@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <build-type xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" uuid="f6699718-828b-4898-bfab-36de06ae4070" xsi:noNamespaceSchemaLocation="https://www.jetbrains.com/teamcity/schemas/2021.1/project-config.xsd">
-  <name>Build libribasim</name>
+  <name>Build Ribasim</name>
   <description />
   <settings ref="Ribasim_Windows">
     <options>
-      <option name="artifactRules" value="ribasim\build\libribasim =&gt; libribasim.zip" />
+      <option name="artifactRules" value="ribasim\build\ribasim =&gt; ribasim_windows.zip" />
       <option name="executionTimeoutMin" value="120" />
       <option name="publishArtifactCondition" value="SUCCESSFUL" />
     </options>
@@ -25,7 +25,7 @@ pixi run --environment=dev install-ci]]></param>
       <runner id="RUNNER_2416" name="Build binary" type="simpleRunner">
         <parameters>
           <param name="script.content"><![CDATA[pixi run remove-artifacts
-pixi run build-libribasim]]></param>
+pixi run build]]></param>
           <param name="teamcity.build.workingDir" value="ribasim" />
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />

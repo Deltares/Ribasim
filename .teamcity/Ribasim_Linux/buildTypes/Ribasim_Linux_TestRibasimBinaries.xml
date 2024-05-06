@@ -1,15 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<build-type xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" uuid="33150291-268d-4891-8743-ff91dc4e2ba4" xsi:noNamespaceSchemaLocation="https://www.jetbrains.com/teamcity/schemas/2021.1/project-config.xsd">
-  <name>Test ribasim_cli</name>
+<build-type xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" uuid="7bd3078e-0f15-487c-b9d6-dd3417d60fe6" xsi:noNamespaceSchemaLocation="https://www.jetbrains.com/teamcity/schemas/2021.1/project-config.xsd">
+  <name>Test Ribasim Binaries</name>
   <description />
   <settings ref="Ribasim_Linux">
     <options>
-      <option name="artifactRules" value="ribasim\build\tests\temp =&gt; test_output.zip" />
+      <option name="artifactRules" value="ribasim\python\ribasim_api\tests\temp =&gt; test_output_api.zip&#xA;ribasim\build\tests\temp =&gt; test_output_cli.zip" />
       <option name="executionTimeoutMin" value="120" />
     </options>
-    <parameters>
-      <param name="conda_env_path" value="%system.teamcity.build.checkoutDir%/ribasim_cli_test_env" />
-    </parameters>
+    <parameters />
     <build-runners>
       <runner id="RUNNER_1501" name="Set up pixi" type="simpleRunner">
         <parameters>
@@ -18,8 +16,7 @@
 source /usr/share/Modules/init/bash
 
 module load pixi
-pixi --version
-pixi run --environment=dev install-ci]]></param>
+pixi --version]]></param>
           <param name="teamcity.build.workingDir" value="ribasim" />
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
@@ -32,7 +29,8 @@ pixi run --environment=dev install-ci]]></param>
 source /usr/share/Modules/init/bash
 
 module load pixi
-pixi --version
+pixi run --environment=dev install
+pixi run test-ribasim-api
 pixi run test-ribasim-cli]]></param>
           <param name="teamcity.build.workingDir" value="ribasim" />
           <param name="teamcity.step.mode" value="default" />
@@ -46,13 +44,12 @@ pixi run test-ribasim-cli]]></param>
       </vcs-entry-ref>
     </vcs-settings>
     <requirements>
-      <does-not-equal id="RQ_310" name="env.OS" value="Windows_NT" />
+      <does-not-equal id="RQ_315" name="env.OS" value="Windows_NT" />
     </requirements>
     <build-triggers>
-      <build-trigger id="TRIGGER_645" type="schedulingTrigger">
+      <build-trigger id="TRIGGER_642" type="schedulingTrigger">
         <parameters>
-          <param name="branchFilter"><![CDATA[+:<default>
-+:v*]]></param>
+          <param name="branchFilter" value="+:&lt;default&gt;" />
           <param name="cronExpression_dm" value="*" />
           <param name="cronExpression_dw" value="?" />
           <param name="cronExpression_hour" value="*" />
@@ -91,13 +88,13 @@ pixi run test-ribasim-cli]]></param>
       </extension>
     </build-extensions>
     <artifact-dependencies>
-      <dependency id="ARTIFACT_DEPENDENCY_570" sourceBuildTypeId="Ribasim_Linux_BuildRibasimCli" cleanDestination="true">
+      <dependency id="ARTIFACT_DEPENDENCY_570" sourceBuildTypeId="Ribasim_Linux_BuildRibasim" cleanDestination="true">
         <revisionRule name="sameChainOrLastFinished" revision="latest.sameChainOrLastFinished" />
-        <artifact sourcePath="ribasim_cli_linux.zip!** =&gt; ribasim/build/ribasim_cli&#xD;&#xA;" />
+        <artifact sourcePath="ribasim_linux.zip!** =&gt; ribasim/build/ribasim&#xD;&#xA;" />
       </dependency>
     </artifact-dependencies>
     <dependencies>
-      <depend-on sourceBuildTypeId="Ribasim_Linux_BuildRibasimCli">
+      <depend-on sourceBuildTypeId="Ribasim_Linux_BuildRibasim">
         <options>
           <option name="run-build-if-dependency-failed" value="RUN_ADD_PROBLEM" />
           <option name="take-started-build-with-same-revisions" value="true" />

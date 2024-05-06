@@ -93,7 +93,7 @@ function parse_static_and_time(
 
     errors = false
     t_end = seconds_since(config.endtime, config.starttime)
-    trivial_timespan = [nextfloat(-Inf), prevfloat(Inf)]
+    trivial_timespan = [0.0, prevfloat(Inf)]
 
     for (node_idx, node_id) in enumerate(node_ids)
         if node_id in static_node_ids
@@ -200,37 +200,37 @@ const nonconservative_nodetypes =
 
 function initialize_allocation!(p::Parameters, config::Config)::Nothing
     (; graph, allocation) = p
-    (; allocation_network_ids, allocation_models, main_network_connections) = allocation
-    allocation_network_ids_ = sort(collect(keys(graph[].node_ids)))
+    (; subnetwork_ids, allocation_models, main_network_connections) = allocation
+    subnetwork_ids_ = sort(collect(keys(graph[].node_ids)))
 
-    if isempty(allocation_network_ids_)
+    if isempty(subnetwork_ids_)
         return nothing
     end
 
-    errors = non_positive_allocation_network_id(graph)
+    errors = non_positive_subnetwork_id(graph)
     if errors
         error("Allocation network initialization failed.")
     end
 
-    for allocation_network_id in allocation_network_ids_
-        push!(allocation_network_ids, allocation_network_id)
+    for subnetwork_id in subnetwork_ids_
+        push!(subnetwork_ids, subnetwork_id)
         push!(main_network_connections, Tuple{NodeID, NodeID}[])
     end
 
-    if first(allocation_network_ids_) == 1
+    if first(subnetwork_ids_) == 1
         find_subnetwork_connections!(p)
     end
 
-    for allocation_network_id in allocation_network_ids_
+    for subnetwork_id in subnetwork_ids_
         push!(
             allocation_models,
-            AllocationModel(allocation_network_id, p, config.allocation.timestep),
+            AllocationModel(subnetwork_id, p, config.allocation.timestep),
         )
     end
     return nothing
 end
 
-function LinearResistance(db::DB, config::Config)::LinearResistance
+function LinearResistance(db::DB, config::Config, graph::MetaGraph)::LinearResistance
     static = load_structvector(db, config, LinearResistanceStaticV1)
     defaults = (; max_flow_rate = Inf, active = true)
     parsed_parameters, valid =
@@ -242,8 +242,12 @@ function LinearResistance(db::DB, config::Config)::LinearResistance
         )
     end
 
+    node_id = NodeID.(NodeType.LinearResistance, parsed_parameters.node_id)
+
     return LinearResistance(
-        NodeID.(NodeType.LinearResistance, parsed_parameters.node_id),
+        node_id,
+        inflow_id.(Ref(graph), node_id),
+        outflow_id.(Ref(graph), node_id),
         BitVector(parsed_parameters.active),
         parsed_parameters.resistance,
         parsed_parameters.max_flow_rate,
@@ -321,7 +325,7 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
     return TabulatedRatingCurve(node_ids, active, interpolations, time, control_mapping)
 end
 
-function ManningResistance(db::DB, config::Config)::ManningResistance
+function ManningResistance(db::DB, config::Config, graph::MetaGraph)::ManningResistance
     static = load_structvector(db, config, ManningResistanceStaticV1)
     parsed_parameters, valid =
         parse_static_and_time(db, config, "ManningResistance"; static)
@@ -330,8 +334,12 @@ function ManningResistance(db::DB, config::Config)::ManningResistance
         error("Errors occurred when parsing ManningResistance data.")
     end
 
+    node_id = NodeID.(NodeType.ManningResistance, parsed_parameters.node_id)
+
     return ManningResistance(
-        NodeID.(NodeType.ManningResistance, parsed_parameters.node_id),
+        node_id,
+        inflow_id.(Ref(graph), node_id),
+        outflow_id.(Ref(graph), node_id),
         BitVector(parsed_parameters.active),
         parsed_parameters.length,
         parsed_parameters.manning_n,
@@ -482,7 +490,7 @@ function Terminal(db::DB, config::Config)::Terminal
     return Terminal(NodeID.(NodeType.Terminal, static.node_id))
 end
 
-function Basin(db::DB, config::Config, chunk_sizes::Vector{Int})::Basin
+function Basin(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{Int})::Basin
     node_id = get_ids(db, "Basin")
     n = length(node_id)
     current_level = zeros(n)
@@ -525,8 +533,12 @@ function Basin(db::DB, config::Config, chunk_sizes::Vector{Int})::Basin
 
     demand = zeros(length(node_id))
 
+    node_id = NodeID.(NodeType.Basin, node_id)
+
     return Basin(
-        Indices(NodeID.(NodeType.Basin, node_id)),
+        Indices(node_id),
+        [collect(inflow_ids(graph, id)) for id in node_id],
+        [collect(outflow_ids(graph, id)) for id in node_id],
         vertical_flux_from_input,
         vertical_flux,
         vertical_flux_prev,
@@ -812,7 +824,7 @@ function UserDemand(db::DB, config::Config)::UserDemand
     realized_bmi = zeros(n_user)
     demand = zeros(n_user, n_priority)
     demand_reduced = zeros(n_user, n_priority)
-    trivial_timespan = [nextfloat(-Inf), prevfloat(Inf)]
+    trivial_timespan = [0.0, prevfloat(Inf)]
     demand_itp = [
         [LinearInterpolation(zeros(2), trivial_timespan) for i in eachindex(priorities)] for j in eachindex(node_ids)
     ]
@@ -877,6 +889,7 @@ function LevelDemand(db::DB, config::Config)::LevelDemand
         static,
         time,
         time_interpolatables = [:min_level, :max_level],
+        defaults = (; min_level = -Inf, max_level = Inf),
     )
 
     if !valid
@@ -951,7 +964,7 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
     return Subgrid(basin_ids, interpolations, fill(NaN, length(basin_ids)))
 end
 
-function Allocation(db::DB, config::Config)::Allocation
+function Allocation(db::DB, config::Config, graph::MetaGraph)::Allocation
     record_demand = (
         time = Float64[],
         subnetwork_id = Int32[],
@@ -976,18 +989,34 @@ function Allocation(db::DB, config::Config)::Allocation
         optimization_type = String[],
     )
 
-    allocation = Allocation(
+    mean_flows = Dict{Tuple{NodeID, NodeID}, Base.RefValue{Float64}}()
+
+    # Find edges which serve as sources in allocation
+    for edge_metadata in values(graph.edge_data)
+        (; subnetwork_id_source, edge) = edge_metadata
+        if subnetwork_id_source != 0
+            mean_flows[edge] = Ref(0.0)
+        end
+    end
+
+    # Find basins with a level demand
+    for node_id in values(graph.vertex_labels)
+        if has_external_demand(graph, node_id, :level_demand)[1]
+            mean_flows[(node_id, node_id)] = Ref(0.0)
+        end
+    end
+
+    return Allocation(
         Int32[],
         AllocationModel[],
         Vector{Tuple{NodeID, NodeID}}[],
         get_all_priorities(db, config),
-        Dict{Tuple{NodeID, NodeID}, Float64}(),
-        Dict{Tuple{NodeID, NodeID}, Float64}(),
+        Dict{Tuple{NodeID, NodeID}, Vector{Float64}}(),
+        Dict{Tuple{NodeID, NodeID}, Vector{Float64}}(),
+        mean_flows,
         record_demand,
         record_flow,
     )
-
-    return allocation
 end
 
 """
@@ -1007,14 +1036,14 @@ function Parameters(db::DB, config::Config)::Parameters
     n_states = length(get_ids(db, "Basin")) + length(get_ids(db, "PidControl"))
     chunk_sizes = get_chunk_sizes(config, n_states)
     graph = create_graph(db, config, chunk_sizes)
-    allocation = Allocation(db, config)
+    allocation = Allocation(db, config, graph)
 
     if !valid_edges(graph)
         error("Invalid edge(s) found.")
     end
 
-    linear_resistance = LinearResistance(db, config)
-    manning_resistance = ManningResistance(db, config)
+    linear_resistance = LinearResistance(db, config, graph)
+    manning_resistance = ManningResistance(db, config, graph)
     tabulated_rating_curve = TabulatedRatingCurve(db, config)
     fractional_flow = FractionalFlow(db, config)
     level_boundary = LevelBoundary(db, config)
@@ -1028,7 +1057,7 @@ function Parameters(db::DB, config::Config)::Parameters
     level_demand = LevelDemand(db, config)
     flow_demand = FlowDemand(db, config)
 
-    basin = Basin(db, config, chunk_sizes)
+    basin = Basin(db, config, graph, chunk_sizes)
     subgrid_level = Subgrid(db, config, basin)
 
     p = Parameters(

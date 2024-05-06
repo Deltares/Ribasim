@@ -27,16 +27,6 @@ zip -r ribasim_qgis.zip ribasim_qgis]]></param>
     <requirements>
       <does-not-equal id="RQ_338" name="env.OS" value="Windows_NT" />
     </requirements>
-    <build-triggers>
-      <build-trigger id="TRIGGER_550" type="buildDependencyTrigger">
-        <parameters>
-          <param name="afterSuccessfulBuildOnly" value="true" />
-          <param name="branchFilter"><![CDATA[+:<default>
-+:v*]]></param>
-          <param name="dependsOn" value="Ribasim_Windows_BuildRibasimCli" />
-        </parameters>
-      </build-trigger>
-    </build-triggers>
     <cleanup />
   </settings>
 </build-type>

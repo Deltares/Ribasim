@@ -11,6 +11,27 @@ class _BaseSchema(pa.DataFrameModel):
         coerce = True
 
 
+class BasinConcentrationExternalSchema(_BaseSchema):
+    node_id: Series[Int32] = pa.Field(nullable=False, default=0)
+    time: Series[Timestamp] = pa.Field(nullable=False)
+    substance: Series[str] = pa.Field(nullable=False)
+    concentration: Series[float] = pa.Field(nullable=True)
+
+
+class BasinConcentrationStateSchema(_BaseSchema):
+    node_id: Series[Int32] = pa.Field(nullable=False, default=0)
+    substance: Series[str] = pa.Field(nullable=False)
+    concentration: Series[float] = pa.Field(nullable=True)
+
+
+class BasinConcentrationSchema(_BaseSchema):
+    node_id: Series[Int32] = pa.Field(nullable=False, default=0)
+    time: Series[Timestamp] = pa.Field(nullable=False)
+    substance: Series[str] = pa.Field(nullable=False)
+    drainage: Series[float] = pa.Field(nullable=True)
+    precipitation: Series[float] = pa.Field(nullable=True)
+
+
 class BasinProfileSchema(_BaseSchema):
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     area: Series[float] = pa.Field(nullable=False)
@@ -48,23 +69,6 @@ class BasinTimeSchema(_BaseSchema):
     urban_runoff: Series[float] = pa.Field(nullable=True)
 
 
-# No capital for concentration to get Basin / boundaryconcentration
-class BasinBoundaryconcentrationSchema(_BaseSchema):
-    node_id: Series[int] = pa.Field(nullable=False, default=0)
-    time: Series[Timestamp] = pa.Field(nullable=False)
-    substance: Series[str] = pa.Field(nullable=False)
-    drainage_concentration: Series[float] = pa.Field(nullable=True)
-    precipitation_concentration: Series[float] = pa.Field(nullable=True)
-    urban_runoff_concentration: Series[float] = pa.Field(nullable=True)
-
-
-class BasinConcentrationSchema(_BaseSchema):
-    node_id: Series[int] = pa.Field(nullable=False, default=0)
-    time: Series[Timestamp] = pa.Field(nullable=False)
-    substance: Series[str] = pa.Field(nullable=False)
-    concentration: Series[float] = pa.Field(nullable=False)
-
-
 class DiscreteControlConditionSchema(_BaseSchema):
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     compound_variable_id: Series[Int32] = pa.Field(nullable=False, default=0)
@@ -87,6 +91,13 @@ class DiscreteControlVariableSchema(_BaseSchema):
     look_ahead: Series[float] = pa.Field(nullable=True)
 
 
+class FlowBoundaryConcentrationSchema(_BaseSchema):
+    node_id: Series[Int32] = pa.Field(nullable=False, default=0)
+    time: Series[Timestamp] = pa.Field(nullable=False)
+    substance: Series[str] = pa.Field(nullable=False)
+    concentration: Series[float] = pa.Field(nullable=False)
+
+
 class FlowBoundaryStaticSchema(_BaseSchema):
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     active: Series[pa.BOOL] = pa.Field(nullable=True)
@@ -97,13 +108,6 @@ class FlowBoundaryTimeSchema(_BaseSchema):
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     time: Series[Timestamp] = pa.Field(nullable=False)
     flow_rate: Series[float] = pa.Field(nullable=False)
-
-
-class FlowBoundaryConcentrationSchema(_BaseSchema):
-    node_id: Series[int] = pa.Field(nullable=False, default=0)
-    time: Series[Timestamp] = pa.Field(nullable=False)
-    substance: Series[str] = pa.Field(nullable=False)
-    concentration: Series[float] = pa.Field(nullable=False)
 
 
 class FlowDemandStaticSchema(_BaseSchema):
@@ -125,6 +129,13 @@ class FractionalFlowStaticSchema(_BaseSchema):
     control_state: Series[str] = pa.Field(nullable=True)
 
 
+class LevelBoundaryConcentrationSchema(_BaseSchema):
+    node_id: Series[Int32] = pa.Field(nullable=False, default=0)
+    time: Series[Timestamp] = pa.Field(nullable=False)
+    substance: Series[str] = pa.Field(nullable=False)
+    concentration: Series[float] = pa.Field(nullable=False)
+
+
 class LevelBoundaryStaticSchema(_BaseSchema):
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     active: Series[pa.BOOL] = pa.Field(nullable=True)
@@ -137,25 +148,18 @@ class LevelBoundaryTimeSchema(_BaseSchema):
     level: Series[float] = pa.Field(nullable=False)
 
 
-class LevelBoundaryConcentrationSchema(_BaseSchema):
-    node_id: Series[int] = pa.Field(nullable=False, default=0)
-    time: Series[Timestamp] = pa.Field(nullable=False)
-    substance: Series[str] = pa.Field(nullable=False)
-    concentration: Series[float] = pa.Field(nullable=False)
-
-
 class LevelDemandStaticSchema(_BaseSchema):
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
-    min_level: Series[float] = pa.Field(nullable=False)
-    max_level: Series[float] = pa.Field(nullable=False)
+    min_level: Series[float] = pa.Field(nullable=True)
+    max_level: Series[float] = pa.Field(nullable=True)
     priority: Series[Int32] = pa.Field(nullable=False, default=0)
 
 
 class LevelDemandTimeSchema(_BaseSchema):
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     time: Series[Timestamp] = pa.Field(nullable=False)
-    min_level: Series[float] = pa.Field(nullable=False)
-    max_level: Series[float] = pa.Field(nullable=False)
+    min_level: Series[float] = pa.Field(nullable=True)
+    max_level: Series[float] = pa.Field(nullable=True)
     priority: Series[Int32] = pa.Field(nullable=False, default=0)
 
 

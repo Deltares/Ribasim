@@ -22,10 +22,11 @@ repo_dir = delwaq_dir.parents[1]
 
 env = Environment(loader=FileSystemLoader(delwaq_dir / "template"))
 
-fillvolume = 0.0
+fillvolume = 1.0
 
 # Read in model and results
 modelfn = repo_dir / "generated_testmodels/basic/ribasim.toml"
+# modelfn = "/Users/evetion/Downloads/hws_2024_3_1/hws.toml"
 # modelfn = repo_dir / "models/hws_2024_3_2/hws.toml"
 model = ribasim.Model.read(modelfn)
 # model.write("nl_2024/ribasim.toml")  # write to new location

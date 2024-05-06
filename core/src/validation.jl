@@ -47,8 +47,8 @@ end
 
 n_neighbor_bounds_flow(nodetype::Symbol) = n_neighbor_bounds_flow(Val(nodetype))
 n_neighbor_bounds_flow(::Val{:Basin}) = n_neighbor_bounds(0, typemax(Int), 0, typemax(Int))
-n_neighbor_bounds_flow(::Val{:LinearResistance}) = n_neighbor_bounds(1, 1, 1, typemax(Int))
-n_neighbor_bounds_flow(::Val{:ManningResistance}) = n_neighbor_bounds(1, 1, 1, typemax(Int))
+n_neighbor_bounds_flow(::Val{:LinearResistance}) = n_neighbor_bounds(1, 1, 1, 1)
+n_neighbor_bounds_flow(::Val{:ManningResistance}) = n_neighbor_bounds(1, 1, 1, 1)
 n_neighbor_bounds_flow(::Val{:TabulatedRatingCurve}) =
     n_neighbor_bounds(1, 1, 1, typemax(Int))
 n_neighbor_bounds_flow(::Val{:FractionalFlow}) = n_neighbor_bounds(1, 1, 1, 1)
@@ -67,7 +67,7 @@ n_neighbor_bounds_flow(nodetype) =
     error("'n_neighbor_bounds_flow' not defined for $nodetype.")
 
 n_neighbor_bounds_control(nodetype::Symbol) = n_neighbor_bounds_control(Val(nodetype))
-n_neighbor_bounds_control(::Val{:Basin}) = n_neighbor_bounds(0, 1, 0, typemax(Int))
+n_neighbor_bounds_control(::Val{:Basin}) = n_neighbor_bounds(0, 1, 0, 0)
 n_neighbor_bounds_control(::Val{:LinearResistance}) = n_neighbor_bounds(0, 1, 0, 0)
 n_neighbor_bounds_control(::Val{:ManningResistance}) = n_neighbor_bounds(0, 1, 0, 0)
 n_neighbor_bounds_control(::Val{:TabulatedRatingCurve}) = n_neighbor_bounds(0, 1, 0, 0)
@@ -307,19 +307,17 @@ function valid_fractional_flow(
     control_states = Set{String}([key[2] for key in keys(control_mapping)])
 
     for src_id in src_ids
-        src_outneighbor_ids = Set(outflow_ids(graph, src_id))
-        if src_outneighbor_ids ⊈ node_id_set
+        src_outflow_ids = Set(outflow_ids(graph, src_id))
+        if src_outflow_ids ⊈ node_id_set
             errors = true
-            @error(
-                "$src_id combines fractional flow outneighbors with other outneigbor types."
-            )
+            @error("$src_id has outflow to FractionalFlow and other node types.")
         end
 
         # Each control state (including missing) must sum to 1
         for control_state in control_states
             fraction_sum = 0.0
 
-            for ff_id in intersect(src_outneighbor_ids, node_id_set)
+            for ff_id in intersect(src_outflow_ids, node_id_set)
                 parameter_values = get(control_mapping, (ff_id, control_state), nothing)
                 if parameter_values === nothing
                     continue
@@ -406,21 +404,21 @@ end
 
 function incomplete_subnetwork(graph::MetaGraph, node_ids::Dict{Int32, Set{NodeID}})::Bool
     errors = false
-    for (allocation_network_id, subnetwork_node_ids) in node_ids
+    for (subnetwork_id, subnetwork_node_ids) in node_ids
         subnetwork, _ = induced_subgraph(graph, code_for.(Ref(graph), subnetwork_node_ids))
         if !is_connected(subnetwork)
-            @error "All nodes in subnetwork $allocation_network_id should be connected"
+            @error "All nodes in subnetwork $subnetwork_id should be connected"
             errors = true
         end
     end
     return errors
 end
 
-function non_positive_allocation_network_id(graph::MetaGraph)::Bool
+function non_positive_subnetwork_id(graph::MetaGraph)::Bool
     errors = false
-    for allocation_network_id in keys(graph[].node_ids)
-        if (allocation_network_id <= 0)
-            @error "Allocation network id $allocation_network_id needs to be a positive integer."
+    for subnetwork_id in keys(graph[].node_ids)
+        if (subnetwork_id <= 0)
+            @error "Allocation network id $subnetwork_id needs to be a positive integer."
             errors = true
         end
     end
@@ -603,29 +601,35 @@ end
 """
 The source nodes must only have one allocation outneighbor and no allocation inneighbors.
 """
-function valid_sources(p::Parameters, allocation_network_id::Int32)::Bool
+function valid_sources(
+    p::Parameters,
+    capacity::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}},
+    subnetwork_id::Int32,
+)::Bool
     (; graph) = p
-
-    edge_ids = graph[].edge_ids[allocation_network_id]
 
     errors = false
 
-    for edge in edge_ids
+    for edge in keys(capacity.data)
+        if !haskey(graph, edge...)
+            edge = reverse(edge)
+        end
+
         (id_source, id_dst) = edge
-        if graph[id_source, id_dst].allocation_network_id_source == allocation_network_id
+        if graph[edge...].subnetwork_id_source == subnetwork_id
             from_source_node = id_source.type in allocation_source_nodetypes
 
-            if is_main_network(allocation_network_id)
+            if is_main_network(subnetwork_id)
                 if !from_source_node
                     errors = true
                     @error "The source node of source edge $edge in the main network must be one of $allocation_source_nodetypes."
                 end
             else
-                from_main_network = is_main_network(graph[id_source].allocation_network_id)
+                from_main_network = is_main_network(graph[id_source].subnetwork_id)
 
                 if !from_source_node && !from_main_network
                     errors = true
-                    @error "The source node of source edge $edge for subnetwork $allocation_network_id is neither a source node nor is it coming from the main network."
+                    @error "The source node of source edge $edge for subnetwork $subnetwork_id is neither a source node nor is it coming from the main network."
                 end
             end
         end

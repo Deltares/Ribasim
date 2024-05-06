@@ -479,14 +479,17 @@ min_level     | Float64  | $m$          | -
 
 A `LevelDemand` node associates a minimum and a maximum level with connected basins to be used by the allocation algorithm.
 Below the minimum level the basin has a demand of the supplied priority,
-above the maximum level the basin acts as a source, used by all nodes with demands in order of priority.
-The same `LevelDemand` node can be used for basins in different subnetworks.
+above the maximum level the basin has a surplus and acts as a source, used by all nodes with demands in order of priority.
+The same `LevelDemand` node can be used for Basins in different subnetworks.
+
+Both `min_level` and `max_level` are optional, to be able to handle only the demand or surplus side.
+If both are missing, `LevelDemand` won't have any effects on allocation.
 
 column        | type    | unit         | restriction
 ------------- | ------- | ------------ | -----------
 node_id       | Int32   | -            | sorted
-min_level     | Float64 | $m$          | -
-max_level     | Float64 | $m$          | -
+min_level     | Float64 | $m$          | (optional, default -Inf)
+max_level     | Float64 | $m$          | (optional, default Inf)
 priority      | Int32   | -            | positive
 
 ## LevelDemand / time
@@ -623,8 +626,6 @@ column                | type    | unit         | restriction
 node_id               | Int32   | -            | sorted
 
 # DisceteControl {#sec-discrete-control}
-
-DiscreteControl is implemented based on [VectorContinuousCallback](https://docs.sciml.ai/DiffEqDocs/stable/features/callback_functions/#VectorContinuousCallback).
 
 ## DiscreteControl / variable
 

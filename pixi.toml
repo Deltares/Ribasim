@@ -29,7 +29,7 @@ test-ribasim-api = "pytest --basetemp=python/ribasim_api/tests/temp --junitxml=r
 
 [feature.dev.tasks]
 # Installation
-install-julia = "juliaup add 1.10.0 && juliaup default 1.10.0"
+install-julia = "juliaup add 1.10.3 && juliaup default 1.10.3"
 install-pre-commit = "pre-commit install"
 install-ci = { depends_on = [
     "install-python",
@@ -53,8 +53,18 @@ initialize-julia = { depends_on = [
 # Docs
 build-julia-docs = { cmd = "julia --project docs/make.jl", depends_on = [
     "initialize-julia",
+], inputs = [
+    "core",
+    "docs/make.jl",
+], outputs = [
+    "docs/build",
 ] }
-quartodoc-build = { cmd = "quartodoc build && rm objects.json", cwd = "docs" }
+quartodoc-build = { cmd = "quartodoc build && rm objects.json", cwd="docs", inputs = [
+    "docs/_quarto.yml",
+    "python/ribasim",
+], outputs = [
+    "docs/python/reference",
+] }
 quarto-preview = { cmd = "quarto preview docs", depends_on = [
     "quartodoc-build",
     "generate-testmodels",
@@ -78,15 +88,7 @@ lint = { depends_on = [
     "mypy-ribasim-qgis",
 ] }
 # Build
-build-ribasim-cli = { cmd = "julia --project build.jl --app", cwd = "build", depends_on = [
-    "generate-testmodels",
-    "initialize-julia",
-] }
-build-libribasim = { cmd = "julia --project build.jl --lib", cwd = "build", depends_on = [
-    "generate-testmodels",
-    "initialize-julia",
-] }
-build = { "cmd" = "julia --project build.jl --app --lib", cwd = "build", depends_on = [
+build = { "cmd" = "julia --project build.jl", cwd = "build", depends_on = [
     "generate-testmodels",
     "initialize-julia",
 ] }
@@ -99,11 +101,20 @@ test-ribasim-core = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test()'
 test-ribasim-core-cov = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test(coverage=true, julia_args=[\"--check-bounds=yes\"])'", depends_on = [
     "generate-testmodels",
 ] }
-generate-testmodels = "python utils/generate-testmodels.py"
+generate-testmodels = { cmd = "python utils/generate-testmodels.py", inputs = [
+    "python/ribasim",
+    "python/ribasim_testmodels",
+], outputs = [
+    "generated_testmodels",
+] }
 tests = { depends_on = ["lint", "test-ribasim-python", "test-ribasim-core"] }
 # Codegen
 codegen = { cmd = "julia --project utils/gen_python.jl && ruff format python/ribasim/ribasim/schemas.py", depends_on = [
     "initialize-julia",
+], inputs = [
+    "core",
+], outputs = [
+    "python/ribasim/ribasim/schemas.py",
 ] }
 # Publish
 build-ribasim-python-wheel = { cmd = "rm --recursive --force dist && python -m build && twine check dist/*", cwd = "python/ribasim" }
@@ -158,7 +169,7 @@ netCDF4 = "*"
 numpy = "*"
 pandas = "*"
 pandas-stubs = "*"
-pandera = "*"
+pandera = ">=0.18"
 pip = "*"
 pyarrow = "*"
 pydantic = ">=2"
@@ -173,6 +184,7 @@ tomli-w = "*"
 xmipy = "*"
 xugrid = "*"
 xarray = "*"
+ipykernel = ">=6.29.3,<6.30"
 
 
 [feature.dev.dependencies]
@@ -189,6 +201,7 @@ qgis-plugin-manager = "*"
 quarto = "*"
 quartodoc = "*"
 ruff = "*"
+rust = "*"
 twine = "*"
 
 [feature.py312.dependencies]

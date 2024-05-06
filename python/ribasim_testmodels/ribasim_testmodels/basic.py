@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
@@ -38,14 +39,14 @@ def basic_model() -> ribasim.Model:
         ),
         basin.State(level=[0.04471158417652035]),
         basin.Concentration(
-            time="2020-01-01 00:00:00", substance=["Cl"], concentration=[0.0]
-        ),
-        basin.BoundaryConcentration(
             time="2020-01-01 00:00:00",
             substance=["Cl"],
-            drainage_concentration=[0.0],
-            precipitation_concentration=[0.0],
-            urban_runoff_concentration=[0.0],
+            drainage=[0.0],
+            precipitation=[0.0],
+        ),
+        basin.ConcentrationState(substance=["Cl"], concentration=[0.0]),
+        basin.ConcentrationExternal(
+            time="2020-01-01 00:00:00", substance=["Cl"], concentration=[0.0]
         ),
     ]
     node_ids = [1, 3, 6, 9]
@@ -117,7 +118,7 @@ def basic_model() -> ribasim.Model:
     model.pump.add(Node(7, Point(4.0, 1.0)), [pump.Static(flow_rate=[0.5 / 3600])])
 
     # Setup flow boundary
-    flow_boundary_data = [
+    flow_boundary_data: Sequence[TableModel[Any]] = [
         flow_boundary.Static(flow_rate=[1e-4]),
         flow_boundary.Concentration(
             time="2020-01-01 00:00:00", substance=["Tracer"], concentration=[1.0]
@@ -350,7 +351,6 @@ def outlet_model():
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
-        solver=ribasim.Solver(saveat=0),
     )
 
     # Set up the basins
@@ -358,7 +358,7 @@ def outlet_model():
         Node(3, Point(2.0, 0.0)),
         [
             basin.Profile(area=[1000.0, 1000.0], level=[0.0, 1.0]),
-            basin.State(level=[1e-3]),
+            basin.State(level=[0.0]),
         ],
     )
 
@@ -368,9 +368,9 @@ def outlet_model():
         [
             level_boundary.Time(
                 time=[
-                    "2020-01-01",
-                    "2020-06-01",
-                    "2021-01-01",
+                    "2020-01-01 00:00:00",
+                    "2020-06-01 00:00:00",
+                    "2021-01-01 00:00:00",
                 ],
                 level=[1.0, 3.0, 3.0],
             )

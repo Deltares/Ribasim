@@ -82,7 +82,7 @@ end
     graph[NodeID(:Pump, 6)] = NodeMetadata(:pump, 9)
 
     function set_edge_metadata!(id_1, id_2, edge_type)
-        graph[id_1, id_2] = EdgeMetadata(0, edge_type, 0, id_1, id_2, false, NodeID[])
+        graph[id_1, id_2] = EdgeMetadata(0, edge_type, 0, (id_1, id_2))
         return nothing
     end
 
@@ -175,7 +175,7 @@ end
     graph[NodeID(:Basin, 7)] = NodeMetadata(:basin, 0)
 
     function set_edge_metadata!(id_1, id_2, edge_type)
-        graph[id_1, id_2] = EdgeMetadata(0, edge_type, 0, id_1, id_2, false, NodeID[])
+        graph[id_1, id_2] = EdgeMetadata(0, edge_type, 0, (id_1, id_2))
         return nothing
     end
 
@@ -239,7 +239,7 @@ end
     @test length(logger.logs) == 4
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
-          "TabulatedRatingCurve #7 combines fractional flow outneighbors with other outneigbor types."
+          "TabulatedRatingCurve #7 has outflow to FractionalFlow and other node types."
     @test logger.logs[2].level == Error
     @test logger.logs[2].message ==
           "Fractional flow nodes must have non-negative fractions."
@@ -437,4 +437,24 @@ end
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
           "Demand of UserDemand #1 with priority 1 should be non-negative"
+end
+
+@testitem "negative storage" begin
+    import BasicModelInterface as BMI
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/linear_resistance/ribasim.toml")
+    @test ispath(toml_path)
+    dt = 1e10
+
+    config = Ribasim.Config(
+        toml_path;
+        solver_algorithm = "Euler",
+        solver_dt = dt,
+        solver_saveat = Inf,
+    )
+    model = Ribasim.Model(config)
+    @test_throws "Negative storages found at 2021-01-01T00:00:00." BMI.update_until(
+        model,
+        dt,
+    )
 end

@@ -1,25 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<build-type xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" uuid="7bd3078e-0f15-487c-b9d6-dd3417d60fe6" xsi:noNamespaceSchemaLocation="https://www.jetbrains.com/teamcity/schemas/2021.1/project-config.xsd">
-  <name>Test ribasim_api</name>
+<build-type xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" uuid="27854ba1-bb78-4d7a-b9fd-fecfb86b0393" xsi:noNamespaceSchemaLocation="https://www.jetbrains.com/teamcity/schemas/2021.1/project-config.xsd">
+  <name>Test Ribasim Binaries</name>
   <description />
-  <settings ref="Ribasim_Linux">
+  <settings ref="Ribasim_Windows">
     <options>
-      <option name="artifactRules" value="ribasim\python\ribasim_api\tests\temp =&gt; test_output.zip" />
-      <option name="executionTimeoutMin" value="120" />
+      <option name="artifactRules" value="ribasim\python\ribasim_api\tests\temp =&gt; test_output_api.zip&#xA;ribasim\build\tests\temp =&gt; test_output_cli.zip" />
     </options>
-    <parameters>
-      <param name="conda_env_path" value="%system.teamcity.build.checkoutDir%/libribasim_test_env" />
-    </parameters>
+    <disabled-settings>
+      <setting-ref ref="RUNNER_1501" />
+    </disabled-settings>
+    <parameters />
     <build-runners>
       <runner id="RUNNER_1501" name="Set up pixi" type="simpleRunner">
         <parameters>
-          <param name="script.content"><![CDATA[#!/bin/bash
-# black magic
-source /usr/share/Modules/init/bash
-
-module load pixi
-pixi --version
-pixi run install-python]]></param>
+          <param name="script.content" value="pixi --version" />
           <param name="teamcity.build.workingDir" value="ribasim" />
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
@@ -27,13 +21,9 @@ pixi run install-python]]></param>
       </runner>
       <runner id="RUNNER_1503" name="Run tests" type="simpleRunner">
         <parameters>
-          <param name="script.content"><![CDATA[#!/bin/bash
-# black magic
-source /usr/share/Modules/init/bash
-
-module load pixi
-pixi --version
-pixi run test-ribasim-api]]></param>
+          <param name="script.content"><![CDATA[pixi run --environment=dev install
+pixi run test-ribasim-api
+pixi run test-ribasim-cli]]></param>
           <param name="teamcity.build.workingDir" value="ribasim" />
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
@@ -46,13 +36,12 @@ pixi run test-ribasim-api]]></param>
       </vcs-entry-ref>
     </vcs-settings>
     <requirements>
-      <does-not-equal id="RQ_315" name="env.OS" value="Windows_NT" />
+      <equals id="RQ_315" name="env.OS" value="Windows_NT" />
     </requirements>
     <build-triggers>
-      <build-trigger id="TRIGGER_642" type="schedulingTrigger">
+      <build-trigger id="TRIGGER_631" type="schedulingTrigger">
         <parameters>
-          <param name="branchFilter"><![CDATA[+:<default>
-+:v*]]></param>
+          <param name="branchFilter" value="+:&lt;default&gt;" />
           <param name="cronExpression_dm" value="*" />
           <param name="cronExpression_dw" value="?" />
           <param name="cronExpression_hour" value="*" />
@@ -74,6 +63,15 @@ pixi run test-ribasim-api]]></param>
       </build-trigger>
     </build-triggers>
     <build-extensions>
+      <extension id="BUILD_EXT_142" type="commit-status-publisher">
+        <parameters>
+          <param name="github_authentication_type" value="token" />
+          <param name="github_host" value="https://api.github.com" />
+          <param name="publisherId" value="githubStatusPublisher" />
+          <param name="secure:github_access_token" value="credentialsJSON:6b37af71-1f2f-4611-8856-db07965445c0" />
+          <param name="vcsRootId" value="Ribasim_Ribasim" />
+        </parameters>
+      </extension>
       <extension id="BUILD_EXT_145" type="xml-report-plugin">
         <parameters>
           <param name="xmlReportParsing.reportDirs" value="ribasim/report.xml" />
@@ -81,23 +79,15 @@ pixi run test-ribasim-api]]></param>
           <param name="xmlReportParsing.verboseOutput" value="true" />
         </parameters>
       </extension>
-      <extension id="BUILD_EXT_295" type="commit-status-publisher">
-        <parameters>
-          <param name="github_authentication_type" value="token" />
-          <param name="github_host" value="https://api.github.com" />
-          <param name="publisherId" value="githubStatusPublisher" />
-          <param name="secure:github_access_token" value="credentialsJSON:6b37af71-1f2f-4611-8856-db07965445c0" />
-        </parameters>
-      </extension>
     </build-extensions>
     <artifact-dependencies>
-      <dependency id="ARTIFACT_DEPENDENCY_570" sourceBuildTypeId="Ribasim_Linux_BuildLibribasim" cleanDestination="true">
+      <dependency id="ARTIFACT_DEPENDENCY_570" sourceBuildTypeId="Ribasim_Windows_BuildRibasim" cleanDestination="true">
         <revisionRule name="sameChainOrLastFinished" revision="latest.sameChainOrLastFinished" />
-        <artifact sourcePath="libribasim.zip!** =&gt; ribasim/build/libribasim&#xD;&#xA;" />
+        <artifact sourcePath="ribasim_windows.zip!** =&gt; ribasim/build/ribasim&#xD;&#xA;" />
       </dependency>
     </artifact-dependencies>
     <dependencies>
-      <depend-on sourceBuildTypeId="Ribasim_Linux_BuildLibribasim">
+      <depend-on sourceBuildTypeId="Ribasim_Windows_BuildRibasim">
         <options>
           <option name="run-build-if-dependency-failed" value="RUN_ADD_PROBLEM" />
           <option name="take-started-build-with-same-revisions" value="true" />

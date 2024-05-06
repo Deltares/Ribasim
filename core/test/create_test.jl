@@ -1,4 +1,4 @@
-@testitem "Non-positive allocation network ID" begin
+@testitem "Non-positive subnetwork ID" begin
     using MetaGraphsNext
     using Graphs
     using Logging
@@ -29,7 +29,7 @@
 
     logger = TestLogger()
     with_logger(logger) do
-        Ribasim.non_positive_allocation_network_id(graph)
+        Ribasim.non_positive_subnetwork_id(graph)
     end
 
     @test length(logger.logs) == 2

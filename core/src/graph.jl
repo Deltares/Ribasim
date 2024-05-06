@@ -16,8 +16,6 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
     )
     # Node IDs per subnetwork
     node_ids = Dict{Int32, Set{NodeID}}()
-    # Allocation edges per subnetwork
-    edge_ids = Dict{Int32, Set{Tuple{NodeID, NodeID}}}()
     # Source edges per subnetwork
     edges_source = Dict{Int32, Set{EdgeMetadata}}()
     # The number of flow edges
@@ -35,16 +33,15 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
         node_id = NodeID(row.node_type, row.node_id)
         # Process allocation network ID
         if ismissing(row.subnetwork_id)
-            allocation_network_id = 0
+            subnetwork_id = 0
         else
-            allocation_network_id = row.subnetwork_id
-            if !haskey(node_ids, allocation_network_id)
-                node_ids[allocation_network_id] = Set{NodeID}()
+            subnetwork_id = row.subnetwork_id
+            if !haskey(node_ids, subnetwork_id)
+                node_ids[subnetwork_id] = Set{NodeID}()
             end
-            push!(node_ids[allocation_network_id], node_id)
+            push!(node_ids[subnetwork_id], node_id)
         end
-        graph[node_id] =
-            NodeMetadata(Symbol(snake_case(row.node_type)), allocation_network_id)
+        graph[node_id] = NodeMetadata(Symbol(snake_case(row.node_type)), subnetwork_id)
     end
 
     errors = false
@@ -68,8 +65,7 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
         if ismissing(subnetwork_id)
             subnetwork_id = 0
         end
-        edge_metadata =
-            EdgeMetadata(fid, edge_type, subnetwork_id, id_src, id_dst, false, NodeID[])
+        edge_metadata = EdgeMetadata(fid, edge_type, subnetwork_id, (id_src, id_dst))
         if haskey(graph, id_src, id_dst)
             errors = true
             @error "Duplicate edge" id_src id_dst
@@ -102,7 +98,6 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
     end
     graph_data = (;
         node_ids,
-        edge_ids,
         edges_source,
         flow_dict,
         flow,
@@ -182,9 +177,16 @@ end
 """
 Get the flow over the given edge (val is needed for get_tmp from ForwardDiff.jl).
 """
-function get_flow(graph::MetaGraph, id_src::NodeID, id_dst::NodeID, val)::Number
-    (; flow_dict, flow) = graph[]
-    return get_tmp(flow, val)[flow_dict[id_src, id_dst]]
+function get_flow(
+    graph::MetaGraph,
+    id_src::NodeID,
+    id_dst::NodeID,
+    val;
+    prev::Bool = false,
+)::Number
+    (; flow_dict, flow, flow_prev) = graph[]
+    flow_vector = prev ? flow_prev : flow
+    return get_tmp(flow_vector, val)[flow_dict[id_src, id_dst]]
 end
 
 """
