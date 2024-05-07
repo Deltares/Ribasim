@@ -55,9 +55,9 @@ end
     )
 
     @test basin.level[2][1] === 4.0
-    @test Ribasim.basin_bottom(basin, NodeID(:Basin, 5)) === 0.0
-    @test Ribasim.basin_bottom(basin, NodeID(:Basin, 7)) === 4.0
-    @test Ribasim.basin_bottom(basin, NodeID(:Basin, 6)) === nothing
+    @test Ribasim.basin_bottom(basin, NodeID(:Basin, 5))[2] === 0.0
+    @test Ribasim.basin_bottom(basin, NodeID(:Basin, 7))[2] === 4.0
+    @test !Ribasim.basin_bottom(basin, NodeID(:Basin, 6))[1]
 end
 
 @testitem "Convert levels to storages" begin
