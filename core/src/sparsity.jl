@@ -40,7 +40,7 @@ function get_jac_prototype(
 
     # Allocation input flows depending on storages
     # Note, this is copied from the update_jac_prototype!(jac_prototype, p)
-    # result so the other is important
+    # result so the order is important
     update_jac_prototype!(jac_prototype, allocation, graph)
 
     # UserDemand inflows depending on storages

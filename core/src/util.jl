@@ -739,30 +739,14 @@ has_fractional_flow_outneighbors(graph::MetaGraph, node_id::NodeID)::Bool = any(
 internalnorm(u::ComponentVector, t) = OrdinaryDiffEq.ODE_DEFAULT_NORM(u.storage, t)
 internalnorm(u::Number, t) = OrdinaryDiffEq.ODE_DEFAULT_NORM(u, t)
 
-function get_n_flows(db::DB)::Int
-    result = execute(columntable, db, "SELECT COUNT(*) FROM Edge WHERE edge_type = 'flow'")
+function edge_count(db::DB, where::String)::Int
+    result = execute(columntable, db, "SELECT COUNT(*) FROM Edge WHERE $where")
     return only(only(result))
 end
 
 function get_n_allocation_flow_inputs(db::DB)::Int
-    n_sources = only(
-        only(
-            execute(
-                columntable,
-                db,
-                "SELECT COUNT(*) From Edge where subnetwork_id IS NOT NULL",
-            ),
-        ),
-    )
-    n_level_demands = only(
-        only(
-            execute(
-                columntable,
-                db,
-                "SELECT COUNT(*) FROM Edge WHERE from_node_type = 'LevelDemand'",
-            ),
-        ),
-    )
+    n_sources = edge_count(db, "subnetwork_id IS NOT NULL")
+    n_level_demands = edge_count(db, "from_node_type = 'LevelDemand'")
     return n_sources + n_level_demands
 end
 
@@ -774,7 +758,7 @@ function get_n_states(db::DB, config::Config)::NamedTuple
     n_basins = length(get_ids(db, "Basin"))
     n_pid_controls = length(get_ids(db, "PidControl"))
     n_user_demands = length(get_ids(db, "UserDemand"))
-    n_flows = get_n_flows(db)
+    n_flows = edge_count(db, "edge_type = 'flow'")
     n_allocation_flow_inputs =
         config.allocation.use_allocation ? get_n_allocation_flow_inputs(db) : 0
     # NOTE: This is the source of truth for the state component names
@@ -790,7 +774,7 @@ function get_n_states(db::DB, config::Config)::NamedTuple
         evaporation_integrated = n_basins,
         drainage_integrated = n_basins,
         infiltration_integrated = n_basins,
-        # Cumulative basin forcings for, for read or reset by BMI only
+        # Cumulative basin forcings, for read or reset by BMI only
         precipitation_bmi = n_basins,
         evaporation_bmi = n_basins,
         drainage_bmi = n_basins,

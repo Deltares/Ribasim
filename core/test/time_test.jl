@@ -29,8 +29,8 @@ end
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/basic_transient/ribasim.toml")
     @test ispath(toml_path)
-    config = Ribasim.Config(toml_path)
-    model = Ribasim.run(config)
+    model = Ribasim.run(toml_path)
+
     basin = model.integrator.p.basin
     n_basin = length(basin.node_id)
     basin_table = DataFrame(Ribasim.basin_table(model))

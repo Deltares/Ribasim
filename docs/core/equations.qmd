@@ -39,7 +39,7 @@ The basins have an associated storage state and the non-basins dictate how water
 
 $\mathbf{u}(t)$ is given by all the states of the model, which are:
 - the storage of the basins;
-- the integral terms of the PID controllers, further explained in [3 PID controller](equations.qmd#sec-PID);
+- the integral terms of the PID controllers, further explained in [PID controller](equations.qmd#sec-PID);
 - integrated flows $\int_{t_0}^t Q_{i,j}(t')\text{d}t'$ used for calculating mean flows.
 
 Given a single basin with node ID $i \in B$, the equation that dictates the change of its storage over time is given by

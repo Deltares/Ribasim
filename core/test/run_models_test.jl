@@ -584,8 +584,7 @@ end
     # Save all flows
     saveat = 0.0
     flow, tstops = get_flow(nothing, saveat)
-    # This one has jumps to ~0.84 and ~1.02 throughout the simulation
-    #@test all(flow .≈ 1.0)
+    @test all(flow[12:end] .≈ 1.0)
     @test length(flow) == length(tstops) - 1
 
     flow, tstops = get_flow(Δt, saveat)
