@@ -116,6 +116,7 @@ end
 """
 Type for storing metadata of edges in the graph:
 id: ID of the edge (only used for labeling flow output)
+flow_idx: Index in the vector of flows
 type: type of the edge
 subnetwork_id_source: ID of subnetwork where this edge is a source
   (0 if not a source)
@@ -123,6 +124,7 @@ edge: (from node ID, to node ID)
 """
 struct EdgeMetadata
     id::Int32
+    flow_idx::Int32
     type::EdgeType.T
     subnetwork_id_source::Int32
     edge::Tuple{NodeID, NodeID}
@@ -233,8 +235,8 @@ Type parameter C indicates the content backing the StructVector, which can be a 
 of Vectors or Arrow Primitives, and is added to avoid type instabilities.
 
 node_id: node ID of the TabulatedRatingCurve node
-inflow_id: node ID across the incoming flow edge
-outflow_ids: node IDs across the outgoing flow edges
+inflow_edge: incoming flow edge
+outflow_edges: outgoing flow edges
 active: whether this node is active and thus contributes flows
 tables: The current Q(h) relationships
 time: The time table used for updating the tables
@@ -242,8 +244,8 @@ control_mapping: dictionary from (node_id, control_state) to Q(h) and/or active 
 """
 struct TabulatedRatingCurve{C} <: AbstractParameterNode
     node_id::Vector{NodeID}
-    inflow_id::Vector{NodeID}
-    outflow_ids::Vector{Vector{NodeID}}
+    inflow_edge::Vector{EdgeMetadata}
+    outflow_edges::Vector{Vector{EdgeMetadata}}
     active::BitVector
     tables::Vector{ScalarInterpolation}
     time::StructVector{TabulatedRatingCurveTimeV1, C, Int}
@@ -632,7 +634,7 @@ struct Parameters{T, C1, C2, V1, V2, V3}
         @NamedTuple{
             node_ids::Dict{Int32, Set{NodeID}},
             edges_source::Dict{Int32, Set{EdgeMetadata}},
-            flow_dict::Dict{Tuple{NodeID, NodeID}, Int},
+            flow_dict::Dict{Tuple{NodeID, NodeID}, Int32},
             flow::T,
             flow_prev::Vector{Float64},
             flow_integrated::Vector{Float64},

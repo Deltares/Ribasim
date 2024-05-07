@@ -378,11 +378,12 @@ function formulate_flow!(
     t::Number,
 )::Nothing
     (; basin, graph) = p
-    (; node_id, active, tables, inflow_id, outflow_ids) = tabulated_rating_curve
+    (; node_id, active, tables, inflow_edge, outflow_edges) = tabulated_rating_curve
 
     for (i, id) in enumerate(node_id)
-        upstream_basin_id = inflow_id[i]
-        downstream_ids = outflow_ids[i]
+        upstream_edge = inflow_edge[i]
+        downstream_edges = outflow_edges[i]
+        upstream_basin_id = upstream_edge.edge[1]
 
         if active[i]
             factor = low_storage_factor(storage, basin.node_id, upstream_basin_id, 10.0)
@@ -391,9 +392,9 @@ function formulate_flow!(
             q = 0.0
         end
 
-        set_flow!(graph, upstream_basin_id, id, q)
-        for downstream_id in downstream_ids
-            set_flow!(graph, id, downstream_id, q)
+        set_flow!(graph, upstream_edge, q)
+        for downstream_edge in downstream_edges
+            set_flow!(graph, downstream_edge, q)
         end
     end
     return nothing

@@ -326,10 +326,15 @@ function TabulatedRatingCurve(
         error("Errors occurred when parsing TabulatedRatingCurve data.")
     end
 
+    inflow_edge = [graph[inflow_id(graph, id), id] for id in node_ids]
+    outflow_edges = [
+        [graph[id, outflow_id] for outflow_id in outflow_ids(graph, id)] for id in node_ids
+    ]
+
     return TabulatedRatingCurve(
         node_ids,
-        inflow_id.(Ref(graph), node_ids),
-        [collect(outflow_ids(graph, id)) for id in node_ids],
+        inflow_edge,
+        outflow_edges,
         active,
         interpolations,
         time,

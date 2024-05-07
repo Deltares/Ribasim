@@ -21,7 +21,7 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
     # The number of flow edges
     flow_counter = 0
     # Dictionary from flow edge to index in flow vector
-    flow_dict = Dict{Tuple{NodeID, NodeID}, Int}()
+    flow_dict = Dict{Tuple{NodeID, NodeID}, Int32}()
     graph = MetaGraph(
         DiGraph();
         label_type = NodeID,
@@ -65,7 +65,13 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
         if ismissing(subnetwork_id)
             subnetwork_id = 0
         end
-        edge_metadata = EdgeMetadata(fid, edge_type, subnetwork_id, (id_src, id_dst))
+        edge_metadata = EdgeMetadata(
+            fid,
+            edge_type == EdgeType.flow ? flow_counter + 1 : 0,
+            edge_type,
+            subnetwork_id,
+            (id_src, id_dst),
+        )
         if haskey(graph, id_src, id_dst)
             errors = true
             @error "Duplicate edge" id_src id_dst
@@ -169,8 +175,20 @@ end
 Set the given flow q over the edge between the given nodes.
 """
 function set_flow!(graph::MetaGraph, id_src::NodeID, id_dst::NodeID, q::Number)::Nothing
-    (; flow_dict, flow) = graph[]
-    get_tmp(flow, q)[flow_dict[(id_src, id_dst)]] = q
+    (; flow_dict) = graph[]
+    flow_idx = flow_dict[(id_src, id_dst)]
+    set_flow!(graph, flow_idx, q)
+    return nothing
+end
+
+function set_flow!(graph::MetaGraph, edge_metadata::EdgeMetadata, q::Number)::Nothing
+    set_flow!(graph, edge_metadata.flow_idx, q)
+    return nothing
+end
+
+function set_flow!(graph, flow_idx::Int32, q::Number)::Nothing
+    (; flow) = graph[]
+    get_tmp(flow, q)[flow_idx] = q
     return nothing
 end
 
