@@ -329,6 +329,7 @@ function TabulatedRatingCurve(
     return TabulatedRatingCurve(
         node_ids,
         inflow_id.(Ref(graph), node_ids),
+        [collect(outflow_ids(graph, id)) for id in node_ids],
         active,
         interpolations,
         time,

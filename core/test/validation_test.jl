@@ -43,14 +43,18 @@ end
     config = Ribasim.Config(toml_path)
     db_path = Ribasim.input_path(config, config.database)
     db = SQLite.DB(db_path)
+    graph = Ribasim.create_graph(db, config, [1])
 
     logger = TestLogger()
     with_logger(logger) do
         @test_throws "Errors occurred when parsing TabulatedRatingCurve data." Ribasim.TabulatedRatingCurve(
             db,
             config,
+            graph,
         )
     end
+    close(db)
+
     @test length(logger.logs) == 2
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==

@@ -234,6 +234,7 @@ of Vectors or Arrow Primitives, and is added to avoid type instabilities.
 
 node_id: node ID of the TabulatedRatingCurve node
 inflow_id: node ID across the incoming flow edge
+outflow_ids: node IDs across the outgoing flow edges
 active: whether this node is active and thus contributes flows
 tables: The current Q(h) relationships
 time: The time table used for updating the tables
@@ -242,6 +243,7 @@ control_mapping: dictionary from (node_id, control_state) to Q(h) and/or active 
 struct TabulatedRatingCurve{C} <: AbstractParameterNode
     node_id::Vector{NodeID}
     inflow_id::Vector{NodeID}
+    outflow_ids::Vector{Vector{NodeID}}
     active::BitVector
     tables::Vector{ScalarInterpolation}
     time::StructVector{TabulatedRatingCurveTimeV1, C, Int}
