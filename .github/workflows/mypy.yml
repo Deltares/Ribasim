@@ -19,8 +19,6 @@ jobs:
       - uses: prefix-dev/setup-pixi@v0.6.0
         with:
           pixi-version: "latest"
-      - name: Prepare pixi
-        run: pixi run install-ci
       - name: Run mypy on python/ribasim
         run: |
           pixi run mypy-ribasim-python
