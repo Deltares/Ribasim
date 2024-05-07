@@ -234,12 +234,7 @@ function SciMLBase.solve!(model::Model)::Model
             update_allocation!(integrator)
             step!(integrator, timestep, true)
         end
-
-        if integrator.sol.retcode != ReturnCode.Default
-            return model
-        end
-        # TODO replace with `check_error!` https://github.com/SciML/SciMLBase.jl/issues/669
-        integrator.sol = SciMLBase.solution_new_retcode(integrator.sol, ReturnCode.Success)
+        check_error!(integrator)
     else
         solve!(integrator)
     end

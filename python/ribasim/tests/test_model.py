@@ -7,6 +7,7 @@ import pytest
 import xugrid
 from pydantic import ValidationError
 from pyproj import CRS
+from ribasim import Node
 from ribasim.config import Solver
 from ribasim.geometry.edge import NodeData
 from ribasim.input_base import esc_id
@@ -65,24 +66,12 @@ def test_exclude_unset(basic):
     assert d["solver"]["saveat"] == 86400.0
 
 
-@pytest.mark.xfail(reason="Needs implementation")
-def test_invalid_node_id(basic):
-    model = basic
-
-    # Add entry with invalid node ID
-    df = model.pump.static.df._append(
-        {"flow_rate": 1, "node_id": -1, "active": True},
-        ignore_index=True,
-    )
-    # Currently can't handle mixed NaN and None in a DataFrame
-    df = df.where(pd.notna(df), None)
-    model.pump.static.df = df
-
+def test_invalid_node_id():
     with pytest.raises(
         ValueError,
-        match=re.escape("Node IDs must be non-negative integers, got [-1]."),
+        match=r".* Input should be greater than or equal to 0 .*",
     ):
-        model.validate_model_node_field_ids()
+        Node(-1, Point(7.0, 7.0))
 
 
 @pytest.mark.xfail(reason="Should be reimplemented by the .add() API.")
