@@ -255,7 +255,11 @@ function LinearResistance(db::DB, config::Config, graph::MetaGraph)::LinearResis
     )
 end
 
-function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
+function TabulatedRatingCurve(
+    db::DB,
+    config::Config,
+    graph::MetaGraph,
+)::TabulatedRatingCurve
     static = load_structvector(db, config, TabulatedRatingCurveStaticV1)
     time = load_structvector(db, config, TabulatedRatingCurveTimeV1)
 
@@ -322,7 +326,14 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
         error("Errors occurred when parsing TabulatedRatingCurve data.")
     end
 
-    return TabulatedRatingCurve(node_ids, active, interpolations, time, control_mapping)
+    return TabulatedRatingCurve(
+        node_ids,
+        inflow_id.(Ref(graph), node_ids),
+        active,
+        interpolations,
+        time,
+        control_mapping,
+    )
 end
 
 function ManningResistance(db::DB, config::Config, graph::MetaGraph)::ManningResistance
@@ -1061,7 +1072,7 @@ function Parameters(db::DB, config::Config)::Parameters
 
     linear_resistance = LinearResistance(db, config, graph)
     manning_resistance = ManningResistance(db, config, graph)
-    tabulated_rating_curve = TabulatedRatingCurve(db, config)
+    tabulated_rating_curve = TabulatedRatingCurve(db, config, graph)
     fractional_flow = FractionalFlow(db, config, graph)
     level_boundary = LevelBoundary(db, config)
     flow_boundary = FlowBoundary(db, config)
