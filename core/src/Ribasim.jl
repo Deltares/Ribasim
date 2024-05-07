@@ -55,6 +55,7 @@ using SciMLBase:
     init,
     solve!,
     step!,
+    check_error!,
     SciMLBase,
     ReturnCode,
     successful_retcode,

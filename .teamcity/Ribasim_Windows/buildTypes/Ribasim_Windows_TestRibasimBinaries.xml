@@ -6,14 +6,11 @@
     <options>
       <option name="artifactRules" value="ribasim\python\ribasim_api\tests\temp =&gt; test_output_api.zip&#xA;ribasim\build\tests\temp =&gt; test_output_cli.zip" />
     </options>
-    <disabled-settings>
-      <setting-ref ref="RUNNER_1501" />
-    </disabled-settings>
     <parameters />
     <build-runners>
       <runner id="RUNNER_1501" name="Set up pixi" type="simpleRunner">
         <parameters>
-          <param name="script.content" value="pixi run install-python" />
+          <param name="script.content" value="pixi --version" />
           <param name="teamcity.build.workingDir" value="ribasim" />
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
@@ -21,8 +18,7 @@
       </runner>
       <runner id="RUNNER_1503" name="Run tests" type="simpleRunner">
         <parameters>
-          <param name="script.content"><![CDATA[pixi run install
-pixi run test-ribasim-api
+          <param name="script.content"><![CDATA[pixi run test-ribasim-api
 pixi run test-ribasim-cli]]></param>
           <param name="teamcity.build.workingDir" value="ribasim" />
           <param name="teamcity.step.mode" value="default" />
