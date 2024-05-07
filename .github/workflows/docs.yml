@@ -33,9 +33,6 @@ jobs:
       - name: Check Quarto installation and all engines
         run: pixi run quarto-check
 
-      - name: Generate Julia docs
-        run: pixi run build-julia-docs
-
       - name: Render Quarto Project
         run: pixi run quarto-render
 
