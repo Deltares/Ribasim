@@ -457,3 +457,22 @@ end
         dt,
     )
 end
+
+@testitem "component order" begin
+    using PreallocationTools: get_tmp
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/main_network_with_subnetworks/ribasim.toml",
+    )
+    @test ispath(toml_path)
+    model = Ribasim.Model(toml_path)
+    (; u, p) = model.integrator
+    (; vertical_flux_from_input, vertical_flux) = p.basin
+    vertical_flux = get_tmp(vertical_flux, 0)
+    @test (propertynames(vertical_flux) .== propertynames(vertical_flux_from_input)) ==
+          (true, false, true, true)
+    @test String.(propertynames(Ribasim.forcings_integrated(u))) ==
+          String.(propertynames(vertical_flux)) .* "_integrated"
+    @test String.(propertynames(Ribasim.forcings_bmi(u))) ==
+          String.(propertynames(vertical_flux)) .* "_bmi"
+end
