@@ -8,12 +8,17 @@
 @schema "ribasim.basin.profile" BasinProfile
 @schema "ribasim.basin.state" BasinState
 @schema "ribasim.basin.subgrid" BasinSubgrid
+@schema "ribasim.basin.concentration" BasinConcentration
+@schema "ribasim.basin.concentrationexternal" BasinConcentrationExternal
+@schema "ribasim.basin.concentrationstate" BasinConcentrationState
 @schema "ribasim.terminal.static" TerminalStatic
 @schema "ribasim.fractionalflow.static" FractionalFlowStatic
 @schema "ribasim.flowboundary.static" FlowBoundaryStatic
 @schema "ribasim.flowboundary.time" FlowBoundaryTime
+@schema "ribasim.flowboundary.concentration" FlowBoundaryConcentration
 @schema "ribasim.levelboundary.static" LevelBoundaryStatic
 @schema "ribasim.levelboundary.time" LevelBoundaryTime
+@schema "ribasim.levelboundary.concentration" LevelBoundaryConcentration
 @schema "ribasim.linearresistance.static" LinearResistanceStatic
 @schema "ribasim.manningresistance.static" ManningResistanceStatic
 @schema "ribasim.pidcontrol.static" PidControlStatic
@@ -99,6 +104,21 @@ end
     urban_runoff::Union{Missing, Float64}
 end
 
+@version BasinConcentrationV1 begin
+    node_id::Int32
+    time::DateTime
+    substance::String
+    drainage::Union{Missing, Float64}
+    precipitation::Union{Missing, Float64}
+end
+
+@version BasinConcentrationExternalV1 begin
+    node_id::Int32
+    time::DateTime
+    substance::String
+    concentration::Union{Missing, Float64}
+end
+
 @version BasinProfileV1 begin
     node_id::Int32
     area::Float64
@@ -108,6 +128,12 @@ end
 @version BasinStateV1 begin
     node_id::Int32
     level::Float64
+end
+
+@version BasinConcentrationStateV1 begin
+    node_id::Int32
+    substance::String
+    concentration::Union{Missing, Float64}
 end
 
 @version BasinSubgridV1 begin
@@ -135,6 +161,13 @@ end
     level::Float64
 end
 
+@version LevelBoundaryConcentrationV1 begin
+    node_id::Int32
+    time::DateTime
+    substance::String
+    concentration::Float64
+end
+
 @version FlowBoundaryStaticV1 begin
     node_id::Int32
     active::Union{Missing, Bool}
@@ -145,6 +178,13 @@ end
     node_id::Int32
     time::DateTime
     flow_rate::Float64
+end
+
+@version FlowBoundaryConcentrationV1 begin
+    node_id::Int32
+    time::DateTime
+    substance::String
+    concentration::Float64
 end
 
 @version LinearResistanceStaticV1 begin
