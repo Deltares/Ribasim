@@ -450,8 +450,16 @@ function formulate_flow!(
     t::Number,
 )::Nothing
     (; basin, graph) = p
-    (; node_id, active, length, manning_n, profile_width, profile_slope) =
-        manning_resistance
+    (;
+        node_id,
+        active,
+        length,
+        manning_n,
+        profile_width,
+        profile_slope,
+        upstream_bottom,
+        downstream_bottom,
+    ) = manning_resistance
     for (i, id) in enumerate(node_id)
         inflow_edge = manning_resistance.inflow_edge[i]
         outflow_edge = manning_resistance.outflow_edge[i]
@@ -465,8 +473,8 @@ function formulate_flow!(
 
         _, h_a = get_level(p, inflow_id, t; storage)
         _, h_b = get_level(p, outflow_id, t; storage)
-        _, bottom_a = basin_bottom(basin, inflow_id)
-        _, bottom_b = basin_bottom(basin, outflow_id)
+        bottom_a = upstream_bottom[i]
+        bottom_b = downstream_bottom[i]
         slope = profile_slope[i]
         width = profile_width[i]
         n = manning_n[i]

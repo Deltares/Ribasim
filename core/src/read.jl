@@ -337,7 +337,12 @@ function TabulatedRatingCurve(
     )
 end
 
-function ManningResistance(db::DB, config::Config, graph::MetaGraph)::ManningResistance
+function ManningResistance(
+    db::DB,
+    config::Config,
+    graph::MetaGraph,
+    basin::Basin,
+)::ManningResistance
     static = load_structvector(db, config, ManningResistanceStaticV1)
     parsed_parameters, valid =
         parse_static_and_time(db, config, "ManningResistance"; static)
@@ -347,6 +352,8 @@ function ManningResistance(db::DB, config::Config, graph::MetaGraph)::ManningRes
     end
 
     node_id = NodeID.(NodeType.ManningResistance, parsed_parameters.node_id)
+    upstream_bottom = basin_bottom.(Ref(basin), inflow_id.(Ref(graph), node_id))
+    downstream_bottom = basin_bottom.(Ref(basin), outflow_id.(Ref(graph), node_id))
 
     return ManningResistance(
         node_id,
@@ -357,6 +364,8 @@ function ManningResistance(db::DB, config::Config, graph::MetaGraph)::ManningRes
         parsed_parameters.manning_n,
         parsed_parameters.profile_width,
         parsed_parameters.profile_slope,
+        [bottom[2] for bottom in upstream_bottom],
+        [bottom[2] for bottom in downstream_bottom],
         parsed_parameters.control_mapping,
     )
 end
@@ -1071,8 +1080,9 @@ function Parameters(db::DB, config::Config)::Parameters
         error("Invalid number of connections for certain node types.")
     end
 
+    basin = Basin(db, config, graph, chunk_sizes)
     linear_resistance = LinearResistance(db, config, graph)
-    manning_resistance = ManningResistance(db, config, graph)
+    manning_resistance = ManningResistance(db, config, graph, basin)
     tabulated_rating_curve = TabulatedRatingCurve(db, config, graph)
     fractional_flow = FractionalFlow(db, config, graph)
     level_boundary = LevelBoundary(db, config)
@@ -1086,7 +1096,6 @@ function Parameters(db::DB, config::Config)::Parameters
     level_demand = LevelDemand(db, config)
     flow_demand = FlowDemand(db, config)
 
-    basin = Basin(db, config, graph, chunk_sizes)
     subgrid_level = Subgrid(db, config, basin)
 
     p = Parameters(

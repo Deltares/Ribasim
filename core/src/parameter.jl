@@ -316,6 +316,8 @@ struct ManningResistance <: AbstractParameterNode
     manning_n::Vector{Float64}
     profile_width::Vector{Float64}
     profile_slope::Vector{Float64}
+    upstream_bottom::Vector{Float64}
+    downstream_bottom::Vector{Float64}
     control_mapping::Dict{Tuple{NodeID, String}, NamedTuple}
 end
 
