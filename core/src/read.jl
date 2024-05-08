@@ -1081,6 +1081,8 @@ function Parameters(db::DB, config::Config)::Parameters
     end
 
     basin = Basin(db, config, graph, chunk_sizes)
+    set_basin_idxs!(graph, basin)
+
     linear_resistance = LinearResistance(db, config, graph)
     manning_resistance = ManningResistance(db, config, graph, basin)
     tabulated_rating_curve = TabulatedRatingCurve(db, config, graph)
@@ -1097,8 +1099,6 @@ function Parameters(db::DB, config::Config)::Parameters
     flow_demand = FlowDemand(db, config)
 
     subgrid_level = Subgrid(db, config, basin)
-
-    set_basin_idxs!(graph, basin)
 
     p = Parameters(
         config.starttime,

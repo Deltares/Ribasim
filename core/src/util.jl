@@ -380,14 +380,21 @@ function get_level(
     (; basin, level_boundary) = p
     if node_id.type == NodeType.Basin
         _, i = id_index(basin.node_id, node_id)
-        current_level = get_tmp(basin.current_level, storage)
-        return true, current_level[i]
+        return true, get_level(i, basin; storage)
     elseif node_id.type == NodeType.LevelBoundary
         i = findsorted(level_boundary.node_id, node_id)
         return true, level_boundary.level[i](t)
     else
         return false, 0.0
     end
+end
+
+function get_level(
+    i::Integer,
+    basin::Basin;
+    storage::Union{AbstractArray, Number} = 0,
+)::Number
+    return get_tmp(basin.current_level, storage)[i]
 end
 
 "Get the index of an ID in a set of indices."
@@ -741,12 +748,13 @@ outflow_edges(graph, node_id)::Vector{EdgeMetadata} =
     [graph[node_id, outflow_id] for outflow_id in outflow_ids(graph, node_id)]
 
 function set_basin_idxs!(graph::MetaGraph, basin::Basin)::Nothing
-    for edge_metadata in values(graph.edge_data)
-        (; edge) = edge_metadata
+    for (edge, edge_metadata) in graph.edge_data
         id_src, id_dst = edge
         edge_metadata = @set edge_metadata.basin_idxs =
             (id_index(basin.node_id, id_src)[2], id_index(basin.node_id, id_dst)[2])
         graph[edge...] = edge_metadata
+        if edge[2] == NodeID(:ManningResistance, 8)
+        end
     end
     return nothing
 end

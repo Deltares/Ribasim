@@ -25,7 +25,7 @@ function water_balance!(
     formulate_flows!(p, storage, t)
 
     # Now formulate du
-    formulate_du!(du, graph, basin, storage)
+    formulate_du!(du, graph, storage)
 
     # PID control (changes the du of PID controlled basins)
     continuous_control!(u, du, pid_control, p, integral, t)
@@ -321,7 +321,7 @@ function formulate_flow!(
 
         # Smoothly let abstraction go to 0 as the source basin
         # level reaches its minimum level
-        _, source_level = get_level(p, inflow_id, t; storage)
+        source_level = get_level(inflow_edge.basin_idxs[1], basin; storage)
         Δsource_level = source_level - min_level
         factor_level = reduction_factor(Δsource_level, 0.1)
         q *= factor_level
@@ -471,8 +471,8 @@ function formulate_flow!(
             continue
         end
 
-        _, h_a = get_level(p, inflow_id, t; storage)
-        _, h_b = get_level(p, outflow_id, t; storage)
+        h_a = get_level(inflow_edge.basin_idxs[1], basin; storage)
+        h_b = get_level(outflow_edge.basin_idxs[2], basin; storage)
         bottom_a = upstream_bottom[i]
         bottom_b = downstream_bottom[i]
         slope = profile_slope[i]
@@ -650,7 +650,6 @@ end
 function formulate_du!(
     du::ComponentVector,
     graph::MetaGraph,
-    basin::Basin,
     storage::AbstractVector,
 )::Nothing
     # loop over basins
@@ -661,12 +660,13 @@ function formulate_du!(
         if type !== EdgeType.flow
             continue
         end
-        q = get_flow(graph, edge_metadata, storage)
         from_id, to_id = edge
 
         if from_id.type == NodeType.Basin
+            q = get_flow(graph, edge_metadata, storage)
             du[basin_idxs[1]] -= q
         elseif to_id.type == NodeType.Basin
+            q = get_flow(graph, edge_metadata, storage)
             du[basin_idxs[2]] += q
         end
     end
