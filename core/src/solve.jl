@@ -452,8 +452,11 @@ function formulate_flow!(
     (; node_id, active, length, manning_n, profile_width, profile_slope) =
         manning_resistance
     for (i, id) in enumerate(node_id)
-        inflow_id = manning_resistance.inflow_id[i]
-        outflow_id = manning_resistance.outflow_id[i]
+        inflow_edge = manning_resistance.inflow_edge[i]
+        outflow_edge = manning_resistance.outflow_edge[i]
+
+        inflow_id = inflow_edge.edge[1]
+        outflow_id = outflow_edge.edge[2]
 
         if !active[i]
             continue
@@ -492,8 +495,8 @@ function formulate_flow!(
 
         q = q_sign * A / n * R_h^(2 / 3) * sqrt(Δh / L * 2 / π * atan(k * Δh) + eps)
 
-        set_flow!(graph, inflow_id, id, q)
-        set_flow!(graph, id, outflow_id, q)
+        set_flow!(graph, inflow_edge, q)
+        set_flow!(graph, outflow_edge, q)
     end
     return nothing
 end

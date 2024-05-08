@@ -350,8 +350,8 @@ function ManningResistance(db::DB, config::Config, graph::MetaGraph)::ManningRes
 
     return ManningResistance(
         node_id,
-        inflow_id.(Ref(graph), node_id),
-        outflow_id.(Ref(graph), node_id),
+        inflow_edge.(Ref(graph), node_id),
+        outflow_edge.(Ref(graph), node_id),
         BitVector(parsed_parameters.active),
         parsed_parameters.length,
         parsed_parameters.manning_n,

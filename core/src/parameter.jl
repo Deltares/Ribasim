@@ -275,8 +275,8 @@ end
 This is a simple Manning-Gauckler reach connection.
 
 node_id: node ID of the ManningResistance node
-inflow_id: node ID across the incoming flow edge
-outflow_id: node ID across the outgoing flow edge
+inflow_edge: incoming flow edge metadata
+outflow_edge: outgoing flow edge metadata
 length: reach length
 manning_n: roughness; Manning's n in (SI units).
 
@@ -309,8 +309,8 @@ Requirements:
 """
 struct ManningResistance <: AbstractParameterNode
     node_id::Vector{NodeID}
-    inflow_id::Vector{NodeID}
-    outflow_id::Vector{NodeID}
+    inflow_edge::Vector{EdgeMetadata}
+    outflow_edge::Vector{EdgeMetadata}
     active::BitVector
     length::Vector{Float64}
     manning_n::Vector{Float64}
