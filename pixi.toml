@@ -185,6 +185,7 @@ xmipy = "*"
 xugrid = "*"
 xarray = "*"
 ipykernel = ">=6.29.3,<6.30"
+networkx = ">=3.3,<4"
 
 
 [feature.dev.dependencies]

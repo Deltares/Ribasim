@@ -6,6 +6,7 @@ from datetime import timedelta
 from pathlib import Path
 
 import geopandas as gpd
+import networkx as nx
 import numpy as np
 import pandas as pd
 import ribasim
@@ -35,6 +36,61 @@ flows = pd.read_feather(modelfn.parent / "results" / "flow.arrow")
 node = gpd.read_file(modelfn.parent / "database.gpkg", layer="Node", fid_as_index=True)
 output_folder = delwaq_dir / "model"
 output_folder.mkdir(exist_ok=True)
+
+# Simplify network, only keep Basins and Boundaries
+G = nx.DiGraph()
+for row in model.node_table().df.itertuples():
+    if "Control" not in row.node_type:
+        G.add_node(row.node_id, type=row.node_type, id=row.node_id)
+for row in model.edge.df.itertuples():
+    if row.edge_type == "flow":
+        G.add_edge(row.from_node_id, row.to_node_id, id=[row.Index])
+
+remove_nodes = []
+for node, out in G.succ.items():
+    if G.nodes[node]["type"] not in [
+        "Basin",
+        "Terminal",
+        "LevelBoundary",
+        "FlowBoundary",
+        "UserDemand",
+    ]:
+        inneighbor_ids = G.pred[node]
+        assert len(inneighbor_ids) == 1
+        inneighbor_id = list(inneighbor_ids)[0]
+        remove_nodes.append(node)
+
+        for outneighbor_id in out.keys():
+            edge = (inneighbor_id, outneighbor_id)
+            edge_id = G.get_edge_data(node, outneighbor_id)["id"]
+            if G.has_edge(*edge):
+                G.get_edge_data(*edge)["id"].append(edge_id)
+            else:
+                G.add_edge(*edge, id=[edge_id])
+
+for node in remove_nodes:
+    G.remove_node(node)
+
+# Relabel as consecutive integers
+basin_id = 0
+boundary_id = 0
+mapping = {}
+for node_id, node in G.nodes.items():
+    if node["type"] == "Basin":
+        basin_id += 1
+        mapping[node_id] = basin_id
+    elif node["type"] in [
+        "Terminal",
+        "UserDemand",
+        "LevelBoundary",
+        "FlowBoundary",
+    ]:
+        boundary_id -= 1
+        mapping[node_id] = boundary_id
+    else:
+        raise Exception("Found unexpected node $node_id in delwaq graph.")
+
+nx.relabel_nodes(G, mapping, copy=False)
 
 # Setup metadata
 if model.solver.saveat == 0 or np.isposinf(model.solver.saveat):
@@ -105,17 +161,8 @@ write_flows(
 basins.time = (basins.time - basins.time[0]).dt.total_seconds().astype("int32")
 ntime = basins.time.unique()
 basins.drop(columns=["level"], inplace=True)
-
-non_basins = set(node.index) - set(basins.node_id) - set(bids)
 rtime = ntime - ntime[0]
-volumes_nbasin = pd.DataFrame(
-    {
-        "time": np.repeat(basins.time.unique(), len(non_basins)),
-        "node_id": np.tile(list(non_basins), len(rtime)),
-        "storage": fillvolume,
-    }
-)
-volumes = pd.concat([basins, volumes_nbasin])
+volumes = basins
 volumes.sort_values(by=["time", "node_id"], inplace=True)
 # volumes.to_csv(output_folder / "volumes.csv", index=False)  # not needed
 volumes.drop(columns=["node_id"], inplace=True)
