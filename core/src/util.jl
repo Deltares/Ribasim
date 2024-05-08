@@ -374,27 +374,21 @@ storage: tells ForwardDiff whether this call is for differentiation or not
 function get_level(
     p::Parameters,
     node_id::NodeID,
+    i::Integer,
     t::Number;
     storage::Union{AbstractArray, Number} = 0,
 )::Tuple{Bool, Number}
     (; basin, level_boundary) = p
     if node_id.type == NodeType.Basin
-        _, i = id_index(basin.node_id, node_id)
-        return true, get_level(i, basin; storage)
+        i = iszero(i) ? id_index(basin.node_id, node_id)[2] : i
+        current_level = get_tmp(basin.current_level, storage)
+        return true, current_level[i]
     elseif node_id.type == NodeType.LevelBoundary
         i = findsorted(level_boundary.node_id, node_id)
         return true, level_boundary.level[i](t)
     else
         return false, 0.0
     end
-end
-
-function get_level(
-    i::Integer,
-    basin::Basin;
-    storage::Union{AbstractArray, Number} = 0,
-)::Number
-    return get_tmp(basin.current_level, storage)[i]
 end
 
 "Get the index of an ID in a set of indices."
