@@ -590,16 +590,16 @@ function formulate_flow!(
 
     for (
         node_id,
-        inflow_id,
-        outflow_ids,
+        inflow_edge,
+        outflow_edges,
         active,
         flow_rate,
         is_pid_controlled,
         min_crest_level,
     ) in zip(
         outlet.node_id,
-        outlet.inflow_id,
-        outlet.outflow_ids,
+        outlet.inflow_edge,
+        outlet.outflow_edges,
         outlet.active,
         get_tmp(outlet.flow_rate, storage),
         outlet.is_pid_controlled,
@@ -609,12 +609,13 @@ function formulate_flow!(
             continue
         end
 
+        inflow_id = inflow_edge.edge[1]
         q = flow_rate
         q *= low_storage_factor(storage, basin.node_id, inflow_id, 10.0)
 
         # No flow of outlet if source level is lower than target level
         # TODO support multiple outflows to FractionalFlow, or refactor FractionalFlow
-        outflow_id = only(outflow_ids)
+        outflow_id = only(outflow_edges).edge[2]
         _, src_level = get_level(p, inflow_id, t; storage)
         _, dst_level = get_level(p, outflow_id, t; storage)
 
@@ -628,10 +629,10 @@ function formulate_flow!(
             q *= reduction_factor(src_level - min_crest_level, 0.1)
         end
 
-        set_flow!(graph, inflow_id, node_id, q)
+        set_flow!(graph, inflow_edge, q)
 
-        for outflow_id in outflow_ids
-            set_flow!(graph, node_id, outflow_id, q)
+        for outflow_edge in outflow_edges
+            set_flow!(graph, outflow_edge, q)
         end
     end
     return nothing

@@ -497,8 +497,8 @@ function Outlet(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{In
 
     return Outlet(
         node_id,
-        inflow_id.(Ref(graph), node_id),
-        [collect(outflow_ids(graph, id)) for id in node_id],
+        inflow_edge.(Ref(graph), node_id),
+        outflow_edges.(Ref(graph), node_id),
         BitVector(parsed_parameters.active),
         flow_rate,
         parsed_parameters.min_flow_rate,
