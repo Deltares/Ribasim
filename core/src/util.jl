@@ -739,3 +739,14 @@ inflow_edge(graph, node_id)::EdgeMetadata = graph[inflow_id(graph, node_id), nod
 outflow_edge(graph, node_id)::EdgeMetadata = graph[node_id, outflow_id(graph, node_id)]
 outflow_edges(graph, node_id)::Vector{EdgeMetadata} =
     [graph[node_id, outflow_id] for outflow_id in outflow_ids(graph, node_id)]
+
+function set_basin_idxs!(graph::MetaGraph, basin::Basin)::Nothing
+    for edge_metadata in values(graph.edge_data)
+        (; edge) = edge_metadata
+        id_src, id_dst = edge
+        edge_metadata = @set edge_metadata.basin_idxs =
+            (id_index(basin.node_id, id_src)[2], id_index(basin.node_id, id_dst)[2])
+        graph[edge...] = edge_metadata
+    end
+    return nothing
+end

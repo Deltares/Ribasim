@@ -1098,6 +1098,8 @@ function Parameters(db::DB, config::Config)::Parameters
 
     subgrid_level = Subgrid(db, config, basin)
 
+    set_basin_idxs!(graph, basin)
+
     p = Parameters(
         config.starttime,
         graph,

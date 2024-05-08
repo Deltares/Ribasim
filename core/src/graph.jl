@@ -71,6 +71,7 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
             edge_type,
             subnetwork_id,
             (id_src, id_dst),
+            (0, 0),
         )
         if haskey(graph, id_src, id_dst)
             errors = true

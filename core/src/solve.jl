@@ -656,12 +656,18 @@ function formulate_du!(
     # loop over basins
     # subtract all outgoing flows
     # add all ingoing flows
-    for (i, basin_id) in enumerate(basin.node_id)
-        for inflow_id in basin.inflow_ids[i]
-            du[i] += get_flow(graph, inflow_id, basin_id, storage)
+    for edge_metadata in values(graph.edge_data)
+        (; type, edge, basin_idxs) = edge_metadata
+        if type !== EdgeType.flow
+            continue
         end
-        for outflow_id in basin.outflow_ids[i]
-            du[i] -= get_flow(graph, basin_id, outflow_id, storage)
+        q = get_flow(graph, edge_metadata, storage)
+        from_id, to_id = edge
+
+        if from_id.type == NodeType.Basin
+            du[basin_idxs[1]] -= q
+        elseif to_id.type == NodeType.Basin
+            du[basin_idxs[2]] += q
         end
     end
     return nothing

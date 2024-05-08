@@ -121,6 +121,7 @@ type: type of the edge
 subnetwork_id_source: ID of subnetwork where this edge is a source
   (0 if not a source)
 edge: (from node ID, to node ID)
+basin_idxs: Basin indices of source and destination nodes (0 if not a basin)
 """
 struct EdgeMetadata
     id::Int32
@@ -128,6 +129,7 @@ struct EdgeMetadata
     type::EdgeType.T
     subnetwork_id_source::Int32
     edge::Tuple{NodeID, NodeID}
+    basin_idxs::Tuple{Int32, Int32}
 end
 
 abstract type AbstractParameterNode end
