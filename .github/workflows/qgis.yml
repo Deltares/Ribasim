@@ -25,9 +25,6 @@ jobs:
       - uses: prefix-dev/setup-pixi@v0.6.0
         with:
           pixi-version: "latest"
-      - name: Prepare pixi
-        run: |
-          pixi run --environment=dev install-ci
       - name: Run tests
         run: pixi run test-ribasim-qgis-cov
       - name: Upload coverage to Codecov
