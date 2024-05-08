@@ -509,16 +509,16 @@ function formulate_flow!(
 )::Nothing
     (; graph) = p
 
-    for (node_id, inflow_id, outflow_id, fraction) in zip(
+    for (node_id, inflow_edge, outflow_edge, fraction) in zip(
         fractional_flow.node_id,
-        fractional_flow.inflow_id,
-        fractional_flow.outflow_id,
+        fractional_flow.inflow_edge,
+        fractional_flow.outflow_edge,
         fractional_flow.fraction,
     )
         # overwrite the inflow such that flow is conserved over the FractionalFlow
-        outflow = get_flow(graph, inflow_id, node_id, storage) * fraction
-        set_flow!(graph, inflow_id, node_id, outflow)
-        set_flow!(graph, node_id, outflow_id, outflow)
+        outflow = get_flow(graph, inflow_edge, storage) * fraction
+        set_flow!(graph, inflow_edge, outflow)
+        set_flow!(graph, outflow_edge, outflow)
     end
     return nothing
 end

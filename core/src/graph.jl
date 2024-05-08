@@ -202,9 +202,19 @@ function get_flow(
     val;
     prev::Bool = false,
 )::Number
-    (; flow_dict, flow, flow_prev) = graph[]
+    (; flow_dict) = graph[]
+    flow_idx = flow_dict[id_src, id_dst]
+    return get_flow(graph, flow_idx, val; prev)
+end
+
+function get_flow(graph, edge_metadata::EdgeMetadata, val; prev::Bool = false)::Number
+    return get_flow(graph, edge_metadata.flow_idx, val; prev)
+end
+
+function get_flow(graph::MetaGraph, flow_idx::Int32, val; prev::Bool = false)
+    (; flow, flow_prev) = graph[]
     flow_vector = prev ? flow_prev : flow
-    return get_tmp(flow_vector, val)[flow_dict[id_src, id_dst]]
+    return get_tmp(flow_vector, val)[flow_idx]
 end
 
 """

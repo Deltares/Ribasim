@@ -327,15 +327,15 @@ Requirements:
 * fraction must be positive.
 
 node_id: node ID of the TabulatedRatingCurve node
-inflow_id: node ID across the incoming flow edge
-outflow_id: node ID across the outgoing flow edge
+inflow_edge: incoming flow edge metadata
+outflow_edge: outgoing flow edge metadata
 fraction: The fraction in [0,1] of flow the node lets through
 control_mapping: dictionary from (node_id, control_state) to fraction
 """
 struct FractionalFlow <: AbstractParameterNode
     node_id::Vector{NodeID}
-    inflow_id::Vector{NodeID}
-    outflow_id::Vector{NodeID}
+    inflow_edge::Vector{EdgeMetadata}
+    outflow_edge::Vector{EdgeMetadata}
     fraction::Vector{Float64}
     control_mapping::Dict{Tuple{NodeID, String}, NamedTuple}
 end

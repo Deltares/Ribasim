@@ -373,8 +373,8 @@ function FractionalFlow(db::DB, config::Config, graph::MetaGraph)::FractionalFlo
 
     return FractionalFlow(
         node_id,
-        inflow_id.(Ref(graph), node_id),
-        outflow_id.(Ref(graph), node_id),
+        inflow_edge.(Ref(graph), node_id),
+        outflow_edge.(Ref(graph), node_id),
         parsed_parameters.fraction,
         parsed_parameters.control_mapping,
     )
