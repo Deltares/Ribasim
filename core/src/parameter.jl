@@ -530,8 +530,8 @@ end
 
 """
 node_id: node ID of the UserDemand node
-inflow_id: node ID across the incoming flow edge
-outflow_id: node ID across the outgoing flow edge
+inflow_edge: incoming flow edge metadata
+outflow_edge: outgoing flow edge metadata
 active: whether this node is active and thus demands water
 realized_bmi: Cumulative inflow volume, for read or reset by BMI only
 demand: water flux demand of UserDemand per priority over time
@@ -547,8 +547,8 @@ min_level: The level of the source basin below which the UserDemand does not abs
 """
 struct UserDemand <: AbstractParameterNode
     node_id::Vector{NodeID}
-    inflow_id::Vector{NodeID}
-    outflow_id::Vector{NodeID}
+    inflow_edge::Vector{EdgeMetadata}
+    outflow_edge::Vector{EdgeMetadata}
     active::BitVector
     realized_bmi::Vector{Float64}
     demand::Matrix{Float64}

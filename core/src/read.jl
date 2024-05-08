@@ -889,8 +889,8 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)::UserDemand
 
     return UserDemand(
         node_ids,
-        inflow_id.(Ref(graph), node_ids),
-        outflow_id.(Ref(graph), node_ids),
+        inflow_edge.(Ref(graph), node_ids),
+        outflow_edge.(Ref(graph), node_ids),
         active,
         realized_bmi,
         demand,

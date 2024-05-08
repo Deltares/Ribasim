@@ -271,8 +271,8 @@ function formulate_flow!(
 
     for (
         node_id,
-        inflow_id,
-        outflow_id,
+        inflow_edge,
+        outflow_edge,
         active,
         demand_itp,
         demand,
@@ -282,8 +282,8 @@ function formulate_flow!(
         demand_from_timeseries,
     ) in zip(
         user_demand.node_id,
-        user_demand.inflow_id,
-        user_demand.outflow_id,
+        user_demand.inflow_edge,
+        user_demand.outflow_edge,
         user_demand.active,
         user_demand.demand_itp,
         # TODO permute these so the nodes are the last dimension, for performance
@@ -315,6 +315,7 @@ function formulate_flow!(
         end
 
         # Smoothly let abstraction go to 0 as the source basin dries out
+        inflow_id = inflow_edge.edge[1]
         factor_basin = low_storage_factor(storage, basin.node_id, inflow_id, 10.0)
         q *= factor_basin
 
@@ -325,10 +326,10 @@ function formulate_flow!(
         factor_level = reduction_factor(Δsource_level, 0.1)
         q *= factor_level
 
-        set_flow!(graph, inflow_id, node_id, q)
+        set_flow!(graph, inflow_edge, q)
 
         # Return flow is immediate
-        set_flow!(graph, node_id, outflow_id, q * return_factor)
+        set_flow!(graph, outflow_edge, q * return_factor)
     end
     return nothing
 end
