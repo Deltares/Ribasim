@@ -63,6 +63,11 @@ function Model(config::Config)::Model
     # All data from the database that we need during runtime is copied into memory,
     # so we can directly close it again.
     db = SQLite.DB(db_path)
+
+    if !valid_edge_types(db)
+        error("Invalid edge types found.")
+    end
+
     local parameters, u0, tstops
     try
         parameters = Parameters(db, config)
@@ -246,12 +251,7 @@ function SciMLBase.solve!(model::Model)::Model
             update_allocation!(integrator)
             step!(integrator, timestep, true)
         end
-
-        if integrator.sol.retcode != ReturnCode.Default
-            return model
-        end
-        # TODO replace with `check_error!` https://github.com/SciML/SciMLBase.jl/issues/669
-        integrator.sol = SciMLBase.solution_new_retcode(integrator.sol, ReturnCode.Success)
+        check_error!(integrator)
     else
         solve!(integrator)
     end

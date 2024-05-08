@@ -28,13 +28,10 @@ jobs:
         with:
           pixi-version: "latest"
       - name: Prepare pixi
-        run: pixi run --environment=dev install-ci
+        run: pixi run install-ci
 
       - name: Check Quarto installation and all engines
         run: pixi run quarto-check
-
-      - name: Generate Julia docs
-        run: pixi run build-julia-docs
 
       - name: Render Quarto Project
         run: pixi run quarto-render

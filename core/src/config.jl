@@ -26,7 +26,8 @@ using OrdinaryDiffEq:
     Tsit5
 
 export Config, Solver, Results, Logging, Toml
-export algorithm, snake_case, input_path, results_path, convert_saveat, convert_dt
+export algorithm,
+    snake_case, input_path, results_path, convert_saveat, convert_dt, nodetypes
 
 const schemas =
     getfield.(

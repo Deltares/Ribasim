@@ -43,14 +43,18 @@ end
     config = Ribasim.Config(toml_path)
     db_path = Ribasim.input_path(config, config.database)
     db = SQLite.DB(db_path)
+    graph = Ribasim.create_graph(db, config, [1])
 
     logger = TestLogger()
     with_logger(logger) do
         @test_throws "Errors occurred when parsing TabulatedRatingCurve data." Ribasim.TabulatedRatingCurve(
             db,
             config,
+            graph,
         )
     end
+    close(db)
+
     @test length(logger.logs) == 2
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
@@ -91,19 +95,9 @@ end
     set_edge_metadata!(NodeID(:Pump, 6), NodeID(:Basin, 2), EdgeType.flow)
     set_edge_metadata!(NodeID(:FractionalFlow, 5), NodeID(:Pump, 6), EdgeType.control)
 
-    pump = Ribasim.Pump(
-        NodeID.(:Pump, [1, 6]),
-        [true, true],
-        [0.0, 0.0],
-        [0.0, 0.0],
-        [1.0, 1.0],
-        Dict{Tuple{NodeID, String}, NamedTuple}(),
-        falses(2),
-    )
-
     logger = TestLogger()
     with_logger(logger) do
-        @test !Ribasim.valid_n_neighbors(pump, graph)
+        @test !Ribasim.valid_n_neighbors(:Pump, graph)
     end
 
     @test length(logger.logs) == 3
@@ -120,15 +114,9 @@ end
     set_edge_metadata!(NodeID(:FractionalFlow, 5), NodeID(:Basin, 3), EdgeType.flow)
     set_edge_metadata!(NodeID(:FractionalFlow, 5), NodeID(:Basin, 4), EdgeType.flow)
 
-    fractional_flow = Ribasim.FractionalFlow(
-        [NodeID(:FractionalFlow, 5)],
-        [1.0],
-        Dict{Tuple{NodeID, String}, NamedTuple}(),
-    )
-
     logger = TestLogger(; min_level = Debug)
     with_logger(logger) do
-        @test !Ribasim.valid_n_neighbors(fractional_flow, graph)
+        @test !Ribasim.valid_n_neighbors(:FractionalFlow, graph)
     end
 
     @test length(logger.logs) == 2
@@ -224,7 +212,7 @@ end
     db_path = Ribasim.input_path(config, config.database)
     db = SQLite.DB(db_path)
     graph = Ribasim.create_graph(db, config, [1, 1])
-    fractional_flow = Ribasim.FractionalFlow(db, config)
+    fractional_flow = Ribasim.FractionalFlow(db, config, graph)
 
     logger = TestLogger()
     with_logger(logger) do
@@ -305,6 +293,8 @@ end
     with_logger(logger) do
         @test_throws "Invalid Outlet flow rate(s)." Ribasim.Outlet(
             [NodeID(:Outlet, 1)],
+            NodeID[],
+            [NodeID[]],
             [true],
             [-1.0],
             [NaN],
@@ -324,6 +314,8 @@ end
     with_logger(logger) do
         @test_throws "Invalid Pump flow rate(s)." Ribasim.Pump(
             [NodeID(:Pump, 1)],
+            NodeID[],
+            [NodeID[]],
             [true],
             [-1.0],
             [NaN],
@@ -420,6 +412,8 @@ end
     with_logger(logger) do
         @test_throws "Invalid demand" Ribasim.UserDemand(
             [NodeID(:UserDemand, 1)],
+            NodeID[],
+            NodeID[],
             [true],
             [0.0],
             [0.0],
