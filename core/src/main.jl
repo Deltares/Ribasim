@@ -52,7 +52,6 @@ function main(toml_path::AbstractString)::Cint
                 # Indicate convergence bottlenecks if possible with the current algorithm
                 if hasproperty(cache, :nlsolver)
                     storage_error = @. abs(cache.nlsolver.cache.atmp.storage / u.storage)
-                    @show storage_error
                     perm = sortperm(storage_error; rev = true)
                     println(
                         "The following basins were identified as convergence bottlenecks (in descending order of severity):",
