@@ -364,8 +364,8 @@ end
 
 """
 node_id: node ID of the Pump node
-inflow_id: node ID across the incoming flow edge
-outflow_ids: node IDs across the outgoing flow edges
+inflow_edge: incoming flow edge metadata
+outflow_edges: outgoing flow edges metadata
 active: whether this node is active and thus contributes flow
 flow_rate: target flow rate
 min_flow_rate: The minimal flow rate of the pump
@@ -375,8 +375,8 @@ is_pid_controlled: whether the flow rate of this pump is governed by PID control
 """
 struct Pump{T} <: AbstractParameterNode
     node_id::Vector{NodeID}
-    inflow_id::Vector{NodeID}
-    outflow_ids::Vector{Vector{NodeID}}
+    inflow_edge::Vector{EdgeMetadata}
+    outflow_edges::Vector{Vector{EdgeMetadata}}
     active::BitVector
     flow_rate::T
     min_flow_rate::Vector{Float64}

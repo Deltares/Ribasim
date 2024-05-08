@@ -555,10 +555,10 @@ function formulate_flow!(
 )::Nothing
     (; graph, basin) = p
 
-    for (node_id, inflow_id, outflow_ids, active, flow_rate, is_pid_controlled) in zip(
+    for (node_id, inflow_edge, outflow_edges, active, flow_rate, is_pid_controlled) in zip(
         pump.node_id,
-        pump.inflow_id,
-        pump.outflow_ids,
+        pump.inflow_edge,
+        pump.outflow_edges,
         pump.active,
         get_tmp(pump.flow_rate, storage),
         pump.is_pid_controlled,
@@ -567,13 +567,14 @@ function formulate_flow!(
             continue
         end
 
+        inflow_id = inflow_edge.edge[1]
         factor = low_storage_factor(storage, basin.node_id, inflow_id, 10.0)
         q = flow_rate * factor
 
-        set_flow!(graph, inflow_id, node_id, q)
+        set_flow!(graph, inflow_edge, q)
 
-        for outflow_id in outflow_ids
-            set_flow!(graph, node_id, outflow_id, q)
+        for outflow_edge in outflow_edges
+            set_flow!(graph, outflow_edge, q)
         end
     end
     return nothing
