@@ -246,8 +246,8 @@ function LinearResistance(db::DB, config::Config, graph::MetaGraph)::LinearResis
 
     return LinearResistance(
         node_id,
-        inflow_id.(Ref(graph), node_id),
-        outflow_id.(Ref(graph), node_id),
+        inflow_edge.(Ref(graph), node_id),
+        outflow_edge.(Ref(graph), node_id),
         BitVector(parsed_parameters.active),
         parsed_parameters.resistance,
         parsed_parameters.max_flow_rate,
@@ -326,15 +326,10 @@ function TabulatedRatingCurve(
         error("Errors occurred when parsing TabulatedRatingCurve data.")
     end
 
-    inflow_edge = [graph[inflow_id(graph, id), id] for id in node_ids]
-    outflow_edges = [
-        [graph[id, outflow_id] for outflow_id in outflow_ids(graph, id)] for id in node_ids
-    ]
-
     return TabulatedRatingCurve(
         node_ids,
-        inflow_edge,
-        outflow_edges,
+        inflow_edge.(Ref(graph), node_ids),
+        outflow_edges.(Ref(graph), node_ids),
         active,
         interpolations,
         time,

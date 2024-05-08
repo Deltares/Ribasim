@@ -734,3 +734,8 @@ has_fractional_flow_outneighbors(graph::MetaGraph, node_id::NodeID)::Bool = any(
     outneighbor_id.type == NodeType.FractionalFlow for
     outneighbor_id in outflow_ids(graph, node_id)
 )
+
+inflow_edge(graph, node_id)::EdgeMetadata = graph[inflow_id(graph, node_id), node_id]
+outflow_edge(graph, node_id)::EdgeMetadata = graph[node_id, outflow_id(graph, node_id)]
+outflow_edges(graph, node_id)::Vector{EdgeMetadata} =
+    [graph[node_id, outflow_id] for outflow_id in outflow_ids(graph, node_id)]

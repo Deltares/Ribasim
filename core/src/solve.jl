@@ -345,8 +345,11 @@ function formulate_flow!(
     (; graph) = p
     (; node_id, active, resistance, max_flow_rate) = linear_resistance
     for (i, id) in enumerate(node_id)
-        inflow_id = linear_resistance.inflow_id[i]
-        outflow_id = linear_resistance.outflow_id[i]
+        inflow_edge = linear_resistance.inflow_edge[i]
+        outflow_edge = linear_resistance.outflow_edge[i]
+
+        inflow_id = inflow_edge.edge[1]
+        outflow_id = outflow_edge.edge[2]
 
         if active[i]
             _, h_a = get_level(p, inflow_id, t; storage)
@@ -361,8 +364,8 @@ function formulate_flow!(
                 q *= low_storage_factor(storage, p.basin.node_id, outflow_id, 10.0)
             end
 
-            set_flow!(graph, inflow_id, id, q)
-            set_flow!(graph, id, outflow_id, q)
+            set_flow!(graph, inflow_edge, q)
+            set_flow!(graph, outflow_edge, q)
         end
     end
     return nothing

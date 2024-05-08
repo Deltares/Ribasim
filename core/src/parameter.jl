@@ -235,8 +235,8 @@ Type parameter C indicates the content backing the StructVector, which can be a 
 of Vectors or Arrow Primitives, and is added to avoid type instabilities.
 
 node_id: node ID of the TabulatedRatingCurve node
-inflow_edge: incoming flow edge
-outflow_edges: outgoing flow edges
+inflow_edge: incoming flow edge metadata
+outflow_edges: outgoing flow edges metadata
 active: whether this node is active and thus contributes flows
 tables: The current Q(h) relationships
 time: The time table used for updating the tables
@@ -254,8 +254,8 @@ end
 
 """
 node_id: node ID of the LinearResistance node
-inflow_id: node ID across the incoming flow edge
-outflow_id: node ID across the outgoing flow edge
+inflow_edge: incoming flow edge metadata
+outflow_edge: outgoing flow edge metadata
 active: whether this node is active and thus contributes flows
 resistance: the resistance to flow; `Q_unlimited = Δh/resistance`
 max_flow_rate: the maximum flow rate allowed through the node; `Q = clamp(Q_unlimited, -max_flow_rate, max_flow_rate)`
@@ -263,8 +263,8 @@ control_mapping: dictionary from (node_id, control_state) to resistance and/or a
 """
 struct LinearResistance <: AbstractParameterNode
     node_id::Vector{NodeID}
-    inflow_id::Vector{NodeID}
-    outflow_id::Vector{NodeID}
+    inflow_edge::Vector{EdgeMetadata}
+    outflow_edge::Vector{EdgeMetadata}
     active::BitVector
     resistance::Vector{Float64}
     max_flow_rate::Vector{Float64}
