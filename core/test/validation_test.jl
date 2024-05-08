@@ -452,3 +452,22 @@ end
         dt,
     )
 end
+
+@testitem "basin indices" begin
+    using Ribasim: NodeType
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
+    @test ispath(toml_path)
+
+    model = Ribasim.Model(toml_path)
+    (; graph, basin) = model.integrator.p
+    for edge_metadata in values(graph.edge_data)
+        (; edge, basin_idxs) = edge_metadata
+        id_src, id_dst = edge
+        if id_src.type == NodeType.Basin
+            @test id_src == basin.node_id.values[basin_idxs[1]]
+        elseif id_dst.type == NodeType.Basin
+            @test id_dst == basin.node_id.values[basin_idxs[2]]
+        end
+    end
+end
