@@ -233,6 +233,8 @@ Type parameter C indicates the content backing the StructVector, which can be a 
 of Vectors or Arrow Primitives, and is added to avoid type instabilities.
 
 node_id: node ID of the TabulatedRatingCurve node
+inflow_id: node ID across the incoming flow edge
+outflow_ids: node IDs across the outgoing flow edges
 active: whether this node is active and thus contributes flows
 tables: The current Q(h) relationships
 time: The time table used for updating the tables
@@ -240,6 +242,8 @@ control_mapping: dictionary from (node_id, control_state) to Q(h) and/or active 
 """
 struct TabulatedRatingCurve{C} <: AbstractParameterNode
     node_id::Vector{NodeID}
+    inflow_id::Vector{NodeID}
+    outflow_ids::Vector{Vector{NodeID}}
     active::BitVector
     tables::Vector{ScalarInterpolation}
     time::StructVector{TabulatedRatingCurveTimeV1, C, Int}
@@ -321,11 +325,15 @@ Requirements:
 * fraction must be positive.
 
 node_id: node ID of the TabulatedRatingCurve node
+inflow_id: node ID across the incoming flow edge
+outflow_id: node ID across the outgoing flow edge
 fraction: The fraction in [0,1] of flow the node lets through
 control_mapping: dictionary from (node_id, control_state) to fraction
 """
 struct FractionalFlow <: AbstractParameterNode
     node_id::Vector{NodeID}
+    inflow_id::Vector{NodeID}
+    outflow_id::Vector{NodeID}
     fraction::Vector{Float64}
     control_mapping::Dict{Tuple{NodeID, String}, NamedTuple}
 end
@@ -354,6 +362,8 @@ end
 
 """
 node_id: node ID of the Pump node
+inflow_id: node ID across the incoming flow edge
+outflow_ids: node IDs across the outgoing flow edges
 active: whether this node is active and thus contributes flow
 flow_rate: target flow rate
 min_flow_rate: The minimal flow rate of the pump
@@ -363,6 +373,8 @@ is_pid_controlled: whether the flow rate of this pump is governed by PID control
 """
 struct Pump{T} <: AbstractParameterNode
     node_id::Vector{NodeID}
+    inflow_id::Vector{NodeID}
+    outflow_ids::Vector{Vector{NodeID}}
     active::BitVector
     flow_rate::T
     min_flow_rate::Vector{Float64}
@@ -372,6 +384,8 @@ struct Pump{T} <: AbstractParameterNode
 
     function Pump(
         node_id,
+        inflow_id,
+        outflow_ids,
         active,
         flow_rate::T,
         min_flow_rate,
@@ -382,6 +396,8 @@ struct Pump{T} <: AbstractParameterNode
         if valid_flow_rates(node_id, get_tmp(flow_rate, 0), control_mapping)
             return new{T}(
                 node_id,
+                inflow_id,
+                outflow_ids,
                 active,
                 flow_rate,
                 min_flow_rate,
@@ -397,6 +413,8 @@ end
 
 """
 node_id: node ID of the Outlet node
+inflow_id: node ID across the incoming flow edge
+outflow_ids: node IDs across the outgoing flow edges
 active: whether this node is active and thus contributes flow
 flow_rate: target flow rate
 min_flow_rate: The minimal flow rate of the outlet
@@ -406,6 +424,8 @@ is_pid_controlled: whether the flow rate of this outlet is governed by PID contr
 """
 struct Outlet{T} <: AbstractParameterNode
     node_id::Vector{NodeID}
+    inflow_id::Vector{NodeID}
+    outflow_ids::Vector{Vector{NodeID}}
     active::BitVector
     flow_rate::T
     min_flow_rate::Vector{Float64}
@@ -416,6 +436,8 @@ struct Outlet{T} <: AbstractParameterNode
 
     function Outlet(
         node_id,
+        inflow_id,
+        outflow_ids,
         active,
         flow_rate::T,
         min_flow_rate,
@@ -427,6 +449,8 @@ struct Outlet{T} <: AbstractParameterNode
         if valid_flow_rates(node_id, get_tmp(flow_rate, 0), control_mapping)
             return new{T}(
                 node_id,
+                inflow_id,
+                outflow_ids,
                 active,
                 flow_rate,
                 min_flow_rate,
@@ -503,6 +527,9 @@ struct PidControl{T} <: AbstractParameterNode
 end
 
 """
+node_id: node ID of the UserDemand node
+inflow_id: node ID across the incoming flow edge
+outflow_id: node ID across the outgoing flow edge
 active: whether this node is active and thus demands water
 realized_bmi: Cumulative inflow volume, for read or reset by BMI only
 demand: water flux demand of UserDemand per priority over time
@@ -518,6 +545,8 @@ min_level: The level of the source basin below which the UserDemand does not abs
 """
 struct UserDemand <: AbstractParameterNode
     node_id::Vector{NodeID}
+    inflow_id::Vector{NodeID}
+    outflow_id::Vector{NodeID}
     active::BitVector
     realized_bmi::Vector{Float64}
     demand::Matrix{Float64}
@@ -530,6 +559,8 @@ struct UserDemand <: AbstractParameterNode
 
     function UserDemand(
         node_id,
+        inflow_id,
+        outflow_id,
         active,
         realized_bmi,
         demand,
@@ -544,6 +575,8 @@ struct UserDemand <: AbstractParameterNode
         if valid_demand(node_id, demand_itp, priorities)
             return new(
                 node_id,
+                inflow_id,
+                outflow_id,
                 active,
                 realized_bmi,
                 demand,

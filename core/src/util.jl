@@ -89,7 +89,11 @@ end
 Compute the area and level of a basin given its storage.
 Also returns darea/dlevel as it is needed for the Jacobian.
 """
-function get_area_and_level(basin::Basin, state_idx::Int, storage::Real)::Tuple{Real, Real}
+function get_area_and_level(
+    basin::Basin,
+    state_idx::Int,
+    storage::Number,
+)::Tuple{Real, Real}
     storage_discrete = basin.storage[state_idx]
     area_discrete = basin.area[state_idx]
     level_discrete = basin.level[state_idx]
@@ -101,8 +105,8 @@ function get_area_and_level(
     storage_discrete::Vector,
     area_discrete::Vector,
     level_discrete::Vector,
-    storage::Real,
-)::Tuple{Real, Real}
+    storage::Number,
+)::Tuple{Number, Number}
     # storage_idx: smallest index such that storage_discrete[storage_idx] >= storage
     storage_idx = searchsortedfirst(storage_discrete, storage)
 
@@ -372,17 +376,17 @@ function get_level(
     node_id::NodeID,
     t::Number;
     storage::Union{AbstractArray, Number} = 0,
-)::Union{Real, Nothing}
+)::Tuple{Bool, Number}
     (; basin, level_boundary) = p
     if node_id.type == NodeType.Basin
         _, i = id_index(basin.node_id, node_id)
         current_level = get_tmp(basin.current_level, storage)
-        current_level[i]
+        return true, current_level[i]
     elseif node_id.type == NodeType.LevelBoundary
         i = findsorted(level_boundary.node_id, node_id)
-        level_boundary.level[i](t)
+        return true, level_boundary.level[i](t)
     else
-        nothing
+        return false, 0.0
     end
 end
 
@@ -395,15 +399,15 @@ function id_index(ids::Indices{NodeID}, id::NodeID)::Tuple{Bool, Int}
 end
 
 "Return the bottom elevation of the basin with index i, or nothing if it doesn't exist"
-function basin_bottom(basin::Basin, node_id::NodeID)::Union{Float64, Nothing}
+function basin_bottom(basin::Basin, node_id::NodeID)::Tuple{Bool, Float64}
     hasindex, i = id_index(basin.node_id, node_id)
     return if hasindex
         # get level(storage) interpolation function
         level_discrete = basin.level[i]
         # and return the first level in this vector, representing the bottom
-        first(level_discrete)
+        return true, first(level_discrete)
     else
-        nothing
+        return false, 0.0
     end
 end
 
@@ -460,12 +464,6 @@ function expand_logic_mapping(
     end
     return logic_mapping_expanded
 end
-
-"""Get all node fieldnames of the parameter object."""
-nodefields(p::Parameters) = (
-    name for
-    name in fieldnames(typeof(p)) if fieldtype(typeof(p), name) <: AbstractParameterNode
-)
 
 """
 Get the node type specific indices of the fractional flows and basins,

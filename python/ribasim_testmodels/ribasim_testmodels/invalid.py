@@ -112,6 +112,10 @@ def invalid_fractional_flow_model() -> Model:
         model.basin[2],
         model.fractional_flow[8],
     )
+    model.edge.add(
+        model.fractional_flow[8],
+        model.terminal[5],
+    )
 
     return model
 
