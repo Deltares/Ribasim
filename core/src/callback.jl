@@ -32,6 +32,8 @@ function create_callbacks(
     # If saveat is a vector which contains 0.0 this callback will still be called
     # at t = 0.0 despite save_start = false
     saveat = saveat isa Vector ? filter(x -> x != 0.0, saveat) : saveat
+    # Need a copy here to get the proper type of the subcomponentvector of the state
+    # consisting of the basin forcings
     saved_vertical_flux = SavedValues(Float64, typeof(copy(forcings_integrated(u0))))
     save_vertical_flux_cb =
         SavingCallback(save_vertical_flux, saved_vertical_flux; saveat, save_start = false)

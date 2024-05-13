@@ -1,4 +1,40 @@
 """
+Get the number of states for each component of the
+state vector, and define the state names.
+"""
+function get_n_states(db::DB, config::Config)::NamedTuple
+    n_basins = length(get_ids(db, "Basin"))
+    n_pid_controls = length(get_ids(db, "PidControl"))
+    n_user_demands = length(get_ids(db, "UserDemand"))
+    n_flows = edge_count(db, "edge_type = 'flow'")
+    n_allocation_flow_inputs =
+        config.allocation.use_allocation ? get_n_allocation_flow_inputs(db) : 0
+    # NOTE: This is the source of truth for the state component names
+    return (;
+        # Basin storages
+        storage = n_basins,
+        # PID control integral terms
+        integral = n_pid_controls,
+        # Integrated flows for mean computation
+        flow_integrated = n_flows,
+        # Integrated basin forcings for mean computation
+        precipitation_integrated = n_basins,
+        evaporation_integrated = n_basins,
+        drainage_integrated = n_basins,
+        infiltration_integrated = n_basins,
+        # Cumulative basin forcings, for read or reset by BMI only
+        precipitation_bmi = n_basins,
+        evaporation_bmi = n_basins,
+        drainage_bmi = n_basins,
+        infiltration_bmi = n_basins,
+        # Flows averaged over Δt_allocation over edges that are allocation sources
+        flow_allocation_input = n_allocation_flow_inputs,
+        # Cumulative UserDemand inflow volume, for read or reset by BMI only
+        realized_user_demand_bmi = n_user_demands,
+    )
+end
+
+"""
 Get a sparse matrix whose sparsity matches (with some false positives) the sparsity of the Jacobian
 of the ODE problem. All nodes are taken into consideration, also the ones
 that are inactive.
@@ -39,7 +75,7 @@ function get_jac_prototype(
     update_jac_prototype!(jac_prototype, basin)
 
     # Allocation input flows depending on storages
-    # Note, this is copied from the update_jac_prototype!(jac_prototype, p)
+    # Note, the storage dependencies of the flows are copied from the update_jac_prototype!(jac_prototype, p)
     # result so the order is important
     update_jac_prototype!(jac_prototype, allocation, graph)
 
@@ -112,24 +148,8 @@ function update_jac_prototype!(jac_prototype::ComponentMatrix, p::Parameters)::N
         if node_id.type in [NodeType.Basin, NodeType.FractionalFlow]
             continue
         end
-        basin_ids = Set{NodeID}()
-        edges = Set{Tuple{NodeID, NodeID}}()
-        for inneighbor_id in inflow_ids(graph, node_id)
-            push!(edges, (inneighbor_id, node_id))
-            if inneighbor_id.type == NodeType.Basin
-                push!(basin_ids, inneighbor_id)
-            end
-        end
-        for outneighbor_id in outflow_ids(graph, node_id)
-            push!(edges, (node_id, outneighbor_id))
-            if outneighbor_id.type == NodeType.Basin
-                push!(basin_ids, outneighbor_id)
-            elseif outneighbor_id.type == NodeType.FractionalFlow
-                fractional_flow_outflow_id = outflow_id(graph, outneighbor_id)
-                push!(edges, (outneighbor_id, fractional_flow_outflow_id))
-            end
-        end
-        for (basin_id, edge) in Iterators.product(basin_ids, edges)
+        edges, basin_ids = get_connected_edges_and_basins(graph, node_id)
+        for (edge, basin_id) in Iterators.product(edges, basin_ids)
             _, basin_idx = id_index(basin.node_id, basin_id)
             edge_idx = flow_dict[edge]
             jac_prototype_storage_flow[basin_idx, edge_idx] = 1.0

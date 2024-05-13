@@ -657,7 +657,8 @@ function formulate_du_integration_flows!(
 
     # Realized user demand
     for (i, id) in enumerate(user_demand.node_id)
-        du.realized_user_demand_bmi[i] = get_flow(graph, inflow_id(graph, id), id, storage)
+        du.realized_user_demand_bmi[i] =
+            get_flow(graph, user_demand.inflow_id[i], id, storage)
     end
 
     return nothing
