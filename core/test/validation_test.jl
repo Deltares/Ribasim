@@ -86,7 +86,7 @@ end
     graph[NodeID(:Pump, 6)] = NodeMetadata(:pump, 9)
 
     function set_edge_metadata!(id_1, id_2, edge_type)
-        graph[id_1, id_2] = EdgeMetadata(0, edge_type, 0, (id_1, id_2))
+        graph[id_1, id_2] = EdgeMetadata(0, 0, edge_type, 0, (id_1, id_2), -1, -1)
         return nothing
     end
 
@@ -163,7 +163,7 @@ end
     graph[NodeID(:Basin, 7)] = NodeMetadata(:basin, 0)
 
     function set_edge_metadata!(id_1, id_2, edge_type)
-        graph[id_1, id_2] = EdgeMetadata(0, edge_type, 0, (id_1, id_2))
+        graph[id_1, id_2] = EdgeMetadata(0, 0, edge_type, 0, (id_1, id_2), -1, -1)
         return nothing
     end
 
@@ -469,4 +469,41 @@ end
           String.(propertynames(vertical_flux)) .* "_integrated"
     @test String.(propertynames(Ribasim.forcings_bmi(u))) ==
           String.(propertynames(vertical_flux)) .* "_bmi"
+end
+
+@testitem "basin indices" begin
+    using Ribasim: NodeType
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
+    @test ispath(toml_path)
+
+    model = Ribasim.Model(toml_path)
+    (; graph, basin) = model.integrator.p
+    for edge_metadata in values(graph.edge_data)
+        (; edge, basin_idx_src, basin_idx_dst) = edge_metadata
+        id_src, id_dst = edge
+        if id_src.type == NodeType.Basin
+            @test id_src == basin.node_id.values[basin_idx_src]
+        elseif id_dst.type == NodeType.Basin
+            @test id_dst == basin.node_id.values[basin_idx_dst]
+        end
+    end
+end
+
+@testitem "Convergence bottleneck" begin
+    using IOCapture: capture
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/invalid_unstable/ribasim.toml")
+    @test ispath(toml_path)
+    (; output) = capture() do
+        Ribasim.main(toml_path)
+    end
+    output = split(output, "\n")[(end - 4):end]
+    @test startswith(
+        output[1],
+        "The following basins were identified as convergence bottlenecks",
+    )
+    @test startswith(output[2], "Basin #11")
+    @test startswith(output[3], "Basin #31")
+    @test startswith(output[4], "Basin #51")
 end

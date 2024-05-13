@@ -246,8 +246,8 @@ function LinearResistance(db::DB, config::Config, graph::MetaGraph)::LinearResis
 
     return LinearResistance(
         node_id,
-        inflow_id.(Ref(graph), node_id),
-        outflow_id.(Ref(graph), node_id),
+        inflow_edge.(Ref(graph), node_id),
+        outflow_edge.(Ref(graph), node_id),
         BitVector(parsed_parameters.active),
         parsed_parameters.resistance,
         parsed_parameters.max_flow_rate,
@@ -328,8 +328,8 @@ function TabulatedRatingCurve(
 
     return TabulatedRatingCurve(
         node_ids,
-        inflow_id.(Ref(graph), node_ids),
-        [collect(outflow_ids(graph, id)) for id in node_ids],
+        inflow_edge.(Ref(graph), node_ids),
+        outflow_edges.(Ref(graph), node_ids),
         active,
         interpolations,
         time,
@@ -337,7 +337,12 @@ function TabulatedRatingCurve(
     )
 end
 
-function ManningResistance(db::DB, config::Config, graph::MetaGraph)::ManningResistance
+function ManningResistance(
+    db::DB,
+    config::Config,
+    graph::MetaGraph,
+    basin::Basin,
+)::ManningResistance
     static = load_structvector(db, config, ManningResistanceStaticV1)
     parsed_parameters, valid =
         parse_static_and_time(db, config, "ManningResistance"; static)
@@ -347,16 +352,20 @@ function ManningResistance(db::DB, config::Config, graph::MetaGraph)::ManningRes
     end
 
     node_id = NodeID.(NodeType.ManningResistance, parsed_parameters.node_id)
+    upstream_bottom = basin_bottom.(Ref(basin), inflow_id.(Ref(graph), node_id))
+    downstream_bottom = basin_bottom.(Ref(basin), outflow_id.(Ref(graph), node_id))
 
     return ManningResistance(
         node_id,
-        inflow_id.(Ref(graph), node_id),
-        outflow_id.(Ref(graph), node_id),
+        inflow_edge.(Ref(graph), node_id),
+        outflow_edge.(Ref(graph), node_id),
         BitVector(parsed_parameters.active),
         parsed_parameters.length,
         parsed_parameters.manning_n,
         parsed_parameters.profile_width,
         parsed_parameters.profile_slope,
+        [bottom[2] for bottom in upstream_bottom],
+        [bottom[2] for bottom in downstream_bottom],
         parsed_parameters.control_mapping,
     )
 end
@@ -373,8 +382,8 @@ function FractionalFlow(db::DB, config::Config, graph::MetaGraph)::FractionalFlo
 
     return FractionalFlow(
         node_id,
-        inflow_id.(Ref(graph), node_id),
-        outflow_id.(Ref(graph), node_id),
+        inflow_edge.(Ref(graph), node_id),
+        outflow_edge.(Ref(graph), node_id),
         parsed_parameters.fraction,
         parsed_parameters.control_mapping,
     )
@@ -464,8 +473,8 @@ function Pump(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{Int}
 
     return Pump(
         node_id,
-        inflow_id.(Ref(graph), node_id),
-        [collect(outflow_ids(graph, id)) for id in node_id],
+        inflow_edge.(Ref(graph), node_id),
+        outflow_edges.(Ref(graph), node_id),
         BitVector(parsed_parameters.active),
         flow_rate,
         parsed_parameters.min_flow_rate,
@@ -497,8 +506,8 @@ function Outlet(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{In
 
     return Outlet(
         node_id,
-        inflow_id.(Ref(graph), node_id),
-        [collect(outflow_ids(graph, id)) for id in node_id],
+        inflow_edge.(Ref(graph), node_id),
+        outflow_edges.(Ref(graph), node_id),
         BitVector(parsed_parameters.active),
         flow_rate,
         parsed_parameters.min_flow_rate,
@@ -882,8 +891,8 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)::UserDemand
 
     return UserDemand(
         node_ids,
-        inflow_id.(Ref(graph), node_ids),
-        outflow_id.(Ref(graph), node_ids),
+        inflow_edge.(Ref(graph), node_ids),
+        outflow_edge.(Ref(graph), node_ids),
         active,
         demand,
         demand_reduced,
@@ -1067,8 +1076,11 @@ function Parameters(db::DB, config::Config)::Parameters
         error("Invalid number of connections for certain node types.")
     end
 
+    basin = Basin(db, config, graph, chunk_sizes)
+    set_basin_idxs!(graph, basin)
+
     linear_resistance = LinearResistance(db, config, graph)
-    manning_resistance = ManningResistance(db, config, graph)
+    manning_resistance = ManningResistance(db, config, graph, basin)
     tabulated_rating_curve = TabulatedRatingCurve(db, config, graph)
     fractional_flow = FractionalFlow(db, config, graph)
     level_boundary = LevelBoundary(db, config)
@@ -1082,7 +1094,6 @@ function Parameters(db::DB, config::Config)::Parameters
     level_demand = LevelDemand(db, config)
     flow_demand = FlowDemand(db, config)
 
-    basin = Basin(db, config, graph, chunk_sizes)
     subgrid_level = Subgrid(db, config, basin)
 
     p = Parameters(
