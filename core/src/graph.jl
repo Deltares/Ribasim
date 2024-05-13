@@ -18,7 +18,8 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
     node_ids = Dict{Int32, Set{NodeID}}()
     # Source edges per subnetwork
     edges_source = Dict{Int32, Set{EdgeMetadata}}()
-    # The number of flow edges
+    # The flow counter gives a unique consecutive id to the
+    # flow edges to index the flow vectors
     flow_counter = 0
     # Dictionary from flow edge to index in flow vector
     flow_dict = Dict{Tuple{NodeID, NodeID}, Int32}()
@@ -71,7 +72,8 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
             edge_type,
             subnetwork_id,
             (id_src, id_dst),
-            (0, 0),
+            -1,
+            -1,
         )
         if haskey(graph, id_src, id_dst)
             errors = true
@@ -196,26 +198,35 @@ end
 """
 Get the flow over the given edge (val is needed for get_tmp from ForwardDiff.jl).
 """
-function get_flow(
-    graph::MetaGraph,
-    id_src::NodeID,
-    id_dst::NodeID,
-    val;
-    prev::Bool = false,
-)::Number
+function get_flow(graph::MetaGraph, id_src::NodeID, id_dst::NodeID, val)::Number
     (; flow_dict) = graph[]
     flow_idx = flow_dict[id_src, id_dst]
-    return get_flow(graph, flow_idx, val; prev)
+    return get_flow(graph, flow_idx, val)
 end
 
-function get_flow(graph, edge_metadata::EdgeMetadata, val; prev::Bool = false)::Number
-    return get_flow(graph, edge_metadata.flow_idx, val; prev)
+function get_flow(graph, edge_metadata::EdgeMetadata, val)::Number
+    return get_flow(graph, edge_metadata.flow_idx, val)
 end
 
-function get_flow(graph::MetaGraph, flow_idx::Int32, val; prev::Bool = false)
-    (; flow, flow_prev) = graph[]
-    flow_vector = prev ? flow_prev : flow
-    return get_tmp(flow_vector, val)[flow_idx]
+function get_flow(graph::MetaGraph, flow_idx::Integer, val)
+    return get_tmp(graph[].flow, val)[flow_idx]
+end
+
+function get_flow_prev(graph, id_src::NodeID, id_dst::NodeID, val)::Number
+    # Note: Can be removed after https://github.com/Deltares/Ribasim/pull/1444
+    (; flow_dict) = graph[]
+    flow_idx = flow_dict[id_src, id_dst]
+    return get_flow(graph, flow_idx, val)
+end
+
+function get_flow_prev(graph, edge_metadata::EdgeMetadata, val)::Number
+    # Note: Can be removed after https://github.com/Deltares/Ribasim/pull/1444
+    return get_flow_prev(graph, edge_metadata.flow_idx, val)
+end
+
+function get_flow_prev(graph::MetaGraph, flow_idx::Integer, val)
+    # Note: Can be removed after https://github.com/Deltares/Ribasim/pull/1444
+    return get_tmp(graph[].flow_prev, val)[flow_idx]
 end
 
 """

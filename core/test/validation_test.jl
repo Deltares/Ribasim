@@ -86,7 +86,7 @@ end
     graph[NodeID(:Pump, 6)] = NodeMetadata(:pump, 9)
 
     function set_edge_metadata!(id_1, id_2, edge_type)
-        graph[id_1, id_2] = EdgeMetadata(0, 0, edge_type, 0, (id_1, id_2), (0, 0))
+        graph[id_1, id_2] = EdgeMetadata(0, 0, edge_type, 0, (id_1, id_2), -1, -1)
         return nothing
     end
 
@@ -163,7 +163,7 @@ end
     graph[NodeID(:Basin, 7)] = NodeMetadata(:basin, 0)
 
     function set_edge_metadata!(id_1, id_2, edge_type)
-        graph[id_1, id_2] = EdgeMetadata(0, 0, edge_type, 0, (id_1, id_2), (0, 0))
+        graph[id_1, id_2] = EdgeMetadata(0, 0, edge_type, 0, (id_1, id_2), -1, -1)
         return nothing
     end
 
@@ -462,12 +462,12 @@ end
     model = Ribasim.Model(toml_path)
     (; graph, basin) = model.integrator.p
     for edge_metadata in values(graph.edge_data)
-        (; edge, basin_idxs) = edge_metadata
+        (; edge, basin_idx_src, basin_idx_dst) = edge_metadata
         id_src, id_dst = edge
         if id_src.type == NodeType.Basin
-            @test id_src == basin.node_id.values[basin_idxs[1]]
+            @test id_src == basin.node_id.values[basin_idx_src]
         elseif id_dst.type == NodeType.Basin
-            @test id_dst == basin.node_id.values[basin_idxs[2]]
+            @test id_dst == basin.node_id.values[basin_idx_dst]
         end
     end
 end

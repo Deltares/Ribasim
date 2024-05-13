@@ -121,7 +121,8 @@ type: type of the edge
 subnetwork_id_source: ID of subnetwork where this edge is a source
   (0 if not a source)
 edge: (from node ID, to node ID)
-basin_idxs: Basin indices of source and destination nodes (0 if not a basin)
+basin_idx_src: Basin index of source node (0 if not a basin)
+basin_idx_dst: Basin index of destination node (0 if not a basin)
 """
 struct EdgeMetadata
     id::Int32
@@ -129,7 +130,8 @@ struct EdgeMetadata
     type::EdgeType.T
     subnetwork_id_source::Int32
     edge::Tuple{NodeID, NodeID}
-    basin_idxs::Tuple{Int32, Int32}
+    basin_idx_src::Int32
+    basin_idx_dst::Int32
 end
 
 abstract type AbstractParameterNode end
@@ -238,7 +240,9 @@ of Vectors or Arrow Primitives, and is added to avoid type instabilities.
 
 node_id: node ID of the TabulatedRatingCurve node
 inflow_edge: incoming flow edge metadata
+    The ID of the destination node is always the ID of the TabulatedRatingCurve node
 outflow_edges: outgoing flow edges metadata
+    The ID of the source node is always the ID of the TabulatedRatingCurve node
 active: whether this node is active and thus contributes flows
 tables: The current Q(h) relationships
 time: The time table used for updating the tables
@@ -257,7 +261,9 @@ end
 """
 node_id: node ID of the LinearResistance node
 inflow_edge: incoming flow edge metadata
+    The ID of the destination node is always the ID of the LinearResistance node
 outflow_edge: outgoing flow edge metadata
+    The ID of the source node is always the ID of the LinearResistance node
 active: whether this node is active and thus contributes flows
 resistance: the resistance to flow; `Q_unlimited = Δh/resistance`
 max_flow_rate: the maximum flow rate allowed through the node; `Q = clamp(Q_unlimited, -max_flow_rate, max_flow_rate)`
@@ -278,7 +284,9 @@ This is a simple Manning-Gauckler reach connection.
 
 node_id: node ID of the ManningResistance node
 inflow_edge: incoming flow edge metadata
+    The ID of the destination node is always the ID of the ManningResistance node
 outflow_edge: outgoing flow edge metadata
+    The ID of the source node is always the ID of the ManningResistance node
 length: reach length
 manning_n: roughness; Manning's n in (SI units).
 
@@ -324,15 +332,11 @@ struct ManningResistance <: AbstractParameterNode
 end
 
 """
-Requirements:
-
-* from: must be (TabulatedRatingCurve,) node
-* to: must be (Basin,) node
-* fraction must be positive.
-
-node_id: node ID of the TabulatedRatingCurve node
+node_id: node ID of the FractionalFlow node
 inflow_edge: incoming flow edge metadata
+    The ID of the destination node is always the ID of the FractionalFlow node
 outflow_edge: outgoing flow edge metadata
+    The ID of the source node is always the ID of the FractionalFlow node
 fraction: The fraction in [0,1] of flow the node lets through
 control_mapping: dictionary from (node_id, control_state) to fraction
 """
@@ -369,7 +373,9 @@ end
 """
 node_id: node ID of the Pump node
 inflow_edge: incoming flow edge metadata
+    The ID of the destination node is always the ID of the Pump node
 outflow_edges: outgoing flow edges metadata
+    The ID of the source node is always the ID of the Pump node
 active: whether this node is active and thus contributes flow
 flow_rate: target flow rate
 min_flow_rate: The minimal flow rate of the pump
@@ -390,8 +396,8 @@ struct Pump{T} <: AbstractParameterNode
 
     function Pump(
         node_id,
-        inflow_id,
-        outflow_ids,
+        inflow_edge,
+        outflow_edges,
         active,
         flow_rate::T,
         min_flow_rate,
@@ -402,8 +408,8 @@ struct Pump{T} <: AbstractParameterNode
         if valid_flow_rates(node_id, get_tmp(flow_rate, 0), control_mapping)
             return new{T}(
                 node_id,
-                inflow_id,
-                outflow_ids,
+                inflow_edge,
+                outflow_edges,
                 active,
                 flow_rate,
                 min_flow_rate,
@@ -419,8 +425,10 @@ end
 
 """
 node_id: node ID of the Outlet node
-inflow_edge: incoming flow edge metadata
-outflow_edges: outgoing flow edges metadata
+inflow_edge: incoming flow edge metadata.
+    The ID of the destination node is always the ID of the Outlet node
+outflow_edges: outgoing flow edges metadata.
+    The ID of the source node is always the ID of the Outlet node
 active: whether this node is active and thus contributes flow
 flow_rate: target flow rate
 min_flow_rate: The minimal flow rate of the outlet
@@ -534,8 +542,10 @@ end
 
 """
 node_id: node ID of the UserDemand node
-inflow_edge: incoming flow edge metadata
+inflow_edge: incoming flow edge
+    The ID of the destination node is always the ID of the UserDemand node
 outflow_edge: outgoing flow edge metadata
+    The ID of the source node is always the ID of the UserDemand node
 active: whether this node is active and thus demands water
 realized_bmi: Cumulative inflow volume, for read or reset by BMI only
 demand: water flux demand of UserDemand per priority over time
