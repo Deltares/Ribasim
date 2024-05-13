@@ -2,19 +2,23 @@
 
 
 ## Steps
-Choose a testmodel and run it. For example:
+Choose a testmodel and run it. For example, running the basic model with ribasim_cli:
 ```bash
-./build/ribasim_cli/bin/ribasim generated_testmodels/basic/ribasim.toml`
+./build/ribasim_cli/bin/ribasim generated_testmodels/basic/ribasim.toml
 ```
 
-Run `gen_delwaq.py` to couple the models. The script can:
+Run `gen_delwaq.py` to couple the models. Open a terminal in the directory of Ribasim
+```python
+python ./coupling/delwaq/gen_delwaq.py
+```
+The script can:
 - Open an existing Ribasim model (hardcoded to `generated_testmodels/basic/ribasim.toml` for now)
 - Convert the metadata, topology and substances to Delwaq format and put it into the `model` folder
 
-You now should manually run Delwaq. You can do so with the Docker image. To do so, follow
-this guide https://publicwiki.deltares.nl/display/Delft3DContainers/. Notably, you need
-to login to https://containers.deltares.nl and create a token which you can use in the following steps.
+You now should manually run Delwaq. You can do so with the Docker image.
+First install WSL and install docker in WSL, then create a CLI secret and log into the Deltares containers. To install docker in WSL and create a CLI secret for the following steps, follow this guide https://publicwiki.deltares.nl/display/Delft3DContainers/.
 
+Log into Deltares containers in docker:
 ```bash
 docker login containers.deltares.nl  # use your deltares email + token
 ```
