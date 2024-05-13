@@ -125,9 +125,7 @@ function integrate_flows!(u, t, integrator)::Nothing
         else
             # Horizontal flows
             value[] +=
-                0.5 *
-                (get_flow(graph, edge..., 0) + get_flow(graph, edge..., 0; prev = true)) *
-                dt
+                0.5 * (get_flow(graph, edge..., 0) + get_flow_prev(graph, edge..., 0)) * dt
         end
     end
 

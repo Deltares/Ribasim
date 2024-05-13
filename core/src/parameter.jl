@@ -116,16 +116,22 @@ end
 """
 Type for storing metadata of edges in the graph:
 id: ID of the edge (only used for labeling flow output)
+flow_idx: Index in the vector of flows
 type: type of the edge
 subnetwork_id_source: ID of subnetwork where this edge is a source
   (0 if not a source)
 edge: (from node ID, to node ID)
+basin_idx_src: Basin index of source node (0 if not a basin)
+basin_idx_dst: Basin index of destination node (0 if not a basin)
 """
 struct EdgeMetadata
     id::Int32
+    flow_idx::Int32
     type::EdgeType.T
     subnetwork_id_source::Int32
     edge::Tuple{NodeID, NodeID}
+    basin_idx_src::Int32
+    basin_idx_dst::Int32
 end
 
 abstract type AbstractParameterNode end
@@ -233,8 +239,10 @@ Type parameter C indicates the content backing the StructVector, which can be a 
 of Vectors or Arrow Primitives, and is added to avoid type instabilities.
 
 node_id: node ID of the TabulatedRatingCurve node
-inflow_id: node ID across the incoming flow edge
-outflow_ids: node IDs across the outgoing flow edges
+inflow_edge: incoming flow edge metadata
+    The ID of the destination node is always the ID of the TabulatedRatingCurve node
+outflow_edges: outgoing flow edges metadata
+    The ID of the source node is always the ID of the TabulatedRatingCurve node
 active: whether this node is active and thus contributes flows
 tables: The current Q(h) relationships
 time: The time table used for updating the tables
@@ -242,8 +250,8 @@ control_mapping: dictionary from (node_id, control_state) to Q(h) and/or active 
 """
 struct TabulatedRatingCurve{C} <: AbstractParameterNode
     node_id::Vector{NodeID}
-    inflow_id::Vector{NodeID}
-    outflow_ids::Vector{Vector{NodeID}}
+    inflow_edge::Vector{EdgeMetadata}
+    outflow_edges::Vector{Vector{EdgeMetadata}}
     active::BitVector
     tables::Vector{ScalarInterpolation}
     time::StructVector{TabulatedRatingCurveTimeV1, C, Int}
@@ -252,8 +260,10 @@ end
 
 """
 node_id: node ID of the LinearResistance node
-inflow_id: node ID across the incoming flow edge
-outflow_id: node ID across the outgoing flow edge
+inflow_edge: incoming flow edge metadata
+    The ID of the destination node is always the ID of the LinearResistance node
+outflow_edge: outgoing flow edge metadata
+    The ID of the source node is always the ID of the LinearResistance node
 active: whether this node is active and thus contributes flows
 resistance: the resistance to flow; `Q_unlimited = Δh/resistance`
 max_flow_rate: the maximum flow rate allowed through the node; `Q = clamp(Q_unlimited, -max_flow_rate, max_flow_rate)`
@@ -261,8 +271,8 @@ control_mapping: dictionary from (node_id, control_state) to resistance and/or a
 """
 struct LinearResistance <: AbstractParameterNode
     node_id::Vector{NodeID}
-    inflow_id::Vector{NodeID}
-    outflow_id::Vector{NodeID}
+    inflow_edge::Vector{EdgeMetadata}
+    outflow_edge::Vector{EdgeMetadata}
     active::BitVector
     resistance::Vector{Float64}
     max_flow_rate::Vector{Float64}
@@ -273,8 +283,10 @@ end
 This is a simple Manning-Gauckler reach connection.
 
 node_id: node ID of the ManningResistance node
-inflow_id: node ID across the incoming flow edge
-outflow_id: node ID across the outgoing flow edge
+inflow_edge: incoming flow edge metadata
+    The ID of the destination node is always the ID of the ManningResistance node
+outflow_edge: outgoing flow edge metadata
+    The ID of the source node is always the ID of the ManningResistance node
 length: reach length
 manning_n: roughness; Manning's n in (SI units).
 
@@ -307,33 +319,31 @@ Requirements:
 """
 struct ManningResistance <: AbstractParameterNode
     node_id::Vector{NodeID}
-    inflow_id::Vector{NodeID}
-    outflow_id::Vector{NodeID}
+    inflow_edge::Vector{EdgeMetadata}
+    outflow_edge::Vector{EdgeMetadata}
     active::BitVector
     length::Vector{Float64}
     manning_n::Vector{Float64}
     profile_width::Vector{Float64}
     profile_slope::Vector{Float64}
+    upstream_bottom::Vector{Float64}
+    downstream_bottom::Vector{Float64}
     control_mapping::Dict{Tuple{NodeID, String}, NamedTuple}
 end
 
 """
-Requirements:
-
-* from: must be (TabulatedRatingCurve,) node
-* to: must be (Basin,) node
-* fraction must be positive.
-
-node_id: node ID of the TabulatedRatingCurve node
-inflow_id: node ID across the incoming flow edge
-outflow_id: node ID across the outgoing flow edge
+node_id: node ID of the FractionalFlow node
+inflow_edge: incoming flow edge metadata
+    The ID of the destination node is always the ID of the FractionalFlow node
+outflow_edge: outgoing flow edge metadata
+    The ID of the source node is always the ID of the FractionalFlow node
 fraction: The fraction in [0,1] of flow the node lets through
 control_mapping: dictionary from (node_id, control_state) to fraction
 """
 struct FractionalFlow <: AbstractParameterNode
     node_id::Vector{NodeID}
-    inflow_id::Vector{NodeID}
-    outflow_id::Vector{NodeID}
+    inflow_edge::Vector{EdgeMetadata}
+    outflow_edge::Vector{EdgeMetadata}
     fraction::Vector{Float64}
     control_mapping::Dict{Tuple{NodeID, String}, NamedTuple}
 end
@@ -362,8 +372,10 @@ end
 
 """
 node_id: node ID of the Pump node
-inflow_id: node ID across the incoming flow edge
-outflow_ids: node IDs across the outgoing flow edges
+inflow_edge: incoming flow edge metadata
+    The ID of the destination node is always the ID of the Pump node
+outflow_edges: outgoing flow edges metadata
+    The ID of the source node is always the ID of the Pump node
 active: whether this node is active and thus contributes flow
 flow_rate: target flow rate
 min_flow_rate: The minimal flow rate of the pump
@@ -373,8 +385,8 @@ is_pid_controlled: whether the flow rate of this pump is governed by PID control
 """
 struct Pump{T} <: AbstractParameterNode
     node_id::Vector{NodeID}
-    inflow_id::Vector{NodeID}
-    outflow_ids::Vector{Vector{NodeID}}
+    inflow_edge::Vector{EdgeMetadata}
+    outflow_edges::Vector{Vector{EdgeMetadata}}
     active::BitVector
     flow_rate::T
     min_flow_rate::Vector{Float64}
@@ -384,8 +396,8 @@ struct Pump{T} <: AbstractParameterNode
 
     function Pump(
         node_id,
-        inflow_id,
-        outflow_ids,
+        inflow_edge,
+        outflow_edges,
         active,
         flow_rate::T,
         min_flow_rate,
@@ -396,8 +408,8 @@ struct Pump{T} <: AbstractParameterNode
         if valid_flow_rates(node_id, get_tmp(flow_rate, 0), control_mapping)
             return new{T}(
                 node_id,
-                inflow_id,
-                outflow_ids,
+                inflow_edge,
+                outflow_edges,
                 active,
                 flow_rate,
                 min_flow_rate,
@@ -413,8 +425,10 @@ end
 
 """
 node_id: node ID of the Outlet node
-inflow_id: node ID across the incoming flow edge
-outflow_ids: node IDs across the outgoing flow edges
+inflow_edge: incoming flow edge metadata.
+    The ID of the destination node is always the ID of the Outlet node
+outflow_edges: outgoing flow edges metadata.
+    The ID of the source node is always the ID of the Outlet node
 active: whether this node is active and thus contributes flow
 flow_rate: target flow rate
 min_flow_rate: The minimal flow rate of the outlet
@@ -424,8 +438,8 @@ is_pid_controlled: whether the flow rate of this outlet is governed by PID contr
 """
 struct Outlet{T} <: AbstractParameterNode
     node_id::Vector{NodeID}
-    inflow_id::Vector{NodeID}
-    outflow_ids::Vector{Vector{NodeID}}
+    inflow_edge::Vector{EdgeMetadata}
+    outflow_edges::Vector{Vector{EdgeMetadata}}
     active::BitVector
     flow_rate::T
     min_flow_rate::Vector{Float64}
@@ -528,8 +542,10 @@ end
 
 """
 node_id: node ID of the UserDemand node
-inflow_id: node ID across the incoming flow edge
-outflow_id: node ID across the outgoing flow edge
+inflow_edge: incoming flow edge
+    The ID of the destination node is always the ID of the UserDemand node
+outflow_edge: outgoing flow edge metadata
+    The ID of the source node is always the ID of the UserDemand node
 active: whether this node is active and thus demands water
 realized_bmi: Cumulative inflow volume, for read or reset by BMI only
 demand: water flux demand of UserDemand per priority over time
@@ -545,8 +561,8 @@ min_level: The level of the source basin below which the UserDemand does not abs
 """
 struct UserDemand <: AbstractParameterNode
     node_id::Vector{NodeID}
-    inflow_id::Vector{NodeID}
-    outflow_id::Vector{NodeID}
+    inflow_edge::Vector{EdgeMetadata}
+    outflow_edge::Vector{EdgeMetadata}
     active::BitVector
     realized_bmi::Vector{Float64}
     demand::Matrix{Float64}
@@ -632,7 +648,7 @@ struct Parameters{T, C1, C2, V1, V2, V3}
         @NamedTuple{
             node_ids::Dict{Int32, Set{NodeID}},
             edges_source::Dict{Int32, Set{EdgeMetadata}},
-            flow_dict::Dict{Tuple{NodeID, NodeID}, Int},
+            flow_dict::Dict{Tuple{NodeID, NodeID}, Int32},
             flow::T,
             flow_prev::Vector{Float64},
             flow_integrated::Vector{Float64},
