@@ -3,4 +3,4 @@ endtime = 2019-12-31
 crs = "EPSG:28992"
 input_dir = "."
 results_dir = "results"
-ribasim_version = "2024.7.0"
+ribasim_version = "2024.8.0"
