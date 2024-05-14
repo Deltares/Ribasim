@@ -384,9 +384,7 @@ end
 
 function valid_demand(
     node_id::Vector{NodeID},
-    demand_itp::Vector{
-        Vector{LinearInterpolation{Vector{Float64}, Vector{Float64}, true, Float64}},
-    },
+    demand_itp::Vector{Vector{ScalarInterpolation}},
     priorities::Vector{Int32},
 )::Bool
     errors = false

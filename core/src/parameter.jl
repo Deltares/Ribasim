@@ -35,10 +35,9 @@ end
 
 Base.to_index(id::NodeID) = Int(id.value)
 
-const ScalarInterpolation =
-    LinearInterpolation{Vector{Float64}, Vector{Float64}, true, Float64}
+const ScalarInterpolation = LinearInterpolation{Vector{Float64}, Vector{Float64}, Float64}
 const VectorInterpolation =
-    LinearInterpolation{Vector{Vector{Float64}}, Vector{Float64}, true, Vector{Float64}}
+    LinearInterpolation{Vector{Vector{Float64}}, Vector{Float64}, Vector{Float64}}
 
 """
 Store information for a subnetwork used for allocation.
@@ -595,8 +594,8 @@ priority: If in a shortage state, the priority of the demand of the connected ba
 """
 struct LevelDemand <: AbstractParameterNode
     node_id::Vector{NodeID}
-    min_level::Vector{LinearInterpolation}
-    max_level::Vector{LinearInterpolation}
+    min_level::Vector{ScalarInterpolation}
+    max_level::Vector{ScalarInterpolation}
     priority::Vector{Int32}
 end
 
