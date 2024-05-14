@@ -2,7 +2,7 @@ name = "Ribasim"
 uuid = "aac5e3d9-0b8f-4d4f-8241-b1a7a9632635"
 authors = ["Deltares and contributors <ribasim.info@deltares.nl>"]
 manifest = "../Manifest.toml"
-version = "2024.7.0"
+version = "2024.8.0"
 
 [deps]
 Accessors = "7d9f7c33-5ae7-4f3b-8dc6-eff91059b697"
@@ -51,7 +51,7 @@ ComponentArrays = "0.13,0.14,0.15"
 Configurations = "0.17"
 DBInterface = "2.4"
 DataFrames = "1.4"
-DataInterpolations = "4.4, 5"
+DataInterpolations = "4.4"
 DataStructures = "0.18"
 Dates = "<0.0.1,1"
 Dictionaries = "0.3.25, 0.4"
