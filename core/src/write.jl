@@ -76,7 +76,25 @@ function get_storages_and_levels(
     return (; time = tsteps, node_id, storage, level)
 end
 
-function average_over_saveats(integral_data, integrator)
+function average_over_saveats(
+    integrand_values::IntegrandValues,
+    symb::Symbol,
+    saveats::Vector{Float64},
+)
+    (; integrand, ts) = integrand_values
+    averages = Vector{Float64}[]
+    saveat_index = 2
+    integral_saveat = zero(first(integrand)[symb])
+    for (integral_step, t) in zip(integrand, ts)
+        if t >= saveats[saveat_index]
+            Δt_saveat = saveats[saveat_index] - saveats[saveat_index - 1]
+            push!(averages, copy(integral_saveat) / Δt_saveat)
+            integral_saveat .= 0.0
+            saveat_index += 1
+        end
+        integral_saveat += integral_step[symb]
+    end
+    return averages
 end
 
 "Create the basin result table from the saved data"
@@ -97,7 +115,7 @@ function basin_table(
     balance_error::Vector{Float64},
     relative_error::Vector{Float64},
 }
-    (; saved) = model
+    (; saved, integrator) = model
     # The last timestep is not included; there is no period over which to compute flows.
     data = get_storages_and_levels(model)
     storage = vec(data.storage[:, begin:(end - 1)])
@@ -107,31 +125,16 @@ function basin_table(
     nbasin = length(data.node_id)
     ntsteps = length(data.time) - 1
     nrows = nbasin * ntsteps
+    saveats = integrator.sol.t
 
-    inflow_rate = FlatVector(saved.flow.integrand, :basin_inflow)
-    outflow_rate = FlatVector(saved.flow.integrand, :basin_outflow)
-    precipitation = zeros(nrows)
-    evaporation = zeros(nrows)
-    drainage = zeros(nrows)
-    infiltration = zeros(nrows)
+    inflow_rate = FlatVector(average_over_saveats(saved.flow, :basin_inflow, saveats))
+    outflow_rate = FlatVector(average_over_saveats(saved.flow, :basin_inflow, saveats))
+    precipitation = FlatVector(average_over_saveats(saved.flow, :precipitation, saveats))
+    evaporation = FlatVector(average_over_saveats(saved.flow, :evaporation, saveats))
+    drainage = FlatVector(average_over_saveats(saved.flow, :drainage, saveats))
+    infiltration = FlatVector(average_over_saveats(saved.flow, :infiltration, saveats))
     balance_error = zeros(nrows)
     relative_error = zeros(nrows)
-
-    @show length(model.integrator.sol.t)
-    @show ntsteps
-    @show length(saved.flow.integrand)
-
-    idx_row = 0
-    for cvec in saved.flow.integrand
-        for (precipitation_, evaporation_, drainage_, infiltration_) in
-            zip(cvec.precipitation, cvec.evaporation, cvec.drainage, cvec.infiltration)
-            idx_row += 1
-            precipitation[idx_row] = precipitation_
-            evaporation[idx_row] = evaporation_
-            drainage[idx_row] = drainage_
-            infiltration[idx_row] = infiltration_
-        end
-    end
 
     time = repeat(data.time[begin:(end - 1)]; inner = nbasin)
     Δtime_seconds = seconds.(diff(data.time))
