@@ -1,7 +1,6 @@
 @testitem "Basin profile validation" begin
     using Dictionaries: Indices
-    using Ribasim: NodeID, valid_profiles, qh_interpolation
-    using DataInterpolations: LinearInterpolation
+    using Ribasim: NodeID, valid_profiles, qh_interpolation, ScalarInterpolation
     using Logging
 
     node_id = Indices([NodeID(:Basin, 1)])
@@ -27,10 +26,10 @@
 
     itp, valid = qh_interpolation([0.0, 0.0], [1.0, 2.0])
     @test !valid
-    @test itp isa LinearInterpolation
+    @test itp isa ScalarInterpolation
     itp, valid = qh_interpolation([0.0, 0.1], [1.0, 2.0])
     @test valid
-    @test itp isa LinearInterpolation
+    @test itp isa ScalarInterpolation
 end
 
 @testitem "Q(h) validation" begin

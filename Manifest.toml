@@ -328,9 +328,9 @@ version = "1.6.1"
 
 [[deps.DataInterpolations]]
 deps = ["FindFirstFunctions", "ForwardDiff", "LinearAlgebra", "PrettyTables", "RecipesBase", "Reexport"]
-git-tree-sha1 = "b24ab19ead284c563c9e494899d2464a7e95face"
+git-tree-sha1 = "b580ef00ec248aeb137b4ef3a4f751a567d35556"
 uuid = "82cc6244-b520-54b8-b5a6-8a565e85f1d0"
-version = "4.8.0"
+version = "5.0.0"
 
     [deps.DataInterpolations.extensions]
     DataInterpolationsChainRulesCoreExt = "ChainRulesCore"
