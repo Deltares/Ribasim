@@ -521,8 +521,9 @@ function Base.getindex(fv::FlatVector, i::Int)
     return v[r + 1]
 end
 
-"Construct a FlatVector from one of the fields of SavedFlow."
-FlatVector(saveval::Vector{SavedFlow}, sym::Symbol) = FlatVector(getfield.(saveval, sym))
+"Construct a FlatVector from one of the components of a ComponentVector."
+FlatVector(saveval::Vector{ComponentVector{A, B, C}} where {A, B, C}, sym::Symbol) =
+    FlatVector(collect.(view.(saveval, sym)))
 
 """
 Function that goes smoothly from 0 to 1 in the interval [0,threshold],
@@ -698,11 +699,10 @@ function get_influx(basin::Basin, node_id::NodeID)::Float64
     return get_influx(basin, basin_idx)
 end
 
-function get_influx(basin::Basin, basin_idx::Int; prev::Bool = false)::Float64
-    (; vertical_flux, vertical_flux_prev) = basin
+function get_influx(basin::Basin, basin_idx::Int)::Float64
+    (; vertical_flux) = basin
     vertical_flux = get_tmp(vertical_flux, 0)
-    flux_vector = prev ? vertical_flux_prev : vertical_flux
-    (; precipitation, evaporation, drainage, infiltration) = flux_vector
+    (; precipitation, evaporation, drainage, infiltration) = vertical_flux
     return precipitation[basin_idx] - evaporation[basin_idx] + drainage[basin_idx] -
            infiltration[basin_idx]
 end
@@ -730,6 +730,8 @@ has_fractional_flow_outneighbors(graph::MetaGraph, node_id::NodeID)::Bool = any(
 
 inflow_edge(graph, node_id)::EdgeMetadata = graph[inflow_id(graph, node_id), node_id]
 outflow_edge(graph, node_id)::EdgeMetadata = graph[node_id, outflow_id(graph, node_id)]
+inflow_edges(graph, node_id)::Vector{EdgeMetadata} =
+    [graph[inflow_id, node_id] for inflow_id in inflow_ids(graph, node_id)]
 outflow_edges(graph, node_id)::Vector{EdgeMetadata} =
     [graph[node_id, outflow_id] for outflow_id in outflow_ids(graph, node_id)]
 

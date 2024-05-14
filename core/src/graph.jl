@@ -100,20 +100,10 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
     end
 
     flow = zeros(flow_counter)
-    flow_prev = fill(NaN, flow_counter)
-    flow_integrated = zeros(flow_counter)
     if config.solver.autodiff
         flow = DiffCache(flow, chunk_sizes)
     end
-    graph_data = (;
-        node_ids,
-        edges_source,
-        flow_dict,
-        flow,
-        flow_prev,
-        flow_integrated,
-        config.solver.saveat,
-    )
+    graph_data = (; node_ids, edges_source, flow_dict, flow, config.solver.saveat)
     graph = @set graph.graph_data = graph_data
 
     return graph

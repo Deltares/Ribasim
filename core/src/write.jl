@@ -76,6 +76,9 @@ function get_storages_and_levels(
     return (; time = tsteps, node_id, storage, level)
 end
 
+function average_over_saveats(integral_data, integrator)
+end
+
 "Create the basin result table from the saved data"
 function basin_table(
     model::Model,
@@ -105,8 +108,8 @@ function basin_table(
     ntsteps = length(data.time) - 1
     nrows = nbasin * ntsteps
 
-    inflow_rate = FlatVector(saved.flow.saveval, :inflow)
-    outflow_rate = FlatVector(saved.flow.saveval, :outflow)
+    inflow_rate = FlatVector(saved.flow.integrand, :basin_inflow)
+    outflow_rate = FlatVector(saved.flow.integrand, :basin_outflow)
     precipitation = zeros(nrows)
     evaporation = zeros(nrows)
     drainage = zeros(nrows)
@@ -114,8 +117,12 @@ function basin_table(
     balance_error = zeros(nrows)
     relative_error = zeros(nrows)
 
+    @show length(model.integrator.sol.t)
+    @show ntsteps
+    @show length(saved.flow.integrand)
+
     idx_row = 0
-    for cvec in saved.vertical_flux.saveval
+    for cvec in saved.flow.integrand
         for (precipitation_, evaporation_, drainage_, infiltration_) in
             zip(cvec.precipitation, cvec.evaporation, cvec.drainage, cvec.infiltration)
             idx_row += 1

@@ -1,4 +1,3 @@
-
 """
 Create the different callbacks that are used to store results
 and feed the simulation with new data. The different callbacks
@@ -13,12 +12,17 @@ function create_callbacks(
     (; starttime, basin, tabulated_rating_curve, discrete_control) = parameters
     callbacks = SciMLBase.DECallback[]
 
+    # Check for negative storages
     negative_storage_cb = FunctionCallingCallback(check_negative_storage)
     push!(callbacks, negative_storage_cb)
 
-    integrating_flows_cb = FunctionCallingCallback(integrate_flows!; func_start = false)
+    integrand_output_prototype = get_flow_integrand_output_prototype(parameters)
+    saved_flow = IntegrandValues(Float64, typeof(integrand_output_prototype))
+    integrating_flows_cb =
+        IntegratingCallback(flow_integrand, saved_flow, integrand_output_prototype)
     push!(callbacks, integrating_flows_cb)
 
+    # TODO: What is this?
     tstops = get_tstops(basin.time.time, starttime)
     basin_cb = PresetTimeCallback(tstops, update_basin; save_positions = (false, false))
     push!(callbacks, basin_cb)
@@ -30,19 +34,6 @@ function create_callbacks(
         save_positions = (false, false),
     )
     push!(callbacks, tabulated_rating_curve_cb)
-
-    # If saveat is a vector which contains 0.0 this callback will still be called
-    # at t = 0.0 despite save_start = false
-    saveat = saveat isa Vector ? filter(x -> x != 0.0, saveat) : saveat
-    saved_vertical_flux = SavedValues(Float64, typeof(basin.vertical_flux_integrated))
-    save_vertical_flux_cb =
-        SavingCallback(save_vertical_flux, saved_vertical_flux; saveat, save_start = false)
-    push!(callbacks, save_vertical_flux_cb)
-
-    # save the flows over time
-    saved_flow = SavedValues(Float64, SavedFlow)
-    save_flow_cb = SavingCallback(save_flow, saved_flow; saveat, save_start = false)
-    push!(callbacks, save_flow_cb)
 
     # interpolate the levels
     saved_subgrid_level = SavedValues(Float64, Vector{Float64})
@@ -56,7 +47,7 @@ function create_callbacks(
         push!(callbacks, export_cb)
     end
 
-    saved = SavedResults(saved_flow, saved_vertical_flux, saved_subgrid_level)
+    saved = SavedResults(saved_flow, saved_subgrid_level)
 
     n_conditions = sum(length(vec) for vec in discrete_control.greater_than; init = 0)
     if n_conditions > 0
@@ -66,6 +57,47 @@ function create_callbacks(
     callback = CallbackSet(callbacks...)
 
     return callback, saved
+end
+
+function flow_integrand(out, u, t, integrator)::Nothing
+    (; basin, graph) = integrator.p
+    (; vertical_flux) = basin
+    vertical_flux = get_tmp(vertical_flux, 0)
+    flow = get_tmp(graph[].flow, 0)
+    out_vertical_flux = @view out[(:precipitation, :evaporation, :drainage, :infiltration)]
+
+    out.flow .= flow
+    out_vertical_flux .= vertical_flux
+
+    for (i, basin_id) in enumerate(basin.node_id)
+        for inflow_edge in basin.inflow_edges[i]
+            q = get_flow(graph, inflow_edge, 0)
+            if q > 0
+                out.basin_inflow[i] += q
+            else
+                out.basin_outflow[i] -= q
+            end
+        end
+        for outflow_edge in basin.outflow_edges[i]
+            q = get_flow(graph, outflow_edge, 0)
+            if q > 0
+                out.basin_outflow[i] += q
+            else
+                out.basin_inflow[i] -= q
+            end
+        end
+    end
+    return nothing
+end
+
+function get_flow_integrand_output_prototype(p::Parameters)
+    (; graph, basin) = p
+    flow = get_tmp(graph[].flow, 0)
+    vertical_flux = get_tmp(basin.vertical_flux, 0)
+    n_basin = length(basin.node_id)
+    basin_inflow = zeros(n_basin)
+    basin_outflow = zeros(n_basin)
+    return ComponentVector{Float64}(; basin_inflow, basin_outflow, flow, vertical_flux...)
 end
 
 function check_negative_storage(u, t, integrator)::Nothing
@@ -86,110 +118,9 @@ function check_negative_storage(u, t, integrator)::Nothing
     return nothing
 end
 
-"""
-Integrate flows over the last timestep
-"""
-function integrate_flows!(u, t, integrator)::Nothing
-    (; p, dt) = integrator
-    (; graph, user_demand, basin, allocation) = p
-    (; flow, flow_dict, flow_prev, flow_integrated) = graph[]
-    (; vertical_flux, vertical_flux_prev, vertical_flux_integrated, vertical_flux_bmi) =
-        basin
-    flow = get_tmp(flow, 0)
-    vertical_flux = get_tmp(vertical_flux, 0)
-    if !isempty(flow_prev) && isnan(flow_prev[1])
-        # If flow_prev is not populated yet
-        copyto!(flow_prev, flow)
-    end
-
-    @. flow_integrated += 0.5 * (flow + flow_prev) * dt
-    @. vertical_flux_integrated += 0.5 * (vertical_flux + vertical_flux_prev) * dt
-    @. vertical_flux_bmi += 0.5 * (vertical_flux + vertical_flux_prev) * dt
-
-    # UserDemand realized flows for BMI
-    for (i, id) in enumerate(user_demand.node_id)
-        src_id = inflow_id(graph, id)
-        flow_idx = flow_dict[src_id, id]
-        user_demand.realized_bmi[i] += 0.5 * (flow[flow_idx] + flow_prev[flow_idx]) * dt
-    end
-
-    # Allocation source flows
-    for (edge, value) in allocation.mean_flows
-        if edge[1] == edge[2]
-            # Vertical fluxes
-            _, basin_idx = id_index(basin.node_id, edge[1])
-            value[] +=
-                0.5 *
-                (get_influx(basin, basin_idx) + get_influx(basin, basin_idx; prev = true)) *
-                dt
-        else
-            # Horizontal flows
-            value[] +=
-                0.5 * (get_flow(graph, edge..., 0) + get_flow_prev(graph, edge..., 0)) * dt
-        end
-    end
-
-    copyto!(flow_prev, flow)
-    copyto!(vertical_flux_prev, vertical_flux)
-    return nothing
-end
-
-"Compute the average flows over the last saveat interval and write
-them to SavedValues"
-function save_flow(u, t, integrator)
-    (; graph) = integrator.p
-    (; flow_integrated, flow_dict) = graph[]
-    (; node_id) = integrator.p.basin
-
-    Δt = get_Δt(integrator)
-    flow_mean = copy(flow_integrated)
-    flow_mean ./= Δt
-    fill!(flow_integrated, 0.0)
-
-    # Divide the flows over edges to Basin inflow and outflow, regardless of edge direction.
-    inflow_mean = zeros(length(node_id))
-    outflow_mean = zeros(length(node_id))
-
-    for (i, basin_id) in enumerate(node_id)
-        for inflow_id in inflow_ids(graph, basin_id)
-            q = flow_mean[flow_dict[inflow_id, basin_id]]
-            if q > 0
-                inflow_mean[i] += q
-            else
-                outflow_mean[i] -= q
-            end
-        end
-        for outflow_id in outflow_ids(graph, basin_id)
-            q = flow_mean[flow_dict[basin_id, outflow_id]]
-            if q > 0
-                outflow_mean[i] += q
-            else
-                inflow_mean[i] -= q
-            end
-        end
-    end
-
-    return SavedFlow(; flow = flow_mean, inflow = inflow_mean, outflow = outflow_mean)
-end
-
-"Compute the average vertical fluxes over the last saveat interval and write
-them to SavedValues"
-function save_vertical_flux(u, t, integrator)
-    (; basin) = integrator.p
-    (; vertical_flux_integrated) = basin
-
-    Δt = get_Δt(integrator)
-    vertical_flux_mean = copy(vertical_flux_integrated)
-    vertical_flux_mean ./= Δt
-    fill!(vertical_flux_integrated, 0.0)
-
-    return vertical_flux_mean
-end
-
 function apply_discrete_control!(u, t, integrator)::Nothing
     (; p) = integrator
     (; discrete_control) = p
-    condition_idx = 0
 
     discrete_control_condition!(u, t, integrator)
 

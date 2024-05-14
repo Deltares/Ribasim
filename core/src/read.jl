@@ -554,9 +554,6 @@ function Basin(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{Int
         drainage = copy(drainage),
         infiltration = copy(infiltration),
     )
-    vertical_flux_prev = zero(vertical_flux)
-    vertical_flux_integrated = zero(vertical_flux)
-    vertical_flux_bmi = zero(vertical_flux)
 
     if config.solver.autodiff
         current_level = DiffCache(current_level, chunk_sizes)
@@ -570,13 +567,10 @@ function Basin(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{Int
 
     return Basin(
         Indices(node_id),
-        [collect(inflow_ids(graph, id)) for id in node_id],
-        [collect(outflow_ids(graph, id)) for id in node_id],
+        inflow_edges.(Ref(graph), node_id),
+        outflow_edges.(Ref(graph), node_id),
         vertical_flux_from_input,
         vertical_flux,
-        vertical_flux_prev,
-        vertical_flux_integrated,
-        vertical_flux_bmi,
         current_level,
         current_area,
         area,
