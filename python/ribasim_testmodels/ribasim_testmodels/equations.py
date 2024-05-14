@@ -67,7 +67,7 @@ def rating_curve_model() -> Model:
     )
 
     level_min = 1.0
-    level = np.linspace(0, 12, 100)
+    level = np.linspace(1, 12, 100)
     flow_rate = np.square(level - level_min) / (60 * 60 * 24)
     model.tabulated_rating_curve.add(
         Node(2, Point(1, 0)),

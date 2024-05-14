@@ -294,7 +294,11 @@ function TabulatedRatingCurve(
                 IterTools.groupby(row -> coalesce(row.control_state, nothing), static_id)
                 control_state = first(group).control_state
                 is_active = coalesce(first(group).active, true)
-                interpolation, is_valid = qh_interpolation(node_id, StructVector(group))
+                table = StructVector(group)
+                if !valid_tabulated_rating_curve(node_id, table)
+                    errors = true
+                end
+                interpolation = qh_interpolation(node_id, table)
                 if !ismissing(control_state)
                     control_mapping[(
                         NodeID(NodeType.TabulatedRatingCurve, node_id),
@@ -309,15 +313,14 @@ function TabulatedRatingCurve(
             # get the timestamp that applies to the model starttime
             idx_starttime = searchsortedlast(time.time, config.starttime)
             pre_table = view(time, 1:idx_starttime)
-            interpolation, is_valid = qh_interpolation(node_id, pre_table)
+            if !valid_tabulated_rating_curve(node_id, pre_table)
+                errors = true
+            end
+            interpolation = qh_interpolation(node_id, pre_table)
             push!(interpolations, interpolation)
             push!(active, true)
         else
             @error "$node_id data not in any table."
-            errors = true
-        end
-        if !is_valid
-            @error "A Q(h) relationship for $node_id from the $source table has repeated levels, this can not be interpolated."
             errors = true
         end
     end

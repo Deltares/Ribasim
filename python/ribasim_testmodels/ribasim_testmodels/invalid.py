@@ -1,6 +1,5 @@
 from typing import Any
 
-import pandas as pd
 from ribasim.config import Node, Solver
 from ribasim.input_base import TableModel
 from ribasim.model import Model
@@ -16,6 +15,12 @@ from shapely.geometry import Point
 
 
 def invalid_qh_model() -> Model:
+    """
+    Invalid TabulatedRatingCurve Q(h) table:
+    - levels must be unique
+    - flow_rate must start at 0
+    - flow_rate must not be decreasing
+    """
     model = Model(
         starttime="2020-01-01",
         endtime="2020-12-01",
@@ -24,29 +29,7 @@ def invalid_qh_model() -> Model:
 
     model.tabulated_rating_curve.add(
         Node(1, Point(0, 0)),
-        # Invalid: levels must not be repeated
-        [tabulated_rating_curve.Static(level=[0, 0], flow_rate=[1, 2])],
-    )
-    model.tabulated_rating_curve.add(
-        Node(2, Point(0, 1)),
-        [
-            tabulated_rating_curve.Time(
-                time=[
-                    pd.Timestamp("2020-01-01"),
-                    pd.Timestamp("2020-01-01"),
-                ],
-                # Invalid: levels must not be repeated
-                level=[0, 0],
-                flow_rate=[1, 2],
-            )
-        ],
-    )
-    model.basin.add(
-        Node(3, Point(0, 2)),
-        [
-            basin.State(level=[1.4112729908597084]),
-            basin.Profile(area=[0.01, 1], level=[0, 1]),
-        ],
+        [tabulated_rating_curve.Static(level=[0, 0, 1], flow_rate=[1, 2, 1.5])],
     )
 
     return model

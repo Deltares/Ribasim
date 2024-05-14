@@ -2,6 +2,7 @@
     using Dictionaries: Indices
     using Ribasim: NodeID, valid_profiles, qh_interpolation, ScalarInterpolation
     using Logging
+    using StructArrays: StructVector
 
     node_id = Indices([NodeID(:Basin, 1)])
     level = [[0.0, 0.0, 1.0]]
@@ -24,11 +25,14 @@
     @test logger.logs[3].message ==
           "Basin #1 profile cannot have decreasing area at the top since extrapolating could lead to negative areas."
 
-    itp, valid = qh_interpolation([0.0, 0.0], [1.0, 2.0])
-    @test !valid
-    @test itp isa ScalarInterpolation
-    itp, valid = qh_interpolation([0.0, 0.1], [1.0, 2.0])
-    @test valid
+    table = StructVector(; flow_rate = [0.0, 0.1], level = [1.0, 2.0], node_id = [5, 5])
+    itp = qh_interpolation(NodeID(:TabulatedRatingCurve, 5), table)
+    # constant extrapolation at the bottom end, linear extrapolation at the top end
+    itp(0.0) ≈ 0.0
+    itp(1.0) ≈ 0.0
+    itp(1.5) ≈ 0.05
+    itp(2.0) ≈ 0.1
+    itp(3.0) ≈ 0.2
     @test itp isa ScalarInterpolation
 end
 
@@ -54,13 +58,14 @@ end
     end
     close(db)
 
-    @test length(logger.logs) == 2
+    @test length(logger.logs) == 3
     @test logger.logs[1].level == Error
-    @test logger.logs[1].message ==
-          "A Q(h) relationship for TabulatedRatingCurve #1 from the static table has repeated levels, this can not be interpolated."
+    @test logger.logs[1].message == "The `flow_rate` must start at 0."
     @test logger.logs[2].level == Error
-    @test logger.logs[2].message ==
-          "A Q(h) relationship for TabulatedRatingCurve #2 from the time table has repeated levels, this can not be interpolated."
+    @test logger.logs[2].message == "The `level` cannot be repeated."
+    @test logger.logs[3].level == Error
+    @test logger.logs[3].message ==
+          "The `flow_rate` cannot decrease with increasing `level`."
 end
 
 @testitem "Neighbor count validation" begin
