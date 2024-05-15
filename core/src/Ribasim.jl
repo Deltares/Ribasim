@@ -36,7 +36,9 @@ using DiffEqCallbacks:
     SavedValues,
     SavingCallback,
     IntegratingCallback,
-    IntegrandValues
+    IntegratingSumCallback,
+    IntegrandValues,
+    IntegrandValuesSum
 using EnumX: EnumX, @enumx
 using ForwardDiff: pickchunksize
 using Graphs:

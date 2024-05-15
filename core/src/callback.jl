@@ -9,18 +9,33 @@ function create_callbacks(
     config::Config,
     saveat,
 )::Tuple{CallbackSet, SavedResults}
-    (; starttime, basin, tabulated_rating_curve, discrete_control) = parameters
+    (; starttime, basin, user_demand, tabulated_rating_curve, discrete_control) = parameters
     callbacks = SciMLBase.DECallback[]
 
     # Check for negative storages
     negative_storage_cb = FunctionCallingCallback(check_negative_storage)
     push!(callbacks, negative_storage_cb)
 
+    # Integrate flows and vertical basin fluxes for mean outputs
     integrand_output_prototype = get_flow_integrand_output_prototype(parameters)
     saved_flow = IntegrandValues(Float64, typeof(integrand_output_prototype))
-    integrating_flows_cb =
+    integrating_flow_cb =
         IntegratingCallback(flow_integrand, saved_flow, integrand_output_prototype)
-    push!(callbacks, integrating_flows_cb)
+    push!(callbacks, integrating_flow_cb)
+
+    # Integrate vertical basin fluxes for BMI
+    stored_for_bmi = IntegrandValuesSum(
+        ComponentVector{Float64}(;
+            get_tmp(basin.vertical_flux, 0)...,
+            user_realized = zeros(length(user_demand.node_id)),
+        ),
+    )
+    integrating_for_bmi_cb = IntegratingSumCallback(
+        bmi_integrand,
+        stored_for_bmi,
+        get_tmp(basin.vertical_flux, 0),
+    )
+    push!(callbacks, integrating_for_bmi_cb)
 
     # TODO: What is this?
     tstops = get_tstops(basin.time.time, starttime)
@@ -47,7 +62,7 @@ function create_callbacks(
         push!(callbacks, export_cb)
     end
 
-    saved = SavedResults(saved_flow, saved_subgrid_level)
+    saved = SavedResults(saved_flow, saved_subgrid_level, stored_for_bmi)
 
     n_conditions = sum(length(vec) for vec in discrete_control.greater_than; init = 0)
     if n_conditions > 0
@@ -64,10 +79,9 @@ function flow_integrand(out, u, t, integrator)::Nothing
     (; vertical_flux) = basin
     vertical_flux = get_tmp(vertical_flux, 0)
     flow = get_tmp(graph[].flow, 0)
-    out_vertical_flux = @view out[(:precipitation, :evaporation, :drainage, :infiltration)]
+    vertical_flux_view(out) .= vertical_flux
 
     out.flow .= flow
-    out_vertical_flux .= vertical_flux
 
     for (i, basin_id) in enumerate(basin.node_id)
         for inflow_edge in basin.inflow_edges[i]
@@ -88,6 +102,16 @@ function flow_integrand(out, u, t, integrator)::Nothing
         end
     end
     return nothing
+end
+
+function bmi_integrand(out, u, t, integrator)::Nothing
+    (; basin, user_demand) = integrator.p
+    vertical_flux_view(out) .= get_tmp(basin.vertical_flux, 0)
+
+    for i in eachindex(user_demand.node_id)
+        out.user_realized[i] = get_flow(graph, user_demand.inflow_edge[i], 0)
+    end
+    return
 end
 
 function get_flow_integrand_output_prototype(p::Parameters)

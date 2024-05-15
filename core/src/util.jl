@@ -753,3 +753,7 @@ function get_basin_idx(edge_metadata::EdgeMetadata, id::NodeID)::Int32
         0
     end
 end
+
+function vertical_flux_view(v::ComponentVector)
+    return @view v[(:precipitation, :evaporation, :drainage, :infiltration)]
+end
