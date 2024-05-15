@@ -525,7 +525,6 @@ inflow_edge: incoming flow edge
 outflow_edge: outgoing flow edge metadata
     The ID of the source node is always the ID of the UserDemand node
 active: whether this node is active and thus demands water
-realized_bmi: Cumulative inflow volume, for read or reset by BMI only
 demand: water flux demand of UserDemand per priority over time
     Each UserDemand has a demand for all priorities,
     which is 0.0 if it is not provided explicitly.
@@ -542,7 +541,6 @@ struct UserDemand <: AbstractParameterNode
     inflow_edge::Vector{EdgeMetadata}
     outflow_edge::Vector{EdgeMetadata}
     active::BitVector
-    realized_bmi::Vector{Float64}
     demand::Matrix{Float64}
     demand_reduced::Matrix{Float64}
     demand_itp::Vector{Vector{ScalarInterpolation}}
@@ -556,7 +554,6 @@ struct UserDemand <: AbstractParameterNode
         inflow_id,
         outflow_id,
         active,
-        realized_bmi,
         demand,
         demand_reduced,
         demand_itp,
@@ -572,7 +569,6 @@ struct UserDemand <: AbstractParameterNode
                 inflow_id,
                 outflow_id,
                 active,
-                realized_bmi,
                 demand,
                 demand_reduced,
                 demand_itp,
