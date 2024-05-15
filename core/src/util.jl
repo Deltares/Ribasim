@@ -757,3 +757,29 @@ end
 function vertical_flux_view(v::ComponentVector)
     return @view v[(:precipitation, :evaporation, :drainage, :infiltration)]
 end
+
+function set_inoutflows!(
+    v::ComponentVector{Float64},
+    graph::MetaGraph,
+    basin::Basin,
+)::Nothing
+    for (i, basin_id) in enumerate(basin.node_id)
+        for inflow_edge in basin.inflow_edges[i]
+            q = get_flow(graph, inflow_edge, 0)
+            if q > 0
+                v.basin_inflow[i] += q
+            else
+                v.basin_outflow[i] -= q
+            end
+        end
+        for outflow_edge in basin.outflow_edges[i]
+            q = get_flow(graph, outflow_edge, 0)
+            if q > 0
+                v.basin_outflow[i] += q
+            else
+                v.basin_inflow[i] -= q
+            end
+        end
+    end
+    return nothing
+end

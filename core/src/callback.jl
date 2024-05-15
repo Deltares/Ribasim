@@ -9,7 +9,14 @@ function create_callbacks(
     config::Config,
     saveat,
 )::Tuple{CallbackSet, SavedResults}
-    (; starttime, basin, user_demand, tabulated_rating_curve, discrete_control) = parameters
+    (;
+        starttime,
+        basin,
+        user_demand,
+        tabulated_rating_curve,
+        discrete_control,
+        allocation,
+    ) = parameters
     callbacks = SciMLBase.DECallback[]
 
     # Check for negative storages
@@ -20,22 +27,26 @@ function create_callbacks(
     integrand_output_prototype = get_flow_integrand_output_prototype(parameters)
     saved_flow = IntegrandValues(Float64, typeof(integrand_output_prototype))
     integrating_flow_cb =
-        IntegratingCallback(flow_integrand, saved_flow, integrand_output_prototype)
+        IntegratingCallback(flow_integrand!, saved_flow, integrand_output_prototype)
     push!(callbacks, integrating_flow_cb)
 
     # Integrate vertical basin fluxes for BMI
-    stored_for_bmi = IntegrandValuesSum(
-        ComponentVector{Float64}(;
-            get_tmp(basin.vertical_flux, 0)...,
-            user_realized = zeros(length(user_demand.node_id)),
-        ),
+    integrand_output_prototype = ComponentVector{Float64}(;
+        get_tmp(basin.vertical_flux, 0)...,
+        user_realized = zeros(length(user_demand.node_id)),
     )
-    integrating_for_bmi_cb = IntegratingSumCallback(
-        bmi_integrand,
-        stored_for_bmi,
-        get_tmp(basin.vertical_flux, 0),
-    )
+    stored_for_bmi = IntegrandValuesSum(integrand_output_prototype)
+    integrating_for_bmi_cb =
+        IntegratingSumCallback(bmi_integrand!, stored_for_bmi, integrand_output_prototype)
     push!(callbacks, integrating_for_bmi_cb)
+
+    # Integrate flows for allocation input
+    integrating_for_allocation_cb = IntegratingSumCallback(
+        allocation_integrand!,
+        allocation.integrated_flow,
+        zeros(length(allocation.integrated_flow_mapping)),
+    )
+    push!(callbacks, integrating_for_allocation_cb)
 
     # TODO: What is this?
     tstops = get_tstops(basin.time.time, starttime)
@@ -74,44 +85,41 @@ function create_callbacks(
     return callback, saved
 end
 
-function flow_integrand(out, u, t, integrator)::Nothing
+function flow_integrand!(out, u, t, integrator)::Nothing
     (; basin, graph) = integrator.p
     (; vertical_flux) = basin
     vertical_flux = get_tmp(vertical_flux, 0)
     flow = get_tmp(graph[].flow, 0)
-    vertical_flux_view(out) .= vertical_flux
 
     out.flow .= flow
-
-    for (i, basin_id) in enumerate(basin.node_id)
-        for inflow_edge in basin.inflow_edges[i]
-            q = get_flow(graph, inflow_edge, 0)
-            if q > 0
-                out.basin_inflow[i] += q
-            else
-                out.basin_outflow[i] -= q
-            end
-        end
-        for outflow_edge in basin.outflow_edges[i]
-            q = get_flow(graph, outflow_edge, 0)
-            if q > 0
-                out.basin_outflow[i] += q
-            else
-                out.basin_inflow[i] -= q
-            end
-        end
-    end
+    vertical_flux_view(out) .= vertical_flux
+    set_inoutflows!(out, graph, basin)
     return nothing
 end
 
-function bmi_integrand(out, u, t, integrator)::Nothing
-    (; basin, user_demand) = integrator.p
+function bmi_integrand!(out, u, t, integrator)::Nothing
+    (; basin, user_demand, graph) = integrator.p
     vertical_flux_view(out) .= get_tmp(basin.vertical_flux, 0)
 
     for i in eachindex(user_demand.node_id)
         out.user_realized[i] = get_flow(graph, user_demand.inflow_edge[i], 0)
     end
     return
+end
+
+function allocation_integrand!(out, u, t, integrator)::Nothing
+    (; allocation, graph, basin) = integrator.p
+    for (edge, i) in allocation.integrated_flow_mapping
+        if edge[1] == edge[2]
+            # Vertical fluxes
+            _, basin_idx = id_index(basin.node_id, edge[1])
+            out[i] = get_influx(basin, basin_idx)
+        else
+            # Horizontal flows
+            out[i] = get_flow(graph, edge..., 0)
+        end
+    end
+    return nothing
 end
 
 function get_flow_integrand_output_prototype(p::Parameters)
@@ -385,7 +393,7 @@ function update_basin(integrator)::Nothing
     (; p, u) = integrator
     (; basin) = p
     (; storage) = u
-    (; node_id, time, vertical_flux_from_input, vertical_flux, vertical_flux_prev) = basin
+    (; node_id, time, vertical_flux_from_input, vertical_flux) = basin
     t = datetime_since(integrator.t, integrator.p.starttime)
     vertical_flux = get_tmp(vertical_flux, integrator.u)
 
@@ -406,9 +414,6 @@ function update_basin(integrator)::Nothing
     end
 
     update_vertical_flux!(basin, storage)
-
-    # Forget about vertical fluxes to handle discontinuous forcing from basin_update
-    copyto!(vertical_flux_prev, vertical_flux)
     return nothing
 end
 
@@ -416,7 +421,7 @@ end
 function update_allocation!(integrator)::Nothing
     (; p, t, u) = integrator
     (; allocation) = p
-    (; allocation_models, mean_flows) = allocation
+    (; allocation_models, integrated_flow) = allocation
 
     # Don't run the allocation algorithm if allocation is not active
     # (Specifically for running Ribasim via the BMI)
@@ -428,9 +433,7 @@ function update_allocation!(integrator)::Nothing
 
     # Divide by the allocation Δt to obtain the mean flows
     # from the integrated flows
-    for value in values(mean_flows)
-        value[] /= Δt_allocation
-    end
+    integrated_flow.integrand ./= Δt_allocation
 
     # If a main network is present, collect demands of subnetworks
     if has_main_network(allocation)
@@ -448,9 +451,8 @@ function update_allocation!(integrator)::Nothing
     end
 
     # Reset the mean source flows
-    for value in values(mean_flows)
-        value[] = 0.0
-    end
+    integrated_flow.integrand .= 0.0
+    return nothing
 end
 
 "Load updates from 'TabulatedRatingCurve / time' into the parameters"

@@ -255,7 +255,7 @@ function set_initial_capacities_source!(
 )::Nothing
     (; problem) = allocation_model
     (; graph, allocation) = p
-    (; mean_flows) = allocation
+    (; integrated_flow, integrated_flow_mapping) = allocation
     (; subnetwork_id) = allocation_model
     source_constraints = problem[:source]
     main_network_source_edges = get_main_network_connections(p, subnetwork_id)
@@ -266,7 +266,7 @@ function set_initial_capacities_source!(
             # If it is a source edge for this allocation problem
             if edge ∉ main_network_source_edges
                 # Reset the source to the averaged flow over the last allocation period
-                source_capacity = mean_flows[edge][]
+                source_capacity = integrated_flow.integrand[integrated_flow_mapping[edge]]
                 JuMP.set_normalized_rhs(
                     source_constraints[edge],
                     # It is assumed that the allocation procedure does not have to be differentiated.
@@ -361,11 +361,11 @@ function get_basin_data(
     (; graph, basin, level_demand, allocation) = p
     (; vertical_flux) = basin
     (; Δt_allocation) = allocation_model
-    (; mean_flows) = allocation
+    (; integrated_flow, integrated_flow_mapping) = allocation
     @assert node_id.type == NodeType.Basin
     vertical_flux = get_tmp(vertical_flux, 0)
     _, basin_idx = id_index(basin.node_id, node_id)
-    influx = mean_flows[(node_id, node_id)][]
+    influx = integrated_flow.integrand[integrated_flow_mapping[node_id, node_id]]
     _, basin_idx = id_index(basin.node_id, node_id)
     storage_basin = u.storage[basin_idx]
     control_inneighbors = inneighbor_labels_type(graph, node_id, EdgeType.control)

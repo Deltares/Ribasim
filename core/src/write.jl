@@ -83,11 +83,12 @@ function average_over_saveats(
 )
     (; integrand, ts) = integrand_values
     averages = Vector{Float64}[]
+    n_saveats = length(saveats)
     saveat_index = 2
     integral_saveat = zero(first(integrand)[symb])
     for (integral_step, t) in zip(integrand, ts)
         integral_saveat += integral_step[symb]
-        if t == saveats[saveat_index]
+        if saveat_index <= n_saveats && t == saveats[saveat_index]
             Δt_saveat = saveats[saveat_index] - saveats[saveat_index - 1]
             push!(averages, copy(integral_saveat) / Δt_saveat)
             integral_saveat .= 0.0

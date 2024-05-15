@@ -75,7 +75,8 @@ struct Allocation
     priorities::Vector{Int32}
     subnetwork_demands::Dict{Tuple{NodeID, NodeID}, Vector{Float64}}
     subnetwork_allocateds::Dict{Tuple{NodeID, NodeID}, Vector{Float64}}
-    mean_flows::Dict{Tuple{NodeID, NodeID}, Base.RefValue{Float64}}
+    integrated_flow_mapping::Dict{Tuple{NodeID, NodeID}, Int32}
+    integrated_flow::IntegrandValuesSum{Vector{Float64}}
     record_demand::@NamedTuple{
         time::Vector{Float64},
         subnetwork_id::Vector{Int32},
