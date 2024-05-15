@@ -86,15 +86,15 @@ function average_over_saveats(
     saveat_index = 2
     integral_saveat = zero(first(integrand)[symb])
     for (integral_step, t) in zip(integrand, ts)
-        if t >= saveats[saveat_index]
+        integral_saveat += integral_step[symb]
+        if t == saveats[saveat_index]
             Δt_saveat = saveats[saveat_index] - saveats[saveat_index - 1]
             push!(averages, copy(integral_saveat) / Δt_saveat)
             integral_saveat .= 0.0
             saveat_index += 1
         end
-        integral_saveat += integral_step[symb]
     end
-    return averages
+    return FlatVector(averages)
 end
 
 "Create the basin result table from the saved data"
@@ -127,12 +127,12 @@ function basin_table(
     nrows = nbasin * ntsteps
     saveats = integrator.sol.t
 
-    inflow_rate = FlatVector(average_over_saveats(saved.flow, :basin_inflow, saveats))
-    outflow_rate = FlatVector(average_over_saveats(saved.flow, :basin_inflow, saveats))
-    precipitation = FlatVector(average_over_saveats(saved.flow, :precipitation, saveats))
-    evaporation = FlatVector(average_over_saveats(saved.flow, :evaporation, saveats))
-    drainage = FlatVector(average_over_saveats(saved.flow, :drainage, saveats))
-    infiltration = FlatVector(average_over_saveats(saved.flow, :infiltration, saveats))
+    inflow_rate = average_over_saveats(saved.flow, :basin_inflow, saveats)
+    outflow_rate = average_over_saveats(saved.flow, :basin_inflow, saveats)
+    precipitation = average_over_saveats(saved.flow, :precipitation, saveats)
+    evaporation = average_over_saveats(saved.flow, :evaporation, saveats)
+    drainage = average_over_saveats(saved.flow, :drainage, saveats)
+    infiltration = average_over_saveats(saved.flow, :infiltration, saveats)
     balance_error = zeros(nrows)
     relative_error = zeros(nrows)
 
@@ -186,9 +186,9 @@ function flow_table(
     flow_rate::FlatVector{Float64},
 }
     (; config, saved, integrator) = model
-    (; t, saveval) = saved.flow
     (; graph) = integrator.p
     (; flow_dict) = graph[]
+    saveats = model.integrator.sol.t
 
     from_node_type = String[]
     from_node_id = Int32[]
@@ -210,20 +210,22 @@ function flow_table(
     end
 
     nflow = length(unique_edge_ids_flow)
-    ntsteps = length(t)
+    ntsteps = length(saveats) - 1
 
     # the timestamp should represent the start of the period, not the end
-    t_starts = circshift(t, 1)
-    if !isempty(t)
-        t_starts[1] = 0.0
+    t_starts = if length(saveats) > 1
+        saveats[1:(end - 1)]
+    else
+        Float64[]
     end
+
     time = repeat(datetime_since.(t_starts, config.starttime); inner = nflow)
     edge_id = repeat(unique_edge_ids_flow; outer = ntsteps)
     from_node_type = repeat(from_node_type; outer = ntsteps)
     from_node_id = repeat(from_node_id; outer = ntsteps)
     to_node_type = repeat(to_node_type; outer = ntsteps)
     to_node_id = repeat(to_node_id; outer = ntsteps)
-    flow_rate = FlatVector(saveval, :flow)
+    flow_rate = average_over_saveats(saved.flow, :flow, saveats)
 
     return (;
         time,

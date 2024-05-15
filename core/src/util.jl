@@ -521,10 +521,6 @@ function Base.getindex(fv::FlatVector, i::Int)
     return v[r + 1]
 end
 
-"Construct a FlatVector from one of the components of a ComponentVector."
-FlatVector(saveval::Vector{ComponentVector{A, B, C}} where {A, B, C}, sym::Symbol) =
-    FlatVector(collect.(view.(saveval, sym)))
-
 """
 Function that goes smoothly from 0 to 1 in the interval [0,threshold],
 and is constant outside this interval.
