@@ -24,7 +24,9 @@ pixi run delwaq]]></param>
         </parameters>
       </runner>
     </build-runners>
-    <vcs-settings />
+    <vcs-settings>
+      <vcs-entry-ref root-id="Ribasim_Ribasim" />
+    </vcs-settings>
     <requirements />
     <build-triggers>
       <build-trigger id="TRIGGER_304" type="vcsTrigger">
