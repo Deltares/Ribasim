@@ -10,7 +10,7 @@
     <build-triggers />
     <artifact-dependencies>
       <dependency id="ARTIFACT_DEPENDENCY_4052" sourceBuildTypeId="Ribasim_Windows_TestRibasimBinaries" cleanDestination="false">
-        <revisionRule name="lastSuccessful" revision="latest.lastSuccessful" />
+        <revisionRule name="sameChainOrLastFinished" revision="latest.sameChainOrLastFinished" />
         <artifact sourcePath="test_output_cli.zip!/popen-gw1/test_models_basic_model_0/results=&gt;generated_testmodels/test_models_basic_model/results" />
       </dependency>
     </artifact-dependencies>
