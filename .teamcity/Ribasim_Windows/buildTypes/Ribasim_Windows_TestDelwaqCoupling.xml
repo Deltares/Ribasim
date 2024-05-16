@@ -8,6 +8,7 @@
       <runner id="Set_up_pixi" name="Set up pixi" type="simpleRunner">
         <parameters>
           <param name="script.content" value="pixi --version" />
+          <param name="teamcity.build.workingDir" value="ribasim" />
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
         </parameters>
