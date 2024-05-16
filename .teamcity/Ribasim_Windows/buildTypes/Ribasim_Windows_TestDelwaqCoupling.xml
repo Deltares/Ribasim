@@ -14,6 +14,14 @@
         <artifact sourcePath="test_output_cli.zip!/popen-gw1/test_models_basic_model_0/results=&gt;generated_testmodels/test_models_basic_model/results" />
       </dependency>
     </artifact-dependencies>
+    <dependencies>
+      <depend-on sourceBuildTypeId="Ribasim_Windows_TestRibasimBinaries">
+        <options>
+          <option name="take-started-build-with-same-revisions" value="true" />
+          <option name="take-successful-builds-only" value="true" />
+        </options>
+      </depend-on>
+    </dependencies>
     <cleanup />
   </settings>
 </build-type>
