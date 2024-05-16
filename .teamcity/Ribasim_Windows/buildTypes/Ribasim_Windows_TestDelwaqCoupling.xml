@@ -4,7 +4,15 @@
   <description />
   <settings ref="Ribasim_Windows">
     <parameters />
-    <build-runners />
+    <build-runners>
+      <runner id="Set_up_pixi" name="Set up pixi" type="simpleRunner">
+        <parameters>
+          <param name="script.content" value="pixi --version" />
+          <param name="teamcity.step.mode" value="default" />
+          <param name="use.custom.script" value="true" />
+        </parameters>
+      </runner>
+    </build-runners>
     <vcs-settings />
     <requirements />
     <build-triggers>
