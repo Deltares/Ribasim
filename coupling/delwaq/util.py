@@ -1,11 +1,20 @@
 """Utilities to write Delwaq (binary) input files."""
 
+import os
+import platform
 import struct
+import subprocess
 from datetime import timedelta
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from ribasim.utils import MissingOptionalModule
+
+try:
+    import xugrid
+except ImportError:
+    xugrid = MissingOptionalModule("xugrid")
 
 
 def strfdelta(tdelta):
@@ -87,3 +96,68 @@ def write_flows(fn: Path | str, data: pd.DataFrame, timestep: timedelta):
         # Delwaq needs an extra timestep after the end
         f.write(struct.pack("<i", int(time + timestep.total_seconds())))
         f.write(group.flow_rate.to_numpy().astype("float32").tobytes())
+
+
+def ugrid(G):
+    # TODO Deduplicate with ribasim.utils
+    edge_df = pd.DataFrame(G.edges(), columns=["from_node_id", "to_node_id"])
+    node_df = pd.DataFrame(G.nodes(), columns=["node_id"])
+    node_df["x"] = [i[1] for i in G.nodes(data="x")]
+    node_df["y"] = [i[1] for i in G.nodes(data="y")]
+    node_df = node_df[node_df.node_id > 0]
+    edge_df = edge_df[
+        edge_df.from_node_id.isin(node_df.node_id)
+        & edge_df.to_node_id.isin(node_df.node_id)
+    ]
+
+    node_id = node_df.node_id.to_numpy()
+    edge_id = edge_df.index.to_numpy()
+    from_node_id = edge_df.from_node_id.to_numpy()
+    to_node_id = edge_df.to_node_id.to_numpy()
+
+    # from node_id to the node_dim index
+    node_lookup = pd.Series(
+        index=node_id,
+        data=node_id.argsort().astype(np.int32),
+        name="node_index",
+    )
+
+    grid = xugrid.Ugrid1d(
+        node_x=node_df.x,
+        node_y=node_df.y,
+        fill_value=-1,
+        edge_node_connectivity=np.column_stack(
+            (
+                node_lookup[from_node_id],
+                node_lookup[to_node_id],
+            )
+        ),
+        name="ribasim",
+    )
+
+    edge_dim = grid.edge_dimension
+    node_dim = grid.node_dimension
+
+    uds = xugrid.UgridDataset(None, grid)
+    uds = uds.assign_coords(node_id=(node_dim, node_id))
+    uds = uds.assign_coords(edge_id=(edge_dim, edge_id))
+    uds = uds.assign_coords(from_node_id=(edge_dim, from_node_id))
+    uds = uds.assign_coords(to_node_id=(edge_dim, to_node_id))
+
+    return uds
+
+
+def run_delwaq():
+    d3d_home = os.environ.get("D3D_HOME")
+    if d3d_home is None:
+        raise ValueError("D3D_HOME is not set.")
+    binfolder = (d3d_home / "bin").absolute()
+    folder = Path(__file__).parent
+    inp_path = folder / "model" / "delwaq.inp"
+    system = platform.system()
+    if system == "Windows":
+        subprocess.run([binfolder / "run_delwaq.bat", inp_path.absolute()])
+    elif system == "Linux":
+        subprocess.run([binfolder / "run_delwaq.sh", inp_path.absolute()])
+    else:
+        raise Exception(f"No support for running Delwaq automatically on {system}.")

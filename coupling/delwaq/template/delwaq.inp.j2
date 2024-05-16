@@ -7,11 +7,9 @@
 'Water quality calculation'
 ' '
 ' '
-; Maarten: Ref time insert:
 'T0: {{startime.strftime("%Y.%m.%d %H:%M:%S")}}  (scu=       1s)'
-; end Maarten: Ref time insert:
 
-; Erwin: Hard coded Substances for mass balance check:
+; Hard coded Substances for mass balance check:
 ; number of active and inactive substances
 {{substances|length+5}}             0
         ; active substances
@@ -24,7 +22,6 @@
 {{5+loop.index}} '{{substance}}'
 {% endfor -%}
         ; passive substances
-; end Erwin
 
 #1;
 
@@ -34,96 +31,80 @@
 ; Integration options:
 15.70 											    ; integration option, no balance keywords yet
 
-; Maarten: Simulation start, stop and timestep:
+; Simulation start, stop and timestep:
   {{ startime.strftime("%Y/%m/%d-%H:%M:%S") }} ; start time
   {{ endtime.strftime("%Y/%m/%d-%H:%M:%S") }} ; stop time
   0 ; timestep constant
 ; dddhhmmss
   {{ timestep }} ; timestep
-; end Maarten: Simulation start, stop and timestep:
  1                                                  ; Monitoring areas in this file
 ; Todo: Monitoring areas
 0
-; end Todo: Monitoring areas
  2                                                  ; No monitoring cross areas
-; Maarten: Output timesteps. Equal to Ribasim timestep:
+; Output timesteps. Equal to Ribasim timestep:
 ; output control (see DELWAQ-manual)
 ; yyyy/mm/dd-hh:mm:ss  yyyy/mm/dd-hh:mm:ss  dddhhmmss
   {{ startime.strftime("%Y/%m/%d-%H:%M:%S") }}  {{ endtime.strftime("%Y/%m/%d-%H:%M:%S") }}  {{ timestep }} ;  start, stop and step for balance output
   {{ startime.strftime("%Y/%m/%d-%H:%M:%S") }}  {{ endtime.strftime("%Y/%m/%d-%H:%M:%S") }}  {{ timestep }} ;  start, stop and step for map output
   {{ startime.strftime("%Y/%m/%d-%H:%M:%S") }}  {{ endtime.strftime("%Y/%m/%d-%H:%M:%S") }}  {{ timestep }} ;  start, stop and step for his output
 
-; end Maarten: Output timesteps. Equal to Ribasim timestep:
 
 #2;
 ;###############################################################################
 ; Third input block
-; Maarten: Ribasim Ugrid file:
+; Ribasim Ugrid file:
 UGRID 'ribasim.nc'          ; Reference to the waqgeom file for UGRID NetCDF output
-; end Maarten: Ribasim Ugrid file:
 
-; Maarten: nr of segments
+; nr of segments
 {{ nsegments }} ; nr of segments
-; end Maarten: nr of segments
 
  2                                                  ; Structure matrix not used
 
-; Maarten: Hier moeten we nog iets mee!
 INCLUDE 'ribasim.atr'     ; From UI: attributes file
-; end Maarten: Hier moeten we nog iets mee!
 
-; Maarten: Volume file
+; Volume file
 -2 ; volumes will be interpolated from a binary file
 'ribasim.vol'        ; From UI: volumes-file
-; end Maarten: Volume file
 
 #3;
 ;###############################################################################
 ; Fourth input block
-; Maarten: nr of exchanges in three directions. Only first is used, followed by two zeros.
+; nr of exchanges in three directions. Only first is used, followed by two zeros.
 {{ nexchanges }} 0 0 ; nr of exchanges
-; end Maarten: nr of exchanges
  0                                                  ; Number of dispersion arrays (this is different when spatial dispersion is implemented)
  0                                                  ; Number of velocity arrays
  1                                                  ; Input format of the pointers.
 
-; Maarten: Pointer file
+; Pointer file
 0 ; pointers from binary file.
 'ribasim.poi'                    ; From Ribasim
-; end Maarten: pointer file
      1                                              ; Dispersions in this file
      1.0 1.0 1.0                                    ; Scale factors for 3 directions
 
 ; Default dispersion:
 1 0.0 1E-07 										; constant dispersion
 
-; Maarten: Area file
+; Area file
 -2 ; areas will be interpolated from a binary file
 'ribasim.are'                    ; From Ribasim
-; end Maarten: Area file
 
-; Maarten: Flow file
+; Flow file
 -2 ; flows from binary file
 'ribasim.flo'                    ; From Ribasim
-; end Maarten: flow file
 
-1                                                   ; Vary in space
-; Maarten: Length file
-0 ; Lengths from binary file
-'ribasim.len'                    ; From Ribasim
-; end Maarten: Length file
+0                                                   ; Vary in space
+; Length file
+1 1 1 1 ; Lengths from binary file
 
 #4;
 ;###############################################################################
 ; Fifth input block, water quality calculation
 
 ; Boundary list
-; Maarten: Boundary list:
 ;'NodeID' 'Comment field' 'Boundary name used for data grouping'
 INCLUDE 'ribasim_bndlist.inc'      ; From UI: Boundary segments
-; end Maarten: Boundary list:
 
-; 0                                                   ; No Tatcher-Harleman time lags #}
+0                                                   ; No Tatcher-Harleman time lags
 ; Boundary data:
 INCLUDE 'B5_bounddata.inc'      ; From UI: Boundary data
 
@@ -156,7 +137,7 @@ CONSTANTS  'ONLY_ACTIVE' 	DATA	0               ; Only active processes
 
 ;INCLUDE 'includes_deltashell/B8_initials.inc'       ; From UI: Initials
 
-; Erwin: Hard coded initials for mass balance check.
+; Hard coded initials for mass balance check.
 MASS/M2 ; The bed substances are specified in mass/m2
 INITIALS
 'Continuity'
@@ -176,7 +157,6 @@ DEFAULTS
 {% for substance in substances -%}
 0
 {% endfor -%}
-; end Erwin
 #8
 ;###############################################################################
 ; Ninth input block
