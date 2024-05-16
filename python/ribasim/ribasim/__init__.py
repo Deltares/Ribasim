@@ -1,4 +1,4 @@
-__version__ = "2024.7.0"
+__version__ = "2024.8.0"
 
 
 from ribasim.config import Allocation, Logging, Node, Solver

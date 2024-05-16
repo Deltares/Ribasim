@@ -29,7 +29,7 @@ pixi --version]]></param>
 source /usr/share/Modules/init/bash
 
 module load pixi
-pixi run --environment=dev install
+pixi run install
 pixi run test-ribasim-api
 pixi run test-ribasim-cli]]></param>
           <param name="teamcity.build.workingDir" value="ribasim" />

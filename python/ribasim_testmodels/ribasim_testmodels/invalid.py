@@ -1,7 +1,7 @@
 from typing import Any
 
 import pandas as pd
-from ribasim.config import Node
+from ribasim.config import Node, Solver
 from ribasim.input_base import TableModel
 from ribasim.model import Model
 from ribasim.nodes import (
@@ -112,6 +112,10 @@ def invalid_fractional_flow_model() -> Model:
         model.basin[2],
         model.fractional_flow[8],
     )
+    model.edge.add(
+        model.fractional_flow[8],
+        model.terminal[5],
+    )
 
     return model
 
@@ -218,4 +222,30 @@ def invalid_edge_types_model() -> Model:
     assert model.edge.df is not None
     model.edge.df["edge_type"] = ["foo", "bar"]
 
+    return model
+
+
+def invalid_unstable_model() -> Model:
+    """Model with several extremely quickly emptying basins."""
+
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2021-01-01",
+        crs="EPSG:28992",
+        solver=Solver(dtmin=60.0),
+    )
+    id_shift = 10
+    for i in range(6):
+        model.basin.add(
+            Node(1 + id_shift * i, Point(i, 0)),
+            [basin.Profile(area=1000.0, level=[0.0, 1.0]), basin.State(level=[1.0])],
+        )
+        flow_rate = 1.0 if (i % 2 == 0) else 1e10
+        model.pump.add(
+            Node(2 + id_shift * i, Point(i, 1)), [pump.Static(flow_rate=[flow_rate])]
+        )
+        model.terminal.add(Node(3 + id_shift * i, Point(i, 2)))
+
+        model.edge.add(model.basin[1 + id_shift * i], model.pump[2 + id_shift * i])
+        model.edge.add(model.pump[2 + id_shift * i], model.terminal[3 + id_shift * i])
     return model

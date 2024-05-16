@@ -55,9 +55,9 @@ end
     )
 
     @test basin.level[2][1] === 4.0
-    @test Ribasim.basin_bottom(basin, NodeID(:Basin, 5)) === 0.0
-    @test Ribasim.basin_bottom(basin, NodeID(:Basin, 7)) === 4.0
-    @test Ribasim.basin_bottom(basin, NodeID(:Basin, 6)) === nothing
+    @test Ribasim.basin_bottom(basin, NodeID(:Basin, 5))[2] === 0.0
+    @test Ribasim.basin_bottom(basin, NodeID(:Basin, 7))[2] === 4.0
+    @test !Ribasim.basin_bottom(basin, NodeID(:Basin, 6))[1]
 end
 
 @testitem "Convert levels to storages" begin
@@ -240,64 +240,66 @@ end
 end
 
 @testitem "low_storage_factor" begin
-    using Ribasim: NodeID, low_storage_factor, Indices
-    @test low_storage_factor(
-        [-2.0],
-        Indices(NodeID.(:Basin, [5])),
-        NodeID(:Basin, 5),
-        2.0,
-    ) === 0.0
-    @test low_storage_factor(
-        [0.0f0],
-        Indices(NodeID.(:Basin, [5])),
-        NodeID(:Basin, 5),
-        2.0,
-    ) === 0.0f0
-    @test low_storage_factor(
-        [0.0],
-        Indices(NodeID.(:Basin, [5])),
-        NodeID(:Basin, 5),
-        2.0,
-    ) === 0.0
-    @test low_storage_factor(
-        [1.0f0],
-        Indices(NodeID.(:Basin, [5])),
-        NodeID(:Basin, 5),
-        2.0,
-    ) === 0.5f0
-    @test low_storage_factor(
-        [1.0],
-        Indices(NodeID.(:Basin, [5])),
-        NodeID(:Basin, 5),
-        2.0,
-    ) === 0.5
-    @test low_storage_factor(
-        [3.0f0],
-        Indices(NodeID.(:Basin, [5])),
-        NodeID(:Basin, 5),
-        2.0,
-    ) === 1.0f0
-    @test low_storage_factor(
-        [3.0],
-        Indices(NodeID.(:Basin, [5])),
-        NodeID(:Basin, 5),
-        2.0,
-    ) === 1.0
+    using Ribasim: NodeID, low_storage_factor, EdgeMetadata, EdgeType
+
+    node_id = NodeID(:Basin, 5)
+    edge_metadata = EdgeMetadata(0, 0, EdgeType.flow, 0, (node_id, node_id), 1, 1)
+    @test low_storage_factor([-2.0], edge_metadata, node_id, 2.0) === 0.0
+    @test low_storage_factor([0.0f0], edge_metadata, node_id, 2.0) === 0.0f0
+    @test low_storage_factor([0.0], edge_metadata, node_id, 2.0) === 0.0
+    @test low_storage_factor([1.0f0], edge_metadata, node_id, 2.0) === 0.5f0
+    @test low_storage_factor([1.0], edge_metadata, node_id, 2.0) === 0.5
+    @test low_storage_factor([3.0f0], edge_metadata, node_id, 2.0) === 1.0f0
+    @test low_storage_factor([3.0], edge_metadata, node_id, 2.0) === 1.0
 end
 
 @testitem "constraints_from_nodes" begin
+    using Ribasim: Model, snake_case, nodetypes, is_flow_constraining
+
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
     @test ispath(toml_path)
-    model = Ribasim.Model(toml_path)
+    model = Model(toml_path)
     (; p) = model.integrator
-    constraining_types = (:pump, :outlet, :linear_resistance)
+    constraining_types = (:Pump, :Outlet, :LinearResistance)
 
-    for type in Ribasim.nodefields(p)
-        node = getfield(p, type)
+    for type in nodetypes
+        type == :Terminal && continue  # has no parameter field
+        node = getfield(p, snake_case(type))
         if type in constraining_types
-            @test Ribasim.is_flow_constraining(node)
+            @test is_flow_constraining(node)
         else
-            @test !Ribasim.is_flow_constraining(node)
+            @test !is_flow_constraining(node)
+        end
+    end
+end
+
+@testitem "Node types" begin
+    using Ribasim: nodetypes, NodeType, Parameters, AbstractParameterNode, snake_case
+
+    @test Set(nodetypes) == Set([
+        :Terminal,
+        :PidControl,
+        :LevelBoundary,
+        :Pump,
+        :UserDemand,
+        :TabulatedRatingCurve,
+        :FlowDemand,
+        :FlowBoundary,
+        :Basin,
+        :ManningResistance,
+        :LevelDemand,
+        :DiscreteControl,
+        :Outlet,
+        :LinearResistance,
+        :FractionalFlow,
+    ])
+    for nodetype in nodetypes
+        NodeType.T(nodetype)
+        if nodetype != :Terminal
+            # It has a struct which is added to Parameters
+            T = getproperty(Ribasim, nodetype)
+            @test T <: AbstractParameterNode
+            @test hasfield(Parameters, snake_case(nodetype))
         end
     end
 end
