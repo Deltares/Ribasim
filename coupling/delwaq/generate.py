@@ -356,4 +356,4 @@ if __name__ == "__main__":
     # Generate a Delwaq model from the default Ribasim model
     repo_dir = delwaq_dir.parents[1]
     modelfn = repo_dir / "generated_testmodels/basic/ribasim.toml"
-    g, substances = generate(modelfn)
+    graph, substances = generate(modelfn)

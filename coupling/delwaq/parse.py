@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-import geopandas as gpd
+import pandas as pd
 import ribasim
 import xarray as xr
 import xugrid as xu
@@ -11,44 +11,41 @@ delwaq_dir = Path(__file__).parent
 repo_dir = delwaq_dir.parents[1]
 output_folder = delwaq_dir / "model"
 
-# TODO Have a shared config...
-modelfn = repo_dir / "generated_testmodels/basic/ribasim.toml"
-# modelfn = repo_dir / "models/hws_2024_3_0/hws.toml"
-model = ribasim.Model.read(modelfn)
 
-# Output of Delwaq
-ds = xr.open_dataset(output_folder / "delwaq_map.nc")
-ug = xu.UgridDataset(ds)
+def parse(modelfn: Path, graph, substances):
+    model = ribasim.Model.read(modelfn)
 
-# Generated for Delwaq, contains the original node ids
-rds = xr.open_dataset(output_folder / "ribasim.nc")
-rug = xu.UgridDataset(rds)
+    # Output of Delwaq
+    ds = xr.open_dataset(output_folder / "delwaq_map.nc")
+    ug = xu.UgridDataset(ds)
 
-# Chloride concentration
-df = (
-    ug["ribasim_network_Cl"].to_dataframe().reset_index()
-    # .drop(columns=["ribasim_network_node_x", "ribasim_network_node_y"])
-)
-df.rename(
-    columns={
-        "nTimesDlwq": "datetime",
-        "ribasim_network_nNodes": "node_id",
-        "ribasim_network_Cl": "concentration",
-        "ribasim_network_node_x": "x",
-        "ribasim_network_node_y": "y",
-    },
-    inplace=True,
-)
-# Map the node_id (logical index) to the original node_id
-df["node_id"] = rug["node_id"].to_numpy()[df.node_id.to_numpy()]
+    mapping = dict(graph.nodes(data="id"))
+    substances.add("Continuity")
 
-# Only keep the basin nodes
-mask = df["node_id"].isin(model.basin.node_ids())
-df = df[mask]
-gdf = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.x, df.y), crs=28992)
-gdfs = gdf.iloc[:100_000]
-gdfs.to_file("delwaq.gpkg", layer="Cl", driver="GPKG")
+    dfs = []
+    for substance in substances:
+        df = ug[f"ribasim_{substance}"].to_dataframe().reset_index()
+        df.rename(
+            columns={
+                "ribasim_nNodes": "node_id",
+                "nTimesDlwq": "time",
+                f"ribasim_{substance}": "concentration",
+            },
+            inplace=True,
+        )
+        df["substance"] = substance
+        df.drop(columns=["ribasim_node_x", "ribasim_node_y"], inplace=True)
+        # Map the node_id (logical index) to the original node_id
+        # TODO Check if this is correct
+        df.node_id += 1
+        df.node_id = df.node_id.map(mapping)
 
-# TODO: Handle existing timeseries instead of overwriting
-model.basin.time = df
-model.write(modelfn)
+        dfs.append(df)
+
+    df = pd.concat(dfs).reset_index(drop=True)
+    df.sort_values(["time", "node_id"], inplace=True)
+
+    model.basin.concentrationexternal = df
+    df.to_feather(modelfn.parent / "results" / "basinconcentrationexternal.arrow")
+
+    return model
