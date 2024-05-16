@@ -630,6 +630,7 @@ end
 
 "Subgrid linearly interpolates basin levels."
 struct Subgrid
+    subgrid_id::Vector{Int32}
     basin_index::Vector{Int32}
     interpolations::Vector{ScalarInterpolation}
     level::Vector{Float64}

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<build-type xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" uuid="3da7414a-6ac5-41db-b5bc-d2a8bb887362" xsi:noNamespaceSchemaLocation="https://www.jetbrains.com/teamcity/schemas/2021.1/project-config.xsd">
+  <name>Test Delwaq coupling</name>
+  <description />
+  <settings ref="Ribasim_Windows">
+    <parameters />
+    <build-runners>
+      <runner id="Set_up_pixi" name="Set up pixi" type="simpleRunner">
+        <parameters>
+          <param name="script.content" value="pixi --version" />
+          <param name="teamcity.step.mode" value="default" />
+          <param name="use.custom.script" value="true" />
+        </parameters>
+      </runner>
+    </build-runners>
+    <vcs-settings />
+    <requirements />
+    <build-triggers>
+      <build-trigger id="TRIGGER_304" type="vcsTrigger">
+        <parameters>
+          <param name="branchFilter" value="+:*" />
+          <param name="enableQueueOptimization" value="true" />
+          <param name="quietPeriodMode" value="DO_NOT_USE" />
+          <param name="triggerRules" value="+:coupling/delwaq/**" />
+        </parameters>
+      </build-trigger>
+    </build-triggers>
+    <artifact-dependencies>
+      <dependency id="ARTIFACT_DEPENDENCY_4206" sourceBuildTypeId="Dimr_DimrCollectors_2bDimrCollectorReleaseSigned" cleanDestination="false">
+        <revisionRule name="lastPinned" revision="latest.lastPinned" />
+        <artifact sourcePath="dimrset_x64_signed_272.zip!/x64 =&gt; dimr" />
+      </dependency>
+      <dependency id="ARTIFACT_DEPENDENCY_4052" sourceBuildTypeId="Ribasim_Windows_TestRibasimBinaries" cleanDestination="false">
+        <revisionRule name="sameChainOrLastFinished" revision="latest.sameChainOrLastFinished" />
+        <artifact sourcePath="test_output_cli.zip!/popen-gw1/test_models_basic_model_0/results=&gt;generated_testmodels/test_models_basic_model/results" />
+      </dependency>
+    </artifact-dependencies>
+    <dependencies>
+      <depend-on sourceBuildTypeId="Ribasim_Windows_TestRibasimBinaries">
+        <options>
+          <option name="take-started-build-with-same-revisions" value="true" />
+          <option name="take-successful-builds-only" value="true" />
+        </options>
+      </depend-on>
+    </dependencies>
+    <cleanup />
+  </settings>
+</build-type>
+

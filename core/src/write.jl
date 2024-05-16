@@ -315,12 +315,11 @@ function subgrid_level_table(
     (; t, saveval) = saved.subgrid_level
     subgrid = integrator.p.subgrid
 
-    nelem = length(subgrid.basin_index)
+    nelem = length(subgrid.subgrid_id)
     ntsteps = length(t)
-    unique_elem_id = collect(1:nelem)
 
     time = repeat(datetime_since.(t, config.starttime); inner = nelem)
-    subgrid_id = repeat(unique_elem_id; outer = ntsteps)
+    subgrid_id = repeat(subgrid.subgrid_id; outer = ntsteps)
     subgrid_level = FlatVector(saveval)
     return (; time, subgrid_id, subgrid_level)
 end
