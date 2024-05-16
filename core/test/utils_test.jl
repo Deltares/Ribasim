@@ -64,7 +64,7 @@ end
     using Dictionaries: Indices
     using StructArrays: StructVector
     using Logging
-    using Ribasim: NodeID
+    using Ribasim: EdgeMetadata, NodeID
 
     level = [
         0.0,
@@ -94,11 +94,8 @@ end
     demand = zeros(1)
     basin = Ribasim.Basin(
         Indices(NodeID.(:Basin, [1])),
-        [NodeID[]],
-        [NodeID[]],
-        zeros(1),
-        zeros(1),
-        zeros(1),
+        [EdgeMetadata[]],
+        [EdgeMetadata[]],
         zeros(1),
         zeros(1),
         zeros(1),

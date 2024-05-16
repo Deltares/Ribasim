@@ -763,26 +763,25 @@ end
 
 function compute_mean_inoutflows(
     flow_mean::AbstractVector,
-    graph::MetaGraph,
     basin::Basin,
 )::Tuple{Vector{Float64}, Vector{Float64}}
-    (; node_id) = basin
+    (; node_id, inflow_edges, outflow_edges) = basin
 
     # Divide the flows over edges to Basin inflow and outflow, regardless of edge direction.
     inflow_mean = zeros(length(node_id))
     outflow_mean = zeros(length(node_id))
 
     for (i, basin_id) in enumerate(node_id)
-        for inflow_edge in basin.inflow_edges[i]
-            q = get_flow(graph, inflow_edge, 0)
+        for inflow_edge in inflow_edges[i]
+            q = flow_mean[inflow_edge.flow_idx]
             if q > 0
                 inflow_mean[i] += q
             else
                 outflow_mean[i] -= q
             end
         end
-        for outflow_edge in basin.outflow_edges[i]
-            q = get_flow(graph, outflow_edge, 0)
+        for outflow_edge in outflow_edges[i]
+            q = flow_mean[outflow_edge.flow_idx]
             if q > 0
                 inflow_mean[i] += q
             else

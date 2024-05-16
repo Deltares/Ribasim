@@ -17,7 +17,11 @@ function TrapezoidIntegrationCallback(integrand_func!, integral_value)::Discrete
         cache,
         integral_value,
     )
-    return DiscreteCallback((u, t, integrator) -> t != 0, affect!)
+    return DiscreteCallback(
+        (u, t, integrator) -> t != 0,
+        affect!;
+        save_positions = (false, false),
+    )
 end
 
 function (affect!::TrapezoidIntegrationAffect)(integrator)::Nothing
@@ -27,10 +31,11 @@ function (affect!::TrapezoidIntegrationAffect)(integrator)::Nothing
     copyto!(integrand_value_prev, integrand_value)
     integrand_func!(integrand_value, integrator.p)
 
-    cache += integrand_value_prev
-    cache += integrand_value
-    cache *= 0.5 * dt
-    integral += cache
+    cache .= integrand_value_prev
+    cache .+= integrand_value
+    cache .*= 0.5 * dt
+
+    integral .+= cache
     return nothing
 end
 
@@ -164,7 +169,7 @@ function save_flow(u, t, integrator)
     flow_mean = copy(integrated_flow)
     flow_mean ./= Δt
     fill!(integrated_flow, 0.0)
-    inflow_mean, outflow_mean = compute_mean_inoutflows(flow_mean.flow, graph, basin)
+    inflow_mean, outflow_mean = compute_mean_inoutflows(flow_mean.flow, basin)
     return SavedFlow(; flow = flow_mean, inflow = inflow_mean, outflow = outflow_mean)
 end
 

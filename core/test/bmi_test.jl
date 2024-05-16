@@ -86,6 +86,8 @@ end
     model = BMI.initialize(Ribasim.Model, toml_path)
     demand = BMI.get_value_ptr(model, "user_demand.demand")
     realized = BMI.get_value_ptr(model, "user_demand.realized")
+    @test realized ===
+          model.integrator.opts.callback.discrete_callbacks[4].affect!.integral.user_realized
     day = 86400.0
     BMI.update_until(model, 0.4day)
     demand = 0.001  # for both users at the start

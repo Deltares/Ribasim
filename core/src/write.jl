@@ -114,8 +114,6 @@ function basin_table(
     balance_error = zeros(nrows)
     relative_error = zeros(nrows)
 
-    @show length(model.integrator.sol.t)
-
     idx_row = 0
     for cvec in saved.flow.saveval
         for (precipitation_, evaporation_, drainage_, infiltration_) in zip(
@@ -132,9 +130,6 @@ function basin_table(
         end
     end
 
-    @show ntsteps
-    @show length(saved.flow.saveval)
-
     time = repeat(data.time[begin:(end - 1)]; inner = nbasin)
     Δtime_seconds = seconds.(diff(data.time))
     Δtime = repeat(Δtime_seconds; inner = nbasin)
@@ -145,6 +140,9 @@ function basin_table(
         storage_flow = storage_rate[i]
         storage_increase = max(storage_flow, 0.0)
         storage_decrease = max(-storage_flow, 0.0)
+
+        inflow_rate[i]
+        precipitation[i]
 
         total_in = inflow_rate[i] + precipitation[i] + drainage[i] - storage_increase
         total_out = outflow_rate[i] + evaporation[i] + infiltration[i] - storage_decrease
@@ -224,7 +222,8 @@ function flow_table(
     from_node_id = repeat(from_node_id; outer = ntsteps)
     to_node_type = repeat(to_node_type; outer = ntsteps)
     to_node_id = repeat(to_node_id; outer = ntsteps)
-    flow_rate = average_over_saveats(saved.flow, :flow, saveats)
+    flow_rate =
+        FlatVector([collect(saved_flows.flow.flow) for saved_flows in saved.flow.saveval])
 
     return (;
         time,

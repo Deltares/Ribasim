@@ -48,7 +48,7 @@ function BMI.get_value_ptr(model::Model, name::AbstractString)::AbstractVector{F
     elseif name == "user_demand.demand"
         vec(model.integrator.p.user_demand.demand)
     elseif name == "user_demand.realized"
-        model.saved.stored_for_bmi.integrand.user_realized
+        model.saved.integrated_bmi_data.user_realized
     else
         error("Unknown variable $name")
     end
