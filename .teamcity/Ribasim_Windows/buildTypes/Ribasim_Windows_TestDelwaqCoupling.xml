@@ -40,6 +40,17 @@ pixi run delwaq]]></param>
         </parameters>
       </build-trigger>
     </build-triggers>
+    <build-extensions>
+      <extension id="BUILD_EXT_417" type="commit-status-publisher">
+        <parameters>
+          <param name="github_authentication_type" value="token" />
+          <param name="github_host" value="https://api.github.com" />
+          <param name="publisherId" value="githubStatusPublisher" />
+          <param name="secure:github_access_token" value="credentialsJSON:abf605ce-e382-4b10-b5de-8a7640dc58d9" />
+          <param name="vcsRootId" value="Ribasim_Ribasim" />
+        </parameters>
+      </extension>
+    </build-extensions>
     <artifact-dependencies>
       <dependency id="ARTIFACT_DEPENDENCY_4206" sourceBuildTypeId="Dimr_DimrCollectors_2bDimrCollectorReleaseSigned" cleanDestination="false">
         <revisionRule name="lastPinned" revision="latest.lastPinned" />
