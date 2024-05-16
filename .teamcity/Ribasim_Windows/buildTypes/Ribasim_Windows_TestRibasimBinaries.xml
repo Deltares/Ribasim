@@ -19,8 +19,8 @@
       <runner id="RUNNER_1503" name="Run tests" type="simpleRunner">
         <parameters>
           <param name="script.content"><![CDATA[pixi run install
-pixi run test-ribasim-api
-pixi run test-ribasim-cli]]></param>
+set D3D_HOME=%teamcity.build.checkoutDir%/dimr
+pixi run delwaq]]></param>
           <param name="teamcity.build.workingDir" value="ribasim" />
           <param name="teamcity.step.mode" value="default" />
           <param name="use.custom.script" value="true" />
