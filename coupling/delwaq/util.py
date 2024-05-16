@@ -151,6 +151,8 @@ def run_delwaq():
     d3d_home = os.environ.get("D3D_HOME")
     if d3d_home is None:
         raise ValueError("D3D_HOME is not set.")
+    else:
+        d3d_home = Path(d3d_home)
     binfolder = (d3d_home / "bin").absolute()
     folder = Path(__file__).parent
     inp_path = folder / "model" / "delwaq.inp"
@@ -160,4 +162,4 @@ def run_delwaq():
     elif system == "Linux":
         subprocess.run([binfolder / "run_delwaq.sh", inp_path.absolute()])
     else:
-        raise Exception(f"No support for running Delwaq automatically on {system}.")
+        raise OSError(f"No support for running Delwaq automatically on {system}.")

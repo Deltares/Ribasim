@@ -27,11 +27,11 @@ env = Environment(autoescape=True, loader=FileSystemLoader(delwaq_dir / "templat
 USE_EVAP = True
 
 
-def generate(toml: Path) -> tuple[nx.DiGraph, set[str]]:
+def generate(modelfn: Path) -> tuple[nx.DiGraph, set[str]]:
     """Generate a Delwaq model from a Ribasim model and results."""
 
     # Read in model and results
-    model = ribasim.Model.read(toml)
+    model = ribasim.Model.read(modelfn)
     basins = pd.read_feather(modelfn.parent / "results" / "basin.arrow")
     flows = pd.read_feather(modelfn.parent / "results" / "flow.arrow")
 
