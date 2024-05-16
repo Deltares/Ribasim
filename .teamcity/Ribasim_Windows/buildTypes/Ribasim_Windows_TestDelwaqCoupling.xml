@@ -26,7 +26,7 @@ pixi run delwaq]]></param>
     </build-runners>
     <vcs-settings>
       <vcs-entry-ref root-id="Ribasim_Ribasim">
-        <checkout-rule rule="ribasim" />
+        <checkout-rule rule=". =&gt; ribasim" />
       </vcs-entry-ref>
     </vcs-settings>
     <requirements />
