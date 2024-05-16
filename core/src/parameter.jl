@@ -137,6 +137,19 @@ end
 abstract type AbstractParameterNode end
 
 """
+In-memory storage of saved mean flows for writing to results.
+
+- `flow`: The mean flows on all edges
+- `inflow`: The sum of the mean flows coming into each basin
+- `outflow`: The sum of the mean flows going out of each basin
+"""
+@kwdef struct SavedFlow{V1 <: ComponentVector{Float64}}
+    flow::V1
+    inflow::Vector{Float64}
+    outflow::Vector{Float64}
+end
+
+"""
 Requirements:
 
 * Must be positive: precipitation, evaporation, infiltration, drainage

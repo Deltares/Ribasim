@@ -521,6 +521,9 @@ function Base.getindex(fv::FlatVector, i::Int)
     return v[r + 1]
 end
 
+"Construct a FlatVector from one of the fields of SavedFlow."
+FlatVector(saveval::Vector{SavedFlow}, sym::Symbol) = FlatVector(getfield.(saveval, sym))
+
 """
 Function that goes smoothly from 0 to 1 in the interval [0,threshold],
 and is constant outside this interval.
@@ -758,28 +761,34 @@ function vertical_flux_view(v::ComponentVector)
     return @view v[(:precipitation, :evaporation, :drainage, :infiltration)]
 end
 
-function set_inoutflows!(
-    v::ComponentVector{Float64},
+function compute_mean_inoutflows(
+    flow_mean::AbstractVector,
     graph::MetaGraph,
     basin::Basin,
-)::Nothing
-    for (i, basin_id) in enumerate(basin.node_id)
+)::Tuple{Vector{Float64}, Vector{Float64}}
+    (; node_id) = basin
+
+    # Divide the flows over edges to Basin inflow and outflow, regardless of edge direction.
+    inflow_mean = zeros(length(node_id))
+    outflow_mean = zeros(length(node_id))
+
+    for (i, basin_id) in enumerate(node_id)
         for inflow_edge in basin.inflow_edges[i]
             q = get_flow(graph, inflow_edge, 0)
             if q > 0
-                v.basin_inflow[i] += q
+                inflow_mean[i] += q
             else
-                v.basin_outflow[i] -= q
+                outflow_mean[i] -= q
             end
         end
         for outflow_edge in basin.outflow_edges[i]
             q = get_flow(graph, outflow_edge, 0)
             if q > 0
-                v.basin_outflow[i] += q
+                inflow_mean[i] += q
             else
-                v.basin_inflow[i] -= q
+                outflow_mean[i] -= q
             end
         end
     end
-    return nothing
+    return inflow_mean, outflow_mean
 end

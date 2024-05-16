@@ -1035,7 +1035,7 @@ function Allocation(db::DB, config::Config, graph::MetaGraph)::Allocation
             integrated_flow_mapping[(node_id, node_id)] = flow_counter
         end
     end
-    integrated_flow = IntegrandValuesSum(zeros(flow_counter))
+    integrated_flow = zeros(flow_counter)
 
     return Allocation(
         Int32[],

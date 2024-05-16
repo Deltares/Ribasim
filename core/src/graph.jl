@@ -104,11 +104,19 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
         flow = DiffCache(flow, chunk_sizes)
     end
 
-    flow = zero(flow_counter)
+    flow = zeros(flow_counter)
     n_basins = length(get_ids(db, "Basin"))
-    vertical_flux = zero(n_basins)
-    integrated_flow = ComponentVector{Float64}(; flow, vertical_flux...)
+    integrated_flow = ComponentVector{Float64}(;
+        flow,
+        precipitation = zeros(n_basins),
+        evaporation = zeros(n_basins),
+        drainage = zeros(n_basins),
+        infiltration = zeros(n_basins),
+    )
 
+    if config.solver.autodiff
+        flow = DiffCache(flow, chunk_sizes)
+    end
     graph_data =
         (; node_ids, edges_source, flow_dict, flow, integrated_flow, config.solver.saveat)
     graph = @set graph.graph_data = graph_data

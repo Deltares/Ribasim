@@ -94,7 +94,7 @@ function basin_table(
     balance_error::Vector{Float64},
     relative_error::Vector{Float64},
 }
-    (; saved, integrator) = model
+    (; saved) = model
     # The last timestep is not included; there is no period over which to compute flows.
     data = get_storages_and_levels(model)
     storage = vec(data.storage[:, begin:(end - 1)])
@@ -104,16 +104,36 @@ function basin_table(
     nbasin = length(data.node_id)
     ntsteps = length(data.time) - 1
     nrows = nbasin * ntsteps
-    saveats = integrator.sol.t
 
-    inflow_rate = average_over_saveats(saved.flow, :basin_inflow, saveats)
-    outflow_rate = average_over_saveats(saved.flow, :basin_inflow, saveats)
-    precipitation = average_over_saveats(saved.flow, :precipitation, saveats)
-    evaporation = average_over_saveats(saved.flow, :evaporation, saveats)
-    drainage = average_over_saveats(saved.flow, :drainage, saveats)
-    infiltration = average_over_saveats(saved.flow, :infiltration, saveats)
+    inflow_rate = FlatVector(saved.flow.saveval, :inflow)
+    outflow_rate = FlatVector(saved.flow.saveval, :outflow)
+    precipitation = zeros(nrows)
+    evaporation = zeros(nrows)
+    drainage = zeros(nrows)
+    infiltration = zeros(nrows)
     balance_error = zeros(nrows)
     relative_error = zeros(nrows)
+
+    @show length(model.integrator.sol.t)
+
+    idx_row = 0
+    for cvec in saved.flow.saveval
+        for (precipitation_, evaporation_, drainage_, infiltration_) in zip(
+            cvec.flow.precipitation,
+            cvec.flow.evaporation,
+            cvec.flow.drainage,
+            cvec.flow.infiltration,
+        )
+            idx_row += 1
+            precipitation[idx_row] = precipitation_
+            evaporation[idx_row] = evaporation_
+            drainage[idx_row] = drainage_
+            infiltration[idx_row] = infiltration_
+        end
+    end
+
+    @show ntsteps
+    @show length(saved.flow.saveval)
 
     time = repeat(data.time[begin:(end - 1)]; inner = nbasin)
     Δtime_seconds = seconds.(diff(data.time))

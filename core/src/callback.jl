@@ -21,11 +21,11 @@ function TrapezoidIntegrationCallback(integrand_func!, integral_value)::Discrete
 end
 
 function (affect!::TrapezoidIntegrationAffect)(integrator)::Nothing
-    (; integrand_func, integrand_value, integrand_value_prev, cache, integral) = affect!
-    (; dt) = integrand
+    (; integrand_func!, integrand_value, integrand_value_prev, cache, integral) = affect!
+    (; dt) = integrator
 
     copyto!(integrand_value_prev, integrand_value)
-    integrand_func(integrand_value, integrator.p)
+    integrand_func!(integrand_value, integrator.p)
 
     cache += integrand_value_prev
     cache += integrand_value
@@ -64,6 +64,11 @@ function create_callbacks(
     integrating_flow_cb =
         TrapezoidIntegrationCallback(flow_integrand!, graph[].integrated_flow)
     push!(callbacks, integrating_flow_cb)
+
+    # Save mean flows
+    saved_flow = SavedValues(Float64, SavedFlow)
+    save_flow_cb = SavingCallback(save_flow, saved_flow; saveat, save_start = false)
+    push!(callbacks, save_flow_cb)
 
     # Integrate vertical basin fluxes for BMI
     integrated_bmi_data = ComponentVector{Float64}(;
@@ -124,7 +129,6 @@ function flow_integrand!(out, p)::Nothing
 
     out.flow .= flow
     vertical_flux_view(out) .= vertical_flux
-    set_inoutflows!(out, graph, basin)
     return nothing
 end
 
@@ -153,41 +157,14 @@ function allocation_integrand!(out, p)::Nothing
     return nothing
 end
 
-"Compute the average flows over the last saveat interval and write
-them to SavedValues"
 function save_flow(u, t, integrator)
-    (; graph) = integrator.p
-    (; flow_integrated, flow_dict) = graph[]
-    (; node_id) = integrator.p.basin
-
+    (; basin, graph) = integrator.p
+    (; integrated_flow) = graph[]
     Δt = get_Δt(integrator)
-    flow_mean = copy(flow_integrated)
+    flow_mean = copy(integrated_flow)
     flow_mean ./= Δt
-    fill!(flow_integrated, 0.0)
-
-    # Divide the flows over edges to Basin inflow and outflow, regardless of edge direction.
-    inflow_mean = zeros(length(node_id))
-    outflow_mean = zeros(length(node_id))
-
-    for (i, basin_id) in enumerate(node_id)
-        for inflow_id in inflow_ids(graph, basin_id)
-            q = flow_mean[flow_dict[inflow_id, basin_id]]
-            if q > 0
-                inflow_mean[i] += q
-            else
-                outflow_mean[i] -= q
-            end
-        end
-        for outflow_id in outflow_ids(graph, basin_id)
-            q = flow_mean[flow_dict[basin_id, outflow_id]]
-            if q > 0
-                outflow_mean[i] += q
-            else
-                inflow_mean[i] -= q
-            end
-        end
-    end
-
+    fill!(integrated_flow, 0.0)
+    inflow_mean, outflow_mean = compute_mean_inoutflows(flow_mean.flow, graph, basin)
     return SavedFlow(; flow = flow_mean, inflow = inflow_mean, outflow = outflow_mean)
 end
 

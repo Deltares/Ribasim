@@ -67,7 +67,7 @@ using SciMLBase:
     ODEFunction,
     ODEProblem,
     ODESolution,
-    VectorContinuousCallback,
+    DiscreteCallback,
     get_proposed_dt
 using SparseArrays: SparseMatrixCSC, spzeros
 using SQLite: SQLite, DB, Query, esc_id
