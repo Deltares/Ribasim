@@ -26,6 +26,10 @@
       </build-trigger>
     </build-triggers>
     <artifact-dependencies>
+      <dependency id="ARTIFACT_DEPENDENCY_4206" sourceBuildTypeId="Dimr_DimrCollectors_2bDimrCollectorReleaseSigned" cleanDestination="false">
+        <revisionRule name="lastPinned" revision="latest.lastPinned" />
+        <artifact sourcePath="dimrset_x64_signed_272.zip!/x64 =&gt; dimr" />
+      </dependency>
       <dependency id="ARTIFACT_DEPENDENCY_4052" sourceBuildTypeId="Ribasim_Windows_TestRibasimBinaries" cleanDestination="false">
         <revisionRule name="sameChainOrLastFinished" revision="latest.sameChainOrLastFinished" />
         <artifact sourcePath="test_output_cli.zip!/popen-gw1/test_models_basic_model_0/results=&gt;generated_testmodels/test_models_basic_model/results" />
