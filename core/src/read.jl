@@ -970,7 +970,8 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
     node_to_basin = Dict(node_id => index for (index, node_id) in enumerate(basin.node_id))
     tables = load_structvector(db, config, BasinSubgridV1)
 
-    basin_ids = Int32[]
+    subgrid_ids = Int32[]
+    basin_index = Int32[]
     interpolations = ScalarInterpolation[]
     has_error = false
     for group in IterTools.groupby(row -> row.subgrid_id, tables)
@@ -987,7 +988,8 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
             pushfirst!(subgrid_level, first(subgrid_level))
             pushfirst!(basin_level, nextfloat(-Inf))
             new_interp = LinearInterpolation(subgrid_level, basin_level; extrapolate = true)
-            push!(basin_ids, node_to_basin[node_id])
+            push!(subgrid_ids, subgrid_id)
+            push!(basin_index, node_to_basin[node_id])
             push!(interpolations, new_interp)
         else
             has_error = true
@@ -995,8 +997,9 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
     end
 
     has_error && error("Invalid Basin / subgrid table.")
+    level = fill(NaN, length(subgrid_ids))
 
-    return Subgrid(basin_ids, interpolations, fill(NaN, length(basin_ids)))
+    return Subgrid(subgrid_ids, basin_index, interpolations, level)
 end
 
 function Allocation(db::DB, config::Config, graph::MetaGraph)::Allocation
