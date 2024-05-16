@@ -1,7 +1,7 @@
 struct SavedResults{V1 <: ComponentVector{Float64}, V2 <: ComponentVector{Float64}}
     flow::IntegrandValues{Float64, V1}
     subgrid_level::SavedValues{Float64, Vector{Float64}}
-    stored_for_bmi::IntegrandValuesSum{V2}
+    integrated_bmi_data::V2
 end
 
 """

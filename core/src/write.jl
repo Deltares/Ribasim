@@ -76,28 +76,6 @@ function get_storages_and_levels(
     return (; time = tsteps, node_id, storage, level)
 end
 
-function average_over_saveats(
-    integrand_values::IntegrandValues,
-    symb::Symbol,
-    saveats::Vector{Float64},
-)
-    (; integrand, ts) = integrand_values
-    averages = Vector{Float64}[]
-    n_saveats = length(saveats)
-    saveat_index = 2
-    integral_saveat = zero(first(integrand)[symb])
-    for (integral_step, t) in zip(integrand, ts)
-        integral_saveat += integral_step[symb]
-        if saveat_index <= n_saveats && t == saveats[saveat_index]
-            Δt_saveat = saveats[saveat_index] - saveats[saveat_index - 1]
-            push!(averages, copy(integral_saveat) / Δt_saveat)
-            integral_saveat .= 0.0
-            saveat_index += 1
-        end
-    end
-    return FlatVector(averages)
-end
-
 "Create the basin result table from the saved data"
 function basin_table(
     model::Model,

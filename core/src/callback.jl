@@ -1,3 +1,39 @@
+struct TrapezoidIntegrationAffect{IntegrandFunc, T}
+    integrand_func!::IntegrandFunc
+    integrand_value::T
+    integrand_value_prev::T
+    cache::T
+    integral::T
+end
+
+function TrapezoidIntegrationCallback(integrand_func!, integral_value)::DiscreteCallback
+    integrand_value = zero(integral_value)
+    integrand_value_prev = zero(integral_value)
+    cache = zero(integral_value)
+    affect! = TrapezoidIntegrationAffect(
+        integrand_func!,
+        integrand_value,
+        integrand_value_prev,
+        cache,
+        integral_value,
+    )
+    return DiscreteCallback((u, t, integrator) -> t != 0, affect!)
+end
+
+function (affect!::TrapezoidIntegrationAffect)(integrator)::Nothing
+    (; integrand_func, integrand_value, integrand_value_prev, cache, integral) = affect!
+    (; dt) = integrand
+
+    copyto!(integrand_value_prev, integrand_value)
+    integrand_func(integrand_value, integrator.p)
+
+    cache += integrand_value_prev
+    cache += integrand_value
+    cache *= 0.5 * dt
+    integral += cache
+    return nothing
+end
+
 """
 Create the different callbacks that are used to store results
 and feed the simulation with new data. The different callbacks
@@ -11,6 +47,7 @@ function create_callbacks(
 )::Tuple{CallbackSet, SavedResults}
     (;
         starttime,
+        graph,
         basin,
         user_demand,
         tabulated_rating_curve,
@@ -24,28 +61,22 @@ function create_callbacks(
     push!(callbacks, negative_storage_cb)
 
     # Integrate flows and vertical basin fluxes for mean outputs
-    integrand_output_prototype = get_flow_integrand_output_prototype(parameters)
-    saved_flow = IntegrandValues(Float64, typeof(integrand_output_prototype))
     integrating_flow_cb =
-        IntegratingCallback(flow_integrand!, saved_flow, integrand_output_prototype)
+        TrapezoidIntegrationCallback(flow_integrand!, graph[].integrated_flow)
     push!(callbacks, integrating_flow_cb)
 
     # Integrate vertical basin fluxes for BMI
-    integrand_output_prototype = ComponentVector{Float64}(;
+    integrated_bmi_data = ComponentVector{Float64}(;
         get_tmp(basin.vertical_flux, 0)...,
         user_realized = zeros(length(user_demand.node_id)),
     )
-    stored_for_bmi = IntegrandValuesSum(integrand_output_prototype)
     integrating_for_bmi_cb =
-        IntegratingSumCallback(bmi_integrand!, stored_for_bmi, integrand_output_prototype)
+        TrapezoidIntegrationCallback(bmi_integrand!, integrated_bmi_data)
     push!(callbacks, integrating_for_bmi_cb)
 
     # Integrate flows for allocation input
-    integrating_for_allocation_cb = IntegratingSumCallback(
-        allocation_integrand!,
-        allocation.integrated_flow,
-        zeros(length(allocation.integrated_flow_mapping)),
-    )
+    integrating_for_allocation_cb =
+        TrapezoidIntegrationCallback(allocation_integrand!, allocation.integrated_flow)
     push!(callbacks, integrating_for_allocation_cb)
 
     # TODO: What is this?
@@ -73,7 +104,7 @@ function create_callbacks(
         push!(callbacks, export_cb)
     end
 
-    saved = SavedResults(saved_flow, saved_subgrid_level, stored_for_bmi)
+    saved = SavedResults(saved_flow, saved_subgrid_level, integrated_bmi_data)
 
     n_conditions = sum(length(vec) for vec in discrete_control.greater_than; init = 0)
     if n_conditions > 0
@@ -85,8 +116,8 @@ function create_callbacks(
     return callback, saved
 end
 
-function flow_integrand!(out, u, t, integrator)::Nothing
-    (; basin, graph) = integrator.p
+function flow_integrand!(out, p)::Nothing
+    (; basin, graph) = p
     (; vertical_flux) = basin
     vertical_flux = get_tmp(vertical_flux, 0)
     flow = get_tmp(graph[].flow, 0)
@@ -97,8 +128,8 @@ function flow_integrand!(out, u, t, integrator)::Nothing
     return nothing
 end
 
-function bmi_integrand!(out, u, t, integrator)::Nothing
-    (; basin, user_demand, graph) = integrator.p
+function bmi_integrand!(out, p)::Nothing
+    (; basin, user_demand, graph) = p
     vertical_flux_view(out) .= get_tmp(basin.vertical_flux, 0)
 
     for i in eachindex(user_demand.node_id)
@@ -107,8 +138,8 @@ function bmi_integrand!(out, u, t, integrator)::Nothing
     return
 end
 
-function allocation_integrand!(out, u, t, integrator)::Nothing
-    (; allocation, graph, basin) = integrator.p
+function allocation_integrand!(out, p)::Nothing
+    (; allocation, graph, basin) = p
     for (edge, i) in allocation.integrated_flow_mapping
         if edge[1] == edge[2]
             # Vertical fluxes
@@ -122,14 +153,42 @@ function allocation_integrand!(out, u, t, integrator)::Nothing
     return nothing
 end
 
-function get_flow_integrand_output_prototype(p::Parameters)
-    (; graph, basin) = p
-    flow = get_tmp(graph[].flow, 0)
-    vertical_flux = get_tmp(basin.vertical_flux, 0)
-    n_basin = length(basin.node_id)
-    basin_inflow = zeros(n_basin)
-    basin_outflow = zeros(n_basin)
-    return ComponentVector{Float64}(; basin_inflow, basin_outflow, flow, vertical_flux...)
+"Compute the average flows over the last saveat interval and write
+them to SavedValues"
+function save_flow(u, t, integrator)
+    (; graph) = integrator.p
+    (; flow_integrated, flow_dict) = graph[]
+    (; node_id) = integrator.p.basin
+
+    Δt = get_Δt(integrator)
+    flow_mean = copy(flow_integrated)
+    flow_mean ./= Δt
+    fill!(flow_integrated, 0.0)
+
+    # Divide the flows over edges to Basin inflow and outflow, regardless of edge direction.
+    inflow_mean = zeros(length(node_id))
+    outflow_mean = zeros(length(node_id))
+
+    for (i, basin_id) in enumerate(node_id)
+        for inflow_id in inflow_ids(graph, basin_id)
+            q = flow_mean[flow_dict[inflow_id, basin_id]]
+            if q > 0
+                inflow_mean[i] += q
+            else
+                outflow_mean[i] -= q
+            end
+        end
+        for outflow_id in outflow_ids(graph, basin_id)
+            q = flow_mean[flow_dict[basin_id, outflow_id]]
+            if q > 0
+                outflow_mean[i] += q
+            else
+                inflow_mean[i] -= q
+            end
+        end
+    end
+
+    return SavedFlow(; flow = flow_mean, inflow = inflow_mean, outflow = outflow_mean)
 end
 
 function check_negative_storage(u, t, integrator)::Nothing
@@ -433,7 +492,7 @@ function update_allocation!(integrator)::Nothing
 
     # Divide by the allocation Δt to obtain the mean flows
     # from the integrated flows
-    integrated_flow.integrand ./= Δt_allocation
+    integrated_flow ./= Δt_allocation
 
     # If a main network is present, collect demands of subnetworks
     if has_main_network(allocation)
@@ -451,7 +510,7 @@ function update_allocation!(integrator)::Nothing
     end
 
     # Reset the mean source flows
-    integrated_flow.integrand .= 0.0
+    integrated_flow .= 0.0
     return nothing
 end
 

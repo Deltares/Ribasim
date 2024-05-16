@@ -14,7 +14,7 @@
     (; graph, allocation) = p
     close(db)
 
-    allocation.integrated_flow.integrand[allocation.integrated_flow_mapping[(
+    allocation.integrated_flow[allocation.integrated_flow_mapping[(
         NodeID(:FlowBoundary, 1),
         NodeID(:Basin, 2),
     )]] = 4.5
@@ -251,7 +251,7 @@ end
 
     # Running full allocation algorithm
     (; Δt_allocation) = allocation_models[1]
-    integrated_flow.integrand[integrated_flow_mapping[(
+    integrated_flow[integrated_flow_mapping[(
         NodeID(:FlowBoundary, 1),
         NodeID(:Basin, 2),
     )]] = 4.5 * Δt_allocation
@@ -306,11 +306,11 @@ end
     t = 0.0
 
     # Set flows of sources
-    integrated_flow.integrand[integrated_flow_mapping[(
+    integrated_flow[integrated_flow_mapping[(
         NodeID(:FlowBoundary, 58),
         NodeID(:Basin, 16),
     )]] = 1.0
-    integrated_flow.integrand[integrated_flow_mapping[(
+    integrated_flow[integrated_flow_mapping[(
         NodeID(:FlowBoundary, 59),
         NodeID(:Basin, 44),
     )]] = 1e-3
@@ -458,7 +458,7 @@ end
     (; u) = model.integrator
     optimization_type = OptimizationType.internal_sources
     for (edge, i) in allocation.integrated_flow_mapping
-        allocation.integrated_flow.integrand[i] = Ribasim.get_flow(graph, edge..., 0)
+        allocation.integrated_flow[i] = Ribasim.get_flow(graph, edge..., 0)
     end
     Ribasim.set_initial_values!(allocation_model, p, u, t)
 

@@ -40,9 +40,9 @@ function BMI.get_value_ptr(model::Model, name::AbstractString)::AbstractVector{F
     elseif name == "basin.drainage"
         model.integrator.p.basin.vertical_flux_from_input.drainage
     elseif name == "basin.infiltration_integrated"
-        model.saved.stored_for_bmi.integrand.infiltration
+        model.saved.integrated_bmi_data.infiltration
     elseif name == "basin.drainage_integrated"
-        model.saved.stored_for_bmi.integrand.drainage
+        model.saved.integrated_bmi_data.drainage
     elseif name == "basin.subgrid_level"
         model.integrator.p.subgrid.level
     elseif name == "user_demand.demand"

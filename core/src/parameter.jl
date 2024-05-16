@@ -76,7 +76,7 @@ struct Allocation
     subnetwork_demands::Dict{Tuple{NodeID, NodeID}, Vector{Float64}}
     subnetwork_allocateds::Dict{Tuple{NodeID, NodeID}, Vector{Float64}}
     integrated_flow_mapping::Dict{Tuple{NodeID, NodeID}, Int32}
-    integrated_flow::IntegrandValuesSum{Vector{Float64}}
+    integrated_flow::Vector{Float64}
     record_demand::@NamedTuple{
         time::Vector{Float64},
         subnetwork_id::Vector{Int32},
@@ -611,7 +611,7 @@ struct Subgrid
 end
 
 # TODO Automatically add all nodetypes here
-struct Parameters{T, C1, C2, V1, V2}
+struct Parameters{T, C1, C2, V1, V2, V3}
     starttime::DateTime
     graph::MetaGraph{
         Int64,
@@ -624,6 +624,7 @@ struct Parameters{T, C1, C2, V1, V2}
             edges_source::Dict{Int32, Set{EdgeMetadata}},
             flow_dict::Dict{Tuple{NodeID, NodeID}, Int32},
             flow::T,
+            integrated_flow::V3,
             saveat::Float64,
         },
         MetaGraphsNext.var"#11#13",
