@@ -19,7 +19,7 @@
       <runner id="Run_Delwaq" name="Run Delwaq" type="simpleRunner">
         <parameters>
           <param name="script.content"><![CDATA[pixi install
-pixi run ribasim-core-testmodels
+pixi run ribasim-core-testmodels basic
 set D3D_HOME=%teamcity.build.checkoutDir%/dimr
 pixi run delwaq]]></param>
           <param name="teamcity.build.workingDir" value="ribasim" />
