@@ -2,6 +2,11 @@ import Ribasim
 
 include("utils.jl")
 
+"""
+Run all testmodels in parallel and check if they pass.
+
+A selection can be made by passing the name(s) of the individual testmodel(s) as (an) argument(s).
+"""
 function main(ARGS)
     toml_paths = get_testmodels()
     if length(ARGS) > 0

@@ -171,7 +171,6 @@ tomli-w = "*"
 xmipy = "*"
 xugrid = "*"
 xarray = "*"
-ipykernel = ">=6.29.3,<6.30"
 networkx = ">=3.3"
 
 [pypi-dependencies]

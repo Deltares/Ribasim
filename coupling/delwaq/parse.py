@@ -12,8 +12,8 @@ repo_dir = delwaq_dir.parents[1]
 output_folder = delwaq_dir / "model"
 
 
-def parse(modelfn: Path, graph, substances):
-    model = ribasim.Model.read(modelfn)
+def parse(toml_path: Path, graph, substances) -> ribasim.Model:
+    model = ribasim.Model.read(toml_path)
 
     # Output of Delwaq
     ds = xr.open_dataset(output_folder / "delwaq_map.nc")
@@ -45,7 +45,7 @@ def parse(modelfn: Path, graph, substances):
     df = pd.concat(dfs).reset_index(drop=True)
     df.sort_values(["time", "node_id"], inplace=True)
 
-    model.basin.concentrationexternal = df
-    df.to_feather(modelfn.parent / "results" / "basin-concentration-external.arrow")
+    model.basin.concentration_external = df
+    df.to_feather(toml_path.parent / "results" / "basin_concentration_external.arrow")
 
     return model

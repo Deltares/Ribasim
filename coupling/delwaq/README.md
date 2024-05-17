@@ -15,7 +15,7 @@ The script can:
 - Open an existing Ribasim model (hardcoded to `generated_testmodels/basic/ribasim.toml` for now)
 - Convert the metadata, topology and substances to Delwaq format and put it into the `model` folder
 
-You now should manually run Delwaq. You can do so with the Docker image.
+You now should manually run Delwaq. If you're an Deltares employee, you can do so with the Docker image.
 First install WSL and install docker in WSL, then create a CLI secret and log into the Deltares containers. To install docker in WSL and create a CLI secret for the following steps, follow this guide https://publicwiki.deltares.nl/display/Delft3DContainers/.
 
 Log into Deltares containers in docker:

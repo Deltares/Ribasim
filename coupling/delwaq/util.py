@@ -17,7 +17,7 @@ except ImportError:
     xugrid = MissingOptionalModule("xugrid")
 
 
-def strfdelta(tdelta):
+def strfdelta(tdelta) -> str:
     # dddhhmmss format
     days = tdelta.days
     hours, rem = divmod(tdelta.seconds, 3600)
@@ -25,7 +25,7 @@ def strfdelta(tdelta):
     return f"{days:03d}{hours:02d}{minutes:02d}{seconds:02d}"
 
 
-def write_pointer(fn: Path | str, data: pd.DataFrame):
+def write_pointer(fn: Path | str, data: pd.DataFrame) -> None:
     """Write pointer file for Delwaq.
 
     The format is a matrix of int32 of edges
@@ -40,7 +40,7 @@ def write_pointer(fn: Path | str, data: pd.DataFrame):
             f.write(struct.pack("<4i", a, b, 0, 0))
 
 
-def write_lengths(fn: Path | str, data: np.ndarray[np.float32]):
+def write_lengths(fn: Path | str, data: np.ndarray[np.float32]) -> None:
     """Write lengths file for Delwaq.
 
     The format is an int defining time/edges (?)
@@ -56,7 +56,7 @@ def write_lengths(fn: Path | str, data: np.ndarray[np.float32]):
         f.write(data.astype("float32").tobytes())
 
 
-def write_volumes(fn: Path | str, data: pd.DataFrame, timestep: timedelta):
+def write_volumes(fn: Path | str, data: pd.DataFrame, timestep: timedelta) -> None:
     """Write volumes file for Delwaq.
 
     The format is an int defining the time
@@ -77,7 +77,7 @@ def write_volumes(fn: Path | str, data: pd.DataFrame, timestep: timedelta):
         f.write(group.storage.to_numpy().astype("float32").tobytes())
 
 
-def write_flows(fn: Path | str, data: pd.DataFrame, timestep: timedelta):
+def write_flows(fn: Path | str, data: pd.DataFrame, timestep: timedelta) -> None:
     """Write flows file for Delwaq.
 
     The format is an int defining the time
@@ -98,7 +98,7 @@ def write_flows(fn: Path | str, data: pd.DataFrame, timestep: timedelta):
         f.write(group.flow_rate.to_numpy().astype("float32").tobytes())
 
 
-def ugrid(G):
+def ugrid(G) -> xugrid.UgridDataset:
     # TODO Deduplicate with ribasim.Model.to_xugrid
     edge_df = pd.DataFrame(G.edges(), columns=["from_node_id", "to_node_id"])
     node_df = pd.DataFrame(G.nodes(), columns=["node_id"])
@@ -147,7 +147,7 @@ def ugrid(G):
     return uds
 
 
-def run_delwaq():
+def run_delwaq() -> None:
     d3d_home = os.environ.get("D3D_HOME")
     if d3d_home is None:
         raise ValueError("D3D_HOME is not set.")

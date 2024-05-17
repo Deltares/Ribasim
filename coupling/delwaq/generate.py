@@ -27,13 +27,13 @@ env = Environment(autoescape=True, loader=FileSystemLoader(delwaq_dir / "templat
 USE_EVAP = True
 
 
-def generate(modelfn: Path) -> tuple[nx.DiGraph, set[str]]:
+def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
     """Generate a Delwaq model from a Ribasim model and results."""
 
     # Read in model and results
-    model = ribasim.Model.read(modelfn)
-    basins = pd.read_feather(modelfn.parent / "results" / "basin.arrow")
-    flows = pd.read_feather(modelfn.parent / "results" / "flow.arrow")
+    model = ribasim.Model.read(toml_path)
+    basins = pd.read_feather(toml_path.parent / "results" / "basin.arrow")
+    flows = pd.read_feather(toml_path.parent / "results" / "flow.arrow")
 
     output_folder = delwaq_dir / "model"
     output_folder.mkdir(exist_ok=True)
@@ -41,7 +41,7 @@ def generate(modelfn: Path) -> tuple[nx.DiGraph, set[str]]:
     # Simplify network, only keep Basins and Boundaries
     G = nx.DiGraph()
     for row in model.node_table().df.itertuples():
-        if "Control" not in row.node_type:
+        if row.node_type not in ribasim.geometry.edge.SPATIALCONTROLNODETYPES:
             G.add_node(
                 row.node_id,
                 type=row.node_type,
@@ -355,5 +355,5 @@ def generate(modelfn: Path) -> tuple[nx.DiGraph, set[str]]:
 if __name__ == "__main__":
     # Generate a Delwaq model from the default Ribasim model
     repo_dir = delwaq_dir.parents[1]
-    modelfn = repo_dir / "generated_testmodels/basic/ribasim.toml"
-    graph, substances = generate(modelfn)
+    toml_path = repo_dir / "generated_testmodels/basic/ribasim.toml"
+    graph, substances = generate(toml_path)
