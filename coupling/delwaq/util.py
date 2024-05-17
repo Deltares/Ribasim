@@ -158,7 +158,11 @@ def run_delwaq():
     inp_path = folder / "model" / "delwaq.inp"
     system = platform.system()
     if system == "Windows":
-        subprocess.run([binfolder / "run_delwaq.bat", inp_path.absolute()])
+        # run_delwaq.bat prepends working directory to the inp file
+        subprocess.run(
+            [binfolder / "run_delwaq.bat", "delwaq.inp"],
+            cwd=(folder / "model").absolute(),
+        )
     elif system == "Linux":
         subprocess.run([binfolder / "run_delwaq.sh", inp_path.absolute()])
     else:

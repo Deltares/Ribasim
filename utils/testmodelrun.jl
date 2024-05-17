@@ -4,6 +4,10 @@ include("utils.jl")
 
 function main(ARGS)
     toml_paths = get_testmodels()
+    if length(ARGS) > 0
+        toml_paths = filter(x -> basename(dirname(x)) in ARGS, toml_paths)
+    end
+    return @info toml_paths
     n_model = length(toml_paths)
     n_pass = 0
     n_fail = 0
