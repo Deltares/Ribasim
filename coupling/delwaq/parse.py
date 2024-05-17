@@ -20,6 +20,7 @@ def parse(toml_path: Path, graph, substances) -> ribasim.Model:
     ug = xu.UgridDataset(ds)
 
     mapping = dict(graph.nodes(data="id"))
+    # Continuity is a (default) tracer representing the mass balance
     substances.add("Continuity")
 
     dfs = []

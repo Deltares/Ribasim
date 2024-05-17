@@ -38,7 +38,7 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
     output_folder = delwaq_dir / "model"
     output_folder.mkdir(exist_ok=True)
 
-    # Simplify network, only keep Basins and Boundaries
+    # Setup flow network
     G = nx.DiGraph()
     for row in model.node_table().df.itertuples():
         if row.node_type not in ribasim.geometry.edge.SPATIALCONTROLNODETYPES:
@@ -54,6 +54,9 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
         if row.edge_type == "flow":
             G.add_edge(row.from_node_id, row.to_node_id, id=[row.Index], duplicate=None)
 
+    # Simplify network, only keeping Basins and Boundaries.
+    # We find an unwanted node, remove it,
+    # and merge the flow edges to/from the node.
     remove_nodes = []
     for node_id, out in G.succ.items():
         if G.nodes[node_id]["type"] not in [
@@ -83,6 +86,11 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
     for node_id in remove_nodes:
         G.remove_node(node_id)
 
+    # Due to the simplification, we can end up with cycles of length 2.
+    # This happens when a UserDemand is connected to and from a Basin,
+    # but can also happen in other cases (rivers with a outlet and pump),
+    # for which we do nothing. We merge these UserDemand cycles edges to
+    # a single edge, and later merge the flows.
     merge_edges = []
     for loop in nx.simple_cycles(G):
         if len(loop) == 2:
@@ -97,7 +105,8 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
                 merge_edges.extend(edge_ids)
                 G.remove_edge(*loop)
 
-    # Relabel as consecutive integers
+    # Relabel the nodes as consecutive integers for Delwaq
+    # Note that the node["id"] is the original node_id
     basin_id = 0
     boundary_id = 0
     node_mapping = {}
@@ -187,12 +196,11 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
     else:
         timestep = timedelta(seconds=model.solver.saveat)
 
-    # Write topology to d file
+    # Write topology to delwaq pointer file
     pointer = pd.DataFrame(G.edges(), columns=["from_node_id", "to_node_id"])
     pointer.to_csv(output_folder / "network.csv", index=False)  # not needed
     write_pointer(output_folder / "ribasim.poi", pointer)
 
-    # nboundary = abs(boundary_id)
     total_segments = basin_id
     total_exchanges = len(pointer)
 
@@ -219,6 +227,7 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
     m = flows.edge_id.isin(merge_edges)
     flows.loc[m, "flow_rate"] = flows.loc[m, "flow_rate"] * -1
 
+    # Map edge_id to the new edge_id and merge any duplicate flows
     flows["edge_id"] = flows["edge_id"].map(edge_mapping)
     flows.dropna(subset=["edge_id"], inplace=True)
     flows["edge_id"] = flows["edge_id"].astype("int32")
@@ -229,7 +238,7 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
         inplace=True,
     )
 
-    # Add basin boundaries
+    # Add basin boundaries to flows
     for edge_id, (a, b, (node_id, boundary_type)) in enumerate(
         G.edges(data="boundary", default=(None, None))
     ):
@@ -240,6 +249,8 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
         )
         df["edge_id"] = edge_id
         nflows = pd.concat([nflows, df], ignore_index=True)
+
+    # Save flows to Delwaq format
     nflows.sort_values(by=["time", "edge_id"], inplace=True)
     nflows.to_csv(output_folder / "flows.csv", index=False)  # not needed
     nflows.drop(
@@ -247,11 +258,11 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
         inplace=True,
     )
     write_flows(output_folder / "ribasim.flo", nflows, timestep)
-    # nflows.loc[:, "flow_rate"] = 1  # m/s
     write_flows(
         output_folder / "ribasim.are", nflows, timestep
-    )  # same as flow, so velocity becomes 1 m/s
+    )  # same as flow, so area becomes 1
 
+    # Write volumes to Delwaq format
     basins.drop(columns=["level"], inplace=True)
     volumes = basins[["time", "node_id", "storage"]]
     volumes.loc[:, "node_id"] = (
@@ -261,8 +272,9 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
     volumes.to_csv(output_folder / "volumes.csv", index=False)  # not needed
     volumes.drop(columns=["node_id"], inplace=True)
     write_volumes(output_folder / "ribasim.vol", volumes, timestep)
-    # volumes.loc[:, "storage"] = 1  # m/s
-    write_volumes(output_folder / "ribasim.vel", volumes, timestep)
+    write_volumes(
+        output_folder / "ribasim.vel", volumes, timestep
+    )  # same as volume, so vel becomes 1
 
     # Length file
     # Timestep and flattened (2, nsegments) of identical lengths
@@ -273,11 +285,12 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
     lengths.iloc[np.repeat(np.arange(len(lengths)), 2)]
     write_flows(output_folder / "ribasim.len", lengths, timestep)
 
-    # Find our boundaries
+    # Find all boundary substances and concentrations
     boundaries = []
     substances = set()
 
     def make_boundary(id, type):
+        # Delwaq has a limit of 12 characters for the boundary name
         return type[:9] + "_" + str(id)
 
     assert model.level_boundary.concentration.df is not None
@@ -306,6 +319,7 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
         )
         substances.update(row.substance)
 
+    # Write boundary data with substances and concentrations
     template = env.get_template("B5_bounddata.inc.j2")
     with open(output_folder / "B5_bounddata.inc", mode="w") as f:
         f.write(
@@ -315,6 +329,8 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
             )
         )
 
+    # Write boundary list, ordered by bid to map the unique boundary names
+    # to the edges described in the pointer file.
     bnd = pointer.copy()
     bnd["bid"] = np.minimum(bnd["from_node_id"], bnd["to_node_id"])
     bnd = bnd[bnd["bid"] < 0]
@@ -333,10 +349,11 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
         quoting=csv.QUOTE_ALL,
     )
 
+    # Setup DIMR configuration for running Delwaq via DIMR
     dimrc = delwaq_dir / "reference/dimr_config.xml"
     shutil.copy(dimrc, output_folder / "dimr_config.xml")
 
-    # Write input template
+    # Write main Delwaq input file
     template = env.get_template("delwaq.inp.j2")
     with open(output_folder / "delwaq.inp", mode="w") as f:
         f.write(
@@ -349,6 +366,9 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
                 substances=substances,
             )
         )
+
+    # Return the graph with original edges and the substances
+    # so we can parse the results back to the original model
     return G, substances
 
 
