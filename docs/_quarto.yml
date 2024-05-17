@@ -32,6 +32,7 @@ website:
         - core/equations.qmd
         - core/allocation.qmd
         - core/numerics.qmd
+        - core/coupling.qmd
     - title: "Python tooling"
       contents:
         - python/index.qmd

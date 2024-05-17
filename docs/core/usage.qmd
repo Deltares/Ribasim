@@ -356,6 +356,38 @@ Water levels beyond the last `basin_level` are linearly extrapolated.
 Note that the interpolation to subgrid water level is not constrained by any water balance within Ribasim.
 Generally, to create physically meaningful subgrid water levels, the subgrid table must be parametrized properly such that the spatially integrated water volume of the subgrid elements agrees with the total storage volume of the basin.
 
+## Basin / concentration {#sec-basin-conc}
+This table defines the concentration(s) of (a) substance(s) for the inflow boundaries of a Basin node.
+
+column        | type     | unit            | restriction
+------------- | -------- | --------------- | -----------
+node_id       | Int32    | -               | sorted
+time          | DateTime | -               | sorted per node_id
+substance     | String   |                 | can correspond to known Delwaq substances
+drainage      | Float64  | $g m^{-3}$      | (optional)
+precipitation | Float64  | $g m^{-3}$      | (optional)
+
+## Basin / concentrationstate {#sec-basin-conc-state}
+This table defines the concentration(s) of (a) substance(s) in the basin at the start of the simulation.
+
+column         | type     | unit         | restriction
+-------------- | -------- | ------------ | -----------
+node_id        | Int32    | -            | sorted
+time           | DateTime | -            | sorted per node_id
+substance      | String   | -            | can correspond to known Delwaq substances
+concentration  | Float64  | $g m^{-3}$   |
+
+## Basin / concentrationexternal
+This table is used for (external) concentrations, that can be used for Control lookups.
+
+column         | type     | unit         | restriction
+-------------- | -------- | ------------ | -----------
+node_id        | Int32    | -            | sorted
+time           | DateTime | -            | sorted per node_id
+substance      | String   | -            | can correspond to known Delwaq substances
+concentration  | Float64  | $g m^{-3}$   |
+
+
 # FractionalFlow {#sec-fractional-flow}
 
 Lets a fraction (in [0,1]) of the incoming flow trough.
@@ -557,6 +589,16 @@ node_id   | Int32    | -            | sorted
 time      | DateTime | -            | sorted per node_id
 level     | Float64  | $m$          | -
 
+## LevelBoundary / concentration {#sec-level-boundary-conc}
+This table defines the concentration(s) of (a) substance(s) for the flow from the LevelBoundary.
+
+column         | type     | unit         | restriction
+-------------- | -------- | ------------ | -----------
+node_id        | Int32    | -            | sorted
+time           | DateTime | -            | sorted per node_id
+substance      | String   | -            | can correspond to known Delwaq substances
+concentration  | Float64  | $g m^{-3}$   |
+
 # FlowBoundary {#sec-flow-boundary}
 
 Pump water to a destination node.
@@ -587,6 +629,16 @@ column    | type     | unit         | restriction
 node_id   | Int32    | -            | sorted
 time      | DateTime | -            | sorted per node_id
 flow_rate | Float64  | $m^3 s^{-1}$ | non-negative
+
+## FlowBoundary / concentration {#sec-flow-boundary-conc}
+This table defines the concentration(s) of (a) substance(s) for the flow from the FlowBoundary.
+
+column         | type     | unit         | restriction
+-------------- | -------- | ------------ | -----------
+node_id        | Int32    | -            | sorted
+time           | DateTime | -            | sorted per node_id
+substance      | String   | -            | can correspond to known Delwaq substances
+concentration  | Float64  | $g m^{-3}$   |
 
 # LinearResistance {#sec-linear-resistance}
 

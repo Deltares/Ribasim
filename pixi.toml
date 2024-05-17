@@ -22,11 +22,7 @@ test-ribasim-api = "pytest --basetemp=python/ribasim_api/tests/temp --junitxml=r
 # Installation
 install-julia = "juliaup add 1.10.3 && juliaup default 1.10.3"
 install-pre-commit = "pre-commit install"
-install-ci = { depends_on = [
-    "install-julia",
-    "update-registry-julia",
-
-] }
+install-ci = { depends_on = ["install-julia", "update-registry-julia"] }
 install = { depends_on = [
     "install-ci",
     "install-qgis-plugins",
@@ -49,7 +45,7 @@ build-julia-docs = { cmd = "julia --project docs/make.jl", depends_on = [
 ], outputs = [
     "docs/build",
 ] }
-quartodoc-build = { cmd = "quartodoc build && rm objects.json", cwd="docs", inputs = [
+quartodoc-build = { cmd = "quartodoc build && rm objects.json", cwd = "docs", inputs = [
     "docs/_quarto.yml",
     "python/ribasim",
 ], outputs = [
@@ -98,6 +94,7 @@ generate-testmodels = { cmd = "python utils/generate-testmodels.py", inputs = [
     "generated_testmodels",
 ] }
 tests = { depends_on = ["lint", "test-ribasim-python", "test-ribasim-core"] }
+delwaq = { cmd = "pytest coupling/delwaq/test.py" }
 # Codegen
 codegen = { cmd = "julia --project utils/gen_python.jl && ruff format python/ribasim/ribasim/schemas.py", depends_on = [
     "initialize-julia",
@@ -153,6 +150,7 @@ github-release = "python utils/github-release.py"
 [dependencies]
 geopandas = "*"
 hatchling = "*"
+jinja2 = "*"
 matplotlib = "*"
 netCDF4 = "*"
 numpy = "*"
@@ -173,6 +171,7 @@ tomli-w = "*"
 xmipy = "*"
 xugrid = "*"
 xarray = "*"
+networkx = ">=3.3"
 
 [pypi-dependencies]
 ribasim = { path = "python/ribasim", editable = true }
