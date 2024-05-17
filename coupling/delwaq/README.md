@@ -2,14 +2,14 @@
 
 
 ## Steps
-Choose a testmodel and run it. For example, running the basic model with ribasim_cli:
+Choose a model and run it. For example, running the basic model with the Ribasim CLI:
 ```bash
 ribasim generated_testmodels/basic/ribasim.toml
 ```
 
-Run `gen_delwaq.py` to couple the models. Open a terminal in the directory of Ribasim
-```python
-python ./coupling/delwaq/gen_delwaq.py
+Run `generate.py` to generate a Delwaq model. Open a terminal in the Ribasim repository root and run:
+```bash
+python ./coupling/delwaq/generate.py
 ```
 The script can:
 - Open an existing Ribasim model (hardcoded to `generated_testmodels/basic/ribasim.toml` for now)
@@ -29,8 +29,8 @@ docker run --mount type=bind,source="$(pwd)/model",target=/mnt/myModel \
   --workdir /mnt/myModel containers.deltares.nl/delft3d/delft3dfm run_dimr.sh
 ```
 
-If everything worked out, there's now a new netcdf output. We'll use this to update the Ribasim model.
-Run `parse_delwaq.py` again to update the Ribasim model with the new concentrations.
+If everything worked out, there's now a new netCDF output. We'll use this to update the Ribasim model.
+Run `parse.py` again to update the Ribasim model with the new concentrations.
 
 ## Notes
 I've tested this with a basic model, and the latest ribasim-nl (hws) model.

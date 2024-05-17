@@ -99,7 +99,7 @@ def write_flows(fn: Path | str, data: pd.DataFrame, timestep: timedelta):
 
 
 def ugrid(G):
-    # TODO Deduplicate with ribasim.utils
+    # TODO Deduplicate with ribasim.Model.to_xugrid
     edge_df = pd.DataFrame(G.edges(), columns=["from_node_id", "to_node_id"])
     node_df = pd.DataFrame(G.nodes(), columns=["node_id"])
     node_df["x"] = [i[1] for i in G.nodes(data="x")]

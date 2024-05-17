@@ -1,4 +1,4 @@
-"""Read a Delwaq model generated from a Ribasim model and inject it back to Ribasim."""
+"""Read a Delwaq model generated from a Ribasim model and inject the results back to Ribasim."""
 
 from pathlib import Path
 
@@ -46,6 +46,6 @@ def parse(modelfn: Path, graph, substances):
     df.sort_values(["time", "node_id"], inplace=True)
 
     model.basin.concentrationexternal = df
-    df.to_feather(modelfn.parent / "results" / "basinconcentrationexternal.arrow")
+    df.to_feather(modelfn.parent / "results" / "basin-concentration-external.arrow")
 
     return model
