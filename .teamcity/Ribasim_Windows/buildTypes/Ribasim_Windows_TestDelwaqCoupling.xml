@@ -6,6 +6,9 @@
     <options>
       <option name="artifactRules" value="ribasim/coupling/delwaq/model" />
     </options>
+    <disabled-settings>
+      <setting-ref ref="ARTIFACT_DEPENDENCY_4052" />
+    </disabled-settings>
     <parameters />
     <build-runners>
       <runner id="Set_up_pixi" name="Set up pixi" type="simpleRunner">
