@@ -4,7 +4,7 @@
 ## Steps
 Choose a testmodel and run it. For example, running the basic model with ribasim_cli:
 ```bash
-./build/ribasim_cli/bin/ribasim generated_testmodels/basic/ribasim.toml
+ribasim generated_testmodels/basic/ribasim.toml
 ```
 
 Run `gen_delwaq.py` to couple the models. Open a terminal in the directory of Ribasim
