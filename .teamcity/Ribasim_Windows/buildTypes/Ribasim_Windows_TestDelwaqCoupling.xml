@@ -3,6 +3,9 @@
   <name>Test Delwaq coupling</name>
   <description />
   <settings ref="Ribasim_Windows">
+    <options>
+      <option name="artifactRules" value="ribasim/coupling/delwaq/model" />
+    </options>
     <parameters />
     <build-runners>
       <runner id="Set_up_pixi" name="Set up pixi" type="simpleRunner">
@@ -16,6 +19,7 @@
       <runner id="Run_Delwaq" name="Run Delwaq" type="simpleRunner">
         <parameters>
           <param name="script.content"><![CDATA[pixi install
+pixi run ribasim-core-testmodels
 set D3D_HOME=%teamcity.build.checkoutDir%/dimr
 pixi run delwaq]]></param>
           <param name="teamcity.build.workingDir" value="ribasim" />
@@ -56,19 +60,7 @@ pixi run delwaq]]></param>
         <revisionRule name="lastPinned" revision="latest.lastPinned" />
         <artifact sourcePath="dimrset_x64_signed_272.zip!/x64 =&gt; dimr" />
       </dependency>
-      <dependency id="ARTIFACT_DEPENDENCY_4052" sourceBuildTypeId="Ribasim_Windows_TestRibasimBinaries" cleanDestination="false">
-        <revisionRule name="sameChainOrLastFinished" revision="latest.sameChainOrLastFinished" />
-        <artifact sourcePath="test_output_cli.zip!/popen-gw1/test_models_basic_model_0=&gt;ribasim/generated_testmodels/basic" />
-      </dependency>
     </artifact-dependencies>
-    <dependencies>
-      <depend-on sourceBuildTypeId="Ribasim_Windows_TestRibasimBinaries">
-        <options>
-          <option name="take-started-build-with-same-revisions" value="true" />
-          <option name="take-successful-builds-only" value="true" />
-        </options>
-      </depend-on>
-    </dependencies>
     <cleanup />
   </settings>
 </build-type>
