@@ -68,6 +68,18 @@ function main()
     cp("cli/target/release/$ribasim", "ribasim/$ribasim"; force = true)
 end
 
+function set_version(filename, version; group = nothing)
+    data = TOML.parsefile(filename)
+    if !isnothing(group)
+        data[group]["version"] = version
+    else
+        data["version"] = version
+    end
+    open(filename, "w") do io
+        TOML.print(io, data)
+    end
+end
+
 """
 Add the following metadata files to the newly created build:
 
@@ -99,32 +111,35 @@ function add_metadata(project_dir, license_file, output_dir, git_repo, readme)
         force = true,
     )
 
+    # since the exact Ribasim version may be hard to find in the Manifest.toml file
+    # we can also extract that information, and add it to the README.md
+    manifest = TOML.parsefile(normpath(git_repo, "Manifest.toml"))
+    if !haskey(manifest, "manifest_format")
+        error("Manifest.toml is in the old format, run Pkg.upgrade_manifest()")
+    end
+    julia_version = manifest["julia_version"]
+    ribasim_entry = only(manifest["deps"]["Ribasim"])
+    version = ribasim_entry["version"]
+    repo = GitRepo(git_repo)
+    branch = LibGit2.head(repo)
+    commit = LibGit2.peel(LibGit2.GitCommit, branch)
+    short_name = LibGit2.shortname(branch)
+    short_commit = string(LibGit2.GitShortHash(LibGit2.GitHash(commit), 10))
+
+    # get the release from the current tag, like `git describe --tags`
+    # if it is a commit after a tag, it will be <tag>-g<short-commit>
+    options = LibGit2.DescribeOptions(; describe_strategy = LibGit2.Consts.DESCRIBE_TAGS)
+    result = LibGit2.GitDescribeResult(repo; options)
+    suffix = "-dirty"
+    foptions =
+        LibGit2.DescribeFormatOptions(; dirty_suffix = Base.unsafe_convert(Cstring, suffix))
+    GC.@preserve suffix tag = LibGit2.format(result; options = foptions)[2:end]  # skip v prefix
+
     # put the LICENSE in the top level directory
     cp(license_file, normpath(output_dir, "LICENSE"); force = true)
+
     open(normpath(output_dir, "README.md"), "w") do io
         println(io, readme)
-
-        # since the exact Ribasim version may be hard to find in the Manifest.toml file
-        # we can also extract that information, and add it to the README.md
-        manifest = TOML.parsefile(normpath(git_repo, "Manifest.toml"))
-        if !haskey(manifest, "manifest_format")
-            error("Manifest.toml is in the old format, run Pkg.upgrade_manifest()")
-        end
-        julia_version = manifest["julia_version"]
-        ribasim_entry = only(manifest["deps"]["Ribasim"])
-        version = ribasim_entry["version"]
-        repo = GitRepo(git_repo)
-        branch = LibGit2.head(repo)
-        commit = LibGit2.peel(LibGit2.GitCommit, branch)
-        short_name = LibGit2.shortname(branch)
-        short_commit = string(LibGit2.GitShortHash(LibGit2.GitHash(commit), 10))
-
-        # get the release from the current tag, like `git describe --tags`
-        # if it is a commit after a tag, it will be <tag>-g<short-commit>
-        options =
-            LibGit2.DescribeOptions(; describe_strategy = LibGit2.Consts.DESCRIBE_TAGS)
-        result = LibGit2.GitDescribeResult(repo; options)
-        tag = LibGit2.format(result)
 
         url = "https://github.com/Deltares/Ribasim/tree"
         version_info = """
@@ -142,6 +157,9 @@ function add_metadata(project_dir, license_file, output_dir, git_repo, readme)
         ```"""
         println(io, version_info)
     end
+
+    # Override the Cargo.toml file with the git version
+    set_version("cli/Cargo.toml", tag; group = "package")
 end
 
 main()
