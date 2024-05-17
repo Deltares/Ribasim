@@ -6,9 +6,6 @@
     <options>
       <option name="artifactRules" value="ribasim/coupling/delwaq/model" />
     </options>
-    <disabled-settings>
-      <setting-ref ref="ARTIFACT_DEPENDENCY_4052" />
-    </disabled-settings>
     <parameters />
     <build-runners>
       <runner id="Set_up_pixi" name="Set up pixi" type="simpleRunner">
@@ -61,10 +58,6 @@ pixi run delwaq]]></param>
       <dependency id="ARTIFACT_DEPENDENCY_4206" sourceBuildTypeId="Dimr_DimrCollectors_2bDimrCollectorReleaseSigned" cleanDestination="false">
         <revisionRule name="lastPinned" revision="latest.lastPinned" />
         <artifact sourcePath="dimrset_x64_signed_272.zip!/x64 =&gt; dimr" />
-      </dependency>
-      <dependency id="ARTIFACT_DEPENDENCY_4052" sourceBuildTypeId="Ribasim_Windows_TestRibasimBinaries" cleanDestination="false">
-        <revisionRule name="sameChainOrLastFinished" revision="latest.sameChainOrLastFinished" />
-        <artifact sourcePath="test_output_cli.zip!/popen-gw1/test_models_basic_model_0=&gt;ribasim/generated_testmodels/basic" />
       </dependency>
     </artifact-dependencies>
     <dependencies>
