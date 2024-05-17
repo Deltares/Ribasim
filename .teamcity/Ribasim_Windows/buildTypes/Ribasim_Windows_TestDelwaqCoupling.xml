@@ -60,14 +60,6 @@ pixi run delwaq]]></param>
         <artifact sourcePath="dimrset_x64_signed_272.zip!/x64 =&gt; dimr" />
       </dependency>
     </artifact-dependencies>
-    <dependencies>
-      <depend-on sourceBuildTypeId="Ribasim_Windows_TestRibasimBinaries">
-        <options>
-          <option name="take-started-build-with-same-revisions" value="true" />
-          <option name="take-successful-builds-only" value="true" />
-        </options>
-      </depend-on>
-    </dependencies>
     <cleanup />
   </settings>
 </build-type>
