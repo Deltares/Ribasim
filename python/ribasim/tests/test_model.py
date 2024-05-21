@@ -222,7 +222,7 @@ def test_indexing(basic):
 
 
 def test_xugrid(basic, tmp_path):
-    uds = basic.to_xugrid(add_results=False)
+    uds = basic.to_xugrid(add_flow=False)
     assert isinstance(uds, xugrid.UgridDataset)
     assert uds.grid.edge_dimension == "ribasim_nEdges"
     assert uds.grid.node_dimension == "ribasim_nNodes"
@@ -233,11 +233,15 @@ def test_xugrid(basic, tmp_path):
     assert uds.attrs["Conventions"] == "CF-1.9 UGRID-1.0"
 
     with pytest.raises(FileNotFoundError, match="Model must be written to disk"):
-        basic.to_xugrid(add_results=True)
+        basic.to_xugrid(add_flow=True)
 
     basic.write(tmp_path / "ribasim.toml")
     with pytest.raises(FileNotFoundError, match="Cannot find results"):
-        basic.to_xugrid(add_results=True)
+        basic.to_xugrid(add_flow=True)
+    with pytest.raises(FileNotFoundError, match="or allocation is not used"):
+        basic.to_xugrid(add_flow=False, add_allocation=True)
+    with pytest.raises(ValueError, match="Cannot add both allocation and flow results"):
+        basic.to_xugrid(add_flow=True, add_allocation=True)
 
 
 def test_to_crs(bucket: Model):
