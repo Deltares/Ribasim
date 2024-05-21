@@ -369,7 +369,7 @@ fraction      | Float64 | -            | in the interval [0,1]
 # TabulatedRatingCurve {#sec-tabulated-rating-curve}
 
 This table is similar in structure to the Basin profile.
-The TabulatedRatingCurve gives a relation between the upstream level of a connected Basin and its outflow.
+The TabulatedRatingCurve gives a relation between the level of a directly upstream Basin or LevelBoundary and its outflow.
 
 column        | type    | unit         | restriction
 ------------- | ------- | ------------ | -----------
