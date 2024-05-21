@@ -1,5 +1,10 @@
 import re
 
+import numpy as np
+import pandas as pd
+from pandera.dtypes import Int32
+from pandera.typing import Series
+
 
 def _pascal_to_snake(pascal_str):
     # Insert a '_' before all uppercase letters that are not at the start of the string
@@ -15,3 +20,46 @@ class MissingOptionalModule:
 
     def __getattr__(self, name):
         raise ImportError(f"{self.name} is required for this functionality")
+
+
+def _node_lookup_numpy(node_id) -> Series[Int32]:
+    """Create a lookup table from from node_id to the node dimension index.
+
+    Used when adding data onto the nodes of an xugrid dataset.
+    """
+    return pd.Series(
+        index=node_id,
+        data=node_id.argsort().astype(np.int32),
+        name="node_index",
+    )
+
+
+def _node_lookup(uds) -> Series[Int32]:
+    """Create a lookup table from from node_id to the node dimension index.
+
+    Used when adding data onto the nodes of an xugrid dataset.
+    """
+    return pd.Series(
+        index=uds["node_id"],
+        data=uds[uds.grid.node_dimension],
+        name="node_index",
+    )
+
+
+def _edge_lookup(uds) -> Series[Int32]:
+    """Create a lookup table from edge_id to the edge dimension index.
+
+    Used when adding data onto the edges of an xugrid dataset.
+    """
+
+    return pd.Series(
+        index=uds["edge_id"],
+        data=uds[uds.grid.edge_dimension],
+        name="edge_index",
+    )
+
+
+def _time_in_ns(df) -> None:
+    """Convert the time column to datetime64[ns] dtype."""
+    # datetime64[ms] gives trouble; https://github.com/pydata/xarray/issues/6318
+    df["time"] = df["time"].astype("datetime64[ns]")
