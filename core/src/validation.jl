@@ -191,11 +191,15 @@ function valid_profiles(
     area::Vector{Vector{Float64}},
 )::Bool
     errors = false
-
     for (id, levels, areas) in zip(node_id, level, area)
+        n = length(levels)
+        if n < 2
+            errors = true
+            @error "$id profile must have at least two data points, got $n."
+        end
         if !allunique(levels)
             errors = true
-            @error "$id has repeated levels, this cannot be interpolated."
+            @error "$id profile has repeated levels, this cannot be interpolated."
         end
 
         if areas[1] <= 0
@@ -206,9 +210,9 @@ function valid_profiles(
             )
         end
 
-        if areas[end] < areas[end - 1]
+        if any(diff(areas) .< 0.0)
             errors = true
-            @error "$id profile cannot have decreasing area at the top since extrapolating could lead to negative areas."
+            @error "$id profile cannot have decreasing areas."
         end
     end
     return !errors
