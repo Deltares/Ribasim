@@ -848,7 +848,8 @@ class LevelDemandStatic(Input):
     def attributes(cls) -> list[QgsField]:
         return [
             QgsField("node_id", QVariant.Int),
-            QgsField("level_demand", QVariant.Double),
+            QgsField("min_level", QVariant.Double),
+            QgsField("max_level", QVariant.Double),
             QgsField("priority", QVariant.Int),
         ]
 
