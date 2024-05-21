@@ -791,3 +791,14 @@ function compute_mean_inoutflows(
     end
     return inflow_mean, outflow_mean
 end
+
+function update_vertical_flux_integrands!(integrator, vertical_flux)::Nothing
+    for callback in integrator.opts.callback.discrete_callbacks
+        (; affect!) = callback
+        if affect! isa TrapezoidIntegrationAffect &&
+           hasproperty(affect!.integrand_value, :precipitation)
+            vertical_flux_view(affect!.integrand_value) .= vertical_flux
+        end
+    end
+    return nothing
+end

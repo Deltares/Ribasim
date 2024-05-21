@@ -1,22 +1,15 @@
 struct TrapezoidIntegrationAffect{IntegrandFunc, T}
     integrand_func!::IntegrandFunc
     integrand_value::T
-    integrand_value_prev::T
     cache::T
     integral::T
 end
 
 function TrapezoidIntegrationCallback(integrand_func!, integral_value)::DiscreteCallback
     integrand_value = zero(integral_value)
-    integrand_value_prev = zero(integral_value)
     cache = zero(integral_value)
-    affect! = TrapezoidIntegrationAffect(
-        integrand_func!,
-        integrand_value,
-        integrand_value_prev,
-        cache,
-        integral_value,
-    )
+    affect! =
+        TrapezoidIntegrationAffect(integrand_func!, integrand_value, cache, integral_value)
     return DiscreteCallback(
         (u, t, integrator) -> t != 0,
         affect!;
@@ -25,13 +18,17 @@ function TrapezoidIntegrationCallback(integrand_func!, integral_value)::Discrete
 end
 
 function (affect!::TrapezoidIntegrationAffect)(integrator)::Nothing
-    (; integrand_func!, integrand_value, integrand_value_prev, cache, integral) = affect!
-    (; dt) = integrator
+    (; integrand_func!, integrand_value, cache, integral) = affect!
+    (; dt, p) = integrator
 
-    copyto!(integrand_value_prev, integrand_value)
-    integrand_func!(integrand_value, integrator.p)
+    # What is a good way to check that this is the first time this
+    # function is called? E.g. that only one timestep has been done?
+    if iszero(integral)
+        integrand_func!(integrand_value, p)
+    end
 
-    cache .= integrand_value_prev
+    cache .= integrand_value
+    integrand_func!(integrand_value, p)
     cache .+= integrand_value
     cache .*= 0.5 * dt
 
@@ -72,7 +69,12 @@ function create_callbacks(
 
     # Save mean flows
     saved_flow = SavedValues(Float64, SavedFlow)
-    save_flow_cb = SavingCallback(save_flow, saved_flow; saveat, save_start = false)
+    save_flow_cb = SavingCallback(
+        save_flow,
+        saved_flow;
+        saveat = (saveat isa Vector) ? filter(x -> x != 0, saveat) : saveat,
+        save_start = false,
+    )
     push!(callbacks, save_flow_cb)
 
     # Integrate vertical basin fluxes for BMI
@@ -455,6 +457,7 @@ function update_basin(integrator)::Nothing
     end
 
     update_vertical_flux!(basin, storage)
+    update_vertical_flux_integrands!(integrator, vertical_flux)
     return nothing
 end
 
