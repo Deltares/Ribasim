@@ -1,10 +1,9 @@
 @testitem "Basin profile validation" begin
-    using Dictionaries: Indices
     using Ribasim: NodeID, valid_profiles, qh_interpolation, ScalarInterpolation
     using Logging
     using StructArrays: StructVector
 
-    node_id = Indices([NodeID(:Basin, 1)])
+    node_id = [NodeID(:Basin, 1)]
     level = [[0.0, 0.0, 1.0]]
     area = [[0.0, 100.0, 90]]
 
