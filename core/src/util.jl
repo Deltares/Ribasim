@@ -89,7 +89,7 @@ end
 Compute the area and level of a basin given its storage.
 Also returns darea/dlevel as it is needed for the Jacobian.
 """
-function get_area_and_level(basin::Basin, state_idx::Int, storage::Real)::Tuple{Real, Real}
+function get_area_and_level(basin::Basin, state_idx::Int, storage::T)::Tuple{T, T} where {T}
     storage_discrete = basin.storage[state_idx]
     area_discrete = basin.area[state_idx]
     level_discrete = basin.level[state_idx]
@@ -98,11 +98,16 @@ function get_area_and_level(basin::Basin, state_idx::Int, storage::Real)::Tuple{
 end
 
 function get_area_and_level(
-    storage_discrete::Vector,
-    area_discrete::Vector,
-    level_discrete::Vector,
-    storage::Real,
-)::Tuple{Real, Real}
+    storage_discrete::AbstractVector,
+    area_discrete::AbstractVector,
+    level_discrete::AbstractVector,
+    storage::T,
+)::Tuple{T, T} where {T}
+
+    # Set type of area and level to prevent runtime dispatch
+    area::T = zero(T)
+    level::T = zero(T)
+
     # storage_idx: smallest index such that storage_discrete[storage_idx] >= storage
     storage_idx = searchsortedfirst(storage_discrete, storage)
 
@@ -110,13 +115,6 @@ function get_area_and_level(
         # This can only happen if the storage is 0
         level = level_discrete[1]
         area = area_discrete[1]
-
-        level_lower = level
-        level_higher = level_discrete[2]
-        area_lower = area
-        area_higher = area_discrete[2]
-
-        darea = (area_higher - area_lower) / (level_higher - level_lower)
 
     elseif storage_idx == length(storage_discrete) + 1
         # With a storage above the profile, use a linear extrapolation of area(level)
@@ -128,20 +126,18 @@ function get_area_and_level(
         storage_lower = storage_discrete[end - 1]
         storage_higher = storage_discrete[end]
 
-        area_diff = area_higher - area_lower
-        level_diff = level_higher - level_lower
+        Δarea = area_higher - area_lower
+        Δlevel = level_higher - level_lower
+        Δstorage = storage_higher - storage_lower
 
-        if area_diff ≈ 0
+        if Δarea ≈ 0.0
             # Constant area means linear interpolation of level
-            darea = 0.0
             area = area_lower
-            level =
-                level_higher +
-                level_diff * (storage - storage_higher) / (storage_higher - storage_lower)
+            level = level_higher + Δlevel * (storage - storage_higher) / Δstorage
         else
-            darea = area_diff / level_diff
+            darea = Δarea / Δlevel
             area = sqrt(area_higher^2 + 2 * (storage - storage_higher) * darea)
-            level = level_lower + level_diff * (area - area_lower) / area_diff
+            level = level_lower + Δlevel * (area - area_lower) / Δarea
         end
 
     else
@@ -152,21 +148,19 @@ function get_area_and_level(
         storage_lower = storage_discrete[storage_idx - 1]
         storage_higher = storage_discrete[storage_idx]
 
-        area_diff = area_higher - area_lower
-        level_diff = level_higher - level_lower
+        Δarea = area_higher - area_lower
+        Δlevel = level_higher - level_lower
+        Δstorage = storage_higher - storage_lower
 
-        if area_diff ≈ 0
+        if Δarea ≈ 0.0
             # Constant area means linear interpolation of level
-            darea = 0.0
             area = area_lower
-            level =
-                level_lower +
-                level_diff * (storage - storage_lower) / (storage_higher - storage_lower)
+            level = level_lower + Δlevel * (storage - storage_lower) / Δstorage
 
         else
-            darea = area_diff / level_diff
+            darea = Δarea / Δlevel
             area = sqrt(area_lower^2 + 2 * (storage - storage_lower) * darea)
-            level = level_lower + level_diff * (area - area_lower) / area_diff
+            level = level_lower + Δlevel * (area - area_lower) / Δarea
         end
     end
 
@@ -201,7 +195,7 @@ function get_scalar_interpolation(
     node_id::NodeID,
     param::Symbol;
     default_value::Float64 = 0.0,
-)::Tuple{LinearInterpolation, Bool}
+)::Tuple{ScalarInterpolation, Bool}
     nodetype = node_id.type
     rows = searchsorted(NodeID.(nodetype, time.node_id), node_id)
     parameter = getfield.(time, param)[rows]
@@ -249,25 +243,20 @@ function scalar_interpolation_derivative(
     end
 end
 
-function qh_interpolation(
-    level::AbstractVector,
-    flow_rate::AbstractVector,
-)::Tuple{LinearInterpolation, Bool}
-    return LinearInterpolation(flow_rate, level; extrapolate = true), allunique(level)
-end
-
 """
 From a table with columns node_id, flow_rate (Q) and level (h),
-create a LinearInterpolation from level to flow rate for a given node_id.
+create a ScalarInterpolation from level to flow rate for a given node_id.
 """
-function qh_interpolation(
-    node_id::NodeID,
-    table::StructVector,
-)::Tuple{LinearInterpolation, Bool}
-    nodetype = node_id.type
-    rowrange = findlastgroup(node_id, NodeID.(nodetype, table.node_id))
-    @assert !isempty(rowrange) "timeseries starts after model start time"
-    return qh_interpolation(table.level[rowrange], table.flow_rate[rowrange])
+function qh_interpolation(node_id::NodeID, table::StructVector)::ScalarInterpolation
+    rowrange = findlastgroup(node_id, NodeID.(node_id.type, table.node_id))
+    level = table.level[rowrange]
+    flow_rate = table.flow_rate[rowrange]
+
+    # Ensure that that Q stays 0 below the first level
+    pushfirst!(level, first(level) - 1)
+    pushfirst!(flow_rate, first(flow_rate))
+
+    return LinearInterpolation(flow_rate, level; extrapolate = true)
 end
 
 """
@@ -369,20 +358,23 @@ storage: tells ForwardDiff whether this call is for differentiation or not
 """
 function get_level(
     p::Parameters,
+    edge_metadata::EdgeMetadata,
     node_id::NodeID,
     t::Number;
     storage::Union{AbstractArray, Number} = 0,
-)::Union{Real, Nothing}
+)::Tuple{Bool, Number}
     (; basin, level_boundary) = p
     if node_id.type == NodeType.Basin
-        _, i = id_index(basin.node_id, node_id)
+        # The edge metadata is only used to obtain the Basin index
+        # in case node_id is for a Basin
+        i = get_basin_idx(edge_metadata, node_id)
         current_level = get_tmp(basin.current_level, storage)
-        current_level[i]
+        return true, current_level[i]
     elseif node_id.type == NodeType.LevelBoundary
         i = findsorted(level_boundary.node_id, node_id)
-        level_boundary.level[i](t)
+        return true, level_boundary.level[i](t)
     else
-        nothing
+        return false, 0.0
     end
 end
 
@@ -395,15 +387,15 @@ function id_index(ids::Indices{NodeID}, id::NodeID)::Tuple{Bool, Int}
 end
 
 "Return the bottom elevation of the basin with index i, or nothing if it doesn't exist"
-function basin_bottom(basin::Basin, node_id::NodeID)::Union{Float64, Nothing}
+function basin_bottom(basin::Basin, node_id::NodeID)::Tuple{Bool, Float64}
     hasindex, i = id_index(basin.node_id, node_id)
     return if hasindex
         # get level(storage) interpolation function
         level_discrete = basin.level[i]
         # and return the first level in this vector, representing the bottom
-        first(level_discrete)
+        return true, first(level_discrete)
     else
-        nothing
+        return false, 0.0
     end
 end
 
@@ -460,12 +452,6 @@ function expand_logic_mapping(
     end
     return logic_mapping_expanded
 end
-
-"""Get all node fieldnames of the parameter object."""
-nodefields(p::Parameters) = (
-    name for
-    name in fieldnames(typeof(p)) if fieldtype(typeof(p), name) <: AbstractParameterNode
-)
 
 """
 Get the node type specific indices of the fractional flows and basins,
@@ -551,13 +537,13 @@ end
 "If id is a Basin with storage below the threshold, return a reduction factor != 1"
 function low_storage_factor(
     storage::AbstractVector{T},
-    basin_ids::Indices{NodeID},
+    edge_metadata::EdgeMetadata,
     id::NodeID,
     threshold::Real,
 )::T where {T <: Real}
-    hasindex, basin_idx = id_index(basin_ids, id)
-    return if hasindex
-        reduction_factor(storage[basin_idx], threshold)
+    if id.type == NodeType.Basin
+        i = get_basin_idx(edge_metadata, id)
+        reduction_factor(storage[i], threshold)
     else
         one(T)
     end
@@ -736,3 +722,31 @@ has_fractional_flow_outneighbors(graph::MetaGraph, node_id::NodeID)::Bool = any(
     outneighbor_id.type == NodeType.FractionalFlow for
     outneighbor_id in outflow_ids(graph, node_id)
 )
+
+inflow_edge(graph, node_id)::EdgeMetadata = graph[inflow_id(graph, node_id), node_id]
+outflow_edge(graph, node_id)::EdgeMetadata = graph[node_id, outflow_id(graph, node_id)]
+outflow_edges(graph, node_id)::Vector{EdgeMetadata} =
+    [graph[node_id, outflow_id] for outflow_id in outflow_ids(graph, node_id)]
+
+function set_basin_idxs!(graph::MetaGraph, basin::Basin)::Nothing
+    for (edge, edge_metadata) in graph.edge_data
+        id_src, id_dst = edge
+        edge_metadata =
+            @set edge_metadata.basin_idx_src = id_index(basin.node_id, id_src)[2]
+        edge_metadata =
+            @set edge_metadata.basin_idx_dst = id_index(basin.node_id, id_dst)[2]
+        graph[edge...] = edge_metadata
+    end
+    return nothing
+end
+
+function get_basin_idx(edge_metadata::EdgeMetadata, id::NodeID)::Int32
+    (; edge) = edge_metadata
+    return if edge[1] == id
+        edge_metadata.basin_idx_src
+    elseif edge[2] == id
+        edge_metadata.basin_idx_dst
+    else
+        0
+    end
+end

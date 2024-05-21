@@ -1,7 +1,6 @@
 from typing import Any
 
-import pandas as pd
-from ribasim.config import Node
+from ribasim.config import Node, Solver
 from ribasim.input_base import TableModel
 from ribasim.model import Model
 from ribasim.nodes import (
@@ -16,6 +15,12 @@ from shapely.geometry import Point
 
 
 def invalid_qh_model() -> Model:
+    """
+    Invalid TabulatedRatingCurve Q(h) table:
+    - levels must be unique
+    - flow_rate must start at 0
+    - flow_rate must not be decreasing
+    """
     model = Model(
         starttime="2020-01-01",
         endtime="2020-12-01",
@@ -24,29 +29,7 @@ def invalid_qh_model() -> Model:
 
     model.tabulated_rating_curve.add(
         Node(1, Point(0, 0)),
-        # Invalid: levels must not be repeated
-        [tabulated_rating_curve.Static(level=[0, 0], flow_rate=[1, 2])],
-    )
-    model.tabulated_rating_curve.add(
-        Node(2, Point(0, 1)),
-        [
-            tabulated_rating_curve.Time(
-                time=[
-                    pd.Timestamp("2020-01-01"),
-                    pd.Timestamp("2020-01-01"),
-                ],
-                # Invalid: levels must not be repeated
-                level=[0, 0],
-                flow_rate=[1, 2],
-            )
-        ],
-    )
-    model.basin.add(
-        Node(3, Point(0, 2)),
-        [
-            basin.State(level=[1.4112729908597084]),
-            basin.Profile(area=[0.01, 1], level=[0, 1]),
-        ],
+        [tabulated_rating_curve.Static(level=[0, 0, 1], flow_rate=[1, 2, 1.5])],
     )
 
     return model
@@ -111,6 +94,10 @@ def invalid_fractional_flow_model() -> Model:
     model.edge.add(
         model.basin[2],
         model.fractional_flow[8],
+    )
+    model.edge.add(
+        model.fractional_flow[8],
+        model.terminal[5],
     )
 
     return model
@@ -218,4 +205,30 @@ def invalid_edge_types_model() -> Model:
     assert model.edge.df is not None
     model.edge.df["edge_type"] = ["foo", "bar"]
 
+    return model
+
+
+def invalid_unstable_model() -> Model:
+    """Model with several extremely quickly emptying basins."""
+
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2021-01-01",
+        crs="EPSG:28992",
+        solver=Solver(dtmin=60.0),
+    )
+    id_shift = 10
+    for i in range(6):
+        model.basin.add(
+            Node(1 + id_shift * i, Point(i, 0)),
+            [basin.Profile(area=1000.0, level=[0.0, 1.0]), basin.State(level=[1.0])],
+        )
+        flow_rate = 1.0 if (i % 2 == 0) else 1e10
+        model.pump.add(
+            Node(2 + id_shift * i, Point(i, 1)), [pump.Static(flow_rate=[flow_rate])]
+        )
+        model.terminal.add(Node(3 + id_shift * i, Point(i, 2)))
+
+        model.edge.add(model.basin[1 + id_shift * i], model.pump[2 + id_shift * i])
+        model.edge.add(model.pump[2 + id_shift * i], model.terminal[3 + id_shift * i])
     return model

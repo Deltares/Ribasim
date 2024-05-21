@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<build-type xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" uuid="3da7414a-6ac5-41db-b5bc-d2a8bb887362" xsi:noNamespaceSchemaLocation="https://www.jetbrains.com/teamcity/schemas/2021.1/project-config.xsd">
+  <name>Test Delwaq coupling</name>
+  <description />
+  <settings ref="Ribasim_Windows">
+    <options>
+      <option name="artifactRules" value="ribasim/coupling/delwaq/model" />
+    </options>
+    <parameters />
+    <build-runners>
+      <runner id="Set_up_pixi" name="Set up pixi" type="simpleRunner">
+        <parameters>
+          <param name="script.content" value="pixi --version" />
+          <param name="teamcity.build.workingDir" value="ribasim" />
+          <param name="teamcity.step.mode" value="default" />
+          <param name="use.custom.script" value="true" />
+        </parameters>
+      </runner>
+      <runner id="Run_Delwaq" name="Run Delwaq" type="simpleRunner">
+        <parameters>
+          <param name="script.content"><![CDATA[pixi install
+pixi run ribasim-core-testmodels basic
+set D3D_HOME=%teamcity.build.checkoutDir%/dimr
+pixi run delwaq]]></param>
+          <param name="teamcity.build.workingDir" value="ribasim" />
+          <param name="teamcity.step.mode" value="default" />
+          <param name="use.custom.script" value="true" />
+        </parameters>
+      </runner>
+    </build-runners>
+    <vcs-settings>
+      <vcs-entry-ref root-id="Ribasim_Ribasim">
+        <checkout-rule rule=". =&gt; ribasim" />
+      </vcs-entry-ref>
+    </vcs-settings>
+    <requirements />
+    <build-triggers>
+      <build-trigger id="TRIGGER_304" type="vcsTrigger">
+        <parameters>
+          <param name="branchFilter" value="+:*" />
+          <param name="enableQueueOptimization" value="true" />
+          <param name="quietPeriodMode" value="DO_NOT_USE" />
+          <param name="triggerRules" value="+:coupling/delwaq/**" />
+        </parameters>
+      </build-trigger>
+    </build-triggers>
+    <build-extensions>
+      <extension id="BUILD_EXT_417" type="commit-status-publisher">
+        <parameters>
+          <param name="github_authentication_type" value="token" />
+          <param name="github_host" value="https://api.github.com" />
+          <param name="publisherId" value="githubStatusPublisher" />
+          <param name="secure:github_access_token" value="credentialsJSON:abf605ce-e382-4b10-b5de-8a7640dc58d9" />
+          <param name="vcsRootId" value="Ribasim_Ribasim" />
+        </parameters>
+      </extension>
+    </build-extensions>
+    <artifact-dependencies>
+      <dependency id="ARTIFACT_DEPENDENCY_4206" sourceBuildTypeId="Dimr_DimrCollectors_2bDimrCollectorReleaseSigned" cleanDestination="false">
+        <revisionRule name="lastPinned" revision="latest.lastPinned" />
+        <artifact sourcePath="dimrset_x64_signed_272.zip!/x64 =&gt; dimr" />
+      </dependency>
+    </artifact-dependencies>
+    <cleanup />
+  </settings>
+</build-type>
+

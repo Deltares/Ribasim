@@ -246,8 +246,8 @@ function LinearResistance(db::DB, config::Config, graph::MetaGraph)::LinearResis
 
     return LinearResistance(
         node_id,
-        inflow_id.(Ref(graph), node_id),
-        outflow_id.(Ref(graph), node_id),
+        inflow_edge.(Ref(graph), node_id),
+        outflow_edge.(Ref(graph), node_id),
         BitVector(parsed_parameters.active),
         parsed_parameters.resistance,
         parsed_parameters.max_flow_rate,
@@ -255,7 +255,11 @@ function LinearResistance(db::DB, config::Config, graph::MetaGraph)::LinearResis
     )
 end
 
-function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
+function TabulatedRatingCurve(
+    db::DB,
+    config::Config,
+    graph::MetaGraph,
+)::TabulatedRatingCurve
     static = load_structvector(db, config, TabulatedRatingCurveStaticV1)
     time = load_structvector(db, config, TabulatedRatingCurveTimeV1)
 
@@ -290,7 +294,11 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
                 IterTools.groupby(row -> coalesce(row.control_state, nothing), static_id)
                 control_state = first(group).control_state
                 is_active = coalesce(first(group).active, true)
-                interpolation, is_valid = qh_interpolation(node_id, StructVector(group))
+                table = StructVector(group)
+                if !valid_tabulated_rating_curve(node_id, table)
+                    errors = true
+                end
+                interpolation = qh_interpolation(node_id, table)
                 if !ismissing(control_state)
                     control_mapping[(
                         NodeID(NodeType.TabulatedRatingCurve, node_id),
@@ -305,15 +313,14 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
             # get the timestamp that applies to the model starttime
             idx_starttime = searchsortedlast(time.time, config.starttime)
             pre_table = view(time, 1:idx_starttime)
-            interpolation, is_valid = qh_interpolation(node_id, pre_table)
+            if !valid_tabulated_rating_curve(node_id, pre_table)
+                errors = true
+            end
+            interpolation = qh_interpolation(node_id, pre_table)
             push!(interpolations, interpolation)
             push!(active, true)
         else
             @error "$node_id data not in any table."
-            errors = true
-        end
-        if !is_valid
-            @error "A Q(h) relationship for $node_id from the $source table has repeated levels, this can not be interpolated."
             errors = true
         end
     end
@@ -322,10 +329,23 @@ function TabulatedRatingCurve(db::DB, config::Config)::TabulatedRatingCurve
         error("Errors occurred when parsing TabulatedRatingCurve data.")
     end
 
-    return TabulatedRatingCurve(node_ids, active, interpolations, time, control_mapping)
+    return TabulatedRatingCurve(
+        node_ids,
+        inflow_edge.(Ref(graph), node_ids),
+        outflow_edges.(Ref(graph), node_ids),
+        active,
+        interpolations,
+        time,
+        control_mapping,
+    )
 end
 
-function ManningResistance(db::DB, config::Config, graph::MetaGraph)::ManningResistance
+function ManningResistance(
+    db::DB,
+    config::Config,
+    graph::MetaGraph,
+    basin::Basin,
+)::ManningResistance
     static = load_structvector(db, config, ManningResistanceStaticV1)
     parsed_parameters, valid =
         parse_static_and_time(db, config, "ManningResistance"; static)
@@ -335,21 +355,25 @@ function ManningResistance(db::DB, config::Config, graph::MetaGraph)::ManningRes
     end
 
     node_id = NodeID.(NodeType.ManningResistance, parsed_parameters.node_id)
+    upstream_bottom = basin_bottom.(Ref(basin), inflow_id.(Ref(graph), node_id))
+    downstream_bottom = basin_bottom.(Ref(basin), outflow_id.(Ref(graph), node_id))
 
     return ManningResistance(
         node_id,
-        inflow_id.(Ref(graph), node_id),
-        outflow_id.(Ref(graph), node_id),
+        inflow_edge.(Ref(graph), node_id),
+        outflow_edge.(Ref(graph), node_id),
         BitVector(parsed_parameters.active),
         parsed_parameters.length,
         parsed_parameters.manning_n,
         parsed_parameters.profile_width,
         parsed_parameters.profile_slope,
+        [bottom[2] for bottom in upstream_bottom],
+        [bottom[2] for bottom in downstream_bottom],
         parsed_parameters.control_mapping,
     )
 end
 
-function FractionalFlow(db::DB, config::Config)::FractionalFlow
+function FractionalFlow(db::DB, config::Config, graph::MetaGraph)::FractionalFlow
     static = load_structvector(db, config, FractionalFlowStaticV1)
     parsed_parameters, valid = parse_static_and_time(db, config, "FractionalFlow"; static)
 
@@ -357,8 +381,12 @@ function FractionalFlow(db::DB, config::Config)::FractionalFlow
         error("Errors occurred when parsing FractionalFlow data.")
     end
 
+    node_id = NodeID.(NodeType.FractionalFlow, parsed_parameters.node_id)
+
     return FractionalFlow(
-        NodeID.(NodeType.FractionalFlow, parsed_parameters.node_id),
+        node_id,
+        inflow_edge.(Ref(graph), node_id),
+        outflow_edge.(Ref(graph), node_id),
         parsed_parameters.fraction,
         parsed_parameters.control_mapping,
     )
@@ -427,7 +455,7 @@ function FlowBoundary(db::DB, config::Config)::FlowBoundary
     return FlowBoundary(node_ids, parsed_parameters.active, parsed_parameters.flow_rate)
 end
 
-function Pump(db::DB, config::Config, chunk_sizes::Vector{Int})::Pump
+function Pump(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{Int})::Pump
     static = load_structvector(db, config, PumpStaticV1)
     defaults = (; min_flow_rate = 0.0, max_flow_rate = Inf, active = true)
     parsed_parameters, valid = parse_static_and_time(db, config, "Pump"; static, defaults)
@@ -444,8 +472,12 @@ function Pump(db::DB, config::Config, chunk_sizes::Vector{Int})::Pump
         parsed_parameters.flow_rate
     end
 
+    node_id = NodeID.(NodeType.Pump, parsed_parameters.node_id)
+
     return Pump(
-        NodeID.(NodeType.Pump, parsed_parameters.node_id),
+        node_id,
+        inflow_edge.(Ref(graph), node_id),
+        outflow_edges.(Ref(graph), node_id),
         BitVector(parsed_parameters.active),
         flow_rate,
         parsed_parameters.min_flow_rate,
@@ -455,7 +487,7 @@ function Pump(db::DB, config::Config, chunk_sizes::Vector{Int})::Pump
     )
 end
 
-function Outlet(db::DB, config::Config, chunk_sizes::Vector{Int})::Outlet
+function Outlet(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{Int})::Outlet
     static = load_structvector(db, config, OutletStaticV1)
     defaults =
         (; min_flow_rate = 0.0, max_flow_rate = Inf, min_crest_level = -Inf, active = true)
@@ -473,8 +505,12 @@ function Outlet(db::DB, config::Config, chunk_sizes::Vector{Int})::Outlet
         parsed_parameters.flow_rate
     end
 
+    node_id = NodeID.(NodeType.Outlet, parsed_parameters.node_id)
+
     return Outlet(
-        NodeID.(NodeType.Outlet, parsed_parameters.node_id),
+        node_id,
+        inflow_edge.(Ref(graph), node_id),
+        outflow_edges.(Ref(graph), node_id),
         BitVector(parsed_parameters.active),
         flow_rate,
         parsed_parameters.min_flow_rate,
@@ -806,7 +842,7 @@ function user_demand_time!(
     return errors
 end
 
-function UserDemand(db::DB, config::Config)::UserDemand
+function UserDemand(db::DB, config::Config, graph::MetaGraph)::UserDemand
     static = load_structvector(db, config, UserDemandStaticV1)
     time = load_structvector(db, config, UserDemandTimeV1)
 
@@ -865,6 +901,8 @@ function UserDemand(db::DB, config::Config)::UserDemand
 
     return UserDemand(
         node_ids,
+        inflow_edge.(Ref(graph), node_ids),
+        outflow_edge.(Ref(graph), node_ids),
         active,
         realized_bmi,
         demand,
@@ -935,7 +973,8 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
     node_to_basin = Dict(node_id => index for (index, node_id) in enumerate(basin.node_id))
     tables = load_structvector(db, config, BasinSubgridV1)
 
-    basin_ids = Int32[]
+    subgrid_ids = Int32[]
+    basin_index = Int32[]
     interpolations = ScalarInterpolation[]
     has_error = false
     for group in IterTools.groupby(row -> row.subgrid_id, tables)
@@ -952,7 +991,8 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
             pushfirst!(subgrid_level, first(subgrid_level))
             pushfirst!(basin_level, nextfloat(-Inf))
             new_interp = LinearInterpolation(subgrid_level, basin_level; extrapolate = true)
-            push!(basin_ids, node_to_basin[node_id])
+            push!(subgrid_ids, subgrid_id)
+            push!(basin_index, node_to_basin[node_id])
             push!(interpolations, new_interp)
         else
             has_error = true
@@ -960,8 +1000,9 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
     end
 
     has_error && error("Invalid Basin / subgrid table.")
+    level = fill(NaN, length(subgrid_ids))
 
-    return Subgrid(basin_ids, interpolations, fill(NaN, length(basin_ids)))
+    return Subgrid(subgrid_ids, basin_index, interpolations, level)
 end
 
 function Allocation(db::DB, config::Config, graph::MetaGraph)::Allocation
@@ -1041,23 +1082,28 @@ function Parameters(db::DB, config::Config)::Parameters
     if !valid_edges(graph)
         error("Invalid edge(s) found.")
     end
+    if !valid_n_neighbors(graph)
+        error("Invalid number of connections for certain node types.")
+    end
+
+    basin = Basin(db, config, graph, chunk_sizes)
+    set_basin_idxs!(graph, basin)
 
     linear_resistance = LinearResistance(db, config, graph)
-    manning_resistance = ManningResistance(db, config, graph)
-    tabulated_rating_curve = TabulatedRatingCurve(db, config)
-    fractional_flow = FractionalFlow(db, config)
+    manning_resistance = ManningResistance(db, config, graph, basin)
+    tabulated_rating_curve = TabulatedRatingCurve(db, config, graph)
+    fractional_flow = FractionalFlow(db, config, graph)
     level_boundary = LevelBoundary(db, config)
     flow_boundary = FlowBoundary(db, config)
-    pump = Pump(db, config, chunk_sizes)
-    outlet = Outlet(db, config, chunk_sizes)
+    pump = Pump(db, config, graph, chunk_sizes)
+    outlet = Outlet(db, config, graph, chunk_sizes)
     terminal = Terminal(db, config)
     discrete_control = DiscreteControl(db, config)
     pid_control = PidControl(db, config, chunk_sizes)
-    user_demand = UserDemand(db, config)
+    user_demand = UserDemand(db, config, graph)
     level_demand = LevelDemand(db, config)
     flow_demand = FlowDemand(db, config)
 
-    basin = Basin(db, config, graph, chunk_sizes)
     subgrid_level = Subgrid(db, config, basin)
 
     p = Parameters(
@@ -1083,10 +1129,6 @@ function Parameters(db::DB, config::Config)::Parameters
     )
 
     set_is_pid_controlled!(p)
-
-    if !valid_n_neighbors(p)
-        error("Invalid number of connections for certain node types.")
-    end
 
     # Allocation data structures
     if config.allocation.use_allocation

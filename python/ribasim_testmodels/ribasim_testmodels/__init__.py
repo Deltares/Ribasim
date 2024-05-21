@@ -49,6 +49,7 @@ from ribasim_testmodels.invalid import (
     invalid_edge_types_model,
     invalid_fractional_flow_model,
     invalid_qh_model,
+    invalid_unstable_model,
 )
 from ribasim_testmodels.pid_control import (
     discrete_control_of_pid_control_model,
@@ -76,6 +77,7 @@ __all__ = [
     "invalid_edge_types_model",
     "invalid_fractional_flow_model",
     "invalid_qh_model",
+    "invalid_unstable_model",
     "leaky_bucket_model",
     "level_boundary_condition_model",
     "level_demand_model",

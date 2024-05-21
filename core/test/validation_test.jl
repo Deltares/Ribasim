@@ -1,8 +1,8 @@
 @testitem "Basin profile validation" begin
     using Dictionaries: Indices
-    using Ribasim: NodeID, valid_profiles, qh_interpolation
-    using DataInterpolations: LinearInterpolation
+    using Ribasim: NodeID, valid_profiles, qh_interpolation, ScalarInterpolation
     using Logging
+    using StructArrays: StructVector
 
     node_id = Indices([NodeID(:Basin, 1)])
     level = [[0.0, 0.0, 1.0]]
@@ -25,12 +25,15 @@
     @test logger.logs[3].message ==
           "Basin #1 profile cannot have decreasing area at the top since extrapolating could lead to negative areas."
 
-    itp, valid = qh_interpolation([0.0, 0.0], [1.0, 2.0])
-    @test !valid
-    @test itp isa LinearInterpolation
-    itp, valid = qh_interpolation([0.0, 0.1], [1.0, 2.0])
-    @test valid
-    @test itp isa LinearInterpolation
+    table = StructVector(; flow_rate = [0.0, 0.1], level = [1.0, 2.0], node_id = [5, 5])
+    itp = qh_interpolation(NodeID(:TabulatedRatingCurve, 5), table)
+    # constant extrapolation at the bottom end, linear extrapolation at the top end
+    itp(0.0) ≈ 0.0
+    itp(1.0) ≈ 0.0
+    itp(1.5) ≈ 0.05
+    itp(2.0) ≈ 0.1
+    itp(3.0) ≈ 0.2
+    @test itp isa ScalarInterpolation
 end
 
 @testitem "Q(h) validation" begin
@@ -43,21 +46,26 @@ end
     config = Ribasim.Config(toml_path)
     db_path = Ribasim.input_path(config, config.database)
     db = SQLite.DB(db_path)
+    graph = Ribasim.create_graph(db, config, [1])
 
     logger = TestLogger()
     with_logger(logger) do
         @test_throws "Errors occurred when parsing TabulatedRatingCurve data." Ribasim.TabulatedRatingCurve(
             db,
             config,
+            graph,
         )
     end
-    @test length(logger.logs) == 2
+    close(db)
+
+    @test length(logger.logs) == 3
     @test logger.logs[1].level == Error
-    @test logger.logs[1].message ==
-          "A Q(h) relationship for TabulatedRatingCurve #1 from the static table has repeated levels, this can not be interpolated."
+    @test logger.logs[1].message == "The `flow_rate` must start at 0."
     @test logger.logs[2].level == Error
-    @test logger.logs[2].message ==
-          "A Q(h) relationship for TabulatedRatingCurve #2 from the time table has repeated levels, this can not be interpolated."
+    @test logger.logs[2].message == "The `level` cannot be repeated."
+    @test logger.logs[3].level == Error
+    @test logger.logs[3].message ==
+          "The `flow_rate` cannot decrease with increasing `level`."
 end
 
 @testitem "Neighbor count validation" begin
@@ -82,7 +90,7 @@ end
     graph[NodeID(:Pump, 6)] = NodeMetadata(:pump, 9)
 
     function set_edge_metadata!(id_1, id_2, edge_type)
-        graph[id_1, id_2] = EdgeMetadata(0, edge_type, 0, (id_1, id_2))
+        graph[id_1, id_2] = EdgeMetadata(0, 0, edge_type, 0, (id_1, id_2), -1, -1)
         return nothing
     end
 
@@ -91,19 +99,9 @@ end
     set_edge_metadata!(NodeID(:Pump, 6), NodeID(:Basin, 2), EdgeType.flow)
     set_edge_metadata!(NodeID(:FractionalFlow, 5), NodeID(:Pump, 6), EdgeType.control)
 
-    pump = Ribasim.Pump(
-        NodeID.(:Pump, [1, 6]),
-        [true, true],
-        [0.0, 0.0],
-        [0.0, 0.0],
-        [1.0, 1.0],
-        Dict{Tuple{NodeID, String}, NamedTuple}(),
-        falses(2),
-    )
-
     logger = TestLogger()
     with_logger(logger) do
-        @test !Ribasim.valid_n_neighbors(pump, graph)
+        @test !Ribasim.valid_n_neighbors(:Pump, graph)
     end
 
     @test length(logger.logs) == 3
@@ -120,15 +118,9 @@ end
     set_edge_metadata!(NodeID(:FractionalFlow, 5), NodeID(:Basin, 3), EdgeType.flow)
     set_edge_metadata!(NodeID(:FractionalFlow, 5), NodeID(:Basin, 4), EdgeType.flow)
 
-    fractional_flow = Ribasim.FractionalFlow(
-        [NodeID(:FractionalFlow, 5)],
-        [1.0],
-        Dict{Tuple{NodeID, String}, NamedTuple}(),
-    )
-
     logger = TestLogger(; min_level = Debug)
     with_logger(logger) do
-        @test !Ribasim.valid_n_neighbors(fractional_flow, graph)
+        @test !Ribasim.valid_n_neighbors(:FractionalFlow, graph)
     end
 
     @test length(logger.logs) == 2
@@ -175,7 +167,7 @@ end
     graph[NodeID(:Basin, 7)] = NodeMetadata(:basin, 0)
 
     function set_edge_metadata!(id_1, id_2, edge_type)
-        graph[id_1, id_2] = EdgeMetadata(0, edge_type, 0, (id_1, id_2))
+        graph[id_1, id_2] = EdgeMetadata(0, 0, edge_type, 0, (id_1, id_2), -1, -1)
         return nothing
     end
 
@@ -224,7 +216,7 @@ end
     db_path = Ribasim.input_path(config, config.database)
     db = SQLite.DB(db_path)
     graph = Ribasim.create_graph(db, config, [1, 1])
-    fractional_flow = Ribasim.FractionalFlow(db, config)
+    fractional_flow = Ribasim.FractionalFlow(db, config, graph)
 
     logger = TestLogger()
     with_logger(logger) do
@@ -305,6 +297,8 @@ end
     with_logger(logger) do
         @test_throws "Invalid Outlet flow rate(s)." Ribasim.Outlet(
             [NodeID(:Outlet, 1)],
+            NodeID[],
+            [NodeID[]],
             [true],
             [-1.0],
             [NaN],
@@ -324,6 +318,8 @@ end
     with_logger(logger) do
         @test_throws "Invalid Pump flow rate(s)." Ribasim.Pump(
             [NodeID(:Pump, 1)],
+            NodeID[],
+            [NodeID[]],
             [true],
             [-1.0],
             [NaN],
@@ -420,6 +416,8 @@ end
     with_logger(logger) do
         @test_throws "Invalid demand" Ribasim.UserDemand(
             [NodeID(:UserDemand, 1)],
+            NodeID[],
+            NodeID[],
             [true],
             [0.0],
             [0.0],
@@ -457,4 +455,41 @@ end
         model,
         dt,
     )
+end
+
+@testitem "basin indices" begin
+    using Ribasim: NodeType
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
+    @test ispath(toml_path)
+
+    model = Ribasim.Model(toml_path)
+    (; graph, basin) = model.integrator.p
+    for edge_metadata in values(graph.edge_data)
+        (; edge, basin_idx_src, basin_idx_dst) = edge_metadata
+        id_src, id_dst = edge
+        if id_src.type == NodeType.Basin
+            @test id_src == basin.node_id.values[basin_idx_src]
+        elseif id_dst.type == NodeType.Basin
+            @test id_dst == basin.node_id.values[basin_idx_dst]
+        end
+    end
+end
+
+@testitem "Convergence bottleneck" begin
+    using IOCapture: capture
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/invalid_unstable/ribasim.toml")
+    @test ispath(toml_path)
+    (; output) = capture() do
+        Ribasim.main(toml_path)
+    end
+    output = split(output, "\n")[(end - 4):end]
+    @test startswith(
+        output[1],
+        "The following basins were identified as convergence bottlenecks",
+    )
+    @test startswith(output[2], "Basin #11")
+    @test startswith(output[3], "Basin #31")
+    @test startswith(output[4], "Basin #51")
 end

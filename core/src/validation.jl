@@ -99,6 +99,7 @@ sort_by_id(row) = row.node_id
 sort_by_time_id(row) = (row.time, row.node_id)
 sort_by_id_level(row) = (row.node_id, row.level)
 sort_by_id_state_level(row) = (row.node_id, row.control_state, row.level)
+sort_by_time_id_level(row) = (row.time, row.node_id, row.level)
 sort_by_priority(row) = (row.node_id, row.priority)
 sort_by_priority_time(row) = (row.node_id, row.priority, row.time)
 sort_by_subgrid_level(row) = (row.subgrid_id, row.basin_level)
@@ -109,6 +110,7 @@ sort_by_condition(row) = (row.node_id, row.compound_variable_id, row.greater_tha
 # get the right sort by function given the Schema, with sort_by_id as the default
 sort_by_function(table::StructVector{<:Legolas.AbstractRecord}) = sort_by_id
 sort_by_function(table::StructVector{TabulatedRatingCurveStaticV1}) = sort_by_id_state_level
+sort_by_function(table::StructVector{TabulatedRatingCurveTimeV1}) = sort_by_time_id_level
 sort_by_function(table::StructVector{BasinProfileV1}) = sort_by_id_level
 sort_by_function(table::StructVector{UserDemandStaticV1}) = sort_by_priority
 sort_by_function(table::StructVector{UserDemandTimeV1}) = sort_by_priority_time
@@ -122,10 +124,8 @@ const TimeSchemas = Union{
     FlowDemandTimeV1,
     LevelBoundaryTimeV1,
     PidControlTimeV1,
-    TabulatedRatingCurveTimeV1,
     UserDemandTimeV1,
 }
-
 function sort_by_function(table::StructVector{<:TimeSchemas})
     return sort_by_time_id
 end
@@ -384,9 +384,7 @@ end
 
 function valid_demand(
     node_id::Vector{NodeID},
-    demand_itp::Vector{
-        Vector{LinearInterpolation{Vector{Float64}, Vector{Float64}, true, Float64}},
-    },
+    demand_itp::Vector{Vector{ScalarInterpolation}},
     priorities::Vector{Int32},
 )::Bool
     errors = false
@@ -399,6 +397,37 @@ function valid_demand(
             end
         end
     end
+    return !errors
+end
+
+function valid_tabulated_rating_curve(node_id::NodeID, table::StructVector)::Bool
+    errors = false
+
+    rowrange = findlastgroup(node_id, NodeID.(node_id.type, table.node_id))
+    level = table.level[rowrange]
+    flow_rate = table.flow_rate[rowrange]
+
+    n = length(level)
+    if n < 2
+        @error "At least two datapoints are needed." node_id n
+        errors = true
+    end
+    Q0 = first(flow_rate)
+    if Q0 != 0.0
+        @error "The `flow_rate` must start at 0." node_id flow_rate = Q0
+        errors = true
+    end
+
+    if !allunique(level)
+        @error "The `level` cannot be repeated." node_id
+        errors = true
+    end
+
+    if any(diff(flow_rate) .< 0.0)
+        @error "The `flow_rate` cannot decrease with increasing `level`." node_id
+        errors = true
+    end
+
     return !errors
 end
 
@@ -429,50 +458,49 @@ end
 Test for each node given its node type whether it has an allowed
 number of flow/control inneighbors and outneighbors
 """
-function valid_n_neighbors(p::Parameters)::Bool
-    (; graph) = p
-
+function valid_n_neighbors(graph::MetaGraph)::Bool
     errors = false
 
-    for nodefield in nodefields(p)
-        errors |= !valid_n_neighbors(getfield(p, nodefield), graph)
+    for nodetype in nodetypes
+        errors |= !valid_n_neighbors(nodetype, graph)
     end
 
     return !errors
 end
 
-function valid_n_neighbors(node::AbstractParameterNode, graph::MetaGraph)::Bool
-    node_type = typeof(node)
-    node_name = nameof(node_type)
-
+function valid_n_neighbors(node_name::Symbol, graph::MetaGraph)::Bool
+    node_type = NodeType.T(node_name)
     bounds_flow = n_neighbor_bounds_flow(node_name)
     bounds_control = n_neighbor_bounds_control(node_name)
 
     errors = false
-
-    for id in node.node_id
+    # return !errors
+    for node_id in labels(graph)
+        node_id.type == node_type || continue
         for (bounds, edge_type) in
             zip((bounds_flow, bounds_control), (EdgeType.flow, EdgeType.control))
-            n_inneighbors = count(x -> true, inneighbor_labels_type(graph, id, edge_type))
-            n_outneighbors = count(x -> true, outneighbor_labels_type(graph, id, edge_type))
+            n_inneighbors =
+                count(x -> true, inneighbor_labels_type(graph, node_id, edge_type))
+            n_outneighbors =
+                count(x -> true, outneighbor_labels_type(graph, node_id, edge_type))
 
             if n_inneighbors < bounds.in_min
-                @error "$id must have at least $(bounds.in_min) $edge_type inneighbor(s) (got $n_inneighbors)."
+                @error "$node_id must have at least $(bounds.in_min) $edge_type inneighbor(s) (got $n_inneighbors)."
                 errors = true
             end
 
             if n_inneighbors > bounds.in_max
-                @error "$id can have at most $(bounds.in_max) $edge_type inneighbor(s) (got $n_inneighbors)."
+                @error "$node_id can have at most $(bounds.in_max) $edge_type inneighbor(s) (got $n_inneighbors)."
                 errors = true
             end
 
             if n_outneighbors < bounds.out_min
-                @error "$id must have at least $(bounds.out_min) $edge_type outneighbor(s) (got $n_outneighbors)."
+                @error "$node_id must have at least $(bounds.out_min) $edge_type outneighbor(s) (got $n_outneighbors)."
                 errors = true
             end
 
             if n_outneighbors > bounds.out_max
-                @error "$id can have at most $(bounds.out_max) $edge_type outneighbor(s) (got $n_outneighbors)."
+                @error "$node_id can have at most $(bounds.out_max) $edge_type outneighbor(s) (got $n_outneighbors)."
                 errors = true
             end
         end

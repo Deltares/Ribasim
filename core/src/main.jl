@@ -46,6 +46,30 @@ function main(toml_path::AbstractString)::Cint
                 t = datetime_since(model.integrator.t, starttime)
                 retcode = model.integrator.sol.retcode
                 @error "The model exited at model time $t with return code $retcode.\nSee https://docs.sciml.ai/DiffEqDocs/stable/basics/solution/#retcodes"
+
+                (; cache, p, u) = model.integrator
+                (; basin) = p
+                # Indicate convergence bottlenecks if possible with the current algorithm
+                if hasproperty(cache, :nlsolver)
+                    storage_error = @. abs(cache.nlsolver.cache.atmp.storage / u.storage)
+                    perm = sortperm(storage_error; rev = true)
+                    println(
+                        "The following basins were identified as convergence bottlenecks (in descending order of severity):",
+                    )
+                    for i in perm
+                        node_id = basin.node_id.values[i]
+                        error = storage_error[i]
+                        if error < config.solver.reltol
+                            break
+                        end
+                        println("$node_id, error = $error")
+                    end
+                else
+                    algorithm = model.config.solver_algorithm
+                    println(
+                        "The current algorithm ($algorithm) does not support indicating convergence bottlenecks, for that try a different one.",
+                    )
+                end
                 return 1
             end
         end

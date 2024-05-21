@@ -1,6 +1,6 @@
 [project]
 name = "Ribasim"
-version = "2024.7.0"
+version = "2024.8.0"
 description = "Water resources modeling"
 authors = ["Deltares and contributors <ribasim.info@deltares.nl>"]
 channels = ["conda-forge"]
@@ -13,15 +13,6 @@ documentation = "https://deltares.github.io/Ribasim/"
 repository = "https://github.com/Deltares/Ribasim"
 
 [tasks]
-# Installation
-install-ribasim-python = "pip install --no-build-isolation --no-deps --disable-pip-version-check --editable python/ribasim"
-install-ribasim-api = "pip install --no-build-isolation --no-deps --disable-pip-version-check --editable python/ribasim_api"
-install-ribasim-testmodels = "pip install --no-build-isolation --no-deps --disable-pip-version-check --editable python/ribasim_testmodels"
-install-python = { depends_on = [
-    "install-ribasim-python",
-    "install-ribasim-api",
-    "install-ribasim-testmodels",
-] }
 # Tests
 test-ribasim-python = "pytest --numprocesses=4 python/ribasim/tests"
 test-ribasim-python-cov = "pytest --numprocesses=4 --cov=ribasim --cov-report=xml python/ribasim/tests"
@@ -29,14 +20,9 @@ test-ribasim-api = "pytest --basetemp=python/ribasim_api/tests/temp --junitxml=r
 
 [feature.dev.tasks]
 # Installation
-install-julia = "juliaup add 1.10.0 && juliaup default 1.10.0"
+install-julia = "juliaup add 1.10.3 && juliaup default 1.10.3"
 install-pre-commit = "pre-commit install"
-install-ci = { depends_on = [
-    "install-python",
-    "install-julia",
-    "update-registry-julia",
-
-] }
+install-ci = { depends_on = ["install-julia", "update-registry-julia"] }
 install = { depends_on = [
     "install-ci",
     "install-qgis-plugins",
@@ -59,7 +45,7 @@ build-julia-docs = { cmd = "julia --project docs/make.jl", depends_on = [
 ], outputs = [
     "docs/build",
 ] }
-quartodoc-build = { cmd = "quartodoc build && rm objects.json", cwd="docs", inputs = [
+quartodoc-build = { cmd = "quartodoc build && rm objects.json", cwd = "docs", inputs = [
     "docs/_quarto.yml",
     "python/ribasim",
 ], outputs = [
@@ -108,6 +94,7 @@ generate-testmodels = { cmd = "python utils/generate-testmodels.py", inputs = [
     "generated_testmodels",
 ] }
 tests = { depends_on = ["lint", "test-ribasim-python", "test-ribasim-core"] }
+delwaq = { cmd = "pytest coupling/delwaq/test.py" }
 # Codegen
 codegen = { cmd = "julia --project utils/gen_python.jl && ruff format python/ribasim/ribasim/schemas.py", depends_on = [
     "initialize-julia",
@@ -163,6 +150,7 @@ github-release = "python utils/github-release.py"
 [dependencies]
 geopandas = "*"
 hatchling = "*"
+jinja2 = "*"
 matplotlib = "*"
 netCDF4 = "*"
 numpy = "*"
@@ -183,7 +171,12 @@ tomli-w = "*"
 xmipy = "*"
 xugrid = "*"
 xarray = "*"
+networkx = ">=3.3"
 
+[pypi-dependencies]
+ribasim = { path = "python/ribasim", editable = true }
+ribasim_api = { path = "python/ribasim_api", editable = true }
+ribasim_testmodels = { path = "python/ribasim_testmodels", editable = true }
 
 [feature.dev.dependencies]
 build = "*"
