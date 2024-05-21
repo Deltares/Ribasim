@@ -400,24 +400,29 @@ fraction      | Float64 | -            | in the interval [0,1]
 
 # TabulatedRatingCurve {#sec-tabulated-rating-curve}
 
-This table is similar in structure to the Basin profile. The TabulatedRatingCurve gives a
-relation between the storage of a connected Basin (via the outlet level) and its outflow.
+This table is similar in structure to the Basin profile.
+The TabulatedRatingCurve gives a relation between the level of a directly upstream Basin or LevelBoundary and its outflow.
 
 column        | type    | unit         | restriction
 ------------- | ------- | ------------ | -----------
 node_id       | Int32   | -            | sorted
 control_state | String  | -            | (optional) sorted per node_id
 active        | Bool    | -            | (optional, default true)
-level         | Float64 | $m$          | sorted per control_state
-flow_rate     | Float64 | $m^3 s^{-1}$ | non-negative
+level         | Float64 | $m$          | sorted per control_state, unique
+flow_rate     | Float64 | $m^3 s^{-1}$ | start at 0, increasing
+
+Thus a single rating curve can be given by the following table:
 
 node_id | flow_rate  | level
 ------- |----------- |-------
-      2 | 0.0        | -0.105
-      2 | 0.0        |  0.095
-      2 | 0.00942702 |  0.295
-      2 | 0.942702   | 20.095
-      3 | 0.0        |  2.129
+      2 | 0.0        | -0.10
+      2 | 0.0001     |  0.09
+      2 | 0.01       |  0.29
+      2 | 0.9        | 20.09
+
+Below the lowest given level of -0.10, the flow rate is kept at 0.
+Between given levels the flow rate is interpolated linearly.
+Above the maximum given level of 20.09, the flow rate keeps increases linearly according to the slope of the last segment.
 
 ## TabulatedRatingCurve / time
 

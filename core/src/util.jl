@@ -243,25 +243,20 @@ function scalar_interpolation_derivative(
     end
 end
 
-function qh_interpolation(
-    level::AbstractVector,
-    flow_rate::AbstractVector,
-)::Tuple{ScalarInterpolation, Bool}
-    return LinearInterpolation(flow_rate, level; extrapolate = true), allunique(level)
-end
-
 """
 From a table with columns node_id, flow_rate (Q) and level (h),
 create a ScalarInterpolation from level to flow rate for a given node_id.
 """
-function qh_interpolation(
-    node_id::NodeID,
-    table::StructVector,
-)::Tuple{ScalarInterpolation, Bool}
-    nodetype = node_id.type
-    rowrange = findlastgroup(node_id, NodeID.(nodetype, table.node_id))
-    @assert !isempty(rowrange) "timeseries starts after model start time"
-    return qh_interpolation(table.level[rowrange], table.flow_rate[rowrange])
+function qh_interpolation(node_id::NodeID, table::StructVector)::ScalarInterpolation
+    rowrange = findlastgroup(node_id, NodeID.(node_id.type, table.node_id))
+    level = table.level[rowrange]
+    flow_rate = table.flow_rate[rowrange]
+
+    # Ensure that that Q stays 0 below the first level
+    pushfirst!(level, first(level) - 1)
+    pushfirst!(flow_rate, first(flow_rate))
+
+    return LinearInterpolation(flow_rate, level; extrapolate = true)
 end
 
 """
