@@ -246,7 +246,7 @@ class TerminalStaticSchema(_BaseSchema):
 class UserDemandStaticSchema(_BaseSchema):
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     active: Series[pa.BOOL] = pa.Field(nullable=True)
-    demand: Series[float] = pa.Field(nullable=False)
+    demand: Series[float] = pa.Field(nullable=True)
     return_factor: Series[float] = pa.Field(nullable=False)
     min_level: Series[float] = pa.Field(nullable=False)
     priority: Series[Int32] = pa.Field(nullable=False, default=0)
