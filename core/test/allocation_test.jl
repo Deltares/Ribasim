@@ -177,9 +177,10 @@ end
     # Subnetworks interpreted as user_demands require variables and constraints to
     # support absolute value expressions in the objective function
     problem = allocation_model_main_network.problem
-    @test problem[:F_abs_user_demand].axes[1] == NodeID.(:Pump, [11, 24, 38])
-    @test problem[:abs_positive_user_demand].axes[1] == NodeID.(:Pump, [11, 24, 38])
-    @test problem[:abs_negative_user_demand].axes[1] == NodeID.(:Pump, [11, 24, 38])
+    node_ids = [NodeID(:UserDemand, 60), NodeID.(:Pump, [11, 24, 38])...]
+    @test problem[:F_abs_user_demand].axes[1] == node_ids
+    @test problem[:abs_positive_user_demand].axes[1] == node_ids
+    @test problem[:abs_negative_user_demand].axes[1] == node_ids
 
     # In each subnetwork, the connection from the main network to the subnetwork is
     # interpreted as a source
