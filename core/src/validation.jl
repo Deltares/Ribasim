@@ -99,6 +99,7 @@ sort_by_id(row) = row.node_id
 sort_by_time_id(row) = (row.time, row.node_id)
 sort_by_id_level(row) = (row.node_id, row.level)
 sort_by_id_state_level(row) = (row.node_id, row.control_state, row.level)
+sort_by_time_id_level(row) = (row.time, row.node_id, row.level)
 sort_by_priority(row) = (row.node_id, row.priority)
 sort_by_priority_time(row) = (row.node_id, row.priority, row.time)
 sort_by_subgrid_level(row) = (row.subgrid_id, row.basin_level)
@@ -109,6 +110,7 @@ sort_by_condition(row) = (row.node_id, row.compound_variable_id, row.greater_tha
 # get the right sort by function given the Schema, with sort_by_id as the default
 sort_by_function(table::StructVector{<:Legolas.AbstractRecord}) = sort_by_id
 sort_by_function(table::StructVector{TabulatedRatingCurveStaticV1}) = sort_by_id_state_level
+sort_by_function(table::StructVector{TabulatedRatingCurveTimeV1}) = sort_by_time_id_level
 sort_by_function(table::StructVector{BasinProfileV1}) = sort_by_id_level
 sort_by_function(table::StructVector{UserDemandStaticV1}) = sort_by_priority
 sort_by_function(table::StructVector{UserDemandTimeV1}) = sort_by_priority_time
@@ -122,10 +124,8 @@ const TimeSchemas = Union{
     FlowDemandTimeV1,
     LevelBoundaryTimeV1,
     PidControlTimeV1,
-    TabulatedRatingCurveTimeV1,
     UserDemandTimeV1,
 }
-
 function sort_by_function(table::StructVector{<:TimeSchemas})
     return sort_by_time_id
 end
@@ -397,6 +397,37 @@ function valid_demand(
             end
         end
     end
+    return !errors
+end
+
+function valid_tabulated_rating_curve(node_id::NodeID, table::StructVector)::Bool
+    errors = false
+
+    rowrange = findlastgroup(node_id, NodeID.(node_id.type, table.node_id))
+    level = table.level[rowrange]
+    flow_rate = table.flow_rate[rowrange]
+
+    n = length(level)
+    if n < 2
+        @error "At least two datapoints are needed." node_id n
+        errors = true
+    end
+    Q0 = first(flow_rate)
+    if Q0 != 0.0
+        @error "The `flow_rate` must start at 0." node_id flow_rate = Q0
+        errors = true
+    end
+
+    if !allunique(level)
+        @error "The `level` cannot be repeated." node_id
+        errors = true
+    end
+
+    if any(diff(flow_rate) .< 0.0)
+        @error "The `flow_rate` cannot decrease with increasing `level`." node_id
+        errors = true
+    end
+
     return !errors
 end
 

@@ -1,0 +1,182 @@
+1000 80 ';'
+;DELWAQ_VERSION_4.910                               ; Delwaq version number
+;PRINT_OUTPUT_OPTION_9                              ; Debug level
+
+; TEMPLATE FILE FOR WATER QUALITY CALCULATION
+; First input block
+'Water quality calculation'
+' '
+' '
+'T0: {{startime.strftime("%Y.%m.%d %H:%M:%S")}}  (scu=       1s)'
+
+; Hard coded Substances for mass balance check:
+; number of active and inactive substances
+{{substances|length+5}}             0
+        ; active substances
+1 'Continuity'
+2 'Basin'
+3 'LevelBoundary'
+4 'FlowBoundary'
+5 'Terminal'
+{% for substance in substances -%}
+{{5+loop.index}} '{{substance}}'
+{% endfor -%}
+        ; passive substances
+
+#1;
+
+;###############################################################################
+; Second input block
+1 'DDHHMMSS' 'DDHHMMSS'                         ; system clock
+; Integration options:
+15.70 											    ; integration option, no balance keywords yet
+
+; Simulation start, stop and timestep:
+  {{ startime.strftime("%Y/%m/%d-%H:%M:%S") }} ; start time
+  {{ endtime.strftime("%Y/%m/%d-%H:%M:%S") }} ; stop time
+  0 ; timestep constant
+; dddhhmmss
+  {{ timestep }} ; timestep
+ 1                                                  ; Monitoring areas in this file
+; Todo: Monitoring areas
+0
+ 2                                                  ; No monitoring cross areas
+; Output timesteps. Equal to Ribasim timestep:
+; output control (see DELWAQ-manual)
+; yyyy/mm/dd-hh:mm:ss  yyyy/mm/dd-hh:mm:ss  dddhhmmss
+  {{ startime.strftime("%Y/%m/%d-%H:%M:%S") }}  {{ endtime.strftime("%Y/%m/%d-%H:%M:%S") }}  {{ timestep }} ;  start, stop and step for balance output
+  {{ startime.strftime("%Y/%m/%d-%H:%M:%S") }}  {{ endtime.strftime("%Y/%m/%d-%H:%M:%S") }}  {{ timestep }} ;  start, stop and step for map output
+  {{ startime.strftime("%Y/%m/%d-%H:%M:%S") }}  {{ endtime.strftime("%Y/%m/%d-%H:%M:%S") }}  {{ timestep }} ;  start, stop and step for his output
+
+
+#2;
+;###############################################################################
+; Third input block
+; Ribasim Ugrid file:
+UGRID 'ribasim.nc'          ; Reference to the waqgeom file for UGRID NetCDF output
+
+; nr of segments
+{{ nsegments }} ; nr of segments
+
+ 2                                                  ; Structure matrix not used
+
+INCLUDE 'ribasim.atr'     ; From UI: attributes file
+
+; Volume file
+-2 ; volumes will be interpolated from a binary file
+'ribasim.vol'        ; From UI: volumes-file
+
+#3;
+;###############################################################################
+; Fourth input block
+; nr of exchanges in three directions. Only first is used, followed by two zeros.
+{{ nexchanges }} 0 0 ; nr of exchanges
+ 0                                                  ; Number of dispersion arrays (this is different when spatial dispersion is implemented)
+ 0                                                  ; Number of velocity arrays
+ 1                                                  ; Input format of the pointers.
+
+; Pointer file
+0 ; pointers from binary file.
+'ribasim.poi'                    ; From Ribasim
+     1                                              ; Dispersions in this file
+     1.0 1.0 1.0                                    ; Scale factors for 3 directions
+
+; Default dispersion:
+1 0.0 1E-07 										; constant dispersion
+
+; Area file
+-2 ; areas will be interpolated from a binary file
+'ribasim.are'                    ; From Ribasim
+
+; Flow file
+-2 ; flows from binary file
+'ribasim.flo'                    ; From Ribasim
+
+0                                                   ; Vary in space
+; Length file
+1 1 1 1 ; Lengths from binary file
+
+#4;
+;###############################################################################
+; Fifth input block, water quality calculation
+
+; Boundary list
+;'NodeID' 'Comment field' 'Boundary name used for data grouping'
+INCLUDE 'ribasim_bndlist.inc'      ; From UI: Boundary segments
+
+0                                                   ; No Tatcher-Harleman time lags
+; Boundary data:
+INCLUDE 'B5_bounddata.inc'      ; From UI: Boundary data
+
+
+#5;
+;###############################################################################
+; Sixth input block, Dry Waste Loads block
+
+0; Number of loads
+
+#6;
+;###############################################################################
+; Seventh input block
+
+CONSTANTS  'ONLY_ACTIVE' 	DATA	0               ; Only active processes
+
+;INCLUDE 'includes_deltashell/B7_processes.inc'      ; From UI: Processes
+;INCLUDE 'includes_deltashell/B7_constants.inc'      ; From UI: Constants
+;INCLUDE 'includes_deltashell/B7_functions.inc'      ; From UI: Functions
+;INCLUDE 'includes_deltashell/B7_parameters.inc'     ; From UI: Parameters
+;INCLUDE 'includes_deltashell/B7_dispersion.inc'     ; FROM UI: Spatial dispersion
+;INCLUDE 'includes_deltashell/B7_vdiffusion.inc'     ; FROM UI: Vertical diffusion
+
+;INCLUDE 'includes_deltashell/B7_segfunctions.inc'   ; FROM UI: SEG_FUNCTION blocks
+;INCLUDE 'includes_deltashell/B7_numerical_options.inc'   ; FROM UI: numerical options
+
+#7
+;###############################################################################
+; Eighth input block
+
+;INCLUDE 'includes_deltashell/B8_initials.inc'       ; From UI: Initials
+
+; Hard coded initials for mass balance check.
+MASS/M2 ; The bed substances are specified in mass/m2
+INITIALS
+'Continuity'
+'Basin'
+'LevelBoundary'
+'FlowBoundary'
+'Terminal'
+{% for substance in substances -%}
+'{{substance}}'
+{% endfor -%}
+DEFAULTS
+1
+0
+0
+0
+0
+{% for substance in substances -%}
+0
+{% endfor -%}
+#8
+;###############################################################################
+; Ninth input block
+ 1                                                  ; Conditions follow in this file
+ 1                                                  ; Default monitor-file
+ 0                                                  ; No grid-file
+; INCLUDE 'includes_deltashell/B9_Hisvar.inc'        ; From UI: History-file
+2 ; perform default output and extra parameters listed below
+0 ; number of parameters listed
+
+; INCLUDE 'includes_deltashell/B9_Mapvar.inc'        ; From UI: Map-file
+2 ; perform default output and extra parameters listed below
+1 ; number of parameters listed
+'Volume'
+                                                    ; Binary/Nefis and History/Map
+ 1                                                  ; Switch on binary History file
+ 1                                                  ; Switch on binary Map file
+ 1                                                  ; Switch off Nefis History file
+ 1                                                  ; Switch off Nefis Map file
+#9
+;###############################################################################
+; Tenth input block
+#10

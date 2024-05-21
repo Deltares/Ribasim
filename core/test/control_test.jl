@@ -147,7 +147,7 @@ end
     t = Ribasim.datetime_since(discrete_control.record.time[2], model.config.starttime)
     @test Date(t) == Date("2020-03-16")
     # then the rating curve is updated to the "low" control_state
-    @test only(p.tabulated_rating_curve.tables).t[2] == 1.2
+    @test last(only(p.tabulated_rating_curve.tables).t) == 1.2
 end
 
 @testitem "Set PID target with DiscreteControl" begin

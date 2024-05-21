@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<dimrConfig xmlns="http://schemas.deltares.nl/dimr" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://schemas.deltares.nl/dimr http://content.oss.deltares.nl/schemas/dimr-1.1.xsd">
+    <documentation>
+        <fileVersion>1.1</fileVersion>
+        <createdBy>Deltares, Coupling team</createdBy>
+        <creationDate>2016-01-20T07:56:32+01:00</creationDate>
+    </documentation>
+
+    <control>
+        <start name="delwaq"/>
+    </control>
+  <component name="delwaq">
+    <library>delwaq</library>
+    <workingDir>.</workingDir>
+    <setting key="-p" value="${PROC_DEF_DIR}/proc_def.dat"/>
+    <inputFile>delwaq.inp</inputFile>
+  </component>
+</dimrConfig>

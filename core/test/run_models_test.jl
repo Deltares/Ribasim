@@ -147,8 +147,7 @@
         basin_level = basin.level[1]
         @test length(p.subgrid.level) == 3
         @test diff(p.subgrid.level) ≈ [-1.0, 2.0]
-        # TODO The original subgrid IDs are lost and mapped to 1, 2, 3
-        @test subgrid.subgrid_id[1:3] == [11, 22, 33] broken = true
+        @test subgrid.subgrid_id[1:3] == [11, 22, 33]
         @test subgrid.subgrid_level[1:3] ≈
               [basin_level, basin_level - 1.0, basin_level + 1.0]
         @test subgrid.subgrid_level[(end - 2):end] == p.subgrid.level

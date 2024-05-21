@@ -44,7 +44,8 @@ fn main() -> ExitCode {
     let shared_lib_path = match OS {
         "windows" => exe_dir.join("bin/libribasim.dll"),
         "linux" => exe_dir.join("lib/libribasim.so"),
-        _ => unimplemented!(),
+        "macos" => exe_dir.join("lib/libribasim.dylib"),
+        _ => unimplemented!("Your OS is not supported yet."),
     };
     unsafe {
         // Load the library
