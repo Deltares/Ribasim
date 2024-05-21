@@ -792,8 +792,8 @@ def main_network_with_subnetworks_model() -> Model:
 
     # Missing demand
     model.user_demand.add(
-        Node(60, Point(7, -1), subnetwork_id=1),
-        [user_demand.Static(return_factor=[0.9], priority=10, min_level=0.0)],
+        Node(60, Point(21, -1), subnetwork_id=1),
+        [user_demand.Static(return_factor=[0.9], priority=2, min_level=0.0)],
     )
 
     model.edge.add(model.flow_boundary[1], model.basin[2], subnetwork_id=1)
