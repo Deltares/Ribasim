@@ -794,8 +794,9 @@ function user_demand_static!(
 
         for row in group
             priority_idx = findsorted(priorities, row.priority)
-            demand_itp[user_demand_idx][priority_idx].u .= row.demand
-            demand[user_demand_idx, priority_idx] = row.demand
+            demand_row = coalesce(row.demand, 0.0)
+            demand_itp[user_demand_idx][priority_idx].u .= demand_row
+            demand[user_demand_idx, priority_idx] = demand_row
         end
     end
     return nothing

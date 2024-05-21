@@ -273,7 +273,7 @@ end
 @version UserDemandStaticV1 begin
     node_id::Int32
     active::Union{Missing, Bool}
-    demand::Float64
+    demand::Union{Missing, Float64}
     return_factor::Float64
     min_level::Float64
     priority::Int32
