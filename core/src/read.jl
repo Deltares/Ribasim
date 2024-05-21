@@ -571,6 +571,11 @@ function Basin(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{Int
 
     node_id = NodeID.(NodeType.Basin, node_id)
 
+    is_valid = valid_profiles(node_id, level, area)
+    if !is_valid
+        error("Invalid Basin / profile table.")
+    end
+
     return Basin(
         Indices(node_id),
         [collect(inflow_ids(graph, id)) for id in node_id],

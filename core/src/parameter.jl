@@ -186,44 +186,6 @@ struct Basin{T, C, V1, V2, V3} <: AbstractParameterNode
     demand::Vector{Float64}
     # Data source for parameter updates
     time::StructVector{BasinTimeV1, C, Int}
-
-    function Basin(
-        node_id,
-        inflow_ids,
-        outflow_ids,
-        vertical_flux_from_input::V1,
-        vertical_flux::V2,
-        vertical_flux_prev::V3,
-        vertical_flux_integrated::V3,
-        vertical_flux_bmi::V3,
-        current_level::T,
-        current_area::T,
-        area,
-        level,
-        storage,
-        demand,
-        time::StructVector{BasinTimeV1, C, Int},
-    ) where {T, C, V1, V2, V3}
-        is_valid = valid_profiles(node_id, level, area)
-        is_valid || error("Invalid Basin / profile table.")
-        return new{T, C, V1, V2, V3}(
-            node_id,
-            inflow_ids,
-            outflow_ids,
-            vertical_flux_from_input,
-            vertical_flux,
-            vertical_flux_prev,
-            vertical_flux_integrated,
-            vertical_flux_bmi,
-            current_level,
-            current_area,
-            area,
-            level,
-            storage,
-            demand,
-            time,
-        )
-    end
 end
 
 """
