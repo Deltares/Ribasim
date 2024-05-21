@@ -861,7 +861,7 @@ realized      | Float64
 
 ::: {.callout-note}
 The LevelDemand node allocations are listed as node type Basin.
-This is because one LevelDemand node can control multiple Basins, and doesn't receive flow by itself.
+This is because one LevelDemand node can link to multiple Basins, and doesn't receive flow by itself.
 :::
 
 For Basins the values `demand`, `allocated` and `realized` are positive if the Basin level is below the minimum level given by a `LevelDemand` node.
