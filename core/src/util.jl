@@ -778,9 +778,9 @@ function compute_mean_inoutflows(
         for outflow_edge in outflow_edges[i]
             q = flow_mean[outflow_edge.flow_idx]
             if q > 0
-                inflow_mean[i] += q
+                outflow_mean[i] += q
             else
-                outflow_mean[i] -= q
+                inflow_mean[i] -= q
             end
         end
     end
