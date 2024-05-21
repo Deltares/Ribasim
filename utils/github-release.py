@@ -1,21 +1,17 @@
 import subprocess
 
 
-def current_git_branch():
-    result = subprocess.run(
-        ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+def git_describe() -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["git", "describe", "--tags", "--exact-match"],
         capture_output=True,
         text=True,
-        check=True,
     )
-    return result.stdout.strip()
 
 
-def main():
+def main(proc: subprocess.CompletedProcess[str]):
     # Get the name of the currently checked out tag
-    tag_name = subprocess.check_output(
-        ["git", "describe", "--tags", "--exact-match"], text=True
-    ).strip()
+    tag_name = proc.stdout.strip()
 
     print(f"Currently checked out tag: {tag_name}")
 
@@ -36,7 +32,9 @@ def main():
 
 
 if __name__ == "__main__":
-    if current_git_branch().startswith("v20"):
-        main()
+    proc = git_describe()
+    if proc.returncode == 0 and proc.stdout.startswith("v20"):
+        main(proc)
     else:
-        print("Branch doesn't start with 'v20', no release made.")
+        print("Current checkout is not a tag starting with 'v20', no release made.")
+        print(proc.stderr)
