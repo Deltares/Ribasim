@@ -405,7 +405,10 @@ function add_constraints_conservation_node!(
     end
 
     # Only the node IDs with conservation constraints on them
-    node_ids = keys(inflows)
+    node_ids = [
+        node_id for node_id in keys(inflows) if
+        !(isempty(inflows[node_id]) && isempty(outflows[node_id]))
+    ]
 
     problem[:flow_conservation] = JuMP.@constraint(
         problem,

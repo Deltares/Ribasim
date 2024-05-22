@@ -509,14 +509,14 @@ outflow_edge: outgoing flow edge metadata
     The ID of the source node is always the ID of the UserDemand node
 active: whether this node is active and thus demands water
 realized_bmi: Cumulative inflow volume, for read or reset by BMI only
-demand: water flux demand of UserDemand per priority over time
+demand: water flux demand of UserDemand per priority ([node_idx, priority_idx])
     Each UserDemand has a demand for all priorities,
     which is 0.0 if it is not provided explicitly.
 demand_reduced: the total demand reduced by allocated flows. This is used for goal programming,
     and requires separate memory from `demand` since demands can come from the BMI
 demand_itp: Timeseries interpolation objects for demands
 demand_from_timeseries: If false the demand comes from the BMI or is fixed
-allocated: water flux currently allocated to UserDemand per priority
+allocated: water flux currently allocated to UserDemand per priority ([node_idx, priority_idx])
 return_factor: the factor in [0,1] of how much of the abstracted water is given back to the system
 min_level: The level of the source basin below which the UserDemand does not abstract
 """
