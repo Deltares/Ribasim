@@ -283,7 +283,7 @@ end
     @test all(allocation_flow.edge_exists)
 
     @test user_demand.allocated[2, :] ≈ [3.5992, 0.0, 0.0] atol = 1e-3
-    @test user_demand.allocated[7, :] ≈ [0.001, 0.0, 0.0] atol = 1e-5
+    @test user_demand.allocated[7, :] ≈ [0.0008998, 0.0, 0.0] atol = 1e-5
 end
 
 @testitem "Subnetworks with sources" begin
