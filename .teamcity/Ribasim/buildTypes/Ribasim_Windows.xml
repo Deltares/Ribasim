@@ -6,7 +6,9 @@
     <options>
       <option name="cleanBuild" value="true" />
     </options>
-    <parameters />
+    <parameters>
+      <param name="env.JULIA_SSL_CA_ROOTS_PATH" value="" />
+    </parameters>
     <build-runners />
     <vcs-settings />
     <requirements>

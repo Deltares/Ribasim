@@ -293,13 +293,13 @@ The profile table defines the physical dimensions of the storage reservoir of ea
 column    | type    | unit         | restriction
 --------- | ------- | ------------ | -----------
 node_id   | Int32   | -            | sorted
-area      | Float64 | $m^2$        | non-negative, per node_id: start positive and increasing
+area      | Float64 | $m^2$        | non-negative, per node_id: start positive and not decreasing
 level     | Float64 | $m$          | per node_id: increasing
 
 The level is the level at the basin outlet. All levels are defined in meters above a datum
 that is the same for the entire model. An example of the first 5 rows of such a table is
 given below. The first 4 rows define the profile of ID `2`. The number of rows can vary
-per ID. Using a very large number of rows may impact performance.
+per ID, and must be at least 2. Using a very large number of rows may impact performance.
 
 node_id |   area | level
 ------- |------- |-------
@@ -514,7 +514,8 @@ min_level     | Float64  | $m$          | -
 
 # LevelDemand {#sec-level_demand}
 
-A `LevelDemand` node associates a minimum and a maximum level with connected basins to be used by the allocation algorithm.
+A `LevelDemand` node associates a minimum and a maximum level with connected Basins to be used by the allocation algorithm.
+Since this connection conveys information rather than flow, an outgoing control edge must be used.
 Below the minimum level the basin has a demand of the supplied priority,
 above the maximum level the basin has a surplus and acts as a source, used by all nodes with demands in order of priority.
 The same `LevelDemand` node can be used for Basins in different subnetworks.
@@ -857,6 +858,11 @@ priority      | Int32
 demand        | Float64
 allocated     | Float64
 realized      | Float64
+
+::: {.callout-note}
+The LevelDemand node allocations are listed as node type Basin.
+This is because one LevelDemand node can link to multiple Basins, and doesn't receive flow by itself.
+:::
 
 For Basins the values `demand`, `allocated` and `realized` are positive if the Basin level is below the minimum level given by a `LevelDemand` node.
 The values are negative if the Basin supplies due to a surplus of water.

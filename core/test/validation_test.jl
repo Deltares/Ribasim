@@ -1,10 +1,9 @@
 @testitem "Basin profile validation" begin
-    using Dictionaries: Indices
     using Ribasim: NodeID, valid_profiles, qh_interpolation, ScalarInterpolation
     using Logging
     using StructArrays: StructVector
 
-    node_id = Indices([NodeID(:Basin, 1)])
+    node_id = [NodeID(:Basin, 1)]
     level = [[0.0, 0.0, 1.0]]
     area = [[0.0, 100.0, 90]]
 
@@ -12,18 +11,16 @@
     with_logger(logger) do
         @test !valid_profiles(node_id, level, area)
     end
-
     @test length(logger.logs) == 3
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
-          "Basin #1 has repeated levels, this cannot be interpolated."
+          "Basin #1 profile has repeated levels, this cannot be interpolated."
     @test logger.logs[2].level == Error
     @test logger.logs[2].message ==
           "Basin #1 profile cannot start with area <= 0 at the bottom for numerical reasons."
     @test logger.logs[2].kwargs[:area] == 0
     @test logger.logs[3].level == Error
-    @test logger.logs[3].message ==
-          "Basin #1 profile cannot have decreasing area at the top since extrapolating could lead to negative areas."
+    @test logger.logs[3].message == "Basin #1 profile cannot have decreasing areas."
 
     table = StructVector(; flow_rate = [0.0, 0.1], level = [1.0, 2.0], node_id = [5, 5])
     itp = qh_interpolation(NodeID(:TabulatedRatingCurve, 5), table)

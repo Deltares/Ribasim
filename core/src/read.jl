@@ -571,6 +571,11 @@ function Basin(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{Int
 
     node_id = NodeID.(NodeType.Basin, node_id)
 
+    is_valid = valid_profiles(node_id, level, area)
+    if !is_valid
+        error("Invalid Basin / profile table.")
+    end
+
     return Basin(
         Indices(node_id),
         [collect(inflow_ids(graph, id)) for id in node_id],
@@ -789,8 +794,9 @@ function user_demand_static!(
 
         for row in group
             priority_idx = findsorted(priorities, row.priority)
-            demand_itp[user_demand_idx][priority_idx].u .= row.demand
-            demand[user_demand_idx, priority_idx] = row.demand
+            demand_row = coalesce(row.demand, 0.0)
+            demand_itp[user_demand_idx][priority_idx].u .= demand_row
+            demand[user_demand_idx, priority_idx] = demand_row
         end
     end
     return nothing

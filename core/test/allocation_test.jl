@@ -182,6 +182,14 @@ end
         (NodeID(:Basin, 10), NodeID(:Pump, 38)),
     ] ⊆ keys(allocation_model_main_network.capacity.data)
 
+    # Subnetworks interpreted as user_demands require variables and constraints to
+    # support absolute value expressions in the objective function
+    problem = allocation_model_main_network.problem
+    node_ids = [NodeID(:UserDemand, 60), NodeID.(:Pump, [11, 24, 38])...]
+    @test problem[:F_abs_user_demand].axes[1] == node_ids
+    @test problem[:abs_positive_user_demand].axes[1] == node_ids
+    @test problem[:abs_negative_user_demand].axes[1] == node_ids
+
     # In each subnetwork, the connection from the main network to the subnetwork is
     # interpreted as a source
     @test Ribasim.get_allocation_model(p, Int32(3)).problem[:source].axes[1] ==
@@ -231,7 +239,7 @@ end
     # "subnetworks_with_sources"
     @test subnetwork_demands[(NodeID(:Basin, 2), NodeID(:Pump, 11))] ≈ [4.0, 4.0, 0.0] atol =
         1e-4
-    @test subnetwork_demands[(NodeID(:Basin, 6), NodeID(:Pump, 24))] ≈ [0.004, 0.0, 0.0]
+    @test subnetwork_demands[(NodeID(:Basin, 6), NodeID(:Pump, 24))] ≈ [1.0, 0.0, 0.0]
     @test subnetwork_demands[(NodeID(:Basin, 10), NodeID(:Pump, 38))][1:2] ≈ [0.001, 0.002] atol =
         1e-4
 
@@ -257,12 +265,12 @@ end
     u = ComponentVector(; storage = zeros(length(p.basin.node_id)))
     Ribasim.update_allocation!((; p, t, u))
 
-    @test subnetwork_allocateds[NodeID(:Basin, 2), NodeID(:Pump, 11)] ≈ [4.0, 0.4947, 0.0] atol =
+    @test subnetwork_allocateds[NodeID(:Basin, 2), NodeID(:Pump, 11)] ≈ [3.5993, 0.0, 0.0] atol =
         1e-4
-    @test subnetwork_allocateds[NodeID(:Basin, 6), NodeID(:Pump, 24)] ≈
-          [0.00399999999, 0.0, 0.0] rtol = 1e-3
+    @test subnetwork_allocateds[NodeID(:Basin, 6), NodeID(:Pump, 24)] ≈ [0.8998, 0.0, 0.0] rtol =
+        1e-3
     @test subnetwork_allocateds[NodeID(:Basin, 10), NodeID(:Pump, 38)] ≈
-          [0.001, 0.000247, 0.0] rtol = 1e-3
+          [0.0008998, 0.0, 0.0] rtol = 1e-3
 
     # Test for existence of edges in allocation flow record
     allocation_flow = DataFrame(record_flow)
@@ -274,7 +282,7 @@ end
     )
     @test all(allocation_flow.edge_exists)
 
-    @test user_demand.allocated[2, :] ≈ [4.0, 0.0, 0.0]
+    @test user_demand.allocated[2, :] ≈ [3.5992, 0.0, 0.0] atol = 1e-3
     @test user_demand.allocated[7, :] ≈ [0.001, 0.0, 0.0] atol = 1e-5
 end
 
@@ -314,9 +322,11 @@ end
     # See the difference between these values here and in
     # "allocation with main network optimization problem", internal sources
     # lower the subnetwork demands
-    @test subnetwork_demands[(NodeID(:Basin, 2), NodeID(:Pump, 11))] ≈ [4.0, 4.0, 0.0]
-    @test subnetwork_demands[(NodeID(:Basin, 6), NodeID(:Pump, 24))] ≈ [0.004, 0.0, 0.0]
-    @test subnetwork_demands[(NodeID(:Basin, 10), NodeID(:Pump, 38))][1:2] ≈ [0.001, 0.001]
+    @test subnetwork_demands[(NodeID(:Basin, 2), NodeID(:Pump, 11))] ≈ [4.0, 4.0, 0.0] rtol =
+        1e-4
+    @test subnetwork_demands[(NodeID(:Basin, 6), NodeID(:Pump, 24))] ≈ [1.0, 0.0, 0.0]
+    @test subnetwork_demands[(NodeID(:Basin, 10), NodeID(:Pump, 38))][1:2] ≈ [0.001, 0.001] rtol =
+        1e-4
 end
 
 @testitem "Allocation level control" begin

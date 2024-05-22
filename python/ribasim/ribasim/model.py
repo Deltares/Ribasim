@@ -48,7 +48,13 @@ from ribasim.input_base import (
     SpatialTableModel,
     context_file_loading,
 )
-from ribasim.utils import MissingOptionalModule
+from ribasim.utils import (
+    MissingOptionalModule,
+    _edge_lookup,
+    _node_lookup,
+    _node_lookup_numpy,
+    _time_in_ns,
+)
 
 try:
     import xugrid
@@ -380,13 +386,19 @@ class Model(FileModel):
 
         return ax
 
-    def to_xugrid(self, add_results: bool = True):
+    def to_xugrid(self, add_flow: bool = False, add_allocation: bool = False):
         """
-        Convert the network and results to a `xugrid.UgridDataset`.
-        To get the network only, set `add_results=False`.
+        Convert the network to a `xugrid.UgridDataset`.
+        To add flow results, set `add_flow=True`.
+        To add allocation results, set `add_allocation=True`.
+        Both cannot be added to the same dataset.
         This method will throw `ImportError`,
         if the optional dependency `xugrid` isn't installed.
         """
+
+        if add_flow and add_allocation:
+            raise ValueError("Cannot add both allocation and flow results.")
+
         node_df = self.node_table().df
         assert node_df is not None
 
@@ -405,13 +417,7 @@ class Model(FileModel):
         edge_id = edge_df.index.to_numpy()
         from_node_id = edge_df.from_node_id.to_numpy()
         to_node_id = edge_df.to_node_id.to_numpy()
-
-        # from node_id to the node_dim index
-        node_lookup = pd.Series(
-            index=node_id,
-            data=node_id.argsort().astype(np.int32),
-            name="node_index",
-        )
+        node_lookup = _node_lookup_numpy(node_id)
 
         grid = xugrid.Ugrid1d(
             node_x=node_df.geometry.x,
@@ -437,15 +443,21 @@ class Model(FileModel):
         uds = uds.assign_coords(from_node_id=(edge_dim, from_node_id))
         uds = uds.assign_coords(to_node_id=(edge_dim, to_node_id))
 
-        if add_results:
-            uds = self._add_results(uds)
+        if add_flow:
+            uds = self._add_flow(uds)
+        elif add_allocation:
+            uds = self._add_allocation(uds)
 
         return uds
 
-    def _add_results(self, uds):
+    def _checked_toml_path(self) -> Path:
         toml_path = self.filepath
         if toml_path is None:
             raise FileNotFoundError("Model must be written to disk to add results.")
+        return toml_path
+
+    def _add_flow(self, uds):
+        toml_path = self._checked_toml_path()
 
         results_path = toml_path.parent / self.results_dir
         basin_path = results_path / "basin.arrow"
@@ -459,41 +471,68 @@ class Model(FileModel):
 
         basin_df = pd.read_feather(basin_path)
         flow_df = pd.read_feather(flow_path)
+        _time_in_ns(basin_df)
+        _time_in_ns(flow_df)
 
+        # add the xugrid dimension indices to the dataframes
         edge_dim = uds.grid.edge_dimension
         node_dim = uds.grid.node_dimension
-
-        # from node_id to the node_dim index
-        node_lookup = pd.Series(
-            index=uds["node_id"],
-            data=uds[node_dim],
-            name="node_index",
-        )
-        # from edge_id to the edge_dim index
-        edge_lookup = pd.Series(
-            index=uds["edge_id"],
-            data=uds[edge_dim],
-            name="edge_index",
-        )
-
-        basin_df = pd.read_feather(basin_path)
-        flow_df = pd.read_feather(flow_path)
-
-        # datetime64[ms] gives trouble; https://github.com/pydata/xarray/issues/6318
-        flow_df["time"] = flow_df["time"].astype("datetime64[ns]")
-        basin_df["time"] = basin_df["time"].astype("datetime64[ns]")
+        node_lookup = _node_lookup(uds)
+        edge_lookup = _edge_lookup(uds)
+        flow_df[edge_dim] = edge_lookup[flow_df["edge_id"]].to_numpy()
+        basin_df[node_dim] = node_lookup[basin_df["node_id"]].to_numpy()
 
         # add flow results to the UgridDataset
-        flow_df[edge_dim] = edge_lookup[flow_df["edge_id"]].to_numpy()
         flow_da = flow_df.set_index(["time", edge_dim])["flow_rate"].to_xarray()
         uds[flow_da.name] = flow_da
 
         # add basin results to the UgridDataset
-        basin_df[node_dim] = node_lookup[basin_df["node_id"]].to_numpy()
         basin_df.drop(columns=["node_id"], inplace=True)
         basin_ds = basin_df.set_index(["time", node_dim]).to_xarray()
 
         for var_name, da in basin_ds.data_vars.items():
             uds[var_name] = da
+
+        return uds
+
+    def _add_allocation(self, uds):
+        toml_path = self._checked_toml_path()
+
+        results_path = toml_path.parent / self.results_dir
+        alloc_flow_path = results_path / "allocation_flow.arrow"
+
+        if not alloc_flow_path.is_file():
+            raise FileNotFoundError(
+                f"Cannot find '{alloc_flow_path}', "
+                "perhaps the model needs to be run first, or allocation is not used."
+            )
+
+        alloc_flow_df = pd.read_feather(
+            alloc_flow_path,
+            columns=["time", "edge_id", "flow_rate", "optimization_type", "priority"],
+        )
+        _time_in_ns(alloc_flow_df)
+
+        # add the xugrid edge dimension index to the dataframe
+        edge_dim = uds.grid.edge_dimension
+        edge_lookup = _edge_lookup(uds)
+        alloc_flow_df[edge_dim] = edge_lookup[alloc_flow_df["edge_id"]].to_numpy()
+
+        # "flow_rate_allocated" is the sum of all allocated flow rates over the priorities
+        allocate_df = alloc_flow_df.loc[
+            alloc_flow_df["optimization_type"] == "allocate"
+        ]
+        uds["flow_rate_allocated"] = (
+            allocate_df.groupby(["time", edge_dim])["flow_rate"].sum().to_xarray()
+        )
+
+        # also add the individual priorities and optimization types
+        # added as separate variables to ensure QGIS / MDAL compatibility
+        for (optimization_type, priority), group in alloc_flow_df.groupby(
+            ["optimization_type", "priority"]
+        ):
+            varname = f"{optimization_type}_priority_{priority}"
+            da = group.set_index(["time", edge_dim])["flow_rate"].to_xarray()
+            uds[varname] = da
 
         return uds
