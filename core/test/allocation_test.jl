@@ -315,16 +315,22 @@ end
 
 @testitem "Allocation level control" begin
     import JuMP
+    using Ribasim: NodeID
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/level_demand/ribasim.toml")
     @test ispath(toml_path)
-    model = Ribasim.run(toml_path)
-
-    storage = Ribasim.get_storages_and_levels(model).storage[1, :]
-    t = Ribasim.tsaves(model)
+    model = Ribasim.Model(toml_path)
 
     p = model.integrator.p
     (; user_demand, graph, allocation, basin, level_demand) = p
+
+    # Initial "integrated" vertical flux
+    @test allocation.mean_flows[(NodeID(:Basin, 2), NodeID(:Basin, 2))][] ≈ 1e2
+
+    Ribasim.solve!(model)
+
+    storage = Ribasim.get_storages_and_levels(model).storage[1, :]
+    t = Ribasim.tsaves(model)
 
     d = user_demand.demand_itp[1][2](0)
     ϕ = 1e-3 # precipitation
@@ -338,48 +344,42 @@ end
     l_max = level_demand.max_level[1](0)
     Δt_allocation = allocation.allocation_models[1].Δt_allocation
 
-    # Until the first allocation solve, the UserDemand abstracts fully
-    stage_1 = t .<= Δt_allocation
-    u_stage_1(τ) = storage[1] + (q + ϕ - d) * τ
-    @test storage[stage_1] ≈ u_stage_1.(t[stage_1]) rtol = 1e-4
-
     # In this section the Basin leaves no supply for the UserDemand
-    stage_2 = Δt_allocation .<= t .<= 3 * Δt_allocation
-    stage_2_start_idx = findfirst(stage_2)
-    u_stage_2(τ) = storage[stage_2_start_idx] + (q + ϕ) * (τ - t[stage_2_start_idx])
-    @test storage[stage_2] ≈ u_stage_2.(t[stage_2]) rtol = 1e-4
+    stage_1 = t .<= 2 * Δt_allocation
+    u_stage_1(τ) = storage[1] + (q + ϕ) * τ
+    @test storage[stage_1] ≈ u_stage_1.(t[stage_1]) rtol = 1e-4
 
     # In this section (and following sections) the basin has no longer a (positive) demand,
     # since precipitation provides enough water to get the basin to its target level
     # The FlowBoundary flow gets fully allocated to the UserDemand
-    stage_3 = 3 * Δt_allocation .<= t .<= 8 * Δt_allocation
-    stage_3_start_idx = findfirst(stage_3)
-    u_stage_3(τ) = storage[stage_3_start_idx] + ϕ * (τ - t[stage_3_start_idx])
-    @test storage[stage_3] ≈ u_stage_3.(t[stage_3]) rtol = 1e-4
+    stage_2 = 2 * Δt_allocation .<= t .<= 8 * Δt_allocation
+    stage_2_start_idx = findfirst(stage_2)
+    u_stage_2(τ) = storage[stage_2_start_idx] + ϕ * (τ - t[stage_2_start_idx])
+    @test storage[stage_2] ≈ u_stage_2.(t[stage_2]) rtol = 1e-4
 
     # In this section the basin enters its surplus stage,
     # even though initially the level is below the maximum level. This is because the simulation
     # anticipates that the current precipitation is going to bring the basin level over
     # its maximum level
-    stage_4 = 8 * Δt_allocation .<= t .<= 12 * Δt_allocation
-    stage_4_start_idx = findfirst(stage_4)
-    u_stage_4(τ) = storage[stage_4_start_idx] + (q + ϕ - d) * (τ - t[stage_4_start_idx])
-    @test storage[stage_4] ≈ u_stage_4.(t[stage_4]) rtol = 1e-4
+    stage_3 = 8 * Δt_allocation .<= t .<= 13 * Δt_allocation
+    stage_3_start_idx = findfirst(stage_3)
+    u_stage_3(τ) = storage[stage_3_start_idx] + (q + ϕ - d) * (τ - t[stage_3_start_idx])
+    @test storage[stage_3] ≈ u_stage_3.(t[stage_3]) rtol = 1e-4
 
     # At the start of this section precipitation stops, and so the UserDemand
     # partly uses surplus water from the basin to fulfill its demand
-    stage_5 = 13 * Δt_allocation .<= t .<= 16 * Δt_allocation
-    stage_5_start_idx = findfirst(stage_5)
-    u_stage_5(τ) = storage[stage_5_start_idx] + (q - d) * (τ - t[stage_5_start_idx])
-    @test storage[stage_5] ≈ u_stage_5.(t[stage_5]) rtol = 1e-4
+    stage_4 = 13 * Δt_allocation .<= t .<= 17 * Δt_allocation
+    stage_4_start_idx = findfirst(stage_4)
+    u_stage_4(τ) = storage[stage_4_start_idx] + (q - d) * (τ - t[stage_4_start_idx])
+    @test storage[stage_4] ≈ u_stage_4.(t[stage_4]) rtol = 1e-4
 
     # From this point the basin is in a dynamical equilibrium,
     # since the basin has no supply so the UserDemand abstracts precisely
     # the flow from the level boundary
-    stage_6 = 17 * Δt_allocation .<= t
-    stage_6_start_idx = findfirst(stage_6)
-    u_stage_6(τ) = storage[stage_6_start_idx]
-    @test storage[stage_6] ≈ u_stage_6.(t[stage_6]) rtol = 1e-4
+    stage_5 = 18 * Δt_allocation .<= t
+    stage_5_start_idx = findfirst(stage_5)
+    u_stage_5(τ) = storage[stage_5_start_idx]
+    @test storage[stage_5] ≈ u_stage_5.(t[stage_5]) rtol = 1e-4
 
     # Isolated LevelDemand + Basin pair to test optional min_level
     problem = allocation.allocation_models[2].problem

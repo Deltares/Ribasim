@@ -750,3 +750,27 @@ function get_basin_idx(edge_metadata::EdgeMetadata, id::NodeID)::Int32
         0
     end
 end
+
+function set_initial_allocation_mean_flows!(integrator)::Nothing
+    (; u, p, t) = integrator
+    (; allocation, graph, basin) = p
+    (; mean_flows, allocation_models) = allocation
+    (; Δt_allocation) = allocation_models[1]
+    (; vertical_flux) = basin
+    vertical_flux = get_tmp(vertical_flux, 0)
+
+    # At the time of writing water_balance! already
+    # gets called once at the problem initialization, this
+    # one is just to make sure.
+    water_balance!(get_du(integrator), u, p, t)
+
+    for (edge, value) in mean_flows
+        if edge[1] == edge[2]
+            q = get_influx(basin, edge[1])
+        else
+            q = get_flow(graph, edge..., 0)
+        end
+        value[] = q * Δt_allocation
+    end
+    return nothing
+end
