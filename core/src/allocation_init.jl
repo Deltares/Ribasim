@@ -193,55 +193,6 @@ function add_variables_flow_buffer!(
 end
 
 """
-Certain allocation distribution types use absolute values in the objective function.
-Since most optimization packages do not support the absolute value function directly,
-New variables are introduced that act as the absolute value of an expression by
-posing the appropriate constraints.
-"""
-function add_variables_absolute_value!(
-    problem::JuMP.Model,
-    p::Parameters,
-    subnetwork_id::Int32,
-)::Nothing
-    (; graph, allocation) = p
-    (; main_network_connections) = allocation
-
-    node_ids = graph[].node_ids[subnetwork_id]
-    node_ids_user_demand = NodeID[]
-    node_ids_level_demand = NodeID[]
-    node_ids_flow_demand = NodeID[]
-
-    for node_id in node_ids
-        type = node_id.type
-        if type == NodeType.UserDemand
-            push!(node_ids_user_demand, node_id)
-        elseif has_external_demand(graph, node_id, :level_demand)[1]
-            push!(node_ids_level_demand, node_id)
-        elseif has_external_demand(graph, node_id, :flow_demand)[1]
-            push!(node_ids_flow_demand, node_id)
-        end
-    end
-
-    # For the main network, connections to subnetworks are treated as UserDemands
-    if is_main_network(subnetwork_id)
-        for connections_subnetwork in main_network_connections
-            for connection in connections_subnetwork
-                push!(node_ids_user_demand, connection[2])
-            end
-        end
-    end
-
-    problem[:F_abs_user_demand] =
-        JuMP.@variable(problem, F_abs_user_demand[node_id = node_ids_user_demand])
-    problem[:F_abs_level_demand] =
-        JuMP.@variable(problem, F_abs_level_demand[node_id = node_ids_level_demand])
-    problem[:F_abs_flow_demand] =
-        JuMP.@variable(problem, F_abs_flow_demand[node_id = node_ids_flow_demand])
-
-    return nothing
-end
-
-"""
 Add the flow capacity constraints to the allocation problem.
 Only finite capacities get a constraint.
 The constraint indices are (edge_source_id, edge_dst_id).
@@ -422,111 +373,6 @@ function add_constraints_conservation_node!(
 end
 
 """
-Minimizing |expr| can be achieved by introducing a new variable expr_abs
-and posing the following constraints:
-expr_abs >= expr
-expr_abs >= -expr
-"""
-function add_constraints_absolute_value!(
-    problem::JuMP.Model,
-    flow_per_node::Dict{NodeID, JuMP.VariableRef},
-    F_abs::JuMP.Containers.DenseAxisArray,
-    variable_type::String,
-)::Nothing
-    # Example demand
-    d = 2.0
-
-    node_ids = only(F_abs.axes)
-
-    # These constraints together make sure that F_abs_* acts as the absolute
-    # value F_abs_* = |x| where x = F-d (here for example d = 2)
-    base_name = "abs_positive_$variable_type"
-    problem[Symbol(base_name)] = JuMP.@constraint(
-        problem,
-        [node_id = node_ids],
-        F_abs[node_id] >= (flow_per_node[node_id] - d),
-        base_name = base_name
-    )
-    base_name = "abs_negative_$variable_type"
-    problem[Symbol(base_name)] = JuMP.@constraint(
-        problem,
-        [node_id = node_ids],
-        F_abs[node_id] >= -(flow_per_node[node_id] - d),
-        base_name = base_name
-    )
-
-    return nothing
-end
-
-"""
-Add constraints so that variables F_abs_user_demand act as the
-absolute value of the expression comparing flow to a UserDemand to its demand.
-"""
-function add_constraints_absolute_value_user_demand!(
-    problem::JuMP.Model,
-    p::Parameters,
-)::Nothing
-    (; graph) = p
-
-    F = problem[:F]
-    F_abs_user_demand = problem[:F_abs_user_demand]
-
-    # Get a dictionary UserDemand node ID => UserDemand inflow variable
-    flow_per_node = Dict(
-        node_id => F[(inflow_id(graph, node_id), node_id)] for
-        node_id in only(F_abs_user_demand.axes)
-    )
-
-    add_constraints_absolute_value!(
-        problem,
-        flow_per_node,
-        F_abs_user_demand,
-        "user_demand",
-    )
-
-    return nothing
-end
-
-"""
-Add constraints so that variables F_abs_level_demand act as the
-absolute value of the expression comparing flow to a basin to its demand.
-"""
-function add_constraints_absolute_value_level_demand!(problem::JuMP.Model)::Nothing
-    F_basin_in = problem[:F_basin_in]
-    F_abs_level_demand = problem[:F_abs_level_demand]
-
-    # Get a dictionary Basin node ID => Basin inflow variable
-    flow_per_node =
-        Dict(node_id => F_basin_in[node_id] for node_id in only(F_abs_level_demand.axes))
-
-    add_constraints_absolute_value!(problem, flow_per_node, F_abs_level_demand, "basin")
-
-    return nothing
-end
-
-"""
-Add constraints so that variables F_abs_flow_demand act as the
-absolute value of the expression comparing flow to a flow buffer to the flow demand.
-"""
-function add_constraints_absolute_value_flow_demand!(problem::JuMP.Model)::Nothing
-    F_flow_buffer_in = problem[:F_flow_buffer_in]
-    F_abs_flow_demand = problem[:F_abs_flow_demand]
-
-    # Get a dictionary Node ID => flow demand flow buffer variable
-    flow_per_node = Dict(
-        node_id => F_flow_buffer_in[node_id] for node_id in only(F_abs_flow_demand.axes)
-    )
-
-    add_constraints_absolute_value!(
-        problem,
-        flow_per_node,
-        F_abs_flow_demand,
-        "flow_demand",
-    )
-    return nothing
-end
-
-"""
 Add the fractional flow constraints to the allocation problem.
 The constraint indices are allocation edges over a fractional flow node.
 
@@ -648,21 +494,24 @@ function allocation_problem(
     capacity::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}},
     subnetwork_id::Int32,
 )::JuMP.Model
-    optimizer = JuMP.optimizer_with_attributes(HiGHS.Optimizer, "log_to_console" => false)
+    optimizer = JuMP.optimizer_with_attributes(
+        HiGHS.Optimizer,
+        "log_to_console" => false,
+        "objective_bound" => 0.0,
+        "time_limit" => 60.0,
+        "random_seed" => 0,
+        "primal_feasibility_tolerance" => 1e-5,
+        "dual_feasibility_tolerance" => 1e-5,
+    )
     problem = JuMP.direct_model(optimizer)
 
     # Add variables to problem
     add_variables_flow!(problem, capacity)
     add_variables_basin!(problem, p, subnetwork_id)
-    add_variables_absolute_value!(problem, p, subnetwork_id)
     add_variables_flow_buffer!(problem, p, subnetwork_id)
 
     # Add constraints to problem
     add_constraints_conservation_node!(problem, p, subnetwork_id)
-
-    add_constraints_absolute_value_user_demand!(problem, p)
-    add_constraints_absolute_value_flow_demand!(problem)
-    add_constraints_absolute_value_level_demand!(problem)
 
     add_constraints_capacity!(problem, capacity, p, subnetwork_id)
     add_constraints_source!(problem, p, subnetwork_id)

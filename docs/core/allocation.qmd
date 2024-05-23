@@ -151,25 +151,23 @@ $$
 
 The error between the flows and user demands is denoted by $E_{\text{user demand}}$, where
 $$
-    E_{\text{user demand}} = \sum_{(i,j)\in E_S\;:\; i\in U_S} \left| F_{ij} - d_j^p(t)\right|
+    E_{\text{user demand}} = \sum_{(i,j)\in E_S\;:\; i\in U_S} d_j^p(t)\left(1 - \frac{F_{ij}}{d_j^p(t)}\right)^2
 $$
 
 :::{.callout-note}
 When performing main network allocation, the connections to subnetworks are also interpreted as UserDemand nodes with demands determined by subnetwork demand collection.
 :::
 
-This type of objective cares about the absolute amount of water allocated to a demand. It treats all deviations equally which means it doesn't give larger punishment per flow unit if deviations increase.
+This type of objective cares about the fraction of the demand allocated, and will lead to an equal fraction of all demands allocated when possible. For a discussion on this see [here](https://github.com/Deltares/Ribasim/pull/1366).
 
-The absolute value applied here is not supported in a linear programming context directly; this requires introduction of new variables and constraints. For more details see [here](https://optimization.cbe.cornell.edu/index.php?title=Optimization_with_absolute_values).
-
-Likewise, the error of level demands from basins is the absolute difference between flows consumed by basins and basin demands.
+Likewise, the error of level demands from basins is the squared relative difference between flows consumed by basins and basin demands.
 $$
-    E_{\text{level demand}} = \sum_{i \in B_S} \left| F_i^\text{basin in} - d_i^p(t)\right|
+    E_{\text{level demand}} = \sum_{i \in B_S} d_i^p(t)\left(1 - \frac{F_i^\text{basin in}}{d_i^p(t)}\right)^2
 $$
 
 Lastly, the error of the flow demands is given as below.
 $$
-    E_{\text{flow demand}} = \sum_{i \in FD_S} \left| F_i^\text{buffer in} - d_i^p(t)\right|
+    E_{\text{flow demand}} = \sum_{i \in FD_S} d_i^p(t)\left(1 -  \frac{F_i^\text{buffer in}}{d_i^p(t)}\right)^2
 $$
 
 ## The optimization constraints
