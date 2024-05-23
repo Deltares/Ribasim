@@ -20,7 +20,7 @@ function create_callbacks(
     push!(callbacks, integrating_flows_cb)
 
     tstops = get_tstops(basin.time.time, starttime)
-    basin_cb = PresetTimeCallback(tstops, update_basin; save_positions = (false, false))
+    basin_cb = PresetTimeCallback(tstops, update_basin!; save_positions = (false, false))
     push!(callbacks, basin_cb)
 
     tstops = get_tstops(tabulated_rating_curve.time.time, starttime)
@@ -426,7 +426,7 @@ function save_subgrid_level(u, t, integrator)
 end
 
 "Load updates from 'Basin / time' into the parameters"
-function update_basin(integrator)::Nothing
+function update_basin!(integrator)::Nothing
     (; p, u) = integrator
     (; basin) = p
     (; storage) = u
