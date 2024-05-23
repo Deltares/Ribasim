@@ -85,12 +85,13 @@ end
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/level_demand/ribasim.toml")
     @test ispath(toml_path)
+    day = 86400.0
 
-    saveat = 20 * 86400.0
+    saveat = 20day
     config = Ribasim.Config(
         toml_path;
         solver_saveat = saveat,
-        solver_dt = 86400,
+        solver_dt = 5day,
         solver_algorithm = "Euler",
     )
     model = Ribasim.Model(config)
