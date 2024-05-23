@@ -751,6 +751,10 @@ function get_basin_idx(edge_metadata::EdgeMetadata, id::NodeID)::Int32
     end
 end
 
+"""
+We want to perform allocation at t = 0 but there are no mean flows available
+as input. Therefore we set the instantaneous flows as the mean flows as allocation input.
+"""
 function set_initial_allocation_mean_flows!(integrator)::Nothing
     (; u, p, t) = integrator
     (; allocation, graph, basin) = p
@@ -770,6 +774,8 @@ function set_initial_allocation_mean_flows!(integrator)::Nothing
         else
             q = get_flow(graph, edge..., 0)
         end
+        # Multiply by Δt_allocation as averaging divides by this factor
+        # in update_allocation!
         value[] = q * Δt_allocation
     end
     return nothing

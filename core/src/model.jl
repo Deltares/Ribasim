@@ -174,7 +174,7 @@ function Model(config::Config)::Model
         @show Ribasim.to
     end
 
-    if config.allocation.use_allocation
+    if config.allocation.use_allocation && is_active(parameters.allocation)
         set_initial_allocation_mean_flows!(integrator)
     end
 
@@ -211,7 +211,8 @@ function SciMLBase.step!(model::Model, dt::Float64)::Model
     # If we are at an allocation time, run allocation before the next physical
     # layer timestep. This allows allocation over period (t, t + dt) to use variables
     # set over BMI at time t before calling this function.
-    if t % config.allocation.timestep ≈ 0
+    ntimes = t / config.allocation.timestep
+    if round(ntimes) ≈ ntimes
         update_allocation!(integrator)
     end
     step!(integrator, dt, true)

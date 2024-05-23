@@ -405,6 +405,7 @@ function add_constraints_conservation_node!(
     end
 
     # Only the node IDs with conservation constraints on them
+    # Discard constraints of the form 0 == 0
     node_ids = [
         node_id for node_id in keys(inflows) if
         !(isempty(inflows[node_id]) && isempty(outflows[node_id]))
