@@ -1064,6 +1064,11 @@ def linear_resistance_demand_model():
 
 
 def fair_distribution_model():
+    """
+    Small model with little restrictions within the graph to see the behavior of
+    allocation in that case.
+    """
+
     model = Model(
         starttime="2020-01-01 00:00:00",
         endtime="2020-01-07 00:00:00",
