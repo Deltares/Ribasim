@@ -17,7 +17,7 @@
     allocation.mean_flows[(NodeID(:FlowBoundary, 1), NodeID(:Basin, 2))][] = 4.5
     allocation_model = p.allocation.allocation_models[1]
     u = ComponentVector(; storage = zeros(length(p.basin.node_id)))
-    Ribasim.allocate!(p, allocation_model, 0.0, u, OptimizationType.allocate)
+    Ribasim.allocate_demands(p, allocation_model, 0.0, u, OptimizationType.allocate)
 
     # Last priority (= 2) flows
     F = allocation_model.problem[:F]
@@ -223,8 +223,14 @@ end
     # Collecting demands
     u = ComponentVector(; storage = zeros(length(basin.node_id)))
     for allocation_model in allocation_models[2:end]
-        Ribasim.allocate!(p, allocation_model, t, u, OptimizationType.internal_sources)
-        Ribasim.allocate!(p, allocation_model, t, u, OptimizationType.collect_demands)
+        Ribasim.find_internal_sources(
+            p,
+            allocation_model,
+            t,
+            u,
+            OptimizationType.internal_sources,
+        )
+        Ribasim.collect_demands(p, allocation_model, t, u, OptimizationType.collect_demands)
     end
 
     # See the difference between these values here and in
@@ -307,8 +313,14 @@ end
     # Collecting demands
     u = ComponentVector(; storage = zeros(length(basin.node_id)))
     for allocation_model in allocation_models[2:end]
-        Ribasim.allocate!(p, allocation_model, t, u, OptimizationType.internal_sources)
-        Ribasim.allocate!(p, allocation_model, t, u, OptimizationType.collect_demands)
+        Ribasim.find_internal_sources(
+            p,
+            allocation_model,
+            t,
+            u,
+            OptimizationType.internal_sources,
+        )
+        Ribasim.collect_demands(p, allocation_model, t, u, OptimizationType.collect_demands)
     end
 
     # See the difference between these values here and in
