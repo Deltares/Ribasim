@@ -17,7 +17,7 @@
     allocation.mean_flows[(NodeID(:FlowBoundary, 1), NodeID(:Basin, 2))][] = 4.5
     allocation_model = p.allocation.allocation_models[1]
     u = ComponentVector(; storage = zeros(length(p.basin.node_id)))
-    Ribasim.allocate_demands(p, allocation_model, 0.0, u, OptimizationType.allocate)
+    Ribasim.allocate_demands(p, allocation_model, 0.0, u)
 
     # Last priority (= 2) flows
     F = allocation_model.problem[:F]

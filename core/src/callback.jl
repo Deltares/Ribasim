@@ -489,7 +489,7 @@ function update_allocation!(integrator)::Nothing
     # If a main network is present this is solved first,
     # which provides allocation to the subnetworks
     for allocation_model in allocation_models
-        allocate_demands(p, allocation_model, t, u, OptimizationType.allocate)
+        allocate_demands(p, allocation_model, t, u)
     end
 
     # Reset the mean source flows
