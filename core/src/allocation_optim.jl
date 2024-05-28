@@ -1014,8 +1014,8 @@ function find_internal_sources(
     allocation_model::AllocationModel,
     t::Float64,
     u::ComponentVector,
-    optimization_type::OptimizationType.internal_sources,
 )::Nothing
+    optimization_type = OptimizationType.internal_sources
     (; allocation) = p
     (; priorities) = allocation
 
@@ -1034,8 +1034,8 @@ function collect_demands(
     allocation_model::AllocationModel,
     t::Float64,
     u::ComponentVector,
-    optimization_type::OptimizationType.collect_demands,
 )::Nothing
+    optimization_type = OptimizationType.collect_demands
     (; allocation) = p
     (; subnetwork_id) = allocation_model
     (; priorities, subnetwork_demands) = allocation
@@ -1065,8 +1065,8 @@ function allocate_demands(
     allocation_model::AllocationModel,
     t::Float64,
     u::ComponentVector,
-    optimization_type::OptimizationType.allocate,
 )::Nothing
+    optimization_type = OptimizationType.allocate
     (; allocation) = p
     (; subnetwork_id) = allocation_model
     (; priorities) = allocation
