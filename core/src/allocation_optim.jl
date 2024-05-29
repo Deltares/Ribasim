@@ -1037,7 +1037,8 @@ function collect_demands(
 )::Nothing
     optimization_type = OptimizationType.internal_sources
     (; allocation) = p
-    (; priorities) = allocation
+    (; subnetwork_id) = allocation_model
+    (; priorities, subnetwork_demands) = allocation
 
     set_initial_capacities_inlet!(allocation_model, p, optimization_type)
 
@@ -1050,9 +1051,7 @@ function collect_demands(
     #----------------------------------------------------------------------------------------------
 
     optimization_type = OptimizationType.collect_demands
-    (; allocation) = p
-    (; subnetwork_id) = allocation_model
-    (; priorities, subnetwork_demands) = allocation
+
     main_network_source_edges = get_main_network_connections(p, subnetwork_id)
 
     # Reset the subnetwork demands to 0.0
