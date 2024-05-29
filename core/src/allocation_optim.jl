@@ -1035,6 +1035,20 @@ function collect_demands(
     t::Float64,
     u::ComponentVector,
 )::Nothing
+    optimization_type = OptimizationType.internal_sources
+    (; allocation) = p
+    (; priorities) = allocation
+
+    set_initial_capacities_inlet!(allocation_model, p, optimization_type)
+
+    set_initial_values!(allocation_model, p, u, t)
+
+    # Loop over the priorities
+    for priority_idx in eachindex(priorities)
+        allocate_priority!(allocation_model, u, p, t, priority_idx, optimization_type)
+    end
+    #----------------------------------------------------------------------------------------------
+
     optimization_type = OptimizationType.collect_demands
     (; allocation) = p
     (; subnetwork_id) = allocation_model
