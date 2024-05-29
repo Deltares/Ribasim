@@ -1040,6 +1040,7 @@ function collect_demands(
     (; subnetwork_id) = allocation_model
     (; priorities, subnetwork_demands) = allocation
 
+    ## Find internal sources
     set_initial_capacities_inlet!(allocation_model, p, optimization_type)
 
     set_initial_values!(allocation_model, p, u, t)
@@ -1048,8 +1049,8 @@ function collect_demands(
     for priority_idx in eachindex(priorities)
         allocate_priority!(allocation_model, u, p, t, priority_idx, optimization_type)
     end
-    #----------------------------------------------------------------------------------------------
 
+    ## Collect demand
     optimization_type = OptimizationType.collect_demands
 
     main_network_source_edges = get_main_network_connections(p, subnetwork_id)
