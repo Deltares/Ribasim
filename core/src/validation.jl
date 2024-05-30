@@ -162,6 +162,21 @@ function valid_config(config::Config)::Bool
     return !errors
 end
 
+function valid_nodes(db::DB)::Bool
+    errors = false
+
+    sql = "SELECT node_type, node_id FROM Node GROUP BY node_type, node_id HAVING COUNT(*) > 1"
+    node_type, node_id = execute(columntable, db, sql)
+
+    for (node_type, node_id) in zip(node_type, node_id)
+        errors = true
+        id = NodeID(node_type, node_id)
+        @error "Multiple occurrences of node $id found in Node table."
+    end
+
+    return !errors
+end
+
 """
 Test for each node given its node type whether the nodes that
 # are downstream ('down-edge') of this node are of an allowed type

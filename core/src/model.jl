@@ -51,6 +51,9 @@ function Model(config::Config)::Model
     # so we can directly close it again.
     db = SQLite.DB(db_path)
 
+    if !valid_nodes(db)
+        error("Invalid nodes found.")
+    end
     if !valid_edge_types(db)
         error("Invalid edge types found.")
     end
