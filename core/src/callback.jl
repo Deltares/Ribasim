@@ -114,7 +114,7 @@ function integrate_flows!(u, t, integrator)::Nothing
     end
 
     # Allocation source flows
-    for (edge, value) in allocation.mean_flows
+    for (edge, value) in allocation.mean_input_flows
         if edge[1] == edge[2]
             # Vertical fluxes
             _, basin_idx = id_index(basin.node_id, edge[1])
@@ -124,6 +124,14 @@ function integrate_flows!(u, t, integrator)::Nothing
                 dt
         else
             # Horizontal flows
+            value[] +=
+                0.5 * (get_flow(graph, edge..., 0) + get_flow_prev(graph, edge..., 0)) * dt
+        end
+    end
+
+    # Realized demand flows
+    for (edge, value) in allocation.mean_realized_flows
+        if edge[1] !== edge[2]
             value[] +=
                 0.5 * (get_flow(graph, edge..., 0) + get_flow_prev(graph, edge..., 0)) * dt
         end
@@ -460,8 +468,8 @@ end
 "Solve the allocation problem for all demands and assign allocated abstractions."
 function update_allocation!(integrator)::Nothing
     (; p, t, u) = integrator
-    (; allocation) = p
-    (; allocation_models, mean_flows) = allocation
+    (; allocation, basin) = p
+    (; allocation_models, mean_input_flows, mean_realized_flows) = allocation
 
     # Don't run the allocation algorithm if allocation is not active
     # (Specifically for running Ribasim via the BMI)
@@ -471,9 +479,20 @@ function update_allocation!(integrator)::Nothing
 
     (; Δt_allocation) = allocation_models[1]
 
-    # Divide by the allocation Δt to obtain the mean flows
+    # Divide by the allocation Δt to obtain the mean input flows
     # from the integrated flows
-    for value in values(mean_flows)
+    for value in values(mean_input_flows)
+        value[] /= Δt_allocation
+    end
+
+    # Divide by the allocation Δt to obtain the mean realized flows
+    # from the integrated flows
+    for (edge, value) in mean_realized_flows
+        if edge[1] == edge[2]
+            # Compute the mean realized demand for basins as Δstorage/Δt_allocation
+            _, basin_idx = id_index(basin.node_id, edge[1])
+            value[] += u[basin_idx]
+        end
         value[] /= Δt_allocation
     end
 
@@ -492,9 +511,19 @@ function update_allocation!(integrator)::Nothing
         allocate!(p, allocation_model, t, u, OptimizationType.allocate)
     end
 
-    # Reset the mean source flows
-    for value in values(mean_flows)
-        value[] = 0.0
+    # Reset the mean flows
+    for mean_flows in (mean_input_flows, mean_realized_flows)
+        for value in values(mean_flows)
+            value[] = 0.0
+        end
+    end
+
+    # Set basin storages for mean storage change computation
+    for (edge, value) in mean_realized_flows
+        if edge[1] == edge[2]
+            _, basin_idx = id_index(basin.node_id, edge[1])
+            value[] = -u[basin_idx]
+        end
     end
 end
 

@@ -203,7 +203,7 @@ function set_initial_capacities_source!(
 )::Nothing
     (; problem) = allocation_model
     (; graph, allocation) = p
-    (; mean_flows) = allocation
+    (; mean_input_flows) = allocation
     (; subnetwork_id) = allocation_model
     source_constraints = problem[:source]
     main_network_source_edges = get_main_network_connections(p, subnetwork_id)
@@ -214,7 +214,7 @@ function set_initial_capacities_source!(
             # If it is a source edge for this allocation problem
             if edge ∉ main_network_source_edges
                 # Reset the source to the averaged flow over the last allocation period
-                source_capacity = mean_flows[edge][]
+                source_capacity = mean_input_flows[edge][]
                 JuMP.set_normalized_rhs(
                     source_constraints[edge],
                     # It is assumed that the allocation procedure does not have to be differentiated.
@@ -309,11 +309,11 @@ function get_basin_data(
     (; graph, basin, level_demand, allocation) = p
     (; vertical_flux) = basin
     (; Δt_allocation) = allocation_model
-    (; mean_flows) = allocation
+    (; mean_input_flows) = allocation
     @assert node_id.type == NodeType.Basin
     vertical_flux = get_tmp(vertical_flux, 0)
     _, basin_idx = id_index(basin.node_id, node_id)
-    influx = mean_flows[(node_id, node_id)][]
+    influx = mean_input_flows[(node_id, node_id)][]
     _, basin_idx = id_index(basin.node_id, node_id)
     storage_basin = u.storage[basin_idx]
     control_inneighbors = inneighbor_labels_type(graph, node_id, EdgeType.control)
@@ -697,7 +697,7 @@ function save_demands_and_allocations!(
     priority_idx::Int,
 )::Nothing
     (; graph, allocation, user_demand, flow_demand, basin) = p
-    (; record_demand, priorities) = allocation
+    (; record_demand, priorities, mean_realized_flows) = allocation
     (; subnetwork_id, problem) = allocation_model
     node_ids = graph[].node_ids[subnetwork_id]
     constraints_outflow = problem[:basin_outflow]
@@ -713,8 +713,7 @@ function save_demands_and_allocations!(
             user_demand_idx = findsorted(user_demand.node_id, node_id)
             demand = user_demand.demand[user_demand_idx, priority_idx]
             allocated = user_demand.allocated[user_demand_idx, priority_idx]
-            #NOTE: instantaneous
-            realized = get_flow(graph, inflow_id(graph, node_id), node_id, 0)
+            realized = mean_realized_flows[(inflow_id(graph, node_id), node_id)][]
 
         elseif has_external_demand(graph, node_id, :level_demand)[1]
             basin_priority_idx = get_external_priority_idx(p, node_id)
@@ -733,9 +732,7 @@ function save_demands_and_allocations!(
                 end
                 allocated =
                     JuMP.value(F_basin_in[node_id]) - JuMP.value(F_basin_out[node_id])
-                # TODO: realized for a basin is not so clear, maybe it should be Δstorage/Δt
-                # over the last allocation interval?
-                realized = 0.0
+                realized = mean_realized_flows[(node_id, node_id)][]
             end
 
         else
@@ -751,8 +748,7 @@ function save_demands_and_allocations!(
                         flow_demand_node_id,
                     )] : 0.0
                 allocated = JuMP.value(F[(inflow_id(graph, node_id), node_id)])
-                #NOTE: Still instantaneous
-                realized = get_flow(graph, inflow_id(graph, node_id), node_id, 0)
+                realized = mean_realized_flows[(inflow_id(graph, node_id), node_id)][]
             end
         end
 
@@ -765,9 +761,6 @@ function save_demands_and_allocations!(
             push!(record_demand.priority, priorities[priority_idx])
             push!(record_demand.demand, demand)
             push!(record_demand.allocated, allocated)
-
-            # TODO: This is now the last abstraction before the allocation update,
-            # should be the average abstraction since the last allocation solve
             push!(record_demand.realized, realized)
         end
     end
