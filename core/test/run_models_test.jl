@@ -128,8 +128,8 @@
     @testset "Results values" begin
         @test flow.time[1] == DateTime(2020)
         @test coalesce.(flow.edge_id[1:2], -1) == [0, 1]
-        @test flow.from_node_id[1:2] == [6, 0]
-        @test flow.to_node_id[1:2] == [0, 922]
+        @test flow.from_node_id[1:2] == [6, 6]
+        @test flow.to_node_id[1:2] == [6, 2147483647]
 
         @test basin.storage[1] ≈ 1.0
         @test basin.level[1] ≈ 0.044711584
