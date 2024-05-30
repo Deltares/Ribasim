@@ -1037,79 +1037,18 @@ end
 Update the allocation optimization problem for the given subnetwork with the problem state
 and flows, solve the allocation problem and assign the results to the UserDemand.
 """
-# function allocate!(
-#     p::Parameters,
-#     allocation_model::AllocationModel,
-#     t::Float64,
-#     u::ComponentVector,
-#     optimization_type::OptimizationType.T,
-# )::Nothing
-#     (; allocation) = p
-#     (; subnetwork_id) = allocation_model
-#     (; priorities, subnetwork_demands) = allocation
-#     main_network_source_edges = get_main_network_connections(p, subnetwork_id)
-
-#     if subnetwork_id == 1
-#         @assert optimization_type == OptimizationType.allocate "For the main network no demands have to be collected"
-#     end
-
-#     # Reset the subnetwork demands to 0.0
-#     if optimization_type == OptimizationType.collect_demands
-#         for main_network_connection in keys(subnetwork_demands)
-#             if main_network_connection in main_network_source_edges
-#                 subnetwork_demands[main_network_connection] .= 0.0
-#             end
-#         end
-#     end
-
-#     set_initial_capacities_inlet!(allocation_model, p, optimization_type)
-
-#     if optimization_type == OptimizationType.collect_demands
-#         # When collecting demands, only flow should be available
-#         # from the main to subnetwork connections
-#         empty_sources!(allocation_model, allocation)
-#     else
-#         set_initial_values!(allocation_model, p, u, t)
-#     end
-
-#     # Loop over the priorities
-#     for priority_idx in eachindex(priorities)
-#         allocate_priority!(allocation_model, u, p, t, priority_idx, optimization_type)
-#     end
-# end
-
-function find_internal_sources(
-    p::Parameters,
-    allocation_model::AllocationModel,
-    t::Float64,
-    u::ComponentVector,
-)::Nothing
-    optimization_type = OptimizationType.internal_sources
-    (; allocation) = p
-    (; priorities) = allocation
-
-    set_initial_capacities_inlet!(allocation_model, p, optimization_type)
-
-    set_initial_values!(allocation_model, p, u, t)
-
-    # Loop over the priorities
-    for priority_idx in eachindex(priorities)
-        allocate_priority!(allocation_model, u, p, t, priority_idx, optimization_type)
-    end
-end
-
 function collect_demands(
     p::Parameters,
     allocation_model::AllocationModel,
     t::Float64,
     u::ComponentVector,
 )::Nothing
-    optimization_type = OptimizationType.internal_sources
     (; allocation) = p
     (; subnetwork_id) = allocation_model
     (; priorities, subnetwork_demands) = allocation
 
     ## Find internal sources
+    optimization_type = OptimizationType.internal_sources
     set_initial_capacities_inlet!(allocation_model, p, optimization_type)
 
     set_initial_values!(allocation_model, p, u, t)

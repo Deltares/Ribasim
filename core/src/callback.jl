@@ -480,7 +480,6 @@ function update_allocation!(integrator)::Nothing
     # If a main network is present, collect demands of subnetworks
     if has_main_network(allocation)
         for allocation_model in Iterators.drop(allocation_models, 1)
-            #find_internal_sources(p, allocation_model, t, u)
             collect_demands(p, allocation_model, t, u)
         end
     end

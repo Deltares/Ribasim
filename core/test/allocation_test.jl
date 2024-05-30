@@ -223,7 +223,6 @@ end
     # Collecting demands
     u = ComponentVector(; storage = zeros(length(basin.node_id)))
     for allocation_model in allocation_models[2:end]
-        #Ribasim.find_internal_sources(p, allocation_model, t, u)
         Ribasim.collect_demands(p, allocation_model, t, u)
     end
 
@@ -307,7 +306,6 @@ end
     # Collecting demands
     u = ComponentVector(; storage = zeros(length(basin.node_id)))
     for allocation_model in allocation_models[2:end]
-        #Ribasim.find_internal_sources(p, allocation_model, t, u)
         Ribasim.collect_demands(p, allocation_model, t, u)
     end
 
