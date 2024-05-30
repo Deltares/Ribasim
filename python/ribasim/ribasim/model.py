@@ -174,16 +174,7 @@ class Model(FileModel):
         db_path.unlink(missing_ok=True)
         context_file_loading.get()["database"] = db_path
         self.edge._save(directory, input_dir)
-
         node = self.node_table()
-        assert node.df is not None
-        # Temporarily require unique node_id for #1262
-        # and copy them to the fid for #1306.
-        if not node.df["node_id"].is_unique:
-            raise ValueError("node_id must be unique")
-        node.df.set_index("node_id", drop=False, inplace=True)
-        node.df.index.name = "fid"
-        node.df.sort_index(inplace=True)
         node._save(directory, input_dir)
 
         for sub in self._nodes():
