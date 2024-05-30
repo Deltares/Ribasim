@@ -780,3 +780,18 @@ function set_initial_allocation_mean_flows!(integrator)::Nothing
     end
     return nothing
 end
+
+function smooth_bounded_identity(x::T, max, frac)::T where {T}
+    x_abs = abs(x)
+    if x_abs <= (1 - frac) * max
+        x
+    elseif x_abs >= (1 + frac) * max
+        sign(x) * max
+    elseif x > 0
+        diff = x - max
+        -1 / (4 * frac * max) * diff^2 + 0.5 * diff + (1 - frac / 4) * max
+    else
+        diff = x + max
+        1 / (4 * frac * max) * diff^2 + 0.5 * diff - (1 - frac / 4) * max
+    end
+end

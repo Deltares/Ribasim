@@ -363,7 +363,7 @@ function formulate_flow!(
             _, h_a = get_level(p, inflow_edge, inflow_id, t; storage)
             _, h_b = get_level(p, outflow_edge, outflow_id, t; storage)
             q_unlimited = (h_a - h_b) / resistance[i]
-            q = clamp(q_unlimited, -max_flow_rate[i], max_flow_rate[i])
+            q = smooth_bounded_identity(q_unlimited, max_flow_rate[i], 0.1)
 
             # add reduction_factor on highest level
             if q > 0
