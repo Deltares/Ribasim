@@ -16,6 +16,14 @@ struct NewNodeType <: AbstractParameterNode
     # Other fields
 end
 ```
+Another abstract class inherited from `AbstractParameterNode` is called `AbstractDemandNode`. For creating new node type used in allocation, define a struct:
+
+```julia
+struct NewNodeType <: AbstractDemandNode
+    node_id::Vector{NodeID}
+    # Other fields
+end
+```
 
 These fields do not have to correspond 1:1 with the input tables (see below). The vector with all node IDs that are of the new type in a given model is a mandatory field. Now you can:
 
