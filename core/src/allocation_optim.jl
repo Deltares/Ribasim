@@ -599,6 +599,7 @@ to obtain the reduced demand used for goal programming
 function adjust_demands!(
     allocation_model::AllocationModel,
     p::Parameters,
+    ::Int,
     ::LevelDemand,
 )::Nothing
     (; graph, basin) = p
@@ -645,6 +646,7 @@ Flow from any priority counts.
 function adjust_demands!(
     allocation_model::AllocationModel,
     p::Parameters,
+    ::Int,
     ::FlowDemand,
 )::Nothing
     (; flow_demand, graph) = p
@@ -665,6 +667,7 @@ function adjust_demands!(
             JuMP.value(F[(inflow_id(graph, node_with_demand_id), node_with_demand_id)]),
         )
     end
+    return nothing
 end
 # function adjust_demands_flow!(allocation_model::AllocationModel, p::Parameters)::Nothing
 #     (; flow_demand, graph) = p
@@ -992,9 +995,6 @@ function allocate_priority!(
     for parameter in propertynames(p)
         demand_node = getfield(p, parameter)
         if demand_node isa AbstractDemandNode
-            # if demand_node isa LevelDemand
-            #     adjust_demands()
-            # end
             adjust_demands!(allocation_model, p, priority_idx, demand_node)
         end
     end
