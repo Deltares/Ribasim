@@ -575,7 +575,11 @@ end
 Subtract the allocated flow to the basin from its demand,
 to obtain the reduced demand used for goal programming
 """
-function adjust_demands_level!(allocation_model::AllocationModel, p::Parameters)::Nothing
+function adjust_demands_level!(
+    allocation_model::AllocationModel,
+    p::Parameters,
+    ::LevelDemand,
+)::Nothing
     (; graph, basin) = p
     (; node_id, demand) = basin
     (; subnetwork_id, problem) = allocation_model
@@ -985,9 +989,15 @@ function allocate_priority!(
     adjust_capacities_returnflow!(allocation_model, p)
 
     # Adjust demands for next optimization (in case of internal_sources -> collect_demands)
-    adjust_demands_user!(allocation_model, p, priority_idx)
-    adjust_demands_level!(allocation_model, p)
-    adjust_demands_flow!(allocation_model, p)
+    for parameter in propertynames(p)
+        demand_node = getfield(p, parameter)
+        if demand_node isa AbstractDemandNode
+            adjust_demands(allocation_model, p, priority_idx, demand_node)
+        end
+    end
+    # adjust_demands_user!(allocation_model, p, priority_idx)
+    # adjust_demands_level!(allocation_model, p)
+    # adjust_demands_flow!(allocation_model, p)
     return nothing
 end
 
