@@ -551,7 +551,7 @@ function adjust_demands!(
     allocation_model::AllocationModel,
     p::Parameters,
     priority_idx::Int,
-    user_demand::UserDemand,
+    ::UserDemand,
 )::Nothing
     (; problem, subnetwork_id) = allocation_model
     (; graph, user_demand) = p
@@ -599,7 +599,7 @@ to obtain the reduced demand used for goal programming
 function adjust_demands!(
     allocation_model::AllocationModel,
     p::Parameters,
-    level_demand::LevelDemand,
+    ::LevelDemand,
 )::Nothing
     (; graph, basin) = p
     (; node_id, demand) = basin
@@ -645,7 +645,7 @@ Flow from any priority counts.
 function adjust_demands!(
     allocation_model::AllocationModel,
     p::Parameters,
-    flow_demand::FlowDemand,
+    ::FlowDemand,
 )::Nothing
     (; flow_demand, graph) = p
     (; problem, subnetwork_id) = allocation_model
