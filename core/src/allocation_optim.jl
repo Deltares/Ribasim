@@ -524,29 +524,6 @@ Set the demand of the flow demand nodes. 2 cases:
 - Before an allocation solve, subtract the flow trough the node with a flow demand
   from the total flow demand (which will be used at the priority of the flow demand only).
 """
-# function adjust_demands_user!(
-#     allocation_model::AllocationModel,
-#     p::Parameters,
-#     priority_idx::Int,
-# )::Nothing
-#     (; problem, subnetwork_id) = allocation_model
-#     (; graph, user_demand) = p
-#     (; node_id, demand_reduced) = user_demand
-#     F = problem[:F]
-
-#     # Reduce the demand by what was allocated
-#     for (i, id) in enumerate(node_id)
-#         if graph[id].subnetwork_id == subnetwork_id
-#             d = max(
-#                 0.0,
-#                 demand_reduced[i, priority_idx] - JuMP.value(F[(inflow_id(graph, id), id)]),
-#             )
-#             demand_reduced[i, priority_idx] = d
-#         end
-#     end
-#     return nothing
-# end
-
 function adjust_demands!(
     allocation_model::AllocationModel,
     p::Parameters,
@@ -575,26 +552,6 @@ end
 Subtract the allocated flow to the basin from its demand,
 to obtain the reduced demand used for goal programming
 """
-# function adjust_demands_level!(
-#     allocation_model::AllocationModel,
-#     p::Parameters,
-#     ::LevelDemand,
-# )::Nothing
-#     (; graph, basin) = p
-#     (; node_id, demand) = basin
-#     (; subnetwork_id, problem) = allocation_model
-#     F_basin_in = problem[:F_basin_in]
-
-#     # Reduce the demand by what was allocated
-#     for id in only(F_basin_in.axes)
-#         if graph[id].subnetwork_id == subnetwork_id
-#             _, i = id_index(basin.node_id, id)
-#             demand[i] -= JuMP.value(F_basin_in[id])
-#         end
-#     end
-
-#     return nothing
-# end
 
 function adjust_demands!(
     allocation_model::AllocationModel,
@@ -669,27 +626,6 @@ function adjust_demands!(
     end
     return nothing
 end
-# function adjust_demands_flow!(allocation_model::AllocationModel, p::Parameters)::Nothing
-#     (; flow_demand, graph) = p
-#     (; problem, subnetwork_id) = allocation_model
-#     F = problem[:F]
-
-#     for (i, node_id) in enumerate(flow_demand.node_id)
-#         if graph[node_id].subnetwork_id != subnetwork_id
-#             continue
-#         end
-
-#         node_with_demand_id =
-#             only(outneighbor_labels_type(graph, node_id, EdgeType.control))
-
-#         flow_demand.demand[i] = max(
-#             0.0,
-#             flow_demand.demand[i] -
-#             JuMP.value(F[(inflow_id(graph, node_with_demand_id), node_with_demand_id)]),
-#         )
-#     end
-#     return nothing
-# end
 
 """
 Set the flow buffer of nodes with a flow demand to 0.0
@@ -998,9 +934,6 @@ function allocate_priority!(
             adjust_demands!(allocation_model, p, priority_idx, demand_node)
         end
     end
-    # adjust_demands_user!(allocation_model, p, priority_idx)
-    # adjust_demands_level!(allocation_model, p)
-    # adjust_demands_flow!(allocation_model, p)
     return nothing
 end
 
