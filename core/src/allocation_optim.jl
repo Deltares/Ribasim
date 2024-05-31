@@ -873,7 +873,7 @@ function save_allocation_flows!(
     return nothing
 end
 
-function allocate_priority!(
+function optimize_priority!(
     allocation_model::AllocationModel,
     u::ComponentVector,
     p::Parameters,
@@ -1001,7 +1001,7 @@ function collect_demands(
 
     # Loop over the priorities
     for priority_idx in eachindex(priorities)
-        allocate_priority!(allocation_model, u, p, t, priority_idx, optimization_type)
+        optimize_priority!(allocation_model, u, p, t, priority_idx, optimization_type)
     end
 
     ## Collect demand
@@ -1024,7 +1024,7 @@ function collect_demands(
 
     # Loop over the priorities
     for priority_idx in eachindex(priorities)
-        allocate_priority!(allocation_model, u, p, t, priority_idx, optimization_type)
+        optimize_priority!(allocation_model, u, p, t, priority_idx, optimization_type)
     end
 end
 
@@ -1049,6 +1049,6 @@ function allocate_demands(
 
     # Loop over the priorities
     for priority_idx in eachindex(priorities)
-        allocate_priority!(allocation_model, u, p, t, priority_idx, optimization_type)
+        optimize_priority!(allocation_model, u, p, t, priority_idx, optimization_type)
     end
 end

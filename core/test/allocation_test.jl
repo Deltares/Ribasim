@@ -237,7 +237,7 @@ end
     # Solving for the main network, containing subnetworks as UserDemands
     allocation_model = allocation_models[1]
     (; problem) = allocation_model
-    Ribasim.allocate_priority!(allocation_model, u, p, t, 1, OptimizationType.allocate)
+    Ribasim.optimize_priority!(allocation_model, u, p, t, 1, OptimizationType.allocate)
 
     # Main network objective function
     F = problem[:F]
@@ -451,7 +451,7 @@ end
     Ribasim.set_initial_values!(allocation_model, p, u, t)
 
     # Priority 1
-    Ribasim.allocate_priority!(
+    Ribasim.optimize_priority!(
         allocation_model,
         model.integrator.u,
         p,
@@ -466,7 +466,7 @@ end
     @test JuMP.normalized_rhs(constraint_flow_out) == Inf
 
     ## Priority 2
-    Ribasim.allocate_priority!(
+    Ribasim.optimize_priority!(
         allocation_model,
         model.integrator.u,
         p,
@@ -481,7 +481,7 @@ end
     @test JuMP.normalized_rhs(constraint_flow_out) == 0.0
 
     ## Priority 3
-    Ribasim.allocate_priority!(
+    Ribasim.optimize_priority!(
         allocation_model,
         model.integrator.u,
         p,
@@ -500,7 +500,7 @@ end
     @test JuMP.value(F[(only(level_boundary.node_id), node_id_with_flow_demand)]) == 0
 
     ## Priority 4
-    Ribasim.allocate_priority!(
+    Ribasim.optimize_priority!(
         allocation_model,
         model.integrator.u,
         p,
