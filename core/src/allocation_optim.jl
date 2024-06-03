@@ -980,14 +980,6 @@ function empty_sources!(allocation_model::AllocationModel, allocation::Allocatio
 end
 
 """
-Loop over the priorities
-"""
-function loop_opt_priorities(priorities::Vector{Int32})::Nothing
-    for priority_idx in eachindex(priorities)
-        optimize_priority!(allocation_model, u, p, t, priority_idx, optimization_type)
-    end
-end
-"""
 Update the allocation optimization problem for the given subnetwork with the problem state
 and flows, solve the allocation problem and assign the results to the UserDemand.
 """
@@ -1007,7 +999,10 @@ function collect_demands(
 
     set_initial_values!(allocation_model, p, u, t)
 
-    loop_opt_priorities(priorities)
+    # Loop over priorities
+    for priority_idx in eachindex(priorities)
+        optimize_priority!(allocation_model, u, p, t, priority_idx, optimization_type)
+    end
 
     ## Collect demand
     optimization_type = OptimizationType.collect_demands
@@ -1027,10 +1022,13 @@ function collect_demands(
     # from the main to subnetwork connections
     empty_sources!(allocation_model, allocation)
 
-    loop_opt_priorities(priorities)
+    # Loop over priorities
+    for priority_idx in eachindex(priorities)
+        optimize_priority!(allocation_model, u, p, t, priority_idx, optimization_type)
+    end
 end
 
-function allocate_demands(
+function allocate_demands!(
     p::Parameters,
     allocation_model::AllocationModel,
     t::Float64,
