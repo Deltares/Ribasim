@@ -1058,13 +1058,13 @@ function Allocation(db::DB, config::Config, graph::MetaGraph)::Allocation
     # Find edges that realize a demand
     for edge_metadata in values(graph.edge_data)
         (; type, edge) = edge_metadata
-        if type != EdgeType.flow
-            continue
-        end
-        dst_id = edge[2]
-        user_demand_inflow = dst_id.type == NodeType.UserDemand
-        flow_demand_inflow = has_external_demand(graph, dst_id, :flow_demand)[1]
-        level_demand_inflow = has_external_demand(graph, dst_id, :level_demand)[1]
+
+        src_id, dst_id = edge
+        user_demand_inflow = (type == EdgeType.flow) && (dst_id.type == NodeType.UserDemand)
+        level_demand_inflow =
+            (type == EdgeType.control) && (src_id.type == NodeType.LevelDemand)
+        flow_demand_inflow =
+            (type == EdgeType.flow) && has_external_demand(graph, dst_id, :flow_demand)[1]
 
         if user_demand_inflow || flow_demand_inflow
             mean_realized_flows[edge] = Ref(0.0)
