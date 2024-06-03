@@ -1,0 +1,44 @@
+---
+title: "LevelBoundary"
+---
+
+LevelBoundary is a node whose water level is determined by the input.
+It can be used as a boundary condition like the level of the sea or a lake.
+Since the water level is unaffected by flow, it acts like an infinitely large Basin.
+Connect the LevelBoundary to a node that will look at the level to calculate the flow, like a LinearResistance.
+
+# Tables
+
+## Static
+
+column        | type    | unit         | restriction
+------------- | ------- | ------------ | -----------
+node_id       | Int32   | -            | sorted
+active        | Bool    | -            | (optional, default true)
+level         | Float64 | $m$          | -
+
+## Time
+
+This table is the transient form of the `LevelBoundary` table.
+The only difference is that a time column is added and activity is assumed to be true.
+The table must by sorted by time, and per time it must be sorted by `node_id`.
+With this the levels can be updated over time. In between the given times the
+level is interpolated linearly, and outside the flow rate is constant given by the
+nearest time value.
+Note that a `node_id` can be either in this table or in the static one, but not both.
+
+column    | type     | unit         | restriction
+--------- | -------  | ------------ | -----------
+node_id   | Int32    | -            | sorted
+time      | DateTime | -            | sorted per node_id
+level     | Float64  | $m$          | -
+
+## Concentration {#sec-level-boundary-conc}
+This table defines the concentration(s) of (a) substance(s) for the flow from the LevelBoundary.
+
+column         | type     | unit         | restriction
+-------------- | -------- | ------------ | -----------
+node_id        | Int32    | -            | sorted
+time           | DateTime | -            | sorted per node_id
+substance      | String   | -            | can correspond to known Delwaq substances
+concentration  | Float64  | $g m^{-3}$   |
