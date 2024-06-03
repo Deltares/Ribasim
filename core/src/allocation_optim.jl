@@ -983,7 +983,7 @@ end
 Update the allocation optimization problem for the given subnetwork with the problem state
 and flows, solve the allocation problem and assign the results to the UserDemand.
 """
-function collect_demands(
+function collect_demands!(
     p::Parameters,
     allocation_model::AllocationModel,
     t::Float64,
@@ -996,7 +996,6 @@ function collect_demands(
     ## Find internal sources
     optimization_type = OptimizationType.internal_sources
     set_initial_capacities_inlet!(allocation_model, p, optimization_type)
-
     set_initial_values!(allocation_model, p, u, t)
 
     # Loop over priorities

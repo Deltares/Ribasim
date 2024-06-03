@@ -20,7 +20,7 @@ The allocation algorithm contains 3 types of optimization:
 
 The full algorithm goes through the following steps:
 
-1. Perform `collect_demands` for all subnetworks apart from the main network;
+1. Perform `internal_sources` followed by `collect_demands` for all subnetworks apart from the main network;
 2. Perform `allocate` for the main network;
 3. Perform `allocate` for the other subnetworks.
 
