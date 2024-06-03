@@ -8476,28 +8476,6 @@ packages:
   license: Apache-2.0
   license_family: Apache
   purls:
-  - pkg:pypi/html5lib
-  - pkg:pypi/bleach
-  size: 131220
-  timestamp: 1696630354218
-- kind: conda
-  name: bleach
-  version: 6.1.0
-  build: pyhd8ed1ab_0
-  subdir: noarch
-  noarch: python
-  url: https://conda.anaconda.org/conda-forge/noarch/bleach-6.1.0-pyhd8ed1ab_0.conda
-  sha256: 845e77ef495376c5c3c328ccfd746ca0ef1978150cae8eae61a300fe7755fb08
-  md5: 0ed9d7c0e9afa7c025807a9a8136ea3e
-  depends:
-  - packaging
-  - python >=3.6
-  - setuptools
-  - six >=1.9.0
-  - webencodings
-  license: Apache-2.0
-  license_family: Apache
-  purls:
   - pkg:pypi/bleach
   - pkg:pypi/html5lib
   size: 131220
@@ -33394,11 +33372,11 @@ packages:
   - matplotlib
   - numpy
   - pandas
-  - pandera>=0.18
+  - pandera >=0.18
   - pyarrow
-  - pydantic~=2.0
+  - pydantic ~=2.0
   - pyogrio
-  - shapely>=2.0
+  - shapely >=2.0
   - tomli
   - tomli-w
   - pytest ; extra == 'tests'
