@@ -289,12 +289,22 @@ function discrete_control_affect!(integrator, compound_variable_idx)
     # Get the discrete_control node to which this compound variable belongs
     discrete_control_node_id = discrete_control.node_id[compound_variable_idx]
 
-    # Get the indices of all conditions that this control node listens to
-    where_node_id = searchsorted(discrete_control.node_id, discrete_control_node_id)
+    # Get the first index of the (compound) variables that this control node listens to
+    variable_idx = searchsortedfirst(discrete_control.node_id, discrete_control_node_id)
+    truth_value_idx = 1
 
-    # Get the truth state for this discrete_control node
-    truth_state =
-        cat([discrete_control.condition_value[i] for i in where_node_id]...; dims = 1)
+    # Build up the truth state from the truth values per (compound) variable per greater than
+    while variable_idx <= length(discrete_control.node_id) &&
+        discrete_control.node_id[variable_idx] == discrete_control_node_id
+        truth_values_variable = discrete_control.condition_value[variable_idx]
+        n_greater_than = length(truth_values_variable)
+        discrete_control.truth_state[truth_value_idx:(truth_value_idx + n_greater_than - 1)] .=
+            truth_values_variable
+        variable_idx += 1
+        truth_value_idx += n_greater_than
+    end
+
+    truth_state = discrete_control.truth_state[1:(truth_value_idx - 1)]
 
     # What the local control state should be
     control_state_new =

@@ -602,7 +602,7 @@ function parse_variables_and_conditions(compound_variable, condition)
     weight = Vector{Float64}[]
     look_ahead = Vector{Float64}[]
     greater_than = Vector{Float64}[]
-    condition_value = BitVector[]
+    condition_value = Vector{Bool}[]
     errors = false
 
     # Loop over unique discrete_control node IDs (on which at least one condition is defined)
@@ -638,7 +638,7 @@ function parse_variables_and_conditions(compound_variable, condition)
                 push!(greater_than, condition_group_variable.greater_than)
                 push!(
                     condition_value,
-                    BitVector(zeros(length(condition_group_variable.greater_than))),
+                    zeros(Bool, length(condition_group_variable.greater_than)),
                 )
             end
         end
@@ -698,6 +698,14 @@ function DiscreteControl(db::DB, config::Config)::DiscreteControl
         control_state = String[],
     )
 
+    max_truth_state_length = 0
+    for id in unique(node_id)
+        where_node_id = searchsorted(node_id, id)
+        truth_state_length = sum(length(condition_value[i]) for i in where_node_id)
+        max_truth_state_length = max(max_truth_state_length, truth_state_length)
+    end
+    truth_state = zeros(Bool, max_truth_state_length)
+
     return DiscreteControl(
         node_id, # Not unique
         listen_node_id,
@@ -706,6 +714,7 @@ function DiscreteControl(db::DB, config::Config)::DiscreteControl
         look_ahead,
         greater_than,
         condition_value,
+        truth_state,
         control_state,
         logic_mapping,
         record,

@@ -457,6 +457,7 @@ weight: the weight of the variables in the condition per compound variable
 look_ahead: the look ahead of variables in the condition in seconds per compound_variable
 greater_than: The threshold values per compound variable
 condition_value: The current truth value of each condition per compound_variable per greater_than
+truth_state: Memory allocated for storing the truth state
 control_state: Dictionary: node ID => (control state, control state start)
 logic_mapping: Dictionary: (control node ID, truth state) => control state
 record: Namedtuple with discrete control information for results
@@ -470,7 +471,9 @@ struct DiscreteControl <: AbstractParameterNode
     look_ahead::Vector{Vector{Float64}}
     # Definition of conditions (one or more greater_than per compound variable)
     greater_than::Vector{Vector{Float64}}
-    condition_value::Vector{BitVector}
+    condition_value::Vector{Vector{Bool}}
+    # Preallocated for storing truth state
+    truth_state::Vector{Bool}
     # Definition of logic
     control_state::Dict{NodeID, Tuple{String, Float64}}
     logic_mapping::Dict{Tuple{NodeID, Vector{Bool}}, String}
