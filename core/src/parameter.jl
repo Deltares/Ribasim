@@ -473,7 +473,7 @@ struct DiscreteControl <: AbstractParameterNode
     condition_value::Vector{BitVector}
     # Definition of logic
     control_state::Dict{NodeID, Tuple{String, Float64}}
-    logic_mapping::Dict{Tuple{NodeID, String}, String}
+    logic_mapping::Dict{Tuple{NodeID, Vector{Bool}}, String}
     record::@NamedTuple{
         time::Vector{Float64},
         control_node_id::Vector{Int32},

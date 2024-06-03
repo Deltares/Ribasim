@@ -293,14 +293,8 @@ function discrete_control_affect!(integrator, compound_variable_idx)
     where_node_id = searchsorted(discrete_control.node_id, discrete_control_node_id)
 
     # Get the truth state for this discrete_control node
-    truth_values = cat(
-        [
-            [ifelse(b, "T", "F") for b in discrete_control.condition_value[i]] for
-            i in where_node_id
-        ]...;
-        dims = 1,
-    )
-    truth_state = join(truth_values, "")
+    truth_state =
+        cat([discrete_control.condition_value[i] for i in where_node_id]...; dims = 1)
 
     # What the local control state should be
     control_state_new =
@@ -319,7 +313,7 @@ function discrete_control_affect!(integrator, compound_variable_idx)
 
         push!(record.time, integrator.t)
         push!(record.control_node_id, Int32(discrete_control_node_id))
-        push!(record.truth_state, truth_state)
+        push!(record.truth_state, convert_truth_state(truth_state))
         push!(record.control_state, control_state_new)
 
         # Loop over nodes which are under control of this control node

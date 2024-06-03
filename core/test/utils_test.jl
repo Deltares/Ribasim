@@ -139,11 +139,11 @@ end
     logic_mapping[(NodeID(:DiscreteControl, 2), "FF")] = "bar"
     logic_mapping_expanded = Ribasim.expand_logic_mapping(logic_mapping)
 
-    @test logic_mapping_expanded[(NodeID(:DiscreteControl, 1), "TTT")] == "foo"
-    @test logic_mapping_expanded[(NodeID(:DiscreteControl, 1), "FTT")] == "foo"
-    @test logic_mapping_expanded[(NodeID(:DiscreteControl, 1), "TTF")] == "foo"
-    @test logic_mapping_expanded[(NodeID(:DiscreteControl, 1), "FTF")] == "foo"
-    @test logic_mapping_expanded[(NodeID(:DiscreteControl, 2), "FF")] == "bar"
+    @test logic_mapping_expanded[(NodeID(:DiscreteControl, 1), Bool[1, 1, 1])] == "foo"
+    @test logic_mapping_expanded[(NodeID(:DiscreteControl, 1), Bool[0, 1, 1])] == "foo"
+    @test logic_mapping_expanded[(NodeID(:DiscreteControl, 1), Bool[1, 1, 0])] == "foo"
+    @test logic_mapping_expanded[(NodeID(:DiscreteControl, 1), Bool[0, 1, 0])] == "foo"
+    @test logic_mapping_expanded[(NodeID(:DiscreteControl, 2), Bool[0, 0])] == "bar"
     @test length(logic_mapping_expanded) == 5
 
     new_key = (NodeID(:DiscreteControl, 3), "duck")
@@ -173,7 +173,7 @@ end
     new_key = (NodeID(:DiscreteControl, 1), "TTF")
     logic_mapping[new_key] = "bar"
 
-    @test_throws "AssertionError: Multiple control states found for DiscreteControl #1 for truth state `TTF`: [\"bar\", \"foo\"]." Ribasim.expand_logic_mapping(
+    @test_throws "AssertionError: Multiple control states found for DiscreteControl #1 for truth state `Bool[1, 1, 0]`: [\"bar\", \"foo\"]." Ribasim.expand_logic_mapping(
         logic_mapping,
     )
 end

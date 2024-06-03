@@ -548,7 +548,7 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
         control_states_discrete_control = Set{String}()
 
         # The truth states of this DiscreteControl node with the wrong length
-        truth_states_wrong_length = String[]
+        truth_states_wrong_length = Vector{Bool}[]
 
         # The number of conditions of this DiscreteControl node
         n_conditions = sum(length(greater_than[i]) for i in searchsorted(node_id, id))
@@ -567,7 +567,7 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
 
         if !isempty(truth_states_wrong_length)
             errors = true
-            @error "$id has $n_conditions condition(s), which is inconsistent with these truth state(s): $truth_states_wrong_length."
+            @error "$id has $n_conditions condition(s), which is inconsistent with these truth state(s): $(convert_truth_state.(truth_states_wrong_length))."
         end
 
         # Check whether these control states are defined for the
