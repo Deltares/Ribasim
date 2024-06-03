@@ -40,10 +40,10 @@ pixi run delwaq]]></param>
           <param name="branchFilter" value="+:*" />
           <param name="enableQueueOptimization" value="true" />
           <param name="quietPeriodMode" value="DO_NOT_USE" />
-          <param name="triggerRules"><![CDATA[+:coupling/delwaq/**
-+:core/**
-+:python/**
-+:ribasim_testmodels/**]]></param>
+          <param name="triggerRules"><![CDATA[+:ribasim/coupling/delwaq/**
++:ribasim/core/**
++:ribasim/python/**
++:ribasim/ribasim_testmodels/**]]></param>
         </parameters>
       </build-trigger>
     </build-triggers>
