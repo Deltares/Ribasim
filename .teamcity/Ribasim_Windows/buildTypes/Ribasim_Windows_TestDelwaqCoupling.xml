@@ -61,7 +61,7 @@ pixi run delwaq]]></param>
     <artifact-dependencies>
       <dependency id="ARTIFACT_DEPENDENCY_4206" sourceBuildTypeId="Dimr_DimrCollectors_2bDimrCollectorReleaseSigned" cleanDestination="false">
         <revisionRule name="lastPinned" revision="latest.lastPinned" />
-        <artifact sourcePath="dimrset_x64_signed_272.zip!/x64 =&gt; dimr" />
+        <artifact sourcePath="dimrset_x64_signed_*.zip!/x64 =&gt; dimr" />
       </dependency>
     </artifact-dependencies>
     <cleanup />
