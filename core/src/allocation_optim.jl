@@ -528,10 +528,10 @@ function adjust_demands!(
     allocation_model::AllocationModel,
     p::Parameters,
     priority_idx::Int,
-    ::UserDemand,
+    user_demand::UserDemand,
 )::Nothing
     (; problem, subnetwork_id) = allocation_model
-    (; graph, user_demand) = p
+    (; graph) = p
     (; node_id, demand_reduced) = user_demand
     F = problem[:F]
 
@@ -604,9 +604,9 @@ function adjust_demands!(
     allocation_model::AllocationModel,
     p::Parameters,
     ::Int,
-    ::FlowDemand,
+    flow_demand::FlowDemand,
 )::Nothing
-    (; flow_demand, graph) = p
+    (; graph) = p
     (; problem, subnetwork_id) = allocation_model
     F = problem[:F]
 
@@ -980,6 +980,14 @@ function empty_sources!(allocation_model::AllocationModel, allocation::Allocatio
 end
 
 """
+Loop over the priorities
+"""
+function loop_opt_priorities(priorities::Vector{Int32})::Nothing
+    for priority_idx in eachindex(priorities)
+        optimize_priority!(allocation_model, u, p, t, priority_idx, optimization_type)
+    end
+end
+"""
 Update the allocation optimization problem for the given subnetwork with the problem state
 and flows, solve the allocation problem and assign the results to the UserDemand.
 """
@@ -999,10 +1007,7 @@ function collect_demands(
 
     set_initial_values!(allocation_model, p, u, t)
 
-    # Loop over the priorities
-    for priority_idx in eachindex(priorities)
-        optimize_priority!(allocation_model, u, p, t, priority_idx, optimization_type)
-    end
+    loop_opt_priorities(priorities)
 
     ## Collect demand
     optimization_type = OptimizationType.collect_demands
@@ -1022,10 +1027,7 @@ function collect_demands(
     # from the main to subnetwork connections
     empty_sources!(allocation_model, allocation)
 
-    # Loop over the priorities
-    for priority_idx in eachindex(priorities)
-        optimize_priority!(allocation_model, u, p, t, priority_idx, optimization_type)
-    end
+    loop_opt_priorities(priorities)
 end
 
 function allocate_demands(
@@ -1039,7 +1041,7 @@ function allocate_demands(
     (; subnetwork_id) = allocation_model
     (; priorities) = allocation
 
-    if subnetwork_id == 1
+    if is_main_network(subnetwork_id)
         @assert optimization_type == OptimizationType.allocate "For the main network no demands have to be collected"
     end
 

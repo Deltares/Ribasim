@@ -14,7 +14,8 @@ within this *Allocation* section the main network is also considered to be a sub
 # The high level algorithm
 The allocation algorithm contains 3 types of optimization:
 
-- `collect_demands`, where flows are allocated within a subnetwork by first using the sources inside the subnetwork (internal sources), and then using main network inlet(s) as a source, with demands reduced by allocations in internal sources. The allocated flows in this optimization type are not used. The goal is to see the flow through the main network inlet(s), which is interpreted as the subnetwork demand;
+- `internal_sources`, where flows are allocated within a subnetwork by only using sources inside the subnetwork;
+- `collect_demands`, where flows are allocated within a subnetwork by only using the main network inlet(s) as a source, with demands reduced by allocations in `internal_sources`. The allocated flows in this optimization type are not used. The goal is to see the flow through the main network inlet(s), which is interpreted as the subnetwork demand;
 - `allocate`, where all available sources are used and the final allocated flows for the users are determined.
 
 The full algorithm goes through the following steps:

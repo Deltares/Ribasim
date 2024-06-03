@@ -16,7 +16,7 @@ struct NewNodeType <: AbstractParameterNode
     # Other fields
 end
 ```
-Another abstract class inherited from `AbstractParameterNode` is called `AbstractDemandNode`. For creating new node type used in allocation, define a struct:
+Another abstract type which subtypes from `AbstractParameterNode` is called `AbstractDemandNode`. For creating new node type used in allocation, define a struct:
 
 ```julia
 struct NewNodeType <: AbstractDemandNode
