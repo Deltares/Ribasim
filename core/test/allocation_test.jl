@@ -325,6 +325,7 @@ end
     import JuMP
     using Ribasim: NodeID
     using DataFrames: DataFrame
+    using DataInterpolations: LinearInterpolation, integral
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/level_demand/ribasim.toml")
     @test ispath(toml_path)
@@ -404,6 +405,18 @@ end
     itp_basin_2 = t -> model.integrator.sol(t)[1]
     realized_numeric = diff(itp_basin_2.(df_basin_2.time)) / Δt_allocation
     @test all(isapprox.(realized_numeric, df_basin_2.realized[2:end], atol = 2e-4))
+
+    # Realized user demand
+    flow_table = DataFrame(Ribasim.flow_table(model))
+    flow_table_user_3 = flow_table[flow_table.edge_id .== 1, :]
+    itp_user_3 = LinearInterpolation(
+        flow_table_user_3.flow_rate,
+        Ribasim.seconds_since.(flow_table_user_3.time, model.config.starttime),
+    )
+    df_user_3 =
+        record_demand[(record_demand.node_id .== 3) .&& (record_demand.priority .== 1), :]
+    realized_numeric = diff(integral.(Ref(itp_user_3), df_user_3.time)) ./ Δt_allocation
+    @test all(isapprox.(realized_numeric[3:end], df_user_3.realized[4:end], atol = 5e-4))
 end
 
 @testitem "Flow demand" begin
