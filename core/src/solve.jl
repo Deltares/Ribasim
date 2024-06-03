@@ -251,8 +251,8 @@ function continuous_control!(
         if controls_pump
             for id in outflow_ids(graph, controlled_node_id)
                 if id in fractional_flow.node_id
-                    after_ff_id = outflow_ids(graph, id)
-                    ff_idx = findsorted(fractional_flow, id)
+                    ff_idx = findsorted(fractional_flow.node_id, id)
+                    after_ff_id = fractional_flow.outflow_edge[ff_idx].edge[2]
                     flow_rate_fraction = fractional_flow.fraction[ff_idx] * flow_rate
                     flow[id, after_ff_id] = flow_rate_fraction
 
