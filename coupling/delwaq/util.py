@@ -104,11 +104,13 @@ def ugrid(G) -> xugrid.UgridDataset:
     node_df = pd.DataFrame(G.nodes(), columns=["node_id"])
     node_df["x"] = [i[1] for i in G.nodes(data="x")]
     node_df["y"] = [i[1] for i in G.nodes(data="y")]
-    node_df = node_df[node_df.node_id > 0]
+    node_df = node_df[node_df.node_id > 0].reset_index(drop=True)
+    node_df.set_index("node_id", drop=False, inplace=True)
+    node_df.sort_index(inplace=True)
     edge_df = edge_df[
         edge_df.from_node_id.isin(node_df.node_id)
         & edge_df.to_node_id.isin(node_df.node_id)
-    ]
+    ].reset_index(drop=True)
 
     node_id = node_df.node_id.to_numpy()
     edge_id = edge_df.index.to_numpy()
