@@ -43,7 +43,7 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
     for row in model.node_table().df.itertuples():
         if row.node_type not in ribasim.geometry.edge.SPATIALCONTROLNODETYPES:
             G.add_node(
-                row.node_id,
+                row.node_type + str(row.node_id),
                 type=row.node_type,
                 id=row.node_id,
                 x=row.geometry.x,
@@ -52,7 +52,12 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
             )
     for row in model.edge.df.itertuples():
         if row.edge_type == "flow":
-            G.add_edge(row.from_node_id, row.to_node_id, id=[row.Index], duplicate=None)
+            G.add_edge(
+                row.from_node_type + str(row.from_node_id),
+                row.to_node_type + str(row.to_node_id),
+                id=[row.Index],
+                duplicate=None,
+            )
 
     # Simplify network, only keeping Basins and Boundaries.
     # We find an unwanted node, remove it,
