@@ -33,6 +33,23 @@ website:
         - core/allocation.qmd
         - core/numerics.qmd
         - core/coupling.qmd
+        - section: "Nodes"
+          contents:
+            - core/node/basin.qmd
+            - core/node/tabulated-rating-curve.qmd
+            - core/node/pump.qmd
+            - core/node/outlet.qmd
+            - core/node/user-demand.qmd
+            - core/node/flow-demand.qmd
+            - core/node/level-demand.qmd
+            - core/node/flow-boundary.qmd
+            - core/node/level-boundary.qmd
+            - core/node/linear-resistance.qmd
+            - core/node/manning-resistance.qmd
+            - core/node/fractional-flow.qmd
+            - core/node/terminal.qmd
+            - core/node/discrete-control.qmd
+            - core/node/pid-control.qmd
     - title: "Python tooling"
       contents:
         - python/index.qmd
