@@ -474,6 +474,34 @@ function control_parameters!(
     return nothing
 end
 
+function control_parameters!(
+    linear_resistance::LinearResistance,
+    controlled_parameters::ControlledParameters,
+)::Nothing
+    if controlled_parameters.node_type != NodeType.LinearResistance
+        return nothing
+    end
+    (; node_idx, active, resistance) = controlled_parameters
+    linear_resistance.active[node_idx] = active
+    linear_resistance.resistance[node_idx] =
+        isnan(resistance) ? linear_resistance.resistance[node_idx] : resistance
+    return nothing
+end
+
+function control_parameters!(
+    manning_resistance::ManningResistance,
+    controlled_parameters::ControlledParameters,
+)::Nothing
+    if controlled_parameters.node_type != NodeType.ManningResistance
+        return nothing
+    end
+    (; node_idx, active, manning_n) = controlled_parameters
+    manning_resistance.active[node_idx] = active
+    manning_resistance.manning_n[node_idx] =
+        isnan(manning_n) ? manning_resistance.manning_n[node_idx] : manning_n
+    return nothing
+end
+
 function set_control_params!(p::Parameters, node_id::NodeID, control_state::String)::Nothing
     node = getfield(p, p.graph[node_id].type)
     controlled_parameters::ControlledParameters =
@@ -484,6 +512,8 @@ function set_control_params!(p::Parameters, node_id::NodeID, control_state::Stri
     control_parameters!(p.tabulated_rating_curve, controlled_parameters)
     control_parameters!(p.fractional_flow, controlled_parameters, p)
     control_parameters!(p.pid_control, controlled_parameters)
+    control_parameters!(p.linear_resistance, controlled_parameters)
+    control_parameters!(p.manning_resistance, controlled_parameters)
     return nothing
 end
 
