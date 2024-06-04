@@ -165,10 +165,12 @@ end
     t = Ribasim.tsaves(model)
     level = Ribasim.get_storages_and_levels(model).level[1, :]
 
-    target_high =
-        pid_control.control_mapping[(NodeID(:PidControl, 6), "target_high")].target.u[1]
+    target_high = pid_control.control_mapping[(
+        NodeID(:PidControl, 6),
+        "target_high",
+    )].interpolation.u[1]
     target_low =
-        pid_control.control_mapping[(NodeID(:PidControl, 6), "target_low")].target.u[1]
+        pid_control.control_mapping[(NodeID(:PidControl, 6), "target_low")].interpolation.u[1]
 
     t_target_jump = discrete_control.record.time[2]
     t_idx_target_jump = searchsortedlast(t, t_target_jump)
