@@ -287,7 +287,7 @@ end
 
 @testitem "Pump/outlet flow rate sign validation" begin
     using Logging
-    using Ribasim: NodeID
+    using Ribasim: NodeID, NodeType, ControlledParameters
 
     logger = TestLogger()
 
@@ -301,7 +301,7 @@ end
             [NaN],
             [NaN],
             [NaN],
-            Dict{Tuple{NodeID, String}, NamedTuple}(),
+            Dict{Tuple{NodeID, String}, ControlledParameters}(),
             [false],
         )
     end
@@ -321,8 +321,9 @@ end
             [-1.0],
             [NaN],
             [NaN],
-            Dict{Tuple{NodeID, String}, NamedTuple}(
-                (NodeID(:Pump, 1), "foo") => (; flow_rate = -1.0),
+            Dict{Tuple{NodeID, String}, ControlledParameters}(
+                (NodeID(:Pump, 1), "foo") =>
+                    ControlledParameters(NodeType.Pump, 1; flow_rate = -1.0),
             ),
             [false],
         )

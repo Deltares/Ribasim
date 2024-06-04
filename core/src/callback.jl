@@ -434,10 +434,10 @@ function control_parameters!(
     if controlled_parameters.node_type != NodeType.TabulatedRatingCurve
         return nothing
     end
-    (; node_idx, active, table) = controlled_parameters
+    (; node_idx, active, interpolation) = controlled_parameters
     tabulated_rating_curve.active[node_idx] = active
     tabulated_rating_curve.tables[node_idx] =
-        isempty(table.t) ? tabulated_rating_curve.tables[node_idx] : table
+        isempty(interpolation.t) ? tabulated_rating_curve.tables[node_idx] : interpolation
     return nothing
 end
 
