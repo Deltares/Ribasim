@@ -397,22 +397,94 @@ function set_fractional_flow_in_allocation!(
     return nothing
 end
 
-function set_control_params!(p::Parameters, node_id::NodeID, control_state::String)
-    node = getfield(p, p.graph[node_id].type)
-    idx = searchsortedfirst(node.node_id, node_id)
-    new_state = node.control_mapping[(node_id, control_state)]
-
-    for (field, value) in zip(keys(new_state), new_state)
-        if !ismissing(value)
-            vec = get_tmp(getfield(node, field), 0)
-            vec[idx] = value
-        end
-
-        # Set new fractional flow fractions in allocation problem
-        if is_active(p.allocation) && node isa FractionalFlow && field == :fraction
-            set_fractional_flow_in_allocation!(p, node_id, value)
-        end
+function control_parameters!(
+    pump::Pump,
+    controlled_parameters::ControlledParameters,
+)::Nothing
+    if controlled_parameters.node_type != NodeType.Pump
+        return nothing
     end
+    (; node_idx, active, flow_rate) = controlled_parameters
+    pump.active[node_idx] = active
+    get_tmp(pump.flow_rate, 0)[node_idx] =
+        isnan(flow_rate) ? pump.flow_rate[node_idx] :
+        clamp(flow_rate, pump.min_flow_rate[node_idx], pump.max_flow_rate[node_idx])
+    return nothing
+end
+
+function control_parameters!(
+    outlet::Outlet,
+    controlled_parameters::ControlledParameters,
+)::Nothing
+    if controlled_parameters.node_type != NodeType.Outlet
+        return nothing
+    end
+    (; node_idx, active, flow_rate) = controlled_parameters
+    outlet.active[node_idx] = active
+    get_tmp(outlet.flow_rate, 0)[node_idx] =
+        isnan(flow_rate) ? outlet.flow_rate[node_idx] :
+        clamp(flow_rate, outlet.min_flow_rate[node_idx], outlet.max_flow_rate[node_idx])
+    return nothing
+end
+
+function control_parameters!(
+    tabulated_rating_curve::TabulatedRatingCurve,
+    controlled_parameters::ControlledParameters,
+)::Nothing
+    if controlled_parameters.node_type != NodeType.TabulatedRatingCurve
+        return nothing
+    end
+    (; node_idx, active, table) = controlled_parameters
+    tabulated_rating_curve.active[node_idx] = active
+    tabulated_rating_curve.tables[node_idx] =
+        isempty(table.t) ? tabulated_rating_curve.tables[node_idx] : table
+    return nothing
+end
+
+function control_parameters!(
+    fractional_flow::FractionalFlow,
+    controlled_parameters::ControlledParameters,
+    p::Parameters,
+)::Nothing
+    if controlled_parameters.node_type != NodeType.FractionalFlow
+        return nothing
+    end
+    (; node_idx, fraction) = controlled_parameters
+    fractional_flow.fraction[node_idx] = fraction
+
+    if is_active(p.allocation)
+        set_fractional_flow_in_allocation!(p, fractional_flow.node_id[node_idx], fraction)
+    end
+    return nothing
+end
+
+function control_parameters!(
+    pid_control::PidControl,
+    controlled_parameters::ControlledParameters,
+)::Nothing
+    if controlled_parameters.node_type != NodeType.PidControl
+        return nothing
+    end
+    (; node_idx, active, interpolation, pid_params) = controlled_parameters
+    pid_control.active[node_idx] = active
+    pid_control.target[node_idx] =
+        isempty(interpolation.t) ? pid_control.target[node_idx] : interpolation
+    pid_control.pid_params[node_idx] =
+        isempty(pid_params.t) ? control.pid_params[node_idx] : pid_params
+    return nothing
+end
+
+function set_control_params!(p::Parameters, node_id::NodeID, control_state::String)::Nothing
+    node = getfield(p, p.graph[node_id].type)
+    controlled_parameters::ControlledParameters =
+        node.control_mapping[(node_id, control_state)]
+
+    control_parameters!(p.pump, controlled_parameters)
+    control_parameters!(p.outlet, controlled_parameters)
+    control_parameters!(p.tabulated_rating_curve, controlled_parameters)
+    control_parameters!(p.fractional_flow, controlled_parameters, p)
+    control_parameters!(p.pid_control, controlled_parameters)
+    return nothing
 end
 
 function update_subgrid_level!(integrator)::Nothing

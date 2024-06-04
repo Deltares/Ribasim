@@ -190,6 +190,71 @@ struct Basin{T, C, V1, V2, V3} <: AbstractParameterNode
     time::StructVector{BasinTimeV1, C, Int}
 end
 
+struct ControlledParameters
+    node_type::NodeType.T
+    node_idx::Int
+    active::Bool
+    flow_rate::Float64
+    min_crest_level::Float64
+    resistance::Float64
+    manning_n::Float64
+    fraction::Float64
+    interpolation::ScalarInterpolation
+    proportional::ScalarInterpolation
+    integral::ScalarInterpolation
+    derivative::ScalarInterpolation
+    pid_params::VectorInterpolation
+end
+
+function ControlledParameters(
+    node_type::NodeType.T,
+    node_idx::Int;
+    active::Bool = true,
+    flow_rate = NaN,
+    min_crest_level::Float64 = NaN,
+    resistance::Float64 = NaN,
+    manning_n::Float64 = NaN,
+    fraction::Float64 = NaN,
+    proportional::ScalarInterpolation = LinearInterpolation(Float64[], Float64[]),
+    integral::ScalarInterpolation = LinearInterpolation(Float64[], Float64[]),
+    derivative::ScalarInterpolation = LinearInterpolation(Float64[], Float64[]),
+    pid_params::VectorInterpolation = LinearInterpolation(Vector{Float64}[], Float64[]),
+    kwargs...,
+)::ControlledParameters
+    kwargs = Dict(kwargs...)
+    # This special case is made so that ControlledParameters does not need
+    # to have many different largely unused fields of type ScalarInterpolation
+    # with different names
+    interpolation = LinearInterpolation(Float64[], Float64[])
+    for symbol in [:table, :target]
+        if symbol in keys(kwargs)
+            interpolation = kwargs[symbol]
+        end
+    end
+    # This needs a special case because flow_rate is a Float64 for Pump, Outlet
+    # but a ScalarInterpolation for FlowBoundary. Maybe change the name of the flow_rate variable for
+    # FlowBoundary to avoid this
+    if node_type == NodeType.FlowBoundary
+        interpolation = flow_rate
+        flow_rate = NaN
+    end
+    return ControlledParameters(
+        node_type,
+        node_idx,
+        active,
+        flow_rate,
+        min_crest_level,
+        resistance,
+        manning_n,
+        fraction,
+        interpolation,
+        proportional,
+        integral,
+        derivative,
+        pid_params,
+    )
+end
+
 """
     struct TabulatedRatingCurve{C}
 
@@ -218,7 +283,7 @@ struct TabulatedRatingCurve{C} <: AbstractParameterNode
     active::BitVector
     tables::Vector{ScalarInterpolation}
     time::StructVector{TabulatedRatingCurveTimeV1, C, Int}
-    control_mapping::Dict{Tuple{NodeID, String}, NamedTuple}
+    control_mapping::Dict{Tuple{NodeID, String}, ControlledParameters}
 end
 
 """
@@ -239,7 +304,7 @@ struct LinearResistance <: AbstractParameterNode
     active::BitVector
     resistance::Vector{Float64}
     max_flow_rate::Vector{Float64}
-    control_mapping::Dict{Tuple{NodeID, String}, NamedTuple}
+    control_mapping::Dict{Tuple{NodeID, String}, ControlledParameters}
 end
 
 """
@@ -291,7 +356,7 @@ struct ManningResistance <: AbstractParameterNode
     profile_slope::Vector{Float64}
     upstream_bottom::Vector{Float64}
     downstream_bottom::Vector{Float64}
-    control_mapping::Dict{Tuple{NodeID, String}, NamedTuple}
+    control_mapping::Dict{Tuple{NodeID, String}, ControlledParameters}
 end
 
 """
@@ -308,7 +373,7 @@ struct FractionalFlow <: AbstractParameterNode
     inflow_edge::Vector{EdgeMetadata}
     outflow_edge::Vector{EdgeMetadata}
     fraction::Vector{Float64}
-    control_mapping::Dict{Tuple{NodeID, String}, NamedTuple}
+    control_mapping::Dict{Tuple{NodeID, String}, ControlledParameters}
 end
 
 """
@@ -354,7 +419,7 @@ struct Pump{T} <: AbstractParameterNode
     flow_rate::T
     min_flow_rate::Vector{Float64}
     max_flow_rate::Vector{Float64}
-    control_mapping::Dict{Tuple{NodeID, String}, NamedTuple}
+    control_mapping::Dict{Tuple{NodeID, String}, ControlledParameters}
     is_pid_controlled::BitVector
 
     function Pump(
@@ -408,7 +473,7 @@ struct Outlet{T} <: AbstractParameterNode
     min_flow_rate::Vector{Float64}
     max_flow_rate::Vector{Float64}
     min_crest_level::Vector{Float64}
-    control_mapping::Dict{Tuple{NodeID, String}, NamedTuple}
+    control_mapping::Dict{Tuple{NodeID, String}, ControlledParameters}
     is_pid_controlled::BitVector
 
     function Outlet(
@@ -503,7 +568,7 @@ struct PidControl{T} <: AbstractParameterNode
     target::Vector{ScalarInterpolation}
     pid_params::Vector{VectorInterpolation}
     error::T
-    control_mapping::Dict{Tuple{NodeID, String}, NamedTuple}
+    control_mapping::Dict{Tuple{NodeID, String}, ControlledParameters}
 end
 
 """

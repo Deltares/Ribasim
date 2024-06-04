@@ -59,9 +59,9 @@ function parse_static_and_time(
     push!(keys_out, :node_id)
     push!(vals_out, node_ids)
 
-    # The control mapping is a dictionary with keys (node_id, control_state) to a named tuple of
+    # The control mapping is a dictionary with keys (node_id, control_state) to a ControlledParameters instance
     # parameter values to be assigned to the node with this node_id in the case of this control_state
-    control_mapping = Dict{Tuple{NodeID, String}, NamedTuple}()
+    control_mapping = Dict{Tuple{NodeID, String}, ControlledParameters}()
 
     push!(keys_out, :control_mapping)
     push!(vals_out, control_mapping)
@@ -127,8 +127,10 @@ function parse_static_and_time(
                 end
                 # Add the parameter values to the control mapping
                 control_state_key = coalesce(control_state, "")
+                nt = NamedTuple{Tuple(parameter_names)}(Tuple(parameter_values))
+                node_idx = searchsortedfirst(node_ids, node_id)
                 control_mapping[(node_id, control_state_key)] =
-                    NamedTuple{Tuple(parameter_names)}(Tuple(parameter_values))
+                    ControlledParameters(NodeType.T(nodetype), node_idx; nt...)
             end
         elseif node_id in time_node_ids
             # TODO replace (time, node_id) order by (node_id, time)
@@ -273,7 +275,7 @@ function TabulatedRatingCurve(
     end
 
     interpolations = ScalarInterpolation[]
-    control_mapping = Dict{Tuple{NodeID, String}, NamedTuple}()
+    control_mapping = Dict{Tuple{NodeID, String}, ControlledParameters}()
     active = BitVector()
     errors = false
 
@@ -300,10 +302,13 @@ function TabulatedRatingCurve(
                 end
                 interpolation = qh_interpolation(node_id, table)
                 if !ismissing(control_state)
+                    nt = (; table = interpolation, active = is_active)
+                    node_idx = searchsortedfirst(node_ids, node_id)
                     control_mapping[(
                         NodeID(NodeType.TabulatedRatingCurve, node_id),
                         control_state,
-                    )] = (; tables = interpolation, active = is_active)
+                    )] =
+                        ControlledParameters(NodeType.TabulatedRatingCurve, node_idx; nt...)
                 end
             end
             push!(interpolations, interpolation)
@@ -759,16 +764,23 @@ function PidControl(db::DB, config::Config, chunk_sizes::Vector{Int})::PidContro
         push!(pid_parameters, itp)
     end
 
-    for (key, params) in parsed_parameters.control_mapping
-        (; proportional, integral, derivative) = params
+    for (key, controlled_parameters) in parsed_parameters.control_mapping
+        (; proportional, integral, derivative) = controlled_parameters
 
-        times = params.proportional.t
+        times = controlled_parameters.proportional.t
         K_p = proportional.u
         K_i = integral.u
         K_d = derivative.u
         pid_params = LinearInterpolation(collect.(zip(K_p, K_i, K_d)), times)
-        parsed_parameters.control_mapping[key] =
-            (; params.target, params.active, pid_params)
+        @assert pid_params isa VectorInterpolation
+        controlled_parameters = @set controlled_parameters.pid_params = pid_params
+        controlled_parameters = @set controlled_parameters.proportional =
+            LinearInterpolation(Float64[], Float64[])
+        controlled_parameters =
+            @set controlled_parameters.integral = LinearInterpolation(Float64[], Float64[])
+        controlled_parameters = @set controlled_parameters.derivative =
+            LinearInterpolation(Float64[], Float64[])
+        parsed_parameters.control_mapping[key] = controlled_parameters
     end
 
     return PidControl(
