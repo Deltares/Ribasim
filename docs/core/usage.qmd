@@ -309,3 +309,16 @@ subnetwork_id   | Int32
 priority        | Int32
 flow_rate       | Float64
 collect_demands | Bool
+
+## Subgrid levels - `subgrid_levels.arrow`
+
+This table is made for the [IMod Coupler](https://deltares.github.io/iMOD-Documentation/coupler_ribamod_technical.html#ribasim).
+For the basin that has sloping water level, the water level in the basin can be varying.
+Take the varying water level of a basin as input, the level of the basin subgrind are calculated by a linear projection.
+The output are used in the IMod Coupler.
+
+column         | type
+---------------| -----
+time           | DateTime
+subgrid_id     | Int32
+subgrid_level  | Float64
