@@ -1,0 +1,47 @@
+---
+title: "TabulatedRatingCurve"
+---
+
+A TabulatedRatingCurve determines outflow from a Basin by looking up the flow rate that corresponds to the current upstream level from a rating curve.
+The TabulatedRatingCurve takes a rating curve as input.
+Use it for instance to model flow over a weir.
+
+# Tables
+
+## Static
+
+column        | type    | unit         | restriction
+------------- | ------- | ------------ | -----------
+node_id       | Int32   | -            | sorted
+control_state | String  | -            | (optional) sorted per node_id
+active        | Bool    | -            | (optional, default true)
+level         | Float64 | $m$          | sorted per control_state, unique
+flow_rate     | Float64 | $m^3 s^{-1}$ | start at 0, increasing
+
+Thus a single rating curve can be given by the following table:
+
+node_id | flow_rate  | level
+------- |----------- |-------
+      2 | 0.0        | -0.10
+      2 | 0.0001     |  0.09
+      2 | 0.01       |  0.29
+      2 | 0.9        | 20.09
+
+Below the lowest given level of -0.10, the flow rate is kept at 0.
+Between given levels the flow rate is interpolated linearly.
+Above the maximum given level of 20.09, the flow rate keeps increases linearly according to the slope of the last segment.
+
+## Time
+
+This table is the transient form of the `TabulatedRatingCurve` table.
+The only difference is that a time column is added.
+The table must by sorted by time, and per time it must be sorted by `node_id`.
+With this the rating curves can be updated over time.
+Note that a `node_id` can be either in this table or in the static one, but not both.
+
+column    | type     | unit         | restriction
+--------- | -------  | ------------ | -----------
+node_id   | Int32    | -            | sorted
+time      | DateTime | -            | sorted per node_id
+level     | Float64  | $m$          | sorted per node_id per time
+flow_rate | Float64  | $m^3 s^{-1}$ | non-negative

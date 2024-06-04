@@ -1,0 +1,12 @@
+---
+title: "Terminal"
+---
+
+A Terminal is a water sink without state or properties.
+Any water that flows into a Terminal node is removed from the model.
+No water can come into the model from a Terminal node.
+For example, Terminal nodes can be used as a downstream boundary.
+
+# Tables
+
+No tables are required for Terminal nodes.
