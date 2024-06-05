@@ -40,20 +40,20 @@ def trivial_model() -> Model:
         ],
     )
 
-    # TODO largest signed 64 bit integer, to check encoding
-    terminal_id = 922  # 3372036854775807
+    # TODO largest signed 32 bit integer, to check encoding
+    terminal_id = 2147483647
     model.terminal.add(Node(terminal_id, Point(500, 200)))
     model.tabulated_rating_curve.add(
-        Node(0, Point(450, 200)),
+        Node(6, Point(450, 200)),
         [tabulated_rating_curve.Static(level=[0.0, 1.0], flow_rate=[0.0, 10 / 86400])],
     )
 
     model.edge.add(
         model.basin[6],
-        model.tabulated_rating_curve[0],
+        model.tabulated_rating_curve[6],
     )
     model.edge.add(
-        model.tabulated_rating_curve[0],
+        model.tabulated_rating_curve[6],
         model.terminal[terminal_id],
     )
 
