@@ -695,6 +695,7 @@ function DiscreteControl(db::DB, config::Config)::DiscreteControl
     end
 
     logic_mapping = expand_logic_mapping(logic_mapping)
+    control_mapping = Dict{Tuple{NodeID, String}, ControlledParameters}()
 
     record = (
         time = Float64[],
@@ -722,6 +723,7 @@ function DiscreteControl(db::DB, config::Config)::DiscreteControl
         truth_state,
         control_state,
         logic_mapping,
+        control_mapping,
         record,
     )
 end
@@ -1154,6 +1156,13 @@ function Parameters(db::DB, config::Config)::Parameters
         flow_demand,
         subgrid_level,
     )
+
+    for node_type in propertynames(p)
+        node = getfield(p, node_type)
+        if hasproperty(node, :control_mapping)
+            merge!(discrete_control.control_mapping, node.control_mapping)
+        end
+    end
 
     set_is_pid_controlled!(p)
 

@@ -304,7 +304,7 @@ function discrete_control_affect!(integrator, compound_variable_idx)
         truth_value_idx += n_greater_than
     end
 
-    truth_state = discrete_control.truth_state[1:(truth_value_idx - 1)]
+    truth_state = view(discrete_control.truth_state, 1:(truth_value_idx - 1))
 
     # What the local control state should be
     control_state_new =
@@ -503,9 +503,7 @@ function control_parameters!(
 end
 
 function set_control_params!(p::Parameters, node_id::NodeID, control_state::String)::Nothing
-    node = getfield(p, p.graph[node_id].type)
-    controlled_parameters::ControlledParameters =
-        node.control_mapping[(node_id, control_state)]
+    controlled_parameters = p.discrete_control.control_mapping[(node_id, control_state)]
 
     control_parameters!(p.pump, controlled_parameters)
     control_parameters!(p.outlet, controlled_parameters)

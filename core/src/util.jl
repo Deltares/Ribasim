@@ -781,4 +781,10 @@ function set_initial_allocation_mean_flows!(integrator)::Nothing
     return nothing
 end
 
-convert_truth_state(v) = join(ifelse.(v, 'T', 'F'), "")
+function convert_truth_state(v)::String
+    truth_values = fill('*', length(v))
+    for i in eachindex(v)
+        truth_values[i] = ifelse(v[i], 'T', 'F')
+    end
+    return join(truth_values, "")
+end
