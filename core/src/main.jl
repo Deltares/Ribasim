@@ -14,6 +14,9 @@ function run(config::Config)::Model
     return model
 end
 
+main(ARGS::Vector{String})::Cint = main(only(ARGS))
+main()::Cint = main(ARGS)
+
 """
     main(toml_path::AbstractString)::Cint
     main(ARGS::Vector{String})::Cint
