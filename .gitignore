@@ -151,3 +151,6 @@ report.xml
 # Designated working dir for working on Ribasim models
 models/
 playground/output
+
+# Ruff
+.ruff_cache

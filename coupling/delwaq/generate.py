@@ -5,6 +5,7 @@ import shutil
 from datetime import timedelta
 from pathlib import Path
 
+# import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 import pandas as pd
@@ -140,7 +141,7 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
                 boundary_id,
                 type="Drainage",
                 id=node["id"],
-                pos=(node["pos"][0] - 0.2, node["pos"][1] + 0.2),
+                pos=(node["pos"][0] - 0.5, node["pos"][1] + 0.5),
             )
             G.add_edge(
                 boundary_id,
@@ -155,7 +156,7 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
                 boundary_id,
                 type="Precipitation",
                 id=node["id"],
-                pos=(node["pos"][0] + 0, node["pos"][1] + 0.2),
+                pos=(node["pos"][0] + 0, node["pos"][1] + 0.5),
             )
             G.add_edge(
                 boundary_id,
@@ -171,7 +172,7 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
                     boundary_id,
                     type="Evaporation",
                     id=node["id"],
-                    pos=(node["pos"][0] + 0.2, node["pos"][1] + 0.2),
+                    pos=(node["pos"][0] + 0.5, node["pos"][1] + 0.5),
                 )
                 G.add_edge(
                     node_id,
@@ -188,12 +189,14 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
             edge_mapping[edge_id] = i
 
     # Plot
+    # plt.figure(figsize=(18, 18))
     # nx.draw(
     #     G,
     #     pos={k: v["pos"] for k, v in G.nodes(data=True)},
     #     with_labels=True,
     #     labels={k: v["id"] for k, v in G.nodes(data=True)},
     # )
+    # plt.savefig("after_relabeling.png", dpi=300)
 
     # Setup metadata
     if model.solver.saveat == 0 or np.isposinf(model.solver.saveat):
@@ -282,9 +285,6 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
     )  # same as volume, so vel becomes 1
 
     # Length file
-    # Timestep and flattened (2, nsegments) of identical lengths
-    # for left right, so 0, 1., 1., 3., 3., 4., 4. etc.
-    # TODO(Maarten) Make use of geometry to calculate lengths
     lengths = nflows.copy()
     lengths.flow_rate = 1
     lengths.iloc[np.repeat(np.arange(len(lengths)), 2)]
@@ -294,35 +294,66 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
     boundaries = []
     substances = set()
 
-    def make_boundary(id, type):
+    def boundary_name(id, type):
         # Delwaq has a limit of 12 characters for the boundary name
         return type[:9] + "_" + str(id)
 
-    assert model.level_boundary.concentration.df is not None
-    for i, row in model.level_boundary.concentration.df.groupby(["node_id"]):
-        row = row.drop_duplicates(subset=["substance"])
-        bid = make_boundary(row.node_id.iloc[0], "LevelBoundary")
-        boundaries.append(
-            {
-                "name": bid,
-                "concentrations": row.concentration.to_list(),
-                "substances": row.substance.to_list(),
-            }
-        )
-        substances.update(row.substance)
+    def quote(value):
+        return f"'{value}'"
 
-    assert model.flow_boundary.concentration.df is not None
-    for i, row in model.flow_boundary.concentration.df.groupby("node_id"):
-        row = row.drop_duplicates(subset=["substance"])
-        bid = make_boundary(row.node_id.iloc[0], "FlowBoundary")
-        boundaries.append(
-            {
-                "name": bid,
-                "concentrations": row.concentration.to_list(),
-                "substances": row.substance.to_list(),
-            }
+    def make_boundary(data, boundary_type):
+        """
+        Create a Delwaq boundary definition with the given data and boundary type.
+        Pivot our data from long to wide format, and convert the time to a string.
+
+        Specifically, we go from a table:
+            `node_id, substance, time, concentration`
+        to
+            ```
+            ITEM 'Drainage_6'
+            CONCENTRATIONS 'Cl' 'Tracer'
+            ABSOLUTE TIME
+            LINEAR DATA 'Cl' 'Tracer'
+            '2020/01/01-00:00:00' 0.0  1.0
+            '2020/01/02-00:00:00' 1.0 -999
+            ```
+        """
+        bid = boundary_name(data.node_id.iloc[0], boundary_type)
+        piv = (
+            data.pivot_table(index="time", columns="substance", values="concentration")
+            .reset_index()
+            .reset_index(drop=True)
         )
-        substances.update(row.substance)
+        piv.time = piv.time.dt.strftime("%Y/%m/%d-%H:%M:%S")
+        boundary = {
+            "name": bid,
+            "substances": list(map(quote, piv.columns[1:])),
+            "df": piv.to_string(
+                formatters={"time": quote}, header=False, index=False, na_rep=-999
+            ),
+        }
+        substances = data.substance.unique()
+        return boundary, substances
+
+    if model.level_boundary.concentration.df is not None:
+        for _, rows in model.level_boundary.concentration.df.groupby(["node_id"]):
+            boundary, substance = make_boundary(rows, "LevelBoundary")
+            boundaries.append(boundary)
+            substances.update(substance)
+
+    if model.flow_boundary.concentration.df is not None:
+        for _, rows in model.flow_boundary.concentration.df.groupby("node_id"):
+            boundary, substance = make_boundary(rows, "FlowBoundary")
+            boundaries.append(boundary)
+            substances.update(substance)
+
+    if model.basin.concentration.df is not None:
+        for _, rows in model.basin.concentration.df.groupby(["node_id"]):
+            for boundary_type in ("Drainage", "Precipitation"):
+                nrows = rows.rename(columns={boundary_type.lower(): "concentration"})
+                boundary, substance = make_boundary(nrows, boundary_type)
+                boundaries.append(boundary)
+                substances.update(substance)
 
     # Write boundary data with substances and concentrations
     template = env.get_template("B5_bounddata.inc.j2")
@@ -342,7 +373,7 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
     bnd.sort_values(by="bid", ascending=False, inplace=True)
     bnd["node_type"] = [G.nodes(data="type")[bid] for bid in bnd["bid"]]
     bnd["node_id"] = [G.nodes(data="id")[bid] for bid in bnd["bid"]]
-    bnd["fid"] = list(map(make_boundary, bnd["node_id"], bnd["node_type"]))
+    bnd["fid"] = list(map(boundary_name, bnd["node_id"], bnd["node_type"]))
     bnd["comment"] = ""
     bnd = bnd[["fid", "comment", "node_type"]]
     bnd.to_csv(
