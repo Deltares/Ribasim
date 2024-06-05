@@ -6,6 +6,7 @@ on:
       paths-ignore: [".teamcity/**"]
       tags: ["*"]
     pull_request:
+      paths-ignore: [".teamcity/**"]
     merge_group:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

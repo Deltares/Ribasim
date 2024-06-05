@@ -40,7 +40,10 @@ pixi run delwaq]]></param>
           <param name="branchFilter" value="+:*" />
           <param name="enableQueueOptimization" value="true" />
           <param name="quietPeriodMode" value="DO_NOT_USE" />
-          <param name="triggerRules" value="+:coupling/delwaq/**" />
+          <param name="triggerRules"><![CDATA[+:ribasim/coupling/delwaq/**
++:ribasim/core/**
++:ribasim/python/**
++:ribasim/ribasim_testmodels/**]]></param>
         </parameters>
       </build-trigger>
     </build-triggers>
@@ -58,7 +61,7 @@ pixi run delwaq]]></param>
     <artifact-dependencies>
       <dependency id="ARTIFACT_DEPENDENCY_4206" sourceBuildTypeId="Dimr_DimrCollectors_2bDimrCollectorReleaseSigned" cleanDestination="false">
         <revisionRule name="lastPinned" revision="latest.lastPinned" />
-        <artifact sourcePath="dimrset_x64_signed_272.zip!/x64 =&gt; dimr" />
+        <artifact sourcePath="dimrset_x64_signed_*.zip!/x64 =&gt; dimr" />
       </dependency>
     </artifact-dependencies>
     <cleanup />

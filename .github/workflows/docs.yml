@@ -4,6 +4,7 @@ on:
     branches: [main, update/pixi-lock, update/julia-manifest]
     paths-ignore: [".teamcity/**"]
   pull_request:
+    paths-ignore: [".teamcity/**"]
   merge_group:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

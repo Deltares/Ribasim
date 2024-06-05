@@ -7,7 +7,7 @@ function pkgversion(m::Module)::VersionNumber
     # If it returns `nothing`, we try a different way
     rootmodule = Base.moduleroot(m)
     pkg = Base.PkgId(rootmodule)
-    pkgorigin = get(Base.pkgorigins, pkg, nothing)
+    pkgorigin = Base.pkgorigins[pkg]
     return pkgorigin.version
 end
 
@@ -688,7 +688,7 @@ end
 function get_influx(basin::Basin, node_id::NodeID)::Float64
     has_index, basin_idx = id_index(basin.node_id, node_id)
     if !has_index
-        error("Sum of vertical fluxes requested for non-basin $id.")
+        error("Sum of vertical fluxes requested for non-basin $node_id.")
     end
     return get_influx(basin, basin_idx)
 end

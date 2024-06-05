@@ -1,0 +1,47 @@
+---
+title: "PidControl"
+---
+
+The PidControl node controls the level in a Basin by continuously controlling the flow rate of a connected Pump or Outlet.
+See also [PID controller](https://en.wikipedia.org/wiki/PID_controller).
+
+When a PidControl node is made inactive, the node under its control retains the last flow rate value, and the error integral is reset to 0.
+
+In the future controlling the flow on a particular edge could be supported.
+
+# Tables
+
+# Static
+
+column           | type     | unit     | restriction
+---------------- | -------- | -------- | -----------
+node_id          | Int32    | -        | sorted
+control_state    | String   | -        | (optional) sorted per node_id
+active           | Bool     | -        | (optional, default true)
+listen_node_type | String   | -        | known node type
+listen_node_id   | Int32    | -        | -
+target           | Float64  | $m$      | -
+proportional     | Float64  | $s^{-1}$ | -
+integral         | Float64  | $s^{-2}$ | -
+derivative       | Float64  | -        | -
+
+## Time
+
+This table is the transient form of the `PidControl` table.
+The differences are that a time column is added and the nodes are assumed to be active so this column is removed.
+The table must by sorted by time, and per time it must be sorted by `node_id`.
+With this the target level and PID coefficients can be updated over time. In between the given times the
+these values interpolated linearly, and outside these values area constant given by the
+nearest time value.
+Note that a `node_id` can be either in this table or in the static one, but not both.
+
+column           | type     | unit     | restriction
+---------------- | -------- | -------- | -----------
+node_id          | Int32    | -        | sorted
+time             | DateTime | -        | sorted per node_id
+listen_node_type | Int32    | -        | known node type
+listen_node_id   | Int32    | -        | -
+target           | Float64  | $m$      | -
+proportional     | Float64  | $s^{-1}$ | -
+integral         | Float64  | $s^{-2}$ | -
+derivative       | Float64  | -        | -

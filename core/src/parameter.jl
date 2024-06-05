@@ -137,6 +137,8 @@ end
 
 abstract type AbstractParameterNode end
 
+abstract type AbstractDemandNode <: AbstractParameterNode end
+
 """
 In-memory storage of saved mean flows for writing to results.
 
@@ -522,7 +524,7 @@ allocated: water flux currently allocated to UserDemand per priority (node_idx, 
 return_factor: the factor in [0,1] of how much of the abstracted water is given back to the system
 min_level: The level of the source basin below which the UserDemand does not abstract
 """
-struct UserDemand <: AbstractParameterNode
+struct UserDemand <: AbstractDemandNode
     node_id::Vector{NodeID}
     inflow_edge::Vector{EdgeMetadata}
     outflow_edge::Vector{EdgeMetadata}
@@ -578,14 +580,14 @@ min_level: The minimum target level of the connected basin(s)
 max_level: The maximum target level of the connected basin(s)
 priority: If in a shortage state, the priority of the demand of the connected basin(s)
 """
-struct LevelDemand <: AbstractParameterNode
+struct LevelDemand <: AbstractDemandNode
     node_id::Vector{NodeID}
     min_level::Vector{ScalarInterpolation}
     max_level::Vector{ScalarInterpolation}
     priority::Vector{Int32}
 end
 
-struct FlowDemand <: AbstractParameterNode
+struct FlowDemand <: AbstractDemandNode
     node_id::Vector{NodeID}
     demand_itp::Vector{ScalarInterpolation}
     demand::Vector{Float64}

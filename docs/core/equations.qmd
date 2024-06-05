@@ -214,26 +214,23 @@ detail in the [the iMOD Coupler docs](https://deltares.github.io/iMOD-Documentat
 
 ## Upstream and downstream flow
 
-Ribasim's basins can be connected to each other, and each basin expects an
-explicit connection. These connections are currently available for inter-basin
-flows:
+Ribasim's Basins can be connected to each other, and each Basin expects an explicit connection.
+These connections are currently available for inter-Basin flows:
 
-<!-- Is the pump a natural water balance term? -->
-1. `Pump`
-2. `TabulatedRatingCurve`
-3. `LinearResistance`
-4. `ManningResistance`
+1. Pump
+2. TabulatedRatingCurve
+3. LinearResistance
+4. ManningResistance
 
-The flow direction of the basin is not pre-determined: flow directions may
-freely reverse, provided the connection allows it. Currently, a `LinearResistance`
-allows bidirectional flow, but the
+The flow direction of the Basin is not pre-determined: flow directions may freely reverse, provided the connection allows it.
+Currently only LinearResistance and ManningResistance allow bidirectional flow.
 
 Additionally, three additional "connections" area available for the "outmost"
 basins (external nodes) in a network.
 
-1. `Terminal`
-2. `LevelBoundary`
-3. `FlowBoundary`
+1. Terminal
+2. LevelBoundary
+3. FlowBoundary
 
 ### Pump {#sec-pump}
 
@@ -270,8 +267,8 @@ of outlets, or even reversal of flows for high precipitation events.
 
 ### LinearResistance
 
-A `LinearResistance` connects two basins together. The flow between the two basins
-is determined by a linear relationship, up to an optional maximum flow rate:
+A LinearResistance connects two Basins together.
+The flow between the two Basins is determined by a linear relationship, up to an optional maximum flow rate:
 
 $$
     Q = \mathrm{clamp}(\frac{h_a - h_b}{R}, -Q_{\max}, Q_{\max})
@@ -279,16 +276,16 @@ $$ {#eq-basinflow}
 
 Here $h_a$ is the water level in the first basin and $h_b$ is the water level in the second basin.
 $R$ is the resistance of the link, and $Q_{\max}$ is the maximum flow rate.
-A `LinearResistance` makes no assumptions about the direction of the flow: water flows from high to low.
+A LinearResistance makes no assumptions about the direction of the flow: water flows from high to low.
 
 ### Terminal
 
-This only allows outflow from a basin into a terminal node.
+This only allows outflow from a Basin into a Terminal node.
 
 ### LevelBoundary
 
-This can be connected to a basin via a `LinearResistance`. This boundary node will then
-exchange water with the basin based on the difference in water level between the two.
+This can be connected to a basin via a LinearResistance.
+This boundary node will then exchange water with the basin based on the difference in water level between the two.
 
 ### FlowBoundary
 
