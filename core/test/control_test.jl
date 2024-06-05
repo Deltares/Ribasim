@@ -11,8 +11,8 @@
 
     # Control input
     pump_control_mapping = p.pump.control_mapping
-    @test pump_control_mapping[(NodeID(:Pump, 4), "off")].flow_rate == 0
-    @test pump_control_mapping[(NodeID(:Pump, 4), "on")].flow_rate == 1.0e-5
+    @test pump_control_mapping[(NodeID(:Pump, 4), "off")].flow_rate_scalar == 0
+    @test pump_control_mapping[(NodeID(:Pump, 4), "on")].flow_rate_scalar == 1.0e-5
 
     logic_mapping::Dict{Tuple{NodeID, Vector{Bool}}, String} = Dict(
         (NodeID(:DiscreteControl, 5), [true, true]) => "on",
@@ -165,12 +165,10 @@ end
     t = Ribasim.tsaves(model)
     level = Ribasim.get_storages_and_levels(model).level[1, :]
 
-    target_high = pid_control.control_mapping[(
-        NodeID(:PidControl, 6),
-        "target_high",
-    )].interpolation.u[1]
+    target_high =
+        pid_control.control_mapping[(NodeID(:PidControl, 6), "target_high")].target.u[1]
     target_low =
-        pid_control.control_mapping[(NodeID(:PidControl, 6), "target_low")].interpolation.u[1]
+        pid_control.control_mapping[(NodeID(:PidControl, 6), "target_low")].target.u[1]
 
     t_target_jump = discrete_control.record.time[2]
     t_idx_target_jump = searchsortedlast(t, t_target_jump)

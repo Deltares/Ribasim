@@ -59,9 +59,9 @@ function parse_static_and_time(
     push!(keys_out, :node_id)
     push!(vals_out, node_ids)
 
-    # The control mapping is a dictionary with keys (node_id, control_state) to a ControlledParameters instance
+    # The control mapping is a dictionary with keys (node_id, control_state) to a ParameterUpdate instance
     # parameter values to be assigned to the node with this node_id in the case of this control_state
-    control_mapping = Dict{Tuple{NodeID, String}, ControlledParameters}()
+    control_mapping = Dict{Tuple{NodeID, String}, ParameterUpdate}()
 
     push!(keys_out, :control_mapping)
     push!(vals_out, control_mapping)
@@ -130,7 +130,7 @@ function parse_static_and_time(
                 nt = NamedTuple{Tuple(parameter_names)}(Tuple(parameter_values))
                 node_idx = searchsortedfirst(node_ids, node_id)
                 control_mapping[(node_id, control_state_key)] =
-                    ControlledParameters(NodeType.T(nodetype), node_idx; nt...)
+                    ParameterUpdate(NodeType.T(nodetype), node_idx; nt...)
             end
         elseif node_id in time_node_ids
             # TODO replace (time, node_id) order by (node_id, time)
@@ -232,6 +232,57 @@ function initialize_allocation!(p::Parameters, config::Config)::Nothing
     return nothing
 end
 
+"""
+Constructor for the ParameterUpdate object. Scalar Float64 fields have default value
+NaN and ScalarInterpolation values have default value LinearInterpolation(Float64[], Float64[])
+(an empty interpolation object). These default values get ignored in DiscreteControl.
+Non-supported key word inputs do not raise an error but get ignored via kwargs....
+"""
+function ParameterUpdate(
+    node_type::NodeType.T,
+    node_idx::Int;
+    active::Bool = true,
+    flow_rate = NaN,
+    min_crest_level::Float64 = NaN,
+    resistance::Float64 = NaN,
+    manning_n::Float64 = NaN,
+    fraction::Float64 = NaN,
+    table::ScalarInterpolation = LinearInterpolation(Float64[], Float64[]),
+    target::ScalarInterpolation = LinearInterpolation(Float64[], Float64[]),
+    proportional::ScalarInterpolation = LinearInterpolation(Float64[], Float64[]),
+    integral::ScalarInterpolation = LinearInterpolation(Float64[], Float64[]),
+    derivative::ScalarInterpolation = LinearInterpolation(Float64[], Float64[]),
+    pid_params::VectorInterpolation = LinearInterpolation(Vector{Float64}[], Float64[]),
+    kwargs...,
+)::ParameterUpdate
+    # This needs a special case because flow_rate is a Float64 for Pump, Outlet
+    # but a ScalarInterpolation for FlowBoundary
+    if node_type == NodeType.FlowBoundary
+        flow_rate_scalar = NaN
+        flow_rate_itp = flow_rate
+    else
+        flow_rate_scalar = flow_rate
+        flow_rate_itp = LinearInterpolation(Float64[], Float64[])
+    end
+    return ParameterUpdate(
+        node_type,
+        node_idx,
+        active,
+        flow_rate_scalar,
+        flow_rate_itp,
+        min_crest_level,
+        resistance,
+        manning_n,
+        fraction,
+        table,
+        target,
+        proportional,
+        integral,
+        derivative,
+        pid_params,
+    )
+end
+
 function LinearResistance(db::DB, config::Config, graph::MetaGraph)::LinearResistance
     static = load_structvector(db, config, LinearResistanceStaticV1)
     defaults = (; max_flow_rate = Inf, active = true)
@@ -275,7 +326,7 @@ function TabulatedRatingCurve(
     end
 
     interpolations = ScalarInterpolation[]
-    control_mapping = Dict{Tuple{NodeID, String}, ControlledParameters}()
+    control_mapping = Dict{Tuple{NodeID, String}, ParameterUpdate}()
     active = BitVector()
     errors = false
 
@@ -307,8 +358,7 @@ function TabulatedRatingCurve(
                     control_mapping[(
                         NodeID(NodeType.TabulatedRatingCurve, node_id),
                         control_state,
-                    )] =
-                        ControlledParameters(NodeType.TabulatedRatingCurve, node_idx; nt...)
+                    )] = ParameterUpdate(NodeType.TabulatedRatingCurve, node_idx; nt...)
                 end
             end
             push!(interpolations, interpolation)
@@ -695,7 +745,7 @@ function DiscreteControl(db::DB, config::Config)::DiscreteControl
     end
 
     logic_mapping = expand_logic_mapping(logic_mapping)
-    control_mapping = Dict{Tuple{NodeID, String}, ControlledParameters}()
+    control_mapping = Dict{Tuple{NodeID, String}, ParameterUpdate}()
 
     record = (
         time = Float64[],
@@ -766,23 +816,23 @@ function PidControl(db::DB, config::Config, chunk_sizes::Vector{Int})::PidContro
         push!(pid_parameters, itp)
     end
 
-    for (key, controlled_parameters) in parsed_parameters.control_mapping
-        (; proportional, integral, derivative) = controlled_parameters
+    for (key, parameter_update) in parsed_parameters.control_mapping
+        (; proportional, integral, derivative) = parameter_update
 
-        times = controlled_parameters.proportional.t
+        times = parameter_update.proportional.t
         K_p = proportional.u
         K_i = integral.u
         K_d = derivative.u
         pid_params = LinearInterpolation(collect.(zip(K_p, K_i, K_d)), times)
         @assert pid_params isa VectorInterpolation
-        controlled_parameters = @set controlled_parameters.pid_params = pid_params
-        controlled_parameters = @set controlled_parameters.proportional =
-            LinearInterpolation(Float64[], Float64[])
-        controlled_parameters =
-            @set controlled_parameters.integral = LinearInterpolation(Float64[], Float64[])
-        controlled_parameters = @set controlled_parameters.derivative =
-            LinearInterpolation(Float64[], Float64[])
-        parsed_parameters.control_mapping[key] = controlled_parameters
+        parameter_update = @set parameter_update.pid_params = pid_params
+        parameter_update =
+            @set parameter_update.proportional = LinearInterpolation(Float64[], Float64[])
+        parameter_update =
+            @set parameter_update.integral = LinearInterpolation(Float64[], Float64[])
+        parameter_update =
+            @set parameter_update.derivative = LinearInterpolation(Float64[], Float64[])
+        parsed_parameters.control_mapping[key] = parameter_update
     end
 
     return PidControl(

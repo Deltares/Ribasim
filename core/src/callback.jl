@@ -304,6 +304,7 @@ function discrete_control_affect!(integrator, compound_variable_idx)
         truth_value_idx += n_greater_than
     end
 
+    # The maximum truth state length is possibly shorter than this truth state
     truth_state = view(discrete_control.truth_state, 1:(truth_value_idx - 1))
 
     # What the local control state should be
@@ -397,59 +398,62 @@ function set_fractional_flow_in_allocation!(
     return nothing
 end
 
-function control_parameters!(
-    pump::Pump,
-    controlled_parameters::ControlledParameters,
-)::Nothing
-    if controlled_parameters.node_type != NodeType.Pump
+function update_parameters!(pump::Pump, parameter_update::ParameterUpdate)::Nothing
+    if parameter_update.node_type != NodeType.Pump
         return nothing
     end
-    (; node_idx, active, flow_rate) = controlled_parameters
+    (; node_idx, active, flow_rate_scalar) = parameter_update
     pump.active[node_idx] = active
-    get_tmp(pump.flow_rate, 0)[node_idx] =
-        isnan(flow_rate) ? pump.flow_rate[node_idx] :
-        clamp(flow_rate, pump.min_flow_rate[node_idx], pump.max_flow_rate[node_idx])
+    if !isnan(flow_rate_scalar)
+        get_tmp(pump.flow_rate, 0)[node_idx] = clamp(
+            flow_rate_scalar,
+            pump.min_flow_rate[node_idx],
+            pump.max_flow_rate[node_idx],
+        )
+    end
     return nothing
 end
 
-function control_parameters!(
-    outlet::Outlet,
-    controlled_parameters::ControlledParameters,
-)::Nothing
-    if controlled_parameters.node_type != NodeType.Outlet
+function update_parameters!(outlet::Outlet, parameter_update::ParameterUpdate)::Nothing
+    if parameter_update.node_type != NodeType.Outlet
         return nothing
     end
-    (; node_idx, active, flow_rate) = controlled_parameters
+    (; node_idx, active, flow_rate_scalar) = parameter_update
     outlet.active[node_idx] = active
-    get_tmp(outlet.flow_rate, 0)[node_idx] =
-        isnan(flow_rate) ? outlet.flow_rate[node_idx] :
-        clamp(flow_rate, outlet.min_flow_rate[node_idx], outlet.max_flow_rate[node_idx])
+    if !isnan(flow_rate_scalar)
+        get_tmp(outlet.flow_rate, 0)[node_idx] = clamp(
+            flow_rate_scalar,
+            outlet.min_flow_rate[node_idx],
+            outlet.max_flow_rate[node_idx],
+        )
+    end
     return nothing
 end
 
-function control_parameters!(
+function update_parameters!(
     tabulated_rating_curve::TabulatedRatingCurve,
-    controlled_parameters::ControlledParameters,
+    parameter_update::ParameterUpdate,
 )::Nothing
-    if controlled_parameters.node_type != NodeType.TabulatedRatingCurve
+    if parameter_update.node_type != NodeType.TabulatedRatingCurve
         return nothing
     end
-    (; node_idx, active, interpolation) = controlled_parameters
+    (; node_idx, active, table) = parameter_update
     tabulated_rating_curve.active[node_idx] = active
-    tabulated_rating_curve.tables[node_idx] =
-        isempty(interpolation.t) ? tabulated_rating_curve.tables[node_idx] : interpolation
+    if !isempty(table.t)
+        tabulated_rating_curve.tables[node_idx] = table
+    end
     return nothing
 end
 
-function control_parameters!(
+function update_parameters!(
     fractional_flow::FractionalFlow,
-    controlled_parameters::ControlledParameters,
+    parameter_update::ParameterUpdate,
     p::Parameters,
 )::Nothing
-    if controlled_parameters.node_type != NodeType.FractionalFlow
+    if parameter_update.node_type != NodeType.FractionalFlow
         return nothing
     end
-    (; node_idx, fraction) = controlled_parameters
+    (; node_idx, fraction) = parameter_update
     fractional_flow.fraction[node_idx] = fraction
 
     if is_active(p.allocation)
@@ -458,60 +462,66 @@ function control_parameters!(
     return nothing
 end
 
-function control_parameters!(
+function update_parameters!(
     pid_control::PidControl,
-    controlled_parameters::ControlledParameters,
+    parameter_update::ParameterUpdate,
 )::Nothing
-    if controlled_parameters.node_type != NodeType.PidControl
+    if parameter_update.node_type != NodeType.PidControl
         return nothing
     end
-    (; node_idx, active, interpolation, pid_params) = controlled_parameters
+    (; node_idx, active, target, pid_params) = parameter_update
     pid_control.active[node_idx] = active
-    pid_control.target[node_idx] =
-        isempty(interpolation.t) ? pid_control.target[node_idx] : interpolation
-    pid_control.pid_params[node_idx] =
-        isempty(pid_params.t) ? control.pid_params[node_idx] : pid_params
+    if !isempty(target.t)
+        pid_control.target[node_idx] = target
+    end
+    if !isempty(pid_params.t)
+        pid_control.pid_params[node_idx] = pid_params
+    end
     return nothing
 end
 
-function control_parameters!(
+function update_parameters!(
     linear_resistance::LinearResistance,
-    controlled_parameters::ControlledParameters,
+    parameter_update::ParameterUpdate,
 )::Nothing
-    if controlled_parameters.node_type != NodeType.LinearResistance
+    if parameter_update.node_type != NodeType.LinearResistance
         return nothing
     end
-    (; node_idx, active, resistance) = controlled_parameters
+    (; node_idx, active, resistance) = parameter_update
     linear_resistance.active[node_idx] = active
-    linear_resistance.resistance[node_idx] =
-        isnan(resistance) ? linear_resistance.resistance[node_idx] : resistance
+    if !isnan(resistance)
+        linear_resistance.resistance[node_idx] = resistance
+    end
     return nothing
 end
 
-function control_parameters!(
+function update_parameters!(
     manning_resistance::ManningResistance,
-    controlled_parameters::ControlledParameters,
+    parameter_update::ParameterUpdate,
 )::Nothing
-    if controlled_parameters.node_type != NodeType.ManningResistance
+    if parameter_update.node_type != NodeType.ManningResistance
         return nothing
     end
-    (; node_idx, active, manning_n) = controlled_parameters
+    (; node_idx, active, manning_n) = parameter_update
     manning_resistance.active[node_idx] = active
-    manning_resistance.manning_n[node_idx] =
-        isnan(manning_n) ? manning_resistance.manning_n[node_idx] : manning_n
+    if !isnan(manning_n)
+        manning_resistance.manning_n[node_idx] = manning_n
+    end
     return nothing
 end
 
 function set_control_params!(p::Parameters, node_id::NodeID, control_state::String)::Nothing
-    controlled_parameters = p.discrete_control.control_mapping[(node_id, control_state)]
+    parameter_update = p.discrete_control.control_mapping[(node_id, control_state)]
 
-    control_parameters!(p.pump, controlled_parameters)
-    control_parameters!(p.outlet, controlled_parameters)
-    control_parameters!(p.tabulated_rating_curve, controlled_parameters)
-    control_parameters!(p.fractional_flow, controlled_parameters, p)
-    control_parameters!(p.pid_control, controlled_parameters)
-    control_parameters!(p.linear_resistance, controlled_parameters)
-    control_parameters!(p.manning_resistance, controlled_parameters)
+    # Only the method corresponding to the type of the node_id actually updates parameters,
+    # but this way there is no runtime dispatch on node type
+    update_parameters!(p.pump, parameter_update)
+    update_parameters!(p.outlet, parameter_update)
+    update_parameters!(p.tabulated_rating_curve, parameter_update)
+    update_parameters!(p.fractional_flow, parameter_update, p)
+    update_parameters!(p.pid_control, parameter_update)
+    update_parameters!(p.linear_resistance, parameter_update)
+    update_parameters!(p.manning_resistance, parameter_update)
     return nothing
 end
 

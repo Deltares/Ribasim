@@ -224,7 +224,7 @@ Test whether static or discrete controlled flow rates are indeed non-negative.
 function valid_flow_rates(
     node_id::Vector{NodeID},
     flow_rate::Vector,
-    control_mapping::Dict{Tuple{NodeID, String}, ControlledParameters},
+    control_mapping::Dict{Tuple{NodeID, String}, ParameterUpdate},
 )::Bool
     errors = false
 
@@ -232,10 +232,10 @@ function valid_flow_rates(
     # if their initial value is also invalid.
     ids_controlled = NodeID[]
 
-    for (key, controlled_parameters) in pairs(control_mapping)
+    for (key, parameter_update) in pairs(control_mapping)
         id_controlled = key[1]
         push!(ids_controlled, id_controlled)
-        flow_rate_ = controlled_parameters.flow_rate
+        flow_rate_ = parameter_update.flow_rate_scalar
         flow_rate_ = isnan(flow_rate_) ? 1.0 : flow_rate_
 
         if flow_rate_ < 0.0
@@ -297,7 +297,7 @@ outneighbor, that the fractions leaving a node add up to ≈1 and that the fract
 function valid_fractional_flow(
     graph::MetaGraph,
     node_id::Vector{NodeID},
-    control_mapping::Dict{Tuple{NodeID, String}, ControlledParameters},
+    control_mapping::Dict{Tuple{NodeID, String}, ParameterUpdate},
 )::Bool
     errors = false
 
