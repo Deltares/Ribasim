@@ -118,13 +118,15 @@ function integrate_flows!(u, t, integrator)::Nothing
         if edge[1] == edge[2]
             # Vertical fluxes
             _, basin_idx = id_index(basin.node_id, edge[1])
-            value[] +=
+            allocation.mean_input_flows[edge] =
+                value +
                 0.5 *
                 (get_influx(basin, basin_idx) + get_influx(basin, basin_idx; prev = true)) *
                 dt
         else
             # Horizontal flows
-            value[] +=
+            allocation.mean_input_flows[edge] =
+                value +
                 0.5 * (get_flow(graph, edge..., 0) + get_flow_prev(graph, edge..., 0)) * dt
         end
     end
@@ -132,8 +134,9 @@ function integrate_flows!(u, t, integrator)::Nothing
     # Realized demand flows
     for (edge, value) in allocation.mean_realized_flows
         if edge[1] !== edge[2]
-            value[] +=
+            value +=
                 0.5 * (get_flow(graph, edge..., 0) + get_flow_prev(graph, edge..., 0)) * dt
+            allocation.mean_realized_flows[edge] = value
         end
     end
 
@@ -481,8 +484,8 @@ function update_allocation!(integrator)::Nothing
 
     # Divide by the allocation Δt to obtain the mean input flows
     # from the integrated flows
-    for value in values(mean_input_flows)
-        value[] /= Δt_allocation
+    for key in keys(mean_input_flows)
+        mean_input_flows[key] = mean_input_flows[key] / Δt_allocation
     end
 
     # Divide by the allocation Δt to obtain the mean realized flows
@@ -491,9 +494,9 @@ function update_allocation!(integrator)::Nothing
         if edge[1] == edge[2]
             # Compute the mean realized demand for basins as Δstorage/Δt_allocation
             _, basin_idx = id_index(basin.node_id, edge[1])
-            value[] += u[basin_idx]
+            mean_realized_flows[edge] = value + u[basin_idx]
         end
-        value[] /= Δt_allocation
+        mean_realized_flows[edge] = mean_realized_flows[edge] / Δt_allocation
     end
 
     # If a main network is present, collect demands of subnetworks
@@ -512,8 +515,8 @@ function update_allocation!(integrator)::Nothing
 
     # Reset the mean flows
     for mean_flows in (mean_input_flows, mean_realized_flows)
-        for value in values(mean_flows)
-            value[] = 0.0
+        for edge in keys(mean_flows)
+            mean_flows[edge] = 0.0
         end
     end
 
@@ -521,7 +524,7 @@ function update_allocation!(integrator)::Nothing
     for (edge, value) in mean_realized_flows
         if edge[1] == edge[2]
             _, basin_idx = id_index(basin.node_id, edge[1])
-            value[] = -u[basin_idx]
+            mean_realized_flows[edge] = value - u[basin_idx]
         end
     end
 end

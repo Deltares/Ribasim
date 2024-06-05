@@ -725,7 +725,7 @@ function save_demands_and_allocations!(
             user_demand_idx = findsorted(user_demand.node_id, node_id)
             demand = user_demand.demand[user_demand_idx, priority_idx]
             allocated = user_demand.allocated[user_demand_idx, priority_idx]
-            realized = mean_realized_flows[(inflow_id(graph, node_id), node_id)][]
+            realized = mean_realized_flows[(inflow_id(graph, node_id), node_id)]
 
         elseif has_external_demand(graph, node_id, :level_demand)[1]
             basin_priority_idx = get_external_priority_idx(p, node_id)
@@ -744,7 +744,7 @@ function save_demands_and_allocations!(
                 end
                 allocated =
                     JuMP.value(F_basin_in[node_id]) - JuMP.value(F_basin_out[node_id])
-                realized = mean_realized_flows[(node_id, node_id)][]
+                realized = mean_realized_flows[(node_id, node_id)]
             end
 
         else
@@ -760,7 +760,7 @@ function save_demands_and_allocations!(
                         flow_demand_node_id,
                     )] : 0.0
                 allocated = JuMP.value(F[(inflow_id(graph, node_id), node_id)])
-                realized = mean_realized_flows[(inflow_id(graph, node_id), node_id)][]
+                realized = mean_realized_flows[(inflow_id(graph, node_id), node_id)]
             end
         end
 

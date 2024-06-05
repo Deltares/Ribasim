@@ -14,7 +14,7 @@
     (; graph, allocation) = p
     close(db)
 
-    allocation.mean_input_flows[(NodeID(:FlowBoundary, 1), NodeID(:Basin, 2))][] = 4.5
+    allocation.mean_input_flows[(NodeID(:FlowBoundary, 1), NodeID(:Basin, 2))] = 4.5
     allocation_model = p.allocation.allocation_models[1]
     u = ComponentVector(; storage = zeros(length(p.basin.node_id)))
     Ribasim.allocate_demands!(p, allocation_model, 0.0, u)
@@ -252,7 +252,7 @@ end
 
     # Running full allocation algorithm
     (; Δt_allocation) = allocation_models[1]
-    mean_input_flows[(NodeID(:FlowBoundary, 1), NodeID(:Basin, 2))][] = 4.5 * Δt_allocation
+    mean_input_flows[(NodeID(:FlowBoundary, 1), NodeID(:Basin, 2))] = 4.5 * Δt_allocation
     u = ComponentVector(; storage = zeros(length(p.basin.node_id)))
     Ribasim.update_allocation!((; p, t, u))
 
@@ -300,8 +300,8 @@ end
     t = 0.0
 
     # Set flows of sources in
-    mean_input_flows[(NodeID(:FlowBoundary, 58), NodeID(:Basin, 16))][] = 1.0
-    mean_input_flows[(NodeID(:FlowBoundary, 59), NodeID(:Basin, 44))][] = 1e-3
+    mean_input_flows[(NodeID(:FlowBoundary, 58), NodeID(:Basin, 16))] = 1.0
+    mean_input_flows[(NodeID(:FlowBoundary, 59), NodeID(:Basin, 44))] = 1e-3
 
     # Collecting demands
     u = ComponentVector(; storage = zeros(length(basin.node_id)))
@@ -333,7 +333,7 @@ end
     (; user_demand, graph, allocation, basin, level_demand) = p
 
     # Initial "integrated" vertical flux
-    @test allocation.mean_input_flows[(NodeID(:Basin, 2), NodeID(:Basin, 2))][] ≈ 1e2
+    @test allocation.mean_input_flows[(NodeID(:Basin, 2), NodeID(:Basin, 2))] ≈ 1e2
 
     Ribasim.solve!(model)
 

@@ -1036,24 +1036,24 @@ function Allocation(db::DB, config::Config, graph::MetaGraph)::Allocation
         optimization_type = String[],
     )
 
-    mean_input_flows = Dict{Tuple{NodeID, NodeID}, Base.RefValue{Float64}}()
+    mean_input_flows = Dict{Tuple{NodeID, NodeID}, Float64}()
 
     # Find edges which serve as sources in allocation
     for edge_metadata in values(graph.edge_data)
         (; subnetwork_id_source, edge) = edge_metadata
         if subnetwork_id_source != 0
-            mean_input_flows[edge] = Ref(0.0)
+            mean_input_flows[edge] = 0.0
         end
     end
 
     # Find basins with a level demand
     for node_id in values(graph.vertex_labels)
         if has_external_demand(graph, node_id, :level_demand)[1]
-            mean_input_flows[(node_id, node_id)] = Ref(0.0)
+            mean_input_flows[(node_id, node_id)] = 0.0
         end
     end
 
-    mean_realized_flows = Dict{Tuple{NodeID, NodeID}, Base.RefValue{Float64}}()
+    mean_realized_flows = Dict{Tuple{NodeID, NodeID}, Float64}()
 
     # Find edges that realize a demand
     for edge_metadata in values(graph.edge_data)
@@ -1067,9 +1067,9 @@ function Allocation(db::DB, config::Config, graph::MetaGraph)::Allocation
             (type == EdgeType.flow) && has_external_demand(graph, dst_id, :flow_demand)[1]
 
         if user_demand_inflow || flow_demand_inflow
-            mean_realized_flows[edge] = Ref(0.0)
+            mean_realized_flows[edge] = 0.0
         elseif level_demand_inflow
-            mean_realized_flows[(dst_id, dst_id)] = Ref(0.0)
+            mean_realized_flows[(dst_id, dst_id)] = 0.0
         end
     end
 
