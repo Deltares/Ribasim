@@ -333,7 +333,11 @@ function write_arrow(
     # Don't write empty tables
     if isempty(table.time)
         # Avoid confusion with old files
-        rm(path; force = true)
+        try
+            rm(path; force = true)
+        catch
+            @warn "Failed to remove outdated results, file may be locked." path
+        end
         return nothing
     end
     # ensure DateTime is encoded in a compatible manner
