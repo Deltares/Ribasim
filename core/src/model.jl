@@ -174,7 +174,9 @@ function Model(config::Config)::Model
         set_initial_allocation_mean_flows!(integrator)
     end
 
-    return Model(integrator, config, saved)
+    model = Model(integrator, config, saved)
+    write_results(model)  # check permissions
+    return model
 end
 
 "Get all saved times in seconds since start"

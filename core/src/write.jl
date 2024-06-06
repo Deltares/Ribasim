@@ -7,36 +7,37 @@ function write_results(model::Model)::Model
     (; config) = model
     (; results) = model.config
     compress = get_compressor(results)
+    init = model.integrator.t == 0
 
     # basin
     table = basin_table(model)
     path = results_path(config, RESULTS_FILENAME.basin)
-    write_arrow(path, table, compress)
+    write_arrow(path, table, compress; init)
 
     # flow
     table = flow_table(model)
     path = results_path(config, RESULTS_FILENAME.flow)
-    write_arrow(path, table, compress)
+    write_arrow(path, table, compress; init)
 
     # discrete control
     table = discrete_control_table(model)
     path = results_path(config, RESULTS_FILENAME.control)
-    write_arrow(path, table, compress)
+    write_arrow(path, table, compress; init)
 
     # allocation
     table = allocation_table(model)
     path = results_path(config, RESULTS_FILENAME.allocation)
-    write_arrow(path, table, compress)
+    write_arrow(path, table, compress; init)
 
     # allocation flow
     table = allocation_flow_table(model)
     path = results_path(config, RESULTS_FILENAME.allocation_flow)
-    write_arrow(path, table, compress)
+    write_arrow(path, table, compress; init)
 
     # exported levels
     table = subgrid_level_table(model)
     path = results_path(config, RESULTS_FILENAME.subgrid_level)
-    write_arrow(path, table, compress)
+    write_arrow(path, table, compress; init)
 
     @debug "Wrote results."
     return model
@@ -328,11 +329,13 @@ end
 function write_arrow(
     path::AbstractString,
     table::NamedTuple,
-    compress::Union{ZstdCompressor, Nothing},
+    compress::Union{ZstdCompressor, Nothing};
+    init::Bool,
 )::Nothing
-    # Don't write empty tables
-    if isempty(table.time)
-        # Avoid confusion with old files
+    # At the start of the simulation, write an empty table to ensure we have permissions
+    # and fail early.
+    # At the end of the simulation, write all non-empty tables, and remove existing empty ones.
+    if !init && isempty(table.time)
         try
             rm(path; force = true)
         catch
@@ -345,7 +348,12 @@ function write_arrow(
     table = merge(table, (; time = convert.(Arrow.DATETIME, table.time)))
     metadata = ["ribasim_version" => string(pkgversion(Ribasim))]
     mkpath(dirname(path))
-    Arrow.write(path, table; compress, metadata)
+    try
+        Arrow.write(path, table; compress, metadata)
+    catch
+        @error "Failed to write results, it may be locked." path
+        error("Failed to write results.")
+    end
     return nothing
 end
 
