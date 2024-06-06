@@ -794,10 +794,13 @@ function set_initial_allocation_mean_flows!(integrator)::Nothing
     return nothing
 end
 
-function convert_truth_state(v)::String
-    truth_values = fill('*', length(v))
-    for i in eachindex(v)
-        truth_values[i] = ifelse(v[i], 'T', 'F')
+"""
+Convert a truth state in terms of a BitVector of Vector{Bool} into a string of 'T' and 'F'
+"""
+function convert_truth_state(boolean_vector)::String
+    truth_values = fill('*', length(boolean_vector))
+    for i in eachindex(boolean_vector)
+        truth_values[i] = ifelse(boolean_vector[i], 'T', 'F')
     end
-    return join(truth_values, "")
+    return join(truth_values)
 end

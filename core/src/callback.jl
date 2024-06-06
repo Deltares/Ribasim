@@ -297,22 +297,36 @@ function discrete_control_affect!(integrator, compound_variable_idx)
     p = integrator.p
     (; discrete_control, graph) = p
 
-    # Get the discrete_control node to which this compound variable belongs
+    # Get the DiscreteControl node to which this compound variable belongs
     discrete_control_node_id = discrete_control.node_id[compound_variable_idx]
 
-    # Get the first index of the (compound) variables that this control node listens to
-    variable_idx = searchsortedfirst(discrete_control.node_id, discrete_control_node_id)
+    # We need to build up the truth state for this DiscreteControl node by:
+    # - Finding all the (compound) variables this DiscreteControde node listens to
+    # - Concatenate in preallocated memory the truth values for all conditions per variable
+    #
+    # There can be multiple truth values per variable because there can be multiple 'greater_than's
+    # per variable which each define a condition. So the final control state is, if the discrete control node
+    # listens to variables with indices n, ..., N:
+    # [
+    #  variable_n     > greater_than_n_1,     ..., variable_n     > greater_than_n_a,
+    #  variable_{n+1} > greater_than_{n+1}_1, ..., variable_{n+1} > greater_than_{n+1}_b,
+    #  ...
+    #  variable_N     > greater_than_N_1,     ..., variable_N     > greater_than_N_c
+    # ]
     truth_value_idx = 1
-
-    # Build up the truth state from the truth values per (compound) variable per greater than
-    while variable_idx <= length(discrete_control.node_id) &&
-        discrete_control.node_id[variable_idx] == discrete_control_node_id
-        truth_values_variable = discrete_control.condition_value[variable_idx]
-        n_greater_than = length(truth_values_variable)
-        discrete_control.truth_state[truth_value_idx:(truth_value_idx + n_greater_than - 1)] .=
-            truth_values_variable
-        variable_idx += 1
-        truth_value_idx += n_greater_than
+    for (variable_idx, node_id) in enumerate(discrete_control.node_id)
+        if node_id < discrete_control_node_id
+            continue
+        elseif node_id == discrete_control_node_id
+            truth_values_variable = discrete_control.condition_value[variable_idx]
+            n_greater_than = length(truth_values_variable)
+            discrete_control.truth_state[truth_value_idx:(truth_value_idx + n_greater_than - 1)] .=
+                truth_values_variable
+            variable_idx += 1
+            truth_value_idx += n_greater_than
+        else
+            break
+        end
     end
 
     # The maximum truth state length is possibly shorter than this truth state
@@ -409,7 +423,11 @@ function set_fractional_flow_in_allocation!(
     return nothing
 end
 
-function update_parameters!(pump::Pump, node_id::NodeID, control_state::String)::Nothing
+function discrete_control_parameter_update(
+    pump::Pump,
+    node_id::NodeID,
+    control_state::String,
+)::Nothing
     parameter_update = pump.control_mapping[(node_id, control_state)]
     (; node_idx, active, flow_rate_scalar) = parameter_update
     pump.active[node_idx] = active
@@ -423,7 +441,11 @@ function update_parameters!(pump::Pump, node_id::NodeID, control_state::String):
     return nothing
 end
 
-function update_parameters!(outlet::Outlet, node_id::NodeID, control_state::String)::Nothing
+function discrete_control_parameter_update(
+    outlet::Outlet,
+    node_id::NodeID,
+    control_state::String,
+)::Nothing
     parameter_update = outlet.control_mapping[(node_id, control_state)]
     (; node_idx, active, flow_rate_scalar) = parameter_update
     outlet.active[node_idx] = active
@@ -437,7 +459,7 @@ function update_parameters!(outlet::Outlet, node_id::NodeID, control_state::Stri
     return nothing
 end
 
-function update_parameters!(
+function discrete_control_parameter_update(
     tabulated_rating_curve::TabulatedRatingCurve,
     node_id::NodeID,
     control_state::String,
@@ -451,7 +473,7 @@ function update_parameters!(
     return nothing
 end
 
-function update_parameters!(
+function discrete_control_parameter_update(
     fractional_flow::FractionalFlow,
     node_id::NodeID,
     control_state::String,
@@ -467,7 +489,7 @@ function update_parameters!(
     return nothing
 end
 
-function update_parameters!(
+function discrete_control_parameter_update(
     pid_control::PidControl,
     node_id::NodeID,
     control_state::String,
@@ -484,7 +506,7 @@ function update_parameters!(
     return nothing
 end
 
-function update_parameters!(
+function discrete_control_parameter_update(
     linear_resistance::LinearResistance,
     node_id::NodeID,
     control_state::String,
@@ -498,7 +520,7 @@ function update_parameters!(
     return nothing
 end
 
-function update_parameters!(
+function discrete_control_parameter_update(
     manning_resistance::ManningResistance,
     node_id::NodeID,
     control_state::String,
@@ -516,19 +538,19 @@ function set_control_params!(p::Parameters, node_id::NodeID, control_state::Stri
 
     # Check node type here to avoid runtime dispatch on the node type
     if node_id.type == NodeType.Pump
-        update_parameters!(p.pump, node_id, control_state)
+        discrete_control_parameter_update(p.pump, node_id, control_state)
     elseif node_id.type == NodeType.Outlet
-        update_parameters!(p.outlet, node_id, control_state)
+        discrete_control_parameter_update(p.outlet, node_id, control_state)
     elseif node_id.type == NodeType.TabulatedRatingCurve
-        update_parameters!(p.tabulated_rating_curve, node_id, control_state)
+        discrete_control_parameter_update(p.tabulated_rating_curve, node_id, control_state)
     elseif node_id.type == NodeType.FractionalFlow
-        update_parameters!(p.fractional_flow, node_id, control_state, p)
+        discrete_control_parameter_update(p.fractional_flow, node_id, control_state, p)
     elseif node_id.type == NodeType.PidControl
-        update_parameters!(p.pid_control, node_id, control_state)
+        discrete_control_parameter_update(p.pid_control, node_id, control_state)
     elseif node_id.type == NodeType.LinearResistance
-        update_parameters!(p.linear_resistance, node_id, control_state)
+        discrete_control_parameter_update(p.linear_resistance, node_id, control_state)
     elseif node_id.type == NodeType.ManningResistance
-        update_parameters!(p.manning_resistance, node_id, control_state)
+        discrete_control_parameter_update(p.manning_resistance, node_id, control_state)
     end
     return nothing
 end
