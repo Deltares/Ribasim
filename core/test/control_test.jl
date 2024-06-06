@@ -1,6 +1,8 @@
 @testitem "Pump discrete control" begin
     using PreallocationTools: get_tmp
     using Ribasim: NodeID
+    import Arrow
+    import Tables
 
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/pump_discrete_control/ribasim.toml")
@@ -45,6 +47,14 @@
 
     flow = get_tmp(graph[].flow, 0)
     @test all(iszero, flow)
+
+    # results/control.arrow
+    control_bytes = read(normpath(dirname(toml_path), "results/control.arrow"))
+    control = Arrow.Table(control_bytes)
+    @test Tables.schema(control) == Tables.Schema(
+        (:time, :control_node_id, :truth_state, :control_state),
+        (DateTime, Int32, String, String),
+    )
 end
 
 @testitem "Flow condition control" begin

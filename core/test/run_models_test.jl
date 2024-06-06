@@ -6,6 +6,12 @@
     import Arrow
     using Ribasim: get_tstops, tsaves
 
+    # There is no control. That means we don't write the control.arrow,
+    # and we remove it if it exists.
+    control_path = normpath(dirname(toml_path), "results/control.arrow")
+    touch(control_path)
+    @test ispath(control_path)
+
     toml_path = normpath(@__DIR__, "../../generated_testmodels/trivial/ribasim.toml")
     @test ispath(toml_path)
     config = Ribasim.Config(toml_path)
@@ -14,11 +20,12 @@
     @test successful_retcode(model)
     (; p) = model.integrator
 
+    @test !ispath(control_path)
+
     # read all results as bytes first to avoid memory mapping
     # which can have cleanup issues due to file locking
     flow_bytes = read(normpath(dirname(toml_path), "results/flow.arrow"))
     basin_bytes = read(normpath(dirname(toml_path), "results/basin.arrow"))
-    control_bytes = read(normpath(dirname(toml_path), "results/control.arrow"))
     allocation_bytes = read(normpath(dirname(toml_path), "results/allocation.arrow"))
     allocation_flow_bytes =
         read(normpath(dirname(toml_path), "results/allocation_flow.arrow"))
@@ -26,7 +33,6 @@
 
     flow = Arrow.Table(flow_bytes)
     basin = Arrow.Table(basin_bytes)
-    control = Arrow.Table(control_bytes)
     allocation = Arrow.Table(allocation_bytes)
     allocation_flow = Arrow.Table(allocation_flow_bytes)
     subgrid = Arrow.Table(subgrid_bytes)
@@ -75,10 +81,6 @@
                 Float64,
                 Float64,
             ),
-        )
-        @test Tables.schema(control) == Tables.Schema(
-            (:time, :control_node_id, :truth_state, :control_state),
-            (DateTime, Int32, String, String),
         )
         @test Tables.schema(allocation) == Tables.Schema(
             (

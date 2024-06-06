@@ -332,6 +332,8 @@ function write_arrow(
 )::Nothing
     # Don't write empty tables
     if isempty(table.time)
+        # Avoid confusion with old files
+        rm(path; force = true)
         return nothing
     end
     # ensure DateTime is encoded in a compatible manner
