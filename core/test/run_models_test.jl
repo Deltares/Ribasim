@@ -12,6 +12,7 @@
     # There is no control. That means we don't write the control.arrow,
     # and we remove it if it exists.
     control_path = normpath(dirname(toml_path), "results/control.arrow")
+    mkpath(dirname(control_path))
     touch(control_path)
     @test ispath(control_path)
 
