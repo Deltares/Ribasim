@@ -310,7 +310,7 @@ priority        | Int32
 flow_rate       | Float64
 collect_demands | Bool
 
-## Subgrid levels - `subgrid_levels.arrow`
+## Subgrid levels - `subgrid_level.arrow`
 
 This result file is only written if the model contains a [Basin / subgrid](node/basin.qmd#subgrid) table.
 See there for more information on the meaning of this output.
