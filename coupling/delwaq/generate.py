@@ -44,7 +44,7 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
     for row in model.node_table().df.itertuples():
         if row.node_type not in ribasim.geometry.edge.SPATIALCONTROLNODETYPES:
             G.add_node(
-                row.node_type + str(row.node_id),
+                f"{row.node_type} #{row.node_id}",
                 type=row.node_type,
                 id=row.node_id,
                 x=row.geometry.x,
@@ -54,8 +54,8 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
     for row in model.edge.df.itertuples():
         if row.edge_type == "flow":
             G.add_edge(
-                row.from_node_type + str(row.from_node_id),
-                row.to_node_type + str(row.to_node_id),
+                f"{row.from_node_type} #{row.from_node_id}",
+                f"{row.to_node_type} #{row.to_node_id}",
                 id=[row.Index],
                 duplicate=None,
             )
@@ -116,10 +116,12 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
     basin_id = 0
     boundary_id = 0
     node_mapping = {}
+    basin_mapping = {}
     for node_id, node in G.nodes.items():
         if node["type"] == "Basin":
             basin_id += 1
             node_mapping[node_id] = basin_id
+            basin_mapping[node["id"]] = basin_id
         elif node["type"] in [
             "Terminal",
             "UserDemand",
@@ -274,7 +276,7 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
     basins.drop(columns=["level"], inplace=True)
     volumes = basins[["time", "node_id", "storage"]]
     volumes.loc[:, "node_id"] = (
-        volumes["node_id"].map(node_mapping).astype(pd.Int32Dtype())
+        volumes["node_id"].map(basin_mapping).astype(pd.Int32Dtype())
     )
     volumes = volumes.sort_values(by=["time", "node_id"])
     volumes.to_csv(output_folder / "volumes.csv", index=False)  # not needed
@@ -365,6 +367,42 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
             )
         )
 
+    # Setup initial basin concentrations
+    defaults = {
+        "Continuity": 1.0,
+        "Basin": 0.0,
+        "LevelBoundary": 0.0,
+        "FlowBoundary": 0.0,
+        "Terminal": 0.0,
+    }
+    substances.update(defaults.keys())
+
+    # Add user defined substances
+    if model.basin.concentration_state.df is not None:
+        initial = model.basin.concentration_state.df
+        substances.update(initial.substance.unique())
+
+    # Make a wide table with the initial default concentrations
+    # using zero for all user defined substances
+    icdf = pd.DataFrame(
+        {
+            substance: [defaults.get(substance, 0.0)] * len(basin_mapping)
+            for substance in sorted(substances)
+        },
+        index=basin_mapping.values(),
+    )
+
+    # Override default concentrations with the user defined values
+    if model.basin.concentration_state.df is not None:
+        for _, row in initial.iterrows():
+            icdf.loc[basin_mapping[row.node_id], row.substance] = row.concentration
+
+    # Add comment with original Basin ID
+    reverse_node_mapping = {v: k for k, v in node_mapping.items()}
+    icdf["comment"] = [f"; {reverse_node_mapping[k]}" for k in icdf.index]
+
+    initial_concentrations = icdf.to_string(header=False, index=False)
+
     # Write boundary list, ordered by bid to map the unique boundary names
     # to the edges described in the pointer file.
     bnd = pointer.copy()
@@ -399,7 +437,8 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
                 timestep=strfdelta(timestep),
                 nsegments=total_segments,
                 nexchanges=total_exchanges,
-                substances=substances,
+                substances=sorted(substances),
+                initial_concentrations=initial_concentrations,
             )
         )
 

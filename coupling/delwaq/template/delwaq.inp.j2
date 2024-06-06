@@ -11,15 +11,10 @@
 
 ; Hard coded Substances for mass balance check:
 ; number of active and inactive substances
-{{substances|length+5}}             0
+{{substances|length}}             0
         ; active substances
-1 'Continuity'
-2 'Basin'
-3 'LevelBoundary'
-4 'FlowBoundary'
-5 'Terminal'
 {% for substance in substances -%}
-{{5+loop.index}} '{{substance}}'
+{{ loop.index }} '{{substance}}'
 {% endfor -%}
         ; passive substances
 
@@ -139,24 +134,12 @@ CONSTANTS  'ONLY_ACTIVE' 	DATA	0               ; Only active processes
 
 ; Hard coded initials for mass balance check.
 MASS/M2 ; The bed substances are specified in mass/m2
-INITIALS
-'Continuity'
-'Basin'
-'LevelBoundary'
-'FlowBoundary'
-'Terminal'
-{% for substance in substances -%}
-'{{substance}}'
-{% endfor -%}
-DEFAULTS
-1
-0
-0
-0
-0
-{% for substance in substances -%}
-0
-{% endfor -%}
+1 ; Input in this file
+1 ; Input without defaults
+{{ substances | length }}*1.0 ; Scale value
+
+; {{ substances | join(" ") }}
+{{ initial_concentrations }}
 #8
 ;###############################################################################
 ; Ninth input block
