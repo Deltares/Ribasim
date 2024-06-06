@@ -113,6 +113,15 @@ function integrate_flows!(u, t, integrator)::Nothing
         user_demand.realized_bmi[i] += 0.5 * (flow[flow_idx] + flow_prev[flow_idx]) * dt
     end
 
+    # *Demand realized flow for output
+    for (edge, value) in allocation.mean_realized_flows
+        if edge[1] !== edge[2]
+            value +=
+                0.5 * (get_flow(graph, edge..., 0) + get_flow_prev(graph, edge..., 0)) * dt
+            allocation.mean_realized_flows[edge] = value
+        end
+    end
+
     # Allocation source flows
     for (edge, value) in allocation.mean_input_flows
         if edge[1] == edge[2]
@@ -128,15 +137,6 @@ function integrate_flows!(u, t, integrator)::Nothing
             allocation.mean_input_flows[edge] =
                 value +
                 0.5 * (get_flow(graph, edge..., 0) + get_flow_prev(graph, edge..., 0)) * dt
-        end
-    end
-
-    # Realized demand flows
-    for (edge, value) in allocation.mean_realized_flows
-        if edge[1] !== edge[2]
-            value +=
-                0.5 * (get_flow(graph, edge..., 0) + get_flow_prev(graph, edge..., 0)) * dt
-            allocation.mean_realized_flows[edge] = value
         end
     end
 

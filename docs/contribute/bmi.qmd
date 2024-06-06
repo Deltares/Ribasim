@@ -1,0 +1,46 @@
+# Basic Model Interface (BMI)
+
+For runtime data exchange and coupling with other kernels, the Julia kernel is wrapped in a Python API (`ribasim_api`) which implements the Basic Modelling Interface [BMI](https://bmi-spec.readthedocs.io/en/latest/).
+
+## Functions
+
+The following functions are available to interact with the Ribasim model"
+
+signature                 | description
+------------------------- | -------------
+`initialize(config_path)` | Initialize a model from the path to the TOML configuration file
+`finalize()`              | Write all results to the configured files
+`get_current_time()`      | Get the current time of the Ribasim simulation
+`get_end_time()`          | Get the final time of the Ribasim simulation in seconds
+`get_start_time()`        | Get the start time of the Ribasim simulation (`0.0`)
+`get_time_step()`         | Get the proposed next internal Ribasim timestep
+`get_time_units()`        | Get the time unit (`s`)
+`get_value_ptr(string)`   | Get the pointer to a Ribasim internal array (see below)
+`update()`                | Perform a Ribasim internal time step
+`update_until(time)`      | Set Ribasim internal timesteps until the specified time
+
+Depending on what is specified in the Ribasim TOML configuration file, Ribasim can internally have adaptive (non-constant) timesteps. `update_until` will always try to progress the Ribasim simulation to exactly the time specified. This however can fail for algorithms that only support a fixed timestep if that timestep does not fit into the interval until the specified time an integer amount of times.
+
+## Memory pointers
+
+The following pointers to memory containing Ribasim internal arrays are given via the BMI using `get_value_ptr(string)`:
+
+string                          | meaning                                | type    | unit         | temporal type         | writable  | sorted by
+------------------------------- | -------------------------------------- | ------- | ------------ | --------------------- | --------  |----------
+`basin.storage`                 | storage per basin                      | Float64 | $m^3$        | instantaneous         | no        | basin node ID
+`basin.level`                   | level per basin                        | Float64 | $m$          | instantaneous         | no        |  basin node ID
+`basin.infiltration`            | infiltration flux per basin            | Float64 | $m^3 s^{-1}$ | forward fill          | yes       |  basin node ID
+`basin.drainage`                | drainage flux per basin                | Float64 | $m^3 s^{-1}$ | forward fill          | yes       |  basin node ID
+`basin.infiltration_integrated` | cumulative infiltration per basin      | Float64 | $m^3$        | integrated from start | yes       |  basin node ID
+`basin.drainage_integrated`     | cumulative drainage per basin          | Float64 | $m^3$        | integrated from start | yes       |  basin node ID
+`basin.subgrid_level`           | subgrid level                          | Float64 | $m$          | instantaneous         | no        |  subgrid ID
+`user_demand.demand`            | demand per node ID per priority        | Float64 | $m^3 s^{-1}$ | forward fill          | yes       |  user_demand node ID, priority index
+`user_demand.realized`          | cumulative intake flow per user        | Float64 | $m^3$        | integrated from start | yes       |  user_demand node ID
+
+Additional notes:
+
+- `user_demand.demand` yields the only 2D array, the other arrays are 1D. This array is indexed as `(node_idx, priority_idx)`
+- The index of e.g. basins and user demand nodes needs to be inferred from the Ribasim input. The same holds for `priority_idx`, which is global over all subnetworks
+- The data being writable means that Ribasim takes into account the possibility that the data is updated outiside the Ribasim core
+- Although the `*_integrated` and `*_realized` data is writable, this doesn't affect the Ribasim simulation. This integrated data is only computed for the BMI, and can be set to $0$ via the BMI to avoid accuracy problems when the values get too large.
+- Different from what is exposed via the BMI, the basin forcings and realized user demands are averaged over the allocation timestep and saveat interval respectively.

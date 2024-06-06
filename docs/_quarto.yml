@@ -63,6 +63,7 @@ website:
         - contribute/python.qmd
         - contribute/qgis.qmd
         - contribute/addnode.qmd
+        - contribute/bmi.qmd
         - contribute/ci.qmd
         - contribute/release.qmd
 
