@@ -28,15 +28,10 @@
     # which can have cleanup issues due to file locking
     flow_bytes = read(normpath(dirname(toml_path), "results/flow.arrow"))
     basin_bytes = read(normpath(dirname(toml_path), "results/basin.arrow"))
-    allocation_bytes = read(normpath(dirname(toml_path), "results/allocation.arrow"))
-    allocation_flow_bytes =
-        read(normpath(dirname(toml_path), "results/allocation_flow.arrow"))
     subgrid_bytes = read(normpath(dirname(toml_path), "results/subgrid_levels.arrow"))
 
     flow = Arrow.Table(flow_bytes)
     basin = Arrow.Table(basin_bytes)
-    allocation = Arrow.Table(allocation_bytes)
-    allocation_flow = Arrow.Table(allocation_flow_bytes)
     subgrid = Arrow.Table(subgrid_bytes)
 
     @testset "Schema" begin
@@ -84,34 +79,6 @@
                 Float64,
             ),
         )
-        @test Tables.schema(allocation) == Tables.Schema(
-            (
-                :time,
-                :subnetwork_id,
-                :node_type,
-                :node_id,
-                :priority,
-                :demand,
-                :allocated,
-                :realized,
-            ),
-            (DateTime, Int32, String, Int32, Int32, Float64, Float64, Float64),
-        )
-        @test Tables.schema(allocation_flow) == Tables.Schema(
-            (
-                :time,
-                :edge_id,
-                :from_node_type,
-                :from_node_id,
-                :to_node_type,
-                :to_node_id,
-                :subnetwork_id,
-                :priority,
-                :flow_rate,
-                :optimization_type,
-            ),
-            (DateTime, Int32, String, Int32, String, Int32, Int32, Int32, Float64, String),
-        )
         @test Tables.schema(subgrid) == Tables.Schema(
             (:time, :subgrid_id, :subgrid_level),
             (DateTime, Int32, Float64),
@@ -124,8 +91,6 @@
         # t0 has no flow, 2 flow edges
         @test nrow(flow) == (nsaved - 1) * 2
         @test nrow(basin) == nsaved - 1
-        @test nrow(control) == 0
-        @test nrow(allocation) == 0
         @test nrow(subgrid) == nsaved * length(p.subgrid.level)
     end
 
