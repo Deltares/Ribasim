@@ -6,14 +6,15 @@
     import Arrow
     using Ribasim: get_tstops, tsaves
 
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/trivial/ribasim.toml")
+    @test ispath(toml_path)
+
     # There is no control. That means we don't write the control.arrow,
     # and we remove it if it exists.
     control_path = normpath(dirname(toml_path), "results/control.arrow")
     touch(control_path)
     @test ispath(control_path)
 
-    toml_path = normpath(@__DIR__, "../../generated_testmodels/trivial/ribasim.toml")
-    @test ispath(toml_path)
     config = Ribasim.Config(toml_path)
     model = Ribasim.run(config)
     @test model isa Ribasim.Model

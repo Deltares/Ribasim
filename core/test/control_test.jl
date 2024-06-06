@@ -1,6 +1,7 @@
 @testitem "Pump discrete control" begin
     using PreallocationTools: get_tmp
     using Ribasim: NodeID
+    using Dates: DateTime
     import Arrow
     import Tables
 
