@@ -333,14 +333,14 @@ function discrete_control_affect!(integrator, compound_variable_idx)
     truth_state = view(discrete_control.truth_state, 1:(truth_value_idx - 1))
 
     # What the local control state should be
-    control_state_new =
-        if haskey(discrete_control.logic_mapping, (discrete_control_node_id, truth_state))
-            discrete_control.logic_mapping[(discrete_control_node_id, truth_state)]
-        else
-            error(
-                "No control state specified for $discrete_control_node_id for truth state $truth_state.",
-            )
-        end
+    control_state_new = get(
+        discrete_control.logic_mapping,
+        (discrete_control_node_id, truth_state),
+        nothing,
+    )
+    isnothing(control_state_new) && error(
+        lazy"No control state specified for $discrete_control_node_id for truth state $truth_state.",
+    )
 
     control_state_now, _ = discrete_control.control_state[discrete_control_node_id]
     if control_state_now != control_state_new

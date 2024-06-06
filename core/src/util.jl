@@ -798,9 +798,5 @@ end
 Convert a truth state in terms of a BitVector of Vector{Bool} into a string of 'T' and 'F'
 """
 function convert_truth_state(boolean_vector)::String
-    truth_values = fill('*', length(boolean_vector))
-    for i in eachindex(boolean_vector)
-        truth_values[i] = ifelse(boolean_vector[i], 'T', 'F')
-    end
-    return join(truth_values)
+    String(UInt8.(ifelse.(boolean_vector, 'T', 'F')))
 end
