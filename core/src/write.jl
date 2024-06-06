@@ -330,6 +330,10 @@ function write_arrow(
     table::NamedTuple,
     compress::Union{ZstdCompressor, Nothing},
 )::Nothing
+    # Don't write empty tables
+    if isempty(table.time)
+        return nothing
+    end
     # ensure DateTime is encoded in a compatible manner
     # https://github.com/apache/arrow-julia/issues/303
     table = merge(table, (; time = convert.(Arrow.DATETIME, table.time)))
