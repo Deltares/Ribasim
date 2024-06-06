@@ -14,7 +14,7 @@
     (; graph, allocation) = p
     close(db)
 
-    allocation.mean_flows[(NodeID(:FlowBoundary, 1), NodeID(:Basin, 2))][] = 4.5
+    allocation.mean_input_flows[(NodeID(:FlowBoundary, 1), NodeID(:Basin, 2))] = 4.5
     allocation_model = p.allocation.allocation_models[1]
     u = ComponentVector(; storage = zeros(length(p.basin.node_id)))
     Ribasim.allocate_demands!(p, allocation_model, 0.0, u)
@@ -216,7 +216,7 @@ end
         subnetwork_demands,
         subnetwork_allocateds,
         record_flow,
-        mean_flows,
+        mean_input_flows,
     ) = allocation
     t = 0.0
 
@@ -252,7 +252,7 @@ end
 
     # Running full allocation algorithm
     (; Δt_allocation) = allocation_models[1]
-    mean_flows[(NodeID(:FlowBoundary, 1), NodeID(:Basin, 2))][] = 4.5 * Δt_allocation
+    mean_input_flows[(NodeID(:FlowBoundary, 1), NodeID(:Basin, 2))] = 4.5 * Δt_allocation
     u = ComponentVector(; storage = zeros(length(p.basin.node_id)))
     Ribasim.update_allocation!((; p, t, u))
 
@@ -295,13 +295,13 @@ end
     close(db)
 
     (; allocation, user_demand, graph, basin) = p
-    (; allocation_models, subnetwork_demands, subnetwork_allocateds, mean_flows) =
+    (; allocation_models, subnetwork_demands, subnetwork_allocateds, mean_input_flows) =
         allocation
     t = 0.0
 
     # Set flows of sources in
-    mean_flows[(NodeID(:FlowBoundary, 58), NodeID(:Basin, 16))][] = 1.0
-    mean_flows[(NodeID(:FlowBoundary, 59), NodeID(:Basin, 44))][] = 1e-3
+    mean_input_flows[(NodeID(:FlowBoundary, 58), NodeID(:Basin, 16))] = 1.0
+    mean_input_flows[(NodeID(:FlowBoundary, 59), NodeID(:Basin, 44))] = 1e-3
 
     # Collecting demands
     u = ComponentVector(; storage = zeros(length(basin.node_id)))
@@ -322,6 +322,8 @@ end
 @testitem "Allocation level control" begin
     import JuMP
     using Ribasim: NodeID
+    using DataFrames: DataFrame
+    using DataInterpolations: LinearInterpolation, integral
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/level_demand/ribasim.toml")
     @test ispath(toml_path)
@@ -331,7 +333,7 @@ end
     (; user_demand, graph, allocation, basin, level_demand) = p
 
     # Initial "integrated" vertical flux
-    @test allocation.mean_flows[(NodeID(:Basin, 2), NodeID(:Basin, 2))][] ≈ 1e2
+    @test allocation.mean_input_flows[(NodeID(:Basin, 2), NodeID(:Basin, 2))] ≈ 1e2
 
     Ribasim.solve!(model)
 
@@ -394,11 +396,31 @@ end
     q = JuMP.normalized_rhs(only(problem[:basin_outflow]))
     storage_surplus = 1000.0  # Basin #7 is 1000 m2 and 1 m above LevelDemand max_level
     @test q ≈ storage_surplus / Δt_allocation
+
+    # Realized level demand
+    record_demand = DataFrame(allocation.record_demand)
+    df_basin_2 = record_demand[record_demand.node_id .== 2, :]
+    itp_basin_2 = t -> model.integrator.sol(t)[1]
+    realized_numeric = diff(itp_basin_2.(df_basin_2.time)) / Δt_allocation
+    @test all(isapprox.(realized_numeric, df_basin_2.realized[2:end], atol = 2e-4))
+
+    # Realized user demand
+    flow_table = DataFrame(Ribasim.flow_table(model))
+    flow_table_user_3 = flow_table[flow_table.edge_id .== 1, :]
+    itp_user_3 = LinearInterpolation(
+        flow_table_user_3.flow_rate,
+        Ribasim.seconds_since.(flow_table_user_3.time, model.config.starttime),
+    )
+    df_user_3 =
+        record_demand[(record_demand.node_id .== 3) .&& (record_demand.priority .== 1), :]
+    realized_numeric = diff(integral.(Ref(itp_user_3), df_user_3.time)) ./ Δt_allocation
+    @test all(isapprox.(realized_numeric[3:end], df_user_3.realized[4:end], atol = 5e-4))
 end
 
 @testitem "Flow demand" begin
     using JuMP
     using Ribasim: NodeID, OptimizationType
+    using DataFrames: DataFrame
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/flow_demand/ribasim.toml")
     @test ispath(toml_path)
@@ -445,9 +467,6 @@ end
     t = 0.0
     (; u) = model.integrator
     optimization_type = OptimizationType.internal_sources
-    for (edge, value) in allocation.mean_flows
-        value[] = Ribasim.get_flow(graph, edge..., 0)
-    end
     Ribasim.set_initial_values!(allocation_model, p, u, t)
 
     # Priority 1
@@ -491,13 +510,15 @@ end
     )
     @test JuMP.normalized_rhs(constraint_flow_out) == Inf
     # The flow from the source is used up in previous priorities
-    @test JuMP.value(F[(NodeID(:LevelBoundary, 1), node_id_with_flow_demand)]) == 0
+    @test JuMP.value(F[(NodeID(:LevelBoundary, 1), node_id_with_flow_demand)]) ≈ 0 atol =
+        1e-10
     # So flow from the flow buffer is used for UserDemand #4
     @test JuMP.value(F_flow_buffer_out[node_id_with_flow_demand]) ≈ 0.001 rtol = 1e-3
     # Flow taken from buffer
     @test JuMP.value(only(F_flow_buffer_out)) ≈ user_demand.demand_itp[1][3](t) rtol = 1e-3
     # No flow coming from level boundary
-    @test JuMP.value(F[(only(level_boundary.node_id), node_id_with_flow_demand)]) == 0
+    @test JuMP.value(F[(only(level_boundary.node_id), node_id_with_flow_demand)]) ≈ 0 atol =
+        1e-10
 
     ## Priority 4
     Ribasim.optimize_priority!(
@@ -512,6 +533,12 @@ end
     d = user_demand.demand_itp[3][4](t)
     @test JuMP.value(F[(NodeID(:UserDemand, 4), NodeID(:Basin, 7))]) +
           JuMP.value(F[(NodeID(:UserDemand, 6), NodeID(:Basin, 7))]) ≈ d rtol = 1e-3
+
+    # Realized flow demand
+    model = Ribasim.run(toml_path)
+    record_demand = DataFrame(model.integrator.p.allocation.record_demand)
+    df_rating_curve_2 = record_demand[record_demand.node_id .== 2, :]
+    @test all(df_rating_curve_2.realized .≈ 2e-3)
 end
 
 @testitem "flow_demand_with_max_flow_rate" begin
