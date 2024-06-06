@@ -12,6 +12,7 @@ from ribasim.config import Solver
 from ribasim.geometry.edge import NodeData
 from ribasim.input_base import esc_id
 from ribasim.model import Model
+from ribasim_testmodels import basic_model, trivial_model
 from shapely import Point
 
 
@@ -221,8 +222,9 @@ def test_indexing(basic):
         model.basin.time[1]
 
 
-def test_xugrid(basic, tmp_path):
-    uds = basic.to_xugrid(add_flow=False)
+@pytest.mark.parametrize("model", [basic_model(), trivial_model()])
+def test_xugrid(model, tmp_path):
+    uds = model.to_xugrid(add_flow=False)
     assert isinstance(uds, xugrid.UgridDataset)
     assert uds.grid.edge_dimension == "ribasim_nEdges"
     assert uds.grid.node_dimension == "ribasim_nNodes"
@@ -233,15 +235,15 @@ def test_xugrid(basic, tmp_path):
     assert uds.attrs["Conventions"] == "CF-1.9 UGRID-1.0"
 
     with pytest.raises(FileNotFoundError, match="Model must be written to disk"):
-        basic.to_xugrid(add_flow=True)
+        model.to_xugrid(add_flow=True)
 
-    basic.write(tmp_path / "ribasim.toml")
+    model.write(tmp_path / "ribasim.toml")
     with pytest.raises(FileNotFoundError, match="Cannot find results"):
-        basic.to_xugrid(add_flow=True)
+        model.to_xugrid(add_flow=True)
     with pytest.raises(FileNotFoundError, match="or allocation is not used"):
-        basic.to_xugrid(add_flow=False, add_allocation=True)
+        model.to_xugrid(add_flow=False, add_allocation=True)
     with pytest.raises(ValueError, match="Cannot add both allocation and flow results"):
-        basic.to_xugrid(add_flow=True, add_allocation=True)
+        model.to_xugrid(add_flow=True, add_allocation=True)
 
 
 def test_to_crs(bucket: Model):

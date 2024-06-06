@@ -51,6 +51,9 @@ function Model(config::Config)::Model
     # so we can directly close it again.
     db = SQLite.DB(db_path)
 
+    if !valid_nodes(db)
+        error("Invalid nodes found.")
+    end
     if !valid_edge_types(db)
         error("Invalid edge types found.")
     end
@@ -101,13 +104,6 @@ function Model(config::Config)::Model
         state = load_structvector(db, config, BasinStateV1)
         n = length(get_ids(db, "Basin"))
 
-        sql = "SELECT node_id FROM Node ORDER BY node_id"
-        node_id = only(execute(columntable, db, sql))
-        if !allunique(node_id)
-            error(
-                "Node IDs need to be globally unique until https://github.com/Deltares/Ribasim/issues/1262 is fixed.",
-            )
-        end
     finally
         # always close the database, also in case of an error
         close(db)
