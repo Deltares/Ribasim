@@ -309,3 +309,14 @@ subnetwork_id   | Int32
 priority        | Int32
 flow_rate       | Float64
 collect_demands | Bool
+
+## Subgrid level - `subgrid_level.arrow`
+
+This result file is only written if the model contains a [Basin / subgrid](node/basin.qmd#subgrid) table.
+See there for more information on the meaning of this output.
+
+column         | type
+---------------| -----
+time           | DateTime
+subgrid_id     | Int32
+subgrid_level  | Float64

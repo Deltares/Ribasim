@@ -22,7 +22,7 @@
     allocation_bytes = read(normpath(dirname(toml_path), "results/allocation.arrow"))
     allocation_flow_bytes =
         read(normpath(dirname(toml_path), "results/allocation_flow.arrow"))
-    subgrid_bytes = read(normpath(dirname(toml_path), "results/subgrid_levels.arrow"))
+    subgrid_bytes = read(normpath(dirname(toml_path), "results/subgrid_level.arrow"))
 
     flow = Arrow.Table(flow_bytes)
     basin = Arrow.Table(basin_bytes)

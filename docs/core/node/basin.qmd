@@ -88,7 +88,7 @@ geom      | Polygon or MultiPolygon | (optional)
 
 ## Subgrid
 
-The subgrid_level table defines a piecewise linear interpolation from a basin water level to a subgrid element water level.
+The subgrid table defines a piecewise linear interpolation from a basin water level to a subgrid element water level.
 Many subgrid elements may be associated with a single basin, each with distinct interpolation functions.
 This functionality can be used to translate a single lumped basin level to a more spatially detailed representation (e.g comparable to the output of a hydrodynamic simulation).
 
