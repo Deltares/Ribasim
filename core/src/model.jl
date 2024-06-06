@@ -39,7 +39,8 @@ function Model(config::Config)::Model
     alg = algorithm(config.solver)
     db_path = input_path(config, config.database)
     if !isfile(db_path)
-        throw(SystemError("Database file not found: $db_path"))
+        @error "Database file not found" db_path
+        error("Database file not found")
     end
 
     # Setup timing logging
