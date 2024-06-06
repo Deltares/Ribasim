@@ -758,7 +758,7 @@ as input. Therefore we set the instantaneous flows as the mean flows as allocati
 function set_initial_allocation_mean_flows!(integrator)::Nothing
     (; u, p, t) = integrator
     (; allocation, graph, basin) = p
-    (; mean_flows, allocation_models) = allocation
+    (; mean_input_flows, mean_realized_flows, allocation_models) = allocation
     (; Δt_allocation) = allocation_models[1]
     (; vertical_flux) = basin
     vertical_flux = get_tmp(vertical_flux, 0)
@@ -768,7 +768,7 @@ function set_initial_allocation_mean_flows!(integrator)::Nothing
     # one is just to make sure.
     water_balance!(get_du(integrator), u, p, t)
 
-    for (edge, value) in mean_flows
+    for edge in keys(mean_input_flows)
         if edge[1] == edge[2]
             q = get_influx(basin, edge[1])
         else
@@ -776,8 +776,21 @@ function set_initial_allocation_mean_flows!(integrator)::Nothing
         end
         # Multiply by Δt_allocation as averaging divides by this factor
         # in update_allocation!
-        value[] = q * Δt_allocation
+        mean_input_flows[edge] = q * Δt_allocation
     end
+
+    # Mean realized demands for basins are calculated as Δstorage/Δt
+    # This sets the realized demands as -storage_old
+    for edge in keys(mean_realized_flows)
+        if edge[1] == edge[2]
+            _, basin_idx = id_index(basin.node_id, edge[1])
+            mean_realized_flows[edge] = -u[basin_idx]
+        else
+            q = get_flow(graph, edge..., 0)
+            mean_realized_flows[edge] = q * Δt_allocation
+        end
+    end
+
     return nothing
 end
 
