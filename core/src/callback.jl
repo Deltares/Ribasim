@@ -485,7 +485,7 @@ function update_allocation!(integrator)::Nothing
     # Divide by the allocation Δt to obtain the mean input flows
     # from the integrated flows
     for key in keys(mean_input_flows)
-        mean_input_flows[key] = mean_input_flows[key] / Δt_allocation
+        mean_input_flows[key] /= Δt_allocation
     end
 
     # Divide by the allocation Δt to obtain the mean realized flows
@@ -496,7 +496,7 @@ function update_allocation!(integrator)::Nothing
             _, basin_idx = id_index(basin.node_id, edge[1])
             mean_realized_flows[edge] = value + u[basin_idx]
         end
-        mean_realized_flows[edge] = mean_realized_flows[edge] / Δt_allocation
+        mean_realized_flows[edge] /= Δt_allocation
     end
 
     # If a main network is present, collect demands of subnetworks
