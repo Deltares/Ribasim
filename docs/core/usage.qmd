@@ -312,10 +312,8 @@ collect_demands | Bool
 
 ## Subgrid levels - `subgrid_levels.arrow`
 
-This table is made for the [IMod Coupler](https://deltares.github.io/iMOD-Documentation/coupler_ribamod_technical.html#ribasim).
-For the basin that has sloping water level, the water level in the basin can be varying.
-Take the varying water level of a basin as input, the level of the basin subgrind are calculated by a linear projection.
-The output are used in the IMod Coupler.
+This result file is only written if the model contains a [Basin / subgrid](node/basin.qmd#subgrid) table.
+See there for more information on the meaning of this output.
 
 column         | type
 ---------------| -----
