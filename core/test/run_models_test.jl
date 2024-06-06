@@ -22,7 +22,7 @@
     allocation_bytes = read(normpath(dirname(toml_path), "results/allocation.arrow"))
     allocation_flow_bytes =
         read(normpath(dirname(toml_path), "results/allocation_flow.arrow"))
-    subgrid_bytes = read(normpath(dirname(toml_path), "results/subgrid_levels.arrow"))
+    subgrid_bytes = read(normpath(dirname(toml_path), "results/subgrid_level.arrow"))
 
     flow = Arrow.Table(flow_bytes)
     basin = Arrow.Table(basin_bytes)
@@ -128,8 +128,8 @@
     @testset "Results values" begin
         @test flow.time[1] == DateTime(2020)
         @test coalesce.(flow.edge_id[1:2], -1) == [0, 1]
-        @test flow.from_node_id[1:2] == [6, 0]
-        @test flow.to_node_id[1:2] == [0, 922]
+        @test flow.from_node_id[1:2] == [6, 6]
+        @test flow.to_node_id[1:2] == [6, 2147483647]
 
         @test basin.storage[1] ≈ 1.0
         @test basin.level[1] ≈ 0.044711584

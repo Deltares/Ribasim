@@ -35,7 +35,7 @@ function write_results(model::Model)::Model
 
     # exported levels
     table = subgrid_level_table(model)
-    path = results_path(config, RESULTS_FILENAME.subgrid_levels)
+    path = results_path(config, RESULTS_FILENAME.subgrid_level)
     write_arrow(path, table, compress)
 
     @debug "Wrote results."
@@ -48,7 +48,7 @@ const RESULTS_FILENAME = (
     control = "control.arrow",
     allocation = "allocation.arrow",
     allocation_flow = "allocation_flow.arrow",
-    subgrid_levels = "subgrid_levels.arrow",
+    subgrid_level = "subgrid_level.arrow",
 )
 
 "Get the storage and level of all basins as matrices of nbasin × ntime"

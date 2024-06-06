@@ -52,7 +52,6 @@ from ribasim.utils import (
     MissingOptionalModule,
     _edge_lookup,
     _node_lookup,
-    _node_lookup_numpy,
     _time_in_ns,
 )
 
@@ -174,16 +173,7 @@ class Model(FileModel):
         db_path.unlink(missing_ok=True)
         context_file_loading.get()["database"] = db_path
         self.edge._save(directory, input_dir)
-
         node = self.node_table()
-        assert node.df is not None
-        # Temporarily require unique node_id for #1262
-        # and copy them to the fid for #1306.
-        if not node.df["node_id"].is_unique:
-            raise ValueError("node_id must be unique")
-        node.df.set_index("node_id", drop=False, inplace=True)
-        node.df.index.name = "fid"
-        node.df.sort_index(inplace=True)
         node._save(directory, input_dir)
 
         for sub in self._nodes():
@@ -209,7 +199,7 @@ class Model(FileModel):
         self.crs = crs
 
     def node_table(self) -> NodeTable:
-        """Compute the full NodeTable from all node types."""
+        """Compute the full sorted NodeTable from all node types."""
         df_chunks = [node.node.df.set_crs(self.crs) for node in self._nodes()]  # type:ignore
         df = pd.concat(df_chunks, ignore_index=True)
         node_table = NodeTable(df=df)
@@ -402,12 +392,6 @@ class Model(FileModel):
         node_df = self.node_table().df
         assert node_df is not None
 
-        # This will need to be adopted for locally unique node IDs,
-        # otherwise the `node_lookup` with `argsort` is not correct.
-        if not node_df.node_id.is_unique:
-            raise ValueError("node_id must be unique")
-        node_df.sort_values("node_id", inplace=True)
-
         assert self.edge.df is not None
         edge_df = self.edge.df.copy()
         # We assume only the flow network is of interest.
@@ -417,7 +401,13 @@ class Model(FileModel):
         edge_id = edge_df.index.to_numpy()
         from_node_id = edge_df.from_node_id.to_numpy()
         to_node_id = edge_df.to_node_id.to_numpy()
-        node_lookup = _node_lookup_numpy(node_id)
+        node_lookup = _node_lookup(node_df)
+        from_node_index = pd.MultiIndex.from_frame(
+            edge_df[["from_node_type", "from_node_id"]]
+        )
+        to_node_index = pd.MultiIndex.from_frame(
+            edge_df[["to_node_type", "to_node_id"]]
+        )
 
         grid = xugrid.Ugrid1d(
             node_x=node_df.geometry.x,
@@ -425,8 +415,8 @@ class Model(FileModel):
             fill_value=-1,
             edge_node_connectivity=np.column_stack(
                 (
-                    node_lookup[from_node_id],
-                    node_lookup[to_node_id],
+                    node_lookup.loc[from_node_index],
+                    node_lookup.loc[to_node_index],
                 )
             ),
             name="ribasim",
@@ -444,7 +434,7 @@ class Model(FileModel):
         uds = uds.assign_coords(to_node_id=(edge_dim, to_node_id))
 
         if add_flow:
-            uds = self._add_flow(uds)
+            uds = self._add_flow(uds, node_lookup)
         elif add_allocation:
             uds = self._add_allocation(uds)
 
@@ -456,7 +446,7 @@ class Model(FileModel):
             raise FileNotFoundError("Model must be written to disk to add results.")
         return toml_path
 
-    def _add_flow(self, uds):
+    def _add_flow(self, uds, node_lookup):
         toml_path = self._checked_toml_path()
 
         results_path = toml_path.parent / self.results_dir
@@ -477,17 +467,19 @@ class Model(FileModel):
         # add the xugrid dimension indices to the dataframes
         edge_dim = uds.grid.edge_dimension
         node_dim = uds.grid.node_dimension
-        node_lookup = _node_lookup(uds)
         edge_lookup = _edge_lookup(uds)
         flow_df[edge_dim] = edge_lookup[flow_df["edge_id"]].to_numpy()
-        basin_df[node_dim] = node_lookup[basin_df["node_id"]].to_numpy()
+        # Use a MultiIndex to ensure the lookup results is the same length as basin_df
+        basin_df["node_type"] = "Basin"
+        multi_index = pd.MultiIndex.from_frame(basin_df[["node_type", "node_id"]])
+        basin_df[node_dim] = node_lookup.loc[multi_index].to_numpy()
 
         # add flow results to the UgridDataset
         flow_da = flow_df.set_index(["time", edge_dim])["flow_rate"].to_xarray()
         uds[flow_da.name] = flow_da
 
         # add basin results to the UgridDataset
-        basin_df.drop(columns=["node_id"], inplace=True)
+        basin_df.drop(columns=["node_type", "node_id"], inplace=True)
         basin_ds = basin_df.set_index(["time", node_dim]).to_xarray()
 
         for var_name, da in basin_ds.data_vars.items():

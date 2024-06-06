@@ -1,0 +1,46 @@
+---
+title: "UserDemand"
+---
+
+A UserDemand takes water from the Basin that supplies it.
+
+When allocation is not used, UserDemand attempts to extract the full demand from the Basin.
+When allocation is used, water is allocated based on its priority, where priority 1 denotes the most important demand.
+
+When the connected Basin is almost empty or reaches the minimum level at which the UserDemand can extract water (`min_level`), it will stop extraction.
+
+UserDemands need an outgoing flow edge along which they can send their return flow, this can also be to the same Basin from which it extracts water.
+The amount of return flow is always a fraction of the inflow into the UserDemand.
+The difference is consumed by the UserDemand.
+
+# Tables
+
+## Static
+
+column        | type    | unit         | restriction
+------------- | ------- | ------------ | -----------
+node_id       | Int32   | -            | sorted
+active        | Bool    | -            | (optional, default true)
+demand        | Float64 | $m^3 s^{-1}$ | non-negative
+return_factor | Float64 | -            | between [0 - 1]
+min_level     | Float64 | $m$          | -
+priority      | Int32   | -            | positive, sorted per node id
+
+## Time
+
+This table is the transient form of the `UserDemand` table.
+The only difference is that a time column is added and activity is assumed to be true.
+The table must by sorted by time, and per time it must be sorted by `node_id`.
+With this the demand can be updated over time. In between the given times the
+demand is interpolated linearly, and outside the demand is constant given by the
+nearest time value.
+Note that a `node_id` can be either in this table or in the static one, but not both.
+
+column        | type     | unit         | restriction
+------------- | -------- | ------------ | -----------
+node_id       | Int32    | -            | sorted
+priority      | Int32    | -            | positive, sorted per node id
+time          | DateTime | -            | sorted per priority per node id
+demand        | Float64  | $m^3 s^{-1}$ | non-negative
+return_factor | Float64  | -            | between [0 - 1]
+min_level     | Float64  | $m$          | -

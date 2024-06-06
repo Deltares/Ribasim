@@ -1,0 +1,25 @@
+---
+title: "Outlet"
+---
+
+The Outlet lets water flow downstream with a prescribed flow rate.
+It is similar to the Pump, with two additional physical constraints:
+
+1. Water only flows down, by gravity
+2. The upstream level must be above the minimum crest level if the upstream level is defined.
+
+When PID controlled, the outlet must point towards the controlled basin in terms of edges.
+
+# Tables
+
+## Static
+
+column                | type    | unit         | restriction
+---------             | ------- | ------------ | -----------
+node_id               | Int32   | -            | sorted
+control_state         | String  | -            | (optional) sorted per node_id
+active                | Bool    | -            | (optional, default true)
+flow_rate             | Float64 | $m^3 s^{-1}$ | non-negative
+min_flow_rate         | Float64 | $m^3 s^{-1}$ | (optional, default 0.0)
+max_flow_rate         | Float64 | $m^3 s^{-1}$ | (optional)
+min_crest_level       | Float64 | $m$          | (optional)

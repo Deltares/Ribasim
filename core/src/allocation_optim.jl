@@ -203,7 +203,7 @@ function set_initial_capacities_source!(
 )::Nothing
     (; problem) = allocation_model
     (; graph, allocation) = p
-    (; mean_flows) = allocation
+    (; mean_input_flows) = allocation
     (; subnetwork_id) = allocation_model
     source_constraints = problem[:source]
     main_network_source_edges = get_main_network_connections(p, subnetwork_id)
@@ -214,7 +214,7 @@ function set_initial_capacities_source!(
             # If it is a source edge for this allocation problem
             if edge ∉ main_network_source_edges
                 # Reset the source to the averaged flow over the last allocation period
-                source_capacity = mean_flows[edge][]
+                source_capacity = mean_input_flows[edge][]
                 JuMP.set_normalized_rhs(
                     source_constraints[edge],
                     # It is assumed that the allocation procedure does not have to be differentiated.
@@ -309,11 +309,11 @@ function get_basin_data(
     (; graph, basin, level_demand, allocation) = p
     (; vertical_flux) = basin
     (; Δt_allocation) = allocation_model
-    (; mean_flows) = allocation
+    (; mean_input_flows) = allocation
     @assert node_id.type == NodeType.Basin
     vertical_flux = get_tmp(vertical_flux, 0)
     _, basin_idx = id_index(basin.node_id, node_id)
-    influx = mean_flows[(node_id, node_id)][]
+    influx = mean_input_flows[(node_id, node_id)][]
     _, basin_idx = id_index(basin.node_id, node_id)
     storage_basin = u.storage[basin_idx]
     control_inneighbors = inneighbor_labels_type(graph, node_id, EdgeType.control)
@@ -524,13 +524,14 @@ Set the demand of the flow demand nodes. 2 cases:
 - Before an allocation solve, subtract the flow trough the node with a flow demand
   from the total flow demand (which will be used at the priority of the flow demand only).
 """
-function adjust_demands_user!(
+function adjust_demands!(
     allocation_model::AllocationModel,
     p::Parameters,
     priority_idx::Int,
+    user_demand::UserDemand,
 )::Nothing
     (; problem, subnetwork_id) = allocation_model
-    (; graph, user_demand) = p
+    (; graph) = p
     (; node_id, demand_reduced) = user_demand
     F = problem[:F]
 
@@ -551,7 +552,13 @@ end
 Subtract the allocated flow to the basin from its demand,
 to obtain the reduced demand used for goal programming
 """
-function adjust_demands_level!(allocation_model::AllocationModel, p::Parameters)::Nothing
+
+function adjust_demands!(
+    allocation_model::AllocationModel,
+    p::Parameters,
+    ::Int,
+    ::LevelDemand,
+)::Nothing
     (; graph, basin) = p
     (; node_id, demand) = basin
     (; subnetwork_id, problem) = allocation_model
@@ -593,8 +600,13 @@ end
 Reduce the flow demand based on flow trough the node with the demand.
 Flow from any priority counts.
 """
-function adjust_demands_flow!(allocation_model::AllocationModel, p::Parameters)::Nothing
-    (; flow_demand, graph) = p
+function adjust_demands!(
+    allocation_model::AllocationModel,
+    p::Parameters,
+    ::Int,
+    flow_demand::FlowDemand,
+)::Nothing
+    (; graph) = p
     (; problem, subnetwork_id) = allocation_model
     F = problem[:F]
 
@@ -697,7 +709,7 @@ function save_demands_and_allocations!(
     priority_idx::Int,
 )::Nothing
     (; graph, allocation, user_demand, flow_demand, basin) = p
-    (; record_demand, priorities) = allocation
+    (; record_demand, priorities, mean_realized_flows) = allocation
     (; subnetwork_id, problem) = allocation_model
     node_ids = graph[].node_ids[subnetwork_id]
     constraints_outflow = problem[:basin_outflow]
@@ -713,8 +725,7 @@ function save_demands_and_allocations!(
             user_demand_idx = findsorted(user_demand.node_id, node_id)
             demand = user_demand.demand[user_demand_idx, priority_idx]
             allocated = user_demand.allocated[user_demand_idx, priority_idx]
-            #NOTE: instantaneous
-            realized = get_flow(graph, inflow_id(graph, node_id), node_id, 0)
+            realized = mean_realized_flows[(inflow_id(graph, node_id), node_id)]
 
         elseif has_external_demand(graph, node_id, :level_demand)[1]
             basin_priority_idx = get_external_priority_idx(p, node_id)
@@ -733,9 +744,7 @@ function save_demands_and_allocations!(
                 end
                 allocated =
                     JuMP.value(F_basin_in[node_id]) - JuMP.value(F_basin_out[node_id])
-                # TODO: realized for a basin is not so clear, maybe it should be Δstorage/Δt
-                # over the last allocation interval?
-                realized = 0.0
+                realized = mean_realized_flows[(node_id, node_id)]
             end
 
         else
@@ -751,8 +760,7 @@ function save_demands_and_allocations!(
                         flow_demand_node_id,
                     )] : 0.0
                 allocated = JuMP.value(F[(inflow_id(graph, node_id), node_id)])
-                #NOTE: Still instantaneous
-                realized = get_flow(graph, inflow_id(graph, node_id), node_id, 0)
+                realized = mean_realized_flows[(inflow_id(graph, node_id), node_id)]
             end
         end
 
@@ -765,9 +773,6 @@ function save_demands_and_allocations!(
             push!(record_demand.priority, priorities[priority_idx])
             push!(record_demand.demand, demand)
             push!(record_demand.allocated, allocated)
-
-            # TODO: This is now the last abstraction before the allocation update,
-            # should be the average abstraction since the last allocation solve
             push!(record_demand.realized, realized)
         end
     end
@@ -861,7 +866,7 @@ function save_allocation_flows!(
     return nothing
 end
 
-function allocate_priority!(
+function optimize_priority!(
     allocation_model::AllocationModel,
     u::ComponentVector,
     p::Parameters,
@@ -916,9 +921,12 @@ function allocate_priority!(
     adjust_capacities_returnflow!(allocation_model, p)
 
     # Adjust demands for next optimization (in case of internal_sources -> collect_demands)
-    adjust_demands_user!(allocation_model, p, priority_idx)
-    adjust_demands_level!(allocation_model, p)
-    adjust_demands_flow!(allocation_model, p)
+    for parameter in propertynames(p)
+        demand_node = getfield(p, parameter)
+        if demand_node isa AbstractDemandNode
+            adjust_demands!(allocation_model, p, priority_idx, demand_node)
+        end
+    end
     return nothing
 end
 
@@ -968,43 +976,71 @@ end
 Update the allocation optimization problem for the given subnetwork with the problem state
 and flows, solve the allocation problem and assign the results to the UserDemand.
 """
-function allocate!(
+function collect_demands!(
     p::Parameters,
     allocation_model::AllocationModel,
     t::Float64,
     u::ComponentVector,
-    optimization_type::OptimizationType.T,
 )::Nothing
     (; allocation) = p
     (; subnetwork_id) = allocation_model
     (; priorities, subnetwork_demands) = allocation
-    main_network_source_edges = get_main_network_connections(p, subnetwork_id)
 
-    if subnetwork_id == 1
-        @assert optimization_type == OptimizationType.allocate "For the main network no demands have to be collected"
+    ## Find internal sources
+    optimization_type = OptimizationType.internal_sources
+    set_initial_capacities_inlet!(allocation_model, p, optimization_type)
+    set_initial_values!(allocation_model, p, u, t)
+
+    # Loop over priorities
+    for priority_idx in eachindex(priorities)
+        optimize_priority!(allocation_model, u, p, t, priority_idx, optimization_type)
     end
 
+    ## Collect demand
+    optimization_type = OptimizationType.collect_demands
+
+    main_network_source_edges = get_main_network_connections(p, subnetwork_id)
+
     # Reset the subnetwork demands to 0.0
-    if optimization_type == OptimizationType.collect_demands
-        for main_network_connection in keys(subnetwork_demands)
-            if main_network_connection in main_network_source_edges
-                subnetwork_demands[main_network_connection] .= 0.0
-            end
+    for main_network_connection in keys(subnetwork_demands)
+        if main_network_connection in main_network_source_edges
+            subnetwork_demands[main_network_connection] .= 0.0
         end
     end
 
     set_initial_capacities_inlet!(allocation_model, p, optimization_type)
 
-    if optimization_type == OptimizationType.collect_demands
-        # When collecting demands, only flow should be available
-        # from the main to subnetwork connections
-        empty_sources!(allocation_model, allocation)
-    else
-        set_initial_values!(allocation_model, p, u, t)
+    # When collecting demands, only flow should be available
+    # from the main to subnetwork connections
+    empty_sources!(allocation_model, allocation)
+
+    # Loop over priorities
+    for priority_idx in eachindex(priorities)
+        optimize_priority!(allocation_model, u, p, t, priority_idx, optimization_type)
     end
+end
+
+function allocate_demands!(
+    p::Parameters,
+    allocation_model::AllocationModel,
+    t::Float64,
+    u::ComponentVector,
+)::Nothing
+    optimization_type = OptimizationType.allocate
+    (; allocation) = p
+    (; subnetwork_id) = allocation_model
+    (; priorities) = allocation
+
+    if is_main_network(subnetwork_id)
+        @assert optimization_type == OptimizationType.allocate "For the main network no demands have to be collected"
+    end
+
+    set_initial_capacities_inlet!(allocation_model, p, optimization_type)
+
+    set_initial_values!(allocation_model, p, u, t)
 
     # Loop over the priorities
     for priority_idx in eachindex(priorities)
-        allocate_priority!(allocation_model, u, p, t, priority_idx, optimization_type)
+        optimize_priority!(allocation_model, u, p, t, priority_idx, optimization_type)
     end
 end

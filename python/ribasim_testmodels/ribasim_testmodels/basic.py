@@ -39,10 +39,10 @@ def basic_model() -> ribasim.Model:
         ),
         basin.State(level=[0.04471158417652035]),
         basin.Concentration(
-            time="2020-01-01 00:00:00",
-            substance=["Cl"],
-            drainage=[0.0],
-            precipitation=[0.0],
+            time=["2020-01-01 00:00:00", "2020-01-01 00:00:00", "2020-01-02 00:00:00"],
+            substance=["Cl", "Tracer", "Cl"],
+            drainage=[0.0, 1.0, 1.0],
+            precipitation=[0.0, 1.0, 1.0],
         ),
         basin.ConcentrationState(substance=["Cl"], concentration=[0.0]),
         basin.ConcentrationExternal(
@@ -121,7 +121,9 @@ def basic_model() -> ribasim.Model:
     flow_boundary_data: Sequence[TableModel[Any]] = [
         flow_boundary.Static(flow_rate=[1e-4]),
         flow_boundary.Concentration(
-            time="2020-01-01 00:00:00", substance=["Tracer"], concentration=[1.0]
+            time=["2020-01-01 00:00:00", "2020-01-01 00:00:00"],
+            substance=["Tracer", "Cl"],
+            concentration=[1.0, 0.0],
         ),
     ]
     model.flow_boundary.add(Node(15, Point(3.0, 3.0)), flow_boundary_data)

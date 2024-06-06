@@ -1,0 +1,22 @@
+---
+title: "Pump"
+---
+
+Pump water from a source node to a destination node.
+The set flow rate will be pumped unless the intake storage is less than $10~m^3$,
+in which case the flow rate will be linearly reduced to $0~m^3/s$.
+The intake must be either a Basin or LevelBoundary.
+When PID controlled, the pump must point away from the controlled basin in terms of edges.
+
+# Tables
+
+## Static
+
+column                | type    | unit         | restriction
+---------             | ------- | ------------ | -----------
+node_id               | Int32   | -            | sorted
+control_state         | String  | -            | (optional) sorted per node_id
+active                | Bool    | -            | (optional, default true)
+flow_rate             | Float64 | $m^3 s^{-1}$ | non-negative
+min_flow_rate         | Float64 | $m^3 s^{-1}$ | (optional, default 0.0)
+max_flow_rate         | Float64 | $m^3 s^{-1}$ | (optional)

@@ -63,7 +63,8 @@ main_network_connections: (from_id, to_id) from the main network to the subnetwo
 priorities: All used priority values.
 subnetwork_demands: The demand of an edge from the main network to a subnetwork
 subnetwork_allocateds: The allocated flow of an edge from the main network to a subnetwork
-mean_flows: Flows averaged over Δt_allocation over edges that are allocation sources
+mean_input_flows: Flows averaged over Δt_allocation over edges that are allocation sources
+mean_realized_flows: Flows averaged over Δt_allocation over edges that realize a demand
 record_demand: A record of demands and allocated flows for nodes that have these
 record_flow: A record of all flows computed by allocation optimization, eventually saved to
     output file
@@ -75,7 +76,8 @@ struct Allocation
     priorities::Vector{Int32}
     subnetwork_demands::Dict{Tuple{NodeID, NodeID}, Vector{Float64}}
     subnetwork_allocateds::Dict{Tuple{NodeID, NodeID}, Vector{Float64}}
-    mean_flows::Dict{Tuple{NodeID, NodeID}, Base.RefValue{Float64}}
+    mean_input_flows::Dict{Tuple{NodeID, NodeID}, Float64}
+    mean_realized_flows::Dict{Tuple{NodeID, NodeID}, Float64}
     record_demand::@NamedTuple{
         time::Vector{Float64},
         subnetwork_id::Vector{Int32},
@@ -134,6 +136,8 @@ struct EdgeMetadata
 end
 
 abstract type AbstractParameterNode end
+
+abstract type AbstractDemandNode <: AbstractParameterNode end
 
 """
 In-memory storage of saved mean flows for writing to results.
@@ -520,7 +524,7 @@ allocated: water flux currently allocated to UserDemand per priority (node_idx, 
 return_factor: the factor in [0,1] of how much of the abstracted water is given back to the system
 min_level: The level of the source basin below which the UserDemand does not abstract
 """
-struct UserDemand <: AbstractParameterNode
+struct UserDemand <: AbstractDemandNode
     node_id::Vector{NodeID}
     inflow_edge::Vector{EdgeMetadata}
     outflow_edge::Vector{EdgeMetadata}
@@ -576,14 +580,14 @@ min_level: The minimum target level of the connected basin(s)
 max_level: The maximum target level of the connected basin(s)
 priority: If in a shortage state, the priority of the demand of the connected basin(s)
 """
-struct LevelDemand <: AbstractParameterNode
+struct LevelDemand <: AbstractDemandNode
     node_id::Vector{NodeID}
     min_level::Vector{ScalarInterpolation}
     max_level::Vector{ScalarInterpolation}
     priority::Vector{Int32}
 end
 
-struct FlowDemand <: AbstractParameterNode
+struct FlowDemand <: AbstractDemandNode
     node_id::Vector{NodeID}
     demand_itp::Vector{ScalarInterpolation}
     demand::Vector{Float64}

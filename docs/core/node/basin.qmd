@@ -1,0 +1,150 @@
+---
+title: "Basin"
+---
+
+The Basin is the central node in each schematization, since it is the only one that stores water.
+It can exchange water with all other nodes.
+The connected nodes determine how water is exchanged; the Basin has no flow behavior of its own.
+
+# Tables
+
+## Static
+
+The `Basin / static` table can be used to set the static value of variables. The time table has a
+similar schema, with the time column added. A static value for a variable is only used if
+there is no dynamic forcing data for that variable. Specifically, if there is either no
+time table, it is empty, or all timestamps of that variable are missing.
+
+column                | type    | unit         | restriction
+---------             | ------- | ------------ | -----------
+node_id               | Int32   | -            | sorted
+precipitation         | Float64 | $m s^{-1}$   | non-negative
+potential_evaporation | Float64 | $m s^{-1}$   | non-negative
+drainage              | Float64 | $m^3 s^{-1}$ | non-negative
+infiltration          | Float64 | $m^3 s^{-1}$ | non-negative
+urban_runoff          | Float64 | $m^3 s^{-1}$ | non-negative
+
+Note that if variables are not set in the static table, default values are used when
+possible. These are generally zero, e.g. no precipitation, no inflow. If it is not possible
+to have a reasonable and safe default, a value must be provided in the static table.
+
+## Time
+
+This table is the transient form of the `Basin` table.
+The only difference is that a time column is added.
+The table must by sorted by time, and per time it must be sorted by `node_id`.
+At the given timestamps the values are set in the simulation, such that the timeseries can be seen as forward filled.
+
+## State
+
+The state table aims to capture the full state of the Basin, such that it can be used as an
+initial condition, potentially the outcome of an earlier simulation. Currently only the
+Basin node types have state.
+
+column    | type    | unit         | restriction
+--------- | ------- | ------------ | -----------
+node_id   | Int32   | -            | sorted
+level     | Float64 | $m$          | $\ge$ basin bottom
+
+Each Basin ID needs to be in the table.
+
+## Profile
+
+The profile table defines the physical dimensions of the storage reservoir of each basin.
+
+column    | type    | unit         | restriction
+--------- | ------- | ------------ | -----------
+node_id   | Int32   | -            | sorted
+area      | Float64 | $m^2$        | non-negative, per node_id: start positive and not decreasing
+level     | Float64 | $m$          | per node_id: increasing
+
+The level is the level at the basin outlet. All levels are defined in meters above a datum
+that is the same for the entire model. An example of the first 5 rows of such a table is
+given below. The first 4 rows define the profile of ID `2`. The number of rows can vary
+per ID, and must be at least 2. Using a very large number of rows may impact performance.
+
+node_id |   area | level
+------- |------- |-------
+      2 |    1.0 |   6.0
+      2 | 1000.0 |   7.0
+      2 | 1000.0 |   9.0
+      3 |    1.0 |   2.2
+
+We use the symbol $A$ for area, $h$ for level and $S$ for storage.
+The profile provides a function $A(h)$ for each basin.
+Internally this get converted to two functions, $A(S)$ and $h(S)$, by integrating over the function, setting the storage to zero for the bottom of the profile.
+The minimum area cannot be zero to avoid numerical issues.
+The maximum area is used to convert the precipitation flux into an inflow.
+
+## Area
+
+The optional area table is not used during computation, but provides a place to associate areas in the form of polygons to Basins.
+Using this makes it easier to recognize which water or land surfaces are represented by Basins.
+
+column    | type                    | restriction
+--------- | ----------------------- | -----------
+node_id   | Int32                   | sorted
+geom      | Polygon or MultiPolygon | (optional)
+
+## Subgrid
+
+The subgrid table defines a piecewise linear interpolation from a basin water level to a subgrid element water level.
+Many subgrid elements may be associated with a single basin, each with distinct interpolation functions.
+This functionality can be used to translate a single lumped basin level to a more spatially detailed representation (e.g comparable to the output of a hydrodynamic simulation).
+
+column        | type    | unit  | restriction
+------------- | ------- | ----- | ------------------------
+subgrid_id    | Int32   | -     | sorted
+node_id       | Int32   | -     | constant per subgrid_id
+basin_level   | Float64 | $m$   | sorted per subgrid_id
+subgrid_level | Float64 | $m$   | sorted per subgrid_id
+
+The table below shows example input for two subgrid elements:
+
+subgrid_id | node_id | basin_level | subgrid_level
+---------- | ------- | ----------- | -------------
+         1 |       9 |         0.0 |           0.0
+         1 |       9 |         1.0 |           1.0
+         1 |       9 |         2.0 |           2.0
+         2 |       9 |         0.0 |           0.5
+         2 |       9 |         1.0 |           1.5
+         2 |       9 |         2.0 |           2.5
+
+Both subgrid elements use the water level of the basin with `node_id` 9 to interpolate to their respective water levels.
+The first element has a one to one connection with the water level; the second also has a one to one connection, but is offset by half a meter.
+A basin water level of 0.3 would be translated to a water level of 0.3 for the first subgrid element, and 0.8 for the second.
+Water levels beyond the last `basin_level` are linearly extrapolated.
+
+Note that the interpolation to subgrid water level is not constrained by any water balance within Ribasim.
+Generally, to create physically meaningful subgrid water levels, the subgrid table must be parametrized properly such that the spatially integrated water volume of the subgrid elements agrees with the total storage volume of the basin.
+
+## Concentration {#sec-basin-conc}
+This table defines the concentration(s) of (a) substance(s) for the inflow boundaries of a Basin node.
+
+column        | type     | unit            | restriction
+------------- | -------- | --------------- | -----------
+node_id       | Int32    | -               | sorted
+time          | DateTime | -               | sorted per node_id
+substance     | String   |                 | can correspond to known Delwaq substances
+drainage      | Float64  | $g m^{-3}$      | (optional)
+precipitation | Float64  | $g m^{-3}$      | (optional)
+
+## ConcentrationState {#sec-basin-conc-state}
+This table defines the concentration(s) of (a) substance(s) in the basin at the start of the simulation.
+
+column         | type     | unit         | restriction
+-------------- | -------- | ------------ | -----------
+node_id        | Int32    | -            | sorted
+time           | DateTime | -            | sorted per node_id
+substance      | String   | -            | can correspond to known Delwaq substances
+concentration  | Float64  | $g m^{-3}$   |
+
+## ConcentrationExternal
+This table is used for (external) concentrations, that can be used for Control lookups.
+
+column         | type     | unit         | restriction
+-------------- | -------- | ------------ | -----------
+node_id        | Int32    | -            | sorted
+time           | DateTime | -            | sorted per node_id
+substance      | String   | -            | can correspond to known Delwaq substances
+concentration  | Float64  | $g m^{-3}$   |
