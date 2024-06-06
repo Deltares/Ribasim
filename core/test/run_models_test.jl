@@ -28,7 +28,7 @@
     # which can have cleanup issues due to file locking
     flow_bytes = read(normpath(dirname(toml_path), "results/flow.arrow"))
     basin_bytes = read(normpath(dirname(toml_path), "results/basin.arrow"))
-    subgrid_bytes = read(normpath(dirname(toml_path), "results/subgrid_levels.arrow"))
+    subgrid_bytes = read(normpath(dirname(toml_path), "results/subgrid_level.arrow"))
 
     flow = Arrow.Table(flow_bytes)
     basin = Arrow.Table(basin_bytes)
