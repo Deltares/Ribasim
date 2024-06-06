@@ -409,7 +409,8 @@ function set_fractional_flow_in_allocation!(
     return nothing
 end
 
-function update_parameters!(pump::Pump, parameter_update::ParameterUpdate)::Nothing
+function update_parameters!(pump::Pump, node_id::NodeID, control_state::String)::Nothing
+    parameter_update = pump.control_mapping[(node_id, control_state)]
     (; node_idx, active, flow_rate_scalar) = parameter_update
     pump.active[node_idx] = active
     if !isnan(flow_rate_scalar)
@@ -422,7 +423,8 @@ function update_parameters!(pump::Pump, parameter_update::ParameterUpdate)::Noth
     return nothing
 end
 
-function update_parameters!(outlet::Outlet, parameter_update::ParameterUpdate)::Nothing
+function update_parameters!(outlet::Outlet, node_id::NodeID, control_state::String)::Nothing
+    parameter_update = outlet.control_mapping[(node_id, control_state)]
     (; node_idx, active, flow_rate_scalar) = parameter_update
     outlet.active[node_idx] = active
     if !isnan(flow_rate_scalar)
@@ -437,8 +439,10 @@ end
 
 function update_parameters!(
     tabulated_rating_curve::TabulatedRatingCurve,
-    parameter_update::ParameterUpdate,
+    node_id::NodeID,
+    control_state::String,
 )::Nothing
+    parameter_update = tabulated_rating_curve.control_mapping[(node_id, control_state)]
     (; node_idx, active, table) = parameter_update
     tabulated_rating_curve.active[node_idx] = active
     if !isempty(table.t)
@@ -449,9 +453,11 @@ end
 
 function update_parameters!(
     fractional_flow::FractionalFlow,
-    parameter_update::ParameterUpdate,
+    node_id::NodeID,
+    control_state::String,
     p::Parameters,
 )::Nothing
+    parameter_update = fractional_flow.control_mapping[(node_id, control_state)]
     (; node_idx, fraction) = parameter_update
     fractional_flow.fraction[node_idx] = fraction
 
@@ -463,8 +469,10 @@ end
 
 function update_parameters!(
     pid_control::PidControl,
-    parameter_update::ParameterUpdate,
+    node_id::NodeID,
+    control_state::String,
 )::Nothing
+    parameter_update = pid_control.control_mapping[(node_id, control_state)]
     (; node_idx, active, target, pid_params) = parameter_update
     pid_control.active[node_idx] = active
     if !isempty(target.t)
@@ -478,8 +486,10 @@ end
 
 function update_parameters!(
     linear_resistance::LinearResistance,
-    parameter_update::ParameterUpdate,
+    node_id::NodeID,
+    control_state::String,
 )::Nothing
+    parameter_update = linear_resistance.control_mapping[(node_id, control_state)]
     (; node_idx, active, resistance) = parameter_update
     linear_resistance.active[node_idx] = active
     if !isnan(resistance)
@@ -490,8 +500,10 @@ end
 
 function update_parameters!(
     manning_resistance::ManningResistance,
-    parameter_update::ParameterUpdate,
+    node_id::NodeID,
+    control_state::String,
 )::Nothing
+    parameter_update = manning_resistance.control_mapping[(node_id, control_state)]
     (; node_idx, active, manning_n) = parameter_update
     manning_resistance.active[node_idx] = active
     if !isnan(manning_n)
@@ -501,23 +513,22 @@ function update_parameters!(
 end
 
 function set_control_params!(p::Parameters, node_id::NodeID, control_state::String)::Nothing
-    parameter_update = p.discrete_control.control_mapping[(node_id, control_state)]
 
     # Check node type here to avoid runtime dispatch on the node type
     if node_id.type == NodeType.Pump
-        update_parameters!(p.pump, parameter_update)
+        update_parameters!(p.pump, node_id, control_state)
     elseif node_id.type == NodeType.Outlet
-        update_parameters!(p.outlet, parameter_update)
-    elseif node_id.type == NodeType.TabulatedRatingcurve
-        update_parameters!(p.tabulated_rating_curve, parameter_update)
+        update_parameters!(p.outlet, node_id, control_state)
+    elseif node_id.type == NodeType.TabulatedRatingCurve
+        update_parameters!(p.tabulated_rating_curve, node_id, control_state)
     elseif node_id.type == NodeType.FractionalFlow
-        update_parameters!(p.fractional_flow, parameter_update, p)
+        update_parameters!(p.fractional_flow, node_id, control_state, p)
     elseif node_id.type == NodeType.PidControl
-        update_parameters!(p.pid_control, parameter_update)
+        update_parameters!(p.pid_control, node_id, control_state)
     elseif node_id.type == NodeType.LinearResistance
-        update_parameters!(p.linear_resistance, parameter_update)
+        update_parameters!(p.linear_resistance, node_id, control_state)
     elseif node_id.type == NodeType.ManningResistance
-        update_parameters!(p.manning_resistance, parameter_update)
+        update_parameters!(p.manning_resistance, node_id, control_state)
     end
     return nothing
 end

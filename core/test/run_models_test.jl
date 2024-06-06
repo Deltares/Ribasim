@@ -280,7 +280,7 @@ end
         Sys.isapple()
 end
 
-@testitem "allocation example model" begin
+@testitem "Allocation example model" begin
     using SciMLBase: successful_retcode
 
     toml_path =
