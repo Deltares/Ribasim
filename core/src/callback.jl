@@ -410,9 +410,6 @@ function set_fractional_flow_in_allocation!(
 end
 
 function update_parameters!(pump::Pump, parameter_update::ParameterUpdate)::Nothing
-    if parameter_update.node_type != NodeType.Pump
-        return nothing
-    end
     (; node_idx, active, flow_rate_scalar) = parameter_update
     pump.active[node_idx] = active
     if !isnan(flow_rate_scalar)
@@ -426,9 +423,6 @@ function update_parameters!(pump::Pump, parameter_update::ParameterUpdate)::Noth
 end
 
 function update_parameters!(outlet::Outlet, parameter_update::ParameterUpdate)::Nothing
-    if parameter_update.node_type != NodeType.Outlet
-        return nothing
-    end
     (; node_idx, active, flow_rate_scalar) = parameter_update
     outlet.active[node_idx] = active
     if !isnan(flow_rate_scalar)
@@ -445,9 +439,6 @@ function update_parameters!(
     tabulated_rating_curve::TabulatedRatingCurve,
     parameter_update::ParameterUpdate,
 )::Nothing
-    if parameter_update.node_type != NodeType.TabulatedRatingCurve
-        return nothing
-    end
     (; node_idx, active, table) = parameter_update
     tabulated_rating_curve.active[node_idx] = active
     if !isempty(table.t)
@@ -461,9 +452,6 @@ function update_parameters!(
     parameter_update::ParameterUpdate,
     p::Parameters,
 )::Nothing
-    if parameter_update.node_type != NodeType.FractionalFlow
-        return nothing
-    end
     (; node_idx, fraction) = parameter_update
     fractional_flow.fraction[node_idx] = fraction
 
@@ -477,9 +465,6 @@ function update_parameters!(
     pid_control::PidControl,
     parameter_update::ParameterUpdate,
 )::Nothing
-    if parameter_update.node_type != NodeType.PidControl
-        return nothing
-    end
     (; node_idx, active, target, pid_params) = parameter_update
     pid_control.active[node_idx] = active
     if !isempty(target.t)
@@ -495,9 +480,6 @@ function update_parameters!(
     linear_resistance::LinearResistance,
     parameter_update::ParameterUpdate,
 )::Nothing
-    if parameter_update.node_type != NodeType.LinearResistance
-        return nothing
-    end
     (; node_idx, active, resistance) = parameter_update
     linear_resistance.active[node_idx] = active
     if !isnan(resistance)
@@ -510,9 +492,6 @@ function update_parameters!(
     manning_resistance::ManningResistance,
     parameter_update::ParameterUpdate,
 )::Nothing
-    if parameter_update.node_type != NodeType.ManningResistance
-        return nothing
-    end
     (; node_idx, active, manning_n) = parameter_update
     manning_resistance.active[node_idx] = active
     if !isnan(manning_n)
@@ -524,15 +503,22 @@ end
 function set_control_params!(p::Parameters, node_id::NodeID, control_state::String)::Nothing
     parameter_update = p.discrete_control.control_mapping[(node_id, control_state)]
 
-    # Only the method corresponding to the type of the node_id actually updates parameters,
-    # but this way there is no runtime dispatch on node type
-    update_parameters!(p.pump, parameter_update)
-    update_parameters!(p.outlet, parameter_update)
-    update_parameters!(p.tabulated_rating_curve, parameter_update)
-    update_parameters!(p.fractional_flow, parameter_update, p)
-    update_parameters!(p.pid_control, parameter_update)
-    update_parameters!(p.linear_resistance, parameter_update)
-    update_parameters!(p.manning_resistance, parameter_update)
+    # Check node type here to avoid runtime dispatch on the node type
+    if node_id.type == NodeType.Pump
+        update_parameters!(p.pump, parameter_update)
+    elseif node_id.type == NodeType.Outlet
+        update_parameters!(p.outlet, parameter_update)
+    elseif node_id.type == NodeType.TabulatedRatingcurve
+        update_parameters!(p.tabulated_rating_curve, parameter_update)
+    elseif node_id.type == NodeType.FractionalFlow
+        update_parameters!(p.fractional_flow, parameter_update, p)
+    elseif node_id.type == NodeType.PidControl
+        update_parameters!(p.pid_control, parameter_update)
+    elseif node_id.type == NodeType.LinearResistance
+        update_parameters!(p.linear_resistance, parameter_update)
+    elseif node_id.type == NodeType.ManningResistance
+        update_parameters!(p.manning_resistance, parameter_update)
+    end
     return nothing
 end
 
