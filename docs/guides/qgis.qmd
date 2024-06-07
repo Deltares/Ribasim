@@ -4,7 +4,7 @@ title: "QGIS plugin development"
 
 # Set up the developer environment
 
-After you have installed the environment as described [here](index.qmd) you must still activate the QGIS plugins.
+After you have installed the environment as described [here](core.qmd) you must still activate the QGIS plugins.
 The simplest way to do this is by running `pixi run install-qgis-plugins`.
 It grabs the latest version of the iMOD QGIS plugin and it makes a symlink to the ribasim_qgis folder so that QGIS can find it.
 It also installs plugins that make it possible to reload and debug your plugin while QGIS is open.

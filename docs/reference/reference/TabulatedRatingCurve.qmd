@@ -1,0 +1,22 @@
+# TabulatedRatingCurve { #ribasim.TabulatedRatingCurve }
+
+`TabulatedRatingCurve()`
+
+Linearly interpolates discharge between a tabulation of level and discharge.
+
+## Parameters
+
+| Name     | Type                       | Description                            | Default   |
+|----------|----------------------------|----------------------------------------|-----------|
+| `static` | pd.DataFrame               | Table with constant rating curves.     | required  |
+| `time`   | pandas.DataFrame, optional | Table with time-varying rating curves. | required  |
+
+## Methods
+
+| Name | Description |
+| --- | --- |
+| [sort](#ribasim.TabulatedRatingCurve.sort) |  |
+
+### sort { #ribasim.TabulatedRatingCurve.sort }
+
+`TabulatedRatingCurve.sort(self)`

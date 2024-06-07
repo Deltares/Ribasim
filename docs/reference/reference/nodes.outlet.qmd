@@ -1,0 +1,3 @@
+# nodes.outlet { #ribasim.nodes.outlet }
+
+`nodes.outlet`

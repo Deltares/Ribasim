@@ -23,4 +23,4 @@ After downloading wheels can be installed by referring to the correct path:
 pip install path/to/ribasim-*.whl
 ```
 
-For documentation please see the [examples](examples.ipynb) and [API reference](reference/).
+For documentation please see the [examples](examples.ipynb) and [API reference](../reference/reference).

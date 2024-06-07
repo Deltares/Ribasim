@@ -1,0 +1,43 @@
+# Edge { #ribasim.Edge }
+
+`Edge()`
+
+Defines the connections between nodes.
+
+## Parameters
+
+| Name     | Type             | Description                            | Default   |
+|----------|------------------|----------------------------------------|-----------|
+| `static` | pandas.DataFrame | Table describing the flow connections. | required  |
+
+## Methods
+
+| Name | Description |
+| --- | --- |
+| [plot](#ribasim.Edge.plot) |  |
+| [sort](#ribasim.Edge.sort) |  |
+| [write](#ribasim.Edge.write) | Write the contents of the input to a GeoPackage. |
+
+### plot { #ribasim.Edge.plot }
+
+`Edge.plot(self, **kwargs)`
+
+### sort { #ribasim.Edge.sort }
+
+`Edge.sort(self)`
+
+### write { #ribasim.Edge.write }
+
+`Edge.write(self, directory, modelname)`
+
+Write the contents of the input to a GeoPackage.
+
+The Geopackage will be written in ``directory`` and will be be named
+``{modelname}.gpkg``.
+
+#### Parameters
+
+| Name        | Type     | Description   | Default   |
+|-------------|----------|---------------|-----------|
+| `directory` | FilePath |               | required  |
+| `modelname` | str      |               | required  |

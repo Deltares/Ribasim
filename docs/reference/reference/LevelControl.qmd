@@ -1,0 +1,11 @@
+# LevelControl { #ribasim.LevelControl }
+
+`LevelControl()`
+
+Controls the level in a basin.
+
+## Parameters
+
+| Name     | Type             | Description                                            | Default   |
+|----------|------------------|--------------------------------------------------------|-----------|
+| `static` | pandas.DataFrame | Table with the constant target levels and resistances. | required  |

@@ -9,62 +9,85 @@ website:
   navbar:
     logo: https://user-images.githubusercontent.com/4471859/224825908-bee7e044-bc6b-4561-8b08-5d330cce3ed5.png
     left:
-      - text: "Julia core"
-        file: core/index.qmd
-      - text: "Python tooling"
-        file: python/index.qmd
-      - text: "QGIS plugin"
-        file: qgis/index.qmd
-      - text: "Contributing"
-        file: contribute/index.qmd
+      - text: "About"
+        file: index.qmd
+      - text: "Get Started"
+        file: tutorials/index.qmd
+      - text: "Guides"
+        file: guides/index.qmd
+      - text: "Background"
+        file: background/concept.qmd
+      - text: "Reference"
+        file: reference/index.qmd
+      - text: "Changelog"
+        file: changelog.md
     right:
       - icon: github
         href: https://github.com/Deltares/Ribasim
         aria-label: GitHub
 
   sidebar:
-    - title: "Julia core"
+    - title: "Get Started"
       contents:
-        - core/index.qmd
-        - core/modelconcept.qmd
-        - core/usage.qmd
-        - core/validation.qmd
-        - core/equations.qmd
-        - core/allocation.qmd
-        - core/numerics.qmd
-        - core/coupling.qmd
+        - tutorials/index.qmd
+        - tutorials/julia.qmd
+        - tutorials/python.qmd
+        - tutorials/qgis.qmd
+
+    - title: "Guides"
+      contents:
+        - guides/index.qmd
+        - section: "For end-users"
+          contents:
+          - guides/examples.ipynb
+          - guides/python.qmd
+          - guides/coupling.qmd
+        - section: "For developers"
+          contents:
+          - guides/core.qmd
+          - guides/qgis.qmd
+          - dev/python.qmd
+          - guides/addnode.qmd
+          - guides/release.qmd
+
+    - title: "Background"
+      contents:
+        - background/concept.qmd
+        - background/usage.qmd
+        - section: "Numerics"
+          contents:
+          - background/modelconcept.qmd
+          - background/equations.qmd
+          - background/numerics.qmd
+        - section: "Implementation"
+          contents:
+          - background/core.qmd
+          - background/validation.qmd
+          - background/allocation.qmd
+          - background/ci.qmd
+
+    - title: "Reference"
+      contents:
+        - reference/index.qmd
+        - reference/test-models.qmd
         - section: "Nodes"
           contents:
-            - core/node/basin.qmd
-            - core/node/tabulated-rating-curve.qmd
-            - core/node/pump.qmd
-            - core/node/outlet.qmd
-            - core/node/user-demand.qmd
-            - core/node/flow-demand.qmd
-            - core/node/level-demand.qmd
-            - core/node/flow-boundary.qmd
-            - core/node/level-boundary.qmd
-            - core/node/linear-resistance.qmd
-            - core/node/manning-resistance.qmd
-            - core/node/fractional-flow.qmd
-            - core/node/terminal.qmd
-            - core/node/discrete-control.qmd
-            - core/node/pid-control.qmd
-    - title: "Python tooling"
-      contents:
-        - python/index.qmd
-        - python/examples.ipynb
-        - python/reference/index.qmd
-        - python/test-models.qmd
-    - title: "Contributing"
-      contents:
-        - contribute/index.qmd
-        - contribute/core.qmd
-        - contribute/python.qmd
-        - contribute/qgis.qmd
-        - contribute/addnode.qmd
-        - contribute/ci.qmd
-        - contribute/release.qmd
+            - reference/node/basin.qmd
+            - reference/node/tabulated-rating-curve.qmd
+            - reference/node/pump.qmd
+            - reference/node/outlet.qmd
+            - reference/node/user-demand.qmd
+            - reference/node/flow-demand.qmd
+            - reference/node/level-demand.qmd
+            - reference/node/flow-boundary.qmd
+            - reference/node/level-boundary.qmd
+            - reference/node/linear-resistance.qmd
+            - reference/node/manning-resistance.qmd
+            - reference/node/fractional-flow.qmd
+            - reference/node/terminal.qmd
+            - reference/node/discrete-control.qmd
+            - reference/node/pid-control.qmd
+        - reference/reference/index.qmd
 
 format:
   html:

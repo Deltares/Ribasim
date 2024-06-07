@@ -1,0 +1,11 @@
+# LevelBoundary { #ribasim.LevelBoundary }
+
+`LevelBoundary(self, static)`
+
+Stores water at a given level unaffected by flow, like an infinitely large basin.
+
+## Parameters
+
+| Name     | Type             | Description                           | Default   |
+|----------|------------------|---------------------------------------|-----------|
+| `static` | pandas.DataFrame | Table with the constant water levels. | required  |

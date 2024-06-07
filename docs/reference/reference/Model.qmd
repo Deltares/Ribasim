@@ -1,0 +1,3 @@
+# Model { #ribasim.Model }
+
+`Model()`

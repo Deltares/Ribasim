@@ -1,0 +1,3 @@
+# nodes.discrete_control { #ribasim.nodes.discrete_control }
+
+`nodes.discrete_control`

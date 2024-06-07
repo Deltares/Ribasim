@@ -1,0 +1,62 @@
+# Node { #ribasim.Node }
+
+`Node()`
+
+The Ribasim nodes as Point geometries.
+
+## Parameters
+
+| Name     | Type                   | Description                            | Default   |
+|----------|------------------------|----------------------------------------|-----------|
+| `static` | geopandas.GeoDataFrame | Table with node ID, type and geometry. | required  |
+
+## Methods
+
+| Name | Description |
+| --- | --- |
+| [hasfid](#ribasim.Node.hasfid) |  |
+| [plot](#ribasim.Node.plot) | Plot the nodes. Each node type is given a separate marker. |
+| [sort](#ribasim.Node.sort) |  |
+| [write](#ribasim.Node.write) | Write the contents of the input to a GeoPackage. |
+
+### hasfid { #ribasim.Node.hasfid }
+
+`Node.hasfid(cls)`
+
+### plot { #ribasim.Node.plot }
+
+`Node.plot(self, **kwargs)`
+
+Plot the nodes. Each node type is given a separate marker.
+
+#### Parameters
+
+| Name       | Type     | Description                                       | Default   |
+|------------|----------|---------------------------------------------------|-----------|
+| `**kwargs` | optional | Keyword arguments forwarded to GeoDataFrame.plot. | `{}`      |
+
+#### Returns
+
+| Type   | Description   |
+|--------|---------------|
+| None   |               |
+
+### sort { #ribasim.Node.sort }
+
+`Node.sort(self)`
+
+### write { #ribasim.Node.write }
+
+`Node.write(self, directory, modelname)`
+
+Write the contents of the input to a GeoPackage.
+
+The Geopackage will be written in ``directory`` and will be be named
+``{modelname}.gpkg``.
+
+#### Parameters
+
+| Name        | Type     | Description   | Default   |
+|-------------|----------|---------------|-----------|
+| `directory` | FilePath |               | required  |
+| `modelname` | str      |               | required  |

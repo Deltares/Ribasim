@@ -1,0 +1,39 @@
+# API Reference {.doc .doc-index}
+
+## Model
+
+The Model class represents an entire Ribasim model.
+
+| | |
+| --- | --- |
+| [Model](Model.qmd#ribasim.Model) |  |
+
+## Edge
+
+The Edge database layer.
+
+| | |
+| --- | --- |
+| [EdgeTable](EdgeTable.qmd#ribasim.EdgeTable) | Defines the connections between nodes. |
+
+## Node types
+
+Available node types to model different situations.
+
+| | |
+| --- | --- |
+| [nodes.basin](nodes.basin.qmd#ribasim.nodes.basin) |  |
+| [nodes.fractional_flow](nodes.fractional_flow.qmd#ribasim.nodes.fractional_flow) |  |
+| [nodes.tabulated_rating_curve](nodes.tabulated_rating_curve.qmd#ribasim.nodes.tabulated_rating_curve) |  |
+| [nodes.pump](nodes.pump.qmd#ribasim.nodes.pump) |  |
+| [nodes.outlet](nodes.outlet.qmd#ribasim.nodes.outlet) |  |
+| [nodes.user_demand](nodes.user_demand.qmd#ribasim.nodes.user_demand) |  |
+| [nodes.level_boundary](nodes.level_boundary.qmd#ribasim.nodes.level_boundary) |  |
+| [nodes.flow_boundary](nodes.flow_boundary.qmd#ribasim.nodes.flow_boundary) |  |
+| [nodes.linear_resistance](nodes.linear_resistance.qmd#ribasim.nodes.linear_resistance) |  |
+| [nodes.manning_resistance](nodes.manning_resistance.qmd#ribasim.nodes.manning_resistance) |  |
+| [nodes.terminal](nodes.terminal.qmd#ribasim.nodes.terminal) |  |
+| [nodes.discrete_control](nodes.discrete_control.qmd#ribasim.nodes.discrete_control) |  |
+| [nodes.pid_control](nodes.pid_control.qmd#ribasim.nodes.pid_control) |  |
+| [nodes.flow_demand](nodes.flow_demand.qmd#ribasim.nodes.flow_demand) |  |
+| [nodes.level_demand](nodes.level_demand.qmd#ribasim.nodes.level_demand) |  |

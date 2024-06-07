@@ -1,0 +1,21 @@
+# utils.connectivity_from_geometry { #ribasim.utils.connectivity_from_geometry }
+
+`utils.connectivity_from_geometry(node, lines)`
+
+Derive from_node_id and to_node_id for every edge in lines. LineStrings
+may be used to connect multiple nodes in a sequence, but every linestring
+vertex must also a node.
+
+## Parameters
+
+| Name    | Type       | Description                   | Default   |
+|---------|------------|-------------------------------|-----------|
+| `node`  | Node       |                               | required  |
+| `lines` | np.ndarray | Array of shapely linestrings. | required  |
+
+## Returns
+
+| Type              | Description   |
+|-------------------|---------------|
+| np.ndarray of int |               |
+| np.ndarray of int |               |
