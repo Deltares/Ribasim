@@ -200,13 +200,13 @@ end
 function apply_discrete_control!(u, t, integrator)::Nothing
     (; p) = integrator
     (; discrete_control) = p
-    condition_idx = 0
+    (; node_id_unique, truth_state) = discrete_control
 
     discrete_control_condition!(u, t, integrator)
 
-    # For every compound variable see whether it changes a control state
-    for compound_variable_idx in eachindex(discrete_control.node_id)
-        discrete_control_affect!(integrator, compound_variable_idx)
+    # For every discrete control node see whether it changes control state
+    for (id, truth_state_) in zip(node_id_unique, truth_state)
+        discrete_control_affect!(integrator, id, truth_state_)
     end
 end
 
@@ -293,12 +293,13 @@ end
 """
 Change parameters based on the control logic.
 """
-function discrete_control_affect!(integrator, compound_variable_idx)
+function discrete_control_affect!(
+    integrator,
+    discrete_control_node_id::NodeID,
+    truth_state::Vector{Bool},
+)
     p = integrator.p
     (; discrete_control, graph) = p
-
-    # Get the DiscreteControl node to which this compound variable belongs
-    discrete_control_node_id = discrete_control.node_id[compound_variable_idx]
 
     # We need to build up the truth state for this DiscreteControl node by:
     # - Finding all the (compound) variables this DiscreteControde node listens to
@@ -313,6 +314,7 @@ function discrete_control_affect!(integrator, compound_variable_idx)
     #  ...
     #  variable_N     > greater_than_N_1,     ..., variable_N     > greater_than_N_c
     # ]
+    found_change = false
     truth_value_idx = 1
     for (variable_idx, node_id) in enumerate(discrete_control.node_id)
         if node_id < discrete_control_node_id
@@ -320,8 +322,17 @@ function discrete_control_affect!(integrator, compound_variable_idx)
         elseif node_id == discrete_control_node_id
             truth_values_variable = discrete_control.condition_value[variable_idx]
             n_greater_than = length(truth_values_variable)
-            discrete_control.truth_state[truth_value_idx:(truth_value_idx + n_greater_than - 1)] .=
-                truth_values_variable
+            range_variable = truth_value_idx:(truth_value_idx + n_greater_than - 1)
+            truth_values_variable_old = view(truth_state, range_variable)
+            if !found_change
+                for i in eachindex(truth_values_variable)
+                    if truth_values_variable_old[i] !== truth_values_variable[i]
+                        found_change = true
+                        break
+                    end
+                end
+            end
+            truth_values_variable_old .= truth_values_variable
             variable_idx += 1
             truth_value_idx += n_greater_than
         else
@@ -329,8 +340,10 @@ function discrete_control_affect!(integrator, compound_variable_idx)
         end
     end
 
-    # The maximum truth state length is possibly shorter than this truth state
-    truth_state = view(discrete_control.truth_state, 1:(truth_value_idx - 1))
+    # If the truth state didn't change, neither did the control state
+    if !found_change
+        return nothing
+    end
 
     # What the local control state should be
     control_state_new = get(

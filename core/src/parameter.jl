@@ -482,6 +482,7 @@ record: Namedtuple with discrete control information for results
 """
 struct DiscreteControl <: AbstractParameterNode
     node_id::Vector{NodeID}
+    node_id_unique::Vector{NodeID}
     # Definition of compound variables
     listen_node_id::Vector{Vector{NodeID}}
     variable::Vector{Vector{String}}
@@ -490,8 +491,8 @@ struct DiscreteControl <: AbstractParameterNode
     # Definition of conditions (one or more greater_than per compound variable)
     greater_than::Vector{Vector{Float64}}
     condition_value::Vector{Vector{Bool}}
-    # Preallocated for storing truth state
-    truth_state::Vector{Bool}
+    # truth_state per discrete control node
+    truth_state::Vector{Vector{Bool}}
     # Definition of logic
     control_state::Dict{NodeID, Tuple{String, Float64}}
     logic_mapping::Dict{Tuple{NodeID, Vector{Bool}}, String}

@@ -705,16 +705,16 @@ function DiscreteControl(db::DB, config::Config)::DiscreteControl
         control_state = String[],
     )
 
-    max_truth_state_length = 0
+    truth_state = Vector{Bool}[]
     for id in unique(node_id)
-        where_node_id = searchsorted(node_id, id)
-        truth_state_length = sum(length(condition_value[i]) for i in where_node_id)
-        max_truth_state_length = max(max_truth_state_length, truth_state_length)
+        where_node_id = (node_id .== id)
+        truth_state_length = sum(length(gd) for gd in greater_than[where_node_id])
+        push!(truth_state, zeros(Bool, truth_state_length))
     end
-    truth_state = zeros(Bool, max_truth_state_length)
 
     return DiscreteControl(
-        node_id, # Not unique
+        node_id,
+        unique(node_id),
         listen_node_id,
         variable,
         weight,
