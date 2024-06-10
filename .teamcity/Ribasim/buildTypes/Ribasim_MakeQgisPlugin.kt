@@ -27,6 +27,6 @@ object Ribasim_MakeQgisPlugin : BuildType({
     requirements {
         doesNotEqual("env.OS", "Windows_NT", "RQ_338")
     }
-    
+
     disableSettings("RQ_338")
 })

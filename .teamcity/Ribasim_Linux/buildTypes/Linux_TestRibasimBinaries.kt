@@ -29,7 +29,7 @@ object Linux_TestRibasimBinaries : BuildType({
                 #!/bin/bash
                 # black magic
                 source /usr/share/Modules/init/bash
-                
+
                 module load pixi
                 pixi --version
             """.trimIndent()
@@ -42,7 +42,7 @@ object Linux_TestRibasimBinaries : BuildType({
                 #!/bin/bash
                 # black magic
                 source /usr/share/Modules/init/bash
-                
+
                 module load pixi
                 pixi run install
                 pixi run test-ribasim-api

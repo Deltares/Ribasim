@@ -23,7 +23,7 @@ object Linux_BuildRibasim : BuildType({
                 #!/bin/bash
                 # black magic
                 source /usr/share/Modules/init/bash
-                
+
                 module load pixi
                 pixi --version
                 pixi run install-ci
@@ -37,7 +37,7 @@ object Linux_BuildRibasim : BuildType({
                 #!/bin/bash
                 # black magic
                 source /usr/share/Modules/init/bash
-                
+
                 module load pixi
                 module load gcc/11.3.0
                 pixi run remove-artifacts

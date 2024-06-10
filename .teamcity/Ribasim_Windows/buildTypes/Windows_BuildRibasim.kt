@@ -55,6 +55,6 @@ object Windows_BuildRibasim : BuildType({
     requirements {
         equals("env.OS", "Windows_NT", "RQ_275")
     }
-    
+
     disableSettings("RQ_275")
 })

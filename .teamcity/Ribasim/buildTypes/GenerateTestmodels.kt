@@ -24,7 +24,7 @@ object GenerateTestmodels : BuildType({
                 #!/bin/bash
                 # black magic
                 source /usr/share/Modules/init/bash
-                
+
                 module load pixi
                 pixi --version
             """.trimIndent()
@@ -37,7 +37,7 @@ object GenerateTestmodels : BuildType({
                 #!/bin/bash
                 # black magic
                 source /usr/share/Modules/init/bash
-                
+
                 module load pixi
                 pixi run generate-testmodels
             """.trimIndent()

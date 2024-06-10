@@ -24,7 +24,7 @@ object Ribasim_MakeGitHubRelease : BuildType({
                 #!/usr/bin/env bash
                 set -euxo pipefail
                 . /usr/share/Modules/init/bash
-                
+
                 module load pixi
                 pixi run github-release
             """.trimIndent()
