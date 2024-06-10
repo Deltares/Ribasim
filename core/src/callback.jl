@@ -423,47 +423,7 @@ function set_fractional_flow_in_allocation!(
     return nothing
 end
 
-function discrete_control_parameter_update(
-    pump::Pump,
-    node_id::NodeID,
-    control_state::String,
-)::Nothing
-    parameter_update = pump.control_mapping[(node_id, control_state)]
-    (; node_idx, active, flow_rate) = parameter_update
-    pump.active[node_idx] = active
-    get_tmp(pump.flow_rate, 0)[node_idx] =
-        clamp(flow_rate, pump.min_flow_rate[node_idx], pump.max_flow_rate[node_idx])
-    return nothing
-end
-
-function discrete_control_parameter_update(
-    outlet::Outlet,
-    node_id::NodeID,
-    control_state::String,
-)::Nothing
-    parameter_update = outlet.control_mapping[(node_id, control_state)]
-    (; node_idx, active, flow_rate) = parameter_update
-    outlet.active[node_idx] = active
-    get_tmp(outlet.flow_rate, 0)[node_idx] =
-        clamp(flow_rate, outlet.min_flow_rate[node_idx], outlet.max_flow_rate[node_idx])
-    return nothing
-end
-
-function discrete_control_parameter_update(
-    tabulated_rating_curve::TabulatedRatingCurve,
-    node_id::NodeID,
-    control_state::String,
-)::Nothing
-    parameter_update = tabulated_rating_curve.control_mapping[(node_id, control_state)]
-    (; node_idx, active, table) = parameter_update
-    tabulated_rating_curve.active[node_idx] = active
-    if !isempty(table.t)
-        tabulated_rating_curve.tables[node_idx] = table
-    end
-    return nothing
-end
-
-function discrete_control_parameter_update(
+function discrete_control_parameter_update!(
     fractional_flow::FractionalFlow,
     node_id::NodeID,
     control_state::String,
@@ -479,7 +439,7 @@ function discrete_control_parameter_update(
     return nothing
 end
 
-function discrete_control_parameter_update(
+function discrete_control_parameter_update!(
     pid_control::PidControl,
     node_id::NodeID,
     control_state::String,
@@ -496,47 +456,23 @@ function discrete_control_parameter_update(
     return nothing
 end
 
-function discrete_control_parameter_update(
-    linear_resistance::LinearResistance,
-    node_id::NodeID,
-    control_state::String,
-)::Nothing
-    parameter_update = linear_resistance.control_mapping[(node_id, control_state)]
-    (; node_idx, active, resistance) = parameter_update
-    linear_resistance.active[node_idx] = active
-    linear_resistance.resistance[node_idx] = resistance
-    return nothing
-end
-
-function discrete_control_parameter_update(
-    manning_resistance::ManningResistance,
-    node_id::NodeID,
-    control_state::String,
-)::Nothing
-    parameter_update = manning_resistance.control_mapping[(node_id, control_state)]
-    (; node_idx, active, manning_n) = parameter_update
-    manning_resistance.active[node_idx] = active
-    manning_resistance.manning_n[node_idx] = manning_n
-    return nothing
-end
-
 function set_control_params!(p::Parameters, node_id::NodeID, control_state::String)::Nothing
 
     # Check node type here to avoid runtime dispatch on the node type
     if node_id.type == NodeType.Pump
-        discrete_control_parameter_update(p.pump, node_id, control_state)
+        discrete_control_parameter_update!(p.pump, node_id, control_state)
     elseif node_id.type == NodeType.Outlet
-        discrete_control_parameter_update(p.outlet, node_id, control_state)
+        discrete_control_parameter_update!(p.outlet, node_id, control_state)
     elseif node_id.type == NodeType.TabulatedRatingCurve
-        discrete_control_parameter_update(p.tabulated_rating_curve, node_id, control_state)
+        discrete_control_parameter_update!(p.tabulated_rating_curve, node_id, control_state)
     elseif node_id.type == NodeType.FractionalFlow
-        discrete_control_parameter_update(p.fractional_flow, node_id, control_state, p)
+        discrete_control_parameter_update!(p.fractional_flow, node_id, control_state, p)
     elseif node_id.type == NodeType.PidControl
-        discrete_control_parameter_update(p.pid_control, node_id, control_state)
+        discrete_control_parameter_update!(p.pid_control, node_id, control_state)
     elseif node_id.type == NodeType.LinearResistance
-        discrete_control_parameter_update(p.linear_resistance, node_id, control_state)
+        discrete_control_parameter_update!(p.linear_resistance, node_id, control_state)
     elseif node_id.type == NodeType.ManningResistance
-        discrete_control_parameter_update(p.manning_resistance, node_id, control_state)
+        discrete_control_parameter_update!(p.manning_resistance, node_id, control_state)
     end
     return nothing
 end
