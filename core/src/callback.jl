@@ -440,23 +440,6 @@ function discrete_control_parameter_update!(
 end
 
 function discrete_control_parameter_update!(
-    pid_control::PidControl,
-    node_id::NodeID,
-    control_state::String,
-)::Nothing
-    parameter_update = pid_control.control_mapping[(node_id, control_state)]
-    (; node_idx, active, target, pid_params) = parameter_update
-    pid_control.active[node_idx] = active
-    if !isempty(target.t)
-        pid_control.target[node_idx] = target
-    end
-    if !isempty(pid_params.t)
-        pid_control.pid_params[node_idx] = pid_params
-    end
-    return nothing
-end
-
-function discrete_control_parameter_update!(
     node::AbstractParameterNode,
     node_id::NodeID,
     control_state::String,
@@ -602,7 +585,7 @@ end
 
 "Load updates from 'TabulatedRatingCurve / time' into the parameters"
 function update_tabulated_rating_curve!(integrator)::Nothing
-    (; node_id, tables, time) = integrator.p.tabulated_rating_curve
+    (; node_id, table, time) = integrator.p.tabulated_rating_curve
     t = datetime_since(integrator.t, integrator.p.starttime)
 
     # get groups of consecutive node_id for the current timestamp
@@ -615,7 +598,7 @@ function update_tabulated_rating_curve!(integrator)::Nothing
         level = [row.level for row in group]
         flow_rate = [row.flow_rate for row in group]
         i = searchsortedfirst(node_id, NodeID(NodeType.TabulatedRatingCurve, id))
-        tables[i] = LinearInterpolation(flow_rate, level; extrapolate = true)
+        table[i] = LinearInterpolation(flow_rate, level; extrapolate = true)
     end
     return nothing
 end

@@ -118,7 +118,8 @@ end
     t_target_change = target_itp.t[2]
     idx_target_change = searchsortedlast(t, t_target_change)
 
-    K_p, K_i, _ = pid_control.pid_params[2](0)
+    K_p = pid_control.proportional[2](0)
+    K_i = pid_control.integral[2](0)
     level_demand = pid_control.target[2](0)
 
     A = basin.area[1][1]
@@ -159,7 +160,7 @@ end
     t = Ribasim.datetime_since(discrete_control.record.time[2], model.config.starttime)
     @test Date(t) == Date("2020-03-16")
     # then the rating curve is updated to the "low" control_state
-    @test last(only(p.tabulated_rating_curve.tables).t) == 1.2
+    @test last(only(p.tabulated_rating_curve.table).t) == 1.2
 end
 
 @testitem "Set PID target with DiscreteControl" begin

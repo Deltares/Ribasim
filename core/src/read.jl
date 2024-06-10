@@ -751,46 +751,14 @@ function PidControl(db::DB, config::Config, chunk_sizes::Vector{Int})::PidContro
     if config.solver.autodiff
         pid_error = DiffCache(pid_error, chunk_sizes)
     end
-
-    # Combine PID parameters into one vector interpolation object
-    pid_parameters = VectorInterpolation[]
-    (; proportional, integral, derivative) = parsed_parameters
-
-    for i in eachindex(node_ids)
-        times = proportional[i].t
-        K_p = proportional[i].u
-        K_i = integral[i].u
-        K_d = derivative[i].u
-
-        itp = LinearInterpolation(collect.(zip(K_p, K_i, K_d)), times)
-        push!(pid_parameters, itp)
-    end
-
-    for (key, parameter_update) in parsed_parameters.control_mapping
-        (; proportional, integral, derivative) = parameter_update
-
-        times = parameter_update.proportional.t
-        K_p = proportional.u
-        K_i = integral.u
-        K_d = derivative.u
-        pid_params = LinearInterpolation(collect.(zip(K_p, K_i, K_d)), times)
-        @assert pid_params isa VectorInterpolation
-        parameter_update = @set parameter_update.pid_params = pid_params
-        parameter_update =
-            @set parameter_update.proportional = LinearInterpolation(Float64[], Float64[])
-        parameter_update =
-            @set parameter_update.integral = LinearInterpolation(Float64[], Float64[])
-        parameter_update =
-            @set parameter_update.derivative = LinearInterpolation(Float64[], Float64[])
-        parsed_parameters.control_mapping[key] = parameter_update
-    end
-
     return PidControl(
         node_ids,
         BitVector(parsed_parameters.active),
         NodeID.(parsed_parameters.listen_node_type, parsed_parameters.listen_node_id),
         parsed_parameters.target,
-        pid_parameters,
+        parsed_parameters.proportional,
+        parsed_parameters.integral,
+        parsed_parameters.derivative,
         pid_error,
         parsed_parameters.control_mapping,
     )

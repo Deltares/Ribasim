@@ -36,8 +36,6 @@ end
 Base.to_index(id::NodeID) = Int(id.value)
 
 const ScalarInterpolation = LinearInterpolation{Vector{Float64}, Vector{Float64}, Float64}
-const VectorInterpolation =
-    LinearInterpolation{Vector{Vector{Float64}}, Vector{Float64}, Vector{Float64}}
 
 """
 Store information for a subnetwork used for allocation.
@@ -209,7 +207,7 @@ inflow_edge: incoming flow edge metadata
 outflow_edges: outgoing flow edges metadata
     The ID of the source node is always the ID of the TabulatedRatingCurve node
 active: whether this node is active and thus contributes flows
-tables: The current Q(h) relationships
+table: The current Q(h) relationships
 time: The time table used for updating the tables
 control_mapping: dictionary from (node_id, control_state) to Q(h) and/or active state
 """
@@ -218,7 +216,7 @@ struct TabulatedRatingCurve{C} <: AbstractParameterNode
     inflow_edge::Vector{EdgeMetadata}
     outflow_edges::Vector{Vector{EdgeMetadata}}
     active::BitVector
-    tables::Vector{ScalarInterpolation}
+    table::Vector{ScalarInterpolation}
     time::StructVector{TabulatedRatingCurveTimeV1, C, Int}
     control_mapping::Dict{
         Tuple{NodeID, String},
@@ -521,7 +519,9 @@ struct PidControl{T} <: AbstractParameterNode
     active::BitVector
     listen_node_id::Vector{NodeID}
     target::Vector{ScalarInterpolation}
-    pid_params::Vector{VectorInterpolation}
+    proportional::Vector{ScalarInterpolation}
+    integral::Vector{ScalarInterpolation}
+    derivative::Vector{ScalarInterpolation}
     error::T
     control_mapping::Dict{
         Tuple{NodeID, String},
@@ -529,7 +529,9 @@ struct PidControl{T} <: AbstractParameterNode
             node_idx::Int,
             active::Bool,
             target::ScalarInterpolation,
-            pid_params::VectorInterpolation,
+            proportional::ScalarInterpolation,
+            integral::ScalarInterpolation,
+            derivative::ScalarInterpolation,
         }
     }
 end
