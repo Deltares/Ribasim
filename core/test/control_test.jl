@@ -1,6 +1,9 @@
 @testitem "Pump discrete control" begin
     using PreallocationTools: get_tmp
     using Ribasim: NodeID
+    using Dates: DateTime
+    import Arrow
+    import Tables
 
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/pump_discrete_control/ribasim.toml")
@@ -26,10 +29,19 @@
     @test discrete_control.logic_mapping == logic_mapping
 
     # Control result
+    control_bytes = read(normpath(dirname(toml_path), "results/control.arrow"))
+    control = Arrow.Table(control_bytes)
+    @test Tables.schema(control) == Tables.Schema(
+        (:time, :control_node_id, :truth_state, :control_state),
+        (DateTime, Int32, String, String),
+    )
     @test discrete_control.record.control_node_id == [5, 6, 5, 5, 6]
+    @test discrete_control.record.control_node_id == control.control_node_id
     @test discrete_control.record.truth_state == ["TF", "F", "FF", "FT", "T"]
+    @test discrete_control.record.truth_state == control.truth_state
     @test discrete_control.record.control_state ==
           ["off", "active", "on", "off", "inactive"]
+    @test discrete_control.record.control_state == control.control_state
 
     level = Ribasim.get_storages_and_levels(model).level
     t = Ribasim.tsaves(model)
