@@ -193,29 +193,6 @@ struct Basin{T, C, V1, V2, V3} <: AbstractParameterNode
 end
 
 """
-ParameterUpdate is an object for storing the data for the
-parameter change associated with a specific control state
-used by DiscreteControl.
-"""
-struct ParameterUpdate
-    node_type::NodeType.T
-    node_idx::Int
-    active::Bool
-    flow_rate_scalar::Float64
-    flow_rate_itp::ScalarInterpolation
-    min_crest_level::Float64
-    resistance::Float64
-    manning_n::Float64
-    fraction::Float64
-    table::ScalarInterpolation
-    target::ScalarInterpolation
-    proportional::ScalarInterpolation
-    integral::ScalarInterpolation
-    derivative::ScalarInterpolation
-    pid_params::VectorInterpolation
-end
-
-"""
     struct TabulatedRatingCurve{C}
 
 Rating curve from level to flow rate. The rating curve is a lookup table with linear
@@ -243,7 +220,10 @@ struct TabulatedRatingCurve{C} <: AbstractParameterNode
     active::BitVector
     tables::Vector{ScalarInterpolation}
     time::StructVector{TabulatedRatingCurveTimeV1, C, Int}
-    control_mapping::Dict{Tuple{NodeID, String}, ParameterUpdate}
+    control_mapping::Dict{
+        Tuple{NodeID, String},
+        @NamedTuple{node_idx::Int, active::Bool, table::ScalarInterpolation}
+    }
 end
 
 """
@@ -264,7 +244,10 @@ struct LinearResistance <: AbstractParameterNode
     active::BitVector
     resistance::Vector{Float64}
     max_flow_rate::Vector{Float64}
-    control_mapping::Dict{Tuple{NodeID, String}, ParameterUpdate}
+    control_mapping::Dict{
+        Tuple{NodeID, String},
+        @NamedTuple{node_idx::Int, active::Bool, resistance::Float64}
+    }
 end
 
 """
@@ -316,7 +299,10 @@ struct ManningResistance <: AbstractParameterNode
     profile_slope::Vector{Float64}
     upstream_bottom::Vector{Float64}
     downstream_bottom::Vector{Float64}
-    control_mapping::Dict{Tuple{NodeID, String}, ParameterUpdate}
+    control_mapping::Dict{
+        Tuple{NodeID, String},
+        @NamedTuple{node_idx::Int, active::Bool, manning_n::Float64}
+    }
 end
 
 """
@@ -333,7 +319,10 @@ struct FractionalFlow <: AbstractParameterNode
     inflow_edge::Vector{EdgeMetadata}
     outflow_edge::Vector{EdgeMetadata}
     fraction::Vector{Float64}
-    control_mapping::Dict{Tuple{NodeID, String}, ParameterUpdate}
+    control_mapping::Dict{
+        Tuple{NodeID, String},
+        @NamedTuple{node_idx::Int, fraction::Float64}
+    }
 end
 
 """
@@ -379,7 +368,10 @@ struct Pump{T} <: AbstractParameterNode
     flow_rate::T
     min_flow_rate::Vector{Float64}
     max_flow_rate::Vector{Float64}
-    control_mapping::Dict{Tuple{NodeID, String}, ParameterUpdate}
+    control_mapping::Dict{
+        Tuple{NodeID, String},
+        @NamedTuple{node_idx::Int, active::Bool, flow_rate::Float64}
+    }
     is_pid_controlled::BitVector
 
     function Pump(
@@ -433,7 +425,10 @@ struct Outlet{T} <: AbstractParameterNode
     min_flow_rate::Vector{Float64}
     max_flow_rate::Vector{Float64}
     min_crest_level::Vector{Float64}
-    control_mapping::Dict{Tuple{NodeID, String}, ParameterUpdate}
+    control_mapping::Dict{
+        Tuple{NodeID, String},
+        @NamedTuple{node_idx::Int, active::Bool, flow_rate::Float64}
+    }
     is_pid_controlled::BitVector
 
     function Outlet(
@@ -528,7 +523,15 @@ struct PidControl{T} <: AbstractParameterNode
     target::Vector{ScalarInterpolation}
     pid_params::Vector{VectorInterpolation}
     error::T
-    control_mapping::Dict{Tuple{NodeID, String}, ParameterUpdate}
+    control_mapping::Dict{
+        Tuple{NodeID, String},
+        @NamedTuple{
+            node_idx::Int,
+            active::Bool,
+            target::ScalarInterpolation,
+            pid_params::VectorInterpolation,
+        }
+    }
 end
 
 """

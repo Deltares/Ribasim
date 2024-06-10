@@ -800,3 +800,17 @@ Convert a truth state in terms of a BitVector of Vector{Bool} into a string of '
 function convert_truth_state(boolean_vector)::String
     String(UInt8.(ifelse.(boolean_vector, 'T', 'F')))
 end
+
+"""
+Given the type of a node struct, e.g. Pump, get the type of the values of the
+control_mapping dict if this field exists.
+"""
+function get_control_state_type(node_type::Type)::Type
+    control_mapping_index = findfirst(==(:control_mapping), fieldnames(node_type))
+    if !isnothing(control_mapping_index)
+        control_mapping_type = fieldtypes(node_type)[control_mapping_index]
+        control_state_type = eltype(fieldtypes(control_mapping_type)[3])
+        return control_state_type
+    end
+    return Nothing
+end

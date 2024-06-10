@@ -10,7 +10,7 @@ than one row in a table, as is the case for TabulatedRatingCurve.
 function parse_static_and_time(
     db::DB,
     config::Config,
-    nodetype::String;
+    node_type::Type;
     static::Union{StructVector, Nothing} = nothing,
     time::Union{StructVector, Nothing} = nothing,
     defaults::NamedTuple = (; active = true),
@@ -32,7 +32,8 @@ function parse_static_and_time(
     # of the current type
     vals_out = []
 
-    node_ids = NodeID.(nodetype, get_ids(db, nodetype))
+    node_type_string = split(string(node_type), '.')[end]
+    node_ids = NodeID.(node_type_string, get_ids(db, node_type_string))
     n_nodes = length(node_ids)
 
     # Initialize the vectors for the output
@@ -59,9 +60,10 @@ function parse_static_and_time(
     push!(keys_out, :node_id)
     push!(vals_out, node_ids)
 
-    # The control mapping is a dictionary with keys (node_id, control_state) to a ParameterUpdate instance
+    # The control mapping is a dictionary with keys (node_id, control_state) to a named tuple of parameter values
     # parameter values to be assigned to the node with this node_id in the case of this control_state
-    control_mapping = Dict{Tuple{NodeID, String}, ParameterUpdate}()
+    control_state_type = get_control_state_type(node_type)
+    control_mapping = Dict{Tuple{NodeID, String}, control_state_type}()
 
     push!(keys_out, :control_mapping)
     push!(vals_out, control_mapping)
@@ -78,7 +80,7 @@ function parse_static_and_time(
         static_node_id_vec = NodeID[]
         static_node_ids = Set{NodeID}()
     else
-        static_node_id_vec = NodeID.(nodetype, static.node_id)
+        static_node_id_vec = NodeID.(node_type_string, static.node_id)
         static_node_ids = Set(static_node_id_vec)
     end
 
@@ -87,7 +89,7 @@ function parse_static_and_time(
         time_node_id_vec = NodeID[]
         time_node_ids = Set{NodeID}()
     else
-        time_node_id_vec = NodeID.(nodetype, time.node_id)
+        time_node_id_vec = NodeID.(node_type_string, time.node_id)
         time_node_ids = Set(time_node_id_vec)
     end
 
@@ -127,10 +129,24 @@ function parse_static_and_time(
                 end
                 # Add the parameter values to the control mapping
                 control_state_key = coalesce(control_state, "")
-                nt = NamedTuple{Tuple(parameter_names)}(Tuple(parameter_values))
-                node_idx = searchsortedfirst(node_ids, node_id)
-                control_mapping[(node_id, control_state_key)] =
-                    ParameterUpdate(NodeType.T(nodetype), node_idx; nt...)
+                controllable_mask =
+                    collect(parameter_names .∈ Ref(fieldnames(control_state_type)))
+                if any(controllable_mask)
+                    node_idx = searchsortedfirst(node_ids, node_id)
+                    controllable_parameter_names =
+                        collect(parameter_names[controllable_mask])
+                    controllable_parameter_values =
+                        collect(parameter_values[controllable_mask])
+                    pushfirst!(controllable_parameter_names, :node_idx)
+                    pushfirst!(
+                        controllable_parameter_values,
+                        searchsortedfirst(node_ids, node_id),
+                    )
+                    control_mapping[(node_id, control_state_key)] =
+                        NamedTuple{Tuple(controllable_parameter_names)}(
+                            Tuple(controllable_parameter_values),
+                        )
+                end
             end
         elseif node_id in time_node_ids
             # TODO replace (time, node_id) order by (node_id, time)
@@ -232,62 +248,11 @@ function initialize_allocation!(p::Parameters, config::Config)::Nothing
     return nothing
 end
 
-"""
-Constructor for the ParameterUpdate object. Scalar Float64 fields have default value
-NaN and ScalarInterpolation values have default value LinearInterpolation(Float64[], Float64[])
-(an empty interpolation object). These default values get ignored in DiscreteControl.
-Non-supported key word inputs do not raise an error but get ignored via kwargs....
-"""
-function ParameterUpdate(
-    node_type::NodeType.T,
-    node_idx::Int;
-    active::Bool = true,
-    flow_rate = NaN,
-    min_crest_level::Float64 = NaN,
-    resistance::Float64 = NaN,
-    manning_n::Float64 = NaN,
-    fraction::Float64 = NaN,
-    table::ScalarInterpolation = LinearInterpolation(Float64[], Float64[]),
-    target::ScalarInterpolation = LinearInterpolation(Float64[], Float64[]),
-    proportional::ScalarInterpolation = LinearInterpolation(Float64[], Float64[]),
-    integral::ScalarInterpolation = LinearInterpolation(Float64[], Float64[]),
-    derivative::ScalarInterpolation = LinearInterpolation(Float64[], Float64[]),
-    pid_params::VectorInterpolation = LinearInterpolation(Vector{Float64}[], Float64[]),
-    kwargs...,
-)::ParameterUpdate
-    # This needs a special case because flow_rate is a Float64 for Pump, Outlet
-    # but a ScalarInterpolation for FlowBoundary
-    if node_type == NodeType.FlowBoundary
-        flow_rate_scalar = NaN
-        flow_rate_itp = flow_rate
-    else
-        flow_rate_scalar = flow_rate
-        flow_rate_itp = LinearInterpolation(Float64[], Float64[])
-    end
-    return ParameterUpdate(
-        node_type,
-        node_idx,
-        active,
-        flow_rate_scalar,
-        flow_rate_itp,
-        min_crest_level,
-        resistance,
-        manning_n,
-        fraction,
-        table,
-        target,
-        proportional,
-        integral,
-        derivative,
-        pid_params,
-    )
-end
-
 function LinearResistance(db::DB, config::Config, graph::MetaGraph)::LinearResistance
     static = load_structvector(db, config, LinearResistanceStaticV1)
     defaults = (; max_flow_rate = Inf, active = true)
     parsed_parameters, valid =
-        parse_static_and_time(db, config, "LinearResistance"; static, defaults)
+        parse_static_and_time(db, config, LinearResistance; static, defaults)
 
     if !valid
         error(
@@ -326,11 +291,14 @@ function TabulatedRatingCurve(
     end
 
     interpolations = ScalarInterpolation[]
-    control_mapping = Dict{Tuple{NodeID, String}, ParameterUpdate}()
+    control_mapping = Dict{
+        Tuple{NodeID, String},
+        @NamedTuple{node_idx::Int, active::Bool, table::ScalarInterpolation}
+    }()
     active = BitVector()
     errors = false
 
-    for node_id in node_ids
+    for (i, node_id) in enumerate(node_ids)
         if node_id in static_node_ids
             # Loop over all static rating curves (groups) with this node_id.
             # If it has a control_state add it to control_mapping.
@@ -353,12 +321,10 @@ function TabulatedRatingCurve(
                 end
                 interpolation = qh_interpolation(node_id, table)
                 if !ismissing(control_state)
-                    nt = (; table = interpolation, active = is_active)
-                    node_idx = searchsortedfirst(node_ids, node_id)
                     control_mapping[(
                         NodeID(NodeType.TabulatedRatingCurve, node_id),
                         control_state,
-                    )] = ParameterUpdate(NodeType.TabulatedRatingCurve, node_idx; nt...)
+                    )] = (; node_idx = i, active = is_active, table = interpolation)
                 end
             end
             push!(interpolations, interpolation)
@@ -383,7 +349,6 @@ function TabulatedRatingCurve(
     if errors
         error("Errors occurred when parsing TabulatedRatingCurve data.")
     end
-
     return TabulatedRatingCurve(
         node_ids,
         inflow_edge.(Ref(graph), node_ids),
@@ -402,8 +367,7 @@ function ManningResistance(
     basin::Basin,
 )::ManningResistance
     static = load_structvector(db, config, ManningResistanceStaticV1)
-    parsed_parameters, valid =
-        parse_static_and_time(db, config, "ManningResistance"; static)
+    parsed_parameters, valid = parse_static_and_time(db, config, ManningResistance; static)
 
     if !valid
         error("Errors occurred when parsing ManningResistance data.")
@@ -430,7 +394,7 @@ end
 
 function FractionalFlow(db::DB, config::Config, graph::MetaGraph)::FractionalFlow
     static = load_structvector(db, config, FractionalFlowStaticV1)
-    parsed_parameters, valid = parse_static_and_time(db, config, "FractionalFlow"; static)
+    parsed_parameters, valid = parse_static_and_time(db, config, FractionalFlow; static)
 
     if !valid
         error("Errors occurred when parsing FractionalFlow data.")
@@ -458,14 +422,8 @@ function LevelBoundary(db::DB, config::Config)::LevelBoundary
     end
 
     time_interpolatables = [:level]
-    parsed_parameters, valid = parse_static_and_time(
-        db,
-        config,
-        "LevelBoundary";
-        static,
-        time,
-        time_interpolatables,
-    )
+    parsed_parameters, valid =
+        parse_static_and_time(db, config, LevelBoundary; static, time, time_interpolatables)
 
     if !valid
         error("Errors occurred when parsing LevelBoundary data.")
@@ -485,14 +443,8 @@ function FlowBoundary(db::DB, config::Config)::FlowBoundary
     end
 
     time_interpolatables = [:flow_rate]
-    parsed_parameters, valid = parse_static_and_time(
-        db,
-        config,
-        "FlowBoundary";
-        static,
-        time,
-        time_interpolatables,
-    )
+    parsed_parameters, valid =
+        parse_static_and_time(db, config, FlowBoundary; static, time, time_interpolatables)
 
     for itp in parsed_parameters.flow_rate
         if any(itp.u .< 0.0)
@@ -513,7 +465,7 @@ end
 function Pump(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{Int})::Pump
     static = load_structvector(db, config, PumpStaticV1)
     defaults = (; min_flow_rate = 0.0, max_flow_rate = Inf, active = true)
-    parsed_parameters, valid = parse_static_and_time(db, config, "Pump"; static, defaults)
+    parsed_parameters, valid = parse_static_and_time(db, config, Pump; static, defaults)
     is_pid_controlled = falses(length(NodeID.(NodeType.Pump, parsed_parameters.node_id)))
 
     if !valid
@@ -546,7 +498,7 @@ function Outlet(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{In
     static = load_structvector(db, config, OutletStaticV1)
     defaults =
         (; min_flow_rate = 0.0, max_flow_rate = Inf, min_crest_level = -Inf, active = true)
-    parsed_parameters, valid = parse_static_and_time(db, config, "Outlet"; static, defaults)
+    parsed_parameters, valid = parse_static_and_time(db, config, Outlet; static, defaults)
     is_pid_controlled = falses(length(NodeID.(NodeType.Outlet, parsed_parameters.node_id)))
 
     if !valid
@@ -788,7 +740,7 @@ function PidControl(db::DB, config::Config, chunk_sizes::Vector{Int})::PidContro
 
     time_interpolatables = [:target, :proportional, :integral, :derivative]
     parsed_parameters, valid =
-        parse_static_and_time(db, config, "PidControl"; static, time, time_interpolatables)
+        parse_static_and_time(db, config, PidControl; static, time, time_interpolatables)
 
     if !valid
         error("Errors occurred when parsing PidControl data.")
@@ -1000,7 +952,7 @@ function LevelDemand(db::DB, config::Config)::LevelDemand
     parsed_parameters, valid = parse_static_and_time(
         db,
         config,
-        "LevelDemand";
+        LevelDemand;
         static,
         time,
         time_interpolatables = [:min_level, :max_level],
@@ -1026,7 +978,7 @@ function FlowDemand(db::DB, config::Config)::FlowDemand
     parsed_parameters, valid = parse_static_and_time(
         db,
         config,
-        "FlowDemand";
+        FlowDemand;
         static,
         time,
         time_interpolatables = [:demand],

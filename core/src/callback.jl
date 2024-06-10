@@ -429,15 +429,10 @@ function discrete_control_parameter_update(
     control_state::String,
 )::Nothing
     parameter_update = pump.control_mapping[(node_id, control_state)]
-    (; node_idx, active, flow_rate_scalar) = parameter_update
+    (; node_idx, active, flow_rate) = parameter_update
     pump.active[node_idx] = active
-    if !isnan(flow_rate_scalar)
-        get_tmp(pump.flow_rate, 0)[node_idx] = clamp(
-            flow_rate_scalar,
-            pump.min_flow_rate[node_idx],
-            pump.max_flow_rate[node_idx],
-        )
-    end
+    get_tmp(pump.flow_rate, 0)[node_idx] =
+        clamp(flow_rate, pump.min_flow_rate[node_idx], pump.max_flow_rate[node_idx])
     return nothing
 end
 
@@ -447,15 +442,10 @@ function discrete_control_parameter_update(
     control_state::String,
 )::Nothing
     parameter_update = outlet.control_mapping[(node_id, control_state)]
-    (; node_idx, active, flow_rate_scalar) = parameter_update
+    (; node_idx, active, flow_rate) = parameter_update
     outlet.active[node_idx] = active
-    if !isnan(flow_rate_scalar)
-        get_tmp(outlet.flow_rate, 0)[node_idx] = clamp(
-            flow_rate_scalar,
-            outlet.min_flow_rate[node_idx],
-            outlet.max_flow_rate[node_idx],
-        )
-    end
+    get_tmp(outlet.flow_rate, 0)[node_idx] =
+        clamp(flow_rate, outlet.min_flow_rate[node_idx], outlet.max_flow_rate[node_idx])
     return nothing
 end
 
@@ -514,9 +504,7 @@ function discrete_control_parameter_update(
     parameter_update = linear_resistance.control_mapping[(node_id, control_state)]
     (; node_idx, active, resistance) = parameter_update
     linear_resistance.active[node_idx] = active
-    if !isnan(resistance)
-        linear_resistance.resistance[node_idx] = resistance
-    end
+    linear_resistance.resistance[node_idx] = resistance
     return nothing
 end
 
@@ -528,9 +516,7 @@ function discrete_control_parameter_update(
     parameter_update = manning_resistance.control_mapping[(node_id, control_state)]
     (; node_idx, active, manning_n) = parameter_update
     manning_resistance.active[node_idx] = active
-    if !isnan(manning_n)
-        manning_resistance.manning_n[node_idx] = manning_n
-    end
+    manning_resistance.manning_n[node_idx] = manning_n
     return nothing
 end
 

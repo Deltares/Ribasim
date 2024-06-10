@@ -11,8 +11,8 @@
 
     # Control input
     pump_control_mapping = p.pump.control_mapping
-    @test pump_control_mapping[(NodeID(:Pump, 4), "off")].flow_rate_scalar == 0
-    @test pump_control_mapping[(NodeID(:Pump, 4), "on")].flow_rate_scalar == 1.0e-5
+    @test pump_control_mapping[(NodeID(:Pump, 4), "off")].flow_rate == 0
+    @test pump_control_mapping[(NodeID(:Pump, 4), "on")].flow_rate == 1.0e-5
 
     logic_mapping::Dict{Tuple{NodeID, Vector{Bool}}, String} = Dict(
         (NodeID(:DiscreteControl, 5), [true, true]) => "on",
