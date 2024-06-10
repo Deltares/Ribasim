@@ -1,3 +1,0 @@
-# nodes.flow_boundary { #ribasim.nodes.flow_boundary }
-
-`nodes.flow_boundary`

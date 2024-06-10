@@ -1,3 +1,0 @@
-# nodes.terminal { #ribasim.nodes.terminal }
-
-`nodes.terminal`

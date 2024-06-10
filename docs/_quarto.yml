@@ -87,7 +87,6 @@ website:
             - reference/node/terminal.qmd
             - reference/node/discrete-control.qmd
             - reference/node/pid-control.qmd
-        - reference/reference/index.qmd
 
 format:
   html:

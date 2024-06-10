@@ -1,3 +1,0 @@
-# nodes.pid_control { #ribasim.nodes.pid_control }
-
-`nodes.pid_control`

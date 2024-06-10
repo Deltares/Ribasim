@@ -30,7 +30,9 @@ Ribasim is supported and developed by:
 :::
 
 ::: {#second-column}
-![](img/hws.png){fig-align="right"}
+<img alt="Ribasim HWS model"
+    src="https://github.com/Deltares/Ribasim/assets/8655030/70c3ee66-75a8-48a7-8675-35e2dc6d63eb"
+>
 :::
 
 ::::

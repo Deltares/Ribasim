@@ -1,3 +1,0 @@
-# nodes.level_demand { #ribasim.nodes.level_demand }
-
-`nodes.level_demand`

@@ -1,3 +1,0 @@
-# nodes.tabulated_rating_curve { #ribasim.nodes.tabulated_rating_curve }
-
-`nodes.tabulated_rating_curve`

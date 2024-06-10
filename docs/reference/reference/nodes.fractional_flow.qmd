@@ -1,3 +1,0 @@
-# nodes.fractional_flow { #ribasim.nodes.fractional_flow }
-
-`nodes.fractional_flow`

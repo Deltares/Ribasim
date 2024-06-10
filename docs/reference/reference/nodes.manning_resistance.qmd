@@ -1,3 +1,0 @@
-# nodes.manning_resistance { #ribasim.nodes.manning_resistance }
-
-`nodes.manning_resistance`

@@ -1,5 +1,0 @@
-# EdgeTable { #ribasim.EdgeTable }
-
-`EdgeTable()`
-
-Defines the connections between nodes.

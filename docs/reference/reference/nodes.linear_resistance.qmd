@@ -1,3 +1,0 @@
-# nodes.linear_resistance { #ribasim.nodes.linear_resistance }
-
-`nodes.linear_resistance`
