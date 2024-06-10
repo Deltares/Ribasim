@@ -456,6 +456,22 @@ function discrete_control_parameter_update!(
     return nothing
 end
 
+function discrete_control_parameter_update!(
+    node::AbstractParameterNode,
+    node_id::NodeID,
+    control_state::String,
+)::Nothing
+    new_state = node.control_mapping[(node_id, control_state)]
+    (; node_idx) = new_state
+    for (field, value) in zip(keys(new_state), new_state)
+        if field == :node_idx
+            continue
+        end
+        vec = get_tmp(getfield(node, field), 0)
+        vec[node_idx] = value
+    end
+end
+
 function set_control_params!(p::Parameters, node_id::NodeID, control_state::String)::Nothing
 
     # Check node type here to avoid runtime dispatch on the node type
