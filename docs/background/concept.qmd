@@ -1,0 +1,88 @@
+---
+title: Introduction
+---
+
+# Introduction {#sec-introduction}
+
+Decision makers need to balance the supply and demand of water at the river basin scale, under increasing environmental pressure.
+Ribasim allows users to model basins under current and changing conditions to evaluate and design and management of the water system.
+It is available as free and open source software under the MIT license.
+Besides a model simulation core, Ribasim also includes tooling to assist in building models from basic datasets and visualize results.
+The model and its results provides insights to decision makers, enabling them to build consensus amongst water users and make informed decisions about how to manage water resources optimally.
+
+The model concept of Ribasim is composed of multiple layers:
+- a physical layer representing water bodies and associated infrastructure as well as abstractions,
+- a rule-based control layer to manage the infrastructure, and
+- (optionally) a priority-based allocation layer to take centralized decisions on user abstractions.
+- (optionally) a coupling layer to exchange fluxes and heads with other kernels
+
+Typically hydrological processes on land will be represented in detail by other models which can be coupled (online) to Ribasim with the help of iMOD Coupler.
+Currently, an online coupling with MODFLOW 6 (groundwater) and with Metaswap + MODFLOW 6 (unsaturated zone + groundwater) is available.
+The corresponding documentation can be found within the [iMOD Suite Documentation](https://deltares.github.io/iMOD-Documentation/coupler.html).
+
+This version of Ribasim is the follow up of the legacy Fortran kernel of Ribasim (version 7) applied world wide, the Fortran kernel SIMRES applied in the Netherlands, and the surface water models Distribution Model and Mozart of the Dutch National Hydrological Instrument.
+
+# Concept {#sec-concept}
+
+## Physical layer {#sec-physical}
+
+To represent the physical characteristics of the water system in an area, Ribasim allows you to divide the area into a network of connected representative elementary watersheds ([Reggiani, Sivapalan, and Majid Hassanizadeh 1998](https://deltares.github.io/Ribasim/#ref-REGGIANI1998367)).
+Within Ribasim, these elements are called basins, which are essentially buckets or reservoirs holding an aggregated volume of water bodies in an area.
+Basins are chained in a graph with connector nodes determining the exchange of water between the basins.
+These connector nodes can represent open water connections (e.g. bifurcations or resistance in a free flowing open water channel) or infrastructure elements such as pumps, gates or weirs.
+An overview of node types and associated data inputs is provided on the [usage page](usage.qmd), while the associated mathematical formations are described on the [equations page](equations.qmd).
+
+## Control layer {#sec-control}
+
+Infrastructure elements are often controlled by humans to implement a certain water management strategy.
+Ribasim allows the configuration of conditional rules to influence the exchange of water between basins, either by setting inflow or outflow, or by controlling a water level.
+Control rules evaluate one or multiple conditions to change a parameter setting of an infrastructure element when the conditional criteria are met.
+Conditions can be either calculated values within the network as well as boundary conditions or (todo) external observations, i.e. observation values external to the model.
+An overview of node types and associated data inputs is provided on the [usage page](usage.qmd), while the associated mathematical formations are described on the [equations page](equations.qmd).
+
+## Allocation layer {#sec-allocation}
+
+Ribasim allows water users (water demands) to abstract water from the basins (i.e. from the physical layer) unless the water level drops below a minimum level.
+Under dry conditions, water managers may want to prioritize some abstractions over other abstractions.
+The Ribasim allocation layer can take care of this prioritization by reducing the abstraction rates of lower-priority demands to ensure that sufficient water remains available in the system for the higher-priority demands.
+The associated mathematical formulations are described on the [allocation page](allocation.qmd).
+In case of large networks, a subdivision in a main network with subnetworks is recommended.
+For more details see the explanation of the [simulation loop](core.qmd#sec-nested-allocation).
+
+The layers and the main components and dataflows between the layers are shown in the next figure:
+
+```{mermaid}
+flowchart TB
+physical:::layer
+rbc:::layer
+allocation:::layer
+user_demand
+basin
+connector[basin connector]
+control[control rules]
+condition
+alloc[global allocation]
+
+subgraph physical[physical layer]
+    user_demand-->|abstraction| basin
+    basin<-->|flow| connector
+end
+
+subgraph rbc[rule based control layer]
+   condition --> control
+end
+
+subgraph allocation[allocation layer]
+    alloc
+end
+
+user_demand-->|request demand| alloc
+alloc-->|assign allocation| user_demand
+basin-->|volume| alloc
+basin --> |volume or level| condition
+alloc --> |optional flow update| control
+control --> |action| connector
+
+%% class definitions for C4 model
+classDef layer fill:transparent,stroke-dasharray:5 5
+```

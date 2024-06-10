@@ -19,7 +19,7 @@ flowchart LR
 
 ### Setup
 
-Delwaq can calculate the concentration of substances in [Basin](node/basin.qmd) nodes over time, based on initial concentrations, and of [FlowBoundary](node/flow-boundary.qmd) nodes. Ribasim exposes the `Basin / concentration`, `Basin / concentration_state`, `FlowBoundary / concentration`, and `LevelBoundary / concentration` tables to setup these substances and concentrations.
+Delwaq can calculate the concentration of substances in [Basin](../reference/node/basin.qmd) nodes over time, based on initial concentrations, and of [FlowBoundary](../reference/node/flow-boundary.qmd) nodes. Ribasim exposes the `Basin / concentration`, `Basin / concentration_state`, `FlowBoundary / concentration`, and `LevelBoundary / concentration` tables to setup these substances and concentrations.
 
 When a Ribasim model ran with the above tables, one can use the utilities in the `coupling/delwaq` folder to generate the input required for Delwaq to run, as well as to parse the output from Delwaq into a Ribasim compatible format.
 For more information see the `README.md` in the same folder.
