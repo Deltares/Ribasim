@@ -176,7 +176,7 @@ function Model(config::Config)::Model
     end
 
     model = Model(integrator, config, saved)
-    write_results(model)  # check permissions
+    write_results(model)  # check whether we can write results to file
     return model
 end
 
