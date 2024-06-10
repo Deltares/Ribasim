@@ -9,22 +9,17 @@
     @test convert(Int32, id) === Int32(2)
 end
 
-@testitem "profile_storage" begin
-    @test Ribasim.profile_storage([0.0, 1.0], [0.0, 1000.0]) == [0.0, 500.0]
-    @test Ribasim.profile_storage([6.0, 7.0], [0.0, 1000.0]) == [0.0, 500.0]
-    @test Ribasim.profile_storage([6.0, 7.0, 9.0], [0.0, 1000.0, 1000.0]) ==
-          [0.0, 500.0, 2500.0]
-end
-
 @testitem "bottom" begin
     using StructArrays: StructVector
     using Ribasim: NodeID
+    using DataInterpolations: LinearInterpolation, integral
+    using SmoothInterpolation: invert_integral
 
     # create two basins with different bottoms/levels
     area = [[0.01, 1.0], [0.01, 1.0]]
     level = [[0.0, 1.0], [4.0, 5.0]]
-    darea = zeros(2)
-    storage = Ribasim.profile_storage.(level, area)
+    level_to_area = LinearInterpolation.(area, level)
+    storage_to_level = invert_integral.(level_to_area)
     demand = zeros(2)
     basin = Ribasim.Basin(
         NodeID.(:Basin, [5, 7], [1, 2]),
@@ -36,15 +31,14 @@ end
         [2.0, 3.0],
         [2.0, 3.0],
         [2.0, 3.0],
-        darea,
-        area,
-        level,
-        storage,
+        [2.0, 3.0],
+        storage_to_level,
+        level_to_area,
         demand,
         StructVector{Ribasim.BasinTimeV1}(undef, 0),
     )
 
-    @test basin.level[2][1] === 4.0
+    @test Ribasim.basin_levels(basin, 2)[1] === 4.0
     @test Ribasim.basin_bottom(basin, NodeID(:Basin, 5, 1))[2] === 0.0
     @test Ribasim.basin_bottom(basin, NodeID(:Basin, 7, 2))[2] === 4.0
     @test !Ribasim.basin_bottom(basin, NodeID(:Terminal, 6, 1))[1]
@@ -54,6 +48,8 @@ end
     using StructArrays: StructVector
     using Logging
     using Ribasim: NodeID
+    using DataInterpolations: LinearInterpolation
+    using SmoothInterpolation: invert_integral
 
     level = [
         0.0,
@@ -79,7 +75,8 @@ end
         0.10659325339342585,
         1.1,
     ]
-    storage = Ribasim.profile_storage(level, area)
+    level_to_area = LinearInterpolation(area, level; extrapolate = true)
+    storage_to_level = invert_integral(level_to_area)
     demand = zeros(1)
     basin = Ribasim.Basin(
         NodeID.(:Basin, [1], 1),
@@ -92,9 +89,8 @@ end
         zeros(1),
         zeros(1),
         zeros(1),
-        [area],
-        [level],
-        [storage],
+        [storage_to_level],
+        [level_to_area],
         demand,
         StructVector{Ribasim.BasinTimeV1}(undef, 0),
     )
@@ -110,7 +106,7 @@ end
           "The initial level (-1.0) of Basin #1 is below the bottom (0.0)."
 
     # Converting from storages to levels and back should return the same storages
-    storages = range(0.0, 2 * storage[end], 50)
+    storages = range(0.0, 2 * storage_to_level.t[end], 50)
     levels = [Ribasim.get_area_and_level(basin, 1, s)[2] for s in storages]
     storages_ = [Ribasim.get_storage_from_level(basin, 1, l) for l in levels]
     @test storages ≈ storages_

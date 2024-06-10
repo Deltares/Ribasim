@@ -68,7 +68,8 @@ end
         ),
     )
 
-    fixed_area = Dict(id.value => basin.area[id.idx][end] for id in basin.node_id)
+    fixed_area =
+        Dict(id.value => Ribasim.basin_areas(basin, id.idx)[end] for id in basin.node_id)
     transform!(time_table, :node_id => ByRow(id -> fixed_area[id]) => :fixed_area)
     @test all(
         basin_table.precipitation .≈ time_table.fixed_area .* time_table.precipitation,

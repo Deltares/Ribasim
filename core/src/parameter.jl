@@ -236,9 +236,10 @@ struct Basin{T, C, V1, V2, V3} <: AbstractParameterNode
     current_level::T
     current_area::T
     # Discrete values for interpolation
-    area::Vector{Vector{Float64}}
-    level::Vector{Vector{Float64}}
-    storage::Vector{Vector{Float64}}
+    storage_to_level::Vector{
+        LinearInterpolationIntInv{Vector{Float64}, Vector{Float64}, Float64},
+    }
+    level_to_area::Vector{ScalarInterpolation}
     # Demands for allocation if applicable
     demand::Vector{Float64}
     # Data source for parameter updates

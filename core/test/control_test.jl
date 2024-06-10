@@ -124,7 +124,7 @@ end
     K_i = pid_control.integral[2](0)
     level_demand = pid_control.target[2](0)
 
-    A = basin.area[1][1]
+    A = Ribasim.basin_areas(basin, 1)[1]
     initial_level = level[1]
     flow_rate = flow_boundary.flow_rate[1].u[1]
     du0 = flow_rate + K_p * (level_demand - initial_level)

@@ -312,7 +312,11 @@ function TabulatedRatingCurve(
                 if !valid_tabulated_rating_curve(node_id, table)
                     errors = true
                 end
-                interpolation = qh_interpolation(node_id, table)
+                interpolation = try
+                    qh_interpolation(node_id, table)
+                catch
+                    LinearInterpolation(Float64[], Float64[])
+                end
                 if !ismissing(control_state)
                     control_mapping[(
                         NodeID(NodeType.TabulatedRatingCurve, node_id, node_id.idx),
@@ -555,7 +559,7 @@ function Basin(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{Int
     infiltration = zeros(n)
     table = (; precipitation, potential_evaporation, drainage, infiltration)
 
-    area, level, storage = create_storage_tables(db, config)
+    area, level = create_storage_tables(db, config)
 
     # both static and time are optional, but we need fallback defaults
     static = load_structvector(db, config, BasinStaticV1)
@@ -592,6 +596,10 @@ function Basin(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{Int
         error("Invalid Basin / profile table.")
     end
 
+    level_to_area = SmoothedLinearInterpolation.(area, level; extrapolate = true, λ = 0.01)
+    level_to_area = LinearInterpolation.(level_to_area)
+    storage_to_level = invert_integral.(level_to_area)
+
     return Basin(
         node_id,
         [collect(inflow_ids(graph, id)) for id in node_id],
@@ -603,9 +611,8 @@ function Basin(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{Int
         vertical_flux_bmi,
         current_level,
         current_area,
-        area,
-        level,
-        storage,
+        storage_to_level,
+        level_to_area,
         demand,
         time,
     )
@@ -1290,19 +1297,16 @@ end
 function create_storage_tables(
     db::DB,
     config::Config,
-)::Tuple{Vector{Vector{Float64}}, Vector{Vector{Float64}}, Vector{Vector{Float64}}}
+)::Tuple{Vector{Vector{Float64}}, Vector{Vector{Float64}}}
     profiles = load_structvector(db, config, BasinProfileV1)
     area = Vector{Vector{Float64}}()
     level = Vector{Vector{Float64}}()
-    storage = Vector{Vector{Float64}}()
 
     for group in IterTools.groupby(row -> row.node_id, profiles)
         group_area = getproperty.(group, :area)
         group_level = getproperty.(group, :level)
-        group_storage = profile_storage(group_level, group_area)
         push!(area, group_area)
         push!(level, group_level)
-        push!(storage, group_storage)
     end
-    return area, level, storage
+    return area, level
 end
