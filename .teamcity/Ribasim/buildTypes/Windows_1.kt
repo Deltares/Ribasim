@@ -16,6 +16,6 @@ object Windows_1 : Template({
     }
 
     requirements {
-        contains("teamcity.agent.jvm.os.name", "Ribasim_Windows", "RQ_422")
+        contains("teamcity.agent.jvm.os.name", "Windows", "RQ_422")
     }
 })

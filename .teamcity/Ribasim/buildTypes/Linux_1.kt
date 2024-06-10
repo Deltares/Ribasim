@@ -14,6 +14,6 @@ object Linux_1 : Template({
     }
 
     requirements {
-        equals("teamcity.agent.jvm.os.name", "Ribasim_Linux", "RQ_418")
+        equals("teamcity.agent.jvm.os.name", "Linux", "RQ_418")
     }
 })
