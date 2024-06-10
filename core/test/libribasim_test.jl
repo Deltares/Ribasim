@@ -6,7 +6,7 @@
     var_name = "basin.storage"
     type = ones(UInt8, 8)
 
-    GC.@preserve time var_name value type toml_path begin
+    GC.@preserve time var_name type toml_path begin
         var_name_ptr = Base.unsafe_convert(Cstring, var_name)
         time_ptr = pointer(time)
         type_ptr = Cstring(pointer(type))
