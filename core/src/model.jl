@@ -39,7 +39,8 @@ function Model(config::Config)::Model
     alg = algorithm(config.solver)
     db_path = input_path(config, config.database)
     if !isfile(db_path)
-        throw(SystemError("Database file not found: $db_path"))
+        @error "Database file not found" db_path
+        error("Database file not found")
     end
 
     # Setup timing logging
@@ -174,7 +175,9 @@ function Model(config::Config)::Model
         set_initial_allocation_mean_flows!(integrator)
     end
 
-    return Model(integrator, config, saved)
+    model = Model(integrator, config, saved)
+    write_results(model)  # check whether we can write results to file
+    return model
 end
 
 "Get all saved times in seconds since start"
