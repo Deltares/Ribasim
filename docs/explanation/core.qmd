@@ -11,7 +11,7 @@ The theory is described on the [equations](equations.qmd) page, and more in-dept
 The core is implemented in the [Julia programming language](https://julialang.org/), and
 can be found in the [Ribasim repository](https://github.com/Deltares/Ribasim) under the
 `core/` folder. For developers we also advise to read the
-[developer documentation](../contribute/core.qmd). Information on coupling can be found [here](coupling.qmd).
+[developer documentation](../dev/core.qmd). Information on coupling can be found [here](coupling.qmd).
 
 An overview of all components is given in the [Get Started](../tutorial/index.qmd#sec-components) section.
 

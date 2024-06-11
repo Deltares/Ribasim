@@ -20,6 +20,8 @@ website:
       - text: "Changelog"
         file: changelog.qmd
     right:
+      - text: "Dev docs"
+        file: dev/index.qmd
       - icon: github
         href: https://github.com/Deltares/Ribasim
         aria-label: GitHub
@@ -33,18 +35,9 @@ website:
     - title: "How-to guides"
       contents:
         - guide/index.qmd
-        - section: "For end-users"
-          contents:
-          - guide/examples.ipynb
-          - guide/python.qmd
-          - guide/coupling.qmd
-        - section: "For developers"
-          contents:
-          - guide/core.qmd
-          - guide/qgis.qmd
-          - dev/python.qmd
-          - guide/addnode.qmd
-          - guide/release.qmd
+        - guide/examples.ipynb
+        - guide/python.qmd
+        - guide/coupling.qmd
 
     - title: "Explanation"
       contents:
@@ -60,7 +53,6 @@ website:
           - explanation/core.qmd
           - explanation/validation.qmd
           - explanation/allocation.qmd
-          - explanation/ci.qmd
 
     - title: "Reference"
       contents:
@@ -83,6 +75,17 @@ website:
             - reference/node/terminal.qmd
             - reference/node/discrete-control.qmd
             - reference/node/pid-control.qmd
+
+    - title: "Dev docs"
+      contents:
+        - dev/index.qmd
+        - dev/contributing.qmd
+        - dev/core.qmd
+        - dev/addnode.qmd
+        - dev/python.qmd
+        - dev/qgis.qmd
+        - dev/ci.qmd
+        - dev/release.qmd
 
 format:
   html:
