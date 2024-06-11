@@ -553,8 +553,7 @@ Check:
 """
 function valid_discrete_control(p::Parameters, config::Config)::Bool
     (; discrete_control, graph) = p
-    (; node_id, logic_mapping, look_ahead, variable, listen_node_id, greater_than) =
-        discrete_control
+    (; node_id, logic_mapping, variable) = discrete_control
 
     t_end = seconds_since(config.endtime, config.starttime)
     errors = false
@@ -567,7 +566,8 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
         truth_states_wrong_length = Vector{Bool}[]
 
         # The number of conditions of this DiscreteControl node
-        n_conditions = sum(length(greater_than[i]) for i in searchsorted(node_id, id))
+        n_conditions =
+            sum(length(variable[i].greater_than) for i in searchsorted(node_id, id))
 
         for (key, control_state) in logic_mapping
             id_, truth_state = key
@@ -614,9 +614,9 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
             end
         end
     end
-    for (look_aheads, variables, listen_node_ids) in
-        zip(look_ahead, variable, listen_node_id)
-        for (Δt, var, node_id) in zip(look_aheads, variables, listen_node_ids)
+    for compound_variable in variable
+        (; look_ahead, variable, listen_node_id) = compound_variable
+        for (Δt, var, node_id) in zip(look_ahead, variable, listen_node_id)
             if !iszero(Δt)
                 node_type = node_id.type
                 if node_type ∉ [NodeType.FlowBoundary, NodeType.LevelBoundary]

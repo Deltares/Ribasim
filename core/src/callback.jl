@@ -58,8 +58,7 @@ function create_callbacks(
 
     saved = SavedResults(saved_flow, saved_vertical_flux, saved_subgrid_level)
 
-    n_conditions = sum(length(vec) for vec in discrete_control.greater_than; init = 0)
-    if n_conditions > 0
+    if !isempty(discrete_control.logic_mapping)
         discrete_control_cb = FunctionCallingCallback(apply_discrete_control!)
         push!(callbacks, discrete_control_cb)
     end
@@ -200,48 +199,111 @@ end
 function apply_discrete_control!(u, t, integrator)::Nothing
     (; p) = integrator
     (; discrete_control) = p
-    (; node_id_unique, truth_state) = discrete_control
+    (; node_id, node_id_unique) = discrete_control
 
-    discrete_control_condition!(u, t, integrator)
+    variable_idx = 1
+    n_variables = length(node_id)
 
-    # For every discrete control node see whether it changes control state
-    for (id, truth_state_) in zip(node_id_unique, truth_state)
-        discrete_control_affect!(integrator, id, truth_state_; force_check = (t == 0))
+    # Loop over the discrete control nodes
+    for (id, truth_state) in zip(node_id_unique, discrete_control.truth_state)
+
+        # Whether a change in truth state was detected, and thus whether
+        # a change in control state is possible
+        truth_state_change = false
+
+        # As the truth state of this node is being updated for the different variables
+        # it listens to, this is the first index of the truth values for the current variable
+        truth_value_variable_idx = 1
+
+        # Loop over the variables listened to by this discrete control node
+        while variable_idx <= n_variables && node_id[variable_idx] == id
+
+            # Compute the value of the current variable
+            value = 0.0
+            compound_variable = discrete_control.variable[variable_idx]
+            for (listen_node_id, variable, weight, look_ahead) in zip(
+                compound_variable.listen_node_id,
+                compound_variable.variable,
+                compound_variable.weight,
+                compound_variable.look_ahead,
+            )
+                value += weight * get_value(p, listen_node_id, variable, look_ahead, u, t)
+            end
+
+            # The thresholds the value of this variable is being compared with
+            greater_thans = compound_variable.greater_than
+            n_greater_than = length(greater_thans)
+
+            # Find the largest index i within the greater thans for this variable
+            # such that value >= greater_than and shift towards the index in the truth state
+            largest_true_index =
+                truth_value_variable_idx - 1 + searchsortedlast(greater_thans, value)
+
+            # Update the truth values in the truth states for the current discrete control node
+            # corresponding to the conditions on the current variable
+            for truth_value_idx in
+                truth_value_variable_idx:(truth_value_variable_idx + n_greater_than - 1)
+                new_truth_state = truth_value_idx <= largest_true_index
+                # If no truth state change was detected yet, check whether there is a change
+                # at this position
+                if !truth_state_change
+                    truth_state_change = (new_truth_state != truth_state[truth_value_idx])
+                end
+                truth_state[truth_value_idx] = new_truth_state
+            end
+
+            truth_value_variable_idx += n_greater_than
+            variable_idx += 1
+        end
+
+        # If no truth state change whas detected for this node, no control
+        # state change is possible either
+        if !((t == 0) || truth_state_change)
+            continue
+        end
+
+        set_new_control_state!(integrator, id, truth_state)
     end
+    return nothing
 end
 
-"""
-Update discrete control condition truths.
-"""
-function discrete_control_condition!(u, t, integrator)
+function set_new_control_state!(
+    integrator,
+    discrete_control_id::NodeID,
+    truth_state::Vector{Bool},
+)::Nothing
     (; p) = integrator
     (; discrete_control) = p
 
-    # Loop over compound variables
-    for (
-        listen_node_ids,
-        variables,
-        weights,
-        greater_thans,
-        look_aheads,
-        condition_values,
-    ) in zip(
-        discrete_control.listen_node_id,
-        discrete_control.variable,
-        discrete_control.weight,
-        discrete_control.greater_than,
-        discrete_control.look_ahead,
-        discrete_control.condition_value,
+    # Get the control state corresponding to the new truth state,
+    # if one is defined
+    control_state_new =
+        get(discrete_control.logic_mapping, (discrete_control_id, truth_state), nothing)
+    isnothing(control_state_new) && error(
+        lazy"No control state specified for $discrete_control_node_id for truth state $truth_state.",
     )
-        value = 0.0
-        for (listen_node_id, variable, weight, look_ahead) in
-            zip(listen_node_ids, variables, weights, look_aheads)
-            value += weight * get_value(p, listen_node_id, variable, look_ahead, u, t)
+
+    # Check the new control state against the current control state
+    # If there is a change, update parameters and the discrete control record
+    control_state_now, _ = discrete_control.control_state[discrete_control_id]
+    if control_state_now != control_state_new
+        record = discrete_control.record
+
+        push!(record.time, integrator.t)
+        push!(record.control_node_id, Int32(discrete_control_id))
+        push!(record.truth_state, convert_truth_state(truth_state))
+        push!(record.control_state, control_state_new)
+
+        # Loop over nodes which are under control of this control node
+        for target_node_id in
+            outneighbor_labels_type(p.graph, discrete_control_id, EdgeType.control)
+            set_control_params!(p, target_node_id, control_state_new)
         end
 
-        condition_values .= false
-        condition_values[1:searchsortedlast(greater_thans, value)] .= true
+        discrete_control.control_state[discrete_control_id] =
+            (control_state_new, integrator.t)
     end
+    return nothing
 end
 
 """
@@ -288,94 +350,6 @@ function get_value(
     end
 
     return value
-end
-
-"""
-Change parameters based on the control logic.
-"""
-function discrete_control_affect!(
-    integrator,
-    discrete_control_node_id::NodeID,
-    truth_state::Vector{Bool};
-    force_check::Bool = false
-)
-    p = integrator.p
-    (; discrete_control, graph) = p
-
-    # We need to build up the truth state for this DiscreteControl node by:
-    # - Finding all the (compound) variables this DiscreteControde node listens to
-    # - Concatenate in preallocated memory the truth values for all conditions per variable
-    #
-    # There can be multiple truth values per variable because there can be multiple 'greater_than's
-    # per variable which each define a condition. So the final control state is, if the discrete control node
-    # listens to variables with indices n, ..., N:
-    # [
-    #  variable_n     > greater_than_n_1,     ..., variable_n     > greater_than_n_a,
-    #  variable_{n+1} > greater_than_{n+1}_1, ..., variable_{n+1} > greater_than_{n+1}_b,
-    #  ...
-    #  variable_N     > greater_than_N_1,     ..., variable_N     > greater_than_N_c
-    # ]
-    found_change = false
-    truth_value_idx = 1
-    for (variable_idx, node_id) in enumerate(discrete_control.node_id)
-        if node_id < discrete_control_node_id
-            continue
-        elseif node_id == discrete_control_node_id
-            truth_values_variable = discrete_control.condition_value[variable_idx]
-            n_greater_than = length(truth_values_variable)
-            range_variable = truth_value_idx:(truth_value_idx + n_greater_than - 1)
-            truth_values_variable_old = view(truth_state, range_variable)
-            if !found_change
-                for i in eachindex(truth_values_variable)
-                    if truth_values_variable_old[i] !== truth_values_variable[i]
-                        found_change = true
-                        break
-                    end
-                end
-            end
-            truth_values_variable_old .= truth_values_variable
-            variable_idx += 1
-            truth_value_idx += n_greater_than
-        else
-            break
-        end
-    end
-
-    # If the truth state didn't change, neither did the control state
-    if !force_check && !found_change
-        return nothing
-    end
-
-    # What the local control state should be
-    control_state_new = get(
-        discrete_control.logic_mapping,
-        (discrete_control_node_id, truth_state),
-        nothing,
-    )
-    isnothing(control_state_new) && error(
-        lazy"No control state specified for $discrete_control_node_id for truth state $truth_state.",
-    )
-
-    control_state_now, _ = discrete_control.control_state[discrete_control_node_id]
-    if control_state_now != control_state_new
-        # Store control action in record
-        record = discrete_control.record
-
-        push!(record.time, integrator.t)
-        push!(record.control_node_id, Int32(discrete_control_node_id))
-        push!(record.truth_state, convert_truth_state(truth_state))
-        push!(record.control_state, control_state_new)
-
-        # Loop over nodes which are under control of this control node
-        for target_node_id in
-            outneighbor_labels_type(graph, discrete_control_node_id, EdgeType.control)
-            set_control_params!(p, target_node_id, control_state_new)
-        end
-
-        discrete_control.control_state[discrete_control_node_id] =
-            (control_state_new, integrator.t)
-    end
-    return nothing
 end
 
 function get_allocation_model(p::Parameters, subnetwork_id::Int32)::AllocationModel

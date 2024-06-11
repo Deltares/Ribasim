@@ -609,7 +609,6 @@ function parse_variables_and_conditions(compound_variable, condition)
     weight = Vector{Float64}[]
     look_ahead = Vector{Float64}[]
     greater_than = Vector{Float64}[]
-    condition_value = Vector{Bool}[]
     errors = false
 
     # Loop over unique discrete_control node IDs (on which at least one condition is defined)
@@ -643,35 +642,18 @@ function parse_variables_and_conditions(compound_variable, condition)
                 push!(weight, coalesce.(variable_group_variable.weight, 1.0))
                 push!(look_ahead, coalesce.(variable_group_variable.look_ahead, 0.0))
                 push!(greater_than, condition_group_variable.greater_than)
-                push!(
-                    condition_value,
-                    zeros(Bool, length(condition_group_variable.greater_than)),
-                )
             end
         end
     end
-    return node_id,
-    listen_node_id,
-    variable,
-    weight,
-    look_ahead,
-    greater_than,
-    condition_value,
-    !errors
+    return node_id, listen_node_id, variable, weight, look_ahead, greater_than, !errors
 end
 
 function DiscreteControl(db::DB, config::Config)::DiscreteControl
     condition = load_structvector(db, config, DiscreteControlConditionV1)
     compound_variable = load_structvector(db, config, DiscreteControlVariableV1)
 
-    node_id,
-    listen_node_id,
-    variable,
-    weight,
-    look_ahead,
-    greater_than,
-    condition_value,
-    valid = parse_variables_and_conditions(compound_variable, condition)
+    node_id, listen_node_id, variable, weight, look_ahead, greater_than, valid =
+        parse_variables_and_conditions(compound_variable, condition)
 
     if !valid
         error("Problems encountered when parsing DiscreteControl variables and conditions.")
@@ -712,15 +694,13 @@ function DiscreteControl(db::DB, config::Config)::DiscreteControl
         push!(truth_state, zeros(Bool, truth_state_length))
     end
 
+    compound_variables =
+        CompoundVariable.(listen_node_id, variable, weight, look_ahead, greater_than)
+
     return DiscreteControl(
         node_id,
         unique(node_id),
-        listen_node_id,
-        variable,
-        weight,
-        look_ahead,
-        greater_than,
-        condition_value,
+        compound_variables,
         truth_state,
         control_state,
         logic_mapping,

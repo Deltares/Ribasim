@@ -467,6 +467,14 @@ struct Terminal <: AbstractParameterNode
     node_id::Vector{NodeID}
 end
 
+struct CompoundVariable
+    listen_node_id::Vector{NodeID}
+    variable::Vector{String}
+    weight::Vector{Float64}
+    look_ahead::Vector{Float64}
+    greater_than::Vector{Float64}
+end
+
 """
 node_id: node ID of the DiscreteControl node per compound variable (can contain repeats)
 listen_node_id: the IDs of the nodes being condition on per compound variable
@@ -483,14 +491,7 @@ record: Namedtuple with discrete control information for results
 struct DiscreteControl <: AbstractParameterNode
     node_id::Vector{NodeID}
     node_id_unique::Vector{NodeID}
-    # Definition of compound variables
-    listen_node_id::Vector{Vector{NodeID}}
-    variable::Vector{Vector{String}}
-    weight::Vector{Vector{Float64}}
-    look_ahead::Vector{Vector{Float64}}
-    # Definition of conditions (one or more greater_than per compound variable)
-    greater_than::Vector{Vector{Float64}}
-    condition_value::Vector{Vector{Bool}}
+    variable::Vector{CompoundVariable}
     # truth_state per discrete control node
     truth_state::Vector{Vector{Bool}}
     # Definition of logic
