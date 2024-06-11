@@ -1,0 +1,25 @@
+---
+title: "Coupling"
+---
+
+# Coupling
+
+## iMOD
+
+Ribasim can also be (online) coupled to other kernels with the help of iMOD Coupler. The corresponding documentation can be found within the [iMOD Suite Documentation](https://deltares.github.io/iMOD-Documentation/coupler.html).
+
+## Water quality
+
+Ribasim can be offline coupled to Delwaq, the Deltares Water Quality model. Note that this functionality is still in active development.
+
+```{mermaid}
+flowchart LR
+    Ribasim --> Delwaq
+```
+
+### Setup
+
+Delwaq can calculate the concentration of substances in [Basin](../reference/node/basin.qmd) nodes over time, based on initial concentrations, and of [FlowBoundary](../reference/node/flow-boundary.qmd) nodes. Ribasim exposes the `Basin / concentration`, `Basin / concentration_state`, `FlowBoundary / concentration`, and `LevelBoundary / concentration` tables to setup these substances and concentrations.
+
+When a Ribasim model ran with the above tables, one can use the utilities in the `coupling/delwaq` folder to generate the input required for Delwaq to run, as well as to parse the output from Delwaq into a Ribasim compatible format.
+For more information see the `README.md` in the same folder.
