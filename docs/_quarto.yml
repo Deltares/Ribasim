@@ -14,7 +14,7 @@ website:
       - text: "How-to guides"
         file: guide/index.qmd
       - text: "Explanation"
-        file: explanation/concept.qmd
+        file: explanation/index.qmd
       - text: "Reference"
         file: reference/index.qmd
       - text: "Changelog"
@@ -41,8 +41,8 @@ website:
 
     - title: "Explanation"
       contents:
+        - explanation/index.qmd
         - explanation/concept.qmd
-        - explanation/usage.qmd
         - section: "Numerics"
           contents:
           - explanation/modelconcept.qmd
@@ -51,12 +51,13 @@ website:
         - section: "Implementation"
           contents:
           - explanation/core.qmd
-          - explanation/validation.qmd
           - explanation/allocation.qmd
 
     - title: "Reference"
       contents:
         - reference/index.qmd
+        - reference/usage.qmd
+        - reference/validation.qmd
         - reference/test-models.qmd
         - section: "Nodes"
           contents:
