@@ -321,7 +321,7 @@ function get_value(p::Parameters, subvariable::NamedTuple, t::Float64)
                 error("Discrete control listen node $listen_node_id does not exist.")
             end
             level = get_tmp(basin.current_level, 0)[basin_idx]
-        elseif node_id.type == NodeType.LevelBoundary
+        elseif listen_node_id.type == NodeType.LevelBoundary
             level_boundary_idx = findsorted(level_boundary.node_id, listen_node_id)
             level = level_boundary.level[level_boundary_idx](t + look_ahead)
         else
@@ -332,7 +332,7 @@ function get_value(p::Parameters, subvariable::NamedTuple, t::Float64)
         value = level
 
     elseif variable == "flow_rate"
-        if node_id.type == NodeType.FlowBoundary
+        if listen_node_id.type == NodeType.FlowBoundary
             flow_boundary_idx = findsorted(flow_boundary.node_id, listen_node_id)
             value = flow_boundary.flow_rate[flow_boundary_idx](t + look_ahead)
         else

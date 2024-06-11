@@ -495,7 +495,7 @@ struct CompoundVariable
         subvariables = [
             (; listen_node_id, variable, weight, look_ahead) for
             (listen_node_id, variable, weight, look_ahead) in
-            zip(listen_node_ids, variables, weights, look_aheads, greater_thans)
+            zip(listen_node_ids, variables, weights, look_aheads)
         ]
         return new(subvariables, greater_thans)
     end

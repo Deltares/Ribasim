@@ -66,7 +66,7 @@ end
     p = model.integrator.p
     (; discrete_control, flow_boundary) = p
 
-    Δt = discrete_control.variable[1].look_ahead[1]
+    Δt = discrete_control.variable[1].subvariables[1].look_ahead
 
     t = Ribasim.tsaves(model)
     t_control = discrete_control.record.time[2]
@@ -90,7 +90,7 @@ end
     p = model.integrator.p
     (; discrete_control, level_boundary) = p
 
-    Δt = discrete_control.variable[1].look_ahead[1]
+    Δt = discrete_control.variable[1].subvariables[1].look_ahead
 
     t = Ribasim.tsaves(model)
     t_control = discrete_control.record.time[2]
@@ -202,11 +202,20 @@ end
     (; discrete_control) = model.integrator.p
     (; variable, record) = discrete_control
 
-    (; listen_node_id, variable, weight) = only(variable)
+    compound_variable = only(variable)
 
-    @test listen_node_id == [NodeID(:FlowBoundary, 2), NodeID(:FlowBoundary, 3)]
-    @test variable == ["flow_rate", "flow_rate"]
-    @test weight == [0.5, 0.5]
+    @test compound_variable.subvariables[1] == (;
+        listen_node_id = NodeID(:FlowBoundary, 2),
+        variable = "flow_rate",
+        weight = 0.5,
+        look_ahead = 0.0,
+    )
+    @test compound_variable.subvariables[2] == (;
+        listen_node_id = NodeID(:FlowBoundary, 3),
+        variable = "flow_rate",
+        weight = 0.5,
+        look_ahead = 0.0,
+    )
     @test record.time ≈ [0.0, model.integrator.sol.t[end] / 2]
     @test record.truth_state == ["F", "T"]
     @test record.control_state == ["Off", "On"]
