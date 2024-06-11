@@ -336,11 +336,13 @@ end
 
 """
 node_id: node ID of the FlowBoundary node
+outflow_ids: The downsteam nodes of this FlowBoundary node
 active: whether this node is active and thus contributes flow
 flow_rate: target flow rate
 """
 struct FlowBoundary <: AbstractParameterNode
     node_id::Vector{NodeID}
+    outflow_ids::Vector{Vector{NodeID}}
     active::BitVector
     flow_rate::Vector{ScalarInterpolation}
 end

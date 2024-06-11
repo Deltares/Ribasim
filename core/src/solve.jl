@@ -551,11 +551,11 @@ function formulate_flow!(
     t::Number,
 )::Nothing
     (; graph) = p
-    (; node_id, active, flow_rate) = flow_boundary
+    (; node_id, active, flow_rate, outflow_ids) = flow_boundary
 
     for (i, id) in enumerate(node_id)
         # Requirement: edge points away from the flow boundary
-        for outflow_id in outflow_ids(graph, id)
+        for outflow_id in outflow_ids[i]
             if !active[i]
                 continue
             end

@@ -432,7 +432,7 @@ function LevelBoundary(db::DB, config::Config)::LevelBoundary
     return LevelBoundary(node_ids, parsed_parameters.active, parsed_parameters.level)
 end
 
-function FlowBoundary(db::DB, config::Config)::FlowBoundary
+function FlowBoundary(db::DB, config::Config, graph::MetaGraph)::FlowBoundary
     static = load_structvector(db, config, FlowBoundaryStaticV1)
     time = load_structvector(db, config, FlowBoundaryTimeV1)
 
@@ -459,7 +459,12 @@ function FlowBoundary(db::DB, config::Config)::FlowBoundary
         error("Errors occurred when parsing FlowBoundary data.")
     end
 
-    return FlowBoundary(node_ids, parsed_parameters.active, parsed_parameters.flow_rate)
+    return FlowBoundary(
+        node_ids,
+        [collect(outflow_ids(graph, id)) for id in node_ids],
+        parsed_parameters.active,
+        parsed_parameters.flow_rate,
+    )
 end
 
 function Pump(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{Int})::Pump
@@ -1092,7 +1097,7 @@ function Parameters(db::DB, config::Config)::Parameters
     tabulated_rating_curve = TabulatedRatingCurve(db, config, graph)
     fractional_flow = FractionalFlow(db, config, graph)
     level_boundary = LevelBoundary(db, config)
-    flow_boundary = FlowBoundary(db, config)
+    flow_boundary = FlowBoundary(db, config, graph)
     pump = Pump(db, config, graph, chunk_sizes)
     outlet = Outlet(db, config, graph, chunk_sizes)
     terminal = Terminal(db, config)
