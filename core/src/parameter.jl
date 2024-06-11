@@ -673,6 +673,7 @@ struct Parameters{T, C1, C2, V1, V2, V3}
         @NamedTuple{
             node_ids::Dict{Int32, Set{NodeID}},
             edges_source::Dict{Int32, Set{EdgeMetadata}},
+            flow_edges::Vector{EdgeMetadata},
             flow_dict::Dict{Tuple{NodeID, NodeID}, Int32},
             flow::T,
             flow_prev::Vector{Float64},

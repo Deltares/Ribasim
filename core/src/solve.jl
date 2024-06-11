@@ -668,11 +668,8 @@ function formulate_du!(
     # loop over basins
     # subtract all outgoing flows
     # add all ingoing flows
-    for edge_metadata in values(graph.edge_data)
-        (; type, edge, basin_idx_src, basin_idx_dst) = edge_metadata
-        if type !== EdgeType.flow
-            continue
-        end
+    for edge_metadata in values(graph[].flow_edges)
+        (; edge, basin_idx_src, basin_idx_dst) = edge_metadata
         from_id, to_id = edge
 
         if from_id.type == NodeType.Basin

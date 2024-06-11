@@ -737,6 +737,16 @@ function set_basin_idxs!(graph::MetaGraph, basin::Basin)::Nothing
             @set edge_metadata.basin_idx_dst = id_index(basin.node_id, id_dst)[2]
         graph[edge...] = edge_metadata
     end
+
+    # Collect the flow edges. This significantly speeds up
+    # formulate_du!
+    append!(
+        graph[].flow_edges,
+        filter(
+            edge_metadata -> edge_metadata.type == EdgeType.flow,
+            collect(values(graph.edge_data)),
+        ),
+    )
     return nothing
 end
 
