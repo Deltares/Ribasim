@@ -206,7 +206,7 @@ function apply_discrete_control!(u, t, integrator)::Nothing
 
     # For every discrete control node see whether it changes control state
     for (id, truth_state_) in zip(node_id_unique, truth_state)
-        discrete_control_affect!(integrator, id, truth_state_)
+        discrete_control_affect!(integrator, id, truth_state_; force_check = (t == 0))
     end
 end
 
@@ -296,7 +296,8 @@ Change parameters based on the control logic.
 function discrete_control_affect!(
     integrator,
     discrete_control_node_id::NodeID,
-    truth_state::Vector{Bool},
+    truth_state::Vector{Bool};
+    force_check::Bool = false
 )
     p = integrator.p
     (; discrete_control, graph) = p
@@ -341,7 +342,7 @@ function discrete_control_affect!(
     end
 
     # If the truth state didn't change, neither did the control state
-    if !found_change
+    if !force_check && !found_change
         return nothing
     end
 
