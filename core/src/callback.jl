@@ -56,12 +56,10 @@ function create_callbacks(
         push!(callbacks, export_cb)
     end
 
-    saved = SavedResults(saved_flow, saved_vertical_flux, saved_subgrid_level)
+    discrete_control_cb = FunctionCallingCallback(apply_discrete_control!)
+    push!(callbacks, discrete_control_cb)
 
-    if !isempty(discrete_control.logic_mapping)
-        discrete_control_cb = FunctionCallingCallback(apply_discrete_control!)
-        push!(callbacks, discrete_control_cb)
-    end
+    saved = SavedResults(saved_flow, saved_vertical_flux, saved_subgrid_level)
     callback = CallbackSet(callbacks...)
 
     return callback, saved
@@ -196,6 +194,13 @@ function save_vertical_flux(u, t, integrator)
     return vertical_flux_mean
 end
 
+"""
+Apply the discrete control logic. Each DiscreteControl node has one or more variables associated with it,
+and these variables are a linear combination of one or more state/time derived parameters of the model.
+The values of these variables are compared against 'greater_than' thresholds. These conditions yield a 'truth_state'
+consisting of 'truth_values' for a DiscreteControl node. This truth_state then corresponds with a 'control_state',
+and nodes controlled by a DiscreteControl node have parameter values associated with this control_state.
+"""
 function apply_discrete_control!(u, t, integrator)::Nothing
     (; p) = integrator
     (; discrete_control) = p
