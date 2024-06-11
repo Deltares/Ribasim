@@ -226,13 +226,8 @@ function apply_discrete_control!(u, t, integrator)::Nothing
             # Compute the value of the current variable
             value = 0.0
             compound_variable = discrete_control.variable[variable_idx]
-            for (listen_node_id, variable, weight, look_ahead) in zip(
-                compound_variable.listen_node_id,
-                compound_variable.variable,
-                compound_variable.weight,
-                compound_variable.look_ahead,
-            )
-                value += weight * get_value(p, listen_node_id, variable, look_ahead, u, t)
+            for subvariable in compound_variable.subvariables
+                value += subvariable.weight * get_value(p, subvariable, t)
             end
 
             # The thresholds the value of this variable is being compared with
@@ -315,26 +310,20 @@ end
 Get a value for a condition. Currently supports getting levels from basins and flows
 from flow boundaries.
 """
-function get_value(
-    p::Parameters,
-    node_id::NodeID,
-    variable::String,
-    Δt::Float64,
-    u::AbstractVector{Float64},
-    t::Float64,
-)
+function get_value(p::Parameters, subvariable::NamedTuple, t::Float64)
     (; basin, flow_boundary, level_boundary) = p
+    (; listen_node_id, look_ahead, variable) = subvariable
 
     if variable == "level"
-        if node_id.type == NodeType.Basin
-            has_index, basin_idx = id_index(basin.node_id, node_id)
+        if listen_node_id.type == NodeType.Basin
+            has_index, basin_idx = id_index(basin.node_id, listen_node_id)
             if !has_index
-                error("Discrete control listen node $node_id does not exist.")
+                error("Discrete control listen node $listen_node_id does not exist.")
             end
-            _, level = get_area_and_level(basin, basin_idx, u[basin_idx])
+            level = get_tmp(basin.current_level, 0)[basin_idx]
         elseif node_id.type == NodeType.LevelBoundary
-            level_boundary_idx = findsorted(level_boundary.node_id, node_id)
-            level = level_boundary.level[level_boundary_idx](t + Δt)
+            level_boundary_idx = findsorted(level_boundary.node_id, listen_node_id)
+            level = level_boundary.level[level_boundary_idx](t + look_ahead)
         else
             error(
                 "Level condition node '$node_id' is neither a basin nor a level boundary.",
@@ -344,10 +333,10 @@ function get_value(
 
     elseif variable == "flow_rate"
         if node_id.type == NodeType.FlowBoundary
-            flow_boundary_idx = findsorted(flow_boundary.node_id, node_id)
-            value = flow_boundary.flow_rate[flow_boundary_idx](t + Δt)
+            flow_boundary_idx = findsorted(flow_boundary.node_id, listen_node_id)
+            value = flow_boundary.flow_rate[flow_boundary_idx](t + look_ahead)
         else
-            error("Flow condition node $node_id is not a flow boundary.")
+            error("Flow condition node $listen_node_id is not a flow boundary.")
         end
 
     else

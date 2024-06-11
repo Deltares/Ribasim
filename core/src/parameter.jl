@@ -469,12 +469,36 @@ struct Terminal <: AbstractParameterNode
     node_id::Vector{NodeID}
 end
 
+"""
+The data for a single compound variable
+subvariables: data for one single subvariable
+greater_than: the thresholds this compound variable will be
+    compared against
+"""
 struct CompoundVariable
-    listen_node_id::Vector{NodeID}
-    variable::Vector{String}
-    weight::Vector{Float64}
-    look_ahead::Vector{Float64}
+    subvariables::Vector{
+        @NamedTuple{
+            listen_node_id::NodeID,
+            variable::String,
+            weight::Float64,
+            look_ahead::Float64,
+        }
+    }
     greater_than::Vector{Float64}
+    function CompoundVariable(
+        listen_node_ids::Vector{NodeID},
+        variables::Vector{String},
+        weights::Vector{Float64},
+        look_aheads::Vector{Float64},
+        greater_thans::Vector{Float64},
+    )
+        subvariables = [
+            (; listen_node_id, variable, weight, look_ahead) for
+            (listen_node_id, variable, weight, look_ahead) in
+            zip(listen_node_ids, variables, weights, look_aheads, greater_thans)
+        ]
+        return new(subvariables, greater_thans)
+    end
 end
 
 """

@@ -615,28 +615,27 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
         end
     end
     for compound_variable in variable
-        (; look_ahead, variable, listen_node_id) = compound_variable
-        for (Δt, var, node_id) in zip(look_ahead, variable, listen_node_id)
-            if !iszero(Δt)
-                node_type = node_id.type
+        for subvariable in compound_variable.subvariables
+            if !iszero(subvariable.look_ahead)
+                node_type = subvariable.listen_node_id.type
                 if node_type ∉ [NodeType.FlowBoundary, NodeType.LevelBoundary]
                     errors = true
-                    @error "Look ahead supplied for non-timeseries listen variable '$var' from listen node $node_id."
+                    @error "Look ahead supplied for non-timeseries listen variable '$(subvariable.variable)' from listen node $node_id."
                 else
-                    if Δt < 0
+                    if subvariable.look_ahead < 0
                         errors = true
-                        @error "Negative look ahead supplied for listen variable '$var' from listen node $node_id."
+                        @error "Negative look ahead supplied for listen variable '$(subvariable.variable)' from listen node $(subvariable.listen_node_id)."
                     else
-                        node = getfield(p, graph[node_id].type)
+                        node = getfield(p, graph[subvariable.listen_node_id].type)
                         idx = if node_type == NodeType.Basin
-                            id_index(node.node_id, node_id)
+                            id_index(node.node_id, subvariable.listen_node_id)
                         else
-                            searchsortedfirst(node.node_id, node_id)
+                            searchsortedfirst(node.node_id, subvariable.listen_node_id)
                         end
-                        interpolation = getfield(node, Symbol(var))[idx]
-                        if t_end + Δt > interpolation.t[end]
+                        interpolation = getfield(node, Symbol(subvariable.variable))[idx]
+                        if t_end + subvariable.look_ahead > interpolation.t[end]
                             errors = true
-                            @error "Look ahead for listen variable '$var' from listen node $node_id goes past timeseries end during simulation."
+                            @error "Look ahead for listen variable '$(subvariable.variable)' from listen node $(subvariable.listen_node_id) goes past timeseries end during simulation."
                         end
                     end
                 end
