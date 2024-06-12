@@ -1,0 +1,322 @@
+---
+title: "Usage"
+filters:
+  - include-code-files
+---
+
+Ribasim is typically used as a command-line interface (CLI). It is distributed as a `.zip`
+archive, that must be downloaded and unpacked. It can be placed anywhere, however it is
+important that the contents of the zip file are kept together in a directory. The Ribasim
+CLI executable is in the `bin` directory.
+
+To download `ribasim_cli.zip`, see the [download section](../tutorials/index.qmd#sec-download).
+
+To check whether the installation was performed successfully, run `ribasim` with no
+arguments in the command line.
+This will give the following message:
+
+```
+Usage: ribasim 'path/to/model/ribasim.toml'
+```
+
+# Configuration file
+
+Ribasim has a single configuration file, which is written in the [TOML](https://toml.io/)
+format. It contains settings, as well as paths to other input and output files.
+Ribasim expects the GeoPackage database [database.gpkg](usage.qmd#sec-geopackage) as well as optional Arrow input files to be available in the input_dir.
+
+```{.toml include="../../core/test/docs.toml"}
+```
+
+## Solver settings {#sec-solver-settings}
+
+The solver section in the configuration file is entirely optional, since we aim to use defaults that will generally work well.
+Common reasons to modify the solver settings are to adjust the calculation or result stepsizes: `dt`, and `saveat`.
+If your model does not converge, or your performance is lower than expected, it can help to adjust other solver settings as well.
+
+The default solver `algorithm = "QNDF"`, which is a multistep method similar to Matlab's `ode15s` [@shampine1997matlab].
+It is an implicit method that supports the default adaptive timestepping.
+The full list of available solvers is: `QNDF`, `Rosenbrock23`, `TRBDF2`, `Rodas5`, `KenCarp4`, `Tsit5`, `RK4`, `ImplicitEuler`, `Euler`.
+Information on the solver algorithms can be found on the [ODE solvers page](https://docs.sciml.ai/DiffEqDocs/stable/solvers/ode_solve/).
+
+By default Ribasim uses adaptive timestepping, though not all algorithms support adaptive timestepping.
+To use fixed timesteps, provide a timestep size in seconds; `dt = 3600.0` corresponds to an hourly timestep.
+With adaptive timestepping, `dtmin` and `dtmax` control the minimum and maximum allowed `dt`.
+If a smaller `dt` than `dtmin` is needed to meet the set error tolerances, the simulation stops, unless `force_dtmin` is set to `true`.
+`force_dtmin` is off by default to ensure an accurate solution.
+
+The default result stepsize, `saveat = 86400` will save results after every day that passed.
+The calculation and result stepsize need not be the same.
+If you wish to save every calculation step, set `saveat = 0`.
+If you wish to not save any intermediate steps, set `saveat = inf`.
+
+The Jacobian matrix provides information about the local sensitivity of the model with respect to changes in the states.
+For implicit solvers it must be calculated often, which can be expensive to do.
+There are several methods to do this.
+By default Ribasim uses a Jacobian derived automatically using [ForwardDiff.jl](https://juliadiff.org/ForwardDiff.jl/stable/) with memory management provided by [PreallocationTools.jl](https://docs.sciml.ai/PreallocationTools/stable/).
+If this is not used by setting `autodiff = false`, the Jacobian is calculated with a finite difference method, which can be less accurate and more expensive.
+
+By default the Jacobian matrix is a sparse matrix (`sparse = true`).
+Since each state typically only depends on a small number of other states, this is generally more efficient, especially for larger models.
+The sparsity structure is calculated from the network and provided as a Jacobian prototype to the solver.
+For small or highly connected models it could be faster to use a dense Jacobian matrix instead by setting `sparse = false`.
+
+The total maximum number of iterations `maxiters = 1e9`, can normally stay as-is unless doing extremely long simulations.
+
+The absolute and relative tolerance for adaptive timestepping can be set with `abstol` and `reltol`. For more information on these and other solver options, see the [DifferentialEquations.jl docs](https://docs.sciml.ai/DiffEqDocs/latest/basics/common_solver_opts/#solver_options).
+
+## Allocation settings
+Currently there are the following allocation settings:
+- `use_allocation`: A boolean which says whether allocation should be used or not;
+- `timestep`: a float value in seconds which dictates the update interval for allocations.
+
+## Results settings
+
+The following entries can be set in the configuration in the `[results]` section.
+
+entry             | type   | description
+----------------- | ------ | -----------
+compression       | Bool   | Whether to apply compression or not.
+compression_level | Int    | Zstandard compression level. Default is 6, higher compresses more.
+subgrid           | Bool   | Compute and output more detailed water levels.
+
+## Logging settings
+
+The following entries can be set in the configuration in the `[logging]` section.
+
+entry             | type   | description
+----------------- | ------ | -----------
+verbosity         | String | Verbosity level: debug, info, warn, or error.
+timing            | Bool   | Enable timings.
+
+# GeoPackage database and Arrow tables {#sec-geopackage}
+
+The input and output tables described below all share that they are tabular files. The Node
+and Edge tables always have to be in the [GeoPackage](https://www.geopackage.org/) database file, and
+results are always written to [Apache Arrow](https://arrow.apache.org/) files, sometimes also
+known as Feather files. All other tables can either be in the database or in separate
+Arrow files that are listed in the TOML as described above.
+
+For visualization, the Node and Edge tables typically have associated geometries. GeoPackage
+was used since it provides a standardized way to store tables with (and without) geometry
+columns in a SQLite database. If, like Ribasim, you can ignore the geometries, a GeoPackage
+is easy to read using SQLite libraries, which are commonly available. Furthermore GeoPackage
+can be updated in place when working on a model.
+
+Arrow was chosen since it is standardized, fast, simple and flexible. It can be read and
+written by many different software packages. In Ribasim we use
+[Arrow.jl](https://arrow.apache.org/julia/dev/). Results are written to Arrow, since for long
+runs Ribasim can produce tables with many rows. Arrow is well suited for large tabular
+datasets, and file size is kept small by using compression. The Arrow input files can be
+compressed with LZ4 or Zstd compression. Furthermore, in some of the columns, a small amount
+of different values are repeated many times. To reduce file sizes it may be a good idea to
+apply [dictionary
+encoding](https://arrow.apache.org/docs/format/Columnar.html#dictionary-encoded-layout) to
+those columns.
+The Ribasim version that was used to create the results is written to each file in the `ribasim_version` schema metadata.
+
+## Table requirements
+
+Below we give details per file, in which we describe the schema of the table using a syntax
+like this:
+
+column    | type    | unit         | restriction
+--------- | ------- | ------------ | -----------
+node_id   | Int32   | -            | sorted
+storage   | Float64 | $m^3$        | non-negative
+
+This means that two columns are required, one named `node_id`, that contained elements of
+type `Int32`, and a column named `storage` that contains elements of type `Float64`. The order
+of the columns does not matter. In some cases there may be restrictions on the values. This
+is indicated under `restriction`.
+
+Tables are also allowed to have rows for timestamps that are not part of the simulation,
+these will be ignored. That makes it easy to prepare data for a larger period, and test
+models on a shorted period.
+
+When preparing the model for simulation, input validation is performed in the Julia core.
+The validation rules are described in the [validation](validation.qmd) section.
+
+## Custom metadata
+
+It may be advantageous to add metadata to rows. For example, basin areas might have names and
+objects such as weirs might have specific identification codes. Additional columns can be freely
+added to tables. The column names should be prefixed with `meta_`. They will not be used in
+computations or validated by the Julia core.
+
+# Node {#sec-node}
+
+Node is a table that specifies the ID and type of each node of a model. The ID must be
+unique among all nodes, and the type must be one of the available node types listed below.
+
+Nodes are components that are connected together to form a larger system. The Basin is a
+central node type that stores water. The other node types influence the flow between Basins
+in some way. Counter intuitively, even systems you may think of as edges, such as a canal,
+are nodes in Ribasim. This is because edges only define direct instantaneous couplings
+between nodes, and never have storage of their own.
+
+column        | type     | restriction
+--------------| -------- | -----------
+node_type     | String   | sorted, known node type
+node_id       | Int32    | sorted per node_type
+geom          | Point    | (optional)
+name          | String   | (optional, does not have to be unique)
+subnetwork_id | Int32    | (optional)
+
+Adding a point geometry to the node table can be helpful to examine models in [QGIS](https://qgis.org/en/site/), as it will show the location of the nodes on the map.
+The geometry is not used by Ribasim.
+
+# Edge {#sec-edge}
+
+Edges define connections between nodes. The only thing that defines an edge is the nodes it connects, and in what direction.
+There are currently 2 possible edge types:
+
+1. "flow": Flows between nodes are stored on edges. The effect of
+  the edge direction depends on the node type, Node types that have a notion of an upstream
+  and downstream side use the incoming edge as the upstream side, and the outgoing edge as the
+  downstream side. This means that edges should generally be drawn in the main flow direction.
+  But for instance between two `LinearResistances` the edge direction does not affect
+  anything, other than the sign of the flow on the edge. The sign of the flow follows the edge
+  direction; a positive flow flows along the edge direction, a negative flow in the opposite
+  way.
+2. "control": The control edges define which nodes are controlled by a particular control node.
+  Control edges should always point away from the control node.
+  The edges between the control node and the nodes it *listens* to are *not* present in `Edge`, these are defined in [`DiscreteControl / condition`](node/discrete-control.qmd)
+
+column        | type                          | restriction
+--------------| ----------------------------- | -----------
+from_node_type| String                        | -
+from_node_id  | Int32                         | -
+to_node_type  | String                        | -
+to_node_id    | Int32                         | -
+edge_type     | String                        | must be "flow" or "control"
+geom          | LineString or MultiLineString | (optional)
+name          | String                        | (optional, does not have to be unique)
+subnetwork_id | Int32                         | (optional, denotes source in allocation network)
+
+Similarly to the node table, you can use a geometry to visualize the connections between the
+nodes in QGIS. For instance, you can draw a line connecting the two node coordinates.
+
+# Results
+
+## Basin - `basin.arrow`
+
+The Basin table contains:
+
+- Results of the storage and level of each Basin, which are instantaneous values;
+- Results of the fluxes on each Basin, which are mean values over the `saveat` intervals.
+  In the time column the start of the period is indicated.
+- The initial condition is written to the file, but the final state is not.
+  It will be placed in a separate output state file in the future.
+- The `inflow_rate` and `outflow_rate` are the sum of the flows from other nodes into and out of the Basin respectively.
+  The actual flows determine in which term they are counted, not the edge direction.
+- The `storage_rate` is flow that adds to the storage in the Basin, increasing the water level. In the equations below this number is split out into two non-negative numbers, `storage_increase` and `storage_decrease`.
+- The `balance_error` is the difference of all Basin inflows (`total_inflow`) and outflows (`total_outflow`), that is (`inflow_rate` + `precipitation` + `drainage` - `storage_increase`) - (`outflow_rate` + `evaporation` + `infiltration` - `storage_decrease`).
+  It can be used to check if the numerical error when solving the water balance is sufficiently small.
+- The `relative_error` is the fraction of the `balance_error` over the mean of the `total_inflow` and `total_outflow`.
+
+column         | type     | unit
+-------------- | ---------| ----
+time           | DateTime | -
+node_id        | Int32    | -
+storage        | Float64  | $m^3$
+level          | Float64  | $m$
+inflow_rate    | Float64  | $m^3 s^{-1}$
+outflow_rate   | Float64  | $m^3 s^{-1}$
+storage_rate   | Float64  | $m^3 s^{-1}$
+precipitation  | Float64  | $m^3 s^{-1}$
+evaporation    | Float64  | $m^3 s^{-1}$
+drainage       | Float64  | $m^3 s^{-1}$
+infiltration   | Float64  | $m^3 s^{-1}$
+balance_error  | Float64  | $m^3 s^{-1}$
+relative_error | Float64  | -
+
+The table is sorted by time, and per time it is sorted by `node_id`.
+
+## Flow - `flow.arrow`
+
+The flow table contains calculated mean flows over the `saveat` intervals for every flow edge in the model.
+In the time column the start of the period is indicated.
+
+column         | type                  | unit
+-------------- | --------------------- | ----
+time           | DateTime              | -
+edge_id        | Int32                 | -
+from_node_type | String                | -
+from_node_id   | Int32                 | -
+to_node_type   | String                | -
+to_node_id     | Int32                 | -
+flow_rate      | Float64               | $m^3 s^{-1}$
+
+The table is sorted by time, and per time the same `edge_id` order is used, though not sorted.
+The `edge_id` value is the same as the `fid` written to the Edge table, and can be used to directly look up the Edge geometry.
+Flows from the "from" to the "to" node have a positive sign, and if the flow is reversed it will be negative.
+
+## DiscreteControl - `control.arrow`
+
+The control table contains a record of each change of control state: when it happened, which control node was involved, to which control state it changed and based on which truth state.
+
+column          | type
+--------------- | ----------
+time            | DateTime
+control_node_id | Int32
+truth_state     | String
+control_state   | String
+
+## Allocation - `allocation.arrow`
+
+The allocation table contains a record of allocation results: when it happened, for which node, in which allocation network, and what the demand, allocated flow and realized flow were.
+The realized values at the starting time of the simulation can be ignored.
+
+column        | type
+--------------| -----
+time          | DateTime
+subnetwork_id | Int32
+node_type     | String
+node_id       | Int32
+priority      | Int32
+demand        | Float64
+allocated     | Float64
+realized      | Float64
+
+::: {.callout-note}
+The LevelDemand node allocations are listed as node type Basin.
+This is because one LevelDemand node can link to multiple Basins, and doesn't receive flow by itself.
+:::
+
+For Basins the values `demand`, `allocated` and `realized` are positive if the Basin level is below the minimum level given by a `LevelDemand` node.
+The values are negative if the Basin supplies due to a surplus of water.
+
+::: {.callout-note}
+Currently the stored demand and abstraction rate are those at the allocation timepoint (and the abstraction rate is based on the previous allocation optimization). In the future these will be an average over the previous allocation timestep.
+:::
+
+## Allocation flow - `allocation_flow.arrow`
+
+The allocation flow table contains results of the optimized allocation flow on every edge in the model that is part of a subnetwork, for each time an optimization problem is solved (see also [here](allocation.qmd#the-high-level-algorithm)).
+If in the model a main network and subnetwork(s) are specified, there are 2 different
+types of optimization for the subnetwork: collecting its total demand per priority (for allocating flow from the main network to the subnetwork), and allocating flow within the subnetwork. The column `collect_demands` provides the distinction between these two optimization types.
+
+column          | type
+----------------| -----
+time            | DateTime
+edge_id         | Int32
+from_node_type  | String
+from_node_id    | Int32
+to_node_type    | String
+to_node_id      | Int32
+subnetwork_id   | Int32
+priority        | Int32
+flow_rate       | Float64
+collect_demands | Bool
+
+## Subgrid level - `subgrid_level.arrow`
+
+This result file is only written if the model contains a [Basin / subgrid](node/basin.qmd#subgrid) table.
+See there for more information on the meaning of this output.
+
+column         | type
+---------------| -----
+time           | DateTime
+subgrid_id     | Int32
+subgrid_level  | Float64

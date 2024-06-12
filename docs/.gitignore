@@ -3,5 +3,6 @@
 /site_libs/
 python/reference/
 python/data/
+guides/data/
 *.html
 objects.json

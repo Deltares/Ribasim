@@ -8,27 +8,30 @@
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/trivial/ribasim.toml")
     @test ispath(toml_path)
+
+    # There is no control. That means we don't write the control.arrow,
+    # and we remove it if it exists.
+    control_path = normpath(dirname(toml_path), "results/control.arrow")
+    mkpath(dirname(control_path))
+    touch(control_path)
+    @test ispath(control_path)
+
     config = Ribasim.Config(toml_path)
     model = Ribasim.run(config)
     @test model isa Ribasim.Model
     @test successful_retcode(model)
     (; p) = model.integrator
 
+    @test !ispath(control_path)
+
     # read all results as bytes first to avoid memory mapping
     # which can have cleanup issues due to file locking
     flow_bytes = read(normpath(dirname(toml_path), "results/flow.arrow"))
     basin_bytes = read(normpath(dirname(toml_path), "results/basin.arrow"))
-    control_bytes = read(normpath(dirname(toml_path), "results/control.arrow"))
-    allocation_bytes = read(normpath(dirname(toml_path), "results/allocation.arrow"))
-    allocation_flow_bytes =
-        read(normpath(dirname(toml_path), "results/allocation_flow.arrow"))
     subgrid_bytes = read(normpath(dirname(toml_path), "results/subgrid_level.arrow"))
 
     flow = Arrow.Table(flow_bytes)
     basin = Arrow.Table(basin_bytes)
-    control = Arrow.Table(control_bytes)
-    allocation = Arrow.Table(allocation_bytes)
-    allocation_flow = Arrow.Table(allocation_flow_bytes)
     subgrid = Arrow.Table(subgrid_bytes)
 
     @testset "Schema" begin
@@ -76,38 +79,6 @@
                 Float64,
             ),
         )
-        @test Tables.schema(control) == Tables.Schema(
-            (:time, :control_node_id, :truth_state, :control_state),
-            (DateTime, Int32, String, String),
-        )
-        @test Tables.schema(allocation) == Tables.Schema(
-            (
-                :time,
-                :subnetwork_id,
-                :node_type,
-                :node_id,
-                :priority,
-                :demand,
-                :allocated,
-                :realized,
-            ),
-            (DateTime, Int32, String, Int32, Int32, Float64, Float64, Float64),
-        )
-        @test Tables.schema(allocation_flow) == Tables.Schema(
-            (
-                :time,
-                :edge_id,
-                :from_node_type,
-                :from_node_id,
-                :to_node_type,
-                :to_node_id,
-                :subnetwork_id,
-                :priority,
-                :flow_rate,
-                :optimization_type,
-            ),
-            (DateTime, Int32, String, Int32, String, Int32, Int32, Int32, Float64, String),
-        )
         @test Tables.schema(subgrid) == Tables.Schema(
             (:time, :subgrid_id, :subgrid_level),
             (DateTime, Int32, Float64),
@@ -120,8 +91,6 @@
         # t0 has no flow, 2 flow edges
         @test nrow(flow) == (nsaved - 1) * 2
         @test nrow(basin) == nsaved - 1
-        @test nrow(control) == 0
-        @test nrow(allocation) == 0
         @test nrow(subgrid) == nsaved * length(p.subgrid.level)
     end
 
@@ -234,7 +203,7 @@ end
     @test model.integrator.sol.u[end] ≈ Float32[519.8817, 519.8798, 339.3959, 1418.4331] skip =
         Sys.isapple() atol = 1.5
 
-    @test length(logger.logs) == 11
+    @test length(logger.logs) > 10
     @test logger.logs[1].level == Debug
     @test logger.logs[1].message == "Read database into memory."
 

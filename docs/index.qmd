@@ -1,158 +1,21 @@
 ---
-title: Ribasim quick overview
+title: Ribasim
 ---
 
-# Introduction {#sec-introduction}
+:::: {layout="[ 50, 50 ]"}
 
-Decision makers need to balance the supply and demand of water at the river basin scale, under increasing environmental pressure.
-Ribasim allows users to model basins under current and changing conditions to evaluate and design and management of the water system.
-It is available as free and open source software under the MIT license.
-Besides a model simulation core, Ribasim also includes tooling to assist in building models from basic datasets and visualize results.
-The model and its results provides insights to decision makers, enabling them to build consensus amongst water users and make informed decisions about how to manage water resources optimally.
+::: {#first-column}
+Ribasim is a water resources model, designed to be the replacement of the regional surface
+water modules Mozart and SIMRES in the Netherlands Hydrological Instrument (NHI).
+</br>
 
-The model concept of Ribasim is composed of multiple layers:
-- a physical layer representing water bodies and associated infrastructure as well as abstractions,
-- a rule-based control layer to manage the infrastructure, and
-- (optionally) a priority-based allocation layer to take centralized decisions on user abstractions.
-- (optionally) a coupling layer to exchange fluxes and heads with other kernels
+Ribasim is written in the [Julia programming language](https://julialang.org/) and is built
+on top of the [SciML: Open Source Software for Scientific Machine Learning](https://sciml.ai/)
+libraries.
 
-Typically hydrological processes on land will be represented in detail by other models which can be coupled (online) to Ribasim with the help of iMOD Coupler.
-Currently, an online coupling with MODFLOW 6 (groundwater) and with Metaswap + MODFLOW 6 (unsaturated zone + groundwater) is available.
-The corresponding documentation can be found within the [iMOD Suite Documentation](https://deltares.github.io/iMOD-Documentation/coupler.html).
-
-This version of Ribasim is the follow up of the legacy Fortran kernel of Ribasim (version 7) applied world wide, the Fortran kernel SIMRES applied in the Netherlands, and the surface water models Distribution Model and Mozart of the Dutch National Hydrological Instrument.
-
-# Concept {#sec-concept}
-
-## Physical layer {#sec-physical}
-
-To represent the physical characteristics of the water system in an area, Ribasim allows you to divide the area into a network of connected representative elementary watersheds ([Reggiani, Sivapalan, and Majid Hassanizadeh 1998](https://deltares.github.io/Ribasim/#ref-REGGIANI1998367)).
-Within Ribasim, these elements are called basins, which are essentially buckets or reservoirs holding an aggregated volume of water bodies in an area.
-Basins are chained in a graph with connector nodes determining the exchange of water between the basins.
-These connector nodes can represent open water connections (e.g. bifurcations or resistance in a free flowing open water channel) or infrastructure elements such as pumps, gates or weirs.
-An overview of node types and associated data inputs is provided on the [usage page](core/usage.qmd), while the associated mathematical formations are described on the [equations page](core/equations.qmd).
-
-## Control layer {#sec-control}
-
-Infrastructure elements are often controlled by humans to implement a certain water management strategy.
-Ribasim allows the configuration of conditional rules to influence the exchange of water between basins, either by setting inflow or outflow, or by controlling a water level.
-Control rules evaluate one or multiple conditions to change a parameter setting of an infrastructure element when the conditional criteria are met.
-Conditions can be either calculated values within the network as well as boundary conditions or (todo) external observations, i.e. observation values external to the model.
-An overview of node types and associated data inputs is provided on the [usage page](core/usage.qmd), while the associated mathematical formations are described on the [equations page](core/equations.qmd).
-
-## Allocation layer {#sec-allocation}
-
-Ribasim allows water users (water demands) to abstract water from the basins (i.e. from the physical layer) unless the water level drops below a minimum level.
-Under dry conditions, water managers may want to prioritize some abstractions over other abstractions.
-The Ribasim allocation layer can take care of this prioritization by reducing the abstraction rates of lower-priority demands to ensure that sufficient water remains available in the system for the higher-priority demands.
-The associated mathematical formulations are described on the [allocation page](core/allocation.qmd).
-In case of large networks, a subdivision in a main network with subnetworks is recommended.
-For more details see the explanation of the [simulation loop](core/index.qmd#sec-nested-allocation) at the Julia core home page.
-
-The layers and the main components and dataflows between the layers are shown in the next figure:
-
-```{mermaid}
-flowchart TB
-physical:::layer
-rbc:::layer
-allocation:::layer
-user_demand
-basin
-connector[basin connector]
-control[control rules]
-condition
-alloc[global allocation]
-
-subgraph physical[physical layer]
-    user_demand-->|abstraction| basin
-    basin<-->|flow| connector
-end
-
-subgraph rbc[rule based control layer]
-   condition --> control
-end
-
-subgraph allocation[allocation layer]
-    alloc
-end
-
-user_demand-->|request demand| alloc
-alloc-->|assign allocation| user_demand
-basin-->|volume| alloc
-basin --> |volume or level| condition
-alloc --> |optional flow update| control
-control --> |action| connector
-
-%% class definitions for C4 model
-classDef layer fill:transparent,stroke-dasharray:5 5
-```
-
-
-
-# About the components {#sec-components}
-The figure below illustrates the relation between the various components of the Ribasim software package.
-
-```{mermaid}
-flowchart TB
-modeler([Modeler]):::user
-
-api["Ribasim Python\n[python]"]
-modeler-->|prepare model|api
-
-ribasim["Ribasim\n[julia]"]
-modeler-->|start|ribasim
-
-subgraph qgisBoundary[QGIS]
-    QGIS[QGIS Application]:::system_ext
-    qgisPlugin["Ribasim QGIS plugin\n[python]"]
-    QGIS-->qgisPlugin
-end
-modeler-->|prepare model|qgisBoundary
-
-model[("input model data\n[toml + geopackage + arrow]")]
-qgisPlugin-->|read/write|model
-api-->|read/write|model
-ribasim-->|simulate|model
-
-output[("simulation results\n[arrow]")]
-ribasim-->|write|output
-
-class qgisBoundary boundary
-
-%% class definitions for C4 model
-classDef user fill:#ABD0BC
-classDef system_ext fill:#D2D2D2
-classDef boundary fill:transparent,stroke-dasharray:5 5
-```
-
-The kernel of Ribasim is written in the [Julia programming language](https://julialang.org/) and is built on top of the [SciML: Open Source Software for Scientific Machine Learning](https://sciml.ai/) libraries, notably [DifferentialEquations.jl](https://docs.sciml.ai/DiffEqDocs/stable/).
-
-The [Ribasim Python package](https://deltares.github.io/Ribasim/python/) is available to build, update and analyze Ribasim models programmatically.
-For runtime data exchange and coupling with other kernels, the Julia kernel is wrapped in a Python API (`ribasim_api`) which implements the Basic Modelling Interface [BMI](https://bmi-spec.readthedocs.io/en/latest/).
-
-The Ribasim QGIS plugin allows users to view or edit a model without programming.
-For specific tasks, like adding long timeseries, using Python is strongly recommended.
-
-One can also use Ribasim Python to build entire models from base data, such that your model setup is fully reproducible.
-
-See [usage](https://deltares.github.io/Ribasim/core/usage.html) for more information.
-
-# Download {#sec-download}
-
-- Ribasim executable - Linux: [ribasim_cli_linux.zip](https://github.com/Deltares/Ribasim/releases/latest/download/ribasim_cli_linux.zip)
-- Ribasim executable - Windows: [ribasim_cli_windows.zip](https://github.com/Deltares/Ribasim/releases/latest/download/ribasim_cli_windows.zip)
-- QGIS plugin: [ribasim_qgis.zip](https://github.com/Deltares/Ribasim/releases/latest/download/ribasim_qgis.zip).
-- Generated testmodels: [generated_testmodels.zip](https://github.com/Deltares/Ribasim/releases/latest/download/generated_testmodels.zip)
-
-The Ribasim Python package is [registered in PyPI](https://pypi.org/project/ribasim/) and can therefore be installed with [pip](https://docs.python.org/3/installing/index.html):
-```
-pip install ribasim
-```
-
-# Acknowledgment
-Ribasim is supported by:
-
-::: {layout-ncol=2 layout-valign="bottom"}
+</br>
+Ribasim is supported and developed by:
+</br>
 <a href="https://www.deltares.nl/">
     <img alt="Deltares logo"
         src="https://user-images.githubusercontent.com/4471859/187672447-adb9cb11-16ca-488b-bef9-08e059fe6d55.svg"
@@ -165,3 +28,11 @@ Ribasim is supported by:
         height="60">
 </a>
 :::
+
+::: {#second-column}
+<img alt="Ribasim HWS model"
+    src="https://github.com/Deltares/Ribasim/assets/8655030/70c3ee66-75a8-48a7-8675-35e2dc6d63eb"
+>
+:::
+
+::::

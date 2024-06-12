@@ -421,6 +421,10 @@ end
     using JuMP
     using Ribasim: NodeID, OptimizationType
     using DataFrames: DataFrame
+    using Tables.DataAPI: nrow
+    import Arrow
+    import Tables
+    using Dates: DateTime
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/flow_demand/ribasim.toml")
     @test ispath(toml_path)
@@ -539,6 +543,44 @@ end
     record_demand = DataFrame(model.integrator.p.allocation.record_demand)
     df_rating_curve_2 = record_demand[record_demand.node_id .== 2, :]
     @test all(df_rating_curve_2.realized .≈ 2e-3)
+
+    @testset "Results" begin
+        allocation_bytes = read(normpath(dirname(toml_path), "results/allocation.arrow"))
+        allocation_flow_bytes =
+            read(normpath(dirname(toml_path), "results/allocation_flow.arrow"))
+        allocation = Arrow.Table(allocation_bytes)
+        allocation_flow = Arrow.Table(allocation_flow_bytes)
+        @test Tables.schema(allocation) == Tables.Schema(
+            (
+                :time,
+                :subnetwork_id,
+                :node_type,
+                :node_id,
+                :priority,
+                :demand,
+                :allocated,
+                :realized,
+            ),
+            (DateTime, Int32, String, Int32, Int32, Float64, Float64, Float64),
+        )
+        @test Tables.schema(allocation_flow) == Tables.Schema(
+            (
+                :time,
+                :edge_id,
+                :from_node_type,
+                :from_node_id,
+                :to_node_type,
+                :to_node_id,
+                :subnetwork_id,
+                :priority,
+                :flow_rate,
+                :optimization_type,
+            ),
+            (DateTime, Int32, String, Int32, String, Int32, Int32, Int32, Float64, String),
+        )
+        @test nrow(allocation) > 0
+        @test nrow(allocation_flow) > 0
+    end
 end
 
 @testitem "flow_demand_with_max_flow_rate" begin
