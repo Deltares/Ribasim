@@ -39,7 +39,7 @@ string                          | meaning                                | type 
 
 Additional notes:
 
-- `user_demand.demand` yields the only 2D array, the other arrays are 1D. This array is indexed as `(node_idx, priority_idx)`
+- `user_demand.demand` yields the only 2D array, the other arrays are 1D. This array is indexed as `(node_idx, priority_idx)` in Julia, which stores arrays column-major
 - The index of e.g. basins and user demand nodes needs to be inferred from the Ribasim input. The same holds for `priority_idx`, which is global over all subnetworks
 - The data being writable means that Ribasim takes into account the possibility that the data is updated outiside the Ribasim core
 - Although the `*_integrated` and `*_realized` data is writable, this doesn't affect the Ribasim simulation. This integrated data is only computed for the BMI, and can be set to $0$ via the BMI to avoid accuracy problems when the values get too large.
