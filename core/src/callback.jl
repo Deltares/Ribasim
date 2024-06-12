@@ -195,11 +195,19 @@ function save_vertical_flux(u, t, integrator)
 end
 
 """
-Apply the discrete control logic. Each DiscreteControl node has one or more variables associated with it,
-and these variables are a linear combination of one or more state/time derived parameters of the model.
-The values of these variables are compared against 'greater_than' thresholds. These conditions yield a 'truth_state'
-consisting of 'truth_values' for a DiscreteControl node. This truth_state then corresponds with a 'control_state',
-and nodes controlled by a DiscreteControl node have parameter values associated with this control_state.
+Apply the discrete control logic. There's somewhat of a complex structure:
+- Each DiscreteControl node can have one ore multiple compound variables it listens to
+- A compound variable is defined as a linear combination of state/time derived parameters of the model
+- Each compound variable has associated with it a sorted vector of greater_than values, which define an ordered
+    list of conditions of the form (compound variable value) => greater_than
+- Thus, to find out which conditions are true, we only need to find the largest index in the greater than values
+    such that the above condition is true
+- The truth value (true/false) of all these conditions for all variables of a DiscreteControl node are concatenated
+    (in preallocated memory) into what is called the nodes truth state. This concatenation happens in the order in which
+    the compound variables appear in discrete_control.compound_variables
+- The DiscreteControl node maps this truth state via the logic mapping to a control state, which is a string
+- The nodes that are controlled by this DiscreteControl node must have the same control state, for which they have
+    parameter values associated with that control state defined in their control_mapping
 """
 function apply_discrete_control!(u, t, integrator)::Nothing
     (; p) = integrator
