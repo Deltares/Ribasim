@@ -196,7 +196,7 @@ end
 
 """
 Apply the discrete control logic. There's somewhat of a complex structure:
-- Each DiscreteControl node can have one ore multiple compound variables it listens to
+- Each DiscreteControl node can have one or multiple compound variables it listens to
 - A compound variable is defined as a linear combination of state/time derived parameters of the model
 - Each compound variable has associated with it a sorted vector of greater_than values, which define an ordered
     list of conditions of the form (compound variable value) => greater_than
