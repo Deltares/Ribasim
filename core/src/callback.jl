@@ -204,13 +204,14 @@ and nodes controlled by a DiscreteControl node have parameter values associated 
 function apply_discrete_control!(u, t, integrator)::Nothing
     (; p) = integrator
     (; discrete_control) = p
-    (; node_id, node_id_unique) = discrete_control
+    (; node_id, variable) = discrete_control
 
     variable_idx = 1
-    n_variables = length(node_id)
+    compound_variable = variable[variable_idx]
+    n_variables = length(variable)
 
     # Loop over the discrete control nodes
-    for (id, truth_state) in zip(node_id_unique, discrete_control.truth_state)
+    for (id, truth_state) in zip(node_id, discrete_control.truth_state)
 
         # Whether a change in truth state was detected, and thus whether
         # a change in control state is possible
@@ -221,11 +222,10 @@ function apply_discrete_control!(u, t, integrator)::Nothing
         truth_value_variable_idx = 1
 
         # Loop over the variables listened to by this discrete control node
-        while variable_idx <= n_variables && node_id[variable_idx] == id
+        while variable_idx <= n_variables && compound_variable.node_id == id
 
             # Compute the value of the current variable
             value = 0.0
-            compound_variable = discrete_control.variable[variable_idx]
             for subvariable in compound_variable.subvariables
                 value += subvariable.weight * get_value(p, subvariable, t)
             end
@@ -254,6 +254,9 @@ function apply_discrete_control!(u, t, integrator)::Nothing
 
             truth_value_variable_idx += n_greater_than
             variable_idx += 1
+            if variable_idx <= n_variables
+                compound_variable = discrete_control.variable[variable_idx]
+            end
         end
 
         # If no truth state change whas detected for this node, no control

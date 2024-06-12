@@ -471,11 +471,13 @@ end
 
 """
 The data for a single compound variable
+node_id:: The ID of the DiscreteControl that listens to this variable
 subvariables: data for one single subvariable
 greater_than: the thresholds this compound variable will be
     compared against
 """
 struct CompoundVariable
+    node_id::NodeID
     subvariables::Vector{
         @NamedTuple{
             listen_node_id::NodeID,
@@ -485,30 +487,12 @@ struct CompoundVariable
         }
     }
     greater_than::Vector{Float64}
-    function CompoundVariable(
-        listen_node_ids::Vector{NodeID},
-        variables::Vector{String},
-        weights::Vector{Float64},
-        look_aheads::Vector{Float64},
-        greater_thans::Vector{Float64},
-    )
-        subvariables = [
-            (; listen_node_id, variable, weight, look_ahead) for
-            (listen_node_id, variable, weight, look_ahead) in
-            zip(listen_node_ids, variables, weights, look_aheads)
-        ]
-        return new(subvariables, greater_thans)
-    end
 end
 
 """
-node_id: node ID of the DiscreteControl node per compound variable (can contain repeats)
-listen_node_id: the IDs of the nodes being condition on per compound variable
-variable: the names of the variables in the condition per compound variable
-weight: the weight of the variables in the condition per compound variable
-look_ahead: the look ahead of variables in the condition in seconds per compound_variable
-greater_than: The threshold values per compound variable
-condition_value: The current truth value of each condition per compound_variable per greater_than
+node_id: node ID of the DiscreteControl (if it has at least one condition defined on it)
+variable: The compound variables, sorted by DiscreteControl node ID
+    (there can be multiple per DiscreteControl node)
 truth_state: Memory allocated for storing the truth state
 control_state: Dictionary: node ID => (control state, control state start)
 logic_mapping: Dictionary: (control node ID, truth state) => control state
@@ -516,7 +500,6 @@ record: Namedtuple with discrete control information for results
 """
 struct DiscreteControl <: AbstractParameterNode
     node_id::Vector{NodeID}
-    node_id_unique::Vector{NodeID}
     variable::Vector{CompoundVariable}
     # truth_state per discrete control node
     truth_state::Vector{Vector{Bool}}

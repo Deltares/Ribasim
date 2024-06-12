@@ -608,12 +608,7 @@ function Basin(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{Int
 end
 
 function parse_variables_and_conditions(compound_variable, condition)
-    node_id = NodeID[]
-    listen_node_id = Vector{NodeID}[]
-    variable = Vector{String}[]
-    weight = Vector{Float64}[]
-    look_ahead = Vector{Float64}[]
-    greater_than = Vector{Float64}[]
+    compound_variables = CompoundVariable[]
     errors = false
 
     # Loop over unique discrete_control node IDs (on which at least one condition is defined)
@@ -635,30 +630,38 @@ function parse_variables_and_conditions(compound_variable, condition)
                 errors = true
                 @error "compound_variable_id $compound_variable_id for $discrete_control_id in condition table but not in variable table"
             else
-                push!(node_id, discrete_control_id)
+                greater_than = condition_group_variable.greater_than
+
+                # Collect subvariable data for this compound variable in
+                # NamedTuples
+                subvariables = NamedTuple[]
+                for i in eachindex(variable_group_variable.variable)
+                    listen_node_id =
+                        NodeID.(
+                            variable_group_variable.listen_node_type[i],
+                            variable_group_variable.listen_node_id[i],
+                        )
+                    variable = variable_group_variable.variable[i]
+                    weight = coalesce.(variable_group_variable.weight[i], 1.0)
+                    look_ahead = coalesce.(variable_group_variable.look_ahead[i], 0.0)
+                    push!(subvariables, (; listen_node_id, variable, weight, look_ahead))
+                end
+
                 push!(
-                    listen_node_id,
-                    NodeID.(
-                        variable_group_variable.listen_node_type,
-                        variable_group_variable.listen_node_id,
-                    ),
+                    compound_variables,
+                    CompoundVariable(discrete_control_id, subvariables, greater_than),
                 )
-                push!(variable, variable_group_variable.variable)
-                push!(weight, coalesce.(variable_group_variable.weight, 1.0))
-                push!(look_ahead, coalesce.(variable_group_variable.look_ahead, 0.0))
-                push!(greater_than, condition_group_variable.greater_than)
             end
         end
     end
-    return node_id, listen_node_id, variable, weight, look_ahead, greater_than, !errors
+    return compound_variables, !errors
 end
 
 function DiscreteControl(db::DB, config::Config)::DiscreteControl
     condition = load_structvector(db, config, DiscreteControlConditionV1)
     compound_variable = load_structvector(db, config, DiscreteControlVariableV1)
 
-    node_id, listen_node_id, variable, weight, look_ahead, greater_than, valid =
-        parse_variables_and_conditions(compound_variable, condition)
+    compound_variables, valid = parse_variables_and_conditions(compound_variable, condition)
 
     if !valid
         error("Problems encountered when parsing DiscreteControl variables and conditions.")
@@ -692,19 +695,18 @@ function DiscreteControl(db::DB, config::Config)::DiscreteControl
         control_state = String[],
     )
 
+    node_id =
+        unique([compound_variable.node_id for compound_variable in compound_variables])
+
     truth_state = Vector{Bool}[]
-    for id in unique(node_id)
-        where_node_id = (node_id .== id)
-        truth_state_length = sum(length(gd) for gd in greater_than[where_node_id])
+    for id in node_id
+        truth_state_length =
+            sum(length(var.greater_than) for var in compound_variables if var.node_id == id)
         push!(truth_state, zeros(Bool, truth_state_length))
     end
 
-    compound_variables =
-        CompoundVariable.(listen_node_id, variable, weight, look_ahead, greater_than)
-
     return DiscreteControl(
         node_id,
-        unique(node_id),
         compound_variables,
         truth_state,
         control_state,
