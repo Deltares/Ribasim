@@ -36,8 +36,6 @@ end
 Base.to_index(id::NodeID) = Int(id.value)
 
 const ScalarInterpolation = LinearInterpolation{Vector{Float64}, Vector{Float64}, Float64}
-const VectorInterpolation =
-    LinearInterpolation{Vector{Vector{Float64}}, Vector{Float64}, Vector{Float64}}
 
 """
 Store information for a subnetwork used for allocation.
@@ -209,7 +207,7 @@ inflow_edge: incoming flow edge metadata
 outflow_edges: outgoing flow edges metadata
     The ID of the source node is always the ID of the TabulatedRatingCurve node
 active: whether this node is active and thus contributes flows
-tables: The current Q(h) relationships
+table: The current Q(h) relationships
 time: The time table used for updating the tables
 control_mapping: dictionary from (node_id, control_state) to Q(h) and/or active state
 """
@@ -218,9 +216,12 @@ struct TabulatedRatingCurve{C} <: AbstractParameterNode
     inflow_edge::Vector{EdgeMetadata}
     outflow_edges::Vector{Vector{EdgeMetadata}}
     active::BitVector
-    tables::Vector{ScalarInterpolation}
+    table::Vector{ScalarInterpolation}
     time::StructVector{TabulatedRatingCurveTimeV1, C, Int}
-    control_mapping::Dict{Tuple{NodeID, String}, NamedTuple}
+    control_mapping::Dict{
+        Tuple{NodeID, String},
+        @NamedTuple{node_idx::Int, active::Bool, table::ScalarInterpolation}
+    }
 end
 
 """
@@ -241,7 +242,10 @@ struct LinearResistance <: AbstractParameterNode
     active::BitVector
     resistance::Vector{Float64}
     max_flow_rate::Vector{Float64}
-    control_mapping::Dict{Tuple{NodeID, String}, NamedTuple}
+    control_mapping::Dict{
+        Tuple{NodeID, String},
+        @NamedTuple{node_idx::Int, active::Bool, resistance::Float64}
+    }
 end
 
 """
@@ -293,7 +297,10 @@ struct ManningResistance <: AbstractParameterNode
     profile_slope::Vector{Float64}
     upstream_bottom::Vector{Float64}
     downstream_bottom::Vector{Float64}
-    control_mapping::Dict{Tuple{NodeID, String}, NamedTuple}
+    control_mapping::Dict{
+        Tuple{NodeID, String},
+        @NamedTuple{node_idx::Int, active::Bool, manning_n::Float64}
+    }
 end
 
 """
@@ -310,7 +317,10 @@ struct FractionalFlow <: AbstractParameterNode
     inflow_edge::Vector{EdgeMetadata}
     outflow_edge::Vector{EdgeMetadata}
     fraction::Vector{Float64}
-    control_mapping::Dict{Tuple{NodeID, String}, NamedTuple}
+    control_mapping::Dict{
+        Tuple{NodeID, String},
+        @NamedTuple{node_idx::Int, fraction::Float64}
+    }
 end
 
 """
@@ -326,11 +336,13 @@ end
 
 """
 node_id: node ID of the FlowBoundary node
+outflow_ids: The downsteam nodes of this FlowBoundary node
 active: whether this node is active and thus contributes flow
 flow_rate: target flow rate
 """
 struct FlowBoundary <: AbstractParameterNode
     node_id::Vector{NodeID}
+    outflow_ids::Vector{Vector{NodeID}}
     active::BitVector
     flow_rate::Vector{ScalarInterpolation}
 end
@@ -356,7 +368,10 @@ struct Pump{T} <: AbstractParameterNode
     flow_rate::T
     min_flow_rate::Vector{Float64}
     max_flow_rate::Vector{Float64}
-    control_mapping::Dict{Tuple{NodeID, String}, NamedTuple}
+    control_mapping::Dict{
+        Tuple{NodeID, String},
+        @NamedTuple{node_idx::Int, active::Bool, flow_rate::Float64}
+    }
     is_pid_controlled::BitVector
 
     function Pump(
@@ -410,7 +425,10 @@ struct Outlet{T} <: AbstractParameterNode
     min_flow_rate::Vector{Float64}
     max_flow_rate::Vector{Float64}
     min_crest_level::Vector{Float64}
-    control_mapping::Dict{Tuple{NodeID, String}, NamedTuple}
+    control_mapping::Dict{
+        Tuple{NodeID, String},
+        @NamedTuple{node_idx::Int, active::Bool, flow_rate::Float64}
+    }
     is_pid_controlled::BitVector
 
     function Outlet(
@@ -452,30 +470,41 @@ struct Terminal <: AbstractParameterNode
 end
 
 """
-node_id: node ID of the DiscreteControl node per compound variable (can contain repeats)
-listen_node_id: the IDs of the nodes being condition on per compound variable
-variable: the names of the variables in the condition per compound variable
-weight: the weight of the variables in the condition per compound variable
-look_ahead: the look ahead of variables in the condition in seconds per compound_variable
-greater_than: The threshold values per compound variable
-condition_value: The current truth value of each condition per compound_variable per greater_than
+The data for a single compound variable
+node_id:: The ID of the DiscreteControl that listens to this variable
+subvariables: data for one single subvariable
+greater_than: the thresholds this compound variable will be
+    compared against
+"""
+struct CompoundVariable
+    node_id::NodeID
+    subvariables::Vector{
+        @NamedTuple{
+            listen_node_id::NodeID,
+            variable::String,
+            weight::Float64,
+            look_ahead::Float64,
+        }
+    }
+    greater_than::Vector{Float64}
+end
+
+"""
+node_id: node ID of the DiscreteControl (if it has at least one condition defined on it)
+compound_variables: The compound variables the DiscreteControl node listens to
+truth_state: Memory allocated for storing the truth state
 control_state: Dictionary: node ID => (control state, control state start)
 logic_mapping: Dictionary: (control node ID, truth state) => control state
 record: Namedtuple with discrete control information for results
 """
 struct DiscreteControl <: AbstractParameterNode
     node_id::Vector{NodeID}
-    # Definition of compound variables
-    listen_node_id::Vector{Vector{NodeID}}
-    variable::Vector{Vector{String}}
-    weight::Vector{Vector{Float64}}
-    look_ahead::Vector{Vector{Float64}}
-    # Definition of conditions (one or more greater_than per compound variable)
-    greater_than::Vector{Vector{Float64}}
-    condition_value::Vector{BitVector}
+    compound_variables::Vector{Vector{CompoundVariable}}
+    # truth_state per discrete control node
+    truth_state::Vector{Vector{Bool}}
     # Definition of logic
     control_state::Dict{NodeID, Tuple{String, Float64}}
-    logic_mapping::Dict{Tuple{NodeID, String}, String}
+    logic_mapping::Dict{Tuple{NodeID, Vector{Bool}}, String}
     record::@NamedTuple{
         time::Vector{Float64},
         control_node_id::Vector{Int32},
@@ -500,9 +529,21 @@ struct PidControl{T} <: AbstractParameterNode
     active::BitVector
     listen_node_id::Vector{NodeID}
     target::Vector{ScalarInterpolation}
-    pid_params::Vector{VectorInterpolation}
+    proportional::Vector{ScalarInterpolation}
+    integral::Vector{ScalarInterpolation}
+    derivative::Vector{ScalarInterpolation}
     error::T
-    control_mapping::Dict{Tuple{NodeID, String}, NamedTuple}
+    control_mapping::Dict{
+        Tuple{NodeID, String},
+        @NamedTuple{
+            node_idx::Int,
+            active::Bool,
+            target::ScalarInterpolation,
+            proportional::ScalarInterpolation,
+            integral::ScalarInterpolation,
+            derivative::ScalarInterpolation,
+        }
+    }
 end
 
 """
@@ -587,6 +628,12 @@ struct LevelDemand <: AbstractDemandNode
     priority::Vector{Int32}
 end
 
+"""
+node_id: node ID of the FlowDemand node
+demand_itp: The time interpolation of the demand of the node
+demand: The current demand of the node
+priority: The priority of the demand of the node
+"""
 struct FlowDemand <: AbstractDemandNode
     node_id::Vector{NodeID}
     demand_itp::Vector{ScalarInterpolation}
@@ -602,27 +649,45 @@ struct Subgrid
     level::Vector{Float64}
 end
 
+"""
+The metadata of the graph (the fields of the NamedTuple) can be accessed
+    e.g. using graph[].flow.
+node_ids: mapping subnetwork ID -> node IDs in that subnetwork
+edges_source: mapping subnetwork ID -> metadata of allocation
+    source edges in that subnetwork
+flow_edges: The metadata of all flow edges
+flow dict: mapping (source ID, destination ID) -> index in the flow vector
+    of the flow over that edge
+flow: Flow per flow edge in the order prescribed by flow_dict
+flow_prev: The flow vector of the previous timestep, used for integration
+flow_integrated: Flow integrated over time, used for mean flow computation
+    over saveat intervals
+saveat: The time interval between saves of output data (storage, flow, ...)
+"""
+const ModelGraph{T} = MetaGraph{
+    Int64,
+    DiGraph{Int64},
+    NodeID,
+    NodeMetadata,
+    EdgeMetadata,
+    @NamedTuple{
+        node_ids::Dict{Int32, Set{NodeID}},
+        edges_source::Dict{Int32, Set{EdgeMetadata}},
+        flow_edges::Vector{EdgeMetadata},
+        flow_dict::Dict{Tuple{NodeID, NodeID}, Int32},
+        flow::T,
+        flow_prev::Vector{Float64},
+        flow_integrated::Vector{Float64},
+        saveat::Float64,
+    },
+    MetaGraphsNext.var"#11#13",
+    Float64,
+} where {T}
+
 # TODO Automatically add all nodetypes here
 struct Parameters{T, C1, C2, V1, V2, V3}
     starttime::DateTime
-    graph::MetaGraph{
-        Int64,
-        DiGraph{Int64},
-        NodeID,
-        NodeMetadata,
-        EdgeMetadata,
-        @NamedTuple{
-            node_ids::Dict{Int32, Set{NodeID}},
-            edges_source::Dict{Int32, Set{EdgeMetadata}},
-            flow_dict::Dict{Tuple{NodeID, NodeID}, Int32},
-            flow::T,
-            flow_prev::Vector{Float64},
-            flow_integrated::Vector{Float64},
-            saveat::Float64,
-        },
-        MetaGraphsNext.var"#11#13",
-        Float64,
-    }
+    graph::ModelGraph{T}
     allocation::Allocation
     basin::Basin{T, C1, V1, V2, V3}
     linear_resistance::LinearResistance

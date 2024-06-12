@@ -17,13 +17,13 @@
     @test pump_control_mapping[(NodeID(:Pump, 4), "off")].flow_rate == 0
     @test pump_control_mapping[(NodeID(:Pump, 4), "on")].flow_rate == 1.0e-5
 
-    logic_mapping::Dict{Tuple{NodeID, String}, String} = Dict(
-        (NodeID(:DiscreteControl, 5), "TT") => "on",
-        (NodeID(:DiscreteControl, 6), "F") => "active",
-        (NodeID(:DiscreteControl, 5), "TF") => "off",
-        (NodeID(:DiscreteControl, 5), "FF") => "on",
-        (NodeID(:DiscreteControl, 5), "FT") => "off",
-        (NodeID(:DiscreteControl, 6), "T") => "inactive",
+    logic_mapping::Dict{Tuple{NodeID, Vector{Bool}}, String} = Dict(
+        (NodeID(:DiscreteControl, 5), [true, true]) => "on",
+        (NodeID(:DiscreteControl, 6), [false]) => "active",
+        (NodeID(:DiscreteControl, 5), [true, false]) => "off",
+        (NodeID(:DiscreteControl, 5), [false, false]) => "on",
+        (NodeID(:DiscreteControl, 5), [false, true]) => "off",
+        (NodeID(:DiscreteControl, 6), [true]) => "inactive",
     )
 
     @test discrete_control.logic_mapping == logic_mapping
@@ -49,11 +49,11 @@
     # Control times
     t_1 = discrete_control.record.time[3]
     t_1_index = findfirst(>=(t_1), t)
-    @test level[1, t_1_index] <= discrete_control.greater_than[1][1]
+    @test level[1, t_1_index] <= discrete_control.compound_variables[1][1].greater_than[1]
 
     t_2 = discrete_control.record.time[4]
     t_2_index = findfirst(>=(t_2), t)
-    @test level[2, t_2_index] >= discrete_control.greater_than[2][1]
+    @test level[2, t_2_index] >= discrete_control.compound_variables[1][2].greater_than[1]
 
     flow = get_tmp(graph[].flow, 0)
     @test all(iszero, flow)
@@ -66,13 +66,13 @@ end
     p = model.integrator.p
     (; discrete_control, flow_boundary) = p
 
-    Δt = discrete_control.look_ahead[1][1]
+    Δt = discrete_control.compound_variables[1][1].subvariables[1].look_ahead
 
     t = Ribasim.tsaves(model)
     t_control = discrete_control.record.time[2]
     t_control_index = searchsortedfirst(t, t_control)
 
-    greater_than = discrete_control.greater_than[1][1]
+    greater_than = discrete_control.compound_variables[1][1].greater_than[1]
     flow_t_control = flow_boundary.flow_rate[1](t_control)
     flow_t_control_ahead = flow_boundary.flow_rate[1](t_control + Δt)
 
@@ -90,13 +90,13 @@ end
     p = model.integrator.p
     (; discrete_control, level_boundary) = p
 
-    Δt = discrete_control.look_ahead[1][1]
+    Δt = discrete_control.compound_variables[1][1].subvariables[1].look_ahead
 
     t = Ribasim.tsaves(model)
     t_control = discrete_control.record.time[2]
     t_control_index = searchsortedfirst(t, t_control)
 
-    greater_than = discrete_control.greater_than[1][1]
+    greater_than = discrete_control.compound_variables[1][1].greater_than[1]
     level_t_control = level_boundary.level[1](t_control)
     level_t_control_ahead = level_boundary.level[1](t_control + Δt)
 
@@ -118,7 +118,8 @@ end
     t_target_change = target_itp.t[2]
     idx_target_change = searchsortedlast(t, t_target_change)
 
-    K_p, K_i, _ = pid_control.pid_params[2](0)
+    K_p = pid_control.proportional[2](0)
+    K_i = pid_control.integral[2](0)
     level_demand = pid_control.target[2](0)
 
     A = basin.area[1][1]
@@ -159,7 +160,7 @@ end
     t = Ribasim.datetime_since(discrete_control.record.time[2], model.config.starttime)
     @test Date(t) == Date("2020-03-16")
     # then the rating curve is updated to the "low" control_state
-    @test last(only(p.tabulated_rating_curve.tables).t) == 1.2
+    @test last(only(p.tabulated_rating_curve.table).t) == 1.2
 end
 
 @testitem "Set PID target with DiscreteControl" begin
@@ -199,11 +200,22 @@ end
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     (; discrete_control) = model.integrator.p
-    (; listen_node_id, variable, weight, record) = discrete_control
+    (; compound_variables, record) = discrete_control
 
-    @test listen_node_id == [[NodeID(:FlowBoundary, 2), NodeID(:FlowBoundary, 3)]]
-    @test variable == [["flow_rate", "flow_rate"]]
-    @test weight == [[0.5, 0.5]]
+    compound_variable = only(only(compound_variables))
+
+    @test compound_variable.subvariables[1] == (;
+        listen_node_id = NodeID(:FlowBoundary, 2),
+        variable = "flow_rate",
+        weight = 0.5,
+        look_ahead = 0.0,
+    )
+    @test compound_variable.subvariables[2] == (;
+        listen_node_id = NodeID(:FlowBoundary, 3),
+        variable = "flow_rate",
+        weight = 0.5,
+        look_ahead = 0.0,
+    )
     @test record.time ≈ [0.0, model.integrator.sol.t[end] / 2]
     @test record.truth_state == ["F", "T"]
     @test record.control_state == ["Off", "On"]

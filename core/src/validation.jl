@@ -239,7 +239,7 @@ Test whether static or discrete controlled flow rates are indeed non-negative.
 function valid_flow_rates(
     node_id::Vector{NodeID},
     flow_rate::Vector,
-    control_mapping::Dict{Tuple{NodeID, String}, NamedTuple},
+    control_mapping::Dict,
 )::Bool
     errors = false
 
@@ -247,10 +247,11 @@ function valid_flow_rates(
     # if their initial value is also invalid.
     ids_controlled = NodeID[]
 
-    for (key, control_values) in pairs(control_mapping)
+    for (key, parameter_update) in pairs(control_mapping)
         id_controlled = key[1]
         push!(ids_controlled, id_controlled)
-        flow_rate_ = get(control_values, :flow_rate, 1)
+        flow_rate_ = parameter_update.flow_rate
+        flow_rate_ = isnan(flow_rate_) ? 1.0 : flow_rate_
 
         if flow_rate_ < 0.0
             errors = true
@@ -311,7 +312,7 @@ outneighbor, that the fractions leaving a node add up to ≈1 and that the fract
 function valid_fractional_flow(
     graph::MetaGraph,
     node_id::Vector{NodeID},
-    control_mapping::Dict{Tuple{NodeID, String}, NamedTuple},
+    control_mapping::Dict,
 )::Bool
     errors = false
 
@@ -552,21 +553,23 @@ Check:
 """
 function valid_discrete_control(p::Parameters, config::Config)::Bool
     (; discrete_control, graph) = p
-    (; node_id, logic_mapping, look_ahead, variable, listen_node_id, greater_than) =
-        discrete_control
+    (; node_id, logic_mapping) = discrete_control
 
     t_end = seconds_since(config.endtime, config.starttime)
     errors = false
 
-    for id in unique(node_id)
+    for (id, compound_variables) in zip(node_id, discrete_control.compound_variables)
         # The control states of this DiscreteControl node
         control_states_discrete_control = Set{String}()
 
         # The truth states of this DiscreteControl node with the wrong length
-        truth_states_wrong_length = String[]
+        truth_states_wrong_length = Vector{Bool}[]
 
         # The number of conditions of this DiscreteControl node
-        n_conditions = sum(length(greater_than[i]) for i in searchsorted(node_id, id))
+        n_conditions = sum(
+            length(compound_variable.greater_than) for
+            compound_variable in compound_variables
+        )
 
         for (key, control_state) in logic_mapping
             id_, truth_state = key
@@ -582,7 +585,7 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
 
         if !isempty(truth_states_wrong_length)
             errors = true
-            @error "$id has $n_conditions condition(s), which is inconsistent with these truth state(s): $truth_states_wrong_length."
+            @error "$id has $n_conditions condition(s), which is inconsistent with these truth state(s): $(convert_truth_state.(truth_states_wrong_length))."
         end
 
         # Check whether these control states are defined for the
@@ -612,30 +615,32 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
                 errors = true
             end
         end
-    end
-    for (look_aheads, variables, listen_node_ids) in
-        zip(look_ahead, variable, listen_node_id)
-        for (Δt, var, node_id) in zip(look_aheads, variables, listen_node_ids)
-            if !iszero(Δt)
-                node_type = node_id.type
-                if node_type ∉ [NodeType.FlowBoundary, NodeType.LevelBoundary]
-                    errors = true
-                    @error "Look ahead supplied for non-timeseries listen variable '$var' from listen node $node_id."
-                else
-                    if Δt < 0
+
+        # Validate look_ahead
+        for compound_variable in compound_variables
+            for subvariable in compound_variable.subvariables
+                if !iszero(subvariable.look_ahead)
+                    node_type = subvariable.listen_node_id.type
+                    if node_type ∉ [NodeType.FlowBoundary, NodeType.LevelBoundary]
                         errors = true
-                        @error "Negative look ahead supplied for listen variable '$var' from listen node $node_id."
+                        @error "Look ahead supplied for non-timeseries listen variable '$(subvariable.variable)' from listen node $(subvariable.listen_node_id)."
                     else
-                        node = getfield(p, graph[node_id].type)
-                        idx = if node_type == NodeType.Basin
-                            id_index(node.node_id, node_id)
-                        else
-                            searchsortedfirst(node.node_id, node_id)
-                        end
-                        interpolation = getfield(node, Symbol(var))[idx]
-                        if t_end + Δt > interpolation.t[end]
+                        if subvariable.look_ahead < 0
                             errors = true
-                            @error "Look ahead for listen variable '$var' from listen node $node_id goes past timeseries end during simulation."
+                            @error "Negative look ahead supplied for listen variable '$(subvariable.variable)' from listen node $(subvariable.listen_node_id)."
+                        else
+                            node = getfield(p, graph[subvariable.listen_node_id].type)
+                            idx = if node_type == NodeType.Basin
+                                id_index(node.node_id, subvariable.listen_node_id)
+                            else
+                                searchsortedfirst(node.node_id, subvariable.listen_node_id)
+                            end
+                            interpolation =
+                                getfield(node, Symbol(subvariable.variable))[idx]
+                            if t_end + subvariable.look_ahead > interpolation.t[end]
+                                errors = true
+                                @error "Look ahead for listen variable '$(subvariable.variable)' from listen node $(subvariable.listen_node_id) goes past timeseries end during simulation."
+                            end
                         end
                     end
                 end

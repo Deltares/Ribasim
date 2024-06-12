@@ -120,7 +120,8 @@ function continuous_control!(
     max_flow_rate_pump = pump.max_flow_rate
     min_flow_rate_outlet = outlet.min_flow_rate
     max_flow_rate_outlet = outlet.max_flow_rate
-    (; node_id, active, target, pid_params, listen_node_id, error) = pid_control
+    (; node_id, active, target, proportional, integral, derivative, listen_node_id, error) =
+        pid_control
     (; current_area) = basin
 
     current_area = get_tmp(current_area, u)
@@ -185,7 +186,9 @@ function continuous_control!(
         factor = factor_basin * factor_outlet
         flow_rate = 0.0
 
-        K_p, K_i, K_d = pid_params[i](t)
+        K_p = proportional[i](t)
+        K_i = integral[i](t)
+        K_d = derivative[i](t)
 
         if !iszero(K_d)
             # dlevel/dstorage = 1/area
@@ -389,7 +392,7 @@ function formulate_flow!(
     t::Number,
 )::Nothing
     (; graph) = p
-    (; node_id, active, tables, inflow_edge, outflow_edges) = tabulated_rating_curve
+    (; node_id, active, table, inflow_edge, outflow_edges) = tabulated_rating_curve
 
     for (i, id) in enumerate(node_id)
         upstream_edge = inflow_edge[i]
@@ -400,7 +403,7 @@ function formulate_flow!(
             factor = low_storage_factor(storage, upstream_edge, upstream_basin_id, 10.0)
             q =
                 factor *
-                tables[i](get_level(p, upstream_edge, upstream_basin_id, t; storage)[2])
+                table[i](get_level(p, upstream_edge, upstream_basin_id, t; storage)[2])
         else
             q = 0.0
         end
@@ -548,11 +551,11 @@ function formulate_flow!(
     t::Number,
 )::Nothing
     (; graph) = p
-    (; node_id, active, flow_rate) = flow_boundary
+    (; node_id, active, flow_rate, outflow_ids) = flow_boundary
 
     for (i, id) in enumerate(node_id)
         # Requirement: edge points away from the flow boundary
-        for outflow_id in outflow_ids(graph, id)
+        for outflow_id in outflow_ids[i]
             if !active[i]
                 continue
             end
@@ -665,11 +668,8 @@ function formulate_du!(
     # loop over basins
     # subtract all outgoing flows
     # add all ingoing flows
-    for edge_metadata in values(graph.edge_data)
-        (; type, edge, basin_idx_src, basin_idx_dst) = edge_metadata
-        if type !== EdgeType.flow
-            continue
-        end
+    for edge_metadata in values(graph[].flow_edges)
+        (; edge, basin_idx_src, basin_idx_dst) = edge_metadata
         from_id, to_id = edge
 
         if from_id.type == NodeType.Basin
