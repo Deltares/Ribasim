@@ -620,7 +620,7 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
                 node_type = subvariable.listen_node_id.type
                 if node_type ∉ [NodeType.FlowBoundary, NodeType.LevelBoundary]
                     errors = true
-                    @error "Look ahead supplied for non-timeseries listen variable '$(subvariable.variable)' from listen node $node_id."
+                    @error "Look ahead supplied for non-timeseries listen variable '$(subvariable.variable)' from listen node $(subvariable.listen_node_id)."
                 else
                     if subvariable.look_ahead < 0
                         errors = true

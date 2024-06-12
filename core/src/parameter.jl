@@ -646,6 +646,12 @@ struct LevelDemand <: AbstractDemandNode
     priority::Vector{Int32}
 end
 
+"""
+node_id: node ID of the FlowDemand node
+demand_itp: The time interpolation of the demand of the node
+demand: The current demand of the node
+priority: The priority of the demand of the node
+"""
 struct FlowDemand <: AbstractDemandNode
     node_id::Vector{NodeID}
     demand_itp::Vector{ScalarInterpolation}
@@ -661,28 +667,45 @@ struct Subgrid
     level::Vector{Float64}
 end
 
+"""
+The metadata of the graph (the fields of the NamedTuple) can be accessed
+    e.g. using graph[].flow.
+node_ids: mapping subnetwork ID -> node IDs in that subnetwork
+edges_source: mapping subnetwork ID -> metadata of allocation
+    source edges in that subnetwork
+flow_edges: The metadata of all flow edges
+flow dict: mapping (source ID, destination ID) -> index in the flow vector
+    of the flow over that edge
+flow: Flow per flow edge in the order prescribed by flow_dict
+flow_prev: The flow vector of the previous timestep, used for integration
+flow_integrated: Flow integrated over time, used for mean flow computation
+    over saveat intervals
+saveat: The time interval between saves of output data (storage, flow, ...)
+"""
+const ModelGraph{T} = MetaGraph{
+    Int64,
+    DiGraph{Int64},
+    NodeID,
+    NodeMetadata,
+    EdgeMetadata,
+    @NamedTuple{
+        node_ids::Dict{Int32, Set{NodeID}},
+        edges_source::Dict{Int32, Set{EdgeMetadata}},
+        flow_edges::Vector{EdgeMetadata},
+        flow_dict::Dict{Tuple{NodeID, NodeID}, Int32},
+        flow::T,
+        flow_prev::Vector{Float64},
+        flow_integrated::Vector{Float64},
+        saveat::Float64,
+    },
+    MetaGraphsNext.var"#11#13",
+    Float64,
+} where {T}
+
 # TODO Automatically add all nodetypes here
 struct Parameters{T, C1, C2, V1, V2, V3}
     starttime::DateTime
-    graph::MetaGraph{
-        Int64,
-        DiGraph{Int64},
-        NodeID,
-        NodeMetadata,
-        EdgeMetadata,
-        @NamedTuple{
-            node_ids::Dict{Int32, Set{NodeID}},
-            edges_source::Dict{Int32, Set{EdgeMetadata}},
-            flow_edges::Vector{EdgeMetadata},
-            flow_dict::Dict{Tuple{NodeID, NodeID}, Int32},
-            flow::T,
-            flow_prev::Vector{Float64},
-            flow_integrated::Vector{Float64},
-            saveat::Float64,
-        },
-        MetaGraphsNext.var"#11#13",
-        Float64,
-    }
+    graph::ModelGraph{T}
     allocation::Allocation
     basin::Basin{T, C1, V1, V2, V3}
     linear_resistance::LinearResistance
