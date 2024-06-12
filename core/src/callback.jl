@@ -204,14 +204,14 @@ and nodes controlled by a DiscreteControl node have parameter values associated 
 function apply_discrete_control!(u, t, integrator)::Nothing
     (; p) = integrator
     (; discrete_control) = p
-    (; node_id, variable) = discrete_control
+    (; node_id) = discrete_control
 
-    variable_idx = 1
-    compound_variable = variable[variable_idx]
-    n_variables = length(variable)
-
-    # Loop over the discrete control nodes
-    for (id, truth_state) in zip(node_id, discrete_control.truth_state)
+    # Loop over the discrete control nodes to determine their truth state
+    # and detect possible control state changes
+    for i in eachindex(node_id)
+        id = node_id[i]
+        truth_state = discrete_control.truth_state[i]
+        compound_variables = discrete_control.compound_variables[i]
 
         # Whether a change in truth state was detected, and thus whether
         # a change in control state is possible
@@ -222,7 +222,7 @@ function apply_discrete_control!(u, t, integrator)::Nothing
         truth_value_variable_idx = 1
 
         # Loop over the variables listened to by this discrete control node
-        while variable_idx <= n_variables && compound_variable.node_id == id
+        for compound_variable in compound_variables
 
             # Compute the value of the current variable
             value = 0.0
@@ -243,7 +243,7 @@ function apply_discrete_control!(u, t, integrator)::Nothing
             # corresponding to the conditions on the current variable
             for truth_value_idx in
                 truth_value_variable_idx:(truth_value_variable_idx + n_greater_than - 1)
-                new_truth_state = truth_value_idx <= largest_true_index
+                new_truth_state = (truth_value_idx <= largest_true_index)
                 # If no truth state change was detected yet, check whether there is a change
                 # at this position
                 if !truth_state_change
@@ -253,10 +253,6 @@ function apply_discrete_control!(u, t, integrator)::Nothing
             end
 
             truth_value_variable_idx += n_greater_than
-            variable_idx += 1
-            if variable_idx <= n_variables
-                compound_variable = discrete_control.variable[variable_idx]
-            end
         end
 
         # If no truth state change whas detected for this node, no control

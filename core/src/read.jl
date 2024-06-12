@@ -608,13 +608,16 @@ function Basin(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{Int
 end
 
 function parse_variables_and_conditions(compound_variable, condition)
-    compound_variables = CompoundVariable[]
+    compound_variables = Vector{CompoundVariable}[]
     errors = false
 
     # Loop over unique discrete_control node IDs (on which at least one condition is defined)
     for id in unique(condition.node_id)
         condition_group_id = filter(row -> row.node_id == id, condition)
         variable_group_id = filter(row -> row.node_id == id, compound_variable)
+
+        compound_variables_node = CompoundVariable[]
+
         # Loop over compound variables for this node ID
         for compound_variable_id in unique(condition_group_id.compound_variable_id)
             condition_group_variable = filter(
@@ -648,11 +651,12 @@ function parse_variables_and_conditions(compound_variable, condition)
                 end
 
                 push!(
-                    compound_variables,
+                    compound_variables_node,
                     CompoundVariable(discrete_control_id, subvariables, greater_than),
                 )
             end
         end
+        push!(compound_variables, compound_variables_node)
     end
     return compound_variables, !errors
 end
@@ -696,12 +700,11 @@ function DiscreteControl(db::DB, config::Config)::DiscreteControl
     )
 
     node_id =
-        unique([compound_variable.node_id for compound_variable in compound_variables])
+        [first(compound_variables_).node_id for compound_variables_ in compound_variables]
 
     truth_state = Vector{Bool}[]
-    for id in node_id
-        truth_state_length =
-            sum(length(var.greater_than) for var in compound_variables if var.node_id == id)
+    for i in eachindex(node_id)
+        truth_state_length = sum(length(var.greater_than) for var in compound_variables[i])
         push!(truth_state, zeros(Bool, truth_state_length))
     end
 

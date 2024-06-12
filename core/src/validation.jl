@@ -553,12 +553,12 @@ Check:
 """
 function valid_discrete_control(p::Parameters, config::Config)::Bool
     (; discrete_control, graph) = p
-    (; node_id, logic_mapping, variable) = discrete_control
+    (; node_id, logic_mapping) = discrete_control
 
     t_end = seconds_since(config.endtime, config.starttime)
     errors = false
 
-    for id in unique(node_id)
+    for (id, compound_variables) in zip(node_id, discrete_control.compound_variables)
         # The control states of this DiscreteControl node
         control_states_discrete_control = Set{String}()
 
@@ -566,8 +566,10 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
         truth_states_wrong_length = Vector{Bool}[]
 
         # The number of conditions of this DiscreteControl node
-        n_conditions =
-            sum(length(variable[i].greater_than) for i in searchsorted(node_id, id))
+        n_conditions = sum(
+            length(compound_variable.greater_than) for
+            compound_variable in compound_variables
+        )
 
         for (key, control_state) in logic_mapping
             id_, truth_state = key
@@ -613,29 +615,32 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
                 errors = true
             end
         end
-    end
-    for compound_variable in variable
-        for subvariable in compound_variable.subvariables
-            if !iszero(subvariable.look_ahead)
-                node_type = subvariable.listen_node_id.type
-                if node_type ∉ [NodeType.FlowBoundary, NodeType.LevelBoundary]
-                    errors = true
-                    @error "Look ahead supplied for non-timeseries listen variable '$(subvariable.variable)' from listen node $(subvariable.listen_node_id)."
-                else
-                    if subvariable.look_ahead < 0
+
+        # Validate look_ahead
+        for compound_variable in compound_variables
+            for subvariable in compound_variable.subvariables
+                if !iszero(subvariable.look_ahead)
+                    node_type = subvariable.listen_node_id.type
+                    if node_type ∉ [NodeType.FlowBoundary, NodeType.LevelBoundary]
                         errors = true
-                        @error "Negative look ahead supplied for listen variable '$(subvariable.variable)' from listen node $(subvariable.listen_node_id)."
+                        @error "Look ahead supplied for non-timeseries listen variable '$(subvariable.variable)' from listen node $(subvariable.listen_node_id)."
                     else
-                        node = getfield(p, graph[subvariable.listen_node_id].type)
-                        idx = if node_type == NodeType.Basin
-                            id_index(node.node_id, subvariable.listen_node_id)
-                        else
-                            searchsortedfirst(node.node_id, subvariable.listen_node_id)
-                        end
-                        interpolation = getfield(node, Symbol(subvariable.variable))[idx]
-                        if t_end + subvariable.look_ahead > interpolation.t[end]
+                        if subvariable.look_ahead < 0
                             errors = true
-                            @error "Look ahead for listen variable '$(subvariable.variable)' from listen node $(subvariable.listen_node_id) goes past timeseries end during simulation."
+                            @error "Negative look ahead supplied for listen variable '$(subvariable.variable)' from listen node $(subvariable.listen_node_id)."
+                        else
+                            node = getfield(p, graph[subvariable.listen_node_id].type)
+                            idx = if node_type == NodeType.Basin
+                                id_index(node.node_id, subvariable.listen_node_id)
+                            else
+                                searchsortedfirst(node.node_id, subvariable.listen_node_id)
+                            end
+                            interpolation =
+                                getfield(node, Symbol(subvariable.variable))[idx]
+                            if t_end + subvariable.look_ahead > interpolation.t[end]
+                                errors = true
+                                @error "Look ahead for listen variable '$(subvariable.variable)' from listen node $(subvariable.listen_node_id) goes past timeseries end during simulation."
+                            end
                         end
                     end
                 end

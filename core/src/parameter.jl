@@ -491,8 +491,7 @@ end
 
 """
 node_id: node ID of the DiscreteControl (if it has at least one condition defined on it)
-variable: The compound variables, sorted by DiscreteControl node ID
-    (there can be multiple per DiscreteControl node)
+compound_variables: The compound variables the DiscreteControl node listens to
 truth_state: Memory allocated for storing the truth state
 control_state: Dictionary: node ID => (control state, control state start)
 logic_mapping: Dictionary: (control node ID, truth state) => control state
@@ -500,7 +499,7 @@ record: Namedtuple with discrete control information for results
 """
 struct DiscreteControl <: AbstractParameterNode
     node_id::Vector{NodeID}
-    variable::Vector{CompoundVariable}
+    compound_variables::Vector{Vector{CompoundVariable}}
     # truth_state per discrete control node
     truth_state::Vector{Vector{Bool}}
     # Definition of logic

@@ -49,11 +49,11 @@
     # Control times
     t_1 = discrete_control.record.time[3]
     t_1_index = findfirst(>=(t_1), t)
-    @test level[1, t_1_index] <= discrete_control.variable[1].greater_than[1]
+    @test level[1, t_1_index] <= discrete_control.compound_variables[1][1].greater_than[1]
 
     t_2 = discrete_control.record.time[4]
     t_2_index = findfirst(>=(t_2), t)
-    @test level[2, t_2_index] >= discrete_control.variable[2].greater_than[1]
+    @test level[2, t_2_index] >= discrete_control.compound_variables[1][2].greater_than[1]
 
     flow = get_tmp(graph[].flow, 0)
     @test all(iszero, flow)
@@ -66,13 +66,13 @@ end
     p = model.integrator.p
     (; discrete_control, flow_boundary) = p
 
-    Δt = discrete_control.variable[1].subvariables[1].look_ahead
+    Δt = discrete_control.compound_variables[1][1].subvariables[1].look_ahead
 
     t = Ribasim.tsaves(model)
     t_control = discrete_control.record.time[2]
     t_control_index = searchsortedfirst(t, t_control)
 
-    greater_than = discrete_control.variable[1].greater_than[1]
+    greater_than = discrete_control.compound_variables[1][1].greater_than[1]
     flow_t_control = flow_boundary.flow_rate[1](t_control)
     flow_t_control_ahead = flow_boundary.flow_rate[1](t_control + Δt)
 
@@ -90,13 +90,13 @@ end
     p = model.integrator.p
     (; discrete_control, level_boundary) = p
 
-    Δt = discrete_control.variable[1].subvariables[1].look_ahead
+    Δt = discrete_control.compound_variables[1][1].subvariables[1].look_ahead
 
     t = Ribasim.tsaves(model)
     t_control = discrete_control.record.time[2]
     t_control_index = searchsortedfirst(t, t_control)
 
-    greater_than = discrete_control.variable[1].greater_than[1]
+    greater_than = discrete_control.compound_variables[1][1].greater_than[1]
     level_t_control = level_boundary.level[1](t_control)
     level_t_control_ahead = level_boundary.level[1](t_control + Δt)
 
@@ -200,9 +200,9 @@ end
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     (; discrete_control) = model.integrator.p
-    (; variable, record) = discrete_control
+    (; compound_variables, record) = discrete_control
 
-    compound_variable = only(variable)
+    compound_variable = only(only(compound_variables))
 
     @test compound_variable.subvariables[1] == (;
         listen_node_id = NodeID(:FlowBoundary, 2),
