@@ -49,6 +49,7 @@ website:
           - dev/python.qmd
           - guides/addnode.qmd
           - guides/release.qmd
+          - guides/bmi.qmd
 
     - title: "Background"
       contents:
