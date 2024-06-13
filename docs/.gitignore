@@ -1,8 +1,7 @@
 /.quarto/
 /_site/
 /site_libs/
-python/reference/
-python/data/
+/reference/python/
 guide/data/
 *.html
 objects.json
