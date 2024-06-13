@@ -20,7 +20,7 @@ class MissingOptionalModule:
 
     def __getattr__(
         self,
-        name,
+        _,
     ):
         raise ImportError(
             f"{self.name} is required for this functionality. You can get it using `pip install ribasim[{self.suggestion}]`."

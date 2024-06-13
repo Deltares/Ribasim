@@ -122,8 +122,8 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
             ):
                 print("Found cycle that is not a UserDemand.")
             else:
-                edge_ids = G.edges[*loop]["id"]
-                G.edges[*reversed(loop)]["id"].extend(edge_ids)
+                edge_ids = G.edges[loop]["id"]
+                G.edges[reversed(loop)]["id"].extend(edge_ids)
                 merge_edges.extend(edge_ids)
                 G.remove_edge(*loop)
 

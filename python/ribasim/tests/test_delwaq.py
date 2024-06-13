@@ -11,7 +11,7 @@ delwaq_dir = Path(__file__).parent
     not bool(os.getenv("D3D_HOME")), reason="Requires Delwaq to be installed."
 )
 def test_offline_delwaq_coupling():
-    repo_dir = delwaq_dir.parents[1]
+    repo_dir = delwaq_dir.parents[2]
     toml_path = repo_dir / "generated_testmodels/basic/ribasim.toml"
 
     graph, substances = generate(toml_path)
