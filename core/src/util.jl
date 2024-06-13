@@ -405,8 +405,8 @@ all possible explicit truth states.
 """
 function expand_logic_mapping(
     logic_mapping::Dict{Tuple{NodeID, String}, String},
-)::Dict{Tuple{NodeID, String}, String}
-    logic_mapping_expanded = Dict{Tuple{NodeID, String}, String}()
+)::Dict{Tuple{NodeID, Vector{Bool}}, String}
+    logic_mapping_expanded = Dict{Tuple{NodeID, Vector{Bool}}, String}()
 
     for (node_id, truth_state) in keys(logic_mapping)
         pattern = r"^[TF\*]+$"
@@ -418,23 +418,23 @@ function expand_logic_mapping(
         n_wildcards = count(==('*'), truth_state)
 
         substitutions = if n_wildcards > 0
-            substitutions = Iterators.product(fill(['T', 'F'], n_wildcards)...)
+            substitutions = Iterators.product(fill([true, false], n_wildcards)...)
         else
             [nothing]
         end
 
         # Loop over all substitution sets for the wildcards
         for substitution in substitutions
-            truth_state_new = ""
+            truth_state_new = Bool[]
             s_index = 0
 
             # If a wildcard is found replace it, otherwise take the old truth value
             for truth_value in truth_state
-                truth_state_new *= if truth_value == '*'
+                if truth_value == '*'
                     s_index += 1
-                    substitution[s_index]
+                    push!(truth_state_new, substitution[s_index])
                 else
-                    truth_value
+                    push!(truth_state_new, truth_value == 'T')
                 end
             end
 
@@ -737,6 +737,16 @@ function set_basin_idxs!(graph::MetaGraph, basin::Basin)::Nothing
             @set edge_metadata.basin_idx_dst = id_index(basin.node_id, id_dst)[2]
         graph[edge...] = edge_metadata
     end
+
+    # Collect the flow edges. This significantly speeds up
+    # formulate_du!
+    append!(
+        graph[].flow_edges,
+        filter(
+            edge_metadata -> edge_metadata.type == EdgeType.flow,
+            collect(values(graph.edge_data)),
+        ),
+    )
     return nothing
 end
 
@@ -792,4 +802,25 @@ function set_initial_allocation_mean_flows!(integrator)::Nothing
     end
 
     return nothing
+end
+
+"""
+Convert a truth state in terms of a BitVector of Vector{Bool} into a string of 'T' and 'F'
+"""
+function convert_truth_state(boolean_vector)::String
+    String(UInt8.(ifelse.(boolean_vector, 'T', 'F')))
+end
+
+"""
+Given the type of a node struct, e.g. Pump, get the type of the values of the
+control_mapping dict if this field exists.
+"""
+function get_control_state_type(node_type::Type)::Type
+    control_mapping_index = findfirst(==(:control_mapping), fieldnames(node_type))
+    if !isnothing(control_mapping_index)
+        control_mapping_type = fieldtypes(node_type)[control_mapping_index]
+        control_state_type = eltype(fieldtypes(control_mapping_type)[3])
+        return control_state_type
+    end
+    return Nothing
 end

@@ -89,6 +89,7 @@ website:
         - dev/addnode.qmd
         - dev/python.qmd
         - dev/qgis.qmd
+        - dev/bmi.qmd
         - dev/ci.qmd
         - dev/release.qmd
 

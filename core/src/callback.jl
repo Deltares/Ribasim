@@ -56,13 +56,10 @@ function create_callbacks(
         push!(callbacks, export_cb)
     end
 
-    saved = SavedResults(saved_flow, saved_vertical_flux, saved_subgrid_level)
+    discrete_control_cb = FunctionCallingCallback(apply_discrete_control!)
+    push!(callbacks, discrete_control_cb)
 
-    n_conditions = sum(length(vec) for vec in discrete_control.greater_than; init = 0)
-    if n_conditions > 0
-        discrete_control_cb = FunctionCallingCallback(apply_discrete_control!)
-        push!(callbacks, discrete_control_cb)
-    end
+    saved = SavedResults(saved_flow, saved_vertical_flux, saved_subgrid_level)
     callback = CallbackSet(callbacks...)
 
     return callback, saved
@@ -113,6 +110,15 @@ function integrate_flows!(u, t, integrator)::Nothing
         user_demand.realized_bmi[i] += 0.5 * (flow[flow_idx] + flow_prev[flow_idx]) * dt
     end
 
+    # *Demand realized flow for output
+    for (edge, value) in allocation.mean_realized_flows
+        if edge[1] !== edge[2]
+            value +=
+                0.5 * (get_flow(graph, edge..., 0) + get_flow_prev(graph, edge..., 0)) * dt
+            allocation.mean_realized_flows[edge] = value
+        end
+    end
+
     # Allocation source flows
     for (edge, value) in allocation.mean_input_flows
         if edge[1] == edge[2]
@@ -128,15 +134,6 @@ function integrate_flows!(u, t, integrator)::Nothing
             allocation.mean_input_flows[edge] =
                 value +
                 0.5 * (get_flow(graph, edge..., 0) + get_flow_prev(graph, edge..., 0)) * dt
-        end
-    end
-
-    # Realized demand flows
-    for (edge, value) in allocation.mean_realized_flows
-        if edge[1] !== edge[2]
-            value +=
-                0.5 * (get_flow(graph, edge..., 0) + get_flow_prev(graph, edge..., 0)) * dt
-            allocation.mean_realized_flows[edge] = value
         end
     end
 
@@ -197,77 +194,143 @@ function save_vertical_flux(u, t, integrator)
     return vertical_flux_mean
 end
 
+"""
+Apply the discrete control logic. There's somewhat of a complex structure:
+- Each DiscreteControl node can have one or multiple compound variables it listens to
+- A compound variable is defined as a linear combination of state/time derived parameters of the model
+- Each compound variable has associated with it a sorted vector of greater_than values, which define an ordered
+    list of conditions of the form (compound variable value) => greater_than
+- Thus, to find out which conditions are true, we only need to find the largest index in the greater than values
+    such that the above condition is true
+- The truth value (true/false) of all these conditions for all variables of a DiscreteControl node are concatenated
+    (in preallocated memory) into what is called the nodes truth state. This concatenation happens in the order in which
+    the compound variables appear in discrete_control.compound_variables
+- The DiscreteControl node maps this truth state via the logic mapping to a control state, which is a string
+- The nodes that are controlled by this DiscreteControl node must have the same control state, for which they have
+    parameter values associated with that control state defined in their control_mapping
+"""
 function apply_discrete_control!(u, t, integrator)::Nothing
     (; p) = integrator
     (; discrete_control) = p
-    condition_idx = 0
+    (; node_id) = discrete_control
 
-    discrete_control_condition!(u, t, integrator)
+    # Loop over the discrete control nodes to determine their truth state
+    # and detect possible control state changes
+    for i in eachindex(node_id)
+        id = node_id[i]
+        truth_state = discrete_control.truth_state[i]
+        compound_variables = discrete_control.compound_variables[i]
 
-    # For every compound variable see whether it changes a control state
-    for compound_variable_idx in eachindex(discrete_control.node_id)
-        discrete_control_affect!(integrator, compound_variable_idx)
+        # Whether a change in truth state was detected, and thus whether
+        # a change in control state is possible
+        truth_state_change = false
+
+        # As the truth state of this node is being updated for the different variables
+        # it listens to, this is the first index of the truth values for the current variable
+        truth_value_variable_idx = 1
+
+        # Loop over the variables listened to by this discrete control node
+        for compound_variable in compound_variables
+
+            # Compute the value of the current variable
+            value = 0.0
+            for subvariable in compound_variable.subvariables
+                value += subvariable.weight * get_value(p, subvariable, t)
+            end
+
+            # The thresholds the value of this variable is being compared with
+            greater_thans = compound_variable.greater_than
+            n_greater_than = length(greater_thans)
+
+            # Find the largest index i within the greater thans for this variable
+            # such that value >= greater_than and shift towards the index in the truth state
+            largest_true_index =
+                truth_value_variable_idx - 1 + searchsortedlast(greater_thans, value)
+
+            # Update the truth values in the truth states for the current discrete control node
+            # corresponding to the conditions on the current variable
+            for truth_value_idx in
+                truth_value_variable_idx:(truth_value_variable_idx + n_greater_than - 1)
+                new_truth_state = (truth_value_idx <= largest_true_index)
+                # If no truth state change was detected yet, check whether there is a change
+                # at this position
+                if !truth_state_change
+                    truth_state_change = (new_truth_state != truth_state[truth_value_idx])
+                end
+                truth_state[truth_value_idx] = new_truth_state
+            end
+
+            truth_value_variable_idx += n_greater_than
+        end
+
+        # If no truth state change whas detected for this node, no control
+        # state change is possible either
+        if !((t == 0) || truth_state_change)
+            continue
+        end
+
+        set_new_control_state!(integrator, id, truth_state)
     end
+    return nothing
 end
 
-"""
-Update discrete control condition truths.
-"""
-function discrete_control_condition!(u, t, integrator)
+function set_new_control_state!(
+    integrator,
+    discrete_control_id::NodeID,
+    truth_state::Vector{Bool},
+)::Nothing
     (; p) = integrator
     (; discrete_control) = p
 
-    # Loop over compound variables
-    for (
-        listen_node_ids,
-        variables,
-        weights,
-        greater_thans,
-        look_aheads,
-        condition_values,
-    ) in zip(
-        discrete_control.listen_node_id,
-        discrete_control.variable,
-        discrete_control.weight,
-        discrete_control.greater_than,
-        discrete_control.look_ahead,
-        discrete_control.condition_value,
+    # Get the control state corresponding to the new truth state,
+    # if one is defined
+    control_state_new =
+        get(discrete_control.logic_mapping, (discrete_control_id, truth_state), nothing)
+    isnothing(control_state_new) && error(
+        lazy"No control state specified for $discrete_control_node_id for truth state $truth_state.",
     )
-        value = 0.0
-        for (listen_node_id, variable, weight, look_ahead) in
-            zip(listen_node_ids, variables, weights, look_aheads)
-            value += weight * get_value(p, listen_node_id, variable, look_ahead, u, t)
+
+    # Check the new control state against the current control state
+    # If there is a change, update parameters and the discrete control record
+    control_state_now, _ = discrete_control.control_state[discrete_control_id]
+    if control_state_now != control_state_new
+        record = discrete_control.record
+
+        push!(record.time, integrator.t)
+        push!(record.control_node_id, Int32(discrete_control_id))
+        push!(record.truth_state, convert_truth_state(truth_state))
+        push!(record.control_state, control_state_new)
+
+        # Loop over nodes which are under control of this control node
+        for target_node_id in
+            outneighbor_labels_type(p.graph, discrete_control_id, EdgeType.control)
+            set_control_params!(p, target_node_id, control_state_new)
         end
 
-        condition_values .= false
-        condition_values[1:searchsortedlast(greater_thans, value)] .= true
+        discrete_control.control_state[discrete_control_id] =
+            (control_state_new, integrator.t)
     end
+    return nothing
 end
 
 """
 Get a value for a condition. Currently supports getting levels from basins and flows
 from flow boundaries.
 """
-function get_value(
-    p::Parameters,
-    node_id::NodeID,
-    variable::String,
-    Δt::Float64,
-    u::AbstractVector{Float64},
-    t::Float64,
-)
+function get_value(p::Parameters, subvariable::NamedTuple, t::Float64)
     (; basin, flow_boundary, level_boundary) = p
+    (; listen_node_id, look_ahead, variable) = subvariable
 
     if variable == "level"
-        if node_id.type == NodeType.Basin
-            has_index, basin_idx = id_index(basin.node_id, node_id)
+        if listen_node_id.type == NodeType.Basin
+            has_index, basin_idx = id_index(basin.node_id, listen_node_id)
             if !has_index
-                error("Discrete control listen node $node_id does not exist.")
+                error("Discrete control listen node $listen_node_id does not exist.")
             end
-            _, level = get_area_and_level(basin, basin_idx, u[basin_idx])
-        elseif node_id.type == NodeType.LevelBoundary
-            level_boundary_idx = findsorted(level_boundary.node_id, node_id)
-            level = level_boundary.level[level_boundary_idx](t + Δt)
+            level = get_tmp(basin.current_level, 0)[basin_idx]
+        elseif listen_node_id.type == NodeType.LevelBoundary
+            level_boundary_idx = findsorted(level_boundary.node_id, listen_node_id)
+            level = level_boundary.level[level_boundary_idx](t + look_ahead)
         else
             error(
                 "Level condition node '$node_id' is neither a basin nor a level boundary.",
@@ -276,11 +339,11 @@ function get_value(
         value = level
 
     elseif variable == "flow_rate"
-        if node_id.type == NodeType.FlowBoundary
-            flow_boundary_idx = findsorted(flow_boundary.node_id, node_id)
-            value = flow_boundary.flow_rate[flow_boundary_idx](t + Δt)
+        if listen_node_id.type == NodeType.FlowBoundary
+            flow_boundary_idx = findsorted(flow_boundary.node_id, listen_node_id)
+            value = flow_boundary.flow_rate[flow_boundary_idx](t + look_ahead)
         else
-            error("Flow condition node $node_id is not a flow boundary.")
+            error("Flow condition node $listen_node_id is not a flow boundary.")
         end
 
     else
@@ -288,61 +351,6 @@ function get_value(
     end
 
     return value
-end
-
-"""
-Change parameters based on the control logic.
-"""
-function discrete_control_affect!(integrator, compound_variable_idx)
-    p = integrator.p
-    (; discrete_control, graph) = p
-
-    # Get the discrete_control node to which this compound variable belongs
-    discrete_control_node_id = discrete_control.node_id[compound_variable_idx]
-
-    # Get the indices of all conditions that this control node listens to
-    where_node_id = searchsorted(discrete_control.node_id, discrete_control_node_id)
-
-    # Get the truth state for this discrete_control node
-    truth_values = cat(
-        [
-            [ifelse(b, "T", "F") for b in discrete_control.condition_value[i]] for
-            i in where_node_id
-        ]...;
-        dims = 1,
-    )
-    truth_state = join(truth_values, "")
-
-    # What the local control state should be
-    control_state_new =
-        if haskey(discrete_control.logic_mapping, (discrete_control_node_id, truth_state))
-            discrete_control.logic_mapping[(discrete_control_node_id, truth_state)]
-        else
-            error(
-                "No control state specified for $discrete_control_node_id for truth state $truth_state.",
-            )
-        end
-
-    control_state_now, _ = discrete_control.control_state[discrete_control_node_id]
-    if control_state_now != control_state_new
-        # Store control action in record
-        record = discrete_control.record
-
-        push!(record.time, integrator.t)
-        push!(record.control_node_id, Int32(discrete_control_node_id))
-        push!(record.truth_state, truth_state)
-        push!(record.control_state, control_state_new)
-
-        # Loop over nodes which are under control of this control node
-        for target_node_id in
-            outneighbor_labels_type(graph, discrete_control_node_id, EdgeType.control)
-            set_control_params!(p, target_node_id, control_state_new)
-        end
-
-        discrete_control.control_state[discrete_control_node_id] =
-            (control_state_new, integrator.t)
-    end
-    return nothing
 end
 
 function get_allocation_model(p::Parameters, subnetwork_id::Int32)::AllocationModel
@@ -404,22 +412,57 @@ function set_fractional_flow_in_allocation!(
     return nothing
 end
 
-function set_control_params!(p::Parameters, node_id::NodeID, control_state::String)
-    node = getfield(p, p.graph[node_id].type)
-    idx = searchsortedfirst(node.node_id, node_id)
-    new_state = node.control_mapping[(node_id, control_state)]
+function discrete_control_parameter_update!(
+    fractional_flow::FractionalFlow,
+    node_id::NodeID,
+    control_state::String,
+    p::Parameters,
+)::Nothing
+    parameter_update = fractional_flow.control_mapping[(node_id, control_state)]
+    (; node_idx, fraction) = parameter_update
+    fractional_flow.fraction[node_idx] = fraction
 
-    for (field, value) in zip(keys(new_state), new_state)
-        if !ismissing(value)
-            vec = get_tmp(getfield(node, field), 0)
-            vec[idx] = value
-        end
-
-        # Set new fractional flow fractions in allocation problem
-        if is_active(p.allocation) && node isa FractionalFlow && field == :fraction
-            set_fractional_flow_in_allocation!(p, node_id, value)
-        end
+    if is_active(p.allocation)
+        set_fractional_flow_in_allocation!(p, fractional_flow.node_id[node_idx], fraction)
     end
+    return nothing
+end
+
+function discrete_control_parameter_update!(
+    node::AbstractParameterNode,
+    node_id::NodeID,
+    control_state::String,
+)::Nothing
+    new_state = node.control_mapping[(node_id, control_state)]
+    (; node_idx) = new_state
+    for (field, value) in zip(keys(new_state), new_state)
+        if field == :node_idx
+            continue
+        end
+        vec = get_tmp(getfield(node, field), 0)
+        vec[node_idx] = value
+    end
+end
+
+function set_control_params!(p::Parameters, node_id::NodeID, control_state::String)::Nothing
+
+    # Check node type here to avoid runtime dispatch on the node type
+    if node_id.type == NodeType.Pump
+        discrete_control_parameter_update!(p.pump, node_id, control_state)
+    elseif node_id.type == NodeType.Outlet
+        discrete_control_parameter_update!(p.outlet, node_id, control_state)
+    elseif node_id.type == NodeType.TabulatedRatingCurve
+        discrete_control_parameter_update!(p.tabulated_rating_curve, node_id, control_state)
+    elseif node_id.type == NodeType.FractionalFlow
+        discrete_control_parameter_update!(p.fractional_flow, node_id, control_state, p)
+    elseif node_id.type == NodeType.PidControl
+        discrete_control_parameter_update!(p.pid_control, node_id, control_state)
+    elseif node_id.type == NodeType.LinearResistance
+        discrete_control_parameter_update!(p.linear_resistance, node_id, control_state)
+    elseif node_id.type == NodeType.ManningResistance
+        discrete_control_parameter_update!(p.manning_resistance, node_id, control_state)
+    end
+    return nothing
 end
 
 function update_subgrid_level!(integrator)::Nothing
@@ -531,7 +574,7 @@ end
 
 "Load updates from 'TabulatedRatingCurve / time' into the parameters"
 function update_tabulated_rating_curve!(integrator)::Nothing
-    (; node_id, tables, time) = integrator.p.tabulated_rating_curve
+    (; node_id, table, time) = integrator.p.tabulated_rating_curve
     t = datetime_since(integrator.t, integrator.p.starttime)
 
     # get groups of consecutive node_id for the current timestamp
@@ -544,7 +587,7 @@ function update_tabulated_rating_curve!(integrator)::Nothing
         level = [row.level for row in group]
         flow_rate = [row.flow_rate for row in group]
         i = searchsortedfirst(node_id, NodeID(NodeType.TabulatedRatingCurve, id))
-        tables[i] = LinearInterpolation(flow_rate, level; extrapolate = true)
+        table[i] = LinearInterpolation(flow_rate, level; extrapolate = true)
     end
     return nothing
 end

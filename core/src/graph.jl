@@ -105,9 +105,11 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
     if config.solver.autodiff
         flow = DiffCache(flow, chunk_sizes)
     end
+    flow_edges = EdgeMetadata[]
     graph_data = (;
         node_ids,
         edges_source,
+        flow_edges,
         flow_dict,
         flow,
         flow_prev,

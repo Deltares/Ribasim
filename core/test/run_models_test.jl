@@ -249,7 +249,7 @@ end
         Sys.isapple()
 end
 
-@testitem "allocation example model" begin
+@testitem "Allocation example model" begin
     using SciMLBase: successful_retcode
 
     toml_path =
@@ -301,7 +301,7 @@ end
     @test successful_retcode(model)
     @test model.integrator.sol.u[end] ≈ Float32[7.783636, 726.16394] skip = Sys.isapple()
     # the highest level in the dynamic table is updated to 1.2 from the callback
-    @test model.integrator.p.tabulated_rating_curve.tables[end].t[end] == 1.2
+    @test model.integrator.p.tabulated_rating_curve.table[end].t[end] == 1.2
 end
 
 @testitem "Profile" begin

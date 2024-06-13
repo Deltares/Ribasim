@@ -10,7 +10,7 @@ than one row in a table, as is the case for TabulatedRatingCurve.
 function parse_static_and_time(
     db::DB,
     config::Config,
-    nodetype::String;
+    node_type::Type;
     static::Union{StructVector, Nothing} = nothing,
     time::Union{StructVector, Nothing} = nothing,
     defaults::NamedTuple = (; active = true),
@@ -32,7 +32,8 @@ function parse_static_and_time(
     # of the current type
     vals_out = []
 
-    node_ids = NodeID.(nodetype, get_ids(db, nodetype))
+    node_type_string = split(string(node_type), '.')[end]
+    node_ids = NodeID.(node_type_string, get_ids(db, node_type_string))
     n_nodes = length(node_ids)
 
     # Initialize the vectors for the output
@@ -59,9 +60,10 @@ function parse_static_and_time(
     push!(keys_out, :node_id)
     push!(vals_out, node_ids)
 
-    # The control mapping is a dictionary with keys (node_id, control_state) to a named tuple of
+    # The control mapping is a dictionary with keys (node_id, control_state) to a named tuple of parameter values
     # parameter values to be assigned to the node with this node_id in the case of this control_state
-    control_mapping = Dict{Tuple{NodeID, String}, NamedTuple}()
+    control_state_type = get_control_state_type(node_type)
+    control_mapping = Dict{Tuple{NodeID, String}, control_state_type}()
 
     push!(keys_out, :control_mapping)
     push!(vals_out, control_mapping)
@@ -78,7 +80,7 @@ function parse_static_and_time(
         static_node_id_vec = NodeID[]
         static_node_ids = Set{NodeID}()
     else
-        static_node_id_vec = NodeID.(nodetype, static.node_id)
+        static_node_id_vec = NodeID.(node_type_string, static.node_id)
         static_node_ids = Set(static_node_id_vec)
     end
 
@@ -87,7 +89,7 @@ function parse_static_and_time(
         time_node_id_vec = NodeID[]
         time_node_ids = Set{NodeID}()
     else
-        time_node_id_vec = NodeID.(nodetype, time.node_id)
+        time_node_id_vec = NodeID.(node_type_string, time.node_id)
         time_node_ids = Set(time_node_id_vec)
     end
 
@@ -127,8 +129,24 @@ function parse_static_and_time(
                 end
                 # Add the parameter values to the control mapping
                 control_state_key = coalesce(control_state, "")
-                control_mapping[(node_id, control_state_key)] =
-                    NamedTuple{Tuple(parameter_names)}(Tuple(parameter_values))
+                controllable_mask =
+                    collect(parameter_names .∈ Ref(fieldnames(control_state_type)))
+                if any(controllable_mask)
+                    node_idx = searchsortedfirst(node_ids, node_id)
+                    controllable_parameter_names =
+                        collect(parameter_names[controllable_mask])
+                    controllable_parameter_values =
+                        collect(parameter_values[controllable_mask])
+                    pushfirst!(controllable_parameter_names, :node_idx)
+                    pushfirst!(
+                        controllable_parameter_values,
+                        searchsortedfirst(node_ids, node_id),
+                    )
+                    control_mapping[(node_id, control_state_key)] =
+                        NamedTuple{Tuple(controllable_parameter_names)}(
+                            Tuple(controllable_parameter_values),
+                        )
+                end
             end
         elseif node_id in time_node_ids
             # TODO replace (time, node_id) order by (node_id, time)
@@ -234,7 +252,7 @@ function LinearResistance(db::DB, config::Config, graph::MetaGraph)::LinearResis
     static = load_structvector(db, config, LinearResistanceStaticV1)
     defaults = (; max_flow_rate = Inf, active = true)
     parsed_parameters, valid =
-        parse_static_and_time(db, config, "LinearResistance"; static, defaults)
+        parse_static_and_time(db, config, LinearResistance; static, defaults)
 
     if !valid
         error(
@@ -273,11 +291,14 @@ function TabulatedRatingCurve(
     end
 
     interpolations = ScalarInterpolation[]
-    control_mapping = Dict{Tuple{NodeID, String}, NamedTuple}()
+    control_mapping = Dict{
+        Tuple{NodeID, String},
+        @NamedTuple{node_idx::Int, active::Bool, table::ScalarInterpolation}
+    }()
     active = BitVector()
     errors = false
 
-    for node_id in node_ids
+    for (i, node_id) in enumerate(node_ids)
         if node_id in static_node_ids
             # Loop over all static rating curves (groups) with this node_id.
             # If it has a control_state add it to control_mapping.
@@ -303,7 +324,7 @@ function TabulatedRatingCurve(
                     control_mapping[(
                         NodeID(NodeType.TabulatedRatingCurve, node_id),
                         control_state,
-                    )] = (; tables = interpolation, active = is_active)
+                    )] = (; node_idx = i, active = is_active, table = interpolation)
                 end
             end
             push!(interpolations, interpolation)
@@ -328,7 +349,6 @@ function TabulatedRatingCurve(
     if errors
         error("Errors occurred when parsing TabulatedRatingCurve data.")
     end
-
     return TabulatedRatingCurve(
         node_ids,
         inflow_edge.(Ref(graph), node_ids),
@@ -347,8 +367,7 @@ function ManningResistance(
     basin::Basin,
 )::ManningResistance
     static = load_structvector(db, config, ManningResistanceStaticV1)
-    parsed_parameters, valid =
-        parse_static_and_time(db, config, "ManningResistance"; static)
+    parsed_parameters, valid = parse_static_and_time(db, config, ManningResistance; static)
 
     if !valid
         error("Errors occurred when parsing ManningResistance data.")
@@ -375,7 +394,7 @@ end
 
 function FractionalFlow(db::DB, config::Config, graph::MetaGraph)::FractionalFlow
     static = load_structvector(db, config, FractionalFlowStaticV1)
-    parsed_parameters, valid = parse_static_and_time(db, config, "FractionalFlow"; static)
+    parsed_parameters, valid = parse_static_and_time(db, config, FractionalFlow; static)
 
     if !valid
         error("Errors occurred when parsing FractionalFlow data.")
@@ -403,14 +422,8 @@ function LevelBoundary(db::DB, config::Config)::LevelBoundary
     end
 
     time_interpolatables = [:level]
-    parsed_parameters, valid = parse_static_and_time(
-        db,
-        config,
-        "LevelBoundary";
-        static,
-        time,
-        time_interpolatables,
-    )
+    parsed_parameters, valid =
+        parse_static_and_time(db, config, LevelBoundary; static, time, time_interpolatables)
 
     if !valid
         error("Errors occurred when parsing LevelBoundary data.")
@@ -419,7 +432,7 @@ function LevelBoundary(db::DB, config::Config)::LevelBoundary
     return LevelBoundary(node_ids, parsed_parameters.active, parsed_parameters.level)
 end
 
-function FlowBoundary(db::DB, config::Config)::FlowBoundary
+function FlowBoundary(db::DB, config::Config, graph::MetaGraph)::FlowBoundary
     static = load_structvector(db, config, FlowBoundaryStaticV1)
     time = load_structvector(db, config, FlowBoundaryTimeV1)
 
@@ -430,14 +443,8 @@ function FlowBoundary(db::DB, config::Config)::FlowBoundary
     end
 
     time_interpolatables = [:flow_rate]
-    parsed_parameters, valid = parse_static_and_time(
-        db,
-        config,
-        "FlowBoundary";
-        static,
-        time,
-        time_interpolatables,
-    )
+    parsed_parameters, valid =
+        parse_static_and_time(db, config, FlowBoundary; static, time, time_interpolatables)
 
     for itp in parsed_parameters.flow_rate
         if any(itp.u .< 0.0)
@@ -452,13 +459,18 @@ function FlowBoundary(db::DB, config::Config)::FlowBoundary
         error("Errors occurred when parsing FlowBoundary data.")
     end
 
-    return FlowBoundary(node_ids, parsed_parameters.active, parsed_parameters.flow_rate)
+    return FlowBoundary(
+        node_ids,
+        [collect(outflow_ids(graph, id)) for id in node_ids],
+        parsed_parameters.active,
+        parsed_parameters.flow_rate,
+    )
 end
 
 function Pump(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{Int})::Pump
     static = load_structvector(db, config, PumpStaticV1)
     defaults = (; min_flow_rate = 0.0, max_flow_rate = Inf, active = true)
-    parsed_parameters, valid = parse_static_and_time(db, config, "Pump"; static, defaults)
+    parsed_parameters, valid = parse_static_and_time(db, config, Pump; static, defaults)
     is_pid_controlled = falses(length(NodeID.(NodeType.Pump, parsed_parameters.node_id)))
 
     if !valid
@@ -491,7 +503,7 @@ function Outlet(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{In
     static = load_structvector(db, config, OutletStaticV1)
     defaults =
         (; min_flow_rate = 0.0, max_flow_rate = Inf, min_crest_level = -Inf, active = true)
-    parsed_parameters, valid = parse_static_and_time(db, config, "Outlet"; static, defaults)
+    parsed_parameters, valid = parse_static_and_time(db, config, Outlet; static, defaults)
     is_pid_controlled = falses(length(NodeID.(NodeType.Outlet, parsed_parameters.node_id)))
 
     if !valid
@@ -596,19 +608,16 @@ function Basin(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{Int
 end
 
 function parse_variables_and_conditions(compound_variable, condition)
-    node_id = NodeID[]
-    listen_node_id = Vector{NodeID}[]
-    variable = Vector{String}[]
-    weight = Vector{Float64}[]
-    look_ahead = Vector{Float64}[]
-    greater_than = Vector{Float64}[]
-    condition_value = BitVector[]
+    compound_variables = Vector{CompoundVariable}[]
     errors = false
 
     # Loop over unique discrete_control node IDs (on which at least one condition is defined)
     for id in unique(condition.node_id)
         condition_group_id = filter(row -> row.node_id == id, condition)
         variable_group_id = filter(row -> row.node_id == id, compound_variable)
+
+        compound_variables_node = CompoundVariable[]
+
         # Loop over compound variables for this node ID
         for compound_variable_id in unique(condition_group_id.compound_variable_id)
             condition_group_variable = filter(
@@ -624,47 +633,39 @@ function parse_variables_and_conditions(compound_variable, condition)
                 errors = true
                 @error "compound_variable_id $compound_variable_id for $discrete_control_id in condition table but not in variable table"
             else
-                push!(node_id, discrete_control_id)
+                greater_than = condition_group_variable.greater_than
+
+                # Collect subvariable data for this compound variable in
+                # NamedTuples
+                subvariables = NamedTuple[]
+                for i in eachindex(variable_group_variable.variable)
+                    listen_node_id =
+                        NodeID.(
+                            variable_group_variable.listen_node_type[i],
+                            variable_group_variable.listen_node_id[i],
+                        )
+                    variable = variable_group_variable.variable[i]
+                    weight = coalesce.(variable_group_variable.weight[i], 1.0)
+                    look_ahead = coalesce.(variable_group_variable.look_ahead[i], 0.0)
+                    push!(subvariables, (; listen_node_id, variable, weight, look_ahead))
+                end
+
                 push!(
-                    listen_node_id,
-                    NodeID.(
-                        variable_group_variable.listen_node_type,
-                        variable_group_variable.listen_node_id,
-                    ),
-                )
-                push!(variable, variable_group_variable.variable)
-                push!(weight, coalesce.(variable_group_variable.weight, 1.0))
-                push!(look_ahead, coalesce.(variable_group_variable.look_ahead, 0.0))
-                push!(greater_than, condition_group_variable.greater_than)
-                push!(
-                    condition_value,
-                    BitVector(zeros(length(condition_group_variable.greater_than))),
+                    compound_variables_node,
+                    CompoundVariable(discrete_control_id, subvariables, greater_than),
                 )
             end
         end
+        push!(compound_variables, compound_variables_node)
     end
-    return node_id,
-    listen_node_id,
-    variable,
-    weight,
-    look_ahead,
-    greater_than,
-    condition_value,
-    !errors
+    return compound_variables, !errors
 end
 
 function DiscreteControl(db::DB, config::Config)::DiscreteControl
     condition = load_structvector(db, config, DiscreteControlConditionV1)
     compound_variable = load_structvector(db, config, DiscreteControlVariableV1)
 
-    node_id,
-    listen_node_id,
-    variable,
-    weight,
-    look_ahead,
-    greater_than,
-    condition_value,
-    valid = parse_variables_and_conditions(compound_variable, condition)
+    compound_variables, valid = parse_variables_and_conditions(compound_variable, condition)
 
     if !valid
         error("Problems encountered when parsing DiscreteControl variables and conditions.")
@@ -698,14 +699,19 @@ function DiscreteControl(db::DB, config::Config)::DiscreteControl
         control_state = String[],
     )
 
+    node_id =
+        [first(compound_variables_).node_id for compound_variables_ in compound_variables]
+
+    truth_state = Vector{Bool}[]
+    for i in eachindex(node_id)
+        truth_state_length = sum(length(var.greater_than) for var in compound_variables[i])
+        push!(truth_state, zeros(Bool, truth_state_length))
+    end
+
     return DiscreteControl(
-        node_id, # Not unique
-        listen_node_id,
-        variable,
-        weight,
-        look_ahead,
-        greater_than,
-        condition_value,
+        node_id,
+        compound_variables,
+        truth_state,
         control_state,
         logic_mapping,
         record,
@@ -724,7 +730,7 @@ function PidControl(db::DB, config::Config, chunk_sizes::Vector{Int})::PidContro
 
     time_interpolatables = [:target, :proportional, :integral, :derivative]
     parsed_parameters, valid =
-        parse_static_and_time(db, config, "PidControl"; static, time, time_interpolatables)
+        parse_static_and_time(db, config, PidControl; static, time, time_interpolatables)
 
     if !valid
         error("Errors occurred when parsing PidControl data.")
@@ -735,39 +741,14 @@ function PidControl(db::DB, config::Config, chunk_sizes::Vector{Int})::PidContro
     if config.solver.autodiff
         pid_error = DiffCache(pid_error, chunk_sizes)
     end
-
-    # Combine PID parameters into one vector interpolation object
-    pid_parameters = VectorInterpolation[]
-    (; proportional, integral, derivative) = parsed_parameters
-
-    for i in eachindex(node_ids)
-        times = proportional[i].t
-        K_p = proportional[i].u
-        K_i = integral[i].u
-        K_d = derivative[i].u
-
-        itp = LinearInterpolation(collect.(zip(K_p, K_i, K_d)), times)
-        push!(pid_parameters, itp)
-    end
-
-    for (key, params) in parsed_parameters.control_mapping
-        (; proportional, integral, derivative) = params
-
-        times = params.proportional.t
-        K_p = proportional.u
-        K_i = integral.u
-        K_d = derivative.u
-        pid_params = LinearInterpolation(collect.(zip(K_p, K_i, K_d)), times)
-        parsed_parameters.control_mapping[key] =
-            (; params.target, params.active, pid_params)
-    end
-
     return PidControl(
         node_ids,
         BitVector(parsed_parameters.active),
         NodeID.(parsed_parameters.listen_node_type, parsed_parameters.listen_node_id),
         parsed_parameters.target,
-        pid_parameters,
+        parsed_parameters.proportional,
+        parsed_parameters.integral,
+        parsed_parameters.derivative,
         pid_error,
         parsed_parameters.control_mapping,
     )
@@ -929,7 +910,7 @@ function LevelDemand(db::DB, config::Config)::LevelDemand
     parsed_parameters, valid = parse_static_and_time(
         db,
         config,
-        "LevelDemand";
+        LevelDemand;
         static,
         time,
         time_interpolatables = [:min_level, :max_level],
@@ -955,7 +936,7 @@ function FlowDemand(db::DB, config::Config)::FlowDemand
     parsed_parameters, valid = parse_static_and_time(
         db,
         config,
-        "FlowDemand";
+        FlowDemand;
         static,
         time,
         time_interpolatables = [:demand],
@@ -1121,7 +1102,7 @@ function Parameters(db::DB, config::Config)::Parameters
     tabulated_rating_curve = TabulatedRatingCurve(db, config, graph)
     fractional_flow = FractionalFlow(db, config, graph)
     level_boundary = LevelBoundary(db, config)
-    flow_boundary = FlowBoundary(db, config)
+    flow_boundary = FlowBoundary(db, config, graph)
     pump = Pump(db, config, graph, chunk_sizes)
     outlet = Outlet(db, config, graph, chunk_sizes)
     terminal = Terminal(db, config)

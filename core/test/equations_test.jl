@@ -133,7 +133,9 @@ end
     storage = Ribasim.get_storages_and_levels(model).storage[:]
     t = Ribasim.tsaves(model)
     SP = pid_control.target[1](0)
-    K_p, K_i, K_d = pid_control.pid_params[1](0)
+    K_p = pid_control.proportional[1](0)
+    K_i = pid_control.integral[1](0)
+    K_d = pid_control.derivative[1](0)
 
     storage_min = 50.005
     level_min = basin.level[1][2]
