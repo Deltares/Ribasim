@@ -9,6 +9,8 @@ website:
   navbar:
     logo: https://user-images.githubusercontent.com/4471859/224825908-bee7e044-bc6b-4561-8b08-5d330cce3ed5.png
     left:
+      - text: "Overview"
+        file: index.qmd
       - text: "Tutorials"
         file: tutorial/index.qmd
       - text: "How-to guides"
@@ -20,7 +22,7 @@ website:
       - text: "Changelog"
         file: changelog.qmd
     right:
-      - text: "Dev docs"
+      - text: "Contributing"
         file: dev/index.qmd
       - icon: github
         href: https://github.com/Deltares/Ribasim
@@ -80,7 +82,6 @@ website:
     - title: "Dev docs"
       contents:
         - dev/index.qmd
-        - dev/contributing.qmd
         - dev/core.qmd
         - dev/addnode.qmd
         - dev/python.qmd
