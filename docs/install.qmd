@@ -17,10 +17,10 @@ be installed with [pip](https://docs.python.org/3/installing/index.html):
 ```
 pip install ribasim
 ```
-For wheel (`.whl`) downloads, including nightly builds, see the [download section](../index.qmd#sec-download).
+For wheel (`.whl`) downloads, including nightly builds, see the [download section](/index.qmd#sec-download).
 After downloading wheels can be installed by referring to the correct path:
 ```
 pip install path/to/ribasim-*.whl
 ```
 
-For documentation please see the [examples](examples.ipynb) and [API reference](../reference/reference).
+For documentation please see the [examples](/guide/examples.ipynb) and [API reference](/reference/reference).

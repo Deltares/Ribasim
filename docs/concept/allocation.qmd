@@ -46,7 +46,7 @@ That is, if $(i,j) \in E_S^\text{source}$, then the average over the last alloca
 $$
     \frac{1}{\Delta t_{\text{alloc}}}\int_{t - \Delta t_{\text{alloc}}}^tQ_{ij}(t') dt'
 $$
- is treated as a source flow in the allocation problem. These edges are either coming from a boundary/source node (e.g. a level or flow boundary) or connect the main network to a subnetwork. For the definition of $Q_{ij}$ see [the formal model description](equations.qmd#formal-model-description).
+ is treated as a source flow in the allocation problem. These edges are either coming from a boundary/source node (e.g. a level or flow boundary) or connect the main network to a subnetwork. For the definition of $Q_{ij}$ see [the formal model description](/concept/equations.qmd#formal-model-description).
 
 ### User demands
 
@@ -80,7 +80,7 @@ $$
     \phi_i(t) = \frac{1}{\Delta t_{\text{alloc}}}\int_{t - \Delta t_{\text{alloc}}}^t \left[Q_{P,i}(t') - Q_{E,i}(t') + Q_{\text{drn},i}(t') - Q_{\text{inf},i}(t') \right] dt', \quad \forall i \in B_S.
 $$
 
-We consider fluxes into the basin to be positive and out of the basin to be negative. For more information see [the natural water balance terms](equations.qmd#natural-water-balance-terms).
+We consider fluxes into the basin to be positive and out of the basin to be negative. For more information see [the natural water balance terms](/concept/equations.qmd#natural-water-balance-terms).
 
 Secondly, there is either a supply or demand from the storage in the basin. Given a minimum level $\ell_{\min, i}$ and a maximum level $\ell_{\max, i}$ which correspond to a minimum storage $s_{\min, i}$ and maximum storage $s_{\max, i}$ respectively, we get a flow supply of
 $$
@@ -238,7 +238,7 @@ $$ {#eq-fractionalflowconstraint}
 
 ## Example
 
-The following is an example of an optimization problem for the example shown [here](../python/examples.ipynb#model-with-allocation-user-demand):
+The following is an example of an optimization problem for the example shown [here](/guide/examples.ipynb#model-with-allocation-user-demand):
 
 
 ```{julia}

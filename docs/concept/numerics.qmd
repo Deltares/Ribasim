@@ -18,7 +18,7 @@ In general $\mathbf{f}$ is a non-linear function in $\mathbf{u}$. These non-line
 - `Basin` profiles;
 - `TabulatedRatingCurve` Q(h) relations.
 
-The problem @eq-prob can be solved by various numerical time-integration methods. To do this the time interval $[t_0,t_\text{end}]$ is discretized into a finite number of time points $t_0 < t_1 < \ldots < t_N = t_\text{end}$ for which approximate solutions $\mathbf{w}_n \approx \mathbf{u}(t_n)$ are computed. In general we do not assume a fixed timestep (the interval between successive points in time). Rather, the solver attempts to make as large a step as possible while keeping error tolerances within requirements. The [solver settings](usage.qmd#sec-solver-settings) section details the available configuration options.
+The problem @eq-prob can be solved by various numerical time-integration methods. To do this the time interval $[t_0,t_\text{end}]$ is discretized into a finite number of time points $t_0 < t_1 < \ldots < t_N = t_\text{end}$ for which approximate solutions $\mathbf{w}_n \approx \mathbf{u}(t_n)$ are computed. In general we do not assume a fixed timestep (the interval between successive points in time). Rather, the solver attempts to make as large a step as possible while keeping error tolerances within requirements. The [solver settings](/reference/usage.qmd#sec-solver-settings) section details the available configuration options.
 
 # Example numerical methods
 
@@ -66,7 +66,7 @@ Note that this thus requires an evaluation of the Jacobian of $\mathbf{f}$ and s
 The implicit method @eq-eulerbackward is a coupled system of equations for $\mathbf{w}_{n+1}$, while the explicit @eq-eulerforward is fully decoupled. This means in general that in a time integration step with an implicit method the basins communicate information with eachother, while in an explicit method this does not happen. A consequence of this is that local events (e.g. a pump turns on) propagate slowly trough the model using an explicit method but quickly using an implicit method, making implicit methods more stable.
 
 # Jacobian computations
-The Newton iterations above require an evaluation of the Jacobian of $\mathbf{f}$. The Jacobian of `water_balance!` is discussed [here](equations.qmd#the-jacobian).
+The Newton iterations above require an evaluation of the Jacobian of $\mathbf{f}$. The Jacobian of `water_balance!` is discussed [here](/concept/equations.qmd#the-jacobian).
 
 There are several ways to compute the Jacobian:
 
@@ -100,7 +100,7 @@ where the continuity of this term is given by the least continuous of $Q$ and $h
 
 ## Empty basins
 
-[Reduction factors](equations.qmd#the-reduction-factor) are introduced at several points in the definition of $\mathbf{f}$ to smooth out otherwise discontinuous transitions (e.g. the flow rate of a pump going to zero when the source basin dries out).
+[Reduction factors](/concept/equations.qmd#the-reduction-factor) are introduced at several points in the definition of $\mathbf{f}$ to smooth out otherwise discontinuous transitions (e.g. the flow rate of a pump going to zero when the source basin dries out).
 If flows are not too large with respect to basin storage, this will prevent basins from reaching 0.
 Rather, the basin gets a very small storage.
 The reduction factors help with performance, but are also an important tool to avoid getting negative storage in basins.

@@ -4,7 +4,7 @@ title: "Julia core development"
 
 # Julia core overview
 
-The computational core is one of the components of Ribasim as illustrated in the [component overview](../tutorial/index.qmd#sec-components).
+The computational core is one of the components of Ribasim as illustrated in the [component overview](/tutorial/index.qmd#sec-components).
 
 The computational process can be divided in three phases:
 
@@ -12,7 +12,7 @@ The computational process can be divided in three phases:
 - Running the simulation loop
 - Writing the output files
 
-A more detailed sequence diagram of the simulation loop is available at the [core](../concepts/core.qmd#sec-simulationloop) home page.
+A more detailed sequence diagram of the simulation loop is available at the [core](/concept/core.qmd#sec-simulationloop) home page.
 
 # Set up the developer environment
 

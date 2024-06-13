@@ -9,7 +9,7 @@ archive, that must be downloaded and unpacked. It can be placed anywhere, howeve
 important that the contents of the zip file are kept together in a directory. The Ribasim
 CLI executable is in the `bin` directory.
 
-To download `ribasim_cli.zip`, see the [download section](../tutorial/index.qmd#sec-download).
+To download `ribasim_cli.zip`, see the [download section](/tutorial/index.qmd#sec-download).
 
 To check whether the installation was performed successfully, run `ribasim` with no
 arguments in the command line.
@@ -23,7 +23,7 @@ Usage: ribasim 'path/to/model/ribasim.toml'
 
 Ribasim has a single configuration file, which is written in the [TOML](https://toml.io/)
 format. It contains settings, as well as paths to other input and output files.
-Ribasim expects the GeoPackage database [database.gpkg](usage.qmd#sec-geopackage) as well as optional Arrow input files to be available in the input_dir.
+Ribasim expects the GeoPackage database [database.gpkg](/reference/usage.qmd#sec-geopackage) as well as optional Arrow input files to be available in the input_dir.
 
 ```{.toml include="../../core/test/docs.toml"}
 ```
@@ -135,7 +135,7 @@ these will be ignored. That makes it easy to prepare data for a larger period, a
 models on a shorted period.
 
 When preparing the model for simulation, input validation is performed in the Julia core.
-The validation rules are described in the [validation](validation.qmd) section.
+The validation rules are described in the [validation](/reference/validation.qmd) section.
 
 ## Custom metadata
 

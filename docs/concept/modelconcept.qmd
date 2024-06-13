@@ -110,16 +110,16 @@ In addition to free flowing waterbodies, a watersystem typically has structures 
 free flowing conditions or structures.
 The following type of connector nodes are available for this purpose:
 
-- [TabulatedRatingCurve](../reference/node/tabulated-rating-curve.qmd): one-directional flow based on upstream head. Node type typically used for gravity flow conditions either free flowing open water channels
+- [TabulatedRatingCurve](/reference/node/tabulated-rating-curve.qmd): one-directional flow based on upstream head. Node type typically used for gravity flow conditions either free flowing open water channels
 or over a fixed structure.
-- [LinearResistance](../reference/node/linear-resistance.qmd): bi-directional flow based on head difference and linear resistance. Node type typically used for bi-directional flow
+- [LinearResistance](/reference/node/linear-resistance.qmd): bi-directional flow based on head difference and linear resistance. Node type typically used for bi-directional flow
 situations or situations where head difference over a structure determines its actual flow capacity.
-- [ManningResistance](../reference/node/manning-resistance.qmd): bi-directional flow based on head difference and resistance using Manning-Gauckler formula. Same usage as LinearResistance,
+- [ManningResistance](/reference/node/manning-resistance.qmd): bi-directional flow based on head difference and resistance using Manning-Gauckler formula. Same usage as LinearResistance,
 providing a better hydrological meaning to the resistance parameterization.
-- [Pump](../reference/node/pump.qmd): one-directional structure with a set flow rate. Node type typically used in combination with control to force water over the edge.
-- [Outlet](../reference/node/outlet.qmd): one-directional gravity structure with a set flow rate. Node type typically used in combination with control to force water over the edge, even if
+- [Pump](/reference/node/pump.qmd): one-directional structure with a set flow rate. Node type typically used in combination with control to force water over the edge.
+- [Outlet](/reference/node/outlet.qmd): one-directional gravity structure with a set flow rate. Node type typically used in combination with control to force water over the edge, even if
 their is a mismatch in actual hydraulic capacity. The node type has an automated mechanism to stop the flow when the head difference is zero.
-- [FractionalFlow](../reference/node/fractional-flow.qmd): to split an outflow over multiple edges based on a flow fraction. Node type is typically used for diversions or bifurcations with a known and fixed ratio.
+- [FractionalFlow](/reference/node/fractional-flow.qmd): to split an outflow over multiple edges based on a flow fraction. Node type is typically used for diversions or bifurcations with a known and fixed ratio.
 
 The control layer can activate or deactivate nodes, set flow rates for the Pump and Outlet, or choose different parameterizations for TabulatedRatingCurve, LinearResistance, ManningResistance or FractionalFlow.
 

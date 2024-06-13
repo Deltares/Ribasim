@@ -19,8 +19,6 @@ website:
         file: concept/index.qmd
       - text: "Reference"
         file: reference/index.qmd
-      - text: "Changelog"
-        file: changelog.qmd
     right:
       - text: "Contributing"
         file: dev/index.qmd
@@ -29,6 +27,12 @@ website:
         aria-label: GitHub
 
   sidebar:
+    - title: "Overview"
+      contents:
+        - index.qmd
+        - install.qmd
+        - changelog.qmd
+
     - title: "Tutorials"
       contents:
         - tutorial/index.qmd
@@ -38,7 +42,6 @@ website:
       contents:
         - guide/index.qmd
         - guide/examples.ipynb
-        - guide/python.qmd
         - guide/coupling.qmd
 
     - title: "Concepts"

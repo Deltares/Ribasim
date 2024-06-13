@@ -46,7 +46,7 @@ node_id: node ID of the NewNodeType node
 end
 ```
 
-Here `static` refers to data that does not change over time. For naming conventions of these schemas see [Node usage](../reference/usage.qmd#sec-node). If a new schema contains a `priority` column for allocation, it must also be added to the list of all such schemas in the function `get_all_priorities` in `util.jl`.
+Here `static` refers to data that does not change over time. For naming conventions of these schemas see [Node usage](/reference/usage.qmd#sec-node). If a new schema contains a `priority` column for allocation, it must also be added to the list of all such schemas in the function `get_all_priorities` in `util.jl`.
 
 `validation.jl` deals with checking and applying a specific sorting order for the tabular data (default is sorting by node ID only), see `sort_by_function` and `sorted_table!`.
 
@@ -96,7 +96,7 @@ Non-conservative node types need to be added to the `nonconservative_nodetypes` 
 
 ## The Jacobian
 
-See [Equations](../concepts/equations.qmd#the-jacobian) for a mathematical description of the Jacobian.
+See [Equations](/concept/equations.qmd#the-jacobian) for a mathematical description of the Jacobian.
 
 Before the Julia core runs its simulation, the sparsity structure `jac_prototype` of $J$ is determined with `get_jac_prototype` in `sparsity.jl`. This function runs trough all node types and looks for nodes that create dependencies between states. It creates a sparse matrix of zeros and ones, where the ones denote locations of possible non-zeros in $J$. Note that only nodes that set flows in the physical layer (or have their own state like `PidControl`) affect the sparsity structure.
 
@@ -106,7 +106,7 @@ The current dependency groups are:
 
 - Out-neighbor dependencies: examples are `TabulatedRatingCurve`, `Pump` (the latter only in the reduction factor regime and not PID controlled). If the in-neighbor of a node of this group is a basin, then the storage of this basin affects itself and the storage of the outneighbor (or the basin one node further if it is connected with a `FractionalFlow` in between) if that is also a basin;
 - Either-neighbor dependencies: examples are `LinearResistance`, `ManningResistance`. If either the in-neighbor or out-neighbor of a node of this group is a basin, the storage of this basin depends on itself. If both the in-neighbor and the out-neighbor are basins, their storages also depend on eachother.
-- The `PidControl` node is a special case which is discussed in [equations](../concepts/equations.qmd#sec-PID).
+- The `PidControl` node is a special case which is discussed in [equations](/concept/equations.qmd#sec-PID).
 
 Using `jac_prototype` the Jacobian of `water_balance!` is computed automatically using [ForwardDiff.jl](https://juliadiff.org/ForwardDiff.jl/stable/) with memory management provided by [PreallocationTools.jl](https://docs.sciml.ai/PreallocationTools/stable/). These computations make use of `DiffCache` and dual numbers.
 
@@ -212,7 +212,7 @@ There are several parts of the documentation which should be updated with the ne
 - If the node has a rol in the physical layer, `docs/core/equations` should contain a short explanation and if possible an analytical expression for the behaviour of the new node;
 - If the node has a role in allocation, `docs/core/allocation` should make this role clear;
 - `docs/reference/node/new-node-type.qmd` should contain a short explanation of the node and the possible schemas associated with it;
-- The example models constructed in `docs/python/examples.ipynb` should be extended with the new node type or a new example model with the new node type should be made.
+- The example models constructed in `docs/guide/examples.ipynb` should be extended with the new node type or a new example model with the new node type should be made.
 - In `_quarto.yml` add `NewNodeType` to the "Node types" contents for the Python API reference.
 
 
@@ -228,7 +228,7 @@ This will derive all JSON Schemas from the julia code, and write them to the doc
 From these JSON Schemas the Python modules `models.py` and `config.py` are generated.
 
 Since adding a node type touches both the Python and Julia code,
-it is a good idea to run both the [Python test suite](python.qmd#test) and [Julia test suite](core.qmd#test) locally before creating a pull request.
+it is a good idea to run both the [Python test suite](python.qmd#test) and [Julia test suite](/dev/core.qmd#test) locally before creating a pull request.
 You can run all tests with:
 
 ```

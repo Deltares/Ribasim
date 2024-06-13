@@ -46,7 +46,7 @@ DiscreteControl is applied in the Julia core as follows:
 - When a condition changes, the corresponding DiscreteControl node ID is retrieved (node_id in the condition schema above).
 - The truth value of all the conditions this DiscreteControl node listens to are retrieved, **in the sorted order as specified in the condition schema**. This is then converted into a string of "T" for true and "F" for false. This string we call the truth state.*
 - The table below determines for the given DiscreteControl node ID and truth state what the corresponding control state is.
-- For all the nodes this DiscreteControl node affects (as given by the "control" edges in [Edges / static](usage.qmd#edge)), their parameters are set to those parameters in `NodeType / static` corresponding to the determined control state.
+- For all the nodes this DiscreteControl node affects (as given by the "control" edges in [Edges / static](/reference/usage.qmd#edge)), their parameters are set to those parameters in `NodeType / static` corresponding to the determined control state.
 
 *.  There is also a second truth state created in which for the last condition that changed it is specified whether it was an upcrossing ("U") or downcrossing ("D") of the threshold (greater than) value. If a control state is specified for a truth state that is crossing-specific, this takes precedence over the control state for the truth state that contains only "T" and "F".
 
