@@ -12,8 +12,6 @@ try:
 except ImportError:
     xu = MissingOptionalModule("xugrid", "delwaq")
 
-import xugrid as xu
-
 delwaq_dir = Path(__file__).parent
 repo_dir = delwaq_dir.parents[1]
 output_folder = delwaq_dir / "model"
