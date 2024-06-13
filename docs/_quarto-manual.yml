@@ -1,0 +1,44 @@
+project:
+  type: book
+
+book:
+  title: "Ribasim documentation"
+  chapters:
+    - part: index.qmd
+    - part: tutorial/index.qmd
+      chapters:
+        - tutorial/qgis.qmd
+    - part: guide/index.qmd
+      chapters:
+        - guide/examples.ipynb
+        - guide/coupling.qmd
+    - part: concept/index.qmd
+      chapters:
+        - concept/concept.qmd
+        - concept/modelconcept.qmd
+        - concept/equations.qmd
+        - concept/numerics.qmd
+        - concept/core.qmd
+        - concept/allocation.qmd
+    - part: reference/index.qmd
+      chapters:
+        - reference/index.qmd
+        - reference/usage.qmd
+        - reference/validation.qmd
+        - reference/test-models.qmd
+        - reference/python/index.qmd
+        - reference/node/basin.qmd
+        - reference/node/tabulated-rating-curve.qmd
+        - reference/node/pump.qmd
+        - reference/node/outlet.qmd
+        - reference/node/user-demand.qmd
+        - reference/node/flow-demand.qmd
+        - reference/node/level-demand.qmd
+        - reference/node/flow-boundary.qmd
+        - reference/node/level-boundary.qmd
+        - reference/node/linear-resistance.qmd
+        - reference/node/manning-resistance.qmd
+        - reference/node/fractional-flow.qmd
+        - reference/node/terminal.qmd
+        - reference/node/discrete-control.qmd
+        - reference/node/pid-control.qmd
