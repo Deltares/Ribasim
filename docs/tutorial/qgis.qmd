@@ -10,7 +10,7 @@ Install [QGIS](https://qgis.org/en/site/) version 3.28 or higher.
 
 ### Install Ribasim plugin
 
-Download `ribasim_qgis.zip`, see the [download section](/index.qmd#sec-download).
+Download `ribasim_qgis.zip`, see the [download section](/install.qmd#sec-download).
 
 Plugins menu > Manage and Install Plugins...
 
@@ -40,7 +40,7 @@ Documentation on the Time Series widget can be found in the [iMOD documentation]
 ### Prepare your model
 
 Open an existing model or create a new model.
-As an example of an existing model, you can use the "basic" model from `generated_testmodels.zip`, see the [download section](/index.qmd#sec-download).
+As an example of an existing model, you can use the "basic" model from `generated_testmodels.zip`, see the [download section](/install.qmd#sec-download).
 
 ![](https://user-images.githubusercontent.com/4471859/224939126-b38f0eed-2e89-4120-b541-5b8c31798c09.png){fig-align="left"}
 
