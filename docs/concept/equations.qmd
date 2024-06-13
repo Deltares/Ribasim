@@ -232,7 +232,7 @@ basins (external nodes) in a network.
 2. LevelBoundary
 3. FlowBoundary
 
-### Pump {#sec-pump}
+### Pump {#sec-equation-pump}
 
 The behaviour of pumps is very straight forward if these nodes are not PID controlled. Their flow is given by a fixed flow rate $q$, multiplied by a reduction factor:
 $$
@@ -241,7 +241,7 @@ $$
 
 Here $u$ is the storage of the upstream basin. The [reduction factor](/concept/equations.qmd#sec-reduction_factor) $\phi$ makes sure that the flow of the pump goes smootly to $0$ as the upstream basin dries out.
 
-### Outlet {#sec-outlet}
+### Outlet {#sec-equation-outlet}
 
 The outlet is very similar to the pump, but it has a few extra [reduction factors](/concept/equations.qmd#sec-reduction_factor) for physical constraints:
 $$
@@ -480,7 +480,7 @@ $$
 Q_\text{pump/outlet} = \text{clip}(\Phi Q_\text{PID}; Q_{\min}, Q_{\max}).
 $$
 
-Here $u_\text{us}$ is the storage of the basin upstream of the pump or outlet, $\Phi$ is the product of [reduction factors](/concept/equations.qmd#sec-reduction_factor) associated with the [pump](/concept/equations.qmd#sec-pump) or [outlet](/concept/equations.qmd#sec-outlet) and
+Here $u_\text{us}$ is the storage of the basin upstream of the pump or outlet, $\Phi$ is the product of [reduction factors](/concept/equations.qmd#sec-reduction_factor) associated with the [pump](/concept/equations.qmd#sec-equation-pump) or [outlet](/concept/equations.qmd#sec-equation-outlet) and
 
 \begin{align}
     \text{clip}(Q; Q_{\min}, Q_{\max}) =
