@@ -106,7 +106,7 @@ number-sections: true
 quartodoc:
   style: pkgdown
   dir: reference/python
-  title: API Reference
+  title: Python API
   package: ribasim
   sections:
     - title: Model
