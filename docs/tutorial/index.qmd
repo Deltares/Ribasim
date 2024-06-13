@@ -61,4 +61,4 @@ For specific tasks, like adding long timeseries, using Python is strongly recomm
 
 One can also use Ribasim Python to build entire models from base data, such that your model setup is fully reproducible.
 
-See [usage](../explanation/usage.qmd) for more information.
+See [usage](../reference/usage.qmd) for more information.

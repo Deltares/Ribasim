@@ -12,7 +12,7 @@ The computational process can be divided in three phases:
 - Running the simulation loop
 - Writing the output files
 
-A more detailed sequence diagram of the simulation loop is available at the [core](../explanation/core.qmd#sec-simulationloop) home page.
+A more detailed sequence diagram of the simulation loop is available at the [core](../concepts/core.qmd#sec-simulationloop) home page.
 
 # Set up the developer environment
 
@@ -131,5 +131,5 @@ pixi run test-ribasim-api
 pixi run test-ribasim-cli
 ```
 
-During development these steps are normally done [on TeamCity](/explanation/ci.qmd#TeamCity),
+During development these steps are normally done [on TeamCity](/dev/ci.qmd#TeamCity),
 though in some cases it can be more convenient to build locally.

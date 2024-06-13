@@ -15,8 +15,8 @@ website:
         file: tutorial/index.qmd
       - text: "How-to guides"
         file: guide/index.qmd
-      - text: "Explanation"
-        file: explanation/index.qmd
+      - text: "Concepts"
+        file: concept/index.qmd
       - text: "Reference"
         file: reference/index.qmd
       - text: "Changelog"
@@ -41,19 +41,19 @@ website:
         - guide/python.qmd
         - guide/coupling.qmd
 
-    - title: "Explanation"
+    - title: "Concepts"
       contents:
-        - explanation/index.qmd
-        - explanation/concept.qmd
+        - concept/index.qmd
+        - concept/concept.qmd
         - section: "Numerics"
           contents:
-          - explanation/modelconcept.qmd
-          - explanation/equations.qmd
-          - explanation/numerics.qmd
+          - concept/modelconcept.qmd
+          - concept/equations.qmd
+          - concept/numerics.qmd
         - section: "Implementation"
           contents:
-          - explanation/core.qmd
-          - explanation/allocation.qmd
+          - concept/core.qmd
+          - concept/allocation.qmd
 
     - title: "Reference"
       contents:
