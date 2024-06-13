@@ -30,7 +30,7 @@ To represent the physical characteristics of the water system in an area, Ribasi
 Within Ribasim, these elements are called basins, which are essentially buckets or reservoirs holding an aggregated volume of water bodies in an area.
 Basins are chained in a graph with connector nodes determining the exchange of water between the basins.
 These connector nodes can represent open water connections (e.g. bifurcations or resistance in a free flowing open water channel) or infrastructure elements such as pumps, gates or weirs.
-An overview of node types and associated data inputs is provided on the [usage page](usage.qmd), while the associated mathematical formations are described on the [equations page](equations.qmd).
+An overview of node types and associated data inputs is provided on the [usage page](/reference/usage.qmd), while the associated mathematical formations are described on the [equations page](/concept/equations.qmd).
 
 ## Control layer {#sec-control}
 
@@ -38,16 +38,16 @@ Infrastructure elements are often controlled by humans to implement a certain wa
 Ribasim allows the configuration of conditional rules to influence the exchange of water between basins, either by setting inflow or outflow, or by controlling a water level.
 Control rules evaluate one or multiple conditions to change a parameter setting of an infrastructure element when the conditional criteria are met.
 Conditions can be either calculated values within the network as well as boundary conditions or (todo) external observations, i.e. observation values external to the model.
-An overview of node types and associated data inputs is provided on the [usage page](usage.qmd), while the associated mathematical formations are described on the [equations page](equations.qmd).
+An overview of node types and associated data inputs is provided on the [usage page](/reference/usage.qmd), while the associated mathematical formations are described on the [equations page](/concept/equations.qmd).
 
 ## Allocation layer {#sec-allocation}
 
 Ribasim allows water users (water demands) to abstract water from the basins (i.e. from the physical layer) unless the water level drops below a minimum level.
 Under dry conditions, water managers may want to prioritize some abstractions over other abstractions.
 The Ribasim allocation layer can take care of this prioritization by reducing the abstraction rates of lower-priority demands to ensure that sufficient water remains available in the system for the higher-priority demands.
-The associated mathematical formulations are described on the [allocation page](allocation.qmd).
+The associated mathematical formulations are described on the [allocation page](/concept/allocation.qmd).
 In case of large networks, a subdivision in a main network with subnetworks is recommended.
-For more details see the explanation of the [simulation loop](core.qmd#sec-nested-allocation).
+For more details see the explanation of the [simulation loop](/concept/core.qmd#sec-nested-allocation).
 
 The layers and the main components and dataflows between the layers are shown in the next figure:
 

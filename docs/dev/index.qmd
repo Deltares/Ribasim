@@ -4,9 +4,9 @@ title: "Contributing"
 
 Ribasim welcomes contributions.
 
-There is developer documentation for the [Julia core](core.qmd), the [Basic Model Interface (BMI)](bmi.qmd), [Python tooling](python.qmd), and the [QGIS plugin](qgis.qmd).
-A guide on how to add a new node type to both is written in [adding node types](addnode.qmd).
-[Release process](release.qmd) describes the steps to follow when creating a new Ribasim release.
+There is developer documentation for the [Julia core](/dev/core.qmd), the [Basic Model Interface (BMI)](/dev/bmi.qmd), [Python tooling](/dev/python.qmd), and the [QGIS plugin](/dev/qgis.qmd).
+A guide on how to add a new node type to both is written in [adding node types](/dev/addnode.qmd).
+[Release process](/dev/release.qmd) describes the steps to follow when creating a new Ribasim release.
 
 # Set up the developer environment
 

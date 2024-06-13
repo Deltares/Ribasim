@@ -4,26 +4,11 @@ filters:
   - include-code-files
 ---
 
-Ribasim is typically used as a command-line interface (CLI). It is distributed as a `.zip`
-archive, that must be downloaded and unpacked. It can be placed anywhere, however it is
-important that the contents of the zip file are kept together in a directory. The Ribasim
-CLI executable is in the `bin` directory.
-
-To download `ribasim_cli.zip`, see the [download section](../tutorials/index.qmd#sec-download).
-
-To check whether the installation was performed successfully, run `ribasim` with no
-arguments in the command line.
-This will give the following message:
-
-```
-Usage: ribasim 'path/to/model/ribasim.toml'
-```
-
 # Configuration file
 
 Ribasim has a single configuration file, which is written in the [TOML](https://toml.io/)
 format. It contains settings, as well as paths to other input and output files.
-Ribasim expects the GeoPackage database [database.gpkg](usage.qmd#sec-geopackage) as well as optional Arrow input files to be available in the input_dir.
+Ribasim expects the GeoPackage database [database.gpkg](/reference/usage.qmd#sec-geopackage) as well as optional Arrow input files to be available in the input_dir.
 
 ```{.toml include="../../core/test/docs.toml"}
 ```
@@ -135,7 +120,7 @@ these will be ignored. That makes it easy to prepare data for a larger period, a
 models on a shorted period.
 
 When preparing the model for simulation, input validation is performed in the Julia core.
-The validation rules are described in the [validation](validation.qmd) section.
+The validation rules are described in the [validation](/reference/validation.qmd) section.
 
 ## Custom metadata
 
@@ -293,7 +278,7 @@ Currently the stored demand and abstraction rate are those at the allocation tim
 
 ## Allocation flow - `allocation_flow.arrow`
 
-The allocation flow table contains results of the optimized allocation flow on every edge in the model that is part of a subnetwork, for each time an optimization problem is solved (see also [here](allocation.qmd#the-high-level-algorithm)).
+The allocation flow table contains results of the optimized allocation flow on every edge in the model that is part of a subnetwork, for each time an optimization problem is solved (see also [here](/concept/allocation.qmd#the-high-level-algorithm)).
 If in the model a main network and subnetwork(s) are specified, there are 2 different
 types of optimization for the subnetwork: collecting its total demand per priority (for allocating flow from the main network to the subnetwork), and allocating flow within the subnetwork. The column `collect_demands` provides the distinction between these two optimization types.
 
