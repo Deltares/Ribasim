@@ -5,13 +5,24 @@ import shutil
 from datetime import timedelta
 from pathlib import Path
 
-# import matplotlib.pyplot as plt
-import networkx as nx
+from ribasim.utils import MissingOptionalModule
+
+try:
+    import networkx as nx
+except ImportError:
+    nx = MissingOptionalModule("networkx", "delwaq")
+
 import numpy as np
 import pandas as pd
+
+try:
+    import jinja2
+except ImportError:
+    jinja2 = MissingOptionalModule("jinja2", "delwaq")
+
 import ribasim
-from jinja2 import Environment, FileSystemLoader
-from util import (
+
+from .util import (
     strfdelta,
     ugrid,
     write_flows,
@@ -21,7 +32,9 @@ from util import (
 
 delwaq_dir = Path(__file__).parent
 
-env = Environment(autoescape=True, loader=FileSystemLoader(delwaq_dir / "template"))
+env = jinja2.Environment(
+    autoescape=True, loader=jinja2.FileSystemLoader(delwaq_dir / "template")
+)
 
 # Add evaporation edges, so mass balance is correct
 # To simulate salt increase due to evaporation, set to False

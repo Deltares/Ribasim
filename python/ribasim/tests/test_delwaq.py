@@ -1,12 +1,15 @@
+import os
 from pathlib import Path
 
-from generate import generate
-from parse import parse
-from util import run_delwaq
+import pytest
+from ribasim.delwaq import generate, parse, run_delwaq
 
 delwaq_dir = Path(__file__).parent
 
 
+@pytest.mark.skipif(
+    not bool(os.getenv("D3D_HOME")), reason="Requires Delwaq to be installed."
+)
 def test_offline_delwaq_coupling():
     repo_dir = delwaq_dir.parents[1]
     toml_path = repo_dir / "generated_testmodels/basic/ribasim.toml"
