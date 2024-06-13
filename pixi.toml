@@ -49,7 +49,7 @@ quartodoc-build = { cmd = "quartodoc build && rm objects.json", cwd = "docs", in
     "docs/_quarto.yml",
     "python/ribasim",
 ], outputs = [
-    "docs/python/reference",
+    "docs/reference/python",
 ] }
 quarto-preview = { cmd = "quarto preview docs", depends_on = [
     "quartodoc-build",

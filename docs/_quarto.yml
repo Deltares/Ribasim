@@ -63,6 +63,7 @@ website:
         - reference/index.qmd
         - reference/usage.qmd
         - reference/validation.qmd
+        - reference/python/index.qmd
         - reference/test-models.qmd
         - section: "Nodes"
           contents:
@@ -104,7 +105,7 @@ number-sections: true
 
 quartodoc:
   style: pkgdown
-  dir: python/reference
+  dir: reference/python
   title: API Reference
   package: ribasim
   sections:
