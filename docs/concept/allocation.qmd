@@ -233,7 +233,7 @@ $$
     j \in V_S^\text{out}(i).
 $$ {#eq-fractionalflowconstraint}
 
-- Flow sign: Furthermore there are the non-negativity constraints for the flows and allocations, see [The optimization variables](allocation.qmd#the-optimization-variables).
+- Flow sign: Furthermore there are the non-negativity constraints for the flows and allocations, see [The optimization variables](/concept/allocation.qmd#the-optimization-variables).
 
 
 ## Example

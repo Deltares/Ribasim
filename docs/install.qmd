@@ -1,5 +1,5 @@
 ---
-title: "Python tooling"
+title: "Installation"
 ---
 
 The Ribasim Python package (named `ribasim`) aims to make it easy to build, update and analyze Ribasim models

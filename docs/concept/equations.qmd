@@ -444,7 +444,7 @@ B = w + 2 d \sqrt{\left(\frac{\Delta y}{\Delta z}\right)^2 + 1}
 $$
 
 # UserDemand allocation
-UserDemands have an allocated flow rate $F^p$ per priority $p=1,2,\ldots, p_{\max}$, which is either determined by [allocation optimization](allocation.qmd) or simply equal to the demand at time $t$; $F^p = d^p(t)$. The actual abstraction rate of a UserDemand is given by
+UserDemands have an allocated flow rate $F^p$ per priority $p=1,2,\ldots, p_{\max}$, which is either determined by [allocation optimization](/concept/allocation.qmd) or simply equal to the demand at time $t$; $F^p = d^p(t)$. The actual abstraction rate of a UserDemand is given by
 $$
     Q_\text{userdemand, in} = \phi(u, 10.0)\phi(h-l_{\min}, 0.1)\sum_{p=1}^{p_{\max}} \min\left(F^p, d^p(t)\right).
 $$
