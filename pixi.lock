@@ -8867,28 +8867,6 @@ packages:
   license: Apache-2.0
   license_family: Apache
   purls:
-  - pkg:pypi/bleach
-  - pkg:pypi/html5lib
-  size: 131220
-  timestamp: 1696630354218
-- kind: conda
-  name: bleach
-  version: 6.1.0
-  build: pyhd8ed1ab_0
-  subdir: noarch
-  noarch: python
-  url: https://conda.anaconda.org/conda-forge/noarch/bleach-6.1.0-pyhd8ed1ab_0.conda
-  sha256: 845e77ef495376c5c3c328ccfd746ca0ef1978150cae8eae61a300fe7755fb08
-  md5: 0ed9d7c0e9afa7c025807a9a8136ea3e
-  depends:
-  - packaging
-  - python >=3.6
-  - setuptools
-  - six >=1.9.0
-  - webencodings
-  license: Apache-2.0
-  license_family: Apache
-  purls:
   - pkg:pypi/html5lib
   - pkg:pypi/bleach
   size: 131220
@@ -33508,7 +33486,7 @@ packages:
   name: ribasim
   version: 2024.8.0
   path: python/ribasim
-  sha256: b73ca6edacbf60f426b5d15f407c165c1a64e974de50849e64f09a75257f087e
+  sha256: 47f876f9598b6b2cc4f8c036240ef027a97e8b56dcfe4ec880de3cfc59ce7a98
   requires_dist:
   - geopandas
   - matplotlib
@@ -33521,6 +33499,13 @@ packages:
   - shapely>=2.0
   - tomli
   - tomli-w
+  - delwaq ; extra == 'all'
+  - netcdf ; extra == 'all'
+  - tests ; extra == 'all'
+  - jinja2 ; extra == 'delwaq'
+  - netcdf ; extra == 'delwaq'
+  - networkx ; extra == 'delwaq'
+  - xugrid ; extra == 'netcdf'
   - pytest ; extra == 'tests'
   - pytest-cov ; extra == 'tests'
   - pytest-xdist ; extra == 'tests'
