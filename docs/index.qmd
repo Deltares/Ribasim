@@ -5,8 +5,7 @@ title: Ribasim
 :::: {layout="[ 50, 50 ]"}
 
 ::: {#first-column}
-Ribasim is a water resources model to simulate the physical behaviour of a managed open water system based on a set 
-of control rules and a prioritized water allocation strategy.
+Ribasim is a water resources model to simulate the physical behavior of a managed open water system based on a set of control rules and a prioritized water allocation strategy.
 </br>
 
 Ribasim is written in the [Julia programming language](https://julialang.org/) and is built
