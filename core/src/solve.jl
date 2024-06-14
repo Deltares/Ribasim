@@ -384,7 +384,7 @@ function formulate_flow!(
     for id in node_id
         upstream_edge = inflow_edge[id.idx]
         downstream_edges = outflow_edges[id.idx]
-        upstream_basin_id = upstream_edge.edge[id.idx]
+        upstream_basin_id = upstream_edge.edge[1]
 
         if active[id.idx]
             factor = low_storage_factor(storage, upstream_basin_id, 10.0)
