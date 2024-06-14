@@ -396,49 +396,53 @@ Replace the truth states in the logic mapping which contain wildcards with
 all possible explicit truth states.
 """
 function expand_logic_mapping(
-    logic_mapping::Dict{Tuple{NodeID, String}, String},
-)::Dict{Tuple{NodeID, Vector{Bool}}, String}
-    logic_mapping_expanded = Dict{Tuple{NodeID, Vector{Bool}}, String}()
+    logic_mapping::Vector{Dict{String, String}},
+    node_ids::Vector{NodeID},
+)::Vector{Dict{Vector{Bool}, String}}
+    logic_mapping_expanded = [Dict{Vector{Bool}, String}() for _ in eachindex(node_ids)]
+    pattern = r"^[TF\*]+$"
 
-    for (node_id, truth_state) in keys(logic_mapping)
-        pattern = r"^[TF\*]+$"
-        if !occursin(pattern, truth_state)
-            error("Truth state \'$truth_state\' contains illegal characters or is empty.")
-        end
-
-        control_state = logic_mapping[(node_id, truth_state)]
-        n_wildcards = count(==('*'), truth_state)
-
-        substitutions = if n_wildcards > 0
-            substitutions = Iterators.product(fill([true, false], n_wildcards)...)
-        else
-            [nothing]
-        end
-
-        # Loop over all substitution sets for the wildcards
-        for substitution in substitutions
-            truth_state_new = Bool[]
-            s_index = 0
-
-            # If a wildcard is found replace it, otherwise take the old truth value
-            for truth_value in truth_state
-                if truth_value == '*'
-                    s_index += 1
-                    push!(truth_state_new, substitution[s_index])
-                else
-                    push!(truth_state_new, truth_value == 'T')
-                end
+    for node_id in node_ids
+        for truth_state in keys(logic_mapping[node_id.idx])
+            if !occursin(pattern, truth_state)
+                error(
+                    "Truth state \'$truth_state\' contains illegal characters or is empty.",
+                )
             end
 
-            new_key = (node_id, truth_state_new)
+            control_state = logic_mapping[node_id.idx][truth_state]
+            n_wildcards = count(==('*'), truth_state)
 
-            if haskey(logic_mapping_expanded, new_key)
-                control_state_existing = logic_mapping_expanded[new_key]
-                control_states = sort([control_state, control_state_existing])
-                msg = "Multiple control states found for $node_id for truth state `$truth_state_new`: $control_states."
-                @assert control_state_existing == control_state msg
+            substitutions = if n_wildcards > 0
+                substitutions = Iterators.product(fill([true, false], n_wildcards)...)
             else
-                logic_mapping_expanded[new_key] = control_state
+                [nothing]
+            end
+
+            # Loop over all substitution sets for the wildcards
+            for substitution in substitutions
+                truth_state_new = Bool[]
+                s_index = 0
+
+                # If a wildcard is found replace it, otherwise take the old truth value
+                for truth_value in truth_state
+                    if truth_value == '*'
+                        s_index += 1
+                        push!(truth_state_new, substitution[s_index])
+                    else
+                        push!(truth_state_new, truth_value == 'T')
+                    end
+                end
+
+                if haskey(logic_mapping_expanded[node_id.idx], truth_state_new)
+                    control_state_existing =
+                        logic_mapping_expanded[node_id.idx][truth_state_new]
+                    control_states = sort([control_state, control_state_existing])
+                    msg = "Multiple control states found for $node_id for truth state `$(convert_truth_state(truth_state_new))`: $control_states."
+                    @assert control_state_existing == control_state msg
+                else
+                    logic_mapping_expanded[node_id.idx][truth_state_new] = control_state
+                end
             end
         end
     end

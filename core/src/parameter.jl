@@ -512,7 +512,7 @@ compound_variables: The compound variables the DiscreteControl node listens to
 truth_state: Memory allocated for storing the truth state
 control_state: The current control state of the DiscreteControl node
 control_state_start: The start time of the  current control state
-logic_mapping: Dictionary: (control node ID, truth state) => control state
+logic_mapping: Dictionary: truth state => control state for the DiscreteControl node
 record: Namedtuple with discrete control information for results
 """
 struct DiscreteControl <: AbstractParameterNode
@@ -521,7 +521,7 @@ struct DiscreteControl <: AbstractParameterNode
     truth_state::Vector{Vector{Bool}}
     control_state::Vector{String}
     control_state_start::Vector{Float64}
-    logic_mapping::Dict{Tuple{NodeID, Vector{Bool}}, String}
+    logic_mapping::Vector{Dict{Vector{Bool}, String}}
     record::@NamedTuple{
         time::Vector{Float64},
         control_node_id::Vector{Int32},

@@ -17,14 +17,15 @@
     @test pump_control_mapping[(NodeID(:Pump, 4, p), "off")].flow_rate == 0
     @test pump_control_mapping[(NodeID(:Pump, 4, p), "on")].flow_rate == 1.0e-5
 
-    logic_mapping::Dict{Tuple{NodeID, Vector{Bool}}, String} = Dict(
-        (NodeID(:DiscreteControl, 5, p), [true, true]) => "on",
-        (NodeID(:DiscreteControl, 6, p), [false]) => "active",
-        (NodeID(:DiscreteControl, 5, p), [true, false]) => "off",
-        (NodeID(:DiscreteControl, 5, p), [false, false]) => "on",
-        (NodeID(:DiscreteControl, 5, p), [false, true]) => "off",
-        (NodeID(:DiscreteControl, 6, p), [true]) => "inactive",
-    )
+    logic_mapping::Vector{Dict{Vector{Bool}, String}} = [
+        Dict(
+            [true, true] => "on",
+            [true, false] => "off",
+            [false, false] => "on",
+            [false, true] => "off",
+        ),
+        Dict([true] => "inactive", [false] => "active"),
+    ]
 
     @test discrete_control.logic_mapping == logic_mapping
 

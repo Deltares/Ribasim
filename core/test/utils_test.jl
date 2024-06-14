@@ -123,47 +123,56 @@ end
 @testitem "Expand logic_mapping" begin
     using Ribasim: NodeID
 
-    logic_mapping = Dict{Tuple{NodeID, String}, String}()
-    logic_mapping[(NodeID(:DiscreteControl, 1, 1), "*T*")] = "foo"
-    logic_mapping[(NodeID(:DiscreteControl, 2, 1), "FF")] = "bar"
-    logic_mapping_expanded = Ribasim.expand_logic_mapping(logic_mapping)
+    logic_mapping = [Dict{String, String}() for _ in 1:2]
+    logic_mapping[1]["*T*"] = "foo"
+    logic_mapping[2]["FF"] = "bar"
+    node_id = NodeID.(:DiscreteControl, [1, 2], [1, 2])
 
-    @test logic_mapping_expanded[(NodeID(:DiscreteControl, 1, 1), Bool[1, 1, 1])] == "foo"
-    @test logic_mapping_expanded[(NodeID(:DiscreteControl, 1, 1), Bool[0, 1, 1])] == "foo"
-    @test logic_mapping_expanded[(NodeID(:DiscreteControl, 1, 1), Bool[1, 1, 0])] == "foo"
-    @test logic_mapping_expanded[(NodeID(:DiscreteControl, 1, 1), Bool[0, 1, 0])] == "foo"
-    @test logic_mapping_expanded[(NodeID(:DiscreteControl, 2, 1), Bool[0, 0])] == "bar"
-    @test length(logic_mapping_expanded) == 5
+    logic_mapping_expanded = Ribasim.expand_logic_mapping(logic_mapping, node_id)
 
-    new_key = (NodeID(:DiscreteControl, 3, 1), "duck")
-    logic_mapping[new_key] = "quack"
+    @test logic_mapping_expanded[1][Bool[1, 1, 1]] == "foo"
+    @test logic_mapping_expanded[1][Bool[0, 1, 1]] == "foo"
+    @test logic_mapping_expanded[1][Bool[1, 1, 0]] == "foo"
+    @test logic_mapping_expanded[1][Bool[0, 1, 0]] == "foo"
+    @test logic_mapping_expanded[2][Bool[0, 0]] == "bar"
+    @test length.(logic_mapping_expanded) == [4, 1]
 
-    @test_throws "Truth state 'duck' contains illegal characters or is empty." Ribasim.expand_logic_mapping(
+    new_truth_state = "duck"
+    new_control_state = "quack"
+    logic_mapping[2][new_truth_state] = new_control_state
+
+    @test_throws "Truth state '$new_truth_state' contains illegal characters or is empty." Ribasim.expand_logic_mapping(
         logic_mapping,
+        node_id,
     )
 
-    delete!(logic_mapping, new_key)
+    delete!(logic_mapping[2], new_truth_state)
 
-    new_key = (NodeID(:DiscreteControl, 3, 1), "")
-    logic_mapping[new_key] = "bar"
+    new_truth_state = ""
+    new_control_state = "bar"
+    logic_mapping[1][new_truth_state] = new_control_state
 
     @test_throws "Truth state '' contains illegal characters or is empty." Ribasim.expand_logic_mapping(
         logic_mapping,
+        node_id,
     )
 
-    delete!(logic_mapping, new_key)
+    delete!(logic_mapping[1], new_truth_state)
 
-    new_key = (NodeID(:DiscreteControl, 1, 1), "FTT")
-    logic_mapping[new_key] = "foo"
+    new_truth_state = "FTT"
+    new_control_state = "foo"
+    logic_mapping[1][new_truth_state] = new_control_state
 
     # This should not throw an error, as although "FTT" for node_id = 1 is already covered above, this is consistent
-    Ribasim.expand_logic_mapping(logic_mapping)
+    Ribasim.expand_logic_mapping(logic_mapping, node_id)
 
-    new_key = (NodeID(:DiscreteControl, 1, 1), "TTF")
-    logic_mapping[new_key] = "bar"
+    new_truth_state = "TTF"
+    new_control_state = "bar"
+    logic_mapping[1][new_truth_state] = new_control_state
 
-    @test_throws "AssertionError: Multiple control states found for DiscreteControl #1 for truth state `Bool[1, 1, 0]`: [\"bar\", \"foo\"]." Ribasim.expand_logic_mapping(
+    @test_throws "AssertionError: Multiple control states found for DiscreteControl #1 for truth state `TTF`: [\"bar\", \"foo\"]." Ribasim.expand_logic_mapping(
         logic_mapping,
+        node_id,
     )
 end
 

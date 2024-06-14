@@ -556,11 +556,6 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
     errors = false
 
     for (id, compound_variables) in zip(node_id, discrete_control.compound_variables)
-        # The control states of this DiscreteControl node
-        control_states_discrete_control = Set{String}()
-
-        # The truth states of this DiscreteControl node with the wrong length
-        truth_states_wrong_length = Vector{Bool}[]
 
         # The number of conditions of this DiscreteControl node
         n_conditions = sum(
@@ -568,15 +563,17 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
             compound_variable in compound_variables
         )
 
-        for (key, control_state) in logic_mapping
-            id_, truth_state = key
+        # The control states of this DiscreteControl node
+        control_states_discrete_control = Set{String}()
 
-            if id_ == id
-                push!(control_states_discrete_control, control_state)
+        # The truth states of this DiscreteControl node with the wrong length
+        truth_states_wrong_length = Vector{Bool}[]
 
-                if length(truth_state) != n_conditions
-                    push!(truth_states_wrong_length, truth_state)
-                end
+        for (truth_state, control_state) in logic_mapping[id.idx]
+            push!(control_states_discrete_control, control_state)
+
+            if length(truth_state) != n_conditions
+                push!(truth_states_wrong_length, truth_state)
             end
         end
 

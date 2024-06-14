@@ -698,19 +698,16 @@ function DiscreteControl(db::DB, config::Config)::DiscreteControl
     control_state = fill("undefined_state", n_nodes)
     control_state_start = zeros(n_nodes)
 
-    # Initialize the logic mapping
+    # Initialize the logic mappings
     logic = load_structvector(db, config, DiscreteControlLogicV1)
-    logic_mapping = Dict{Tuple{NodeID, String}, String}()
+    logic_mapping = [Dict{String, String}() for _ in eachindex(node_id)]
 
     for (node_id, truth_state, control_state_) in
         zip(logic.node_id, logic.truth_state, logic.control_state)
-        logic_mapping[(
-            NodeID(NodeType.DiscreteControl, node_id, searchsortedfirst(ids, node_id)),
-            truth_state,
-        )] = control_state_
+        logic_mapping[findsorted(ids, node_id)][truth_state] = control_state_
     end
 
-    logic_mapping = expand_logic_mapping(logic_mapping)
+    logic_mapping = expand_logic_mapping(logic_mapping, node_id)
 
     record = (
         time = Float64[],

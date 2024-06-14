@@ -288,9 +288,9 @@ function set_new_control_state!(
     # Get the control state corresponding to the new truth state,
     # if one is defined
     control_state_new =
-        get(discrete_control.logic_mapping, (discrete_control_id, truth_state), nothing)
+        get(discrete_control.logic_mapping[discrete_control_id.idx], truth_state, nothing)
     isnothing(control_state_new) && error(
-        lazy"No control state specified for $discrete_control_node_id for truth state $truth_state.",
+        lazy"No control state specified for $discrete_control_id for truth state $truth_state.",
     )
 
     # Check the new control state against the current control state
