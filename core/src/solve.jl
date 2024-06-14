@@ -536,19 +536,16 @@ function formulate_flow!(
     t::Number,
 )::Nothing
     (; graph) = p
-    (; node_id, active, flow_rate, outflow_ids) = flow_boundary
+    (; node_id, active, flow_rate, outflow_edges) = flow_boundary
 
     for id in node_id
-        # Requirement: edge points away from the flow boundary
-        for outflow_id in outflow_ids[id.idx]
-            if !active[id.idx]
-                continue
-            end
-
+        if active[id.idx]
             rate = flow_rate[id.idx](t)
+            for outflow_edge in outflow_edges[id.idx]
 
-            # Adding water is always possible
-            set_flow!(graph, id, outflow_id, rate)
+                # Adding water is always possible
+                set_flow!(graph, outflow_edge, rate)
+            end
         end
     end
 end

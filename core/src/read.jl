@@ -473,7 +473,7 @@ function FlowBoundary(db::DB, config::Config, graph::MetaGraph)::FlowBoundary
 
     return FlowBoundary(
         node_ids,
-        [collect(outflow_ids(graph, id)) for id in node_ids],
+        outflow_edges.(Ref(graph), node_ids),
         parsed_parameters.active,
         parsed_parameters.flow_rate,
     )
