@@ -67,14 +67,8 @@ function Model(config::Config)::Model
             error("Invalid discrete control state definition(s).")
         end
 
-        (; pid_control, basin, pump, graph, fractional_flow) = parameters
-        if !valid_pid_connectivity(
-            pid_control.node_id,
-            pid_control.listen_node_id,
-            graph,
-            basin.node_id,
-            pump.node_id,
-        )
+        (; pid_control, graph, fractional_flow) = parameters
+        if !valid_pid_connectivity(pid_control.node_id, pid_control.listen_node_id, graph)
             error("Invalid PidControl connectivity.")
         end
 

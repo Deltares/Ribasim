@@ -277,14 +277,11 @@ function valid_pid_connectivity(
     pid_control_node_id::Vector{NodeID},
     pid_control_listen_node_id::Vector{NodeID},
     graph::MetaGraph,
-    basin_node_id::Indices{NodeID},
-    pump_node_id::Vector{NodeID},
 )::Bool
     errors = false
 
     for (pid_control_id, listen_id) in zip(pid_control_node_id, pid_control_listen_node_id)
-        has_index, _ = id_index(basin_node_id, listen_id)
-        if !has_index
+        if listen_id.type !== NodeType.Basin
             @error "Listen node $listen_id of $pid_control_id is not a Basin"
             errors = true
         end
@@ -423,7 +420,7 @@ end
 function valid_tabulated_rating_curve(node_id::NodeID, table::StructVector)::Bool
     errors = false
 
-    rowrange = findlastgroup(node_id, NodeID.(node_id.type, table.node_id))
+    rowrange = findlastgroup(node_id, NodeID.(node_id.type, table.node_id, Ref(0)))
     level = table.level[rowrange]
     flow_rate = table.flow_rate[rowrange]
 
@@ -630,13 +627,8 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
                             @error "Negative look ahead supplied for listen variable '$(subvariable.variable)' from listen node $(subvariable.listen_node_id)."
                         else
                             node = getfield(p, graph[subvariable.listen_node_id].type)
-                            idx = if node_type == NodeType.Basin
-                                id_index(node.node_id, subvariable.listen_node_id)
-                            else
-                                searchsortedfirst(node.node_id, subvariable.listen_node_id)
-                            end
                             interpolation =
-                                getfield(node, Symbol(subvariable.variable))[idx]
+                                getfield(node, Symbol(subvariable.variable))[subvariable.listen_node_id.idx]
                             if t_end + subvariable.look_ahead > interpolation.t[end]
                                 errors = true
                                 @error "Look ahead for listen variable '$(subvariable.variable)' from listen node $(subvariable.listen_node_id) goes past timeseries end during simulation."

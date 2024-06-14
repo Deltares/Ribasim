@@ -14,16 +14,16 @@
 
     # Control input
     pump_control_mapping = p.pump.control_mapping
-    @test pump_control_mapping[(NodeID(:Pump, 4), "off")].flow_rate == 0
-    @test pump_control_mapping[(NodeID(:Pump, 4), "on")].flow_rate == 1.0e-5
+    @test pump_control_mapping[(NodeID(:Pump, 4, p), "off")].flow_rate == 0
+    @test pump_control_mapping[(NodeID(:Pump, 4, p), "on")].flow_rate == 1.0e-5
 
     logic_mapping::Dict{Tuple{NodeID, Vector{Bool}}, String} = Dict(
-        (NodeID(:DiscreteControl, 5), [true, true]) => "on",
-        (NodeID(:DiscreteControl, 6), [false]) => "active",
-        (NodeID(:DiscreteControl, 5), [true, false]) => "off",
-        (NodeID(:DiscreteControl, 5), [false, false]) => "on",
-        (NodeID(:DiscreteControl, 5), [false, true]) => "off",
-        (NodeID(:DiscreteControl, 6), [true]) => "inactive",
+        (NodeID(:DiscreteControl, 5, p), [true, true]) => "on",
+        (NodeID(:DiscreteControl, 6, p), [false]) => "active",
+        (NodeID(:DiscreteControl, 5, p), [true, false]) => "off",
+        (NodeID(:DiscreteControl, 5, p), [false, false]) => "on",
+        (NodeID(:DiscreteControl, 5, p), [false, true]) => "off",
+        (NodeID(:DiscreteControl, 6, p), [true]) => "inactive",
     )
 
     @test discrete_control.logic_mapping == logic_mapping
@@ -172,16 +172,16 @@ end
     )
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
-    p = model.integrator.p
+    (; p) = model.integrator
     (; discrete_control, pid_control) = p
 
     t = Ribasim.tsaves(model)
     level = Ribasim.get_storages_and_levels(model).level[1, :]
 
     target_high =
-        pid_control.control_mapping[(NodeID(:PidControl, 6), "target_high")].target.u[1]
+        pid_control.control_mapping[(NodeID(:PidControl, 6, p), "target_high")].target.u[1]
     target_low =
-        pid_control.control_mapping[(NodeID(:PidControl, 6), "target_low")].target.u[1]
+        pid_control.control_mapping[(NodeID(:PidControl, 6, p), "target_low")].target.u[1]
 
     t_target_jump = discrete_control.record.time[2]
     t_idx_target_jump = searchsortedlast(t, t_target_jump)
@@ -199,19 +199,20 @@ end
     )
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
-    (; discrete_control) = model.integrator.p
+    (; p) = model.integrator
+    (; discrete_control) = p
     (; compound_variables, record) = discrete_control
 
     compound_variable = only(only(compound_variables))
 
     @test compound_variable.subvariables[1] == (;
-        listen_node_id = NodeID(:FlowBoundary, 2),
+        listen_node_id = NodeID(:FlowBoundary, 2, p),
         variable = "flow_rate",
         weight = 0.5,
         look_ahead = 0.0,
     )
     @test compound_variable.subvariables[2] == (;
-        listen_node_id = NodeID(:FlowBoundary, 3),
+        listen_node_id = NodeID(:FlowBoundary, 3, p),
         variable = "flow_rate",
         weight = 0.5,
         look_ahead = 0.0,

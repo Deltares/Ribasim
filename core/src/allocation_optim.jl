@@ -59,7 +59,7 @@ function set_objective_priority!(
 
         if to_node_id.type == NodeType.UserDemand
             # UserDemand
-            user_demand_idx = findsorted(node_id, to_node_id)
+            user_demand_idx = to_node_id.idx
             d = demand_reduced[user_demand_idx, priority_idx]
             F_ud = F[edge]
             add_objective_term!(ex, d, F_ud)
@@ -71,8 +71,7 @@ function set_objective_priority!(
                 flow_priority_idx = get_external_priority_idx(p, to_node_id)
                 d =
                     priority_idx == flow_priority_idx ?
-                    flow_demand.demand[findsorted(flow_demand.node_id, demand_node_id)] :
-                    0.0
+                    flow_demand.demand[demand_node_id.idx] : 0.0
 
                 F_fd = F[edge]
                 add_objective_term!(ex, d, F_fd)
@@ -87,8 +86,7 @@ function set_objective_priority!(
         d =
             basin_priority_idx == priority_idx ?
             get_basin_demand(allocation_model, u, p, t, node_id) : 0.0
-        _, basin_idx = id_index(basin.node_id, node_id)
-        basin.demand[basin_idx] = d
+        basin.demand[node_id.idx] = d
         F_ld = F_basin_in[node_id]
         add_objective_term!(ex, d, F_ld)
     end
@@ -135,8 +133,7 @@ function assign_allocations!(
             user_demand_node_id = edge[2]
             if user_demand_node_id.type == NodeType.UserDemand
                 allocated = JuMP.value(F[edge])
-                user_demand_idx = findsorted(user_demand.node_id, user_demand_node_id)
-                user_demand.allocated[user_demand_idx, priority_idx] = allocated
+                user_demand.allocated[user_demand_node_id.idx, priority_idx] = allocated
             end
         end
     end
@@ -306,24 +303,22 @@ function get_basin_data(
     u::ComponentVector,
     node_id::NodeID,
 )
-    (; graph, basin, level_demand, allocation) = p
+    (; graph, basin, allocation) = p
     (; vertical_flux) = basin
     (; Δt_allocation) = allocation_model
     (; mean_input_flows) = allocation
     @assert node_id.type == NodeType.Basin
     vertical_flux = get_tmp(vertical_flux, 0)
-    _, basin_idx = id_index(basin.node_id, node_id)
     influx = mean_input_flows[(node_id, node_id)][]
-    _, basin_idx = id_index(basin.node_id, node_id)
-    storage_basin = u.storage[basin_idx]
+    storage_basin = u.storage[node_id.idx]
     control_inneighbors = inneighbor_labels_type(graph, node_id, EdgeType.control)
     if isempty(control_inneighbors)
         level_demand_idx = 0
     else
         level_demand_node_id = first(control_inneighbors)
-        level_demand_idx = findsorted(level_demand.node_id, level_demand_node_id)
+        level_demand_idx = level_demand_node_id.idx
     end
-    return storage_basin, Δt_allocation, influx, level_demand_idx, basin_idx
+    return storage_basin, Δt_allocation, influx, level_demand_idx, node_id.idx
 end
 
 """
@@ -439,10 +434,10 @@ function set_initial_demands_user!(
 
     # Read the demand from the interpolated timeseries
     # for users for which the demand comes from there
-    for (i, id) in enumerate(node_id)
-        if demand_from_timeseries[i] && graph[id].subnetwork_id == subnetwork_id
+    for id in node_id
+        if demand_from_timeseries[id.idx] && graph[id].subnetwork_id == subnetwork_id
             for priority_idx in eachindex(allocation.priorities)
-                demand[i, priority_idx] = demand_itp[i][priority_idx](t)
+                demand[id.idx, priority_idx] = demand_itp[id.idx][priority_idx](t)
             end
         end
     end
@@ -468,8 +463,7 @@ function set_initial_demands_level!(
 
     for id in node_ids_level_demand
         if graph[id].subnetwork_id == subnetwork_id
-            _, i = id_index(node_id, id)
-            demand[i] = get_basin_demand(allocation_model, u, p, t, id)
+            demand[id.idx] = get_basin_demand(allocation_model, u, p, t, id)
         end
     end
 
@@ -506,10 +500,9 @@ function adjust_capacities_returnflow!(
 
     for node_id in only(constraints_outflow.axes)
         constraint = constraints_outflow[node_id]
-        user_idx = findsorted(user_demand.node_id, node_id)
         capacity =
             JuMP.normalized_rhs(constraint) +
-            user_demand.return_factor[user_idx] *
+            user_demand.return_factor[node_id.idx] *
             JuMP.value(F[(inflow_id(graph, node_id), node_id)])
 
         JuMP.set_normalized_rhs(constraint, capacity)
@@ -536,13 +529,14 @@ function adjust_demands!(
     F = problem[:F]
 
     # Reduce the demand by what was allocated
-    for (i, id) in enumerate(node_id)
+    for id in node_id
         if graph[id].subnetwork_id == subnetwork_id
             d = max(
                 0.0,
-                demand_reduced[i, priority_idx] - JuMP.value(F[(inflow_id(graph, id), id)]),
+                demand_reduced[id.idx, priority_idx] -
+                JuMP.value(F[(inflow_id(graph, id), id)]),
             )
-            demand_reduced[i, priority_idx] = d
+            demand_reduced[id.idx, priority_idx] = d
         end
     end
     return nothing
@@ -567,8 +561,7 @@ function adjust_demands!(
     # Reduce the demand by what was allocated
     for id in only(F_basin_in.axes)
         if graph[id].subnetwork_id == subnetwork_id
-            _, i = id_index(basin.node_id, id)
-            demand[i] -= JuMP.value(F_basin_in[id])
+            demand[id.idx] -= JuMP.value(F_basin_in[id])
         end
     end
 
@@ -587,11 +580,11 @@ function set_initial_demands_flow!(
     (; flow_demand, graph) = p
     (; subnetwork_id) = allocation_model
 
-    for (i, node_id) in enumerate(flow_demand.node_id)
+    for node_id in flow_demand.node_id
         if graph[node_id].subnetwork_id != subnetwork_id
             continue
         end
-        flow_demand.demand[i] = flow_demand.demand_itp[i](t)
+        flow_demand.demand[node_id.idx] = flow_demand.demand_itp[node_id.idx](t)
     end
     return nothing
 end
@@ -610,7 +603,7 @@ function adjust_demands!(
     (; problem, subnetwork_id) = allocation_model
     F = problem[:F]
 
-    for (i, node_id) in enumerate(flow_demand.node_id)
+    for node_id in flow_demand.node_id
         if graph[node_id].subnetwork_id != subnetwork_id
             continue
         end
@@ -618,9 +611,9 @@ function adjust_demands!(
         node_with_demand_id =
             only(outneighbor_labels_type(graph, node_id, EdgeType.control))
 
-        flow_demand.demand[i] = max(
+        flow_demand.demand[node_id.idx] = max(
             0.0,
-            flow_demand.demand[i] -
+            flow_demand.demand[node_id.idx] -
             JuMP.value(F[(inflow_id(graph, node_with_demand_id), node_with_demand_id)]),
         )
     end
@@ -685,8 +678,7 @@ function set_capacities_flow_demand_outflow!(
     for node_id in only(constraints.axes)
         constraint = constraints[node_id]
         node_id_flow_demand = only(inneighbor_labels_type(graph, node_id, EdgeType.control))
-        node_idx = findsorted(flow_demand.node_id, node_id_flow_demand)
-        priority_flow_demand = flow_demand.priority[node_idx]
+        priority_flow_demand = flow_demand.priority[node_id_flow_demand.idx]
 
         capacity = if priority == priority_flow_demand
             0.0
@@ -722,9 +714,8 @@ function save_demands_and_allocations!(
 
         if node_id.type == NodeType.UserDemand
             has_demand = true
-            user_demand_idx = findsorted(user_demand.node_id, node_id)
-            demand = user_demand.demand[user_demand_idx, priority_idx]
-            allocated = user_demand.allocated[user_demand_idx, priority_idx]
+            demand = user_demand.demand[node_id.idx, priority_idx]
+            allocated = user_demand.allocated[node_id.idx, priority_idx]
             realized = mean_realized_flows[(inflow_id(graph, node_id), node_id)]
 
         elseif has_external_demand(graph, node_id, :level_demand)[1]
@@ -739,8 +730,7 @@ function save_demands_and_allocations!(
                 end
                 if priority_idx == basin_priority_idx
                     # Basin demand
-                    _, basin_idx = id_index(basin.node_id, node_id)
-                    demand += basin.demand[basin_idx]
+                    demand += basin.demand[node_id.idx]
                 end
                 allocated =
                     JuMP.value(F_basin_in[node_id]) - JuMP.value(F_basin_out[node_id])
@@ -755,10 +745,7 @@ function save_demands_and_allocations!(
                 flow_priority_idx = get_external_priority_idx(p, node_id)
                 demand =
                     priority_idx == flow_priority_idx ?
-                    flow_demand.demand[findsorted(
-                        flow_demand.node_id,
-                        flow_demand_node_id,
-                    )] : 0.0
+                    flow_demand.demand[flow_demand_node_id.idx,] : 0.0
                 allocated = JuMP.value(F[(inflow_id(graph, node_id), node_id)])
                 realized = mean_realized_flows[(inflow_id(graph, node_id), node_id)]
             end

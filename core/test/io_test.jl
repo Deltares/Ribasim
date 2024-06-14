@@ -58,11 +58,15 @@ end
 @testitem "findlastgroup" begin
     using Ribasim: NodeID, findlastgroup
 
-    @test findlastgroup(NodeID(:Pump, 2), NodeID.(:Pump, [5, 4, 2, 2, 5, 2, 2, 2, 1])) ===
-          6:8
-    @test findlastgroup(NodeID(:Pump, 2), NodeID.(:Pump, [2])) === 1:1
-    @test findlastgroup(NodeID(:Pump, 3), NodeID.(:Pump, [5, 4, 2, 2, 5, 2, 2, 2, 1])) ===
-          1:0
+    @test findlastgroup(
+        NodeID(:Pump, 2, 1),
+        NodeID.(:Pump, [5, 4, 2, 2, 5, 2, 2, 2, 1], 1),
+    ) === 6:8
+    @test findlastgroup(NodeID(:Pump, 2, 1), NodeID.(:Pump, [2], 1)) === 1:1
+    @test findlastgroup(
+        NodeID(:Pump, 3, 1),
+        NodeID.(:Pump, [5, 4, 2, 2, 5, 2, 2, 2, 1], 1),
+    ) === 1:0
 end
 
 @testitem "table sort" begin

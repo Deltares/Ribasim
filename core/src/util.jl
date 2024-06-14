@@ -27,7 +27,7 @@ function profile_storage(levels::Vector, areas::Vector)::Vector{Float64}
 end
 
 """Get the storage of a basin from its level."""
-function get_storage_from_level(basin::Basin, state_idx::Int, level::Float64)::Float64
+function get_storage_from_level(basin::Basin, state_idx::Integer, level::Float64)::Float64
     storage_discrete = basin.storage[state_idx]
     area_discrete = basin.area[state_idx]
     level_discrete = basin.level[state_idx]
@@ -71,8 +71,8 @@ function get_storages_from_levels(basin::Basin, levels::Vector)::Vector{Float64}
     for (i, level) in enumerate(levels)
         storage = get_storage_from_level(basin, i, level)
         bottom = first(basin.level[i])
-        node_id = basin.node_id.values[i]
         if level < bottom
+            node_id = basin.node_id[i]
             @error "The initial level ($level) of $node_id is below the bottom ($bottom)."
             errors = true
         end
@@ -89,7 +89,11 @@ end
 Compute the area and level of a basin given its storage.
 Also returns darea/dlevel as it is needed for the Jacobian.
 """
-function get_area_and_level(basin::Basin, state_idx::Int, storage::T)::Tuple{T, T} where {T}
+function get_area_and_level(
+    basin::Basin,
+    state_idx::Integer,
+    storage::T,
+)::Tuple{T, T} where {T}
     storage_discrete = basin.storage[state_idx]
     area_discrete = basin.area[state_idx]
     level_discrete = basin.level[state_idx]
@@ -197,7 +201,7 @@ function get_scalar_interpolation(
     default_value::Float64 = 0.0,
 )::Tuple{ScalarInterpolation, Bool}
     nodetype = node_id.type
-    rows = searchsorted(NodeID.(nodetype, time.node_id), node_id)
+    rows = searchsorted(NodeID.(nodetype, time.node_id, Ref(0)), node_id)
     parameter = getfield.(time, param)[rows]
     parameter = coalesce(parameter, default_value)
     times = seconds_since.(time.time[rows], starttime)
@@ -248,7 +252,7 @@ From a table with columns node_id, flow_rate (Q) and level (h),
 create a ScalarInterpolation from level to flow rate for a given node_id.
 """
 function qh_interpolation(node_id::NodeID, table::StructVector)::ScalarInterpolation
-    rowrange = findlastgroup(node_id, NodeID.(node_id.type, table.node_id))
+    rowrange = findlastgroup(node_id, NodeID.(node_id.type, table.node_id, Ref(0)))
     level = table.level[rowrange]
     flow_rate = table.flow_rate[rowrange]
 
@@ -358,7 +362,6 @@ storage: tells ForwardDiff whether this call is for differentiation or not
 """
 function get_level(
     p::Parameters,
-    edge_metadata::EdgeMetadata,
     node_id::NodeID,
     t::Number;
     storage::Union{AbstractArray, Number} = 0,
@@ -367,31 +370,20 @@ function get_level(
     if node_id.type == NodeType.Basin
         # The edge metadata is only used to obtain the Basin index
         # in case node_id is for a Basin
-        i = get_basin_idx(edge_metadata, node_id)
         current_level = get_tmp(basin.current_level, storage)
-        return true, current_level[i]
+        return true, current_level[node_id.idx]
     elseif node_id.type == NodeType.LevelBoundary
-        i = findsorted(level_boundary.node_id, node_id)
-        return true, level_boundary.level[i](t)
+        return true, level_boundary.level[node_id.idx](t)
     else
         return false, 0.0
     end
 end
 
-"Get the index of an ID in a set of indices."
-function id_index(ids::Indices{NodeID}, id::NodeID)::Tuple{Bool, Int}
-    # We avoid creating Dictionary here since it converts the values to a Vector,
-    # leading to allocations when used with PreallocationTools's ReinterpretArrays.
-    hasindex, (_, i) = gettoken(ids, id)
-    return hasindex, i
-end
-
 "Return the bottom elevation of the basin with index i, or nothing if it doesn't exist"
 function basin_bottom(basin::Basin, node_id::NodeID)::Tuple{Bool, Float64}
-    hasindex, i = id_index(basin.node_id, node_id)
-    return if hasindex
+    return if node_id.type == NodeType.Basin
         # get level(storage) interpolation function
-        level_discrete = basin.level[i]
+        level_discrete = basin.level[node_id.idx]
         # and return the first level in this vector, representing the bottom
         return true, first(level_discrete)
     else
@@ -454,38 +446,6 @@ function expand_logic_mapping(
 end
 
 """
-Get the node type specific indices of the fractional flows and basins,
-that are consecutively connected to a node of given id.
-"""
-function get_fractional_flow_connected_basins(
-    node_id::NodeID,
-    basin::Basin,
-    fractional_flow::FractionalFlow,
-    graph::MetaGraph,
-)::Tuple{Vector{Int}, Vector{Int}, Bool}
-    fractional_flow_idxs = Int[]
-    basin_idxs = Int[]
-
-    has_fractional_flow_outneighbors = false
-
-    for first_outflow_id in outflow_ids(graph, node_id)
-        if first_outflow_id in fractional_flow.node_id
-            has_fractional_flow_outneighbors = true
-            second_outflow_id = outflow_id(graph, first_outflow_id)
-            has_index, basin_idx = id_index(basin.node_id, second_outflow_id)
-            if has_index
-                push!(
-                    fractional_flow_idxs,
-                    searchsortedfirst(fractional_flow.node_id, first_outflow_id),
-                )
-                push!(basin_idxs, basin_idx)
-            end
-        end
-    end
-    return fractional_flow_idxs, basin_idxs, has_fractional_flow_outneighbors
-end
-
-"""
     struct FlatVector{T} <: AbstractVector{T}
 
 A FlatVector is an AbstractVector that iterates the T of a `Vector{Vector{T}}`.
@@ -537,13 +497,11 @@ end
 "If id is a Basin with storage below the threshold, return a reduction factor != 1"
 function low_storage_factor(
     storage::AbstractVector{T},
-    edge_metadata::EdgeMetadata,
     id::NodeID,
     threshold::Real,
 )::T where {T <: Real}
     if id.type == NodeType.Basin
-        i = get_basin_idx(edge_metadata, id)
-        reduction_factor(storage[i], threshold)
+        reduction_factor(storage[id.idx], threshold)
     else
         one(T)
     end
@@ -603,11 +561,9 @@ function get_external_priority_idx(p::Parameters, node_id::NodeID)::Int
     inneighbor_control_id = only(inneighbor_control_ids)
     type = inneighbor_control_id.type
     if type == NodeType.LevelDemand
-        idx = findsorted(level_demand.node_id, inneighbor_control_id)
-        priority = level_demand.priority[idx]
+        priority = level_demand.priority[inneighbor_control_id.idx]
     elseif type == NodeType.FlowDemand
-        idx = findsorted(flow_demand.node_id, inneighbor_control_id)
-        priority = flow_demand.priority[idx]
+        priority = flow_demand.priority[inneighbor_control_id.idx]
     else
         error("Nodes of type $type have no priority.")
     end
@@ -624,11 +580,9 @@ function set_is_pid_controlled!(p::Parameters)::Nothing
     for id in pid_control.node_id
         id_controlled = only(outneighbor_labels_type(graph, id, EdgeType.control))
         if id_controlled.type == NodeType.Pump
-            pump_idx = findsorted(pump.node_id, id_controlled)
-            pump.is_pid_controlled[pump_idx] = true
+            pump.is_pid_controlled[id_controlled.idx] = true
         elseif id_controlled.type == NodeType.Outlet
-            outlet_idx = findsorted(outlet.node_id, id_controlled)
-            outlet.is_pid_controlled[outlet_idx] = true
+            outlet.is_pid_controlled[id_controlled.idx] = true
         else
             error(
                 "Only Pump and Outlet can be controlled by PidController, got $is_controlled",
@@ -686,36 +640,19 @@ function get_Δt(integrator)::Float64
 end
 
 function get_influx(basin::Basin, node_id::NodeID)::Float64
-    has_index, basin_idx = id_index(basin.node_id, node_id)
-    if !has_index
+    if node_id.type !== NodeType.Basin
         error("Sum of vertical fluxes requested for non-basin $node_id.")
     end
-    return get_influx(basin, basin_idx)
+    return get_influx(basin, node_id.idx)
 end
 
-function get_influx(basin::Basin, basin_idx::Int; prev::Bool = false)::Float64
+function get_influx(basin::Basin, basin_idx::Integer; prev::Bool = false)::Float64
     (; vertical_flux, vertical_flux_prev) = basin
     vertical_flux = get_tmp(vertical_flux, 0)
     flux_vector = prev ? vertical_flux_prev : vertical_flux
     (; precipitation, evaporation, drainage, infiltration) = flux_vector
     return precipitation[basin_idx] - evaporation[basin_idx] + drainage[basin_idx] -
            infiltration[basin_idx]
-end
-
-function get_discrete_control_indices(discrete_control::DiscreteControl, condition_idx::Int)
-    (; greater_than) = discrete_control
-    condition_idx_now = 1
-
-    for (compound_variable_idx, vec) in enumerate(greater_than)
-        l = length(vec)
-
-        if condition_idx_now + l > condition_idx
-            greater_than_idx = condition_idx - condition_idx_now + 1
-            return compound_variable_idx, greater_than_idx
-        end
-
-        condition_idx_now += l
-    end
 end
 
 has_fractional_flow_outneighbors(graph::MetaGraph, node_id::NodeID)::Bool = any(
@@ -727,39 +664,6 @@ inflow_edge(graph, node_id)::EdgeMetadata = graph[inflow_id(graph, node_id), nod
 outflow_edge(graph, node_id)::EdgeMetadata = graph[node_id, outflow_id(graph, node_id)]
 outflow_edges(graph, node_id)::Vector{EdgeMetadata} =
     [graph[node_id, outflow_id] for outflow_id in outflow_ids(graph, node_id)]
-
-function set_basin_idxs!(graph::MetaGraph, basin::Basin)::Nothing
-    for (edge, edge_metadata) in graph.edge_data
-        id_src, id_dst = edge
-        edge_metadata =
-            @set edge_metadata.basin_idx_src = id_index(basin.node_id, id_src)[2]
-        edge_metadata =
-            @set edge_metadata.basin_idx_dst = id_index(basin.node_id, id_dst)[2]
-        graph[edge...] = edge_metadata
-    end
-
-    # Collect the flow edges. This significantly speeds up
-    # formulate_du!
-    append!(
-        graph[].flow_edges,
-        filter(
-            edge_metadata -> edge_metadata.type == EdgeType.flow,
-            collect(values(graph.edge_data)),
-        ),
-    )
-    return nothing
-end
-
-function get_basin_idx(edge_metadata::EdgeMetadata, id::NodeID)::Int32
-    (; edge) = edge_metadata
-    return if edge[1] == id
-        edge_metadata.basin_idx_src
-    elseif edge[2] == id
-        edge_metadata.basin_idx_dst
-    else
-        0
-    end
-end
 
 """
 We want to perform allocation at t = 0 but there are no mean flows available
@@ -793,8 +697,7 @@ function set_initial_allocation_mean_flows!(integrator)::Nothing
     # This sets the realized demands as -storage_old
     for edge in keys(mean_realized_flows)
         if edge[1] == edge[2]
-            _, basin_idx = id_index(basin.node_id, edge[1])
-            mean_realized_flows[edge] = -u[basin_idx]
+            mean_realized_flows[edge] = -u[edge[1].idx]
         else
             q = get_flow(graph, edge..., 0)
             mean_realized_flows[edge] = q * Δt_allocation
@@ -823,4 +726,11 @@ function get_control_state_type(node_type::Type)::Type
         return control_state_type
     end
     return Nothing
+end
+
+function NodeID(type::Symbol, value::Integer, p::Parameters)::NodeID
+    node_type = NodeType.T(type)
+    node = getfield(p, snake_case(type))
+    idx = searchsortedfirst(node.node_id, NodeID(node_type, value, 0))
+    return NodeID(node_type, value, idx)
 end

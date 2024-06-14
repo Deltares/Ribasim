@@ -30,7 +30,8 @@ end
         normpath(@__DIR__, "../../generated_testmodels/basic_transient/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
-    basin = model.integrator.p.basin
+    (; p) = model.integrator
+    (; basin) = p
     n_basin = length(basin.node_id)
     basin_table = DataFrame(Ribasim.basin_table(model))
 
@@ -38,10 +39,8 @@ end
     t_end = time_table.time[end]
     filter!(:time => t -> t !== t_end, time_table)
 
-    time_table[!, "basin_idx"] = [
-        Ribasim.id_index(basin.node_id, node_id)[2] for
-        node_id in Ribasim.NodeID.(:Basin, time_table.node_id)
-    ]
+    time_table[!, "basin_idx"] =
+        [node_id.idx for node_id in Ribasim.NodeID.(:Basin, time_table.node_id, Ref(p))]
     time_table[!, "area"] = [
         Ribasim.get_area_and_level(basin, idx, storage)[1] for
         (idx, storage) in zip(time_table.basin_idx, basin_table.storage)
@@ -69,10 +68,7 @@ end
         ),
     )
 
-    fixed_area = Dict(
-        id.value => basin.area[Ribasim.id_index(basin.node_id, id)[2]][end] for
-        id in basin.node_id
-    )
+    fixed_area = Dict(id.value => basin.area[id.idx][end] for id in basin.node_id)
     transform!(time_table, :node_id => ByRow(id -> fixed_area[id]) => :fixed_area)
     @test all(
         basin_table.precipitation .≈ time_table.fixed_area .* time_table.precipitation,

@@ -479,12 +479,12 @@ end
     @test all(isapprox.(h_expected, h_actual; atol = 0.02))
     # Test for conservation of mass, flow at the beginning == flow at the end
     n_self_loops = length(p.graph[].flow_dict)
-    @test Ribasim.get_flow(p.graph, NodeID(:FlowBoundary, 1), NodeID(:Basin, 2), 0) ≈ 5.0 atol =
-        0.001 skip = Sys.isapple()
+    @test Ribasim.get_flow(p.graph, NodeID(:FlowBoundary, 1, p), NodeID(:Basin, 2, p), 0) ≈
+          5.0 atol = 0.001 skip = Sys.isapple()
     @test Ribasim.get_flow(
         p.graph,
-        NodeID(:ManningResistance, 101),
-        NodeID(:Basin, 102),
+        NodeID(:ManningResistance, 101, p),
+        NodeID(:Basin, 102, p),
         0,
     ) ≈ 5.0 atol = 0.001 skip = Sys.isapple()
 end

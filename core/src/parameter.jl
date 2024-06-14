@@ -16,14 +16,36 @@ NodeType.T(str::AbstractString) = NodeType.T(Symbol(str))
 struct NodeID
     type::NodeType.T
     value::Int32
+    idx::Int32
 end
 
-NodeID(type::Symbol, value::Integer) = NodeID(NodeType.T(type), value)
-NodeID(type::AbstractString, value::Integer) = NodeID(NodeType.T(type), value)
+NodeID(type::Symbol, value::Integer, idx::Integer) = NodeID(NodeType.T(type), value, idx)
+NodeID(type::AbstractString, value::Integer, idx::Integer) =
+    NodeID(NodeType.T(type), value, idx)
+
+function NodeID(type::Union{Symbol, AbstractString}, value::Integer, db::DB)::NodeID
+    return NodeID(NodeType.T(type), value, db)
+end
+
+function NodeID(type::NodeType.T, value::Integer, db::DB)::NodeID
+    node_type_string = string(type)
+    idx = only(
+        only(
+            execute(
+                columntable,
+                db,
+                "SELECT COUNT(*) FROM Node WHERE node_type == $(esc_id(node_type_string)) AND node_id <= $value",
+            ),
+        ),
+    )
+    @assert idx > 0
+    return NodeID(type, value, idx)
+end
 
 Base.Int32(id::NodeID) = id.value
 Base.convert(::Type{Int32}, id::NodeID) = id.value
 Base.broadcastable(id::NodeID) = Ref(id)
+Base.:(==)(id_1::NodeID, id_2::NodeID) = id_1.type == id_2.type && id_1.value == id_2.value
 Base.show(io::IO, id::NodeID) = print(io, id.type, " #", id.value)
 
 function Base.isless(id_1::NodeID, id_2::NodeID)::Bool
@@ -120,8 +142,6 @@ type: type of the edge
 subnetwork_id_source: ID of subnetwork where this edge is a source
   (0 if not a source)
 edge: (from node ID, to node ID)
-basin_idx_src: Basin index of source node (0 if not a basin)
-basin_idx_dst: Basin index of destination node (0 if not a basin)
 """
 struct EdgeMetadata
     id::Int32
@@ -129,8 +149,6 @@ struct EdgeMetadata
     type::EdgeType.T
     subnetwork_id_source::Int32
     edge::Tuple{NodeID, NodeID}
-    basin_idx_src::Int32
-    basin_idx_dst::Int32
 end
 
 abstract type AbstractParameterNode end
@@ -159,7 +177,6 @@ Requirements:
 
 Type parameter C indicates the content backing the StructVector, which can be a NamedTuple
 of vectors or Arrow Tables, and is added to avoid type instabilities.
-The node_id are Indices to support fast lookup of e.g. current_level using ID.
 
 if autodiff
     T = DiffCache{Vector{Float64}}
@@ -168,7 +185,7 @@ else
 end
 """
 struct Basin{T, C, V1, V2, V3} <: AbstractParameterNode
-    node_id::Indices{NodeID}
+    node_id::Vector{NodeID}
     inflow_ids::Vector{Vector{NodeID}}
     outflow_ids::Vector{Vector{NodeID}}
     # Vertical fluxes
@@ -490,20 +507,20 @@ struct CompoundVariable
 end
 
 """
-node_id: node ID of the DiscreteControl (if it has at least one condition defined on it)
+node_id: node ID of the DiscreteControl node
 compound_variables: The compound variables the DiscreteControl node listens to
 truth_state: Memory allocated for storing the truth state
-control_state: Dictionary: node ID => (control state, control state start)
+control_state: The current control state of the DiscreteControl node
+control_state_start: The start time of the  current control state
 logic_mapping: Dictionary: (control node ID, truth state) => control state
 record: Namedtuple with discrete control information for results
 """
 struct DiscreteControl <: AbstractParameterNode
     node_id::Vector{NodeID}
     compound_variables::Vector{Vector{CompoundVariable}}
-    # truth_state per discrete control node
     truth_state::Vector{Vector{Bool}}
-    # Definition of logic
-    control_state::Dict{NodeID, Tuple{String, Float64}}
+    control_state::Vector{String}
+    control_state_start::Vector{Float64}
     logic_mapping::Dict{Tuple{NodeID, Vector{Bool}}, String}
     record::@NamedTuple{
         time::Vector{Float64},
