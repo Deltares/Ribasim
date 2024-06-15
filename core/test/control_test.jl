@@ -12,10 +12,11 @@
     p = model.integrator.p
     (; discrete_control, graph) = p
 
-    # Control input
+    # Control input(flow rates)
     pump_control_mapping = p.pump.control_mapping
-    @test pump_control_mapping[(NodeID(:Pump, 4, p), "off")].flow_rate == 0
-    @test pump_control_mapping[(NodeID(:Pump, 4, p), "on")].flow_rate == 1.0e-5
+    @test only(pump_control_mapping[(NodeID(:Pump, 4, p), "off")].scalar_update).value == 0
+    @test only(pump_control_mapping[(NodeID(:Pump, 4, p), "on")].scalar_update).value ==
+          1.0e-5
 
     logic_mapping::Vector{Dict{Vector{Bool}, String}} = [
         Dict(
@@ -179,10 +180,14 @@ end
     t = Ribasim.tsaves(model)
     level = Ribasim.get_storages_and_levels(model).level[1, :]
 
-    target_high =
-        pid_control.control_mapping[(NodeID(:PidControl, 6, p), "target_high")].target.u[1]
-    target_low =
-        pid_control.control_mapping[(NodeID(:PidControl, 6, p), "target_low")].target.u[1]
+    target_high = pid_control.control_mapping[(
+        NodeID(:PidControl, 6, p),
+        "target_high",
+    )].itp_update[1].value.u[1]
+    target_low = pid_control.control_mapping[(
+        NodeID(:PidControl, 6, p),
+        "target_low",
+    )].itp_update[1].value.u[1]
 
     t_target_jump = discrete_control.record.time[2]
     t_idx_target_jump = searchsortedlast(t, t_target_jump)
@@ -208,12 +213,14 @@ end
 
     @test compound_variable.subvariables[1] == (;
         listen_node_id = NodeID(:FlowBoundary, 2, p),
+        variable_ref = compound_variable.subvariables[1].variable_ref,
         variable = "flow_rate",
         weight = 0.5,
         look_ahead = 0.0,
     )
     @test compound_variable.subvariables[2] == (;
         listen_node_id = NodeID(:FlowBoundary, 3, p),
+        variable_ref = compound_variable.subvariables[2].variable_ref,
         variable = "flow_rate",
         weight = 0.5,
         look_ahead = 0.0,

@@ -718,23 +718,147 @@ function convert_truth_state(boolean_vector)::String
     String(UInt8.(ifelse.(boolean_vector, 'T', 'F')))
 end
 
-"""
-Given the type of a node struct, e.g. Pump, get the type of the values of the
-control_mapping dict if this field exists.
-"""
-function get_control_state_type(node_type::Type)::Type
-    control_mapping_index = findfirst(==(:control_mapping), fieldnames(node_type))
-    if !isnothing(control_mapping_index)
-        control_mapping_type = fieldtypes(node_type)[control_mapping_index]
-        control_state_type = eltype(fieldtypes(control_mapping_type)[3])
-        return control_state_type
-    end
-    return Nothing
-end
-
 function NodeID(type::Symbol, value::Integer, p::Parameters)::NodeID
     node_type = NodeType.T(type)
     node = getfield(p, snake_case(type))
     idx = searchsortedfirst(node.node_id, NodeID(node_type, value, 0))
     return NodeID(node_type, value, idx)
+end
+
+"""
+Get a reference to a state(-derived) parameter
+"""
+function get_variable_ref(
+    p::Parameters,
+    subvariable::NamedTuple,
+)::Base.RefArray{Float64, Vector{Float64}, Nothing}
+    (; basin) = p
+    (; listen_node_id, variable) = subvariable
+
+    return if listen_node_id.type == NodeType.Basin && variable == "level"
+        level = get_tmp(basin.current_level, 0)
+        Ref(level, listen_node_id.idx)
+    else
+        Ref(Float64[], 0)
+    end
+end
+
+"""
+Set references to all variables that are listened to by discrete control
+"""
+function set_listen_variable_refs!(p::Parameters)::Nothing
+    (; discrete_control) = p
+    for compound_variables in discrete_control.compound_variables
+        for compound_variable in compound_variables
+            (; subvariables) = compound_variable
+            for (j, subvariable) in enumerate(subvariables)
+                subvariables[j] =
+                    @set subvariable.variable_ref = get_variable_ref(p, subvariable)
+            end
+        end
+    end
+    return nothing
+end
+
+"""
+Set references to all variables that are controlled by discrete control
+"""
+function set_controlled_variable_refs!(p::Parameters)::Nothing
+    for nodetype in propertynames(p)
+        node = getfield(p, nodetype)
+        if node isa AbstractParameterNode && hasfield(typeof(node), :control_mapping)
+            control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate} =
+                node.control_mapping
+
+            for ((node_id, control_state), control_state_update) in control_mapping
+                (; scalar_update, itp_update) = control_state_update
+
+                # References to scalar parameters
+                for (i, parameter_update) in enumerate(scalar_update)
+                    field = get_tmp(getfield(node, parameter_update.name), 0)
+                    scalar_update[i] = @set parameter_update.ref = Ref(field, node_id.idx)
+                end
+
+                # References to interpolation parameters
+                for (i, parameter_update) in enumerate(itp_update)
+                    field = get_tmp(getfield(node, parameter_update.name), 0)
+                    itp_update[i] = @set parameter_update.ref = Ref(field, node_id.idx)
+                end
+
+                # Reference to 'active' parameter if it exists
+                if hasfield(typeof(node), :active)
+                    control_mapping[(node_id, control_state)] =
+                        @set control_state_update.active.ref = Ref(node.active, node_id.idx)
+                end
+            end
+        end
+    end
+    return nothing
+end
+
+"""
+Add a control state to a logic mapping. The references to the targets in memory
+for the parameter values are added later when these references are known
+"""
+function add_control_state!(
+    control_mapping,
+    time_interpolatables,
+    parameter_names,
+    parameter_values,
+    node_type,
+    control_state,
+    node_id,
+)::Nothing
+    control_state_key = coalesce(control_state, "")
+
+    # Control state is only added if a control state update can be defined
+    add_control_state = false
+
+    # Create 'active' parameter update if it exists, otherwise this gets
+    # ignored
+    active_idx = findfirst(==(:active), parameter_names)
+    active = if isnothing(active_idx)
+        ParameterUpdate(:active, true)
+    else
+        add_control_state = true
+        ParameterUpdate(:active, parameter_values[active_idx])
+    end
+    control_state_update = ControlStateUpdate(
+        active,
+        ParameterUpdate{Float64}[],
+        ParameterUpdate{ScalarInterpolation}[],
+    )
+    for (parameter_name, parameter_value) in zip(parameter_names, parameter_values)
+        if parameter_name in controllablefields(Symbol(node_type)) &&
+           parameter_name !== :active
+            add_control_state = true
+            parameter_update = ParameterUpdate(parameter_name, parameter_value)
+
+            # Differentiate between scalar parameters and interpolation parameters
+            if parameter_name in time_interpolatables
+                push!(control_state_update.itp_update, parameter_update)
+            else
+                push!(control_state_update.scalar_update, parameter_update)
+            end
+        end
+    end
+    if add_control_state
+        control_mapping[(node_id, control_state_key)] = control_state_update
+    end
+    return nothing
+end
+
+"""
+Collect the control mappings of all controllable nodes in
+the DiscreteControl object for easy access
+"""
+function collect_control_mappings!(p)::Nothing
+    (; control_mappings) = p.discrete_control
+
+    for node_type in instances(NodeType.T)
+        node = getfield(p, Symbol(snake_case(string(node_type))))
+        if hasfield(typeof(node), :control_mapping)
+            control_mappings[node_type] = node.control_mapping
+        end
+    end
 end

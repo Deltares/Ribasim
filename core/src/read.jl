@@ -63,8 +63,7 @@ function parse_static_and_time(
 
     # The control mapping is a dictionary with keys (node_id, control_state) to a named tuple of parameter values
     # parameter values to be assigned to the node with this node_id in the case of this control_state
-    control_state_type = get_control_state_type(node_type)
-    control_mapping = Dict{Tuple{NodeID, String}, control_state_type}()
+    control_mapping = Dict{Tuple{NodeID, String}, ControlStateUpdate}()
 
     push!(keys_out, :control_mapping)
     push!(vals_out, control_mapping)
@@ -131,25 +130,15 @@ function parse_static_and_time(
                     getfield(out, parameter_name)[node_id.idx] = val
                 end
                 # Add the parameter values to the control mapping
-                control_state_key = coalesce(control_state, "")
-                controllable_mask =
-                    collect(parameter_names .∈ Ref(fieldnames(control_state_type)))
-                if any(controllable_mask)
-                    node_idx = searchsortedfirst(node_ids, node_id)
-                    controllable_parameter_names =
-                        collect(parameter_names[controllable_mask])
-                    controllable_parameter_values =
-                        collect(parameter_values[controllable_mask])
-                    pushfirst!(controllable_parameter_names, :node_idx)
-                    pushfirst!(
-                        controllable_parameter_values,
-                        searchsortedfirst(node_ids, node_id),
-                    )
-                    control_mapping[(node_id, control_state_key)] =
-                        NamedTuple{Tuple(controllable_parameter_names)}(
-                            Tuple(controllable_parameter_values),
-                        )
-                end
+                add_control_state!(
+                    control_mapping,
+                    time_interpolatables,
+                    parameter_names,
+                    parameter_values,
+                    node_type_string,
+                    control_state,
+                    node_id,
+                )
             end
         elseif node_id in time_node_ids
             # TODO replace (time, node_id) order by (node_id, time)
@@ -273,7 +262,7 @@ function LinearResistance(db::DB, config::Config, graph::MetaGraph)::LinearResis
         node_id,
         inflow_edge.(Ref(graph), node_id),
         outflow_edge.(Ref(graph), node_id),
-        BitVector(parsed_parameters.active),
+        parsed_parameters.active,
         parsed_parameters.resistance,
         parsed_parameters.max_flow_rate,
         parsed_parameters.control_mapping,
@@ -298,11 +287,8 @@ function TabulatedRatingCurve(
     end
 
     interpolations = ScalarInterpolation[]
-    control_mapping = Dict{
-        Tuple{NodeID, String},
-        @NamedTuple{node_idx::Int, active::Bool, table::ScalarInterpolation}
-    }()
-    active = BitVector()
+    control_mapping = Dict{Tuple{NodeID, String}, ControlStateUpdate}()
+    active = Bool[]
     errors = false
 
     for node_id in node_ids
@@ -331,10 +317,10 @@ function TabulatedRatingCurve(
                     control_mapping[(
                         NodeID(NodeType.TabulatedRatingCurve, node_id, node_id.idx),
                         control_state,
-                    )] = (;
-                        node_idx = node_id.idx,
-                        active = is_active,
-                        table = interpolation,
+                    )] = ControlStateUpdate(
+                        ParameterUpdate(:active, is_active),
+                        ParameterUpdate{Float64}[],
+                        [ParameterUpdate(:table, interpolation)],
                     )
                 end
             end
@@ -392,7 +378,7 @@ function ManningResistance(
         node_id,
         inflow_edge.(Ref(graph), node_id),
         outflow_edge.(Ref(graph), node_id),
-        BitVector(parsed_parameters.active),
+        parsed_parameters.active,
         parsed_parameters.length,
         parsed_parameters.manning_n,
         parsed_parameters.profile_width,
@@ -502,7 +488,7 @@ function Pump(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{Int}
         node_id,
         inflow_edge.(Ref(graph), node_id),
         outflow_edges.(Ref(graph), node_id),
-        BitVector(parsed_parameters.active),
+        parsed_parameters.active,
         flow_rate,
         parsed_parameters.min_flow_rate,
         parsed_parameters.max_flow_rate,
@@ -541,7 +527,7 @@ function Outlet(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{In
         node_id,
         inflow_edge.(Ref(graph), node_id),
         outflow_edges.(Ref(graph), node_id),
-        BitVector(parsed_parameters.active),
+        parsed_parameters.active,
         flow_rate,
         parsed_parameters.min_flow_rate,
         parsed_parameters.max_flow_rate,
@@ -666,7 +652,12 @@ function parse_variables_and_conditions(compound_variable, condition, ids, db)
                     variable = variable_group_variable.variable[i]
                     weight = coalesce.(variable_group_variable.weight[i], 1.0)
                     look_ahead = coalesce.(variable_group_variable.look_ahead[i], 0.0)
-                    push!(subvariables, (; listen_node_id, variable, weight, look_ahead))
+                    # Placeholder until actual ref is known
+                    variable_ref = Ref(Float64[], 0)
+                    push!(
+                        subvariables,
+                        (; listen_node_id, variable_ref, variable, weight, look_ahead),
+                    )
                 end
 
                 push!(
@@ -680,7 +671,7 @@ function parse_variables_and_conditions(compound_variable, condition, ids, db)
     return compound_variables, !errors
 end
 
-function DiscreteControl(db::DB, config::Config)::DiscreteControl
+function DiscreteControl(db::DB, config::Config, graph::MetaGraph)::DiscreteControl
     condition = load_structvector(db, config, DiscreteControlConditionV1)
     compound_variable = load_structvector(db, config, DiscreteControlVariableV1)
 
@@ -723,13 +714,20 @@ function DiscreteControl(db::DB, config::Config)::DiscreteControl
         push!(truth_state, zeros(Bool, truth_state_length))
     end
 
+    controlled_nodes =
+        collect.(outneighbor_labels_type.(Ref(graph), node_id, EdgeType.control))
+
+    control_mappings = Dict{NodeType.T, Dict{Tuple{NodeID, String}, ControlStateUpdate}}()
+
     return DiscreteControl(
         node_id,
+        controlled_nodes,
         compound_variables,
         truth_state,
         control_state,
         control_state_start,
         logic_mapping,
+        control_mappings,
         record,
     )
 end
@@ -759,7 +757,7 @@ function PidControl(db::DB, config::Config, chunk_sizes::Vector{Int})::PidContro
     end
     return PidControl(
         node_ids,
-        BitVector(parsed_parameters.active),
+        parsed_parameters.active,
         NodeID.(
             parsed_parameters.listen_node_type,
             parsed_parameters.listen_node_id,
@@ -775,7 +773,7 @@ function PidControl(db::DB, config::Config, chunk_sizes::Vector{Int})::PidContro
 end
 
 function user_demand_static!(
-    active::BitVector,
+    active::Vector{Bool},
     demand::Matrix{Float64},
     demand_itp::Vector{Vector{ScalarInterpolation}},
     return_factor::Vector{Float64},
@@ -803,7 +801,7 @@ function user_demand_static!(
 end
 
 function user_demand_time!(
-    active::BitVector,
+    active::Vector{Bool},
     demand::Matrix{Float64},
     demand_itp::Vector{Vector{ScalarInterpolation}},
     demand_from_timeseries::BitVector,
@@ -862,7 +860,7 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)::UserDemand
     priorities = get_all_priorities(db, config)
     n_user = length(node_ids)
     n_priority = length(priorities)
-    active = BitVector(ones(Bool, n_user))
+    active = ones(Bool, n_user)
     realized_bmi = zeros(n_user)
     demand = zeros(n_user, n_priority)
     demand_reduced = zeros(n_user, n_priority)
@@ -1127,7 +1125,7 @@ function Parameters(db::DB, config::Config)::Parameters
     pump = Pump(db, config, graph, chunk_sizes)
     outlet = Outlet(db, config, graph, chunk_sizes)
     terminal = Terminal(db, config)
-    discrete_control = DiscreteControl(db, config)
+    discrete_control = DiscreteControl(db, config, graph)
     pid_control = PidControl(db, config, chunk_sizes)
     user_demand = UserDemand(db, config, graph)
     level_demand = LevelDemand(db, config)
@@ -1157,7 +1155,10 @@ function Parameters(db::DB, config::Config)::Parameters
         subgrid_level,
     )
 
+    collect_control_mappings!(p)
     set_is_pid_controlled!(p)
+    set_listen_variable_refs!(p)
+    set_controlled_variable_refs!(p)
 
     # Allocation data structures
     if config.allocation.use_allocation

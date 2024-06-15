@@ -127,8 +127,8 @@ end
         ].allocated
     @test all(
         allocated_9_before ./ allocated_6_before .<=
-        control_mapping[(NodeID(:FractionalFlow, 7, p), "A")].fraction /
-        control_mapping[(NodeID(:FractionalFlow, 4, p), "A")].fraction,
+        only(control_mapping[(NodeID(:FractionalFlow, 7, p), "A")].scalar_update).value /
+        only(control_mapping[(NodeID(:FractionalFlow, 4, p), "A")].scalar_update).value,
     )
     @test all(allocated_9_after ./ allocated_6_after .<= 1.0)
 

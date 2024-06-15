@@ -86,6 +86,17 @@ n_neighbor_bounds_control(::Val{:FlowDemand}) = n_neighbor_bounds(0, 0, 1, 1)
 n_neighbor_bounds_control(nodetype) =
     error("'n_neighbor_bounds_control' not defined for $nodetype.")
 
+controllablefields(nodetype::Symbol) = controllablefields(Val(nodetype))
+controllablefields(::Val{:LinearResistance}) = Set((:active, :resistance))
+controllablefields(::Val{:ManningResistance}) = Set((:active, :manning_n))
+controllablefields(::Val{:TabulatedRatingCurve}) = Set((:active, :table))
+controllablefields(::Val{:FractionalFlow}) = Set((:fraction,))
+controllablefields(::Val{:Pump}) = Set((:active, :flow_rate))
+controllablefields(::Val{:Outlet}) = Set((:active, :flow_rate))
+controllablefields(::Val{:PidControl}) =
+    Set((:active, :target, :propoertional, :integral, :derivative))
+controllablefields(nodetype) = Set{Symbol}()
+
 function variable_names(s::Any)
     filter(x -> !(x in (:node_id, :control_state)), fieldnames(s))
 end
@@ -247,11 +258,12 @@ function valid_flow_rates(
     # if their initial value is also invalid.
     ids_controlled = NodeID[]
 
-    for (key, parameter_update) in pairs(control_mapping)
+    for (key, control_state_update) in pairs(control_mapping)
         id_controlled = key[1]
         push!(ids_controlled, id_controlled)
-        flow_rate_ = parameter_update.flow_rate
-        flow_rate_ = isnan(flow_rate_) ? 1.0 : flow_rate_
+        flow_rate_update = only(control_state_update.scalar_update)
+        @assert flow_rate_update.name == :flow_rate
+        flow_rate_ = flow_rate_update.value
 
         if flow_rate_ < 0.0
             errors = true
@@ -335,11 +347,11 @@ function valid_fractional_flow(
             fraction_sum = 0.0
 
             for ff_id in intersect(src_outflow_ids, node_id_set)
-                parameter_values = get(control_mapping, (ff_id, control_state), nothing)
-                if parameter_values === nothing
+                control_state_update = get(control_mapping, (ff_id, control_state), nothing)
+                if control_state_update === nothing
                     continue
                 else
-                    (; fraction) = parameter_values
+                    fraction = only(control_state_update.scalar_update).value
                 end
 
                 fraction_sum += fraction

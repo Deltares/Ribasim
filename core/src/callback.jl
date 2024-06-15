@@ -305,8 +305,7 @@ function set_new_control_state!(
         push!(record.control_state, control_state_new)
 
         # Loop over nodes which are under control of this control node
-        for target_node_id in
-            outneighbor_labels_type(p.graph, discrete_control_id, EdgeType.control)
+        for target_node_id in discrete_control.controlled_nodes[discrete_control_id.idx]
             set_control_params!(p, target_node_id, control_state_new)
         end
 
@@ -321,13 +320,15 @@ Get a value for a condition. Currently supports getting levels from basins and f
 from flow boundaries.
 """
 function get_value(p::Parameters, subvariable::NamedTuple, t::Float64)
-    (; basin, flow_boundary, level_boundary) = p
-    (; listen_node_id, look_ahead, variable) = subvariable
+    (; flow_boundary, level_boundary) = p
+    (; listen_node_id, look_ahead, variable, variable_ref) = subvariable
+
+    if !iszero(variable_ref.i)
+        return variable_ref[]
+    end
 
     if variable == "level"
-        if listen_node_id.type == NodeType.Basin
-            level = get_tmp(basin.current_level, 0)[listen_node_id.idx]
-        elseif listen_node_id.type == NodeType.LevelBoundary
+        if listen_node_id.type == NodeType.LevelBoundary
             level = level_boundary.level[listen_node_id.idx](t + look_ahead)
         else
             error(
@@ -409,56 +410,33 @@ function set_fractional_flow_in_allocation!(
     return nothing
 end
 
-function discrete_control_parameter_update!(
-    fractional_flow::FractionalFlow,
-    node_id::NodeID,
-    control_state::String,
-    p::Parameters,
-)::Nothing
-    parameter_update = fractional_flow.control_mapping[(node_id, control_state)]
-    (; node_idx, fraction) = parameter_update
-    fractional_flow.fraction[node_idx] = fraction
+function set_control_params!(p::Parameters, node_id::NodeID, control_state::String)::Nothing
+    (; discrete_control, allocation) = p
+    (; control_mappings) = discrete_control
+    control_state_update = control_mappings[node_id.type][(node_id, control_state)]
+    (; active, scalar_update, itp_update) = control_state_update
+    apply_parameter_update!(active)
+    apply_parameter_update!.(scalar_update)
+    apply_parameter_update!.(itp_update)
 
-    if is_active(p.allocation)
-        set_fractional_flow_in_allocation!(p, fractional_flow.node_id[node_idx], fraction)
+    # Update fractional flow in allocation if this node is a FractionalFlow node
+    # and allocation is active
+    if node_id.type == NodeType.FractionalFlow && is_active(allocation)
+        @assert only(scalar_update).name == :fraction
+        set_fractional_flow_in_allocation!(p, node_id, only(scalar_update).value)
     end
     return nothing
 end
 
-function discrete_control_parameter_update!(
-    node::AbstractParameterNode,
-    node_id::NodeID,
-    control_state::String,
-)::Nothing
-    new_state = node.control_mapping[(node_id, control_state)]
-    (; node_idx) = new_state
-    for (field, value) in zip(keys(new_state), new_state)
-        if field == :node_idx
-            continue
-        end
-        vec = get_tmp(getfield(node, field), 0)
-        vec[node_idx] = value
-    end
-end
+function apply_parameter_update!(parameter_update)::Nothing
+    (; name, value, ref) = parameter_update
 
-function set_control_params!(p::Parameters, node_id::NodeID, control_state::String)::Nothing
-
-    # Check node type here to avoid runtime dispatch on the node type
-    if node_id.type == NodeType.Pump
-        discrete_control_parameter_update!(p.pump, node_id, control_state)
-    elseif node_id.type == NodeType.Outlet
-        discrete_control_parameter_update!(p.outlet, node_id, control_state)
-    elseif node_id.type == NodeType.TabulatedRatingCurve
-        discrete_control_parameter_update!(p.tabulated_rating_curve, node_id, control_state)
-    elseif node_id.type == NodeType.FractionalFlow
-        discrete_control_parameter_update!(p.fractional_flow, node_id, control_state, p)
-    elseif node_id.type == NodeType.PidControl
-        discrete_control_parameter_update!(p.pid_control, node_id, control_state)
-    elseif node_id.type == NodeType.LinearResistance
-        discrete_control_parameter_update!(p.linear_resistance, node_id, control_state)
-    elseif node_id.type == NodeType.ManningResistance
-        discrete_control_parameter_update!(p.manning_resistance, node_id, control_state)
+    # Ignore this parameter update of the associated node does
+    # not have an 'active' field
+    if name == :active && ref.i == 0
+        return nothing
     end
+    ref[] = value
     return nothing
 end
 
