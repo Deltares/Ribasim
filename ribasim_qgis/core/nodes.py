@@ -57,7 +57,8 @@ class Input(abc.ABC):
 
     @classmethod
     @abc.abstractmethod
-    def input_type(cls) -> str: ...
+    def input_type(cls) -> str:
+        ...
 
     @classmethod
     @abc.abstractmethod
