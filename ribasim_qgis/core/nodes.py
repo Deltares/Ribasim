@@ -67,7 +67,8 @@ class Input(abc.ABC):
 
     @classmethod
     @abc.abstractmethod
-    def attributes(cls) -> list[QgsField]: ...
+    def attributes(cls) -> list[QgsField]:
+        ...
 
     @classmethod
     def is_spatial(cls):
