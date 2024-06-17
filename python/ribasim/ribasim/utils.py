@@ -14,11 +14,17 @@ def _pascal_to_snake(pascal_str):
 class MissingOptionalModule:
     """Presents a clear error for optional modules."""
 
-    def __init__(self, name):
+    def __init__(self, name, suggestion="all"):
         self.name = name
+        self.suggestion = suggestion
 
-    def __getattr__(self, name):
-        raise ImportError(f"{self.name} is required for this functionality")
+    def __getattr__(
+        self,
+        _,
+    ):
+        raise ImportError(
+            f"{self.name} is required for this functionality. You can get it using `pip install ribasim[{self.suggestion}]`."
+        )
 
 
 def _node_lookup(df) -> Series[Int32]:

@@ -3,9 +3,14 @@
 from pathlib import Path
 
 import pandas as pd
+
 import ribasim
-import xarray as xr
-import xugrid as xu
+from ribasim.utils import MissingOptionalModule
+
+try:
+    import xugrid as xu
+except ImportError:
+    xu = MissingOptionalModule("xugrid", "delwaq")
 
 delwaq_dir = Path(__file__).parent
 repo_dir = delwaq_dir.parents[1]
@@ -16,8 +21,7 @@ def parse(toml_path: Path, graph, substances) -> ribasim.Model:
     model = ribasim.Model.read(toml_path)
 
     # Output of Delwaq
-    ds = xr.open_dataset(output_folder / "delwaq_map.nc")
-    ug = xu.UgridDataset(ds)
+    ug = xu.open_dataset(output_folder / "delwaq_map.nc")
 
     mapping = dict(graph.nodes(data="id"))
     # Continuity is a (default) tracer representing the mass balance

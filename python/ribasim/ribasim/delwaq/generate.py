@@ -5,13 +5,24 @@ import shutil
 from datetime import timedelta
 from pathlib import Path
 
-# import matplotlib.pyplot as plt
-import networkx as nx
+from ribasim.utils import MissingOptionalModule
+
+try:
+    import networkx as nx
+except ImportError:
+    nx = MissingOptionalModule("networkx", "delwaq")
+
 import numpy as np
 import pandas as pd
+
+try:
+    import jinja2
+except ImportError:
+    jinja2 = MissingOptionalModule("jinja2", "delwaq")  # type: ignore
+
 import ribasim
-from jinja2 import Environment, FileSystemLoader
-from util import (
+
+from .util import (
     strfdelta,
     ugrid,
     write_flows,
@@ -21,7 +32,9 @@ from util import (
 
 delwaq_dir = Path(__file__).parent
 
-env = Environment(autoescape=True, loader=FileSystemLoader(delwaq_dir / "template"))
+env = jinja2.Environment(
+    autoescape=True, loader=jinja2.FileSystemLoader(delwaq_dir / "template")
+)
 
 # Add evaporation edges, so mass balance is correct
 # To simulate salt increase due to evaporation, set to False
@@ -41,7 +54,9 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
 
     # Setup flow network
     G = nx.DiGraph()
-    for row in model.node_table().df.itertuples():
+    nodes = model.node_table()
+    assert nodes.df is not None
+    for row in nodes.df.itertuples():
         if row.node_type not in ribasim.geometry.edge.SPATIALCONTROLNODETYPES:
             G.add_node(
                 f"{row.node_type} #{row.node_id}",
@@ -51,6 +66,7 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
                 y=row.geometry.y,
                 pos=(row.geometry.x, row.geometry.y),
             )
+    assert model.edge.df is not None
     for row in model.edge.df.itertuples():
         if row.edge_type == "flow":
             G.add_edge(
@@ -106,8 +122,8 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
             ):
                 print("Found cycle that is not a UserDemand.")
             else:
-                edge_ids = G.edges[*loop]["id"]
-                G.edges[*reversed(loop)]["id"].extend(edge_ids)
+                edge_ids = G.edges[loop]["id"]
+                G.edges[reversed(loop)]["id"].extend(edge_ids)
                 merge_edges.extend(edge_ids)
                 G.remove_edge(*loop)
 
@@ -116,7 +132,7 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
     basin_id = 0
     boundary_id = 0
     node_mapping = {}
-    basin_mapping = {}
+    basin_mapping: dict[int, int] = {}
     for node_id, node in G.nodes.items():
         if node["type"] == "Basin":
             basin_id += 1
@@ -385,11 +401,11 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
     # Make a wide table with the initial default concentrations
     # using zero for all user defined substances
     icdf = pd.DataFrame(
-        {
+        data={
             substance: [defaults.get(substance, 0.0)] * len(basin_mapping)
             for substance in sorted(substances)
         },
-        index=basin_mapping.values(),
+        index=list(basin_mapping.values()),
     )
 
     # Override default concentrations with the user defined values

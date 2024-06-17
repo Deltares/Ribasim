@@ -6,7 +6,9 @@ build-backend = "hatchling.build"
 name = "ribasim"
 description = "Pre- and post-process Ribasim"
 readme = "README.md"
-authors = [{ name = "Deltares and contributors", email = "ribasim.info@deltares.nl" }]
+authors = [
+    { name = "Deltares and contributors", email = "ribasim.info@deltares.nl" },
+]
 license = { text = "MIT" }
 classifiers = [
     "Intended Audience :: Science/Research",
@@ -30,6 +32,9 @@ dynamic = ["version"]
 
 [project.optional-dependencies]
 tests = ["pytest", "pytest-xdist", "pytest-cov", "ribasim_testmodels"]
+netcdf = ["xugrid"]
+delwaq = ["jinja2", "networkx", "ribasim[netcdf]"]
+all = ["ribasim[tests]", "ribasim[netcdf]", "ribasim[delwaq]"]
 
 [project.urls]
 Documentation = "https://deltares.github.io/Ribasim"
@@ -37,3 +42,6 @@ Source = "https://github.com/Deltares/Ribasim"
 
 [tool.hatch.version]
 path = "ribasim/__init__.py"
+
+[tool.hatch.build.targets.sdist]
+artifacts = ["delwaq/reference/*", "delwaq/template/*"]

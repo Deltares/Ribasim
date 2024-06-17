@@ -8,7 +8,9 @@ from datetime import timedelta
 from pathlib import Path
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
+
 from ribasim.utils import MissingOptionalModule
 
 try:
@@ -40,7 +42,7 @@ def write_pointer(fn: Path | str, data: pd.DataFrame) -> None:
             f.write(struct.pack("<4i", a, b, 0, 0))
 
 
-def write_lengths(fn: Path | str, data: np.ndarray[np.float32]) -> None:
+def write_lengths(fn: Path | str, data: npt.NDArray[np.float32]) -> None:
     """Write lengths file for Delwaq.
 
     The format is an int defining time/edges (?)
@@ -69,11 +71,12 @@ def write_volumes(fn: Path | str, data: pd.DataFrame, timestep: timedelta) -> No
     """
     with open(fn, "wb") as f:
         for time, group in data.groupby("time"):
-            f.write(struct.pack("<i", int(time)))
+            f.write(struct.pack("<i", time))
             f.write(group.storage.to_numpy().astype("float32").tobytes())
 
         # Delwaq needs an extra timestep after the end
-        f.write(struct.pack("<i", int(time + timestep.total_seconds())))
+        ntime = time + int(timestep.total_seconds())  # type: ignore
+        f.write(struct.pack("<i", ntime))
         f.write(group.storage.to_numpy().astype("float32").tobytes())
 
 
@@ -90,11 +93,12 @@ def write_flows(fn: Path | str, data: pd.DataFrame, timestep: timedelta) -> None
     """
     with open(fn, "wb") as f:
         for time, group in data.groupby("time"):
-            f.write(struct.pack("<i", int(time)))
+            f.write(struct.pack("<i", time))
             f.write(group.flow_rate.to_numpy().astype("float32").tobytes())
 
         # Delwaq needs an extra timestep after the end
-        f.write(struct.pack("<i", int(time + timestep.total_seconds())))
+        ntime = time + int(timestep.total_seconds())  # type: ignore
+        f.write(struct.pack("<i", ntime))
         f.write(group.flow_rate.to_numpy().astype("float32").tobytes())
 
 
@@ -118,7 +122,7 @@ def ugrid(G) -> xugrid.UgridDataset:
     to_node_id = edge_df.to_node_id.to_numpy()
 
     # from node_id to the node_dim index
-    node_lookup = pd.Series(
+    node_lookup: pd.Series[int] = pd.Series(
         index=node_id,
         data=node_id.argsort().astype(np.int32),
         name="node_index",
@@ -154,8 +158,8 @@ def run_delwaq() -> None:
     if d3d_home is None:
         raise ValueError("D3D_HOME is not set.")
     else:
-        d3d_home = Path(d3d_home)
-    binfolder = (d3d_home / "bin").absolute()
+        pd3d_home = Path(d3d_home)
+    binfolder = (pd3d_home / "bin").absolute()
     folder = Path(__file__).parent
     inp_path = folder / "model" / "delwaq.inp"
     system = platform.system()
