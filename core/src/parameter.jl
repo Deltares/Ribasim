@@ -13,9 +13,23 @@ end
 
 NodeType.T(str::AbstractString) = NodeType.T(Symbol(str))
 
+"""
+    NodeID(type::Union{NodeType.T, Symbol, AbstractString}, value::Integer, idx::Integer)
+    NodeID(type::Union{NodeType.T, Symbol, AbstractString}, value::Integer, db::DB)
+    NodeID(type::Union{NodeType.T, Symbol, AbstractString}, value::Integer, p::Parameters)
+
+NodeID is a unique identifier for a node in the model, as well as an index into the internal node type struct.
+
+The combination to the node type and ID is unique in the model.
+The index is used to find the parameters of the node.
+This index can be passed directly, or calculated from the database or parameters.
+"""
 struct NodeID
+    "Type of node, e.g. Basin, Pump, etc."
     type::NodeType.T
+    "ID of node as given by users"
     value::Int32
+    "Index into the internal node type struct."
     idx::Int32
 end
 
