@@ -62,7 +62,8 @@ class Input(abc.ABC):
 
     @classmethod
     @abc.abstractmethod
-    def geometry_type(cls) -> str: ...
+    def geometry_type(cls) -> str:
+        ...
 
     @classmethod
     @abc.abstractmethod
