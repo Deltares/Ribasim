@@ -61,8 +61,8 @@ function update_vertical_flux!(basin::Basin, storage::AbstractVector)::Nothing
         level = current_level[id.idx]
         area = current_area[id.idx]
 
-        bottom = basin.level[id.idx][1]
-        fixed_area = basin.area[id.idx][end]
+        bottom = basin_levels(basin, id.idx)[1]
+        fixed_area = basin_areas(basin, id.idx)[end]
         depth = max(level - bottom, 0.0)
         factor = reduction_factor(depth, 0.1)
 
@@ -119,8 +119,7 @@ function continuous_control!(
     max_flow_rate_pump = pump.max_flow_rate
     min_flow_rate_outlet = outlet.min_flow_rate
     max_flow_rate_outlet = outlet.max_flow_rate
-    (; node_id, active, target, proportional, integral, derivative, listen_node_id, error) =
-        pid_control
+    (; node_id, active, target, listen_node_id, error) = pid_control
     (; current_area) = basin
 
     current_area = get_tmp(current_area, u)
@@ -178,9 +177,9 @@ function continuous_control!(
         factor = factor_basin * factor_outlet
         flow_rate = 0.0
 
-        K_p = proportional[id.idx](t)
-        K_i = integral[id.idx](t)
-        K_d = derivative[id.idx](t)
+        K_p = pid_control.proportional[id.idx](t)
+        K_i = pid_control.integral[id.idx](t)
+        K_d = pid_control.derivative[id.idx](t)
 
         if !iszero(K_d)
             # dlevel/dstorage = 1/area
@@ -199,7 +198,7 @@ function continuous_control!(
         end
 
         if !iszero(K_d)
-            dlevel_demand = scalar_interpolation_derivative(target[id.idx], t)
+            dlevel_demand = derivative(target[id.idx], t)
             du_listened_basin_old = du.storage[listened_node_id.idx]
             # The expression below is the solution to an implicit equation for
             # du_listened_basin. This equation results from the fact that if the derivative

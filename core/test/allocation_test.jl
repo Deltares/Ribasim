@@ -353,7 +353,7 @@ end
         Ribasim.NodeID(:Basin, 2, p),
         0,
     )
-    A = basin.area[1][1]
+    A = Ribasim.basin_areas(basin, 1)[1]
     l_max = level_demand.max_level[1](0)
     Δt_allocation = allocation.allocation_models[1].Δt_allocation
 

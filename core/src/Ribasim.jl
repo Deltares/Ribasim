@@ -25,7 +25,7 @@ using Accessors: @set
 using Arrow: Arrow, Table
 using CodecZstd: ZstdCompressor
 using ComponentArrays: ComponentVector
-using DataInterpolations: LinearInterpolation, derivative
+using DataInterpolations: LinearInterpolation, derivative, integral
 using Dates: Dates, DateTime, Millisecond, @dateformat_str
 using DBInterface: execute
 using DiffEqCallbacks:
@@ -64,6 +64,7 @@ using SciMLBase:
     ODESolution,
     VectorContinuousCallback,
     get_proposed_dt
+using SmoothInterpolation
 using SparseArrays: SparseMatrixCSC, spzeros
 using SQLite: SQLite, DB, Query, esc_id
 using StructArrays: StructVector

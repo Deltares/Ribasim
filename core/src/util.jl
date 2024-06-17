@@ -11,57 +11,21 @@ function pkgversion(m::Module)::VersionNumber
     return pkgorigin.version
 end
 
-"Calculate a profile storage by integrating the areas over the levels"
-function profile_storage(levels::Vector, areas::Vector)::Vector{Float64}
-    # profile starts at the bottom; first storage is 0
-    storages = zero(areas)
-    n = length(storages)
-
-    for i in 2:n
-        Δh = levels[i] - levels[i - 1]
-        avg_area = 0.5 * (areas[i - 1] + areas[i])
-        ΔS = avg_area * Δh
-        storages[i] = storages[i - 1] + ΔS
-    end
-    return storages
-end
-
 """Get the storage of a basin from its level."""
-function get_storage_from_level(basin::Basin, state_idx::Integer, level::Float64)::Float64
-    storage_discrete = basin.storage[state_idx]
-    area_discrete = basin.area[state_idx]
-    level_discrete = basin.level[state_idx]
-
-    level_lower_index = searchsortedlast(level_discrete, level)
-
-    # If the level is at or below the bottom then the storage is 0
-    if level_lower_index == 0
-        return 0.0
+function get_storage_from_level(basin::Basin, state_idx::Int, level::Float64)::Float64
+    level_to_area = basin.level_to_area[state_idx]
+    if level < level_to_area.t[1]
+        0.0
+    else
+        integral(level_to_area, level)
     end
-
-    level_lower_index = min(level_lower_index, length(level_discrete) - 1)
-
-    darea =
-        (area_discrete[level_lower_index + 1] - area_discrete[level_lower_index]) /
-        (level_discrete[level_lower_index + 1] - level_discrete[level_lower_index])
-
-    level_lower = level_discrete[level_lower_index]
-    area_lower = area_discrete[level_lower_index]
-    level_diff = level - level_lower
-
-    storage =
-        storage_discrete[level_lower_index] +
-        area_lower * level_diff +
-        0.5 * darea * level_diff^2
-
-    return storage
 end
 
 """Compute the storages of the basins based on the water level of the basins."""
 function get_storages_from_levels(basin::Basin, levels::Vector)::Vector{Float64}
     errors = false
     state_length = length(levels)
-    basin_length = length(basin.level)
+    basin_length = length(basin.storage_to_level)
     if state_length != basin_length
         @error "Unexpected 'Basin / state' length." state_length basin_length
         errors = true
@@ -70,7 +34,7 @@ function get_storages_from_levels(basin::Basin, levels::Vector)::Vector{Float64}
 
     for (i, level) in enumerate(levels)
         storage = get_storage_from_level(basin, i, level)
-        bottom = first(basin.level[i])
+        bottom = first(basin_levels(basin, i))
         if level < bottom
             node_id = basin.node_id[i]
             @error "The initial level ($level) of $node_id is below the bottom ($bottom)."
@@ -87,86 +51,10 @@ end
 
 """
 Compute the area and level of a basin given its storage.
-Also returns darea/dlevel as it is needed for the Jacobian.
 """
-function get_area_and_level(
-    basin::Basin,
-    state_idx::Integer,
-    storage::T,
-)::Tuple{T, T} where {T}
-    storage_discrete = basin.storage[state_idx]
-    area_discrete = basin.area[state_idx]
-    level_discrete = basin.level[state_idx]
-
-    return get_area_and_level(storage_discrete, area_discrete, level_discrete, storage)
-end
-
-function get_area_and_level(
-    storage_discrete::AbstractVector,
-    area_discrete::AbstractVector,
-    level_discrete::AbstractVector,
-    storage::T,
-)::Tuple{T, T} where {T}
-
-    # Set type of area and level to prevent runtime dispatch
-    area::T = zero(T)
-    level::T = zero(T)
-
-    # storage_idx: smallest index such that storage_discrete[storage_idx] >= storage
-    storage_idx = searchsortedfirst(storage_discrete, storage)
-
-    if storage_idx == 1
-        # This can only happen if the storage is 0
-        level = level_discrete[1]
-        area = area_discrete[1]
-
-    elseif storage_idx == length(storage_discrete) + 1
-        # With a storage above the profile, use a linear extrapolation of area(level)
-        # based on the last 2 values.
-        area_lower = area_discrete[end - 1]
-        area_higher = area_discrete[end]
-        level_lower = level_discrete[end - 1]
-        level_higher = level_discrete[end]
-        storage_lower = storage_discrete[end - 1]
-        storage_higher = storage_discrete[end]
-
-        Δarea = area_higher - area_lower
-        Δlevel = level_higher - level_lower
-        Δstorage = storage_higher - storage_lower
-
-        if Δarea ≈ 0.0
-            # Constant area means linear interpolation of level
-            area = area_lower
-            level = level_higher + Δlevel * (storage - storage_higher) / Δstorage
-        else
-            darea = Δarea / Δlevel
-            area = sqrt(area_higher^2 + 2 * (storage - storage_higher) * darea)
-            level = level_lower + Δlevel * (area - area_lower) / Δarea
-        end
-
-    else
-        area_lower = area_discrete[storage_idx - 1]
-        area_higher = area_discrete[storage_idx]
-        level_lower = level_discrete[storage_idx - 1]
-        level_higher = level_discrete[storage_idx]
-        storage_lower = storage_discrete[storage_idx - 1]
-        storage_higher = storage_discrete[storage_idx]
-
-        Δarea = area_higher - area_lower
-        Δlevel = level_higher - level_lower
-        Δstorage = storage_higher - storage_lower
-
-        if Δarea ≈ 0.0
-            # Constant area means linear interpolation of level
-            area = area_lower
-            level = level_lower + Δlevel * (storage - storage_lower) / Δstorage
-
-        else
-            darea = Δarea / Δlevel
-            area = sqrt(area_lower^2 + 2 * (storage - storage_lower) * darea)
-            level = level_lower + Δlevel * (area - area_lower) / Δarea
-        end
-    end
+function get_area_and_level(basin::Basin, state_idx::Int, storage::T)::Tuple{T, T} where {T}
+    level = basin.storage_to_level[state_idx](max(storage, 0.0))
+    area = basin.level_to_area[state_idx](level)
 
     return area, level
 end
@@ -216,35 +104,8 @@ function get_scalar_interpolation(
         push!(parameter, parameter[end])
     end
 
-    return LinearInterpolation(parameter, times), allunique(times)
-end
-
-"Derivative of scalar interpolation."
-function scalar_interpolation_derivative(
-    itp::ScalarInterpolation,
-    t::Float64;
-    extrapolate_down_constant::Bool = true,
-    extrapolate_up_constant::Bool = true,
-)::Float64
-    # The function 'derivative' doesn't handle extrapolation well (DataInterpolations v4.0.1)
-    t_smaller_index = searchsortedlast(itp.t, t)
-    if t_smaller_index == 0
-        if extrapolate_down_constant
-            return 0.0
-        else
-            # Get derivative in middle of last interval
-            return derivative(itp, (itp.t[end] - itp.t[end - 1]) / 2)
-        end
-    elseif t_smaller_index == length(itp.t)
-        if extrapolate_up_constant
-            return 0.0
-        else
-            # Get derivative in middle of first interval
-            return derivative(itp, (itp.t[2] - itp.t[1]) / 2)
-        end
-    else
-        return derivative(itp, t)
-    end
+    itp = SmoothedLinearInterpolation(parameter, times; extrapolate = true, λ = 0.1)
+    return LinearInterpolation(itp), allunique(times)
 end
 
 """
@@ -260,7 +121,8 @@ function qh_interpolation(node_id::NodeID, table::StructVector)::ScalarInterpola
     pushfirst!(level, first(level) - 1)
     pushfirst!(flow_rate, first(flow_rate))
 
-    return LinearInterpolation(flow_rate, level; extrapolate = true)
+    itp = SmoothedLinearInterpolation(flow_rate, level; extrapolate = true)
+    return LinearInterpolation(itp)
 end
 
 """
@@ -383,7 +245,7 @@ end
 function basin_bottom(basin::Basin, node_id::NodeID)::Tuple{Bool, Float64}
     return if node_id.type == NodeType.Basin
         # get level(storage) interpolation function
-        level_discrete = basin.level[node_id.idx]
+        level_discrete = basin_levels(basin, node_id.idx)
         # and return the first level in this vector, representing the bottom
         return true, first(level_discrete)
     else
@@ -650,7 +512,7 @@ function get_influx(basin::Basin, node_id::NodeID)::Float64
     return get_influx(basin, node_id.idx)
 end
 
-function get_influx(basin::Basin, basin_idx::Integer; prev::Bool = false)::Float64
+function get_influx(basin::Basin, basin_idx::Int; prev::Bool = false)::Float64
     (; vertical_flux, vertical_flux_prev) = basin
     vertical_flux = get_tmp(vertical_flux, 0)
     flux_vector = prev ? vertical_flux_prev : vertical_flux
@@ -861,4 +723,12 @@ function collect_control_mappings!(p)::Nothing
             control_mappings[node_type] = node.control_mapping
         end
     end
+end
+
+function basin_levels(basin::Basin, state_idx::Int)
+    return basin.level_to_area[state_idx].t
+end
+
+function basin_areas(basin::Basin, state_idx::Int)
+    return basin.level_to_area[state_idx].u
 end

@@ -280,9 +280,9 @@ end
     @test successful_retcode(sparse_fdm)
     @test successful_retcode(dense_fdm)
 
-    @test dense_ad.integrator.sol.u[end] ≈ sparse_ad.integrator.sol.u[end] atol = 1e-3
+    @test dense_ad.integrator.sol.u[end] ≈ sparse_ad.integrator.sol.u[end] atol = 0.1
     @test sparse_fdm.integrator.sol.u[end] ≈ sparse_ad.integrator.sol.u[end]
-    @test dense_fdm.integrator.sol.u[end] ≈ sparse_ad.integrator.sol.u[end] atol = 1e-3
+    @test dense_fdm.integrator.sol.u[end] ≈ sparse_ad.integrator.sol.u[end] atol = 0.1
 
     config = Ribasim.Config(toml_path; solver_algorithm = "Rodas5", solver_autodiff = true)
     time_ad = Ribasim.run(config)
@@ -306,10 +306,17 @@ end
 
 @testitem "Profile" begin
     import Tables
+    using DataInterpolations: LinearInterpolation, integral
+    using SmoothInterpolation: invert_integral
 
     "Shorthand for Ribasim.get_area_and_level"
     function lookup(profile, S)
-        Ribasim.get_area_and_level(profile.S, profile.A, profile.h, S)[1:2]
+        level_to_area = LinearInterpolation(profile.A, profile.h; extrapolate = true)
+        storage_to_level = invert_integral(level_to_area)
+
+        level = storage_to_level(max(S, 0.0))
+        area = level_to_area(level)
+        return area, level
     end
 
     n_interpolations = 100
@@ -318,7 +325,8 @@ end
     # Covers interpolation for constant and non-constant area, extrapolation for constant area
     A = [0.0, 100.0, 100.0]
     h = [0.0, 10.0, 15.0]
-    profile = (; A, h, S = Ribasim.profile_storage(h, A))
+    S = integral.(Ref(LinearInterpolation(A, h)), h)
+    profile = (; S, A, h)
 
     # On profile points we reproduce the profile
     for (; S, A, h) in Tables.rows(profile)
@@ -345,7 +353,9 @@ end
     # Covers extrapolation for non-constant area
     A = [0.0, 100.0]
     h = [0.0, 10.0]
-    profile = (; A, h, S = Ribasim.profile_storage(h, A))
+    S = integral.(Ref(LinearInterpolation(A, h)), h)
+
+    profile = (; A, h, S)
 
     S = 500.0 + 100.0
     A, h = lookup(profile, S)

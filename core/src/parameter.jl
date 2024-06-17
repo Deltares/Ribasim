@@ -14,7 +14,7 @@ end
 NodeType.T(str::AbstractString) = NodeType.T(Symbol(str))
 
 """
-    NodeID(type::Union{NodeType.T, Symbol, AbstractString}, value::Integer, idx::Integer)
+    NodeID(type::Union{NodeType.T, Symbol, AbstractString}, value::Integer, idx::Int)
     NodeID(type::Union{NodeType.T, Symbol, AbstractString}, value::Integer, db::DB)
     NodeID(type::Union{NodeType.T, Symbol, AbstractString}, value::Integer, p::Parameters)
 
@@ -30,11 +30,11 @@ struct NodeID
     "ID of node as given by users"
     value::Int32
     "Index into the internal node type struct."
-    idx::Int32
+    idx::Int
 end
 
-NodeID(type::Symbol, value::Integer, idx::Integer) = NodeID(NodeType.T(type), value, idx)
-NodeID(type::AbstractString, value::Integer, idx::Integer) =
+NodeID(type::Symbol, value::Integer, idx::Int) = NodeID(NodeType.T(type), value, idx)
+NodeID(type::AbstractString, value::Integer, idx::Int) =
     NodeID(NodeType.T(type), value, idx)
 
 function NodeID(type::Union{Symbol, AbstractString}, value::Integer, db::DB)::NodeID
@@ -160,7 +160,7 @@ edge: (from node ID, to node ID)
 """
 struct EdgeMetadata
     id::Int32
-    flow_idx::Int32
+    flow_idx::Int
     type::EdgeType.T
     subnetwork_id_source::Int32
     edge::Tuple{NodeID, NodeID}
@@ -236,9 +236,10 @@ struct Basin{T, C, V1, V2, V3} <: AbstractParameterNode
     current_level::T
     current_area::T
     # Discrete values for interpolation
-    area::Vector{Vector{Float64}}
-    level::Vector{Vector{Float64}}
-    storage::Vector{Vector{Float64}}
+    storage_to_level::Vector{
+        LinearInterpolationIntInv{Vector{Float64}, Vector{Float64}, Float64},
+    }
+    level_to_area::Vector{ScalarInterpolation}
     # Demands for allocation if applicable
     demand::Vector{Float64}
     # Data source for parameter updates
@@ -706,7 +707,7 @@ const ModelGraph{T} = MetaGraph{
         node_ids::Dict{Int32, Set{NodeID}},
         edges_source::Dict{Int32, Set{EdgeMetadata}},
         flow_edges::Vector{EdgeMetadata},
-        flow_dict::Dict{Tuple{NodeID, NodeID}, Int32},
+        flow_dict::Dict{Tuple{NodeID, NodeID}, Int},
         flow::T,
         flow_prev::Vector{Float64},
         flow_integrated::Vector{Float64},
