@@ -33486,7 +33486,7 @@ packages:
   name: ribasim
   version: 2024.8.0
   path: python/ribasim
-  sha256: 47f876f9598b6b2cc4f8c036240ef027a97e8b56dcfe4ec880de3cfc59ce7a98
+  sha256: f46cf8f46dac7cc77668c5f86cbba298e32d24ef0043ba264e03b6e0cdee0b03
   requires_dist:
   - geopandas
   - matplotlib
@@ -33499,12 +33499,16 @@ packages:
   - shapely>=2.0
   - tomli
   - tomli-w
-  - delwaq ; extra == 'all'
-  - netcdf ; extra == 'all'
-  - tests ; extra == 'all'
+  - jinja2 ; extra == 'all'
+  - networkx ; extra == 'all'
+  - pytest ; extra == 'all'
+  - pytest-cov ; extra == 'all'
+  - pytest-xdist ; extra == 'all'
+  - ribasim-testmodels ; extra == 'all'
+  - xugrid ; extra == 'all'
   - jinja2 ; extra == 'delwaq'
-  - netcdf ; extra == 'delwaq'
   - networkx ; extra == 'delwaq'
+  - xugrid ; extra == 'delwaq'
   - xugrid ; extra == 'netcdf'
   - pytest ; extra == 'tests'
   - pytest-cov ; extra == 'tests'
