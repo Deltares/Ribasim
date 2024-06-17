@@ -1,21 +1,12 @@
 @testitem "NodeID" begin
     using Ribasim: NodeID
 
-    id = NodeID(:Basin, 2)
+    id = NodeID(:Basin, 2, 1)
     @test sprint(show, id) === "Basin #2"
-    @test id < NodeID(:Basin, 3)
-    @test_throws ErrorException id < NodeID(:Pump, 3)
+    @test id < NodeID(:Basin, 3, 1)
+    @test_throws ErrorException id < NodeID(:Pump, 3, 1)
     @test Int32(id) === Int32(2)
     @test convert(Int32, id) === Int32(2)
-end
-
-@testitem "id_index" begin
-    using Dictionaries: Indices
-    using Ribasim: NodeID
-
-    ids = Indices(NodeID.(:Basin, [2, 4, 6]))
-    @test Ribasim.id_index(ids, NodeID(:Basin, 4)) === (true, 2)
-    @test Ribasim.id_index(ids, NodeID(:Basin, 5)) === (false, 0)
 end
 
 @testitem "profile_storage" begin
@@ -26,7 +17,6 @@ end
 end
 
 @testitem "bottom" begin
-    using Dictionaries: Indices
     using StructArrays: StructVector
     using Ribasim: NodeID
 
@@ -37,7 +27,7 @@ end
     storage = Ribasim.profile_storage.(level, area)
     demand = zeros(2)
     basin = Ribasim.Basin(
-        Indices(NodeID.(:Basin, [5, 7])),
+        NodeID.(:Basin, [5, 7], [1, 2]),
         [NodeID[]],
         [NodeID[]],
         [2.0, 3.0],
@@ -55,13 +45,12 @@ end
     )
 
     @test basin.level[2][1] === 4.0
-    @test Ribasim.basin_bottom(basin, NodeID(:Basin, 5))[2] === 0.0
-    @test Ribasim.basin_bottom(basin, NodeID(:Basin, 7))[2] === 4.0
-    @test !Ribasim.basin_bottom(basin, NodeID(:Basin, 6))[1]
+    @test Ribasim.basin_bottom(basin, NodeID(:Basin, 5, 1))[2] === 0.0
+    @test Ribasim.basin_bottom(basin, NodeID(:Basin, 7, 2))[2] === 4.0
+    @test !Ribasim.basin_bottom(basin, NodeID(:Terminal, 6, 1))[1]
 end
 
 @testitem "Convert levels to storages" begin
-    using Dictionaries: Indices
     using StructArrays: StructVector
     using Logging
     using Ribasim: NodeID
@@ -93,7 +82,7 @@ end
     storage = Ribasim.profile_storage(level, area)
     demand = zeros(1)
     basin = Ribasim.Basin(
-        Indices(NodeID.(:Basin, [1])),
+        NodeID.(:Basin, [1], 1),
         [NodeID[]],
         [NodeID[]],
         zeros(1),
@@ -134,47 +123,56 @@ end
 @testitem "Expand logic_mapping" begin
     using Ribasim: NodeID
 
-    logic_mapping = Dict{Tuple{NodeID, String}, String}()
-    logic_mapping[(NodeID(:DiscreteControl, 1), "*T*")] = "foo"
-    logic_mapping[(NodeID(:DiscreteControl, 2), "FF")] = "bar"
-    logic_mapping_expanded = Ribasim.expand_logic_mapping(logic_mapping)
+    logic_mapping = [Dict{String, String}() for _ in 1:2]
+    logic_mapping[1]["*T*"] = "foo"
+    logic_mapping[2]["FF"] = "bar"
+    node_id = NodeID.(:DiscreteControl, [1, 2], [1, 2])
 
-    @test logic_mapping_expanded[(NodeID(:DiscreteControl, 1), Bool[1, 1, 1])] == "foo"
-    @test logic_mapping_expanded[(NodeID(:DiscreteControl, 1), Bool[0, 1, 1])] == "foo"
-    @test logic_mapping_expanded[(NodeID(:DiscreteControl, 1), Bool[1, 1, 0])] == "foo"
-    @test logic_mapping_expanded[(NodeID(:DiscreteControl, 1), Bool[0, 1, 0])] == "foo"
-    @test logic_mapping_expanded[(NodeID(:DiscreteControl, 2), Bool[0, 0])] == "bar"
-    @test length(logic_mapping_expanded) == 5
+    logic_mapping_expanded = Ribasim.expand_logic_mapping(logic_mapping, node_id)
 
-    new_key = (NodeID(:DiscreteControl, 3), "duck")
-    logic_mapping[new_key] = "quack"
+    @test logic_mapping_expanded[1][Bool[1, 1, 1]] == "foo"
+    @test logic_mapping_expanded[1][Bool[0, 1, 1]] == "foo"
+    @test logic_mapping_expanded[1][Bool[1, 1, 0]] == "foo"
+    @test logic_mapping_expanded[1][Bool[0, 1, 0]] == "foo"
+    @test logic_mapping_expanded[2][Bool[0, 0]] == "bar"
+    @test length.(logic_mapping_expanded) == [4, 1]
 
-    @test_throws "Truth state 'duck' contains illegal characters or is empty." Ribasim.expand_logic_mapping(
+    new_truth_state = "duck"
+    new_control_state = "quack"
+    logic_mapping[2][new_truth_state] = new_control_state
+
+    @test_throws "Truth state '$new_truth_state' contains illegal characters or is empty." Ribasim.expand_logic_mapping(
         logic_mapping,
+        node_id,
     )
 
-    delete!(logic_mapping, new_key)
+    delete!(logic_mapping[2], new_truth_state)
 
-    new_key = (NodeID(:DiscreteControl, 3), "")
-    logic_mapping[new_key] = "bar"
+    new_truth_state = ""
+    new_control_state = "bar"
+    logic_mapping[1][new_truth_state] = new_control_state
 
     @test_throws "Truth state '' contains illegal characters or is empty." Ribasim.expand_logic_mapping(
         logic_mapping,
+        node_id,
     )
 
-    delete!(logic_mapping, new_key)
+    delete!(logic_mapping[1], new_truth_state)
 
-    new_key = (NodeID(:DiscreteControl, 1), "FTT")
-    logic_mapping[new_key] = "foo"
+    new_truth_state = "FTT"
+    new_control_state = "foo"
+    logic_mapping[1][new_truth_state] = new_control_state
 
     # This should not throw an error, as although "FTT" for node_id = 1 is already covered above, this is consistent
-    Ribasim.expand_logic_mapping(logic_mapping)
+    Ribasim.expand_logic_mapping(logic_mapping, node_id)
 
-    new_key = (NodeID(:DiscreteControl, 1), "TTF")
-    logic_mapping[new_key] = "bar"
+    new_truth_state = "TTF"
+    new_control_state = "bar"
+    logic_mapping[1][new_truth_state] = new_control_state
 
-    @test_throws "AssertionError: Multiple control states found for DiscreteControl #1 for truth state `Bool[1, 1, 0]`: [\"bar\", \"foo\"]." Ribasim.expand_logic_mapping(
+    @test_throws "AssertionError: Multiple control states found for DiscreteControl #1 for truth state `TTF`: [\"bar\", \"foo\"]." Ribasim.expand_logic_mapping(
         logic_mapping,
+        node_id,
     )
 end
 
@@ -242,15 +240,14 @@ end
 @testitem "low_storage_factor" begin
     using Ribasim: NodeID, low_storage_factor, EdgeMetadata, EdgeType
 
-    node_id = NodeID(:Basin, 5)
-    edge_metadata = EdgeMetadata(0, 0, EdgeType.flow, 0, (node_id, node_id), 1, 1)
-    @test low_storage_factor([-2.0], edge_metadata, node_id, 2.0) === 0.0
-    @test low_storage_factor([0.0f0], edge_metadata, node_id, 2.0) === 0.0f0
-    @test low_storage_factor([0.0], edge_metadata, node_id, 2.0) === 0.0
-    @test low_storage_factor([1.0f0], edge_metadata, node_id, 2.0) === 0.5f0
-    @test low_storage_factor([1.0], edge_metadata, node_id, 2.0) === 0.5
-    @test low_storage_factor([3.0f0], edge_metadata, node_id, 2.0) === 1.0f0
-    @test low_storage_factor([3.0], edge_metadata, node_id, 2.0) === 1.0
+    node_id = NodeID(:Basin, 5, 1)
+    @test low_storage_factor([-2.0], node_id, 2.0) === 0.0
+    @test low_storage_factor([0.0f0], node_id, 2.0) === 0.0f0
+    @test low_storage_factor([0.0], node_id, 2.0) === 0.0
+    @test low_storage_factor([1.0f0], node_id, 2.0) === 0.5f0
+    @test low_storage_factor([1.0], node_id, 2.0) === 0.5
+    @test low_storage_factor([3.0f0], node_id, 2.0) === 1.0f0
+    @test low_storage_factor([3.0], node_id, 2.0) === 1.0
 end
 
 @testitem "constraints_from_nodes" begin

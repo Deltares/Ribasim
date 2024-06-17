@@ -64,7 +64,7 @@ function get_storages_and_levels(
     (; config, integrator) = model
     (; sol, p) = integrator
 
-    node_id = p.basin.node_id.values::Vector{NodeID}
+    node_id = p.basin.node_id::Vector{NodeID}
     tsteps = datetime_since.(tsaves(model), config.starttime)
 
     storage = hcat([collect(u_.storage) for u_ in sol.u]...)

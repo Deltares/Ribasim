@@ -13,17 +13,54 @@ end
 
 NodeType.T(str::AbstractString) = NodeType.T(Symbol(str))
 
+"""
+    NodeID(type::Union{NodeType.T, Symbol, AbstractString}, value::Integer, idx::Integer)
+    NodeID(type::Union{NodeType.T, Symbol, AbstractString}, value::Integer, db::DB)
+    NodeID(type::Union{NodeType.T, Symbol, AbstractString}, value::Integer, p::Parameters)
+
+NodeID is a unique identifier for a node in the model, as well as an index into the internal node type struct.
+
+The combination to the node type and ID is unique in the model.
+The index is used to find the parameters of the node.
+This index can be passed directly, or calculated from the database or parameters.
+"""
 struct NodeID
+    "Type of node, e.g. Basin, Pump, etc."
     type::NodeType.T
+    "ID of node as given by users"
     value::Int32
+    "Index into the internal node type struct."
+    idx::Int32
 end
 
-NodeID(type::Symbol, value::Integer) = NodeID(NodeType.T(type), value)
-NodeID(type::AbstractString, value::Integer) = NodeID(NodeType.T(type), value)
+NodeID(type::Symbol, value::Integer, idx::Integer) = NodeID(NodeType.T(type), value, idx)
+NodeID(type::AbstractString, value::Integer, idx::Integer) =
+    NodeID(NodeType.T(type), value, idx)
+
+function NodeID(type::Union{Symbol, AbstractString}, value::Integer, db::DB)::NodeID
+    return NodeID(NodeType.T(type), value, db)
+end
+
+function NodeID(type::NodeType.T, value::Integer, db::DB)::NodeID
+    node_type_string = string(type)
+    # The index is equal to the number of nodes of the same type with a lower or equal ID
+    idx = only(
+        only(
+            execute(
+                columntable,
+                db,
+                "SELECT COUNT(*) FROM Node WHERE node_type == $(esc_id(node_type_string)) AND node_id <= $value",
+            ),
+        ),
+    )
+    @assert idx > 0
+    return NodeID(type, value, idx)
+end
 
 Base.Int32(id::NodeID) = id.value
 Base.convert(::Type{Int32}, id::NodeID) = id.value
 Base.broadcastable(id::NodeID) = Ref(id)
+Base.:(==)(id_1::NodeID, id_2::NodeID) = id_1.type == id_2.type && id_1.value == id_2.value
 Base.show(io::IO, id::NodeID) = print(io, id.type, " #", id.value)
 
 function Base.isless(id_1::NodeID, id_2::NodeID)::Bool
@@ -120,8 +157,6 @@ type: type of the edge
 subnetwork_id_source: ID of subnetwork where this edge is a source
   (0 if not a source)
 edge: (from node ID, to node ID)
-basin_idx_src: Basin index of source node (0 if not a basin)
-basin_idx_dst: Basin index of destination node (0 if not a basin)
 """
 struct EdgeMetadata
     id::Int32
@@ -129,8 +164,29 @@ struct EdgeMetadata
     type::EdgeType.T
     subnetwork_id_source::Int32
     edge::Tuple{NodeID, NodeID}
-    basin_idx_src::Int32
-    basin_idx_dst::Int32
+end
+
+"""
+The update of an parameter given by a value and a reference to the target
+location of the variable in memory
+"""
+struct ParameterUpdate{T}
+    name::Symbol
+    value::T
+    ref::Base.RefArray{T, Vector{T}, Nothing}
+end
+
+function ParameterUpdate(name::Symbol, value::T)::ParameterUpdate{T} where {T}
+    return ParameterUpdate(name, value, Ref(T[], 0))
+end
+"""
+The parameter update associated with a certain control state
+for discrete control
+"""
+struct ControlStateUpdate
+    active::ParameterUpdate{Bool}
+    scalar_update::Vector{ParameterUpdate{Float64}}
+    itp_update::Vector{ParameterUpdate{ScalarInterpolation}}
 end
 
 abstract type AbstractParameterNode end
@@ -159,7 +215,6 @@ Requirements:
 
 Type parameter C indicates the content backing the StructVector, which can be a NamedTuple
 of vectors or Arrow Tables, and is added to avoid type instabilities.
-The node_id are Indices to support fast lookup of e.g. current_level using ID.
 
 if autodiff
     T = DiffCache{Vector{Float64}}
@@ -168,7 +223,7 @@ else
 end
 """
 struct Basin{T, C, V1, V2, V3} <: AbstractParameterNode
-    node_id::Indices{NodeID}
+    node_id::Vector{NodeID}
     inflow_ids::Vector{Vector{NodeID}}
     outflow_ids::Vector{Vector{NodeID}}
     # Vertical fluxes
@@ -215,13 +270,10 @@ struct TabulatedRatingCurve{C} <: AbstractParameterNode
     node_id::Vector{NodeID}
     inflow_edge::Vector{EdgeMetadata}
     outflow_edges::Vector{Vector{EdgeMetadata}}
-    active::BitVector
+    active::Vector{Bool}
     table::Vector{ScalarInterpolation}
     time::StructVector{TabulatedRatingCurveTimeV1, C, Int}
-    control_mapping::Dict{
-        Tuple{NodeID, String},
-        @NamedTuple{node_idx::Int, active::Bool, table::ScalarInterpolation}
-    }
+    control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate}
 end
 
 """
@@ -239,13 +291,10 @@ struct LinearResistance <: AbstractParameterNode
     node_id::Vector{NodeID}
     inflow_edge::Vector{EdgeMetadata}
     outflow_edge::Vector{EdgeMetadata}
-    active::BitVector
+    active::Vector{Bool}
     resistance::Vector{Float64}
     max_flow_rate::Vector{Float64}
-    control_mapping::Dict{
-        Tuple{NodeID, String},
-        @NamedTuple{node_idx::Int, active::Bool, resistance::Float64}
-    }
+    control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate}
 end
 
 """
@@ -290,17 +339,14 @@ struct ManningResistance <: AbstractParameterNode
     node_id::Vector{NodeID}
     inflow_edge::Vector{EdgeMetadata}
     outflow_edge::Vector{EdgeMetadata}
-    active::BitVector
+    active::Vector{Bool}
     length::Vector{Float64}
     manning_n::Vector{Float64}
     profile_width::Vector{Float64}
     profile_slope::Vector{Float64}
     upstream_bottom::Vector{Float64}
     downstream_bottom::Vector{Float64}
-    control_mapping::Dict{
-        Tuple{NodeID, String},
-        @NamedTuple{node_idx::Int, active::Bool, manning_n::Float64}
-    }
+    control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate}
 end
 
 """
@@ -317,10 +363,7 @@ struct FractionalFlow <: AbstractParameterNode
     inflow_edge::Vector{EdgeMetadata}
     outflow_edge::Vector{EdgeMetadata}
     fraction::Vector{Float64}
-    control_mapping::Dict{
-        Tuple{NodeID, String},
-        @NamedTuple{node_idx::Int, fraction::Float64}
-    }
+    control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate}
 end
 
 """
@@ -330,20 +373,20 @@ level: the fixed level of this 'infinitely big basin'
 """
 struct LevelBoundary <: AbstractParameterNode
     node_id::Vector{NodeID}
-    active::BitVector
+    active::Vector{Bool}
     level::Vector{ScalarInterpolation}
 end
 
 """
 node_id: node ID of the FlowBoundary node
-outflow_ids: The downsteam nodes of this FlowBoundary node
+outflow_edges: The outgoing flow edge metadata
 active: whether this node is active and thus contributes flow
 flow_rate: target flow rate
 """
 struct FlowBoundary <: AbstractParameterNode
     node_id::Vector{NodeID}
-    outflow_ids::Vector{Vector{NodeID}}
-    active::BitVector
+    outflow_edges::Vector{Vector{EdgeMetadata}}
+    active::Vector{Bool}
     flow_rate::Vector{ScalarInterpolation}
 end
 
@@ -364,14 +407,11 @@ struct Pump{T} <: AbstractParameterNode
     node_id::Vector{NodeID}
     inflow_edge::Vector{EdgeMetadata}
     outflow_edges::Vector{Vector{EdgeMetadata}}
-    active::BitVector
+    active::Vector{Bool}
     flow_rate::T
     min_flow_rate::Vector{Float64}
     max_flow_rate::Vector{Float64}
-    control_mapping::Dict{
-        Tuple{NodeID, String},
-        @NamedTuple{node_idx::Int, active::Bool, flow_rate::Float64}
-    }
+    control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate}
     is_pid_controlled::BitVector
 
     function Pump(
@@ -420,15 +460,12 @@ struct Outlet{T} <: AbstractParameterNode
     node_id::Vector{NodeID}
     inflow_edge::Vector{EdgeMetadata}
     outflow_edges::Vector{Vector{EdgeMetadata}}
-    active::BitVector
+    active::Vector{Bool}
     flow_rate::T
     min_flow_rate::Vector{Float64}
     max_flow_rate::Vector{Float64}
     min_crest_level::Vector{Float64}
-    control_mapping::Dict{
-        Tuple{NodeID, String},
-        @NamedTuple{node_idx::Int, active::Bool, flow_rate::Float64}
-    }
+    control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate}
     is_pid_controlled::BitVector
 
     function Outlet(
@@ -481,6 +518,7 @@ struct CompoundVariable
     subvariables::Vector{
         @NamedTuple{
             listen_node_id::NodeID,
+            variable_ref::Base.RefArray{Float64, Vector{Float64}, Nothing},
             variable::String,
             weight::Float64,
             look_ahead::Float64,
@@ -490,21 +528,25 @@ struct CompoundVariable
 end
 
 """
-node_id: node ID of the DiscreteControl (if it has at least one condition defined on it)
+node_id: node ID of the DiscreteControl node
+controlled_nodes: The IDs of the nodes controlled by the DiscreteControl node
 compound_variables: The compound variables the DiscreteControl node listens to
 truth_state: Memory allocated for storing the truth state
-control_state: Dictionary: node ID => (control state, control state start)
-logic_mapping: Dictionary: (control node ID, truth state) => control state
+control_state: The current control state of the DiscreteControl node
+control_state_start: The start time of the  current control state
+logic_mapping: Dictionary: truth state => control state for the DiscreteControl node
+control_mapping: dictionary node type => control mapping for that node type
 record: Namedtuple with discrete control information for results
 """
 struct DiscreteControl <: AbstractParameterNode
     node_id::Vector{NodeID}
+    controlled_nodes::Vector{Vector{NodeID}}
     compound_variables::Vector{Vector{CompoundVariable}}
-    # truth_state per discrete control node
     truth_state::Vector{Vector{Bool}}
-    # Definition of logic
-    control_state::Dict{NodeID, Tuple{String, Float64}}
-    logic_mapping::Dict{Tuple{NodeID, Vector{Bool}}, String}
+    control_state::Vector{String}
+    control_state_start::Vector{Float64}
+    logic_mapping::Vector{Dict{Vector{Bool}, String}}
+    control_mappings::Dict{NodeType.T, Dict{Tuple{NodeID, String}, ControlStateUpdate}}
     record::@NamedTuple{
         time::Vector{Float64},
         control_node_id::Vector{Int32},
@@ -526,24 +568,14 @@ error: the current error; basin_target - current_level
 """
 struct PidControl{T} <: AbstractParameterNode
     node_id::Vector{NodeID}
-    active::BitVector
+    active::Vector{Bool}
     listen_node_id::Vector{NodeID}
     target::Vector{ScalarInterpolation}
     proportional::Vector{ScalarInterpolation}
     integral::Vector{ScalarInterpolation}
     derivative::Vector{ScalarInterpolation}
     error::T
-    control_mapping::Dict{
-        Tuple{NodeID, String},
-        @NamedTuple{
-            node_idx::Int,
-            active::Bool,
-            target::ScalarInterpolation,
-            proportional::ScalarInterpolation,
-            integral::ScalarInterpolation,
-            derivative::ScalarInterpolation,
-        }
-    }
+    control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate}
 end
 
 """
@@ -569,7 +601,7 @@ struct UserDemand <: AbstractDemandNode
     node_id::Vector{NodeID}
     inflow_edge::Vector{EdgeMetadata}
     outflow_edge::Vector{EdgeMetadata}
-    active::BitVector
+    active::Vector{Bool}
     realized_bmi::Vector{Float64}
     demand::Matrix{Float64}
     demand_reduced::Matrix{Float64}

@@ -3,7 +3,7 @@
     using Logging
     using StructArrays: StructVector
 
-    node_id = [NodeID(:Basin, 1)]
+    node_id = [NodeID(:Basin, 1, 1)]
     level = [[0.0, 0.0, 1.0]]
     area = [[0.0, 100.0, 90]]
 
@@ -23,7 +23,7 @@
     @test logger.logs[3].message == "Basin #1 profile cannot have decreasing areas."
 
     table = StructVector(; flow_rate = [0.0, 0.1], level = [1.0, 2.0], node_id = [5, 5])
-    itp = qh_interpolation(NodeID(:TabulatedRatingCurve, 5), table)
+    itp = qh_interpolation(NodeID(:TabulatedRatingCurve, 5, 1), table)
     # constant extrapolation at the bottom end, linear extrapolation at the top end
     itp(0.0) ≈ 0.0
     itp(1.0) ≈ 0.0
@@ -79,22 +79,22 @@ end
         graph_data = nothing,
     )
 
-    graph[NodeID(:Pump, 1)] = NodeMetadata(:pump, 9)
-    graph[NodeID(:Basin, 2)] = NodeMetadata(:pump, 9)
-    graph[NodeID(:Basin, 3)] = NodeMetadata(:pump, 9)
-    graph[NodeID(:Basin, 4)] = NodeMetadata(:pump, 9)
-    graph[NodeID(:FractionalFlow, 5)] = NodeMetadata(:pump, 9)
-    graph[NodeID(:Pump, 6)] = NodeMetadata(:pump, 9)
+    graph[NodeID(:Pump, 1, 1)] = NodeMetadata(:pump, 9)
+    graph[NodeID(:Basin, 2, 1)] = NodeMetadata(:pump, 9)
+    graph[NodeID(:Basin, 3, 1)] = NodeMetadata(:pump, 9)
+    graph[NodeID(:Basin, 4, 1)] = NodeMetadata(:pump, 9)
+    graph[NodeID(:FractionalFlow, 5, 1)] = NodeMetadata(:pump, 9)
+    graph[NodeID(:Pump, 6, 1)] = NodeMetadata(:pump, 9)
 
     function set_edge_metadata!(id_1, id_2, edge_type)
-        graph[id_1, id_2] = EdgeMetadata(0, 0, edge_type, 0, (id_1, id_2), -1, -1)
+        graph[id_1, id_2] = EdgeMetadata(0, 0, edge_type, 0, (id_1, id_2))
         return nothing
     end
 
-    set_edge_metadata!(NodeID(:Basin, 2), NodeID(:Pump, 1), EdgeType.flow)
-    set_edge_metadata!(NodeID(:Basin, 3), NodeID(:Pump, 1), EdgeType.flow)
-    set_edge_metadata!(NodeID(:Pump, 6), NodeID(:Basin, 2), EdgeType.flow)
-    set_edge_metadata!(NodeID(:FractionalFlow, 5), NodeID(:Pump, 6), EdgeType.control)
+    set_edge_metadata!(NodeID(:Basin, 2, 1), NodeID(:Pump, 1, 1), EdgeType.flow)
+    set_edge_metadata!(NodeID(:Basin, 3, 1), NodeID(:Pump, 1, 1), EdgeType.flow)
+    set_edge_metadata!(NodeID(:Pump, 6, 1), NodeID(:Basin, 2, 1), EdgeType.flow)
+    set_edge_metadata!(NodeID(:FractionalFlow, 5, 1), NodeID(:Pump, 6, 1), EdgeType.control)
 
     logger = TestLogger()
     with_logger(logger) do
@@ -111,9 +111,9 @@ end
     @test logger.logs[3].message ==
           "Pump #6 must have at least 1 flow inneighbor(s) (got 0)."
 
-    set_edge_metadata!(NodeID(:Basin, 2), NodeID(:FractionalFlow, 5), EdgeType.flow)
-    set_edge_metadata!(NodeID(:FractionalFlow, 5), NodeID(:Basin, 3), EdgeType.flow)
-    set_edge_metadata!(NodeID(:FractionalFlow, 5), NodeID(:Basin, 4), EdgeType.flow)
+    set_edge_metadata!(NodeID(:Basin, 2, 1), NodeID(:FractionalFlow, 5, 1), EdgeType.flow)
+    set_edge_metadata!(NodeID(:FractionalFlow, 5, 1), NodeID(:Basin, 3, 1), EdgeType.flow)
+    set_edge_metadata!(NodeID(:FractionalFlow, 5, 1), NodeID(:Basin, 4, 1), EdgeType.flow)
 
     logger = TestLogger(; min_level = Debug)
     with_logger(logger) do
@@ -137,15 +137,13 @@ end
 end
 
 @testitem "PidControl connectivity validation" begin
-    using Dictionaries: Indices
     using Graphs: DiGraph
     using Logging
     using MetaGraphsNext: MetaGraph
     using Ribasim: NodeID, NodeMetadata, EdgeMetadata, NodeID, EdgeType
 
-    pid_control_node_id = NodeID.(:PidControl, [1, 6])
-    pid_control_listen_node_id = [NodeID(:Terminal, 3), NodeID(:Basin, 5)]
-    pump_node_id = NodeID.(:Pump, [2, 4])
+    pid_control_node_id = NodeID.(:PidControl, [1, 6], 1)
+    pid_control_listen_node_id = [NodeID(:Terminal, 3, 1), NodeID(:Basin, 5, 1)]
 
     graph = MetaGraph(
         DiGraph();
@@ -155,28 +153,26 @@ end
         graph_data = nothing,
     )
 
-    graph[NodeID(:PidControl, 1)] = NodeMetadata(:pid_control, 0)
-    graph[NodeID(:PidControl, 6)] = NodeMetadata(:pid_control, 0)
-    graph[NodeID(:Pump, 2)] = NodeMetadata(:pump, 0)
-    graph[NodeID(:Pump, 4)] = NodeMetadata(:pump, 0)
-    graph[NodeID(:Terminal, 3)] = NodeMetadata(:something_else, 0)
-    graph[NodeID(:Basin, 5)] = NodeMetadata(:basin, 0)
-    graph[NodeID(:Basin, 7)] = NodeMetadata(:basin, 0)
+    graph[NodeID(:PidControl, 1, 1)] = NodeMetadata(:pid_control, 0)
+    graph[NodeID(:PidControl, 6, 1)] = NodeMetadata(:pid_control, 0)
+    graph[NodeID(:Pump, 2, 1)] = NodeMetadata(:pump, 0)
+    graph[NodeID(:Pump, 4, 1)] = NodeMetadata(:pump, 0)
+    graph[NodeID(:Terminal, 3, 1)] = NodeMetadata(:something_else, 0)
+    graph[NodeID(:Basin, 5, 1)] = NodeMetadata(:basin, 0)
+    graph[NodeID(:Basin, 7, 1)] = NodeMetadata(:basin, 0)
 
     function set_edge_metadata!(id_1, id_2, edge_type)
-        graph[id_1, id_2] = EdgeMetadata(0, 0, edge_type, 0, (id_1, id_2), -1, -1)
+        graph[id_1, id_2] = EdgeMetadata(0, 0, edge_type, 0, (id_1, id_2))
         return nothing
     end
 
-    set_edge_metadata!(NodeID(:Terminal, 3), NodeID(:Pump, 4), EdgeType.flow)
-    set_edge_metadata!(NodeID(:Basin, 7), NodeID(:Pump, 2), EdgeType.flow)
-    set_edge_metadata!(NodeID(:Pump, 2), NodeID(:Basin, 7), EdgeType.flow)
-    set_edge_metadata!(NodeID(:Pump, 4), NodeID(:Basin, 7), EdgeType.flow)
+    set_edge_metadata!(NodeID(:Terminal, 3, 1), NodeID(:Pump, 4, 1), EdgeType.flow)
+    set_edge_metadata!(NodeID(:Basin, 7, 1), NodeID(:Pump, 2, 1), EdgeType.flow)
+    set_edge_metadata!(NodeID(:Pump, 2, 1), NodeID(:Basin, 7, 1), EdgeType.flow)
+    set_edge_metadata!(NodeID(:Pump, 4, 1), NodeID(:Basin, 7, 1), EdgeType.flow)
 
-    set_edge_metadata!(NodeID(:PidControl, 1), NodeID(:Pump, 4), EdgeType.control)
-    set_edge_metadata!(NodeID(:PidControl, 6), NodeID(:Pump, 2), EdgeType.control)
-
-    basin_node_id = Indices(NodeID.(:Basin, [5, 7]))
+    set_edge_metadata!(NodeID(:PidControl, 1, 1), NodeID(:Pump, 4, 1), EdgeType.control)
+    set_edge_metadata!(NodeID(:PidControl, 6, 1), NodeID(:Pump, 2, 1), EdgeType.control)
 
     logger = TestLogger()
     with_logger(logger) do
@@ -184,8 +180,6 @@ end
             pid_control_node_id,
             pid_control_listen_node_id,
             graph,
-            basin_node_id,
-            pump_node_id,
         )
     end
 
@@ -232,19 +226,19 @@ end
     @test logger.logs[2].level == Error
     @test logger.logs[2].message ==
           "Fractional flow nodes must have non-negative fractions."
-    @test logger.logs[2].kwargs[:node_id] == NodeID(:FractionalFlow, 3)
+    @test logger.logs[2].kwargs[:node_id] == NodeID(:FractionalFlow, 3, 1)
     @test logger.logs[2].kwargs[:fraction] ≈ -0.1
     @test logger.logs[2].kwargs[:control_state] == ""
     @test logger.logs[3].level == Error
     @test logger.logs[3].message ==
           "The sum of fractional flow fractions leaving a node must be ≈1."
-    @test logger.logs[3].kwargs[:node_id] == NodeID(:TabulatedRatingCurve, 7)
+    @test logger.logs[3].kwargs[:node_id] == NodeID(:TabulatedRatingCurve, 7, 1)
     @test logger.logs[3].kwargs[:fraction_sum] ≈ 0.4
     @test logger.logs[3].kwargs[:control_state] == ""
     @test logger.logs[4].level == Error
     @test logger.logs[4].message == "Cannot connect a basin to a fractional_flow."
-    @test logger.logs[4].kwargs[:id_src] == NodeID(:Basin, 2)
-    @test logger.logs[4].kwargs[:id_dst] == NodeID(:FractionalFlow, 8)
+    @test logger.logs[4].kwargs[:id_src] == NodeID(:Basin, 2, 1)
+    @test logger.logs[4].kwargs[:id_dst] == NodeID(:FractionalFlow, 8, 1)
 end
 
 @testitem "DiscreteControl logic validation" begin
@@ -287,13 +281,13 @@ end
 
 @testitem "Pump/outlet flow rate sign validation" begin
     using Logging
-    using Ribasim: NodeID, NodeType
+    using Ribasim: NodeID, NodeType, ControlStateUpdate, ParameterUpdate
 
     logger = TestLogger()
 
     with_logger(logger) do
         @test_throws "Invalid Outlet flow rate(s)." Ribasim.Outlet(
-            [NodeID(:Outlet, 1)],
+            [NodeID(:Outlet, 1, 1)],
             NodeID[],
             [NodeID[]],
             [true],
@@ -301,7 +295,7 @@ end
             [NaN],
             [NaN],
             [NaN],
-            Dict{Tuple{NodeID, String}, NamedTuple}(),
+            Dict{Tuple{NodeID, String}, ControlStateUpdate}(),
             [false],
         )
     end
@@ -314,15 +308,19 @@ end
 
     with_logger(logger) do
         @test_throws "Invalid Pump flow rate(s)." Ribasim.Pump(
-            [NodeID(:Pump, 1)],
+            [NodeID(:Pump, 1, 1)],
             NodeID[],
             [NodeID[]],
             [true],
             [-1.0],
             [NaN],
             [NaN],
-            Dict{Tuple{NodeID, String}, NamedTuple}(
-                (NodeID(:Pump, 1), "foo") => (; active = true, flow_rate = -1.0),
+            Dict(
+                (NodeID(:Pump, 1, 1), "foo") => ControlStateUpdate(
+                    ParameterUpdate(:active, true),
+                    [ParameterUpdate(:flow_rate, -1.0)],
+                    ParameterUpdate[],
+                ),
             ),
             [false],
         )
@@ -364,13 +362,13 @@ end
     using Ribasim: valid_subgrid, NodeID
     using Logging
 
-    node_to_basin = Dict(NodeID(:Basin, 9) => 1)
+    node_to_basin = Dict(NodeID(:Basin, 9, 1) => 1)
 
     logger = TestLogger()
     with_logger(logger) do
         @test !valid_subgrid(
             Int32(1),
-            NodeID(:Basin, 10),
+            NodeID(:Basin, 10, 1),
             node_to_basin,
             [-1.0, 0.0],
             [-1.0, 0.0],
@@ -380,14 +378,14 @@ end
     @test length(logger.logs) == 1
     @test logger.logs[1].level == Error
     @test logger.logs[1].message == "The node_id of the Basin / subgrid does not exist."
-    @test logger.logs[1].kwargs[:node_id] == NodeID(:Basin, 10)
+    @test logger.logs[1].kwargs[:node_id] == NodeID(:Basin, 10, 1)
     @test logger.logs[1].kwargs[:subgrid_id] == 1
 
     logger = TestLogger()
     with_logger(logger) do
         @test !valid_subgrid(
             Int32(1),
-            NodeID(:Basin, 9),
+            NodeID(:Basin, 9, 1),
             node_to_basin,
             [-1.0, 0.0, 0.0],
             [-1.0, 0.0, 0.0],
@@ -412,7 +410,7 @@ end
 
     with_logger(logger) do
         @test_throws "Invalid demand" Ribasim.UserDemand(
-            [NodeID(:UserDemand, 1)],
+            [NodeID(:UserDemand, 1, 1)],
             NodeID[],
             NodeID[],
             [true],
@@ -452,25 +450,6 @@ end
         model,
         dt,
     )
-end
-
-@testitem "basin indices" begin
-    using Ribasim: NodeType
-
-    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
-    @test ispath(toml_path)
-
-    model = Ribasim.Model(toml_path)
-    (; graph, basin) = model.integrator.p
-    for edge_metadata in values(graph.edge_data)
-        (; edge, basin_idx_src, basin_idx_dst) = edge_metadata
-        id_src, id_dst = edge
-        if id_src.type == NodeType.Basin
-            @test id_src == basin.node_id.values[basin_idx_src]
-        elseif id_dst.type == NodeType.Basin
-            @test id_dst == basin.node_id.values[basin_idx_dst]
-        end
-    end
 end
 
 @testitem "Convergence bottleneck" begin

@@ -33,7 +33,8 @@ function parse_static_and_time(
     vals_out = []
 
     node_type_string = split(string(node_type), '.')[end]
-    node_ids = NodeID.(node_type_string, get_ids(db, node_type_string))
+    ids = get_ids(db, node_type_string)
+    node_ids = NodeID.(node_type_string, ids, eachindex(ids))
     n_nodes = length(node_ids)
 
     # Initialize the vectors for the output
@@ -62,8 +63,7 @@ function parse_static_and_time(
 
     # The control mapping is a dictionary with keys (node_id, control_state) to a named tuple of parameter values
     # parameter values to be assigned to the node with this node_id in the case of this control_state
-    control_state_type = get_control_state_type(node_type)
-    control_mapping = Dict{Tuple{NodeID, String}, control_state_type}()
+    control_mapping = Dict{Tuple{NodeID, String}, ControlStateUpdate}()
 
     push!(keys_out, :control_mapping)
     push!(vals_out, control_mapping)
@@ -80,7 +80,8 @@ function parse_static_and_time(
         static_node_id_vec = NodeID[]
         static_node_ids = Set{NodeID}()
     else
-        static_node_id_vec = NodeID.(node_type_string, static.node_id)
+        idx = searchsortedfirst.(Ref(ids), static.node_id)
+        static_node_id_vec = NodeID.(node_type_string, static.node_id, idx)
         static_node_ids = Set(static_node_id_vec)
     end
 
@@ -89,7 +90,8 @@ function parse_static_and_time(
         time_node_id_vec = NodeID[]
         time_node_ids = Set{NodeID}()
     else
-        time_node_id_vec = NodeID.(node_type_string, time.node_id)
+        idx = searchsortedfirst.(Ref(ids), time.node_id)
+        time_node_id_vec = NodeID.(Ref(node_type_string), time.node_id, idx)
         time_node_ids = Set(time_node_id_vec)
     end
 
@@ -97,7 +99,7 @@ function parse_static_and_time(
     t_end = seconds_since(config.endtime, config.starttime)
     trivial_timespan = [0.0, prevfloat(Inf)]
 
-    for (node_idx, node_id) in enumerate(node_ids)
+    for node_id in node_ids
         if node_id in static_node_ids
             # The interval of rows of the static table that have the current node_id
             rows = searchsorted(static_node_id_vec, node_id)
@@ -125,28 +127,18 @@ function parse_static_and_time(
                     # The initial parameter value is overwritten here each time until the last row,
                     # but in the case of control the proper initial parameter values are set later on
                     # in the code
-                    getfield(out, parameter_name)[node_idx] = val
+                    getfield(out, parameter_name)[node_id.idx] = val
                 end
                 # Add the parameter values to the control mapping
-                control_state_key = coalesce(control_state, "")
-                controllable_mask =
-                    collect(parameter_names .∈ Ref(fieldnames(control_state_type)))
-                if any(controllable_mask)
-                    node_idx = searchsortedfirst(node_ids, node_id)
-                    controllable_parameter_names =
-                        collect(parameter_names[controllable_mask])
-                    controllable_parameter_values =
-                        collect(parameter_values[controllable_mask])
-                    pushfirst!(controllable_parameter_names, :node_idx)
-                    pushfirst!(
-                        controllable_parameter_values,
-                        searchsortedfirst(node_ids, node_id),
-                    )
-                    control_mapping[(node_id, control_state_key)] =
-                        NamedTuple{Tuple(controllable_parameter_names)}(
-                            Tuple(controllable_parameter_values),
-                        )
-                end
+                add_control_state!(
+                    control_mapping,
+                    time_interpolatables,
+                    parameter_names,
+                    parameter_values,
+                    node_type_string,
+                    control_state,
+                    node_id,
+                )
             end
         elseif node_id in time_node_ids
             # TODO replace (time, node_id) order by (node_id, time)
@@ -181,7 +173,7 @@ function parse_static_and_time(
                         val = getfield(time_subset[time_first_idx], parameter_name)
                     end
                 end
-                getfield(out, parameter_name)[node_idx] = val
+                getfield(out, parameter_name)[node_id.idx] = val
             end
         else
             @error "$node_id data not in any table."
@@ -197,9 +189,12 @@ function static_and_time_node_ids(
     time::StructVector,
     node_type::String,
 )::Tuple{Set{NodeID}, Set{NodeID}, Vector{NodeID}, Bool}
-    static_node_ids = Set(NodeID.(node_type, static.node_id))
-    time_node_ids = Set(NodeID.(node_type, time.node_id))
-    node_ids = NodeID.(node_type, get_ids(db, node_type))
+    ids = get_ids(db, node_type)
+    idx = searchsortedfirst.(Ref(ids), static.node_id)
+    static_node_ids = Set(NodeID.(Ref(node_type), static.node_id, idx))
+    idx = searchsortedfirst.(Ref(ids), time.node_id)
+    time_node_ids = Set(NodeID.(Ref(node_type), time.node_id, idx))
+    node_ids = NodeID.(Ref(node_type), ids, eachindex(ids))
     doubles = intersect(static_node_ids, time_node_ids)
     errors = false
     if !isempty(doubles)
@@ -260,13 +255,14 @@ function LinearResistance(db::DB, config::Config, graph::MetaGraph)::LinearResis
         )
     end
 
-    node_id = NodeID.(NodeType.LinearResistance, parsed_parameters.node_id)
+    (; node_id) = parsed_parameters
+    node_id = NodeID.(NodeType.LinearResistance, node_id, eachindex(node_id))
 
     return LinearResistance(
         node_id,
         inflow_edge.(Ref(graph), node_id),
         outflow_edge.(Ref(graph), node_id),
-        BitVector(parsed_parameters.active),
+        parsed_parameters.active,
         parsed_parameters.resistance,
         parsed_parameters.max_flow_rate,
         parsed_parameters.control_mapping,
@@ -291,21 +287,18 @@ function TabulatedRatingCurve(
     end
 
     interpolations = ScalarInterpolation[]
-    control_mapping = Dict{
-        Tuple{NodeID, String},
-        @NamedTuple{node_idx::Int, active::Bool, table::ScalarInterpolation}
-    }()
-    active = BitVector()
+    control_mapping = Dict{Tuple{NodeID, String}, ControlStateUpdate}()
+    active = Bool[]
     errors = false
 
-    for (i, node_id) in enumerate(node_ids)
+    for node_id in node_ids
         if node_id in static_node_ids
             # Loop over all static rating curves (groups) with this node_id.
             # If it has a control_state add it to control_mapping.
             # The last rating curve forms the initial condition and activity.
             source = "static"
             rows = searchsorted(
-                NodeID.(NodeType.TabulatedRatingCurve, static.node_id),
+                NodeID.(NodeType.TabulatedRatingCurve, static.node_id, node_id.idx),
                 node_id,
             )
             static_id = view(static, rows)
@@ -322,9 +315,13 @@ function TabulatedRatingCurve(
                 interpolation = qh_interpolation(node_id, table)
                 if !ismissing(control_state)
                     control_mapping[(
-                        NodeID(NodeType.TabulatedRatingCurve, node_id),
+                        NodeID(NodeType.TabulatedRatingCurve, node_id, node_id.idx),
                         control_state,
-                    )] = (; node_idx = i, active = is_active, table = interpolation)
+                    )] = ControlStateUpdate(
+                        ParameterUpdate(:active, is_active),
+                        ParameterUpdate{Float64}[],
+                        [ParameterUpdate(:table, interpolation)],
+                    )
                 end
             end
             push!(interpolations, interpolation)
@@ -373,7 +370,7 @@ function ManningResistance(
         error("Errors occurred when parsing ManningResistance data.")
     end
 
-    node_id = NodeID.(NodeType.ManningResistance, parsed_parameters.node_id)
+    (; node_id) = parsed_parameters
     upstream_bottom = basin_bottom.(Ref(basin), inflow_id.(Ref(graph), node_id))
     downstream_bottom = basin_bottom.(Ref(basin), outflow_id.(Ref(graph), node_id))
 
@@ -381,7 +378,7 @@ function ManningResistance(
         node_id,
         inflow_edge.(Ref(graph), node_id),
         outflow_edge.(Ref(graph), node_id),
-        BitVector(parsed_parameters.active),
+        parsed_parameters.active,
         parsed_parameters.length,
         parsed_parameters.manning_n,
         parsed_parameters.profile_width,
@@ -400,7 +397,8 @@ function FractionalFlow(db::DB, config::Config, graph::MetaGraph)::FractionalFlo
         error("Errors occurred when parsing FractionalFlow data.")
     end
 
-    node_id = NodeID.(NodeType.FractionalFlow, parsed_parameters.node_id)
+    (; node_id) = parsed_parameters
+    node_id = NodeID.(NodeType.FractionalFlow, node_id, eachindex(node_id))
 
     return FractionalFlow(
         node_id,
@@ -461,7 +459,7 @@ function FlowBoundary(db::DB, config::Config, graph::MetaGraph)::FlowBoundary
 
     return FlowBoundary(
         node_ids,
-        [collect(outflow_ids(graph, id)) for id in node_ids],
+        outflow_edges.(Ref(graph), node_ids),
         parsed_parameters.active,
         parsed_parameters.flow_rate,
     )
@@ -471,7 +469,7 @@ function Pump(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{Int}
     static = load_structvector(db, config, PumpStaticV1)
     defaults = (; min_flow_rate = 0.0, max_flow_rate = Inf, active = true)
     parsed_parameters, valid = parse_static_and_time(db, config, Pump; static, defaults)
-    is_pid_controlled = falses(length(NodeID.(NodeType.Pump, parsed_parameters.node_id)))
+    is_pid_controlled = falses(length(parsed_parameters.node_id))
 
     if !valid
         error("Errors occurred when parsing Pump data.")
@@ -484,13 +482,13 @@ function Pump(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{Int}
         parsed_parameters.flow_rate
     end
 
-    node_id = NodeID.(NodeType.Pump, parsed_parameters.node_id)
+    (; node_id) = parsed_parameters
 
     return Pump(
         node_id,
         inflow_edge.(Ref(graph), node_id),
         outflow_edges.(Ref(graph), node_id),
-        BitVector(parsed_parameters.active),
+        parsed_parameters.active,
         flow_rate,
         parsed_parameters.min_flow_rate,
         parsed_parameters.max_flow_rate,
@@ -504,7 +502,8 @@ function Outlet(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{In
     defaults =
         (; min_flow_rate = 0.0, max_flow_rate = Inf, min_crest_level = -Inf, active = true)
     parsed_parameters, valid = parse_static_and_time(db, config, Outlet; static, defaults)
-    is_pid_controlled = falses(length(NodeID.(NodeType.Outlet, parsed_parameters.node_id)))
+
+    is_pid_controlled = falses(length(parsed_parameters.node_id))
 
     if !valid
         error("Errors occurred when parsing Outlet data.")
@@ -517,13 +516,18 @@ function Outlet(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{In
         parsed_parameters.flow_rate
     end
 
-    node_id = NodeID.(NodeType.Outlet, parsed_parameters.node_id)
+    node_id =
+        NodeID.(
+            NodeType.Outlet,
+            parsed_parameters.node_id,
+            eachindex(parsed_parameters.node_id),
+        )
 
     return Outlet(
         node_id,
         inflow_edge.(Ref(graph), node_id),
         outflow_edges.(Ref(graph), node_id),
-        BitVector(parsed_parameters.active),
+        parsed_parameters.active,
         flow_rate,
         parsed_parameters.min_flow_rate,
         parsed_parameters.max_flow_rate,
@@ -534,8 +538,8 @@ function Outlet(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{In
 end
 
 function Terminal(db::DB, config::Config)::Terminal
-    static = load_structvector(db, config, TerminalStaticV1)
-    return Terminal(NodeID.(NodeType.Terminal, static.node_id))
+    node_id = get_ids(db, "Terminal")
+    return Terminal(NodeID.(NodeType.Terminal, node_id, eachindex(node_id)))
 end
 
 function Basin(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{Int})::Basin
@@ -581,7 +585,7 @@ function Basin(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{Int
 
     demand = zeros(length(node_id))
 
-    node_id = NodeID.(NodeType.Basin, node_id)
+    node_id = NodeID.(NodeType.Basin, node_id, eachindex(node_id))
 
     is_valid = valid_profiles(node_id, level, area)
     if !is_valid
@@ -589,7 +593,7 @@ function Basin(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{Int
     end
 
     return Basin(
-        Indices(node_id),
+        node_id,
         [collect(inflow_ids(graph, id)) for id in node_id],
         [collect(outflow_ids(graph, id)) for id in node_id],
         vertical_flux_from_input,
@@ -607,12 +611,14 @@ function Basin(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{Int
     )
 end
 
-function parse_variables_and_conditions(compound_variable, condition)
+function parse_variables_and_conditions(compound_variable, condition, ids, db)
     compound_variables = Vector{CompoundVariable}[]
     errors = false
 
-    # Loop over unique discrete_control node IDs (on which at least one condition is defined)
-    for id in unique(condition.node_id)
+    # Loop over unique discrete_control node IDs
+    for (i, id) in enumerate(ids)
+        discrete_control_id = NodeID(NodeType.DiscreteControl, id, i)
+
         condition_group_id = filter(row -> row.node_id == id, condition)
         variable_group_id = filter(row -> row.node_id == id, compound_variable)
 
@@ -628,7 +634,6 @@ function parse_variables_and_conditions(compound_variable, condition)
                 row -> row.compound_variable_id == compound_variable_id,
                 variable_group_id,
             )
-            discrete_control_id = NodeID(NodeType.DiscreteControl, id)
             if isempty(variable_group_variable)
                 errors = true
                 @error "compound_variable_id $compound_variable_id for $discrete_control_id in condition table but not in variable table"
@@ -639,15 +644,20 @@ function parse_variables_and_conditions(compound_variable, condition)
                 # NamedTuples
                 subvariables = NamedTuple[]
                 for i in eachindex(variable_group_variable.variable)
-                    listen_node_id =
-                        NodeID.(
-                            variable_group_variable.listen_node_type[i],
-                            variable_group_variable.listen_node_id[i],
-                        )
+                    listen_node_id = NodeID(
+                        variable_group_variable.listen_node_type[i],
+                        variable_group_variable.listen_node_id[i],
+                        db,
+                    )
                     variable = variable_group_variable.variable[i]
                     weight = coalesce.(variable_group_variable.weight[i], 1.0)
                     look_ahead = coalesce.(variable_group_variable.look_ahead[i], 0.0)
-                    push!(subvariables, (; listen_node_id, variable, weight, look_ahead))
+                    # Placeholder until actual ref is known
+                    variable_ref = Ref(Float64[], 0)
+                    push!(
+                        subvariables,
+                        (; listen_node_id, variable_ref, variable, weight, look_ahead),
+                    )
                 end
 
                 push!(
@@ -661,36 +671,34 @@ function parse_variables_and_conditions(compound_variable, condition)
     return compound_variables, !errors
 end
 
-function DiscreteControl(db::DB, config::Config)::DiscreteControl
+function DiscreteControl(db::DB, config::Config, graph::MetaGraph)::DiscreteControl
     condition = load_structvector(db, config, DiscreteControlConditionV1)
     compound_variable = load_structvector(db, config, DiscreteControlVariableV1)
 
-    compound_variables, valid = parse_variables_and_conditions(compound_variable, condition)
+    ids = get_ids(db, "DiscreteControl")
+    node_id = NodeID.(:DiscreteControl, ids, eachindex(ids))
+    compound_variables, valid =
+        parse_variables_and_conditions(compound_variable, condition, ids, db)
 
     if !valid
         error("Problems encountered when parsing DiscreteControl variables and conditions.")
     end
 
-    control_state::Dict{NodeID, Tuple{String, Float64}} = Dict()
+    # Initialize the control state (and control state start) per DiscreteControl node
+    n_nodes = length(node_id)
+    control_state = fill("undefined_state", n_nodes)
+    control_state_start = zeros(n_nodes)
 
-    rows = execute(db, "SELECT from_node_id, edge_type FROM Edge ORDER BY fid")
-    for (; from_node_id, edge_type) in rows
-        if edge_type == "control"
-            control_state[NodeID(NodeType.DiscreteControl, from_node_id)] =
-                ("undefined_state", 0.0)
-        end
-    end
-
+    # Initialize the logic mappings
     logic = load_structvector(db, config, DiscreteControlLogicV1)
-    logic_mapping = Dict{Tuple{NodeID, String}, String}()
+    logic_mapping = [Dict{String, String}() for _ in eachindex(node_id)]
 
     for (node_id, truth_state, control_state_) in
         zip(logic.node_id, logic.truth_state, logic.control_state)
-        logic_mapping[(NodeID(NodeType.DiscreteControl, node_id), truth_state)] =
-            control_state_
+        logic_mapping[findsorted(ids, node_id)][truth_state] = control_state_
     end
 
-    logic_mapping = expand_logic_mapping(logic_mapping)
+    logic_mapping = expand_logic_mapping(logic_mapping, node_id)
 
     record = (
         time = Float64[],
@@ -699,21 +707,27 @@ function DiscreteControl(db::DB, config::Config)::DiscreteControl
         control_state = String[],
     )
 
-    node_id =
-        [first(compound_variables_).node_id for compound_variables_ in compound_variables]
-
+    # Initialize the truth state per DiscreteControl node
     truth_state = Vector{Bool}[]
     for i in eachindex(node_id)
         truth_state_length = sum(length(var.greater_than) for var in compound_variables[i])
         push!(truth_state, zeros(Bool, truth_state_length))
     end
 
+    controlled_nodes =
+        collect.(outneighbor_labels_type.(Ref(graph), node_id, EdgeType.control))
+
+    control_mappings = Dict{NodeType.T, Dict{Tuple{NodeID, String}, ControlStateUpdate}}()
+
     return DiscreteControl(
         node_id,
+        controlled_nodes,
         compound_variables,
         truth_state,
         control_state,
+        control_state_start,
         logic_mapping,
+        control_mappings,
         record,
     )
 end
@@ -743,8 +757,12 @@ function PidControl(db::DB, config::Config, chunk_sizes::Vector{Int})::PidContro
     end
     return PidControl(
         node_ids,
-        BitVector(parsed_parameters.active),
-        NodeID.(parsed_parameters.listen_node_type, parsed_parameters.listen_node_id),
+        parsed_parameters.active,
+        NodeID.(
+            parsed_parameters.listen_node_type,
+            parsed_parameters.listen_node_id,
+            Ref(db),
+        ),
         parsed_parameters.target,
         parsed_parameters.proportional,
         parsed_parameters.integral,
@@ -755,19 +773,18 @@ function PidControl(db::DB, config::Config, chunk_sizes::Vector{Int})::PidContro
 end
 
 function user_demand_static!(
-    active::BitVector,
+    active::Vector{Bool},
     demand::Matrix{Float64},
     demand_itp::Vector{Vector{ScalarInterpolation}},
     return_factor::Vector{Float64},
     min_level::Vector{Float64},
     static::StructVector{UserDemandStaticV1},
-    node_ids::Vector{NodeID},
+    ids::Vector{Int32},
     priorities::Vector{Int32},
 )::Nothing
     for group in IterTools.groupby(row -> row.node_id, static)
         first_row = first(group)
-        node_id = NodeID(NodeType.UserDemand, first_row.node_id)
-        user_demand_idx = findsorted(node_ids, node_id)
+        user_demand_idx = searchsortedfirst(ids, first_row.node_id)
 
         active[user_demand_idx] = coalesce(first_row.active, true)
         return_factor[user_demand_idx] = first_row.return_factor
@@ -784,14 +801,14 @@ function user_demand_static!(
 end
 
 function user_demand_time!(
-    active::BitVector,
+    active::Vector{Bool},
     demand::Matrix{Float64},
     demand_itp::Vector{Vector{ScalarInterpolation}},
     demand_from_timeseries::BitVector,
     return_factor::Vector{Float64},
     min_level::Vector{Float64},
     time::StructVector{UserDemandTimeV1},
-    node_ids::Vector{NodeID},
+    ids::Vector{Int32},
     priorities::Vector{Int32},
     config::Config,
 )::Bool
@@ -800,8 +817,7 @@ function user_demand_time!(
 
     for group in IterTools.groupby(row -> (row.node_id, row.priority), time)
         first_row = first(group)
-        node_id = NodeID(NodeType.UserDemand, first_row.node_id)
-        user_demand_idx = findsorted(node_ids, node_id)
+        user_demand_idx = findsorted(ids, first_row.node_id)
 
         active[user_demand_idx] = true
         demand_from_timeseries[user_demand_idx] = true
@@ -813,7 +829,7 @@ function user_demand_time!(
             config.starttime,
             t_end,
             StructVector(group),
-            node_id,
+            NodeID(:UserDemand, first_row.node_id, 0),
             :demand;
             default_value = 0.0,
         )
@@ -832,6 +848,7 @@ end
 function UserDemand(db::DB, config::Config, graph::MetaGraph)::UserDemand
     static = load_structvector(db, config, UserDemandStaticV1)
     time = load_structvector(db, config, UserDemandTimeV1)
+    ids = get_ids(db, "UserDemand")
 
     _, _, node_ids, valid = static_and_time_node_ids(db, static, time, "UserDemand")
 
@@ -843,7 +860,7 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)::UserDemand
     priorities = get_all_priorities(db, config)
     n_user = length(node_ids)
     n_priority = length(priorities)
-    active = BitVector(ones(Bool, n_user))
+    active = ones(Bool, n_user)
     realized_bmi = zeros(n_user)
     demand = zeros(n_user, n_priority)
     demand_reduced = zeros(n_user, n_priority)
@@ -864,7 +881,7 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)::UserDemand
         return_factor,
         min_level,
         static,
-        node_ids,
+        ids,
         priorities,
     )
 
@@ -877,7 +894,7 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)::UserDemand
         return_factor,
         min_level,
         time,
-        node_ids,
+        ids,
         priorities,
         config,
     )
@@ -921,8 +938,10 @@ function LevelDemand(db::DB, config::Config)::LevelDemand
         error("Errors occurred when parsing LevelDemand data.")
     end
 
+    (; node_id) = parsed_parameters
+
     return LevelDemand(
-        NodeID.(NodeType.LevelDemand, parsed_parameters.node_id),
+        NodeID.(NodeType.LevelDemand, node_id, eachindex(node_id)),
         parsed_parameters.min_level,
         parsed_parameters.max_level,
         parsed_parameters.priority,
@@ -947,9 +966,10 @@ function FlowDemand(db::DB, config::Config)::FlowDemand
     end
 
     demand = zeros(length(parsed_parameters.node_id))
+    (; node_id) = parsed_parameters
 
     return FlowDemand(
-        NodeID.(NodeType.FlowDemand, parsed_parameters.node_id),
+        NodeID.(NodeType.FlowDemand, node_id, eachindex(node_id)),
         parsed_parameters.demand,
         demand,
         parsed_parameters.priority,
@@ -966,7 +986,7 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
     has_error = false
     for group in IterTools.groupby(row -> row.subgrid_id, tables)
         subgrid_id = first(getproperty.(group, :subgrid_id))
-        node_id = NodeID(NodeType.Basin, first(getproperty.(group, :node_id)))
+        node_id = NodeID(NodeType.Basin, first(getproperty.(group, :node_id)), db)
         basin_level = getproperty.(group, :basin_level)
         subgrid_level = getproperty.(group, :subgrid_level)
 
@@ -1095,7 +1115,6 @@ function Parameters(db::DB, config::Config)::Parameters
     end
 
     basin = Basin(db, config, graph, chunk_sizes)
-    set_basin_idxs!(graph, basin)
 
     linear_resistance = LinearResistance(db, config, graph)
     manning_resistance = ManningResistance(db, config, graph, basin)
@@ -1106,7 +1125,7 @@ function Parameters(db::DB, config::Config)::Parameters
     pump = Pump(db, config, graph, chunk_sizes)
     outlet = Outlet(db, config, graph, chunk_sizes)
     terminal = Terminal(db, config)
-    discrete_control = DiscreteControl(db, config)
+    discrete_control = DiscreteControl(db, config, graph)
     pid_control = PidControl(db, config, chunk_sizes)
     user_demand = UserDemand(db, config, graph)
     level_demand = LevelDemand(db, config)
@@ -1136,7 +1155,10 @@ function Parameters(db::DB, config::Config)::Parameters
         subgrid_level,
     )
 
+    collect_control_mappings!(p)
     set_is_pid_controlled!(p)
+    set_listen_variable_refs!(p)
+    set_controlled_variable_refs!(p)
 
     # Allocation data structures
     if config.allocation.use_allocation

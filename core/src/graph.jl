@@ -31,7 +31,7 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
         graph_data = nothing,
     )
     for row in node_rows
-        node_id = NodeID(row.node_type, row.node_id)
+        node_id = NodeID(row.node_type, row.node_id, db)
         # Process allocation network ID
         if ismissing(row.subnetwork_id)
             subnetwork_id = 0
@@ -61,8 +61,8 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
         catch
             error("Invalid edge type $edge_type.")
         end
-        id_src = NodeID(from_node_type, from_node_id)
-        id_dst = NodeID(to_node_type, to_node_id)
+        id_src = NodeID(from_node_type, from_node_id, db)
+        id_dst = NodeID(to_node_type, to_node_id, db)
         if ismissing(subnetwork_id)
             subnetwork_id = 0
         end
@@ -72,8 +72,6 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
             edge_type,
             subnetwork_id,
             (id_src, id_dst),
-            -1,
-            -1,
         )
         if haskey(graph, id_src, id_dst)
             errors = true
@@ -105,7 +103,7 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
     if config.solver.autodiff
         flow = DiffCache(flow, chunk_sizes)
     end
-    flow_edges = EdgeMetadata[]
+    flow_edges = [edge for edge in values(graph.edge_data) if edge.type == EdgeType.flow]
     graph_data = (;
         node_ids,
         edges_source,

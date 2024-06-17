@@ -60,7 +60,7 @@ function main(toml_path::AbstractString)::Cint
                         "The following basins were identified as convergence bottlenecks (in descending order of severity):",
                     )
                     for i in perm
-                        node_id = basin.node_id.values[i]
+                        node_id = basin.node_id[i]
                         error = storage_error[i]
                         if error < config.solver.reltol
                             break

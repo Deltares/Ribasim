@@ -44,20 +44,20 @@ function get_subnetwork_capacity(
         # If this edge is part of this subnetwork
         # edges between the main network and a subnetwork are added in add_subnetwork_connections!
         if edge_metadata.edge ⊆ node_ids_subnetwork
-            node_src = getfield(p, graph[edge_metadata.edge[1]].type)
-            node_dst = getfield(p, graph[edge_metadata.edge[2]].type)
+            id_src, id_dst = edge_metadata.edge
+
+            node_src = getfield(p, graph[id_src].type)
+            node_dst = getfield(p, graph[id_dst].type)
 
             capacity_edge = Inf
 
             # Find flow constraints for this edge
             if is_flow_constraining(node_src)
-                node_src_idx = findsorted(node_src.node_id, edge_metadata.edge[1])
-                capacity_node_src = node_src.max_flow_rate[node_src_idx]
+                capacity_node_src = node_src.max_flow_rate[id_src.idx]
                 capacity_edge = min(capacity_edge, capacity_node_src)
             end
             if is_flow_constraining(node_dst)
-                node_dst_idx = findsorted(node_dst.node_id, edge_metadata.edge[2])
-                capacity_node_dst = node_dst.max_flow_rate[node_dst_idx]
+                capacity_node_dst = node_dst.max_flow_rate[id_dst.idx]
                 capacity_edge = min(capacity_edge, capacity_node_dst)
             end
 
@@ -399,8 +399,7 @@ function add_constraints_fractional_flow!(
             if outflow_id.type == NodeType.FractionalFlow
                 edge = (node_id, outflow_id)
                 push!(edges_to_fractional_flow, edge)
-                node_idx = findsorted(fractional_flow.node_id, outflow_id)
-                fractions[edge] = fractional_flow.fraction[node_idx]
+                fractions[edge] = fractional_flow.fraction[outflow_id.idx]
                 inflows[node_id] = sum([
                     F[(inflow_id, node_id)] for inflow_id in inflow_ids(graph, node_id)
                 ])

@@ -86,6 +86,17 @@ n_neighbor_bounds_control(::Val{:FlowDemand}) = n_neighbor_bounds(0, 0, 1, 1)
 n_neighbor_bounds_control(nodetype) =
     error("'n_neighbor_bounds_control' not defined for $nodetype.")
 
+controllablefields(nodetype::Symbol) = controllablefields(Val(nodetype))
+controllablefields(::Val{:LinearResistance}) = Set((:active, :resistance))
+controllablefields(::Val{:ManningResistance}) = Set((:active, :manning_n))
+controllablefields(::Val{:TabulatedRatingCurve}) = Set((:active, :table))
+controllablefields(::Val{:FractionalFlow}) = Set((:fraction,))
+controllablefields(::Val{:Pump}) = Set((:active, :flow_rate))
+controllablefields(::Val{:Outlet}) = Set((:active, :flow_rate))
+controllablefields(::Val{:PidControl}) =
+    Set((:active, :target, :propoertional, :integral, :derivative))
+controllablefields(nodetype) = Set{Symbol}()
+
 function variable_names(s::Any)
     filter(x -> !(x in (:node_id, :control_state)), fieldnames(s))
 end
@@ -247,11 +258,12 @@ function valid_flow_rates(
     # if their initial value is also invalid.
     ids_controlled = NodeID[]
 
-    for (key, parameter_update) in pairs(control_mapping)
+    for (key, control_state_update) in pairs(control_mapping)
         id_controlled = key[1]
         push!(ids_controlled, id_controlled)
-        flow_rate_ = parameter_update.flow_rate
-        flow_rate_ = isnan(flow_rate_) ? 1.0 : flow_rate_
+        flow_rate_update = only(control_state_update.scalar_update)
+        @assert flow_rate_update.name == :flow_rate
+        flow_rate_ = flow_rate_update.value
 
         if flow_rate_ < 0.0
             errors = true
@@ -277,14 +289,11 @@ function valid_pid_connectivity(
     pid_control_node_id::Vector{NodeID},
     pid_control_listen_node_id::Vector{NodeID},
     graph::MetaGraph,
-    basin_node_id::Indices{NodeID},
-    pump_node_id::Vector{NodeID},
 )::Bool
     errors = false
 
     for (pid_control_id, listen_id) in zip(pid_control_node_id, pid_control_listen_node_id)
-        has_index, _ = id_index(basin_node_id, listen_id)
-        if !has_index
+        if listen_id.type !== NodeType.Basin
             @error "Listen node $listen_id of $pid_control_id is not a Basin"
             errors = true
         end
@@ -338,11 +347,11 @@ function valid_fractional_flow(
             fraction_sum = 0.0
 
             for ff_id in intersect(src_outflow_ids, node_id_set)
-                parameter_values = get(control_mapping, (ff_id, control_state), nothing)
-                if parameter_values === nothing
+                control_state_update = get(control_mapping, (ff_id, control_state), nothing)
+                if control_state_update === nothing
                     continue
                 else
-                    (; fraction) = parameter_values
+                    fraction = only(control_state_update.scalar_update).value
                 end
 
                 fraction_sum += fraction
@@ -423,7 +432,7 @@ end
 function valid_tabulated_rating_curve(node_id::NodeID, table::StructVector)::Bool
     errors = false
 
-    rowrange = findlastgroup(node_id, NodeID.(node_id.type, table.node_id))
+    rowrange = findlastgroup(node_id, NodeID.(node_id.type, table.node_id, Ref(0)))
     level = table.level[rowrange]
     flow_rate = table.flow_rate[rowrange]
 
@@ -559,11 +568,6 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
     errors = false
 
     for (id, compound_variables) in zip(node_id, discrete_control.compound_variables)
-        # The control states of this DiscreteControl node
-        control_states_discrete_control = Set{String}()
-
-        # The truth states of this DiscreteControl node with the wrong length
-        truth_states_wrong_length = Vector{Bool}[]
 
         # The number of conditions of this DiscreteControl node
         n_conditions = sum(
@@ -571,15 +575,17 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
             compound_variable in compound_variables
         )
 
-        for (key, control_state) in logic_mapping
-            id_, truth_state = key
+        # The control states of this DiscreteControl node
+        control_states_discrete_control = Set{String}()
 
-            if id_ == id
-                push!(control_states_discrete_control, control_state)
+        # The truth states of this DiscreteControl node with the wrong length
+        truth_states_wrong_length = Vector{Bool}[]
 
-                if length(truth_state) != n_conditions
-                    push!(truth_states_wrong_length, truth_state)
-                end
+        for (truth_state, control_state) in logic_mapping[id.idx]
+            push!(control_states_discrete_control, control_state)
+
+            if length(truth_state) != n_conditions
+                push!(truth_states_wrong_length, truth_state)
             end
         end
 
@@ -630,13 +636,8 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
                             @error "Negative look ahead supplied for listen variable '$(subvariable.variable)' from listen node $(subvariable.listen_node_id)."
                         else
                             node = getfield(p, graph[subvariable.listen_node_id].type)
-                            idx = if node_type == NodeType.Basin
-                                id_index(node.node_id, subvariable.listen_node_id)
-                            else
-                                searchsortedfirst(node.node_id, subvariable.listen_node_id)
-                            end
                             interpolation =
-                                getfield(node, Symbol(subvariable.variable))[idx]
+                                getfield(node, Symbol(subvariable.variable))[subvariable.listen_node_id.idx]
                             if t_end + subvariable.look_ahead > interpolation.t[end]
                                 errors = true
                                 @error "Look ahead for listen variable '$(subvariable.variable)' from listen node $(subvariable.listen_node_id) goes past timeseries end during simulation."

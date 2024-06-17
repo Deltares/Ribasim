@@ -69,8 +69,8 @@ function check_negative_storage(u, t, integrator)::Nothing
     (; basin) = integrator.p
     (; node_id) = basin
     errors = false
-    for (i, id) in enumerate(node_id)
-        if u.storage[i] < 0
+    for id in node_id
+        if u.storage[id.idx] < 0
             @error "Negative storage detected in $id"
             errors = true
         end
@@ -104,10 +104,11 @@ function integrate_flows!(u, t, integrator)::Nothing
     @. vertical_flux_bmi += 0.5 * (vertical_flux + vertical_flux_prev) * dt
 
     # UserDemand realized flows for BMI
-    for (i, id) in enumerate(user_demand.node_id)
+    for id in user_demand.node_id
         src_id = inflow_id(graph, id)
         flow_idx = flow_dict[src_id, id]
-        user_demand.realized_bmi[i] += 0.5 * (flow[flow_idx] + flow_prev[flow_idx]) * dt
+        user_demand.realized_bmi[id.idx] +=
+            0.5 * (flow[flow_idx] + flow_prev[flow_idx]) * dt
     end
 
     # *Demand realized flow for output
@@ -123,11 +124,13 @@ function integrate_flows!(u, t, integrator)::Nothing
     for (edge, value) in allocation.mean_input_flows
         if edge[1] == edge[2]
             # Vertical fluxes
-            _, basin_idx = id_index(basin.node_id, edge[1])
             allocation.mean_input_flows[edge] =
                 value +
                 0.5 *
-                (get_influx(basin, basin_idx) + get_influx(basin, basin_idx; prev = true)) *
+                (
+                    get_influx(basin, edge[1].idx) +
+                    get_influx(basin, edge[1].idx; prev = true)
+                ) *
                 dt
         else
             # Horizontal flows
@@ -158,21 +161,21 @@ function save_flow(u, t, integrator)
     inflow_mean = zeros(length(node_id))
     outflow_mean = zeros(length(node_id))
 
-    for (i, basin_id) in enumerate(node_id)
+    for basin_id in node_id
         for inflow_id in inflow_ids(graph, basin_id)
             q = flow_mean[flow_dict[inflow_id, basin_id]]
             if q > 0
-                inflow_mean[i] += q
+                inflow_mean[basin_id.idx] += q
             else
-                outflow_mean[i] -= q
+                outflow_mean[basin_id.idx] -= q
             end
         end
         for outflow_id in outflow_ids(graph, basin_id)
             q = flow_mean[flow_dict[basin_id, outflow_id]]
             if q > 0
-                outflow_mean[i] += q
+                outflow_mean[basin_id.idx] += q
             else
-                inflow_mean[i] -= q
+                inflow_mean[basin_id.idx] -= q
             end
         end
     end
@@ -285,14 +288,14 @@ function set_new_control_state!(
     # Get the control state corresponding to the new truth state,
     # if one is defined
     control_state_new =
-        get(discrete_control.logic_mapping, (discrete_control_id, truth_state), nothing)
+        get(discrete_control.logic_mapping[discrete_control_id.idx], truth_state, nothing)
     isnothing(control_state_new) && error(
-        lazy"No control state specified for $discrete_control_node_id for truth state $truth_state.",
+        lazy"No control state specified for $discrete_control_id for truth state $truth_state.",
     )
 
     # Check the new control state against the current control state
     # If there is a change, update parameters and the discrete control record
-    control_state_now, _ = discrete_control.control_state[discrete_control_id]
+    control_state_now = discrete_control.control_state[discrete_control_id.idx]
     if control_state_now != control_state_new
         record = discrete_control.record
 
@@ -302,13 +305,12 @@ function set_new_control_state!(
         push!(record.control_state, control_state_new)
 
         # Loop over nodes which are under control of this control node
-        for target_node_id in
-            outneighbor_labels_type(p.graph, discrete_control_id, EdgeType.control)
+        for target_node_id in discrete_control.controlled_nodes[discrete_control_id.idx]
             set_control_params!(p, target_node_id, control_state_new)
         end
 
-        discrete_control.control_state[discrete_control_id] =
-            (control_state_new, integrator.t)
+        discrete_control.control_state[discrete_control_id.idx] = control_state_new
+        discrete_control.control_state_start[discrete_control_id.idx] = integrator.t
     end
     return nothing
 end
@@ -318,19 +320,16 @@ Get a value for a condition. Currently supports getting levels from basins and f
 from flow boundaries.
 """
 function get_value(p::Parameters, subvariable::NamedTuple, t::Float64)
-    (; basin, flow_boundary, level_boundary) = p
-    (; listen_node_id, look_ahead, variable) = subvariable
+    (; flow_boundary, level_boundary) = p
+    (; listen_node_id, look_ahead, variable, variable_ref) = subvariable
+
+    if !iszero(variable_ref.i)
+        return variable_ref[]
+    end
 
     if variable == "level"
-        if listen_node_id.type == NodeType.Basin
-            has_index, basin_idx = id_index(basin.node_id, listen_node_id)
-            if !has_index
-                error("Discrete control listen node $listen_node_id does not exist.")
-            end
-            level = get_tmp(basin.current_level, 0)[basin_idx]
-        elseif listen_node_id.type == NodeType.LevelBoundary
-            level_boundary_idx = findsorted(level_boundary.node_id, listen_node_id)
-            level = level_boundary.level[level_boundary_idx](t + look_ahead)
+        if listen_node_id.type == NodeType.LevelBoundary
+            level = level_boundary.level[listen_node_id.idx](t + look_ahead)
         else
             error(
                 "Level condition node '$node_id' is neither a basin nor a level boundary.",
@@ -340,8 +339,7 @@ function get_value(p::Parameters, subvariable::NamedTuple, t::Float64)
 
     elseif variable == "flow_rate"
         if listen_node_id.type == NodeType.FlowBoundary
-            flow_boundary_idx = findsorted(flow_boundary.node_id, listen_node_id)
-            value = flow_boundary.flow_rate[flow_boundary_idx](t + look_ahead)
+            value = flow_boundary.flow_rate[listen_node_id.idx](t + look_ahead)
         else
             error("Flow condition node $listen_node_id is not a flow boundary.")
         end
@@ -412,56 +410,33 @@ function set_fractional_flow_in_allocation!(
     return nothing
 end
 
-function discrete_control_parameter_update!(
-    fractional_flow::FractionalFlow,
-    node_id::NodeID,
-    control_state::String,
-    p::Parameters,
-)::Nothing
-    parameter_update = fractional_flow.control_mapping[(node_id, control_state)]
-    (; node_idx, fraction) = parameter_update
-    fractional_flow.fraction[node_idx] = fraction
+function set_control_params!(p::Parameters, node_id::NodeID, control_state::String)::Nothing
+    (; discrete_control, allocation) = p
+    (; control_mappings) = discrete_control
+    control_state_update = control_mappings[node_id.type][(node_id, control_state)]
+    (; active, scalar_update, itp_update) = control_state_update
+    apply_parameter_update!(active)
+    apply_parameter_update!.(scalar_update)
+    apply_parameter_update!.(itp_update)
 
-    if is_active(p.allocation)
-        set_fractional_flow_in_allocation!(p, fractional_flow.node_id[node_idx], fraction)
+    # Update fractional flow in allocation if this node is a FractionalFlow node
+    # and allocation is active
+    if node_id.type == NodeType.FractionalFlow && is_active(allocation)
+        @assert only(scalar_update).name == :fraction
+        set_fractional_flow_in_allocation!(p, node_id, only(scalar_update).value)
     end
     return nothing
 end
 
-function discrete_control_parameter_update!(
-    node::AbstractParameterNode,
-    node_id::NodeID,
-    control_state::String,
-)::Nothing
-    new_state = node.control_mapping[(node_id, control_state)]
-    (; node_idx) = new_state
-    for (field, value) in zip(keys(new_state), new_state)
-        if field == :node_idx
-            continue
-        end
-        vec = get_tmp(getfield(node, field), 0)
-        vec[node_idx] = value
-    end
-end
+function apply_parameter_update!(parameter_update)::Nothing
+    (; name, value, ref) = parameter_update
 
-function set_control_params!(p::Parameters, node_id::NodeID, control_state::String)::Nothing
-
-    # Check node type here to avoid runtime dispatch on the node type
-    if node_id.type == NodeType.Pump
-        discrete_control_parameter_update!(p.pump, node_id, control_state)
-    elseif node_id.type == NodeType.Outlet
-        discrete_control_parameter_update!(p.outlet, node_id, control_state)
-    elseif node_id.type == NodeType.TabulatedRatingCurve
-        discrete_control_parameter_update!(p.tabulated_rating_curve, node_id, control_state)
-    elseif node_id.type == NodeType.FractionalFlow
-        discrete_control_parameter_update!(p.fractional_flow, node_id, control_state, p)
-    elseif node_id.type == NodeType.PidControl
-        discrete_control_parameter_update!(p.pid_control, node_id, control_state)
-    elseif node_id.type == NodeType.LinearResistance
-        discrete_control_parameter_update!(p.linear_resistance, node_id, control_state)
-    elseif node_id.type == NodeType.ManningResistance
-        discrete_control_parameter_update!(p.manning_resistance, node_id, control_state)
+    # Ignore this parameter update of the associated node does
+    # not have an 'active' field
+    if name == :active && ref.i == 0
+        return nothing
     end
+    ref[] = value
     return nothing
 end
 
@@ -499,8 +474,7 @@ function update_basin!(integrator)::Nothing
     )
 
     for row in timeblock
-        hasindex, i = id_index(node_id, NodeID(NodeType.Basin, row.node_id))
-        @assert hasindex "Table 'Basin / time' contains non-Basin IDs"
+        i = searchsortedfirst(node_id, NodeID(NodeType.Basin, row.node_id, 0))
         set_table_row!(table, row, i)
     end
 
@@ -536,8 +510,7 @@ function update_allocation!(integrator)::Nothing
     for (edge, value) in mean_realized_flows
         if edge[1] == edge[2]
             # Compute the mean realized demand for basins as Δstorage/Δt_allocation
-            _, basin_idx = id_index(basin.node_id, edge[1])
-            mean_realized_flows[edge] = value + u[basin_idx]
+            mean_realized_flows[edge] = value + u[edge[1].idx]
         end
         mean_realized_flows[edge] /= Δt_allocation
     end
@@ -566,8 +539,7 @@ function update_allocation!(integrator)::Nothing
     # Set basin storages for mean storage change computation
     for (edge, value) in mean_realized_flows
         if edge[1] == edge[2]
-            _, basin_idx = id_index(basin.node_id, edge[1])
-            mean_realized_flows[edge] = value - u[basin_idx]
+            mean_realized_flows[edge] = value - u[edge[1].idx]
         end
     end
 end
@@ -586,7 +558,7 @@ function update_tabulated_rating_curve!(integrator)::Nothing
         id = first(group).node_id
         level = [row.level for row in group]
         flow_rate = [row.flow_rate for row in group]
-        i = searchsortedfirst(node_id, NodeID(NodeType.TabulatedRatingCurve, id))
+        i = searchsortedfirst(node_id, NodeID(NodeType.TabulatedRatingCurve, id, 0))
         table[i] = LinearInterpolation(flow_rate, level; extrapolate = true)
     end
     return nothing

@@ -13,16 +13,16 @@
         graph_data = Tuple,
     )
 
-    graph[NodeID(:Basin, 1)] = Ribasim.NodeMetadata(Symbol(:delft), 1)
-    graph[NodeID(:Basin, 2)] = Ribasim.NodeMetadata(Symbol(:denhaag), -1)
+    graph[NodeID(:Basin, 1, 1)] = Ribasim.NodeMetadata(Symbol(:delft), 1)
+    graph[NodeID(:Basin, 2, 1)] = Ribasim.NodeMetadata(Symbol(:denhaag), -1)
 
     graph[1, 2] = :yes
 
     node_ids = Dict{Int32, Set{NodeID}}()
     node_ids[0] = Set{NodeID}()
     node_ids[-1] = Set{NodeID}()
-    push!(node_ids[0], NodeID(:Basin, 1))
-    push!(node_ids[-1], NodeID(:Basin, 2))
+    push!(node_ids[0], NodeID(:Basin, 1, 1))
+    push!(node_ids[-1], NodeID(:Basin, 2, 1))
 
     graph_data = (; node_ids,)
     graph = @set graph.graph_data = graph_data
@@ -57,23 +57,23 @@ end
 
     node_ids = Dict{Int32, Set{NodeID}}()
     node_ids[1] = Set{NodeID}()
-    push!(node_ids[1], NodeID(:Basin, 1))
-    push!(node_ids[1], NodeID(:Basin, 2))
-    push!(node_ids[1], NodeID(:Basin, 3))
+    push!(node_ids[1], NodeID(:Basin, 1, 1))
+    push!(node_ids[1], NodeID(:Basin, 2, 1))
+    push!(node_ids[1], NodeID(:Basin, 3, 1))
     node_ids[2] = Set{NodeID}()
-    push!(node_ids[2], NodeID(:Basin, 4))
-    push!(node_ids[2], NodeID(:Basin, 5))
-    push!(node_ids[2], NodeID(:Basin, 6))
+    push!(node_ids[2], NodeID(:Basin, 4, 1))
+    push!(node_ids[2], NodeID(:Basin, 5, 1))
+    push!(node_ids[2], NodeID(:Basin, 6, 1))
 
-    graph[NodeID(:Basin, 1)] = Ribasim.NodeMetadata(Symbol(:delft), 1)
-    graph[NodeID(:Basin, 2)] = Ribasim.NodeMetadata(Symbol(:denhaag), 1)
-    graph[NodeID(:Basin, 3)] = Ribasim.NodeMetadata(Symbol(:rdam), 1)
-    graph[NodeID(:Basin, 4)] = Ribasim.NodeMetadata(Symbol(:adam), 2)
-    graph[NodeID(:Basin, 5)] = Ribasim.NodeMetadata(Symbol(:utrecht), 2)
-    graph[NodeID(:Basin, 6)] = Ribasim.NodeMetadata(Symbol(:leiden), 2)
+    graph[NodeID(:Basin, 1, 1)] = Ribasim.NodeMetadata(Symbol(:delft), 1)
+    graph[NodeID(:Basin, 2, 1)] = Ribasim.NodeMetadata(Symbol(:denhaag), 1)
+    graph[NodeID(:Basin, 3, 1)] = Ribasim.NodeMetadata(Symbol(:rdam), 1)
+    graph[NodeID(:Basin, 4, 1)] = Ribasim.NodeMetadata(Symbol(:adam), 2)
+    graph[NodeID(:Basin, 5, 1)] = Ribasim.NodeMetadata(Symbol(:utrecht), 2)
+    graph[NodeID(:Basin, 6, 1)] = Ribasim.NodeMetadata(Symbol(:leiden), 2)
 
-    graph[NodeID(:Basin, 1), NodeID(:Basin, 2)] = :yes
-    graph[NodeID(:Basin, 1), NodeID(:Basin, 3)] = :yes
+    graph[NodeID(:Basin, 1, 1), NodeID(:Basin, 2, 1)] = :yes
+    graph[NodeID(:Basin, 1, 1), NodeID(:Basin, 3, 1)] = :yes
     graph[4, 5] = :yes
 
     logger = TestLogger()
