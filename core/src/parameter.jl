@@ -43,6 +43,7 @@ end
 
 function NodeID(type::NodeType.T, value::Integer, db::DB)::NodeID
     node_type_string = string(type)
+    # The index is equal to the number of nodes of the same type with a lower or equal ID
     idx = only(
         only(
             execute(
