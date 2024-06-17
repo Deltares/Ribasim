@@ -6,13 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
-- Support for concentration state and time for Delwaq coupling.
 
 ### Changed
-- Documentation has been overhauled to be more user-friendly.
 
+## [v2024.9.0] - 2024-06-17
+
+### Added
+- Support for concentration state and time for Delwaq coupling.
+- Show exact commit on `ribasim --version` if it is not a release. #1479
+
+### Changed
+- Optimized performance.
+- Documentation has been overhauled to be more user-friendly.
+- Stricter TabulatedRatingCurve validation. #1469
+- Stricter Basin / profile validation. #1486
+- Allocation objective function now gives equal ratios during shortage. #1386
 
 ### Fixed
+- Don't require unique node IDs. #1513
 
 ## [v2024.8.0] - 2024-05-14
 
