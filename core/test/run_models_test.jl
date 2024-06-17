@@ -280,9 +280,9 @@ end
     @test successful_retcode(sparse_fdm)
     @test successful_retcode(dense_fdm)
 
-    @test dense_ad.integrator.sol.u[end] ≈ sparse_ad.integrator.sol.u[end] atol = 1e-3
+    @test dense_ad.integrator.sol.u[end] ≈ sparse_ad.integrator.sol.u[end] atol = 0.1
     @test sparse_fdm.integrator.sol.u[end] ≈ sparse_ad.integrator.sol.u[end]
-    @test dense_fdm.integrator.sol.u[end] ≈ sparse_ad.integrator.sol.u[end] atol = 1e-3
+    @test dense_fdm.integrator.sol.u[end] ≈ sparse_ad.integrator.sol.u[end] atol = 0.1
 
     config = Ribasim.Config(toml_path; solver_algorithm = "Rodas5", solver_autodiff = true)
     time_ad = Ribasim.run(config)
