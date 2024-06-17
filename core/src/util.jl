@@ -512,7 +512,7 @@ function get_influx(basin::Basin, node_id::NodeID)::Float64
     return get_influx(basin, node_id.idx)
 end
 
-function get_influx(basin::Basin, basin_idx::Integer; prev::Bool = false)::Float64
+function get_influx(basin::Basin, basin_idx::Int; prev::Bool = false)::Float64
     (; vertical_flux, vertical_flux_prev) = basin
     vertical_flux = get_tmp(vertical_flux, 0)
     flux_vector = prev ? vertical_flux_prev : vertical_flux
@@ -725,10 +725,10 @@ function collect_control_mappings!(p)::Nothing
     end
 end
 
-function basin_levels(basin::Basin, state_idx::Integer)
+function basin_levels(basin::Basin, state_idx::Int)
     return basin.level_to_area[state_idx].t
 end
 
-function basin_areas(basin::Basin, state_idx::Integer)
+function basin_areas(basin::Basin, state_idx::Int)
     return basin.level_to_area[state_idx].u
 end

@@ -177,9 +177,9 @@ function continuous_control!(
         factor = factor_basin * factor_outlet
         flow_rate = 0.0
 
-        K_p = pid_control.proportional[i](t)
-        K_i = pid_control.integral[i](t)
-        K_d = pid_control.derivative[i](t)
+        K_p = pid_control.proportional[id.idx](t)
+        K_i = pid_control.integral[id.idx](t)
+        K_d = pid_control.derivative[id.idx](t)
 
         if !iszero(K_d)
             # dlevel/dstorage = 1/area
@@ -199,7 +199,7 @@ function continuous_control!(
 
         if !iszero(K_d)
             dlevel_demand = derivative(target[id.idx], t)
-            du_listened_basin_old = du.storage[listened_node_idx.idx]
+            du_listened_basin_old = du.storage[listened_node_id.idx]
             # The expression below is the solution to an implicit equation for
             # du_listened_basin. This equation results from the fact that if the derivative
             # term in the PID controller is used, the controlled pump flow rate depends on itself.
