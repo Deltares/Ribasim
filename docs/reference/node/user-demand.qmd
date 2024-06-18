@@ -44,3 +44,26 @@ time          | DateTime | -            | sorted per priority per node id
 demand        | Float64  | $m^3 s^{-1}$ | non-negative
 return_factor | Float64  | -            | between [0 - 1]
 min_level     | Float64  | $m$          | -
+
+# Equations
+
+UserDemand receive an allocated flow rate $F^p$ per priority $p=1,2,\ldots, p_{\max}$, which is either determined by [allocation optimization](/concept/allocation.qmd) or simply equal to the demand at time $t$; $F^p = d^p(t)$.
+The realized abstraction rate of a UserDemand is given by
+$$
+    Q_\text{in} = \phi(u, 10.0)\phi(h-l_{\min}, 0.1)\sum_{p=1}^{p_{\max}} \min\left(F^p, d^p(t)\right).
+$$
+
+From left to right:
+
+- The first reduction factor lets the UserDemand abstraction go smoothly to $0$ as the source Basin dries out;
+- The second reduction factor lets the UserDemand abstraction go smoothly to $0$ as the source Basin level approaches the minimum source Basin level (from above);
+- The last term is the sum of the allocations over the priorities.
+  If the current demand happens to be lower than the allocation at some priority, the demand is taken instead.
+
+UserDemands also have a return factor $0 \le r \le 1$, which determines the return flow (outflow) of the UserDemand:
+
+$$
+Q_\text{out} = r \cdot Q_\text{in}.
+$$
+
+Note that this means that the UserDemand has a consumption rate of $(1-r)Q_\text{in}$.

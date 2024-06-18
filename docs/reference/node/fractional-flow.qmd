@@ -37,3 +37,14 @@ column        | type    | unit         | restriction
 node_id       | Int32   | -            | sorted
 control_state | String  | -            | (optional) sorted per node_id
 fraction      | Float64 | -            | in the interval [0,1]
+
+# Equations
+
+$$
+Q = Q_\text{in} \phi
+$$
+
+Where
+
+- $Q_\text{in}$ is the incoming flow, determined by the incoming node
+- $\phi$ is the `fraction` of the incoming flow going through this node

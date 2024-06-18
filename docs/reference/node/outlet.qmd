@@ -23,3 +23,23 @@ flow_rate             | Float64 | $m^3 s^{-1}$ | non-negative
 min_flow_rate         | Float64 | $m^3 s^{-1}$ | (optional, default 0.0)
 max_flow_rate         | Float64 | $m^3 s^{-1}$ | (optional)
 min_crest_level       | Float64 | $m$          | (optional)
+
+# Equations
+
+The Outlet is very similar to the Pump, but it has a few extra [reduction factors](/concept/equations.qmd#sec-reduction_factor) for physical constraints:
+
+$$
+Q = \mathrm{clamp}(\phi(u_a; 10.0)\phi(\Delta h; 0.1) \phi(h_a-h_\text{min};0.1) Q_\text{set}, Q_{\min}, Q_{\max})
+$$
+
+$Q$ is the realized Outlet flow rate.
+$Q_\text{set}$ is the Outlet's target `flow_rate`.
+$Q_{\min}$ and $Q_{\max}$ are the Outlet `min_flow_rate` and `max_flow_rate`.
+The subscript $a$ denotes the upstream node and $b$ the downstream node.
+The first reduction factor reduces flow from a drying upstream Basin.
+The second one makes sure that the Outlet flow goes to zero as the head difference $\Delta h = h_a - h_b$ goes to zero.
+The last one makes sure that the Outlet only produces flow when the upstream level is above the minimum crest level $h_\text{min}$.
+
+
+Not all node types upstream or downstream of the Outlet have a defined level.
+If this is the case, and therefore the reduction factor cannot be computed, it is defined to be $1.0$.
