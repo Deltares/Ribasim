@@ -42,3 +42,8 @@ node_id        | Int32    | -            | sorted
 time           | DateTime | -            | sorted per node_id
 substance      | String   | -            | can correspond to known Delwaq substances
 concentration  | Float64  | $g m^{-3}$   |
+
+# Equations
+
+A LevelBoundary can be connected to a Basin via a LinearResistance.
+This boundary node will then exchange water with the Basin based on the difference in water level between the two.

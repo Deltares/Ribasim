@@ -148,3 +148,112 @@ node_id        | Int32    | -            | sorted
 time           | DateTime | -            | sorted per node_id
 substance      | String   | -            | can correspond to known Delwaq substances
 concentration  | Float64  | $g m^{-3}$   |
+
+# Equations
+
+## The reduction factor {#sec-reduction_factor}
+At several points in the equations below a *reduction factor* is used. This is a term that makes certain transitions more smooth, for instance when a pump stops providing water when its source basin dries up. The reduction factor is given by
+
+\begin{align}
+    \phi(x; p) =
+    \begin{cases}
+    0 &\text{if}\quad x < 0 \\
+        -2 \left(\frac{x}{p}\right)^3 + 3\left(\frac{x}{p}\right)^2 &\text{if}\quad 0 \le x \le p \\
+        1 &\text{if}\quad x > p
+    \end{cases}
+\end{align}
+
+Here $p > 0$ is the threshold value which determines the interval $[0,p]$ of the smooth transition between $0$ and $1$, see the plot below.
+
+```{python}
+# | code-fold: true
+import numpy as np
+import matplotlib.pyplot as plt
+
+def f(x, p = 3):
+    x_scaled = x / p
+    phi = (-2 * x_scaled + 3) * x_scaled**2
+    phi = np.where(x < 0, 0, phi)
+    phi = np.where(x > p, 1, phi)
+
+    return phi
+
+fontsize = 15
+p = 3
+N = 100
+x_min = -1
+x_max = 4
+x = np.linspace(x_min,x_max,N)
+phi = f(x,p)
+
+fig,ax = plt.subplots(dpi=80)
+ax.plot(x,phi)
+
+y_lim = ax.get_ylim()
+
+ax.set_xticks([0,p], [0,"$p$"], fontsize=fontsize)
+ax.set_yticks([0,1], [0,1], fontsize=fontsize)
+ax.hlines([0,1],x_min,x_max, color = "k", ls = ":", zorder=-1)
+ax.vlines([0,p], *y_lim, color = "k", ls = ":")
+ax.set_xlim(x_min,x_max)
+ax.set_xlabel("$x$", fontsize=fontsize)
+ax.set_ylabel(r"$\phi(x;p)$", fontsize=fontsize)
+ax.set_ylim(y_lim)
+
+fig.tight_layout()
+plt.show()
+```
+
+## Precipitation
+
+The precipitation term is given by
+
+$$
+    Q_P = P \cdot A.
+$$ {#eq-precip}
+
+Here $P = P(t)$ is the precipitation rate and $A$ is the maximum area given in the `Basin / profile` table.
+Precipitation in the Basin area is assumed to be directly added to the Basin storage.
+The modeler needs to ensure all precipitation enters the model, and there is no overlap in the maximum profile areas, otherwise extra water is created.
+If a part of the catchment is not in any Basin profile, the modeler has to verify that water source is not forgotten.
+It can for instance be converted to a flow rate and added to a Basin as a FlowBoundary.
+
+## Evaporation
+
+The evaporation term is given by
+
+$$
+    Q_E = E_\text{pot} \cdot A(u) \cdot \phi(d;0.1).
+$$ {#eq-evap}
+
+Here $E_\text{pot} = E_\text{pot}(t)$ is the potential evaporation rate and $A$ is the wetted area.
+$\phi$ is the [reduction factor](/concept/equations.qmd#sec-reduction_factor) which depends on the depth $d$.
+It provides a smooth gradient as $u \rightarrow 0$.
+
+A straightforward formulation $Q_E = \mathrm{max}(E_\text{pot} A(u), 0)$ is unsuitable, as $\frac{\mathrm{d}Q_E}{\mathrm{d}u}(u=0)$ is not well-defined.
+
+A non-smooth derivative results in extremely small timesteps and long computation time.
+In a physical interpretation, evaporation is switched on or off per individual droplet of water.
+In general, the effect of the reduction term is negligible, or not even necessary.
+As a surface water dries, its wetted area decreases and so does the evaporative flux.
+However, for (simplified) cases with constant wetted surface (a rectangular profile), evaporation only stops at $u = 0$.
+
+## Infiltration and Drainage
+
+Infiltration is provided as a lump sum for the Basin.
+If Ribasim is coupled with MODFLOW 6, the infiltration is computed as the sum of all **positive** flows of the MODFLOW 6 boundary conditions in the Basin:
+
+$$
+    Q_\text{inf} = \sum_{i=1}^{n} \sum_{j=1}^{m} \max(Q_{\mathrm{mf6}_{i,j}}, 0.0)
+$$ {#eq-inf}
+
+Where $i$ is the index of the boundary condition, $j$ the MODFLOW 6 cell index, $n$ the number of boundary conditions, and $m$ the number of MODFLOW 6 cells in the Basin.
+$Q_{\mathrm{mf6}_{i,j}}$ is the flow computed by MODFLOW 6 for cell $j$ for boundary condition $i$.
+
+Drainage is a lump sum for the Basin, and consists of the sum of the absolute value of all **negative** flows of the MODFLOW 6 boundary conditions in the Basin.
+
+$$
+    Q_\text{drn} = \sum_{i=1}^{n} \sum_{j=1}^{m} \left| \min(Q_{\mathrm{mf6}_{i,j}}, 0.0) \right|
+$$ {#eq-drn}
+
+The interaction with MODFLOW 6 boundary conditions is explained in greater detail in the [the iMOD Coupler docs](https://deltares.github.io/iMOD-Documentation/coupler.html).

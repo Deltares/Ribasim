@@ -45,3 +45,70 @@ target           | Float64  | $m$      | -
 proportional     | Float64  | $s^{-1}$ | -
 integral         | Float64  | $s^{-2}$ | -
 derivative       | Float64  | -        | -
+
+# Equations
+
+The PID controller continuously sets the flow rate of a Pump or Outlet to bring the level of a certain Basin closer to its setpoint.
+If we denote the setpoint by $\text{SP}(t)$ and the Basin level by $y(t)$, then the error is given by
+
+$$
+e(t) = \text{SP}(t) - y(t).
+$$ {#eq-error}
+
+The output of the PID controller for the flow rate of the Pump or Outlet is then given by
+
+$$
+    Q_\text{PID}(t) = K_p e(t) + K_i\int_{t_0}^t e(\tau)\text{d}\tau + K_d \frac{\text{d}e}{\text{d}t},
+$$ {#eq-PIDflow}
+
+for given constant parameters $K_p,K_i,K_d$.
+
+The $Q_\text{PID}(t)$ is not directly realized, but subject to the equations of the Pump and Outlet, acting as $Q_\text{set}$.
+
+For the integral term we denote
+$$
+I(t) = \int_{t_0}^t e(\tau)\text{d}\tau,
+$$
+
+where $t_0$ is the last time the PID controller was made active.
+$I(t)$ is treated as a state of the system and thus it has its own equation in [the system](/concept/equations.qmd):
+$$
+\frac{\text{d}I}{\text{d}t} = e(t).
+$$
+
+::: {.callout-note}
+In the case of the controlled Outlet, the upstream node can also be a level boundary.
+In this case we define $\phi = 1$.
+:::
+
+## The derivative term
+
+When $K_d \ne 0$ this adds a level of complexity.
+We can see this by looking at the error derivative more closely:
+$$
+\frac{\text{d}e}{\text{d}t} = \frac{\text{d}\text{SP}}{\text{d}t} - \frac{1}{A(u_\text{PID})}\frac{\text{d}u_\text{PID}}{\text{d}t},
+$$
+
+where $A(u_\text{PID})$ is the area of the controlled basin as a function of the storage of the controlled basin $u_\text{PID}$. The complexity arises from the fact that $Q_\text{PID}$ is a contribution to $\frac{\text{d}u_\text{PID}}{\text{d}t} = f_\text{PID}$, which makes @eq-PIDflow an implicit equation for $Q_\text{PID}$. We define
+
+$$
+f_\text{PID} = \hat{f}_\text{PID} \pm Q_\text{pump/outlet},
+$$
+
+that is, $\hat{f}_\text{PID}$ is the right hand side of the ODE for the controlled basin storage state without the contribution of the PID controlled pump.
+The plus sign holds for an outlet and the minus sign for a pump, dictated by the way the pump and outlet connectivity to the controlled basin is enforced.
+
+Using this, solving @eq-PIDflow for $Q_\text{PID}$ yields
+$$
+Q_\text{pump/outlet} = \text{clamp}\left(\phi(u_\text{us})\frac{K_pe + K_iI + K_d \left(\frac{\text{d}\text{SP}}{\text{d}t}-\frac{\hat{f}_\text{PID}}{A(u_\text{PID})}\right)}{1\pm\phi(u_\text{us})\frac{K_d}{A(u_\text{PID})}}, Q_{\min}, Q_{\max}\right),
+$$
+
+where the clamping is again done last.
+Note that to compute this, $\hat{f}_\text{PID}$ has to be known first, meaning that the PID controlled Pump or Outlet flow rate has to be computed after all other contributions to the PID controlled Basin's storage are known.
+
+## The sign of the parameters
+
+Note by @eq-error that the error is positive if the setpoint is larger than the Basin level and negative if the setpoint is smaller than the Basin level.
+
+We enforce the convention that when a Pump is controlled, its edge points away from the Basin, and when an Outlet is controlled, its edge points towards the Basin, so that the main flow direction along these edges is positive.
+Therefore, positive flows of the Pump and Outlet have opposite effects on the Basin, and thus the parameters $K_p,K_i,K_d$ of the Pump and Outlet must have opposite signs to achieve the same goal.

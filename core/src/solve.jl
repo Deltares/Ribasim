@@ -206,7 +206,7 @@ function continuous_control!(
             flow_rate += K_d * (dlevel_demand - du_listened_basin_old / area) / D
         end
 
-        # Clip values outside pump flow rate bounds
+        # Clamp values outside pump flow rate bounds
         if controls_pump
             min_flow_rate = min_flow_rate_pump
             max_flow_rate = max_flow_rate_pump

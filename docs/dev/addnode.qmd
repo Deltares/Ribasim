@@ -73,7 +73,9 @@ end
 
 ## Node behavior
 
-In general if the new node type dictates flow, the behaviour of the new node in the Ribasim core is defined in a method of the `formulate_flow!` function, which is called within the `water_balance!` (both in `solve.jl`) function being the right hand side of the system of differential equations solved by Ribasim. Here the details depend highly on the specifics of the node type. An example structure of a `formulate_flow!` method is given below.
+In general if the new node type dictates flow, the behavior of the new node in the Ribasim core is defined in a method of the `formulate_flow!` function, which is called within the `water_balance!` (both in `solve.jl`) function being the right hand side of the system of differential equations solved by Ribasim.
+Here the details depend highly on the specifics of the node type.
+An example structure of a `formulate_flow!` method is given below.
 
 ```julia
 function formulate_flow!(new_node_type::NewNodeType, p::Parameters)::Nothing
@@ -106,7 +108,7 @@ The current dependency groups are:
 
 - Out-neighbor dependencies: examples are `TabulatedRatingCurve`, `Pump` (the latter only in the reduction factor regime and not PID controlled). If the in-neighbor of a node of this group is a basin, then the storage of this basin affects itself and the storage of the outneighbor (or the basin one node further if it is connected with a `FractionalFlow` in between) if that is also a basin;
 - Either-neighbor dependencies: examples are `LinearResistance`, `ManningResistance`. If either the in-neighbor or out-neighbor of a node of this group is a basin, the storage of this basin depends on itself. If both the in-neighbor and the out-neighbor are basins, their storages also depend on eachother.
-- The `PidControl` node is a special case which is discussed in [equations](/concept/equations.qmd#sec-PID).
+- The `PidControl` node is a special case which is discussed in [the PID equations](/reference/node/pid-control.qmd#equations).
 
 Using `jac_prototype` the Jacobian of `water_balance!` is computed automatically using [ForwardDiff.jl](https://juliadiff.org/ForwardDiff.jl/stable/) with memory management provided by [PreallocationTools.jl](https://docs.sciml.ai/PreallocationTools/stable/). These computations make use of `DiffCache` and dual numbers.
 
@@ -202,14 +204,14 @@ reprf(x) = repr(convert(Vector{Float32}, x))
 
 See [here](/dev/python.qmd#sec-codecov) for monitoring of Python test coverage.
 
-If the new node type introduces new (somewhat) complex behaviour, a good test is to construct a minimal model containing the new node type in `python/ribasim_testmodels/ribasim_testmodels/equations.py` and compare the simulation result to the analytical solution (if possible) in `core/test/equations.jl`.
+If the new node type introduces new (somewhat) complex behavior, a good test is to construct a minimal model containing the new node type in `python/ribasim_testmodels/ribasim_testmodels/equations.py` and compare the simulation result to the analytical solution (if possible) in `core/test/equations.jl`.
 
 
 # Documentation
 
 There are several parts of the documentation which should be updated with the new node type:
 
-- If the node has a rol in the physical layer, `docs/core/equations` should contain a short explanation and if possible an analytical expression for the behaviour of the new node;
+- If the node has a rol in the physical layer, `docs/core/equations` should contain a short explanation and if possible an analytical expression for the behavior of the new node;
 - If the node has a role in allocation, `docs/core/allocation` should make this role clear;
 - `docs/reference/node/new-node-type.qmd` should contain a short explanation of the node and the possible schemas associated with it;
 - The example models constructed in `docs/guide/examples.ipynb` should be extended with the new node type or a new example model with the new node type should be made.

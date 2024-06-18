@@ -46,3 +46,8 @@ node_id        | Int32    | -            | sorted
 time           | DateTime | -            | sorted per node_id
 substance      | String   | -            | can correspond to known Delwaq substances
 concentration  | Float64  | $g m^{-3}$   |
+
+# Equations
+
+A FlowBoundary can be connected directly to a Basin and prescribes the flow to that Basin.
+Since the `flow_rate` cannot be negative a FlowBoundary can only add water to the model.
