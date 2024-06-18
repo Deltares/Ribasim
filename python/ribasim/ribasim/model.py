@@ -62,7 +62,7 @@ except ImportError:
 
 
 class Model(FileModel):
-    """Model class has all the information of the Ribasim model."""
+    """A model of inland water resources systems."""
 
     starttime: datetime.datetime
     endtime: datetime.datetime
