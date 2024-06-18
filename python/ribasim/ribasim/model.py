@@ -62,6 +62,8 @@ except ImportError:
 
 
 class Model(FileModel):
+    """Model class has all the information of the Ribasim model."""
+
     starttime: datetime.datetime
     endtime: datetime.datetime
     crs: str

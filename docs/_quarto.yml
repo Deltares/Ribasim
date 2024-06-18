@@ -112,7 +112,22 @@ quartodoc:
     - title: Model
       desc: The Model class represents an entire Ribasim model.
       contents:
-        - Model
+        - name: Model
+          members: [
+            set_node_parent,
+            ensure_edge_table_is_present,
+            serialize_path,
+            model_post_init,
+            set_crs,
+            to_crs,
+            node_table,
+            read,
+            write,
+            reset_contextvar,
+            plot_control_listen,
+            plot,
+            to_xugrid
+            ]
     - title: Edge
       desc: The Edge database layer.
       contents:
