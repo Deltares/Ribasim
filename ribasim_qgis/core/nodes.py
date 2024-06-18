@@ -322,7 +322,7 @@ class Edge(Input):
             marker_symbol.changeSymbolLayer(0, arrow_marker)
             marker_line_symbol_layer = cast(
                 QgsMarkerLineSymbolLayer,
-                QgsMarkerLineSymbolLayer.create({"placements": "SegmentCenter"}),
+                QgsMarkerLineSymbolLayer.create({"placements": "CentralPoint"}),
             )
 
             marker_line_symbol_layer.setSubSymbol(marker_symbol)
