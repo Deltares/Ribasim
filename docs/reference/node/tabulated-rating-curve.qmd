@@ -45,3 +45,20 @@ node_id   | Int32    | -            | sorted
 time      | DateTime | -            | sorted per node_id
 level     | Float64  | $m$          | sorted per node_id per time
 flow_rate | Float64  | $m^3 s^{-1}$ | non-negative
+
+# Equations
+
+The Tabulated Rating Curve is a tabulation of a basin's discharge behavior.
+It describes a piecewise linear relationship between the Basin's level and its discharge.
+It can be understood as an empirical description of a Basin's properties.
+This can include a weir, but also the lumped hydraulic behavior of the upstream channels.
+
+$$
+Q = \phi(u; 10.0) f(h_a)
+$$
+
+Where:
+
+- $h_a$ is the upstream water level
+- $\phi$ is the reduction factor for the upstream Basin drying out
+- $f$ is a piecewise linear function describing the given rating curve $Q(h)$

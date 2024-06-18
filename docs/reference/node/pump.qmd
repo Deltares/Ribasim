@@ -20,3 +20,18 @@ active                | Bool    | -            | (optional, default true)
 flow_rate             | Float64 | $m^3 s^{-1}$ | non-negative
 min_flow_rate         | Float64 | $m^3 s^{-1}$ | (optional, default 0.0)
 max_flow_rate         | Float64 | $m^3 s^{-1}$ | (optional)
+
+# Equations
+
+The behavior of a Pump is simple if these nodes are not PID controlled.
+Their flow is given by a fixed flow rate $q$, multiplied by a reduction factor:
+
+$$
+Q = \mathrm{clamp}(\phi(u; 10.0) Q_\text{set}, Q_{\min}, Q_{\max})
+$$
+
+$Q$ is the realized Pump flow rate.
+$Q_\text{set}$ is the Pump's target `flow_rate`.
+$Q_{\min}$ and $Q_{\max}$ are the Pump `min_flow_rate` and `max_flow_rate`.
+$u$ is the storage of the incoming Basin.
+The [reduction factor](/concept/equations.qmd#sec-reduction_factor) $\phi$ makes sure that the flow of the Pump goes smoothly to $0$ as the incoming Basin dries out.

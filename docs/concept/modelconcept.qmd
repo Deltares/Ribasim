@@ -106,7 +106,7 @@ As each (sub)basin has its own volume, low throughput (high volume, low discharg
 can be represented in a lumped manner; of course, more detail requires more parameters.
 
 ## Structures in a water system
-In addition to free flowing waterbodies, a watersystem typically has structures to control the flow of water. Ribasim uses connector nodes which simplify the hydraulic behaviour for the
+In addition to free flowing waterbodies, a watersystem typically has structures to control the flow of water. Ribasim uses connector nodes which simplify the hydraulic behavior for the
 free flowing conditions or structures.
 The following type of connector nodes are available for this purpose:
 

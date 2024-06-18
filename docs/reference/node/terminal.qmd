@@ -10,3 +10,7 @@ For example, Terminal nodes can be used as a downstream boundary.
 # Tables
 
 No tables are required for Terminal nodes.
+
+# Equations
+
+The incoming node determines the flow into the Terminal node.
