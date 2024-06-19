@@ -21,21 +21,19 @@ end
     level_to_area = LinearInterpolation.(area, level)
     storage_to_level = invert_integral.(level_to_area)
     demand = zeros(2)
-    basin = Ribasim.Basin(
-        NodeID.(:Basin, [5, 7], [1, 2]),
-        [NodeID[]],
-        [NodeID[]],
-        [2.0, 3.0],
-        [2.0, 3.0],
-        [2.0, 3.0],
-        [2.0, 3.0],
-        [2.0, 3.0],
-        [2.0, 3.0],
-        [2.0, 3.0],
+    basin = Ribasim.Basin(;
+        node_id = NodeID.(:Basin, [5, 7], [1, 2]),
+        vertical_flux_from_input = [2.0, 3.0],
+        vertical_flux = [2.0, 3.0],
+        vertical_flux_prev = [2.0, 3.0],
+        vertical_flux_integrated = [2.0, 3.0],
+        vertical_flux_bmi = [2.0, 3.0],
+        current_level = [2.0, 3.0],
+        current_area = [2.0, 3.0],
         storage_to_level,
         level_to_area,
         demand,
-        StructVector{Ribasim.BasinTimeV1}(undef, 0),
+        time = StructVector{Ribasim.BasinTimeV1}(undef, 0),
     )
 
     @test Ribasim.basin_levels(basin, 2)[1] === 4.0
@@ -78,21 +76,12 @@ end
     level_to_area = LinearInterpolation(area, level; extrapolate = true)
     storage_to_level = invert_integral(level_to_area)
     demand = zeros(1)
-    basin = Ribasim.Basin(
-        NodeID.(:Basin, [1], 1),
-        [NodeID[]],
-        [NodeID[]],
-        zeros(1),
-        zeros(1),
-        zeros(1),
-        zeros(1),
-        zeros(1),
-        zeros(1),
-        zeros(1),
-        [storage_to_level],
-        [level_to_area],
+    basin = Ribasim.Basin(;
+        node_id = NodeID.(:Basin, [1], 1),
+        storage_to_level = [storage_to_level],
+        level_to_area = [level_to_area],
         demand,
-        StructVector{Ribasim.BasinTimeV1}(undef, 0),
+        time = StructVector{Ribasim.BasinTimeV1}(undef, 0),
     )
 
     logger = TestLogger()

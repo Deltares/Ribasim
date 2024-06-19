@@ -87,7 +87,13 @@ end
     graph[NodeID(:Pump, 6, 1)] = NodeMetadata(:pump, 9)
 
     function set_edge_metadata!(id_1, id_2, edge_type)
-        graph[id_1, id_2] = EdgeMetadata(0, 0, edge_type, 0, (id_1, id_2))
+        graph[id_1, id_2] = EdgeMetadata(;
+            id = 0,
+            flow_idx = 0,
+            type = edge_type,
+            subnetwork_id_source = 0,
+            edge = (id_1, id_2),
+        )
         return nothing
     end
 
@@ -162,7 +168,13 @@ end
     graph[NodeID(:Basin, 7, 1)] = NodeMetadata(:basin, 0)
 
     function set_edge_metadata!(id_1, id_2, edge_type)
-        graph[id_1, id_2] = EdgeMetadata(0, 0, edge_type, 0, (id_1, id_2))
+        graph[id_1, id_2] = EdgeMetadata(;
+            id = 0,
+            flow_idx = 0,
+            type = edge_type,
+            subnetwork_id_source = 0,
+            edge = (id_1, id_2),
+        )
         return nothing
     end
 
@@ -286,17 +298,9 @@ end
     logger = TestLogger()
 
     with_logger(logger) do
-        @test_throws "Invalid Outlet flow rate(s)." Ribasim.Outlet(
-            [NodeID(:Outlet, 1, 1)],
-            NodeID[],
-            [NodeID[]],
-            [true],
-            [-1.0],
-            [NaN],
-            [NaN],
-            [NaN],
-            Dict{Tuple{NodeID, String}, ControlStateUpdate}(),
-            [false],
+        @test_throws "Invalid Outlet flow rate(s)." Ribasim.Outlet(;
+            node_id = [NodeID(:Outlet, 1, 1)],
+            flow_rate = [-1.0],
         )
     end
 
@@ -307,22 +311,15 @@ end
     logger = TestLogger()
 
     with_logger(logger) do
-        @test_throws "Invalid Pump flow rate(s)." Ribasim.Pump(
-            [NodeID(:Pump, 1, 1)],
-            NodeID[],
-            [NodeID[]],
-            [true],
-            [-1.0],
-            [NaN],
-            [NaN],
-            Dict(
-                (NodeID(:Pump, 1, 1), "foo") => ControlStateUpdate(
-                    ParameterUpdate(:active, true),
-                    [ParameterUpdate(:flow_rate, -1.0)],
-                    ParameterUpdate[],
+        @test_throws "Invalid Pump flow rate(s)." Ribasim.Pump(;
+            node_id = [NodeID(:Pump, 1, 1)],
+            flow_rate = [-1.0],
+            control_mapping = Dict(
+                (NodeID(:Pump, 1, 1), "foo") => ControlStateUpdate(;
+                    active = ParameterUpdate(:active, true),
+                    scalar_update = [ParameterUpdate(:flow_rate, -1.0)],
                 ),
             ),
-            [false],
         )
     end
 
@@ -404,26 +401,15 @@ end
 @testitem "negative demand" begin
     using Logging
     using DataInterpolations: LinearInterpolation
-    using Ribasim: NodeID
+    using Ribasim: NodeID, valid_demand
 
     logger = TestLogger()
 
     with_logger(logger) do
-        @test_throws "Invalid demand" Ribasim.UserDemand(
-            [NodeID(:UserDemand, 1, 1)],
-            NodeID[],
-            NodeID[],
-            [true],
-            [0.0],
-            [0.0],
-            [0.0],
-            [[LinearInterpolation([-5.0, -5.0], [-1.8, 1.8])]],
-            [true],
-            [0.0, -0.0],
-            [0.9],
-            [0.9],
-            Int32[1],
-        )
+        node_id = [NodeID(:UserDemand, 1, 1)]
+        demand_itp = [[LinearInterpolation([-5.0, -5.0], [-1.8, 1.8])]]
+        priorities = Int32[1]
+        @test !valid_demand(node_id, demand_itp, priorities)
     end
 
     @test length(logger.logs) == 1

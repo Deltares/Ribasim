@@ -574,7 +574,7 @@ function set_initial_allocation_mean_flows!(integrator)::Nothing
 end
 
 """
-Convert a truth state in terms of a BitVector of Vector{Bool} into a string of 'T' and 'F'
+Convert a truth state in terms of a BitVector or Vector{Bool} into a string of 'T' and 'F'
 """
 function convert_truth_state(boolean_vector)::String
     String(UInt8.(ifelse.(boolean_vector, 'T', 'F')))
@@ -685,11 +685,7 @@ function add_control_state!(
         add_control_state = true
         ParameterUpdate(:active, parameter_values[active_idx])
     end
-    control_state_update = ControlStateUpdate(
-        active,
-        ParameterUpdate{Float64}[],
-        ParameterUpdate{ScalarInterpolation}[],
-    )
+    control_state_update = ControlStateUpdate(; active)
     for (parameter_name, parameter_value) in zip(parameter_names, parameter_values)
         if parameter_name in controllablefields(Symbol(node_type)) &&
            parameter_name !== :active

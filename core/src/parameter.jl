@@ -24,7 +24,7 @@ The combination to the node type and ID is unique in the model.
 The index is used to find the parameters of the node.
 This index can be passed directly, or calculated from the database or parameters.
 """
-struct NodeID
+@kwdef struct NodeID
     "Type of node, e.g. Basin, Pump, etc."
     type::NodeType.T
     "ID of node as given by users"
@@ -82,7 +82,7 @@ capacity: The capacity per edge of the allocation network, as constrained by nod
 problem: The JuMP.jl model for solving the allocation problem
 Δt_allocation: The time interval between consecutive allocation solves
 """
-struct AllocationModel
+@kwdef struct AllocationModel
     subnetwork_id::Int32
     capacity::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}}
     problem::JuMP.Model
@@ -104,13 +104,13 @@ record_demand: A record of demands and allocated flows for nodes that have these
 record_flow: A record of all flows computed by allocation optimization, eventually saved to
     output file
 """
-struct Allocation
-    subnetwork_ids::Vector{Int32}
-    allocation_models::Vector{AllocationModel}
-    main_network_connections::Vector{Vector{Tuple{NodeID, NodeID}}}
+@kwdef struct Allocation
+    subnetwork_ids::Vector{Int32} = []
+    allocation_models::Vector{AllocationModel} = []
+    main_network_connections::Vector{Vector{Tuple{NodeID, NodeID}}} = []
     priorities::Vector{Int32}
-    subnetwork_demands::Dict{Tuple{NodeID, NodeID}, Vector{Float64}}
-    subnetwork_allocateds::Dict{Tuple{NodeID, NodeID}, Vector{Float64}}
+    subnetwork_demands::Dict{Tuple{NodeID, NodeID}, Vector{Float64}} = Dict()
+    subnetwork_allocateds::Dict{Tuple{NodeID, NodeID}, Vector{Float64}} = Dict()
     mean_input_flows::Dict{Tuple{NodeID, NodeID}, Float64}
     mean_realized_flows::Dict{Tuple{NodeID, NodeID}, Float64}
     record_demand::@NamedTuple{
@@ -122,7 +122,16 @@ struct Allocation
         demand::Vector{Float64},
         allocated::Vector{Float64},
         realized::Vector{Float64},
-    }
+    } = (;
+        time = Float64[],
+        subnetwork_id = Int32[],
+        node_type = String[],
+        node_id = Int32[],
+        priority = Int32[],
+        demand = Float64[],
+        allocated = Float64[],
+        realized = Float64[],
+    )
     record_flow::@NamedTuple{
         time::Vector{Float64},
         edge_id::Vector{Int32},
@@ -134,7 +143,18 @@ struct Allocation
         priority::Vector{Int32},
         flow_rate::Vector{Float64},
         optimization_type::Vector{String},
-    }
+    } = (;
+        time = Float64[],
+        edge_id = Int32[],
+        from_node_type = String[],
+        from_node_id = Int32[],
+        to_node_type = String[],
+        to_node_id = Int32[],
+        subnetwork_id = Int32[],
+        priority = Int32[],
+        flow_rate = Float64[],
+        optimization_type = String[],
+    )
 end
 
 is_active(allocation::Allocation) = !isempty(allocation.allocation_models)
@@ -144,7 +164,7 @@ Type for storing metadata of nodes in the graph
 type: type of the node
 subnetwork_id: Allocation network ID (0 if not in subnetwork)
 """
-struct NodeMetadata
+@kwdef struct NodeMetadata
     type::Symbol
     subnetwork_id::Int32
 end
@@ -158,7 +178,7 @@ subnetwork_id_source: ID of subnetwork where this edge is a source
   (0 if not a source)
 edge: (from node ID, to node ID)
 """
-struct EdgeMetadata
+@kwdef struct EdgeMetadata
     id::Int32
     flow_idx::Int
     type::EdgeType.T
@@ -179,14 +199,15 @@ end
 function ParameterUpdate(name::Symbol, value::T)::ParameterUpdate{T} where {T}
     return ParameterUpdate(name, value, Ref(T[], 0))
 end
+
 """
 The parameter update associated with a certain control state
 for discrete control
 """
-struct ControlStateUpdate
+@kwdef struct ControlStateUpdate
     active::ParameterUpdate{Bool}
-    scalar_update::Vector{ParameterUpdate{Float64}}
-    itp_update::Vector{ParameterUpdate{ScalarInterpolation}}
+    scalar_update::Vector{ParameterUpdate{Float64}} = []
+    itp_update::Vector{ParameterUpdate{ScalarInterpolation}} = []
 end
 
 abstract type AbstractParameterNode end
@@ -222,19 +243,19 @@ else
     T = Vector{Float64}
 end
 """
-struct Basin{T, C, V1, V2, V3} <: AbstractParameterNode
+@kwdef struct Basin{T, C, V1, V2, V3} <: AbstractParameterNode
     node_id::Vector{NodeID}
-    inflow_ids::Vector{Vector{NodeID}}
-    outflow_ids::Vector{Vector{NodeID}}
+    inflow_ids::Vector{Vector{NodeID}} = [NodeID[]]
+    outflow_ids::Vector{Vector{NodeID}} = [NodeID[]]
     # Vertical fluxes
-    vertical_flux_from_input::V1
-    vertical_flux::V2
-    vertical_flux_prev::V3
-    vertical_flux_integrated::V3
-    vertical_flux_bmi::V3
+    vertical_flux_from_input::V1 = zeros(length(node_id))
+    vertical_flux::V2 = zeros(length(node_id))
+    vertical_flux_prev::V3 = zeros(length(node_id))
+    vertical_flux_integrated::V3 = zeros(length(node_id))
+    vertical_flux_bmi::V3 = zeros(length(node_id))
     # Cache this to avoid recomputation
-    current_level::T
-    current_area::T
+    current_level::T = zeros(length(node_id))
+    current_area::T = zeros(length(node_id))
     # Discrete values for interpolation
     storage_to_level::Vector{
         LinearInterpolationIntInv{Vector{Float64}, Vector{Float64}, Float64},
@@ -267,7 +288,7 @@ table: The current Q(h) relationships
 time: The time table used for updating the tables
 control_mapping: dictionary from (node_id, control_state) to Q(h) and/or active state
 """
-struct TabulatedRatingCurve{C} <: AbstractParameterNode
+@kwdef struct TabulatedRatingCurve{C} <: AbstractParameterNode
     node_id::Vector{NodeID}
     inflow_edge::Vector{EdgeMetadata}
     outflow_edges::Vector{Vector{EdgeMetadata}}
@@ -288,7 +309,7 @@ resistance: the resistance to flow; `Q_unlimited = Δh/resistance`
 max_flow_rate: the maximum flow rate allowed through the node; `Q = clamp(Q_unlimited, -max_flow_rate, max_flow_rate)`
 control_mapping: dictionary from (node_id, control_state) to resistance and/or active state
 """
-struct LinearResistance <: AbstractParameterNode
+@kwdef struct LinearResistance <: AbstractParameterNode
     node_id::Vector{NodeID}
     inflow_edge::Vector{EdgeMetadata}
     outflow_edge::Vector{EdgeMetadata}
@@ -336,7 +357,7 @@ Requirements:
 * profile_slope >= 0
 * (profile_width == 0) xor (profile_slope == 0)
 """
-struct ManningResistance <: AbstractParameterNode
+@kwdef struct ManningResistance <: AbstractParameterNode
     node_id::Vector{NodeID}
     inflow_edge::Vector{EdgeMetadata}
     outflow_edge::Vector{EdgeMetadata}
@@ -359,7 +380,7 @@ outflow_edge: outgoing flow edge metadata
 fraction: The fraction in [0,1] of flow the node lets through
 control_mapping: dictionary from (node_id, control_state) to fraction
 """
-struct FractionalFlow <: AbstractParameterNode
+@kwdef struct FractionalFlow <: AbstractParameterNode
     node_id::Vector{NodeID}
     inflow_edge::Vector{EdgeMetadata}
     outflow_edge::Vector{EdgeMetadata}
@@ -372,7 +393,7 @@ node_id: node ID of the LevelBoundary node
 active: whether this node is active
 level: the fixed level of this 'infinitely big basin'
 """
-struct LevelBoundary <: AbstractParameterNode
+@kwdef struct LevelBoundary <: AbstractParameterNode
     node_id::Vector{NodeID}
     active::Vector{Bool}
     level::Vector{ScalarInterpolation}
@@ -384,7 +405,7 @@ outflow_edges: The outgoing flow edge metadata
 active: whether this node is active and thus contributes flow
 flow_rate: target flow rate
 """
-struct FlowBoundary <: AbstractParameterNode
+@kwdef struct FlowBoundary <: AbstractParameterNode
     node_id::Vector{NodeID}
     outflow_edges::Vector{Vector{EdgeMetadata}}
     active::Vector{Bool}
@@ -404,16 +425,16 @@ max_flow_rate: The maximum flow rate of the pump
 control_mapping: dictionary from (node_id, control_state) to target flow rate
 is_pid_controlled: whether the flow rate of this pump is governed by PID control
 """
-struct Pump{T} <: AbstractParameterNode
+@kwdef struct Pump{T} <: AbstractParameterNode
     node_id::Vector{NodeID}
-    inflow_edge::Vector{EdgeMetadata}
-    outflow_edges::Vector{Vector{EdgeMetadata}}
-    active::Vector{Bool}
+    inflow_edge::Vector{EdgeMetadata} = []
+    outflow_edges::Vector{Vector{EdgeMetadata}} = []
+    active::Vector{Bool} = fill(true, length(node_id))
     flow_rate::T
-    min_flow_rate::Vector{Float64}
-    max_flow_rate::Vector{Float64}
+    min_flow_rate::Vector{Float64} = zeros(length(node_id))
+    max_flow_rate::Vector{Float64} = fill(Inf, length(node_id))
     control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate}
-    is_pid_controlled::BitVector
+    is_pid_controlled::Vector{Bool} = fill(false, length(node_id))
 
     function Pump(
         node_id,
@@ -457,17 +478,17 @@ max_flow_rate: The maximum flow rate of the outlet
 control_mapping: dictionary from (node_id, control_state) to target flow rate
 is_pid_controlled: whether the flow rate of this outlet is governed by PID control
 """
-struct Outlet{T} <: AbstractParameterNode
+@kwdef struct Outlet{T} <: AbstractParameterNode
     node_id::Vector{NodeID}
-    inflow_edge::Vector{EdgeMetadata}
-    outflow_edges::Vector{Vector{EdgeMetadata}}
-    active::Vector{Bool}
+    inflow_edge::Vector{EdgeMetadata} = []
+    outflow_edges::Vector{Vector{EdgeMetadata}} = []
+    active::Vector{Bool} = fill(true, length(node_id))
     flow_rate::T
-    min_flow_rate::Vector{Float64}
-    max_flow_rate::Vector{Float64}
-    min_crest_level::Vector{Float64}
-    control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate}
-    is_pid_controlled::BitVector
+    min_flow_rate::Vector{Float64} = zeros(length(node_id))
+    max_flow_rate::Vector{Float64} = fill(Inf, length(node_id))
+    min_crest_level::Vector{Float64} = fill(-Inf, length(node_id))
+    control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate} = Dict()
+    is_pid_controlled::Vector{Bool} = fill(false, length(node_id))
 
     function Outlet(
         node_id,
@@ -503,7 +524,7 @@ end
 """
 node_id: node ID of the Terminal node
 """
-struct Terminal <: AbstractParameterNode
+@kwdef struct Terminal <: AbstractParameterNode
     node_id::Vector{NodeID}
 end
 
@@ -514,7 +535,7 @@ subvariables: data for one single subvariable
 greater_than: the thresholds this compound variable will be
     compared against
 """
-struct CompoundVariable
+@kwdef struct CompoundVariable
     node_id::NodeID
     subvariables::Vector{
         @NamedTuple{
@@ -539,21 +560,27 @@ logic_mapping: Dictionary: truth state => control state for the DiscreteControl 
 control_mapping: dictionary node type => control mapping for that node type
 record: Namedtuple with discrete control information for results
 """
-struct DiscreteControl <: AbstractParameterNode
+@kwdef struct DiscreteControl <: AbstractParameterNode
     node_id::Vector{NodeID}
     controlled_nodes::Vector{Vector{NodeID}}
     compound_variables::Vector{Vector{CompoundVariable}}
     truth_state::Vector{Vector{Bool}}
-    control_state::Vector{String}
-    control_state_start::Vector{Float64}
+    control_state::Vector{String} = fill("undefined_state", length(node_id))
+    control_state_start::Vector{Float64} = zeros(length(node_id))
     logic_mapping::Vector{Dict{Vector{Bool}, String}}
-    control_mappings::Dict{NodeType.T, Dict{Tuple{NodeID, String}, ControlStateUpdate}}
+    control_mappings::Dict{NodeType.T, Dict{Tuple{NodeID, String}, ControlStateUpdate}} =
+        Dict()
     record::@NamedTuple{
         time::Vector{Float64},
         control_node_id::Vector{Int32},
         truth_state::Vector{String},
         control_state::Vector{String},
-    }
+    } = (;
+        time = Float64[],
+        control_node_id = Int32[],
+        truth_state = String[],
+        control_state = String[],
+    )
 end
 
 """
@@ -567,7 +594,7 @@ pid_params: a vector interpolation for parameters changing over time.
     where the last three are the coefficients for the PID equation.
 error: the current error; basin_target - current_level
 """
-struct PidControl{T} <: AbstractParameterNode
+@kwdef struct PidControl{T} <: AbstractParameterNode
     node_id::Vector{NodeID}
     active::Vector{Bool}
     listen_node_id::Vector{NodeID}
@@ -598,54 +625,19 @@ allocated: water flux currently allocated to UserDemand per priority (node_idx, 
 return_factor: the factor in [0,1] of how much of the abstracted water is given back to the system
 min_level: The level of the source basin below which the UserDemand does not abstract
 """
-struct UserDemand <: AbstractDemandNode
+@kwdef struct UserDemand <: AbstractDemandNode
     node_id::Vector{NodeID}
-    inflow_edge::Vector{EdgeMetadata}
-    outflow_edge::Vector{EdgeMetadata}
-    active::Vector{Bool}
-    realized_bmi::Vector{Float64}
+    inflow_edge::Vector{EdgeMetadata} = []
+    outflow_edge::Vector{EdgeMetadata} = []
+    active::Vector{Bool} = fill(true, length(node_id))
+    realized_bmi::Vector{Float64} = zeros(length(node_id))
     demand::Matrix{Float64}
     demand_reduced::Matrix{Float64}
     demand_itp::Vector{Vector{ScalarInterpolation}}
-    demand_from_timeseries::BitVector
+    demand_from_timeseries::Vector{Bool}
     allocated::Matrix{Float64}
     return_factor::Vector{Float64}
     min_level::Vector{Float64}
-
-    function UserDemand(
-        node_id,
-        inflow_id,
-        outflow_id,
-        active,
-        realized_bmi,
-        demand,
-        demand_reduced,
-        demand_itp,
-        demand_from_timeseries,
-        allocated,
-        return_factor,
-        min_level,
-        priorities,
-    )
-        if valid_demand(node_id, demand_itp, priorities)
-            return new(
-                node_id,
-                inflow_id,
-                outflow_id,
-                active,
-                realized_bmi,
-                demand,
-                demand_reduced,
-                demand_itp,
-                demand_from_timeseries,
-                allocated,
-                return_factor,
-                min_level,
-            )
-        else
-            error("Invalid demand")
-        end
-    end
 end
 
 """
@@ -654,10 +646,10 @@ min_level: The minimum target level of the connected basin(s)
 max_level: The maximum target level of the connected basin(s)
 priority: If in a shortage state, the priority of the demand of the connected basin(s)
 """
-struct LevelDemand <: AbstractDemandNode
+@kwdef struct LevelDemand <: AbstractDemandNode
     node_id::Vector{NodeID}
-    min_level::Vector{ScalarInterpolation}
-    max_level::Vector{ScalarInterpolation}
+    min_level::Vector{ScalarInterpolation} = fill(-Inf, length(node_id))
+    max_level::Vector{ScalarInterpolation} = fill(Inf, length(node_id))
     priority::Vector{Int32}
 end
 
@@ -667,7 +659,7 @@ demand_itp: The time interpolation of the demand of the node
 demand: The current demand of the node
 priority: The priority of the demand of the node
 """
-struct FlowDemand <: AbstractDemandNode
+@kwdef struct FlowDemand <: AbstractDemandNode
     node_id::Vector{NodeID}
     demand_itp::Vector{ScalarInterpolation}
     demand::Vector{Float64}
@@ -675,7 +667,7 @@ struct FlowDemand <: AbstractDemandNode
 end
 
 "Subgrid linearly interpolates basin levels."
-struct Subgrid
+@kwdef struct Subgrid
     subgrid_id::Vector{Int32}
     basin_index::Vector{Int32}
     interpolations::Vector{ScalarInterpolation}
@@ -717,8 +709,7 @@ const ModelGraph{T} = MetaGraph{
     Float64,
 } where {T}
 
-# TODO Automatically add all nodetypes here
-struct Parameters{T, C1, C2, V1, V2, V3}
+@kwdef struct Parameters{T, C1, C2, V1, V2, V3}
     starttime::DateTime
     graph::ModelGraph{T}
     allocation::Allocation
