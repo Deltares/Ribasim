@@ -258,10 +258,10 @@ function LinearResistance(db::DB, config::Config, graph::MetaGraph)::LinearResis
     (; node_id) = parsed_parameters
     node_id = NodeID.(NodeType.LinearResistance, node_id, eachindex(node_id))
 
-    return LinearResistance(
+    return LinearResistance(;
         node_id,
-        inflow_edge.(Ref(graph), node_id),
-        outflow_edge.(Ref(graph), node_id),
+        inflow_edge = inflow_edge.(Ref(graph), node_id),
+        outflow_edge = outflow_edge.(Ref(graph), node_id),
         parsed_parameters.active,
         parsed_parameters.resistance,
         parsed_parameters.max_flow_rate,
@@ -350,12 +350,12 @@ function TabulatedRatingCurve(
     if errors
         error("Errors occurred when parsing TabulatedRatingCurve data.")
     end
-    return TabulatedRatingCurve(
-        node_ids,
-        inflow_edge.(Ref(graph), node_ids),
-        outflow_edges.(Ref(graph), node_ids),
+    return TabulatedRatingCurve(;
+        node_id = node_ids,
+        inflow_edge = inflow_edge.(Ref(graph), node_ids),
+        outflow_edges = outflow_edges.(Ref(graph), node_ids),
         active,
-        interpolations,
+        table = interpolations,
         time,
         control_mapping,
     )
@@ -378,17 +378,17 @@ function ManningResistance(
     upstream_bottom = basin_bottom.(Ref(basin), inflow_id.(Ref(graph), node_id))
     downstream_bottom = basin_bottom.(Ref(basin), outflow_id.(Ref(graph), node_id))
 
-    return ManningResistance(
+    return ManningResistance(;
         node_id,
-        inflow_edge.(Ref(graph), node_id),
-        outflow_edge.(Ref(graph), node_id),
+        inflow_edge = inflow_edge.(Ref(graph), node_id),
+        outflow_edge = outflow_edge.(Ref(graph), node_id),
         parsed_parameters.active,
         parsed_parameters.length,
         parsed_parameters.manning_n,
         parsed_parameters.profile_width,
         parsed_parameters.profile_slope,
-        [bottom[2] for bottom in upstream_bottom],
-        [bottom[2] for bottom in downstream_bottom],
+        upstream_bottom = [bottom[2] for bottom in upstream_bottom],
+        downstream_bottom = [bottom[2] for bottom in downstream_bottom],
         parsed_parameters.control_mapping,
     )
 end
@@ -404,10 +404,10 @@ function FractionalFlow(db::DB, config::Config, graph::MetaGraph)::FractionalFlo
     (; node_id) = parsed_parameters
     node_id = NodeID.(NodeType.FractionalFlow, node_id, eachindex(node_id))
 
-    return FractionalFlow(
+    return FractionalFlow(;
         node_id,
-        inflow_edge.(Ref(graph), node_id),
-        outflow_edge.(Ref(graph), node_id),
+        inflow_edge = inflow_edge.(Ref(graph), node_id),
+        outflow_edge = outflow_edge.(Ref(graph), node_id),
         parsed_parameters.fraction,
         parsed_parameters.control_mapping,
     )
@@ -431,7 +431,11 @@ function LevelBoundary(db::DB, config::Config)::LevelBoundary
         error("Errors occurred when parsing LevelBoundary data.")
     end
 
-    return LevelBoundary(node_ids, parsed_parameters.active, parsed_parameters.level)
+    return LevelBoundary(;
+        node_id = node_ids,
+        parsed_parameters.active,
+        parsed_parameters.level,
+    )
 end
 
 function FlowBoundary(db::DB, config::Config, graph::MetaGraph)::FlowBoundary
@@ -461,9 +465,9 @@ function FlowBoundary(db::DB, config::Config, graph::MetaGraph)::FlowBoundary
         error("Errors occurred when parsing FlowBoundary data.")
     end
 
-    return FlowBoundary(
-        node_ids,
-        outflow_edges.(Ref(graph), node_ids),
+    return FlowBoundary(;
+        node_id = node_ids,
+        outflow_edges = outflow_edges.(Ref(graph), node_ids),
         parsed_parameters.active,
         parsed_parameters.flow_rate,
     )
@@ -473,7 +477,6 @@ function Pump(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{Int}
     static = load_structvector(db, config, PumpStaticV1)
     defaults = (; min_flow_rate = 0.0, max_flow_rate = Inf, active = true)
     parsed_parameters, valid = parse_static_and_time(db, config, Pump; static, defaults)
-    is_pid_controlled = falses(length(parsed_parameters.node_id))
 
     if !valid
         error("Errors occurred when parsing Pump data.")
@@ -488,16 +491,15 @@ function Pump(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{Int}
 
     (; node_id) = parsed_parameters
 
-    return Pump(
+    return Pump(;
         node_id,
-        inflow_edge.(Ref(graph), node_id),
-        outflow_edges.(Ref(graph), node_id),
+        inflow_edge = inflow_edge.(Ref(graph), node_id),
+        outflow_edges = outflow_edges.(Ref(graph), node_id),
         parsed_parameters.active,
         flow_rate,
         parsed_parameters.min_flow_rate,
         parsed_parameters.max_flow_rate,
         parsed_parameters.control_mapping,
-        is_pid_controlled,
     )
 end
 
@@ -506,8 +508,6 @@ function Outlet(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{In
     defaults =
         (; min_flow_rate = 0.0, max_flow_rate = Inf, min_crest_level = -Inf, active = true)
     parsed_parameters, valid = parse_static_and_time(db, config, Outlet; static, defaults)
-
-    is_pid_controlled = falses(length(parsed_parameters.node_id))
 
     if !valid
         error("Errors occurred when parsing Outlet data.")
@@ -527,17 +527,16 @@ function Outlet(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{In
             eachindex(parsed_parameters.node_id),
         )
 
-    return Outlet(
+    return Outlet(;
         node_id,
-        inflow_edge.(Ref(graph), node_id),
-        outflow_edges.(Ref(graph), node_id),
+        inflow_edge = inflow_edge.(Ref(graph), node_id),
+        outflow_edges = outflow_edges.(Ref(graph), node_id),
         parsed_parameters.active,
         flow_rate,
         parsed_parameters.min_flow_rate,
         parsed_parameters.max_flow_rate,
         parsed_parameters.min_crest_level,
         parsed_parameters.control_mapping,
-        is_pid_controlled,
     )
 end
 
@@ -600,10 +599,10 @@ function Basin(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{Int
     level_to_area = LinearInterpolation.(level_to_area)
     storage_to_level = invert_integral.(level_to_area)
 
-    return Basin(
+    return Basin(;
         node_id,
-        [collect(inflow_ids(graph, id)) for id in node_id],
-        [collect(outflow_ids(graph, id)) for id in node_id],
+        inflow_ids = [collect(inflow_ids(graph, id)) for id in node_id],
+        outflow_ids = [collect(outflow_ids(graph, id)) for id in node_id],
         vertical_flux_from_input,
         vertical_flux,
         vertical_flux_prev,
@@ -669,7 +668,11 @@ function parse_variables_and_conditions(compound_variable, condition, ids, db)
 
                 push!(
                     compound_variables_node,
-                    CompoundVariable(discrete_control_id, subvariables, greater_than),
+                    CompoundVariable(;
+                        node_id = discrete_control_id,
+                        subvariables,
+                        greater_than,
+                    ),
                 )
             end
         end
@@ -691,11 +694,6 @@ function DiscreteControl(db::DB, config::Config, graph::MetaGraph)::DiscreteCont
         error("Problems encountered when parsing DiscreteControl variables and conditions.")
     end
 
-    # Initialize the control state (and control state start) per DiscreteControl node
-    n_nodes = length(node_id)
-    control_state = fill("undefined_state", n_nodes)
-    control_state_start = zeros(n_nodes)
-
     # Initialize the logic mappings
     logic = load_structvector(db, config, DiscreteControlLogicV1)
     logic_mapping = [Dict{String, String}() for _ in eachindex(node_id)]
@@ -707,35 +705,22 @@ function DiscreteControl(db::DB, config::Config, graph::MetaGraph)::DiscreteCont
 
     logic_mapping = expand_logic_mapping(logic_mapping, node_id)
 
-    record = (
-        time = Float64[],
-        control_node_id = Int32[],
-        truth_state = String[],
-        control_state = String[],
-    )
-
     # Initialize the truth state per DiscreteControl node
     truth_state = Vector{Bool}[]
     for i in eachindex(node_id)
         truth_state_length = sum(length(var.greater_than) for var in compound_variables[i])
-        push!(truth_state, zeros(Bool, truth_state_length))
+        push!(truth_state, fill(false, truth_state_length))
     end
 
     controlled_nodes =
         collect.(outneighbor_labels_type.(Ref(graph), node_id, EdgeType.control))
 
-    control_mappings = Dict{NodeType.T, Dict{Tuple{NodeID, String}, ControlStateUpdate}}()
-
-    return DiscreteControl(
+    return DiscreteControl(;
         node_id,
         controlled_nodes,
         compound_variables,
         truth_state,
-        control_state,
-        control_state_start,
         logic_mapping,
-        control_mappings,
-        record,
     )
 end
 
@@ -762,10 +747,10 @@ function PidControl(db::DB, config::Config, chunk_sizes::Vector{Int})::PidContro
     if config.solver.autodiff
         pid_error = DiffCache(pid_error, chunk_sizes)
     end
-    return PidControl(
-        node_ids,
+    return PidControl(;
+        node_id = node_ids,
         parsed_parameters.active,
-        NodeID.(
+        listen_node_id = NodeID.(
             parsed_parameters.listen_node_type,
             parsed_parameters.listen_node_id,
             Ref(db),
@@ -774,7 +759,7 @@ function PidControl(db::DB, config::Config, chunk_sizes::Vector{Int})::PidContro
         parsed_parameters.proportional,
         parsed_parameters.integral,
         parsed_parameters.derivative,
-        pid_error,
+        error = pid_error,
         parsed_parameters.control_mapping,
     )
 end
@@ -811,7 +796,7 @@ function user_demand_time!(
     active::Vector{Bool},
     demand::Matrix{Float64},
     demand_itp::Vector{Vector{ScalarInterpolation}},
-    demand_from_timeseries::BitVector,
+    demand_from_timeseries::Vector{Bool},
     return_factor::Vector{Float64},
     min_level::Vector{Float64},
     time::StructVector{UserDemandTimeV1},
@@ -867,7 +852,7 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)::UserDemand
     priorities = get_all_priorities(db, config)
     n_user = length(node_ids)
     n_priority = length(priorities)
-    active = ones(Bool, n_user)
+    active = fill(true, n_user)
     realized_bmi = zeros(n_user)
     demand = zeros(n_user, n_priority)
     demand_reduced = zeros(n_user, n_priority)
@@ -875,7 +860,7 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)::UserDemand
     demand_itp = [
         [LinearInterpolation(zeros(2), trivial_timespan) for i in eachindex(priorities)] for j in eachindex(node_ids)
     ]
-    demand_from_timeseries = BitVector(zeros(Bool, n_user))
+    demand_from_timeseries = fill(false, n_user)
     allocated = fill(Inf, n_user, n_priority)
     return_factor = zeros(n_user)
     min_level = zeros(n_user)
@@ -906,14 +891,14 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)::UserDemand
         config,
     )
 
-    if errors
+    if errors || !valid_demand(node_ids, demand_itp, priorities)
         error("Errors occurred when parsing UserDemand data.")
     end
 
-    return UserDemand(
-        node_ids,
-        inflow_edge.(Ref(graph), node_ids),
-        outflow_edge.(Ref(graph), node_ids),
+    return UserDemand(;
+        node_id = node_ids,
+        inflow_edge = inflow_edge.(Ref(graph), node_ids),
+        outflow_edge = outflow_edge.(Ref(graph), node_ids),
         active,
         realized_bmi,
         demand,
@@ -923,7 +908,6 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)::UserDemand
         allocated,
         return_factor,
         min_level,
-        priorities,
     )
 end
 
@@ -975,9 +959,9 @@ function FlowDemand(db::DB, config::Config)::FlowDemand
     demand = zeros(length(parsed_parameters.node_id))
     (; node_id) = parsed_parameters
 
-    return FlowDemand(
-        NodeID.(NodeType.FlowDemand, node_id, eachindex(node_id)),
-        parsed_parameters.demand,
+    return FlowDemand(;
+        node_id = NodeID.(NodeType.FlowDemand, node_id, eachindex(node_id)),
+        demand_itp = parsed_parameters.demand,
         demand,
         parsed_parameters.priority,
     )
@@ -1016,34 +1000,10 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
     has_error && error("Invalid Basin / subgrid table.")
     level = fill(NaN, length(subgrid_ids))
 
-    return Subgrid(subgrid_ids, basin_index, interpolations, level)
+    return Subgrid(; subgrid_id = subgrid_ids, basin_index, interpolations, level)
 end
 
 function Allocation(db::DB, config::Config, graph::MetaGraph)::Allocation
-    record_demand = (
-        time = Float64[],
-        subnetwork_id = Int32[],
-        node_type = String[],
-        node_id = Int32[],
-        priority = Int32[],
-        demand = Float64[],
-        allocated = Float64[],
-        realized = Float64[],
-    )
-
-    record_flow = (
-        time = Float64[],
-        edge_id = Int32[],
-        from_node_type = String[],
-        from_node_id = Int32[],
-        to_node_type = String[],
-        to_node_id = Int32[],
-        subnetwork_id = Int32[],
-        priority = Int32[],
-        flow_rate = Float64[],
-        optimization_type = String[],
-    )
-
     mean_input_flows = Dict{Tuple{NodeID, NodeID}, Float64}()
 
     # Find edges which serve as sources in allocation
@@ -1081,17 +1041,10 @@ function Allocation(db::DB, config::Config, graph::MetaGraph)::Allocation
         end
     end
 
-    return Allocation(
-        Int32[],
-        AllocationModel[],
-        Vector{Tuple{NodeID, NodeID}}[],
-        get_all_priorities(db, config),
-        Dict{Tuple{NodeID, NodeID}, Vector{Float64}}(),
-        Dict{Tuple{NodeID, NodeID}, Vector{Float64}}(),
+    return Allocation(;
+        priorities = get_all_priorities(db, config),
         mean_input_flows,
         mean_realized_flows,
-        record_demand,
-        record_flow,
     )
 end
 
@@ -1138,9 +1091,9 @@ function Parameters(db::DB, config::Config)::Parameters
     level_demand = LevelDemand(db, config)
     flow_demand = FlowDemand(db, config)
 
-    subgrid_level = Subgrid(db, config, basin)
+    subgrid = Subgrid(db, config, basin)
 
-    p = Parameters(
+    p = Parameters(;
         config.starttime,
         graph,
         allocation,
@@ -1159,7 +1112,7 @@ function Parameters(db::DB, config::Config)::Parameters
         user_demand,
         level_demand,
         flow_demand,
-        subgrid_level,
+        subgrid,
     )
 
     collect_control_mappings!(p)

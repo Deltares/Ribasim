@@ -66,12 +66,12 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
         if ismissing(subnetwork_id)
             subnetwork_id = 0
         end
-        edge_metadata = EdgeMetadata(
-            fid,
-            edge_type == EdgeType.flow ? flow_counter + 1 : 0,
-            edge_type,
-            subnetwork_id,
-            (id_src, id_dst),
+        edge_metadata = EdgeMetadata(;
+            id = fid,
+            flow_idx = edge_type == EdgeType.flow ? flow_counter + 1 : 0,
+            type = edge_type,
+            subnetwork_id_source = subnetwork_id,
+            edge = (id_src, id_dst),
         )
         if haskey(graph, id_src, id_dst)
             errors = true
