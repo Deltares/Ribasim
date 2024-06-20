@@ -62,6 +62,8 @@ except ImportError:
 
 
 class Model(FileModel):
+    """A model of inland water resources systems."""
+
     starttime: datetime.datetime
     endtime: datetime.datetime
     crs: str
