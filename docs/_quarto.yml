@@ -108,45 +108,9 @@ quartodoc:
   dir: reference/python
   title: Python API
   package: ribasim
-  sections:
-    - title: Model
-      desc: The Model class represents an entire Ribasim model.
-      contents:
-        - name: Model
-          members: [
-            set_node_parent,
-            ensure_edge_table_is_present,
-            serialize_path,
-            model_post_init,
-            set_crs,
-            to_crs,
-            node_table,
-            read,
-            write,
-            reset_contextvar,
-            plot_control_listen,
-            plot,
-            to_xugrid
-            ]
-    - title: Edge
-      desc: The Edge database layer.
-      contents:
-        - EdgeTable
-    - title: Node types
-      desc: Available node types to model different situations.
-      contents:
-        - nodes.basin
-        - nodes.fractional_flow
-        - nodes.tabulated_rating_curve
-        - nodes.pump
-        - nodes.outlet
-        - nodes.user_demand
-        - nodes.level_boundary
-        - nodes.flow_boundary
-        - nodes.linear_resistance
-        - nodes.manning_resistance
-        - nodes.terminal
-        - nodes.discrete_control
-        - nodes.pid_control
-        - nodes.flow_demand
-        - nodes.level_demand
+  options:
+    include_inherited: true
+    include_empty: true
+    include_attributes: true
+    include_classes: true
+    include_functions: true
