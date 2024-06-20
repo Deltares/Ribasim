@@ -7,8 +7,9 @@ import tomli
 from pandas import DataFrame
 from pandas.testing import assert_frame_equal
 from pydantic import ValidationError
-from ribasim import Model
-from ribasim.nodes import pump, terminal
+from ribasim import Model, Node, Solver
+from ribasim.nodes import basin, pump, terminal, user_demand
+from shapely.geometry import Point
 
 
 def __assert_equal(a: DataFrame, b: DataFrame) -> None:
@@ -90,6 +91,40 @@ def test_extra_columns():
     with pytest.raises(ValidationError):
         # Extra column "extra" needs "meta_" prefix
         terminal.Static(meta_id=[-1, -2, -3], extra=[-1, -2, -3])
+
+
+def test_extra_spatial_columns():
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2021-01-01",
+        crs="EPSG:28992",
+        solver=Solver(algorithm="Tsit5"),
+    )
+
+    model.basin.add(
+        Node(1, Point(0, 0), meta_id=1),
+        [basin.Profile(area=1000.0, level=[0.0, 1.0]), basin.State(level=[1.0])],
+    )
+    model.user_demand.add(
+        Node(2, Point(1, 0.5), meta_id=2),
+        [
+            user_demand.Static(
+                demand=[1e-4], return_factor=0.9, min_level=0.9, priority=1
+            )
+        ],
+    )
+
+    model.edge.add(model.basin[1], model.user_demand[2], meta_foo=1)
+    assert "meta_foo" in model.edge.df.columns
+    assert "meta_id" in model.node_table().df.columns
+
+    with pytest.raises(ValidationError):
+        model.basin.add(
+            Node(2, Point(0, 0), foo=1),
+            [basin.Profile(area=1000.0, level=[0.0, 1.0]), basin.State(level=[1.0])],
+        )
+    with pytest.raises(ValidationError):
+        model.edge.add(model.basin[1], model.user_demand[2], foo=1)
 
 
 def test_sort(level_range, tmp_path):
