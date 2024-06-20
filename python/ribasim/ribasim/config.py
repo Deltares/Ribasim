@@ -97,18 +97,20 @@ class Node(pydantic.BaseModel):
     name: str = ""
     subnetwork_id: int | None = None
 
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    model_config = ConfigDict(arbitrary_types_allowed=True, extra="allow")
 
     def __init__(self, node_id: int, geometry: Point, **kwargs) -> None:
         super().__init__(node_id=node_id, geometry=geometry, **kwargs)
 
     def into_geodataframe(self, node_type: str) -> GeoDataFrame:
+        extra = self.model_extra if self.model_extra is not None else {}
         return GeoDataFrame(
             data={
                 "node_id": pd.Series([self.node_id], dtype=np.int32),
                 "node_type": pd.Series([node_type], dtype=str),
                 "name": pd.Series([self.name], dtype=str),
                 "subnetwork_id": pd.Series([self.subnetwork_id], dtype=pd.Int32Dtype()),
+                **extra,
             },
             geometry=[self.geometry],
         )

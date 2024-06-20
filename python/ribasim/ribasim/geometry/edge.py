@@ -51,6 +51,7 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
         geometry: LineString | MultiLineString | None = None,
         name: str = "",
         subnetwork_id: int | None = None,
+        **kwargs,
     ):
         geometry_to_append = (
             [LineString([from_node.geometry, to_node.geometry])]
@@ -71,6 +72,7 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
                 "edge_type": pd.Series([edge_type], dtype=str),
                 "name": pd.Series([name], dtype=str),
                 "subnetwork_id": pd.Series([subnetwork_id], dtype=pd.Int32Dtype()),
+                **kwargs,
             },
             geometry=geometry_to_append,
             crs=self.df.crs,
