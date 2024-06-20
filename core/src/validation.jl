@@ -315,7 +315,7 @@ function valid_pid_connectivity(
 end
 
 """
-Check that nodes that have fractional flow outneighbors do not have any other type of
+Check that nodes that have FractionalFlow outneighbors do not have any other type of
 outneighbor, that the fractions leaving a node add up to ≈1 and that the fractions are non-negative.
 """
 function valid_fractional_flow(
@@ -328,12 +328,24 @@ function valid_fractional_flow(
     # Node IDs that have fractional flow outneighbors
     src_ids = Set{NodeID}()
 
+    # The set of control states associated with each source node
+    control_states = Dict{NodeID, Set{String}}()
+
     for id in node_id
-        union!(src_ids, inflow_ids(graph, id))
+        src_id = inflow_id(graph, id)
+        push!(src_ids, inflow_id(graph, id))
+
+        if !haskey(control_states, src_id)
+            control_states[src_id] = Set{String}()
+        end
+        for (controlled_id, control_state) in keys(control_mapping)
+            if controlled_id == id
+                push!(control_states[src_id], control_state)
+            end
+        end
     end
 
     node_id_set = Set{NodeID}(node_id)
-    control_states = Set{String}([key[2] for key in keys(control_mapping)])
 
     for src_id in src_ids
         src_outflow_ids = Set(outflow_ids(graph, src_id))
@@ -343,7 +355,7 @@ function valid_fractional_flow(
         end
 
         # Each control state (including missing) must sum to 1
-        for control_state in control_states
+        for control_state in control_states[src_id]
             fraction_sum = 0.0
 
             for ff_id in intersect(src_outflow_ids, node_id_set)
