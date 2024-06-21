@@ -23,8 +23,8 @@ def main(proc: subprocess.CompletedProcess[str]):
             "create",
             tag_name,
             "--generate-notes",
-            "ribasim_cli_linux.zip",
-            "ribasim_cli_windows.zip",
+            "ribasim_linux.zip",
+            "ribasim_windows.zip",
             "ribasim_qgis.zip",
             "generated_testmodels.zip",
         ]
