@@ -256,6 +256,8 @@ end
     # Cache this to avoid recomputation
     current_level::T = zeros(length(node_id))
     current_area::T = zeros(length(node_id))
+    # Dried out basins
+    is_empty::Vector{Bool} = zeros(Bool, length(node_id))
     # Discrete values for interpolation
     storage_to_level::Vector{
         LinearInterpolationIntInv{Vector{Float64}, Vector{Float64}, Float64},

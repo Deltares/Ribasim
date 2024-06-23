@@ -51,7 +51,7 @@ function update_jac_prototype!(
 )::Nothing
     (; node_id) = node
 
-    if isempty(node_id)
+    if node isa Pump || isempty(node_id)
         return nothing
     end
 

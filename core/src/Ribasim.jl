@@ -33,7 +33,8 @@ using DiffEqCallbacks:
     PeriodicCallback,
     PresetTimeCallback,
     SavedValues,
-    SavingCallback
+    SavingCallback,
+    VectorContinuousCallback
 using EnumX: EnumX, @enumx
 using ForwardDiff: pickchunksize
 using Graphs:

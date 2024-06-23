@@ -10,11 +10,8 @@ function create_callbacks(
     config::Config,
     saveat,
 )::Tuple{CallbackSet, SavedResults}
-    (; starttime, basin, tabulated_rating_curve, discrete_control) = parameters
+    (; starttime, basin, tabulated_rating_curve) = parameters
     callbacks = SciMLBase.DECallback[]
-
-    negative_storage_cb = FunctionCallingCallback(check_negative_storage)
-    push!(callbacks, negative_storage_cb)
 
     integrating_flows_cb = FunctionCallingCallback(integrate_flows!; func_start = false)
     push!(callbacks, integrating_flows_cb)
@@ -59,32 +56,49 @@ function create_callbacks(
     discrete_control_cb = FunctionCallingCallback(apply_discrete_control!)
     push!(callbacks, discrete_control_cb)
 
+    empty_basin_cb = VectorContinuousCallback(
+        empty_basin_conditions!,
+        set_empty_basin!,
+        length(basin.node_id);
+        save_positions = (false, false),
+    )
+    push!(callbacks, empty_basin_cb)
+
+    non_empty_basin_cb = FunctionCallingCallback(check_basins_non_empty!)
+    push!(callbacks, non_empty_basin_cb)
+
     saved = SavedResults(saved_flow, saved_vertical_flux, saved_subgrid_level)
     callback = CallbackSet(callbacks...)
 
     return callback, saved
 end
 
-function check_negative_storage(u, t, integrator)::Nothing
-    (; basin) = integrator.p
-    (; node_id) = basin
-    errors = false
-    for id in node_id
-        if u.storage[id.idx] < 0
-            @error "Negative storage detected in $id"
-            errors = true
-        end
+function empty_basin_conditions!(out, u, t, integrator)::Nothing
+    (; is_empty) = integrator.p.basin
+    for (i, s) in enumerate(u.storage)
+        out[i] = is_empty[i] ? Inf : s - EMPTY_BASIN_THRESHOLD_LOW
     end
+    return nothing
+end
 
-    if errors
-        t_datetime = datetime_since(integrator.t, integrator.p.starttime)
-        error("Negative storages found at $t_datetime.")
+function set_empty_basin!(integrator, basin_idx)::Nothing
+    integrator.p.basin.is_empty[basin_idx] = true
+    return nothing
+end
+
+function check_basins_non_empty!(u, t, integrator)::Nothing
+    (; is_empty) = integrator.p.basin
+
+    for (i, s) in enumerate(u.storage)
+        if is_empty[i]
+            is_empty[i] = s < EMPTY_BASIN_THRESHOLD_HIGH
+        end
     end
     return nothing
 end
 
 """
-Integrate flows over the last timestep
+Integrate flows over the latest timestep
 """
 function integrate_flows!(u, t, integrator)::Nothing
     (; p, dt) = integrator

@@ -175,9 +175,9 @@ end
 
     @test jac_prototype.m == 4
     @test jac_prototype.n == 4
-    @test jac_prototype.colptr == [1, 3, 7, 9, 10]
-    @test jac_prototype.rowval == [1, 2, 1, 2, 3, 4, 3, 4, 4]
-    @test jac_prototype.nzval == ones(9)
+    @test jac_prototype.colptr == [1, 3, 7, 7, 8]
+    @test jac_prototype.rowval == [1, 2, 1, 2, 3, 4, 4]
+    @test jac_prototype.nzval == ones(7)
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/pid_control/ribasim.toml")
 
@@ -220,19 +220,6 @@ end
     @test reduction_factor(1.0, 2.0) === 0.5
     @test reduction_factor(3.0f0, 2.0) === 1.0f0
     @test reduction_factor(3.0, 2.0) === 1.0
-end
-
-@testitem "low_storage_factor" begin
-    using Ribasim: NodeID, low_storage_factor, EdgeMetadata, EdgeType
-
-    node_id = NodeID(:Basin, 5, 1)
-    @test low_storage_factor([-2.0], node_id, 2.0) === 0.0
-    @test low_storage_factor([0.0f0], node_id, 2.0) === 0.0f0
-    @test low_storage_factor([0.0], node_id, 2.0) === 0.0
-    @test low_storage_factor([1.0f0], node_id, 2.0) === 0.5f0
-    @test low_storage_factor([1.0], node_id, 2.0) === 0.5
-    @test low_storage_factor([3.0f0], node_id, 2.0) === 1.0f0
-    @test low_storage_factor([3.0], node_id, 2.0) === 1.0
 end
 
 @testitem "constraints_from_nodes" begin

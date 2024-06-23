@@ -105,7 +105,7 @@
         @test basin.storage_rate[1] ≈
               (basin.storage[2] - basin.storage[1]) / config.solver.saveat
         @test all(==(0), basin.inflow_rate)
-        @test all(>(0), basin.outflow_rate)
+        @test all(>=(0), basin.outflow_rate)
         @test flow.flow_rate[1] == basin.outflow_rate[1]
         @test all(==(0), basin.drainage)
         @test all(==(0), basin.infiltration)
@@ -200,7 +200,7 @@ end
 
     @test successful_retcode(model)
     @test allunique(Ribasim.tsaves(model))
-    @test model.integrator.sol.u[end] ≈ Float32[519.8817, 519.8798, 339.3959, 1418.4331] skip =
+    @test model.integrator.sol.u[end] ≈ Float32[520.0755, 520.0736, 337.6680, 1418.4555] skip =
         Sys.isapple() atol = 1.5
 
     @test length(logger.logs) > 10
@@ -299,7 +299,7 @@ end
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
     @test successful_retcode(model)
-    @test model.integrator.sol.u[end] ≈ Float32[7.783636, 726.16394] skip = Sys.isapple()
+    @test model.integrator.sol.u[end] ≈ Float32[5.8973, 728.1020] skip = Sys.isapple()
     # the highest level in the dynamic table is updated to 1.2 from the callback
     @test model.integrator.p.tabulated_rating_curve.table[end].t[end] == 1.2
 end
