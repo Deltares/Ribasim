@@ -728,3 +728,23 @@ end
 function basin_areas(basin::Basin, state_idx::Int)
     return basin.level_to_area[state_idx].u
 end
+
+function fields_of_type(p::Parameters; type = AbstractDemandNode)
+    return (getfield(p, name) for name in propertynames(p) if getfield(p, name) isa type)
+end
+
+function get_fractional_flow_connected_basin_idxs(
+    graph::MetaGraph,
+    id::NodeID,
+)::Vector{Int32}
+    basin_idxs = Int32[]
+    for id_out in outflow_ids(graph, id)
+        if id_out.type == NodeType.FractionalFlow
+            id_past_ff = outflow_id(graph, id_out)
+            if id_past_ff.type == NodeType.Basin
+                push!(basin_idxs, id_past_ff.idx)
+            end
+        end
+    end
+    return basin_idxs
+end

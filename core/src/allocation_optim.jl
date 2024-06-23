@@ -908,11 +908,8 @@ function optimize_priority!(
     adjust_capacities_returnflow!(allocation_model, p)
 
     # Adjust demands for next optimization (in case of internal_sources -> collect_demands)
-    for parameter in propertynames(p)
-        demand_node = getfield(p, parameter)
-        if demand_node isa AbstractDemandNode
-            adjust_demands!(allocation_model, p, priority_idx, demand_node)
-        end
+    for demand_node in fields_of_type(p; type = AbstractDemandNode)
+        adjust_demands!(allocation_model, p, priority_idx, demand_node)
     end
     return nothing
 end
