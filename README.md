@@ -19,8 +19,8 @@ libraries.
 
 For most users the [latest release](https://github.com/Deltares/Ribasim/releases/latest) is recommended, it can be downloaded here:
 
-- Ribasim executable - Linux: [ribasim_cli_linux.zip](https://github.com/Deltares/Ribasim/releases/latest/download/ribasim_cli_linux.zip)
-- Ribasim executable - Windows: [ribasim_cli_windows.zip](https://github.com/Deltares/Ribasim/releases/latest/download/ribasim_cli_windows.zip)
+- Ribasim executable - Linux: [ribasim_linux.zip](https://github.com/Deltares/Ribasim/releases/latest/download/ribasim_linux.zip)
+- Ribasim executable - Windows: [ribasim_windows.zip](https://github.com/Deltares/Ribasim/releases/latest/download/ribasim_windows.zip)
 - QGIS plugin: [ribasim_qgis.zip](https://github.com/Deltares/Ribasim/releases/latest/download/ribasim_qgis.zip).
 - Generated testmodels: [generated_testmodels.zip](https://github.com/Deltares/Ribasim/releases/latest/download/generated_testmodels.zip)
 
