@@ -1,0 +1,45 @@
+---
+title: "Allocation"
+---
+
+# The `Allocation` struct
+Object for all information about allocation
+entry                   |  description
+-----------------       |  -----------
+
+subnetwork_ids          | The unique sorted allocation network IDs
+allocation models       | The allocation models for the main network and subnetworks corresponding to subnetwork_ids
+main_network_connections| (from_id, to_id) from the main network to the subnetwork per subnetwork
+priorities              | All used priority values.
+subnetwork_demands      | The demand of an edge from the main network to a subnetwork
+subnetwork_allocateds   | The allocated flow of an edge from the main network to a subnetwork
+mean_input_flows        | Flows averaged over Δt_allocation over edges that are allocation sources
+mean_realized_flows     | Flows averaged over Δt_allocation over edges that realize a demand
+record_demand           | A record of demands and allocated flows for nodes that have these
+record_flow             | A record of all flows computed by allocation optimization, eventually saved to output file
+
+# Initialization
+
+## Data processing
+### Deriving edge capacities
+### Handling the connection between the main network and subnetworks
+
+## Optimization problem
+### Setting up optimization variables
+### Setting up optimization constraints
+
+# Optimization
+
+## Preparing the optimization problem
+### Setting up the objective function
+### Setting the constraints and capacities
+
+## Looping over priorities
+### Updating capacities
+
+## Output data
+
+## Communicating to the physical layer
+
+### `UserDemand` abstraction
+### Controlling pumps/weirs based on allocation results (n/a)
