@@ -8,7 +8,7 @@ entry                   |  description
 -----------------       |  -----------
 
 subnetwork_ids          | The unique sorted allocation network IDs
-allocation models       | The allocation models for the main network and subnetworks corresponding to subnetwork_ids
+allocation_models       | The allocation models for the main network and subnetworks corresponding to subnetwork_ids
 main_network_connections| (from_id, to_id) from the main network to the subnetwork per subnetwork
 priorities              | All used priority values.
 subnetwork_demands      | The demand of an edge from the main network to a subnetwork
@@ -19,14 +19,21 @@ record_demand           | A record of demands and allocated flows for nodes that
 record_flow             | A record of all flows computed by allocation optimization, eventually saved to output file
 
 # Initialization
+What the file of `allocation.jl`is for. Below is the steps of allocation problem initialization
+
+For each subnetwork, a allocation problem.
 
 ## Data processing
 ### Deriving edge capacities
-### Handling the connection between the main network and subnetworks
+Obtaining the capacities of all the flow edges in subnetwork. Stored in a SparseArray object from JuMP called `capacities`
 
+### Handling the connection between the main network and subnetworks
+function find_subnetwork_connetions will find the edges from the main network to a subnetwo
 ## Optimization problem
 ### Setting up optimization variables
+
 ### Setting up optimization constraints
+
 
 # Optimization
 
