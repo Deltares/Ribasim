@@ -40,9 +40,10 @@ function set_objective_priority!(
     (; main_network_connections, subnetwork_demands) = allocation
     F = problem[:F]
 
+    # Initialize an empty quadratic expression for the objective
     ex = JuMP.QuadExpr()
 
-    # Terms for subnetworks as UserDemand
+    # Terms for subnetworks acting as UserDemand on the main network
     if is_main_network(subnetwork_id)
         for connections_subnetwork in main_network_connections[2:end]
             for connection in connections_subnetwork
@@ -91,6 +92,7 @@ function set_objective_priority!(
         add_objective_term!(ex, d, F_ld)
     end
 
+    # Add the new objective to he problem
     new_objective = JuMP.@expression(problem, ex)
     JuMP.@objective(problem, Min, new_objective)
     return nothing
@@ -457,7 +459,7 @@ function set_initial_demands_level!(
 )::Nothing
     (; subnetwork_id, problem) = allocation_model
     (; graph, basin) = p
-    (; node_id, demand) = basin
+    (; demand) = basin
 
     node_ids_level_demand = only(problem[:basin_outflow].axes)
 
@@ -554,7 +556,7 @@ function adjust_demands!(
     ::LevelDemand,
 )::Nothing
     (; graph, basin) = p
-    (; node_id, demand) = basin
+    (; demand) = basin
     (; subnetwork_id, problem) = allocation_model
     F_basin_in = problem[:F_basin_in]
 
@@ -604,6 +606,8 @@ function adjust_demands!(
     F = problem[:F]
 
     for node_id in flow_demand.node_id
+
+        # Only update data for FlowDemand nodes in the current subnetwork
         if graph[node_id].subnetwork_id != subnetwork_id
             continue
         end
@@ -649,6 +653,9 @@ function adjust_capacities_buffer!(allocation_model::AllocationModel)::Nothing
 
     for node_id in only(constraints_flow_buffer.axes)
         constraint = constraints_flow_buffer[node_id]
+
+        # The capacity should not be able to get below 0, but can get to small negative numbers,
+        # probably due to floating point errors. Therefore new_capacity = max(0, new_capacity) is applied.
         buffer_capacity = max(
             0.0,
             JuMP.normalized_rhs(constraint) + JuMP.value(F_flow_buffer_in[node_id]) -
@@ -663,6 +670,10 @@ end
 Set the capacity of the outflow edge from a node with a flow demand:
 - To Inf if the current priority is other than the priority of the flow demand
 - To 0.0 if the current priority is equal to the priority of the flow demand
+
+This is done so that flow can go towards the node with the flow demand into its buffer,
+to avoid the problem that the flow has nowhere to go after this node and to make sure
+that this flow can be used for later priorities
 """
 function set_capacities_flow_demand_outflow!(
     allocation_model::AllocationModel,
