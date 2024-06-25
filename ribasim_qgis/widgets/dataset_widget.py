@@ -50,10 +50,10 @@ class DatasetTreeWidget(QTreeWidget):
         self.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Preferred)
         self.setHeaderLabels([""])
         self.setHeaderHidden(False)
-        header = self.header()
-        header.setSectionResizeMode(1, QHeaderView.Stretch)
-        header.setSectionsMovable(False)
         self.setColumnCount(1)
+        header = self.header()
+        header.setSectionResizeMode(0, QHeaderView.Stretch)
+        header.setSectionsMovable(False)
 
     def items(self) -> list[QTreeWidgetItem]:
         root = self.invisibleRootItem()
