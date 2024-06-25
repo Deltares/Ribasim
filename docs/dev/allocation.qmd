@@ -25,10 +25,15 @@ For each subnetwork, a allocation problem.
 
 ## Data processing
 ### Deriving edge capacities
-Obtaining the capacities of all the flow edges in subnetwork. Stored in a SparseArray object from JuMP called `capacities`
+
+Obtaining the capacities of all the flow edges in subnetwork. Stored in a SparseArray object from JuMP called `capacities` indexed by the `edge_metadata.edge`
+
+Function `get_capacity` can obtain SparseArray object given a subnetwork id and ribasim model parameter `p`, if the source is valid (), it will return capacity.
+
 
 ### Handling the connection between the main network and subnetworks
-function find_subnetwork_connetions will find the edges from the main network to a subnetwo
+function find_subnetwork_connetions will find the edges from the main network to a subnetwork
+
 ## Optimization problem
 ### Setting up optimization variables
 
