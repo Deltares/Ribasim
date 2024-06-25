@@ -457,7 +457,7 @@ function set_initial_demands_level!(
 )::Nothing
     (; subnetwork_id, problem) = allocation_model
     (; graph, basin) = p
-    (; node_id, demand) = basin
+    (; demand) = basin
 
     node_ids_level_demand = only(problem[:basin_outflow].axes)
 
@@ -554,7 +554,7 @@ function adjust_demands!(
     ::LevelDemand,
 )::Nothing
     (; graph, basin) = p
-    (; node_id, demand) = basin
+    (; demand) = basin
     (; subnetwork_id, problem) = allocation_model
     F_basin_in = problem[:F_basin_in]
 
@@ -853,6 +853,42 @@ function save_allocation_flows!(
     return nothing
 end
 
+function allocate_to_users_from_connected_basin!(
+    allocation_model::AllocationModel,
+    p::Parameters,
+    priority_idx::Int,
+)::Nothing
+    (; problem) = allocation_model
+    (; graph, user_demand) = p
+
+    # Get al UserDemand nodes from this subnetwork
+    node_ids_user_demand = only(problem[:source_user].axes)
+    for node_id in node_ids_user_demand
+
+        # Check whether the upstream basin has a level demand
+        # and thus can act as a source
+        upstream_basin_id = user_demand.inflow_edge[node_id.idx].edge[1]
+        if has_external_demand(graph, upstream_basin_id, :level_demand)[1]
+
+            # The demand of the UserDemand node at the current priority
+            demand = user_demand.demand_reduced[node_id.idx, priority_idx]
+
+            # The capacity of the upstream basin
+            constraint = problem[:basin_outflow][upstream_basin_id]
+            capacity = JuMP.normalized_rhs(constraint)
+
+            # The allocated amount
+            allocated = min(demand, capacity)
+
+            # Subtract the allocated amount from the user demand and basin capacity
+            user_demand.demand_reduced[node_id.idx, priority_idx] -= allocated
+            JuMP.set_normalized_rhs(constraint, capacity - allocated)
+        end
+    end
+
+    return nothing
+end
+
 function optimize_priority!(
     allocation_model::AllocationModel,
     u::ComponentVector,
@@ -873,6 +909,10 @@ function optimize_priority!(
     # quadratic terms:
     # https://jump.dev/JuMP.jl/v1.16/manual/objective/#Modify-an-objective-coefficient
     set_objective_priority!(allocation_model, p, u, t, priority_idx)
+
+    # Allocate to UserDemand nodes from the directly connected basin
+    # This happens outside the JuMP optimization
+    allocate_to_users_from_connected_basin!(allocation_model, p, priority_idx)
 
     # Solve the allocation problem for this priority
     JuMP.optimize!(problem)
