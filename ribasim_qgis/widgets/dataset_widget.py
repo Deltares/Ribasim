@@ -17,7 +17,6 @@ from PyQt5.QtWidgets import (
     QCheckBox,
     QFileDialog,
     QHBoxLayout,
-    QHeaderView,
     QLineEdit,
     QMessageBox,
     QPushButton,
@@ -48,12 +47,9 @@ class DatasetTreeWidget(QTreeWidget):
         self.setHeaderHidden(True)
         self.setSortingEnabled(True)
         self.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Preferred)
-        self.setHeaderLabels([""])
+        self.setHeaderLabels(["  Layer"])
         self.setHeaderHidden(False)
         self.setColumnCount(1)
-        header = self.header()
-        header.setSectionResizeMode(0, QHeaderView.Stretch)
-        header.setSectionsMovable(False)
 
     def items(self) -> list[QTreeWidgetItem]:
         root = self.invisibleRootItem()
