@@ -22,6 +22,21 @@ function find_subnetwork_connections!(p::Parameters)::Nothing
     return nothing
 end
 
+function get_main_network_connections(
+    p::Parameters,
+    subnetwork_id::Int32,
+)::Vector{Tuple{NodeID, NodeID}}
+    (; allocation) = p
+    (; subnetwork_ids, main_network_connections) = allocation
+    idx = findsorted(subnetwork_ids, subnetwork_id)
+    if isnothing(idx)
+        error("Invalid allocation network ID $subnetwork_id.")
+    else
+        return main_network_connections[idx]
+    end
+    return
+end
+
 """
 Get the fixed capacity (∈[0,∞]) of the edges in the subnetwork in a JuMP.Containers.SparseAxisArray,
 which is a type of sparse arrays that in this case takes NodeID in stead of Int as indices.

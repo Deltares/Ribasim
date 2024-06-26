@@ -28,22 +28,61 @@ For each subnetwork, a allocation problem.
 
 Obtaining the capacities of all the flow edges in subnetwork. Stored in a SparseArray object from JuMP called `capacities` indexed by the `edge_metadata.edge`
 
-Function `get_capacity` can obtain SparseArray object given a subnetwork id and ribasim model parameter `p`, if the source is valid (), it will return capacity.
-
+Function `get_capacity` can obtain SparseArray object given a subnetwork id and ribasim model parameter `p`, if the source of the subnetwork is valid (), it will return capacity.
 
 ### Handling the connection between the main network and subnetworks
-function find_subnetwork_connetions will find the edges from the main network to a subnetwork
+function find_subnetwork_connetions will find the edges connect the main network and a subnetwork. `subnetwork_demands` and `subnetwork_allocateds` will be created
+`main_network_connection` is a vector of edge that connect subnetwork with main network
 
 ## Optimization problem
 ### Setting up optimization variables
+There are three sets of variable in the optimization problems. They are flows between the edges in allocation model, flows basin connect with a level demand node and flows of nodes that connect with flow demand or fractional flow outneighbors.
+
+In the code below, flow edges are retracted from capacity array. And variable named by `F($startnode, $endnode)` are created.
+```{julia}
+function add_variables_flow!(
+    problem::JuMP.Model,
+    capacity::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}},
+)::Nothing
+    edges = keys(capacity.data)
+    problem[:F] = JuMP.@variable(problem, F[edge = edges] >= 0.0)
+    return nothing
+end
+```
+
+In the following code block, variable that represent flows of thoes basins that connected with level demand are defined. The variable is named `F_basin_in` if basin supplied by the basins with a level demand and `F_basin_out` if consumed by a level demand.
+```{julia}
+function add_variables_basin!(
+    problem::JuMP.Model,
+    p::Parameters,
+    subnetwork_id::Int32,
+)::Nothing
+    (; graph) = p
+
+    # Get the node IDs from the subnetwork for basins that have a level demand
+    node_ids_basin = [
+        node_id for
+        node_id in graph[].node_ids[subnetwork_id] if graph[node_id].type == :basin &&
+        has_external_demand(graph, node_id, :level_demand)[1]
+    ]
+    problem[:F_basin_in] =
+        JuMP.@variable(problem, F_basin_in[node_id = node_ids_basin,] >= 0.0)
+    problem[:F_basin_out] =
+        JuMP.@variable(problem, F_basin_out[node_id = node_ids_basin,] >= 0.0)
+    return nothing
+end
+```
+
+The last set of optimization variables are the flows with  flow demand or fractional flow outneighbors. It is defined in a similar way to the second set of variables.
 
 ### Setting up optimization constraints
-
+Flow edge is greater and equal to 0. This is set when the variable are added to the optimization problem.
 
 # Optimization
 
 ## Preparing the optimization problem
 ### Setting up the objective function
+The objective function is defined here here code
 ### Setting the constraints and capacities
 
 ## Looping over priorities
