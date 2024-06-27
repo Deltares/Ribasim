@@ -3,6 +3,36 @@ title: "DiscreteControl"
 ---
 
 Set parameters of other nodes based on model state conditions (e.g. Basin level).
+The table below shows which parameters are controllable for a given node type.
+
+```{julia}
+# | code-fold: true
+using Ribasim
+using DataFrames: DataFrame
+using MarkdownTables
+
+node_names = Symbol[]
+controllable_parameters = String[]
+
+for node_type in fieldtypes(Ribasim.Parameters)
+    if node_type <: Ribasim.AbstractParameterNode
+        node_name = nameof(node_type)
+        controllable_fields = Ribasim.controllablefields(node_name)
+        controllable_fields = sort!(string.(controllable_fields))
+        if node_name == :TabulatedRatingCurve
+            controllable_fields = map(s -> replace(s, "table" => "q(h) relationship (given by level, flow_rate)"), controllable_fields)
+        end
+        if !isempty(controllable_fields)
+            push!(node_names, Ribasim.snake_case(node_name))
+            push!(controllable_parameters, join(controllable_fields, ", "))
+        end
+    end
+end
+
+df = DataFrame(:node => node_names, :controllable_parameters => controllable_parameters)
+
+markdown_table(df)
+```
 
 # Tables
 

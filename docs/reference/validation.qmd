@@ -14,8 +14,8 @@ using Ribasim
 using DataFrames: DataFrame
 using MarkdownTables
 
-node_names_snake_case = Vector{Symbol}()
-node_names_camel_case = Vector{Symbol}()
+node_names_snake_case = Symbol[]
+node_names_camel_case = Symbol[]
 for (node_name, node_type) in zip(fieldnames(Ribasim.Parameters), fieldtypes(Ribasim.Parameters))
     if node_type <: Ribasim.AbstractParameterNode
         push!(node_names_snake_case, node_name)
