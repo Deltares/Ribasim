@@ -39,7 +39,8 @@ function find_subnetwork_connetions will find the edges connect the main network
 There are three sets of variable in the optimization problems. They are flows between the edges in allocation model, flows basin connect with a level demand node and flows of nodes that connect with flow demand or fractional flow outneighbors.
 
 In the code below, flow edges are retracted from capacity array. And variable named by `F($startnode, $endnode)` are created.
-```{julia}
+
+```julia
 function add_variables_flow!(
     problem::JuMP.Model,
     capacity::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}},
@@ -51,7 +52,8 @@ end
 ```
 
 In the following code block, variable that represent flows of thoes basins that connected with level demand are defined. The variable is named `F_basin_in` if basin supplied by the basins with a level demand and `F_basin_out` if consumed by a level demand.
-```{julia}
+
+```julia
 function add_variables_basin!(
     problem::JuMP.Model,
     p::Parameters,
@@ -76,7 +78,24 @@ end
 The last set of optimization variables are the flows with  flow demand or fractional flow outneighbors. It is defined in a similar way to the second set of variables.
 
 ### Setting up optimization constraints
-Flow edge is greater and equal to 0. This is set when the variable are added to the optimization problem.
+All the variable are greater and equal to 0. This is set when the variable are added to the optimization problem.
+
+Other constrains are capacity, source_user, source and flow_conservation, fractional_flow, basin_outflow, flow_buffer_outflow and flow_demand_outflow.
+
+For each set of constrains, a function named `add_constrains_[constrains name]` is created.
+
+Take `add_constraints_user_source` as an example, the node that is relevant to the constrains are filtered. Then a set of constrains are added by calling JuMP.`@`constraint.
+
+```julia
+    node_ids_user = [node_id for node_id in node_ids if node_id.type == NodeType.UserDemand]
+
+    problem[:source_user] = JuMP.@constraint(
+        problem,
+        [node_id = node_ids_user],
+        F[(node_id, outflow_id(graph, node_id))] <= 0.0,
+        base_name = "source_user"
+    )
+```
 
 # Optimization
 
