@@ -45,6 +45,7 @@ function set_objective_priority!(
 
     # Terms for subnetworks acting as UserDemand on the main network
     if is_main_network(subnetwork_id)
+        # Loop over the connections between main and subnetwork
         for connections_subnetwork in main_network_connections[2:end]
             for connection in connections_subnetwork
                 d = subnetwork_demands[connection][priority_idx]
@@ -54,7 +55,7 @@ function set_objective_priority!(
         end
     end
 
-    # Terms for UserDemand nodes and LevelDemand nodes
+    # Terms for UserDemand nodes and FlowDemand nodes
     for edge in keys(capacity.data)
         to_node_id = edge[2]
 
@@ -92,7 +93,7 @@ function set_objective_priority!(
         add_objective_term!(ex, d, F_ld)
     end
 
-    # Add the new objective to he problem
+    # Add the new objective to the problem
     new_objective = JuMP.@expression(problem, ex)
     JuMP.@objective(problem, Min, new_objective)
     return nothing
@@ -1028,10 +1029,6 @@ function allocate_demands!(
     (; allocation) = p
     (; subnetwork_id) = allocation_model
     (; priorities) = allocation
-
-    if is_main_network(subnetwork_id)
-        @assert optimization_type == OptimizationType.allocate "For the main network no demands have to be collected"
-    end
 
     set_initial_capacities_inlet!(allocation_model, p, optimization_type)
 

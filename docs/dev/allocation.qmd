@@ -77,10 +77,10 @@ end
 
 The last set of optimization variables are the flows with  flow demand or fractional flow outneighbors. It is defined in a similar way to the second set of variables.
 
-### Setting up optimization constraints
+### Setting up initial optimization constraints
 All the variable are greater and equal to 0. This is set when the variable are added to the optimization problem.
 
-Other constrains are capacity, source_user, source and flow_conservation, fractional_flow, basin_outflow, flow_buffer_outflow and flow_demand_outflow.
+Other constrains are capacity, `source_user`, `source`, `flow_conservation`, `fractional_flow`, `basin_outflow`, `flow_buffer_outflow` and `flow_demand_outflow`.
 
 For each set of constrains, a function named `add_constrains_[constrains name]` is created.
 
@@ -101,9 +101,40 @@ Take `add_constraints_user_source` as an example, the node that is relevant to t
 
 ## Preparing the optimization problem
 ### Setting up the objective function
-The objective function is defined here here code
-### Setting the constraints and capacities
+The optimization objective is sum of three quadratic error terms.
+The quadratic terms are defined with function `add_objective_term`.
 
+In `set_objective_priority`, it set objective function for a given priority.
+First it treat subnetwork as user demand and add the quadratic terms of main network.
+Then it loop over all the edge in allocation. Based on the type of the node the edge pointing to (user demand or flow demand), it adds the corresponding quadratic terms.
+Finally, it does same to the edge that start from level demand node.
+
+### Setting the constraints and capacities
+In function `set_initial_values` capacities and demands are initialized.
+```julia
+function set_initial_values!(
+    allocation_model::AllocationModel,
+    p::Parameters,
+    u::ComponentVector,
+    t::Float64,
+)::Nothing
+    set_initial_capacities_source!(allocation_model, p)
+    set_initial_capacities_edge!(allocation_model, p)
+    set_initial_capacities_basin!(allocation_model, p, u, t)
+    set_initial_capacities_buffer!(allocation_model)
+    set_initial_capacities_returnflow!(allocation_model)
+
+    set_initial_demands_user!(allocation_model, p, t)
+    set_initial_demands_level!(allocation_model, u, p, t)
+    set_initial_demands_flow!(allocation_model, p, t)
+    return nothing
+end
+```
+Within the subnetwork, capacities of `source` is set to the average flow in the past allocation period. It updates `source` constrains.
+
+Initial capacities for all edge
+
+Apart from the `set_initial_` function above, capacities of `inlet` is the allocated capacities from main network to subnetwork. Source constrains will be adapted based on the optimization type. This function is called separately and thus not part of the `set_initial_values`.
 ## Looping over priorities
 ### Updating capacities
 
