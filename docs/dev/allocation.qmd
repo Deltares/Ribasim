@@ -110,7 +110,7 @@ Then it loop over all the edge in allocation. Based on the type of the node the 
 Finally, it does same to the edge that start from level demand node.
 
 ### Setting the constraints and capacities
-In function `set_initial_values` capacities and demands are initialized.
+In function `set_initial_values` capacities and demands are initialized. Source, edge, basin, buffer and returnflow are set to the corresponding initial values.
 ```julia
 function set_initial_values!(
     allocation_model::AllocationModel,
@@ -130,13 +130,38 @@ function set_initial_values!(
     return nothing
 end
 ```
-Within the subnetwork, capacities of `source` is set to the average flow in the past allocation period. It updates `source` constrains.
-
-Initial capacities for all edge
 
 Apart from the `set_initial_` function above, capacities of `inlet` is the allocated capacities from main network to subnetwork. Source constrains will be adapted based on the optimization type. This function is called separately and thus not part of the `set_initial_values`.
+
 ## Looping over priorities
 ### Updating capacities
+While optimizing a given priority, `set_capacities_flow_demand_outflow` update constraints `flow_demand_outflow`.
+If the current priority is the same as the priority of the flow demand, constraints will be infinite, otherwise 0.
+
+And optimization objective function is updated based on the new flow demand and the given priority. The optimization solver is called.
+
+If a solution is found by the solver, the allocation result will be updated. And it will be saved, so the physical layer can make use of it.
+
+The function `assign_allocations` update subnetwork demand (`collect_demand`) or assign the allocated amount to user (`allocate`) with the result of the optimization. Then it also writes the result flow in `Allocation` object.
+
+Function `save_demands_and_allocations` and `save_allocation_flows` save the allocated flow to corresponding nodes and edge in the subnetworks.
+
+Lastly, capacities and demands are updated
+
+```julia
+adjust_capacities_source!(allocation_model)
+adjust_capacities_edge!(allocation_model)
+adjust_capacities_basin!(allocation_model)
+adjust_capacities_buffer!(allocation_model)
+adjust_capacities_returnflow!(allocation_model, p)
+
+for parameter in propertynames(p)
+    demand_node = getfield(p, parameter)
+    if demand_node isa AbstractDemandNode
+        adjust_demands!(allocation_model, p, priority_idx, demand_node)
+    end
+end
+```
 
 ## Output data
 
