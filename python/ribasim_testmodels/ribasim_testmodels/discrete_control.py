@@ -510,7 +510,7 @@ def connector_node_flow_condition_model() -> Model:
             discrete_control.Variable(
                 listen_node_type=["LinearResistance"],
                 listen_node_id=[1],
-                variable=["flow"],
+                variable=["flow_rate"],
                 compound_variable_id=1,
             ),
             discrete_control.Condition(greater_than=[1e-4], compound_variable_id=1),

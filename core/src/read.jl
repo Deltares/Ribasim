@@ -210,6 +210,13 @@ end
 
 const nonconservative_nodetypes =
     Set{String}(["Basin", "LevelBoundary", "FlowBoundary", "Terminal", "UserDemand"])
+const conservative_nodetypes = Set{String}([
+    "Pump",
+    "Outlet",
+    "TabulatedRatingCurve",
+    "LinearResistance",
+    "ManningResistance",
+])
 
 function initialize_allocation!(p::Parameters, config::Config)::Nothing
     (; graph, allocation) = p

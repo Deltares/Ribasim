@@ -593,21 +593,32 @@ Get a reference to a state(-derived) parameter
 function get_variable_ref(
     p::Parameters,
     subvariable::NamedTuple,
-)::Base.RefArray{Float64, Vector{Float64}, Nothing}
+)::Tuple{Base.RefArray{Float64, Vector{Float64}, Nothing}, Bool}
     (; basin, graph) = p
     (; listen_node_id, variable) = subvariable
 
-    return if listen_node_id.type == NodeType.Basin && variable == "level"
+    errors = false
+
+    ref = if listen_node_id.type == NodeType.Basin && variable == "level"
         level = get_tmp(basin.current_level, 0)
         Ref(level, listen_node_id.idx)
-    elseif variable == "flow"
-        flow = get_tmp(graph[].flow, 0)
-        id_in = inflow_id(graph, listen_node_id)
-        flow_idx = graph[].flow_dict[(id_in, listen_node_id)]
-        Ref(flow, flow_idx)
+    elseif variable == "flow_rate"
+        listen_node_type = string(listen_node_id.type)
+        if listen_node_type ∉ conservative_nodetypes
+            errors = true
+            @error "Cannot listen to flow_rate of $listen_node_id, the node type must be one of $conservative_node_types"
+            Ref(Float64[], 0)
+        else
+            flow = get_tmp(graph[].flow, 0)
+            id_in = inflow_id(graph, listen_node_id)
+            flow_idx = graph[].flow_dict[(id_in, listen_node_id)]
+            Ref(flow, flow_idx)
+        end
     else
         Ref(Float64[], 0)
     end
+
+    return ref, errors
 end
 
 """
@@ -615,14 +626,21 @@ Set references to all variables that are listened to by discrete control
 """
 function set_listen_variable_refs!(p::Parameters)::Nothing
     (; discrete_control) = p
+    errors = false
+
     for compound_variables in discrete_control.compound_variables
         for compound_variable in compound_variables
             (; subvariables) = compound_variable
             for (j, subvariable) in enumerate(subvariables)
-                subvariables[j] =
-                    @set subvariable.variable_ref = get_variable_ref(p, subvariable)
+                ref, error = get_variable_ref(p, subvariable)
+                subvariables[j] = @set subvariable.variable_ref = ref
+                errors |= error
             end
         end
+    end
+
+    if errors
+        error("Error(s) occurred when parsing listen variables.")
     end
     return nothing
 end
