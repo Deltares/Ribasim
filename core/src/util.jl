@@ -602,7 +602,9 @@ function get_variable_ref(
     ref = if listen_node_id.type == NodeType.Basin && variable == "level"
         level = get_tmp(basin.current_level, 0)
         Ref(level, listen_node_id.idx)
-    elseif variable == "flow_rate"
+    elseif variable == "flow_rate" && listen_node_id.type != NodeType.FlowBoundary
+        # FlowBoundary flow_rate can also be listened to but this is handled differently,
+        # because it supports look ahead
         listen_node_type = string(listen_node_id.type)
         if listen_node_type ∉ conservative_nodetypes
             errors = true

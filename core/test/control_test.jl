@@ -229,3 +229,24 @@ end
     @test record.truth_state == ["F", "T"]
     @test record.control_state == ["Off", "On"]
 end
+
+@testime "Flow through node control" begin
+    using DataFrames: DataFrame
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/connector_node_flow_condition/ribasim.toml",
+    )
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+
+    (; p) = model.integrator
+    (; record) = p.discrete_control
+    @test record.truth_state == ["T", "F"]
+    @test record.control_state == ["On", "Off"]
+
+    t_switch = Ribasim.datetime_since(record.time[2], p.starttime)
+    flow_table = DataFrame(Ribasim.flow_table(model))
+    @test all(filter(:time => time -> time <= t_switch, flow_table).flow_rate .> 0)
+    @test all(filter(:time => time -> time > t_switch, flow_table).flow_rate .== 0)
+end

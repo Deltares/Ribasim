@@ -166,8 +166,6 @@ function Model(config::Config)::Model
     )
     @debug "Setup integrator."
 
-    println("bar")
-
     if config.logging.timing
         @show Ribasim.to
     end
