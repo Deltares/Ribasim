@@ -3,40 +3,47 @@ title: "Allocation"
 ---
 
 # The `Allocation` struct
-Object for all information about allocation
-entry                   |  description
------------------       |  -----------
 
-subnetwork_ids          | The unique sorted allocation network IDs
-allocation_models       | The allocation models for the main network and subnetworks corresponding to subnetwork_ids
-main_network_connections| (from_id, to_id) from the main network to the subnetwork per subnetwork
-priorities              | All used priority values.
-subnetwork_demands      | The demand of an edge from the main network to a subnetwork
-subnetwork_allocateds   | The allocated flow of an edge from the main network to a subnetwork
-mean_input_flows        | Flows averaged over Δt_allocation over edges that are allocation sources
-mean_realized_flows     | Flows averaged over Δt_allocation over edges that realize a demand
-record_demand           | A record of demands and allocated flows for nodes that have these
-record_flow             | A record of all flows computed by allocation optimization, eventually saved to output file
+This is an object storing all information about allocation.
+
+field                    |  description
+-----------------        |  -----------
+
+subnetwork_ids           | The unique sorted allocation network IDs
+allocation_models        | The allocation models for the main network and subnetworks corresponding to subnetwork_ids
+main_network_connections | (from_id, to_id) from the main network to the subnetwork per subnetwork
+priorities               | All used priority values.
+subnetwork_demands       | The demand of an edge from the main network to a subnetwork
+subnetwork_allocateds    | The allocated flow of an edge from the main network to a subnetwork
+mean_input_flows         | Flows averaged over Δt_allocation over edges that are allocation sources
+mean_realized_flows      | Flows averaged over Δt_allocation over edges that realize a demand
+record_demand            | A record of demands and allocated flows for nodes that have these
+record_flow              | A record of all flows computed by allocation optimization, eventually saved to output file
+
+# `JuMP.jl` problem interaction
 
 # Initialization
-What the file of `allocation.jl`is for. Below is the steps of allocation problem initialization
+Initialization of the allocation data structures happens in `allocation_init.jl`. Below the steps of allocation problem initialization are explained.
 
-For each subnetwork, a allocation problem.
+For each subnetwork, a allocation problem is made, which is stored in the `allocation_models` field mentioned above.
 
 ## Data processing
 ### Deriving edge capacities
 
-Obtaining the capacities of all the flow edges in subnetwork. Stored in a SparseArray object from JuMP called `capacities` indexed by the `edge_metadata.edge`
+Obtaining the capacities of all the flow edges in subnetwork. The capacity of an edge is given by the smallest `max_flow_rate` of the nodes connected to the edges, if these nodes have such a value. The capacities are stored in a `SparseArray` object from `JuMP.jl` called `capacities`, indexed by a tuple of node IDs.
 
-Function `get_capacity` can obtain SparseArray object given a subnetwork id and ribasim model parameter `p`, if the source of the subnetwork is valid (), it will return capacity.
+The function `get_capacity` obtains the capacities given a subnetwork ID and the Ribasim model parameters `p`, if the sources of the subnetwork are valid (checked in `valid_sources`).
 
 ### Handling the connection between the main network and subnetworks
-function find_subnetwork_connetions will find the edges connect the main network and a subnetwork. `subnetwork_demands` and `subnetwork_allocateds` will be created
-`main_network_connection` is a vector of edge that connect subnetwork with main network
+function find_subnetwork_connetions will find the edges connected to the main network and a subnetwork. `subnetwork_demands` and `subnetwork_allocateds` will be created.
+`main_network_connection` is a vector of edges that connect a subnetwork with the main network.
 
 ## Optimization problem
 ### Setting up optimization variables
-There are three sets of variable in the optimization problems. They are flows between the edges in allocation model, flows basin connect with a level demand node and flows of nodes that connect with flow demand or fractional flow outneighbors.
+There are three types of variables in the optimization problems:
+- flows between the edges in allocation model
+- flows in and out of a basin with a level demand
+- flows in and out of nodes that have a buffer, which are nodes that have a flow demand or have fractional flow outneighbors
 
 In the code below, flow edges are retracted from capacity array. And variable named by `F($startnode, $endnode)` are created.
 
