@@ -594,12 +594,17 @@ function get_variable_ref(
     p::Parameters,
     subvariable::NamedTuple,
 )::Base.RefArray{Float64, Vector{Float64}, Nothing}
-    (; basin) = p
+    (; basin, graph) = p
     (; listen_node_id, variable) = subvariable
 
     return if listen_node_id.type == NodeType.Basin && variable == "level"
         level = get_tmp(basin.current_level, 0)
         Ref(level, listen_node_id.idx)
+    elseif variable == "flow"
+        flow = get_tmp(graph[].flow, 0)
+        id_in = inflow_id(graph, listen_node_id)
+        flow_idx = graph[].flow_dict[(id_in, listen_node_id)]
+        Ref(flow, flow_idx)
     else
         Ref(Float64[], 0)
     end

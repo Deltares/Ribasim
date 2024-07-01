@@ -475,7 +475,7 @@ def level_range_model() -> Model:
     return model
 
 
-def non_boundary_flow_condition_model() -> Model:
+def connector_node_flow_condition_model() -> Model:
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
@@ -493,7 +493,7 @@ def non_boundary_flow_condition_model() -> Model:
         Node(1, Point(1, 0)),
         [
             linear_resistance.Static(
-                control_state=["On", "Off"], resistance=1e-3, active=[True, False]
+                control_state=["On", "Off"], resistance=1e4, active=[True, False]
             )
         ],
     )
@@ -508,15 +508,12 @@ def non_boundary_flow_condition_model() -> Model:
         Node(1, Point(0.5, 0.8660254037844386)),
         [
             discrete_control.Variable(
-                listen_node_type=[
-                    "Edge",
-                    "Basin",
-                ],  # TODO: Change to listen_feature_type!
-                listen_node_id=[0, 1],  # TODO: Change to listen_feature_id!
-                variable=["flow", "level"],
+                listen_node_type=["LinearResistance"],
+                listen_node_id=[1],
+                variable=["flow"],
                 compound_variable_id=1,
             ),
-            discrete_control.Condition(greater_than=[1.0], compound_variable_id=1),
+            discrete_control.Condition(greater_than=[1e-4], compound_variable_id=1),
             discrete_control.Logic(truth_state=["T", "F"], control_state=["On", "Off"]),
         ],
     )

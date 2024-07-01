@@ -16,7 +16,6 @@ from pydantic import (
     field_serializer,
     model_validator,
 )
-from shapely.geometry import Point
 
 import ribasim
 from ribasim.config import (
@@ -316,36 +315,23 @@ class Model(FileModel):
 
         # Collect geometry data
         node = self.node_table().df
-        control_nodes = df_listen_edge.merge(
+        control_nodes_geometry = df_listen_edge.merge(
             node,
             left_on=["control_node_id", "control_node_type"],
             right_on=["node_id", "node_type"],
             how="left",
-        )
+        )["geometry"]
 
-        listen_features = df_listen_edge.merge(
+        listen_nodes_geometry = df_listen_edge.merge(
             node,
             left_on=["listen_node_id", "listen_node_type"],
             right_on=["node_id", "node_type"],
             how="left",
-        )
-
-        # Add the midpoints of listen edges
-        def calculate_midpoint(row):
-            edge_geom = self.edge.df.loc[row["listen_node_id"], "geometry"].xy
-            return Point(
-                (edge_geom[0][0] + edge_geom[0][1]) / 2,
-                (edge_geom[1][0] + edge_geom[1][1]) / 2,
-            )
-
-        edge_rows = listen_features[listen_features["listen_node_type"] == "Edge"]
-        listen_features.loc[edge_rows.index, "geometry"] = edge_rows.apply(
-            calculate_midpoint, axis=1
-        )
+        )["geometry"]
 
         # Plot listen edges
         for i, (point_listen, point_control) in enumerate(
-            zip(listen_features["geometry"], control_nodes["geometry"])
+            zip(listen_nodes_geometry, control_nodes_geometry)
         ):
             ax.plot(
                 [point_listen.x, point_control.x],
