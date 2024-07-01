@@ -142,11 +142,7 @@ And optimization objective function is updated based on the new flow demand and 
 
 If a solution is found by the solver, the allocation result will be updated. And it will be saved, so the physical layer can make use of it.
 
-The function `assign_allocations` update subnetwork demand (`collect_demand`) or assign the allocated amount to user (`allocate`) with the result of the optimization. Then it also writes the result flow in `Allocation` object.
-
-Function `save_demands_and_allocations` and `save_allocation_flows` save the allocated flow to corresponding nodes and edge in the subnetworks.
-
-Lastly, capacities and demands are updated
+Lastly, capacities and demands are updated, as shown below:
 
 ```julia
 adjust_capacities_source!(allocation_model)
@@ -164,8 +160,13 @@ end
 ```
 
 ## Output data
+Function `save_demands_and_allocations` and `save_allocation_flows` save the allocated flow to corresponding nodes and edge in the subnetworks.
 
 ## Communicating to the physical layer
+The function `assign_allocations` update subnetwork demand (`collect_demand`) or assign the allocated amount to user (`allocate`) with the result of the optimization.
+Then it also writes the resulted flow to `Allocation` object.
 
 ### `UserDemand` abstraction
+
+
 ### Controlling pumps/weirs based on allocation results (n/a)
