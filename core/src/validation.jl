@@ -441,6 +441,23 @@ function valid_demand(
     return !errors
 end
 
+function valid_outlet_crest_level(graph::MetaGraph, outlet::Outlet, basin:Basin)::Bool
+    errors = false
+    for (id, crest) in zip(outlet.node_id,outlet.min_crest_level)
+        id_in = inflow_id(graph, id)
+        if id_in.type == NodeType.Basin
+            #validation:
+            basin_bottom_level = basin_bottom(basin, id_in)
+            if crest <= basin_bottom_level[2]
+                @error "Minimum crest level of outlet $id is lower than bottom of basin $id_in"
+                errors = true
+        end
+    end
+    return !errors
+end
+
+function valid_tabulated_rating_curve_level()::Bool end
+
 function valid_tabulated_rating_curve(node_id::NodeID, table::StructVector)::Bool
     errors = false
 
