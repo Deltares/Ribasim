@@ -230,7 +230,7 @@ end
     @test record.control_state == ["Off", "On"]
 end
 
-@testime "Flow through node control" begin
+@testitem "Flow through node control" begin
     using DataFrames: DataFrame
 
     toml_path = normpath(
