@@ -56,10 +56,23 @@ variable             | String   | -       | must be "level" or "flow_rate", sort
 weight               | Float64  | -       | (optional, default 1.0)
 look_ahead           | Float64  | $s$     | Only on transient boundary conditions, non-negative (optional, default 0.0).
 
+These variables can be listened to:
+- The level of a Basin
+- The level of a LevelBoundary (supports look ahead)
+- The flow  rate through one of these node types: Pump, Outlet, TabulatedRatingCurve, LinearResistance, ManningResistance
+- The flow rate of a FlowBoundary (supports look ahead)
+
 ## Condition
 
-The condition schema defines conditions of the form 'the `discrete_control` node with this `node_id` listens to whether the variable given by the `node_id` and `compound_variable_id` is greater than `greater_than`'.
+The condition schema defines conditions of the form 'the `discrete_control` node with this `node_id` listens to whether the variable given by the `node_id` and `compound_variable_id` is greater than `greater_than`'. In equation form:
+
+$$
+    \text{weight}_1 * \text{variable}_1 + \text{weight}_2 * \text{variable}_2 + \ldots > \text{greater\_than}.
+$$
+
 Multiple conditions with different `greater_than` values can be defined on the same compound_variable.
+
+Note the strict inequality '$>$' in the equation above. This means for instance that if a simulation starts with a compound variable exactly at the `greater_than` value, the condition is false.
 
 column               | type     | unit    | restriction
 -------------------- | -------- | ------- | -----------
