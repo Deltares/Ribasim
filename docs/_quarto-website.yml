@@ -1,0 +1,104 @@
+project:
+  type: website
+  resources:
+    - schema/*.schema.json
+
+website:
+  title: "Ribasim"
+  page-navigation: true
+  navbar:
+    logo: https://user-images.githubusercontent.com/4471859/224825908-bee7e044-bc6b-4561-8b08-5d330cce3ed5.png
+    left:
+      - text: "Overview"
+        file: index.qmd
+      - text: "Tutorials"
+        file: tutorial/index.qmd
+      - text: "How-to guides"
+        file: guide/index.qmd
+      - text: "Concepts"
+        file: concept/index.qmd
+      - text: "Reference"
+        file: reference/index.qmd
+    right:
+      - text: "Contributing"
+        file: dev/index.qmd
+      - icon: github
+        href: https://github.com/Deltares/Ribasim
+        aria-label: GitHub
+
+  sidebar:
+    - title: "Overview"
+      contents:
+        - index.qmd
+        - install.qmd
+        - changelog.qmd
+
+    - title: "Tutorials"
+      contents:
+        - tutorial/index.qmd
+        - tutorial/qgis.qmd
+
+    - title: "How-to guides"
+      contents:
+        - guide/index.qmd
+        - guide/examples.ipynb
+        - guide/coupling.qmd
+
+    - title: "Concepts"
+      contents:
+        - concept/index.qmd
+        - concept/concept.qmd
+        - section: "Numerics"
+          contents:
+          - concept/modelconcept.qmd
+          - concept/equations.qmd
+          - concept/numerics.qmd
+        - section: "Implementation"
+          contents:
+          - concept/core.qmd
+          - concept/allocation.qmd
+
+    - title: "Reference"
+      contents:
+        - reference/index.qmd
+        - reference/usage.qmd
+        - reference/validation.qmd
+        - reference/test-models.qmd
+        - reference/python/index.qmd
+        - section: "Nodes"
+          contents:
+            - reference/node/basin.qmd
+            - reference/node/tabulated-rating-curve.qmd
+            - reference/node/pump.qmd
+            - reference/node/outlet.qmd
+            - reference/node/user-demand.qmd
+            - reference/node/flow-demand.qmd
+            - reference/node/level-demand.qmd
+            - reference/node/flow-boundary.qmd
+            - reference/node/level-boundary.qmd
+            - reference/node/linear-resistance.qmd
+            - reference/node/manning-resistance.qmd
+            - reference/node/fractional-flow.qmd
+            - reference/node/terminal.qmd
+            - reference/node/discrete-control.qmd
+            - reference/node/pid-control.qmd
+
+    - title: "Dev docs"
+      contents:
+        - dev/index.qmd
+        - dev/core.qmd
+        - dev/addnode.qmd
+        - dev/python.qmd
+        - dev/qgis.qmd
+        - dev/bmi.qmd
+        - dev/ci.qmd
+        - dev/release.qmd
+
+format:
+  html:
+    theme: cosmo
+    css: assets/styles.css
+    toc: true
+
+bibliography: references.bib
+number-sections: true
