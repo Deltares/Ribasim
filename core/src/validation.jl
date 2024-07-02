@@ -664,7 +664,9 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
 end
 
 """
-The source nodes must only have one allocation outneighbor and no allocation inneighbors.
+An allocation source edge is valid if either:
+    - The edge connects the main network to a subnetwork
+    - The edge comes from a source node
 """
 function valid_sources(
     p::Parameters,
@@ -675,12 +677,18 @@ function valid_sources(
 
     errors = false
 
+    # Loop over edges that were assigned a capacity
     for edge in keys(capacity.data)
+
+        # For an edge (id_a, id_b) in the physical model
+        # the reverse (id_b, id_a) can exist in the allocation subnetwork
         if !haskey(graph, edge...)
             edge = reverse(edge)
         end
 
         (id_source, id_dst) = edge
+
+        # Whether the current edge is a source for the current subnetwork
         if graph[edge...].subnetwork_id_source == subnetwork_id
             from_source_node = id_source.type in allocation_source_nodetypes
 
