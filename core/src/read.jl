@@ -724,6 +724,58 @@ function DiscreteControl(db::DB, config::Config, graph::MetaGraph)::DiscreteCont
     )
 end
 
+function ContinuousControl(db::DB, config::Config)::ContinuousControl
+    compound_variable = load_structvector(db, config, ContinuousControlVariableV1)
+    relationship = load_structvector(db, config, ContinuousControlRelationshipV1)
+    control_logic = load_structvector(db, config, ContinuousControlLogicV1)
+
+    ids = get_ids(db, "ContinuousControl")
+    node_id = NodeID.(:ContinuousControl, ids, eachindex(ids))
+
+    relationship_ids = unique(relationship.relationship_id)
+
+    # Parse the relationship table
+    # Create linear interpolation objects out of the provided relationships
+    relationships = ScalarInterpolation[]
+    for relationship_id in relationship_ids
+        relationship_rows = filter(row -> row.relationship_id = relationship_id)
+        relationship_itp = LinearInterpolation(
+            relationship_rows.output,
+            relationship_rows.input;
+            extrapolate = true,
+        )
+
+        push!(relationships, relationship_itp)
+    end
+
+    # Parse the logic table. References to the target locations for continuous
+    # control are added later, as they are not known yet here
+    logic = Vector{Tuple{Int, String}}[]
+    errors = false
+    for id in ids
+        logics = Tuple{Int, String}[]
+        id_rows = filter(row -> row.node_id == id, control_logic)
+        for row in id_rows
+            if row.relationship_id in relationship_ids
+                relationship_idx = searchsortedfirst(relationship_ids, row.relationship_id)
+                push!(logics, (relationship_idx, row.variable))
+            else
+                @error "relationship ID $(row.relationship_id) not defined in ContinuousControl / Relationship table."
+                errors = true
+            end
+        end
+
+        push!(logic, logics)
+    end
+
+    target_refs = PreallocationRef[]
+
+    # Parse the compound variable table
+    compound_variable = CompoundVariable[]
+
+    return ContinuousControl(node_id, compound_variable, logic, target_refs, relationships)
+end
+
 function PidControl(db::DB, config::Config, chunk_sizes::Vector{Int})::PidControl
     static = load_structvector(db, config, PidControlStaticV1)
     time = load_structvector(db, config, PidControlTimeV1)
@@ -1086,6 +1138,7 @@ function Parameters(db::DB, config::Config)::Parameters
     outlet = Outlet(db, config, graph, chunk_sizes)
     terminal = Terminal(db, config)
     discrete_control = DiscreteControl(db, config, graph)
+    continuous_control = ContinuousControl(db, config)
     pid_control = PidControl(db, config, chunk_sizes)
     user_demand = UserDemand(db, config, graph)
     level_demand = LevelDemand(db, config)
@@ -1108,6 +1161,7 @@ function Parameters(db::DB, config::Config)::Parameters
         outlet,
         terminal,
         discrete_control,
+        continuous_control,
         pid_control,
         user_demand,
         level_demand,
