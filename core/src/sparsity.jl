@@ -11,37 +11,83 @@ from the naming convention of this sparsity structure in the
 differentialequations.jl docs.
 """
 function get_jac_prototype(p::Parameters)::SparseMatrixCSC{Float64, Int64}
-    (; basin, pid_control, graph) = p
+    (; basin, pid_control, user_demand, graph) = p
 
     n_basins = length(basin.node_id)
     n_states = n_basins + length(pid_control.node_id)
     jac_prototype = spzeros(n_states, n_states)
 
-    update_jac_prototype!(jac_prototype, basin, graph)
+    for connector_node in fields_of_type(p; type = AbstractConnectorNode)
+        update_jac_prototype!(jac_prototype, connector_node, graph)
+    end
+
+    update_jac_prototype!(jac_prototype, user_demand, graph)
     update_jac_prototype!(jac_prototype, pid_control, basin, graph)
+
     return jac_prototype
 end
 
 """
-Add nonzeros for basins connected to eachother via 1 node and possibly a fractional flow node
-Basins are also assumed to depend on themselves (main diagonal terms)
+jac_prototype[i,j] = 1.0 means that generally
+∂fᵢ/∂uⱼ ≠ 0
 """
 function update_jac_prototype!(
     jac_prototype::SparseMatrixCSC{Float64, Int64},
-    basin::Basin,
+    affectors::Vector{Int32},
+    affecteds::Vector{Int32},
+)::Nothing
+    for affector in affectors
+        for affected in affecteds
+            jac_prototype[affected, affector] = 1.0
+        end
+    end
+    return nothing
+end
+
+function update_jac_prototype!(
+    jac_prototype::SparseMatrixCSC{Float64, Int64},
+    node::AbstractParameterNode,
     graph::MetaGraph,
 )::Nothing
-    for id in basin.node_id
-        for id_neighbor in inoutflow_ids(graph, id)
-            for id_neighbor_neighbor in inoutflow_ids(graph, id_neighbor)
-                if id_neighbor_neighbor.type == NodeType.FractionalFlow
-                    id_neighbor_neighbor = outflow_id(graph, id_neighbor_neighbor)
-                end
-                if id_neighbor_neighbor.type == NodeType.Basin
-                    jac_prototype[id.idx, id_neighbor_neighbor.idx] = 1.0
-                end
-            end
+    (; node_id) = node
+
+    if node isa Pump || isempty(node_id)
+        return nothing
+    end
+
+    node_type = graph[first(node_id)].type
+
+    # When fractional flow is not allowed downstream of the current node
+    # type, this means the downstream node type affects the flow
+    # (is this always true?)
+    downstream_affects_flow = (:fractional_flow ∉ neighbortypes(node_type))
+
+    for id in node_id
+        id_in = inflow_id(graph, id)
+        ids_out = collect(outflow_ids(graph, id))
+
+        affectors = Int32[]
+        affecteds = Int32[id_out.idx for id_out in ids_out if id_out.type == NodeType.Basin]
+
+        # The upstream basin affects and is affected by the flow over this node
+        if id_in.type == NodeType.Basin
+            push!(affectors, id_in.idx)
+            push!(affecteds, id_in.idx)
         end
+
+        if downstream_affects_flow
+            # If the downstream node affects the flow,
+            # it is unique
+            id_out = only(ids_out)
+            if id_out.type == NodeType.Basin
+                push!(affectors, id_out.idx)
+            end
+        else
+            # Downstream nodes connected via fractional flow nodes
+            append!(affecteds, get_fractional_flow_connected_basin_idxs(graph, id))
+        end
+
+        update_jac_prototype!(jac_prototype, affectors, affecteds)
     end
     return nothing
 end
@@ -58,12 +104,26 @@ function update_jac_prototype!(
     for id in pid_control.node_id
         idx_integral = length(basin.node_id) + id.idx
         id_controlled = only(outneighbor_labels_type(graph, id, EdgeType.control))
-        for id_basin in inoutflow_ids(graph, id_controlled)
-            if id_basin.type == NodeType.Basin
-                jac_prototype[id_basin.idx, idx_integral] = 1.0
-                jac_prototype[idx_integral, id_basin.idx] = 1.0
+
+        # The integral term affects and is affected by the flow over the PID
+        # controlled node
+        affectors = Int32[idx_integral]
+        affecteds = Int32[idx_integral]
+
+        # It is assumed for simplicity that basins on either side of the PID
+        # controlled node affect and are affected by the flow over the PID
+        # controlled node
+        for id_input in inoutflow_ids(graph, id_controlled)
+            if id_input.type == NodeType.Basin
+                push!(affectors, id_input.idx)
+                push!(affecteds, id_input.idx)
             end
         end
+
+        # Downstream nodes connected via fractional flow nodes
+        append!(affecteds, get_fractional_flow_connected_basin_idxs(graph, id_controlled))
+
+        update_jac_prototype!(jac_prototype, affectors, affecteds)
     end
     return nothing
 end

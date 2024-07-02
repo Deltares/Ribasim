@@ -27,7 +27,7 @@ This index can be passed directly, or calculated from the database or parameters
 @kwdef struct NodeID
     "Type of node, e.g. Basin, Pump, etc."
     type::NodeType.T
-    "ID of node as given by users"
+    "ID of node as given by modeler"
     value::Int32
     "Index into the internal node type struct."
     idx::Int
@@ -211,7 +211,7 @@ for discrete control
 end
 
 abstract type AbstractParameterNode end
-
+abstract type AbstractConnectorNode <: AbstractParameterNode end
 abstract type AbstractDemandNode <: AbstractParameterNode end
 
 """
@@ -256,6 +256,8 @@ end
     # Cache this to avoid recomputation
     current_level::T = zeros(length(node_id))
     current_area::T = zeros(length(node_id))
+    # Dried out basins
+    is_empty::Vector{Bool} = zeros(Bool, length(node_id))
     # Discrete values for interpolation
     storage_to_level::Vector{
         LinearInterpolationIntInv{Vector{Float64}, Vector{Float64}, Float64},
@@ -288,7 +290,7 @@ table: The current Q(h) relationships
 time: The time table used for updating the tables
 control_mapping: dictionary from (node_id, control_state) to Q(h) and/or active state
 """
-@kwdef struct TabulatedRatingCurve{C} <: AbstractParameterNode
+@kwdef struct TabulatedRatingCurve{C} <: AbstractConnectorNode
     node_id::Vector{NodeID}
     inflow_edge::Vector{EdgeMetadata}
     outflow_edges::Vector{Vector{EdgeMetadata}}
@@ -309,7 +311,7 @@ resistance: the resistance to flow; `Q_unlimited = Δh/resistance`
 max_flow_rate: the maximum flow rate allowed through the node; `Q = clamp(Q_unlimited, -max_flow_rate, max_flow_rate)`
 control_mapping: dictionary from (node_id, control_state) to resistance and/or active state
 """
-@kwdef struct LinearResistance <: AbstractParameterNode
+@kwdef struct LinearResistance <: AbstractConnectorNode
     node_id::Vector{NodeID}
     inflow_edge::Vector{EdgeMetadata}
     outflow_edge::Vector{EdgeMetadata}
@@ -357,7 +359,7 @@ Requirements:
 * profile_slope >= 0
 * (profile_width == 0) xor (profile_slope == 0)
 """
-@kwdef struct ManningResistance <: AbstractParameterNode
+@kwdef struct ManningResistance <: AbstractConnectorNode
     node_id::Vector{NodeID}
     inflow_edge::Vector{EdgeMetadata}
     outflow_edge::Vector{EdgeMetadata}
@@ -425,7 +427,7 @@ max_flow_rate: The maximum flow rate of the pump
 control_mapping: dictionary from (node_id, control_state) to target flow rate
 is_pid_controlled: whether the flow rate of this pump is governed by PID control
 """
-@kwdef struct Pump{T} <: AbstractParameterNode
+@kwdef struct Pump{T} <: AbstractConnectorNode
     node_id::Vector{NodeID}
     inflow_edge::Vector{EdgeMetadata} = []
     outflow_edges::Vector{Vector{EdgeMetadata}} = []
@@ -478,7 +480,7 @@ max_flow_rate: The maximum flow rate of the outlet
 control_mapping: dictionary from (node_id, control_state) to target flow rate
 is_pid_controlled: whether the flow rate of this outlet is governed by PID control
 """
-@kwdef struct Outlet{T} <: AbstractParameterNode
+@kwdef struct Outlet{T} <: AbstractConnectorNode
     node_id::Vector{NodeID}
     inflow_edge::Vector{EdgeMetadata} = []
     outflow_edges::Vector{Vector{EdgeMetadata}} = []

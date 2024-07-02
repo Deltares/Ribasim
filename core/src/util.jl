@@ -1,3 +1,6 @@
+const EMPTY_BASIN_THRESHOLD_LOW = 1.0
+const EMPTY_BASIN_THRESHOLD_HIGH = 10.0
+
 "Get the package version of a given module"
 function pkgversion(m::Module)::VersionNumber
     version = Base.pkgversion(Ribasim)
@@ -360,20 +363,11 @@ function reduction_factor(x::T, threshold::Real)::T where {T <: Real}
     end
 end
 
-"If id is a Basin with storage below the threshold, return a reduction factor != 1"
-function low_storage_factor(
-    storage::AbstractVector{T},
-    id::NodeID,
-    threshold::Real,
-)::T where {T <: Real}
-    if id.type == NodeType.Basin
-        reduction_factor(storage[id.idx], threshold)
-    else
-        one(T)
-    end
+function empty_basin_factor(id::NodeID, basin::Basin, q::T)::T where {T}
+    return id.type == NodeType.Basin && basin.is_empty[id.idx] ? zero(T) : one(T)
 end
 
-"""Whether the given node node is flow constraining by having a maximum flow rate."""
+"""Whether the given node is flow constraining by having a maximum flow rate."""
 is_flow_constraining(node::AbstractParameterNode) = hasfield(typeof(node), :max_flow_rate)
 
 """Whether the given node is flow direction constraining (only in direction of edges)."""
@@ -727,4 +721,24 @@ end
 
 function basin_areas(basin::Basin, state_idx::Int)
     return basin.level_to_area[state_idx].u
+end
+
+function fields_of_type(p::Parameters; type = AbstractDemandNode)
+    return (getfield(p, name) for name in propertynames(p) if getfield(p, name) isa type)
+end
+
+function get_fractional_flow_connected_basin_idxs(
+    graph::MetaGraph,
+    id::NodeID,
+)::Vector{Int32}
+    basin_idxs = Int32[]
+    for id_out in outflow_ids(graph, id)
+        if id_out.type == NodeType.FractionalFlow
+            id_past_ff = outflow_id(graph, id_out)
+            if id_past_ff.type == NodeType.Basin
+                push!(basin_idxs, id_past_ff.idx)
+            end
+        end
+    end
+    return basin_idxs
 end

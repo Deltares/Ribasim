@@ -172,7 +172,7 @@ function continuous_control!(
         end
 
         id_inflow = inflow_id(graph, controlled_node_id)
-        factor_basin = low_storage_factor(storage, id_inflow, 10.0)
+        factor_basin = empty_basin_factor(id_inflow, p.basin, first(u))
 
         factor = factor_basin * factor_outlet
         flow_rate = 0.0
@@ -312,7 +312,7 @@ function formulate_flow!(
 
         # Smoothly let abstraction go to 0 as the source basin dries out
         inflow_id = inflow_edge.edge[1]
-        factor_basin = low_storage_factor(storage, inflow_id, 10.0)
+        factor_basin = empty_basin_factor(inflow_id, p.basin, q)
         q *= factor_basin
 
         # Smoothly let abstraction go to 0 as the source basin
@@ -356,9 +356,9 @@ function formulate_flow!(
 
             # add reduction_factor on highest level
             if q > 0
-                q *= low_storage_factor(storage, inflow_id, 10.0)
+                q *= empty_basin_factor(inflow_id, p.basin, q)
             else
-                q *= low_storage_factor(storage, outflow_id, 10.0)
+                q *= empty_basin_factor(outflow_id, p.basin, q)
             end
 
             set_flow!(graph, inflow_edge, q)
@@ -386,8 +386,9 @@ function formulate_flow!(
         upstream_basin_id = upstream_edge.edge[1]
 
         if active[id.idx]
-            factor = low_storage_factor(storage, upstream_basin_id, 10.0)
-            q = factor * table[id.idx](get_level(p, upstream_basin_id, t; storage)[2])
+            q = table[id.idx](get_level(p, upstream_basin_id, t; storage)[2])
+            factor = empty_basin_factor(upstream_basin_id, p.basin, q)
+            q *= factor
         else
             q = 0.0
         end
@@ -555,10 +556,9 @@ function formulate_flow!(
     storage::AbstractVector,
     t::Number,
 )::Nothing
-    (; graph, basin) = p
+    (; graph) = p
 
-    for (node_id, inflow_edge, outflow_edges, active, flow_rate, is_pid_controlled) in zip(
-        pump.node_id,
+    for (inflow_edge, outflow_edges, active, flow_rate, is_pid_controlled) in zip(
         pump.inflow_edge,
         pump.outflow_edges,
         pump.active,
@@ -570,7 +570,7 @@ function formulate_flow!(
         end
 
         inflow_id = inflow_edge.edge[1]
-        factor = low_storage_factor(storage, inflow_id, 10.0)
+        factor = empty_basin_factor(inflow_id, p.basin, flow_rate)
         q = flow_rate * factor
 
         set_flow!(graph, inflow_edge, q)
@@ -591,7 +591,6 @@ function formulate_flow!(
     (; graph) = p
 
     for (
-        node_id,
         inflow_edge,
         outflow_edges,
         active,
@@ -599,7 +598,6 @@ function formulate_flow!(
         is_pid_controlled,
         min_crest_level,
     ) in zip(
-        outlet.node_id,
         outlet.inflow_edge,
         outlet.outflow_edges,
         outlet.active,
@@ -613,7 +611,7 @@ function formulate_flow!(
 
         inflow_id = inflow_edge.edge[1]
         q = flow_rate
-        q *= low_storage_factor(storage, inflow_id, 10.0)
+        q *= empty_basin_factor(inflow_id, p.basin, q)
 
         # No flow of outlet if source level is lower than target level
         # TODO support multiple outflows to FractionalFlow, or refactor FractionalFlow
