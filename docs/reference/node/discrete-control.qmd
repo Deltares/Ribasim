@@ -57,9 +57,9 @@ weight               | Float64  | -       | (optional, default 1.0)
 look_ahead           | Float64  | $s$     | Only on transient boundary conditions, non-negative (optional, default 0.0).
 
 These variables can be listened to:
-- The level of a basin
+- The level of a Basin
 - The level of a LevelBoundary (supports look ahead)
-- The flow through one of these node types: Pump, Outlet, TabulatedRatingCurve, LinearResistance, ManningResistance
+- The flow  rate through one of these node types: Pump, Outlet, TabulatedRatingCurve, LinearResistance, ManningResistance
 - The flow rate of a FlowBoundary (supports look ahead)
 
 ## Condition
@@ -72,7 +72,7 @@ $$
 
 Multiple conditions with different `greater_than` values can be defined on the same compound_variable.
 
-Note the strict inequality '$>$' in the equation above. This means for instance that if a simulation starts with a comound variable exactly at the `greater_than` value, the condition is false.
+Note the strict inequality '$>$' in the equation above. This means for instance that if a simulation starts with a compound variable exactly at the `greater_than` value, the condition is false.
 
 column               | type     | unit    | restriction
 -------------------- | -------- | ------- | -----------

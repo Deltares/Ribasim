@@ -476,6 +476,11 @@ def level_range_model() -> Model:
 
 
 def connector_node_flow_condition_model() -> Model:
+    """
+    Set up a minimal model with discrete control with a condition on
+    the flow through a connector node.
+    """
+
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",

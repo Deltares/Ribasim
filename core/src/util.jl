@@ -605,7 +605,7 @@ function get_variable_ref(
     elseif variable == "flow_rate" && listen_node_id.type != NodeType.FlowBoundary
         # FlowBoundary flow_rate can also be listened to but this is handled differently,
         # because it supports look ahead
-        listen_node_type = string(listen_node_id.type)
+        listen_node_type = listen_node_id.type
         if listen_node_type ∉ conservative_nodetypes
             errors = true
             @error "Cannot listen to flow_rate of $listen_node_id, the node type must be one of $conservative_node_types"
