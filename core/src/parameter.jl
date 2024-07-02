@@ -79,12 +79,14 @@ Store information for a subnetwork used for allocation.
 
 subnetwork_id: The ID of this allocation network
 capacity: The capacity per edge of the allocation network, as constrained by nodes that have a max_flow_rate
+flow_priority: The flows over all the edges in the subnetwork for a certain priority (used for allocation_flow output)
 problem: The JuMP.jl model for solving the allocation problem
 Δt_allocation: The time interval between consecutive allocation solves
 """
 @kwdef struct AllocationModel
     subnetwork_id::Int32
     capacity::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}}
+    flow_priority::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}}
     problem::JuMP.Model
     Δt_allocation::Float64
 end
