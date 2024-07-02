@@ -528,6 +528,11 @@ node_id: node ID of the Terminal node
     node_id::Vector{NodeID}
 end
 
+struct PreallocationRef{T}
+    vector::T
+    index::Int
+end
+
 """
 The data for a single compound variable
 node_id:: The ID of the DiscreteControl that listens to this variable
@@ -535,12 +540,12 @@ subvariables: data for one single subvariable
 greater_than: the thresholds this compound variable will be
     compared against
 """
-@kwdef struct CompoundVariable
+@kwdef struct CompoundVariable{T}
     node_id::NodeID
     subvariables::Vector{
         @NamedTuple{
             listen_node_id::NodeID,
-            variable_ref::Base.RefArray{Float64, Vector{Float64}, Nothing},
+            variable_ref::PreallocationRef{T},
             variable::String,
             weight::Float64,
             look_ahead::Float64,
@@ -581,6 +586,14 @@ record: Namedtuple with discrete control information for results
         truth_state = String[],
         control_state = String[],
     )
+end
+
+@wkdef struct ContinuousControl <: AbstractParameterNode
+    node_id::Vector{NodeID}
+    compound_variable::Vector{CompoundVariable}
+    logic::Vector{Vector{Tuple{Int, String}}}
+    target_refs::Vector{Vector{PreallocationRef}}
+    relationship::Vector{ScalarInterpolation}
 end
 
 """
@@ -724,6 +737,7 @@ const ModelGraph{T} = MetaGraph{
     outlet::Outlet{T}
     terminal::Terminal
     discrete_control::DiscreteControl
+    continuous_control::ContinuousControl
     pid_control::PidControl{T}
     user_demand::UserDemand
     level_demand::LevelDemand
