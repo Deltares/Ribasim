@@ -2,7 +2,7 @@ package patches.buildTypes
 
 import jetbrains.buildServer.configs.kotlin.*
 import jetbrains.buildServer.configs.kotlin.BuildType
-import jetbrains.buildServer.configs.kotlin.buildSteps.script
+import jetbrains.buildServer.configs.kotlin.buildSteps.powerShell
 import jetbrains.buildServer.configs.kotlin.ui.*
 
 /*
@@ -16,10 +16,12 @@ create(RelativeId("Ribasim_Windows"), BuildType({
     description = "Temporary build to run on a failing agent"
 
     steps {
-        script {
+        powerShell {
             name = "Reset permissions"
             id = "Reset_permissions"
-            scriptContent = "icacls %teamcity.agent.jvm.user.home%/.julia/artifacts /q /c /t /reset"
+            scriptMode = script {
+                content = "icacls ~/.julia/artifacts /q /c /t /reset"
+            }
         }
     }
 }))
