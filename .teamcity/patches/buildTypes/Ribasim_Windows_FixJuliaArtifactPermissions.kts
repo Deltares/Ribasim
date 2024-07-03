@@ -19,7 +19,7 @@ create(RelativeId("Ribasim_Windows"), BuildType({
         script {
             name = "Reset permissions"
             id = "Reset_permissions"
-            scriptContent = "icacls %env.HOMEPATH%/.julia/artifacts /q /c /t /reset"
+            scriptContent = "icacls %teamcity.agent.jvm.user.home%/.julia/artifacts /q /c /t /reset"
         }
     }
 }))
