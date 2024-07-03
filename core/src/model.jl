@@ -85,6 +85,10 @@ function Model(config::Config)::Model
             error("Invalid minimum crest level of outlet")
         end
 
+        if !valid_tabulated_curve_level(graph, tabulated_rating_curve, basin)
+            error("Invalid level of tabulated rating curve")
+        end
+
         # tell the solver to stop when new data comes in
         tstops = Vector{Float64}[]
         for schema_version in [
