@@ -114,6 +114,7 @@ function Model(config::Config)::Model
     # Integrals for PID control
     integral = zeros(length(parameters.pid_control.node_id))
     u0 = ComponentVector{Float64}(; storage, integral)
+    du0 = zero(u0)
     # for Float32 this method allows max ~1000 year simulations without accuracy issues
     t_end = seconds_since(config.endtime, config.starttime)
     @assert eps(t_end) < 3600 "Simulation time too long"
@@ -125,7 +126,8 @@ function Model(config::Config)::Model
     tstops = sort(unique(vcat(tstops...)))
     adaptive, dt = convert_dt(config.solver.dt)
 
-    jac_prototype = config.solver.sparse ? get_jac_prototype(parameters) : nothing
+    jac_prototype =
+        config.solver.sparse ? get_jac_prototype(parameters, t0, du0, u0) : nothing
     RHS = ODEFunction(water_balance!; jac_prototype)
 
     @timeit_debug to "Setup ODEProblem" begin
@@ -139,7 +141,7 @@ function Model(config::Config)::Model
     # Run water_balance! before initializing the integrator. This is because
     # at this initialization the discrete control callback is called for the first
     # time which depends on the flows formulated in water_balance!
-    water_balance!(copy(u0), u0, parameters, t0)
+    water_balance!(du0, u0, parameters, t0)
 
     # Initialize the integrator, providing all solver options as described in
     # https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/

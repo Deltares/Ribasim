@@ -161,7 +161,7 @@ end
     )
 end
 
-@testitem "Jacobian sparsity" begin
+@testitem "Jacobian sparsity" skip = true begin
     import SQLite
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")

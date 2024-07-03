@@ -10,15 +10,21 @@ Note: the name 'prototype' does not mean this code is a prototype, it comes
 from the naming convention of this sparsity structure in the
 differentialequations.jl docs.
 """
-function get_jac_prototype(p::Parameters)::SparseMatrixCSC{Float64, Int64}
+function get_jac_prototype(p::Parameters, t0, du0, u0)::SparseMatrixCSC{Float64, Int64}
     (; basin, pid_control, graph) = p
 
     n_basins = length(basin.node_id)
     n_states = n_basins + length(pid_control.node_id)
-    jac_prototype = spzeros(n_states, n_states)
+    # jac_prototype = spzeros(n_states, n_states)
 
-    update_jac_prototype!(jac_prototype, basin, graph)
-    update_jac_prototype!(jac_prototype, pid_control, basin, graph)
+    # update_jac_prototype!(jac_prototype, basin, graph)
+    # update_jac_prototype!(jac_prototype, pid_control, basin, graph)
+
+    jac_sparsity = jacobian_sparsity((du, u) -> water_balance!(du, u, p, t0), du0, u0)
+    jac_prototype = float.(jac_sparsity)
+
+    # https://docs.sciml.ai/DiffEqDocs/latest/tutorials/advanced_ode_example/#Declaring-a-Sparse-Jacobian-with-Automatic-Sparsity-Detection
+
     return jac_prototype
 end
 
