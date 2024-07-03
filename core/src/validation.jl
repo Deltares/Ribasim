@@ -441,7 +441,7 @@ function valid_demand(
     return !errors
 end
 
-function valid_outlet_crest_level(graph::MetaGraph, outlet::Outlet, basin:Basin)::Bool
+function valid_outlet_crest_level(graph::MetaGraph, outlet::Outlet, basin::Basin)::Bool
     errors = false
     for (id, crest) in zip(outlet.node_id,outlet.min_crest_level)
         id_in = inflow_id(graph, id)
@@ -457,18 +457,19 @@ function valid_outlet_crest_level(graph::MetaGraph, outlet::Outlet, basin:Basin)
     return !errors
 end
 
-function valid_tabulated_rating_curve_level(graph::MetaGraph, tabulated_rating_curve::TabulatedRatingCurve)::Bool
+function valid_tabulated_curve_level(graph::MetaGraph, tabulated_rating_curve::TabulatedRatingCurve, basin::Basin)::Bool
     errors = false
-    for (id, level) in zip(tabulated_rating_curve.node_id, tabulated_rating_curve.table)
+    for (id, table) in zip(tabulated_rating_curve.node_id, tabulated_rating_curve.table)
         id_in = inflow_id(graph, id)
         if id_in.type == NodeType.Basin
             basin_bottom_level = basin_bottom(basin, id_in)
-            if level[1] <= basin_bottom_level[2]
+            if table.u[1] < basin_bottom_level[2]
                 @error "One of levels in tabulated rating curve $id is lower than bottom of upstream basin $id_in"
                 errors = true
             end
         end
     end
+    return !errors
 end
 
 function valid_tabulated_rating_curve(node_id::NodeID, table::StructVector)::Bool
