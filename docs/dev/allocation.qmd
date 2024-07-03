@@ -6,19 +6,18 @@ title: "Allocation"
 
 This is an object storing all information about allocation.
 
-field                    |  description
------------------        |  -----------
-
-subnetwork_ids           | The unique sorted allocation network IDs
-allocation_models        | The allocation models for the main network and subnetworks corresponding to subnetwork_ids
-main_network_connections | (from_id, to_id) from the main network to the subnetwork per subnetwork
-priorities               | All used priority values.
-subnetwork_demands       | The demand of an edge from the main network to a subnetwork
-subnetwork_allocateds    | The allocated flow of an edge from the main network to a subnetwork
-mean_input_flows         | Flows averaged over Δt_allocation over edges that are allocation sources
-mean_realized_flows      | Flows averaged over Δt_allocation over edges that realize a demand
-record_demand            | A record of demands and allocated flows for nodes that have these
-record_flow              | A record of all flows computed by allocation optimization, eventually saved to output file
+|field                    |  description|
+|------------ | -------------------------- |
+|subnetwork_ids           | The unique sorted allocation network IDs|
+|allocation_models        | The allocation models for the main network and subnetworks corresponding to subnetwork_ids|
+|main_network_connections | (from_id, to_id) from the main network to the subnetwork per subnetwork|
+|priorities               | All used priority values.|
+|subnetwork_demands       | The demand of an edge from the main network to a subnetwork|
+|subnetwork_allocateds    | The allocated flow of an edge from the main network to a subnetwork|
+|mean_input_flows         | Flows averaged over Δt_allocation over edges that are allocation sources|
+|mean_realized_flows      | Flows averaged over Δt_allocation over edges that realize a demand|
+|record_demand            | A record of demands and allocated flows for nodes that have these|
+|record_flow              | A record of all flows computed by allocation optimization, eventually saved to output file|
 
 # `JuMP.jl` problem interaction
 
@@ -30,56 +29,44 @@ For each subnetwork, a allocation problem is made, which is stored in the `alloc
 ## Data processing
 ### Deriving edge capacities
 
-Obtaining the capacities of all the flow edges in subnetwork. The capacity of an edge is given by the smallest `max_flow_rate` of the nodes connected to the edges, if these nodes have such a value. The capacities are stored in a `SparseArray` object from `JuMP.jl` called `capacities`, indexed by a tuple of node IDs.
+Edge capacities are important constraints in the optimization problem. Obtaining the capacities of all the flow edges in subnetwork. The capacity of an edge is given by the smallest `max_flow_rate` of the nodes connected to the edges, if these nodes have such a value. The capacities are stored in a `SparseArray` object from `JuMP.jl` called `capacities`, indexed by a tuple of node IDs.
 
-The function `get_capacity` obtains the capacities given a subnetwork ID and the Ribasim model parameters `p`, if the sources of the subnetwork are valid (checked in `valid_sources`).
+The function `get_capacity` obtains the capacities given a subnetwork ID and the Ribasim model parameters `p`, if the sources of the subnetwork are valid (checked in function `valid_sources`).
 
 ### Handling the connection between the main network and subnetworks
-function find_subnetwork_connetions will find the edges connected to the main network and a subnetwork. `subnetwork_demands` and `subnetwork_allocateds` will be created.
+function `find_subnetwork_connetions` finds the edges connected to the main network and a subnetwork. `subnetwork_demands` and `subnetwork_allocateds` will be created.
 `main_network_connection` is a vector of edges that connect a subnetwork with the main network.
 
 ## Optimization problem
 ### Setting up optimization variables
 There are three types of variables in the optimization problems:
+
 - flows between the edges in allocation model
 - flows in and out of a basin with a level demand
 - flows in and out of nodes that have a buffer, which are nodes that have a flow demand or have fractional flow outneighbors
 
-In the code below, flow edges are retracted from capacity array. And variable named by `F($startnode, $endnode)` are created.
+To add variable of flow, In the function `add_variables_flow`, flow edges are retracted from capacity array. And variable named by `F($startnode, $endnode)` are created.
 
 ```julia
-function add_variables_flow!(
-    problem::JuMP.Model,
-    capacity::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}},
-)::Nothing
-    edges = keys(capacity.data)
-    problem[:F] = JuMP.@variable(problem, F[edge = edges] >= 0.0)
-    return nothing
-end
+edges = keys(capacity.data)
+problem[:F] = JuMP.@variable(problem, F[edge = edges] >= 0.0)
 ```
 
-In the following code block, variable that represent flows of thoes basins that connected with level demand are defined. The variable is named `F_basin_in` if basin supplied by the basins with a level demand and `F_basin_out` if consumed by a level demand.
+In the function `add_variables_basin`, variable that represent flows of thoes basins that connected with level demand are defined.
+Part of the function is shown in the code block below.
+The variable is named `F_basin_in` if basin supplied by the basins with a level demand and `F_basin_out` if consumed by a level demand.
 
 ```julia
-function add_variables_basin!(
-    problem::JuMP.Model,
-    p::Parameters,
-    subnetwork_id::Int32,
-)::Nothing
-    (; graph) = p
-
-    # Get the node IDs from the subnetwork for basins that have a level demand
-    node_ids_basin = [
-        node_id for
-        node_id in graph[].node_ids[subnetwork_id] if graph[node_id].type == :basin &&
-        has_external_demand(graph, node_id, :level_demand)[1]
-    ]
-    problem[:F_basin_in] =
-        JuMP.@variable(problem, F_basin_in[node_id = node_ids_basin,] >= 0.0)
-    problem[:F_basin_out] =
-        JuMP.@variable(problem, F_basin_out[node_id = node_ids_basin,] >= 0.0)
-    return nothing
-end
+# Get the node IDs from the subnetwork for basins that have a level demand
+node_ids_basin = [
+    node_id for
+    node_id in graph[].node_ids[subnetwork_id] if graph[node_id].type == :basin &&
+    has_external_demand(graph, node_id, :level_demand)[1]
+]
+problem[:F_basin_in] =
+    JuMP.@variable(problem, F_basin_in[node_id = node_ids_basin,] >= 0.0)
+problem[:F_basin_out] =
+    JuMP.@variable(problem, F_basin_out[node_id = node_ids_basin,] >= 0.0)
 ```
 
 The last set of optimization variables are the flows with  flow demand or fractional flow outneighbors. It is defined in a similar way to the second set of variables.
@@ -91,17 +78,18 @@ Other constrains are capacity, `source_user`, `source`, `flow_conservation`, `fr
 
 For each set of constrains, a function named `add_constrains_[constrains name]` is created.
 
-Take `add_constraints_user_source` as an example, the node that is relevant to the constrains are filtered. Then a set of constrains are added by calling JuMP.`@`constraint.
+Take `add_constraints_user_source` as an example, the node that is relevant to the constrains are filtered.
+Then a set of constrains are added by calling JuMP.`@`constraint.
 
 ```julia
-    node_ids_user = [node_id for node_id in node_ids if node_id.type == NodeType.UserDemand]
+node_ids_user = [node_id for node_id in node_ids if node_id.type == NodeType.UserDemand]
 
-    problem[:source_user] = JuMP.@constraint(
-        problem,
-        [node_id = node_ids_user],
-        F[(node_id, outflow_id(graph, node_id))] <= 0.0,
-        base_name = "source_user"
-    )
+problem[:source_user] = JuMP.@constraint(
+    problem,
+    [node_id = node_ids_user],
+    F[(node_id, outflow_id(graph, node_id))] <= 0.0,
+    base_name = "source_user"
+)
 ```
 
 # Optimization
@@ -113,41 +101,57 @@ The quadratic terms are defined with function `add_objective_term`.
 
 In `set_objective_priority`, it set objective function for a given priority.
 First it treat subnetwork as user demand and add the quadratic terms of main network.
-Then it loop over all the edge in allocation. Based on the type of the node the edge pointing to (user demand or flow demand), it adds the corresponding quadratic terms.
+Then it loop over all the edge in allocation.
+Based on the type of the node the edge pointing to (user demand or flow demand), it adds the corresponding quadratic terms.
 Finally, it does same to the edge that start from level demand node.
 
 ### Setting the constraints and capacities
-In function `set_initial_values` capacities and demands are initialized. Source, edge, basin, buffer and returnflow are set to the corresponding initial values.
+In the function `set_initial_values` capacities and demands are initialized. As shown below, these functions set the capacities of source, edge, basin, buffer and demands to the corresponding initial values.
 ```julia
-function set_initial_values!(
-    allocation_model::AllocationModel,
-    p::Parameters,
-    u::ComponentVector,
-    t::Float64,
-)::Nothing
-    set_initial_capacities_source!(allocation_model, p)
-    set_initial_capacities_edge!(allocation_model, p)
-    set_initial_capacities_basin!(allocation_model, p, u, t)
-    set_initial_capacities_buffer!(allocation_model)
-    set_initial_capacities_returnflow!(allocation_model)
+set_initial_capacities_source!(allocation_model, p)
+set_initial_capacities_edge!(allocation_model, p)
+set_initial_capacities_basin!(allocation_model, p, u, t)
+set_initial_capacities_buffer!(allocation_model)
+set_initial_capacities_returnflow!(allocation_model)
 
-    set_initial_demands_user!(allocation_model, p, t)
-    set_initial_demands_level!(allocation_model, u, p, t)
-    set_initial_demands_flow!(allocation_model, p, t)
-    return nothing
+set_initial_demands_user!(allocation_model, p, t)
+set_initial_demands_level!(allocation_model, u, p, t)
+set_initial_demands_flow!(allocation_model, p, t)
+```
+
+These capacities determine the constraints of the optimization problem.
+Take `set_initial_capacities_source` as an example, the right-hand-side value of the `source_constraints` are set to the `source_capacity`.
+
+```julia
+for edge_metadata in values(graph.edge_data)
+    (; edge) = edge_metadata
+    if graph[edge...].subnetwork_id_source == subnetwork_id
+        # If it is a source edge for this allocation problem
+        if edge ∉ main_network_source_edges
+            # Reset the source to the averaged flow over the last allocation period
+            source_capacity = mean_input_flows[edge][]
+            JuMP.set_normalized_rhs(
+                source_constraints[edge],
+                # It is assumed that the allocation procedure does not have to be differentiated.
+                source_capacity,
+            )
+        end
+    end
 end
 ```
 
-Apart from the `set_initial_` function above, capacities of `inlet` is the allocated capacities from main network to subnetwork. Source constrains will be adapted based on the optimization type. This function is called separately and thus not part of the `set_initial_values`.
+Apart from the `set_initial_` function above, capacities of `inlet` is the allocated capacities from main network to subnetwork.
+Source constrains will be adapted based on the optimization type.
+This function is called separately and thus not part of the `set_initial_values`.
 
 ## Looping over priorities
 ### Updating capacities
 While optimizing a given priority, `set_capacities_flow_demand_outflow` update constraints `flow_demand_outflow`.
 If the current priority is the same as the priority of the flow demand, constraints will be infinite, otherwise 0.
 
-And optimization objective function is updated based on the new flow demand and the given priority. The optimization solver is called.
+Optimization objective function is updated based on the new flow demand and the given priority and the optimization solver is called.
 
-If a solution is found by the solver, the allocation result will be updated. And it will be saved, so the physical layer can make use of it.
+If a solution is found by the solver, the allocation result will be updated. And it will be [saved](allocation.qmd#output-data), so the [physical layer](allocation.qmd#communicating-to-the-physical-layer) can make use of it.
 
 Lastly, capacities and demands are updated, as shown below:
 
