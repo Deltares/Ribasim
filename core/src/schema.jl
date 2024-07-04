@@ -258,8 +258,8 @@ end
     look_ahead::Union{Missing, Float64}
 end
 
-@version ContinuousControlRelationShipV1 begin
-    realtionship_id::Int32
+@version ContinuousControlRelationshipV1 begin
+    relationship_id::Int32
     input::Float64
     output::Float64
 end

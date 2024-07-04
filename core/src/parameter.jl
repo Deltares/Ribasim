@@ -588,7 +588,7 @@ record: Namedtuple with discrete control information for results
     )
 end
 
-@wkdef struct ContinuousControl <: AbstractParameterNode
+@kwdef struct ContinuousControl <: AbstractParameterNode
     node_id::Vector{NodeID}
     compound_variable::Vector{CompoundVariable}
     logic::Vector{Vector{Tuple{Int, String}}}

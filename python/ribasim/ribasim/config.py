@@ -24,6 +24,9 @@ from ribasim.schemas import (
     BasinStaticSchema,
     BasinSubgridSchema,
     BasinTimeSchema,
+    ContinuousControlLogicSchema,
+    ContinuousControlRelationshipSchema,
+    ContinuousControlVariableSchema,
     DiscreteControlConditionSchema,
     DiscreteControlLogicSchema,
     DiscreteControlVariableSchema,
@@ -360,4 +363,19 @@ class FractionalFlow(MultiNodeModel):
     static: TableModel[FractionalFlowStaticSchema] = Field(
         default_factory=TableModel[FractionalFlowStaticSchema],
         json_schema_extra={"sort_keys": ["node_id", "control_state"]},
+    )
+
+
+class ContinuousControl(MultiNodeModel):
+    variable: TableModel[ContinuousControlVariableSchema] = Field(
+        default_factory=TableModel[ContinuousControlVariableSchema],
+        json_schema_extra={"sort_keys": ["node_id"]},
+    )
+    relationship: TableModel[ContinuousControlRelationshipSchema] = Field(
+        default_factory=TableModel[ContinuousControlRelationshipSchema],
+        json_schema_extra={"sort_keys": ["relationship_id", "input"]},
+    )
+    logic: TableModel[ContinuousControlLogicSchema] = Field(
+        default_factory=TableModel[ContinuousControlLogicSchema],
+        json_schema_extra={"sort_keys": ["node_id"]},
     )

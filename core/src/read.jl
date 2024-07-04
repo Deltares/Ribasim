@@ -617,6 +617,26 @@ function Basin(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{Int
     )
 end
 
+# function CompoundVariable()::CompoundVariable
+#     return CompoundVariable(...)
+# end
+
+function parse_compound_variables(
+    db::DB,
+    config::Config,
+    ::Type{T},
+    node_id::Vector{NodeID},
+) where {T}
+    data = load_structvector(db, config, T)
+    compound_variables = Vector{CompoundVariable}[]
+
+    for (i, id) in enimerate(node_id)
+        variable_data = (filter, row -> row.node_id) == id
+
+        compound_variables_node = CompoundVariable[]
+    end
+end
+
 function parse_variables_and_conditions(compound_variable, condition, ids, db)
     compound_variables = Vector{CompoundVariable}[]
     errors = false
