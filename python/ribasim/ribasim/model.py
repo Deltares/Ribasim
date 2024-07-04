@@ -305,14 +305,23 @@ class Model(FileModel):
             to_add["control_node_type"] = "PidControl"
             df_listen_edge = pd.concat([df_listen_edge, to_add])
 
-        # Listen edges from DiscreteControl
-        df_variable = self.discrete_control.variable.df
-        if df_variable is not None:
-            to_add = df_variable[
+        # Listen edges from ContinuousControl and DiscreteControl
+        for table, name in (
+            (self.continuous_control.variable.df, "ContinuousControl"),
+            (self.discrete_control.variable.df, "DiscreteControl"),
+        ):
+            if table is None:
+                continue
+
+            to_add = table[
                 ["node_id", "listen_node_id", "listen_node_type"]
             ].drop_duplicates()
-            to_add.columns = ["control_node_id", "listen_node_id", "listen_node_type"]
-            to_add["control_node_type"] = "DiscreteControl"
+            to_add.columns = [
+                "control_node_id",
+                "listen_node_id",
+                "listen_node_type",
+            ]
+            to_add["control_node_type"] = name
             df_listen_edge = pd.concat([df_listen_edge, to_add])
 
         # Collect geometry data

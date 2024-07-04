@@ -21,6 +21,7 @@ neighbortypes(::Val{:level_boundary}) =
     Set((:linear_resistance, :pump, :outlet, :tabulated_rating_curve))
 neighbortypes(::Val{:linear_resistance}) = Set((:basin, :level_boundary))
 neighbortypes(::Val{:manning_resistance}) = Set((:basin,))
+neighbortypes(::Val{:continuous_control}) = Set((:pump, :outlet))
 neighbortypes(::Val{:discrete_control}) = Set((
     :pump,
     :outlet,
@@ -59,6 +60,7 @@ n_neighbor_bounds_flow(::Val{:Pump}) = n_neighbor_bounds(1, 1, 1, typemax(Int))
 n_neighbor_bounds_flow(::Val{:Outlet}) = n_neighbor_bounds(1, 1, 1, 1)
 n_neighbor_bounds_flow(::Val{:Terminal}) = n_neighbor_bounds(1, typemax(Int), 0, 0)
 n_neighbor_bounds_flow(::Val{:PidControl}) = n_neighbor_bounds(0, 0, 0, 0)
+n_neighbor_bounds_flow(::Val{:ContinuousControl}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_flow(::Val{:DiscreteControl}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_flow(::Val{:UserDemand}) = n_neighbor_bounds(1, 1, 1, 1)
 n_neighbor_bounds_flow(::Val{:LevelDemand}) = n_neighbor_bounds(0, 0, 0, 0)
@@ -78,6 +80,8 @@ n_neighbor_bounds_control(::Val{:Pump}) = n_neighbor_bounds(0, 1, 0, 0)
 n_neighbor_bounds_control(::Val{:Outlet}) = n_neighbor_bounds(0, 1, 0, 0)
 n_neighbor_bounds_control(::Val{:Terminal}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_control(::Val{:PidControl}) = n_neighbor_bounds(0, 1, 1, 1)
+n_neighbor_bounds_control(::Val{:ContinuousControl}) =
+    n_neighbor_bounds(0, 0, 1, typemax(Int))
 n_neighbor_bounds_control(::Val{:DiscreteControl}) =
     n_neighbor_bounds(0, 0, 1, typemax(Int))
 n_neighbor_bounds_control(::Val{:UserDemand}) = n_neighbor_bounds(0, 0, 0, 0)

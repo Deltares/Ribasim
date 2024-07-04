@@ -145,8 +145,9 @@ class MultiNodeModel(NodeModel):
                 existing_member.df if existing_member.df is not None else pd.DataFrame()
             )
             assert table.df is not None
-            table_to_append = table.df.assign(node_id=node_id)
-            setattr(self, member_name, pd.concat([existing_table, table_to_append]))
+            if "node_id" in table.df.columns:
+                table_to_append = table.df.assign(node_id=node_id)
+                setattr(self, member_name, pd.concat([existing_table, table_to_append]))
 
         node_table = node.into_geodataframe(
             node_type=self.__class__.__name__,
