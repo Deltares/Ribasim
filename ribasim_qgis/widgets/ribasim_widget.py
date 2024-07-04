@@ -5,6 +5,7 @@ It ensures the underlying widgets can talk to each other.  It also manages the
 connection to the QGIS Layers Panel, and ensures there is a group for the
 Ribasim layers there.
 """
+
 from __future__ import annotations
 
 from pathlib import Path

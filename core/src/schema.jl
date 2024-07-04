@@ -91,7 +91,6 @@ end
     potential_evaporation::Union{Missing, Float64}
     infiltration::Union{Missing, Float64}
     precipitation::Union{Missing, Float64}
-    urban_runoff::Union{Missing, Float64}
 end
 
 @version BasinTimeV1 begin
@@ -101,7 +100,6 @@ end
     potential_evaporation::Union{Missing, Float64}
     infiltration::Union{Missing, Float64}
     precipitation::Union{Missing, Float64}
-    urban_runoff::Union{Missing, Float64}
 end
 
 @version BasinConcentrationV1 begin

@@ -45,7 +45,6 @@ def local_pidcontrolled_cascade_model():
             potential_evaporation=evaporation,
             infiltration=0.0,
             precipitation=precipitation,
-            urban_runoff=0.0,
         ),
     ]
 
@@ -56,7 +55,6 @@ def local_pidcontrolled_cascade_model():
             potential_evaporation=evaporation,
             infiltration=0.0,
             precipitation=precipitation,
-            urban_runoff=0.0,
         ),
     ]
     basin_time3 = [
@@ -66,7 +64,6 @@ def local_pidcontrolled_cascade_model():
             potential_evaporation=evaporation,
             infiltration=0.0,
             precipitation=precipitation,
-            urban_runoff=0.0,
         ),
     ]
 
@@ -81,7 +78,6 @@ def local_pidcontrolled_cascade_model():
                 potential_evaporation=0.0,
                 infiltration=0.0,
                 precipitation=0.0,
-                urban_runoff=0.0,
             ),
         ],
     )

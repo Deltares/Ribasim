@@ -49,7 +49,6 @@ class BasinStaticSchema(_BaseSchema):
     potential_evaporation: Series[float] = pa.Field(nullable=True)
     infiltration: Series[float] = pa.Field(nullable=True)
     precipitation: Series[float] = pa.Field(nullable=True)
-    urban_runoff: Series[float] = pa.Field(nullable=True)
 
 
 class BasinSubgridSchema(_BaseSchema):
@@ -66,7 +65,6 @@ class BasinTimeSchema(_BaseSchema):
     potential_evaporation: Series[float] = pa.Field(nullable=True)
     infiltration: Series[float] = pa.Field(nullable=True)
     precipitation: Series[float] = pa.Field(nullable=True)
-    urban_runoff: Series[float] = pa.Field(nullable=True)
 
 
 class DiscreteControlConditionSchema(_BaseSchema):
