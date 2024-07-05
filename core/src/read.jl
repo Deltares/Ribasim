@@ -744,21 +744,24 @@ function DiscreteControl(db::DB, config::Config, graph::MetaGraph)::DiscreteCont
     )
 end
 
-function ContinuousControl(db::DB, config::Config)::ContinuousControl
-    compound_variable = load_structvector(db, config, ContinuousControlVariableV1)
+function continuous_control_relationships(db, config, ids)
     relationship = load_structvector(db, config, ContinuousControlRelationshipV1)
-    control_logic = load_structvector(db, config, ContinuousControlLogicV1)
-
-    ids = get_ids(db, "ContinuousControl")
-    node_id = NodeID.(:ContinuousControl, ids, eachindex(ids))
-
-    relationship_ids = unique(relationship.relationship_id)
-
+    errors = false
     # Parse the relationship table
     # Create linear interpolation objects out of the provided relationships
     relationships = ScalarInterpolation[]
-    for relationship_id in relationship_ids
-        relationship_rows = filter(row -> row.relationship_id = relationship_id)
+    controlled_parameters = String[]
+    for id in ids
+        relationship_rows = filter(row -> row.node_id == id, relationship)
+        if length(relationship_rows) < 2
+            @error "There must be at least 2 data points in a ContinuousControl relationship."
+            errors = true
+        elseif length(unique(relationship_rows.controlled_parameter)) !== 1
+            @error "There must be a unique controlled parameter in a ContinuousControl relationship."
+            errors = true
+        else
+            push!(controlled_parameters, first(relationship_rows.controlled_parameter))
+        end
         relationship_itp = LinearInterpolation(
             relationship_rows.output,
             relationship_rows.input;
@@ -768,32 +771,34 @@ function ContinuousControl(db::DB, config::Config)::ContinuousControl
         push!(relationships, relationship_itp)
     end
 
-    # Parse the logic table. References to the target locations for continuous
-    # control are added later, as they are not known yet here
-    logic = Vector{Tuple{Int, String}}[]
-    errors = false
-    for id in ids
-        logics = Tuple{Int, String}[]
-        id_rows = filter(row -> row.node_id == id, control_logic)
-        for row in id_rows
-            if row.relationship_id in relationship_ids
-                relationship_idx = searchsortedfirst(relationship_ids, row.relationship_id)
-                push!(logics, (relationship_idx, row.variable))
-            else
-                @error "relationship ID $(row.relationship_id) not defined in ContinuousControl / Relationship table."
-                errors = true
-            end
-        end
+    return relationships, controlled_parameters, errors
+end
 
-        push!(logic, logics)
-    end
+function ContinuousControl(db::DB, config::Config)::ContinuousControl
+    compound_variable = load_structvector(db, config, ContinuousControlVariableV1)
+
+    ids = get_ids(db, "ContinuousControl")
+    node_id = NodeID.(:ContinuousControl, ids, eachindex(ids))
+
+    relationship, controlled_parameter, errors =
+        continuous_control_relationships(db, config, ids)
 
     target_refs = PreallocationRef[]
 
     # Parse the compound variable table
     compound_variable = CompoundVariable[]
 
-    return ContinuousControl(node_id, compound_variable, logic, target_refs, relationships)
+    if errors
+        error("Errors encountered when parsing ContinuousControl data.")
+    end
+
+    return ContinuousControl(
+        node_id,
+        compound_variable,
+        controlled_parameter,
+        target_refs,
+        relationship,
+    )
 end
 
 function PidControl(db::DB, config::Config, chunk_sizes::Vector{Int})::PidControl

@@ -591,8 +591,8 @@ end
 @kwdef struct ContinuousControl <: AbstractParameterNode
     node_id::Vector{NodeID}
     compound_variable::Vector{CompoundVariable}
-    logic::Vector{Vector{Tuple{Int, String}}}
-    target_refs::Vector{Vector{PreallocationRef}}
+    controlled_parameter::Vector{String}
+    target_refs::Vector{PreallocationRef}
     relationship::Vector{ScalarInterpolation}
 end
 

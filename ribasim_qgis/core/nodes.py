@@ -782,27 +782,9 @@ class ContinuousControlRelationship(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("relationship_id", QVariant.Int),
+            QgsField("node_id", QVariant.Int),
             QgsField("input", QVariant.Double),
             QgsField("output", QVariant.Double),
-        ]
-
-
-class ContinuousControlLogic(Input):
-    @classmethod
-    def input_type(cls) -> str:
-        return "ContinuousControl / logic"
-
-    @classmethod
-    def geometry_type(cls) -> str:
-        return "No Geometry"
-
-    @classmethod
-    def attributes(cls) -> list[QgsField]:
-        return [
-            QgsField("node_id", QVariant.Int),
-            QgsField("relationship_id", QVariant.Int),
-            QgsField("variable", QVariant.String),
         ]
 
 

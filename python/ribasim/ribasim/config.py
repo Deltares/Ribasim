@@ -24,7 +24,6 @@ from ribasim.schemas import (
     BasinStaticSchema,
     BasinSubgridSchema,
     BasinTimeSchema,
-    ContinuousControlLogicSchema,
     ContinuousControlRelationshipSchema,
     ContinuousControlVariableSchema,
     DiscreteControlConditionSchema,
@@ -145,9 +144,8 @@ class MultiNodeModel(NodeModel):
                 existing_member.df if existing_member.df is not None else pd.DataFrame()
             )
             assert table.df is not None
-            if "node_id" in table.df.columns:
-                table_to_append = table.df.assign(node_id=node_id)
-                setattr(self, member_name, pd.concat([existing_table, table_to_append]))
+            table_to_append = table.df.assign(node_id=node_id)
+            setattr(self, member_name, pd.concat([existing_table, table_to_append]))
 
         node_table = node.into_geodataframe(
             node_type=self.__class__.__name__,
@@ -374,9 +372,5 @@ class ContinuousControl(MultiNodeModel):
     )
     relationship: TableModel[ContinuousControlRelationshipSchema] = Field(
         default_factory=TableModel[ContinuousControlRelationshipSchema],
-        json_schema_extra={"sort_keys": ["relationship_id", "input"]},
-    )
-    logic: TableModel[ContinuousControlLogicSchema] = Field(
-        default_factory=TableModel[ContinuousControlLogicSchema],
-        json_schema_extra={"sort_keys": ["node_id"]},
+        json_schema_extra={"sort_keys": ["node_id", "input"]},
     )

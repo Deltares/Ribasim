@@ -69,16 +69,11 @@ class BasinTimeSchema(_BaseSchema):
     urban_runoff: Series[float] = pa.Field(nullable=True)
 
 
-class ContinuousControlLogicSchema(_BaseSchema):
-    node_id: Series[Int32] = pa.Field(nullable=False, default=0)
-    relationship_id: Series[Int32] = pa.Field(nullable=False, default=0)
-    variable: Series[str] = pa.Field(nullable=False)
-
-
 class ContinuousControlRelationshipSchema(_BaseSchema):
-    relationship_id: Series[Int32] = pa.Field(nullable=False, default=0)
+    node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     input: Series[float] = pa.Field(nullable=False)
     output: Series[float] = pa.Field(nullable=False)
+    controlled_parameter: Series[str] = pa.Field(nullable=False)
 
 
 class ContinuousControlVariableSchema(_BaseSchema):

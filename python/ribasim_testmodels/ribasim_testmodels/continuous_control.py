@@ -53,16 +53,25 @@ def outlet_continuous_control_model() -> Model:
         Node(1, Point(2, 1)),
         [
             continuous_control.Variable(
-                node_id=[1],
                 listen_node_type="LinearResistance",
-                listen_node_id=1,
+                listen_node_id=[1],
                 variable="flow_rate",
             ),
             continuous_control.Relationship(
-                relationship_id=1, input=[0.0, 1.0], output=[0.0, 6.0]
+                input=[0.0, 1.0], output=[0.0, 0.6], controlled_parameter="flow_rate"
             ),
-            continuous_control.Logic(
-                node_id=[1], relationship_id=1, variable="flow_rate"
+        ],
+    )
+    model.continuous_control.add(
+        Node(2, Point(2, -1)),
+        [
+            continuous_control.Variable(
+                listen_node_type="LinearResistance",
+                listen_node_id=[1],
+                variable="flow_rate",
+            ),
+            continuous_control.Relationship(
+                input=[0.0, 1.0], output=[0.0, 0.4], controlled_parameter="flow_rate"
             ),
         ],
     )
@@ -74,6 +83,6 @@ def outlet_continuous_control_model() -> Model:
     model.edge.add(model.outlet[1], model.terminal[1])
     model.edge.add(model.outlet[2], model.terminal[2])
     model.edge.add(model.continuous_control[1], model.outlet[1])
-    model.edge.add(model.continuous_control[1], model.outlet[2])
+    model.edge.add(model.continuous_control[2], model.outlet[2])
 
     return model

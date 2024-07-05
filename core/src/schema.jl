@@ -5,7 +5,6 @@
 @schema "ribasim.discretecontrol.logic" DiscreteControlLogic
 @schema "ribasim.continuouscontrol.variable" ContinuousControlVariable
 @schema "ribasim.continuouscontrol.relationship" ContinuousControlRelationship
-@schema "ribasim.continuouscontrol.logic" ContinuousControlLogic
 @schema "ribasim.basin.static" BasinStatic
 @schema "ribasim.basin.time" BasinTime
 @schema "ribasim.basin.profile" BasinProfile
@@ -259,15 +258,10 @@ end
 end
 
 @version ContinuousControlRelationshipV1 begin
-    relationship_id::Int32
+    node_id::Int32
     input::Float64
     output::Float64
-end
-
-@version ContinuousControlLogicV1 begin
-    node_id::Int32
-    relationship_id::Int
-    variable::String
+    controlled_parameter::String
 end
 
 @version PidControlStaticV1 begin
