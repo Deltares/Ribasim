@@ -588,18 +588,27 @@ function NodeID(type::Symbol, value::Integer, p::Parameters)::NodeID
 end
 
 """
-Get a reference to a state(-derived) parameter
+Get a reference to a parameter
 """
 function get_variable_ref(
-    p::Parameters,
-    subvariable::NamedTuple,
-)::Base.RefArray{Float64, Vector{Float64}, Nothing}
-    (; basin) = p
-    (; listen_node_id, variable) = subvariable
+    p::Parameters{T},
+    node_id::NodeID,
+    variable::String;
+    listen::Bool = true,
+)::PreallocationRef{T} where {T}
+    (; basin, graph) = p
 
-    return if listen_node_id.type == NodeType.Basin && variable == "level"
-        level = get_tmp(basin.current_level, 0)
-        Ref(level, listen_node_id.idx)
+    return if node_id.type == NodeType.Basin && variable == "level"
+        PreallocationRef(basin.current_level, node_id.idx)
+    elseif variable == "flow_rate"
+        if listen
+            id_in = inflow_id(graph, node_id)
+            (; flow_idx) = graph[id_in, node_id]
+            PreallocationRef(graph[].flow, flow_idx)
+        else
+            node = getfield(p, snake_case(Symbol(node_id.type)))
+            PreallocationRef(node.flow_rate, node_id.idx)
+        end
     else
         Ref(Float64[], 0)
     end
@@ -609,13 +618,18 @@ end
 Set references to all variables that are listened to by discrete control
 """
 function set_listen_variable_refs!(p::Parameters)::Nothing
-    (; discrete_control) = p
-    for compound_variables in discrete_control.compound_variables
+    (; discrete_control, continuous_control) = p
+    compound_variable_sets =
+        [discrete_control.compound_variables..., continuous_control.compound_variable]
+    for compound_variables in compound_variable_sets
         for compound_variable in compound_variables
             (; subvariables) = compound_variable
             for (j, subvariable) in enumerate(subvariables)
-                subvariables[j] =
-                    @set subvariable.variable_ref = get_variable_ref(p, subvariable)
+                subvariables[j] = @set subvariable.variable_ref = get_variable_ref(
+                    p,
+                    subvariable.listen_node_id,
+                    subvariable.variable,
+                )
             end
         end
     end
@@ -654,6 +668,27 @@ function set_controlled_variable_refs!(p::Parameters)::Nothing
                 end
             end
         end
+    end
+    return nothing
+end
+
+function set_controlled_variable_refs!(
+    p::Parameters,
+    continuous_control::ContinuousControl,
+)::Nothing
+    (; graph) = p
+    (; node_id, target_ref, controlled_parameter) = continuous_control
+    for (i, id) in enumerate(node_id)
+        controlled_node_id = only(outneighbor_labels_type(graph, id, EdgeType.control))
+        push!(
+            target_ref,
+            get_variable_ref(
+                p,
+                controlled_node_id,
+                controlled_parameter[i];
+                listen = false,
+            ),
+        )
     end
     return nothing
 end

@@ -588,11 +588,11 @@ record: Namedtuple with discrete control information for results
     )
 end
 
-@kwdef struct ContinuousControl <: AbstractParameterNode
+@kwdef struct ContinuousControl{T} <: AbstractParameterNode
     node_id::Vector{NodeID}
     compound_variable::Vector{CompoundVariable}
     controlled_parameter::Vector{String}
-    target_refs::Vector{PreallocationRef}
+    target_ref::Vector{PreallocationRef{T}}
     relationship::Vector{ScalarInterpolation}
 end
 
@@ -737,7 +737,7 @@ const ModelGraph{T} = MetaGraph{
     outlet::Outlet{T}
     terminal::Terminal
     discrete_control::DiscreteControl
-    continuous_control::ContinuousControl
+    continuous_control::ContinuousControl{T}
     pid_control::PidControl{T}
     user_demand::UserDemand
     level_demand::LevelDemand

@@ -617,24 +617,33 @@ function Basin(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{Int
     )
 end
 
-# function CompoundVariable()::CompoundVariable
-#     return CompoundVariable(...)
-# end
-
-function parse_compound_variables(
-    db::DB,
-    config::Config,
-    ::Type{T},
-    node_id::Vector{NodeID},
-) where {T}
-    data = load_structvector(db, config, T)
-    compound_variables = Vector{CompoundVariable}[]
-
-    for (i, id) in enimerate(node_id)
-        variable_data = (filter, row -> row.node_id) == id
-
-        compound_variables_node = CompoundVariable[]
+function CompoundVariable(
+    compound_variable_data,
+    node_type::NodeType.T,
+    db::DB;
+    greater_than = Float64[],
+    placeholder_vector = Float64[],
+)::CompoundVariable
+    subvariables = @NamedTuple{
+        listen_node_id::NodeID,
+        variable_ref::PreallocationRef{typeof(placeholder_vector)},
+        variable::String,
+        weight::Float64,
+        look_ahead::Float64,
+    }[]
+    for row in compound_variable_data
+        listen_node_id = NodeID(row.listen_node_type, row.listen_node_id, db)
+        # Placeholder until actual ref is known
+        variable_ref = PreallocationRef(placeholder_vector, 0)
+        variable = row.variable
+        weight = coalesce(row.weight, 1.0)
+        look_ahead = coalesce(row.look_ahead, 0.0)
+        subvariable = (; listen_node_id, variable_ref, variable, weight, look_ahead)
+        push!(subvariables, subvariable)
     end
+
+    node_id = NodeID(node_type, only(unique(compound_variable_data.node_id)), db)
+    return CompoundVariable(node_id, subvariables, greater_than)
 end
 
 function parse_variables_and_conditions(compound_variable, condition, ids, db)
@@ -665,32 +674,12 @@ function parse_variables_and_conditions(compound_variable, condition, ids, db)
                 @error "compound_variable_id $compound_variable_id for $discrete_control_id in condition table but not in variable table"
             else
                 greater_than = condition_group_variable.greater_than
-
-                # Collect subvariable data for this compound variable in
-                # NamedTuples
-                subvariables = NamedTuple[]
-                for i in eachindex(variable_group_variable.variable)
-                    listen_node_id = NodeID(
-                        variable_group_variable.listen_node_type[i],
-                        variable_group_variable.listen_node_id[i],
-                        db,
-                    )
-                    variable = variable_group_variable.variable[i]
-                    weight = coalesce.(variable_group_variable.weight[i], 1.0)
-                    look_ahead = coalesce.(variable_group_variable.look_ahead[i], 0.0)
-                    # Placeholder until actual ref is known
-                    variable_ref = Ref(Float64[], 0)
-                    push!(
-                        subvariables,
-                        (; listen_node_id, variable_ref, variable, weight, look_ahead),
-                    )
-                end
-
                 push!(
                     compound_variables_node,
-                    CompoundVariable(;
-                        node_id = discrete_control_id,
-                        subvariables,
+                    CompoundVariable(
+                        variable_group_variable,
+                        NodeType.DiscreteControl,
+                        db;
                         greater_than,
                     ),
                 )
@@ -774,7 +763,31 @@ function continuous_control_relationships(db, config, ids)
     return relationships, controlled_parameters, errors
 end
 
-function ContinuousControl(db::DB, config::Config)::ContinuousControl
+function continuous_control_compound_variables(
+    db::DB,
+    config::Config,
+    ids,
+    graph::MetaGraph,
+)
+    data = load_structvector(db, config, ContinuousControlVariableV1)
+    compound_variables = CompoundVariable[]
+
+    for id in ids
+        variable_data = filter(row -> row.node_id == id, data)
+        push!(
+            compound_variables,
+            CompoundVariable(
+                variable_data,
+                NodeType.ContinuousControl,
+                db;
+                placeholder_vector = graph[].flow,
+            ),
+        )
+    end
+    compound_variables
+end
+
+function ContinuousControl(db::DB, config::Config, graph::MetaGraph)::ContinuousControl
     compound_variable = load_structvector(db, config, ContinuousControlVariableV1)
 
     ids = get_ids(db, "ContinuousControl")
@@ -782,11 +795,9 @@ function ContinuousControl(db::DB, config::Config)::ContinuousControl
 
     relationship, controlled_parameter, errors =
         continuous_control_relationships(db, config, ids)
+    compound_variable = continuous_control_compound_variables(db, config, ids, graph)
 
-    target_refs = PreallocationRef[]
-
-    # Parse the compound variable table
-    compound_variable = CompoundVariable[]
+    target_refs = PreallocationRef{typeof(graph[].flow)}[]
 
     if errors
         error("Errors encountered when parsing ContinuousControl data.")
@@ -1163,7 +1174,7 @@ function Parameters(db::DB, config::Config)::Parameters
     outlet = Outlet(db, config, graph, chunk_sizes)
     terminal = Terminal(db, config)
     discrete_control = DiscreteControl(db, config, graph)
-    continuous_control = ContinuousControl(db, config)
+    continuous_control = ContinuousControl(db, config, graph)
     pid_control = PidControl(db, config, chunk_sizes)
     user_demand = UserDemand(db, config, graph)
     level_demand = LevelDemand(db, config)
@@ -1198,6 +1209,7 @@ function Parameters(db::DB, config::Config)::Parameters
     set_is_pid_controlled!(p)
     set_listen_variable_refs!(p)
     set_controlled_variable_refs!(p)
+    set_controlled_variable_refs!(p, continuous_control)
 
     # Allocation data structures
     if config.allocation.use_allocation
