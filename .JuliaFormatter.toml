@@ -13,3 +13,5 @@ whitespace_typedefs = true
 
 # And add other options we like:
 separate_kwargs_with_semicolon = true
+
+ignore = [".pixi"]
