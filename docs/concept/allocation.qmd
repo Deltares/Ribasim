@@ -99,8 +99,8 @@ for all $i \in B_S$. Note that the basin demand has only a single priority, so f
 #### Flow magnitude and direction constraints
 Nodes in the Ribasim model that have a `max_flow_rate`, i.e. Pump, Outlet and LinearResistance, put a constraint on the flow through that node. Some nodes only allow flow in one direction, like Pump, Outlet and TabulatedRatingCurve.
 
-#### FractionalFlow and UserDemand return flows
-Both FractionalFlow and UserDemand nodes dictate proportional relationships between flows over edges in the subnetwork. UserDemands have a return factor $0 \le r_i \le 1, i \in U_S$, and FractionalFlow nodes have an associated fraction $f_j$ which can be updated by DiscreteControl.
+#### UserDemand return flows
+UserDemand nodes dictate proportional relationships between flows over edges in the subnetwork. The return factor is given by $0 \le r_i \le 1, i \in U_S$.
 
 ## The subnetwork
 The subnetwork consists of a set of nodes $S \subset V$ and edges
@@ -225,13 +225,6 @@ Here we use that each UserDemand node in the allocation network has a unique  ou
 $$
     r_i \cdot F_{ki}, \quad V_S^{\text{in}}(i) = \{k\}.
 $$
-
-- Fractional flow: Let $L_S \subset V_S$ be the set of nodes in the max flow graph with fractional flow outneighbors, and $f_j$ the flow fraction associated with fractional flow node $j \in V_S$. Then
-$$
-    F_{ij} \le f_j \sum_{k\in V^\text{in}_S(i)} F_{ki} \qquad
-    \forall i \in L_S, \;
-    j \in V_S^\text{out}(i).
-$$ {#eq-fractionalflowconstraint}
 
 - Flow sign: Furthermore there are the non-negativity constraints for the flows and allocations, see [The optimization variables](/concept/allocation.qmd#the-optimization-variables).
 

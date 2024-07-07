@@ -377,39 +377,6 @@ function get_main_network_connections(
     return
 end
 
-"""
-Update the fractional flow fractions in an allocation problem.
-"""
-function set_fractional_flow_in_allocation!(
-    p::Parameters,
-    node_id::NodeID,
-    fraction::Number,
-)::Nothing
-    (; graph) = p
-
-    subnetwork_id = graph[node_id].subnetwork_id
-    # Get the allocation model this fractional flow node is in
-    allocation_model = get_allocation_model(p, subnetwork_id)
-    if !isnothing(allocation_model)
-        problem = allocation_model.problem
-        # The allocation edge which jumps over the fractional flow node
-        edge = (inflow_id(graph, node_id), outflow_id(graph, node_id))
-        if haskey(graph, edge...)
-            # The constraint for this fractional flow node
-            if edge in keys(problem[:fractional_flow])
-                constraint = problem[:fractional_flow][edge]
-
-                # Set the new fraction on all inflow terms in the constraint
-                for inflow_id in inflow_ids_allocation(graph, edge[1])
-                    flow = problem[:F][(inflow_id, edge[1])]
-                    JuMP.set_normalized_coefficient(constraint, flow, -fraction)
-                end
-            end
-        end
-    end
-    return nothing
-end
-
 function set_control_params!(p::Parameters, node_id::NodeID, control_state::String)::Nothing
     (; discrete_control, allocation) = p
     (; control_mappings) = discrete_control
@@ -419,12 +386,6 @@ function set_control_params!(p::Parameters, node_id::NodeID, control_state::Stri
     apply_parameter_update!.(scalar_update)
     apply_parameter_update!.(itp_update)
 
-    # Update fractional flow in allocation if this node is a FractionalFlow node
-    # and allocation is active
-    if node_id.type == NodeType.FractionalFlow && is_active(allocation)
-        @assert only(scalar_update).name == :fraction
-        set_fractional_flow_in_allocation!(p, node_id, only(scalar_update).value)
-    end
     return nothing
 end
 

@@ -7,7 +7,6 @@ from ribasim.nodes import (
     basin,
     discrete_control,
     flow_boundary,
-    fractional_flow,
     pump,
     tabulated_rating_curve,
 )
@@ -30,74 +29,6 @@ def invalid_qh_model() -> Model:
     model.tabulated_rating_curve.add(
         Node(1, Point(0, 0)),
         [tabulated_rating_curve.Static(level=[0, 0, 1], flow_rate=[1, 2, 1.5])],
-    )
-
-    return model
-
-
-def invalid_fractional_flow_model() -> Model:
-    model = Model(
-        starttime="2020-01-01",
-        endtime="2020-12-01",
-        crs="EPSG:28992",
-    )
-
-    basin_shared: list[TableModel[Any]] = [
-        basin.Profile(area=[0.01, 1.0], level=[0.0, 1.0]),
-        basin.State(level=[1.4112729908597084]),
-    ]
-    model.basin.add(Node(1, Point(0, 1)), basin_shared)
-    model.basin.add(Node(2, Point(-1, 0)), basin_shared)
-    # Invalid: fractions must be non-negative and add up to approximately 1
-    model.fractional_flow.add(
-        Node(3, Point(0, -1)), [fractional_flow.Static(fraction=[-0.1])]
-    )
-    model.fractional_flow.add(
-        Node(4, Point(1, 0)), [fractional_flow.Static(fraction=[0.5])]
-    )
-    model.terminal.add(Node(5, Point(0, -2)))
-    model.terminal.add(Node(6, Point(0, 2)))
-    model.tabulated_rating_curve.add(
-        Node(7, Point(0, 0)),
-        [tabulated_rating_curve.Static(level=[0.0, 1.0], flow_rate=[0.0, 50.0])],
-    )
-    # Invalid: #8 comes from a Basin
-    model.fractional_flow.add(
-        Node(8, Point(-1, -1)), [fractional_flow.Static(fraction=[1.0])]
-    )
-
-    model.edge.add(
-        model.basin[1],
-        model.tabulated_rating_curve[7],
-    )
-    # Invalid: TabulatedRatingCurve #7 has outflow to FractionalFlow and other node types.
-    model.edge.add(
-        model.tabulated_rating_curve[7],
-        model.basin[2],
-    )
-    model.edge.add(
-        model.tabulated_rating_curve[7],
-        model.fractional_flow[3],
-    )
-    model.edge.add(
-        model.fractional_flow[3],
-        model.terminal[5],
-    )
-    model.edge.add(
-        model.tabulated_rating_curve[7],
-        model.fractional_flow[4],
-    )
-    model.edge.add(
-        model.fractional_flow[4],
-        model.terminal[6],
-    )
-    model.edge.add(
-        model.basin[2],
-        model.fractional_flow[8],
-    )
-    model.edge.add(
-        model.fractional_flow[8],
-        model.terminal[5],
     )
 
     return model

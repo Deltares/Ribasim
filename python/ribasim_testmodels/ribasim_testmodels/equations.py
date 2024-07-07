@@ -7,7 +7,6 @@ from ribasim.model import Model
 from ribasim.nodes import (
     basin,
     flow_boundary,
-    fractional_flow,
     level_boundary,
     linear_resistance,
     manning_resistance,

@@ -12,7 +12,6 @@
 @schema "ribasim.basin.concentrationexternal" BasinConcentrationExternal
 @schema "ribasim.basin.concentrationstate" BasinConcentrationState
 @schema "ribasim.terminal.static" TerminalStatic
-@schema "ribasim.fractionalflow.static" FractionalFlowStatic
 @schema "ribasim.flowboundary.static" FlowBoundaryStatic
 @schema "ribasim.flowboundary.time" FlowBoundaryTime
 @schema "ribasim.flowboundary.concentration" FlowBoundaryConcentration
@@ -141,12 +140,6 @@ end
     node_id::Int32
     basin_level::Float64
     subgrid_level::Float64
-end
-
-@version FractionalFlowStaticV1 begin
-    node_id::Int32
-    fraction::Float64
-    control_state::Union{Missing, String}
 end
 
 @version LevelBoundaryStaticV1 begin

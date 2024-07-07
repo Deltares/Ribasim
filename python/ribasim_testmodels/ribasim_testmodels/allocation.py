@@ -10,7 +10,6 @@ from ribasim.nodes import (
     discrete_control,
     flow_boundary,
     flow_demand,
-    fractional_flow,
     level_boundary,
     level_demand,
     linear_resistance,
@@ -338,100 +337,6 @@ def minimal_subnetwork_model() -> Model:
     model.edge.add(model.basin[4], model.user_demand[6])
     model.edge.add(model.user_demand[5], model.basin[4])
     model.edge.add(model.user_demand[6], model.basin[4])
-
-    return model
-
-
-def fractional_flow_subnetwork_model() -> Model:
-    """Create a small subnetwork that contains fractional flow nodes.
-    This model is merged into main_network_with_subnetworks_model.
-    """
-
-    model = Model(
-        starttime="2020-01-01",
-        endtime="2021-01-01",
-        crs="EPSG:28992",
-        allocation=Allocation(use_allocation=True, timestep=86400),
-    )
-
-    basin_data: list[TableModel[Any]] = [
-        basin.Profile(area=1000.0, level=[0.0, 1.0]),
-        basin.State(level=[1.0]),
-    ]
-
-    model.flow_boundary.add(
-        Node(1, Point(0, 0), subnetwork_id=2),
-        [
-            flow_boundary.Time(
-                time=["2020-01-01", "2021-01-01"],
-                flow_rate=[2.0e-3, 4.0e-3],
-            )
-        ],
-    )
-    model.basin.add(Node(2, Point(0, 1), subnetwork_id=2), basin_data)
-    model.tabulated_rating_curve.add(
-        Node(3, Point(0, 2), subnetwork_id=2),
-        [tabulated_rating_curve.Static(level=[0.0, 1.0], flow_rate=[0.0, 1e-4])],
-    )
-    model.fractional_flow.add(
-        Node(4, Point(-1, 3), subnetwork_id=2),
-        [fractional_flow.Static(fraction=[0.25, 0.75], control_state=["A", "B"])],
-    )
-    model.basin.add(Node(5, Point(-2, 4), subnetwork_id=2), basin_data)
-    model.user_demand.add(
-        Node(6, Point(-3, 5), subnetwork_id=2),
-        [
-            user_demand.Static(
-                demand=[1e-3], return_factor=0.9, min_level=0.9, priority=1
-            )
-        ],
-    )
-    model.fractional_flow.add(
-        Node(7, Point(1, 3), subnetwork_id=2),
-        [fractional_flow.Static(fraction=[0.75, 0.25], control_state=["A", "B"])],
-    )
-    model.basin.add(Node(8, Point(2, 4), subnetwork_id=2), basin_data)
-    model.user_demand.add(
-        Node(9, Point(3, 5), subnetwork_id=2),
-        [
-            user_demand.Time(
-                time=["2020-01-01", "2021-01-01"],
-                demand=[1e-3, 2e-3],
-                return_factor=0.9,
-                min_level=0.9,
-                priority=1,
-            )
-        ],
-    )
-    model.discrete_control.add(
-        Node(10, Point(-1, 2), subnetwork_id=2),
-        [
-            discrete_control.Variable(
-                listen_node_type="FlowBoundary",
-                listen_node_id=[1],
-                variable="flow_rate",
-                compound_variable_id=1,
-            ),
-            discrete_control.Condition(
-                greater_than=[3e-3],
-                compound_variable_id=1,
-            ),
-            discrete_control.Logic(truth_state=["F", "T"], control_state=["A", "B"]),
-        ],
-    )
-
-    model.edge.add(model.flow_boundary[1], model.basin[2], subnetwork_id=2)
-    model.edge.add(model.basin[2], model.tabulated_rating_curve[3])
-    model.edge.add(model.tabulated_rating_curve[3], model.fractional_flow[4])
-    model.edge.add(model.fractional_flow[4], model.basin[5])
-    model.edge.add(model.basin[5], model.user_demand[6])
-    model.edge.add(model.user_demand[6], model.basin[5])
-    model.edge.add(model.tabulated_rating_curve[3], model.fractional_flow[7])
-    model.edge.add(model.fractional_flow[7], model.basin[8])
-    model.edge.add(model.basin[8], model.user_demand[9])
-    model.edge.add(model.user_demand[9], model.basin[8])
-    model.edge.add(model.discrete_control[10], model.fractional_flow[4])
-    model.edge.add(model.discrete_control[10], model.fractional_flow[7])
 
     return model
 

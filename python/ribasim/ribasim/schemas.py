@@ -123,12 +123,6 @@ class FlowDemandTimeSchema(_BaseSchema):
     priority: Series[Int32] = pa.Field(nullable=False, default=0)
 
 
-class FractionalFlowStaticSchema(_BaseSchema):
-    node_id: Series[Int32] = pa.Field(nullable=False, default=0)
-    fraction: Series[float] = pa.Field(nullable=False)
-    control_state: Series[str] = pa.Field(nullable=True)
-
-
 class LevelBoundaryConcentrationSchema(_BaseSchema):
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     time: Series[Timestamp] = pa.Field(nullable=False)

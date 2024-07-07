@@ -273,7 +273,6 @@ end
         :DiscreteControl,
         :Outlet,
         :LinearResistance,
-        :FractionalFlow,
     ])
     for nodetype in nodetypes
         NodeType.T(nodetype)

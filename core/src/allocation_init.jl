@@ -164,8 +164,7 @@ function add_variables_basin!(
 end
 
 """
-Add the variables for supply/demand of the buffer of a node with a flow demand
-or fractional flow outneighbors to the problem.
+Add the variables for supply/demand of the buffer of a node with a flow demand to the problem.
 The variable indices are the node IDs of the nodes with a buffer in the subnetwork.
 """
 function add_variables_flow_buffer!(
@@ -176,11 +175,9 @@ function add_variables_flow_buffer!(
     (; graph) = p
 
     # Collect the nodes in the subnetwork that have a flow demand
-    # or fractional flow outneighbors
     node_ids_flow_demand = NodeID[]
     for node_id in graph[].node_ids[subnetwork_id]
-        if has_external_demand(graph, node_id, :flow_demand)[1] ||
-           has_fractional_flow_outneighbors(graph, node_id)
+        if has_external_demand(graph, node_id, :flow_demand)[1]
             push!(node_ids_flow_demand, node_id)
         end
     end
@@ -348,8 +345,7 @@ function add_constraints_conservation_node!(
         end
 
         # If the node has a buffer
-        if has_external_demand(graph, node_id, :flow_demand)[1] ||
-           has_fractional_flow_outneighbors(graph, node_id)
+        if has_external_demand(graph, node_id, :flow_demand)[1]
             push!(inflows_node, F_flow_buffer_out[node_id])
             push!(outflows_node, F_flow_buffer_in[node_id])
         end
@@ -369,52 +365,6 @@ function add_constraints_conservation_node!(
         base_name = "flow_conservation"
     )
 
-    return nothing
-end
-
-"""
-Add the fractional flow constraints to the allocation problem.
-The constraint indices are allocation edges over a fractional flow node.
-
-Constraint:
-flow after fractional_flow node <= fraction * inflow
-"""
-function add_constraints_fractional_flow!(
-    problem::JuMP.Model,
-    p::Parameters,
-    subnetwork_id::Int32,
-)::Nothing
-    (; graph, fractional_flow) = p
-    F = problem[:F]
-    node_ids = graph[].node_ids[subnetwork_id]
-
-    # Find the nodes in this subnetwork with a FractionalFlow
-    # outneighbor, and collect the corresponding flow fractions
-    # and inflow variable
-    edges_to_fractional_flow = Tuple{NodeID, NodeID}[]
-    fractions = Dict{Tuple{NodeID, NodeID}, Float64}()
-    inflows = Dict{NodeID, JuMP.AffExpr}()
-    for node_id in node_ids
-        for outflow_id in outflow_ids(graph, node_id)
-            if outflow_id.type == NodeType.FractionalFlow
-                edge = (node_id, outflow_id)
-                push!(edges_to_fractional_flow, edge)
-                fractions[edge] = fractional_flow.fraction[outflow_id.idx]
-                inflows[node_id] = sum([
-                    F[(inflow_id, node_id)] for inflow_id in inflow_ids(graph, node_id)
-                ])
-            end
-        end
-    end
-
-    if !isempty(edges_to_fractional_flow)
-        problem[:fractional_flow] = JuMP.@constraint(
-            problem,
-            [edge = edges_to_fractional_flow],
-            F[edge] <= fractions[edge] * inflows[edge[1]],
-            base_name = "fractional_flow"
-        )
-    end
     return nothing
 end
 
@@ -515,7 +465,6 @@ function allocation_problem(
     add_constraints_capacity!(problem, capacity, p, subnetwork_id)
     add_constraints_source!(problem, p, subnetwork_id)
     add_constraints_user_source!(problem, p, subnetwork_id)
-    add_constraints_fractional_flow!(problem, p, subnetwork_id)
     add_constraints_basin_flow!(problem)
     add_constraints_flow_demand_outflow!(problem, p, subnetwork_id)
     add_constraints_buffer!(problem)

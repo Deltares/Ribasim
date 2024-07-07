@@ -67,17 +67,9 @@ function Model(config::Config)::Model
             error("Invalid discrete control state definition(s).")
         end
 
-        (; pid_control, graph, fractional_flow) = parameters
+        (; pid_control, graph) = parameters
         if !valid_pid_connectivity(pid_control.node_id, pid_control.listen_node_id, graph)
             error("Invalid PidControl connectivity.")
-        end
-
-        if !valid_fractional_flow(
-            graph,
-            fractional_flow.node_id,
-            fractional_flow.control_mapping,
-        )
-            error("Invalid fractional flow node combinations found.")
         end
 
         # tell the solver to stop when new data comes in

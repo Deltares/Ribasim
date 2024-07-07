@@ -180,7 +180,7 @@ end
     Ribasim.solve!(model)
     @test successful_retcode(model)
     p = model.integrator.p
-    (; flow_boundary, fractional_flow, pump) = p
+    (; flow_boundary, pump) = p
 
     q_boundary = flow_boundary.flow_rate[1].u[1]
     pump_flow_rate = get_tmp(pump.flow_rate, 0)
