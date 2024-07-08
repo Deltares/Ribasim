@@ -26,20 +26,20 @@ def outlet_continuous_control_model() -> Model:
         [
             level_boundary.Time(
                 time=pd.date_range(start="2020-01-01", end="2021-01-01", periods=100),
-                level=np.sin(np.linspace(0, 6 * np.pi, 100)),
+                level=6.0 + np.sin(np.linspace(0, 6 * np.pi, 100)),
             )
         ],
     )
 
     model.linear_resistance.add(
-        Node(1, Point(1, 0)), [linear_resistance.Static(resistance=[0.06])]
+        Node(1, Point(1, 0)), [linear_resistance.Static(resistance=[10.0])]
     )
 
     model.basin.add(
         Node(1, Point(2, 0)),
         [
-            basin.Profile(area=10.0, level=[0.0, 1.0]),
-            basin.State(level=[0.5]),
+            basin.Profile(area=10000.0, level=[0.0, 1.0]),
+            basin.State(level=[10.0]),
         ],
     )
 
@@ -58,7 +58,10 @@ def outlet_continuous_control_model() -> Model:
                 variable="flow_rate",
             ),
             continuous_control.Relationship(
-                input=[0.0, 1.0], output=[0.0, 0.6], controlled_parameter="flow_rate"
+                input=[0.0, 1.0],
+                output=[0.0, 0.6],
+                min_output=0.0,
+                controlled_parameter="flow_rate",
             ),
         ],
     )
@@ -71,7 +74,10 @@ def outlet_continuous_control_model() -> Model:
                 variable="flow_rate",
             ),
             continuous_control.Relationship(
-                input=[0.0, 1.0], output=[0.0, 0.4], controlled_parameter="flow_rate"
+                input=[0.0, 1.0],
+                output=[0.0, 0.4],
+                min_output=0.0,
+                controlled_parameter="flow_rate",
             ),
         ],
     )

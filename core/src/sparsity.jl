@@ -3,6 +3,9 @@ Get a sparse matrix whose sparsity matches (with some false positives) the spars
 of the ODE problem. All nodes are taken into consideration, also the ones
 that are inactive.
 
+jac_prototype[i,j] = 1.0 means that it is expected that at some point the simulation
+∂fᵢ/∂uⱼ ≠ 0
+
 In Ribasim the Jacobian is typically sparse because each state only depends on a small
 number of other states.
 
@@ -11,7 +14,7 @@ from the naming convention of this sparsity structure in the
 differentialequations.jl docs.
 """
 function get_jac_prototype(p::Parameters)::SparseMatrixCSC{Float64, Int64}
-    (; basin, pid_control, graph) = p
+    (; basin, pid_control, graph, continuous_control) = p
 
     n_basins = length(basin.node_id)
     n_states = n_basins + length(pid_control.node_id)
@@ -19,6 +22,8 @@ function get_jac_prototype(p::Parameters)::SparseMatrixCSC{Float64, Int64}
 
     update_jac_prototype!(jac_prototype, basin, graph)
     update_jac_prototype!(jac_prototype, pid_control, basin, graph)
+    update_jac_prototype!(jac_prototype, continuous_control, graph)
+
     return jac_prototype
 end
 
@@ -65,5 +70,37 @@ function update_jac_prototype!(
             end
         end
     end
+    return nothing
+end
+
+function update_jac_prototype!(
+    jac_prototype::SparseMatrixCSC{Float64, Int64},
+    continuous_control::ContinuousControl,
+    graph::MetaGraph,
+)::Nothing
+    (; compound_variable) = continuous_control
+    for (i, id) in enumerate(continuous_control.node_id)
+        affectees = Int[]
+        for subvariable in compound_variable[i].subvariables
+            (; variable, listen_node_id) = subvariable
+            if variable == "level" && listen_node_id.type == NodeType.Basin
+                push!(affectees, listen_node_id.idx)
+            elseif variable == "flow"
+                for connected_id in inoutflow_ids(graph, listen_node_id)
+                    if connected_id.type == NodeType.Basin
+                        push!(affectees, connected_id.idx)
+                    end
+                end
+            end
+        end
+
+        controlled_node_id = only(outneighbor_labels_type(graph, id, EdgeType.control))
+        for affected_id in inoutflow_ids(graph, controlled_node_id)
+            for affectee in affectees
+                jac_prototype[affected_id.idx, affectee] == 1.0
+            end
+        end
+    end
+
     return nothing
 end

@@ -785,6 +785,9 @@ class ContinuousControlRelationship(Input):
             QgsField("node_id", QVariant.Int),
             QgsField("input", QVariant.Double),
             QgsField("output", QVariant.Double),
+            QgsField("controlled_parameter", QVariant.String),
+            QgsField("min_output", QVariant.Double),
+            QgsField("max_output", QVariant.Double),
         ]
 
 

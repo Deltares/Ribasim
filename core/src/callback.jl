@@ -234,12 +234,7 @@ function apply_discrete_control!(u, t, integrator)::Nothing
 
         # Loop over the variables listened to by this discrete control node
         for compound_variable in compound_variables
-
-            # Compute the value of the current variable
-            value = 0.0
-            for subvariable in compound_variable.subvariables
-                value += subvariable.weight * get_value(p, subvariable, t)
-            end
+            value = compound_variable_value(compound_variable, p, u, t)
 
             # The thresholds the value of this variable is being compared with
             greater_thans = compound_variable.greater_than
@@ -319,12 +314,12 @@ end
 Get a value for a condition. Currently supports getting levels from basins and flows
 from flow boundaries.
 """
-function get_value(p::Parameters, subvariable::NamedTuple, t::Float64)
+function get_value(subvariable::NamedTuple, p::Parameters, u::AbstractVector, t::Float64)
     (; flow_boundary, level_boundary) = p
     (; listen_node_id, look_ahead, variable, variable_ref) = subvariable
 
-    if !iszero(variable_ref.i)
-        return variable_ref[]
+    if !iszero(variable_ref.idx)
+        return get_value(variable_ref, u)
     end
 
     if variable == "level"
@@ -348,6 +343,14 @@ function get_value(p::Parameters, subvariable::NamedTuple, t::Float64)
         error("Unsupported condition variable $variable.")
     end
 
+    return value
+end
+
+function compound_variable_value(compound_variable::CompoundVariable, p, u, t)
+    value = zero(eltype(u))
+    for subvariable in compound_variable.subvariables
+        value += subvariable.weight * get_value(subvariable, p, u, t)
+    end
     return value
 end
 

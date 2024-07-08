@@ -740,16 +740,28 @@ function continuous_control_relationships(db, config, ids)
     # Create linear interpolation objects out of the provided relationships
     relationships = ScalarInterpolation[]
     controlled_parameters = String[]
+    min_outputs = Float64[]
+    max_outputs = Float64[]
+
     for id in ids
         relationship_rows = filter(row -> row.node_id == id, relationship)
+        unique_controlled_parameter = unique(relationship_rows.controlled_parameter)
+        unique_min_output = unique(coalesce.(relationship_rows.min_output, -Inf))
+        unique_max_output = unique(coalesce.(relationship_rows.max_output, Inf))
+
         if length(relationship_rows) < 2
             @error "There must be at least 2 data points in a ContinuousControl relationship."
             errors = true
-        elseif length(unique(relationship_rows.controlled_parameter)) !== 1
-            @error "There must be a unique controlled parameter in a ContinuousControl relationship."
+        elseif length(unique_controlled_parameter) !== 1
+            @error "There must be a unique 'controlled_parameter' in a ContinuousControl relationship."
+            errors = true
+        elseif (length(unique_min_output) !== 1) || (length(unique_max_output) !== 1)
+            @error "There must be a unique 'min_output' and 'max_output' in a ContinuousControl relationsip."
             errors = true
         else
-            push!(controlled_parameters, first(relationship_rows.controlled_parameter))
+            push!(controlled_parameters, only(unique_controlled_parameter))
+            push!(min_outputs, only(unique_min_output))
+            push!(max_outputs, only(unique_max_output))
         end
         relationship_itp = LinearInterpolation(
             relationship_rows.output,
@@ -760,7 +772,7 @@ function continuous_control_relationships(db, config, ids)
         push!(relationships, relationship_itp)
     end
 
-    return relationships, controlled_parameters, errors
+    return relationships, controlled_parameters, min_outputs, max_outputs, errors
 end
 
 function continuous_control_compound_variables(
@@ -793,7 +805,7 @@ function ContinuousControl(db::DB, config::Config, graph::MetaGraph)::Continuous
     ids = get_ids(db, "ContinuousControl")
     node_id = NodeID.(:ContinuousControl, ids, eachindex(ids))
 
-    relationship, controlled_parameter, errors =
+    relationship, controlled_parameter, min_output, max_output, errors =
         continuous_control_relationships(db, config, ids)
     compound_variable = continuous_control_compound_variables(db, config, ids, graph)
 
@@ -803,12 +815,25 @@ function ContinuousControl(db::DB, config::Config, graph::MetaGraph)::Continuous
         error("Errors encountered when parsing ContinuousControl data.")
     end
 
+    affected_edges = Tuple{EdgeMetadata, EdgeMetadata}[]
+
+    for id in node_id
+        controlled_id = only(outneighbor_labels_type(graph, id, EdgeType.control))
+        push!(
+            affected_edges,
+            (inflow_edge(graph, controlled_id), outflow_edge(graph, controlled_id)),
+        )
+    end
+
     return ContinuousControl(
         node_id,
         compound_variable,
         controlled_parameter,
         target_refs,
         relationship,
+        min_output,
+        max_output,
+        affected_edges,
     )
 end
 

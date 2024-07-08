@@ -262,6 +262,8 @@ end
     input::Float64
     output::Float64
     controlled_parameter::String
+    min_output::Union{Missing, Float64}
+    max_output::Union{Missing, Float64}
 end
 
 @version PidControlStaticV1 begin

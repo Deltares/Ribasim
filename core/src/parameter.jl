@@ -530,7 +530,14 @@ end
 
 struct PreallocationRef{T}
     vector::T
-    index::Int
+    idx::Int
+end
+
+get_value(ref::PreallocationRef, val) = get_tmp(ref.vector, val)[ref.idx]
+
+function set_value!(ref::PreallocationRef, value)::Nothing
+    get_tmp(ref.vector, value)[ref.idx] = value
+    return nothing
 end
 
 """
@@ -538,7 +545,7 @@ The data for a single compound variable
 node_id:: The ID of the DiscreteControl that listens to this variable
 subvariables: data for one single subvariable
 greater_than: the thresholds this compound variable will be
-    compared against
+    compared against (in the case of DiscreteControl)
 """
 @kwdef struct CompoundVariable{T}
     node_id::NodeID
@@ -594,6 +601,9 @@ end
     controlled_parameter::Vector{String}
     target_ref::Vector{PreallocationRef{T}}
     relationship::Vector{ScalarInterpolation}
+    min_output::Vector{Float64}
+    max_output::Vector{Float64}
+    affected_edges::Vector{Tuple{EdgeMetadata, EdgeMetadata}}
 end
 
 """

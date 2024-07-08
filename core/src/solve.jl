@@ -24,12 +24,52 @@ function water_balance!(
     # First formulate intermediate flows
     formulate_flows!(p, storage, t)
 
+    # Continuous control
+    formulate_continuous_control!(u, p, t)
+
     # Now formulate du
     formulate_du!(du, graph, storage)
 
-    # PID control (changes the du of PID controlled basins)
-    continuous_control!(u, du, pid_control, p, integral, t)
+    # PID control (changes the du of basins connected to PID controlled nodes)
+    formulate_pid_control!(u, du, pid_control, p, integral, t)
 
+    return nothing
+end
+
+function formulate_continuous_control!(u, p, t)::Nothing
+    (;
+        compound_variable,
+        target_ref,
+        relationship,
+        min_output,
+        max_output,
+        affected_edges,
+        controlled_parameter,
+    ) = p.continuous_control
+
+    for (cvar, ref, rel, min, max, aff_edges, param) in zip(
+        compound_variable,
+        target_ref,
+        relationship,
+        min_output,
+        max_output,
+        affected_edges,
+        controlled_parameter,
+    )
+        value = compound_variable_value(cvar, p, u, t)
+        output = clamp(rel(value), min, max)
+        set_value!(ref, output)
+
+        # TODO: compute proper reduction factor!
+        reduction_factor_product = 1.0
+        output_reduced = reduction_factor_product * output
+
+        if param == "flow_rate"
+            for edge_metadata in aff_edges
+                set_flow!(p.graph, edge_metadata, output_reduced)
+            end
+        end
+    end
     return nothing
 end
 
@@ -106,7 +146,7 @@ function set_error!(pid_control::PidControl, p::Parameters, u::ComponentVector, 
     end
 end
 
-function continuous_control!(
+function formulate_pid_control!(
     u::ComponentVector,
     du::ComponentVector,
     pid_control::PidControl,

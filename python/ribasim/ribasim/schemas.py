@@ -74,6 +74,8 @@ class ContinuousControlRelationshipSchema(_BaseSchema):
     input: Series[float] = pa.Field(nullable=False)
     output: Series[float] = pa.Field(nullable=False)
     controlled_parameter: Series[str] = pa.Field(nullable=False)
+    min_output: Series[float] = pa.Field(nullable=True)
+    max_output: Series[float] = pa.Field(nullable=True)
 
 
 class ContinuousControlVariableSchema(_BaseSchema):
