@@ -1,0 +1,27 @@
+---
+title: "ContinuousControl"
+---
+
+# Tables
+
+## Variable
+
+column               | type     | unit    | restriction
+-------------------- | -------- | ------- | -----------
+node_id              | Int32    | -       | sorted
+listen_node_type     | String   | -       | known node type
+listen_node_id       | Int32    | -       | sorted per node_id
+variable             | String   | -       | must be "level" or "flow_rate", sorted per listen_node_id
+weight               | Float64  | -       | (optional, default 1.0)
+look_ahead           | Float64  | $s$     | Only on transient boundary conditions, non-negative (optional, default 0.0).
+
+## Relationship
+
+column               | type    | unit    | restriction
+-------------------- | ------- | ------- | -----------
+node_id              | Int32   | -       | sorted
+input                | Float64 | -       | sorted per node_id
+output               | Float64 | -       | -
+controlled_parameter | String  | -       | must be "level" or "flow_rate"
+min_output           | Float64 | -       | -
+max_output           | Float64 | -       | -
