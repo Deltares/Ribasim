@@ -148,7 +148,8 @@ end
     # "subnetworks_with_sources"
     @test subnetwork_demands[(NodeID(:Basin, 2, p), NodeID(:Pump, 11, p))] ≈ [4.0, 4.0, 0.0] atol =
         1e-4
-    @test subnetwork_demands[(NodeID(:Basin, 6, p), NodeID(:Pump, 24, p))] ≈ [1.0, 0.0, 0.0]
+    @test subnetwork_demands[(NodeID(:Basin, 6, p), NodeID(:Pump, 24, p))] ≈
+          [0.001, 0.0, 0.0] atol = 1e-4
     @test subnetwork_demands[(NodeID(:Basin, 10, p), NodeID(:Pump, 38, p))][1:2] ≈
           [0.001, 0.002] atol = 1e-4
 
@@ -176,11 +177,11 @@ end
     Ribasim.update_allocation!((; p, t, u))
 
     @test subnetwork_allocateds[NodeID(:Basin, 2, p), NodeID(:Pump, 11, p)] ≈
-          [3.5993, 0.0, 0.0] atol = 1e-4
+          [4, 0.49775, 0.0] atol = 1e-4
     @test subnetwork_allocateds[NodeID(:Basin, 6, p), NodeID(:Pump, 24, p)] ≈
-          [0.8998, 0.0, 0.0] rtol = 1e-3
+          [0.001, 0.0, 0.0] rtol = 1e-3
     @test subnetwork_allocateds[NodeID(:Basin, 10, p), NodeID(:Pump, 38, p)] ≈
-          [0.0008998, 0.0, 0.0] rtol = 1e-3
+          [0.001, 0.00024888, 0.0] rtol = 1e-3
 
     # Test for existence of edges in allocation flow record
     allocation_flow = DataFrame(record_flow)
@@ -194,8 +195,8 @@ end
     )
     @test all(allocation_flow.edge_exists)
 
-    @test user_demand.allocated[2, :] ≈ [3.5992, 0.0, 0.0] atol = 1e-3
-    @test user_demand.allocated[7, :] ≈ [0.0008998, 0.0, 0.0] atol = 1e-5
+    @test user_demand.allocated[2, :] ≈ [4.0, 0.0, 0.0] atol = 1e-3
+    @test user_demand.allocated[7, :] ≈ [0.0, 0.0, 0.000112] atol = 1e-5
 end
 
 @testitem "Subnetworks with sources" begin
@@ -235,7 +236,8 @@ end
     # lower the subnetwork demands
     @test subnetwork_demands[(NodeID(:Basin, 2, p), NodeID(:Pump, 11, p))] ≈ [4.0, 4.0, 0.0] rtol =
         1e-4
-    @test subnetwork_demands[(NodeID(:Basin, 6, p), NodeID(:Pump, 24, p))] ≈ [1.0, 0.0, 0.0]
+    @test subnetwork_demands[(NodeID(:Basin, 6, p), NodeID(:Pump, 24, p))] ≈
+          [0.001, 0.0, 0.0] rtol = 1e-4
     @test subnetwork_demands[(NodeID(:Basin, 10, p), NodeID(:Pump, 38, p))][1:2] ≈
           [0.001, 0.001] rtol = 1e-4
 end
