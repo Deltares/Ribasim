@@ -473,3 +473,58 @@ def level_range_model() -> Model:
     )
 
     return model
+
+
+def connector_node_flow_condition_model() -> Model:
+    """
+    Set up a minimal model with discrete control with a condition on
+    the flow through a connector node.
+    """
+
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2021-01-01",
+        crs="EPSG:28992",
+    )
+
+    model.basin.add(
+        Node(1, Point(0, 0)),
+        [
+            basin.Profile(area=1000.0, level=[0.0, 1.0]),
+            basin.State(level=[20.0]),
+        ],
+    )
+    model.linear_resistance.add(
+        Node(1, Point(1, 0)),
+        [
+            linear_resistance.Static(
+                control_state=["On", "Off"], resistance=1e4, active=[True, False]
+            )
+        ],
+    )
+    model.basin.add(
+        Node(2, Point(2, 0)),
+        [
+            basin.Profile(area=1000.0, level=[0.0, 1.0]),
+            basin.State(level=[10.0]),
+        ],
+    )
+    model.discrete_control.add(
+        Node(1, Point(0.5, 0.8660254037844386)),
+        [
+            discrete_control.Variable(
+                listen_node_type=["LinearResistance"],
+                listen_node_id=[1],
+                variable=["flow_rate"],
+                compound_variable_id=1,
+            ),
+            discrete_control.Condition(greater_than=[1e-4], compound_variable_id=1),
+            discrete_control.Logic(truth_state=["T", "F"], control_state=["On", "Off"]),
+        ],
+    )
+
+    model.edge.add(model.basin[1], model.linear_resistance[1])
+    model.edge.add(model.linear_resistance[1], model.basin[2])
+    model.edge.add(model.discrete_control[1], model.linear_resistance[1])
+
+    return model

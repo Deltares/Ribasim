@@ -588,7 +588,7 @@ function NodeID(type::Symbol, value::Integer, p::Parameters)::NodeID
 end
 
 """
-Get a reference to a parameter
+Get the reference to a parameter
 """
 function get_variable_ref(
     p::Parameters{T},
@@ -597,14 +597,21 @@ function get_variable_ref(
     listen::Bool = true,
 )::PreallocationRef{T} where {T}
     (; basin, graph) = p
+    errors = false
 
-    return if node_id.type == NodeType.Basin && variable == "level"
+    ref = if node_id.type == NodeType.Basin && variable == "level"
         PreallocationRef(basin.current_level, node_id.idx)
     elseif variable == "flow_rate"
         if listen
-            id_in = inflow_id(graph, node_id)
-            (; flow_idx) = graph[id_in, node_id]
-            PreallocationRef(graph[].flow, flow_idx)
+            if node_type.type ∉ conservative_nodetypes
+                errors = true
+                @error "Cannot listen to flow_rate of $listen_node_id, the node type must be one of $conservative_node_types"
+                Ref(Float64[], 0)
+            else
+                id_in = inflow_id(graph, node_id)
+                (; flow_idx) = graph[id_in, node_id]
+                PreallocationRef(graph[].flow, flow_idx)
+            end
         else
             node = getfield(p, snake_case(Symbol(node_id.type)))
             PreallocationRef(node.flow_rate, node_id.idx)
@@ -612,26 +619,32 @@ function get_variable_ref(
     else
         Ref(Float64[], 0)
     end
+    return ref, errors
 end
 
 """
-Set references to all variables that are listened to by discrete control
+Set references to all variables that are listened to by discrete/continuous control
 """
 function set_listen_variable_refs!(p::Parameters)::Nothing
     (; discrete_control, continuous_control) = p
     compound_variable_sets =
         [discrete_control.compound_variables..., continuous_control.compound_variable]
+    errors = false
+
     for compound_variables in compound_variable_sets
         for compound_variable in compound_variables
-            (; subvariables) = compound_variable
+            (; subvariables) = compound_variables
             for (j, subvariable) in enumerate(subvariables)
-                subvariables[j] = @set subvariable.variable_ref = get_variable_ref(
-                    p,
-                    subvariable.listen_node_id,
-                    subvariable.variable,
-                )
+                ref, error =
+                    get_variable_ref(p, subvariable.listen_node_id, subvariable.variable)
+                subvariables[j] = @set subvariable.variable_ref = ref
+                errors |= error
             end
         end
+    end
+
+    if errors
+        error("Error(s) occurred when parsing listen variables.")
     end
     return nothing
 end
