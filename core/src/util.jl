@@ -694,17 +694,17 @@ function set_controlled_variable_refs!(
 )::Nothing
     (; graph) = p
     (; node_id, target_ref, controlled_parameter) = continuous_control
+    errors = false
     for (i, id) in enumerate(node_id)
         controlled_node_id = only(outneighbor_labels_type(graph, id, EdgeType.control))
-        push!(
-            target_ref,
-            get_variable_ref(
-                p,
-                controlled_node_id,
-                controlled_parameter[i];
-                listen = false,
-            ),
-        )
+        ref, error =
+            get_variable_ref(p, controlled_node_id, controlled_parameter[i]; listen = false)
+        push!(target_ref, ref)
+        error |= error
+    end
+
+    if errors
+        error("Errors encountered when setting continuously controlled variable refs.")
     end
     return nothing
 end
