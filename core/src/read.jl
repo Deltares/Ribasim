@@ -651,8 +651,9 @@ function CompoundVariable(
     return CompoundVariable(node_id, subvariables, greater_than)
 end
 
-function parse_variables_and_conditions(compound_variable, condition, ids, db)
-    compound_variables = Vector{CompoundVariable}[]
+function parse_variables_and_conditions(compound_variable, condition, ids, db, graph)
+    placeholder_vector = graph[].flow
+    compound_variables = Vector{CompoundVariable{typeof(placeholder_vector)}}[]
     errors = false
 
     # Loop over unique discrete_control node IDs
@@ -686,6 +687,7 @@ function parse_variables_and_conditions(compound_variable, condition, ids, db)
                         NodeType.DiscreteControl,
                         db;
                         greater_than,
+                        placeholder_vector,
                     ),
                 )
             end
@@ -702,7 +704,7 @@ function DiscreteControl(db::DB, config::Config, graph::MetaGraph)::DiscreteCont
     ids = get_ids(db, "DiscreteControl")
     node_id = NodeID.(:DiscreteControl, ids, eachindex(ids))
     compound_variables, valid =
-        parse_variables_and_conditions(compound_variable, condition, ids, db)
+        parse_variables_and_conditions(compound_variable, condition, ids, db, graph)
 
     if !valid
         error("Problems encountered when parsing DiscreteControl variables and conditions.")
@@ -786,8 +788,9 @@ function continuous_control_compound_variables(
     ids,
     graph::MetaGraph,
 )
+    placeholder_vector = graph[].flow
     data = load_structvector(db, config, ContinuousControlVariableV1)
-    compound_variables = CompoundVariable[]
+    compound_variables = CompoundVariable{typeof(placeholder_vector)}[]
 
     for id in ids
         variable_data = filter(row -> row.node_id == id, data)
@@ -797,7 +800,7 @@ function continuous_control_compound_variables(
                 variable_data,
                 NodeType.ContinuousControl,
                 db;
-                placeholder_vector = graph[].flow,
+                placeholder_vector,
             ),
         )
     end

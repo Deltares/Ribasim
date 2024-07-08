@@ -595,17 +595,17 @@ function get_variable_ref(
     node_id::NodeID,
     variable::String;
     listen::Bool = true,
-)::PreallocationRef{T} where {T}
+)::Tuple{PreallocationRef{T}, Bool} where {T}
     (; basin, graph) = p
     errors = false
 
     ref = if node_id.type == NodeType.Basin && variable == "level"
         PreallocationRef(basin.current_level, node_id.idx)
-    elseif variable == "flow_rate"
+    elseif variable == "flow_rate" && node_id.type != NodeType.FlowBoundary
         if listen
-            if node_type.type ∉ conservative_nodetypes
+            if node_id.type ∉ conservative_nodetypes
                 errors = true
-                @error "Cannot listen to flow_rate of $listen_node_id, the node type must be one of $conservative_node_types"
+                @error "Cannot listen to flow_rate of $node_id, the node type must be one of $conservative_node_types"
                 Ref(Float64[], 0)
             else
                 id_in = inflow_id(graph, node_id)
@@ -617,7 +617,8 @@ function get_variable_ref(
             PreallocationRef(node.flow_rate, node_id.idx)
         end
     else
-        Ref(Float64[], 0)
+        # Placeholder to obtain correct type
+        PreallocationRef(graph[].flow, 0)
     end
     return ref, errors
 end
@@ -633,11 +634,13 @@ function set_listen_variable_refs!(p::Parameters)::Nothing
 
     for compound_variables in compound_variable_sets
         for compound_variable in compound_variables
-            (; subvariables) = compound_variables
+            (; subvariables) = compound_variable
             for (j, subvariable) in enumerate(subvariables)
                 ref, error =
                     get_variable_ref(p, subvariable.listen_node_id, subvariable.variable)
-                subvariables[j] = @set subvariable.variable_ref = ref
+                if !error
+                    subvariables[j] = @set subvariable.variable_ref = ref
+                end
                 errors |= error
             end
         end

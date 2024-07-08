@@ -572,16 +572,16 @@ logic_mapping: Dictionary: truth state => control state for the DiscreteControl 
 control_mapping: dictionary node type => control mapping for that node type
 record: Namedtuple with discrete control information for results
 """
-@kwdef struct DiscreteControl <: AbstractParameterNode
+@kwdef struct DiscreteControl{T} <: AbstractParameterNode
     node_id::Vector{NodeID}
     controlled_nodes::Vector{Vector{NodeID}}
-    compound_variables::Vector{Vector{CompoundVariable}}
+    compound_variables::Vector{Vector{CompoundVariable{T}}}
     truth_state::Vector{Vector{Bool}}
     control_state::Vector{String} = fill("undefined_state", length(node_id))
     control_state_start::Vector{Float64} = zeros(length(node_id))
     logic_mapping::Vector{Dict{Vector{Bool}, String}}
     control_mappings::Dict{NodeType.T, Dict{Tuple{NodeID, String}, ControlStateUpdate}} =
-        Dict()
+        Dict{NodeType.T, Dict{Tuple{NodeID, String}, ControlStateUpdate}}()
     record::@NamedTuple{
         time::Vector{Float64},
         control_node_id::Vector{Int32},
@@ -597,7 +597,7 @@ end
 
 @kwdef struct ContinuousControl{T} <: AbstractParameterNode
     node_id::Vector{NodeID}
-    compound_variable::Vector{CompoundVariable}
+    compound_variable::Vector{CompoundVariable{T}}
     controlled_parameter::Vector{String}
     target_ref::Vector{PreallocationRef{T}}
     relationship::Vector{ScalarInterpolation}
@@ -746,7 +746,7 @@ const ModelGraph{T} = MetaGraph{
     pump::Pump{T}
     outlet::Outlet{T}
     terminal::Terminal
-    discrete_control::DiscreteControl
+    discrete_control::DiscreteControl{T}
     continuous_control::ContinuousControl{T}
     pid_control::PidControl{T}
     user_demand::UserDemand
