@@ -81,7 +81,7 @@ function Model(config::Config)::Model
             error("Invalid fractional flow node combinations found.")
         end
 
-        if !valid_outlet_crest_level(graph, outlet, basin)
+        if !valid_outlet_crest_level!(graph, outlet, basin)
             error("Invalid minimum crest level of outlet")
         end
 
