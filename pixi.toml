@@ -20,7 +20,7 @@ test-ribasim-api = "pytest --basetemp=python/ribasim_api/tests/temp --junitxml=r
 
 [feature.dev.tasks]
 # Installation
-install-julia = "juliaup add 1.10.4 && juliaup override set 1.10.4"
+install-julia = "juliaup add 1.10.4 && juliaup override unset && juliaup override set 1.10.4"
 install-pre-commit = "pre-commit install"
 install-ci = { depends_on = ["install-julia", "update-registry-julia"] }
 install = { depends_on = [
@@ -156,9 +156,9 @@ netCDF4 = "*"
 numpy = "*"
 pandas = "*"
 pandas-stubs = "*"
-pandera = ">=0.18"
+pandera = ">=0.20"
 pip = "*"
-pyarrow = "<15"
+pyarrow = "*"
 pydantic = ">=2"
 pyogrio = "*"
 pytest = "*"
