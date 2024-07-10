@@ -84,7 +84,7 @@ test-ribasim-cli = "pytest --numprocesses=4 --basetemp=build/tests/temp --junitx
 test-ribasim-core = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test()'", depends_on = [
     "generate-testmodels",
 ] }
-test-ribasim-core-cov = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test(coverage=true, julia_args=[\"--check-bounds=yes\"])'", depends_on = [
+test-ribasim-core-cov = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test(coverage=true, julia_args=[\"--check-bounds=yes\"], test_args=[\"coverage\"])'", depends_on = [
     "generate-testmodels",
 ] }
 generate-testmodels = { cmd = "python utils/generate-testmodels.py", inputs = [

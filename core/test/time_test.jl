@@ -1,4 +1,4 @@
-@testitem "Time dependent flow boundary" begin
+@testitem "integration_Time dependent flow boundary" begin
     using Dates
     using DataFrames: DataFrame
     using SciMLBase: successful_retcode
@@ -23,7 +23,7 @@
     @test isapprox(flow_1_to_2.flow_rate, flow_expected, rtol = 0.005)
 end
 
-@testitem "vertical_flux_means" begin
+@testitem "integration_vertical_flux_means" begin
     using DataFrames: DataFrame, transform!, ByRow
 
     toml_path =

@@ -35,7 +35,7 @@
     close(db)
 end
 
-@testitem "Allocation objective" begin
+@testitem "integration_Allocation objective" begin
     using DataFrames: DataFrame
     using SciMLBase: successful_retcode
     using Ribasim: NodeID
@@ -422,7 +422,7 @@ end
     @test all(isapprox.(realized_numeric[3:end], df_user_3.realized[4:end], atol = 5e-4))
 end
 
-@testitem "Flow demand" begin
+@testitem "integration_Flow demand" begin
     using JuMP
     using Ribasim: NodeID, OptimizationType
     using DataFrames: DataFrame
@@ -608,7 +608,7 @@ end
     @test constraint.set.upper == 2.0
 end
 
-@testitem "equal_fraction_allocation" begin
+@testitem "integration_equal_fraction_allocation" begin
     using Ribasim: NodeID, NodeType
     using StructArrays: StructVector
     using DataFrames: DataFrame

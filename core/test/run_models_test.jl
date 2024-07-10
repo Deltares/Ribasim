@@ -1,4 +1,4 @@
-@testitem "trivial model" begin
+@testitem "integration_trivial model" begin
     using SciMLBase: successful_retcode
     using Tables: Tables
     using Tables.DataAPI: nrow
@@ -123,7 +123,7 @@
     end
 end
 
-@testitem "bucket model" begin
+@testitem "integration_bucket model" begin
     using SciMLBase: successful_retcode
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/bucket/ribasim.toml")
@@ -176,7 +176,7 @@ end
     @test successful_retcode(Ribasim.solve!(model))
 end
 
-@testitem "basic model" begin
+@testitem "integration_basic model" begin
     using Logging: Debug, with_logger
     using LoggingExtras
     using SciMLBase: successful_retcode
@@ -223,7 +223,7 @@ end
     end
 end
 
-@testitem "basic arrow model" begin
+@testitem "integration_basic arrow model" begin
     using SciMLBase: successful_retcode
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic_arrow/ribasim.toml")
@@ -233,7 +233,7 @@ end
     @test successful_retcode(model)
 end
 
-@testitem "basic transient model" begin
+@testitem "integration_basic transient model" begin
     using SciMLBase: successful_retcode
 
     toml_path =
@@ -249,7 +249,7 @@ end
         Sys.isapple()
 end
 
-@testitem "Allocation example model" begin
+@testitem "integration_Allocation example model" begin
     using SciMLBase: successful_retcode
 
     toml_path =
@@ -260,7 +260,7 @@ end
     @test successful_retcode(model)
 end
 
-@testitem "sparse and AD/FDM jac solver options" begin
+@testitem "integration_sparse and AD/FDM jac solver options" begin
     using SciMLBase: successful_retcode
 
     toml_path =
@@ -290,7 +290,7 @@ end
     @test time_ad.integrator.sol.u[end] ≈ sparse_ad.integrator.sol.u[end] atol = 1
 end
 
-@testitem "TabulatedRatingCurve model" begin
+@testitem "integration_TabulatedRatingCurve model" begin
     using SciMLBase: successful_retcode
 
     toml_path =
@@ -363,7 +363,7 @@ end
     @test A ≈ 10 * h
 end
 
-@testitem "Outlet constraints" begin
+@testitem "integration_Outlet constraints" begin
     using DataFrames: DataFrame
     using SciMLBase: successful_retcode
 
@@ -396,7 +396,7 @@ end
     all(isapprox.(level_basin[t .>= t_maximum_level], level.u[3], atol = 5e-2))
 end
 
-@testitem "UserDemand" begin
+@testitem "integration_UserDemand" begin
     using SciMLBase: successful_retcode
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/user_demand/ribasim.toml")
@@ -412,7 +412,7 @@ end
     @test only(model.integrator.sol(180day)) ≈ 509 atol = 1
 end
 
-@testitem "ManningResistance" begin
+@testitem "integration_ManningResistance" begin
     using PreallocationTools: get_tmp
     using SciMLBase: successful_retcode
     using Ribasim: NodeID
@@ -499,7 +499,7 @@ end
     ) ≈ 5.0 atol = 0.001 skip = Sys.isapple()
 end
 
-@testitem "mean_flow" begin
+@testitem "integration_mean_flow" begin
     using DataFrames: DataFrame
 
     toml_path =

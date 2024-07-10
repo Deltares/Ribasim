@@ -15,7 +15,7 @@
 # Equation: storage' = -(2*level(storage)-C)/resistance, storage(t0) = storage0
 # Solution: storage(t) = limit_storage + (storage0 - limit_storage)*exp(-t/(basin_area*resistance))
 # Here limit_storage is the storage at which the level of the basin is equal to the level of the level boundary
-@testitem "LinearResistance" begin
+@testitem "integration_LinearResistance" begin
     using SciMLBase: successful_retcode
 
     toml_path =
@@ -48,7 +48,7 @@ end
 # Equation: w' = -α/basin_area * w^2, w = (level(storage) - level_min)/basin_area
 # Solution: w = 1/(α(t-t0)/basin_area + 1/w(t0)),
 # storage = storage_min + 1/(α(t-t0)/basin_area^2 + 1/(storage(t0)-storage_min))
-@testitem "TabulatedRatingCurve" begin
+@testitem "integration_TabulatedRatingCurve" begin
     using SciMLBase: successful_retcode
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/rating_curve/ribasim.toml")
@@ -82,7 +82,7 @@ end
 # Solution: (implicit, given by Wolfram Alpha).
 # Note: The Wolfram Alpha solution contains a factor of the hypergeometric function 2F1, but these values are
 # so close to 1 that they are omitted.
-@testitem "ManningResistance" begin
+@testitem "integration_ManningResistance" begin
     using SciMLBase: successful_retcode
 
     toml_path =
@@ -119,7 +119,7 @@ end
 # The second order linear inhomogeneous ODE for this model is derived by
 # differentiating the equation for the storage of the controlled basin
 # once to time to get rid of the integral term.
-@testitem "PID control" begin
+@testitem "integration_PID control" begin
     using SciMLBase: successful_retcode
 
     toml_path =

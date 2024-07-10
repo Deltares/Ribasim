@@ -1,4 +1,4 @@
-@testitem "Pump discrete control" begin
+@testitem "integration_Pump discrete control" begin
     using PreallocationTools: get_tmp
     using Ribasim: NodeID
     using Dates: DateTime
@@ -61,7 +61,7 @@
     @test all(iszero, flow)
 end
 
-@testitem "Flow condition control" begin
+@testitem "integration_Flow condition control" begin
     toml_path = normpath(@__DIR__, "../../generated_testmodels/flow_condition/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
@@ -82,7 +82,7 @@ end
     @test isapprox(flow_t_control_ahead, greater_than, rtol = 0.005)
 end
 
-@testitem "Transient level boundary condition control" begin
+@testitem "integration_Transient level boundary condition control" begin
     toml_path = normpath(
         @__DIR__,
         "../../generated_testmodels/level_boundary_condition/ribasim.toml",
@@ -106,7 +106,7 @@ end
     @test isapprox(level_t_control_ahead, greater_than, rtol = 0.005)
 end
 
-@testitem "PID control" begin
+@testitem "integration_PID control" begin
     toml_path = normpath(@__DIR__, "../../generated_testmodels/pid_control/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
@@ -144,7 +144,7 @@ end
     )
 end
 
-@testitem "TabulatedRatingCurve control" begin
+@testitem "integration_TabulatedRatingCurve control" begin
     using Dates: Date
 
     toml_path = normpath(
@@ -165,7 +165,7 @@ end
     @test last(only(p.tabulated_rating_curve.table).t) == 1.2
 end
 
-@testitem "Set PID target with DiscreteControl" begin
+@testitem "integration_Set PID target with DiscreteControl" begin
     using Ribasim: NodeID
 
     toml_path = normpath(
@@ -196,7 +196,7 @@ end
     @test isapprox(level[end], target_low, atol = 1e-1)
 end
 
-@testitem "Compound condition" begin
+@testitem "integration_Compound condition" begin
     using Ribasim: NodeID
 
     toml_path = normpath(
@@ -230,7 +230,7 @@ end
     @test record.control_state == ["Off", "On"]
 end
 
-@testitem "Flow through node control" begin
+@testitem "integration_Flow through node control" begin
     using DataFrames: DataFrame
 
     toml_path = normpath(

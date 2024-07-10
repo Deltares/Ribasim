@@ -121,7 +121,7 @@ end
     @test_throws "not sorted as required" Ribasim.sorted_table!(reversed_arrow_table)
 end
 
-@testitem "results" begin
+@testitem "integration_results" begin
     using SciMLBase: successful_retcode
     import Arrow
 
