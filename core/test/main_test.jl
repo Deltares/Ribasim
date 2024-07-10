@@ -1,5 +1,5 @@
 
-@testitem "toml_path" begin
+@testitem "integration_toml_path" begin
     using IOCapture: capture
     import TOML
 

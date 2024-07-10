@@ -438,7 +438,7 @@ end
     )
 end
 
-@testitem "Convergence bottleneck" begin
+@testitem "integration_Convergence bottleneck" begin
     using IOCapture: capture
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/invalid_unstable/ribasim.toml")
