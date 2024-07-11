@@ -452,7 +452,7 @@ function valid_outlet_crest_level!(graph::MetaGraph, outlet::Outlet, basin::Basi
             basin_bottom_level = basin_bottom(basin, id_in)[2]
             if crest == -Inf
                 outlet.min_crest_level[id.idx] = basin_bottom_level
-            elseif crest-1 < basin_bottom_level
+            elseif crest < basin_bottom_level
                 @error "Minimum crest level of $id is lower than bottom of upstream $id_in crest basin_bottom_level"
                 errors = true
             end
