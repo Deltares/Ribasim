@@ -441,17 +441,19 @@ function valid_demand(
     return !errors
 end
 
+"""
+Validate Outlet crest level and fill in default values
+"""
 function valid_outlet_crest_level!(graph::MetaGraph, outlet::Outlet, basin::Basin)::Bool
     errors = false
-    for (index, (id, crest)) in enumerate(zip(outlet.node_id, outlet.min_crest_level))
+    for (id, crest) in zip(outlet.node_id, outlet.min_crest_level)
         id_in = inflow_id(graph, id)
         if id_in.type == NodeType.Basin
-            #validation:
-            basin_bottom_level = basin_bottom(basin, id_in)
+            basin_bottom_level = basin_bottom(basin, id_in)[2]
             if crest == -Inf
-                outlet.min_crest_level[index] = basin_bottom_level[2]
-            elseif crest < basin_bottom_level[2]
-                @error "Minimum crest level of $id is lower than bottom of upstream $id_in"
+                outlet.min_crest_level[id.idx] = basin_bottom_level
+            elseif crest-1 < basin_bottom_level
+                @error "Minimum crest level of $id is lower than bottom of upstream $id_in crest basin_bottom_level"
                 errors = true
             end
         end
@@ -464,9 +466,10 @@ function valid_tabulated_curve_level(graph::MetaGraph, tabulated_rating_curve::T
     for (id, table) in zip(tabulated_rating_curve.node_id, tabulated_rating_curve.table)
         id_in = inflow_id(graph, id)
         if id_in.type == NodeType.Basin
-            basin_bottom_level = basin_bottom(basin, id_in)
-            if table.u[1] < basin_bottom_level[2]
-                @error "One of levels in $id is lower than bottom of upstream $id_in"
+            basin_bottom_level = basin_bottom(basin, id_in)[2]
+            # add 1.0 avoid extrapolation below 0
+            if table.t[1] + 1.0 < basin_bottom_level
+                @error "Lowest levels of $id is lower than bottom of upstream $id_in crest basin_bottom_level"
                 errors = true
             end
         end

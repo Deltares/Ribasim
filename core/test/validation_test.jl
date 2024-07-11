@@ -438,26 +438,22 @@ end
     )
 end
 
-@testitem "tabulated rating curve validation" begin
-    import SQLite
+@testitem "TabulatedRatingCurve upstream level validation" begin
     using Ribasim: valid_tabulated_curve_level
     using Logging
 
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/level_range/ribasim.toml")
     @test ispath(toml_path)
-    invalid_level = -0.1
+    invalid_level = -2.0
 
     config = Ribasim.Config(toml_path)
     model = Ribasim.Model(config)
 
-    db_path = Ribasim.input_path(config, config.database)
-    db = SQLite.DB(db_path)
-    parameters = Ribasim.Parameters(db, config)
+    parameters = model.integrator.p
 
-    (; graph, tabulated_rating_curve, basin) =
-    parameters
-    tabulated_rating_curve.table[1].u[1] = invalid_level
+    (; graph, tabulated_rating_curve, basin) = parameters
+    tabulated_rating_curve.table[1].t[1] = invalid_level
 
     logger = TestLogger()
     with_logger(logger) do
@@ -467,11 +463,10 @@ end
     @test length(logger.logs) == 1
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
-          "One of levels in TabulatedRatingCurve #5 is lower than bottom of upstream Basin #1"
+          "Lowest levels of TabulatedRatingCurve #5 is lower than bottom of upstream Basin #1 crest basin_bottom_level"
 end
 
-@testitem "outlet validation" begin
-    import SQLite
+@testitem "Outlet upstream level validation" begin
     using Ribasim: valid_outlet_crest_level!
     using Logging
 
@@ -483,12 +478,9 @@ end
     config = Ribasim.Config(toml_path)
     model = Ribasim.Model(config)
 
-    db_path = Ribasim.input_path(config, config.database)
-    db = SQLite.DB(db_path)
-    parameters = Ribasim.Parameters(db, config)
+    parameters = model.integrator.p
 
-    (; graph, outlet, basin) =
-    parameters
+    (; graph, outlet, basin) = parameters
     outlet.min_crest_level[1] = invalid_level
 
     logger = TestLogger()
@@ -499,7 +491,7 @@ end
     @test length(logger.logs) == 1
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
-          "Minimum crest level of Outlet #4 is lower than bottom of upstream Basin #3"
+          "Minimum crest level of Outlet #4 is lower than bottom of upstream Basin #3 crest basin_bottom_level"
 end
 
 @testitem "Convergence bottleneck" begin
