@@ -2,6 +2,20 @@
 title: "Allocation"
 ---
 
+```{mermaid}
+flowchart TD
+    subgraph update_allocation
+        direction TB
+        G[update mean flows]-->E[collect demand]
+        E-->F[allocate demand]
+    end
+
+    C(Begin)-->A[Initialization allocation]
+    A--> update_allocation --> H[\end of time?\]
+    H--> |No| update_allocation
+    H --> |Yes| D(End)
+```
+
 # The `Allocation` struct
 
 This is an object storing all information about allocation.
@@ -74,7 +88,7 @@ edges = keys(capacity.data)
 problem[:F] = JuMP.@variable(problem, F[edge = edges] >= 0.0)
 ```
 
-In the function `add_variables_basin`, variable that represent flows of thoes basins that connected with level demand are defined.
+In the function `add_variables_basin`, variable that represent flows of those basins that connected with level demand are defined.
 Part of the function is shown in the code block below.
 The variable is named `F_basin_in` if basin supplied by the basins with a level demand and `F_basin_out` if consumed by a level demand.
 
@@ -96,12 +110,12 @@ The last set of optimization variables are the flows with  flow demand or fracti
 ### Setting up initial optimization constraints
 All the variable are greater and equal to 0. This is set when the variable are added to the optimization problem.
 
-Other constrains are capacity, `source_user`, `source`, `flow_conservation`, `fractional_flow`, `basin_outflow`, `flow_buffer_outflow` and `flow_demand_outflow`.
+Other constraints are capacity, `source_user`, `source`, `flow_conservation`, `fractional_flow`, `basin_outflow`, `flow_buffer_outflow` and `flow_demand_outflow`.
 
-For each set of constrains, a function named `add_constrains_[constrains name]` is created.
+For each set of constraints, a function named `add_constrains_[constraints name]` is created.
 
-Take `add_constraints_user_source` as an example, the node that is relevant to the constrains are filtered.
-Then a set of constrains are added by calling JuMP.\@constraint.
+Take `add_constraints_user_source` as an example, the node that is relevant to the constraints are filtered.
+Then a set of constraints are added by calling JuMP.\@constraint.
 
 ```julia
 node_ids_user = [node_id for node_id in node_ids if node_id.type == NodeType.UserDemand]
@@ -163,7 +177,7 @@ end
 ```
 
 Apart from the `set_initial_` function above, capacities of `inlet` is the allocated capacities from main network to subnetwork.
-Source constrains will be adapted based on the optimization type.
+Source constraints will be adapted based on the optimization type.
 This function is called separately and thus not part of the `set_initial_values`.
 
 ## Looping over priorities
