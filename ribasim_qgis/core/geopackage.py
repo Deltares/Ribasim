@@ -8,6 +8,7 @@ This module lightly wraps a few QGIS built in functions to:
     * Remove a layer from a geopackage
 
 """
+
 import sqlite3
 from contextlib import contextmanager
 from pathlib import Path

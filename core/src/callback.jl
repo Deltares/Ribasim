@@ -10,7 +10,7 @@ function create_callbacks(
     config::Config,
     saveat,
 )::Tuple{CallbackSet, SavedResults}
-    (; starttime, basin, tabulated_rating_curve, discrete_control) = parameters
+    (; starttime, basin, tabulated_rating_curve) = parameters
     callbacks = SciMLBase.DECallback[]
 
     negative_storage_cb = FunctionCallingCallback(check_negative_storage)

@@ -94,7 +94,7 @@ controllablefields(::Val{:FractionalFlow}) = Set((:fraction,))
 controllablefields(::Val{:Pump}) = Set((:active, :flow_rate))
 controllablefields(::Val{:Outlet}) = Set((:active, :flow_rate))
 controllablefields(::Val{:PidControl}) =
-    Set((:active, :target, :propoertional, :integral, :derivative))
+    Set((:active, :target, :proportional, :integral, :derivative))
 controllablefields(nodetype) = Set{Symbol}()
 
 function variable_names(s::Any)
