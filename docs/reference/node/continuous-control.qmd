@@ -1,0 +1,46 @@
+---
+title: "ContinuousControl"
+---
+
+The `ContinuousControl` node allows for fine control of a controllable property of a connector node, which is updated at each time step. This control can be set up as follows:
+
+1. Define a compound variable. This is a linear combination of variables in the model the `ContinuousControl` node can listen to, i.e. flows and levels.;
+2. Define a piecewise linear function by providing datapoints which get interpolated. The controlled parameter is then set to the outcome of this function given the value of the compound variable.
+
+# Tables
+
+## Variable
+
+The compound variable schema defines linear combinations of variables which can be used in conditions. This means that
+this schema defines new variables with the given `compound_variable_id` that look like
+$$
+    \text{weight}_1 * \text{variable}_1 + \text{weight}_2 * \text{variable}_2 + \ldots,
+$$
+
+which can be for instance an average or a difference of variables. If a variable comes from a time-series, a look ahead $\Delta t$ can be supplied. There is only one compound variable per `ContinuousControl` node.
+
+column               | type     | unit    | restriction
+-------------------- | -------- | ------- | -----------
+node_id              | Int32    | -       | sorted
+listen_node_type     | String   | -       | known node type
+listen_node_id       | Int32    | -       | sorted per node_id
+variable             | String   | -       | must be "level" or "flow_rate", sorted per listen_node_id
+weight               | Float64  | -       | (optional, default 1.0)
+look_ahead           | Float64  | $s$     | Only on transient boundary conditions, non-negative (optional, default 0.0).
+
+## Relationship
+
+The relationship table defines a piecewise linear function $f$ interpolating between `(input, output)` datapoints for each `ContinuousControl` node. The total computation thus looks like
+
+$$
+    f(\text{weight}_1 * \text{variable}_1 + \text{weight}_2 * \text{variable}_2 + \ldots).
+$$
+
+column               | type    | unit    | restriction
+-------------------- | ------- | ------- | -----------
+node_id              | Int32   | -       | sorted
+input                | Float64 | -       | sorted per node_id
+output               | Float64 | -       | -
+controlled_parameter | String  | -       | must be "level" or "flow_rate"
+min_output           | Float64 | -       | -
+max_output           | Float64 | -       | -
