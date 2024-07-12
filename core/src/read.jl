@@ -622,6 +622,10 @@ function Basin(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{Int
     )
 end
 
+"""
+Get a CompoundVariable object given its definition in the input data.
+References to listened parameters are added later.
+"""
 function CompoundVariable(
     compound_variable_data,
     node_type::NodeType.T,
@@ -636,17 +640,21 @@ function CompoundVariable(
         weight::Float64,
         look_ahead::Float64,
     }[]
+    # Each row defines a subvariable
     for row in compound_variable_data
         listen_node_id = NodeID(row.listen_node_type, row.listen_node_id, db)
         # Placeholder until actual ref is known
         variable_ref = PreallocationRef(placeholder_vector, 0)
         variable = row.variable
+        # Default to weight = 1.0 if not specified
         weight = coalesce(row.weight, 1.0)
+        # Default to look_ahead = 0.0 if not specified
         look_ahead = coalesce(row.look_ahead, 0.0)
         subvariable = (; listen_node_id, variable_ref, variable, weight, look_ahead)
         push!(subvariables, subvariable)
     end
 
+    # The ID of the node listening to this CompoundVariable
     node_id = NodeID(node_type, only(unique(compound_variable_data.node_id)), db)
     return CompoundVariable(node_id, subvariables, greater_than)
 end
@@ -750,12 +758,15 @@ function continuous_control_relationships(db, config, ids)
     min_outputs = Float64[]
     max_outputs = Float64[]
 
+    # Loop over the IDs of the ContinuousControl nodes
     for id in ids
+        # Get the relationship data for this node
         relationship_rows = filter(row -> row.node_id == id, relationship)
         unique_controlled_parameter = unique(relationship_rows.controlled_parameter)
         unique_min_output = unique(coalesce.(relationship_rows.min_output, -Inf))
         unique_max_output = unique(coalesce.(relationship_rows.max_output, Inf))
 
+        # Error handling
         if length(relationship_rows) < 2
             @error "There must be at least 2 data points in a ContinuousControl relationship."
             errors = true
@@ -788,10 +799,14 @@ function continuous_control_compound_variables(
     ids,
     graph::MetaGraph,
 )
+    # This is a vector that is known to have a DiffCache if automatic differentiation
+    # is used. Therefore this vector is used as a placeholder with the correct type
     placeholder_vector = graph[].flow
+
     data = load_structvector(db, config, ContinuousControlVariableV1)
     compound_variables = CompoundVariable{typeof(placeholder_vector)}[]
 
+    # Loop over the ContinuousControl node IDs
     for id in ids
         variable_data = filter(row -> row.node_id == id, data)
         push!(
@@ -817,14 +832,15 @@ function ContinuousControl(db::DB, config::Config, graph::MetaGraph)::Continuous
         continuous_control_relationships(db, config, ids)
     compound_variable = continuous_control_compound_variables(db, config, ids, graph)
 
+    # References to the controlled parameters, filled in later when they are known
     target_refs = PreallocationRef{typeof(graph[].flow)}[]
 
     if errors
         error("Errors encountered when parsing ContinuousControl data.")
     end
 
+    # Get the edges that are directly affected by the controlled node
     affected_edges = Tuple{EdgeMetadata, EdgeMetadata}[]
-
     for id in node_id
         controlled_id = only(outneighbor_labels_type(graph, id, EdgeType.control))
         push!(
