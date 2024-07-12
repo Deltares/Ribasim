@@ -250,3 +250,34 @@ end
     @test all(filter(:time => time -> time <= t_switch, flow_table).flow_rate .> 0)
     @test all(filter(:time => time -> time > t_switch, flow_table).flow_rate .== 0)
 end
+
+@testitem "Outlet continuous control" begin
+    using DataFrames: DataFrame
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/outlet_continuous_control/ribasim.toml",
+    )
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+    flow_data = DataFrame(Ribasim.flow_table(model))
+
+    function get_edge_flow(from_node_type, from_node_id, to_node_type, to_node_id)
+        data = filter(
+            [:from_node_type, :from_node_id, :to_node_type, :to_node_id] =>
+                (a, b, c, d) ->
+                    (a == from_node_type) &&
+                        (b == from_node_id) &&
+                        (c == to_node_type) &&
+                        (d == to_node_id),
+            flow_data,
+        )
+        return data.flow_rate
+    end
+
+    inflow = get_edge_flow("LinearResistance", 1, "Basin", 1)
+    @test get_edge_flow("Basin", 1, "Outlet", 1) ≈ max.(0.6 .* inflow, 0) rtol = 1e-4
+    @test get_edge_flow("Outlet", 1, "Terminal", 1) ≈ max.(0.6 .* inflow, 0) rtol = 1e-4
+    @test get_edge_flow("Basin", 1, "Outlet", 2) ≈ max.(0.4 .* inflow, 0) rtol = 1e-4
+    @test get_edge_flow("Outlet", 2, "Terminal", 2) ≈ max.(0.4 .* inflow, 0) rtol = 1e-4
+end
