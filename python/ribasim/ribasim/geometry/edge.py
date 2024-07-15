@@ -31,7 +31,7 @@ class NodeData(NamedTuple):
     geometry: Point
 
 
-class EdgeSchema(pa.SchemaModel):
+class EdgeSchema(pa.DataFrameModel):
     name: Series[str] = pa.Field(default="")
     from_node_type: Series[str] = pa.Field(nullable=True)
     from_node_id: Series[Int32] = pa.Field(default=0, coerce=True)

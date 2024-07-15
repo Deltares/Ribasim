@@ -15,7 +15,7 @@ from ribasim.input_base import SpatialTableModel
 __all__ = ("NodeTable",)
 
 
-class NodeSchema(pa.SchemaModel):
+class NodeSchema(pa.DataFrameModel):
     node_id: Series[Int32] = pa.Field(ge=0)
     name: Series[str] = pa.Field(default="")
     node_type: Series[str] = pa.Field(default="")
