@@ -145,6 +145,11 @@ function Model(config::Config)::Model
     callback, saved = create_callbacks(parameters, config, saveat)
     @debug "Created callbacks."
 
+    # Run water_balance! before initializing the integrator. This is because
+    # at this initialization the discrete control callback is called for the first
+    # time which depends on the flows formulated in water_balance!
+    water_balance!(copy(u0), u0, parameters, t0)
+
     # Initialize the integrator, providing all solver options as described in
     # https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/
     # Not all keyword arguments (e.g. `dt`) support `nothing`, in which case we follow

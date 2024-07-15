@@ -57,18 +57,15 @@ class Input(abc.ABC):
 
     @classmethod
     @abc.abstractmethod
-    def input_type(cls) -> str:
-        ...
+    def input_type(cls) -> str: ...
 
     @classmethod
     @abc.abstractmethod
-    def geometry_type(cls) -> str:
-        ...
+    def geometry_type(cls) -> str: ...
 
     @classmethod
     @abc.abstractmethod
-    def attributes(cls) -> list[QgsField]:
-        ...
+    def attributes(cls) -> list[QgsField]: ...
 
     @classmethod
     def is_spatial(cls):

@@ -208,8 +208,13 @@ function static_and_time_node_ids(
     return static_node_ids, time_node_ids, node_ids, !errors
 end
 
-const nonconservative_nodetypes =
-    Set{String}(["Basin", "LevelBoundary", "FlowBoundary", "Terminal", "UserDemand"])
+const conservative_nodetypes = Set{NodeType.T}([
+    NodeType.Pump,
+    NodeType.Outlet,
+    NodeType.TabulatedRatingCurve,
+    NodeType.LinearResistance,
+    NodeType.ManningResistance,
+])
 
 function initialize_allocation!(p::Parameters, config::Config)::Nothing
     (; graph, allocation) = p

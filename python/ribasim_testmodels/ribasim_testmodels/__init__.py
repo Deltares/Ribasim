@@ -30,6 +30,7 @@ from ribasim_testmodels.basic import (
 from ribasim_testmodels.bucket import bucket_model, leaky_bucket_model
 from ribasim_testmodels.discrete_control import (
     compound_variable_condition_model,
+    connector_node_flow_condition_model,
     flow_condition_model,
     level_boundary_condition_model,
     level_range_model,
@@ -90,6 +91,7 @@ __all__ = [
     "manning_resistance_model",
     "minimal_subnetwork_model",
     "misc_nodes_model",
+    "connector_node_flow_condition_model",
     "outlet_model",
     "pid_control_equation_model",
     "pid_control_model",
