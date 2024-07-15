@@ -239,10 +239,6 @@ class TabulatedRatingCurveTimeSchema(_BaseSchema):
     flow_rate: Series[float] = pa.Field(nullable=False)
 
 
-class TerminalStaticSchema(_BaseSchema):
-    node_id: Series[Int32] = pa.Field(nullable=False, default=0)
-
-
 class UserDemandStaticSchema(_BaseSchema):
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     active: Series[pa.BOOL] = pa.Field(nullable=True)
