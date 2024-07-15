@@ -442,8 +442,7 @@ end
     using Ribasim: valid_tabulated_curve_level
     using Logging
 
-    toml_path =
-        normpath(@__DIR__, "../../generated_testmodels/level_range/ribasim.toml")
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/level_range/ribasim.toml")
     @test ispath(toml_path)
     invalid_level = -2.0
 
@@ -470,8 +469,10 @@ end
     using Ribasim: valid_outlet_crest_level!
     using Logging
 
-    toml_path =
-        normpath(@__DIR__, "../../generated_testmodels/level_boundary_condition/ribasim.toml")
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/level_boundary_condition/ribasim.toml",
+    )
     @test ispath(toml_path)
     invalid_level = -2.0
 
