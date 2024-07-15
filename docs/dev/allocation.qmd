@@ -1,7 +1,8 @@
 ---
 title: "Allocation"
 ---
-
+# Overview of allocation implementation
+In this document, the allocation workflow is explained. Below is an overview of it.
 ```{mermaid}
 flowchart TD
     subgraph update_allocation
@@ -16,24 +17,49 @@ flowchart TD
     H --> |Yes| D(End)
 ```
 
-# The `Allocation` struct
+If allocation is used in a model, Allocation struct is created.
+Allocation struct stores the data that is needed for calculation and the result of the calculation.
+Optimization is an essential part of allocation.
+JuMP model is used to model and solve the optimization problems that come up in the allocation.
+AllocationModel struct is used for constructing JuMP problem.
+When a Allocation model is created, a JuMP optimization model is defined and initialized in the allocation model.
 
-This is an object storing all information about allocation.
+After initialization, as the simulation start, allocation problem is solved and updated on every time step.
+In each iteration, data that is needed for comuptation are updated.
+And parameters of optimization problem are also updated.
+Optimization problem are solved and the data of the result are saved.
 
-|field                    |  description|
-|------------ | -------------------------- |
-|subnetwork_ids           | The unique sorted allocation network IDs|
-|allocation_models        | The allocation models for the main network and subnetworks corresponding to subnetwork_ids|
-|main_network_connections | (from_id, to_id) from the main network to the subnetwork per subnetwork|
-|priorities               | All used priority values.|
-|subnetwork_demands       | The demand of an edge from the main network to a subnetwork|
-|subnetwork_allocateds    | The allocated flow of an edge from the main network to a subnetwork|
-|mean_input_flows         | Flows averaged over Δt_allocation over edges that are allocation sources|
-|mean_realized_flows      | Flows averaged over Δt_allocation over edges that realize a demand|
-|record_demand            | A record of demands and allocated flows for nodes that have these|
-|record_flow              | A record of all flows computed by allocation optimization, eventually saved to output file|
+The update of allocation are spread in three parts. They are updating
 
-# `JuMP.jl` problem interaction
+## The `Allocation` struct
+
+Allocation struct stores all information about allocation.
+
+|field     | type              |  description|
+|------------ | -------- |---------------------------------------- |
+|subnetwork_ids     | Vector{Int32}     | The unique sorted allocation network IDs|
+|allocation_models     | AllocationModel   | The allocation models for the main network and subnetworks corresponding to subnetwork_ids|
+|main_network_connections  |Vector{Vector{Tuple{NodeID, NodeID}}}| (from_id, to_id) from the main network to the subnetwork per subnetwork|
+|priorities        |Vector{Int32}| All used priority values.|
+|subnetwork_demands   | Dict{Tuple{NodeID, NodeID}, Vector{Float64}}   | The demand of an edge from the main network to a subnetwork|
+|subnetwork_allocateds |Dict{Tuple{NodeID, NodeID}, Vector{Float64}}   | The allocated flow of an edge from the main network to a subnetwork|
+|mean_input_flows    |  Dict{Tuple{NodeID, NodeID}, Float64}   | Flows averaged over Δt_allocation over edges that are allocation sources|
+|mean_realized_flows  | Dict{Tuple{NodeID, NodeID}, Float64}   | Flows averaged over Δt_allocation over edges that realize a demand|
+|record_demand      |      | A record of demands and allocated flows for nodes that have these|
+|record_flow       |       | A record of all flows computed by allocation optimization, eventually saved to output file|
+
+## The `AllocationModel` struct
+
+`AllocationModel` struct has all information that is needed for JuMP optimization.
+
+|field     | type              |  description|
+|------------  | -------- |---------------------------------------- |
+|subnetwork_id |Int32 |The ID of this allocation network|
+|capacity | JuMP.Containers.SparseAxisArray | The capacity per edge of the allocation network, as constrained by nodes that have a max_flow_rate|
+|problem | JuMP.Model | The JuMP.jl model for solving the allocation problem|
+|Δt_allocation | Float64 | The time interval between consecutive allocation solves   |
+
+## `JuMP.jl` problem interaction
 We used this julia package to model and solve the optimization in the allocation.
 
 In allocation, the optimization problem object is named `problem`and is an instance from class `JuMP.Model`.
