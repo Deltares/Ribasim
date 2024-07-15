@@ -20,8 +20,7 @@ jobs:
           cache: false
       - name: Update pixi lock file
         run: |
-          rm pixi.lock
-          pixi install
+          pixi update
       - uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
