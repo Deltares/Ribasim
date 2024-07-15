@@ -545,6 +545,11 @@ function Outlet(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{In
     )
 end
 
+function Terminal(db::DB, config::Config)::Terminal
+    node_id = get_ids(db, "Terminal")
+    return Terminal(NodeID.(NodeType.Terminal, node_id, eachindex(node_id)))
+end
+
 function Basin(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{Int})::Basin
     node_id = get_ids(db, "Basin")
     n = length(node_id)
@@ -1084,6 +1089,7 @@ function Parameters(db::DB, config::Config)::Parameters
     flow_boundary = FlowBoundary(db, config, graph)
     pump = Pump(db, config, graph, chunk_sizes)
     outlet = Outlet(db, config, graph, chunk_sizes)
+    terminal = Terminal(db, config)
     discrete_control = DiscreteControl(db, config, graph)
     pid_control = PidControl(db, config, chunk_sizes)
     user_demand = UserDemand(db, config, graph)
@@ -1105,6 +1111,7 @@ function Parameters(db::DB, config::Config)::Parameters
         flow_boundary,
         pump,
         outlet,
+        terminal,
         discrete_control,
         pid_control,
         user_demand,
