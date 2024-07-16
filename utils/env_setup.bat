@@ -1,4 +1,3 @@
-set JULIAUP_DEPOT_PATH=%~dp0
 set QUARTO_PYTHON=python
 
 setlocal EnableDelayedExpansion

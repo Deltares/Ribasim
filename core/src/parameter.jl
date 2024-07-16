@@ -94,7 +94,7 @@ end
 """
 Object for all information about allocation
 subnetwork_ids: The unique sorted allocation network IDs
-allocation models: The allocation models for the main network and subnetworks corresponding to
+allocation_models: The allocation models for the main network and subnetworks corresponding to
     subnetwork_ids
 main_network_connections: (from_id, to_id) from the main network to the subnetwork per subnetwork
 priorities: All used priority values.

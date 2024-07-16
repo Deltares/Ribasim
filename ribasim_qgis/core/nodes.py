@@ -57,18 +57,15 @@ class Input(abc.ABC):
 
     @classmethod
     @abc.abstractmethod
-    def input_type(cls) -> str:
-        ...
+    def input_type(cls) -> str: ...
 
     @classmethod
     @abc.abstractmethod
-    def geometry_type(cls) -> str:
-        ...
+    def geometry_type(cls) -> str: ...
 
     @classmethod
     @abc.abstractmethod
-    def attributes(cls) -> list[QgsField]:
-        ...
+    def attributes(cls) -> list[QgsField]: ...
 
     @classmethod
     def is_spatial(cls):
@@ -383,7 +380,6 @@ class BasinStatic(Input):
             QgsField("potential_evaporation", QVariant.Double),
             QgsField("infiltration", QVariant.Double),
             QgsField("precipitation", QVariant.Double),
-            QgsField("urban_runoff", QVariant.Double),
         ]
 
 
@@ -405,7 +401,6 @@ class BasinTime(Input):
             QgsField("potential_evaporation", QVariant.Double),
             QgsField("infiltration", QVariant.Double),
             QgsField("precipitation", QVariant.Double),
-            QgsField("urban_runoff", QVariant.Double),
         ]
 
 
@@ -639,20 +634,6 @@ class OutletStatic(Input):
             QgsField("min_crest_level", QVariant.Double),
             QgsField("control_state", QVariant.String),
         ]
-
-
-class TerminalStatic(Input):
-    @classmethod
-    def input_type(cls) -> str:
-        return "Terminal / static"
-
-    @classmethod
-    def geometry_type(cls) -> str:
-        return "No Geometry"
-
-    @classmethod
-    def attributes(cls) -> list[QgsField]:
-        return [QgsField("node_id", QVariant.Int)]
 
 
 class FlowBoundaryStatic(Input):

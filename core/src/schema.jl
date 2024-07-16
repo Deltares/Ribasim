@@ -11,7 +11,6 @@
 @schema "ribasim.basin.concentration" BasinConcentration
 @schema "ribasim.basin.concentrationexternal" BasinConcentrationExternal
 @schema "ribasim.basin.concentrationstate" BasinConcentrationState
-@schema "ribasim.terminal.static" TerminalStatic
 @schema "ribasim.fractionalflow.static" FractionalFlowStatic
 @schema "ribasim.flowboundary.static" FlowBoundaryStatic
 @schema "ribasim.flowboundary.time" FlowBoundaryTime
@@ -91,7 +90,6 @@ end
     potential_evaporation::Union{Missing, Float64}
     infiltration::Union{Missing, Float64}
     precipitation::Union{Missing, Float64}
-    urban_runoff::Union{Missing, Float64}
 end
 
 @version BasinTimeV1 begin
@@ -101,7 +99,6 @@ end
     potential_evaporation::Union{Missing, Float64}
     infiltration::Union{Missing, Float64}
     precipitation::Union{Missing, Float64}
-    urban_runoff::Union{Missing, Float64}
 end
 
 @version BasinConcentrationV1 begin
@@ -218,10 +215,6 @@ end
     time::DateTime
     level::Float64
     flow_rate::Float64
-end
-
-@version TerminalStaticV1 begin
-    node_id::Int32
 end
 
 @version DiscreteControlVariableV1 begin

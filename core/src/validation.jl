@@ -94,7 +94,7 @@ controllablefields(::Val{:FractionalFlow}) = Set((:fraction,))
 controllablefields(::Val{:Pump}) = Set((:active, :flow_rate))
 controllablefields(::Val{:Outlet}) = Set((:active, :flow_rate))
 controllablefields(::Val{:PidControl}) =
-    Set((:active, :target, :propoertional, :integral, :derivative))
+    Set((:active, :target, :proportional, :integral, :derivative))
 controllablefields(nodetype) = Set{Symbol}()
 
 function variable_names(s::Any)
@@ -434,6 +434,47 @@ function valid_demand(
         for (demand_p_itp, p_itp) in zip(col, priorities)
             if any(demand_p_itp.u .< 0.0)
                 @error "Demand of $id with priority $p_itp should be non-negative"
+                errors = true
+            end
+        end
+    end
+    return !errors
+end
+
+"""
+Validate Outlet crest level and fill in default values
+"""
+function valid_outlet_crest_level!(graph::MetaGraph, outlet::Outlet, basin::Basin)::Bool
+    errors = false
+    for (id, crest) in zip(outlet.node_id, outlet.min_crest_level)
+        id_in = inflow_id(graph, id)
+        if id_in.type == NodeType.Basin
+            basin_bottom_level = basin_bottom(basin, id_in)[2]
+            if crest == -Inf
+                outlet.min_crest_level[id.idx] = basin_bottom_level
+            elseif crest < basin_bottom_level
+                @error "Minimum crest level of $id is lower than bottom of upstream $id_in" crest basin_bottom_level
+                errors = true
+            end
+        end
+    end
+    return !errors
+end
+
+function valid_tabulated_curve_level(
+    graph::MetaGraph,
+    tabulated_rating_curve::TabulatedRatingCurve,
+    basin::Basin,
+)::Bool
+    errors = false
+    for (id, table) in zip(tabulated_rating_curve.node_id, tabulated_rating_curve.table)
+        id_in = inflow_id(graph, id)
+        if id_in.type == NodeType.Basin
+            basin_bottom_level = basin_bottom(basin, id_in)[2]
+            # the second level is the bottom, the first is added to control extrapolation
+            if table.t[1] + 1.0 < basin_bottom_level
+                @error "Lowest levels of $id is lower than bottom of upstream $id_in" table.t[1] +
+                                                                                      1.0 basin_bottom_level
                 errors = true
             end
         end

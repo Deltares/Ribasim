@@ -438,6 +438,63 @@ end
     )
 end
 
+@testitem "TabulatedRatingCurve upstream level validation" begin
+    using Ribasim: valid_tabulated_curve_level
+    using Logging
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/level_range/ribasim.toml")
+    @test ispath(toml_path)
+    invalid_level = -2.0
+
+    config = Ribasim.Config(toml_path)
+    model = Ribasim.Model(config)
+
+    parameters = model.integrator.p
+
+    (; graph, tabulated_rating_curve, basin) = parameters
+    tabulated_rating_curve.table[1].t[1] = invalid_level
+
+    logger = TestLogger()
+    with_logger(logger) do
+        @test !Ribasim.valid_tabulated_curve_level(graph, tabulated_rating_curve, basin)
+    end
+
+    @test length(logger.logs) == 1
+    @test logger.logs[1].level == Error
+    @test logger.logs[1].message ==
+          "Lowest levels of TabulatedRatingCurve #5 is lower than bottom of upstream Basin #1"
+end
+
+@testitem "Outlet upstream level validation" begin
+    using Ribasim: valid_outlet_crest_level!
+    using Logging
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/level_boundary_condition/ribasim.toml",
+    )
+    @test ispath(toml_path)
+    invalid_level = -2.0
+
+    config = Ribasim.Config(toml_path)
+    model = Ribasim.Model(config)
+
+    parameters = model.integrator.p
+
+    (; graph, outlet, basin) = parameters
+    outlet.min_crest_level[1] = invalid_level
+
+    logger = TestLogger()
+    with_logger(logger) do
+        @test !Ribasim.valid_outlet_crest_level!(graph, outlet, basin)
+    end
+
+    @test length(logger.logs) == 1
+    @test logger.logs[1].level == Error
+    @test logger.logs[1].message ==
+          "Minimum crest level of Outlet #4 is lower than bottom of upstream Basin #3"
+end
+
 @testitem "Convergence bottleneck" begin
     using IOCapture: capture
     toml_path =
