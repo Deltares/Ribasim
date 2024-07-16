@@ -462,7 +462,7 @@ end
     @test length(logger.logs) == 1
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
-          "Lowest levels of TabulatedRatingCurve #5 is lower than bottom of upstream Basin #1 crest basin_bottom_level"
+          "Lowest levels of TabulatedRatingCurve #5 is lower than bottom of upstream Basin #1"
 end
 
 @testitem "Outlet upstream level validation" begin
@@ -492,7 +492,7 @@ end
     @test length(logger.logs) == 1
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
-          "Minimum crest level of Outlet #4 is lower than bottom of upstream Basin #3 crest basin_bottom_level"
+          "Minimum crest level of Outlet #4 is lower than bottom of upstream Basin #3"
 end
 
 @testitem "Convergence bottleneck" begin
