@@ -8,38 +8,44 @@ flowchart TD
     subgraph update_allocation
         direction TB
         G[update mean flows]-->E[collect demand]
-        E-->F[allocate demand]
+        E-->F[allocate]
     end
-
+    style update_allocation fill:#9ff
     C(Begin)-->A[Initialization allocation]
     A--> update_allocation --> H[\end of time?\]
     H--> |No| update_allocation
     H --> |Yes| D(End)
 ```
 
-If allocation is used in a model, Allocation struct is created.
+If allocation is used in a model, [Allocation struct](https://deltares.github.io/Ribasim/dev/allocation.html#the-allocation-struct)(s) are created.
 Allocation struct stores the data that is needed for calculation and the result of the calculation.
 Optimization is an essential part of allocation.
 JuMP model is used to model and solve the optimization problems that come up in the allocation.
-AllocationModel struct is used for constructing JuMP problem.
+[AllocationModel struct](https://deltares.github.io/Ribasim/dev/allocation.html#the-allocation-struct) is used for constructing JuMP problem.
 When a Allocation model is created, a JuMP optimization model is defined and initialized in the allocation model.
+More details on how allocation interacts with `JuMP` is explained [here](https://deltares.github.io/Ribasim/dev/allocation.html#the-allocation-struct).
 
 After initialization, as the simulation start, allocation problem is solved and updated on every time step.
 In each iteration, data that is needed for comuptation are updated.
 And parameters of optimization problem are also updated.
 Optimization problem are solved and the data of the result are saved.
 
-The update of allocation are spread in three parts. They are updating
+The update of allocation are spread in three parts.
+They are updating the mean flows, ["collect demand" and "allocate"](https://deltares.github.io/Ribasim/concept/allocation.html#the-high-level-algorithm).
+The mean flows data is used for iMOD coupler.
+The steps "collect demand" and "allocate" correspond to the function `collect_demand` and `allocate_demand` in the code.
+
+The iteration stops when it reaches the end time step.
 
 ## The `Allocation` struct
 
-Allocation struct stores all information about allocation.
+`Allocation` struct stores all information about allocation.
 
 |field     | type              |  description|
 |------------ | -------- |---------------------------------------- |
 |subnetwork_ids     | Vector{Int32}     | The unique sorted allocation network IDs|
 |allocation_models     | AllocationModel   | The allocation models for the main network and subnetworks corresponding to subnetwork_ids|
-|main_network_connections  |Vector{Vector{Tuple{NodeID, NodeID}}}| (from_id, to_id) from the main network to the subnetwork per subnetwork|
+|main_network_connections  |Vector{Vector{Tuple{NodeID, NodeID}}} | (from_id, to_id) from the main network to the subnetwork per subnetwork|
 |priorities        |Vector{Int32}| All used priority values.|
 |subnetwork_demands   | Dict{Tuple{NodeID, NodeID}, Vector{Float64}}   | The demand of an edge from the main network to a subnetwork|
 |subnetwork_allocateds |Dict{Tuple{NodeID, NodeID}, Vector{Float64}}   | The allocated flow of an edge from the main network to a subnetwork|
