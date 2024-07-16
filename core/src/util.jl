@@ -438,22 +438,29 @@ function get_external_priority_idx(p::Parameters, node_id::NodeID)::Int
 end
 
 """
-Set is_pid_controlled to true for those pumps and outlets that are PID controlled
+Set is_continuously_controlled to true for those pumps and outlets that are controlled by either
+PidControl or ContinuousControl
 """
-function set_is_pid_controlled!(p::Parameters)::Nothing
-    (; graph, pid_control, pump, outlet) = p
+function set_is_continuously_controlled!(p::Parameters)::Nothing
+    (; graph, continuous_control, pid_control, pump, outlet) = p
+    errors = false
 
-    for id in pid_control.node_id
-        id_controlled = only(outneighbor_labels_type(graph, id, EdgeType.control))
-        if id_controlled.type == NodeType.Pump
-            pump.is_pid_controlled[id_controlled.idx] = true
-        elseif id_controlled.type == NodeType.Outlet
-            outlet.is_pid_controlled[id_controlled.idx] = true
-        else
-            error(
-                "Only Pump and Outlet can be controlled by PidController, got $is_controlled",
-            )
+    for id_vector in [continuous_control.node_id, pid_control.node_id]
+        for id in id_vector
+            id_controlled = only(outneighbor_labels_type(graph, id, EdgeType.control))
+            if id_controlled.type == NodeType.Pump
+                pump.is_continuously_controlled[id_controlled.idx] = true
+            elseif id_controlled.type == NodeType.Outlet
+                outlet.is_continuously_controlled[id_controlled.idx] = true
+            else
+                errors = true
+                @error "Only Pump and Outlet can be controlled by PidController, got $id_controlled"
+            end
         end
+    end
+
+    if errors
+        error("Errors occurred when parsing ContinuousControl and PidControl connectivity")
     end
     return nothing
 end
@@ -655,7 +662,7 @@ end
 """
 Set references to all variables that are controlled by discrete control
 """
-function set_controlled_variable_refs!(p::Parameters)::Nothing
+function set_discrete_controlled_variable_refs!(p::Parameters)::Nothing
     for nodetype in propertynames(p)
         node = getfield(p, nodetype)
         if node isa AbstractParameterNode && hasfield(typeof(node), :control_mapping)
@@ -688,19 +695,24 @@ function set_controlled_variable_refs!(p::Parameters)::Nothing
     return nothing
 end
 
-function set_controlled_variable_refs!(
-    p::Parameters,
-    continuous_control::ContinuousControl,
-)::Nothing
-    (; graph) = p
-    (; node_id, target_ref, controlled_parameter) = continuous_control
+function set_continuously_controlled_variable_refs!(p::Parameters)::Nothing
+    (; continuous_control, pid_control, graph) = p
     errors = false
-    for (i, id) in enumerate(node_id)
-        controlled_node_id = only(outneighbor_labels_type(graph, id, EdgeType.control))
-        ref, error =
-            get_variable_ref(p, controlled_node_id, controlled_parameter[i]; listen = false)
-        push!(target_ref, ref)
-        error |= error
+    for (node, controlled_parameters) in (
+        (continuous_control, continuous_control.controlled_parameter),
+        (pid_control, fill("flow_rate", length(pid_control.node_id))),
+    )
+        for (id, controlled_parameter) in zip(node.node_id, controlled_parameters)
+            controlled_node_id = only(outneighbor_labels_type(graph, id, EdgeType.control))
+            ref, error = get_variable_ref(
+                p,
+                controlled_node_id,
+                controlled_parameter;
+                listen = false,
+            )
+            push!(node.target_ref, ref)
+            errors |= error
+        end
     end
 
     if errors

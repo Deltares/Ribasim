@@ -21,54 +21,34 @@ function water_balance!(
     # Basin forcings
     formulate_basins!(du, basin, storage)
 
-    # First formulate intermediate flows
+    # Formulate intermediate flows (non continuously controlled)
     formulate_flows!(p, storage, t)
 
-    # Continuous control
+    # Compute continuous control
     formulate_continuous_control!(u, p, t)
 
-    # Now formulate du
-    formulate_du!(du, graph, storage)
-
-    # PID control (changes the du of basins connected to PID controlled nodes)
+    # Compute PID control
     formulate_pid_control!(u, du, pid_control, p, integral, t)
+
+    # Forulate intermediate flows (continuously controlled)
+    formulate_flows!(p, storage, t; continuously_controlled = true)
+
+    # Formulate du
+    formulate_du!(du, graph, storage)
 
     return nothing
 end
 
 function formulate_continuous_control!(u, p, t)::Nothing
-    (;
-        compound_variable,
-        target_ref,
-        relationship,
-        min_output,
-        max_output,
-        affected_edges,
-        controlled_parameter,
-    ) = p.continuous_control
+    (; compound_variable, target_ref, relationship, min_output, max_output) =
+        p.continuous_control
 
-    for (cvar, ref, rel, min, max, aff_edges, param) in zip(
-        compound_variable,
-        target_ref,
-        relationship,
-        min_output,
-        max_output,
-        affected_edges,
-        controlled_parameter,
-    )
+    for (cvar, ref, rel, min, max) in
+        zip(compound_variable, target_ref, relationship, min_output, max_output)
         value = compound_variable_value(cvar, p, u, t)
-        output = clamp(rel(value), min, max)
-        set_value!(ref, output)
 
-        # TODO: compute proper reduction factor!
-        reduction_factor_product = 1.0
-        output_reduced = reduction_factor_product * output
-
-        if param == "flow_rate"
-            for edge_metadata in aff_edges
-                set_flow!(p.graph, edge_metadata, output_reduced)
-            end
-        end
+        # TODO: This iclamping s not smooth, maybe needs reduction factors
+        set_value!(ref, clamp(rel(value), min, max))
     end
     return nothing
 end
@@ -154,87 +134,48 @@ function formulate_pid_control!(
     integral_value::SubArray,
     t::Number,
 )::Nothing
-    (; graph, pump, outlet, basin, fractional_flow) = p
-    min_flow_rate_pump = pump.min_flow_rate
-    max_flow_rate_pump = pump.max_flow_rate
-    min_flow_rate_outlet = outlet.min_flow_rate
-    max_flow_rate_outlet = outlet.max_flow_rate
+    (; basin) = p
     (; node_id, active, target, listen_node_id, error) = pid_control
     (; current_area) = basin
 
     current_area = get_tmp(current_area, u)
-    storage = u.storage
     error = get_tmp(error, u)
 
     set_error!(pid_control, p, u, t)
 
-    for id in node_id
-        if !active[id.idx]
-            du.integral[id.idx] = 0.0
-            u.integral[id.idx] = 0.0
+    for (i, id) in enumerate(node_id)
+        if !active[i]
+            du.integral[i] = 0.0
+            u.integral[i] = 0.0
             continue
         end
 
-        du.integral[id.idx] = error[id.idx]
+        du.integral[i] = error[i]
 
-        listened_node_id = listen_node_id[id.idx]
+        listened_node_id = listen_node_id[i]
 
-        controlled_node_id = only(outneighbor_labels_type(graph, id, EdgeType.control))
-        controls_pump = (controlled_node_id in pump.node_id)
-
-        if !controls_pump
-            src_id = inflow_id(graph, controlled_node_id)
-            dst_id = outflow_id(graph, controlled_node_id)
-
-            inflow_edge = graph[src_id, controlled_node_id]
-            outflow_edge = graph[controlled_node_id, dst_id]
-
-            has_src_level, src_level = get_level(p, src_id, t; storage)
-            has_dst_level, dst_level = get_level(p, dst_id, t; storage)
-
-            factor_outlet = 1.0
-
-            # No flow out of outlet if source level is lower than reference level
-            if has_src_level && has_dst_level
-                Δlevel = src_level - dst_level
-                factor_outlet *= reduction_factor(Δlevel, 0.1)
-            end
-
-            # No flow out of outlet if source level is lower than minimum crest level
-            if has_src_level
-                factor_outlet *= reduction_factor(
-                    src_level - outlet.min_crest_level[controlled_node_id.idx],
-                    0.1,
-                )
-            end
-        else
-            factor_outlet = 1.0
-        end
-
-        id_inflow = inflow_id(graph, controlled_node_id)
-        factor_basin = low_storage_factor(storage, id_inflow, 10.0)
-
-        factor = factor_basin * factor_outlet
         flow_rate = 0.0
 
-        K_p = pid_control.proportional[id.idx](t)
-        K_i = pid_control.integral[id.idx](t)
-        K_d = pid_control.derivative[id.idx](t)
+        K_p = pid_control.proportional[i](t)
+        K_i = pid_control.integral[i](t)
+        K_d = pid_control.derivative[i](t)
 
         if !iszero(K_d)
             # dlevel/dstorage = 1/area
+            # TODO: replace by DataInterpolations.derivative(storage_to_level, storage)
             area = current_area[listened_node_id.idx]
-            D = 1.0 - K_d * factor / area
+            D = 1.0 - K_d / area
         else
             D = 1.0
         end
 
         if !iszero(K_p)
-            flow_rate += factor * K_p * error[id.idx] / D
+            flow_rate += K_p * error[id.idx] / D
         end
 
         if !iszero(K_i)
-            flow_rate += factor * K_i * integral_value[id.idx] / D
+            println("yeet")
+            flow_rate += K_i * integral_value[id.idx] / D
         end
 
         if !iszero(K_d)
@@ -246,53 +187,8 @@ function formulate_pid_control!(
             flow_rate += K_d * (dlevel_demand - du_listened_basin_old / area) / D
         end
 
-        # Clamp values outside pump flow rate bounds
-        if controls_pump
-            min_flow_rate = min_flow_rate_pump
-            max_flow_rate = max_flow_rate_pump
-        else
-            min_flow_rate = min_flow_rate_outlet
-            max_flow_rate = max_flow_rate_outlet
-        end
-
-        flow_rate = clamp(
-            flow_rate,
-            min_flow_rate[controlled_node_id.idx],
-            max_flow_rate[controlled_node_id.idx],
-        )
-
-        # Set flow for connected edges
-        src_id = inflow_id(graph, controlled_node_id)
-        dst_id = outflow_id(graph, controlled_node_id)
-
-        set_flow!(graph, src_id, controlled_node_id, flow_rate)
-        set_flow!(graph, controlled_node_id, dst_id, flow_rate)
-
-        # Below du.storage is updated. This is normally only done
-        # in formulate!(du, connectivity, basin), but in this function
-        # flows are set so du has to be updated too.
-        if dst_id.type == NodeType.Basin
-            du.storage[dst_id.idx] += flow_rate
-        end
-
-        if src_id.type == NodeType.Basin
-            du.storage[src_id.idx] -= flow_rate
-        end
-
-        # When the controlled pump flows out into fractional flow nodes
-        if controls_pump
-            for id in outflow_ids(graph, controlled_node_id)
-                if id in fractional_flow.node_id
-                    after_ff_id = fractional_flow.outflow_edge[id.idx].edge[2]
-                    flow_rate_fraction = fractional_flow.fraction[id.idx] * flow_rate
-                    flow[id, after_ff_id] = flow_rate_fraction
-
-                    if after_ff_id.type == NodeType.Basin
-                        du.storage[after_ff_id.idx] += flow_rate_fraction
-                    end
-                end
-            end
-        end
+        # Set flow_rate
+        set_value!(pid_control.target_ref[i], flow_rate)
     end
     return nothing
 end
@@ -594,18 +490,26 @@ function formulate_flow!(
     p::Parameters,
     storage::AbstractVector,
     t::Number,
+    continuously_controlled::Bool,
 )::Nothing
-    (; graph, basin) = p
+    (; graph) = p
 
-    for (node_id, inflow_edge, outflow_edges, active, flow_rate, is_pid_controlled) in zip(
+    for (
+        node_id,
+        inflow_edge,
+        outflow_edges,
+        active,
+        flow_rate,
+        is_continuously_controlled,
+    ) in zip(
         pump.node_id,
         pump.inflow_edge,
         pump.outflow_edges,
         pump.active,
         get_tmp(pump.flow_rate, storage),
-        pump.is_pid_controlled,
+        pump.is_continuously_controlled,
     )
-        if !active || is_pid_controlled
+        if !active || (is_continuously_controlled != continuously_controlled)
             continue
         end
 
@@ -627,6 +531,7 @@ function formulate_flow!(
     p::Parameters,
     storage::AbstractVector,
     t::Number,
+    continuously_controlled::Bool,
 )::Nothing
     (; graph) = p
 
@@ -636,7 +541,7 @@ function formulate_flow!(
         outflow_edges,
         active,
         flow_rate,
-        is_pid_controlled,
+        is_continuously_controlled,
         min_crest_level,
     ) in zip(
         outlet.node_id,
@@ -644,10 +549,10 @@ function formulate_flow!(
         outlet.outflow_edges,
         outlet.active,
         get_tmp(outlet.flow_rate, storage),
-        outlet.is_pid_controlled,
+        outlet.is_continuously_controlled,
         outlet.min_crest_level,
     )
-        if !active || is_pid_controlled
+        if !active || (is_continuously_controlled != continuously_controlled)
             continue
         end
 
@@ -703,7 +608,12 @@ function formulate_du!(
     return nothing
 end
 
-function formulate_flows!(p::Parameters, storage::AbstractVector, t::Number)::Nothing
+function formulate_flows!(
+    p::Parameters,
+    storage::AbstractVector,
+    t::Number;
+    continuously_controlled::Bool = false,
+)::Nothing
     (;
         linear_resistance,
         manning_resistance,
@@ -715,13 +625,16 @@ function formulate_flows!(p::Parameters, storage::AbstractVector, t::Number)::No
         fractional_flow,
     ) = p
 
-    formulate_flow!(linear_resistance, p, storage, t)
-    formulate_flow!(manning_resistance, p, storage, t)
-    formulate_flow!(tabulated_rating_curve, p, storage, t)
-    formulate_flow!(flow_boundary, p, storage, t)
-    formulate_flow!(pump, p, storage, t)
-    formulate_flow!(outlet, p, storage, t)
-    formulate_flow!(user_demand, p, storage, t)
+    formulate_flow!(pump, p, storage, t, continuously_controlled)
+    formulate_flow!(outlet, p, storage, t, continuously_controlled)
+
+    if !continuously_controlled
+        formulate_flow!(linear_resistance, p, storage, t)
+        formulate_flow!(manning_resistance, p, storage, t)
+        formulate_flow!(tabulated_rating_curve, p, storage, t)
+        formulate_flow!(flow_boundary, p, storage, t)
+        formulate_flow!(user_demand, p, storage, t)
+    end
 
     # do this last since they rely on formulated input flows
     formulate_flow!(fractional_flow, p, storage, t)

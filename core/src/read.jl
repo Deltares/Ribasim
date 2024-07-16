@@ -839,16 +839,6 @@ function ContinuousControl(db::DB, config::Config, graph::MetaGraph)::Continuous
         error("Errors encountered when parsing ContinuousControl data.")
     end
 
-    # Get the edges that are directly affected by the controlled node
-    affected_edges = Tuple{EdgeMetadata, EdgeMetadata}[]
-    for id in node_id
-        controlled_id = only(outneighbor_labels_type(graph, id, EdgeType.control))
-        push!(
-            affected_edges,
-            (inflow_edge(graph, controlled_id), outflow_edge(graph, controlled_id)),
-        )
-    end
-
     return ContinuousControl(
         node_id,
         compound_variable,
@@ -857,11 +847,15 @@ function ContinuousControl(db::DB, config::Config, graph::MetaGraph)::Continuous
         relationship,
         min_output,
         max_output,
-        affected_edges,
     )
 end
 
-function PidControl(db::DB, config::Config, chunk_sizes::Vector{Int})::PidControl
+function PidControl(
+    db::DB,
+    config::Config,
+    graph::MetaGraph,
+    chunk_sizes::Vector{Int},
+)::PidControl
     static = load_structvector(db, config, PidControlStaticV1)
     time = load_structvector(db, config, PidControlTimeV1)
 
@@ -884,6 +878,8 @@ function PidControl(db::DB, config::Config, chunk_sizes::Vector{Int})::PidContro
     if config.solver.autodiff
         pid_error = DiffCache(pid_error, chunk_sizes)
     end
+    target_ref = PreallocationRef{typeof(pid_error)}[]
+
     return PidControl(;
         node_id = node_ids,
         parsed_parameters.active,
@@ -893,6 +889,7 @@ function PidControl(db::DB, config::Config, chunk_sizes::Vector{Int})::PidContro
             Ref(db),
         ),
         parsed_parameters.target,
+        target_ref,
         parsed_parameters.proportional,
         parsed_parameters.integral,
         parsed_parameters.derivative,
@@ -1224,7 +1221,7 @@ function Parameters(db::DB, config::Config)::Parameters
     terminal = Terminal(db, config)
     discrete_control = DiscreteControl(db, config, graph)
     continuous_control = ContinuousControl(db, config, graph)
-    pid_control = PidControl(db, config, chunk_sizes)
+    pid_control = PidControl(db, config, graph, chunk_sizes)
     user_demand = UserDemand(db, config, graph)
     level_demand = LevelDemand(db, config)
     flow_demand = FlowDemand(db, config)
@@ -1255,10 +1252,10 @@ function Parameters(db::DB, config::Config)::Parameters
     )
 
     collect_control_mappings!(p)
-    set_is_pid_controlled!(p)
+    set_is_continuously_controlled!(p)
     set_listen_variable_refs!(p)
-    set_controlled_variable_refs!(p)
-    set_controlled_variable_refs!(p, continuous_control)
+    set_discrete_controlled_variable_refs!(p)
+    set_continuously_controlled_variable_refs!(p)
 
     # Allocation data structures
     if config.allocation.use_allocation

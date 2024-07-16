@@ -423,7 +423,7 @@ flow_rate: target flow rate
 min_flow_rate: The minimal flow rate of the pump
 max_flow_rate: The maximum flow rate of the pump
 control_mapping: dictionary from (node_id, control_state) to target flow rate
-is_pid_controlled: whether the flow rate of this pump is governed by PID control
+is_continuously_controlled: whether the flow rate of this pump is governed by PidControl or ContinuousControl
 """
 @kwdef struct Pump{T} <: AbstractParameterNode
     node_id::Vector{NodeID}
@@ -434,7 +434,7 @@ is_pid_controlled: whether the flow rate of this pump is governed by PID control
     min_flow_rate::Vector{Float64} = zeros(length(node_id))
     max_flow_rate::Vector{Float64} = fill(Inf, length(node_id))
     control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate}
-    is_pid_controlled::Vector{Bool} = fill(false, length(node_id))
+    is_continuously_controlled::Vector{Bool} = fill(false, length(node_id))
 
     function Pump(
         node_id,
@@ -445,7 +445,7 @@ is_pid_controlled: whether the flow rate of this pump is governed by PID control
         min_flow_rate,
         max_flow_rate,
         control_mapping,
-        is_pid_controlled,
+        is_continuously_controlled,
     ) where {T}
         if valid_flow_rates(node_id, get_tmp(flow_rate, 0), control_mapping)
             return new{T}(
@@ -457,7 +457,7 @@ is_pid_controlled: whether the flow rate of this pump is governed by PID control
                 min_flow_rate,
                 max_flow_rate,
                 control_mapping,
-                is_pid_controlled,
+                is_continuously_controlled,
             )
         else
             error("Invalid Pump flow rate(s).")
@@ -476,7 +476,7 @@ flow_rate: target flow rate
 min_flow_rate: The minimal flow rate of the outlet
 max_flow_rate: The maximum flow rate of the outlet
 control_mapping: dictionary from (node_id, control_state) to target flow rate
-is_pid_controlled: whether the flow rate of this outlet is governed by PID control
+is_continuously_controlled: whether the flow rate of this pump is governed by PidControl or ContinuousControl
 """
 @kwdef struct Outlet{T} <: AbstractParameterNode
     node_id::Vector{NodeID}
@@ -488,7 +488,7 @@ is_pid_controlled: whether the flow rate of this outlet is governed by PID contr
     max_flow_rate::Vector{Float64} = fill(Inf, length(node_id))
     min_crest_level::Vector{Float64} = fill(-Inf, length(node_id))
     control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate} = Dict()
-    is_pid_controlled::Vector{Bool} = fill(false, length(node_id))
+    is_continuously_controlled::Vector{Bool} = fill(false, length(node_id))
 
     function Outlet(
         node_id,
@@ -500,7 +500,7 @@ is_pid_controlled: whether the flow rate of this outlet is governed by PID contr
         max_flow_rate,
         min_crest_level,
         control_mapping,
-        is_pid_controlled,
+        is_continuously_controlled,
     ) where {T}
         if valid_flow_rates(node_id, get_tmp(flow_rate, 0), control_mapping)
             return new{T}(
@@ -513,7 +513,7 @@ is_pid_controlled: whether the flow rate of this outlet is governed by PID contr
                 max_flow_rate,
                 min_crest_level,
                 control_mapping,
-                is_pid_controlled,
+                is_continuously_controlled,
             )
         else
             error("Invalid Outlet flow rate(s).")
@@ -603,7 +603,6 @@ end
     relationship::Vector{ScalarInterpolation}
     min_output::Vector{Float64}
     max_output::Vector{Float64}
-    affected_edges::Vector{Tuple{EdgeMetadata, EdgeMetadata}}
 end
 
 """
@@ -611,17 +610,22 @@ PID control currently only supports regulating basin levels.
 
 node_id: node ID of the PidControl node
 active: whether this node is active and thus sets flow rates
+controlled_node_id: The node that is being controlled
 listen_node_id: the id of the basin being controlled
-pid_params: a vector interpolation for parameters changing over time.
-    The parameters are respectively target, proportional, integral, derivative,
-    where the last three are the coefficients for the PID equation.
+target: target level (possibly time dependent)
+target_ref: reference to the controlled flow_rate value
+proportional: proportionality coefficient error
+integral: proportionality coefficient error integral
+derivative: proportionality coefficient error derivative
 error: the current error; basin_target - current_level
+dictionary from (node_id, control_state) to target flow rate
 """
 @kwdef struct PidControl{T} <: AbstractParameterNode
     node_id::Vector{NodeID}
     active::Vector{Bool}
     listen_node_id::Vector{NodeID}
     target::Vector{ScalarInterpolation}
+    target_ref::Vector{PreallocationRef{T}}
     proportional::Vector{ScalarInterpolation}
     integral::Vector{ScalarInterpolation}
     derivative::Vector{ScalarInterpolation}
