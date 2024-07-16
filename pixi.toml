@@ -188,7 +188,7 @@ libgdal-arrow-parquet = "*"
 mypy = "*"
 pre-commit = "*"
 pyqt-stubs = "*"
-qgis = "*"
+qgis = ">=3.34"
 qgis-plugin-manager = "*"
 quarto = "*"
 quartodoc = "*"
@@ -211,12 +211,6 @@ dev = { features = ["py312", "dev"], solve-group = "py312" }
 py312 = { features = ["py312"], solve-group = "py312" }
 py311 = ["py311"]
 py310 = ["py310"]
-
-[activation]
-scripts = ["utils/env_setup.sh"]
-
-[target.win-64.activation]
-scripts = ["utils/env_setup.bat"]
 
 [system-requirements]
 linux = "3.10.0"
