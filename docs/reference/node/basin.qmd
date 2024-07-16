@@ -45,7 +45,7 @@ node_id   | Int32   | -            | sorted
 level     | Float64 | $m$          | $\ge$ basin bottom
 
 Each Basin ID needs to be in the table.
-To use the final state of an earlier simulation as an initial condition, copy the `results/basin_state.arrow` over to the `input_dir`, and point the TOML to it:
+To use the final state of an earlier simulation as an initial condition, copy [`results/basin_state.arrow`](/reference/usage.qmd#sec-state) over to the `input_dir`, and point the TOML to it:
 
 ```toml
 [basin]
