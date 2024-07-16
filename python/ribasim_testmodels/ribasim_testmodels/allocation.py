@@ -923,7 +923,9 @@ def level_demand_model() -> Model:
     )
     model.level_demand.add(
         Node(4, Point(1, -1), subnetwork_id=2),
-        [level_demand.Static(min_level=[1.0], max_level=1.5, priority=1)],
+        [
+            level_demand.Static(min_level=[1.0], priority=1)
+        ],  # min_level=[1.0], max_level=1.5,
     )
     model.basin.add(
         Node(5, Point(2, -1), subnetwork_id=2),
