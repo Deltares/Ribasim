@@ -236,7 +236,6 @@ def basic_transient_model() -> ribasim.Model:
             "potential_evaporation": evaporation,
             "infiltration": 0.0,
             "precipitation": precipitation,
-            "urban_runoff": 0.0,
         }
     )
     df = model.basin.static.df

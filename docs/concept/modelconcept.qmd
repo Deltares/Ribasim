@@ -18,12 +18,12 @@ $$
 \frac{\mathrm{d}S}{\mathrm{d}t} = Q_{in} - Q_{out}
 $$
 
-We can split out the fluxes into separate terms, such as precipitation $P$, evapotranspiration $ET$ and runoff $R$.
+We can split out the fluxes into separate terms, such as precipitation $P$ and evapotranspiration $ET$.
 For now other fluxes are combined into $Q_{rest}$.
 If we define all fluxes entering our reservoir as positive, and those leaving the system as negative, all fluxes can be summed up.
 
 $$
-\frac{\mathrm{d}S}{\mathrm{d}t} = R + P + ET + Q_{rest}
+\frac{\mathrm{d}S}{\mathrm{d}t} = P + ET + Q_{rest}
 $$
 
 ## Time
