@@ -164,7 +164,7 @@ end
 end
 
 # Simple solutions:
-# storage1 = storage1(t0) + (t-t0)*(frac*q_boundary - q_pump)
+# storage1 = storage1(t0) + (t-t0)*(q_boundary - q_pump)
 # storage2 = storage2(t0) + (t-t0)*q_pump
 # Note: uses Euler algorithm
 @testitem "MiscellaneousNodes" begin
@@ -180,17 +180,16 @@ end
     Ribasim.solve!(model)
     @test successful_retcode(model)
     p = model.integrator.p
-    (; flow_boundary, fractional_flow, pump) = p
+    (; flow_boundary, pump) = p
 
     q_boundary = flow_boundary.flow_rate[1].u[1]
     pump_flow_rate = get_tmp(pump.flow_rate, 0)
     q_pump = pump_flow_rate[1]
-    frac = fractional_flow.fraction[1]
 
     storage_both = get_storages_and_levels(model).storage
     t = tsaves(model)
     tspan = model.integrator.sol.prob.tspan
     @test t ≈ range(tspan...; step = config.solver.saveat)
-    @test storage_both[1, :] ≈ @. storage_both[1, 1] + t * (frac * q_boundary - q_pump)
+    @test storage_both[1, :] ≈ @. storage_both[1, 1] + t * (q_boundary - q_pump)
     @test storage_both[2, :] ≈ @. storage_both[2, 1] + t * q_pump
 end
