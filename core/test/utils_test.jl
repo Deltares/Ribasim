@@ -253,7 +253,6 @@ end
         NodeType.Pump,
         NodeType.Outlet,
         NodeType.TabulatedRatingCurve,
-        NodeType.FractionalFlow,
         NodeType.UserDemand,
         NodeType.FlowBoundary,
     )
