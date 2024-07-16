@@ -48,7 +48,6 @@ from ribasim.schemas import (
     PumpStaticSchema,
     TabulatedRatingCurveStaticSchema,
     TabulatedRatingCurveTimeSchema,
-    TerminalStaticSchema,
     UserDemandStaticSchema,
     UserDemandTimeSchema,
 )
@@ -171,11 +170,7 @@ class MultiNodeModel(NodeModel):
         )
 
 
-class Terminal(MultiNodeModel):
-    static: TableModel[TerminalStaticSchema] = Field(
-        default_factory=TableModel[TerminalStaticSchema],
-        json_schema_extra={"sort_keys": ["node_id"]},
-    )
+class Terminal(MultiNodeModel): ...
 
 
 class PidControl(MultiNodeModel):

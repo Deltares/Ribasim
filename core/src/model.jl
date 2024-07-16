@@ -67,7 +67,8 @@ function Model(config::Config)::Model
             error("Invalid discrete control state definition(s).")
         end
 
-        (; pid_control, graph, fractional_flow) = parameters
+        (; pid_control, graph, fractional_flow, outlet, tabulated_rating_curve, basin) =
+            parameters
         if !valid_pid_connectivity(pid_control.node_id, pid_control.listen_node_id, graph)
             error("Invalid PidControl connectivity.")
         end
@@ -78,6 +79,14 @@ function Model(config::Config)::Model
             fractional_flow.control_mapping,
         )
             error("Invalid fractional flow node combinations found.")
+        end
+
+        if !valid_outlet_crest_level!(graph, outlet, basin)
+            error("Invalid minimum crest level of outlet")
+        end
+
+        if !valid_tabulated_curve_level(graph, tabulated_rating_curve, basin)
+            error("Invalid level of tabulated rating curve")
         end
 
         # tell the solver to stop when new data comes in

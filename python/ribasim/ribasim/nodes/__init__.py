@@ -12,7 +12,6 @@ from ribasim.nodes import (
     pid_control,
     pump,
     tabulated_rating_curve,
-    terminal,
     user_demand,
 )
 
@@ -30,6 +29,5 @@ __all__ = [
     "pid_control",
     "pump",
     "tabulated_rating_curve",
-    "terminal",
     "user_demand",
 ]
