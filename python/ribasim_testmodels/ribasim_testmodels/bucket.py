@@ -30,7 +30,6 @@ def bucket_model() -> ribasim.Model:
                 potential_evaporation=[np.nan],
                 infiltration=[np.nan],
                 precipitation=[np.nan],
-                urban_runoff=[np.nan],
             ),
         ],
     )
@@ -61,7 +60,6 @@ def leaky_bucket_model() -> ribasim.Model:
                 potential_evaporation=np.nan,
                 infiltration=[np.nan, 0.001, 0.002, 0.0, 0.0],
                 precipitation=np.nan,
-                urban_runoff=0.0,
             ),
         ],
     )

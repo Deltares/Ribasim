@@ -49,7 +49,6 @@ class BasinStaticSchema(_BaseSchema):
     potential_evaporation: Series[float] = pa.Field(nullable=True)
     infiltration: Series[float] = pa.Field(nullable=True)
     precipitation: Series[float] = pa.Field(nullable=True)
-    urban_runoff: Series[float] = pa.Field(nullable=True)
 
 
 class BasinSubgridSchema(_BaseSchema):
@@ -66,7 +65,6 @@ class BasinTimeSchema(_BaseSchema):
     potential_evaporation: Series[float] = pa.Field(nullable=True)
     infiltration: Series[float] = pa.Field(nullable=True)
     precipitation: Series[float] = pa.Field(nullable=True)
-    urban_runoff: Series[float] = pa.Field(nullable=True)
 
 
 class DiscreteControlConditionSchema(_BaseSchema):
@@ -237,10 +235,6 @@ class TabulatedRatingCurveTimeSchema(_BaseSchema):
     time: Series[Timestamp] = pa.Field(nullable=False)
     level: Series[float] = pa.Field(nullable=False)
     flow_rate: Series[float] = pa.Field(nullable=False)
-
-
-class TerminalStaticSchema(_BaseSchema):
-    node_id: Series[Int32] = pa.Field(nullable=False, default=0)
 
 
 class UserDemandStaticSchema(_BaseSchema):

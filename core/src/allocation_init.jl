@@ -46,17 +46,17 @@ function get_subnetwork_capacity(
         if edge_metadata.edge ⊆ node_ids_subnetwork
             id_src, id_dst = edge_metadata.edge
 
-            node_src = getfield(p, graph[id_src].type)
-            node_dst = getfield(p, graph[id_dst].type)
-
             capacity_edge = Inf
 
             # Find flow constraints for this edge
-            if is_flow_constraining(node_src)
+            if is_flow_constraining(id_src.type)
+                node_src = getfield(p, graph[id_src].type)
+
                 capacity_node_src = node_src.max_flow_rate[id_src.idx]
                 capacity_edge = min(capacity_edge, capacity_node_src)
             end
-            if is_flow_constraining(node_dst)
+            if is_flow_constraining(id_dst.type)
+                node_dst = getfield(p, graph[id_dst].type)
                 capacity_node_dst = node_dst.max_flow_rate[id_dst.idx]
                 capacity_edge = min(capacity_edge, capacity_node_dst)
             end
@@ -66,8 +66,8 @@ function get_subnetwork_capacity(
             # If allowed by the nodes from this edge,
             # allow allocation flow in opposite direction of the edge
             if !(
-                is_flow_direction_constraining(node_src) ||
-                is_flow_direction_constraining(node_dst)
+                is_flow_direction_constraining(id_src.type) ||
+                is_flow_direction_constraining(id_dst.type)
             )
                 capacity[reverse(edge_metadata.edge)] = capacity_edge
             end

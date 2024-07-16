@@ -236,21 +236,39 @@ end
 end
 
 @testitem "constraints_from_nodes" begin
-    using Ribasim: Model, snake_case, nodetypes, is_flow_constraining
+    using Ribasim:
+        Model,
+        snake_case,
+        nodetypes,
+        NodeType,
+        is_flow_constraining,
+        is_flow_direction_constraining
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
     @test ispath(toml_path)
     model = Model(toml_path)
     (; p) = model.integrator
-    constraining_types = (:Pump, :Outlet, :LinearResistance)
+    constraining_types = (NodeType.Pump, NodeType.Outlet, NodeType.LinearResistance)
+    directed = (
+        NodeType.Pump,
+        NodeType.Outlet,
+        NodeType.TabulatedRatingCurve,
+        NodeType.FractionalFlow,
+        NodeType.UserDemand,
+        NodeType.FlowBoundary,
+    )
 
-    for type in nodetypes
-        type == :Terminal && continue  # has no parameter field
-        node = getfield(p, snake_case(type))
+    for symbol in nodetypes
+        type = NodeType.T(symbol)
         if type in constraining_types
-            @test is_flow_constraining(node)
+            @test is_flow_constraining(type)
         else
-            @test !is_flow_constraining(node)
+            @test !is_flow_constraining(type)
+        end
+        if type in directed
+            @test is_flow_direction_constraining(type)
+        else
+            @test !is_flow_direction_constraining(type)
         end
     end
 end
