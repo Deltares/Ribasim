@@ -11,7 +11,6 @@
 @schema "ribasim.basin.concentration" BasinConcentration
 @schema "ribasim.basin.concentrationexternal" BasinConcentrationExternal
 @schema "ribasim.basin.concentrationstate" BasinConcentrationState
-@schema "ribasim.terminal.static" TerminalStatic
 @schema "ribasim.fractionalflow.static" FractionalFlowStatic
 @schema "ribasim.flowboundary.static" FlowBoundaryStatic
 @schema "ribasim.flowboundary.time" FlowBoundaryTime
@@ -216,10 +215,6 @@ end
     time::DateTime
     level::Float64
     flow_rate::Float64
-end
-
-@version TerminalStaticV1 begin
-    node_id::Int32
 end
 
 @version DiscreteControlVariableV1 begin

@@ -636,20 +636,6 @@ class OutletStatic(Input):
         ]
 
 
-class TerminalStatic(Input):
-    @classmethod
-    def input_type(cls) -> str:
-        return "Terminal / static"
-
-    @classmethod
-    def geometry_type(cls) -> str:
-        return "No Geometry"
-
-    @classmethod
-    def attributes(cls) -> list[QgsField]:
-        return [QgsField("node_id", QVariant.Int)]
-
-
 class FlowBoundaryStatic(Input):
     @classmethod
     def input_type(cls) -> str:
