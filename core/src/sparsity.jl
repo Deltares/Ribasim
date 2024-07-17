@@ -23,7 +23,7 @@ function get_jac_prototype(p::Parameters)::SparseMatrixCSC{Float64, Int64}
 end
 
 """
-Add nonzeros for basins connected to eachother via 1 node and possibly a fractional flow node
+Add nonzeros for basins connected to eachother via 1 node.
 Basins are also assumed to depend on themselves (main diagonal terms)
 """
 function update_jac_prototype!(
@@ -34,9 +34,6 @@ function update_jac_prototype!(
     for id in basin.node_id
         for id_neighbor in inoutflow_ids(graph, id)
             for id_neighbor_neighbor in inoutflow_ids(graph, id_neighbor)
-                if id_neighbor_neighbor.type == NodeType.FractionalFlow
-                    id_neighbor_neighbor = outflow_id(graph, id_neighbor_neighbor)
-                end
                 if id_neighbor_neighbor.type == NodeType.Basin
                     jac_prototype[id.idx, id_neighbor_neighbor.idx] = 1.0
                 end

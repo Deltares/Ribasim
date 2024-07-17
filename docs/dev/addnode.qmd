@@ -105,7 +105,7 @@ We divide the various node types in groups based on what type of state dependenc
 
 The current dependency groups are:
 
-- Out-neighbor dependencies: examples are `TabulatedRatingCurve`, `Pump` (the latter only in the reduction factor regime and not PID controlled). If the in-neighbor of a node of this group is a basin, then the storage of this basin affects itself and the storage of the outneighbor (or the basin one node further if it is connected with a `FractionalFlow` in between) if that is also a basin;
+- Out-neighbor dependencies: examples are `TabulatedRatingCurve`, `Pump` (the latter only in the reduction factor regime and not PID controlled). If the in-neighbor of a node of this group is a basin, then the storage of this basin affects itself and the storage of the outneighbor if that is also a basin;
 - Either-neighbor dependencies: examples are `LinearResistance`, `ManningResistance`. If either the in-neighbor or out-neighbor of a node of this group is a basin, the storage of this basin depends on itself. If both the in-neighbor and the out-neighbor are basins, their storages also depend on eachother.
 - The `PidControl` node is a special case which is discussed in [the PID equations](/reference/node/pid-control.qmd#equations).
 

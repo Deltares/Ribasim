@@ -175,9 +175,9 @@ end
 
     @test jac_prototype.m == 4
     @test jac_prototype.n == 4
-    @test jac_prototype.colptr == [1, 3, 5, 8, 11]
-    @test jac_prototype.rowval == [1, 2, 1, 2, 2, 3, 4, 2, 3, 4]
-    @test jac_prototype.nzval == ones(10)
+    @test jac_prototype.colptr == [1, 3, 7, 10, 13]
+    @test jac_prototype.rowval == [1, 2, 1, 2, 3, 4, 2, 3, 4, 2, 3, 4]
+    @test jac_prototype.nzval == ones(12)
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/pid_control/ribasim.toml")
 
@@ -253,7 +253,6 @@ end
         NodeType.Pump,
         NodeType.Outlet,
         NodeType.TabulatedRatingCurve,
-        NodeType.FractionalFlow,
         NodeType.UserDemand,
         NodeType.FlowBoundary,
     )
@@ -291,7 +290,6 @@ end
         :DiscreteControl,
         :Outlet,
         :LinearResistance,
-        :FractionalFlow,
     ])
     for nodetype in nodetypes
         NodeType.T(nodetype)

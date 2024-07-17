@@ -374,23 +374,6 @@ Requirements:
 end
 
 """
-node_id: node ID of the FractionalFlow node
-inflow_edge: incoming flow edge metadata
-    The ID of the destination node is always the ID of the FractionalFlow node
-outflow_edge: outgoing flow edge metadata
-    The ID of the source node is always the ID of the FractionalFlow node
-fraction: The fraction in [0,1] of flow the node lets through
-control_mapping: dictionary from (node_id, control_state) to fraction
-"""
-@kwdef struct FractionalFlow <: AbstractParameterNode
-    node_id::Vector{NodeID}
-    inflow_edge::Vector{EdgeMetadata}
-    outflow_edge::Vector{EdgeMetadata}
-    fraction::Vector{Float64}
-    control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate}
-end
-
-"""
 node_id: node ID of the LevelBoundary node
 active: whether this node is active
 level: the fixed level of this 'infinitely big basin'
@@ -719,7 +702,6 @@ const ModelGraph{T} = MetaGraph{
     linear_resistance::LinearResistance
     manning_resistance::ManningResistance
     tabulated_rating_curve::TabulatedRatingCurve{C2}
-    fractional_flow::FractionalFlow
     level_boundary::LevelBoundary
     flow_boundary::FlowBoundary
     pump::Pump{T}

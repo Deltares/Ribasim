@@ -87,7 +87,7 @@ from qgis.core import QgsApplication, QgsProject, QgsProjectBadLayerHandler
 from qgis.PyQt.QtCore import QDir
 
 
-class QgsProjectBadLayerDefaultHandler(QgsProjectBadLayerHandler):
+class QgsProjectBadLayerDefaultHandler(QgsProjectBadLayerHandler):  # type: ignore
     def handleBadLayers(self, layers, dom):
         pass
 

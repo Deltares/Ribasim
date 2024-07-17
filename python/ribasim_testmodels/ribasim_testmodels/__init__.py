@@ -9,7 +9,6 @@ from ribasim_testmodels.allocation import (
     allocation_example_model,
     fair_distribution_model,
     flow_demand_model,
-    fractional_flow_subnetwork_model,
     level_demand_model,
     linear_resistance_demand_model,
     looped_subnetwork_model,
@@ -48,7 +47,6 @@ from ribasim_testmodels.equations import (
 from ribasim_testmodels.invalid import (
     invalid_discrete_control_model,
     invalid_edge_types_model,
-    invalid_fractional_flow_model,
     invalid_qh_model,
     invalid_unstable_model,
 )
@@ -73,10 +71,8 @@ __all__ = [
     "flow_boundary_time_model",
     "flow_condition_model",
     "flow_demand_model",
-    "fractional_flow_subnetwork_model",
     "invalid_discrete_control_model",
     "invalid_edge_types_model",
-    "invalid_fractional_flow_model",
     "invalid_qh_model",
     "invalid_unstable_model",
     "leaky_bucket_model",
