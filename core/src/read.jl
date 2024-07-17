@@ -398,25 +398,6 @@ function ManningResistance(
     )
 end
 
-function FractionalFlow(db::DB, config::Config, graph::MetaGraph)::FractionalFlow
-    static = load_structvector(db, config, FractionalFlowStaticV1)
-    parsed_parameters, valid = parse_static_and_time(db, config, FractionalFlow; static)
-
-    if !valid
-        error("Errors occurred when parsing FractionalFlow data.")
-    end
-
-    (; node_id) = parsed_parameters
-    node_id = NodeID.(NodeType.FractionalFlow, node_id, eachindex(node_id))
-
-    return FractionalFlow(;
-        node_id,
-        inflow_edge = inflow_edge.(Ref(graph), node_id),
-        outflow_edge = outflow_edge.(Ref(graph), node_id),
-        parsed_parameters.fraction,
-        parsed_parameters.control_mapping,
-    )
-end
 
 function LevelBoundary(db::DB, config::Config)::LevelBoundary
     static = load_structvector(db, config, LevelBoundaryStaticV1)
@@ -1084,7 +1065,6 @@ function Parameters(db::DB, config::Config)::Parameters
     linear_resistance = LinearResistance(db, config, graph)
     manning_resistance = ManningResistance(db, config, graph, basin)
     tabulated_rating_curve = TabulatedRatingCurve(db, config, graph)
-    fractional_flow = FractionalFlow(db, config, graph)
     level_boundary = LevelBoundary(db, config)
     flow_boundary = FlowBoundary(db, config, graph)
     pump = Pump(db, config, graph, chunk_sizes)
@@ -1106,7 +1086,6 @@ function Parameters(db::DB, config::Config)::Parameters
         linear_resistance,
         manning_resistance,
         tabulated_rating_curve,
-        fractional_flow,
         level_boundary,
         flow_boundary,
         pump,
