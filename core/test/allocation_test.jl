@@ -552,6 +552,7 @@ end
 end
 
 @testitem "direct_basin_allocation" begin
+    using Ribasim: NodeID
     import SQLite
     import JuMP
 
@@ -566,5 +567,8 @@ end
     Ribasim.set_initial_values!(allocation_model, p, u, t)
     Ribasim.set_objective_priority!(allocation_model, p, u, t, priority_idx)
     Ribasim.allocate_to_users_from_connected_basin!(allocation_model, p, priority_idx)
-    @test collect(values(allocation_model.flow_priority.data)) == [0.0015, 0.0, 0.0]
+    flow_data = allocation_model.flow_priority.data
+    @test flow_data[(NodeID(:FlowBoundary, 1, p), NodeID(:Basin, 2, p))] == 0.0
+    @test flow_data[(NodeID(:Basin, 2, p), NodeID(:UserDemand, 3, p))] == 0.0015
+    @test flow_data[(NodeID(:UserDemand, 3, p), NodeID(:Basin, 5, p))] == 0.0
 end
