@@ -32,7 +32,6 @@ from ribasim.schemas import (
     FlowBoundaryTimeSchema,
     FlowDemandStaticSchema,
     FlowDemandTimeSchema,
-    FractionalFlowStaticSchema,
     LevelBoundaryConcentrationSchema,
     LevelBoundaryStaticSchema,
     LevelBoundaryTimeSchema,
@@ -46,7 +45,6 @@ from ribasim.schemas import (
     PumpStaticSchema,
     TabulatedRatingCurveStaticSchema,
     TabulatedRatingCurveTimeSchema,
-    TerminalStaticSchema,
     UserDemandStaticSchema,
     UserDemandTimeSchema,
 )
@@ -169,11 +167,7 @@ class MultiNodeModel(NodeModel):
         )
 
 
-class Terminal(MultiNodeModel):
-    static: TableModel[TerminalStaticSchema] = Field(
-        default_factory=TableModel[TerminalStaticSchema],
-        json_schema_extra={"sort_keys": ["node_id"]},
-    )
+class Terminal(MultiNodeModel): ...
 
 
 class PidControl(MultiNodeModel):
@@ -352,12 +346,5 @@ class Outlet(MultiNodeModel):
 class LinearResistance(MultiNodeModel):
     static: TableModel[LinearResistanceStaticSchema] = Field(
         default_factory=TableModel[LinearResistanceStaticSchema],
-        json_schema_extra={"sort_keys": ["node_id", "control_state"]},
-    )
-
-
-class FractionalFlow(MultiNodeModel):
-    static: TableModel[FractionalFlowStaticSchema] = Field(
-        default_factory=TableModel[FractionalFlowStaticSchema],
         json_schema_extra={"sort_keys": ["node_id", "control_state"]},
     )

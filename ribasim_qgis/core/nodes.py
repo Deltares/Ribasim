@@ -199,7 +199,6 @@ class Node(Input):
         shape = Qgis.MarkerShape
         MARKERS: dict[str, tuple[QColor, str, Qgis.MarkerShape]] = {
             "Basin": (QColor("blue"), "Basin", shape.Circle),
-            "FractionalFlow": (QColor("red"), "FractionalFlow", shape.Triangle),
             "LinearResistance": (
                 QColor("green"),
                 "LinearResistance",
@@ -380,7 +379,6 @@ class BasinStatic(Input):
             QgsField("potential_evaporation", QVariant.Double),
             QgsField("infiltration", QVariant.Double),
             QgsField("precipitation", QVariant.Double),
-            QgsField("urban_runoff", QVariant.Double),
         ]
 
 
@@ -402,7 +400,6 @@ class BasinTime(Input):
             QgsField("potential_evaporation", QVariant.Double),
             QgsField("infiltration", QVariant.Double),
             QgsField("precipitation", QVariant.Double),
-            QgsField("urban_runoff", QVariant.Double),
         ]
 
 
@@ -496,24 +493,6 @@ class TabulatedRatingCurveTime(Input):
             QgsField("node_id", QVariant.Int),
             QgsField("level", QVariant.Double),
             QgsField("flow_rate", QVariant.Double),
-        ]
-
-
-class FractionalFlowStatic(Input):
-    @classmethod
-    def input_type(cls) -> str:
-        return "FractionalFlow / static"
-
-    @classmethod
-    def geometry_type(cls) -> str:
-        return "No Geometry"
-
-    @classmethod
-    def attributes(cls) -> list[QgsField]:
-        return [
-            QgsField("node_id", QVariant.Int),
-            QgsField("fraction", QVariant.Double),
-            QgsField("control_state", QVariant.String),
         ]
 
 
@@ -636,20 +615,6 @@ class OutletStatic(Input):
             QgsField("min_crest_level", QVariant.Double),
             QgsField("control_state", QVariant.String),
         ]
-
-
-class TerminalStatic(Input):
-    @classmethod
-    def input_type(cls) -> str:
-        return "Terminal / static"
-
-    @classmethod
-    def geometry_type(cls) -> str:
-        return "No Geometry"
-
-    @classmethod
-    def attributes(cls) -> list[QgsField]:
-        return [QgsField("node_id", QVariant.Int)]
 
 
 class FlowBoundaryStatic(Input):

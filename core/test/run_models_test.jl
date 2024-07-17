@@ -211,16 +211,6 @@ end
 
     # flows are recorded at the end of each period, and are undefined at the start
     @test unique(table.time) == Ribasim.datetimes(model)[1:(end - 1)]
-
-    # inflow = outflow over FractionalFlow
-    t = table.time[1]
-    @test length(p.fractional_flow.node_id) == 3
-    for id in p.fractional_flow.node_id
-        inflow = only(table.flow_rate[table.to_node_id .== id.value .&& table.time .== t])
-        outflow =
-            only(table.flow_rate[table.from_node_id .== id.value .&& table.time .== t])
-        @test inflow == outflow
-    end
 end
 
 @testitem "basic arrow model" begin

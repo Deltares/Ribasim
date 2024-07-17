@@ -67,90 +67,6 @@ end
           1 / user_demand.demand[2]
 end
 
-@testitem "Allocation with controlled fractional flow" begin
-    using DataFrames: DataFrame, groupby
-    using Ribasim: NodeID
-    using OrdinaryDiffEq: solve!
-    using JuMP
-
-    toml_path = normpath(
-        @__DIR__,
-        "../../generated_testmodels/fractional_flow_subnetwork/ribasim.toml",
-    )
-    model = Ribasim.Model(toml_path)
-    (; p) = model.integrator
-    problem = p.allocation.allocation_models[1].problem
-    F = problem[:F]
-    constraints_fractional_flow = problem[:fractional_flow]
-    @test JuMP.normalized_coefficient(
-        constraints_fractional_flow[(
-            NodeID(:TabulatedRatingCurve, 3, p),
-            NodeID(:FractionalFlow, 4, p),
-        )],
-        F[(NodeID(:Basin, 2, p), NodeID(:TabulatedRatingCurve, 3, p))],
-    ) ≈ -0.75
-    @test JuMP.normalized_coefficient(
-        constraints_fractional_flow[(
-            NodeID(:TabulatedRatingCurve, 3, p),
-            NodeID(:FractionalFlow, 7, p),
-        )],
-        F[(NodeID(:Basin, 2, p), NodeID(:TabulatedRatingCurve, 3, p))],
-    ) ≈ -0.25
-
-    solve!(model)
-    record_allocation = DataFrame(model.integrator.p.allocation.record_demand)
-    record_control = model.integrator.p.discrete_control.record
-    groups = groupby(record_allocation, [:node_type, :node_id, :priority])
-    fractional_flow = model.integrator.p.fractional_flow
-    (; control_mapping) = fractional_flow
-    t_control = record_control.time[2]
-
-    allocated_6_before =
-        groups[("UserDemand", 6, 1)][
-            groups[("UserDemand", 6, 1)].time .< t_control,
-            :,
-        ].allocated
-    allocated_9_before =
-        groups[("UserDemand", 9, 1)][
-            groups[("UserDemand", 9, 1)].time .< t_control,
-            :,
-        ].allocated
-    allocated_6_after =
-        groups[("UserDemand", 6, 1)][
-            groups[("UserDemand", 6, 1)].time .> t_control,
-            :,
-        ].allocated
-    allocated_9_after =
-        groups[("UserDemand", 9, 1)][
-            groups[("UserDemand", 9, 1)].time .> t_control,
-            :,
-        ].allocated
-    @test all(
-        allocated_9_before ./ allocated_6_before .<=
-        only(control_mapping[(NodeID(:FractionalFlow, 7, p), "A")].scalar_update).value /
-        only(control_mapping[(NodeID(:FractionalFlow, 4, p), "A")].scalar_update).value,
-    )
-    @test all(allocated_9_after ./ allocated_6_after .<= 1.0)
-
-    @test record_control.truth_state == ["F", "T"]
-    @test record_control.control_state == ["A", "B"]
-
-    @test JuMP.normalized_coefficient(
-        constraints_fractional_flow[(
-            NodeID(:TabulatedRatingCurve, 3, p),
-            NodeID(:FractionalFlow, 4, p),
-        )],
-        F[(NodeID(:Basin, 2, p), NodeID(:TabulatedRatingCurve, 3, p))],
-    ) ≈ -0.75
-    @test JuMP.normalized_coefficient(
-        constraints_fractional_flow[(
-            NodeID(:TabulatedRatingCurve, 3, p),
-            NodeID(:FractionalFlow, 7, p),
-        )],
-        F[(NodeID(:Basin, 2, p), NodeID(:TabulatedRatingCurve, 3, p))],
-    ) ≈ -0.25
-end
-
 @testitem "main allocation network initialization" begin
     using SQLite
     using Ribasim: NodeID
@@ -232,7 +148,8 @@ end
     # "subnetworks_with_sources"
     @test subnetwork_demands[(NodeID(:Basin, 2, p), NodeID(:Pump, 11, p))] ≈ [4.0, 4.0, 0.0] atol =
         1e-4
-    @test subnetwork_demands[(NodeID(:Basin, 6, p), NodeID(:Pump, 24, p))] ≈ [1.0, 0.0, 0.0]
+    @test subnetwork_demands[(NodeID(:Basin, 6, p), NodeID(:Pump, 24, p))] ≈
+          [0.001, 0.0, 0.0] atol = 1e-4
     @test subnetwork_demands[(NodeID(:Basin, 10, p), NodeID(:Pump, 38, p))][1:2] ≈
           [0.001, 0.002] atol = 1e-4
 
@@ -260,11 +177,11 @@ end
     Ribasim.update_allocation!((; p, t, u))
 
     @test subnetwork_allocateds[NodeID(:Basin, 2, p), NodeID(:Pump, 11, p)] ≈
-          [3.5993, 0.0, 0.0] atol = 1e-4
+          [4, 0.49775, 0.0] atol = 1e-4
     @test subnetwork_allocateds[NodeID(:Basin, 6, p), NodeID(:Pump, 24, p)] ≈
-          [0.8998, 0.0, 0.0] rtol = 1e-3
+          [0.001, 0.0, 0.0] rtol = 1e-3
     @test subnetwork_allocateds[NodeID(:Basin, 10, p), NodeID(:Pump, 38, p)] ≈
-          [0.0008998, 0.0, 0.0] rtol = 1e-3
+          [0.001, 0.00024888, 0.0] rtol = 1e-3
 
     # Test for existence of edges in allocation flow record
     allocation_flow = DataFrame(record_flow)
@@ -278,8 +195,8 @@ end
     )
     @test all(allocation_flow.edge_exists)
 
-    @test user_demand.allocated[2, :] ≈ [3.5992, 0.0, 0.0] atol = 1e-3
-    @test user_demand.allocated[7, :] ≈ [0.0008998, 0.0, 0.0] atol = 1e-5
+    @test user_demand.allocated[2, :] ≈ [4.0, 0.0, 0.0] atol = 1e-3
+    @test user_demand.allocated[7, :] ≈ [0.0, 0.0, 0.000112] atol = 1e-5
 end
 
 @testitem "Subnetworks with sources" begin
@@ -319,7 +236,8 @@ end
     # lower the subnetwork demands
     @test subnetwork_demands[(NodeID(:Basin, 2, p), NodeID(:Pump, 11, p))] ≈ [4.0, 4.0, 0.0] rtol =
         1e-4
-    @test subnetwork_demands[(NodeID(:Basin, 6, p), NodeID(:Pump, 24, p))] ≈ [1.0, 0.0, 0.0]
+    @test subnetwork_demands[(NodeID(:Basin, 6, p), NodeID(:Pump, 24, p))] ≈
+          [0.001, 0.0, 0.0] rtol = 1e-4
     @test subnetwork_demands[(NodeID(:Basin, 10, p), NodeID(:Pump, 38, p))][1:2] ≈
           [0.001, 0.001] rtol = 1e-4
 end

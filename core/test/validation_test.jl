@@ -83,7 +83,6 @@ end
     graph[NodeID(:Basin, 2, 1)] = NodeMetadata(:pump, 9)
     graph[NodeID(:Basin, 3, 1)] = NodeMetadata(:pump, 9)
     graph[NodeID(:Basin, 4, 1)] = NodeMetadata(:pump, 9)
-    graph[NodeID(:FractionalFlow, 5, 1)] = NodeMetadata(:pump, 9)
     graph[NodeID(:Pump, 6, 1)] = NodeMetadata(:pump, 9)
 
     function set_edge_metadata!(id_1, id_2, edge_type)
@@ -100,7 +99,6 @@ end
     set_edge_metadata!(NodeID(:Basin, 2, 1), NodeID(:Pump, 1, 1), EdgeType.flow)
     set_edge_metadata!(NodeID(:Basin, 3, 1), NodeID(:Pump, 1, 1), EdgeType.flow)
     set_edge_metadata!(NodeID(:Pump, 6, 1), NodeID(:Basin, 2, 1), EdgeType.flow)
-    set_edge_metadata!(NodeID(:FractionalFlow, 5, 1), NodeID(:Pump, 6, 1), EdgeType.control)
 
     logger = TestLogger()
     with_logger(logger) do
@@ -116,23 +114,6 @@ end
     @test logger.logs[3].level == Error
     @test logger.logs[3].message ==
           "Pump #6 must have at least 1 flow inneighbor(s) (got 0)."
-
-    set_edge_metadata!(NodeID(:Basin, 2, 1), NodeID(:FractionalFlow, 5, 1), EdgeType.flow)
-    set_edge_metadata!(NodeID(:FractionalFlow, 5, 1), NodeID(:Basin, 3, 1), EdgeType.flow)
-    set_edge_metadata!(NodeID(:FractionalFlow, 5, 1), NodeID(:Basin, 4, 1), EdgeType.flow)
-
-    logger = TestLogger(; min_level = Debug)
-    with_logger(logger) do
-        @test !Ribasim.valid_n_neighbors(:FractionalFlow, graph)
-    end
-
-    @test length(logger.logs) == 2
-    @test logger.logs[1].level == Error
-    @test logger.logs[1].message ==
-          "FractionalFlow #5 can have at most 1 flow outneighbor(s) (got 2)."
-    @test logger.logs[2].level == Error
-    @test logger.logs[2].message ==
-          "FractionalFlow #5 can have at most 0 control outneighbor(s) (got 1)."
 
     @test_throws "'n_neighbor_bounds_flow' not defined for Val{:foo}()." Ribasim.n_neighbor_bounds_flow(
         :foo,
@@ -202,55 +183,6 @@ end
     @test logger.logs[2].level == Error
     @test logger.logs[2].message ==
           "PID listened Basin #5 is not on either side of controlled Pump #2."
-end
-
-@testitem "FractionalFlow validation" begin
-    import SQLite
-    using Logging
-    using Ribasim: NodeID
-
-    toml_path = normpath(
-        @__DIR__,
-        "../../generated_testmodels/invalid_fractional_flow/ribasim.toml",
-    )
-    @test ispath(toml_path)
-
-    config = Ribasim.Config(toml_path)
-    db_path = Ribasim.input_path(config, config.database)
-    db = SQLite.DB(db_path)
-    graph = Ribasim.create_graph(db, config, [1, 1])
-    fractional_flow = Ribasim.FractionalFlow(db, config, graph)
-
-    logger = TestLogger()
-    with_logger(logger) do
-        @test !Ribasim.valid_fractional_flow(
-            graph,
-            fractional_flow.node_id,
-            fractional_flow.control_mapping,
-        )
-        @test !Ribasim.valid_edges(graph)
-    end
-
-    @test length(logger.logs) == 4
-    @test logger.logs[1].level == Error
-    @test logger.logs[1].message ==
-          "TabulatedRatingCurve #7 has outflow to FractionalFlow and other node types."
-    @test logger.logs[2].level == Error
-    @test logger.logs[2].message ==
-          "Fractional flow nodes must have non-negative fractions."
-    @test logger.logs[2].kwargs[:node_id] == NodeID(:FractionalFlow, 3, 1)
-    @test logger.logs[2].kwargs[:fraction] ≈ -0.1
-    @test logger.logs[2].kwargs[:control_state] == ""
-    @test logger.logs[3].level == Error
-    @test logger.logs[3].message ==
-          "The sum of fractional flow fractions leaving a node must be ≈1."
-    @test logger.logs[3].kwargs[:node_id] == NodeID(:TabulatedRatingCurve, 7, 1)
-    @test logger.logs[3].kwargs[:fraction_sum] ≈ 0.4
-    @test logger.logs[3].kwargs[:control_state] == ""
-    @test logger.logs[4].level == Error
-    @test logger.logs[4].message == "Cannot connect a basin to a fractional_flow."
-    @test logger.logs[4].kwargs[:id_src] == NodeID(:Basin, 2, 1)
-    @test logger.logs[4].kwargs[:id_dst] == NodeID(:FractionalFlow, 8, 1)
 end
 
 @testitem "DiscreteControl logic validation" begin
@@ -436,6 +368,63 @@ end
         model,
         dt,
     )
+end
+
+@testitem "TabulatedRatingCurve upstream level validation" begin
+    using Ribasim: valid_tabulated_curve_level
+    using Logging
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/level_range/ribasim.toml")
+    @test ispath(toml_path)
+    invalid_level = -2.0
+
+    config = Ribasim.Config(toml_path)
+    model = Ribasim.Model(config)
+
+    parameters = model.integrator.p
+
+    (; graph, tabulated_rating_curve, basin) = parameters
+    tabulated_rating_curve.table[1].t[1] = invalid_level
+
+    logger = TestLogger()
+    with_logger(logger) do
+        @test !Ribasim.valid_tabulated_curve_level(graph, tabulated_rating_curve, basin)
+    end
+
+    @test length(logger.logs) == 1
+    @test logger.logs[1].level == Error
+    @test logger.logs[1].message ==
+          "Lowest levels of TabulatedRatingCurve #5 is lower than bottom of upstream Basin #1"
+end
+
+@testitem "Outlet upstream level validation" begin
+    using Ribasim: valid_outlet_crest_level!
+    using Logging
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/level_boundary_condition/ribasim.toml",
+    )
+    @test ispath(toml_path)
+    invalid_level = -2.0
+
+    config = Ribasim.Config(toml_path)
+    model = Ribasim.Model(config)
+
+    parameters = model.integrator.p
+
+    (; graph, outlet, basin) = parameters
+    outlet.min_crest_level[1] = invalid_level
+
+    logger = TestLogger()
+    with_logger(logger) do
+        @test !Ribasim.valid_outlet_crest_level!(graph, outlet, basin)
+    end
+
+    @test length(logger.logs) == 1
+    @test logger.logs[1].level == Error
+    @test logger.logs[1].message ==
+          "Minimum crest level of Outlet #4 is lower than bottom of upstream Basin #3"
 end
 
 @testitem "Convergence bottleneck" begin

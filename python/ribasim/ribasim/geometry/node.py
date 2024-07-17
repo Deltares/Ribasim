@@ -103,7 +103,6 @@ class NodeTable(SpatialTableModel[NodeSchema]):
 
         MARKERS = {
             "Basin": "o",
-            "FractionalFlow": "^",
             "LevelBoundary": "o",
             "LinearResistance": "^",
             "ManningResistance": "D",
@@ -122,7 +121,6 @@ class NodeTable(SpatialTableModel[NodeSchema]):
 
         COLORS = {
             "Basin": "b",
-            "FractionalFlow": "r",
             "LevelBoundary": "g",
             "LinearResistance": "g",
             "ManningResistance": "r",

@@ -2,7 +2,6 @@ from ribasim.nodes import (
     basin,
     discrete_control,
     flow_boundary,
-    fractional_flow,
     level_boundary,
     level_demand,
     linear_resistance,
@@ -11,7 +10,6 @@ from ribasim.nodes import (
     pid_control,
     pump,
     tabulated_rating_curve,
-    terminal,
     user_demand,
 )
 
@@ -19,7 +17,6 @@ __all__ = [
     "basin",
     "discrete_control",
     "flow_boundary",
-    "fractional_flow",
     "level_boundary",
     "level_demand",
     "linear_resistance",
@@ -28,6 +25,5 @@ __all__ = [
     "pid_control",
     "pump",
     "tabulated_rating_curve",
-    "terminal",
     "user_demand",
 ]

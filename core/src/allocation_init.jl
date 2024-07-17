@@ -63,21 +63,17 @@ function get_subnetwork_capacity(
         if edge_metadata.edge ⊆ node_ids_subnetwork
             id_src, id_dst = edge_metadata.edge
 
-            # The AbstractParameterNode objects containing the data for
-            # the source and destination onde of the edge
-            node_src = getfield(p, graph[id_src].type)
-            node_dst = getfield(p, graph[id_dst].type)
-
-            # Initialize edge capacity as infinite
             capacity_edge = Inf
 
-            # Find flow constraints for this edge, given by the
-            # max_flow_rate of the source or destination node of the edge
-            if is_flow_constraining(node_src)
+            # Find flow constraints for this edge
+            if is_flow_constraining(id_src.type)
+                node_src = getfield(p, graph[id_src].type)
+
                 capacity_node_src = node_src.max_flow_rate[id_src.idx]
                 capacity_edge = min(capacity_edge, capacity_node_src)
             end
-            if is_flow_constraining(node_dst)
+            if is_flow_constraining(id_dst.type)
+                node_dst = getfield(p, graph[id_dst].type)
                 capacity_node_dst = node_dst.max_flow_rate[id_dst.idx]
                 capacity_edge = min(capacity_edge, capacity_node_dst)
             end
@@ -88,8 +84,8 @@ function get_subnetwork_capacity(
             # If allowed by the nodes from this edge,
             # allow allocation flow in opposite direction of the edge
             if !(
-                is_flow_direction_constraining(node_src) ||
-                is_flow_direction_constraining(node_dst)
+                is_flow_direction_constraining(id_src.type) ||
+                is_flow_direction_constraining(id_dst.type)
             )
                 capacity[reverse(edge_metadata.edge)] = capacity_edge
             end
@@ -188,8 +184,7 @@ function add_variables_basin!(
 end
 
 """
-Add the variables for supply/demand of the buffer of a node with a flow demand
-or fractional flow outneighbors to the problem.
+Add the variables for supply/demand of the buffer of a node with a flow demand to the problem.
 The variable indices are the node IDs of the nodes with a buffer in the subnetwork.
 """
 function add_variables_flow_buffer!(
@@ -200,11 +195,9 @@ function add_variables_flow_buffer!(
     (; graph) = p
 
     # Collect the nodes in the subnetwork that have a flow demand
-    # or fractional flow outneighbors
     node_ids_flow_demand = NodeID[]
     for node_id in graph[].node_ids[subnetwork_id]
-        if has_external_demand(graph, node_id, :flow_demand)[1] ||
-           has_fractional_flow_outneighbors(graph, node_id)
+        if has_external_demand(graph, node_id, :flow_demand)[1]
             push!(node_ids_flow_demand, node_id)
         end
     end
@@ -373,8 +366,7 @@ function add_constraints_conservation_node!(
         end
 
         # If the node has a buffer
-        if has_external_demand(graph, node_id, :flow_demand)[1] ||
-           has_fractional_flow_outneighbors(graph, node_id)
+        if has_external_demand(graph, node_id, :flow_demand)[1]
             push!(inflows_node, F_flow_buffer_out[node_id])
             push!(outflows_node, F_flow_buffer_in[node_id])
         end
@@ -544,7 +536,6 @@ function allocation_problem(
     add_constraints_capacity!(problem, capacity, p, subnetwork_id)
     add_constraints_source!(problem, p, subnetwork_id)
     add_constraints_user_source!(problem, p, subnetwork_id)
-    add_constraints_fractional_flow!(problem, p, subnetwork_id)
     add_constraints_basin_flow!(problem)
     add_constraints_flow_demand_outflow!(problem, p, subnetwork_id)
     add_constraints_buffer!(problem)

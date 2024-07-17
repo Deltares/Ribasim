@@ -18,12 +18,12 @@ $$
 \frac{\mathrm{d}S}{\mathrm{d}t} = Q_{in} - Q_{out}
 $$
 
-We can split out the fluxes into separate terms, such as precipitation $P$, evapotranspiration $ET$ and runoff $R$.
+We can split out the fluxes into separate terms, such as precipitation $P$ and evapotranspiration $ET$.
 For now other fluxes are combined into $Q_{rest}$.
 If we define all fluxes entering our reservoir as positive, and those leaving the system as negative, all fluxes can be summed up.
 
 $$
-\frac{\mathrm{d}S}{\mathrm{d}t} = R + P + ET + Q_{rest}
+\frac{\mathrm{d}S}{\mathrm{d}t} = P + ET + Q_{rest}
 $$
 
 ## Time
@@ -119,8 +119,7 @@ providing a better hydrological meaning to the resistance parameterization.
 - [Pump](/reference/node/pump.qmd): one-directional structure with a set flow rate. Node type typically used in combination with control to force water over the edge.
 - [Outlet](/reference/node/outlet.qmd): one-directional gravity structure with a set flow rate. Node type typically used in combination with control to force water over the edge, even if
 their is a mismatch in actual hydraulic capacity. The node type has an automated mechanism to stop the flow when the head difference is zero.
-- [FractionalFlow](/reference/node/fractional-flow.qmd): to split an outflow over multiple edges based on a flow fraction. Node type is typically used for diversions or bifurcations with a known and fixed ratio.
 
-The control layer can activate or deactivate nodes, set flow rates for the Pump and Outlet, or choose different parameterizations for TabulatedRatingCurve, LinearResistance, ManningResistance or FractionalFlow.
+The control layer can activate or deactivate nodes, set flow rates for the Pump and Outlet, or choose different parameterizations for TabulatedRatingCurve, LinearResistance or ManningResistance.
 
 Connector nodes are required within a Ribasim network to determine the flow exchange between basins.

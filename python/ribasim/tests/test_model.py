@@ -75,56 +75,6 @@ def test_invalid_node_id():
         Node(-1, Point(7.0, 7.0))
 
 
-@pytest.mark.xfail(reason="Should be reimplemented by the .add() API.")
-def test_node_id_duplicate(basic):
-    model = basic
-
-    # Add duplicate node ID
-    df = model.pump.static.df._append(
-        {"flow_rate": 1, "node_id": 1, "active": True}, ignore_index=True
-    )
-    # Currently can't handle mixed NaN and None in a DataFrame
-    df = df.where(pd.notna(df), None)
-    model.pump.static.df = df
-    with pytest.raises(
-        ValueError,
-        match=re.escape("These node IDs were assigned to multiple node types: [1]."),
-    ):
-        model.validate_model_node_field_ids()
-
-
-@pytest.mark.xfail(reason="Needs implementation")
-def test_node_ids_misassigned(basic):
-    model = basic
-
-    # Misassign node IDs
-    model.pump.static.df.loc[0, "node_id"] = 8
-    model.fractional_flow.static.df.loc[1, "node_id"] = 7
-
-    with pytest.raises(
-        ValueError,
-        match="For FractionalFlow, the node IDs in the data tables don't match the node IDs in the network.+",
-    ):
-        model.validate_model_node_ids()
-
-
-@pytest.mark.xfail(reason="Needs implementation")
-def test_node_ids_unsequential(basic):
-    model = basic
-
-    basin = model.basin
-    basin.profile = pd.DataFrame(
-        data={
-            "node_id": [1, 1, 3, 3, 6, 6, 1000, 1000],
-            "area": [0.01, 1000.0] * 4,
-            "level": [0.0, 1.0] * 4,
-        }
-    )
-    basin.static.df["node_id"] = [1, 3, 6, 1000]
-
-    model.validate_model_node_field_ids()
-
-
 def test_tabulated_rating_curve_model(tabulated_rating_curve, tmp_path):
     model_orig = tabulated_rating_curve
     model_orig.set_crs(model_orig.crs)

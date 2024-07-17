@@ -374,20 +374,20 @@ function low_storage_factor(
 end
 
 """Whether the given node node is flow constraining by having a maximum flow rate."""
-is_flow_constraining(node::AbstractParameterNode) = hasfield(typeof(node), :max_flow_rate)
+function is_flow_constraining(type::NodeType.T)::Bool
+    type in (NodeType.LinearResistance, NodeType.Pump, NodeType.Outlet)
+end
 
 """Whether the given node is flow direction constraining (only in direction of edges)."""
-is_flow_direction_constraining(node::AbstractParameterNode) = (
-    node isa Union{
-        Pump,
-        Outlet,
-        TabulatedRatingCurve,
-        FractionalFlow,
-        Terminal,
-        UserDemand,
-        FlowBoundary,
-    }
-)
+function is_flow_direction_constraining(type::NodeType.T)::Bool
+    type in (
+        NodeType.Pump,
+        NodeType.Outlet,
+        NodeType.TabulatedRatingCurve,
+        NodeType.UserDemand,
+        NodeType.FlowBoundary,
+    )
+end
 
 function has_main_network(allocation::Allocation)::Bool
     if !is_active(allocation)
@@ -520,11 +520,6 @@ function get_influx(basin::Basin, basin_idx::Int; prev::Bool = false)::Float64
     return precipitation[basin_idx] - evaporation[basin_idx] + drainage[basin_idx] -
            infiltration[basin_idx]
 end
-
-has_fractional_flow_outneighbors(graph::MetaGraph, node_id::NodeID)::Bool = any(
-    outneighbor_id.type == NodeType.FractionalFlow for
-    outneighbor_id in outflow_ids(graph, node_id)
-)
 
 inflow_edge(graph, node_id)::EdgeMetadata = graph[inflow_id(graph, node_id), node_id]
 outflow_edge(graph, node_id)::EdgeMetadata = graph[node_id, outflow_id(graph, node_id)]
@@ -739,6 +734,7 @@ function collect_control_mappings!(p)::Nothing
     (; control_mappings) = p.discrete_control
 
     for node_type in instances(NodeType.T)
+        node_type == NodeType.Terminal && continue
         node = getfield(p, Symbol(snake_case(string(node_type))))
         if hasfield(typeof(node), :control_mapping)
             control_mappings[node_type] = node.control_mapping

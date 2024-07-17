@@ -114,7 +114,7 @@ function continuous_control!(
     integral_value::SubArray,
     t::Number,
 )::Nothing
-    (; graph, pump, outlet, basin, fractional_flow) = p
+    (; graph, pump, outlet, basin) = p
     min_flow_rate_pump = pump.min_flow_rate
     max_flow_rate_pump = pump.max_flow_rate
     min_flow_rate_outlet = outlet.min_flow_rate
@@ -239,20 +239,6 @@ function continuous_control!(
             du.storage[src_id.idx] -= flow_rate
         end
 
-        # When the controlled pump flows out into fractional flow nodes
-        if controls_pump
-            for id in outflow_ids(graph, controlled_node_id)
-                if id in fractional_flow.node_id
-                    after_ff_id = fractional_flow.outflow_edge[id.idx].edge[2]
-                    flow_rate_fraction = fractional_flow.fraction[id.idx] * flow_rate
-                    flow[id, after_ff_id] = flow_rate_fraction
-
-                    if after_ff_id.type == NodeType.Basin
-                        du.storage[after_ff_id.idx] += flow_rate_fraction
-                    end
-                end
-            end
-        end
     end
     return nothing
 end
@@ -507,28 +493,6 @@ function formulate_flow!(
 end
 
 function formulate_flow!(
-    fractional_flow::FractionalFlow,
-    p::Parameters,
-    storage::AbstractVector,
-    t::Number,
-)::Nothing
-    (; graph) = p
-
-    for (node_id, inflow_edge, outflow_edge, fraction) in zip(
-        fractional_flow.node_id,
-        fractional_flow.inflow_edge,
-        fractional_flow.outflow_edge,
-        fractional_flow.fraction,
-    )
-        # overwrite the inflow such that flow is conserved over the FractionalFlow
-        outflow = get_flow(graph, inflow_edge, storage) * fraction
-        set_flow!(graph, inflow_edge, outflow)
-        set_flow!(graph, outflow_edge, outflow)
-    end
-    return nothing
-end
-
-function formulate_flow!(
     flow_boundary::FlowBoundary,
     p::Parameters,
     storage::AbstractVector,
@@ -616,7 +580,6 @@ function formulate_flow!(
         q *= low_storage_factor(storage, inflow_id, 10.0)
 
         # No flow of outlet if source level is lower than target level
-        # TODO support multiple outflows to FractionalFlow, or refactor FractionalFlow
         outflow_edge = only(outflow_edges)
         outflow_id = outflow_edge.edge[2]
         _, src_level = get_level(p, inflow_id, t; storage)
@@ -672,7 +635,6 @@ function formulate_flows!(p::Parameters, storage::AbstractVector, t::Number)::No
         pump,
         outlet,
         user_demand,
-        fractional_flow,
     ) = p
 
     formulate_flow!(linear_resistance, p, storage, t)
@@ -682,7 +644,4 @@ function formulate_flows!(p::Parameters, storage::AbstractVector, t::Number)::No
     formulate_flow!(pump, p, storage, t)
     formulate_flow!(outlet, p, storage, t)
     formulate_flow!(user_demand, p, storage, t)
-
-    # do this last since they rely on formulated input flows
-    formulate_flow!(fractional_flow, p, storage, t)
 end
