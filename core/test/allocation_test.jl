@@ -566,6 +566,5 @@ end
     Ribasim.set_initial_values!(allocation_model, p, u, t)
     Ribasim.set_objective_priority!(allocation_model, p, u, t, priority_idx)
     Ribasim.allocate_to_users_from_connected_basin!(allocation_model, p, priority_idx)
-    allocation_model.flow_priority
-    @test collect(values(res.data)) == [0.0015, 0.0, 0.0]
+    @test collect(values(allocation_model.flow_priority.data)) == [0.0015, 0.0, 0.0]
 end
