@@ -861,7 +861,7 @@ function allocate_to_users_from_connected_basin!(
     (; problem) = allocation_model
     (; graph, user_demand) = p
 
-    # Get al UserDemand nodes from this subnetwork
+    # Get all UserDemand nodes from this subnetwork
     node_ids_user_demand = only(problem[:source_user].axes)
     for node_id in node_ids_user_demand
 
