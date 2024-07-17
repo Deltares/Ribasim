@@ -10,7 +10,6 @@ from ribasim.input_base import TableModel
 from ribasim.nodes import (
     basin,
     flow_boundary,
-    fractional_flow,
     level_boundary,
     linear_resistance,
     manning_resistance,
@@ -89,29 +88,34 @@ def basic_model() -> ribasim.Model:
         ],
     )
 
-    # Setup tabulated rating curve
+    # Setup TabulatedRatingCurve
+    q = 10 / 86400  # 10 m³/day
     model.tabulated_rating_curve.add(
-        Node(4, Point(3.0, 0.0)),
+        Node(6, Point(4.0, 0.0)),
         [
             tabulated_rating_curve.Static(
                 level=[0.0, 1.0],
-                flow_rate=[
-                    0.0,
-                    1000.0 * 0.01 / 86400,
-                ],  # Discharge: lose 1% of storage volume per day at storage = 1000.0.
+                flow_rate=[0.0, 0.6 * q],
             )
         ],
     )
-
-    # Setup fractional flows
-    model.fractional_flow.add(
-        Node(5, Point(3.0, 1.0)), [fractional_flow.Static(fraction=[0.3])]
+    model.tabulated_rating_curve.add(
+        Node(3, Point(3.0, 1.0)),
+        [
+            tabulated_rating_curve.Static(
+                level=[0.0, 1.0],
+                flow_rate=[0.0, 0.3 * q],
+            )
+        ],
     )
-    model.fractional_flow.add(
-        Node(8, Point(4.0, 0.0)), [fractional_flow.Static(fraction=[0.6])]
-    )
-    model.fractional_flow.add(
-        Node(13, Point(3.0, -1.0)), [fractional_flow.Static(fraction=[0.1])]
+    model.tabulated_rating_curve.add(
+        Node(1, Point(3.0, -1.0)),
+        [
+            tabulated_rating_curve.Static(
+                level=[0.0, 1.0],
+                flow_rate=[0.0, 0.1 * q],
+            )
+        ],
     )
 
     # Setup pump
@@ -157,19 +161,19 @@ def basic_model() -> ribasim.Model:
     model.edge.add(model.manning_resistance[2], model.basin[3])
     model.edge.add(
         model.basin[3],
-        model.tabulated_rating_curve[4],
+        model.tabulated_rating_curve[6],
     )
     model.edge.add(
-        model.tabulated_rating_curve[4],
-        model.fractional_flow[5],
+        model.basin[3],
+        model.tabulated_rating_curve[3],
     )
     model.edge.add(
-        model.tabulated_rating_curve[4],
-        model.fractional_flow[8],
+        model.basin[3],
+        model.tabulated_rating_curve[1],
     )
-    model.edge.add(model.fractional_flow[5], model.basin[6])
+    model.edge.add(model.tabulated_rating_curve[3], model.basin[6])
     model.edge.add(model.basin[6], model.pump[7])
-    model.edge.add(model.fractional_flow[8], model.basin[9])
+    model.edge.add(model.tabulated_rating_curve[6], model.basin[9])
     model.edge.add(model.pump[7], model.basin[9])
     model.edge.add(model.basin[9], model.linear_resistance[10])
     model.edge.add(
@@ -181,11 +185,7 @@ def basic_model() -> ribasim.Model:
         model.basin[3],
     )
     model.edge.add(
-        model.tabulated_rating_curve[4],
-        model.fractional_flow[13],
-    )
-    model.edge.add(
-        model.fractional_flow[13],
+        model.tabulated_rating_curve[1],
         model.terminal[14],
     )
     model.edge.add(

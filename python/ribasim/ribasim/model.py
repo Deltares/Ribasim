@@ -25,7 +25,6 @@ from ribasim.config import (
     DiscreteControl,
     FlowBoundary,
     FlowDemand,
-    FractionalFlow,
     LevelBoundary,
     LevelDemand,
     LinearResistance,
@@ -83,7 +82,6 @@ class Model(FileModel):
     discrete_control: DiscreteControl = Field(default_factory=DiscreteControl)
     flow_boundary: FlowBoundary = Field(default_factory=FlowBoundary)
     flow_demand: FlowDemand = Field(default_factory=FlowDemand)
-    fractional_flow: FractionalFlow = Field(default_factory=FractionalFlow)
     level_boundary: LevelBoundary = Field(default_factory=LevelBoundary)
     level_demand: LevelDemand = Field(default_factory=LevelDemand)
     linear_resistance: LinearResistance = Field(default_factory=LinearResistance)

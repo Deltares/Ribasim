@@ -7,7 +7,6 @@ from ribasim.model import Model
 from ribasim.nodes import (
     basin,
     flow_boundary,
-    fractional_flow,
     level_boundary,
     linear_resistance,
     manning_resistance,
@@ -123,7 +122,7 @@ def manning_resistance_model() -> Model:
 
 
 def misc_nodes_model() -> Model:
-    """Set up a minimal model using flow_boundary, fractional_flow and pump nodes."""
+    """Set up a minimal model using flow_boundary and pump nodes."""
 
     model = Model(
         starttime="2020-01-01",
@@ -138,25 +137,14 @@ def misc_nodes_model() -> Model:
     ]
 
     model.flow_boundary.add(
-        Node(1, Point(0, 0)), [flow_boundary.Static(flow_rate=[3e-4])]
-    )
-    model.fractional_flow.add(
-        Node(2, Point(0, 1)), [fractional_flow.Static(fraction=[0.5])]
+        Node(1, Point(0, 0)), [flow_boundary.Static(flow_rate=[1.5e-4])]
     )
     model.basin.add(Node(3, Point(0, 2)), basin_shared)
     model.pump.add(Node(4, Point(0, 3)), [pump.Static(flow_rate=[1e-4])])
     model.basin.add(Node(5, Point(0, 4)), basin_shared)
-    model.fractional_flow.add(
-        Node(6, Point(1, 0)), [fractional_flow.Static(fraction=[0.5])]
-    )
-    model.terminal.add(Node(7, Point(2, 0)))
 
     model.edge.add(
         model.flow_boundary[1],
-        model.fractional_flow[2],
-    )
-    model.edge.add(
-        model.fractional_flow[2],
         model.basin[3],
     )
     model.edge.add(
@@ -166,14 +154,6 @@ def misc_nodes_model() -> Model:
     model.edge.add(
         model.pump[4],
         model.basin[5],
-    )
-    model.edge.add(
-        model.flow_boundary[1],
-        model.fractional_flow[6],
-    )
-    model.edge.add(
-        model.fractional_flow[6],
-        model.terminal[7],
     )
 
     return model

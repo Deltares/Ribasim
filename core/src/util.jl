@@ -384,7 +384,6 @@ function is_flow_direction_constraining(type::NodeType.T)::Bool
         NodeType.Pump,
         NodeType.Outlet,
         NodeType.TabulatedRatingCurve,
-        NodeType.FractionalFlow,
         NodeType.UserDemand,
         NodeType.FlowBoundary,
     )
@@ -528,11 +527,6 @@ function get_influx(basin::Basin, basin_idx::Int; prev::Bool = false)::Float64
     return precipitation[basin_idx] - evaporation[basin_idx] + drainage[basin_idx] -
            infiltration[basin_idx]
 end
-
-has_fractional_flow_outneighbors(graph::MetaGraph, node_id::NodeID)::Bool = any(
-    outneighbor_id.type == NodeType.FractionalFlow for
-    outneighbor_id in outflow_ids(graph, node_id)
-)
 
 inflow_edge(graph, node_id)::EdgeMetadata = graph[inflow_id(graph, node_id), node_id]
 outflow_edge(graph, node_id)::EdgeMetadata = graph[node_id, outflow_id(graph, node_id)]

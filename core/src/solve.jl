@@ -134,7 +134,11 @@ function formulate_pid_control!(
     integral_value::SubArray,
     t::Number,
 )::Nothing
-    (; basin) = p
+    (; graph, pump, outlet, basin) = p
+    min_flow_rate_pump = pump.min_flow_rate
+    max_flow_rate_pump = pump.max_flow_rate
+    min_flow_rate_outlet = outlet.min_flow_rate
+    max_flow_rate_outlet = outlet.max_flow_rate
     (; node_id, active, target, listen_node_id, error) = pid_control
     (; current_area) = basin
 
@@ -170,16 +174,15 @@ function formulate_pid_control!(
         end
 
         if !iszero(K_p)
-            flow_rate += K_p * error[id.idx] / D
+            flow_rate += K_p * error[i] / D
         end
 
         if !iszero(K_i)
-            println("yeet")
-            flow_rate += K_i * integral_value[id.idx] / D
+            flow_rate += K_i * integral_value[i] / D
         end
 
         if !iszero(K_d)
-            dlevel_demand = derivative(target[id.idx], t)
+            dlevel_demand = derivative(target[i], t)
             du_listened_basin_old = du.storage[listened_node_id.idx]
             # The expression below is the solution to an implicit equation for
             # du_listened_basin. This equation results from the fact that if the derivative
@@ -443,28 +446,6 @@ function formulate_flow!(
 end
 
 function formulate_flow!(
-    fractional_flow::FractionalFlow,
-    p::Parameters,
-    storage::AbstractVector,
-    t::Number,
-)::Nothing
-    (; graph) = p
-
-    for (node_id, inflow_edge, outflow_edge, fraction) in zip(
-        fractional_flow.node_id,
-        fractional_flow.inflow_edge,
-        fractional_flow.outflow_edge,
-        fractional_flow.fraction,
-    )
-        # overwrite the inflow such that flow is conserved over the FractionalFlow
-        outflow = get_flow(graph, inflow_edge, storage) * fraction
-        set_flow!(graph, inflow_edge, outflow)
-        set_flow!(graph, outflow_edge, outflow)
-    end
-    return nothing
-end
-
-function formulate_flow!(
     flow_boundary::FlowBoundary,
     p::Parameters,
     storage::AbstractVector,
@@ -561,7 +542,6 @@ function formulate_flow!(
         q *= low_storage_factor(storage, inflow_id, 10.0)
 
         # No flow of outlet if source level is lower than target level
-        # TODO support multiple outflows to FractionalFlow, or refactor FractionalFlow
         outflow_edge = only(outflow_edges)
         outflow_id = outflow_edge.edge[2]
         _, src_level = get_level(p, inflow_id, t; storage)
@@ -622,7 +602,6 @@ function formulate_flows!(
         pump,
         outlet,
         user_demand,
-        fractional_flow,
     ) = p
 
     formulate_flow!(pump, p, storage, t, continuously_controlled)
@@ -635,7 +614,4 @@ function formulate_flows!(
         formulate_flow!(flow_boundary, p, storage, t)
         formulate_flow!(user_demand, p, storage, t)
     end
-
-    # do this last since they rely on formulated input flows
-    formulate_flow!(fractional_flow, p, storage, t)
 end

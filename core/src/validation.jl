@@ -1,9 +1,9 @@
 # Allowed types for downstream (to_node_id) nodes given the type of the upstream (from_node_id) node
 neighbortypes(nodetype::Symbol) = neighbortypes(Val(nodetype))
-neighbortypes(::Val{:pump}) = Set((:basin, :fractional_flow, :terminal, :level_boundary))
-neighbortypes(::Val{:outlet}) = Set((:basin, :fractional_flow, :terminal, :level_boundary))
+neighbortypes(::Val{:pump}) = Set((:basin, :terminal, :level_boundary))
+neighbortypes(::Val{:outlet}) = Set((:basin, :terminal, :level_boundary))
 neighbortypes(::Val{:user_demand}) =
-    Set((:basin, :fractional_flow, :terminal, :level_boundary))
+    Set((:basin, :terminal, :level_boundary))
 neighbortypes(::Val{:level_demand}) = Set((:basin,))
 neighbortypes(::Val{:basin}) = Set((
     :linear_resistance,
@@ -14,9 +14,8 @@ neighbortypes(::Val{:basin}) = Set((
     :user_demand,
 ))
 neighbortypes(::Val{:terminal}) = Set{Symbol}() # only endnode
-neighbortypes(::Val{:fractional_flow}) = Set((:basin, :terminal, :level_boundary))
 neighbortypes(::Val{:flow_boundary}) =
-    Set((:basin, :fractional_flow, :terminal, :level_boundary))
+    Set((:basin, :terminal, :level_boundary))
 neighbortypes(::Val{:level_boundary}) =
     Set((:linear_resistance, :pump, :outlet, :tabulated_rating_curve))
 neighbortypes(::Val{:linear_resistance}) = Set((:basin, :level_boundary))
@@ -28,12 +27,11 @@ neighbortypes(::Val{:discrete_control}) = Set((
     :tabulated_rating_curve,
     :linear_resistance,
     :manning_resistance,
-    :fractional_flow,
     :pid_control,
 ))
 neighbortypes(::Val{:pid_control}) = Set((:pump, :outlet))
 neighbortypes(::Val{:tabulated_rating_curve}) =
-    Set((:basin, :fractional_flow, :terminal, :level_boundary))
+    Set((:basin, :terminal, :level_boundary))
 neighbortypes(::Val{:flow_demand}) =
     Set((:linear_resistance, :manning_resistance, :tabulated_rating_curve, :pump, :outlet))
 neighbortypes(::Any) = Set{Symbol}()
@@ -52,7 +50,6 @@ n_neighbor_bounds_flow(::Val{:LinearResistance}) = n_neighbor_bounds(1, 1, 1, 1)
 n_neighbor_bounds_flow(::Val{:ManningResistance}) = n_neighbor_bounds(1, 1, 1, 1)
 n_neighbor_bounds_flow(::Val{:TabulatedRatingCurve}) =
     n_neighbor_bounds(1, 1, 1, typemax(Int))
-n_neighbor_bounds_flow(::Val{:FractionalFlow}) = n_neighbor_bounds(1, 1, 1, 1)
 n_neighbor_bounds_flow(::Val{:LevelBoundary}) =
     n_neighbor_bounds(0, typemax(Int), 0, typemax(Int))
 n_neighbor_bounds_flow(::Val{:FlowBoundary}) = n_neighbor_bounds(0, 0, 1, typemax(Int))
@@ -73,7 +70,6 @@ n_neighbor_bounds_control(::Val{:Basin}) = n_neighbor_bounds(0, 1, 0, 0)
 n_neighbor_bounds_control(::Val{:LinearResistance}) = n_neighbor_bounds(0, 1, 0, 0)
 n_neighbor_bounds_control(::Val{:ManningResistance}) = n_neighbor_bounds(0, 1, 0, 0)
 n_neighbor_bounds_control(::Val{:TabulatedRatingCurve}) = n_neighbor_bounds(0, 1, 0, 0)
-n_neighbor_bounds_control(::Val{:FractionalFlow}) = n_neighbor_bounds(0, 1, 0, 0)
 n_neighbor_bounds_control(::Val{:LevelBoundary}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_control(::Val{:FlowBoundary}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_control(::Val{:Pump}) = n_neighbor_bounds(0, 1, 0, 0)
@@ -94,7 +90,6 @@ controllablefields(nodetype::Symbol) = controllablefields(Val(nodetype))
 controllablefields(::Val{:LinearResistance}) = Set((:active, :resistance))
 controllablefields(::Val{:ManningResistance}) = Set((:active, :manning_n))
 controllablefields(::Val{:TabulatedRatingCurve}) = Set((:active, :table))
-controllablefields(::Val{:FractionalFlow}) = Set((:fraction,))
 controllablefields(::Val{:Pump}) = Set((:active, :flow_rate))
 controllablefields(::Val{:Outlet}) = Set((:active, :flow_rate))
 controllablefields(::Val{:PidControl}) =
@@ -317,85 +312,6 @@ function valid_pid_connectivity(
         end
     end
 
-    return !errors
-end
-
-"""
-Check that nodes that have FractionalFlow outneighbors do not have any other type of
-outneighbor, that the fractions leaving a node add up to ≈1 and that the fractions are non-negative.
-"""
-function valid_fractional_flow(
-    graph::MetaGraph,
-    node_id::Vector{NodeID},
-    control_mapping::Dict,
-)::Bool
-    errors = false
-
-    # Node IDs that have fractional flow outneighbors
-    src_ids = Set{NodeID}()
-
-    # The set of control states associated with each source node
-    control_states = Dict{NodeID, Set{String}}()
-
-    for id in node_id
-        src_id = inflow_id(graph, id)
-        push!(src_ids, inflow_id(graph, id))
-
-        if !haskey(control_states, src_id)
-            control_states[src_id] = Set{String}()
-        end
-        for (controlled_id, control_state) in keys(control_mapping)
-            if controlled_id == id
-                push!(control_states[src_id], control_state)
-            end
-        end
-    end
-
-    node_id_set = Set{NodeID}(node_id)
-
-    for src_id in src_ids
-        src_outflow_ids = Set(outflow_ids(graph, src_id))
-        if src_outflow_ids ⊈ node_id_set
-            errors = true
-            @error("$src_id has outflow to FractionalFlow and other node types.")
-        end
-
-        # Each control state (including missing) must sum to 1
-        for control_state in control_states[src_id]
-            fraction_sum = 0.0
-
-            for ff_id in intersect(src_outflow_ids, node_id_set)
-                control_state_update = get(control_mapping, (ff_id, control_state), nothing)
-                if control_state_update === nothing
-                    continue
-                else
-                    fraction = only(control_state_update.scalar_update).value
-                end
-
-                fraction_sum += fraction
-
-                if fraction < 0
-                    errors = true
-                    @error(
-                        "Fractional flow nodes must have non-negative fractions.",
-                        fraction,
-                        node_id = ff_id,
-                        control_state,
-                    )
-                end
-            end
-
-            if !(fraction_sum ≈ 1)
-                errors = true
-                @error(
-                    "The sum of fractional flow fractions leaving a node must be ≈1.",
-                    fraction_sum,
-                    node_id = src_id,
-                    control_state,
-                )
-            end
-        end
-    end
     return !errors
 end
 
