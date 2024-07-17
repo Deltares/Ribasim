@@ -13,7 +13,7 @@ on top of the [SciML: Open Source Software for Scientific Machine Learning](http
 libraries.
 
 </br>
-Ribasim is developed and supported by Deltares.  
+Ribasim is developed and supported by Deltares.
 The first version of Ribasim is developed by Deltares as part of a consortium with funding from TKI by Deltares for the Dutch watersystem.
 </br>
 <a href="https://www.deltares.nl/">
