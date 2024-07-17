@@ -550,3 +550,22 @@ end
     @test all(isapprox.(fractions[1], fractions[3], atol = 1e-4))
     @test all(isapprox.(fractions[1], fractions[4], atol = 1e-4))
 end
+
+@testitem "direct_basin_allocation" begin
+    import SQLite
+    import JuMP
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/level_demand/ribasim.toml")
+    model = Ribasim.Model(toml_path)
+    (; p) = model.integrator
+    t = 0.0
+    u = model.integrator.u
+    priority_idx = 2
+
+    allocation_model = first(p.allocation.allocation_models)
+    Ribasim.set_initial_values!(allocation_model, p, u, t)
+    Ribasim.set_objective_priority!(allocation_model, p, u, t, priority_idx)
+    Ribasim.allocate_to_users_from_connected_basin!(allocation_model, p, priority_idx)
+    allocation_model.flow_priority
+    @test collect(values(res.data)) == [0.0015, 0.0, 0.0]
+end

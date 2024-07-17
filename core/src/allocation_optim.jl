@@ -854,11 +854,10 @@ end
 
 function allocate_to_users_from_connected_basin!(
     allocation_model::AllocationModel,
-    flow_priority,
     p::Parameters,
     priority_idx::Int,
 )::Nothing
-    (; problem) = allocation_model
+    (; flow_priority, problem) = allocation_model
     (; graph, user_demand) = p
 
     # Get all UserDemand nodes from this subnetwork
@@ -920,12 +919,7 @@ function optimize_priority!(
 
     # Allocate to UserDemand nodes from the directly connected basin
     # This happens outside the JuMP optimization
-    allocate_to_users_from_connected_basin!(
-        allocation_model,
-        flow_priority,
-        p,
-        priority_idx,
-    )
+    allocate_to_users_from_connected_basin!(allocation_model, p, priority_idx)
 
     # Solve the allocation problem for this priority
     JuMP.optimize!(problem)
