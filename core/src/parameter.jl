@@ -1,6 +1,7 @@
 # EdgeType.flow and NodeType.FlowBoundary
 @enumx EdgeType flow control none
 @eval @enumx NodeType $(config.nodetypes...)
+@enumx ContinuousControlType None Continuous PID
 
 # Support creating a NodeType enum instance from a symbol or string
 function NodeType.T(s::Symbol)::NodeType.T
@@ -406,7 +407,7 @@ flow_rate: target flow rate
 min_flow_rate: The minimal flow rate of the pump
 max_flow_rate: The maximum flow rate of the pump
 control_mapping: dictionary from (node_id, control_state) to target flow rate
-is_continuously_controlled: whether the flow rate of this pump is governed by PidControl or ContinuousControl
+continuous_control_Type: one of None, ContinuousControl, PidControl
 """
 @kwdef struct Pump{T} <: AbstractParameterNode
     node_id::Vector{NodeID}
@@ -417,7 +418,8 @@ is_continuously_controlled: whether the flow rate of this pump is governed by Pi
     min_flow_rate::Vector{Float64} = zeros(length(node_id))
     max_flow_rate::Vector{Float64} = fill(Inf, length(node_id))
     control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate}
-    is_continuously_controlled::Vector{Bool} = fill(false, length(node_id))
+    continuous_control_type::Vector{ContinuousControlType.T} =
+        fill(ContinuousControlType.None, length(node_id))
 
     function Pump(
         node_id,
@@ -428,7 +430,7 @@ is_continuously_controlled: whether the flow rate of this pump is governed by Pi
         min_flow_rate,
         max_flow_rate,
         control_mapping,
-        is_continuously_controlled,
+        continuous_control_type,
     ) where {T}
         if valid_flow_rates(node_id, get_tmp(flow_rate, 0), control_mapping)
             return new{T}(
@@ -440,7 +442,7 @@ is_continuously_controlled: whether the flow rate of this pump is governed by Pi
                 min_flow_rate,
                 max_flow_rate,
                 control_mapping,
-                is_continuously_controlled,
+                continuous_control_type,
             )
         else
             error("Invalid Pump flow rate(s).")
@@ -459,7 +461,7 @@ flow_rate: target flow rate
 min_flow_rate: The minimal flow rate of the outlet
 max_flow_rate: The maximum flow rate of the outlet
 control_mapping: dictionary from (node_id, control_state) to target flow rate
-is_continuously_controlled: whether the flow rate of this pump is governed by PidControl or ContinuousControl
+continuous_control_Type: one of None, ContinuousControl, PidControl
 """
 @kwdef struct Outlet{T} <: AbstractParameterNode
     node_id::Vector{NodeID}
@@ -471,7 +473,8 @@ is_continuously_controlled: whether the flow rate of this pump is governed by Pi
     max_flow_rate::Vector{Float64} = fill(Inf, length(node_id))
     min_crest_level::Vector{Float64} = fill(-Inf, length(node_id))
     control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate} = Dict()
-    is_continuously_controlled::Vector{Bool} = fill(false, length(node_id))
+    continuous_control_type::Vector{ContinuousControlType.T} =
+        fill(ContinuousControlType.None, length(node_id))
 
     function Outlet(
         node_id,
@@ -483,7 +486,7 @@ is_continuously_controlled: whether the flow rate of this pump is governed by Pi
         max_flow_rate,
         min_crest_level,
         control_mapping,
-        is_continuously_controlled,
+        continuous_control_type,
     ) where {T}
         if valid_flow_rates(node_id, get_tmp(flow_rate, 0), control_mapping)
             return new{T}(
@@ -496,7 +499,7 @@ is_continuously_controlled: whether the flow rate of this pump is governed by Pi
                 max_flow_rate,
                 min_crest_level,
                 control_mapping,
-                is_continuously_controlled,
+                continuous_control_type,
             )
         else
             error("Invalid Outlet flow rate(s).")
@@ -613,6 +616,7 @@ dictionary from (node_id, control_state) to target flow rate
     integral::Vector{ScalarInterpolation}
     derivative::Vector{ScalarInterpolation}
     error::T
+    controlled_basins::Vector{NodeID}
     control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate}
 end
 

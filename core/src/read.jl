@@ -398,7 +398,6 @@ function ManningResistance(
     )
 end
 
-
 function LevelBoundary(db::DB, config::Config)::LevelBoundary
     static = load_structvector(db, config, LevelBoundaryStaticV1)
     time = load_structvector(db, config, LevelBoundaryTimeV1)
@@ -861,6 +860,17 @@ function PidControl(
     end
     target_ref = PreallocationRef{typeof(pid_error)}[]
 
+    controlled_basins = Set{NodeID}()
+    for id in node_ids
+        controlled_node = only(outneighbor_labels_type(graph, id, EdgeType.control))
+        for id_inout in inoutflow_ids(graph, controlled_node)
+            if id_inout.type == NodeType.Basin
+                push!(controlled_basins, id_inout)
+            end
+        end
+    end
+    controlled_basins = collect(controlled_basins)
+
     return PidControl(;
         node_id = node_ids,
         parsed_parameters.active,
@@ -875,6 +885,7 @@ function PidControl(
         parsed_parameters.integral,
         parsed_parameters.derivative,
         error = pid_error,
+        controlled_basins,
         parsed_parameters.control_mapping,
     )
 end
@@ -1231,7 +1242,7 @@ function Parameters(db::DB, config::Config)::Parameters
     )
 
     collect_control_mappings!(p)
-    set_is_continuously_controlled!(p)
+    set_continuous_control_type!(p)
     set_listen_variable_refs!(p)
     set_discrete_controlled_variable_refs!(p)
     set_continuously_controlled_variable_refs!(p)

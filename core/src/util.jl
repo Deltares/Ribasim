@@ -438,31 +438,47 @@ function get_external_priority_idx(p::Parameters, node_id::NodeID)::Int
 end
 
 """
-Set is_continuously_controlled to true for those pumps and outlets that are controlled by either
+Set continuous_control_type for those pumps and outlets that are controlled by either
 PidControl or ContinuousControl
 """
-function set_is_continuously_controlled!(p::Parameters)::Nothing
-    (; graph, continuous_control, pid_control, pump, outlet) = p
+function set_continuous_control_type!(p::Parameters)::Nothing
+    (; continuous_control, pid_control) = p
     errors = false
 
-    for id_vector in [continuous_control.node_id, pid_control.node_id]
-        for id in id_vector
-            id_controlled = only(outneighbor_labels_type(graph, id, EdgeType.control))
-            if id_controlled.type == NodeType.Pump
-                pump.is_continuously_controlled[id_controlled.idx] = true
-            elseif id_controlled.type == NodeType.Outlet
-                outlet.is_continuously_controlled[id_controlled.idx] = true
-            else
-                errors = true
-                @error "Only Pump and Outlet can be controlled by PidController, got $id_controlled"
-            end
-        end
-    end
+    errors = set_continuous_control_type!(
+        p,
+        continuous_control.node_id,
+        ContinuousControlType.Continuous,
+    )
+    errors |=
+        set_continuous_control_type!(p, pid_control.node_id, ContinuousControlType.PID)
 
     if errors
         error("Errors occurred when parsing ContinuousControl and PidControl connectivity")
     end
     return nothing
+end
+
+function set_continuous_control_type!(
+    p::Parameters,
+    node_id::Vector{NodeID},
+    continuous_control_type::ContinuousControlType.T,
+)::Bool
+    (; graph, pump, outlet) = p
+    errors = false
+
+    for id in node_id
+        id_controlled = only(outneighbor_labels_type(graph, id, EdgeType.control))
+        if id_controlled.type == NodeType.Pump
+            pump.continuous_control_type[id_controlled.idx] = continuous_control_type
+        elseif id_controlled.type == NodeType.Outlet
+            outlet.continuous_control_type[id_controlled.idx] = continuous_control_type
+        else
+            errors = true
+            @error "Only Pump and Outlet can be controlled by PidController, got $id_controlled"
+        end
+    end
+    return errors
 end
 
 function has_external_demand(
