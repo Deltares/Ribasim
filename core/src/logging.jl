@@ -26,3 +26,29 @@ function setup_logger(;
         LoggingExtras.TeeLogger(file_logger, terminal_logger),
     )
 end
+
+function log_bottlenecks(model; converged::Bool)
+    (; cache, p, u) = model.integrator
+    (; basin) = p
+
+    level = converged ? LoggingExtras.Info : LoggingExtras.Warn
+
+    # Indicate convergence bottlenecks if possible with the current algorithm
+    if hasproperty(cache, :nlsolver)
+        storage_error = @. abs(cache.nlsolver.cache.atmp.storage / u.storage)
+        perm = sortperm(storage_error; rev = true)
+        errors = Pair{Symbol, Float64}[]
+        for i in perm
+            node_id = Symbol(basin.node_id[i])
+            error = storage_error[i]
+            if error < model.config.solver.reltol
+                break
+            end
+            push!(errors, node_id => error)
+        end
+        @logmsg level "Convergence bottlenecks in descending order of severity:" errors...
+    else
+        algorithm = model.config.solver_algorithm
+        @logmsg level "Convergence bottlenecks are not shown for the chosen solver algorithm." algorithm
+    end
+end
