@@ -552,7 +552,7 @@ end
 end
 
 @testitem "level_demand_without_max_level" begin
-    using Ribasim: NodeID, get_basin_capacity, inflow_id
+    using Ribasim: NodeID, get_basin_capacity, outflow_id
     using JuMP
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/level_demand/ribasim.toml")
@@ -560,13 +560,12 @@ end
     model = Ribasim.Model(toml_path)
     (; p, u, t) = model.integrator
     (; allocation_models) = p.allocation
-    (; level_demand, graph) = p
+    (; basin, level_demand, graph) = p
 
-    (; max_level) = level_demand
-    max_level = fill(Inf, length(level_demand.node_id))
+    fill!(level_demand.max_level[1].u, Inf)
+    fill!(level_demand.max_level[2].u, Inf)
 
-    id_in = Ribasim.outflow_id(graph, level_demand.node_id[2])
-    # print(collect(id_in)[1])
-    @test Ribasim.get_basin_capacity(allocation_models[1], u, p, t, collect(id_in)[1]) ==
-          Inf
+    @test Ribasim.get_basin_capacity(allocation_models[1], u, p, t, basin.node_id[1]) == 0.0
+    @test Ribasim.get_basin_capacity(allocation_models[1], u, p, t, basin.node_id[2]) == 0.0
+    @test Ribasim.get_basin_capacity(allocation_models[1], u, p, t, basin.node_id[3]) == 0.0
 end
