@@ -18,7 +18,13 @@ function BMI.update(model::Model)::Model
 end
 
 function BMI.update_until(model::Model, time::Float64)::Model
-    (; t) = model.integrator
+    # Recompute flow_prev to take into account flow discontinuities introduced
+    # by parameter changes through BMI
+    (; integrator) = model
+    (; u, p, t) = integrator
+    (; flow, flow_prev) = p.graph[]
+    water_balance!(get_du(integrator), u, p, t)
+    copyto!(flow_prev, get_tmp(flow, 0))
     dt = time - t
     if dt < 0
         error("The model has already passed the given timestamp.")

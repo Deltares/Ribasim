@@ -83,15 +83,20 @@ end
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/minimal_subnetwork/ribasim.toml")
     @test ispath(toml_path)
-    model = BMI.initialize(Ribasim.Model, toml_path)
+    config = Ribasim.Config(toml_path; allocation_use_allocation = false)
+    model = Ribasim.Model(config)
     demand = BMI.get_value_ptr(model, "user_demand.demand")
     realized = BMI.get_value_ptr(model, "user_demand.realized")
+    year = model.integrator.p.user_demand.demand_itp[2][1].t[2]
+    demand_start = 1e-3
+    slope = 1e-3 / year
     day = 86400.0
-    BMI.update_until(model, 0.4day)
-    demand = 0.001  # for both users at the start
-    @test all(isapprox.(realized, demand * 0.4day; rtol = 1e-3))
-    BMI.update_until(model, 0.6day)
-    @test all(isapprox.(realized, demand * 0.6day; rtol = 1e-3))
+    BMI.update_until(model, day)
+    @test realized ≈ [demand_start * day, demand_start * day + 0.5 * slope * day^2]
+    demand_later = 2e-3
+    demand[1] = demand_later
+    BMI.update_until(model, 2day)
+    @test realized[1] == demand_start * day + demand_later * day
 end
 
 @testitem "vertical basin flux" begin
