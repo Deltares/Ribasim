@@ -550,3 +550,23 @@ end
     @test all(isapprox.(fractions[1], fractions[3], atol = 1e-4))
     @test all(isapprox.(fractions[1], fractions[4], atol = 1e-4))
 end
+
+@testitem "level_demand_without_max_level" begin
+    using Ribasim: NodeID, get_basin_capacity, inflow_id
+    using JuMP
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/level_demand/ribasim.toml")
+    @test ispath(toml_path)
+    model = Ribasim.Model(toml_path)
+    (; p, u, t) = model.integrator
+    (; allocation_models) = p.allocation
+    (; level_demand, graph) = p
+
+    (; max_level) = level_demand
+    max_level = fill(Inf, length(level_demand.node_id))
+
+    id_in = Ribasim.outflow_id(graph, level_demand.node_id[2])
+    # print(collect(id_in)[1])
+    @test Ribasim.get_basin_capacity(allocation_models[1], u, p, t, collect(id_in)[1]) ==
+          Inf
+end
