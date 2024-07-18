@@ -87,6 +87,7 @@ end
     model = Ribasim.Model(config)
     demand = BMI.get_value_ptr(model, "user_demand.demand")
     realized = BMI.get_value_ptr(model, "user_demand.realized")
+    # One year in seconds
     year = model.integrator.p.user_demand.demand_itp[2][1].t[2]
     demand_start = 1e-3
     slope = 1e-3 / year
