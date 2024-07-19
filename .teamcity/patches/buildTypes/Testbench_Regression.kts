@@ -12,5 +12,9 @@ in the project with id = 'Testbench', and delete the patch script.
 create(RelativeId("Testbench"), BuildType({
     id("Testbench_Regression")
     name = "Regression"
+
+    vcs {
+        root(DslContext.settingsRoot)
+    }
 }))
 
