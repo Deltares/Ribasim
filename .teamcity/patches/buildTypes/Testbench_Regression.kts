@@ -10,6 +10,7 @@ To apply the patch, create a buildType with id = 'Testbench_Regression'
 in the project with id = 'Testbench', and delete the patch script.
 */
 create(RelativeId("Testbench"), BuildType({
+    templates(RelativeId("Ribasim_Linux"))
     id("Testbench_Regression")
     name = "Regression"
 
