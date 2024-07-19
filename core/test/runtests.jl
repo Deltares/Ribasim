@@ -1,6 +1,6 @@
 using ReTestItems, Ribasim
 
-name_regex = ifelse("regression" in ARGS, r"^(regression_).*", nothing)
+name_regex = ifelse("regression" in ARGS, r"^(regression_).*", r"^(?!regression_).*")
 
 runtests(
     Ribasim;
