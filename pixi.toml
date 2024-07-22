@@ -104,7 +104,7 @@ codegen = { cmd = "julia --project utils/gen_python.jl && ruff format python/rib
     "core",
 ], outputs = [
     "python/ribasim/ribasim/schemas.py",
-] }
+], env = { SSL_CERT_FILE  = "", SSL_CERT_DIR="" } }
 # Publish
 build-ribasim-python-wheel = { cmd = "rm --recursive --force dist && python -m build && twine check dist/*", cwd = "python/ribasim" }
 build-ribasim-api-wheel = { cmd = "rm --recursive --force dist && python -m build && twine check dist/*", cwd = "python/ribasim_api" }
