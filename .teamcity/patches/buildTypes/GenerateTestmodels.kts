@@ -9,6 +9,11 @@ To apply the patch, change the buildType with id = 'GenerateTestmodels'
 accordingly, and delete the patch script.
 */
 changeBuildType(RelativeId("GenerateTestmodels")) {
+    check(paused == false) {
+        "Unexpected paused: '$paused'"
+    }
+    paused = true
+
     params {
         add {
             param("env.PIXI_CACHE_DIR", "/u/svc-teamcity-ansible/.cache")

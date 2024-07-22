@@ -9,6 +9,11 @@ To apply the patch, change the buildType with id = 'Ribasim_MakeQgisPlugin'
 accordingly, and delete the patch script.
 */
 changeBuildType(RelativeId("Ribasim_MakeQgisPlugin")) {
+    check(paused == false) {
+        "Unexpected paused: '$paused'"
+    }
+    paused = true
+
     vcs {
         remove(DslContext.settingsRoot.id!!)
         add(RelativeId("Ribasim1"))
