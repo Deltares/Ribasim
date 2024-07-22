@@ -20,9 +20,5 @@ create(DslContext.projectId, GitVcsRoot({
         -:refs/heads/gh-pages
     """.trimIndent()
     useTagsAsBranches = true
-    authMethod = password {
-        userName = "teamcity-deltares"
-        password = "credentialsJSON:abf605ce-e382-4b10-b5de-8a7640dc58d9"
-    }
 }))
 
