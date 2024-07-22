@@ -139,7 +139,6 @@ function integrate_flows!(u, t, integrator)::Nothing
                 0.5 * (get_flow(graph, edge..., 0) + get_flow_prev(graph, edge..., 0)) * dt
         end
     end
-
     copyto!(flow_prev, flow)
     copyto!(vertical_flux_prev, vertical_flux)
     return nothing
