@@ -262,6 +262,7 @@ It assigns the allocated amount to the demand nodes with the result of the optim
 Afterwards, it writes the resulting flow to the `Allocation` object.
 
 ### `UserDemand` abstraction
+TODO
 
-
-### Controlling pumps/weirs based on allocation results (n/a)
+### Controlling pumps/weirs based on allocation results
+N/A and TODO
