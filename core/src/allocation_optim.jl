@@ -368,7 +368,15 @@ function get_basin_demand(
     if iszero(level_demand_idx)
         return 0.0
     else
-        level_min = level_demand.min_level[level_demand_idx](t)
+        # Check can be removed after https://github.com/SciML/DataInterpolations.jl/issues/302
+        min_level_itp = level_demand.min_level[level_demand_idx]
+        min_level_u = min_level_itp.u
+        level_min =
+            if length(min_level_u) == 2 && min_level_u[1] == -Inf && min_level_u[2] == -Inf
+                -Inf
+            else
+                level_demand.min_level[level_demand_idx](t)
+            end
         storage_min = get_storage_from_level(p.basin, basin_idx, level_min)
         return max(0.0, (storage_min - storage_basin) / Δt_allocation - influx)
     end

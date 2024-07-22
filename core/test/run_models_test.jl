@@ -296,8 +296,7 @@ end
 
 @testitem "Profile" begin
     import Tables
-    using DataInterpolations: LinearInterpolation, integral
-    using SmoothInterpolation: invert_integral
+    using DataInterpolations: LinearInterpolation, integral, invert_integral
 
     "Shorthand for Ribasim.get_area_and_level"
     function lookup(profile, S)

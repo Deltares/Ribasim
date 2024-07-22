@@ -12,8 +12,7 @@ end
 @testitem "bottom" begin
     using StructArrays: StructVector
     using Ribasim: NodeID
-    using DataInterpolations: LinearInterpolation, integral
-    using SmoothInterpolation: invert_integral
+    using DataInterpolations: LinearInterpolation, integral, invert_integral
 
     # create two basins with different bottoms/levels
     area = [[0.01, 1.0], [0.01, 1.0]]
@@ -46,8 +45,7 @@ end
     using StructArrays: StructVector
     using Logging
     using Ribasim: NodeID
-    using DataInterpolations: LinearInterpolation
-    using SmoothInterpolation: invert_integral
+    using DataInterpolations: LinearInterpolation, invert_integral
 
     level = [
         0.0,
