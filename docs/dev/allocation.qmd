@@ -177,17 +177,19 @@ The initialization and iteration of the optimization problems are implemented in
 
 ## Preparing the optimization problem
 ### Setting up the objective function
-The optimization objective is sum of three quadratic error terms.
-The quadratic terms are defined with function `add_objective_term`.
+The optimization objective is the sum of three quadratic error terms.
+The quadratic terms are defined with `add_objective_term` function.
 
-In `set_objective_priority`, it set objective function for a given priority.
-First it treat subnetwork as user demand and add the quadratic terms of main network.
-Then it loop over all the edge in allocation.
-Based on the type of the node the edge pointing to (user demand or flow demand), it adds the corresponding quadratic terms.
-Finally, it does same to the edge that start from level demand node.
+In `set_objective_priority`, it sets the objective function for a given priority.
+First, it treats the subnetworks as user demand nodes and adds the quadratic terms of the main network.
+Then it loops over all the edges in allocation.
+Based on the type of the node that the edge is pointing to (user demand or flow demand), it adds the corresponding quadratic terms.
+Finally, it does the same to the edges that start from a level demand node.
 
 ### Setting the constraints and capacities
-In the function `set_initial_values` capacities and demands are initialized. As shown below, these functions set the capacities of source, edge, basin, buffer and demands to the corresponding initial values.
+In the function `set_initial_values` capacities and demands are initialized.
+As shown below, these functions set the capacities of the source, edge, basin, buffer and demands to the corresponding initial values.
+
 ```julia
 set_initial_capacities_source!(allocation_model, p)
 set_initial_capacities_edge!(allocation_model, p)
@@ -201,7 +203,7 @@ set_initial_demands_flow!(allocation_model, p, t)
 ```
 
 These capacities determine the constraints of the optimization problem.
-Take `set_initial_capacities_source` as an example, the right-hand-side value of the `source_constraints` are set to the `source_capacity`.
+Take `set_initial_capacities_source` as an example, the right-hand-side values of the `source_constraints` are set to the `source_capacity`.
 
 ```julia
 for edge_metadata in values(graph.edge_data)
@@ -221,16 +223,16 @@ for edge_metadata in values(graph.edge_data)
 end
 ```
 
-Apart from the `set_initial_` function above, capacities of `inlet` is the allocated capacities from main network to subnetwork.
+Apart from the `set_initial_` function above, capacities of `inlet` are the allocated capacities from the main network to the subnetworks.
 Source constraints will be adapted based on the optimization type.
 This function is called separately and thus not part of the `set_initial_values`.
 
 ## Looping over priorities
 ### Updating capacities
-While optimizing a given priority, `set_capacities_flow_demand_outflow` update constraints `flow_demand_outflow`.
+While optimizing a given priority, function `set_capacities_flow_demand_outflow` updates the constraints `flow_demand_outflow`.
 If the current priority is the same as the priority of the flow demand, constraints will be infinite, otherwise 0.
 
-Optimization objective function is updated based on the new flow demand and the given priority and the optimization solver is called.
+The optimization objective function is updated based on the new flow demand and the given priority and the optimization solver is called.
 
 If a solution is found by the solver, the allocation result will be updated. And it will be [saved](allocation.qmd#output-data), so the [physical layer](allocation.qmd#communicating-to-the-physical-layer) can make use of it.
 
@@ -252,11 +254,12 @@ end
 ```
 
 ## Output data
-Function `save_demands_and_allocations` and `save_allocation_flows` save the allocated flow to corresponding nodes and edge in the subnetworks.
+Functions `save_demands_and_allocations` and `save_allocation_flows` save the allocated flow to corresponding nodes and edges in the subnetworks.
 
 ## Communicating to the physical layer
-The function `assign_allocations` update subnetwork demand (`collect_demand`) or assign the allocated amount to user (`allocate`) with the result of the optimization.
-Then it also writes the resulted flow to `Allocation` object.
+The function `assign_allocations` updates the subnetwork demand if the optimization task is `collect_demand`
+It assigns the allocated amount to the demand nodes with the result of the optimization fi the optimization task is `allocate`
+Afterwards, it writes the resulting flow to the `Allocation` object.
 
 ### `UserDemand` abstraction
 
