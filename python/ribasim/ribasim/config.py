@@ -52,6 +52,18 @@ from ribasim.utils import _pascal_to_snake
 
 
 class Allocation(ChildModel):
+    """
+    Defines the allocation optimization algorithm options.
+
+    Attributes
+    ----------
+    timestep : float
+        The simulated time in seconds between successive allocation calls (Optional, defaults to 86400)
+    use_allocation : bool
+        Whether the allocation algorithm should be active. If not, `UserDemand` nodes attempt to
+        abstract their full demand (Optional, defaults to False)
+    """
+
     timestep: float = 86400.0
     use_allocation: bool = False
 
@@ -64,6 +76,38 @@ class Results(ChildModel):
 
 
 class Solver(ChildModel):
+    """
+    Defines the numerical solver options.
+    For more details see <https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/#solver_options>.
+
+    Attributes
+    ----------
+    algorithm : str
+        The used numerical time integration algorithm (Optional, defaults to QNDF)
+    saveat : float
+        Time interval in seconds between saves of output data.
+        0 saves every timestep, inf only saves at start- and endtime. (Optional, defaults to 86400)
+    dt : float
+        Timestep of the solver. (Optional, defaults to None which implies adaptive timestepping)
+    dtmin : float
+        The minimum allowed timestep of the solver (Optional, defaults to 0.0)
+    dtmax : float
+        The maximum allowed timestep size (Optional, defaults to 0.0 which implies the total length of the simulation)
+    force_dtmin : bool
+        If a smaller dt than dtmin is needed to meet the set error tolerances, the simulation stops, unless force_dtmin = true
+        (Optional, defaults to False)
+    abstol : float
+        The absolute tolerance for adaptive timestepping (Optional, defaults to 1e-6)
+    reltol : float
+        The relative tolerance for adaptive timestepping (Optional, defaults to 1e-5)
+    maxiters : int
+        The total number of linear iterations over the whole simulation. (Defaults to 1e9, only needs to be increased for extremely long simulations)
+    sparse : bool
+        Whether a sparse Jacobian matrix is used, which gives a significant speedup for models with >~10 basins.
+    autodiff : bool
+        Whether automatic differentiation in stead of fine difference is used to compute the Jacobian.
+    """
+
     algorithm: str = "QNDF"
     saveat: float = 86400.0
     dt: float | None = None
@@ -85,11 +129,37 @@ class Verbosity(str, Enum):
 
 
 class Logging(ChildModel):
+    """
+    Defines the logging behaviour of the core.
+
+    Attributes
+    ----------
+    verbosity : Verbosity
+        The verbosity of the logging: debug/info/warn/error (Optional, defaults to info)
+    timing : Bool
+        Enable timings.
+    """
+
     verbosity: Verbosity = Verbosity.info
     timing: bool = False
 
 
 class Node(pydantic.BaseModel):
+    """
+    Defines a node for the model.
+
+    Attributes
+    ----------
+    node_id : NonNegativeInt
+        Integer ID of the node. Must be unique within the same node type.
+    geometry : shapely.geometry.Point
+        The coordinates of the node.
+    name : str
+        An optional name of the node.
+    subnetwork_id : int
+        Optionally adds this node to a subnetwork, which is input for the allocation algorithm.
+    """
+
     node_id: NonNegativeInt
     geometry: Point
     name: str = ""
@@ -124,6 +194,18 @@ class MultiNodeModel(NodeModel):
         return self
 
     def add(self, node: Node, tables: Sequence[TableModel[Any]] | None = None) -> None:
+        """Add a node and the associated data to the model.
+
+        Parameters
+        ----------
+        node : Ribasim.Node
+        tables : Sequence[TableModel[Any]] | None
+
+        Raises
+        ------
+        ValueError
+            When the given node ID already exists for this node type
+        """
         if tables is None:
             tables = []
 
