@@ -42,4 +42,5 @@ This will automatically install all required packages for development.
 Our pixi environment also provides an instance of Julia and QGIS.
 These will not conflict with any pre-installed applications, as long as you have the pixi environment enabled.
 You can do this in a terminal by calling `pixi shell`, or starting programs with `pixi run julia`, or `pixi run qgis`.
-This is also the way that we start visual studio code: `pixi run code .`.
+Visual Studio Code will locate the pixi environments; select `('dev': Pixi)` once such that all developer tools are available.
+Unless the setting `python.terminal.activateEnvironment` is disabled, it will already activate the environment in your terminal.

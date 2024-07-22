@@ -6,7 +6,7 @@ title: "QGIS plugin"
 
 ## Start
 
-Install [QGIS](https://qgis.org/en/site/) version 3.28 or higher.
+Install [QGIS](https://qgis.org/en/site/) version 3.34 or higher.
 
 ### Install Ribasim plugin
 

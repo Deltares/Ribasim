@@ -213,6 +213,7 @@ function SciMLBase.step!(model::Model, dt::Float64)::Model
     if round(ntimes) ≈ ntimes
         update_allocation!(integrator)
     end
+    set_previous_flows!(integrator)
     step!(integrator, dt, true)
     return model
 end
