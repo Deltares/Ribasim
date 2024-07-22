@@ -1,6 +1,8 @@
 package Ribasim_Windows
 
-import Ribasim_Windows.buildTypes.*
+import Ribasim_Windows.buildTypes.Windows_BuildRibasim
+import Ribasim_Windows.buildTypes.Windows_TestDelwaqCoupling
+import Ribasim_Windows.buildTypes.Windows_TestRibasimBinaries
 import jetbrains.buildServer.configs.kotlin.Project
 
 object Project : Project({
