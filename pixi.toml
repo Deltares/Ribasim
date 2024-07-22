@@ -29,9 +29,11 @@ install = { depends_on = [
     "install-pre-commit",
 ] }
 # Julia
-update-registry-julia = "julia --eval='using Pkg; Registry.update()'"
-update-manifest-julia = "julia --project --eval='using Pkg; Pkg.update()'"
-instantiate-julia = "julia --project --eval='using Pkg; Pkg.instantiate()'"
+## Due to an issue with curl and openssl the SSL_CERT_FILE and SSL_CERT_DIR
+## have to be cleared https://github.com/JuliaLang/Downloads.jl/issues/244
+update-registry-julia = { cmd = "julia --eval='using Pkg; Registry.update()'", env = { SSL_CERT_FILE  = "", SSL_CERT_DIR="" } }
+update-manifest-julia =  { cmd ="julia --project --eval='using Pkg; Pkg.update()'", env = { SSL_CERT_FILE  = "", SSL_CERT_DIR="" } }
+instantiate-julia =  { cmd ="julia --project --eval='using Pkg; Pkg.instantiate()'", env = { SSL_CERT_FILE  = "", SSL_CERT_DIR="" } }
 initialize-julia = { depends_on = [
     "update-registry-julia",
     "instantiate-julia",
