@@ -7,10 +7,6 @@ object Windows_1 : Template({
     name = "Ribasim_Windows"
     description = "Template for agent that uses Windows OS"
 
-    params {
-        param("env.JULIA_SSL_CA_ROOTS_PATH", "")
-    }
-
     vcs {
         cleanCheckout = true
     }
