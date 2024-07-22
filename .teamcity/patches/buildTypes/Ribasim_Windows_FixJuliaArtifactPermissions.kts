@@ -14,6 +14,7 @@ create(RelativeId("Ribasim_Windows"), BuildType({
     id("Ribasim_Windows_FixJuliaArtifactPermissions")
     name = "Fix Julia Artifact permissions"
     description = "Temporary build to run on a failing agent"
+    paused = true
 
     steps {
         powerShell {
