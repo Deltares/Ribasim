@@ -93,8 +93,8 @@ class DatasetTreeWidget(QTreeWidget):
 
         # Start deleting
         elements = {item.element for item in selection}  # type: ignore[attr-defined] # TODO: dynamic item.element should be in some dict.
-        qgs_instance = QgsProject.instance()
-        assert qgs_instance is not None
+        project = QgsProject.instance()
+        assert project is not None
 
         for element in elements:
             layer = element.layer
@@ -102,7 +102,7 @@ class DatasetTreeWidget(QTreeWidget):
             if layer is None:
                 continue
             try:
-                qgs_instance.removeMapLayer(layer.id())
+                project.removeMapLayer(layer.id())
             except (RuntimeError, AttributeError) as e:
                 if e.args[0] in (
                     "wrapped C/C++ object of type QgsVectorLayer has been deleted",
@@ -268,8 +268,10 @@ class DatasetWidget(QWidget):
                 [
                     f"starttime = {datetime(2020, 1, 1)}\n",
                     f"endtime = {datetime(2021, 1, 1)}\n",
+                    f'crs = "{self.ribasim_widget.crs.authid()}"\n',
                     'input_dir = "."\n',
                     'results_dir = "results"\n',
+                    'ribasim_version = "2024.9.0"\n',
                 ]
             )
 

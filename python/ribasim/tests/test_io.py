@@ -1,4 +1,5 @@
 from datetime import datetime
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -202,3 +203,10 @@ def test_datetime_timezone():
     assert isinstance(model.endtime, datetime)
     assert model.starttime.tzinfo is None
     assert model.endtime.tzinfo is None
+
+
+def test_minimal_toml():
+    # Check if the TOML used in QGIS tests is still valid.
+    toml_path = Path(__file__).parents[3] / "ribasim_qgis/tests/data/simple_valid.toml"
+    model = ribasim.Model.read(toml_path)
+    assert model.crs == "EPSG:28992"
