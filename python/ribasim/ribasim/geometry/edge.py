@@ -63,8 +63,7 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
         to_node: NodeData
             A node indexed by its node ID, e.g. `model.linear_resistance[1]`
         geometry : LineString | MultiLineString | None
-            The geometry of a line. If not supplied, the geometry is inferred as a
-            straight line between the edge ends.
+            The geometry of a line. If not supplied, it creates a straight line between the nodes.
         name : str
             An optional name for the edge.
         subnetwork_id : int | None

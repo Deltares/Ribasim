@@ -105,7 +105,7 @@ class Solver(ChildModel):
     sparse : bool
         Whether a sparse Jacobian matrix is used, which gives a significant speedup for models with >~10 basins.
     autodiff : bool
-        Whether automatic differentiation in stead of fine difference is used to compute the Jacobian.
+        Whether automatic differentiation instead of fine difference is used to compute the Jacobian. (Optional, defaults to true)
     """
 
     algorithm: str = "QNDF"
@@ -130,14 +130,14 @@ class Verbosity(str, Enum):
 
 class Logging(ChildModel):
     """
-    Defines the logging behaviour of the core.
+    Defines the logging behavior of the core.
 
     Attributes
     ----------
     verbosity : Verbosity
         The verbosity of the logging: debug/info/warn/error (Optional, defaults to info)
     timing : Bool
-        Enable timings.
+        Enable timings (Optional, defaults to False)
     """
 
     verbosity: Verbosity = Verbosity.info

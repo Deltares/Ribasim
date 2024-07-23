@@ -185,7 +185,7 @@ class Model(FileModel):
         Parameters
         ----------
         crs : str
-            Coordinate reference system
+            Coordinate reference system, like "EPSG:4326" for WGS84 latitude longitude.
         """
         self._apply_crs_function("set_crs", crs)
 
@@ -402,9 +402,9 @@ class Model(FileModel):
         Parameters
         ----------
         add_flow : bool
-            add flow results
+            add flow results (Optional, defaults to False)
         add_allocation : bool
-            add allocation results
+            add allocation results (Optional, defaults to False)
         """
 
         if add_flow and add_allocation:
