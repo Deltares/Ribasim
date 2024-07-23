@@ -22,7 +22,7 @@ function get_storage_from_level(basin::Basin, state_idx::Int, level::Float64)::F
 end
 
 """Compute the storages of the basins based on the water level of the basins."""
-function get_storages_from_levels(basin::Basin, levels::Vector)::Vector{Float64}
+function get_storages_from_levels(basin::Basin, levels::AbstractVector)::Vector{Float64}
     errors = false
     state_length = length(levels)
     basin_length = length(basin.storage_to_level)

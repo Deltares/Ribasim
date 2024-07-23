@@ -9,6 +9,11 @@ function write_results(model::Model)::Model
     compress = get_compressor(results)
     remove_empty_table = model.integrator.t != 0
 
+    # state
+    table = basin_state_table(model)
+    path = results_path(config, RESULTS_FILENAME.basin_state)
+    write_arrow(path, table, compress; remove_empty_table)
+
     # basin
     table = basin_table(model)
     path = results_path(config, RESULTS_FILENAME.basin)
@@ -44,6 +49,7 @@ function write_results(model::Model)::Model
 end
 
 const RESULTS_FILENAME = (
+    basin_state = "basin_state.arrow",
     basin = "basin.arrow",
     flow = "flow.arrow",
     control = "control.arrow",
@@ -75,6 +81,19 @@ function get_storages_and_levels(
     end
 
     return (; time = tsteps, node_id, storage, level)
+end
+
+"Create the basin state table from the saved data"
+function basin_state_table(
+    model::Model,
+)::@NamedTuple{node_id::Vector{Int32}, level::Vector{Float64}}
+    (; storage) = model.integrator.u
+    (; basin) = model.integrator.p
+
+    # ensure the levels are up-to-date
+    set_current_basin_properties!(basin, storage)
+
+    return (; node_id = Int32.(basin.node_id), level = get_tmp(basin.current_level, 0))
 end
 
 "Create the basin result table from the saved data"
@@ -335,7 +354,7 @@ function write_arrow(
     # At the start of the simulation, write an empty table to ensure we have permissions
     # and fail early.
     # At the end of the simulation, write all non-empty tables, and remove existing empty ones.
-    if isempty(table.time) && remove_empty_table
+    if haskey(table, :time) && isempty(table.time) && remove_empty_table
         try
             rm(path; force = true)
         catch
@@ -343,9 +362,11 @@ function write_arrow(
         end
         return nothing
     end
-    # ensure DateTime is encoded in a compatible manner
-    # https://github.com/apache/arrow-julia/issues/303
-    table = merge(table, (; time = convert.(Arrow.DATETIME, table.time)))
+    if haskey(table, :time)
+        # ensure DateTime is encoded in a compatible manner
+        # https://github.com/apache/arrow-julia/issues/303
+        table = merge(table, (; time = convert.(Arrow.DATETIME, table.time)))
+    end
     metadata = ["ribasim_version" => string(pkgversion(Ribasim))]
     mkpath(dirname(path))
     try
