@@ -749,3 +749,20 @@ end
 function basin_areas(basin::Basin, state_idx::Int)
     return basin.level_to_area[state_idx].u
 end
+
+"""
+Just before setting a timestep, call water_balance! again
+to get a correct value of the flows for integrating
+"""
+function set_previous_flows!(integrator)
+    (; p, u, t) = integrator
+    (; flow, flow_prev) = p.graph[]
+    (; vertical_flux, vertical_flux_prev) = p.basin
+    du = get_du(integrator)
+    water_balance!(du, u, p, t)
+
+    flow = get_tmp(flow, 0)
+    vertical_flux = get_tmp(vertical_flux, 0)
+    copyto!(flow_prev, flow)
+    copyto!(vertical_flux_prev, vertical_flux)
+end

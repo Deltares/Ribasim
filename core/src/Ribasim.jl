@@ -39,7 +39,7 @@ using ForwardDiff: pickchunksize
 using Graphs:
     DiGraph, Edge, edges, inneighbors, nv, outneighbors, induced_subgraph, is_connected
 using Legolas: Legolas, @schema, @version, validate, SchemaVersion, declared
-using Logging: with_logger, LogLevel, AbstractLogger
+using Logging: with_logger, @logmsg, LogLevel, AbstractLogger
 using MetaGraphsNext:
     MetaGraphsNext,
     MetaGraph,
