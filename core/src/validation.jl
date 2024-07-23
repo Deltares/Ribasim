@@ -2,8 +2,7 @@
 neighbortypes(nodetype::Symbol) = neighbortypes(Val(nodetype))
 neighbortypes(::Val{:pump}) = Set((:basin, :terminal, :level_boundary))
 neighbortypes(::Val{:outlet}) = Set((:basin, :terminal, :level_boundary))
-neighbortypes(::Val{:user_demand}) =
-    Set((:basin, :terminal, :level_boundary))
+neighbortypes(::Val{:user_demand}) = Set((:basin, :terminal, :level_boundary))
 neighbortypes(::Val{:level_demand}) = Set((:basin,))
 neighbortypes(::Val{:basin}) = Set((
     :linear_resistance,
@@ -14,8 +13,7 @@ neighbortypes(::Val{:basin}) = Set((
     :user_demand,
 ))
 neighbortypes(::Val{:terminal}) = Set{Symbol}() # only endnode
-neighbortypes(::Val{:flow_boundary}) =
-    Set((:basin, :terminal, :level_boundary))
+neighbortypes(::Val{:flow_boundary}) = Set((:basin, :terminal, :level_boundary))
 neighbortypes(::Val{:level_boundary}) =
     Set((:linear_resistance, :pump, :outlet, :tabulated_rating_curve))
 neighbortypes(::Val{:linear_resistance}) = Set((:basin, :level_boundary))
@@ -30,8 +28,7 @@ neighbortypes(::Val{:discrete_control}) = Set((
     :pid_control,
 ))
 neighbortypes(::Val{:pid_control}) = Set((:pump, :outlet))
-neighbortypes(::Val{:tabulated_rating_curve}) =
-    Set((:basin, :terminal, :level_boundary))
+neighbortypes(::Val{:tabulated_rating_curve}) = Set((:basin, :terminal, :level_boundary))
 neighbortypes(::Val{:flow_demand}) =
     Set((:linear_resistance, :manning_resistance, :tabulated_rating_curve, :pump, :outlet))
 neighbortypes(::Any) = Set{Symbol}()
@@ -128,7 +125,7 @@ sort_by_function(table::StructVector{UserDemandTimeV1}) = sort_by_priority_time
 sort_by_function(table::StructVector{BasinSubgridV1}) = sort_by_subgrid_level
 sort_by_function(table::StructVector{DiscreteControlVariableV1}) = sort_by_variable
 sort_by_function(table::StructVector{DiscreteControlConditionV1}) = sort_by_condition
-sort_by_function(table::StructVector{ContinuousControlRelationshipV1}) = sort_by_id_input
+sort_by_function(table::StructVector{ContinuousControlFunctionV1}) = sort_by_id_input
 
 const TimeSchemas = Union{
     BasinTimeV1,

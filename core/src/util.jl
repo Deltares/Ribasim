@@ -709,18 +709,14 @@ end
 function set_continuously_controlled_variable_refs!(p::Parameters)::Nothing
     (; continuous_control, pid_control, graph) = p
     errors = false
-    for (node, controlled_parameters) in (
-        (continuous_control, continuous_control.controlled_parameter),
+    for (node, controlled_variable) in (
+        (continuous_control, continuous_control.controlled_variable),
         (pid_control, fill("flow_rate", length(pid_control.node_id))),
     )
-        for (id, controlled_parameter) in zip(node.node_id, controlled_parameters)
+        for (id, controlled_variable) in zip(node.node_id, controlled_variable)
             controlled_node_id = only(outneighbor_labels_type(graph, id, EdgeType.control))
-            ref, error = get_variable_ref(
-                p,
-                controlled_node_id,
-                controlled_parameter;
-                listen = false,
-            )
+            ref, error =
+                get_variable_ref(p, controlled_node_id, controlled_variable; listen = false)
             push!(node.target_ref, ref)
             errors |= error
         end

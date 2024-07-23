@@ -57,11 +57,10 @@ def outlet_continuous_control_model() -> Model:
                 listen_node_id=[1],
                 variable="flow_rate",
             ),
-            continuous_control.Relationship(
+            continuous_control.Function(
                 input=[0.0, 1.0],
                 output=[0.0, 0.6],
-                min_output=0.0,
-                controlled_parameter="flow_rate",
+                controlled_variable="flow_rate",
             ),
         ],
     )
@@ -73,11 +72,10 @@ def outlet_continuous_control_model() -> Model:
                 listen_node_id=[1],
                 variable="flow_rate",
             ),
-            continuous_control.Relationship(
+            continuous_control.Function(
                 input=[0.0, 1.0],
                 output=[0.0, 0.4],
-                min_output=0.0,
-                controlled_parameter="flow_rate",
+                controlled_variable="flow_rate",
             ),
         ],
     )

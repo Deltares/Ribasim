@@ -67,13 +67,11 @@ class BasinTimeSchema(_BaseSchema):
     precipitation: Series[float] = pa.Field(nullable=True)
 
 
-class ContinuousControlRelationshipSchema(_BaseSchema):
+class ContinuousControlFunctionSchema(_BaseSchema):
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     input: Series[float] = pa.Field(nullable=False)
     output: Series[float] = pa.Field(nullable=False)
-    controlled_parameter: Series[str] = pa.Field(nullable=False)
-    min_output: Series[float] = pa.Field(nullable=True)
-    max_output: Series[float] = pa.Field(nullable=True)
+    controlled_variable: Series[str] = pa.Field(nullable=False)
 
 
 class ContinuousControlVariableSchema(_BaseSchema):

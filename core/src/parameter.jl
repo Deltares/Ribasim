@@ -407,7 +407,7 @@ flow_rate: target flow rate
 min_flow_rate: The minimal flow rate of the pump
 max_flow_rate: The maximum flow rate of the pump
 control_mapping: dictionary from (node_id, control_state) to target flow rate
-continuous_control_Type: one of None, ContinuousControl, PidControl
+continuous_control_type: one of None, ContinuousControl, PidControl
 """
 @kwdef struct Pump{T} <: AbstractParameterNode
     node_id::Vector{NodeID}
@@ -461,7 +461,7 @@ flow_rate: target flow rate
 min_flow_rate: The minimal flow rate of the outlet
 max_flow_rate: The maximum flow rate of the outlet
 control_mapping: dictionary from (node_id, control_state) to target flow rate
-continuous_control_Type: one of None, ContinuousControl, PidControl
+continuous_control_type: one of None, ContinuousControl, PidControl
 """
 @kwdef struct Outlet{T} <: AbstractParameterNode
     node_id::Vector{NodeID}
@@ -514,6 +514,10 @@ node_id: node ID of the Terminal node
     node_id::Vector{NodeID}
 end
 
+"""
+A variant on `Base.Ref` where the source array is a vector that is possibly wrapped in a ForwardDiff.DiffCache.
+Retrieve value with get_value(ref::PreallocationRef, val) where `val` determines the return type.
+"""
 struct PreallocationRef{T}
     vector::T
     idx::Int
@@ -584,11 +588,9 @@ end
 @kwdef struct ContinuousControl{T} <: AbstractParameterNode
     node_id::Vector{NodeID}
     compound_variable::Vector{CompoundVariable{T}}
-    controlled_parameter::Vector{String}
+    controlled_variable::Vector{String}
     target_ref::Vector{PreallocationRef{T}}
-    relationship::Vector{ScalarInterpolation}
-    min_output::Vector{Float64}
-    max_output::Vector{Float64}
+    func::Vector{ScalarInterpolation}
 end
 
 """

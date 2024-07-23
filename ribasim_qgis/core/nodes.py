@@ -224,6 +224,7 @@ class Node(Input):
                 shape.Circle,
             ),
             "FlowDemand": (QColor("red"), "FlowDemand", shape.Hexagon),
+            "ContinuousControl": (QColor("gray"), "ContinuousControl", shape.Star),
             # All other nodes, or incomplete input
             "": (QColor("white"), "", shape.Circle),
         }
@@ -732,10 +733,10 @@ class ContinuousControlVariable(Input):
         ]
 
 
-class ContinuousControlRelationship(Input):
+class ContinuousControlFunction(Input):
     @classmethod
     def input_type(cls) -> str:
-        return "ContinuousControl / relationship"
+        return "ContinuousControl / function"
 
     @classmethod
     def geometry_type(cls) -> str:
@@ -747,9 +748,7 @@ class ContinuousControlRelationship(Input):
             QgsField("node_id", QVariant.Int),
             QgsField("input", QVariant.Double),
             QgsField("output", QVariant.Double),
-            QgsField("controlled_parameter", QVariant.String),
-            QgsField("min_output", QVariant.Double),
-            QgsField("max_output", QVariant.Double),
+            QgsField("controlled_variable", QVariant.String),
         ]
 
 

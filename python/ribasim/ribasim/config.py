@@ -24,7 +24,7 @@ from ribasim.schemas import (
     BasinStaticSchema,
     BasinSubgridSchema,
     BasinTimeSchema,
-    ContinuousControlRelationshipSchema,
+    ContinuousControlFunctionSchema,
     ContinuousControlVariableSchema,
     DiscreteControlConditionSchema,
     DiscreteControlLogicSchema,
@@ -357,7 +357,7 @@ class ContinuousControl(MultiNodeModel):
         default_factory=TableModel[ContinuousControlVariableSchema],
         json_schema_extra={"sort_keys": ["node_id"]},
     )
-    relationship: TableModel[ContinuousControlRelationshipSchema] = Field(
-        default_factory=TableModel[ContinuousControlRelationshipSchema],
+    function: TableModel[ContinuousControlFunctionSchema] = Field(
+        default_factory=TableModel[ContinuousControlFunctionSchema],
         json_schema_extra={"sort_keys": ["node_id", "input"]},
     )

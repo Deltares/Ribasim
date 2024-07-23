@@ -4,7 +4,7 @@
 @schema "ribasim.discretecontrol.condition" DiscreteControlCondition
 @schema "ribasim.discretecontrol.logic" DiscreteControlLogic
 @schema "ribasim.continuouscontrol.variable" ContinuousControlVariable
-@schema "ribasim.continuouscontrol.relationship" ContinuousControlRelationship
+@schema "ribasim.continuouscontrol.function" ContinuousControlFunction
 @schema "ribasim.basin.static" BasinStatic
 @schema "ribasim.basin.time" BasinTime
 @schema "ribasim.basin.profile" BasinProfile
@@ -243,13 +243,11 @@ end
     look_ahead::Union{Missing, Float64}
 end
 
-@version ContinuousControlRelationshipV1 begin
+@version ContinuousControlFunctionV1 begin
     node_id::Int32
     input::Float64
     output::Float64
-    controlled_parameter::String
-    min_output::Union{Missing, Float64}
-    max_output::Union{Missing, Float64}
+    controlled_variable::String
 end
 
 @version PidControlStaticV1 begin

@@ -82,19 +82,25 @@ function update_jac_prototype!(
             (; variable, listen_node_id) = subvariable
             if variable == "level" && listen_node_id.type == NodeType.Basin
                 push!(affectees, listen_node_id.idx)
-            elseif variable == "flow"
+            elseif variable == "flow_rate"
                 for connected_id in inoutflow_ids(graph, listen_node_id)
                     if connected_id.type == NodeType.Basin
                         push!(affectees, connected_id.idx)
                     end
                 end
+            else
+                error(
+                    "Updating Jacobian sparsity with variable type $variable is not supported.",
+                )
             end
         end
 
         controlled_node_id = only(outneighbor_labels_type(graph, id, EdgeType.control))
         for affected_id in inoutflow_ids(graph, controlled_node_id)
-            for affectee in affectees
-                jac_prototype[affected_id.idx, affectee] == 1.0
+            if affected_id.type == NodeType.Basin
+                for affectee in affectees
+                    jac_prototype[affected_id.idx, affectee] == 1.0
+                end
             end
         end
     end

@@ -18,6 +18,12 @@ function water_balance!(
     # Ensures current_* vectors are current
     set_current_basin_properties!(basin, storage)
 
+    # Notes on the ordering of these formulations:
+    # - Continuous control can depend on flows (which are not continuously controlled themselves),
+    #   so these flows have to be formulated first.
+    # - Pid control can depend on the du of basins and subsequently change them
+    #   because of the error derivative term.
+
     # Basin forcings
     formulate_basins!(du, basin, storage)
 
@@ -51,15 +57,11 @@ function water_balance!(
 end
 
 function formulate_continuous_control!(u, p, t)::Nothing
-    (; compound_variable, target_ref, relationship, min_output, max_output) =
-        p.continuous_control
+    (; compound_variable, target_ref, func) = p.continuous_control
 
-    for (cvar, ref, rel, min, max) in
-        zip(compound_variable, target_ref, relationship, min_output, max_output)
+    for (cvar, ref, func_) in zip(compound_variable, target_ref, func)
         value = compound_variable_value(cvar, p, u, t)
-
-        # TODO: This iclamping s not smooth, maybe needs reduction factors
-        set_value!(ref, clamp(rel(value), min, max))
+        set_value!(ref, func_(value))
     end
     return nothing
 end
