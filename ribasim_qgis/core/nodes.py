@@ -922,7 +922,13 @@ NONSPATIALNODETYPES: set[str] = {
     cls.nodetype() for cls in Input.__subclasses__() if not cls.is_spatial()
 }
 EDGETYPES = {"flow", "control"}
-SPATIALCONTROLNODETYPES = {"LevelDemand", "FlowDemand", "DiscreteControl", "PidControl"}
+SPATIALCONTROLNODETYPES = {
+    "ContinuousControl",
+    "DiscreteControl",
+    "FlowDemand",
+    "LevelDemand",
+    "PidControl",
+}
 
 
 def load_nodes_from_geopackage(path: Path) -> dict[str, Input]:
