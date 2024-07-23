@@ -180,6 +180,13 @@ class Model(FileModel):
             sub._save(directory, input_dir)
 
     def set_crs(self, crs: str) -> None:
+        """Set the coordinate reference system of the data in the model.
+
+        Parameters
+        ----------
+        crs : str
+            Coordinate reference system, like "EPSG:4326" for WGS84 latitude longitude.
+        """
         self._apply_crs_function("set_crs", crs)
 
     def to_crs(self, crs: str) -> None:
@@ -229,18 +236,24 @@ class Model(FileModel):
 
     @classmethod
     def read(cls, filepath: str | PathLike[str]) -> "Model":
-        """Read model from TOML file."""
+        """Read a model from a TOML file.
+
+        Parameters
+        ----------
+        filepath : str | PathLike[str]
+            The path to the TOML file.
+        """
         return cls(filepath=filepath)  # type: ignore
 
     def write(self, filepath: str | PathLike[str]) -> Path:
-        """
-        Write the contents of the model to disk and save it as a TOML configuration file.
+        """Write the contents of the model to disk and save it as a TOML configuration file.
 
         If ``filepath.parent`` does not exist, it is created before writing.
 
         Parameters
         ----------
-        filepath: str | PathLike[str] A file path with .toml extension
+        filepath : str | PathLike[str]
+            A file path with .toml extension.
         """
         # TODO
         # self.validate_model()
@@ -280,6 +293,8 @@ class Model(FileModel):
         return self
 
     def plot_control_listen(self, ax):
+        """Plot the implicit listen edges of the model."""
+
         df_listen_edge = pd.DataFrame(
             data={
                 "control_node_id": pd.Series([], dtype=np.int32),
@@ -341,17 +356,19 @@ class Model(FileModel):
         return
 
     def plot(self, ax=None, indicate_subnetworks: bool = True) -> Any:
-        """
-        Plot the nodes, edges and allocation networks of the model.
+        """Plot the nodes, edges and allocation networks of the model.
 
         Parameters
         ----------
-        ax : matplotlib.pyplot.Artist, optional
+        ax : matplotlib.pyplot.Artist
             Axes on which to draw the plot.
+        indicate_subnetworks : bool
+            Whether to indicate subnetworks with a convex hull backdrop.
 
         Returns
         -------
         ax : matplotlib.pyplot.Artist
+            Axis on which the plot is drawn.
         """
         if ax is None:
             _, ax = plt.subplots()
@@ -377,13 +394,17 @@ class Model(FileModel):
         return ax
 
     def to_xugrid(self, add_flow: bool = False, add_allocation: bool = False):
-        """
-        Convert the network to a `xugrid.UgridDataset`.
-        To add flow results, set `add_flow=True`.
-        To add allocation results, set `add_allocation=True`.
-        Both cannot be added to the same dataset.
-        This method will throw `ImportError`,
-        if the optional dependency `xugrid` isn't installed.
+        """Convert the network to a `xugrid.UgridDataset`.
+
+        Either the flow or the allocation data can be added, but not both simultaneously.
+        This method will throw `ImportError` if the optional dependency `xugrid` isn't installed.
+
+        Parameters
+        ----------
+        add_flow : bool
+            add flow results (Optional, defaults to False)
+        add_allocation : bool
+            add allocation results (Optional, defaults to False)
         """
 
         if add_flow and add_allocation:
