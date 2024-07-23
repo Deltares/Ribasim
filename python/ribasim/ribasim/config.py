@@ -24,6 +24,8 @@ from ribasim.schemas import (
     BasinStaticSchema,
     BasinSubgridSchema,
     BasinTimeSchema,
+    ContinuousControlFunctionSchema,
+    ContinuousControlVariableSchema,
     DiscreteControlConditionSchema,
     DiscreteControlLogicSchema,
     DiscreteControlVariableSchema,
@@ -429,4 +431,15 @@ class LinearResistance(MultiNodeModel):
     static: TableModel[LinearResistanceStaticSchema] = Field(
         default_factory=TableModel[LinearResistanceStaticSchema],
         json_schema_extra={"sort_keys": ["node_id", "control_state"]},
+    )
+
+
+class ContinuousControl(MultiNodeModel):
+    variable: TableModel[ContinuousControlVariableSchema] = Field(
+        default_factory=TableModel[ContinuousControlVariableSchema],
+        json_schema_extra={"sort_keys": ["node_id"]},
+    )
+    function: TableModel[ContinuousControlFunctionSchema] = Field(
+        default_factory=TableModel[ContinuousControlFunctionSchema],
+        json_schema_extra={"sort_keys": ["node_id", "input"]},
     )

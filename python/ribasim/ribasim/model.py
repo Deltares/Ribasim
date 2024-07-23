@@ -21,6 +21,7 @@ import ribasim
 from ribasim.config import (
     Allocation,
     Basin,
+    ContinuousControl,
     DiscreteControl,
     FlowBoundary,
     FlowDemand,
@@ -77,6 +78,7 @@ class Model(FileModel):
     allocation: Allocation = Field(default_factory=Allocation)
 
     basin: Basin = Field(default_factory=Basin)
+    continuous_control: ContinuousControl = Field(default_factory=ContinuousControl)
     discrete_control: DiscreteControl = Field(default_factory=DiscreteControl)
     flow_boundary: FlowBoundary = Field(default_factory=FlowBoundary)
     flow_demand: FlowDemand = Field(default_factory=FlowDemand)
@@ -316,14 +318,23 @@ class Model(FileModel):
             to_add["control_node_type"] = "PidControl"
             df_listen_edge = pd.concat([df_listen_edge, to_add])
 
-        # Listen edges from DiscreteControl
-        df_variable = self.discrete_control.variable.df
-        if df_variable is not None:
-            to_add = df_variable[
+        # Listen edges from ContinuousControl and DiscreteControl
+        for table, name in (
+            (self.continuous_control.variable.df, "ContinuousControl"),
+            (self.discrete_control.variable.df, "DiscreteControl"),
+        ):
+            if table is None:
+                continue
+
+            to_add = table[
                 ["node_id", "listen_node_id", "listen_node_type"]
             ].drop_duplicates()
-            to_add.columns = ["control_node_id", "listen_node_id", "listen_node_type"]
-            to_add["control_node_type"] = "DiscreteControl"
+            to_add.columns = [
+                "control_node_id",
+                "listen_node_id",
+                "listen_node_type",
+            ]
+            to_add["control_node_type"] = name
             df_listen_edge = pd.concat([df_listen_edge, to_add])
 
         # Collect geometry data

@@ -276,20 +276,21 @@ end
     using Ribasim: nodetypes, NodeType, Parameters, AbstractParameterNode, snake_case
 
     @test Set(nodetypes) == Set([
-        :Terminal,
-        :PidControl,
-        :LevelBoundary,
-        :Pump,
-        :UserDemand,
-        :TabulatedRatingCurve,
-        :FlowDemand,
-        :FlowBoundary,
         :Basin,
-        :ManningResistance,
-        :LevelDemand,
+        :ContinuousControl,
         :DiscreteControl,
-        :Outlet,
+        :FlowBoundary,
+        :FlowDemand,
+        :LevelBoundary,
+        :LevelDemand,
         :LinearResistance,
+        :ManningResistance,
+        :Outlet,
+        :PidControl,
+        :Pump,
+        :TabulatedRatingCurve,
+        :Terminal,
+        :UserDemand,
     ])
     for nodetype in nodetypes
         NodeType.T(nodetype)

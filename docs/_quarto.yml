@@ -81,6 +81,7 @@ website:
             - reference/node/manning-resistance.qmd
             - reference/node/terminal.qmd
             - reference/node/discrete-control.qmd
+            - reference/node/continuous-control.qmd
             - reference/node/pid-control.qmd
 
     - title: "Dev docs"

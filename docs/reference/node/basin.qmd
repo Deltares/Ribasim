@@ -34,11 +34,9 @@ The only difference is that a time column is added.
 The table must by sorted by time, and per time it must be sorted by `node_id`.
 At the given timestamps the values are set in the simulation, such that the timeseries can be seen as forward filled.
 
-## State
+## State {#sec-state}
 
-The state table aims to capture the full state of the Basin, such that it can be used as an
-initial condition, potentially the outcome of an earlier simulation. Currently only the
-Basin node types have state.
+The state table gives the initial water levels of all Basins.
 
 column    | type    | unit         | restriction
 --------- | ------- | ------------ | -----------
@@ -46,6 +44,16 @@ node_id   | Int32   | -            | sorted
 level     | Float64 | $m$          | $\ge$ basin bottom
 
 Each Basin ID needs to be in the table.
+To use the final state of an earlier simulation as an initial condition, copy [`results/basin_state.arrow`](/reference/usage.qmd#sec-state) over to the `input_dir`, and point the TOML to it:
+
+```toml
+[basin]
+state = "basin_state.arrow"
+```
+
+This will start of the simulation with the same water levels as the end of the earlier simulation.
+Since there is no time information in this state, the user is responsible to ensure that the earlier `endtime` matches the current `starttime`.
+This only applies when the user wishes to continue an existing simulation as if it was one continuous simulation.
 
 ## Profile
 

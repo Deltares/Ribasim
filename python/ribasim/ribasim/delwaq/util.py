@@ -168,8 +168,9 @@ def run_delwaq() -> None:
         subprocess.run(
             [binfolder / "run_delwaq.bat", "delwaq.inp"],
             cwd=(folder / "model").absolute(),
+            check=True,
         )
     elif system == "Linux":
-        subprocess.run([binfolder / "run_delwaq.sh", inp_path.absolute()])
+        subprocess.run([binfolder / "run_delwaq.sh", inp_path.absolute()], check=True)
     else:
         raise OSError(f"No support for running Delwaq automatically on {system}.")
