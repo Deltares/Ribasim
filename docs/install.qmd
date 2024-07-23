@@ -65,20 +65,14 @@ pip install ribasim
 Ribasim is typically used as a command-line interface (CLI). It is distributed as a `.zip`
 archive, that must be downloaded and unpacked. It can be placed anywhere, however it is
 important that the contents of the zip file are kept together in a directory. The Ribasim
-executable is in the main folder.
+CLI executable is in the `bin` directory.
 
-To check whether the installation was performed successfully, open a terminal and go to the path where the executable is for example 'C:\Ribasim\ribasim_windows'.
-If you are using cmd.exe type `ribasim`, or for PowerShell `./ribasim`.
-
+To check whether the installation was performed successfully, run `ribasim` with no
+arguments in the command line.
 This will give the following message:
 
 ```
-error: the following required arguments were not provided:
-  <TOML_PATH>
-
-Usage: ribasim <TOML_PATH>
-
-For more information, try '--help'.'
+Usage: ribasim 'path/to/model/ribasim.toml'
 ```
 
 # Ribasim Python
