@@ -67,6 +67,22 @@ class BasinTimeSchema(_BaseSchema):
     precipitation: Series[float] = pa.Field(nullable=True)
 
 
+class ContinuousControlFunctionSchema(_BaseSchema):
+    node_id: Series[Int32] = pa.Field(nullable=False, default=0)
+    input: Series[float] = pa.Field(nullable=False)
+    output: Series[float] = pa.Field(nullable=False)
+    controlled_variable: Series[str] = pa.Field(nullable=False)
+
+
+class ContinuousControlVariableSchema(_BaseSchema):
+    node_id: Series[Int32] = pa.Field(nullable=False, default=0)
+    listen_node_type: Series[str] = pa.Field(nullable=False)
+    listen_node_id: Series[Int32] = pa.Field(nullable=False, default=0)
+    variable: Series[str] = pa.Field(nullable=False)
+    weight: Series[float] = pa.Field(nullable=True)
+    look_ahead: Series[float] = pa.Field(nullable=True)
+
+
 class DiscreteControlConditionSchema(_BaseSchema):
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     compound_variable_id: Series[Int32] = pa.Field(nullable=False, default=0)

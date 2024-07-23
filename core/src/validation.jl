@@ -2,8 +2,7 @@
 neighbortypes(nodetype::Symbol) = neighbortypes(Val(nodetype))
 neighbortypes(::Val{:pump}) = Set((:basin, :terminal, :level_boundary))
 neighbortypes(::Val{:outlet}) = Set((:basin, :terminal, :level_boundary))
-neighbortypes(::Val{:user_demand}) =
-    Set((:basin, :terminal, :level_boundary))
+neighbortypes(::Val{:user_demand}) = Set((:basin, :terminal, :level_boundary))
 neighbortypes(::Val{:level_demand}) = Set((:basin,))
 neighbortypes(::Val{:basin}) = Set((
     :linear_resistance,
@@ -14,12 +13,12 @@ neighbortypes(::Val{:basin}) = Set((
     :user_demand,
 ))
 neighbortypes(::Val{:terminal}) = Set{Symbol}() # only endnode
-neighbortypes(::Val{:flow_boundary}) =
-    Set((:basin, :terminal, :level_boundary))
+neighbortypes(::Val{:flow_boundary}) = Set((:basin, :terminal, :level_boundary))
 neighbortypes(::Val{:level_boundary}) =
     Set((:linear_resistance, :pump, :outlet, :tabulated_rating_curve))
 neighbortypes(::Val{:linear_resistance}) = Set((:basin, :level_boundary))
 neighbortypes(::Val{:manning_resistance}) = Set((:basin,))
+neighbortypes(::Val{:continuous_control}) = Set((:pump, :outlet))
 neighbortypes(::Val{:discrete_control}) = Set((
     :pump,
     :outlet,
@@ -29,8 +28,7 @@ neighbortypes(::Val{:discrete_control}) = Set((
     :pid_control,
 ))
 neighbortypes(::Val{:pid_control}) = Set((:pump, :outlet))
-neighbortypes(::Val{:tabulated_rating_curve}) =
-    Set((:basin, :terminal, :level_boundary))
+neighbortypes(::Val{:tabulated_rating_curve}) = Set((:basin, :terminal, :level_boundary))
 neighbortypes(::Val{:flow_demand}) =
     Set((:linear_resistance, :manning_resistance, :tabulated_rating_curve, :pump, :outlet))
 neighbortypes(::Any) = Set{Symbol}()
@@ -56,6 +54,7 @@ n_neighbor_bounds_flow(::Val{:Pump}) = n_neighbor_bounds(1, 1, 1, typemax(Int))
 n_neighbor_bounds_flow(::Val{:Outlet}) = n_neighbor_bounds(1, 1, 1, 1)
 n_neighbor_bounds_flow(::Val{:Terminal}) = n_neighbor_bounds(1, typemax(Int), 0, 0)
 n_neighbor_bounds_flow(::Val{:PidControl}) = n_neighbor_bounds(0, 0, 0, 0)
+n_neighbor_bounds_flow(::Val{:ContinuousControl}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_flow(::Val{:DiscreteControl}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_flow(::Val{:UserDemand}) = n_neighbor_bounds(1, 1, 1, 1)
 n_neighbor_bounds_flow(::Val{:LevelDemand}) = n_neighbor_bounds(0, 0, 0, 0)
@@ -74,6 +73,8 @@ n_neighbor_bounds_control(::Val{:Pump}) = n_neighbor_bounds(0, 1, 0, 0)
 n_neighbor_bounds_control(::Val{:Outlet}) = n_neighbor_bounds(0, 1, 0, 0)
 n_neighbor_bounds_control(::Val{:Terminal}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_control(::Val{:PidControl}) = n_neighbor_bounds(0, 1, 1, 1)
+n_neighbor_bounds_control(::Val{:ContinuousControl}) =
+    n_neighbor_bounds(0, 0, 1, typemax(Int))
 n_neighbor_bounds_control(::Val{:DiscreteControl}) =
     n_neighbor_bounds(0, 0, 1, typemax(Int))
 n_neighbor_bounds_control(::Val{:UserDemand}) = n_neighbor_bounds(0, 0, 0, 0)
@@ -112,6 +113,7 @@ sort_by_subgrid_level(row) = (row.subgrid_id, row.basin_level)
 sort_by_variable(row) =
     (row.node_id, row.listen_node_type, row.listen_node_id, row.variable)
 sort_by_condition(row) = (row.node_id, row.compound_variable_id, row.greater_than)
+sort_by_id_input(row) = (row.node_id, row.input)
 
 # get the right sort by function given the Schema, with sort_by_id as the default
 sort_by_function(table::StructVector{<:Legolas.AbstractRecord}) = sort_by_id
@@ -123,6 +125,7 @@ sort_by_function(table::StructVector{UserDemandTimeV1}) = sort_by_priority_time
 sort_by_function(table::StructVector{BasinSubgridV1}) = sort_by_subgrid_level
 sort_by_function(table::StructVector{DiscreteControlVariableV1}) = sort_by_variable
 sort_by_function(table::StructVector{DiscreteControlConditionV1}) = sort_by_condition
+sort_by_function(table::StructVector{ContinuousControlFunctionV1}) = sort_by_id_input
 
 const TimeSchemas = Union{
     BasinTimeV1,
