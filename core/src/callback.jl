@@ -451,7 +451,7 @@ end
 "Solve the allocation problem for all demands and assign allocated abstractions."
 function update_allocation!(integrator)::Nothing
     (; p, t, u) = integrator
-    (; allocation, basin) = p
+    (; allocation) = p
     (; allocation_models, mean_input_flows, mean_realized_flows) = allocation
 
     # Don't run the allocation algorithm if allocation is not active

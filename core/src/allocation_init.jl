@@ -492,6 +492,7 @@ function AllocationModel(
 )::AllocationModel
     capacity = get_capacity(p, subnetwork_id)
     problem = allocation_problem(p, capacity, subnetwork_id)
+    flow_priority = JuMP.Containers.SparseAxisArray(Dict(only(problem[:F].axes) .=> 0.0))
 
-    return AllocationModel(; subnetwork_id, capacity, problem, Δt_allocation)
+    return AllocationModel(; subnetwork_id, capacity, flow_priority, problem, Δt_allocation)
 end

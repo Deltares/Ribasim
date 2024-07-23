@@ -283,7 +283,7 @@ end
     # In this section (and following sections) the basin has no longer a (positive) demand,
     # since precipitation provides enough water to get the basin to its target level
     # The FlowBoundary flow gets fully allocated to the UserDemand
-    stage_2 = 2 * Δt_allocation .<= t .<= 8 * Δt_allocation
+    stage_2 = 2 * Δt_allocation .<= t .<= 9 * Δt_allocation
     stage_2_start_idx = findfirst(stage_2)
     u_stage_2(τ) = storage[stage_2_start_idx] + ϕ * (τ - t[stage_2_start_idx])
     @test storage[stage_2] ≈ u_stage_2.(t[stage_2]) rtol = 1e-4
@@ -292,14 +292,14 @@ end
     # even though initially the level is below the maximum level. This is because the simulation
     # anticipates that the current precipitation is going to bring the basin level over
     # its maximum level
-    stage_3 = 8 * Δt_allocation .<= t .<= 13 * Δt_allocation
+    stage_3 = 9 * Δt_allocation .<= t .<= 13 * Δt_allocation
     stage_3_start_idx = findfirst(stage_3)
     u_stage_3(τ) = storage[stage_3_start_idx] + (q + ϕ - d) * (τ - t[stage_3_start_idx])
     @test storage[stage_3] ≈ u_stage_3.(t[stage_3]) rtol = 1e-4
 
     # At the start of this section precipitation stops, and so the UserDemand
     # partly uses surplus water from the basin to fulfill its demand
-    stage_4 = 13 * Δt_allocation .<= t .<= 17 * Δt_allocation
+    stage_4 = 13 * Δt_allocation .<= t .<= 15 * Δt_allocation
     stage_4_start_idx = findfirst(stage_4)
     u_stage_4(τ) = storage[stage_4_start_idx] + (q - d) * (τ - t[stage_4_start_idx])
     @test storage[stage_4] ≈ u_stage_4.(t[stage_4]) rtol = 1e-4
@@ -307,7 +307,7 @@ end
     # From this point the basin is in a dynamical equilibrium,
     # since the basin has no supply so the UserDemand abstracts precisely
     # the flow from the level boundary
-    stage_5 = 18 * Δt_allocation .<= t
+    stage_5 = 16 * Δt_allocation .<= t
     stage_5_start_idx = findfirst(stage_5)
     u_stage_5(τ) = storage[stage_5_start_idx]
     @test storage[stage_5] ≈ u_stage_5.(t[stage_5]) rtol = 1e-4
@@ -549,6 +549,28 @@ end
     @test all(isapprox.(fractions[1], fractions[2], atol = 1e-4))
     @test all(isapprox.(fractions[1], fractions[3], atol = 1e-4))
     @test all(isapprox.(fractions[1], fractions[4], atol = 1e-4))
+end
+
+@testitem "direct_basin_allocation" begin
+    using Ribasim: NodeID
+    import SQLite
+    import JuMP
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/level_demand/ribasim.toml")
+    model = Ribasim.Model(toml_path)
+    (; p) = model.integrator
+    t = 0.0
+    u = model.integrator.u
+    priority_idx = 2
+
+    allocation_model = first(p.allocation.allocation_models)
+    Ribasim.set_initial_values!(allocation_model, p, u, t)
+    Ribasim.set_objective_priority!(allocation_model, p, u, t, priority_idx)
+    Ribasim.allocate_to_users_from_connected_basin!(allocation_model, p, priority_idx)
+    flow_data = allocation_model.flow_priority.data
+    @test flow_data[(NodeID(:FlowBoundary, 1, p), NodeID(:Basin, 2, p))] == 0.0
+    @test flow_data[(NodeID(:Basin, 2, p), NodeID(:UserDemand, 3, p))] == 0.0015
+    @test flow_data[(NodeID(:UserDemand, 3, p), NodeID(:Basin, 5, p))] == 0.0
 end
 
 @testitem "level_demand_without_max_level" begin
