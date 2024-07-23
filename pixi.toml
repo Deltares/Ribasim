@@ -77,7 +77,7 @@ lint = { depends_on = [
 build = { "cmd" = "julia --project build.jl", cwd = "build", depends_on = [
     "generate-testmodels",
     "initialize-julia",
-] }
+], env = {JULIA_SSL_CA_ROOTS_PATH = ""} }
 remove-artifacts = "julia --eval 'rm(joinpath(Base.DEPOT_PATH[1], \"artifacts\"), force=true, recursive=true)'"
 # Tests
 test-ribasim-cli = "pytest --numprocesses=4 --basetemp=build/tests/temp --junitxml=report.xml build/tests"

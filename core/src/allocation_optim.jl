@@ -346,7 +346,11 @@ function get_basin_capacity(
         return 0.0
     else
         level_max = level_demand.max_level[level_demand_idx](t)
-        storage_max = get_storage_from_level(p.basin, basin_idx, level_max)
+        if isinf(level_max)
+            storage_max = Inf
+        else
+            storage_max = get_storage_from_level(p.basin, basin_idx, level_max)
+        end
         return max(0.0, (storage_basin - storage_max) / Δt_allocation + influx)
     end
 end
