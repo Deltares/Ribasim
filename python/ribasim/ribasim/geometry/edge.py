@@ -59,6 +59,24 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
         subnetwork_id: int | None = None,
         **kwargs,
     ):
+        """Add an edge between nodes. The type of the edge (flow or control)
+        is automatically inferred from the type of the `from_node`.
+
+        Parameters
+        ----------
+        from_node : NodeData
+            A node indexed by its node ID, e.g. `model.basin[1]`
+        to_node: NodeData
+            A node indexed by its node ID, e.g. `model.linear_resistance[1]`
+        geometry : LineString | MultiLineString | None
+            The geometry of a line. If not supplied, it creates a straight line between the nodes.
+        name : str
+            An optional name for the edge.
+        subnetwork_id : int | None
+            An optional subnetwork id for the edge. This edge indicates a source for
+            the allocation algorithm, and should thus not be set for every edge in a subnetwork.
+        **kwargs : Dict
+        """
         geometry_to_append = (
             [LineString([from_node.geometry, to_node.geometry])]
             if geometry is None
