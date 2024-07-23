@@ -67,7 +67,8 @@ archive, that must be downloaded and unpacked. It can be placed anywhere, howeve
 important that the contents of the zip file are kept together in a directory. The Ribasim
 executable is in the main folder.
 
-To check whether the installation was performed successfully, open a terminal and go to the path where the executable is for example 'C:\Ribasim\ribasim_windows' and and type `ribasim` with no arguments in the command line.
+To check whether the installation was performed successfully, open a terminal and go to the path where the executable is for example 'C:\Ribasim\ribasim_windows'.
+If you are using cmd.exe type `ribasim`, or for PowerShell `./ribasim`.
 
 This will give the following message:
 
