@@ -5,6 +5,7 @@ It ensures the underlying widgets can talk to each other.  It also manages the
 connection to the QGIS Layers Panel, and ensures there is a group for the
 Ribasim layers there.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -12,9 +13,9 @@ from typing import Any, cast
 
 from PyQt5.QtWidgets import QTabWidget, QVBoxLayout, QWidget
 from qgis.core import (
+    Qgis,
     QgsAbstractVectorLayerLabeling,
     QgsCoordinateReferenceSystem,
-    QgsEditFormConfig,
     QgsFeatureRenderer,
     QgsLayerTreeGroup,
     QgsMapLayer,
@@ -172,11 +173,10 @@ class RibasimWidget(QWidget):
         assert maplayer is not None
         if suppress is not None:
             config = maplayer.editFormConfig()
-            # From QGIS 3.32 on we can use https://github.com/Deltares/Ribasim/commit/8a22fc0630f343069fd3c285ae46e9fde0c71a32
             config.setSuppress(
-                QgsEditFormConfig.FeatureFormSuppress.SuppressOn  # type: ignore
+                Qgis.AttributeFormSuppression.On
                 if suppress
-                else QgsEditFormConfig.FeatureFormSuppress.SuppressDefault  # type: ignore
+                else Qgis.AttributeFormSuppression.Default
             )
             maplayer.setEditFormConfig(config)
         if renderer is not None:

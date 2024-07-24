@@ -58,7 +58,7 @@ assert iface is not None
 
 def __get_test_function(test_module_name):
     """Load the test module and return the test function"""
-    print("QGIS Test Runner - Trying to import %s" % test_module_name)
+    print(f"QGIS Test Runner - Trying to import {test_module_name}")
     try:
         test_module = importlib.import_module(test_module_name)
         function_name = "run_all"
@@ -72,7 +72,7 @@ def __get_test_function(test_module_name):
             test_module_name[:pos],
             test_module_name[pos + 1 :],
         )
-        print("QGIS Test Runner - Trying to import %s" % test_module_name)
+        print(f"QGIS Test Runner - Trying to import {test_module_name}")
         sys.stdout.flush()
         try:
             test_module = importlib.import_module(test_module_name)
@@ -87,7 +87,7 @@ from qgis.core import QgsApplication, QgsProject, QgsProjectBadLayerHandler
 from qgis.PyQt.QtCore import QDir
 
 
-class QgsProjectBadLayerDefaultHandler(QgsProjectBadLayerHandler):
+class QgsProjectBadLayerDefaultHandler(QgsProjectBadLayerHandler):  # type: ignore
     def handleBadLayers(self, layers, dom):
         pass
 
@@ -119,11 +119,11 @@ def __run_test():
     try:
         test_module_name = QgsApplication.instance().arguments()[-1]
         function_name = __get_test_function(test_module_name)
-        print("QGIS Test Runner Inside - executing function %s" % function_name)
+        print(f"QGIS Test Runner Inside - executing function {function_name}")
         function_name()
         __exit_qgis(signal.SIG_DFL)
     except Exception as e:
-        logging.error("QGIS Test Runner Inside - [FAILED] Exception: %s" % e)
+        logging.error(f"QGIS Test Runner Inside - [FAILED] Exception: {e}")
         # Print tb
         traceback.print_exc(file=sys.stderr)
         __exit_qgis(signal.SIGTERM)

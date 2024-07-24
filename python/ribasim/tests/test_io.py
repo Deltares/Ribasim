@@ -1,4 +1,5 @@
 from datetime import datetime
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -8,7 +9,7 @@ from pandas import DataFrame
 from pandas.testing import assert_frame_equal
 from pydantic import ValidationError
 from ribasim import Model, Node, Solver
-from ribasim.nodes import basin, pump, terminal, user_demand
+from ribasim.nodes import basin, pump, user_demand
 from shapely.geometry import Point
 
 
@@ -65,7 +66,7 @@ def test_basic_transient(basic_transient, tmp_path):
     assert model_orig.basin.time.df.time.iloc[0] == time.df.time.iloc[0]
     assert time.df.node_id.dtype == np.int32
     __assert_equal(model_orig.basin.time.df, time.df)
-    assert time.df.shape == (1468, 7)
+    assert time.df.shape == (1468, 6)
 
 
 @pytest.mark.xfail(reason="Needs implementation")
@@ -84,13 +85,13 @@ def test_repr():
 
 
 def test_extra_columns():
-    terminal_static = terminal.Static(meta_id=[-1, -2, -3])
-    assert "meta_id" in terminal_static.df.columns
-    assert (terminal_static.df.meta_id == [-1, -2, -3]).all()
+    pump_static = pump.Static(meta_id=[-1], flow_rate=[1.2])
+    assert "meta_id" in pump_static.df.columns
+    assert pump_static.df.meta_id.iloc[0] == -1
 
     with pytest.raises(ValidationError):
         # Extra column "extra" needs "meta_" prefix
-        terminal.Static(meta_id=[-1, -2, -3], extra=[-1, -2, -3])
+        pump.Static(extra=[-2], flow_rate=[1.2])
 
 
 def test_extra_spatial_columns():
@@ -202,3 +203,10 @@ def test_datetime_timezone():
     assert isinstance(model.endtime, datetime)
     assert model.starttime.tzinfo is None
     assert model.endtime.tzinfo is None
+
+
+def test_minimal_toml():
+    # Check if the TOML used in QGIS tests is still valid.
+    toml_path = Path(__file__).parents[3] / "ribasim_qgis/tests/data/simple_valid.toml"
+    model = ribasim.Model.read(toml_path)
+    assert model.crs == "EPSG:28992"

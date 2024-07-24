@@ -15,7 +15,7 @@ from ribasim.input_base import SpatialTableModel
 __all__ = ("NodeTable",)
 
 
-class NodeSchema(pa.SchemaModel):
+class NodeSchema(pa.DataFrameModel):
     node_id: Series[Int32] = pa.Field(ge=0)
     name: Series[str] = pa.Field(default="")
     node_type: Series[str] = pa.Field(default="")
@@ -103,39 +103,39 @@ class NodeTable(SpatialTableModel[NodeSchema]):
 
         MARKERS = {
             "Basin": "o",
-            "FractionalFlow": "^",
+            "ContinuousControl": "*",
+            "DiscreteControl": "*",
+            "FlowBoundary": "h",
+            "FlowDemand": "h",
             "LevelBoundary": "o",
+            "LevelDemand": "o",
             "LinearResistance": "^",
             "ManningResistance": "D",
-            "TabulatedRatingCurve": "D",
-            "Pump": "h",
             "Outlet": "h",
-            "Terminal": "s",
-            "FlowBoundary": "h",
-            "DiscreteControl": "*",
             "PidControl": "x",
+            "Pump": "h",
+            "TabulatedRatingCurve": "D",
+            "Terminal": "s",
             "UserDemand": "s",
-            "LevelDemand": "o",
-            "FlowDemand": "h",
             "": "o",
         }
 
         COLORS = {
             "Basin": "b",
-            "FractionalFlow": "r",
+            "ContinuousControl": "0.5",
+            "DiscreteControl": "k",
+            "FlowBoundary": "m",
+            "FlowDemand": "r",
             "LevelBoundary": "g",
+            "LevelDemand": "k",
             "LinearResistance": "g",
             "ManningResistance": "r",
-            "TabulatedRatingCurve": "g",
-            "Pump": "0.5",  # grayscale level
             "Outlet": "g",
-            "Terminal": "m",
-            "FlowBoundary": "m",
-            "DiscreteControl": "k",
             "PidControl": "k",
+            "Pump": "0.5",  # grayscale level
+            "TabulatedRatingCurve": "g",
+            "Terminal": "m",
             "UserDemand": "g",
-            "LevelDemand": "k",
-            "FlowDemand": "r",
             "": "k",
         }
         if self.df is None:

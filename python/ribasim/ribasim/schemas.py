@@ -49,7 +49,6 @@ class BasinStaticSchema(_BaseSchema):
     potential_evaporation: Series[float] = pa.Field(nullable=True)
     infiltration: Series[float] = pa.Field(nullable=True)
     precipitation: Series[float] = pa.Field(nullable=True)
-    urban_runoff: Series[float] = pa.Field(nullable=True)
 
 
 class BasinSubgridSchema(_BaseSchema):
@@ -66,7 +65,22 @@ class BasinTimeSchema(_BaseSchema):
     potential_evaporation: Series[float] = pa.Field(nullable=True)
     infiltration: Series[float] = pa.Field(nullable=True)
     precipitation: Series[float] = pa.Field(nullable=True)
-    urban_runoff: Series[float] = pa.Field(nullable=True)
+
+
+class ContinuousControlFunctionSchema(_BaseSchema):
+    node_id: Series[Int32] = pa.Field(nullable=False, default=0)
+    input: Series[float] = pa.Field(nullable=False)
+    output: Series[float] = pa.Field(nullable=False)
+    controlled_variable: Series[str] = pa.Field(nullable=False)
+
+
+class ContinuousControlVariableSchema(_BaseSchema):
+    node_id: Series[Int32] = pa.Field(nullable=False, default=0)
+    listen_node_type: Series[str] = pa.Field(nullable=False)
+    listen_node_id: Series[Int32] = pa.Field(nullable=False, default=0)
+    variable: Series[str] = pa.Field(nullable=False)
+    weight: Series[float] = pa.Field(nullable=True)
+    look_ahead: Series[float] = pa.Field(nullable=True)
 
 
 class DiscreteControlConditionSchema(_BaseSchema):
@@ -121,12 +135,6 @@ class FlowDemandTimeSchema(_BaseSchema):
     time: Series[Timestamp] = pa.Field(nullable=False)
     demand: Series[float] = pa.Field(nullable=False)
     priority: Series[Int32] = pa.Field(nullable=False, default=0)
-
-
-class FractionalFlowStaticSchema(_BaseSchema):
-    node_id: Series[Int32] = pa.Field(nullable=False, default=0)
-    fraction: Series[float] = pa.Field(nullable=False)
-    control_state: Series[str] = pa.Field(nullable=True)
 
 
 class LevelBoundaryConcentrationSchema(_BaseSchema):
@@ -237,10 +245,6 @@ class TabulatedRatingCurveTimeSchema(_BaseSchema):
     time: Series[Timestamp] = pa.Field(nullable=False)
     level: Series[float] = pa.Field(nullable=False)
     flow_rate: Series[float] = pa.Field(nullable=False)
-
-
-class TerminalStaticSchema(_BaseSchema):
-    node_id: Series[Int32] = pa.Field(nullable=False, default=0)
 
 
 class UserDemandStaticSchema(_BaseSchema):

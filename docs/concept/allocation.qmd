@@ -7,6 +7,8 @@ Allocation is the process of assigning an allocated flow rate to demand nodes in
 
 The allocation problem is solved per subnetwork (and main network) of the Ribasim model. Each subnetwork is used to formulate an optimization problem with the [JuMP](https://jump.dev/JuMP.jl/stable/) package, which is solved using the [HiGHS solver](https://highs.dev/). For more in-depth information see also the example of solving the maximum flow problem with `JuMP.jl` [here](https://jump.dev/JuMP.jl/stable/tutorials/linear/network_flows/#The-max-flow-problem).
 
+Before the optimization for each priority there is a simple step that tries to allocate flow to the `UserDemand` nodes from the their directly connected basin.
+
 :::{.callout-note}
 within this *Allocation* section the main network is also considered to be a subnetwork.
 :::
@@ -99,8 +101,8 @@ for all $i \in B_S$. Note that the basin demand has only a single priority, so f
 #### Flow magnitude and direction constraints
 Nodes in the Ribasim model that have a `max_flow_rate`, i.e. Pump, Outlet and LinearResistance, put a constraint on the flow through that node. Some nodes only allow flow in one direction, like Pump, Outlet and TabulatedRatingCurve.
 
-#### FractionalFlow and UserDemand return flows
-Both FractionalFlow and UserDemand nodes dictate proportional relationships between flows over edges in the subnetwork. UserDemands have a return factor $0 \le r_i \le 1, i \in U_S$, and FractionalFlow nodes have an associated fraction $f_j$ which can be updated by DiscreteControl.
+#### UserDemand return flows
+UserDemand nodes dictate proportional relationships between flows over edges in the subnetwork. The return factor is given by $0 \le r_i \le 1, i \in U_S$.
 
 ## The subnetwork
 The subnetwork consists of a set of nodes $S \subset V$ and edges
@@ -139,7 +141,7 @@ There are several types of variable whose value has to be determined to solve th
 
 - The flows $F \in \mathbb{R}_{\ge 0}^{n\times n}$ over the edges in the allocation network;
 - The flows $F^\text{basin out}_{i}, F^\text{basin in}_{i} \geq 0$ for all $i \in B_S$ supplied and consumed by the basins with a level demand respectively;
-- The flows $F^\text{buffer out}_{i}, F^\text{buffer in}_{i} \ge 0$ for all $i \in FD_S \cup FF_S$ supplied and consumed by the flow buffers of nodes with a flow demand or fractional flow outneighbors.
+- The flows $F^\text{buffer out}_{i}, F^\text{buffer in}_{i} \ge 0$ for all $i \in FD_S \cup FF_S$ supplied and consumed by the flow buffers of nodes with a flow demand.
 
 ## The optimization objective
 
@@ -225,13 +227,6 @@ Here we use that each UserDemand node in the allocation network has a unique  ou
 $$
     r_i \cdot F_{ki}, \quad V_S^{\text{in}}(i) = \{k\}.
 $$
-
-- Fractional flow: Let $L_S \subset V_S$ be the set of nodes in the max flow graph with fractional flow outneighbors, and $f_j$ the flow fraction associated with fractional flow node $j \in V_S$. Then
-$$
-    F_{ij} \le f_j \sum_{k\in V^\text{in}_S(i)} F_{ki} \qquad
-    \forall i \in L_S, \;
-    j \in V_S^\text{out}(i).
-$$ {#eq-fractionalflowconstraint}
 
 - Flow sign: Furthermore there are the non-negativity constraints for the flows and allocations, see [The optimization variables](/concept/allocation.qmd#the-optimization-variables).
 

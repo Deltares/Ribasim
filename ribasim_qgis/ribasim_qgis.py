@@ -1,4 +1,5 @@
 """Setup a dockwidget to hold the ribasim plugin widgets."""
+
 from pathlib import Path
 
 from qgis.gui import QgsDockWidget
@@ -7,7 +8,7 @@ from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction
 
 
-class RibasimDockWidget(QgsDockWidget):
+class RibasimDockWidget(QgsDockWidget):  # type: ignore
     def closeEvent(self, event) -> None:
         # TODO: if we implement talking to a Julia server, shut it down here.
         event.accept()
