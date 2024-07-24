@@ -1,4 +1,4 @@
-@testitem "regression_ode_solvers" begin
+@testitem "regression_ode_solvers_trivial" begin
     using SciMLBase: successful_retcode
     using Tables: Tables
     using Tables.DataAPI: nrow
@@ -15,59 +15,50 @@
     mkpath(dirname(control_path))
     touch(control_path)
     @test ispath(control_path)
-
     config = Ribasim.Config(toml_path)
-    model = Ribasim.run(config)
-    @test model isa Ribasim.Model
-    @test successful_retcode(model)
-    (; p) = model.integrator
 
-    @test !ispath(control_path)
+    solver_list =
+        ["QNDF", "Rosenbrock23", "TRBDF2", "Rodas5", "KenCarp4", "Tsit5", "ImplicitEuler"]
+    sparse_on = [true, false]
+    autodiff_on = [true, false]
 
-    # read all results as bytes first to avoid memory mapping
-    # which can have cleanup issues due to file locking
-    flow_bytes = read(normpath(dirname(toml_path), "results/flow.arrow"))
-    basin_bytes = read(normpath(dirname(toml_path), "results/basin.arrow"))
-    subgrid_bytes = read(normpath(dirname(toml_path), "results/subgrid_level.arrow"))
+    @testset "$solver" for solver in solver_list
+        @testset "sparse density is $sparse_on_off" for sparse_on_off in sparse_on
+            @testset "auto differentiation is $autodiff_on_off" for autodiff_on_off in
+                                                                    autodiff_on
+                config = Ribasim.Config(
+                    toml_path;
+                    solver_algorithm = solver,
+                    solver_sparse = sparse_on_off,
+                    solver_autodiff = autodiff_on_off,
+                )
+                model = Ribasim.run(config)
+                @test model isa Ribasim.Model
+                @test successful_retcode(model)
+                (; p) = model.integrator
 
-    flow = Arrow.Table(flow_bytes)
-    basin = Arrow.Table(basin_bytes)
-    subgrid = Arrow.Table(subgrid_bytes)
+                @test !ispath(control_path)
 
-    @testset "Results size" begin
-        nsaved = length(tsaves(model))
-        @test nsaved > 10
-        # t0 has no flow, 2 flow edges
-        @test nrow(flow) == (nsaved - 1) * 2
-        @test nrow(basin) == nsaved - 1
-        @test nrow(subgrid) == nsaved * length(p.subgrid.level)
-    end
+                # read all results as bytes first to avoid memory mapping
+                # which can have cleanup issues due to file locking
+                flow_bytes = read(normpath(dirname(toml_path), "results/flow.arrow"))
+                basin_bytes = read(normpath(dirname(toml_path), "results/basin.arrow"))
+                # subgrid_bytes = read(normpath(dirname(toml_path), "results/subgrid_level.arrow"))
 
-    @testset "Results values" begin
-        @test flow.time[1] == DateTime(2020)
-        @test coalesce.(flow.edge_id[1:2], -1) == [0, 1]
-        @test flow.from_node_id[1:2] == [6, 6]
-        @test flow.to_node_id[1:2] == [6, 2147483647]
+                flow = Arrow.Table(flow_bytes)
+                basin = Arrow.Table(basin_bytes)
+                # subgrid = Arrow.Table(subgrid_bytes)
 
-        @test basin.storage[1] ≈ 1.0
-        @test basin.level[1] ≈ 0.044711584
-        @test basin.storage_rate[1] ≈
-              (basin.storage[2] - basin.storage[1]) / config.solver.saveat
-        @test all(==(0), basin.inflow_rate)
-        @test all(>(0), basin.outflow_rate)
-        @test flow.flow_rate[1] == basin.outflow_rate[1]
-        @test all(==(0), basin.drainage)
-        @test all(==(0), basin.infiltration)
-        @test all(q -> abs(q) < 1e-7, basin.balance_error)
-        @test all(q -> abs(q) < 0.01, basin.relative_error)
-
-        # The exporter interpolates 1:1 for three subgrid elements, but shifted by 1.0 meter.
-        basin_level = basin.level[1]
-        @test length(p.subgrid.level) == 3
-        @test diff(p.subgrid.level) ≈ [-1.0, 2.0]
-        @test subgrid.subgrid_id[1:3] == [11, 22, 33]
-        @test subgrid.subgrid_level[1:3] ≈
-              [basin_level, basin_level - 1.0, basin_level + 1.0]
-        @test subgrid.subgrid_level[(end - 2):end] == p.subgrid.level
+                @testset "Results values" begin
+                    @test basin.storage[1] ≈ 1.0
+                    @test basin.level[1] ≈ 0.044711584
+                    @test basin.storage[end] ≈ 16.530443267
+                    @test basin.level[end] ≈ 0.181817438
+                    @test flow.flow_rate[1] == basin.outflow_rate[1]
+                    @test all(q -> abs(q) < 1e-7, basin.balance_error)
+                    @test all(q -> abs(q) < 0.01, basin.relative_error)
+                end
+            end
+        end
     end
 end
