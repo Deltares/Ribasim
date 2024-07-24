@@ -350,14 +350,7 @@ Function that goes smoothly from 0 to 1 in the interval [0,threshold],
 and is constant outside this interval.
 """
 function reduction_factor(x::T, threshold::Real)::T where {T <: Real}
-    return if x < 0
-        zero(T)
-    elseif x < threshold
-        x_scaled = x / threshold
-        (-2 * x_scaled + 3) * x_scaled^2
-    else
-        one(T)
-    end
+    clamp(x + sin(π * (2x - 1)) / (2π), zero(T), one(T))
 end
 
 "If id is a Basin with storage below the threshold, return a reduction factor != 1"
