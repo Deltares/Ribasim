@@ -23,7 +23,8 @@ object Linux_BuildRibasim : BuildType({
 
                 module load pixi
                 module load gcc/11.3.0
-            """
+
+            """.trimIndent()
 
     steps {
         script {
