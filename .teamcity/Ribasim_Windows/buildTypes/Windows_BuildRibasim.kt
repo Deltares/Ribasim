@@ -1,6 +1,7 @@
 package Ribasim_Windows.buildTypes
 
 import Templates.GithubCommitStatusIntegration
+import Templates.LinuxAgent
 import Templates.WindowsAgent
 import jetbrains.buildServer.configs.kotlin.BuildType
 import jetbrains.buildServer.configs.kotlin.PublishMode
@@ -18,9 +19,18 @@ object Windows_BuildRibasim : BuildType({
         cleanCheckout = true
     }
 
-    val header = """
-            """
+    var header = ""
+    if (templates.contains(LinuxAgent)) {
+        header = """
+                #!/bin/bash
+                # black magic
+                source /usr/share/Modules/init/bash
 
+                module load pixi
+                module load gcc/11.3.0
+
+            """.trimIndent()
+    }
     steps {
         script {
             name = "Build binary"

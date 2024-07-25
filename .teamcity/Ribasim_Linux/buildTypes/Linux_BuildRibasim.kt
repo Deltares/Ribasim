@@ -16,7 +16,9 @@ object Linux_BuildRibasim : BuildType({
         cleanCheckout = true
     }
 
-    val header = """
+    var header = ""
+    if (templates.contains(LinuxAgent)) {
+        header = """
                 #!/bin/bash
                 # black magic
                 source /usr/share/Modules/init/bash
@@ -25,7 +27,7 @@ object Linux_BuildRibasim : BuildType({
                 module load gcc/11.3.0
 
             """.trimIndent()
-
+    }
     steps {
         script {
             name = "Build binary"
