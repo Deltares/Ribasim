@@ -2,7 +2,7 @@
 
 julia_version = "1.10.4"
 manifest_format = "2.0"
-project_hash = "9dcac39cfaf0ad2fe294f09f7574ac9dc6eda273"
+project_hash = "ced48539db7c5827a1e795e5349b519fb599876e"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "aa4d425271a914d8c4af6ad9fccb6eb3aec662c7"
@@ -338,7 +338,9 @@ version = "1.6.1"
 
 [[deps.DataInterpolations]]
 deps = ["FindFirstFunctions", "ForwardDiff", "LinearAlgebra", "PrettyTables", "ReadOnlyArrays", "RecipesBase", "Reexport"]
-git-tree-sha1 = "7a891ddd01f046ce7d5bd7a4f77b56064091ae6e"
+git-tree-sha1 = "f42cb8af4512b4e8b35600d5fa6a1861f5d5c43a"
+repo-rev = "master"
+repo-url = "https://github.com/SciML/DataInterpolations.jl.git"
 uuid = "82cc6244-b520-54b8-b5a6-8a565e85f1d0"
 version = "5.3.0"
 

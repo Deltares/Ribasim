@@ -384,7 +384,7 @@ end
     parameters = model.integrator.p
 
     (; graph, tabulated_rating_curve, basin) = parameters
-    tabulated_rating_curve.table[1].t[1] = invalid_level
+    tabulated_rating_curve.table[1].t.parent[1] = invalid_level
 
     logger = TestLogger()
     with_logger(logger) do
@@ -438,6 +438,9 @@ end
         Ribasim.main(toml_path)
     end
 
-    @test occursin("Warning: Convergence bottlenecks in descending order of severity:", output)
+    @test occursin(
+        "Warning: Convergence bottlenecks in descending order of severity:",
+        output,
+    )
     @test occursin("Basin #11 = ", output)
 end

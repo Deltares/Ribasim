@@ -312,7 +312,7 @@ end
     storage = range(0.0, 1000.0, n_interpolations)
 
     # Covers interpolation for constant and non-constant area, extrapolation for constant area
-    A = [0.0, 100.0, 100.0]
+    A = [1e-9, 100.0, 100.0]
     h = [0.0, 10.0, 15.0]
     S = integral.(Ref(LinearInterpolation(A, h)), h)
     profile = (; S, A, h)
@@ -340,7 +340,7 @@ end
     end
 
     # Covers extrapolation for non-constant area
-    A = [0.0, 100.0]
+    A = [1e-9, 100.0]
     h = [0.0, 10.0]
     S = integral.(Ref(LinearInterpolation(A, h)), h)
 
