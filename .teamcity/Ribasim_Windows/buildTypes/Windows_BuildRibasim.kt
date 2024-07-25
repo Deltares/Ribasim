@@ -20,7 +20,7 @@ object Windows_BuildRibasim : BuildType({
     }
 
     var header = ""
-    if (options.findRawParam("OS")?.value?.contains("Linux") == true) {
+    if (templates.contains(LinuxAgent)) {
         header = """
                 #!/bin/bash
                 # black magic

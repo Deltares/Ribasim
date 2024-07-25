@@ -9,8 +9,6 @@ object LinuxAgent : Template({
 
     publishArtifacts = PublishMode.SUCCESSFUL
 
-    options.param("OS", "Linux")
-
     requirements {
         equals("teamcity.agent.jvm.os.name", "Linux", "RQ_418")
     }
