@@ -1,11 +1,12 @@
 package Ribasim_Windows.buildTypes
 
-import jetbrains.buildServer.configs.kotlin.*
-import jetbrains.buildServer.configs.kotlin.buildFeatures.commitStatusPublisher
+import Templates.GithubCommitStatusIntegration
+import jetbrains.buildServer.configs.kotlin.BuildType
+import jetbrains.buildServer.configs.kotlin.PublishMode
 import jetbrains.buildServer.configs.kotlin.buildSteps.script
 
 object Windows_BuildRibasim : BuildType({
-    templates(Ribasim.buildTypes.Windows_1)
+    templates(Ribasim.buildTypes.Windows_1, GithubCommitStatusIntegration)
     name = "Build Ribasim"
 
     artifactRules = """ribasim\build\ribasim => ribasim_windows.zip"""
@@ -38,18 +39,6 @@ object Windows_BuildRibasim : BuildType({
 
     failureConditions {
         executionTimeoutMin = 120
-    }
-
-    features {
-        commitStatusPublisher {
-            id = "BUILD_EXT_295"
-            publisher = github {
-                githubUrl = "https://api.github.com"
-                authType = personalToken {
-                    token = "credentialsJSON:6b37af71-1f2f-4611-8856-db07965445c0"
-                }
-            }
-        }
     }
 
     requirements {

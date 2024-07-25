@@ -1,15 +1,15 @@
 package Ribasim_Windows.buildTypes
 
-import Ribasim.vcsRoots.Ribasim as RibasimVcs
-import jetbrains.buildServer.configs.kotlin.*
+import Templates.GithubCommitStatusIntegration
+import jetbrains.buildServer.configs.kotlin.BuildType
 import jetbrains.buildServer.configs.kotlin.buildFeatures.XmlReport
-import jetbrains.buildServer.configs.kotlin.buildFeatures.commitStatusPublisher
 import jetbrains.buildServer.configs.kotlin.buildFeatures.xmlReport
 import jetbrains.buildServer.configs.kotlin.buildSteps.script
 import jetbrains.buildServer.configs.kotlin.triggers.schedule
+import Ribasim.vcsRoots.Ribasim as RibasimVcs
 
 object Windows_TestRibasimBinaries : BuildType({
-    templates(Ribasim.buildTypes.Windows_1)
+    templates(Ribasim.buildTypes.Windows_1, GithubCommitStatusIntegration)
     name = "Test Ribasim Binaries"
 
     artifactRules = """
@@ -52,16 +52,6 @@ object Windows_TestRibasimBinaries : BuildType({
     }
 
     features {
-        commitStatusPublisher {
-            id = "BUILD_EXT_142"
-            vcsRootExtId = "${RibasimVcs.id}"
-            publisher = github {
-                githubUrl = "https://api.github.com"
-                authType = personalToken {
-                    token = "credentialsJSON:6b37af71-1f2f-4611-8856-db07965445c0"
-                }
-            }
-        }
         xmlReport {
             id = "BUILD_EXT_145"
             reportType = XmlReport.XmlReportType.JUNIT

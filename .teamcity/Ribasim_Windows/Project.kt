@@ -3,14 +3,13 @@ package Ribasim_Windows
 import Ribasim_Windows.buildTypes.Windows_BuildRibasim
 import Ribasim_Windows.buildTypes.Windows_TestDelwaqCoupling
 import Ribasim_Windows.buildTypes.Windows_TestRibasimBinaries
+import Templates.GithubCommitStatusIntegration
+import Templates.GithubPullRequestsIntegration
 import jetbrains.buildServer.configs.kotlin.BuildType
 import jetbrains.buildServer.configs.kotlin.FailureAction
 import jetbrains.buildServer.configs.kotlin.Project
-import jetbrains.buildServer.configs.kotlin.buildFeatures.PullRequests
-import jetbrains.buildServer.configs.kotlin.buildFeatures.commitStatusPublisher
-import jetbrains.buildServer.configs.kotlin.buildFeatures.pullRequests
-import Ribasim.vcsRoots.Ribasim as RibasimVcs
 import jetbrains.buildServer.configs.kotlin.triggers.vcs
+import Ribasim.vcsRoots.Ribasim as RibasimVcs
 
 object Project : Project({
     id("Ribasim_Windows")
@@ -20,10 +19,15 @@ object Project : Project({
     buildType(Windows_BuildRibasim)
     buildType(Windows_TestDelwaqCoupling)
     buildType(Windows_TestRibasimBinaries)
+
+    template(GithubCommitStatusIntegration)
+    template(GithubPullRequestsIntegration)
 })
 
 object Main : BuildType({
     name = "RibasimMain"
+
+    templates(GithubCommitStatusIntegration, GithubPullRequestsIntegration)
 
     allowExternalStatus = true
     type = Type.COMPOSITE
@@ -34,27 +38,6 @@ object Main : BuildType({
 
     triggers {
         vcs {
-        }
-    }
-
-    features {
-        commitStatusPublisher {
-            vcsRootExtId = "${RibasimVcs.id}"
-            publisher = github {
-                githubUrl = "https://api.github.com"
-                authType = personalToken {
-                    token = "credentialsJSON:6b37af71-1f2f-4611-8856-db07965445c0"
-                }
-            }
-        }
-        pullRequests {
-            vcsRootExtId = "${RibasimVcs.id}"
-            provider = github {
-                authType = token {
-                    token = "credentialsJSON:6b37af71-1f2f-4611-8856-db07965445c0"
-                }
-                filterAuthorRole = PullRequests.GitHubRoleFilter.MEMBER
-            }
         }
     }
 
