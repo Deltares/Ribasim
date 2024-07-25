@@ -3,6 +3,8 @@
 @schema "ribasim.discretecontrol.variable" DiscreteControlVariable
 @schema "ribasim.discretecontrol.condition" DiscreteControlCondition
 @schema "ribasim.discretecontrol.logic" DiscreteControlLogic
+@schema "ribasim.continuouscontrol.variable" ContinuousControlVariable
+@schema "ribasim.continuouscontrol.function" ContinuousControlFunction
 @schema "ribasim.basin.static" BasinStatic
 @schema "ribasim.basin.time" BasinTime
 @schema "ribasim.basin.profile" BasinProfile
@@ -230,6 +232,22 @@ end
     node_id::Int32
     truth_state::String
     control_state::String
+end
+
+@version ContinuousControlVariableV1 begin
+    node_id::Int32
+    listen_node_type::String
+    listen_node_id::Int32
+    variable::String
+    weight::Union{Missing, Float64}
+    look_ahead::Union{Missing, Float64}
+end
+
+@version ContinuousControlFunctionV1 begin
+    node_id::Int32
+    input::Float64
+    output::Float64
+    controlled_variable::String
 end
 
 @version PidControlStaticV1 begin

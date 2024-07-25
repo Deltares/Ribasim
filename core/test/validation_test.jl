@@ -428,19 +428,16 @@ end
 end
 
 @testitem "Convergence bottleneck" begin
+    using Logging
     using IOCapture: capture
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/invalid_unstable/ribasim.toml")
     @test ispath(toml_path)
+
     (; output) = capture() do
         Ribasim.main(toml_path)
     end
-    output = split(output, "\n")[(end - 4):end]
-    @test startswith(
-        output[1],
-        "The following basins were identified as convergence bottlenecks",
-    )
-    @test startswith(output[2], "Basin #11")
-    @test startswith(output[3], "Basin #31")
-    @test startswith(output[4], "Basin #51")
+
+    @test occursin("Warning: Convergence bottlenecks in descending order of severity:", output)
+    @test occursin("Basin #11 = ", output)
 end

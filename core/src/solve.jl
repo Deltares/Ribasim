@@ -18,18 +18,51 @@ function water_balance!(
     # Ensures current_* vectors are current
     set_current_basin_properties!(basin, storage)
 
+    # Notes on the ordering of these formulations:
+    # - Continuous control can depend on flows (which are not continuously controlled themselves),
+    #   so these flows have to be formulated first.
+    # - Pid control can depend on the du of basins and subsequently change them
+    #   because of the error derivative term.
+
     # Basin forcings
     formulate_basins!(du, basin, storage)
 
-    # First formulate intermediate flows
+    # Formulate intermediate flows (non continuously controlled)
     formulate_flows!(p, storage, t)
 
-    # Now formulate du
+    # Compute continuous control
+    formulate_continuous_control!(u, p, t)
+
+    # Formulate intermediate flows (controlled by ContinuousControl)
+    formulate_flows!(
+        p,
+        storage,
+        t;
+        continuous_control_type = ContinuousControlType.Continuous,
+    )
+
+    # Formulate du (all)
     formulate_du!(du, graph, storage)
 
-    # PID control (changes the du of PID controlled basins)
-    continuous_control!(u, du, pid_control, p, integral, t)
+    # Compute PID control
+    formulate_pid_control!(u, du, pid_control, p, integral, t)
 
+    # Formulate intermediate flow (controlled by PID control)
+    formulate_flows!(p, storage, t; continuous_control_type = ContinuousControlType.PID)
+
+    # Formulate du (controlled by PidControl)
+    formulate_du_pid_controlled!(du, graph, pid_control, storage)
+
+    return nothing
+end
+
+function formulate_continuous_control!(u, p, t)::Nothing
+    (; compound_variable, target_ref, func) = p.continuous_control
+
+    for (cvar, ref, func_) in zip(compound_variable, target_ref, func)
+        value = compound_variable_value(cvar, p, u, t)
+        set_value!(ref, func_(value))
+    end
     return nothing
 end
 
@@ -106,7 +139,7 @@ function set_error!(pid_control::PidControl, p::Parameters, u::ComponentVector, 
     end
 end
 
-function continuous_control!(
+function formulate_pid_control!(
     u::ComponentVector,
     du::ComponentVector,
     pid_control::PidControl,
@@ -114,91 +147,51 @@ function continuous_control!(
     integral_value::SubArray,
     t::Number,
 )::Nothing
-    (; graph, pump, outlet, basin) = p
-    min_flow_rate_pump = pump.min_flow_rate
-    max_flow_rate_pump = pump.max_flow_rate
-    min_flow_rate_outlet = outlet.min_flow_rate
-    max_flow_rate_outlet = outlet.max_flow_rate
+    (; basin) = p
     (; node_id, active, target, listen_node_id, error) = pid_control
     (; current_area) = basin
 
     current_area = get_tmp(current_area, u)
-    storage = u.storage
     error = get_tmp(error, u)
 
     set_error!(pid_control, p, u, t)
 
-    for id in node_id
-        if !active[id.idx]
-            du.integral[id.idx] = 0.0
-            u.integral[id.idx] = 0.0
+    for (i, id) in enumerate(node_id)
+        if !active[i]
+            du.integral[i] = 0.0
+            u.integral[i] = 0.0
             continue
         end
 
-        du.integral[id.idx] = error[id.idx]
+        du.integral[i] = error[i]
 
-        listened_node_id = listen_node_id[id.idx]
+        listened_node_id = listen_node_id[i]
 
-        controlled_node_id = only(outneighbor_labels_type(graph, id, EdgeType.control))
-        controls_pump = (controlled_node_id in pump.node_id)
-
-        if !controls_pump
-            src_id = inflow_id(graph, controlled_node_id)
-            dst_id = outflow_id(graph, controlled_node_id)
-
-            inflow_edge = graph[src_id, controlled_node_id]
-            outflow_edge = graph[controlled_node_id, dst_id]
-
-            has_src_level, src_level = get_level(p, src_id, t; storage)
-            has_dst_level, dst_level = get_level(p, dst_id, t; storage)
-
-            factor_outlet = 1.0
-
-            # No flow out of outlet if source level is lower than reference level
-            if has_src_level && has_dst_level
-                Δlevel = src_level - dst_level
-                factor_outlet *= reduction_factor(Δlevel, 0.1)
-            end
-
-            # No flow out of outlet if source level is lower than minimum crest level
-            if has_src_level
-                factor_outlet *= reduction_factor(
-                    src_level - outlet.min_crest_level[controlled_node_id.idx],
-                    0.1,
-                )
-            end
-        else
-            factor_outlet = 1.0
-        end
-
-        id_inflow = inflow_id(graph, controlled_node_id)
-        factor_basin = low_storage_factor(storage, id_inflow, 10.0)
-
-        factor = factor_basin * factor_outlet
         flow_rate = 0.0
 
-        K_p = pid_control.proportional[id.idx](t)
-        K_i = pid_control.integral[id.idx](t)
-        K_d = pid_control.derivative[id.idx](t)
+        K_p = pid_control.proportional[i](t)
+        K_i = pid_control.integral[i](t)
+        K_d = pid_control.derivative[i](t)
 
         if !iszero(K_d)
             # dlevel/dstorage = 1/area
+            # TODO: replace by DataInterpolations.derivative(storage_to_level, storage)
             area = current_area[listened_node_id.idx]
-            D = 1.0 - K_d * factor / area
+            D = 1.0 - K_d / area
         else
             D = 1.0
         end
 
         if !iszero(K_p)
-            flow_rate += factor * K_p * error[id.idx] / D
+            flow_rate += K_p * error[i] / D
         end
 
         if !iszero(K_i)
-            flow_rate += factor * K_i * integral_value[id.idx] / D
+            flow_rate += K_i * integral_value[i] / D
         end
 
         if !iszero(K_d)
-            dlevel_demand = derivative(target[id.idx], t)
+            dlevel_demand = derivative(target[i], t)
             du_listened_basin_old = du.storage[listened_node_id.idx]
             # The expression below is the solution to an implicit equation for
             # du_listened_basin. This equation results from the fact that if the derivative
@@ -206,39 +199,8 @@ function continuous_control!(
             flow_rate += K_d * (dlevel_demand - du_listened_basin_old / area) / D
         end
 
-        # Clamp values outside pump flow rate bounds
-        if controls_pump
-            min_flow_rate = min_flow_rate_pump
-            max_flow_rate = max_flow_rate_pump
-        else
-            min_flow_rate = min_flow_rate_outlet
-            max_flow_rate = max_flow_rate_outlet
-        end
-
-        flow_rate = clamp(
-            flow_rate,
-            min_flow_rate[controlled_node_id.idx],
-            max_flow_rate[controlled_node_id.idx],
-        )
-
-        # Set flow for connected edges
-        src_id = inflow_id(graph, controlled_node_id)
-        dst_id = outflow_id(graph, controlled_node_id)
-
-        set_flow!(graph, src_id, controlled_node_id, flow_rate)
-        set_flow!(graph, controlled_node_id, dst_id, flow_rate)
-
-        # Below du.storage is updated. This is normally only done
-        # in formulate!(du, connectivity, basin), but in this function
-        # flows are set so du has to be updated too.
-        if dst_id.type == NodeType.Basin
-            du.storage[dst_id.idx] += flow_rate
-        end
-
-        if src_id.type == NodeType.Basin
-            du.storage[src_id.idx] -= flow_rate
-        end
-
+        # Set flow_rate
+        set_value!(pid_control.target_ref[i], flow_rate)
     end
     return nothing
 end
@@ -518,24 +480,37 @@ function formulate_flow!(
     p::Parameters,
     storage::AbstractVector,
     t::Number,
+    continuous_control_type_::ContinuousControlType.T,
 )::Nothing
-    (; graph, basin) = p
+    (; graph) = p
 
-    for (node_id, inflow_edge, outflow_edges, active, flow_rate, is_pid_controlled) in zip(
+    for (
+        node_id,
+        inflow_edge,
+        outflow_edges,
+        active,
+        flow_rate,
+        min_flow_rate,
+        max_flow_rate,
+        continuous_control_type,
+    ) in zip(
         pump.node_id,
         pump.inflow_edge,
         pump.outflow_edges,
         pump.active,
         get_tmp(pump.flow_rate, storage),
-        pump.is_pid_controlled,
+        pump.min_flow_rate,
+        pump.max_flow_rate,
+        pump.continuous_control_type,
     )
-        if !active || is_pid_controlled
+        if !active || (continuous_control_type != continuous_control_type_)
             continue
         end
 
         inflow_id = inflow_edge.edge[1]
         factor = low_storage_factor(storage, inflow_id, 10.0)
         q = flow_rate * factor
+        q = clamp(q, min_flow_rate, max_flow_rate)
 
         set_flow!(graph, inflow_edge, q)
 
@@ -551,6 +526,7 @@ function formulate_flow!(
     p::Parameters,
     storage::AbstractVector,
     t::Number,
+    continuous_control_type_::ContinuousControlType.T,
 )::Nothing
     (; graph) = p
 
@@ -560,7 +536,9 @@ function formulate_flow!(
         outflow_edges,
         active,
         flow_rate,
-        is_pid_controlled,
+        min_flow_rate,
+        max_flow_rate,
+        continuous_control_type,
         min_crest_level,
     ) in zip(
         outlet.node_id,
@@ -568,10 +546,12 @@ function formulate_flow!(
         outlet.outflow_edges,
         outlet.active,
         get_tmp(outlet.flow_rate, storage),
-        outlet.is_pid_controlled,
+        outlet.min_flow_rate,
+        outlet.max_flow_rate,
+        outlet.continuous_control_type,
         outlet.min_crest_level,
     )
-        if !active || is_pid_controlled
+        if !active || (continuous_control_type != continuous_control_type_)
             continue
         end
 
@@ -594,6 +574,8 @@ function formulate_flow!(
         if src_level !== nothing
             q *= reduction_factor(src_level - min_crest_level, 0.1)
         end
+
+        q = clamp(q, min_flow_rate, max_flow_rate)
 
         set_flow!(graph, inflow_edge, q)
 
@@ -626,7 +608,30 @@ function formulate_du!(
     return nothing
 end
 
-function formulate_flows!(p::Parameters, storage::AbstractVector, t::Number)::Nothing
+function formulate_du_pid_controlled!(
+    du::ComponentVector,
+    graph::MetaGraph,
+    pid_control::PidControl,
+    storage::AbstractVector,
+)::Nothing
+    for id in pid_control.controlled_basins
+        du[id.idx] = zero(eltype(du))
+        for id_in in inflow_ids(graph, id)
+            du[id.idx] += get_flow(graph, id_in, id, storage)
+        end
+        for id_out in outflow_ids(graph, id)
+            du[id.idx] -= get_flow(graph, id, id_out, storage)
+        end
+    end
+    return nothing
+end
+
+function formulate_flows!(
+    p::Parameters,
+    storage::AbstractVector,
+    t::Number;
+    continuous_control_type::ContinuousControlType.T = ContinuousControlType.None,
+)::Nothing
     (;
         linear_resistance,
         manning_resistance,
@@ -637,11 +642,14 @@ function formulate_flows!(p::Parameters, storage::AbstractVector, t::Number)::No
         user_demand,
     ) = p
 
-    formulate_flow!(linear_resistance, p, storage, t)
-    formulate_flow!(manning_resistance, p, storage, t)
-    formulate_flow!(tabulated_rating_curve, p, storage, t)
-    formulate_flow!(flow_boundary, p, storage, t)
-    formulate_flow!(pump, p, storage, t)
-    formulate_flow!(outlet, p, storage, t)
-    formulate_flow!(user_demand, p, storage, t)
+    formulate_flow!(pump, p, storage, t, continuous_control_type)
+    formulate_flow!(outlet, p, storage, t, continuous_control_type)
+
+    if continuous_control_type == ContinuousControlType.None
+        formulate_flow!(linear_resistance, p, storage, t)
+        formulate_flow!(manning_resistance, p, storage, t)
+        formulate_flow!(tabulated_rating_curve, p, storage, t)
+        formulate_flow!(flow_boundary, p, storage, t)
+        formulate_flow!(user_demand, p, storage, t)
+    end
 end

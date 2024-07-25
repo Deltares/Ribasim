@@ -237,6 +237,17 @@ The table is sorted by time, and per time the same `edge_id` order is used, thou
 The `edge_id` value is the same as the `fid` written to the Edge table, and can be used to directly look up the Edge geometry.
 Flows from the "from" to the "to" node have a positive sign, and if the flow is reversed it will be negative.
 
+## State - `basin_state.arrow` {#sec-state}
+
+The Basin state table contains the water levels in each Basin at the end of the simulation.
+
+column    | type    | unit
+--------- | ------- | ------------
+node_id   | Int32   | -
+level     | Float64 | $m$
+
+To use this result as the initial condition of another simulation, see the [Basin / state](/reference/node/basin.qmd#sec-state) table reference.
+
 ## DiscreteControl - `control.arrow`
 
 The control table contains a record of each change of control state: when it happened, which control node was involved, to which control state it changed and based on which truth state.

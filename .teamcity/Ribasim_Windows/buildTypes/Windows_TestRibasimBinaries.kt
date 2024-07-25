@@ -33,7 +33,7 @@ object Windows_TestRibasimBinaries : BuildType({
             id = "RUNNER_1503"
             workingDir = "ribasim"
             scriptContent = """
-                pixi run install
+                pixi run install-ci
                 pixi run test-ribasim-api
                 pixi run test-ribasim-cli
             """.trimIndent()

@@ -1,5 +1,6 @@
 from ribasim.nodes import (
     basin,
+    continuous_control,
     discrete_control,
     flow_boundary,
     level_boundary,
@@ -15,6 +16,7 @@ from ribasim.nodes import (
 
 __all__ = [
     "basin",
+    "continuous_control",
     "discrete_control",
     "flow_boundary",
     "level_boundary",
