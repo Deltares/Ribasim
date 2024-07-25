@@ -2,6 +2,7 @@ package Ribasim
 
 import Ribasim.buildTypes.*
 import Ribasim.vcsRoots.*
+import Templates.GithubCommitStatusIntegration
 import jetbrains.buildServer.configs.kotlin.Project
 import jetbrains.buildServer.configs.kotlin.projectFeatures.activeStorage
 import jetbrains.buildServer.configs.kotlin.projectFeatures.awsConnection
@@ -18,6 +19,7 @@ object Project : Project({
 
     template(Linux_1)
     template(Windows_1)
+    template(GithubCommitStatusIntegration)
 
     features {
         awsConnection {
