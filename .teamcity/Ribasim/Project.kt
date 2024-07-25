@@ -4,9 +4,7 @@ import Ribasim.buildTypes.GenerateTestmodels
 import Ribasim.buildTypes.Ribasim_MakeGitHubRelease
 import Ribasim.buildTypes.Ribasim_MakeQgisPlugin
 import Ribasim.vcsRoots.Ribasim
-import Templates.Build
-import Templates.GithubCommitStatusIntegration
-import Templates.GithubPullRequestsIntegration
+import Templates.*
 import jetbrains.buildServer.configs.kotlin.Project
 import jetbrains.buildServer.configs.kotlin.projectFeatures.activeStorage
 import jetbrains.buildServer.configs.kotlin.projectFeatures.awsConnection
@@ -23,7 +21,6 @@ object Project : Project({
 
     template(GithubCommitStatusIntegration)
     template(GithubPullRequestsIntegration)
-    template(Build.create())
 
     features {
         awsConnection {

@@ -3,9 +3,7 @@ package Ribasim_Windows
 import Ribasim_Windows.buildTypes.Windows_BuildRibasim
 import Ribasim_Windows.buildTypes.Windows_TestDelwaqCoupling
 import Ribasim_Windows.buildTypes.Windows_TestRibasimBinaries
-import Templates.GithubCommitStatusIntegration
-import Templates.GithubPullRequestsIntegration
-import Templates.WindowsAgent
+import Templates.*
 import jetbrains.buildServer.configs.kotlin.BuildType
 import jetbrains.buildServer.configs.kotlin.FailureAction
 import jetbrains.buildServer.configs.kotlin.Project
@@ -22,6 +20,7 @@ object Project : Project({
     buildType(Windows_TestRibasimBinaries)
 
     template(WindowsAgent)
+    template(BuildWindows)
 })
 
 object Windows_Main : BuildType({

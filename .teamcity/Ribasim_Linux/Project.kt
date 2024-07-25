@@ -3,9 +3,7 @@ package Ribasim_Linux
 import Ribasim.vcsRoots.Ribasim
 import Ribasim_Linux.buildTypes.Linux_BuildRibasim
 import Ribasim_Linux.buildTypes.Linux_TestRibasimBinaries
-import Templates.GithubCommitStatusIntegration
-import Templates.GithubPullRequestsIntegration
-import Templates.LinuxAgent
+import Templates.*
 import jetbrains.buildServer.configs.kotlin.BuildType
 import jetbrains.buildServer.configs.kotlin.FailureAction
 import jetbrains.buildServer.configs.kotlin.Project
@@ -20,6 +18,7 @@ object Project : Project({
     buildType(Linux_TestRibasimBinaries)
 
     template(LinuxAgent)
+    template(BuildLinux)
 })
 
 object Linux_Main : BuildType({

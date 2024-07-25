@@ -4,14 +4,9 @@ package Templates
 import jetbrains.buildServer.configs.kotlin.Template
 import jetbrains.buildServer.configs.kotlin.buildSteps.script
 
-
-class Build(platformOs: Any) : Template() {
-    companion object Factory {
-        fun create(platform: String = "") = Build(platformOs=platform)
-    }
-
+open class Build(platformOs: String) : Template() {
     init {
-        name = "Build_Template"
+        name = "Build${platformOs}_Template"
 
         artifactRules = """ribasim\build\ribasim => ribasim_linux.zip"""
 
@@ -52,3 +47,5 @@ class Build(platformOs: Any) : Template() {
     }
 }
 
+object BuildWindows : Build("Windows")
+object BuildLinux : Build("Linux")
