@@ -16,29 +16,26 @@ object Linux_BuildRibasim : BuildType({
         cleanCheckout = true
     }
 
-    val linuxheader = """
+    val header = """
                 #!/bin/bash
                 # black magic
                 source /usr/share/Modules/init/bash
 
                 module load pixi
                 module load gcc/11.3.0
-            """.trimIndent()
-    val buildscript = """
-                pixi --version
-                pixi run install-ci
-                pixi run remove-artifacts
-                pixi run build
-            """.trimIndent()
-
-    val totalscript = linuxheader + "\n" + buildscript
+            """
 
     steps {
         script {
             name = "Build binary"
             id = "RUNNER_2416"
             workingDir = "ribasim"
-            scriptContent = totalscript.trimIndent()
+            scriptContent = header + """
+                pixi --version
+                pixi run install-ci
+                pixi run remove-artifacts
+                pixi run build
+            """.trimIndent()
         }
     }
 
