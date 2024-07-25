@@ -7,9 +7,9 @@ object Ribasim : GitVcsRoot({
     url = "https://github.com/Deltares/Ribasim"
     branch = "main"
     branchSpec = """
-        +:refs/heads/*
+        +:refs/heads/master
         +:refs/tags/*
-        -:refs/heads/gh-pages
+        +:refs/heads/gh-readonly-queue/*
     """.trimIndent()
     useTagsAsBranches = true
     authMethod = password {
