@@ -16,7 +16,7 @@ object Project : Project({
     id("Ribasim_Windows")
     name = "Ribasim_Windows"
 
-    buildType(Main)
+    buildType(Windows_Main)
     buildType(Windows_BuildRibasim)
     buildType(Windows_TestDelwaqCoupling)
     buildType(Windows_TestRibasimBinaries)
@@ -24,7 +24,7 @@ object Project : Project({
     template(WindowsAgent)
 })
 
-object Main : BuildType({
+object Windows_Main : BuildType({
     name = "RibasimMain"
 
     templates(GithubCommitStatusIntegration, GithubPullRequestsIntegration)
@@ -34,6 +34,7 @@ object Main : BuildType({
 
     vcs {
         root(RibasimVcs, ". => ribasim")
+        cleanCheckout = true
     }
 
     triggers {

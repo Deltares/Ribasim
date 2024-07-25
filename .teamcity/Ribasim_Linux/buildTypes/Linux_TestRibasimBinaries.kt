@@ -1,5 +1,6 @@
 package Ribasim_Linux.buildTypes
 
+import Templates.GithubCommitStatusIntegration
 import Templates.LinuxAgent
 import jetbrains.buildServer.configs.kotlin.*
 import jetbrains.buildServer.configs.kotlin.buildFeatures.XmlReport
@@ -9,7 +10,7 @@ import jetbrains.buildServer.configs.kotlin.buildSteps.script
 import jetbrains.buildServer.configs.kotlin.triggers.schedule
 
 object Linux_TestRibasimBinaries : BuildType({
-    templates(LinuxAgent)
+    templates(LinuxAgent, GithubCommitStatusIntegration)
     name = "Test Ribasim Binaries"
 
     artifactRules = """
@@ -75,15 +76,6 @@ object Linux_TestRibasimBinaries : BuildType({
             rules = "ribasim/report.xml"
             verbose = true
         }
-        commitStatusPublisher {
-            id = "BUILD_EXT_295"
-            publisher = github {
-                githubUrl = "https://api.github.com"
-                authType = personalToken {
-                    token = "credentialsJSON:6b37af71-1f2f-4611-8856-db07965445c0"
-                }
-            }
-        }
     }
 
     dependencies {
@@ -99,9 +91,5 @@ object Linux_TestRibasimBinaries : BuildType({
                 """.trimIndent()
             }
         }
-    }
-
-    requirements {
-        doesNotEqual("env.OS", "Windows_NT", "RQ_315")
     }
 })
