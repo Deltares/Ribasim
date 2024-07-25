@@ -559,7 +559,11 @@ def concentration_condition_model() -> Model:
 
     model.pump.add(
         Node(1, Point(1, 0)),
-        [pump.Static(control_state=["On", "Off"], active=[True, False], flow_rate=1.0)],
+        [
+            pump.Static(
+                control_state=["On", "Off"], active=[True, False], flow_rate=1e-3
+            )
+        ],
     )
 
     model.terminal.add(Node(1, Point(2, 0)))
@@ -570,7 +574,7 @@ def concentration_condition_model() -> Model:
             discrete_control.Variable(
                 listen_node_type=["Basin"],
                 listen_node_id=[1],
-                variable=["concentration_kryptonite"],
+                variable=["concentration_external.kryptonite"],
                 compound_variable_id=1,
             ),
             discrete_control.Condition(greater_than=[0.5], compound_variable_id=1),
