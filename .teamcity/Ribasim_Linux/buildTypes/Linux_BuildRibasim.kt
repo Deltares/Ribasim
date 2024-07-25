@@ -17,7 +17,7 @@ object Linux_BuildRibasim : BuildType({
     }
 
     var header = ""
-    if (templates.contains(LinuxAgent)) {
+    if (options.findRawParam("OS")?.value?.contains("Linux") == true) {
         header = """
                 #!/bin/bash
                 # black magic
