@@ -7,7 +7,7 @@ object Ribasim : GitVcsRoot({
     url = "https://github.com/Deltares/Ribasim"
     branch = "main"
     branchSpec = """
-        +:refs/heads/master
+        +:refs/heads/main
         +:refs/tags/*
         +:refs/heads/gh-readonly-queue/*
     """.trimIndent()
