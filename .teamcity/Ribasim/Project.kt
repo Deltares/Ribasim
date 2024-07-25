@@ -3,6 +3,7 @@ package Ribasim
 import Ribasim.buildTypes.*
 import Ribasim.vcsRoots.*
 import Templates.GithubCommitStatusIntegration
+import Templates.GithubPullRequestsIntegration
 import jetbrains.buildServer.configs.kotlin.Project
 import jetbrains.buildServer.configs.kotlin.projectFeatures.activeStorage
 import jetbrains.buildServer.configs.kotlin.projectFeatures.awsConnection
@@ -17,9 +18,10 @@ object Project : Project({
     buildType(Ribasim_MakeQgisPlugin)
     buildType(Ribasim_MakeGitHubRelease)
 
+    template(GithubCommitStatusIntegration)
+    template(GithubPullRequestsIntegration)
     template(Linux_1)
     template(Windows_1)
-    template(GithubCommitStatusIntegration)
 
     features {
         awsConnection {

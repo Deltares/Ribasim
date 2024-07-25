@@ -19,9 +19,6 @@ object Project : Project({
     buildType(Windows_BuildRibasim)
     buildType(Windows_TestDelwaqCoupling)
     buildType(Windows_TestRibasimBinaries)
-
-    template(GithubCommitStatusIntegration)
-    template(GithubPullRequestsIntegration)
 })
 
 object Main : BuildType({
