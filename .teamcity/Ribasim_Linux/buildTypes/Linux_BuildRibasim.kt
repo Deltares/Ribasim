@@ -20,6 +20,9 @@ object Linux_BuildRibasim : BuildType({
                 #!/bin/bash
                 # black magic
                 source /usr/share/Modules/init/bash
+
+                module load pixi
+                module load gcc/11.3.0
             """.trimIndent()
     val buildscript = """
                 pixi --version
@@ -28,7 +31,7 @@ object Linux_BuildRibasim : BuildType({
                 pixi run build
             """.trimIndent()
 
-    val totalscript = linuxheader + System.lineSeparator() + buildscript
+    val totalscript = linuxheader + "\n" + buildscript
 
     steps {
         script {
