@@ -14,6 +14,7 @@ object GenerateTestmodels : BuildType({
 
     vcs {
         cleanCheckout = true
+        root(Ribasim.vcsRoots.Ribasim, ". => ribasim")
     }
 
     steps {
