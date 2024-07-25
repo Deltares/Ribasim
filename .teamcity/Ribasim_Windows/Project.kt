@@ -3,7 +3,14 @@ package Ribasim_Windows
 import Ribasim_Windows.buildTypes.Windows_BuildRibasim
 import Ribasim_Windows.buildTypes.Windows_TestDelwaqCoupling
 import Ribasim_Windows.buildTypes.Windows_TestRibasimBinaries
+import jetbrains.buildServer.configs.kotlin.BuildType
+import jetbrains.buildServer.configs.kotlin.FailureAction
 import jetbrains.buildServer.configs.kotlin.Project
+import jetbrains.buildServer.configs.kotlin.buildFeatures.PullRequests
+import jetbrains.buildServer.configs.kotlin.buildFeatures.commitStatusPublisher
+import jetbrains.buildServer.configs.kotlin.buildFeatures.pullRequests
+import Ribasim.vcsRoots.Ribasim as RibasimVcs
+import jetbrains.buildServer.configs.kotlin.triggers.vcs
 
 object Project : Project({
     id("Ribasim_Windows")
