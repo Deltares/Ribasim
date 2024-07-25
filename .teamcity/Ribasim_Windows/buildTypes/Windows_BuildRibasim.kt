@@ -18,24 +18,18 @@ object Windows_BuildRibasim : BuildType({
         cleanCheckout = true
     }
 
-    steps {
-        script {
-            name = "Set up pixi"
-            id = "RUNNER_2415"
-            workingDir = "ribasim"
-            scriptContent = """
+    val buildscript = """
                 pixi --version
                 pixi run install-ci
+                pixi run remove-artifacts
+                pixi run build
             """.trimIndent()
-        }
+    steps {
         script {
             name = "Build binary"
             id = "RUNNER_2416"
             workingDir = "ribasim"
-            scriptContent = """
-                pixi run remove-artifacts
-                pixi run build
-            """.trimIndent()
+            scriptContent = buildscript
         }
     }
 
