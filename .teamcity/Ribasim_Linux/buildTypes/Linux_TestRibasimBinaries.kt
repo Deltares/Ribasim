@@ -1,5 +1,6 @@
 package Ribasim_Linux.buildTypes
 
+import Templates.LinuxAgent
 import jetbrains.buildServer.configs.kotlin.*
 import jetbrains.buildServer.configs.kotlin.buildFeatures.XmlReport
 import jetbrains.buildServer.configs.kotlin.buildFeatures.commitStatusPublisher
@@ -8,7 +9,7 @@ import jetbrains.buildServer.configs.kotlin.buildSteps.script
 import jetbrains.buildServer.configs.kotlin.triggers.schedule
 
 object Linux_TestRibasimBinaries : BuildType({
-    templates(Ribasim.buildTypes.Linux_1)
+    templates(LinuxAgent)
     name = "Test Ribasim Binaries"
 
     artifactRules = """
@@ -18,6 +19,7 @@ object Linux_TestRibasimBinaries : BuildType({
 
     vcs {
         root(Ribasim.vcsRoots.Ribasim, ". => ribasim")
+        cleanCheckout = true
     }
 
     steps {

@@ -1,12 +1,13 @@
 package Ribasim_Windows.buildTypes
 
 import Templates.GithubCommitStatusIntegration
+import Templates.WindowsAgent
 import jetbrains.buildServer.configs.kotlin.BuildType
 import jetbrains.buildServer.configs.kotlin.PublishMode
 import jetbrains.buildServer.configs.kotlin.buildSteps.script
 
 object Windows_BuildRibasim : BuildType({
-    templates(Ribasim.buildTypes.Windows_1, GithubCommitStatusIntegration)
+    templates(WindowsAgent, GithubCommitStatusIntegration)
     name = "Build Ribasim"
 
     artifactRules = """ribasim\build\ribasim => ribasim_windows.zip"""
@@ -14,6 +15,7 @@ object Windows_BuildRibasim : BuildType({
 
     vcs {
         root(Ribasim.vcsRoots.Ribasim, ". => ribasim")
+        cleanCheckout = true
     }
 
     steps {
@@ -40,10 +42,4 @@ object Windows_BuildRibasim : BuildType({
     failureConditions {
         executionTimeoutMin = 120
     }
-
-    requirements {
-        equals("env.OS", "Windows_NT", "RQ_275")
-    }
-
-    disableSettings("RQ_275")
 })

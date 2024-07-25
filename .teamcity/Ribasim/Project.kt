@@ -1,7 +1,9 @@
 package Ribasim
 
-import Ribasim.buildTypes.*
-import Ribasim.vcsRoots.*
+import Ribasim.buildTypes.GenerateTestmodels
+import Ribasim.buildTypes.Ribasim_MakeGitHubRelease
+import Ribasim.buildTypes.Ribasim_MakeQgisPlugin
+import Ribasim.vcsRoots.Ribasim
 import Templates.GithubCommitStatusIntegration
 import Templates.GithubPullRequestsIntegration
 import jetbrains.buildServer.configs.kotlin.Project
@@ -20,8 +22,6 @@ object Project : Project({
 
     template(GithubCommitStatusIntegration)
     template(GithubPullRequestsIntegration)
-    template(Linux_1)
-    template(Windows_1)
 
     features {
         awsConnection {

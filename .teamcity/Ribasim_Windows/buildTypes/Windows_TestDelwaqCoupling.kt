@@ -1,20 +1,21 @@
 package Ribasim_Windows.buildTypes
 
 import Templates.GithubCommitStatusIntegration
+import Templates.WindowsAgent
 import Ribasim.vcsRoots.Ribasim as RibasimVcs
 import jetbrains.buildServer.configs.kotlin.*
-import jetbrains.buildServer.configs.kotlin.buildFeatures.commitStatusPublisher
 import jetbrains.buildServer.configs.kotlin.buildSteps.script
 import jetbrains.buildServer.configs.kotlin.triggers.vcs
 
 object Windows_TestDelwaqCoupling : BuildType({
-    templates(Ribasim.buildTypes.Windows_1, GithubCommitStatusIntegration)
+    templates(WindowsAgent, GithubCommitStatusIntegration)
     name = "Test Delwaq coupling"
 
     artifactRules = "ribasim/coupling/delwaq/model"
 
     vcs {
         root(RibasimVcs, ". => ribasim")
+        cleanCheckout = true
     }
 
     steps {

@@ -1,6 +1,7 @@
 package Ribasim_Linux
 
 import Ribasim_Linux.buildTypes.*
+import Templates.LinuxAgent
 import jetbrains.buildServer.configs.kotlin.Project
 
 object Project : Project({
@@ -9,4 +10,6 @@ object Project : Project({
 
     buildType(Linux_BuildRibasim)
     buildType(Linux_TestRibasimBinaries)
+
+    template(LinuxAgent)
 })

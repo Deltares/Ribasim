@@ -1,17 +1,19 @@
 package Ribasim_Linux.buildTypes
 
+import Templates.LinuxAgent
 import jetbrains.buildServer.configs.kotlin.*
 import jetbrains.buildServer.configs.kotlin.buildFeatures.commitStatusPublisher
 import jetbrains.buildServer.configs.kotlin.buildSteps.script
 
 object Linux_BuildRibasim : BuildType({
-    templates(Ribasim.buildTypes.Linux_1)
+    templates(LinuxAgent)
     name = "Build Ribasim"
 
     artifactRules = """ribasim\build\ribasim => ribasim_linux.zip"""
 
     vcs {
         root(Ribasim.vcsRoots.Ribasim, ". => ribasim")
+        cleanCheckout = true
     }
 
     steps {

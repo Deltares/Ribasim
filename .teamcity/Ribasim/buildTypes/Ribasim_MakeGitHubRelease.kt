@@ -1,11 +1,12 @@
 package Ribasim.buildTypes
 
+import Templates.LinuxAgent
 import jetbrains.buildServer.configs.kotlin.*
 import jetbrains.buildServer.configs.kotlin.buildSteps.script
 import jetbrains.buildServer.configs.kotlin.triggers.vcs
 
 object Ribasim_MakeGitHubRelease : BuildType({
-    templates(Linux_1)
+    templates(LinuxAgent)
     name = "Make GitHub Release"
 
     params {
@@ -14,6 +15,7 @@ object Ribasim_MakeGitHubRelease : BuildType({
 
     vcs {
         root(Ribasim.vcsRoots.Ribasim)
+        cleanCheckout = true
     }
 
     steps {

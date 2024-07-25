@@ -1,6 +1,7 @@
 package Ribasim_Windows.buildTypes
 
 import Templates.GithubCommitStatusIntegration
+import Templates.WindowsAgent
 import jetbrains.buildServer.configs.kotlin.BuildType
 import jetbrains.buildServer.configs.kotlin.buildFeatures.XmlReport
 import jetbrains.buildServer.configs.kotlin.buildFeatures.xmlReport
@@ -9,7 +10,7 @@ import jetbrains.buildServer.configs.kotlin.triggers.schedule
 import Ribasim.vcsRoots.Ribasim as RibasimVcs
 
 object Windows_TestRibasimBinaries : BuildType({
-    templates(Ribasim.buildTypes.Windows_1, GithubCommitStatusIntegration)
+    templates(WindowsAgent, GithubCommitStatusIntegration)
     name = "Test Ribasim Binaries"
 
     artifactRules = """
@@ -19,6 +20,7 @@ object Windows_TestRibasimBinaries : BuildType({
 
     vcs {
         root(RibasimVcs, ". => ribasim")
+        cleanCheckout = true
     }
 
     steps {
@@ -73,9 +75,5 @@ object Windows_TestRibasimBinaries : BuildType({
                 """.trimIndent()
             }
         }
-    }
-
-    requirements {
-        equals("env.OS", "Windows_NT", "RQ_315")
     }
 })
