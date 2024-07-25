@@ -1,5 +1,6 @@
 package Ribasim_Linux.buildTypes
 
+import Ribasim_Linux.Linux_BuildRibasim
 import Templates.GithubCommitStatusIntegration
 import Templates.LinuxAgent
 import jetbrains.buildServer.configs.kotlin.BuildType

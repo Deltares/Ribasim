@@ -1,5 +1,7 @@
 package Ribasim.buildTypes
 
+import Ribasim_Linux.Linux_BuildRibasim
+import Ribasim_Windows.Windows_BuildRibasim
 import Templates.LinuxAgent
 import jetbrains.buildServer.configs.kotlin.*
 import jetbrains.buildServer.configs.kotlin.buildSteps.script
@@ -54,7 +56,7 @@ object Ribasim_MakeGitHubRelease : BuildType({
                 artifactRules = "generated_testmodels.zip"
             }
         }
-        dependency(Ribasim_Linux.buildTypes.Linux_BuildRibasim) {
+        dependency(Linux_BuildRibasim) {
             snapshot {
                 onDependencyFailure = FailureAction.FAIL_TO_START
             }
@@ -77,7 +79,7 @@ object Ribasim_MakeGitHubRelease : BuildType({
                 artifactRules = "ribasim_qgis.zip"
             }
         }
-        dependency(Ribasim_Windows.buildTypes.Windows_BuildRibasim) {
+        dependency(Windows_BuildRibasim) {
             snapshot {
                 onDependencyFailure = FailureAction.FAIL_TO_START
             }

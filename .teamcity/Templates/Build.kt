@@ -24,7 +24,6 @@ open class Build(platformOs: String) : Template() {
 
                 module load pixi
                 module load gcc/11.3.0
-
             """.trimIndent()
         }
         steps {
@@ -33,10 +32,10 @@ open class Build(platformOs: String) : Template() {
                 id = "RUNNER_2416"
                 workingDir = "ribasim"
                 scriptContent = header + """
-                pixi --version
-                pixi run install-ci
-                pixi run remove-artifacts
-                pixi run build
+                    pixi --version
+                    pixi run install-ci
+                    pixi run remove-artifacts
+                    pixi run build
             """.trimIndent()
             }
         }

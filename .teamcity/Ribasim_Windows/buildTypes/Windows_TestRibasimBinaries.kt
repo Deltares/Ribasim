@@ -1,5 +1,6 @@
 package Ribasim_Windows.buildTypes
 
+import Ribasim_Windows.Windows_BuildRibasim
 import Templates.GithubCommitStatusIntegration
 import Templates.WindowsAgent
 import jetbrains.buildServer.configs.kotlin.BuildType

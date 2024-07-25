@@ -1,6 +1,5 @@
 package Ribasim_Windows
 
-import Ribasim_Windows.buildTypes.Windows_BuildRibasim
 import Ribasim_Windows.buildTypes.Windows_TestDelwaqCoupling
 import Ribasim_Windows.buildTypes.Windows_TestRibasimBinaries
 import Templates.*
@@ -49,4 +48,9 @@ object Windows_Main : BuildType({
             onDependencyFailure = FailureAction.FAIL_TO_START
         }
     }
+})
+
+object Windows_BuildRibasim : BuildType({
+    templates(WindowsAgent, GithubCommitStatusIntegration, BuildWindows)
+    name = "Build Ribasim"
 })

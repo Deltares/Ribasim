@@ -1,9 +1,11 @@
 package Ribasim_Linux
 
 import Ribasim.vcsRoots.Ribasim
-import Ribasim_Linux.buildTypes.Linux_BuildRibasim
 import Ribasim_Linux.buildTypes.Linux_TestRibasimBinaries
-import Templates.*
+import Templates.BuildLinux
+import Templates.GithubCommitStatusIntegration
+import Templates.GithubPullRequestsIntegration
+import Templates.LinuxAgent
 import jetbrains.buildServer.configs.kotlin.BuildType
 import jetbrains.buildServer.configs.kotlin.FailureAction
 import jetbrains.buildServer.configs.kotlin.Project
@@ -44,4 +46,14 @@ object Linux_Main : BuildType({
             onDependencyFailure = FailureAction.FAIL_TO_START
         }
     }
+})
+
+object Linux_BuildRibasim : BuildType({
+    templates(
+        LinuxAgent,
+        GithubCommitStatusIntegration,
+        BuildLinux
+    )
+
+    name = "Build Ribasim"
 })
