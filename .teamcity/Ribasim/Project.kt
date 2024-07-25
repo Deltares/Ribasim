@@ -16,7 +16,6 @@ object Project : Project({
     buildType(Ribasim_MakeQgisPlugin)
     buildType(Ribasim_MakeGitHubRelease)
 
-    template(GitHubIntegrationTemplate)
     template(Linux_1)
     template(Windows_1)
 
