@@ -121,22 +121,22 @@ In `python/ribasim/ribasim/config.py` add
 - a class of the following form with all schemas associated with the node type:
 
 ```python
-class NewNodeType(NodeModel):
+class NewNodeType(MultiNodeModel):
     static: TableModel[NewNodeTypeStaticSchema] = Field(
         default_factory=TableModel[NewNodeTypeStaticSchema],
         json_schema_extra={"sort_keys": ["node_id"]},
     )
 ```
 
-In `python/ribasim/ribasim/__init__.py` add
+In `python/ribasim/ribasim/nodes/__init__.py` add
 
-- `NewNodeType` to the imports from `ribasim.config`;
+- `NewNodeType` to the imports from `ribasim.nodes`;
 - `"NewNodeType"` to `__all__`.
 
 In `python/ribasim/ribasim/model.py`, add
 
 - `NewNodeType` to the imports from `ribasim.config`;
-- new_node_type as a parameter and in the docstring of the `Model` class.
+- new_node_type as a parameter of the `Model` class.
 
 In `python/ribasim/ribasim/geometry/node.py` add a color and shape description in the `MARKERS` and `COLORS` dictionaries.
 

@@ -1,6 +1,7 @@
 # EdgeType.flow and NodeType.FlowBoundary
 @enumx EdgeType flow control none
 @eval @enumx NodeType $(config.nodetypes...)
+@enumx ContinuousControlType None Continuous PID
 
 # Support creating a NodeType enum instance from a symbol or string
 function NodeType.T(s::Symbol)::NodeType.T
@@ -85,12 +86,14 @@ Store information for a subnetwork used for allocation.
 
 subnetwork_id: The ID of this allocation network
 capacity: The capacity per edge of the allocation network, as constrained by nodes that have a max_flow_rate
+flow_priority: The flows over all the edges in the subnetwork for a certain priority (used for allocation_flow output)
 problem: The JuMP.jl model for solving the allocation problem
 Δt_allocation: The time interval between consecutive allocation solves
 """
 @kwdef struct AllocationModel
     subnetwork_id::Int32
     capacity::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}}
+    flow_priority::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}}
     problem::JuMP.Model
     Δt_allocation::Float64
 end
@@ -417,7 +420,7 @@ flow_rate: target flow rate
 min_flow_rate: The minimal flow rate of the pump
 max_flow_rate: The maximum flow rate of the pump
 control_mapping: dictionary from (node_id, control_state) to target flow rate
-is_pid_controlled: whether the flow rate of this pump is governed by PID control
+continuous_control_type: one of None, ContinuousControl, PidControl
 """
 @kwdef struct Pump{T} <: AbstractParameterNode
     node_id::Vector{NodeID}
@@ -428,7 +431,8 @@ is_pid_controlled: whether the flow rate of this pump is governed by PID control
     min_flow_rate::Vector{Float64} = zeros(length(node_id))
     max_flow_rate::Vector{Float64} = fill(Inf, length(node_id))
     control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate}
-    is_pid_controlled::Vector{Bool} = fill(false, length(node_id))
+    continuous_control_type::Vector{ContinuousControlType.T} =
+        fill(ContinuousControlType.None, length(node_id))
 
     function Pump(
         node_id,
@@ -439,7 +443,7 @@ is_pid_controlled: whether the flow rate of this pump is governed by PID control
         min_flow_rate,
         max_flow_rate,
         control_mapping,
-        is_pid_controlled,
+        continuous_control_type,
     ) where {T}
         if valid_flow_rates(node_id, get_tmp(flow_rate, 0), control_mapping)
             return new{T}(
@@ -451,7 +455,7 @@ is_pid_controlled: whether the flow rate of this pump is governed by PID control
                 min_flow_rate,
                 max_flow_rate,
                 control_mapping,
-                is_pid_controlled,
+                continuous_control_type,
             )
         else
             error("Invalid Pump flow rate(s).")
@@ -470,7 +474,7 @@ flow_rate: target flow rate
 min_flow_rate: The minimal flow rate of the outlet
 max_flow_rate: The maximum flow rate of the outlet
 control_mapping: dictionary from (node_id, control_state) to target flow rate
-is_pid_controlled: whether the flow rate of this outlet is governed by PID control
+continuous_control_type: one of None, ContinuousControl, PidControl
 """
 @kwdef struct Outlet{T} <: AbstractParameterNode
     node_id::Vector{NodeID}
@@ -482,7 +486,8 @@ is_pid_controlled: whether the flow rate of this outlet is governed by PID contr
     max_flow_rate::Vector{Float64} = fill(Inf, length(node_id))
     min_crest_level::Vector{Float64} = fill(-Inf, length(node_id))
     control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate} = Dict()
-    is_pid_controlled::Vector{Bool} = fill(false, length(node_id))
+    continuous_control_type::Vector{ContinuousControlType.T} =
+        fill(ContinuousControlType.None, length(node_id))
 
     function Outlet(
         node_id,
@@ -494,7 +499,7 @@ is_pid_controlled: whether the flow rate of this outlet is governed by PID contr
         max_flow_rate,
         min_crest_level,
         control_mapping,
-        is_pid_controlled,
+        continuous_control_type,
     ) where {T}
         if valid_flow_rates(node_id, get_tmp(flow_rate, 0), control_mapping)
             return new{T}(
@@ -507,7 +512,7 @@ is_pid_controlled: whether the flow rate of this outlet is governed by PID contr
                 max_flow_rate,
                 min_crest_level,
                 control_mapping,
-                is_pid_controlled,
+                continuous_control_type,
             )
         else
             error("Invalid Outlet flow rate(s).")
@@ -523,18 +528,34 @@ node_id: node ID of the Terminal node
 end
 
 """
+A variant on `Base.Ref` where the source array is a vector that is possibly wrapped in a ForwardDiff.DiffCache.
+Retrieve value with get_value(ref::PreallocationRef, val) where `val` determines the return type.
+"""
+struct PreallocationRef{T}
+    vector::T
+    idx::Int
+end
+
+get_value(ref::PreallocationRef, val) = get_tmp(ref.vector, val)[ref.idx]
+
+function set_value!(ref::PreallocationRef, value)::Nothing
+    get_tmp(ref.vector, value)[ref.idx] = value
+    return nothing
+end
+
+"""
 The data for a single compound variable
 node_id:: The ID of the DiscreteControl that listens to this variable
 subvariables: data for one single subvariable
 greater_than: the thresholds this compound variable will be
-    compared against
+    compared against (in the case of DiscreteControl)
 """
-@kwdef struct CompoundVariable
+@kwdef struct CompoundVariable{T}
     node_id::NodeID
     subvariables::Vector{
         @NamedTuple{
             listen_node_id::NodeID,
-            variable_ref::Base.RefArray{Float64, Vector{Float64}, Nothing},
+            variable_ref::PreallocationRef{T},
             variable::String,
             weight::Float64,
             look_ahead::Float64,
@@ -554,16 +575,16 @@ logic_mapping: Dictionary: truth state => control state for the DiscreteControl 
 control_mapping: dictionary node type => control mapping for that node type
 record: Namedtuple with discrete control information for results
 """
-@kwdef struct DiscreteControl <: AbstractParameterNode
+@kwdef struct DiscreteControl{T} <: AbstractParameterNode
     node_id::Vector{NodeID}
     controlled_nodes::Vector{Vector{NodeID}}
-    compound_variables::Vector{Vector{CompoundVariable}}
+    compound_variables::Vector{Vector{CompoundVariable{T}}}
     truth_state::Vector{Vector{Bool}}
     control_state::Vector{String} = fill("undefined_state", length(node_id))
     control_state_start::Vector{Float64} = zeros(length(node_id))
     logic_mapping::Vector{Dict{Vector{Bool}, String}}
     control_mappings::Dict{NodeType.T, Dict{Tuple{NodeID, String}, ControlStateUpdate}} =
-        Dict()
+        Dict{NodeType.T, Dict{Tuple{NodeID, String}, ControlStateUpdate}}()
     record::@NamedTuple{
         time::Vector{Float64},
         control_node_id::Vector{Int32},
@@ -577,26 +598,40 @@ record: Namedtuple with discrete control information for results
     )
 end
 
+@kwdef struct ContinuousControl{T} <: AbstractParameterNode
+    node_id::Vector{NodeID}
+    compound_variable::Vector{CompoundVariable{T}}
+    controlled_variable::Vector{String}
+    target_ref::Vector{PreallocationRef{T}}
+    func::Vector{ScalarInterpolation}
+end
+
 """
 PID control currently only supports regulating basin levels.
 
 node_id: node ID of the PidControl node
 active: whether this node is active and thus sets flow rates
+controlled_node_id: The node that is being controlled
 listen_node_id: the id of the basin being controlled
-pid_params: a vector interpolation for parameters changing over time.
-    The parameters are respectively target, proportional, integral, derivative,
-    where the last three are the coefficients for the PID equation.
+target: target level (possibly time dependent)
+target_ref: reference to the controlled flow_rate value
+proportional: proportionality coefficient error
+integral: proportionality coefficient error integral
+derivative: proportionality coefficient error derivative
 error: the current error; basin_target - current_level
+dictionary from (node_id, control_state) to target flow rate
 """
 @kwdef struct PidControl{T} <: AbstractParameterNode
     node_id::Vector{NodeID}
     active::Vector{Bool}
     listen_node_id::Vector{NodeID}
     target::Vector{ScalarInterpolation}
+    target_ref::Vector{PreallocationRef{T}}
     proportional::Vector{ScalarInterpolation}
     integral::Vector{ScalarInterpolation}
     derivative::Vector{ScalarInterpolation}
     error::T
+    controlled_basins::Vector{NodeID}
     control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate}
 end
 
@@ -716,7 +751,8 @@ const ModelGraph{T} = MetaGraph{
     pump::Pump{T}
     outlet::Outlet{T}
     terminal::Terminal
-    discrete_control::DiscreteControl
+    discrete_control::DiscreteControl{T}
+    continuous_control::ContinuousControl{T}
     pid_control::PidControl{T}
     user_demand::UserDemand
     level_demand::LevelDemand

@@ -22,7 +22,7 @@ function get_storage_from_level(basin::Basin, state_idx::Int, level::Float64)::F
 end
 
 """Compute the storages of the basins based on the water level of the basins."""
-function get_storages_from_levels(basin::Basin, levels::Vector)::Vector{Float64}
+function get_storages_from_levels(basin::Basin, levels::AbstractVector)::Vector{Float64}
     errors = false
     state_length = length(levels)
     basin_length = length(basin.storage_to_level)
@@ -436,24 +436,47 @@ function get_external_priority_idx(p::Parameters, node_id::NodeID)::Int
 end
 
 """
-Set is_pid_controlled to true for those pumps and outlets that are PID controlled
+Set continuous_control_type for those pumps and outlets that are controlled by either
+PidControl or ContinuousControl
 """
-function set_is_pid_controlled!(p::Parameters)::Nothing
-    (; graph, pid_control, pump, outlet) = p
+function set_continuous_control_type!(p::Parameters)::Nothing
+    (; continuous_control, pid_control) = p
+    errors = false
 
-    for id in pid_control.node_id
-        id_controlled = only(outneighbor_labels_type(graph, id, EdgeType.control))
-        if id_controlled.type == NodeType.Pump
-            pump.is_pid_controlled[id_controlled.idx] = true
-        elseif id_controlled.type == NodeType.Outlet
-            outlet.is_pid_controlled[id_controlled.idx] = true
-        else
-            error(
-                "Only Pump and Outlet can be controlled by PidController, got $is_controlled",
-            )
-        end
+    errors = set_continuous_control_type!(
+        p,
+        continuous_control.node_id,
+        ContinuousControlType.Continuous,
+    )
+    errors |=
+        set_continuous_control_type!(p, pid_control.node_id, ContinuousControlType.PID)
+
+    if errors
+        error("Errors occurred when parsing ContinuousControl and PidControl connectivity")
     end
     return nothing
+end
+
+function set_continuous_control_type!(
+    p::Parameters,
+    node_id::Vector{NodeID},
+    continuous_control_type::ContinuousControlType.T,
+)::Bool
+    (; graph, pump, outlet) = p
+    errors = false
+
+    for id in node_id
+        id_controlled = only(outneighbor_labels_type(graph, id, EdgeType.control))
+        if id_controlled.type == NodeType.Pump
+            pump.continuous_control_type[id_controlled.idx] = continuous_control_type
+        elseif id_controlled.type == NodeType.Outlet
+            outlet.continuous_control_type[id_controlled.idx] = continuous_control_type
+        else
+            errors = true
+            @error "Only Pump and Outlet can be controlled by PidController, got $id_controlled"
+        end
+    end
+    return errors
 end
 
 function has_external_demand(
@@ -581,54 +604,59 @@ function NodeID(type::Symbol, value::Integer, p::Parameters)::NodeID
 end
 
 """
-Get a reference to a state(-derived) parameter
+Get the reference to a parameter
 """
 function get_variable_ref(
-    p::Parameters,
-    subvariable::NamedTuple,
-)::Tuple{Base.RefArray{Float64, Vector{Float64}, Nothing}, Bool}
+    p::Parameters{T},
+    node_id::NodeID,
+    variable::String;
+    listen::Bool = true,
+)::Tuple{PreallocationRef{T}, Bool} where {T}
     (; basin, graph) = p
-    (; listen_node_id, variable) = subvariable
-
     errors = false
 
-    ref = if listen_node_id.type == NodeType.Basin && variable == "level"
-        level = get_tmp(basin.current_level, 0)
-        Ref(level, listen_node_id.idx)
-    elseif variable == "flow_rate" && listen_node_id.type != NodeType.FlowBoundary
-        # FlowBoundary flow_rate can also be listened to but this is handled differently,
-        # because it supports look ahead
-        listen_node_type = listen_node_id.type
-        if listen_node_type ∉ conservative_nodetypes
-            errors = true
-            @error "Cannot listen to flow_rate of $listen_node_id, the node type must be one of $conservative_node_types"
-            Ref(Float64[], 0)
+    ref = if node_id.type == NodeType.Basin && variable == "level"
+        PreallocationRef(basin.current_level, node_id.idx)
+    elseif variable == "flow_rate" && node_id.type != NodeType.FlowBoundary
+        if listen
+            if node_id.type ∉ conservative_nodetypes
+                errors = true
+                @error "Cannot listen to flow_rate of $node_id, the node type must be one of $conservative_node_types"
+                Ref(Float64[], 0)
+            else
+                id_in = inflow_id(graph, node_id)
+                (; flow_idx) = graph[id_in, node_id]
+                PreallocationRef(graph[].flow, flow_idx)
+            end
         else
-            flow = get_tmp(graph[].flow, 0)
-            id_in = inflow_id(graph, listen_node_id)
-            flow_idx = graph[].flow_dict[(id_in, listen_node_id)]
-            Ref(flow, flow_idx)
+            node = getfield(p, snake_case(Symbol(node_id.type)))
+            PreallocationRef(node.flow_rate, node_id.idx)
         end
     else
-        Ref(Float64[], 0)
+        # Placeholder to obtain correct type
+        PreallocationRef(graph[].flow, 0)
     end
-
     return ref, errors
 end
 
 """
-Set references to all variables that are listened to by discrete control
+Set references to all variables that are listened to by discrete/continuous control
 """
 function set_listen_variable_refs!(p::Parameters)::Nothing
-    (; discrete_control) = p
+    (; discrete_control, continuous_control) = p
+    compound_variable_sets =
+        [discrete_control.compound_variables..., continuous_control.compound_variable]
     errors = false
 
-    for compound_variables in discrete_control.compound_variables
+    for compound_variables in compound_variable_sets
         for compound_variable in compound_variables
             (; subvariables) = compound_variable
             for (j, subvariable) in enumerate(subvariables)
-                ref, error = get_variable_ref(p, subvariable)
-                subvariables[j] = @set subvariable.variable_ref = ref
+                ref, error =
+                    get_variable_ref(p, subvariable.listen_node_id, subvariable.variable)
+                if !error
+                    subvariables[j] = @set subvariable.variable_ref = ref
+                end
                 errors |= error
             end
         end
@@ -643,7 +671,7 @@ end
 """
 Set references to all variables that are controlled by discrete control
 """
-function set_controlled_variable_refs!(p::Parameters)::Nothing
+function set_discrete_controlled_variable_refs!(p::Parameters)::Nothing
     for nodetype in propertynames(p)
         node = getfield(p, nodetype)
         if node isa AbstractParameterNode && hasfield(typeof(node), :control_mapping)
@@ -672,6 +700,28 @@ function set_controlled_variable_refs!(p::Parameters)::Nothing
                 end
             end
         end
+    end
+    return nothing
+end
+
+function set_continuously_controlled_variable_refs!(p::Parameters)::Nothing
+    (; continuous_control, pid_control, graph) = p
+    errors = false
+    for (node, controlled_variable) in (
+        (continuous_control, continuous_control.controlled_variable),
+        (pid_control, fill("flow_rate", length(pid_control.node_id))),
+    )
+        for (id, controlled_variable) in zip(node.node_id, controlled_variable)
+            controlled_node_id = only(outneighbor_labels_type(graph, id, EdgeType.control))
+            ref, error =
+                get_variable_ref(p, controlled_node_id, controlled_variable; listen = false)
+            push!(node.target_ref, ref)
+            errors |= error
+        end
+    end
+
+    if errors
+        error("Errors encountered when setting continuously controlled variable refs.")
     end
     return nothing
 end
