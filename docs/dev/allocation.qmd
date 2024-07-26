@@ -89,7 +89,7 @@ When [looping over priorities](https://deltares.github.io/Ribasim/dev/allocation
 - Objective function: This is the function that sets the objective of the optimization problem.
 It is defined using the [`@objective`](https://jump.dev/JuMP.jl/stable/api/JuMP/#@objective) macro.
 
-During the computation, functions `JuMP.normalized_rhs` and `JuMP.set_normalized_rhs` are used to update the constraints.
+The functions `JuMP.normalized_rhs` and `JuMP.set_normalized_rhs` are used to read and write the constant right hand side of constriants. 
 
 For example, to update the capacity of one of the edges, `JuMP.normalized_rhs` moves all the constants to the right-hand sides and all variables to the left-hand side and `JuMP.set_normalized_rhs` sets the new right-hand-side value.
 ```julia
