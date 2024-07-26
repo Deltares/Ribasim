@@ -13,7 +13,7 @@ fun generateTestBinariesHeader(platformOs: String): String {
                 source /usr/share/Modules/init/bash
 
                 module load pixi
-            """.trimIndent()
+            """.trimIndent() + System.lineSeparator()
     }
 
     return ""

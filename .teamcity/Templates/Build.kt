@@ -13,7 +13,7 @@ fun generateBuildHeader(platformOs: String): String {
 
                 module load pixi
                 module load gcc/11.3.0
-            """.trimIndent()
+            """.trimIndent() + System.lineSeparator()
     }
 
     return ""
