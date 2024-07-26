@@ -59,8 +59,7 @@ git push --tags
 This will trigger a workflow on TeamCity that will publish a new release on GitHub as soon as it is finished.
 You can follow the progress [here](https://dpcbuild.deltares.nl/buildConfiguration/Ribasim_Ribasim_MakeGitHubRelease?mode=builds).
 It also auto-generates a changelog.
-You'll probably want to curate that by rearranging the most important changes for users to the top in the form of [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
-The possibly long list of generated release notes can put below an "All changes" collapsed item as such:
+You need to edit that by moving the auto-generated contents, except the "Full Changelog" link, in a collapsed details block as shown below.
 
 ```
 <details>
@@ -73,6 +72,8 @@ All changes
 </details>
 
 ```
+
+Now copy the manually edited changelog entry from changelog.qmd above the details, such that the edited changelog can be seen both from our documentation as well as GitHub releases.
 
 ## Release the Ribasim Python packages to PyPI
 

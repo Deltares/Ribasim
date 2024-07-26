@@ -18,18 +18,20 @@ open class TestDelwaqCoupling(platformOs: String) : Template() {
                 name = "Set up pixi"
                 id = "Set_up_pixi"
                 workingDir = "ribasim"
-                scriptContent = "pixi --version"
+                scriptContent = """
+                pixi --version
+                pixi run install-ci
+                """.trimIndent()
             }
             script {
                 name = "Run Delwaq"
                 id = "Run_Delwaq"
                 workingDir = "ribasim"
                 scriptContent = """
-                pixi install
                 pixi run ribasim-core-testmodels basic
                 set D3D_HOME=%teamcity.build.checkoutDir%/dimr
                 pixi run delwaq
-            """.trimIndent()
+                """.trimIndent()
             }
         }
     }

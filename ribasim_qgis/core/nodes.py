@@ -224,6 +224,7 @@ class Node(Input):
                 shape.Circle,
             ),
             "FlowDemand": (QColor("red"), "FlowDemand", shape.Hexagon),
+            "ContinuousControl": (QColor("gray"), "ContinuousControl", shape.Star),
             # All other nodes, or incomplete input
             "": (QColor("white"), "", shape.Circle),
         }
@@ -711,6 +712,46 @@ class DiscreteControlLogic(Input):
         ]
 
 
+class ContinuousControlVariable(Input):
+    @classmethod
+    def input_type(cls) -> str:
+        return "ContinuousControl / variable"
+
+    @classmethod
+    def geometry_type(cs) -> str:
+        return "No Geometry"
+
+    @classmethod
+    def attributes(cls) -> list[QgsField]:
+        return [
+            QgsField("node_id", QVariant.Int),
+            QgsField("listen_node_type", QVariant.String),
+            QgsField("listen_node_id", QVariant.Int),
+            QgsField("variable", QVariant.String),
+            QgsField("weight", QVariant.Double),
+            QgsField("look_ahead", QVariant.Double),
+        ]
+
+
+class ContinuousControlFunction(Input):
+    @classmethod
+    def input_type(cls) -> str:
+        return "ContinuousControl / function"
+
+    @classmethod
+    def geometry_type(cls) -> str:
+        return "No Geometry"
+
+    @classmethod
+    def attributes(cls) -> list[QgsField]:
+        return [
+            QgsField("node_id", QVariant.Int),
+            QgsField("input", QVariant.Double),
+            QgsField("output", QVariant.Double),
+            QgsField("controlled_variable", QVariant.String),
+        ]
+
+
 class PidControlStatic(Input):
     @classmethod
     def input_type(cls) -> str:
@@ -881,7 +922,13 @@ NONSPATIALNODETYPES: set[str] = {
     cls.nodetype() for cls in Input.__subclasses__() if not cls.is_spatial()
 }
 EDGETYPES = {"flow", "control"}
-SPATIALCONTROLNODETYPES = {"LevelDemand", "FlowDemand", "DiscreteControl", "PidControl"}
+SPATIALCONTROLNODETYPES = {
+    "ContinuousControl",
+    "DiscreteControl",
+    "FlowDemand",
+    "LevelDemand",
+    "PidControl",
+}
 
 
 def load_nodes_from_geopackage(path: Path) -> dict[str, Input]:

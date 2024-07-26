@@ -42,6 +42,7 @@ open class TestBinaries (platformOs: String) : Template() {
                 scriptContent = header +
                 """
                 pixi --version
+                pixi run install-ci
                 """.trimIndent()
             }
             script {
@@ -50,7 +51,6 @@ open class TestBinaries (platformOs: String) : Template() {
                 workingDir = "ribasim"
                 scriptContent = header +
                 """
-                pixi run install
                 pixi run test-ribasim-api
                 pixi run test-ribasim-cli
                 """.trimIndent()

@@ -7,6 +7,8 @@ Allocation is the process of assigning an allocated flow rate to demand nodes in
 
 The allocation problem is solved per subnetwork (and main network) of the Ribasim model. Each subnetwork is used to formulate an optimization problem with the [JuMP](https://jump.dev/JuMP.jl/stable/) package, which is solved using the [HiGHS solver](https://highs.dev/). For more in-depth information see also the example of solving the maximum flow problem with `JuMP.jl` [here](https://jump.dev/JuMP.jl/stable/tutorials/linear/network_flows/#The-max-flow-problem).
 
+Before the optimization for each priority there is a simple step that tries to allocate flow to the `UserDemand` nodes from the their directly connected basin.
+
 :::{.callout-note}
 within this *Allocation* section the main network is also considered to be a subnetwork.
 :::
