@@ -99,7 +99,7 @@ JuMP.set_normalized_rhs(
 )
 ```
 
-Some JuMP data structures are used to store intermediate or result data. For more information, please visit [JuMP API](https://jump.dev/JuMP.jl/stable/api/JuMP/).
+Some JuMP data structures are used to store intermediate or result data. For more information, see [JuMP API](https://jump.dev/JuMP.jl/stable/api/JuMP/).
 
 # Initialization
 Initialization of the allocation data structures happens in `allocation_init.jl`. Below the steps of allocation problem initialization are explained.
