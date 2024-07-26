@@ -53,6 +53,8 @@ object Windows_Main : BuildType({
 object Windows_BuildRibasim : BuildType({
     templates(WindowsAgent, GithubCommitStatusIntegration, BuildWindows)
     name = "Build Ribasim"
+
+    artifactRules = """ribasim\build\ribasim => ribasim_windows.zip"""
 })
 
 object Windows_TestRibasimBinaries : BuildType({

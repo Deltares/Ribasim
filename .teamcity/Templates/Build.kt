@@ -23,8 +23,6 @@ open class Build(platformOs: String) : Template() {
     init {
         name = "Build${platformOs}_Template"
 
-        artifactRules = """ribasim\build\ribasim => ribasim_linux.zip"""
-
         vcs {
             root(Ribasim.vcsRoots.Ribasim, ". => ribasim")
             cleanCheckout = true
