@@ -28,7 +28,7 @@ More details on how allocation interacts with `JuMP.jl` is explained [here](http
 After initialization, as the simulation starts, the allocation problem is solved and updated after every allocation timestep (which is specified in the TOML).
 In each iteration, the data needed for comuptation is updated.
 The parameters of the optimization problem are also updated.
-The optimization problem are solved and the data of the result are saved.
+The optimization problem is solved and the data of the result is saved.
 
 The update of allocation (`update_allocation`) is repeating and spread into three parts.
 They are updating the mean flows, ["collect demand" and "allocate"](https://deltares.github.io/Ribasim/concept/allocation.html#the-high-level-algorithm).
