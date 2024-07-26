@@ -1,7 +1,7 @@
 package Ribasim_Windows
 
-import Ribasim_Windows.buildTypes.Windows_TestDelwaqCoupling
 import Templates.*
+import jetbrains.buildServer.configs.kotlin.AbsoluteId
 import jetbrains.buildServer.configs.kotlin.BuildType
 import jetbrains.buildServer.configs.kotlin.FailureAction
 import jetbrains.buildServer.configs.kotlin.Project
@@ -20,6 +20,7 @@ object Project : Project({
     template(WindowsAgent)
     template(BuildWindows)
     template(TestBinariesWindows)
+    template(TestDelwaqCouplingWindows)
 })
 
 object Windows_Main : BuildType({
@@ -73,6 +74,33 @@ object Windows_TestRibasimBinaries : BuildType({
                     ribasim_windows.zip!** => ribasim/build/ribasim
                 """.trimIndent()
             }
+        }
+    }
+})
+
+object Windows_TestDelwaqCoupling : BuildType({
+    templates(WindowsAgent, GithubCommitStatusIntegration, TestDelwaqCouplingWindows)
+    name = "Test Delwaq coupling"
+
+    artifactRules = "ribasim/coupling/delwaq/model"
+
+    triggers {
+        vcs {
+            id = "TRIGGER_304"
+            triggerRules = """
+                +:ribasim/coupling/delwaq/**
+                +:ribasim/core/**
+                +:ribasim/python/**
+                +:ribasim/ribasim_testmodels/**
+            """.trimIndent()
+        }
+    }
+
+    dependencies {
+        artifacts(AbsoluteId("Dimr_DimrCollectors_2bDimrCollectorReleaseSigned")) {
+            id = "ARTIFACT_DEPENDENCY_4206"
+            buildRule = lastPinned()
+            artifactRules = "dimrset_x64_signed_*.zip!/x64 => dimr"
         }
     }
 })
