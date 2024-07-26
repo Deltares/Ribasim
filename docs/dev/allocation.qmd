@@ -257,8 +257,8 @@ end
 Functions `save_demands_and_allocations` and `save_allocation_flows` save the allocated flow to corresponding nodes and edges in the subnetworks.
 
 ## Communicating to the physical layer
-The function `assign_allocations` updates the subnetwork demand if the optimization task is `collect_demand`
-It assigns the allocated amount to the demand nodes with the result of the optimization fi the optimization task is `allocate`
+The function `assign_allocations` updates the subnetwork demand if the optimization task is `collect_demands`.
+It assigns the allocated amount to the `UserDemand` nodes with the result of the optimization if the optimization task is `allocate`.
 Afterwards, it writes the resulting flow to the `Allocation` object.
 
 ### `UserDemand` abstraction
