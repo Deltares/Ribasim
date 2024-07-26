@@ -4,7 +4,7 @@ package Templates
 import jetbrains.buildServer.configs.kotlin.Template
 import jetbrains.buildServer.configs.kotlin.buildSteps.script
 
-fun generateHeader(platformOs: String): String {
+fun generateBuildHeader(platformOs: String): String {
     if (platformOs == "Linux") {
         return """
                 #!/bin/bash
@@ -30,25 +30,27 @@ open class Build(platformOs: String) : Template() {
             cleanCheckout = true
         }
 
-        val header = generateHeader(platformOs)
+        val header = generateBuildHeader(platformOs)
         steps {
             script {
                 name = "Set up pixi"
                 id = "RUNNER_2415"
                 workingDir = "ribasim"
-                scriptContent = header + """
-                    pixi --version
-                    pixi run install-ci
-            """.trimIndent()
+                scriptContent = header +
+                """
+                pixi --version
+                pixi run install-ci
+                """.trimIndent()
             }
             script {
                 name = "Build binary"
                 id = "RUNNER_2416"
                 workingDir = "ribasim"
-                scriptContent = header + """
-                    pixi run remove-artifacts
-                    pixi run build
-            """.trimIndent()
+                scriptContent = header +
+                """
+                pixi run remove-artifacts
+                pixi run build
+                """.trimIndent()
             }
         }
 

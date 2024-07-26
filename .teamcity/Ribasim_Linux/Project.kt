@@ -1,11 +1,7 @@
 package Ribasim_Linux
 
 import Ribasim.vcsRoots.Ribasim
-import Ribasim_Linux.buildTypes.Linux_TestRibasimBinaries
-import Templates.BuildLinux
-import Templates.GithubCommitStatusIntegration
-import Templates.GithubPullRequestsIntegration
-import Templates.LinuxAgent
+import Templates.*
 import jetbrains.buildServer.configs.kotlin.BuildType
 import jetbrains.buildServer.configs.kotlin.FailureAction
 import jetbrains.buildServer.configs.kotlin.Project
@@ -21,6 +17,7 @@ object Project : Project({
 
     template(LinuxAgent)
     template(BuildLinux)
+    template(TestBinariesLinux)
 })
 
 object Linux_Main : BuildType({
@@ -56,4 +53,24 @@ object Linux_BuildRibasim : BuildType({
     )
 
     name = "Build Ribasim"
+})
+
+object Linux_TestRibasimBinaries : BuildType({
+    templates(LinuxAgent, GithubCommitStatusIntegration, TestBinariesLinux)
+    name = "Test Ribasim Binaries"
+
+    dependencies {
+        dependency(Linux_BuildRibasim) {
+            snapshot {
+            }
+
+            artifacts {
+                id = "ARTIFACT_DEPENDENCY_570"
+                cleanDestination = true
+                artifactRules = """
+                    ribasim_linux.zip!** => ribasim/build/ribasim
+                """.trimIndent()
+            }
+        }
+    }
 })

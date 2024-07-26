@@ -1,7 +1,6 @@
 package Ribasim_Windows
 
 import Ribasim_Windows.buildTypes.Windows_TestDelwaqCoupling
-import Ribasim_Windows.buildTypes.Windows_TestRibasimBinaries
 import Templates.*
 import jetbrains.buildServer.configs.kotlin.BuildType
 import jetbrains.buildServer.configs.kotlin.FailureAction
@@ -20,6 +19,7 @@ object Project : Project({
 
     template(WindowsAgent)
     template(BuildWindows)
+    template(TestBinariesWindows)
 })
 
 object Windows_Main : BuildType({
@@ -53,4 +53,24 @@ object Windows_Main : BuildType({
 object Windows_BuildRibasim : BuildType({
     templates(WindowsAgent, GithubCommitStatusIntegration, BuildWindows)
     name = "Build Ribasim"
+})
+
+object Windows_TestRibasimBinaries : BuildType({
+    templates(WindowsAgent, GithubCommitStatusIntegration, TestBinariesWindows)
+    name = "Test Ribasim Binaries"
+
+    dependencies {
+        dependency(Windows_BuildRibasim) {
+            snapshot {
+            }
+
+            artifacts {
+                id = "ARTIFACT_DEPENDENCY_570"
+                cleanDestination = true
+                artifactRules = """
+                    ribasim_windows.zip!** => ribasim/build/ribasim
+                """.trimIndent()
+            }
+        }
+    }
 })

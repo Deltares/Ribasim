@@ -1,7 +1,9 @@
 package Ribasim.buildTypes
 
 import Ribasim_Linux.Linux_BuildRibasim
+import Ribasim_Linux.Linux_TestRibasimBinaries
 import Ribasim_Windows.Windows_BuildRibasim
+import Ribasim_Windows.Windows_TestRibasimBinaries
 import Templates.LinuxAgent
 import jetbrains.buildServer.configs.kotlin.*
 import jetbrains.buildServer.configs.kotlin.buildSteps.script
@@ -66,7 +68,7 @@ object Ribasim_MakeGitHubRelease : BuildType({
                 artifactRules = "ribasim_linux.zip"
             }
         }
-        snapshot(Ribasim_Linux.buildTypes.Linux_TestRibasimBinaries) {
+        snapshot(Linux_TestRibasimBinaries) {
             onDependencyFailure = FailureAction.FAIL_TO_START
         }
         dependency(Ribasim_MakeQgisPlugin) {
@@ -89,7 +91,7 @@ object Ribasim_MakeGitHubRelease : BuildType({
                 artifactRules = "ribasim_windows.zip"
             }
         }
-        snapshot(Ribasim_Windows.buildTypes.Windows_TestRibasimBinaries) {
+        snapshot(Windows_TestRibasimBinaries) {
             onDependencyFailure = FailureAction.FAIL_TO_START
         }
     }
