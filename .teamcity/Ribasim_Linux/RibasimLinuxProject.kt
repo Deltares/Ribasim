@@ -7,7 +7,7 @@ import jetbrains.buildServer.configs.kotlin.FailureAction
 import jetbrains.buildServer.configs.kotlin.Project
 import jetbrains.buildServer.configs.kotlin.triggers.vcs
 
-object Project : Project({
+object RibasimLinuxProject : Project({
     id("Ribasim_Linux")
     name = "Ribasim_Linux"
 
@@ -23,7 +23,7 @@ object Project : Project({
 object Linux_Main : BuildType({
     name = "RibasimMain"
 
-    templates(GithubCommitStatusIntegration, GithubPullRequestsIntegration)
+    templates(GithubPullRequestsIntegration)
 
     allowExternalStatus = true
     type = Type.COMPOSITE

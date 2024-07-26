@@ -9,17 +9,17 @@ import jetbrains.buildServer.configs.kotlin.buildFeatures.pullRequests
 object GithubCommitStatusIntegration : Template({
     name = "GithubCommitStatusIntegrationTemplate"
 
-//    features {
-//        commitStatusPublisher {
-//            vcsRootExtId = "${Ribasim.id}"
-//            publisher = github {
-//                githubUrl = "https://api.github.com"
-//                authType = personalToken {
-//                    token = "credentialsJSON:6b37af71-1f2f-4611-8856-db07965445c0"
-//                }
-//            }
-//        }
-//    }
+    features {
+        commitStatusPublisher {
+            vcsRootExtId = "${Ribasim.id}"
+            publisher = github {
+                githubUrl = "https://api.github.com"
+                authType = personalToken {
+                    token = "credentialsJSON:6b37af71-1f2f-4611-8856-db07965445c0"
+                }
+            }
+        }
+    }
 })
 
 object GithubPullRequestsIntegration : Template({

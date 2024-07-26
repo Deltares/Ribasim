@@ -8,7 +8,7 @@ import jetbrains.buildServer.configs.kotlin.Project
 import jetbrains.buildServer.configs.kotlin.triggers.vcs
 import Ribasim.vcsRoots.Ribasim as RibasimVcs
 
-object Project : Project({
+object RibasimWindowsProject : Project({
     id("Ribasim_Windows")
     name = "Ribasim_Windows"
 
@@ -26,7 +26,7 @@ object Project : Project({
 object Windows_Main : BuildType({
     name = "RibasimMain"
 
-    templates(GithubCommitStatusIntegration, GithubPullRequestsIntegration)
+    templates(GithubPullRequestsIntegration)
 
     allowExternalStatus = true
     type = Type.COMPOSITE

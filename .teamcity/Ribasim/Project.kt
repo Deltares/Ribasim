@@ -4,6 +4,8 @@ import Ribasim.buildTypes.GenerateTestmodels
 import Ribasim.buildTypes.Ribasim_MakeGitHubRelease
 import Ribasim.buildTypes.Ribasim_MakeQgisPlugin
 import Ribasim.vcsRoots.Ribasim
+import Ribasim_Linux.RibasimLinuxProject
+import Ribasim_Windows.RibasimWindowsProject
 import Templates.*
 import jetbrains.buildServer.configs.kotlin.Project
 import jetbrains.buildServer.configs.kotlin.projectFeatures.activeStorage
@@ -57,6 +59,6 @@ object Project : Project({
         }
     }
 
-    subProject(Ribasim_Linux.Project)
-    subProject(Ribasim_Windows.Project)
+    subProject(RibasimLinuxProject)
+    subProject(RibasimWindowsProject)
 })
