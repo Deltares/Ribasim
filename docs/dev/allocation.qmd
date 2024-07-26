@@ -20,7 +20,7 @@ flowchart TD
 If allocation is used in a model, [Allocation structs](https://deltares.github.io/Ribasim/dev/allocation.html#the-allocation-struct) are created.
 The allocation struct stores the data that is needed for the calculations and the results of the calculation.
 In allocation, optimization is an essential part.
-The JuMP model is used to model and solve the optimization problems that come up in the allocation.
+The JuMP model is used to model and solve the optimization problems that come up in allocation.
 The [AllocationModel struct](https://deltares.github.io/Ribasim/dev/allocation.html#the-allocation-struct) is used for constructing the JuMP model.
 When an instance of `AllocationModel` is created, a JuMP optimization model is defined and initialized in the instance.
 More details on how allocation interacts with `JuMP.jl` is explained [here](https://deltares.github.io/Ribasim/dev/allocation.html#jump.jl-problem-interaction).
