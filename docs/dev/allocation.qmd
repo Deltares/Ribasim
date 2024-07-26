@@ -26,7 +26,7 @@ When an instance of `AllocationModel` is created, a JuMP optimization model is d
 More details on how allocation interacts with `JuMP.jl` is explained [here](https://deltares.github.io/Ribasim/dev/allocation.html#jump.jl-problem-interaction).
 
 After initialization, as the simulation starts, the allocation problem is solved and updated after every allocation timestep (which is specified in the TOML).
-In each iteration, data needed for comuptation are updated.
+In each iteration, the data needed for comuptation is updated.
 The parameters of the optimization problem are also updated.
 The optimization problem are solved and the data of the result are saved.
 
