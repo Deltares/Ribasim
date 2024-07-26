@@ -3,7 +3,7 @@ endtime = 2019-12-31
 crs = "EPSG:28992"
 input_dir = "../../generated_testmodels/lhm"
 results_dir = "../../generated_testmodels/lhm"
-ribasim_version = "2024.9.0"
+ribasim_version = "2024.10.0"
 
 [basin]
 time = "basin/time.arrow"

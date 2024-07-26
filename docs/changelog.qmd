@@ -9,6 +9,33 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
+## [v2024.10.0] - 2024-07-23
+
+For this release we said goodbye to the problematic FractionalFlow node, but welcome the ContinuousControl as a long requested feature.
+
+### Added
+- Control: Add ContinuousControl node type. #1602
+- Control: Support listening to flow through connector nodes. #1594
+- Validate that TabulatedRatingCurve levels are above Basin bottom. #1607
+- Validate that Outlet crest levels are above Basin bottom. #1607
+- Always show convergence bottlenecks. #1636
+- Docstrings for Ribasim Python. #1643
+- Allocate to UserDemand from directly connected Basin if possible. #1581
+- Add `basin_state.arrow` results. #1626
+- Also write stacktraces to `ribasim.log`. #1653
+
+### Changed
+- Require QGIS 3.34 (LTR) or newer for Ribasim QGIS plugin.
+
+### Fixed
+- Compatibility with latest NumPy, Pandera and PyArrow releases. #1618
+- LevelDemand can now be without `min_level` or `max_level`. #1629
+
+### Removed
+- Removed unused urban runoff variable from Basin. #1611
+- Removed unneeded static table from Terminal. #1624
+- Removed FractionalFlow node. #1616
+
 ## [v2024.9.0] - 2024-06-20
 
 ### Added
@@ -24,6 +51,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 - Don't require unique node IDs. #1513
+- Fix QGIS crash on plugin initialization. #1580
 
 ## [v2024.8.0] - 2024-05-14
 

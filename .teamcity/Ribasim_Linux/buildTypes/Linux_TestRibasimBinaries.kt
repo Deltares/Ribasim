@@ -44,7 +44,7 @@ object Linux_TestRibasimBinaries : BuildType({
                 source /usr/share/Modules/init/bash
 
                 module load pixi
-                pixi run install
+                pixi run install-ci
                 pixi run test-ribasim-api
                 pixi run test-ribasim-cli
             """.trimIndent()
