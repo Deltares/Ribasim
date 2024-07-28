@@ -104,8 +104,7 @@ function get_scalar_interpolation(
         push!(parameter, parameter[end])
     end
 
-    itp = SmoothedLinearInterpolation(parameter, times; extrapolate = true, λ = 0.1)
-    return LinearInterpolation(itp), allunique(times)
+    return LinearInterpolation(parameter, times; extrapolate = true), allunique(times)
 end
 
 """
@@ -121,8 +120,7 @@ function qh_interpolation(node_id::NodeID, table::StructVector)::ScalarInterpola
     pushfirst!(level, first(level) - 1)
     pushfirst!(flow_rate, first(flow_rate))
 
-    itp = SmoothedLinearInterpolation(flow_rate, level; extrapolate = true)
-    return LinearInterpolation(itp)
+    return LinearInterpolation(flow_rate, level; extrapolate = true)
 end
 
 """
