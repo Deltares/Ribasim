@@ -65,3 +65,29 @@ def leaky_bucket_model() -> ribasim.Model:
     )
 
     return model
+
+
+def very_leaky_bucket_model() -> ribasim.Model:
+    """Bucket model with very large infiltration."""
+
+    model = ribasim.Model(
+        starttime="2020-01-01",
+        endtime="2021-01-01",
+        crs="EPSG:28992",
+    )
+
+    model.basin.add(
+        Node(1, Point(0, 0)),
+        [
+            basin.Profile(
+                area=[1000.0, 1000.0],
+                level=[0.0, 1.0],
+            ),
+            basin.State(level=[1.0]),
+            basin.Time(
+                time=["2020-01-01", "2020-07-01"], infiltration=[0.0, 1e6]
+            ),  # Drains in a millisecond
+        ],
+    )
+
+    return model

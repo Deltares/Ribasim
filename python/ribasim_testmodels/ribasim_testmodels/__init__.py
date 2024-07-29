@@ -26,7 +26,11 @@ from ribasim_testmodels.basic import (
     outlet_model,
     tabulated_rating_curve_model,
 )
-from ribasim_testmodels.bucket import bucket_model, leaky_bucket_model
+from ribasim_testmodels.bucket import (
+    bucket_model,
+    leaky_bucket_model,
+    very_leaky_bucket_model,
+)
 from ribasim_testmodels.continuous_control import outlet_continuous_control_model
 from ribasim_testmodels.discrete_control import (
     compound_variable_condition_model,
@@ -104,6 +108,7 @@ __all__ = [
     "trivial_model",
     "two_basin_model",
     "user_demand_model",
+    "very_leaky_bucket_model",
 ]
 
 # provide a mapping from model name to its constructor, so we can iterate over all models
