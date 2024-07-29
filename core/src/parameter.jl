@@ -73,7 +73,13 @@ end
 
 Base.to_index(id::NodeID) = Int(id.value)
 
-const ScalarInterpolation = LinearInterpolation{Vector{Float64}, Vector{Float64}, Float64}
+const ScalarInterpolation = LinearInterpolation{
+    ReadOnlyVector{Float64, Vector{Float64}},
+    ReadOnlyVector{Float64, Vector{Float64}},
+    Vector{Float64},
+    Vector{Float64},
+    Float64,
+}
 
 """
 Store information for a subnetwork used for allocation.
@@ -261,7 +267,12 @@ end
     current_area::T = zeros(length(node_id))
     # Discrete values for interpolation
     storage_to_level::Vector{
-        LinearInterpolationIntInv{Vector{Float64}, Vector{Float64}, Float64},
+        LinearInterpolationIntInv{
+            ReadOnlyVector{Float64, Vector{Float64}},
+            Vector{Float64},
+            ScalarInterpolation,
+            Float64,
+        },
     }
     level_to_area::Vector{ScalarInterpolation}
     # Demands for allocation if applicable

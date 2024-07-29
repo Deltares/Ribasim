@@ -20,7 +20,7 @@ open class TestDelwaqCoupling(platformOs: String) : Template() {
                 workingDir = "ribasim"
                 scriptContent = """
                 pixi --version
-                pixi run install-ci
+                pixi run install
                 """.trimIndent()
             }
             script {

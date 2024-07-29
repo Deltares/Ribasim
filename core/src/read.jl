@@ -580,8 +580,7 @@ function Basin(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{Int
         error("Invalid Basin / profile table.")
     end
 
-    level_to_area = SmoothedLinearInterpolation.(area, level; extrapolate = true, λ = 0.01)
-    level_to_area = LinearInterpolation.(level_to_area)
+    level_to_area = LinearInterpolation.(area, level; extrapolate = true)
     storage_to_level = invert_integral.(level_to_area)
 
     return Basin(;
@@ -901,7 +900,12 @@ function user_demand_static!(
         for row in group
             priority_idx = findsorted(priorities, row.priority)
             demand_row = coalesce(row.demand, 0.0)
-            demand_itp[user_demand_idx][priority_idx].u .= demand_row
+            demand_itp_old = demand_itp[user_demand_idx][priority_idx]
+            demand_itp[user_demand_idx][priority_idx] = LinearInterpolation(
+                fill(demand_row, 2),
+                demand_itp_old.t;
+                extrapolate = true,
+            )
             demand[user_demand_idx, priority_idx] = demand_row
         end
     end
@@ -974,7 +978,9 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)::UserDemand
     demand_reduced = zeros(n_user, n_priority)
     trivial_timespan = [0.0, prevfloat(Inf)]
     demand_itp = [
-        [LinearInterpolation(zeros(2), trivial_timespan) for i in eachindex(priorities)] for j in eachindex(node_ids)
+        ScalarInterpolation[
+            LinearInterpolation(zeros(2), trivial_timespan) for i in eachindex(priorities)
+        ] for j in eachindex(node_ids)
     ]
     demand_from_timeseries = fill(false, n_user)
     allocated = fill(Inf, n_user, n_priority)
