@@ -51,7 +51,6 @@ using MetaGraphsNext:
     inneighbor_labels
 using OrdinaryDiffEq: OrdinaryDiffEq, OrdinaryDiffEqRosenbrockAdaptiveAlgorithm, get_du
 using PreallocationTools: DiffCache, get_tmp
-using ReadOnlyArrays: ReadOnlyVector
 using SciMLBase:
     init,
     solve!,

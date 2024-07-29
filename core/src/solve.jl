@@ -484,6 +484,8 @@ function formulate_flow!(
 )::Nothing
     (; graph) = p
 
+    @show get_tmp(pump.flow_rate, storage)
+
     for (
         node_id,
         inflow_edge,

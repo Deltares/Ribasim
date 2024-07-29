@@ -74,8 +74,8 @@ end
 Base.to_index(id::NodeID) = Int(id.value)
 
 const ScalarInterpolation = LinearInterpolation{
-    ReadOnlyVector{Float64, Vector{Float64}},
-    ReadOnlyVector{Float64, Vector{Float64}},
+    Vector{Float64},
+    Vector{Float64},
     Vector{Float64},
     Vector{Float64},
     Float64,
@@ -268,7 +268,7 @@ end
     # Discrete values for interpolation
     storage_to_level::Vector{
         LinearInterpolationIntInv{
-            ReadOnlyVector{Float64, Vector{Float64}},
+            Vector{Float64},
             Vector{Float64},
             ScalarInterpolation,
             Float64,
