@@ -28,7 +28,7 @@ object Windows_TestDelwaqCoupling : BuildType({
             id = "Run_Delwaq"
             workingDir = "ribasim"
             scriptContent = """
-                pixi install-ci
+                pixi run install-ci
                 pixi run ribasim-core-testmodels basic
                 set D3D_HOME=%teamcity.build.checkoutDir%/dimr
                 pixi run delwaq
