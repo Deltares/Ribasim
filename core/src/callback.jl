@@ -338,7 +338,7 @@ function get_value(subvariable::NamedTuple, p::Parameters, u::AbstractVector, t:
             error("Flow condition node $listen_node_id is not a flow boundary.")
         end
 
-    elseif startswith(variable, "concentration_external")
+    elseif startswith(variable, "concentration_external.")
         value = basin.concentration_external[listen_node_id.idx][variable](t)
     else
         error("Unsupported condition variable $variable.")

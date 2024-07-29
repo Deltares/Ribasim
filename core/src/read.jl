@@ -607,18 +607,20 @@ function Basin(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{Int
             concentration_external_id["concentration_external.$substance"] = itp
             if any(itp.u .< 0)
                 errors = true
-                @error "Found negative concentration(s) in Basin / concentration_external for node $id, substance $substance."
+                @error "Found negative concentration(s) in `Basin / concentration_external`." node_id =
+                    id, substance
             end
             if !no_duplication
                 errors = true
-                @error "There are repeated time values for in Basin / concentration_external for node $id, substance $substance, this can not be interpolated."
+                @error "There are repeated time values for in `Basin / concentration_external`." node_id =
+                    id substance
             end
         end
         push!(concentration_external, concentration_external_id)
     end
 
     if errors
-        error("Errors encountered when parsing basin concentration data.")
+        error("Errors encountered when parsing Basin concentration data.")
     end
 
     return Basin(;
