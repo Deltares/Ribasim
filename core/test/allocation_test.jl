@@ -584,8 +584,8 @@ end
     (; allocation_models) = p.allocation
     (; basin, level_demand, graph) = p
 
-    fill!(level_demand.max_level[1].u, Inf)
-    fill!(level_demand.max_level[2].u, Inf)
+    fill!(level_demand.max_level[1].u.parent, Inf)
+    fill!(level_demand.max_level[2].u.parent, Inf)
 
     # Given a max_level of Inf, the basin capacity is 0.0 because it is not possible for the basin level to be > Inf
     @test Ribasim.get_basin_capacity(allocation_models[1], u, p, t, basin.node_id[1]) == 0.0

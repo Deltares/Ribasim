@@ -36,8 +36,6 @@ For this release we said goodbye to the problematic FractionalFlow node, but wel
 - Removed unneeded static table from Terminal. #1624
 - Removed FractionalFlow node. #1616
 
-### Changed
-
 ## [v2024.9.0] - 2024-06-20
 
 ### Added
