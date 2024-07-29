@@ -4,7 +4,13 @@ from pathlib import Path
 import pytest
 import ribasim
 from ribasim_api import RibasimApi
-from ribasim_testmodels import basic_model, basic_transient_model
+from ribasim_testmodels import (
+    basic_model,
+    basic_transient_model,
+    leaky_bucket_model,
+    two_basin_model,
+    user_demand_model,
+)
 
 
 @pytest.fixture(scope="session")
@@ -43,3 +49,18 @@ def basic() -> ribasim.Model:
 @pytest.fixture(scope="session")
 def basic_transient(basic) -> ribasim.Model:
     return basic_transient_model(basic)
+
+
+@pytest.fixture(scope="session")
+def leaky_bucket() -> ribasim.Model:
+    return leaky_bucket_model()
+
+
+@pytest.fixture(scope="session")
+def user_demand() -> ribasim.Model:
+    return user_demand_model()
+
+
+@pytest.fixture(scope="session")
+def two_basin() -> ribasim.Model:
+    return two_basin_model()
