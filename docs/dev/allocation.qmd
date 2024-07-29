@@ -18,21 +18,22 @@ flowchart TD
 ```
 
 If allocation is used in a model, [Allocation structs](https://deltares.github.io/Ribasim/dev/allocation.html#the-allocation-struct) are created.
-The allocation struct stores the data that is needed for the calculations and the results of the calculation.
+The allocation struct stores the data that is needed for the calculations and stores also the results of the calculation.
 In allocation, optimization is an essential part.
-The JuMP model is used to model and solve the optimization problems that come up in allocation.
+`JuMP.jl` is used to model and solve the optimization problems that are defined by allocation.
 The [AllocationModel struct](https://deltares.github.io/Ribasim/dev/allocation.html#the-allocation-struct) is used for constructing the JuMP model.
 When an instance of `AllocationModel` is created, a JuMP optimization model is defined and initialized in the instance.
 More details on how allocation interacts with `JuMP.jl` is explained [here](https://deltares.github.io/Ribasim/dev/allocation.html#jump.jl-problem-interaction).
 
 After initialization, as the simulation starts, the allocation problem is solved and updated after every allocation timestep (which is specified in the TOML).
-In each iteration, the data needed for comuptation is updated.
-The parameters of the optimization problem are also updated.
-The optimization problem is solved and the data of the result is saved.
+With every allocation timestep a new optimization problem is formulated and solved, using the latest available (simulation) model conditions and forcing and demand predictions.
 
-The update of allocation (`update_allocation`) is repeating and spread into three parts.
-They are updating the mean flows, ["collect demand" and "allocate"](https://deltares.github.io/Ribasim/concept/allocation.html#the-high-level-algorithm).
-The mean flow data is used for the iMOD coupler.
+The update of allocation (`update_allocation`) is repeating and spread into three parts:
+
+- Updating the mean flows. The mean flow data is only used only for output, not used by any internal functions.
+- ["Collect demand"](https://deltares.github.io/Ribasim/concept/allocation.html#the-high-level-algorithm). This step initialize and solve the optimization problems that collects the demand from the subnetworks.
+- ["Allocate"](https://deltares.github.io/Ribasim/concept/allocation.html#the-high-level-algorithm). This step solves the optimization problems that allocates the demand to the subnetworks.
+
 The steps "collect demand" and "allocate" correspond to the function `collect_demand` and `allocate_demand` in the code.
 
 The iteration stops when it reaches the end time step.
@@ -68,7 +69,7 @@ The `AllocationModel` struct has all the data that is needed for the JuMP optimi
 ## `JuMP.jl` problem interaction
 When working with optimization problems using JuMP, there are three fundamental components that need to be defined:
 
-- Optimization variables: These are the [variables](https://jump.dev/JuMP.jl/stable/api/JuMP/#@constraints) that are optimized in the optimization problem in allocation.
+- Optimization variables: These are the [variables](https://jump.dev/JuMP.jl/stable/api/JuMP/#@constraints) that are optimized in the allocation problem formulation.
 They are defined using the [`@variable`](https://jump.dev/JuMP.jl/stable/api/JuMP/#@variables) macro.
 For example, to specify the flow rates in all the edges in the allocation network as variables:
 
@@ -89,7 +90,7 @@ When [looping over priorities](https://deltares.github.io/Ribasim/dev/allocation
 - Objective function: This is the function that sets the objective of the optimization problem.
 It is defined using the [`@objective`](https://jump.dev/JuMP.jl/stable/api/JuMP/#@objective) macro.
 
-The functions `JuMP.normalized_rhs` and `JuMP.set_normalized_rhs` are used to read and write the constant right hand side of constriants.
+The functions `JuMP.normalized_rhs` and `JuMP.set_normalized_rhs` are used to read and write the constant right hand side of constraints.
 
 For example, to update the capacity of one of the edges, `JuMP.normalized_rhs` moves all the constants to the right-hand sides and all variables to the left-hand side and `JuMP.set_normalized_rhs` sets the new right-hand-side value.
 ```julia
@@ -104,14 +105,13 @@ Some JuMP data structures are used to store intermediate or result data. For mor
 # Initialization
 Initialization of the allocation data structures happens in `allocation_init.jl`. Below the steps of allocation problem initialization are explained.
 
-For each subnetwork, an allocation problem is made, which is stored in the `allocation_models` field mentioned above.
+For each subnetwork, an allocation problem is formulated, which is stored in the `allocation_models` field mentioned above.
 
 ## Data processing
 ### Deriving edge capacities
+Edge capacities are important constraints in the optimization problem. They set the limit for the flows between the edges. Therefore, the capacities of all the flow edges in the subnetworks are obtained. The capacity of an edge is given by the smallest `max_flow_rate` of the nodes connected to the edges if these nodes have such a value. The capacities are stored in a `SparseArray` object from `JuMP.jl` called `capacities`, indexed by a tuple of node IDs.
 
-Edge capacities are important constraints in the optimization problem. Obtaining the capacities of all the flow edges in the subnetworks. The capacity of an edge is given by the smallest `max_flow_rate` of the nodes connected to the edges if these nodes have such a value. The capacities are stored in a `SparseArray` object from `JuMP.jl` called `capacities`, indexed by a tuple of node IDs.
-
-The function `get_capacity` obtains the capacities of the edges within a subnetwork given a subnetwork ID and the Ribasim model parameters `p`, if the sources of the subnetwork are valid (checked in function `valid_sources`). 
+The function `get_capacity` obtains the capacities of the edges within a subnetwork given a subnetwork ID and the Ribasim model parameters `p`, if the sources of the subnetwork are valid (checked in function `valid_sources`).
 
 ### Handling the connection between the main network and subnetworks
 The function `find_subnetwork_connetions` finds the edges that connected the main network to a subnetwork. `subnetwork_demands` and `subnetwork_allocateds` will be created, which stores demands and allocated values for subnetworks as a whole.
@@ -173,22 +173,31 @@ problem[:source_user] = JuMP.@constraint(
 ```
 
 # Optimization
-Initialization of the data structure is in `allocation_optim.jl`, and updating, running and reading the results is in `allocation_optim.jl`.
+Initialization of the data structure is in `allocation_init.jl`, and updating, running and reading the results is in `allocation_optim.jl`.
 
 ## Preparing the optimization problem
 ### Setting up the objective function
 The optimization objective is the sum of three quadratic error terms.
 The quadratic terms are defined with `add_objective_term` function.
 
-In `set_objective_priority`, it sets the objective function for a given priority.
-First, it treats the subnetworks as user demand nodes and adds the quadratic terms of the main network.
-Then it loops over all the edges in allocation.
-Based on the type of the node that the edge is pointing to (user demand or flow demand), it adds the corresponding quadratic terms.
-Finally, it does the same to the edges that start from a level demand node.
+In `set_objective_priority`, it sets the objective function for a given priority with following steps:
+
+- First, it treats the subnetworks as user demand nodes and adds the quadratic terms of the main network.
+- Then it loops over all the edges in allocation.
+- Based on the type of the node that the edge is pointing to (user demand or flow demand), it adds the corresponding quadratic terms.
+- Finally, it does the same to the edges that start from a level demand node.
 
 ### Setting the constraints and capacities
-In the function `set_initial_values` capacities and demands are initialized.
-As shown below, these functions set the capacities of the source, edge, basin, buffer and demands to the corresponding initial values.
+In the function `set_initial_values`, following capacities and demands are initialized:
+
+- Source capacities come from the physical layer
+- Edge capacities derived from the maximum capacities between the connected nodes
+- Basin capacities 
+- Buffer capacities
+- User demands fractional retrun flow 
+- Demands either come from the Ribasim model or are set via the BMI
+
+As shown below, these functions set the capacities to the corresponding initial values.
 
 ```julia
 set_initial_capacities_source!(allocation_model, p)
@@ -232,7 +241,7 @@ This function is called separately and thus not part of the `set_initial_values`
 While optimizing a given priority, the function `set_capacities_flow_demand_outflow` updates the constraints `flow_demand_outflow`.
 If the current priority is the same as the priority of the flow demand, constraints will be infinite, otherwise 0.
 
-The optimization objective function is updated based on the new flow demand and the given priority and the optimization solver is called.
+The optimization objective function is updated based on the new demands and the given priority.
 
 If a solution is found by the solver, the allocation result will be updated. And it will be [saved](allocation.qmd#output-data), so the [physical layer](allocation.qmd#communicating-to-the-physical-layer) can make use of it.
 
@@ -254,7 +263,8 @@ end
 ```
 
 ## Output data
-Functions `save_demands_and_allocations` and `save_allocation_flows` save the allocated flow to corresponding nodes and edges in the subnetworks.
+Functions `save_demands_and_allocations` saves the demand and the allocated value per demand node. And `save_allocation_flows` save the optimized flows over the edges in the subnetwork.
+These values are saved in the `record_demand` and `record_flow` fields of the `Allocation` struct and only writen to the output file at the end of the simulation.
 
 ## Communicating to the physical layer
 The function `assign_allocations` updates the subnetwork demand if the optimization task is `collect_demands`.
@@ -262,7 +272,8 @@ It assigns the allocated amount to the `UserDemand` nodes with the result of the
 Afterwards, it writes the resulting flow to the `Allocation` object.
 
 ### `UserDemand` abstraction
-TODO
+When allocation is active, the amount each `UserDemand` node is allowed to extract from its upstream basin is determined by the allocation algorithm. 
+See [here](https://deltares.github.io/Ribasim/reference/node/user-demand.html) for more details on how allocation updates the `UserDemand` node.
 
 ### Controlling pumps/weirs based on allocation results
-N/A and TODO
+N/A and TODO in [this task](https://github.com/Deltares/Ribasim/issues/714).
