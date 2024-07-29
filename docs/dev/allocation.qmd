@@ -192,9 +192,9 @@ In the function `set_initial_values`, the following capacities and demands are i
 
 - Source capacities come from the physical layer
 - Edge capacities derived from the maximum capacities between the connected nodes
-- Basin capacities 
+- Basin capacities
 - Buffer capacities
-- User demands fractional return flow 
+- User demands fractional return flow
 - Demands either come from the Ribasim model or are set via the BMI
 
 As shown below, these functions set the capacities to the corresponding initial values.
@@ -263,7 +263,7 @@ end
 ```
 
 ## Output data
-Function `save_demands_and_allocations` saves the demand and the allocated value per demand node. And funtion `save_allocation_flows` saves the optimized flows over the edges in the subnetwork.
+Function `save_demands_and_allocations` saves the demand and the allocated value per demand node. And function `save_allocation_flows` saves the optimized flows over the edges in the subnetwork.
 These values are saved in the `record_demand` and `record_flow` fields of the `Allocation` struct and only written to the output file at the end of the simulation.
 
 ## Communicating to the physical layer
@@ -272,7 +272,7 @@ It assigns the allocated amount to the `UserDemand` nodes with the result of the
 Afterwards, it writes the resulting flow to the `Allocation` object.
 
 ### `UserDemand` abstraction
-When allocation is active, the amount each `UserDemand` node is allowed to extract from its upstream basin is determined by the allocation algorithm. 
+When allocation is active, the amount each `UserDemand` node is allowed to extract from its upstream basin is determined by the allocation algorithm.
 See [here](https://deltares.github.io/Ribasim/reference/node/user-demand.html) for more details on how allocation updates the `UserDemand` node.
 
 ### Controlling pumps/weirs based on allocation results
