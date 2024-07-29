@@ -281,3 +281,24 @@ end
     @test get_edge_flow("Basin", 1, "Outlet", 2) ≈ max.(0.4 .* inflow, 0) rtol = 1e-4
     @test get_edge_flow("Outlet", 2, "Terminal", 2) ≈ max.(0.4 .* inflow, 0) rtol = 1e-4
 end
+
+@testitem "Concentration discrete control" begin
+    using DataFrames: DataFrame
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/concentration_condition/ribasim.toml",
+    )
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+    flow_data = DataFrame(Ribasim.flow_table(model))
+    flow_edge_0 = filter(:edge_id => id -> id == 0, flow_data)
+    t = Ribasim.seconds_since.(flow_edge_0.time, model.config.starttime)
+    itp =
+        model.integrator.p.basin.concentration_external[1]["concentration_external.kryptonite"]
+    concentration = itp.(t)
+    threshold = 0.5
+    above_threshold = concentration .> threshold
+    @test all(isapprox.(flow_edge_0.flow_rate[above_threshold], 1e-3, rtol = 1e-2))
+    @test all(isapprox.(flow_edge_0.flow_rate[.!above_threshold], 0.0, atol = 1e-5))
+end

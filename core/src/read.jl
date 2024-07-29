@@ -583,6 +583,45 @@ function Basin(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{Int
     level_to_area = LinearInterpolation.(area, level; extrapolate = true)
     storage_to_level = invert_integral.(level_to_area)
 
+    t_end = seconds_since(config.endtime, config.starttime)
+
+    errors = false
+
+    concentration_external_data =
+        load_structvector(db, config, BasinConcentrationExternalV1)
+    concentration_external = Dict{String, ScalarInterpolation}[]
+    for id in node_id
+        concentration_external_id = Dict{String, ScalarInterpolation}()
+        data_id = filter(row -> row.node_id == id.value, concentration_external_data)
+        for group in IterTools.groupby(row -> row.substance, data_id)
+            first_row = first(group)
+            substance = first_row.substance
+            itp, no_duplication = get_scalar_interpolation(
+                config.starttime,
+                t_end,
+                StructVector(group),
+                NodeID(:Basin, first_row.node_id, 0),
+                :concentration,
+            )
+            concentration_external_id["concentration_external.$substance"] = itp
+            if any(itp.u .< 0)
+                errors = true
+                @error "Found negative concentration(s) in `Basin / concentration_external`." node_id =
+                    id, substance
+            end
+            if !no_duplication
+                errors = true
+                @error "There are repeated time values for in `Basin / concentration_external`." node_id =
+                    id substance
+            end
+        end
+        push!(concentration_external, concentration_external_id)
+    end
+
+    if errors
+        error("Errors encountered when parsing Basin concentration data.")
+    end
+
     return Basin(;
         node_id,
         inflow_ids = [collect(inflow_ids(graph, id)) for id in node_id],
@@ -598,6 +637,7 @@ function Basin(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{Int
         level_to_area,
         demand,
         time,
+        concentration_external,
     )
 end
 
