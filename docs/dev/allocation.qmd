@@ -180,7 +180,7 @@ Initialization of the data structure is in `allocation_init.jl`, and updating, r
 The optimization objective is the sum of three quadratic error terms.
 The quadratic terms are defined with `add_objective_term` function.
 
-In `set_objective_priority`, it sets the objective function for a given priority with following steps:
+In `set_objective_priority`, it sets the objective function for a given priority with the following steps:
 
 - First, it treats the subnetworks as user demand nodes and adds the quadratic terms of the main network.
 - Then it loops over all the edges in allocation.
@@ -188,13 +188,13 @@ In `set_objective_priority`, it sets the objective function for a given priority
 - Finally, it does the same to the edges that start from a level demand node.
 
 ### Setting the constraints and capacities
-In the function `set_initial_values`, following capacities and demands are initialized:
+In the function `set_initial_values`, the following capacities and demands are initialized:
 
 - Source capacities come from the physical layer
 - Edge capacities derived from the maximum capacities between the connected nodes
 - Basin capacities 
 - Buffer capacities
-- User demands fractional retrun flow 
+- User demands fractional return flow 
 - Demands either come from the Ribasim model or are set via the BMI
 
 As shown below, these functions set the capacities to the corresponding initial values.
@@ -263,8 +263,8 @@ end
 ```
 
 ## Output data
-Functions `save_demands_and_allocations` saves the demand and the allocated value per demand node. And `save_allocation_flows` save the optimized flows over the edges in the subnetwork.
-These values are saved in the `record_demand` and `record_flow` fields of the `Allocation` struct and only writen to the output file at the end of the simulation.
+Function `save_demands_and_allocations` saves the demand and the allocated value per demand node. And funtion `save_allocation_flows` saves the optimized flows over the edges in the subnetwork.
+These values are saved in the `record_demand` and `record_flow` fields of the `Allocation` struct and only written to the output file at the end of the simulation.
 
 ## Communicating to the physical layer
 The function `assign_allocations` updates the subnetwork demand if the optimization task is `collect_demands`.
