@@ -9,14 +9,11 @@ function water_balance!(
 )::Nothing
     (; graph, basin, pid_control) = p
 
-    storage = u.storage
-    integral = u.integral
-
     du .= 0.0
-    get_tmp(graph[].flow, storage) .= 0.0
+    graph[].flow[parent(u)] .= 0.0
 
     # Ensures current_* vectors are current
-    set_current_basin_properties!(basin, storage)
+    set_current_basin_properties!(basin, u)
 
     # Notes on the ordering of these formulations:
     # - Continuous control can depend on flows (which are not continuously controlled themselves),
@@ -25,33 +22,28 @@ function water_balance!(
     #   because of the error derivative term.
 
     # Basin forcings
-    formulate_basins!(du, basin, storage)
+    formulate_basins!(du, basin, u)
 
     # Formulate intermediate flows (non continuously controlled)
-    formulate_flows!(p, storage, t)
+    formulate_flows!(p, u, t)
 
     # Compute continuous control
     formulate_continuous_control!(u, p, t)
 
     # Formulate intermediate flows (controlled by ContinuousControl)
-    formulate_flows!(
-        p,
-        storage,
-        t;
-        continuous_control_type = ContinuousControlType.Continuous,
-    )
+    formulate_flows!(p, u, t; continuous_control_type = ContinuousControlType.Continuous)
 
     # Formulate du (all)
-    formulate_du!(du, graph, storage)
+    formulate_du!(du, graph, u)
 
     # Compute PID control
-    formulate_pid_control!(u, du, pid_control, p, integral, t)
+    formulate_pid_control!(u, du, pid_control, p, t)
 
     # Formulate intermediate flow (controlled by PID control)
-    formulate_flows!(p, storage, t; continuous_control_type = ContinuousControlType.PID)
+    formulate_flows!(p, u, t; continuous_control_type = ContinuousControlType.PID)
 
     # Formulate du (controlled by PidControl)
-    formulate_du_pid_controlled!(du, graph, pid_control, storage)
+    formulate_du_pid_controlled!(du, graph, pid_control, u)
 
     return nothing
 end
@@ -66,12 +58,14 @@ function formulate_continuous_control!(u, p, t)::Nothing
     return nothing
 end
 
-function set_current_basin_properties!(basin::Basin, storage::AbstractVector)::Nothing
+function set_current_basin_properties!(basin::Basin, u::AbstractVector)::Nothing
     (; current_level, current_area) = basin
-    current_level = get_tmp(current_level, storage)
-    current_area = get_tmp(current_area, storage)
+    current_level = current_level[parent(u)]
+    current_area = current_area[parent(u)]
 
-    for i in eachindex(storage)
+    storage = u.storage
+
+    for i in eachindex(u.storage)
         s = storage[i]
         area, level = get_area_and_level(basin, i, s)
 
@@ -84,11 +78,11 @@ end
 Smoothly let the evaporation flux go to 0 when at small water depths
 Currently at less than 0.1 m.
 """
-function update_vertical_flux!(basin::Basin, storage::AbstractVector)::Nothing
+function update_vertical_flux!(basin::Basin, u::AbstractVector)::Nothing
     (; current_level, current_area, vertical_flux_from_input, vertical_flux) = basin
-    current_level = get_tmp(current_level, storage)
-    current_area = get_tmp(current_area, storage)
-    vertical_flux = get_tmp(vertical_flux, storage)
+    current_level = current_level[parent(u)]
+    current_area = current_area[parent(u)]
+    vertical_flux = wrap_forcing(vertical_flux[parent(u)])
 
     for id in basin.node_id
         level = current_level[id.idx]
@@ -113,12 +107,8 @@ function update_vertical_flux!(basin::Basin, storage::AbstractVector)::Nothing
     return nothing
 end
 
-function formulate_basins!(
-    du::AbstractVector,
-    basin::Basin,
-    storage::AbstractVector,
-)::Nothing
-    update_vertical_flux!(basin, storage)
+function formulate_basins!(du::AbstractVector, basin::Basin, u::AbstractVector)::Nothing
+    update_vertical_flux!(basin, u)
     for id in basin.node_id
         # add all vertical fluxes that enter the Basin
         du.storage[id.idx] += get_influx(basin, id.idx)
@@ -129,8 +119,8 @@ end
 function set_error!(pid_control::PidControl, p::Parameters, u::ComponentVector, t::Number)
     (; basin) = p
     (; listen_node_id, target, error) = pid_control
-    error = get_tmp(error, u)
-    current_level = get_tmp(basin.current_level, u)
+    error = error[u]
+    current_level = basin.current_level[u]
 
     for i in eachindex(listen_node_id)
         listened_node_id = listen_node_id[i]
@@ -144,15 +134,14 @@ function formulate_pid_control!(
     du::ComponentVector,
     pid_control::PidControl,
     p::Parameters,
-    integral_value::SubArray,
     t::Number,
 )::Nothing
     (; basin) = p
     (; node_id, active, target, listen_node_id, error) = pid_control
     (; current_area) = basin
 
-    current_area = get_tmp(current_area, u)
-    error = get_tmp(error, u)
+    current_area = current_area[parent(u)]
+    error = error[parent(u)]
 
     set_error!(pid_control, p, u, t)
 
@@ -187,7 +176,7 @@ function formulate_pid_control!(
         end
 
         if !iszero(K_i)
-            flow_rate += K_i * integral_value[i] / D
+            flow_rate += K_i * u.integral_value[i] / D
         end
 
         if !iszero(K_d)
@@ -284,7 +273,7 @@ Directed graph: outflow is positive!
 function formulate_flow!(
     linear_resistance::LinearResistance,
     p::Parameters,
-    storage::AbstractVector,
+    u::AbstractVector,
     t::Number,
 )::Nothing
     (; graph) = p
@@ -297,20 +286,16 @@ function formulate_flow!(
         outflow_id = outflow_edge.edge[2]
 
         if active[id.idx]
-            _, h_a = get_level(p, inflow_id, t; storage)
-            _, h_b = get_level(p, outflow_id, t; storage)
+            _, h_a = get_level(p, inflow_id, t; u = parent(u))
+            _, h_b = get_level(p, outflow_id, t; u = parent(u))
             q_unlimited = (h_a - h_b) / resistance[id.idx]
             q = clamp(q_unlimited, -max_flow_rate[id.idx], max_flow_rate[id.idx])
 
-            # add reduction_factor on highest level
-            if q > 0
-                q *= low_storage_factor(storage, inflow_id, 10.0)
-            else
-                q *= low_storage_factor(storage, outflow_id, 10.0)
-            end
+            q *= low_storage_factor(u.storage, inflow_id, 10.0)
+            q *= low_storage_factor(u.storage, outflow_id, 10.0)
 
-            set_flow!(graph, inflow_edge, q)
-            set_flow!(graph, outflow_edge, q)
+            set_flow!(graph, inflow_edge, q, parent(u))
+            set_flow!(graph, outflow_edge, q, parent(u))
         end
     end
     return nothing
@@ -322,7 +307,7 @@ Directed graph: outflow is positive!
 function formulate_flow!(
     tabulated_rating_curve::TabulatedRatingCurve,
     p::Parameters,
-    storage::AbstractVector,
+    u::AbstractVector,
     t::Number,
 )::Nothing
     (; graph) = p
@@ -334,15 +319,15 @@ function formulate_flow!(
         upstream_basin_id = upstream_edge.edge[1]
 
         if active[id.idx]
-            factor = low_storage_factor(storage, upstream_basin_id, 10.0)
-            q = factor * table[id.idx](get_level(p, upstream_basin_id, t; storage)[2])
+            factor = low_storage_factor(u.storage, upstream_basin_id, 10.0)
+            q = factor * table[id.idx](get_level(p, upstream_basin_id, t; u = parent(u))[2])
         else
             q = 0.0
         end
 
-        set_flow!(graph, upstream_edge, q)
+        set_flow!(graph, upstream_edge, q, parent(u))
         for downstream_edge in downstream_edges
-            set_flow!(graph, downstream_edge, q)
+            set_flow!(graph, downstream_edge, q, parent(u))
         end
     end
     return nothing
@@ -390,7 +375,7 @@ dry.
 function formulate_flow!(
     manning_resistance::ManningResistance,
     p::Parameters,
-    storage::AbstractVector{T},
+    u::AbstractVector{T},
     t::Number,
 )::Nothing where {T}
     (; graph) = p
@@ -415,8 +400,9 @@ function formulate_flow!(
             continue
         end
 
-        _, h_a = get_level(p, inflow_id, t; storage)
-        _, h_b = get_level(p, outflow_id, t; storage)
+        _, h_a = get_level(p, inflow_id, t; u = parent(u))
+        _, h_b = get_level(p, outflow_id, t; u = parent(u))
+
         bottom_a = upstream_bottom[id.idx]
         bottom_b = downstream_bottom[id.idx]
         slope = profile_slope[id.idx]
@@ -448,8 +434,8 @@ function formulate_flow!(
 
         q = q_sign * A / n * ∛(R_h^2) * sqrt(Δh / L * 2 / π * atan(k * Δh) + eps)
 
-        set_flow!(graph, inflow_edge, q)
-        set_flow!(graph, outflow_edge, q)
+        set_flow!(graph, inflow_edge, q, parent(u))
+        set_flow!(graph, outflow_edge, q, parent(u))
     end
     return nothing
 end
@@ -457,7 +443,7 @@ end
 function formulate_flow!(
     flow_boundary::FlowBoundary,
     p::Parameters,
-    storage::AbstractVector,
+    u::AbstractVector,
     t::Number,
 )::Nothing
     (; graph) = p
@@ -469,7 +455,7 @@ function formulate_flow!(
             for outflow_edge in outflow_edges[id.idx]
 
                 # Adding water is always possible
-                set_flow!(graph, outflow_edge, rate)
+                set_flow!(graph, outflow_edge, rate, parent(u))
             end
         end
     end
@@ -478,13 +464,11 @@ end
 function formulate_flow!(
     pump::Pump,
     p::Parameters,
-    storage::AbstractVector,
+    u::AbstractVector,
     t::Number,
     continuous_control_type_::ContinuousControlType.T,
 )::Nothing
     (; graph) = p
-
-    @show get_tmp(pump.flow_rate, storage)
 
     for (
         node_id,
@@ -500,7 +484,7 @@ function formulate_flow!(
         pump.inflow_edge,
         pump.outflow_edges,
         pump.active,
-        get_tmp(pump.flow_rate, storage),
+        pump.flow_rate[parent(u)],
         pump.min_flow_rate,
         pump.max_flow_rate,
         pump.continuous_control_type,
@@ -510,14 +494,14 @@ function formulate_flow!(
         end
 
         inflow_id = inflow_edge.edge[1]
-        factor = low_storage_factor(storage, inflow_id, 10.0)
+        factor = low_storage_factor(u.storage, inflow_id, 10.0)
         q = flow_rate * factor
         q = clamp(q, min_flow_rate, max_flow_rate)
 
-        set_flow!(graph, inflow_edge, q)
+        set_flow!(graph, inflow_edge, q, parent(u))
 
         for outflow_edge in outflow_edges
-            set_flow!(graph, outflow_edge, q)
+            set_flow!(graph, outflow_edge, q, parent(u))
         end
     end
     return nothing
@@ -526,7 +510,7 @@ end
 function formulate_flow!(
     outlet::Outlet,
     p::Parameters,
-    storage::AbstractVector,
+    u::AbstractVector,
     t::Number,
     continuous_control_type_::ContinuousControlType.T,
 )::Nothing
@@ -547,7 +531,7 @@ function formulate_flow!(
         outlet.inflow_edge,
         outlet.outflow_edges,
         outlet.active,
-        get_tmp(outlet.flow_rate, storage),
+        outlet.flow_rate[parent(u)],
         outlet.min_flow_rate,
         outlet.max_flow_rate,
         outlet.continuous_control_type,
@@ -559,7 +543,7 @@ function formulate_flow!(
 
         inflow_id = inflow_edge.edge[1]
         q = flow_rate
-        q *= low_storage_factor(storage, inflow_id, 10.0)
+        q *= low_storage_factor(u.storage, inflow_id, 10.0)
 
         # No flow of outlet if source level is lower than target level
         outflow_edge = only(outflow_edges)
@@ -579,20 +563,16 @@ function formulate_flow!(
 
         q = clamp(q, min_flow_rate, max_flow_rate)
 
-        set_flow!(graph, inflow_edge, q)
+        set_flow!(graph, inflow_edge, q, parent(u))
 
         for outflow_edge in outflow_edges
-            set_flow!(graph, outflow_edge, q)
+            set_flow!(graph, outflow_edge, q, parent(u))
         end
     end
     return nothing
 end
 
-function formulate_du!(
-    du::ComponentVector,
-    graph::MetaGraph,
-    storage::AbstractVector,
-)::Nothing
+function formulate_du!(du::ComponentVector, graph::MetaGraph, u::AbstractVector)::Nothing
     # loop over basins
     # subtract all outgoing flows
     # add all ingoing flows
@@ -600,10 +580,10 @@ function formulate_du!(
         from_id, to_id = edge_metadata.edge
 
         if from_id.type == NodeType.Basin
-            q = get_flow(graph, edge_metadata, storage)
+            q = get_flow(graph, edge_metadata, parent(u))
             du[from_id.idx] -= q
         elseif to_id.type == NodeType.Basin
-            q = get_flow(graph, edge_metadata, storage)
+            q = get_flow(graph, edge_metadata, parent(u))
             du[to_id.idx] += q
         end
     end
@@ -630,7 +610,7 @@ end
 
 function formulate_flows!(
     p::Parameters,
-    storage::AbstractVector,
+    u::AbstractVector,
     t::Number;
     continuous_control_type::ContinuousControlType.T = ContinuousControlType.None,
 )::Nothing
@@ -644,14 +624,14 @@ function formulate_flows!(
         user_demand,
     ) = p
 
-    formulate_flow!(pump, p, storage, t, continuous_control_type)
-    formulate_flow!(outlet, p, storage, t, continuous_control_type)
+    formulate_flow!(pump, p, u, t, continuous_control_type)
+    formulate_flow!(outlet, p, u, t, continuous_control_type)
 
     if continuous_control_type == ContinuousControlType.None
-        formulate_flow!(linear_resistance, p, storage, t)
-        formulate_flow!(manning_resistance, p, storage, t)
-        formulate_flow!(tabulated_rating_curve, p, storage, t)
-        formulate_flow!(flow_boundary, p, storage, t)
-        formulate_flow!(user_demand, p, storage, t)
+        formulate_flow!(linear_resistance, p, u, t)
+        formulate_flow!(manning_resistance, p, u, t)
+        formulate_flow!(tabulated_rating_curve, p, u, t)
+        formulate_flow!(flow_boundary, p, u, t)
+        formulate_flow!(user_demand, p, u, t)
     end
 end

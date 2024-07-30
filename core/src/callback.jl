@@ -92,8 +92,8 @@ function integrate_flows!(u, t, integrator)::Nothing
     (; flow, flow_dict, flow_prev, flow_integrated) = graph[]
     (; vertical_flux, vertical_flux_prev, vertical_flux_integrated, vertical_flux_bmi) =
         basin
-    flow = get_tmp(flow, 0)
-    vertical_flux = get_tmp(vertical_flux, 0)
+    flow = flow[parent(u)]
+    vertical_flux = vertical_flux[parent(u)]
     if !isempty(flow_prev) && isnan(flow_prev[1])
         # If flow_prev is not populated yet
         copyto!(flow_prev, flow)

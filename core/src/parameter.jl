@@ -81,6 +81,14 @@ const ScalarInterpolation = LinearInterpolation{
     Float64,
 }
 
+struct CallableInt <: Function
+    i::Int
+end
+
+(callable_int::CallableInt)(input) = callable_int.i
+
+const LBC = LazyBufferCache{CallableInt}
+
 """
 Store information for a subnetwork used for allocation.
 
@@ -252,19 +260,19 @@ else
     T = Vector{Float64}
 end
 """
-@kwdef struct Basin{T, C, V1, V2, V3} <: AbstractParameterNode
+@kwdef struct Basin{C, V1, V2} <: AbstractParameterNode
     node_id::Vector{NodeID}
     inflow_ids::Vector{Vector{NodeID}} = [NodeID[]]
     outflow_ids::Vector{Vector{NodeID}} = [NodeID[]]
     # Vertical fluxes
     vertical_flux_from_input::V1 = zeros(length(node_id))
-    vertical_flux::V2 = zeros(length(node_id))
-    vertical_flux_prev::V3 = zeros(length(node_id))
-    vertical_flux_integrated::V3 = zeros(length(node_id))
-    vertical_flux_bmi::V3 = zeros(length(node_id))
+    vertical_flux::LBC = LazyBufferCache(CallableInt(length(node_id)))
+    vertical_flux_prev::V2 = zeros(length(node_id))
+    vertical_flux_integrated::V2 = zeros(length(node_id))
+    vertical_flux_bmi::V2 = zeros(length(node_id))
     # Cache this to avoid recomputation
-    current_level::T = zeros(length(node_id))
-    current_area::T = zeros(length(node_id))
+    current_level::LBC = LazyBufferCache(CallableInt(length(node_id)))
+    current_area::LBC = LazyBufferCache(CallableInt(length(node_id)))
     # Discrete values for interpolation
     storage_to_level::Vector{
         LinearInterpolationIntInv{
@@ -422,12 +430,12 @@ max_flow_rate: The maximum flow rate of the pump
 control_mapping: dictionary from (node_id, control_state) to target flow rate
 continuous_control_type: one of None, ContinuousControl, PidControl
 """
-@kwdef struct Pump{T} <: AbstractParameterNode
+@kwdef struct Pump <: AbstractParameterNode
     node_id::Vector{NodeID}
     inflow_edge::Vector{EdgeMetadata} = []
     outflow_edges::Vector{Vector{EdgeMetadata}} = []
     active::Vector{Bool} = fill(true, length(node_id))
-    flow_rate::T
+    flow_rate::LBC = LazyBufferCache(CallableInt(length(node_id)))
     min_flow_rate::Vector{Float64} = zeros(length(node_id))
     max_flow_rate::Vector{Float64} = fill(Inf, length(node_id))
     control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate}
@@ -439,14 +447,14 @@ continuous_control_type: one of None, ContinuousControl, PidControl
         inflow_edge,
         outflow_edges,
         active,
-        flow_rate::T,
+        flow_rate,
         min_flow_rate,
         max_flow_rate,
         control_mapping,
         continuous_control_type,
-    ) where {T}
-        if valid_flow_rates(node_id, get_tmp(flow_rate, 0), control_mapping)
-            return new{T}(
+    )
+        if valid_flow_rates(node_id, flow_rate[Float64[]], control_mapping)
+            return new(
                 node_id,
                 inflow_edge,
                 outflow_edges,
@@ -476,12 +484,12 @@ max_flow_rate: The maximum flow rate of the outlet
 control_mapping: dictionary from (node_id, control_state) to target flow rate
 continuous_control_type: one of None, ContinuousControl, PidControl
 """
-@kwdef struct Outlet{T} <: AbstractParameterNode
+@kwdef struct Outlet <: AbstractParameterNode
     node_id::Vector{NodeID}
     inflow_edge::Vector{EdgeMetadata} = []
     outflow_edges::Vector{Vector{EdgeMetadata}} = []
     active::Vector{Bool} = fill(true, length(node_id))
-    flow_rate::T
+    flow_rate::LBC = LazyBufferCache(CallableInt(length(node_id)))
     min_flow_rate::Vector{Float64} = zeros(length(node_id))
     max_flow_rate::Vector{Float64} = fill(Inf, length(node_id))
     min_crest_level::Vector{Float64} = fill(-Inf, length(node_id))
@@ -494,15 +502,15 @@ continuous_control_type: one of None, ContinuousControl, PidControl
         inflow_id,
         outflow_ids,
         active,
-        flow_rate::T,
+        flow_rate,
         min_flow_rate,
         max_flow_rate,
         min_crest_level,
         control_mapping,
         continuous_control_type,
-    ) where {T}
-        if valid_flow_rates(node_id, get_tmp(flow_rate, 0), control_mapping)
-            return new{T}(
+    )
+        if valid_flow_rates(node_id, flow_rate[Float64[]], control_mapping)
+            return new(
                 node_id,
                 inflow_id,
                 outflow_ids,
@@ -718,7 +726,7 @@ flow_integrated: Flow integrated over time, used for mean flow computation
     over saveat intervals
 saveat: The time interval between saves of output data (storage, flow, ...)
 """
-const ModelGraph{T} = MetaGraph{
+const ModelGraph = MetaGraph{
     Int64,
     DiGraph{Int64},
     NodeID,
@@ -729,31 +737,31 @@ const ModelGraph{T} = MetaGraph{
         edges_source::Dict{Int32, Set{EdgeMetadata}},
         flow_edges::Vector{EdgeMetadata},
         flow_dict::Dict{Tuple{NodeID, NodeID}, Int},
-        flow::T,
+        flow::LBC,
         flow_prev::Vector{Float64},
         flow_integrated::Vector{Float64},
         saveat::Float64,
     },
     MetaGraphsNext.var"#11#13",
     Float64,
-} where {T}
+}
 
-@kwdef struct Parameters{T, C1, C2, V1, V2, V3}
+@kwdef struct Parameters{T, C1, C2, V1, V2}
     starttime::DateTime
-    graph::ModelGraph{T}
+    graph::ModelGraph
     allocation::Allocation
-    basin::Basin{T, C1, V1, V2, V3}
+    basin::Basin{C1, V1, V2}
     linear_resistance::LinearResistance
     manning_resistance::ManningResistance
     tabulated_rating_curve::TabulatedRatingCurve{C2}
     level_boundary::LevelBoundary
     flow_boundary::FlowBoundary
-    pump::Pump{T}
-    outlet::Outlet{T}
+    pump::Pump
+    outlet::Outlet
     terminal::Terminal
     discrete_control::DiscreteControl{T}
     continuous_control::ContinuousControl{T}
-    pid_control::PidControl{T}
+    pid_control::PidControl
     user_demand::UserDemand
     level_demand::LevelDemand
     flow_demand::FlowDemand

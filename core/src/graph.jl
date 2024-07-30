@@ -5,7 +5,7 @@ Return a directed metagraph with data of nodes (NodeMetadata):
 and data of edges (EdgeMetadata):
 [`EdgeMetadata`](@ref)
 """
-function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGraph
+function create_graph(db::DB, config::Config)::MetaGraph
     node_rows = execute(
         db,
         "SELECT node_id, node_type, subnetwork_id FROM Node ORDER BY node_type, node_id",
@@ -97,12 +97,9 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
         error("Incomplete connectivity in subnetwork")
     end
 
-    flow = zeros(flow_counter)
+    flow = LazyBufferCache(CallableInt(flow_counter))
     flow_prev = fill(NaN, flow_counter)
     flow_integrated = zeros(flow_counter)
-    if config.solver.autodiff
-        flow = DiffCache(flow, chunk_sizes)
-    end
     flow_edges = [edge for edge in values(graph.edge_data) if edge.type == EdgeType.flow]
     graph_data = (;
         node_ids,
@@ -184,14 +181,14 @@ function set_flow!(graph::MetaGraph, id_src::NodeID, id_dst::NodeID, q::Number):
     return nothing
 end
 
-function set_flow!(graph::MetaGraph, edge_metadata::EdgeMetadata, q::Number)::Nothing
-    set_flow!(graph, edge_metadata.flow_idx, q)
+function set_flow!(graph::MetaGraph, edge_metadata::EdgeMetadata, q::Number, u)::Nothing
+    set_flow!(graph, edge_metadata.flow_idx, q, u)
     return nothing
 end
 
-function set_flow!(graph, flow_idx::Int, q::Number)::Nothing
+function set_flow!(graph, flow_idx::Int, q::Number, u)::Nothing
     (; flow) = graph[]
-    get_tmp(flow, q)[flow_idx] = q
+    flow[u][flow_idx] = q
     return nothing
 end
 
@@ -204,12 +201,12 @@ function get_flow(graph::MetaGraph, id_src::NodeID, id_dst::NodeID, val)::Number
     return get_flow(graph, flow_idx, val)
 end
 
-function get_flow(graph, edge_metadata::EdgeMetadata, val)::Number
-    return get_flow(graph, edge_metadata.flow_idx, val)
+function get_flow(graph, edge_metadata::EdgeMetadata, u)::Number
+    return get_flow(graph, edge_metadata.flow_idx, u)
 end
 
-function get_flow(graph::MetaGraph, flow_idx::Int, val)
-    return get_tmp(graph[].flow, val)[flow_idx]
+function get_flow(graph::MetaGraph, flow_idx::Int, u)
+    return graph[].flow[u][flow_idx]
 end
 
 function get_flow_prev(graph, id_src::NodeID, id_dst::NodeID, val)::Number

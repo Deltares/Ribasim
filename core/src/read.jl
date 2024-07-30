@@ -458,7 +458,7 @@ function FlowBoundary(db::DB, config::Config, graph::MetaGraph)::FlowBoundary
     )
 end
 
-function Pump(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{Int})::Pump
+function Pump(db::DB, config::Config, graph::MetaGraph)::Pump
     static = load_structvector(db, config, PumpStaticV1)
     defaults = (; min_flow_rate = 0.0, max_flow_rate = Inf, active = true)
     parsed_parameters, valid = parse_static_and_time(db, config, Pump; static, defaults)
@@ -467,14 +467,11 @@ function Pump(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{Int}
         error("Errors occurred when parsing Pump data.")
     end
 
-    # If flow rate is set by PID control, it is part of the AD Jacobian computations
-    flow_rate = if config.solver.autodiff
-        DiffCache(parsed_parameters.flow_rate, chunk_sizes)
-    else
-        parsed_parameters.flow_rate
-    end
-
     (; node_id) = parsed_parameters
+
+    # If flow rate is set by PID control, it is part of the AD Jacobian computations
+    flow_rate = LazyBufferCache(CallableInt(length(node_id)))
+    flow_rate[Float64[]] .= parsed_parameters.flow_rate
 
     return Pump(;
         node_id,
@@ -488,7 +485,7 @@ function Pump(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{Int}
     )
 end
 
-function Outlet(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{Int})::Outlet
+function Outlet(db::DB, config::Config, graph::MetaGraph)::Outlet
     static = load_structvector(db, config, OutletStaticV1)
     defaults =
         (; min_flow_rate = 0.0, max_flow_rate = Inf, min_crest_level = -Inf, active = true)
@@ -498,19 +495,16 @@ function Outlet(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{In
         error("Errors occurred when parsing Outlet data.")
     end
 
-    # If flow rate is set by PID control, it is part of the AD Jacobian computations
-    flow_rate = if config.solver.autodiff
-        DiffCache(parsed_parameters.flow_rate, chunk_sizes)
-    else
-        parsed_parameters.flow_rate
-    end
-
     node_id =
         NodeID.(
             NodeType.Outlet,
             parsed_parameters.node_id,
             eachindex(parsed_parameters.node_id),
         )
+
+    # If flow rate is set by PID control, it is part of the AD Jacobian computations
+    flow_rate = LazyBufferCache(CallableInt(length(node_id)))
+    flow_rate[Float64[], length(node_id)] .= parsed_parameters.flow_rate
 
     return Outlet(;
         node_id,
@@ -530,11 +524,11 @@ function Terminal(db::DB, config::Config)::Terminal
     return Terminal(NodeID.(NodeType.Terminal, node_id, eachindex(node_id)))
 end
 
-function Basin(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{Int})::Basin
+function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     node_id = get_ids(db, "Basin")
     n = length(node_id)
-    current_level = zeros(n)
-    current_area = zeros(n)
+    current_level = LazyBufferCache(CallableInt(n))
+    current_area = LazyBufferCache(CallableInt(n))
 
     precipitation = zeros(n)
     potential_evaporation = zeros(n)
@@ -555,21 +549,15 @@ function Basin(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{Int
 
     vertical_flux_from_input =
         ComponentVector(; precipitation, potential_evaporation, drainage, infiltration)
-    vertical_flux = ComponentVector(;
+    vertical_flux = LazyBufferCache(CallableInt(4 * n))
+    vertical_flux_prev = ComponentVector(;
         precipitation = copy(precipitation),
         evaporation,
         drainage = copy(drainage),
         infiltration = copy(infiltration),
     )
-    vertical_flux_prev = zero(vertical_flux)
-    vertical_flux_integrated = zero(vertical_flux)
-    vertical_flux_bmi = zero(vertical_flux)
-
-    if config.solver.autodiff
-        current_level = DiffCache(current_level, chunk_sizes)
-        current_area = DiffCache(current_area, chunk_sizes)
-        vertical_flux = DiffCache(vertical_flux, chunk_sizes)
-    end
+    vertical_flux_integrated = zero(vertical_flux_prev)
+    vertical_flux_bmi = zero(vertical_flux_prev)
 
     demand = zeros(length(node_id))
 
@@ -819,12 +807,7 @@ function ContinuousControl(db::DB, config::Config, graph::MetaGraph)::Continuous
     )
 end
 
-function PidControl(
-    db::DB,
-    config::Config,
-    graph::MetaGraph,
-    chunk_sizes::Vector{Int},
-)::PidControl
+function PidControl(db::DB, config::Config, graph::MetaGraph)::PidControl
     static = load_structvector(db, config, PidControlStaticV1)
     time = load_structvector(db, config, PidControlTimeV1)
 
@@ -842,11 +825,7 @@ function PidControl(
         error("Errors occurred when parsing PidControl data.")
     end
 
-    pid_error = zeros(length(node_ids))
-
-    if config.solver.autodiff
-        pid_error = DiffCache(pid_error, chunk_sizes)
-    end
+    pid_error = LazyBufferCache(CallableInt(length(node_ids)))
     target_ref = PreallocationRef{typeof(pid_error)}[]
 
     controlled_basins = Set{NodeID}()
@@ -1170,23 +1149,9 @@ function Allocation(db::DB, config::Config, graph::MetaGraph)::Allocation
     )
 end
 
-"""
-Get the chunk sizes for DiffCache; differentiation w.r.t. u
-and t (the latter only if a Rosenbrock algorithm is used).
-"""
-function get_chunk_sizes(config::Config, n_states::Int)::Vector{Int}
-    chunk_sizes = [pickchunksize(n_states)]
-    if Ribasim.config.algorithms[config.solver.algorithm] <:
-       OrdinaryDiffEqRosenbrockAdaptiveAlgorithm
-        push!(chunk_sizes, 1)
-    end
-    return chunk_sizes
-end
-
 function Parameters(db::DB, config::Config)::Parameters
     n_states = length(get_ids(db, "Basin")) + length(get_ids(db, "PidControl"))
-    chunk_sizes = get_chunk_sizes(config, n_states)
-    graph = create_graph(db, config, chunk_sizes)
+    graph = create_graph(db, config)
     allocation = Allocation(db, config, graph)
 
     if !valid_edges(graph)
@@ -1196,19 +1161,19 @@ function Parameters(db::DB, config::Config)::Parameters
         error("Invalid number of connections for certain node types.")
     end
 
-    basin = Basin(db, config, graph, chunk_sizes)
+    basin = Basin(db, config, graph)
 
     linear_resistance = LinearResistance(db, config, graph)
     manning_resistance = ManningResistance(db, config, graph, basin)
     tabulated_rating_curve = TabulatedRatingCurve(db, config, graph)
     level_boundary = LevelBoundary(db, config)
     flow_boundary = FlowBoundary(db, config, graph)
-    pump = Pump(db, config, graph, chunk_sizes)
-    outlet = Outlet(db, config, graph, chunk_sizes)
+    pump = Pump(db, config, graph)
+    outlet = Outlet(db, config, graph)
     terminal = Terminal(db, config)
     discrete_control = DiscreteControl(db, config, graph)
     continuous_control = ContinuousControl(db, config, graph)
-    pid_control = PidControl(db, config, graph, chunk_sizes)
+    pid_control = PidControl(db, config, graph)
     user_demand = UserDemand(db, config, graph)
     level_demand = LevelDemand(db, config)
     flow_demand = FlowDemand(db, config)

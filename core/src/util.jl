@@ -220,17 +220,12 @@ Get the current water level of a node ID.
 The ID can belong to either a Basin or a LevelBoundary.
 storage: tells ForwardDiff whether this call is for differentiation or not
 """
-function get_level(
-    p::Parameters,
-    node_id::NodeID,
-    t::Number;
-    storage::Union{AbstractArray, Number} = 0,
-)::Tuple{Bool, Number}
+function get_level(p::Parameters, node_id::NodeID, t::Number; u = 0)::Tuple{Bool, Number}
     (; basin, level_boundary) = p
     if node_id.type == NodeType.Basin
         # The edge metadata is only used to obtain the Basin index
         # in case node_id is for a Basin
-        current_level = get_tmp(basin.current_level, storage)
+        current_level = basin.current_level[u]
         return true, current_level[node_id.idx]
     elseif node_id.type == NodeType.LevelBoundary
         return true, level_boundary.level[node_id.idx](t)
@@ -528,7 +523,7 @@ end
 
 function get_influx(basin::Basin, basin_idx::Int; prev::Bool = false)::Float64
     (; vertical_flux, vertical_flux_prev) = basin
-    vertical_flux = get_tmp(vertical_flux, 0)
+    vertical_flux = wrap_forcing(vertical_flux[Float64[]])
     flux_vector = prev ? vertical_flux_prev : vertical_flux
     (; precipitation, evaporation, drainage, infiltration) = flux_vector
     return precipitation[basin_idx] - evaporation[basin_idx] + drainage[basin_idx] -
@@ -676,7 +671,7 @@ function set_discrete_controlled_variable_refs!(p::Parameters)::Nothing
 
                 # References to scalar parameters
                 for (i, parameter_update) in enumerate(scalar_update)
-                    field = get_tmp(getfield(node, parameter_update.name), 0)
+                    field = getfield(node, parameter_update.name)[Float64[]]
                     scalar_update[i] = @set parameter_update.ref = Ref(field, node_id.idx)
                 end
 
@@ -806,4 +801,17 @@ function set_previous_flows!(integrator)
     vertical_flux = get_tmp(vertical_flux, 0)
     copyto!(flow_prev, flow)
     copyto!(vertical_flux_prev, vertical_flux)
+end
+
+function wrap_forcing(vector)
+    n = length(vector) ÷ 4
+    return ComponentVector(
+        vector,
+        Axis(;
+            precipitation = 1:n,
+            evaporation = (n + 1):(2n),
+            drainage = (2n + 1):(3n),
+            infiltration = (3n + 1):(4n),
+        ),
+    )
 end

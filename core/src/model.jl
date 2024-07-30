@@ -107,14 +107,15 @@ function Model(config::Config)::Model
 
     storage = get_storages_from_levels(parameters.basin, state.level)
 
-    # Synchronize level with storage
-    set_current_basin_properties!(parameters.basin, storage)
-
     @assert length(storage) == n "Basin / state length differs from number of Basins"
     # Integrals for PID control
     integral = zeros(length(parameters.pid_control.node_id))
     u0 = ComponentVector{Float64}(; storage, integral)
     du0 = zero(u0)
+
+    # Synchronize level with storage
+    set_current_basin_properties!(parameters.basin, u0)
+
     # for Float32 this method allows max ~1000 year simulations without accuracy issues
     t_end = seconds_since(config.endtime, config.starttime)
     @assert eps(t_end) < 3600 "Simulation time too long"
