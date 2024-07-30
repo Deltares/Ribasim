@@ -13,6 +13,7 @@ end
     using StructArrays: StructVector
     using Ribasim: NodeID
     using DataInterpolations: LinearInterpolation, integral, invert_integral
+    using PreallocationTools: LazyBufferCache
 
     # create two basins with different bottoms/levels
     area = [[0.01, 1.0], [0.01, 1.0]]
@@ -20,15 +21,14 @@ end
     level_to_area = LinearInterpolation.(area, level)
     storage_to_level = invert_integral.(level_to_area)
     demand = zeros(2)
+    current_level = LazyBufferCache(Ribasim.CallableInt(2))
+    current_area = LazyBufferCache(Ribasim.CallableInt(2))
+    current_level[Float64[]] .= [2.0, 3.0]
+    current_area[Float64[]] .= [2.0, 3.0]
     basin = Ribasim.Basin(;
         node_id = NodeID.(:Basin, [5, 7], [1, 2]),
-        vertical_flux_from_input = [2.0, 3.0],
-        vertical_flux = [2.0, 3.0],
-        vertical_flux_prev = [2.0, 3.0],
-        vertical_flux_integrated = [2.0, 3.0],
-        vertical_flux_bmi = [2.0, 3.0],
-        current_level = [2.0, 3.0],
-        current_area = [2.0, 3.0],
+        current_level,
+        current_area,
         storage_to_level,
         level_to_area,
         demand,

@@ -131,7 +131,7 @@ end
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
     @test model.integrator.u.storage ≈ [1000]
-    vertical_flux = Ribasim.get_tmp(model.integrator.p.basin.vertical_flux, 0)
+    vertical_flux = Ribasim.wrap_forcing(model.integrator.p.basin.vertical_flux[Float64[]])
     @test vertical_flux.precipitation == [0.0]
     @test vertical_flux.evaporation == [0.0]
     @test vertical_flux.drainage == [0.0]
@@ -149,7 +149,7 @@ end
     @test model isa Ribasim.Model
 
     stor = model.integrator.u.storage
-    vertical_flux = Ribasim.get_tmp(model.integrator.p.basin.vertical_flux, 0)
+    vertical_flux = Ribasim.wrap_forcing(model.integrator.p.basin.vertical_flux[Float64[]])
     prec = vertical_flux.precipitation
     evap = vertical_flux.evaporation
     drng = vertical_flux.drainage
@@ -233,7 +233,10 @@ end
     @test model isa Ribasim.Model
     @test successful_retcode(model)
     @test allunique(Ribasim.tsaves(model))
-    precipitation = Ribasim.get_tmp(model.integrator.p.basin.vertical_flux, 0).precipitation
+    precipitation =
+        Ribasim.wrap_forcing(
+            model.integrator.p.basin.vertical_flux[Float64[]],
+        ).precipitation
     @test length(precipitation) == 4
     @test model.integrator.sol.u[end] ≈ Float32[472.02444, 472.02252, 367.6387, 1427.981] skip =
         Sys.isapple()
@@ -467,7 +470,7 @@ end
 
     u = model.integrator.sol.u[end]
     p = model.integrator.p
-    h_actual = get_tmp(p.basin.current_level, u)[1:50]
+    h_actual = p.basin.current_level[parent(u)][1:50]
     x = collect(10.0:20.0:990.0)
     h_expected = standard_step_method(x, 5.0, 1.0, 0.04, h_actual[end], 1.0e-6)
 
@@ -478,13 +481,17 @@ end
     @test all(isapprox.(h_expected, h_actual; atol = 0.02))
     # Test for conservation of mass, flow at the beginning == flow at the end
     n_self_loops = length(p.graph[].flow_dict)
-    @test Ribasim.get_flow(p.graph, NodeID(:FlowBoundary, 1, p), NodeID(:Basin, 2, p), 0) ≈
-          5.0 atol = 0.001 skip = Sys.isapple()
+    @test Ribasim.get_flow(
+        p.graph,
+        NodeID(:FlowBoundary, 1, p),
+        NodeID(:Basin, 2, p),
+        parent(u),
+    ) ≈ 5.0 atol = 0.001 skip = Sys.isapple()
     @test Ribasim.get_flow(
         p.graph,
         NodeID(:ManningResistance, 101, p),
         NodeID(:Basin, 102, p),
-        0,
+        parent(u),
     ) ≈ 5.0 atol = 0.001 skip = Sys.isapple()
 end
 

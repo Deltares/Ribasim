@@ -53,7 +53,7 @@ function formulate_continuous_control!(u, p, t)::Nothing
 
     for (cvar, ref, func_) in zip(compound_variable, target_ref, func)
         value = compound_variable_value(cvar, p, u, t)
-        set_value!(ref, func_(value))
+        set_value!(ref, func_(value), parent(u))
     end
     return nothing
 end
@@ -120,7 +120,7 @@ function set_error!(pid_control::PidControl, p::Parameters, u::ComponentVector, 
     (; basin) = p
     (; listen_node_id, target, error) = pid_control
     error = error[u]
-    current_level = basin.current_level[u]
+    current_level = basin.current_level[parent(u)]
 
     for i in eachindex(listen_node_id)
         listened_node_id = listen_node_id[i]
@@ -176,7 +176,7 @@ function formulate_pid_control!(
         end
 
         if !iszero(K_i)
-            flow_rate += K_i * u.integral_value[i] / D
+            flow_rate += K_i * u.integral[i] / D
         end
 
         if !iszero(K_d)
@@ -189,7 +189,7 @@ function formulate_pid_control!(
         end
 
         # Set flow_rate
-        set_value!(pid_control.target_ref[i], flow_rate)
+        set_value!(pid_control.target_ref[i], flow_rate, parent(u))
     end
     return nothing
 end
@@ -594,15 +594,15 @@ function formulate_du_pid_controlled!(
     du::ComponentVector,
     graph::MetaGraph,
     pid_control::PidControl,
-    storage::AbstractVector,
+    u::AbstractVector,
 )::Nothing
     for id in pid_control.controlled_basins
         du[id.idx] = zero(eltype(du))
         for id_in in inflow_ids(graph, id)
-            du[id.idx] += get_flow(graph, id_in, id, storage)
+            du[id.idx] += get_flow(graph, id_in, id, parent(u))
         end
         for id_out in outflow_ids(graph, id)
-            du[id.idx] -= get_flow(graph, id, id_out, storage)
+            du[id.idx] -= get_flow(graph, id, id_out, parent(u))
         end
     end
     return nothing

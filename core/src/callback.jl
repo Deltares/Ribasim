@@ -417,7 +417,7 @@ end
 
 function update_subgrid_level!(integrator)::Nothing
     (; u, p) = integrator
-    basin_level = p.basin.current_level[u]
+    basin_level = p.basin.current_level[parent(u)]
     subgrid = integrator.p.subgrid
     for (i, (index, interp)) in enumerate(zip(subgrid.basin_index, subgrid.interpolations))
         subgrid.level[i] = interp(basin_level[index])
@@ -437,7 +437,7 @@ function update_basin!(integrator)::Nothing
     (; storage) = u
     (; node_id, time, vertical_flux_from_input, vertical_flux, vertical_flux_prev) = basin
     t = datetime_since(integrator.t, integrator.p.starttime)
-    vertical_flux = vertical_flux[u]
+    vertical_flux = vertical_flux[parent(u)]
 
     rows = searchsorted(time.time, t)
     timeblock = view(time, rows)
@@ -535,7 +535,12 @@ function update_tabulated_rating_curve!(integrator)::Nothing
         level = [row.level for row in group]
         flow_rate = [row.flow_rate for row in group]
         i = searchsortedfirst(node_id, NodeID(NodeType.TabulatedRatingCurve, id, 0))
-        table[i] = LinearInterpolation(flow_rate, level; extrapolate = true)
+        table[i] = LinearInterpolation(
+            flow_rate,
+            level;
+            extrapolate = true,
+            cache_parameters = true,
+        )
     end
     return nothing
 end

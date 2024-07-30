@@ -19,26 +19,28 @@ function get_jac_prototype(p::Parameters, t0, du0, u0)::SparseMatrixCSC{Float64,
 
     n_basins = length(basin.node_id)
     n_states = n_basins + length(pid_control.node_id)
-    # jac_prototype = spzeros(n_states, n_states)
+    jac_prototype = spzeros(n_states, n_states)
 
-    # update_jac_prototype!(jac_prototype, basin, graph)
-    # update_jac_prototype!(jac_prototype, pid_control, basin, graph)
-    # update_jac_prototype!(jac_prototype, continuous_control, graph)
+    update_jac_prototype!(jac_prototype, basin, graph)
+    update_jac_prototype!(jac_prototype, pid_control, basin, graph)
+    update_jac_prototype!(jac_prototype, continuous_control, graph)
 
     p.pump.flow_rate[Num[]] .= zeros(Num, length(p.pump.node_id))
     p.outlet.flow_rate[Num[]] .= zeros(Num, length(p.outlet.node_id))
+    p.pid_control.error[Num[]] .= zeros(Num, length(p.pid_control.node_id))
     p.basin.current_level[Num[]] .= zeros(Num, length(p.basin.node_id))
     p.basin.current_area[Num[]] .= zeros(Num, length(p.basin.node_id))
     p.basin.vertical_flux[Num[]] .= zeros(Num, 4 * length(p.basin.node_id))
     p.graph[].flow[Num[]] .= zeros(Num, length(p.graph[].flow_dict))
 
     jac_sparsity = jacobian_sparsity((du, u) -> water_balance!(du, u, p, t0), du0, u0)
-    jac_prototype = float.(jac_sparsity)
+    jac_prototype_symbolic = float.(jac_sparsity)
+    display(jac_prototype_symbolic)
     display(jac_prototype)
 
     # https://docs.sciml.ai/DiffEqDocs/latest/tutorials/advanced_ode_example/#Declaring-a-Sparse-Jacobian-with-Automatic-Sparsity-Detection
 
-    return jac_prototype
+    return jac_prototype_symbolic
 end
 
 """

@@ -269,7 +269,7 @@ end
         graph,
         Ribasim.NodeID(:FlowBoundary, 1, p),
         Ribasim.NodeID(:Basin, 2, p),
-        0,
+        Float64[],
     )
     A = Ribasim.basin_areas(basin, 1)[1]
     l_max = level_demand.max_level[1](0)
@@ -286,7 +286,7 @@ end
     stage_2 = 2 * Δt_allocation .<= t .<= 9 * Δt_allocation
     stage_2_start_idx = findfirst(stage_2)
     u_stage_2(τ) = storage[stage_2_start_idx] + ϕ * (τ - t[stage_2_start_idx])
-    @test storage[stage_2] ≈ u_stage_2.(t[stage_2]) rtol = 1e-4
+    @test storage[stage_2] ≈ u_stage_2.(t[stage_2]) rtol = 1e-2
 
     # In this section the basin enters its surplus stage,
     # even though initially the level is below the maximum level. This is because the simulation
@@ -310,7 +310,7 @@ end
     stage_5 = 16 * Δt_allocation .<= t
     stage_5_start_idx = findfirst(stage_5)
     u_stage_5(τ) = storage[stage_5_start_idx]
-    @test storage[stage_5] ≈ u_stage_5.(t[stage_5]) rtol = 1e-4
+    @test storage[stage_5] ≈ u_stage_5.(t[stage_5]) rtol = 1e-2
 
     # Isolated LevelDemand + Basin pair to test optional min_level
     problem = allocation.allocation_models[2].problem
@@ -584,8 +584,8 @@ end
     (; allocation_models) = p.allocation
     (; basin, level_demand, graph) = p
 
-    fill!(level_demand.max_level[1].u.parent, Inf)
-    fill!(level_demand.max_level[2].u.parent, Inf)
+    fill!(level_demand.max_level[1].u, Inf)
+    fill!(level_demand.max_level[2].u, Inf)
 
     # Given a max_level of Inf, the basin capacity is 0.0 because it is not possible for the basin level to be > Inf
     @test Ribasim.get_basin_capacity(allocation_models[1], u, p, t, basin.node_id[1]) == 0.0

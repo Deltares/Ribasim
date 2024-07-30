@@ -188,7 +188,7 @@ end
 
 function set_flow!(graph, flow_idx::Int, q::Number, u)::Nothing
     (; flow) = graph[]
-    flow[u][flow_idx] = q
+    flow[Ref(q)][flow_idx] = q
     return nothing
 end
 
@@ -223,7 +223,7 @@ end
 
 function get_flow_prev(graph::MetaGraph, flow_idx::Int, val)
     # Note: Can be removed after https://github.com/Deltares/Ribasim/pull/1444
-    return graph[].flow_prew[val][flow_idx]
+    return graph[].flow_prev[val][flow_idx]
 end
 
 """

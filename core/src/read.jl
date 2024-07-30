@@ -120,7 +120,11 @@ function parse_static_and_time(
                         val = defaults[parameter_name]
                     end
                     if parameter_name in time_interpolatables
-                        val = LinearInterpolation([val, val], trivial_timespan)
+                        val = LinearInterpolation(
+                            [val, val],
+                            trivial_timespan;
+                            cache_parameters = true,
+                        )
                     end
                     # Collect the parameter values in the parameter_values vector
                     push!(parameter_values, val)
@@ -642,7 +646,7 @@ function CompoundVariable(
 )::CompoundVariable
     subvariables = @NamedTuple{
         listen_node_id::NodeID,
-        variable_ref::PreallocationRef{typeof(placeholder_vector)},
+        variable_ref::PreallocationRef,
         variable::String,
         weight::Float64,
         look_ahead::Float64,
@@ -668,7 +672,7 @@ end
 
 function parse_variables_and_conditions(compound_variable, condition, ids, db, graph)
     placeholder_vector = graph[].flow
-    compound_variables = Vector{CompoundVariable{typeof(placeholder_vector)}}[]
+    compound_variables = Vector{CompoundVariable}[]
     errors = false
 
     # Loop over unique discrete_control node IDs
@@ -784,6 +788,7 @@ function continuous_control_functions(db, config, ids)
             function_rows.output,
             function_rows.input;
             extrapolate = true,
+            cache_parameters = true,
         )
 
         push!(functions, function_itp)
@@ -803,7 +808,7 @@ function continuous_control_compound_variables(
     placeholder_vector = graph[].flow
 
     data = load_structvector(db, config, ContinuousControlVariableV1)
-    compound_variables = CompoundVariable{typeof(placeholder_vector)}[]
+    compound_variables = CompoundVariable[]
 
     # Loop over the ContinuousControl node IDs
     for id in ids
@@ -832,7 +837,7 @@ function ContinuousControl(db::DB, config::Config, graph::MetaGraph)::Continuous
     compound_variable = continuous_control_compound_variables(db, config, ids, graph)
 
     # References to the controlled parameters, filled in later when they are known
-    target_refs = PreallocationRef{typeof(graph[].flow)}[]
+    target_refs = PreallocationRef[]
 
     if errors
         error("Errors encountered when parsing ContinuousControl data.")
@@ -866,7 +871,7 @@ function PidControl(db::DB, config::Config, graph::MetaGraph)::PidControl
     end
 
     pid_error = LazyBufferCache(CallableInt(length(node_ids)))
-    target_ref = PreallocationRef{typeof(pid_error)}[]
+    target_ref = PreallocationRef[]
 
     controlled_basins = Set{NodeID}()
     for id in node_ids
@@ -924,6 +929,7 @@ function user_demand_static!(
                 fill(demand_row, 2),
                 demand_itp_old.t;
                 extrapolate = true,
+                cache_parameters = true,
             )
             demand[user_demand_idx, priority_idx] = demand_row
         end
@@ -998,7 +1004,8 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)::UserDemand
     trivial_timespan = [0.0, prevfloat(Inf)]
     demand_itp = [
         ScalarInterpolation[
-            LinearInterpolation(zeros(2), trivial_timespan) for i in eachindex(priorities)
+            LinearInterpolation(zeros(2), trivial_timespan; cache_parameters = true) for
+            i in eachindex(priorities)
         ] for j in eachindex(node_ids)
     ]
     demand_from_timeseries = fill(false, n_user)
@@ -1129,7 +1136,12 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
             # Ensure it doesn't extrapolate before the first value.
             pushfirst!(subgrid_level, first(subgrid_level))
             pushfirst!(basin_level, nextfloat(-Inf))
-            new_interp = LinearInterpolation(subgrid_level, basin_level; extrapolate = true)
+            new_interp = LinearInterpolation(
+                subgrid_level,
+                basin_level;
+                extrapolate = true,
+                cache_parameters = true,
+            )
             push!(subgrid_ids, subgrid_id)
             push!(basin_index, node_to_basin[node_id])
             push!(interpolations, new_interp)

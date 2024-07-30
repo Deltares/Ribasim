@@ -542,15 +542,15 @@ end
 A variant on `Base.Ref` where the source array is a vector that is possibly wrapped in a ForwardDiff.DiffCache.
 Retrieve value with get_value(ref::PreallocationRef, val) where `val` determines the return type.
 """
-struct PreallocationRef{T}
-    vector::T
+struct PreallocationRef
+    vector::LBC
     idx::Int
 end
 
 get_value(ref::PreallocationRef, val) = ref.vector[val][ref.idx]
 
-function set_value!(ref::PreallocationRef, value)::Nothing
-    get_tmp(ref.vector, value)[ref.idx] = value
+function set_value!(ref::PreallocationRef, value, val)::Nothing
+    ref.vector[val][ref.idx] = value
     return nothing
 end
 
@@ -561,12 +561,12 @@ subvariables: data for one single subvariable
 greater_than: the thresholds this compound variable will be
     compared against (in the case of DiscreteControl)
 """
-@kwdef struct CompoundVariable{T}
+@kwdef struct CompoundVariable
     node_id::NodeID
     subvariables::Vector{
         @NamedTuple{
             listen_node_id::NodeID,
-            variable_ref::PreallocationRef{T},
+            variable_ref::PreallocationRef,
             variable::String,
             weight::Float64,
             look_ahead::Float64,
@@ -586,10 +586,10 @@ logic_mapping: Dictionary: truth state => control state for the DiscreteControl 
 control_mapping: dictionary node type => control mapping for that node type
 record: Namedtuple with discrete control information for results
 """
-@kwdef struct DiscreteControl{T} <: AbstractParameterNode
+@kwdef struct DiscreteControl <: AbstractParameterNode
     node_id::Vector{NodeID}
     controlled_nodes::Vector{Vector{NodeID}}
-    compound_variables::Vector{Vector{CompoundVariable{T}}}
+    compound_variables::Vector{Vector{CompoundVariable}}
     truth_state::Vector{Vector{Bool}}
     control_state::Vector{String} = fill("undefined_state", length(node_id))
     control_state_start::Vector{Float64} = zeros(length(node_id))
@@ -609,11 +609,11 @@ record: Namedtuple with discrete control information for results
     )
 end
 
-@kwdef struct ContinuousControl{T} <: AbstractParameterNode
+@kwdef struct ContinuousControl <: AbstractParameterNode
     node_id::Vector{NodeID}
-    compound_variable::Vector{CompoundVariable{T}}
+    compound_variable::Vector{CompoundVariable}
     controlled_variable::Vector{String}
-    target_ref::Vector{PreallocationRef{T}}
+    target_ref::Vector{PreallocationRef}
     func::Vector{ScalarInterpolation}
 end
 
@@ -632,16 +632,16 @@ derivative: proportionality coefficient error derivative
 error: the current error; basin_target - current_level
 dictionary from (node_id, control_state) to target flow rate
 """
-@kwdef struct PidControl{T} <: AbstractParameterNode
+@kwdef struct PidControl <: AbstractParameterNode
     node_id::Vector{NodeID}
     active::Vector{Bool}
     listen_node_id::Vector{NodeID}
     target::Vector{ScalarInterpolation}
-    target_ref::Vector{PreallocationRef{T}}
+    target_ref::Vector{PreallocationRef}
     proportional::Vector{ScalarInterpolation}
     integral::Vector{ScalarInterpolation}
     derivative::Vector{ScalarInterpolation}
-    error::T
+    error::LBC = LazyBufferCache(CallableInt(length(node_id)))
     controlled_basins::Vector{NodeID}
     control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate}
 end
@@ -749,7 +749,7 @@ const ModelGraph = MetaGraph{
     Float64,
 }
 
-@kwdef struct Parameters{T, C1, C2, V1, V2}
+@kwdef struct Parameters{C1, C2, V1, V2}
     starttime::DateTime
     graph::ModelGraph
     allocation::Allocation
@@ -762,8 +762,8 @@ const ModelGraph = MetaGraph{
     pump::Pump
     outlet::Outlet
     terminal::Terminal
-    discrete_control::DiscreteControl{T}
-    continuous_control::ContinuousControl{T}
+    discrete_control::DiscreteControl
+    continuous_control::ContinuousControl
     pid_control::PidControl
     user_demand::UserDemand
     level_demand::LevelDemand

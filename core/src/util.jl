@@ -104,7 +104,13 @@ function get_scalar_interpolation(
         push!(parameter, parameter[end])
     end
 
-    return LinearInterpolation(parameter, times; extrapolate = true), allunique(times)
+    return LinearInterpolation(
+        parameter,
+        times;
+        extrapolate = true,
+        cache_parameters = true,
+    ),
+    allunique(times)
 end
 
 """
@@ -120,7 +126,12 @@ function qh_interpolation(node_id::NodeID, table::StructVector)::ScalarInterpola
     pushfirst!(level, first(level) - 1)
     pushfirst!(flow_rate, first(flow_rate))
 
-    return LinearInterpolation(flow_rate, level; extrapolate = true)
+    return LinearInterpolation(
+        flow_rate,
+        level;
+        extrapolate = true,
+        cache_parameters = true,
+    )
 end
 
 """
@@ -225,7 +236,7 @@ function get_level(p::Parameters, node_id::NodeID, t::Number; u = 0)::Tuple{Bool
     if node_id.type == NodeType.Basin
         # The edge metadata is only used to obtain the Basin index
         # in case node_id is for a Basin
-        current_level = basin.current_level[u]
+        current_level = basin.current_level[parent(u)]
         return true, current_level[node_id.idx]
     elseif node_id.type == NodeType.LevelBoundary
         return true, level_boundary.level[node_id.idx](t)
@@ -343,7 +354,11 @@ Function that goes smoothly from 0 to 1 in the interval [0,threshold],
 and is constant outside this interval.
 """
 function reduction_factor(x::T, threshold::Real)::T where {T <: Real}
-    clamp(x + sin(π * (2x - 1)) / (2π), zero(T), one(T))
+    if isinf(x)
+        one(T)
+    else
+        clamp(x + sin(π * (2x - 1)) / (2π), zero(T), one(T))
+    end
 end
 
 "If id is a Basin with storage below the threshold, return a reduction factor != 1"
@@ -552,7 +567,7 @@ function set_initial_allocation_mean_flows!(integrator)::Nothing
 
     for edge in keys(mean_input_flows)
         if edge[1] == edge[2]
-            q = get_influx(basin, edge[1])
+            q = get_influx(p.basin, edge[1])
         else
             q = get_flow(graph, edge..., parent(u))
         end
@@ -593,11 +608,11 @@ end
 Get the reference to a parameter
 """
 function get_variable_ref(
-    p::Parameters{T},
+    p::Parameters,
     node_id::NodeID,
     variable::String;
     listen::Bool = true,
-)::Tuple{PreallocationRef{T}, Bool} where {T}
+)::Tuple{PreallocationRef, Bool}
     (; basin, graph) = p
     errors = false
 
@@ -795,8 +810,8 @@ function set_previous_flows!(integrator)
     du = get_du(integrator)
     water_balance!(du, u, p, t)
 
-    flow = get_tmp(flow, 0)
-    vertical_flux = get_tmp(vertical_flux, 0)
+    flow = flow[parent(u)]
+    vertical_flux = vertical_flux[parent(u)]
     copyto!(flow_prev, flow)
     copyto!(vertical_flux_prev, vertical_flux)
 end
