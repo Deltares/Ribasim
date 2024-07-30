@@ -66,8 +66,8 @@ area      | Float64 | $m^2$        | non-negative, per node_id: start positive a
 level     | Float64 | $m$          | per node_id: increasing
 
 The level is the level at the basin outlet. All levels are defined in meters above a datum
-that is the same for the entire model. An example of the first 5 rows of such a table is
-given below. The first 4 rows define the profile of ID `2`. The number of rows can vary
+that is the same for the entire model. An example of the first 4 rows of such a table is
+given below. The first 3 rows define the profile of ID `2`. The number of rows can vary
 per ID, and must be at least 2. Using a very large number of rows may impact performance.
 
 node_id |   area | level
