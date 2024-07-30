@@ -287,6 +287,9 @@ end
     demand::Vector{Float64}
     # Data source for parameter updates
     time::StructVector{BasinTimeV1, C, Int}
+    # Concentrations
+    concentration_external::Vector{Dict{String, ScalarInterpolation}} =
+        Dict{String, ScalarInterpolation}[]
 end
 
 """

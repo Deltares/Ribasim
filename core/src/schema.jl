@@ -54,7 +54,12 @@ function nodetype(
     record = Legolas.record_type(sv)
     node = last(split(string(Symbol(record)), '.'; limit = 3))
 
-    elements = split(string(T), '.'; limit = 3)
+    type_string = string(T)
+    elements = split(type_string, '.'; limit = 3)
+    last_element = last(elements)
+    if startswith(last_element, "concentration") && length(last_element) > 13
+        elements[end] = "concentration_$(last_element[14:end])"
+    end
     if isnode(sv)
         n = elements[2]
         k = Symbol(elements[3])

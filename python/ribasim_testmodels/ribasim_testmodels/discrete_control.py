@@ -1,3 +1,5 @@
+import numpy as np
+import pandas as pd
 from ribasim.config import Node
 from ribasim.model import Model
 from ribasim.nodes import (
@@ -526,5 +528,62 @@ def connector_node_flow_condition_model() -> Model:
     model.edge.add(model.basin[1], model.linear_resistance[1])
     model.edge.add(model.linear_resistance[1], model.basin[2])
     model.edge.add(model.discrete_control[1], model.linear_resistance[1])
+
+    return model
+
+
+def concentration_condition_model() -> Model:
+    """
+    Set up a minimal model with discrete control based on a
+    concentration condition.
+    """
+
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2021-01-01",
+        crs="EPSG:28992",
+    )
+
+    model.basin.add(
+        Node(1, Point(0, 0)),
+        [
+            basin.Profile(area=1000.0, level=[0.0, 1.0]),
+            basin.State(level=[20.0]),
+            basin.ConcentrationExternal(
+                time=pd.date_range(start="2020-01-01", end="2021-01-01", periods=100),
+                substance="kryptonite",
+                concentration=np.sin(np.linspace(0, 6 * np.pi, 100)) ** 2,
+            ),
+        ],
+    )
+
+    model.pump.add(
+        Node(1, Point(1, 0)),
+        [
+            pump.Static(
+                control_state=["On", "Off"], active=[True, False], flow_rate=1e-3
+            )
+        ],
+    )
+
+    model.terminal.add(Node(1, Point(2, 0)))
+
+    model.discrete_control.add(
+        Node(1, Point(1, 1)),
+        [
+            discrete_control.Variable(
+                listen_node_type=["Basin"],
+                listen_node_id=[1],
+                variable=["concentration_external.kryptonite"],
+                compound_variable_id=1,
+            ),
+            discrete_control.Condition(greater_than=[0.5], compound_variable_id=1),
+            discrete_control.Logic(truth_state=["T", "F"], control_state=["On", "Off"]),
+        ],
+    )
+
+    model.edge.add(model.basin[1], model.pump[1])
+    model.edge.add(model.pump[1], model.terminal[1])
+    model.edge.add(model.discrete_control[1], model.pump[1])
 
     return model
