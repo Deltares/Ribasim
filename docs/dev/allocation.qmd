@@ -232,7 +232,7 @@ for edge_metadata in values(graph.edge_data)
 end
 ```
 
-Apart from the `set_initial_` function above, capacities of `inlet` are the allocated capacities from the main network to the subnetworks.
+Apart from the `set_initial_*` function above, capacities of `inlet` are the allocated capacities from the main network to the subnetworks.
 Source constraints will be adapted based on the optimization type.
 This function is called separately and thus not part of the `set_initial_values`.
 
