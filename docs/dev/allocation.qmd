@@ -263,7 +263,7 @@ end
 ```
 
 ## Output data
-Function `save_demands_and_allocations` saves the demand and the allocated value per demand node. And function `save_allocation_flows` saves the optimized flows over the edges in the subnetwork.
+The function `save_demands_and_allocations` saves the demand and the allocated value per demand node. And the function `save_allocation_flows` saves the optimized flows over the edges in the subnetwork.
 These values are saved in the `record_demand` and `record_flow` fields of the `Allocation` struct and only written to the output file at the end of the simulation.
 
 ## Communicating to the physical layer
