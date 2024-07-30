@@ -358,20 +358,11 @@ function reduction_factor(x::T, threshold::Real)::T where {T <: Real}
     end
 end
 
-"If id is a Basin with storage below the threshold, return a reduction factor != 1"
-function low_storage_factor(
-    storage::AbstractVector{T},
-    id::NodeID,
-    threshold::Real,
-)::T where {T <: Real}
-    if id.type == NodeType.Basin
-        reduction_factor(storage[id.idx], threshold)
-    else
-        one(T)
-    end
+function empty_basin_factor(id::NodeID, basin::Basin, ::T)::T where {T}
+    return id.type == NodeType.Basin && basin.is_empty[id.idx] ? zero(T) : one(T)
 end
 
-"""Whether the given node node is flow constraining by having a maximum flow rate."""
+"""Whether the given node is flow constraining by having a maximum flow rate."""
 function is_flow_constraining(type::NodeType.T)::Bool
     type in (NodeType.LinearResistance, NodeType.Pump, NodeType.Outlet)
 end

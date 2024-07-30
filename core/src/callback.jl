@@ -59,10 +59,45 @@ function create_callbacks(
     discrete_control_cb = FunctionCallingCallback(apply_discrete_control!)
     push!(callbacks, discrete_control_cb)
 
+    empty_basin_cb = VectorContinuousCallback(
+        empty_basin_conditions!,
+        set_empty_basin!,
+        length(basin.node_id);
+        save_positions = (false, false),
+    )
+    push!(callbacks, empty_basin_cb)
+
+    non_empty_basin_cb = FunctionCallingCallback(check_basins_non_empty!)
+    push!(callbacks, non_empty_basin_cb)
+
     saved = SavedResults(saved_flow, saved_vertical_flux, saved_subgrid_level)
     callback = CallbackSet(callbacks...)
 
     return callback, saved
+end
+
+function empty_basin_conditions!(out, u, t, integrator)::Nothing
+    (; is_empty) = integrator.p.basin
+    for (i, s) in enumerate(u.storage)
+        out[i] = is_empty[i] ? Inf : s - EMPTY_BASIN_THRESHOLD_LOW
+    end
+    return nothing
+end
+
+function set_empty_basin!(integrator, basin_idx)::Nothing
+    integrator.p.basin.is_empty[basin_idx] = true
+    return nothing
+end
+
+function check_basins_non_empty!(u, t, integrator)::Nothing
+    (; is_empty) = integrator.p.basin
+
+    for (i, s) in enumerate(u.storage)
+        if is_empty[i]
+            is_empty[i] = s < EMPTY_BASIN_THRESHOLD_HIGH
+        end
+    end
+    return nothing
 end
 
 function check_negative_storage(u, t, integrator)::Nothing

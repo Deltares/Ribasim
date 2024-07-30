@@ -260,7 +260,7 @@ function formulate_flow!(
 
         # Smoothly let abstraction go to 0 as the source basin dries out
         inflow_id = inflow_edge.edge[1]
-        factor_basin = low_storage_factor(storage, inflow_id, 10.0)
+        factor_basin = empty_basin_factor(inflow_id, p.basin, first(storage))
         q *= factor_basin
 
         # Smoothly let abstraction go to 0 as the source basin
@@ -304,9 +304,9 @@ function formulate_flow!(
 
             # add reduction_factor on highest level
             if q > 0
-                q *= low_storage_factor(storage, inflow_id, 10.0)
+                q *= empty_basin_factor(inflow_id, p.basin, q)
             else
-                q *= low_storage_factor(storage, outflow_id, 10.0)
+                q *= empty_basin_factor(outflow_id, p.basin, q)
             end
 
             set_flow!(graph, inflow_edge, q)
@@ -334,7 +334,7 @@ function formulate_flow!(
         upstream_basin_id = upstream_edge.edge[1]
 
         if active[id.idx]
-            factor = low_storage_factor(storage, upstream_basin_id, 10.0)
+            factor = empty_basin_factor(upstream_basin_id, p.basin, first(storage))
             q = factor * table[id.idx](get_level(p, upstream_basin_id, t; storage)[2])
         else
             q = 0.0
@@ -508,7 +508,7 @@ function formulate_flow!(
         end
 
         inflow_id = inflow_edge.edge[1]
-        factor = low_storage_factor(storage, inflow_id, 10.0)
+        factor = empty_basin_factor(inflow_id, p.basin, flow_rate)
         q = flow_rate * factor
         q = clamp(q, min_flow_rate, max_flow_rate)
 
@@ -557,7 +557,7 @@ function formulate_flow!(
 
         inflow_id = inflow_edge.edge[1]
         q = flow_rate
-        q *= low_storage_factor(storage, inflow_id, 10.0)
+        q *= empty_basin_factor(inflow_id, p.basin, q)
 
         # No flow of outlet if source level is lower than target level
         outflow_edge = only(outflow_edges)

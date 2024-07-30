@@ -105,7 +105,9 @@ function Model(config::Config)::Model
     end
     @debug "Read database into memory."
 
-    storage = get_storages_from_levels(parameters.basin, state.level)
+    (; basin) = parameters
+    storage = get_storages_from_levels(basin, state.level)
+    @. basin.is_empty = storage < EMPTY_BASIN_THRESHOLD_LOW
 
     # Synchronize level with storage
     set_current_basin_properties!(parameters.basin, storage)

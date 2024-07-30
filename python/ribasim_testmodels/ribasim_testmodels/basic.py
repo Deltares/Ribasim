@@ -16,6 +16,7 @@ from ribasim.nodes import (
     outlet,
     pump,
     tabulated_rating_curve,
+    user_demand,
 )
 from shapely.geometry import Point
 
@@ -387,5 +388,95 @@ def outlet_model():
     # Setup the edges
     model.edge.add(model.level_boundary[1], model.outlet[2])
     model.edge.add(model.outlet[2], model.basin[3])
+
+    return model
+
+
+def crystal_model():
+    starttime = "2023-01-01"
+    endtime = "2024-01-01"
+    model = ribasim.Model(
+        starttime=starttime,
+        endtime=endtime,
+        crs="EPSG:4326",
+    )
+
+    rng = np.random.default_rng(seed=0)
+    size = 100
+    model.flow_boundary.add(
+        Node(1, Point(0.0, 0.0), name="Main"),
+        [
+            flow_boundary.Time(
+                time=pd.date_range(starttime, endtime, periods=size),
+                flow_rate=np.abs(rng.normal(34.0, 23.84, size)),
+            )
+        ],
+    )
+    model.flow_boundary.add(
+        Node(2, Point(-3.0, 0.0), name="Minor"),
+        [
+            flow_boundary.Time(
+                time=pd.date_range(starttime, endtime, periods=size),
+                flow_rate=np.abs(rng.normal(9.09, 4.14, size=size)),
+            )
+        ],
+    )
+
+    model.basin.add(
+        Node(3, Point(-0.75, -0.5), name="Div"),
+        [
+            basin.Profile(area=[1, 5, 10], level=[0, 3, 6]),
+            basin.State(level=[1.0]),
+            basin.Time(time=[starttime, endtime]),
+        ],
+    )
+
+    model.basin.add(
+        Node(4, Point(-1.5, -1), name="Conf"),
+        [
+            basin.Profile(area=[1, 5, 10], level=[0, 3, 6]),
+            basin.State(level=[1.0]),
+            basin.Time(time=[starttime, endtime]),
+        ],
+    )
+
+    model.tabulated_rating_curve.add(
+        Node(5, Point(-1.5, -1.5), name="maingate"),
+        [
+            tabulated_rating_curve.Static(
+                level=[0.0, 0.1],
+                flow_rate=[0.0, 150],
+            )
+        ],
+    )
+
+    model.user_demand.add(
+        Node(6, Point(-1.5, 1.0), name="IrrA"),
+        [
+            user_demand.Time(
+                demand=[0.0, 0.1, 0.1, 0.0],
+                return_factor=[0.0, 0.1, 0.2, 0.0],
+                min_level=[0.0, 0.0, 0.0, 0.0],
+                priority=[5, 1, 1, 5],
+                time=[starttime, "2023-04-01", "2023-07-01", "2023-12-01"],
+            )
+        ],
+    )
+
+    model.outlet.add(
+        Node(7, Point(-1.125, -0.75)),
+        [outlet.Static(flow_rate=[150], min_crest_level=[0.1])],
+    )
+
+    model.terminal.add(Node(8, Point(-1.5, -3.0), name="Terminal"))
+
+    model.edge.add(model.flow_boundary[1], model.basin[3])
+    model.edge.add(model.flow_boundary[2], model.basin[4])
+    model.edge.add(model.basin[3], model.user_demand[6])
+    model.edge.add(model.user_demand[6], model.basin[4])
+    model.edge.add(model.basin[3], model.outlet[7])
+    model.edge.add(model.outlet[7], model.basin[4])
+    model.edge.add(model.basin[4], model.tabulated_rating_curve[5])
+    model.edge.add(model.tabulated_rating_curve[5], model.terminal[8])
 
     return model

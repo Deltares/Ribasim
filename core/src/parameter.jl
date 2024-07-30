@@ -14,6 +14,9 @@ end
 
 NodeType.T(str::AbstractString) = NodeType.T(Symbol(str))
 
+const EMPTY_BASIN_THRESHOLD_LOW = 1.0
+const EMPTY_BASIN_THRESHOLD_HIGH = 10.0
+
 """
     NodeID(type::Union{NodeType.T, Symbol, AbstractString}, value::Integer, idx::Int)
     NodeID(type::Union{NodeType.T, Symbol, AbstractString}, value::Integer, db::DB)
@@ -265,6 +268,8 @@ end
     # Cache this to avoid recomputation
     current_level::T = zeros(length(node_id))
     current_area::T = zeros(length(node_id))
+    # Dried out basins
+    is_empty::Vector{Bool} = zeros(Bool, length(node_id))
     # Discrete values for interpolation
     storage_to_level::Vector{
         LinearInterpolationIntInv{
