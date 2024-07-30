@@ -109,7 +109,7 @@ For each subnetwork, an allocation problem is formulated, which is stored in the
 
 ## Data processing
 ### Deriving edge capacities
-Edge capacities are important constraints in the optimization problem. They set the limit for the flows between the edges. Therefore, the capacities of all the flow edges in the subnetworks are obtained. The capacity of an edge is given by the smallest `max_flow_rate` of the nodes connected to the edges if these nodes have such a value. The capacities are stored in a `SparseArray` object from `JuMP.jl` called `capacities`, indexed by a tuple of node IDs.
+Edge capacities are important constraints in the optimization problem. They set the limit for the flows between the nodes. Therefore, the capacities of all the flow edges in the subnetworks are obtained. The capacity of an edge is given by the smallest `max_flow_rate` of the nodes connected to the edges if these nodes have such a value. The capacities are stored in a `SparseArray` object from `JuMP.jl` called `capacities`, indexed by a tuple of node IDs.
 
 The function `get_capacity` obtains the capacities of the edges within a subnetwork given a subnetwork ID and the Ribasim model parameters `p`, if the sources of the subnetwork are valid (checked in function `valid_sources`).
 
