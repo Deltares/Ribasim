@@ -541,11 +541,9 @@ as input. Therefore we set the instantaneous flows as the mean flows as allocati
 """
 function set_initial_allocation_mean_flows!(integrator)::Nothing
     (; u, p, t) = integrator
-    (; allocation, graph, basin) = p
+    (; allocation, graph) = p
     (; mean_input_flows, mean_realized_flows, allocation_models) = allocation
     (; Δt_allocation) = allocation_models[1]
-    (; vertical_flux) = basin
-    vertical_flux = get_tmp(vertical_flux, 0)
 
     # At the time of writing water_balance! already
     # gets called once at the problem initialization, this
@@ -556,7 +554,7 @@ function set_initial_allocation_mean_flows!(integrator)::Nothing
         if edge[1] == edge[2]
             q = get_influx(basin, edge[1])
         else
-            q = get_flow(graph, edge..., 0)
+            q = get_flow(graph, edge..., parent(u))
         end
         # Multiply by Δt_allocation as averaging divides by this factor
         # in update_allocation!
@@ -569,7 +567,7 @@ function set_initial_allocation_mean_flows!(integrator)::Nothing
         if edge[1] == edge[2]
             mean_realized_flows[edge] = -u[edge[1].idx]
         else
-            q = get_flow(graph, edge..., 0)
+            q = get_flow(graph, edge..., parent(u))
             mean_realized_flows[edge] = q * Δt_allocation
         end
     end

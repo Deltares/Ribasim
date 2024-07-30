@@ -193,7 +193,7 @@ function set_flow!(graph, flow_idx::Int, q::Number, u)::Nothing
 end
 
 """
-Get the flow over the given edge (val is needed for get_tmp from ForwardDiff.jl).
+Get the flow over the given edge (val is needed for the LazyBufferCache from ForwardDiff.jl).
 """
 function get_flow(graph::MetaGraph, id_src::NodeID, id_dst::NodeID, val)::Number
     (; flow_dict) = graph[]
@@ -223,7 +223,7 @@ end
 
 function get_flow_prev(graph::MetaGraph, flow_idx::Int, val)
     # Note: Can be removed after https://github.com/Deltares/Ribasim/pull/1444
-    return get_tmp(graph[].flow_prev, val)[flow_idx]
+    return graph[].flow_prew[val][flow_idx]
 end
 
 """

@@ -544,7 +544,7 @@ struct PreallocationRef{T}
     idx::Int
 end
 
-get_value(ref::PreallocationRef, val) = get_tmp(ref.vector, val)[ref.idx]
+get_value(ref::PreallocationRef, val) = ref.vector[val][ref.idx]
 
 function set_value!(ref::PreallocationRef, value)::Nothing
     get_tmp(ref.vector, value)[ref.idx] = value

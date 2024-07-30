@@ -26,8 +26,12 @@ function get_jac_prototype(p::Parameters, t0, du0, u0)::SparseMatrixCSC{Float64,
     # update_jac_prototype!(jac_prototype, continuous_control, graph)
 
     p.pump.flow_rate[Num[]] .= zeros(Num, length(p.pump.node_id))
+    p.outlet.flow_rate[Num[]] .= zeros(Num, length(p.outlet.node_id))
     p.basin.current_level[Num[]] .= zeros(Num, length(p.basin.node_id))
+    p.basin.current_area[Num[]] .= zeros(Num, length(p.basin.node_id))
+    p.basin.vertical_flux[Num[]] .= zeros(Num, 4 * length(p.basin.node_id))
     p.graph[].flow[Num[]] .= zeros(Num, length(p.graph[].flow_dict))
+
     jac_sparsity = jacobian_sparsity((du, u) -> water_balance!(du, u, p, t0), du0, u0)
     jac_prototype = float.(jac_sparsity)
     display(jac_prototype)

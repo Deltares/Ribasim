@@ -115,7 +115,12 @@ function integrate_flows!(u, t, integrator)::Nothing
     for (edge, value) in allocation.mean_realized_flows
         if edge[1] !== edge[2]
             value +=
-                0.5 * (get_flow(graph, edge..., 0) + get_flow_prev(graph, edge..., 0)) * dt
+                0.5 *
+                (
+                    get_flow(graph, edge..., parent(u)) +
+                    get_flow_prev(graph, edge..., parent(u))
+                ) *
+                dt
             allocation.mean_realized_flows[edge] = value
         end
     end
@@ -136,7 +141,12 @@ function integrate_flows!(u, t, integrator)::Nothing
             # Horizontal flows
             allocation.mean_input_flows[edge] =
                 value +
-                0.5 * (get_flow(graph, edge..., 0) + get_flow_prev(graph, edge..., 0)) * dt
+                0.5 *
+                (
+                    get_flow(graph, edge..., parent(u)) +
+                    get_flow_prev(graph, edge..., parent(u))
+                ) *
+                dt
         end
     end
     copyto!(flow_prev, flow)
@@ -404,7 +414,8 @@ function apply_parameter_update!(parameter_update)::Nothing
 end
 
 function update_subgrid_level!(integrator)::Nothing
-    basin_level = get_tmp(integrator.p.basin.current_level, 0)
+    (; u, p) = integrator
+    basin_level = p.basin.current_level[u]
     subgrid = integrator.p.subgrid
     for (i, (index, interp)) in enumerate(zip(subgrid.basin_index, subgrid.interpolations))
         subgrid.level[i] = interp(basin_level[index])
@@ -424,7 +435,7 @@ function update_basin!(integrator)::Nothing
     (; storage) = u
     (; node_id, time, vertical_flux_from_input, vertical_flux, vertical_flux_prev) = basin
     t = datetime_since(integrator.t, integrator.p.starttime)
-    vertical_flux = get_tmp(vertical_flux, integrator.u)
+    vertical_flux = vertical_flux[u]
 
     rows = searchsorted(time.time, t)
     timeblock = view(time, rows)

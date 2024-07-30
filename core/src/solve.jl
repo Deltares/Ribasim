@@ -197,7 +197,7 @@ end
 function formulate_flow!(
     user_demand::UserDemand,
     p::Parameters,
-    storage::AbstractVector,
+    u::AbstractVector,
     t::Number,
 )::Nothing
     (; graph, allocation) = p
@@ -249,20 +249,20 @@ function formulate_flow!(
 
         # Smoothly let abstraction go to 0 as the source basin dries out
         inflow_id = inflow_edge.edge[1]
-        factor_basin = low_storage_factor(storage, inflow_id, 10.0)
+        factor_basin = low_storage_factor(u.storage, inflow_id, 10.0)
         q *= factor_basin
 
         # Smoothly let abstraction go to 0 as the source basin
         # level reaches its minimum level
-        _, source_level = get_level(p, inflow_id, t; storage)
+        _, source_level = get_level(p, inflow_id, t; u = parent(u))
         Δsource_level = source_level - min_level
         factor_level = reduction_factor(Δsource_level, 0.1)
         q *= factor_level
 
-        set_flow!(graph, inflow_edge, q)
+        set_flow!(graph, inflow_edge, q, parent(u))
 
         # Return flow is immediate
-        set_flow!(graph, outflow_edge, q * return_factor)
+        set_flow!(graph, outflow_edge, q * return_factor, parent(u))
     end
     return nothing
 end
@@ -548,8 +548,8 @@ function formulate_flow!(
         # No flow of outlet if source level is lower than target level
         outflow_edge = only(outflow_edges)
         outflow_id = outflow_edge.edge[2]
-        _, src_level = get_level(p, inflow_id, t; storage)
-        _, dst_level = get_level(p, outflow_id, t; storage)
+        _, src_level = get_level(p, inflow_id, t; u = parent(u))
+        _, dst_level = get_level(p, outflow_id, t; u = parent(u))
 
         if src_level !== nothing && dst_level !== nothing
             Δlevel = src_level - dst_level
