@@ -372,21 +372,6 @@ function get_allocation_model(p::Parameters, subnetwork_id::Int32)::AllocationMo
     end
 end
 
-function get_main_network_connections(
-    p::Parameters,
-    subnetwork_id::Int32,
-)::Vector{Tuple{NodeID, NodeID}}
-    (; allocation) = p
-    (; subnetwork_ids, main_network_connections) = allocation
-    idx = findsorted(subnetwork_ids, subnetwork_id)
-    if isnothing(idx)
-        error("Invalid allocation network ID $subnetwork_id.")
-    else
-        return main_network_connections[idx]
-    end
-    return
-end
-
 function set_control_params!(p::Parameters, node_id::NodeID, control_state::String)::Nothing
     (; discrete_control, allocation) = p
     (; control_mappings) = discrete_control
