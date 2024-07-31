@@ -11,9 +11,8 @@ end
 
 @testitem "bottom" begin
     using StructArrays: StructVector
-    using Ribasim: NodeID
+    using Ribasim: NodeID, FixedSizeLazyBufferCache
     using DataInterpolations: LinearInterpolation, integral, invert_integral
-    using PreallocationTools: LazyBufferCache
 
     # create two basins with different bottoms/levels
     area = [[0.01, 1.0], [0.01, 1.0]]
@@ -21,8 +20,8 @@ end
     level_to_area = LinearInterpolation.(area, level)
     storage_to_level = invert_integral.(level_to_area)
     demand = zeros(2)
-    current_level = LazyBufferCache(Ribasim.CallableInt(2))
-    current_area = LazyBufferCache(Ribasim.CallableInt(2))
+    current_level = FixedSizeLazyBufferCache(2)
+    current_area = FixedSizeLazyBufferCache(2)
     current_level[Float64[]] .= [2.0, 3.0]
     current_area[Float64[]] .= [2.0, 3.0]
     basin = Ribasim.Basin(;

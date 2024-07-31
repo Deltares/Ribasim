@@ -81,13 +81,10 @@ const ScalarInterpolation = LinearInterpolation{
     Float64,
 }
 
-struct CallableInt <: Function
-    i::Int
-end
-
-(callable_int::CallableInt)(input) = callable_int.i
-
-const LBC = LazyBufferCache{CallableInt}
+set_zero!(v) = fill!(v, zero(eltype(v)))
+const LBC = LazyBufferCache{Returns{Int}, typeof(set_zero!)}
+FixedSizeLazyBufferCache(len::Int)::LBC =
+    LazyBufferCache(Returns(len); initializer! = set_zero!)
 
 """
 Store information for a subnetwork used for allocation.
@@ -266,13 +263,13 @@ end
     outflow_ids::Vector{Vector{NodeID}} = [NodeID[]]
     # Vertical fluxes
     vertical_flux_from_input::V1 = zeros(length(node_id))
-    vertical_flux::LBC = LazyBufferCache(CallableInt(length(node_id)))
+    vertical_flux::LBC = FixedSizeLazyBufferCache(length(node_id))
     vertical_flux_prev::V2 = zeros(length(node_id))
     vertical_flux_integrated::V2 = zeros(length(node_id))
     vertical_flux_bmi::V2 = zeros(length(node_id))
     # Cache this to avoid recomputation
-    current_level::LBC = LazyBufferCache(CallableInt(length(node_id)))
-    current_area::LBC = LazyBufferCache(CallableInt(length(node_id)))
+    current_level::LBC = FixedSizeLazyBufferCache(length(node_id))
+    current_area::LBC = FixedSizeLazyBufferCache(length(node_id))
     # Discrete values for interpolation
     storage_to_level::Vector{
         LinearInterpolationIntInv{
@@ -438,7 +435,7 @@ continuous_control_type: one of None, ContinuousControl, PidControl
     inflow_edge::Vector{EdgeMetadata} = []
     outflow_edges::Vector{Vector{EdgeMetadata}} = []
     active::Vector{Bool} = fill(true, length(node_id))
-    flow_rate::LBC = LazyBufferCache(CallableInt(length(node_id)))
+    flow_rate::LBC = FixedSizeLazyBufferCache(length(node_id))
     min_flow_rate::Vector{Float64} = zeros(length(node_id))
     max_flow_rate::Vector{Float64} = fill(Inf, length(node_id))
     control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate}
@@ -492,7 +489,7 @@ continuous_control_type: one of None, ContinuousControl, PidControl
     inflow_edge::Vector{EdgeMetadata} = []
     outflow_edges::Vector{Vector{EdgeMetadata}} = []
     active::Vector{Bool} = fill(true, length(node_id))
-    flow_rate::LBC = LazyBufferCache(CallableInt(length(node_id)))
+    flow_rate::LBC = FixedSizeLazyBufferCache(length(node_id))
     min_flow_rate::Vector{Float64} = zeros(length(node_id))
     max_flow_rate::Vector{Float64} = fill(Inf, length(node_id))
     min_crest_level::Vector{Float64} = fill(-Inf, length(node_id))
@@ -641,7 +638,7 @@ dictionary from (node_id, control_state) to target flow rate
     proportional::Vector{ScalarInterpolation}
     integral::Vector{ScalarInterpolation}
     derivative::Vector{ScalarInterpolation}
-    error::LBC = LazyBufferCache(CallableInt(length(node_id)))
+    error::LBC = FixedSizeLazyBufferCache(length(node_id))
     controlled_basins::Vector{NodeID}
     control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate}
 end

@@ -97,7 +97,7 @@ function create_graph(db::DB, config::Config)::MetaGraph
         error("Incomplete connectivity in subnetwork")
     end
 
-    flow = LazyBufferCache(CallableInt(flow_counter))
+    flow = FixedSizeLazyBufferCache(flow_counter)
     flow_prev = fill(NaN, flow_counter)
     flow_integrated = zeros(flow_counter)
     flow_edges = [edge for edge in values(graph.edge_data) if edge.type == EdgeType.flow]
@@ -183,7 +183,7 @@ function set_flow!(graph, flow_idx::Int, q::Number, du)::Nothing
 end
 
 """
-Get the flow over the given edge (val is needed for the LazyBufferCache from ForwardDiff.jl).
+Get the flow over the given edge (du is needed for LazyBufferCache from ForwardDiff.jl).
 """
 function get_flow(graph::MetaGraph, id_src::NodeID, id_dst::NodeID, du)::Number
     (; flow_dict) = graph[]

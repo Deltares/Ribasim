@@ -397,8 +397,9 @@ function apply_parameter_update!(parameter_update)::Nothing
 end
 
 function update_subgrid_level!(integrator)::Nothing
-    (; u, p) = integrator
-    basin_level = p.basin.current_level[parent(u)]
+    (; p) = integrator
+    du = get_du(integrator)
+    basin_level = p.basin.current_level[parent(du)]
     subgrid = integrator.p.subgrid
     for (i, (index, interp)) in enumerate(zip(subgrid.basin_index, subgrid.interpolations))
         subgrid.level[i] = interp(basin_level[index])

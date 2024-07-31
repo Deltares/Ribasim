@@ -34,7 +34,7 @@ function BMI.get_value_ptr(model::Model, name::AbstractString)::AbstractVector{F
     if name == "basin.storage"
         model.integrator.u.storage
     elseif name == "basin.level"
-        model.integrator.p.basin.current_level[model.integrator.u]
+        model.integrator.p.basin.current_level[parent(model.integrator.u)]
     elseif name == "basin.infiltration"
         model.integrator.p.basin.vertical_flux_from_input.infiltration
     elseif name == "basin.drainage"
