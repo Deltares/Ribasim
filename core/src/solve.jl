@@ -152,11 +152,12 @@ function formulate_pid_control!(
 
     current_area = current_area[parent(du)]
     error = error[parent(du)]
+    all_nodes_active = p.all_nodes_active[]
 
     set_error!(pid_control, p, du, t)
 
     for (i, id) in enumerate(node_id)
-        if !active[i]
+        if !(active[i] || all_nodes_active)
             du.integral[i] = 0.0
             u.integral[i] = 0.0
             continue
@@ -212,7 +213,7 @@ function formulate_flow!(
     t::Number,
 )::Nothing
     (; graph, allocation) = p
-
+    all_nodes_active = p.all_nodes_active[]
     for (
         node_id,
         inflow_edge,
@@ -237,7 +238,7 @@ function formulate_flow!(
         user_demand.min_level,
         user_demand.demand_from_timeseries,
     )
-        if !active
+        if !(active || all_nodes_active)
             continue
         end
 
@@ -289,6 +290,7 @@ function formulate_flow!(
     t::Number,
 )::Nothing
     (; graph) = p
+    all_nodes_active = p.all_nodes_active[]
     (; node_id, active, resistance, max_flow_rate) = linear_resistance
     for id in node_id
         inflow_edge = linear_resistance.inflow_edge[id.idx]
@@ -297,7 +299,7 @@ function formulate_flow!(
         inflow_id = inflow_edge.edge[1]
         outflow_id = outflow_edge.edge[2]
 
-        if active[id.idx]
+        if (active[id.idx] || all_nodes_active)
             _, h_a = get_level(p, inflow_id, t, du)
             _, h_b = get_level(p, outflow_id, t, du)
             q_unlimited = (h_a - h_b) / resistance[id.idx]
@@ -324,6 +326,7 @@ function formulate_flow!(
     t::Number,
 )::Nothing
     (; graph) = p
+    all_nodes_active = p.all_nodes_active[]
     (; node_id, active, table, inflow_edge, outflow_edges) = tabulated_rating_curve
 
     for id in node_id
@@ -331,7 +334,7 @@ function formulate_flow!(
         downstream_edges = outflow_edges[id.idx]
         upstream_basin_id = upstream_edge.edge[1]
 
-        if active[id.idx]
+        if active[id.idx] || all_nodes_active
             factor = low_storage_factor(u.storage, upstream_basin_id, 10.0)
             q = factor * table[id.idx](get_level(p, upstream_basin_id, t, du)[2])
         else
@@ -403,6 +406,7 @@ function formulate_flow!(
         upstream_bottom,
         downstream_bottom,
     ) = manning_resistance
+    all_nodes_active = p.all_nodes_active[]
     for id in node_id
         inflow_edge = manning_resistance.inflow_edge[id.idx]
         outflow_edge = manning_resistance.outflow_edge[id.idx]
@@ -410,7 +414,7 @@ function formulate_flow!(
         inflow_id = inflow_edge.edge[1]
         outflow_id = outflow_edge.edge[2]
 
-        if !active[id.idx]
+        if !(active[id.idx] || all_nodes_active)
             continue
         end
 
@@ -461,11 +465,12 @@ function formulate_flow!(
     p::Parameters,
     t::Number,
 )::Nothing
-    (; graph) = p
+    (; graph, all_nodes_active) = p
+    all_nodes_active = p.all_nodes_active[]
     (; node_id, active, flow_rate, outflow_edges) = flow_boundary
 
     for id in node_id
-        if active[id.idx]
+        if active[id.idx] || all_nodes_active
             rate = flow_rate[id.idx](t)
             for outflow_edge in outflow_edges[id.idx]
 
@@ -485,6 +490,7 @@ function formulate_flow!(
     continuous_control_type_::ContinuousControlType.T,
 )::Nothing
     (; graph) = p
+    all_nodes_active = p.all_nodes_active[]
 
     for (
         node_id,
@@ -505,7 +511,8 @@ function formulate_flow!(
         pump.max_flow_rate,
         pump.continuous_control_type,
     )
-        if !active || (continuous_control_type != continuous_control_type_)
+        if !(active || all_nodes_active) ||
+           (continuous_control_type != continuous_control_type_)
             continue
         end
 
@@ -532,6 +539,7 @@ function formulate_flow!(
     continuous_control_type_::ContinuousControlType.T,
 )::Nothing
     (; graph) = p
+    all_nodes_active = p.all_nodes_active[]
 
     for (
         node_id,
@@ -554,7 +562,8 @@ function formulate_flow!(
         outlet.continuous_control_type,
         outlet.min_crest_level,
     )
-        if !active || (continuous_control_type != continuous_control_type_)
+        if !(active || all_nodes_active) ||
+           (continuous_control_type != continuous_control_type_)
             continue
         end
 

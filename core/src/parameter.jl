@@ -769,4 +769,5 @@ const ModelGraph = MetaGraph{
     level_demand::LevelDemand
     flow_demand::FlowDemand
     subgrid::Subgrid
+    all_nodes_active::Base.RefValue{Bool} = Ref(false)
 end

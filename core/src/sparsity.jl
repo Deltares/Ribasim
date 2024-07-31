@@ -33,7 +33,10 @@ function get_jac_prototype(p::Parameters, t0, du0, u0)::SparseMatrixCSC{Float64,
     p.basin.vertical_flux[Num[]] .= zeros(Num, 4 * length(p.basin.node_id))
     p.graph[].flow[Num[]] .= zeros(Num, length(p.graph[].flow_dict))
 
+    p.all_nodes_active[] = true
     jac_sparsity = jacobian_sparsity((du, u) -> water_balance!(du, u, p, t0), du0, u0)
+    p.all_nodes_active[] = false
+
     jac_prototype_symbolic = float.(jac_sparsity)
     display(jac_prototype_symbolic)
     display(jac_prototype)
