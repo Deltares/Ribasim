@@ -94,13 +94,82 @@ def test_get_var_shape(libribasim, basic, tmp_path):
     assert_array_almost_equal(actual_shape, expected_shape)
 
 
-def test_get_value_ptr(libribasim, basic, tmp_path):
+def test_get_value_ptr_basin(libribasim, basic, tmp_path):
     basic.write(tmp_path / "ribasim.toml")
     config_file = str(tmp_path / "ribasim.toml")
     libribasim.initialize(config_file)
+
+    # Storage
     actual_volume = libribasim.get_value_ptr("basin.storage")
     expected_volume = np.array([1.0, 1.0, 1.0, 1.0])
     assert_array_almost_equal(actual_volume, expected_volume)
+
+    # Level
+    actual_level = libribasim.get_value_ptr("basin.level")
+    expected_level = np.array(4 * [0.04471158417652035])
+    assert_array_almost_equal(actual_level, expected_level)
+
+
+def test_get_value_ptr_subgrid(libribasim, two_basin, tmp_path):
+    two_basin.write(tmp_path / "ribasim.toml")
+    config_file = str(tmp_path / "ribasim.toml")
+    libribasim.initialize(config_file)
+
+    # Run model until subgrid level is updated
+    libribasim.update_until(86400.0)
+
+    # Subgrid level
+    actual_subgrid_level = libribasim.get_value_ptr("basin.subgrid_level")
+    expected_subgrid_level = np.array([np.nan, np.nan])
+    assert_array_almost_equal(actual_subgrid_level, expected_subgrid_level)
+
+
+def test_get_value_ptr_basin_forcing(libribasim, leaky_bucket, tmp_path):
+    leaky_bucket.write(tmp_path / "ribasim.toml")
+    config_file = str(tmp_path / "ribasim.toml")
+    libribasim.initialize(config_file)
+
+    # Infiltration (instantaneous)
+    actual_infiltration = libribasim.get_value_ptr("basin.infiltration")
+    expected_infiltration = np.array([0.0])
+    assert_array_almost_equal(actual_infiltration, expected_infiltration)
+
+    # Drainage (instantaneous)
+    actual_drainage = libribasim.get_value_ptr("basin.drainage")
+    expected_drainage = np.array([0.003])
+    assert_array_almost_equal(actual_drainage, expected_drainage)
+
+    # Run model for a while to build up integrated forcing
+    libribasim.update_until(60.0)
+
+    # Infiltration (integrated)
+    actual_infiltration = libribasim.get_value_ptr("basin.infiltration_integrated")
+    expected_infiltration = np.array([0.0])
+    assert_array_almost_equal(actual_infiltration, expected_infiltration)
+
+    # Drainage (integrated)
+    actual_drainage = libribasim.get_value_ptr("basin.drainage_integrated")
+    expected_drainage = np.array([0.003 * 60.0])
+    assert_array_almost_equal(actual_drainage, expected_drainage)
+
+
+def test_get_value_ptr_allocation(libribasim, user_demand, tmp_path):
+    user_demand.write(tmp_path / "ribasim.toml")
+    config_file = str(tmp_path / "ribasim.toml")
+    libribasim.initialize(config_file)
+
+    # Demand
+    actual_demand = libribasim.get_value_ptr("user_demand.demand")
+    expected_demand = np.array([1e-4, 0.0])
+    assert_array_almost_equal(actual_demand, expected_demand)
+
+    # Run model for a while to build up realized
+    libribasim.update_until(60.0)
+
+    # Realized
+    actual_realized = libribasim.get_value_ptr("user_demand.realized")
+    expected_realized = np.array([1e-4 * 60.0, 0.0])
+    assert_array_almost_equal(actual_realized, expected_realized)
 
 
 def test_err_unknown_var(libribasim, basic, tmp_path):

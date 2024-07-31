@@ -36,6 +36,22 @@ import ribasim
 __all__ = ("TableModel",)
 
 delimiter = " / "
+node_names_snake_case = [
+    "basin",
+    "continuous_control",
+    "discrete_control",
+    "flow_boundary",
+    "flow_demand",
+    "level_boundary",
+    "level_demand",
+    "linear_resistance",
+    "manning_resistance",
+    "outlet",
+    "pid_control",
+    "pump",
+    "tabulated_rating_curve",
+    "user_demand",
+]
 
 gpd.options.io_engine = "pyogrio"
 
@@ -181,11 +197,19 @@ class TableModel(FileModel, Generic[TableT]):
         NodeSchema -> Schema
         TabularRatingCurveStaticSchema -> TabularRatingCurve / Static
         """
-        names: list[str] = re.sub("([A-Z]+)", r" \1", str(cls.tableschema())).split()
-        if len(names) > 2:
-            return f"{''.join(names[:-2])}{delimiter}{names[-2].lower()}"
-        else:
+        cls_string = str(cls.tableschema())
+        names: list[str] = re.sub("([A-Z]+)", r" \1", cls_string).split()[:-1]
+        names_lowered = [name.lower() for name in names]
+        if len(names) == 1:
             return names[0]
+        else:
+            for n in range(1, len(names_lowered) + 1):
+                node_name_snake_case = "_".join(names_lowered[:n])
+                if node_name_snake_case in node_names_snake_case:
+                    node_name = "".join(names[:n])
+                    table_name = "_".join(names_lowered[n:])
+                    return node_name + delimiter + table_name
+            raise ValueError(f"Found no known node name in {cls_string}")
 
     @model_validator(mode="before")
     @classmethod

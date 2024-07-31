@@ -63,6 +63,7 @@ website:
         - reference/index.qmd
         - reference/usage.qmd
         - reference/validation.qmd
+        - reference/allocation.qmd
         - reference/python/index.qmd
         - reference/test-models.qmd
         - section: "Nodes"
@@ -90,6 +91,7 @@ website:
         - dev/addnode.qmd
         - dev/python.qmd
         - dev/qgis.qmd
+        - dev/allocation.qmd
         - dev/bmi.qmd
         - dev/ci.qmd
         - dev/release.qmd

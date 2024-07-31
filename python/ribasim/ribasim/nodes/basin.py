@@ -15,13 +15,13 @@ from ribasim.schemas import (
 )
 
 __all__ = [
-    "Static",
-    "Time",
-    "State",
-    "Profile",
-    "Subgrid",
     "Area",
     "Concentration",
+    "Profile",
+    "State",
+    "Static",
+    "Subgrid",
+    "Time",
 ]
 
 
