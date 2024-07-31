@@ -1,17 +1,13 @@
-package Ribasim.buildTypes
+package Templates
 
 import jetbrains.buildServer.configs.kotlin.*
 
-object Linux_1 : Template({
+object LinuxAgent : Template({
     id("Ribasim_Linux")
     name = "Ribasim_Linux"
     description = "Template for agent that uses Linux OS"
 
     publishArtifacts = PublishMode.SUCCESSFUL
-
-    vcs {
-        cleanCheckout = true
-    }
 
     requirements {
         equals("teamcity.agent.jvm.os.name", "Linux", "RQ_418")

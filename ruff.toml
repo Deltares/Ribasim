@@ -17,7 +17,7 @@ ignore = [
     "PD002",
     "PD901",
 ]
-fixable = ["I"]
+fixable = ["ALL"]
 
 [lint.pydocstyle]
 convention = "numpy"

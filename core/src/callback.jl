@@ -314,7 +314,7 @@ Get a value for a condition. Currently supports getting levels from basins and f
 from flow boundaries.
 """
 function get_value(subvariable::NamedTuple, p::Parameters, u::AbstractVector, t::Float64)
-    (; flow_boundary, level_boundary) = p
+    (; flow_boundary, level_boundary, basin) = p
     (; listen_node_id, look_ahead, variable, variable_ref) = subvariable
 
     if !iszero(variable_ref.idx)
@@ -338,6 +338,8 @@ function get_value(subvariable::NamedTuple, p::Parameters, u::AbstractVector, t:
             error("Flow condition node $listen_node_id is not a flow boundary.")
         end
 
+    elseif startswith(variable, "concentration_external.")
+        value = basin.concentration_external[listen_node_id.idx][variable](t)
     else
         error("Unsupported condition variable $variable.")
     end
@@ -362,21 +364,6 @@ function get_allocation_model(p::Parameters, subnetwork_id::Int32)::AllocationMo
     else
         return allocation_models[idx]
     end
-end
-
-function get_main_network_connections(
-    p::Parameters,
-    subnetwork_id::Int32,
-)::Vector{Tuple{NodeID, NodeID}}
-    (; allocation) = p
-    (; subnetwork_ids, main_network_connections) = allocation
-    idx = findsorted(subnetwork_ids, subnetwork_id)
-    if isnothing(idx)
-        error("Invalid allocation network ID $subnetwork_id.")
-    else
-        return main_network_connections[idx]
-    end
-    return
 end
 
 function set_control_params!(p::Parameters, node_id::NodeID, control_state::String)::Nothing

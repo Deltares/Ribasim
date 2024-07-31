@@ -1,11 +1,12 @@
 package Ribasim.buildTypes
 
+import Templates.GithubCommitStatusIntegration
 import jetbrains.buildServer.configs.kotlin.*
 import jetbrains.buildServer.configs.kotlin.buildSteps.script
 import jetbrains.buildServer.configs.kotlin.triggers.vcs
 
 object GenerateTestmodels : BuildType({
-    templates(GitHubIntegrationTemplate)
+    templates(GithubCommitStatusIntegration)
     name = "Generate Testmodels"
 
     artifactRules = """ribasim\generated_testmodels => generated_testmodels.zip"""
@@ -13,6 +14,7 @@ object GenerateTestmodels : BuildType({
 
     vcs {
         cleanCheckout = true
+        root(Ribasim.vcsRoots.Ribasim, ". => ribasim")
     }
 
     steps {
