@@ -1,13 +1,9 @@
 using ReTestItems, Ribasim
 
-path = pwd()
-print(path)
 if in("integration", ARGS)
-    runtests(
-        "../integration_test";
-        nworkers = min(4, Sys.CPU_THREADS ÷ 2),
-        nworker_threads = 2,
-    )
+    test_type = "../integration_test"
 else
-    runtests("../test"; nworkers = min(4, Sys.CPU_THREADS ÷ 2), nworker_threads = 2)
+    test_type = "../test"
 end
+
+runtests(test_type; nworkers = min(4, Sys.CPU_THREADS ÷ 2), nworker_threads = 2)
