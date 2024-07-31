@@ -32,7 +32,7 @@ The update of allocation (`update_allocation`) is repeating and spread into thre
 
 - Updating the mean flows. The mean flow data is only used only for output, not used by any internal functions.
 - ["Collect demand"](https://deltares.github.io/Ribasim/concept/allocation.html#the-high-level-algorithm). This step initialize and solve the optimization problems that collects the demand from the subnetworks.
-- ["Allocate"](https://deltares.github.io/Ribasim/concept/allocation.html#the-high-level-algorithm). This step solves the optimization problems that allocates the demand to the subnetworks.
+- ["Allocate"](https://deltares.github.io/Ribasim/concept/allocation.html#the-high-level-algorithm). This step solves the optimization problems that allocates the demand. For the main network this step allocates to the subnetworks and demand nodes that are in the main network. For the subnetwork this step allocates to the demand nodes.
 
 The steps "collect demand" and "allocate" correspond to the function `collect_demand` and `allocate_demand` in the code.
 
@@ -178,9 +178,9 @@ Initialization of the data structure is in `allocation_init.jl`, and updating, r
 ## Preparing the optimization problem
 ### Setting up the objective function
 The optimization objective is the sum of three quadratic error terms.
-The quadratic terms are defined with `add_objective_term` function.
+The quadratic terms are defined with the `add_objective_term` function.
 
-In `set_objective_priority`, it sets the objective function for a given priority with the following steps:
+Function `set_objective_priority` sets the objective function based on the main network for a given priority with the following steps:
 
 - First, it treats the subnetworks as user demand nodes and adds the quadratic terms of the main network.
 - Then it loops over all the edges in allocation.
@@ -192,9 +192,9 @@ In the function `set_initial_values`, the following capacities and demands are i
 
 - Source capacities come from the physical layer
 - Edge capacities derived from the maximum capacities between the connected nodes
-- Basin capacities
-- Buffer capacities
-- User demands fractional return flow
+- Basin capacities come from the disk of water above the max level set by a level demand node
+- Buffer capacities start at 0
+- User demands fractional return flow starts at 0
 - Demands either come from the Ribasim model or are set via the BMI
 
 As shown below, these functions set the capacities to the corresponding initial values.
@@ -240,6 +240,7 @@ This function is called separately and thus not part of the `set_initial_values`
 ### Updating capacities
 While optimizing a given priority, the function `set_capacities_flow_demand_outflow` updates the constraints `flow_demand_outflow`.
 If the current priority is the same as the priority of the flow demand, constraints will be infinite, otherwise 0.
+At priorities where there is no flow demand, flow can go freely trough the node. When there is flow demand, flow is directed into the buffer. This is to make sure that flow can go to the node with the flow demand, even though the flow might have nowhere to go after that node.
 
 The optimization objective function is updated based on the new demands and the given priority.
 
