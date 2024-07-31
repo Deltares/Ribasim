@@ -114,7 +114,7 @@ function Model(config::Config)::Model
     du0 = zero(u0)
 
     # Synchronize level with storage
-    set_current_basin_properties!(parameters.basin, u0)
+    set_current_basin_properties!(parameters.basin, u0, du0)
 
     # for Float32 this method allows max ~1000 year simulations without accuracy issues
     t_end = seconds_since(config.endtime, config.starttime)

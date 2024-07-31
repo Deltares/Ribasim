@@ -90,7 +90,7 @@ function basin_state_table(
     (; basin) = model.integrator.p
 
     # ensure the levels are up-to-date
-    set_current_basin_properties!(basin, model.integrator.u)
+    set_current_basin_properties!(basin, model.integrator.u, get_du(model.integrator))
 
     return (; node_id = Int32.(basin.node_id), level = basin.current_level[Float64[]])
 end

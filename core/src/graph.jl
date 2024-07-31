@@ -171,59 +171,46 @@ function Base.iterate(iter::OutNeighbors, state = 1)
     return label_out, state
 end
 
-"""
-Set the given flow q over the edge between the given nodes.
-"""
-function set_flow!(graph::MetaGraph, id_src::NodeID, id_dst::NodeID, q::Number)::Nothing
-    (; flow_dict) = graph[]
-    flow_idx = flow_dict[(id_src, id_dst)]
-    set_flow!(graph, flow_idx, q)
+function set_flow!(graph::MetaGraph, edge_metadata::EdgeMetadata, q::Number, du)::Nothing
+    set_flow!(graph, edge_metadata.flow_idx, q, du)
     return nothing
 end
 
-function set_flow!(graph::MetaGraph, edge_metadata::EdgeMetadata, q::Number, u)::Nothing
-    set_flow!(graph, edge_metadata.flow_idx, q, u)
-    return nothing
-end
-
-function set_flow!(graph, flow_idx::Int, q::Number, u)::Nothing
+function set_flow!(graph, flow_idx::Int, q::Number, du)::Nothing
     (; flow) = graph[]
-    flow[Ref(q)][flow_idx] = q
+    flow[parent(du)][flow_idx] = q
     return nothing
 end
 
 """
 Get the flow over the given edge (val is needed for the LazyBufferCache from ForwardDiff.jl).
 """
-function get_flow(graph::MetaGraph, id_src::NodeID, id_dst::NodeID, val)::Number
+function get_flow(graph::MetaGraph, id_src::NodeID, id_dst::NodeID, du)::Number
     (; flow_dict) = graph[]
     flow_idx = flow_dict[id_src, id_dst]
-    return get_flow(graph, flow_idx, val)
+    return get_flow(graph, flow_idx, du)
 end
 
-function get_flow(graph, edge_metadata::EdgeMetadata, u)::Number
-    return get_flow(graph, edge_metadata.flow_idx, u)
+function get_flow(graph, edge_metadata::EdgeMetadata, du)::Number
+    return get_flow(graph, edge_metadata.flow_idx, du)
 end
 
-function get_flow(graph::MetaGraph, flow_idx::Int, u)
-    return graph[].flow[u][flow_idx]
+function get_flow(graph::MetaGraph, flow_idx::Int, du)
+    return graph[].flow[parent(du)][flow_idx]
 end
 
-function get_flow_prev(graph, id_src::NodeID, id_dst::NodeID, val)::Number
-    # Note: Can be removed after https://github.com/Deltares/Ribasim/pull/1444
+function get_flow_prev(graph, id_src::NodeID, id_dst::NodeID, du)::Number
     (; flow_dict) = graph[]
     flow_idx = flow_dict[id_src, id_dst]
-    return get_flow(graph, flow_idx, val)
+    return get_flow(graph, flow_idx, du)
 end
 
-function get_flow_prev(graph, edge_metadata::EdgeMetadata, val)::Number
-    # Note: Can be removed after https://github.com/Deltares/Ribasim/pull/1444
-    return get_flow_prev(graph, edge_metadata.flow_idx, val)
+function get_flow_prev(graph, edge_metadata::EdgeMetadata, du)::Number
+    return get_flow_prev(graph, edge_metadata.flow_idx, du)
 end
 
-function get_flow_prev(graph::MetaGraph, flow_idx::Int, val)
-    # Note: Can be removed after https://github.com/Deltares/Ribasim/pull/1444
-    return graph[].flow_prev[val][flow_idx]
+function get_flow_prev(graph::MetaGraph, flow_idx::Int, du)
+    return graph[].flow_prev[parent(du)][flow_idx]
 end
 
 """

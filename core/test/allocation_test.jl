@@ -286,7 +286,7 @@ end
     stage_2 = 2 * Δt_allocation .<= t .<= 9 * Δt_allocation
     stage_2_start_idx = findfirst(stage_2)
     u_stage_2(τ) = storage[stage_2_start_idx] + ϕ * (τ - t[stage_2_start_idx])
-    @test storage[stage_2] ≈ u_stage_2.(t[stage_2]) rtol = 1e-2
+    @test storage[stage_2] ≈ u_stage_2.(t[stage_2]) rtol = 1e-4
 
     # In this section the basin enters its surplus stage,
     # even though initially the level is below the maximum level. This is because the simulation
@@ -310,7 +310,7 @@ end
     stage_5 = 16 * Δt_allocation .<= t
     stage_5_start_idx = findfirst(stage_5)
     u_stage_5(τ) = storage[stage_5_start_idx]
-    @test storage[stage_5] ≈ u_stage_5.(t[stage_5]) rtol = 1e-2
+    @test storage[stage_5] ≈ u_stage_5.(t[stage_5]) rtol = 1e-4
 
     # Isolated LevelDemand + Basin pair to test optional min_level
     problem = allocation.allocation_models[2].problem

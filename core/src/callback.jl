@@ -92,8 +92,9 @@ function integrate_flows!(u, t, integrator)::Nothing
     (; flow, flow_dict, flow_prev, flow_integrated) = graph[]
     (; vertical_flux, vertical_flux_prev, vertical_flux_integrated, vertical_flux_bmi) =
         basin
-    flow = flow[parent(u)]
-    vertical_flux = vertical_flux[parent(u)]
+    du = get_du(integrator)
+    flow = flow[parent(du)]
+    vertical_flux = vertical_flux[parent(du)]
     if !isempty(flow_prev) && isnan(flow_prev[1])
         # If flow_prev is not populated yet
         copyto!(flow_prev, flow)
@@ -116,10 +117,7 @@ function integrate_flows!(u, t, integrator)::Nothing
         if edge[1] !== edge[2]
             value +=
                 0.5 *
-                (
-                    get_flow(graph, edge..., parent(u)) +
-                    get_flow_prev(graph, edge..., parent(u))
-                ) *
+                (get_flow(graph, edge..., du) + get_flow_prev(graph, edge..., du)) *
                 dt
             allocation.mean_realized_flows[edge] = value
         end
@@ -142,10 +140,7 @@ function integrate_flows!(u, t, integrator)::Nothing
             allocation.mean_input_flows[edge] =
                 value +
                 0.5 *
-                (
-                    get_flow(graph, edge..., parent(u)) +
-                    get_flow_prev(graph, edge..., parent(u))
-                ) *
+                (get_flow(graph, edge..., du) + get_flow_prev(graph, edge..., du)) *
                 dt
         end
     end
@@ -225,6 +220,7 @@ function apply_discrete_control!(u, t, integrator)::Nothing
     (; p) = integrator
     (; discrete_control) = p
     (; node_id) = discrete_control
+    du = get_du(integrator)
 
     # Loop over the discrete control nodes to determine their truth state
     # and detect possible control state changes
@@ -243,7 +239,7 @@ function apply_discrete_control!(u, t, integrator)::Nothing
 
         # Loop over the variables listened to by this discrete control node
         for compound_variable in compound_variables
-            value = compound_variable_value(compound_variable, p, u, t)
+            value = compound_variable_value(compound_variable, p, du, t)
 
             # The thresholds the value of this variable is being compared with
             greater_thans = compound_variable.greater_than
@@ -323,12 +319,12 @@ end
 Get a value for a condition. Currently supports getting levels from basins and flows
 from flow boundaries.
 """
-function get_value(subvariable::NamedTuple, p::Parameters, u::AbstractVector, t::Float64)
+function get_value(subvariable::NamedTuple, p::Parameters, du::AbstractVector, t::Float64)
     (; flow_boundary, level_boundary, basin) = p
     (; listen_node_id, look_ahead, variable, variable_ref) = subvariable
 
     if !iszero(variable_ref.idx)
-        return get_value(variable_ref, u)
+        return get_value(variable_ref, du)
     end
 
     if variable == "level"
@@ -357,10 +353,10 @@ function get_value(subvariable::NamedTuple, p::Parameters, u::AbstractVector, t:
     return value
 end
 
-function compound_variable_value(compound_variable::CompoundVariable, p, u, t)
-    value = zero(eltype(u))
+function compound_variable_value(compound_variable::CompoundVariable, p, du, t)
+    value = zero(eltype(du))
     for subvariable in compound_variable.subvariables
-        value += subvariable.weight * get_value(subvariable, p, u, t)
+        value += subvariable.weight * get_value(subvariable, p, du, t)
     end
     return value
 end

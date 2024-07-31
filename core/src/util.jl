@@ -229,14 +229,14 @@ end
 """
 Get the current water level of a node ID.
 The ID can belong to either a Basin or a LevelBoundary.
-storage: tells ForwardDiff whether this call is for differentiation or not
+du: tells ForwardDiff whether this call is for differentiation or not
 """
-function get_level(p::Parameters, node_id::NodeID, t::Number; u = 0)::Tuple{Bool, Number}
+function get_level(p::Parameters, node_id::NodeID, t::Number, du)::Tuple{Bool, Number}
     (; basin, level_boundary) = p
     if node_id.type == NodeType.Basin
         # The edge metadata is only used to obtain the Basin index
         # in case node_id is for a Basin
-        current_level = basin.current_level[parent(u)]
+        current_level = basin.current_level[parent(du)]
         return true, current_level[node_id.idx]
     elseif node_id.type == NodeType.LevelBoundary
         return true, level_boundary.level[node_id.idx](t)
@@ -355,9 +355,17 @@ and is constant outside this interval.
 """
 function reduction_factor(x::T, threshold::Real)::T where {T <: Real}
     if isinf(x)
-        one(T)
+        (sign(x) + one(T)) / 2
     else
-        clamp(x + sin(π * (2x - 1)) / (2π), zero(T), one(T))
+        x_scaled = x / threshold
+        0.5 * (
+            0.5 *
+            (sign(threshold - x) + one(T)) *
+            (sign(x) + one(T)) *
+            ((-2 * x_scaled + 3) * x_scaled^2) +
+            sign(x - threshold) +
+            one(T)
+        )
     end
 end
 
@@ -537,8 +545,8 @@ function get_influx(basin::Basin, node_id::NodeID)::Float64
 end
 
 function get_influx(basin::Basin, basin_idx::Int; prev::Bool = false)::Float64
-    (; vertical_flux, vertical_flux_prev) = basin
-    vertical_flux = wrap_forcing(vertical_flux[Float64[]])
+    (; vertical_flux, vertical_flux_prev, vertical_flux_from_input) = basin
+    vertical_flux = wrap_forcing(vertical_flux[parent(vertical_flux_from_input)])
     flux_vector = prev ? vertical_flux_prev : vertical_flux
     (; precipitation, evaporation, drainage, infiltration) = flux_vector
     return precipitation[basin_idx] - evaporation[basin_idx] + drainage[basin_idx] -
@@ -563,13 +571,14 @@ function set_initial_allocation_mean_flows!(integrator)::Nothing
     # At the time of writing water_balance! already
     # gets called once at the problem initialization, this
     # one is just to make sure.
-    water_balance!(get_du(integrator), u, p, t)
+    du = get_du(integrator)
+    water_balance!(du, u, p, t)
 
     for edge in keys(mean_input_flows)
         if edge[1] == edge[2]
             q = get_influx(p.basin, edge[1])
         else
-            q = get_flow(graph, edge..., parent(u))
+            q = get_flow(graph, edge..., du)
         end
         # Multiply by Δt_allocation as averaging divides by this factor
         # in update_allocation!
@@ -582,7 +591,7 @@ function set_initial_allocation_mean_flows!(integrator)::Nothing
         if edge[1] == edge[2]
             mean_realized_flows[edge] = -u[edge[1].idx]
         else
-            q = get_flow(graph, edge..., parent(u))
+            q = get_flow(graph, edge..., du)
             mean_realized_flows[edge] = q * Δt_allocation
         end
     end
@@ -684,13 +693,16 @@ function set_discrete_controlled_variable_refs!(p::Parameters)::Nothing
 
                 # References to scalar parameters
                 for (i, parameter_update) in enumerate(scalar_update)
-                    field = getfield(node, parameter_update.name)[Float64[]]
+                    field = getfield(node, parameter_update.name)
+                    if field isa LBC
+                        field = field[Float64[]]
+                    end
                     scalar_update[i] = @set parameter_update.ref = Ref(field, node_id.idx)
                 end
 
                 # References to interpolation parameters
                 for (i, parameter_update) in enumerate(itp_update)
-                    field = get_tmp(getfield(node, parameter_update.name), 0)
+                    field = getfield(node, parameter_update.name)
                     itp_update[i] = @set parameter_update.ref = Ref(field, node_id.idx)
                 end
 
