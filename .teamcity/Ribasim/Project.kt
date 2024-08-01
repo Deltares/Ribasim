@@ -6,7 +6,7 @@ import Ribasim.buildTypes.Ribasim_MakeQgisPlugin
 import Ribasim.vcsRoots.Ribasim
 import Ribasim_Linux.RibasimLinuxProject
 import Ribasim_Windows.RibasimWindowsProject
-import Testbench.IntegrationTest_Windows
+import Testbench.RibasimTestbench
 import Templates.*
 import jetbrains.buildServer.configs.kotlin.Project
 import jetbrains.buildServer.configs.kotlin.projectFeatures.activeStorage
@@ -62,5 +62,5 @@ object Project : Project({
 
     subProject(RibasimLinuxProject)
     subProject(RibasimWindowsProject)
-    subProject(IntegrationTest_Windows)
+    subProject(RibasimTestbench)
 })
