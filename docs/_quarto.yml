@@ -12,9 +12,9 @@ website:
       - text: "Overview"
         file: index.qmd
       - text: "How-to guides"
-        file: guide/index.qmd
+        file: guide/examples.ipynb
       - text: "Concepts"
-        file: concept/index.qmd
+        file: concept/concept.qmd
       - text: "Reference"
         file: reference/index.qmd
     right:
@@ -33,14 +33,12 @@ website:
 
     - title: "How-to guides"
       contents:
-        - guide/index.qmd
         - guide/examples.ipynb
         - guide/qgis.qmd
         - guide/coupling.qmd
 
     - title: "Concepts"
       contents:
-        - concept/index.qmd
         - concept/concept.qmd
         - section: "Numerics"
           contents:
@@ -57,7 +55,6 @@ website:
         - reference/index.qmd
         - reference/usage.qmd
         - reference/validation.qmd
-        - reference/allocation.qmd
         - reference/python/index.qmd
         - reference/test-models.qmd
         - section: "Nodes"
