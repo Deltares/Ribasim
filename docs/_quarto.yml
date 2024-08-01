@@ -75,7 +75,7 @@ website:
             - reference/node/continuous-control.qmd
             - reference/node/pid-control.qmd
 
-    - title: "Dev docs"
+    - title: "Contributing"
       contents:
         - dev/index.qmd
         - dev/core.qmd
