@@ -61,4 +61,5 @@ object Project : Project({
 
     subProject(RibasimLinuxProject)
     subProject(RibasimWindowsProject)
+    subProject(Testbench)
 })

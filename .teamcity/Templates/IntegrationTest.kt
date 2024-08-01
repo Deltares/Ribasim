@@ -1,0 +1,60 @@
+package Templates
+
+import jetbrains.buildServer.configs.kotlin.Template
+import jetbrains.buildServer.configs.kotlin.buildFeatures.XmlReport
+import jetbrains.buildServer.configs.kotlin.buildFeatures.xmlReport
+import jetbrains.buildServer.configs.kotlin.buildSteps.script
+
+fun generateIntegrationTestHeader(platformOs: String): String {
+    if (platformOs == "Linux") {
+        return ""
+    }
+
+    return ""
+}
+
+open class IntegrationTest (platformOs: String) : Template() {
+    init {
+        name = "IntegrationTest_${platformOs}_Template"
+
+        artifactRules = """
+
+
+        """.trimIndent()
+
+        vcs {
+            root(Ribasim.vcsRoots.Ribasim, ". => ribasim")
+            cleanCheckout = true
+        }
+
+        val header = generateIntegrationTestHeader(platformOs)
+
+        steps {
+            script {
+                name = "Set up pixi"
+                id = "RUNNER_1505"
+                workingDir = "ribasim"
+                scriptContent = header +
+                """
+                pixi --version
+                pixi run install-ci
+                """.trimIndent()
+            }
+            script {
+                name = "Run integration tests"
+                id = "RUNNER_1505"
+                workingDir = "ribasim"
+                scriptContent = header +
+                """
+                pixi run model-integration-test
+                """.trimIndent()
+            }
+        }
+
+        failureConditions {
+            executionTimeoutMin = 30
+        }
+    }
+}
+
+object IntegrationTestWindows : IntegrationTest("Windows)
