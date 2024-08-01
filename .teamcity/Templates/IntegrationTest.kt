@@ -42,7 +42,7 @@ open class IntegrationTest (platformOs: String) : Template() {
             }
             script {
                 name = "Run integration tests"
-                id = "RUNNER_1505"
+                id = "RUNNER_1507"
                 workingDir = "ribasim"
                 scriptContent = header +
                 """
