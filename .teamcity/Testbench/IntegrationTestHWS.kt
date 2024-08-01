@@ -12,14 +12,12 @@ object RibasimTestbench : Project ({
 
     buildType(IntegrationTest_Windows)
 
-    template(WindowsAgent)
-    template(BuildWindows)
     template(IntegrationTestWindows)
 })
 
 object IntegrationTest_Windows : BuildType({
     templates(WindowsAgent, GithubCommitStatusIntegration, IntegrationTestWindows)
-    name = "Test Ribasim Binaries"
+    name = "IntegrationTestWindows"
 
     triggers{
         schedule {
