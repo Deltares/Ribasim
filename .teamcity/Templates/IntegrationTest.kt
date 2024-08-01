@@ -57,4 +57,4 @@ open class IntegrationTest (platformOs: String) : Template() {
     }
 }
 
-object IntegrationTestWindows : IntegrationTest("Windows)
+object IntegrationTestWindows : IntegrationTest("Windows")
