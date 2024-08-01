@@ -84,10 +84,10 @@ In order to publish Ribasim Python or Ribasim API follow the following steps:
 
 2) Open a terminal and run `pixi run publish-ribasim-api`
 
-## Do manual checks
+## QGIS manual testing
 
 Our continuous integration (CI) should have caught most issues.
-A current weak spot in our testing is the QGIS plugin, so it is a good idea to do some manual checks to see if it works properly.
+A current weak spot in our testing is the QGIS plugin, so a manual test plan is in place.
 Start with running the automated task to see if it can be correctly installed.
 
 ```sh
@@ -96,7 +96,7 @@ Start with running the automated task to see if it can be correctly installed.
 pixi run test-ribasim-qgis-ui
 ```
 
-It is a good idea to load new test models if there are any, or test any other changed functionality.
+Then follow the instructions as described in the [QGIS manual test plan](qgis_test_plan.qmd).
 
 ## Announce release
 

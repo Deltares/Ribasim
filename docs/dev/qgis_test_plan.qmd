@@ -1,0 +1,61 @@
+---
+title: "QGIS plugin manual test plan"
+---
+
+This document describes how to perform a full manual test on the Ribasim QGIS plugin.
+Known shortcomings and issues can be documented [here](/known_issues.qmd).
+Bugs can be reported on [GitHub](https://github.com/Deltares/Ribasim/issues).
+
+# Clean Slate Tests
+Before starting with data, perform the following tests to see if the plugin doesn't result in any errors.
+
+## Enable and Disable
+
+- Open QGIS and navigate to "Plugins > Manage and Install Plugins...": _The plugin management window opens_.
+- Navigate to "Installed": _Ribasim plugin is in the list (enabled)_.
+- Disable the Ribasim plugin: _Ribasim plugin panel hides if it was open, Ribasim button hides from navigation toolbar_.
+- Enable the Ribasim plugin: _Ribasim button shows on the navigation toolbar_.
+
+## Open and Close
+
+- Open QGIS and ensure that the Ribasim plugin is installed and enabled.
+- Open the application via the Ribasim button on the QGIS toolbar: _Ribasim panel opens_.
+- Press the Ribasim button on the QGIS toolbar: _Ribasim panel hides_.
+
+## Button states on startup
+
+- Open QGIS and ensure that the Ribasim plugin is installed and enabled.
+- Open the application via the Ribasim button on the QGIS toolbar: _Ribasim panel opens_.
+- _In the Model tab, the "Add to QGIS" and "Remove from Dataset" buttons are disabled_.
+- _In the Nodes tab, all buttons are disabled_.
+
+# New model tests
+
+## New and cancel
+
+- Open QGIS and ensure that the Ribasim plugin is installed and enabled.
+- Open the application via the Ribasim button on the QGIS toolbar: _Ribasim panel opens_.
+- Press the "New" button in the Model tab: _file navigation window pops up_.
+- Fill in a name.
+- Press "Cancel": _Ensure that no files are created in that location_.
+
+## New single model
+
+- Open QGIS and ensure that the Ribasim plugin is installed and enabled.
+- Open the application via the Ribasim button on the QGIS toolbar: _Ribasim panel opens_.
+- Press the "New" button in the Model tab: _file navigation window pops up_.
+- Fill in a name ("test1").
+- Press OK: _A toml and database file are created on the given location_.
+- _The layers tab shows a group with a "Node" and "Edge" layer, the canvas is empty._
+- _The Ribasim panel shows a Node and Edge layer, the file path is set in the text field, all nodes buttons are enabled_.
+
+## New model in same folder
+
+- Open QGIS and ensure that the Ribasim plugin is installed and enabled.
+- Open the application via the Ribasim button on the QGIS toolbar: _Ribasim panel opens_.
+- Press the "New" button in the Model tab: _file navigation window pops up_.
+- Fill in a name ("test1").
+- Press OK: _A toml and database file are created on the given location_.
+- Press the "New" button in the Model tab: _file navigation window pops up_.
+- Fill in a name ("test2").
+- Press OK: _An error is given that the database.gpkg already exists, test2.toml is not written_.

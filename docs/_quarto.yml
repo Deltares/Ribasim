@@ -81,11 +81,14 @@ website:
         - dev/core.qmd
         - dev/addnode.qmd
         - dev/python.qmd
-        - dev/qgis.qmd
         - dev/allocation.qmd
         - dev/bmi.qmd
         - dev/ci.qmd
         - dev/release.qmd
+        - section: QGIS
+          contents:
+            - dev/qgis.qmd
+            - dev/qgis_test_plan.qmd
 
 format:
   html:
