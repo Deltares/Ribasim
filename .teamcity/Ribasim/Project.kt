@@ -24,6 +24,8 @@ object Project : Project({
 
     template(GithubCommitStatusIntegration)
     template(GithubPullRequestsIntegration)
+    template(WindowsAgent)
+    template(BuildWindows)
 
     features {
         awsConnection {
