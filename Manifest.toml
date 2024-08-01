@@ -2,7 +2,7 @@
 
 julia_version = "1.10.4"
 manifest_format = "2.0"
-project_hash = "1f635113c3942011817a95f3b34347acc94b7036"
+project_hash = "4ab334c22b392689c0b97d7d9437877b605ab2cb"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "aa4d425271a914d8c4af6ad9fccb6eb3aec662c7"
@@ -1301,6 +1301,13 @@ deps = ["Accessors", "Arrow", "BasicModelInterface", "CodecZstd", "ComponentArra
 path = "core"
 uuid = "aac5e3d9-0b8f-4d4f-8241-b1a7a9632635"
 version = "2024.10.0"
+
+    [deps.Ribasim.extensions]
+    RibasimMakieExt = ["Makie", "DataFrames"]
+
+    [deps.Ribasim.weakdeps]
+    DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+    Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 
 [[deps.RuntimeGeneratedFunctions]]
 deps = ["ExprTools", "SHA", "Serialization"]
