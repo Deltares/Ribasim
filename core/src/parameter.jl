@@ -1,3 +1,6 @@
+const SolverStats =
+    @NamedTuple{time::Float64, nf::Int, nsolve::Int, naccept::Int, nreject::Int}
+
 # EdgeType.flow and NodeType.FlowBoundary
 @enumx EdgeType flow control none
 @eval @enumx NodeType $(config.nodetypes...)

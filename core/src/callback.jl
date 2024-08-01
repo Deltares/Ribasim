@@ -1,4 +1,3 @@
-
 """
 Create the different callbacks that are used to store results
 and feed the simulation with new data. The different callbacks
@@ -44,6 +43,12 @@ function create_callbacks(
     save_flow_cb = SavingCallback(save_flow, saved_flow; saveat, save_start = false)
     push!(callbacks, save_flow_cb)
 
+    # save solver stats
+    saved_solver_stats = SavedValues(Float64, SolverStats)
+    solver_stats_cb =
+        SavingCallback(save_solver_stats, saved_solver_stats; saveat, save_start = true)
+    push!(callbacks, solver_stats_cb)
+
     # interpolate the levels
     saved_subgrid_level = SavedValues(Float64, Vector{Float64})
     if config.results.subgrid
@@ -59,10 +64,26 @@ function create_callbacks(
     discrete_control_cb = FunctionCallingCallback(apply_discrete_control!)
     push!(callbacks, discrete_control_cb)
 
-    saved = SavedResults(saved_flow, saved_vertical_flux, saved_subgrid_level)
+    saved = SavedResults(
+        saved_flow,
+        saved_vertical_flux,
+        saved_subgrid_level,
+        saved_solver_stats,
+    )
     callback = CallbackSet(callbacks...)
 
     return callback, saved
+end
+
+function save_solver_stats(u, t, integrator)
+    (; stats) = integrator.sol
+    (;
+        time = t,
+        nf = stats.nf,
+        nsolve = stats.nsolve,
+        naccept = stats.naccept,
+        nreject = stats.nreject,
+    )
 end
 
 function check_negative_storage(u, t, integrator)::Nothing

@@ -44,6 +44,11 @@ function write_results(model::Model)::Model
     path = results_path(config, RESULTS_FILENAME.subgrid_level)
     write_arrow(path, table, compress; remove_empty_table)
 
+    # solver stats
+    table = solver_stats_table(model)
+    path = results_path(config, RESULTS_FILENAME.solver_stats)
+    write_arrow(path, table, compress; remove_empty_table)
+
     @debug "Wrote results."
     return model
 end
@@ -56,6 +61,7 @@ const RESULTS_FILENAME = (
     allocation = "allocation.arrow",
     allocation_flow = "allocation_flow.arrow",
     subgrid_level = "subgrid_level.arrow",
+    solver_stats = "solver_stats.arrow",
 )
 
 "Get the storage and level of all basins as matrices of nbasin × ntime"
@@ -180,6 +186,25 @@ function basin_table(
         infiltration,
         balance_error,
         relative_error,
+    )
+end
+
+function solver_stats_table(
+    model::Model,
+)::@NamedTuple{
+    time::Vector{DateTime},
+    nf::Vector{Int},
+    nsolve::Vector{Int},
+    naccept::Vector{Int},
+    nreject::Vector{Int},
+}
+    solver_stats = StructVector(model.saved.solver_stats.saveval)
+    (;
+        time = datetime_since.(solver_stats.time[2:end], model.integrator.p.starttime),
+        nf = diff(solver_stats.nf),
+        nsolve = diff(solver_stats.nsolve),
+        naccept = diff(solver_stats.naccept),
+        nreject = diff(solver_stats.nreject),
     )
 end
 
