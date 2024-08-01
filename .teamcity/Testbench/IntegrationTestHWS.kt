@@ -1,5 +1,6 @@
 package Testbench
 
+import Ribasim_Windows.Windows_BuildRibasim
 import Templates.*
 import jetbrains.buildServer.configs.kotlin.BuildType
 import jetbrains.buildServer.configs.kotlin.Project
@@ -33,7 +34,7 @@ object IntegrationTest_Windows : BuildType({
     }
 
     dependencies {
-        dependency(Ribasim_Windows.Windows_BuildRibasim) {
+        dependency(Windows_BuildRibasim) {
             snapshot {
             }
 
