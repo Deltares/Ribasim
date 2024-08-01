@@ -11,8 +11,6 @@ website:
     left:
       - text: "Overview"
         file: index.qmd
-      - text: "Tutorials"
-        file: tutorial/index.qmd
       - text: "How-to guides"
         file: guide/index.qmd
       - text: "Concepts"
@@ -33,15 +31,11 @@ website:
         - install.qmd
         - changelog.qmd
 
-    - title: "Tutorials"
-      contents:
-        - tutorial/index.qmd
-        - tutorial/qgis.qmd
-
     - title: "How-to guides"
       contents:
         - guide/index.qmd
         - guide/examples.ipynb
+        - guide/qgis.qmd
         - guide/coupling.qmd
 
     - title: "Concepts"
