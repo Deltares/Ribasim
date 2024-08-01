@@ -1,12 +1,10 @@
 package Testbench
 
-import Template.*
-import jetbrains.buildServer.configs.kotlin.AbsoluteId
+import Templates.*
 import jetbrains.buildServer.configs.kotlin.BuildType
-import jetbrains.buildServer.configs.kotlin.FailureAction
 import jetbrains.buildServer.configs.kotlin.Project
-import jetbrains.buildServer.configs.kotlin.triggers.vcs
-import Ribasim.vcsRoots.Ribasim as RibasimVcs
+import jetbrains.buildServer.configs.kotlin.triggers.schedule
+
 
 object RibasimTestbench : Project ({
     id("Testbench")
@@ -16,26 +14,28 @@ object RibasimTestbench : Project ({
 
     template(WindowsAgent)
     template(BuildWindows)
-    template(IntegrationTest)
+    template(IntegrationTestWindows)
 })
 
 object IntegrationTest_Windows : BuildType({
-    templates(WindowsAgent, GithubCommitStatusIntegration, IntegrationTest)
+    templates(WindowsAgent, GithubCommitStatusIntegration, IntegrationTestWindows)
     name = "Test Ribasim Binaries"
 
-    schedule {
-        id = ""
-        schedulingPolicy = daily {
-            hour = 0
-        }
+    triggers{
+        schedule {
+            id = ""
+            schedulingPolicy = daily {
+                hour = 0
+            }
 
-        branchFilter = "+:<default>"
-        triggerBuild = always()
-        withPendingChangesOnly = false
+            branchFilter = "+:<default>"
+            triggerBuild = always()
+            withPendingChangesOnly = false
+        }
     }
 
     dependencies {
-        dependency(Windows_BuildRibasim) {
+        dependency(Ribasim_Windows.Windows_BuildRibasim) {
             snapshot {
             }
 
