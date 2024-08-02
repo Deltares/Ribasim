@@ -1,9 +1,12 @@
 package Templates
 
+import Ribasim_Windows.Windows_BuildRibasim
+import Ribasim_Linux.Linux_BuildRibasim
 import jetbrains.buildServer.configs.kotlin.Template
 import jetbrains.buildServer.configs.kotlin.buildFeatures.XmlReport
 import jetbrains.buildServer.configs.kotlin.buildFeatures.xmlReport
 import jetbrains.buildServer.configs.kotlin.buildSteps.script
+import jetbrains.buildServer.configs.kotlin.triggers.schedule
 
 fun generateIntegrationTestHeader(platformOs: String): String {
     if (platformOs == "Linux") {
@@ -20,6 +23,7 @@ fun generateIntegrationTestHeader(platformOs: String): String {
 }
 
 open class IntegrationTest (platformOs: String) : Template() {
+
     init {
         name = "IntegrationTest_${platformOs}_Template"
 
@@ -59,6 +63,40 @@ open class IntegrationTest (platformOs: String) : Template() {
 
         failureConditions {
             executionTimeoutMin = 30
+        }
+
+        triggers{
+            schedule {
+                id = ""
+                schedulingPolicy = daily {
+                    hour = 0
+                }
+
+                branchFilter = "+:<default>"
+                triggerBuild = always()
+                withPendingChangesOnly = true
+            }
+        }
+
+        val a = if (platformOs == "Windows"){
+            Windows_BuildRibasim
+        } else {
+            Linux_BuildRibasim
+        }
+
+        dependencies{
+            dependency(a) {
+                snapshot {
+                }
+
+                artifacts {
+                    id = "ARTIFACT_DEPENDENCY_570"
+                    cleanDestination = true
+                    artifactRules = """
+                    ribasim_windows.zip!** => ribasim/build/ribasim
+                """.trimIndent()
+                }
+            }
         }
     }
 }

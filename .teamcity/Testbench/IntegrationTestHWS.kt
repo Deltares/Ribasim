@@ -15,88 +15,18 @@ object RibasimTestbench : Project ({
     name = "Testbench"
 
     buildType(IntegrationTest_Windows)
-//    buildType(IntegrationTest_Linux)
+    buildType(IntegrationTest_Linux)
 
     template(IntegrationTestWindows)
     template(IntegrationTestLinux)
 })
 
 object IntegrationTest_Windows : BuildType({
-    features {
-        matrix {
-            os = listOf(
-                value("Windows"),
-                value("Linux")
-            )
-        }
-    }
-
-    if ("teamcity.agent.jvm.os.name" == "Windows"){
-        templates(WindowsAgent, GithubCommitStatusIntegration, IntegrationTestWindows)
-        name = "IntegrationTestWindows"
-    } else {
-        templates(LinuxAgent, GithubCommitStatusIntegration, IntegrationTestLinux)
-        name = "IntegrationTestLinux"
-    }
-
-    triggers{
-        schedule {
-            id = ""
-            schedulingPolicy = daily {
-                hour = 0
-            }
-
-            branchFilter = "+:<default>"
-            triggerBuild = always()
-            withPendingChangesOnly = true
-        }
-    }
-
-    dependencies {
-        dependency(Windows_BuildRibasim) {
-            snapshot {
-            }
-
-            artifacts {
-                id = "ARTIFACT_DEPENDENCY_570"
-                cleanDestination = true
-                artifactRules = """
-                    ribasim_windows.zip!** => ribasim/build/ribasim
-                """.trimIndent()
-            }
-        }
-    }
+    name = "IntegrationTestWindows"
+    templates(WindowsAgent, GithubCommitStatusIntegration, IntegrationTestWindows)
 })
 
-//object IntegrationTest_Linux : BuildType({
-//    templates(LinuxAgent, GithubCommitStatusIntegration, IntegrationTestLinux)
-//    name = "IntegrationTestLinux"
-//
-//    triggers{
-//        schedule {
-//            id = ""
-//            schedulingPolicy = daily {
-//                hour = 0
-//            }
-//
-//            branchFilter = "+:<default>"
-//            triggerBuild = always()
-//            withPendingChangesOnly = true
-//        }
-//    }
-//
-//    dependencies {
-//        dependency(Linux_BuildRibasim) {
-//            snapshot {
-//            }
-//
-//            artifacts {
-//                id = "ARTIFACT_DEPENDENCY_570"
-//                cleanDestination = true
-//                artifactRules = """
-//                    ribasim_windows.zip!** => ribasim/build/ribasim
-//                """.trimIndent()
-//            }
-//        }
-//    }
-//})
+object IntegrationTest_Linux : BuildType({
+    templates(LinuxAgent, GithubCommitStatusIntegration, IntegrationTestLinux)
+    name = "IntegrationTestLinux"
+})
