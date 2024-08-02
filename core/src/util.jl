@@ -694,7 +694,7 @@ function set_discrete_controlled_variable_refs!(p::Parameters)::Nothing
                 # References to scalar parameters
                 for (i, parameter_update) in enumerate(scalar_update)
                     field = getfield(node, parameter_update.name)
-                    if field isa LBC
+                    if field isa Cache
                         field = field[Float64[]]
                     end
                     scalar_update[i] = @set parameter_update.ref = Ref(field, node_id.idx)
@@ -828,15 +828,16 @@ function set_previous_flows!(integrator)
     copyto!(vertical_flux_prev, vertical_flux)
 end
 
+"""
+Split the single forcing vector into views of the components
+precipitation, evaporation, drainage, infiltration
+"""
 function wrap_forcing(vector)
     n = length(vector) ÷ 4
-    return ComponentVector(
-        vector,
-        Axis(;
-            precipitation = 1:n,
-            evaporation = (n + 1):(2n),
-            drainage = (2n + 1):(3n),
-            infiltration = (3n + 1):(4n),
-        ),
+    (;
+        precipitation = view(vector, 1:n),
+        evaporation = view(vector, (2 + 1):(2n)),
+        drainage = view(vector, (2n + 1):(3n)),
+        infiltration = view(vector, (3n + 1):(4n)),
     )
 end

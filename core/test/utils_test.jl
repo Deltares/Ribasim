@@ -11,7 +11,7 @@ end
 
 @testitem "bottom" begin
     using StructArrays: StructVector
-    using Ribasim: NodeID, FixedSizeLazyBufferCache
+    using Ribasim: NodeID, cache
     using DataInterpolations: LinearInterpolation, integral, invert_integral
 
     # create two basins with different bottoms/levels
@@ -20,8 +20,8 @@ end
     level_to_area = LinearInterpolation.(area, level)
     storage_to_level = invert_integral.(level_to_area)
     demand = zeros(2)
-    current_level = FixedSizeLazyBufferCache(2)
-    current_area = FixedSizeLazyBufferCache(2)
+    current_level = cache(2)
+    current_area = cache(2)
     current_level[Float64[]] .= [2.0, 3.0]
     current_area[Float64[]] .= [2.0, 3.0]
     basin = Ribasim.Basin(;
@@ -158,7 +158,7 @@ end
     )
 end
 
-@testitem "Jacobian sparsity" skip = true begin
+@testitem "Jacobian sparsity" begin
     import SQLite
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
@@ -217,6 +217,8 @@ end
     @test reduction_factor(1.0, 2.0) === 0.5
     @test reduction_factor(3.0f0, 2.0) === 1.0f0
     @test reduction_factor(3.0, 2.0) === 1.0
+    @test reduction_factor(Inf, 2.0) === 1.0
+    @test reduction_factor(-Inf, 2.0) === 0.0
 end
 
 @testitem "low_storage_factor" begin

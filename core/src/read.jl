@@ -474,7 +474,7 @@ function Pump(db::DB, config::Config, graph::MetaGraph)::Pump
     (; node_id) = parsed_parameters
 
     # If flow rate is set by PID control, it is part of the AD Jacobian computations
-    flow_rate = FixedSizeLazyBufferCache(length(node_id))
+    flow_rate = cache(length(node_id))
     flow_rate[Float64[]] .= parsed_parameters.flow_rate
 
     return Pump(;
@@ -507,7 +507,7 @@ function Outlet(db::DB, config::Config, graph::MetaGraph)::Outlet
         )
 
     # If flow rate is set by PID control, it is part of the AD Jacobian computations
-    flow_rate = FixedSizeLazyBufferCache(length(node_id))
+    flow_rate = cache(length(node_id))
     flow_rate[Float64[], length(node_id)] .= parsed_parameters.flow_rate
 
     return Outlet(;
@@ -531,8 +531,8 @@ end
 function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     node_id = get_ids(db, "Basin")
     n = length(node_id)
-    current_level = FixedSizeLazyBufferCache(n)
-    current_area = FixedSizeLazyBufferCache(n)
+    current_level = cache(n)
+    current_area = cache(n)
 
     precipitation = zeros(n)
     potential_evaporation = zeros(n)
@@ -553,7 +553,7 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
 
     vertical_flux_from_input =
         ComponentVector(; precipitation, potential_evaporation, drainage, infiltration)
-    vertical_flux = FixedSizeLazyBufferCache(4 * n)
+    vertical_flux = cache(4 * n)
     vertical_flux_prev = ComponentVector(;
         precipitation = copy(precipitation),
         evaporation,
@@ -870,7 +870,7 @@ function PidControl(db::DB, config::Config, graph::MetaGraph)::PidControl
         error("Errors occurred when parsing PidControl data.")
     end
 
-    pid_error = FixedSizeLazyBufferCache(length(node_ids))
+    pid_error = cache(length(node_ids))
     target_ref = PreallocationRef[]
 
     controlled_basins = Set{NodeID}()

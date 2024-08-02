@@ -97,7 +97,7 @@ function create_graph(db::DB, config::Config)::MetaGraph
         error("Incomplete connectivity in subnetwork")
     end
 
-    flow = FixedSizeLazyBufferCache(flow_counter)
+    flow = cache(flow_counter)
     flow_prev = fill(NaN, flow_counter)
     flow_integrated = zeros(flow_counter)
     flow_edges = [edge for edge in values(graph.edge_data) if edge.type == EdgeType.flow]

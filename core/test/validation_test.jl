@@ -225,13 +225,12 @@ end
 
 @testitem "Pump/outlet flow rate sign validation" begin
     using Logging
-    using Ribasim:
-        NodeID, NodeType, ControlStateUpdate, ParameterUpdate, FixedSizeLazyBufferCache
+    using Ribasim: NodeID, NodeType, ControlStateUpdate, ParameterUpdate, cache
 
     logger = TestLogger()
 
     with_logger(logger) do
-        flow_rate = FixedSizeLazyBufferCache(1)
+        flow_rate = cache(1)
         flow_rate[Float64[]] .= -1
         @test_throws "Invalid Outlet flow rate(s)." Ribasim.Outlet(;
             node_id = [NodeID(:Outlet, 1, 1)],
@@ -246,7 +245,7 @@ end
     logger = TestLogger()
 
     with_logger(logger) do
-        flow_rate = FixedSizeLazyBufferCache(1)
+        flow_rate = cache(1)
         flow_rate[Float64[]] .= -1
         @test_throws "Invalid Pump flow rate(s)." Ribasim.Pump(;
             node_id = [NodeID(:Pump, 1, 1)],

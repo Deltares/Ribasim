@@ -24,7 +24,7 @@ import TranscodingStreams
 using Accessors: @set
 using Arrow: Arrow, Table
 using CodecZstd: ZstdCompressor
-using ComponentArrays: ComponentVector, Axis, parent
+using ComponentArrays: ComponentVector, Axis
 using DataInterpolations:
     LinearInterpolation, LinearInterpolationIntInv, invert_integral, derivative, integral
 using Dates: Dates, DateTime, Millisecond, @dateformat_str
@@ -87,7 +87,6 @@ include("logging.jl")
 include("allocation_init.jl")
 include("allocation_optim.jl")
 include("util.jl")
-include("sparsity.jl")
 include("graph.jl")
 include("model.jl")
 include("read.jl")
