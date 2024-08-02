@@ -5,7 +5,9 @@ import Ribasim_Linux.Linux_BuildRibasim
 import Templates.*
 import jetbrains.buildServer.configs.kotlin.BuildType
 import jetbrains.buildServer.configs.kotlin.Project
+import jetbrains.buildServer.configs.kotlin.matrix
 import jetbrains.buildServer.configs.kotlin.triggers.schedule
+import jetbrains.buildServer.configs.kotlin.*
 
 
 object RibasimTestbench : Project ({
@@ -13,15 +15,29 @@ object RibasimTestbench : Project ({
     name = "Testbench"
 
     buildType(IntegrationTest_Windows)
-    buildType(IntegrationTest_Linux)
+//    buildType(IntegrationTest_Linux)
 
     template(IntegrationTestWindows)
     template(IntegrationTestLinux)
 })
 
 object IntegrationTest_Windows : BuildType({
-    templates(WindowsAgent, GithubCommitStatusIntegration, IntegrationTestWindows)
-    name = "IntegrationTestWindows"
+    features {
+        matrix {
+            os = listOf(
+                value("Windows"),
+                value("Linux")
+            )
+        }
+    }
+
+    if ("teamcity.agent.jvm.os.name" == "Windows"){
+        templates(WindowsAgent, GithubCommitStatusIntegration, IntegrationTestWindows)
+        name = "IntegrationTestWindows"
+    } else {
+        templates(LinuxAgent, GithubCommitStatusIntegration, IntegrationTestLinux)
+        name = "IntegrationTestLinux"
+    }
 
     triggers{
         schedule {
@@ -52,35 +68,35 @@ object IntegrationTest_Windows : BuildType({
     }
 })
 
-object IntegrationTest_Linux : BuildType({
-    templates(LinuxAgent, GithubCommitStatusIntegration, IntegrationTestLinux)
-    name = "IntegrationTestLinux"
-
-    triggers{
-        schedule {
-            id = ""
-            schedulingPolicy = daily {
-                hour = 0
-            }
-
-            branchFilter = "+:<default>"
-            triggerBuild = always()
-            withPendingChangesOnly = true
-        }
-    }
-
-    dependencies {
-        dependency(Linux_BuildRibasim) {
-            snapshot {
-            }
-
-            artifacts {
-                id = "ARTIFACT_DEPENDENCY_570"
-                cleanDestination = true
-                artifactRules = """
-                    ribasim_windows.zip!** => ribasim/build/ribasim
-                """.trimIndent()
-            }
-        }
-    }
-})
+//object IntegrationTest_Linux : BuildType({
+//    templates(LinuxAgent, GithubCommitStatusIntegration, IntegrationTestLinux)
+//    name = "IntegrationTestLinux"
+//
+//    triggers{
+//        schedule {
+//            id = ""
+//            schedulingPolicy = daily {
+//                hour = 0
+//            }
+//
+//            branchFilter = "+:<default>"
+//            triggerBuild = always()
+//            withPendingChangesOnly = true
+//        }
+//    }
+//
+//    dependencies {
+//        dependency(Linux_BuildRibasim) {
+//            snapshot {
+//            }
+//
+//            artifacts {
+//                id = "ARTIFACT_DEPENDENCY_570"
+//                cleanDestination = true
+//                artifactRules = """
+//                    ribasim_windows.zip!** => ribasim/build/ribasim
+//                """.trimIndent()
+//            }
+//        }
+//    }
+//})
