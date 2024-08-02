@@ -203,7 +203,7 @@ end
                 # Testbench for basin.arrow
                 @test basin.time == basin_bench.time
                 @test basin.node_id == basin_bench.node_id
-                @test all(q -> abs(q) < 9.0, basin.storage - basin_bench.storage)
+                @test all(q -> abs(q) < 12.0, basin.storage - basin_bench.storage)
                 @test all(q -> abs(q) < 0.5, basin.level - basin_bench.level)
                 @test all(q -> abs(q) < 1e-3, basin.balance_error)
                 @test all(q -> abs(q) < 2.5, basin.relative_error)

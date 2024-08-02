@@ -1,17 +1,11 @@
 using ReTestItems, Ribasim
 
 if in("integration", ARGS)
-    runtests(
-        "../integration_test";
-        nworkers = min(4, Sys.CPU_THREADS ÷ 2),
-        nworker_threads = 2,
-    )
+    test_type = "../integration_test"
 elseif in("regression", ARGS)
-    runtests(
-        "../regression_test";
-        nworkers = min(4, Sys.CPU_THREADS ÷ 2),
-        nworker_threads = 2,
-    )
+    test_type = "../regression_test"
 else
-    runtests("../test"; nworkers = min(4, Sys.CPU_THREADS ÷ 2), nworker_threads = 2)
+    test_type = "."
 end
+
+runtests(test_type; nworkers = min(4, Sys.CPU_THREADS ÷ 2), nworker_threads = 2)
