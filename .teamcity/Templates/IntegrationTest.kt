@@ -7,7 +7,13 @@ import jetbrains.buildServer.configs.kotlin.buildSteps.script
 
 fun generateIntegrationTestHeader(platformOs: String): String {
     if (platformOs == "Linux") {
-        return ""
+        return """
+                #!/bin/bash
+                # black magic
+                source /usr/share/Modules/init/bash
+
+                module load pixi
+            """.trimIndent() + System.lineSeparator()
     }
 
     return ""
@@ -58,3 +64,4 @@ open class IntegrationTest (platformOs: String) : Template() {
 }
 
 object IntegrationTestWindows : IntegrationTest("Windows")
+object IntegrationTestLinux : IntegrationTest("Linux")
