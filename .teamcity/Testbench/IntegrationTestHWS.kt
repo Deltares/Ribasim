@@ -13,6 +13,7 @@ object RibasimTestbench : Project ({
     name = "Testbench"
 
     buildType(IntegrationTest_Windows)
+    buildType(IntegrationTest_Linux)
 
     template(IntegrationTestWindows)
     template(IntegrationTestLinux)
