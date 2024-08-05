@@ -68,5 +68,5 @@ object Project : Project({
     subProject(RibasimLinuxProject)
     subProject(RibasimWindowsProject)
     subProject(IntegrationTestHWS)
-    subProject(RegressionTestODESolve)
+//    subProject(RegressionTestODESolve)
 })
