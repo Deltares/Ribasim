@@ -193,18 +193,18 @@ function solver_stats_table(
     model::Model,
 )::@NamedTuple{
     time::Vector{DateTime},
-    nf::Vector{Int},
-    nsolve::Vector{Int},
-    naccept::Vector{Int},
-    nreject::Vector{Int},
+    water_balance_calls::Vector{Int},
+    linear_solves::Vector{Int},
+    accepted_timesteps::Vector{Int},
+    rejected_timesteps::Vector{Int},
 }
     solver_stats = StructVector(model.saved.solver_stats.saveval)
     (;
         time = datetime_since.(solver_stats.time[2:end], model.integrator.p.starttime),
-        nf = diff(solver_stats.nf),
-        nsolve = diff(solver_stats.nsolve),
-        naccept = diff(solver_stats.naccept),
-        nreject = diff(solver_stats.nreject),
+        water_balance_calls = diff(solver_stats.water_balance_calls),
+        linear_solves = diff(solver_stats.linear_solves),
+        accepted_timesteps = diff(solver_stats.accepted_timesteps),
+        rejected_timesteps = diff(solver_stats.rejected_timesteps),
     )
 end
 

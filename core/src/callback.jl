@@ -79,10 +79,10 @@ function save_solver_stats(u, t, integrator)
     (; stats) = integrator.sol
     (;
         time = t,
-        nf = stats.nf,
-        nsolve = stats.nsolve,
-        naccept = stats.naccept,
-        nreject = stats.nreject,
+        water_balance_calls = stats.nf,
+        linear_solves = stats.nsolve,
+        accepted_timesteps = stats.naccept,
+        rejected_timesteps = stats.nreject,
     )
 end
 

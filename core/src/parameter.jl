@@ -1,5 +1,10 @@
-const SolverStats =
-    @NamedTuple{time::Float64, nf::Int, nsolve::Int, naccept::Int, nreject::Int}
+const SolverStats = @NamedTuple{
+    time::Float64,
+    water_balance_calls::Int,
+    linear_solves::Int,
+    accepted_timesteps::Int,
+    rejected_timesteps::Int,
+}
 
 # EdgeType.flow and NodeType.FlowBoundary
 @enumx EdgeType flow control none
