@@ -160,6 +160,7 @@ end
 
 @testitem "Jacobian sparsity" begin
     import SQLite
+    using ComponentArrays: ComponentVector
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
 
@@ -168,13 +169,19 @@ end
     db = SQLite.DB(db_path)
 
     p = Ribasim.Parameters(db, cfg)
-    jac_prototype = Ribasim.get_jac_prototype(p)
+    t0 = 0.0
+    u0 = ComponentVector{Float64}(;
+        storage = zeros(length(p.basin.node_id)),
+        integral = Float64[],
+    )
+    du0 = copy(u0)
+    jac_prototype = Ribasim.get_jac_prototype(du0, u0, p, t0)
 
     @test jac_prototype.m == 4
     @test jac_prototype.n == 4
-    @test jac_prototype.colptr == [1, 3, 7, 10, 13]
-    @test jac_prototype.rowval == [1, 2, 1, 2, 3, 4, 2, 3, 4, 2, 3, 4]
-    @test jac_prototype.nzval == ones(12)
+    @test jac_prototype.colptr == [1, 3, 7, 7, 8]
+    @test jac_prototype.rowval == [1, 2, 1, 2, 3, 4, 4]
+    @test jac_prototype.nzval == ones(7)
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/pid_control/ribasim.toml")
 
@@ -183,7 +190,13 @@ end
     db = SQLite.DB(db_path)
 
     p = Ribasim.Parameters(db, cfg)
-    jac_prototype = Ribasim.get_jac_prototype(p)
+    t0 = 0.0
+    u0 = ComponentVector{Float64}(;
+        storage = zeros(length(p.basin.node_id)),
+        integral = zeros(length(p.pid_control.node_id)),
+    )
+    du0 = copy(u0)
+    jac_prototype = Ribasim.get_jac_prototype(du0, u0, p, t0)
 
     @test jac_prototype.m == 3
     @test jac_prototype.n == 3

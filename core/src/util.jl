@@ -836,8 +836,15 @@ function wrap_forcing(vector)
     n = length(vector) ÷ 4
     (;
         precipitation = view(vector, 1:n),
-        evaporation = view(vector, (2 + 1):(2n)),
+        evaporation = view(vector, (n + 1):(2n)),
         drainage = view(vector, (2n + 1):(3n)),
         infiltration = view(vector, (3n + 1):(4n)),
     )
+end
+
+function get_jac_prototype(du0, u0, p, t0)
+    p.all_nodes_active[] = true
+    jac_prototype = jacobian_sparsity((du, u) -> water_balance!(du, u, p, t0), du0, u0)
+    p.all_nodes_active[] = false
+    jac_prototype
 end

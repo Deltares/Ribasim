@@ -128,11 +128,7 @@ function Model(config::Config)::Model
     adaptive, dt = convert_dt(config.solver.dt)
 
     jac_prototype = if config.solver.sparse
-        parameters.all_nodes_active[] = true
-        jac_prototype =
-            jacobian_sparsity((du, u) -> water_balance!(du, u, parameters, t0), du0, u0)
-        parameters.all_nodes_active[] = false
-        jac_prototype
+        get_jac_prototype(du0, u0, p, t0)
     else
         nothing
     end
