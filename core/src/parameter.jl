@@ -14,8 +14,8 @@ end
 
 NodeType.T(str::AbstractString) = NodeType.T(Symbol(str))
 
-const EMPTY_BASIN_THRESHOLD_LOW = 1.0
-const EMPTY_BASIN_THRESHOLD_HIGH = 10.0
+const EMPTY_BASIN_THRESHOLD_LOW = 1e-2
+const EMPTY_BASIN_THRESHOLD_HIGH = 1e-1
 
 """
     NodeID(type::Union{NodeType.T, Symbol, AbstractString}, value::Integer, idx::Int)

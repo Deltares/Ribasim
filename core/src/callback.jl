@@ -76,10 +76,18 @@ function create_callbacks(
     return callback, saved
 end
 
+"""
+For basins that are not considered empty, see whether
+they must actually be considered empty by checking
+depth < EMPTY_BASIN_THRESHOLD_LOW
+"""
 function empty_basin_conditions!(out, u, t, integrator)::Nothing
-    (; is_empty) = integrator.p.basin
-    for (i, s) in enumerate(u.storage)
-        out[i] = is_empty[i] ? Inf : s - EMPTY_BASIN_THRESHOLD_LOW
+    (; basin) = integrator.p
+    (; is_empty, current_level, node_id) = basin
+    current_level = get_tmp(current_level, 0)
+    for (l, id) in zip(current_level, node_id)
+        depth = l - basin_bottom(basin, id)[2]
+        out[id.idx] = is_empty[id.idx] ? Inf : depth - EMPTY_BASIN_THRESHOLD_LOW
     end
     return nothing
 end
@@ -90,11 +98,14 @@ function set_empty_basin!(integrator, basin_idx)::Nothing
 end
 
 function check_basins_non_empty!(u, t, integrator)::Nothing
-    (; is_empty) = integrator.p.basin
+    (; basin) = integrator.p
+    (; is_empty, current_level, node_id) = basin
+    current_level = get_tmp(current_level, 0)
 
-    for (i, s) in enumerate(u.storage)
-        if is_empty[i]
-            is_empty[i] = s < EMPTY_BASIN_THRESHOLD_HIGH
+    for (l, is_empty_, id) in zip(current_level, is_empty, node_id)
+        if is_empty_
+            depth = l - basin_bottom(basin, id)[2]
+            is_empty[id.idx] = depth < EMPTY_BASIN_THRESHOLD_HIGH
         end
     end
     return nothing

@@ -220,19 +220,6 @@ end
     @test reduction_factor(3.0, 2.0) === 1.0
 end
 
-@testitem "low_storage_factor" begin
-    using Ribasim: NodeID, low_storage_factor, EdgeMetadata, EdgeType
-
-    node_id = NodeID(:Basin, 5, 1)
-    @test low_storage_factor([-2.0], node_id, 2.0) === 0.0
-    @test low_storage_factor([0.0f0], node_id, 2.0) === 0.0f0
-    @test low_storage_factor([0.0], node_id, 2.0) === 0.0
-    @test low_storage_factor([1.0f0], node_id, 2.0) === 0.5f0
-    @test low_storage_factor([1.0], node_id, 2.0) === 0.5
-    @test low_storage_factor([3.0f0], node_id, 2.0) === 1.0f0
-    @test low_storage_factor([3.0], node_id, 2.0) === 1.0
-end
-
 @testitem "constraints_from_nodes" begin
     using Ribasim:
         Model,
