@@ -119,8 +119,9 @@ def test_get_value_ptr_subgrid(libribasim, two_basin, tmp_path):
     libribasim.update_until(86400.0)
 
     # Subgrid level
+    libribasim.update_subgrid_level()
     actual_subgrid_level = libribasim.get_value_ptr("basin.subgrid_level")
-    expected_subgrid_level = np.array([np.nan, np.nan])
+    expected_subgrid_level = np.array([2.17, 0.006142])
     assert_array_almost_equal(actual_subgrid_level, expected_subgrid_level)
 
 
