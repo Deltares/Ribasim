@@ -77,27 +77,6 @@ open class IntegrationTest (platformOs: String) : Template() {
                 withPendingChangesOnly = true
             }
         }
-
-        val a = if (platformOs == "Windows"){
-            Windows_BuildRibasim
-        } else {
-            Linux_BuildRibasim
-        }
-
-        dependencies{
-            dependency(a) {
-                snapshot {
-                }
-
-                artifacts {
-                    id = "ARTIFACT_DEPENDENCY_570"
-                    cleanDestination = true
-                    artifactRules = """
-                    ribasim_windows.zip!** => ribasim/build/ribasim
-                """.trimIndent()
-                }
-            }
-        }
     }
 }
 
