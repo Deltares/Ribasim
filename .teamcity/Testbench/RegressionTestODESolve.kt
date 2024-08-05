@@ -1,4 +1,4 @@
-package Testbench
+package Testbench_Regression
 
 import Ribasim_Windows.Windows_BuildRibasim
 import Ribasim_Linux.Linux_BuildRibasim

@@ -1,4 +1,4 @@
-package Testbench
+package Testbench_Integration
 
 import Ribasim_Linux.Linux_BuildRibasim
 import Ribasim_Windows.Windows_BuildRibasim
