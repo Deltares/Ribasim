@@ -401,14 +401,30 @@ def crystal_model():
         crs="EPSG:4326",
     )
 
-    rng = np.random.default_rng(seed=0)
-    size = 100
+    size = 13
     model.flow_boundary.add(
         Node(1, Point(0.0, 0.0), name="Main"),
         [
             flow_boundary.Time(
                 time=pd.date_range(starttime, endtime, periods=size),
-                flow_rate=np.abs(rng.normal(34.0, 23.84, size)),
+                flow_rate=np.array(
+                    [
+                        57.9,
+                        57.4,
+                        83.6,
+                        51.9,
+                        49,
+                        29,
+                        24.3,
+                        21.0,
+                        21.9,
+                        28.2,
+                        26.2,
+                        29.6,
+                        44,
+                    ]
+                )
+                / 86400,
             )
         ],
     )
@@ -417,7 +433,24 @@ def crystal_model():
         [
             flow_boundary.Time(
                 time=pd.date_range(starttime, endtime, periods=size),
-                flow_rate=np.abs(rng.normal(9.09, 4.14, size=size)),
+                flow_rate=np.array(
+                    [
+                        11.8,
+                        6.8,
+                        19.9,
+                        9.8,
+                        16.6,
+                        9.5,
+                        8.9,
+                        8.1,
+                        7,
+                        10.2,
+                        8.9,
+                        12.7,
+                        15.5,
+                    ]
+                )
+                / 86400,
             )
         ],
     )
