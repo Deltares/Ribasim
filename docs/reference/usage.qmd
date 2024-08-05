@@ -316,3 +316,15 @@ column         | type
 time           | DateTime
 subgrid_id     | Int32
 subgrid_level  | Float64
+
+## Solver statistics - `solver_stats.arrow`
+
+This result file contains statistics about the solver, which can give an insight into how well the solver is performing over time. `water_balance` refers to the right-hand-side function of the system of differential equations solved by the Ribasim core.
+
+column              | type
+--------------------| -----
+time                | DateTime
+water_balance_calls | Int
+linear_solves       | Int
+accepted_timesteps  | Int
+rejected_timesteps  | Int
