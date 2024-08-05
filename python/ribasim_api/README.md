@@ -20,4 +20,4 @@ conda install -c conda-forge ribasim-api
 
 # Contributing
 
-For the developer docs please have a look at https://deltares.github.io/Ribasim/contribute/python.html
+For the developer docs please have a look at https://deltares.github.io/Ribasim/dev/.
