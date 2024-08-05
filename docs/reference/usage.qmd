@@ -319,7 +319,7 @@ subgrid_level  | Float64
 
 ## Solver statistics - `solver_stats.arrow`
 
-This result file contains statistics about the solver, which can give an insight into how well the solver is performing over time. `water_balance` refers to the right-hand-side function of the system of differential equations solved by the Ribasim core.
+This result file contains statistics about the solver, which can give an insight into how well the solver is performing over time. The data is solved by `saveat` (see [configuration file](#configuration-file)). `water_balance` refers to the right-hand-side function of the system of differential equations solved by the Ribasim core.
 
 column              | type
 --------------------| -----
