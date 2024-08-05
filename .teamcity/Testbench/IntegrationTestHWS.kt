@@ -1,4 +1,4 @@
-package Testbench_Integration
+package Testbench
 
 import Ribasim_Linux.Linux_BuildRibasim
 import Ribasim_Windows.Windows_BuildRibasim
@@ -6,7 +6,10 @@ import Templates.*
 import jetbrains.buildServer.configs.kotlin.BuildType
 import jetbrains.buildServer.configs.kotlin.Project
 
-
+object Testbench : Project({
+    subProject(IntegrationTestHWS)
+    subProject(RegressionTestODESolve)
+})
 object IntegrationTestHWS : Project ({
     id("IntegrationTestHWS")
     name = "IntegrationTestHWS"
