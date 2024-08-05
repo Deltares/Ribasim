@@ -6,8 +6,9 @@ import Ribasim.buildTypes.Ribasim_MakeQgisPlugin
 import Ribasim.vcsRoots.Ribasim
 import Ribasim_Linux.RibasimLinuxProject
 import Ribasim_Windows.RibasimWindowsProject
-import Testbench.RibasimTestbench
+import Testbench.IntegrationTestHWS
 import Templates.*
+import Testbench.RegressionTestODESolve
 import jetbrains.buildServer.configs.kotlin.Project
 import jetbrains.buildServer.configs.kotlin.projectFeatures.activeStorage
 import jetbrains.buildServer.configs.kotlin.projectFeatures.awsConnection
@@ -66,5 +67,6 @@ object Project : Project({
 
     subProject(RibasimLinuxProject)
     subProject(RibasimWindowsProject)
-    subProject(RibasimTestbench)
+    subProject(IntegrationTestHWS)
+    subProject(RegressionTestODESolve)
 })
