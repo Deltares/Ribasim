@@ -15,6 +15,9 @@ object RegressionTestODESolve : Project({
 
     buildType(RegressionTest_Windows)
     buildType(RegressionTest_Linux)
+
+    template(RegressionTestWindows)
+    template(RegressionTestLinux)
 })
 
 object RegressionTest_Windows : BuildType({
