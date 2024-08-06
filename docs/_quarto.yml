@@ -88,6 +88,7 @@ website:
       contents:
         - dev/index.qmd
         - dev/core.qmd
+        - dev/benchmark.qmd
         - dev/addnode.qmd
         - dev/python.qmd
         - dev/qgis.qmd
