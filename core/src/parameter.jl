@@ -1,6 +1,6 @@
 const SolverStats = @NamedTuple{
     time::Float64,
-    water_balance_calls::Int,
+    rhs_calls::Int,
     linear_solves::Int,
     accepted_timesteps::Int,
     rejected_timesteps::Int,

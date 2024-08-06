@@ -86,13 +86,7 @@
             (DateTime, Int32, Float64),
         )
         @test Tables.schema(solver_stats) == Tables.Schema(
-            (
-                :time,
-                :water_balance_calls,
-                :linear_solves,
-                :accepted_timesteps,
-                :rejected_timesteps,
-            ),
+            (:time, :rhs_calls, :linear_solves, :accepted_timesteps, :rejected_timesteps),
             (DateTime, Int, Int, Int, Int),
         )
     end
