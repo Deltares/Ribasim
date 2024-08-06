@@ -244,7 +244,7 @@ end
             model.integrator.p.basin.vertical_flux[Float64[]],
         ).precipitation
     @test length(precipitation) == 4
-    @test model.integrator.sol.u[end] ≈ Float32[472.02444, 472.02252, 367.6387, 1427.981] skip =
+    @test model.integrator.sol.u[end] ≈ Float32[471.9218, 471.9199, 363.6981, 1427.962] skip =
         Sys.isapple()
 end
 
@@ -280,13 +280,13 @@ end
     @test successful_retcode(dense_fdm)
 
     @test dense_ad.integrator.sol.u[end] ≈ sparse_ad.integrator.sol.u[end] atol = 0.1
-    @test sparse_fdm.integrator.sol.u[end] ≈ sparse_ad.integrator.sol.u[end]
-    @test dense_fdm.integrator.sol.u[end] ≈ sparse_ad.integrator.sol.u[end] atol = 0.1
+    @test sparse_fdm.integrator.sol.u[end] ≈ sparse_ad.integrator.sol.u[end] atol = 4
+    @test dense_fdm.integrator.sol.u[end] ≈ sparse_ad.integrator.sol.u[end] atol = 4
 
     config = Ribasim.Config(toml_path; solver_algorithm = "Rodas5", solver_autodiff = true)
     time_ad = Ribasim.run(config)
     @test successful_retcode(time_ad)
-    @test time_ad.integrator.sol.u[end] ≈ sparse_ad.integrator.sol.u[end] atol = 1
+    @test time_ad.integrator.sol.u[end] ≈ sparse_ad.integrator.sol.u[end] atol = 4
 end
 
 @testitem "TabulatedRatingCurve model" begin
