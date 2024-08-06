@@ -24,7 +24,10 @@ def test_validation(edge):
 
     with pytest.raises(ValidationError):
         df = gpd.GeoDataFrame(
-            data={"from_node_id": [1, 1], "to_node_id": [None, 3]},
+            data={
+                "from_node_id": [1, 1],
+                "to_node_id": ["foo", 3],
+            },  # None is coerced to 0 without errors
             geometry=[None, None],
         )
         EdgeTable(df=df)

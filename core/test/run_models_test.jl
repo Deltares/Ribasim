@@ -211,16 +211,6 @@ end
 
     # flows are recorded at the end of each period, and are undefined at the start
     @test unique(table.time) == Ribasim.datetimes(model)[1:(end - 1)]
-
-    # inflow = outflow over FractionalFlow
-    t = table.time[1]
-    @test length(p.fractional_flow.node_id) == 3
-    for id in p.fractional_flow.node_id
-        inflow = only(table.flow_rate[table.to_node_id .== id.value .&& table.time .== t])
-        outflow =
-            only(table.flow_rate[table.from_node_id .== id.value .&& table.time .== t])
-        @test inflow == outflow
-    end
 end
 
 @testitem "basic arrow model" begin
@@ -306,8 +296,7 @@ end
 
 @testitem "Profile" begin
     import Tables
-    using DataInterpolations: LinearInterpolation, integral
-    using SmoothInterpolation: invert_integral
+    using DataInterpolations: LinearInterpolation, integral, invert_integral
 
     "Shorthand for Ribasim.get_area_and_level"
     function lookup(profile, S)
@@ -323,7 +312,7 @@ end
     storage = range(0.0, 1000.0, n_interpolations)
 
     # Covers interpolation for constant and non-constant area, extrapolation for constant area
-    A = [0.0, 100.0, 100.0]
+    A = [1e-9, 100.0, 100.0]
     h = [0.0, 10.0, 15.0]
     S = integral.(Ref(LinearInterpolation(A, h)), h)
     profile = (; S, A, h)
@@ -351,7 +340,7 @@ end
     end
 
     # Covers extrapolation for non-constant area
-    A = [0.0, 100.0]
+    A = [1e-9, 100.0]
     h = [0.0, 10.0]
     S = integral.(Ref(LinearInterpolation(A, h)), h)
 

@@ -139,7 +139,6 @@ function integrate_flows!(u, t, integrator)::Nothing
                 0.5 * (get_flow(graph, edge..., 0) + get_flow_prev(graph, edge..., 0)) * dt
         end
     end
-
     copyto!(flow_prev, flow)
     copyto!(vertical_flux_prev, vertical_flux)
     return nothing
@@ -234,12 +233,7 @@ function apply_discrete_control!(u, t, integrator)::Nothing
 
         # Loop over the variables listened to by this discrete control node
         for compound_variable in compound_variables
-
-            # Compute the value of the current variable
-            value = 0.0
-            for subvariable in compound_variable.subvariables
-                value += subvariable.weight * get_value(p, subvariable, t)
-            end
+            value = compound_variable_value(compound_variable, p, u, t)
 
             # The thresholds the value of this variable is being compared with
             greater_thans = compound_variable.greater_than
@@ -319,12 +313,12 @@ end
 Get a value for a condition. Currently supports getting levels from basins and flows
 from flow boundaries.
 """
-function get_value(p::Parameters, subvariable::NamedTuple, t::Float64)
-    (; flow_boundary, level_boundary) = p
+function get_value(subvariable::NamedTuple, p::Parameters, u::AbstractVector, t::Float64)
+    (; flow_boundary, level_boundary, basin) = p
     (; listen_node_id, look_ahead, variable, variable_ref) = subvariable
 
-    if !iszero(variable_ref.i)
-        return variable_ref[]
+    if !iszero(variable_ref.idx)
+        return get_value(variable_ref, u)
     end
 
     if variable == "level"
@@ -344,10 +338,20 @@ function get_value(p::Parameters, subvariable::NamedTuple, t::Float64)
             error("Flow condition node $listen_node_id is not a flow boundary.")
         end
 
+    elseif startswith(variable, "concentration_external.")
+        value = basin.concentration_external[listen_node_id.idx][variable](t)
     else
         error("Unsupported condition variable $variable.")
     end
 
+    return value
+end
+
+function compound_variable_value(compound_variable::CompoundVariable, p, u, t)
+    value = zero(eltype(u))
+    for subvariable in compound_variable.subvariables
+        value += subvariable.weight * get_value(subvariable, p, u, t)
+    end
     return value
 end
 
@@ -362,54 +366,6 @@ function get_allocation_model(p::Parameters, subnetwork_id::Int32)::AllocationMo
     end
 end
 
-function get_main_network_connections(
-    p::Parameters,
-    subnetwork_id::Int32,
-)::Vector{Tuple{NodeID, NodeID}}
-    (; allocation) = p
-    (; subnetwork_ids, main_network_connections) = allocation
-    idx = findsorted(subnetwork_ids, subnetwork_id)
-    if isnothing(idx)
-        error("Invalid allocation network ID $subnetwork_id.")
-    else
-        return main_network_connections[idx]
-    end
-    return
-end
-
-"""
-Update the fractional flow fractions in an allocation problem.
-"""
-function set_fractional_flow_in_allocation!(
-    p::Parameters,
-    node_id::NodeID,
-    fraction::Number,
-)::Nothing
-    (; graph) = p
-
-    subnetwork_id = graph[node_id].subnetwork_id
-    # Get the allocation model this fractional flow node is in
-    allocation_model = get_allocation_model(p, subnetwork_id)
-    if !isnothing(allocation_model)
-        problem = allocation_model.problem
-        # The allocation edge which jumps over the fractional flow node
-        edge = (inflow_id(graph, node_id), outflow_id(graph, node_id))
-        if haskey(graph, edge...)
-            # The constraint for this fractional flow node
-            if edge in keys(problem[:fractional_flow])
-                constraint = problem[:fractional_flow][edge]
-
-                # Set the new fraction on all inflow terms in the constraint
-                for inflow_id in inflow_ids_allocation(graph, edge[1])
-                    flow = problem[:F][(inflow_id, edge[1])]
-                    JuMP.set_normalized_coefficient(constraint, flow, -fraction)
-                end
-            end
-        end
-    end
-    return nothing
-end
-
 function set_control_params!(p::Parameters, node_id::NodeID, control_state::String)::Nothing
     (; discrete_control, allocation) = p
     (; control_mappings) = discrete_control
@@ -419,12 +375,6 @@ function set_control_params!(p::Parameters, node_id::NodeID, control_state::Stri
     apply_parameter_update!.(scalar_update)
     apply_parameter_update!.(itp_update)
 
-    # Update fractional flow in allocation if this node is a FractionalFlow node
-    # and allocation is active
-    if node_id.type == NodeType.FractionalFlow && is_active(allocation)
-        @assert only(scalar_update).name == :fraction
-        set_fractional_flow_in_allocation!(p, node_id, only(scalar_update).value)
-    end
     return nothing
 end
 
@@ -488,7 +438,7 @@ end
 "Solve the allocation problem for all demands and assign allocated abstractions."
 function update_allocation!(integrator)::Nothing
     (; p, t, u) = integrator
-    (; allocation, basin) = p
+    (; allocation) = p
     (; allocation_models, mean_input_flows, mean_realized_flows) = allocation
 
     # Don't run the allocation algorithm if allocation is not active

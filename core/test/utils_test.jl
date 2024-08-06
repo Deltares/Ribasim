@@ -12,8 +12,7 @@ end
 @testitem "bottom" begin
     using StructArrays: StructVector
     using Ribasim: NodeID
-    using DataInterpolations: LinearInterpolation, integral
-    using SmoothInterpolation: invert_integral
+    using DataInterpolations: LinearInterpolation, integral, invert_integral
 
     # create two basins with different bottoms/levels
     area = [[0.01, 1.0], [0.01, 1.0]]
@@ -46,8 +45,7 @@ end
     using StructArrays: StructVector
     using Logging
     using Ribasim: NodeID
-    using DataInterpolations: LinearInterpolation
-    using SmoothInterpolation: invert_integral
+    using DataInterpolations: LinearInterpolation, invert_integral
 
     level = [
         0.0,
@@ -175,9 +173,9 @@ end
 
     @test jac_prototype.m == 4
     @test jac_prototype.n == 4
-    @test jac_prototype.colptr == [1, 3, 5, 8, 11]
-    @test jac_prototype.rowval == [1, 2, 1, 2, 2, 3, 4, 2, 3, 4]
-    @test jac_prototype.nzval == ones(10)
+    @test jac_prototype.colptr == [1, 3, 7, 10, 13]
+    @test jac_prototype.rowval == [1, 2, 1, 2, 3, 4, 2, 3, 4, 2, 3, 4]
+    @test jac_prototype.nzval == ones(12)
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/pid_control/ribasim.toml")
 
@@ -236,21 +234,38 @@ end
 end
 
 @testitem "constraints_from_nodes" begin
-    using Ribasim: Model, snake_case, nodetypes, is_flow_constraining
+    using Ribasim:
+        Model,
+        snake_case,
+        nodetypes,
+        NodeType,
+        is_flow_constraining,
+        is_flow_direction_constraining
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
     @test ispath(toml_path)
     model = Model(toml_path)
     (; p) = model.integrator
-    constraining_types = (:Pump, :Outlet, :LinearResistance)
+    constraining_types = (NodeType.Pump, NodeType.Outlet, NodeType.LinearResistance)
+    directed = (
+        NodeType.Pump,
+        NodeType.Outlet,
+        NodeType.TabulatedRatingCurve,
+        NodeType.UserDemand,
+        NodeType.FlowBoundary,
+    )
 
-    for type in nodetypes
-        type == :Terminal && continue  # has no parameter field
-        node = getfield(p, snake_case(type))
+    for symbol in nodetypes
+        type = NodeType.T(symbol)
         if type in constraining_types
-            @test is_flow_constraining(node)
+            @test is_flow_constraining(type)
         else
-            @test !is_flow_constraining(node)
+            @test !is_flow_constraining(type)
+        end
+        if type in directed
+            @test is_flow_direction_constraining(type)
+        else
+            @test !is_flow_direction_constraining(type)
         end
     end
 end
@@ -259,21 +274,21 @@ end
     using Ribasim: nodetypes, NodeType, Parameters, AbstractParameterNode, snake_case
 
     @test Set(nodetypes) == Set([
-        :Terminal,
-        :PidControl,
-        :LevelBoundary,
-        :Pump,
-        :UserDemand,
-        :TabulatedRatingCurve,
-        :FlowDemand,
-        :FlowBoundary,
         :Basin,
-        :ManningResistance,
-        :LevelDemand,
+        :ContinuousControl,
         :DiscreteControl,
-        :Outlet,
+        :FlowBoundary,
+        :FlowDemand,
+        :LevelBoundary,
+        :LevelDemand,
         :LinearResistance,
-        :FractionalFlow,
+        :ManningResistance,
+        :Outlet,
+        :PidControl,
+        :Pump,
+        :TabulatedRatingCurve,
+        :Terminal,
+        :UserDemand,
     ])
     for nodetype in nodetypes
         NodeType.T(nodetype)

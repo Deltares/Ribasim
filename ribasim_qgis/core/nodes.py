@@ -199,7 +199,6 @@ class Node(Input):
         shape = Qgis.MarkerShape
         MARKERS: dict[str, tuple[QColor, str, Qgis.MarkerShape]] = {
             "Basin": (QColor("blue"), "Basin", shape.Circle),
-            "FractionalFlow": (QColor("red"), "FractionalFlow", shape.Triangle),
             "LinearResistance": (
                 QColor("green"),
                 "LinearResistance",
@@ -225,6 +224,7 @@ class Node(Input):
                 shape.Circle,
             ),
             "FlowDemand": (QColor("red"), "FlowDemand", shape.Hexagon),
+            "ContinuousControl": (QColor("gray"), "ContinuousControl", shape.Star),
             # All other nodes, or incomplete input
             "": (QColor("white"), "", shape.Circle),
         }
@@ -380,7 +380,6 @@ class BasinStatic(Input):
             QgsField("potential_evaporation", QVariant.Double),
             QgsField("infiltration", QVariant.Double),
             QgsField("precipitation", QVariant.Double),
-            QgsField("urban_runoff", QVariant.Double),
         ]
 
 
@@ -402,7 +401,6 @@ class BasinTime(Input):
             QgsField("potential_evaporation", QVariant.Double),
             QgsField("infiltration", QVariant.Double),
             QgsField("precipitation", QVariant.Double),
-            QgsField("urban_runoff", QVariant.Double),
         ]
 
 
@@ -496,24 +494,6 @@ class TabulatedRatingCurveTime(Input):
             QgsField("node_id", QVariant.Int),
             QgsField("level", QVariant.Double),
             QgsField("flow_rate", QVariant.Double),
-        ]
-
-
-class FractionalFlowStatic(Input):
-    @classmethod
-    def input_type(cls) -> str:
-        return "FractionalFlow / static"
-
-    @classmethod
-    def geometry_type(cls) -> str:
-        return "No Geometry"
-
-    @classmethod
-    def attributes(cls) -> list[QgsField]:
-        return [
-            QgsField("node_id", QVariant.Int),
-            QgsField("fraction", QVariant.Double),
-            QgsField("control_state", QVariant.String),
         ]
 
 
@@ -638,20 +618,6 @@ class OutletStatic(Input):
         ]
 
 
-class TerminalStatic(Input):
-    @classmethod
-    def input_type(cls) -> str:
-        return "Terminal / static"
-
-    @classmethod
-    def geometry_type(cls) -> str:
-        return "No Geometry"
-
-    @classmethod
-    def attributes(cls) -> list[QgsField]:
-        return [QgsField("node_id", QVariant.Int)]
-
-
 class FlowBoundaryStatic(Input):
     @classmethod
     def input_type(cls) -> str:
@@ -743,6 +709,46 @@ class DiscreteControlLogic(Input):
             QgsField("node_id", QVariant.Int),
             QgsField("control_state", QVariant.String),
             QgsField("truth_state", QVariant.String),
+        ]
+
+
+class ContinuousControlVariable(Input):
+    @classmethod
+    def input_type(cls) -> str:
+        return "ContinuousControl / variable"
+
+    @classmethod
+    def geometry_type(cs) -> str:
+        return "No Geometry"
+
+    @classmethod
+    def attributes(cls) -> list[QgsField]:
+        return [
+            QgsField("node_id", QVariant.Int),
+            QgsField("listen_node_type", QVariant.String),
+            QgsField("listen_node_id", QVariant.Int),
+            QgsField("variable", QVariant.String),
+            QgsField("weight", QVariant.Double),
+            QgsField("look_ahead", QVariant.Double),
+        ]
+
+
+class ContinuousControlFunction(Input):
+    @classmethod
+    def input_type(cls) -> str:
+        return "ContinuousControl / function"
+
+    @classmethod
+    def geometry_type(cls) -> str:
+        return "No Geometry"
+
+    @classmethod
+    def attributes(cls) -> list[QgsField]:
+        return [
+            QgsField("node_id", QVariant.Int),
+            QgsField("input", QVariant.Double),
+            QgsField("output", QVariant.Double),
+            QgsField("controlled_variable", QVariant.String),
         ]
 
 
@@ -916,7 +922,13 @@ NONSPATIALNODETYPES: set[str] = {
     cls.nodetype() for cls in Input.__subclasses__() if not cls.is_spatial()
 }
 EDGETYPES = {"flow", "control"}
-SPATIALCONTROLNODETYPES = {"LevelDemand", "FlowDemand", "DiscreteControl", "PidControl"}
+SPATIALCONTROLNODETYPES = {
+    "ContinuousControl",
+    "DiscreteControl",
+    "FlowDemand",
+    "LevelDemand",
+    "PidControl",
+}
 
 
 def load_nodes_from_geopackage(path: Path) -> dict[str, Input]:

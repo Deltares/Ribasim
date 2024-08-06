@@ -63,6 +63,7 @@ website:
         - reference/index.qmd
         - reference/usage.qmd
         - reference/validation.qmd
+        - reference/allocation.qmd
         - reference/python/index.qmd
         - reference/test-models.qmd
         - section: "Nodes"
@@ -78,9 +79,9 @@ website:
             - reference/node/level-boundary.qmd
             - reference/node/linear-resistance.qmd
             - reference/node/manning-resistance.qmd
-            - reference/node/fractional-flow.qmd
             - reference/node/terminal.qmd
             - reference/node/discrete-control.qmd
+            - reference/node/continuous-control.qmd
             - reference/node/pid-control.qmd
 
     - title: "Dev docs"
@@ -90,6 +91,7 @@ website:
         - dev/addnode.qmd
         - dev/python.qmd
         - dev/qgis.qmd
+        - dev/allocation.qmd
         - dev/bmi.qmd
         - dev/ci.qmd
         - dev/release.qmd

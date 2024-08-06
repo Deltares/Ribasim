@@ -1,7 +1,7 @@
-
-@testitem "toml_path" begin
+@testitem "main output" begin
     using IOCapture: capture
     import TOML
+    using Ribasim: Config, results_path
 
     model_path = normpath(@__DIR__, "../../generated_testmodels/basic/")
     toml_path = normpath(model_path, "ribasim.toml")
@@ -24,4 +24,28 @@
         @show backtrace
     end
     @test occursin("version in the TOML config file does not match", output)
+    @test occursin("Info: Convergence bottlenecks in descending order of severity:", output)
+end
+
+@testitem "main error logging" begin
+    using IOCapture: capture
+    import TOML
+    using Ribasim: Config, results_path
+
+    model_path = normpath(@__DIR__, "../../generated_testmodels/invalid_edge_types/")
+    toml_path = normpath(model_path, "ribasim.toml")
+
+    @test ispath(toml_path)
+    (; value, output) = capture() do
+        Ribasim.main(toml_path)
+    end
+    @test value == 1
+
+    # Stacktraces should be written to both the terminal and log file.
+    @test occursin("\nStacktrace:\n", output)
+    config = Config(toml_path)
+    log_path = results_path(config, "ribasim.log")
+    @test ispath(log_path)
+    log_str = read(log_path, String)
+    @test occursin("\nStacktrace:\n", log_str)
 end

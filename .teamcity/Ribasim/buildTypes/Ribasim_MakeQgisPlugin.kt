@@ -1,16 +1,18 @@
 package Ribasim.buildTypes
 
+import Templates.LinuxAgent
 import jetbrains.buildServer.configs.kotlin.*
 import jetbrains.buildServer.configs.kotlin.buildSteps.script
 
 object Ribasim_MakeQgisPlugin : BuildType({
-    templates(Linux_1)
+    templates(LinuxAgent)
     name = "Make QGIS plugin"
 
     artifactRules = "ribasim_qgis.zip"
 
     vcs {
         root(Ribasim.vcsRoots.Ribasim)
+        cleanCheckout = true
     }
 
     steps {
