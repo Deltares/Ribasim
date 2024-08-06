@@ -2,6 +2,7 @@ struct SavedResults{V1 <: ComponentVector{Float64}}
     flow::SavedValues{Float64, SavedFlow}
     vertical_flux::SavedValues{Float64, V1}
     subgrid_level::SavedValues{Float64, Vector{Float64}}
+    solver_stats::SavedValues{Float64, SolverStats}
 end
 
 """

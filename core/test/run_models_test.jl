@@ -29,10 +29,12 @@
     flow_bytes = read(normpath(dirname(toml_path), "results/flow.arrow"))
     basin_bytes = read(normpath(dirname(toml_path), "results/basin.arrow"))
     subgrid_bytes = read(normpath(dirname(toml_path), "results/subgrid_level.arrow"))
+    solver_stats_bytes = read(normpath(dirname(toml_path), "results/solver_stats.arrow"))
 
     flow = Arrow.Table(flow_bytes)
     basin = Arrow.Table(basin_bytes)
     subgrid = Arrow.Table(subgrid_bytes)
+    solver_stats = Arrow.Table(solver_stats_bytes)
 
     @testset "Schema" begin
         @test Tables.schema(flow) == Tables.Schema(
@@ -82,6 +84,10 @@
         @test Tables.schema(subgrid) == Tables.Schema(
             (:time, :subgrid_id, :subgrid_level),
             (DateTime, Int32, Float64),
+        )
+        @test Tables.schema(solver_stats) == Tables.Schema(
+            (:time, :rhs_calls, :linear_solves, :accepted_timesteps, :rejected_timesteps),
+            (DateTime, Int, Int, Int, Int),
         )
     end
 
