@@ -844,7 +844,12 @@ end
 
 function get_jac_prototype(du0, u0, p, t0)
     p.all_nodes_active[] = true
-    jac_prototype = jacobian_sparsity((du, u) -> water_balance!(du, u, p, t0), du0, u0)
+    jac_prototype = jacobian_sparsity(
+        (du, u) -> water_balance!(du, u, p, t0),
+        du0,
+        u0,
+        TracerSparsityDetector(),
+    )
     p.all_nodes_active[] = false
     jac_prototype
 end

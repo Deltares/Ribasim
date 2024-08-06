@@ -129,7 +129,7 @@ function Model(config::Config)::Model
     adaptive, dt = convert_dt(config.solver.dt)
 
     jac_prototype = if config.solver.sparse
-        get_jac_prototype(du0, u0, p, t0)
+        get_jac_prototype(du0, u0, parameters, t0)
     else
         nothing
     end
