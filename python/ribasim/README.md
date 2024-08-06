@@ -13,8 +13,8 @@ setup is fully reproducible.
 The package is [registered in PyPI](https://pypi.org/project/ribasim/) and can therefore
 be installed with `pip install ribasim`.
 
-For documentation please see the [examples](https://deltares.github.io/Ribasim/python/examples.html) and [API reference](https://deltares.github.io/Ribasim/python/reference/).
+For documentation please see the https://deltares.github.io/Ribasim/ and [API reference](https://deltares.github.io/Ribasim/reference/python/)
 
 # Contributing
 
-For the developer docs please have a look at https://deltares.github.io/Ribasim/python/developer.html
+For the developer docs please have a look at https://deltares.github.io/Ribasim/dev/.

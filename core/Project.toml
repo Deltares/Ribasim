@@ -40,6 +40,13 @@ TerminalLoggers = "5d786b92-1e48-4d6f-9151-6b4477ca9bed"
 TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
 TranscodingStreams = "3bb67fe8-82b1-5028-8e26-92a6c54297fa"
 
+[weakdeps]
+Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+
+[extensions]
+RibasimMakieExt = ["Makie", "DataFrames"]
+
 [compat]
 Accessors = "0.1"
 Aqua = "0.8"
@@ -67,6 +74,7 @@ Legolas = "0.5"
 LinearSolve = "2.24"
 Logging = "<0.0.1, 1"
 LoggingExtras = "1"
+Makie = "0.21"
 MetaGraphsNext = "0.6, 0.7"
 OrdinaryDiffEq = "6.7"
 PreallocationTools = "0.4"
