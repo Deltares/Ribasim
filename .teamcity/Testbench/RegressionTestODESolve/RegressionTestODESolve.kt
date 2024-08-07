@@ -23,39 +23,9 @@ object RegressionTestODESolve : Project({
 object RegressionTest_Windows : BuildType({
     name = "RegressionTestWindows"
     templates(WindowsAgent, GithubCommitStatusIntegration, RegressionTestWindows)
-
-    dependencies{
-        dependency(Windows_BuildRibasim) {
-            snapshot {
-            }
-
-            artifacts {
-                id = "ARTIFACT_DEPENDENCY_570"
-                cleanDestination = true
-                artifactRules = """
-                    ribasim_windows.zip!** => ribasim/build/ribasim
-                """.trimIndent()
-            }
-        }
-    }
 })
 
 object RegressionTest_Linux : BuildType({
     name = "RegressionTestLinux"
     templates(LinuxAgent, GithubCommitStatusIntegration, RegressionTestLinux)
-
-    dependencies{
-        dependency(Linux_BuildRibasim) {
-            snapshot {
-            }
-
-            artifacts {
-                id = "ARTIFACT_DEPENDENCY_570"
-                cleanDestination = true
-                artifactRules = """
-                    ribasim_linux.zip!** => ribasim/build/ribasim
-                """.trimIndent()
-            }
-        }
-    }
 })
