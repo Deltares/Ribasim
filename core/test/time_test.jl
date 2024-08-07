@@ -78,7 +78,6 @@ end
 
 @testitem "Integrate over discontinuity" begin
     import BasicModelInterface as BMI
-    using Ribasim: get_tmp
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/level_demand/ribasim.toml")
     @test ispath(toml_path)
@@ -92,8 +91,9 @@ end
         solver_algorithm = "Euler",
     )
     model = Ribasim.Model(config)
-    starting_precipitation =
-        get_tmp(model.integrator.p.basin.vertical_flux, 0).precipitation[1]
+    starting_precipitation = Ribasim.wrap_forcing(
+        model.integrator.p.basin.vertical_flux[Float64[]],
+    ).precipitation[1]
     BMI.update_until(model, saveat)
     mean_precipitation = only(model.saved.vertical_flux.saveval).precipitation[1]
     # Given that precipitation stops after 15 of the 20 days

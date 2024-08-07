@@ -1,5 +1,4 @@
 @testitem "Pump discrete control" begin
-    using PreallocationTools: get_tmp
     using Ribasim: NodeID
     using Dates: DateTime
     import Arrow
@@ -57,7 +56,7 @@
     t_2_index = findfirst(>=(t_2), t)
     @test level[2, t_2_index] >= discrete_control.compound_variables[1][2].greater_than[1]
 
-    flow = get_tmp(graph[].flow, 0)
+    flow = graph[].flow[Float64[]]
     @test all(iszero, flow)
 end
 
