@@ -2,7 +2,7 @@
 
 julia_version = "1.10.4"
 manifest_format = "2.0"
-project_hash = "d5247101eb296198406ab040fca3c997b4be7438"
+project_hash = "b661ee182fee5f018556cef7564349e623ba00b9"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "6778bcc27496dae5723ff37ee30af451db8b35fe"
@@ -1608,9 +1608,11 @@ version = "1.10.0"
 
 [[deps.SparseConnectivityTracer]]
 deps = ["ADTypes", "Compat", "DocStringExtensions", "FillArrays", "LinearAlgebra", "Random", "Requires", "SparseArrays"]
-git-tree-sha1 = "50f8dcef2355909de25639cf936008d6e85ec2ae"
+git-tree-sha1 = "0009e17ce49ede39993a37aaf9eed9604c095635"
+repo-rev = "gd/componentarrays"
+repo-url = "https://github.com/adrhill/SparseConnectivityTracer.jl"
 uuid = "9f842d2f-2579-4b1d-911e-f412cf18a3f5"
-version = "0.6.0"
+version = "0.6.1"
 
     [deps.SparseConnectivityTracer.extensions]
     SparseConnectivityTracerNNlibExt = "NNlib"

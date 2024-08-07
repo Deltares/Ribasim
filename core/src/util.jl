@@ -848,7 +848,7 @@ function get_jac_prototype(du0, u0, p, t0)
         (du, u) -> water_balance!(du, u, p, t0),
         du0,
         u0,
-        TracerSparsityDetector(),
+        TracerLocalSparsityDetector(),
     )
     p.all_nodes_active[] = false
     jac_prototype
