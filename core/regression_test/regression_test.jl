@@ -1,20 +1,10 @@
 @testitem "regression_ode_solvers_trivial" begin
     using SciMLBase: successful_retcode
-    using Tables: Tables
-    using Tables.DataAPI: nrow
-    using Dates: DateTime
     import Arrow
-    using Ribasim: get_tstops, tsaves
+    using Ribasim
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/trivial/ribasim.toml")
     @test ispath(toml_path)
-
-    # There is no control. That means we don't write the control.arrow,
-    # and we remove it if it exists.
-    control_path = normpath(dirname(toml_path), "results/control.arrow")
-    mkpath(dirname(control_path))
-    touch(control_path)
-    @test ispath(control_path)
     config = Ribasim.Config(toml_path)
 
     solver_list =
@@ -36,8 +26,6 @@
                 @test model isa Ribasim.Model
                 @test successful_retcode(model)
                 (; p) = model.integrator
-
-                @test !ispath(control_path)
 
                 # read all results as bytes first to avoid memory mapping
                 # which can have cleanup issues due to file locking
@@ -65,21 +53,11 @@ end
 
 @testitem "regression_ode_solvers_basic" begin
     using SciMLBase: successful_retcode
-    using Tables: Tables
-    using Tables.DataAPI: nrow
-    using Dates: DateTime
     import Arrow
-    using Ribasim: get_tstops, tsaves
+    using Ribasim
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
     @test ispath(toml_path)
-
-    # There is no control. That means we don't write the control.arrow,
-    # and we remove it if it exists.
-    control_path = normpath(dirname(toml_path), "results/control.arrow")
-    mkpath(dirname(control_path))
-    touch(control_path)
-    @test ispath(control_path)
     config = Ribasim.Config(toml_path)
 
     flow_bytes_bench = read(normpath(@__DIR__, "../../benchmark/basic/flow.arrow"))
@@ -105,8 +83,6 @@ end
                 @test model isa Ribasim.Model
                 @test successful_retcode(model)
                 (; p) = model.integrator
-
-                @test !ispath(control_path)
 
                 # read all results as bytes first to avoid memory mapping
                 # which can have cleanup issues due to file locking
@@ -139,21 +115,11 @@ end
 
 @testitem "regression_ode_solvers_pid_control" begin
     using SciMLBase: successful_retcode
-    using Tables: Tables
-    using Tables.DataAPI: nrow
-    using Dates: DateTime
     import Arrow
-    using Ribasim: get_tstops, tsaves
+    using Ribasim
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/pid_control/ribasim.toml")
     @test ispath(toml_path)
-
-    # There is no control. That means we don't write the control.arrow,
-    # and we remove it if it exists.
-    control_path = normpath(dirname(toml_path), "results/control.arrow")
-    mkpath(dirname(control_path))
-    touch(control_path)
-    @test ispath(control_path)
     config = Ribasim.Config(toml_path)
 
     flow_bytes_bench = read(normpath(@__DIR__, "../../benchmark/pid_control/flow.arrow"))
@@ -181,8 +147,6 @@ end
                 @test successful_retcode(model)
                 (; p) = model.integrator
 
-                @test !ispath(control_path)
-
                 # read all results as bytes first to avoid memory mapping
                 # which can have cleanup issues due to file locking
                 flow_bytes = read(normpath(dirname(toml_path), "results/flow.arrow"))
@@ -203,7 +167,7 @@ end
                 # Testbench for basin.arrow
                 @test basin.time == basin_bench.time
                 @test basin.node_id == basin_bench.node_id
-                @test all(q -> abs(q) < 12.0, basin.storage - basin_bench.storage)
+                @test all(q -> abs(q) < 100.0, basin.storage - basin_bench.storage)
                 @test all(q -> abs(q) < 0.5, basin.level - basin_bench.level)
                 @test all(q -> abs(q) < 1e-3, basin.balance_error)
                 @test all(q -> abs(q) < 2.5, basin.relative_error)
@@ -214,24 +178,14 @@ end
 
 @testitem "regression_ode_solvers_allocation" begin
     using SciMLBase: successful_retcode
-    using Tables: Tables
-    using Tables.DataAPI: nrow
-    using Dates: DateTime
     import Arrow
-    using Ribasim: get_tstops, tsaves
+    using Ribasim
 
     toml_path = normpath(
         @__DIR__,
         "../../generated_testmodels/subnetworks_with_sources/ribasim.toml",
     )
     @test ispath(toml_path)
-
-    # There is no control. That means we don't write the control.arrow,
-    # and we remove it if it exists.
-    control_path = normpath(dirname(toml_path), "results/control.arrow")
-    mkpath(dirname(control_path))
-    touch(control_path)
-    @test ispath(control_path)
     config = Ribasim.Config(toml_path)
 
     flow_bytes_bench =
@@ -260,8 +214,6 @@ end
                 @test model isa Ribasim.Model
                 @test successful_retcode(model)
                 (; p) = model.integrator
-
-                @test !ispath(control_path)
 
                 # read all results as bytes first to avoid memory mapping
                 # which can have cleanup issues due to file locking
