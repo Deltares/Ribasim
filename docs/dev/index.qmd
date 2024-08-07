@@ -8,7 +8,7 @@ There is developer documentation for the [Julia core](/dev/core.qmd), the [Basic
 A guide on how to add a new node type to both is written in [adding node types](/dev/addnode.qmd).
 [Release process](/dev/release.qmd) describes the steps to follow when creating a new Ribasim release.
 
-# Set up the developer environment
+# Setting up the developer environment
 
 ## Clone Ribasim
 
