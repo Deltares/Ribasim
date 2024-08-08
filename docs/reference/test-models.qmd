@@ -14,11 +14,10 @@ for model_name, model_constructor in ribasim_testmodels.constructors.items():
         continue
 
     model = model_constructor()
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize = (6, 6))
     model.plot(ax)
     ax.set_title(label=model_name, loc="left")
     fig.text(0, 1, model_constructor.__doc__)
-    fig.tight_layout()
     plt.show()
     plt.close(fig)
 ```
