@@ -49,7 +49,7 @@ def collect_node_properties(
     node: QgsVectorLayer,
 ) -> tuple[NDArray[np.float64], NDArray[np.int_], dict[str, tuple[str, int]]]:
     n_node = node.featureCount()
-    node_fields = node._fields()
+    node_fields = node.fields()
     type_field = node_fields.indexFromName("node_type")
     id_field = node_fields.indexFromName("node_id")
 
@@ -113,7 +113,7 @@ def set_edge_properties(node: QgsVectorLayer, edge: QgsVectorLayer) -> None:
     edge_xy = collect_edge_coordinates(edge)
     from_fid, to_fid = derive_connectivity(node_index, node_xy, edge_xy)
 
-    edge_fields = edge._fields()
+    edge_fields = edge.fields()
     from_type_field = edge_fields.indexFromName("from_node_type")
     from_id_field = edge_fields.indexFromName("from_node_id")
     to_type_field = edge_fields.indexFromName("to_node_type")
