@@ -105,7 +105,7 @@ class Input(abc.ABC):
         defaults = getattr(self, "defaults", None)
         if self.layer is None or defaults is None:
             return
-        fields = self.layer.fields()
+        fields = self.layer._fields()
         for name, definition in defaults.items():
             index = fields.indexFromName(name)
             self.layer.setDefaultValueDefinition(index, definition)
@@ -113,7 +113,7 @@ class Input(abc.ABC):
     def set_dropdown(self, name: str, options: set[str]) -> None:
         """Use a dropdown menu for a field in the editor widget."""
         layer = self.layer
-        index = layer.fields().indexFromName(name)
+        index = layer._fields().indexFromName(name)
         setup = QgsEditorWidgetSetup(
             "ValueMap",
             {"map": {node: node for node in options}},
@@ -185,7 +185,7 @@ class Node(Input):
 
     def set_editor_widget(self) -> None:
         layer = self.layer
-        node_type_field = layer.fields().indexFromName("node_type")
+        node_type_field = layer._fields().indexFromName("node_type")
         self.set_dropdown("node_type", NONSPATIALNODETYPES)
 
         layer_form_config = layer.editFormConfig()
