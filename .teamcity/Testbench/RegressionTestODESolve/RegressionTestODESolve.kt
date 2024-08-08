@@ -23,9 +23,35 @@ object RegressionTestODESolve : Project({
 object RegressionTest_Windows : BuildType({
     name = "RegressionTestWindows"
     templates(WindowsAgent, GithubCommitStatusIntegration, RegressionTestWindows)
+
+    triggers{
+        schedule {
+            id = ""
+            schedulingPolicy = daily {
+                hour = 0
+            }
+
+            branchFilter = "+:<default>"
+            triggerBuild = always()
+            withPendingChangesOnly = true
+        }
+    }
 })
 
 object RegressionTest_Linux : BuildType({
     name = "RegressionTestLinux"
     templates(LinuxAgent, GithubCommitStatusIntegration, RegressionTestLinux)
+
+    triggers{
+        schedule {
+            id = ""
+            schedulingPolicy = daily {
+                hour = 0
+            }
+
+            branchFilter = "+:<default>"
+            triggerBuild = always()
+            withPendingChangesOnly = true
+        }
+    }
 })

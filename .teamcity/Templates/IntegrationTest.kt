@@ -65,18 +65,6 @@ open class IntegrationTest (platformOs: String) : Template() {
             executionTimeoutMin = 30
         }
 
-        triggers{
-            schedule {
-                id = ""
-                schedulingPolicy = daily {
-                    hour = 0
-                }
-
-                branchFilter = "+:<default>"
-                triggerBuild = always()
-                withPendingChangesOnly = true
-            }
-        }
     }
 }
 
