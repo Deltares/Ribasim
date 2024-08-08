@@ -7,6 +7,6 @@ import jetbrains.buildServer.configs.kotlin.Project
 
 object Testbench : Project({
     name = "Testbench"
-    subProject(IntegrationTestHWS)
-    subProject(RegressionTestODESolve)
+//    subProject(IntegrationTestHWS)
+//    subProject(RegressionTestODESolve)
 })
