@@ -17,8 +17,6 @@ object RibasimWindowsProject : Project({
     buildType(Windows_TestDelwaqCoupling)
     buildType(Windows_TestRibasimBinaries)
 
-    template(WindowsAgent)
-    template(BuildWindows)
     template(TestBinariesWindows)
     template(TestDelwaqCouplingWindows)
 })

@@ -2,7 +2,7 @@ from qgis.testing import unittest
 from qgis.utils import iface, plugins
 
 
-class TestPlugin(unittest.TestCase):
+class TestPlugin(unittest.TestCase):  # type: ignore
     def test_plugin_is_loaded(self):
         """Test plugin is properly loaded and appears in QGIS plugins."""
         plugin = plugins.get("ribasim_qgis")

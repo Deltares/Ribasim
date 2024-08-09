@@ -8,7 +8,7 @@ from ribasim_qgis.core.model import (
 )
 
 
-class TestModel(unittest.TestCase):
+class TestModel(unittest.TestCase):  # type: ignore
     tests_folder_path = Path(__file__).parent.parent.resolve()
     data_folder_path = tests_folder_path / "data"
 

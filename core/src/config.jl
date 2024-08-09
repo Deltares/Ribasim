@@ -11,13 +11,10 @@ module config
 using Configurations: Configurations, @option, from_toml, @type_alias
 using DataStructures: DefaultDict
 using Dates: DateTime
-using LineSearches: BackTracking
 using Logging: LogLevel, Debug, Info, Warn, Error
 using ..Ribasim: Ribasim, isnode, nodetype
 using OrdinaryDiffEq:
     OrdinaryDiffEqAlgorithm,
-    OrdinaryDiffEqNewtonAdaptiveAlgorithm,
-    NLNewton,
     Euler,
     ImplicitEuler,
     KenCarp4,
@@ -239,17 +236,11 @@ function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
         error("Given solver algorithm $(solver.algorithm) not supported.\n\
             Available options are: ($(options)).")
     end
-    kwargs = Dict{Symbol, Any}()
-    if algotype <: OrdinaryDiffEqNewtonAdaptiveAlgorithm
-        kwargs[:nlsolve] = NLNewton(; relax = BackTracking())
-    end
     # not all algorithms support this keyword
-    kwargs[:autodiff] = solver.autodiff
     try
-        algotype(; kwargs...)
+        algotype(; solver.autodiff)
     catch
-        pop!(kwargs, :autodiff)
-        algotype(; kwargs...)
+        algotype()
     end
 end
 
