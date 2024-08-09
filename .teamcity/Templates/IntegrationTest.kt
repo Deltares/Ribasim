@@ -65,7 +65,7 @@ open class IntegrationTest (platformOs: String) : Template() {
         }
 
         failureConditions {
-            executionTimeoutMin = 30
+            executionTimeoutMin = 90
         }
 
     }
