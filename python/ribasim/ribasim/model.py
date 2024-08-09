@@ -98,7 +98,7 @@ class Model(FileModel):
     edge: EdgeTable = Field(default_factory=EdgeTable)
 
     @model_validator(mode="after")
-    def set_node_parent(self) -> "Model":
+    def _set_node_parent(self) -> "Model":
         for (
             k,
             v,
@@ -108,14 +108,14 @@ class Model(FileModel):
         return self
 
     @model_validator(mode="after")
-    def ensure_edge_table_is_present(self) -> "Model":
+    def _ensure_edge_table_is_present(self) -> "Model":
         if self.edge.df is None:
             self.edge.df = GeoDataFrame[EdgeSchema]()
         self.edge.df.set_geometry("geometry", inplace=True, crs=self.crs)
         return self
 
     @field_serializer("input_dir", "results_dir")
-    def serialize_path(self, path: Path) -> str:
+    def _serialize_path(self, path: Path) -> str:
         return str(path)
 
     def model_post_init(self, __context: Any) -> None:
@@ -132,7 +132,7 @@ class Model(FileModel):
         """
         content = ["ribasim.Model("]
         INDENT = "    "
-        for field in self.fields():
+        for field in self._fields():
             attr = getattr(self, field)
             if isinstance(attr, EdgeTable):
                 content.append(f"{INDENT}{field}=Edge(...),")
@@ -289,7 +289,7 @@ class Model(FileModel):
             return {}
 
     @model_validator(mode="after")
-    def reset_contextvar(self) -> "Model":
+    def _reset_contextvar(self) -> "Model":
         # Drop database info
         context_file_loading.set({})
         return self
