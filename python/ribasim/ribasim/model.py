@@ -98,7 +98,7 @@ class Model(FileModel):
     edge: EdgeTable = Field(default_factory=EdgeTable)
 
     @model_validator(mode="after")
-    def set_node_parent(self) -> "Model":
+    def _set_node_parent(self) -> "Model":
         for (
             k,
             v,
@@ -108,14 +108,14 @@ class Model(FileModel):
         return self
 
     @model_validator(mode="after")
-    def ensure_edge_table_is_present(self) -> "Model":
+    def _ensure_edge_table_is_present(self) -> "Model":
         if self.edge.df is None:
             self.edge.df = GeoDataFrame[EdgeSchema]()
         self.edge.df.set_geometry("geometry", inplace=True, crs=self.crs)
         return self
 
     @field_serializer("input_dir", "results_dir")
-    def serialize_path(self, path: Path) -> str:
+    def _serialize_path(self, path: Path) -> str:
         return str(path)
 
     def model_post_init(self, __context: Any) -> None:
@@ -132,7 +132,7 @@ class Model(FileModel):
         """
         content = ["ribasim.Model("]
         INDENT = "    "
-        for field in self.fields():
+        for field in self._fields():
             attr = getattr(self, field)
             if isinstance(attr, EdgeTable):
                 content.append(f"{INDENT}{field}=Edge(...),")
@@ -289,7 +289,7 @@ class Model(FileModel):
             return {}
 
     @model_validator(mode="after")
-    def reset_contextvar(self) -> "Model":
+    def _reset_contextvar(self) -> "Model":
         # Drop database info
         context_file_loading.set({})
         return self
@@ -366,7 +366,12 @@ class Model(FileModel):
             )
         return
 
-    def plot(self, ax=None, indicate_subnetworks: bool = True) -> Any:
+    def plot(
+        self,
+        ax=None,
+        indicate_subnetworks: bool = True,
+        aspect_ratio_bound: float = 0.33,
+    ) -> Any:
         """Plot the nodes, edges and allocation networks of the model.
 
         Parameters
@@ -375,6 +380,9 @@ class Model(FileModel):
             Axes on which to draw the plot.
         indicate_subnetworks : bool
             Whether to indicate subnetworks with a convex hull backdrop.
+        aspect_ratio_bound : float
+            The maximal aspect ratio in (0,1). The smaller this number, the further the figure
+            shape is allowed to be from a square
 
         Returns
         -------
@@ -401,6 +409,21 @@ class Model(FileModel):
             labels += labels_subnetworks
 
         ax.legend(handles, labels, loc="lower left", bbox_to_anchor=(1, 0.5))
+
+        # Enforce aspect ratio bound
+        xlim = ax.get_xlim()
+        ylim = ax.get_ylim()
+        xsize = xlim[1] - xlim[0]
+        ysize = ylim[1] - ylim[0]
+
+        if ysize < aspect_ratio_bound * xsize:
+            y_mid = (ylim[0] + ylim[1]) / 2
+            ysize_new = aspect_ratio_bound * xsize
+            ax.set_ylim(y_mid - ysize_new / 2, y_mid + ysize_new / 2)
+        elif xsize < aspect_ratio_bound * ysize:
+            x_mid = (xlim[0] + xlim[1]) / 2
+            xsize_new = aspect_ratio_bound * ysize
+            ax.set_xlim(x_mid - xsize_new / 2, x_mid + xsize_new / 2)
 
         return ax
 
