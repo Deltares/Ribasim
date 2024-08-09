@@ -60,7 +60,7 @@ object Project : Project({
             }
             credentials = accessKeys()
             accessKeyID = "AKIAQBIN2MPWXSD2IZ5F"
-            accessKey = "credentialsJSON:dba90026-9856-4f87-94d9-bab91f3f2d5c"
+            accessKey = "credentialsJSON:abf605ce-e382-4b10-b5de-8a7640dc58d9"
         }
     }
 
