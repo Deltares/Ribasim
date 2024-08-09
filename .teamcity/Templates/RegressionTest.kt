@@ -56,6 +56,7 @@ open class RegressionTest (platformOs: String) : Template() {
                 workingDir = "ribasim"
                 scriptContent = header +
                         """
+                pixi run python utils/get_benchmark.py %MiniO_credential_token%
                 pixi run test-ribasim-regression
                 """.trimIndent()
             }
