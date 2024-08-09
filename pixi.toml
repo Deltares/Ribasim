@@ -177,6 +177,7 @@ xugrid = "*"
 xarray = "*"
 networkx = ">=3.3"
 ipykernel = ">=6.29"
+minio = "*"
 
 [pypi-dependencies]
 ribasim = { path = "python/ribasim", editable = true }

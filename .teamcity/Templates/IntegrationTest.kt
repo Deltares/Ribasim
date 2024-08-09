@@ -36,7 +36,9 @@ open class IntegrationTest (platformOs: String) : Template() {
             root(Ribasim.vcsRoots.Ribasim, ". => ribasim")
             cleanCheckout = true
         }
-
+        params {
+            password("MiniO_credential_token", "credentialsJSON:86cbf3e5-724c-437d-9962-7a3f429b0aa2")
+        }
         val header = generateIntegrationTestHeader(platformOs)
 
         steps {

@@ -97,7 +97,7 @@ object Windows_TestDelwaqCoupling : BuildType({
     dependencies {
         artifacts(AbsoluteId("Dimr_DimrCollectors_2bDimrCollectorReleaseSigned")) {
             id = "ARTIFACT_DEPENDENCY_4206"
-            buildRule = lastPinned()
+            buildRule = tag("DIMRset_2.27.09")
             artifactRules = "dimrset_x64_signed_*.zip!/x64 => dimr"
         }
     }
