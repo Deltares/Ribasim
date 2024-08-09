@@ -21,7 +21,7 @@ test-ribasim-api = "pytest --basetemp=python/ribasim_api/tests/temp --junitxml=r
 [feature.dev.tasks]
 # Installation
 install-julia = "juliaup add 1.10.4 && juliaup override unset && juliaup override set 1.10.4"
-fix-julia-dir = "icacls $homedrive/$homepath/.julia/artifacts /q /c /t /reset;exit" # ignore errors (on non-Windows platforms)
+fix-julia-dir = "icacls $homedrive/$homepath/.julia/artifacts /q /c /t /reset;exit 0" # ignore errors (on non-Windows platforms)
 install-pre-commit = "pre-commit install"
 install-ci = { depends_on = [
     "fix-julia-dir",
