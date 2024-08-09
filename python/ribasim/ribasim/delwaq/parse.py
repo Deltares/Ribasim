@@ -17,7 +17,9 @@ repo_dir = delwaq_dir.parents[1]
 output_folder = delwaq_dir / "model"
 
 
-def parse(toml_path: Path, graph, substances) -> ribasim.Model:
+def parse(
+    toml_path: Path, graph, substances, output_folder=output_folder
+) -> ribasim.Model:
     model = ribasim.Model.read(toml_path)
 
     # Output of Delwaq

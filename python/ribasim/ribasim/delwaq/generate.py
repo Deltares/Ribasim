@@ -31,6 +31,7 @@ from .util import (
 )
 
 delwaq_dir = Path(__file__).parent
+output_folder = delwaq_dir / "model"
 
 env = jinja2.Environment(
     autoescape=True, loader=jinja2.FileSystemLoader(delwaq_dir / "template")
@@ -41,7 +42,11 @@ env = jinja2.Environment(
 USE_EVAP = True
 
 
-def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
+def generate(
+    toml_path: Path,
+    output_folder=output_folder,
+    use_evaporation=USE_EVAP,
+) -> tuple[nx.DiGraph, set[str]]:
     """Generate a Delwaq model from a Ribasim model and results."""
 
     # Read in model and results
@@ -49,7 +54,6 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
     basins = pd.read_feather(toml_path.parent / "results" / "basin.arrow")
     flows = pd.read_feather(toml_path.parent / "results" / "flow.arrow")
 
-    output_folder = delwaq_dir / "model"
     output_folder.mkdir(exist_ok=True)
 
     # Setup flow network
@@ -184,7 +188,7 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
                 boundary=(node["id"], "precipitation"),
             )
 
-            if USE_EVAP:
+            if use_evaporation:
                 boundary_id -= 1
                 G.add_node(
                     boundary_id,
