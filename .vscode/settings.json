@@ -23,6 +23,5 @@
     "julia.lint.disabledDirs": [
         ".pixi"
     ],
-    "julia.lint.run": true,
-    "files.insertFinalNewline": true
+    "julia.lint.run": true
 }

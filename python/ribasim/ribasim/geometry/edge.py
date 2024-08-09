@@ -107,7 +107,7 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
         )
         self.df.index.name = "fid"
 
-    def _get_where_edge_type(self, edge_type: str) -> NDArray[np.bool_]:
+    def get_where_edge_type(self, edge_type: str) -> NDArray[np.bool_]:
         assert self.df is not None
         return (self.df.edge_type == edge_type).to_numpy()
 
@@ -118,14 +118,6 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
         self.df.sort_index(inplace=True)
 
     def plot(self, **kwargs) -> Axes:
-        """Plot the edges of the model.
-
-        Parameters
-        ----------
-        **kwargs : Dict
-            Supported: 'ax', 'color_flow', 'color_control'
-        """
-
         assert self.df is not None
         kwargs = kwargs.copy()  # Avoid side-effects
         ax = kwargs.get("ax", None)
@@ -149,8 +141,8 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
             kwargs_control["color"] = color_control
             kwargs_control["label"] = "Control edge"
 
-        where_flow = self._get_where_edge_type("flow")
-        where_control = self._get_where_edge_type("control")
+        where_flow = self.get_where_edge_type("flow")
+        where_control = self.get_where_edge_type("control")
 
         if not self.df[where_flow].empty:
             self.df[where_flow].plot(**kwargs_flow)

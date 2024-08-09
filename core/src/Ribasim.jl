@@ -98,10 +98,4 @@ include("callback.jl")
 include("main.jl")
 include("libribasim.jl")
 
-# Define names used in Makie extension
-function plot_basin_data end
-function plot_basin_data! end
-function plot_flow end
-function plot_flow! end
-
 end  # module Ribasim

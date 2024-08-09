@@ -92,7 +92,7 @@ class BaseModel(PydanticBaseModel):
     )
 
     @classmethod
-    def _fields(cls) -> list[str]:
+    def fields(cls) -> list[str]:
         """Return the names of the fields contained in the Model."""
         return list(cls.model_fields.keys())
 
@@ -117,7 +117,7 @@ class FileModel(BaseModel, ABC):
 
     @model_validator(mode="before")
     @classmethod
-    def _check_filepath(cls, value: Any) -> Any:
+    def check_filepath(cls, value: Any) -> Any:
         # Enable initialization with a Path.
         if isinstance(value, dict):
             # Pydantic Model init requires a dict
@@ -173,7 +173,7 @@ class TableModel(FileModel, Generic[TableT]):
 
     @field_validator("df")
     @classmethod
-    def _check_extra_columns(cls, v: DataFrame[TableT]):
+    def check_extra_columns(cls, v: DataFrame[TableT]):
         """Allow only extra columns with `meta_` prefix."""
         if isinstance(v, (pd.DataFrame, gpd.GeoDataFrame)):
             for colname in v.columns:
@@ -187,7 +187,7 @@ class TableModel(FileModel, Generic[TableT]):
         return v
 
     @model_serializer
-    def _set_model(self) -> str | None:
+    def set_model(self) -> str | None:
         return str(self.filepath.name) if self.filepath is not None else None
 
     @classmethod
@@ -213,14 +213,14 @@ class TableModel(FileModel, Generic[TableT]):
 
     @model_validator(mode="before")
     @classmethod
-    def _check_dataframe(cls, value: Any) -> Any:
+    def check_dataframe(cls, value: Any) -> Any:
         # Enable initialization with a DataFrame.
         if isinstance(value, pd.DataFrame | gpd.GeoDataFrame):
             value = {"df": value}
 
         return value
 
-    def _node_ids(self) -> set[int]:
+    def node_ids(self) -> set[int]:
         node_ids: set[int] = set()
         if self.df is not None and "node_id" in self.df.columns:
             node_ids.update(self.df["node_id"])
@@ -394,7 +394,7 @@ class ChildModel(BaseModel):
     _parent_field: str | None = None
 
     @model_validator(mode="after")
-    def _check_parent(self) -> "ChildModel":
+    def check_parent(self) -> "ChildModel":
         if self._parent is not None:
             self._parent.model_fields_set.update({self._parent_field})
         return self
@@ -432,7 +432,7 @@ class NodeModel(ChildModel):
         return f"{cls.get_input_type()}{delimiter}{field}"
 
     def _tables(self) -> Generator[TableModel[Any], Any, None]:
-        for key in self._fields():
+        for key in self.fields():
             attr = getattr(self, key)
             if (
                 isinstance(attr, TableModel)
@@ -441,10 +441,10 @@ class NodeModel(ChildModel):
             ):
                 yield attr
 
-    def _node_ids(self) -> set[int]:
+    def node_ids(self) -> set[int]:
         node_ids: set[int] = set()
         for table in self._tables():
-            node_ids.update(table._node_ids())
+            node_ids.update(table.node_ids())
         return node_ids
 
     def _save(self, directory: DirectoryPath, input_dir: DirectoryPath):
@@ -457,7 +457,7 @@ class NodeModel(ChildModel):
         Skip "empty" attributes: when the dataframe of a TableModel is None.
         """
         content = []
-        for field in self._fields():
+        for field in self.fields():
             attr = getattr(self, field)
             if isinstance(attr, TableModel):
                 if attr.df is not None:
