@@ -21,8 +21,13 @@ test-ribasim-api = "pytest --basetemp=python/ribasim_api/tests/temp --junitxml=r
 [feature.dev.tasks]
 # Installation
 install-julia = "juliaup add 1.10.4 && juliaup override unset && juliaup override set 1.10.4"
+fix-julia-dir = "icacls $homedrive/$homepath/.julia/artifacts /q /c /t /reset;exit" # ignore errors (on non-Windows platforms)
 install-pre-commit = "pre-commit install"
-install-ci = { depends_on = ["install-julia", "update-registry-julia"] }
+install-ci = { depends_on = [
+    "fix-julia-dir",
+    "install-julia",
+    "update-registry-julia",
+] }
 install = { depends_on = [
     "install-ci",
     "install-qgis-plugins",
@@ -77,7 +82,7 @@ lint = { depends_on = [
 build = { "cmd" = "julia --project build.jl", cwd = "build", depends_on = [
     "generate-testmodels",
     "initialize-julia",
-], env = {JULIA_SSL_CA_ROOTS_PATH = ""} }
+], env = { JULIA_SSL_CA_ROOTS_PATH = "" } }
 remove-artifacts = "julia --eval 'rm(joinpath(Base.DEPOT_PATH[1], \"artifacts\"), force=true, recursive=true)'"
 # Tests
 test-ribasim-cli = "pytest --numprocesses=4 --basetemp=build/tests/temp --junitxml=report.xml build/tests"
