@@ -20,6 +20,6 @@ objects = myClient.list_objects(myBucketName, prefix="hws_2024_7_0/", recursive=
 
 for obj in objects:
     try:
-        myClient.fget_object(myBucketName, obj.object_name, "" + obj.object_name)
+        myClient.fget_object(myBucketName, obj.object_name, "models/" + obj.object_name)
     except S3Error as e:
         print(f"Error occurred: {e}")
