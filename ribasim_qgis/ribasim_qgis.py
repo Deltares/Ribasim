@@ -8,7 +8,7 @@ from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction
 
 
-class RibasimDockWidget(QgsDockWidget):  # type: ignore
+class RibasimDockWidget(QgsDockWidget):
     def closeEvent(self, event) -> None:
         # TODO: if we implement talking to a Julia server, shut it down here.
         event.accept()
