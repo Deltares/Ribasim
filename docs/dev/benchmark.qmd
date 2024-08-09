@@ -2,7 +2,8 @@
 title: "Benchmark"
 ---
 
-This document describes how the benchmarking and performance testing of Ribasim is handled. In Ribasim, the benchmarking includes and regression tests on the test models and regressive performance tests on the production models.
+This document describes how the benchmarking and performance testing of Ribasim is handled.
+In Ribasim, the benchmarking includes and regression tests on the test models and regressive performance tests on the production models.
 
 The idea of regression tests on the test models is to run models with various solvers, run models with a sparse Jacobian and a dense one and compare the outputs.
 It will possibly involve production models in the future.
@@ -15,9 +16,11 @@ It will report if the new changes in the code decrease the model's performance o
 ## Benchmark the ODE solvers
 The benchmarking of the ODE solvers is done by running the test models with different ODE solvers and solver settings and comparing the output with the benchmark.
 
-The settings include the true and false of jacobian density and auto differentiation. Currently, 4 models are chosen to undergo the regression tests. They are `trivial`, `basic`, `pid_control` and `subnetwork_with_sources`.
+The settings include toggling the `sparse` and `autodiff` solver settings.
+Currently, 4 models are chosen to undergo the regression tests.
+They are `trivial`, `basic`, `pid_control` and `subnetwork_with_sources`.
 
-The current benchmark is the output files of a stable run of the test models with the default (`QNDF`) solver with default settings.
+The benchmark reference are the output files of a run of the test models with default solver settings.
 The output files `basin.arrow` and `flow.arrow` are used for comparison.
 Different margins are set for the comparison of the outputs, and the benchmark is considered passed if the output is within the margin.
 Since we are still in the process of evaluating the performance of different solvers, the margin is subject to change.
@@ -31,9 +34,9 @@ TODO, and can be merged with the section [benchmark of the ODE solvers](#benchma
 TODO, [#issue 1658](https://github.com/Deltares/Ribasim/issues/1658), and can be merged with the section [benchmark of the ODE solvers](#benchmark-the-ode-solvers) when it is done.
 
 # Benchmarking of the production model
-Regressive performance tests on the production models are done by running the production models with the new changes of the code and comparing the runtime performance with the benchmark.
-The current benchmark is the output files of a stable run of the production models with the default (`QNDF`) solver.
-The output file "basin_state.arrow" which records the end states of the basin is used for comparison.
+Regressive performance tests on the production models are done by running the production models with the new changes of the code and comparing the runtime performance with the reference run.
+The references are the output files of a run of the production models with the default solver settings.
+The output file `basin_state.arrow` which records the end states of the basin is used for comparison.
 Since the development of the model is still ongoing, the benchmark is subject to change.
 
-The regressive performance tests are currently run on a weekly basis. When the development of the model is more stable, the tests will be run more frequently.
+The regressive performance tests are currently run on a weekly basis.

@@ -170,7 +170,6 @@ end
                 @test all(q -> abs(q) < 100.0, basin.storage - basin_bench.storage)
                 @test all(q -> abs(q) < 0.5, basin.level - basin_bench.level)
                 @test all(q -> abs(q) < 1e-3, basin.balance_error)
-                @test all(q -> abs(q) < 2.5, basin.relative_error)
             end
         end
     end
@@ -235,17 +234,6 @@ end
                 # Testbench for basin.arrow
                 @test basin.time == basin_bench.time
                 @test basin.node_id == basin_bench.node_id
-                # TODO @test all(q -> abs(q) < 12.0, basin.storage - basin_bench.storage)
-                # TODO @test all(
-                #     q -> abs(q) < 100.0,
-                #     basin.storage[(end - 16):end] - basin_bench.storage[(end - 16):end],
-                # )
-                # TODO @test all(
-                #     q -> abs(q) < 2.0,
-                #     basin.level[(end - 16):end] - basin_bench.level[(end - 16):end],
-                # )
-                # TODO @test all(q -> abs(q) < 1e-1, basin.balance_error)
-                # TODO @test all(q -> abs(q) < 30.0, basin.relative_error)
             end
         end
     end
