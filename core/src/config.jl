@@ -11,7 +11,7 @@ module config
 using Configurations: Configurations, @option, from_toml, @type_alias
 using DataStructures: DefaultDict
 using Dates: DateTime
-using LineSearches: BackTracking
+using LineSearches: BackTracking, AbstractLineSearch
 using Logging: LogLevel, Debug, Info, Warn, Error
 using ..Ribasim: Ribasim, isnode, nodetype
 using OrdinaryDiffEq:
@@ -231,6 +231,37 @@ const algorithms = Dict{String, Type}(
     "Euler" => Euler,
 )
 
+@kwdef struct NonNegativeStorage{LT <: AbstractLineSearch} <: AbstractLineSearch
+    ls::LT = BackTracking()
+end
+
+function (ls::NonNegativeStorage)(ϕ, dϕ, ϕdϕ, α0, ϕ0, dϕ0)
+    # Result from actual linesearch
+    α, _ = ls.ls(ϕ, dϕ, ϕdϕ, α0, ϕ0, dϕ0)
+
+    # Correct to non-negative storages
+    names = propertynames(ϕ)
+    dz = getfield(ϕ, names[1])
+    z = getfield(ϕ, names[2]).z
+    resid = getfield(ϕ, names[3])
+
+    for (z_, dz_) in zip(z, dz)
+        if z_ > 0 && dz_ < 0
+            α = min(α, -z_/dz_)
+        elseif z_ < 0
+            α
+        end
+    end
+    @show dz
+    @show z
+    @assert α ≥ 0
+    @show α
+    # @show resid(z)
+    # println("-----------------------")
+
+    α, 1
+end
+
 "Create an OrdinaryDiffEqAlgorithm from solver config"
 function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
     algotype = get(algorithms, solver.algorithm, nothing)
@@ -241,7 +272,7 @@ function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
     end
     kwargs = Dict{Symbol, Any}()
     if algotype <: OrdinaryDiffEqNewtonAdaptiveAlgorithm
-        kwargs[:nlsolve] = NLNewton(; relax = BackTracking())
+        kwargs[:nlsolve] = NLNewton(; relax = NonNegativeStorage())
     end
     # not all algorithms support this keyword
     kwargs[:autodiff] = solver.autodiff

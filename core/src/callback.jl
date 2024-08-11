@@ -97,6 +97,10 @@ function check_negative_storage(u, t, integrator)::Nothing
         end
     end
 
+    println("#############################")
+    @show t
+    println("#############################")
+
     if errors
         t_datetime = datetime_since(integrator.t, integrator.p.starttime)
         error("Negative storages found at $t_datetime.")
