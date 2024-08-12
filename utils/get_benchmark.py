@@ -3,23 +3,31 @@ import sys
 from minio import Minio
 from minio.error import S3Error
 
-# For access
-myMinioServer = "s3.deltares.nl"
-myAccessKey = "KwKRzscudy3GvRB8BN1Z"
-mySecretKey = sys.argv[1]
+"""For access
+To access and download a specific folder in MinIO server
+
+minioServer: the access point to MinIO for Deltares
+accessKey: the credentials username
+secreyKey: input from the terminal, the credentials password
+pathToFolder: input from the terminal, the path to the folder to download. E.g. "benchmark/", "hws_2024_7_0/"
+"""
+
+minioServer = "s3.deltares.nl"
+accessKey = "KwKRzscudy3GvRB8BN1Z"
+secretKey = sys.argv[1]
+pathToFolder = sys.argv[2]
 
 # The path that will be recursively downloaded
-myBucketName = "ribasim"
-myPathName = "hws_2024_7_0"
-myRewind = "2023.05.10T16:00"  # Notation that mc uses
+bucketName = "ribasim"
+pathName = "hws_2024_7_0"
 
 # Minio client connection
-myClient = Minio(myMinioServer, access_key=myAccessKey, secret_key=mySecretKey)
+myClient = Minio(minioServer, access_key=accessKey, secret_key=secretKey)
 
-objects = myClient.list_objects(myBucketName, prefix="benchmark/", recursive=True)
+objects = myClient.list_objects(bucketName, prefix=pathToFolder, recursive=True)
 
 for obj in objects:
     try:
-        myClient.fget_object(myBucketName, obj.object_name, "" + obj.object_name)
+        myClient.fget_object(bucketName, obj.object_name, "" + obj.object_name)
     except S3Error as e:
         print(f"Error occurred: {e}")
