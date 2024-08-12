@@ -104,7 +104,7 @@ codegen = { cmd = "julia --project utils/gen_python.jl && ruff format python/rib
     "python/ribasim/ribasim/schemas.py",
 ] }
 # Publish
-add-ribasim-icon ={ cmd = "rcedit \"build/ribasim/ribasim.exe\" --set-icon \"utils/ribasimicon.ico\""}
+add-ribasim-icon ={ cmd = "rcedit build/ribasim/ribasim.exe --set-icon docs/assets/ribasim.ico"}
 build-ribasim-python-wheel = { cmd = "rm --recursive --force dist && python -m build && twine check dist/*", cwd = "python/ribasim" }
 build-ribasim-api-wheel = { cmd = "rm --recursive --force dist && python -m build && twine check dist/*", cwd = "python/ribasim_api" }
 build-wheels = { depends_on = [
