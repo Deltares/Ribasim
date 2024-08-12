@@ -348,7 +348,7 @@ class Model(FileModel):
         listen_nodes_geometry = df_listen_edge.merge(
             node,
             left_on=["listen_node_id"],
-            right_on=["node_id", "node_type"],
+            right_on=["node_id"],
             how="left",
         )["geometry"]
 
