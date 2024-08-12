@@ -60,6 +60,7 @@ object Windows_BuildRibasim : BuildType({
         script {
             name = "add Ribasim logo to .exe"
             id = "RUNNER_2417"
+            workingDir = "ribasim"
             scriptContent = "pixi run add-ribasim-icon"
         }
     }
