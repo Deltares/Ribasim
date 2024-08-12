@@ -48,7 +48,6 @@ open class Build(platformOs: String) : Template() {
                 """
                 pixi run remove-artifacts
                 pixi run build
-                pixi run add-ribasim-icon
                 """.trimIndent()
             }
         }

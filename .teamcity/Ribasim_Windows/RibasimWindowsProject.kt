@@ -7,6 +7,7 @@ import jetbrains.buildServer.configs.kotlin.FailureAction
 import jetbrains.buildServer.configs.kotlin.Project
 import jetbrains.buildServer.configs.kotlin.triggers.vcs
 import Ribasim.vcsRoots.Ribasim as RibasimVcs
+import jetbrains.buildServer.configs.kotlin.buildSteps.script
 
 object RibasimWindowsProject : Project({
     id("Ribasim_Windows")
@@ -55,6 +56,13 @@ object Windows_BuildRibasim : BuildType({
     templates(WindowsAgent, GithubCommitStatusIntegration, BuildWindows)
     name = "Build Ribasim"
 
+    steps {
+        script {
+            name = "add Ribasim logo to .exe"
+            id = "RUNNER_2417"
+            scriptContent = "pixi run add-ribasim-icon"
+        }
+    }
     artifactRules = """ribasim\build\ribasim => ribasim_windows.zip"""
 })
 
