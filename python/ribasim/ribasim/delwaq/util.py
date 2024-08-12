@@ -122,7 +122,7 @@ def ugrid(G) -> xugrid.UgridDataset:
     to_node_id = edge_df.to_node_id.to_numpy()
 
     # from node_id to the node_dim index
-    node_lookup: pd.Series[int] = pd.Series(
+    node_lookup = pd.Series(
         index=node_id,
         data=node_id.argsort().astype(np.int32),
         name="node_index",
