@@ -24,29 +24,24 @@ from __future__ import annotations
 
 import abc
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
-from PyQt5.QtCore import Qt, QVariant
-from PyQt5.QtGui import QColor
+from PyQt5.QtCore import QVariant
 from qgis.core import (
     Qgis,
     QgsCategorizedSymbolRenderer,
     QgsCoordinateReferenceSystem,
     QgsEditorWidgetSetup,
-    QgsFeatureRenderer,
     QgsField,
-    QgsLineSymbol,
-    QgsMarkerLineSymbolLayer,
-    QgsMarkerSymbol,
     QgsPalLayerSettings,
-    QgsRendererCategory,
-    QgsSimpleMarkerSymbolLayer,
-    QgsSimpleMarkerSymbolLayerBase,
     QgsVectorLayer,
     QgsVectorLayerSimpleLabeling,
 )
+from qgis.PyQt.QtXml import QDomDocument
 
 from ribasim_qgis.core import geopackage
+
+STYLE_DIR = Path(__file__).parent / "styles"
 
 
 class Input(abc.ABC):
@@ -60,8 +55,12 @@ class Input(abc.ABC):
     def input_type(cls) -> str: ...
 
     @classmethod
-    @abc.abstractmethod
-    def geometry_type(cls) -> str: ...
+    def geometry_type(cls) -> str:
+        return "No Geometry"
+
+    @classmethod
+    def qgis_geometry_type(cls) -> Any:
+        Qgis.GeometryType.NullGeometry
 
     @classmethod
     @abc.abstractmethod
@@ -124,8 +123,20 @@ class Input(abc.ABC):
         pass
 
     @property
-    def renderer(self) -> QgsFeatureRenderer | None:
-        return None
+    def renderer(self) -> QgsCategorizedSymbolRenderer:
+        fn = STYLE_DIR / f"{self.input_type()}Style.sld"
+        if fn.is_file():
+            document = QDomDocument()
+            document.setContent(fn.read_text())
+            sld = document.firstChildElement("StyledLayerDescriptor")
+
+            nle = sld.firstChildElement("namedLayerElem")
+            renderer = QgsCategorizedSymbolRenderer().loadSld(
+                nle, self.qgis_geometry_type(), ""
+            )
+            return renderer
+        else:
+            return None
 
     @property
     def labels(self) -> Any:
@@ -163,6 +174,10 @@ class Node(Input):
         return "Point"
 
     @classmethod
+    def qgis_geometry_type(cls) -> Any:
+        return Qgis.GeometryType.PointGeometry
+
+    @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
             QgsField("name", QVariant.String),
@@ -195,57 +210,6 @@ class Node(Input):
         return
 
     @property
-    def renderer(self) -> QgsCategorizedSymbolRenderer:
-        shape = Qgis.MarkerShape
-        MARKERS: dict[str, tuple[QColor, str, Qgis.MarkerShape]] = {
-            "Basin": (QColor("blue"), "Basin", shape.Circle),
-            "LinearResistance": (
-                QColor("green"),
-                "LinearResistance",
-                shape.Triangle,
-            ),
-            "TabulatedRatingCurve": (
-                QColor("green"),
-                "TabulatedRatingCurve",
-                shape.Diamond,
-            ),
-            "LevelBoundary": (QColor("green"), "LevelBoundary", shape.Circle),
-            "FlowBoundary": (QColor("purple"), "FlowBoundary", shape.Hexagon),
-            "Pump": (QColor("gray"), "Pump", shape.Hexagon),
-            "Outlet": (QColor("green"), "Outlet", shape.Hexagon),
-            "ManningResistance": (QColor("red"), "ManningResistance", shape.Diamond),
-            "Terminal": (QColor("purple"), "Terminal", shape.Square),
-            "DiscreteControl": (QColor("black"), "DiscreteControl", shape.Star),
-            "PidControl": (QColor("black"), "PidControl", shape.Cross2),
-            "UserDemand": (QColor("green"), "UserDemand", shape.Square),
-            "LevelDemand": (
-                QColor("black"),
-                "LevelDemand",
-                shape.Circle,
-            ),
-            "FlowDemand": (QColor("red"), "FlowDemand", shape.Hexagon),
-            "ContinuousControl": (QColor("gray"), "ContinuousControl", shape.Star),
-            # All other nodes, or incomplete input
-            "": (QColor("white"), "", shape.Circle),
-        }
-
-        categories = []
-        for value, (color, label, marker_shape) in MARKERS.items():
-            symbol = QgsMarkerSymbol()
-            cast(QgsSimpleMarkerSymbolLayerBase, symbol.symbolLayer(0)).setShape(
-                marker_shape
-            )
-            symbol.setColor(QColor(color))
-            symbol.setSize(4)
-            category = QgsRendererCategory(value, symbol, label, render=True)
-            categories.append(category)
-
-        renderer = QgsCategorizedSymbolRenderer(
-            attrName="node_type", categories=categories
-        )
-        return renderer
-
-    @property
     def labels(self) -> Any:
         pal_layer = QgsPalLayerSettings()
         pal_layer.fieldName = """concat("name", ' #', "node_id")"""
@@ -273,6 +237,10 @@ class Edge(Input):
         return "LineString"
 
     @classmethod
+    def qgis_geometry_type(cls) -> Any:
+        return Qgis.GeometryType.LineGeometry
+
+    @classmethod
     def input_type(cls) -> str:
         return "Edge"
 
@@ -291,48 +259,6 @@ class Edge(Input):
         layer.setEditFormConfig(layer_form_config)
 
         return
-
-    @property
-    def renderer(self) -> QgsCategorizedSymbolRenderer:
-        MARKERS = {
-            "flow": (QColor("#3690c0"), "flow"),  # lightblue
-            "control": (QColor("gray"), "control"),
-            "": (QColor("black"), ""),  # All other edges, or incomplete input
-        }
-
-        categories = []
-        for value, (colour, label) in MARKERS.items():
-            # Create line
-            symbol = QgsLineSymbol()
-            symbol.setColor(QColor(colour))
-            symbol.setWidth(0.5)
-
-            # Create an arrow marker to indicate directionality
-            arrow_marker = QgsSimpleMarkerSymbolLayer()
-            arrow_marker.setShape(Qgis.MarkerShape.ArrowHeadFilled)
-            arrow_marker.setColor(QColor(colour))
-            arrow_marker.setSize(3)
-            arrow_marker.setStrokeStyle(Qt.PenStyle(Qt.NoPen))
-
-            # Add marker to line
-            marker_symbol = QgsMarkerSymbol()
-            marker_symbol.changeSymbolLayer(0, arrow_marker)
-            marker_line_symbol_layer = cast(
-                QgsMarkerLineSymbolLayer,
-                QgsMarkerLineSymbolLayer.create({"placements": "CentralPoint"}),
-            )
-
-            marker_line_symbol_layer.setSubSymbol(marker_symbol)
-            symbol.appendSymbolLayer(marker_line_symbol_layer)
-
-            category = QgsRendererCategory(value, symbol, label)
-            category.setRenderState(True)
-            categories.append(category)
-
-        renderer = QgsCategorizedSymbolRenderer(
-            attrName="edge_type", categories=categories
-        )
-        return renderer
 
     @property
     def labels(self) -> Any:

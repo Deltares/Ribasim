@@ -33,6 +33,8 @@ from pydantic import (
 
 import ribasim
 
+from .styles import _add_styles_to_geopackage
+
 __all__ = ("TableModel",)
 
 delimiter = " / "
@@ -387,6 +389,7 @@ class SpatialTableModel(TableModel[TableT], Generic[TableT]):
         # the index name must be fid otherwise it will generate a separate fid column
         self.df.index.name = "fid"
         self.df.to_file(path, layer=self.tablename(), index=True, driver="GPKG")
+        _add_styles_to_geopackage(path, self.tablename())
 
 
 class ChildModel(BaseModel):
