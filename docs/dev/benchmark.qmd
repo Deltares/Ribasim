@@ -27,12 +27,6 @@ Since we are still in the process of evaluating the performance of different sol
 
 The regression tests are run on a weekly basis.
 
-## Benchmark the rest of the test models
-TODO, and can be merged with the section [benchmark of the ODE solvers](#benchmark-the-ode-solvers) when it is done.
-
-## Benchmark of the rest of the ODE solvers
-TODO, [#issue 1658](https://github.com/Deltares/Ribasim/issues/1658), and can be merged with the section [benchmark of the ODE solvers](#benchmark-the-ode-solvers) when it is done.
-
 # Benchmarking of the production model
 Regressive performance tests on the production models are done by running the production models with the new changes of the code and comparing the runtime performance with the reference run.
 The references are the output files of a run of the production models with the default solver settings.
