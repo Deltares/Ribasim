@@ -205,3 +205,11 @@ def test_to_crs(bucket: Model):
     # Assert that the bucket is still at Deltares' headquarter
     assert model.basin.node.df["geometry"].iloc[0].x == pytest.approx(4.38, abs=0.1)
     assert model.basin.node.df["geometry"].iloc[0].y == pytest.approx(51.98, abs=0.1)
+
+
+def test_styles(tabulated_rating_curve: Model, tmp_path):
+    model = tabulated_rating_curve
+
+    model.write(tmp_path / "basic" / "ribasim.toml")
+    with connect(tmp_path / "basic" / "database.gpkg") as conn:
+        assert conn.execute("SELECT COUNT(*) FROM layer_styles").fetchone()[0] == 3
