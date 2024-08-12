@@ -195,7 +195,9 @@ class MultiNodeModel(NodeModel):
         self.node.filter(self.__class__.__name__)
         return self
 
-    def add(self, node: Node, tables: Sequence[TableModel[Any]] | None = None) -> None:
+    def add(
+        self, node: Node, tables: Sequence[TableModel[Any]] | None = None
+    ) -> NodeData:
         """Add a node and the associated data to the model.
 
         Parameters
