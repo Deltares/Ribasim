@@ -124,7 +124,7 @@ class Input(abc.ABC):
 
     @property
     def renderer(self) -> QgsCategorizedSymbolRenderer:
-        fn = STYLE_DIR / f"{self.input_type()}Style.sld"
+        fn = STYLE_DIR / f"{self.input_type().replace(" / ", "_")}Style.sld"
         if fn.is_file():
             document = QDomDocument()
             document.setContent(fn.read_text())
@@ -361,6 +361,10 @@ class BasinArea(Input):
     @classmethod
     def geometry_type(cls) -> str:
         return "Polygon"
+
+    @classmethod
+    def qgis_geometry_type(cls) -> str:
+        return Qgis.GeometryType.PolygonGeometry
 
     @classmethod
     def attributes(cls) -> list[QgsField]:

@@ -92,7 +92,7 @@ def _add_styles_to_geopackage(gpkg_path: Path, layer: str):
             conn.execute(CREATE_TABLE_SQL)
             conn.execute(INSERT_CONTENTS_SQL)
 
-        style_name = f"{layer}Style"
+        style_name = f"{layer.replace(" / ", "_")}Style"
         style_qml = STYLES_DIR / f"{style_name}.qml"
         style_sld = STYLES_DIR / f"{style_name}.sld"
 
