@@ -57,7 +57,6 @@ def pump_discrete_control_model() -> Model:
         Node(5, Point(1, 1)),
         [
             discrete_control.Variable(
-                listen_node_type="Basin",
                 listen_node_id=[1, 3],
                 variable="level",
                 compound_variable_id=[1, 2],
@@ -76,7 +75,6 @@ def pump_discrete_control_model() -> Model:
         Node(6, Point(2, -1)),
         [
             discrete_control.Variable(
-                listen_node_type="Basin",
                 listen_node_id=[3],
                 variable="level",
                 compound_variable_id=1,
@@ -151,7 +149,6 @@ def flow_condition_model() -> Model:
         Node(5, Point(1, 1)),
         [
             discrete_control.Variable(
-                listen_node_type="FlowBoundary",
                 listen_node_id=[1],
                 variable="flow_rate",
                 look_ahead=60 * 86400,
@@ -218,7 +215,6 @@ def level_boundary_condition_model() -> Model:
         Node(6, Point(1.5, 1)),
         [
             discrete_control.Variable(
-                listen_node_type="LevelBoundary",
                 listen_node_id=[1],
                 variable="level",
                 look_ahead=60 * 86400,
@@ -294,7 +290,6 @@ def tabulated_rating_curve_control_model() -> Model:
         Node(4, Point(1, 1)),
         [
             discrete_control.Variable(
-                listen_node_type="Basin",
                 listen_node_id=[1],
                 variable="level",
                 compound_variable_id=1,
@@ -360,7 +355,6 @@ def compound_variable_condition_model() -> Model:
         Node(6, Point(1, 1)),
         [
             discrete_control.Variable(
-                listen_node_type="FlowBoundary",
                 listen_node_id=[2, 3],
                 variable="flow_rate",
                 weight=0.5,
@@ -424,7 +418,6 @@ def level_range_model() -> Model:
         Node(7, Point(1, 0)),
         [
             discrete_control.Variable(
-                listen_node_type="Basin",
                 listen_node_id=[1],
                 variable="level",
                 compound_variable_id=1,
@@ -497,7 +490,7 @@ def connector_node_flow_condition_model() -> Model:
         ],
     )
     model.linear_resistance.add(
-        Node(1, Point(1, 0)),
+        Node(2, Point(1, 0)),
         [
             linear_resistance.Static(
                 control_state=["On", "Off"], resistance=1e4, active=[True, False]
@@ -505,18 +498,17 @@ def connector_node_flow_condition_model() -> Model:
         ],
     )
     model.basin.add(
-        Node(2, Point(2, 0)),
+        Node(3, Point(2, 0)),
         [
             basin.Profile(area=1000.0, level=[0.0, 1.0]),
             basin.State(level=[10.0]),
         ],
     )
     model.discrete_control.add(
-        Node(1, Point(0.5, 0.8660254037844386)),
+        Node(4, Point(0.5, 0.8660254037844386)),
         [
             discrete_control.Variable(
-                listen_node_type=["LinearResistance"],
-                listen_node_id=[1],
+                listen_node_id=[2],
                 variable=["flow_rate"],
                 compound_variable_id=1,
             ),
@@ -525,9 +517,9 @@ def connector_node_flow_condition_model() -> Model:
         ],
     )
 
-    model.edge.add(model.basin[1], model.linear_resistance[1])
-    model.edge.add(model.linear_resistance[1], model.basin[2])
-    model.edge.add(model.discrete_control[1], model.linear_resistance[1])
+    model.edge.add(model.basin[1], model.linear_resistance[2])
+    model.edge.add(model.linear_resistance[2], model.basin[3])
+    model.edge.add(model.discrete_control[4], model.linear_resistance[2])
 
     return model
 
@@ -558,7 +550,7 @@ def concentration_condition_model() -> Model:
     )
 
     model.pump.add(
-        Node(1, Point(1, 0)),
+        Node(2, Point(1, 0)),
         [
             pump.Static(
                 control_state=["On", "Off"], active=[True, False], flow_rate=1e-3
@@ -566,13 +558,12 @@ def concentration_condition_model() -> Model:
         ],
     )
 
-    model.terminal.add(Node(1, Point(2, 0)))
+    model.terminal.add(Node(3, Point(2, 0)))
 
     model.discrete_control.add(
-        Node(1, Point(1, 1)),
+        Node(4, Point(1, 1)),
         [
             discrete_control.Variable(
-                listen_node_type=["Basin"],
                 listen_node_id=[1],
                 variable=["concentration_external.kryptonite"],
                 compound_variable_id=1,
@@ -582,8 +573,8 @@ def concentration_condition_model() -> Model:
         ],
     )
 
-    model.edge.add(model.basin[1], model.pump[1])
-    model.edge.add(model.pump[1], model.terminal[1])
-    model.edge.add(model.discrete_control[1], model.pump[1])
+    model.edge.add(model.basin[1], model.pump[2])
+    model.edge.add(model.pump[2], model.terminal[3])
+    model.edge.add(model.discrete_control[4], model.pump[2])
 
     return model

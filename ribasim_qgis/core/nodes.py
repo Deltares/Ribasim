@@ -260,9 +260,7 @@ class Edge(Input):
     def attributes(cls) -> list[QgsField]:
         return [
             QgsField("name", QVariant.String),
-            QgsField("from_node_type", QVariant.String),
             QgsField("from_node_id", QVariant.Int),
-            QgsField("to_node_type", QVariant.String),
             QgsField("to_node_id", QVariant.Int),
             QgsField("edge_type", QVariant.String),
             QgsField("subnetwork_id", QVariant.Int),
@@ -284,8 +282,6 @@ class Edge(Input):
         layer = self.layer
 
         self.set_dropdown("edge_type", EDGETYPES)
-        self.set_dropdown("from_node_type", NONSPATIALNODETYPES)
-        self.set_dropdown("to_node_type", NONSPATIALNODETYPES)
 
         layer_form_config = layer.editFormConfig()
         layer.setEditFormConfig(layer_form_config)
@@ -668,7 +664,6 @@ class DiscreteControlVariable(Input):
         return [
             QgsField("node_id", QVariant.Int),
             QgsField("compound_variable_id", QVariant.Int),
-            QgsField("listen_node_type", QVariant.String),
             QgsField("listen_node_id", QVariant.Int),
             QgsField("variable", QVariant.String),
             QgsField("weight", QVariant.Double),
@@ -725,7 +720,6 @@ class ContinuousControlVariable(Input):
     def attributes(cls) -> list[QgsField]:
         return [
             QgsField("node_id", QVariant.Int),
-            QgsField("listen_node_type", QVariant.String),
             QgsField("listen_node_id", QVariant.Int),
             QgsField("variable", QVariant.String),
             QgsField("weight", QVariant.Double),
@@ -766,7 +760,6 @@ class PidControlStatic(Input):
         return [
             QgsField("node_id", QVariant.Int),
             QgsField("active", QVariant.Bool),
-            QgsField("listen_node_type", QVariant.String),
             QgsField("listen_node_id", QVariant.Int),
             QgsField("target", QVariant.Double),
             QgsField("proportional", QVariant.Double),
@@ -788,7 +781,6 @@ class PidControlTime(Input):
     def attributes(cls) -> list[QgsField]:
         return [
             QgsField("node_id", QVariant.Int),
-            QgsField("listen_node_type", QVariant.String),
             QgsField("listen_node_id", QVariant.Int),
             QgsField("time", QVariant.DateTime),
             QgsField("target", QVariant.Double),

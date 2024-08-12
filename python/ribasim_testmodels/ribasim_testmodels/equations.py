@@ -179,7 +179,6 @@ def pid_control_equation_model() -> Model:
         Node(4, Point(0.5, 1)),
         [
             pid_control.Static(
-                listen_node_type="Basin",
                 listen_node_id=[1],
                 target=10.0,
                 proportional=-2.5,

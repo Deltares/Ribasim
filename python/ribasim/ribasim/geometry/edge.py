@@ -33,9 +33,7 @@ class NodeData(NamedTuple):
 
 class EdgeSchema(pa.DataFrameModel):
     name: Series[str] = pa.Field(default="")
-    from_node_type: Series[str] = pa.Field(nullable=True)
     from_node_id: Series[Int32] = pa.Field(default=0, coerce=True)
-    to_node_type: Series[str] = pa.Field(nullable=True)
     to_node_id: Series[Int32] = pa.Field(default=0, coerce=True)
     edge_type: Series[str] = pa.Field(default="flow", coerce=True)
     subnetwork_id: Series[pd.Int32Dtype] = pa.Field(
@@ -89,9 +87,7 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
 
         table_to_append = GeoDataFrame[EdgeSchema](
             data={
-                "from_node_type": pd.Series([from_node.node_type], dtype=str),
                 "from_node_id": pd.Series([from_node.node_id], dtype=np.int32),
-                "to_node_type": pd.Series([to_node.node_type], dtype=str),
                 "to_node_id": pd.Series([to_node.node_id], dtype=np.int32),
                 "edge_type": pd.Series([edge_type], dtype=str),
                 "name": pd.Series([name], dtype=str),

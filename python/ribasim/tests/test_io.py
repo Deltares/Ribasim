@@ -145,7 +145,6 @@ def test_sort(level_range, tmp_path):
     assert table.df.iloc[0]["greater_than"] == 5.0
 
     # The edge table is not sorted
-    assert edge.df.iloc[1]["from_node_type"] == "Pump"
     assert edge.df.iloc[1]["from_node_id"] == 3
 
     # re-apply wrong sort, then check if it gets sorted on write
@@ -157,7 +156,6 @@ def test_sort(level_range, tmp_path):
     table_loaded = model_loaded.discrete_control.condition
     edge_loaded = model_loaded.edge
     assert table_loaded.df.iloc[0]["greater_than"] == 5.0
-    assert edge.df.iloc[1]["from_node_type"] == "Pump"
     assert edge.df.iloc[1]["from_node_id"] == 3
     __assert_equal(table.df, table_loaded.df)
     __assert_equal(edge.df, edge_loaded.df)

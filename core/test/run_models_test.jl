@@ -38,16 +38,8 @@
 
     @testset "Schema" begin
         @test Tables.schema(flow) == Tables.Schema(
-            (
-                :time,
-                :edge_id,
-                :from_node_type,
-                :from_node_id,
-                :to_node_type,
-                :to_node_id,
-                :flow_rate,
-            ),
-            (DateTime, Union{Int32, Missing}, String, Int32, String, Int32, Float64),
+            (:time, :edge_id, :from_node_id, :to_node_id, :flow_rate),
+            (DateTime, Union{Int32, Missing}, Int32, Int32, Float64),
         )
         @test Tables.schema(basin) == Tables.Schema(
             (
@@ -103,8 +95,8 @@
     @testset "Results values" begin
         @test flow.time[1] == DateTime(2020)
         @test coalesce.(flow.edge_id[1:2], -1) == [0, 1]
-        @test flow.from_node_id[1:2] == [6, 6]
-        @test flow.to_node_id[1:2] == [6, 2147483647]
+        @test flow.from_node_id[1:2] == [6, 0]
+        @test flow.to_node_id[1:2] == [0, 2147483647]
 
         @test basin.storage[1] ≈ 1.0
         @test basin.level[1] ≈ 0.044711584

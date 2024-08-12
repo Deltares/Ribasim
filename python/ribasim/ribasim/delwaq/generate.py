@@ -59,7 +59,7 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
     for row in nodes.df.itertuples():
         if row.node_type not in ribasim.geometry.edge.SPATIALCONTROLNODETYPES:
             G.add_node(
-                f"{row.node_type} #{row.node_id}",
+                row.node_id,
                 type=row.node_type,
                 id=row.node_id,
                 x=row.geometry.x,
@@ -70,8 +70,8 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
     for row in model.edge.df.itertuples():
         if row.edge_type == "flow":
             G.add_edge(
-                f"{row.from_node_type} #{row.from_node_id}",
-                f"{row.to_node_type} #{row.to_node_id}",
+                row.from_node_id,
+                row.to_node_id,
                 id=[row.Index],
                 duplicate=None,
             )
@@ -260,7 +260,7 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
     nflows = flows.copy()
     nflows = flows.groupby(["time", "edge_id"]).sum().reset_index()
     nflows.drop(
-        columns=["from_node_id", "from_node_type", "to_node_id", "to_node_type"],
+        columns=["from_node_id", "to_node_id"],
         inplace=True,
     )
 

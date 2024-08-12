@@ -91,7 +91,7 @@ def basic_model() -> ribasim.Model:
     # Setup TabulatedRatingCurve
     q = 10 / 86400  # 10 m³/day
     model.tabulated_rating_curve.add(
-        Node(6, Point(4.0, 0.0)),
+        Node(4, Point(4.0, 0.0)),
         [
             tabulated_rating_curve.Static(
                 level=[0.0, 1.0],
@@ -100,7 +100,7 @@ def basic_model() -> ribasim.Model:
         ],
     )
     model.tabulated_rating_curve.add(
-        Node(3, Point(3.0, 1.0)),
+        Node(5, Point(3.0, 1.0)),
         [
             tabulated_rating_curve.Static(
                 level=[0.0, 1.0],
@@ -109,7 +109,7 @@ def basic_model() -> ribasim.Model:
         ],
     )
     model.tabulated_rating_curve.add(
-        Node(1, Point(3.0, -1.0)),
+        Node(8, Point(3.0, -1.0)),
         [
             tabulated_rating_curve.Static(
                 level=[0.0, 1.0],
@@ -161,19 +161,19 @@ def basic_model() -> ribasim.Model:
     model.edge.add(model.manning_resistance[2], model.basin[3])
     model.edge.add(
         model.basin[3],
-        model.tabulated_rating_curve[6],
+        model.tabulated_rating_curve[8],
     )
     model.edge.add(
         model.basin[3],
-        model.tabulated_rating_curve[3],
+        model.tabulated_rating_curve[5],
     )
     model.edge.add(
         model.basin[3],
-        model.tabulated_rating_curve[1],
+        model.tabulated_rating_curve[4],
     )
-    model.edge.add(model.tabulated_rating_curve[3], model.basin[6])
+    model.edge.add(model.tabulated_rating_curve[5], model.basin[6])
     model.edge.add(model.basin[6], model.pump[7])
-    model.edge.add(model.tabulated_rating_curve[6], model.basin[9])
+    model.edge.add(model.tabulated_rating_curve[8], model.basin[9])
     model.edge.add(model.pump[7], model.basin[9])
     model.edge.add(model.basin[9], model.linear_resistance[10])
     model.edge.add(
@@ -185,7 +185,7 @@ def basic_model() -> ribasim.Model:
         model.basin[3],
     )
     model.edge.add(
-        model.tabulated_rating_curve[1],
+        model.tabulated_rating_curve[4],
         model.terminal[14],
     )
     model.edge.add(

@@ -52,6 +52,7 @@ from ribasim.utils import (
     MissingOptionalModule,
     _edge_lookup,
     _node_lookup,
+    _node_lookup_numpy,
     _time_in_ns,
 )
 
@@ -176,6 +177,13 @@ class Model(FileModel):
         context_file_loading.get()["database"] = db_path
         self.edge._save(directory, input_dir)
         node = self.node_table()
+
+        assert node.df is not None
+        if not node.df["node_id"].is_unique:
+            raise ValueError("node_id must be unique")
+        node.df.set_index("node_id", drop=False, inplace=True)
+        node.df.index.name = "fid"
+        node.df.sort_index(inplace=True)
         node._save(directory, input_dir)
 
         for sub in self._nodes():
@@ -300,9 +308,7 @@ class Model(FileModel):
         df_listen_edge = pd.DataFrame(
             data={
                 "control_node_id": pd.Series([], dtype=np.int32),
-                "control_node_type": pd.Series([], dtype=str),
                 "listen_node_id": pd.Series([], dtype=np.int32),
-                "listen_node_type": pd.Series([], dtype=str),
             }
         )
 
@@ -311,11 +317,8 @@ class Model(FileModel):
             if table is None:
                 continue
 
-            to_add = table[
-                ["node_id", "listen_node_id", "listen_node_type"]
-            ].drop_duplicates()
-            to_add.columns = ["control_node_id", "listen_node_id", "listen_node_type"]
-            to_add["control_node_type"] = "PidControl"
+            to_add = table[["node_id", "listen_node_id"]].drop_duplicates()
+            to_add.columns = ["control_node_id", "listen_node_id"]
             df_listen_edge = pd.concat([df_listen_edge, to_add])
 
         # Listen edges from ContinuousControl and DiscreteControl
@@ -326,15 +329,11 @@ class Model(FileModel):
             if table is None:
                 continue
 
-            to_add = table[
-                ["node_id", "listen_node_id", "listen_node_type"]
-            ].drop_duplicates()
+            to_add = table[["node_id", "listen_node_id"]].drop_duplicates()
             to_add.columns = [
                 "control_node_id",
                 "listen_node_id",
-                "listen_node_type",
             ]
-            to_add["control_node_type"] = name
             df_listen_edge = pd.concat([df_listen_edge, to_add])
 
         # Collect geometry data
@@ -348,7 +347,7 @@ class Model(FileModel):
 
         listen_nodes_geometry = df_listen_edge.merge(
             node,
-            left_on=["listen_node_id", "listen_node_type"],
+            left_on=["listen_node_id"],
             right_on=["node_id", "node_type"],
             how="left",
         )["geometry"]
@@ -447,6 +446,10 @@ class Model(FileModel):
         node_df = self.node_table().df
         assert node_df is not None
 
+        if not node_df.node_id.is_unique:
+            raise ValueError("node_id must be unique")
+        node_df.sort_values("node_id", inplace=True)
+
         assert self.edge.df is not None
         edge_df = self.edge.df.copy()
         # We assume only the flow network is of interest.
@@ -456,13 +459,7 @@ class Model(FileModel):
         edge_id = edge_df.index.to_numpy()
         from_node_id = edge_df.from_node_id.to_numpy()
         to_node_id = edge_df.to_node_id.to_numpy()
-        node_lookup = _node_lookup(node_df)
-        from_node_index = pd.MultiIndex.from_frame(
-            edge_df[["from_node_type", "from_node_id"]]
-        )
-        to_node_index = pd.MultiIndex.from_frame(
-            edge_df[["to_node_type", "to_node_id"]]
-        )
+        node_lookup = _node_lookup_numpy(node_id)
 
         grid = xugrid.Ugrid1d(
             node_x=node_df.geometry.x,
@@ -470,8 +467,8 @@ class Model(FileModel):
             fill_value=-1,
             edge_node_connectivity=np.column_stack(
                 (
-                    node_lookup.loc[from_node_index],
-                    node_lookup.loc[to_node_index],
+                    node_lookup.loc[from_node_id],
+                    node_lookup.loc[to_node_id],
                 )
             ),
             name="ribasim",
@@ -522,19 +519,17 @@ class Model(FileModel):
         # add the xugrid dimension indices to the dataframes
         edge_dim = uds.grid.edge_dimension
         node_dim = uds.grid.node_dimension
+        node_lookup = _node_lookup(uds)
         edge_lookup = _edge_lookup(uds)
         flow_df[edge_dim] = edge_lookup[flow_df["edge_id"]].to_numpy()
-        # Use a MultiIndex to ensure the lookup results is the same length as basin_df
-        basin_df["node_type"] = "Basin"
-        multi_index = pd.MultiIndex.from_frame(basin_df[["node_type", "node_id"]])
-        basin_df[node_dim] = node_lookup.loc[multi_index].to_numpy()
+        basin_df[node_dim] = node_lookup[basin_df["node_id"]].to_numpy()
 
         # add flow results to the UgridDataset
         flow_da = flow_df.set_index(["time", edge_dim])["flow_rate"].to_xarray()
         uds[flow_da.name] = flow_da
 
         # add basin results to the UgridDataset
-        basin_df.drop(columns=["node_type", "node_id"], inplace=True)
+        basin_df.drop(columns=["node_id"], inplace=True)
         basin_ds = basin_df.set_index(["time", node_dim]).to_xarray()
 
         for var_name, da in basin_ds.data_vars.items():

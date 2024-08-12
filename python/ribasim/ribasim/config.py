@@ -235,6 +235,7 @@ class MultiNodeModel(NodeModel):
             if self.node.df is None
             else pd.concat([self.node.df, node_table])
         )
+        return self[node_id]
 
     def __getitem__(self, index: int) -> NodeData:
         # Unlike TableModel, support only indexing single rows.
@@ -398,7 +399,6 @@ class DiscreteControl(MultiNodeModel):
         json_schema_extra={
             "sort_keys": [
                 "node_id",
-                "listen_node_type",
                 "listen_node_id",
                 "variable",
             ]
