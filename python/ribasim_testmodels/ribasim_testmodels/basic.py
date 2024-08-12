@@ -91,7 +91,7 @@ def basic_model() -> ribasim.Model:
     # Setup TabulatedRatingCurve
     q = 10 / 86400  # 10 m³/day
     model.tabulated_rating_curve.add(
-        Node(4, Point(4.0, 0.0)),
+        Node(8, Point(4.0, 0.0)),
         [
             tabulated_rating_curve.Static(
                 level=[0.0, 1.0],
@@ -109,7 +109,7 @@ def basic_model() -> ribasim.Model:
         ],
     )
     model.tabulated_rating_curve.add(
-        Node(8, Point(3.0, -1.0)),
+        Node(4, Point(3.0, -1.0)),
         [
             tabulated_rating_curve.Static(
                 level=[0.0, 1.0],

@@ -340,8 +340,8 @@ class Model(FileModel):
         node = self.node_table().df
         control_nodes_geometry = df_listen_edge.merge(
             node,
-            left_on=["control_node_id", "control_node_type"],
-            right_on=["node_id", "node_type"],
+            left_on=["control_node_id"],
+            right_on=["node_id"],
             how="left",
         )["geometry"]
 
