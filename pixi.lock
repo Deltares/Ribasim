@@ -1223,7 +1223,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/pyzmq-26.1.0-py312hd7027bb_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/qhull-2020.2-hc790b64_5.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/qt-main-5.15.8-h06adc49_23.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/rcedit-1.1.1-h63175ca_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/re2-2023.09.01-hd3b24a8_2.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/requests-2.32.3-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/scikit-learn-1.5.1-py312h816cc57_0.conda
@@ -3181,7 +3180,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/quarto-1.5.55-h57928b3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/quartodoc-0.7.5-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/qwt-6.3.0-h9417a65_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/rcedit-1.1.1-h63175ca_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/re2-2023.09.01-hd3b24a8_2.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/readme_renderer-44.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/referencing-0.35.1-pyhd8ed1ab_0.conda
@@ -4470,7 +4468,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/pyzmq-26.1.0-py310h656833d_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/qhull-2020.2-hc790b64_5.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/qt6-main-6.7.2-hbb46ec1_4.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/rcedit-1.1.1-h63175ca_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/re2-2023.09.01-hd3b24a8_2.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/requests-2.32.3-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/scikit-learn-1.5.1-py310hf2a6c47_0.conda
@@ -5725,7 +5722,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/pyzmq-26.1.0-py311h484c95c_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/qhull-2020.2-hc790b64_5.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/qt6-main-6.7.2-hbb46ec1_4.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/rcedit-1.1.1-h63175ca_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/re2-2023.09.01-hd3b24a8_2.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/requests-2.32.3-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/scikit-learn-1.5.1-py311hdcb8d17_0.conda
@@ -7007,7 +7003,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/pyzmq-26.1.0-py312hd7027bb_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/qhull-2020.2-hc790b64_5.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/qt-main-5.15.8-h06adc49_23.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/rcedit-1.1.1-h63175ca_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/re2-2023.09.01-hd3b24a8_2.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/requests-2.32.3-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/scikit-learn-1.5.1-py312h816cc57_0.conda
@@ -36720,24 +36715,6 @@ packages:
   size: 3526548
   timestamp: 1715264518907
 - kind: conda
-  name: rcedit
-  version: 1.1.1
-  build: h63175ca_1
-  build_number: 1
-  subdir: win-64
-  url: https://conda.anaconda.org/conda-forge/win-64/rcedit-1.1.1-h63175ca_1.conda
-  sha256: 1c68adb60bc644f05e05b306b7634200025684e95067583c81f95e6aa0df2d9f
-  md5: e70d5ba6fb13dcb7b74be3d037338a15
-  depends:
-  - ucrt >=10.0.20348.0
-  - vc >=14.2,<15
-  - vs2015_runtime >=14.29.30139
-  license: MIT
-  license_family: MIT
-  purls: []
-  size: 48497
-  timestamp: 1670962446971
-- kind: conda
   name: re2
   version: 2023.09.01
   build: h4cba328_2
@@ -37018,40 +36995,6 @@ packages:
   requires_python: '>=3.10'
   editable: true
 - kind: pypi
-  name: ribasim
-  version: 2024.10.0
-  path: python/ribasim
-  sha256: be31457a51083ee5f04c05753c0308f556542c46f94a60a82f9387c5156e82ff
-  requires_dist:
-  - geopandas
-  - matplotlib
-  - numpy
-  - pandas
-  - pandera>=0.20
-  - pyarrow
-  - pydantic~=2.0
-  - pyogrio
-  - shapely>=2.0
-  - tomli
-  - tomli-w
-  - jinja2 ; extra == 'all'
-  - networkx ; extra == 'all'
-  - pytest ; extra == 'all'
-  - pytest-cov ; extra == 'all'
-  - pytest-xdist ; extra == 'all'
-  - ribasim-testmodels ; extra == 'all'
-  - xugrid ; extra == 'all'
-  - jinja2 ; extra == 'delwaq'
-  - networkx ; extra == 'delwaq'
-  - xugrid ; extra == 'delwaq'
-  - xugrid ; extra == 'netcdf'
-  - pytest ; extra == 'tests'
-  - pytest-cov ; extra == 'tests'
-  - pytest-xdist ; extra == 'tests'
-  - ribasim-testmodels ; extra == 'tests'
-  requires_python: '>=3.10'
-  editable: true
-- kind: pypi
   name: ribasim-api
   version: 2024.10.0
   path: python/ribasim_api
@@ -37061,31 +37004,6 @@ packages:
   - pytest ; extra == 'tests'
   - ribasim ; extra == 'tests'
   - ribasim-testmodels ; extra == 'tests'
-  requires_python: '>=3.10'
-  editable: true
-- kind: pypi
-  name: ribasim-api
-  version: 2024.10.0
-  path: python/ribasim_api
-  sha256: 3d2210b7455ccaa058d8508690e100fa6039118c9fac925c058cfa8474185c45
-  requires_dist:
-  - xmipy
-  - pytest ; extra == 'tests'
-  - ribasim ; extra == 'tests'
-  - ribasim-testmodels ; extra == 'tests'
-  requires_python: '>=3.10'
-  editable: true
-- kind: pypi
-  name: ribasim-testmodels
-  version: 0.5.0
-  path: python/ribasim_testmodels
-  sha256: 8b7c7c59cfa8b428e4387aabffa7f83af86138327e1e4579a0523537410e3a9c
-  requires_dist:
-  - geopandas
-  - numpy
-  - pandas
-  - ribasim
-  - pytest ; extra == 'tests'
   requires_python: '>=3.10'
   editable: true
 - kind: pypi
