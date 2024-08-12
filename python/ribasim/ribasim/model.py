@@ -366,7 +366,12 @@ class Model(FileModel):
             )
         return
 
-    def plot(self, ax=None, indicate_subnetworks: bool = True) -> Any:
+    def plot(
+        self,
+        ax=None,
+        indicate_subnetworks: bool = True,
+        aspect_ratio_bound: float = 0.33,
+    ) -> Any:
         """Plot the nodes, edges and allocation networks of the model.
 
         Parameters
@@ -375,6 +380,9 @@ class Model(FileModel):
             Axes on which to draw the plot.
         indicate_subnetworks : bool
             Whether to indicate subnetworks with a convex hull backdrop.
+        aspect_ratio_bound : float
+            The maximal aspect ratio in (0,1). The smaller this number, the further the figure
+            shape is allowed to be from a square
 
         Returns
         -------
@@ -401,6 +409,21 @@ class Model(FileModel):
             labels += labels_subnetworks
 
         ax.legend(handles, labels, loc="lower left", bbox_to_anchor=(1, 0.5))
+
+        # Enforce aspect ratio bound
+        xlim = ax.get_xlim()
+        ylim = ax.get_ylim()
+        xsize = xlim[1] - xlim[0]
+        ysize = ylim[1] - ylim[0]
+
+        if ysize < aspect_ratio_bound * xsize:
+            y_mid = (ylim[0] + ylim[1]) / 2
+            ysize_new = aspect_ratio_bound * xsize
+            ax.set_ylim(y_mid - ysize_new / 2, y_mid + ysize_new / 2)
+        elif xsize < aspect_ratio_bound * ysize:
+            x_mid = (xlim[0] + xlim[1]) / 2
+            xsize_new = aspect_ratio_bound * ysize
+            ax.set_xlim(x_mid - xsize_new / 2, x_mid + xsize_new / 2)
 
         return ax
 
