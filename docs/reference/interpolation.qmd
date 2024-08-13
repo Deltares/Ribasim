@@ -1,0 +1,292 @@
+---
+title: "Interpolation"
+---
+
+Interpolation is a significant part of the Ribasim core, which is why this page is dedicated to which interpolation types are used, and how edge cases are handled. For most interpolation functionality in the core we use the package [DataInterpolations.jl](https://docs.sciml.ai/DataInterpolations/stable/).
+
+# Basin profiles
+
+_General description from Fatima?_
+
+## Level to area
+
+The level to area relationship is defined with the `Basin / profile` data using linear interpolation. An example of such a relationship is shown below.
+
+```{python}
+# | code-fold: true
+import numpy as np
+import matplotlib.pyplot as plt
+
+np.random.seed(3)
+fig, ax = plt.subplots()
+fontsize_title = 20
+fontsize = 15
+
+# Data
+N = 3
+area = 25 * np.cumsum(np.random.rand(N))
+level = np.cumsum(np.random.rand(N))
+
+# Interpolation
+ax.set_title("level → area", fontsize = fontsize_title)
+ax.scatter(level,area, label = "data")
+ax.plot(level,area, label = "interpolation")
+ax.set_xlabel("level", fontsize = fontsize)
+ax.set_ylabel("area", fontsize = fontsize)
+ax.set_xticks([])
+ax.set_yticks([0])
+
+# Extrapolation
+level_extrap = 2 * level[-1] - level[-2]
+area_extrap = 2 * area[-1] - area[-2]
+ax.plot([level[-1], level_extrap], [area[-1], area_extrap], color = "C0", ls = "dashed", label = "extrapolation")
+
+ax.legend()
+fig.tight_layout();
+```
+
+For this interpolation it is validated that:
+
+- The areas are positive and are non-decreasing;
+- There are at least 2 data points.
+
+This interpolation is used in each evaluation of the right hand side function of the ODE.
+
+## Level to storage
+
+The level to storage relationship gives the volume of water in the basin at a given level, which is given by the integral over the level to area relationship from the basin bottom to the given level.
+
+```{python}
+# | code-fold: true
+storage = np.diff(level) * area[:-1] + 0.5 * np.diff(area) * np.diff(level)
+storage = np.cumsum(storage)
+storage = np.insert(storage, 0, 0.0)
+def storage_from_level(l):
+    i = min(max(0, np.searchsorted(level, l)-1), len(level)-2)
+    return storage[i] + area[i] * (l - level[i]) + 0.5 * (area[i+1] - area[i]) / (level[i+1] - level[i]) * (l - level[i])**2
+
+fig, ax = plt.subplots()
+level_eval = np.linspace(level[0], level[-1], 100)
+storage_eval = [storage_from_level(l) for l in np.linspace(level[0], level[-1], 100)]
+ax.scatter(level, storage, label = "storage at datapoints")
+ax.plot(level_eval, storage_eval, label = "interpolation")
+ax.set_xticks([])
+ax.set_yticks([0])
+ax.set_title("level → storage", fontsize = fontsize_title)
+ax.set_xlabel("level", fontsize = fontsize)
+ax.set_ylabel("storage", fontsize = fontsize)
+
+level_eval_extrap = np.linspace(level[-1], level_extrap, 35)
+storage_eval_extrap = [storage_from_level(l) for l in level_eval_extrap]
+ax.plot(level_eval_extrap, storage_eval_extrap, color = "C0", linestyle = "dashed", label = "extrapolation")
+ax.legend()
+```
+
+for converting the initial state in terms of levels to an initial state in terms of storages used in the core.
+
+```{python}
+# | code-fold: true
+
+from matplotlib import cm
+import plotly.graph_objects as go
+
+def A(l):
+    i = min(max(0, np.searchsorted(level, l)-1), len(level)-2)
+    return area[i] + (area[i+1] - area[i])/(level[i+1] - level[i]) * (l - level[i])
+
+level_eval = np.linspace(level[0], level_extrap, 100)
+area_eval = np.array([A(l) for l in level_eval])
+radius_eval = np.sqrt(area_eval/np.pi)
+
+level_eval = np.insert(level_eval, 0, level[0])
+radius_eval = np.insert(radius_eval, 0, 0.0)
+
+phi = np.linspace(0, 2*np.pi, 100)
+R, P = np.meshgrid(radius_eval, phi)
+X = R * np.cos(P)
+Y = R * np.sin(P)
+Z = np.tile(level_eval, (100, 1))
+
+storage_eval = [storage_from_level(l) for l in level_eval]
+
+storage_eval = [storage_from_level(l) for l in level_eval]
+colormap_values = np.tile(storage_eval, (100,1))
+
+# The basin
+fig = go.Figure()
+fig.add_trace(
+    go.Surface(x=X, y=Y, z=Z,
+        surfacecolor = colormap_values,
+        colorscale = "Blues",
+        reversescale = True,
+        hoverinfo = "skip",
+        colorbar = dict(title='Storage', len = 0.5),
+        name = "Basin",
+        showlegend = True
+    )
+)
+
+
+# Basin bottom
+fig.add_trace(
+    go.Scatter3d(
+        x=[0], y=[0], z=[level[0]],
+        mode='text',
+        text=['Bottom: lowest level'],
+        textposition='top center',
+        textfont=dict(size=12, color='white'),
+        name = "Bottom label"
+    )
+)
+
+# Add arrow in the z direction
+fig.add_trace(
+    go.Cone(
+        x=[0], y=[0], z=[2*level[2]],
+        u=[0], v=[0], w=[1],
+        sizemode="absolute",
+        sizeref=1,
+        showscale=False,
+        colorscale=[[0, 'white'], [1, 'white']],
+        legendgroup = "ArrowGroup",
+        hoverinfo = "skip"
+
+    )
+)
+
+# Add label for the arrow
+fig.add_trace(
+    go.Scatter3d(
+        x=[0], y=[0], z=[2*level[2]],
+        mode='text',
+        text=['Linear area(level) interpolation'],
+        textposition='middle right',
+        textfont = dict(size=12, color='black'),
+        name = "Linear interpolation arrow",
+        legendgroup = "ArrowGroup",
+        showlegend = False
+    )
+)
+
+# Add arrow base
+fig.add_trace(
+    go.Scatter3d(
+        x=[0,0], y=[0,0], z=[1.5 * level[2], 2 * level[2]],
+        mode = 'lines',
+        line = dict(color='white', width=10),
+        name = "Linear interpolation arrow",
+        legendgroup = "ArrowGroup",
+        hoverinfo = "skip"
+    )
+)
+
+
+# Remove axis labels
+fig.update_layout(
+    scene=dict(
+        xaxis=dict(showticklabels=False),
+        yaxis=dict(showticklabels=False),
+        zaxis=dict(showticklabels=False),
+    )
+)
+
+# Add the circle representing (level, area) entry to the plot
+circle_r = 0.99 * np.sqrt(area[1] / np.pi)
+circle_x = circle_r * np.cos(phi)
+circle_y = circle_r * np.sin(phi)
+circle_z = np.full_like(phi, level[1])
+fig.add_trace(
+    go.Scatter3d(
+        x=circle_x, y=circle_y, z=circle_z,
+        mode='lines',
+        line=dict(color='green', width=10),
+        name='(level, area) entry',
+        hoverinfo = "skip",
+        legendgroup = "LevelAreaEntryGroup"
+    )
+)
+
+# Add the disk representing (level, area) entry
+R = np.array([0.0, circle_r])
+R, P = np.meshgrid(R, phi)
+X = R * np.cos(P)
+Y = R * np.sin(P)
+Z = np.full_like(X, level[1])
+fig.add_trace(
+    go.Surface(
+        x=X, y=Y, z=Z,
+        colorscale=[[0, 'green'], [1, 'green']],
+        opacity=0.5,
+        showscale=False,
+        legendgroup = "LevelAreaEntryGroup"
+    )
+)
+
+# Add label for (level, area) entry
+fig.add_trace(
+    go.Scatter3d(
+        x=[0], y=[0], z=[level[1]],
+        mode='text',
+        text=['(level, area) entry'],
+        textposition='top center',
+        textfont = dict(size=12, color='lightgreen'),
+        legendgroup = "LevelAreaEntryGroup",
+        showlegend = False
+    )
+)
+
+fig.show()
+```
+
+## Storage to level
+
+The level is computed from the storage by inverting the level to storage relationship shown above. See [here](https://docs.sciml.ai/DataInterpolations/stable/inverting_integrals/) for more details.
+
+# Basin Forcings
+
+Basin forcings, as specified in `Basin / static` or `Basin / time`, are interpolated with forward fill. This looks as follows.
+
+```{python}
+# | code-fold: true
+
+fig, ax = plt.subplots()
+
+N = 5
+y = np.random.rand(N)
+x = np.cumsum(np.random.rand(N))
+
+def forward_fill(x):
+    i = min(max(0, np.searchsorted(level, l)-1), len(level)-2)
+    return x[i]
+
+def plot_forward_fill(i):
+    ax.plot([x[i], x[i+1]], [y[i], y[i]], color = "C0")
+
+ax.scatter(x,y, label = "forcing at data points")
+for i in range(N-1):
+    plot_forward_fill(i)
+
+x_missing_data = np.random.rand(3)
+
+ax.legend()
+```
+
+# Concentrations
+
+# Tabulated Rating Curve
+
+# Level Boundary
+
+# Flow Boundary
+
+# Continuous Control
+
+# Pid Control
+
+# User Demand
+
+# Level Demand (min max level)
+
+# Flow Demand
+
+# Subgrid
