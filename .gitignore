@@ -154,6 +154,7 @@ playground/output
 # Ruff
 .ruff_cache
 .teamcity/.idea/
+.idea/
 
 # https://github.com/Deltares/Ribasim/issues/1652
 ribasim_qgis/tests/data/database.gpkg

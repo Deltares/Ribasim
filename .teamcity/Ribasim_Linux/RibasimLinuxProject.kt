@@ -15,8 +15,6 @@ object RibasimLinuxProject : Project({
     buildType(Linux_BuildRibasim)
     buildType(Linux_TestRibasimBinaries)
 
-    template(LinuxAgent)
-    template(BuildLinux)
     template(TestBinariesLinux)
 })
 
