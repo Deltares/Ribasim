@@ -32,6 +32,7 @@ from qgis.core import (
     QgsCategorizedSymbolRenderer,
     QgsCoordinateReferenceSystem,
     QgsEditorWidgetSetup,
+    QgsFeatureRenderer,
     QgsField,
     QgsPalLayerSettings,
     QgsVectorLayer,
@@ -59,8 +60,8 @@ class Input(abc.ABC):
         return "No Geometry"
 
     @classmethod
-    def qgis_geometry_type(cls) -> Any:
-        Qgis.GeometryType.NullGeometry
+    def qgis_geometry_type(cls) -> Qgis.GeometryType:
+        return Qgis.GeometryType.NullGeometry  # type: ignore
 
     @classmethod
     @abc.abstractmethod
@@ -123,7 +124,7 @@ class Input(abc.ABC):
         pass
 
     @property
-    def renderer(self) -> QgsCategorizedSymbolRenderer:
+    def renderer(self) -> QgsFeatureRenderer | None:
         fn = STYLE_DIR / f"{self.input_type().replace(' / ', '_')}Style.sld"
         if fn.is_file():
             document = QDomDocument()
@@ -174,8 +175,8 @@ class Node(Input):
         return "Point"
 
     @classmethod
-    def qgis_geometry_type(cls) -> Any:
-        return Qgis.GeometryType.PointGeometry
+    def qgis_geometry_type(cls) -> Qgis.GeometryType:
+        return Qgis.GeometryType.PointGeometry  # type: ignore
 
     @classmethod
     def attributes(cls) -> list[QgsField]:
@@ -237,8 +238,8 @@ class Edge(Input):
         return "LineString"
 
     @classmethod
-    def qgis_geometry_type(cls) -> Any:
-        return Qgis.GeometryType.LineGeometry
+    def qgis_geometry_type(cls) -> Qgis.GeometryType:
+        return Qgis.GeometryType.LineGeometry  # type: ignore
 
     @classmethod
     def input_type(cls) -> str:
@@ -363,8 +364,8 @@ class BasinArea(Input):
         return "Polygon"
 
     @classmethod
-    def qgis_geometry_type(cls) -> str:
-        return Qgis.GeometryType.PolygonGeometry
+    def qgis_geometry_type(cls) -> Qgis.GeometryType:
+        return Qgis.GeometryType.PolygonGeometry  # type: ignore
 
     @classmethod
     def attributes(cls) -> list[QgsField]:

@@ -72,7 +72,7 @@ VALUES (
     'geom',
     :style_name,
     :style_qml,
-    :style_sld,
+    '',
     '1',
     :description,
     '',
@@ -94,9 +94,8 @@ def _add_styles_to_geopackage(gpkg_path: Path, layer: str):
 
         style_name = f"{layer.replace(' / ', '_')}Style"
         style_qml = STYLES_DIR / f"{style_name}.qml"
-        style_sld = STYLES_DIR / f"{style_name}.sld"
 
-        if style_qml.exists() and style_sld.exists():
+        if style_qml.exists():
             description = f"Ribasim style for layer: {layer}"
             update_date_time = f"{datetime.now().isoformat()}Z"
 
@@ -105,7 +104,6 @@ def _add_styles_to_geopackage(gpkg_path: Path, layer: str):
                 {
                     "layer": layer,
                     "style_qml": style_qml.read_bytes(),
-                    "style_sld": style_sld.read_bytes(),
                     "style_name": style_name,
                     "description": description,
                     "update_date_time": update_date_time,
