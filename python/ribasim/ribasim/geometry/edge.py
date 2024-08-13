@@ -107,7 +107,7 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
         )
         if self.df.duplicated().any():
             raise ValueError(
-                f"Edges have to be unique, but edge ({from_node.node_id=}, {from_node.node_id=}) already exists."
+                f"Edges have to be unique, but edge ({from_node.node_id}, {from_node.node_id}) already exists."
             )
         self.df.index.name = "fid"
 
