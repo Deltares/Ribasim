@@ -121,11 +121,39 @@ def test_extra_spatial_columns():
 
     with pytest.raises(ValidationError):
         model.basin.add(
-            Node(2, Point(0, 0), foo=1),
+            Node(3, Point(0, 0), foo=1),
             [basin.Profile(area=1000.0, level=[0.0, 1.0]), basin.State(level=[1.0])],
         )
     with pytest.raises(ValidationError):
         model.edge.add(model.basin[1], model.user_demand[2], foo=1)
+
+
+def test_autoincrement():
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2021-01-01",
+        crs="EPSG:28992",
+        solver=Solver(algorithm="Tsit5"),
+    )
+
+    model.basin.add(
+        Node(1, Point(0, 0), meta_id=1),
+        [basin.Profile(area=1000.0, level=[0.0, 1.0]), basin.State(level=[1.0])],
+    )
+    with pytest.raises(ValueError):
+        model.user_demand.add(
+            Node(1, Point(1, 0.5), meta_id=2),
+            [
+                user_demand.Static(
+                    demand=[1e-4], return_factor=0.9, min_level=0.9, priority=1
+                )
+            ],
+        )
+    nbasin = model.basin.add(
+        Node(geometry=Point(0, 0), meta_id=1),
+        [basin.Profile(area=1000.0, level=[0.0, 1.0]), basin.State(level=[1.0])],
+    )
+    assert nbasin.node_id == 2
 
 
 def test_sort(level_range, tmp_path):

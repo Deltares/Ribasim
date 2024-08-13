@@ -13,6 +13,7 @@ from pandera.typing.geopandas import GeoDataFrame
 from pydantic import (
     DirectoryPath,
     Field,
+    NonNegativeInt,
     field_serializer,
     model_validator,
 )
@@ -43,6 +44,7 @@ from ribasim.config import (
 from ribasim.geometry.edge import EdgeSchema, EdgeTable
 from ribasim.geometry.node import NodeTable
 from ribasim.input_base import (
+    BaseModel,
     ChildModel,
     FileModel,
     SpatialTableModel,
@@ -62,12 +64,29 @@ except ImportError:
     xugrid = MissingOptionalModule("xugrid")
 
 
+class NodeID(BaseModel):
+    node_ids: set[int] = set()
+    max_node_id: NonNegativeInt = 0
+
+    def add(self, node_id: int) -> None:
+        self.node_ids.add(node_id)
+        self.max_node_id = max(self.max_node_id, node_id)
+
+    def __contains__(self, value: int) -> bool:
+        return self.node_ids.__contains__(value)
+
+    def new_id(self) -> int:
+        return self.max_node_id + 1
+
+
 class Model(FileModel):
     """A model of inland water resources systems."""
 
     starttime: datetime.datetime
     endtime: datetime.datetime
     crs: str
+
+    node_id: NodeID = Field(default_factory=NodeID)
 
     input_dir: Path = Field(default=Path("."))
     results_dir: Path = Field(default=Path("results"))

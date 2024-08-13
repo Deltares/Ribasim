@@ -1,7 +1,7 @@
 import numbers
 from collections.abc import Sequence
 from enum import Enum
-from typing import Any
+from typing import Any, Optional
 
 import numpy as np
 import pandas as pd
@@ -152,7 +152,7 @@ class Node(pydantic.BaseModel):
 
     Attributes
     ----------
-    node_id : NonNegativeInt
+    node_id : Optional[NonNegativeInt]
         Integer ID of the node. Must be unique within the same node type.
     geometry : shapely.geometry.Point
         The coordinates of the node.
@@ -162,21 +162,26 @@ class Node(pydantic.BaseModel):
         Optionally adds this node to a subnetwork, which is input for the allocation algorithm.
     """
 
-    node_id: NonNegativeInt
+    node_id: Optional[NonNegativeInt] = None
     geometry: Point
     name: str = ""
     subnetwork_id: int | None = None
 
     model_config = ConfigDict(arbitrary_types_allowed=True, extra="allow")
 
-    def __init__(self, node_id: int, geometry: Point, **kwargs) -> None:
+    def __init__(
+        self,
+        node_id: Optional[NonNegativeInt] = None,
+        geometry: Point = Point(0, 0),
+        **kwargs,
+    ) -> None:
         super().__init__(node_id=node_id, geometry=geometry, **kwargs)
 
-    def into_geodataframe(self, node_type: str) -> GeoDataFrame:
+    def into_geodataframe(self, node_type: str, node_id: int) -> GeoDataFrame:
         extra = self.model_extra if self.model_extra is not None else {}
         return GeoDataFrame(
             data={
-                "node_id": pd.Series([self.node_id], dtype=np.int32),
+                "node_id": pd.Series([node_id], dtype=np.int32),
                 "node_type": pd.Series([node_type], dtype=str),
                 "name": pd.Series([self.name], dtype=str),
                 "subnetwork_id": pd.Series([self.subnetwork_id], dtype=pd.Int32Dtype()),
@@ -214,9 +219,12 @@ class MultiNodeModel(NodeModel):
             tables = []
 
         node_id = node.node_id
-        if self.node.df is not None and node_id in self.node.df["node_id"].to_numpy():
+
+        if node_id is None:
+            node_id = self._parent.node_id.new_id()
+        elif node_id in self._parent.node_id:
             raise ValueError(
-                f"Node IDs have to be unique, but {node_id=} already exists."
+                f"Node IDs have to be unique, but {node_id} already exists."
             )
 
         for table in tables:
@@ -230,13 +238,14 @@ class MultiNodeModel(NodeModel):
             setattr(self, member_name, pd.concat([existing_table, table_to_append]))
 
         node_table = node.into_geodataframe(
-            node_type=self.__class__.__name__,
+            node_type=self.__class__.__name__, node_id=node_id
         )
         self.node.df = (
             node_table
             if self.node.df is None
             else pd.concat([self.node.df, node_table])
         )
+        self._parent.node_id.add(node_id)
         return self[node_id]
 
     def __getitem__(self, index: int) -> NodeData:
