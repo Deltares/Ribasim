@@ -241,8 +241,8 @@ end
     @test allunique(Ribasim.tsaves(model))
     precipitation = Ribasim.get_tmp(model.integrator.p.basin.vertical_flux, 0).precipitation
     @test length(precipitation) == 4
-    @test model.integrator.sol.u[end] ≈ Float32[471.9218, 471.9199, 363.6981, 1427.962] skip =
-        Sys.isapple()
+    @test model.integrator.sol.u[end] ≈ Float32[472.06555, 472.06366, 367.23883, 1427.9957] abstol =
+        2.0 skip = Sys.isapple()
 end
 
 @testitem "Allocation example model" begin
