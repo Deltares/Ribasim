@@ -1,13 +1,14 @@
 import numbers
 from collections.abc import Sequence
 from enum import Enum
-from typing import Any
+from typing import Any, Optional
 
 import numpy as np
 import pandas as pd
 import pydantic
 from geopandas import GeoDataFrame
 from pydantic import ConfigDict, Field, NonNegativeInt, model_validator
+from shapely import is_empty
 from shapely.geometry import Point
 
 from ribasim.geometry import BasinAreaSchema, NodeTable
@@ -152,8 +153,8 @@ class Node(pydantic.BaseModel):
 
     Attributes
     ----------
-    node_id : NonNegativeInt
-        Integer ID of the node. Must be unique within the same node type.
+    node_id : Optional[NonNegativeInt]
+        Integer ID of the node. Must be unique for the model.
     geometry : shapely.geometry.Point
         The coordinates of the node.
     name : str
@@ -162,21 +163,28 @@ class Node(pydantic.BaseModel):
         Optionally adds this node to a subnetwork, which is input for the allocation algorithm.
     """
 
-    node_id: NonNegativeInt
+    node_id: Optional[NonNegativeInt] = None
     geometry: Point
     name: str = ""
     subnetwork_id: int | None = None
 
     model_config = ConfigDict(arbitrary_types_allowed=True, extra="allow")
 
-    def __init__(self, node_id: int, geometry: Point, **kwargs) -> None:
+    def __init__(
+        self,
+        node_id: Optional[NonNegativeInt] = None,
+        geometry: Point = Point("nan", "nan"),
+        **kwargs,
+    ) -> None:
+        if is_empty(geometry):
+            raise (ValueError("Node geometry must be a valid Point"))
         super().__init__(node_id=node_id, geometry=geometry, **kwargs)
 
-    def into_geodataframe(self, node_type: str) -> GeoDataFrame:
+    def into_geodataframe(self, node_type: str, node_id: int) -> GeoDataFrame:
         extra = self.model_extra if self.model_extra is not None else {}
         return GeoDataFrame(
             data={
-                "node_id": pd.Series([self.node_id], dtype=np.int32),
+                "node_id": pd.Series([node_id], dtype=np.int32),
                 "node_type": pd.Series([node_type], dtype=str),
                 "name": pd.Series([self.name], dtype=str),
                 "subnetwork_id": pd.Series([self.subnetwork_id], dtype=pd.Int32Dtype()),
@@ -195,7 +203,9 @@ class MultiNodeModel(NodeModel):
         self.node.filter(self.__class__.__name__)
         return self
 
-    def add(self, node: Node, tables: Sequence[TableModel[Any]] | None = None) -> None:
+    def add(
+        self, node: Node, tables: Sequence[TableModel[Any]] | None = None
+    ) -> NodeData:
         """Add a node and the associated data to the model.
 
         Parameters
@@ -212,9 +222,17 @@ class MultiNodeModel(NodeModel):
             tables = []
 
         node_id = node.node_id
-        if self.node.df is not None and node_id in self.node.df["node_id"].to_numpy():
+
+        if self._parent is None:
             raise ValueError(
-                f"Node IDs have to be unique, but {node_id=} already exists."
+                f"You can only add to a {self._node_type} MultiNodeModel when attached to a Model."
+            )
+
+        if node_id is None:
+            node_id = self._parent.used_node_ids.new_id()
+        elif node_id in self._parent.used_node_ids:
+            raise ValueError(
+                f"Node IDs have to be unique, but {node_id} already exists."
             )
 
         for table in tables:
@@ -228,13 +246,15 @@ class MultiNodeModel(NodeModel):
             setattr(self, member_name, pd.concat([existing_table, table_to_append]))
 
         node_table = node.into_geodataframe(
-            node_type=self.__class__.__name__,
+            node_type=self.__class__.__name__, node_id=node_id
         )
         self.node.df = (
             node_table
             if self.node.df is None
             else pd.concat([self.node.df, node_table])
         )
+        self._parent.used_node_ids.add(node_id)
+        return self[node_id]
 
     def __getitem__(self, index: int) -> NodeData:
         # Unlike TableModel, support only indexing single rows.
@@ -398,7 +418,6 @@ class DiscreteControl(MultiNodeModel):
         json_schema_extra={
             "sort_keys": [
                 "node_id",
-                "listen_node_type",
                 "listen_node_id",
                 "variable",
             ]

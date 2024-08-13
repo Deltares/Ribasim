@@ -12,7 +12,19 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
     )
     edge_rows = execute(
         db,
-        "SELECT fid, from_node_type, from_node_id, to_node_type, to_node_id, edge_type, subnetwork_id FROM Edge ORDER BY fid",
+        """
+        SELECT
+            Edge.fid,
+            FromNode.node_id AS from_node_id,
+            FromNode.node_type AS from_node_type,
+            ToNode.node_id AS to_node_id,
+            ToNode.node_type AS to_node_type,
+            Edge.edge_type,
+            Edge.subnetwork_id
+        FROM Edge
+        LEFT JOIN Node AS FromNode ON FromNode.node_id = Edge.from_node_id
+        LEFT JOIN Node AS ToNode ON ToNode.node_id = Edge.to_node_id
+        """,
     )
     # Node IDs per subnetwork
     node_ids = Dict{Int32, Set{NodeID}}()

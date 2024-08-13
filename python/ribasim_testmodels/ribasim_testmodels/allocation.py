@@ -388,7 +388,7 @@ def allocation_example_model() -> Model:
             )
         ],
     )
-    model.terminal.add(Node(1, Point(5, 0), subnetwork_id=2))
+    model.terminal.add(Node(8, Point(5, 0), subnetwork_id=2))
 
     model.edge.add(model.flow_boundary[1], model.basin[2], subnetwork_id=2)
     model.edge.add(model.basin[2], model.user_demand[3])
@@ -396,7 +396,7 @@ def allocation_example_model() -> Model:
     model.edge.add(model.linear_resistance[4], model.basin[5])
     model.edge.add(model.basin[5], model.user_demand[6])
     model.edge.add(model.basin[5], model.tabulated_rating_curve[7])
-    model.edge.add(model.tabulated_rating_curve[7], model.terminal[1])
+    model.edge.add(model.tabulated_rating_curve[7], model.terminal[8])
     model.edge.add(model.user_demand[3], model.basin[2])
     model.edge.add(model.user_demand[6], model.basin[5])
 
