@@ -653,7 +653,7 @@ function CompoundVariable(
     }[]
     # Each row defines a subvariable
     for row in compound_variable_data
-        listen_node_id = NodeID(row.listen_node_type, row.listen_node_id, db)
+        listen_node_id = NodeID(row.listen_node_id, db)
         # Placeholder until actual ref is known
         variable_ref = PreallocationRef(placeholder_vector, 0)
         variable = row.variable
@@ -884,14 +884,12 @@ function PidControl(db::DB, config::Config, graph::MetaGraph)::PidControl
     end
     controlled_basins = collect(controlled_basins)
 
+    listen_node_id = NodeID.(parsed_parameters.listen_node_id, Ref(db))
+
     return PidControl(;
         node_id = node_ids,
         parsed_parameters.active,
-        listen_node_id = NodeID.(
-            parsed_parameters.listen_node_type,
-            parsed_parameters.listen_node_id,
-            Ref(db),
-        ),
+        listen_node_id,
         parsed_parameters.target,
         target_ref,
         parsed_parameters.proportional,

@@ -121,11 +121,73 @@ def test_extra_spatial_columns():
 
     with pytest.raises(ValidationError):
         model.basin.add(
-            Node(2, Point(0, 0), foo=1),
+            Node(3, Point(0, 0), foo=1),
             [basin.Profile(area=1000.0, level=[0.0, 1.0]), basin.State(level=[1.0])],
         )
     with pytest.raises(ValidationError):
         model.edge.add(model.basin[1], model.user_demand[2], foo=1)
+
+
+def test_autoincrement():
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2021-01-01",
+        crs="EPSG:28992",
+        solver=Solver(algorithm="Tsit5"),
+    )
+
+    model.basin.add(Node(20, Point(0, 0)), [basin.State(level=[1.0])])
+    with pytest.raises(
+        ValueError, match="Node IDs have to be unique, but 20 already exists."
+    ):
+        model.user_demand.add(
+            Node(20, Point(1, 0.5)),
+            [
+                user_demand.Static(
+                    demand=[1e-4], return_factor=0.9, min_level=0.9, priority=1
+                )
+            ],
+        )
+
+    nbasin = model.basin.add(Node(geometry=Point(0, 0)), [basin.State(level=[1.0])])
+    assert nbasin.node_id == 21
+
+    # Can use any remaining positive integer
+    model.basin.add(Node(1, geometry=Point(0, 0)), [basin.State(level=[1.0])])
+    nbasin = model.basin.add(Node(geometry=Point(0, 0)), [basin.State(level=[1.0])])
+    assert nbasin.node_id == 22
+
+    model.basin.add(Node(100, geometry=Point(0, 0)), [basin.State(level=[1.0])])
+
+    nbasin = model.basin.add(Node(geometry=Point(0, 0)), [basin.State(level=[1.0])])
+    assert nbasin.node_id == 101
+
+
+def test_node_empty_geometry():
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2021-01-01",
+        crs="EPSG:28992",
+    )
+
+    with pytest.raises(ValueError, match="Node geometry must be a valid Point"):
+        model.user_demand.add(
+            Node(),
+            [
+                user_demand.Static(
+                    demand=[1e-4], return_factor=0.9, min_level=0.9, priority=1
+                )
+            ],
+        )
+    with pytest.raises(ValueError, match="Node geometry must be a valid Point"):
+        model.user_demand.add(
+            Node(2),
+            [
+                user_demand.Static(
+                    demand=[1e-4], return_factor=0.9, min_level=0.9, priority=1
+                )
+            ],
+        )
 
 
 def test_sort(level_range, tmp_path):
@@ -145,7 +207,6 @@ def test_sort(level_range, tmp_path):
     assert table.df.iloc[0]["greater_than"] == 5.0
 
     # The edge table is not sorted
-    assert edge.df.iloc[1]["from_node_type"] == "Pump"
     assert edge.df.iloc[1]["from_node_id"] == 3
 
     # re-apply wrong sort, then check if it gets sorted on write
@@ -157,7 +218,6 @@ def test_sort(level_range, tmp_path):
     table_loaded = model_loaded.discrete_control.condition
     edge_loaded = model_loaded.edge
     assert table_loaded.df.iloc[0]["greater_than"] == 5.0
-    assert edge.df.iloc[1]["from_node_type"] == "Pump"
     assert edge.df.iloc[1]["from_node_id"] == 3
     __assert_equal(table.df, table_loaded.df)
     __assert_equal(edge.df, edge_loaded.df)

@@ -66,6 +66,16 @@ function NodeID(type::NodeType.T, value::Integer, db::DB)::NodeID
     return NodeID(type, value, idx)
 end
 
+function NodeID(value::Integer, db::DB)::NodeID
+    (idx, type) = execute(
+        columntable,
+        db,
+        "SELECT COUNT(*), node_type FROM Node WHERE node_type == (SELECT node_type FROM Node WHERE node_id == $value) AND node_id <= $value",
+    )
+    @assert only(idx) > 0
+    return NodeID(only(type), value, only(idx))
+end
+
 Base.Int32(id::NodeID) = id.value
 Base.convert(::Type{Int32}, id::NodeID) = id.value
 Base.broadcastable(id::NodeID) = Ref(id)

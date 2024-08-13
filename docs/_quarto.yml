@@ -43,6 +43,9 @@ website:
         - guide/index.qmd
         - guide/examples.ipynb
         - guide/coupling.qmd
+        - section: "Coupling guides"
+          contents:
+          - guide/delwaq.ipynb
 
     - title: "Concepts"
       contents:
@@ -88,6 +91,7 @@ website:
       contents:
         - dev/index.qmd
         - dev/core.qmd
+        - dev/benchmark.qmd
         - dev/addnode.qmd
         - dev/python.qmd
         - dev/qgis.qmd

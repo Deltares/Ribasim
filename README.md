@@ -24,9 +24,8 @@ For most users the [latest release](https://github.com/Deltares/Ribasim/releases
 - QGIS plugin: [ribasim_qgis.zip](https://github.com/Deltares/Ribasim/releases/latest/download/ribasim_qgis.zip).
 - Generated testmodels: [generated_testmodels.zip](https://github.com/Deltares/Ribasim/releases/latest/download/generated_testmodels.zip)
 
+# Example model
 
-![Timeseries of
-results](https://user-images.githubusercontent.com/4471859/179259333-070dfe18-8f43-4ac4-bb38-013b252e2e4b.png)
+Ribasim model of the main water distribution network in the Netherlands.
 
-![Daily water
-balance](https://user-images.githubusercontent.com/4471859/179259174-0caccd4a-c51b-449e-873c-17d48cfc8870.png)
+![model_on_map](https://github.com/user-attachments/assets/5095a4fe-c336-4380-aa0c-851c851d3895)

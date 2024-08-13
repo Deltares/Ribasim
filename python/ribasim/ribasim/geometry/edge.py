@@ -33,9 +33,7 @@ class NodeData(NamedTuple):
 
 class EdgeSchema(pa.DataFrameModel):
     name: Series[str] = pa.Field(default="")
-    from_node_type: Series[str] = pa.Field(nullable=True)
     from_node_id: Series[Int32] = pa.Field(default=0, coerce=True)
-    to_node_type: Series[str] = pa.Field(nullable=True)
     to_node_id: Series[Int32] = pa.Field(default=0, coerce=True)
     edge_type: Series[str] = pa.Field(default="flow", coerce=True)
     subnetwork_id: Series[pd.Int32Dtype] = pa.Field(
@@ -89,9 +87,7 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
 
         table_to_append = GeoDataFrame[EdgeSchema](
             data={
-                "from_node_type": pd.Series([from_node.node_type], dtype=str),
                 "from_node_id": pd.Series([from_node.node_id], dtype=np.int32),
-                "to_node_type": pd.Series([to_node.node_type], dtype=str),
                 "to_node_id": pd.Series([to_node.node_id], dtype=np.int32),
                 "edge_type": pd.Series([edge_type], dtype=str),
                 "name": pd.Series([name], dtype=str),
@@ -107,7 +103,7 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
         )
         self.df.index.name = "fid"
 
-    def get_where_edge_type(self, edge_type: str) -> NDArray[np.bool_]:
+    def _get_where_edge_type(self, edge_type: str) -> NDArray[np.bool_]:
         assert self.df is not None
         return (self.df.edge_type == edge_type).to_numpy()
 
@@ -118,6 +114,14 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
         self.df.sort_index(inplace=True)
 
     def plot(self, **kwargs) -> Axes:
+        """Plot the edges of the model.
+
+        Parameters
+        ----------
+        **kwargs : Dict
+            Supported: 'ax', 'color_flow', 'color_control'
+        """
+
         assert self.df is not None
         kwargs = kwargs.copy()  # Avoid side-effects
         ax = kwargs.get("ax", None)
@@ -141,8 +145,8 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
             kwargs_control["color"] = color_control
             kwargs_control["label"] = "Control edge"
 
-        where_flow = self.get_where_edge_type("flow")
-        where_control = self.get_where_edge_type("control")
+        where_flow = self._get_where_edge_type("flow")
+        where_control = self._get_where_edge_type("control")
 
         if not self.df[where_flow].empty:
             self.df[where_flow].plot(**kwargs_flow)
