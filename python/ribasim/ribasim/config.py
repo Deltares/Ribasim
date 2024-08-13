@@ -153,7 +153,7 @@ class Node(pydantic.BaseModel):
     Attributes
     ----------
     node_id : Optional[NonNegativeInt]
-        Integer ID of the node. Must be unique within the same node type.
+        Integer ID of the node. Must be unique for the model.
     geometry : shapely.geometry.Point
         The coordinates of the node.
     name : str

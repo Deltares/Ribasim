@@ -72,8 +72,8 @@ function NodeID(value::Integer, db::DB)::NodeID
         db,
         "SELECT COUNT(*), node_type FROM Node WHERE node_type == (SELECT node_type FROM Node WHERE node_id == $value) AND node_id <= $value",
     )
-    @assert idx[1] > 0
-    return NodeID(type[1], value, idx[1])
+    @assert only(idx) > 0
+    return NodeID(only(type), value, only(idx))
 end
 
 Base.Int32(id::NodeID) = id.value

@@ -467,7 +467,6 @@ class Model(FileModel):
 
         if not node_df.node_id.is_unique:
             raise ValueError("node_id must be unique")
-        node_df.sort_values("node_id", inplace=True)
 
         assert self.edge.df is not None
         edge_df = self.edge.df.copy()

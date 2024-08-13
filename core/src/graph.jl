@@ -15,15 +15,15 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
         """
         SELECT
             Edge.fid,
-            FNode.node_id AS from_node_id,
-            FNode.node_type AS from_node_type,
-            TNode.node_id AS to_node_id,
-            TNode.node_type AS to_node_type,
+            FromNode.node_id AS from_node_id,
+            FromNode.node_type AS from_node_type,
+            ToNode.node_id AS to_node_id,
+            ToNode.node_type AS to_node_type,
             Edge.edge_type,
             Edge.subnetwork_id
         FROM Edge
-        LEFT JOIN Node AS FNode ON FNode.node_id = Edge.from_node_id
-        LEFT JOIN Node AS TNode ON TNode.node_id = Edge.to_node_id
+        LEFT JOIN Node AS FromNode ON FromNode.node_id = Edge.from_node_id
+        LEFT JOIN Node AS ToNode ON ToNode.node_id = Edge.to_node_id
         """,
     )
     # Node IDs per subnetwork
