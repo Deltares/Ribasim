@@ -64,7 +64,7 @@ object Windows_BuildRibasim : BuildType({
             scriptContent = "pixi run add-ribasim-icon"
         }
     }
-    artifactRules = """ribasim\build\ribasim => ribasim_windows.zip"""
+    artifactRules = """ribasim\build\ribasim => ribasim_windows.zip!/ribasim"""
 })
 
 object Windows_TestRibasimBinaries : BuildType({
@@ -80,7 +80,7 @@ object Windows_TestRibasimBinaries : BuildType({
                 id = "ARTIFACT_DEPENDENCY_570"
                 cleanDestination = true
                 artifactRules = """
-                    ribasim_windows.zip!** => ribasim/build/ribasim
+                    ribasim_windows.zip!/ribasim/** => ribasim/build/ribasim
                 """.trimIndent()
             }
         }
