@@ -70,7 +70,7 @@ object Linux_TestRibasimBinaries : BuildType({
                 id = "ARTIFACT_DEPENDENCY_570"
                 cleanDestination = true
                 artifactRules = """
-                    ribasim_linux.zip!** => ribasim/build/ribasim
+                    ribasim_linux.zip!/ribasim/** => ribasim/build/ribasim
                 """.trimIndent()
             }
         }
