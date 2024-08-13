@@ -23,7 +23,7 @@ def trivial_model() -> Model:
     # 22. start at -1.0
     # 11. start at 0.0
     # 33. start at 1.0
-    model.basin.add(
+    basin6 = model.basin.add(
         Node(6, Point(400, 200)),
         [
             basin.Static(
@@ -42,19 +42,16 @@ def trivial_model() -> Model:
 
     # TODO largest signed 32 bit integer, to check encoding
     terminal_id = 2147483647
-    model.terminal.add(Node(terminal_id, Point(500, 200)))
-    model.tabulated_rating_curve.add(
-        Node(6, Point(450, 200)),
+    term = model.terminal.add(Node(terminal_id, Point(500, 200)))
+    trc0 = model.tabulated_rating_curve.add(
+        Node(0, Point(450, 200)),
         [tabulated_rating_curve.Static(level=[0.0, 1.0], flow_rate=[0.0, 10 / 86400])],
     )
 
     model.edge.add(
-        model.basin[6],
-        model.tabulated_rating_curve[6],
+        basin6,
+        trc0,
     )
-    model.edge.add(
-        model.tabulated_rating_curve[6],
-        model.terminal[terminal_id],
-    )
+    model.edge.add(trc0, term)
 
     return model
