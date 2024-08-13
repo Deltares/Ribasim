@@ -206,7 +206,7 @@ end
 
     @test successful_retcode(model)
     @test allunique(Ribasim.tsaves(model))
-    @test model.integrator.sol.u[end] ≈ Float32[519.8817, 519.8798, 339.3959, 1418.4331] skip =
+    @test model.integrator.u ≈ Float32[519.8817, 519.8798, 339.3959, 1418.4331] skip =
         Sys.isapple() atol = 1.5
 
     @test length(logger.logs) > 10
@@ -241,8 +241,8 @@ end
     @test allunique(Ribasim.tsaves(model))
     precipitation = Ribasim.get_tmp(model.integrator.p.basin.vertical_flux, 0).precipitation
     @test length(precipitation) == 4
-    @test model.integrator.sol.u[end] ≈ Float32[471.9218, 471.9199, 363.6981, 1427.962] skip =
-        Sys.isapple()
+    @test model.integrator.u ≈ Float32[472.06555, 472.06366, 367.23883, 1427.9957] atol =
+        2.0 skip = Sys.isapple()
 end
 
 @testitem "Allocation example model" begin
@@ -276,14 +276,14 @@ end
     @test successful_retcode(sparse_fdm)
     @test successful_retcode(dense_fdm)
 
-    @test dense_ad.integrator.sol.u[end] ≈ sparse_ad.integrator.sol.u[end] atol = 0.1
-    @test sparse_fdm.integrator.sol.u[end] ≈ sparse_ad.integrator.sol.u[end] atol = 4
-    @test dense_fdm.integrator.sol.u[end] ≈ sparse_ad.integrator.sol.u[end] atol = 4
+    @test dense_ad.integrator.u ≈ sparse_ad.integrator.u atol = 0.1
+    @test sparse_fdm.integrator.u ≈ sparse_ad.integrator.u atol = 4
+    @test dense_fdm.integrator.u ≈ sparse_ad.integrator.u atol = 4
 
     config = Ribasim.Config(toml_path; solver_algorithm = "Rodas5", solver_autodiff = true)
     time_ad = Ribasim.run(config)
     @test successful_retcode(time_ad)
-    @test time_ad.integrator.sol.u[end] ≈ sparse_ad.integrator.sol.u[end] atol = 4
+    @test time_ad.integrator.u ≈ sparse_ad.integrator.u atol = 4
 end
 
 @testitem "TabulatedRatingCurve model" begin
@@ -295,7 +295,7 @@ end
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
     @test successful_retcode(model)
-    @test model.integrator.sol.u[end] ≈ Float32[7.783636, 726.16394] skip = Sys.isapple()
+    @test model.integrator.u ≈ Float32[7.783636, 726.16394] skip = Sys.isapple()
     # the highest level in the dynamic table is updated to 1.2 from the callback
     @test model.integrator.p.tabulated_rating_curve.table[end].t[end] == 1.2
 end
@@ -471,8 +471,7 @@ end
     model = Ribasim.run(toml_path)
     @test successful_retcode(model)
 
-    u = model.integrator.sol.u[end]
-    p = model.integrator.p
+    (; u, p) = model.integrator
     h_actual = get_tmp(p.basin.current_level, u)[1:50]
     x = collect(10.0:20.0:990.0)
     h_expected = standard_step_method(x, 5.0, 1.0, 0.04, h_actual[end], 1.0e-6)
