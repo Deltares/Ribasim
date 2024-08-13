@@ -16,6 +16,8 @@ The level to area relationship is defined with the `Basin / profile` data using 
 # | code-fold: true
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
+from IPython.display import display, Markdown
 
 np.random.seed(3)
 fig, ax = plt.subplots()
@@ -43,7 +45,16 @@ xlim = ax.get_xlim()
 ax.set_xlim(xlim[0], (level[-1] + level_extrap)/2)
 
 ax.legend()
-fig.tight_layout();
+fig.tight_layout()
+
+markdown_table = pd.DataFrame(
+        data = {
+            "level" : level,
+            "area" : area
+        }
+    ).to_markdown(index = False)
+
+display(Markdown(markdown_table))
 ```
 
 For this interpolation it is validated that:
