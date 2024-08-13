@@ -8,6 +8,7 @@ import pandas as pd
 import pydantic
 from geopandas import GeoDataFrame
 from pydantic import ConfigDict, Field, NonNegativeInt, model_validator
+from shapely import is_empty
 from shapely.geometry import Point
 
 from ribasim.geometry import BasinAreaSchema, NodeTable
@@ -172,9 +173,11 @@ class Node(pydantic.BaseModel):
     def __init__(
         self,
         node_id: Optional[NonNegativeInt] = None,
-        geometry: Point = Point(0, 0),
+        geometry: Point = Point("nan", "nan"),
         **kwargs,
     ) -> None:
+        if is_empty(geometry):
+            raise (ValueError("Node geometry must be a valid Point"))
         super().__init__(node_id=node_id, geometry=geometry, **kwargs)
 
     def into_geodataframe(self, node_type: str, node_id: int) -> GeoDataFrame:
@@ -226,8 +229,8 @@ class MultiNodeModel(NodeModel):
             )
 
         if node_id is None:
-            node_id = self._parent.node_id.new_id()
-        elif node_id in self._parent.node_id:
+            node_id = self._parent.used_node_ids.new_id()
+        elif node_id in self._parent.used_node_ids:
             raise ValueError(
                 f"Node IDs have to be unique, but {node_id} already exists."
             )

@@ -64,7 +64,14 @@ except ImportError:
     xugrid = MissingOptionalModule("xugrid")
 
 
-class NodeID(BaseModel):
+class UsedNodeIDs(BaseModel):
+    """A helper class to manage global unique node IDs.
+
+    We keep track of all node IDs in the model,
+    and keep track of the maximum to provide new IDs.
+    MultiNodeModels will check this instance on `add`.
+    """
+
     node_ids: set[int] = set()
     max_node_id: NonNegativeInt = 0
 
@@ -86,7 +93,7 @@ class Model(FileModel):
     endtime: datetime.datetime
     crs: str
 
-    node_id: NodeID = Field(default_factory=NodeID)
+    used_node_ids: UsedNodeIDs = Field(default_factory=UsedNodeIDs)
 
     input_dir: Path = Field(default=Path("."))
     results_dir: Path = Field(default=Path("results"))
