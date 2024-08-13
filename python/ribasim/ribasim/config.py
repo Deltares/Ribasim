@@ -220,6 +220,11 @@ class MultiNodeModel(NodeModel):
 
         node_id = node.node_id
 
+        if self._parent is None:
+            raise ValueError(
+                f"You can only add to a {self._node_type} MultiNodeModel when attached to a Model."
+            )
+
         if node_id is None:
             node_id = self._parent.node_id.new_id()
         elif node_id in self._parent.node_id:
