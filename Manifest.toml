@@ -2,7 +2,7 @@
 
 julia_version = "1.10.4"
 manifest_format = "2.0"
-project_hash = "54e426945d98f455e7bed32276bc1525f29c036f"
+project_hash = "9ae1bf51799e10933933a73d22951e1390164308"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "6778bcc27496dae5723ff37ee30af451db8b35fe"
@@ -364,7 +364,9 @@ version = "1.6.1"
 
 [[deps.DataInterpolations]]
 deps = ["FindFirstFunctions", "ForwardDiff", "LinearAlgebra", "PrettyTables", "RecipesBase", "Reexport"]
-git-tree-sha1 = "9cc1cf079b42b5b6392c6b1df4bfc3e2a852b597"
+git-tree-sha1 = "1d002b20cbe409907a77f5abca5ae99e70ecbe48"
+repo-rev = "master"
+repo-url = "https://github.com/SciML/DataInterpolations.jl"
 uuid = "82cc6244-b520-54b8-b5a6-8a565e85f1d0"
 version = "6.1.0"
 
@@ -1438,7 +1440,7 @@ uuid = "295af30f-e4ad-537b-8983-00126c2a3abe"
 version = "3.5.18"
 
 [[deps.Ribasim]]
-deps = ["Accessors", "Arrow", "BasicModelInterface", "CodecZstd", "ComponentArrays", "Configurations", "DBInterface", "DataInterpolations", "DataStructures", "Dates", "DiffEqCallbacks", "EnumX", "FiniteDiff", "ForwardDiff", "Graphs", "HiGHS", "IterTools", "JuMP", "Legolas", "LineSearches", "LinearSolve", "Logging", "LoggingExtras", "MetaGraphsNext", "OrdinaryDiffEq", "PreallocationTools", "SQLite", "SciMLBase", "SparseArrays", "SparseConnectivityTracer", "StructArrays", "Symbolics", "Tables", "TerminalLoggers", "TimerOutputs", "TranscodingStreams"]
+deps = ["Accessors", "Arrow", "BasicModelInterface", "CodecZstd", "ComponentArrays", "Configurations", "DBInterface", "DataInterpolations", "DataStructures", "Dates", "DiffEqCallbacks", "EnumX", "FiniteDiff", "ForwardDiff", "Graphs", "HiGHS", "IterTools", "JuMP", "Legolas", "LinearSolve", "Logging", "LoggingExtras", "MetaGraphsNext", "OrdinaryDiffEq", "PreallocationTools", "SQLite", "SciMLBase", "SparseArrays", "SparseConnectivityTracer", "StructArrays", "Symbolics", "Tables", "TerminalLoggers", "TimerOutputs", "TranscodingStreams"]
 path = "core"
 uuid = "aac5e3d9-0b8f-4d4f-8241-b1a7a9632635"
 version = "2024.10.0"
@@ -1608,11 +1610,11 @@ version = "1.10.0"
 
 [[deps.SparseConnectivityTracer]]
 deps = ["ADTypes", "Compat", "DocStringExtensions", "FillArrays", "LinearAlgebra", "Random", "Requires", "SparseArrays"]
-git-tree-sha1 = "3fa98674113e1b6d9f1f601775653e46eadefcb5"
+git-tree-sha1 = "90adf7d52df139e888dc656644c842cadf7366e4"
 repo-rev = "main"
 repo-url = "https://github.com/adrhill/SparseConnectivityTracer.jl"
 uuid = "9f842d2f-2579-4b1d-911e-f412cf18a3f5"
-version = "0.6.1-DEV"
+version = "0.6.2-DEV"
 
     [deps.SparseConnectivityTracer.extensions]
     SparseConnectivityTracerNNlibExt = "NNlib"
