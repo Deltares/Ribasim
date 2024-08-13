@@ -150,6 +150,7 @@ def test_duplicate_edge(trivial):
         model.edge.add(
             model.basin[6],
             model.tabulated_rating_curve[6],
+            name="duplicate",
         )
 
 
