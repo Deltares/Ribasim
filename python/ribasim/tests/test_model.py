@@ -145,11 +145,11 @@ def test_duplicate_edge(trivial):
     model = trivial
     with pytest.raises(
         ValueError,
-        match=re.escape("Edges have to be unique, but edge (6, 6) already exists."),
+        match=re.escape("Edges have to be unique, but edge (6, 0) already exists."),
     ):
         model.edge.add(
             model.basin[6],
-            model.tabulated_rating_curve[6],
+            model.tabulated_rating_curve[0],
             name="duplicate",
         )
 
