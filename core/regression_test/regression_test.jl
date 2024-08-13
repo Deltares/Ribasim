@@ -60,8 +60,8 @@ end
     @test ispath(toml_path)
     config = Ribasim.Config(toml_path)
 
-    flow_bytes_bench = read(normpath(@__DIR__, "../../benchmark/basic/flow.arrow"))
-    basin_bytes_bench = read(normpath(@__DIR__, "../../benchmark/basic/basin.arrow"))
+    flow_bytes_bench = read(normpath(@__DIR__, "../../models/benchmark/basic/flow.arrow"))
+    basin_bytes_bench = read(normpath(@__DIR__, "../../models/benchmark/basic/basin.arrow"))
     flow_bench = Arrow.Table(flow_bytes_bench)
     basin_bench = Arrow.Table(basin_bytes_bench)
 
@@ -122,8 +122,10 @@ end
     @test ispath(toml_path)
     config = Ribasim.Config(toml_path)
 
-    flow_bytes_bench = read(normpath(@__DIR__, "../../benchmark/pid_control/flow.arrow"))
-    basin_bytes_bench = read(normpath(@__DIR__, "../../benchmark/pid_control/basin.arrow"))
+    flow_bytes_bench =
+        read(normpath(@__DIR__, "../../models/benchmark/pid_control/flow.arrow"))
+    basin_bytes_bench =
+        read(normpath(@__DIR__, "../../modesl/benchmark/pid_control/basin.arrow"))
     flow_bench = Arrow.Table(flow_bytes_bench)
     basin_bench = Arrow.Table(basin_bytes_bench)
 
@@ -187,10 +189,12 @@ end
     @test ispath(toml_path)
     config = Ribasim.Config(toml_path)
 
-    flow_bytes_bench =
-        read(normpath(@__DIR__, "../../benchmark/subnetworks_with_sources/flow.arrow"))
-    basin_bytes_bench =
-        read(normpath(@__DIR__, "../../benchmark/subnetworks_with_sources/basin.arrow"))
+    flow_bytes_bench = read(
+        normpath(@__DIR__, "../../models/benchmark/subnetworks_with_sources/flow.arrow"),
+    )
+    basin_bytes_bench = read(
+        normpath(@__DIR__, "../../models/benchmark/subnetworks_with_sources/basin.arrow"),
+    )
     flow_bench = Arrow.Table(flow_bytes_bench)
     basin_bench = Arrow.Table(basin_bytes_bench)
 

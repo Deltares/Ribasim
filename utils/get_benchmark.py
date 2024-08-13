@@ -28,6 +28,6 @@ objects = myClient.list_objects(bucketName, prefix=pathToFolder, recursive=True)
 
 for obj in objects:
     try:
-        myClient.fget_object(bucketName, obj.object_name, "" + obj.object_name)
+        myClient.fget_object(bucketName, obj.object_name, "models/" + obj.object_name)
     except S3Error as e:
         print(f"Error occurred: {e}")
