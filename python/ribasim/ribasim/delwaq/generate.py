@@ -31,6 +31,7 @@ from .util import (
 )
 
 delwaq_dir = Path(__file__).parent
+output_folder = delwaq_dir / "model"
 
 env = jinja2.Environment(
     autoescape=True, loader=jinja2.FileSystemLoader(delwaq_dir / "template")
@@ -41,20 +42,53 @@ env = jinja2.Environment(
 USE_EVAP = True
 
 
-def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
-    """Generate a Delwaq model from a Ribasim model and results."""
+def _boundary_name(id, type):
+    # Delwaq has a limit of 12 characters for the boundary name
+    return type[:9] + "_" + str(id)
 
-    # Read in model and results
-    model = ribasim.Model.read(toml_path)
-    basins = pd.read_feather(toml_path.parent / "results" / "basin.arrow")
-    flows = pd.read_feather(toml_path.parent / "results" / "flow.arrow")
 
-    output_folder = delwaq_dir / "model"
-    output_folder.mkdir(exist_ok=True)
+def _quote(value):
+    return f"'{value}'"
 
-    # Setup flow network
+
+def _make_boundary(data, boundary_type):
+    """
+    Create a Delwaq boundary definition with the given data and boundary type.
+    Pivot our data from long to wide format, and convert the time to a string.
+
+    Specifically, we go from a table:
+        `node_id, substance, time, concentration`
+    to
+        ```
+        ITEM 'Drainage_6'
+        CONCENTRATIONS 'Cl' 'Tracer'
+        ABSOLUTE TIME
+        LINEAR DATA 'Cl' 'Tracer'
+        '2020/01/01-00:00:00' 0.0  1.0
+        '2020/01/02-00:00:00' 1.0 -999
+        ```
+    """
+    bid = _boundary_name(data.node_id.iloc[0], boundary_type)
+    piv = (
+        data.pivot_table(index="time", columns="substance", values="concentration")
+        .reset_index()
+        .reset_index(drop=True)
+    )
+    piv.time = piv.time.dt.strftime("%Y/%m/%d-%H:%M:%S")
+    boundary = {
+        "name": bid,
+        "substances": list(map(_quote, piv.columns[1:])),
+        "df": piv.to_string(
+            formatters={"time": _quote}, header=False, index=False, na_rep=-999
+        ),
+    }
+    substances = data.substance.unique()
+    return boundary, substances
+
+
+def _setup_graph(nodes, edge, use_evaporation=True):
     G = nx.DiGraph()
-    nodes = model.node_table()
+
     assert nodes.df is not None
     for row in nodes.df.itertuples():
         if row.node_type not in ribasim.geometry.edge.SPATIALCONTROLNODETYPES:
@@ -66,8 +100,8 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
                 y=row.geometry.y,
                 pos=(row.geometry.x, row.geometry.y),
             )
-    assert model.edge.df is not None
-    for row in model.edge.df.itertuples():
+    assert edge.df is not None
+    for row in edge.df.itertuples():
         if row.edge_type == "flow":
             G.add_edge(
                 f"{row.from_node_type} #{row.from_node_id}",
@@ -184,7 +218,7 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
                 boundary=(node["id"], "precipitation"),
             )
 
-            if USE_EVAP:
+            if use_evaporation:
                 boundary_id -= 1
                 G.add_node(
                     boundary_id,
@@ -205,6 +239,57 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
     for i, (a, b, d) in enumerate(G.edges(data=True)):
         for edge_id in d["id"]:
             edge_mapping[edge_id] = i
+
+    assert len(basin_mapping) == basin_id
+
+    return G, merge_edges, node_mapping, edge_mapping, basin_mapping
+
+
+def _setup_boundaries(model):
+    boundaries = []
+    substances = set()
+
+    if model.level_boundary.concentration.df is not None:
+        for _, rows in model.level_boundary.concentration.df.groupby(["node_id"]):
+            boundary, substance = _make_boundary(rows, "LevelBoundary")
+            boundaries.append(boundary)
+            substances.update(substance)
+
+    if model.flow_boundary.concentration.df is not None:
+        for _, rows in model.flow_boundary.concentration.df.groupby("node_id"):
+            boundary, substance = _make_boundary(rows, "FlowBoundary")
+            boundaries.append(boundary)
+            substances.update(substance)
+
+    if model.basin.concentration.df is not None:
+        for _, rows in model.basin.concentration.df.groupby(["node_id"]):
+            for boundary_type in ("Drainage", "Precipitation"):
+                nrows = rows.rename(columns={boundary_type.lower(): "concentration"})
+                boundary, substance = _make_boundary(nrows, boundary_type)
+                boundaries.append(boundary)
+                substances.update(substance)
+
+    return boundaries, substances
+
+
+def generate(
+    toml_path: Path,
+    output_folder=output_folder,
+    use_evaporation=USE_EVAP,
+) -> tuple[nx.DiGraph, set[str]]:
+    """Generate a Delwaq model from a Ribasim model and results."""
+
+    # Read in model and results
+    model = ribasim.Model.read(toml_path)
+    basins = pd.read_feather(toml_path.parent / "results" / "basin.arrow")
+    flows = pd.read_feather(toml_path.parent / "results" / "flow.arrow")
+
+    output_folder.mkdir(exist_ok=True)
+
+    # Setup flow network
+    G, merge_edges, node_mapping, edge_mapping, basin_mapping = _setup_graph(
+        model.node_table(), model.edge, use_evaporation=use_evaporation
+    )
 
     # Plot
     # plt.figure(figsize=(18, 18))
@@ -227,7 +312,7 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
     pointer.to_csv(output_folder / "network.csv", index=False)  # not needed
     write_pointer(output_folder / "ribasim.poi", pointer)
 
-    total_segments = basin_id
+    total_segments = len(basin_mapping)
     total_exchanges = len(pointer)
 
     # Write attributes template
@@ -309,69 +394,7 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
     write_flows(output_folder / "ribasim.len", lengths, timestep)
 
     # Find all boundary substances and concentrations
-    boundaries = []
-    substances = set()
-
-    def boundary_name(id, type):
-        # Delwaq has a limit of 12 characters for the boundary name
-        return type[:9] + "_" + str(id)
-
-    def quote(value):
-        return f"'{value}'"
-
-    def make_boundary(data, boundary_type):
-        """
-        Create a Delwaq boundary definition with the given data and boundary type.
-        Pivot our data from long to wide format, and convert the time to a string.
-
-        Specifically, we go from a table:
-            `node_id, substance, time, concentration`
-        to
-            ```
-            ITEM 'Drainage_6'
-            CONCENTRATIONS 'Cl' 'Tracer'
-            ABSOLUTE TIME
-            LINEAR DATA 'Cl' 'Tracer'
-            '2020/01/01-00:00:00' 0.0  1.0
-            '2020/01/02-00:00:00' 1.0 -999
-            ```
-        """
-        bid = boundary_name(data.node_id.iloc[0], boundary_type)
-        piv = (
-            data.pivot_table(index="time", columns="substance", values="concentration")
-            .reset_index()
-            .reset_index(drop=True)
-        )
-        piv.time = piv.time.dt.strftime("%Y/%m/%d-%H:%M:%S")
-        boundary = {
-            "name": bid,
-            "substances": list(map(quote, piv.columns[1:])),
-            "df": piv.to_string(
-                formatters={"time": quote}, header=False, index=False, na_rep=-999
-            ),
-        }
-        substances = data.substance.unique()
-        return boundary, substances
-
-    if model.level_boundary.concentration.df is not None:
-        for _, rows in model.level_boundary.concentration.df.groupby(["node_id"]):
-            boundary, substance = make_boundary(rows, "LevelBoundary")
-            boundaries.append(boundary)
-            substances.update(substance)
-
-    if model.flow_boundary.concentration.df is not None:
-        for _, rows in model.flow_boundary.concentration.df.groupby("node_id"):
-            boundary, substance = make_boundary(rows, "FlowBoundary")
-            boundaries.append(boundary)
-            substances.update(substance)
-
-    if model.basin.concentration.df is not None:
-        for _, rows in model.basin.concentration.df.groupby(["node_id"]):
-            for boundary_type in ("Drainage", "Precipitation"):
-                nrows = rows.rename(columns={boundary_type.lower(): "concentration"})
-                boundary, substance = make_boundary(nrows, boundary_type)
-                boundaries.append(boundary)
-                substances.update(substance)
+    boundaries, substances = _setup_boundaries(model)
 
     # Write boundary data with substances and concentrations
     template = env.get_template("B5_bounddata.inc.j2")
@@ -427,7 +450,7 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
     bnd.sort_values(by="bid", ascending=False, inplace=True)
     bnd["node_type"] = [G.nodes(data="type")[bid] for bid in bnd["bid"]]
     bnd["node_id"] = [G.nodes(data="id")[bid] for bid in bnd["bid"]]
-    bnd["fid"] = list(map(boundary_name, bnd["node_id"], bnd["node_type"]))
+    bnd["fid"] = list(map(_boundary_name, bnd["node_id"], bnd["node_type"]))
     bnd["comment"] = ""
     bnd = bnd[["fid", "comment", "node_type"]]
     bnd.to_csv(

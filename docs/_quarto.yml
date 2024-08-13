@@ -43,6 +43,9 @@ website:
         - guide/index.qmd
         - guide/examples.ipynb
         - guide/coupling.qmd
+        - section: "Coupling guides"
+          contents:
+          - guide/delwaq.ipynb
 
     - title: "Concepts"
       contents:
