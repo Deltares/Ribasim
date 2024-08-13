@@ -53,7 +53,7 @@ open class RegressionTest (platformOs: String) : Template() {
                 """.trimIndent()
             }
             script {
-                name = "Run integration tests"
+                name = "Run regression tests"
                 id = "RUNNER_1511"
                 workingDir = "ribasim"
                 scriptContent = header +
