@@ -253,7 +253,7 @@ class MultiNodeModel(NodeModel):
             if self.node.df is None
             else pd.concat([self.node.df, node_table])
         )
-        self._parent.node_id.add(node_id)
+        self._parent.used_node_ids.add(node_id)
         return self[node_id]
 
     def __getitem__(self, index: int) -> NodeData:
