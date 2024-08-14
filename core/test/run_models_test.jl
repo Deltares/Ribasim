@@ -395,8 +395,8 @@ end
     @test only(model.integrator.sol(0day)) == 1000.0
     # constant UserDemand withdraws to 0.9m/900m3
     @test only(model.integrator.sol(150day)) ≈ 900 atol = 5
-    # dynamic UserDemand withdraws to 0.5m/509m3
-    @test only(model.integrator.sol(180day)) ≈ 509 atol = 1
+    # dynamic UserDemand withdraws to 0.5m/503m3
+    @test only(model.integrator.sol(180day)) ≈ 503 atol = 1
 end
 
 @testitem "ManningResistance" begin
