@@ -937,7 +937,7 @@ function user_demand_static!(
             fill(first_row.return_factor, 2),
             return_factor_old.t;
             extrapolate = true,
-        )# first_row.return_factor
+        )
         min_level[user_demand_idx] = first_row.min_level
 
         for row in group
@@ -990,8 +990,6 @@ function user_demand_time!(
             errors = true
         end
 
-        #first_row.return_factor
-
         min_level[user_demand_idx] = first_row.min_level
 
         priority_idx = findsorted(priorities, first_row.priority)
@@ -1043,7 +1041,7 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)::UserDemand
     demand_from_timeseries = fill(false, n_user)
     allocated = fill(Inf, n_user, n_priority)
     return_factor =
-        [LinearInterpolation(zeros(2), trivial_timespan) for i in eachindex(node_ids)]#zeros(n_user)
+        [LinearInterpolation(zeros(2), trivial_timespan) for i in eachindex(node_ids)]
     min_level = zeros(n_user)
 
     # Process static table
