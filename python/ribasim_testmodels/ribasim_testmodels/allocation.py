@@ -70,7 +70,7 @@ def user_demand_model() -> Model:
                     "2020-07-01 01:00:00",
                 ],
                 demand=[0.0, 3e-4, 3e-4, 0.0],
-                return_factor=[0.0, 0.2, 0.3, 0.4],
+                return_factor=[0.0, 0.1, 0.2, 0.3],
                 min_level=0.5,
                 priority=1,
             )
