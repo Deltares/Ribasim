@@ -814,10 +814,3 @@ function set_previous_flows!(integrator)
     copyto!(flow_prev, flow)
     copyto!(vertical_flux_prev, vertical_flux)
 end
-
-function steady_state_start(ode_prob)
-    # Find steady state in first day
-    sol = solve(SteadyStateProblem(ode_prob), DynamicSS(; tspan = 86400.0))
-    display(propertynames(sol))
-    sol
-end

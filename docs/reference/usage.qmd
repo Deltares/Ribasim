@@ -30,6 +30,8 @@ With adaptive timestepping, `dtmin` and `dtmax` control the minimum and maximum 
 If a smaller `dt` than `dtmin` is needed to meet the set error tolerances, the simulation stops, unless `force_dtmin` is set to `true`.
 `force_dtmin` is off by default to ensure an accurate solution.
 
+An initial state is provided in the `Basin / state` table. If `steady_start = true` then the solver first searches for a steady state solution at the start of the simulation (with the provided state as initial condition).
+
 The default result stepsize, `saveat = 86400` will save results after every day that passed.
 The calculation and result stepsize need not be the same.
 If you wish to save every calculation step, set `saveat = 0`.
