@@ -95,9 +95,7 @@ end
                 # Testbench for flow.arrow
                 @test flow.time == flow_bench.time
                 @test flow.edge_id == flow_bench.edge_id
-                @test flow.from_node_type == flow_bench.from_node_type
                 @test flow.from_node_id == flow_bench.from_node_id
-                @test flow.to_node_type == flow_bench.to_node_type
                 @test flow.to_node_id == flow_bench.to_node_id
                 @test all(q -> abs(q) < 0.01, flow.flow_rate - flow_bench.flow_rate)
 
@@ -160,9 +158,7 @@ end
                 # Testbench for flow.arrow
                 @test flow.time == flow_bench.time
                 @test flow.edge_id == flow_bench.edge_id
-                @test flow.from_node_type == flow_bench.from_node_type
                 @test flow.from_node_id == flow_bench.from_node_id
-                @test flow.to_node_type == flow_bench.to_node_type
                 @test flow.to_node_id == flow_bench.to_node_id
                 @test all(q -> abs(q) < 0.01, flow.flow_rate - flow_bench.flow_rate)
 
@@ -229,9 +225,7 @@ end
                 # Testbench for flow.arrow
                 @test flow.time == flow_bench.time
                 @test flow.edge_id == flow_bench.edge_id
-                @test flow.from_node_type == flow_bench.from_node_type
                 @test flow.from_node_id == flow_bench.from_node_id
-                @test flow.to_node_type == flow_bench.to_node_type
                 @test flow.to_node_id == flow_bench.to_node_id
 
                 # Testbench for basin.arrow
