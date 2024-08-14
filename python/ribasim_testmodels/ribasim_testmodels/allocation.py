@@ -59,12 +59,31 @@ def user_demand_model() -> Model:
             )
         ],
     )
-    model.terminal.add(Node(4, Point(2, 0)))
+    model.user_demand.add(
+        Node(4, Point(1, 0)),
+        [
+            user_demand.Time(
+                time=[
+                    "2020-06-01 00:00:00",
+                    "2020-06-01 01:00:00",
+                    "2020-07-01 00:00:00",
+                    "2020-07-01 01:00:00",
+                ],
+                demand=[0.0, 3e-4, 3e-4, 0.0],
+                return_factor=[0.0, 0.2, 0.3, 0.4],
+                min_level=0.5,
+                priority=1,
+            )
+        ],
+    )
+    model.terminal.add(Node(5, Point(2, 0)))
 
     model.edge.add(model.basin[1], model.user_demand[2])
     model.edge.add(model.basin[1], model.user_demand[3])
-    model.edge.add(model.user_demand[2], model.terminal[4])
-    model.edge.add(model.user_demand[3], model.terminal[4])
+    model.edge.add(model.basin[1], model.user_demand[4])
+    model.edge.add(model.user_demand[2], model.terminal[5])
+    model.edge.add(model.user_demand[3], model.terminal[5])
+    model.edge.add(model.user_demand[4], model.terminal[5])
 
     return model
 
