@@ -686,7 +686,7 @@ min_level: The level of the source basin below which the UserDemand does not abs
     demand_itp::Vector{Vector{ScalarInterpolation}}
     demand_from_timeseries::Vector{Bool}
     allocated::Matrix{Float64}
-    return_factor::Vector{Float64}
+    return_factor::Vector{ScalarInterpolation}
     min_level::Vector{Float64}
 end
 

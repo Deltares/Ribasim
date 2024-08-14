@@ -921,7 +921,7 @@ function user_demand_static!(
     active::Vector{Bool},
     demand::Matrix{Float64},
     demand_itp::Vector{Vector{ScalarInterpolation}},
-    return_factor::Vector{Float64},
+    return_factor::Vector{ScalarInterpolation},
     min_level::Vector{Float64},
     static::StructVector{UserDemandStaticV1},
     ids::Vector{Int32},
@@ -932,7 +932,12 @@ function user_demand_static!(
         user_demand_idx = searchsortedfirst(ids, first_row.node_id)
 
         active[user_demand_idx] = coalesce(first_row.active, true)
-        return_factor[user_demand_idx] = first_row.return_factor
+        return_factor_old = return_factor[user_demand_idx]
+        return_factor[user_demand_idx] = LinearInterpolation(
+            fill(first_row.return_factor, 2),
+            return_factor_old.t;
+            extrapolate = true,
+        )# first_row.return_factor
         min_level[user_demand_idx] = first_row.min_level
 
         for row in group
@@ -955,7 +960,7 @@ function user_demand_time!(
     demand::Matrix{Float64},
     demand_itp::Vector{Vector{ScalarInterpolation}},
     demand_from_timeseries::Vector{Bool},
-    return_factor::Vector{Float64},
+    return_factor::Vector{ScalarInterpolation},
     min_level::Vector{Float64},
     time::StructVector{UserDemandTimeV1},
     ids::Vector{Int32},
@@ -971,11 +976,26 @@ function user_demand_time!(
 
         active[user_demand_idx] = true
         demand_from_timeseries[user_demand_idx] = true
-        return_factor[user_demand_idx] = first_row.return_factor
+        return_factor_itp, is_valid_return = get_scalar_interpolation(
+            config.starttime,
+            t_end,
+            StructVector(group),
+            NodeID(:UserDemand, first_row.node_id, 0),
+            :return_factor;
+        )
+        if is_valid_return
+            return_factor[user_demand_idx] = return_factor_itp
+        else
+            @error "The return_factor(t) relationship for UserDemand $(first_row.node_id) from the time table has repeated timestamps, this can not be interpolated."
+            errors = true
+        end
+
+        #first_row.return_factor
+
         min_level[user_demand_idx] = first_row.min_level
 
         priority_idx = findsorted(priorities, first_row.priority)
-        demand_p_itp, is_valid = get_scalar_interpolation(
+        demand_p_itp, is_valid_demand = get_scalar_interpolation(
             config.starttime,
             t_end,
             StructVector(group),
@@ -985,10 +1005,10 @@ function user_demand_time!(
         )
         demand[user_demand_idx, priority_idx] = demand_p_itp(0.0)
 
-        if is_valid
+        if is_valid_demand
             demand_itp[user_demand_idx][priority_idx] = demand_p_itp
         else
-            @error "The demand(t) relationship for UserDemand $node_id of priority $p from the time table has repeated timestamps, this can not be interpolated."
+            @error "The demand(t) relationship for UserDemand $(first_row.node_id) of priority $priority_idx from the time table has repeated timestamps, this can not be interpolated."
             errors = true
         end
     end
@@ -1022,7 +1042,8 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)::UserDemand
     ]
     demand_from_timeseries = fill(false, n_user)
     allocated = fill(Inf, n_user, n_priority)
-    return_factor = zeros(n_user)
+    return_factor =
+        [LinearInterpolation(zeros(2), trivial_timespan) for i in eachindex(node_ids)]#zeros(n_user)
     min_level = zeros(n_user)
 
     # Process static table
