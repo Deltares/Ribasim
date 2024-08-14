@@ -77,14 +77,16 @@ $$
 storage = np.diff(level) * area[:-1] + 0.5 * np.diff(area) * np.diff(level)
 storage = np.cumsum(storage)
 storage = np.insert(storage, 0, 0.0)
-def storage_from_level(l):
+def S(l):
     i = min(max(0, np.searchsorted(level, l)-1), len(level)-2)
     return storage[i] + area[i] * (l - level[i]) + 0.5 * (area[i+1] - area[i]) / (level[i+1] - level[i]) * (l - level[i])**2
+
+S = np.vectorize(S)
 
 # Interpolation
 fig, ax = plt.subplots()
 level_eval = np.linspace(level[0], level[-1], 100)
-storage_eval = [storage_from_level(l) for l in np.linspace(level[0], level[-1], 100)]
+storage_eval = S(np.linspace(level[0], level[-1], 100))
 ax.scatter(level, storage, label = "storage at datapoints")
 ax.plot(level_eval, storage_eval, label = "interpolation")
 ax.set_xticks([level[0], level[-1]])
@@ -95,7 +97,7 @@ ax.set_ylabel("storage", fontsize = fontsize)
 
 # Estrapolatnio
 level_eval_extrap = np.linspace(level[-1], level_extrap, 35)
-storage_eval_extrap = [storage_from_level(l) for l in level_eval_extrap]
+storage_eval_extrap = S(level_eval_extrap)
 ax.plot(level_eval_extrap, storage_eval_extrap, color = "C0", linestyle = "dashed", label = "extrapolation")
 xlim = ax.get_xlim()
 ax.set_xlim(xlim[0], (level[-1] + level_extrap)/2)
@@ -107,156 +109,134 @@ for converting the initial state in terms of levels to an initial state in terms
 ```{python}
 # | code-fold: true
 
-from matplotlib import cm
+from dash import html, dcc, Dash
 import plotly.graph_objects as go
+from dash.dependencies import Input, Output, State
+
+fig = go.Figure()
+fig.update_layout(uirevision='constant')
+
+def linear_interpolation(X,Y,x):
+    i = min(max(0, np.searchsorted(X, x)-1), len(X)-2)
+    return Y[i] + (Y[i+1] - Y[i])/(X[i+1] - X[i]) * (x - X[i])
 
 def A(l):
-    i = min(max(0, np.searchsorted(level, l)-1), len(level)-2)
-    return area[i] + (area[i+1] - area[i])/(level[i+1] - level[i]) * (l - level[i])
+    return linear_interpolation(level, area, l)
 
-level_eval = np.linspace(level[0], level_extrap, 100)
-area_eval = np.array([A(l) for l in level_eval])
-radius_eval = np.sqrt(area_eval/np.pi)
+A = np.vectorize(A)
 
-level_eval = np.insert(level_eval, 0, level[0])
-radius_eval = np.insert(radius_eval, 0, 0.0)
+def L(a):
+    if a < area[0]:
+        return level[0]
+    else:
+        return linear_interpolation(area, level, a)
 
-phi = np.linspace(0, 2*np.pi, 100)
-R, P = np.meshgrid(radius_eval, phi)
-X = R * np.cos(P)
-Y = R * np.sin(P)
-Z = np.tile(level_eval, (100, 1))
+L = np.vectorize(L)
 
-storage_eval = [storage_from_level(l) for l in level_eval]
+length = 8.5
+X = np.linspace(-length/2, length/2, 100)
 
-storage_eval = [storage_from_level(l) for l in level_eval]
-colormap_values = np.tile(storage_eval, (100,1))
+y_max = area[-1] / (2 * length)
+Y = np.linspace(-y_max, y_max, 100)
+X, Y = np.meshgrid(X, Y)
+
+Z = L(2*length*np.abs(Y))
+
+
+# Profile data
+customdata = np.stack((A(Z).T, S(Z).T), axis = 2)
+hovertemplate = (
+    "<b>level</b>: %{z:.3f}<br>"
+    "<b>area</b>: %{customdata[0]:.3f}<br>"
+    "<b>storage</b>: %{customdata[1]:.3f}"
+    "<extra></extra>"
+)
 
 # The basin
-fig = go.Figure()
 fig.add_trace(
     go.Surface(x=X, y=Y, z=Z,
-        surfacecolor = colormap_values,
-        colorscale = "Blues",
-        reversescale = True,
-        hoverinfo = "skip",
-        colorbar = dict(title='Storage', len = 0.5),
+        hoverinfo = "text",
+        hovertemplate=hovertemplate,
+        customdata = customdata,
         name = "Basin",
-        showlegend = True
+        showlegend = True,
+        showscale = False,
+        colorscale=[[0, 'brown'], [1, 'brown']]
     )
 )
 
+# The water level
+z_start = level[1]
+y_start = area[1] / (2 * length)
 
-# Basin bottom
-fig.add_trace(
-    go.Scatter3d(
-        x=[0], y=[0], z=[level[0]],
-        mode='text',
-        text=['Bottom: lowest level'],
-        textposition='top center',
-        textfont=dict(size=12, color='white'),
-        name = "Bottom label"
-    )
-)
-
-# Add arrow in the z direction
-fig.add_trace(
-    go.Cone(
-        x=[0], y=[0], z=[2*level[2]],
-        u=[0], v=[0], w=[1],
-        sizemode="absolute",
-        sizeref=1,
-        showscale=False,
-        colorscale=[[0, 'white'], [1, 'white']],
-        legendgroup = "ArrowGroup",
-        hoverinfo = "skip"
-
-    )
-)
-
-# Add label for the arrow
-fig.add_trace(
-    go.Scatter3d(
-        x=[0], y=[0], z=[2*level[2]],
-        mode='text',
-        text=['Linear area(level) interpolation'],
-        textposition='middle right',
-        textfont = dict(size=12, color='black'),
-        name = "Linear interpolation arrow",
-        legendgroup = "ArrowGroup",
-        showlegend = False
-    )
-)
-
-# Add arrow base
-fig.add_trace(
-    go.Scatter3d(
-        x=[0,0], y=[0,0], z=[1.5 * level[2], 2 * level[2]],
-        mode = 'lines',
-        line = dict(color='white', width=10),
-        name = "Linear interpolation arrow",
-        legendgroup = "ArrowGroup",
-        hoverinfo = "skip"
-    )
-)
-
-
-# Remove axis labels
-fig.update_layout(
-    scene=dict(
-        xaxis=dict(showticklabels=False),
-        yaxis=dict(showticklabels=False),
-        zaxis=dict(showticklabels=False),
-    )
-)
-
-# Add the circle representing (level, area) entry to the plot
-circle_r = 0.99 * np.sqrt(area[1] / np.pi)
-circle_x = circle_r * np.cos(phi)
-circle_y = circle_r * np.sin(phi)
-circle_z = np.full_like(phi, level[1])
-fig.add_trace(
-    go.Scatter3d(
-        x=circle_x, y=circle_y, z=circle_z,
-        mode='lines',
-        line=dict(color='green', width=10),
-        name='(level, area) entry',
-        hoverinfo = "skip",
-        legendgroup = "LevelAreaEntryGroup"
-    )
-)
-
-# Add the disk representing (level, area) entry
-R = np.array([0.0, circle_r])
-R, P = np.meshgrid(R, phi)
-X = R * np.cos(P)
-Y = R * np.sin(P)
-Z = np.full_like(X, level[1])
 fig.add_trace(
     go.Surface(
-        x=X, y=Y, z=Z,
-        colorscale=[[0, 'green'], [1, 'green']],
-        opacity=0.5,
+        x=[[-length/2, length/2], [-length/2, length/2]],
+        y=[[-y_start, -y_start], [y_start, y_start]],
+        z=[[z_start, z_start], [z_start, z_start]],
+        opacity=0.7,
         showscale=False,
-        legendgroup = "LevelAreaEntryGroup"
+        hoverinfo='skip',
+        name='Water level',
+        showlegend = True,
+        colorscale=[[0, 'blue'], [1, 'blue']]
     )
 )
 
-# Add label for (level, area) entry
-fig.add_trace(
-    go.Scatter3d(
-        x=[0], y=[0], z=[level[1]],
-        mode='text',
-        text=['(level, area) entry'],
-        textposition='top center',
-        textfont = dict(size=12, color='lightgreen'),
-        legendgroup = "LevelAreaEntryGroup",
-        showlegend = False
+fig.update_layout(
+    scene=dict(
+        aspectmode='data'
     )
 )
 
-fig.show()
+# Create a Dash app
+app = Dash(__name__)
+
+# Create the app layout
+app.layout = html.Div([
+    dcc.Graph(id='graph', figure=fig),
+    dcc.Store(id='hover-data')
+])
+
+# Clientside callback to update hover-data
+app.clientside_callback(
+    """
+    function(hoverData) {
+        return hoverData;
+    }
+    """,
+    Output('hover-data', 'data'),
+    Input('graph', 'hoverData')
+)
+
+# Callback to update the graph
+@app.callback(
+    Output('graph', 'figure'),
+    Input('hover-data', 'data'),
+    State('graph', 'figure')
+)
+def update_graph(hover_data, fig):
+    if hover_data:
+        if 'points' in hover_data and len(hover_data['points']) > 0:
+            basin_bottom = fig["data"][0]['z'][50][50]
+            hover_point = hover_data['points'][0]
+            y = abs(hover_point['y'])
+            z = hover_point['z']
+            water_level = fig['data'][1]
+
+            if z <= basin_bottom:
+                # Basin is empty, give water level zero extent
+                water_level['y'] = [[0, 0], [0, 0]]
+            else:
+                water_level['y'] = [[-y, -y], [y, y]]
+
+            water_level['z'] = [[z, z], [z, z]]
+    return fig
+
+# Run the app
+app.run_server()
 ```
+
 
 ## Storage to level
 
