@@ -44,7 +44,6 @@ def pid_control_model() -> Model:
                     "2020-07-01",
                     "2020-12-01",
                 ],
-                listen_node_type="Basin",
                 listen_node_id=2,
                 target=[5.0, 5.0, 7.5, 7.5],
                 proportional=-1e-3,
@@ -66,7 +65,6 @@ def pid_control_model() -> Model:
                     "2020-07-01",
                     "2020-12-01",
                 ],
-                listen_node_type="Basin",
                 listen_node_id=2,
                 target=[5.0, 5.0, 7.5, 7.5],
                 proportional=1e-3,
@@ -116,7 +114,6 @@ def discrete_control_of_pid_control_model() -> Model:
         Node(6, Point(1, 1)),
         [
             pid_control.Static(
-                listen_node_type="Basin",
                 listen_node_id=3,
                 control_state=["target_high", "target_low"],
                 target=[5.0, 3.0],
@@ -130,7 +127,6 @@ def discrete_control_of_pid_control_model() -> Model:
         Node(7, Point(0, 1)),
         [
             discrete_control.Variable(
-                listen_node_type="LevelBoundary",
                 listen_node_id=[1],
                 variable="level",
                 compound_variable_id=1,

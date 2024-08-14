@@ -33,9 +33,7 @@ class NodeData(NamedTuple):
 
 class EdgeSchema(pa.DataFrameModel):
     name: Series[str] = pa.Field(default="")
-    from_node_type: Series[str] = pa.Field(nullable=True)
     from_node_id: Series[Int32] = pa.Field(default=0, coerce=True)
-    to_node_type: Series[str] = pa.Field(nullable=True)
     to_node_id: Series[Int32] = pa.Field(default=0, coerce=True)
     edge_type: Series[str] = pa.Field(default="flow", coerce=True)
     subnetwork_id: Series[pd.Int32Dtype] = pa.Field(
@@ -89,9 +87,7 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
 
         table_to_append = GeoDataFrame[EdgeSchema](
             data={
-                "from_node_type": pd.Series([from_node.node_type], dtype=str),
                 "from_node_id": pd.Series([from_node.node_id], dtype=np.int32),
-                "to_node_type": pd.Series([to_node.node_type], dtype=str),
                 "to_node_id": pd.Series([to_node.node_id], dtype=np.int32),
                 "edge_type": pd.Series([edge_type], dtype=str),
                 "name": pd.Series([name], dtype=str),
@@ -105,6 +101,10 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
         self.df = GeoDataFrame[EdgeSchema](
             pd.concat([self.df, table_to_append], ignore_index=True)
         )
+        if self.df.duplicated(subset=["from_node_id", "to_node_id"]).any():
+            raise ValueError(
+                f"Edges have to be unique, but edge ({from_node.node_id}, {to_node.node_id}) already exists."
+            )
         self.df.index.name = "fid"
 
     def _get_where_edge_type(self, edge_type: str) -> NDArray[np.bool_]:

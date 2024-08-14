@@ -217,9 +217,7 @@ function flow_table(
 )::@NamedTuple{
     time::Vector{DateTime},
     edge_id::Vector{Union{Int32, Missing}},
-    from_node_type::Vector{String},
     from_node_id::Vector{Int32},
-    to_node_type::Vector{String},
     to_node_id::Vector{Int32},
     flow_rate::FlatVector{Float64},
 }
@@ -228,9 +226,7 @@ function flow_table(
     (; graph) = integrator.p
     (; flow_dict) = graph[]
 
-    from_node_type = String[]
     from_node_id = Int32[]
-    to_node_type = String[]
     to_node_id = Int32[]
     unique_edge_ids_flow = Union{Int32, Missing}[]
 
@@ -240,9 +236,7 @@ function flow_table(
     end
 
     for (from_id, to_id) in flow_edge_ids
-        push!(from_node_type, string(from_id.type))
         push!(from_node_id, from_id.value)
-        push!(to_node_type, string(to_id.type))
         push!(to_node_id, to_id.value)
         push!(unique_edge_ids_flow, graph[from_id, to_id].id)
     end
@@ -257,21 +251,11 @@ function flow_table(
     end
     time = repeat(datetime_since.(t_starts, config.starttime); inner = nflow)
     edge_id = repeat(unique_edge_ids_flow; outer = ntsteps)
-    from_node_type = repeat(from_node_type; outer = ntsteps)
     from_node_id = repeat(from_node_id; outer = ntsteps)
-    to_node_type = repeat(to_node_type; outer = ntsteps)
     to_node_id = repeat(to_node_id; outer = ntsteps)
     flow_rate = FlatVector(saveval, :flow)
 
-    return (;
-        time,
-        edge_id,
-        from_node_type,
-        from_node_id,
-        to_node_type,
-        to_node_id,
-        flow_rate,
-    )
+    return (; time, edge_id, from_node_id, to_node_id, flow_rate)
 end
 
 "Create a discrete control result table from the saved data"
