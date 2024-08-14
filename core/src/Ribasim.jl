@@ -49,7 +49,9 @@ using MetaGraphsNext:
     labels,
     outneighbor_labels,
     inneighbor_labels
-using OrdinaryDiffEq: OrdinaryDiffEq, OrdinaryDiffEqRosenbrockAdaptiveAlgorithm, get_du
+using NonlinearSolve: solve
+using OrdinaryDiffEq:
+    OrdinaryDiffEq, OrdinaryDiffEqRosenbrockAdaptiveAlgorithm, get_du, SteadyStateProblem
 using PreallocationTools: DiffCache, get_tmp
 using ReadOnlyArrays: ReadOnlyVector
 using SciMLBase:
@@ -67,6 +69,7 @@ using SciMLBase:
     VectorContinuousCallback,
     get_proposed_dt
 using SparseArrays: SparseMatrixCSC, spzeros
+using SteadyStateDiffEq: DynamicSS
 using SQLite: SQLite, DB, Query, esc_id
 using StructArrays: StructVector
 using Tables: Tables, AbstractRow, columntable

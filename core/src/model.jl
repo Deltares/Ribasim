@@ -129,6 +129,11 @@ function Model(config::Config)::Model
     jac_prototype = config.solver.sparse ? get_jac_prototype(parameters) : nothing
     RHS = ODEFunction(water_balance!; jac_prototype)
 
+    @timeit_debug to "Compute steady start state" begin
+        steady_state_start!()
+    end
+    @debug "Compute steady start state"
+
     @timeit_debug to "Setup ODEProblem" begin
         prob = ODEProblem(RHS, u0, timespan, parameters)
     end
