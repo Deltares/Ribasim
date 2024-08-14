@@ -63,7 +63,6 @@ website:
         - reference/index.qmd
         - reference/usage.qmd
         - reference/validation.qmd
-        - reference/interpolation.qmd
         - reference/python/index.qmd
         - reference/test-models.qmd
         - section: "Nodes"
