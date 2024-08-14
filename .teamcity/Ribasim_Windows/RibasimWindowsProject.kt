@@ -7,6 +7,7 @@ import jetbrains.buildServer.configs.kotlin.FailureAction
 import jetbrains.buildServer.configs.kotlin.Project
 import jetbrains.buildServer.configs.kotlin.triggers.vcs
 import Ribasim.vcsRoots.Ribasim as RibasimVcs
+import jetbrains.buildServer.configs.kotlin.buildSteps.script
 
 object RibasimWindowsProject : Project({
     id("Ribasim_Windows")
@@ -17,8 +18,6 @@ object RibasimWindowsProject : Project({
     buildType(Windows_TestDelwaqCoupling)
     buildType(Windows_TestRibasimBinaries)
 
-    template(WindowsAgent)
-    template(BuildWindows)
     template(TestBinariesWindows)
     template(TestDelwaqCouplingWindows)
 })
@@ -55,7 +54,15 @@ object Windows_BuildRibasim : BuildType({
     templates(WindowsAgent, GithubCommitStatusIntegration, BuildWindows)
     name = "Build Ribasim"
 
-    artifactRules = """ribasim\build\ribasim => ribasim_windows.zip"""
+    steps {
+        script {
+            name = "add Ribasim logo to .exe"
+            id = "RUNNER_2417"
+            workingDir = "ribasim"
+            scriptContent = "pixi run add-ribasim-icon"
+        }
+    }
+    artifactRules = """ribasim\build\ribasim => ribasim_windows.zip!/ribasim"""
 })
 
 object Windows_TestRibasimBinaries : BuildType({
@@ -71,7 +78,7 @@ object Windows_TestRibasimBinaries : BuildType({
                 id = "ARTIFACT_DEPENDENCY_570"
                 cleanDestination = true
                 artifactRules = """
-                    ribasim_windows.zip!** => ribasim/build/ribasim
+                    ribasim_windows.zip!/ribasim/** => ribasim/build/ribasim
                 """.trimIndent()
             }
         }

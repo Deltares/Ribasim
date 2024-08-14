@@ -94,6 +94,9 @@ test-ribasim-core = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test()'
 test-ribasim-core-cov = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test(coverage=true, julia_args=[\"--check-bounds=yes\"])'", depends_on = [
     "generate-testmodels",
 ] }
+test-ribasim-regression ={ cmd = "julia --project=core --eval 'using Pkg; Pkg.test(julia_args=[\"--check-bounds=yes\"], test_args=[\"regression\"])'", depends_on = [
+    "generate-testmodels",
+] }
 generate-testmodels = { cmd = "python utils/generate-testmodels.py", inputs = [
     "python/ribasim",
     "python/ribasim_testmodels",
@@ -102,6 +105,7 @@ generate-testmodels = { cmd = "python utils/generate-testmodels.py", inputs = [
 ] }
 tests = { depends_on = ["lint", "test-ribasim-python", "test-ribasim-core"] }
 delwaq = { cmd = "pytest python/ribasim/tests/test_delwaq.py" }
+model-integration-test = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test(test_args=[\"integration\"])'" }
 # Codegen
 codegen = { cmd = "julia --project utils/gen_python.jl && ruff format python/ribasim/ribasim/schemas.py", depends_on = [
     "initialize-julia",
@@ -111,6 +115,7 @@ codegen = { cmd = "julia --project utils/gen_python.jl && ruff format python/rib
     "python/ribasim/ribasim/schemas.py",
 ] }
 # Publish
+add-ribasim-icon ={ cmd = "rcedit build/ribasim/ribasim.exe --set-icon docs/assets/ribasim.ico"}
 build-ribasim-python-wheel = { cmd = "rm --recursive --force dist && python -m build && twine check dist/*", cwd = "python/ribasim" }
 build-ribasim-api-wheel = { cmd = "rm --recursive --force dist && python -m build && twine check dist/*", cwd = "python/ribasim_api" }
 build-wheels = { depends_on = [
@@ -181,6 +186,7 @@ xarray = "*"
 networkx = ">=3.3"
 ipykernel = ">=6.29"
 dash = ">=2.17.1,<2.18"
+minio = "*"
 
 [pypi-dependencies]
 ribasim = { path = "python/ribasim", editable = true }
@@ -203,6 +209,9 @@ quartodoc = "*"
 ruff = "*"
 rust = "*"
 twine = "*"
+
+[target.win-64.dependencies]
+rcedit = "*"
 
 [feature.py312.dependencies]
 python = "3.12.*"

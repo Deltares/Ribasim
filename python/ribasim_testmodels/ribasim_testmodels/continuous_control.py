@@ -32,29 +32,28 @@ def outlet_continuous_control_model() -> Model:
     )
 
     model.linear_resistance.add(
-        Node(1, Point(1, 0)), [linear_resistance.Static(resistance=[10.0])]
+        Node(2, Point(1, 0)), [linear_resistance.Static(resistance=[10.0])]
     )
 
     model.basin.add(
-        Node(1, Point(2, 0)),
+        Node(3, Point(2, 0)),
         [
             basin.Profile(area=10000.0, level=[0.0, 1.0]),
             basin.State(level=[10.0]),
         ],
     )
 
-    model.outlet.add(Node(1, Point(3, 1)), [outlet.Static(flow_rate=[1.0])])
-    model.outlet.add(Node(2, Point(3, -1)), [outlet.Static(flow_rate=[1.0])])
+    model.outlet.add(Node(4, Point(3, 1)), [outlet.Static(flow_rate=[1.0])])
+    model.outlet.add(Node(5, Point(3, -1)), [outlet.Static(flow_rate=[1.0])])
 
-    model.terminal.add(Node(1, Point(4, 1)))
-    model.terminal.add(Node(2, Point(4, -1)))
+    model.terminal.add(Node(6, Point(4, 1)))
+    model.terminal.add(Node(7, Point(4, -1)))
 
     model.continuous_control.add(
-        Node(1, Point(2, 1)),
+        Node(8, Point(2, 1)),
         [
             continuous_control.Variable(
-                listen_node_type="LinearResistance",
-                listen_node_id=[1],
+                listen_node_id=[2],
                 variable="flow_rate",
             ),
             continuous_control.Function(
@@ -65,11 +64,10 @@ def outlet_continuous_control_model() -> Model:
         ],
     )
     model.continuous_control.add(
-        Node(2, Point(2, -1)),
+        Node(9, Point(2, -1)),
         [
             continuous_control.Variable(
-                listen_node_type="LinearResistance",
-                listen_node_id=[1],
+                listen_node_id=[2],
                 variable="flow_rate",
             ),
             continuous_control.Function(
@@ -80,13 +78,13 @@ def outlet_continuous_control_model() -> Model:
         ],
     )
 
-    model.edge.add(model.level_boundary[1], model.linear_resistance[1])
-    model.edge.add(model.linear_resistance[1], model.basin[1])
-    model.edge.add(model.basin[1], model.outlet[1])
-    model.edge.add(model.basin[1], model.outlet[2])
-    model.edge.add(model.outlet[1], model.terminal[1])
-    model.edge.add(model.outlet[2], model.terminal[2])
-    model.edge.add(model.continuous_control[1], model.outlet[1])
-    model.edge.add(model.continuous_control[2], model.outlet[2])
+    model.edge.add(model.level_boundary[1], model.linear_resistance[2])
+    model.edge.add(model.linear_resistance[2], model.basin[3])
+    model.edge.add(model.basin[3], model.outlet[4])
+    model.edge.add(model.basin[3], model.outlet[5])
+    model.edge.add(model.outlet[4], model.terminal[6])
+    model.edge.add(model.outlet[5], model.terminal[7])
+    model.edge.add(model.continuous_control[8], model.outlet[4])
+    model.edge.add(model.continuous_control[9], model.outlet[5])
 
     return model

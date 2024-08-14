@@ -220,7 +220,6 @@ end
 @version DiscreteControlVariableV1 begin
     node_id::Int32
     compound_variable_id::Int32
-    listen_node_type::String
     listen_node_id::Int32
     variable::String
     weight::Union{Missing, Float64}
@@ -241,7 +240,6 @@ end
 
 @version ContinuousControlVariableV1 begin
     node_id::Int32
-    listen_node_type::String
     listen_node_id::Int32
     variable::String
     weight::Union{Missing, Float64}
@@ -258,7 +256,6 @@ end
 @version PidControlStaticV1 begin
     node_id::Int32
     active::Union{Missing, Bool}
-    listen_node_type::String
     listen_node_id::Int32
     target::Float64
     proportional::Float64
@@ -269,7 +266,6 @@ end
 
 @version PidControlTimeV1 begin
     node_id::Int32
-    listen_node_type::String
     listen_node_id::Int32
     time::DateTime
     target::Float64

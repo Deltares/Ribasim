@@ -141,6 +141,19 @@ def test_edge_table(basic):
     assert df.crs == CRS.from_epsg(28992)
 
 
+def test_duplicate_edge(trivial):
+    model = trivial
+    with pytest.raises(
+        ValueError,
+        match=re.escape("Edges have to be unique, but edge (6, 0) already exists."),
+    ):
+        model.edge.add(
+            model.basin[6],
+            model.tabulated_rating_curve[0],
+            name="duplicate",
+        )
+
+
 def test_indexing(basic):
     model = basic
 
@@ -205,3 +218,11 @@ def test_to_crs(bucket: Model):
     # Assert that the bucket is still at Deltares' headquarter
     assert model.basin.node.df["geometry"].iloc[0].x == pytest.approx(4.38, abs=0.1)
     assert model.basin.node.df["geometry"].iloc[0].y == pytest.approx(51.98, abs=0.1)
+
+
+def test_styles(tabulated_rating_curve: Model, tmp_path):
+    model = tabulated_rating_curve
+
+    model.write(tmp_path / "basic" / "ribasim.toml")
+    with connect(tmp_path / "basic" / "database.gpkg") as conn:
+        assert conn.execute("SELECT COUNT(*) FROM layer_styles").fetchone()[0] == 3

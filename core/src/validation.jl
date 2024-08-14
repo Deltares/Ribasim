@@ -110,8 +110,7 @@ sort_by_time_id_level(row) = (row.time, row.node_id, row.level)
 sort_by_priority(row) = (row.node_id, row.priority)
 sort_by_priority_time(row) = (row.node_id, row.priority, row.time)
 sort_by_subgrid_level(row) = (row.subgrid_id, row.basin_level)
-sort_by_variable(row) =
-    (row.node_id, row.listen_node_type, row.listen_node_id, row.variable)
+sort_by_variable(row) = (row.node_id, row.listen_node_id, row.variable)
 sort_by_condition(row) = (row.node_id, row.compound_variable_id, row.greater_than)
 sort_by_id_input(row) = (row.node_id, row.input)
 
@@ -174,13 +173,11 @@ end
 function valid_nodes(db::DB)::Bool
     errors = false
 
-    sql = "SELECT node_type, node_id FROM Node GROUP BY node_type, node_id HAVING COUNT(*) > 1"
-    node_type, node_id = execute(columntable, db, sql)
-
-    for (node_type, node_id) in zip(node_type, node_id)
+    sql = "SELECT node_id FROM Node GROUP BY node_id HAVING COUNT(*) > 1"
+    node_ids = only(execute(columntable, db, sql))
+    for node_id in node_ids
         errors = true
-        id = NodeID(node_type, node_id)
-        @error "Multiple occurrences of node $id found in Node table."
+        @error "Multiple occurrences of node_id $node_id found in Node table."
     end
 
     return !errors
