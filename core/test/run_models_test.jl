@@ -385,18 +385,31 @@ end
 
 @testitem "UserDemand" begin
     using SciMLBase: successful_retcode
+    using Dates
+    using DataFrames: DataFrame
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/user_demand/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test successful_retcode(model)
 
-    day = 86400.0
-    @test only(model.integrator.sol(0day)) == 1000.0
+    flow = DataFrame(Ribasim.flow_table(model))
+    seconds_in_day = 86400.0
+    return_factor_itp = model.integrator.p.user_demand.return_factor[3]
+    @testset "daily return factor validation on $thday day" for thday in [1:30;]
+        day_data = filter([:time] => t -> day(t) == thday && month(t) == 6, flow)
+        transient_return_factor =
+            sum(filter([:from_node_id] => from -> from == 4, day_data).flow_rate) /
+            sum(filter([:to_node_id] => to -> to == 4, day_data).flow_rate)
+        @test transient_return_factor ≈ return_factor_itp((152 + thday) * seconds_in_day) atol =
+            0.1
+    end
+
+    @test only(model.integrator.sol(0seconds_in_day)) == 1000.0
     # constant UserDemand withdraws to 0.9m/900m3
-    @test only(model.integrator.sol(150day)) ≈ 900 atol = 5
+    @test only(model.integrator.sol(150seconds_in_day)) ≈ 900 atol = 5
     # dynamic UserDemand withdraws to 0.5m/503m3
-    @test only(model.integrator.sol(180day)) ≈ 503 atol = 1
+    @test only(model.integrator.sol(180seconds_in_day)) ≈ 503 atol = 1
 end
 
 @testitem "ManningResistance" begin
