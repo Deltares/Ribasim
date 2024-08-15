@@ -21,15 +21,9 @@ test-ribasim-api = "pytest --basetemp=python/ribasim_api/tests/temp --junitxml=r
 [feature.dev.tasks]
 # Installation
 install-julia = "juliaup add 1.10.4 && juliaup override unset && juliaup override set 1.10.4"
-# Workaround rare issue, only on Windows, hence uses exit 0 to ignore errors
-# Upstream issue: https://github.com/JuliaLang/julia/issues/52272
-reset-artifact-permissions = "icacls $homedrive/$homepath/.julia/artifacts /q /c /t /reset;exit 0"
 install-pre-commit = "pre-commit install"
-install-ci = { depends_on = [
-    "reset-artifact-permissions",
-    "install-julia",
-    "update-registry-julia",
-] }
+# Note that this has a Windows specific override
+install-ci = { depends_on = ["install-julia", "update-registry-julia"] }
 install = { depends_on = [
     "install-ci",
     "install-qgis-plugins",
@@ -94,7 +88,7 @@ test-ribasim-core = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test()'
 test-ribasim-core-cov = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test(coverage=true, julia_args=[\"--check-bounds=yes\"])'", depends_on = [
     "generate-testmodels",
 ] }
-test-ribasim-regression ={ cmd = "julia --project=core --eval 'using Pkg; Pkg.test(julia_args=[\"--check-bounds=yes\"], test_args=[\"regression\"])'", depends_on = [
+test-ribasim-regression = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test(julia_args=[\"--check-bounds=yes\"], test_args=[\"regression\"])'", depends_on = [
     "generate-testmodels",
 ] }
 generate-testmodels = { cmd = "python utils/generate-testmodels.py", inputs = [
@@ -115,7 +109,7 @@ codegen = { cmd = "julia --project utils/gen_python.jl && ruff format python/rib
     "python/ribasim/ribasim/schemas.py",
 ] }
 # Publish
-add-ribasim-icon ={ cmd = "rcedit build/ribasim/ribasim.exe --set-icon docs/assets/ribasim.ico"}
+add-ribasim-icon = { cmd = "rcedit build/ribasim/ribasim.exe --set-icon docs/assets/ribasim.ico" }
 build-ribasim-python-wheel = { cmd = "rm --recursive --force dist && python -m build && twine check dist/*", cwd = "python/ribasim" }
 build-ribasim-api-wheel = { cmd = "rm --recursive --force dist && python -m build && twine check dist/*", cwd = "python/ribasim_api" }
 build-wheels = { depends_on = [
@@ -158,6 +152,16 @@ ribasim-core-testmodels = { cmd = "julia --project --threads=4 utils/testmodelru
 ] }
 # Release
 github-release = "python utils/github-release.py"
+
+[feature.dev.target.win.tasks]
+# Workaround rare issue on Windows where the permissions of the artifacts directory are incorrect
+# Upstream issue: https://github.com/JuliaLang/julia/issues/52272
+reset-artifact-permissions = "icacls $homedrive/$homepath/.julia/artifacts /q /c /t /reset"
+install-ci = { depends_on = [
+    "reset-artifact-permissions",
+    "install-julia",
+    "update-registry-julia",
+] }
 
 [dependencies]
 geopandas = "*"
