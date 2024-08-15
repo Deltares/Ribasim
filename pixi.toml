@@ -156,7 +156,7 @@ github-release = "python utils/github-release.py"
 [feature.dev.target.win.tasks]
 # Workaround rare issue, only on Windows, hence uses exit 0 to ignore errors
 # Upstream issue: https://github.com/JuliaLang/julia/issues/52272
-reset-artifact-permissions = "icacls $homedrive/$homepath/.julia/artifacts /q /c /t /reset;exit 0"
+reset-artifact-permissions = "icacls $homedrive/$homepath/.julia/artifacts /q /c /t /reset"
 install-ci = { depends_on = [
     "reset-artifact-permissions",
     "install-julia",
