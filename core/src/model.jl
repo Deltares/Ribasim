@@ -129,20 +129,43 @@ function Model(config::Config)::Model
     jac_prototype = config.solver.sparse ? get_jac_prototype(parameters) : nothing
     RHS = ODEFunction(water_balance!; jac_prototype)
 
+    @timeit_debug to "Setup ODEProblem" begin
+        prob = ODEProblem(RHS, u0, timespan, parameters)
+        @show propertynames(prob)
+    end
+    @debug "Setup ODEProblem."
+
     if config.solver.steady_start
         @timeit_debug to "Compute steady start state" begin
-            # Look for steady state on first simulated day
-            sol =
-                solve(SteadyStateProblem(RHS, u0, parameters), DynamicSS(; tspan = 86400.0))
-            u0 .= sol.u
+            (; basin) = parameters
+
+            # Compute steady state
+            parameters.fixed_t[] = 0.0
+            sol = solve(SteadyStateProblem(prob), DynamicSS())
+            parameters.fixed_t[] = -1.0
+
+            # Check steady state
+            errors = false
+            dlevel_max = 1e-3 / 86400.0 # 1 mm / day
+            for (id, steady_storage, dstorage, storage_to_level) in
+                zip(basin.node_id, sol.u.storage, sol.resid.storage, basin.storage_to_level)
+                # dlevel/dt = dlevel/dstorage * dstorage/dt
+                dlevel = derivative(storage_to_level, steady_storage) * dstorage
+                if dlevel > dlevel_max
+                    @error "Didn't find a steady state for $id"
+                    errors = true
+                end
+            end
+
+            if errors
+                error(
+                    "Could not find a steady start state (levels such that dlevel/dt <= 1 mm/day for all basins).",
+                )
+            end
+            prob.u0.storage .= sol.u.storage
         end
         @debug "Compute steady start state"
     end
-
-    @timeit_debug to "Setup ODEProblem" begin
-        prob = ODEProblem(RHS, u0, timespan, parameters)
-    end
-    @debug "Setup ODEProblem."
 
     callback, saved = create_callbacks(parameters, config, saveat)
     @debug "Created callbacks."

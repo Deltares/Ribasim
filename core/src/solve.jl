@@ -9,6 +9,9 @@ function water_balance!(
 )::Nothing
     (; graph, basin, pid_control) = p
 
+    # Overrule given t with fixed_t for steady state runs
+    t = p.fixed_t[] >= 0 ? p.fixed_t[] : t
+
     storage = u.storage
     integral = u.integral
 

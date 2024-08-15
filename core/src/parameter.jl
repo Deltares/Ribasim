@@ -761,6 +761,7 @@ const ModelGraph{T} = MetaGraph{
 
 @kwdef struct Parameters{T, C1, C2, V1, V2, V3}
     starttime::DateTime
+    fixed_t::Base.RefValue{Float64} = Ref(-1.0)
     graph::ModelGraph{T}
     allocation::Allocation
     basin::Basin{T, C1, V1, V2, V3}
