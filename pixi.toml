@@ -154,7 +154,7 @@ ribasim-core-testmodels = { cmd = "julia --project --threads=4 utils/testmodelru
 github-release = "python utils/github-release.py"
 
 [feature.dev.target.win.tasks]
-# Workaround rare issue, only on Windows, hence uses exit 0 to ignore errors
+# Workaround rare issue on Windows where the permissions of the artifacts directory are incorrect
 # Upstream issue: https://github.com/JuliaLang/julia/issues/52272
 reset-artifact-permissions = "icacls $homedrive/$homepath/.julia/artifacts /q /c /t /reset"
 install-ci = { depends_on = [
