@@ -853,3 +853,13 @@ function get_jac_prototype(du0, u0, p, t0)
     p.all_nodes_active[] = false
     jac_prototype
 end
+
+# Custom overloads
+(A::AbstractInterpolation)(t::Dual) = Dual(A(primal(t)), tracer(t))
+reduction_factor(x::Dual, threshold::Real) =
+    Dual(reduction_factor(primal(x), threshold), tracer(x))
+function Base.sign(x::D) where {P <: Real, T <: GradientTracer, D <: Dual{P, T}}
+    p = primal(x)
+    p = one(p) > 0 ? p : -one(p)
+    Dual(p, tracer(x))
+end

@@ -179,9 +179,9 @@ end
 
     @test jac_prototype.m == 4
     @test jac_prototype.n == 4
-    @test jac_prototype.colptr == [1, 3, 7, 7, 8]
-    @test jac_prototype.rowval == [1, 2, 1, 2, 3, 4, 4]
-    @test jac_prototype.nzval == ones(7)
+    @test jac_prototype.colptr == [1, 1, 2, 2, 3]
+    @test jac_prototype.rowval == [2, 4]
+    @test jac_prototype.nzval == ones(Bool, 2)
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/pid_control/ribasim.toml")
 
@@ -200,9 +200,9 @@ end
 
     @test jac_prototype.m == 3
     @test jac_prototype.n == 3
-    @test jac_prototype.colptr == [1, 4, 5, 6]
-    @test jac_prototype.rowval == [1, 2, 3, 1, 1]
-    @test jac_prototype.nzval == ones(5)
+    @test jac_prototype.colptr == [1, 4, 4, 5]
+    @test jac_prototype.rowval == [1, 2, 3, 1]
+    @test jac_prototype.nzval == ones(Bool, 4)
 end
 
 @testitem "FlatVector" begin

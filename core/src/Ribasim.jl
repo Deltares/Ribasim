@@ -26,7 +26,12 @@ using Arrow: Arrow, Table
 using CodecZstd: ZstdCompressor
 using ComponentArrays: ComponentVector, Axis
 using DataInterpolations:
-    LinearInterpolation, LinearInterpolationIntInv, invert_integral, derivative, integral
+    LinearInterpolation,
+    LinearInterpolationIntInv,
+    invert_integral,
+    derivative,
+    integral,
+    AbstractInterpolation
 using Dates: Dates, DateTime, Millisecond, @dateformat_str
 using DBInterface: execute
 using DiffEqCallbacks:
@@ -72,7 +77,8 @@ using Tables: Tables, AbstractRow, columntable
 using TerminalLoggers: TerminalLogger
 using TimerOutputs: TimerOutputs, TimerOutput, @timeit_debug
 # using Symbolics: jacobian_sparsity, Num
-using SparseConnectivityTracer: TracerLocalSparsityDetector, jacobian_sparsity
+using SparseConnectivityTracer:
+    TracerLocalSparsityDetector, jacobian_sparsity, Dual, primal, tracer, GradientTracer
 export libribasim
 
 const to = TimerOutput()
