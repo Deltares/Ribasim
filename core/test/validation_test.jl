@@ -444,3 +444,24 @@ end
     )
     @test occursin("Basin #11 = ", output)
 end
+
+@testitem "Unnecessary priority of demand nodes in a model" skip = true begin
+    using Ribasim: valid_priorities, UserDemand, LevelDemand, FlowDemand
+    using Logging
+    using IOCapture: capture
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/flow_demand/ribasim.toml")
+    @test ispath(toml_path)
+
+    config = Ribasim.Config(toml_path; allocation.use_allocation = false)
+
+    logger = TestLogger()
+    with_logger(logger) do
+        @test !Ribasim.valid_outlet_crest_level!(graph, outlet, basin)
+    end
+    @test occursin(
+        "Warning: Convergence bottlenecks in descending order of severity:",
+        output,
+    )
+    @test occursin("Basin #11 = ", output)
+end
