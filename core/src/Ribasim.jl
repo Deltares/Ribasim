@@ -70,15 +70,13 @@ using SciMLBase:
     ODESolution,
     VectorContinuousCallback,
     get_proposed_dt
-using SparseArrays: SparseMatrixCSC, spzeros
 using SQLite: SQLite, DB, Query, esc_id
 using StructArrays: StructVector
 using Tables: Tables, AbstractRow, columntable
 using TerminalLoggers: TerminalLogger
 using TimerOutputs: TimerOutputs, TimerOutput, @timeit_debug
 # using Symbolics: jacobian_sparsity, Num
-using SparseConnectivityTracer:
-    TracerLocalSparsityDetector, jacobian_sparsity, Dual, primal, tracer, GradientTracer
+using SparseConnectivityTracer: TracerSparsityDetector, jacobian_sparsity, GradientTracer
 export libribasim
 
 const to = TimerOutput()

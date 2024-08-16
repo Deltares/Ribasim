@@ -161,6 +161,7 @@ end
 @testitem "Jacobian sparsity" begin
     import SQLite
     using ComponentArrays: ComponentVector
+    using SparseArrays: spzeros
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
 
@@ -177,11 +178,11 @@ end
     du0 = copy(u0)
     jac_prototype = Ribasim.get_jac_prototype(du0, u0, p, t0)
 
-    @test jac_prototype.m == 4
-    @test jac_prototype.n == 4
-    @test jac_prototype.colptr == [1, 1, 2, 2, 3]
-    @test jac_prototype.rowval == [2, 4]
-    @test jac_prototype.nzval == ones(Bool, 2)
+    jac_prototype_expected = spzeros(Bool, 4, 4)
+    jac_prototype_expected[1:2, 1:2] .= true
+    jac_prototype_expected[3:4, 2:3] .= true
+    jac_prototype_expected[4, 4] = true
+    @test jac_prototype == jac_prototype_expected
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/pid_control/ribasim.toml")
 
@@ -190,7 +191,6 @@ end
     db = SQLite.DB(db_path)
 
     p = Ribasim.Parameters(db, cfg)
-    t0 = 0.0
     u0 = ComponentVector{Float64}(;
         storage = zeros(length(p.basin.node_id)),
         integral = zeros(length(p.pid_control.node_id)),
@@ -198,11 +198,10 @@ end
     du0 = copy(u0)
     jac_prototype = Ribasim.get_jac_prototype(du0, u0, p, t0)
 
-    @test jac_prototype.m == 3
-    @test jac_prototype.n == 3
-    @test jac_prototype.colptr == [1, 4, 4, 5]
-    @test jac_prototype.rowval == [1, 2, 3, 1]
-    @test jac_prototype.nzval == ones(Bool, 4)
+    jac_prototype_expected = spzeros(Bool, 3, 3)
+    jac_prototype_expected[1, 1:3] .= true
+    jac_prototype_expected[2:3, 1] .= true
+    @test jac_prototype == jac_prototype_expected
 end
 
 @testitem "FlatVector" begin

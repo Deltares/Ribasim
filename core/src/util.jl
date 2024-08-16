@@ -354,18 +354,13 @@ Function that goes smoothly from 0 to 1 in the interval [0,threshold],
 and is constant outside this interval.
 """
 function reduction_factor(x::T, threshold::Real)::T where {T <: Real}
-    if isinf(x)
-        (sign(x) + one(T)) / 2
-    else
+    return if x < 0
+        zero(T)
+    elseif x < threshold
         x_scaled = x / threshold
-        0.5 * (
-            0.5 *
-            (sign(threshold - x) + one(T)) *
-            (sign(x) + one(T)) *
-            ((-2 * x_scaled + 3) * x_scaled^2) +
-            sign(x - threshold) +
-            one(T)
-        )
+        (-2 * x_scaled + 3) * x_scaled^2
+    else
+        one(T)
     end
 end
 
@@ -848,18 +843,12 @@ function get_jac_prototype(du0, u0, p, t0)
         (du, u) -> water_balance!(du, u, p, t0),
         du0,
         u0,
-        TracerLocalSparsityDetector(),
+        TracerSparsityDetector(),
     )
     p.all_nodes_active[] = false
     jac_prototype
 end
 
 # Custom overloads
-(A::AbstractInterpolation)(t::Dual) = Dual(A(primal(t)), tracer(t))
-reduction_factor(x::Dual, threshold::Real) =
-    Dual(reduction_factor(primal(x), threshold), tracer(x))
-function Base.sign(x::D) where {P <: Real, T <: GradientTracer, D <: Dual{P, T}}
-    p = primal(x)
-    p = one(p) > 0 ? p : -one(p)
-    Dual(p, tracer(x))
-end
+(A::AbstractInterpolation)(t::GradientTracer) = t
+reduction_factor(x::GradientTracer, threshold::Real) = x
