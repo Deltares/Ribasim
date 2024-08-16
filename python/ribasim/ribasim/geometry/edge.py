@@ -101,6 +101,10 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
         self.df = GeoDataFrame[EdgeSchema](
             pd.concat([self.df, table_to_append], ignore_index=True)
         )
+        if self.df.duplicated(subset=["from_node_id", "to_node_id"]).any():
+            raise ValueError(
+                f"Edges have to be unique, but edge ({from_node.node_id}, {to_node.node_id}) already exists."
+            )
         self.df.index.name = "fid"
 
     def _get_where_edge_type(self, edge_type: str) -> NDArray[np.bool_]:
