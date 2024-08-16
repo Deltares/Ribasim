@@ -75,7 +75,6 @@ using StructArrays: StructVector
 using Tables: Tables, AbstractRow, columntable
 using TerminalLoggers: TerminalLogger
 using TimerOutputs: TimerOutputs, TimerOutput, @timeit_debug
-# using Symbolics: jacobian_sparsity, Num
 using SparseConnectivityTracer: TracerSparsityDetector, jacobian_sparsity, GradientTracer
 export libribasim
 
