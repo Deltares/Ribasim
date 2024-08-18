@@ -191,7 +191,7 @@ This interpolation is used in each evaluation of the right hand side function of
 The level to storage relationship gives the volume of water in the basin at a given level, which is given by the integral over the level to area relationship from the basin bottom to the given level:
 
 $$
-    S(l) = \int_{l_0}^l A(l')\text{d}l'.
+    S(h) = \int_{h_0}^h A(h')\text{d}h'.
 $$
 
 ```{python}
@@ -199,9 +199,9 @@ $$
 storage = np.diff(level) * area[:-1] + 0.5 * np.diff(area) * np.diff(level)
 storage = np.cumsum(storage)
 storage = np.insert(storage, 0, 0.0)
-def S(l):
-    i = min(max(0, np.searchsorted(level, l)-1), len(level)-2)
-    return storage[i] + area[i] * (l - level[i]) + 0.5 * (area[i+1] - area[i]) / (level[i+1] - level[i]) * (l - level[i])**2
+def S(h):
+    i = min(max(0, np.searchsorted(level, h)-1), len(level)-2)
+    return storage[i] + area[i] * (h - level[i]) + 0.5 * (area[i+1] - area[i]) / (level[i+1] - level[i]) * (h - level[i])**2
 
 S = np.vectorize(S)
 
@@ -217,7 +217,7 @@ ax.set_yticks([0])
 ax.set_xlabel("level", fontsize = fontsize)
 ax.set_ylabel("storage", fontsize = fontsize)
 
-# Estrapolatnio
+# Extrapolation
 level_eval_extrap = np.linspace(level[-1], level_extrap, 35)
 storage_eval_extrap = S(level_eval_extrap)
 ax.plot(level_eval_extrap, storage_eval_extrap, color = "C0", linestyle = "dashed", label = "extrapolation")
@@ -228,140 +228,122 @@ ax.legend()
 
 for converting the initial state in terms of levels to an initial state in terms of storages used in the core.
 
-#### 3D example
+#### Interactive basin example
 
-The profile data is not detailed enough to create a full 3D picture of the basin. However, if we assume the profile data is for a stretch of canal of given length, we can use the following plot to get a mental picture of the basin. If you hover your cursor over the basin you see the corresponding level, area and storage.
-
+The profile data is not detailed enough to create a full 3D picture of the basin. However, if we assume the profile data is for a stretch of canal of given length, the following plot shows a cross section of the basin.
 ```{python}
 # | code-fold: true
-
-from dash import html, dcc, Dash
 import plotly.graph_objects as go
-from dash.dependencies import Input, Output, State
-
-fig = go.Figure()
+import numpy as np
 
 def linear_interpolation(X,Y,x):
     i = min(max(0, np.searchsorted(X, x)-1), len(X)-2)
     return Y[i] + (Y[i+1] - Y[i])/(X[i+1] - X[i]) * (x - X[i])
 
-def A(l):
-    return linear_interpolation(level, area, l)
+def A(h):
+    return linear_interpolation(level, area, h)
 
-A = np.vectorize(A)
+fig = go.Figure()
 
-def L(a):
-    if a < area[0]:
-        return level[0]
-    else:
-        return linear_interpolation(area, level, a)
+x = area/2
+x = np.concat([-x[::-1], x])
+y = np.concat([level[::-1], level])
 
-L = np.vectorize(L)
-
-length = 8.5
-X = np.linspace(-length/2, length/2, 100)
-
-y_max = area[-1] / (2 * length)
-Y = np.linspace(-y_max, y_max, 100)
-X, Y = np.meshgrid(X, Y)
-
-Z = L(2*length*np.abs(Y))
-
-
-# Profile data
-customdata = np.stack((A(Z).T, S(Z).T), axis = 2)
-hovertemplate = (
-    "<b>level</b>: %{z:.3f}<br>"
-    "<b>area</b>: %{customdata[0]:.3f}<br>"
-    "<b>storage</b>: %{customdata[1]:.3f}"
-    "<extra></extra>"
-)
-
-# The basin
+# Basin profile
 fig.add_trace(
-    go.Surface(x=X, y=Y, z=Z,
-        hoverinfo = "text",
-        hovertemplate=hovertemplate,
-        customdata = customdata,
-        name = "Basin",
-        showlegend = True,
-        showscale = False,
-        colorscale=[[0, 'brown'], [1, 'brown']]
+    go.Scatter(
+        x = x,
+        y = y,
+        line = dict(color = "green"),
+        name = "Basin profile"
     )
 )
 
-# The water level
-z_start = level[1]
-y_start = area[1] / (2 * length)
-
+# Basin profile extrapolation
+y_extrap = np.array([level[-1], level_extrap])
+x_extrap = np.array([area[-1]/2, area_extrap/2])
 fig.add_trace(
-    go.Surface(
-        x=[[-length/2, length/2], [-length/2, length/2]],
-        y=[[-y_start, -y_start], [y_start, y_start]],
-        z=[[z_start, z_start], [z_start, z_start]],
-        opacity=0.7,
-        showscale=False,
-        hoverinfo='skip',
-        name='Water level',
-        showlegend = True,
-        colorscale=[[0, 'blue'], [1, 'blue']]
+    go.Scatter(
+        x = x_extrap,
+        y = y_extrap,
+        line = dict(color = "green", dash = "dash"),
+        name = "Basin extrapolation"
     )
 )
+fig.add_trace(
+    go.Scatter(
+        x = -x_extrap,
+        y = y_extrap,
+        line = dict(color = "green", dash = "dash"),
+        showlegend = False
+    )
+)
+
+# Water level
+fig.add_trace(
+    go.Scatter(x = [-area[0]/2, area[0]/2],
+               y = [level[0], level[0]],
+               line = dict(color = "blue"),
+               name= "Water level")
+)
+
+# Fill area
+fig.add_trace(
+    go.Scatter(
+        x = [],
+        y = [],
+        fill = 'tonexty',
+        fillcolor = 'rgba(0, 0, 255, 0.2)',
+        line = dict(color = 'rgba(255, 255, 255, 0)'),
+        name = "Filled area"
+    )
+)
+
+# Create slider steps
+steps = []
+for h in np.linspace(level[0], level_extrap, 100):
+    a = A(h)
+    s = S(h).item()
+
+
+    i = min(max(0, np.searchsorted(level, h)-1), len(level)-2)
+    fill_area = np.append(area[:i+1], a)
+    fill_level = np.append(level[:i+1], h)
+    fill_x = np.concat([-fill_area[::-1]/2, fill_area/2])
+    fill_y = np.concat([fill_level[::-1], fill_level])
+
+    step = dict(
+        method = "update",
+        args=[
+            {
+                "x": [x, x_extrap, -x_extrap, [-a/2, a/2], fill_x],
+                "y": [y, y_extrap, y_extrap, [h, h], fill_y]
+            },
+            {"title": f"Interactive water level <br> Area: {a:.2f}, Storage: {s:.2f}"}
+        ],
+        label=str(round(h, 2))
+    )
+    steps.append(step)
+
+# Create slider
+sliders = [dict(
+    active=0,
+    currentvalue={"prefix": "Level: "},
+    pad={"t": 25},
+    steps=steps
+)]
 
 fig.update_layout(
-    scene=dict(
-        aspectmode='data'
-    )
+    title = {
+        "text": f"Interactive water level <br> Area: {area[0]:.2f}, Storage: 0.0",
+    },
+    yaxis_title = "level",
+    sliders = sliders,
+    margin = {"t": 100, "b": 100}
 )
 
-# Create a Dash app
-app = Dash(__name__)
-
-# Create the app layout
-app.layout = html.Div([
-    dcc.Graph(id='graph', figure=fig),
-    dcc.Store(id='hover-data')
-])
-
-# Clientside callback to update hover-data
-app.clientside_callback(
-    """
-    function(hoverData) {
-        return hoverData;
-    }
-    """,
-    Output('hover-data', 'data'),
-    Input('graph', 'hoverData')
-)
-
-# Callback to update the graph
-@app.callback(
-    Output('graph', 'figure'),
-    Input('hover-data', 'data'),
-    State('graph', 'figure')
-)
-def update_graph(hover_data, fig):
-    if hover_data:
-        if 'points' in hover_data and len(hover_data['points']) > 0:
-            basin_bottom = fig["data"][0]['z'][50][50]
-            hover_point = hover_data['points'][0]
-            y = abs(hover_point['y'])
-            z = hover_point['z']
-            water_level = fig['data'][1]
-
-            if z <= basin_bottom:
-                # Basin is empty, give water level zero extent
-                water_level['y'] = [[0, 0], [0, 0]]
-            else:
-                water_level['y'] = [[-y, -y], [y, y]]
-
-            water_level['z'] = [[z, z], [z, z]]
-    return fig
-
-# Run the app
-app.run_server(debug = True)
+fig.show()
 ```
-
 
 #### Storage to level
 
