@@ -1006,7 +1006,7 @@ function user_demand_time!(
         if is_valid_demand
             demand_itp[user_demand_idx][priority_idx] = demand_p_itp
         else
-            @error "The demand(t) relationship for UserDemand $(first_row.node_id) of priority $priority_idx from the time table has repeated timestamps, this can not be interpolated."
+            @error "The demand(t) relationship for UserDemand $(first_row.node_id) of priority $(first_row.priority_idx) from the time table has repeated timestamps, this can not be interpolated."
             errors = true
         end
     end
