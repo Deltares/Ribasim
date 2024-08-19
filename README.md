@@ -5,7 +5,7 @@
 [![QGIS Tests](https://github.com/Deltares/Ribasim/actions/workflows/qgis.yml/badge.svg)](https://github.com/Deltares/Ribasim/actions/workflows/qgis.yml)
 [![codecov](https://codecov.io/gh/Deltares/Ribasim/branch/main/graph/badge.svg)](https://codecov.io/gh/Deltares/Ribasim)
 
-**Documentation: https://deltares.github.io/Ribasim/**
+**Documentation: https://ribasim.org/**
 
 Ribasim is a water resources model, designed to be the replacement of the regional surface
 water modules Mozart and SIMRES in the Netherlands Hydrological Instrument (NHI). Ribasim is
