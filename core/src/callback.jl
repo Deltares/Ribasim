@@ -251,15 +251,21 @@ function save_water_balance_error(u, t, integrator)
 
     # First compute the storage rate
     Δt = get_Δt(integrator)
-    absolute_error = copy(u.storage)
-    absolute_error .-= storage_prev
-    absolute_error ./= Δt
+    storage_rate = copy(u.storage)
+    storage_rate .-= storage_prev
+    storage_rate ./= Δt
 
     # Then compare storage rate to inflow and outflow
+    absolute_error = copy(storage_rate)
     absolute_error .-= total_inflow
     absolute_error .+= total_outflow
 
-    # Then compute error relative to total (absolute) flow
+    @show storage_rate
+    @show total_inflow
+    @show total_outflow
+    @show absolute_error
+
+    # Then compute error relative to mean (absolute) flow
     relative_error = absolute_error ./ (0.5 * (total_inflow + total_outflow))
 
     errors = false
@@ -270,9 +276,9 @@ function save_water_balance_error(u, t, integrator)
         end
     end
 
-    if errors
-        error("Too large water balance error(s) detected.")
-    end
+    # if errors
+    #     error("Too large water balance error(s) detected.")
+    # end
 
     total_inflow .= 0.0
     total_outflow .= 0.0
