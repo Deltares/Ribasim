@@ -126,8 +126,9 @@ function integrate_flows!(u, t, integrator)::Nothing
     (; flow, flow_dict, flow_prev, flow_integrated) = graph[]
     (; vertical_flux, vertical_flux_prev, vertical_flux_integrated, vertical_flux_bmi) =
         basin
-    flow = get_tmp(flow, 0)
-    vertical_flux = get_tmp(vertical_flux, 0)
+    du = get_du(integrator)
+    flow = flow[parent(du)]
+    vertical_flux = vertical_flux[parent(du)]
     if !isempty(flow_prev) && isnan(flow_prev[1])
         # If flow_prev is not populated yet
         copyto!(flow_prev, flow)
@@ -149,7 +150,9 @@ function integrate_flows!(u, t, integrator)::Nothing
     for (edge, value) in allocation.mean_realized_flows
         if edge[1] !== edge[2]
             value +=
-                0.5 * (get_flow(graph, edge..., 0) + get_flow_prev(graph, edge..., 0)) * dt
+                0.5 *
+                (get_flow(graph, edge..., du) + get_flow_prev(graph, edge..., du)) *
+                dt
             allocation.mean_realized_flows[edge] = value
         end
     end
@@ -170,7 +173,9 @@ function integrate_flows!(u, t, integrator)::Nothing
             # Horizontal flows
             allocation.mean_input_flows[edge] =
                 value +
-                0.5 * (get_flow(graph, edge..., 0) + get_flow_prev(graph, edge..., 0)) * dt
+                0.5 *
+                (get_flow(graph, edge..., du) + get_flow_prev(graph, edge..., du)) *
+                dt
         end
     end
     copyto!(flow_prev, flow)
@@ -241,22 +246,33 @@ function save_vertical_flux(u, t, integrator)
 end
 
 function save_water_balance_error(u, t, integrator)
-    (; storage_prev, total_inflow, total_outflow) = integrator.p.basin
+    (; node_id, storage_prev, total_inflow, total_outflow) = integrator.p.basin
+    (; max_rel_balance_error) = integrator.p
 
+    # First compute the storage rate
     Δt = get_Δt(integrator)
-    storage_rate = copy(u.storage)
-    storage_rate .-= storage_prev
-    storage_rate ./= Δt
-    for i in eachindex(storage_rate)
-        storage_increase = max(storage_rate[i], 0.0)
-        storage_decrease = max(-storage_rate[i], 0.0)
-        total_inflow[i] -= storage_increase
-        total_outflow[i] -= storage_decrease
-    end
-    copyto!(storage_prev, u.storage)
+    absolute_error = copy(u.storage)
+    absolute_error .-= storage_prev
+    absolute_error ./= Δt
 
-    absolute_error = total_inflow - total_outflow
+    # Then compare storage rate to inflow and outflow
+    absolute_error .-= total_inflow
+    absolute_error .+= total_outflow
+
+    # Then compute error relative to total (absolute) flow
     relative_error = absolute_error ./ (0.5 * (total_inflow + total_outflow))
+
+    errors = false
+    for (rel_error, id) in zip(relative_error, node_id)
+        if rel_error > max_rel_balance_error
+            @error "Relative water balance error for $id ($rel_error) larger than tolerance ($max_rel_balance_error)"
+            errors = true
+        end
+    end
+
+    if errors
+        error("Too large water balance error(s) detected.")
+    end
 
     total_inflow .= 0.0
     total_outflow .= 0.0
@@ -282,6 +298,7 @@ function apply_discrete_control!(u, t, integrator)::Nothing
     (; p) = integrator
     (; discrete_control) = p
     (; node_id) = discrete_control
+    du = get_du(integrator)
 
     # Loop over the discrete control nodes to determine their truth state
     # and detect possible control state changes
@@ -300,7 +317,7 @@ function apply_discrete_control!(u, t, integrator)::Nothing
 
         # Loop over the variables listened to by this discrete control node
         for compound_variable in compound_variables
-            value = compound_variable_value(compound_variable, p, u, t)
+            value = compound_variable_value(compound_variable, p, du, t)
 
             # The thresholds the value of this variable is being compared with
             greater_thans = compound_variable.greater_than
@@ -380,12 +397,12 @@ end
 Get a value for a condition. Currently supports getting levels from basins and flows
 from flow boundaries.
 """
-function get_value(subvariable::NamedTuple, p::Parameters, u::AbstractVector, t::Float64)
+function get_value(subvariable::NamedTuple, p::Parameters, du::AbstractVector, t::Float64)
     (; flow_boundary, level_boundary, basin) = p
     (; listen_node_id, look_ahead, variable, variable_ref) = subvariable
 
     if !iszero(variable_ref.idx)
-        return get_value(variable_ref, u)
+        return get_value(variable_ref, du)
     end
 
     if variable == "level"
@@ -414,10 +431,10 @@ function get_value(subvariable::NamedTuple, p::Parameters, u::AbstractVector, t:
     return value
 end
 
-function compound_variable_value(compound_variable::CompoundVariable, p, u, t)
-    value = zero(eltype(u))
+function compound_variable_value(compound_variable::CompoundVariable, p, du, t)
+    value = zero(eltype(du))
     for subvariable in compound_variable.subvariables
-        value += subvariable.weight * get_value(subvariable, p, u, t)
+        value += subvariable.weight * get_value(subvariable, p, du, t)
     end
     return value
 end
@@ -434,7 +451,7 @@ function get_allocation_model(p::Parameters, subnetwork_id::Int32)::AllocationMo
 end
 
 function set_control_params!(p::Parameters, node_id::NodeID, control_state::String)::Nothing
-    (; discrete_control, allocation) = p
+    (; discrete_control) = p
     (; control_mappings) = discrete_control
     control_state_update = control_mappings[node_id.type][(node_id, control_state)]
     (; active, scalar_update, itp_update) = control_state_update
@@ -458,7 +475,9 @@ function apply_parameter_update!(parameter_update)::Nothing
 end
 
 function update_subgrid_level!(integrator)::Nothing
-    basin_level = get_tmp(integrator.p.basin.current_level, 0)
+    (; p) = integrator
+    du = get_du(integrator)
+    basin_level = p.basin.current_level[parent(du)]
     subgrid = integrator.p.subgrid
     for (i, (index, interp)) in enumerate(zip(subgrid.basin_index, subgrid.interpolations))
         subgrid.level[i] = interp(basin_level[index])
@@ -478,7 +497,7 @@ function update_basin!(integrator)::Nothing
     (; storage) = u
     (; node_id, time, vertical_flux_from_input, vertical_flux, vertical_flux_prev) = basin
     t = datetime_since(integrator.t, integrator.p.starttime)
-    vertical_flux = get_tmp(vertical_flux, integrator.u)
+    vertical_flux = vertical_flux[parent(u)]
 
     rows = searchsorted(time.time, t)
     timeblock = view(time, rows)
@@ -576,7 +595,12 @@ function update_tabulated_rating_curve!(integrator)::Nothing
         level = [row.level for row in group]
         flow_rate = [row.flow_rate for row in group]
         i = searchsortedfirst(node_id, NodeID(NodeType.TabulatedRatingCurve, id, 0))
-        table[i] = LinearInterpolation(flow_rate, level; extrapolate = true)
+        table[i] = LinearInterpolation(
+            flow_rate,
+            level;
+            extrapolate = true,
+            cache_parameters = true,
+        )
     end
     return nothing
 end

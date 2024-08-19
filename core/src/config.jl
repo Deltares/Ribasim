@@ -99,6 +99,7 @@ const nodetypes = collect(keys(nodekinds))
     force_dtmin::Bool = false
     abstol::Float64 = 1e-6
     reltol::Float64 = 1e-5
+    max_rel_balance_error::Float64 = 0.01
     maxiters::Int = 1e9
     sparse::Bool = true
     autodiff::Bool = true
