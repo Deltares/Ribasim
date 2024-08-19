@@ -125,7 +125,6 @@ function basin_table(
     data = get_storages_and_levels(model)
     storage = vec(data.storage[:, begin:(end - 1)])
     level = vec(data.level[:, begin:(end - 1)])
-    Δstorage = vec(diff(data.storage; dims = 2))
 
     nbasin = length(data.node_id)
     ntsteps = length(data.time) - 1
@@ -133,12 +132,11 @@ function basin_table(
 
     inflow_rate = FlatVector(saved.flow.saveval, :inflow)
     outflow_rate = FlatVector(saved.flow.saveval, :outflow)
+    storage_rate = FlatVector(saved.water_balance_error.saveval, :storage_rate)
     precipitation = zeros(nrows)
     evaporation = zeros(nrows)
     drainage = zeros(nrows)
     infiltration = zeros(nrows)
-    balance_error = zeros(nrows)
-    relative_error = zeros(nrows)
 
     idx_row = 0
     for cvec in saved.vertical_flux.saveval
@@ -152,25 +150,10 @@ function basin_table(
         end
     end
 
+    balance_error = FlatVector(saved.water_balance_error.saveval, :absolute_error)
+    relative_error = FlatVector(saved.water_balance_error.saveval, :relative_error)
     time = repeat(data.time[begin:(end - 1)]; inner = nbasin)
-    Δtime_seconds = seconds.(diff(data.time))
-    Δtime = repeat(Δtime_seconds; inner = nbasin)
     node_id = repeat(Int32.(data.node_id); outer = ntsteps)
-    storage_rate = Δstorage ./ Δtime
-
-    for i in 1:nrows
-        storage_flow = storage_rate[i]
-        storage_increase = max(storage_flow, 0.0)
-        storage_decrease = max(-storage_flow, 0.0)
-
-        total_in = inflow_rate[i] + precipitation[i] + drainage[i] - storage_increase
-        total_out = outflow_rate[i] + evaporation[i] + infiltration[i] - storage_decrease
-        balance_error[i] = total_in - total_out
-        mean_flow_rate = 0.5 * (total_in + total_out)
-        if mean_flow_rate != 0
-            relative_error[i] = balance_error[i] / mean_flow_rate
-        end
-    end
 
     return (;
         time,

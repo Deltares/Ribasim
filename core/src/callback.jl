@@ -33,6 +33,8 @@ function create_callbacks(
     # If saveat is a vector which contains 0.0 this callback will still be called
     # at t = 0.0 despite save_start = false
     saveat = saveat isa Vector ? filter(x -> x != 0.0, saveat) : saveat
+
+    # save the vertical fluxes (basin forcings) over time
     saved_vertical_flux = SavedValues(Float64, typeof(basin.vertical_flux_integrated))
     save_vertical_flux_cb =
         SavingCallback(save_vertical_flux, saved_vertical_flux; saveat, save_start = false)
@@ -42,6 +44,16 @@ function create_callbacks(
     saved_flow = SavedValues(Float64, SavedFlow)
     save_flow_cb = SavingCallback(save_flow, saved_flow; saveat, save_start = false)
     push!(callbacks, save_flow_cb)
+
+    # save water balance errors
+    saved_water_balance_error = SavedValues(Float64, SavedWaterBalanceError)
+    save_water_balance_error_cb = SavingCallback(
+        save_water_balance_error,
+        saved_water_balance_error;
+        saveat,
+        save_start = false,
+    )
+    push!(callbacks, save_water_balance_error_cb)
 
     # save solver stats
     saved_solver_stats = SavedValues(Float64, SolverStats)
@@ -69,6 +81,7 @@ function create_callbacks(
         saved_vertical_flux,
         saved_subgrid_level,
         saved_solver_stats,
+        saved_water_balance_error,
     )
     callback = CallbackSet(callbacks...)
 
@@ -170,7 +183,7 @@ them to SavedValues"
 function save_flow(u, t, integrator)
     (; graph) = integrator.p
     (; flow_integrated, flow_dict) = graph[]
-    (; node_id) = integrator.p.basin
+    (; node_id, inflow_ids, outflow_ids, total_inflow, total_outflow) = integrator.p.basin
 
     Δt = get_Δt(integrator)
     flow_mean = copy(flow_integrated)
@@ -181,8 +194,8 @@ function save_flow(u, t, integrator)
     inflow_mean = zeros(length(node_id))
     outflow_mean = zeros(length(node_id))
 
-    for basin_id in node_id
-        for inflow_id in inflow_ids(graph, basin_id)
+    for (basin_id, inflow_ids_, outflow_ids_) in zip(node_id, inflow_ids, outflow_ids)
+        for inflow_id in inflow_ids_
             q = flow_mean[flow_dict[inflow_id, basin_id]]
             if q > 0
                 inflow_mean[basin_id.idx] += q
@@ -190,7 +203,7 @@ function save_flow(u, t, integrator)
                 outflow_mean[basin_id.idx] -= q
             end
         end
-        for outflow_id in outflow_ids(graph, basin_id)
+        for outflow_id in outflow_ids_
             q = flow_mean[flow_dict[basin_id, outflow_id]]
             if q > 0
                 outflow_mean[basin_id.idx] += q
@@ -200,6 +213,10 @@ function save_flow(u, t, integrator)
         end
     end
 
+    # Update total *flow error with new inflow and outflow data
+    total_inflow .+= inflow_mean
+    total_outflow .+= outflow_mean
+
     return SavedFlow(; flow = flow_mean, inflow = inflow_mean, outflow = outflow_mean)
 end
 
@@ -207,14 +224,43 @@ end
 them to SavedValues"
 function save_vertical_flux(u, t, integrator)
     (; basin) = integrator.p
-    (; vertical_flux_integrated) = basin
+    (; vertical_flux_integrated, total_inflow, total_outflow) = basin
 
     Δt = get_Δt(integrator)
     vertical_flux_mean = copy(vertical_flux_integrated)
     vertical_flux_mean ./= Δt
     fill!(vertical_flux_integrated, 0.0)
 
+    # Update total *flow with new vertical flux (forcing) data
+    total_inflow .+= vertical_flux_mean.precipitation
+    total_inflow .+= vertical_flux_mean.drainage
+    total_outflow .+= vertical_flux_mean.evaporation
+    total_outflow .+= vertical_flux_mean.infiltration
+
     return vertical_flux_mean
+end
+
+function save_water_balance_error(u, t, integrator)
+    (; storage_prev, total_inflow, total_outflow) = integrator.p.basin
+
+    Δt = get_Δt(integrator)
+    storage_rate = copy(u.storage)
+    storage_rate .-= storage_prev
+    storage_rate ./= Δt
+    for i in eachindex(storage_rate)
+        storage_increase = max(storage_rate[i], 0.0)
+        storage_decrease = max(-storage_rate[i], 0.0)
+        total_inflow[i] -= storage_increase
+        total_outflow[i] -= storage_decrease
+    end
+    copyto!(storage_prev, u.storage)
+
+    absolute_error = total_inflow - total_outflow
+    relative_error = absolute_error ./ (0.5 * (total_inflow + total_outflow))
+
+    total_inflow .= 0.0
+    total_outflow .= 0.0
+    SavedWaterBalanceError(; storage_rate, absolute_error, relative_error)
 end
 
 """

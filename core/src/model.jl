@@ -3,6 +3,7 @@ struct SavedResults{V1 <: ComponentVector{Float64}}
     vertical_flux::SavedValues{Float64, V1}
     subgrid_level::SavedValues{Float64, Vector{Float64}}
     solver_stats::SavedValues{Float64, SolverStats}
+    water_balance_error::SavedValues{Float64, SavedWaterBalanceError}
 end
 
 """
@@ -107,6 +108,7 @@ function Model(config::Config)::Model
     @debug "Read database into memory."
 
     storage = get_storages_from_levels(parameters.basin, state.level)
+    parameters.basin.storage_prev .= storage
 
     # Synchronize level with storage
     set_current_basin_properties!(parameters.basin, storage)

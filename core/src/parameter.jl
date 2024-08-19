@@ -241,6 +241,8 @@ abstract type AbstractParameterNode end
 
 abstract type AbstractDemandNode <: AbstractParameterNode end
 
+abstract type AbstractSaved end
+
 """
 In-memory storage of saved mean flows for writing to results.
 
@@ -248,10 +250,22 @@ In-memory storage of saved mean flows for writing to results.
 - `inflow`: The sum of the mean flows coming into each basin
 - `outflow`: The sum of the mean flows going out of each basin
 """
-@kwdef struct SavedFlow
+@kwdef struct SavedFlow <: AbstractSaved
     flow::Vector{Float64}
     inflow::Vector{Float64}
     outflow::Vector{Float64}
+end
+
+"""
+In-memory storage of saved water balance error sfor writing to results.
+- `storage_rate`: Δstorage / Δt over a saveat interval
+- `absolute_error`: Absolute error
+- `relative_error`: Relative error
+"""
+@kwdef struct SavedWaterBalanceError <: AbstractSaved
+    storage_rate::Vector{Float64}
+    absolute_error::Vector{Float64}
+    relative_error::Vector{Float64}
 end
 
 """
@@ -280,6 +294,10 @@ end
     vertical_flux_prev::V3 = zeros(length(node_id))
     vertical_flux_integrated::V3 = zeros(length(node_id))
     vertical_flux_bmi::V3 = zeros(length(node_id))
+    # For water balance error computations
+    storage_prev::Vector{Float64} = zeros(length(node_id))
+    total_inflow::Vector{Float64} = zeros(length(node_id))
+    total_outflow::Vector{Float64} = zeros(length(node_id))
     # Cache this to avoid recomputation
     current_level::T = zeros(length(node_id))
     current_area::T = zeros(length(node_id))
