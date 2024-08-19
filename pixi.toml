@@ -190,6 +190,7 @@ xarray = "*"
 networkx = ">=3.3"
 ipykernel = ">=6.29"
 minio = "*"
+ipywidgets = ">=8.1.3,<8.2"
 
 [pypi-dependencies]
 ribasim = { path = "python/ribasim", editable = true }
