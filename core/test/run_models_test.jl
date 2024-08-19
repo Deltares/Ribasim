@@ -385,18 +385,34 @@ end
 
 @testitem "UserDemand" begin
     using SciMLBase: successful_retcode
+    using Dates
+    using DataFrames: DataFrame
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/user_demand/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test successful_retcode(model)
 
-    day = 86400.0
-    @test only(model.integrator.sol(0day)) == 1000.0
-    # constant UserDemand withdraws to 0.9m/900m3
-    @test only(model.integrator.sol(150day)) ≈ 900 atol = 5
-    # dynamic UserDemand withdraws to 0.5m/509m3
-    @test only(model.integrator.sol(180day)) ≈ 509 atol = 1
+    seconds_in_day = 86400.0
+    @test only(model.integrator.sol(0seconds_in_day)) == 1000.0
+    # constant UserDemand withdraws to 0.9m or 900m3 due to min level = 0.9
+    @test only(model.integrator.sol(150seconds_in_day)) ≈ 900 atol = 5
+    # dynamic UserDemand withdraws to 0.5m or 500m3 due to min level = 0.5
+    @test only(model.integrator.sol(220seconds_in_day)) ≈ 500 atol = 1
+
+    # Trasient return factor
+    flow = DataFrame(Ribasim.flow_table(model))
+    return_factor_itp = model.integrator.p.user_demand.return_factor[3]
+    flow_in =
+        filter([:from_node_id, :to_node_id] => (from, to) -> (from, to) == (1, 4), flow)
+    flow_out =
+        filter([:from_node_id, :to_node_id] => (from, to) -> (from, to) == (4, 5), flow)
+    time_seconds = Ribasim.seconds_since.(flow_in.time, model.config.starttime)
+    @test isapprox(
+        flow_out.flow_rate,
+        return_factor_itp.(time_seconds) .* flow_in.flow_rate,
+        rtol = 1e-1,
+    )
 end
 
 @testitem "ManningResistance" begin
