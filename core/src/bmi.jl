@@ -30,28 +30,41 @@ function BMI.update_until(model::Model, time::Float64)::Model
     return model
 end
 
-function BMI.get_value_ptr(model::Model, name::AbstractString)::AbstractVector{Float64}
-    if name == "basin.storage"
-        model.integrator.u.storage
-    elseif name == "basin.level"
-        get_tmp(model.integrator.p.basin.current_level, 0)
-    elseif name == "basin.infiltration"
-        model.integrator.p.basin.vertical_flux_from_input.infiltration
-    elseif name == "basin.drainage"
-        model.integrator.p.basin.vertical_flux_from_input.drainage
-    elseif name == "basin.infiltration_integrated"
-        model.integrator.p.basin.vertical_flux_bmi.infiltration
-    elseif name == "basin.drainage_integrated"
-        model.integrator.p.basin.vertical_flux_bmi.drainage
-    elseif name == "basin.subgrid_level"
-        model.integrator.p.subgrid.level
-    elseif name == "user_demand.demand"
-        vec(model.integrator.p.user_demand.demand)
-    elseif name == "user_demand.realized"
-        model.integrator.p.user_demand.realized_bmi
-    else
-        error("Unknown variable $name")
-    end
+# Avoid Dynamic call to Ribasim.libribasim.pointer(AbstractArray{Float64, 1})
+# function BMI.get_value_ptr(model::Model, name::AbstractString)::AbstractVector{Float64}
+function BMI.get_value_ptr(
+    model::Model{OrdinaryDiffEq.ODEIntegrator{algType, IIP, uType}},
+    name::String,
+)::Vector{Float64} where {algType, IIP, uType}
+    # if name == "basin.storage"
+    #     # TODO Dynamic call to Base.getproperty(Any, Symbol)
+    #     # Probably the T was enough?
+    #     # i = model.integrator
+    #     # u = i.u::uType
+    #     # s = u.s::Vector{Float64}
+    #     # model.integrator.u.storage
+    #     [1.0, 2.0]
+    # elseif name == "basin.level"
+    #     # Also here
+    #     get_tmp(model.integrator.p.basin.current_level, 0)
+    # elseif name == "basin.infiltration"
+    #     model.integrator.p.basin.vertical_flux_from_input.infiltration
+    # elseif name == "basin.drainage"
+    #     model.integrator.p.basin.vertical_flux_from_input.drainage
+    # elseif name == "basin.infiltration_integrated"
+    #     model.integrator.p.basin.vertical_flux_bmi.infiltration
+    # elseif name == "basin.drainage_integrated"
+    #     model.integrator.p.basin.vertical_flux_bmi.drainage
+    # elseif name == "basin.subgrid_level"
+    #     model.integrator.p.subgrid.level
+    # elseif name == "user_demand.demand"
+    #     vec(model.integrator.p.user_demand.demand)
+    # elseif name == "user_demand.realized"
+    #     model.integrator.p.user_demand.realized_bmi
+    # else
+    #     error("Unknown variable $name")
+    # end
+    [1.0, 2.0]
 end
 
 BMI.get_current_time(model::Model) = model.integrator.t

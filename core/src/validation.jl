@@ -164,7 +164,6 @@ function valid_config(config::Config)::Bool
 
     if config.starttime >= config.endtime
         errors = true
-        @error "The model starttime must be before the endtime."
     end
 
     return !errors
@@ -177,7 +176,6 @@ function valid_nodes(db::DB)::Bool
     node_ids = only(execute(columntable, db, sql))
     for node_id in node_ids
         errors = true
-        @error "Multiple occurrences of node_id $node_id found in Node table."
     end
 
     return !errors
@@ -197,7 +195,6 @@ function valid_edges(graph::MetaGraph)::Bool
 
         if !(type_dst in neighbortypes(type_src))
             errors = true
-            @error "Cannot connect a $type_src to a $type_dst." id_src id_dst
         end
     end
     return !errors
@@ -216,24 +213,17 @@ function valid_profiles(
         n = length(levels)
         if n < 2
             errors = true
-            @error "$id profile must have at least two data points, got $n."
         end
         if !allunique(levels)
             errors = true
-            @error "$id profile has repeated levels, this cannot be interpolated."
         end
 
         if areas[1] <= 0
             errors = true
-            @error(
-                "$id profile cannot start with area <= 0 at the bottom for numerical reasons.",
-                area = areas[1],
-            )
         end
 
         if any(diff(areas) .< 0.0)
             errors = true
-            @error "$id profile cannot have decreasing areas."
         end
     end
     return !errors
@@ -263,7 +253,6 @@ function valid_flow_rates(
         if flow_rate_ < 0.0
             errors = true
             control_state = key[2]
-            @error "$id_controlled flow rates must be non-negative, found $flow_rate_ for control state '$control_state'."
         end
     end
 
@@ -273,7 +262,6 @@ function valid_flow_rates(
         end
         if flow_rate_ < 0.0
             errors = true
-            @error "$id flow rates must be non-negative, found $flow_rate_."
         end
     end
 
@@ -289,7 +277,6 @@ function valid_pid_connectivity(
 
     for (pid_control_id, listen_id) in zip(pid_control_node_id, pid_control_listen_node_id)
         if listen_id.type !== NodeType.Basin
-            @error "Listen node $listen_id of $pid_control_id is not a Basin"
             errors = true
         end
 
@@ -302,7 +289,6 @@ function valid_pid_connectivity(
 
         if listen_id ∉ [id_inflow, id_outflow]
             errors = true
-            @error "PID listened $listen_id is not on either side of controlled $controlled_id."
         end
     end
 
@@ -323,17 +309,14 @@ function valid_subgrid(
 
     if !(node_id in keys(node_to_basin))
         errors = true
-        @error "The node_id of the Basin / subgrid does not exist." node_id subgrid_id
     end
 
     if !allunique(basin_level)
         errors = true
-        @error "Basin / subgrid subgrid_id $(subgrid_id) has repeated basin levels, this cannot be interpolated."
     end
 
     if !allunique(subgrid_level)
         errors = true
-        @error "Basin / subgrid subgrid_id $(subgrid_id) has repeated element levels, this cannot be interpolated."
     end
 
     return !errors
@@ -349,7 +332,6 @@ function valid_demand(
     for (col, id) in zip(demand_itp, node_id)
         for (demand_p_itp, p_itp) in zip(col, priorities)
             if any(demand_p_itp.u .< 0.0)
-                @error "Demand of $id with priority $p_itp should be non-negative"
                 errors = true
             end
         end
@@ -369,7 +351,6 @@ function valid_outlet_crest_level!(graph::MetaGraph, outlet::Outlet, basin::Basi
             if crest == -Inf
                 outlet.min_crest_level[id.idx] = basin_bottom_level
             elseif crest < basin_bottom_level
-                @error "Minimum crest level of $id is lower than bottom of upstream $id_in" crest basin_bottom_level
                 errors = true
             end
         end
@@ -389,8 +370,7 @@ function valid_tabulated_curve_level(
             basin_bottom_level = basin_bottom(basin, id_in)[2]
             # the second level is the bottom, the first is added to control extrapolation
             if table.t[1] + 1.0 < basin_bottom_level
-                @error "Lowest levels of $id is lower than bottom of upstream $id_in" table.t[1] +
-                                                                                      1.0 basin_bottom_level
+                1.0basin_bottom_level
                 errors = true
             end
         end
@@ -407,22 +387,18 @@ function valid_tabulated_rating_curve(node_id::NodeID, table::StructVector)::Boo
 
     n = length(level)
     if n < 2
-        @error "At least two datapoints are needed." node_id n
         errors = true
     end
     Q0 = first(flow_rate)
     if Q0 != 0.0
-        @error "The `flow_rate` must start at 0." node_id flow_rate = Q0
         errors = true
     end
 
     if !allunique(level)
-        @error "The `level` cannot be repeated." node_id
         errors = true
     end
 
     if any(diff(flow_rate) .< 0.0)
-        @error "The `flow_rate` cannot decrease with increasing `level`." node_id
         errors = true
     end
 
@@ -434,7 +410,6 @@ function incomplete_subnetwork(graph::MetaGraph, node_ids::Dict{Int32, Set{NodeI
     for (subnetwork_id, subnetwork_node_ids) in node_ids
         subnetwork, _ = induced_subgraph(graph, code_for.(Ref(graph), subnetwork_node_ids))
         if !is_connected(subnetwork)
-            @error "All nodes in subnetwork $subnetwork_id should be connected"
             errors = true
         end
     end
@@ -445,7 +420,6 @@ function non_positive_subnetwork_id(graph::MetaGraph)::Bool
     errors = false
     for subnetwork_id in keys(graph[].node_ids)
         if (subnetwork_id <= 0)
-            @error "Allocation network id $subnetwork_id needs to be a positive integer."
             errors = true
         end
     end
@@ -483,22 +457,18 @@ function valid_n_neighbors(node_name::Symbol, graph::MetaGraph)::Bool
                 count(x -> true, outneighbor_labels_type(graph, node_id, edge_type))
 
             if n_inneighbors < bounds.in_min
-                @error "$node_id must have at least $(bounds.in_min) $edge_type inneighbor(s) (got $n_inneighbors)."
                 errors = true
             end
 
             if n_inneighbors > bounds.in_max
-                @error "$node_id can have at most $(bounds.in_max) $edge_type inneighbor(s) (got $n_inneighbors)."
                 errors = true
             end
 
             if n_outneighbors < bounds.out_min
-                @error "$node_id must have at least $(bounds.out_min) $edge_type outneighbor(s) (got $n_outneighbors)."
                 errors = true
             end
 
             if n_outneighbors > bounds.out_max
-                @error "$node_id can have at most $(bounds.out_max) $edge_type outneighbor(s) (got $n_outneighbors)."
                 errors = true
             end
         end
@@ -517,7 +487,6 @@ function valid_edge_types(db::DB)::Bool
     for (; fid, from_node_id, to_node_id, edge_type) in edge_rows
         if edge_type ∉ ["flow", "control"]
             errors = true
-            @error "Invalid edge type '$edge_type' for edge #$fid from node #$from_node_id to node #$to_node_id."
         end
     end
     return !errors
@@ -560,7 +529,6 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
 
         if !isempty(truth_states_wrong_length)
             errors = true
-            @error "$id has $n_conditions condition(s), which is inconsistent with these truth state(s): $(convert_truth_state.(truth_states_wrong_length))."
         end
 
         # Check whether these control states are defined for the
@@ -586,7 +554,7 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
 
             if !isempty(undefined_control_states)
                 undefined_list = collect(undefined_control_states)
-                @error "These control states from $id are not defined for controlled $id_outneighbor: $undefined_list."
+
                 errors = true
             end
         end
@@ -598,18 +566,17 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
                     node_type = subvariable.listen_node_id.type
                     if node_type ∉ [NodeType.FlowBoundary, NodeType.LevelBoundary]
                         errors = true
-                        @error "Look ahead supplied for non-timeseries listen variable '$(subvariable.variable)' from listen node $(subvariable.listen_node_id)."
+
                     else
                         if subvariable.look_ahead < 0
                             errors = true
-                            @error "Negative look ahead supplied for listen variable '$(subvariable.variable)' from listen node $(subvariable.listen_node_id)."
+
                         else
                             node = getfield(p, graph[subvariable.listen_node_id].type)
                             interpolation =
                                 getfield(node, Symbol(subvariable.variable))[subvariable.listen_node_id.idx]
                             if t_end + subvariable.look_ahead > interpolation.t[end]
                                 errors = true
-                                @error "Look ahead for listen variable '$(subvariable.variable)' from listen node $(subvariable.listen_node_id) goes past timeseries end during simulation."
                             end
                         end
                     end
@@ -652,14 +619,12 @@ function valid_sources(
             if is_main_network(subnetwork_id)
                 if !from_source_node
                     errors = true
-                    @error "The source node of source edge $edge in the main network must be one of $allocation_source_nodetypes."
                 end
             else
                 from_main_network = is_main_network(graph[id_source].subnetwork_id)
 
                 if !from_source_node && !from_main_network
                     errors = true
-                    @error "The source node of source edge $edge for subnetwork $subnetwork_id is neither a source node nor is it coming from the main network."
                 end
             end
         end

@@ -43,8 +43,9 @@ macro try_c(ex)
             model === nothing && error("Model not initialized")
             $(esc(ex))
         catch e
-            global last_error_message
-            last_error_message = sprint(showerror, e)
+            # TODO workaround juliac sprint
+            # global last_error_message
+            # last_error_message = sprint(showerror, e)
             return 1
         end
         return 0
@@ -62,8 +63,9 @@ macro try_c_uninitialized(ex)
             global model
             $(esc(ex))
         catch e
-            global last_error_message
-            last_error_message = sprint(showerror, e)
+            # TODO workaround juliac sprint
+            # global last_error_message
+            # last_error_message = sprint(showerror, e)
             return 1
         end
         return 0

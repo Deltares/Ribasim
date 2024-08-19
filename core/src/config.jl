@@ -265,11 +265,9 @@ function convert_saveat(saveat::Float64, t_end::Float64)::Union{Float64, Vector{
         # every saveat seconds
         if saveat !== round(saveat)
             errors = true
-            @error "A finite saveat must be an integer number of seconds." saveat
         end
     else
         errors = true
-        @error "Invalid saveat" saveat
     end
 
     errors && error("Invalid saveat")
@@ -289,7 +287,6 @@ function convert_dt(dt::Union{Float64, Nothing})::Tuple{Bool, Float64}
         # fixed step size
         adaptive = false
     else
-        @error "Invalid dt" dt
         error("Invalid dt")
     end
     adaptive, dt

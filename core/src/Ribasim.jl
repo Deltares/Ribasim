@@ -96,7 +96,7 @@ include("write.jl")
 include("bmi.jl")
 include("callback.jl")
 include("main.jl")
-include("libribasim.jl")
+# include("libribasim.jl")
 
 # Define names used in Makie extension
 function plot_basin_data end

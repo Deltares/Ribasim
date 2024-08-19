@@ -40,7 +40,6 @@ function Model(config::Config)::Model
     alg = algorithm(config.solver)
     db_path = input_path(config, config.database)
     if !isfile(db_path)
-        @error "Database file not found" db_path
         error("Database file not found")
     end
 
@@ -93,6 +92,7 @@ function Model(config::Config)::Model
             PidControlTimeV1,
         ]
             time_schema = load_structvector(db, config, schema_version)
+            # TODO Dynamic call to Base.getproperty(Any, Symbol)
             push!(tstops, get_tstops(time_schema.time, config.starttime))
         end
 

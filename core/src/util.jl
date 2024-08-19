@@ -27,7 +27,6 @@ function get_storages_from_levels(basin::Basin, levels::AbstractVector)::Vector{
     state_length = length(levels)
     basin_length = length(basin.storage_to_level)
     if state_length != basin_length
-        @error "Unexpected 'Basin / state' length." state_length basin_length
         errors = true
     end
     storages = zeros(state_length)
@@ -37,7 +36,7 @@ function get_storages_from_levels(basin::Basin, levels::AbstractVector)::Vector{
         bottom = first(basin_levels(basin, i))
         if level < bottom
             node_id = basin.node_id[i]
-            @error "The initial level ($level) of $node_id is below the bottom ($bottom)."
+
             errors = true
         end
         storages[i] = storage
@@ -473,7 +472,6 @@ function set_continuous_control_type!(
             outlet.continuous_control_type[id_controlled.idx] = continuous_control_type
         else
             errors = true
-            @error "Only Pump and Outlet can be controlled by PidController, got $id_controlled"
         end
     end
     return errors
@@ -621,7 +619,7 @@ function get_variable_ref(
         if listen
             if node_id.type ∉ conservative_nodetypes
                 errors = true
-                @error "Cannot listen to flow_rate of $node_id, the node type must be one of $conservative_node_types"
+
                 Ref(Float64[], 0)
             else
                 id_in = inflow_id(graph, node_id)

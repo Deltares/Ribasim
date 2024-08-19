@@ -87,7 +87,6 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
         )
         if haskey(graph, id_src, id_dst)
             errors = true
-            @error "Duplicate edge" id_src id_dst
         end
         graph[id_src, id_dst] = edge_metadata
         if edge_type == EdgeType.flow

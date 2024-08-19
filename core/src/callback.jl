@@ -92,7 +92,6 @@ function check_negative_storage(u, t, integrator)::Nothing
     errors = false
     for id in node_id
         if u.storage[id.idx] < 0
-            @error "Negative storage detected in $id"
             errors = true
         end
     end

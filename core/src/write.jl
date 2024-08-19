@@ -370,7 +370,6 @@ function write_arrow(
         try
             rm(path; force = true)
         catch
-            @warn "Failed to remove results, file may be locked." path
         end
         return nothing
     end
@@ -384,7 +383,6 @@ function write_arrow(
     try
         Arrow.write(path, table; compress, metadata)
     catch
-        @error "Failed to write results, file may be locked." path
         error("Failed to write results.")
     end
     return nothing
