@@ -7,7 +7,7 @@ import pandas as pd
 import pandera as pa
 from matplotlib.patches import Patch
 from pandera.dtypes import Int32
-from pandera.typing import Series
+from pandera.typing import Index, Series
 from pandera.typing.geopandas import GeoSeries
 
 from ribasim.input_base import SpatialTableModel
@@ -16,7 +16,7 @@ __all__ = ("NodeTable",)
 
 
 class NodeSchema(pa.DataFrameModel):
-    node_id: Series[Int32] = pa.Field(ge=0)
+    node_id: Index[Int32] = pa.Field(default=0, check_name=True)
     name: Series[str] = pa.Field(default="")
     node_type: Series[str] = pa.Field(default="")
     subnetwork_id: Series[pd.Int32Dtype] = pa.Field(
@@ -28,6 +28,10 @@ class NodeSchema(pa.DataFrameModel):
         add_missing_columns = True
         coerce = True
 
+    @classmethod
+    def _index_name(self) -> str:
+        return "node_id"
+
 
 class NodeTable(SpatialTableModel[NodeSchema]):
     """The Ribasim nodes as Point geometries."""
@@ -37,12 +41,6 @@ class NodeTable(SpatialTableModel[NodeSchema]):
         if self.df is not None:
             mask = self.df[self.df["node_type"] != nodetype].index
             self.df.drop(mask, inplace=True)
-            self.df.reset_index(inplace=True, drop=True)
-
-    def sort(self):
-        assert self.df is not None
-        sort_keys = ["node_type", "node_id"]
-        self.df.sort_values(sort_keys, ignore_index=True, inplace=True)
 
     def plot_allocation_networks(self, ax=None, zorder=None) -> Any:
         if ax is None:
@@ -156,9 +154,7 @@ class NodeTable(SpatialTableModel[NodeSchema]):
 
         assert self.df is not None
         geometry = self.df["geometry"]
-        for text, xy in zip(
-            self.df["node_id"], np.column_stack((geometry.x, geometry.y))
-        ):
+        for text, xy in zip(self.df.index, np.column_stack((geometry.x, geometry.y))):
             ax.annotate(text=text, xy=xy, xytext=(2.0, 2.0), textcoords="offset points")
 
         return ax

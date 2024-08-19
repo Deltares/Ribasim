@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 from pandera.dtypes import Int32
 from pandera.typing import Series
+from pydantic import BaseModel, NonNegativeInt
 
 
 def _pascal_to_snake(pascal_str):
@@ -67,3 +68,25 @@ def _time_in_ns(df) -> None:
     """Convert the time column to datetime64[ns] dtype."""
     # datetime64[ms] gives trouble; https://github.com/pydata/xarray/issues/6318
     df["time"] = df["time"].astype("datetime64[ns]")
+
+
+class UsedIDs(BaseModel):
+    """A helper class to manage global unique (node) IDs.
+
+    We keep track of all IDs in the model,
+    and keep track of the maximum to provide new IDs.
+    MultiNodeModels and Edge will check this instance on `add`.
+    """
+
+    node_ids: set[int] = set()
+    max_node_id: NonNegativeInt = 0
+
+    def add(self, node_id: int) -> None:
+        self.node_ids.add(node_id)
+        self.max_node_id = max(self.max_node_id, node_id)
+
+    def __contains__(self, value: int) -> bool:
+        return self.node_ids.__contains__(value)
+
+    def new_id(self) -> int:
+        return self.max_node_id + 1

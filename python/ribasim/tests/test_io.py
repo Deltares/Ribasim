@@ -2,6 +2,7 @@ from datetime import datetime
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import pytest
 import ribasim
 import tomli
@@ -22,8 +23,6 @@ def __assert_equal(a: DataFrame, b: DataFrame) -> None:
 
     a = a.reset_index(drop=True)
     b = b.reset_index(drop=True)
-    a.drop(columns=["fid"], inplace=True, errors="ignore")
-    b.drop(columns=["fid"], inplace=True, errors="ignore")
 
     assert_frame_equal(a, b)
 
@@ -92,6 +91,11 @@ def test_extra_columns():
     with pytest.raises(ValidationError):
         # Extra column "extra" needs "meta_" prefix
         pump.Static(extra=[-2], flow_rate=[1.2])
+
+
+def test_index_tables():
+    p = pump.Static(flow_rate=[1.2])
+    assert p.df.index.name == "fid"
 
 
 def test_extra_spatial_columns():
@@ -226,7 +230,7 @@ def test_sort(level_range, tmp_path):
 def test_roundtrip(trivial, tmp_path):
     model1 = trivial
     # set custom Edge index
-    model1.edge.df.index = [15, 12]
+    model1.edge.df.index = pd.Index([15, 12], name="edge_id")
     model1dir = tmp_path / "model1"
     model2dir = tmp_path / "model2"
     # read a model and then write it to a different path

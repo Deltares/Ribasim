@@ -2,7 +2,7 @@
 
 import pandera as pa
 from pandera.dtypes import Int32, Timestamp
-from pandera.typing import Series
+from pandera.typing import Series, Index
 
 
 class _BaseSchema(pa.DataFrameModel):
@@ -10,9 +10,14 @@ class _BaseSchema(pa.DataFrameModel):
         add_missing_columns = True
         coerce = True
 
+    @classmethod
+    def _index_name(self) -> str:
+        return "fid"
+
 
 {% for m in models %}
 class {{m[:name]}}Schema(_BaseSchema):
+    fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
   {% for f in m[:fields] %}
     {% if (f[2] == "Series[Int32]") %}
     {{ f[1] }}: {{ f[2] }} = pa.Field(nullable={{ f[3] }}, default=0)
