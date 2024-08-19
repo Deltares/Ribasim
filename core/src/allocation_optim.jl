@@ -306,12 +306,10 @@ function get_basin_data(
     u::ComponentVector,
     node_id::NodeID,
 )
-    (; graph, basin, allocation) = p
-    (; vertical_flux) = basin
+    (; graph, allocation) = p
     (; Δt_allocation) = allocation_model
     (; mean_input_flows) = allocation
     @assert node_id.type == NodeType.Basin
-    vertical_flux = get_tmp(vertical_flux, 0)
     influx = mean_input_flows[(node_id, node_id)][]
     storage_basin = u.storage[node_id.idx]
     control_inneighbors = inneighbor_labels_type(graph, node_id, EdgeType.control)
