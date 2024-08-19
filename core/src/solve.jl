@@ -274,7 +274,7 @@ function formulate_flow!(
         set_flow!(graph, inflow_edge, q, du)
 
         # Return flow is immediate
-        set_flow!(graph, outflow_edge, q * return_factor, du)
+        set_flow!(graph, outflow_edge, q * return_factor(t), du)
     end
     return nothing
 end
