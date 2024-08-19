@@ -394,7 +394,7 @@ end
     @test length(logger.logs) == 1
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
-          "Lowest levels of TabulatedRatingCurve #5 is lower than bottom of upstream Basin #1"
+          "Lowest level of TabulatedRatingCurve #5 is lower than bottom of upstream Basin #1"
 end
 
 @testitem "Outlet upstream level validation" begin
