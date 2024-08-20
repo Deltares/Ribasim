@@ -260,11 +260,6 @@ function save_water_balance_error(u, t, integrator)
     absolute_error .-= total_inflow
     absolute_error .+= total_outflow
 
-    @show storage_rate
-    @show total_inflow
-    @show total_outflow
-    @show absolute_error
-
     # Then compute error relative to mean (absolute) flow
     relative_error = absolute_error ./ (0.5 * (total_inflow + total_outflow))
 
@@ -282,6 +277,7 @@ function save_water_balance_error(u, t, integrator)
 
     total_inflow .= 0.0
     total_outflow .= 0.0
+    copyto!(storage_prev, u.storage)
     SavedWaterBalanceError(; storage_rate, absolute_error, relative_error)
 end
 
