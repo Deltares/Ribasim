@@ -93,9 +93,9 @@ def _setup_graph(nodes, edge, use_evaporation=True):
     for row in nodes.df.itertuples():
         if row.node_type not in ribasim.geometry.edge.SPATIALCONTROLNODETYPES:
             G.add_node(
-                row.node_id,
+                row.Index,
                 type=row.node_type,
-                id=row.node_id,
+                id=row.Index,
                 x=row.geometry.x,
                 y=row.geometry.y,
                 pos=(row.geometry.x, row.geometry.y),

@@ -510,14 +510,14 @@ end
 function valid_edge_types(db::DB)::Bool
     edge_rows = execute(
         db,
-        "SELECT fid, from_node_id, to_node_id, edge_type FROM Edge ORDER BY fid",
+        "SELECT edge_id, from_node_id, to_node_id, edge_type FROM Edge ORDER BY edge_id",
     )
     errors = false
 
-    for (; fid, from_node_id, to_node_id, edge_type) in edge_rows
+    for (; edge_id, from_node_id, to_node_id, edge_type) in edge_rows
         if edge_type ∉ ["flow", "control"]
             errors = true
-            @error "Invalid edge type '$edge_type' for edge #$fid from node #$from_node_id to node #$to_node_id."
+            @error "Invalid edge type '$edge_type' for edge #$edge_id from node #$from_node_id to node #$to_node_id."
         end
     end
     return !errors

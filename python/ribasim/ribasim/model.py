@@ -13,7 +13,7 @@ from pandera.typing.geopandas import GeoDataFrame
 from pydantic import (
     DirectoryPath,
     Field,
-    NonNegativeInt,
+    PrivateAttr,
     field_serializer,
     model_validator,
 )
@@ -44,14 +44,15 @@ from ribasim.config import (
 from ribasim.geometry.edge import EdgeSchema, EdgeTable
 from ribasim.geometry.node import NodeTable
 from ribasim.input_base import (
-    BaseModel,
     ChildModel,
     FileModel,
     SpatialTableModel,
     context_file_loading,
+    context_file_writing,
 )
 from ribasim.utils import (
     MissingOptionalModule,
+    UsedIDs,
     _edge_lookup,
     _node_lookup,
     _node_lookup_numpy,
@@ -64,36 +65,12 @@ except ImportError:
     xugrid = MissingOptionalModule("xugrid")
 
 
-class UsedNodeIDs(BaseModel):
-    """A helper class to manage global unique node IDs.
-
-    We keep track of all node IDs in the model,
-    and keep track of the maximum to provide new IDs.
-    MultiNodeModels will check this instance on `add`.
-    """
-
-    node_ids: set[int] = set()
-    max_node_id: NonNegativeInt = 0
-
-    def add(self, node_id: int) -> None:
-        self.node_ids.add(node_id)
-        self.max_node_id = max(self.max_node_id, node_id)
-
-    def __contains__(self, value: int) -> bool:
-        return self.node_ids.__contains__(value)
-
-    def new_id(self) -> int:
-        return self.max_node_id + 1
-
-
 class Model(FileModel):
     """A model of inland water resources systems."""
 
     starttime: datetime.datetime
     endtime: datetime.datetime
     crs: str
-
-    used_node_ids: UsedNodeIDs = Field(default_factory=UsedNodeIDs)
 
     input_dir: Path = Field(default=Path("."))
     results_dir: Path = Field(default=Path("results"))
@@ -124,6 +101,8 @@ class Model(FileModel):
 
     edge: EdgeTable = Field(default_factory=EdgeTable)
 
+    _used_node_ids: UsedIDs = PrivateAttr(default_factory=UsedIDs)
+
     @model_validator(mode="after")
     def _set_node_parent(self) -> "Model":
         for (
@@ -137,7 +116,7 @@ class Model(FileModel):
     @model_validator(mode="after")
     def _ensure_edge_table_is_present(self) -> "Model":
         if self.edge.df is None:
-            self.edge.df = GeoDataFrame[EdgeSchema]()
+            self.edge.df = GeoDataFrame[EdgeSchema](index=pd.Index([], name="edge_id"))
         self.edge.df.set_geometry("geometry", inplace=True, crs=self.crs)
         return self
 
@@ -200,16 +179,11 @@ class Model(FileModel):
         db_path = directory / input_dir / "database.gpkg"
         db_path.parent.mkdir(parents=True, exist_ok=True)
         db_path.unlink(missing_ok=True)
-        context_file_loading.get()["database"] = db_path
+        context_file_writing.get()["database"] = db_path
         self.edge._save(directory, input_dir)
         node = self.node_table()
 
         assert node.df is not None
-        if not node.df["node_id"].is_unique:
-            raise ValueError("node_id must be unique")
-        node.df.set_index("node_id", drop=False, inplace=True)
-        node.df.index.name = "fid"
-        node.df.sort_index(inplace=True)
         node._save(directory, input_dir)
 
         for sub in self._nodes():
@@ -232,23 +206,23 @@ class Model(FileModel):
 
     def _apply_crs_function(self, function_name: str, crs: str) -> None:
         """Apply `function_name`, with `crs` as the first and only argument to all spatial tables."""
-        self.edge.df = getattr(self.edge.df, function_name)(crs)
+        getattr(self.edge.df, function_name)(crs, inplace=True)
         for sub in self._nodes():
             if sub.node.df is not None:
-                sub.node.df = getattr(sub.node.df, function_name)(crs)
+                getattr(sub.node.df, function_name)(crs, inplace=True)
             for table in sub._tables():
                 if isinstance(table, SpatialTableModel) and table.df is not None:
-                    table.df = getattr(table.df, function_name)(crs)
+                    getattr(table.df, function_name)(crs, inplace=True)
         self.crs = crs
 
     def node_table(self) -> NodeTable:
         """Compute the full sorted NodeTable from all node types."""
         df_chunks = [node.node.df.set_crs(self.crs) for node in self._nodes()]  # type:ignore
-        df = pd.concat(df_chunks, ignore_index=True)
+        df = pd.concat(df_chunks)
         node_table = NodeTable(df=df)
         node_table.sort()
         assert node_table.df is not None
-        node_table.df.index.name = "fid"
+        assert node_table.df.index.is_unique, "node_id must be unique"
         return node_table
 
     def _nodes(self) -> Generator[MultiNodeModel, Any, None]:
@@ -297,13 +271,13 @@ class Model(FileModel):
         self.filepath = filepath
         if not filepath.suffix == ".toml":
             raise ValueError(f"Filepath '{filepath}' is not a .toml file.")
-        context_file_loading.set({})
+        context_file_writing.set({})
         directory = filepath.parent
         directory.mkdir(parents=True, exist_ok=True)
         self._save(directory, self.input_dir)
         fn = self._write_toml(filepath)
 
-        context_file_loading.set({})
+        context_file_writing.set({})
         return fn
 
     @classmethod
@@ -472,15 +446,12 @@ class Model(FileModel):
         node_df = self.node_table().df
         assert node_df is not None
 
-        if not node_df.node_id.is_unique:
-            raise ValueError("node_id must be unique")
-
         assert self.edge.df is not None
         edge_df = self.edge.df.copy()
         # We assume only the flow network is of interest.
         edge_df = edge_df[edge_df.edge_type == "flow"]
 
-        node_id = node_df.node_id.to_numpy()
+        node_id = node_df.index.to_numpy()
         edge_id = edge_df.index.to_numpy()
         from_node_id = edge_df.from_node_id.to_numpy()
         to_node_id = edge_df.to_node_id.to_numpy()
