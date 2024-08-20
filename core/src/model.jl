@@ -146,8 +146,14 @@ function Model(config::Config)::Model
             (; basin) = parameters
 
             # Compute steady state
+            println("Computing steady state...")
             parameters.fixed_t[] = 0.0
-            sol = solve(SteadyStateProblem(prob), DynamicSS())
+            sol = solve(
+                SteadyStateProblem(RHS, u0, parameters),
+                DynamicSS(ImplicitEuler());
+                abstol = 1e-10,
+                reltol = 1e-10,
+            )
             parameters.fixed_t[] = -1.0
 
             # Check steady state

@@ -846,7 +846,7 @@ function get_jac_prototype(du0, u0, p, t0)
         TracerSparsityDetector(),
     )
     p.all_nodes_active[] = false
-    jac_prototype
+    Float64.(jac_prototype)
 end
 
 # Custom overloads

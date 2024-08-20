@@ -57,7 +57,11 @@ using MetaGraphsNext:
 using NonlinearSolve: solve
 using PreallocationTools: LazyBufferCache
 using OrdinaryDiffEq:
-    OrdinaryDiffEq, OrdinaryDiffEqRosenbrockAdaptiveAlgorithm, get_du, SteadyStateProblem
+    OrdinaryDiffEq,
+    OrdinaryDiffEqRosenbrockAdaptiveAlgorithm,
+    get_du,
+    SteadyStateProblem,
+    ImplicitEuler
 using SciMLBase:
     init,
     solve!,
@@ -72,7 +76,7 @@ using SciMLBase:
     ODESolution,
     VectorContinuousCallback,
     get_proposed_dt
-using SteadyStateDiffEq: DynamicSS
+using SteadyStateDiffEq: DynamicSS, SSRootfind
 using SQLite: SQLite, DB, Query, esc_id
 using StructArrays: StructVector
 using Tables: Tables, AbstractRow, columntable
