@@ -224,6 +224,7 @@ class Edge(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
+            QgsField("edge_id", QVariant.Int),
             QgsField("name", QVariant.String),
             QgsField("from_node_id", QVariant.Int),
             QgsField("to_node_id", QVariant.Int),
@@ -260,7 +261,7 @@ class Edge(Input):
     @property
     def labels(self) -> Any:
         pal_layer = QgsPalLayerSettings()
-        pal_layer.fieldName = """concat("name", ' #', "fid")"""
+        pal_layer.fieldName = """concat("name", ' #', "edge_id")"""
         pal_layer.isExpression = True
         pal_layer.placement = Qgis.LabelPlacement.Line
         pal_layer.dist = 1.0
