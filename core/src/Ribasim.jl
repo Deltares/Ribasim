@@ -33,6 +33,10 @@ using SciMLBase:
     VectorContinuousCallback,
     get_proposed_dt
 
+# Automatically detecting the sparsity pattern of the Jacobian of water_balance!
+# through operator overloading
+using SparseConnectivityTracer: TracerSparsityDetector, jacobian_sparsity, GradientTracer
+
 # PreallocationTools is used because the RHS function (water_balance!) gets called with different input types
 # for u, du:
 # - Float64 for normal calls
