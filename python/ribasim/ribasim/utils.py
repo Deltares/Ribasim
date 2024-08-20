@@ -71,7 +71,7 @@ def _time_in_ns(df) -> None:
 
 
 class UsedIDs(BaseModel):
-    """A helper class to manage global unique (node) IDs.
+    """A helper class to manage globally unique node IDs.
 
     We keep track of all IDs in the model,
     and keep track of the maximum to provide new IDs.
