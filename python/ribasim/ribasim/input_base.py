@@ -15,7 +15,6 @@ from typing import (
 import geopandas as gpd
 import numpy as np
 import pandas as pd
-import pandera as pa
 from pandera.typing import DataFrame
 from pandera.typing.geopandas import GeoDataFrame
 from pydantic import BaseModel as PydanticBaseModel
@@ -32,6 +31,7 @@ from pydantic import (
 )
 
 import ribasim
+from ribasim.schemas import _BaseSchema
 
 from .styles import _add_styles_to_geopackage
 
@@ -64,7 +64,7 @@ context_file_writing: ContextVar[dict[str, Any]] = ContextVar(
     "file_writing", default={}
 )
 
-TableT = TypeVar("TableT", bound=pa.DataFrameModel)
+TableT = TypeVar("TableT", bound=_BaseSchema)
 
 
 def esc_id(identifier: str) -> str:

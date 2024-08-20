@@ -14,6 +14,7 @@ from pydantic import NonNegativeInt, PrivateAttr
 from shapely.geometry import LineString, MultiLineString, Point
 
 from ribasim.input_base import SpatialTableModel
+from ribasim.schemas import _BaseSchema
 from ribasim.utils import UsedIDs
 
 __all__ = ("EdgeTable",)
@@ -33,19 +34,14 @@ class NodeData(NamedTuple):
     geometry: Point
 
 
-class EdgeSchema(pa.DataFrameModel):
-    edge_id: Index[Int32] = pa.Field(default=0, ge=0, check_name=True, coerce=True)
+class EdgeSchema(_BaseSchema):
+    edge_id: Index[Int32] = pa.Field(default=0, ge=0, check_name=True)
     name: Series[str] = pa.Field(default="")
-    from_node_id: Series[Int32] = pa.Field(default=0, coerce=True)
-    to_node_id: Series[Int32] = pa.Field(default=0, coerce=True)
-    edge_type: Series[str] = pa.Field(default="flow", coerce=True)
-    subnetwork_id: Series[pd.Int32Dtype] = pa.Field(
-        default=pd.NA, nullable=True, coerce=True
-    )
+    from_node_id: Series[Int32] = pa.Field(default=0)
+    to_node_id: Series[Int32] = pa.Field(default=0)
+    edge_type: Series[str] = pa.Field(default="flow")
+    subnetwork_id: Series[pd.Int32Dtype] = pa.Field(default=pd.NA, nullable=True)
     geometry: GeoSeries[Any] = pa.Field(default=None, nullable=True)
-
-    class Config:
-        add_missing_columns = True
 
     @classmethod
     def _index_name(self) -> str:
@@ -101,20 +97,19 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
                 f"Edge IDs have to be unique, but {edge_id} already exists."
             )
 
-        table_to_append = GeoDataFrame(
+        table_to_append = GeoDataFrame[EdgeSchema](
             data={
-                "edge_id": pd.Series([edge_id], dtype=np.int32),
-                "from_node_id": pd.Series([from_node.node_id], dtype=np.int32),
-                "to_node_id": pd.Series([to_node.node_id], dtype=np.int32),
-                "edge_type": pd.Series([edge_type], dtype=str),
-                "name": pd.Series([name], dtype=str),
-                "subnetwork_id": pd.Series([subnetwork_id], dtype=pd.Int32Dtype()),
+                "from_node_id": [from_node.node_id],
+                "to_node_id": [to_node.node_id],
+                "edge_type": [edge_type],
+                "name": [name],
+                "subnetwork_id": [subnetwork_id],
                 **kwargs,
             },
             geometry=geometry_to_append,
             crs=self.df.crs,
+            index=pd.Index([edge_id], name="edge_id"),
         )
-        table_to_append.set_index("edge_id", inplace=True)
 
         self.df = GeoDataFrame[EdgeSchema](pd.concat([self.df, table_to_append]))
         if self.df.duplicated(subset=["from_node_id", "to_node_id"]).any():

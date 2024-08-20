@@ -11,11 +11,12 @@ from pandera.typing import Index, Series
 from pandera.typing.geopandas import GeoSeries
 
 from ribasim.input_base import SpatialTableModel
+from ribasim.schemas import _BaseSchema
 
 __all__ = ("NodeTable",)
 
 
-class NodeSchema(pa.DataFrameModel):
+class NodeSchema(_BaseSchema):
     node_id: Index[Int32] = pa.Field(default=0, check_name=True)
     name: Series[str] = pa.Field(default="")
     node_type: Series[str] = pa.Field(default="")
@@ -23,10 +24,6 @@ class NodeSchema(pa.DataFrameModel):
         default=pd.NA, nullable=True, coerce=True
     )
     geometry: GeoSeries[Any] = pa.Field(default=None, nullable=True)
-
-    class Config:
-        add_missing_columns = True
-        coerce = True
 
     @classmethod
     def _index_name(self) -> str:

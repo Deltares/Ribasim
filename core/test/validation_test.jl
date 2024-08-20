@@ -281,10 +281,10 @@ end
     @test length(logger.logs) == 2
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
-          "Invalid edge type 'foo' for edge #0 from node #1 to node #2."
+          "Invalid edge type 'foo' for edge #1 from node #1 to node #2."
     @test logger.logs[2].level == Error
     @test logger.logs[2].message ==
-          "Invalid edge type 'bar' for edge #1 from node #2 to node #3."
+          "Invalid edge type 'bar' for edge #2 from node #2 to node #3."
 end
 
 @testitem "Subgrid validation" begin
