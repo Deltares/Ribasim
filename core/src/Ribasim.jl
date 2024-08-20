@@ -14,48 +14,10 @@ For more granular access, see:
 """
 module Ribasim
 
-import BasicModelInterface as BMI
-import HiGHS
-import IterTools
-import JuMP
-import LoggingExtras
-import TranscodingStreams
-
-using Accessors: @set
-using Arrow: Arrow, Table
-using CodecZstd: ZstdCompressor
-using ComponentArrays: ComponentVector, Axis
-using DataInterpolations:
-    LinearInterpolation,
-    LinearInterpolationIntInv,
-    invert_integral,
-    derivative,
-    integral,
-    AbstractInterpolation
-using Dates: Dates, DateTime, Millisecond, @dateformat_str
-using DBInterface: execute
-using DiffEqCallbacks:
-    FunctionCallingCallback,
-    PeriodicCallback,
-    PresetTimeCallback,
-    SavedValues,
-    SavingCallback
-using EnumX: EnumX, @enumx
-using ForwardDiff: pickchunksize
-using Graphs:
-    DiGraph, Edge, edges, inneighbors, nv, outneighbors, induced_subgraph, is_connected
-using Legolas: Legolas, @schema, @version, validate, SchemaVersion, declared
-using Logging: with_logger, @logmsg, LogLevel, AbstractLogger
-using MetaGraphsNext:
-    MetaGraphsNext,
-    MetaGraph,
-    label_for,
-    code_for,
-    labels,
-    outneighbor_labels,
-    inneighbor_labels
+# Algorithms for solving ODEs.
 using OrdinaryDiffEq: OrdinaryDiffEq, OrdinaryDiffEqRosenbrockAdaptiveAlgorithm, get_du
-using PreallocationTools: LazyBufferCache
+
+# Interface for defining and solving the ODE problem of the physical layer.
 using SciMLBase:
     init,
     solve!,
@@ -70,12 +32,108 @@ using SciMLBase:
     ODESolution,
     VectorContinuousCallback,
     get_proposed_dt
-using SQLite: SQLite, DB, Query, esc_id
-using StructArrays: StructVector
-using Tables: Tables, AbstractRow, columntable
-using TerminalLoggers: TerminalLogger
-using TimerOutputs: TimerOutputs, TimerOutput, @timeit_debug
+
+# Automatically detecting the sparsity pattern of the Jacobian of water_balance!
+# through operator overloading
 using SparseConnectivityTracer: TracerSparsityDetector, jacobian_sparsity, GradientTracer
+
+# PreallocationTools is used because the RHS function (water_balance!) gets called with different input types
+# for u, du:
+# - Float64 for normal calls
+# - Dual numbers for automatic differentiation with ForwardDiff
+# - GradientTracer for automatic Jacobian sparsity detection with SparseConnectivityTracer
+# The computations inside the rhs go trough preallocated arrays of the required type which are created by LazyBufferCache.
+# Retrieving a cache from a LazyBufferCache looks like indexing: https://docs.sciml.ai/PreallocationTools/stable/#LazyBufferCache
+using PreallocationTools: LazyBufferCache
+
+# Interpolation functionality, used for e.g.
+# basin profiles and TabulatedRatingCurve. See also the node
+# references in the docs.
+using DataInterpolations:
+    LinearInterpolation,
+    LinearInterpolationIntInv,
+    invert_integral,
+    derivative,
+    integral,
+    AbstractInterpolation
+
+# Modeling language for Mathematical Optimization.
+# Used for allocation, see the docs: https://ribasim.org/dev/allocation.html
+import JuMP
+# The optimization backend of JuMP.
+import HiGHS
+
+# The BMI is a standard for interacting with a Ribasim model,
+# see the docs: https://ribasim.org/dev/bmi.html
+import BasicModelInterface as BMI
+
+# Reading and writing optionally compressed Arrow tables
+using Arrow: Arrow, Table
+import TranscodingStreams
+using CodecZstd: ZstdCompressor
+# Reading GeoPackage files, which are SQLite databases with spatial data
+using SQLite: SQLite, DB, Query, esc_id
+using DBInterface: execute
+
+# Logging to both the console and a file
+using Logging: with_logger, @logmsg, LogLevel, AbstractLogger
+import LoggingExtras
+using TerminalLoggers: TerminalLogger
+
+# Convenience wrapper around arrays, divides vectors in
+# separate sections which can be indexed individually.
+# Used for e.g. Basin forcing and the state vector.
+using ComponentArrays: ComponentVector, Axis
+
+# Date and time handling; externally we use the proleptic Gregorian calendar,
+# internally we use a Float64; seconds since the start of the simulation.
+using Dates: Dates, DateTime, Millisecond, @dateformat_str
+
+# Callbacks are used to trigger function calls at specific points in the similation.
+# E.g. after each timestep for discrete control,
+# or at each saveat for saving storage and flow results.
+using DiffEqCallbacks:
+    FunctionCallingCallback,
+    PeriodicCallback,
+    PresetTimeCallback,
+    SavedValues,
+    SavingCallback
+
+# The network defined by the Node and Edge table is converted to a graph internally.
+using Graphs:
+    DiGraph, Edge, edges, inneighbors, nv, outneighbors, induced_subgraph, is_connected
+# Convenience functionality built on top of Graphs. Used to store e.g. node and edge metadata
+# alongside the graph. Extra metadata is stored in a NamedTuple retrieved as graph[].
+using MetaGraphsNext:
+    MetaGraphsNext,
+    MetaGraph,
+    label_for,
+    code_for,
+    labels,
+    outneighbor_labels,
+    inneighbor_labels
+
+# Improved enumeration type compared to Base, used for e.g. node types.
+using EnumX: EnumX, @enumx
+
+# Easily change an immutable field of an object.
+using Accessors: @set
+
+# Iteration utilities, used to partition and group tables.
+import IterTools
+
+# Define and validate the schemas of the input tables.
+using Legolas: Legolas, @schema, @version, validate, SchemaVersion, declared
+
+# Tables interface that works with either SQLite or Arrow tables.
+using Tables: Tables, AbstractRow, columntable
+
+# Wrapper around a vector of structs to easily retrieve the same field from all elements.
+using StructArrays: StructVector
+
+# TODO remove, not used
+using TimerOutputs: TimerOutputs, TimerOutput, @timeit_debug
+
 export libribasim
 
 const to = TimerOutput()
