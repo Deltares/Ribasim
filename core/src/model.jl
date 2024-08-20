@@ -108,13 +108,15 @@ function Model(config::Config)::Model
 
     storage = get_storages_from_levels(parameters.basin, state.level)
 
-    # Synchronize level with storage
-    set_current_basin_properties!(parameters.basin, storage)
-
     @assert length(storage) == n "Basin / state length differs from number of Basins"
     # Integrals for PID control
     integral = zeros(length(parameters.pid_control.node_id))
     u0 = ComponentVector{Float64}(; storage, integral)
+    du0 = zero(u0)
+
+    # Synchronize level with storage
+    set_current_basin_properties!(parameters.basin, u0, du0)
+
     # for Float32 this method allows max ~1000 year simulations without accuracy issues
     t_end = seconds_since(config.endtime, config.starttime)
     @assert eps(t_end) < 3600 "Simulation time too long"
@@ -126,7 +128,11 @@ function Model(config::Config)::Model
     tstops = sort(unique(vcat(tstops...)))
     adaptive, dt = convert_dt(config.solver.dt)
 
-    jac_prototype = config.solver.sparse ? get_jac_prototype(parameters) : nothing
+    jac_prototype = if config.solver.sparse
+        get_jac_prototype(du0, u0, parameters, t0)
+    else
+        nothing
+    end
     RHS = ODEFunction(water_balance!; jac_prototype)
 
     @timeit_debug to "Setup ODEProblem" begin
@@ -173,7 +179,7 @@ function Model(config::Config)::Model
     # Run water_balance! before initializing the integrator. This is because
     # at this initialization the discrete control callback is called for the first
     # time which depends on the flows formulated in water_balance!
-    water_balance!(copy(u0), u0, parameters, t0)
+    water_balance!(du0, u0, parameters, t0)
 
     # Initialize the integrator, providing all solver options as described in
     # https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/

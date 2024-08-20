@@ -104,7 +104,13 @@ function get_scalar_interpolation(
         push!(parameter, parameter[end])
     end
 
-    return LinearInterpolation(parameter, times; extrapolate = true), allunique(times)
+    return LinearInterpolation(
+        parameter,
+        times;
+        extrapolate = true,
+        cache_parameters = true,
+    ),
+    allunique(times)
 end
 
 """
@@ -120,7 +126,12 @@ function qh_interpolation(node_id::NodeID, table::StructVector)::ScalarInterpola
     pushfirst!(level, first(level) - 1)
     pushfirst!(flow_rate, first(flow_rate))
 
-    return LinearInterpolation(flow_rate, level; extrapolate = true)
+    return LinearInterpolation(
+        flow_rate,
+        level;
+        extrapolate = true,
+        cache_parameters = true,
+    )
 end
 
 """
@@ -218,19 +229,14 @@ end
 """
 Get the current water level of a node ID.
 The ID can belong to either a Basin or a LevelBoundary.
-storage: tells ForwardDiff whether this call is for differentiation or not
+du: tells ForwardDiff whether this call is for differentiation or not
 """
-function get_level(
-    p::Parameters,
-    node_id::NodeID,
-    t::Number;
-    storage::Union{AbstractArray, Number} = 0,
-)::Tuple{Bool, Number}
+function get_level(p::Parameters, node_id::NodeID, t::Number, du)::Tuple{Bool, Number}
     (; basin, level_boundary) = p
     if node_id.type == NodeType.Basin
         # The edge metadata is only used to obtain the Basin index
         # in case node_id is for a Basin
-        current_level = get_tmp(basin.current_level, storage)
+        current_level = basin.current_level[parent(du)]
         return true, current_level[node_id.idx]
     elseif node_id.type == NodeType.LevelBoundary
         return true, level_boundary.level[node_id.idx](t)
@@ -534,8 +540,8 @@ function get_influx(basin::Basin, node_id::NodeID)::Float64
 end
 
 function get_influx(basin::Basin, basin_idx::Int; prev::Bool = false)::Float64
-    (; vertical_flux, vertical_flux_prev) = basin
-    vertical_flux = get_tmp(vertical_flux, 0)
+    (; vertical_flux, vertical_flux_prev, vertical_flux_from_input) = basin
+    vertical_flux = wrap_forcing(vertical_flux[parent(vertical_flux_from_input)])
     flux_vector = prev ? vertical_flux_prev : vertical_flux
     (; precipitation, evaporation, drainage, infiltration) = flux_vector
     return precipitation[basin_idx] - evaporation[basin_idx] + drainage[basin_idx] -
@@ -553,22 +559,21 @@ as input. Therefore we set the instantaneous flows as the mean flows as allocati
 """
 function set_initial_allocation_mean_flows!(integrator)::Nothing
     (; u, p, t) = integrator
-    (; allocation, graph, basin) = p
+    (; allocation, graph) = p
     (; mean_input_flows, mean_realized_flows, allocation_models) = allocation
     (; Δt_allocation) = allocation_models[1]
-    (; vertical_flux) = basin
-    vertical_flux = get_tmp(vertical_flux, 0)
 
     # At the time of writing water_balance! already
     # gets called once at the problem initialization, this
     # one is just to make sure.
-    water_balance!(get_du(integrator), u, p, t)
+    du = get_du(integrator)
+    water_balance!(du, u, p, t)
 
     for edge in keys(mean_input_flows)
         if edge[1] == edge[2]
-            q = get_influx(basin, edge[1])
+            q = get_influx(p.basin, edge[1])
         else
-            q = get_flow(graph, edge..., 0)
+            q = get_flow(graph, edge..., du)
         end
         # Multiply by Δt_allocation as averaging divides by this factor
         # in update_allocation!
@@ -581,7 +586,7 @@ function set_initial_allocation_mean_flows!(integrator)::Nothing
         if edge[1] == edge[2]
             mean_realized_flows[edge] = -u[edge[1].idx]
         else
-            q = get_flow(graph, edge..., 0)
+            q = get_flow(graph, edge..., du)
             mean_realized_flows[edge] = q * Δt_allocation
         end
     end
@@ -607,11 +612,11 @@ end
 Get the reference to a parameter
 """
 function get_variable_ref(
-    p::Parameters{T},
+    p::Parameters,
     node_id::NodeID,
     variable::String;
     listen::Bool = true,
-)::Tuple{PreallocationRef{T}, Bool} where {T}
+)::Tuple{PreallocationRef, Bool}
     (; basin, graph) = p
     errors = false
 
@@ -683,13 +688,16 @@ function set_discrete_controlled_variable_refs!(p::Parameters)::Nothing
 
                 # References to scalar parameters
                 for (i, parameter_update) in enumerate(scalar_update)
-                    field = get_tmp(getfield(node, parameter_update.name), 0)
+                    field = getfield(node, parameter_update.name)
+                    if field isa Cache
+                        field = field[Float64[]]
+                    end
                     scalar_update[i] = @set parameter_update.ref = Ref(field, node_id.idx)
                 end
 
                 # References to interpolation parameters
                 for (i, parameter_update) in enumerate(itp_update)
-                    field = get_tmp(getfield(node, parameter_update.name), 0)
+                    field = getfield(node, parameter_update.name)
                     itp_update[i] = @set parameter_update.ref = Ref(field, node_id.idx)
                 end
 
@@ -809,8 +817,38 @@ function set_previous_flows!(integrator)
     du = get_du(integrator)
     water_balance!(du, u, p, t)
 
-    flow = get_tmp(flow, 0)
-    vertical_flux = get_tmp(vertical_flux, 0)
+    flow = flow[parent(u)]
+    vertical_flux = vertical_flux[parent(u)]
     copyto!(flow_prev, flow)
     copyto!(vertical_flux_prev, vertical_flux)
 end
+
+"""
+Split the single forcing vector into views of the components
+precipitation, evaporation, drainage, infiltration
+"""
+function wrap_forcing(vector)
+    n = length(vector) ÷ 4
+    (;
+        precipitation = view(vector, 1:n),
+        evaporation = view(vector, (n + 1):(2n)),
+        drainage = view(vector, (2n + 1):(3n)),
+        infiltration = view(vector, (3n + 1):(4n)),
+    )
+end
+
+function get_jac_prototype(du0, u0, p, t0)
+    p.all_nodes_active[] = true
+    jac_prototype = jacobian_sparsity(
+        (du, u) -> water_balance!(du, u, p, t0),
+        du0,
+        u0,
+        TracerSparsityDetector(),
+    )
+    p.all_nodes_active[] = false
+    jac_prototype
+end
+
+# Custom overloads
+(A::AbstractInterpolation)(t::GradientTracer) = t
+reduction_factor(x::GradientTracer, threshold::Real) = x

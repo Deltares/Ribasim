@@ -24,9 +24,14 @@ import TranscodingStreams
 using Accessors: @set
 using Arrow: Arrow, Table
 using CodecZstd: ZstdCompressor
-using ComponentArrays: ComponentVector
+using ComponentArrays: ComponentVector, Axis
 using DataInterpolations:
-    LinearInterpolation, LinearInterpolationIntInv, invert_integral, derivative, integral
+    LinearInterpolation,
+    LinearInterpolationIntInv,
+    invert_integral,
+    derivative,
+    integral,
+    AbstractInterpolation
 using Dates: Dates, DateTime, Millisecond, @dateformat_str
 using DBInterface: execute
 using DiffEqCallbacks:
@@ -50,10 +55,9 @@ using MetaGraphsNext:
     outneighbor_labels,
     inneighbor_labels
 using NonlinearSolve: solve
+using PreallocationTools: LazyBufferCache
 using OrdinaryDiffEq:
     OrdinaryDiffEq, OrdinaryDiffEqRosenbrockAdaptiveAlgorithm, get_du, SteadyStateProblem
-using PreallocationTools: DiffCache, get_tmp
-using ReadOnlyArrays: ReadOnlyVector
 using SciMLBase:
     init,
     solve!,
@@ -68,14 +72,13 @@ using SciMLBase:
     ODESolution,
     VectorContinuousCallback,
     get_proposed_dt
-using SparseArrays: SparseMatrixCSC, spzeros
 using SteadyStateDiffEq: DynamicSS
 using SQLite: SQLite, DB, Query, esc_id
 using StructArrays: StructVector
 using Tables: Tables, AbstractRow, columntable
 using TerminalLoggers: TerminalLogger
 using TimerOutputs: TimerOutputs, TimerOutput, @timeit_debug
-
+using SparseConnectivityTracer: TracerSparsityDetector, jacobian_sparsity, GradientTracer
 export libribasim
 
 const to = TimerOutput()
@@ -91,7 +94,6 @@ include("logging.jl")
 include("allocation_init.jl")
 include("allocation_optim.jl")
 include("util.jl")
-include("sparsity.jl")
 include("graph.jl")
 include("model.jl")
 include("read.jl")

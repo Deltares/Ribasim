@@ -389,8 +389,8 @@ function valid_tabulated_curve_level(
             basin_bottom_level = basin_bottom(basin, id_in)[2]
             # the second level is the bottom, the first is added to control extrapolation
             if table.t[1] + 1.0 < basin_bottom_level
-                @error "Lowest levels of $id is lower than bottom of upstream $id_in" table.t[1] +
-                                                                                      1.0 basin_bottom_level
+                @error "Lowest level of $id is lower than bottom of upstream $id_in" table.t[1] +
+                                                                                     1.0 basin_bottom_level
                 errors = true
             end
         end

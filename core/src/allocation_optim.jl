@@ -306,12 +306,10 @@ function get_basin_data(
     u::ComponentVector,
     node_id::NodeID,
 )
-    (; graph, basin, allocation) = p
-    (; vertical_flux) = basin
+    (; graph, allocation) = p
     (; Δt_allocation) = allocation_model
     (; mean_input_flows) = allocation
     @assert node_id.type == NodeType.Basin
-    vertical_flux = get_tmp(vertical_flux, 0)
     influx = mean_input_flows[(node_id, node_id)][]
     storage_basin = u.storage[node_id.idx]
     control_inneighbors = inneighbor_labels_type(graph, node_id, EdgeType.control)
@@ -499,6 +497,7 @@ to the capacity of the outflow source.
 function adjust_capacities_returnflow!(
     allocation_model::AllocationModel,
     p::Parameters,
+    t::Float64,
 )::Nothing
     (; graph, user_demand) = p
     (; problem) = allocation_model
@@ -509,7 +508,7 @@ function adjust_capacities_returnflow!(
         constraint = constraints_outflow[node_id]
         capacity =
             JuMP.normalized_rhs(constraint) +
-            user_demand.return_factor[node_id.idx] *
+            user_demand.return_factor[node_id.idx](t) *
             JuMP.value(F[(inflow_id(graph, node_id), node_id)])
 
         JuMP.set_normalized_rhs(constraint, capacity)
@@ -973,7 +972,7 @@ function optimize_priority!(
     adjust_capacities_edge!(allocation_model)
     adjust_capacities_basin!(allocation_model)
     adjust_capacities_buffer!(allocation_model)
-    adjust_capacities_returnflow!(allocation_model, p)
+    adjust_capacities_returnflow!(allocation_model, p, t)
 
     # Adjust demands for next optimization (in case of internal_sources -> collect_demands)
     for parameter in propertynames(p)
