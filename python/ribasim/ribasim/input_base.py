@@ -338,7 +338,7 @@ class TableModel(FileModel, Generic[TableT]):
     def columns(cls) -> list[str]:
         """Retrieve column names."""
         T = cls.tableschema()
-        return list(T.to_schema().columns.keys()) + [T.to_schema().index.name]
+        return list(T.to_schema().columns.keys())
 
     def __repr__(self) -> str:
         # Make sure not to return just "None", because it gets extremely confusing

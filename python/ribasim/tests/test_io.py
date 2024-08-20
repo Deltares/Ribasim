@@ -11,6 +11,7 @@ from pandas.testing import assert_frame_equal
 from pydantic import ValidationError
 from ribasim import Model, Node, Solver
 from ribasim.nodes import basin, pump, user_demand
+from ribasim.utils import UsedIDs
 from shapely.geometry import Point
 
 
@@ -132,7 +133,33 @@ def test_extra_spatial_columns():
         model.edge.add(model.basin[1], model.user_demand[2], foo=1)
 
 
-def test_autoincrement():
+def test_edge_autoincrement(basic):
+    model = basic
+    model.edge.df = model.edge.df.iloc[0:0]  # clear the table
+    model.edge._used_edge_ids = UsedIDs()  # and reset the counter
+
+    model.edge.add(model.basin[1], model.manning_resistance[2], edge_id=20)
+    assert model.edge.df.index[-1] == 20
+
+    model.edge.add(model.manning_resistance[2], model.basin[3])
+    assert model.edge.df.index[-1] == 21
+
+    # Can use any remaining positive integer
+    model.edge.add(model.basin[3], model.tabulated_rating_curve[8], edge_id=1)
+    assert model.edge.df.index[-1] == 1
+
+    with pytest.raises(
+        ValueError,
+        match="Edge IDs have to be unique, but 1 already exists.",
+    ):
+        model.edge.add(
+            model.linear_resistance[10],
+            model.level_boundary[17],
+            edge_id=1,
+        )
+
+
+def test_node_autoincrement():
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
