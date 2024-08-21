@@ -449,33 +449,6 @@ end
     @test occursin("Basin #11 = ", output)
 end
 
-@testitem "Unnecessary priority of demand nodes in a model" begin
-    using Ribasim
-    using Logging
-    using IOCapture: capture
-
-    toml_path = normpath(@__DIR__, "../../generated_testmodels/flow_demand/ribasim.toml")
-    @test ispath(toml_path)
-
-    config = Ribasim.Config(toml_path; allocation_use_allocation = false)
-
-    logger = TestLogger()
-    with_logger(logger) do
-        Ribasim.run(config)
-    end
-    @test length(logger.logs) == 4
-    @test logger.logs[1].level == Warn
-    @test logger.logs[1].message ==
-          "Priority parameter(s) are specified for a demand node but allocation is not active."
-    @test logger.logs[2].message ==
-          "Priority parameter(s) are specified for a demand node but allocation is not active."
-
-    @test logger.logs[3].message ==
-          "Priority parameter(s) are specified for a demand node but allocation is not active."
-    @test logger.logs[4].message ==
-          "Priority parameter(s) are specified for a demand node but allocation is not active."
-end
-
 @testitem "Missing priority when allocation is active" begin
     using Ribasim
     using Logging

@@ -671,8 +671,6 @@ function valid_priorities(priorities::Vector, use_allocation::Bool)::Bool
     errors = false
     if 0 in priorities && use_allocation
         errors = true
-    elseif !all(y -> y == 0, priorities) && !use_allocation
-        @warn "Priority parameter(s) are specified for a demand node but allocation is not active."
     end
     return !errors
 end
