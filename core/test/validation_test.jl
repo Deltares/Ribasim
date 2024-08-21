@@ -445,23 +445,52 @@ end
     @test occursin("Basin #11 = ", output)
 end
 
-@testitem "Unnecessary priority of demand nodes in a model" skip = true begin
-    using Ribasim: valid_priorities, UserDemand, LevelDemand, FlowDemand
+@testitem "Unnecessary priority of demand nodes in a model" begin
+    using Ribasim
     using Logging
     using IOCapture: capture
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/flow_demand/ribasim.toml")
     @test ispath(toml_path)
 
-    config = Ribasim.Config(toml_path; allocation.use_allocation = false)
+    config = Ribasim.Config(toml_path; allocation_use_allocation = false)
 
     logger = TestLogger()
     with_logger(logger) do
-        @test !Ribasim.valid_outlet_crest_level!(graph, outlet, basin)
+        Ribasim.run(config)
     end
-    @test occursin(
-        "Warning: Convergence bottlenecks in descending order of severity:",
-        output,
-    )
-    @test occursin("Basin #11 = ", output)
+    @test length(logger.logs) == 4
+    @test logger.logs[1].level == Warn
+    @test logger.logs[1].message ==
+          "Priority parameter(s) are specified for a demand node but allocation is not active."
+    @test logger.logs[2].message ==
+          "Priority parameter(s) are specified for a demand node but allocation is not active."
+
+    @test logger.logs[3].message ==
+          "Priority parameter(s) are specified for a demand node but allocation is not active."
+    @test logger.logs[4].message ==
+          "Priority parameter(s) are specified for a demand node but allocation is not active."
+end
+
+@testitem "Missing priority when allocation is active" begin
+    using Ribasim
+    using Logging
+    using IOCapture: capture
+
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/invalid_priorities/ribasim.toml")
+    @test ispath(toml_path)
+
+    config = Ribasim.Config(toml_path; allocation_use_allocation = true)
+
+    logger = TestLogger()
+    with_logger(logger) do
+        @test_throws "Priority parameter is missing" Ribasim.run(config)
+    end
+    @test length(logger.logs) == 2
+    @test logger.logs[1].level == Error
+    @test logger.logs[1].message ==
+          "Missing priority parameter(s) for a Ribasim.UserDemandStaticV1 node in the allocation problem."
+    @test logger.logs[2].message ==
+          "Missing priority parameter(s) for a Ribasim.FlowDemandStaticV1 node in the allocation problem."
 end

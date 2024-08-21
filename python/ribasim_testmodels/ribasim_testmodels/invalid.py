@@ -1,14 +1,17 @@
 from typing import Any
 
-from ribasim.config import Node, Solver
+from ribasim.config import Allocation, Node, Solver
 from ribasim.input_base import TableModel
 from ribasim.model import Model
 from ribasim.nodes import (
     basin,
     discrete_control,
     flow_boundary,
+    flow_demand,
+    level_boundary,
     pump,
     tabulated_rating_curve,
+    user_demand,
 )
 from shapely.geometry import Point
 
@@ -161,4 +164,68 @@ def invalid_unstable_model() -> Model:
 
         model.edge.add(model.basin[1 + id_shift * i], model.pump[2 + id_shift * i])
         model.edge.add(model.pump[2 + id_shift * i], model.terminal[3 + id_shift * i])
+    return model
+
+
+def invalid_priorities_model() -> Model:
+    """Model with allocation active but missing priority parameter(s)."""
+
+    model = Model(
+        starttime="2020-01-01 00:00:00",
+        endtime="2021-01-01 00:00:00",
+        crs="EPSG:28992",
+        allocation=Allocation(use_allocation=True, timestep=1e5),
+    )
+
+    model.tabulated_rating_curve.add(
+        Node(2, Point(1, 0), subnetwork_id=2),
+        [tabulated_rating_curve.Static(level=[0.0, 1.0], flow_rate=[0.0, 2e-3])],
+    )
+
+    model.level_boundary.add(
+        Node(1, Point(0, 0), subnetwork_id=2),
+        [level_boundary.Static(node_id=[1], level=[1.0])],
+    )
+
+    model.basin.add(
+        Node(3, Point(2, 0), subnetwork_id=2),
+        [basin.Profile(area=1e3, level=[0.0, 1.0]), basin.State(level=[1.0])],
+    )
+    model.basin.add(
+        Node(7, Point(3, -1), subnetwork_id=2),
+        [basin.Profile(area=1e3, level=[0.0, 1.0]), basin.State(level=[1.0])],
+    )
+
+    model.user_demand.add(
+        Node(4, Point(3, 0), subnetwork_id=2),
+        [user_demand.Static(demand=[1e-3], return_factor=1.0, min_level=0.2)],
+    )
+    model.user_demand.add(
+        Node(6, Point(2, -1), subnetwork_id=2),
+        [user_demand.Static(demand=[1e-3], return_factor=1.0, min_level=0.2)],
+    )
+    model.user_demand.add(
+        Node(8, Point(3, -2), subnetwork_id=2),
+        [user_demand.Static(demand=[2e-3], return_factor=1.0, min_level=0.2)],
+    )
+
+    model.flow_demand.add(
+        Node(5, Point(1, -1), subnetwork_id=2),
+        [flow_demand.Static(demand=[2e-3])],
+    )
+
+    model.edge.add(
+        model.level_boundary[1],
+        model.tabulated_rating_curve[2],
+        subnetwork_id=2,
+    )
+    model.edge.add(model.tabulated_rating_curve[2], model.basin[3])
+    model.edge.add(model.basin[3], model.user_demand[4])
+    model.edge.add(model.user_demand[4], model.basin[7])
+    model.edge.add(model.basin[7], model.user_demand[8])
+    model.edge.add(model.user_demand[8], model.basin[7])
+    model.edge.add(model.basin[3], model.user_demand[6])
+    model.edge.add(model.user_demand[6], model.basin[7])
+    model.edge.add(model.flow_demand[5], model.tabulated_rating_curve[2])
+
     return model

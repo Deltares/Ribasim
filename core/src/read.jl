@@ -1008,9 +1008,6 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)::UserDemand
 
     # Initialize vectors for UserDemand fields
     priorities = get_all_priorities(db, config)
-    if !valid_priorities(priorities, config.allocation.use_allocation)
-        error("The priority parameter is missing for UserDemand node")
-    end
     n_user = length(node_ids)
     n_priority = length(priorities)
     active = fill(true, n_user)
@@ -1094,10 +1091,6 @@ function LevelDemand(db::DB, config::Config)::LevelDemand
 
     (; node_id) = parsed_parameters
 
-    if !valid_priorities(parsed_parameters.priority, config.allocation.use_allocation)
-        error("The priority parameter is missing for LevelDemand node")
-    end
-
     return LevelDemand(
         NodeID.(NodeType.LevelDemand, node_id, eachindex(node_id)),
         parsed_parameters.min_level,
@@ -1125,10 +1118,6 @@ function FlowDemand(db::DB, config::Config)::FlowDemand
 
     demand = zeros(length(parsed_parameters.node_id))
     (; node_id) = parsed_parameters
-
-    if !valid_priorities(parsed_parameters.priority, config.allocation.use_allocation)
-        error("The priority parameter is missing for FlowDemand node")
-    end
 
     return FlowDemand(;
         node_id = NodeID.(NodeType.FlowDemand, node_id, eachindex(node_id)),
