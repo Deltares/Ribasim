@@ -120,7 +120,11 @@ function parse_static_and_time(
                         val = defaults[parameter_name]
                     end
                     if parameter_name in time_interpolatables
-                        val = LinearInterpolation([val, val], trivial_timespan)
+                        val = LinearInterpolation(
+                            [val, val],
+                            trivial_timespan;
+                            cache_parameters = true,
+                        )
                     end
                     # Collect the parameter values in the parameter_values vector
                     push!(parameter_values, val)
@@ -458,7 +462,7 @@ function FlowBoundary(db::DB, config::Config, graph::MetaGraph)::FlowBoundary
     )
 end
 
-function Pump(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{Int})::Pump
+function Pump(db::DB, config::Config, graph::MetaGraph)::Pump
     static = load_structvector(db, config, PumpStaticV1)
     defaults = (; min_flow_rate = 0.0, max_flow_rate = Inf, active = true)
     parsed_parameters, valid = parse_static_and_time(db, config, Pump; static, defaults)
@@ -467,14 +471,11 @@ function Pump(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{Int}
         error("Errors occurred when parsing Pump data.")
     end
 
-    # If flow rate is set by PID control, it is part of the AD Jacobian computations
-    flow_rate = if config.solver.autodiff
-        DiffCache(parsed_parameters.flow_rate, chunk_sizes)
-    else
-        parsed_parameters.flow_rate
-    end
-
     (; node_id) = parsed_parameters
+
+    # If flow rate is set by PID control, it is part of the AD Jacobian computations
+    flow_rate = cache(length(node_id))
+    flow_rate[Float64[]] .= parsed_parameters.flow_rate
 
     return Pump(;
         node_id,
@@ -488,7 +489,7 @@ function Pump(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{Int}
     )
 end
 
-function Outlet(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{Int})::Outlet
+function Outlet(db::DB, config::Config, graph::MetaGraph)::Outlet
     static = load_structvector(db, config, OutletStaticV1)
     defaults =
         (; min_flow_rate = 0.0, max_flow_rate = Inf, min_crest_level = -Inf, active = true)
@@ -498,19 +499,16 @@ function Outlet(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{In
         error("Errors occurred when parsing Outlet data.")
     end
 
-    # If flow rate is set by PID control, it is part of the AD Jacobian computations
-    flow_rate = if config.solver.autodiff
-        DiffCache(parsed_parameters.flow_rate, chunk_sizes)
-    else
-        parsed_parameters.flow_rate
-    end
-
     node_id =
         NodeID.(
             NodeType.Outlet,
             parsed_parameters.node_id,
             eachindex(parsed_parameters.node_id),
         )
+
+    # If flow rate is set by PID control, it is part of the AD Jacobian computations
+    flow_rate = cache(length(node_id))
+    flow_rate[Float64[], length(node_id)] .= parsed_parameters.flow_rate
 
     return Outlet(;
         node_id,
@@ -530,11 +528,11 @@ function Terminal(db::DB, config::Config)::Terminal
     return Terminal(NodeID.(NodeType.Terminal, node_id, eachindex(node_id)))
 end
 
-function Basin(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{Int})::Basin
+function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     node_id = get_ids(db, "Basin")
     n = length(node_id)
-    current_level = zeros(n)
-    current_area = zeros(n)
+    current_level = cache(n)
+    current_area = cache(n)
 
     precipitation = zeros(n)
     potential_evaporation = zeros(n)
@@ -555,21 +553,15 @@ function Basin(db::DB, config::Config, graph::MetaGraph, chunk_sizes::Vector{Int
 
     vertical_flux_from_input =
         ComponentVector(; precipitation, potential_evaporation, drainage, infiltration)
-    vertical_flux = ComponentVector(;
+    vertical_flux = cache(4 * n)
+    vertical_flux_prev = ComponentVector(;
         precipitation = copy(precipitation),
         evaporation,
         drainage = copy(drainage),
         infiltration = copy(infiltration),
     )
-    vertical_flux_prev = zero(vertical_flux)
-    vertical_flux_integrated = zero(vertical_flux)
-    vertical_flux_bmi = zero(vertical_flux)
-
-    if config.solver.autodiff
-        current_level = DiffCache(current_level, chunk_sizes)
-        current_area = DiffCache(current_area, chunk_sizes)
-        vertical_flux = DiffCache(vertical_flux, chunk_sizes)
-    end
+    vertical_flux_integrated = zero(vertical_flux_prev)
+    vertical_flux_bmi = zero(vertical_flux_prev)
 
     demand = zeros(length(node_id))
 
@@ -654,7 +646,7 @@ function CompoundVariable(
 )::CompoundVariable
     subvariables = @NamedTuple{
         listen_node_id::NodeID,
-        variable_ref::PreallocationRef{typeof(placeholder_vector)},
+        variable_ref::PreallocationRef,
         variable::String,
         weight::Float64,
         look_ahead::Float64,
@@ -680,7 +672,7 @@ end
 
 function parse_variables_and_conditions(compound_variable, condition, ids, db, graph)
     placeholder_vector = graph[].flow
-    compound_variables = Vector{CompoundVariable{typeof(placeholder_vector)}}[]
+    compound_variables = Vector{CompoundVariable}[]
     errors = false
 
     # Loop over unique discrete_control node IDs
@@ -796,6 +788,7 @@ function continuous_control_functions(db, config, ids)
             function_rows.output,
             function_rows.input;
             extrapolate = true,
+            cache_parameters = true,
         )
 
         push!(functions, function_itp)
@@ -815,7 +808,7 @@ function continuous_control_compound_variables(
     placeholder_vector = graph[].flow
 
     data = load_structvector(db, config, ContinuousControlVariableV1)
-    compound_variables = CompoundVariable{typeof(placeholder_vector)}[]
+    compound_variables = CompoundVariable[]
 
     # Loop over the ContinuousControl node IDs
     for id in ids
@@ -844,7 +837,7 @@ function ContinuousControl(db::DB, config::Config, graph::MetaGraph)::Continuous
     compound_variable = continuous_control_compound_variables(db, config, ids, graph)
 
     # References to the controlled parameters, filled in later when they are known
-    target_refs = PreallocationRef{typeof(graph[].flow)}[]
+    target_refs = PreallocationRef[]
 
     if errors
         error("Errors encountered when parsing ContinuousControl data.")
@@ -859,12 +852,7 @@ function ContinuousControl(db::DB, config::Config, graph::MetaGraph)::Continuous
     )
 end
 
-function PidControl(
-    db::DB,
-    config::Config,
-    graph::MetaGraph,
-    chunk_sizes::Vector{Int},
-)::PidControl
+function PidControl(db::DB, config::Config, graph::MetaGraph)::PidControl
     static = load_structvector(db, config, PidControlStaticV1)
     time = load_structvector(db, config, PidControlTimeV1)
 
@@ -882,12 +870,8 @@ function PidControl(
         error("Errors occurred when parsing PidControl data.")
     end
 
-    pid_error = zeros(length(node_ids))
-
-    if config.solver.autodiff
-        pid_error = DiffCache(pid_error, chunk_sizes)
-    end
-    target_ref = PreallocationRef{typeof(pid_error)}[]
+    pid_error = cache(length(node_ids))
+    target_ref = PreallocationRef[]
 
     controlled_basins = Set{NodeID}()
     for id in node_ids
@@ -921,7 +905,7 @@ function user_demand_static!(
     active::Vector{Bool},
     demand::Matrix{Float64},
     demand_itp::Vector{Vector{ScalarInterpolation}},
-    return_factor::Vector{Float64},
+    return_factor::Vector{ScalarInterpolation},
     min_level::Vector{Float64},
     static::StructVector{UserDemandStaticV1},
     ids::Vector{Int32},
@@ -932,7 +916,12 @@ function user_demand_static!(
         user_demand_idx = searchsortedfirst(ids, first_row.node_id)
 
         active[user_demand_idx] = coalesce(first_row.active, true)
-        return_factor[user_demand_idx] = first_row.return_factor
+        return_factor_old = return_factor[user_demand_idx]
+        return_factor[user_demand_idx] = LinearInterpolation(
+            fill(first_row.return_factor, 2),
+            return_factor_old.t;
+            extrapolate = true,
+        )
         min_level[user_demand_idx] = first_row.min_level
 
         for row in group
@@ -943,6 +932,7 @@ function user_demand_static!(
                 fill(demand_row, 2),
                 demand_itp_old.t;
                 extrapolate = true,
+                cache_parameters = true,
             )
             demand[user_demand_idx, priority_idx] = demand_row
         end
@@ -955,7 +945,7 @@ function user_demand_time!(
     demand::Matrix{Float64},
     demand_itp::Vector{Vector{ScalarInterpolation}},
     demand_from_timeseries::Vector{Bool},
-    return_factor::Vector{Float64},
+    return_factor::Vector{ScalarInterpolation},
     min_level::Vector{Float64},
     time::StructVector{UserDemandTimeV1},
     ids::Vector{Int32},
@@ -971,11 +961,24 @@ function user_demand_time!(
 
         active[user_demand_idx] = true
         demand_from_timeseries[user_demand_idx] = true
-        return_factor[user_demand_idx] = first_row.return_factor
+        return_factor_itp, is_valid_return = get_scalar_interpolation(
+            config.starttime,
+            t_end,
+            StructVector(group),
+            NodeID(:UserDemand, first_row.node_id, 0),
+            :return_factor;
+        )
+        if is_valid_return
+            return_factor[user_demand_idx] = return_factor_itp
+        else
+            @error "The return_factor(t) relationship for UserDemand $(first_row.node_id) from the time table has repeated timestamps, this can not be interpolated."
+            errors = true
+        end
+
         min_level[user_demand_idx] = first_row.min_level
 
         priority_idx = findsorted(priorities, first_row.priority)
-        demand_p_itp, is_valid = get_scalar_interpolation(
+        demand_p_itp, is_valid_demand = get_scalar_interpolation(
             config.starttime,
             t_end,
             StructVector(group),
@@ -985,10 +988,10 @@ function user_demand_time!(
         )
         demand[user_demand_idx, priority_idx] = demand_p_itp(0.0)
 
-        if is_valid
+        if is_valid_demand
             demand_itp[user_demand_idx][priority_idx] = demand_p_itp
         else
-            @error "The demand(t) relationship for UserDemand $node_id of priority $p from the time table has repeated timestamps, this can not be interpolated."
+            @error "The demand(t) relationship for UserDemand $(first_row.node_id) of priority $(first_row.priority_idx) from the time table has repeated timestamps, this can not be interpolated."
             errors = true
         end
     end
@@ -1017,12 +1020,14 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)::UserDemand
     trivial_timespan = [0.0, prevfloat(Inf)]
     demand_itp = [
         ScalarInterpolation[
-            LinearInterpolation(zeros(2), trivial_timespan) for i in eachindex(priorities)
+            LinearInterpolation(zeros(2), trivial_timespan; cache_parameters = true) for
+            i in eachindex(priorities)
         ] for j in eachindex(node_ids)
     ]
     demand_from_timeseries = fill(false, n_user)
     allocated = fill(Inf, n_user, n_priority)
-    return_factor = zeros(n_user)
+    return_factor =
+        [LinearInterpolation(zeros(2), trivial_timespan) for i in eachindex(node_ids)]
     min_level = zeros(n_user)
 
     # Process static table
@@ -1148,7 +1153,12 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
             # Ensure it doesn't extrapolate before the first value.
             pushfirst!(subgrid_level, first(subgrid_level))
             pushfirst!(basin_level, nextfloat(-Inf))
-            new_interp = LinearInterpolation(subgrid_level, basin_level; extrapolate = true)
+            new_interp = LinearInterpolation(
+                subgrid_level,
+                basin_level;
+                extrapolate = true,
+                cache_parameters = true,
+            )
             push!(subgrid_ids, subgrid_id)
             push!(basin_index, node_to_basin[node_id])
             push!(interpolations, new_interp)
@@ -1208,23 +1218,9 @@ function Allocation(db::DB, config::Config, graph::MetaGraph)::Allocation
     )
 end
 
-"""
-Get the chunk sizes for DiffCache; differentiation w.r.t. u
-and t (the latter only if a Rosenbrock algorithm is used).
-"""
-function get_chunk_sizes(config::Config, n_states::Int)::Vector{Int}
-    chunk_sizes = [pickchunksize(n_states)]
-    if Ribasim.config.algorithms[config.solver.algorithm] <:
-       OrdinaryDiffEqRosenbrockAdaptiveAlgorithm
-        push!(chunk_sizes, 1)
-    end
-    return chunk_sizes
-end
-
 function Parameters(db::DB, config::Config)::Parameters
     n_states = length(get_ids(db, "Basin")) + length(get_ids(db, "PidControl"))
-    chunk_sizes = get_chunk_sizes(config, n_states)
-    graph = create_graph(db, config, chunk_sizes)
+    graph = create_graph(db, config)
     allocation = Allocation(db, config, graph)
 
     if !valid_edges(graph)
@@ -1234,19 +1230,19 @@ function Parameters(db::DB, config::Config)::Parameters
         error("Invalid number of connections for certain node types.")
     end
 
-    basin = Basin(db, config, graph, chunk_sizes)
+    basin = Basin(db, config, graph)
 
     linear_resistance = LinearResistance(db, config, graph)
     manning_resistance = ManningResistance(db, config, graph, basin)
     tabulated_rating_curve = TabulatedRatingCurve(db, config, graph)
     level_boundary = LevelBoundary(db, config)
     flow_boundary = FlowBoundary(db, config, graph)
-    pump = Pump(db, config, graph, chunk_sizes)
-    outlet = Outlet(db, config, graph, chunk_sizes)
+    pump = Pump(db, config, graph)
+    outlet = Outlet(db, config, graph)
     terminal = Terminal(db, config)
     discrete_control = DiscreteControl(db, config, graph)
     continuous_control = ContinuousControl(db, config, graph)
-    pid_control = PidControl(db, config, graph, chunk_sizes)
+    pid_control = PidControl(db, config, graph)
     user_demand = UserDemand(db, config, graph)
     level_demand = LevelDemand(db, config)
     flow_demand = FlowDemand(db, config)

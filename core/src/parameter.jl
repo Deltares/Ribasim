@@ -92,12 +92,26 @@ end
 Base.to_index(id::NodeID) = Int(id.value)
 
 const ScalarInterpolation = LinearInterpolation{
-    ReadOnlyVector{Float64, Vector{Float64}},
-    ReadOnlyVector{Float64, Vector{Float64}},
+    Vector{Float64},
+    Vector{Float64},
     Vector{Float64},
     Vector{Float64},
     Float64,
 }
+
+set_zero!(v) = fill!(v, zero(eltype(v)))
+const Cache = LazyBufferCache{Returns{Int}, typeof(set_zero!)}
+
+"""
+Cache for in place computations within water_balance!, with different eltypes
+for different situations:
+- Symbolics.Num for Jacobian sparsity detection
+- ForwardDiff.Dual for automatic differentiation
+- Float64 for normal calls
+
+The caches are always initialized with zeros
+"""
+cache(len::Int)::Cache = LazyBufferCache(Returns(len); initializer! = set_zero!)
 
 """
 Store information for a subnetwork used for allocation.
@@ -270,23 +284,23 @@ else
     T = Vector{Float64}
 end
 """
-@kwdef struct Basin{T, C, V1, V2, V3} <: AbstractParameterNode
+@kwdef struct Basin{C, V1, V2} <: AbstractParameterNode
     node_id::Vector{NodeID}
     inflow_ids::Vector{Vector{NodeID}} = [NodeID[]]
     outflow_ids::Vector{Vector{NodeID}} = [NodeID[]]
     # Vertical fluxes
     vertical_flux_from_input::V1 = zeros(length(node_id))
-    vertical_flux::V2 = zeros(length(node_id))
-    vertical_flux_prev::V3 = zeros(length(node_id))
-    vertical_flux_integrated::V3 = zeros(length(node_id))
-    vertical_flux_bmi::V3 = zeros(length(node_id))
+    vertical_flux::Cache = cache(length(node_id))
+    vertical_flux_prev::V2 = zeros(length(node_id))
+    vertical_flux_integrated::V2 = zeros(length(node_id))
+    vertical_flux_bmi::V2 = zeros(length(node_id))
     # Cache this to avoid recomputation
-    current_level::T = zeros(length(node_id))
-    current_area::T = zeros(length(node_id))
+    current_level::Cache = cache(length(node_id))
+    current_area::Cache = cache(length(node_id))
     # Discrete values for interpolation
     storage_to_level::Vector{
         LinearInterpolationIntInv{
-            ReadOnlyVector{Float64, Vector{Float64}},
+            Vector{Float64},
             Vector{Float64},
             ScalarInterpolation,
             Float64,
@@ -443,12 +457,12 @@ max_flow_rate: The maximum flow rate of the pump
 control_mapping: dictionary from (node_id, control_state) to target flow rate
 continuous_control_type: one of None, ContinuousControl, PidControl
 """
-@kwdef struct Pump{T} <: AbstractParameterNode
+@kwdef struct Pump <: AbstractParameterNode
     node_id::Vector{NodeID}
     inflow_edge::Vector{EdgeMetadata} = []
     outflow_edges::Vector{Vector{EdgeMetadata}} = []
     active::Vector{Bool} = fill(true, length(node_id))
-    flow_rate::T
+    flow_rate::Cache = cache(length(node_id))
     min_flow_rate::Vector{Float64} = zeros(length(node_id))
     max_flow_rate::Vector{Float64} = fill(Inf, length(node_id))
     control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate}
@@ -460,14 +474,14 @@ continuous_control_type: one of None, ContinuousControl, PidControl
         inflow_edge,
         outflow_edges,
         active,
-        flow_rate::T,
+        flow_rate,
         min_flow_rate,
         max_flow_rate,
         control_mapping,
         continuous_control_type,
-    ) where {T}
-        if valid_flow_rates(node_id, get_tmp(flow_rate, 0), control_mapping)
-            return new{T}(
+    )
+        if valid_flow_rates(node_id, flow_rate[Float64[]], control_mapping)
+            return new(
                 node_id,
                 inflow_edge,
                 outflow_edges,
@@ -497,12 +511,12 @@ max_flow_rate: The maximum flow rate of the outlet
 control_mapping: dictionary from (node_id, control_state) to target flow rate
 continuous_control_type: one of None, ContinuousControl, PidControl
 """
-@kwdef struct Outlet{T} <: AbstractParameterNode
+@kwdef struct Outlet <: AbstractParameterNode
     node_id::Vector{NodeID}
     inflow_edge::Vector{EdgeMetadata} = []
     outflow_edges::Vector{Vector{EdgeMetadata}} = []
     active::Vector{Bool} = fill(true, length(node_id))
-    flow_rate::T
+    flow_rate::Cache = cache(length(node_id))
     min_flow_rate::Vector{Float64} = zeros(length(node_id))
     max_flow_rate::Vector{Float64} = fill(Inf, length(node_id))
     min_crest_level::Vector{Float64} = fill(-Inf, length(node_id))
@@ -515,15 +529,15 @@ continuous_control_type: one of None, ContinuousControl, PidControl
         inflow_id,
         outflow_ids,
         active,
-        flow_rate::T,
+        flow_rate,
         min_flow_rate,
         max_flow_rate,
         min_crest_level,
         control_mapping,
         continuous_control_type,
-    ) where {T}
-        if valid_flow_rates(node_id, get_tmp(flow_rate, 0), control_mapping)
-            return new{T}(
+    )
+        if valid_flow_rates(node_id, flow_rate[Float64[]], control_mapping)
+            return new(
                 node_id,
                 inflow_id,
                 outflow_ids,
@@ -552,15 +566,15 @@ end
 A variant on `Base.Ref` where the source array is a vector that is possibly wrapped in a ForwardDiff.DiffCache.
 Retrieve value with get_value(ref::PreallocationRef, val) where `val` determines the return type.
 """
-struct PreallocationRef{T}
-    vector::T
+struct PreallocationRef
+    vector::Cache
     idx::Int
 end
 
-get_value(ref::PreallocationRef, val) = get_tmp(ref.vector, val)[ref.idx]
+get_value(ref::PreallocationRef, du) = ref.vector[parent(du)][ref.idx]
 
-function set_value!(ref::PreallocationRef, value)::Nothing
-    get_tmp(ref.vector, value)[ref.idx] = value
+function set_value!(ref::PreallocationRef, value, du)::Nothing
+    ref.vector[parent(du)][ref.idx] = value
     return nothing
 end
 
@@ -571,12 +585,12 @@ subvariables: data for one single subvariable
 greater_than: the thresholds this compound variable will be
     compared against (in the case of DiscreteControl)
 """
-@kwdef struct CompoundVariable{T}
+@kwdef struct CompoundVariable
     node_id::NodeID
     subvariables::Vector{
         @NamedTuple{
             listen_node_id::NodeID,
-            variable_ref::PreallocationRef{T},
+            variable_ref::PreallocationRef,
             variable::String,
             weight::Float64,
             look_ahead::Float64,
@@ -596,10 +610,10 @@ logic_mapping: Dictionary: truth state => control state for the DiscreteControl 
 control_mapping: dictionary node type => control mapping for that node type
 record: Namedtuple with discrete control information for results
 """
-@kwdef struct DiscreteControl{T} <: AbstractParameterNode
+@kwdef struct DiscreteControl <: AbstractParameterNode
     node_id::Vector{NodeID}
     controlled_nodes::Vector{Vector{NodeID}}
-    compound_variables::Vector{Vector{CompoundVariable{T}}}
+    compound_variables::Vector{Vector{CompoundVariable}}
     truth_state::Vector{Vector{Bool}}
     control_state::Vector{String} = fill("undefined_state", length(node_id))
     control_state_start::Vector{Float64} = zeros(length(node_id))
@@ -619,11 +633,11 @@ record: Namedtuple with discrete control information for results
     )
 end
 
-@kwdef struct ContinuousControl{T} <: AbstractParameterNode
+@kwdef struct ContinuousControl <: AbstractParameterNode
     node_id::Vector{NodeID}
-    compound_variable::Vector{CompoundVariable{T}}
+    compound_variable::Vector{CompoundVariable}
     controlled_variable::Vector{String}
-    target_ref::Vector{PreallocationRef{T}}
+    target_ref::Vector{PreallocationRef}
     func::Vector{ScalarInterpolation}
 end
 
@@ -642,16 +656,16 @@ derivative: proportionality coefficient error derivative
 error: the current error; basin_target - current_level
 dictionary from (node_id, control_state) to target flow rate
 """
-@kwdef struct PidControl{T} <: AbstractParameterNode
+@kwdef struct PidControl <: AbstractParameterNode
     node_id::Vector{NodeID}
     active::Vector{Bool}
     listen_node_id::Vector{NodeID}
     target::Vector{ScalarInterpolation}
-    target_ref::Vector{PreallocationRef{T}}
+    target_ref::Vector{PreallocationRef}
     proportional::Vector{ScalarInterpolation}
     integral::Vector{ScalarInterpolation}
     derivative::Vector{ScalarInterpolation}
-    error::T
+    error::Cache = cache(length(node_id))
     controlled_basins::Vector{NodeID}
     control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate}
 end
@@ -686,7 +700,7 @@ min_level: The level of the source basin below which the UserDemand does not abs
     demand_itp::Vector{Vector{ScalarInterpolation}}
     demand_from_timeseries::Vector{Bool}
     allocated::Matrix{Float64}
-    return_factor::Vector{Float64}
+    return_factor::Vector{ScalarInterpolation}
     min_level::Vector{Float64}
 end
 
@@ -739,7 +753,7 @@ flow_integrated: Flow integrated over time, used for mean flow computation
     over saveat intervals
 saveat: The time interval between saves of output data (storage, flow, ...)
 """
-const ModelGraph{T} = MetaGraph{
+const ModelGraph = MetaGraph{
     Int64,
     DiGraph{Int64},
     NodeID,
@@ -750,33 +764,34 @@ const ModelGraph{T} = MetaGraph{
         edges_source::Dict{Int32, Set{EdgeMetadata}},
         flow_edges::Vector{EdgeMetadata},
         flow_dict::Dict{Tuple{NodeID, NodeID}, Int},
-        flow::T,
+        flow::Cache,
         flow_prev::Vector{Float64},
         flow_integrated::Vector{Float64},
         saveat::Float64,
     },
     MetaGraphsNext.var"#11#13",
     Float64,
-} where {T}
+}
 
-@kwdef struct Parameters{T, C1, C2, V1, V2, V3}
+@kwdef struct Parameters{C1, C2, V1, V2}
     starttime::DateTime
-    graph::ModelGraph{T}
+    graph::ModelGraph
     allocation::Allocation
-    basin::Basin{T, C1, V1, V2, V3}
+    basin::Basin{C1, V1, V2}
     linear_resistance::LinearResistance
     manning_resistance::ManningResistance
     tabulated_rating_curve::TabulatedRatingCurve{C2}
     level_boundary::LevelBoundary
     flow_boundary::FlowBoundary
-    pump::Pump{T}
-    outlet::Outlet{T}
+    pump::Pump
+    outlet::Outlet
     terminal::Terminal
-    discrete_control::DiscreteControl{T}
-    continuous_control::ContinuousControl{T}
-    pid_control::PidControl{T}
+    discrete_control::DiscreteControl
+    continuous_control::ContinuousControl
+    pid_control::PidControl
     user_demand::UserDemand
     level_demand::LevelDemand
     flow_demand::FlowDemand
     subgrid::Subgrid
+    all_nodes_active::Base.RefValue{Bool} = Ref(false)
 end

@@ -389,8 +389,8 @@ function valid_tabulated_curve_level(
             basin_bottom_level = basin_bottom(basin, id_in)[2]
             # the second level is the bottom, the first is added to control extrapolation
             if table.t[1] + 1.0 < basin_bottom_level
-                @error "Lowest levels of $id is lower than bottom of upstream $id_in" table.t[1] +
-                                                                                      1.0 basin_bottom_level
+                @error "Lowest level of $id is lower than bottom of upstream $id_in" table.t[1] +
+                                                                                     1.0 basin_bottom_level
                 errors = true
             end
         end
@@ -510,14 +510,14 @@ end
 function valid_edge_types(db::DB)::Bool
     edge_rows = execute(
         db,
-        "SELECT fid, from_node_id, to_node_id, edge_type FROM Edge ORDER BY fid",
+        "SELECT edge_id, from_node_id, to_node_id, edge_type FROM Edge ORDER BY edge_id",
     )
     errors = false
 
-    for (; fid, from_node_id, to_node_id, edge_type) in edge_rows
+    for (; edge_id, from_node_id, to_node_id, edge_type) in edge_rows
         if edge_type ∉ ["flow", "control"]
             errors = true
-            @error "Invalid edge type '$edge_type' for edge #$fid from node #$from_node_id to node #$to_node_id."
+            @error "Invalid edge type '$edge_type' for edge #$edge_id from node #$from_node_id to node #$to_node_id."
         end
     end
     return !errors

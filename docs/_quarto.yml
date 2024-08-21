@@ -1,8 +1,7 @@
 project:
   type: website
   resources:
-    - schema/*.schema.json
-
+    - CNAME
 website:
   title: "Ribasim"
   page-navigation: true
@@ -66,7 +65,6 @@ website:
         - reference/index.qmd
         - reference/usage.qmd
         - reference/validation.qmd
-        - reference/allocation.qmd
         - reference/python/index.qmd
         - reference/test-models.qmd
         - section: "Nodes"

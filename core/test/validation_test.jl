@@ -43,7 +43,7 @@ end
     config = Ribasim.Config(toml_path)
     db_path = Ribasim.input_path(config, config.database)
     db = SQLite.DB(db_path)
-    graph = Ribasim.create_graph(db, config, [1])
+    graph = Ribasim.create_graph(db, config)
 
     logger = TestLogger()
     with_logger(logger) do
@@ -225,14 +225,16 @@ end
 
 @testitem "Pump/outlet flow rate sign validation" begin
     using Logging
-    using Ribasim: NodeID, NodeType, ControlStateUpdate, ParameterUpdate
+    using Ribasim: NodeID, NodeType, ControlStateUpdate, ParameterUpdate, cache
 
     logger = TestLogger()
 
     with_logger(logger) do
+        flow_rate = cache(1)
+        flow_rate[Float64[]] .= -1
         @test_throws "Invalid Outlet flow rate(s)." Ribasim.Outlet(;
             node_id = [NodeID(:Outlet, 1, 1)],
-            flow_rate = [-1.0],
+            flow_rate,
         )
     end
 
@@ -243,9 +245,11 @@ end
     logger = TestLogger()
 
     with_logger(logger) do
+        flow_rate = cache(1)
+        flow_rate[Float64[]] .= -1
         @test_throws "Invalid Pump flow rate(s)." Ribasim.Pump(;
             node_id = [NodeID(:Pump, 1, 1)],
-            flow_rate = [-1.0],
+            flow_rate,
             control_mapping = Dict(
                 (NodeID(:Pump, 1, 1), "foo") => ControlStateUpdate(;
                     active = ParameterUpdate(:active, true),
@@ -281,10 +285,10 @@ end
     @test length(logger.logs) == 2
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
-          "Invalid edge type 'foo' for edge #0 from node #1 to node #2."
+          "Invalid edge type 'foo' for edge #1 from node #1 to node #2."
     @test logger.logs[2].level == Error
     @test logger.logs[2].message ==
-          "Invalid edge type 'bar' for edge #1 from node #2 to node #3."
+          "Invalid edge type 'bar' for edge #2 from node #2 to node #3."
 end
 
 @testitem "Subgrid validation" begin
@@ -384,7 +388,7 @@ end
     parameters = model.integrator.p
 
     (; graph, tabulated_rating_curve, basin) = parameters
-    tabulated_rating_curve.table[1].t.parent[1] = invalid_level
+    tabulated_rating_curve.table[1].t[1] = invalid_level
 
     logger = TestLogger()
     with_logger(logger) do
@@ -394,7 +398,7 @@ end
     @test length(logger.logs) == 1
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
-          "Lowest levels of TabulatedRatingCurve #5 is lower than bottom of upstream Basin #1"
+          "Lowest level of TabulatedRatingCurve #5 is lower than bottom of upstream Basin #1"
 end
 
 @testitem "Outlet upstream level validation" begin

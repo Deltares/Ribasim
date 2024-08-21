@@ -13,8 +13,10 @@ def edge() -> EdgeTable:
     d = (1.0, 1.0)
     geometry = [sg.LineString([a, b, c]), sg.LineString([a, d])]
     df = gpd.GeoDataFrame(
-        data={"from_node_id": [1, 1], "to_node_id": [2, 3]}, geometry=geometry
+        data={"edge_id": [0, 1], "from_node_id": [1, 1], "to_node_id": [2, 3]},
+        geometry=geometry,
     )
+    df.set_index("edge_id", inplace=True)
     edge = EdgeTable(df=df)
     return edge
 
@@ -25,11 +27,13 @@ def test_validation(edge):
     with pytest.raises(ValidationError):
         df = gpd.GeoDataFrame(
             data={
+                "edge_id": [0, 1],
                 "from_node_id": [1, 1],
                 "to_node_id": ["foo", 3],
             },  # None is coerced to 0 without errors
             geometry=[None, None],
         )
+        df.set_index("edge_id", inplace=True)
         EdgeTable(df=df)
 
 
