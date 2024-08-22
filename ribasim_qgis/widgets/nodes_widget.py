@@ -63,11 +63,10 @@ class NodesWidget(QWidget):
             self.ribasim_widget.crs,
             names,
         )
+        node.load_style()  # Doesn't work in `create` itself
         # Write to geopackage
         node.write()
         # Add to QGIS
-        self.ribasim_widget.add_layer(
-            node.layer, "Ribasim Input", node.renderer, labels=node.labels
-        )
+        self.ribasim_widget.add_layer(node.layer, "Ribasim Input", labels=node.labels)
         # Add to dataset tree
         self.ribasim_widget.add_node_layer(node)

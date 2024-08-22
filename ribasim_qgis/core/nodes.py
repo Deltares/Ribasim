@@ -31,7 +31,6 @@ from qgis.core import (
     Qgis,
     QgsCoordinateReferenceSystem,
     QgsEditorWidgetSetup,
-    QgsFeatureRenderer,
     QgsField,
     QgsPalLayerSettings,
     QgsVectorLayer,
@@ -122,10 +121,6 @@ class Input(abc.ABC):
         pass
 
     @property
-    def renderer(self) -> QgsFeatureRenderer | None:
-        return None
-
-    @property
     def labels(self) -> Any:
         return None
 
@@ -135,11 +130,10 @@ class Input(abc.ABC):
         )
         return self.layer
 
-    def from_geopackage(self) -> tuple[QgsVectorLayer, Any, Any]:
+    def from_geopackage(self) -> tuple[QgsVectorLayer, Any]:
         self.layer_from_geopackage()
-        fn = STYLE_DIR / f"{self.input_type().replace(' / ', '_')}Style.qml"
-        renderer = self.layer.loadNamedStyle(str(fn))
-        return (self.layer, renderer, self.labels)
+        self.load_style()
+        return (self.layer, self.labels)
 
     def write(self) -> None:
         self.layer = geopackage.write_layer(self._path, self.layer, self.input_type())
@@ -151,6 +145,10 @@ class Input(abc.ABC):
     def set_editor_widget(self) -> None:
         # Calling during new_layer doesn't have any effect...
         pass
+
+    def load_style(self):
+        fn = STYLE_DIR / f"{self.input_type().replace(' / ', '_')}Style.qml"
+        self.layer.loadNamedStyle(str(fn))
 
 
 class Node(Input):

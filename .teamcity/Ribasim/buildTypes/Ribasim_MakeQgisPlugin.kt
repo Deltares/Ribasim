@@ -19,6 +19,12 @@ object Ribasim_MakeQgisPlugin : BuildType({
         script {
             id = "RUNNER_2193"
             scriptContent = """
+                #!/bin/bash
+                source /usr/share/Modules/init/bash
+
+                module load pixi
+                pixi run install-ribasim-qgis
+
                 rsync --verbose --recursive --delete ribasim_qgis/ ribasim_qgis
                 rm --force ribasim_qgis.zip
                 zip -r ribasim_qgis.zip ribasim_qgis
