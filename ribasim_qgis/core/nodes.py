@@ -29,7 +29,6 @@ from typing import Any
 from PyQt5.QtCore import QVariant
 from qgis.core import (
     Qgis,
-    QgsCategorizedSymbolRenderer,
     QgsCoordinateReferenceSystem,
     QgsEditorWidgetSetup,
     QgsFeatureRenderer,
@@ -38,7 +37,6 @@ from qgis.core import (
     QgsVectorLayer,
     QgsVectorLayerSimpleLabeling,
 )
-from qgis.PyQt.QtXml import QDomDocument
 
 from ribasim_qgis.core import geopackage
 
@@ -125,19 +123,7 @@ class Input(abc.ABC):
 
     @property
     def renderer(self) -> QgsFeatureRenderer | None:
-        fn = STYLE_DIR / f"{self.input_type().replace(' / ', '_')}Style.sld"
-        if fn.is_file():
-            document = QDomDocument()
-            document.setContent(fn.read_text())
-            sld = document.firstChildElement("StyledLayerDescriptor")
-
-            nle = sld.firstChildElement("namedLayerElem")
-            renderer = QgsCategorizedSymbolRenderer().loadSld(
-                nle, self.qgis_geometry_type(), ""
-            )
-            return renderer
-        else:
-            return None
+        return None
 
     @property
     def labels(self) -> Any:
@@ -151,7 +137,9 @@ class Input(abc.ABC):
 
     def from_geopackage(self) -> tuple[QgsVectorLayer, Any, Any]:
         self.layer_from_geopackage()
-        return (self.layer, self.renderer, self.labels)
+        fn = STYLE_DIR / f"{self.input_type().replace(' / ', '_')}Style.qml"
+        renderer = self.layer.loadNamedStyle(str(fn))
+        return (self.layer, renderer, self.labels)
 
     def write(self) -> None:
         self.layer = geopackage.write_layer(self._path, self.layer, self.input_type())

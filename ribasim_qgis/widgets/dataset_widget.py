@@ -198,9 +198,9 @@ class DatasetWidget(QWidget):
 
     def add_item_to_qgis(self, item) -> None:
         element = item.element
-        layer, renderer, labels = element.from_geopackage()
+        layer, _, labels = element.from_geopackage()
         suppress = self.suppress_popup_checkbox.isChecked()
-        self.add_layer(layer, "Ribasim Input", renderer, suppress, labels=labels)
+        self.add_layer(layer, "Ribasim Input", None, suppress, labels=labels)
         element.set_editor_widget()
         element.set_read_only()
         return
