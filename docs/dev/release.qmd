@@ -33,7 +33,7 @@ Don't change the old version numbers in `changelog.qmd`.
 
 ## Update the changelog
 
-The `docs/changelog.qmd` file, hosted on https://ribasim.org/changelog, records the most important changes for users.
+The `docs/changelog.qmd` file, hosted on [ribasim.org/changelog](https://ribasim.org/changelog), records the most important changes for users.
 Review the commits since the [latest Ribasim release](https://github.com/Deltares/Ribasim/releases/latest) to make sure these are listed.
 Change the "Unreleased" section to the new version number and date, and create a new empty "Unreleased" section at the top.
 

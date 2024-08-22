@@ -1,7 +1,7 @@
 ---
 title: "Allocation"
 ---
-# Overview of allocation implementation [#sec-allocation-overview]
+# Overview of allocation implementation {#sec-allocation-overview}
 In this document, the allocation workflow is explained. Below is an overview of it.
 ```{mermaid}
 flowchart TD
@@ -38,7 +38,7 @@ The steps "collect demand" and "allocate" correspond to the function `collect_de
 
 The iteration stops when it reaches the end time step.
 
-## The `Allocation` struct [#sec-allocation-struct]
+## The `Allocation` struct {#sec-allocation-struct}
 
 The `Allocation` struct stores necessary data and calculation results.
 
@@ -55,7 +55,7 @@ The `Allocation` struct stores necessary data and calculation results.
 |record_demand      |      | A record of demands and allocated flows for nodes that have these|
 |record_flow       |       | A record of all flows computed by allocation optimization, eventually saved to output file|
 
-## The `AllocationModel` struct [#sec-allocation-model-struct]
+## The `AllocationModel` struct {#sec-allocation-model-struct}
 
 The `AllocationModel` struct has all the data that is needed for the JuMP optimization problem.
 
@@ -66,7 +66,7 @@ The `AllocationModel` struct has all the data that is needed for the JuMP optimi
 |problem | JuMP.Model | The JuMP.jl model for solving the allocation problem|
 |Δt_allocation | Float64 | The time interval between consecutive allocation solves   |
 
-## JuMP problem interaction [#sec-jump-problem]
+## JuMP problem interaction {#sec-jump-problem}
 When working with optimization problems using JuMP, there are three fundamental components that need to be defined:
 
 - Optimization variables: These are the [variables](https://jump.dev/JuMP.jl/stable/api/JuMP/#@constraints) that are optimized in the allocation problem formulation.
@@ -117,7 +117,7 @@ The function `get_capacity` obtains the capacities of the edges within a subnetw
 The function `find_subnetwork_connetions` finds the edges that connected the main network to a subnetwork. `subnetwork_demands` and `subnetwork_allocateds` will be created, which stores demands and allocated values for subnetworks as a whole.
 `main_network_connections` is a vector of edges that connect a subnetwork with the main network.
 
-## The optimization problem [#sec-optimization-problem]
+## The optimization problem {#sec-optimization-problem}
 ### Setting up the optimization variables
 There are three types of variables in the optimization problems:
 
@@ -152,7 +152,7 @@ problem[:F_basin_out] =
 
 The last set of optimization variables is the flow edges in and out of the buffer of nodes with a flow demand. It is defined in a similar way to the second set of variables.
 
-### Setting up initial optimization constraints [#sec-initial-constraints]
+### Setting up initial optimization constraints {#sec-initial-constraints}
 All the variables are greater and equal to 0. This is set when the variables are added to the optimization problem.
 
 Other constraints are `capacity`, `source_user`, `source`, `flow_conservation`, `fractional_flow`, `basin_outflow`, `flow_buffer_outflow` and `flow_demand_outflow`.
@@ -237,7 +237,7 @@ Source constraints will be adapted based on the optimization type.
 This function is called separately and thus not part of the `set_initial_values`.
 
 ## Looping over priorities
-### Updating capacities [#sec-updating-capacities]
+### Updating capacities {#sec-updating-capacities}
 While optimizing a given priority, the function `set_capacities_flow_demand_outflow` updates the constraints `flow_demand_outflow`.
 If the current priority is the same as the priority of the flow demand, constraints will be infinite, otherwise 0.
 At priorities where there is no flow demand, flow can go freely trough the node. When there is flow demand, flow is directed into the buffer. This is to make sure that flow can go to the node with the flow demand, even though the flow might have nowhere to go after that node.
