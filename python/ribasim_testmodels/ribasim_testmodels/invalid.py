@@ -9,6 +9,7 @@ from ribasim.nodes import (
     flow_boundary,
     flow_demand,
     level_boundary,
+    level_demand,
     pump,
     tabulated_rating_curve,
     user_demand,
@@ -191,22 +192,15 @@ def invalid_priorities_model() -> Model:
         Node(3, Point(2, 0), subnetwork_id=2),
         [basin.Profile(area=1e3, level=[0.0, 1.0]), basin.State(level=[1.0])],
     )
-    model.basin.add(
-        Node(7, Point(3, -1), subnetwork_id=2),
-        [basin.Profile(area=1e3, level=[0.0, 1.0]), basin.State(level=[1.0])],
-    )
 
     model.user_demand.add(
         Node(4, Point(3, 0), subnetwork_id=2),
         [user_demand.Static(demand=[1e-3], return_factor=1.0, min_level=0.2)],
     )
-    model.user_demand.add(
+
+    model.level_demand.add(
         Node(6, Point(2, -1), subnetwork_id=2),
-        [user_demand.Static(demand=[1e-3], return_factor=1.0, min_level=0.2)],
-    )
-    model.user_demand.add(
-        Node(8, Point(3, -2), subnetwork_id=2),
-        [user_demand.Static(demand=[2e-3], return_factor=1.0, min_level=0.2)],
+        [level_demand.Static(min_level=[1.0], max_level=1.5)],
     )
 
     model.flow_demand.add(
@@ -221,11 +215,7 @@ def invalid_priorities_model() -> Model:
     )
     model.edge.add(model.tabulated_rating_curve[2], model.basin[3])
     model.edge.add(model.basin[3], model.user_demand[4])
-    model.edge.add(model.user_demand[4], model.basin[7])
-    model.edge.add(model.basin[7], model.user_demand[8])
-    model.edge.add(model.user_demand[8], model.basin[7])
-    model.edge.add(model.basin[3], model.user_demand[6])
-    model.edge.add(model.user_demand[6], model.basin[7])
+    model.edge.add(model.basin[3], model.level_demand[6])
     model.edge.add(model.flow_demand[5], model.tabulated_rating_curve[2])
 
     return model
