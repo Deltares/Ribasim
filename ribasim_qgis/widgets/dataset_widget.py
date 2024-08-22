@@ -199,7 +199,6 @@ class DatasetWidget(QWidget):
         layer, labels = element.from_geopackage()
         suppress = self.suppress_popup_checkbox.isChecked()
         self.add_layer(layer, "Ribasim Input", suppress, labels=labels)
-        element.load_style()
         element.set_editor_widget()
         element.set_read_only()
         return
