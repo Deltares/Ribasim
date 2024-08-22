@@ -39,7 +39,7 @@ The table must by sorted by time, and per time it must be sorted by `node_id`.
 With this the demand can be updated over time. In between the given times the
 demand is interpolated linearly, and outside the demand is constant given by the
 nearest time value.
-And `priority` parameter is not dependent on time and remains an integer value for each node.
+The `priority` is not allowed to change over time.
 Note that a `node_id` can be either in this table or in the static one, but not both.
 
 column        | type     | unit         | restriction
