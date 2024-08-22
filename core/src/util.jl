@@ -838,7 +838,7 @@ function wrap_forcing(vector)
 end
 
 """
-The function f(x) = sign(x)*√x where for |x|<threshold a
+The function f(x) = sign(x)*√(|x|) where for |x|<threshold a
 polynomial is used so that the function is still differentiable
 but the derivative is bounded at x = 0.
 """
