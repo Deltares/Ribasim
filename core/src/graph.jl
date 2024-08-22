@@ -14,7 +14,7 @@ function create_graph(db::DB, config::Config)::MetaGraph
         db,
         """
         SELECT
-            Edge.fid,
+            Edge.edge_id,
             FromNode.node_id AS from_node_id,
             FromNode.node_type AS from_node_type,
             ToNode.node_id AS to_node_id,
@@ -59,7 +59,7 @@ function create_graph(db::DB, config::Config)::MetaGraph
 
     errors = false
     for (;
-        fid,
+        edge_id,
         from_node_type,
         from_node_id,
         to_node_type,
@@ -79,7 +79,7 @@ function create_graph(db::DB, config::Config)::MetaGraph
             subnetwork_id = 0
         end
         edge_metadata = EdgeMetadata(;
-            id = fid,
+            id = edge_id,
             flow_idx = edge_type == EdgeType.flow ? flow_counter + 1 : 0,
             type = edge_type,
             subnetwork_id_source = subnetwork_id,

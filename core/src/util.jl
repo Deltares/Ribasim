@@ -837,6 +837,19 @@ function wrap_forcing(vector)
     )
 end
 
+"""
+The function f(x) = sign(x)*√(|x|) where for |x|<threshold a
+polynomial is used so that the function is still differentiable
+but the derivative is bounded at x = 0.
+"""
+function relaxed_root(x, threshold)
+    if abs(x) < threshold
+        1 / 4 * (x / sqrt(threshold)) * (5 - (x / threshold)^2)
+    else
+        sign(x) * sqrt(abs(x))
+    end
+end
+
 function get_jac_prototype(du0, u0, p, t0)
     p.all_nodes_active[] = true
     jac_prototype = jacobian_sparsity(
@@ -852,3 +865,4 @@ end
 # Custom overloads
 (A::AbstractInterpolation)(t::GradientTracer) = t
 reduction_factor(x::GradientTracer, threshold::Real) = x
+relaxed_root(x::GradientTracer, threshold::Real) = x
