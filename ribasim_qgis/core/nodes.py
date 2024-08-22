@@ -137,6 +137,7 @@ class Input(abc.ABC):
 
     def write(self) -> None:
         self.layer = geopackage.write_layer(self._path, self.layer, self.input_type())
+        self.load_style()
         self.set_defaults()
 
     def remove_from_geopackage(self) -> None:

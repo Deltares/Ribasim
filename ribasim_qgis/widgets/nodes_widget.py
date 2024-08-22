@@ -63,7 +63,6 @@ class NodesWidget(QWidget):
             self.ribasim_widget.crs,
             names,
         )
-        node.load_style()  # Doesn't work in `create` itself
         # Write to geopackage
         node.write()
         # Add to QGIS
