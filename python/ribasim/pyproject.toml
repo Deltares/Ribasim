@@ -37,7 +37,7 @@ delwaq = ["jinja2", "networkx", "ribasim[netcdf]"]
 all = ["ribasim[tests]", "ribasim[netcdf]", "ribasim[delwaq]"]
 
 [project.urls]
-Documentation = "https://deltares.github.io/Ribasim"
+Documentation = "https://ribasim.org/"
 Source = "https://github.com/Deltares/Ribasim"
 
 [tool.hatch.version]
