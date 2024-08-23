@@ -53,13 +53,6 @@ function water_balance!(
 
     # Formulate du (controlled by PidControl)
     formulate_du_pid_controlled!(du, graph, pid_control)
-
-    if eltype(du) == Float64
-        println(p.basin.node_id[argmax(du.storage)])
-    end
-    #println(sum(u.storage))
-    #println("$(sqrt(sum(du .^ 2))),")
-
     return nothing
 end
 

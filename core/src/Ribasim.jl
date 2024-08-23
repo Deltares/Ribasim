@@ -22,6 +22,8 @@ using OrdinaryDiffEq:
     SteadyStateProblem,
     ImplicitEuler
 using SteadyStateDiffEq: DynamicSS, SSRootfind
+using NonlinearSolve: NonlinearLeastSquaresProblem, solve, GaussNewton, LineSearchesJL
+using LineSearches: Static
 
 # Interface for defining and solving the ODE problem of the physical layer.
 using SciMLBase:
@@ -50,7 +52,7 @@ using SparseConnectivityTracer: TracerSparsityDetector, jacobian_sparsity, Gradi
 # - GradientTracer for automatic Jacobian sparsity detection with SparseConnectivityTracer
 # The computations inside the rhs go trough preallocated arrays of the required type which are created by LazyBufferCache.
 # Retrieving a cache from a LazyBufferCache looks like indexing: https://docs.sciml.ai/PreallocationTools/stable/#LazyBufferCache
-using PreallocationTools: LazyBufferCache
+using PreallocationTools: LazyBufferCache, DiffCache, get_tmp
 
 # Interpolation functionality, used for e.g.
 # basin profiles and TabulatedRatingCurve. See also the node

@@ -11,6 +11,78 @@ function pkgversion(m::Module)::VersionNumber
     return pkgorigin.version
 end
 
+function get_initial_storage(p::Parameters, level::AbstractVector)::Vector{Float64}
+    storages, errors = if true#length(level) == 0
+        get_steady_state_storages(p)
+    else
+        get_storages_from_levels(p.basin, level)
+    end
+    if errors
+        error("Encountered errors while parsing the initial levels of basins.")
+    end
+
+    storages
+end
+
+function get_steady_state_storages(p::Parameters)
+    (; basin, pid_control) = p
+    n_basin = length(basin.node_id)
+    n_pid_control = length(pid_control.node_id)
+
+    # Fixed t = 0.0
+    t = 0.0
+
+    # PidControl integral term always zero
+    u = ComponentVector{Float64}(;
+        storage = zeros(n_basin),
+        integral = zeros(n_pid_control),
+    )
+
+    # Set initial vertical fluxes
+    update_basin!((; u, p, t))
+
+    du = zero(u)
+    u = DiffCache(u)
+    du = DiffCache(du)
+
+    # Function whose root defines the steady state
+    # storage = protostorage² to enforce non-negative storages
+    function resid(protostorage, p)
+        u_tmp = get_tmp(u, protostorage)
+        du_tmp = get_tmp(du, protostorage)
+        for (i, ps) in enumerate(protostorage)
+            u_tmp.storage[i] = ps^2
+        end
+
+        water_balance!(du_tmp, u_tmp, p, t)
+        # resid = ||dstorage||₂
+        resid = zero(eltype(protostorage))
+        for ds in du_tmp.storage
+            resid += ds^2
+        end
+        return [sqrt(resid)]
+    end
+    bottoms = map(id -> basin_bottom(basin, id)[2], basin.node_id)
+    # Initial guess: the levels are everywhere equal to the highest bottom + 1m
+    level0 = maximum(bottoms) + 1
+    protostorage0 = sqrt.(first(get_storages_from_levels(basin, fill(level0, n_basin))))
+    prob = NonlinearLeastSquaresProblem(resid, protostorage0, p)
+    # Relaxation: stepsize 0.95
+    sol = solve(
+        prob,
+        GaussNewton(; linesearch = LineSearchesJL(; method = Static(), α = 0.95)),
+    )
+    storages = sol.u .^ 2
+    errors = sol.retcode != ReturnCode.Success
+    if errors
+        du = get_tmp(du, 0)
+        id_worst = basin.node_id[argmax(abs.(du.storage))]
+        @error "No initial basin states were supplied, but computing steady initial state failed for some basins" id_worst
+    end
+    errors = false
+    return storages, errors
+end
+
 """Get the storage of a basin from its level."""
 function get_storage_from_level(basin::Basin, state_idx::Int, level::Float64)::Float64
     level_to_area = basin.level_to_area[state_idx]
@@ -22,7 +94,10 @@ function get_storage_from_level(basin::Basin, state_idx::Int, level::Float64)::F
 end
 
 """Compute the storages of the basins based on the water level of the basins."""
-function get_storages_from_levels(basin::Basin, levels::AbstractVector)::Vector{Float64}
+function get_storages_from_levels(
+    basin::Basin,
+    levels::AbstractVector,
+)::Tuple{Vector{Float64}, Bool}
     errors = false
     state_length = length(levels)
     basin_length = length(basin.storage_to_level)
@@ -42,11 +117,8 @@ function get_storages_from_levels(basin::Basin, levels::AbstractVector)::Vector{
         end
         storages[i] = storage
     end
-    if errors
-        error("Encountered errors while parsing the initial levels of basins.")
-    end
 
-    return storages
+    return storages, errors
 end
 
 """

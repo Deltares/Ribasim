@@ -22,6 +22,7 @@ from ribasim_testmodels.backwater import backwater_model
 from ribasim_testmodels.basic import (
     basic_arrow_model,
     basic_model,
+    basic_no_initial_state_model,
     basic_transient_model,
     outlet_model,
     tabulated_rating_curve_model,
@@ -65,6 +66,7 @@ __all__ = [
     "backwater_model",
     "basic_arrow_model",
     "basic_model",
+    "basic_no_initial_state_model",
     "basic_transient_model",
     "bucket_model",
     "compound_variable_condition_model",

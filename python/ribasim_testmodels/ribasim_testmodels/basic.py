@@ -261,6 +261,14 @@ def basic_transient_model() -> ribasim.Model:
     return model
 
 
+def basic_no_initial_state_model() -> ribasim.Model:
+    """Remove the initial state from the basic model so that it has to be found as a steady state."""
+
+    model = basic_model()
+    model.basin.state.df = None
+    return model
+
+
 def tabulated_rating_curve_model() -> ribasim.Model:
     """
     Set up a model where the upstream Basin has two TabulatedRatingCurve attached.
