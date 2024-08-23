@@ -85,6 +85,18 @@ SQL_STYLES_EXIST = """
 SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type="table" AND name="layer_styles");
 """
 
+SQL_STYLES_STYLE_EXISTS = """
+SELECT EXISTS(SELECT 1 FROM layer_styles WHERE styleName = :style_name);
+"""
+
+
+def _no_existing_style(conn, style_name):
+    style_exists = conn.execute(
+        SQL_STYLES_STYLE_EXISTS, {"style_name": style_name}
+    ).fetchone()[0]
+    print(style_exists)
+    return not style_exists
+
 
 def _add_styles_to_geopackage(gpkg_path: Path, layer: str):
     with sqlite3.connect(gpkg_path) as conn:
@@ -95,7 +107,7 @@ def _add_styles_to_geopackage(gpkg_path: Path, layer: str):
         style_name = f"{layer.replace(' / ', '_')}Style"
         style_qml = STYLES_DIR / f"{style_name}.qml"
 
-        if style_qml.exists():
+        if style_qml.exists() and _no_existing_style(conn, style_name):
             description = f"Ribasim style for layer: {layer}"
             update_date_time = f"{datetime.now().isoformat()}Z"
 
