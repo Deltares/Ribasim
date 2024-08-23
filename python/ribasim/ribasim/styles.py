@@ -94,7 +94,6 @@ def _no_existing_style(conn, style_name):
     style_exists = conn.execute(
         SQL_STYLES_STYLE_EXISTS, {"style_name": style_name}
     ).fetchone()[0]
-    print(style_exists)
     return not style_exists
 
 
