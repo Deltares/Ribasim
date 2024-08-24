@@ -20,13 +20,12 @@ repository=https://github.com/Deltares/Ribasim
 # Recommended items:
 
 hasProcessingProvider=no
-# Uncomment the following line and add your changelog:
-# changelog=https://deltares.github.io/Ribasim/changelog.html
+changelog=https://ribasim.org/changelog
 
 # Tags are comma separated with spaces allowed
-tags=julia, hydrology, water allocation
+tags=hydrology, water, water resources, model, julia
 
-homepage=https://github.com/Deltares/Ribasim
+homepage=https://ribasim.org/
 category=Plugins
 icon=icon.png
 # experimental flag

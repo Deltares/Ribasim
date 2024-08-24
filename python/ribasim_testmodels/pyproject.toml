@@ -20,7 +20,7 @@ dynamic = ["version"]
 tests = ["pytest"]
 
 [project.urls]
-Documentation = "https://deltares.github.io/Ribasim"
+Documentation = "https://ribasim.org/"
 Source = "https://github.com/Deltares/Ribasim"
 
 [tool.hatch.version]
