@@ -184,4 +184,5 @@ class RibasimWidget(QWidget):
         return maplayer
 
     def add_relationship(self, new_layer, name: str) -> None:
+        assert self.node_layer is not None
         self.__dataset_widget.add_relationship(new_layer, self.node_layer.id(), name)

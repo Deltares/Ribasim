@@ -218,10 +218,14 @@ class DatasetWidget(QWidget):
         rel.setReferencingLayer(from_layer.id())
         rel.setReferencedLayer(to_layer_id)
         rel.setName(name)
-        rel.setStrength(rel.RelationStrength.Composition)
+        rel.setStrength(rel.RelationStrength.Composition)  # type: ignore
         rel.addFieldPair(fk, "node_id")
         rel.generateId()
-        QgsProject.instance().relationManager().addRelation(rel)
+        instance = QgsProject.instance()
+        assert instance is not None
+        rel_manager = instance.relationManager()
+        assert rel_manager is not None
+        rel_manager.addRelation(rel)
 
         # Also use the relationship as an editor widget
         field_index = from_layer.fields().indexFromName(fk)
@@ -274,6 +278,7 @@ class DatasetWidget(QWidget):
 
         # Connect node and edge layer to derive connectivities.
         self.node_layer = node.layer
+        assert self.node_layer is not None
         self.edge_layer = edge.layer
         self.edge_layer.editingStopped.connect(self.connect_nodes)
 
@@ -289,15 +294,23 @@ class DatasetWidget(QWidget):
 
         # When the Node selection changes, filter all related tables
         edge_rels = []
-        for rel in QgsProject.instance().relationManager().relations().values():
+        instance = QgsProject.instance()
+        assert instance is not None
+        rel_manager = instance.relationManager()
+        assert rel_manager is not None
+        for rel in rel_manager.relations().values():
             # Edge relations are special, they have two references to the Node table
-            if rel.referencingLayer().name() == "Edge":
+            referencing = rel.referencingLayer()
+            referenced = rel.referencedLayer()
+            assert referencing is not None
+            assert referenced is not None
+
+            if referencing.name() == "Edge":
                 edge_rels.append(rel)
             else:
-                rel.referencedLayer().selectionChanged.connect(
-                    partial(filterbyrel, [rel])
-                )
-        rel.referencedLayer().selectionChanged.connect(partial(filterbyrel, edge_rels))
+                referenced.selectionChanged.connect(partial(filterbyrel, [rel]))
+
+        self.node_layer.selectionChanged.connect(partial(filterbyrel, edge_rels))
         return
 
     def new_model(self) -> None:
