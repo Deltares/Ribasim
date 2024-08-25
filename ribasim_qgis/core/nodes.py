@@ -123,6 +123,15 @@ class Input(abc.ABC):
         )
         layer.setEditorWidgetSetup(index, setup)
 
+    def set_unique(self, name: str) -> None:
+        layer = self.layer
+        index = layer.fields().indexFromName(name)
+        setup = QgsEditorWidgetSetup(
+            "UniqueValues",
+            {},
+        )
+        layer.setEditorWidgetSetup(index, setup)
+
     def set_read_only(self) -> None:
         pass
 
@@ -134,8 +143,11 @@ class Input(abc.ABC):
         self.layer = QgsVectorLayer(
             f"{self._path}|layername={self.input_type()}", self.input_type()
         )
-        # Load style from database if exists
-        self.layer.loadDefaultStyle()
+        # Load style from database if exists, otherwise load and save default qml style
+        _, success = self.layer.loadDefaultStyle()
+        if not success:
+            self.load_default_style()
+            self.save_style()
         # Connect signal to save style to database when changed
         self.layer.styleChanged.connect(self.save_style)
         return self.layer
@@ -214,6 +226,7 @@ class Node(Input):
         layer = self.layer
         node_type_field_index = layer.fields().indexFromName("node_type")
         self.set_dropdown("node_type", NONSPATIALNODETYPES)
+        self.set_unique("node_id")
 
         layer_form_config = layer.editFormConfig()
         layer_form_config.setReuseLastValue(node_type_field_index, True)
@@ -267,6 +280,7 @@ class Edge(Input):
         layer = self.layer
 
         self.set_dropdown("edge_type", EDGETYPES)
+        self.set_unique("edge_id")
 
         layer_form_config = layer.editFormConfig()
         layer.setEditFormConfig(layer_form_config)
