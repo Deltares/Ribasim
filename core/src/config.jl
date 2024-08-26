@@ -11,6 +11,7 @@ module config
 using Configurations: Configurations, @option, from_toml, @type_alias
 using DataStructures: DefaultDict
 using Dates: DateTime
+using LineSearches: BackTracking
 using Logging: LogLevel, Debug, Info, Warn, Error
 using ..Ribasim: Ribasim, isnode, nodetype
 using OrdinaryDiffEq:
@@ -240,7 +241,7 @@ function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
     end
     kwargs = Dict{Symbol, Any}()
     if algotype <: OrdinaryDiffEqNewtonAdaptiveAlgorithm
-        kwargs[:nlsolve] = NLNewton(; relax = 0.1)
+        kwargs[:nlsolve] = NLNewton(; relax = BackTracking())
     end
     # not all algorithms support this keyword
     kwargs[:autodiff] = solver.autodiff
