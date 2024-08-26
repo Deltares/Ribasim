@@ -67,12 +67,11 @@ subgrid           | Bool   | Compute and output more detailed water levels.
 
 ## Logging settings
 
-The following entries can be set in the configuration in the `[logging]` section.
+The following can be set in the configuration in the `[logging]` section.
 
 entry             | type   | description
 ----------------- | ------ | -----------
 verbosity         | String | Verbosity level: debug, info, warn, or error.
-timing            | Bool   | Enable timings.
 
 # GeoPackage database and Arrow tables {#sec-geopackage}
 
