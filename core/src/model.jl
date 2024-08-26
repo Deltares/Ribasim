@@ -3,7 +3,6 @@ struct SavedResults{V1 <: ComponentVector{Float64}}
     vertical_flux::SavedValues{Float64, V1}
     subgrid_level::SavedValues{Float64, Vector{Float64}}
     solver_stats::SavedValues{Float64, SolverStats}
-    water_balance_error::SavedValues{Float64, SavedWaterBalanceError}
 end
 
 """

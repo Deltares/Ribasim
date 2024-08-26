@@ -45,15 +45,9 @@ function create_callbacks(
     save_flow_cb = SavingCallback(save_flow, saved_flow; saveat, save_start = false)
     push!(callbacks, save_flow_cb)
 
-    # save water balance errors
-    saved_water_balance_error = SavedValues(Float64, SavedWaterBalanceError)
-    save_water_balance_error_cb = SavingCallback(
-        save_water_balance_error,
-        saved_water_balance_error;
-        saveat,
-        save_start = false,
-    )
-    push!(callbacks, save_water_balance_error_cb)
+    # Check water balance error per timestep
+    water_balance_cb = FunctionCallingCallback(check_water_balance_error)
+    push!(callbacks, water_balance_cb)
 
     # save solver stats
     saved_solver_stats = SavedValues(Float64, SolverStats)
@@ -245,7 +239,7 @@ function save_vertical_flux(u, t, integrator)
     return vertical_flux_mean
 end
 
-function save_water_balance_error(u, t, integrator)
+function check_water_balance_error(u, t, integrator)::Nothing
     (; node_id, storage_prev, total_inflow, total_outflow) = integrator.p.basin
     (; max_rel_balance_error) = integrator.p
 
@@ -271,14 +265,14 @@ function save_water_balance_error(u, t, integrator)
         end
     end
 
-    # if errors
-    #     error("Too large water balance error(s) detected.")
-    # end
+    if errors
+        error("Too large water balance error(s) detected.")
+    end
 
     total_inflow .= 0.0
     total_outflow .= 0.0
     copyto!(storage_prev, u.storage)
-    SavedWaterBalanceError(; storage_rate, absolute_error, relative_error)
+    return nothing
 end
 
 """
