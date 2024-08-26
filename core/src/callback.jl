@@ -275,10 +275,9 @@ function check_water_balance_error(u, t, integrator)::Nothing
         end
     end
 
-    # if errors
-    #     error("Too large water balance error(s) detected.")
-    # end
-    @show relative_error
+    if errors
+        error("Too large water balance error(s) detected.")
+    end
     return nothing
 end
 
