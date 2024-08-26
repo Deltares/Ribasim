@@ -346,9 +346,8 @@ function Base.getindex(fv::FlatVector, i::Int)
     return v[r + 1]
 end
 
-"Construct a FlatVector from one of the fields of SavedFlow or SavedWaterBalanceError."
-FlatVector(saveval::Vector{S}, sym::Symbol) where {S <: AbstractSaved} =
-    FlatVector(getfield.(saveval, sym))
+"Construct a FlatVector from one of the fields of SavedFlow."
+FlatVector(saveval::Vector{SavedFlow}, sym::Symbol) = FlatVector(getfield.(saveval, sym))
 
 """
 Function that goes smoothly from 0 to 1 in the interval [0,threshold],
