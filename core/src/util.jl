@@ -53,9 +53,18 @@ end
 Compute the area and level of a basin given its storage.
 """
 function get_area_and_level(basin::Basin, state_idx::Int, storage::T)::Tuple{T, T} where {T}
-    level = basin.storage_to_level[state_idx](max(storage, 0.0))
-    area = basin.level_to_area[state_idx](level)
-
+    storage_to_level = basin.storage_to_level[state_idx]
+    level_to_area = basin.level_to_area[state_idx]
+    if storage >= 0
+        level = storage_to_level(storage)
+    else
+        # Negative storage is not feasible and this yields a level
+        # below the basin bottom, but this does yield usable gradients
+        # for the non-linear solver
+        bottom = first(level_to_area.t)
+        level = bottom + derivative(storage_to_level, 0.0) * storage
+    end
+    area = level_to_area(level)
     return area, level
 end
 
@@ -866,3 +875,4 @@ end
 (A::AbstractInterpolation)(t::GradientTracer) = t
 reduction_factor(x::GradientTracer, threshold::Real) = x
 relaxed_root(x::GradientTracer, threshold::Real) = x
+get_area_and_level(basin::Basin, state_idx::Int, storage::GradientTracer) = storage, storage
