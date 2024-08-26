@@ -162,9 +162,9 @@ function basin_table(
         storage_increase = max(storage_flow, 0.0)
         storage_decrease = max(-storage_flow, 0.0)
 
-        total_in = inflow_rate[i] + precipitation[i] + drainage[i] - storage_increase
-        total_out = outflow_rate[i] + evaporation[i] + infiltration[i] - storage_decrease
-        balance_error[i] = total_in - total_out
+        total_in = inflow_rate[i] + precipitation[i] + drainage[i]
+        total_out = outflow_rate[i] + evaporation[i] + infiltration[i]
+        balance_error[i] = (total_in - storage_increase) - (total_out - storage_decrease)
         mean_flow_rate = 0.5 * (total_in + total_out)
         if mean_flow_rate != 0
             relative_error[i] = balance_error[i] / mean_flow_rate
