@@ -2,7 +2,7 @@
 
 julia_version = "1.10.4"
 manifest_format = "2.0"
-project_hash = "2b2a9cb070f27da14347926ef40451cec12cc8c4"
+project_hash = "f5db1a5a8508af3b6aa81e77870ec2fb3af68768"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "6778bcc27496dae5723ff37ee30af451db8b35fe"
@@ -1242,12 +1242,6 @@ uuid = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
 deps = ["SHA"]
 uuid = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
-[[deps.ReTestItems]]
-deps = ["Dates", "Logging", "LoggingExtras", "Pkg", "Serialization", "Sockets", "Test", "TestEnv"]
-git-tree-sha1 = "f4a49b06ae830ff83a8743964ed08a805f5bab20"
-uuid = "817f1d60-ba6b-4fd5-9520-3cf149f6a823"
-version = "1.25.0"
-
 [[deps.RecipesBase]]
 deps = ["PrecompileTools"]
 git-tree-sha1 = "5c3d09cc4f31f5fc6af001c250bf1278733100ff"
@@ -1647,6 +1641,17 @@ deps = ["Pkg"]
 git-tree-sha1 = "2a57e05cb9854e7260c354f1bcdbe5190adba19f"
 uuid = "1e6cf692-eddd-4d53-88a5-2d735e33781b"
 version = "1.102.0"
+
+[[deps.TestItemRunner]]
+deps = ["Pkg", "TOML", "Test", "TestItems", "UUIDs"]
+git-tree-sha1 = "29647c5398be04a1d697265ba385bdf3f623c993"
+uuid = "f8b46487-2199-4994-9208-9a1283c18c0a"
+version = "1.0.5"
+
+[[deps.TestItems]]
+git-tree-sha1 = "42fd9023fef18b9b78c8343a4e2f3813ffbcefcb"
+uuid = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
+version = "1.0.0"
 
 [[deps.ThreadingUtilities]]
 deps = ["ManualMemory"]
