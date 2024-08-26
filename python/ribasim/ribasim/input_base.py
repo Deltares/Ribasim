@@ -181,6 +181,9 @@ class TableModel(FileModel, Generic[TableT]):
     def _check_extra_columns(cls, v: DataFrame[TableT]):
         """Allow only extra columns with `meta_` prefix."""
         if isinstance(v, (pd.DataFrame, gpd.GeoDataFrame)):
+            # On reading from geopackage, migrate the tables
+            if context_file_loading.get().get("database") is not None:
+                v = cls.tableschema().migrate(v)
             for colname in v.columns:
                 if colname not in cls.columns() and not colname.startswith("meta_"):
                     raise ValueError(
