@@ -873,7 +873,7 @@ NODES: dict[str, type[Input]] = {
 }
 NONSPATIALNODETYPES: set[str] = {
     cls.nodetype() for cls in Input.__subclasses__() if not cls.is_spatial()
-}
+} | {"Terminal"}
 EDGETYPES = {"flow", "control"}
 SPATIALCONTROLNODETYPES = {
     "ContinuousControl",
