@@ -16,6 +16,7 @@ from shapely.geometry import LineString, MultiLineString, Point
 from ribasim.input_base import SpatialTableModel
 from ribasim.schemas import _BaseSchema
 from ribasim.utils import UsedIDs
+from ribasim.validation import connectivity
 
 __all__ = ("EdgeTable",)
 
@@ -81,6 +82,11 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
             the allocation algorithm, and should thus not be set for every edge in a subnetwork.
         **kwargs : Dict
         """
+        if not connectivity(from_node.node_type, to_node.node_type):
+            raise ValueError(
+                f"Node {to_node.node_type} cannot connect with upstream node {from_node.node_type}"
+            )
+
         geometry_to_append = (
             [LineString([from_node.geometry, to_node.geometry])]
             if geometry is None

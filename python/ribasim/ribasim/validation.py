@@ -1,5 +1,5 @@
 # Table for connectivity
-# "basin": ["linear_resistance"] means that the upstream of basin can be linear_resistance only
+# "basin": ["linear_resistance"] means that the downstream of basin can be linear_resistance only
 connectivity = {
     "basin": [
         "linear_resistance",
@@ -34,7 +34,7 @@ connectivity = {
 
 
 # Function to validate connection
-def can_connect(node_down, node_up):
-    if node_down in connectivity:
-        return node_up in connectivity[node_down]
+def can_connect(node_up, node_down):
+    if node_up in connectivity:
+        return node_down in connectivity[node_up]
     return False
