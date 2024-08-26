@@ -560,7 +560,8 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
         drainage = copy(drainage),
         infiltration = copy(infiltration),
     )
-    vertical_flux_integrated = zero(vertical_flux_prev)
+    vertical_flux_mean_over_dt = zero(vertical_flux_prev)
+    vertical_flux_integrated_over_saveat = zero(vertical_flux_prev)
     vertical_flux_bmi = zero(vertical_flux_prev)
 
     demand = zeros(length(node_id))
@@ -616,12 +617,13 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
 
     return Basin(;
         node_id,
-        inflow_ids = [collect(inflow_ids(graph, id)) for id in node_id],
-        outflow_ids = [collect(outflow_ids(graph, id)) for id in node_id],
+        inflow_edges = inflow_edges.(Ref(graph), node_id),
+        outflow_edges = outflow_edges.(Ref(graph), node_id),
         vertical_flux_from_input,
         vertical_flux,
         vertical_flux_prev,
-        vertical_flux_integrated,
+        vertical_flux_mean_over_dt,
+        vertical_flux_integrated_over_saveat,
         vertical_flux_bmi,
         current_level,
         current_area,

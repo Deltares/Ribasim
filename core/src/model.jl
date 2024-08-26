@@ -107,7 +107,6 @@ function Model(config::Config)::Model
     @debug "Read database into memory."
 
     storage = get_storages_from_levels(parameters.basin, state.level)
-    parameters.basin.storage_prev .= storage
 
     @assert length(storage) == n "Basin / state length differs from number of Basins"
     # Integrals for PID control
