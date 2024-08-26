@@ -17,6 +17,7 @@ from pathlib import Path
 # Importing from plugins directly for mypy
 from plugins import processing
 from qgis.core import QgsVectorFileWriter, QgsVectorLayer
+from qgis.PyQt.QtXml import QDomDocument
 
 
 @contextmanager
@@ -50,7 +51,11 @@ def layers(path: Path) -> list[str]:
 
 
 def write_layer(
-    path: Path, layer: QgsVectorLayer, layername: str, newfile: bool = False
+    path: Path,
+    layer: QgsVectorLayer,
+    layername: str,
+    newfile: bool = False,
+    fid: str = "fid",
 ) -> QgsVectorLayer:
     """
     Write a QgsVectorLayer to a GeoPackage database.
@@ -75,6 +80,12 @@ def write_layer(
     options = QgsVectorFileWriter.SaveVectorOptions()
     options.driverName = "gpkg"
     options.layerName = layername
+    options.layerOptions = [f"FID={fid}"]
+
+    # Store the current layer style
+    doc = QDomDocument()
+    layer.exportNamedStyle(doc)
+
     if not newfile:
         options.actionOnExistingFile = (
             QgsVectorFileWriter.ActionOnExistingFile.CreateOrOverwriteLayer
@@ -88,6 +99,11 @@ def write_layer(
             f" with error: {error_message}"
         )
     layer = QgsVectorLayer(f"{path}|layername={layername}", layername, "ogr")
+
+    # Load the stored layer style, and save it to the geopackage
+    layer.importNamedStyle(doc)
+    stylename = f"{layername.replace(' / ', '_')}Style"
+    layer.saveStyleToDatabase(stylename, "", True, "")
     return layer
 
 

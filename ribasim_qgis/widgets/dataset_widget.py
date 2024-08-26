@@ -182,7 +182,6 @@ class DatasetWidget(QWidget):
         self,
         layer: Any,
         destination: Any,
-        renderer: Any = None,
         suppress: bool = False,
         on_top: bool = False,
         labels: Any = None,
@@ -190,7 +189,6 @@ class DatasetWidget(QWidget):
         return self.ribasim_widget.add_layer(
             layer,
             destination,
-            renderer,
             suppress,
             on_top,
             labels,
@@ -198,9 +196,9 @@ class DatasetWidget(QWidget):
 
     def add_item_to_qgis(self, item) -> None:
         element = item.element
-        layer, renderer, labels = element.from_geopackage()
+        layer, labels = element.from_geopackage()
         suppress = self.suppress_popup_checkbox.isChecked()
-        self.add_layer(layer, "Ribasim Input", renderer, suppress, labels=labels)
+        self.add_layer(layer, "Ribasim Input", suppress, labels=labels)
         element.set_editor_widget()
         element.set_read_only()
         return

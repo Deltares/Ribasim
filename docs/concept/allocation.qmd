@@ -13,7 +13,7 @@ Before the optimization for each priority there is a simple step that tries to a
 within this *Allocation* section the main network is also considered to be a subnetwork.
 :::
 
-# The high level algorithm
+# The high level algorithm {#sec-high-level-algorithm}
 The allocation algorithm contains 3 types of optimization:
 
 - `internal_sources`, where flows are allocated within a subnetwork by only using sources inside the subnetwork;

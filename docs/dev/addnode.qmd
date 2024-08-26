@@ -144,8 +144,7 @@ In `python/ribasim/ribasim/geometry/node.py` add a color and shape description i
 
 The script `ribasim_qgis/core/nodes.py` has to be updated to specify how the new node type is displayed by the QGIS plugin. Specifically:
 
-- Add a color and shape description in the `MARKERS` dictionary in `Node.renderer`,
-  consistent with the entries added above;
+- Update the .qml style (using QGIS) in the styles folder for the specific Node.
 - Add an input class per schema, e.g.
 
 ```python
