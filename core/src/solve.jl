@@ -428,9 +428,6 @@ function formulate_flow!(
         n = manning_n[id.idx]
         L = length[id.idx]
 
-        Δh = h_a - h_b
-        q_sign = sign(Δh)
-
         # Average d, A, R
         d_a = h_a - bottom_a
         d_b = h_b - bottom_b
@@ -446,11 +443,10 @@ function formulate_flow!(
         R_h_a = A_a / P_a
         R_h_b = A_b / P_b
         R_h = 0.5 * (R_h_a + R_h_b)
-        k = 1000.0
-        # This epsilon makes sure the AD derivative at Δh = 0 does not give NaN
-        eps = 1e-200
 
-        q = q_sign * A / n * ∛(R_h^2) * sqrt(Δh / L * 2 / π * atan(k * Δh) + eps)
+        Δh = h_a - h_b
+
+        q = A / n * ∛(R_h^2) * relaxed_root(Δh / L, 1e-3)
 
         set_flow!(graph, inflow_edge, q, du)
         set_flow!(graph, outflow_edge, q, du)

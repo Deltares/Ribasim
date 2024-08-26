@@ -2,6 +2,7 @@ from datetime import datetime
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import pytest
 import ribasim
 import tomli
@@ -10,6 +11,7 @@ from pandas.testing import assert_frame_equal
 from pydantic import ValidationError
 from ribasim import Model, Node, Solver
 from ribasim.nodes import basin, pump, user_demand
+from ribasim.utils import UsedIDs
 from shapely.geometry import Point
 
 
@@ -22,8 +24,6 @@ def __assert_equal(a: DataFrame, b: DataFrame) -> None:
 
     a = a.reset_index(drop=True)
     b = b.reset_index(drop=True)
-    a.drop(columns=["fid"], inplace=True, errors="ignore")
-    b.drop(columns=["fid"], inplace=True, errors="ignore")
 
     assert_frame_equal(a, b)
 
@@ -94,6 +94,11 @@ def test_extra_columns():
         pump.Static(extra=[-2], flow_rate=[1.2])
 
 
+def test_index_tables():
+    p = pump.Static(flow_rate=[1.2])
+    assert p.df.index.name == "fid"
+
+
 def test_extra_spatial_columns():
     model = Model(
         starttime="2020-01-01",
@@ -128,7 +133,33 @@ def test_extra_spatial_columns():
         model.edge.add(model.basin[1], model.user_demand[2], foo=1)
 
 
-def test_autoincrement():
+def test_edge_autoincrement(basic):
+    model = basic
+    model.edge.df = model.edge.df.iloc[0:0]  # clear the table
+    model.edge._used_edge_ids = UsedIDs()  # and reset the counter
+
+    model.edge.add(model.basin[1], model.manning_resistance[2], edge_id=20)
+    assert model.edge.df.index[-1] == 20
+
+    model.edge.add(model.manning_resistance[2], model.basin[3])
+    assert model.edge.df.index[-1] == 21
+
+    # Can use any remaining positive integer
+    model.edge.add(model.basin[3], model.tabulated_rating_curve[8], edge_id=1)
+    assert model.edge.df.index[-1] == 1
+
+    with pytest.raises(
+        ValueError,
+        match="Edge IDs have to be unique, but 1 already exists.",
+    ):
+        model.edge.add(
+            model.linear_resistance[10],
+            model.level_boundary[17],
+            edge_id=1,
+        )
+
+
+def test_node_autoincrement():
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
@@ -226,7 +257,7 @@ def test_sort(level_range, tmp_path):
 def test_roundtrip(trivial, tmp_path):
     model1 = trivial
     # set custom Edge index
-    model1.edge.df.index = [15, 12]
+    model1.edge.df.index = pd.Index([15, 12], name="edge_id")
     model1dir = tmp_path / "model1"
     model2dir = tmp_path / "model2"
     # read a model and then write it to a different path

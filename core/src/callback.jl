@@ -121,6 +121,7 @@ function integrate_flows!(u, t, integrator)::Nothing
     (; vertical_flux, vertical_flux_prev, vertical_flux_integrated, vertical_flux_bmi) =
         basin
     du = get_du(integrator)
+    water_balance!(du, u, p, t)
     flow = flow[parent(du)]
     vertical_flux = vertical_flux[parent(du)]
     if !isempty(flow_prev) && isnan(flow_prev[1])

@@ -1,8 +1,7 @@
 project:
   type: website
   resources:
-    - schema/*.schema.json
-
+    - CNAME
 website:
   title: "Ribasim"
   page-navigation: true
