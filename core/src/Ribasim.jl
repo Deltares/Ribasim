@@ -131,13 +131,7 @@ using Tables: Tables, AbstractRow, columntable
 # Wrapper around a vector of structs to easily retrieve the same field from all elements.
 using StructArrays: StructVector
 
-# TODO remove, not used
-using TimerOutputs: TimerOutputs, TimerOutput, @timeit_debug
-
 export libribasim
-
-const to = TimerOutput()
-TimerOutputs.complement!()
 
 include("schema.jl")
 include("config.jl")

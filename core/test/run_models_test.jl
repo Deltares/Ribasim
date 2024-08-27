@@ -334,6 +334,7 @@ end
 
     # On the second segment and extrapolation
     for S in [500.0 + 100.0, 1000.0 + 100.0]
+        local A, h
         S = 500.0 + 100.0
         A, h = lookup(profile, S)
         @test h ≈ 10.0 + (S - 500.0) / 100.0

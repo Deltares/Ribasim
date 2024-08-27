@@ -1,0 +1,227 @@
+---
+title: "QGIS plugin manual test plan"
+---
+
+This document describes how to perform a full manual test on the Ribasim QGIS plugin.
+Known shortcomings and issues can be documented [here](/known_issues.qmd).
+Bugs can be reported on [GitHub](https://github.com/Deltares/Ribasim/issues).
+
+# Clean slate tests
+Before starting with data, perform the following tests to see if the plugin doesn't result in any errors.
+
+## Enable and disable
+
+- Open QGIS and navigate to "Plugins > Manage and Install Plugins...": _The plugin management window opens_.
+- Navigate to "Installed": _Ribasim plugin is in the list (enabled)_.
+- Disable the Ribasim plugin: _Ribasim plugin panel hides if it was open, Ribasim button hides from navigation toolbar_.
+- Enable the Ribasim plugin: _Ribasim button shows on the navigation toolbar_.
+
+## Open and close
+
+- Open QGIS and ensure that the Ribasim plugin is installed and enabled.
+- Open the application via the Ribasim button on the QGIS toolbar: _Ribasim panel opens_.
+- Press the Ribasim button on the QGIS toolbar: _Ribasim panel hides_.
+
+## Button states on startup
+
+- Open QGIS and ensure that the Ribasim plugin is installed and enabled.
+- Open the application via the Ribasim button on the QGIS toolbar: _Ribasim panel opens_.
+- _In the Model tab, the "Add to QGIS" and "Remove from Dataset" buttons are disabled_.
+- _In the Nodes tab, all buttons are disabled_.
+
+[Failing](https://github.com/Deltares/Ribasim/issues/1678)
+
+# New model tests
+
+## New and cancel
+
+- Open QGIS and ensure that the Ribasim plugin is installed and enabled.
+- Open the application via the Ribasim button on the QGIS toolbar: _Ribasim panel opens_.
+- Press the "New" button in the Model tab: _file navigation window pops up_.
+- Fill in a name.
+- Press "Cancel": _Ensure that no files are created in that location_.
+
+## New single model
+
+- Open QGIS and ensure that the Ribasim plugin is installed and enabled.
+- Open the application via the Ribasim button on the QGIS toolbar: _Ribasim panel opens_.
+- Press the "New" button in the Model tab: _file navigation window pops up_.
+- Fill in a name ("test1").
+- Press OK: _A TOML and database file are created on the given location_.
+- _The layers tab shows a group with a "Node" and "Edge" layer, the canvas is empty._
+- _The Ribasim panel shows a Node and Edge layer, the file path is set in the text field, all nodes buttons are enabled_.
+- Cleanup: Delete the created files from disk.
+
+## New model in same folder
+
+- Open QGIS and ensure that the Ribasim plugin is installed and enabled.
+- Open the application via the Ribasim button on the QGIS toolbar: _Ribasim panel opens_.
+- Press the "New" button in the Model tab: _file navigation window pops up_.
+- Fill in a name ("test1").
+- Press OK: _A TOML and database file are created on the given location_.
+- Press the "New" button in the Model tab: _file navigation window pops up_.
+- Fill in a name ("test2").
+- Press OK: _An error is given that the database.gpkg already exists, test2.toml is not written_.
+- Cleanup: Delete the created files from disk.
+
+[Failing](https://github.com/Deltares/Ribasim/issues/1679)
+
+## New model with same name
+
+- Open QGIS and ensure that the Ribasim plugin is installed and enabled.
+- Open the application via the Ribasim button on the QGIS toolbar: _Ribasim panel opens_.
+- Press the "New" button in the Model tab: _file navigation window pops up_.
+- Fill in a name ("test1").
+- Press OK: _A TOML and database file are created on the given location_.
+- Open test1.toml in a text editor and write "EXTRA_LINE=true"
+- Press the "New" button in the Model tab: _file navigation window pops up_.
+- Fill in a name ("test1").
+- Press OK: _Shows a popup window to ask if you want to overwrite_.
+- Press Yes: _An error is given that the database.gpkg already exists, test1.toml is not overwritten (EXTRA_LINE=true) is still in test1.toml_.
+- Cleanup: Delete the created files from disk.
+
+Unsure if this is wanted behavior, as we said we wanted to overwrite the TOML file, and therefore also the database file.
+Perhaps we should create folders instead of TOML files only.
+
+[Failing](https://github.com/Deltares/Ribasim/issues/1681)
+
+## New model and clean new project cleans Ribasim plugin
+
+- Open QGIS and ensure that the Ribasim plugin is installed and enabled.
+- Open the application via the Ribasim button on the QGIS toolbar: _Ribasim panel opens_.
+- Press the "New" button in the Model tab: _file navigation window pops up_.
+- Fill in a name ("test1").
+- Press OK: _A TOML and database file are created on the given location_.
+- Press "Project > New": _Popup asks to save the project_.
+- Press Discard: _Layers tab is emptied, Ribasim panel is emptied_.
+
+[Failing](https://github.com/Deltares/Ribasim/issues/1682)
+
+# Model tab button interaction tests
+
+## Open model twice
+
+- Open QGIS and ensure that the Ribasim plugin is installed and enabled.
+- Open the application via the Ribasim button on the QGIS toolbar: _Ribasim panel opens_.
+- Press the "New" button in the Model tab: _file navigation window pops up_.
+- Fill in a name ("test1").
+- Press OK: _A TOML and database file are created on the given location_.
+- Press the "Open" button in the Model tab: _file navigation window pops up_.
+- Open test1.toml: _A new layer group is added to the layers panel_.
+- In the Nodes tab press "Basin / profile": _A Basin / profile table layer is added to the last layer group only_.
+
+Intended behavior: The same model is loaded twice, but there is only a connection on the last loaded model when interacting with the plugin.
+
+## Add to QGIS button
+
+- Open QGIS and ensure that the Ribasim plugin is installed and enabled.
+- Open the application via the Ribasim button on the QGIS toolbar: _Ribasim panel opens_.
+- Press the "New" button in the Model tab: _file navigation window pops up_.
+- Fill in a name ("test1").
+- Press OK: _A TOML and database file are created on the given location_.
+- Press "Add to QGIS": _Nothing happens_.
+- Press the "Edge" layer in the Model tab: _"Add to QGIS" button is disabled_.
+
+[Failing](https://github.com/Deltares/Ribasim/issues/1683)
+
+## Remove from Dataset button
+
+- Open QGIS and ensure that the Ribasim plugin is installed and enabled.
+- Open the application via the Ribasim button on the QGIS toolbar: _Ribasim panel opens_.
+- Press the "New" button in the Model tab: _file navigation window pops up_.
+- Fill in a name ("test1").
+- Press OK: _A TOML and database file are created on the given location_.
+- Press the "Edge" layer in the Model tab, press "Remove from Dataset": _Popup shows "Deleting: Edge"_.
+- Press "Yes": "Edge" layer is removed from Layers panel and from Model tab.
+
+Unsure if this is wanted behavior, it is now impossible to load the model afterwards because it no longer contains an Edge layer.
+Perhaps better if we only allow removal of the optional tables. See this [bug report](https://github.com/Deltares/Ribasim/issues/1684).
+
+# Nodes tab button interaction tests
+
+## Add all tables to new model
+
+- Open QGIS and ensure that the Ribasim plugin is installed and enabled.
+- Open the application via the Ribasim button on the QGIS toolbar: _Ribasim panel opens_.
+- Press the "New" button in the Model tab: _file navigation window pops up_.
+- Fill in a name ("test1").
+- Press OK: _A TOML and database file are created on the given location_.
+- Go to the Nodes tab: _All buttons are enabled_.
+- From left to right, top to bottom, press every button to add tables to the layers: _The layer group contains extra layers for every button clicked. Basin / area is a MultiPolygon layer_.
+- Navigate to Model tab: _All layers are added to the panel_.
+- Press the "Open" button to open the same model once again: _The layers panel adds the model containing all of its layers, the Model tab was refreshed_.
+
+## Add table twice to new model
+
+- Open QGIS and ensure that the Ribasim plugin is installed and enabled.
+- Open the application via the Ribasim button on the QGIS toolbar: _Ribasim panel opens_.
+- Press the "New" button in the Model tab: _file navigation window pops up_.
+- Fill in a name ("test1").
+- Press OK: _A TOML and database file are created on the given location_.
+- Go to the Nodes tab: _All buttons are enabled_.
+- Press the Basin / time button: _A layer is added to the layers panel with that name, the button becomes disabled_.
+
+[Failing](https://github.com/Deltares/Ribasim/issues/1685)
+
+# Map interaction tests
+
+## Add points to Node layer
+
+- Open QGIS and ensure that the Ribasim plugin is installed and enabled.
+- Open the application via the Ribasim button on the QGIS toolbar: _Ribasim panel opens_.
+- Press the "New" button in the Model tab: _file navigation window pops up_.
+- Fill in a name ("test1").
+- Press OK: _A TOML and database file are created on the given location_.
+- Select the Node layer in the Layers tab: _edit buttons in the toolbar become enabled_.
+- Edit the layer by pressing the pencil button: _Add Point Feature button becomes enabled_.
+- Click in the canvas: _Popup appears with Feature Attributes to fill in_.
+- Press OK: _The first Node appears on the map_.
+- Click in the canvas again: _Popup appears with Feature Attributes to fill in_.
+- Press OK: _The second Node appears on the map_.
+
+Unexpected behavior: The default type of the nodes is NULL, and therefore undefined.
+Should be enforced and validated.
+See [issue](https://github.com/Deltares/Ribasim/issues/1688#issuecomment-2265315907).
+
+## Add edges to Edge layer
+
+- Open QGIS and ensure that the Ribasim plugin is installed and enabled.
+- Open the application via the Ribasim button on the QGIS toolbar: _Ribasim panel opens_.
+- Press the "New" button in the Model tab: _file navigation window pops up_.
+- Fill in a name ("test1").
+- Press OK: _A TOML and database file are created on the given location_.
+- Select the Node layer in the Layers tab: _edit buttons in the toolbar become enabled_.
+- Edit the layer by pressing the pencil button: _Add Point Feature button becomes enabled_.
+- Click in the canvas: _Popup appears with Feature Attributes to fill in_.
+- Add a node id of 1, press OK: _The first Node appears on the map_.
+- Click in the canvas again: _Popup appears with Feature Attributes to fill in_.
+- Add a node id of 2, press OK: _The second Node appears on the map_.
+- Select the Edge layer in the Layers tab: _edit buttons in the toolbar become enabled_.
+- Enable snapping under View > Toolbars > Snapping Toolbars: _Magnet button is enabled and active_.
+- Press the Add Line Feature button: _Mouse becomes a crosshair_.
+- Snap a line between the two nodes, click the two nodes and then right click to finish: _Popup shows with input, all is set to NULL_.
+- Press OK: _Line appears on screen between the two nodes_.
+- Save the layer's edits: _The line becomes blue_.
+- Open the attribute table: _The information shows the from_node_id, to_node_id. This information matches the information from the Node table._
+
+# Tables tests
+
+## Edit tables with data
+TODO
+
+## Edit the type of a node
+TODO
+
+## Edit information in optional tables
+TODO
+
+# Result inspection tests
+
+## Run a model and check the time series
+TODO
+
+# Tutorial tests
+
+## Perform tutorial in documentation
+
+Go through the tutorial as described in the [How-to guide](/guide/qgis.qmd).

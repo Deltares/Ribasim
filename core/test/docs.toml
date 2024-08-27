@@ -41,7 +41,6 @@ autodiff = true              # optional, default true
 [logging]
 # defines the logging level of Ribasim
 verbosity = "info" # optional, default "info", can otherwise be "debug", "warn" or "error"
-timing = false     # optional, whether to log debug timing statements
 
 [results]
 # These results files are always written

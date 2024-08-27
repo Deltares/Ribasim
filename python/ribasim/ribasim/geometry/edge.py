@@ -1,4 +1,4 @@
-from typing import Any, NamedTuple, Optional
+from typing import NamedTuple, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -14,8 +14,9 @@ from pydantic import NonNegativeInt, PrivateAttr
 from shapely.geometry import LineString, MultiLineString, Point
 
 from ribasim.input_base import SpatialTableModel
-from ribasim.schemas import _BaseSchema
 from ribasim.utils import UsedIDs
+
+from .base import _GeoBaseSchema
 
 __all__ = ("EdgeTable",)
 
@@ -34,14 +35,14 @@ class NodeData(NamedTuple):
     geometry: Point
 
 
-class EdgeSchema(_BaseSchema):
+class EdgeSchema(_GeoBaseSchema):
     edge_id: Index[Int32] = pa.Field(default=0, ge=0, check_name=True)
     name: Series[str] = pa.Field(default="")
     from_node_id: Series[Int32] = pa.Field(default=0)
     to_node_id: Series[Int32] = pa.Field(default=0)
     edge_type: Series[str] = pa.Field(default="flow")
     subnetwork_id: Series[pd.Int32Dtype] = pa.Field(default=pd.NA, nullable=True)
-    geometry: GeoSeries[Any] = pa.Field(default=None, nullable=True)
+    geometry: GeoSeries[LineString] = pa.Field(default=None, nullable=True)
 
     @classmethod
     def _index_name(self) -> str:
