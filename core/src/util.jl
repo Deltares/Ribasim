@@ -407,19 +407,31 @@ end
 
 function get_all_priorities(db::DB, config::Config)::Vector{Int32}
     priorities = Set{Int32}()
-
+    is_valid = true
     # TODO: Is there a way to automatically grab all tables with a priority column?
-    for type in [
-        UserDemandStaticV1,
-        UserDemandTimeV1,
-        LevelDemandStaticV1,
-        LevelDemandTimeV1,
-        FlowDemandStaticV1,
-        FlowDemandTimeV1,
+    for (type, name) in [
+        (UserDemandStaticV1, "UserDemand / static"),
+        (UserDemandTimeV1, "UserDemand / time"),
+        (LevelDemandStaticV1, "LevelDemand / static"),
+        (LevelDemandTimeV1, "LevelDemand / time"),
+        (FlowDemandStaticV1, "FlowDemand / static"),
+        (FlowDemandTimeV1, "FlowDemand / time"),
     ]
-        union!(priorities, load_structvector(db, config, type).priority)
+        if valid_priorities(
+            load_structvector(db, config, type).priority,
+            config.allocation.use_allocation,
+        )
+            union!(priorities, load_structvector(db, config, type).priority)
+        else
+            is_valid = false
+            @error "Missing priority parameter(s) for a $name node in the allocation problem."
+        end
     end
-    return sort(collect(priorities))
+    if is_valid
+        return sort(collect(priorities))
+    else
+        error("Priority parameter is missing")
+    end
 end
 
 function get_external_priority_idx(p::Parameters, node_id::NodeID)::Int

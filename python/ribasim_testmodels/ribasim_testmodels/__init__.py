@@ -49,6 +49,7 @@ from ribasim_testmodels.equations import (
 from ribasim_testmodels.invalid import (
     invalid_discrete_control_model,
     invalid_edge_types_model,
+    invalid_priorities_model,
     invalid_qh_model,
     invalid_unstable_model,
 )
@@ -77,6 +78,7 @@ __all__ = [
     "flow_demand_model",
     "invalid_discrete_control_model",
     "invalid_edge_types_model",
+    "invalid_priorities_model",
     "invalid_qh_model",
     "invalid_unstable_model",
     "leaky_bucket_model",
