@@ -387,7 +387,7 @@ class BasinArea(Input):
 
     @classmethod
     def geometry_type(cls) -> str:
-        return "Polygon"
+        return "MultiPolygon"
 
     @classmethod
     def qgis_geometry_type(cls) -> Qgis.GeometryType:

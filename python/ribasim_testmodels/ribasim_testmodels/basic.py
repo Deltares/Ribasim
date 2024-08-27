@@ -17,7 +17,7 @@ from ribasim.nodes import (
     pump,
     tabulated_rating_curve,
 )
-from shapely.geometry import Point
+from shapely.geometry import MultiPolygon, Point
 
 
 def basic_model() -> ribasim.Model:
@@ -314,7 +314,7 @@ def tabulated_rating_curve_model() -> ribasim.Model:
         Node(1, basin_geometry_1),
         [
             basin.Static(precipitation=[0.002 / 86400]),
-            basin.Area(geometry=[basin_geometry_1.buffer(1.0)]),
+            basin.Area(geometry=[MultiPolygon([basin_geometry_1.buffer(1.0)])]),
             *node_data,
         ],
     )
@@ -323,7 +323,7 @@ def tabulated_rating_curve_model() -> ribasim.Model:
         Node(4, basin_geometry_2),
         [
             basin.Static(precipitation=[0.0]),
-            basin.Area(geometry=[basin_geometry_2.buffer(1.0)]),
+            basin.Area(geometry=[MultiPolygon([basin_geometry_2.buffer(1.0)])]),
             *node_data,
         ],
     )
