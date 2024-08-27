@@ -9,21 +9,23 @@ from matplotlib.patches import Patch
 from pandera.dtypes import Int32
 from pandera.typing import Index, Series
 from pandera.typing.geopandas import GeoSeries
+from shapely.geometry import Point
 
 from ribasim.input_base import SpatialTableModel
-from ribasim.schemas import _BaseSchema
+
+from .base import _GeoBaseSchema
 
 __all__ = ("NodeTable",)
 
 
-class NodeSchema(_BaseSchema):
+class NodeSchema(_GeoBaseSchema):
     node_id: Index[Int32] = pa.Field(default=0, check_name=True)
     name: Series[str] = pa.Field(default="")
     node_type: Series[str] = pa.Field(default="")
     subnetwork_id: Series[pd.Int32Dtype] = pa.Field(
         default=pd.NA, nullable=True, coerce=True
     )
-    geometry: GeoSeries[Any] = pa.Field(default=None, nullable=True)
+    geometry: GeoSeries[Point] = pa.Field(default=None, nullable=True)
 
     @classmethod
     def _index_name(self) -> str:
