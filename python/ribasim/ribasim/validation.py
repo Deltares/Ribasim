@@ -29,7 +29,7 @@ connectivity = {
     "PidControl": ["Pump", "Outlet"],
     "UserDemand": ["Basin", "Terminal", "LevelBoundary"],
     "LevelDemand": ["Basin"],
-    "FLowDemand": [
+    "FlowDemand": [
         "LinearResistance",
         "ManningResistance",
         "TabulatedRatingCurve",
