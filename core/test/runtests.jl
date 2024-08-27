@@ -1,3 +1,16 @@
-using ReTestItems, Ribasim
+using TestItemRunner
 
-runtests(Ribasim; nworkers = min(4, Sys.CPU_THREADS ÷ 2), nworker_threads = 2)
+function test_type(item)::Bool
+    dir = basename(dirname(item.filename))
+    is_integration = dir == "integration_test"
+    is_regression = dir == "regression_test"
+    if in("integration", ARGS)
+        is_integration
+    elseif in("regression", ARGS)
+        is_regression
+    else
+        !is_integration && !is_regression
+    end
+end
+
+@run_package_tests filter = test_type

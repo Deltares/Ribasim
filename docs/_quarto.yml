@@ -1,8 +1,7 @@
 project:
   type: website
   resources:
-    - schema/*.schema.json
-
+    - CNAME
 website:
   title: "Ribasim"
   page-navigation: true
@@ -36,6 +35,9 @@ website:
         - guide/examples.ipynb
         - guide/qgis.qmd
         - guide/coupling.qmd
+        - section: "Coupling guides"
+          contents:
+          - guide/delwaq.ipynb
 
     - title: "Concepts"
       contents:
@@ -79,6 +81,7 @@ website:
       contents:
         - dev/index.qmd
         - dev/core.qmd
+        - dev/benchmark.qmd
         - dev/addnode.qmd
         - dev/python.qmd
         - dev/allocation.qmd

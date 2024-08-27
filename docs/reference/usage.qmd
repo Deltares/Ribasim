@@ -67,12 +67,11 @@ subgrid           | Bool   | Compute and output more detailed water levels.
 
 ## Logging settings
 
-The following entries can be set in the configuration in the `[logging]` section.
+The following can be set in the configuration in the `[logging]` section.
 
 entry             | type   | description
 ----------------- | ------ | -----------
 verbosity         | String | Verbosity level: debug, info, warn, or error.
-timing            | Bool   | Enable timings.
 
 # GeoPackage database and Arrow tables {#sec-geopackage}
 
@@ -316,3 +315,15 @@ column         | type
 time           | DateTime
 subgrid_id     | Int32
 subgrid_level  | Float64
+
+## Solver statistics - `solver_stats.arrow`
+
+This result file contains statistics about the solver, which can give an insight into how well the solver is performing over time. The data is solved by `saveat` (see [configuration file](#configuration-file)). `water_balance` refers to the right-hand-side function of the system of differential equations solved by the Ribasim core.
+
+column              | type
+--------------------| -----
+time                | DateTime
+water_balance_calls | Int
+linear_solves       | Int
+accepted_timesteps  | Int
+rejected_timesteps  | Int

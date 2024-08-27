@@ -15,6 +15,8 @@ using Logging: LogLevel, Debug, Info, Warn, Error
 using ..Ribasim: Ribasim, isnode, nodetype
 using OrdinaryDiffEq:
     OrdinaryDiffEqAlgorithm,
+    OrdinaryDiffEqNewtonAdaptiveAlgorithm,
+    NLNewton,
     Euler,
     ImplicitEuler,
     KenCarp4,
@@ -112,7 +114,6 @@ end
 
 @option struct Logging <: TableOption
     verbosity::LogLevel = Info
-    timing::Bool = false
 end
 
 @option struct Allocation <: TableOption
@@ -236,11 +237,17 @@ function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
         error("Given solver algorithm $(solver.algorithm) not supported.\n\
             Available options are: ($(options)).")
     end
+    kwargs = Dict{Symbol, Any}()
+    if algotype <: OrdinaryDiffEqNewtonAdaptiveAlgorithm
+        kwargs[:nlsolve] = NLNewton(; relax = 0.1)
+    end
     # not all algorithms support this keyword
+    kwargs[:autodiff] = solver.autodiff
     try
-        algotype(; solver.autodiff)
+        algotype(; kwargs...)
     catch
-        algotype()
+        pop!(kwargs, :autodiff)
+        algotype(; kwargs...)
     end
 end
 

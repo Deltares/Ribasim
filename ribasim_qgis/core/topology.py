@@ -114,9 +114,7 @@ def set_edge_properties(node: QgsVectorLayer, edge: QgsVectorLayer) -> None:
     from_fid, to_fid = derive_connectivity(node_index, node_xy, edge_xy)
 
     edge_fields = edge.fields()
-    from_type_field = edge_fields.indexFromName("from_node_type")
     from_id_field = edge_fields.indexFromName("from_node_id")
-    to_type_field = edge_fields.indexFromName("to_node_type")
     to_id_field = edge_fields.indexFromName("to_node_id")
     edge_type_field = edge_fields.indexFromName("edge_type")
 
@@ -127,21 +125,11 @@ def set_edge_properties(node: QgsVectorLayer, edge: QgsVectorLayer) -> None:
             edge_iterator = cast(Iterable[QgsFeature], edge.getFeatures())
             for feature, fid1, fid2 in zip(edge_iterator, from_fid, to_fid):
                 type1, id1 = node_identifiers[fid1]
-                type2, id2 = node_identifiers[fid2]
+                _, id2 = node_identifiers[fid2]
                 edge_type = infer_edge_type(type1)
 
                 fid = feature.id()
-                edge.changeAttributeValue(
-                    fid,
-                    from_type_field,
-                    type1,
-                )
                 edge.changeAttributeValue(fid, from_id_field, id1)
-                edge.changeAttributeValue(
-                    fid,
-                    to_type_field,
-                    type2,
-                )
                 edge.changeAttributeValue(fid, to_id_field, id2)
                 edge.changeAttributeValue(fid, edge_type_field, edge_type)
 

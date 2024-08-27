@@ -16,7 +16,6 @@ from qgis.core import (
     Qgis,
     QgsAbstractVectorLayerLabeling,
     QgsCoordinateReferenceSystem,
-    QgsFeatureRenderer,
     QgsLayerTreeGroup,
     QgsMapLayer,
     QgsProject,
@@ -134,7 +133,6 @@ class RibasimWidget(QWidget):
         self,
         layer: QgsVectorLayer,
         destination: str,
-        renderer: QgsFeatureRenderer | None = None,
         suppress: bool | None = None,
         on_top: bool = False,
         labels: QgsAbstractVectorLayerLabeling | None = None,
@@ -148,8 +146,6 @@ class RibasimWidget(QWidget):
             QGIS map layer, raster or vector layer
         destination:
             Legend group
-        renderer:
-            QGIS layer renderer, optional
         suppress:
             optional, bool. Default value is None.
             This controls whether attribute form popup is suppressed or not.
@@ -179,8 +175,6 @@ class RibasimWidget(QWidget):
                 else Qgis.AttributeFormSuppression.Default
             )
             maplayer.setEditFormConfig(config)
-        if renderer is not None:
-            maplayer.setRenderer(renderer)
         if labels is not None:
             layer.setLabeling(labels)
             layer.setLabelsEnabled(True)

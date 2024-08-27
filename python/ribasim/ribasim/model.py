@@ -13,6 +13,7 @@ from pandera.typing.geopandas import GeoDataFrame
 from pydantic import (
     DirectoryPath,
     Field,
+    PrivateAttr,
     field_serializer,
     model_validator,
 )
@@ -47,11 +48,14 @@ from ribasim.input_base import (
     FileModel,
     SpatialTableModel,
     context_file_loading,
+    context_file_writing,
 )
 from ribasim.utils import (
     MissingOptionalModule,
+    UsedIDs,
     _edge_lookup,
     _node_lookup,
+    _node_lookup_numpy,
     _time_in_ns,
 )
 
@@ -97,8 +101,10 @@ class Model(FileModel):
 
     edge: EdgeTable = Field(default_factory=EdgeTable)
 
+    _used_node_ids: UsedIDs = PrivateAttr(default_factory=UsedIDs)
+
     @model_validator(mode="after")
-    def set_node_parent(self) -> "Model":
+    def _set_node_parent(self) -> "Model":
         for (
             k,
             v,
@@ -108,14 +114,14 @@ class Model(FileModel):
         return self
 
     @model_validator(mode="after")
-    def ensure_edge_table_is_present(self) -> "Model":
+    def _ensure_edge_table_is_present(self) -> "Model":
         if self.edge.df is None:
-            self.edge.df = GeoDataFrame[EdgeSchema]()
+            self.edge.df = GeoDataFrame[EdgeSchema](index=pd.Index([], name="edge_id"))
         self.edge.df.set_geometry("geometry", inplace=True, crs=self.crs)
         return self
 
     @field_serializer("input_dir", "results_dir")
-    def serialize_path(self, path: Path) -> str:
+    def _serialize_path(self, path: Path) -> str:
         return str(path)
 
     def model_post_init(self, __context: Any) -> None:
@@ -132,7 +138,7 @@ class Model(FileModel):
         """
         content = ["ribasim.Model("]
         INDENT = "    "
-        for field in self.fields():
+        for field in self._fields():
             attr = getattr(self, field)
             if isinstance(attr, EdgeTable):
                 content.append(f"{INDENT}{field}=Edge(...),")
@@ -173,9 +179,11 @@ class Model(FileModel):
         db_path = directory / input_dir / "database.gpkg"
         db_path.parent.mkdir(parents=True, exist_ok=True)
         db_path.unlink(missing_ok=True)
-        context_file_loading.get()["database"] = db_path
+        context_file_writing.get()["database"] = db_path
         self.edge._save(directory, input_dir)
         node = self.node_table()
+
+        assert node.df is not None
         node._save(directory, input_dir)
 
         for sub in self._nodes():
@@ -198,23 +206,23 @@ class Model(FileModel):
 
     def _apply_crs_function(self, function_name: str, crs: str) -> None:
         """Apply `function_name`, with `crs` as the first and only argument to all spatial tables."""
-        self.edge.df = getattr(self.edge.df, function_name)(crs)
+        getattr(self.edge.df, function_name)(crs, inplace=True)
         for sub in self._nodes():
             if sub.node.df is not None:
-                sub.node.df = getattr(sub.node.df, function_name)(crs)
+                getattr(sub.node.df, function_name)(crs, inplace=True)
             for table in sub._tables():
                 if isinstance(table, SpatialTableModel) and table.df is not None:
-                    table.df = getattr(table.df, function_name)(crs)
+                    getattr(table.df, function_name)(crs, inplace=True)
         self.crs = crs
 
     def node_table(self) -> NodeTable:
         """Compute the full sorted NodeTable from all node types."""
         df_chunks = [node.node.df.set_crs(self.crs) for node in self._nodes()]  # type:ignore
-        df = pd.concat(df_chunks, ignore_index=True)
+        df = pd.concat(df_chunks)
         node_table = NodeTable(df=df)
         node_table.sort()
         assert node_table.df is not None
-        node_table.df.index.name = "fid"
+        assert node_table.df.index.is_unique, "node_id must be unique"
         return node_table
 
     def _nodes(self) -> Generator[MultiNodeModel, Any, None]:
@@ -263,13 +271,13 @@ class Model(FileModel):
         self.filepath = filepath
         if not filepath.suffix == ".toml":
             raise ValueError(f"Filepath '{filepath}' is not a .toml file.")
-        context_file_loading.set({})
+        context_file_writing.set({})
         directory = filepath.parent
         directory.mkdir(parents=True, exist_ok=True)
         self._save(directory, self.input_dir)
         fn = self._write_toml(filepath)
 
-        context_file_loading.set({})
+        context_file_writing.set({})
         return fn
 
     @classmethod
@@ -289,7 +297,7 @@ class Model(FileModel):
             return {}
 
     @model_validator(mode="after")
-    def reset_contextvar(self) -> "Model":
+    def _reset_contextvar(self) -> "Model":
         # Drop database info
         context_file_loading.set({})
         return self
@@ -300,9 +308,7 @@ class Model(FileModel):
         df_listen_edge = pd.DataFrame(
             data={
                 "control_node_id": pd.Series([], dtype=np.int32),
-                "control_node_type": pd.Series([], dtype=str),
                 "listen_node_id": pd.Series([], dtype=np.int32),
-                "listen_node_type": pd.Series([], dtype=str),
             }
         )
 
@@ -311,11 +317,8 @@ class Model(FileModel):
             if table is None:
                 continue
 
-            to_add = table[
-                ["node_id", "listen_node_id", "listen_node_type"]
-            ].drop_duplicates()
-            to_add.columns = ["control_node_id", "listen_node_id", "listen_node_type"]
-            to_add["control_node_type"] = "PidControl"
+            to_add = table[["node_id", "listen_node_id"]].drop_duplicates()
+            to_add.columns = ["control_node_id", "listen_node_id"]
             df_listen_edge = pd.concat([df_listen_edge, to_add])
 
         # Listen edges from ContinuousControl and DiscreteControl
@@ -326,30 +329,26 @@ class Model(FileModel):
             if table is None:
                 continue
 
-            to_add = table[
-                ["node_id", "listen_node_id", "listen_node_type"]
-            ].drop_duplicates()
+            to_add = table[["node_id", "listen_node_id"]].drop_duplicates()
             to_add.columns = [
                 "control_node_id",
                 "listen_node_id",
-                "listen_node_type",
             ]
-            to_add["control_node_type"] = name
             df_listen_edge = pd.concat([df_listen_edge, to_add])
 
         # Collect geometry data
         node = self.node_table().df
         control_nodes_geometry = df_listen_edge.merge(
             node,
-            left_on=["control_node_id", "control_node_type"],
-            right_on=["node_id", "node_type"],
+            left_on=["control_node_id"],
+            right_on=["node_id"],
             how="left",
         )["geometry"]
 
         listen_nodes_geometry = df_listen_edge.merge(
             node,
-            left_on=["listen_node_id", "listen_node_type"],
-            right_on=["node_id", "node_type"],
+            left_on=["listen_node_id"],
+            right_on=["node_id"],
             how="left",
         )["geometry"]
 
@@ -366,7 +365,12 @@ class Model(FileModel):
             )
         return
 
-    def plot(self, ax=None, indicate_subnetworks: bool = True) -> Any:
+    def plot(
+        self,
+        ax=None,
+        indicate_subnetworks: bool = True,
+        aspect_ratio_bound: float = 0.33,
+    ) -> Any:
         """Plot the nodes, edges and allocation networks of the model.
 
         Parameters
@@ -375,6 +379,9 @@ class Model(FileModel):
             Axes on which to draw the plot.
         indicate_subnetworks : bool
             Whether to indicate subnetworks with a convex hull backdrop.
+        aspect_ratio_bound : float
+            The maximal aspect ratio in (0,1). The smaller this number, the further the figure
+            shape is allowed to be from a square
 
         Returns
         -------
@@ -401,6 +408,21 @@ class Model(FileModel):
             labels += labels_subnetworks
 
         ax.legend(handles, labels, loc="lower left", bbox_to_anchor=(1, 0.5))
+
+        # Enforce aspect ratio bound
+        xlim = ax.get_xlim()
+        ylim = ax.get_ylim()
+        xsize = xlim[1] - xlim[0]
+        ysize = ylim[1] - ylim[0]
+
+        if ysize < aspect_ratio_bound * xsize:
+            y_mid = (ylim[0] + ylim[1]) / 2
+            ysize_new = aspect_ratio_bound * xsize
+            ax.set_ylim(y_mid - ysize_new / 2, y_mid + ysize_new / 2)
+        elif xsize < aspect_ratio_bound * ysize:
+            x_mid = (xlim[0] + xlim[1]) / 2
+            xsize_new = aspect_ratio_bound * ysize
+            ax.set_xlim(x_mid - xsize_new / 2, x_mid + xsize_new / 2)
 
         return ax
 
@@ -429,17 +451,11 @@ class Model(FileModel):
         # We assume only the flow network is of interest.
         edge_df = edge_df[edge_df.edge_type == "flow"]
 
-        node_id = node_df.node_id.to_numpy()
+        node_id = node_df.index.to_numpy()
         edge_id = edge_df.index.to_numpy()
         from_node_id = edge_df.from_node_id.to_numpy()
         to_node_id = edge_df.to_node_id.to_numpy()
-        node_lookup = _node_lookup(node_df)
-        from_node_index = pd.MultiIndex.from_frame(
-            edge_df[["from_node_type", "from_node_id"]]
-        )
-        to_node_index = pd.MultiIndex.from_frame(
-            edge_df[["to_node_type", "to_node_id"]]
-        )
+        node_lookup = _node_lookup_numpy(node_id)
 
         grid = xugrid.Ugrid1d(
             node_x=node_df.geometry.x,
@@ -447,8 +463,8 @@ class Model(FileModel):
             fill_value=-1,
             edge_node_connectivity=np.column_stack(
                 (
-                    node_lookup.loc[from_node_index],
-                    node_lookup.loc[to_node_index],
+                    node_lookup.loc[from_node_id],
+                    node_lookup.loc[to_node_id],
                 )
             ),
             name="ribasim",
@@ -499,19 +515,17 @@ class Model(FileModel):
         # add the xugrid dimension indices to the dataframes
         edge_dim = uds.grid.edge_dimension
         node_dim = uds.grid.node_dimension
+        node_lookup = _node_lookup(uds)
         edge_lookup = _edge_lookup(uds)
         flow_df[edge_dim] = edge_lookup[flow_df["edge_id"]].to_numpy()
-        # Use a MultiIndex to ensure the lookup results is the same length as basin_df
-        basin_df["node_type"] = "Basin"
-        multi_index = pd.MultiIndex.from_frame(basin_df[["node_type", "node_id"]])
-        basin_df[node_dim] = node_lookup.loc[multi_index].to_numpy()
+        basin_df[node_dim] = node_lookup[basin_df["node_id"]].to_numpy()
 
         # add flow results to the UgridDataset
         flow_da = flow_df.set_index(["time", edge_dim])["flow_rate"].to_xarray()
         uds[flow_da.name] = flow_da
 
         # add basin results to the UgridDataset
-        basin_df.drop(columns=["node_type", "node_id"], inplace=True)
+        basin_df.drop(columns=["node_id"], inplace=True)
         basin_ds = basin_df.set_index(["time", node_dim]).to_xarray()
 
         for var_name, da in basin_ds.data_vars.items():

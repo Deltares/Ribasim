@@ -98,12 +98,12 @@ def test_write_adds_fid_in_tables(basic, tmp_path):
     model_orig = basic
     # for node an explicit index was provided
     nrow = len(model_orig.basin.node.df)
-    assert model_orig.basin.node.df.index.name is None
+    assert model_orig.basin.node.df.index.name == "node_id"
 
-    # for edge no index was provided, but it still needs to write it to file
+    # for edge an explicit index was provided
     nrow = len(model_orig.edge.df)
-    assert model_orig.edge.df.index.name == "fid"
-    assert model_orig.edge.df.index.equals(pd.RangeIndex(nrow))
+    assert model_orig.edge.df.index.name == "edge_id"
+    assert model_orig.edge.df.index.equals(pd.RangeIndex(1, nrow + 1))
 
     model_orig.write(tmp_path / "basic/ribasim.toml")
     with connect(tmp_path / "basic/database.gpkg") as connection:
@@ -111,13 +111,13 @@ def test_write_adds_fid_in_tables(basic, tmp_path):
         df = pd.read_sql_query(query, connection)
         assert "fid" in df.columns
 
-        query = "select fid from Node"
+        query = "select node_id from Node"
         df = pd.read_sql_query(query, connection)
-        assert "fid" in df.columns
+        assert "node_id" in df.columns
 
-        query = "select fid from Edge"
+        query = "select edge_id from Edge"
         df = pd.read_sql_query(query, connection)
-        assert "fid" in df.columns
+        assert "edge_id" in df.columns
 
 
 def test_node_table(basic):
@@ -125,10 +125,10 @@ def test_node_table(basic):
     node = model.node_table()
     df = node.df
     assert df.geometry.is_unique
-    assert df.node_id.dtype == np.int32
+    assert df.index.dtype == np.int32
     assert df.subnetwork_id.dtype == pd.Int32Dtype()
     assert df.node_type.iloc[0] == "Basin"
-    assert df.node_type.iloc[-1] == "Terminal"
+    assert df.node_type.iloc[-1] == "LevelBoundary"
     assert df.crs == CRS.from_epsg(28992)
 
 
@@ -139,6 +139,21 @@ def test_edge_table(basic):
     assert df.from_node_id.dtype == np.int32
     assert df.subnetwork_id.dtype == pd.Int32Dtype()
     assert df.crs == CRS.from_epsg(28992)
+
+
+def test_duplicate_edge(trivial):
+    model = trivial
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            "Edges have to be unique, but edge with from_node_id 6 to_node_id 0 already exists."
+        ),
+    ):
+        model.edge.add(
+            model.basin[6],
+            model.tabulated_rating_curve[0],
+            name="duplicate",
+        )
 
 
 def test_indexing(basic):
@@ -205,3 +220,11 @@ def test_to_crs(bucket: Model):
     # Assert that the bucket is still at Deltares' headquarter
     assert model.basin.node.df["geometry"].iloc[0].x == pytest.approx(4.38, abs=0.1)
     assert model.basin.node.df["geometry"].iloc[0].y == pytest.approx(51.98, abs=0.1)
+
+
+def test_styles(tabulated_rating_curve: Model, tmp_path):
+    model = tabulated_rating_curve
+
+    model.write(tmp_path / "basic" / "ribasim.toml")
+    with connect(tmp_path / "basic" / "database.gpkg") as conn:
+        assert conn.execute("SELECT COUNT(*) FROM layer_styles").fetchone()[0] == 3

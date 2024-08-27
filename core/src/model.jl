@@ -2,6 +2,7 @@ struct SavedResults{V1 <: ComponentVector{Float64}}
     flow::SavedValues{Float64, SavedFlow}
     vertical_flux::SavedValues{Float64, V1}
     subgrid_level::SavedValues{Float64, Vector{Float64}}
+    solver_stats::SavedValues{Float64, SolverStats}
 end
 
 """
@@ -41,11 +42,6 @@ function Model(config::Config)::Model
     if !isfile(db_path)
         @error "Database file not found" db_path
         error("Database file not found")
-    end
-
-    # Setup timing logging
-    if config.logging.timing
-        TimerOutputs.enable_debug_timings(Ribasim)  # causes recompilation (!)
     end
 
     # All data from the database that we need during runtime is copied into memory,
@@ -107,13 +103,15 @@ function Model(config::Config)::Model
 
     storage = get_storages_from_levels(parameters.basin, state.level)
 
-    # Synchronize level with storage
-    set_current_basin_properties!(parameters.basin, storage)
-
     @assert length(storage) == n "Basin / state length differs from number of Basins"
     # Integrals for PID control
     integral = zeros(length(parameters.pid_control.node_id))
     u0 = ComponentVector{Float64}(; storage, integral)
+    du0 = zero(u0)
+
+    # Synchronize level with storage
+    set_current_basin_properties!(parameters.basin, u0, du0)
+
     # for Float32 this method allows max ~1000 year simulations without accuracy issues
     t_end = seconds_since(config.endtime, config.starttime)
     @assert eps(t_end) < 3600 "Simulation time too long"
@@ -125,12 +123,14 @@ function Model(config::Config)::Model
     tstops = sort(unique(vcat(tstops...)))
     adaptive, dt = convert_dt(config.solver.dt)
 
-    jac_prototype = config.solver.sparse ? get_jac_prototype(parameters) : nothing
+    jac_prototype = if config.solver.sparse
+        get_jac_prototype(du0, u0, parameters, t0)
+    else
+        nothing
+    end
     RHS = ODEFunction(water_balance!; jac_prototype)
 
-    @timeit_debug to "Setup ODEProblem" begin
-        prob = ODEProblem(RHS, u0, timespan, parameters)
-    end
+    prob = ODEProblem(RHS, u0, timespan, parameters)
     @debug "Setup ODEProblem."
 
     callback, saved = create_callbacks(parameters, config, saveat)
@@ -139,13 +139,13 @@ function Model(config::Config)::Model
     # Run water_balance! before initializing the integrator. This is because
     # at this initialization the discrete control callback is called for the first
     # time which depends on the flows formulated in water_balance!
-    water_balance!(copy(u0), u0, parameters, t0)
+    water_balance!(du0, u0, parameters, t0)
 
     # Initialize the integrator, providing all solver options as described in
     # https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/
     # Not all keyword arguments (e.g. `dt`) support `nothing`, in which case we follow
     # https://github.com/SciML/OrdinaryDiffEq.jl/blob/v6.57.0/src/solve.jl#L10
-    @timeit_debug to "Setup integrator" integrator = init(
+    integrator = init(
         prob,
         alg;
         progress = true,
@@ -165,10 +165,6 @@ function Model(config::Config)::Model
         config.solver.maxiters,
     )
     @debug "Setup integrator."
-
-    if config.logging.timing
-        @show Ribasim.to
-    end
 
     if config.allocation.use_allocation && is_active(parameters.allocation)
         set_initial_allocation_mean_flows!(integrator)

@@ -2,7 +2,7 @@
 
 import pandera as pa
 from pandera.dtypes import Int32, Timestamp
-from pandera.typing import Series
+from pandera.typing import Index, Series
 
 
 class _BaseSchema(pa.DataFrameModel):
@@ -10,8 +10,13 @@ class _BaseSchema(pa.DataFrameModel):
         add_missing_columns = True
         coerce = True
 
+    @classmethod
+    def _index_name(self) -> str:
+        return "fid"
+
 
 class BasinConcentrationExternalSchema(_BaseSchema):
+    fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     time: Series[Timestamp] = pa.Field(nullable=False)
     substance: Series[str] = pa.Field(nullable=False)
@@ -19,12 +24,14 @@ class BasinConcentrationExternalSchema(_BaseSchema):
 
 
 class BasinConcentrationStateSchema(_BaseSchema):
+    fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     substance: Series[str] = pa.Field(nullable=False)
     concentration: Series[float] = pa.Field(nullable=True)
 
 
 class BasinConcentrationSchema(_BaseSchema):
+    fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     time: Series[Timestamp] = pa.Field(nullable=False)
     substance: Series[str] = pa.Field(nullable=False)
@@ -33,17 +40,20 @@ class BasinConcentrationSchema(_BaseSchema):
 
 
 class BasinProfileSchema(_BaseSchema):
+    fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     area: Series[float] = pa.Field(nullable=False)
     level: Series[float] = pa.Field(nullable=False)
 
 
 class BasinStateSchema(_BaseSchema):
+    fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     level: Series[float] = pa.Field(nullable=False)
 
 
 class BasinStaticSchema(_BaseSchema):
+    fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     drainage: Series[float] = pa.Field(nullable=True)
     potential_evaporation: Series[float] = pa.Field(nullable=True)
@@ -52,6 +62,7 @@ class BasinStaticSchema(_BaseSchema):
 
 
 class BasinSubgridSchema(_BaseSchema):
+    fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     subgrid_id: Series[Int32] = pa.Field(nullable=False, default=0)
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     basin_level: Series[float] = pa.Field(nullable=False)
@@ -59,6 +70,7 @@ class BasinSubgridSchema(_BaseSchema):
 
 
 class BasinTimeSchema(_BaseSchema):
+    fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     time: Series[Timestamp] = pa.Field(nullable=False)
     drainage: Series[float] = pa.Field(nullable=True)
@@ -68,6 +80,7 @@ class BasinTimeSchema(_BaseSchema):
 
 
 class ContinuousControlFunctionSchema(_BaseSchema):
+    fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     input: Series[float] = pa.Field(nullable=False)
     output: Series[float] = pa.Field(nullable=False)
@@ -75,8 +88,8 @@ class ContinuousControlFunctionSchema(_BaseSchema):
 
 
 class ContinuousControlVariableSchema(_BaseSchema):
+    fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
-    listen_node_type: Series[str] = pa.Field(nullable=False)
     listen_node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     variable: Series[str] = pa.Field(nullable=False)
     weight: Series[float] = pa.Field(nullable=True)
@@ -84,21 +97,23 @@ class ContinuousControlVariableSchema(_BaseSchema):
 
 
 class DiscreteControlConditionSchema(_BaseSchema):
+    fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     compound_variable_id: Series[Int32] = pa.Field(nullable=False, default=0)
     greater_than: Series[float] = pa.Field(nullable=False)
 
 
 class DiscreteControlLogicSchema(_BaseSchema):
+    fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     truth_state: Series[str] = pa.Field(nullable=False)
     control_state: Series[str] = pa.Field(nullable=False)
 
 
 class DiscreteControlVariableSchema(_BaseSchema):
+    fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     compound_variable_id: Series[Int32] = pa.Field(nullable=False, default=0)
-    listen_node_type: Series[str] = pa.Field(nullable=False)
     listen_node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     variable: Series[str] = pa.Field(nullable=False)
     weight: Series[float] = pa.Field(nullable=True)
@@ -106,6 +121,7 @@ class DiscreteControlVariableSchema(_BaseSchema):
 
 
 class FlowBoundaryConcentrationSchema(_BaseSchema):
+    fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     time: Series[Timestamp] = pa.Field(nullable=False)
     substance: Series[str] = pa.Field(nullable=False)
@@ -113,24 +129,28 @@ class FlowBoundaryConcentrationSchema(_BaseSchema):
 
 
 class FlowBoundaryStaticSchema(_BaseSchema):
+    fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     active: Series[pa.BOOL] = pa.Field(nullable=True)
     flow_rate: Series[float] = pa.Field(nullable=False)
 
 
 class FlowBoundaryTimeSchema(_BaseSchema):
+    fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     time: Series[Timestamp] = pa.Field(nullable=False)
     flow_rate: Series[float] = pa.Field(nullable=False)
 
 
 class FlowDemandStaticSchema(_BaseSchema):
+    fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     demand: Series[float] = pa.Field(nullable=False)
     priority: Series[Int32] = pa.Field(nullable=False, default=0)
 
 
 class FlowDemandTimeSchema(_BaseSchema):
+    fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     time: Series[Timestamp] = pa.Field(nullable=False)
     demand: Series[float] = pa.Field(nullable=False)
@@ -138,6 +158,7 @@ class FlowDemandTimeSchema(_BaseSchema):
 
 
 class LevelBoundaryConcentrationSchema(_BaseSchema):
+    fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     time: Series[Timestamp] = pa.Field(nullable=False)
     substance: Series[str] = pa.Field(nullable=False)
@@ -145,18 +166,21 @@ class LevelBoundaryConcentrationSchema(_BaseSchema):
 
 
 class LevelBoundaryStaticSchema(_BaseSchema):
+    fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     active: Series[pa.BOOL] = pa.Field(nullable=True)
     level: Series[float] = pa.Field(nullable=False)
 
 
 class LevelBoundaryTimeSchema(_BaseSchema):
+    fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     time: Series[Timestamp] = pa.Field(nullable=False)
     level: Series[float] = pa.Field(nullable=False)
 
 
 class LevelDemandStaticSchema(_BaseSchema):
+    fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     min_level: Series[float] = pa.Field(nullable=True)
     max_level: Series[float] = pa.Field(nullable=True)
@@ -164,6 +188,7 @@ class LevelDemandStaticSchema(_BaseSchema):
 
 
 class LevelDemandTimeSchema(_BaseSchema):
+    fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     time: Series[Timestamp] = pa.Field(nullable=False)
     min_level: Series[float] = pa.Field(nullable=True)
@@ -172,6 +197,7 @@ class LevelDemandTimeSchema(_BaseSchema):
 
 
 class LinearResistanceStaticSchema(_BaseSchema):
+    fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     active: Series[pa.BOOL] = pa.Field(nullable=True)
     resistance: Series[float] = pa.Field(nullable=False)
@@ -180,6 +206,7 @@ class LinearResistanceStaticSchema(_BaseSchema):
 
 
 class ManningResistanceStaticSchema(_BaseSchema):
+    fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     active: Series[pa.BOOL] = pa.Field(nullable=True)
     length: Series[float] = pa.Field(nullable=False)
@@ -190,6 +217,7 @@ class ManningResistanceStaticSchema(_BaseSchema):
 
 
 class OutletStaticSchema(_BaseSchema):
+    fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     active: Series[pa.BOOL] = pa.Field(nullable=True)
     flow_rate: Series[float] = pa.Field(nullable=False)
@@ -200,9 +228,9 @@ class OutletStaticSchema(_BaseSchema):
 
 
 class PidControlStaticSchema(_BaseSchema):
+    fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     active: Series[pa.BOOL] = pa.Field(nullable=True)
-    listen_node_type: Series[str] = pa.Field(nullable=False)
     listen_node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     target: Series[float] = pa.Field(nullable=False)
     proportional: Series[float] = pa.Field(nullable=False)
@@ -212,8 +240,8 @@ class PidControlStaticSchema(_BaseSchema):
 
 
 class PidControlTimeSchema(_BaseSchema):
+    fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
-    listen_node_type: Series[str] = pa.Field(nullable=False)
     listen_node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     time: Series[Timestamp] = pa.Field(nullable=False)
     target: Series[float] = pa.Field(nullable=False)
@@ -224,6 +252,7 @@ class PidControlTimeSchema(_BaseSchema):
 
 
 class PumpStaticSchema(_BaseSchema):
+    fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     active: Series[pa.BOOL] = pa.Field(nullable=True)
     flow_rate: Series[float] = pa.Field(nullable=False)
@@ -233,6 +262,7 @@ class PumpStaticSchema(_BaseSchema):
 
 
 class TabulatedRatingCurveStaticSchema(_BaseSchema):
+    fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     active: Series[pa.BOOL] = pa.Field(nullable=True)
     level: Series[float] = pa.Field(nullable=False)
@@ -241,6 +271,7 @@ class TabulatedRatingCurveStaticSchema(_BaseSchema):
 
 
 class TabulatedRatingCurveTimeSchema(_BaseSchema):
+    fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     time: Series[Timestamp] = pa.Field(nullable=False)
     level: Series[float] = pa.Field(nullable=False)
@@ -248,6 +279,7 @@ class TabulatedRatingCurveTimeSchema(_BaseSchema):
 
 
 class UserDemandStaticSchema(_BaseSchema):
+    fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     active: Series[pa.BOOL] = pa.Field(nullable=True)
     demand: Series[float] = pa.Field(nullable=True)
@@ -257,6 +289,7 @@ class UserDemandStaticSchema(_BaseSchema):
 
 
 class UserDemandTimeSchema(_BaseSchema):
+    fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
     time: Series[Timestamp] = pa.Field(nullable=False)
     demand: Series[float] = pa.Field(nullable=False)

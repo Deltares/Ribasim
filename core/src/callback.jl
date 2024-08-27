@@ -1,4 +1,3 @@
-
 """
 Create the different callbacks that are used to store results
 and feed the simulation with new data. The different callbacks
@@ -44,6 +43,12 @@ function create_callbacks(
     save_flow_cb = SavingCallback(save_flow, saved_flow; saveat, save_start = false)
     push!(callbacks, save_flow_cb)
 
+    # save solver stats
+    saved_solver_stats = SavedValues(Float64, SolverStats)
+    solver_stats_cb =
+        SavingCallback(save_solver_stats, saved_solver_stats; saveat, save_start = true)
+    push!(callbacks, solver_stats_cb)
+
     # interpolate the levels
     saved_subgrid_level = SavedValues(Float64, Vector{Float64})
     if config.results.subgrid
@@ -59,10 +64,26 @@ function create_callbacks(
     discrete_control_cb = FunctionCallingCallback(apply_discrete_control!)
     push!(callbacks, discrete_control_cb)
 
-    saved = SavedResults(saved_flow, saved_vertical_flux, saved_subgrid_level)
+    saved = SavedResults(
+        saved_flow,
+        saved_vertical_flux,
+        saved_subgrid_level,
+        saved_solver_stats,
+    )
     callback = CallbackSet(callbacks...)
 
     return callback, saved
+end
+
+function save_solver_stats(u, t, integrator)
+    (; stats) = integrator.sol
+    (;
+        time = t,
+        rhs_calls = stats.nf,
+        linear_solves = stats.nsolve,
+        accepted_timesteps = stats.naccept,
+        rejected_timesteps = stats.nreject,
+    )
 end
 
 function check_negative_storage(u, t, integrator)::Nothing
@@ -92,8 +113,10 @@ function integrate_flows!(u, t, integrator)::Nothing
     (; flow, flow_dict, flow_prev, flow_integrated) = graph[]
     (; vertical_flux, vertical_flux_prev, vertical_flux_integrated, vertical_flux_bmi) =
         basin
-    flow = get_tmp(flow, 0)
-    vertical_flux = get_tmp(vertical_flux, 0)
+    du = get_du(integrator)
+    water_balance!(du, u, p, t)
+    flow = flow[parent(du)]
+    vertical_flux = vertical_flux[parent(du)]
     if !isempty(flow_prev) && isnan(flow_prev[1])
         # If flow_prev is not populated yet
         copyto!(flow_prev, flow)
@@ -115,7 +138,9 @@ function integrate_flows!(u, t, integrator)::Nothing
     for (edge, value) in allocation.mean_realized_flows
         if edge[1] !== edge[2]
             value +=
-                0.5 * (get_flow(graph, edge..., 0) + get_flow_prev(graph, edge..., 0)) * dt
+                0.5 *
+                (get_flow(graph, edge..., du) + get_flow_prev(graph, edge..., du)) *
+                dt
             allocation.mean_realized_flows[edge] = value
         end
     end
@@ -136,7 +161,9 @@ function integrate_flows!(u, t, integrator)::Nothing
             # Horizontal flows
             allocation.mean_input_flows[edge] =
                 value +
-                0.5 * (get_flow(graph, edge..., 0) + get_flow_prev(graph, edge..., 0)) * dt
+                0.5 *
+                (get_flow(graph, edge..., du) + get_flow_prev(graph, edge..., du)) *
+                dt
         end
     end
     copyto!(flow_prev, flow)
@@ -215,6 +242,7 @@ function apply_discrete_control!(u, t, integrator)::Nothing
     (; p) = integrator
     (; discrete_control) = p
     (; node_id) = discrete_control
+    du = get_du(integrator)
 
     # Loop over the discrete control nodes to determine their truth state
     # and detect possible control state changes
@@ -233,7 +261,7 @@ function apply_discrete_control!(u, t, integrator)::Nothing
 
         # Loop over the variables listened to by this discrete control node
         for compound_variable in compound_variables
-            value = compound_variable_value(compound_variable, p, u, t)
+            value = compound_variable_value(compound_variable, p, du, t)
 
             # The thresholds the value of this variable is being compared with
             greater_thans = compound_variable.greater_than
@@ -313,12 +341,12 @@ end
 Get a value for a condition. Currently supports getting levels from basins and flows
 from flow boundaries.
 """
-function get_value(subvariable::NamedTuple, p::Parameters, u::AbstractVector, t::Float64)
+function get_value(subvariable::NamedTuple, p::Parameters, du::AbstractVector, t::Float64)
     (; flow_boundary, level_boundary, basin) = p
     (; listen_node_id, look_ahead, variable, variable_ref) = subvariable
 
     if !iszero(variable_ref.idx)
-        return get_value(variable_ref, u)
+        return get_value(variable_ref, du)
     end
 
     if variable == "level"
@@ -347,10 +375,10 @@ function get_value(subvariable::NamedTuple, p::Parameters, u::AbstractVector, t:
     return value
 end
 
-function compound_variable_value(compound_variable::CompoundVariable, p, u, t)
-    value = zero(eltype(u))
+function compound_variable_value(compound_variable::CompoundVariable, p, du, t)
+    value = zero(eltype(du))
     for subvariable in compound_variable.subvariables
-        value += subvariable.weight * get_value(subvariable, p, u, t)
+        value += subvariable.weight * get_value(subvariable, p, du, t)
     end
     return value
 end
@@ -391,7 +419,9 @@ function apply_parameter_update!(parameter_update)::Nothing
 end
 
 function update_subgrid_level!(integrator)::Nothing
-    basin_level = get_tmp(integrator.p.basin.current_level, 0)
+    (; p) = integrator
+    du = get_du(integrator)
+    basin_level = p.basin.current_level[parent(du)]
     subgrid = integrator.p.subgrid
     for (i, (index, interp)) in enumerate(zip(subgrid.basin_index, subgrid.interpolations))
         subgrid.level[i] = interp(basin_level[index])
@@ -411,7 +441,7 @@ function update_basin!(integrator)::Nothing
     (; storage) = u
     (; node_id, time, vertical_flux_from_input, vertical_flux, vertical_flux_prev) = basin
     t = datetime_since(integrator.t, integrator.p.starttime)
-    vertical_flux = get_tmp(vertical_flux, integrator.u)
+    vertical_flux = vertical_flux[parent(u)]
 
     rows = searchsorted(time.time, t)
     timeblock = view(time, rows)
@@ -509,7 +539,12 @@ function update_tabulated_rating_curve!(integrator)::Nothing
         level = [row.level for row in group]
         flow_rate = [row.flow_rate for row in group]
         i = searchsortedfirst(node_id, NodeID(NodeType.TabulatedRatingCurve, id, 0))
-        table[i] = LinearInterpolation(flow_rate, level; extrapolate = true)
+        table[i] = LinearInterpolation(
+            flow_rate,
+            level;
+            extrapolate = true,
+            cache_parameters = true,
+        )
     end
     return nothing
 end

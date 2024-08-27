@@ -104,7 +104,6 @@ def local_pidcontrolled_cascade_model():
 
     # Set up pid control
     pid_control_data = {
-        "listen_node_type": "Basin",
         "proportional": [0.1],
         "integral": [0.00],
         "derivative": [0.0],

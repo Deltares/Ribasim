@@ -67,7 +67,6 @@ def invalid_discrete_control_model() -> Model:
         Node(5, Point(1, 1)),
         [
             discrete_control.Variable(
-                listen_node_type=["Basin", "FlowBoundary", "FlowBoundary"],
                 listen_node_id=[1, 4, 4],
                 variable=["level", "flow_rate", "flow_rate"],
                 # Invalid: look_ahead can only be specified for timeseries variables.

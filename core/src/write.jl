@@ -44,6 +44,11 @@ function write_results(model::Model)::Model
     path = results_path(config, RESULTS_FILENAME.subgrid_level)
     write_arrow(path, table, compress; remove_empty_table)
 
+    # solver stats
+    table = solver_stats_table(model)
+    path = results_path(config, RESULTS_FILENAME.solver_stats)
+    write_arrow(path, table, compress; remove_empty_table)
+
     @debug "Wrote results."
     return model
 end
@@ -56,6 +61,7 @@ const RESULTS_FILENAME = (
     allocation = "allocation.arrow",
     allocation_flow = "allocation_flow.arrow",
     subgrid_level = "subgrid_level.arrow",
+    solver_stats = "solver_stats.arrow",
 )
 
 "Get the storage and level of all basins as matrices of nbasin × ntime"
@@ -87,13 +93,12 @@ end
 function basin_state_table(
     model::Model,
 )::@NamedTuple{node_id::Vector{Int32}, level::Vector{Float64}}
-    (; storage) = model.integrator.u
     (; basin) = model.integrator.p
 
     # ensure the levels are up-to-date
-    set_current_basin_properties!(basin, storage)
+    set_current_basin_properties!(basin, model.integrator.u, get_du(model.integrator))
 
-    return (; node_id = Int32.(basin.node_id), level = get_tmp(basin.current_level, 0))
+    return (; node_id = Int32.(basin.node_id), level = basin.current_level[Float64[]])
 end
 
 "Create the basin result table from the saved data"
@@ -183,15 +188,35 @@ function basin_table(
     )
 end
 
+function solver_stats_table(
+    model::Model,
+)::@NamedTuple{
+    time::Vector{DateTime},
+    rhs_calls::Vector{Int},
+    linear_solves::Vector{Int},
+    accepted_timesteps::Vector{Int},
+    rejected_timesteps::Vector{Int},
+}
+    solver_stats = StructVector(model.saved.solver_stats.saveval)
+    (;
+        time = datetime_since.(
+            solver_stats.time[1:(end - 1)],
+            model.integrator.p.starttime,
+        ),
+        rhs_calls = diff(solver_stats.rhs_calls),
+        linear_solves = diff(solver_stats.linear_solves),
+        accepted_timesteps = diff(solver_stats.accepted_timesteps),
+        rejected_timesteps = diff(solver_stats.rejected_timesteps),
+    )
+end
+
 "Create a flow result table from the saved data"
 function flow_table(
     model::Model,
 )::@NamedTuple{
     time::Vector{DateTime},
     edge_id::Vector{Union{Int32, Missing}},
-    from_node_type::Vector{String},
     from_node_id::Vector{Int32},
-    to_node_type::Vector{String},
     to_node_id::Vector{Int32},
     flow_rate::FlatVector{Float64},
 }
@@ -200,9 +225,7 @@ function flow_table(
     (; graph) = integrator.p
     (; flow_dict) = graph[]
 
-    from_node_type = String[]
     from_node_id = Int32[]
-    to_node_type = String[]
     to_node_id = Int32[]
     unique_edge_ids_flow = Union{Int32, Missing}[]
 
@@ -212,9 +235,7 @@ function flow_table(
     end
 
     for (from_id, to_id) in flow_edge_ids
-        push!(from_node_type, string(from_id.type))
         push!(from_node_id, from_id.value)
-        push!(to_node_type, string(to_id.type))
         push!(to_node_id, to_id.value)
         push!(unique_edge_ids_flow, graph[from_id, to_id].id)
     end
@@ -229,21 +250,11 @@ function flow_table(
     end
     time = repeat(datetime_since.(t_starts, config.starttime); inner = nflow)
     edge_id = repeat(unique_edge_ids_flow; outer = ntsteps)
-    from_node_type = repeat(from_node_type; outer = ntsteps)
     from_node_id = repeat(from_node_id; outer = ntsteps)
-    to_node_type = repeat(to_node_type; outer = ntsteps)
     to_node_id = repeat(to_node_id; outer = ntsteps)
     flow_rate = FlatVector(saveval, :flow)
 
-    return (;
-        time,
-        edge_id,
-        from_node_type,
-        from_node_id,
-        to_node_type,
-        to_node_id,
-        flow_rate,
-    )
+    return (; time, edge_id, from_node_id, to_node_id, flow_rate)
 end
 
 "Create a discrete control result table from the saved data"

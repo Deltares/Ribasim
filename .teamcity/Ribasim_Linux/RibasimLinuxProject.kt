@@ -15,8 +15,6 @@ object RibasimLinuxProject : Project({
     buildType(Linux_BuildRibasim)
     buildType(Linux_TestRibasimBinaries)
 
-    template(LinuxAgent)
-    template(BuildLinux)
     template(TestBinariesLinux)
 })
 
@@ -54,7 +52,7 @@ object Linux_BuildRibasim : BuildType({
 
     name = "Build Ribasim"
 
-    artifactRules = """ribasim\build\ribasim => ribasim_linux.zip"""
+    artifactRules = """ribasim\build\ribasim => ribasim_linux.zip!/ribasim"""
 })
 
 object Linux_TestRibasimBinaries : BuildType({
@@ -70,7 +68,7 @@ object Linux_TestRibasimBinaries : BuildType({
                 id = "ARTIFACT_DEPENDENCY_570"
                 cleanDestination = true
                 artifactRules = """
-                    ribasim_linux.zip!** => ribasim/build/ribasim
+                    ribasim_linux.zip!/ribasim/** => ribasim/build/ribasim
                 """.trimIndent()
             }
         }
