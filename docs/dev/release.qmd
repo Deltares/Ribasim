@@ -96,7 +96,7 @@ Start with running the automated task to see if it can be correctly installed.
 pixi run test-ribasim-qgis-ui
 ```
 
-Then follow the instructions as described in the [QGIS manual test plan](qgis_test_plan.qmd).
+Then follow the instructions as described in the [QGIS manual test plan](/dev/qgis_test_plan.qmd).
 
 ## Announce release
 

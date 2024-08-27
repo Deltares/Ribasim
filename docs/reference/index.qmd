@@ -2,4 +2,4 @@
 title: "Reference"
 ---
 
-These pages contain the test models, node descriptions and python documentation.
+These pages contain the test models, node descriptions and Ribasim Python API documentation.

@@ -29,6 +29,7 @@ website:
         - index.qmd
         - install.qmd
         - changelog.qmd
+        - known_issues.qmd
 
     - title: "How-to guides"
       contents:

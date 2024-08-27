@@ -43,12 +43,11 @@ The kernel of Ribasim is written in the [Julia programming language](https://jul
 The [Ribasim Python package](/install.qmd) is available to build, update and analyze Ribasim models programmatically.
 For runtime data exchange and coupling with other kernels, the Julia kernel is wrapped in a Python API (`ribasim_api`) which implements the Basic Modelling Interface [BMI](https://bmi-spec.readthedocs.io/en/latest/).
 
-The core of Ribasim supports [GeoPackage](https://www.geopackage.org/) as its input data structure.
-And so does [QGIS](https://qgis.org/).
-This makes QGIS the perfect application to create, edit, and inspect Ribasim models.
-The Ribasim QGIS plugin aids users in setting up the model by providing valid values while editing.
-Deltares also provides the iMOD QGIS plugin, which can be used to inspect the output results of a Ribasim model too.
-For specific tasks, like adding long timeseries, using Python is strongly recommended.
+Ribasim uses [GeoPackage](https://www.geopackage.org/) files to store the model database (`database.gpkg`).
+[QGIS](https://qgis.org/) works well with GeoPackage files.
+This makes QGIS the perfect application to inspect and make edits to Ribasim models.
+Deltares also provides the iMOD QGIS plugin, which can be used to inspect the results of a Ribasim model too.
+For larger edits using Python is recommended.
 One can also use Ribasim Python to build entire models from base data, such that your model setup is fully reproducible.
 
 # Download {#sec-download}
@@ -132,7 +131,7 @@ Open the Ribasim plugin panel.
 In QGIS, navigate to "Plugins > Manage and Install Plugins > All".
 In the search bar, type: "iMOD". Select the iMOD plugin, and click "Install".
 
-At least version 0.4.0 of the iMOD plugin is required.
+At least version 0.5.2 of the iMOD plugin is required.
 
 The Time Series widget from the iMOD plugin is used for visualizing Ribasim results, which is described in the [results section](#sec-results).
 Documentation on the Time Series widget can be found in the [iMOD documentation](https://deltares.github.io/iMOD-Documentation/qgis_user_manual.html#time-series-time-series).
