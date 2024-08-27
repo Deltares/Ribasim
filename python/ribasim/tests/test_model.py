@@ -156,6 +156,15 @@ def test_duplicate_edge(trivial):
         )
 
 
+def test_connectivity(trivial):
+    model = trivial
+    with pytest.raises(
+        ValueError,
+        match=re.escape("Node Terminal cannot connect with upstream node Basin"),
+    ):
+        model.edge.add(model.basin[6], model.terminal[2147483647])
+
+
 def test_indexing(basic):
     model = basic
 
