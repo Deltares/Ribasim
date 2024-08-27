@@ -51,7 +51,18 @@ function water_balance!(
     # Formulate du (controlled by PidControl)
     formulate_du_pid_controlled!(du, graph, pid_control)
 
+    # https://github.com/Deltares/Ribasim/issues/1705#issuecomment-2283293974
+    adapt_negative_storage_du!(du, u)
+
     return nothing
+end
+
+function adapt_negative_storage_du!(du, u)
+    for (i, s) in enumerate(u.storage)
+        if s < 0
+            du.storage[i] = max(du.storage[i], 0.0)
+        end
+    end
 end
 
 function formulate_continuous_control!(du, p, t)::Nothing

@@ -876,3 +876,4 @@ end
 reduction_factor(x::GradientTracer, threshold::Real) = x
 relaxed_root(x::GradientTracer, threshold::Real) = x
 get_area_and_level(basin::Basin, state_idx::Int, storage::GradientTracer) = storage, storage
+adapt_negative_storage_du!(du, u::ComponentVector{<:GradientTracer}) = nothing
