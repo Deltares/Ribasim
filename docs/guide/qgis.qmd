@@ -53,7 +53,7 @@ A record can be selected by clicking on the row number.
 
 ![](https://user-images.githubusercontent.com/4471859/224939287-a8b9f351-9aea-4e3a-8417-3867cd40cda5.png){fig-align="left"}
 
-Adjust the content. Note that the node_id field is connected to the Node layer and thus must be set to an existing node_id.
+Adjust the content. Note that the `node_id` field is connected to the Node layer and thus must be set to an existing `node_id`.
 If you prefer, it also works to copy data with the same columns from
 Excel. Turn off edit mode and save changes to the layer.
 
@@ -98,7 +98,7 @@ Now leave the edit mode and save the results to the layer. Your model is now rea
 
 # Inspect a (large) model {#sec-inspect}
 
-For larger models the node tables---especially the transient ones---can grow quite large. To facilitate inspection,
+For larger models the node tables can grow quite large. To facilitate inspection,
 the tables are linked via the `node_id` field to the Node table, and react to the selection of the Node layer. That is, on selection of certain nodes---either via the map or the attribute table---the selection is also made in all related tables. This is also the case for the Edge layer.
 It helps to set the attribute table of a table of interest to show selected features only (using the dropdown button on the bottom left).
 
