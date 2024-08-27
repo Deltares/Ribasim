@@ -7,7 +7,7 @@ connectivity = {
         "TabulatedRatingCurve",
         "Pump",
         "Outlet",
-        "UserDdemand",
+        "UserDemand",
     ],
     "LinearResistance": ["Basin", "LevelBoundary"],
     "ManningResistance": ["Basin"],
