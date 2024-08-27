@@ -139,12 +139,9 @@ class Logging(ChildModel):
     ----------
     verbosity : Verbosity
         The verbosity of the logging: debug/info/warn/error (Optional, defaults to info)
-    timing : Bool
-        Enable timings (Optional, defaults to False)
     """
 
     verbosity: Verbosity = Verbosity.info
-    timing: bool = False
 
 
 class Node(pydantic.BaseModel):
