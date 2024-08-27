@@ -29,7 +29,7 @@ Before starting with data, perform the following tests to see if the plugin does
 - _In the Model tab, the "Add to QGIS" and "Remove from Dataset" buttons are disabled_.
 - _In the Nodes tab, all buttons are disabled_.
 
-[Failing](https://github.com/Deltares/Ribasim/issues/1678)
+❌ [Failing](https://github.com/Deltares/Ribasim/issues/1678)
 
 # New model tests
 
@@ -64,7 +64,7 @@ Before starting with data, perform the following tests to see if the plugin does
 - Press OK: _An error is given that the database.gpkg already exists, test2.toml is not written_.
 - Cleanup: Delete the created files from disk.
 
-[Failing](https://github.com/Deltares/Ribasim/issues/1679)
+❌ [Failing](https://github.com/Deltares/Ribasim/issues/1679)
 
 ## New model with same name
 
@@ -83,7 +83,7 @@ Before starting with data, perform the following tests to see if the plugin does
 Unsure if this is wanted behavior, as we said we wanted to overwrite the TOML file, and therefore also the database file.
 Perhaps we should create folders instead of TOML files only.
 
-[Failing](https://github.com/Deltares/Ribasim/issues/1681)
+❌ [Failing](https://github.com/Deltares/Ribasim/issues/1681)
 
 ## New model and clean new project cleans Ribasim plugin
 
@@ -95,7 +95,7 @@ Perhaps we should create folders instead of TOML files only.
 - Press "Project > New": _Popup asks to save the project_.
 - Press Discard: _Layers tab is emptied, Ribasim panel is emptied_.
 
-[Failing](https://github.com/Deltares/Ribasim/issues/1682)
+❌ [Failing](https://github.com/Deltares/Ribasim/issues/1682)
 
 # Model tab button interaction tests
 
@@ -122,7 +122,7 @@ Intended behavior: The same model is loaded twice, but there is only a connectio
 - Press "Add to QGIS": _Nothing happens_.
 - Press the "Edge" layer in the Model tab: _"Add to QGIS" button is disabled_.
 
-[Failing](https://github.com/Deltares/Ribasim/issues/1683)
+❌ [Failing](https://github.com/Deltares/Ribasim/issues/1683)
 
 ## Remove from Dataset button
 
@@ -161,7 +161,7 @@ Perhaps better if we only allow removal of the optional tables. See this [bug re
 - Go to the Nodes tab: _All buttons are enabled_.
 - Press the Basin / time button: _A layer is added to the layers panel with that name, the button becomes disabled_.
 
-[Failing](https://github.com/Deltares/Ribasim/issues/1685)
+❌ [Failing](https://github.com/Deltares/Ribasim/issues/1685)
 
 # Map interaction tests
 
@@ -199,10 +199,22 @@ See [issue](https://github.com/Deltares/Ribasim/issues/1688#issuecomment-2265315
 - Select the Edge layer in the Layers tab: _edit buttons in the toolbar become enabled_.
 - Enable snapping under View > Toolbars > Snapping Toolbars: _Magnet button is enabled and active_.
 - Press the Add Line Feature button: _Mouse becomes a crosshair_.
-- Snap a line between the two nodes, click the two nodes and then right click to finish: _Popup shows with input, all is set to NULL_.
+- Snap a line between the two nodes, click the two nodes and then right click to finish: _Popup shows with input, most fields are set to NULL_.
 - Press OK: _Line appears on screen between the two nodes_.
 - Save the layer's edits: _The line becomes blue_.
-- Open the attribute table: _The information shows the from_node_id, to_node_id. This information matches the information from the Node table._
+- Open the attribute table: _The information shows the from\_node\_id, to\_node\_id. This information matches the information from the Node table._
+
+## Node selection on map triggers table selection
+
+- Open QGIS and ensure that the Ribasim plugin is installed and enabled.
+- Open the application via the Ribasim button on the QGIS toolbar: _Ribasim panel opens_.
+- Press the "Open" button in the Model tab: _file navigation window pops up_.
+- Choose an existing model from the `generated_testmodels` folder.
+- Press OK: _The model layers appear in the layer panel and on the map_.
+- Select the node layer, and make a subselection of nodes on the map: _Nodes are highlighted in yellow, including their edges_.
+- Open the Edge attribute table: _The highlighted rows are those with a from/to node\_id that was selected_.
+- Open any non-spatial attribute table: _The highlighted rows are those with an node\_id that was selected_.
+
 
 # Tables tests
 
