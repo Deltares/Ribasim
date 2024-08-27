@@ -37627,7 +37627,7 @@ packages:
   name: ribasim
   version: 2024.10.0
   path: python/ribasim
-  sha256: be31457a51083ee5f04c05753c0308f556542c46f94a60a82f9387c5156e82ff
+  sha256: dabdd02a24d0b7d6a745c1bcdd800f8afdeb527b8b294ded4eaaf7205939a9cd
   requires_dist:
   - geopandas
   - matplotlib
@@ -37673,7 +37673,7 @@ packages:
   name: ribasim-api
   version: 2024.10.0
   path: python/ribasim_api
-  sha256: 3d2210b7455ccaa058d8508690e100fa6039118c9fac925c058cfa8474185c45
+  sha256: dc882869854e0940ab3a12506f5b9508b04045793f6badb644579c43fa2b6cb9
   requires_dist:
   - xmipy
   - pytest ; extra == 'tests'
@@ -37685,7 +37685,7 @@ packages:
   name: ribasim-testmodels
   version: 0.5.0
   path: python/ribasim_testmodels
-  sha256: 8b7c7c59cfa8b428e4387aabffa7f83af86138327e1e4579a0523537410e3a9c
+  sha256: 2b0165819d6cc5d79b0b65761e8c38b1cc9f34649dea3ed4406013080ea8b112
   requires_dist:
   - geopandas
   - numpy
