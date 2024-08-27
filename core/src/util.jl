@@ -541,9 +541,10 @@ end
 
 function get_influx(basin::Basin, basin_idx::Int; prev::Bool = false)::Float64
     (; node_id, vertical_flux, vertical_flux_prev, vertical_flux_from_input) = basin
-    if prev
+    influx = if prev
         vertical_flux_prev.precipitation[basin_idx] -
-        vertical_flux_prev.evaporation[basin_idx] + vertical_flux_prev.drainage[basin_idx] -
+        vertical_flux_prev.evaporation[basin_idx] +
+        vertical_flux_prev.drainage[basin_idx] -
         vertical_flux_prev.infiltration[basin_idx]
     else
         n = length(node_id)
@@ -553,6 +554,7 @@ function get_influx(basin::Basin, basin_idx::Int; prev::Bool = false)::Float64
         vertical_flux[2n + basin_idx] - # drainage
         vertical_flux[3n + basin_idx] # infiltration
     end
+    return influx
 end
 
 inflow_edge(graph, node_id)::EdgeMetadata = graph[inflow_id(graph, node_id), node_id]
