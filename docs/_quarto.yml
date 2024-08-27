@@ -10,12 +10,10 @@ website:
     left:
       - text: "Overview"
         file: index.qmd
-      - text: "Tutorials"
-        file: tutorial/index.qmd
       - text: "How-to guides"
-        file: guide/index.qmd
+        file: guide/examples.ipynb
       - text: "Concepts"
-        file: concept/index.qmd
+        file: concept/concept.qmd
       - text: "Reference"
         file: reference/index.qmd
     right:
@@ -31,16 +29,12 @@ website:
         - index.qmd
         - install.qmd
         - changelog.qmd
-
-    - title: "Tutorials"
-      contents:
-        - tutorial/index.qmd
-        - tutorial/qgis.qmd
+        - known_issues.qmd
 
     - title: "How-to guides"
       contents:
-        - guide/index.qmd
         - guide/examples.ipynb
+        - guide/qgis.qmd
         - guide/coupling.qmd
         - section: "Coupling guides"
           contents:
@@ -48,7 +42,6 @@ website:
 
     - title: "Concepts"
       contents:
-        - concept/index.qmd
         - concept/concept.qmd
         - section: "Numerics"
           contents:
@@ -85,18 +78,21 @@ website:
             - reference/node/continuous-control.qmd
             - reference/node/pid-control.qmd
 
-    - title: "Dev docs"
+    - title: "Contributing"
       contents:
         - dev/index.qmd
         - dev/core.qmd
         - dev/benchmark.qmd
         - dev/addnode.qmd
         - dev/python.qmd
-        - dev/qgis.qmd
         - dev/allocation.qmd
         - dev/bmi.qmd
         - dev/ci.qmd
         - dev/release.qmd
+        - section: QGIS
+          contents:
+            - dev/qgis.qmd
+            - dev/qgis_test_plan.qmd
 
 format:
   html:
