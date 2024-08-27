@@ -46,7 +46,9 @@ function log_bottlenecks(model; converged::Bool)
             end
             push!(errors, node_id => error)
         end
-        @logmsg level "Convergence bottlenecks in descending order of severity:" errors...
+        if !isempty(errors)
+            @logmsg level "Convergence bottlenecks in descending order of severity:" errors...
+        end
     else
         algorithm = model.config.solver.algorithm
         @logmsg level "Convergence bottlenecks are not shown for the chosen solver algorithm." algorithm
