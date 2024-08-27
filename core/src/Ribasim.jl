@@ -17,6 +17,9 @@ module Ribasim
 # Algorithms for solving ODEs.
 using OrdinaryDiffEq: OrdinaryDiffEq, OrdinaryDiffEqRosenbrockAdaptiveAlgorithm, get_du
 
+# Algorithms for solving explicit integral problems
+using Integrals: IntegralProblem, solve, QuadGKJL
+
 # Interface for defining and solving the ODE problem of the physical layer.
 using SciMLBase:
     init,
