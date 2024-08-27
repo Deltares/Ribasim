@@ -117,11 +117,12 @@ Integrate flows over the last timestep
 function integrate_flows!(u, t, integrator)::Nothing
     (; p, dt) = integrator
     (; graph, user_demand, basin, allocation) = p
-    (; flow, flow_dict, flow_prev, flow_mean_over_dt, flow_integrated_over_saveat) = graph[]
+    (; flow, flow_dict, flow_prev, flow_integrated_over_dt, flow_integrated_over_saveat) =
+        graph[]
     (;
         vertical_flux,
         vertical_flux_prev,
-        vertical_flux_mean_over_dt,
+        vertical_flux_integrated_over_dt,
         vertical_flux_integrated_over_saveat,
         vertical_flux_bmi,
     ) = basin
@@ -134,10 +135,10 @@ function integrate_flows!(u, t, integrator)::Nothing
         copyto!(flow_prev, flow)
     end
 
-    @. flow_mean_over_dt = 0.5 * (flow + flow_prev)
-    @. flow_integrated_over_saveat += flow_mean_over_dt * dt
-    @. vertical_flux_mean_over_dt = 0.5 * (vertical_flux + vertical_flux_prev)
-    @. vertical_flux_integrated_over_saveat += vertical_flux_mean_over_dt * dt
+    @. flow_integrated_over_dt = 0.5 * (flow + flow_prev) * dt
+    @. flow_integrated_over_saveat += flow_integrated_over_dt
+    @. vertical_flux_integrated_over_dt = 0.5 * (vertical_flux + vertical_flux_prev) * dt
+    @. vertical_flux_integrated_over_saveat += vertical_flux_integrated_over_dt
     @. vertical_flux_bmi += 0.5 * (vertical_flux + vertical_flux_prev) * dt
 
     # UserDemand realized flows for BMI
@@ -243,26 +244,31 @@ end
 
 function check_water_balance_error(u, t, integrator)::Nothing
     (; dt, p, uprev) = integrator
-    (; total_inflow, total_outflow, vertical_flux_mean_over_dt, node_id) = p.basin
-    (; flow_mean_over_dt) = p.graph[]
+    (; total_inflow, total_outflow, vertical_flux_integrated_over_dt, node_id) = p.basin
+    (; flow_integrated_over_dt) = p.graph[]
     (; max_rel_balance_error) = integrator.p
+
+    total_inflow .= 0
+    total_outflow .= 0
 
     # First compute the storage rate
     storage_rate = copy(u.storage)
-    storage_rate .-= uprev.storage
-    storage_rate ./= dt
+    @. storage_rate -= uprev.storage
+    @. storage_rate /= dt
 
     # Then compute the mean in- and outflow per basin over the last timestep
-    net_inoutflow!(total_inflow, total_outflow, flow_mean_over_dt, p.basin)
-    total_inflow .+= vertical_flux_mean_over_dt.precipitation
-    total_inflow .+= vertical_flux_mean_over_dt.drainage
-    total_outflow .+= vertical_flux_mean_over_dt.evaporation
-    total_outflow .+= vertical_flux_mean_over_dt.infiltration
+    net_inoutflow!(total_inflow, total_outflow, flow_integrated_over_dt, p.basin)
+    @. total_inflow += vertical_flux_integrated_over_dt.precipitation
+    @. total_inflow += vertical_flux_integrated_over_dt.drainage
+    @. total_outflow += vertical_flux_integrated_over_dt.evaporation
+    @. total_outflow += vertical_flux_integrated_over_dt.infiltration
+    @. total_inflow /= dt
+    @. total_outflow /= dt
 
     # Then compare storage rate to inflow and outflow
     absolute_error = copy(storage_rate)
-    absolute_error .-= total_inflow
-    absolute_error .+= total_outflow
+    @. absolute_error -= total_inflow
+    @. absolute_error += total_outflow
 
     # Then compute error relative to mean (absolute) flow
     relative_error = absolute_error ./ (0.5 * (total_inflow + total_outflow))

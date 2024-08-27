@@ -111,7 +111,7 @@ function create_graph(db::DB, config::Config)::MetaGraph
 
     flow = cache(flow_counter)
     flow_prev = fill(NaN, flow_counter)
-    flow_mean_over_dt = zeros(flow_counter)
+    flow_integrated_over_dt = zeros(flow_counter)
     flow_integrated_over_saveat = zeros(flow_counter)
     flow_edges = [edge for edge in values(graph.edge_data) if edge.type == EdgeType.flow]
     graph_data = (;
@@ -121,7 +121,7 @@ function create_graph(db::DB, config::Config)::MetaGraph
         flow_dict,
         flow,
         flow_prev,
-        flow_mean_over_dt,
+        flow_integrated_over_dt,
         flow_integrated_over_saveat,
         config.solver.saveat,
     )

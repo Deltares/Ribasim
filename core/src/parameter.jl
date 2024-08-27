@@ -286,7 +286,7 @@ of vectors or Arrow Tables, and is added to avoid type instabilities.
     vertical_flux_from_input::V1 = zeros(length(node_id))
     vertical_flux::Cache = cache(length(node_id))
     vertical_flux_prev::V2 = zeros(length(node_id))
-    vertical_flux_mean_over_dt::V2 = zeros(length(node_id))
+    vertical_flux_integrated_over_dt::V2 = zeros(length(node_id))
     vertical_flux_integrated_over_saveat::V2 = zeros(length(node_id))
     vertical_flux_bmi::V2 = zeros(length(node_id))
     # For water balance error computations
@@ -764,7 +764,7 @@ const ModelGraph = MetaGraph{
         flow_dict::Dict{Tuple{NodeID, NodeID}, Int},
         flow::Cache,
         flow_prev::Vector{Float64},
-        flow_mean_over_dt::Vector{Float64},
+        flow_integrated_over_dt::Vector{Float64},
         flow_integrated_over_saveat::Vector{Float64},
         saveat::Float64,
     },

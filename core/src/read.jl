@@ -560,7 +560,7 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
         drainage = copy(drainage),
         infiltration = copy(infiltration),
     )
-    vertical_flux_mean_over_dt = zero(vertical_flux_prev)
+    vertical_flux_integrated_over_dt = zero(vertical_flux_prev)
     vertical_flux_integrated_over_saveat = zero(vertical_flux_prev)
     vertical_flux_bmi = zero(vertical_flux_prev)
 
@@ -622,7 +622,7 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
         vertical_flux_from_input,
         vertical_flux,
         vertical_flux_prev,
-        vertical_flux_mean_over_dt,
+        vertical_flux_integrated_over_dt,
         vertical_flux_integrated_over_saveat,
         vertical_flux_bmi,
         current_level,
