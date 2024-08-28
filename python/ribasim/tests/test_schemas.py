@@ -1,8 +1,12 @@
 from unittest.mock import patch
 
+import pytest
+from pydantic import ValidationError
 from ribasim import Model
 from ribasim.db_utils import _set_db_schema_version
+from ribasim.nodes import basin
 from ribasim.schemas import BasinProfileSchema
+from shapely.geometry import Point
 
 
 def test_config_inheritance():
@@ -21,3 +25,11 @@ def test_migration(migration, basic, tmp_path):
 
     Model.read(toml_path)
     assert migration.called
+
+
+def test_geometry_validation():
+    with pytest.raises(
+        ValidationError,
+        match="Column 'geometry' failed element-wise validator number 0: <Check is_correct_geometry_type> failure cases",
+    ):
+        basin.Area(geometry=[Point([1.0, 2.0])])
