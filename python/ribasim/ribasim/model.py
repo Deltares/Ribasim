@@ -1,4 +1,5 @@
 import datetime
+import logging
 from collections.abc import Generator
 from os import PathLike
 from pathlib import Path
@@ -319,9 +320,14 @@ class Model(FileModel):
         df_result = df_result[["from_node_id", "from_node_count", "from_node_type"]]
         for _, row in df_result.iterrows():
             # from node's outneighbor
-            if row["from_node_count"] < flow_edge_amount[row["from_node_type"][2]]:
-                is_valid = False
-
+            try:
+                if row["from_node_count"] < flow_edge_amount[row["from_node_type"][2]]:
+                    is_valid = False
+                    raise ValueError(
+                        f"Node {row['from_node_id']} must have at least {flow_edge_amount[row["from_node_type"][2]]} outnrighbor(s) (got {row["from_node_count"]})"
+                    )
+            except ValueError as e:
+                logging.error(e)
         # check to node's neighbor
         to_node_count = (
             df_graph_flow.groupby("to_node_id").size().reset_index(name="to_node_count")
@@ -333,8 +339,14 @@ class Model(FileModel):
         )
         df_result = df_result[["to_node_id", "to_node_count", "to_node_type"]]
         for _, row in df_result.iterrows():
-            if row["to_node_count"] < flow_edge_amount[row["to_node_type"][0]]:
-                is_valid = False
+            try:
+                if row["to_node_count"] < flow_edge_amount[row["to_node_type"][0]]:
+                    is_valid = False
+                    raise ValueError(
+                        f"Node {row['to_node_id']} must have at least {flow_edge_amount[row["to_node_type"][0]]} outnrighbor(s) (got {row["to_node_count"]})"
+                    )
+            except ValueError as e:
+                logging.error(e)
         return is_valid
 
     @classmethod

@@ -128,13 +128,17 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
         ].shape[0]
         # validation on neighbor amount
         if (
-            in_flow_neighbor >= flow_edge_amount[to_node.node_type][1]
+            in_flow_neighbor > flow_edge_amount[to_node.node_type][1]
         ):  # too many upstream neighbor, flow edge
-            raise ValueError
+            raise ValueError(
+                f"Node {to_node.node_id} can have at most {flow_edge_amount[to_node.node_type][1]} flow edge inneighbor(s) (got {in_flow_neighbor})"
+            )
         if (
-            out_flow_neighbor >= flow_edge_amount[to_node.node_type][3]
+            out_flow_neighbor > flow_edge_amount[from_node.node_type][3]
         ):  # too many downstream neighbor, flow edge
-            raise ValueError
+            raise ValueError(
+                f"Node {from_node.node_id} can have at most {flow_edge_amount[from_node.node_type][3]} flow edge inneighbor(s) (got {out_flow_neighbor})"
+            )
 
         self.df = GeoDataFrame[EdgeSchema](pd.concat([self.df, table_to_append]))
         if self.df.duplicated(subset=["from_node_id", "to_node_id"]).any():

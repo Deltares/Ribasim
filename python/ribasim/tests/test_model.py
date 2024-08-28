@@ -160,7 +160,9 @@ def test_connectivity(trivial):
     model = trivial
     with pytest.raises(
         ValueError,
-        match=re.escape("Node Terminal cannot connect with upstream node Basin"),
+        match=re.escape(
+            "Node of type Basin cannot be upstream of node of type Terminal"
+        ),
     ):
         model.edge.add(model.basin[6], model.terminal[2147483647])
 
