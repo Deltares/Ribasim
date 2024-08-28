@@ -16,7 +16,7 @@ from shapely.geometry import LineString, MultiLineString, Point
 from ribasim.input_base import SpatialTableModel
 from ribasim.schemas import _BaseSchema
 from ribasim.utils import UsedIDs
-from ribasim.validation import can_connect
+from ribasim.validation import can_connect, flow_edge_amount
 
 __all__ = ("EdgeTable",)
 
@@ -116,6 +116,25 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
             crs=self.df.crs,
             index=pd.Index([edge_id], name="edge_id"),
         )
+
+        upstream_flow_neighbor = self.df.loc[
+            (self.df["to_node_id"] == to_node.node_id)
+            & (self.df["edge_type"] == "flow")
+        ].count()
+        downstream_flow_neighbor = self.df.loc[
+            (self.df["from_node_id"] == from_node.node_id)
+            & (self.df["edge_type"] == "flow")
+        ].count()
+        # validation on neighbor amount
+        if (
+            upstream_flow_neighbor >= flow_edge_amount[to_node.node_type][0]
+        ):  # too many upstream neighbor, flow edge
+            raise ValueError
+        if (
+            downstream_flow_neighbor >= flow_edge_amount[to_node.node_type][2]
+        ):  # too many downstream neighbor, flow edge
+            raise ValueError
+        # if #too many
 
         self.df = GeoDataFrame[EdgeSchema](pd.concat([self.df, table_to_append]))
         if self.df.duplicated(subset=["from_node_id", "to_node_id"]).any():
