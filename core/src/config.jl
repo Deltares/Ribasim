@@ -282,7 +282,7 @@ function OrdinaryDiffEq.relax!(
 
     α = 1.0
 
-    for (s, ds) in (integrator.u.storage, dz.storage)
+    for (s, ds) in zip(integrator.u.storage, dz.storage)
         if ds < 0 && s >= 0 && s + ds < 0
             α = min(α, -s / ds)
         end
