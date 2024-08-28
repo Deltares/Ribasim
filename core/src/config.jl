@@ -15,6 +15,8 @@ using LineSearches: BackTracking
 using Logging: LogLevel, Debug, Info, Warn, Error
 using ..Ribasim: Ribasim, isnode, nodetype
 using OrdinaryDiffEq:
+    OrdinaryDiffEq,
+    AbstractNLSolver,
     OrdinaryDiffEqAlgorithm,
     OrdinaryDiffEqNewtonAdaptiveAlgorithm,
     NLNewton,
@@ -27,6 +29,7 @@ using OrdinaryDiffEq:
     Rosenbrock23,
     TRBDF2,
     Tsit5
+using SciMLBase: DEIntegrator
 
 export Config, Solver, Results, Logging, Toml
 export algorithm,
@@ -241,7 +244,7 @@ function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
     end
     kwargs = Dict{Symbol, Any}()
     if algotype <: OrdinaryDiffEqNewtonAdaptiveAlgorithm
-        kwargs[:nlsolve] = NLNewton(; relax = BackTracking())
+        kwargs[:nlsolve] = NLNewton(; relax = 0.1)
     end
     # not all algorithms support this keyword
     kwargs[:autodiff] = solver.autodiff
@@ -251,6 +254,23 @@ function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
         pop!(kwargs, :autodiff)
         algotype(; kwargs...)
     end
+end
+
+function OrdinaryDiffEq.relax!(
+    dz,
+    nlsolver::AbstractNLSolver,
+    integrator::DEIntegrator,
+    f,
+    linesearch::String,
+)
+    α = 1.0
+
+    for (s, ds) in (integrator.u.storage, dz.storage)
+        if ds < 0 && s >= 0
+            α = min(α, -s / ds)
+        end
+    end
+    @. dz *= α
 end
 
 "Convert the saveat Float64 from our Config to SciML's saveat"
