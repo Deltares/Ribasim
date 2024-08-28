@@ -58,6 +58,7 @@ from ribasim.utils import (
     _node_lookup_numpy,
     _time_in_ns,
 )
+from ribasim.validation import flow_edge_amount
 
 try:
     import xugrid
@@ -279,6 +280,62 @@ class Model(FileModel):
 
         context_file_writing.set({})
         return fn
+
+    def validate_model(self):
+        df_edge = self.edge.df
+        df_chunks = [node.node.df.set_crs(self.crs) for node in self._nodes()]  # type:ignore
+        df_node = pd.concat(df_chunks)
+
+        df_graph = df_edge
+        # Join df_edge with df_node to get to_node_type
+        df_graph = df_graph.join(
+            df_node[["node_type"]], on="from_node_id", how="left", rsuffix="_from"
+        )
+        df_graph = df_graph.rename(columns={"node_type": "from_node_type"})
+
+        df_graph = df_graph.join(
+            df_node[["node_type"]], on="to_node_id", how="left", rsuffix="_to"
+        )
+        df_graph = df_graph.rename(columns={"node_type": "to_node_type"})
+        flow_edge_amount
+        self._check_neighbors()
+
+    def _check_neighbors(self, df_graph: pd.DataFrame, flow_edge_amount) -> bool:
+        is_valid = True
+        # Count flow edge neighbor
+        df_graph_flow = df_graph.loc[df_graph["edge_type"] == "flow"]
+
+        # check from node's neighbor
+        from_node_count = (
+            df_graph_flow.groupby("from_node_id")
+            .size()
+            .reset_index(name="from_node_count")
+        )
+        df_result = (
+            df_graph_flow[["from_node_id", "from_node_type"]]
+            .drop_duplicates()
+            .merge(from_node_count, on="from_node_id", how="left")
+        )
+        df_result = df_result[["from_node_id", "from_node_count", "from_node_type"]]
+        for _, row in df_result.iterrows():
+            # from node's outneighbor
+            if row["from_node_count"] < flow_edge_amount[row["from_node_type"][2]]:
+                is_valid = False
+
+        # check to node's neighbor
+        to_node_count = (
+            df_graph_flow.groupby("to_node_id").size().reset_index(name="to_node_count")
+        )
+        df_result = (
+            df_graph_flow[["to_node_id", "to_node_type"]]
+            .drop_duplicates()
+            .merge(to_node_count, on="to_node_id", how="left")
+        )
+        df_result = df_result[["to_node_id", "to_node_count", "to_node_type"]]
+        for _, row in df_result.iterrows():
+            if row["to_node_count"] < flow_edge_amount[row["to_node_type"][0]]:
+                is_valid = False
+        return is_valid
 
     @classmethod
     def _load(cls, filepath: Path | None) -> dict[str, Any]:

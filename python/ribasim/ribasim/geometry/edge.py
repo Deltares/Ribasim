@@ -84,7 +84,7 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
         """
         if not can_connect(from_node.node_type, to_node.node_type):
             raise ValueError(
-                f"Node {to_node.node_type} cannot connect with upstream node {from_node.node_type}"
+                f"Node of type {from_node.node_type} cannot be upstream of node of type {to_node.node_type}"
             )
 
         geometry_to_append = (
@@ -117,24 +117,24 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
             index=pd.Index([edge_id], name="edge_id"),
         )
 
-        upstream_flow_neighbor = self.df.loc[
+        in_flow_neighbor: int = self.df.loc[
             (self.df["to_node_id"] == to_node.node_id)
             & (self.df["edge_type"] == "flow")
-        ].count()
-        downstream_flow_neighbor = self.df.loc[
+        ].shape[0]
+
+        out_flow_neighbor: int = self.df.loc[
             (self.df["from_node_id"] == from_node.node_id)
             & (self.df["edge_type"] == "flow")
-        ].count()
+        ].shape[0]
         # validation on neighbor amount
         if (
-            upstream_flow_neighbor >= flow_edge_amount[to_node.node_type][0]
+            in_flow_neighbor >= flow_edge_amount[to_node.node_type][1]
         ):  # too many upstream neighbor, flow edge
             raise ValueError
         if (
-            downstream_flow_neighbor >= flow_edge_amount[to_node.node_type][2]
+            out_flow_neighbor >= flow_edge_amount[to_node.node_type][3]
         ):  # too many downstream neighbor, flow edge
             raise ValueError
-        # if #too many
 
         self.df = GeoDataFrame[EdgeSchema](pd.concat([self.df, table_to_append]))
         if self.df.duplicated(subset=["from_node_id", "to_node_id"]).any():
