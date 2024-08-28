@@ -137,7 +137,7 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
             edge_type == "flow"
         ):  # too many downstream neighbor, flow edge
             raise ValueError(
-                f"Node {from_node.node_id} can have at most {flow_edge_amount[from_node.node_type][3]} flow edge inneighbor(s) (got {out_flow_neighbor})"
+                f"Node {from_node.node_id} can have at most {flow_edge_amount[from_node.node_type][3]} flow edge outneighbor(s) (got {out_flow_neighbor})"
             )
 
         self.df = GeoDataFrame[EdgeSchema](pd.concat([self.df, table_to_append]))

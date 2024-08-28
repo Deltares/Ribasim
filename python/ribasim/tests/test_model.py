@@ -175,7 +175,7 @@ def test_maximum_neighbor(outlet):
     model = outlet
     with pytest.raises(
         ValueError,
-        match=re.escape("Node 2 can have at most 1 flow edge inneighbor(s) (got 1)"),
+        match=re.escape("Node 2 can have at most 1 flow edge outneighbor(s) (got 1)"),
     ):
         model.basin.add(
             Node(4, Point(1.0, 1.0)),
@@ -184,13 +184,17 @@ def test_maximum_neighbor(outlet):
                 basin.State(level=[0.0]),
             ],
         )
-
         model.edge.add(model.outlet[2], model.basin[4])
-        # Set up the level boundary
+
+    with pytest.raises(
+        ValueError,
+        match=re.escape("Node 2 can have at most 1 flow edge inneighbor(s) (got 1)"),
+    ):
         model.level_boundary.add(
             Node(5, Point(0.0, 1.0)),
             [level_boundary.Static(level=[3.0])],
         )
+        model.edge.add(model.level_boundary[5], model.outlet[2])
 
 
 def test_indexing(basic):
