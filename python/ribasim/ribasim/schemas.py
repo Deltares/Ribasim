@@ -21,7 +21,7 @@ class _BaseSchema(pa.DataFrameModel):
     @classmethod
     def migrate(cls, df: Any) -> Any:
         f: Callable[[Any], Any] = getattr(
-            migrations, str(cls.__name__).lower() + "migration", lambda x: x
+            migrations, str(cls.__name__).lower() + "_migration", lambda x: x
         )
         return f(df)
 

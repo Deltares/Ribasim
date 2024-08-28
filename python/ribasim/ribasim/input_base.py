@@ -4,7 +4,7 @@ from collections.abc import Callable, Generator
 from contextlib import closing
 from contextvars import ContextVar
 from pathlib import Path
-from sqlite3 import Connection, connect
+from sqlite3 import connect
 from typing import (
     Any,
     Generic,
@@ -31,6 +31,12 @@ from pydantic import (
 )
 
 import ribasim
+from ribasim.db_utils import (
+    _get_db_schema_version,
+    _set_gpkg_attribute_table,
+    esc_id,
+    exists,
+)
 from ribasim.schemas import _BaseSchema
 
 from .styles import _add_styles_to_geopackage
@@ -65,21 +71,6 @@ context_file_writing: ContextVar[dict[str, Any]] = ContextVar(
 )
 
 TableT = TypeVar("TableT", bound=_BaseSchema)
-
-
-def esc_id(identifier: str) -> str:
-    """Escape SQLite identifiers."""
-    return '"' + identifier.replace('"', '""') + '"'
-
-
-def exists(connection: Connection, name: str) -> bool:
-    """Check if a table exists in a SQLite database."""
-    with closing(connection.cursor()) as cursor:
-        cursor.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name=?", (name,)
-        )
-        result = cursor.fetchone()
-    return result is not None
 
 
 TABLES = ["profile", "state", "static", "time", "logic", "condition"]
@@ -178,12 +169,15 @@ class TableModel(FileModel, Generic[TableT]):
 
     @field_validator("df")
     @classmethod
-    def _check_extra_columns(cls, v: DataFrame[TableT]):
+    def _check_schema(cls, v: DataFrame[TableT]):
         """Allow only extra columns with `meta_` prefix."""
         if isinstance(v, (pd.DataFrame, gpd.GeoDataFrame)):
-            # On reading from geopackage, migrate the tables
-            if context_file_loading.get().get("database") is not None:
-                v = cls.tableschema().migrate(v)
+            # On reading from geopackage, migrate the tables when necessary
+            db_path = context_file_loading.get().get("database")
+            if db_path is not None:
+                version = _get_db_schema_version(db_path)
+                if version < ribasim.__schema_version__:
+                    v = cls.tableschema().migrate(v)
             for colname in v.columns:
                 if colname not in cls.columns() and not colname.startswith("meta_"):
                     raise ValueError(
@@ -280,11 +274,8 @@ class TableModel(FileModel, Generic[TableT]):
                 dtype={"fid": "INTEGER PRIMARY KEY AUTOINCREMENT"},
             )
 
+            _set_gpkg_attribute_table(connection, table)
             # Set geopackage attribute table
-            with closing(connection.cursor()) as cursor:
-                sql = "INSERT INTO gpkg_contents (table_name, data_type, identifier) VALUES (?, ?, ?)"
-                cursor.execute(sql, (table, "attributes", table))
-            connection.commit()
 
     def _write_arrow(self, filepath: Path, directory: Path, input_dir: Path) -> None:
         """Write the contents of the input to a an arrow file."""

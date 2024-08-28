@@ -28,6 +28,7 @@ def sqlite3_cursor(path: Path):
         yield cursor
     finally:
         cursor.close()
+        connection.commit()
         connection.close()
 
 
@@ -48,6 +49,25 @@ def layers(path: Path) -> list[str]:
         cursor.execute("Select table_name from gpkg_contents")
         layers = [item[0] for item in cursor.fetchall()]
     return layers
+
+
+def write_schema_version(path: Path, version: int = 1) -> None:
+    """Write the schema version to the geopackage."""
+    with sqlite3_cursor(path) as cursor:
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS ribasim_metadata (
+                key TEXT PRIMARY KEY,
+                value TEXT
+            );
+            """
+        )
+        cursor.execute(
+            "INSERT OR REPLACE INTO ribasim_metadata (key, value) VALUES ('schema_version', ?)",
+            (version,),
+        )
+        sql = "INSERT INTO gpkg_contents (table_name, data_type, identifier) VALUES (?, ?, ?)"
+        cursor.execute(sql, ("ribasim_metadata", "attributes", "ribasim_metadata"))
 
 
 def write_layer(

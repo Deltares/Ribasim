@@ -32,6 +32,7 @@ from qgis.core import (
     QgsVectorLayer,
 )
 
+from ribasim_qgis.core.geopackage import write_schema_version
 from ribasim_qgis.core.model import (
     get_database_path_from_model_file,
     get_directory_path_from_model_file,
@@ -257,6 +258,7 @@ class DatasetWidget(QWidget):
                     names=[],
                 )
                 instance.write()
+            write_schema_version(geo_path)
             self.load_geopackage()
             self.ribasim_widget.toggle_node_buttons(True)
 
