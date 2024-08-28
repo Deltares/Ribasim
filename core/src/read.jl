@@ -572,7 +572,8 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
         error("Invalid Basin / profile table.")
     end
 
-    level_to_area = LinearInterpolation.(area, level; extrapolate = true)
+    level_to_area =
+        LinearInterpolation.(area, level; extrapolate = true, cache_parameters = true)
     storage_to_level = invert_integral.(level_to_area)
 
     t_end = seconds_since(config.endtime, config.starttime)
