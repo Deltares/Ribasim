@@ -298,10 +298,11 @@ class Model(FileModel):
             df_node[["node_type"]], on="to_node_id", how="left", rsuffix="_to"
         )
         df_graph = df_graph.rename(columns={"node_type": "to_node_type"})
-        flow_edge_amount
-        self._check_neighbors()
 
-    def _check_neighbors(self, df_graph: pd.DataFrame, flow_edge_amount) -> bool:
+        if not self._check_neighbors(df_graph, flow_edge_amount):
+            raise ValueError("Minimum inneighbor or outneighbor unsatisfied")
+
+    def _check_neighbors(self, df_graph: pd.DataFrame, flow_edge_amount: dict) -> bool:
         is_valid = True
         # Count flow edge neighbor
         df_graph_flow = df_graph.loc[df_graph["edge_type"] == "flow"]

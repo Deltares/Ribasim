@@ -12,7 +12,11 @@ from ribasim.config import Solver
 from ribasim.geometry.edge import NodeData
 from ribasim.input_base import esc_id
 from ribasim.model import Model
-from ribasim_testmodels import basic_model, trivial_model
+from ribasim.nodes import (
+    basin,
+    level_boundary,
+)
+from ribasim_testmodels import basic_model, outlet_model, trivial_model
 from shapely import Point
 
 
@@ -141,17 +145,17 @@ def test_edge_table(basic):
     assert df.crs == CRS.from_epsg(28992)
 
 
-def test_duplicate_edge(trivial):
-    model = trivial
+def test_duplicate_edge(basic):
+    model = basic
     with pytest.raises(
         ValueError,
         match=re.escape(
-            "Edges have to be unique, but edge with from_node_id 6 to_node_id 0 already exists."
+            "Edges have to be unique, but edge with from_node_id 16 to_node_id 1 already exists."
         ),
     ):
         model.edge.add(
-            model.basin[6],
-            model.tabulated_rating_curve[0],
+            model.flow_boundary[16],
+            model.basin[1],
             name="duplicate",
         )
 
@@ -165,6 +169,28 @@ def test_connectivity(trivial):
         ),
     ):
         model.edge.add(model.basin[6], model.terminal[2147483647])
+
+
+def test_maximum_neighbor(outlet):
+    model = outlet
+    with pytest.raises(
+        ValueError,
+        match=re.escape("Node 2 can have at most 1 flow edge inneighbor(s) (got 1)"),
+    ):
+        model.basin.add(
+            Node(4, Point(1.0, 1.0)),
+            [
+                basin.Profile(area=[1000.0, 1000.0], level=[0.0, 1.0]),
+                basin.State(level=[0.0]),
+            ],
+        )
+
+        model.edge.add(model.outlet[2], model.basin[4])
+        # Set up the level boundary
+        model.level_boundary.add(
+            Node(5, Point(0.0, 1.0)),
+            [level_boundary.Static(level=[3.0])],
+        )
 
 
 def test_indexing(basic):
@@ -198,7 +224,7 @@ def test_indexing(basic):
         model.basin.time[1]
 
 
-@pytest.mark.parametrize("model", [basic_model(), trivial_model()])
+@pytest.mark.parametrize("model", [basic_model(), outlet_model(), trivial_model()])
 def test_xugrid(model, tmp_path):
     uds = model.to_xugrid(add_flow=False)
     assert isinstance(uds, xugrid.UgridDataset)

@@ -30,6 +30,11 @@ def tabulated_rating_curve() -> ribasim.Model:
 
 
 @pytest.fixture()
+def outlet() -> ribasim.Model:
+    return ribasim_testmodels.outlet_model()
+
+
+@pytest.fixture()
 def backwater() -> ribasim.Model:
     return ribasim_testmodels.backwater_model()
 

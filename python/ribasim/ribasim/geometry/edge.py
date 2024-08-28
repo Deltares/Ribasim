@@ -127,14 +127,14 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
             & (self.df["edge_type"] == "flow")
         ].shape[0]
         # validation on neighbor amount
-        if (
-            in_flow_neighbor > flow_edge_amount[to_node.node_type][1]
+        if (in_flow_neighbor >= flow_edge_amount[to_node.node_type][1]) & (
+            edge_type == "flow"
         ):  # too many upstream neighbor, flow edge
             raise ValueError(
                 f"Node {to_node.node_id} can have at most {flow_edge_amount[to_node.node_type][1]} flow edge inneighbor(s) (got {in_flow_neighbor})"
             )
-        if (
-            out_flow_neighbor > flow_edge_amount[from_node.node_type][3]
+        if (out_flow_neighbor >= flow_edge_amount[from_node.node_type][3]) & (
+            edge_type == "flow"
         ):  # too many downstream neighbor, flow edge
             raise ValueError(
                 f"Node {from_node.node_id} can have at most {flow_edge_amount[from_node.node_type][3]} flow edge inneighbor(s) (got {out_flow_neighbor})"
