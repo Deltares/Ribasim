@@ -220,6 +220,7 @@ def invalid_priorities_model() -> Model:
     )
     model.edge.add(model.tabulated_rating_curve[2], model.basin[3])
     model.edge.add(model.basin[3], model.user_demand[4])
+    model.edge.add(model.level_demand[6], model.basin[3])
     model.edge.add(model.flow_demand[5], model.tabulated_rating_curve[2])
 
     return model
