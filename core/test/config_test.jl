@@ -37,7 +37,7 @@
 end
 
 @testitem "Solver" begin
-    using OrdinaryDiffEq: alg_autodiff, AutoFiniteDiff, AutoForwardDiff
+    using OrdinaryDiffEqCore: alg_autodiff, AutoFiniteDiff, AutoForwardDiff
     using Ribasim: convert_saveat, convert_dt, Solver, algorithm
 
     solver = Solver()
