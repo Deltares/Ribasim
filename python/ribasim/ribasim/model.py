@@ -258,6 +258,8 @@ class Model(FileModel):
         filepath : str | PathLike[str]
             The path to the TOML file.
         """
+        if not Path(filepath).is_file():
+            raise FileNotFoundError(f"File '{filepath}' does not exist.")
         return cls(filepath=filepath)  # type: ignore
 
     def write(self, filepath: str | PathLike[str]) -> Path:
@@ -295,7 +297,12 @@ class Model(FileModel):
 
             directory = filepath.parent / config.get("input_dir", ".")
             context_file_loading.get()["directory"] = directory
-            context_file_loading.get()["database"] = directory / "database.gpkg"
+            db_path = directory / "database.gpkg"
+
+            if not db_path.is_file():
+                raise FileNotFoundError(f"Database file '{db_path}' does not exist.")
+
+            context_file_loading.get()["database"] = db_path
 
             return config
         else:

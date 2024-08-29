@@ -299,5 +299,6 @@ def test_datetime_timezone():
 def test_minimal_toml():
     # Check if the TOML used in QGIS tests is still valid.
     toml_path = Path(__file__).parents[3] / "ribasim_qgis/tests/data/simple_valid.toml"
+    (toml_path.parent / "database.gpkg").touch()  # database file must exist for `read`
     model = ribasim.Model.read(toml_path)
     assert model.crs == "EPSG:28992"
