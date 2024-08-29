@@ -1,6 +1,6 @@
 [run]
+source = .
 omit =
-    ribasim_qgis/resources.py
-    ribasim_qgis/tests/*
-    ribasim_qgis/tomllib/*
-    ribasim_qgis/ui_tests/*
+    resources.py
+    tests/*
+    tomllib/*
