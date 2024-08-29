@@ -92,7 +92,7 @@ def test_tabulated_rating_curve_model(tabulated_rating_curve, tmp_path):
     model_orig.set_crs(model_orig.crs)
     basin_area = tabulated_rating_curve.basin.area.df
     assert basin_area is not None
-    assert basin_area.geometry.geom_type.iloc[0] == "Polygon"
+    assert basin_area.geometry.geom_type.iloc[0] == "MultiPolygon"
     assert basin_area.crs == CRS.from_epsg(28992)
     model_orig.write(tmp_path / "tabulated_rating_curve/ribasim.toml")
     model_new = Model.read(tmp_path / "tabulated_rating_curve/ribasim.toml")

@@ -448,3 +448,28 @@ end
     )
     @test occursin("Basin #11 = ", output)
 end
+
+@testitem "Missing priority when allocation is active" begin
+    using Ribasim
+    using Logging
+    using IOCapture: capture
+
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/invalid_priorities/ribasim.toml")
+    @test ispath(toml_path)
+
+    config = Ribasim.Config(toml_path; allocation_use_allocation = true)
+
+    logger = TestLogger()
+    with_logger(logger) do
+        @test_throws "Priority parameter is missing" Ribasim.run(config)
+    end
+    @test length(logger.logs) == 3
+    @test logger.logs[1].level == Error
+    @test logger.logs[1].message ==
+          "Missing priority parameter(s) for a UserDemand / static node in the allocation problem."
+    @test logger.logs[2].message ==
+          "Missing priority parameter(s) for a LevelDemand / static node in the allocation problem."
+    @test logger.logs[3].message ==
+          "Missing priority parameter(s) for a FlowDemand / static node in the allocation problem."
+end

@@ -1368,7 +1368,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/brotli-1.1.0-hd590300_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/brotli-bin-1.1.0-hd590300_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/brotli-python-1.1.0-py312h30efb56_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/build-0.7.0-pyhd8ed1ab_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/linux-64/bzip2-1.0.8-h4bc722e_7.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/c-ares-1.32.3-h4bc722e_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/ca-certificates-2024.7.4-hbcca054_0.conda
@@ -1689,7 +1688,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/pathspec-0.12.1-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pcre2-10.44-h0f59acf_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pdal-2.7.2-hd8ed1ab_4.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/pep517-0.13.0-pyhd8ed1ab_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/noarch/pexpect-4.9.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pickleshare-0.7.5-py_1003.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pillow-10.4.0-py312h287a98d_0.conda
@@ -1862,6 +1860,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zlib-1.3.1-h4ab18f5_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zstandard-0.23.0-py312h3483029_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zstd-1.5.6-ha6fb4c9_0.conda
+      - pypi: https://files.pythonhosted.org/packages/44/5b/fa477e4fd8e62c722febdc52462d7b037a77aa963c3e400a8e90e8f0d2c0/ptvsd-4.3.2-py2.py3-none-any.whl
       - pypi: python/ribasim
       - pypi: python/ribasim_api
       - pypi: python/ribasim_testmodels
@@ -1908,7 +1907,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/brotli-1.1.0-h0dc2134_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/brotli-bin-1.1.0-h0dc2134_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/brotli-python-1.1.0-py312heafc425_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/build-0.7.0-pyhd8ed1ab_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/osx-64/bzip2-1.0.8-hfdf4475_7.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/c-ares-1.32.3-h51dda26_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/ca-certificates-2024.7.4-h8857fd0_0.conda
@@ -2201,7 +2199,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/pathspec-0.12.1-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/pcre2-10.44-h7634a1b_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pdal-2.7.2-hd8ed1ab_4.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/pep517-0.13.0-pyhd8ed1ab_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/noarch/pexpect-4.9.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pickleshare-0.7.5-py_1003.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/osx-64/pillow-10.4.0-py312hbd70edc_0.conda
@@ -2355,6 +2352,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/zlib-1.3.1-h87427d6_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/zstandard-0.23.0-py312h331e495_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/zstd-1.5.6-h915ae27_0.conda
+      - pypi: https://files.pythonhosted.org/packages/44/5b/fa477e4fd8e62c722febdc52462d7b037a77aa963c3e400a8e90e8f0d2c0/ptvsd-4.3.2-py2.py3-none-any.whl
       - pypi: python/ribasim
       - pypi: python/ribasim_api
       - pypi: python/ribasim_testmodels
@@ -2401,7 +2399,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/brotli-1.1.0-hb547adb_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/brotli-bin-1.1.0-hb547adb_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/brotli-python-1.1.0-py312h9f69965_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/build-0.7.0-pyhd8ed1ab_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/bzip2-1.0.8-h99b78c6_7.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/c-ares-1.32.3-h99b78c6_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/ca-certificates-2024.7.4-hf0a4a13_0.conda
@@ -2694,7 +2691,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/pathspec-0.12.1-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pcre2-10.44-h297a79d_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pdal-2.7.2-hd8ed1ab_4.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/pep517-0.13.0-pyhd8ed1ab_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/noarch/pexpect-4.9.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pickleshare-0.7.5-py_1003.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pillow-10.4.0-py312h39b1d8d_0.conda
@@ -2848,6 +2844,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zlib-1.3.1-hfb2fe0b_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zstandard-0.23.0-py312h721a963_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zstd-1.5.6-hb46c0d2_0.conda
+      - pypi: https://files.pythonhosted.org/packages/44/5b/fa477e4fd8e62c722febdc52462d7b037a77aa963c3e400a8e90e8f0d2c0/ptvsd-4.3.2-py2.py3-none-any.whl
       - pypi: python/ribasim
       - pypi: python/ribasim_api
       - pypi: python/ribasim_testmodels
@@ -2892,7 +2889,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/brotli-1.1.0-hcfcfb64_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/brotli-bin-1.1.0-hcfcfb64_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/brotli-python-1.1.0-py312h53d5487_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/build-0.7.0-pyhd8ed1ab_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/win-64/bzip2-1.0.8-h2466b09_7.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/c-ares-1.32.3-h2466b09_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/ca-certificates-2024.7.4-h56e8100_0.conda
@@ -3162,7 +3158,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/pathspec-0.12.1-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/pcre2-10.44-h3d7b363_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pdal-2.7.2-hd8ed1ab_4.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/pep517-0.13.0-pyhd8ed1ab_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/noarch/pickleshare-0.7.5-py_1003.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/win-64/pillow-10.4.0-py312h381445a_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pip-24.2-pyhd8ed1ab_0.conda
@@ -3320,6 +3315,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/zlib-1.3.1-h2466b09_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstandard-0.23.0-py312h7606c53_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstd-1.5.6-h0ea2cb4_0.conda
+      - pypi: https://files.pythonhosted.org/packages/44/5b/fa477e4fd8e62c722febdc52462d7b037a77aa963c3e400a8e90e8f0d2c0/ptvsd-4.3.2-py2.py3-none-any.whl
       - pypi: python/ribasim
       - pypi: python/ribasim_api
       - pypi: python/ribasim_testmodels
@@ -10072,27 +10068,6 @@ packages:
   - pkg:pypi/brotli?source=hash-mapping
   size: 366883
   timestamp: 1695990710194
-- kind: conda
-  name: build
-  version: 0.7.0
-  build: pyhd8ed1ab_0
-  subdir: noarch
-  noarch: python
-  url: https://conda.anaconda.org/conda-forge/noarch/build-0.7.0-pyhd8ed1ab_0.tar.bz2
-  sha256: 44e2d3270209d1f10b8adec2a159699ed66914e851ec34775902e856ea04afeb
-  md5: add7f31586d03678695b32b78a1337a1
-  depends:
-  - importlib-metadata
-  - packaging
-  - pep517 >=0.9.1
-  - python >=3.6
-  - tomli
-  license: MIT
-  license_family: MIT
-  purls:
-  - pkg:pypi/build?source=hash-mapping
-  size: 17759
-  timestamp: 1631843776429
 - kind: conda
   name: bzip2
   version: 1.0.8
@@ -31045,24 +31020,6 @@ packages:
   size: 6590
   timestamp: 1721158828386
 - kind: conda
-  name: pep517
-  version: 0.13.0
-  build: pyhd8ed1ab_0
-  subdir: noarch
-  noarch: python
-  url: https://conda.anaconda.org/conda-forge/noarch/pep517-0.13.0-pyhd8ed1ab_0.tar.bz2
-  sha256: 6a6f2fa6bc9106b2edcccc142242dc3ab1f2f77a6debbd5b480f08482f052636
-  md5: d94aa03d99d8adc9898f783eba0d84d2
-  depends:
-  - python >=3.8
-  - tomli
-  license: MIT
-  license_family: MIT
-  purls:
-  - pkg:pypi/pep517?source=hash-mapping
-  size: 19044
-  timestamp: 1667916747996
-- kind: conda
   name: pexpect
   version: 4.9.0
   build: pyhd8ed1ab_0
@@ -32410,6 +32367,12 @@ packages:
   purls: []
   size: 144301
   timestamp: 1537755684331
+- kind: pypi
+  name: ptvsd
+  version: 4.3.2
+  url: https://files.pythonhosted.org/packages/44/5b/fa477e4fd8e62c722febdc52462d7b037a77aa963c3e400a8e90e8f0d2c0/ptvsd-4.3.2-py2.py3-none-any.whl
+  sha256: 459137736068bb02515040b2ed2738169cb30d69a38e0fd5dffcba255f41e68d
+  requires_python: '>=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*'
 - kind: conda
   name: ptyprocess
   version: 0.7.0
@@ -37614,6 +37577,40 @@ packages:
   requires_python: '>=3.10'
   editable: true
 - kind: pypi
+  name: ribasim
+  version: 2024.10.0
+  path: python/ribasim
+  sha256: dabdd02a24d0b7d6a745c1bcdd800f8afdeb527b8b294ded4eaaf7205939a9cd
+  requires_dist:
+  - geopandas
+  - matplotlib
+  - numpy
+  - pandas
+  - pandera>=0.20
+  - pyarrow
+  - pydantic~=2.0
+  - pyogrio
+  - shapely>=2.0
+  - tomli
+  - tomli-w
+  - jinja2 ; extra == 'all'
+  - networkx ; extra == 'all'
+  - pytest ; extra == 'all'
+  - pytest-cov ; extra == 'all'
+  - pytest-xdist ; extra == 'all'
+  - ribasim-testmodels ; extra == 'all'
+  - xugrid ; extra == 'all'
+  - jinja2 ; extra == 'delwaq'
+  - networkx ; extra == 'delwaq'
+  - xugrid ; extra == 'delwaq'
+  - xugrid ; extra == 'netcdf'
+  - pytest ; extra == 'tests'
+  - pytest-cov ; extra == 'tests'
+  - pytest-xdist ; extra == 'tests'
+  - ribasim-testmodels ; extra == 'tests'
+  requires_python: '>=3.10'
+  editable: true
+- kind: pypi
   name: ribasim-api
   version: 2024.10.0
   path: python/ribasim_api
@@ -37623,6 +37620,31 @@ packages:
   - pytest ; extra == 'tests'
   - ribasim ; extra == 'tests'
   - ribasim-testmodels ; extra == 'tests'
+  requires_python: '>=3.10'
+  editable: true
+- kind: pypi
+  name: ribasim-api
+  version: 2024.10.0
+  path: python/ribasim_api
+  sha256: dc882869854e0940ab3a12506f5b9508b04045793f6badb644579c43fa2b6cb9
+  requires_dist:
+  - xmipy
+  - pytest ; extra == 'tests'
+  - ribasim ; extra == 'tests'
+  - ribasim-testmodels ; extra == 'tests'
+  requires_python: '>=3.10'
+  editable: true
+- kind: pypi
+  name: ribasim-testmodels
+  version: 0.5.0
+  path: python/ribasim_testmodels
+  sha256: 2b0165819d6cc5d79b0b65761e8c38b1cc9f34649dea3ed4406013080ea8b112
+  requires_dist:
+  - geopandas
+  - numpy
+  - pandas
+  - ribasim
+  - pytest ; extra == 'tests'
   requires_python: '>=3.10'
   editable: true
 - kind: pypi

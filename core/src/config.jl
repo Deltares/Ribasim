@@ -114,7 +114,6 @@ end
 
 @option struct Logging <: TableOption
     verbosity::LogLevel = Info
-    timing::Bool = false
 end
 
 @option struct Allocation <: TableOption
