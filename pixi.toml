@@ -14,8 +14,8 @@ repository = "https://github.com/Deltares/Ribasim"
 
 [tasks]
 # Tests
-test-ribasim-python = "pytest --numprocesses=4 python/ribasim/tests"
-test-ribasim-python-cov = "pytest --numprocesses=4 --cov=ribasim --cov-report=xml python/ribasim/tests"
+test-ribasim-python = "pytest --numprocesses=4 -m 'not regression' python/ribasim/tests"
+test-ribasim-python-cov = "pytest --numprocesses=4 --cov=ribasim --cov-report=xml -m 'not regression' python/ribasim/tests"
 test-ribasim-api = "pytest --basetemp=python/ribasim_api/tests/temp --junitxml=report.xml python/ribasim_api/tests"
 
 [feature.dev.tasks]
