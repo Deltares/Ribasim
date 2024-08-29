@@ -287,7 +287,7 @@ class Model(FileModel):
 
     def _validate_model(self):
         df_edge = self.edge.df
-        df_chunks = [node.node.df.set_crs(self.crs) for node in self._nodes()]  # type:ignore
+        df_chunks = [node.node.df.set_crs(self.crs) for node in self._nodes()]
         df_node = pd.concat(df_chunks)
 
         df_graph = df_edge
@@ -306,7 +306,10 @@ class Model(FileModel):
             raise ValueError("Minimum inneighbor or outneighbor unsatisfied")
 
     def _check_neighbors(
-        self, df_graph: pd.DataFrame, flow_edge_amount: dict, nodes: pd.Series
+        self,
+        df_graph: pd.DataFrame,
+        flow_edge_amount: dict[str, list[int]],
+        nodes,
     ) -> bool:
         is_valid = True
         # Count flow edge neighbor
@@ -332,7 +335,9 @@ class Model(FileModel):
                     "from_node_count": 0,
                     "from_node_type": node,
                 }
-                df_result.loc[len(df_result)] = new_row
+                df_result = pd.concat(
+                    [df_result, pd.DataFrame([new_row])], ignore_index=True
+                )
         for _, row in df_result.iterrows():
             # from node's outneighbor
             try:
@@ -360,7 +365,9 @@ class Model(FileModel):
                     "to_node_count": 0,
                     "to_node_type": node,
                 }
-                df_result.loc[len(df_result)] = new_row
+                df_result = pd.concat(
+                    [df_result, pd.DataFrame([new_row])], ignore_index=True
+                )
 
         for _, row in df_result.iterrows():
             try:
