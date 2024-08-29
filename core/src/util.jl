@@ -905,7 +905,11 @@ adapt_negative_storage_du!(du, u::ComponentVector{<:GradientTracer}) = nothing
     z_tmp::V = []
 end
 
-function resid(z, integrator, nlsolver, f)
+"""
+Compute the residual of the non-linear solver, i.e. a measure of the
+error in the solution to the implicit equation defined by the solver algorithm
+"""
+function residual(z, integrator, nlsolver, f)
     (; uprev, t, p, dt, opts, isdae) = integrator
     (; tmp, ztmp, γ, α, cache, method) = nlsolver
     (; ustep, atmp, tstep, k, invγdt, tstep, k, invγdt) = cache
@@ -949,10 +953,10 @@ function OrdinaryDiffEq.relax!(
 
     # Apply relaxation and measure the residu change
     @. z_tmp = nlsolver.z + dz
-    resid_before = resid(z_tmp, integrator, nlsolver, f)
+    resid_before = residual(z_tmp, integrator, nlsolver, f)
     relax!(dz, nlsolver, integrator, f, linesearch)
     @. z_tmp = nlsolver.z + dz
-    resid_after = resid(z_tmp, integrator, nlsolver, f)
+    resid_after = residual(z_tmp, integrator, nlsolver, f)
 
     # If the residu increased due to the relaxation, reject it
     if resid_after > resid_before
