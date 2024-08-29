@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euxo pipefail
+set -eux
 
 echo 'Stopping/killing containers'
 docker compose -f compose.yml kill
