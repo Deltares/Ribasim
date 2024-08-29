@@ -15,6 +15,7 @@ from ribasim.model import Model
 from ribasim.nodes import (
     basin,
     level_boundary,
+    outlet,
 )
 from ribasim_testmodels import basic_model, outlet_model, trivial_model
 from shapely import Point
@@ -195,6 +196,35 @@ def test_maximum_neighbor(outlet):
             [level_boundary.Static(level=[3.0])],
         )
         model.edge.add(model.level_boundary[5], model.outlet[2])
+
+
+def test_minimum_neighbor():
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2021-01-01",
+        crs="EPSG:28992",
+        solver=Solver(),
+    )
+
+    model.basin.add(
+        Node(3, Point(2.0, 0.0)),
+        [
+            basin.Profile(area=[1000.0, 1000.0], level=[0.0, 1.0]),
+            basin.State(level=[0.0]),
+        ],
+    )
+    model.outlet.add(
+        Node(2, Point(1.0, 0.0)),
+        [outlet.Static(flow_rate=[1e-3], min_crest_level=[2.0])],
+    )
+    model.terminal.add(Node(4, Point(3.0, -2.0)))
+
+    with pytest.raises(
+        ValueError,
+        match=re.escape("Minimum inneighbor or outneighbor unsatisfied"),
+    ):
+        model.edge.add(model.basin[3], model.outlet[2])
+        model.write("test.toml")
 
 
 def test_indexing(basic):

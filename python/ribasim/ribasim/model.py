@@ -268,7 +268,7 @@ class Model(FileModel):
             A file path with .toml extension.
         """
         # TODO
-        # self.validate_model()
+        self._validate_model()
         filepath = Path(filepath)
         self.filepath = filepath
         if not filepath.suffix == ".toml":
@@ -282,7 +282,7 @@ class Model(FileModel):
         context_file_writing.set({})
         return fn
 
-    def validate_model(self):
+    def _validate_model(self):
         df_edge = self.edge.df
         df_chunks = [node.node.df.set_crs(self.crs) for node in self._nodes()]  # type:ignore
         df_node = pd.concat(df_chunks)
@@ -299,10 +299,12 @@ class Model(FileModel):
         )
         df_graph = df_graph.rename(columns={"node_type": "to_node_type"})
 
-        if not self._check_neighbors(df_graph, flow_edge_amount):
+        if not self._check_neighbors(df_graph, flow_edge_amount, df_node["node_type"]):
             raise ValueError("Minimum inneighbor or outneighbor unsatisfied")
 
-    def _check_neighbors(self, df_graph: pd.DataFrame, flow_edge_amount: dict) -> bool:
+    def _check_neighbors(
+        self, df_graph: pd.DataFrame, flow_edge_amount: dict, nodes: pd.Series
+    ) -> bool:
         is_valid = True
         # Count flow edge neighbor
         df_graph_flow = df_graph.loc[df_graph["edge_type"] == "flow"]
@@ -318,14 +320,24 @@ class Model(FileModel):
             .drop_duplicates()
             .merge(from_node_count, on="from_node_id", how="left")
         )
+
         df_result = df_result[["from_node_id", "from_node_count", "from_node_type"]]
+        # print(df_result)
+        for index, node in enumerate(nodes):
+            if nodes.index[index] not in df_result["from_node_id"].to_numpy():
+                new_row = {
+                    "from_node_id": nodes.index[index],
+                    "from_node_count": 0,
+                    "from_node_type": node,
+                }
+                df_result.loc[len(df_result)] = new_row
         for _, row in df_result.iterrows():
-            # from node's outneighbor
+            # from node's outneighbor)
             try:
-                if row["from_node_count"] < flow_edge_amount[row["from_node_type"][2]]:
+                if row["from_node_count"] < flow_edge_amount[row["from_node_type"]][2]:
                     is_valid = False
                     raise ValueError(
-                        f"Node {row['from_node_id']} must have at least {flow_edge_amount[row["from_node_type"][2]]} outnrighbor(s) (got {row["from_node_count"]})"
+                        f"Node {row['from_node_id']} must have at least {flow_edge_amount[row["from_node_type"]][2]} outneighbor(s) (got {row["from_node_count"]})"
                     )
             except ValueError as e:
                 logging.error(e)
@@ -339,12 +351,24 @@ class Model(FileModel):
             .merge(to_node_count, on="to_node_id", how="left")
         )
         df_result = df_result[["to_node_id", "to_node_count", "to_node_type"]]
+        print(df_result)
+        for index, node in enumerate(nodes):
+            if nodes.index[index] not in df_result["to_node_id"].to_numpy():
+                new_row = {
+                    "to_node_id": nodes.index[index],
+                    "to_node_count": 0,
+                    "to_node_type": node,
+                }
+                df_result.loc[len(df_result)] = new_row
+
         for _, row in df_result.iterrows():
             try:
-                if row["to_node_count"] < flow_edge_amount[row["to_node_type"][0]]:
+                print(row["to_node_count"])
+                print(flow_edge_amount[row["to_node_type"]][0])
+                if row["to_node_count"] < flow_edge_amount[row["to_node_type"]][0]:
                     is_valid = False
                     raise ValueError(
-                        f"Node {row['to_node_id']} must have at least {flow_edge_amount[row["to_node_type"][0]]} outnrighbor(s) (got {row["to_node_count"]})"
+                        f"Node {row['to_node_id']} must have at least {flow_edge_amount[row["to_node_type"]][0]} inneighbor(s) (got {row["to_node_count"]})"
                     )
             except ValueError as e:
                 logging.error(e)
