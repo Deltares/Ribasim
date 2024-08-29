@@ -37,7 +37,6 @@ function Model(config_path::AbstractString)::Model
 end
 
 function Model(config::Config)::Model
-    alg = algorithm(config.solver)
     db_path = input_path(config, config.database)
     if !isfile(db_path)
         @error "Database file not found" db_path
@@ -113,6 +112,9 @@ function Model(config::Config)::Model
     integral = zeros(length(parameters.pid_control.node_id))
     u0 = ComponentVector{Float64}(; storage, integral)
     du0 = zero(u0)
+
+    # The Solver algorithm
+    alg = algorithm(config.solver, u0)
 
     # Synchronize level with storage
     set_current_basin_properties!(parameters.basin, u0, du0)

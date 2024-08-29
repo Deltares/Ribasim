@@ -878,49 +878,63 @@ relaxed_root(x::GradientTracer, threshold::Real) = x
 get_area_and_level(basin::Basin, state_idx::Int, storage::GradientTracer) = storage, storage
 adapt_negative_storage_du!(du, u::ComponentVector{<:GradientTracer}) = nothing
 
-@kwdef struct NonNegativeStorageRelaxation{A}
-    first_search::A = BackTracking()
-    α_min::Float64 = 1e-8
-    c_safety::Float64 = 0.9
+@kwdef struct MonitoredBackTracking{B, V}
+    linesearch::B = BackTracking()
+    dz_tmp::V = []
+    z_tmp::V = []
+end
+
+function resid(z, integrator, nlsolver, f)
+    (; uprev, t, p, dt, opts, isdae) = integrator
+    (; tmp, ztmp, γ, α, cache, method) = nlsolver
+    (; ustep, atmp, tstep, k, invγdt, tstep, k, invγdt) = cache
+    if isdae
+        _uprev = get_dae_uprev(integrator, uprev)
+        b, ustep2 =
+            _compute_rhs!(tmp, ztmp, ustep, α, tstep, k, invγdt, p, _uprev, f::TF, z)
+    else
+        b, ustep2 =
+            _compute_rhs!(tmp, ztmp, ustep, γ, α, tstep, k, invγdt, method, p, dt, f, z)
+    end
+    calculate_residuals!(
+        atmp,
+        b,
+        uprev,
+        ustep2,
+        opts.abstol,
+        opts.reltol,
+        opts.internalnorm,
+        t,
+    )
+    ndz = opts.internalnorm(atmp, t)
+    return ndz
 end
 
 """
-Custom relaxation for preventing negative storages, applied after a first
-relaxation given by first_search.
-The smallest relative step size α is computed such that all storages are >= 0.
-This is then multiplied by c_safety and clamped between α_min and 1.0,
-and applied to the step dz.
+MonitoredBackTracing is a thin wrapper of BackTracking, making sure that
+the BackTracking relaxation is rejected if it results in a residual increase
 """
 function OrdinaryDiffEq.relax!(
     dz,
     nlsolver::AbstractNLSolver,
     integrator::DEIntegrator,
     f,
-    linesearch::NonNegativeStorageRelaxation,
+    linesearch::MonitoredBackTracking,
 )
-    (; first_search, c_safety, α_min) = linesearch
+    (; linesearch, dz_tmp, z_tmp) = linesearch
 
-    # Find a state index which is changed by this step
-    nonzero_dz_index = findfirst(x -> !iszero(x), dz)
-    if isnothing(nonzero_dz_index)
-        return
+    # Store step before relaxation
+    @. dz_tmp = dz
+
+    # Apply relaxation and measure the residu change
+    @. z_tmp = nlsolver.z + dz
+    resid_before = resid(z_tmp, integrator, nlsolver, f)
+    relax!(dz, nlsolver, integrator, f, linesearch)
+    @. z_tmp = nlsolver.z + dz
+    resid_after = resid(z_tmp, integrator, nlsolver, f)
+
+    # If the residu increased due to the relaxation, reject it
+    if resid_after > resid_before
+        @. dz = dz_tmp
     end
-
-    # Deduce and undo the relaxation factor of the first search
-    dz_i = dz[nonzero_dz_index]
-    relax!(dz, nlsolver, integrator, f, first_search)
-    α_first_search = dz[nonzero_dz_index] / dz_i
-    @. dz /= α_first_search
-
-    α_storage = 1.0
-
-    for (s, ds) in zip(integrator.u.storage, dz.storage)
-        if ds < 0 && s >= 0 && s + ds < 0
-            α_storage = min(α_storage, -s / ds)
-        end
-    end
-    α = sqrt(alpha_storage * alpha_first_search)
-
-    # Apply the relaxation
-    @. dz *= α
 end

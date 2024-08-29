@@ -231,7 +231,7 @@ const algorithms = Dict{String, Type}(
 )
 
 "Create an OrdinaryDiffEqAlgorithm from solver config"
-function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
+function algorithm(solver::Solver, u0 = [])::OrdinaryDiffEqAlgorithm
     algotype = get(algorithms, solver.algorithm, nothing)
     if algotype === nothing
         options = join(keys(algorithms), ", ")
@@ -240,7 +240,9 @@ function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
     end
     kwargs = Dict{Symbol, Any}()
     if algotype <: OrdinaryDiffEqNewtonAdaptiveAlgorithm
-        kwargs[:nlsolve] = NLNewton(; relax = Ribasim.NonNegativeStorageRelaxation())
+        kwargs[:nlsolve] = NLNewton(;
+            relax = Ribasim.MonitoredBackTracking(; z_tmp = copy(u0), dz_tmp = copy(u0)),
+        )
     end
     # not all algorithms support this keyword
     kwargs[:autodiff] = solver.autodiff
