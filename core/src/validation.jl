@@ -666,3 +666,11 @@ function valid_sources(
     end
     return !errors
 end
+
+function valid_priorities(priorities::Vector, use_allocation::Bool)::Bool
+    errors = false
+    if 0 in priorities && use_allocation
+        errors = true
+    end
+    return !errors
+end

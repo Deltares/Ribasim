@@ -416,19 +416,31 @@ end
 
 function get_all_priorities(db::DB, config::Config)::Vector{Int32}
     priorities = Set{Int32}()
-
+    is_valid = true
     # TODO: Is there a way to automatically grab all tables with a priority column?
-    for type in [
-        UserDemandStaticV1,
-        UserDemandTimeV1,
-        LevelDemandStaticV1,
-        LevelDemandTimeV1,
-        FlowDemandStaticV1,
-        FlowDemandTimeV1,
+    for (type, name) in [
+        (UserDemandStaticV1, "UserDemand / static"),
+        (UserDemandTimeV1, "UserDemand / time"),
+        (LevelDemandStaticV1, "LevelDemand / static"),
+        (LevelDemandTimeV1, "LevelDemand / time"),
+        (FlowDemandStaticV1, "FlowDemand / static"),
+        (FlowDemandTimeV1, "FlowDemand / time"),
     ]
-        union!(priorities, load_structvector(db, config, type).priority)
+        if valid_priorities(
+            load_structvector(db, config, type).priority,
+            config.allocation.use_allocation,
+        )
+            union!(priorities, load_structvector(db, config, type).priority)
+        else
+            is_valid = false
+            @error "Missing priority parameter(s) for a $name node in the allocation problem."
+        end
     end
-    return sort(collect(priorities))
+    if is_valid
+        return sort(collect(priorities))
+    else
+        error("Priority parameter is missing")
+    end
 end
 
 function get_external_priority_idx(p::Parameters, node_id::NodeID)::Int
@@ -549,12 +561,21 @@ function get_influx(basin::Basin, node_id::NodeID)::Float64
 end
 
 function get_influx(basin::Basin, basin_idx::Int; prev::Bool = false)::Float64
-    (; vertical_flux, vertical_flux_prev, vertical_flux_from_input) = basin
-    vertical_flux = wrap_forcing(vertical_flux[parent(vertical_flux_from_input)])
-    flux_vector = prev ? vertical_flux_prev : vertical_flux
-    (; precipitation, evaporation, drainage, infiltration) = flux_vector
-    return precipitation[basin_idx] - evaporation[basin_idx] + drainage[basin_idx] -
-           infiltration[basin_idx]
+    (; node_id, vertical_flux, vertical_flux_prev, vertical_flux_from_input) = basin
+    influx = if prev
+        vertical_flux_prev.precipitation[basin_idx] -
+        vertical_flux_prev.evaporation[basin_idx] +
+        vertical_flux_prev.drainage[basin_idx] -
+        vertical_flux_prev.infiltration[basin_idx]
+    else
+        n = length(node_id)
+        vertical_flux = vertical_flux[parent(vertical_flux_from_input)]
+        vertical_flux[basin_idx] - # precipitation
+        vertical_flux[n + basin_idx] + # evaporation
+        vertical_flux[2n + basin_idx] - # drainage
+        vertical_flux[3n + basin_idx] # infiltration
+    end
+    return influx
 end
 
 inflow_edge(graph, node_id)::EdgeMetadata = graph[inflow_id(graph, node_id), node_id]

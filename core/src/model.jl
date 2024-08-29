@@ -43,11 +43,6 @@ function Model(config::Config)::Model
         error("Database file not found")
     end
 
-    # Setup timing logging
-    if config.logging.timing
-        TimerOutputs.enable_debug_timings(Ribasim)  # causes recompilation (!)
-    end
-
     # All data from the database that we need during runtime is copied into memory,
     # so we can directly close it again.
     db = SQLite.DB(db_path)
@@ -137,9 +132,7 @@ function Model(config::Config)::Model
     end
     RHS = ODEFunction(water_balance!; jac_prototype)
 
-    @timeit_debug to "Setup ODEProblem" begin
-        prob = ODEProblem(RHS, u0, timespan, parameters)
-    end
+    prob = ODEProblem(RHS, u0, timespan, parameters)
     @debug "Setup ODEProblem."
 
     callback, saved = create_callbacks(parameters, config, saveat)
@@ -154,7 +147,7 @@ function Model(config::Config)::Model
     # https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/
     # Not all keyword arguments (e.g. `dt`) support `nothing`, in which case we follow
     # https://github.com/SciML/OrdinaryDiffEq.jl/blob/v6.57.0/src/solve.jl#L10
-    @timeit_debug to "Setup integrator" integrator = init(
+    integrator = init(
         prob,
         alg;
         progress = true,
@@ -174,10 +167,6 @@ function Model(config::Config)::Model
         config.solver.maxiters,
     )
     @debug "Setup integrator."
-
-    if config.logging.timing
-        @show Ribasim.to
-    end
 
     if config.allocation.use_allocation && is_active(parameters.allocation)
         set_initial_allocation_mean_flows!(integrator)
