@@ -128,3 +128,46 @@ def test_minimum_flow_neighbor():
     ):
         model.edge.add(model.basin[3], model.outlet[2])
         model.write("test.toml")
+
+
+def test_minimum_control_neighbor():
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2021-01-01",
+        crs="EPSG:28992",
+        solver=Solver(),
+    )
+
+    model.basin.add(
+        Node(3, Point(2.0, 0.0)),
+        [
+            basin.Profile(area=[1000.0, 1000.0], level=[0.0, 1.0]),
+            basin.State(level=[0.0]),
+        ],
+    )
+    model.outlet.add(
+        Node(2, Point(1.0, 0.0)),
+        [outlet.Static(flow_rate=[1e-3], min_crest_level=[2.0])],
+    )
+    model.terminal.add(Node(4, Point(3.0, -2.0)))
+
+    model.edge.add(model.basin[3], model.outlet[2])
+    model.edge.add(model.outlet[2], model.terminal[4])
+
+    with pytest.raises(
+        ValueError,
+        match=re.escape("Minimum control inneighbor or outneighbor unsatisfied"),
+    ):
+        model.pid_control.add(
+            Node(5, Point(0.5, 1)),
+            [
+                pid_control.Static(
+                    listen_node_id=[3],
+                    target=10.0,
+                    proportional=-2.5,
+                    integral=-0.001,
+                    derivative=10.0,
+                )
+            ],
+        )
+        model.write("test.toml")
