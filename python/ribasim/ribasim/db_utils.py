@@ -5,7 +5,8 @@ from sqlite3 import Connection, connect
 
 def esc_id(identifier: str) -> str:
     """Escape SQLite identifiers."""
-    return '"' + identifier.replace('"', '""') + '"'
+    identifier = identifier.replace('"', '""')
+    return f'"{identifier}"'
 
 
 def exists(connection: Connection, name: str) -> bool:
@@ -42,15 +43,13 @@ def _get_db_schema_version(db_path: Path) -> int:
     which is smaller than the initial schema version of the database.
     """
     with closing(connect(db_path)) as connection:
-        if exists(connection, "ribasim_metadata"):
-            with closing(connection.cursor()) as cursor:
-                cursor.execute(
-                    "SELECT value FROM ribasim_metadata WHERE key='schema_version'"
-                )
-                result = int(cursor.fetchone()[0])
-        else:
-            result = 0
-    return result
+        if not exists(connection, "ribasim_metadata"):
+          return 0
+        with closing(connection.cursor()) as cursor:
+            cursor.execute(
+                "SELECT value FROM ribasim_metadata WHERE key='schema_version'"
+               )
+                return int(cursor.fetchone()[0])
 
 
 def _set_db_schema_version(db_path: Path, version: int = 1) -> None:
