@@ -16,7 +16,7 @@ from shapely.geometry import LineString, MultiLineString, Point
 from ribasim.input_base import SpatialTableModel
 from ribasim.schemas import _BaseSchema
 from ribasim.utils import UsedIDs
-from ribasim.validation import can_connect, flow_edge_amount
+from ribasim.validation import can_connect, control_edge_amount, flow_edge_amount
 
 __all__ = ("EdgeTable",)
 
@@ -129,15 +129,37 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
         # validation on neighbor amount
         if (in_flow_neighbor >= flow_edge_amount[to_node.node_type][1]) & (
             edge_type == "flow"
-        ):  # too many upstream neighbor, flow edge
+        ):
             raise ValueError(
                 f"Node {to_node.node_id} can have at most {flow_edge_amount[to_node.node_type][1]} flow edge inneighbor(s) (got {in_flow_neighbor})"
             )
         if (out_flow_neighbor >= flow_edge_amount[from_node.node_type][3]) & (
             edge_type == "flow"
-        ):  # too many downstream neighbor, flow edge
+        ):
             raise ValueError(
                 f"Node {from_node.node_id} can have at most {flow_edge_amount[from_node.node_type][3]} flow edge outneighbor(s) (got {out_flow_neighbor})"
+            )
+
+        in_control_neighbor: int = self.df.loc[
+            (self.df["to_node_id"] == to_node.node_id)
+            & (self.df["edge_type"] == "control")
+        ].shape[0]
+        out_control_neighbor: int = self.df.loc[
+            (self.df["from_node_id"] == from_node.node_id)
+            & (self.df["edge_type"] == "control")
+        ].shape[0]
+
+        if (in_control_neighbor >= control_edge_amount[to_node.node_type][1]) & (
+            edge_type == "control"
+        ):
+            raise ValueError(
+                f"Node {to_node.node_id} can have at most {control_edge_amount[to_node.node_type][1]} control edge inneighbor(s) (got {in_control_neighbor})"
+            )
+        if (out_control_neighbor >= control_edge_amount[from_node.node_type][3]) & (
+            edge_type == "control"
+        ):
+            raise ValueError(
+                f"Node {from_node.node_id} can have at most {control_edge_amount[from_node.node_type][3]} control edge outneighbor(s) (got {out_control_neighbor})"
             )
 
         self.df = GeoDataFrame[EdgeSchema](pd.concat([self.df, table_to_append]))

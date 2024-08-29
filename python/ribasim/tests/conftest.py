@@ -25,6 +25,11 @@ def bucket() -> ribasim.Model:
 
 
 @pytest.fixture()
+def pid_control_equation() -> ribasim.Model:
+    return ribasim_testmodels.pid_control_equation_model()
+
+
+@pytest.fixture()
 def tabulated_rating_curve() -> ribasim.Model:
     return ribasim_testmodels.tabulated_rating_curve_model()
 

@@ -16,8 +16,15 @@ from ribasim.nodes import (
     basin,
     level_boundary,
     outlet,
+    pid_control,
+    pump,
 )
-from ribasim_testmodels import basic_model, outlet_model, trivial_model
+from ribasim_testmodels import (
+    basic_model,
+    outlet_model,
+    pid_control_equation_model,
+    trivial_model,
+)
 from shapely import Point
 
 
@@ -172,7 +179,7 @@ def test_connectivity(trivial):
         model.edge.add(model.basin[6], model.terminal[2147483647])
 
 
-def test_maximum_neighbor(outlet):
+def test_maximum_flow_neighbor(outlet):
     model = outlet
     with pytest.raises(
         ValueError,
@@ -198,7 +205,42 @@ def test_maximum_neighbor(outlet):
         model.edge.add(model.level_boundary[5], model.outlet[2])
 
 
-def test_minimum_neighbor():
+def test_maximum_control_neighbor(pid_control_equation):
+    model = pid_control_equation
+    with pytest.raises(
+        ValueError,
+        match=re.escape("Node 2 can have at most 1 control edge inneighbor(s) (got 1)"),
+    ):
+        model.pid_control.add(
+            Node(5, Point(0.5, -1.0)),
+            [
+                pid_control.Static(
+                    listen_node_id=[1],
+                    target=10.0,
+                    proportional=-2.5,
+                    integral=-0.001,
+                    derivative=10.0,
+                )
+            ],
+        )
+        model.edge.add(
+            model.pid_control[5],
+            model.pump[2],
+        )
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            "Node 4 can have at most 1 control edge outneighbor(s) (got 1)"
+        ),
+    ):
+        model.pump.add(Node(6, Point(-1.0, 0)), [pump.Static(flow_rate=[0.0])])
+        model.edge.add(
+            model.pid_control[4],
+            model.pump[6],
+        )
+
+
+def test_minimum_flow_neighbor():
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
@@ -258,7 +300,10 @@ def test_indexing(basic):
         model.basin.time[1]
 
 
-@pytest.mark.parametrize("model", [basic_model(), outlet_model(), trivial_model()])
+@pytest.mark.parametrize(
+    "model",
+    [basic_model(), outlet_model(), pid_control_equation_model(), trivial_model()],
+)
 def test_xugrid(model, tmp_path):
     uds = model.to_xugrid(add_flow=False)
     assert isinstance(uds, xugrid.UgridDataset)
