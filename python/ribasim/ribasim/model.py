@@ -322,7 +322,6 @@ class Model(FileModel):
         )
 
         df_result = df_result[["from_node_id", "from_node_count", "from_node_type"]]
-        # print(df_result)
         for index, node in enumerate(nodes):
             if nodes.index[index] not in df_result["from_node_id"].to_numpy():
                 new_row = {
@@ -332,7 +331,7 @@ class Model(FileModel):
                 }
                 df_result.loc[len(df_result)] = new_row
         for _, row in df_result.iterrows():
-            # from node's outneighbor)
+            # from node's outneighbor
             try:
                 if row["from_node_count"] < flow_edge_amount[row["from_node_type"]][2]:
                     is_valid = False
@@ -351,7 +350,6 @@ class Model(FileModel):
             .merge(to_node_count, on="to_node_id", how="left")
         )
         df_result = df_result[["to_node_id", "to_node_count", "to_node_type"]]
-        print(df_result)
         for index, node in enumerate(nodes):
             if nodes.index[index] not in df_result["to_node_id"].to_numpy():
                 new_row = {
@@ -363,8 +361,6 @@ class Model(FileModel):
 
         for _, row in df_result.iterrows():
             try:
-                print(row["to_node_count"])
-                print(flow_edge_amount[row["to_node_type"]][0])
                 if row["to_node_count"] < flow_edge_amount[row["to_node_type"]][0]:
                     is_valid = False
                     raise ValueError(
