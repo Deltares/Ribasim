@@ -14,8 +14,8 @@ repository = "https://github.com/Deltares/Ribasim"
 
 [tasks]
 # Tests
-test-ribasim-python = "pytest --numprocesses=4 python/ribasim/tests"
-test-ribasim-python-cov = "pytest --numprocesses=4 --cov=ribasim --cov-report=xml python/ribasim/tests"
+test-ribasim-python = "pytest --numprocesses=4 -m 'not regression' python/ribasim/tests"
+test-ribasim-python-cov = "pytest --numprocesses=4 --cov=ribasim --cov-report=xml -m 'not regression' python/ribasim/tests"
 test-ribasim-api = "pytest --basetemp=python/ribasim_api/tests/temp --junitxml=report.xml python/ribasim_api/tests"
 
 [feature.dev.tasks]
@@ -85,11 +85,13 @@ test-ribasim-cli = "pytest --numprocesses=4 --basetemp=build/tests/temp --junitx
 test-ribasim-core = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test()'", depends_on = [
     "generate-testmodels",
 ] }
+test-ribasim-migration = { cmd = "pytest --numprocesses=4 -m regression python/ribasim/tests" }
 test-ribasim-core-cov = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test(coverage=true, julia_args=[\"--check-bounds=yes\"])'", depends_on = [
     "generate-testmodels",
 ] }
 test-ribasim-regression = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test(julia_args=[\"--check-bounds=yes\"], test_args=[\"regression\"])'", depends_on = [
     "generate-testmodels",
+    "test-ribasim-migration",
 ] }
 generate-testmodels = { cmd = "python utils/generate-testmodels.py", inputs = [
     "python/ribasim",

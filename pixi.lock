@@ -37546,41 +37546,7 @@ packages:
   name: ribasim
   version: 2024.10.0
   path: python/ribasim
-  sha256: dabdd02a24d0b7d6a745c1bcdd800f8afdeb527b8b294ded4eaaf7205939a9cd
-  requires_dist:
-  - geopandas
-  - matplotlib
-  - numpy
-  - pandas
-  - pandera>=0.20
-  - pyarrow
-  - pydantic~=2.0
-  - pyogrio
-  - shapely>=2.0
-  - tomli
-  - tomli-w
-  - jinja2 ; extra == 'all'
-  - networkx ; extra == 'all'
-  - pytest ; extra == 'all'
-  - pytest-cov ; extra == 'all'
-  - pytest-xdist ; extra == 'all'
-  - ribasim-testmodels ; extra == 'all'
-  - xugrid ; extra == 'all'
-  - jinja2 ; extra == 'delwaq'
-  - networkx ; extra == 'delwaq'
-  - xugrid ; extra == 'delwaq'
-  - xugrid ; extra == 'netcdf'
-  - pytest ; extra == 'tests'
-  - pytest-cov ; extra == 'tests'
-  - pytest-xdist ; extra == 'tests'
-  - ribasim-testmodels ; extra == 'tests'
-  requires_python: '>=3.10'
-  editable: true
-- kind: pypi
-  name: ribasim
-  version: 2024.10.0
-  path: python/ribasim
-  sha256: dabdd02a24d0b7d6a745c1bcdd800f8afdeb527b8b294ded4eaaf7205939a9cd
+  sha256: c48692687129085ad19256cbf54c8df9853f6259b31997cc4a282fde86072751
   requires_dist:
   - geopandas
   - matplotlib
@@ -37620,31 +37586,6 @@ packages:
   - pytest ; extra == 'tests'
   - ribasim ; extra == 'tests'
   - ribasim-testmodels ; extra == 'tests'
-  requires_python: '>=3.10'
-  editable: true
-- kind: pypi
-  name: ribasim-api
-  version: 2024.10.0
-  path: python/ribasim_api
-  sha256: dc882869854e0940ab3a12506f5b9508b04045793f6badb644579c43fa2b6cb9
-  requires_dist:
-  - xmipy
-  - pytest ; extra == 'tests'
-  - ribasim ; extra == 'tests'
-  - ribasim-testmodels ; extra == 'tests'
-  requires_python: '>=3.10'
-  editable: true
-- kind: pypi
-  name: ribasim-testmodels
-  version: 0.5.0
-  path: python/ribasim_testmodels
-  sha256: 2b0165819d6cc5d79b0b65761e8c38b1cc9f34649dea3ed4406013080ea8b112
-  requires_dist:
-  - geopandas
-  - numpy
-  - pandas
-  - ribasim
-  - pytest ; extra == 'tests'
   requires_python: '>=3.10'
   editable: true
 - kind: pypi
