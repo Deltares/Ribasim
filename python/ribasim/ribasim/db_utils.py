@@ -44,12 +44,12 @@ def _get_db_schema_version(db_path: Path) -> int:
     """
     with closing(connect(db_path)) as connection:
         if not exists(connection, "ribasim_metadata"):
-          return 0
+            return 0
         with closing(connection.cursor()) as cursor:
             cursor.execute(
                 "SELECT value FROM ribasim_metadata WHERE key='schema_version'"
-               )
-                return int(cursor.fetchone()[0])
+            )
+            return int(cursor.fetchone()[0])
 
 
 def _set_db_schema_version(db_path: Path, version: int = 1) -> None:
