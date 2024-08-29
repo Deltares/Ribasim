@@ -15,7 +15,15 @@ For more granular access, see:
 module Ribasim
 
 # Algorithms for solving ODEs.
-using OrdinaryDiffEq: OrdinaryDiffEq, OrdinaryDiffEqRosenbrockAdaptiveAlgorithm, get_du
+using OrdinaryDiffEq:
+    OrdinaryDiffEq,
+    OrdinaryDiffEqRosenbrockAdaptiveAlgorithm,
+    get_du,
+    AbstractNLSolver,
+    relax!,
+    _compute_rhs!,
+    calculate_residuals!
+using LineSearches: BackTracking
 
 # Algorithms for solving explicit integral problems
 using Integrals: IntegralProblem, solve, QuadGKJL
@@ -34,7 +42,8 @@ using SciMLBase:
     ODEProblem,
     ODESolution,
     VectorContinuousCallback,
-    get_proposed_dt
+    get_proposed_dt,
+    DEIntegrator
 
 # Automatically detecting the sparsity pattern of the Jacobian of water_balance!
 # through operator overloading

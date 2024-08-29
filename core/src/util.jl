@@ -53,9 +53,18 @@ end
 Compute the area and level of a basin given its storage.
 """
 function get_area_and_level(basin::Basin, state_idx::Int, storage::T)::Tuple{T, T} where {T}
-    level = basin.storage_to_level[state_idx](max(storage, 0.0))
-    area = basin.level_to_area[state_idx](level)
-
+    storage_to_level = basin.storage_to_level[state_idx]
+    level_to_area = basin.level_to_area[state_idx]
+    if storage >= 0
+        level = storage_to_level(storage)
+    else
+        # Negative storage is not feasible and this yields a level
+        # below the basin bottom, but this does yield usable gradients
+        # for the non-linear solver
+        bottom = first(level_to_area.t)
+        level = bottom + derivative(storage_to_level, 0.0) * storage
+    end
+    area = level_to_area(level)
     return area, level
 end
 
@@ -889,3 +898,70 @@ end
 (A::AbstractInterpolation)(t::GradientTracer) = t
 reduction_factor(x::GradientTracer, threshold::Real) = x
 relaxed_root(x::GradientTracer, threshold::Real) = x
+get_area_and_level(basin::Basin, state_idx::Int, storage::GradientTracer) = storage, storage
+stop_declining_negative_storage!(du, u::ComponentVector{<:GradientTracer}) = nothing
+
+@kwdef struct MonitoredBackTracking{B, V}
+    linesearch::B = BackTracking()
+    dz_tmp::V = []
+    z_tmp::V = []
+end
+
+"""
+Compute the residual of the non-linear solver, i.e. a measure of the
+error in the solution to the implicit equation defined by the solver algorithm
+"""
+function residual(z, integrator, nlsolver, f)
+    (; uprev, t, p, dt, opts, isdae) = integrator
+    (; tmp, ztmp, γ, α, cache, method) = nlsolver
+    (; ustep, atmp, tstep, k, invγdt, tstep, k, invγdt) = cache
+    if isdae
+        _uprev = get_dae_uprev(integrator, uprev)
+        b, ustep2 =
+            _compute_rhs!(tmp, ztmp, ustep, α, tstep, k, invγdt, p, _uprev, f::TF, z)
+    else
+        b, ustep2 =
+            _compute_rhs!(tmp, ztmp, ustep, γ, α, tstep, k, invγdt, method, p, dt, f, z)
+    end
+    calculate_residuals!(
+        atmp,
+        b,
+        uprev,
+        ustep2,
+        opts.abstol,
+        opts.reltol,
+        opts.internalnorm,
+        t,
+    )
+    ndz = opts.internalnorm(atmp, t)
+    return ndz
+end
+
+"""
+MonitoredBackTracing is a thin wrapper of BackTracking, making sure that
+the BackTracking relaxation is rejected if it results in a residual increase
+"""
+function OrdinaryDiffEq.relax!(
+    dz,
+    nlsolver::AbstractNLSolver,
+    integrator::DEIntegrator,
+    f,
+    linesearch::MonitoredBackTracking,
+)
+    (; linesearch, dz_tmp, z_tmp) = linesearch
+
+    # Store step before relaxation
+    @. dz_tmp = dz
+
+    # Apply relaxation and measure the residual change
+    @. z_tmp = nlsolver.z + dz
+    resid_before = residual(z_tmp, integrator, nlsolver, f)
+    relax!(dz, nlsolver, integrator, f, linesearch)
+    @. z_tmp = nlsolver.z + dz
+    resid_after = residual(z_tmp, integrator, nlsolver, f)
+
+    # If the residual increased due to the relaxation, reject it
+    if resid_after > resid_before
+        @. dz = dz_tmp
+    end
+end

@@ -36,7 +36,7 @@ Turn on the edit mode to be able to add nodes on the map.
 
 Add nodes to the map with a left click and select the node type.
 
-![](https://user-images.githubusercontent.com/4471859/224939237-67c1150b-15ec-4044-a02a-26a82f81da05.png){fig-align="left"}
+<img alt="Node form" src="https://github.com/user-attachments/assets/6e811bb9-1817-4505-b8a4-a96ced5b6c26" class="img-fluid"/>
 
 Turn the edit mode off and save the edits to the Nodes layer.
 
@@ -53,7 +53,8 @@ A record can be selected by clicking on the row number.
 
 ![](https://user-images.githubusercontent.com/4471859/224939287-a8b9f351-9aea-4e3a-8417-3867cd40cda5.png){fig-align="left"}
 
-Adjust the content. If you prefer, it also works to copy data with the same columns from
+Adjust the content. Note that the `node_id` field is connected to the Node layer and thus must be set to an existing `node_id`.
+If you prefer, it also works to copy data with the same columns from
 Excel. Turn off edit mode and save changes to the layer.
 
 ![](https://user-images.githubusercontent.com/4471859/224939297-4b0ca812-9618-4d25-ab7a-518bf1ca63e1.png){fig-align="left"}
@@ -63,7 +64,7 @@ Excel. Turn off edit mode and save changes to the layer.
 ### Turn on snapping
 
 Make sure the Snapping Toolbar is visible, by going to the View > Toolbars menu. Turn on
-snapping mode by clicking the magnet and set the snapping distance to 25 pixels.
+snapping mode by clicking the magnet and set the snapping distance to 25 pixels. The keyboard shortcut for snapping is `s` (once the toolbar is enabled).
 
 ![](https://user-images.githubusercontent.com/4471859/224939328-8359272a-30bb-4eb1-ab6c-968318ac3997.png){fig-align="left"}
 
@@ -79,7 +80,11 @@ Select "Add line feature".
 
 Create a connection by left clicking a source node and right clicking the destination node.
 
-![](https://user-images.githubusercontent.com/4471859/224939363-88716d43-0536-499d-adb8-2fb4223c0f87.png){fig-align="left"}
+<img alt="Create an edge" src="https://github.com/user-attachments/assets/048d342d-dd2b-4e67-b8a0-7bbb8fe3f243" class="img-fluid"/>
+
+A form where one can change the edge attributes will pop up. Once done with editing, click ok.
+
+<img alt="Edge form" src="https://github.com/user-attachments/assets/bee6af6f-7623-4d1e-98ed-edc26c524377" class="img-fluid"/>
 
 Now leave the edit mode and save the results to the layer. Your model is now ready to run. See
 
@@ -90,6 +95,15 @@ Now leave the edit mode and save the results to the layer. Your model is now rea
 - Call Ribasim with the `.toml` file as input. E.g. `<path_to_ribasim>\ribasim.exe my_model.toml`.
 - In your model directory there is now a `results/` folder with `basin.arrow` and
   `flow.arrow` output files.
+
+# Inspect a (large) model {#sec-inspect}
+
+For larger models the node tables can grow quite large. To facilitate inspection,
+the tables are linked via the `node_id` field to the Node table, and react to the selection of the Node layer. That is, on selection of certain nodes---either via the map or the attribute table---the selection is also made in all related tables. This is also the case for the Edge layer.
+It helps to set the attribute table of a table of interest to show selected features only (using the dropdown button on the bottom left).
+
+<img alt="Selection change" src="https://github.com/user-attachments/assets/074c1f58-926b-4d5e-a640-86a5a746a4c2" class="img-fluid"/>
+
 
 # Inspecting results {#sec-results}
 
