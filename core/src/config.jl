@@ -11,16 +11,12 @@ module config
 using Configurations: Configurations, @option, from_toml, @type_alias
 using DataStructures: DefaultDict
 using Dates: DateTime
-using LineSearches: BackTracking
 using Logging: LogLevel, Debug, Info, Warn, Error
 using ..Ribasim: Ribasim, isnode, nodetype
 using OrdinaryDiffEq:
-    OrdinaryDiffEq,
-    AbstractNLSolver,
     OrdinaryDiffEqAlgorithm,
     OrdinaryDiffEqNewtonAdaptiveAlgorithm,
     NLNewton,
-    relax!,
     Euler,
     ImplicitEuler,
     KenCarp4,
@@ -30,7 +26,6 @@ using OrdinaryDiffEq:
     Rosenbrock23,
     TRBDF2,
     Tsit5
-using SciMLBase: DEIntegrator
 
 export Config, Solver, Results, Logging, Toml
 export algorithm,
@@ -245,7 +240,7 @@ function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
     end
     kwargs = Dict{Symbol, Any}()
     if algotype <: OrdinaryDiffEqNewtonAdaptiveAlgorithm
-        kwargs[:nlsolve] = NLNewton(; relax = NonNegativeStorageRelaxation())
+        kwargs[:nlsolve] = NLNewton(; relax = Ribasim.NonNegativeStorageRelaxation())
     end
     # not all algorithms support this keyword
     kwargs[:autodiff] = solver.autodiff
@@ -255,40 +250,6 @@ function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
         pop!(kwargs, :autodiff)
         algotype(; kwargs...)
     end
-end
-
-@kwdef struct NonNegativeStorageRelaxation{A}
-    first_search::A = 0.05
-    α_min::Float64 = 0.1
-    c_safety::Float64 = 0.9
-end
-
-"""
-Custom relaxation for preventing negative storages, applied after a first
-relaxation given by first_search.
-The smallest relative step size α is computed such that all storages are >= 0.
-This is then multiplied by c_safety and clamped between α_min and 1.0,
-and applied to the step dz.
-"""
-function OrdinaryDiffEq.relax!(
-    dz,
-    nlsolver::AbstractNLSolver,
-    integrator::DEIntegrator,
-    f,
-    linesearch::NonNegativeStorageRelaxation,
-)
-    (; first_search, c_safety, α_min) = linesearch
-    relax!(dz, nlsolver, integrator, f, first_search)
-
-    α = 1.0
-
-    for (s, ds) in zip(integrator.u.storage, dz.storage)
-        if ds < 0 && s >= 0 && s + ds < 0
-            α = min(α, -s / ds)
-        end
-    end
-    α = clamp(c_safety * α, α_min, 1.0)
-    @. dz *= α
 end
 
 "Convert the saveat Float64 from our Config to SciML's saveat"

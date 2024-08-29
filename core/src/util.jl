@@ -877,3 +877,50 @@ reduction_factor(x::GradientTracer, threshold::Real) = x
 relaxed_root(x::GradientTracer, threshold::Real) = x
 get_area_and_level(basin::Basin, state_idx::Int, storage::GradientTracer) = storage, storage
 adapt_negative_storage_du!(du, u::ComponentVector{<:GradientTracer}) = nothing
+
+@kwdef struct NonNegativeStorageRelaxation{A}
+    first_search::A = BackTracking()
+    α_min::Float64 = 1e-8
+    c_safety::Float64 = 0.9
+end
+
+"""
+Custom relaxation for preventing negative storages, applied after a first
+relaxation given by first_search.
+The smallest relative step size α is computed such that all storages are >= 0.
+This is then multiplied by c_safety and clamped between α_min and 1.0,
+and applied to the step dz.
+"""
+function OrdinaryDiffEq.relax!(
+    dz,
+    nlsolver::AbstractNLSolver,
+    integrator::DEIntegrator,
+    f,
+    linesearch::NonNegativeStorageRelaxation,
+)
+    (; first_search, c_safety, α_min) = linesearch
+
+    # Find a state index which is changed by this step
+    nonzero_dz_index = findfirst(x -> !iszero(x), dz)
+    if isnothing(nonzero_dz_index)
+        return
+    end
+
+    # Deduce and undo the relaxation factor of the first search
+    dz_i = dz[nonzero_dz_index]
+    relax!(dz, nlsolver, integrator, f, first_search)
+    α_first_search = dz[nonzero_dz_index] / dz_i
+    @. dz /= α_first_search
+
+    α_storage = 1.0
+
+    for (s, ds) in zip(integrator.u.storage, dz.storage)
+        if ds < 0 && s >= 0 && s + ds < 0
+            α_storage = min(α_storage, -s / ds)
+        end
+    end
+    α = sqrt(alpha_storage * alpha_first_search)
+
+    # Apply the relaxation
+    @. dz *= α
+end
