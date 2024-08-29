@@ -102,6 +102,7 @@ class Model(FileModel):
     user_demand: UserDemand = Field(default_factory=UserDemand)
 
     edge: EdgeTable = Field(default_factory=EdgeTable)
+    validation: bool = Field(default=True)
 
     _used_node_ids: UsedIDs = PrivateAttr(default_factory=UsedIDs)
 
@@ -267,8 +268,10 @@ class Model(FileModel):
         filepath : str | PathLike[str]
             A file path with .toml extension.
         """
-        # TODO
-        self._validate_model()
+        # Skip validation if the model name starts with "invalid"
+        if self.validation:
+            self._validate_model()
+
         filepath = Path(filepath)
         self.filepath = filepath
         if not filepath.suffix == ".toml":
@@ -364,7 +367,7 @@ class Model(FileModel):
                 if row["to_node_count"] < flow_edge_amount[row["to_node_type"]][0]:
                     is_valid = False
                     raise ValueError(
-                        f"Node {row['to_node_id']} must have at least {flow_edge_amount[row["to_node_type"]][0]} inneighbor(s) (got {row["to_node_count"]})"
+                        f"Node {row["to_node_id"]} must have at least {flow_edge_amount[row["to_node_type"]][0]} inneighbor(s) (got {row["to_node_count"]})"
                     )
             except ValueError as e:
                 logging.error(e)

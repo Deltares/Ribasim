@@ -130,7 +130,15 @@ def test_extra_spatial_columns():
             [basin.Profile(area=1000.0, level=[0.0, 1.0]), basin.State(level=[1.0])],
         )
     with pytest.raises(ValidationError):
-        model.edge.add(model.basin[1], model.user_demand[2], foo=1)
+        model.user_demand.add(
+            Node(4, Point(1, -0.5), meta_id=3),
+            [
+                user_demand.Static(
+                    demand=[1e-4], return_factor=0.9, min_level=0.9, priority=1
+                )
+            ],
+        )
+        model.edge.add(model.basin[1], model.user_demand[4], foo=1)
 
 
 def test_edge_autoincrement(basic):
