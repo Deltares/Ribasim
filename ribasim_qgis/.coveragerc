@@ -1,6 +1,6 @@
 [run]
 source = .
 omit =
-    resources.py
-    tests/*
-    tomllib/*
+    */resources.py
+    */tests/*
+    */tomllib/*
