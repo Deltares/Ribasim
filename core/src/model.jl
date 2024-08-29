@@ -109,7 +109,7 @@ function Model(config::Config)::Model
     du0 = zero(u0)
 
     # The Solver algorithm
-    alg = algorithm(config.solver, u0)
+    alg = algorithm(config.solver; u0)
 
     # Synchronize level with storage
     set_current_basin_properties!(parameters.basin, u0, du0)

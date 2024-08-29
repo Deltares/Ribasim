@@ -897,7 +897,7 @@ end
 reduction_factor(x::GradientTracer, threshold::Real) = x
 relaxed_root(x::GradientTracer, threshold::Real) = x
 get_area_and_level(basin::Basin, state_idx::Int, storage::GradientTracer) = storage, storage
-adapt_negative_storage_du!(du, u::ComponentVector{<:GradientTracer}) = nothing
+stop_declining_negative_storage!(du, u::ComponentVector{<:GradientTracer}) = nothing
 
 @kwdef struct MonitoredBackTracking{B, V}
     linesearch::B = BackTracking()
@@ -951,14 +951,14 @@ function OrdinaryDiffEq.relax!(
     # Store step before relaxation
     @. dz_tmp = dz
 
-    # Apply relaxation and measure the residu change
+    # Apply relaxation and measure the residual change
     @. z_tmp = nlsolver.z + dz
     resid_before = residual(z_tmp, integrator, nlsolver, f)
     relax!(dz, nlsolver, integrator, f, linesearch)
     @. z_tmp = nlsolver.z + dz
     resid_after = residual(z_tmp, integrator, nlsolver, f)
 
-    # If the residu increased due to the relaxation, reject it
+    # If the residual increased due to the relaxation, reject it
     if resid_after > resid_before
         @. dz = dz_tmp
     end
