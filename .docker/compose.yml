@@ -5,7 +5,7 @@ services:
     image: qgis/qgis:release-3_34
     container_name: qgis
     volumes:
-      - ../ribasim_qgis/:/tests_directory/${PLUGIN_NAME}
+      - ../ribasim_qgis/:/tests_directory/ribasim_qgis
     environment:
       - CI=true
       - DISPLAY=:99
