@@ -153,10 +153,13 @@ The node by itself portrays as a bucket with a certain volume of water and can b
 
 @tbl-input1 shows the input data for the basin node profile.
 
++-----------+----------+
 | Area [m2] |Level [m] |
-|-----------|----------|
++===========+==========+
 | 672000    |     0    |
++-----------+----------+
 | 5600000   |     6    |
++-----------+----------+
 
 : Profile data for the basin node {#tbl-input1}
 
@@ -183,11 +186,15 @@ It is therefore expected that the confluence basin reaches a level where the out
 Only then is the confluence basin in equilibrium.
 To ensure that inflow equals outflow (IN=OUT) and keeping in mind the maximum depth of the river is 6 m, the Q-h relationship in @tbl-input2 will be used as input.
 
++---------------------+--------------------+
 | Water Level (h) [m] | Outflow (Q) [m³/s] |
-|---------------------|--------------------|
++=====================+====================+
 |         0.0         |         0.0        |
++---------------------+--------------------+
 |          2          |         50         |
++---------------------+--------------------+
 |          5          |         200        |
++---------------------+--------------------+
 
 : Input data for the Tabulated Rating Curve {#tbl-input2}
 
