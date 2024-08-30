@@ -302,7 +302,16 @@ function check_water_balance_error(u, t, integrator)::Nothing
     # Then compute error relative to mean (absolute) flow
     relative_error = absolute_error ./ (0.5 * (total_inflow + total_outflow))
 
-    @show relative_error
+    @show t, storage_rate
+
+    for (infl, outfl) in zip(total_inflow, total_outflow)
+        if !isnan(infl)
+            @assert infl >= 0.0
+        end
+        if !isnan(outfl)
+            @assert outfl >= 0.0
+        end
+    end
 
     errors = false
     for (rel_error, id) in zip(relative_error, node_id)
