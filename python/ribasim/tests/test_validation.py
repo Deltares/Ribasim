@@ -34,7 +34,7 @@ def test_connectivity(trivial):
     with pytest.raises(
         ValueError,
         match=re.escape(
-            "Node of type Basin cannot be upstream of node of type Terminal"
+            "Node of type Terminal cannot be downstream of node of type Basin. Possible downstream node: ['LinearResistance', 'ManningResistance', 'TabulatedRatingCurve', 'Pump', 'Outlet', 'UserDemand']"
         ),
     ):
         model.edge.add(model.basin[6], model.terminal[2147483647])

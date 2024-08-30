@@ -15,7 +15,12 @@ from shapely.geometry import LineString, MultiLineString, Point
 
 from ribasim.input_base import SpatialTableModel
 from ribasim.utils import UsedIDs
-from ribasim.validation import can_connect, control_edge_amount, flow_edge_amount
+from ribasim.validation import (
+    can_connect,
+    connectivity,
+    control_edge_amount,
+    flow_edge_amount,
+)
 
 from .base import _GeoBaseSchema
 
@@ -85,7 +90,7 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
         """
         if not can_connect(from_node.node_type, to_node.node_type):
             raise ValueError(
-                f"Node of type {from_node.node_type} cannot be upstream of node of type {to_node.node_type}"
+                f"Node of type {to_node.node_type} cannot be downstream of node of type {from_node.node_type}. Possible downstream node: {connectivity[from_node.node_type]}."
             )
 
         geometry_to_append = (
