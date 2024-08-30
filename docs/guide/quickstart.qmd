@@ -151,7 +151,14 @@ The node by itself portrays as a bucket with a certain volume of water and can b
 
 ![Basin node concept for the confluence](https://github.com/user-attachments/assets/3a6b05d9-c535-4054-be92-c593a0c03d93){fig-align="left" #fig-confluence}
 
-Table 1 shows the input data for the basin node profile.
+@tbl-input1 shows the input data for the basin node profile.
+
+| Area [m2] |Level [m] |
+|-----------|----------|
+| 672000    |     0    |
+| 5600000   |     6    |
+
+: Profile data for the basin node {#tbl-input1}
 
 The following code will be:
 ```python
@@ -174,7 +181,15 @@ This setup mimics the behavior of a gate or spillway, allowing us to model how v
 As the two inflows come together at the confluence, we expect, as mentioned and coded before, a discharge average of 44.45 m³/s.
 It is therefore expected that the confluence basin reaches a level where the outflow is equal to the inflow via the rating curve.
 Only then is the confluence basin in equilibrium.
-To ensure that inflow equals outflow (IN=OUT) and keeping in mind the maximum depth of the river is 6 m, the Q-h relationship in Table 2 will be used as input.
+To ensure that inflow equals outflow (IN=OUT) and keeping in mind the maximum depth of the river is 6 m, the Q-h relationship in @tbl-input2 will be used as input.
+
+| Water Level (h) [m] | Outflow (Q) [m³/s] |
+|---------------------|--------------------|
+|         0.0         |         0.0        |
+|          2          |         50         |
+|          5          |         200        |
+
+: Input data for the Tabulated Rating Curve {#tbl-input2}
 
 In Ribasim, the Q-h relation is a linear function, so the points in between will be linearly interpolated.
 @fig-discharge illustrates the visual process and shows a progressive increase in discharge with rising water levels.
