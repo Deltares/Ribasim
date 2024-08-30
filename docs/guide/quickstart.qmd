@@ -59,5 +59,247 @@ Download the Crystal_Basin.zip file from the website. Extract Crystal_Basin.zip 
 Additionally, your Python model (.py) and eventually the output files will also be saved in this folder.
 
 # Modual 1 - Crystal River Basin
+We will examine a straightforward example of the Crystal River Basin, which includes a main river and a single tributary flowing into the sea (see Figure 1).
+An average discharge of 44.45 m3/s is measured at the confluence.
+In this module, the basin is free of any activities, allowing the model to simulate the natural flow.
+The next step is to include a demand (irrigation) that taps from a canal out of the main river.
 
-# Modual 2 - Reservoirs and Public Water Supply
+After this module the user will be able to:
+- Build a river basin model from scratch
+- Understand the functionality of the  ‘demand’ and ‘basin’ nodes
+- Generate overview of results
+- Evaluate the simulation results
+
+## Modual 1.1 - Natural Flow
+### Step 1: Import packages
+Before building the model we need to import some modules.
+Open your python platform (Spyder, VS code etc.) name it 'Crystal_1.1' and save it into your model folder 'Crystal_Basin'.
+Import the following modules in python:
+
+```python
+import shutil
+from pathlib import Path
+import pathlib
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from ribasim import Allocation, Model, Node # The main library used for river basin modeling.
+from ribasim.nodes import (
+    flow_boundary,
+    basin,
+    tabulated_rating_curve,
+    terminal
+)
+from shapely.geometry import Point
+import subprocess  # For running the model
+```
+### Step 2: Setup paths and model configuration
+Reference the paths of the Ribasim installation and model directory and define the time period (2022-01-01 until 2023-01-01) for the model simulation:
+```python
+base_dir = Path("c:/Ribasim")
+model_dir = base_dir / "Crystal_Basin"
+data_path = model_dir / "data/input/ACTINFLW.csv"
+
+starttime = "2022-01-01"
+endtime = "2023-01-01"
+model = Model(
+    starttime=starttime,
+    endtime=endtime,
+    crs="EPSG:4326",
+)
+```
+### Step 3: Flow boundary nodes
+Crystal Basin consists of two inflow points, the tributary and the main Crystal river, we will call them ‘Minor’ and ‘Main’ respectively.
+In order to define the time series flow rate (m³/s) we read the discharge data from ACTINFLW.csv.
+This inflow data goes monthly from 2014 to 2023.
+However, for this exercise actual runtime is already defined in step 2.
+
+```python
+data = pd.read_csv(data_path, sep=";")
+data['sum']= data['minor']+data['main']
+#Average inflow and max. of the whole summed inflow data timeseries
+#From 2014 - 2023
+print('Average inflowQ m3/s:',data['sum'].mean())
+print('Average inflowQ m3/s:',data['sum'].max))
+
+model.flow_boundary.add(
+    Node(1, Point(0.0, 0.0), name='Main'),
+    [flow_boundary.Time(time=data.time, flow_rate=data.main,
+    )]
+)
+
+model.flow_boundary.add(
+    Node(2, Point(-3.0, 0.0), name='Minor'),
+    [flow_boundary.Time(time=data.time, flow_rate=data.minor,
+    )]
+)
+```
+### Step 4: Basin node (confluence)
+To schematize the confluence from the tributary we will use the Basin node.
+The node by itself portrays as a bucket with a certain volume of water and can be used for different purposes, such as a reservoir, a lake or in this case a confluence.
+Figure 2 visualizes a cross section of the confluence point in our model.
+
+Table 1 shows the input data for the basin node profile.
+
+The following code will be:
+```python
+model.basin.add(
+    Node(3, Point(-1.5, -1), name='Conf'),
+    [basin.Profile(area=[672000, 5600000], level=[0, 6]),
+     basin.State(level=[4]),
+     basin.Time(time=[starttime, endtime]),
+    ],
+)
+```
+### Step 5: Tabulated rating curve
+In the previous step we implemented a Basin node that functions as a confluence.
+Conceptually, the basin acts like a bucket of water, accumulating inflows and then releasing them.
+However, the model does not run if the basin is directly connected to the terminal node.
+This is because, for the model to function properly, we need to define a relation between the water level (h) in the basin and the outflow (Q) from the basin.
+This relation is defined by the 'Tabulated Rating Curve' and thus serves as a critical component.
+This setup mimics the behavior of a gate or spillway, allowing us to model how varying water levels influence flow rates at the confluence.
+
+As the two inflows come together at the confluence, we expect, as mentioned and coded before, a discharge average of 44.45 m³/s.
+It is therefore expected that the confluence basin reaches a level where the outflow is equal to the inflow via the rating curve.
+Only then is the confluence basin in equilibrium.
+To ensure that inflow equals outflow (IN=OUT) and keeping in mind the maximum depth of the river is 6 m, the Q-h relationship in Table 2 will be used as input.
+
+In Ribasim, the Q-h relation is a linear function, so the points in between will be linearly interpolated.
+Figure 3 illustrates the visual process and shows a progressive increase in discharge with rising water levels.
+In this case this means:
+- At level 0: No discharge occurs. This represents a condition where the water level is too low for any flow to be discharged.
+- At level 2 : Discharge is max. 50m3/s. This is a bit above the average discharge rate, corresponding to the water level where normal flow conditions are established.
+- At level 5: Discharge rate reaches 200m3/s. This  discharge rate occurs at the  water level during wet periods, indicating higher flow capacity.
+
+Taking this into account, add the Tabulated Rating Curve as follows:
+
+```python
+model.tabulated_rating_curve.add(
+    Node(4, Point(-1.5, -1.5), name='MainConf'),
+    [tabulated_rating_curve.Static(
+        level=[0.0, 2, 5],
+        flow_rate=[0.0, 50, 200],
+        )
+    ]
+)
+```
+### Step 6: Terminal node
+Finally all the water will discharge into the ocean.
+Schematize this with the terminal node as it portrays the end point of the model.
+Besides the node number/name and location, no further input is needed.
+
+```python
+model.terminal.add(Node(5, Point(-1.5, -3.0), name="Terminal"))
+```
+### Step 7: Defining edges
+Implement the connections (edges) between the nodes, in the following order:
+1.	Flow boundaries to the basin;
+2.	Basin to the rating curve;
+3.	Tabulated rating curve to the terminal.
+
+```python
+model.edge.add(model.flow_boundary[1], model.basin[3])
+model.edge.add(model.flow_boundary[2], model.basin[3])
+model.edge.add(model.basin[3], model.tabulated_rating_curve[4])
+model.edge.add(model.tabulated_rating_curve[4], model.terminal[5])
+```
+### Step 8: Visualization and model execution
+Plot the schematization, write the model configuration to the TOML file.
+Name the output file 'Crystal_1.1':
+
+```python
+model.plot()
+
+toml_path = model_dir/ "Crystal_1.1/ribasim.toml"
+model.write(toml_path)
+rib_path = base_dir / "ribasim_windows/ribasim.exe"
+```
+The schematization should look like Figure 4.
+
+After writing  model.write a subfolder 'Crystal_1.1' is created, which contains the model input data and configuration:
+- ribasim.toml: The model configuration
+- database.gpkg: A geopackage containing the shapes of your schematization and the input data of the nodes used.
+
+Now run the model:
+```python
+subprocess.run([rib_path, toml_path], check=True)
+```
+
+### Step 9: Post-processing results
+Read the arrow files and plot the simulated flows from different edges and the levels and storages at our confluence point:
+
+```python
+df_basin = pd.read_feather(model_dir / "Crystal_1.1/results/basin.arrow")
+
+# Create pivot tables and plot for basin data
+df_basin_wide = df_basin.pivot_table(
+index="time", columns="node_id", values=["storage", "level"]
+)
+
+# Skip the first timestep as it’s the initialization step
+df_basin_wide = df_basin_wide.iloc[1:]
+
+# Plot level and storage on the same graph with dual y-axes
+fig, ax1 = plt.subplots(figsize=(12, 6))
+
+# Plot level on the primary y-axis
+color = 'b'
+ax1.set_xlabel('Time')
+ax1.set_ylabel('Level [m]', color=color)
+ax1.plot(df_basin_wide.index, df_basin_wide["level"], color=color)
+ax1.tick_params(axis='y', labelcolor=color)
+
+# Create a secondary y-axis for storage
+ax2 = ax1.twinx()
+color = 'r'
+ax2.set_ylabel('Storage [m³]', color='r')
+ax2.plot(df_basin_wide.index, df_basin_wide["storage"],linestyle='--', color=color)
+ax2.tick_params(axis='y', labelcolor=color)
+
+fig.tight_layout()  # Adjust layout to fit labels
+plt.title('Basin Level and Storage Over Time')
+plt.show()
+
+
+# Plot flow data
+# Read the data from feather format
+df_flow = pd.read_feather(model_dir / "Crystal_1.1/results/flow.arrow")
+# Create 'edge' and 'flow_m3d' columns
+df_flow["edge"] = list(zip(df_flow.from_node_id, df_flow.to_node_id))
+
+# Create a pivot table
+pivot_flow = df_flow.pivot_table(index="time", columns="edge", values="flow_rate")
+
+# Skip the first timestep
+pivot_flow = pivot_flow.iloc[1:]
+
+line_styles = ['-', '--', '-', '-.']
+num_styles = len(line_styles)
+
+fig, ax = plt.subplots(figsize=(12, 6))
+for i, column in enumerate(pivot_flow.columns):
+    pivot_flow[column].plot(ax=ax, linestyle=line_styles[i % num_styles],linewidth=1.5, alpha=0.8)
+
+# Set labels and title
+ax.set_xlabel('Time')
+ax.set_ylabel('Flow [m³/s]')
+ax.legend(bbox_to_anchor=(1.15, 1), title="Edge")
+plt.title('Flow Over Time')
+plt.grid(True)
+plt.show()
+```
+
+Figure 5 shows the storage and levels in the basin node.
+
+In this configuration the basin node is designed to ensure that inflow equals outflow, effectively simulating a controlled junction where water flow is managed rather than stored.
+To accurately represent the relationship between water levels and discharge rates at this confluence, a rating curve node is implemented.
+This setup mimics the behavior of a gate or spillway, allowing us to model how varying water levels influence flow rates at the confluence.
+Since the basin node is functioning as a confluence rather than a storage reservoir, the simulated water levels and storage trends will closely follow the inflow patterns.
+This is because there is no net change in storage; all incoming water is balanced by outgoing flow.
+
+Figure 6 shows the discharges in m³/s on each edge.
+Edge (3,4) represents the flow from the confluence to the tabulated rating curve and edge (4,5) represents the flow from the tabulated rating curve to the terminal.
+Both show the same discharge over time.
+Which is expected in a natural flow environment, as what is coming into the confluence must come out.
+
+# Modual 2 - Irrigation demand
