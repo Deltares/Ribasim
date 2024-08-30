@@ -107,6 +107,7 @@ codegen = { cmd = "julia --project utils/gen_python.jl && ruff format python/rib
     "initialize-julia",
 ], inputs = [
     "core",
+    "utils",
 ], outputs = [
     "python/ribasim/ribasim/schemas.py",
 ] }

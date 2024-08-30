@@ -109,15 +109,15 @@ def test_write_adds_fid_in_tables(basic, tmp_path):
     model_orig.write(tmp_path / "basic/ribasim.toml")
     with connect(tmp_path / "basic/database.gpkg") as connection:
         query = f"select * from {esc_id('Basin / profile')}"
-        df = pd.read_sql_query(query, connection)
+        df = pd.read_sql_query(query, connection, dtype_backend="pyarrow")
         assert "fid" in df.columns
 
         query = "select node_id from Node"
-        df = pd.read_sql_query(query, connection)
+        df = pd.read_sql_query(query, connection, dtype_backend="pyarrow")
         assert "node_id" in df.columns
 
         query = "select edge_id from Edge"
-        df = pd.read_sql_query(query, connection)
+        df = pd.read_sql_query(query, connection, dtype_backend="pyarrow")
         assert "edge_id" in df.columns
 
 

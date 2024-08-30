@@ -65,6 +65,7 @@ def _edge_lookup(uds) -> Series[Int32]:
 
 
 def _time_in_ns(df) -> None:
+    # TODO check
     """Convert the time column to datetime64[ns] dtype."""
     # datetime64[ms] gives trouble; https://github.com/pydata/xarray/issues/6318
     df["time"] = df["time"].astype("datetime64[ns]")

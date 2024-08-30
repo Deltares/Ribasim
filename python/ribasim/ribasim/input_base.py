@@ -15,6 +15,7 @@ from typing import (
 import geopandas as gpd
 import numpy as np
 import pandas as pd
+import pyogrio
 from pandera.typing import DataFrame
 from pandera.typing.geopandas import GeoDataFrame
 from pydantic import BaseModel as PydanticBaseModel
@@ -294,7 +295,10 @@ class TableModel(FileModel, Generic[TableT]):
             if exists(connection, table):
                 query = f"select * from {esc_id(table)}"
                 df = pd.read_sql_query(
-                    query, connection, parse_dates={"time": {"format": "ISO8601"}}
+                    query,
+                    connection,
+                    parse_dates={"time": {"format": "ISO8601"}},
+                    dtype_backend="pyarrow",
                 )
                 df.set_index("fid", inplace=True)
             else:
@@ -305,7 +309,7 @@ class TableModel(FileModel, Generic[TableT]):
     @classmethod
     def _from_arrow(cls, path: Path) -> pd.DataFrame:
         directory = context_file_loading.get().get("directory", Path("."))
-        return pd.read_feather(directory / path)
+        return pd.read_feather(directory / path, dtype_backend="pyarrow")
 
     def sort(self):
         """Sort the table as required.
@@ -374,7 +378,13 @@ class SpatialTableModel(TableModel[TableT], Generic[TableT]):
         with connect(path) as connection:
             if exists(connection, table):
                 # pyogrio hardcodes fid name on reading
-                df = gpd.read_file(path, layer=table, fid_as_index=True)
+                df = pyogrio.read_dataframe(
+                    path,
+                    layer=table,
+                    fid_as_index=True,
+                    use_arrow=True,
+                    arrow_to_pandas_kwargs={"types_mapper": pd.ArrowDtype},
+                )
                 df.index.rename(cls.tableschema()._index_name(), inplace=True)
             else:
                 df = None

@@ -20,8 +20,8 @@ def flow_boundary_time_model() -> Model:
     )
 
     n_times = 100
-    time = pd.date_range(start="2020-03-01", end="2020-10-01", periods=n_times).astype(
-        "datetime64[s]"
+    time = pd.date_range(
+        start="2020-03-01", end="2020-10-01", periods=n_times, unit="s"
     )
     flow_rate = 1 + np.sin(np.pi * np.linspace(0, 0.5, n_times)) ** 2
 

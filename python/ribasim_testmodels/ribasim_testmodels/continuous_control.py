@@ -25,7 +25,9 @@ def outlet_continuous_control_model() -> Model:
         Node(1, Point(0, 0)),
         [
             level_boundary.Time(
-                time=pd.date_range(start="2020-01-01", end="2021-01-01", periods=100),
+                time=pd.date_range(
+                    start="2020-01-01", end="2021-01-01", periods=100, unit="ms"
+                ),
                 level=6.0 + np.sin(np.linspace(0, 6 * np.pi, 100)),
             )
         ],

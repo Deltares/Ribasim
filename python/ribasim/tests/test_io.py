@@ -1,7 +1,6 @@
 from datetime import datetime
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 import pytest
 import ribasim
@@ -64,7 +63,7 @@ def test_basic_transient(basic_transient, tmp_path):
 
     time = model_loaded.basin.time
     assert model_orig.basin.time.df.time.iloc[0] == time.df.time.iloc[0]
-    assert time.df.node_id.dtype == np.int32
+    assert time.df.node_id.dtype == "int32[pyarrow]"
     __assert_equal(model_orig.basin.time.df, time.df)
     assert time.df.shape == (1468, 6)
 

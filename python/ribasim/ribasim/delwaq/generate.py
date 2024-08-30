@@ -281,8 +281,12 @@ def generate(
 
     # Read in model and results
     model = ribasim.Model.read(toml_path)
-    basins = pd.read_feather(toml_path.parent / "results" / "basin.arrow")
-    flows = pd.read_feather(toml_path.parent / "results" / "flow.arrow")
+    basins = pd.read_feather(
+        toml_path.parent / "results" / "basin.arrow", dtype_backend="pyarrow"
+    )
+    flows = pd.read_feather(
+        toml_path.parent / "results" / "flow.arrow", dtype_backend="pyarrow"
+    )
 
     output_folder.mkdir(exist_ok=True)
 

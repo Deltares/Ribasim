@@ -290,8 +290,8 @@ def tabulated_rating_curve_model() -> ribasim.Model:
         [
             tabulated_rating_curve.Time(
                 time=[
-                    # test subsecond precision
-                    pd.Timestamp("2020-01-01 00:00:00.000001"),
+                    # test millisecond precision
+                    pd.Timestamp("2020-01-01 00:00:00.001"),
                     pd.Timestamp("2020-01"),
                     pd.Timestamp("2020-02"),
                     pd.Timestamp("2020-02"),

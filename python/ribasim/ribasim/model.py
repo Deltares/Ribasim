@@ -519,8 +519,8 @@ class Model(FileModel):
                 "perhaps the model needs to be run first."
             )
 
-        basin_df = pd.read_feather(basin_path)
-        flow_df = pd.read_feather(flow_path)
+        basin_df = pd.read_feather(basin_path, dtype_backend="pyarrow")
+        flow_df = pd.read_feather(flow_path, dtype_backend="pyarrow")
         _time_in_ns(basin_df)
         _time_in_ns(flow_df)
 
@@ -560,6 +560,7 @@ class Model(FileModel):
         alloc_flow_df = pd.read_feather(
             alloc_flow_path,
             columns=["time", "edge_id", "flow_rate", "optimization_type", "priority"],
+            dtype_backend="pyarrow",
         )
         _time_in_ns(alloc_flow_df)
 
