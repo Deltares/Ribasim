@@ -1,3 +1,63 @@
 ---
 title: "Quick start guide"
 ---
+
+# Introduction
+Welcome to Ribasim!
+This guide will help you get started with the basics of installing and using Ribasim for river basin simulation.
+For this guide, the user interface will be implemented in Python using the Ribasim Python package.
+The Ribasim package (name 'ribasim') simplifies the process of building, updating, and analyzing Ribasim model programmatically.
+It also allows for the creation of entire models from base data, ensuring that your model setup is fully reproducible.
+This package is available on PyPI.
+## Learning objectives
+In this guide, we will focus on a fictional river basin called Crystal, which will serve as our case study.
+The guide is divided into different modules, each covering various scenarios.
+These include simulating natural flow, implementing reservoirs, and observing the impact of other structures.
+While not all node types and possibilities will be demonstrated, the focus will be on the most commonly used and significant situations.
+By the end of the guide, users will be able to:
+- **Set Up a Basic Ribasim Model**: Understand how to create a new model for a river basin using the Ribasim Python package.
+- **Evaluate the Impact of Demands**: Introduce water demand (such as irrigation) and assess their effects on the river basin.
+- **Modify and Update Models**: Learn how to update existing models with new data and changes.
+- **Analyze Simulation Results**: Use built-in tools to analyze and interpret the results of your simulations.
+
+# Starting RIBASIM
+## System requirements
+Before installing Ribasim, ensure your system meets the following requirements:
+- Operating System: Windows 10 or later, or Linux (latest distributions)
+- Processor: x86-64 (64-bit)
+- RAM: 4 GB minimum, 8 GB recommended
+- Hard Drive: 1GB of free space
+
+## Installation
+1. Download Ribasim: Obtain the Ribasim 9 installation package from the official website: [Ribasim - Installation](deltares.github.io) under chapter '2 Download':
+* For Windows download: ‘ribasim_windows.zip’
+* For Linux: ‘ribasim_linux.zip’
+2. Unpack the .zip archive: It is important to keep the contents of the zip file organized within a single directory. The Ribasim executable can be found in the directory;
+3. Check installation: To check whether the installation was performed successfully, in cmd go to the executable path and type ribasim with no arguments in the command line. This will give the following message:
+
+```batch
+error: the following required arguments were not provided:
+ <TOML_PATH>
+Usage: ribasim <TOML_PATH>
+For more information, try '--help'.
+```
+
+4. We use a command line interface (CLI) to install our Ribasim packages. To install Ribasim open PowerShell or Windows command prompt and write:
+
+```batch
+conda install Ribasim
+```
+or
+
+```batch
+mamba install Ribasim
+```
+## Data preparation
+Download the Crystal_Basin.zip file from the website. Extract Crystal_Basin.zip and place it in the same directory as your Ribasim installation. This folder includes:
+- QuickStartGuide.pdf
+- data: Contains data inputs such as time series needed for running the case.
+Additionally, your Python model (.py) and eventually the output files will also be saved in this folder.
+
+# Modual 1 - Crystal River Basin
+
+# Modual 2 - Reservoirs and Public Water Supply
