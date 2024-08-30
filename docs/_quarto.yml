@@ -33,6 +33,7 @@ website:
 
     - title: "How-to guides"
       contents:
+        - guide/quickstart.qmd
         - guide/examples.ipynb
         - guide/qgis.qmd
         - guide/coupling.qmd
