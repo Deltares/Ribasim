@@ -118,6 +118,17 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
             index=pd.Index([edge_id], name="edge_id"),
         )
 
+        self._validate_edge(to_node, from_node, edge_type)
+
+        self.df = GeoDataFrame[EdgeSchema](pd.concat([self.df, table_to_append]))
+        if self.df.duplicated(subset=["from_node_id", "to_node_id"]).any():
+            raise ValueError(
+                f"Edges have to be unique, but edge with from_node_id {from_node.node_id} to_node_id {to_node.node_id} already exists."
+            )
+        self._used_edge_ids.add(edge_id)
+
+    def _validate_edge(self, to_node: NodeData, from_node: NodeData, edge_type: str):
+        assert self.df is not None
         in_flow_neighbor: int = self.df.loc[
             (self.df["to_node_id"] == to_node.node_id)
             & (self.df["edge_type"] == "flow")
@@ -162,13 +173,6 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
             raise ValueError(
                 f"Node {from_node.node_id} can have at most {control_edge_amount[from_node.node_type][3]} control edge outneighbor(s) (got {out_control_neighbor})"
             )
-
-        self.df = GeoDataFrame[EdgeSchema](pd.concat([self.df, table_to_append]))
-        if self.df.duplicated(subset=["from_node_id", "to_node_id"]).any():
-            raise ValueError(
-                f"Edges have to be unique, but edge with from_node_id {from_node.node_id} to_node_id {to_node.node_id} already exists."
-            )
-        self._used_edge_ids.add(edge_id)
 
     def _get_where_edge_type(self, edge_type: str) -> NDArray[np.bool_]:
         assert self.df is not None
