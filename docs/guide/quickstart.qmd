@@ -548,3 +548,160 @@ When selecting only the flow demanded by the User Demand node, or in other words
 Figure 12 shows the flow to the ocean (Terminal).
 Compared to Crystal 1.1 the flow has decreased during the irrigated period.
 Indicating the impact of irrigation without any drain.
+
+# Modual 2 – Reservoirs and Public Water Supply
+Due to the increase of population and climate change Crystal city has implemented a reservoir upstream to store water for domestic use (See Figure 13).
+The reservoir is to help ensure a reliable supply during dry periods.
+In this module, the user will update the model to incorporate the reservoir's impact on the whole Crystal Basin.
+
+## Modual 2.1 – Reservoir
+### Step 1: Add a basin
+This time the basin 3 will function as a reservoir instead of a diversion, meaning it's storage and levels will play an important role for the users (the city and the farmer).
+The reservoir has a max. area of 32.3 km² and a max. depth of 7 m.
+The profile of basin 3 should change to:
+
+```python
+model.basin.add(
+    Node(3, Point(-0.75, -0.5), name='Rsv'),
+    [basin.Profile(area=[20000000, 32300000], level=[0, 7]),
+     basin.State(level=[3.5]),
+     basin.Time(time=[starttime, endtime]),
+    ],
+)
+```
+
+### Step 2: Adjust the code
+Adjust the naming of the basin in the dictionary mapping and the saving file should be Crystal_2.1 instead of 1.2.
+
+```python
+toml_path = model_dir/ "Crystal_2.1/ribasim.toml"
+model.write(toml_path)
+rib_path = base_dir / "ribasim_windows/ribasim.exe"
+```
+
+```python
+# Dictionary mapping node_ids to names
+edge_names = {
+    (1,3): 'Main',
+    (2,4): 'Minor',
+    (3,6): 'IrrA Demand',
+    (6,4): 'IrrA Drain',
+    (3,7): 'Rsv2Main',
+    (7,4): 'Main2Conf',
+    (4,5): 'Conf2TRC',
+    (5,8): 'TRC2Term',
+}
+
+# Dictionary mapping basins (node_ids) to names
+node_names = {
+    3: 'Rsv',
+    4: 'Conf',
+}
+
+df_basin = pd.read_feather(model_dir / "Crystal_2.1/results/basin.arrow")
+```
+
+```python
+# Create pivot tables and plot for basin data
+df_basin_rsv = df_basin_wide.xs('Rsv', axis=1, level=1, drop_level=False)
+df_basin_conf = df_basin_wide.xs('Conf', axis=1, level=1, drop_level=False)
+```
+
+```python
+# Plot Rsv basin data
+ax2 = ax1.twinx()  # Secondary y-axis for storage
+plot_basin_data(ax1, ax2, df_basin_rsv, title='Reservoir Level and Storage Over Time')
+```
+
+```python
+# Sample data loading and preparation
+df_flow = pd.read_feather(model_dir / "Crystal_2.1/results/flow.arrow")
+df_flow["edge"] = list(zip(df_flow.from_node_id, df_flow.to_node_id))
+df_flow["name"] = df_flow["edge"].map(edge_names)
+
+# Plot the flow data, interactive plot with Plotly
+pivot_flow = df_flow.pivot_table(index="time", columns="name", values="flow_rate").reset_index()
+fig = px.line(pivot_flow, x="time", y=pivot_flow.columns[1:], title="Flow Over Time [m3/s]")
+
+fig.update_layout(legend_title_text='Edge')
+fig.write_html(model_dir/ "Crystal_2.1/plot_edges.html")
+fig.show()
+```
+
+### Step 3: Plotting results
+Figure 14 illustrates the new storage and water level at the reservoir.
+As expected, after increasing the profile of basin 3 to mimic the reservoir, its storage capacity increased as well.
+
+## Module 2.2 – Public Water Supply
+
+### Step 1: Rename the saving files
+Rename the files to 'Crystal_2.2'
+
+### Step 2: Add a demand node
+50.000 people live in Crystal City.
+To represents the total flow rate or abstraction rate required to meet the water demand of 50,000 people, another demand node needs to be added assuming a return flow of 60%.
+
+```python
+model.user_demand.add(
+    Node(9, Point(0.0, -0.25), name='PWS'),
+    [user_demand.Time(
+        demand=[0.07, 0.08, 0.09, 0.10, 0.12, 0.14, 0.15, 0.14, 0.12, 0.10, 0.09, 0.08],  # Total demand in m³/s
+        return_factor=0.6,
+        min_level=0,
+        priority=1,
+        time=[
+            starttime,
+            "2022-02-01",
+            "2022-03-01",
+            "2022-04-01",
+            "2022-05-01",
+            "2022-06-01",
+            "2022-07-01",
+            "2022-08-01",
+            "2022-09-01",
+            "2022-10-01",
+            "2022-11-01",
+            "2022-12-01"
+        ]
+    )]
+)
+```
+
+### Step 3: Add the edges
+The connection between the reservoir and the demand node needs to be defined:
+
+```python
+model.edge.add(model.flow_boundary[1], model.basin[3])
+model.edge.add(model.flow_boundary[2], model.basin[4])
+model.edge.add(model.basin[3], model.user_demand[6])
+model.edge.add(model.basin[3], model.user_demand[9])
+model.edge.add(model.user_demand[6], model.basin[4])
+model.edge.add(model.user_demand[9], model.basin[4])
+model.edge.add(model.basin[3], model.tabulated_rating_curve[7])
+model.edge.add(model.tabulated_rating_curve[7], model.basin[4])
+model.edge.add(model.basin[4], model.tabulated_rating_curve[5])
+model.edge.add(model.tabulated_rating_curve[5], model.terminal[8])
+```
+
+### Step 4: Adjust the name dictionaries
+
+```python
+# Dictionary mapping node_ids to names
+edge_names = {
+    (1,3): 'Main',
+    (2,4): 'Minor',
+    (3,6): 'IrrA Demand',
+    (6,4): 'IrrA Drain',
+    (3,9): 'PWS Demand',
+    (9,4): 'PWS Return',
+    (3,7): 'Rsv2Main',
+    (7,4): 'Main2Conf',
+    (4,5): 'Conf2TRC',
+    (5,8): 'TRC2Term',
+}
+```
+### Step 5: Check the simulated demands
+Figure 15 shows the flow to (PWS Demand) and out (PWS Return) of the PWS node.
+Figure 16 shows the downstream flow to the ocean.
+The impact is clear.
+Due to the demands upstream (irrigation and public water supply) an expected decrease of discharge is shown downstream.
