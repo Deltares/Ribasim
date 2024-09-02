@@ -15,7 +15,14 @@ For more granular access, see:
 module Ribasim
 
 # Algorithms for solving ODEs.
-using OrdinaryDiffEq: OrdinaryDiffEq, OrdinaryDiffEqRosenbrockAdaptiveAlgorithm, get_du
+using OrdinaryDiffEqCore:
+    OrdinaryDiffEqCore,
+    OrdinaryDiffEqRosenbrockAdaptiveAlgorithm,
+    get_du,
+    AbstractNLSolver,
+    calculate_residuals!
+using OrdinaryDiffEqNonlinearSolve: OrdinaryDiffEqNonlinearSolve, relax!, _compute_rhs!
+using LineSearches: BackTracking
 
 # Interface for defining and solving the ODE problem of the physical layer.
 using SciMLBase:
@@ -31,7 +38,8 @@ using SciMLBase:
     ODEProblem,
     ODESolution,
     VectorContinuousCallback,
-    get_proposed_dt
+    get_proposed_dt,
+    DEIntegrator
 
 # Automatically detecting the sparsity pattern of the Jacobian of water_balance!
 # through operator overloading

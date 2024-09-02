@@ -42,6 +42,7 @@ from ribasim.config import (
     Terminal,
     UserDemand,
 )
+from ribasim.db_utils import _set_db_schema_version
 from ribasim.geometry.edge import EdgeSchema, EdgeTable
 from ribasim.geometry.node import NodeTable
 from ribasim.input_base import (
@@ -183,11 +184,15 @@ class Model(FileModel):
         db_path.parent.mkdir(parents=True, exist_ok=True)
         db_path.unlink(missing_ok=True)
         context_file_writing.get()["database"] = db_path
+
         self.edge._save(directory, input_dir)
         node = self.node_table()
 
         assert node.df is not None
         node._save(directory, input_dir)
+
+        # Run after geopackage schema has been created
+        _set_db_schema_version(db_path, ribasim.__schema_version__)
 
         for sub in self._nodes():
             sub._save(directory, input_dir)
@@ -256,6 +261,8 @@ class Model(FileModel):
         filepath : str | PathLike[str]
             The path to the TOML file.
         """
+        if not Path(filepath).is_file():
+            raise FileNotFoundError(f"File '{filepath}' does not exist.")
         return cls(filepath=filepath)  # type: ignore
 
     def write(self, filepath: str | PathLike[str]) -> Path:
@@ -426,7 +433,12 @@ class Model(FileModel):
 
             directory = filepath.parent / config.get("input_dir", ".")
             context_file_loading.get()["directory"] = directory
-            context_file_loading.get()["database"] = directory / "database.gpkg"
+            db_path = directory / "database.gpkg"
+
+            if not db_path.is_file():
+                raise FileNotFoundError(f"Database file '{db_path}' does not exist.")
+
+            context_file_loading.get()["database"] = db_path
 
             return config
         else:

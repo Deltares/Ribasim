@@ -9,7 +9,7 @@ qgis_process = subprocess.run(
         "--nologo",
         "--code",
         "ribasim_qgis/scripts/qgis_testrunner.py",
-        "ribasim_qgis.ui_tests",
+        "ribasim_qgis.tests",
     ],
     stdout=subprocess.PIPE,
     stderr=subprocess.STDOUT,

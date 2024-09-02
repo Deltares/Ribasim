@@ -491,8 +491,12 @@ end
 
 function Outlet(db::DB, config::Config, graph::MetaGraph)::Outlet
     static = load_structvector(db, config, OutletStaticV1)
-    defaults =
-        (; min_flow_rate = 0.0, max_flow_rate = Inf, min_crest_level = -Inf, active = true)
+    defaults = (;
+        min_flow_rate = 0.0,
+        max_flow_rate = Inf,
+        min_upstream_level = -Inf,
+        active = true,
+    )
     parsed_parameters, valid = parse_static_and_time(db, config, Outlet; static, defaults)
 
     if !valid
@@ -518,7 +522,7 @@ function Outlet(db::DB, config::Config, graph::MetaGraph)::Outlet
         flow_rate,
         parsed_parameters.min_flow_rate,
         parsed_parameters.max_flow_rate,
-        parsed_parameters.min_crest_level,
+        parsed_parameters.min_upstream_level,
         parsed_parameters.control_mapping,
     )
 end
@@ -572,7 +576,8 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
         error("Invalid Basin / profile table.")
     end
 
-    level_to_area = LinearInterpolation.(area, level; extrapolate = true)
+    level_to_area =
+        LinearInterpolation.(area, level; extrapolate = true, cache_parameters = true)
     storage_to_level = invert_integral.(level_to_area)
 
     t_end = seconds_since(config.endtime, config.starttime)
@@ -921,6 +926,7 @@ function user_demand_static!(
             fill(first_row.return_factor, 2),
             return_factor_old.t;
             extrapolate = true,
+            cache_parameters = true,
         )
         min_level[user_demand_idx] = first_row.min_level
 
@@ -1026,8 +1032,10 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)::UserDemand
     ]
     demand_from_timeseries = fill(false, n_user)
     allocated = fill(Inf, n_user, n_priority)
-    return_factor =
-        [LinearInterpolation(zeros(2), trivial_timespan) for i in eachindex(node_ids)]
+    return_factor = [
+        LinearInterpolation(zeros(2), trivial_timespan; cache_parameters = true) for
+        i in eachindex(node_ids)
+    ]
     min_level = zeros(n_user)
 
     # Process static table

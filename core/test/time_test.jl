@@ -39,10 +39,15 @@ end
     t_end = time_table.time[end]
     filter!(:time => t -> t !== t_end, time_table)
 
+    function get_area(basin, idx, storage)
+        level = Ribasim.get_level_from_storage(basin, idx, storage)
+        basin.level_to_area[idx](level)
+    end
+
     time_table[!, "basin_idx"] =
         [node_id.idx for node_id in Ribasim.NodeID.(:Basin, time_table.node_id, Ref(p))]
     time_table[!, "area"] = [
-        Ribasim.get_area_and_level(basin, idx, storage)[1] for
+        get_area(basin, idx, storage) for
         (idx, storage) in zip(time_table.basin_idx, basin_table.storage)
     ]
     # Mean areas are sufficient to compute the mean flows

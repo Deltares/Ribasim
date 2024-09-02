@@ -8,7 +8,7 @@
 function is_current_module(log)::Bool
     (log._module == @__MODULE__) ||
         (parentmodule(log._module) == @__MODULE__) ||
-        log._module == OrdinaryDiffEq # for the progress bar
+        log._module == OrdinaryDiffEqCore # for the progress bar
 end
 
 function setup_logger(;

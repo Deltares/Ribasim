@@ -51,7 +51,18 @@ function water_balance!(
     # Formulate du (controlled by PidControl)
     formulate_du_pid_controlled!(du, graph, pid_control)
 
+    # https://github.com/Deltares/Ribasim/issues/1705#issuecomment-2283293974
+    stop_declining_negative_storage!(du, u)
+
     return nothing
+end
+
+function stop_declining_negative_storage!(du, u)
+    for (i, s) in enumerate(u.storage)
+        if s < 0
+            du.storage[i] = max(du.storage[i], 0.0)
+        end
+    end
 end
 
 function formulate_continuous_control!(du, p, t)::Nothing
@@ -75,12 +86,9 @@ function set_current_basin_properties!(
 
     storage = u.storage
 
-    for i in eachindex(du.storage)
-        s = storage[i]
-        area, level = get_area_and_level(basin, i, s)
-
-        current_area[i] = area
-        current_level[i] = level
+    for (i, s) in enumerate(storage)
+        current_level[i] = get_level_from_storage(basin, i, s)
+        current_area[i] = basin.level_to_area[i](current_level[i])
     end
 end
 
@@ -546,7 +554,7 @@ function formulate_flow!(
         min_flow_rate,
         max_flow_rate,
         continuous_control_type,
-        min_crest_level,
+        min_upstream_level,
     ) in zip(
         outlet.node_id,
         outlet.inflow_edge,
@@ -556,7 +564,7 @@ function formulate_flow!(
         outlet.min_flow_rate,
         outlet.max_flow_rate,
         outlet.continuous_control_type,
-        outlet.min_crest_level,
+        outlet.min_upstream_level,
     )
         if !(active || all_nodes_active) ||
            (continuous_control_type != continuous_control_type_)
@@ -580,7 +588,7 @@ function formulate_flow!(
 
         # No flow out outlet if source level is lower than minimum crest level
         if src_level !== nothing
-            q *= reduction_factor(src_level - min_crest_level, 0.1)
+            q *= reduction_factor(src_level - min_upstream_level, 0.1)
         end
 
         q = clamp(q, min_flow_rate, max_flow_rate)

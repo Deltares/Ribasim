@@ -45,3 +45,8 @@ path = "ribasim/__init__.py"
 
 [tool.hatch.build.targets.sdist]
 artifacts = ["delwaq/reference/*", "delwaq/template/*"]
+
+[tool.pytest.ini_options]
+markers = [
+    "regression: Older models that are not on the current database schema.",
+]

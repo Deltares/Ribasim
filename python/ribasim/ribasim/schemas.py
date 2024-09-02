@@ -1,8 +1,12 @@
 # Automatically generated file. Do not modify.
 
+from typing import Any, Callable
+
 import pandera as pa
 from pandera.dtypes import Int32, Timestamp
 from pandera.typing import Index, Series
+
+from ribasim import migrations
 
 
 class _BaseSchema(pa.DataFrameModel):
@@ -13,6 +17,13 @@ class _BaseSchema(pa.DataFrameModel):
     @classmethod
     def _index_name(self) -> str:
         return "fid"
+
+    @classmethod
+    def migrate(cls, df: Any, schema_version: int) -> Any:
+        f: Callable[[Any, Any], Any] = getattr(
+            migrations, str(cls.__name__).lower() + "_migration", lambda x, _: x
+        )
+        return f(df, schema_version)
 
 
 class BasinConcentrationExternalSchema(_BaseSchema):
@@ -223,7 +234,7 @@ class OutletStaticSchema(_BaseSchema):
     flow_rate: Series[float] = pa.Field(nullable=False)
     min_flow_rate: Series[float] = pa.Field(nullable=True)
     max_flow_rate: Series[float] = pa.Field(nullable=True)
-    min_crest_level: Series[float] = pa.Field(nullable=True)
+    min_upstream_level: Series[float] = pa.Field(nullable=True)
     control_state: Series[str] = pa.Field(nullable=True)
 
 
