@@ -13,19 +13,13 @@ using DataStructures: DefaultDict
 using Dates: DateTime
 using Logging: LogLevel, Debug, Info, Warn, Error
 using ..Ribasim: Ribasim, isnode, nodetype
-using OrdinaryDiffEq:
-    OrdinaryDiffEqAlgorithm,
-    OrdinaryDiffEqNewtonAdaptiveAlgorithm,
-    NLNewton,
-    Euler,
-    ImplicitEuler,
-    KenCarp4,
-    QNDF,
-    RK4,
-    Rodas5,
-    Rosenbrock23,
-    TRBDF2,
-    Tsit5
+using OrdinaryDiffEqCore: OrdinaryDiffEqAlgorithm, OrdinaryDiffEqNewtonAdaptiveAlgorithm
+using OrdinaryDiffEqNonlinearSolve: NLNewton
+using OrdinaryDiffEqLowOrderRK: Euler, RK4
+using OrdinaryDiffEqTsit5: Tsit5
+using OrdinaryDiffEqSDIRK: ImplicitEuler, KenCarp4, TRBDF2
+using OrdinaryDiffEqBDF: QNDF
+using OrdinaryDiffEqRosenbrock: Rodas5, Rosenbrock23
 
 export Config, Solver, Results, Logging, Toml
 export algorithm,
