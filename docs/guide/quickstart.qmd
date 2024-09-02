@@ -7,7 +7,7 @@ title: "Quick start guide"
 # Introduction
 Welcome to Ribasim!
 This guide will help you get started with the basics of installing and using Ribasim for river basin simulation.
-For this guide, the user interface will be implemented in Python using the Ribasim Python package.
+In this guide, the relevant functionalities will be implemented in Python using the Ribasim Python package.
 The Ribasim package (named 'ribasim') simplifies the process of building, updating, and analyzing Ribasim model programmatically.
 It also allows for the creation of entire models from base data, ensuring that your model setup is fully reproducible.
 This package is available on PyPI.
@@ -84,7 +84,7 @@ After this module the user will be able to:
 ## Modual 1.1 - Natural Flow
 ### Step 1: Import packages
 Before building the model we need to import some modules.
-Open your python platform (Spyder, VS code etc.) name it `Crystal_1.1` and save it into your model folder `Crystal_Basin`.
+Open your python platform (Spyder, VS code etc.), created a new file and name it `Crystal_1.1` and save it into your model folder `Crystal_Basin`.
 Import the following modules in python:
 
 ```python
@@ -164,7 +164,7 @@ The node by itself portrays as a bucket with a certain volume of water and can b
 
 : Profile data for the basin node {#tbl-input1}
 
-The following code will be:
+To specify the basin profile, the following code is used:
 ```python
 model.basin.add(
     Node(3, Point(-1.5, -1), name='Conf'),
