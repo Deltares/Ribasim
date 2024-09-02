@@ -299,7 +299,6 @@ end
     import Tables
     using DataInterpolations: LinearInterpolation, integral, invert_integral
 
-    "Shorthand for Ribasim.get_area_and_level"
     function lookup(profile, S)
         level_to_area = LinearInterpolation(profile.A, profile.h; extrapolate = true)
         storage_to_level = invert_integral(level_to_area)

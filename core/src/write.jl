@@ -83,7 +83,7 @@ function get_storages_and_levels(
     level = zero(storage)
     for (i, basin_storage) in enumerate(eachrow(storage))
         level[i, :] =
-            [get_area_and_level(p.basin, i, storage)[2] for storage in basin_storage]
+            [get_level_from_storage(p.basin, i, storage) for storage in basin_storage]
     end
 
     return (; time = tsteps, node_id, storage, level)

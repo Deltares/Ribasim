@@ -36,6 +36,7 @@ from qgis.core import (
     QgsVectorLayer,
 )
 
+from ribasim_qgis.core.geopackage import write_schema_version
 from ribasim_qgis.core.model import (
     get_database_path_from_model_file,
     get_directory_path_from_model_file,
@@ -316,10 +317,13 @@ class DatasetWidget(QWidget):
     def new_model(self) -> None:
         """Create a new Ribasim model file, and set it as the active dataset."""
         path, _ = QFileDialog.getSaveFileName(self, "Select file", "", "*.toml")
+        self._new_model(path)
+
+    def _new_model(self, path: str):
         if path != "":  # Empty string in case of cancel button press
             self.dataset_line_edit.setText(path)
             geo_path = self.path.with_name("database.gpkg")
-            self._write_new_model()
+            self._write_toml()
 
             for input_type in (Node, Edge):
                 instance = input_type.create(
@@ -328,10 +332,11 @@ class DatasetWidget(QWidget):
                     names=[],
                 )
                 instance.write()
+            write_schema_version(geo_path)
             self.load_geopackage()
             self.ribasim_widget.toggle_node_buttons(True)
 
-    def _write_new_model(self) -> None:
+    def _write_toml(self) -> None:
         with open(self.path, "w") as f:
             f.writelines(
                 [
@@ -348,6 +353,9 @@ class DatasetWidget(QWidget):
         """Open a Ribasim model file."""
         self.dataset_tree.clear()
         path, _ = QFileDialog.getOpenFileName(self, "Select file", "", "*.toml")
+        self._open_model(path)
+
+    def _open_model(self, path: str) -> None:
         if path != "":  # Empty string in case of cancel button press
             self.dataset_line_edit.setText(path)
             self.load_geopackage()

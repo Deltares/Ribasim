@@ -1,8 +1,12 @@
 # Automatically generated file. Do not modify.
 
+from typing import Any, Callable
+
 import pandera as pa
 from pandera.dtypes import Int32, Timestamp
 from pandera.typing import Index, Series
+
+from ribasim import migrations
 
 
 class _BaseSchema(pa.DataFrameModel):
@@ -13,6 +17,13 @@ class _BaseSchema(pa.DataFrameModel):
     @classmethod
     def _index_name(self) -> str:
         return "fid"
+
+    @classmethod
+    def migrate(cls, df: Any) -> Any:
+        f: Callable[[Any], Any] = getattr(
+            migrations, str(cls.__name__).lower() + "_migration", lambda x: x
+        )
+        return f(df)
 
 
 class BasinConcentrationExternalSchema(_BaseSchema):
