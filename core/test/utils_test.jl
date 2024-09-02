@@ -93,7 +93,7 @@ end
 
     # Converting from storages to levels and back should return the same storages
     storages = range(0.0, 2 * storage_to_level.t[end], 50)
-    levels = [Ribasim.get_storage_from_level(basin, 1, s) for s in storages]
+    levels = [Ribasim.get_level_from_storage(basin, 1, s) for s in storages]
     storages_ = [Ribasim.get_storage_from_level(basin, 1, l) for l in levels]
     @test storages ≈ storages_
 
