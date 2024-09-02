@@ -59,7 +59,7 @@ from ribasim.utils import (
     _node_lookup_numpy,
     _time_in_ns,
 )
-from ribasim.validation import control_edge_amount, flow_edge_amount
+from ribasim.validation import control_edge_neighbor_amount, flow_edge_neighbor_amount
 
 try:
     import xugrid
@@ -102,7 +102,7 @@ class Model(FileModel):
     user_demand: UserDemand = Field(default_factory=UserDemand)
 
     edge: EdgeTable = Field(default_factory=EdgeTable)
-    validation: bool = Field(default=True)
+    use_validation: bool = Field(default=True)
 
     _used_node_ids: UsedIDs = PrivateAttr(default_factory=UsedIDs)
 
@@ -268,8 +268,8 @@ class Model(FileModel):
         filepath : str | PathLike[str]
             A file path with .toml extension.
         """
-        # Skip validation if the model name starts with "invalid"
-        if self.validation:
+
+        if self.use_validation:
             self._validate_model()
 
         filepath = Path(filepath)
@@ -303,11 +303,11 @@ class Model(FileModel):
         df_graph = df_graph.rename(columns={"node_type": "to_node_type"})
 
         if not self._check_neighbors(
-            df_graph, flow_edge_amount, "flow", df_node["node_type"]
+            df_graph, flow_edge_neighbor_amount, "flow", df_node["node_type"]
         ):
             raise ValueError("Minimum flow inneighbor or outneighbor unsatisfied")
         if not self._check_neighbors(
-            df_graph, control_edge_amount, "control", df_node["node_type"]
+            df_graph, control_edge_neighbor_amount, "control", df_node["node_type"]
         ):
             raise ValueError("Minimum control inneighbor or outneighbor unsatisfied")
 
@@ -318,22 +318,27 @@ class Model(FileModel):
         edge_type: str,
         nodes,
     ) -> bool:
+        """Check if the neighbor amount of the two nodes connected by the given edge meet the minimum requirements."""
+
         is_valid = True
-        # Count edge neighbor
+
+        # filter graph by edge type
         df_graph = df_graph.loc[df_graph["edge_type"] == edge_type]
 
-        # check from node's neighbor
+        # count occurrence of "from_node" which reflects the number of outneighbors
         from_node_count = (
             df_graph.groupby("from_node_id").size().reset_index(name="from_node_count")  # type: ignore
         )
 
+        # append from_node_count column to result
         df_result = (
             df_graph[["from_node_id", "from_node_type"]]
             .drop_duplicates()
             .merge(from_node_count, on="from_node_id", how="left")
         )
-
         df_result = df_result[["from_node_id", "from_node_count", "from_node_type"]]
+
+        # loop over nodes, add the one that is not the upstream of any other nodes
         for index, node in enumerate(nodes):
             if nodes.index[index] not in df_result["from_node_id"].to_numpy():
                 new_row = {
@@ -344,26 +349,29 @@ class Model(FileModel):
                 df_result = pd.concat(
                     [df_result, pd.DataFrame([new_row])], ignore_index=True
                 )
+        # loop over all the "from_node" and check if they have enough outneighbor
         for _, row in df_result.iterrows():
             # from node's outneighbor
-            try:
-                if row["from_node_count"] < edge_amount[row["from_node_type"]][2]:
-                    is_valid = False
-                    raise ValueError(
-                        f"Node {row['from_node_id']} must have at least {edge_amount[row['from_node_type']][2]} outneighbor(s) (got {row['from_node_count']})"
-                    )
-            except ValueError as e:
-                logging.error(e)
-        # check to node's neighbor
+            if row["from_node_count"] < edge_amount[row["from_node_type"]][2]:
+                is_valid = False
+                logging.error(
+                    f"Node {row['from_node_id']} must have at least {edge_amount[row['from_node_type']][2]} outneighbor(s) (got {row['from_node_count']})"
+                )
+
+        # count occurrence of "to_node" which reflects the number of inneighbors
         to_node_count = (
             df_graph.groupby("to_node_id").size().reset_index(name="to_node_count")  # type: ignore
         )
+
+        # append to_node_count column to result
         df_result = (
             df_graph[["to_node_id", "to_node_type"]]
             .drop_duplicates()
             .merge(to_node_count, on="to_node_id", how="left")
         )
         df_result = df_result[["to_node_id", "to_node_count", "to_node_type"]]
+
+        # loop over nodes, add the one that is not the downstream of any other nodes
         for index, node in enumerate(nodes):
             if nodes.index[index] not in df_result["to_node_id"].to_numpy():
                 new_row = {
@@ -375,15 +383,14 @@ class Model(FileModel):
                     [df_result, pd.DataFrame([new_row])], ignore_index=True
                 )
 
+        # loop over all the "to_node" and check if they have enough inneighbor
         for _, row in df_result.iterrows():
-            try:
-                if row["to_node_count"] < edge_amount[row["to_node_type"]][0]:
-                    is_valid = False
-                    raise ValueError(
-                        f"Node {row['to_node_id']} must have at least {edge_amount[row['to_node_type']][0]} inneighbor(s) (got {row['to_node_count']})"
-                    )
-            except ValueError as e:
-                logging.error(e)
+            if row["to_node_count"] < edge_amount[row["to_node_type"]][0]:
+                is_valid = False
+                logging.error(
+                    f"Node {row['to_node_id']} must have at least {edge_amount[row['to_node_type']][0]} inneighbor(s) (got {row['to_node_count']})"
+                )
+
         return is_valid
 
     @classmethod

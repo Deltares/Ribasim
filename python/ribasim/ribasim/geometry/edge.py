@@ -17,9 +17,9 @@ from ribasim.input_base import SpatialTableModel
 from ribasim.utils import UsedIDs
 from ribasim.validation import (
     can_connect,
-    connectivity,
-    control_edge_amount,
-    flow_edge_amount,
+    control_edge_neighbor_amount,
+    flow_edge_neighbor_amount,
+    node_type_connectivity,
 )
 
 from .base import _GeoBaseSchema
@@ -90,7 +90,7 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
         """
         if not can_connect(from_node.node_type, to_node.node_type):
             raise ValueError(
-                f"Node of type {to_node.node_type} cannot be downstream of node of type {from_node.node_type}. Possible downstream node: {connectivity[from_node.node_type]}."
+                f"Node of type {to_node.node_type} cannot be downstream of node of type {from_node.node_type}. Possible downstream node: {node_type_connectivity[from_node.node_type]}."
             )
 
         geometry_to_append = (
@@ -134,50 +134,34 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
 
     def _validate_edge(self, to_node: NodeData, from_node: NodeData, edge_type: str):
         assert self.df is not None
-        in_flow_neighbor: int = self.df.loc[
+        in_neighbor: int = self.df.loc[
             (self.df["to_node_id"] == to_node.node_id)
-            & (self.df["edge_type"] == "flow")
+            & (self.df["edge_type"] == edge_type)
         ].shape[0]
 
-        out_flow_neighbor: int = self.df.loc[
+        out_neighbor: int = self.df.loc[
             (self.df["from_node_id"] == from_node.node_id)
-            & (self.df["edge_type"] == "flow")
+            & (self.df["edge_type"] == edge_type)
         ].shape[0]
         # validation on neighbor amount
-        if (in_flow_neighbor >= flow_edge_amount[to_node.node_type][1]) & (
-            edge_type == "flow"
-        ):
-            raise ValueError(
-                f"Node {to_node.node_id} can have at most {flow_edge_amount[to_node.node_type][1]} flow edge inneighbor(s) (got {in_flow_neighbor})"
-            )
-        if (out_flow_neighbor >= flow_edge_amount[from_node.node_type][3]) & (
-            edge_type == "flow"
-        ):
-            raise ValueError(
-                f"Node {from_node.node_id} can have at most {flow_edge_amount[from_node.node_type][3]} flow edge outneighbor(s) (got {out_flow_neighbor})"
-            )
-
-        in_control_neighbor: int = self.df.loc[
-            (self.df["to_node_id"] == to_node.node_id)
-            & (self.df["edge_type"] == "control")
-        ].shape[0]
-        out_control_neighbor: int = self.df.loc[
-            (self.df["from_node_id"] == from_node.node_id)
-            & (self.df["edge_type"] == "control")
-        ].shape[0]
-
-        if (in_control_neighbor >= control_edge_amount[to_node.node_type][1]) & (
-            edge_type == "control"
-        ):
-            raise ValueError(
-                f"Node {to_node.node_id} can have at most {control_edge_amount[to_node.node_type][1]} control edge inneighbor(s) (got {in_control_neighbor})"
-            )
-        if (out_control_neighbor >= control_edge_amount[from_node.node_type][3]) & (
-            edge_type == "control"
-        ):
-            raise ValueError(
-                f"Node {from_node.node_id} can have at most {control_edge_amount[from_node.node_type][3]} control edge outneighbor(s) (got {out_control_neighbor})"
-            )
+        if edge_type == "flow":
+            if in_neighbor >= flow_edge_neighbor_amount[to_node.node_type][1]:
+                raise ValueError(
+                    f"Node {to_node.node_id} can have at most {flow_edge_neighbor_amount[to_node.node_type][1]} flow edge inneighbor(s) (got {in_neighbor})"
+                )
+            if out_neighbor >= flow_edge_neighbor_amount[from_node.node_type][3]:
+                raise ValueError(
+                    f"Node {from_node.node_id} can have at most {flow_edge_neighbor_amount[from_node.node_type][3]} flow edge outneighbor(s) (got {out_neighbor})"
+                )
+        elif edge_type == "control":
+            if in_neighbor >= control_edge_neighbor_amount[to_node.node_type][1]:
+                raise ValueError(
+                    f"Node {to_node.node_id} can have at most {control_edge_neighbor_amount[to_node.node_type][1]} control edge inneighbor(s) (got {in_neighbor})"
+                )
+            if out_neighbor >= control_edge_neighbor_amount[from_node.node_type][3]:
+                raise ValueError(
+                    f"Node {from_node.node_id} can have at most {control_edge_neighbor_amount[from_node.node_type][3]} control edge outneighbor(s) (got {out_neighbor})"
+                )
 
     def _get_where_edge_type(self, edge_type: str) -> NDArray[np.bool_]:
         assert self.df is not None

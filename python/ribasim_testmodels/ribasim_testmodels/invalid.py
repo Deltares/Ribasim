@@ -28,7 +28,7 @@ def invalid_qh_model() -> Model:
         starttime="2020-01-01",
         endtime="2020-12-01",
         crs="EPSG:28992",
-        validation=False,
+        use_validation=False,
     )
 
     model.tabulated_rating_curve.add(
@@ -44,7 +44,7 @@ def invalid_discrete_control_model() -> Model:
         starttime="2020-01-01",
         endtime="2020-12-01",
         crs="EPSG:28992",
-        validation=False,
+        use_validation=False,
     )
 
     basin_shared: list[TableModel[Any]] = [
@@ -118,7 +118,7 @@ def invalid_edge_types_model() -> Model:
         starttime="2020-01-01",
         endtime="2020-12-01",
         crs="EPSG:28992",
-        validation=False,
+        use_validation=False,
     )
 
     basin_shared: list[TableModel[Any]] = [
@@ -153,7 +153,7 @@ def invalid_unstable_model() -> Model:
         endtime="2021-01-01",
         crs="EPSG:28992",
         solver=Solver(dtmin=60.0),
-        validation=False,
+        use_validation=False,
     )
     id_shift = 10
     for i in range(6):
@@ -180,7 +180,7 @@ def invalid_priorities_model() -> Model:
         endtime="2021-01-01 00:00:00",
         crs="EPSG:28992",
         allocation=Allocation(use_allocation=True, timestep=1e5),
-        validation=False,
+        use_validation=False,
     )
 
     model.tabulated_rating_curve.add(

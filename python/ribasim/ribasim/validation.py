@@ -1,6 +1,6 @@
-# Table for connectivity
+# Table for connectivity between different node types
 # "Basin": ["LinearResistance"] means that the downstream of basin can be LinearResistance only
-connectivity: dict[str, list[str]] = {
+node_type_connectivity: dict[str, list[str]] = {
     "Basin": [
         "LinearResistance",
         "ManningResistance",
@@ -39,14 +39,15 @@ connectivity: dict[str, list[str]] = {
 }
 
 
-# Function to validate connection
-def can_connect(node_up: str, node_down: str) -> bool:
-    if node_up in connectivity:
-        return node_down in connectivity[node_up]
+# Function to validate connectivity between two node types
+def can_connect(node_type_up: str, node_type_down: str) -> bool:
+    if node_type_up in node_type_connectivity:
+        return node_type_down in node_type_connectivity[node_type_up]
     return False
 
 
-flow_edge_amount: dict[str, list[int]] = {
+flow_edge_neighbor_amount: dict[str, list[int]] = {
+    # list[int] = [in_min, in_max, out_min, out_max]
     "Basin": [0, int(1e9), 0, int(1e9)],
     "LinearResistance": [1, 1, 1, 1],
     "ManningResistance": [1, 1, 1, 1],
@@ -64,7 +65,8 @@ flow_edge_amount: dict[str, list[int]] = {
     "FlowDemand": [0, 0, 0, 0],
 }
 
-control_edge_amount: dict[str, list[int]] = {
+control_edge_neighbor_amount: dict[str, list[int]] = {
+    # list[int] = [in_min, in_max, out_min, out_max]
     "Basin": [0, 1, 0, 0],
     "LinearResistance": [0, 1, 0, 0],
     "ManningResistance": [0, 1, 0, 0],
