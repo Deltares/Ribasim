@@ -19,7 +19,7 @@ class _BaseSchema(pa.DataFrameModel):
 
     @classmethod
     def migrate(cls, df: Any, schema_version: int) -> Any:
-        f: Callable[[Any], Any] = getattr(
+        f: Callable[[Any, Any], Any] = getattr(
             migrations, str(cls.__name__).lower() + "_migration", lambda x, _: x
         )
         return f(df, schema_version)
