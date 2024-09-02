@@ -302,16 +302,16 @@ class Model(FileModel):
         )
         df_graph = df_graph.rename(columns={"node_type": "to_node_type"})
 
-        if not self._check_neighbors(
+        if not self._check_neighbor_amount(
             df_graph, flow_edge_neighbor_amount, "flow", df_node["node_type"]
         ):
             raise ValueError("Minimum flow inneighbor or outneighbor unsatisfied")
-        if not self._check_neighbors(
+        if not self._check_neighbor_amount(
             df_graph, control_edge_neighbor_amount, "control", df_node["node_type"]
         ):
             raise ValueError("Minimum control inneighbor or outneighbor unsatisfied")
 
-    def _check_neighbors(
+    def _check_neighbor_amount(
         self,
         df_graph: pd.DataFrame,
         edge_amount: dict[str, list[int]],
@@ -330,27 +330,21 @@ class Model(FileModel):
             df_graph.groupby("from_node_id").size().reset_index(name="from_node_count")  # type: ignore
         )
 
-        # append from_node_count column to result
-        df_result = (
+        # append from_node_count column to from_node_id and from_node_type
+        from_node_info = (
             df_graph[["from_node_id", "from_node_type"]]
             .drop_duplicates()
             .merge(from_node_count, on="from_node_id", how="left")
         )
-        df_result = df_result[["from_node_id", "from_node_count", "from_node_type"]]
+        from_node_info = from_node_info[
+            ["from_node_id", "from_node_count", "from_node_type"]
+        ]
 
-        # loop over nodes, add the one that is not the upstream of any other nodes
-        for index, node in enumerate(nodes):
-            if nodes.index[index] not in df_result["from_node_id"].to_numpy():
-                new_row = {
-                    "from_node_id": nodes.index[index],
-                    "from_node_count": 0,
-                    "from_node_type": node,
-                }
-                df_result = pd.concat(
-                    [df_result, pd.DataFrame([new_row])], ignore_index=True
-                )
+        # add the node that is not the upstream of any other nodes
+        from_node_info = self._add_source_sink_node(nodes, from_node_info, "from")
+
         # loop over all the "from_node" and check if they have enough outneighbor
-        for _, row in df_result.iterrows():
+        for _, row in from_node_info.iterrows():
             # from node's outneighbor
             if row["from_node_count"] < edge_amount[row["from_node_type"]][2]:
                 is_valid = False
@@ -364,27 +358,18 @@ class Model(FileModel):
         )
 
         # append to_node_count column to result
-        df_result = (
+        to_node_info = (
             df_graph[["to_node_id", "to_node_type"]]
             .drop_duplicates()
             .merge(to_node_count, on="to_node_id", how="left")
         )
-        df_result = df_result[["to_node_id", "to_node_count", "to_node_type"]]
+        to_node_info = to_node_info[["to_node_id", "to_node_count", "to_node_type"]]
 
-        # loop over nodes, add the one that is not the downstream of any other nodes
-        for index, node in enumerate(nodes):
-            if nodes.index[index] not in df_result["to_node_id"].to_numpy():
-                new_row = {
-                    "to_node_id": nodes.index[index],
-                    "to_node_count": 0,
-                    "to_node_type": node,
-                }
-                df_result = pd.concat(
-                    [df_result, pd.DataFrame([new_row])], ignore_index=True
-                )
+        # add the node that is not the downstream of any other nodes
+        to_node_info = self._add_source_sink_node(nodes, to_node_info, "to")
 
         # loop over all the "to_node" and check if they have enough inneighbor
-        for _, row in df_result.iterrows():
+        for _, row in to_node_info.iterrows():
             if row["to_node_count"] < edge_amount[row["to_node_type"]][0]:
                 is_valid = False
                 logging.error(
@@ -392,6 +377,44 @@ class Model(FileModel):
                 )
 
         return is_valid
+
+    def _add_source_sink_node(
+        self, nodes, node_info: pd.DataFrame, direction: str
+    ) -> pd.DataFrame:
+        """Loop over node table.
+
+        Add the nodes whose id are missing in the from_node and to_node column in the edge table because they are not the upstream or downstrem of other nodes.
+
+        Specify that their occurrence in from_node table or to_node table is 0.
+        """
+
+        if direction == "from":
+            # loop over nodes, add the one that is not the downstream of any other nodes
+            for index, node in enumerate(nodes):
+                if nodes.index[index] not in node_info["from_node_id"].to_numpy():
+                    new_row = {
+                        "from_node_id": nodes.index[index],
+                        "from_node_count": 0,
+                        "from_node_type": node,
+                    }
+                    node_info = pd.concat(
+                        [node_info, pd.DataFrame([new_row])], ignore_index=True
+                    )
+
+        elif direction == "to":
+            # loop over nodes, add the one that is not the downstream of any other nodes
+            for index, node in enumerate(nodes):
+                if nodes.index[index] not in node_info["to_node_id"].to_numpy():
+                    new_row = {
+                        "to_node_id": nodes.index[index],
+                        "to_node_count": 0,
+                        "to_node_type": node,
+                    }
+                    node_info = pd.concat(
+                        [node_info, pd.DataFrame([new_row])], ignore_index=True
+                    )
+
+        return node_info
 
     @classmethod
     def _load(cls, filepath: Path | None) -> dict[str, Any]:
