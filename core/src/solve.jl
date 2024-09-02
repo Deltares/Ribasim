@@ -86,10 +86,8 @@ function set_current_basin_properties!(
 
     storage = u.storage
 
-    for i in eachindex(du.storage)
-        s = storage[i]
-        level = get_level_from_storage(basin, i, s)
-        current_level[i] = level
+    for (i, s) in enumerate(storage)
+        current_level[i] = get_level_from_storage(basin, i, s)
         current_area[i] = basin.level_to_area[i](current_level[i])
     end
 end
