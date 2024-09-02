@@ -7,7 +7,7 @@ from pandas import DataFrame
 # Do the same for write_schema_version in ribasim_qgis/core/geopackage.py
 
 
-def nodeschema_migration(gdf: GeoDataFrame, schema_version) -> GeoDataFrame:
+def nodeschema_migration(gdf: GeoDataFrame, schema_version: int) -> GeoDataFrame:
     if "node_id" in gdf.columns and schema_version == 0:
         warnings.warn("Migrating outdated Node table.", UserWarning)
         assert gdf["node_id"].is_unique, "Node IDs have to be unique."
@@ -16,7 +16,7 @@ def nodeschema_migration(gdf: GeoDataFrame, schema_version) -> GeoDataFrame:
     return gdf
 
 
-def edgeschema_migration(gdf: GeoDataFrame, schema_version) -> GeoDataFrame:
+def edgeschema_migration(gdf: GeoDataFrame, schema_version: int) -> GeoDataFrame:
     if "from_node_type" in gdf.columns and schema_version == 0:
         warnings.warn("Migrating outdated Edge table.", UserWarning)
         gdf.drop("from_node_type", inplace=True, axis=1)
@@ -30,7 +30,7 @@ def edgeschema_migration(gdf: GeoDataFrame, schema_version) -> GeoDataFrame:
     return gdf
 
 
-def basinstaticschema_migration(df: DataFrame, schema_version) -> DataFrame:
+def basinstaticschema_migration(df: DataFrame, schema_version: int) -> DataFrame:
     if "urban_runoff" in df.columns and schema_version == 0:
         warnings.warn("Migrating outdated Basin / static table.", UserWarning)
         df.drop("urban_runoff", inplace=True, axis=1)
@@ -38,7 +38,7 @@ def basinstaticschema_migration(df: DataFrame, schema_version) -> DataFrame:
     return df
 
 
-def basintimeschema_migration(df: DataFrame, schema_version) -> DataFrame:
+def basintimeschema_migration(df: DataFrame, schema_version: int) -> DataFrame:
     if "urban_runoff" in df.columns and schema_version == 0:
         warnings.warn("Migrating outdated Basin / time table.", UserWarning)
         df.drop("urban_runoff", inplace=True, axis=1)
@@ -47,7 +47,7 @@ def basintimeschema_migration(df: DataFrame, schema_version) -> DataFrame:
 
 
 def continuouscontrolvariableschema_migration(
-    df: DataFrame, schema_version
+    df: DataFrame, schema_version: int
 ) -> DataFrame:
     if "listen_node_type" in df.columns and schema_version == 0:
         warnings.warn(
@@ -58,7 +58,9 @@ def continuouscontrolvariableschema_migration(
     return df
 
 
-def discretecontrolvariableschema_migration(df: DataFrame, schema_version) -> DataFrame:
+def discretecontrolvariableschema_migration(
+    df: DataFrame, schema_version: int
+) -> DataFrame:
     if "listen_node_type" in df.columns and schema_version == 0:
         warnings.warn(
             "Migrating outdated DiscreteControl / variable table.", UserWarning
@@ -68,7 +70,7 @@ def discretecontrolvariableschema_migration(df: DataFrame, schema_version) -> Da
     return df
 
 
-def pidcontrolstaticschema_migration(df: DataFrame, schema_version) -> DataFrame:
+def pidcontrolstaticschema_migration(df: DataFrame, schema_version: int) -> DataFrame:
     if "listen_node_type" in df.columns and schema_version == 0:
         warnings.warn("Migrating outdated PidControl / static table.", UserWarning)
         df.drop("listen_node_type", inplace=True, axis=1)
@@ -76,7 +78,7 @@ def pidcontrolstaticschema_migration(df: DataFrame, schema_version) -> DataFrame
     return df
 
 
-def outletstaticschema_migration(df: DataFrame, schema_version) -> DataFrame:
+def outletstaticschema_migration(df: DataFrame, schema_version: int) -> DataFrame:
     if schema_version == 1:
         warnings.warn("Migrating outdated Outlet / static table.", UserWarning)
         df.rename(columns={"min_crest_level": "min_upstream_level"}, inplace=True)
