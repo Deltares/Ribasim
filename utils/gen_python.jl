@@ -55,3 +55,18 @@ open(normpath(@__DIR__, "..", "python", "ribasim", "ribasim", "schemas.py"), "w"
     init = Dict("models" => get_models())
     println(io, model_template(; init = init))
 end
+
+function get_connectivity()
+    """
+    Set up a vector contains all possible connecting node for all node types.
+    """
+    [
+        (name = T, connectivity = Ribasim.neighbortypes(T)) for
+        T in keys(Ribasim.config.nodekinds)
+    ]
+end
+
+connection_template = Template(
+    normpath(@__DIR__, "templates", "validation.py.jinja");
+    config = Dict("trim_blocks" => true, "lstrip_blocks" => true, "autoescape" => false),
+)
