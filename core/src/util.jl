@@ -939,7 +939,7 @@ end
 MonitoredBackTracing is a thin wrapper of BackTracking, making sure that
 the BackTracking relaxation is rejected if it results in a residual increase
 """
-function OrdinaryDiffEq.relax!(
+function OrdinaryDiffEqNonlinearSolve.relax!(
     dz,
     nlsolver::AbstractNLSolver,
     integrator::DEIntegrator,

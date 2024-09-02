@@ -15,9 +15,7 @@ using Logging: LogLevel, Debug, Info, Warn, Error
 using ..Ribasim: Ribasim, isnode, nodetype
 using OrdinaryDiffEq:
     OrdinaryDiffEqAlgorithm,
-    OrdinaryDiffEqNewtonAdaptiveAlgorithm,
     NonlinearSolveAlg,
-    NewtonRaphson,
     Euler,
     ImplicitEuler,
     KenCarp4,
@@ -27,6 +25,8 @@ using OrdinaryDiffEq:
     Rosenbrock23,
     TRBDF2,
     Tsit5
+using OrdinaryDiffEqCore: OrdinaryDiffEqNewtonAdaptiveAlgorithm
+using OrdinaryDiffEqNonlinearSolve: NewtonRaphson
 using LineSearches: BackTracking
 using ADTypes: AutoForwardDiff
 
