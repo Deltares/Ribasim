@@ -118,7 +118,7 @@ def test_minimum_flow_neighbor():
     )
     model.outlet.add(
         Node(2, Point(1.0, 0.0)),
-        [outlet.Static(flow_rate=[1e-3], min_crest_level=[2.0])],
+        [outlet.Static(flow_rate=[1e-3], min_upstream_level=[2.0])],
     )
     model.terminal.add(Node(4, Point(3.0, -2.0)))
 
@@ -147,7 +147,7 @@ def test_minimum_control_neighbor():
     )
     model.outlet.add(
         Node(2, Point(1.0, 0.0)),
-        [outlet.Static(flow_rate=[1e-3], min_crest_level=[2.0])],
+        [outlet.Static(flow_rate=[1e-3], min_upstream_level=[2.0])],
     )
     model.terminal.add(Node(4, Point(3.0, -2.0)))
 
