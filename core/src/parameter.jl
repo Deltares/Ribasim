@@ -519,7 +519,7 @@ continuous_control_type: one of None, ContinuousControl, PidControl
     flow_rate::Cache = cache(length(node_id))
     min_flow_rate::Vector{Float64} = zeros(length(node_id))
     max_flow_rate::Vector{Float64} = fill(Inf, length(node_id))
-    min_crest_level::Vector{Float64} = fill(-Inf, length(node_id))
+    min_upstream_level::Vector{Float64} = fill(-Inf, length(node_id))
     control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate} = Dict()
     continuous_control_type::Vector{ContinuousControlType.T} =
         fill(ContinuousControlType.None, length(node_id))
@@ -532,7 +532,7 @@ continuous_control_type: one of None, ContinuousControl, PidControl
         flow_rate,
         min_flow_rate,
         max_flow_rate,
-        min_crest_level,
+        min_upstream_level,
         control_mapping,
         continuous_control_type,
     )
@@ -545,7 +545,7 @@ continuous_control_type: one of None, ContinuousControl, PidControl
                 flow_rate,
                 min_flow_rate,
                 max_flow_rate,
-                min_crest_level,
+                min_upstream_level,
                 control_mapping,
                 continuous_control_type,
             )
