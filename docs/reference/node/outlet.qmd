@@ -22,7 +22,7 @@ active                | Bool    | -            | (optional, default true)
 flow_rate             | Float64 | $m^3 s^{-1}$ | non-negative
 min_flow_rate         | Float64 | $m^3 s^{-1}$ | (optional, default 0.0)
 max_flow_rate         | Float64 | $m^3 s^{-1}$ | (optional)
-min_crest_level       | Float64 | $m$          | (optional)
+min_upstream_level       | Float64 | $m$          | (optional)
 
 # Equations
 

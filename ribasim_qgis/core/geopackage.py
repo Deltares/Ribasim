@@ -51,7 +51,7 @@ def layers(path: Path) -> list[str]:
     return layers
 
 
-def write_schema_version(path: Path, version: int = 1) -> None:
+def write_schema_version(path: Path, version: int = 2) -> None:
     """Write the schema version to the geopackage."""
     with sqlite3_cursor(path) as cursor:
         cursor.execute(

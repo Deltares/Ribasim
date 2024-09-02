@@ -86,7 +86,7 @@ end
     flow_rate::Float64
     min_flow_rate::Union{Missing, Float64}
     max_flow_rate::Union{Missing, Float64}
-    min_crest_level::Union{Missing, Float64}
+    min_upstream_level::Union{Missing, Float64}
     control_state::Union{Missing, String}
 end
 

@@ -372,11 +372,11 @@ end
     outlet_flow =
         filter([:from_node_id, :to_node_id] => (from, to) -> from == 2 && to == 3, flow)
 
-    t_min_crest_level =
-        level.t[2] * (outlet.min_crest_level[1] - level.u[1]) / (level.u[2] - level.u[1])
+    t_min_upstream_level =
+        level.t[2] * (outlet.min_upstream_level[1] - level.u[1]) / (level.u[2] - level.u[1])
 
     # No outlet flow when upstream level is below minimum crest level
-    @test all(@. outlet_flow.flow_rate[t <= t_min_crest_level] == 0)
+    @test all(@. outlet_flow.flow_rate[t <= t_min_upstream_level] == 0)
 
     t = Ribasim.tsaves(model)
     t_maximum_level = level.t[2]

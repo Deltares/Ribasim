@@ -554,7 +554,7 @@ function formulate_flow!(
         min_flow_rate,
         max_flow_rate,
         continuous_control_type,
-        min_crest_level,
+        min_upstream_level,
     ) in zip(
         outlet.node_id,
         outlet.inflow_edge,
@@ -564,7 +564,7 @@ function formulate_flow!(
         outlet.min_flow_rate,
         outlet.max_flow_rate,
         outlet.continuous_control_type,
-        outlet.min_crest_level,
+        outlet.min_upstream_level,
     )
         if !(active || all_nodes_active) ||
            (continuous_control_type != continuous_control_type_)
@@ -588,7 +588,7 @@ function formulate_flow!(
 
         # No flow out outlet if source level is lower than minimum crest level
         if src_level !== nothing
-            q *= reduction_factor(src_level - min_crest_level, 0.1)
+            q *= reduction_factor(src_level - min_upstream_level, 0.1)
         end
 
         q = clamp(q, min_flow_rate, max_flow_rate)
