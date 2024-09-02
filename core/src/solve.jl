@@ -2,11 +2,11 @@
 The right hand side function of the system of ODEs set up by Ribasim.
 """
 function water_balance!(
-    du::ComponentVector,
-    u::ComponentVector,
+    du::V,
+    u::V,
     p::Parameters,
     t::Number,
-)::Nothing
+)::Nothing where {V <: ComponentVector}
     (; graph, basin, pid_control) = p
 
     du .= 0.0

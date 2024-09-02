@@ -14,12 +14,14 @@ using Dates: DateTime
 using Logging: LogLevel, Debug, Info, Warn, Error
 using ..Ribasim: Ribasim, isnode, nodetype
 using OrdinaryDiffEqCore: OrdinaryDiffEqAlgorithm, OrdinaryDiffEqNewtonAdaptiveAlgorithm
-using OrdinaryDiffEqNonlinearSolve: NLNewton
+using OrdinaryDiffEqNonlinearSolve: NLNewton, NonlinearSolveAlg, NewtonRaphson
 using OrdinaryDiffEqLowOrderRK: Euler, RK4
 using OrdinaryDiffEqTsit5: Tsit5
 using OrdinaryDiffEqSDIRK: ImplicitEuler, KenCarp4, TRBDF2
 using OrdinaryDiffEqBDF: QNDF
 using OrdinaryDiffEqRosenbrock: Rodas5, Rosenbrock23
+using LineSearches: BackTracking
+using ADTypes: AutoForwardDiff
 
 export Config, Solver, Results, Logging, Toml
 export algorithm,
@@ -233,8 +235,11 @@ function algorithm(solver::Solver; u0 = [])::OrdinaryDiffEqAlgorithm
     end
     kwargs = Dict{Symbol, Any}()
     if algotype <: OrdinaryDiffEqNewtonAdaptiveAlgorithm
-        kwargs[:nlsolve] = NLNewton(;
-            relax = Ribasim.MonitoredBackTracking(; z_tmp = copy(u0), dz_tmp = copy(u0)),
+        # kwargs[:nlsolve] = NLNewton(;
+        #     relax = Ribasim.MonitoredBackTracking(; z_tmp = copy(u0), dz_tmp = copy(u0)),
+        # )
+        kwargs[:nlsolve] = NonlinearSolveAlg(
+            NewtonRaphson(; linesearch = BackTracking(), autodiff = AutoForwardDiff()),
         )
     end
     # not all algorithms support this keyword
