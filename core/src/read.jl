@@ -533,7 +533,7 @@ function Outlet(db::DB, config::Config, graph::MetaGraph)::Outlet
         parsed_parameters.max_flow_rate,
         parsed_parameters.control_mapping,
         parsed_parameters.min_upstream_level,
-        parsed_parameters.min_upstream_level,
+        parsed_parameters.max_downstream_level,
     )
 end
 
