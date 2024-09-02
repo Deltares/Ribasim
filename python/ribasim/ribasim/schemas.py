@@ -19,11 +19,11 @@ class _BaseSchema(pa.DataFrameModel):
         return "fid"
 
     @classmethod
-    def migrate(cls, df: Any) -> Any:
+    def migrate(cls, df: Any, schema_version: int) -> Any:
         f: Callable[[Any], Any] = getattr(
-            migrations, str(cls.__name__).lower() + "_migration", lambda x: x
+            migrations, str(cls.__name__).lower() + "_migration", lambda x, _: x
         )
-        return f(df)
+        return f(df, schema_version)
 
 
 class BasinConcentrationExternalSchema(_BaseSchema):

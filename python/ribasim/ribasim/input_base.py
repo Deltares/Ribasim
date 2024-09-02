@@ -177,7 +177,7 @@ class TableModel(FileModel, Generic[TableT]):
             if db_path is not None:
                 version = _get_db_schema_version(db_path)
                 if version < ribasim.__schema_version__:
-                    v = cls.tableschema().migrate(v)
+                    v = cls.tableschema().migrate(v, version)
             for colname in v.columns:
                 if colname not in cls.columns() and not colname.startswith("meta_"):
                     raise ValueError(
