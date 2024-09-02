@@ -16,7 +16,8 @@ using ..Ribasim: Ribasim, isnode, nodetype
 using OrdinaryDiffEq:
     OrdinaryDiffEqAlgorithm,
     OrdinaryDiffEqNewtonAdaptiveAlgorithm,
-    NLNewton,
+    NonlinearSolveAlg,
+    NewtonRaphson,
     Euler,
     ImplicitEuler,
     KenCarp4,
@@ -26,6 +27,8 @@ using OrdinaryDiffEq:
     Rosenbrock23,
     TRBDF2,
     Tsit5
+using LineSearches: BackTracking
+using ADTypes: AutoForwardDiff
 
 export Config, Solver, Results, Logging, Toml
 export algorithm,
@@ -239,8 +242,11 @@ function algorithm(solver::Solver; u0 = [])::OrdinaryDiffEqAlgorithm
     end
     kwargs = Dict{Symbol, Any}()
     if algotype <: OrdinaryDiffEqNewtonAdaptiveAlgorithm
-        kwargs[:nlsolve] = NLNewton(;
-            relax = Ribasim.MonitoredBackTracking(; z_tmp = copy(u0), dz_tmp = copy(u0)),
+        # kwargs[:nlsolve] = NLNewton(;
+        #     relax = Ribasim.MonitoredBackTracking(; z_tmp = copy(u0), dz_tmp = copy(u0)),
+        # )
+        kwargs[:nlsolve] = NonlinearSolveAlg(
+            NewtonRaphson(; linesearch = BackTracking(), autodiff = AutoForwardDiff()),
         )
     end
     # not all algorithms support this keyword
