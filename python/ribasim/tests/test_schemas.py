@@ -34,9 +34,9 @@ def test_model_schema(basic, tmp_path):
     toml_path = tmp_path / "basic.toml"
     db_path = tmp_path / "database.gpkg"
     basic.write(toml_path)
-    assert _get_db_schema_version(db_path) == 1
-    _set_db_schema_version(db_path, 2)
     assert _get_db_schema_version(db_path) == 2
+    _set_db_schema_version(db_path, 1)
+    assert _get_db_schema_version(db_path) == 1
 
 
 def test_geometry_validation():
