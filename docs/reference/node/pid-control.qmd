@@ -13,17 +13,17 @@ In the future controlling the flow on a particular edge could be supported.
 
 # Static
 
-column           | type     | unit     | restriction
----------------- | -------- | -------- | -----------
-node_id          | Int32    | -        | sorted
-control_state    | String   | -        | (optional) sorted per node_id
-active           | Bool     | -        | (optional, default true)
-listen_node_type | String   | -        | known node type
-listen_node_id   | Int32    | -        | -
-target           | Float64  | $m$      | -
-proportional     | Float64  | $s^{-1}$ | -
-integral         | Float64  | $s^{-2}$ | -
-derivative       | Float64  | -        | -
+column           | type     | unit            | restriction
+---------------- | -------- | --------------- | -----------
+node_id          | Int32    | -               | sorted
+control_state    | String   | -               | (optional) sorted per node_id
+active           | Bool     | -               | (optional, default true)
+listen_node_type | String   | -               | known node type
+listen_node_id   | Int32    | -               | -
+target           | Float64  | $\text{m}$      | -
+proportional     | Float64  | $\text{s}^{-1}$ | -
+integral         | Float64  | $\text{s}^{-2}$ | -
+derivative       | Float64  | -               | -
 
 ## Time
 
@@ -35,16 +35,16 @@ these values interpolated linearly, and outside these values area constant given
 nearest time value.
 Note that a `node_id` can be either in this table or in the static one, but not both.
 
-column           | type     | unit     | restriction
----------------- | -------- | -------- | -----------
-node_id          | Int32    | -        | sorted
-time             | DateTime | -        | sorted per node_id
-listen_node_type | Int32    | -        | known node type
-listen_node_id   | Int32    | -        | -
-target           | Float64  | $m$      | -
-proportional     | Float64  | $s^{-1}$ | -
-integral         | Float64  | $s^{-2}$ | -
-derivative       | Float64  | -        | -
+column           | type     | unit            | restriction
+---------------- | -------- | --------------- | -----------
+node_id          | Int32    | -               | sorted
+time             | DateTime | -               | sorted per node_id
+listen_node_type | Int32    | -               | known node type
+listen_node_id   | Int32    | -               | -
+target           | Float64  | $\text{m}$      | -
+proportional     | Float64  | $\text{s}^{-1}$ | -
+integral         | Float64  | $\text{s}^{-2}$ | -
+derivative       | Float64  | -               | -
 
 # Equations
 
