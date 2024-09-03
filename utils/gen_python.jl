@@ -70,3 +70,9 @@ connection_template = Template(
     normpath(@__DIR__, "templates", "validation.py.jinja");
     config = Dict("trim_blocks" => true, "lstrip_blocks" => true, "autoescape" => false),
 )
+
+# Write schemas.py
+open(normpath(@__DIR__, "..", "python", "ribasim", "ribasim", "validation.py"), "w") do io
+    init = Dict("nodes" => get_connectivity())
+    println(io, connection_template(; init = init))
+end
