@@ -274,7 +274,7 @@ function formulate_flow!(
 
         # Smoothly let abstraction go to 0 as the source basin
         # level reaches its minimum level
-        _, source_level = get_level(p, inflow_id, t, du)
+        source_level = get_level(p, inflow_id, t, du)
         Δsource_level = source_level - min_level
         factor_level = reduction_factor(Δsource_level, 0.1)
         q *= factor_level
@@ -308,8 +308,8 @@ function formulate_flow!(
         outflow_id = outflow_edge.edge[2]
 
         if (active[id.idx] || all_nodes_active)
-            _, h_a = get_level(p, inflow_id, t, du)
-            _, h_b = get_level(p, outflow_id, t, du)
+            h_a = get_level(p, inflow_id, t, du)
+            h_b = get_level(p, outflow_id, t, du)
             q_unlimited = (h_a - h_b) / resistance[id.idx]
             q = clamp(q_unlimited, -max_flow_rate[id.idx], max_flow_rate[id.idx])
 
@@ -344,7 +344,7 @@ function formulate_flow!(
 
         if active[id.idx] || all_nodes_active
             factor = low_storage_factor(u.storage, upstream_basin_id, 10.0)
-            q = factor * table[id.idx](get_level(p, upstream_basin_id, t, du)[2])
+            q = factor * table[id.idx](get_level(p, upstream_basin_id, t, du))
         else
             q = 0.0
         end
@@ -424,8 +424,8 @@ function formulate_flow!(
             continue
         end
 
-        _, h_a = get_level(p, inflow_id, t, du)
-        _, h_b = get_level(p, outflow_id, t, du)
+        h_a = get_level(p, inflow_id, t, du)
+        h_b = get_level(p, outflow_id, t, du)
 
         bottom_a = upstream_bottom[id.idx]
         bottom_b = downstream_bottom[id.idx]
@@ -524,20 +524,14 @@ function formulate_flow!(
 
         inflow_id = inflow_edge.edge[1]
         outflow_id = outflow_edge.edge[2]
+        src_level = get_level(p, inflow_id, t, du)
+        dst_level = get_level(p, outflow_id, t, du)
 
         factor = low_storage_factor(u.storage, inflow_id, 10.0)
         q = flow_rate * factor
 
-        _, src_level = get_level(p, inflow_id, t, du)
-        _, dst_level = get_level(p, outflow_id, t, du)
-
-        if src_level !== nothing
-            q *= reduction_factor(src_level - min_upstream_level, 0.02)
-        end
-
-        if dst_level !== nothing
-            q *= reduction_factor(max_downstream_level - dst_level, 0.02)
-        end
+        q *= reduction_factor(src_level - min_upstream_level, 0.02)
+        q *= reduction_factor(max_downstream_level - dst_level, 0.02)
 
         q = clamp(q, min_flow_rate, max_flow_rate)
 
@@ -588,26 +582,17 @@ function formulate_flow!(
 
         inflow_id = inflow_edge.edge[1]
         outflow_id = outflow_edge.edge[2]
+        src_level = get_level(p, inflow_id, t, du)
+        dst_level = get_level(p, outflow_id, t, du)
 
         q = flow_rate
         q *= low_storage_factor(u.storage, inflow_id, 10.0)
 
-        _, src_level = get_level(p, inflow_id, t, du)
-        _, dst_level = get_level(p, outflow_id, t, du)
-
         # No flow of outlet if source level is lower than target level
-        if src_level !== nothing && dst_level !== nothing
-            Δlevel = src_level - dst_level
-            q *= reduction_factor(Δlevel, 0.02)
-        end
-
-        if src_level !== nothing
-            q *= reduction_factor(src_level - min_upstream_level, 0.02)
-        end
-
-        if dst_level !== nothing
-            q *= reduction_factor(max_downstream_level - dst_level, 0.02)
-        end
+        Δlevel = src_level - dst_level
+        q *= reduction_factor(Δlevel, 0.02)
+        q *= reduction_factor(src_level - min_upstream_level, 0.02)
+        q *= reduction_factor(max_downstream_level - dst_level, 0.02)
 
         q = clamp(q, min_flow_rate, max_flow_rate)
 
