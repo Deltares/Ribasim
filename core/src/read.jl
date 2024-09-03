@@ -491,8 +491,12 @@ end
 
 function Outlet(db::DB, config::Config, graph::MetaGraph)::Outlet
     static = load_structvector(db, config, OutletStaticV1)
-    defaults =
-        (; min_flow_rate = 0.0, max_flow_rate = Inf, min_crest_level = -Inf, active = true)
+    defaults = (;
+        min_flow_rate = 0.0,
+        max_flow_rate = Inf,
+        min_upstream_level = -Inf,
+        active = true,
+    )
     parsed_parameters, valid = parse_static_and_time(db, config, Outlet; static, defaults)
 
     if !valid
@@ -518,7 +522,7 @@ function Outlet(db::DB, config::Config, graph::MetaGraph)::Outlet
         flow_rate,
         parsed_parameters.min_flow_rate,
         parsed_parameters.max_flow_rate,
-        parsed_parameters.min_crest_level,
+        parsed_parameters.min_upstream_level,
         parsed_parameters.control_mapping,
     )
 end

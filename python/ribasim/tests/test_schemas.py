@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 import pytest
+import ribasim
 from pydantic import ValidationError
 from ribasim import Model
 from ribasim.db_utils import _get_db_schema_version, _set_db_schema_version
@@ -34,9 +35,10 @@ def test_model_schema(basic, tmp_path):
     toml_path = tmp_path / "basic.toml"
     db_path = tmp_path / "database.gpkg"
     basic.write(toml_path)
-    assert _get_db_schema_version(db_path) == 1
-    _set_db_schema_version(db_path, 2)
-    assert _get_db_schema_version(db_path) == 2
+
+    assert _get_db_schema_version(db_path) == ribasim.__schema_version__
+    _set_db_schema_version(db_path, 0)
+    assert _get_db_schema_version(db_path) == 0
 
 
 def test_geometry_validation():

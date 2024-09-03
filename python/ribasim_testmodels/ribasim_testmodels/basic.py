@@ -381,7 +381,7 @@ def outlet_model():
     # Setup the outlet
     model.outlet.add(
         Node(2, Point(1.0, 0.0)),
-        [outlet.Static(flow_rate=[1e-3], min_crest_level=[2.0])],
+        [outlet.Static(flow_rate=[1e-3], min_upstream_level=[2.0])],
     )
 
     # Setup the edges

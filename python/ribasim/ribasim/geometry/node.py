@@ -19,7 +19,7 @@ __all__ = ("NodeTable",)
 
 
 class NodeSchema(_GeoBaseSchema):
-    node_id: Index[Int32] = pa.Field(default=0, check_name=True)
+    node_id: Index[Int32] = pa.Field(default=0, ge=0, check_name=True)
     name: Series[str] = pa.Field(default="")
     node_type: Series[str] = pa.Field(default="")
     subnetwork_id: Series[pd.Int32Dtype] = pa.Field(

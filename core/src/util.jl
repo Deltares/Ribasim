@@ -50,22 +50,19 @@ function get_storages_from_levels(basin::Basin, levels::AbstractVector)::Vector{
 end
 
 """
-Compute the area and level of a basin given its storage.
+Compute the level of a basin given its storage.
 """
-function get_area_and_level(basin::Basin, state_idx::Int, storage::T)::Tuple{T, T} where {T}
+function get_level_from_storage(basin::Basin, state_idx::Int, storage)
     storage_to_level = basin.storage_to_level[state_idx]
-    level_to_area = basin.level_to_area[state_idx]
     if storage >= 0
-        level = storage_to_level(storage)
+        return storage_to_level(storage)
     else
         # Negative storage is not feasible and this yields a level
         # below the basin bottom, but this does yield usable gradients
         # for the non-linear solver
-        bottom = first(level_to_area.t)
-        level = bottom + derivative(storage_to_level, 0.0) * storage
+        bottom = first(storage_to_level.u)
+        return bottom + derivative(storage_to_level, 0.0) * storage
     end
-    area = level_to_area(level)
-    return area, level
 end
 
 """
@@ -896,7 +893,7 @@ end
 (A::AbstractInterpolation)(t::GradientTracer) = t
 reduction_factor(x::GradientTracer, threshold::Real) = x
 relaxed_root(x::GradientTracer, threshold::Real) = x
-get_area_and_level(basin::Basin, state_idx::Int, storage::GradientTracer) = storage, storage
+get_level_from_storage(basin::Basin, state_idx::Int, storage::GradientTracer) = storage
 stop_declining_negative_storage!(du, u::ComponentVector{<:GradientTracer}) = nothing
 
 @kwdef struct MonitoredBackTracking{B, V}
@@ -939,7 +936,7 @@ end
 MonitoredBackTracing is a thin wrapper of BackTracking, making sure that
 the BackTracking relaxation is rejected if it results in a residual increase
 """
-function OrdinaryDiffEq.relax!(
+function OrdinaryDiffEqNonlinearSolve.relax!(
     dz,
     nlsolver::AbstractNLSolver,
     integrator::DEIntegrator,
