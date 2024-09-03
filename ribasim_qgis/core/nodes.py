@@ -570,7 +570,7 @@ class OutletStatic(Input):
             QgsField("flow_rate", QVariant.Double),
             QgsField("min_flow_rate", QVariant.Double),
             QgsField("max_flow_rate", QVariant.Double),
-            QgsField("min_crest_level", QVariant.Double),
+            QgsField("min_upstream_level", QVariant.Double),
             QgsField("control_state", QVariant.String),
         ]
 
