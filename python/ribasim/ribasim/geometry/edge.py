@@ -101,6 +101,7 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
         edge_type = (
             "control" if from_node.node_type in SPATIALCONTROLNODETYPES else "flow"
         )
+        self._validate_edge(to_node, from_node, edge_type)
         assert self.df is not None
         if edge_id is None:
             edge_id = self._used_edge_ids.new_id()
@@ -122,8 +123,6 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
             crs=self.df.crs,
             index=pd.Index([edge_id], name="edge_id"),
         )
-
-        self._validate_edge(to_node, from_node, edge_type)
 
         self.df = GeoDataFrame[EdgeSchema](pd.concat([self.df, table_to_append]))
         if self.df.duplicated(subset=["from_node_id", "to_node_id"]).any():
