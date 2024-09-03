@@ -237,17 +237,18 @@ Get the current water level of a node ID.
 The ID can belong to either a Basin or a LevelBoundary.
 du: tells ForwardDiff whether this call is for differentiation or not
 """
-function get_level(p::Parameters, node_id::NodeID, t::Number, du)::Tuple{Bool, Number}
-    (; basin, level_boundary) = p
+function get_level(p::Parameters, node_id::NodeID, t::Number, du)::Number
     if node_id.type == NodeType.Basin
-        # The edge metadata is only used to obtain the Basin index
-        # in case node_id is for a Basin
-        current_level = basin.current_level[parent(du)]
-        return true, current_level[node_id.idx]
+        current_level = p.basin.current_level[parent(du)]
+        current_level[node_id.idx]
     elseif node_id.type == NodeType.LevelBoundary
-        return true, level_boundary.level[node_id.idx](t)
+        p.level_boundary.level[node_id.idx](t)
+    elseif node_id.type == NodeType.Terminal
+        # Terminal is like a bottomless pit.
+        # A level at -Inf ensures we don't hit `max_downstream_level` reduction factors.
+        -Inf
     else
-        return false, 0.0
+        error("Node ID $node_id is not a Basin, LevelBoundary or Terminal.")
     end
 end
 

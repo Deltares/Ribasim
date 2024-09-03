@@ -330,9 +330,10 @@ of Vectors or Arrow Primitives, and is added to avoid type instabilities.
 node_id: node ID of the TabulatedRatingCurve node
 inflow_edge: incoming flow edge metadata
     The ID of the destination node is always the ID of the TabulatedRatingCurve node
-outflow_edges: outgoing flow edges metadata
+outflow_edge: outgoing flow edge metadata
     The ID of the source node is always the ID of the TabulatedRatingCurve node
 active: whether this node is active and thus contributes flows
+max_downstream_level: The downstream level above which the TabulatedRatingCurve flow goes to zero
 table: The current Q(h) relationships
 time: The time table used for updating the tables
 control_mapping: dictionary from (node_id, control_state) to Q(h) and/or active state
@@ -340,8 +341,9 @@ control_mapping: dictionary from (node_id, control_state) to Q(h) and/or active 
 @kwdef struct TabulatedRatingCurve{C} <: AbstractParameterNode
     node_id::Vector{NodeID}
     inflow_edge::Vector{EdgeMetadata}
-    outflow_edges::Vector{Vector{EdgeMetadata}}
+    outflow_edge::Vector{EdgeMetadata}
     active::Vector{Bool}
+    max_downstream_level::Vector{Float64} = fill(Inf, length(node_id))
     table::Vector{ScalarInterpolation}
     time::StructVector{TabulatedRatingCurveTimeV1, C, Int}
     control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate}
@@ -448,23 +450,27 @@ end
 node_id: node ID of the Pump node
 inflow_edge: incoming flow edge metadata
     The ID of the destination node is always the ID of the Pump node
-outflow_edges: outgoing flow edges metadata
+outflow_edge: outgoing flow edge metadata
     The ID of the source node is always the ID of the Pump node
 active: whether this node is active and thus contributes flow
 flow_rate: target flow rate
 min_flow_rate: The minimal flow rate of the pump
 max_flow_rate: The maximum flow rate of the pump
+min_upstream_level: The upstream level below which the Pump flow goes to zero
+max_downstream_level: The downstream level above which the Pump flow goes to zero
 control_mapping: dictionary from (node_id, control_state) to target flow rate
 continuous_control_type: one of None, ContinuousControl, PidControl
 """
 @kwdef struct Pump <: AbstractParameterNode
     node_id::Vector{NodeID}
     inflow_edge::Vector{EdgeMetadata} = []
-    outflow_edges::Vector{Vector{EdgeMetadata}} = []
+    outflow_edge::Vector{EdgeMetadata} = []
     active::Vector{Bool} = fill(true, length(node_id))
     flow_rate::Cache = cache(length(node_id))
     min_flow_rate::Vector{Float64} = zeros(length(node_id))
     max_flow_rate::Vector{Float64} = fill(Inf, length(node_id))
+    min_upstream_level::Vector{Float64} = fill(-Inf, length(node_id))
+    max_downstream_level::Vector{Float64} = fill(Inf, length(node_id))
     control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate}
     continuous_control_type::Vector{ContinuousControlType.T} =
         fill(ContinuousControlType.None, length(node_id))
@@ -472,11 +478,13 @@ continuous_control_type: one of None, ContinuousControl, PidControl
     function Pump(
         node_id,
         inflow_edge,
-        outflow_edges,
+        outflow_edge,
         active,
         flow_rate,
         min_flow_rate,
         max_flow_rate,
+        min_upstream_level,
+        max_downstream_level,
         control_mapping,
         continuous_control_type,
     )
@@ -484,11 +492,13 @@ continuous_control_type: one of None, ContinuousControl, PidControl
             return new(
                 node_id,
                 inflow_edge,
-                outflow_edges,
+                outflow_edge,
                 active,
                 flow_rate,
                 min_flow_rate,
                 max_flow_rate,
+                min_upstream_level,
+                max_downstream_level,
                 control_mapping,
                 continuous_control_type,
             )
@@ -502,50 +512,55 @@ end
 node_id: node ID of the Outlet node
 inflow_edge: incoming flow edge metadata.
     The ID of the destination node is always the ID of the Outlet node
-outflow_edges: outgoing flow edges metadata.
+outflow_edge: outgoing flow edge metadata.
     The ID of the source node is always the ID of the Outlet node
 active: whether this node is active and thus contributes flow
 flow_rate: target flow rate
 min_flow_rate: The minimal flow rate of the outlet
 max_flow_rate: The maximum flow rate of the outlet
+min_upstream_level: The upstream level below which the Outlet flow goes to zero
+max_downstream_level: The downstream level above which the Outlet flow goes to zero
 control_mapping: dictionary from (node_id, control_state) to target flow rate
 continuous_control_type: one of None, ContinuousControl, PidControl
 """
 @kwdef struct Outlet <: AbstractParameterNode
     node_id::Vector{NodeID}
     inflow_edge::Vector{EdgeMetadata} = []
-    outflow_edges::Vector{Vector{EdgeMetadata}} = []
+    outflow_edge::Vector{EdgeMetadata} = []
     active::Vector{Bool} = fill(true, length(node_id))
     flow_rate::Cache = cache(length(node_id))
     min_flow_rate::Vector{Float64} = zeros(length(node_id))
     max_flow_rate::Vector{Float64} = fill(Inf, length(node_id))
     min_upstream_level::Vector{Float64} = fill(-Inf, length(node_id))
+    max_downstream_level::Vector{Float64} = fill(Inf, length(node_id))
     control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate} = Dict()
     continuous_control_type::Vector{ContinuousControlType.T} =
         fill(ContinuousControlType.None, length(node_id))
 
     function Outlet(
         node_id,
-        inflow_id,
-        outflow_ids,
+        inflow_edge,
+        outflow_edge,
         active,
         flow_rate,
         min_flow_rate,
         max_flow_rate,
         min_upstream_level,
+        max_downstream_level,
         control_mapping,
         continuous_control_type,
     )
         if valid_flow_rates(node_id, flow_rate[Float64[]], control_mapping)
             return new(
                 node_id,
-                inflow_id,
-                outflow_ids,
+                inflow_edge,
+                outflow_edge,
                 active,
                 flow_rate,
                 min_flow_rate,
                 max_flow_rate,
                 min_upstream_level,
+                max_downstream_level,
                 control_mapping,
                 continuous_control_type,
             )

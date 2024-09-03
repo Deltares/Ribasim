@@ -180,8 +180,7 @@ end
 
     jac_prototype_expected = spzeros(Bool, 4, 4)
     jac_prototype_expected[1:2, 1:2] .= true
-    jac_prototype_expected[3:4, 2:3] .= true
-    jac_prototype_expected[4, 4] = true
+    jac_prototype_expected[3:4, 2:4] .= true
     @test jac_prototype == jac_prototype_expected
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/pid_control/ribasim.toml")
