@@ -891,7 +891,6 @@ function get_jac_prototype(du0, u0, p, t0)
 end
 
 # Custom overloads
-(A::AbstractInterpolation)(t::GradientTracer) = t
 reduction_factor(x::GradientTracer, threshold::Real) = x
 relaxed_root(x::GradientTracer, threshold::Real) = x
 get_level_from_storage(basin::Basin, state_idx::Int, storage::GradientTracer) = storage
