@@ -397,10 +397,13 @@ function valid_tabulated_curve_level(
     return !errors
 end
 
-function valid_tabulated_rating_curve(node_id::NodeID, table::StructVector)::Bool
+function valid_tabulated_rating_curve(
+    node_id::NodeID,
+    table::StructVector,
+    rowrange::UnitRange{Int},
+)::Bool
     errors = false
 
-    rowrange = findlastgroup(node_id, NodeID.(node_id.type, table.node_id, Ref(0)))
     level = table.level[rowrange]
     flow_rate = table.flow_rate[rowrange]
 

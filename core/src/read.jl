@@ -298,6 +298,7 @@ function TabulatedRatingCurve(
     interpolations = ScalarInterpolation[]
     control_mapping = Dict{Tuple{NodeID, String}, ControlStateUpdate}()
     active = Bool[]
+    max_downstream_level = Float64[]
     errors = false
 
     for node_id in node_ids
@@ -317,12 +318,15 @@ function TabulatedRatingCurve(
                 IterTools.groupby(row -> coalesce(row.control_state, nothing), static_id)
                 control_state = first(group).control_state
                 is_active = coalesce(first(group).active, true)
+                max_level = coalesce(first(group).max_downstream_level, Inf)
                 table = StructVector(group)
-                if !valid_tabulated_rating_curve(node_id, table)
+                rowrange =
+                    findlastgroup(node_id, NodeID.(node_id.type, table.node_id, Ref(0)))
+                if !valid_tabulated_rating_curve(node_id, table, rowrange)
                     errors = true
                 end
                 interpolation = try
-                    qh_interpolation(node_id, table)
+                    qh_interpolation(table, rowrange)
                 catch
                     LinearInterpolation(Float64[], Float64[])
                 end
@@ -339,17 +343,23 @@ function TabulatedRatingCurve(
             end
             push!(interpolations, interpolation)
             push!(active, is_active)
+            push!(max_downstream_level, max_level)
         elseif node_id in time_node_ids
             source = "time"
             # get the timestamp that applies to the model starttime
             idx_starttime = searchsortedlast(time.time, config.starttime)
             pre_table = view(time, 1:idx_starttime)
-            if !valid_tabulated_rating_curve(node_id, pre_table)
+            rowrange =
+                findlastgroup(node_id, NodeID.(node_id.type, pre_table.node_id, Ref(0)))
+
+            if !valid_tabulated_rating_curve(node_id, pre_table, rowrange)
                 errors = true
             end
-            interpolation = qh_interpolation(node_id, pre_table)
+            interpolation = qh_interpolation(pre_table, rowrange)
+            max_level = pre_table.max_downstream_level[rowrange][begin]
             push!(interpolations, interpolation)
             push!(active, true)
+            push!(max_downstream_level, max_level)
         else
             @error "$node_id data not in any table."
             errors = true
@@ -364,6 +374,7 @@ function TabulatedRatingCurve(
         inflow_edge = inflow_edge.(Ref(graph), node_ids),
         outflow_edge = outflow_edge.(Ref(graph), node_ids),
         active,
+        max_downstream_level,
         table = interpolations,
         time,
         control_mapping,

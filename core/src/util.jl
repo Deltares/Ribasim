@@ -123,8 +123,10 @@ end
 From a table with columns node_id, flow_rate (Q) and level (h),
 create a ScalarInterpolation from level to flow rate for a given node_id.
 """
-function qh_interpolation(node_id::NodeID, table::StructVector)::ScalarInterpolation
-    rowrange = findlastgroup(node_id, NodeID.(node_id.type, table.node_id, Ref(0)))
+function qh_interpolation(
+    table::StructVector,
+    rowrange::UnitRange{Int},
+)::ScalarInterpolation
     level = table.level[rowrange]
     flow_rate = table.flow_rate[rowrange]
 
