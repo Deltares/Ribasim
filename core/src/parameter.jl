@@ -526,7 +526,7 @@ continuous_control_type: one of None, ContinuousControl, PidControl
 @kwdef struct Outlet <: AbstractParameterNode
     node_id::Vector{NodeID}
     inflow_edge::Vector{EdgeMetadata} = []
-    outflow_edge::Vector{Vector{EdgeMetadata}} = []
+    outflow_edge::Vector{EdgeMetadata} = []
     active::Vector{Bool} = fill(true, length(node_id))
     flow_rate::Cache = cache(length(node_id))
     min_flow_rate::Vector{Float64} = zeros(length(node_id))

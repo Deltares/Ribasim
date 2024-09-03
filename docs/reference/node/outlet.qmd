@@ -27,7 +27,7 @@ max_downstream_level | Float64 | $m$          | (optional)
 
 # Equations
 
-The Outlet is very similar to the Pump, but it has an extra [reduction factor](/concept/equations.qmd#sec-reduction_factor) for physical constraints:
+The Outlet is very similar to the Pump, but it has an extra [reduction factor](/reference/node/basin.qmd#sec-reduction-factor) for physical constraints:
 
 $$
 Q = \mathrm{clamp}(\phi Q_\text{set}, Q_{\min}, Q_{\max})
