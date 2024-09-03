@@ -143,23 +143,27 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
             & (self.df["edge_type"] == edge_type)
         ].shape[0]
         # validation on neighbor amount
+        max_in_flow: int = flow_edge_neighbor_amount[to_node.node_type][1]
+        max_out_flow: int = flow_edge_neighbor_amount[from_node.node_type][3]
+        max_in_control: int = control_edge_neighbor_amount[to_node.node_type][1]
+        max_out_control: int = control_edge_neighbor_amount[from_node.node_type][3]
         if edge_type == "flow":
-            if in_neighbor >= flow_edge_neighbor_amount[to_node.node_type][1]:
+            if in_neighbor >= max_in_flow:
                 raise ValueError(
-                    f"Node {to_node.node_id} can have at most {flow_edge_neighbor_amount[to_node.node_type][1]} flow edge inneighbor(s) (got {in_neighbor})"
+                    f"Node {to_node.node_id} can have at most {max_in_flow} flow edge inneighbor(s) (got {in_neighbor})"
                 )
-            if out_neighbor >= flow_edge_neighbor_amount[from_node.node_type][3]:
+            if out_neighbor >= max_out_flow:
                 raise ValueError(
-                    f"Node {from_node.node_id} can have at most {flow_edge_neighbor_amount[from_node.node_type][3]} flow edge outneighbor(s) (got {out_neighbor})"
+                    f"Node {from_node.node_id} can have at most {max_out_flow} flow edge outneighbor(s) (got {out_neighbor})"
                 )
         elif edge_type == "control":
-            if in_neighbor >= control_edge_neighbor_amount[to_node.node_type][1]:
+            if in_neighbor >= max_in_control:
                 raise ValueError(
-                    f"Node {to_node.node_id} can have at most {control_edge_neighbor_amount[to_node.node_type][1]} control edge inneighbor(s) (got {in_neighbor})"
+                    f"Node {to_node.node_id} can have at most {max_in_control} control edge inneighbor(s) (got {in_neighbor})"
                 )
-            if out_neighbor >= control_edge_neighbor_amount[from_node.node_type][3]:
+            if out_neighbor >= max_out_control:
                 raise ValueError(
-                    f"Node {from_node.node_id} can have at most {control_edge_neighbor_amount[from_node.node_type][3]} control edge outneighbor(s) (got {out_neighbor})"
+                    f"Node {from_node.node_id} can have at most {max_out_control} control edge outneighbor(s) (got {out_neighbor})"
                 )
 
     def _get_where_edge_type(self, edge_type: str) -> NDArray[np.bool_]:
