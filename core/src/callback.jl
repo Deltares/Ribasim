@@ -115,7 +115,7 @@ end
 Integrate flows over the last timestep
 """
 function integrate_flows!(u, t, integrator)::Nothing
-    (; p, dt, tprev) = integrator
+    (; p, dt, uprev, tprev) = integrator
     (; graph, user_demand, basin, allocation) = p
     (; flow, flow_dict, flow_prev, flow_integrated_over_dt, flow_integrated_over_saveat) =
         graph[]
@@ -127,7 +127,6 @@ function integrate_flows!(u, t, integrator)::Nothing
         vertical_flux_bmi,
     ) = basin
     du = get_du(integrator)
-    u_tmp = copy(du)
     flow = flow[parent(du)]
     vertical_flux = vertical_flux[parent(du)]
     if !isempty(flow_prev) && isnan(flow_prev[1])
@@ -135,40 +134,17 @@ function integrate_flows!(u, t, integrator)::Nothing
         copyto!(flow_prev, flow)
     end
 
-    @assert dt ≈ t - tprev
-    function compute_flow(t, p)
-        integrator.sol(u_tmp, t)
-        water_balance!(du, u_tmp, p, t)
-        flow
-    end
+    water_balance!(du, uprev, p, tprev)
+    @. flow_integrated_over_dt = flow
+    @. vertical_flux_integrated_over_dt = vertical_flux
+    water_balance!(du, u, p, t)
+    @. flow_integrated_over_dt += flow
+    @. vertical_flux_integrated_over_dt += vertical_flux
+    @. vertical_flux_integrated_over_dt *= dt / 2
 
-    function compute_vertical_flux(t, p)
-        integrator.sol(u_tmp, t)
-        water_balance!(du, u_tmp, p, t)
-        vertical_flux
-    end
-
-    flow_integrated_over_dt .=
-        solve(
-            IntegralProblem(compute_flow, (tprev, t), p),
-            QuadGKJL();
-            abstol = 1e-6,
-            reltol = 1e-6,
-        ).u
-
-    vertical_flux_integrated_over_dt .=
-        solve(
-            IntegralProblem(compute_vertical_flux, (tprev, t), p),
-            QuadGKJL();
-            abstol = 1e-6,
-            reltol = 1e-6,
-        ).u
-    # @show sol
-    # @. flow_integrated_over_dt = 0.5 * (flow + flow_prev) * dt
     @. flow_integrated_over_saveat += flow_integrated_over_dt
-    #@. vertical_flux_integrated_over_dt = 0.5 * (vertical_flux + vertical_flux_prev) * dt
     @. vertical_flux_integrated_over_saveat += vertical_flux_integrated_over_dt
-    @. vertical_flux_bmi += 0.5 * (vertical_flux + vertical_flux_prev) * dt
+    @. vertical_flux_bmi += vertical_flux_integrated_over_dt
 
     # UserDemand realized flows for BMI
     for id in user_demand.node_id
@@ -178,6 +154,7 @@ function integrate_flows!(u, t, integrator)::Nothing
             0.5 * (flow[flow_idx] + flow_prev[flow_idx]) * dt
     end
 
+    # TODO: Do all these with the same calls to water_balance! as above
     # *Demand realized flow for output
     for (edge, value) in allocation.mean_realized_flows
         if edge[1] !== edge[2]
@@ -272,15 +249,18 @@ function save_vertical_flux(u, t, integrator)
 end
 
 function check_water_balance_error(u, t, integrator)::Nothing
-    (; dt, p, uprev) = integrator
+    (; dt, p, uprev, tprev) = integrator
     (; total_inflow, total_outflow, vertical_flux_integrated_over_dt, node_id) = p.basin
     (; flow_integrated_over_dt) = p.graph[]
-    (; max_rel_balance_error) = integrator.p
+    (; water_balance_error_abstol, water_balance_error_reltol) = integrator.p
 
     total_inflow .= 0
     total_outflow .= 0
 
+    t < 1 && return
+
     # First compute the storage rate
+    # TODO: Preallocate storage_rate
     storage_rate = copy(u.storage)
     @. storage_rate -= uprev.storage
     @. storage_rate /= dt
@@ -295,35 +275,30 @@ function check_water_balance_error(u, t, integrator)::Nothing
     @. total_outflow /= dt
 
     # Then compare storage rate to inflow and outflow
+    # TODO: Preallocate absolute_error
     absolute_error = copy(storage_rate)
     @. absolute_error -= total_inflow
     @. absolute_error += total_outflow
 
-    # Then compute error relative to mean (absolute) flow
-    relative_error = absolute_error ./ (0.5 * (total_inflow + total_outflow))
-
-    @show t, storage_rate
-
-    for (infl, outfl) in zip(total_inflow, total_outflow)
-        if !isnan(infl)
-            @assert infl >= 0.0
-        end
-        if !isnan(outfl)
-            @assert outfl >= 0.0
-        end
-    end
+    # Then compute error relative to total (absolute) flow
+    # TODO: Preallocate relative_error
+    relative_error = absolute_error ./ (total_inflow + total_outflow)
 
     errors = false
-    for (rel_error, id) in zip(relative_error, node_id)
-        if abs(rel_error) > max_rel_balance_error
-            @error "Relative water balance error for $id ($rel_error) larger than tolerance ($max_rel_balance_error)"
+    for (abs_error, rel_error, id) in zip(absolute_error, relative_error, node_id)
+        if abs(abs_error) > water_balance_error_abstol &&
+           abs(rel_error) > water_balance_error_reltol
+            inflow = total_inflow[id.idx]
+            outflow = total_outflow[id.idx]
+            rate = storage_rate[id.idx]
+            @error "Water balance error too large for $id" t tprev inflow outflow rate abs_error water_balance_error_abstol rel_error water_balance_error_reltol
             errors = true
         end
     end
 
-    # if errors
-    #     error("Too large water balance error(s) detected.")
-    # end
+    if errors
+        error("Too large water balance error(s) detected.")
+    end
     return nothing
 end
 

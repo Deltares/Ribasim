@@ -793,5 +793,6 @@ const ModelGraph = MetaGraph{
     flow_demand::FlowDemand
     subgrid::Subgrid
     all_nodes_active::Base.RefValue{Bool} = Ref(false)
-    max_rel_balance_error::Float64
+    water_balance_error_abstol::Float64 = 1e-3
+    water_balance_error_reltol::Float64 = 0.01
 end

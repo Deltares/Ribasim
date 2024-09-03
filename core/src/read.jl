@@ -1275,7 +1275,8 @@ function Parameters(db::DB, config::Config)::Parameters
         level_demand,
         flow_demand,
         subgrid,
-        config.solver.max_rel_balance_error,
+        config.solver.water_balance_error_abstol,
+        config.solver.water_balance_error_reltol,
     )
 
     collect_control_mappings!(p)

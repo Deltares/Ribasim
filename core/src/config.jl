@@ -85,7 +85,7 @@ end
 const nodetypes = collect(keys(nodekinds))
 
 @option struct Solver <: TableOption
-    algorithm::String = "QNDF"
+    algorithm::String = "ImplicitEuler"
     saveat::Float64 = 86400.0
     dt::Union{Float64, Nothing} = nothing
     dtmin::Float64 = 0.0
@@ -93,7 +93,8 @@ const nodetypes = collect(keys(nodekinds))
     force_dtmin::Bool = false
     abstol::Float64 = 1e-6
     reltol::Float64 = 1e-5
-    max_rel_balance_error::Float64 = 0.01
+    water_balance_error_abstol::Float64 = 1e-3
+    water_balance_error_reltol::Float64 = 0.01
     maxiters::Int = 1e9
     sparse::Bool = true
     autodiff::Bool = true
