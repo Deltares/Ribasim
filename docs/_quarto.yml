@@ -11,7 +11,7 @@ website:
       - text: "Overview"
         file: index.qmd
       - text: "How-to guides"
-        file: guide/examples.ipynb
+        file: guide/quickstart.qmd
       - text: "Concepts"
         file: concept/concept.qmd
       - text: "Reference"
@@ -33,8 +33,8 @@ website:
 
     - title: "How-to guides"
       contents:
-        - guide/examples.ipynb
         - guide/quickstart.qmd
+        - guide/examples.ipynb
         - guide/qgis.qmd
         - guide/coupling.qmd
         - section: "Coupling guides"

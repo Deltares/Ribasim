@@ -7,8 +7,8 @@ title: "Quick start guide"
 # Introduction
 Welcome to Ribasim!
 This guide will help you get started with the basics of installing and using Ribasim for river basin simulation.
-In this guide, the relevant functionalities will be implemented in Python using the Ribasim Python package.
-The Ribasim package (named 'ribasim') simplifies the process of building, updating, and analyzing Ribasim model programmatically.
+In this guide, the schematization of models will be implemented in Python using the Ribasim Python package.
+The Ribasim package (named `ribasim`) simplifies the process of building, updating, and analyzing Ribasim model programmatically.
 It also allows for the creation of entire models from base data, ensuring that your model setup is fully reproducible.
 This package is available on PyPI.
 
@@ -52,12 +52,12 @@ For more information, try '--help'.
 4. We use a command line interface (CLI) to install our Ribasim packages. To install Ribasim open PowerShell or Windows command prompt and write:
 
 ```sh
-conda install Ribasim
+conda install ribasim
 ```
 or
 
 ```sh
-mamba install Ribasim
+mamba install ribasim
 ```
 ## Data preparation
 Download the `Crystal_Basin.zip` file from the website. Extract `Crystal_Basin.zip` and place it in the same directory as your Ribasim installation. This folder includes:
@@ -68,7 +68,7 @@ Additionally, your Python model (`.py`) and eventually the output files will als
 
 # Modual 1 - Crystal River Basin
 We will examine a straightforward example of the Crystal River Basin, which includes a main river and a single tributary flowing into the sea (see @fig-crystal-basin).
-An average discharge of 44.45 $m^3/s$ is measured at the confluence.
+An average discharge of $44.45  \text{ m}^3/\text{s}$ is measured at the confluence.
 In this module, the basin is free of any activities, allowing the model to simulate the natural flow.
 The next step is to include a demand (irrigation) that taps from a canal out of the main river.
 
@@ -121,7 +121,7 @@ model = Model(
 ```
 ### Step 3: Flow boundary nodes
 Crystal Basin consists of two inflow points, the tributary and the main Crystal river, we will call them `Minor` and `Main` respectively.
-In order to define the time series flow rate (m³/s) we read the discharge data from `ACTINFLW.csv`.
+In order to define the time series flow rate ($\text{m}^3/\text{s}$) we read the discharge data from `ACTINFLW.csv`.
 This inflow data goes monthly from 2014 to 2023.
 However, for this exercise actual runtime is already defined in step 2.
 
@@ -154,15 +154,12 @@ The node by itself portrays as a bucket with a certain volume of water and can b
 
 @tbl-input1 shows the input data for the basin node profile.
 
-+-----------+----------+
-| Area [$m^2$] | Level [$m$] |
-+==============+=============+
-|    672000    |      0      |
-+--------------+-------------+
-|   5600000    |      6      |
-+--------------+-------------+
-
 : Profile data for the basin node {#tbl-input1}
+
+| Area [$\text{m}^2$] | Level [$\text{m}$] |
+|---------------------|--------------------|
+|    $672000.0$       |      $0.0$         |
+|   $5600000.0$       |      $6.0$         |
 
 To specify the basin profile, the following code is used:
 ```python
@@ -182,30 +179,26 @@ This is because, for the model to function properly, we need to define a relatio
 This relation is defined by the `Tabulated Rating Curve` and thus serves as a critical component.
 This setup mimics the behavior of a gate or spillway, allowing us to model how varying water levels influence flow rates at the confluence.
 
-As the two inflows come together at the confluence, we expect, as mentioned and coded before, a discharge average of 44.45 m³/s.
+As the two inflows come together at the confluence, we expect, as mentioned and coded before, a discharge average of $44.45 \text{ m}^3/\text{s}$.
 It is therefore expected that the confluence basin reaches a level where the outflow is equal to the inflow via the rating curve.
 Only then is the confluence basin in equilibrium.
-To ensure that inflow equals outflow (IN=OUT) and keeping in mind the maximum depth of the river is 6 $m$, the $Q(h)$ relationship in @tbl-input2 will be used as input.
-
-+---------------------+--------------------+
-| Water Level (h) [m] | Outflow (Q) [m³/s] |
-+=====================+====================+
-|         0.0         |         0.0        |
-+---------------------+--------------------+
-|          2          |         50         |
-+---------------------+--------------------+
-|          5          |         200        |
-+---------------------+--------------------+
+To ensure that inflow equals outflow (IN=OUT) and keeping in mind the maximum depth of the river is $6 \text{ m}$, the $Q(h)$ relationship in @tbl-input2 will be used as input.
 
 : Input data for the Tabulated Rating Curve {#tbl-input2}
 
-In Ribasim, the Q-h relation is a linear function, so the points in between will be linearly interpolated.
+| Water Level ($h$) [$\text{m}$] | Outflow ($Q$) [$\text{m}^3/\text{s}$] |
+| -------------------------------|---------------------------------------|
+| $0.0$                          | $0.0$                                 |
+| $2.0$                          | $50.0$                                |
+| $5.0$                          | $200.0$                               |
+
+In Ribasim, the $Q(h)$ relation is a linear function, so the points in between will be linearly interpolated.
 @fig-discharge illustrates the visual process and shows a progressive increase in discharge with rising water levels.
 In this case this means:
 
 - At level $0.0$: No discharge occurs. This represents a condition where the water level is too low for any flow to be discharged.
-- At level $2.0$: Discharge is max. $50m^3/s$. This is a bit above the average discharge rate, corresponding to the water level where normal flow conditions are established.
-- At level $5.0$: Discharge rate reaches $200m^3/s$. This discharge rate occurs at the water level during wet periods, indicating higher flow capacity.
+- At level $2.0$: Discharge is max. $50.0 \text{ m}^3/\text{s}$. This is a bit above the average discharge rate, corresponding to the water level where normal flow conditions are established.
+- At level $5.0$: Discharge rate reaches $200.0 \text{ m}^3/\text{s}$. This discharge rate occurs at the water level during wet periods, indicating higher flow capacity.
 
 ![Discharge at corresponding water levels](https://github.com/user-attachments/assets/14799746-3b4d-4d4c-9b8a-37fbe1d88081){fig-align="left" #fig-discharge}
 
@@ -257,7 +250,7 @@ The schematization should look like @fig-cs11.
 
 ![Schematization of the Crystal basin 1.1](https://github.com/user-attachments/assets/c3bfceb8-6da0-46d3-9ded-e7a039d874ec){fig-align="left" #fig-cs11}
 
-After writing  model.write a subfolder 'Crystal_1.1' is created, which contains the model input data and configuration:
+After writing  model.write a subfolder `Crystal_1.1` is created, which contains the model input data and configuration:
 
 - ribasim.toml: The model configuration
 - database.gpkg: A geopackage containing the shapes of your schematization and the input data of the nodes used.
@@ -341,7 +334,7 @@ This is because there is no net change in storage; all incoming water is balance
 
 ![Simulated basin level and storage](https://github.com/user-attachments/assets/1e039b16-1db9-4bb1-bd85-9e3b6692d771){fig-align="left" #fig-sim1}
 
-@fig-sim2 shows the discharges in $m^3/s$ on each edge.
+@fig-sim2 shows the discharges in $\text{m}^3/\text{s}$ on each edge.
 Edge (3,4) represents the flow from the confluence to the tabulated rating curve and edge (4,5) represents the flow from the tabulated rating curve to the terminal.
 Both show the same discharge over time.
 Which is expected in a natural flow environment, as what is coming into the confluence must come out.
@@ -411,8 +404,8 @@ model.basin.add(
 
 ### Step 3: Add the irrigation demand
 A big farm company needs to apply irrigation to its field starting from April to September.
-The irrigated field is $> 17000$ ha and requires around $5mm/day$.
-In this case the farm company diverts from the main river an average flow rate of $10 m^3/s$ and $12 m^3/s$ during spring and summer, respectively.
+The irrigated field is $> 17000 \text{ ha}$ and requires around $5 \text{ mm/day}$.
+In this case the farm company diverts from the main river an average flow rate of $10 \text{ m}^3/\text{s}$ and $12 \text{ m}^3/\text{s}$ during spring and summer, respectively.
 Start of irrigation takes place on the 1st of April until the end of August.
 The farmer taps water through a canal (demand).
 
@@ -612,7 +605,7 @@ In this module, the user will update the model to incorporate the reservoir's im
 ## Modual 2.1 – Reservoir
 ### Step 1: Add a basin
 This time the basin 3 will function as a reservoir instead of a diversion, meaning it's storage and levels will play an important role for the users (the city and the farmer).
-The reservoir has a max. area of $32.3 km^2$ and a max. depth of $7 m$.
+The reservoir has a max. area of $32.3 \text{ km}^2$ and a max. depth of $7 \text{ m}$.
 The profile of basin 3 should change to:
 
 ```python
@@ -692,7 +685,7 @@ As expected, after increasing the profile of basin 3 to mimic the reservoir, its
 ## Module 2.2 – Public Water Supply
 
 ### Step 1: Rename the saving files
-Rename the files to 'Crystal_2.2'
+Rename the files to `Crystal_2.2`
 
 ### Step 2: Add a demand node
 $50.000$ people live in Crystal City.
