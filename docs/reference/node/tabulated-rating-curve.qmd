@@ -10,14 +10,14 @@ Use it for instance to model flow over a weir.
 
 ## Static
 
-column               | type    | unit         | restriction
--------------------- | ------- | ------------ | -----------
-node_id              | Int32   | -            | sorted
-control_state        | String  | -            | (optional) sorted per node_id
-active               | Bool    | -            | (optional, default true)
-max_downstream_level | Float64 | -            | (optional)
-level                | Float64 | $m$          | sorted per control_state, unique
-flow_rate            | Float64 | $m^3 s^{-1}$ | start at 0, increasing
+column               | type    | unit                  | restriction
+-------------        | ------- | --------------------- | -----------
+node_id              | Int32   | -                     | sorted
+control_state        | String  | -                     | (optional) sorted per node_id
+active               | Bool    | -                     | (optional, default true)
+max_downstream_level | Float64 | $\text{m}$            | (optional)
+level                | Float64 | $\text{m}$            | sorted per control_state, unique
+flow_rate            | Float64 | $\text{m}^3/\text{s}$ | start at 0, increasing
 
 Thus a single rating curve can be given by the following table:
 
@@ -85,12 +85,12 @@ The table must by sorted by time, and per time it must be sorted by `node_id`.
 With this the rating curves can be updated over time.
 Note that a `node_id` can be either in this table or in the static one, but not both.
 
-column    | type     | unit         | restriction
---------- | -------  | ------------ | -----------
-node_id   | Int32    | -            | sorted
-time      | DateTime | -            | sorted per node_id
-level     | Float64  | $m$          | sorted per node_id per time
-flow_rate | Float64  | $m^3 s^{-1}$ | non-negative
+column    | type     | unit                  | restriction
+--------- | -------  | --------------------- | -----------
+node_id   | Int32    | -                     | sorted
+time      | DateTime | -                     | sorted per node_id
+level     | Float64  | $\text{m}$            | sorted per node_id per time
+flow_rate | Float64  | $\text{m}^3/\text{s}$ | non-negative
 
 # Equations
 
