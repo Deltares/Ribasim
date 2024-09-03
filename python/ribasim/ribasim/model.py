@@ -309,16 +309,16 @@ class Model(FileModel):
         )
         df_graph = df_graph.rename(columns={"node_type": "to_node_type"})
 
-        if not self._check_neighbor_amount(
+        if not self._has_valid_neighbor_amount(
             df_graph, flow_edge_neighbor_amount, "flow", df_node["node_type"]
         ):
             raise ValueError("Minimum flow inneighbor or outneighbor unsatisfied")
-        if not self._check_neighbor_amount(
+        if not self._has_valid_neighbor_amount(
             df_graph, control_edge_neighbor_amount, "control", df_node["node_type"]
         ):
             raise ValueError("Minimum control inneighbor or outneighbor unsatisfied")
 
-    def _check_neighbor_amount(
+    def _has_valid_neighbor_amount(
         self,
         df_graph: pd.DataFrame,
         edge_amount: dict[str, list[int]],
@@ -395,31 +395,17 @@ class Model(FileModel):
         Specify that their occurrence in from_node table or to_node table is 0.
         """
 
-        if direction == "from":
-            # loop over nodes, add the one that is not the downstream of any other nodes
-            for index, node in enumerate(nodes):
-                if nodes.index[index] not in node_info["from_node_id"].to_numpy():
-                    new_row = {
-                        "from_node_id": nodes.index[index],
-                        "from_node_count": 0,
-                        "from_node_type": node,
-                    }
-                    node_info = pd.concat(
-                        [node_info, pd.DataFrame([new_row])], ignore_index=True
-                    )
-
-        elif direction == "to":
-            # loop over nodes, add the one that is not the downstream of any other nodes
-            for index, node in enumerate(nodes):
-                if nodes.index[index] not in node_info["to_node_id"].to_numpy():
-                    new_row = {
-                        "to_node_id": nodes.index[index],
-                        "to_node_count": 0,
-                        "to_node_type": node,
-                    }
-                    node_info = pd.concat(
-                        [node_info, pd.DataFrame([new_row])], ignore_index=True
-                    )
+        # loop over nodes, add the one that is not the downstream (from) or upstream (to) of any other nodes
+        for index, node in enumerate(nodes):
+            if nodes.index[index] not in node_info[f"{direction}_node_id"].to_numpy():
+                new_row = {
+                    f"{direction}_node_id": nodes.index[index],
+                    f"{direction}_node_count": 0,
+                    f"{direction}_node_type": node,
+                }
+                node_info = pd.concat(
+                    [node_info, pd.DataFrame([new_row])], ignore_index=True
+                )
 
         return node_info
 
