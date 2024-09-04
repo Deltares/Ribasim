@@ -454,6 +454,9 @@ function formulate_flow!(
 
         q = A / n * ∛(R_h^2) * relaxed_root(Δh / L, 1e-3)
 
+        q *= low_storage_factor(u.storage, inflow_id, 10.0)
+        q *= low_storage_factor(u.storage, outflow_id, 10.0)
+
         set_flow!(graph, inflow_edge, q, du)
         set_flow!(graph, outflow_edge, q, du)
     end
