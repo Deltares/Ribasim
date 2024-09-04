@@ -285,7 +285,6 @@ of vectors or Arrow Tables, and is added to avoid type instabilities.
     # Vertical fluxes
     vertical_flux_from_input::V1 = zeros(length(node_id))
     vertical_flux::Cache = cache(length(node_id))
-    vertical_flux_prev::V2 = zeros(length(node_id))
     vertical_flux_integrated_over_dt::V2 = zeros(length(node_id))
     vertical_flux_integrated_over_saveat::V2 = zeros(length(node_id))
     vertical_flux_bmi::V2 = zeros(length(node_id))
@@ -761,10 +760,9 @@ flow_edges: The metadata of all flow edges
 flow dict: mapping (source ID, destination ID) -> index in the flow vector
     of the flow over that edge
 flow: Flow per flow edge in the order prescribed by flow_dict
-flow_prev: The flow vector of the previous timestep, used for integration
-flow_integrated: Flow integrated over time, used for mean flow computation
-    over saveat intervals
-saveat: The time interval between saves of output data (storage, flow, ...)
+flow_integrated_over_dt: Flow integrated over last timestep, used for mean flow computation
+flow_integrated_over_saveat: Flow integrated over last saveat interval, used for mean flow computation for output
+saveat: The time interval between saves of output data (storage, mean flow, ...)
 """
 const ModelGraph = MetaGraph{
     Int64,
@@ -778,7 +776,6 @@ const ModelGraph = MetaGraph{
         flow_edges::Vector{EdgeMetadata},
         flow_dict::Dict{Tuple{NodeID, NodeID}, Int},
         flow::Cache,
-        flow_prev::Vector{Float64},
         flow_integrated_over_dt::Vector{Float64},
         flow_integrated_over_saveat::Vector{Float64},
         saveat::Float64,

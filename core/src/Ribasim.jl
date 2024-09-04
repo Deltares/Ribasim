@@ -24,9 +24,6 @@ using OrdinaryDiffEqCore:
 using OrdinaryDiffEqNonlinearSolve: OrdinaryDiffEqNonlinearSolve, relax!, _compute_rhs!
 using LineSearches: BackTracking
 
-# Algorithms for solving explicit integral problems
-using Integrals: IntegralProblem, solve, QuadGKJL
-
 # Interface for defining and solving the ODE problem of the physical layer.
 using SciMLBase:
     init,

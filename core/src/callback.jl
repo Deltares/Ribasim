@@ -117,11 +117,9 @@ Integrate flows over the last timestep
 function integrate_flows!(u, t, integrator)::Nothing
     (; p, dt, uprev, tprev) = integrator
     (; graph, user_demand, basin, allocation) = p
-    (; flow, flow_dict, flow_prev, flow_integrated_over_dt, flow_integrated_over_saveat) =
-        graph[]
+    (; flow, flow_dict, flow_integrated_over_dt, flow_integrated_over_saveat) = graph[]
     (;
         vertical_flux,
-        vertical_flux_prev,
         vertical_flux_integrated_over_dt,
         vertical_flux_integrated_over_saveat,
         vertical_flux_bmi,
@@ -129,20 +127,22 @@ function integrate_flows!(u, t, integrator)::Nothing
     du = get_du(integrator)
     flow = flow[parent(du)]
     vertical_flux = vertical_flux[parent(du)]
-    if !isempty(flow_prev) && isnan(flow_prev[1])
-        # If flow_prev is not populated yet
-        copyto!(flow_prev, flow)
-    end
 
+    # Formulate flows at previous t with current discrete parameters
     water_balance!(du, uprev, p, tprev)
     @. flow_integrated_over_dt = flow
     @. vertical_flux_integrated_over_dt = vertical_flux
+
+    # Formulate flows at current t (with current discrete parameters)
     water_balance!(du, u, p, t)
     @. flow_integrated_over_dt += flow
     @. vertical_flux_integrated_over_dt += vertical_flux
+
+    # Finish flow integration computation
     @. vertical_flux_integrated_over_dt *= dt / 2
     @. flow_integrated_over_dt *= dt / 2
 
+    # Add integrated flows over timestep to integrated flows over longer periods
     @. flow_integrated_over_saveat += flow_integrated_over_dt
     @. vertical_flux_integrated_over_saveat += vertical_flux_integrated_over_dt
     @. vertical_flux_bmi += vertical_flux_integrated_over_dt
@@ -151,18 +151,14 @@ function integrate_flows!(u, t, integrator)::Nothing
     for id in user_demand.node_id
         src_id = inflow_id(graph, id)
         flow_idx = flow_dict[src_id, id]
-        user_demand.realized_bmi[id.idx] +=
-            0.5 * (flow[flow_idx] + flow_prev[flow_idx]) * dt
+        user_demand.realized_bmi[id.idx] += flow_integrated_over_dt[flow_idx]
     end
 
-    # TODO: Do all these with the same calls to water_balance! as above
     # *Demand realized flow for output
     for (edge, value) in allocation.mean_realized_flows
         if edge[1] !== edge[2]
-            value +=
-                0.5 *
-                (get_flow(graph, edge..., du) + get_flow_prev(graph, edge..., du)) *
-                dt
+            flow_idx = flow_dict[edge...]
+            value += flow_integrated_over_dt[flow_idx]
             allocation.mean_realized_flows[edge] = value
         end
     end
@@ -181,15 +177,10 @@ function integrate_flows!(u, t, integrator)::Nothing
                 dt
         else
             # Horizontal flows
-            allocation.mean_input_flows[edge] =
-                value +
-                0.5 *
-                (get_flow(graph, edge..., du) + get_flow_prev(graph, edge..., du)) *
-                dt
+            flow_idx = flow_dict[edge...]
+            allocation.mean_input_flows[edge] = flow_integrated_over_dt[flow_idx]
         end
     end
-    copyto!(flow_prev, flow)
-    copyto!(vertical_flux_prev, vertical_flux)
     return nothing
 end
 
@@ -517,7 +508,7 @@ function update_basin!(integrator)::Nothing
     (; p, u) = integrator
     (; basin) = p
     (; storage) = u
-    (; node_id, time, vertical_flux_from_input, vertical_flux, vertical_flux_prev) = basin
+    (; node_id, time, vertical_flux_from_input, vertical_flux) = basin
     t = datetime_since(integrator.t, integrator.p.starttime)
     vertical_flux = vertical_flux[parent(u)]
 
@@ -537,9 +528,6 @@ function update_basin!(integrator)::Nothing
     end
 
     update_vertical_flux!(basin, storage)
-
-    # Forget about vertical fluxes to handle discontinuous forcing from basin_update
-    copyto!(vertical_flux_prev, vertical_flux)
     return nothing
 end
 
