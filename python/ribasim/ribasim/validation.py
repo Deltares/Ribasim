@@ -3,7 +3,7 @@
 # Table for connectivity
 # "Basin": ["LinearResistance"] means that the downstream of basin can be LinearResistance only
 
-connectivity: dict[str, list[str]] = {
+node_type_connectivity: dict[str, list[str]] = {
     "PidControl": [
         "Outlet",
         "Pump",
@@ -82,12 +82,12 @@ connectivity: dict[str, list[str]] = {
 
 # Function to validate connection
 def can_connect(node_up: str, node_down: str) -> bool:
-    if node_up in connectivity:
-        return node_down in connectivity[node_up]
+    if node_up in node_type_connectivity:
+        return node_down in node_type_connectivity[node_up]
     return False
 
 
-flow_edge_amount: dict[str, list[int]] = {
+flow_edge_neighbor_amount: dict[str, list[int]] = {
     "PidControl": [0, 0, 0, 0],
     "LevelBoundary": [0, 9223372036854775807, 0, 9223372036854775807],
     "Pump": [1, 1, 1, 1],
@@ -105,7 +105,7 @@ flow_edge_amount: dict[str, list[int]] = {
     "Terminal": [1, 9223372036854775807, 0, 0],
 }
 
-control_edge_amount: dict[str, list[int]] = {
+control_edge_neighbor_amount: dict[str, list[int]] = {
     "PidControl": [0, 1, 1, 1],
     "LevelBoundary": [0, 0, 0, 0],
     "Pump": [0, 1, 0, 0],
