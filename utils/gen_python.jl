@@ -63,7 +63,6 @@ function get_connectivity()
     [
         (
             name = T,
-            # connectivity = Ribasim.neighbortypes(T),
             connectivity = Set(
                 Ribasim.config.camel_case(x) for x in Ribasim.neighbortypes(T)
             ),
