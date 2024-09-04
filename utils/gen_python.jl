@@ -61,8 +61,12 @@ function get_connectivity()
     Set up a vector contains all possible connecting node for all node types.
     """
     [
-        (name = T, connectivity = Ribasim.neighbortypes(T)) for
-        T in keys(Ribasim.config.nodekinds)
+        (
+            name = T,
+            connectivity = Ribasim.neighbortypes(T),
+            flow_neighbor_bound = Ribasim.n_neighbor_bounds_flow(T),
+            control_neighbor_bound = Ribasim.n_neighbor_bounds_control(T),
+        ) for T in keys(Ribasim.config.nodekinds)
     ]
 end
 
@@ -71,7 +75,7 @@ connection_template = Template(
     config = Dict("trim_blocks" => true, "lstrip_blocks" => true, "autoescape" => false),
 )
 
-# Write schemas.py
+# Write validation.py
 open(normpath(@__DIR__, "..", "python", "ribasim", "ribasim", "validation.py"), "w") do io
     init = Dict("nodes" => get_connectivity())
     println(io, connection_template(; init = init))
