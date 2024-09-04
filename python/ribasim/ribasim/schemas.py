@@ -19,11 +19,11 @@ class _BaseSchema(pa.DataFrameModel):
         return "fid"
 
     @classmethod
-    def migrate(cls, df: Any) -> Any:
-        f: Callable[[Any], Any] = getattr(
-            migrations, str(cls.__name__).lower() + "_migration", lambda x: x
+    def migrate(cls, df: Any, schema_version: int) -> Any:
+        f: Callable[[Any, Any], Any] = getattr(
+            migrations, str(cls.__name__).lower() + "_migration", lambda x, _: x
         )
-        return f(df)
+        return f(df, schema_version)
 
 
 class BasinConcentrationExternalSchema(_BaseSchema):
@@ -234,7 +234,8 @@ class OutletStaticSchema(_BaseSchema):
     flow_rate: Series[float] = pa.Field(nullable=False)
     min_flow_rate: Series[float] = pa.Field(nullable=True)
     max_flow_rate: Series[float] = pa.Field(nullable=True)
-    min_crest_level: Series[float] = pa.Field(nullable=True)
+    min_upstream_level: Series[float] = pa.Field(nullable=True)
+    max_downstream_level: Series[float] = pa.Field(nullable=True)
     control_state: Series[str] = pa.Field(nullable=True)
 
 
@@ -269,6 +270,8 @@ class PumpStaticSchema(_BaseSchema):
     flow_rate: Series[float] = pa.Field(nullable=False)
     min_flow_rate: Series[float] = pa.Field(nullable=True)
     max_flow_rate: Series[float] = pa.Field(nullable=True)
+    min_upstream_level: Series[float] = pa.Field(nullable=True)
+    max_downstream_level: Series[float] = pa.Field(nullable=True)
     control_state: Series[str] = pa.Field(nullable=True)
 
 

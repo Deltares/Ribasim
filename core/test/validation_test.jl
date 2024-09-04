@@ -418,7 +418,7 @@ end
     parameters = model.integrator.p
 
     (; graph, outlet, basin) = parameters
-    outlet.min_crest_level[1] = invalid_level
+    outlet.min_upstream_level[1] = invalid_level
 
     logger = TestLogger()
     with_logger(logger) do
