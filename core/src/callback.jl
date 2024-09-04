@@ -141,6 +141,7 @@ function integrate_flows!(u, t, integrator)::Nothing
     @. flow_integrated_over_dt += flow
     @. vertical_flux_integrated_over_dt += vertical_flux
     @. vertical_flux_integrated_over_dt *= dt / 2
+    @. flow_integrated_over_dt *= dt / 2
 
     @. flow_integrated_over_saveat += flow_integrated_over_dt
     @. vertical_flux_integrated_over_saveat += vertical_flux_integrated_over_dt
@@ -256,8 +257,6 @@ function check_water_balance_error(u, t, integrator)::Nothing
 
     total_inflow .= 0
     total_outflow .= 0
-
-    t < 1 && return
 
     # First compute the storage rate
     # TODO: Preallocate storage_rate
