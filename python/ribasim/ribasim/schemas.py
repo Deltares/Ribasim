@@ -235,6 +235,7 @@ class OutletStaticSchema(_BaseSchema):
     min_flow_rate: Series[float] = pa.Field(nullable=True)
     max_flow_rate: Series[float] = pa.Field(nullable=True)
     min_upstream_level: Series[float] = pa.Field(nullable=True)
+    max_downstream_level: Series[float] = pa.Field(nullable=True)
     control_state: Series[str] = pa.Field(nullable=True)
 
 
@@ -269,6 +270,8 @@ class PumpStaticSchema(_BaseSchema):
     flow_rate: Series[float] = pa.Field(nullable=False)
     min_flow_rate: Series[float] = pa.Field(nullable=True)
     max_flow_rate: Series[float] = pa.Field(nullable=True)
+    min_upstream_level: Series[float] = pa.Field(nullable=True)
+    max_downstream_level: Series[float] = pa.Field(nullable=True)
     control_state: Series[str] = pa.Field(nullable=True)
 
 

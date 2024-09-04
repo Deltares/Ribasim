@@ -424,7 +424,7 @@ concentration  | Float64  | $\text{g}/\text{m}^3$ |
 
 # Equations
 
-## The reduction factor {#sec-reduction_factor}
+## The reduction factor {#sec-reduction-factor}
 At several points in the equations below a *reduction factor* is used. This is a term that makes certain transitions more smooth, for instance when a pump stops providing water when its source basin dries up. The reduction factor is given by
 
 \begin{align}
@@ -500,7 +500,7 @@ $$
 $$ {#eq-evap}
 
 Here $E_\text{pot} = E_\text{pot}(t)$ is the potential evaporation rate and $A$ is the wetted area.
-$\phi$ is the [reduction factor](/concept/equations.qmd#sec-reduction_factor) which depends on the depth $d$.
+$\phi$ is the [reduction factor](/reference/node/basin.qmd#sec-reduction-factor) which depends on the depth $d$.
 It provides a smooth gradient as $u \rightarrow 0$.
 
 A straightforward formulation $Q_E = \mathrm{max}(E_\text{pot} A(u), 0)$ is unsuitable, as $\frac{\mathrm{d}Q_E}{\mathrm{d}u}(u=0)$ is not well-defined.

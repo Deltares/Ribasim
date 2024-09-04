@@ -20,18 +20,22 @@ active                | Bool    | -            | (optional, default true)
 flow_rate             | Float64 | $\text{m}^3/\text{s}$ | non-negative
 min_flow_rate         | Float64 | $\text{m}^3/\text{s}$ | (optional, default 0.0)
 max_flow_rate         | Float64 | $\text{m}^3/\text{s}$ | (optional)
+min_upstream_level    | Float64 | $\text{m}$          | (optional)
+max_downstream_level  | Float64 | $\text{m}$          | (optional)
 
 # Equations
 
 The behavior of a Pump is simple if these nodes are not PID controlled.
-Their flow is given by a fixed flow rate $q$, multiplied by a reduction factor:
+Their flow is given by a fixed flow rate $q$, multiplied by reduction factors:
 
 $$
-Q = \mathrm{clamp}(\phi(u; 10.0) Q_\text{set}, Q_{\min}, Q_{\max})
+Q = \mathrm{clamp}(\phi Q_\text{set}, Q_{\min}, Q_{\max})
 $$
 
-$Q$ is the realized Pump flow rate.
-$Q_\text{set}$ is the Pump's target `flow_rate`.
-$Q_{\min}$ and $Q_{\max}$ are the Pump `min_flow_rate` and `max_flow_rate`.
-$u$ is the storage of the incoming Basin.
-The [reduction factor](/concept/equations.qmd#sec-reduction_factor) $\phi$ makes sure that the flow of the Pump goes smoothly to $0$ as the incoming Basin dries out.
+- $Q$ is the realized Pump flow rate.
+- $Q_\text{set}$ is the Pump's target `flow_rate`.
+- $Q_{\min}$ and $Q_{\max}$ are the Pump `min_flow_rate` and `max_flow_rate`.
+- $\phi$ is the reduction factor, which smoothly reduces flow based on all of these criteria:
+  - The upstream volume is below $10 m^3$.
+  - The upstream level is below `min_upstream_level` + $0.02 m$
+  - The downstream level is above `max_downstream_level` - $0.02 m$
