@@ -24,9 +24,6 @@ using OrdinaryDiffEqCore:
 using OrdinaryDiffEqNonlinearSolve: OrdinaryDiffEqNonlinearSolve, relax!, _compute_rhs!
 using LineSearches: BackTracking
 
-# TODO: Remove after https://github.com/SciML/FindFirstFunctions.jl/pull/26
-using FindFirstFunctions: FindFirstFunctions
-
 # Interface for defining and solving the ODE problem of the physical layer.
 using SciMLBase:
     init,
