@@ -65,6 +65,30 @@ function get_level_from_storage(basin::Basin, state_idx::Int, storage)
     end
 end
 
+# TODO: Remove after https://github.com/SciML/FindFirstFunctions.jl/pull/26
+function (g::FindFirstFunctions.Guesser)(x)
+    (; v, idx_prev, linear_lookup) = g
+    if linear_lookup
+        f = (x - first(v)) / (last(v) - first(v))
+        if isinf(f)
+            f > 0 ? lastindex(v) : firstindex(v)
+        else
+            i_0, i_f = firstindex(v), lastindex(v)
+            i_approx = f * (i_f - i_0) + i_0
+            target_type = typeof(firstindex(v))
+            if i_approx >= typemax(target_type)
+                lastindex(v) + 1
+            elseif i_approx <= typemin(target_type)
+                firstindex(v) - 1
+            else
+                round(target_type, i_approx)
+            end
+        end
+    else
+        idx_prev[]
+    end
+end
+
 """
 For an element `id` and a vector of elements `ids`, get the range of indices of the last
 consecutive block of `id`.
@@ -381,6 +405,18 @@ function low_storage_factor(
         reduction_factor(storage[id.idx], threshold)
     else
         one(T)
+    end
+end
+
+"""
+For resistance nodes, give a reduction factor based on the upstream node
+as defined by the flow direction.
+"""
+function low_storage_factor_resistance_node(u, q, inflow_id, outflow_id, threshold)
+    if q > 0
+        low_storage_factor(u.storage, inflow_id, threshold)
+    else
+        low_storage_factor(u.storage, outflow_id, threshold)
     end
 end
 
@@ -892,6 +928,13 @@ end
 
 # Custom overloads
 reduction_factor(x::GradientTracer, threshold::Real) = x
+low_storage_factor_resistance_node(
+    storage::ComponentVector{<:GradientTracer},
+    q,
+    inflow_id,
+    outflow_id,
+    threshold,
+) = q
 relaxed_root(x::GradientTracer, threshold::Real) = x
 get_level_from_storage(basin::Basin, state_idx::Int, storage::GradientTracer) = storage
 stop_declining_negative_storage!(du, u::ComponentVector{<:GradientTracer}) = nothing
