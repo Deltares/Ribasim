@@ -63,7 +63,10 @@ function get_connectivity()
     [
         (
             name = T,
-            connectivity = Ribasim.neighbortypes(T),
+            # connectivity = Ribasim.neighbortypes(T),
+            connectivity = Set(
+                Ribasim.config.camel_case(x) for x in Ribasim.neighbortypes(T)
+            ),
             flow_neighbor_bound = Ribasim.n_neighbor_bounds_flow(T),
             control_neighbor_bound = Ribasim.n_neighbor_bounds_control(T),
         ) for T in keys(Ribasim.config.nodekinds)

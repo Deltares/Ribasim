@@ -20,22 +20,12 @@ def can_connect(node_up: str, node_down: str) -> bool:
 
 flow_edge_amount: dict[str, list[int]] = {
 {% for n in nodes%}
-    '{{n[:name]}}': [
-        {{ n[:flow_neighbor_bound].in_min }},
-        {{ n[:flow_neighbor_bound].in_max }},
-        {{ n[:flow_neighbor_bound].out_min }},
-        {{ n[:flow_neighbor_bound].out_max }},
-    ],
+    '{{n[:name]}}': [{{ n[:flow_neighbor_bound].in_min }}, {{ n[:flow_neighbor_bound].in_max }}, {{ n[:flow_neighbor_bound].out_min }}, {{ n[:flow_neighbor_bound].out_max }}],
 {%end%}
 }
 
 control_edge_amount: dict[str, list[int]] = {
 {% for n in nodes%}
-    '{{n[:name]}}': [
-        {{ n[:control_neighbor_bound].in_min }},
-        {{ n[:control_neighbor_bound].in_max }},
-        {{ n[:control_neighbor_bound].out_min }},
-        {{ n[:control_neighbor_bound].out_max }},
-    ],
+    '{{n[:name]}}': [{{ n[:control_neighbor_bound].in_min }}, {{ n[:control_neighbor_bound].in_max }}, {{ n[:control_neighbor_bound].out_min }}, {{ n[:control_neighbor_bound].out_max }}],
 {%end%}
 }

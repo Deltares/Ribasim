@@ -23,7 +23,7 @@ using OrdinaryDiffEqRosenbrock: Rodas5, Rosenbrock23
 
 export Config, Solver, Results, Logging, Toml
 export algorithm,
-    snake_case, input_path, results_path, convert_saveat, convert_dt, nodetypes
+    camel_case, snake_case, input_path, results_path, convert_saveat, convert_dt, nodetypes
 
 const schemas =
     getfield.(
@@ -48,6 +48,15 @@ function snake_case(str::AbstractString)::String
 end
 
 snake_case(sym::Symbol)::Symbol = Symbol(snake_case(String(sym)))
+
+"Convert a string from snake_case to CamelCase."
+function camel_case(snake_case::AbstractString)::String
+    camel_case = replace(snake_case, r"_([a-z])" => s -> uppercase(s[2]))
+    camel_case = uppercase(first(camel_case)) * camel_case[2:end]
+    return camel_case
+end
+
+camel_case(sym::Symbol)::Symbol = Symbol(camel_case(String(sym)))
 
 """
 Add fieldnames with Union{String, Nothing} type to struct expression. Requires @option use before it.
