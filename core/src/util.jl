@@ -551,22 +551,20 @@ function get_Δt(integrator)::Float64
     end
 end
 
-function get_influx(basin::Basin, node_id::NodeID)::Float64
+function get_influx(basin::Basin, node_id::NodeID, vertical_flux::AbstractVector)::Float64
     if node_id.type !== NodeType.Basin
         error("Sum of vertical fluxes requested for non-basin $node_id.")
     end
-    return get_influx(basin, node_id.idx)
+    return get_influx(basin, node_id.idx, vertical_flux)
 end
 
-function get_influx(basin::Basin, basin_idx::Int)::Float64
-    (; node_id, vertical_flux, vertical_flux_from_input) = basin
+function get_influx(basin::Basin, basin_idx::Int, vertical_flux::AbstractVector)::Float64
+    (; node_id) = basin
     n = length(node_id)
-    vertical_flux = vertical_flux[parent(vertical_flux_from_input)]
-    vertical_flux[basin_idx] - # precipitation
-    vertical_flux[n + basin_idx] + # evaporation
-    vertical_flux[2n + basin_idx] - # drainage
-    vertical_flux[3n + basin_idx] # infiltration
-    return vertical_flux
+    return vertical_flux[basin_idx] - # precipitation
+           vertical_flux[n + basin_idx] + # evaporation
+           vertical_flux[2n + basin_idx] - # drainage
+           vertical_flux[3n + basin_idx] # infiltration
 end
 
 inflow_edge(graph, node_id)::EdgeMetadata = graph[inflow_id(graph, node_id), node_id]
@@ -582,9 +580,11 @@ as input. Therefore we set the instantaneous flows as the mean flows as allocati
 """
 function set_initial_allocation_mean_flows!(integrator)::Nothing
     (; u, p, t) = integrator
-    (; allocation, graph) = p
+    (; allocation, graph, basin) = p
     (; mean_input_flows, mean_realized_flows, allocation_models) = allocation
     (; Δt_allocation) = allocation_models[1]
+    (; vertical_flux, vertical_flux_from_input) = basin
+    vertical_flux = vertical_flux[parent(vertical_flux_from_input)]
 
     # At the time of writing water_balance! already
     # gets called once at the problem initialization, this
@@ -594,7 +594,7 @@ function set_initial_allocation_mean_flows!(integrator)::Nothing
 
     for edge in keys(mean_input_flows)
         if edge[1] == edge[2]
-            q = get_influx(p.basin, edge[1])
+            q = get_influx(p.basin, edge[1], vertical_flux)
         else
             q = get_flow(graph, edge..., du)
         end

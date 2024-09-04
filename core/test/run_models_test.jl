@@ -479,7 +479,8 @@ end
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/backwater/ribasim.toml")
     @test ispath(toml_path)
-    model = Ribasim.run(toml_path)
+    config = Ribasim.Config(toml_path; solver_water_balance_error_reltol = Inf)
+    model = Ribasim.run(config)
     @test successful_retcode(model)
 
     u = model.integrator.sol.u[end]

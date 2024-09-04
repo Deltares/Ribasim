@@ -127,9 +127,11 @@ end
 
 function formulate_basins!(du::AbstractVector, basin::Basin)::Nothing
     update_vertical_flux!(basin, du)
+    (; vertical_flux, vertical_flux_from_input) = basin
+    vertical_flux = vertical_flux[parent(vertical_flux_from_input)]
     for id in basin.node_id
         # add all vertical fluxes that enter the Basin
-        du.storage[id.idx] += get_influx(basin, id.idx)
+        du.storage[id.idx] += get_influx(basin, id.idx, vertical_flux)
     end
     return nothing
 end

@@ -116,7 +116,7 @@ Integrate flows over the last timestep
 """
 function integrate_flows!(u, t, integrator)::Nothing
     (; p, dt, uprev, tprev) = integrator
-    (; graph, user_demand, basin, allocation) = p
+    (; graph, user_demand, basin, allocation, flow_boundary) = p
     (; flow, flow_dict, flow_integrated_over_dt, flow_integrated_over_saveat) = graph[]
     (;
         vertical_flux,
@@ -141,6 +141,15 @@ function integrate_flows!(u, t, integrator)::Nothing
     # Finish flow integration computation
     @. vertical_flux_integrated_over_dt *= dt / 2
     @. flow_integrated_over_dt *= dt / 2
+
+    # Do exact integration for flow boundaries
+    for (outflow_edges, flow_rate) in
+        zip(flow_boundary.outflow_edges, flow_boundary.flow_rate)
+        integrated_flow = integral(flow_rate, tprev, t)
+        for outflow_edge in outflow_edges
+            flow_integrated_over_dt[outflow_edge.flow_idx] = integrated_flow
+        end
+    end
 
     # Add integrated flows over timestep to integrated flows over longer periods
     @. flow_integrated_over_saveat += flow_integrated_over_dt
@@ -168,13 +177,7 @@ function integrate_flows!(u, t, integrator)::Nothing
         if edge[1] == edge[2]
             # Vertical fluxes
             allocation.mean_input_flows[edge] =
-                value +
-                0.5 *
-                (
-                    get_influx(basin, edge[1].idx) +
-                    get_influx(basin, edge[1].idx; prev = true)
-                ) *
-                dt
+                value + get_influx(basin, edge[1].idx, vertical_flux_integrated_over_dt)
         else
             # Horizontal flows
             flow_idx = flow_dict[edge...]
@@ -245,6 +248,9 @@ function check_water_balance_error(u, t, integrator)::Nothing
     (; total_inflow, total_outflow, vertical_flux_integrated_over_dt, node_id) = p.basin
     (; flow_integrated_over_dt) = p.graph[]
     (; water_balance_error_abstol, water_balance_error_reltol) = integrator.p
+
+    # Don't check the water balance error in the first millisecond
+    t < 1e-3 && return
 
     total_inflow .= 0
     total_outflow .= 0

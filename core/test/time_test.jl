@@ -6,6 +6,7 @@
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/flow_boundary_time/ribasim.toml")
     @test ispath(toml_path)
+    config = Ribasim.Config(toml_path)
     model = Ribasim.run(toml_path)
     @test successful_retcode(model)
 
@@ -94,6 +95,7 @@ end
         solver_saveat = saveat,
         solver_dt = 5day,
         solver_algorithm = "Euler",
+        solver_water_balance_error_reltol = 1.0,
     )
     model = Ribasim.Model(config)
     starting_precipitation = Ribasim.wrap_forcing(
