@@ -45,7 +45,7 @@ def backwater_model():
             [
                 manning_resistance.Static(
                     length=[20.0],
-                    manning_n=[0.04],
+                    manning_n=[0.09],
                     profile_width=[1.0],
                     profile_slope=[0.0],
                 )
@@ -69,7 +69,7 @@ def backwater_model():
 
     model.basin.add(
         Node(102, Point(1010.0, 0.0)),
-        [basin.State(level=[2.0]), basin.Profile(level=[0.0, 1.0], area=1e20)],
+        [basin.State(level=[2.0]), basin.Profile(level=[0.0, 1.0], area=1e10)],
     )
     model.edge.add(
         model.manning_resistance[101],

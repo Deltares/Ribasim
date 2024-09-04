@@ -293,7 +293,9 @@ function check_water_balance_error(u, t, integrator)::Nothing
     end
 
     if errors
-        error("Too large water balance error(s) detected.")
+        error(
+            "Too large water balance error(s) detected. Consider lowering solver tolerances or reducing shocks in the model.",
+        )
     end
     return nothing
 end

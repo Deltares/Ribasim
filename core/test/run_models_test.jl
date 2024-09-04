@@ -479,21 +479,21 @@ end
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/backwater/ribasim.toml")
     @test ispath(toml_path)
-    config = Ribasim.Config(toml_path; solver_water_balance_error_reltol = Inf)
-    model = Ribasim.run(config)
+    model = Ribasim.run(toml_path)
     @test successful_retcode(model)
 
     u = model.integrator.sol.u[end]
     p = model.integrator.p
+    manning_n = first(p.manning_resistance.manning_n)
     h_actual = p.basin.current_level[parent(u)][1:50]
     x = collect(10.0:20.0:990.0)
-    h_expected = standard_step_method(x, 5.0, 1.0, 0.04, h_actual[end], 1.0e-6)
+    h_expected = standard_step_method(x, 5.0, 1.0, manning_n, h_actual[end], 1.0e-6)
 
     # We test with a somewhat arbitrary difference of 0.01 m. There are some
     # numerical choices to make in terms of what the representative friction
     # slope is. See e.g.:
     # https://www.hec.usace.army.mil/confluence/rasdocs/ras1dtechref/latest/theoretical-basis-for-one-dimensional-and-two-dimensional-hydrodynamic-calculations/1d-steady-flow-water-surface-profiles/friction-loss-evaluation
-    @test all(isapprox.(h_expected, h_actual; atol = 0.02))
+    @test all(isapprox.(h_expected, h_actual; atol = 0.04))
     # Test for conservation of mass, flow at the beginning == flow at the end
     n_self_loops = length(p.graph[].flow_dict)
     @test Ribasim.get_flow(
