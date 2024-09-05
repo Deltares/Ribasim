@@ -362,7 +362,7 @@ function TabulatedRatingCurve(
     return TabulatedRatingCurve(;
         node_id = node_ids,
         inflow_edge = inflow_edge.(Ref(graph), node_ids),
-        outflow_edges = outflow_edges.(Ref(graph), node_ids),
+        outflow_edge = outflow_edge.(Ref(graph), node_ids),
         active,
         table = interpolations,
         time,
@@ -464,7 +464,13 @@ end
 
 function Pump(db::DB, config::Config, graph::MetaGraph)::Pump
     static = load_structvector(db, config, PumpStaticV1)
-    defaults = (; min_flow_rate = 0.0, max_flow_rate = Inf, active = true)
+    defaults = (;
+        min_flow_rate = 0.0,
+        max_flow_rate = Inf,
+        min_upstream_level = -Inf,
+        max_downstream_level = Inf,
+        active = true,
+    )
     parsed_parameters, valid = parse_static_and_time(db, config, Pump; static, defaults)
 
     if !valid
@@ -480,11 +486,13 @@ function Pump(db::DB, config::Config, graph::MetaGraph)::Pump
     return Pump(;
         node_id,
         inflow_edge = inflow_edge.(Ref(graph), node_id),
-        outflow_edges = outflow_edges.(Ref(graph), node_id),
+        outflow_edge = outflow_edge.(Ref(graph), node_id),
         parsed_parameters.active,
         flow_rate,
         parsed_parameters.min_flow_rate,
         parsed_parameters.max_flow_rate,
+        parsed_parameters.min_upstream_level,
+        parsed_parameters.max_downstream_level,
         parsed_parameters.control_mapping,
     )
 end
@@ -495,6 +503,7 @@ function Outlet(db::DB, config::Config, graph::MetaGraph)::Outlet
         min_flow_rate = 0.0,
         max_flow_rate = Inf,
         min_upstream_level = -Inf,
+        max_downstream_level = Inf,
         active = true,
     )
     parsed_parameters, valid = parse_static_and_time(db, config, Outlet; static, defaults)
@@ -517,13 +526,14 @@ function Outlet(db::DB, config::Config, graph::MetaGraph)::Outlet
     return Outlet(;
         node_id,
         inflow_edge = inflow_edge.(Ref(graph), node_id),
-        outflow_edges = outflow_edges.(Ref(graph), node_id),
+        outflow_edge = outflow_edge.(Ref(graph), node_id),
         parsed_parameters.active,
         flow_rate,
         parsed_parameters.min_flow_rate,
         parsed_parameters.max_flow_rate,
-        parsed_parameters.min_upstream_level,
         parsed_parameters.control_mapping,
+        parsed_parameters.min_upstream_level,
+        parsed_parameters.max_downstream_level,
     )
 end
 

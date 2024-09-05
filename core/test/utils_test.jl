@@ -180,8 +180,7 @@ end
 
     jac_prototype_expected = spzeros(Bool, 4, 4)
     jac_prototype_expected[1:2, 1:2] .= true
-    jac_prototype_expected[3:4, 2:3] .= true
-    jac_prototype_expected[4, 4] = true
+    jac_prototype_expected[3:4, 2:4] .= true
     @test jac_prototype == jac_prototype_expected
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/pid_control/ribasim.toml")
@@ -234,7 +233,7 @@ end
 end
 
 @testitem "low_storage_factor" begin
-    using Ribasim: NodeID, low_storage_factor, EdgeMetadata, EdgeType
+    using Ribasim: NodeID, low_storage_factor, low_storage_factor_resistance_node
 
     node_id = NodeID(:Basin, 5, 1)
     @test low_storage_factor([-2.0], node_id, 2.0) === 0.0
@@ -244,6 +243,30 @@ end
     @test low_storage_factor([1.0], node_id, 2.0) === 0.5
     @test low_storage_factor([3.0f0], node_id, 2.0) === 1.0f0
     @test low_storage_factor([3.0], node_id, 2.0) === 1.0
+
+    node_id_1 = NodeID(:Basin, 5, 1)
+    node_id_2 = NodeID(:Basin, 6, 2)
+    @test low_storage_factor_resistance_node(
+        (; storage = [3.0, 3.0]),
+        1.0,
+        node_id_1,
+        node_id_2,
+        2.0,
+    ) == 1.0
+    @test low_storage_factor_resistance_node(
+        (; storage = [1.0, 3.0]),
+        1.0,
+        node_id_1,
+        node_id_2,
+        2.0,
+    ) == 0.5
+    @test low_storage_factor_resistance_node(
+        (; storage = [1.0, 3.0]),
+        -1.0,
+        node_id_1,
+        node_id_2,
+        2.0,
+    ) == 1.0
 end
 
 @testitem "constraints_from_nodes" begin
