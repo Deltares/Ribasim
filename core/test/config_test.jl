@@ -81,10 +81,16 @@ end
     @test Ribasim.snake_case("CamelCase") == "camel_case"
     @test Ribasim.snake_case("ABCdef") == "a_b_cdef"
     @test Ribasim.snake_case("snake_case") == "snake_case"
+    @test Ribasim.snake_case(:CamelCase) == :camel_case
+    @test Ribasim.snake_case(:ABCdef) == :a_b_cdef
+    @test Ribasim.snake_case(:snake_case) == :snake_case
 end
 
 @testitem "camel_case" begin
     @test Ribasim.camel_case("camel_case") == "CamelCase"
     @test Ribasim.camel_case("a_b_cdef") == "ABCdef"
     @test Ribasim.camel_case("CamelCase") == "CamelCase"
+    @test Ribasim.camel_case(:camel_case) == :CamelCase
+    @test Ribasim.camel_case(:a_b_cdef) == :ABCdef
+    @test Ribasim.camel_case(:CamelCase) == :CamelCase
 end

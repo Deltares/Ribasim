@@ -2,7 +2,6 @@
 
 # Table for connectivity
 # "Basin": ["LinearResistance"] means that the downstream of basin can be LinearResistance only
-
 node_type_connectivity: dict[str, list[str]] = {
     "PidControl": [
         "Outlet",
@@ -81,9 +80,9 @@ node_type_connectivity: dict[str, list[str]] = {
 
 
 # Function to validate connection
-def can_connect(node_up: str, node_down: str) -> bool:
-    if node_up in node_type_connectivity:
-        return node_down in node_type_connectivity[node_up]
+def can_connect(node_type_up: str, node_type_down: str) -> bool:
+    if node_type_up in node_type_connectivity:
+        return node_type_down in node_type_connectivity[node_type_up]
     return False
 
 
