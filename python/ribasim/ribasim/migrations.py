@@ -17,31 +17,32 @@ def nodeschema_migration(gdf: GeoDataFrame, schema_version: int) -> GeoDataFrame
 
 
 def edgeschema_migration(gdf: GeoDataFrame, schema_version: int) -> GeoDataFrame:
-    if "from_node_type" in gdf.columns and schema_version == 0:
+    if schema_version == 0:
         warnings.warn("Migrating outdated Edge table.", UserWarning)
-        gdf.drop("from_node_type", inplace=True, axis=1)
-    if "to_node_type" in gdf.columns and schema_version == 0:
+        gdf.drop(columns="from_node_type", inplace=True, errors="ignore")
+    if schema_version == 0:
         warnings.warn("Migrating outdated Edge table.", UserWarning)
-        gdf.drop("to_node_type", inplace=True, axis=1)
+        gdf.drop(columns="to_node_type", inplace=True, errors="ignore")
     if "edge_id" in gdf.columns and schema_version == 0:
         warnings.warn("Migrating outdated Edge table.", UserWarning)
+        assert gdf["edge_id"].is_unique, "Edge IDs have to be unique."
         gdf.set_index("edge_id", inplace=True)
 
     return gdf
 
 
 def basinstaticschema_migration(df: DataFrame, schema_version: int) -> DataFrame:
-    if "urban_runoff" in df.columns and schema_version == 0:
+    if schema_version == 0:
         warnings.warn("Migrating outdated Basin / static table.", UserWarning)
-        df.drop("urban_runoff", inplace=True, axis=1)
+        df.drop(columns="urban_runoff", inplace=True, errors="ignore")
 
     return df
 
 
 def basintimeschema_migration(df: DataFrame, schema_version: int) -> DataFrame:
-    if "urban_runoff" in df.columns and schema_version == 0:
+    if schema_version == 0:
         warnings.warn("Migrating outdated Basin / time table.", UserWarning)
-        df.drop("urban_runoff", inplace=True, axis=1)
+        df.drop(columns="urban_runoff", inplace=True, errors="ignore")
 
     return df
 
@@ -49,11 +50,11 @@ def basintimeschema_migration(df: DataFrame, schema_version: int) -> DataFrame:
 def continuouscontrolvariableschema_migration(
     df: DataFrame, schema_version: int
 ) -> DataFrame:
-    if "listen_node_type" in df.columns and schema_version == 0:
+    if schema_version == 0:
         warnings.warn(
             "Migrating outdated ContinuousControl / variable table.", UserWarning
         )
-        df.drop("listen_node_type", inplace=True, axis=1)
+        df.drop(columns="listen_node_type", inplace=True, errors="ignore")
 
     return df
 
@@ -61,19 +62,19 @@ def continuouscontrolvariableschema_migration(
 def discretecontrolvariableschema_migration(
     df: DataFrame, schema_version: int
 ) -> DataFrame:
-    if "listen_node_type" in df.columns and schema_version == 0:
+    if schema_version == 0:
         warnings.warn(
             "Migrating outdated DiscreteControl / variable table.", UserWarning
         )
-        df.drop("listen_node_type", inplace=True, axis=1)
+        df.drop(columns="listen_node_type", inplace=True, errors="ignore")
 
     return df
 
 
 def pidcontrolstaticschema_migration(df: DataFrame, schema_version: int) -> DataFrame:
-    if "listen_node_type" in df.columns and schema_version == 0:
+    if schema_version == 0:
         warnings.warn("Migrating outdated PidControl / static table.", UserWarning)
-        df.drop("listen_node_type", inplace=True, axis=1)
+        df.drop(columns="listen_node_type", inplace=True, errors="ignore")
 
     return df
 
