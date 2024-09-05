@@ -372,7 +372,7 @@ function valid_min_upstream_level!(
             if min_upstream_level == -Inf
                 node.min_upstream_level[id.idx] = basin_bottom_level
             elseif min_upstream_level < basin_bottom_level
-                @error "Minimum min_upstream_level level of $id is lower than bottom of upstream $id_in" min_upstream_level basin_bottom_level
+                @error "Minimum upstream level of $id is lower than bottom of upstream $id_in" min_upstream_level basin_bottom_level
                 errors = true
             end
         end
