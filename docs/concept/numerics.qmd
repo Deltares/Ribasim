@@ -100,7 +100,7 @@ where the continuity of this term is given by the least continuous of $Q$ and $h
 
 ## Empty basins
 
-[Reduction factors](/concept/equations.qmd#the-reduction-factor) are introduced at several points in the definition of $\mathbf{f}$ to smooth out otherwise discontinuous transitions (e.g. the flow rate of a pump going to zero when the source basin dries out).
+[Reduction factors](/reference/node/basin.qmd#sec-reduction-factor) are introduced at several points in the definition of $\mathbf{f}$ to smooth out otherwise discontinuous transitions (e.g. the flow rate of a pump going to zero when the source basin dries out).
 If flows are not too large with respect to basin storage, this will prevent basins from reaching 0.
 Rather, the basin gets a very small storage.
 The reduction factors help with performance, but are also an important tool to avoid getting negative storage in basins.

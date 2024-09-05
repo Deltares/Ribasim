@@ -10,13 +10,14 @@ Use it for instance to model flow over a weir.
 
 ## Static
 
-column        | type    | unit         | restriction
-------------- | ------- | ------------ | -----------
-node_id       | Int32   | -            | sorted
-control_state | String  | -            | (optional) sorted per node_id
-active        | Bool    | -            | (optional, default true)
-level         | Float64 | $m$          | sorted per control_state, unique
-flow_rate     | Float64 | $m^3 s^{-1}$ | start at 0, increasing
+column               | type    | unit                  | restriction
+-------------        | ------- | --------------------- | -----------
+node_id              | Int32   | -                     | sorted
+control_state        | String  | -                     | (optional) sorted per node_id
+active               | Bool    | -                     | (optional, default true)
+max_downstream_level | Float64 | $\text{m}$            | (optional)
+level                | Float64 | $\text{m}$            | sorted per control_state, unique
+flow_rate            | Float64 | $\text{m}^3/\text{s}$ | start at 0, increasing
 
 Thus a single rating curve can be given by the following table:
 
@@ -84,26 +85,27 @@ The table must by sorted by time, and per time it must be sorted by `node_id`.
 With this the rating curves can be updated over time.
 Note that a `node_id` can be either in this table or in the static one, but not both.
 
-column    | type     | unit         | restriction
---------- | -------  | ------------ | -----------
-node_id   | Int32    | -            | sorted
-time      | DateTime | -            | sorted per node_id
-level     | Float64  | $m$          | sorted per node_id per time
-flow_rate | Float64  | $m^3 s^{-1}$ | non-negative
+column    | type     | unit                  | restriction
+--------- | -------  | --------------------- | -----------
+node_id   | Int32    | -                     | sorted
+time      | DateTime | -                     | sorted per node_id
+level     | Float64  | $\text{m}$            | sorted per node_id per time
+flow_rate | Float64  | $\text{m}^3/\text{s}$ | non-negative
 
 # Equations
 
-The Tabulated Rating Curve is a tabulation of a basin's discharge behavior.
+The TabulatedRatingCurve is a tabulation of a Basin's discharge behavior.
 It describes a piecewise linear relationship between the Basin's level and its discharge.
 It can be understood as an empirical description of a Basin's properties.
 This can include a weir, but also the lumped hydraulic behavior of the upstream channels.
 
 $$
-Q = \phi(u; 10.0) f(h_a)
+Q = \phi f(h)
 $$
 
 Where:
 
-- $h_a$ is the upstream water level
-- $\phi$ is the reduction factor for the upstream Basin drying out
+- $h$ is the upstream water level
 - $f$ is a piecewise linear function describing the given rating curve $Q(h)$
+- $\phi$ is the reduction factor, which smoothly reduces flow based on all of these criteria:
+  - The upstream volume is below $10 m^3$.

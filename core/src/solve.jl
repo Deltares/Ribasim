@@ -84,9 +84,7 @@ function set_current_basin_properties!(
     current_level = current_level[parent(du)]
     current_area = current_area[parent(du)]
 
-    storage = u.storage
-
-    for (i, s) in enumerate(storage)
+    for (i, s) in enumerate(u.storage)
         current_level[i] = get_level_from_storage(basin, i, s)
         current_area[i] = basin.level_to_area[i](current_level[i])
     end
@@ -274,7 +272,7 @@ function formulate_flow!(
 
         # Smoothly let abstraction go to 0 as the source basin
         # level reaches its minimum level
-        _, source_level = get_level(p, inflow_id, t, du)
+        source_level = get_level(p, inflow_id, t, du)
         Δsource_level = source_level - min_level
         factor_level = reduction_factor(Δsource_level, 0.1)
         q *= factor_level
@@ -308,13 +306,11 @@ function formulate_flow!(
         outflow_id = outflow_edge.edge[2]
 
         if (active[id.idx] || all_nodes_active)
-            _, h_a = get_level(p, inflow_id, t, du)
-            _, h_b = get_level(p, outflow_id, t, du)
+            h_a = get_level(p, inflow_id, t, du)
+            h_b = get_level(p, outflow_id, t, du)
             q_unlimited = (h_a - h_b) / resistance[id.idx]
             q = clamp(q_unlimited, -max_flow_rate[id.idx], max_flow_rate[id.idx])
-
-            q *= low_storage_factor(u.storage, inflow_id, 10.0)
-            q *= low_storage_factor(u.storage, outflow_id, 10.0)
+            q *= low_storage_factor_resistance_node(u, q, inflow_id, outflow_id, 10.0)
 
             set_flow!(graph, inflow_edge, q, du)
             set_flow!(graph, outflow_edge, q, du)
@@ -335,24 +331,22 @@ function formulate_flow!(
 )::Nothing
     (; graph) = p
     all_nodes_active = p.all_nodes_active[]
-    (; node_id, active, table, inflow_edge, outflow_edges) = tabulated_rating_curve
+    (; node_id, active, table, inflow_edge, outflow_edge) = tabulated_rating_curve
 
     for id in node_id
         upstream_edge = inflow_edge[id.idx]
-        downstream_edges = outflow_edges[id.idx]
+        downstream_edge = outflow_edge[id.idx]
         upstream_basin_id = upstream_edge.edge[1]
 
         if active[id.idx] || all_nodes_active
             factor = low_storage_factor(u.storage, upstream_basin_id, 10.0)
-            q = factor * table[id.idx](get_level(p, upstream_basin_id, t, du)[2])
+            q = factor * table[id.idx](get_level(p, upstream_basin_id, t, du))
         else
             q = 0.0
         end
 
         set_flow!(graph, upstream_edge, q, du)
-        for downstream_edge in downstream_edges
-            set_flow!(graph, downstream_edge, q, du)
-        end
+        set_flow!(graph, downstream_edge, q, du)
     end
     return nothing
 end
@@ -426,8 +420,8 @@ function formulate_flow!(
             continue
         end
 
-        _, h_a = get_level(p, inflow_id, t, du)
-        _, h_b = get_level(p, outflow_id, t, du)
+        h_a = get_level(p, inflow_id, t, du)
+        h_b = get_level(p, outflow_id, t, du)
 
         bottom_a = upstream_bottom[id.idx]
         bottom_b = downstream_bottom[id.idx]
@@ -455,6 +449,7 @@ function formulate_flow!(
         Δh = h_a - h_b
 
         q = A / n * ∛(R_h^2) * relaxed_root(Δh / L, 1e-3)
+        q *= low_storage_factor_resistance_node(u, q, inflow_id, outflow_id, 10.0)
 
         set_flow!(graph, inflow_edge, q, du)
         set_flow!(graph, outflow_edge, q, du)
@@ -499,20 +494,24 @@ function formulate_flow!(
     for (
         node_id,
         inflow_edge,
-        outflow_edges,
+        outflow_edge,
         active,
         flow_rate,
         min_flow_rate,
         max_flow_rate,
+        min_upstream_level,
+        max_downstream_level,
         continuous_control_type,
     ) in zip(
         pump.node_id,
         pump.inflow_edge,
-        pump.outflow_edges,
+        pump.outflow_edge,
         pump.active,
         pump.flow_rate[parent(du)],
         pump.min_flow_rate,
         pump.max_flow_rate,
+        pump.min_upstream_level,
+        pump.max_downstream_level,
         pump.continuous_control_type,
     )
         if !(active || all_nodes_active) ||
@@ -521,15 +520,20 @@ function formulate_flow!(
         end
 
         inflow_id = inflow_edge.edge[1]
+        outflow_id = outflow_edge.edge[2]
+        src_level = get_level(p, inflow_id, t, du)
+        dst_level = get_level(p, outflow_id, t, du)
+
         factor = low_storage_factor(u.storage, inflow_id, 10.0)
         q = flow_rate * factor
+
+        q *= reduction_factor(src_level - min_upstream_level, 0.02)
+        q *= reduction_factor(max_downstream_level - dst_level, 0.02)
+
         q = clamp(q, min_flow_rate, max_flow_rate)
 
         set_flow!(graph, inflow_edge, q, du)
-
-        for outflow_edge in outflow_edges
-            set_flow!(graph, outflow_edge, q, du)
-        end
+        set_flow!(graph, outflow_edge, q, du)
     end
     return nothing
 end
@@ -548,23 +552,25 @@ function formulate_flow!(
     for (
         node_id,
         inflow_edge,
-        outflow_edges,
+        outflow_edge,
         active,
         flow_rate,
         min_flow_rate,
         max_flow_rate,
         continuous_control_type,
         min_upstream_level,
+        max_downstream_level,
     ) in zip(
         outlet.node_id,
         outlet.inflow_edge,
-        outlet.outflow_edges,
+        outlet.outflow_edge,
         outlet.active,
         outlet.flow_rate[parent(du)],
         outlet.min_flow_rate,
         outlet.max_flow_rate,
         outlet.continuous_control_type,
         outlet.min_upstream_level,
+        outlet.max_downstream_level,
     )
         if !(active || all_nodes_active) ||
            (continuous_control_type != continuous_control_type_)
@@ -572,32 +578,23 @@ function formulate_flow!(
         end
 
         inflow_id = inflow_edge.edge[1]
+        outflow_id = outflow_edge.edge[2]
+        src_level = get_level(p, inflow_id, t, du)
+        dst_level = get_level(p, outflow_id, t, du)
+
         q = flow_rate
         q *= low_storage_factor(u.storage, inflow_id, 10.0)
 
         # No flow of outlet if source level is lower than target level
-        outflow_edge = only(outflow_edges)
-        outflow_id = outflow_edge.edge[2]
-        _, src_level = get_level(p, inflow_id, t, du)
-        _, dst_level = get_level(p, outflow_id, t, du)
-
-        if src_level !== nothing && dst_level !== nothing
-            Δlevel = src_level - dst_level
-            q *= reduction_factor(Δlevel, 0.1)
-        end
-
-        # No flow out outlet if source level is lower than minimum crest level
-        if src_level !== nothing
-            q *= reduction_factor(src_level - min_upstream_level, 0.1)
-        end
+        Δlevel = src_level - dst_level
+        q *= reduction_factor(Δlevel, 0.02)
+        q *= reduction_factor(src_level - min_upstream_level, 0.02)
+        q *= reduction_factor(max_downstream_level - dst_level, 0.02)
 
         q = clamp(q, min_flow_rate, max_flow_rate)
 
         set_flow!(graph, inflow_edge, q, du)
-
-        for outflow_edge in outflow_edges
-            set_flow!(graph, outflow_edge, q, du)
-        end
+        set_flow!(graph, outflow_edge, q, du)
     end
     return nothing
 end
