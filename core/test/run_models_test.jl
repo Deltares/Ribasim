@@ -246,7 +246,7 @@ end
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/allocation_example/ribasim.toml")
     @test ispath(toml_path)
-    model = Ribasim.run(toml_path)
+    model = Ribasim.run(config)
     @test model isa Ribasim.Model
     @test successful_retcode(model)
 end
@@ -517,7 +517,12 @@ end
         normpath(@__DIR__, "../../generated_testmodels/flow_boundary_time/ribasim.toml")
     @test ispath(toml_path)
     function get_flow(solver_dt::Union{Float64, Nothing}, solver_saveat::Float64)
-        config = Ribasim.Config(toml_path; solver_dt, solver_saveat)
+        config = Ribasim.Config(
+            toml_path;
+            solver_dt,
+            solver_saveat,
+            solver_water_balance_error_reltol = 1.0,
+        )
         model = Ribasim.run(config)
         df = DataFrame(Ribasim.flow_table(model))
         flow =
@@ -528,8 +533,8 @@ end
         flow, Ribasim.tsaves(model)
     end
 
-    Δt = 24 * 24 * 60.0
-    t_end = 3.16224e7 # 366 days
+    Δt = 86400.0
+    t_end = 366Δt
 
     # t_end % saveat = 0
     saveat = 86400.0

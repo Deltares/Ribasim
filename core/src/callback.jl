@@ -250,7 +250,7 @@ function check_water_balance_error(u, t, integrator)::Nothing
     (; water_balance_error_abstol, water_balance_error_reltol) = integrator.p
 
     # Don't check the water balance error in the first millisecond
-    t < 1e-3 && return
+    (t < 1e-3 || tprev == 0) && return
 
     total_inflow .= 0
     total_outflow .= 0

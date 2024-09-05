@@ -38,7 +38,7 @@ def outlet_continuous_control_model() -> Model:
     model.basin.add(
         Node(3, Point(2, 0)),
         [
-            basin.Profile(area=10000.0, level=[0.0, 1.0]),
+            basin.Profile(area=10000.0, level=[0.0, 0.7]),
             basin.State(level=[10.0]),
         ],
     )
