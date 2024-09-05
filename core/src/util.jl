@@ -386,6 +386,18 @@ function low_storage_factor(
     end
 end
 
+"""
+For resistance nodes, give a reduction factor based on the upstream node
+as defined by the flow direction.
+"""
+function low_storage_factor_resistance_node(u, q, inflow_id, outflow_id, threshold)
+    if q > 0
+        low_storage_factor(u.storage, inflow_id, threshold)
+    else
+        low_storage_factor(u.storage, outflow_id, threshold)
+    end
+end
+
 """Whether the given node node is flow constraining by having a maximum flow rate."""
 function is_flow_constraining(type::NodeType.T)::Bool
     type in (NodeType.LinearResistance, NodeType.Pump, NodeType.Outlet)
@@ -894,6 +906,13 @@ end
 
 # Custom overloads
 reduction_factor(x::GradientTracer, threshold::Real) = x
+low_storage_factor_resistance_node(
+    storage::ComponentVector{<:GradientTracer},
+    q,
+    inflow_id,
+    outflow_id,
+    threshold,
+) = q
 relaxed_root(x::GradientTracer, threshold::Real) = x
 get_level_from_storage(basin::Basin, state_idx::Int, storage::GradientTracer) = storage
 stop_declining_negative_storage!(du, u::ComponentVector{<:GradientTracer}) = nothing
