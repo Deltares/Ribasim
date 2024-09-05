@@ -336,11 +336,11 @@ function formulate_flow!(
     for id in node_id
         inflow_edge = tabulated_rating_curve.inflow_edge[id.idx]
         outflow_edge = tabulated_rating_curve.outflow_edge[id.idx]
-        inflow_id = outflow_edge.edge[1]
+        inflow_id = inflow_edge.edge[1]
         outflow_id = outflow_edge.edge[2]
         max_downstream_level = tabulated_rating_curve.max_downstream_level[id.idx]
 
-        h_a = get_level(p, outflow_id, t, du)
+        h_a = get_level(p, inflow_id, t, du)
         h_b = get_level(p, outflow_id, t, du)
         Δh = h_a - h_b
 

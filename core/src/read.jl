@@ -356,7 +356,7 @@ function TabulatedRatingCurve(
                 errors = true
             end
             interpolation = qh_interpolation(pre_table, rowrange)
-            max_level = pre_table.max_downstream_level[rowrange][begin]
+            max_level = coalesce(pre_table.max_downstream_level[rowrange][begin], Inf)
             push!(interpolations, interpolation)
             push!(active, true)
             push!(max_downstream_level, max_level)
