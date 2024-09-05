@@ -402,7 +402,7 @@ end
 end
 
 @testitem "Outlet upstream level validation" begin
-    using Ribasim: valid_outlet_crest_level!
+    using Ribasim: valid_min_upstream_level!
     using Logging
 
     toml_path = normpath(
@@ -422,13 +422,13 @@ end
 
     logger = TestLogger()
     with_logger(logger) do
-        @test !Ribasim.valid_outlet_crest_level!(graph, outlet, basin)
+        @test !Ribasim.valid_min_upstream_level!(graph, outlet, basin)
     end
 
     @test length(logger.logs) == 1
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
-          "Minimum crest level of Outlet #4 is lower than bottom of upstream Basin #3"
+          "Minimum upstream level of Outlet #4 is lower than bottom of upstream Basin #3"
 end
 
 @testitem "Convergence bottleneck" begin
