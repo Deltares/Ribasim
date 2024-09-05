@@ -84,9 +84,7 @@ function set_current_basin_properties!(
     current_level = current_level[parent(du)]
     current_area = current_area[parent(du)]
 
-    storage = u.storage
-
-    for (i, s) in enumerate(storage)
+    for (i, s) in enumerate(u.storage)
         current_level[i] = get_level_from_storage(basin, i, s)
         current_area[i] = basin.level_to_area[i](current_level[i])
     end
@@ -314,9 +312,7 @@ function formulate_flow!(
             h_b = get_level(p, outflow_id, t, du)
             q_unlimited = (h_a - h_b) / resistance[id.idx]
             q = clamp(q_unlimited, -max_flow_rate[id.idx], max_flow_rate[id.idx])
-
-            q *= low_storage_factor(u.storage, inflow_id, 10.0)
-            q *= low_storage_factor(u.storage, outflow_id, 10.0)
+            q *= low_storage_factor_resistance_node(u, q, inflow_id, outflow_id, 10.0)
 
             set_flow!(graph, inflow_edge, q, du)
             set_flow!(graph, outflow_edge, q, du)
@@ -455,6 +451,7 @@ function formulate_flow!(
         Δh = h_a - h_b
 
         q = A / n * ∛(R_h^2) * relaxed_root(Δh / L, 1e-3)
+        q *= low_storage_factor_resistance_node(u, q, inflow_id, outflow_id, 10.0)
 
         set_flow!(graph, inflow_edge, q, du)
         set_flow!(graph, outflow_edge, q, du)

@@ -586,9 +586,9 @@ weakdeps = ["PDMats", "SparseArrays", "Statistics"]
     FillArraysStatisticsExt = "Statistics"
 
 [[deps.FindFirstFunctions]]
-git-tree-sha1 = "fa0ba2042021409deb144f868abafde0b06be8f0"
+git-tree-sha1 = "670e1d9ceaa4a3161d32fe2d2fb2177f8d78b330"
 uuid = "64ca27bc-2ba2-4a57-88aa-44e436879224"
-version = "1.3.0"
+version = "1.4.1"
 
 [[deps.FiniteDiff]]
 deps = ["ArrayInterface", "LinearAlgebra", "Setfield", "SparseArrays"]
