@@ -2,7 +2,7 @@
 title: "Quick start guide"
 ---
 
-![](https://github.com/user-attachments/assets/467e71da-def4-4723-91de-f76bf78758fe){fig-align="left"}
+![](https://s3.deltares.nl/ribasim/doc-image/quickstart/cover.png){fig-align="left"}
 
 # Introduction
 Welcome to Ribasim!
@@ -72,7 +72,7 @@ An average discharge of $44.45  \text{ m}^3/\text{s}$ is measured at the conflue
 In this module, the basin is free of any activities, allowing the model to simulate the natural flow.
 The next step is to include a demand (irrigation) that taps from a canal out of the main river.
 
-![Crystal Basin based on natural flow](https://github.com/user-attachments/assets/e7c4e14c-07ca-416a-877f-9ea0459bdf3d){fig-align="left" #fig-crystal-basin}
+![Crystal Basin based on natural flow](https://s3.deltares.nl/ribasim/doc-image/quickstart/Crystal-Basin-based-on-natural-flow.png){fig-align="left" #fig-crystal-basin}
 
 After this module the user will be able to:
 
@@ -150,7 +150,7 @@ To schematize the confluence from the tributary we will use the Basin node.
 The node by itself portrays as a bucket with a certain volume of water and can be used for different purposes, such as a reservoir, a lake or in this case a confluence.
 @fig-confluence visualizes a cross section of the confluence point in our model.
 
-![Basin node concept for the confluence](https://github.com/user-attachments/assets/3a6b05d9-c535-4054-be92-c593a0c03d93){fig-align="left" #fig-confluence}
+![Basin node concept for the confluence](https://s3.deltares.nl/ribasim/doc-image/quickstart/Basin-node-concept-for-the-confluence.png){fig-align="left" #fig-confluence}
 
 @tbl-input1 shows the input data for the basin node profile.
 
@@ -200,7 +200,7 @@ In this case this means:
 - At level $2.0$: Discharge is max. $50.0 \text{ m}^3/\text{s}$. This is a bit above the average discharge rate, corresponding to the water level where normal flow conditions are established.
 - At level $5.0$: Discharge rate reaches $200.0 \text{ m}^3/\text{s}$. This discharge rate occurs at the water level during wet periods, indicating higher flow capacity.
 
-![Discharge at corresponding water levels](https://github.com/user-attachments/assets/14799746-3b4d-4d4c-9b8a-37fbe1d88081){fig-align="left" #fig-discharge}
+![Discharge at corresponding water levels](https://s3.deltares.nl/ribasim/doc-image/quickstart/Discharge-at-corresponding-water-levels.png){fig-align="left" #fig-discharge}
 
 Taking this into account, add the `Tabulated Rating Curve` as follows:
 
@@ -248,7 +248,7 @@ rib_path = base_dir / "ribasim_windows/ribasim.exe"
 ```
 The schematization should look like @fig-cs11.
 
-![Schematization of the Crystal basin 1.1](https://github.com/user-attachments/assets/c3bfceb8-6da0-46d3-9ded-e7a039d874ec){fig-align="left" #fig-cs11}
+![Schematization of the Crystal basin 1.1](https://s3.deltares.nl/ribasim/doc-image/quickstart/Schematization-of-the-Crystal-basin-1.1.png){fig-align="left" #fig-cs11}
 
 After writing  model.write a subfolder `Crystal_1.1` is created, which contains the model input data and configuration:
 
@@ -332,21 +332,21 @@ This setup mimics the behavior of a gate or spillway, allowing us to model how v
 Since the basin node is functioning as a confluence rather than a storage reservoir, the simulated water levels and storage trends will closely follow the inflow patterns.
 This is because there is no net change in storage; all incoming water is balanced by outgoing flow.
 
-![Simulated basin level and storage](https://github.com/user-attachments/assets/1e039b16-1db9-4bb1-bd85-9e3b6692d771){fig-align="left" #fig-sim1}
+![Simulated basin level and storage](https://s3.deltares.nl/ribasim/doc-image/quickstart/Simulated-basin-level-and-storage.png){fig-align="left" #fig-sim1}
 
 @fig-sim2 shows the discharges in $\text{m}^3/\text{s}$ on each edge.
 Edge (3,4) represents the flow from the confluence to the tabulated rating curve and edge (4,5) represents the flow from the tabulated rating curve to the terminal.
 Both show the same discharge over time.
 Which is expected in a natural flow environment, as what is coming into the confluence must come out.
 
-![Simulated flows on each edge](https://github.com/user-attachments/assets/37c99ecf-dfd1-47e0-8be7-61ec885da232){fig-align="left" #fig-sim2}
+![Simulated flows on each edge](https://s3.deltares.nl/ribasim/doc-image/quickstart/Simulated-flows-on-each-edge.jpg){fig-align="left" #fig-sim2}
 
 ## Modual 1.2 - Irrigation demand
 
 Let us modify the environment to include agricultural activities within the basin, which necessitate irrigation.
 In a conventional irrigation setup, some water is diverted from the Main River through a canal, with a portion of it eventually returning to the main river (see @fig-irrigation).
 
-![Crystal basin with irrigation](https://github.com/user-attachments/assets/64fa750c-d7b9-4f5c-9a24-2f95e2b8bba8){fig-align="left" #fig-irrigation}
+![Crystal basin with irrigation](https://s3.deltares.nl/ribasim/doc-image/quickstart/Crystal-basin-with-irrigation.png){fig-align="left" #fig-irrigation}
 
 For this update schematization, we need to incorporate three additional nodes:
 
@@ -477,7 +477,7 @@ subprocess.run([rib_path, toml_path], check=True)
 
 The schematization should look like @fig-cs12.
 
-![Schematization of the Crystal basin with irrigation](https://github.com/user-attachments/assets/6241d388-5373-4f6c-b1f6-ff1a1a34d0e6){fig-align="left" #fig-cs12}
+![Schematization of the Crystal basin with irrigation](https://s3.deltares.nl/ribasim/doc-image/quickstart/Schematization-of-the-Crystal-basin-with-irrigation.png){fig-align="left" #fig-cs12}
 
 ### Step 7: Name the edges and basins
 The names of each nodes are defined and saved in the geopackage.
@@ -561,7 +561,7 @@ At the diverted section, where the profile is narrower than at the confluence, w
 When compared to the natural flow conditions, where no water is abstracted for irrigation (See Crystal 1.1), there is a noticeable decrease in both storage and water levels at the confluence downstream.
 This reduction is attributed to the irrigation demand upstream with no return flow, which decreases the amount of available water in the main river, resulting in lower water levels at the confluence.
 
-![Simulated basin levels and storages](https://github.com/user-attachments/assets/cce87cfb-9a7b-4025-812a-e2c35fa932a9){fig-align="left" #fig-sim3}
+![Simulated basin levels and storages](https://s3.deltares.nl/ribasim/doc-image/quickstart/Simulated-basin-levels-and-storages.png){fig-align="left" #fig-sim3}
 
 ### Step 9: Plot and compare the flow results
 Plot the flow results in an interactive plotting tool.
@@ -583,24 +583,24 @@ fig.show()
 
 The plot will be saved as an HTML file, which can be viewed by dragging the file into an internet browser (@fig-sim4).
 
-![Simulated flows of each edge](https://github.com/user-attachments/assets/2a27ab07-a4c5-4906-bdcd-45491f868042){fig-align="left" #fig-sim4}
+![Simulated flows of each edge](https://s3.deltares.nl/ribasim/doc-image/quickstart/Simulated-flows-of-each-edge.png){fig-align="left" #fig-sim4}
 
 When selecting only the flow demanded by the User Demand node, or in other words the supply for irrigation increases at times when it is required (@fig-sim5) and the return flow remains zero, as the assumption defined before was that there is no drain.
 
-![Supplied irrigation and return flow](https://github.com/user-attachments/assets/e87f75d3-c721-41f5-92c3-768a42ffd92e){fig-align="left" #fig-sim5}
+![Supplied irrigation and return flow](https://s3.deltares.nl/ribasim/doc-image/quickstart/Supplied-irrigation-and-return-flow.png){fig-align="left" #fig-sim5}
 
 @fig-sim6 shows the flow to the ocean (Terminal).
 Compared to Crystal 1.1 the flow has decreased during the irrigated period.
 Indicating the impact of irrigation without any drain.
 
-![Simulated flow to Terminal](https://github.com/user-attachments/assets/b4563cbd-4919-4422-9cb8-70deebf98094){fig-align="left" #fig-sim6}
+![Simulated flow to Terminal](https://s3.deltares.nl/ribasim/doc-image/quickstart/Simulated-flow-to-Terminal.png){fig-align="left" #fig-sim6}
 
 # Modual 2 – Reservoirs and Public Water Supply
 Due to the increase of population and climate change Crystal city has implemented a reservoir upstream to store water for domestic use (See @fig-reservoir).
 The reservoir is to help ensure a reliable supply during dry periods.
 In this module, the user will update the model to incorporate the reservoir's impact on the whole Crystal Basin.
 
-![Crystal basin with demands and a reservoir](https://github.com/user-attachments/assets/615f6d93-bdb9-4a38-a308-c5c0929930b5){fig-align="left" #fig-reservoir}
+![Crystal basin with demands and a reservoir](https://s3.deltares.nl/ribasim/doc-image/quickstart/Crystal-basin-with-demands-and-a-reservoir.png){fig-align="left" #fig-reservoir}
 
 ## Modual 2.1 – Reservoir
 ### Step 1: Add a basin
@@ -680,7 +680,7 @@ fig.show()
 @fig-sim7 illustrates the new storage and water level at the reservoir.
 As expected, after increasing the profile of basin 3 to mimic the reservoir, its storage capacity increased as well.
 
-![Simulated basin storages and levels](https://github.com/user-attachments/assets/545b6ce0-1a87-4f3b-b87e-79d7382beac2){fig-align="left" #fig-sim7}
+![Simulated basin storages and levels](https://s3.deltares.nl/ribasim/doc-image/quickstart/Simulated-basin-storages-and-levels.png){fig-align="left" #fig-sim7}
 
 ## Module 2.2 – Public Water Supply
 
@@ -756,6 +756,6 @@ edge_names = {
 The impact is clear.
 Due to the demands upstream (irrigation and public water supply) an expected decrease of discharge is shown downstream.
 
-![Simulated flows to and from the city](https://github.com/user-attachments/assets/937a4868-87d1-4b5f-b37d-ab865428740d){fig-align="left" #fig-sim8}
+![Simulated flows to and from the city](https://s3.deltares.nl/ribasim/doc-image/quickstart/Simulated-flows-to-and-from-the-city.png){fig-align="left" #fig-sim8}
 
-![Simulated basin storages and levels](https://github.com/user-attachments/assets/16fce006-5e8b-4657-9b80-f26d1489ca99){fig-align="left" #fig-sim9}
+![Simulated basin storages and levels](https://s3.deltares.nl/ribasim/doc-image/quickstart/Simulated-basin-storages-and-levels-reservoir.png){fig-align="left" #fig-sim9}
