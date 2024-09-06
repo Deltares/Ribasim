@@ -1,5 +1,5 @@
 # Allowed types for downstream (to_node_id) nodes given the type of the upstream (from_node_id) node
-neighbortypes(nodetype::Symbol) = neighbortypes(Val(nodetype))
+neighbortypes(nodetype::Symbol) = neighbortypes(Val(config.snake_case(nodetype)))
 neighbortypes(::Val{:pump}) = Set((:basin, :terminal, :level_boundary))
 neighbortypes(::Val{:outlet}) = Set((:basin, :terminal, :level_boundary))
 neighbortypes(::Val{:user_demand}) = Set((:basin, :terminal, :level_boundary))
