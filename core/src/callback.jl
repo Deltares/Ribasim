@@ -138,9 +138,7 @@ function integrate_flows!(u, t, integrator)::Nothing
     for (edge, value) in allocation.mean_realized_flows
         if edge[1] !== edge[2]
             value +=
-                0.5 *
-                (get_flow(graph, edge..., du) + get_flow_prev(graph, edge..., du)) *
-                dt
+                0.5 * (get_flow(graph, edge..., flow) + get_flow_prev(graph, edge...)) * dt
             allocation.mean_realized_flows[edge] = value
         end
     end
@@ -153,8 +151,8 @@ function integrate_flows!(u, t, integrator)::Nothing
                 value +
                 0.5 *
                 (
-                    get_influx(basin, edge[1].idx) +
-                    get_influx(basin, edge[1].idx; prev = true)
+                    get_influx(basin, edge[1].idx, vertical_flux) +
+                    get_influx_prev(basin, edge[1].idx)
                 ) *
                 dt
         else

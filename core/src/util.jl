@@ -237,9 +237,13 @@ Get the current water level of a node ID.
 The ID can belong to either a Basin or a LevelBoundary.
 du: tells ForwardDiff whether this call is for differentiation or not
 """
-function get_level(p::Parameters, node_id::NodeID, t::Number, du)::Number
+function get_level(
+    p::Parameters,
+    node_id::NodeID,
+    t::Number,
+    current_level::AbstractVector,
+)::Number
     if node_id.type == NodeType.Basin
-        current_level = p.basin.current_level[parent(du)]
         current_level[node_id.idx]
     elseif node_id.type == NodeType.LevelBoundary
         p.level_boundary.level[node_id.idx](t)
@@ -563,29 +567,27 @@ function get_Δt(integrator)::Float64
     end
 end
 
-function get_influx(basin::Basin, node_id::NodeID)::Float64
+function get_influx(basin::Basin, node_id::NodeID, vertical_flux::AbstractVector)::Number
     if node_id.type !== NodeType.Basin
         error("Sum of vertical fluxes requested for non-basin $node_id.")
     end
-    return get_influx(basin, node_id.idx)
+    return get_influx(basin, node_id.idx, vertical_flux)
 end
 
-function get_influx(basin::Basin, basin_idx::Int; prev::Bool = false)::Float64
-    (; node_id, vertical_flux, vertical_flux_prev, vertical_flux_from_input) = basin
-    influx = if prev
-        vertical_flux_prev.precipitation[basin_idx] -
-        vertical_flux_prev.evaporation[basin_idx] +
-        vertical_flux_prev.drainage[basin_idx] -
-        vertical_flux_prev.infiltration[basin_idx]
-    else
-        n = length(node_id)
-        vertical_flux = vertical_flux[parent(vertical_flux_from_input)]
-        vertical_flux[basin_idx] - # precipitation
-        vertical_flux[n + basin_idx] + # evaporation
-        vertical_flux[2n + basin_idx] - # drainage
-        vertical_flux[3n + basin_idx] # infiltration
-    end
-    return influx
+function get_influx(basin::Basin, basin_idx::Int, vertical_flux::AbstractVector;)::Number
+    (; node_id) = basin
+    n = length(node_id)
+    vertical_flux[basin_idx] - # precipitation
+    vertical_flux[n + basin_idx] + # evaporation
+    vertical_flux[2n + basin_idx] - # drainage
+    vertical_flux[3n + basin_idx] # infiltration
+end
+
+function get_influx_prev(basin::Basin, basin_idx::Int)
+    (; vertical_flux_prev) = basin
+    vertical_flux_prev.precipitation[basin_idx] -
+    vertical_flux_prev.evaporation[basin_idx] + vertical_flux_prev.drainage[basin_idx] -
+    vertical_flux_prev.infiltration[basin_idx]
 end
 
 inflow_edge(graph, node_id)::EdgeMetadata = graph[inflow_id(graph, node_id), node_id]
@@ -953,7 +955,9 @@ end
 
 """
 MonitoredBackTracing is a thin wrapper of BackTracking, making sure that
-the BackTracking relaxation is rejected if it results in a residual increase
+backtracking is only applied when the step direction is a direction of descent
+with respect to the residual. This already happens in NonLinearSolve.jl:
+# https://github.com/SciML/NonlinearSolve.jl/blob/e457a984e6d2b9e27580322cb7a2a2288119773e/src/globalization/line_search.jl#L200-L222
 """
 function OrdinaryDiffEqNonlinearSolve.relax!(
     dz,
@@ -962,20 +966,28 @@ function OrdinaryDiffEqNonlinearSolve.relax!(
     f,
     linesearch::MonitoredBackTracking,
 )
-    (; linesearch, dz_tmp, z_tmp) = linesearch
-
-    # Store step before relaxation
-    @. dz_tmp = dz
-
-    # Apply relaxation and measure the residual change
-    @. z_tmp = nlsolver.z + dz
-    resid_before = residual(z_tmp, integrator, nlsolver, f)
-    relax!(dz, nlsolver, integrator, f, linesearch)
-    @. z_tmp = nlsolver.z + dz
-    resid_after = residual(z_tmp, integrator, nlsolver, f)
-
-    # If the residual increased due to the relaxation, reject it
-    if resid_after > resid_before
-        @. dz = dz_tmp
+    (; cache) = nlsolver
+    function ϕ(α)
+        local z = @. cache.atmp = nlsolver.z - dz * α
+        res = residual(z, integrator, nlsolver, f)
+        return res
     end
+    function dϕ(α)
+        ϵ = sqrt(eps())
+        return (ϕ(α + ϵ) - ϕ(α)) / ϵ
+    end
+    function ϕdϕ(α)
+        ϵ = sqrt(eps())
+        ϕ_1 = ϕ(α)
+        ϕ_2 = ϕ(α + ϵ)
+        ∂ϕ∂α = (ϕ_2 - ϕ_1) / ϵ
+        return ϕ_1, ∂ϕ∂α
+    end
+    α0 = one(eltype(cache.ustep))
+    ϕ0, dϕ0 = ϕdϕ(zero(α0))
+    if dϕ0 > 0
+        α, _ = linesearch.linesearch(ϕ, dϕ, ϕdϕ, α0, ϕ0, dϕ0)
+        @. dz = dz * α
+    end
+    return dz
 end

@@ -183,46 +183,24 @@ function Base.iterate(iter::OutNeighbors, state = 1)
     return label_out, state
 end
 
-function set_flow!(graph::MetaGraph, edge_metadata::EdgeMetadata, q::Number, du)::Nothing
-    set_flow!(graph, edge_metadata.flow_idx, q, du)
-    return nothing
-end
-
-function set_flow!(graph, flow_idx::Int, q::Number, du)::Nothing
-    (; flow) = graph[]
-    flow[parent(du)][flow_idx] = q
-    return nothing
-end
-
 """
-Get the flow over the given edge (du is needed for LazyBufferCache from ForwardDiff.jl).
+Get the flow over the given edge.
 """
-function get_flow(graph::MetaGraph, id_src::NodeID, id_dst::NodeID, du)::Number
+function get_flow(
+    graph::MetaGraph,
+    id_src::NodeID,
+    id_dst::NodeID,
+    flow::AbstractVector,
+)::Number
     (; flow_dict) = graph[]
     flow_idx = flow_dict[id_src, id_dst]
-    return get_flow(graph, flow_idx, du)
+    return flow[flow_idx]
 end
 
-function get_flow(graph, edge_metadata::EdgeMetadata, du)::Number
-    return get_flow(graph, edge_metadata.flow_idx, du)
-end
-
-function get_flow(graph::MetaGraph, flow_idx::Int, du)
-    return graph[].flow[parent(du)][flow_idx]
-end
-
-function get_flow_prev(graph, id_src::NodeID, id_dst::NodeID, du)::Number
-    (; flow_dict) = graph[]
+function get_flow_prev(graph::MetaGraph, id_src::NodeID, id_dst::NodeID)::Number
+    (; flow_dict, flow_prev) = graph[]
     flow_idx = flow_dict[id_src, id_dst]
-    return get_flow(graph, flow_idx, du)
-end
-
-function get_flow_prev(graph, edge_metadata::EdgeMetadata, du)::Number
-    return get_flow_prev(graph, edge_metadata.flow_idx, du)
-end
-
-function get_flow_prev(graph::MetaGraph, flow_idx::Int, du)
-    return graph[].flow_prev[parent(du)][flow_idx]
+    return flow_prev[flow_idx]
 end
 
 """
