@@ -246,6 +246,7 @@ end
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/allocation_example/ribasim.toml")
     @test ispath(toml_path)
+    config = Ribasim.Config(toml_path)#; solver_water_balance_error_reltol = 1.0)
     model = Ribasim.run(config)
     @test model isa Ribasim.Model
     @test successful_retcode(model)

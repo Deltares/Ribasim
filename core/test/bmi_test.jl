@@ -107,7 +107,7 @@ end
     @test ispath(toml_path)
     model = BMI.initialize(Ribasim.Model, toml_path)
     drainage = BMI.get_value_ptr(model, "basin.drainage")
-    drainage_flux = [1e-3, 2e-3, 3e-3, 4e-3]
+    drainage_flux = [1.0e-3, 2e-3, 3.0e-3, 4.0e-3]
     drainage .= drainage_flux
 
     Δt = 5 * 86400.0

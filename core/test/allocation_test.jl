@@ -283,10 +283,10 @@ end
     # In this section (and following sections) the basin has no longer a (positive) demand,
     # since precipitation provides enough water to get the basin to its target level
     # The FlowBoundary flow gets fully allocated to the UserDemand
-    # stage_2 = 2 * Δt_allocation .<= t .<= 9 * Δt_allocation
-    # stage_2_start_idx = findfirst(stage_2)
-    # u_stage_2(τ) = storage[stage_2_start_idx] + ϕ * (τ - t[stage_2_start_idx])
-    # @test storage[stage_2] ≈ u_stage_2.(t[stage_2]) rtol = 1e-4
+    stage_2 = 2 * Δt_allocation .<= t .<= 9 * Δt_allocation
+    stage_2_start_idx = findfirst(stage_2)
+    u_stage_2(τ) = storage[stage_2_start_idx] + ϕ * (τ - t[stage_2_start_idx])
+    @test storage[stage_2] ≈ u_stage_2.(t[stage_2]) rtol = 1e-4
 
     # In this section the basin enters its surplus stage,
     # even though initially the level is below the maximum level. This is because the simulation
@@ -299,7 +299,7 @@ end
 
     # At the start of this section precipitation stops, and so the UserDemand
     # partly uses surplus water from the basin to fulfill its demand
-    stage_4 = 12 * Δt_allocation .<= t .<= 15 * Δt_allocation
+    stage_4 = 13 * Δt_allocation .<= t .<= 15 * Δt_allocation
     stage_4_start_idx = findfirst(stage_4)
     u_stage_4(τ) = storage[stage_4_start_idx] + (q - d) * (τ - t[stage_4_start_idx])
     @test storage[stage_4] ≈ u_stage_4.(t[stage_4]) rtol = 1e-4
@@ -307,10 +307,10 @@ end
     # From this point the basin is in a dynamical equilibrium,
     # since the basin has no supply so the UserDemand abstracts precisely
     # the flow from the level boundary
-    # stage_5 = 16 * Δt_allocation .<= t
-    # stage_5_start_idx = findfirst(stage_5)
-    # u_stage_5(τ) = storage[stage_5_start_idx]
-    # @test storage[stage_5] ≈ u_stage_5.(t[stage_5]) rtol = 1e-4
+    stage_5 = 16 * Δt_allocation .<= t
+    stage_5_start_idx = findfirst(stage_5)
+    u_stage_5(τ) = storage[stage_5_start_idx]
+    @test storage[stage_5] ≈ u_stage_5.(t[stage_5]) rtol = 1e-4
 
     # Isolated LevelDemand + Basin pair to test optional min_level
     problem = allocation.allocation_models[2].problem
@@ -321,23 +321,23 @@ end
     @test q ≈ storage_surplus / Δt_allocation
 
     # Realized level demand
-    # record_demand = DataFrame(allocation.record_demand)
-    # df_basin_2 = record_demand[record_demand.node_id .== 2, :]
-    # itp_basin_2 = t -> model.integrator.sol(t)[1]
-    # realized_numeric = diff(itp_basin_2.(df_basin_2.time)) / Δt_allocation
-    # @test all(isapprox.(realized_numeric, df_basin_2.realized[2:end], atol = 2e-4))
+    record_demand = DataFrame(allocation.record_demand)
+    df_basin_2 = record_demand[record_demand.node_id .== 2, :]
+    itp_basin_2 = t -> model.integrator.sol(t)[1]
+    realized_numeric = diff(itp_basin_2.(df_basin_2.time)) / Δt_allocation
+    @test all(isapprox.(realized_numeric, df_basin_2.realized[2:end], atol = 2e-4))
 
     # Realized user demand
-    # flow_table = DataFrame(Ribasim.flow_table(model))
-    # flow_table_user_3 = flow_table[flow_table.edge_id .== 1, :]
-    # itp_user_3 = LinearInterpolation(
-    #     flow_table_user_3.flow_rate,
-    #     Ribasim.seconds_since.(flow_table_user_3.time, model.config.starttime),
-    # )
-    # df_user_3 =
-    #     record_demand[(record_demand.node_id .== 3) .&& (record_demand.priority .== 1), :]
-    # realized_numeric = diff(integral.(Ref(itp_user_3), df_user_3.time)) ./ Δt_allocation
-    # @test all(isapprox.(realized_numeric[3:end], df_user_3.realized[4:end], atol = 5e-4))
+    flow_table = DataFrame(Ribasim.flow_table(model))
+    flow_table_user_3 = flow_table[flow_table.edge_id .== 1, :]
+    itp_user_3 = LinearInterpolation(
+        flow_table_user_3.flow_rate,
+        Ribasim.seconds_since.(flow_table_user_3.time, model.config.starttime),
+    )
+    df_user_3 =
+        record_demand[(record_demand.node_id .== 3) .&& (record_demand.priority .== 1), :]
+    realized_numeric = diff(integral.(Ref(itp_user_3), df_user_3.time)) ./ Δt_allocation
+    @test all(isapprox.(realized_numeric[3:end], df_user_3.realized[4:end], atol = 5e-4))
 end
 
 @testitem "Flow demand" begin

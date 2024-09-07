@@ -258,8 +258,7 @@ end
         "../../generated_testmodels/outlet_continuous_control/ribasim.toml",
     )
     @test ispath(toml_path)
-    config = Ribasim.Config(toml_path)
-    model = Ribasim.run(config)
+    model = Ribasim.run(toml_path)
     flow_data = DataFrame(Ribasim.flow_table(model))
 
     function get_edge_flow(from_node_id, to_node_id)

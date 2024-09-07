@@ -45,7 +45,7 @@ def backwater_model():
             [
                 manning_resistance.Static(
                     length=[20.0],
-                    manning_n=[0.09],
+                    manning_n=[0.04],
                     profile_width=[1.0],
                     profile_slope=[0.0],
                 )

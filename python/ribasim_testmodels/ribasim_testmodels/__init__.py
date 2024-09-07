@@ -29,7 +29,6 @@ from ribasim_testmodels.basic import (
 from ribasim_testmodels.bucket import (
     bucket_model,
     leaky_bucket_model,
-    static_leaky_bucket_model,
 )
 from ribasim_testmodels.continuous_control import outlet_continuous_control_model
 from ribasim_testmodels.discrete_control import (
@@ -103,7 +102,6 @@ __all__ = [
     "pid_control_model",
     "pump_discrete_control_model",
     "rating_curve_model",
-    "static_leaky_bucket_model",
     "subnetwork_model",
     "subnetworks_with_sources_model",
     "tabulated_rating_curve_control_model",

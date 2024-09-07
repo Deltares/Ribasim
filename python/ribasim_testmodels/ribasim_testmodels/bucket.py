@@ -36,35 +36,6 @@ def bucket_model() -> ribasim.Model:
     return model
 
 
-def static_leaky_bucket_model() -> ribasim.Model:
-    """Bucket model with dynamic forcing with missings at Deltares' headquarter."""
-
-    model = ribasim.Model(
-        starttime="2020-01-01",
-        endtime="2020-01-05",
-        crs="EPSG:28992",
-    )
-
-    model.basin.add(
-        Node(1, Point(85825.6, 444613.9)),
-        [
-            basin.Profile(
-                area=[1000.0, 1000.0],
-                level=[0.0, 1.0],
-            ),
-            basin.State(level=[1.0]),
-            basin.Static(
-                drainage=[np.nan],
-                potential_evaporation=[np.nan],
-                infiltration=[np.nan],
-                precipitation=[1.0],
-            ),
-        ],
-    )
-
-    return model
-
-
 def leaky_bucket_model() -> ribasim.Model:
     """Bucket model with dynamic forcing with missings at Deltares' headquarter."""
 
