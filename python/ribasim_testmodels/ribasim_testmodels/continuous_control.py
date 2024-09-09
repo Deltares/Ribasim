@@ -39,7 +39,7 @@ def outlet_continuous_control_model() -> Model:
         Node(3, Point(2, 0)),
         [
             basin.Profile(area=10000.0, level=[0.0, 1.0]),
-            basin.State(level=[10.0]),
+            basin.State(level=[6.0]),
         ],
     )
 

@@ -27,12 +27,12 @@
     @test JuMP.value(F[(NodeID(:FlowBoundary, 1, db), NodeID(:Basin, 2, db))]) ≈ 0.5
     @test JuMP.value(F[(NodeID(:Basin, 6, db), NodeID(:UserDemand, 11, db))]) ≈ 0.0
 
+    close(db)
+
     (; allocated) = p.user_demand
     @test allocated[1, :] ≈ [0.0, 0.5]
     @test allocated[2, :] ≈ [4.0, 0.0]
     @test allocated[3, :] ≈ [0.0, 2.0]
-
-    close(db)
 end
 
 @testitem "Allocation objective" begin

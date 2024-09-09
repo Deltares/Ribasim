@@ -271,10 +271,10 @@ end
     end
 
     inflow = get_edge_flow(2, 3)
-    @test get_edge_flow(3, 4) ≈ max.(0.6 .* inflow, 0) rtol = 1e-4
-    @test get_edge_flow(4, 6) ≈ max.(0.6 .* inflow, 0) rtol = 1e-4
-    @test get_edge_flow(3, 5) ≈ max.(0.4 .* inflow, 0) rtol = 1e-4
-    @test get_edge_flow(5, 7) ≈ max.(0.4 .* inflow, 0) rtol = 1e-4
+    @test get_edge_flow(3, 4) ≈ max.(0.6inflow, 0) rtol = 1e-4
+    @test get_edge_flow(4, 6) ≈ max.(0.6inflow, 0) rtol = 1e-4
+    @test get_edge_flow(3, 5) ≈ max.(0.4inflow, 0) rtol = 1e-4
+    @test get_edge_flow(5, 7) ≈ max.(0.4inflow, 0) rtol = 1e-4
 end
 
 @testitem "Concentration discrete control" begin

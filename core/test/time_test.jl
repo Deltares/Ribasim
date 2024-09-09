@@ -65,13 +65,12 @@ end
         end
     end
 
-    @test all(
-        isapprox(
-            basin_table.evaporation,
-            time_table.mean_area .* time_table.potential_evaporation;
-            rtol = 1e-4,
-        ),
-    )
+    for id in basin.node_id
+        evaporation_computed = filter(:node_id => ==(id.value), basin_table).evaporation
+        data = filter(:node_id => ==(id.value), time_table)
+        evaporation_expected = data.mean_area .* data.potential_evaporation
+        @test evaporation_computed ≈ evaporation_expected atol = 1e-4
+    end
 
     fixed_area =
         Dict(id.value => Ribasim.basin_areas(basin, id.idx)[end] for id in basin.node_id)

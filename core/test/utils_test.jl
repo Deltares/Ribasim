@@ -170,6 +170,7 @@ end
     db = SQLite.DB(db_path)
 
     p = Ribasim.Parameters(db, cfg)
+    close(db)
     t0 = 0.0
     u0 = ComponentVector{Float64}(;
         storage = zeros(length(p.basin.node_id)),
@@ -190,6 +191,7 @@ end
     db = SQLite.DB(db_path)
 
     p = Ribasim.Parameters(db, cfg)
+    close(db)
     u0 = ComponentVector{Float64}(;
         storage = zeros(length(p.basin.node_id)),
         integral = zeros(length(p.pid_control.node_id)),

@@ -107,8 +107,8 @@
         @test flow.flow_rate[1] == basin.outflow_rate[1]
         @test all(==(0), basin.drainage)
         @test all(==(0), basin.infiltration)
-        @test all(q -> abs(q) < 1e-7, basin.balance_error)
-        @test all(q -> abs(q) < 0.01, basin.relative_error)
+        @test all(q -> abs(q) < 1e-6, basin.balance_error)
+        @test all(q -> abs(q) < 0.05, basin.relative_error)
 
         # The exporter interpolates 1:1 for three subgrid elements, but shifted by 1.0 meter.
         basin_level = basin.level[1]

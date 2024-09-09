@@ -199,6 +199,7 @@ end
     db_path = Ribasim.input_path(cfg, cfg.database)
     db = SQLite.DB(db_path)
     p = Ribasim.Parameters(db, cfg)
+    close(db)
 
     logger = TestLogger()
     with_logger(logger) do
@@ -281,6 +282,7 @@ end
     with_logger(logger) do
         @test !Ribasim.valid_edge_types(db)
     end
+    close(db)
 
     @test length(logger.logs) == 2
     @test logger.logs[1].level == Error
