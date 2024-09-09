@@ -23,7 +23,7 @@
     @test logger.logs[3].message == "Basin #1 profile cannot have decreasing areas."
 
     table = StructVector(; flow_rate = [0.0, 0.1], level = [1.0, 2.0], node_id = [5, 5])
-    itp = qh_interpolation(NodeID(:TabulatedRatingCurve, 5, 1), table)
+    itp = qh_interpolation(table, 1:2)
     # constant extrapolation at the bottom end, linear extrapolation at the top end
     itp(0.0) ≈ 0.0
     itp(1.0) ≈ 0.0

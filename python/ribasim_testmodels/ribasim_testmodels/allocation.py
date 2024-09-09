@@ -792,12 +792,12 @@ def flow_demand_model() -> Model:
 
     model.tabulated_rating_curve.add(
         Node(2, Point(1, 0), subnetwork_id=2),
-        [tabulated_rating_curve.Static(level=[0.0, 1.0], flow_rate=[0.0, 2e-3])],
+        [tabulated_rating_curve.Static(level=[0.0, 2.0], flow_rate=[0.0, 2e-3])],
     )
 
     model.level_boundary.add(
         Node(1, Point(0, 0), subnetwork_id=2),
-        [level_boundary.Static(node_id=[1], level=[1.0])],
+        [level_boundary.Static(node_id=[1], level=[2.0])],
     )
 
     model.basin.add(

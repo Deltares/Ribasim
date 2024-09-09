@@ -281,6 +281,7 @@ class TabulatedRatingCurveStaticSchema(_BaseSchema):
     active: Series[pa.BOOL] = pa.Field(nullable=True)
     level: Series[float] = pa.Field(nullable=False)
     flow_rate: Series[float] = pa.Field(nullable=False)
+    max_downstream_level: Series[float] = pa.Field(nullable=True)
     control_state: Series[str] = pa.Field(nullable=True)
 
 
@@ -290,6 +291,7 @@ class TabulatedRatingCurveTimeSchema(_BaseSchema):
     time: Series[Timestamp] = pa.Field(nullable=False)
     level: Series[float] = pa.Field(nullable=False)
     flow_rate: Series[float] = pa.Field(nullable=False)
+    max_downstream_level: Series[float] = pa.Field(nullable=True)
 
 
 class UserDemandStaticSchema(_BaseSchema):
