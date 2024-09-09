@@ -10,8 +10,10 @@ website:
     left:
       - text: "Overview"
         file: index.qmd
+      - text: "Tutorials"
+        file: tutorial/quickstart.qmd
       - text: "How-to guides"
-        file: guide/quickstart.qmd
+        file: guide/examples.ipynb
       - text: "Concepts"
         file: concept/concept.qmd
       - text: "Reference"
@@ -31,9 +33,12 @@ website:
         - changelog.qmd
         - known_issues.qmd
 
+    - title: "Tutorials"
+      contents:
+        - tutorial/quickstart.qmd
+
     - title: "How-to guides"
       contents:
-        - guide/quickstart.qmd
         - guide/examples.ipynb
         - guide/qgis.qmd
         - guide/coupling.qmd
