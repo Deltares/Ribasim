@@ -128,6 +128,7 @@ def test_write_adds_fid_in_tables(basic, tmp_path):
 
 def test_node_table(basic):
     model = basic
+    assert model.flow_boundary.node.df.crs == CRS.from_epsg(28992)
     node = model.node_table()
     df = node.df
     assert df.geometry.is_unique

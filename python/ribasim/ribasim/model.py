@@ -225,7 +225,7 @@ class Model(FileModel):
 
     def node_table(self) -> NodeTable:
         """Compute the full sorted NodeTable from all node types."""
-        df_chunks = [node.node.df.set_crs(self.crs) for node in self._nodes()]  # type:ignore
+        df_chunks = [node.node.df for node in self._nodes()]
         df = pd.concat(df_chunks)
         node_table = NodeTable(df=df)
         node_table.sort()
