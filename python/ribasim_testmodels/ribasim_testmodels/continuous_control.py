@@ -32,7 +32,7 @@ def outlet_continuous_control_model() -> Model:
     )
 
     model.linear_resistance.add(
-        Node(2, Point(1, 0)), [linear_resistance.Static(resistance=[100.0])]
+        Node(2, Point(1, 0)), [linear_resistance.Static(resistance=[10.0])]
     )
 
     model.basin.add(

@@ -288,9 +288,6 @@ of vectors or Arrow Tables, and is added to avoid type instabilities.
     vertical_flux_integrated_over_dt::V2 = zeros(length(node_id))
     vertical_flux_integrated_over_saveat::V2 = zeros(length(node_id))
     vertical_flux_bmi::V2 = zeros(length(node_id))
-    # For water balance error computations
-    total_inflow::Vector{Float64} = zeros(length(node_id))
-    total_outflow::Vector{Float64} = zeros(length(node_id))
     # Cache this to avoid recomputation
     current_level::Cache = cache(length(node_id))
     current_area::Cache = cache(length(node_id))
@@ -805,6 +802,4 @@ const ModelGraph = MetaGraph{
     flow_demand::FlowDemand
     subgrid::Subgrid
     all_nodes_active::Base.RefValue{Bool} = Ref(false)
-    water_balance_error_abstol::Float64 = 1e-3
-    water_balance_error_reltol::Float64 = 0.01
 end

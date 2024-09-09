@@ -18,10 +18,6 @@ function create_callbacks(
     integrating_flows_cb = FunctionCallingCallback(integrate_flows!; func_start = false)
     push!(callbacks, integrating_flows_cb)
 
-    # Check water balance error per timestep
-    water_balance_cb = FunctionCallingCallback(check_water_balance_error)
-    push!(callbacks, water_balance_cb)
-
     tstops = get_tstops(basin.time.time, starttime)
     basin_cb = PresetTimeCallback(tstops, update_basin!; save_positions = (false, false))
     push!(callbacks, basin_cb)
@@ -129,7 +125,7 @@ function integrate_flows!(u, t, integrator)::Nothing
     vertical_flux = vertical_flux[parent(du)]
 
     u_tmp = copy(u)
-    n_steps = 5
+    n_steps = 3
 
     @. flow_integrated_over_dt = 0
     @. vertical_flux_integrated_over_dt = 0
@@ -249,54 +245,6 @@ function save_vertical_flux(u, t, integrator)
     fill!(vertical_flux_integrated_over_saveat, 0.0)
 
     return vertical_flux_mean
-end
-
-function check_water_balance_error(u, t, integrator)::Nothing
-    (; dt, p, uprev, tprev) = integrator
-    (; total_inflow, total_outflow, vertical_flux_integrated_over_dt, node_id) = p.basin
-    (; flow_integrated_over_dt) = p.graph[]
-    (; water_balance_error_abstol, water_balance_error_reltol) = integrator.p
-
-    # Don't check the water balance error in the first second
-    (t < 1.0 || tprev == 0) && return
-
-    @. total_inflow = 0
-    @. total_outflow = 0
-
-    # Compute the mean in- and outflow per basin over the last timestep
-    net_inoutflow!(total_inflow, total_outflow, flow_integrated_over_dt, p.basin)
-    @. total_inflow += vertical_flux_integrated_over_dt.precipitation
-    @. total_inflow += vertical_flux_integrated_over_dt.drainage
-    @. total_outflow += vertical_flux_integrated_over_dt.evaporation
-    @. total_outflow += vertical_flux_integrated_over_dt.infiltration
-    @. total_inflow /= dt
-    @. total_outflow /= dt
-
-    errors = false
-
-    for (s, sprev, inflow, outflow, id) in
-        zip(u.storage, uprev.storage, total_inflow, total_outflow, node_id)
-        # The storage change as a flow over the last timestep
-        storage_rate = (s - sprev) / dt
-        # Difference between change in storage and integrated flows
-        absolute_error = storage_rate - (inflow - outflow)
-        # Normalize by total (absolute) flow in and out of the basin
-        relative_error = absolute_error / (inflow + outflow)
-
-        # Compare against water balance error tolerances
-        if abs(absolute_error) > water_balance_error_abstol &&
-           abs(relative_error) > water_balance_error_reltol
-            @error "Water balance error too large for $id" t tprev inflow outflow storage_rate absolute_error water_balance_error_abstol relative_error water_balance_error_reltol
-            errors = true
-        end
-    end
-
-    # if errors
-    #     error(
-    #         "Too large water balance error(s) detected. Consider lowering solver tolerances or reducing shocks in the model.",
-    #     )
-    # end
-    return nothing
 end
 
 """

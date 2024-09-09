@@ -246,8 +246,7 @@ end
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/allocation_example/ribasim.toml")
     @test ispath(toml_path)
-    config = Ribasim.Config(toml_path)#; solver_water_balance_error_reltol = 1.0)
-    model = Ribasim.run(config)
+    model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
     @test successful_retcode(model)
 end
@@ -494,7 +493,7 @@ end
     # numerical choices to make in terms of what the representative friction
     # slope is. See e.g.:
     # https://www.hec.usace.army.mil/confluence/rasdocs/ras1dtechref/latest/theoretical-basis-for-one-dimensional-and-two-dimensional-hydrodynamic-calculations/1d-steady-flow-water-surface-profiles/friction-loss-evaluation
-    @test all(isapprox.(h_expected, h_actual; atol = 0.04))
+    @test all(isapprox.(h_expected, h_actual; atol = 0.02))
     # Test for conservation of mass, flow at the beginning == flow at the end
     n_self_loops = length(p.graph[].flow_dict)
     @test Ribasim.get_flow(
@@ -518,12 +517,7 @@ end
         normpath(@__DIR__, "../../generated_testmodels/flow_boundary_time/ribasim.toml")
     @test ispath(toml_path)
     function get_flow(solver_dt::Union{Float64, Nothing}, solver_saveat::Float64)
-        config = Ribasim.Config(
-            toml_path;
-            solver_dt,
-            solver_saveat,
-            solver_water_balance_error_reltol = 1.0,
-        )
+        config = Ribasim.Config(toml_path; solver_dt, solver_saveat)
         model = Ribasim.run(config)
         df = DataFrame(Ribasim.flow_table(model))
         flow =

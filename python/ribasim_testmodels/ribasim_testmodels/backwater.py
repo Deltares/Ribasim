@@ -69,7 +69,7 @@ def backwater_model():
 
     model.basin.add(
         Node(102, Point(1010.0, 0.0)),
-        [basin.State(level=[2.0]), basin.Profile(level=[0.0, 1.0], area=1e10)],
+        [basin.State(level=[2.0]), basin.Profile(level=[0.0, 1.0], area=1e20)],
     )
     model.edge.add(
         model.manning_resistance[101],

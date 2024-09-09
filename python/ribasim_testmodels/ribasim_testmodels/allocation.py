@@ -403,7 +403,7 @@ def allocation_example_model() -> Model:
         Node(7, Point(4, 0), subnetwork_id=2),
         [
             tabulated_rating_curve.Static(
-                level=[0.0, 0.5, 1.0], flow_rate=[0.0, 0.0, 0.2]
+                level=[0.0, 0.5, 1.0], flow_rate=[0.0, 0.0, 2.0]
             )
         ],
     )
