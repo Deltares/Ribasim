@@ -25,6 +25,7 @@ By the end of the guide, users will be able to:
 - **Analyze Simulation Results**: Use built-in tools to analyze and interpret the results of your simulations.
 
 # Starting RIBASIM
+
 ## System requirements
 Before installing Ribasim, ensure your system meets the following requirements:
 
@@ -49,7 +50,7 @@ Usage: ribasim <TOML_PATH>
 For more information, try '--help'.
 ```
 
-4. We use a command line interface (CLI) to install our Ribasim packages. To install Ribasim open PowerShell or Windows command prompt and write:
+4. We use a command line interface (CLI) to install our Ribasim package. To install Ribasim open PowerShell or Windows command prompt and write:
 
 ```sh
 conda install ribasim
@@ -59,14 +60,15 @@ or
 ```sh
 mamba install ribasim
 ```
+
 ## Data preparation
 Download the `Crystal_Basin.zip` file from the website. Extract `Crystal_Basin.zip` and place it in the same directory as your Ribasim installation. This folder includes:
 
 - `QuickStartGuide.pdf`
 - `data`: Contains data inputs such as time series needed for running the case.
-Additionally, your Python model (`.py`) and eventually the output files will also be saved in this folder.
+Additionally, your Python model (`.py`) and the results will also be saved in this folder.
 
-# Modual 1 - Crystal River Basin
+# Module 1 - Crystal River Basin
 We will examine a straightforward example of the Crystal River Basin, which includes a main river and a single tributary flowing into the sea (see @fig-crystal-basin).
 An average discharge of $44.45  \text{ m}^3/\text{s}$ is measured at the confluence.
 In this module, the basin is free of any activities, allowing the model to simulate the natural flow.
@@ -81,16 +83,15 @@ After this module the user will be able to:
 - Generate overview of results
 - Evaluate the simulation results
 
-## Modual 1.1 - Natural Flow
+## Module 1.1 - Natural Flow
+
 ### Step 1: Import packages
 Before building the model we need to import some modules.
 Open your python platform (Spyder, VS code etc.), created a new file and name it `Crystal_1.1` and save it into your model folder `Crystal_Basin`.
 Import the following modules in python:
 
 ```python
-import shutil
 from pathlib import Path
-import pathlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -104,6 +105,7 @@ from ribasim.nodes import (
 from shapely.geometry import Point
 import subprocess  # For running the model
 ```
+
 ### Step 2: Setup paths and model configuration
 Reference the paths of the Ribasim installation and model directory and define the time period (2022-01-01 until 2023-01-01) for the model simulation:
 ```python
@@ -119,6 +121,7 @@ model = Model(
     crs="EPSG:4326",
 )
 ```
+
 ### Step 3: Flow boundary nodes
 Crystal Basin consists of two inflow points, the tributary and the main Crystal river, we will call them `Minor` and `Main` respectively.
 In order to define the time series flow rate ($\text{m}^3/\text{s}$) we read the discharge data from `ACTINFLW.csv`.
@@ -128,10 +131,10 @@ However, for this exercise actual runtime is already defined in step 2.
 ```python
 data = pd.read_csv(data_path, sep=";")
 data['sum']= data['minor']+data['main']
-#Average inflow and max. of the whole summed inflow data timeseries
-#From 2014 - 2023
+# Average and max inflow of the whole summed inflow data timeseries
+# From 2014 - 2023
 print('Average inflowQ m3/s:',data['sum'].mean())
-print('Average inflowQ m3/s:',data['sum'].max)
+print('Maximum inflowQ m3/s:',data['sum'].max)
 
 model.flow_boundary.add(
     Node(1, Point(0.0, 0.0), name='Main'),
@@ -145,6 +148,7 @@ model.flow_boundary.add(
     )]
 )
 ```
+
 ### Step 4: Basin node (confluence)
 To schematize the confluence from the tributary we will use the Basin node.
 The node by itself portrays as a bucket with a certain volume of water and can be used for different purposes, such as a reservoir, a lake or in this case a confluence.
@@ -171,6 +175,7 @@ model.basin.add(
     ],
 )
 ```
+
 ### Step 5: Tabulated rating curve
 In the previous step we implemented a Basin node that functions as a confluence.
 Conceptually, the basin acts like a bucket of water, accumulating inflows and then releasing them.
@@ -214,6 +219,7 @@ model.tabulated_rating_curve.add(
     ]
 )
 ```
+
 ### Step 6: Terminal node
 Finally all the water will discharge into the ocean.
 Schematize this with the terminal node as it portrays the end point of the model.
@@ -222,12 +228,13 @@ Besides the node number/name and location, no further input is needed.
 ```python
 model.terminal.add(Node(5, Point(-1.5, -3.0), name="Terminal"))
 ```
+
 ### Step 7: Defining edges
 Implement the connections (edges) between the nodes, in the following order:
 
-1.	Flow boundaries to the basin;
-2.	Basin to the rating curve;
-3.	Tabulated rating curve to the terminal.
+1. Flow boundaries to the basin;
+2. Basin to the rating curve;
+3. Tabulated rating curve to the terminal.
 
 ```python
 model.edge.add(model.flow_boundary[1], model.basin[3])
@@ -235,6 +242,7 @@ model.edge.add(model.flow_boundary[2], model.basin[3])
 model.edge.add(model.basin[3], model.tabulated_rating_curve[4])
 model.edge.add(model.tabulated_rating_curve[4], model.terminal[5])
 ```
+
 ### Step 8: Visualization and model execution
 Plot the schematization, write the model configuration to the `TOML` file.
 Name the output file `Crystal_1.1/ribasim.toml`:
@@ -341,7 +349,7 @@ Which is expected in a natural flow environment, as what is coming into the conf
 
 ![Simulated flows on each edge](https://s3.deltares.nl/ribasim/doc-image/quickstart/Simulated-flows-on-each-edge.jpg){fig-align="left" #fig-sim2}
 
-## Modual 1.2 - Irrigation demand
+## Module 1.2 - Irrigation demand
 
 Let us modify the environment to include agricultural activities within the basin, which necessitate irrigation.
 In a conventional irrigation setup, some water is diverted from the Main River through a canal, with a portion of it eventually returning to the main river (see @fig-irrigation).
@@ -354,13 +362,11 @@ For this update schematization, we need to incorporate three additional nodes:
 - User Demand: Represents the irrigation demand.
 - Tabulates Rating Curve: Defines the remaining water flow from the main river at the diversion point.
 
-### Step 1: Setup the model & adjust Import Packages
+### Step 1: Setup the model & adjust import packages
 Copy and paste the python script `Crystal_1.1` and rename it `Crystal_1.2`.
 De import modules remain the same, except a demand needs to be added and if you want to have a more interactive plot then importing `plotly` can be useful.
 
 ```python
-import shutilfrom
-import pathlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -468,7 +474,7 @@ This time the new outputs should be written in a new folder called `Crystal_1.2`
 ```python
 model.plot()
 
-toml_path = model_dir/ "Crystal_1.2/ribasim.toml"
+toml_path = model_dir / "Crystal_1.2/ribasim.toml"
 model.write(toml_path)
 rib_path = base_dir / "ribasim_windows/ribasim.exe"
 
@@ -550,7 +556,6 @@ plot_basin_data(ax3, ax4, df_basin_conf, title='Conf Basin Level and Storage ove
 
 # Common X label
 ax3.set_xlabel('Time')
-
 fig.tight_layout()  # Adjust layout to fit labels
 plt.show()
 ```
@@ -595,14 +600,14 @@ Indicating the impact of irrigation without any drain.
 
 ![Simulated flow to Terminal](https://s3.deltares.nl/ribasim/doc-image/quickstart/Simulated-flow-to-Terminal.png){fig-align="left" #fig-sim6}
 
-# Modual 2 – Reservoirs and Public Water Supply
+# Module 2 – Reservoirs and Public Water Supply
 Due to the increase of population and climate change Crystal city has implemented a reservoir upstream to store water for domestic use (See @fig-reservoir).
 The reservoir is to help ensure a reliable supply during dry periods.
 In this module, the user will update the model to incorporate the reservoir's impact on the whole Crystal Basin.
 
 ![Crystal basin with demands and a reservoir](https://s3.deltares.nl/ribasim/doc-image/quickstart/Crystal-basin-with-demands-and-a-reservoir.png){fig-align="left" #fig-reservoir}
 
-## Modual 2.1 – Reservoir
+## Module 2.1 – Reservoir
 ### Step 1: Add a basin
 This time the basin 3 will function as a reservoir instead of a diversion, meaning it's storage and levels will play an important role for the users (the city and the farmer).
 The reservoir has a max. area of $32.3 \text{ km}^2$ and a max. depth of $7 \text{ m}$.
@@ -695,7 +700,8 @@ To represents the total flow rate or abstraction rate required to meet the water
 model.user_demand.add(
     Node(9, Point(0.0, -0.25), name='PWS'),
     [user_demand.Time(
-        demand=[0.07, 0.08, 0.09, 0.10, 0.12, 0.14, 0.15, 0.14, 0.12, 0.10, 0.09, 0.08],  # Total demand in m³/s
+        # Total demand in m³/s
+        demand=[0.07, 0.08, 0.09, 0.10, 0.12, 0.14, 0.15, 0.14, 0.12, 0.10, 0.09, 0.08],
         return_factor=0.6,
         min_level=0,
         priority=1,
