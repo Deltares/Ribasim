@@ -101,7 +101,8 @@ One can also use Ribasim Python to build entire models from base data, such that
 setup is fully reproducible.
 
 The Ribasim Python package is [registered in PyPI](https://pypi.org/project/ribasim/) and [conda-forge](https://prefix.dev/channels/conda-forge/packages/ribasim) and can therefore be installed with [pip](https://docs.python.org/3/installing/index.html), [conda](https://docs.conda.io/) or [pixi](https://pixi.sh/):
-```
+
+```sh
 pip install ribasim
 ```
 
