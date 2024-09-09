@@ -375,7 +375,7 @@ end
     t_min_upstream_level =
         level.t[2] * (outlet.min_upstream_level[1] - level.u[1]) / (level.u[2] - level.u[1])
 
-    # No outlet flow when upstream level is below minimum crest level
+    # No outlet flow when upstream level is below minimum upstream level
     @test all(@. outlet_flow.flow_rate[t <= t_min_upstream_level] == 0)
 
     t = Ribasim.tsaves(model)
