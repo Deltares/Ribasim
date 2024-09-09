@@ -352,22 +352,30 @@ function formulate_flow!(
     current_level::AbstractVector,
 )::Nothing
     all_nodes_active = p.all_nodes_active[]
-    (; node_id, active, table, inflow_edge, outflow_edge) = tabulated_rating_curve
+    (; node_id, active, table) = tabulated_rating_curve
 
     for id in node_id
-        upstream_edge = inflow_edge[id.idx]
-        downstream_edge = outflow_edge[id.idx]
-        upstream_basin_id = upstream_edge.edge[1]
+        inflow_edge = tabulated_rating_curve.inflow_edge[id.idx]
+        outflow_edge = tabulated_rating_curve.outflow_edge[id.idx]
+        inflow_id = inflow_edge.edge[1]
+        outflow_id = outflow_edge.edge[2]
+        max_downstream_level = tabulated_rating_curve.max_downstream_level[id.idx]
+
+        h_a = get_level(p, inflow_id, t, du)
+        h_b = get_level(p, outflow_id, t, du)
+        Δh = h_a - h_b
 
         if active[id.idx] || all_nodes_active
-            factor = low_storage_factor(u.storage, upstream_basin_id, 10.0)
-            q = factor * table[id.idx](get_level(p, upstream_basin_id, t, current_level))
+            factor = low_storage_factor(u.storage, inflow_id, 10.0)
+            q = factor * table[id.idx](h_a)
+            q *= reduction_factor(Δh, 0.02)
+            q *= reduction_factor(max_downstream_level - h_b, 0.02)
         else
             q = 0.0
         end
 
-        flow[upstream_edge.flow_idx] = q
-        flow[downstream_edge.flow_idx] = q
+        flow[inflow_edge.flow_idx] = q
+        flow[outflow_edge.flow_idx] = q
     end
     return nothing
 end

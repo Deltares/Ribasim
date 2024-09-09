@@ -23,7 +23,7 @@
     @test logger.logs[3].message == "Basin #1 profile cannot have decreasing areas."
 
     table = StructVector(; flow_rate = [0.0, 0.1], level = [1.0, 2.0], node_id = [5, 5])
-    itp = qh_interpolation(NodeID(:TabulatedRatingCurve, 5, 1), table)
+    itp = qh_interpolation(table, 1:2)
     # constant extrapolation at the bottom end, linear extrapolation at the top end
     itp(0.0) ≈ 0.0
     itp(1.0) ≈ 0.0
@@ -402,7 +402,7 @@ end
 end
 
 @testitem "Outlet upstream level validation" begin
-    using Ribasim: valid_outlet_crest_level!
+    using Ribasim: valid_min_upstream_level!
     using Logging
 
     toml_path = normpath(
@@ -422,13 +422,13 @@ end
 
     logger = TestLogger()
     with_logger(logger) do
-        @test !Ribasim.valid_outlet_crest_level!(graph, outlet, basin)
+        @test !Ribasim.valid_min_upstream_level!(graph, outlet, basin)
     end
 
     @test length(logger.logs) == 1
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
-          "Minimum crest level of Outlet #4 is lower than bottom of upstream Basin #3"
+          "Minimum upstream level of Outlet #4 is lower than bottom of upstream Basin #3"
 end
 
 @testitem "Convergence bottleneck" begin

@@ -17,7 +17,7 @@ For this release we said goodbye to the problematic FractionalFlow node, but wel
 - Control: Add ContinuousControl node type. #1602
 - Control: Support listening to flow through connector nodes. #1594
 - Validate that TabulatedRatingCurve levels are above Basin bottom. #1607
-- Validate that Outlet crest levels are above Basin bottom. #1607
+- Validate that Outlet minimum upstream levels are above Basin bottom. #1607
 - Always show convergence bottlenecks. #1636
 - Docstrings for Ribasim Python. #1643
 - Allocate to UserDemand from directly connected Basin if possible. #1581

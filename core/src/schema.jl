@@ -210,6 +210,7 @@ end
     active::Union{Missing, Bool}
     level::Float64
     flow_rate::Float64
+    max_downstream_level::Union{Missing, Float64}
     control_state::Union{Missing, String}
 end
 
@@ -218,6 +219,7 @@ end
     time::DateTime
     level::Float64
     flow_rate::Float64
+    max_downstream_level::Union{Missing, Float64}
 end
 
 @version DiscreteControlVariableV1 begin
