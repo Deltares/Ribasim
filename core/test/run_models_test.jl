@@ -198,7 +198,7 @@ end
 
     @test successful_retcode(model)
     @test allunique(Ribasim.tsaves(model))
-    @test model.integrator.u ≈ Float32[519.8817, 519.8798, 339.3959, 1418.4331] skip =
+    @test model.integrator.u ≈ Float32[803.7093, 803.68274, 495.241, 1318.3053] skip =
         Sys.isapple() atol = 1.5
 
     @test length(logger.logs) > 10
@@ -236,8 +236,8 @@ end
             model.integrator.p.basin.vertical_flux[Float64[]],
         ).precipitation
     @test length(precipitation) == 4
-    @test model.integrator.u ≈ Float32[472.06555, 472.06366, 367.23883, 1427.9957] atol =
-        2.0 skip = Sys.isapple()
+    @test model.integrator.u ≈ Float32[698.22736, 698.2014, 421.20447, 1334.4354] atol = 2.0 skip =
+        Sys.isapple()
 end
 
 @testitem "Allocation example model" begin
@@ -291,7 +291,7 @@ end
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
     @test successful_retcode(model)
-    @test model.integrator.u ≈ Float32[7.783636, 726.16394] skip = Sys.isapple()
+    @test model.integrator.u ≈ Float32[368.31558, 365.68442] skip = Sys.isapple()
     # the highest level in the dynamic table is updated to 1.2 from the callback
     @test model.integrator.p.tabulated_rating_curve.table[end].t[end] == 1.2
 end
@@ -376,7 +376,7 @@ end
     t_min_upstream_level =
         level.t[2] * (outlet.min_upstream_level[1] - level.u[1]) / (level.u[2] - level.u[1])
 
-    # No outlet flow when upstream level is below minimum crest level
+    # No outlet flow when upstream level is below minimum upstream level
     @test all(@. outlet_flow.flow_rate[t <= t_min_upstream_level] == 0)
 
     t = Ribasim.tsaves(model)

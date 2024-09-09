@@ -2,8 +2,12 @@
 title: "Installation"
 ---
 
+In this document, we describe how to install the different components of Ribasim.
+First the components and their relation are introduced, then installation instructions per component follow.
+
 # Components {#sec-components}
-The figure below illustrates the relation between the various components of the Ribasim software package.
+
+The figure below illustrates the relation between the various components of Ribasim.
 
 ```{mermaid}
 flowchart TB
@@ -38,6 +42,9 @@ classDef system_ext fill:#D2D2D2
 classDef boundary fill:transparent,stroke-dasharray:5 5
 ```
 
+There are three main components of the Ribasim software package.
+They are the Ribasim core (written in Julia language), the Ribasim Python package and the Ribasim QGIS plugin.
+
 The kernel of Ribasim is written in the [Julia programming language](https://julialang.org/) and is built on top of the [SciML: Open Source Software for Scientific Machine Learning](https://sciml.ai/) libraries, notably [DifferentialEquations.jl](https://docs.sciml.ai/DiffEqDocs/stable/).
 
 The [Ribasim Python package](/install.qmd) is available to build, update and analyze Ribasim models programmatically.
@@ -50,26 +57,24 @@ Deltares also provides the iMOD QGIS plugin, which can be used to inspect the re
 For larger edits using Python is recommended.
 One can also use Ribasim Python to build entire models from base data, such that your model setup is fully reproducible.
 
-# Download {#sec-download}
+Users can choose to use Ribasim Python or QGIS plugin or a combination of them to build a Ribasim model.
+And then use the Ribasim core to run the simulation.
 
-- Ribasim executable - Windows: [ribasim_windows.zip](https://github.com/Deltares/Ribasim/releases/latest/download/ribasim_windows.zip)
-- Ribasim executable - Linux: [ribasim_linux.zip](https://github.com/Deltares/Ribasim/releases/latest/download/ribasim_linux.zip)
-- QGIS plugin: [ribasim_qgis.zip](https://github.com/Deltares/Ribasim/releases/latest/download/ribasim_qgis.zip).
-- Generated testmodels: [generated_testmodels.zip](https://github.com/Deltares/Ribasim/releases/latest/download/generated_testmodels.zip)
-
-The Ribasim Python package is [registered in PyPI](https://pypi.org/project/ribasim/) and [conda-forge](https://prefix.dev/channels/conda-forge/packages/ribasim) and can therefore be installed with [pip](https://docs.python.org/3/installing/index.html), [conda](https://docs.conda.io/) or [pixi](https://pixi.sh/):
-```
-pip install ribasim
-```
-
-# Ribasim core
+# Install Ribasim core
 
 Ribasim is typically used as a command-line interface (CLI). It is distributed as a `.zip`
 archive, that must be downloaded and unpacked. It can be placed anywhere, however it is
 important that the contents of the zip file are kept together in a directory. The Ribasim
 executable is in the main folder.
 
-To check whether the installation was performed successfully, open a terminal and go to the path where the executable is for example 'C:\Ribasim\ribasim_windows'.
+To download the Ribasim core, download the appropriate zip file for your operating system:
+
+- Ribasim executable - Windows: [ribasim_windows.zip](https://github.com/Deltares/Ribasim/releases/latest/download/ribasim_windows.zip)
+- Ribasim executable - Linux: [ribasim_linux.zip](https://github.com/Deltares/Ribasim/releases/latest/download/ribasim_linux.zip)
+
+Note that we currently only support and provide binaries for Windows and Linux, for the x86_64 architecture.
+
+To check whether the installation was performed successfully, open a terminal and go to the path where the executable is for example `C:\bin\ribasim\`.
 If you are using cmd.exe type `ribasim`, or for PowerShell `./ribasim`.
 
 This will give the following message:
@@ -83,7 +88,7 @@ Usage: ribasim <TOML_PATH>
 For more information, try '--help'.'
 ```
 
-# Ribasim Python
+# Install Ribasim Python
 
 The Ribasim Python package (named `ribasim`) aims to make it easy to build, update and analyze Ribasim models
 programmatically.
@@ -95,23 +100,25 @@ Python instead.
 One can also use Ribasim Python to build entire models from base data, such that your model
 setup is fully reproducible.
 
-The package is [registered in PyPI](https://pypi.org/project/ribasim/) and can therefore
-be installed with [pip](https://docs.python.org/3/installing/index.html):
+The Ribasim Python package is [registered in PyPI](https://pypi.org/project/ribasim/) and [conda-forge](https://prefix.dev/channels/conda-forge/packages/ribasim) and can therefore be installed with [pip](https://docs.python.org/3/installing/index.html), [conda](https://docs.conda.io/) or [pixi](https://pixi.sh/):
 ```
 pip install ribasim
 ```
 
 For documentation please see the [examples](/guide/examples.ipynb) and [API reference](/reference/reference).
 
-# Ribasim QGIS plugin
+# Install Ribasim QGIS plugin
 
 The Ribasim QGIS plugin requires [QGIS](https://qgis.org/en/site/) 3.34 or higher.
+The Ribasim QGIS plugin is only distributed as a .zip archive and must be downloaded and installed in QGIS.
 
 ## Install Ribasim plugin
 
-Download `ribasim_qgis.zip`, see the [download section](#sec-download).
+Firstly, download `ribasim_qgis.zip`:
 
-Plugins menu > Manage and Install Plugins...
+- QGIS plugin: [ribasim_qgis.zip](https://github.com/Deltares/Ribasim/releases/latest/download/ribasim_qgis.zip).
+
+In QGIS, go to Plugins menu > Manage and Install Plugins...
 
 ![](https://user-images.githubusercontent.com/4471859/224939069-9aae77ea-898f-442f-83b5-f2671c114956.png){fig-align="left"}
 

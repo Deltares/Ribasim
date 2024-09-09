@@ -62,17 +62,21 @@ function Model(config::Config)::Model
             error("Invalid discrete control state definition(s).")
         end
 
-        (; pid_control, graph, outlet, basin, tabulated_rating_curve) = parameters
+        (; pid_control, graph, outlet, pump, basin, tabulated_rating_curve) = parameters
         if !valid_pid_connectivity(pid_control.node_id, pid_control.listen_node_id, graph)
             error("Invalid PidControl connectivity.")
         end
 
-        if !valid_outlet_crest_level!(graph, outlet, basin)
-            error("Invalid minimum crest level of outlet")
+        if !valid_min_upstream_level!(graph, outlet, basin)
+            error("Invalid minimum upstream level of Outlet.")
+        end
+
+        if !valid_min_upstream_level!(graph, pump, basin)
+            error("Invalid minimum upstream level of Pump.")
         end
 
         if !valid_tabulated_curve_level(graph, tabulated_rating_curve, basin)
-            error("Invalid level of tabulated rating curve")
+            error("Invalid level of TabulatedRatingCurve.")
         end
 
         # tell the solver to stop when new data comes in

@@ -1,5 +1,5 @@
 # Allowed types for downstream (to_node_id) nodes given the type of the upstream (from_node_id) node
-neighbortypes(nodetype::Symbol) = neighbortypes(Val(nodetype))
+neighbortypes(nodetype::Symbol) = neighbortypes(Val(config.snake_case(nodetype)))
 neighbortypes(::Val{:pump}) = Set((:basin, :terminal, :level_boundary))
 neighbortypes(::Val{:outlet}) = Set((:basin, :terminal, :level_boundary))
 neighbortypes(::Val{:user_demand}) = Set((:basin, :terminal, :level_boundary))
@@ -357,18 +357,22 @@ function valid_demand(
 end
 
 """
-Validate Outlet crest level and fill in default values
+Validate Outlet or Pump `min_upstream_level` and fill in default values
 """
-function valid_outlet_crest_level!(graph::MetaGraph, outlet::Outlet, basin::Basin)::Bool
+function valid_min_upstream_level!(
+    graph::MetaGraph,
+    node::Union{Outlet, Pump},
+    basin::Basin,
+)::Bool
     errors = false
-    for (id, crest) in zip(outlet.node_id, outlet.min_upstream_level)
+    for (id, min_upstream_level) in zip(node.node_id, node.min_upstream_level)
         id_in = inflow_id(graph, id)
         if id_in.type == NodeType.Basin
             basin_bottom_level = basin_bottom(basin, id_in)[2]
-            if crest == -Inf
-                outlet.min_upstream_level[id.idx] = basin_bottom_level
-            elseif crest < basin_bottom_level
-                @error "Minimum crest level of $id is lower than bottom of upstream $id_in" crest basin_bottom_level
+            if min_upstream_level == -Inf
+                node.min_upstream_level[id.idx] = basin_bottom_level
+            elseif min_upstream_level < basin_bottom_level
+                @error "Minimum upstream level of $id is lower than bottom of upstream $id_in" min_upstream_level basin_bottom_level
                 errors = true
             end
         end
@@ -397,10 +401,13 @@ function valid_tabulated_curve_level(
     return !errors
 end
 
-function valid_tabulated_rating_curve(node_id::NodeID, table::StructVector)::Bool
+function valid_tabulated_rating_curve(
+    node_id::NodeID,
+    table::StructVector,
+    rowrange::UnitRange{Int},
+)::Bool
     errors = false
 
-    rowrange = findlastgroup(node_id, NodeID.(node_id.type, table.node_id, Ref(0)))
     level = table.level[rowrange]
     flow_rate = table.flow_rate[rowrange]
 
