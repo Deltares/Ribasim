@@ -10,7 +10,7 @@ from numpy.typing import NDArray
 from pandera.dtypes import Int32
 from pandera.typing import Index, Series
 from pandera.typing.geopandas import GeoDataFrame, GeoSeries
-from pydantic import NonNegativeInt, PrivateAttr
+from pydantic import NonNegativeInt, PrivateAttr, model_validator
 from shapely.geometry import LineString, MultiLineString, Point
 
 from ribasim.input_base import SpatialTableModel
@@ -59,6 +59,13 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
     """Defines the connections between nodes."""
 
     _used_edge_ids: UsedIDs = PrivateAttr(default_factory=UsedIDs)
+
+    @model_validator(mode="after")
+    def _update_used_ids(self) -> "EdgeTable":
+        if self.df is not None and len(self.df.index) > 0:
+            self._used_edge_ids.node_ids.update(self.df.index)
+            self._used_edge_ids.max_node_id = self.df.index.max()
+        return self
 
     def add(
         self,
