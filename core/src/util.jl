@@ -959,9 +959,7 @@ end
 
 """
 MonitoredBackTracing is a thin wrapper of BackTracking, making sure that
-backtracking is only applied when the step direction is a direction of descent
-with respect to the residual. This already happens in NonLinearSolve.jl:
-# https://github.com/SciML/NonlinearSolve.jl/blob/e457a984e6d2b9e27580322cb7a2a2288119773e/src/globalization/line_search.jl#L200-L222
+the BackTracking relaxation is rejected if it results in a residual increase
 """
 function OrdinaryDiffEqNonlinearSolve.relax!(
     dz,
@@ -970,28 +968,20 @@ function OrdinaryDiffEqNonlinearSolve.relax!(
     f,
     linesearch::MonitoredBackTracking,
 )
-    (; cache) = nlsolver
-    function ϕ(α)
-        local z = @. cache.atmp = nlsolver.z - dz * α
-        res = residual(z, integrator, nlsolver, f)
-        return res
+    (; linesearch, dz_tmp, z_tmp) = linesearch
+
+    # Store step before relaxation
+    @. dz_tmp = dz
+
+    # Apply relaxation and measure the residual change
+    @. z_tmp = nlsolver.z + dz
+    resid_before = residual(z_tmp, integrator, nlsolver, f)
+    relax!(dz, nlsolver, integrator, f, linesearch)
+    @. z_tmp = nlsolver.z + dz
+    resid_after = residual(z_tmp, integrator, nlsolver, f)
+
+    # If the residual increased due to the relaxation, reject it
+    if resid_after > resid_before
+        @. dz = dz_tmp
     end
-    function dϕ(α)
-        ϵ = sqrt(eps())
-        return (ϕ(α + ϵ) - ϕ(α)) / ϵ
-    end
-    function ϕdϕ(α)
-        ϵ = sqrt(eps())
-        ϕ_1 = ϕ(α)
-        ϕ_2 = ϕ(α + ϵ)
-        ∂ϕ∂α = (ϕ_2 - ϕ_1) / ϵ
-        return ϕ_1, ∂ϕ∂α
-    end
-    α0 = one(eltype(cache.ustep))
-    ϕ0, dϕ0 = ϕdϕ(zero(α0))
-    if dϕ0 > 0
-        α, _ = linesearch.linesearch(ϕ, dϕ, ϕdϕ, α0, ϕ0, dϕ0)
-        @. dz = dz * α
-    end
-    return dz
 end
