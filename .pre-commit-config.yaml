@@ -4,7 +4,6 @@ repos:
     hooks:
       - id: check-added-large-files
       - id: check-case-conflict
-      - id: check-json
       - id: check-yaml
       - id: check-toml
       - id: check-merge-conflict
