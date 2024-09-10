@@ -178,8 +178,6 @@ class Model(FileModel):
         return fn
 
     def _save(self, directory: DirectoryPath, input_dir: DirectoryPath):
-        # Set CRS of the tables to the CRS stored in the Model object
-        self.set_crs(self.crs)
         db_path = directory / input_dir / "database.gpkg"
         db_path.parent.mkdir(parents=True, exist_ok=True)
         db_path.unlink(missing_ok=True)
@@ -294,7 +292,7 @@ class Model(FileModel):
 
     def _validate_model(self):
         df_edge = self.edge.df
-        df_chunks = [node.node.df.set_crs(self.crs) for node in self._nodes()]
+        df_chunks = [node.node.df for node in self._nodes()]
         df_node = pd.concat(df_chunks)
 
         df_graph = df_edge
