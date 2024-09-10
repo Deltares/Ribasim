@@ -168,7 +168,6 @@ end
 # storage2 = storage2(t0) + (t-t0)*q_pump
 # Note: uses Euler algorithm
 @testitem "MiscellaneousNodes" begin
-    using PreallocationTools: get_tmp
     using SciMLBase: successful_retcode
     using Ribasim: tsaves, get_storages_and_levels
 
@@ -183,7 +182,7 @@ end
     (; flow_boundary, pump) = p
 
     q_boundary = flow_boundary.flow_rate[1].u[1]
-    pump_flow_rate = get_tmp(pump.flow_rate, 0)
+    pump_flow_rate = pump.flow_rate[Float64[]]
     q_pump = pump_flow_rate[1]
 
     storage_both = get_storages_and_levels(model).storage

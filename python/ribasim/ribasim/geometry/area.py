@@ -1,13 +1,13 @@
-from typing import Any
-
 import pandera as pa
 from pandera.dtypes import Int32
-from pandera.typing import Series
+from pandera.typing import Index, Series
 from pandera.typing.geopandas import GeoSeries
+from shapely.geometry import MultiPolygon
 
-from ribasim.schemas import _BaseSchema
+from .base import _GeoBaseSchema
 
 
-class BasinAreaSchema(_BaseSchema):
+class BasinAreaSchema(_GeoBaseSchema):
+    fid: Index[Int32] = pa.Field(default=0, check_name=True)
     node_id: Series[Int32] = pa.Field(nullable=False, default=0)
-    geometry: GeoSeries[Any] = pa.Field(default=None, nullable=True)
+    geometry: GeoSeries[MultiPolygon] = pa.Field(default=None, nullable=True)

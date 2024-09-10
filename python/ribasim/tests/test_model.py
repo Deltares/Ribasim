@@ -4,6 +4,7 @@ from sqlite3 import connect
 import numpy as np
 import pandas as pd
 import pytest
+import tomli_w
 import xugrid
 from pydantic import ValidationError
 from pyproj import CRS
@@ -12,7 +13,12 @@ from ribasim.config import Solver
 from ribasim.geometry.edge import NodeData
 from ribasim.input_base import esc_id
 from ribasim.model import Model
-from ribasim_testmodels import basic_model, trivial_model
+from ribasim_testmodels import (
+    basic_model,
+    outlet_model,
+    pid_control_equation_model,
+    trivial_model,
+)
 from shapely import Point
 
 
@@ -80,7 +86,7 @@ def test_tabulated_rating_curve_model(tabulated_rating_curve, tmp_path):
     model_orig.set_crs(model_orig.crs)
     basin_area = tabulated_rating_curve.basin.area.df
     assert basin_area is not None
-    assert basin_area.geometry.geom_type.iloc[0] == "Polygon"
+    assert basin_area.geometry.geom_type.iloc[0] == "MultiPolygon"
     assert basin_area.crs == CRS.from_epsg(28992)
     model_orig.write(tmp_path / "tabulated_rating_curve/ribasim.toml")
     model_new = Model.read(tmp_path / "tabulated_rating_curve/ribasim.toml")
@@ -98,12 +104,12 @@ def test_write_adds_fid_in_tables(basic, tmp_path):
     model_orig = basic
     # for node an explicit index was provided
     nrow = len(model_orig.basin.node.df)
-    assert model_orig.basin.node.df.index.name is None
+    assert model_orig.basin.node.df.index.name == "node_id"
 
-    # for edge no index was provided, but it still needs to write it to file
+    # for edge an explicit index was provided
     nrow = len(model_orig.edge.df)
-    assert model_orig.edge.df.index.name == "fid"
-    assert model_orig.edge.df.index.equals(pd.RangeIndex(nrow))
+    assert model_orig.edge.df.index.name == "edge_id"
+    assert model_orig.edge.df.index.equals(pd.RangeIndex(1, nrow + 1))
 
     model_orig.write(tmp_path / "basic/ribasim.toml")
     with connect(tmp_path / "basic/database.gpkg") as connection:
@@ -111,13 +117,13 @@ def test_write_adds_fid_in_tables(basic, tmp_path):
         df = pd.read_sql_query(query, connection)
         assert "fid" in df.columns
 
-        query = "select fid from Node"
+        query = "select node_id from Node"
         df = pd.read_sql_query(query, connection)
-        assert "fid" in df.columns
+        assert "node_id" in df.columns
 
-        query = "select fid from Edge"
+        query = "select edge_id from Edge"
         df = pd.read_sql_query(query, connection)
-        assert "fid" in df.columns
+        assert "edge_id" in df.columns
 
 
 def test_node_table(basic):
@@ -125,10 +131,10 @@ def test_node_table(basic):
     node = model.node_table()
     df = node.df
     assert df.geometry.is_unique
-    assert df.node_id.dtype == np.int32
+    assert df.index.dtype == np.int32
     assert df.subnetwork_id.dtype == pd.Int32Dtype()
     assert df.node_type.iloc[0] == "Basin"
-    assert df.node_type.iloc[-1] == "Terminal"
+    assert df.node_type.iloc[-1] == "LevelBoundary"
     assert df.crs == CRS.from_epsg(28992)
 
 
@@ -139,19 +145,6 @@ def test_edge_table(basic):
     assert df.from_node_id.dtype == np.int32
     assert df.subnetwork_id.dtype == pd.Int32Dtype()
     assert df.crs == CRS.from_epsg(28992)
-
-
-def test_duplicate_edge(trivial):
-    model = trivial
-    with pytest.raises(
-        ValueError,
-        match=re.escape("Edges have to be unique, but edge (6, 0) already exists."),
-    ):
-        model.edge.add(
-            model.basin[6],
-            model.tabulated_rating_curve[0],
-            name="duplicate",
-        )
 
 
 def test_indexing(basic):
@@ -185,7 +178,10 @@ def test_indexing(basic):
         model.basin.time[1]
 
 
-@pytest.mark.parametrize("model", [basic_model(), trivial_model()])
+@pytest.mark.parametrize(
+    "model",
+    [basic_model(), outlet_model(), pid_control_equation_model(), trivial_model()],
+)
 def test_xugrid(model, tmp_path):
     uds = model.to_xugrid(add_flow=False)
     assert isinstance(uds, xugrid.UgridDataset)
@@ -226,3 +222,19 @@ def test_styles(tabulated_rating_curve: Model, tmp_path):
     model.write(tmp_path / "basic" / "ribasim.toml")
     with connect(tmp_path / "basic" / "database.gpkg") as conn:
         assert conn.execute("SELECT COUNT(*) FROM layer_styles").fetchone()[0] == 3
+
+
+def test_non_existent_files(tmp_path):
+    with pytest.raises(
+        FileNotFoundError, match="File 'non_existent_file.toml' does not exist."
+    ):
+        Model.read("non_existent_file.toml")
+
+    # Create a TOML file without a database.gpkg
+    content = {"input_path": str(tmp_path)}
+    toml_path = tmp_path / "test.toml"
+    with open(toml_path, "wb") as f:
+        tomli_w.dump(content, f)
+
+    with pytest.raises(FileNotFoundError, match=r"Database file .* does not exist\."):
+        Model.read(toml_path)

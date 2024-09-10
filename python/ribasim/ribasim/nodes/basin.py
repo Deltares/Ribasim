@@ -1,8 +1,5 @@
-from geopandas import GeoDataFrame
-from pandas import DataFrame
-
 from ribasim.geometry.area import BasinAreaSchema
-from ribasim.input_base import TableModel
+from ribasim.input_base import SpatialTableModel, TableModel
 from ribasim.schemas import (
     BasinConcentrationExternalSchema,
     BasinConcentrationSchema,
@@ -26,45 +23,36 @@ __all__ = [
 
 
 class Static(TableModel[BasinStaticSchema]):
-    def __init__(self, **kwargs):
-        super().__init__(df=DataFrame(dict(**kwargs)))
+    pass
 
 
 class Time(TableModel[BasinTimeSchema]):
-    def __init__(self, **kwargs):
-        super().__init__(df=DataFrame(dict(**kwargs)))
+    pass
 
 
 class State(TableModel[BasinStateSchema]):
-    def __init__(self, **kwargs):
-        super().__init__(df=DataFrame(dict(**kwargs)))
+    pass
 
 
 class Profile(TableModel[BasinProfileSchema]):
-    def __init__(self, **kwargs):
-        super().__init__(df=DataFrame(dict(**kwargs)))
+    pass
 
 
 class Subgrid(TableModel[BasinSubgridSchema]):
-    def __init__(self, **kwargs):
-        super().__init__(df=DataFrame(dict(**kwargs)))
+    pass
 
 
-class Area(TableModel[BasinAreaSchema]):
-    def __init__(self, **kwargs):
-        super().__init__(df=GeoDataFrame(dict(**kwargs)))
+class Area(SpatialTableModel[BasinAreaSchema]):
+    pass
 
 
 class Concentration(TableModel[BasinConcentrationSchema]):
-    def __init__(self, **kwargs):
-        super().__init__(df=GeoDataFrame(dict(**kwargs)))
+    pass
 
 
 class ConcentrationExternal(TableModel[BasinConcentrationExternalSchema]):
-    def __init__(self, **kwargs):
-        super().__init__(df=GeoDataFrame(dict(**kwargs)))
+    pass
 
 
 class ConcentrationState(TableModel[BasinConcentrationStateSchema]):
-    def __init__(self, **kwargs):
-        super().__init__(df=GeoDataFrame(dict(**kwargs)))
+    pass

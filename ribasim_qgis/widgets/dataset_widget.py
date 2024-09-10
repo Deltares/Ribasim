@@ -8,6 +8,7 @@ computation.
 from __future__ import annotations
 
 from datetime import datetime
+from functools import partial
 from pathlib import Path
 from typing import Any, cast
 
@@ -27,11 +28,15 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 from qgis.core import (
+    QgsEditorWidgetSetup,
+    QgsFeatureRequest,
     QgsMapLayer,
     QgsProject,
+    QgsRelation,
     QgsVectorLayer,
 )
 
+from ribasim_qgis.core.geopackage import write_schema_version
 from ribasim_qgis.core.model import (
     get_database_path_from_model_file,
     get_directory_path_from_model_file,
@@ -182,7 +187,6 @@ class DatasetWidget(QWidget):
         self,
         layer: Any,
         destination: Any,
-        renderer: Any = None,
         suppress: bool = False,
         on_top: bool = False,
         labels: Any = None,
@@ -190,7 +194,6 @@ class DatasetWidget(QWidget):
         return self.ribasim_widget.add_layer(
             layer,
             destination,
-            renderer,
             suppress,
             on_top,
             labels,
@@ -198,9 +201,9 @@ class DatasetWidget(QWidget):
 
     def add_item_to_qgis(self, item) -> None:
         element = item.element
-        layer, renderer, labels = element.from_geopackage()
+        layer, labels = element.from_geopackage()
         suppress = self.suppress_popup_checkbox.isChecked()
-        self.add_layer(layer, "Ribasim Input", renderer, suppress, labels=labels)
+        self.add_layer(layer, "Ribasim Input", suppress, labels=labels)
         element.set_editor_widget()
         element.set_read_only()
         return
@@ -209,6 +212,32 @@ class DatasetWidget(QWidget):
         selection = self.dataset_tree.selectedItems()
         for item in selection:
             self.add_item_to_qgis(item)
+
+    @staticmethod
+    def add_relationship(from_layer, to_layer_id, name, fk="node_id") -> None:
+        rel = QgsRelation()
+        rel.setReferencingLayer(from_layer.id())
+        rel.setReferencedLayer(to_layer_id)
+        rel.setName(name)
+        rel.setStrength(rel.RelationStrength.Composition)  # type: ignore
+        rel.addFieldPair(fk, "node_id")
+        rel.generateId()
+        instance = QgsProject.instance()
+        assert instance is not None
+        rel_manager = instance.relationManager()
+        assert rel_manager is not None
+        rel_manager.addRelation(rel)
+
+        # Also use the relationship as an editor widget
+        field_index = from_layer.fields().indexFromName(fk)
+        setup = QgsEditorWidgetSetup(
+            "RelationReference",
+            {
+                "Relation": rel.id(),
+                "MapIdentification": True,
+            },
+        )
+        from_layer.setEditorWidgetSetup(field_index, setup)
 
     def load_geopackage(self) -> None:
         """Load the layers of a GeoPackage into the Layers Panel"""
@@ -223,34 +252,78 @@ class DatasetWidget(QWidget):
         node = nodes.pop("Node")
         item = self.dataset_tree.add_node_layer(node)
         self.add_item_to_qgis(item)
+        # Make sure node_id shows up in relationships
+        node.layer.setDisplayExpression("node_id")
 
         edge = nodes.pop("Edge")
         item = self.dataset_tree.add_node_layer(edge)
         self.add_item_to_qgis(item)
+        self.add_relationship(
+            edge.layer, node.layer.id(), "EdgeFromNode", "from_node_id"
+        )
+        self.add_relationship(edge.layer, node.layer.id(), "EdgeToNode", "to_node_id")
 
         basin_area_layer = nodes.pop("Basin / area", None)
         if basin_area_layer is not None:
             item = self.dataset_tree.add_node_layer(basin_area_layer)
             self.add_item_to_qgis(item)
+            self.add_relationship(
+                basin_area_layer.layer, node.layer.id(), "Basin / area"
+            )
 
         # Add the remaining layers
-        for node_layer in nodes.values():
+        for table_name, node_layer in nodes.items():
             item = self.dataset_tree.add_node_layer(node_layer)
             self.add_item_to_qgis(item)
+            self.add_relationship(node_layer.layer, node.layer.id(), table_name)
 
         # Connect node and edge layer to derive connectivities.
         self.node_layer = node.layer
+        assert self.node_layer is not None
         self.edge_layer = edge.layer
         self.edge_layer.editingStopped.connect(self.connect_nodes)
+
+        def filterbyrel(relationships, feature_ids):
+            """Filter all related tables by the selected features in the node table."""
+            ids = []
+            selection = QgsFeatureRequest().setFilterFids(feature_ids)
+            for rel in relationships:
+                for feature in rel.referencedLayer().getFeatures(selection):
+                    ids.extend(f.id() for f in rel.getRelatedFeatures(feature))
+
+            rel.referencingLayer().selectByIds(ids)
+
+        # When the Node selection changes, filter all related tables
+        edge_rels = []
+        instance = QgsProject.instance()
+        assert instance is not None
+        rel_manager = instance.relationManager()
+        assert rel_manager is not None
+        for rel in rel_manager.relations().values():
+            # Edge relations are special, they have two references to the Node table
+            referencing = rel.referencingLayer()
+            referenced = rel.referencedLayer()
+            assert referencing is not None
+            assert referenced is not None
+
+            if referencing.name() == "Edge":
+                edge_rels.append(rel)
+            else:
+                referenced.selectionChanged.connect(partial(filterbyrel, [rel]))
+
+        self.node_layer.selectionChanged.connect(partial(filterbyrel, edge_rels))
         return
 
     def new_model(self) -> None:
         """Create a new Ribasim model file, and set it as the active dataset."""
         path, _ = QFileDialog.getSaveFileName(self, "Select file", "", "*.toml")
+        self._new_model(path)
+
+    def _new_model(self, path: str):
         if path != "":  # Empty string in case of cancel button press
             self.dataset_line_edit.setText(path)
             geo_path = self.path.with_name("database.gpkg")
-            self._write_new_model()
+            self._write_toml()
 
             for input_type in (Node, Edge):
                 instance = input_type.create(
@@ -259,10 +332,11 @@ class DatasetWidget(QWidget):
                     names=[],
                 )
                 instance.write()
+            write_schema_version(geo_path)
             self.load_geopackage()
             self.ribasim_widget.toggle_node_buttons(True)
 
-    def _write_new_model(self) -> None:
+    def _write_toml(self) -> None:
         with open(self.path, "w") as f:
             f.writelines(
                 [
@@ -279,6 +353,9 @@ class DatasetWidget(QWidget):
         """Open a Ribasim model file."""
         self.dataset_tree.clear()
         path, _ = QFileDialog.getOpenFileName(self, "Select file", "", "*.toml")
+        self._open_model(path)
+
+    def _open_model(self, path: str) -> None:
         if path != "":  # Empty string in case of cancel button press
             self.dataset_line_edit.setText(path)
             self.load_geopackage()

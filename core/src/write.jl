@@ -83,7 +83,7 @@ function get_storages_and_levels(
     level = zero(storage)
     for (i, basin_storage) in enumerate(eachrow(storage))
         level[i, :] =
-            [get_area_and_level(p.basin, i, storage)[2] for storage in basin_storage]
+            [get_level_from_storage(p.basin, i, storage) for storage in basin_storage]
     end
 
     return (; time = tsteps, node_id, storage, level)
@@ -93,13 +93,12 @@ end
 function basin_state_table(
     model::Model,
 )::@NamedTuple{node_id::Vector{Int32}, level::Vector{Float64}}
-    (; storage) = model.integrator.u
     (; basin) = model.integrator.p
 
     # ensure the levels are up-to-date
-    set_current_basin_properties!(basin, storage)
+    set_current_basin_properties!(basin, model.integrator.u, get_du(model.integrator))
 
-    return (; node_id = Int32.(basin.node_id), level = get_tmp(basin.current_level, 0))
+    return (; node_id = Int32.(basin.node_id), level = basin.current_level[Float64[]])
 end
 
 "Create the basin result table from the saved data"
@@ -159,13 +158,9 @@ function basin_table(
     storage_rate = Δstorage ./ Δtime
 
     for i in 1:nrows
-        storage_flow = storage_rate[i]
-        storage_increase = max(storage_flow, 0.0)
-        storage_decrease = max(-storage_flow, 0.0)
-
-        total_in = inflow_rate[i] + precipitation[i] + drainage[i] - storage_increase
-        total_out = outflow_rate[i] + evaporation[i] + infiltration[i] - storage_decrease
-        balance_error[i] = total_in - total_out
+        total_in = inflow_rate[i] + precipitation[i] + drainage[i]
+        total_out = outflow_rate[i] + evaporation[i] + infiltration[i]
+        balance_error[i] = storage_rate[i] - (total_in - total_out)
         mean_flow_rate = 0.5 * (total_in + total_out)
         if mean_flow_rate != 0
             relative_error[i] = balance_error[i] / mean_flow_rate

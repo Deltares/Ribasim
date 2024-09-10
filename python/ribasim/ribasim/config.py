@@ -139,12 +139,9 @@ class Logging(ChildModel):
     ----------
     verbosity : Verbosity
         The verbosity of the logging: debug/info/warn/error (Optional, defaults to info)
-    timing : Bool
-        Enable timings (Optional, defaults to False)
     """
 
     verbosity: Verbosity = Verbosity.info
-    timing: bool = False
 
 
 class Node(pydantic.BaseModel):
@@ -182,7 +179,7 @@ class Node(pydantic.BaseModel):
 
     def into_geodataframe(self, node_type: str, node_id: int) -> GeoDataFrame:
         extra = self.model_extra if self.model_extra is not None else {}
-        return GeoDataFrame(
+        gdf = GeoDataFrame(
             data={
                 "node_id": pd.Series([node_id], dtype=np.int32),
                 "node_type": pd.Series([node_type], dtype=str),
@@ -192,6 +189,8 @@ class Node(pydantic.BaseModel):
             },
             geometry=[self.geometry],
         )
+        gdf.set_index("node_id", inplace=True)
+        return gdf
 
 
 class MultiNodeModel(NodeModel):
@@ -229,8 +228,8 @@ class MultiNodeModel(NodeModel):
             )
 
         if node_id is None:
-            node_id = self._parent.used_node_ids.new_id()
-        elif node_id in self._parent.used_node_ids:
+            node_id = self._parent._used_node_ids.new_id()
+        elif node_id in self._parent._used_node_ids:
             raise ValueError(
                 f"Node IDs have to be unique, but {node_id} already exists."
             )
@@ -243,17 +242,22 @@ class MultiNodeModel(NodeModel):
             )
             assert table.df is not None
             table_to_append = table.df.assign(node_id=node_id)
-            setattr(self, member_name, pd.concat([existing_table, table_to_append]))
+            setattr(
+                self,
+                member_name,
+                pd.concat([existing_table, table_to_append], ignore_index=True),
+            )
 
         node_table = node.into_geodataframe(
             node_type=self.__class__.__name__, node_id=node_id
         )
-        self.node.df = (
-            node_table
-            if self.node.df is None
-            else pd.concat([self.node.df, node_table])
-        )
-        self._parent.used_node_ids.add(node_id)
+        if self.node.df is None:
+            self.node.df = node_table
+        else:
+            df = pd.concat([self.node.df, node_table])
+            self.node.df = df
+
+        self._parent._used_node_ids.add(node_id)
         return self[node_id]
 
     def __getitem__(self, index: int) -> NodeData:
@@ -265,7 +269,7 @@ class MultiNodeModel(NodeModel):
                 f"{node_model_name} index must be an integer, not {indextype}"
             )
 
-        row = self.node[index].iloc[0]
+        row = self.node.df.loc[index]
         return NodeData(
             node_id=int(index), node_type=row["node_type"], geometry=row["geometry"]
         )

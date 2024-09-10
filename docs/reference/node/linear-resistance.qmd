@@ -8,13 +8,13 @@ Bidirectional flow proportional to the level difference between the connected ba
 
 ## Static
 
-column        | type    | unit         | restriction
-------------- | ------- | ------------ | -----------
-node_id       | Int32   | -            | sorted
-control_state | String  | -            | (optional) sorted per node_id
-active        | Bool    | -            | (optional, default true)
-resistance    | Float64 | $sm^{-2}$    | -
-max_flow_rate | Float64 | $m^3 s^{-1}$ | non-negative
+column        | type    | unit                  | restriction
+------------- | ------- | --------------------- | -----------
+node_id       | Int32   | -                     | sorted
+control_state | String  | -                     | (optional) sorted per node_id
+active        | Bool    | -                     | (optional, default true)
+resistance    | Float64 | $\text{s}/\text{m}^2$ | -
+max_flow_rate | Float64 | $\text{m}^3/s$        | non-negative
 
 # Equations
 
@@ -22,7 +22,7 @@ A LinearResistance connects two Basins together.
 The flow between the two Basins is determined by a linear relationship, up to an optional maximum flow rate:
 
 $$
-Q_\text{linear_resistance} = \mathrm{clamp}(\frac{h_a - h_b}{R}, -Q_{\max}, Q_{\max})
+Q_\text{linear\_resistance} = \mathrm{clamp}\left(\frac{h_a - h_b}{R}, -Q_{\max}, Q_{\max}\right)
 $$
 
 Here $h_a$ is the water level in the incoming Basin and $h_b$ is the water level in the outgoing Basin.

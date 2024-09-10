@@ -269,7 +269,7 @@ end
         graph,
         Ribasim.NodeID(:FlowBoundary, 1, p),
         Ribasim.NodeID(:Basin, 2, p),
-        0,
+        Float64[],
     )
     A = Ribasim.basin_areas(basin, 1)[1]
     l_max = level_demand.max_level[1](0)
@@ -465,7 +465,7 @@ end
     model = Ribasim.run(toml_path)
     record_demand = DataFrame(model.integrator.p.allocation.record_demand)
     df_rating_curve_2 = record_demand[record_demand.node_id .== 2, :]
-    @test all(df_rating_curve_2.realized .≈ 2e-3)
+    @test all(df_rating_curve_2.realized .≈ 0.002)
 
     @testset "Results" begin
         allocation_bytes = read(normpath(dirname(toml_path), "results/allocation.arrow"))
@@ -584,8 +584,8 @@ end
     (; allocation_models) = p.allocation
     (; basin, level_demand, graph) = p
 
-    fill!(level_demand.max_level[1].u.parent, Inf)
-    fill!(level_demand.max_level[2].u.parent, Inf)
+    fill!(level_demand.max_level[1].u, Inf)
+    fill!(level_demand.max_level[2].u, Inf)
 
     # Given a max_level of Inf, the basin capacity is 0.0 because it is not possible for the basin level to be > Inf
     @test Ribasim.get_basin_capacity(allocation_models[1], u, p, t, basin.node_id[1]) == 0.0

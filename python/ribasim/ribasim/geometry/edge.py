@@ -1,4 +1,4 @@
-from typing import Any, NamedTuple
+from typing import NamedTuple, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -8,11 +8,21 @@ import shapely
 from matplotlib.axes import Axes
 from numpy.typing import NDArray
 from pandera.dtypes import Int32
-from pandera.typing import Series
+from pandera.typing import Index, Series
 from pandera.typing.geopandas import GeoDataFrame, GeoSeries
+from pydantic import NonNegativeInt, PrivateAttr
 from shapely.geometry import LineString, MultiLineString, Point
 
 from ribasim.input_base import SpatialTableModel
+from ribasim.utils import UsedIDs
+from ribasim.validation import (
+    can_connect,
+    control_edge_neighbor_amount,
+    flow_edge_neighbor_amount,
+    node_type_connectivity,
+)
+
+from .base import _GeoBaseSchema
 
 __all__ = ("EdgeTable",)
 
@@ -31,22 +41,24 @@ class NodeData(NamedTuple):
     geometry: Point
 
 
-class EdgeSchema(pa.DataFrameModel):
+class EdgeSchema(_GeoBaseSchema):
+    edge_id: Index[Int32] = pa.Field(default=0, ge=0, check_name=True)
     name: Series[str] = pa.Field(default="")
-    from_node_id: Series[Int32] = pa.Field(default=0, coerce=True)
-    to_node_id: Series[Int32] = pa.Field(default=0, coerce=True)
-    edge_type: Series[str] = pa.Field(default="flow", coerce=True)
-    subnetwork_id: Series[pd.Int32Dtype] = pa.Field(
-        default=pd.NA, nullable=True, coerce=True
-    )
-    geometry: GeoSeries[Any] = pa.Field(default=None, nullable=True)
+    from_node_id: Series[Int32] = pa.Field(default=0)
+    to_node_id: Series[Int32] = pa.Field(default=0)
+    edge_type: Series[str] = pa.Field(default="flow")
+    subnetwork_id: Series[pd.Int32Dtype] = pa.Field(default=pd.NA, nullable=True)
+    geometry: GeoSeries[LineString] = pa.Field(default=None, nullable=True)
 
-    class Config:
-        add_missing_columns = True
+    @classmethod
+    def _index_name(self) -> str:
+        return "edge_id"
 
 
 class EdgeTable(SpatialTableModel[EdgeSchema]):
     """Defines the connections between nodes."""
+
+    _used_edge_ids: UsedIDs = PrivateAttr(default_factory=UsedIDs)
 
     def add(
         self,
@@ -55,6 +67,7 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
         geometry: LineString | MultiLineString | None = None,
         name: str = "",
         subnetwork_id: int | None = None,
+        edge_id: Optional[NonNegativeInt] = None,
         **kwargs,
     ):
         """Add an edge between nodes. The type of the edge (flow or control)
@@ -75,6 +88,11 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
             the allocation algorithm, and should thus not be set for every edge in a subnetwork.
         **kwargs : Dict
         """
+        if not can_connect(from_node.node_type, to_node.node_type):
+            raise ValueError(
+                f"Node of type {to_node.node_type} cannot be downstream of node of type {from_node.node_type}. Possible downstream node: {node_type_connectivity[from_node.node_type]}."
+            )
+
         geometry_to_append = (
             [LineString([from_node.geometry, to_node.geometry])]
             if geometry is None
@@ -83,39 +101,74 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
         edge_type = (
             "control" if from_node.node_type in SPATIALCONTROLNODETYPES else "flow"
         )
+        self._validate_edge(to_node, from_node, edge_type)
         assert self.df is not None
+        if edge_id is None:
+            edge_id = self._used_edge_ids.new_id()
+        elif edge_id in self._used_edge_ids:
+            raise ValueError(
+                f"Edge IDs have to be unique, but {edge_id} already exists."
+            )
 
         table_to_append = GeoDataFrame[EdgeSchema](
             data={
-                "from_node_id": pd.Series([from_node.node_id], dtype=np.int32),
-                "to_node_id": pd.Series([to_node.node_id], dtype=np.int32),
-                "edge_type": pd.Series([edge_type], dtype=str),
-                "name": pd.Series([name], dtype=str),
-                "subnetwork_id": pd.Series([subnetwork_id], dtype=pd.Int32Dtype()),
+                "from_node_id": [from_node.node_id],
+                "to_node_id": [to_node.node_id],
+                "edge_type": [edge_type],
+                "name": [name],
+                "subnetwork_id": [subnetwork_id],
                 **kwargs,
             },
             geometry=geometry_to_append,
             crs=self.df.crs,
+            index=pd.Index([edge_id], name="edge_id"),
         )
 
-        self.df = GeoDataFrame[EdgeSchema](
-            pd.concat([self.df, table_to_append], ignore_index=True)
-        )
+        self.df = GeoDataFrame[EdgeSchema](pd.concat([self.df, table_to_append]))
         if self.df.duplicated(subset=["from_node_id", "to_node_id"]).any():
             raise ValueError(
-                f"Edges have to be unique, but edge ({from_node.node_id}, {to_node.node_id}) already exists."
+                f"Edges have to be unique, but edge with from_node_id {from_node.node_id} to_node_id {to_node.node_id} already exists."
             )
-        self.df.index.name = "fid"
+        self._used_edge_ids.add(edge_id)
+
+    def _validate_edge(self, to_node: NodeData, from_node: NodeData, edge_type: str):
+        assert self.df is not None
+        in_neighbor: int = self.df.loc[
+            (self.df["to_node_id"] == to_node.node_id)
+            & (self.df["edge_type"] == edge_type)
+        ].shape[0]
+
+        out_neighbor: int = self.df.loc[
+            (self.df["from_node_id"] == from_node.node_id)
+            & (self.df["edge_type"] == edge_type)
+        ].shape[0]
+        # validation on neighbor amount
+        max_in_flow: int = flow_edge_neighbor_amount[to_node.node_type][1]
+        max_out_flow: int = flow_edge_neighbor_amount[from_node.node_type][3]
+        max_in_control: int = control_edge_neighbor_amount[to_node.node_type][1]
+        max_out_control: int = control_edge_neighbor_amount[from_node.node_type][3]
+        if edge_type == "flow":
+            if in_neighbor >= max_in_flow:
+                raise ValueError(
+                    f"Node {to_node.node_id} can have at most {max_in_flow} flow edge inneighbor(s) (got {in_neighbor})"
+                )
+            if out_neighbor >= max_out_flow:
+                raise ValueError(
+                    f"Node {from_node.node_id} can have at most {max_out_flow} flow edge outneighbor(s) (got {out_neighbor})"
+                )
+        elif edge_type == "control":
+            if in_neighbor >= max_in_control:
+                raise ValueError(
+                    f"Node {to_node.node_id} can have at most {max_in_control} control edge inneighbor(s) (got {in_neighbor})"
+                )
+            if out_neighbor >= max_out_control:
+                raise ValueError(
+                    f"Node {from_node.node_id} can have at most {max_out_control} control edge outneighbor(s) (got {out_neighbor})"
+                )
 
     def _get_where_edge_type(self, edge_type: str) -> NDArray[np.bool_]:
         assert self.df is not None
         return (self.df.edge_type == edge_type).to_numpy()
-
-    def sort(self):
-        # Only sort the index (fid / edge_id) since this needs to be sorted in a GeoPackage.
-        # Under most circumstances, this retains the input order,
-        # making the edge_id as stable as possible; useful for post-processing.
-        self.df.sort_index(inplace=True)
 
     def plot(self, **kwargs) -> Axes:
         """Plot the edges of the model.

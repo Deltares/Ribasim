@@ -13,7 +13,7 @@ Before the optimization for each priority there is a simple step that tries to a
 within this *Allocation* section the main network is also considered to be a subnetwork.
 :::
 
-# The high level algorithm
+# The high level algorithm {#sec-high-level-algorithm}
 The allocation algorithm contains 3 types of optimization:
 
 - `internal_sources`, where flows are allocated within a subnetwork by only using sources inside the subnetwork;
@@ -251,7 +251,7 @@ allocation_model = p.allocation.allocation_models[1]
 t = 0.0
 priority_idx = 1
 
-Ribasim.set_flow!(p.graph, NodeID(:FlowBoundary, 1, p), NodeID(:Basin, 2, p), 1.0)
+Ribasim.set_flow!(p.graph, 1, 1.0, u)
 Ribasim.set_objective_priority!(allocation_model, p, u, t, priority_idx)
 Ribasim.set_initial_values!(allocation_model, p, u, t)
 

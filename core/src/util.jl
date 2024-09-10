@@ -50,13 +50,19 @@ function get_storages_from_levels(basin::Basin, levels::AbstractVector)::Vector{
 end
 
 """
-Compute the area and level of a basin given its storage.
+Compute the level of a basin given its storage.
 """
-function get_area_and_level(basin::Basin, state_idx::Int, storage::T)::Tuple{T, T} where {T}
-    level = basin.storage_to_level[state_idx](max(storage, 0.0))
-    area = basin.level_to_area[state_idx](level)
-
-    return area, level
+function get_level_from_storage(basin::Basin, state_idx::Int, storage)
+    storage_to_level = basin.storage_to_level[state_idx]
+    if storage >= 0
+        return storage_to_level(storage)
+    else
+        # Negative storage is not feasible and this yields a level
+        # below the basin bottom, but this does yield usable gradients
+        # for the non-linear solver
+        bottom = first(storage_to_level.u)
+        return bottom + derivative(storage_to_level, 0.0) * storage
+    end
 end
 
 """
@@ -104,15 +110,23 @@ function get_scalar_interpolation(
         push!(parameter, parameter[end])
     end
 
-    return LinearInterpolation(parameter, times; extrapolate = true), allunique(times)
+    return LinearInterpolation(
+        parameter,
+        times;
+        extrapolate = true,
+        cache_parameters = true,
+    ),
+    allunique(times)
 end
 
 """
 From a table with columns node_id, flow_rate (Q) and level (h),
 create a ScalarInterpolation from level to flow rate for a given node_id.
 """
-function qh_interpolation(node_id::NodeID, table::StructVector)::ScalarInterpolation
-    rowrange = findlastgroup(node_id, NodeID.(node_id.type, table.node_id, Ref(0)))
+function qh_interpolation(
+    table::StructVector,
+    rowrange::UnitRange{Int},
+)::ScalarInterpolation
     level = table.level[rowrange]
     flow_rate = table.flow_rate[rowrange]
 
@@ -120,7 +134,12 @@ function qh_interpolation(node_id::NodeID, table::StructVector)::ScalarInterpola
     pushfirst!(level, first(level) - 1)
     pushfirst!(flow_rate, first(flow_rate))
 
-    return LinearInterpolation(flow_rate, level; extrapolate = true)
+    return LinearInterpolation(
+        flow_rate,
+        level;
+        extrapolate = true,
+        cache_parameters = true,
+    )
 end
 
 """
@@ -218,24 +237,20 @@ end
 """
 Get the current water level of a node ID.
 The ID can belong to either a Basin or a LevelBoundary.
-storage: tells ForwardDiff whether this call is for differentiation or not
+du: tells ForwardDiff whether this call is for differentiation or not
 """
-function get_level(
-    p::Parameters,
-    node_id::NodeID,
-    t::Number;
-    storage::Union{AbstractArray, Number} = 0,
-)::Tuple{Bool, Number}
-    (; basin, level_boundary) = p
+function get_level(p::Parameters, node_id::NodeID, t::Number, du)::Number
     if node_id.type == NodeType.Basin
-        # The edge metadata is only used to obtain the Basin index
-        # in case node_id is for a Basin
-        current_level = get_tmp(basin.current_level, storage)
-        return true, current_level[node_id.idx]
+        current_level = p.basin.current_level[parent(du)]
+        current_level[node_id.idx]
     elseif node_id.type == NodeType.LevelBoundary
-        return true, level_boundary.level[node_id.idx](t)
+        p.level_boundary.level[node_id.idx](t)
+    elseif node_id.type == NodeType.Terminal
+        # Terminal is like a bottomless pit.
+        # A level at -Inf ensures we don't hit `max_downstream_level` reduction factors.
+        -Inf
     else
-        return false, 0.0
+        error("Node ID $node_id is not a Basin, LevelBoundary or Terminal.")
     end
 end
 
@@ -371,6 +386,18 @@ function low_storage_factor(
     end
 end
 
+"""
+For resistance nodes, give a reduction factor based on the upstream node
+as defined by the flow direction.
+"""
+function low_storage_factor_resistance_node(u, q, inflow_id, outflow_id, threshold)
+    if q > 0
+        low_storage_factor(u.storage, inflow_id, threshold)
+    else
+        low_storage_factor(u.storage, outflow_id, threshold)
+    end
+end
+
 """Whether the given node node is flow constraining by having a maximum flow rate."""
 function is_flow_constraining(type::NodeType.T)::Bool
     type in (NodeType.LinearResistance, NodeType.Pump, NodeType.Outlet)
@@ -401,19 +428,31 @@ end
 
 function get_all_priorities(db::DB, config::Config)::Vector{Int32}
     priorities = Set{Int32}()
-
+    is_valid = true
     # TODO: Is there a way to automatically grab all tables with a priority column?
-    for type in [
-        UserDemandStaticV1,
-        UserDemandTimeV1,
-        LevelDemandStaticV1,
-        LevelDemandTimeV1,
-        FlowDemandStaticV1,
-        FlowDemandTimeV1,
+    for (type, name) in [
+        (UserDemandStaticV1, "UserDemand / static"),
+        (UserDemandTimeV1, "UserDemand / time"),
+        (LevelDemandStaticV1, "LevelDemand / static"),
+        (LevelDemandTimeV1, "LevelDemand / time"),
+        (FlowDemandStaticV1, "FlowDemand / static"),
+        (FlowDemandTimeV1, "FlowDemand / time"),
     ]
-        union!(priorities, load_structvector(db, config, type).priority)
+        if valid_priorities(
+            load_structvector(db, config, type).priority,
+            config.allocation.use_allocation,
+        )
+            union!(priorities, load_structvector(db, config, type).priority)
+        else
+            is_valid = false
+            @error "Missing priority parameter(s) for a $name node in the allocation problem."
+        end
     end
-    return sort(collect(priorities))
+    if is_valid
+        return sort(collect(priorities))
+    else
+        error("Priority parameter is missing")
+    end
 end
 
 function get_external_priority_idx(p::Parameters, node_id::NodeID)::Int
@@ -534,12 +573,21 @@ function get_influx(basin::Basin, node_id::NodeID)::Float64
 end
 
 function get_influx(basin::Basin, basin_idx::Int; prev::Bool = false)::Float64
-    (; vertical_flux, vertical_flux_prev) = basin
-    vertical_flux = get_tmp(vertical_flux, 0)
-    flux_vector = prev ? vertical_flux_prev : vertical_flux
-    (; precipitation, evaporation, drainage, infiltration) = flux_vector
-    return precipitation[basin_idx] - evaporation[basin_idx] + drainage[basin_idx] -
-           infiltration[basin_idx]
+    (; node_id, vertical_flux, vertical_flux_prev, vertical_flux_from_input) = basin
+    influx = if prev
+        vertical_flux_prev.precipitation[basin_idx] -
+        vertical_flux_prev.evaporation[basin_idx] +
+        vertical_flux_prev.drainage[basin_idx] -
+        vertical_flux_prev.infiltration[basin_idx]
+    else
+        n = length(node_id)
+        vertical_flux = vertical_flux[parent(vertical_flux_from_input)]
+        vertical_flux[basin_idx] - # precipitation
+        vertical_flux[n + basin_idx] + # evaporation
+        vertical_flux[2n + basin_idx] - # drainage
+        vertical_flux[3n + basin_idx] # infiltration
+    end
+    return influx
 end
 
 inflow_edge(graph, node_id)::EdgeMetadata = graph[inflow_id(graph, node_id), node_id]
@@ -553,22 +601,21 @@ as input. Therefore we set the instantaneous flows as the mean flows as allocati
 """
 function set_initial_allocation_mean_flows!(integrator)::Nothing
     (; u, p, t) = integrator
-    (; allocation, graph, basin) = p
+    (; allocation, graph) = p
     (; mean_input_flows, mean_realized_flows, allocation_models) = allocation
     (; Δt_allocation) = allocation_models[1]
-    (; vertical_flux) = basin
-    vertical_flux = get_tmp(vertical_flux, 0)
 
     # At the time of writing water_balance! already
     # gets called once at the problem initialization, this
     # one is just to make sure.
-    water_balance!(get_du(integrator), u, p, t)
+    du = get_du(integrator)
+    water_balance!(du, u, p, t)
 
     for edge in keys(mean_input_flows)
         if edge[1] == edge[2]
-            q = get_influx(basin, edge[1])
+            q = get_influx(p.basin, edge[1])
         else
-            q = get_flow(graph, edge..., 0)
+            q = get_flow(graph, edge..., du)
         end
         # Multiply by Δt_allocation as averaging divides by this factor
         # in update_allocation!
@@ -581,7 +628,7 @@ function set_initial_allocation_mean_flows!(integrator)::Nothing
         if edge[1] == edge[2]
             mean_realized_flows[edge] = -u[edge[1].idx]
         else
-            q = get_flow(graph, edge..., 0)
+            q = get_flow(graph, edge..., du)
             mean_realized_flows[edge] = q * Δt_allocation
         end
     end
@@ -607,11 +654,11 @@ end
 Get the reference to a parameter
 """
 function get_variable_ref(
-    p::Parameters{T},
+    p::Parameters,
     node_id::NodeID,
     variable::String;
     listen::Bool = true,
-)::Tuple{PreallocationRef{T}, Bool} where {T}
+)::Tuple{PreallocationRef, Bool}
     (; basin, graph) = p
     errors = false
 
@@ -683,13 +730,16 @@ function set_discrete_controlled_variable_refs!(p::Parameters)::Nothing
 
                 # References to scalar parameters
                 for (i, parameter_update) in enumerate(scalar_update)
-                    field = get_tmp(getfield(node, parameter_update.name), 0)
+                    field = getfield(node, parameter_update.name)
+                    if field isa Cache
+                        field = field[Float64[]]
+                    end
                     scalar_update[i] = @set parameter_update.ref = Ref(field, node_id.idx)
                 end
 
                 # References to interpolation parameters
                 for (i, parameter_update) in enumerate(itp_update)
-                    field = get_tmp(getfield(node, parameter_update.name), 0)
+                    field = getfield(node, parameter_update.name)
                     itp_update[i] = @set parameter_update.ref = Ref(field, node_id.idx)
                 end
 
@@ -809,8 +859,125 @@ function set_previous_flows!(integrator)
     du = get_du(integrator)
     water_balance!(du, u, p, t)
 
-    flow = get_tmp(flow, 0)
-    vertical_flux = get_tmp(vertical_flux, 0)
+    flow = flow[parent(u)]
+    vertical_flux = vertical_flux[parent(u)]
     copyto!(flow_prev, flow)
     copyto!(vertical_flux_prev, vertical_flux)
+end
+
+"""
+Split the single forcing vector into views of the components
+precipitation, evaporation, drainage, infiltration
+"""
+function wrap_forcing(vector)
+    n = length(vector) ÷ 4
+    (;
+        precipitation = view(vector, 1:n),
+        evaporation = view(vector, (n + 1):(2n)),
+        drainage = view(vector, (2n + 1):(3n)),
+        infiltration = view(vector, (3n + 1):(4n)),
+    )
+end
+
+"""
+The function f(x) = sign(x)*√(|x|) where for |x|<threshold a
+polynomial is used so that the function is still differentiable
+but the derivative is bounded at x = 0.
+"""
+function relaxed_root(x, threshold)
+    if abs(x) < threshold
+        1 / 4 * (x / sqrt(threshold)) * (5 - (x / threshold)^2)
+    else
+        sign(x) * sqrt(abs(x))
+    end
+end
+
+function get_jac_prototype(du0, u0, p, t0)
+    p.all_nodes_active[] = true
+    jac_prototype = jacobian_sparsity(
+        (du, u) -> water_balance!(du, u, p, t0),
+        du0,
+        u0,
+        TracerSparsityDetector(),
+    )
+    p.all_nodes_active[] = false
+    jac_prototype
+end
+
+# Custom overloads
+reduction_factor(x::GradientTracer, threshold::Real) = x
+low_storage_factor_resistance_node(
+    storage::ComponentVector{<:GradientTracer},
+    q,
+    inflow_id,
+    outflow_id,
+    threshold,
+) = q
+relaxed_root(x::GradientTracer, threshold::Real) = x
+get_level_from_storage(basin::Basin, state_idx::Int, storage::GradientTracer) = storage
+stop_declining_negative_storage!(du, u::ComponentVector{<:GradientTracer}) = nothing
+
+@kwdef struct MonitoredBackTracking{B, V}
+    linesearch::B = BackTracking()
+    dz_tmp::V = []
+    z_tmp::V = []
+end
+
+"""
+Compute the residual of the non-linear solver, i.e. a measure of the
+error in the solution to the implicit equation defined by the solver algorithm
+"""
+function residual(z, integrator, nlsolver, f)
+    (; uprev, t, p, dt, opts, isdae) = integrator
+    (; tmp, ztmp, γ, α, cache, method) = nlsolver
+    (; ustep, atmp, tstep, k, invγdt, tstep, k, invγdt) = cache
+    if isdae
+        _uprev = get_dae_uprev(integrator, uprev)
+        b, ustep2 =
+            _compute_rhs!(tmp, ztmp, ustep, α, tstep, k, invγdt, p, _uprev, f::TF, z)
+    else
+        b, ustep2 =
+            _compute_rhs!(tmp, ztmp, ustep, γ, α, tstep, k, invγdt, method, p, dt, f, z)
+    end
+    calculate_residuals!(
+        atmp,
+        b,
+        uprev,
+        ustep2,
+        opts.abstol,
+        opts.reltol,
+        opts.internalnorm,
+        t,
+    )
+    ndz = opts.internalnorm(atmp, t)
+    return ndz
+end
+
+"""
+MonitoredBackTracing is a thin wrapper of BackTracking, making sure that
+the BackTracking relaxation is rejected if it results in a residual increase
+"""
+function OrdinaryDiffEqNonlinearSolve.relax!(
+    dz,
+    nlsolver::AbstractNLSolver,
+    integrator::DEIntegrator,
+    f,
+    linesearch::MonitoredBackTracking,
+)
+    (; linesearch, dz_tmp, z_tmp) = linesearch
+
+    # Store step before relaxation
+    @. dz_tmp = dz
+
+    # Apply relaxation and measure the residual change
+    @. z_tmp = nlsolver.z + dz
+    resid_before = residual(z_tmp, integrator, nlsolver, f)
+    relax!(dz, nlsolver, integrator, f, linesearch)
+    @. z_tmp = nlsolver.z + dz
+    resid_after = residual(z_tmp, integrator, nlsolver, f)
+
+    # If the residual increased due to the relaxation, reject it
+    if resid_after > resid_before
+        @. dz = dz_tmp
+    end
 end

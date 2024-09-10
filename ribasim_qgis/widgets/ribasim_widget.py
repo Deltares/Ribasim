@@ -16,7 +16,6 @@ from qgis.core import (
     Qgis,
     QgsAbstractVectorLayerLabeling,
     QgsCoordinateReferenceSystem,
-    QgsFeatureRenderer,
     QgsLayerTreeGroup,
     QgsMapLayer,
     QgsProject,
@@ -107,7 +106,7 @@ class RibasimWidget(QWidget):
         assert project is not None
         root = project.layerTreeRoot()
         assert root is not None
-        self.group = root.addGroup(name)
+        self.group = root.insertGroup(0, name)  # insert at the top
         self.create_subgroup(name, "Ribasim Input")
 
     def add_to_group(self, maplayer: Any, destination: str, on_top: bool):
@@ -134,7 +133,6 @@ class RibasimWidget(QWidget):
         self,
         layer: QgsVectorLayer,
         destination: str,
-        renderer: QgsFeatureRenderer | None = None,
         suppress: bool | None = None,
         on_top: bool = False,
         labels: QgsAbstractVectorLayerLabeling | None = None,
@@ -148,8 +146,6 @@ class RibasimWidget(QWidget):
             QGIS map layer, raster or vector layer
         destination:
             Legend group
-        renderer:
-            QGIS layer renderer, optional
         suppress:
             optional, bool. Default value is None.
             This controls whether attribute form popup is suppressed or not.
@@ -179,8 +175,6 @@ class RibasimWidget(QWidget):
                 else Qgis.AttributeFormSuppression.Default
             )
             maplayer.setEditFormConfig(config)
-        if renderer is not None:
-            maplayer.setRenderer(renderer)
         if labels is not None:
             layer.setLabeling(labels)
             layer.setLabelsEnabled(True)
@@ -188,3 +182,7 @@ class RibasimWidget(QWidget):
             self.add_to_group(maplayer, destination, on_top)
 
         return maplayer
+
+    def add_relationship(self, new_layer, name: str) -> None:
+        assert self.node_layer is not None
+        self.__dataset_widget.add_relationship(new_layer, self.node_layer.id(), name)

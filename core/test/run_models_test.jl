@@ -94,7 +94,7 @@
 
     @testset "Results values" begin
         @test flow.time[1] == DateTime(2020)
-        @test coalesce.(flow.edge_id[1:2], -1) == [0, 1]
+        @test coalesce.(flow.edge_id[1:2], -1) == [100, 101]
         @test flow.from_node_id[1:2] == [6, 0]
         @test flow.to_node_id[1:2] == [0, 2147483647]
 
@@ -129,7 +129,7 @@ end
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
     @test model.integrator.u.storage ≈ [1000]
-    vertical_flux = Ribasim.get_tmp(model.integrator.p.basin.vertical_flux, 0)
+    vertical_flux = Ribasim.wrap_forcing(model.integrator.p.basin.vertical_flux[Float64[]])
     @test vertical_flux.precipitation == [0.0]
     @test vertical_flux.evaporation == [0.0]
     @test vertical_flux.drainage == [0.0]
@@ -147,7 +147,7 @@ end
     @test model isa Ribasim.Model
 
     stor = model.integrator.u.storage
-    vertical_flux = Ribasim.get_tmp(model.integrator.p.basin.vertical_flux, 0)
+    vertical_flux = Ribasim.wrap_forcing(model.integrator.p.basin.vertical_flux[Float64[]])
     prec = vertical_flux.precipitation
     evap = vertical_flux.evaporation
     drng = vertical_flux.drainage
@@ -198,7 +198,7 @@ end
 
     @test successful_retcode(model)
     @test allunique(Ribasim.tsaves(model))
-    @test model.integrator.u ≈ Float32[519.8817, 519.8798, 339.3959, 1418.4331] skip =
+    @test model.integrator.u ≈ Float32[803.7093, 803.68274, 495.241, 1318.3053] skip =
         Sys.isapple() atol = 1.5
 
     @test length(logger.logs) > 10
@@ -231,10 +231,13 @@ end
     @test model isa Ribasim.Model
     @test successful_retcode(model)
     @test allunique(Ribasim.tsaves(model))
-    precipitation = Ribasim.get_tmp(model.integrator.p.basin.vertical_flux, 0).precipitation
+    precipitation =
+        Ribasim.wrap_forcing(
+            model.integrator.p.basin.vertical_flux[Float64[]],
+        ).precipitation
     @test length(precipitation) == 4
-    @test model.integrator.u ≈ Float32[472.06555, 472.06366, 367.23883, 1427.9957] atol =
-        2.0 skip = Sys.isapple()
+    @test model.integrator.u ≈ Float32[698.22736, 698.2014, 421.20447, 1334.4354] atol = 2.0 skip =
+        Sys.isapple()
 end
 
 @testitem "Allocation example model" begin
@@ -287,7 +290,7 @@ end
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
     @test successful_retcode(model)
-    @test model.integrator.u ≈ Float32[7.783636, 726.16394] skip = Sys.isapple()
+    @test model.integrator.u ≈ Float32[368.31558, 365.68442] skip = Sys.isapple()
     # the highest level in the dynamic table is updated to 1.2 from the callback
     @test model.integrator.p.tabulated_rating_curve.table[end].t[end] == 1.2
 end
@@ -296,7 +299,6 @@ end
     import Tables
     using DataInterpolations: LinearInterpolation, integral, invert_integral
 
-    "Shorthand for Ribasim.get_area_and_level"
     function lookup(profile, S)
         level_to_area = LinearInterpolation(profile.A, profile.h; extrapolate = true)
         storage_to_level = invert_integral(level_to_area)
@@ -331,6 +333,7 @@ end
 
     # On the second segment and extrapolation
     for S in [500.0 + 100.0, 1000.0 + 100.0]
+        local A, h
         S = 500.0 + 100.0
         A, h = lookup(profile, S)
         @test h ≈ 10.0 + (S - 500.0) / 100.0
@@ -369,11 +372,11 @@ end
     outlet_flow =
         filter([:from_node_id, :to_node_id] => (from, to) -> from == 2 && to == 3, flow)
 
-    t_min_crest_level =
-        level.t[2] * (outlet.min_crest_level[1] - level.u[1]) / (level.u[2] - level.u[1])
+    t_min_upstream_level =
+        level.t[2] * (outlet.min_upstream_level[1] - level.u[1]) / (level.u[2] - level.u[1])
 
-    # No outlet flow when upstream level is below minimum crest level
-    @test all(@. outlet_flow.flow_rate[t <= t_min_crest_level] == 0)
+    # No outlet flow when upstream level is below minimum upstream level
+    @test all(@. outlet_flow.flow_rate[t <= t_min_upstream_level] == 0)
 
     t = Ribasim.tsaves(model)
     t_maximum_level = level.t[2]
@@ -385,18 +388,34 @@ end
 
 @testitem "UserDemand" begin
     using SciMLBase: successful_retcode
+    using Dates
+    using DataFrames: DataFrame
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/user_demand/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test successful_retcode(model)
 
-    day = 86400.0
-    @test only(model.integrator.sol(0day)) == 1000.0
-    # constant UserDemand withdraws to 0.9m/900m3
-    @test only(model.integrator.sol(150day)) ≈ 900 atol = 5
-    # dynamic UserDemand withdraws to 0.5m/509m3
-    @test only(model.integrator.sol(180day)) ≈ 509 atol = 1
+    seconds_in_day = 86400.0
+    @test only(model.integrator.sol(0seconds_in_day)) == 1000.0
+    # constant UserDemand withdraws to 0.9m or 900m3 due to min level = 0.9
+    @test only(model.integrator.sol(150seconds_in_day)) ≈ 900 atol = 5
+    # dynamic UserDemand withdraws to 0.5m or 500m3 due to min level = 0.5
+    @test only(model.integrator.sol(220seconds_in_day)) ≈ 500 atol = 1
+
+    # Trasient return factor
+    flow = DataFrame(Ribasim.flow_table(model))
+    return_factor_itp = model.integrator.p.user_demand.return_factor[3]
+    flow_in =
+        filter([:from_node_id, :to_node_id] => (from, to) -> (from, to) == (1, 4), flow)
+    flow_out =
+        filter([:from_node_id, :to_node_id] => (from, to) -> (from, to) == (4, 5), flow)
+    time_seconds = Ribasim.seconds_since.(flow_in.time, model.config.starttime)
+    @test isapprox(
+        flow_out.flow_rate,
+        return_factor_itp.(time_seconds) .* flow_in.flow_rate,
+        rtol = 1e-1,
+    )
 end
 
 @testitem "ManningResistance" begin
@@ -463,8 +482,9 @@ end
     model = Ribasim.run(toml_path)
     @test successful_retcode(model)
 
-    (; u, p) = model.integrator
-    h_actual = get_tmp(p.basin.current_level, u)[1:50]
+    u = model.integrator.sol.u[end]
+    p = model.integrator.p
+    h_actual = p.basin.current_level[parent(u)][1:50]
     x = collect(10.0:20.0:990.0)
     h_expected = standard_step_method(x, 5.0, 1.0, 0.04, h_actual[end], 1.0e-6)
 
@@ -475,13 +495,17 @@ end
     @test all(isapprox.(h_expected, h_actual; atol = 0.02))
     # Test for conservation of mass, flow at the beginning == flow at the end
     n_self_loops = length(p.graph[].flow_dict)
-    @test Ribasim.get_flow(p.graph, NodeID(:FlowBoundary, 1, p), NodeID(:Basin, 2, p), 0) ≈
-          5.0 atol = 0.001 skip = Sys.isapple()
+    @test Ribasim.get_flow(
+        p.graph,
+        NodeID(:FlowBoundary, 1, p),
+        NodeID(:Basin, 2, p),
+        parent(u),
+    ) ≈ 5.0 atol = 0.001 skip = Sys.isapple()
     @test Ribasim.get_flow(
         p.graph,
         NodeID(:ManningResistance, 101, p),
         NodeID(:Basin, 102, p),
-        0,
+        parent(u),
     ) ≈ 5.0 atol = 0.001 skip = Sys.isapple()
 end
 

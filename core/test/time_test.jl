@@ -39,10 +39,15 @@ end
     t_end = time_table.time[end]
     filter!(:time => t -> t !== t_end, time_table)
 
+    function get_area(basin, idx, storage)
+        level = Ribasim.get_level_from_storage(basin, idx, storage)
+        basin.level_to_area[idx](level)
+    end
+
     time_table[!, "basin_idx"] =
         [node_id.idx for node_id in Ribasim.NodeID.(:Basin, time_table.node_id, Ref(p))]
     time_table[!, "area"] = [
-        Ribasim.get_area_and_level(basin, idx, storage)[1] for
+        get_area(basin, idx, storage) for
         (idx, storage) in zip(time_table.basin_idx, basin_table.storage)
     ]
     # Mean areas are sufficient to compute the mean flows
@@ -78,7 +83,6 @@ end
 
 @testitem "Integrate over discontinuity" begin
     import BasicModelInterface as BMI
-    using Ribasim: get_tmp
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/level_demand/ribasim.toml")
     @test ispath(toml_path)
@@ -92,8 +96,9 @@ end
         solver_algorithm = "Euler",
     )
     model = Ribasim.Model(config)
-    starting_precipitation =
-        get_tmp(model.integrator.p.basin.vertical_flux, 0).precipitation[1]
+    starting_precipitation = Ribasim.wrap_forcing(
+        model.integrator.p.basin.vertical_flux[Float64[]],
+    ).precipitation[1]
     BMI.update_until(model, saveat)
     mean_precipitation = only(model.saved.vertical_flux.saveval).precipitation[1]
     # Given that precipitation stops after 15 of the 20 days

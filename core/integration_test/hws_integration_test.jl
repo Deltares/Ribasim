@@ -1,4 +1,4 @@
-@testitem "HWS model integration test" timeout = 3600 begin
+@testitem "HWS model integration test" begin
     using SciMLBase: successful_retcode
     using Arrow
 

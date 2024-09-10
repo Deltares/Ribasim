@@ -24,7 +24,6 @@
         @show backtrace
     end
     @test occursin("version in the TOML config file does not match", output)
-    @test occursin("Info: Convergence bottlenecks in descending order of severity:", output)
 end
 
 @testitem "main error logging" begin

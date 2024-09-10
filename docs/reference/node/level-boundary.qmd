@@ -15,7 +15,7 @@ column        | type    | unit         | restriction
 ------------- | ------- | ------------ | -----------
 node_id       | Int32   | -            | sorted
 active        | Bool    | -            | (optional, default true)
-level         | Float64 | $m$          | -
+level         | Float64 | $\text{m}$          | -
 
 ## Time
 
@@ -31,17 +31,17 @@ column    | type     | unit         | restriction
 --------- | -------  | ------------ | -----------
 node_id   | Int32    | -            | sorted
 time      | DateTime | -            | sorted per node_id
-level     | Float64  | $m$          | -
+level     | Float64  | $\text{m}$   | -
 
 ## Concentration {#sec-level-boundary-conc}
 This table defines the concentration(s) of (a) substance(s) for the flow from the LevelBoundary.
 
-column         | type     | unit         | restriction
--------------- | -------- | ------------ | -----------
-node_id        | Int32    | -            | sorted
-time           | DateTime | -            | sorted per node_id
-substance      | String   | -            | can correspond to known Delwaq substances
-concentration  | Float64  | $g m^{-3}$   |
+column         | type     | unit                  | restriction
+-------------- | -------- | --------------------- | -----------
+node_id        | Int32    | -                     | sorted
+time           | DateTime | -                     | sorted per node_id
+substance      | String   | -                     | can correspond to known Delwaq substances
+concentration  | Float64  | $\text{g}/\text{m}^3$ |
 
 # Equations
 

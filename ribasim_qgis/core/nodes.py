@@ -29,16 +29,13 @@ from typing import Any
 from PyQt5.QtCore import QVariant
 from qgis.core import (
     Qgis,
-    QgsCategorizedSymbolRenderer,
     QgsCoordinateReferenceSystem,
     QgsEditorWidgetSetup,
-    QgsFeatureRenderer,
     QgsField,
     QgsPalLayerSettings,
     QgsVectorLayer,
     QgsVectorLayerSimpleLabeling,
 )
-from qgis.PyQt.QtXml import QDomDocument
 
 from ribasim_qgis.core import geopackage
 
@@ -72,6 +69,10 @@ class Input(abc.ABC):
         return False
 
     @classmethod
+    def fid_column(cls) -> str:
+        return "fid"
+
+    @classmethod
     def nodetype(cls):
         return cls.input_type().split("/")[0].strip()
 
@@ -86,6 +87,8 @@ class Input(abc.ABC):
             raise ValueError(f"Name already exists in geopackage: {cls.input_type()}")
         instance = cls(path)
         instance.layer = instance.new_layer(crs)
+        # Load style from QML file
+        instance.load_default_style()
         return instance
 
     def new_layer(self, crs: QgsCoordinateReferenceSystem) -> QgsVectorLayer:
@@ -120,24 +123,17 @@ class Input(abc.ABC):
         )
         layer.setEditorWidgetSetup(index, setup)
 
+    def set_unique(self, name: str) -> None:
+        layer = self.layer
+        index = layer.fields().indexFromName(name)
+        setup = QgsEditorWidgetSetup(
+            "UniqueValues",
+            {},
+        )
+        layer.setEditorWidgetSetup(index, setup)
+
     def set_read_only(self) -> None:
         pass
-
-    @property
-    def renderer(self) -> QgsFeatureRenderer | None:
-        fn = STYLE_DIR / f"{self.input_type().replace(' / ', '_')}Style.sld"
-        if fn.is_file():
-            document = QDomDocument()
-            document.setContent(fn.read_text())
-            sld = document.firstChildElement("StyledLayerDescriptor")
-
-            nle = sld.firstChildElement("namedLayerElem")
-            renderer = QgsCategorizedSymbolRenderer().loadSld(
-                nle, self.qgis_geometry_type(), ""
-            )
-            return renderer
-        else:
-            return None
 
     @property
     def labels(self) -> Any:
@@ -147,14 +143,23 @@ class Input(abc.ABC):
         self.layer = QgsVectorLayer(
             f"{self._path}|layername={self.input_type()}", self.input_type()
         )
+        # Load style from database if exists, otherwise load and save default qml style
+        _, success = self.layer.loadDefaultStyle()
+        if not success:
+            self.load_default_style()
+            self.save_style()
+        # Connect signal to save style to database when changed
+        self.layer.styleChanged.connect(self.save_style)
         return self.layer
 
-    def from_geopackage(self) -> tuple[QgsVectorLayer, Any, Any]:
+    def from_geopackage(self) -> tuple[QgsVectorLayer, Any]:
         self.layer_from_geopackage()
-        return (self.layer, self.renderer, self.labels)
+        return (self.layer, self.labels)
 
     def write(self) -> None:
-        self.layer = geopackage.write_layer(self._path, self.layer, self.input_type())
+        self.layer = geopackage.write_layer(
+            self._path, self.layer, self.input_type(), fid=self.fid_column()
+        )
         self.set_defaults()
 
     def remove_from_geopackage(self) -> None:
@@ -163,6 +168,16 @@ class Input(abc.ABC):
     def set_editor_widget(self) -> None:
         # Calling during new_layer doesn't have any effect...
         pass
+
+    def stylename(self) -> str:
+        return f"{self.input_type().replace(' / ', '_')}Style"
+
+    def load_default_style(self):
+        fn = STYLE_DIR / f"{self.stylename()}.qml"
+        self.layer.loadNamedStyle(str(fn))
+
+    def save_style(self):
+        self.layer.saveStyleToDatabase(self.stylename(), "", True, "")
 
 
 class Node(Input):
@@ -181,9 +196,9 @@ class Node(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
+            QgsField("node_id", QVariant.Int),
             QgsField("name", QVariant.String),
             QgsField("node_type", QVariant.String),
-            QgsField("node_id", QVariant.Int),
             QgsField("subnetwork_id", QVariant.Int),
         ]
 
@@ -191,21 +206,30 @@ class Node(Input):
     def is_spatial(cls):
         return True
 
+    @classmethod
+    def fid_column(cls):
+        return "node_id"
+
     def write(self) -> None:
         # Special case the Node layer write because it needs to generate a new file.
         self.layer = geopackage.write_layer(
-            self._path, self.layer, self.input_type(), newfile=True
+            self._path,
+            self.layer,
+            self.input_type(),
+            newfile=True,
+            fid=self.fid_column(),
         )
         self.set_defaults()
         return
 
     def set_editor_widget(self) -> None:
         layer = self.layer
-        node_type_field = layer.fields().indexFromName("node_type")
+        node_type_field_index = layer.fields().indexFromName("node_type")
         self.set_dropdown("node_type", NONSPATIALNODETYPES)
+        self.set_unique("node_id")
 
         layer_form_config = layer.editFormConfig()
-        layer_form_config.setReuseLastValue(node_type_field, True)
+        layer_form_config.setReuseLastValue(node_type_field_index, True)
         layer.setEditFormConfig(layer_form_config)
 
         return
@@ -224,6 +248,7 @@ class Edge(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
+            QgsField("edge_id", QVariant.Int),
             QgsField("name", QVariant.String),
             QgsField("from_node_id", QVariant.Int),
             QgsField("to_node_id", QVariant.Int),
@@ -247,10 +272,15 @@ class Edge(Input):
     def is_spatial(cls):
         return True
 
+    @classmethod
+    def fid_column(cls):
+        return "edge_id"
+
     def set_editor_widget(self) -> None:
         layer = self.layer
 
         self.set_dropdown("edge_type", EDGETYPES)
+        self.set_unique("edge_id")
 
         layer_form_config = layer.editFormConfig()
         layer.setEditFormConfig(layer_form_config)
@@ -260,7 +290,7 @@ class Edge(Input):
     @property
     def labels(self) -> Any:
         pal_layer = QgsPalLayerSettings()
-        pal_layer.fieldName = """concat("name", ' #', "fid")"""
+        pal_layer.fieldName = """concat("name", ' #', "edge_id")"""
         pal_layer.isExpression = True
         pal_layer.placement = Qgis.LabelPlacement.Line
         pal_layer.dist = 1.0
@@ -357,7 +387,7 @@ class BasinArea(Input):
 
     @classmethod
     def geometry_type(cls) -> str:
-        return "Polygon"
+        return "MultiPolygon"
 
     @classmethod
     def qgis_geometry_type(cls) -> Qgis.GeometryType:
@@ -540,7 +570,7 @@ class OutletStatic(Input):
             QgsField("flow_rate", QVariant.Double),
             QgsField("min_flow_rate", QVariant.Double),
             QgsField("max_flow_rate", QVariant.Double),
-            QgsField("min_crest_level", QVariant.Double),
+            QgsField("min_upstream_level", QVariant.Double),
             QgsField("control_state", QVariant.String),
         ]
 
@@ -843,7 +873,7 @@ NODES: dict[str, type[Input]] = {
 }
 NONSPATIALNODETYPES: set[str] = {
     cls.nodetype() for cls in Input.__subclasses__() if not cls.is_spatial()
-}
+} | {"Terminal"}
 EDGETYPES = {"flow", "control"}
 SPATIALCONTROLNODETYPES = {
     "ContinuousControl",

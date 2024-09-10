@@ -11,7 +11,7 @@ end
 
 @testitem "bottom" begin
     using StructArrays: StructVector
-    using Ribasim: NodeID
+    using Ribasim: NodeID, cache
     using DataInterpolations: LinearInterpolation, integral, invert_integral
 
     # create two basins with different bottoms/levels
@@ -20,15 +20,14 @@ end
     level_to_area = LinearInterpolation.(area, level)
     storage_to_level = invert_integral.(level_to_area)
     demand = zeros(2)
+    current_level = cache(2)
+    current_area = cache(2)
+    current_level[Float64[]] .= [2.0, 3.0]
+    current_area[Float64[]] .= [2.0, 3.0]
     basin = Ribasim.Basin(;
         node_id = NodeID.(:Basin, [5, 7], [1, 2]),
-        vertical_flux_from_input = [2.0, 3.0],
-        vertical_flux = [2.0, 3.0],
-        vertical_flux_prev = [2.0, 3.0],
-        vertical_flux_integrated = [2.0, 3.0],
-        vertical_flux_bmi = [2.0, 3.0],
-        current_level = [2.0, 3.0],
-        current_area = [2.0, 3.0],
+        current_level,
+        current_area,
         storage_to_level,
         level_to_area,
         demand,
@@ -94,7 +93,7 @@ end
 
     # Converting from storages to levels and back should return the same storages
     storages = range(0.0, 2 * storage_to_level.t[end], 50)
-    levels = [Ribasim.get_area_and_level(basin, 1, s)[2] for s in storages]
+    levels = [Ribasim.get_level_from_storage(basin, 1, s) for s in storages]
     storages_ = [Ribasim.get_storage_from_level(basin, 1, l) for l in levels]
     @test storages ≈ storages_
 
@@ -161,6 +160,8 @@ end
 
 @testitem "Jacobian sparsity" begin
     import SQLite
+    using ComponentArrays: ComponentVector
+    using SparseArrays: spzeros
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
 
@@ -169,13 +170,18 @@ end
     db = SQLite.DB(db_path)
 
     p = Ribasim.Parameters(db, cfg)
-    jac_prototype = Ribasim.get_jac_prototype(p)
+    t0 = 0.0
+    u0 = ComponentVector{Float64}(;
+        storage = zeros(length(p.basin.node_id)),
+        integral = Float64[],
+    )
+    du0 = copy(u0)
+    jac_prototype = Ribasim.get_jac_prototype(du0, u0, p, t0)
 
-    @test jac_prototype.m == 4
-    @test jac_prototype.n == 4
-    @test jac_prototype.colptr == [1, 3, 7, 10, 13]
-    @test jac_prototype.rowval == [1, 2, 1, 2, 3, 4, 2, 3, 4, 2, 3, 4]
-    @test jac_prototype.nzval == ones(12)
+    jac_prototype_expected = spzeros(Bool, 4, 4)
+    jac_prototype_expected[1:2, 1:2] .= true
+    jac_prototype_expected[2:4, 2:4] .= true
+    @test jac_prototype == jac_prototype_expected
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/pid_control/ribasim.toml")
 
@@ -184,13 +190,17 @@ end
     db = SQLite.DB(db_path)
 
     p = Ribasim.Parameters(db, cfg)
-    jac_prototype = Ribasim.get_jac_prototype(p)
+    u0 = ComponentVector{Float64}(;
+        storage = zeros(length(p.basin.node_id)),
+        integral = zeros(length(p.pid_control.node_id)),
+    )
+    du0 = copy(u0)
+    jac_prototype = Ribasim.get_jac_prototype(du0, u0, p, t0)
 
-    @test jac_prototype.m == 3
-    @test jac_prototype.n == 3
-    @test jac_prototype.colptr == [1, 4, 5, 6]
-    @test jac_prototype.rowval == [1, 2, 3, 1, 1]
-    @test jac_prototype.nzval == ones(5)
+    jac_prototype_expected = spzeros(Bool, 3, 3)
+    jac_prototype_expected[1, 1:3] .= true
+    jac_prototype_expected[2:3, 1] .= true
+    @test jac_prototype == jac_prototype_expected
 end
 
 @testitem "FlatVector" begin
@@ -218,10 +228,12 @@ end
     @test reduction_factor(1.0, 2.0) === 0.5
     @test reduction_factor(3.0f0, 2.0) === 1.0f0
     @test reduction_factor(3.0, 2.0) === 1.0
+    @test reduction_factor(Inf, 2.0) === 1.0
+    @test reduction_factor(-Inf, 2.0) === 0.0
 end
 
 @testitem "low_storage_factor" begin
-    using Ribasim: NodeID, low_storage_factor, EdgeMetadata, EdgeType
+    using Ribasim: NodeID, low_storage_factor, low_storage_factor_resistance_node
 
     node_id = NodeID(:Basin, 5, 1)
     @test low_storage_factor([-2.0], node_id, 2.0) === 0.0
@@ -231,6 +243,30 @@ end
     @test low_storage_factor([1.0], node_id, 2.0) === 0.5
     @test low_storage_factor([3.0f0], node_id, 2.0) === 1.0f0
     @test low_storage_factor([3.0], node_id, 2.0) === 1.0
+
+    node_id_1 = NodeID(:Basin, 5, 1)
+    node_id_2 = NodeID(:Basin, 6, 2)
+    @test low_storage_factor_resistance_node(
+        (; storage = [3.0, 3.0]),
+        1.0,
+        node_id_1,
+        node_id_2,
+        2.0,
+    ) == 1.0
+    @test low_storage_factor_resistance_node(
+        (; storage = [1.0, 3.0]),
+        1.0,
+        node_id_1,
+        node_id_2,
+        2.0,
+    ) == 0.5
+    @test low_storage_factor_resistance_node(
+        (; storage = [1.0, 3.0]),
+        -1.0,
+        node_id_1,
+        node_id_2,
+        2.0,
+    ) == 1.0
 end
 
 @testitem "constraints_from_nodes" begin

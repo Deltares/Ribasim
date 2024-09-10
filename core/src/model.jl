@@ -37,16 +37,10 @@ function Model(config_path::AbstractString)::Model
 end
 
 function Model(config::Config)::Model
-    alg = algorithm(config.solver)
     db_path = input_path(config, config.database)
     if !isfile(db_path)
         @error "Database file not found" db_path
         error("Database file not found")
-    end
-
-    # Setup timing logging
-    if config.logging.timing
-        TimerOutputs.enable_debug_timings(Ribasim)  # causes recompilation (!)
     end
 
     # All data from the database that we need during runtime is copied into memory,
@@ -68,17 +62,21 @@ function Model(config::Config)::Model
             error("Invalid discrete control state definition(s).")
         end
 
-        (; pid_control, graph, outlet, basin, tabulated_rating_curve) = parameters
+        (; pid_control, graph, outlet, pump, basin, tabulated_rating_curve) = parameters
         if !valid_pid_connectivity(pid_control.node_id, pid_control.listen_node_id, graph)
             error("Invalid PidControl connectivity.")
         end
 
-        if !valid_outlet_crest_level!(graph, outlet, basin)
-            error("Invalid minimum crest level of outlet")
+        if !valid_min_upstream_level!(graph, outlet, basin)
+            error("Invalid minimum upstream level of Outlet.")
+        end
+
+        if !valid_min_upstream_level!(graph, pump, basin)
+            error("Invalid minimum upstream level of Pump.")
         end
 
         if !valid_tabulated_curve_level(graph, tabulated_rating_curve, basin)
-            error("Invalid level of tabulated rating curve")
+            error("Invalid level of TabulatedRatingCurve.")
         end
 
         # tell the solver to stop when new data comes in
@@ -108,13 +106,18 @@ function Model(config::Config)::Model
 
     storage = get_storages_from_levels(parameters.basin, state.level)
 
-    # Synchronize level with storage
-    set_current_basin_properties!(parameters.basin, storage)
-
     @assert length(storage) == n "Basin / state length differs from number of Basins"
     # Integrals for PID control
     integral = zeros(length(parameters.pid_control.node_id))
     u0 = ComponentVector{Float64}(; storage, integral)
+    du0 = zero(u0)
+
+    # The Solver algorithm
+    alg = algorithm(config.solver; u0)
+
+    # Synchronize level with storage
+    set_current_basin_properties!(parameters.basin, u0, du0)
+
     # for Float32 this method allows max ~1000 year simulations without accuracy issues
     t_end = seconds_since(config.endtime, config.starttime)
     @assert eps(t_end) < 3600 "Simulation time too long"
@@ -126,12 +129,14 @@ function Model(config::Config)::Model
     tstops = sort(unique(vcat(tstops...)))
     adaptive, dt = convert_dt(config.solver.dt)
 
-    jac_prototype = config.solver.sparse ? get_jac_prototype(parameters) : nothing
+    jac_prototype = if config.solver.sparse
+        get_jac_prototype(du0, u0, parameters, t0)
+    else
+        nothing
+    end
     RHS = ODEFunction(water_balance!; jac_prototype)
 
-    @timeit_debug to "Setup ODEProblem" begin
-        prob = ODEProblem(RHS, u0, timespan, parameters)
-    end
+    prob = ODEProblem(RHS, u0, timespan, parameters)
     @debug "Setup ODEProblem."
 
     callback, saved = create_callbacks(parameters, config, saveat)
@@ -140,13 +145,13 @@ function Model(config::Config)::Model
     # Run water_balance! before initializing the integrator. This is because
     # at this initialization the discrete control callback is called for the first
     # time which depends on the flows formulated in water_balance!
-    water_balance!(copy(u0), u0, parameters, t0)
+    water_balance!(du0, u0, parameters, t0)
 
     # Initialize the integrator, providing all solver options as described in
     # https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/
     # Not all keyword arguments (e.g. `dt`) support `nothing`, in which case we follow
     # https://github.com/SciML/OrdinaryDiffEq.jl/blob/v6.57.0/src/solve.jl#L10
-    @timeit_debug to "Setup integrator" integrator = init(
+    integrator = init(
         prob,
         alg;
         progress = true,
@@ -166,10 +171,6 @@ function Model(config::Config)::Model
         config.solver.maxiters,
     )
     @debug "Setup integrator."
-
-    if config.logging.timing
-        @show Ribasim.to
-    end
 
     if config.allocation.use_allocation && is_active(parameters.allocation)
         set_initial_allocation_mean_flows!(integrator)

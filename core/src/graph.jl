@@ -5,7 +5,7 @@ Return a directed metagraph with data of nodes (NodeMetadata):
 and data of edges (EdgeMetadata):
 [`EdgeMetadata`](@ref)
 """
-function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGraph
+function create_graph(db::DB, config::Config)::MetaGraph
     node_rows = execute(
         db,
         "SELECT node_id, node_type, subnetwork_id FROM Node ORDER BY node_type, node_id",
@@ -14,7 +14,7 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
         db,
         """
         SELECT
-            Edge.fid,
+            Edge.edge_id,
             FromNode.node_id AS from_node_id,
             FromNode.node_type AS from_node_type,
             ToNode.node_id AS to_node_id,
@@ -59,7 +59,7 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
 
     errors = false
     for (;
-        fid,
+        edge_id,
         from_node_type,
         from_node_id,
         to_node_type,
@@ -79,7 +79,7 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
             subnetwork_id = 0
         end
         edge_metadata = EdgeMetadata(;
-            id = fid,
+            id = edge_id,
             flow_idx = edge_type == EdgeType.flow ? flow_counter + 1 : 0,
             type = edge_type,
             subnetwork_id_source = subnetwork_id,
@@ -109,12 +109,9 @@ function create_graph(db::DB, config::Config, chunk_sizes::Vector{Int})::MetaGra
         error("Incomplete connectivity in subnetwork")
     end
 
-    flow = zeros(flow_counter)
+    flow = cache(flow_counter)
     flow_prev = fill(NaN, flow_counter)
     flow_integrated = zeros(flow_counter)
-    if config.solver.autodiff
-        flow = DiffCache(flow, chunk_sizes)
-    end
     flow_edges = [edge for edge in values(graph.edge_data) if edge.type == EdgeType.flow]
     graph_data = (;
         node_ids,
@@ -186,59 +183,46 @@ function Base.iterate(iter::OutNeighbors, state = 1)
     return label_out, state
 end
 
-"""
-Set the given flow q over the edge between the given nodes.
-"""
-function set_flow!(graph::MetaGraph, id_src::NodeID, id_dst::NodeID, q::Number)::Nothing
-    (; flow_dict) = graph[]
-    flow_idx = flow_dict[(id_src, id_dst)]
-    set_flow!(graph, flow_idx, q)
+function set_flow!(graph::MetaGraph, edge_metadata::EdgeMetadata, q::Number, du)::Nothing
+    set_flow!(graph, edge_metadata.flow_idx, q, du)
     return nothing
 end
 
-function set_flow!(graph::MetaGraph, edge_metadata::EdgeMetadata, q::Number)::Nothing
-    set_flow!(graph, edge_metadata.flow_idx, q)
-    return nothing
-end
-
-function set_flow!(graph, flow_idx::Int, q::Number)::Nothing
+function set_flow!(graph, flow_idx::Int, q::Number, du)::Nothing
     (; flow) = graph[]
-    get_tmp(flow, q)[flow_idx] = q
+    flow[parent(du)][flow_idx] = q
     return nothing
 end
 
 """
-Get the flow over the given edge (val is needed for get_tmp from ForwardDiff.jl).
+Get the flow over the given edge (du is needed for LazyBufferCache from ForwardDiff.jl).
 """
-function get_flow(graph::MetaGraph, id_src::NodeID, id_dst::NodeID, val)::Number
+function get_flow(graph::MetaGraph, id_src::NodeID, id_dst::NodeID, du)::Number
     (; flow_dict) = graph[]
     flow_idx = flow_dict[id_src, id_dst]
-    return get_flow(graph, flow_idx, val)
+    return get_flow(graph, flow_idx, du)
 end
 
-function get_flow(graph, edge_metadata::EdgeMetadata, val)::Number
-    return get_flow(graph, edge_metadata.flow_idx, val)
+function get_flow(graph, edge_metadata::EdgeMetadata, du)::Number
+    return get_flow(graph, edge_metadata.flow_idx, du)
 end
 
-function get_flow(graph::MetaGraph, flow_idx::Int, val)
-    return get_tmp(graph[].flow, val)[flow_idx]
+function get_flow(graph::MetaGraph, flow_idx::Int, du)
+    return graph[].flow[parent(du)][flow_idx]
 end
 
-function get_flow_prev(graph, id_src::NodeID, id_dst::NodeID, val)::Number
-    # Note: Can be removed after https://github.com/Deltares/Ribasim/pull/1444
+function get_flow_prev(graph, id_src::NodeID, id_dst::NodeID, du)::Number
     (; flow_dict) = graph[]
     flow_idx = flow_dict[id_src, id_dst]
-    return get_flow(graph, flow_idx, val)
+    return get_flow(graph, flow_idx, du)
 end
 
-function get_flow_prev(graph, edge_metadata::EdgeMetadata, val)::Number
-    # Note: Can be removed after https://github.com/Deltares/Ribasim/pull/1444
-    return get_flow_prev(graph, edge_metadata.flow_idx, val)
+function get_flow_prev(graph, edge_metadata::EdgeMetadata, du)::Number
+    return get_flow_prev(graph, edge_metadata.flow_idx, du)
 end
 
-function get_flow_prev(graph::MetaGraph, flow_idx::Int, val)
-    # Note: Can be removed after https://github.com/Deltares/Ribasim/pull/1444
-    return get_tmp(graph[].flow_prev, val)[flow_idx]
+function get_flow_prev(graph::MetaGraph, flow_idx::Int, du)
+    return graph[].flow_prev[parent(du)][flow_idx]
 end
 
 """

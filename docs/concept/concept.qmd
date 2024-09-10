@@ -11,6 +11,7 @@ Besides a model simulation core, Ribasim also includes tooling to assist in buil
 The model and its results provides insights to decision makers, enabling them to build consensus amongst water users and make informed decisions about how to manage water resources optimally.
 
 The model concept of Ribasim is composed of multiple layers:
+
 - a physical layer representing water bodies and associated infrastructure as well as abstractions,
 - a rule-based control layer to manage the infrastructure, and
 - (optionally) a priority-based allocation layer to take centralized decisions on user abstractions.
@@ -26,7 +27,7 @@ This version of Ribasim is the follow up of the legacy Fortran kernel of Ribasim
 
 ## Physical layer {#sec-physical}
 
-To represent the physical characteristics of the water system in an area, Ribasim allows you to divide the area into a network of connected representative elementary watersheds ([Reggiani, Sivapalan, and Majid Hassanizadeh 1998](https://deltares.github.io/Ribasim/#ref-REGGIANI1998367)).
+To represent the physical characteristics of the water system in an area, Ribasim allows you to divide the area into a network of connected representative elementary watersheds [@REGGIANI1998367].
 Within Ribasim, these elements are called basins, which are essentially buckets or reservoirs holding an aggregated volume of water bodies in an area.
 Basins are chained in a graph with connector nodes determining the exchange of water between the basins.
 These connector nodes can represent open water connections (e.g. bifurcations or resistance in a free flowing open water channel) or infrastructure elements such as pumps, gates or weirs.
