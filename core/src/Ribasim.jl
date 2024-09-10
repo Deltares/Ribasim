@@ -53,6 +53,7 @@ using SparseConnectivityTracer: TracerSparsityDetector, jacobian_sparsity, Gradi
 # The computations inside the rhs go trough preallocated arrays of the required type which are created by LazyBufferCache.
 # Retrieving a cache from a LazyBufferCache looks like indexing: https://docs.sciml.ai/PreallocationTools/stable/#LazyBufferCache
 using PreallocationTools: LazyBufferCache
+using FiniteDiff: finite_difference_gradient!
 
 # Interpolation functionality, used for e.g.
 # basin profiles and TabulatedRatingCurve. See also the node

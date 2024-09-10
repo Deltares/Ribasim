@@ -124,27 +124,56 @@ function integrate_flows!(u, t, integrator)::Nothing
     flow = flow[parent(du)]
     vertical_flux = vertical_flux[parent(du)]
 
-    u_tmp = copy(u)
-    n_steps = 3
+    # Compute flows and dstorage at tprev
+    water_balance!(du, uprev, p, tprev)
+    flow_prev = copy(flow) # ALLOCATING
+    vertical_flux_prev = copy(vertical_flux) # ALLOCATING
+    du_prev = copy(du) # ALLOCATING
 
-    @. flow_integrated_over_dt = 0
-    @. vertical_flux_integrated_over_dt = 0
+    # Compute flows and dstorage at t
+    water_balance!(du, u, p, t)
+    du_now = copy(du) # ALLOCATING
 
-    for (i, t_tmp) in enumerate(range(tprev, t; length = n_steps))
-        integrator.sol(u_tmp, t_tmp)
-        water_balance!(du, u_tmp, p, t_tmp)
-        if (i == 1) || (i == n_steps)
-            @. flow_integrated_over_dt += flow
-            @. vertical_flux_integrated_over_dt += vertical_flux
-        else
-            @. flow_integrated_over_dt += 2 * flow
-            @. vertical_flux_integrated_over_dt += 2 * vertical_flux
-        end
+    # Trapezoidal term
+    @. flow_integrated_over_dt = 0.5 * (flow + flow_prev) * dt
+    @. vertical_flux_integrated_over_dt = 0.5 * (vertical_flux + vertical_flux_prev) * dt
+
+    n_flow = length(flow)
+    n_vertical_flux = length(vertical_flux)
+
+    # Compute dflow and
+    function flow!(out, u, t)
+        water_balance!(du, u, p, t)
+        out[1:n_flow] .= graph[].flow[du]
+        out[(n_flow + 1):end] = basin.vertical_flux[du]
     end
 
-    # Finish flow integration computation
-    @. vertical_flux_integrated_over_dt *= dt / ((n_steps - 1) * 2)
-    @. flow_integrated_over_dt *= dt / ((n_steps - 1) * 2)
+    n_total = n_flow + n_vertical_flux
+    dflow_vertical_flux_prev = zeros(n_total) # ALLOCATING
+    dflow_vertical_flux = zeros(n_total) # ALLOCATING
+
+    finite_difference_gradient!(
+        dflow_vertical_flux_prev,
+        (out, t_) -> flow!(out, uprev + du_prev * (t_ - tprev), t_), # ALLOCATING
+        tprev,
+        Val(:forward),
+    )
+    finite_difference_gradient!(
+        dflow_vertical_flux,
+        (out, t_) -> flow!(out, u + du_now * (t_ - t), t_), # ALLOCATING
+        t,
+        Val(:forward),
+    )
+
+    dflow_prev = @view dflow_vertical_flux_prev[1:n_flow]
+    dvertical_flux_prev = @view dflow_vertical_flux_prev[(n_flow + 1):end]
+    dflow = @view dflow_vertical_flux[1:n_flow]
+    dvertical_flux = @view dflow_vertical_flux[(n_flow + 1):end]
+
+    # Correction term
+    @. flow_integrated_over_dt += 0.25 * (dflow_prev - dflow) * dt^2
+    @. vertical_flux_integrated_over_dt +=
+        0.25 * (dvertical_flux_prev - dvertical_flux) * dt^2
 
     # Do exact integration for flow boundaries
     for (outflow_edges, flow_rate) in
