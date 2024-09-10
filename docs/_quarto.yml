@@ -11,7 +11,7 @@ website:
       - text: "Overview"
         file: index.qmd
       - text: "Tutorials"
-        file: tutorial/quickstart.ipynb
+        file: tutorial/natural-flow.ipynb
       - text: "How-to guides"
         file: guide/examples.ipynb
       - text: "Concepts"
@@ -35,7 +35,10 @@ website:
 
     - title: "Tutorials"
       contents:
-        - tutorial/quickstart.ipynb
+        - tutorial/natural-flow.ipynb
+        - tutorial/irrigation-demand.ipynb
+        - tutorial/reservoir.ipynb
+        - tutorial/public-water-supply.ipynb
 
     - title: "How-to guides"
       contents:
