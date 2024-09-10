@@ -124,6 +124,16 @@ class Model(FileModel):
         self.edge.df.set_geometry("geometry", inplace=True, crs=self.crs)
         return self
 
+    @model_validator(mode="after")
+    def _update_used_ids(self) -> "EdgeTable":
+        # Only update the used node IDs if we read from a database
+        if "database" in context_file_loading.get():
+            df = self.node_table().df
+            if len(df.index) > 0:
+                self._used_node_ids.node_ids.update(df.index)
+                self._used_node_ids.max_node_id = df.index.max()
+        return self
+
     @field_serializer("input_dir", "results_dir")
     def _serialize_path(self, path: Path) -> str:
         return str(path)
@@ -224,7 +234,11 @@ class Model(FileModel):
     def node_table(self) -> NodeTable:
         """Compute the full sorted NodeTable from all node types."""
         df_chunks = [node.node.df for node in self._nodes()]
-        df = pd.concat(df_chunks)
+        df = (
+            pd.concat(df_chunks)
+            if df_chunks
+            else pd.DataFrame(index=pd.Index([], name="node_id"))
+        )
         node_table = NodeTable(df=df)
         node_table.sort()
         assert node_table.df is not None
