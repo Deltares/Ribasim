@@ -10,8 +10,8 @@ print(root_folder)
 
 @pytest.mark.regression
 def test_hws_migration():
-    toml_path = root_folder / "models/hws_2024_7_0/hws.toml"
-    db_path = root_folder / "models/hws_2024_7_0/database.gpkg"
+    toml_path = root_folder / "models/hws_migration/hws.toml"
+    db_path = root_folder / "models/hws_migration/database.gpkg"
 
     assert (
         toml_path.exists()
