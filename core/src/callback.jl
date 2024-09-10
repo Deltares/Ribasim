@@ -159,9 +159,7 @@ function integrate_flows!(u, t, integrator)::Nothing
             # Horizontal flows
             allocation.mean_input_flows[edge] =
                 value +
-                0.5 *
-                (get_flow(graph, edge..., du) + get_flow_prev(graph, edge..., du)) *
-                dt
+                0.5 * (get_flow(graph, edge..., flow) + get_flow_prev(graph, edge...)) * dt
         end
     end
     copyto!(flow_prev, flow)

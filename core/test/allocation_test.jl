@@ -253,7 +253,7 @@ end
     model = Ribasim.Model(toml_path)
 
     p = model.integrator.p
-    (; user_demand, graph, allocation, basin, level_demand) = p
+    (; user_demand, graph, allocation, basin, level_demand, flow_boundary) = p
 
     # Initial "integrated" vertical flux
     @test allocation.mean_input_flows[(NodeID(:Basin, 2, p), NodeID(:Basin, 2, p))] ≈ 1e2
@@ -262,15 +262,11 @@ end
 
     storage = Ribasim.get_storages_and_levels(model).storage[1, :]
     t = Ribasim.tsaves(model)
+    flow = graph[].flow[model.integrator.u]
 
     d = user_demand.demand_itp[1][2](0)
     ϕ = 1e-3 # precipitation
-    q = Ribasim.get_flow(
-        graph,
-        Ribasim.NodeID(:FlowBoundary, 1, p),
-        Ribasim.NodeID(:Basin, 2, p),
-        Float64[],
-    )
+    q = only(flow_boundary.flow_rate).u[1]
     A = Ribasim.basin_areas(basin, 1)[1]
     l_max = level_demand.max_level[1](0)
     Δt_allocation = allocation.allocation_models[1].Δt_allocation

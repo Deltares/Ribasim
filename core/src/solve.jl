@@ -361,8 +361,8 @@ function formulate_flow!(
         outflow_id = outflow_edge.edge[2]
         max_downstream_level = tabulated_rating_curve.max_downstream_level[id.idx]
 
-        h_a = get_level(p, inflow_id, t, du)
-        h_b = get_level(p, outflow_id, t, du)
+        h_a = get_level(p, inflow_id, t, current_level)
+        h_b = get_level(p, outflow_id, t, current_level)
         Δh = h_a - h_b
 
         if active[id.idx] || all_nodes_active

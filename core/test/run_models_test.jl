@@ -499,13 +499,13 @@ end
         p.graph,
         NodeID(:FlowBoundary, 1, p),
         NodeID(:Basin, 2, p),
-        parent(u),
+        p.graph[].flow[parent(u)],
     ) ≈ 5.0 atol = 0.001 skip = Sys.isapple()
     @test Ribasim.get_flow(
         p.graph,
         NodeID(:ManningResistance, 101, p),
         NodeID(:Basin, 102, p),
-        parent(u),
+        p.graph[].flow[parent(u)],
     ) ≈ 5.0 atol = 0.001 skip = Sys.isapple()
 end
 
