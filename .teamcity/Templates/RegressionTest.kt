@@ -59,7 +59,7 @@ open class RegressionTest (platformOs: String) : Template() {
                 scriptContent = header +
                         """
                 pixi run python utils/get_benchmark.py %MiniO_credential_token% "benchmark/"
-                pixi run python utils/get_benchmark.py %MiniO_credential_token% "hws_2024_7_0/"
+                pixi run python utils/get_benchmark.py %MiniO_credential_token% "hws_migration/"
                 pixi run test-ribasim-regression
                 """.trimIndent()
             }

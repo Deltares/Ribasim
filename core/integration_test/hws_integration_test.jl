@@ -25,7 +25,7 @@
     # current benchmark is 600s
     benchmark_runtime = 600
     performance_diff =
-        round((timed.time - benchmark_runtime) / benchmark_runtime * 100; digits = 2)
+        round(abs(timed.time - benchmark_runtime) / benchmark_runtime * 100; digits = 2)
     if performance_diff < 0.0
         @info "Runtime is $(timed.time) and it is $performance_diff % faster than benchmark"
     elseif performance_diff > 0.0 && performance_diff < 0.2
