@@ -125,10 +125,11 @@ class Model(FileModel):
         return self
 
     @model_validator(mode="after")
-    def _update_used_ids(self) -> "EdgeTable":
+    def _update_used_ids(self) -> "Model":
         # Only update the used node IDs if we read from a database
         if "database" in context_file_loading.get():
             df = self.node_table().df
+            assert df is not None
             if len(df.index) > 0:
                 self._used_node_ids.node_ids.update(df.index)
                 self._used_node_ids.max_node_id = df.index.max()
