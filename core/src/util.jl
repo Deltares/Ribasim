@@ -979,3 +979,10 @@ function OrdinaryDiffEqNonlinearSolve.relax!(
         @. dz = dz_tmp
     end
 end
+
+function build_state_vector(p::Parameters)
+    for T in conservative_nodetypes
+    end
+
+    return ComponentVector{Float64}(;)
+end

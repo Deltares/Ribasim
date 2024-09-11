@@ -560,6 +560,7 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     # both static and time are optional, but we need fallback defaults
     static = load_structvector(db, config, BasinStaticV1)
     time = load_structvector(db, config, BasinTimeV1)
+    state = load_structvector(db, config, BasinStateV1)
 
     set_static_value!(table, node_id, static)
     set_current_value!(table, node_id, time, config.starttime)
@@ -629,7 +630,7 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
         error("Errors encountered when parsing Basin concentration data.")
     end
 
-    return Basin(;
+    basin = Basin(;
         node_id,
         inflow_ids = [collect(inflow_ids(graph, id)) for id in node_id],
         outflow_ids = [collect(outflow_ids(graph, id)) for id in node_id],
@@ -646,6 +647,10 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
         time,
         concentration_external,
     )
+
+    @set basin.storage0 = get_storages_from_levels(basin, state.level)
+    @assert length(basin.storage0) == n "Basin / state length differs from number of Basins"
+    return basin
 end
 
 """

@@ -90,19 +90,15 @@ function Model(config::Config)::Model
             push!(tstops, get_tstops(time_schema.time, config.starttime))
         end
 
-        # use state
-        state = load_structvector(db, config, BasinStateV1)
-        n = length(get_ids(db, "Basin"))
-
     finally
         # always close the database, also in case of an error
         close(db)
     end
     @debug "Read database into memory."
 
-    storage = get_storages_from_levels(parameters.basin, state.level)
+    u0 = build_state_vector(parameters)
+    du0 = zero(u0)
 
-    @assert length(storage) == n "Basin / state length differs from number of Basins"
     # Integrals for PID control
     integral = zeros(length(parameters.pid_control.node_id))
     u0 = ComponentVector{Float64}(; storage, integral)

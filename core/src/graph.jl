@@ -109,20 +109,8 @@ function create_graph(db::DB, config::Config)::MetaGraph
         error("Incomplete connectivity in subnetwork")
     end
 
-    flow = cache(flow_counter)
-    flow_prev = fill(NaN, flow_counter)
-    flow_integrated = zeros(flow_counter)
     flow_edges = [edge for edge in values(graph.edge_data) if edge.type == EdgeType.flow]
-    graph_data = (;
-        node_ids,
-        edges_source,
-        flow_edges,
-        flow_dict,
-        flow,
-        flow_prev,
-        flow_integrated,
-        config.solver.saveat,
-    )
+    graph_data = (; node_ids, edges_source, flow_edges, flow_dict)
     graph = @set graph.graph_data = graph_data
 
     return graph

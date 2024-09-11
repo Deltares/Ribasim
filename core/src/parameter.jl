@@ -294,7 +294,10 @@ end
     vertical_flux_prev::V2 = zeros(length(node_id))
     vertical_flux_integrated::V2 = zeros(length(node_id))
     vertical_flux_bmi::V2 = zeros(length(node_id))
+    # Initial_storage
+    storage0::Vector{Float64} = zeros(length(node_id))
     # Cache this to avoid recomputation
+    current_storage::Cache = cache(length(node_id))
     current_level::Cache = cache(length(node_id))
     current_area::Cache = cache(length(node_id))
     # Discrete values for interpolation
@@ -779,10 +782,6 @@ const ModelGraph = MetaGraph{
         edges_source::Dict{Int32, Set{EdgeMetadata}},
         flow_edges::Vector{EdgeMetadata},
         flow_dict::Dict{Tuple{NodeID, NodeID}, Int},
-        flow::Cache,
-        flow_prev::Vector{Float64},
-        flow_integrated::Vector{Float64},
-        saveat::Float64,
     },
     MetaGraphsNext.var"#11#13",
     Float64,
