@@ -569,31 +569,6 @@ function get_Δt(integrator)::Float64
     end
 end
 
-function get_influx(basin::Basin, node_id::NodeID)::Float64
-    if node_id.type !== NodeType.Basin
-        error("Sum of vertical fluxes requested for non-basin $node_id.")
-    end
-    return get_influx(basin, node_id.idx)
-end
-
-function get_influx(basin::Basin, basin_idx::Int; prev::Bool = false)::Float64
-    (; node_id, vertical_flux, vertical_flux_prev, vertical_flux_from_input) = basin
-    influx = if prev
-        vertical_flux_prev.precipitation[basin_idx] -
-        vertical_flux_prev.evaporation[basin_idx] +
-        vertical_flux_prev.drainage[basin_idx] -
-        vertical_flux_prev.infiltration[basin_idx]
-    else
-        n = length(node_id)
-        vertical_flux = vertical_flux[parent(vertical_flux_from_input)]
-        vertical_flux[basin_idx] - # precipitation
-        vertical_flux[n + basin_idx] + # evaporation
-        vertical_flux[2n + basin_idx] - # drainage
-        vertical_flux[3n + basin_idx] # infiltration
-    end
-    return influx
-end
-
 inflow_edge(graph, node_id)::EdgeMetadata = graph[inflow_id(graph, node_id), node_id]
 outflow_edge(graph, node_id)::EdgeMetadata = graph[node_id, outflow_id(graph, node_id)]
 outflow_edges(graph, node_id)::Vector{EdgeMetadata} =

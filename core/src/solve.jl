@@ -147,7 +147,7 @@ function formulate_storage!(
 )
     for (flow_rate, outflow_edges) in
         zip(flow_boundary.flow_rate, flow_boundary.outflow_edges)
-        volume = integral(flow_rate, t)
+        volume = integral(flow_rate, 0.0, t)
         for outflow_edge in outflow_edges
             outflow_id = outflow_edge.edge[2]
             if outflow_id.type == NodeType.Basin
@@ -391,8 +391,11 @@ function formulate_flow!(
         upstream_basin_id = upstream_edge.edge[1]
 
         if active[id.idx] || all_nodes_active
-            factor =
-                low_storage_factor(basin.current_level[parent(du)], upstream_basin_id, 10.0)
+            factor = low_storage_factor(
+                basin.current_storage[parent(du)],
+                upstream_basin_id,
+                10.0,
+            )
             q = factor * table[id.idx](get_level(p, upstream_basin_id, t, du))
         else
             q = 0.0
@@ -618,7 +621,7 @@ function formulate_flow!(
         q *= reduction_factor(max_downstream_level - dst_level, 0.02)
 
         q = clamp(q, min_flow_rate, max_flow_rate)
-        du.outlet[id.idx] = quarterofyear
+        du.outlet[id.idx] = q
     end
     return nothing
 end

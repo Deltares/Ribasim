@@ -146,7 +146,12 @@ function Model(config::Config)::Model
         progress_steps = 100,
         callback,
         tstops,
-        # isoutofdomain = (u, p, t) -> any(<(0), u.storage),
+        isoutofdomain = (u, p, t) -> (
+            set_current_basin_properties!(u, u, p, t); any(
+                <(0),
+                p.basin.current_storage[parent(u)],
+            )
+        ),
         saveat,
         adaptive,
         dt,
