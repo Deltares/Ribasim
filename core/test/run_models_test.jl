@@ -494,7 +494,7 @@ end
     # https://www.hec.usace.army.mil/confluence/rasdocs/ras1dtechref/latest/theoretical-basis-for-one-dimensional-and-two-dimensional-hydrodynamic-calculations/1d-steady-flow-water-surface-profiles/friction-loss-evaluation
     @test all(isapprox.(h_expected, h_actual; atol = 0.02))
     # Test for conservation of mass, flow at the beginning == flow at the end
-    n_self_loops = length(p.graph[].flow_dict)
+    n_self_loops = length(u)
     @test Ribasim.get_flow(
         p.graph,
         NodeID(:FlowBoundary, 1, p),

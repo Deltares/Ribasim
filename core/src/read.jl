@@ -1240,7 +1240,6 @@ function Allocation(db::DB, config::Config, graph::MetaGraph)::Allocation
 end
 
 function Parameters(db::DB, config::Config)::Parameters
-    n_states = length(get_ids(db, "Basin")) + length(get_ids(db, "PidControl"))
     graph = create_graph(db, config)
     allocation = Allocation(db, config, graph)
 

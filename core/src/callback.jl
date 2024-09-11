@@ -7,6 +7,7 @@ Returns the CallbackSet and the SavedValues for flow.
 function create_callbacks(
     parameters::Parameters,
     config::Config,
+    u0::ComponentVector,
     saveat,
 )::Tuple{CallbackSet, SavedResults}
     (; starttime, basin, tabulated_rating_curve) = parameters
@@ -27,8 +28,14 @@ function create_callbacks(
     )
     push!(callbacks, tabulated_rating_curve_cb)
 
-    saved_vertical_flux = SavedValues(Float64, typeof(basin.vertical_flux_bmi))
-    saved_flow = SavedValues(Float64, SavedFlow)
+    # If saveat is a vector which contains 0.0 this callback will still be called
+    # at t = 0.0 despite save_start = false
+    saveat = saveat isa Vector ? filter(x -> x != 0.0, saveat) : saveat
+
+    # save the flows over time
+    saved_flow = SavedValues(Float64, SavedFlow{typeof(u0)})
+    save_flow_cb = SavingCallback(save_flow, saved_flow; saveat, save_start = false)
+    push!(callbacks, save_flow_cb)
 
     # save solver stats
     saved_solver_stats = SavedValues(Float64, SolverStats)
@@ -51,15 +58,53 @@ function create_callbacks(
     discrete_control_cb = FunctionCallingCallback(apply_discrete_control!)
     push!(callbacks, discrete_control_cb)
 
-    saved = SavedResults(
-        saved_flow,
-        saved_vertical_flux,
-        saved_subgrid_level,
-        saved_solver_stats,
-    )
+    saved = SavedResults(saved_flow, saved_subgrid_level, saved_solver_stats)
     callback = CallbackSet(callbacks...)
 
     return callback, saved
+end
+
+function save_flow(u, t, integrator)
+    (; p, sol) = integrator
+    (; basin, flow_basin_inneighbor_index, flow_basin_outneighbor_index, flow_boundary) = p
+    (; u) = sol
+    Δt = get_Δt(integrator)
+    flow_mean = (u[end] - sol(t - Δt)) / Δt
+
+    inflow_mean = zeros(length(basin.node_id))
+    outflow_mean = zeros(length(basin.node_id))
+
+    for (flow, inflow_basin_idx, outflow_basin_idx) in
+        zip(flow_mean, flow_basin_inneighbor_index, flow_basin_outneighbor_index)
+        if !iszero(inflow_basin_idx)
+            if flow > 0
+                outflow_mean[inflow_basin_idx] += flow
+            else
+                inflow_mean[inflow_basin_idx] -= flow
+            end
+        end
+
+        if !iszero(outflow_basin_idx)
+            if flow > 0
+                inflow_mean[outflow_basin_idx] += flow
+            else
+                outflow_mean[outflow_basin_idx] -= flow
+            end
+        end
+    end
+
+    for (flow_rate, outflow_edges) in
+        zip(flow_boundary.flow_rate, flow_boundary.outflow_edges)
+        flow = integral(flow_rate, t - Δt, t) / Δt
+        for outflow_edge in outflow_edges
+            outflow_id = outflow_edge.edge[2]
+            if outflow_id.type == NodeType.Basin
+                inflow_mean[outflow_id.idx] += flow
+            end
+        end
+    end
+
+    return SavedFlow(; flow = flow_mean, inflow = inflow_mean, outflow = outflow_mean)
 end
 
 function save_solver_stats(u, t, integrator)

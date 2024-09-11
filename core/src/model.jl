@@ -1,6 +1,5 @@
-struct SavedResults{V1 <: ComponentVector{Float64}}
-    flow::SavedValues{Float64, SavedFlow}
-    vertical_flux::SavedValues{Float64, V1}
+struct SavedResults{V <: ComponentVector{Float64}}
+    flow::SavedValues{Float64, SavedFlow{V}}
     subgrid_level::SavedValues{Float64, Vector{Float64}}
     solver_stats::SavedValues{Float64, SolverStats}
 end
@@ -103,6 +102,8 @@ function Model(config::Config)::Model
     u0 = build_state_vector(parameters)
     du0 = zero(u0)
 
+    parameters = set_flow_basin_neighbor_indices(parameters, u0)
+
     # The Solver algorithm
     alg = algorithm(config.solver; u0)
 
@@ -130,7 +131,7 @@ function Model(config::Config)::Model
     prob = ODEProblem(RHS, u0, timespan, parameters)
     @debug "Setup ODEProblem."
 
-    callback, saved = create_callbacks(parameters, config, saveat)
+    callback, saved = create_callbacks(parameters, config, u0, saveat)
     @debug "Created callbacks."
 
     # Run water_balance! before initializing the integrator. This is because
@@ -150,12 +151,12 @@ function Model(config::Config)::Model
         progress_steps = 100,
         callback,
         tstops,
-        isoutofdomain = (u, p, t) -> (
-            set_current_basin_properties!(u, u, p, t); any(
-                <(0),
-                p.basin.current_storage[parent(u)],
-            )
-        ),
+        isoutofdomain = (u, p, t) -> begin
+            (; current_storage) = p.basin
+            current_storage = current_storage[parent(u)]
+            formulate_storages!(current_storage, u, p, t)
+            any(<(0), current_storage)
+        end,
         saveat,
         adaptive,
         dt,

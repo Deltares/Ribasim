@@ -54,9 +54,9 @@ function formulate_continuous_control!(du, p, t)::Nothing
     return nothing
 end
 
-function set_current_basin_properties!(
-    du::AbstractVector,
-    u::AbstractVector,
+function formulate_storages!(
+    current_storage::AbstractVector,
+    u::ComponentVector,
     p::Parameters,
     t::Number,
 )::Nothing
@@ -70,15 +70,10 @@ function set_current_basin_properties!(
         manning_resistance,
         user_demand,
     ) = p
-    (; storage0, current_storage, current_level, current_area) = basin
-    current_storage = current_storage[parent(du)]
-    current_level = current_level[parent(du)]
-    current_area = current_area[parent(du)]
-
     # Current storage: initial conditdion +
     # total inflows and outflows since the start
     # of the simulation
-    @. current_storage = storage0
+    @. current_storage = basin.storage0
     formulate_storage!(current_storage, t, u)
     formulate_storage!(current_storage, t, flow_boundary)
     formulate_storage!(current_storage, t, u.tabulated_rating_curve, tabulated_rating_curve)
@@ -93,6 +88,22 @@ function set_current_basin_properties!(
         user_demand;
         return_factor = user_demand.return_factor,
     )
+    return nothing
+end
+
+function set_current_basin_properties!(
+    du::AbstractVector,
+    u::AbstractVector,
+    p::Parameters,
+    t::Number,
+)::Nothing
+    (; basin) = p
+    (; current_storage, current_level, current_area) = basin
+    current_storage = current_storage[parent(du)]
+    current_level = current_level[parent(du)]
+    current_area = current_area[parent(du)]
+
+    formulate_storages!(current_storage, u, p, t)
 
     for (i, s) in enumerate(current_storage)
         current_level[i] = get_level_from_storage(basin, i, s)

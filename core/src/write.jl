@@ -76,14 +76,19 @@ function get_storages_and_levels(
     (; config, integrator) = model
     (; sol, p) = integrator
 
+    du = get_du(integrator)
     node_id = p.basin.node_id::Vector{NodeID}
     tsteps = datetime_since.(tsaves(model), config.starttime)
 
-    storage = hcat([collect(u_.storage) for u_ in sol.u]...)
+    current_storage = p.basin.current_storage[parent(du)]
+    current_level = p.basin.current_level[parent(du)]
+
+    storage = zeros(length(node_id), length(tsteps))
     level = zero(storage)
-    for (i, basin_storage) in enumerate(eachrow(storage))
-        level[i, :] =
-            [get_level_from_storage(p.basin, i, storage) for storage in basin_storage]
+    for (i, (t, u)) in enumerate(zip(sol.t, sol.u))
+        set_current_basin_properties!(du, u, p, t)
+        storage[:, i] .= current_storage
+        level[:, i] .= current_level
     end
 
     return (; time = tsteps, node_id, storage, level)
@@ -141,9 +146,10 @@ function basin_table(
     relative_error = zeros(nrows)
 
     idx_row = 0
-    for cvec in saved.vertical_flux.saveval
+    for cvec in saved.flow.saveval
+        (; flow) = cvec
         for (precipitation_, evaporation_, drainage_, infiltration_) in
-            zip(cvec.precipitation, cvec.evaporation, cvec.drainage, cvec.infiltration)
+            zip(flow.precipitation, flow.evaporation, flow.drainage, flow.infiltration)
             idx_row += 1
             precipitation[idx_row] = precipitation_
             evaporation[idx_row] = evaporation_
@@ -167,6 +173,8 @@ function basin_table(
             relative_error[i] = balance_error[i] / mean_flow_rate
         end
     end
+
+    @show maximum(abs.(relative_error))
 
     return (;
         time,

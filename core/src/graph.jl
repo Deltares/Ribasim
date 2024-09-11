@@ -34,7 +34,6 @@ function create_graph(db::DB, config::Config)::MetaGraph
     # flow edges to index the flow vectors
     flow_counter = 0
     # Dictionary from flow edge to index in flow vector
-    flow_dict = Dict{Tuple{NodeID, NodeID}, Int}()
     graph = MetaGraph(
         DiGraph();
         label_type = NodeID,
@@ -90,10 +89,6 @@ function create_graph(db::DB, config::Config)::MetaGraph
             @error "Duplicate edge" id_src id_dst
         end
         graph[id_src, id_dst] = edge_metadata
-        if edge_type == EdgeType.flow
-            flow_counter += 1
-            flow_dict[(id_src, id_dst)] = flow_counter
-        end
         if subnetwork_id != 0
             if !haskey(edges_source, subnetwork_id)
                 edges_source[subnetwork_id] = Set{EdgeMetadata}()
@@ -110,7 +105,7 @@ function create_graph(db::DB, config::Config)::MetaGraph
     end
 
     flow_edges = [edge for edge in values(graph.edge_data) if edge.type == EdgeType.flow]
-    graph_data = (; node_ids, edges_source, flow_edges, flow_dict)
+    graph_data = (; node_ids, edges_source, flow_edges, config.solver.saveat)
     graph = @set graph.graph_data = graph_data
 
     return graph
@@ -185,32 +180,12 @@ end
 """
 Get the flow over the given edge (du is needed for LazyBufferCache from ForwardDiff.jl).
 """
-function get_flow(graph::MetaGraph, id_src::NodeID, id_dst::NodeID, du)::Number
-    (; flow_dict) = graph[]
-    flow_idx = flow_dict[id_src, id_dst]
-    return get_flow(graph, flow_idx, du)
-end
-
 function get_flow(graph, edge_metadata::EdgeMetadata, du)::Number
     return get_flow(graph, edge_metadata.flow_idx, du)
 end
 
 function get_flow(graph::MetaGraph, flow_idx::Int, du)
     return graph[].flow[parent(du)][flow_idx]
-end
-
-function get_flow_prev(graph, id_src::NodeID, id_dst::NodeID, du)::Number
-    (; flow_dict) = graph[]
-    flow_idx = flow_dict[id_src, id_dst]
-    return get_flow(graph, flow_idx, du)
-end
-
-function get_flow_prev(graph, edge_metadata::EdgeMetadata, du)::Number
-    return get_flow_prev(graph, edge_metadata.flow_idx, du)
-end
-
-function get_flow_prev(graph::MetaGraph, flow_idx::Int, du)
-    return graph[].flow_prev[parent(du)][flow_idx]
 end
 
 """

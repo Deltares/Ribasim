@@ -258,12 +258,12 @@ abstract type AbstractDemandNode <: AbstractParameterNode end
 """
 In-memory storage of saved mean flows for writing to results.
 
-- `flow`: The mean flows on all edges
+- `flow`: The mean flows on all edges and forcings
 - `inflow`: The sum of the mean flows coming into each basin
 - `outflow`: The sum of the mean flows going out of each basin
 """
-@kwdef struct SavedFlow
-    flow::Vector{Float64}
+@kwdef struct SavedFlow{V}
+    flow::V
     inflow::Vector{Float64}
     outflow::Vector{Float64}
 end
@@ -760,12 +760,7 @@ node_ids: mapping subnetwork ID -> node IDs in that subnetwork
 edges_source: mapping subnetwork ID -> metadata of allocation
     source edges in that subnetwork
 flow_edges: The metadata of all flow edges
-flow dict: mapping (source ID, destination ID) -> index in the flow vector
     of the flow over that edge
-flow: Flow per flow edge in the order prescribed by flow_dict
-flow_prev: The flow vector of the previous timestep, used for integration
-flow_integrated: Flow integrated over time, used for mean flow computation
-    over saveat intervals
 saveat: The time interval between saves of output data (storage, flow, ...)
 """
 const ModelGraph = MetaGraph{
@@ -778,7 +773,7 @@ const ModelGraph = MetaGraph{
         node_ids::Dict{Int32, Set{NodeID}},
         edges_source::Dict{Int32, Set{EdgeMetadata}},
         flow_edges::Vector{EdgeMetadata},
-        flow_dict::Dict{Tuple{NodeID, NodeID}, Int},
+        saveat::Float64,
     },
     MetaGraphsNext.var"#11#13",
     Float64,
@@ -804,5 +799,7 @@ const ModelGraph = MetaGraph{
     level_demand::LevelDemand
     flow_demand::FlowDemand
     subgrid::Subgrid
+    flow_basin_inneighbor_index::Vector{Int32} = Int32[]
+    flow_basin_outneighbor_index::Vector{Int32} = Int32[]
     all_nodes_active::Base.RefValue{Bool} = Ref(false)
 end

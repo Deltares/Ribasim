@@ -356,7 +356,7 @@ function Base.getindex(fv::FlatVector, i::Int)
 end
 
 "Construct a FlatVector from one of the fields of SavedFlow."
-FlatVector(saveval::Vector{SavedFlow}, sym::Symbol) = FlatVector(getfield.(saveval, sym))
+FlatVector(saveval::Vector{<:SavedFlow}, sym::Symbol) = FlatVector(getfield.(saveval, sym))
 
 """
 Function that goes smoothly from 0 to 1 in the interval [0,threshold],
@@ -978,4 +978,47 @@ function build_state_vector(p::Parameters)
         precipitation = zeros(length(p.basin.node_id)),
         drainage = zeros(length(p.basin.node_id)),
     )
+end
+
+function set_flow_basin_neighbor_indices(p::Parameters, u0::ComponentVector)::Parameters
+    flow_basin_inneighbor_index = Int32[]
+    flow_basin_outneighbor_index = Int32[]
+
+    for node_name in keys(u0)
+        if hasfield(Parameters, node_name)
+            node = getfield(p, node_name)
+            for id in node.node_id
+                inflow_ids_ = collect(inflow_ids(p.graph, id))
+                outflow_ids_ = collect(outflow_ids(p.graph, id))
+
+                idx = if length(inflow_ids_) == 0
+                    0
+                elseif length(inflow_ids_) == 1
+                    inflow_id = only(inflow_ids_)
+                    inflow_id.type == NodeType.Basin ? inflow_id.idx : 0
+                else
+                    error()
+                end
+                push!(flow_basin_inneighbor_index, idx)
+
+                idx = if length(outflow_ids_) == 0
+                    0
+                elseif length(outflow_ids_) == 1
+                    outflow_id = only(outflow_ids_)
+                    outflow_id.type == NodeType.Basin ? outflow_id.idx : 0
+                end
+                push!(flow_basin_outneighbor_index, idx)
+            end
+        elseif node_name == :integral
+            append!(flow_basin_inneighbor_index, zeros(length(p.pid_control.node_id)))
+            append!(flow_basin_outneighbor_index, zeros(length(p.pid_control.node_id)))
+        else
+            append!(flow_basin_inneighbor_index, zeros(length(p.basin.node_id)))
+            append!(flow_basin_outneighbor_index, zeros(length(p.basin.node_id)))
+        end
+    end
+
+    p = @set p.flow_basin_inneighbor_index = flow_basin_inneighbor_index
+    p = @set p.flow_basin_outneighbor_index = flow_basin_outneighbor_index
+    return p
 end
