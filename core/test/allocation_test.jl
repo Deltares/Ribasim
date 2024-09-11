@@ -465,7 +465,7 @@ end
     model = Ribasim.run(toml_path)
     record_demand = DataFrame(model.integrator.p.allocation.record_demand)
     df_rating_curve_2 = record_demand[record_demand.node_id .== 2, :]
-    @test all(df_rating_curve_2.realized .≈ 2e-3)
+    @test all(df_rating_curve_2.realized .≈ 0.002)
 
     @testset "Results" begin
         allocation_bytes = read(normpath(dirname(toml_path), "results/allocation.arrow"))
