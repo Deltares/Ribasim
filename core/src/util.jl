@@ -388,11 +388,17 @@ end
 For resistance nodes, give a reduction factor based on the upstream node
 as defined by the flow direction.
 """
-function low_storage_factor_resistance_node(u, q, inflow_id, outflow_id, threshold)
+function low_storage_factor_resistance_node(
+    current_storage,
+    q,
+    inflow_id,
+    outflow_id,
+    threshold,
+)
     if q > 0
-        low_storage_factor(u.storage, inflow_id, threshold)
+        low_storage_factor(current_storage, inflow_id, threshold)
     else
-        low_storage_factor(u.storage, outflow_id, threshold)
+        low_storage_factor(current_storage, outflow_id, threshold)
     end
 end
 
@@ -905,8 +911,8 @@ end
 # Custom overloads
 reduction_factor(x::GradientTracer, threshold::Real) = x
 low_storage_factor_resistance_node(
-    storage::ComponentVector{<:GradientTracer},
-    q,
+    storage,
+    q::GradientTracer,
     inflow_id,
     outflow_id,
     threshold,
@@ -981,8 +987,18 @@ function OrdinaryDiffEqNonlinearSolve.relax!(
 end
 
 function build_state_vector(p::Parameters)
-    for T in conservative_nodetypes
-    end
-
-    return ComponentVector{Float64}(;)
+    return ComponentVector{Float64}(;
+        tabulated_rating_curve = zeros(length(p.tabulated_rating_curve.node_id)),
+        pump = zeros(length(p.pump.node_id)),
+        outlet = zeros(length(p.outlet.node_id)),
+        user_demand = zeros(length(p.user_demand.node_id)),
+        linear_resistance = zeros(length(p.linear_resistance.node_id)),
+        manning_resistance = zeros(length(p.manning_resistance.node_id)),
+        integral = zeros(length(p.pid_control.node_id)),
+        evaporation = zeros(length(p.basin.node_id)),
+        infiltration = zeros(length(p.basin.node_id)),
+        # TODO: These can be integrated exactly, do not have to be states
+        precipitation = zeros(length(p.basin.node_id)),
+        drainage = zeros(length(p.basin.node_id)),
+    )
 end

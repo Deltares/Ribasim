@@ -290,9 +290,6 @@ end
     outflow_ids::Vector{Vector{NodeID}} = [NodeID[]]
     # Vertical fluxes
     vertical_flux_from_input::V1 = zeros(length(node_id))
-    vertical_flux::Cache = cache(length(node_id))
-    vertical_flux_prev::V2 = zeros(length(node_id))
-    vertical_flux_integrated::V2 = zeros(length(node_id))
     vertical_flux_bmi::V2 = zeros(length(node_id))
     # Initial_storage
     storage0::Vector{Float64} = zeros(length(node_id))
@@ -440,7 +437,7 @@ end
 node_id: node ID of the FlowBoundary node
 outflow_edges: The outgoing flow edge metadata
 active: whether this node is active and thus contributes flow
-flow_rate: target flow rate
+flow_rate: flow rate (exact)
 """
 @kwdef struct FlowBoundary <: AbstractParameterNode
     node_id::Vector{NodeID}

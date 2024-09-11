@@ -568,15 +568,12 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
 
     vertical_flux_from_input =
         ComponentVector(; precipitation, potential_evaporation, drainage, infiltration)
-    vertical_flux = cache(4 * n)
-    vertical_flux_prev = ComponentVector(;
+    vertical_flux_bmi = ComponentVector(;
         precipitation = copy(precipitation),
         evaporation,
         drainage = copy(drainage),
         infiltration = copy(infiltration),
     )
-    vertical_flux_integrated = zero(vertical_flux_prev)
-    vertical_flux_bmi = zero(vertical_flux_prev)
 
     demand = zeros(length(node_id))
 
@@ -635,9 +632,6 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
         inflow_ids = [collect(inflow_ids(graph, id)) for id in node_id],
         outflow_ids = [collect(outflow_ids(graph, id)) for id in node_id],
         vertical_flux_from_input,
-        vertical_flux,
-        vertical_flux_prev,
-        vertical_flux_integrated,
         vertical_flux_bmi,
         current_level,
         current_area,
@@ -648,7 +642,7 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
         concentration_external,
     )
 
-    @set basin.storage0 = get_storages_from_levels(basin, state.level)
+    basin = @set basin.storage0 = get_storages_from_levels(basin, state.level)
     @assert length(basin.storage0) == n "Basin / state length differs from number of Basins"
     return basin
 end
@@ -691,7 +685,7 @@ function CompoundVariable(
 end
 
 function parse_variables_and_conditions(compound_variable, condition, ids, db, graph)
-    placeholder_vector = graph[].flow
+    placeholder_vector = cache(1)
     compound_variables = Vector{CompoundVariable}[]
     errors = false
 
@@ -817,15 +811,8 @@ function continuous_control_functions(db, config, ids)
     return functions, controlled_variables, errors
 end
 
-function continuous_control_compound_variables(
-    db::DB,
-    config::Config,
-    ids,
-    graph::MetaGraph,
-)
-    # This is a vector that is known to have a DiffCache if automatic differentiation
-    # is used. Therefore this vector is used as a placeholder with the correct type
-    placeholder_vector = graph[].flow
+function continuous_control_compound_variables(db::DB, config::Config, ids)
+    placeholder_vector = cache(1)
 
     data = load_structvector(db, config, ContinuousControlVariableV1)
     compound_variables = CompoundVariable[]
@@ -854,7 +841,7 @@ function ContinuousControl(db::DB, config::Config, graph::MetaGraph)::Continuous
 
     # Avoid using `function` as a variable name as that is recognized as a keyword
     func, controlled_variable, errors = continuous_control_functions(db, config, ids)
-    compound_variable = continuous_control_compound_variables(db, config, ids, graph)
+    compound_variable = continuous_control_compound_variables(db, config, ids)
 
     # References to the controlled parameters, filled in later when they are known
     target_refs = PreallocationRef[]

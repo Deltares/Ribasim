@@ -93,12 +93,13 @@ end
 function basin_state_table(
     model::Model,
 )::@NamedTuple{node_id::Vector{Int32}, level::Vector{Float64}}
-    (; basin) = model.integrator.p
+    du = get_du(model.integrator)
+    (; u, p, t) = model.integrator
 
     # ensure the levels are up-to-date
-    set_current_basin_properties!(basin, model.integrator.u, get_du(model.integrator))
+    set_current_basin_properties!(du, u, p, t)
 
-    return (; node_id = Int32.(basin.node_id), level = basin.current_level[Float64[]])
+    return (; node_id = Int32.(p.basin.node_id), level = p.basin.current_level[Float64[]])
 end
 
 "Create the basin result table from the saved data"

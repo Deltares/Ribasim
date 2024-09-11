@@ -99,22 +99,17 @@ function Model(config::Config)::Model
     u0 = build_state_vector(parameters)
     du0 = zero(u0)
 
-    # Integrals for PID control
-    integral = zeros(length(parameters.pid_control.node_id))
-    u0 = ComponentVector{Float64}(; storage, integral)
-    du0 = zero(u0)
-
     # The Solver algorithm
     alg = algorithm(config.solver; u0)
-
-    # Synchronize level with storage
-    set_current_basin_properties!(parameters.basin, u0, du0)
 
     # for Float32 this method allows max ~1000 year simulations without accuracy issues
     t_end = seconds_since(config.endtime, config.starttime)
     @assert eps(t_end) < 3600 "Simulation time too long"
     t0 = zero(t_end)
     timespan = (t0, t_end)
+
+    # Synchronize level with storage
+    set_current_basin_properties!(du0, u0, parameters, t0)
 
     saveat = convert_saveat(config.solver.saveat, t_end)
     saveat isa Float64 && push!(tstops, range(0, t_end; step = saveat))
@@ -151,7 +146,7 @@ function Model(config::Config)::Model
         progress_steps = 100,
         callback,
         tstops,
-        isoutofdomain = (u, p, t) -> any(<(0), u.storage),
+        # isoutofdomain = (u, p, t) -> any(<(0), u.storage),
         saveat,
         adaptive,
         dt,
@@ -169,7 +164,7 @@ function Model(config::Config)::Model
     end
 
     model = Model(integrator, config, saved)
-    write_results(model)  # check whether we can write results to file
+    # write_results(model)  # check whether we can write results to file
     return model
 end
 

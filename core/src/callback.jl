@@ -15,9 +15,6 @@ function create_callbacks(
     negative_storage_cb = FunctionCallingCallback(check_negative_storage)
     push!(callbacks, negative_storage_cb)
 
-    integrating_flows_cb = FunctionCallingCallback(integrate_flows!; func_start = false)
-    push!(callbacks, integrating_flows_cb)
-
     tstops = get_tstops(basin.time.time, starttime)
     basin_cb = PresetTimeCallback(tstops, update_basin!; save_positions = (false, false))
     push!(callbacks, basin_cb)
@@ -30,18 +27,8 @@ function create_callbacks(
     )
     push!(callbacks, tabulated_rating_curve_cb)
 
-    # If saveat is a vector which contains 0.0 this callback will still be called
-    # at t = 0.0 despite save_start = false
-    saveat = saveat isa Vector ? filter(x -> x != 0.0, saveat) : saveat
-    saved_vertical_flux = SavedValues(Float64, typeof(basin.vertical_flux_integrated))
-    save_vertical_flux_cb =
-        SavingCallback(save_vertical_flux, saved_vertical_flux; saveat, save_start = false)
-    push!(callbacks, save_vertical_flux_cb)
-
-    # save the flows over time
+    saved_vertical_flux = SavedValues(Float64, typeof(basin.vertical_flux_bmi))
     saved_flow = SavedValues(Float64, SavedFlow)
-    save_flow_cb = SavingCallback(save_flow, saved_flow; saveat, save_start = false)
-    push!(callbacks, save_flow_cb)
 
     # save solver stats
     saved_solver_stats = SavedValues(Float64, SolverStats)
@@ -88,10 +75,14 @@ end
 
 function check_negative_storage(u, t, integrator)::Nothing
     (; basin) = integrator.p
-    (; node_id) = basin
+    (; node_id, current_storage) = basin
+    du = get_du(integrator)
+    set_current_basin_properties!(du, u, integrator.p, t)
+    current_storage = current_storage[parent(du)]
+
     errors = false
     for id in node_id
-        if u.storage[id.idx] < 0
+        if current_storage[id.idx] < 0
             @error "Negative storage detected in $id"
             errors = true
         end
@@ -317,12 +308,10 @@ end
 
 "Load updates from 'Basin / time' into the parameters"
 function update_basin!(integrator)::Nothing
-    (; p, u) = integrator
+    (; p) = integrator
     (; basin) = p
-    (; storage) = u
-    (; node_id, time, vertical_flux_from_input, vertical_flux, vertical_flux_prev) = basin
+    (; node_id, time, vertical_flux_from_input) = basin
     t = datetime_since(integrator.t, integrator.p.starttime)
-    vertical_flux = vertical_flux[parent(u)]
 
     rows = searchsorted(time.time, t)
     timeblock = view(time, rows)
@@ -338,11 +327,6 @@ function update_basin!(integrator)::Nothing
         i = searchsortedfirst(node_id, NodeID(NodeType.Basin, row.node_id, 0))
         set_table_row!(table, row, i)
     end
-
-    update_vertical_flux!(basin, storage)
-
-    # Forget about vertical fluxes to handle discontinuous forcing from basin_update
-    copyto!(vertical_flux_prev, vertical_flux)
     return nothing
 end
 
