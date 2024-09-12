@@ -18,7 +18,7 @@
     @testset "Results values" begin
         @test basin.node_id == basin_bench.node_id
         @test all(q -> abs(q) < 0.01, basin.level - basin_bench.level)
-        all(q -> (println(q); abs(q) > 0.01), basin.level - basin_bench.level)
+        map(q -> (println(q); abs(q) > 0.01), basin.level - basin_bench.level)
     end
 
     timed = @timed Ribasim.run(toml_path)
