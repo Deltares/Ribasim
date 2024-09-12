@@ -243,7 +243,8 @@ function algorithm(solver::Solver; u0 = [])::OrdinaryDiffEqAlgorithm
     kwargs = Dict{Symbol, Any}()
     if algotype <: OrdinaryDiffEqNewtonAdaptiveAlgorithm
         kwargs[:nlsolve] = NLNewton(;
-            relax = Ribasim.MonitoredBackTracking(; z_tmp = copy(u0), dz_tmp = copy(u0)),
+            relax = 0.1,
+            # relax = Ribasim.MonitoredBackTracking(; z_tmp = copy(u0), dz_tmp = copy(u0)),
         )
     end
     # not all algorithms support this keyword
