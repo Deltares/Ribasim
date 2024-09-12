@@ -84,9 +84,9 @@ function formulate_storages!(
     formulate_storage!(
         current_storage,
         t,
-        u.user_demand,
+        u.user_demand_inflow,
         user_demand;
-        return_factor = user_demand.return_factor,
+        edge_volume_out = u.user_demand_outflow,
     )
     return nothing
 end
@@ -126,24 +126,22 @@ Formulate storage contributions of nodes.
 function formulate_storage!(
     current_storage::AbstractVector,
     t::Number,
-    edge_volume::AbstractVector,
+    edge_volume_in::AbstractVector,
     node::AbstractParameterNode;
-    return_factor = nothing,
+    edge_volume_out = nothing,
 )
-    for (volume, inflow_edge, outflow_edge, id) in
-        zip(edge_volume, node.inflow_edge, node.outflow_edge, node.node_id)
+    edge_volume_out = isnothing(edge_volume_out) ? edge_volume_in : edge_volume_out
+
+    for (volume_in, volume_out, inflow_edge, outflow_edge) in
+        zip(edge_volume_in, edge_volume_out, node.inflow_edge, node.outflow_edge)
         inflow_id = inflow_edge.edge[1]
         if inflow_id.type == NodeType.Basin
-            current_storage[inflow_id.idx] -= volume
+            current_storage[inflow_id.idx] -= volume_in
         end
 
         outflow_id = outflow_edge.edge[2]
         if outflow_id.type == NodeType.Basin
-            current_storage[outflow_id.idx] += if isnothing(return_factor)
-                volume
-            else
-                volume * return_factor[id.idx](t)
-            end
+            current_storage[outflow_id.idx] += volume_out
         end
     end
 end
@@ -158,6 +156,7 @@ function formulate_storage!(
 )
     for (flow_rate, outflow_edges) in
         zip(flow_boundary.flow_rate, flow_boundary.outflow_edges)
+        # TODO: This is incorrect when the flow boundary has been inactive
         volume = integral(flow_rate, 0.0, t)
         for outflow_edge in outflow_edges
             outflow_id = outflow_edge.edge[2]

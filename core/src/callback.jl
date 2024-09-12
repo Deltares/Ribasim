@@ -93,9 +93,13 @@ function save_flow(u, t, integrator)
         end
     end
 
-    for (flow_rate, outflow_edges) in
-        zip(flow_boundary.flow_rate, flow_boundary.outflow_edges)
+    flow_boundary_mean = zeros(length(flow_boundary.node_id))
+
+    for (flow_rate, outflow_edges, id) in
+        zip(flow_boundary.flow_rate, flow_boundary.outflow_edges, flow_boundary.node_id)
+        # TODO: This is incorrect when the flow boundary has been inactive
         flow = integral(flow_rate, t - Δt, t) / Δt
+        flow_boundary_mean[id.idx] = flow
         for outflow_edge in outflow_edges
             outflow_id = outflow_edge.edge[2]
             if outflow_id.type == NodeType.Basin
@@ -104,7 +108,12 @@ function save_flow(u, t, integrator)
         end
     end
 
-    return SavedFlow(; flow = flow_mean, inflow = inflow_mean, outflow = outflow_mean)
+    return SavedFlow(;
+        flow = flow_mean,
+        inflow = inflow_mean,
+        outflow = outflow_mean,
+        flow_boundary = flow_boundary_mean,
+    )
 end
 
 function save_solver_stats(u, t, integrator)

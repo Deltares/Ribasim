@@ -174,8 +174,6 @@ function basin_table(
         end
     end
 
-    @show maximum(abs.(relative_error))
-
     return (;
         time,
         node_id,
@@ -223,21 +221,19 @@ function flow_table(
     edge_id::Vector{Union{Int32, Missing}},
     from_node_id::Vector{Int32},
     to_node_id::Vector{Int32},
-    flow_rate::FlatVector{Float64},
+    flow_rate::Vector{Float64},
 }
     (; config, saved, integrator) = model
     (; t, saveval) = saved.flow
-    (; graph) = integrator.p
-    (; flow_dict) = graph[]
+    (; p, u) = integrator
+    (; graph) = p
+    (; flow_edges) = graph[]
 
     from_node_id = Int32[]
     to_node_id = Int32[]
     unique_edge_ids_flow = Union{Int32, Missing}[]
 
-    flow_edge_ids = Vector{Tuple{NodeID, NodeID}}(undef, length(flow_dict))
-    for (edge_id, index) in flow_dict
-        flow_edge_ids[index] = edge_id
-    end
+    flow_edge_ids = [flow_edge.edge for flow_edge in flow_edges]
 
     for (from_id, to_id) in flow_edge_ids
         push!(from_node_id, from_id.value)
@@ -248,6 +244,32 @@ function flow_table(
     nflow = length(unique_edge_ids_flow)
     ntsteps = length(t)
 
+    flow_rate = zeros(nflow * ntsteps)
+
+    for (i, flow_edge) in enumerate(flow_edges)
+        from_id, to_id = flow_edge.edge
+        from_node_type = snake_case(Symbol(from_id.type))
+        to_node_type = snake_case(Symbol(to_id.type))
+        component_name, index = if from_node_type in keys(u)
+            from_node_type, from_id.idx
+        elseif to_node_type in keys(u)
+            to_node_type, to_id.idx
+        elseif from_node_type == :flow_boundary
+            :flow_boundary, from_id.idx
+        else
+            error("$from_id, $to_id")
+        end
+
+        for (j, cvec) in enumerate(saveval)
+            (; flow, flow_boundary) = cvec
+
+            component =
+                component_name == (:flow_boundary) ? flow_boundary :
+                getproperty(flow, component_name)
+            flow_rate[i + (j - 1) * nflow] = component[index]
+        end
+    end
+
     # the timestamp should represent the start of the period, not the end
     t_starts = circshift(t, 1)
     if !isempty(t)
@@ -257,7 +279,6 @@ function flow_table(
     edge_id = repeat(unique_edge_ids_flow; outer = ntsteps)
     from_node_id = repeat(from_node_id; outer = ntsteps)
     to_node_id = repeat(to_node_id; outer = ntsteps)
-    flow_rate = FlatVector(saveval, :flow)
 
     return (; time, edge_id, from_node_id, to_node_id, flow_rate)
 end

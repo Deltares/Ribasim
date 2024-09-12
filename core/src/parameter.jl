@@ -266,6 +266,7 @@ In-memory storage of saved mean flows for writing to results.
     flow::V
     inflow::Vector{Float64}
     outflow::Vector{Float64}
+    flow_boundary::Vector{Float64}
 end
 
 """
