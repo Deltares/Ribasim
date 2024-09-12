@@ -246,6 +246,7 @@ end
     import JuMP
     using Ribasim: NodeID
     using DataFrames: DataFrame
+    using OrdinaryDiffEqCore: get_du
     using DataInterpolations: LinearInterpolation, integral
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/level_demand/ribasim.toml")
@@ -262,14 +263,15 @@ end
 
     storage = Ribasim.get_storages_and_levels(model).storage[1, :]
     t = Ribasim.tsaves(model)
+    du = get_du(model.integrator)
 
     d = user_demand.demand_itp[1][2](0)
     ϕ = 1e-3 # precipitation
     q = Ribasim.get_flow(
-        graph,
-        Ribasim.NodeID(:FlowBoundary, 1, p),
-        Ribasim.NodeID(:Basin, 2, p),
-        Float64[],
+        du,
+        p,
+        0.0,
+        (Ribasim.NodeID(:FlowBoundary, 1, p), Ribasim.NodeID(:Basin, 2, p)),
     )
     A = Ribasim.basin_areas(basin, 1)[1]
     l_max = level_demand.max_level[1](0)

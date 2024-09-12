@@ -656,8 +656,7 @@ function get_variable_ref(
                 Ref(Float64[], 0)
             else
                 # Index in the state vector
-                flow_idx =
-                    only(getfield(u, :axes))[snake_case(Symbol(node_id.type))].idx[node_id.idx]
+                flow_idx = flow_index(u, node_id)
                 PreallocationRef(cache(1), flow_idx; from_du = true)
             end
         else
@@ -669,6 +668,23 @@ function get_variable_ref(
         PreallocationRef(cache(1), 0)
     end
     return ref, errors
+end
+
+function flow_index(
+    u::ComponentVector{Float64, Vector{Float64}, <:Tuple{<:Axis{NT}}},
+    node_id::NodeID,
+)::Union{Int, Nothing} where {NT}
+    node_type = snake_case(Symbol(node_id.type))
+    if node_type in keys(NT)
+        only(getfield(u, :axes))[node_type].idx[node_id.idx]
+    else
+        nothing
+    end
+end
+
+function flow_index(u::ComponentVector, edge::Tuple{NodeID, NodeID})::Int
+    idx = flow_index(u, edge[1])
+    isnothing(idx) ? flow_index(u, edge[2]) : idx
 end
 
 """
@@ -831,23 +847,6 @@ end
 
 function basin_areas(basin::Basin, state_idx::Int)
     return basin.level_to_area[state_idx].u
-end
-
-"""
-Just before setting a timestep, call water_balance! again
-to get a correct value of the flows for integrating
-"""
-function set_previous_flows!(integrator)
-    (; p, u, t) = integrator
-    (; flow, flow_prev) = p.graph[]
-    (; vertical_flux, vertical_flux_prev) = p.basin
-    du = get_du(integrator)
-    water_balance!(du, u, p, t)
-
-    flow = flow[parent(u)]
-    vertical_flux = vertical_flux[parent(u)]
-    copyto!(flow_prev, flow)
-    copyto!(vertical_flux_prev, vertical_flux)
 end
 
 """

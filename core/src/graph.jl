@@ -240,16 +240,6 @@ function inflow_id(graph::MetaGraph, id::NodeID)::NodeID
     return only(inflow_ids(graph, id))
 end
 
-"""
-Get the metadata of an edge in the graph from an edge of the underlying
-DiGraph.
-"""
-function metadata_from_edge(graph::MetaGraph, edge::Edge{Int})::EdgeMetadata
-    label_src = label_for(graph, edge.src)
-    label_dst = label_for(graph, edge.dst)
-    return graph[label_src, label_dst]
-end
-
 function get_flow(
     flow::ComponentVector,
     p::Parameters,
@@ -279,6 +269,6 @@ end
 
 function get_influx(du::ComponentVector, id::NodeID)
     @assert id.type == NodeType.Basin
-    return du.precipitation[id.idx] + drainage[id.idx] - du.evaporation[id.idx] -
+    return du.precipitation[id.idx] + du.drainage[id.idx] - du.evaporation[id.idx] -
            du.infiltration[id.idx]
 end

@@ -171,10 +171,7 @@ end
 
     p = Ribasim.Parameters(db, cfg)
     t0 = 0.0
-    u0 = ComponentVector{Float64}(;
-        storage = zeros(length(p.basin.node_id)),
-        integral = Float64[],
-    )
+    u0 = Ribasim.build_state_vector(p)
     du0 = copy(u0)
     jac_prototype = Ribasim.get_jac_prototype(du0, u0, p, t0)
 

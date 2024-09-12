@@ -140,6 +140,7 @@ end
 
 @testitem "leaky bucket model" begin
     using SciMLBase: successful_retcode
+    using OrdinaryDiffEqCore: get_du
     import BasicModelInterface as BMI
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/leaky_bucket/ribasim.toml")
@@ -147,12 +148,15 @@ end
     model = Ribasim.Model(toml_path)
     @test model isa Ribasim.Model
 
-    stor = model.integrator.u.storage
-    vertical_flux = Ribasim.wrap_forcing(model.integrator.p.basin.vertical_flux[Float64[]])
-    prec = vertical_flux.precipitation
-    evap = vertical_flux.evaporation
-    drng = vertical_flux.drainage
-    infl = vertical_flux.infiltration
+    (; integrator) = model
+    du = get_du(integrator)
+    (; u, p, t) = integrator
+    Ribasim.water_balance!(du, u, p, t)
+    stor = integrator.p.basin.current_storage[parent(du)]
+    prec = du.precipitation
+    evap = du.evaporation
+    drng = du.drainage
+    infl = du.infiltration
     # The dynamic data has missings, but these are not set.
     @test prec == [0.0]
     @test evap == [0.0]
@@ -199,8 +203,8 @@ end
 
     @test successful_retcode(model)
     @test allunique(Ribasim.tsaves(model))
-    @test model.integrator.u ≈ Float32[803.7093, 803.68274, 495.241, 1318.3053] skip =
-        Sys.isapple() atol = 1.5
+    @test model.integrator.p.basin.current_storage[Float64[]] ≈
+          Float32[803.7093, 803.68274, 495.241, 1318.3053] skip = Sys.isapple() atol = 1.5
 
     @test length(logger.logs) > 10
     @test logger.logs[1].level == Debug
@@ -224,6 +228,7 @@ end
 
 @testitem "basic transient model" begin
     using SciMLBase: successful_retcode
+    using OrdinaryDiffEqCore: get_du
 
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/basic_transient/ribasim.toml")
@@ -232,13 +237,11 @@ end
     @test model isa Ribasim.Model
     @test successful_retcode(model)
     @test allunique(Ribasim.tsaves(model))
-    precipitation =
-        Ribasim.wrap_forcing(
-            model.integrator.p.basin.vertical_flux[Float64[]],
-        ).precipitation
+    du = get_du(model.integrator)
+    precipitation = du.precipitation
     @test length(precipitation) == 4
-    @test model.integrator.u ≈ Float32[698.22736, 698.2014, 421.20447, 1334.4354] atol = 2.0 skip =
-        Sys.isapple()
+    @test model.integrator.p.basin.current_storage[parent(du)] ≈
+          Float32[698.22736, 698.2014, 421.20447, 1334.4354] atol = 2.0 skip = Sys.isapple()
 end
 
 @testitem "Allocation example model" begin
@@ -291,7 +294,8 @@ end
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
     @test successful_retcode(model)
-    @test model.integrator.u ≈ Float32[368.31558, 365.68442] skip = Sys.isapple()
+    @test model.integrator.p.basin.current_storage[Float64[]] ≈
+          Float32[368.31558, 365.68442] skip = Sys.isapple()
     # the highest level in the dynamic table is updated to 1.2 from the callback
     @test model.integrator.p.tabulated_rating_curve.table[end].t[end] == 1.2
 end
@@ -391,18 +395,25 @@ end
     using SciMLBase: successful_retcode
     using Dates
     using DataFrames: DataFrame
+    using Ribasim: formulate_storages!
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/user_demand/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test successful_retcode(model)
 
-    seconds_in_day = 86400.0
-    @test only(model.integrator.sol(0seconds_in_day)) == 1000.0
+    (; u, p, t, sol) = model.integrator
+    current_storage = p.basin.current_storage[Float64[]]
+
+    day = 86400.0
+    formulate_storages!(current_storage, sol(0day), p, 0day)
+    @test only(current_storage) == 1000.0
     # constant UserDemand withdraws to 0.9m or 900m3 due to min level = 0.9
-    @test only(model.integrator.sol(150seconds_in_day)) ≈ 900 atol = 5
+    formulate_storages!(current_storage, sol(150day), p, 150day)
+    @test only(current_storage) ≈ 900 atol = 5
     # dynamic UserDemand withdraws to 0.5m or 500m3 due to min level = 0.5
-    @test only(model.integrator.sol(220seconds_in_day)) ≈ 500 atol = 1
+    formulate_storages!(current_storage, sol(220day), p, 220day)
+    @test only(current_storage) ≈ 500 atol = 1
 
     # Trasient return factor
     flow = DataFrame(Ribasim.flow_table(model))
@@ -422,6 +433,7 @@ end
 @testitem "ManningResistance" begin
     using PreallocationTools: get_tmp
     using SciMLBase: successful_retcode
+    using OrdinaryDiffEqCore: get_du
     using Ribasim: NodeID
 
     """
@@ -483,9 +495,9 @@ end
     model = Ribasim.run(toml_path)
     @test successful_retcode(model)
 
-    u = model.integrator.sol.u[end]
-    p = model.integrator.p
-    h_actual = p.basin.current_level[parent(u)][1:50]
+    du = get_du(model.integrator)
+    (; p, t) = model.integrator
+    h_actual = p.basin.current_level[parent(du)][1:50]
     x = collect(10.0:20.0:990.0)
     h_expected = standard_step_method(x, 5.0, 1.0, 0.04, h_actual[end], 1.0e-6)
 
@@ -495,18 +507,13 @@ end
     # https://www.hec.usace.army.mil/confluence/rasdocs/ras1dtechref/latest/theoretical-basis-for-one-dimensional-and-two-dimensional-hydrodynamic-calculations/1d-steady-flow-water-surface-profiles/friction-loss-evaluation
     @test all(isapprox.(h_expected, h_actual; atol = 0.02))
     # Test for conservation of mass, flow at the beginning == flow at the end
-    n_self_loops = length(u)
+    @test Ribasim.get_flow(du, p, t, (NodeID(:FlowBoundary, 1, p), NodeID(:Basin, 2, p))) ≈
+          5.0 atol = 0.001 skip = Sys.isapple()
     @test Ribasim.get_flow(
-        p.graph,
-        NodeID(:FlowBoundary, 1, p),
-        NodeID(:Basin, 2, p),
-        parent(u),
-    ) ≈ 5.0 atol = 0.001 skip = Sys.isapple()
-    @test Ribasim.get_flow(
-        p.graph,
-        NodeID(:ManningResistance, 101, p),
-        NodeID(:Basin, 102, p),
-        parent(u),
+        du,
+        p,
+        t,
+        (NodeID(:ManningResistance, 101, p), NodeID(:Basin, 102, p)),
     ) ≈ 5.0 atol = 0.001 skip = Sys.isapple()
 end
 

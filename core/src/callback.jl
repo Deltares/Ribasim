@@ -386,8 +386,8 @@ end
 
 "Solve the allocation problem for all demands and assign allocated abstractions."
 function update_allocation!(integrator)::Nothing
-    (; p, t, u) = integrator
-    (; allocation) = p
+    (; p, t, u, sol) = integrator
+    (; allocation, flow_boundary) = p
     (; allocation_models, mean_input_flows, mean_realized_flows) = allocation
 
     # Don't run the allocation algorithm if allocation is not active
@@ -397,11 +397,21 @@ function update_allocation!(integrator)::Nothing
     end
 
     (; Δt_allocation) = allocation_models[1]
-
-    # Divide by the allocation Δt to obtain the mean input flows
-    # from the integrated flows
-    for key in keys(mean_input_flows)
-        mean_input_flows[key] /= Δt_allocation
+    if t > 0
+        for edge in keys(mean_input_flows)
+            mean_flow = if edge[1] == edge[2]
+                (get_influx(sol(t), edge[1]) - get_influx(sol(t - Δt_allocation), edge[1])) / Δt_allocation
+            elseif edge[1].type == NodeType.FlowBoundary
+                # TODO: This is not correct if the flow boundary has been inactive
+                integral(flow_boundary.flow_rate[edge[1].idx], t - Δt_allocation, t) /
+                Δt_allocation
+            else
+                flow_idx = flow_index(u, edge)
+                (sol(t; idxs = flow_idx) - sol(t - Δt_allocation; idxs = flow_idx)) /
+                Δt_allocation
+            end
+            mean_input_flows[edge] = mean_flow
+        end
     end
 
     # Divide by the allocation Δt to obtain the mean realized flows
