@@ -123,17 +123,18 @@ end
 
 @testitem "bucket model" begin
     using SciMLBase: successful_retcode
+    using OrdinaryDiffEqCore: get_du
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/bucket/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
-    @test model.integrator.u.storage ≈ [1000]
-    vertical_flux = Ribasim.wrap_forcing(model.integrator.p.basin.vertical_flux[Float64[]])
-    @test vertical_flux.precipitation == [0.0]
-    @test vertical_flux.evaporation == [0.0]
-    @test vertical_flux.drainage == [0.0]
-    @test vertical_flux.infiltration == [0.0]
+    @test model.integrator.p.basin.current_storage[Float64[]] ≈ [1000]
+    du = get_du(model.integrator)
+    @test du.precipitation == [0.0]
+    @test du.evaporation == [0.0]
+    @test du.drainage == [0.0]
+    @test du.infiltration == [0.0]
     @test successful_retcode(model)
 end
 

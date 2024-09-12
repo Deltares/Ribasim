@@ -166,28 +166,6 @@ function Base.iterate(iter::OutNeighbors, state = 1)
     return label_out, state
 end
 
-function set_flow!(graph::MetaGraph, edge_metadata::EdgeMetadata, q::Number, du)::Nothing
-    set_flow!(graph, edge_metadata.flow_idx, q, du)
-    return nothing
-end
-
-function set_flow!(graph, flow_idx::Int, q::Number, du)::Nothing
-    (; flow) = graph[]
-    flow[parent(du)][flow_idx] = q
-    return nothing
-end
-
-"""
-Get the flow over the given edge (du is needed for LazyBufferCache from ForwardDiff.jl).
-"""
-function get_flow(graph, edge_metadata::EdgeMetadata, du)::Number
-    return get_flow(graph, edge_metadata.flow_idx, du)
-end
-
-function get_flow(graph::MetaGraph, flow_idx::Int, du)
-    return graph[].flow[parent(du)][flow_idx]
-end
-
 """
 Get the inneighbor node IDs of the given node ID (label)
 over the given edge type in the graph.
@@ -270,4 +248,37 @@ function metadata_from_edge(graph::MetaGraph, edge::Edge{Int})::EdgeMetadata
     label_src = label_for(graph, edge.src)
     label_dst = label_for(graph, edge.dst)
     return graph[label_src, label_dst]
+end
+
+function get_flow(
+    flow::ComponentVector,
+    p::Parameters,
+    t::Number,
+    edge::Tuple{NodeID, NodeID};
+    boundary_flow = nothing,
+)
+    (; flow_boundary) = p
+    from_id, to_id = edge
+    from_node_type = snake_case(Symbol(from_id.type))
+    to_node_type = snake_case(Symbol(to_id.type))
+    if from_node_type in keys(flow)
+        getproperty(flow, from_node_type)[from_id.idx]
+    elseif to_node_type in keys(flow)
+        getproperty(flow, to_node_type)[to_id.idx]
+    elseif from_node_type == :flow_boundary
+        isnothing(boundary_flow) ? flow_boundary.flow_rate[from_id.idx](t) :
+        boundary_flow[from_id.idx]
+    elseif from_node_type == :user_demand
+        flow.user_demand_outflow[from_id.idx]
+    elseif to_node_type == :user_demand
+        flow.user_demand_inflow[to_id.idx]
+    else
+        error("$from_id, $to_id")
+    end
+end
+
+function get_influx(du::ComponentVector, id::NodeID)
+    @assert id.type == NodeType.Basin
+    return du.precipitation[id.idx] + drainage[id.idx] - du.evaporation[id.idx] -
+           du.infiltration[id.idx]
 end

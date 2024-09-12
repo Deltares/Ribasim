@@ -594,9 +594,9 @@ function set_initial_allocation_mean_flows!(integrator)::Nothing
 
     for edge in keys(mean_input_flows)
         if edge[1] == edge[2]
-            q = get_influx(p.basin, edge[1])
+            q = get_influx(du, edge[1])
         else
-            q = get_flow(graph, edge..., du)
+            q = get_flow(du, p, t, edge)
         end
         # Multiply by Δt_allocation as averaging divides by this factor
         # in update_allocation!
@@ -609,7 +609,7 @@ function set_initial_allocation_mean_flows!(integrator)::Nothing
         if edge[1] == edge[2]
             mean_realized_flows[edge] = -u[edge[1].idx]
         else
-            q = get_flow(graph, edge..., du)
+            q = get_flow(du, p, t, edge)
             mean_realized_flows[edge] = q * Δt_allocation
         end
     end
@@ -643,6 +643,9 @@ function get_variable_ref(
     (; basin, graph) = p
     errors = false
 
+    # Only built here because it is needed to obtain indices
+    u = build_state_vector(p)
+
     ref = if node_id.type == NodeType.Basin && variable == "level"
         PreallocationRef(basin.current_level, node_id.idx)
     elseif variable == "flow_rate" && node_id.type != NodeType.FlowBoundary
@@ -652,9 +655,10 @@ function get_variable_ref(
                 @error "Cannot listen to flow_rate of $node_id, the node type must be one of $conservative_node_types"
                 Ref(Float64[], 0)
             else
-                id_in = inflow_id(graph, node_id)
-                (; flow_idx) = graph[id_in, node_id]
-                PreallocationRef(graph[].flow, flow_idx)
+                # Index in the state vector
+                flow_idx =
+                    only(getfield(u, :axes))[snake_case(Symbol(node_id.type))].idx[node_id.idx]
+                PreallocationRef(cache(1), flow_idx; from_du = true)
             end
         else
             node = getfield(p, snake_case(Symbol(node_id.type)))
@@ -662,7 +666,7 @@ function get_variable_ref(
         end
     else
         # Placeholder to obtain correct type
-        PreallocationRef(graph[].flow, 0)
+        PreallocationRef(cache(1), 0)
     end
     return ref, errors
 end

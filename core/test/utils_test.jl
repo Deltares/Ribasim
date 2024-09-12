@@ -246,27 +246,12 @@ end
 
     node_id_1 = NodeID(:Basin, 5, 1)
     node_id_2 = NodeID(:Basin, 6, 2)
-    @test low_storage_factor_resistance_node(
-        (; storage = [3.0, 3.0]),
-        1.0,
-        node_id_1,
-        node_id_2,
-        2.0,
-    ) == 1.0
-    @test low_storage_factor_resistance_node(
-        (; storage = [1.0, 3.0]),
-        1.0,
-        node_id_1,
-        node_id_2,
-        2.0,
-    ) == 0.5
-    @test low_storage_factor_resistance_node(
-        (; storage = [1.0, 3.0]),
-        -1.0,
-        node_id_1,
-        node_id_2,
-        2.0,
-    ) == 1.0
+    @test low_storage_factor_resistance_node([3.0, 3.0], 1.0, node_id_1, node_id_2, 2.0) ==
+          1.0
+    @test low_storage_factor_resistance_node([1.0, 3.0], 1.0, node_id_1, node_id_2, 2.0) ==
+          0.5
+    @test low_storage_factor_resistance_node([1.0, 3.0], -1.0, node_id_1, node_id_2, 2.0) ==
+          1.0
 end
 
 @testitem "constraints_from_nodes" begin

@@ -1,5 +1,6 @@
 @testitem "Pump discrete control" begin
     using Ribasim: NodeID
+    using OrdinaryDiffEqCore: get_du
     using Dates: DateTime
     import Arrow
     import Tables
@@ -56,7 +57,7 @@
     t_2_index = findfirst(>=(t_2), t)
     @test level[2, t_2_index] >= discrete_control.compound_variables[1][2].greater_than[1]
 
-    flow = graph[].flow[Float64[]]
+    flow = get_du(model.integrator)[(:linear_resistance, :pump)]
     @test all(iszero, flow)
 end
 

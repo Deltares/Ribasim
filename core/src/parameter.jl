@@ -579,15 +579,20 @@ node_id: node ID of the Terminal node
 end
 
 """
-A variant on `Base.Ref` where the source array is a vector that is possibly wrapped in a ForwardDiff.DiffCache.
+A variant on `Base.Ref` where the source array is a vector that is possibly wrapped in a ForwardDiff.LazyBufferCache.
 Retrieve value with get_value(ref::PreallocationRef, val) where `val` determines the return type.
 """
 struct PreallocationRef
     vector::Cache
     idx::Int
+    from_du::Bool
+    function PreallocationRef(vector::Cache, idx::Int; from_du = false)
+        new(vector, idx, from_du)
+    end
 end
 
-get_value(ref::PreallocationRef, du) = ref.vector[parent(du)][ref.idx]
+get_value(ref::PreallocationRef, du) =
+    ref.from_du ? du[ref.idx] : ref.vector[parent(du)][ref.idx]
 
 function set_value!(ref::PreallocationRef, value, du)::Nothing
     ref.vector[parent(du)][ref.idx] = value

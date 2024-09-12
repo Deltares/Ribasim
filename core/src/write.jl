@@ -225,7 +225,7 @@ function flow_table(
 }
     (; config, saved, integrator) = model
     (; t, saveval) = saved.flow
-    (; p, u) = integrator
+    (; p) = integrator
     (; graph) = p
     (; flow_edges) = graph[]
 
@@ -247,26 +247,10 @@ function flow_table(
     flow_rate = zeros(nflow * ntsteps)
 
     for (i, flow_edge) in enumerate(flow_edges)
-        from_id, to_id = flow_edge.edge
-        from_node_type = snake_case(Symbol(from_id.type))
-        to_node_type = snake_case(Symbol(to_id.type))
-        component_name, index = if from_node_type in keys(u)
-            from_node_type, from_id.idx
-        elseif to_node_type in keys(u)
-            to_node_type, to_id.idx
-        elseif from_node_type == :flow_boundary
-            :flow_boundary, from_id.idx
-        else
-            error("$from_id, $to_id")
-        end
-
         for (j, cvec) in enumerate(saveval)
             (; flow, flow_boundary) = cvec
-
-            component =
-                component_name == (:flow_boundary) ? flow_boundary :
-                getproperty(flow, component_name)
-            flow_rate[i + (j - 1) * nflow] = component[index]
+            flow_rate[i + (j - 1) * nflow] =
+                get_flow(flow, p, 0.0, flow_edge.edge; boundary_flow = flow_boundary)
         end
     end
 

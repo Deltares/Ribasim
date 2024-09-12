@@ -38,9 +38,6 @@ function water_balance!(
     # Formulate intermediate flow (controlled by PID control)
     formulate_flows!(du, p, t; continuous_control_type = ContinuousControlType.PID)
 
-    # Formulate du (controlled by PidControl)
-    formulate_du_pid_controlled!(du, graph, pid_control)
-
     return nothing
 end
 
@@ -265,7 +262,7 @@ function formulate_pid_control!(
 
         if !iszero(K_d)
             dlevel_demand = derivative(target[i], t)
-            du_listened_basin_old = du.storage[listened_node_id.idx]
+            du_listened_basin_old = formulate_dstorage(du, p, t, listened_node_id)#du.storage[listened_node_id.idx]
             # The expression below is the solution to an implicit equation for
             # du_listened_basin. This equation results from the fact that if the derivative
             # term in the PID controller is used, the controlled pump flow rate depends on itself.
@@ -276,6 +273,26 @@ function formulate_pid_control!(
         set_value!(pid_control.target_ref[i], flow_rate, du)
     end
     return nothing
+end
+
+function formulate_dstorage(du::ComponentVector, p::Parameters, t::Number, node_id::NodeID)
+    (; basin) = p
+    (; inflow_ids, outflow_ids) = basin
+    @assert node_id.type == NodeType.Basin
+    dstorage = 0.0
+    for inflow_id in inflow_ids[node_id.idx]
+        dstorage += get_flow(du, p, t, (inflow_id, node_id))
+    end
+    for outflow_id in outflow_ids[node_id.idx]
+        dstorage -= get_flow(du, p, t, (node_id, outflow_id))
+    end
+
+    dstorage += du.precipitation[node_id.idx]
+    dstorage += du.drainage[node_id.idx]
+    dstorage -= du.evaporation[node_id.idx]
+    dstorage -= du.infiltration[node_id.idx]
+
+    dstorage
 end
 
 function formulate_flow!(
@@ -294,6 +311,7 @@ function formulate_flow!(
         demand_itp,
         demand,
         allocated,
+        return_factor,
         min_level,
         demand_from_timeseries,
     ) in zip(
@@ -305,6 +323,7 @@ function formulate_flow!(
         # TODO permute these so the nodes are the last dimension, for performance
         eachrow(user_demand.demand),
         eachrow(user_demand.allocated),
+        user_demand.return_factor,
         user_demand.min_level,
         user_demand.demand_from_timeseries,
     )
@@ -341,7 +360,8 @@ function formulate_flow!(
         Δsource_level = source_level - min_level
         factor_level = reduction_factor(Δsource_level, 0.1)
         q *= factor_level
-        du.user_demand[id.idx] = q
+        du.user_demand_inflow[id.idx] = q
+        du.user_demand_outflow[id.idx] = q * return_factor(t)
     end
     return nothing
 end
@@ -637,23 +657,6 @@ function formulate_flow!(
 
         q = clamp(q, min_flow_rate, max_flow_rate)
         du.outlet[id.idx] = q
-    end
-    return nothing
-end
-
-function formulate_du_pid_controlled!(
-    du::ComponentVector,
-    graph::MetaGraph,
-    pid_control::PidControl,
-)::Nothing
-    for id in pid_control.controlled_basins
-        du[id.idx] = zero(eltype(du))
-        for id_in in inflow_ids(graph, id)
-            du[id.idx] += get_flow(graph, id_in, id, du)
-        end
-        for id_out in outflow_ids(graph, id)
-            du[id.idx] -= get_flow(graph, id, id_out, du)
-        end
     end
     return nothing
 end
