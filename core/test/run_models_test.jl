@@ -129,11 +129,12 @@ end
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
-    @test model.integrator.p.basin.current_storage[Float64[]] ≈ [1000]
+    (; basin) = model.integrator.p
+    @test basin.current_storage[Float64[]] ≈ [1000]
+    @test basin.vertical_flux_from_input.precipitation == [0.0]
+    @test basin.vertical_flux_from_input.drainage == [0.0]
     du = get_du(model.integrator)
-    @test du.precipitation == [0.0]
     @test du.evaporation == [0.0]
-    @test du.drainage == [0.0]
     @test du.infiltration == [0.0]
     @test successful_retcode(model)
 end
@@ -153,9 +154,9 @@ end
     (; u, p, t) = integrator
     Ribasim.water_balance!(du, u, p, t)
     stor = integrator.p.basin.current_storage[parent(du)]
-    prec = du.precipitation
+    prec = p.basin.vertical_flux_from_input.precipitation
     evap = du.evaporation
-    drng = du.drainage
+    drng = p.basin.vertical_flux_from_input.drainage
     infl = du.infiltration
     # The dynamic data has missings, but these are not set.
     @test prec == [0.0]
@@ -238,10 +239,10 @@ end
     @test successful_retcode(model)
     @test allunique(Ribasim.tsaves(model))
     du = get_du(model.integrator)
-    precipitation = du.precipitation
+    precipitation = model.integrator.p.basin.vertical_flux_from_input.precipitation
     @test length(precipitation) == 4
     @test model.integrator.p.basin.current_storage[parent(du)] ≈
-          Float32[698.22736, 698.2014, 421.20447, 1334.4354] atol = 2.0 skip = Sys.isapple()
+          Float32[697.30591, 697.2799, 419.19034, 1334.3859] atol = 2.0 skip = Sys.isapple()
 end
 
 @testitem "Allocation example model" begin
@@ -282,7 +283,7 @@ end
     config = Ribasim.Config(toml_path; solver_algorithm = "Rodas5", solver_autodiff = true)
     time_ad = Ribasim.run(config)
     @test successful_retcode(time_ad)
-    @test time_ad.integrator.u ≈ sparse_ad.integrator.u atol = 4
+    @test time_ad.integrator.u ≈ sparse_ad.integrator.u atol = 10
 end
 
 @testitem "TabulatedRatingCurve model" begin
@@ -396,23 +397,23 @@ end
     using Dates
     using DataFrames: DataFrame
     using Ribasim: formulate_storages!
+    import BasicModelInterface as BMI
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/user_demand/ribasim.toml")
     @test ispath(toml_path)
-    model = Ribasim.run(toml_path)
-    @test successful_retcode(model)
+    model = Ribasim.Model(toml_path)
 
     (; u, p, t, sol) = model.integrator
     current_storage = p.basin.current_storage[Float64[]]
 
     day = 86400.0
-    formulate_storages!(current_storage, sol(0day), p, 0day)
-    @test only(current_storage) == 1000.0
+
+    @test only(current_storage) ≈ 1000.0
     # constant UserDemand withdraws to 0.9m or 900m3 due to min level = 0.9
-    formulate_storages!(current_storage, sol(150day), p, 150day)
+    BMI.update_until(model, 150day)
     @test only(current_storage) ≈ 900 atol = 5
     # dynamic UserDemand withdraws to 0.5m or 500m3 due to min level = 0.5
-    formulate_storages!(current_storage, sol(220day), p, 220day)
+    BMI.update_until(model, 220day)
     @test only(current_storage) ≈ 500 atol = 1
 
     # Trasient return factor

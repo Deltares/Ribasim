@@ -1,5 +1,6 @@
 struct SavedResults{V <: ComponentVector{Float64}}
     flow::SavedValues{Float64, SavedFlow{V}}
+    basin_state::SavedValues{Float64, SavedBasinState}
     subgrid_level::SavedValues{Float64, Vector{Float64}}
     solver_stats::SavedValues{Float64, SolverStats}
 end
@@ -102,7 +103,7 @@ function Model(config::Config)::Model
     u0 = build_state_vector(parameters)
     du0 = zero(u0)
 
-    parameters = set_flow_basin_neighbor_indices(parameters, u0)
+    parameters = set_state_flow_edges(parameters, u0)
 
     # The Solver algorithm
     alg = algorithm(config.solver; u0)
@@ -154,7 +155,7 @@ function Model(config::Config)::Model
         isoutofdomain = (u, p, t) -> begin
             (; current_storage) = p.basin
             current_storage = current_storage[parent(u)]
-            formulate_storages!(current_storage, u, p, t)
+            formulate_storages!(current_storage, u, u, p, t)
             any(<(0), current_storage)
         end,
         saveat,

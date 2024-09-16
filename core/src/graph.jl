@@ -267,8 +267,12 @@ function get_flow(
     end
 end
 
-function get_influx(du::ComponentVector, id::NodeID)
+function get_influx(du::ComponentVector, id::NodeID, p::Parameters)
     @assert id.type == NodeType.Basin
-    return du.precipitation[id.idx] + du.drainage[id.idx] - du.evaporation[id.idx] -
+    (; basin) = p
+    (; vertical_flux_from_input) = basin
+    fixed_area = basin_areas(basin, id.idx)[end]
+    return fixed_area * vertical_flux_from_input.precipitation[id.idx] +
+           vertical_flux_from_input.drainage[id.idx] - du.evaporation[id.idx] -
            du.infiltration[id.idx]
 end

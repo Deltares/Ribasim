@@ -122,12 +122,9 @@ end
         "../../generated_testmodels/main_network_with_subnetworks/ribasim.toml",
     )
     @test ispath(toml_path)
-    cfg = Ribasim.Config(toml_path)
-    db_path = Ribasim.input_path(cfg, cfg.database)
-    db = SQLite.DB(db_path)
-    p = Ribasim.Parameters(db, cfg)
-    close(db)
+    model = Ribasim.Model(toml_path)
 
+    (; p) = model.integrator
     (; allocation, user_demand, graph, basin) = p
     (;
         allocation_models,
@@ -173,15 +170,14 @@ end
     (; Δt_allocation) = allocation_models[1]
     mean_input_flows[(NodeID(:FlowBoundary, 1, p), NodeID(:Basin, 2, p))] =
         4.5 * Δt_allocation
-    u = ComponentVector(; storage = zeros(length(p.basin.node_id)))
-    Ribasim.update_allocation!((; p, t, u))
+    Ribasim.update_allocation!(model.integrator)
 
     @test subnetwork_allocateds[NodeID(:Basin, 2, p), NodeID(:Pump, 11, p)] ≈
-          [4, 0.49775, 0.0] atol = 1e-4
+          [4.0, 0.4977, 0.0] atol = 1e-4
     @test subnetwork_allocateds[NodeID(:Basin, 6, p), NodeID(:Pump, 24, p)] ≈
           [0.001, 0.0, 0.0] rtol = 1e-3
     @test subnetwork_allocateds[NodeID(:Basin, 10, p), NodeID(:Pump, 38, p)] ≈
-          [0.001, 0.00024888, 0.0] rtol = 1e-3
+          [0.001, 0.000248, 0.0] rtol = 1e-3
 
     # Test for existence of edges in allocation flow record
     allocation_flow = DataFrame(record_flow)
@@ -196,7 +192,7 @@ end
     @test all(allocation_flow.edge_exists)
 
     @test user_demand.allocated[2, :] ≈ [4.0, 0.0, 0.0] atol = 1e-3
-    @test user_demand.allocated[7, :] ≈ [0.0, 0.0, 0.000112] atol = 1e-5
+    @test user_demand.allocated[7, :] ≈ [0.0, 0.0, 0.00011] atol = 1e-5
 end
 
 @testitem "Subnetworks with sources" begin
@@ -325,13 +321,13 @@ end
     # Realized level demand
     record_demand = DataFrame(allocation.record_demand)
     df_basin_2 = record_demand[record_demand.node_id .== 2, :]
-    itp_basin_2 = t -> model.integrator.sol(t)[1]
+    itp_basin_2 = LinearInterpolation(storage, t)
     realized_numeric = diff(itp_basin_2.(df_basin_2.time)) / Δt_allocation
     @test all(isapprox.(realized_numeric, df_basin_2.realized[2:end], atol = 2e-4))
 
     # Realized user demand
     flow_table = DataFrame(Ribasim.flow_table(model))
-    flow_table_user_3 = flow_table[flow_table.edge_id .== 1, :]
+    flow_table_user_3 = flow_table[flow_table.edge_id .== 2, :]
     itp_user_3 = LinearInterpolation(
         flow_table_user_3.flow_rate,
         Ribasim.seconds_since.(flow_table_user_3.time, model.config.starttime),

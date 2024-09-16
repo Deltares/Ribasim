@@ -267,6 +267,13 @@ In-memory storage of saved mean flows for writing to results.
     inflow::Vector{Float64}
     outflow::Vector{Float64}
     flow_boundary::Vector{Float64}
+    precipitation::Vector{Float64}
+    drainage::Vector{Float64}
+end
+
+@kwdef struct SavedBasinState
+    storage::Vector{Float64}
+    level::Vector{Float64}
 end
 
 """
@@ -294,10 +301,17 @@ end
     vertical_flux_bmi::V2 = zeros(length(node_id))
     # Initial_storage
     storage0::Vector{Float64} = zeros(length(node_id))
+    # Analytically integrated forcings
+    cumulative_precipitation::Vector{Float64} = zeros(length(node_id))
+    cumulative_drainage::Vector{Float64} = zeros(length(node_id))
+    cumulative_precipitation_saveat::Vector{Float64} = zeros(length(node_id))
+    cumulative_drainage_saveat::Vector{Float64} = zeros(length(node_id))
     # Cache this to avoid recomputation
     current_storage::Cache = cache(length(node_id))
     current_level::Cache = cache(length(node_id))
     current_area::Cache = cache(length(node_id))
+    current_cumulative_precipitation::Cache = cache(length(node_id))
+    current_cumulative_drainage::Cache = cache(length(node_id))
     # Discrete values for interpolation
     storage_to_level::Vector{
         LinearInterpolationIntInv{
@@ -444,6 +458,8 @@ flow_rate: flow rate (exact)
     node_id::Vector{NodeID}
     outflow_edges::Vector{Vector{EdgeMetadata}}
     active::Vector{Bool}
+    cumulative_flow::Vector{Float64} = zeros(length(node_id))
+    cumulative_flow_saveat::Vector{Float64} = zeros(length(node_id))
     flow_rate::Vector{ScalarInterpolation}
 end
 
@@ -805,7 +821,8 @@ const ModelGraph = MetaGraph{
     level_demand::LevelDemand
     flow_demand::FlowDemand
     subgrid::Subgrid
-    flow_basin_inneighbor_index::Vector{Int32} = Int32[]
-    flow_basin_outneighbor_index::Vector{Int32} = Int32[]
+    state_inflow_edge::Vector{EdgeMetadata} = EdgeMetadata[]
+    state_outflow_edge::Vector{EdgeMetadata} = EdgeMetadata[]
     all_nodes_active::Base.RefValue{Bool} = Ref(false)
+    tprev::Base.RefValue{Float64} = Ref(0.0)
 end

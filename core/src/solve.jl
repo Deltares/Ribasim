@@ -7,12 +7,15 @@ function water_balance!(
     p::Parameters,
     t::Number,
 )::Nothing
-    (; graph, basin, pid_control) = p
+    (; basin, pid_control) = p
 
     du .= 0.0
 
     # Ensures current_* vectors are current
     set_current_basin_properties!(du, u, p, t)
+
+    current_storage = basin.current_storage[parent(du)]
+    current_level = basin.current_level[parent(du)]
 
     # Notes on the ordering of these formulations:
     # - Continuous control can depend on flows (which are not continuously controlled themselves),
@@ -24,19 +27,33 @@ function water_balance!(
     update_vertical_flux!(basin, du)
 
     # Formulate intermediate flows (non continuously controlled)
-    formulate_flows!(du, p, t)
+    formulate_flows!(du, p, t, current_storage, current_level)
 
     # Compute continuous control
     formulate_continuous_control!(du, p, t)
 
     # Formulate intermediate flows (controlled by ContinuousControl)
-    formulate_flows!(du, p, t; continuous_control_type = ContinuousControlType.Continuous)
+    formulate_flows!(
+        du,
+        p,
+        t,
+        current_storage,
+        current_level;
+        continuous_control_type = ContinuousControlType.Continuous,
+    )
 
     # Compute PID control
     formulate_pid_control!(u, du, pid_control, p, t)
 
     # Formulate intermediate flow (controlled by PID control)
-    formulate_flows!(du, p, t; continuous_control_type = ContinuousControlType.PID)
+    formulate_flows!(
+        du,
+        p,
+        t,
+        current_storage,
+        current_level;
+        continuous_control_type = ContinuousControlType.PID,
+    )
 
     return nothing
 end
@@ -53,6 +70,7 @@ end
 
 function formulate_storages!(
     current_storage::AbstractVector,
+    du::ComponentVector,
     u::ComponentVector,
     p::Parameters,
     t::Number,
@@ -66,13 +84,14 @@ function formulate_storages!(
         linear_resistance,
         manning_resistance,
         user_demand,
+        tprev,
     ) = p
     # Current storage: initial conditdion +
     # total inflows and outflows since the start
     # of the simulation
     @. current_storage = basin.storage0
-    formulate_storage!(current_storage, t, u)
-    formulate_storage!(current_storage, t, flow_boundary)
+    formulate_storage!(current_storage, basin, du, u)
+    formulate_storage!(current_storage, tprev[], t, flow_boundary)
     formulate_storage!(current_storage, t, u.tabulated_rating_curve, tabulated_rating_curve)
     formulate_storage!(current_storage, t, u.pump, pump)
     formulate_storage!(current_storage, t, u.outlet, outlet)
@@ -89,18 +108,39 @@ function formulate_storages!(
 end
 
 function set_current_basin_properties!(
-    du::AbstractVector,
-    u::AbstractVector,
+    du::ComponentVector,
+    u::ComponentVector,
     p::Parameters,
     t::Number,
 )::Nothing
     (; basin) = p
-    (; current_storage, current_level, current_area) = basin
+    (;
+        current_storage,
+        current_level,
+        current_area,
+        current_cumulative_precipitation,
+        current_cumulative_drainage,
+        cumulative_precipitation,
+        cumulative_drainage,
+        vertical_flux_from_input,
+    ) = basin
     current_storage = current_storage[parent(du)]
     current_level = current_level[parent(du)]
     current_area = current_area[parent(du)]
+    current_cumulative_precipitation = current_cumulative_precipitation[parent(du)]
+    current_cumulative_drainage = current_cumulative_drainage[parent(du)]
 
-    formulate_storages!(current_storage, u, p, t)
+    dt = t - p.tprev[]
+    for node_id in basin.node_id
+        fixed_area = basin_areas(basin, node_id.idx)[end]
+        current_cumulative_precipitation[node_id.idx] =
+            cumulative_precipitation[node_id.idx] +
+            fixed_area * vertical_flux_from_input.precipitation[node_id.idx] * dt
+    end
+    @. current_cumulative_drainage =
+        cumulative_drainage + dt * vertical_flux_from_input.drainage
+
+    formulate_storages!(current_storage, du, u, p, t)
 
     for (i, s) in enumerate(current_storage)
         current_level[i] = get_level_from_storage(basin, i, s)
@@ -108,13 +148,21 @@ function set_current_basin_properties!(
     end
 end
 
-function formulate_storage!(current_storage::AbstractVector, t::Number, u::ComponentVector)
+function formulate_storage!(
+    current_storage::AbstractVector,
+    basin::Basin,
+    du::ComponentVector,
+    u::ComponentVector,
+)
+    (; current_cumulative_precipitation, current_cumulative_drainage) = basin
+
     @. current_storage -= u.evaporation
     @. current_storage -= u.infiltration
 
-    # TODO: These can be integrated exactly, do not have to be states
-    @. current_storage += u.precipitation
-    @. current_storage += u.drainage
+    current_cumulative_precipitation = current_cumulative_precipitation[parent(du)]
+    current_cumulative_drainage = current_cumulative_drainage[parent(du)]
+    @. current_storage += current_cumulative_precipitation
+    @. current_storage += current_cumulative_drainage
 end
 
 """
@@ -148,13 +196,20 @@ Formulate storage contributions of flow boundaries.
 """
 function formulate_storage!(
     current_storage::AbstractVector,
+    tprev::Number,
     t::Number,
     flow_boundary::FlowBoundary,
 )
-    for (flow_rate, outflow_edges) in
-        zip(flow_boundary.flow_rate, flow_boundary.outflow_edges)
-        # TODO: This is incorrect when the flow boundary has been inactive
-        volume = integral(flow_rate, 0.0, t)
+    for (flow_rate, outflow_edges, active, cumulative_flow) in zip(
+        flow_boundary.flow_rate,
+        flow_boundary.outflow_edges,
+        flow_boundary.active,
+        flow_boundary.cumulative_flow,
+    )
+        volume = cumulative_flow
+        if active
+            volume += integral(flow_rate, tprev, t)
+        end
         for outflow_edge in outflow_edges
             outflow_id = outflow_edge.edge[2]
             if outflow_id.type == NodeType.Basin
@@ -178,18 +233,13 @@ function update_vertical_flux!(basin::Basin, du::AbstractVector)::Nothing
         area = current_area[id.idx]
 
         bottom = basin_levels(basin, id.idx)[1]
-        fixed_area = basin_areas(basin, id.idx)[end]
         depth = max(level - bottom, 0.0)
         factor = reduction_factor(depth, 0.1)
 
-        precipitation = fixed_area * vertical_flux_from_input.precipitation[id.idx]
         evaporation = area * factor * vertical_flux_from_input.potential_evaporation[id.idx]
-        drainage = vertical_flux_from_input.drainage[id.idx]
         infiltration = factor * vertical_flux_from_input.infiltration[id.idx]
 
-        du.precipitation[id.idx] = precipitation
         du.evaporation[id.idx] = evaporation
-        du.drainage[id.idx] = drainage
         du.infiltration[id.idx] = infiltration
     end
 
@@ -237,7 +287,7 @@ function formulate_pid_control!(
 
         listened_node_id = listen_node_id[i]
 
-        flow_rate = 0.0
+        flow_rate = zero(eltype(du))
 
         K_p = pid_control.proportional[i](t)
         K_i = pid_control.integral[i](t)
@@ -277,7 +327,7 @@ end
 
 function formulate_dstorage(du::ComponentVector, p::Parameters, t::Number, node_id::NodeID)
     (; basin) = p
-    (; inflow_ids, outflow_ids) = basin
+    (; inflow_ids, outflow_ids, vertical_flux_from_input) = basin
     @assert node_id.type == NodeType.Basin
     dstorage = 0.0
     for inflow_id in inflow_ids[node_id.idx]
@@ -287,8 +337,9 @@ function formulate_dstorage(du::ComponentVector, p::Parameters, t::Number, node_
         dstorage -= get_flow(du, p, t, (node_id, outflow_id))
     end
 
-    dstorage += du.precipitation[node_id.idx]
-    dstorage += du.drainage[node_id.idx]
+    fixed_area = basin_areas(basin, node_id.idx)[end]
+    dstorage += fixed_area * vertical_flux_from_input.precipitation[node_id.idx]
+    dstorage += vertical_flux_from_input.drainage[node_id.idx]
     dstorage -= du.evaporation[node_id.idx]
     dstorage -= du.infiltration[node_id.idx]
 
@@ -296,10 +347,12 @@ function formulate_dstorage(du::ComponentVector, p::Parameters, t::Number, node_
 end
 
 function formulate_flow!(
+    du::ComponentVector,
     user_demand::UserDemand,
-    du::AbstractVector,
     p::Parameters,
     t::Number,
+    current_storage::Vector,
+    current_level::Vector,
 )::Nothing
     (; allocation, basin) = p
     all_nodes_active = p.all_nodes_active[]
@@ -350,13 +403,12 @@ function formulate_flow!(
 
         # Smoothly let abstraction go to 0 as the source basin dries out
         inflow_id = inflow_edge.edge[1]
-        factor_basin =
-            low_storage_factor(basin.current_storage[parent(du)], inflow_id, 10.0)
+        factor_basin = low_storage_factor(current_storage, inflow_id, 10.0)
         q *= factor_basin
 
         # Smoothly let abstraction go to 0 as the source basin
         # level reaches its minimum level
-        source_level = get_level(p, inflow_id, t, du)
+        source_level = get_level(p, inflow_id, t, current_level)
         Δsource_level = source_level - min_level
         factor_level = reduction_factor(Δsource_level, 0.1)
         q *= factor_level
@@ -370,13 +422,14 @@ end
 Directed graph: outflow is positive!
 """
 function formulate_flow!(
+    du::ComponentVector,
     linear_resistance::LinearResistance,
-    du::AbstractVector,
     p::Parameters,
     t::Number,
+    current_storage::Vector,
+    current_level::Vector,
 )::Nothing
     all_nodes_active = p.all_nodes_active[]
-    (; basin) = p
     (; node_id, active, resistance, max_flow_rate) = linear_resistance
     for id in node_id
         inflow_edge = linear_resistance.inflow_edge[id.idx]
@@ -386,12 +439,12 @@ function formulate_flow!(
         outflow_id = outflow_edge.edge[2]
 
         if (active[id.idx] || all_nodes_active)
-            h_a = get_level(p, inflow_id, t, du)
-            h_b = get_level(p, outflow_id, t, du)
+            h_a = get_level(p, inflow_id, t, current_level)
+            h_b = get_level(p, outflow_id, t, current_level)
             q_unlimited = (h_a - h_b) / resistance[id.idx]
             q = clamp(q_unlimited, -max_flow_rate[id.idx], max_flow_rate[id.idx])
             q *= low_storage_factor_resistance_node(
-                basin.current_storage[parent(du)],
+                current_storage,
                 q,
                 inflow_id,
                 outflow_id,
@@ -407,10 +460,12 @@ end
 Directed graph: outflow is positive!
 """
 function formulate_flow!(
-    tabulated_rating_curve::TabulatedRatingCurve,
     du::AbstractVector,
+    tabulated_rating_curve::TabulatedRatingCurve,
     p::Parameters,
     t::Number,
+    current_storage::Vector,
+    current_level::Vector,
 )::Nothing
     (; basin) = p
     all_nodes_active = p.all_nodes_active[]
@@ -423,12 +478,12 @@ function formulate_flow!(
         outflow_id = outflow_edge.edge[2]
         max_downstream_level = tabulated_rating_curve.max_downstream_level[id.idx]
 
-        h_a = get_level(p, inflow_id, t, du)
-        h_b = get_level(p, outflow_id, t, du)
+        h_a = get_level(p, inflow_id, t, current_level)
+        h_b = get_level(p, outflow_id, t, current_level)
         Δh = h_a - h_b
 
         if active[id.idx] || all_nodes_active
-            factor = low_storage_factor(basin.current_storage[parent(du)], inflow_id, 10.0)
+            factor = low_storage_factor(current_storage, inflow_id, 10.0)
             q = factor * table[id.idx](h_a)
             q *= reduction_factor(Δh, 0.02)
             q *= reduction_factor(max_downstream_level - h_b, 0.02)
@@ -481,10 +536,12 @@ hydraulic radius. This ensures that a basin can receive water after it has gone
 dry.
 """
 function formulate_flow!(
-    manning_resistance::ManningResistance,
     du::AbstractVector,
+    manning_resistance::ManningResistance,
     p::Parameters,
     t::Number,
+    current_storage::Vector,
+    current_level::Vector,
 )::Nothing
     (;
         node_id,
@@ -496,7 +553,6 @@ function formulate_flow!(
         upstream_bottom,
         downstream_bottom,
     ) = manning_resistance
-    (; basin) = p
     all_nodes_active = p.all_nodes_active[]
     for id in node_id
         inflow_edge = manning_resistance.inflow_edge[id.idx]
@@ -509,8 +565,8 @@ function formulate_flow!(
             continue
         end
 
-        h_a = get_level(p, inflow_id, t, du)
-        h_b = get_level(p, outflow_id, t, du)
+        h_a = get_level(p, inflow_id, t, current_level)
+        h_b = get_level(p, outflow_id, t, current_level)
 
         bottom_a = upstream_bottom[id.idx]
         bottom_b = downstream_bottom[id.idx]
@@ -539,7 +595,7 @@ function formulate_flow!(
 
         q = A / n * ∛(R_h^2) * relaxed_root(Δh / L, 1e-3)
         q *= low_storage_factor_resistance_node(
-            basin.current_storage[parent(du)],
+            current_storage,
             q,
             inflow_id,
             outflow_id,
@@ -551,13 +607,14 @@ function formulate_flow!(
 end
 
 function formulate_flow!(
-    pump::Pump,
     du::AbstractVector,
+    pump::Pump,
     p::Parameters,
     t::Number,
+    current_storage::Vector,
+    current_level::Vector,
     continuous_control_type_::ContinuousControlType.T,
 )::Nothing
-    (; basin) = p
     all_nodes_active = p.all_nodes_active[]
     for (
         id,
@@ -589,10 +646,10 @@ function formulate_flow!(
 
         inflow_id = inflow_edge.edge[1]
         outflow_id = outflow_edge.edge[2]
-        src_level = get_level(p, inflow_id, t, du)
-        dst_level = get_level(p, outflow_id, t, du)
+        src_level = get_level(p, inflow_id, t, current_level)
+        dst_level = get_level(p, outflow_id, t, current_level)
 
-        factor = low_storage_factor(basin.current_storage[parent(du)], inflow_id, 10.0)
+        factor = low_storage_factor(current_storage, inflow_id, 10.0)
         q = flow_rate * factor
 
         q *= reduction_factor(src_level - min_upstream_level, 0.02)
@@ -605,14 +662,15 @@ function formulate_flow!(
 end
 
 function formulate_flow!(
-    outlet::Outlet,
     du::AbstractVector,
+    outlet::Outlet,
     p::Parameters,
     t::Number,
+    current_storage::Vector,
+    current_level::Vector,
     continuous_control_type_::ContinuousControlType.T,
 )::Nothing
     all_nodes_active = p.all_nodes_active[]
-    (; basin) = p
     for (
         id,
         inflow_edge,
@@ -643,11 +701,11 @@ function formulate_flow!(
 
         inflow_id = inflow_edge.edge[1]
         outflow_id = outflow_edge.edge[2]
-        src_level = get_level(p, inflow_id, t, du)
-        dst_level = get_level(p, outflow_id, t, du)
+        src_level = get_level(p, inflow_id, t, current_level)
+        dst_level = get_level(p, outflow_id, t, current_level)
 
         q = flow_rate
-        q *= low_storage_factor(basin.current_storage[parent(du)], inflow_id, 10.0)
+        q *= low_storage_factor(current_storage, inflow_id, 10.0)
 
         # No flow of outlet if source level is lower than target level
         Δlevel = src_level - dst_level
@@ -664,7 +722,9 @@ end
 function formulate_flows!(
     du::AbstractVector,
     p::Parameters,
-    t::Number;
+    t::Number,
+    current_storage::Vector,
+    current_level::Vector;
     continuous_control_type::ContinuousControlType.T = ContinuousControlType.None,
 )::Nothing
     (;
@@ -676,13 +736,21 @@ function formulate_flows!(
         user_demand,
     ) = p
 
-    formulate_flow!(pump, du, p, t, continuous_control_type)
-    formulate_flow!(outlet, du, p, t, continuous_control_type)
+    formulate_flow!(du, pump, p, t, current_storage, current_level, continuous_control_type)
+    formulate_flow!(
+        du,
+        outlet,
+        p,
+        t,
+        current_storage,
+        current_level,
+        continuous_control_type,
+    )
 
     if continuous_control_type == ContinuousControlType.None
-        formulate_flow!(linear_resistance, du, p, t)
-        formulate_flow!(manning_resistance, du, p, t)
-        formulate_flow!(tabulated_rating_curve, du, p, t)
-        formulate_flow!(user_demand, du, p, t)
+        formulate_flow!(du, linear_resistance, p, t, current_storage, current_level)
+        formulate_flow!(du, manning_resistance, p, t, current_storage, current_level)
+        formulate_flow!(du, tabulated_rating_curve, p, t, current_storage, current_level)
+        formulate_flow!(du, user_demand, p, t, current_storage, current_level)
     end
 end

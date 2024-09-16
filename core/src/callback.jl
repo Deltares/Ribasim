@@ -13,13 +13,26 @@ function create_callbacks(
     (; starttime, basin, tabulated_rating_curve) = parameters
     callbacks = SciMLBase.DECallback[]
 
+    # Check for negative storage
     negative_storage_cb = FunctionCallingCallback(check_negative_storage)
     push!(callbacks, negative_storage_cb)
 
+    # Save storages and levels
+    saved_basin_states = SavedValues(Float64, SavedBasinState)
+    save_basin_state_cb = SavingCallback(save_basin_state, saved_basin_states; saveat)
+    push!(callbacks, save_basin_state_cb)
+
+    # Update cumulative flows (exact integration and for BMI)
+    integrated_flows_cb =
+        FunctionCallingCallback(update_cumulative_flows!; func_start = false)
+    push!(callbacks, integrated_flows_cb)
+
+    # Update basin forcings
     tstops = get_tstops(basin.time.time, starttime)
     basin_cb = PresetTimeCallback(tstops, update_basin!; save_positions = (false, false))
     push!(callbacks, basin_cb)
 
+    # Update tabulated_rating_curve q(h) relationships
     tstops = get_tstops(tabulated_rating_curve.time.time, starttime)
     tabulated_rating_curve_cb = PresetTimeCallback(
         tstops,
@@ -32,7 +45,7 @@ function create_callbacks(
     # at t = 0.0 despite save_start = false
     saveat = saveat isa Vector ? filter(x -> x != 0.0, saveat) : saveat
 
-    # save the flows over time
+    # save the flows and basin properties over time
     saved_flow = SavedValues(Float64, SavedFlow{typeof(u0)})
     save_flow_cb = SavingCallback(save_flow, saved_flow; saveat, save_start = false)
     push!(callbacks, save_flow_cb)
@@ -58,48 +71,154 @@ function create_callbacks(
     discrete_control_cb = FunctionCallingCallback(apply_discrete_control!)
     push!(callbacks, discrete_control_cb)
 
-    saved = SavedResults(saved_flow, saved_subgrid_level, saved_solver_stats)
+    saved = SavedResults(
+        saved_flow,
+        saved_basin_states,
+        saved_subgrid_level,
+        saved_solver_stats,
+    )
     callback = CallbackSet(callbacks...)
 
     return callback, saved
 end
 
+function update_cumulative_flows!(u, t, integrator)::Nothing
+    (; p, uprev, tprev, dt) = integrator
+    (; basin, user_demand, flow_boundary, allocation) = p
+    (; vertical_flux_bmi, vertical_flux_from_input) = basin
+
+    # Update tprev
+    p.tprev[] = t
+
+    # Update cumulative flows exposed via the BMI
+    @. user_demand.realized_bmi += u.user_demand_inflow - uprev.user_demand_inflow
+    @. vertical_flux_bmi.drainage += vertical_flux_from_input.drainage * dt
+    @. vertical_flux_bmi.evaporation += u.evaporation - uprev.evaporation
+    @. vertical_flux_bmi.infiltration += u.infiltration - uprev.infiltration
+
+    # Update cumulative forcings which are integrated exactly
+    @. basin.cumulative_drainage += vertical_flux_from_input.drainage * dt
+    @. basin.cumulative_drainage_saveat += vertical_flux_from_input.drainage * dt
+
+    # Precipitation depends on fixed area
+    for node_id in basin.node_id
+        fixed_area = basin_areas(basin, node_id.idx)[end]
+        added_precipitation =
+            fixed_area * vertical_flux_from_input.precipitation[node_id.idx] * dt
+
+        vertical_flux_bmi.precipitation[node_id.idx] += added_precipitation
+        basin.cumulative_precipitation[node_id.idx] += added_precipitation
+        basin.cumulative_precipitation_saveat[node_id.idx] += added_precipitation
+    end
+
+    # Exact boundary flow over time step
+    for (id, flow_rate, active) in
+        zip(flow_boundary.node_id, flow_boundary.flow_rate, flow_boundary.active)
+        if active
+            volume = integral(flow_rate, tprev, t)
+            flow_boundary.cumulative_flow[id.idx] += volume
+            flow_boundary.cumulative_flow_saveat[id.idx] += volume
+        end
+    end
+
+    # Update realized flows for allocation input
+    for edge in keys(allocation.mean_input_flows)
+        allocation.mean_input_flows[edge] += flow_update_on_edge(integrator, edge)
+    end
+
+    # Update realized flows for allocation output
+    for edge in keys(allocation.mean_realized_flows)
+        allocation.mean_realized_flows[edge] += flow_update_on_edge(integrator, edge)
+        if edge[1] == edge[2]
+            basin_id = edge[1]
+            @assert basin_id.type == NodeType.Basin
+            for inflow_id in basin.inflow_ids[basin_id.idx]
+                allocation.mean_realized_flows[edge] +=
+                    flow_update_on_edge(integrator, (inflow_id, basin_id))
+            end
+            for outflow_id in basin.outflow_ids[basin_id.idx]
+                allocation.mean_realized_flows[edge] -=
+                    flow_update_on_edge(integrator, (basin_id, outflow_id))
+            end
+        end
+    end
+    return nothing
+end
+
+function flow_update_on_edge(
+    integrator::DEIntegrator,
+    edge_src::Tuple{NodeID, NodeID},
+)::Float64
+    (; u, uprev, p, t, tprev, dt) = integrator
+    (; basin, flow_boundary) = p
+    (; vertical_flux_from_input) = basin
+    from_id, to_id = edge_src
+    if from_id == to_id
+        @assert from_id.type == to_id.type == NodeType.Basin
+        idx = from_id.idx
+        fixed_area = basin_areas(basin, idx)[end]
+        (
+            fixed_area * vertical_flux_from_input.precipitation[idx] +
+            vertical_flux_from_input.drainage[idx]
+        ) * dt - (u.evaporation[idx] - uprev.evaporation[idx]) -
+        (u.infiltration[idx] - uprev.infiltration[idx])
+    elseif from_id.type == NodeType.FlowBoundary
+        if flow_boundary.active[from_id.idx]
+            integral(flow_boundary.flow_rate[from_id.idx], tprev, t)
+        else
+            0.0
+        end
+    else
+        flow_idx = flow_index(u, edge_src)
+        u[flow_idx] - uprev[flow_idx]
+    end
+end
+
+function save_basin_state(u, t, integrator)
+    (; p) = integrator
+    (; basin) = p
+    du = get_du(integrator)
+    current_storage = basin.current_storage[parent(du)]
+    current_level = basin.current_level[parent(du)]
+    water_balance!(du, u, p, t)
+    SavedBasinState(; storage = copy(current_storage), level = copy(current_level))
+end
+
 function save_flow(u, t, integrator)
     (; p, sol) = integrator
-    (; basin, flow_basin_inneighbor_index, flow_basin_outneighbor_index, flow_boundary) = p
-    (; u) = sol
+    (; basin, state_inflow_edge, state_outflow_edge, flow_boundary) = p
     Δt = get_Δt(integrator)
-    flow_mean = (u[end] - sol(t - Δt)) / Δt
+    flow_mean = (u - sol(t - Δt)) / Δt
 
     inflow_mean = zeros(length(basin.node_id))
     outflow_mean = zeros(length(basin.node_id))
 
-    for (flow, inflow_basin_idx, outflow_basin_idx) in
-        zip(flow_mean, flow_basin_inneighbor_index, flow_basin_outneighbor_index)
-        if !iszero(inflow_basin_idx)
+    for (flow, inflow_edge, outflow_edge) in
+        zip(flow_mean, state_inflow_edge, state_outflow_edge)
+        inflow_id = inflow_edge.edge[1]
+        if inflow_id.type == NodeType.Basin
             if flow > 0
-                outflow_mean[inflow_basin_idx] += flow
+                outflow_mean[inflow_id.idx] += flow
             else
-                inflow_mean[inflow_basin_idx] -= flow
+                inflow_mean[inflow_id.idx] -= flow
             end
         end
 
-        if !iszero(outflow_basin_idx)
+        outflow_id = outflow_edge.edge[2]
+        if outflow_id.type == NodeType.Basin
             if flow > 0
-                inflow_mean[outflow_basin_idx] += flow
+                inflow_mean[outflow_id.idx] += flow
             else
-                outflow_mean[outflow_basin_idx] -= flow
+                outflow_mean[outflow_id.idx] -= flow
             end
         end
     end
 
-    flow_boundary_mean = zeros(length(flow_boundary.node_id))
+    flow_boundary_mean = copy(flow_boundary.cumulative_flow_saveat) ./ Δt
+    flow_boundary.cumulative_flow_saveat .= 0.0
 
-    for (flow_rate, outflow_edges, id) in
-        zip(flow_boundary.flow_rate, flow_boundary.outflow_edges, flow_boundary.node_id)
-        # TODO: This is incorrect when the flow boundary has been inactive
-        flow = integral(flow_rate, t - Δt, t) / Δt
-        flow_boundary_mean[id.idx] = flow
+    for (outflow_edges, id) in zip(flow_boundary.outflow_edges, flow_boundary.node_id)
+        flow = flow_boundary_mean[id.idx]
         for outflow_edge in outflow_edges
             outflow_id = outflow_edge.edge[2]
             if outflow_id.type == NodeType.Basin
@@ -108,11 +227,18 @@ function save_flow(u, t, integrator)
         end
     end
 
+    precipitation = copy(basin.cumulative_precipitation_saveat) ./ Δt
+    drainage = copy(basin.cumulative_drainage_saveat) ./ Δt
+    @. basin.cumulative_precipitation_saveat = 0.0
+    @. basin.cumulative_drainage_saveat = 0.0
+
     return SavedFlow(;
         flow = flow_mean,
         inflow = inflow_mean,
         outflow = outflow_mean,
         flow_boundary = flow_boundary_mean,
+        precipitation,
+        drainage,
     )
 end
 
@@ -169,6 +295,7 @@ function apply_discrete_control!(u, t, integrator)::Nothing
     (; discrete_control) = p
     (; node_id) = discrete_control
     du = get_du(integrator)
+    water_balance!(du, u, p, t)
 
     # Loop over the discrete control nodes to determine their truth state
     # and detect possible control state changes
@@ -386,9 +513,15 @@ end
 
 "Solve the allocation problem for all demands and assign allocated abstractions."
 function update_allocation!(integrator)::Nothing
-    (; p, t, u, sol) = integrator
-    (; allocation, flow_boundary) = p
+    (; p, t, u) = integrator
+    (; allocation, basin) = p
+    (; current_storage) = basin
     (; allocation_models, mean_input_flows, mean_realized_flows) = allocation
+
+    # Make sure current storages are up to date
+    du = get_du(integrator)
+    current_storage = current_storage[parent(du)]
+    formulate_storages!(current_storage, du, u, p, t)
 
     # Don't run the allocation algorithm if allocation is not active
     # (Specifically for running Ribasim via the BMI)
@@ -397,30 +530,13 @@ function update_allocation!(integrator)::Nothing
     end
 
     (; Δt_allocation) = allocation_models[1]
-    if t > 0
-        for edge in keys(mean_input_flows)
-            mean_flow = if edge[1] == edge[2]
-                (get_influx(sol(t), edge[1]) - get_influx(sol(t - Δt_allocation), edge[1])) / Δt_allocation
-            elseif edge[1].type == NodeType.FlowBoundary
-                # TODO: This is not correct if the flow boundary has been inactive
-                integral(flow_boundary.flow_rate[edge[1].idx], t - Δt_allocation, t) /
-                Δt_allocation
-            else
-                flow_idx = flow_index(u, edge)
-                (sol(t; idxs = flow_idx) - sol(t - Δt_allocation; idxs = flow_idx)) /
-                Δt_allocation
-            end
-            mean_input_flows[edge] = mean_flow
-        end
+    for edge in keys(mean_input_flows)
+        mean_input_flows[edge] /= Δt_allocation
     end
 
     # Divide by the allocation Δt to obtain the mean realized flows
     # from the integrated flows
-    for (edge, value) in mean_realized_flows
-        if edge[1] == edge[2]
-            # Compute the mean realized demand for basins as Δstorage/Δt_allocation
-            mean_realized_flows[edge] = value + u[edge[1].idx]
-        end
+    for edge in keys(mean_realized_flows)
         mean_realized_flows[edge] /= Δt_allocation
     end
 
@@ -442,13 +558,6 @@ function update_allocation!(integrator)::Nothing
     for mean_flows in (mean_input_flows, mean_realized_flows)
         for edge in keys(mean_flows)
             mean_flows[edge] = 0.0
-        end
-    end
-
-    # Set basin storages for mean storage change computation
-    for (edge, value) in mean_realized_flows
-        if edge[1] == edge[2]
-            mean_realized_flows[edge] = value - u[edge[1].idx]
         end
     end
 end

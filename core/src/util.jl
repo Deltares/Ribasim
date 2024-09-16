@@ -239,9 +239,8 @@ Get the current water level of a node ID.
 The ID can belong to either a Basin or a LevelBoundary.
 du: tells ForwardDiff whether this call is for differentiation or not
 """
-function get_level(p::Parameters, node_id::NodeID, t::Number, du)::Number
+function get_level(p::Parameters, node_id::NodeID, t::Number, current_level::Vector)::Number
     if node_id.type == NodeType.Basin
-        current_level = p.basin.current_level[parent(du)]
         current_level[node_id.idx]
     elseif node_id.type == NodeType.LevelBoundary
         p.level_boundary.level[node_id.idx](t)
@@ -356,7 +355,8 @@ function Base.getindex(fv::FlatVector, i::Int)
 end
 
 "Construct a FlatVector from one of the fields of SavedFlow."
-FlatVector(saveval::Vector{<:SavedFlow}, sym::Symbol) = FlatVector(getfield.(saveval, sym))
+FlatVector(saveval::Vector{<:SavedFlow}, sym::Symbol) =
+    FlatVector(isempty(saveval) ? Vector{Float64}[] : getfield.(saveval, sym))
 
 """
 Function that goes smoothly from 0 to 1 in the interval [0,threshold],
@@ -594,7 +594,7 @@ function set_initial_allocation_mean_flows!(integrator)::Nothing
 
     for edge in keys(mean_input_flows)
         if edge[1] == edge[2]
-            q = get_influx(du, edge[1])
+            q = get_influx(du, edge[1], p)
         else
             q = get_flow(du, p, t, edge)
         end
@@ -672,18 +672,22 @@ end
 
 function flow_index(
     u::ComponentVector{Float64, Vector{Float64}, <:Tuple{<:Axis{NT}}},
-    node_id::NodeID,
+    node_id::NodeID;
+    inflow::Bool = true,
 )::Union{Int, Nothing} where {NT}
     node_type = snake_case(Symbol(node_id.type))
     if node_type in keys(NT)
         only(getfield(u, :axes))[node_type].idx[node_id.idx]
+    elseif startswith(String(node_type), "user_demand")
+        component_name = inflow ? :user_demand_inflow : :user_demand_outflow
+        only(getfield(u, :axes))[component_name].idx[node_id.idx]
     else
         nothing
     end
 end
 
 function flow_index(u::ComponentVector, edge::Tuple{NodeID, NodeID})::Int
-    idx = flow_index(u, edge[1])
+    idx = flow_index(u, edge[1]; inflow = false)
     isnothing(idx) ? flow_index(u, edge[2]) : idx
 end
 
@@ -850,20 +854,6 @@ function basin_areas(basin::Basin, state_idx::Int)
 end
 
 """
-Split the single forcing vector into views of the components
-precipitation, evaporation, drainage, infiltration
-"""
-function wrap_forcing(vector)
-    n = length(vector) ÷ 4
-    (;
-        precipitation = view(vector, 1:n),
-        evaporation = view(vector, (n + 1):(2n)),
-        drainage = view(vector, (2n + 1):(3n)),
-        infiltration = view(vector, (3n + 1):(4n)),
-    )
-end
-
-"""
 The function f(x) = sign(x)*√(|x|) where for |x|<threshold a
 polynomial is used so that the function is still differentiable
 but the derivative is bounded at x = 0.
@@ -957,7 +947,7 @@ function OrdinaryDiffEqNonlinearSolve.relax!(
     @. z_tmp = nlsolver.z + dz
     resid_before = residual(z_tmp, integrator, nlsolver, f)
     relax!(dz, nlsolver, integrator, f, linesearch)
-    @. z_tmp = nlsolver.z + dz
+    @. z_tmp = nlsolver.z + 0.95 * dz
     resid_after = residual(z_tmp, integrator, nlsolver, f)
 
     # If the residual increased due to the relaxation, reject it
@@ -975,54 +965,92 @@ function build_state_vector(p::Parameters)
         user_demand_outflow = zeros(length(p.user_demand.node_id)),
         linear_resistance = zeros(length(p.linear_resistance.node_id)),
         manning_resistance = zeros(length(p.manning_resistance.node_id)),
-        integral = zeros(length(p.pid_control.node_id)),
         evaporation = zeros(length(p.basin.node_id)),
         infiltration = zeros(length(p.basin.node_id)),
-        # TODO: These can be integrated exactly, do not have to be states
-        precipitation = zeros(length(p.basin.node_id)),
-        drainage = zeros(length(p.basin.node_id)),
+        integral = zeros(length(p.pid_control.node_id)),
     )
 end
 
-function set_flow_basin_neighbor_indices(p::Parameters, u0::ComponentVector)::Parameters
-    flow_basin_inneighbor_index = Int32[]
-    flow_basin_outneighbor_index = Int32[]
+function set_state_flow_edges(p::Parameters, u0::ComponentVector)::Parameters
+    (; user_demand, graph) = p
+
+    state_inflow_edge = EdgeMetadata[]
+    state_outflow_edge = EdgeMetadata[]
+
+    placeholder_edge = EdgeMetadata(
+        0,
+        0,
+        EdgeType.flow,
+        0,
+        (NodeID(:Terminal, 0, 0), NodeID(:Terminal, 0, 0)),
+    )
 
     for node_name in keys(u0)
         if hasfield(Parameters, node_name)
-            node = getfield(p, node_name)
+            node::AbstractParameterNode = getfield(p, node_name)
             for id in node.node_id
                 inflow_ids_ = collect(inflow_ids(p.graph, id))
                 outflow_ids_ = collect(outflow_ids(p.graph, id))
 
-                idx = if length(inflow_ids_) == 0
-                    0
+                inflow_edge = if length(inflow_ids_) == 0
+                    placeholder_edge
                 elseif length(inflow_ids_) == 1
                     inflow_id = only(inflow_ids_)
-                    inflow_id.type == NodeType.Basin ? inflow_id.idx : 0
+                    graph[inflow_id, id]
                 else
                     error()
                 end
-                push!(flow_basin_inneighbor_index, idx)
+                push!(state_inflow_edge, inflow_edge)
 
-                idx = if length(outflow_ids_) == 0
-                    0
+                outflow_edge = if length(outflow_ids_) == 0
+                    placeholder_edge
                 elseif length(outflow_ids_) == 1
                     outflow_id = only(outflow_ids_)
-                    outflow_id.type == NodeType.Basin ? outflow_id.idx : 0
+                    graph[id, outflow_id]
+                else
+                    error()
                 end
-                push!(flow_basin_outneighbor_index, idx)
+                push!(state_outflow_edge, outflow_edge)
             end
-        elseif node_name == :integral
-            append!(flow_basin_inneighbor_index, zeros(length(p.pid_control.node_id)))
-            append!(flow_basin_outneighbor_index, zeros(length(p.pid_control.node_id)))
-        else
-            append!(flow_basin_inneighbor_index, zeros(length(p.basin.node_id)))
-            append!(flow_basin_outneighbor_index, zeros(length(p.basin.node_id)))
+        elseif startswith(String(node_name), "user_demand")
+            placeholder_edges = fill(placeholder_edge, length(user_demand.node_id))
+            if node_name == :user_demand_inflow
+                append!(state_inflow_edge, user_demand.inflow_edge)
+                append!(state_outflow_edge, placeholder_edges)
+            elseif node_name == :user_demand_outflow
+                append!(state_inflow_edge, placeholder_edges)
+                append!(state_outflow_edge, user_demand.outflow_edge)
+            end
         end
     end
 
-    p = @set p.flow_basin_inneighbor_index = flow_basin_inneighbor_index
-    p = @set p.flow_basin_outneighbor_index = flow_basin_outneighbor_index
+    p = @set p.state_inflow_edge = state_inflow_edge
+    p = @set p.state_outflow_edge = state_outflow_edge
     return p
+end
+
+function id_from_state_index(
+    p::Parameters,
+    ::ComponentVector{Float64, Vector{Float64}, <:Tuple{<:Axis{NT}}},
+    global_idx::Int,
+) where {NT}
+    local_idx = 0
+    component = Symbol()
+    for (comp, range) in zip(keys(NT), values(NT))
+        if global_idx in range
+            component = comp
+            local_idx = global_idx - first(range) + 1
+            break
+        end
+    end
+    component_string = String(component)
+    if endswith(component_string, "_inflow") || endswith(component_string, "_outflow")
+        component = :user_demand
+    elseif component == :integral
+        component = :pid_control
+    elseif component in [:infiltration, :evaporation]
+        component = :basin
+    end
+
+    getfield(p, component).node_id[local_idx]
 end

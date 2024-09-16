@@ -161,7 +161,7 @@ end
 @testitem "Jacobian sparsity" begin
     import SQLite
     using ComponentArrays: ComponentVector
-    using SparseArrays: spzeros
+    using SparseArrays: sparse, findnz
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
 
@@ -175,9 +175,13 @@ end
     du0 = copy(u0)
     jac_prototype = Ribasim.get_jac_prototype(du0, u0, p, t0)
 
-    jac_prototype_expected = spzeros(Bool, 4, 4)
-    jac_prototype_expected[1:2, 1:2] .= true
-    jac_prototype_expected[2:4, 2:4] .= true
+    # rows, cols, _ = findnz(jac_prototype)
+    #! format: off
+    rows_expected = [1, 2, 3, 6, 7, 9, 13, 1, 2, 3, 4, 6, 7, 9, 10, 13, 14, 1, 2, 3, 4, 5, 6, 7, 9, 11, 13, 15, 2, 3, 4, 5, 10, 11, 14, 15, 3, 4, 5, 11, 15, 1, 2, 3, 6, 7, 9, 13, 1, 2, 3, 6, 7, 8, 9, 12, 13, 7, 8, 12, 1, 2, 3, 6, 7, 9, 13, 2, 4, 10, 14, 3, 4, 5, 11, 15, 7, 8, 12, 1, 2, 3, 6, 7, 9, 13, 2, 4, 10, 14, 3, 4, 5, 11, 15]
+    cols_expected = [1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7, 7, 8, 8, 8, 9, 9, 9, 9, 9, 9, 9, 10, 10, 10, 10, 11, 11, 11, 11, 11, 12, 12, 12, 13, 13, 13, 13, 13, 13, 13, 14, 14, 14, 14, 15, 15, 15, 15, 15]
+    #! format: on
+    jac_prototype_expected =
+        sparse(rows_expected, cols_expected, true, size(jac_prototype)...)
     @test jac_prototype == jac_prototype_expected
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/pid_control/ribasim.toml")
@@ -187,16 +191,16 @@ end
     db = SQLite.DB(db_path)
 
     p = Ribasim.Parameters(db, cfg)
-    u0 = ComponentVector{Float64}(;
-        storage = zeros(length(p.basin.node_id)),
-        integral = zeros(length(p.pid_control.node_id)),
-    )
+    u0 = Ribasim.build_state_vector(p)
     du0 = copy(u0)
     jac_prototype = Ribasim.get_jac_prototype(du0, u0, p, t0)
 
-    jac_prototype_expected = spzeros(Bool, 3, 3)
-    jac_prototype_expected[1, 1:3] .= true
-    jac_prototype_expected[2:3, 1] .= true
+    #! format: off
+    rows_expected = [1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6, 1, 2]
+    cols_expected = [1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 5, 6]
+    #! format: on
+    jac_prototype_expected =
+        sparse(rows_expected, cols_expected, true, size(jac_prototype)...)
     @test jac_prototype == jac_prototype_expected
 end
 

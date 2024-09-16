@@ -73,22 +73,17 @@ function get_storages_and_levels(
     storage::Matrix{Float64},
     level::Matrix{Float64},
 }
-    (; config, integrator) = model
-    (; sol, p) = integrator
+    (; config, integrator, saved) = model
+    (; p) = integrator
 
-    du = get_du(integrator)
     node_id = p.basin.node_id::Vector{NodeID}
     tsteps = datetime_since.(tsaves(model), config.starttime)
 
-    current_storage = p.basin.current_storage[parent(du)]
-    current_level = p.basin.current_level[parent(du)]
-
     storage = zeros(length(node_id), length(tsteps))
     level = zero(storage)
-    for (i, (t, u)) in enumerate(zip(sol.t, sol.u))
-        set_current_basin_properties!(du, u, p, t)
-        storage[:, i] .= current_storage
-        level[:, i] .= current_level
+    for (i, cvec) in enumerate(saved.basin_state.saveval)
+        storage[:, i] .= cvec.storage
+        level[:, i] .= cvec.level
     end
 
     return (; time = tsteps, node_id, storage, level)
@@ -147,9 +142,12 @@ function basin_table(
 
     idx_row = 0
     for cvec in saved.flow.saveval
-        (; flow) = cvec
-        for (precipitation_, evaporation_, drainage_, infiltration_) in
-            zip(flow.precipitation, flow.evaporation, flow.drainage, flow.infiltration)
+        for (precipitation_, evaporation_, drainage_, infiltration_) in zip(
+            cvec.precipitation,
+            cvec.flow.evaporation,
+            cvec.drainage,
+            cvec.flow.infiltration,
+        )
             idx_row += 1
             precipitation[idx_row] = precipitation_
             evaporation[idx_row] = evaporation_
@@ -246,11 +244,11 @@ function flow_table(
 
     flow_rate = zeros(nflow * ntsteps)
 
-    for (i, flow_edge) in enumerate(flow_edges)
+    for (i, edge) in enumerate(flow_edge_ids)
         for (j, cvec) in enumerate(saveval)
             (; flow, flow_boundary) = cvec
             flow_rate[i + (j - 1) * nflow] =
-                get_flow(flow, p, 0.0, flow_edge.edge; boundary_flow = flow_boundary)
+                get_flow(flow, p, 0.0, edge; boundary_flow = flow_boundary)
         end
     end
 
