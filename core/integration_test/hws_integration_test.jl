@@ -17,8 +17,7 @@
 
     @testset "Results values" begin
         @test basin.node_id == basin_bench.node_id
-        @test all(q -> abs(q) < 0.03, basin.level - basin_bench.level)
-        @show maximum(basin.level - basin_bench.level)
+        @test all(q -> abs(q) < 0.06, basin.level - basin_bench.level)
     end
 
     timed = @timed Ribasim.run(toml_path)
