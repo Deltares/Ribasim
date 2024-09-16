@@ -68,6 +68,52 @@ function formulate_continuous_control!(du, p, t)::Nothing
     return nothing
 end
 
+"""
+Compute the storages, levels and areas of all basins given the
+state u and the time t.
+"""
+function set_current_basin_properties!(
+    du::ComponentVector,
+    u::ComponentVector,
+    p::Parameters,
+    t::Number,
+)::Nothing
+    (; basin) = p
+    (;
+        current_storage,
+        current_level,
+        current_area,
+        current_cumulative_precipitation,
+        current_cumulative_drainage,
+        cumulative_precipitation,
+        cumulative_drainage,
+        vertical_flux_from_input,
+    ) = basin
+    current_storage = current_storage[parent(du)]
+    current_level = current_level[parent(du)]
+    current_area = current_area[parent(du)]
+    current_cumulative_precipitation = current_cumulative_precipitation[parent(du)]
+    current_cumulative_drainage = current_cumulative_drainage[parent(du)]
+
+    # The exactly integrated precipitation and drainage up to the t of this water_balance call
+    dt = t - p.tprev[]
+    for node_id in basin.node_id
+        fixed_area = basin_areas(basin, node_id.idx)[end]
+        current_cumulative_precipitation[node_id.idx] =
+            cumulative_precipitation[node_id.idx] +
+            fixed_area * vertical_flux_from_input.precipitation[node_id.idx] * dt
+    end
+    @. current_cumulative_drainage =
+        cumulative_drainage + dt * vertical_flux_from_input.drainage
+
+    formulate_storages!(current_storage, du, u, p, t)
+
+    for (i, s) in enumerate(current_storage)
+        current_level[i] = get_level_from_storage(basin, i, s)
+        current_area[i] = basin.level_to_area[i](current_level[i])
+    end
+end
+
 function formulate_storages!(
     current_storage::AbstractVector,
     du::ComponentVector,
@@ -107,47 +153,9 @@ function formulate_storages!(
     return nothing
 end
 
-function set_current_basin_properties!(
-    du::ComponentVector,
-    u::ComponentVector,
-    p::Parameters,
-    t::Number,
-)::Nothing
-    (; basin) = p
-    (;
-        current_storage,
-        current_level,
-        current_area,
-        current_cumulative_precipitation,
-        current_cumulative_drainage,
-        cumulative_precipitation,
-        cumulative_drainage,
-        vertical_flux_from_input,
-    ) = basin
-    current_storage = current_storage[parent(du)]
-    current_level = current_level[parent(du)]
-    current_area = current_area[parent(du)]
-    current_cumulative_precipitation = current_cumulative_precipitation[parent(du)]
-    current_cumulative_drainage = current_cumulative_drainage[parent(du)]
-
-    dt = t - p.tprev[]
-    for node_id in basin.node_id
-        fixed_area = basin_areas(basin, node_id.idx)[end]
-        current_cumulative_precipitation[node_id.idx] =
-            cumulative_precipitation[node_id.idx] +
-            fixed_area * vertical_flux_from_input.precipitation[node_id.idx] * dt
-    end
-    @. current_cumulative_drainage =
-        cumulative_drainage + dt * vertical_flux_from_input.drainage
-
-    formulate_storages!(current_storage, du, u, p, t)
-
-    for (i, s) in enumerate(current_storage)
-        current_level[i] = get_level_from_storage(basin, i, s)
-        current_area[i] = basin.level_to_area[i](current_level[i])
-    end
-end
-
+"""
+The storage contributions of the forcings that are part of the state.
+"""
 function formulate_storage!(
     current_storage::AbstractVector,
     basin::Basin,
@@ -312,11 +320,11 @@ function formulate_pid_control!(
 
         if !iszero(K_d)
             dlevel_demand = derivative(target[i], t)
-            du_listened_basin_old = formulate_dstorage(du, p, t, listened_node_id)#du.storage[listened_node_id.idx]
+            dstorage_listened_basin_old = formulate_dstorage(du, p, t, listened_node_id)#du.storage[listened_node_id.idx]
             # The expression below is the solution to an implicit equation for
-            # du_listened_basin. This equation results from the fact that if the derivative
+            # dstorage_listened_basin. This equation results from the fact that if the derivative
             # term in the PID controller is used, the controlled pump flow rate depends on itself.
-            flow_rate += K_d * (dlevel_demand - du_listened_basin_old / area) / D
+            flow_rate += K_d * (dlevel_demand - dstorage_listened_basin_old / area) / D
         end
 
         # Set flow_rate
@@ -325,6 +333,9 @@ function formulate_pid_control!(
     return nothing
 end
 
+"""
+Formulate the time derivative of the storage in a single Basin.
+"""
 function formulate_dstorage(du::ComponentVector, p::Parameters, t::Number, node_id::NodeID)
     (; basin) = p
     (; inflow_ids, outflow_ids, vertical_flux_from_input) = basin
@@ -354,7 +365,7 @@ function formulate_flow!(
     current_storage::Vector,
     current_level::Vector,
 )::Nothing
-    (; allocation, basin) = p
+    (; allocation) = p
     all_nodes_active = p.all_nodes_active[]
     for (
         id,

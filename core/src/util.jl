@@ -936,6 +936,7 @@ function OrdinaryDiffEqNonlinearSolve.relax!(
 end
 
 function build_state_vector(p::Parameters)
+    # It is assumed that the horizontal flow states come first
     return ComponentVector{Float64}(;
         tabulated_rating_curve = zeros(length(p.tabulated_rating_curve.node_id)),
         pump = zeros(length(p.pump.node_id)),

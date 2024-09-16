@@ -258,9 +258,12 @@ abstract type AbstractDemandNode <: AbstractParameterNode end
 """
 In-memory storage of saved mean flows for writing to results.
 
-- `flow`: The mean flows on all edges and forcings
+- `flow`: The mean flows on all edges and state-dependent forcings
 - `inflow`: The sum of the mean flows coming into each basin
 - `outflow`: The sum of the mean flows going out of each basin
+- `flow_boundary`: The exact integrated mean flows of flow boundaries
+- `precipitation`: The exact integrated mean precipitation
+- `drainage`: The exact integrated mean drainage
 """
 @kwdef struct SavedFlow{V}
     flow::V
@@ -271,6 +274,9 @@ In-memory storage of saved mean flows for writing to results.
     drainage::Vector{Float64}
 end
 
+"""
+In-memory storage of saved instantaneous storages and levels for writing to results.
+"""
 @kwdef struct SavedBasinState
     storage::Vector{Float64}
     level::Vector{Float64}
@@ -452,6 +458,8 @@ end
 node_id: node ID of the FlowBoundary node
 outflow_edges: The outgoing flow edge metadata
 active: whether this node is active and thus contributes flow
+cumulative_flow: The exactly integrated cumulative boundary flow since the start of the simulation
+cumulative_flow_saveat: The exactly integrated cumulative boundary flow since the last saveat
 flow_rate: flow rate (exact)
 """
 @kwdef struct FlowBoundary <: AbstractParameterNode
@@ -595,7 +603,8 @@ node_id: node ID of the Terminal node
 end
 
 """
-A variant on `Base.Ref` where the source array is a vector that is possibly wrapped in a ForwardDiff.LazyBufferCache.
+A variant on `Base.Ref` where the source array is a vector that is possibly wrapped in a ForwardDiff.LazyBufferCache,
+or a reference to the state derivative vector du.
 Retrieve value with get_value(ref::PreallocationRef, val) where `val` determines the return type.
 """
 struct PreallocationRef
@@ -821,6 +830,7 @@ const ModelGraph = MetaGraph{
     level_demand::LevelDemand
     flow_demand::FlowDemand
     subgrid::Subgrid
+    # Per state the in- and outflow edges associated with that state (if theu exist)
     state_inflow_edge::Vector{EdgeMetadata} = EdgeMetadata[]
     state_outflow_edge::Vector{EdgeMetadata} = EdgeMetadata[]
     all_nodes_active::Base.RefValue{Bool} = Ref(false)
