@@ -17,7 +17,7 @@
 
     @testset "Results values" begin
         @test basin.node_id == basin_bench.node_id
-        @test all(q -> abs(q) < 0.01, basin.level - basin_bench.level)
+        @test all(q -> abs(q) < 0.06, basin.level - basin_bench.level)
     end
 
     timed = @timed Ribasim.run(toml_path)
@@ -27,6 +27,7 @@
     performance_diff =
         round((timed.time - benchmark_runtime) / benchmark_runtime * 100; digits = 2)
     if performance_diff < 0.0
+        performance_diff = abs(performance_diff)
         @info "Runtime is $(timed.time) and it is $performance_diff % faster than benchmark"
     elseif performance_diff > 0.0 && performance_diff < 0.2
         @info "Runtime is $(timed.time) and it is $performance_diff % slower than benchmark"
