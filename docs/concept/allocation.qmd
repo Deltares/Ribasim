@@ -244,8 +244,7 @@ using SQLite
 using ComponentArrays: ComponentVector
 
 toml_path = normpath(@__DIR__, "../../generated_testmodels/allocation_example/ribasim.toml")
-integrator = Ribasim.Model(toml_path).integrator
-(; p) = integrator
+p = Ribasim.Model(toml_path).integrator.p
 u = ComponentVector(; storage = zeros(length(p.basin.node_id)))
 
 allocation_model = p.allocation.allocation_models[1]
