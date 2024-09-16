@@ -240,6 +240,10 @@ function inflow_id(graph::MetaGraph, id::NodeID)::NodeID
     return only(inflow_ids(graph, id))
 end
 
+"""
+Get the specific q from the input vector flow which has the same components as
+the state vector, given an edge (inflow_id, outflow_id).
+"""
 function get_flow(
     flow::ComponentVector,
     p::Parameters,
@@ -248,22 +252,12 @@ function get_flow(
     boundary_flow = nothing,
 )
     (; flow_boundary) = p
-    from_id, to_id = edge
-    from_node_type = snake_case(Symbol(from_id.type))
-    to_node_type = snake_case(Symbol(to_id.type))
-    if from_node_type in keys(flow)
-        getproperty(flow, from_node_type)[from_id.idx]
-    elseif to_node_type in keys(flow)
-        getproperty(flow, to_node_type)[to_id.idx]
-    elseif from_node_type == :flow_boundary
+    from_id = edge[1]
+    if from_id.type == NodeType.FlowBoundary
         isnothing(boundary_flow) ? flow_boundary.flow_rate[from_id.idx](t) :
         boundary_flow[from_id.idx]
-    elseif from_node_type == :user_demand
-        flow.user_demand_outflow[from_id.idx]
-    elseif to_node_type == :user_demand
-        flow.user_demand_inflow[to_id.idx]
     else
-        error("$from_id, $to_id")
+        flow[state_index_from_edge(flow, edge)]
     end
 end
 

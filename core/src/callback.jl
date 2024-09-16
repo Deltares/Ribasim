@@ -45,7 +45,7 @@ function create_callbacks(
     # at t = 0.0 despite save_start = false
     saveat = saveat isa Vector ? filter(x -> x != 0.0, saveat) : saveat
 
-    # save the flows and basin properties over time
+    # save the flows averaged over the saveat intervals
     saved_flow = SavedValues(Float64, SavedFlow{typeof(u0)})
     save_flow_cb = SavingCallback(save_flow, saved_flow; saveat, save_start = false)
     push!(callbacks, save_flow_cb)
@@ -82,6 +82,14 @@ function create_callbacks(
     return callback, saved
 end
 
+"""
+Update with the latest timestep:
+- Cumulative flows/forcings which are exposed via the bmi
+- Cumulative flows/forcings which are integrated exactly
+- Cumulative flows/forcings which are input for the allocation algorithm
+- Cumulative flows/forcings which are realized demands in the allocation context
+
+"""
 function update_cumulative_flows!(u, t, integrator)::Nothing
     (; p, uprev, tprev, dt) = integrator
     (; basin, user_demand, flow_boundary, allocation) = p
@@ -145,6 +153,11 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
     return nothing
 end
 
+"""
+Given an edge (from_id, to_id), compute the cumulative flow over that
+edge over the latest timestep. If from_id and to_id are both the same basin,
+the function returns the sum of the basin forcings.
+"""
 function flow_update_on_edge(
     integrator::DEIntegrator,
     edge_src::Tuple{NodeID, NodeID},
@@ -169,11 +182,14 @@ function flow_update_on_edge(
             0.0
         end
     else
-        flow_idx = flow_index(u, edge_src)
+        flow_idx = state_index_from_edge(u, edge_src)
         u[flow_idx] - uprev[flow_idx]
     end
 end
 
+"""
+Save the storages and levels at the latest t.
+"""
 function save_basin_state(u, t, integrator)
     (; p) = integrator
     (; basin) = p
@@ -184,6 +200,11 @@ function save_basin_state(u, t, integrator)
     SavedBasinState(; storage = copy(current_storage), level = copy(current_level))
 end
 
+"""
+Save all cumulative forcings and flows over edges over the latest timestep,
+Both computed by the solver and integrated exactly. Also computes the total horizontal
+inflow and outflow per basin.
+"""
 function save_flow(u, t, integrator)
     (; p, sol) = integrator
     (; basin, state_inflow_edge, state_outflow_edge, flow_boundary) = p
@@ -529,6 +550,8 @@ function update_allocation!(integrator)::Nothing
         return nothing
     end
 
+    # Divide by the allocation Δt to obtain the mean input flows
+    # from the integrated flows
     (; Δt_allocation) = allocation_models[1]
     for edge in keys(mean_input_flows)
         mean_input_flows[edge] /= Δt_allocation

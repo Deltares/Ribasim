@@ -655,8 +655,8 @@ function get_variable_ref(
                 @error "Cannot listen to flow_rate of $node_id, the node type must be one of $conservative_node_types"
                 Ref(Float64[], 0)
             else
-                # Index in the state vector
-                flow_idx = flow_index(u, node_id)
+                # Index in the state vector (inflow)
+                flow_idx = state_index_from_id(node_id, u)
                 PreallocationRef(cache(1), flow_idx; from_du = true)
             end
         else
@@ -668,27 +668,6 @@ function get_variable_ref(
         PreallocationRef(cache(1), 0)
     end
     return ref, errors
-end
-
-function flow_index(
-    u::ComponentVector{Float64, Vector{Float64}, <:Tuple{<:Axis{NT}}},
-    node_id::NodeID;
-    inflow::Bool = true,
-)::Union{Int, Nothing} where {NT}
-    node_type = snake_case(Symbol(node_id.type))
-    if node_type in keys(NT)
-        only(getfield(u, :axes))[node_type].idx[node_id.idx]
-    elseif startswith(String(node_type), "user_demand")
-        component_name = inflow ? :user_demand_inflow : :user_demand_outflow
-        only(getfield(u, :axes))[component_name].idx[node_id.idx]
-    else
-        nothing
-    end
-end
-
-function flow_index(u::ComponentVector, edge::Tuple{NodeID, NodeID})::Int
-    idx = flow_index(u, edge[1]; inflow = false)
-    isnothing(idx) ? flow_index(u, edge[2]) : idx
 end
 
 """
@@ -1033,7 +1012,7 @@ function id_from_state_index(
     p::Parameters,
     ::ComponentVector{Float64, Vector{Float64}, <:Tuple{<:Axis{NT}}},
     global_idx::Int,
-) where {NT}
+)::NodeID where {NT}
     local_idx = 0
     component = Symbol()
     for (comp, range) in zip(keys(NT), values(NT))
@@ -1053,4 +1032,28 @@ function id_from_state_index(
     end
 
     getfield(p, component).node_id[local_idx]
+end
+
+function state_index_from_id(
+    id::NodeID,
+    ::ComponentVector{A, B, <:Tuple{<:Axis{NT}}};
+    inflow::Bool = true,
+) where {A, B, NT}
+    component_name = if id.type == NodeType.UserDemand
+        inflow ? :user_demand_inflow : :user_demand_outflow
+    else
+        snake_case(Symbol(id.type))
+    end
+
+    for (comp, range) in zip(keys(NT), values(NT))
+        if comp == component_name
+            return range[id.idx]
+        end
+    end
+    return nothing
+end
+
+function state_index_from_edge(u::ComponentVector, edge::Tuple{NodeID, NodeID})::Int
+    idx = state_index_from_id(edge[2], u)
+    isnothing(idx) ? state_index_from_id(edge[1], u; inflow = false) : idx
 end
