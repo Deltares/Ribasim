@@ -80,7 +80,7 @@ def pidcontrolstaticschema_migration(df: DataFrame, schema_version: int) -> Data
 
 
 def outletstaticschema_migration(df: DataFrame, schema_version: int) -> DataFrame:
-    if schema_version == 1:
+    if schema_version < 2:
         warnings.warn("Migrating outdated Outlet / static table.", UserWarning)
         # First remove automatically added empty column.
         df.drop(columns="min_upstream_level", inplace=True, errors="ignore")
