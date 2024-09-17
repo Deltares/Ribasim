@@ -11,13 +11,13 @@ $$
 which is a system of coupled first order differential equations.
 
 The model is given by a directed graph, consisting of a set of node IDs (vertices) $V$ and edges $E$, consisting of ordered pairs of node IDs.
-We denote the subset of the nodes given by the basins $B \subset V$, and the subset of nodes that prescribe flow $N \subset V$.
+We denote the subset of the nodes given by the Basins $B \subset V$, and the subset of nodes that prescribe flow $N \subset V$.
 
 The states $\mathbf{u}$ of the model are given by cumulative flows since the start of the simulation as prescribed by the nodes $N$:
 $$
 	u_n(t) = \int_{t_0}^t q_n\text{d}t' \quad \forall n \in N,
 $$
-as well as by the basin forcings:
+as well as by the Basin forcings:
 $$
 	u_b^\text{forcing}(t) = \int_{t_0}^t q_b^\text{forcing}\text{d}t' \quad \forall b \in B.
 $$
@@ -27,7 +27,7 @@ $$
 	u_i(t_0) = 0 \quad \forall i.
 $$
 
-From these cumulative flows, the storage in each basin can be determined at each point in time:
+From these cumulative flows, the storage in each Basin can be determined at each point in time:
 $$
 	S_b(t) = S_i(0) + S^\text{exact}(t) - u_b^\text{forcing}(t) + \sum_{n\;|\;(n,b)\in E} u(t) - \sum_{n\;|\;(b,n)\in E} u(t),
 $$
@@ -35,12 +35,12 @@ $$
 i.e. the storage is given by:
 
 - the initial storage;
-- Plus the exactly integrated flows (more on that below);
+- plus the exactly integrated flows (more on that below);
 - minus the cumulative outgoing forcings;
 - plus the cumulative horizontal inflows;
 - minus the cumulative horizontal outflows.
 
-From these storages in combination with the basin profiles the basin levels $h$ are computed.
+From these storages in combination with the Basin profiles the Basin levels $h$ are computed.
 The relationship between the profile and the storage is given by
 $$
 	S_b = \int_{h_0}^h A_b(\ell)\text{d}\ell,
@@ -52,7 +52,7 @@ These levels are then inputs for determining the flows prescribed by the nodes $
 $$
 	\frac{\text{d}h}{\text{d}t} = \frac{1}{A_b},
 $$
-and so areas of zero are not allowed in the basin profiles.
+and so areas of zero are not allowed in the Basin profiles.
 
 ## The PID control integral state
 
@@ -64,7 +64,7 @@ This is the error integral for PID control, further explained in [PID equations]
 The more states the problem has, the more time it takes to solve it.
 Therefore we want to minimize the number of states.
 Flows do not have to be states when they can be integrated over time exactly because they do not depend on the other states.
-This is true for flow boundaries, precipitation (which uses a fixed basin area) and drainage.
+This is true for FlowBoundary nodes, and Basin precipitation (which uses a fixed basin area) and drainage.
 
 ## The Jacobian
 
@@ -81,16 +81,17 @@ i.e. $J_{i,j}$ quantifies how $f_j$. the time derivative of state $j$, changes w
 
 ## Why this formulation
 
-You might wonder why in the above explanation the states are given by the cumulative flows and not by the basin storages, which is arguably conceptually simpler.
-The reason is that we do not just want to model the storages in the basins over time, but we also want accurate output of each individual flow, e.g. to model the spread of pollutants.
+You might wonder why in the above explanation the states are given by the cumulative flows and not by the Basin storages, which is arguably conceptually simpler.
+The reason is that we do not just want to model the storages in the Basins over time, but we also want accurate output of each individual flow, e.g. to model the spread of pollutants.
 
-When the states are given by the storages, generally the individual flows can not accurately be computed from that as a post processing step.
+When the states are given by the storages, generally the individual flows can not accurately be computed from that as a post processing step, because there are more flows than storages.
+Also, we can only compute flows at individual points in time explicitly, not over a whole interval.
 When the states are given by the cumulative flows however, the output of the problem solve gives these flows directly, and from those the storage over time can be computed accurately.
-Hence in short, the formulation above gives more information than a formulation with basin storages as states.
+Hence in short, the formulation above gives more information than a formulation with Basin storages as states.
 
 ## Numerical solution
 
-Ribasim uses `OrdinaryDiffEq.jl` to provide a numerical solution to the water balance equations.
+Ribasim uses [OrdinaryDiffEq.jl](https://github.com/SciML/OrdinaryDiffEq.jl/) to provide a numerical solution to the water balance equations.
 Changes to forcings or parameters such as precipitation, but also the allocated water abstraction is managed through the use of callback functions [@callbacks].
 In a coupled run, the exchanges with MODFLOW 6 are also managed via the use of a callback function.
 For more a more in-depth discussion of numerical computations see [Numerical considerations](numerics.qmd).

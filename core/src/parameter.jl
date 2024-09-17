@@ -842,3 +842,8 @@ const ModelGraph = MetaGraph{
     water_balance_abstol::Float64
     water_balance_reltol::Float64
 end
+
+# To opt-out of type checking for ForwardDiff
+function DiffEqBase.anyeltypedual(::Parameters, ::Type{Val{counter}}) where {counter}
+    Any
+end
