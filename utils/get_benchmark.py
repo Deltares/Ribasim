@@ -9,7 +9,7 @@ To access and download a specific folder in MinIO server
 minioServer: the access point to MinIO for Deltares
 accessKey: the credentials username
 secreyKey: input from the terminal, the credentials password
-pathToFolder: input from the terminal, the path to the folder to download. E.g. "benchmark/", "hws_2024_7_0/"
+pathToFolder: input from the terminal, the path to the folder to download. E.g. "benchmark/", "hws_2024_7_0/", "hws_migration"
 """
 
 minioServer = "s3.deltares.nl"

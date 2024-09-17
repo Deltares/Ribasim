@@ -124,6 +124,17 @@ class Model(FileModel):
         self.edge.df.set_geometry("geometry", inplace=True, crs=self.crs)
         return self
 
+    @model_validator(mode="after")
+    def _update_used_ids(self) -> "Model":
+        # Only update the used node IDs if we read from a database
+        if "database" in context_file_loading.get():
+            df = self.node_table().df
+            assert df is not None
+            if len(df.index) > 0:
+                self._used_node_ids.node_ids.update(df.index)
+                self._used_node_ids.max_node_id = df.index.max()
+        return self
+
     @field_serializer("input_dir", "results_dir")
     def _serialize_path(self, path: Path) -> str:
         return str(path)
@@ -178,8 +189,6 @@ class Model(FileModel):
         return fn
 
     def _save(self, directory: DirectoryPath, input_dir: DirectoryPath):
-        # Set CRS of the tables to the CRS stored in the Model object
-        self.set_crs(self.crs)
         db_path = directory / input_dir / "database.gpkg"
         db_path.parent.mkdir(parents=True, exist_ok=True)
         db_path.unlink(missing_ok=True)
@@ -225,8 +234,12 @@ class Model(FileModel):
 
     def node_table(self) -> NodeTable:
         """Compute the full sorted NodeTable from all node types."""
-        df_chunks = [node.node.df.set_crs(self.crs) for node in self._nodes()]  # type:ignore
-        df = pd.concat(df_chunks)
+        df_chunks = [node.node.df for node in self._nodes()]
+        df = (
+            pd.concat(df_chunks)
+            if df_chunks
+            else pd.DataFrame(index=pd.Index([], name="node_id"))
+        )
         node_table = NodeTable(df=df)
         node_table.sort()
         assert node_table.df is not None
@@ -294,7 +307,7 @@ class Model(FileModel):
 
     def _validate_model(self):
         df_edge = self.edge.df
-        df_chunks = [node.node.df.set_crs(self.crs) for node in self._nodes()]
+        df_chunks = [node.node.df for node in self._nodes()]
         df_node = pd.concat(df_chunks)
 
         df_graph = df_edge

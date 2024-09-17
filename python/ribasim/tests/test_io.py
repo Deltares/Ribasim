@@ -202,6 +202,19 @@ def test_node_autoincrement():
     assert nbasin.node_id == 101
 
 
+def test_node_autoincrement_existing_model(basic, tmp_path):
+    model = basic
+
+    model.write(tmp_path / "ribasim.toml")
+    nmodel = Model.read(tmp_path / "ribasim.toml")
+
+    assert nmodel._used_node_ids.max_node_id == 17
+    assert nmodel._used_node_ids.node_ids == set(range(1, 18)) - {13}
+
+    assert nmodel.edge._used_edge_ids.max_node_id == 16
+    assert nmodel.edge._used_edge_ids.node_ids == set(range(1, 17))
+
+
 def test_node_empty_geometry():
     model = Model(
         starttime="2020-01-01",

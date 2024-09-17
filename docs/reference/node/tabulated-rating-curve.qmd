@@ -85,12 +85,13 @@ The table must by sorted by time, and per time it must be sorted by `node_id`.
 With this the rating curves can be updated over time.
 Note that a `node_id` can be either in this table or in the static one, but not both.
 
-column    | type     | unit                  | restriction
---------- | -------  | --------------------- | -----------
-node_id   | Int32    | -                     | sorted
-time      | DateTime | -                     | sorted per node_id
-level     | Float64  | $\text{m}$            | sorted per node_id per time
-flow_rate | Float64  | $\text{m}^3/\text{s}$ | non-negative
+column               | type     | unit                  | restriction
+-------------------- | -------  | --------------------- | -----------
+node_id              | Int32    | -                     | sorted
+time                 | DateTime | -                     | sorted per node_id
+level                | Float64  | $\text{m}$            | sorted per node_id per time
+flow_rate            | Float64  | $\text{m}^3/\text{s}$ | non-negative
+max_downstream_level | Float64  | $\text{m}$            | (optional)
 
 # Equations
 
@@ -109,3 +110,5 @@ Where:
 - $f$ is a piecewise linear function describing the given rating curve $Q(h)$
 - $\phi$ is the reduction factor, which smoothly reduces flow based on all of these criteria:
   - The upstream volume is below $10 m^3$.
+  - The upstream level is less than $0.02 m$ above the downstream level.
+  - The downstream level is above `max_downstream_level` - $0.02 m$

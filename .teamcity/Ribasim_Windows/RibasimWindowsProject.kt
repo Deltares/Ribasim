@@ -89,7 +89,7 @@ object Windows_TestDelwaqCoupling : BuildType({
     templates(WindowsAgent, GithubCommitStatusIntegration, TestDelwaqCouplingWindows)
     name = "Test Delwaq coupling"
 
-    artifactRules = "ribasim/coupling/delwaq/model"
+    artifactRules = "ribasim/python/ribasim/ribasim/delwaq/model"
 
     triggers {
         vcs {
