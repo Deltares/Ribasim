@@ -214,6 +214,7 @@ function save_flow(u, t, integrator)
     inflow_mean = zeros(length(basin.node_id))
     outflow_mean = zeros(length(basin.node_id))
 
+    # Flow contributions from horizontal flow states
     for (flow, inflow_edge, outflow_edge) in
         zip(flow_mean, state_inflow_edge, state_outflow_edge)
         inflow_id = inflow_edge.edge[1]
@@ -235,6 +236,7 @@ function save_flow(u, t, integrator)
         end
     end
 
+    # Flow contributions from flow boundaries
     flow_boundary_mean = copy(flow_boundary.cumulative_flow_saveat) ./ Δt
     flow_boundary.cumulative_flow_saveat .= 0.0
 
@@ -253,7 +255,7 @@ function save_flow(u, t, integrator)
     @. basin.cumulative_precipitation_saveat = 0.0
     @. basin.cumulative_drainage_saveat = 0.0
 
-    return SavedFlow(;
+    saved_flow = SavedFlow(;
         flow = flow_mean,
         inflow = inflow_mean,
         outflow = outflow_mean,
@@ -261,6 +263,66 @@ function save_flow(u, t, integrator)
         precipitation,
         drainage,
     )
+    check_water_balance_error(p, saved_flow, t, Δt, u)
+    return saved_flow
+end
+
+function check_water_balance_error(
+    p::Parameters,
+    saved_flow::SavedFlow,
+    t::Float64,
+    Δt::Float64,
+    u::ComponentVector,
+)::Nothing
+    (; basin, water_balance_abstol, water_balance_reltol) = p
+    errors = false
+    current_storage = basin.current_storage[parent(u)]
+
+    for (
+        i,
+        (
+            inflow_rate,
+            outflow_rate,
+            precipitation,
+            drainage,
+            evaporation,
+            infiltration,
+            s_now,
+            s_prev,
+        ),
+    ) in enumerate(
+        zip(
+            saved_flow.inflow,
+            saved_flow.outflow,
+            saved_flow.precipitation,
+            saved_flow.drainage,
+            saved_flow.flow.evaporation,
+            saved_flow.flow.infiltration,
+            current_storage,
+            basin.storage_prev_saveat,
+        ),
+    )
+        storage_rate = (s_now - s_prev) / Δt
+        total_in = inflow_rate + precipitation + drainage
+        total_out = outflow_rate + evaporation + infiltration
+        balance_error = storage_rate - (total_in - total_out)
+        mean_flow_rate = (total_in + total_out) / 2
+        relative_error = iszero(mean_flow_rate) ? 0.0 : balance_error / mean_flow_rate
+
+        if abs(balance_error) > water_balance_abstol &&
+           abs(relative_error) > water_balance_reltol
+            errors = true
+            id = id_from_state_index(p, saved_flow.flow, i)
+            @error "Too large water balance error" id balance_error relative_error
+        end
+    end
+    if errors
+        t = datetime_since(t, p.starttime)
+        error("Too large water balance error(s) detected at t = $t")
+    end
+
+    @. basin.storage_prev_saveat = current_storage
+    return nothing
 end
 
 function save_solver_stats(u, t, integrator)

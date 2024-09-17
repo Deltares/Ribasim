@@ -654,6 +654,7 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     )
 
     basin = @set basin.storage0 = get_storages_from_levels(basin, state.level)
+    basin = @set basin.storage_prev_saveat = copy(basin.storage0)
     @assert length(basin.storage0) == n "Basin / state length differs from number of Basins"
     return basin
 end
@@ -1289,6 +1290,8 @@ function Parameters(db::DB, config::Config)::Parameters
         level_demand,
         flow_demand,
         subgrid,
+        config.solver.water_balance_abstol,
+        config.solver.water_balance_reltol,
     )
 
     collect_control_mappings!(p)

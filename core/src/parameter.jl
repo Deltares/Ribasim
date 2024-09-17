@@ -227,6 +227,8 @@ edge: (from node ID, to node ID)
     edge::Tuple{NodeID, NodeID}
 end
 
+Base.length(::EdgeMetadata) = 1
+
 """
 The update of an parameter given by a value and a reference to the target
 location of the variable in memory
@@ -307,6 +309,7 @@ end
     vertical_flux_bmi::V2 = zeros(length(node_id))
     # Initial_storage
     storage0::Vector{Float64} = zeros(length(node_id))
+    storage_prev_saveat::Vector{Float64} = zeros(length(node_id))
     # Analytically integrated forcings
     cumulative_precipitation::Vector{Float64} = zeros(length(node_id))
     cumulative_drainage::Vector{Float64} = zeros(length(node_id))
@@ -810,7 +813,7 @@ const ModelGraph = MetaGraph{
     Float64,
 }
 
-@kwdef struct Parameters{C1, C2, V1, V2}
+@kwdef struct Parameters{C1, C2, C3, C4, V1, V2}
     starttime::DateTime
     graph::ModelGraph
     allocation::Allocation
@@ -831,8 +834,11 @@ const ModelGraph = MetaGraph{
     flow_demand::FlowDemand
     subgrid::Subgrid
     # Per state the in- and outflow edges associated with that state (if theu exist)
-    state_inflow_edge::Vector{EdgeMetadata} = EdgeMetadata[]
-    state_outflow_edge::Vector{EdgeMetadata} = EdgeMetadata[]
+    state_inflow_edge::C3 = ComponentVector()
+    state_outflow_edge::C4 = ComponentVector()
     all_nodes_active::Base.RefValue{Bool} = Ref(false)
     tprev::Base.RefValue{Float64} = Ref(0.0)
+    # Water balance tolerances
+    water_balance_abstol::Float64
+    water_balance_reltol::Float64
 end

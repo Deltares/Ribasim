@@ -954,8 +954,9 @@ end
 function set_state_flow_edges(p::Parameters, u0::ComponentVector)::Parameters
     (; user_demand, graph) = p
 
-    state_inflow_edge = EdgeMetadata[]
-    state_outflow_edge = EdgeMetadata[]
+    components = Symbol[]
+    state_inflow_edges = Vector{EdgeMetadata}[]
+    state_outflow_edges = Vector{EdgeMetadata}[]
 
     placeholder_edge = EdgeMetadata(
         0,
@@ -968,6 +969,9 @@ function set_state_flow_edges(p::Parameters, u0::ComponentVector)::Parameters
     for node_name in keys(u0)
         if hasfield(Parameters, node_name)
             node::AbstractParameterNode = getfield(p, node_name)
+            push!(components, node_name)
+            state_inflow_edges_component = EdgeMetadata[]
+            state_outflow_edges_component = EdgeMetadata[]
             for id in node.node_id
                 inflow_ids_ = collect(inflow_ids(p.graph, id))
                 outflow_ids_ = collect(outflow_ids(p.graph, id))
@@ -980,7 +984,7 @@ function set_state_flow_edges(p::Parameters, u0::ComponentVector)::Parameters
                 else
                     error()
                 end
-                push!(state_inflow_edge, inflow_edge)
+                push!(state_inflow_edges_component, inflow_edge)
 
                 outflow_edge = if length(outflow_ids_) == 0
                     placeholder_edge
@@ -990,19 +994,25 @@ function set_state_flow_edges(p::Parameters, u0::ComponentVector)::Parameters
                 else
                     error()
                 end
-                push!(state_outflow_edge, outflow_edge)
+                push!(state_outflow_edges_component, outflow_edge)
             end
+            push!(state_inflow_edges, state_inflow_edges_component)
+            push!(state_outflow_edges, state_outflow_edges_component)
         elseif startswith(String(node_name), "user_demand")
+            push!(components, node_name)
             placeholder_edges = fill(placeholder_edge, length(user_demand.node_id))
             if node_name == :user_demand_inflow
-                append!(state_inflow_edge, user_demand.inflow_edge)
-                append!(state_outflow_edge, placeholder_edges)
+                push!(state_inflow_edges, user_demand.inflow_edge)
+                push!(state_outflow_edges, placeholder_edges)
             elseif node_name == :user_demand_outflow
-                append!(state_inflow_edge, placeholder_edges)
-                append!(state_outflow_edge, user_demand.outflow_edge)
+                push!(state_inflow_edges, placeholder_edges)
+                push!(state_outflow_edges, user_demand.outflow_edge)
             end
         end
     end
+
+    state_inflow_edge = ComponentVector(NamedTuple(zip(components, state_inflow_edges)))
+    state_outflow_edge = ComponentVector(NamedTuple(zip(components, state_outflow_edges)))
 
     p = @set p.state_inflow_edge = state_inflow_edge
     p = @set p.state_outflow_edge = state_outflow_edge
