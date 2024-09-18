@@ -170,6 +170,7 @@ end
     db = SQLite.DB(db_path)
 
     p = Ribasim.Parameters(db, cfg)
+    close(db)
     t0 = 0.0
     u0 = Ribasim.build_state_vector(p)
     du0 = copy(u0)
@@ -191,6 +192,7 @@ end
     db = SQLite.DB(db_path)
 
     p = Ribasim.Parameters(db, cfg)
+    close(db)
     u0 = Ribasim.build_state_vector(p)
     du0 = copy(u0)
     jac_prototype = Ribasim.get_jac_prototype(du0, u0, p, t0)

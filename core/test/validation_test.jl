@@ -88,7 +88,6 @@ end
     function set_edge_metadata!(id_1, id_2, edge_type)
         graph[id_1, id_2] = EdgeMetadata(;
             id = 0,
-            flow_idx = 0,
             type = edge_type,
             subnetwork_id_source = 0,
             edge = (id_1, id_2),
@@ -151,7 +150,6 @@ end
     function set_edge_metadata!(id_1, id_2, edge_type)
         graph[id_1, id_2] = EdgeMetadata(;
             id = 0,
-            flow_idx = 0,
             type = edge_type,
             subnetwork_id_source = 0,
             edge = (id_1, id_2),
@@ -199,6 +197,7 @@ end
     db_path = Ribasim.input_path(cfg, cfg.database)
     db = SQLite.DB(db_path)
     p = Ribasim.Parameters(db, cfg)
+    close(db)
 
     logger = TestLogger()
     with_logger(logger) do
@@ -281,6 +280,7 @@ end
     with_logger(logger) do
         @test !Ribasim.valid_edge_types(db)
     end
+    close(db)
 
     @test length(logger.logs) == 2
     @test logger.logs[1].level == Error
