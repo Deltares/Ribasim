@@ -30,9 +30,9 @@ function create_graph(db::DB, config::Config)::MetaGraph
     node_ids = Dict{Int32, Set{NodeID}}()
     # Source edges per subnetwork
     edges_source = Dict{Int32, Set{EdgeMetadata}}()
-    # The flow counter gives a unique consecutive id to the
-    # flow edges to index the flow vectors
-    flow_counter = 0
+    # The metadata of the flow edges in the order in which they are in the input
+    # and will be in the output
+    flow_edges = EdgeMetadata[]
     # Dictionary from flow edge to index in flow vector
     graph = MetaGraph(
         DiGraph();
@@ -79,11 +79,13 @@ function create_graph(db::DB, config::Config)::MetaGraph
         end
         edge_metadata = EdgeMetadata(;
             id = edge_id,
-            flow_idx = edge_type == EdgeType.flow ? flow_counter + 1 : 0,
             type = edge_type,
             subnetwork_id_source = subnetwork_id,
             edge = (id_src, id_dst),
         )
+        if edge_type == EdgeType.flow
+            push!(flow_edges, edge_metadata)
+        end
         if haskey(graph, id_src, id_dst)
             errors = true
             @error "Duplicate edge" id_src id_dst
@@ -104,7 +106,6 @@ function create_graph(db::DB, config::Config)::MetaGraph
         error("Incomplete connectivity in subnetwork")
     end
 
-    flow_edges = [edge for edge in values(graph.edge_data) if edge.type == EdgeType.flow]
     graph_data = (; node_ids, edges_source, flow_edges, config.solver.saveat)
     graph = @set graph.graph_data = graph_data
 

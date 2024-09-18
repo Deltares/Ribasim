@@ -213,7 +213,6 @@ end
 """
 Type for storing metadata of edges in the graph:
 id: ID of the edge (only used for labeling flow output)
-flow_idx: Index in the vector of flows
 type: type of the edge
 subnetwork_id_source: ID of subnetwork where this edge is a source
   (0 if not a source)
@@ -221,7 +220,6 @@ edge: (from node ID, to node ID)
 """
 @kwdef struct EdgeMetadata
     id::Int32
-    flow_idx::Int
     type::EdgeType.T
     subnetwork_id_source::Int32
     edge::Tuple{NodeID, NodeID}

@@ -263,44 +263,41 @@ function save_flow(u, t, integrator)
         precipitation,
         drainage,
     )
-    check_water_balance_error(p, saved_flow, t, Δt, u)
+    check_water_balance_error(integrator, saved_flow, Δt)
     return saved_flow
 end
 
 function check_water_balance_error(
-    p::Parameters,
+    integrator::DEIntegrator,
     saved_flow::SavedFlow,
-    t::Float64,
     Δt::Float64,
-    u::ComponentVector,
 )::Nothing
+    (; u, p, t) = integrator
     (; basin, water_balance_abstol, water_balance_reltol) = p
     errors = false
     current_storage = basin.current_storage[parent(u)]
+    formulate_storages!(current_storage, u, u, p, t)
 
     for (
-        i,
-        (
-            inflow_rate,
-            outflow_rate,
-            precipitation,
-            drainage,
-            evaporation,
-            infiltration,
-            s_now,
-            s_prev,
-        ),
-    ) in enumerate(
-        zip(
-            saved_flow.inflow,
-            saved_flow.outflow,
-            saved_flow.precipitation,
-            saved_flow.drainage,
-            saved_flow.flow.evaporation,
-            saved_flow.flow.infiltration,
-            current_storage,
-            basin.storage_prev_saveat,
-        ),
+        inflow_rate,
+        outflow_rate,
+        precipitation,
+        drainage,
+        evaporation,
+        infiltration,
+        s_now,
+        s_prev,
+        id,
+    ) in zip(
+        saved_flow.inflow,
+        saved_flow.outflow,
+        saved_flow.precipitation,
+        saved_flow.drainage,
+        saved_flow.flow.evaporation,
+        saved_flow.flow.infiltration,
+        current_storage,
+        basin.storage_prev_saveat,
+        basin.node_id,
     )
         storage_rate = (s_now - s_prev) / Δt
         total_in = inflow_rate + precipitation + drainage
@@ -312,7 +309,6 @@ function check_water_balance_error(
         if abs(balance_error) > water_balance_abstol &&
            abs(relative_error) > water_balance_reltol
             errors = true
-            id = id_from_state_index(p, saved_flow.flow, i)
             @error "Too large water balance error" id balance_error relative_error
         end
     end

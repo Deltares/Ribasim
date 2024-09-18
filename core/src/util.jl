@@ -960,7 +960,6 @@ function set_state_flow_edges(p::Parameters, u0::ComponentVector)::Parameters
 
     placeholder_edge = EdgeMetadata(
         0,
-        0,
         EdgeType.flow,
         0,
         (NodeID(:Terminal, 0, 0), NodeID(:Terminal, 0, 0)),
@@ -1041,6 +1040,10 @@ function id_from_state_index(
     elseif component in [:infiltration, :evaporation]
         component = :basin
     end
+
+    @show global_idx
+    @show NT
+    @show local_idx
 
     getfield(p, component).node_id[local_idx]
 end
