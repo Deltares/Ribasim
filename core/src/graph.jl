@@ -264,7 +264,7 @@ function get_flow(
             boundary_flow[from_id.idx]
         end
     else
-        flow[state_index_from_edge(flow, edge)]
+        flow[get_state_index(flow, edge)]
     end
 end
 

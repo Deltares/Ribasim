@@ -658,7 +658,7 @@ function get_variable_ref(
                 Ref(Float64[], 0)
             else
                 # Index in the state vector (inflow)
-                flow_idx = state_index_from_id(node_id, u)
+                flow_idx = get_state_index(node_id, u)
                 PreallocationRef(cache(1), flow_idx; from_du = true)
             end
         else
@@ -1052,7 +1052,7 @@ function id_from_state_index(
     getfield(p, component).node_id[local_idx]
 end
 
-function state_index_from_id(
+function get_state_index(
     id::NodeID,
     ::ComponentVector{A, B, <:Tuple{<:Axis{NT}}};
     inflow::Bool = true,
@@ -1071,9 +1071,9 @@ function state_index_from_id(
     return nothing
 end
 
-function state_index_from_edge(u::ComponentVector, edge::Tuple{NodeID, NodeID})::Int
-    idx = state_index_from_id(edge[2], u)
-    isnothing(idx) ? state_index_from_id(edge[1], u; inflow = false) : idx
+function get_state_index(u::ComponentVector, edge::Tuple{NodeID, NodeID})::Int
+    idx = get_state_index(edge[2], u)
+    isnothing(idx) ? get_state_index(edge[1], u; inflow = false) : idx
 end
 
 """

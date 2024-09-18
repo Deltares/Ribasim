@@ -182,7 +182,7 @@ function flow_update_on_edge(
             0.0
         end
     else
-        flow_idx = state_index_from_edge(u, edge_src)
+        flow_idx = get_state_index(u, edge_src)
         u[flow_idx] - uprev[flow_idx]
     end
 end
