@@ -242,8 +242,10 @@ function inflow_id(graph::MetaGraph, id::NodeID)::NodeID
 end
 
 """
-Get the specific q from the input vector flow which has the same components as
+Get the specific q from the input vector `flow` which has the same components as
 the state vector, given an edge (inflow_id, outflow_id).
+`flow` can be either instantaneous or integrated/averaged. Instantaneous FlowBoundary flows can be obtained
+from the parameters, but integrated/averaged FlowBoundary flows must be provided via `boundary_flow`.
 """
 function get_flow(
     flow::ComponentVector,
@@ -255,8 +257,12 @@ function get_flow(
     (; flow_boundary) = p
     from_id = edge[1]
     if from_id.type == NodeType.FlowBoundary
-        isnothing(boundary_flow) ? flow_boundary.flow_rate[from_id.idx](t) :
-        boundary_flow[from_id.idx]
+        if boundary_flow === nothing
+            flow_boundary.active[from_id.idx] ? flow_boundary.flow_rate[from_id.idx](t) :
+            0.0
+        else
+            boundary_flow[from_id.idx]
+        end
     else
         flow[state_index_from_edge(flow, edge)]
     end

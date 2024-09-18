@@ -152,12 +152,7 @@ function Model(config::Config)::Model
         progress_steps = 100,
         callback,
         tstops,
-        isoutofdomain = (u, p, t) -> begin
-            (; current_storage) = p.basin
-            current_storage = current_storage[parent(u)]
-            formulate_storages!(current_storage, u, u, p, t)
-            any(<(0), current_storage)
-        end,
+        isoutofdomain,
         saveat,
         adaptive,
         dt,
@@ -175,7 +170,7 @@ function Model(config::Config)::Model
     end
 
     model = Model(integrator, config, saved)
-    # write_results(model)  # check whether we can write results to file
+    write_results(model)  # check whether we can write results to file
     return model
 end
 

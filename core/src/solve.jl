@@ -69,7 +69,7 @@ function formulate_continuous_control!(du, p, t)::Nothing
 end
 
 """
-Compute the storages, levels and areas of all basins given the
+Compute the storages, levels and areas of all Basins given the
 state u and the time t.
 """
 function set_current_basin_properties!(
@@ -135,7 +135,7 @@ function formulate_storages!(
     # Current storage: initial conditdion +
     # total inflows and outflows since the start
     # of the simulation
-    @. current_storage = basin.storage0
+    current_storage .= basin.storage0
     formulate_storage!(current_storage, basin, du, u)
     formulate_storage!(current_storage, tprev[], t, flow_boundary)
     formulate_storage!(current_storage, t, u.tabulated_rating_curve, tabulated_rating_curve)
@@ -164,13 +164,13 @@ function formulate_storage!(
 )
     (; current_cumulative_precipitation, current_cumulative_drainage) = basin
 
-    @. current_storage -= u.evaporation
-    @. current_storage -= u.infiltration
+    current_storage .-= u.evaporation
+    current_storage .-= u.infiltration
 
     current_cumulative_precipitation = current_cumulative_precipitation[parent(du)]
     current_cumulative_drainage = current_cumulative_drainage[parent(du)]
-    @. current_storage += current_cumulative_precipitation
-    @. current_storage += current_cumulative_drainage
+    current_storage .+= current_cumulative_precipitation
+    current_storage .+= current_cumulative_drainage
 end
 
 """
@@ -320,7 +320,7 @@ function formulate_pid_control!(
 
         if !iszero(K_d)
             dlevel_demand = derivative(target[i], t)
-            dstorage_listened_basin_old = formulate_dstorage(du, p, t, listened_node_id)#du.storage[listened_node_id.idx]
+            dstorage_listened_basin_old = formulate_dstorage(du, p, t, listened_node_id)
             # The expression below is the solution to an implicit equation for
             # dstorage_listened_basin. This equation results from the fact that if the derivative
             # term in the PID controller is used, the controlled pump flow rate depends on itself.

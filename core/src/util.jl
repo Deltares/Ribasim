@@ -355,8 +355,10 @@ function Base.getindex(fv::FlatVector, i::Int)
 end
 
 "Construct a FlatVector from one of the fields of SavedFlow."
-FlatVector(saveval::Vector{<:SavedFlow}, sym::Symbol) =
-    FlatVector(isempty(saveval) ? Vector{Float64}[] : getfield.(saveval, sym))
+function FlatVector(saveval::Vector{<:SavedFlow}, sym::Symbol)
+    v = isempty(saveval) ? Vector{Float64}[] : getfield.(saveval, sym)
+    FlatVector(v)
+end
 
 """
 Function that goes smoothly from 0 to 1 in the interval [0,threshold],
@@ -926,7 +928,7 @@ function OrdinaryDiffEqNonlinearSolve.relax!(
     @. z_tmp = nlsolver.z + dz
     resid_before = residual(z_tmp, integrator, nlsolver, f)
     relax!(dz, nlsolver, integrator, f, linesearch)
-    @. z_tmp = nlsolver.z + 0.95 * dz
+    @. z_tmp = nlsolver.z + dz
     resid_after = residual(z_tmp, integrator, nlsolver, f)
 
     # If the residual increased due to the relaxation, reject it
@@ -936,7 +938,8 @@ function OrdinaryDiffEqNonlinearSolve.relax!(
 end
 
 function build_state_vector(p::Parameters)
-    # It is assumed that the horizontal flow states come first
+    # It is assumed that the horizontal flow states come first in
+    # p.state_inflow_edge and p.state_outflow_edge
     return ComponentVector{Float64}(;
         tabulated_rating_curve = zeros(length(p.tabulated_rating_curve.node_id)),
         pump = zeros(length(p.pump.node_id)),
@@ -951,6 +954,11 @@ function build_state_vector(p::Parameters)
     )
 end
 
+"""
+Create vectors state_inflow_edge and state_outflow_edge which give for each state
+in the state vector in order the metadata of the edge that is associated with that state.
+Only for horizontal flows, which are assumed to come first in the state vector.
+"""
 function set_state_flow_edges(p::Parameters, u0::ComponentVector)::Parameters
     (; user_demand, graph) = p
 
@@ -981,7 +989,7 @@ function set_state_flow_edges(p::Parameters, u0::ComponentVector)::Parameters
                     inflow_id = only(inflow_ids_)
                     graph[inflow_id, id]
                 else
-                    error()
+                    error("Multiple inflows not supported")
                 end
                 push!(state_inflow_edges_component, inflow_edge)
 
@@ -991,7 +999,7 @@ function set_state_flow_edges(p::Parameters, u0::ComponentVector)::Parameters
                     outflow_id = only(outflow_ids_)
                     graph[id, outflow_id]
                 else
-                    error()
+                    error("Multiple outflows not supported")
                 end
                 push!(state_outflow_edges_component, outflow_edge)
             end
@@ -1025,7 +1033,7 @@ function id_from_state_index(
 )::NodeID where {NT}
     local_idx = 0
     component = Symbol()
-    for (comp, range) in zip(keys(NT), values(NT))
+    for (comp, range) in pairs(NT)
         if global_idx in range
             component = comp
             local_idx = global_idx - first(range) + 1
@@ -1040,10 +1048,6 @@ function id_from_state_index(
     elseif component in [:infiltration, :evaporation]
         component = :basin
     end
-
-    @show global_idx
-    @show NT
-    @show local_idx
 
     getfield(p, component).node_id[local_idx]
 end
@@ -1070,4 +1074,14 @@ end
 function state_index_from_edge(u::ComponentVector, edge::Tuple{NodeID, NodeID})::Int
     idx = state_index_from_id(edge[2], u)
     isnothing(idx) ? state_index_from_id(edge[1], u; inflow = false) : idx
+end
+
+"""
+Check whether any storages are negative given the state u.
+"""
+function isoutofdomain(u, p, t)
+    (; current_storage) = p.basin
+    current_storage = current_storage[parent(u)]
+    formulate_storages!(current_storage, u, u, p, t)
+    any(<(0), current_storage)
 end

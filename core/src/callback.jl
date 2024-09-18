@@ -27,12 +27,12 @@ function create_callbacks(
         FunctionCallingCallback(update_cumulative_flows!; func_start = false)
     push!(callbacks, integrated_flows_cb)
 
-    # Update basin forcings
+    # Update Basin forcings
     tstops = get_tstops(basin.time.time, starttime)
     basin_cb = PresetTimeCallback(tstops, update_basin!; save_positions = (false, false))
     push!(callbacks, basin_cb)
 
-    # Update tabulated_rating_curve q(h) relationships
+    # Update TabulatedRatingCurve Q(h) relationships
     tstops = get_tstops(tabulated_rating_curve.time.time, starttime)
     tabulated_rating_curve_cb = PresetTimeCallback(
         tstops,
@@ -84,7 +84,7 @@ end
 
 """
 Update with the latest timestep:
-- Cumulative flows/forcings which are exposed via the bmi
+- Cumulative flows/forcings which are exposed via the BMI
 - Cumulative flows/forcings which are integrated exactly
 - Cumulative flows/forcings which are input for the allocation algorithm
 - Cumulative flows/forcings which are realized demands in the allocation context
