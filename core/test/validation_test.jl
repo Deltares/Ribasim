@@ -487,7 +487,7 @@ end
 
     logger = TestLogger()
     with_logger(logger) do
-        @test_throws "AssertionError: Node id of type PidControl and index 1 is not defined" Ribasim.NodeID(
+        @test_throws "Node ID #1 of type PidControl is not defined." Ribasim.NodeID(
             :PidControl,
             1,
             db,
@@ -495,9 +495,6 @@ end
     end
 
     with_logger(logger) do
-        @test_throws "AssertionError: Node id of 20 is not defined or not unique" Ribasim.NodeID(
-            20,
-            db,
-        )
+        @test_throws "Node ID #20 is not defined." Ribasim.NodeID(20, db)
     end
 end
