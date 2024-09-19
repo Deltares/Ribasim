@@ -63,7 +63,7 @@ function NodeID(type::NodeType.T, value::Integer, db::DB)::NodeID
         ),
     )
     if idx <= 0
-        error("Node ID #$value of type $type is not defined.")
+        error("Node ID #$value of type $type is not in the Node table.")
     end
     return NodeID(type, value, idx)
 end
