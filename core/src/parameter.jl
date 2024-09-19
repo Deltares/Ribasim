@@ -75,7 +75,7 @@ function NodeID(value::Integer, db::DB)::NodeID
         "SELECT COUNT(*), node_type FROM Node WHERE node_type == (SELECT node_type FROM Node WHERE node_id == $value) AND node_id <= $value",
     )
     if only(idx) <= 0
-        error("Node ID #$value is not defined.")
+        error("Node ID #$value is not in the Node table.")
     end
     return NodeID(only(type), value, only(idx))
 end
