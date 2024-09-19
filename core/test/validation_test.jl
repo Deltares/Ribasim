@@ -487,7 +487,7 @@ end
 
     logger = TestLogger()
     with_logger(logger) do
-        @test_throws "Node ID #1 of type PidControl is not defined." Ribasim.NodeID(
+        @test_throws "Node ID #1 of type PidControl is not in the Node table." Ribasim.NodeID(
             :PidControl,
             1,
             db,
