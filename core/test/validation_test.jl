@@ -495,6 +495,6 @@ end
     end
 
     with_logger(logger) do
-        @test_throws "Node ID #20 is not defined." Ribasim.NodeID(20, db)
+        @test_throws "Node ID #20 is not in the Node table." Ribasim.NodeID(20, db)
     end
 end
