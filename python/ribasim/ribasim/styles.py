@@ -1,7 +1,8 @@
 import logging
-import sqlite3
+from contextlib import closing
 from datetime import datetime
 from pathlib import Path
+from sqlite3 import connect
 
 STYLES_DIR = Path(__file__).parent / "styles"
 
@@ -98,19 +99,19 @@ def _no_existing_style(conn, style_name):
 
 
 def _add_styles_to_geopackage(gpkg_path: Path, layer: str):
-    with sqlite3.connect(gpkg_path) as conn:
-        if not conn.execute(SQL_STYLES_EXIST).fetchone()[0]:
-            conn.execute(CREATE_TABLE_SQL)
-            conn.execute(INSERT_CONTENTS_SQL)
+    with closing(connect(gpkg_path)) as connection:
+        if not connection.execute(SQL_STYLES_EXIST).fetchone()[0]:
+            connection.execute(CREATE_TABLE_SQL)
+            connection.execute(INSERT_CONTENTS_SQL)
 
         style_name = f"{layer.replace(' / ', '_')}Style"
         style_qml = STYLES_DIR / f"{style_name}.qml"
 
-        if style_qml.exists() and _no_existing_style(conn, style_name):
+        if style_qml.exists() and _no_existing_style(connection, style_name):
             description = f"Ribasim style for layer: {layer}"
             update_date_time = f"{datetime.now().isoformat()}Z"
 
-            conn.execute(
+            connection.execute(
                 INSERT_ROW_SQL,
                 {
                     "layer": layer,
