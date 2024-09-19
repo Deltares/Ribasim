@@ -18,10 +18,10 @@ time table, it is empty, or all timestamps of that variable are missing.
 column                | type    | unit                  | restriction
 ---------             | ------- | --------------------- | -----------
 node_id               | Int32   | -                     | sorted
-precipitation         | Float64 | $\text{m}/\text{s}$   | non-negative
-potential_evaporation | Float64 | $\text{m}/\text{s}$   | non-negative
-drainage              | Float64 | $\text{m}^3/\text{s}$ | non-negative
-infiltration          | Float64 | $\text{m}^3/\text{s}$ | non-negative
+precipitation         | Float64 | $\text m}/\text{s}$   | non-negative
+potential_evaporation | Float64 | $\text m}/\text{s}$   | non-negative
+drainage              | Float64 | $\text m}^3/\text{s}$ | non-negative
+infiltration          | Float64 | $\text m}^3/\text{s}$ | non-negative
 
 Note that if variables are not set in the static table, default values are used when
 possible. These are generally zero, e.g. no precipitation, no inflow. If it is not possible
@@ -93,7 +93,7 @@ The state table gives the initial water levels of all Basins.
 column    | type    | unit         | restriction
 --------- | ------- | ------------ | -----------
 node_id   | Int32   | -            | sorted
-level     | Float64 | $\text{m}$   | $\ge$ basin bottom
+level     | Float64 | $\text m}$   | $\ge$ basin bottom
 
 Each Basin ID needs to be in the table.
 To use the final state of an earlier simulation as an initial condition, copy [`results/basin_state.arrow`](/reference/usage.qmd#sec-state) over to the `input_dir`, and point the TOML to it:
@@ -114,8 +114,8 @@ The profile table defines the physical dimensions of the storage reservoir of ea
 column    | type    | unit         | restriction
 --------- | ------- | ------------ | -----------
 node_id   | Int32   | -            | sorted
-area      | Float64 | $\text{m}^2$ | non-negative, per node_id: start positive and not decreasing
-level     | Float64 | $\text{m}$   | per node_id: increasing
+area      | Float64 | $\text m}^2$ | non-negative, per node_id: start positive and not decreasing
+level     | Float64 | $\text m}$   | per node_id: increasing
 
 The level is the level at the basin outlet. All levels are defined in meters above a datum
 that is the same for the entire model. An example of the first 4 rows of such a table is
@@ -369,8 +369,8 @@ column        | type    | unit         | restriction
 ------------- | ------- | ------------ | ------------------------
 subgrid_id    | Int32   | -            | sorted
 node_id       | Int32   | -            | constant per subgrid_id
-basin_level   | Float64 | $\text{m}$   | sorted per subgrid_id
-subgrid_level | Float64 | $\text{m}$   | sorted per subgrid_id
+basin_level   | Float64 | $\text m}$   | sorted per subgrid_id
+subgrid_level | Float64 | $\text m}$   | sorted per subgrid_id
 
 The table below shows example input for two subgrid elements:
 
@@ -399,8 +399,8 @@ column        | type     | unit                     | restriction
 node_id       | Int32    | -                        | sorted
 time          | DateTime | -                        | sorted per node_id
 substance     | String   |                          | can correspond to known Delwaq substances
-drainage      | Float64  | $\text{g}/\text{m}^3$ | (optional)
-precipitation | Float64  | $\text{g}/\text{m}^3$ | (optional)
+drainage      | Float64  | $\text{g}/\text m}^3$ | (optional)
+precipitation | Float64  | $\text{g}/\text m}^3$ | (optional)
 
 ## ConcentrationState {#sec-basin-conc-state}
 This table defines the concentration(s) of (a) substance(s) in the basin at the start of the simulation.
@@ -410,7 +410,7 @@ column         | type     | unit                     | restriction
 node_id        | Int32    | -                        | sorted
 time           | DateTime | -                        | sorted per node_id
 substance      | String   | -                        | can correspond to known Delwaq substances
-concentration  | Float64  | $\text{g}/\text{m}^3$ |
+concentration  | Float64  | $\text{g}/\text m}^3$ |
 
 ## ConcentrationExternal
 This table is used for (external) concentrations, that can be used for Control lookups.
@@ -420,7 +420,7 @@ column         | type     | unit                     | restriction
 node_id        | Int32    | -                        | sorted
 time           | DateTime | -                        | sorted per node_id
 substance      | String   | -                        | can correspond to known Delwaq substances
-concentration  | Float64  | $\text{g}/\text{m}^3$ |
+concentration  | Float64  | $\text{g}/\text m}^3$ |
 
 # Equations
 
@@ -520,7 +520,7 @@ $$
     Q_\text{inf} = \sum_{i=1}^{n} \sum_{j=1}^{m} \max(Q_{\mathrm{mf6}_{i,j}}, 0.0)
 $$ {#eq-inf}
 
-Where $i$ is the index of the boundary condition, $j$ the MODFLOW 6 cell index, $n$ the number of boundary conditions, and $\text{m}$ the number of MODFLOW 6 cells in the Basin.
+Where $i$ is the index of the boundary condition, $j$ the MODFLOW 6 cell index, $n$ the number of boundary conditions, and $\text m}$ the number of MODFLOW 6 cells in the Basin.
 $Q_{\mathrm{mf6}_{i,j}}$ is the flow computed by MODFLOW 6 for cell $j$ for boundary condition $i$.
 
 Drainage is a lump sum for the Basin, and consists of the sum of the absolute value of all **negative** flows of the MODFLOW 6 boundary conditions in the Basin.

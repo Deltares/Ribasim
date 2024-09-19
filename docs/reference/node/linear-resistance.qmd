@@ -13,8 +13,8 @@ column        | type    | unit                  | restriction
 node_id       | Int32   | -                     | sorted
 control_state | String  | -                     | (optional) sorted per node_id
 active        | Bool    | -                     | (optional, default true)
-resistance    | Float64 | $\text{s}/\text{m}^2$ | -
-max_flow_rate | Float64 | $\text{m}^3/s$        | non-negative
+resistance    | Float64 | $\text{s}/\text m}^2$ | -
+max_flow_rate | Float64 | $\text m}^3/s$        | non-negative
 
 # Equations
 
