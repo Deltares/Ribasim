@@ -95,11 +95,6 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
     (; basin, user_demand, flow_boundary, allocation) = p
     (; vertical_flux_bmi, vertical_flux_from_input) = basin
 
-    @show t
-    @show integrator.t
-    @show vertical_flux_from_input.drainage
-    @show dt
-
     # Update tprev
     p.tprev[] = t
 
@@ -155,10 +150,6 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
             end
         end
     end
-
-    @show t * vertical_flux_from_input.drainage
-    @show vertical_flux_bmi.drainage
-    println("----------------------")
     return nothing
 end
 

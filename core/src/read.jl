@@ -586,8 +586,6 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
         infiltration = zero(infiltration),
     )
 
-    @show vertical_flux_bmi
-
     demand = zeros(length(node_id))
 
     node_id = NodeID.(NodeType.Basin, node_id, eachindex(node_id))
