@@ -20,7 +20,7 @@ control_state    | String   | -               | (optional) sorted per node_id
 active           | Bool     | -               | (optional, default true)
 listen_node_type | String   | -               | known node type
 listen_node_id   | Int32    | -               | -
-target           | Float64  | $\text m}$      | -
+target           | Float64  | $\text{m}$      | -
 proportional     | Float64  | $\text{s}^{-1}$ | -
 integral         | Float64  | $\text{s}^{-2}$ | -
 derivative       | Float64  | -               | -
@@ -41,7 +41,7 @@ node_id          | Int32    | -               | sorted
 time             | DateTime | -               | sorted per node_id
 listen_node_type | Int32    | -               | known node type
 listen_node_id   | Int32    | -               | -
-target           | Float64  | $\text m}$      | -
+target           | Float64  | $\text{m}$      | -
 proportional     | Float64  | $\text{s}^{-1}$ | -
 integral         | Float64  | $\text{s}^{-2}$ | -
 derivative       | Float64  | -               | -

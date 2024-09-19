@@ -205,16 +205,16 @@ column         | type     | unit
 -------------- | ---------| ----
 time           | DateTime | -
 node_id        | Int32    | -
-storage        | Float64  | $\text m}^3$
-level          | Float64  | $\text m}$
-inflow_rate    | Float64  | $\text m}^3/\text{s}$
-outflow_rate   | Float64  | $\text m}^3/\text{s}$
-storage_rate   | Float64  | $\text m}^3/\text{s}$
-precipitation  | Float64  | $\text m}^3/\text{s}$
-evaporation    | Float64  | $\text m}^3/\text{s}$
-drainage       | Float64  | $\text m}^3/\text{s}$
-infiltration   | Float64  | $\text m}^3/\text{s}$
-balance_error  | Float64  | $\text m}^3/\text{s}$
+storage        | Float64  | $\text{m}^3$
+level          | Float64  | $\text{m}$
+inflow_rate    | Float64  | $\text{m}^3/\text{s}$
+outflow_rate   | Float64  | $\text{m}^3/\text{s}$
+storage_rate   | Float64  | $\text{m}^3/\text{s}$
+precipitation  | Float64  | $\text{m}^3/\text{s}$
+evaporation    | Float64  | $\text{m}^3/\text{s}$
+drainage       | Float64  | $\text{m}^3/\text{s}$
+infiltration   | Float64  | $\text{m}^3/\text{s}$
+balance_error  | Float64  | $\text{m}^3/\text{s}$
 relative_error | Float64  | -
 
 The table is sorted by time, and per time it is sorted by `node_id`.
@@ -232,7 +232,7 @@ from_node_type | String                | -
 from_node_id   | Int32                 | -
 to_node_type   | String                | -
 to_node_id     | Int32                 | -
-flow_rate      | Float64               | $\text m}^3/\text{s}$
+flow_rate      | Float64               | $\text{m}^3/\text{s}$
 
 The table is sorted by time, and per time the same `edge_id` order is used, though not sorted.
 The `edge_id` value is the same as the `fid` written to the Edge table, and can be used to directly look up the Edge geometry.
@@ -245,7 +245,7 @@ The Basin state table contains the water levels in each Basin at the end of the 
 column    | type    | unit
 --------- | ------- | ------------
 node_id   | Int32   | -
-level     | Float64 | $\text m}$
+level     | Float64 | $\text{m}$
 
 To use this result as the initial condition of another simulation, see the [Basin / state](/reference/node/basin.qmd#sec-state) table reference.
 

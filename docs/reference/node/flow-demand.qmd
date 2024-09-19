@@ -13,7 +13,7 @@ column        | type     | unit                  | restriction
 ------------- | -------- | --------------------- | -----------
 node_id       | Int32    | -                     | sorted
 priority      | Int32    | -                     | positive
-demand        | Float64  | $\text m}^3/\text{s}$ | non-negative
+demand        | Float64  | $\text{m}^3/\text{s}$ | non-negative
 
 ## Time
 
@@ -25,4 +25,4 @@ column        | type     | unit                  | restriction
 node_id       | Int32    | -                     | sorted
 time          | DateTime | -                     | sorted per node_id
 priority      | Int32    | -                     | positive
-demand        | Float64  | $\text m}^3/\text{s}$ | non-negative
+demand        | Float64  | $\text{m}^3/\text{s}$ | non-negative

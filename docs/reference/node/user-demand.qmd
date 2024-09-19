@@ -26,9 +26,9 @@ column        | type    | unit                  | restriction
 ------------- | ------- | ----------------------| -----------
 node_id       | Int32   | -                     | sorted
 active        | Bool    | -                     | (optional, default true)
-demand        | Float64 | $\text m}^3/\text{s}$ | non-negative
+demand        | Float64 | $\text{m}^3/\text{s}$ | non-negative
 return_factor | Float64 | -                     | between [0 - 1]
-min_level     | Float64 | $\text m}$            | -
+min_level     | Float64 | $\text{m}$            | -
 priority      | Int32   | -                     | positive, sorted per node id
 
 ## Time
@@ -47,9 +47,9 @@ column        | type     | unit                  | restriction
 node_id       | Int32    | -                     | sorted
 priority      | Int32    | -                     | positive, sorted per node id
 time          | DateTime | -                     | sorted per priority per node id
-demand        | Float64  | $\text m}^3/\text{s}$ | non-negative
+demand        | Float64  | $\text{m}^3/\text{s}$ | non-negative
 return_factor | Float64  | -                     | between [0 - 1]
-min_level     | Float64  | $\text m}$            | -
+min_level     | Float64  | $\text{m}$            | -
 
 # Equations
 

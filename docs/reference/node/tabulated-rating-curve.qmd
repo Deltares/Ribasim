@@ -15,9 +15,9 @@ column               | type    | unit                  | restriction
 node_id              | Int32   | -                     | sorted
 control_state        | String  | -                     | (optional) sorted per node_id
 active               | Bool    | -                     | (optional, default true)
-max_downstream_level | Float64 | $\text m}$            | (optional)
-level                | Float64 | $\text m}$            | sorted per control_state, unique
-flow_rate            | Float64 | $\text m}^3/\text{s}$ | start at 0, increasing
+max_downstream_level | Float64 | $\text{m}$            | (optional)
+level                | Float64 | $\text{m}$            | sorted per control_state, unique
+flow_rate            | Float64 | $\text{m}^3/\text{s}$ | start at 0, increasing
 
 Thus a single rating curve can be given by the following table:
 
@@ -89,9 +89,9 @@ column               | type     | unit                  | restriction
 -------------------- | -------  | --------------------- | -----------
 node_id              | Int32    | -                     | sorted
 time                 | DateTime | -                     | sorted per node_id
-level                | Float64  | $\text m}$            | sorted per node_id per time
-flow_rate            | Float64  | $\text m}^3/\text{s}$ | non-negative
-max_downstream_level | Float64  | $\text m}$            | (optional)
+level                | Float64  | $\text{m}$            | sorted per node_id per time
+flow_rate            | Float64  | $\text{m}^3/\text{s}$ | non-negative
+max_downstream_level | Float64  | $\text{m}$            | (optional)
 
 # Equations
 

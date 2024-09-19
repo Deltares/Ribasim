@@ -16,11 +16,11 @@ column                | type    | unit                   | restriction
 node_id               | Int32   | -                      | sorted
 control_state         | String  | -                      | (optional) sorted per node_id
 active                | Bool    | -                      | (optional, default true)
-flow_rate             | Float64 | $\text m}^3/\text{s}\$ | non-negative
-min_flow_rate         | Float64 | $\text m}^3/\text{s}\$ | (optional, default 0.0)
-max_flow_rate         | Float64 | $\text m}^3/\text{s}\$ | (optional)
-min_upstream_level    | Float64 | $\text m}$             | (optional)
-max_downstream_level  | Float64 | $\text m}$             | (optional)
+flow_rate             | Float64 | $\text{m}^3/\text{s}\$ | non-negative
+min_flow_rate         | Float64 | $\text{m}^3/\text{s}\$ | (optional, default 0.0)
+max_flow_rate         | Float64 | $\text{m}^3/\text{s}\$ | (optional)
+min_upstream_level    | Float64 | $\text{m}$             | (optional)
+max_downstream_level  | Float64 | $\text{m}$             | (optional)
 
 # Equations
 
