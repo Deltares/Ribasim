@@ -1062,8 +1062,7 @@ function get_state_index(
     else
         snake_case(Symbol(id.type))
     end
-
-    for (comp, range) in zip(keys(NT), values(NT))
+    for (comp, range) in pairs(NT)
         if comp == component_name
             return range[id.idx]
         end
