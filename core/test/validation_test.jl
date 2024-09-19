@@ -473,3 +473,31 @@ end
     @test logger.logs[3].message ==
           "Missing priority parameter(s) for a FlowDemand / static node in the allocation problem."
 end
+
+@testitem "Invalid NodeID index" begin
+    using Ribasim
+    import SQLite
+    using Logging
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
+
+    cfg = Ribasim.Config(toml_path)
+    db_path = Ribasim.input_path(cfg, cfg.database)
+    db = SQLite.DB(db_path)
+
+    logger = TestLogger()
+    with_logger(logger) do
+        @test_throws "AssertionError: Node id of type PidControl and index 1 is not defined" Ribasim.NodeID(
+            :PidControl,
+            1,
+            db,
+        )
+    end
+
+    with_logger(logger) do
+        @test_throws "AssertionError: Node id of 20 is not defined or not unique" Ribasim.NodeID(
+            20,
+            db,
+        )
+    end
+end
