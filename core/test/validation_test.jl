@@ -474,7 +474,7 @@ end
           "Missing priority parameter(s) for a FlowDemand / static node in the allocation problem."
 end
 
-@testitem "Invalid NodeID index" begin
+@testitem "Node ID not in Node table" begin
     using Ribasim
     import SQLite
     using Logging
