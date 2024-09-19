@@ -97,6 +97,7 @@ end
 
     # load a sorted table
     table = Ribasim.load_structvector(db, config, Ribasim.BasinTimeV1)
+    close(db)
     by = Ribasim.sort_by_function(table)
     @test by == Ribasim.sort_by_time_id
     # reverse it so it needs sorting
@@ -153,9 +154,9 @@ end
 
     config = Ribasim.Config(toml_path)
     model = Ribasim.Model(config)
-    storage1_begin = copy(model.integrator.u.storage)
+    storage1_begin = copy(model.integrator.p.basin.current_storage[Float64[]])
     solve!(model)
-    storage1_end = model.integrator.u.storage
+    storage1_end = model.integrator.p.basin.current_storage[Float64[]]
     @test storage1_begin != storage1_end
 
     # copy state results to input
@@ -171,6 +172,6 @@ end
     end
 
     model = Ribasim.Model(toml_path)
-    storage2_begin = model.integrator.u.storage
+    storage2_begin = model.integrator.p.basin.current_storage[Float64[]]
     @test storage1_end ≈ storage2_begin
 end

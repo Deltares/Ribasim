@@ -35,12 +35,12 @@ function log_bottlenecks(model; converged::Bool)
 
     # Indicate convergence bottlenecks if possible with the current algorithm
     if hasproperty(cache, :nlsolver)
-        storage_error = @. abs(cache.nlsolver.cache.atmp.storage / u.storage)
-        perm = sortperm(storage_error; rev = true)
+        flow_error = @. abs(cache.nlsolver.cache.atmp / u)
+        perm = sortperm(flow_error; rev = true)
         errors = Pair{Symbol, Float64}[]
         for i in perm
-            node_id = Symbol(basin.node_id[i])
-            error = storage_error[i]
+            node_id = Symbol(id_from_state_index(p, u, i))
+            error = flow_error[i]
             if error < model.config.solver.reltol
                 break
             end

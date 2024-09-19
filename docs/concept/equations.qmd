@@ -3,76 +3,95 @@ title: "Equations"
 ---
 
 # Formal model description
-In this section we give a formal description of the problem that is solved by Ribasim.
-The problem is of the form
-
+In this section we give a formal description of the problem that is solved by Ribasim. The problem is of the form
 $$
-\frac{\text{d}\mathbf{u}}{\text{d}t} = f(\mathbf{u},p(t),t),\quad t \in [t_0,t_\text{end}],
+	\frac{\text{d}\mathbf{u}}{\text{d}t} = f(\mathbf{u},p(t),t), \quad t \in [t_0, t_\text{end}],
 $$
 
-i.e. a system of coupled first order ordinary differential equations, with initial condition $\mathbf{u}(t_0)= \mathbf{u}_0$ and time dependent input data denoted by $p(t)$.
+which is a system of coupled first order differential equations.
 
-The model is given by a directed graph, consisting of a set of nodes (or vertices) $V$ and edges $E$.
-Let $V$ be the set of node IDs and let $E$ be the set of ordered tuples $(i,j)$ meaning that node $i$ is connected to node $j$.
+The model is given by a directed graph, consisting of a set of node IDs (vertices) $V$ and edges $E$, consisting of ordered pairs of node IDs.
+We denote the subset of the nodes given by the Basins $B \subset V$, and the subset of nodes that prescribe flow $N \subset V$.
 
-We can split the set of nodes into two subsets $V = B \cup N$, where $B$ is the set of basins and $N$ is the set of non-basins.
-The basins have an associated storage state and the non-basins dictate how water flows to or from basins.
-
-$\mathbf{u}(t)$ is given by all the states of the model, which are (currently) the storage of the basins and the integral terms of the PID controllers, the latter being explained in [PID equations](/reference/node/pid-control.qmd#equations).
-
-Given a single basin with node ID $i \in B$, the equation that dictates the change of its storage over time is given by
-
+The states $\mathbf{u}$ of the model are given by cumulative flows since the start of the simulation as prescribed by the nodes $N$:
 $$
-\frac{\text{d}u_i}{\text{d}t} =
-\sum_{(i',j') \in E | j' = i} Q_{i',j'} - \sum_{(i',j') \in E | i' = i} Q_{i',j'} + F_i(p,t).
+	u_n(t) = \int_{t_0}^t q_n\text{d}t' \quad \forall n \in N,
+$$
+as well as by the Basin forcings:
+$$
+	u_b^\text{forcing}(t) = \int_{t_0}^t q_b^\text{forcing}\text{d}t' \quad \forall b \in B.
 $$
 
-Here $Q_{i,j}$ is the flow along an edge, where the graph direction dictates positive flow.
-So the first term denotes flow towards the basin, the second one denotes flow away from the basin, and the third term denotes external forcing.
-$F_i(p,t)$ is given by input data, and $Q_{i' ,j'}$ is determined by the type of nodes that connect to that edge.
+Because of this definition, the initial conditions of all states are simple:
+$$
+	u_i(t_0) = 0 \quad \forall i.
+$$
 
-The various node and forcing types that the model can contain are explained in the section [Natural water balance terms](/concept/equations.qmd#natural-water-balance-terms).
+From these cumulative flows, the storage in each Basin can be determined at each point in time:
+$$
+	S_b(t) = S_i(0) + S^\text{exact}(t) - u_b^\text{forcing}(t) + \sum_{n\;|\;(n,b)\in E} u(t) - \sum_{n\;|\;(b,n)\in E} u(t),
+$$
 
-::: {.callout-note}
-In general a model has more nodes than states, so in the Julia core there is a distinction between node indices and state indices. For simplicity these are treated as equal in the documentation when it comes to basins and their storage.
-:::
+i.e. the storage is given by:
+
+- the initial storage;
+- plus the exactly integrated flows (more on that below);
+- minus the cumulative outgoing forcings;
+- plus the cumulative horizontal inflows;
+- minus the cumulative horizontal outflows.
+
+From these storages in combination with the Basin profiles the Basin levels $h$ are computed.
+The relationship between the profile and the storage is given by
+$$
+	S_b = \int_{h_0}^h A_b(\ell)\text{d}\ell,
+$$
+
+where $A_b$ is the linear interpolation of the area as a function of the level.
+These levels are then inputs for determining the flows prescribed by the nodes $N$. From this relation it also follows that
+
+$$
+	\frac{\text{d}h}{\text{d}t} = \frac{1}{A_b},
+$$
+and so areas of zero are not allowed in the Basin profiles.
+
+## The PID control integral state
+
+There's one other type of state, which is not a cumulative flow but a cumulative error.
+This is the error integral for PID control, further explained in [PID equations](/reference/node/pid-control.qmd#equations).
+
+## Exactly integrating flows to minimize the number of states
+
+The more states the problem has, the more time it takes to solve it.
+Therefore we want to minimize the number of states.
+Flows do not have to be states when they can be integrated over time exactly because they do not depend on the other states.
+This is true for FlowBoundary nodes, and Basin precipitation (which uses a fixed basin area) and drainage.
 
 ## The Jacobian
 
-The Jacobian is a $n\times n$ matrix where $n$ is the number of states in the simulation. The Jacobian is computed either using finite difference methods or automatic differentiation. For more details on the computation of the Jacobian and how it is used in the solvers see [numerical considerations](numerics.qmd).
-
+The Jacobian is an $N \times N$ matrix where $N$ is the number of states in the simulation.
+It is computed as part of implicit time stepping methods.
+There are 2 different methods available for computing this matrix: finite difference or automatic differentiation.
+For more details on the computation of the Jacobian and how it is used in the solvers see [numerical considerations](numerics.qmd).
 
 The entries of the Jacobian $J$ are given by
 $$
-J[i,j] = \frac{\partial f_j}{\partial u_i},
+	J_{i,j} = \frac{\partial f_j}{\partial u_i},
 $$
+i.e. $J_{i,j}$ quantifies how $f_j$. the time derivative of state $j$, changes with respect to changes in state $i$. Most of these entries are $0$, because flows in distant parts of the model do not depend on each other.
 
-hence $J[i,j]$ quantifies how $f_j$, the derivative of state $j$ with respect to time, changes with a change in state $i$. If a node creates dependendies between basin storages (or other states), then this yields contributions to the Jacobian. If $j$ corresponds to a storage state, then
+## Why this formulation
 
-$$
-J[i,j] = \sum_{(i',j') \in E | j' = i} \frac{\partial Q_{i',j'}}{\partial u_i} - \sum_{(i',j') \in E | i' = i} \frac{\partial Q_{i',j'}}{\partial u_i},
-$$
+You might wonder why in the above explanation the states are given by the cumulative flows and not by the Basin storages, which is arguably conceptually simpler.
+The reason is that we do not just want to model the storages in the Basins over time, but we also want accurate output of each individual flow, e.g. to model the spread of pollutants.
 
-Most of these terms are always $0$, because a flow over an edge only depends on a small number of states. Therefore the matrix $J$ is very sparse.
+When the states are given by the storages, generally the individual flows can not accurately be computed from that as a post processing step, because there are more flows than storages.
+Also, we can only compute flows at individual points in time explicitly, not over a whole interval.
+When the states are given by the cumulative flows however, the output of the problem solve gives these flows directly, and from those the storage over time can be computed accurately.
+Hence in short, the formulation above gives more information than a formulation with Basin storages as states.
 
-For many contributions to the Jacobian the derivative of the level $l(u)$ of a basin with respect to its storage $u$ is required. To get an expression for this, we first look at the storage as a function of the level:
+## Numerical solution
 
-$$
-u(l) = \int_{l_0}^l A(\ell)d\ell.
-$$
-
-From this we obtain $u'(l) = A(l)$ and thus
-$$
-\frac{\text{d}l}{\text{d}u} = \frac{1}{A(u)}.
-$$
-
-:::{.callout-note}
-The presence of division by the basin area means that areas of size zero are not allowed.
-:::
-
-# Numerical solution
-
-Ribasim uses OrdinaryDiffEq.jl to provide a numerical solution to the water balance equations.
+Ribasim uses [OrdinaryDiffEq.jl](https://github.com/SciML/OrdinaryDiffEq.jl/) to provide a numerical solution to the water balance equations.
 Changes to forcings or parameters such as precipitation, but also the allocated water abstraction is managed through the use of callback functions [@callbacks].
 In a coupled run, the exchanges with MODFLOW 6 are also managed via the use of a callback function.
 For more a more in-depth discussion of numerical computations see [Numerical considerations](numerics.qmd).

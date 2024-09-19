@@ -21,6 +21,7 @@ using OrdinaryDiffEqCore:
     get_du,
     AbstractNLSolver,
     calculate_residuals!
+using DiffEqBase: DiffEqBase
 using OrdinaryDiffEqNonlinearSolve: OrdinaryDiffEqNonlinearSolve, relax!, _compute_rhs!
 using LineSearches: BackTracking
 

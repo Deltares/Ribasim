@@ -7,21 +7,32 @@ Returns the CallbackSet and the SavedValues for flow.
 function create_callbacks(
     parameters::Parameters,
     config::Config,
+    u0::ComponentVector,
     saveat,
 )::Tuple{CallbackSet, SavedResults}
     (; starttime, basin, tabulated_rating_curve) = parameters
     callbacks = SciMLBase.DECallback[]
 
+    # Check for negative storage
     negative_storage_cb = FunctionCallingCallback(check_negative_storage)
     push!(callbacks, negative_storage_cb)
 
-    integrating_flows_cb = FunctionCallingCallback(integrate_flows!; func_start = false)
-    push!(callbacks, integrating_flows_cb)
+    # Save storages and levels
+    saved_basin_states = SavedValues(Float64, SavedBasinState)
+    save_basin_state_cb = SavingCallback(save_basin_state, saved_basin_states; saveat)
+    push!(callbacks, save_basin_state_cb)
 
+    # Update cumulative flows (exact integration and for BMI)
+    integrated_flows_cb =
+        FunctionCallingCallback(update_cumulative_flows!; func_start = false)
+    push!(callbacks, integrated_flows_cb)
+
+    # Update Basin forcings
     tstops = get_tstops(basin.time.time, starttime)
     basin_cb = PresetTimeCallback(tstops, update_basin!; save_positions = (false, false))
     push!(callbacks, basin_cb)
 
+    # Update TabulatedRatingCurve Q(h) relationships
     tstops = get_tstops(tabulated_rating_curve.time.time, starttime)
     tabulated_rating_curve_cb = PresetTimeCallback(
         tstops,
@@ -33,13 +44,9 @@ function create_callbacks(
     # If saveat is a vector which contains 0.0 this callback will still be called
     # at t = 0.0 despite save_start = false
     saveat = saveat isa Vector ? filter(x -> x != 0.0, saveat) : saveat
-    saved_vertical_flux = SavedValues(Float64, typeof(basin.vertical_flux_integrated))
-    save_vertical_flux_cb =
-        SavingCallback(save_vertical_flux, saved_vertical_flux; saveat, save_start = false)
-    push!(callbacks, save_vertical_flux_cb)
 
-    # save the flows over time
-    saved_flow = SavedValues(Float64, SavedFlow)
+    # save the flows averaged over the saveat intervals
+    saved_flow = SavedValues(Float64, SavedFlow{typeof(u0)})
     save_flow_cb = SavingCallback(save_flow, saved_flow; saveat, save_start = false)
     push!(callbacks, save_flow_cb)
 
@@ -66,13 +73,252 @@ function create_callbacks(
 
     saved = SavedResults(
         saved_flow,
-        saved_vertical_flux,
+        saved_basin_states,
         saved_subgrid_level,
         saved_solver_stats,
     )
     callback = CallbackSet(callbacks...)
 
     return callback, saved
+end
+
+"""
+Update with the latest timestep:
+- Cumulative flows/forcings which are exposed via the BMI
+- Cumulative flows/forcings which are integrated exactly
+- Cumulative flows/forcings which are input for the allocation algorithm
+- Cumulative flows/forcings which are realized demands in the allocation context
+
+"""
+function update_cumulative_flows!(u, t, integrator)::Nothing
+    (; p, uprev, tprev, dt) = integrator
+    (; basin, user_demand, flow_boundary, allocation) = p
+    (; vertical_flux_bmi, vertical_flux_from_input) = basin
+
+    # Update tprev
+    p.tprev[] = t
+
+    # Update cumulative flows exposed via the BMI
+    @. user_demand.realized_bmi += u.user_demand_inflow - uprev.user_demand_inflow
+    @. vertical_flux_bmi.drainage += vertical_flux_from_input.drainage * dt
+    @. vertical_flux_bmi.evaporation += u.evaporation - uprev.evaporation
+    @. vertical_flux_bmi.infiltration += u.infiltration - uprev.infiltration
+
+    # Update cumulative forcings which are integrated exactly
+    @. basin.cumulative_drainage += vertical_flux_from_input.drainage * dt
+    @. basin.cumulative_drainage_saveat += vertical_flux_from_input.drainage * dt
+
+    # Precipitation depends on fixed area
+    for node_id in basin.node_id
+        fixed_area = basin_areas(basin, node_id.idx)[end]
+        added_precipitation =
+            fixed_area * vertical_flux_from_input.precipitation[node_id.idx] * dt
+
+        vertical_flux_bmi.precipitation[node_id.idx] += added_precipitation
+        basin.cumulative_precipitation[node_id.idx] += added_precipitation
+        basin.cumulative_precipitation_saveat[node_id.idx] += added_precipitation
+    end
+
+    # Exact boundary flow over time step
+    for (id, flow_rate, active) in
+        zip(flow_boundary.node_id, flow_boundary.flow_rate, flow_boundary.active)
+        if active
+            volume = integral(flow_rate, tprev, t)
+            flow_boundary.cumulative_flow[id.idx] += volume
+            flow_boundary.cumulative_flow_saveat[id.idx] += volume
+        end
+    end
+
+    # Update realized flows for allocation input
+    for edge in keys(allocation.mean_input_flows)
+        allocation.mean_input_flows[edge] += flow_update_on_edge(integrator, edge)
+    end
+
+    # Update realized flows for allocation output
+    for edge in keys(allocation.mean_realized_flows)
+        allocation.mean_realized_flows[edge] += flow_update_on_edge(integrator, edge)
+        if edge[1] == edge[2]
+            basin_id = edge[1]
+            @assert basin_id.type == NodeType.Basin
+            for inflow_id in basin.inflow_ids[basin_id.idx]
+                allocation.mean_realized_flows[edge] +=
+                    flow_update_on_edge(integrator, (inflow_id, basin_id))
+            end
+            for outflow_id in basin.outflow_ids[basin_id.idx]
+                allocation.mean_realized_flows[edge] -=
+                    flow_update_on_edge(integrator, (basin_id, outflow_id))
+            end
+        end
+    end
+    return nothing
+end
+
+"""
+Given an edge (from_id, to_id), compute the cumulative flow over that
+edge over the latest timestep. If from_id and to_id are both the same basin,
+the function returns the sum of the basin forcings.
+"""
+function flow_update_on_edge(
+    integrator::DEIntegrator,
+    edge_src::Tuple{NodeID, NodeID},
+)::Float64
+    (; u, uprev, p, t, tprev, dt) = integrator
+    (; basin, flow_boundary) = p
+    (; vertical_flux_from_input) = basin
+    from_id, to_id = edge_src
+    if from_id == to_id
+        @assert from_id.type == to_id.type == NodeType.Basin
+        idx = from_id.idx
+        fixed_area = basin_areas(basin, idx)[end]
+        (
+            fixed_area * vertical_flux_from_input.precipitation[idx] +
+            vertical_flux_from_input.drainage[idx]
+        ) * dt - (u.evaporation[idx] - uprev.evaporation[idx]) -
+        (u.infiltration[idx] - uprev.infiltration[idx])
+    elseif from_id.type == NodeType.FlowBoundary
+        if flow_boundary.active[from_id.idx]
+            integral(flow_boundary.flow_rate[from_id.idx], tprev, t)
+        else
+            0.0
+        end
+    else
+        flow_idx = get_state_index(u, edge_src)
+        u[flow_idx] - uprev[flow_idx]
+    end
+end
+
+"""
+Save the storages and levels at the latest t.
+"""
+function save_basin_state(u, t, integrator)
+    (; p) = integrator
+    (; basin) = p
+    du = get_du(integrator)
+    current_storage = basin.current_storage[parent(du)]
+    current_level = basin.current_level[parent(du)]
+    water_balance!(du, u, p, t)
+    SavedBasinState(; storage = copy(current_storage), level = copy(current_level))
+end
+
+"""
+Save all cumulative forcings and flows over edges over the latest timestep,
+Both computed by the solver and integrated exactly. Also computes the total horizontal
+inflow and outflow per basin.
+"""
+function save_flow(u, t, integrator)
+    (; p, sol) = integrator
+    (; basin, state_inflow_edge, state_outflow_edge, flow_boundary) = p
+    Δt = get_Δt(integrator)
+    flow_mean = (u - sol(t - Δt)) / Δt
+
+    inflow_mean = zeros(length(basin.node_id))
+    outflow_mean = zeros(length(basin.node_id))
+
+    # Flow contributions from horizontal flow states
+    for (flow, inflow_edge, outflow_edge) in
+        zip(flow_mean, state_inflow_edge, state_outflow_edge)
+        inflow_id = inflow_edge.edge[1]
+        if inflow_id.type == NodeType.Basin
+            if flow > 0
+                outflow_mean[inflow_id.idx] += flow
+            else
+                inflow_mean[inflow_id.idx] -= flow
+            end
+        end
+
+        outflow_id = outflow_edge.edge[2]
+        if outflow_id.type == NodeType.Basin
+            if flow > 0
+                inflow_mean[outflow_id.idx] += flow
+            else
+                outflow_mean[outflow_id.idx] -= flow
+            end
+        end
+    end
+
+    # Flow contributions from flow boundaries
+    flow_boundary_mean = copy(flow_boundary.cumulative_flow_saveat) ./ Δt
+    flow_boundary.cumulative_flow_saveat .= 0.0
+
+    for (outflow_edges, id) in zip(flow_boundary.outflow_edges, flow_boundary.node_id)
+        flow = flow_boundary_mean[id.idx]
+        for outflow_edge in outflow_edges
+            outflow_id = outflow_edge.edge[2]
+            if outflow_id.type == NodeType.Basin
+                inflow_mean[outflow_id.idx] += flow
+            end
+        end
+    end
+
+    precipitation = copy(basin.cumulative_precipitation_saveat) ./ Δt
+    drainage = copy(basin.cumulative_drainage_saveat) ./ Δt
+    @. basin.cumulative_precipitation_saveat = 0.0
+    @. basin.cumulative_drainage_saveat = 0.0
+
+    saved_flow = SavedFlow(;
+        flow = flow_mean,
+        inflow = inflow_mean,
+        outflow = outflow_mean,
+        flow_boundary = flow_boundary_mean,
+        precipitation,
+        drainage,
+    )
+    check_water_balance_error(integrator, saved_flow, Δt)
+    return saved_flow
+end
+
+function check_water_balance_error(
+    integrator::DEIntegrator,
+    saved_flow::SavedFlow,
+    Δt::Float64,
+)::Nothing
+    (; u, p, t) = integrator
+    (; basin, water_balance_abstol, water_balance_reltol) = p
+    errors = false
+    current_storage = basin.current_storage[parent(u)]
+    formulate_storages!(current_storage, u, u, p, t)
+
+    for (
+        inflow_rate,
+        outflow_rate,
+        precipitation,
+        drainage,
+        evaporation,
+        infiltration,
+        s_now,
+        s_prev,
+        id,
+    ) in zip(
+        saved_flow.inflow,
+        saved_flow.outflow,
+        saved_flow.precipitation,
+        saved_flow.drainage,
+        saved_flow.flow.evaporation,
+        saved_flow.flow.infiltration,
+        current_storage,
+        basin.storage_prev_saveat,
+        basin.node_id,
+    )
+        storage_rate = (s_now - s_prev) / Δt
+        total_in = inflow_rate + precipitation + drainage
+        total_out = outflow_rate + evaporation + infiltration
+        balance_error = storage_rate - (total_in - total_out)
+        mean_flow_rate = (total_in + total_out) / 2
+        relative_error = iszero(mean_flow_rate) ? 0.0 : balance_error / mean_flow_rate
+
+        if abs(balance_error) > water_balance_abstol &&
+           abs(relative_error) > water_balance_reltol
+            errors = true
+            @error "Too large water balance error" id balance_error relative_error
+        end
+    end
+    if errors
+        t = datetime_since(t, p.starttime)
+        error("Too large water balance error(s) detected at t = $t")
+    end
+
+    @. basin.storage_prev_saveat = current_storage
+    return nothing
 end
 
 function save_solver_stats(u, t, integrator)
@@ -88,10 +334,14 @@ end
 
 function check_negative_storage(u, t, integrator)::Nothing
     (; basin) = integrator.p
-    (; node_id) = basin
+    (; node_id, current_storage) = basin
+    du = get_du(integrator)
+    set_current_basin_properties!(du, u, integrator.p, t)
+    current_storage = current_storage[parent(du)]
+
     errors = false
     for id in node_id
-        if u.storage[id.idx] < 0
+        if current_storage[id.idx] < 0
             @error "Negative storage detected in $id"
             errors = true
         end
@@ -102,125 +352,6 @@ function check_negative_storage(u, t, integrator)::Nothing
         error("Negative storages found at $t_datetime.")
     end
     return nothing
-end
-
-"""
-Integrate flows over the last timestep
-"""
-function integrate_flows!(u, t, integrator)::Nothing
-    (; p, dt) = integrator
-    (; graph, user_demand, basin, allocation) = p
-    (; flow, flow_dict, flow_prev, flow_integrated) = graph[]
-    (; vertical_flux, vertical_flux_prev, vertical_flux_integrated, vertical_flux_bmi) =
-        basin
-    du = get_du(integrator)
-    water_balance!(du, u, p, t)
-    flow = flow[parent(du)]
-    vertical_flux = vertical_flux[parent(du)]
-    if !isempty(flow_prev) && isnan(flow_prev[1])
-        # If flow_prev is not populated yet
-        copyto!(flow_prev, flow)
-    end
-
-    @. flow_integrated += 0.5 * (flow + flow_prev) * dt
-    @. vertical_flux_integrated += 0.5 * (vertical_flux + vertical_flux_prev) * dt
-    @. vertical_flux_bmi += 0.5 * (vertical_flux + vertical_flux_prev) * dt
-
-    # UserDemand realized flows for BMI
-    for id in user_demand.node_id
-        src_id = inflow_id(graph, id)
-        flow_idx = flow_dict[src_id, id]
-        user_demand.realized_bmi[id.idx] +=
-            0.5 * (flow[flow_idx] + flow_prev[flow_idx]) * dt
-    end
-
-    # *Demand realized flow for output
-    for (edge, value) in allocation.mean_realized_flows
-        if edge[1] !== edge[2]
-            value +=
-                0.5 *
-                (get_flow(graph, edge..., du) + get_flow_prev(graph, edge..., du)) *
-                dt
-            allocation.mean_realized_flows[edge] = value
-        end
-    end
-
-    # Allocation source flows
-    for (edge, value) in allocation.mean_input_flows
-        if edge[1] == edge[2]
-            # Vertical fluxes
-            allocation.mean_input_flows[edge] =
-                value +
-                0.5 *
-                (
-                    get_influx(basin, edge[1].idx) +
-                    get_influx(basin, edge[1].idx; prev = true)
-                ) *
-                dt
-        else
-            # Horizontal flows
-            allocation.mean_input_flows[edge] =
-                value +
-                0.5 *
-                (get_flow(graph, edge..., du) + get_flow_prev(graph, edge..., du)) *
-                dt
-        end
-    end
-    copyto!(flow_prev, flow)
-    copyto!(vertical_flux_prev, vertical_flux)
-    return nothing
-end
-
-"Compute the average flows over the last saveat interval and write
-them to SavedValues"
-function save_flow(u, t, integrator)
-    (; graph) = integrator.p
-    (; flow_integrated, flow_dict) = graph[]
-    (; node_id) = integrator.p.basin
-
-    Δt = get_Δt(integrator)
-    flow_mean = copy(flow_integrated)
-    flow_mean ./= Δt
-    fill!(flow_integrated, 0.0)
-
-    # Divide the flows over edges to Basin inflow and outflow, regardless of edge direction.
-    inflow_mean = zeros(length(node_id))
-    outflow_mean = zeros(length(node_id))
-
-    for basin_id in node_id
-        for inflow_id in inflow_ids(graph, basin_id)
-            q = flow_mean[flow_dict[inflow_id, basin_id]]
-            if q > 0
-                inflow_mean[basin_id.idx] += q
-            else
-                outflow_mean[basin_id.idx] -= q
-            end
-        end
-        for outflow_id in outflow_ids(graph, basin_id)
-            q = flow_mean[flow_dict[basin_id, outflow_id]]
-            if q > 0
-                outflow_mean[basin_id.idx] += q
-            else
-                inflow_mean[basin_id.idx] -= q
-            end
-        end
-    end
-
-    return SavedFlow(; flow = flow_mean, inflow = inflow_mean, outflow = outflow_mean)
-end
-
-"Compute the average vertical fluxes over the last saveat interval and write
-them to SavedValues"
-function save_vertical_flux(u, t, integrator)
-    (; basin) = integrator.p
-    (; vertical_flux_integrated) = basin
-
-    Δt = get_Δt(integrator)
-    vertical_flux_mean = copy(vertical_flux_integrated)
-    vertical_flux_mean ./= Δt
-    fill!(vertical_flux_integrated, 0.0)
-
-    return vertical_flux_mean
 end
 
 """
@@ -243,6 +374,7 @@ function apply_discrete_control!(u, t, integrator)::Nothing
     (; discrete_control) = p
     (; node_id) = discrete_control
     du = get_du(integrator)
+    water_balance!(du, u, p, t)
 
     # Loop over the discrete control nodes to determine their truth state
     # and detect possible control state changes
@@ -436,12 +568,10 @@ end
 
 "Load updates from 'Basin / time' into the parameters"
 function update_basin!(integrator)::Nothing
-    (; p, u) = integrator
+    (; p) = integrator
     (; basin) = p
-    (; storage) = u
-    (; node_id, time, vertical_flux_from_input, vertical_flux, vertical_flux_prev) = basin
+    (; node_id, time, vertical_flux_from_input) = basin
     t = datetime_since(integrator.t, integrator.p.starttime)
-    vertical_flux = vertical_flux[parent(u)]
 
     rows = searchsorted(time.time, t)
     timeblock = view(time, rows)
@@ -457,19 +587,20 @@ function update_basin!(integrator)::Nothing
         i = searchsortedfirst(node_id, NodeID(NodeType.Basin, row.node_id, 0))
         set_table_row!(table, row, i)
     end
-
-    update_vertical_flux!(basin, storage)
-
-    # Forget about vertical fluxes to handle discontinuous forcing from basin_update
-    copyto!(vertical_flux_prev, vertical_flux)
     return nothing
 end
 
 "Solve the allocation problem for all demands and assign allocated abstractions."
 function update_allocation!(integrator)::Nothing
     (; p, t, u) = integrator
-    (; allocation) = p
+    (; allocation, basin) = p
+    (; current_storage) = basin
     (; allocation_models, mean_input_flows, mean_realized_flows) = allocation
+
+    # Make sure current storages are up to date
+    du = get_du(integrator)
+    current_storage = current_storage[parent(du)]
+    formulate_storages!(current_storage, du, u, p, t)
 
     # Don't run the allocation algorithm if allocation is not active
     # (Specifically for running Ribasim via the BMI)
@@ -477,21 +608,16 @@ function update_allocation!(integrator)::Nothing
         return nothing
     end
 
-    (; Δt_allocation) = allocation_models[1]
-
     # Divide by the allocation Δt to obtain the mean input flows
     # from the integrated flows
-    for key in keys(mean_input_flows)
-        mean_input_flows[key] /= Δt_allocation
+    (; Δt_allocation) = allocation_models[1]
+    for edge in keys(mean_input_flows)
+        mean_input_flows[edge] /= Δt_allocation
     end
 
     # Divide by the allocation Δt to obtain the mean realized flows
     # from the integrated flows
-    for (edge, value) in mean_realized_flows
-        if edge[1] == edge[2]
-            # Compute the mean realized demand for basins as Δstorage/Δt_allocation
-            mean_realized_flows[edge] = value + u[edge[1].idx]
-        end
+    for edge in keys(mean_realized_flows)
         mean_realized_flows[edge] /= Δt_allocation
     end
 
@@ -513,13 +639,6 @@ function update_allocation!(integrator)::Nothing
     for mean_flows in (mean_input_flows, mean_realized_flows)
         for edge in keys(mean_flows)
             mean_flows[edge] = 0.0
-        end
-    end
-
-    # Set basin storages for mean storage change computation
-    for (edge, value) in mean_realized_flows
-        if edge[1] == edge[2]
-            mean_realized_flows[edge] = value - u[edge[1].idx]
         end
     end
 end
