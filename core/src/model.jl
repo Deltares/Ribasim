@@ -104,6 +104,7 @@ function Model(config::Config)::Model
     du0 = zero(u0)
 
     parameters = set_state_flow_edges(parameters, u0)
+    parameters = @set parameters.u_prev_saveat = zero(u0)
 
     # The Solver algorithm
     alg = algorithm(config.solver; u0)
@@ -150,10 +151,10 @@ function Model(config::Config)::Model
         progress = true,
         progress_name = "Simulating",
         progress_steps = 100,
+        save_everystep = false,
         callback,
         tstops,
         isoutofdomain,
-        saveat,
         adaptive,
         dt,
         config.solver.dtmin,
@@ -175,7 +176,8 @@ function Model(config::Config)::Model
 end
 
 "Get all saved times in seconds since start"
-tsaves(model::Model)::Vector{Float64} = model.integrator.sol.t
+tsaves(model::Model)::Vector{Float64} =
+    [0.0, (cvec.t for cvec in model.saved.flow.saveval)...]
 
 "Get all saved times as a Vector{DateTime}"
 function datetimes(model::Model)::Vector{DateTime}
