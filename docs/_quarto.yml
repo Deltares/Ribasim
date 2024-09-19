@@ -38,7 +38,6 @@ website:
         - tutorial/natural-flow.ipynb
         - tutorial/irrigation-demand.ipynb
         - tutorial/reservoir.ipynb
-        - tutorial/public-water-supply.ipynb
 
     - title: "How-to guides"
       contents:
