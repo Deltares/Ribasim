@@ -580,11 +580,13 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     vertical_flux_from_input =
         ComponentVector(; precipitation, potential_evaporation, drainage, infiltration)
     vertical_flux_bmi = ComponentVector(;
-        precipitation = copy(precipitation),
-        evaporation,
-        drainage = copy(drainage),
-        infiltration = copy(infiltration),
+        precipitation = zero(precipitation),
+        evaporation = zero(evaporation),
+        drainage = zero(drainage),
+        infiltration = zero(infiltration),
     )
+
+    @show vertical_flux_bmi
 
     demand = zeros(length(node_id))
 
