@@ -475,3 +475,28 @@ end
     @test logger.logs[3].message ==
           "Missing priority parameter(s) for a FlowDemand / static node in the allocation problem."
 end
+
+@testitem "Node ID not in Node table" begin
+    using Ribasim
+    import SQLite
+    using Logging
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
+
+    cfg = Ribasim.Config(toml_path)
+    db_path = Ribasim.input_path(cfg, cfg.database)
+    db = SQLite.DB(db_path)
+
+    logger = TestLogger()
+    with_logger(logger) do
+        @test_throws "Node ID #1 of type PidControl is not in the Node table." Ribasim.NodeID(
+            :PidControl,
+            1,
+            db,
+        )
+    end
+
+    with_logger(logger) do
+        @test_throws "Node ID #20 is not in the Node table." Ribasim.NodeID(20, db)
+    end
+end
