@@ -62,7 +62,7 @@ function NodeID(type::NodeType.T, value::Integer, db::DB)::NodeID
             ),
         ),
     )
-    @assert idx > 0
+    @assert idx > 0 "Node id of $type is $value. It needs to be a positive integer"
     return NodeID(type, value, idx)
 end
 
@@ -72,7 +72,7 @@ function NodeID(value::Integer, db::DB)::NodeID
         db,
         "SELECT COUNT(*), node_type FROM Node WHERE node_type == (SELECT node_type FROM Node WHERE node_id == $value) AND node_id <= $value",
     )
-    @assert only(idx) > 0
+    @assert only(idx) > 0 "Node id of $type is $value. It needs to be a positive integer"
     return NodeID(only(type), value, only(idx))
 end
 
