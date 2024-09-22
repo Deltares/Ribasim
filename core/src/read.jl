@@ -656,7 +656,6 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     storage0 = get_storages_from_levels(basin, state.level)
     @assert length(storage0) == n "Basin / state length differs from number of Basins"
     basin.storage0 .= storage0
-    basin.storage_prev_saveat .= storage0
     return basin
 end
 

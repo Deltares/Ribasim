@@ -119,16 +119,21 @@ function formulate_storages!(
     du::ComponentVector,
     u::ComponentVector,
     p::Parameters,
-    t::Number,
+    t::Number;
+    add_initial_storage::Bool = true,
 )::Nothing
     (; basin, flow_boundary, tprev, flow_to_storage) = p
-    # Current storage: initial conditdion +
+    # Current storage: initial condition +
     # total inflows and outflows since the start
     # of the simulation
-    mul!(current_storage, flow_to_storage, u)
+    if add_initial_storage
+        current_storage .= basin.storage0
+    else
+        current_storage .= 0.0
+    end
+    mul!(current_storage, flow_to_storage, u, 1, 1)
     formulate_storage!(current_storage, basin, du)
     formulate_storage!(current_storage, tprev[], t, flow_boundary)
-    current_storage .+= basin.storage0
     return nothing
 end
 

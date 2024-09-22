@@ -280,7 +280,10 @@ function check_water_balance_error(
     (; basin, water_balance_abstol, water_balance_reltol) = p
     errors = false
     current_storage = basin.current_storage[parent(u)]
-    formulate_storages!(current_storage, u, u, p, t)
+
+    # The initial storage is irrelevant for the storage rate and can only cause
+    # floating point truncation errors
+    formulate_storages!(current_storage, u, u, p, t; add_initial_storage = false)
 
     for (
         inflow_rate,
@@ -300,7 +303,7 @@ function check_water_balance_error(
         saved_flow.flow.evaporation,
         saved_flow.flow.infiltration,
         current_storage,
-        basin.storage_prev_saveat,
+        basin.Δstorage_prev_saveat,
         basin.node_id,
     )
         storage_rate = (s_now - s_prev) / Δt
@@ -321,7 +324,7 @@ function check_water_balance_error(
         error("Too large water balance error(s) detected at t = $t")
     end
 
-    @. basin.storage_prev_saveat = current_storage
+    @. basin.Δstorage_prev_saveat = current_storage
     return nothing
 end
 

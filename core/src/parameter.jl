@@ -314,7 +314,8 @@ end
     vertical_flux_bmi::V2 = zeros(length(node_id))
     # Initial_storage
     storage0::Vector{Float64} = zeros(length(node_id))
-    storage_prev_saveat::Vector{Float64} = zeros(length(node_id))
+    # Storage at previous saveat without storage0
+    Δstorage_prev_saveat::Vector{Float64} = zeros(length(node_id))
     # Analytically integrated forcings
     cumulative_precipitation::Vector{Float64} = zeros(length(node_id))
     cumulative_drainage::Vector{Float64} = zeros(length(node_id))
