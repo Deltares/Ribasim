@@ -121,82 +121,31 @@ function formulate_storages!(
     p::Parameters,
     t::Number,
 )::Nothing
-    (;
-        basin,
-        flow_boundary,
-        tabulated_rating_curve,
-        pump,
-        outlet,
-        linear_resistance,
-        manning_resistance,
-        user_demand,
-        tprev,
-    ) = p
+    (; basin, flow_boundary, tprev, flow_to_storage) = p
     # Current storage: initial conditdion +
     # total inflows and outflows since the start
     # of the simulation
-    current_storage .= basin.storage0
-    formulate_storage!(current_storage, basin, du, u)
+    mul!(current_storage, flow_to_storage, u)
+    formulate_storage!(current_storage, basin, du)
     formulate_storage!(current_storage, tprev[], t, flow_boundary)
-    formulate_storage!(current_storage, t, u.tabulated_rating_curve, tabulated_rating_curve)
-    formulate_storage!(current_storage, t, u.pump, pump)
-    formulate_storage!(current_storage, t, u.outlet, outlet)
-    formulate_storage!(current_storage, t, u.linear_resistance, linear_resistance)
-    formulate_storage!(current_storage, t, u.manning_resistance, manning_resistance)
-    formulate_storage!(
-        current_storage,
-        t,
-        u.user_demand_inflow,
-        user_demand;
-        edge_volume_out = u.user_demand_outflow,
-    )
+    current_storage .+= basin.storage0
     return nothing
 end
 
 """
-The storage contributions of the forcings that are part of the state.
+The storage contributions of the forcings that are not part of the state.
 """
 function formulate_storage!(
     current_storage::AbstractVector,
     basin::Basin,
     du::ComponentVector,
-    u::ComponentVector,
 )
     (; current_cumulative_precipitation, current_cumulative_drainage) = basin
-
-    current_storage .-= u.evaporation
-    current_storage .-= u.infiltration
 
     current_cumulative_precipitation = current_cumulative_precipitation[parent(du)]
     current_cumulative_drainage = current_cumulative_drainage[parent(du)]
     current_storage .+= current_cumulative_precipitation
     current_storage .+= current_cumulative_drainage
-end
-
-"""
-Formulate storage contributions of nodes.
-"""
-function formulate_storage!(
-    current_storage::AbstractVector,
-    t::Number,
-    edge_volume_in::AbstractVector,
-    node::AbstractParameterNode;
-    edge_volume_out = nothing,
-)
-    edge_volume_out = isnothing(edge_volume_out) ? edge_volume_in : edge_volume_out
-
-    for (volume_in, volume_out, inflow_edge, outflow_edge) in
-        zip(edge_volume_in, edge_volume_out, node.inflow_edge, node.outflow_edge)
-        inflow_id = inflow_edge.edge[1]
-        if inflow_id.type == NodeType.Basin
-            current_storage[inflow_id.idx] -= volume_in
-        end
-
-        outflow_id = outflow_edge.edge[2]
-        if outflow_id.type == NodeType.Basin
-            current_storage[outflow_id.idx] += volume_out
-        end
-    end
 end
 
 """

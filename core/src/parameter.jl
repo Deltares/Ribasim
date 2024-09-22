@@ -843,6 +843,8 @@ const ModelGraph = MetaGraph{
     state_outflow_edge::C4 = ComponentVector()
     all_nodes_active::Base.RefValue{Bool} = Ref(false)
     tprev::Base.RefValue{Float64} = Ref(0.0)
+    # Sparse matrix for combining flows into storages
+    flow_to_storage::SparseMatrixCSC{Float64, Int64} = spzeros(1, 1)
     # Water balance tolerances
     water_balance_abstol::Float64
     water_balance_reltol::Float64
