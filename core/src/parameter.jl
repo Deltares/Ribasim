@@ -62,7 +62,9 @@ function NodeID(type::NodeType.T, value::Integer, db::DB)::NodeID
             ),
         ),
     )
-    @assert idx > 0
+    if idx <= 0
+        error("Node ID #$value of type $type is not in the Node table.")
+    end
     return NodeID(type, value, idx)
 end
 
@@ -72,7 +74,9 @@ function NodeID(value::Integer, db::DB)::NodeID
         db,
         "SELECT COUNT(*), node_type FROM Node WHERE node_type == (SELECT node_type FROM Node WHERE node_id == $value) AND node_id <= $value",
     )
-    @assert only(idx) > 0
+    if only(idx) <= 0
+        error("Node ID #$value is not in the Node table.")
+    end
     return NodeID(only(type), value, only(idx))
 end
 
@@ -213,7 +217,6 @@ end
 """
 Type for storing metadata of edges in the graph:
 id: ID of the edge (only used for labeling flow output)
-flow_idx: Index in the vector of flows
 type: type of the edge
 subnetwork_id_source: ID of subnetwork where this edge is a source
   (0 if not a source)
@@ -221,11 +224,12 @@ edge: (from node ID, to node ID)
 """
 @kwdef struct EdgeMetadata
     id::Int32
-    flow_idx::Int
     type::EdgeType.T
     subnetwork_id_source::Int32
     edge::Tuple{NodeID, NodeID}
 end
+
+Base.length(::EdgeMetadata) = 1
 
 """
 The update of an parameter given by a value and a reference to the target
@@ -258,14 +262,31 @@ abstract type AbstractDemandNode <: AbstractParameterNode end
 """
 In-memory storage of saved mean flows for writing to results.
 
-- `flow`: The mean flows on all edges
+- `flow`: The mean flows on all edges and state-dependent forcings
 - `inflow`: The sum of the mean flows coming into each basin
 - `outflow`: The sum of the mean flows going out of each basin
+- `flow_boundary`: The exact integrated mean flows of flow boundaries
+- `precipitation`: The exact integrated mean precipitation
+- `drainage`: The exact integrated mean drainage
+- `t`: Endtime of the interval over which is averaged
 """
-@kwdef struct SavedFlow
-    flow::Vector{Float64}
+@kwdef struct SavedFlow{V}
+    flow::V
     inflow::Vector{Float64}
     outflow::Vector{Float64}
+    flow_boundary::Vector{Float64}
+    precipitation::Vector{Float64}
+    drainage::Vector{Float64}
+    t::Float64
+end
+
+"""
+In-memory storage of saved instantaneous storages and levels for writing to results.
+"""
+@kwdef struct SavedBasinState
+    storage::Vector{Float64}
+    level::Vector{Float64}
+    t::Float64
 end
 
 """
@@ -290,13 +311,21 @@ end
     outflow_ids::Vector{Vector{NodeID}} = [NodeID[]]
     # Vertical fluxes
     vertical_flux_from_input::V1 = zeros(length(node_id))
-    vertical_flux::Cache = cache(length(node_id))
-    vertical_flux_prev::V2 = zeros(length(node_id))
-    vertical_flux_integrated::V2 = zeros(length(node_id))
     vertical_flux_bmi::V2 = zeros(length(node_id))
+    # Initial_storage
+    storage0::Vector{Float64} = zeros(length(node_id))
+    storage_prev_saveat::Vector{Float64} = zeros(length(node_id))
+    # Analytically integrated forcings
+    cumulative_precipitation::Vector{Float64} = zeros(length(node_id))
+    cumulative_drainage::Vector{Float64} = zeros(length(node_id))
+    cumulative_precipitation_saveat::Vector{Float64} = zeros(length(node_id))
+    cumulative_drainage_saveat::Vector{Float64} = zeros(length(node_id))
     # Cache this to avoid recomputation
+    current_storage::Cache = cache(length(node_id))
     current_level::Cache = cache(length(node_id))
     current_area::Cache = cache(length(node_id))
+    current_cumulative_precipitation::Cache = cache(length(node_id))
+    current_cumulative_drainage::Cache = cache(length(node_id))
     # Discrete values for interpolation
     storage_to_level::Vector{
         LinearInterpolationIntInv{
@@ -330,9 +359,10 @@ of Vectors or Arrow Primitives, and is added to avoid type instabilities.
 node_id: node ID of the TabulatedRatingCurve node
 inflow_edge: incoming flow edge metadata
     The ID of the destination node is always the ID of the TabulatedRatingCurve node
-outflow_edges: outgoing flow edges metadata
+outflow_edge: outgoing flow edge metadata
     The ID of the source node is always the ID of the TabulatedRatingCurve node
 active: whether this node is active and thus contributes flows
+max_downstream_level: The downstream level above which the TabulatedRatingCurve flow goes to zero
 table: The current Q(h) relationships
 time: The time table used for updating the tables
 control_mapping: dictionary from (node_id, control_state) to Q(h) and/or active state
@@ -340,8 +370,9 @@ control_mapping: dictionary from (node_id, control_state) to Q(h) and/or active 
 @kwdef struct TabulatedRatingCurve{C} <: AbstractParameterNode
     node_id::Vector{NodeID}
     inflow_edge::Vector{EdgeMetadata}
-    outflow_edges::Vector{Vector{EdgeMetadata}}
+    outflow_edge::Vector{EdgeMetadata}
     active::Vector{Bool}
+    max_downstream_level::Vector{Float64} = fill(Inf, length(node_id))
     table::Vector{ScalarInterpolation}
     time::StructVector{TabulatedRatingCurveTimeV1, C, Int}
     control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate}
@@ -435,12 +466,16 @@ end
 node_id: node ID of the FlowBoundary node
 outflow_edges: The outgoing flow edge metadata
 active: whether this node is active and thus contributes flow
-flow_rate: target flow rate
+cumulative_flow: The exactly integrated cumulative boundary flow since the start of the simulation
+cumulative_flow_saveat: The exactly integrated cumulative boundary flow since the last saveat
+flow_rate: flow rate (exact)
 """
 @kwdef struct FlowBoundary <: AbstractParameterNode
     node_id::Vector{NodeID}
     outflow_edges::Vector{Vector{EdgeMetadata}}
     active::Vector{Bool}
+    cumulative_flow::Vector{Float64} = zeros(length(node_id))
+    cumulative_flow_saveat::Vector{Float64} = zeros(length(node_id))
     flow_rate::Vector{ScalarInterpolation}
 end
 
@@ -448,23 +483,27 @@ end
 node_id: node ID of the Pump node
 inflow_edge: incoming flow edge metadata
     The ID of the destination node is always the ID of the Pump node
-outflow_edges: outgoing flow edges metadata
+outflow_edge: outgoing flow edge metadata
     The ID of the source node is always the ID of the Pump node
 active: whether this node is active and thus contributes flow
 flow_rate: target flow rate
 min_flow_rate: The minimal flow rate of the pump
 max_flow_rate: The maximum flow rate of the pump
+min_upstream_level: The upstream level below which the Pump flow goes to zero
+max_downstream_level: The downstream level above which the Pump flow goes to zero
 control_mapping: dictionary from (node_id, control_state) to target flow rate
 continuous_control_type: one of None, ContinuousControl, PidControl
 """
 @kwdef struct Pump <: AbstractParameterNode
     node_id::Vector{NodeID}
     inflow_edge::Vector{EdgeMetadata} = []
-    outflow_edges::Vector{Vector{EdgeMetadata}} = []
+    outflow_edge::Vector{EdgeMetadata} = []
     active::Vector{Bool} = fill(true, length(node_id))
     flow_rate::Cache = cache(length(node_id))
     min_flow_rate::Vector{Float64} = zeros(length(node_id))
     max_flow_rate::Vector{Float64} = fill(Inf, length(node_id))
+    min_upstream_level::Vector{Float64} = fill(-Inf, length(node_id))
+    max_downstream_level::Vector{Float64} = fill(Inf, length(node_id))
     control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate}
     continuous_control_type::Vector{ContinuousControlType.T} =
         fill(ContinuousControlType.None, length(node_id))
@@ -472,11 +511,13 @@ continuous_control_type: one of None, ContinuousControl, PidControl
     function Pump(
         node_id,
         inflow_edge,
-        outflow_edges,
+        outflow_edge,
         active,
         flow_rate,
         min_flow_rate,
         max_flow_rate,
+        min_upstream_level,
+        max_downstream_level,
         control_mapping,
         continuous_control_type,
     )
@@ -484,11 +525,13 @@ continuous_control_type: one of None, ContinuousControl, PidControl
             return new(
                 node_id,
                 inflow_edge,
-                outflow_edges,
+                outflow_edge,
                 active,
                 flow_rate,
                 min_flow_rate,
                 max_flow_rate,
+                min_upstream_level,
+                max_downstream_level,
                 control_mapping,
                 continuous_control_type,
             )
@@ -502,50 +545,55 @@ end
 node_id: node ID of the Outlet node
 inflow_edge: incoming flow edge metadata.
     The ID of the destination node is always the ID of the Outlet node
-outflow_edges: outgoing flow edges metadata.
+outflow_edge: outgoing flow edge metadata.
     The ID of the source node is always the ID of the Outlet node
 active: whether this node is active and thus contributes flow
 flow_rate: target flow rate
 min_flow_rate: The minimal flow rate of the outlet
 max_flow_rate: The maximum flow rate of the outlet
+min_upstream_level: The upstream level below which the Outlet flow goes to zero
+max_downstream_level: The downstream level above which the Outlet flow goes to zero
 control_mapping: dictionary from (node_id, control_state) to target flow rate
 continuous_control_type: one of None, ContinuousControl, PidControl
 """
 @kwdef struct Outlet <: AbstractParameterNode
     node_id::Vector{NodeID}
     inflow_edge::Vector{EdgeMetadata} = []
-    outflow_edges::Vector{Vector{EdgeMetadata}} = []
+    outflow_edge::Vector{EdgeMetadata} = []
     active::Vector{Bool} = fill(true, length(node_id))
     flow_rate::Cache = cache(length(node_id))
     min_flow_rate::Vector{Float64} = zeros(length(node_id))
     max_flow_rate::Vector{Float64} = fill(Inf, length(node_id))
-    min_crest_level::Vector{Float64} = fill(-Inf, length(node_id))
+    min_upstream_level::Vector{Float64} = fill(-Inf, length(node_id))
+    max_downstream_level::Vector{Float64} = fill(Inf, length(node_id))
     control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate} = Dict()
     continuous_control_type::Vector{ContinuousControlType.T} =
         fill(ContinuousControlType.None, length(node_id))
 
     function Outlet(
         node_id,
-        inflow_id,
-        outflow_ids,
+        inflow_edge,
+        outflow_edge,
         active,
         flow_rate,
         min_flow_rate,
         max_flow_rate,
-        min_crest_level,
+        min_upstream_level,
+        max_downstream_level,
         control_mapping,
         continuous_control_type,
     )
         if valid_flow_rates(node_id, flow_rate[Float64[]], control_mapping)
             return new(
                 node_id,
-                inflow_id,
-                outflow_ids,
+                inflow_edge,
+                outflow_edge,
                 active,
                 flow_rate,
                 min_flow_rate,
                 max_flow_rate,
-                min_crest_level,
+                min_upstream_level,
+                max_downstream_level,
                 control_mapping,
                 continuous_control_type,
             )
@@ -563,15 +611,21 @@ node_id: node ID of the Terminal node
 end
 
 """
-A variant on `Base.Ref` where the source array is a vector that is possibly wrapped in a ForwardDiff.DiffCache.
+A variant on `Base.Ref` where the source array is a vector that is possibly wrapped in a ForwardDiff.LazyBufferCache,
+or a reference to the state derivative vector du.
 Retrieve value with get_value(ref::PreallocationRef, val) where `val` determines the return type.
 """
 struct PreallocationRef
     vector::Cache
     idx::Int
+    from_du::Bool
+    function PreallocationRef(vector::Cache, idx::Int; from_du = false)
+        new(vector, idx, from_du)
+    end
 end
 
-get_value(ref::PreallocationRef, du) = ref.vector[parent(du)][ref.idx]
+get_value(ref::PreallocationRef, du) =
+    ref.from_du ? du[ref.idx] : ref.vector[parent(du)][ref.idx]
 
 function set_value!(ref::PreallocationRef, value, du)::Nothing
     ref.vector[parent(du)][ref.idx] = value
@@ -745,12 +799,7 @@ node_ids: mapping subnetwork ID -> node IDs in that subnetwork
 edges_source: mapping subnetwork ID -> metadata of allocation
     source edges in that subnetwork
 flow_edges: The metadata of all flow edges
-flow dict: mapping (source ID, destination ID) -> index in the flow vector
     of the flow over that edge
-flow: Flow per flow edge in the order prescribed by flow_dict
-flow_prev: The flow vector of the previous timestep, used for integration
-flow_integrated: Flow integrated over time, used for mean flow computation
-    over saveat intervals
 saveat: The time interval between saves of output data (storage, flow, ...)
 """
 const ModelGraph = MetaGraph{
@@ -763,17 +812,13 @@ const ModelGraph = MetaGraph{
         node_ids::Dict{Int32, Set{NodeID}},
         edges_source::Dict{Int32, Set{EdgeMetadata}},
         flow_edges::Vector{EdgeMetadata},
-        flow_dict::Dict{Tuple{NodeID, NodeID}, Int},
-        flow::Cache,
-        flow_prev::Vector{Float64},
-        flow_integrated::Vector{Float64},
         saveat::Float64,
     },
     MetaGraphsNext.var"#11#13",
     Float64,
 }
 
-@kwdef struct Parameters{C1, C2, V1, V2}
+@kwdef struct Parameters{C1, C2, C3, C4, C5, V1, V2}
     starttime::DateTime
     graph::ModelGraph
     allocation::Allocation
@@ -793,5 +838,19 @@ const ModelGraph = MetaGraph{
     level_demand::LevelDemand
     flow_demand::FlowDemand
     subgrid::Subgrid
+    # Per state the in- and outflow edges associated with that state (if theu exist)
+    state_inflow_edge::C3 = ComponentVector()
+    state_outflow_edge::C4 = ComponentVector()
     all_nodes_active::Base.RefValue{Bool} = Ref(false)
+    tprev::Base.RefValue{Float64} = Ref(0.0)
+    # Water balance tolerances
+    water_balance_abstol::Float64
+    water_balance_reltol::Float64
+    # State at previous saveat
+    u_prev_saveat::C5 = ComponentVector()
+end
+
+# To opt-out of type checking for ForwardDiff
+function DiffEqBase.anyeltypedual(::Parameters, ::Type{Val{counter}}) where {counter}
+    Any
 end

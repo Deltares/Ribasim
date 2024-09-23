@@ -10,11 +10,17 @@ from numpy.typing import NDArray
 from pandera.dtypes import Int32
 from pandera.typing import Index, Series
 from pandera.typing.geopandas import GeoDataFrame, GeoSeries
-from pydantic import NonNegativeInt, PrivateAttr
+from pydantic import NonNegativeInt, PrivateAttr, model_validator
 from shapely.geometry import LineString, MultiLineString, Point
 
 from ribasim.input_base import SpatialTableModel
 from ribasim.utils import UsedIDs
+from ribasim.validation import (
+    can_connect,
+    control_edge_neighbor_amount,
+    flow_edge_neighbor_amount,
+    node_type_connectivity,
+)
 
 from .base import _GeoBaseSchema
 
@@ -54,6 +60,13 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
 
     _used_edge_ids: UsedIDs = PrivateAttr(default_factory=UsedIDs)
 
+    @model_validator(mode="after")
+    def _update_used_ids(self) -> "EdgeTable":
+        if self.df is not None and len(self.df.index) > 0:
+            self._used_edge_ids.node_ids.update(self.df.index)
+            self._used_edge_ids.max_node_id = self.df.index.max()
+        return self
+
     def add(
         self,
         from_node: NodeData,
@@ -82,6 +95,11 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
             the allocation algorithm, and should thus not be set for every edge in a subnetwork.
         **kwargs : Dict
         """
+        if not can_connect(from_node.node_type, to_node.node_type):
+            raise ValueError(
+                f"Node of type {to_node.node_type} cannot be downstream of node of type {from_node.node_type}. Possible downstream node: {node_type_connectivity[from_node.node_type]}."
+            )
+
         geometry_to_append = (
             [LineString([from_node.geometry, to_node.geometry])]
             if geometry is None
@@ -90,6 +108,7 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
         edge_type = (
             "control" if from_node.node_type in SPATIALCONTROLNODETYPES else "flow"
         )
+        self._validate_edge(to_node, from_node, edge_type)
         assert self.df is not None
         if edge_id is None:
             edge_id = self._used_edge_ids.new_id()
@@ -118,6 +137,41 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
                 f"Edges have to be unique, but edge with from_node_id {from_node.node_id} to_node_id {to_node.node_id} already exists."
             )
         self._used_edge_ids.add(edge_id)
+
+    def _validate_edge(self, to_node: NodeData, from_node: NodeData, edge_type: str):
+        assert self.df is not None
+        in_neighbor: int = self.df.loc[
+            (self.df["to_node_id"] == to_node.node_id)
+            & (self.df["edge_type"] == edge_type)
+        ].shape[0]
+
+        out_neighbor: int = self.df.loc[
+            (self.df["from_node_id"] == from_node.node_id)
+            & (self.df["edge_type"] == edge_type)
+        ].shape[0]
+        # validation on neighbor amount
+        max_in_flow: int = flow_edge_neighbor_amount[to_node.node_type][1]
+        max_out_flow: int = flow_edge_neighbor_amount[from_node.node_type][3]
+        max_in_control: int = control_edge_neighbor_amount[to_node.node_type][1]
+        max_out_control: int = control_edge_neighbor_amount[from_node.node_type][3]
+        if edge_type == "flow":
+            if in_neighbor >= max_in_flow:
+                raise ValueError(
+                    f"Node {to_node.node_id} can have at most {max_in_flow} flow edge inneighbor(s) (got {in_neighbor})"
+                )
+            if out_neighbor >= max_out_flow:
+                raise ValueError(
+                    f"Node {from_node.node_id} can have at most {max_out_flow} flow edge outneighbor(s) (got {out_neighbor})"
+                )
+        elif edge_type == "control":
+            if in_neighbor >= max_in_control:
+                raise ValueError(
+                    f"Node {to_node.node_id} can have at most {max_in_control} control edge inneighbor(s) (got {in_neighbor})"
+                )
+            if out_neighbor >= max_out_control:
+                raise ValueError(
+                    f"Node {from_node.node_id} can have at most {max_out_control} control edge outneighbor(s) (got {out_neighbor})"
+                )
 
     def _get_where_edge_type(self, edge_type: str) -> NDArray[np.bool_]:
         assert self.df is not None

@@ -13,7 +13,12 @@ from ribasim.config import Solver
 from ribasim.geometry.edge import NodeData
 from ribasim.input_base import esc_id
 from ribasim.model import Model
-from ribasim_testmodels import basic_model, trivial_model
+from ribasim_testmodels import (
+    basic_model,
+    outlet_model,
+    pid_control_equation_model,
+    trivial_model,
+)
 from shapely import Point
 
 
@@ -123,6 +128,7 @@ def test_write_adds_fid_in_tables(basic, tmp_path):
 
 def test_node_table(basic):
     model = basic
+    assert model.flow_boundary.node.df.crs == CRS.from_epsg(28992)
     node = model.node_table()
     df = node.df
     assert df.geometry.is_unique
@@ -140,21 +146,6 @@ def test_edge_table(basic):
     assert df.from_node_id.dtype == np.int32
     assert df.subnetwork_id.dtype == pd.Int32Dtype()
     assert df.crs == CRS.from_epsg(28992)
-
-
-def test_duplicate_edge(trivial):
-    model = trivial
-    with pytest.raises(
-        ValueError,
-        match=re.escape(
-            "Edges have to be unique, but edge with from_node_id 6 to_node_id 0 already exists."
-        ),
-    ):
-        model.edge.add(
-            model.basin[6],
-            model.tabulated_rating_curve[0],
-            name="duplicate",
-        )
 
 
 def test_indexing(basic):
@@ -188,7 +179,10 @@ def test_indexing(basic):
         model.basin.time[1]
 
 
-@pytest.mark.parametrize("model", [basic_model(), trivial_model()])
+@pytest.mark.parametrize(
+    "model",
+    [basic_model(), outlet_model(), pid_control_equation_model(), trivial_model()],
+)
 def test_xugrid(model, tmp_path):
     uds = model.to_xugrid(add_flow=False)
     assert isinstance(uds, xugrid.UgridDataset)

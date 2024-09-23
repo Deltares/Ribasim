@@ -93,7 +93,7 @@ end
 
     # Converting from storages to levels and back should return the same storages
     storages = range(0.0, 2 * storage_to_level.t[end], 50)
-    levels = [Ribasim.get_area_and_level(basin, 1, s)[2] for s in storages]
+    levels = [Ribasim.get_level_from_storage(basin, 1, s) for s in storages]
     storages_ = [Ribasim.get_storage_from_level(basin, 1, l) for l in levels]
     @test storages ≈ storages_
 
@@ -161,7 +161,7 @@ end
 @testitem "Jacobian sparsity" begin
     import SQLite
     using ComponentArrays: ComponentVector
-    using SparseArrays: spzeros
+    using SparseArrays: sparse, findnz
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
 
@@ -170,18 +170,19 @@ end
     db = SQLite.DB(db_path)
 
     p = Ribasim.Parameters(db, cfg)
+    close(db)
     t0 = 0.0
-    u0 = ComponentVector{Float64}(;
-        storage = zeros(length(p.basin.node_id)),
-        integral = Float64[],
-    )
+    u0 = Ribasim.build_state_vector(p)
     du0 = copy(u0)
     jac_prototype = Ribasim.get_jac_prototype(du0, u0, p, t0)
 
-    jac_prototype_expected = spzeros(Bool, 4, 4)
-    jac_prototype_expected[1:2, 1:2] .= true
-    jac_prototype_expected[3:4, 2:3] .= true
-    jac_prototype_expected[4, 4] = true
+    # rows, cols, _ = findnz(jac_prototype)
+    #! format: off
+    rows_expected = [1, 2, 3, 6, 7, 9, 13, 1, 2, 3, 4, 6, 7, 9, 10, 13, 14, 1, 2, 3, 4, 5, 6, 7, 9, 11, 13, 15, 2, 3, 4, 5, 10, 11, 14, 15, 3, 4, 5, 11, 15, 1, 2, 3, 6, 7, 9, 13, 1, 2, 3, 6, 7, 8, 9, 12, 13, 7, 8, 12, 1, 2, 3, 6, 7, 9, 13, 2, 4, 10, 14, 3, 4, 5, 11, 15, 7, 8, 12, 1, 2, 3, 6, 7, 9, 13, 2, 4, 10, 14, 3, 4, 5, 11, 15]
+    cols_expected = [1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7, 7, 8, 8, 8, 9, 9, 9, 9, 9, 9, 9, 10, 10, 10, 10, 11, 11, 11, 11, 11, 12, 12, 12, 13, 13, 13, 13, 13, 13, 13, 14, 14, 14, 14, 15, 15, 15, 15, 15]
+    #! format: on
+    jac_prototype_expected =
+        sparse(rows_expected, cols_expected, true, size(jac_prototype)...)
     @test jac_prototype == jac_prototype_expected
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/pid_control/ribasim.toml")
@@ -191,16 +192,17 @@ end
     db = SQLite.DB(db_path)
 
     p = Ribasim.Parameters(db, cfg)
-    u0 = ComponentVector{Float64}(;
-        storage = zeros(length(p.basin.node_id)),
-        integral = zeros(length(p.pid_control.node_id)),
-    )
+    close(db)
+    u0 = Ribasim.build_state_vector(p)
     du0 = copy(u0)
     jac_prototype = Ribasim.get_jac_prototype(du0, u0, p, t0)
 
-    jac_prototype_expected = spzeros(Bool, 3, 3)
-    jac_prototype_expected[1, 1:3] .= true
-    jac_prototype_expected[2:3, 1] .= true
+    #! format: off
+    rows_expected = [1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6, 1, 2]
+    cols_expected = [1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 5, 6]
+    #! format: on
+    jac_prototype_expected =
+        sparse(rows_expected, cols_expected, true, size(jac_prototype)...)
     @test jac_prototype == jac_prototype_expected
 end
 
@@ -234,7 +236,7 @@ end
 end
 
 @testitem "low_storage_factor" begin
-    using Ribasim: NodeID, low_storage_factor, EdgeMetadata, EdgeType
+    using Ribasim: NodeID, low_storage_factor, low_storage_factor_resistance_node
 
     node_id = NodeID(:Basin, 5, 1)
     @test low_storage_factor([-2.0], node_id, 2.0) === 0.0
@@ -244,6 +246,15 @@ end
     @test low_storage_factor([1.0], node_id, 2.0) === 0.5
     @test low_storage_factor([3.0f0], node_id, 2.0) === 1.0f0
     @test low_storage_factor([3.0], node_id, 2.0) === 1.0
+
+    node_id_1 = NodeID(:Basin, 5, 1)
+    node_id_2 = NodeID(:Basin, 6, 2)
+    @test low_storage_factor_resistance_node([3.0, 3.0], 1.0, node_id_1, node_id_2, 2.0) ==
+          1.0
+    @test low_storage_factor_resistance_node([1.0, 3.0], 1.0, node_id_1, node_id_2, 2.0) ==
+          0.5
+    @test low_storage_factor_resistance_node([1.0, 3.0], -1.0, node_id_1, node_id_2, 2.0) ==
+          1.0
 end
 
 @testitem "constraints_from_nodes" begin

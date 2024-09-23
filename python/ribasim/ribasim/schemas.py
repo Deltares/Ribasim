@@ -21,11 +21,11 @@ class _BaseSchema(pa.DataFrameModel):
         return "fid"
 
     @classmethod
-    def migrate(cls, df: Any) -> Any:
-        f: Callable[[Any], Any] = getattr(
-            migrations, str(cls.__name__).lower() + "_migration", lambda x: x
+    def migrate(cls, df: Any, schema_version: int) -> Any:
+        f: Callable[[Any, Any], Any] = getattr(
+            migrations, str(cls.__name__).lower() + "_migration", lambda x, _: x
         )
-        return f(df)
+        return f(df, schema_version)
 
 
 class BasinConcentrationExternalSchema(_BaseSchema):
@@ -363,23 +363,14 @@ class ManningResistanceStaticSchema(_BaseSchema):
 
 class OutletStaticSchema(_BaseSchema):
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
-    node_id: Series[Annotated[pd.ArrowDtype, pyarrow.int32()]] = pa.Field(nullable=True)
-    active: Series[Annotated[pd.ArrowDtype, pyarrow.bool_()]] = pa.Field(nullable=True)
-    flow_rate: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
-        nullable=True
-    )
-    min_flow_rate: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
-        nullable=True
-    )
-    max_flow_rate: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
-        nullable=True
-    )
-    min_crest_level: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
-        nullable=True
-    )
-    control_state: Series[Annotated[pd.ArrowDtype, pyarrow.string()]] = pa.Field(
-        nullable=True
-    )
+    node_id: Series[Int32] = pa.Field(nullable=False, default=0)
+    active: Series[pa.BOOL] = pa.Field(nullable=True)
+    flow_rate: Series[float] = pa.Field(nullable=False)
+    min_flow_rate: Series[float] = pa.Field(nullable=True)
+    max_flow_rate: Series[float] = pa.Field(nullable=True)
+    min_upstream_level: Series[float] = pa.Field(nullable=True)
+    max_downstream_level: Series[float] = pa.Field(nullable=True)
+    control_state: Series[str] = pa.Field(nullable=True)
 
 
 class PidControlStaticSchema(_BaseSchema):
@@ -434,45 +425,33 @@ class PidControlTimeSchema(_BaseSchema):
 
 class PumpStaticSchema(_BaseSchema):
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
-    node_id: Series[Annotated[pd.ArrowDtype, pyarrow.int32()]] = pa.Field(nullable=True)
-    active: Series[Annotated[pd.ArrowDtype, pyarrow.bool_()]] = pa.Field(nullable=True)
-    flow_rate: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
-        nullable=True
-    )
-    min_flow_rate: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
-        nullable=True
-    )
-    max_flow_rate: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
-        nullable=True
-    )
-    control_state: Series[Annotated[pd.ArrowDtype, pyarrow.string()]] = pa.Field(
-        nullable=True
-    )
+    node_id: Series[Int32] = pa.Field(nullable=False, default=0)
+    active: Series[pa.BOOL] = pa.Field(nullable=True)
+    flow_rate: Series[float] = pa.Field(nullable=False)
+    min_flow_rate: Series[float] = pa.Field(nullable=True)
+    max_flow_rate: Series[float] = pa.Field(nullable=True)
+    min_upstream_level: Series[float] = pa.Field(nullable=True)
+    max_downstream_level: Series[float] = pa.Field(nullable=True)
+    control_state: Series[str] = pa.Field(nullable=True)
 
 
 class TabulatedRatingCurveStaticSchema(_BaseSchema):
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
-    node_id: Series[Annotated[pd.ArrowDtype, pyarrow.int32()]] = pa.Field(nullable=True)
-    active: Series[Annotated[pd.ArrowDtype, pyarrow.bool_()]] = pa.Field(nullable=True)
-    level: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(nullable=True)
-    flow_rate: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
-        nullable=True
-    )
-    control_state: Series[Annotated[pd.ArrowDtype, pyarrow.string()]] = pa.Field(
-        nullable=True
-    )
+    node_id: Series[Int32] = pa.Field(nullable=False, default=0)
+    active: Series[pa.BOOL] = pa.Field(nullable=True)
+    level: Series[float] = pa.Field(nullable=False)
+    flow_rate: Series[float] = pa.Field(nullable=False)
+    max_downstream_level: Series[float] = pa.Field(nullable=True)
+    control_state: Series[str] = pa.Field(nullable=True)
 
 
 class TabulatedRatingCurveTimeSchema(_BaseSchema):
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
-    node_id: Series[Annotated[pd.ArrowDtype, pyarrow.int32()]] = pa.Field(nullable=True)
-    time: Series[Annotated[pd.ArrowDtype, pyarrow.timestamp("ms")]] = pa.Field(
-        nullable=True
-    )
-    level: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(nullable=True)
-    flow_rate: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
-        nullable=True
-    )
+    node_id: Series[Int32] = pa.Field(nullable=False, default=0)
+    time: Series[Timestamp] = pa.Field(nullable=False)
+    level: Series[float] = pa.Field(nullable=False)
+    flow_rate: Series[float] = pa.Field(nullable=False)
+    max_downstream_level: Series[float] = pa.Field(nullable=True)
 
 
 class UserDemandStaticSchema(_BaseSchema):

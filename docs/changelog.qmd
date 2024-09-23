@@ -7,65 +7,100 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- Support discrete control based on an external concentration condition. [#1660](https://github.com/Deltares/Ribasim/pull/1660)
+- Add `results/solver_stats.arrow` with solver statistics over time. [#1677](https://github.com/Deltares/Ribasim/pull/1677)
+- Add icon to `ribasim.exe` on Windows. [#1712](https://github.com/Deltares/Ribasim/pull/1712)
+- Save QGIS styling in the model database. [#1713](https://github.com/Deltares/Ribasim/pull/1713)
+- Add Delwaq coupling guide. [#1619](https://github.com/Deltares/Ribasim/pull/1619)
+- Solver speedup due to backtracking relaxation. [#1761](https://github.com/Deltares/Ribasim/pull/1761)
+- Reject adding a duplicate edge in Python. [#1719](https://github.com/Deltares/Ribasim/pull/1719)
+- Support transient UserDemand return factor. [#1727](https://github.com/Deltares/Ribasim/pull/1727)
+- Document the interpolation of input data. [#1720](https://github.com/Deltares/Ribasim/pull/1720)
+- Automate Jacobian sparsity detection. [#1606](https://github.com/Deltares/Ribasim/pull/1606)
+- Support specifying the `edge_id` as `model.edge.add(a, b, edge_id=5)`. [#1737](https://github.com/Deltares/Ribasim/pull/1737)
+- Use [https://ribasim.org/](https://ribasim.org/) to host our documentation. [#1736](https://github.com/Deltares/Ribasim/pull/1736)
+- Validate geometry types in Python. [#1760](https://github.com/Deltares/Ribasim/pull/1760)
+- Add relationships between tables in QGIS. [#1755](https://github.com/Deltares/Ribasim/pull/1755)
+- Support migrating from older Ribasim versions in Python. [#1764](https://github.com/Deltares/Ribasim/pull/1764)
+- Add quick start guide to docs. [#1787](https://github.com/Deltares/Ribasim/pull/1787)
+- Add `min_upstream_level` and `max_downstream_level` to Pump and Outlet. [#1792](https://github.com/Deltares/Ribasim/pull/1792)
+- Add `max_downstream_level` to TabulatedRatingCurve. [#1795](https://github.com/Deltares/Ribasim/pull/1795)
+- Validate edge connections in Python. [#1765](https://github.com/Deltares/Ribasim/pull/1765)
+- Add low storage reduction factor to ManningResistance. [#1796](https://github.com/Deltares/Ribasim/pull/1796)
+
 ### Changed
+
+- Refactor of the core to ensure smaller water balance errors. [#1819](https://github.com/Deltares/Ribasim/pull/1819)
+- Make `node_id` globally unique. [#1717](https://github.com/Deltares/Ribasim/pull/1717)
+- Make the Node ID the index of the Node table, and Edge ID for Edge. [#1737](https://github.com/Deltares/Ribasim/pull/1737)
+- Make more Python functions private. [#1702](https://github.com/Deltares/Ribasim/pull/1702)
+- Put the contents of the CLI zips in a folder. [#1722](https://github.com/Deltares/Ribasim/pull/1722)
+- Changed water balance error definition. [#1767](https://github.com/Deltares/Ribasim/pull/1767)
+- Disallow missing priority parameter when using allocation. [#1745](https://github.com/Deltares/Ribasim/pull/1745)
+- Rename Outlet's `min_crest_level` to `min_upstream_level`. [#1788](https://github.com/Deltares/Ribasim/pull/1788)
+- Only allow flow under gravity in TabulatedRatingCurve. [#1795](https://github.com/Deltares/Ribasim/pull/1795)
+
+### Fixed
+- Remove oscillations in ManningResistance. [#1750](https://github.com/Deltares/Ribasim/pull/1750)
+- Fix GeoPandas CRS warning. [#1810](https://github.com/Deltares/Ribasim/pull/1810)
 
 ## [v2024.10.0] - 2024-07-23
 
 For this release we said goodbye to the problematic FractionalFlow node, but welcome the ContinuousControl as a long requested feature.
 
 ### Added
-- Control: Add ContinuousControl node type. #1602
-- Control: Support listening to flow through connector nodes. #1594
-- Validate that TabulatedRatingCurve levels are above Basin bottom. #1607
-- Validate that Outlet crest levels are above Basin bottom. #1607
-- Always show convergence bottlenecks. #1636
-- Docstrings for Ribasim Python. #1643
-- Allocate to UserDemand from directly connected Basin if possible. #1581
-- Add `basin_state.arrow` results. #1626
-- Also write stacktraces to `ribasim.log`. #1653
+- Control: Add ContinuousControl node type. [#1602](https://github.com/Deltares/Ribasim/pull/1602)
+- Control: Support listening to flow through connector nodes. [#1594](https://github.com/Deltares/Ribasim/pull/1594)
+- Validate that TabulatedRatingCurve levels are above Basin bottom. [#1607](https://github.com/Deltares/Ribasim/pull/1607)
+- Validate that Outlet minimum upstream levels are above Basin bottom. [#1607](https://github.com/Deltares/Ribasim/pull/1607)
+- Always show convergence bottlenecks. [#1636](https://github.com/Deltares/Ribasim/pull/1636)
+- Docstrings for Ribasim Python. [#1643](https://github.com/Deltares/Ribasim/pull/1643)
+- Allocate to UserDemand from directly connected Basin if possible. [#1581](https://github.com/Deltares/Ribasim/pull/1581)
+- Add `basin_state.arrow` results. [#1626](https://github.com/Deltares/Ribasim/pull/1626)
+- Also write stacktraces to `ribasim.log`. [#1653](https://github.com/Deltares/Ribasim/pull/1653)
 
 ### Changed
 - Require QGIS 3.34 (LTR) or newer for Ribasim QGIS plugin.
 
 ### Fixed
-- Compatibility with latest NumPy, Pandera and PyArrow releases. #1618
-- LevelDemand can now be without `min_level` or `max_level`. #1629
+- Compatibility with latest NumPy, Pandera and PyArrow releases. [#1618](https://github.com/Deltares/Ribasim/pull/1618)
+- LevelDemand can now be without `min_level` or `max_level`. [#1629](https://github.com/Deltares/Ribasim/pull/1629)
 
 ### Removed
-- Removed unused urban runoff variable from Basin. #1611
-- Removed unneeded static table from Terminal. #1624
-- Removed FractionalFlow node. #1616
+- Removed unused urban runoff variable from Basin. [#1611](https://github.com/Deltares/Ribasim/pull/1611)
+- Removed unneeded static table from Terminal. [#1624](https://github.com/Deltares/Ribasim/pull/1624)
+- Removed FractionalFlow node. [#1616](https://github.com/Deltares/Ribasim/pull/1616)
 
 ## [v2024.9.0] - 2024-06-20
 
 ### Added
 - Support for concentration state and time for Delwaq coupling.
-- Show exact commit on `ribasim --version` if it is not a release. #1479
+- Show exact commit on `ribasim --version` if it is not a release. [#1479](https://github.com/Deltares/Ribasim/pull/1479)
 
 ### Changed
 - Optimized performance.
 - Documentation has been overhauled to be more user-friendly.
-- Stricter TabulatedRatingCurve validation. #1469
-- Stricter Basin / profile validation. #1486
-- Allocation objective function now gives equal ratios during shortage. #1386
+- Stricter TabulatedRatingCurve validation. [#1469](https://github.com/Deltares/Ribasim/pull/1469)
+- Stricter Basin / profile validation. [#1486](https://github.com/Deltares/Ribasim/pull/1486)
+- Allocation objective function now gives equal ratios during shortage. [#1386](https://github.com/Deltares/Ribasim/pull/1386)
 
 ### Fixed
-- Don't require unique node IDs. #1513
-- Fix QGIS crash on plugin initialization. #1580
+- Don't require unique node IDs. [#1513](https://github.com/Deltares/Ribasim/pull/1513)
+- Fix QGIS crash on plugin initialization. [#1580](https://github.com/Deltares/Ribasim/pull/1580)
 
 ## [v2024.8.0] - 2024-05-14
 
 ### Added
 
-- There is more validation on the edges. #1434
-- If the model does not converge and the used algorithm supports it, we log which Basins don't converge. #1440
+- There is more validation on the edges. [#1434](https://github.com/Deltares/Ribasim/pull/1434)
+- If the model does not converge and the used algorithm supports it, we log which Basins don't converge. [#1440](https://github.com/Deltares/Ribasim/pull/1440)
 
 ### Changed
 
-- If negative storages inadvertently happen, we now throw an error. #1425
-- Users of the QGIS plugin need to remove the old version to avoid two copies due to #1453.
+- If negative storages inadvertently happen, we now throw an error. [#1425](https://github.com/Deltares/Ribasim/pull/1425)
+- Users of the QGIS plugin need to remove the old version to avoid two copies due to [#1453](https://github.com/Deltares/Ribasim/pull/1453).
 
 ### Fixed
 
-- Performance improvements have been a focus of this release, giving up to 10x faster runs. #1433, #1436, #1438, #1448, #1457
-- The CLI exe is now always in the root of the zip and makes use of the libribasim shared library. #1415
+- Performance improvements have been a focus of this release, giving up to 10x faster runs. [#1433](https://github.com/Deltares/Ribasim/pull/1433), [#1436](https://github.com/Deltares/Ribasim/pull/1436), [#1438](https://github.com/Deltares/Ribasim/pull/1438), [#1448](https://github.com/Deltares/Ribasim/pull/1448), [#1457](https://github.com/Deltares/Ribasim/pull/1457)
+- The CLI exe is now always in the root of the zip and makes use of the libribasim shared library. [#1415](https://github.com/Deltares/Ribasim/pull/1415)

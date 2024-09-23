@@ -23,7 +23,7 @@
     @test logger.logs[3].message == "Basin #1 profile cannot have decreasing areas."
 
     table = StructVector(; flow_rate = [0.0, 0.1], level = [1.0, 2.0], node_id = [5, 5])
-    itp = qh_interpolation(NodeID(:TabulatedRatingCurve, 5, 1), table)
+    itp = qh_interpolation(table, 1:2)
     # constant extrapolation at the bottom end, linear extrapolation at the top end
     itp(0.0) ≈ 0.0
     itp(1.0) ≈ 0.0
@@ -88,7 +88,6 @@ end
     function set_edge_metadata!(id_1, id_2, edge_type)
         graph[id_1, id_2] = EdgeMetadata(;
             id = 0,
-            flow_idx = 0,
             type = edge_type,
             subnetwork_id_source = 0,
             edge = (id_1, id_2),
@@ -151,7 +150,6 @@ end
     function set_edge_metadata!(id_1, id_2, edge_type)
         graph[id_1, id_2] = EdgeMetadata(;
             id = 0,
-            flow_idx = 0,
             type = edge_type,
             subnetwork_id_source = 0,
             edge = (id_1, id_2),
@@ -199,6 +197,7 @@ end
     db_path = Ribasim.input_path(cfg, cfg.database)
     db = SQLite.DB(db_path)
     p = Ribasim.Parameters(db, cfg)
+    close(db)
 
     logger = TestLogger()
     with_logger(logger) do
@@ -281,6 +280,7 @@ end
     with_logger(logger) do
         @test !Ribasim.valid_edge_types(db)
     end
+    close(db)
 
     @test length(logger.logs) == 2
     @test logger.logs[1].level == Error
@@ -402,7 +402,7 @@ end
 end
 
 @testitem "Outlet upstream level validation" begin
-    using Ribasim: valid_outlet_crest_level!
+    using Ribasim: valid_min_upstream_level!
     using Logging
 
     toml_path = normpath(
@@ -418,17 +418,17 @@ end
     parameters = model.integrator.p
 
     (; graph, outlet, basin) = parameters
-    outlet.min_crest_level[1] = invalid_level
+    outlet.min_upstream_level[1] = invalid_level
 
     logger = TestLogger()
     with_logger(logger) do
-        @test !Ribasim.valid_outlet_crest_level!(graph, outlet, basin)
+        @test !Ribasim.valid_min_upstream_level!(graph, outlet, basin)
     end
 
     @test length(logger.logs) == 1
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
-          "Minimum crest level of Outlet #4 is lower than bottom of upstream Basin #3"
+          "Minimum upstream level of Outlet #4 is lower than bottom of upstream Basin #3"
 end
 
 @testitem "Convergence bottleneck" begin
@@ -446,7 +446,9 @@ end
         "Warning: Convergence bottlenecks in descending order of severity:",
         output,
     )
-    @test occursin("Basin #11 = ", output)
+    @test occursin("Pump #12 = ", output)
+    @test occursin("Pump #32 = ", output)
+    @test occursin("Pump #52 = ", output)
 end
 
 @testitem "Missing priority when allocation is active" begin
@@ -472,4 +474,29 @@ end
           "Missing priority parameter(s) for a LevelDemand / static node in the allocation problem."
     @test logger.logs[3].message ==
           "Missing priority parameter(s) for a FlowDemand / static node in the allocation problem."
+end
+
+@testitem "Node ID not in Node table" begin
+    using Ribasim
+    import SQLite
+    using Logging
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
+
+    cfg = Ribasim.Config(toml_path)
+    db_path = Ribasim.input_path(cfg, cfg.database)
+    db = SQLite.DB(db_path)
+
+    logger = TestLogger()
+    with_logger(logger) do
+        @test_throws "Node ID #1 of type PidControl is not in the Node table." Ribasim.NodeID(
+            :PidControl,
+            1,
+            db,
+        )
+    end
+
+    with_logger(logger) do
+        @test_throws "Node ID #20 is not in the Node table." Ribasim.NodeID(20, db)
+    end
 end

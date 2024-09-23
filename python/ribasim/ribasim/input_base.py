@@ -178,7 +178,7 @@ class TableModel(FileModel, Generic[TableT]):
             if db_path is not None:
                 version = _get_db_schema_version(db_path)
                 if version < ribasim.__schema_version__:
-                    v = cls.tableschema().migrate(v)
+                    v = cls.tableschema().migrate(v, version)
             for colname in v.columns:
                 if colname not in cls.columns() and not colname.startswith("meta_"):
                     raise ValueError(
@@ -291,7 +291,7 @@ class TableModel(FileModel, Generic[TableT]):
 
     @classmethod
     def _from_db(cls, path: Path, table: str) -> pd.DataFrame | None:
-        with connect(path) as connection:
+        with closing(connect(path)) as connection:
             if exists(connection, table):
                 query = f"select * from {esc_id(table)}"
                 df = pd.read_sql_query(
@@ -375,7 +375,7 @@ class SpatialTableModel(TableModel[TableT], Generic[TableT]):
 
     @classmethod
     def _from_db(cls, path: Path, table: str):
-        with connect(path) as connection:
+        with closing(connect(path)) as connection:
             if exists(connection, table):
                 # pyogrio hardcodes fid name on reading
                 df = pyogrio.read_dataframe(

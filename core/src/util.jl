@@ -50,22 +50,19 @@ function get_storages_from_levels(basin::Basin, levels::AbstractVector)::Vector{
 end
 
 """
-Compute the area and level of a basin given its storage.
+Compute the level of a basin given its storage.
 """
-function get_area_and_level(basin::Basin, state_idx::Int, storage::T)::Tuple{T, T} where {T}
+function get_level_from_storage(basin::Basin, state_idx::Int, storage)
     storage_to_level = basin.storage_to_level[state_idx]
-    level_to_area = basin.level_to_area[state_idx]
     if storage >= 0
-        level = storage_to_level(storage)
+        return storage_to_level(storage)
     else
         # Negative storage is not feasible and this yields a level
         # below the basin bottom, but this does yield usable gradients
         # for the non-linear solver
-        bottom = first(level_to_area.t)
-        level = bottom + derivative(storage_to_level, 0.0) * storage
+        bottom = first(storage_to_level.u)
+        return bottom + derivative(storage_to_level, 0.0) * storage
     end
-    area = level_to_area(level)
-    return area, level
 end
 
 """
@@ -126,8 +123,10 @@ end
 From a table with columns node_id, flow_rate (Q) and level (h),
 create a ScalarInterpolation from level to flow rate for a given node_id.
 """
-function qh_interpolation(node_id::NodeID, table::StructVector)::ScalarInterpolation
-    rowrange = findlastgroup(node_id, NodeID.(node_id.type, table.node_id, Ref(0)))
+function qh_interpolation(
+    table::StructVector,
+    rowrange::UnitRange{Int},
+)::ScalarInterpolation
     level = table.level[rowrange]
     flow_rate = table.flow_rate[rowrange]
 
@@ -240,17 +239,17 @@ Get the current water level of a node ID.
 The ID can belong to either a Basin or a LevelBoundary.
 du: tells ForwardDiff whether this call is for differentiation or not
 """
-function get_level(p::Parameters, node_id::NodeID, t::Number, du)::Tuple{Bool, Number}
-    (; basin, level_boundary) = p
+function get_level(p::Parameters, node_id::NodeID, t::Number, current_level::Vector)::Number
     if node_id.type == NodeType.Basin
-        # The edge metadata is only used to obtain the Basin index
-        # in case node_id is for a Basin
-        current_level = basin.current_level[parent(du)]
-        return true, current_level[node_id.idx]
+        current_level[node_id.idx]
     elseif node_id.type == NodeType.LevelBoundary
-        return true, level_boundary.level[node_id.idx](t)
+        p.level_boundary.level[node_id.idx](t)
+    elseif node_id.type == NodeType.Terminal
+        # Terminal is like a bottomless pit.
+        # A level at -Inf ensures we don't hit `max_downstream_level` reduction factors.
+        -Inf
     else
-        return false, 0.0
+        error("Node ID $node_id is not a Basin, LevelBoundary or Terminal.")
     end
 end
 
@@ -356,7 +355,10 @@ function Base.getindex(fv::FlatVector, i::Int)
 end
 
 "Construct a FlatVector from one of the fields of SavedFlow."
-FlatVector(saveval::Vector{SavedFlow}, sym::Symbol) = FlatVector(getfield.(saveval, sym))
+function FlatVector(saveval::Vector{<:SavedFlow}, sym::Symbol)
+    v = isempty(saveval) ? Vector{Float64}[] : getfield.(saveval, sym)
+    FlatVector(v)
+end
 
 """
 Function that goes smoothly from 0 to 1 in the interval [0,threshold],
@@ -383,6 +385,24 @@ function low_storage_factor(
         reduction_factor(storage[id.idx], threshold)
     else
         one(T)
+    end
+end
+
+"""
+For resistance nodes, give a reduction factor based on the upstream node
+as defined by the flow direction.
+"""
+function low_storage_factor_resistance_node(
+    current_storage,
+    q,
+    inflow_id,
+    outflow_id,
+    threshold,
+)
+    if q > 0
+        low_storage_factor(current_storage, inflow_id, threshold)
+    else
+        low_storage_factor(current_storage, outflow_id, threshold)
     end
 end
 
@@ -553,31 +573,6 @@ function get_Δt(integrator)::Float64
     end
 end
 
-function get_influx(basin::Basin, node_id::NodeID)::Float64
-    if node_id.type !== NodeType.Basin
-        error("Sum of vertical fluxes requested for non-basin $node_id.")
-    end
-    return get_influx(basin, node_id.idx)
-end
-
-function get_influx(basin::Basin, basin_idx::Int; prev::Bool = false)::Float64
-    (; node_id, vertical_flux, vertical_flux_prev, vertical_flux_from_input) = basin
-    influx = if prev
-        vertical_flux_prev.precipitation[basin_idx] -
-        vertical_flux_prev.evaporation[basin_idx] +
-        vertical_flux_prev.drainage[basin_idx] -
-        vertical_flux_prev.infiltration[basin_idx]
-    else
-        n = length(node_id)
-        vertical_flux = vertical_flux[parent(vertical_flux_from_input)]
-        vertical_flux[basin_idx] - # precipitation
-        vertical_flux[n + basin_idx] + # evaporation
-        vertical_flux[2n + basin_idx] - # drainage
-        vertical_flux[3n + basin_idx] # infiltration
-    end
-    return influx
-end
-
 inflow_edge(graph, node_id)::EdgeMetadata = graph[inflow_id(graph, node_id), node_id]
 outflow_edge(graph, node_id)::EdgeMetadata = graph[node_id, outflow_id(graph, node_id)]
 outflow_edges(graph, node_id)::Vector{EdgeMetadata} =
@@ -601,9 +596,9 @@ function set_initial_allocation_mean_flows!(integrator)::Nothing
 
     for edge in keys(mean_input_flows)
         if edge[1] == edge[2]
-            q = get_influx(p.basin, edge[1])
+            q = get_influx(du, edge[1], p)
         else
-            q = get_flow(graph, edge..., du)
+            q = get_flow(du, p, t, edge)
         end
         # Multiply by Δt_allocation as averaging divides by this factor
         # in update_allocation!
@@ -616,7 +611,7 @@ function set_initial_allocation_mean_flows!(integrator)::Nothing
         if edge[1] == edge[2]
             mean_realized_flows[edge] = -u[edge[1].idx]
         else
-            q = get_flow(graph, edge..., du)
+            q = get_flow(du, p, t, edge)
             mean_realized_flows[edge] = q * Δt_allocation
         end
     end
@@ -650,6 +645,9 @@ function get_variable_ref(
     (; basin, graph) = p
     errors = false
 
+    # Only built here because it is needed to obtain indices
+    u = build_state_vector(p)
+
     ref = if node_id.type == NodeType.Basin && variable == "level"
         PreallocationRef(basin.current_level, node_id.idx)
     elseif variable == "flow_rate" && node_id.type != NodeType.FlowBoundary
@@ -659,9 +657,9 @@ function get_variable_ref(
                 @error "Cannot listen to flow_rate of $node_id, the node type must be one of $conservative_node_types"
                 Ref(Float64[], 0)
             else
-                id_in = inflow_id(graph, node_id)
-                (; flow_idx) = graph[id_in, node_id]
-                PreallocationRef(graph[].flow, flow_idx)
+                # Index in the state vector (inflow)
+                flow_idx = get_state_index(node_id, u)
+                PreallocationRef(cache(1), flow_idx; from_du = true)
             end
         else
             node = getfield(p, snake_case(Symbol(node_id.type)))
@@ -669,7 +667,7 @@ function get_variable_ref(
         end
     else
         # Placeholder to obtain correct type
-        PreallocationRef(graph[].flow, 0)
+        PreallocationRef(cache(1), 0)
     end
     return ref, errors
 end
@@ -837,37 +835,6 @@ function basin_areas(basin::Basin, state_idx::Int)
 end
 
 """
-Just before setting a timestep, call water_balance! again
-to get a correct value of the flows for integrating
-"""
-function set_previous_flows!(integrator)
-    (; p, u, t) = integrator
-    (; flow, flow_prev) = p.graph[]
-    (; vertical_flux, vertical_flux_prev) = p.basin
-    du = get_du(integrator)
-    water_balance!(du, u, p, t)
-
-    flow = flow[parent(u)]
-    vertical_flux = vertical_flux[parent(u)]
-    copyto!(flow_prev, flow)
-    copyto!(vertical_flux_prev, vertical_flux)
-end
-
-"""
-Split the single forcing vector into views of the components
-precipitation, evaporation, drainage, infiltration
-"""
-function wrap_forcing(vector)
-    n = length(vector) ÷ 4
-    (;
-        precipitation = view(vector, 1:n),
-        evaporation = view(vector, (n + 1):(2n)),
-        drainage = view(vector, (2n + 1):(3n)),
-        infiltration = view(vector, (3n + 1):(4n)),
-    )
-end
-
-"""
 The function f(x) = sign(x)*√(|x|) where for |x|<threshold a
 polynomial is used so that the function is still differentiable
 but the derivative is bounded at x = 0.
@@ -893,10 +860,16 @@ function get_jac_prototype(du0, u0, p, t0)
 end
 
 # Custom overloads
-(A::AbstractInterpolation)(t::GradientTracer) = t
 reduction_factor(x::GradientTracer, threshold::Real) = x
+low_storage_factor_resistance_node(
+    storage,
+    q::GradientTracer,
+    inflow_id,
+    outflow_id,
+    threshold,
+) = q
 relaxed_root(x::GradientTracer, threshold::Real) = x
-get_area_and_level(basin::Basin, state_idx::Int, storage::GradientTracer) = storage, storage
+get_level_from_storage(basin::Basin, state_idx::Int, storage::GradientTracer) = storage
 stop_declining_negative_storage!(du, u::ComponentVector{<:GradientTracer}) = nothing
 
 @kwdef struct MonitoredBackTracking{B, V}
@@ -939,7 +912,7 @@ end
 MonitoredBackTracing is a thin wrapper of BackTracking, making sure that
 the BackTracking relaxation is rejected if it results in a residual increase
 """
-function OrdinaryDiffEq.relax!(
+function OrdinaryDiffEqNonlinearSolve.relax!(
     dz,
     nlsolver::AbstractNLSolver,
     integrator::DEIntegrator,
@@ -962,4 +935,152 @@ function OrdinaryDiffEq.relax!(
     if resid_after > resid_before
         @. dz = dz_tmp
     end
+end
+
+function build_state_vector(p::Parameters)
+    # It is assumed that the horizontal flow states come first in
+    # p.state_inflow_edge and p.state_outflow_edge
+    return ComponentVector{Float64}(;
+        tabulated_rating_curve = zeros(length(p.tabulated_rating_curve.node_id)),
+        pump = zeros(length(p.pump.node_id)),
+        outlet = zeros(length(p.outlet.node_id)),
+        user_demand_inflow = zeros(length(p.user_demand.node_id)),
+        user_demand_outflow = zeros(length(p.user_demand.node_id)),
+        linear_resistance = zeros(length(p.linear_resistance.node_id)),
+        manning_resistance = zeros(length(p.manning_resistance.node_id)),
+        evaporation = zeros(length(p.basin.node_id)),
+        infiltration = zeros(length(p.basin.node_id)),
+        integral = zeros(length(p.pid_control.node_id)),
+    )
+end
+
+"""
+Create vectors state_inflow_edge and state_outflow_edge which give for each state
+in the state vector in order the metadata of the edge that is associated with that state.
+Only for horizontal flows, which are assumed to come first in the state vector.
+"""
+function set_state_flow_edges(p::Parameters, u0::ComponentVector)::Parameters
+    (; user_demand, graph) = p
+
+    components = Symbol[]
+    state_inflow_edges = Vector{EdgeMetadata}[]
+    state_outflow_edges = Vector{EdgeMetadata}[]
+
+    placeholder_edge = EdgeMetadata(
+        0,
+        EdgeType.flow,
+        0,
+        (NodeID(:Terminal, 0, 0), NodeID(:Terminal, 0, 0)),
+    )
+
+    for node_name in keys(u0)
+        if hasfield(Parameters, node_name)
+            node::AbstractParameterNode = getfield(p, node_name)
+            push!(components, node_name)
+            state_inflow_edges_component = EdgeMetadata[]
+            state_outflow_edges_component = EdgeMetadata[]
+            for id in node.node_id
+                inflow_ids_ = collect(inflow_ids(p.graph, id))
+                outflow_ids_ = collect(outflow_ids(p.graph, id))
+
+                inflow_edge = if length(inflow_ids_) == 0
+                    placeholder_edge
+                elseif length(inflow_ids_) == 1
+                    inflow_id = only(inflow_ids_)
+                    graph[inflow_id, id]
+                else
+                    error("Multiple inflows not supported")
+                end
+                push!(state_inflow_edges_component, inflow_edge)
+
+                outflow_edge = if length(outflow_ids_) == 0
+                    placeholder_edge
+                elseif length(outflow_ids_) == 1
+                    outflow_id = only(outflow_ids_)
+                    graph[id, outflow_id]
+                else
+                    error("Multiple outflows not supported")
+                end
+                push!(state_outflow_edges_component, outflow_edge)
+            end
+            push!(state_inflow_edges, state_inflow_edges_component)
+            push!(state_outflow_edges, state_outflow_edges_component)
+        elseif startswith(String(node_name), "user_demand")
+            push!(components, node_name)
+            placeholder_edges = fill(placeholder_edge, length(user_demand.node_id))
+            if node_name == :user_demand_inflow
+                push!(state_inflow_edges, user_demand.inflow_edge)
+                push!(state_outflow_edges, placeholder_edges)
+            elseif node_name == :user_demand_outflow
+                push!(state_inflow_edges, placeholder_edges)
+                push!(state_outflow_edges, user_demand.outflow_edge)
+            end
+        end
+    end
+
+    state_inflow_edge = ComponentVector(NamedTuple(zip(components, state_inflow_edges)))
+    state_outflow_edge = ComponentVector(NamedTuple(zip(components, state_outflow_edges)))
+
+    p = @set p.state_inflow_edge = state_inflow_edge
+    p = @set p.state_outflow_edge = state_outflow_edge
+    return p
+end
+
+function id_from_state_index(
+    p::Parameters,
+    ::ComponentVector{Float64, Vector{Float64}, <:Tuple{<:Axis{NT}}},
+    global_idx::Int,
+)::NodeID where {NT}
+    local_idx = 0
+    component = Symbol()
+    for (comp, range) in pairs(NT)
+        if global_idx in range
+            component = comp
+            local_idx = global_idx - first(range) + 1
+            break
+        end
+    end
+    component_string = String(component)
+    if endswith(component_string, "_inflow") || endswith(component_string, "_outflow")
+        component = :user_demand
+    elseif component == :integral
+        component = :pid_control
+    elseif component in [:infiltration, :evaporation]
+        component = :basin
+    end
+
+    getfield(p, component).node_id[local_idx]
+end
+
+function get_state_index(
+    id::NodeID,
+    ::ComponentVector{A, B, <:Tuple{<:Axis{NT}}};
+    inflow::Bool = true,
+) where {A, B, NT}
+    component_name = if id.type == NodeType.UserDemand
+        inflow ? :user_demand_inflow : :user_demand_outflow
+    else
+        snake_case(Symbol(id.type))
+    end
+    for (comp, range) in pairs(NT)
+        if comp == component_name
+            return range[id.idx]
+        end
+    end
+    return nothing
+end
+
+function get_state_index(u::ComponentVector, edge::Tuple{NodeID, NodeID})::Int
+    idx = get_state_index(edge[2], u)
+    isnothing(idx) ? get_state_index(edge[1], u; inflow = false) : idx
+end
+
+"""
+Check whether any storages are negative given the state u.
+"""
+function isoutofdomain(u, p, t)
+    (; current_storage) = p.basin
+    current_storage = current_storage[parent(u)]
+    formulate_storages!(current_storage, u, u, p, t)
+    any(<(0), current_storage)
 end

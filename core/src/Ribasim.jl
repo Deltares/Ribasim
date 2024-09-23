@@ -15,14 +15,14 @@ For more granular access, see:
 module Ribasim
 
 # Algorithms for solving ODEs.
-using OrdinaryDiffEq:
-    OrdinaryDiffEq,
+using OrdinaryDiffEqCore:
+    OrdinaryDiffEqCore,
     OrdinaryDiffEqRosenbrockAdaptiveAlgorithm,
     get_du,
     AbstractNLSolver,
-    relax!,
-    _compute_rhs!,
     calculate_residuals!
+using DiffEqBase: DiffEqBase
+using OrdinaryDiffEqNonlinearSolve: OrdinaryDiffEqNonlinearSolve, relax!, _compute_rhs!
 using LineSearches: BackTracking
 
 # Interface for defining and solving the ODE problem of the physical layer.

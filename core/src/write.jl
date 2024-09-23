@@ -73,17 +73,17 @@ function get_storages_and_levels(
     storage::Matrix{Float64},
     level::Matrix{Float64},
 }
-    (; config, integrator) = model
-    (; sol, p) = integrator
+    (; config, integrator, saved) = model
+    (; p) = integrator
 
     node_id = p.basin.node_id::Vector{NodeID}
     tsteps = datetime_since.(tsaves(model), config.starttime)
 
-    storage = hcat([collect(u_.storage) for u_ in sol.u]...)
+    storage = zeros(length(node_id), length(tsteps))
     level = zero(storage)
-    for (i, basin_storage) in enumerate(eachrow(storage))
-        level[i, :] =
-            [get_area_and_level(p.basin, i, storage)[2] for storage in basin_storage]
+    for (i, cvec) in enumerate(saved.basin_state.saveval)
+        storage[:, i] .= cvec.storage
+        level[:, i] .= cvec.level
     end
 
     return (; time = tsteps, node_id, storage, level)
@@ -93,12 +93,13 @@ end
 function basin_state_table(
     model::Model,
 )::@NamedTuple{node_id::Vector{Int32}, level::Vector{Float64}}
-    (; basin) = model.integrator.p
+    du = get_du(model.integrator)
+    (; u, p, t) = model.integrator
 
     # ensure the levels are up-to-date
-    set_current_basin_properties!(basin, model.integrator.u, get_du(model.integrator))
+    set_current_basin_properties!(du, u, p, t)
 
-    return (; node_id = Int32.(basin.node_id), level = basin.current_level[Float64[]])
+    return (; node_id = Int32.(p.basin.node_id), level = p.basin.current_level[Float64[]])
 end
 
 "Create the basin result table from the saved data"
@@ -140,9 +141,13 @@ function basin_table(
     relative_error = zeros(nrows)
 
     idx_row = 0
-    for cvec in saved.vertical_flux.saveval
-        for (precipitation_, evaporation_, drainage_, infiltration_) in
-            zip(cvec.precipitation, cvec.evaporation, cvec.drainage, cvec.infiltration)
+    for cvec in saved.flow.saveval
+        for (precipitation_, evaporation_, drainage_, infiltration_) in zip(
+            cvec.precipitation,
+            cvec.flow.evaporation,
+            cvec.drainage,
+            cvec.flow.infiltration,
+        )
             idx_row += 1
             precipitation[idx_row] = precipitation_
             evaporation[idx_row] = evaporation_
@@ -214,21 +219,19 @@ function flow_table(
     edge_id::Vector{Union{Int32, Missing}},
     from_node_id::Vector{Int32},
     to_node_id::Vector{Int32},
-    flow_rate::FlatVector{Float64},
+    flow_rate::Vector{Float64},
 }
     (; config, saved, integrator) = model
     (; t, saveval) = saved.flow
-    (; graph) = integrator.p
-    (; flow_dict) = graph[]
+    (; p) = integrator
+    (; graph) = p
+    (; flow_edges) = graph[]
 
     from_node_id = Int32[]
     to_node_id = Int32[]
     unique_edge_ids_flow = Union{Int32, Missing}[]
 
-    flow_edge_ids = Vector{Tuple{NodeID, NodeID}}(undef, length(flow_dict))
-    for (edge_id, index) in flow_dict
-        flow_edge_ids[index] = edge_id
-    end
+    flow_edge_ids = [flow_edge.edge for flow_edge in flow_edges]
 
     for (from_id, to_id) in flow_edge_ids
         push!(from_node_id, from_id.value)
@@ -239,6 +242,16 @@ function flow_table(
     nflow = length(unique_edge_ids_flow)
     ntsteps = length(t)
 
+    flow_rate = zeros(nflow * ntsteps)
+
+    for (i, edge) in enumerate(flow_edge_ids)
+        for (j, cvec) in enumerate(saveval)
+            (; flow, flow_boundary) = cvec
+            flow_rate[i + (j - 1) * nflow] =
+                get_flow(flow, p, 0.0, edge; boundary_flow = flow_boundary)
+        end
+    end
+
     # the timestamp should represent the start of the period, not the end
     t_starts = circshift(t, 1)
     if !isempty(t)
@@ -248,7 +261,6 @@ function flow_table(
     edge_id = repeat(unique_edge_ids_flow; outer = ntsteps)
     from_node_id = repeat(from_node_id; outer = ntsteps)
     to_node_id = repeat(to_node_id; outer = ntsteps)
-    flow_rate = FlatVector(saveval, :flow)
 
     return (; time, edge_id, from_node_id, to_node_id, flow_rate)
 end

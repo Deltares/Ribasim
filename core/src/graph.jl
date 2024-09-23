@@ -30,11 +30,10 @@ function create_graph(db::DB, config::Config)::MetaGraph
     node_ids = Dict{Int32, Set{NodeID}}()
     # Source edges per subnetwork
     edges_source = Dict{Int32, Set{EdgeMetadata}}()
-    # The flow counter gives a unique consecutive id to the
-    # flow edges to index the flow vectors
-    flow_counter = 0
+    # The metadata of the flow edges in the order in which they are in the input
+    # and will be in the output
+    flow_edges = EdgeMetadata[]
     # Dictionary from flow edge to index in flow vector
-    flow_dict = Dict{Tuple{NodeID, NodeID}, Int}()
     graph = MetaGraph(
         DiGraph();
         label_type = NodeID,
@@ -80,20 +79,18 @@ function create_graph(db::DB, config::Config)::MetaGraph
         end
         edge_metadata = EdgeMetadata(;
             id = edge_id,
-            flow_idx = edge_type == EdgeType.flow ? flow_counter + 1 : 0,
             type = edge_type,
             subnetwork_id_source = subnetwork_id,
             edge = (id_src, id_dst),
         )
+        if edge_type == EdgeType.flow
+            push!(flow_edges, edge_metadata)
+        end
         if haskey(graph, id_src, id_dst)
             errors = true
             @error "Duplicate edge" id_src id_dst
         end
         graph[id_src, id_dst] = edge_metadata
-        if edge_type == EdgeType.flow
-            flow_counter += 1
-            flow_dict[(id_src, id_dst)] = flow_counter
-        end
         if subnetwork_id != 0
             if !haskey(edges_source, subnetwork_id)
                 edges_source[subnetwork_id] = Set{EdgeMetadata}()
@@ -109,20 +106,7 @@ function create_graph(db::DB, config::Config)::MetaGraph
         error("Incomplete connectivity in subnetwork")
     end
 
-    flow = cache(flow_counter)
-    flow_prev = fill(NaN, flow_counter)
-    flow_integrated = zeros(flow_counter)
-    flow_edges = [edge for edge in values(graph.edge_data) if edge.type == EdgeType.flow]
-    graph_data = (;
-        node_ids,
-        edges_source,
-        flow_edges,
-        flow_dict,
-        flow,
-        flow_prev,
-        flow_integrated,
-        config.solver.saveat,
-    )
+    graph_data = (; node_ids, edges_source, flow_edges, config.solver.saveat)
     graph = @set graph.graph_data = graph_data
 
     return graph
@@ -181,48 +165,6 @@ function Base.iterate(iter::OutNeighbors, state = 1)
         end
     end
     return label_out, state
-end
-
-function set_flow!(graph::MetaGraph, edge_metadata::EdgeMetadata, q::Number, du)::Nothing
-    set_flow!(graph, edge_metadata.flow_idx, q, du)
-    return nothing
-end
-
-function set_flow!(graph, flow_idx::Int, q::Number, du)::Nothing
-    (; flow) = graph[]
-    flow[parent(du)][flow_idx] = q
-    return nothing
-end
-
-"""
-Get the flow over the given edge (du is needed for LazyBufferCache from ForwardDiff.jl).
-"""
-function get_flow(graph::MetaGraph, id_src::NodeID, id_dst::NodeID, du)::Number
-    (; flow_dict) = graph[]
-    flow_idx = flow_dict[id_src, id_dst]
-    return get_flow(graph, flow_idx, du)
-end
-
-function get_flow(graph, edge_metadata::EdgeMetadata, du)::Number
-    return get_flow(graph, edge_metadata.flow_idx, du)
-end
-
-function get_flow(graph::MetaGraph, flow_idx::Int, du)
-    return graph[].flow[parent(du)][flow_idx]
-end
-
-function get_flow_prev(graph, id_src::NodeID, id_dst::NodeID, du)::Number
-    (; flow_dict) = graph[]
-    flow_idx = flow_dict[id_src, id_dst]
-    return get_flow(graph, flow_idx, du)
-end
-
-function get_flow_prev(graph, edge_metadata::EdgeMetadata, du)::Number
-    return get_flow_prev(graph, edge_metadata.flow_idx, du)
-end
-
-function get_flow_prev(graph::MetaGraph, flow_idx::Int, du)
-    return graph[].flow_prev[parent(du)][flow_idx]
 end
 
 """
@@ -300,11 +242,38 @@ function inflow_id(graph::MetaGraph, id::NodeID)::NodeID
 end
 
 """
-Get the metadata of an edge in the graph from an edge of the underlying
-DiGraph.
+Get the specific q from the input vector `flow` which has the same components as
+the state vector, given an edge (inflow_id, outflow_id).
+`flow` can be either instantaneous or integrated/averaged. Instantaneous FlowBoundary flows can be obtained
+from the parameters, but integrated/averaged FlowBoundary flows must be provided via `boundary_flow`.
 """
-function metadata_from_edge(graph::MetaGraph, edge::Edge{Int})::EdgeMetadata
-    label_src = label_for(graph, edge.src)
-    label_dst = label_for(graph, edge.dst)
-    return graph[label_src, label_dst]
+function get_flow(
+    flow::ComponentVector,
+    p::Parameters,
+    t::Number,
+    edge::Tuple{NodeID, NodeID};
+    boundary_flow = nothing,
+)
+    (; flow_boundary) = p
+    from_id = edge[1]
+    if from_id.type == NodeType.FlowBoundary
+        if boundary_flow === nothing
+            flow_boundary.active[from_id.idx] ? flow_boundary.flow_rate[from_id.idx](t) :
+            0.0
+        else
+            boundary_flow[from_id.idx]
+        end
+    else
+        flow[get_state_index(flow, edge)]
+    end
+end
+
+function get_influx(du::ComponentVector, id::NodeID, p::Parameters)
+    @assert id.type == NodeType.Basin
+    (; basin) = p
+    (; vertical_flux_from_input) = basin
+    fixed_area = basin_areas(basin, id.idx)[end]
+    return fixed_area * vertical_flux_from_input.precipitation[id.idx] +
+           vertical_flux_from_input.drainage[id.idx] - du.evaporation[id.idx] -
+           du.infiltration[id.idx]
 end

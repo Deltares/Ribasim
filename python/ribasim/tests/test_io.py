@@ -129,7 +129,15 @@ def test_extra_spatial_columns():
             [basin.Profile(area=1000.0, level=[0.0, 1.0]), basin.State(level=[1.0])],
         )
     with pytest.raises(ValidationError):
-        model.edge.add(model.basin[1], model.user_demand[2], foo=1)
+        model.user_demand.add(
+            Node(4, Point(1, -0.5), meta_id=3),
+            [
+                user_demand.Static(
+                    demand=[1e-4], return_factor=0.9, min_level=0.9, priority=1
+                )
+            ],
+        )
+        model.edge.add(model.basin[1], model.user_demand[4], foo=1)
 
 
 def test_edge_autoincrement(basic):
@@ -191,6 +199,19 @@ def test_node_autoincrement():
 
     nbasin = model.basin.add(Node(geometry=Point(0, 0)), [basin.State(level=[1.0])])
     assert nbasin.node_id == 101
+
+
+def test_node_autoincrement_existing_model(basic, tmp_path):
+    model = basic
+
+    model.write(tmp_path / "ribasim.toml")
+    nmodel = Model.read(tmp_path / "ribasim.toml")
+
+    assert nmodel._used_node_ids.max_node_id == 17
+    assert nmodel._used_node_ids.node_ids == set(range(1, 18)) - {13}
+
+    assert nmodel.edge._used_edge_ids.max_node_id == 16
+    assert nmodel.edge._used_edge_ids.node_ids == set(range(1, 17))
 
 
 def test_node_empty_geometry():
@@ -301,3 +322,12 @@ def test_minimal_toml():
     (toml_path.parent / "database.gpkg").touch()  # database file must exist for `read`
     model = ribasim.Model.read(toml_path)
     assert model.crs == "EPSG:28992"
+
+
+def test_closed_model(basic, tmp_path):
+    # Test whether we can write to a just opened model
+    # implicitly testing that the database is closed after read
+    toml_path = tmp_path / "basic/ribasim.toml"
+    basic.write(toml_path)
+    model = ribasim.Model.read(toml_path)
+    model.write(toml_path)

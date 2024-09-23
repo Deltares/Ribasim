@@ -121,7 +121,7 @@ class Solver(ChildModel):
     reltol: float = 1e-05
     maxiters: int = 1000000000
     sparse: bool = True
-    autodiff: bool = True
+    autodiff: bool = False
 
 
 class Verbosity(str, Enum):
@@ -251,6 +251,7 @@ class MultiNodeModel(NodeModel):
         node_table = node.into_geodataframe(
             node_type=self.__class__.__name__, node_id=node_id
         )
+        node_table.set_crs(self._parent.crs, inplace=True)
         if self.node.df is None:
             self.node.df = node_table
         else:

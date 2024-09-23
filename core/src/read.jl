@@ -298,6 +298,7 @@ function TabulatedRatingCurve(
     interpolations = ScalarInterpolation[]
     control_mapping = Dict{Tuple{NodeID, String}, ControlStateUpdate}()
     active = Bool[]
+    max_downstream_level = Float64[]
     errors = false
 
     for node_id in node_ids
@@ -317,12 +318,15 @@ function TabulatedRatingCurve(
                 IterTools.groupby(row -> coalesce(row.control_state, nothing), static_id)
                 control_state = first(group).control_state
                 is_active = coalesce(first(group).active, true)
+                max_level = coalesce(first(group).max_downstream_level, Inf)
                 table = StructVector(group)
-                if !valid_tabulated_rating_curve(node_id, table)
+                rowrange =
+                    findlastgroup(node_id, NodeID.(node_id.type, table.node_id, Ref(0)))
+                if !valid_tabulated_rating_curve(node_id, table, rowrange)
                     errors = true
                 end
                 interpolation = try
-                    qh_interpolation(node_id, table)
+                    qh_interpolation(table, rowrange)
                 catch
                     LinearInterpolation(Float64[], Float64[])
                 end
@@ -339,17 +343,23 @@ function TabulatedRatingCurve(
             end
             push!(interpolations, interpolation)
             push!(active, is_active)
+            push!(max_downstream_level, max_level)
         elseif node_id in time_node_ids
             source = "time"
             # get the timestamp that applies to the model starttime
             idx_starttime = searchsortedlast(time.time, config.starttime)
             pre_table = view(time, 1:idx_starttime)
-            if !valid_tabulated_rating_curve(node_id, pre_table)
+            rowrange =
+                findlastgroup(node_id, NodeID.(node_id.type, pre_table.node_id, Ref(0)))
+
+            if !valid_tabulated_rating_curve(node_id, pre_table, rowrange)
                 errors = true
             end
-            interpolation = qh_interpolation(node_id, pre_table)
+            interpolation = qh_interpolation(pre_table, rowrange)
+            max_level = coalesce(pre_table.max_downstream_level[rowrange][begin], Inf)
             push!(interpolations, interpolation)
             push!(active, true)
+            push!(max_downstream_level, max_level)
         else
             @error "$node_id data not in any table."
             errors = true
@@ -362,8 +372,9 @@ function TabulatedRatingCurve(
     return TabulatedRatingCurve(;
         node_id = node_ids,
         inflow_edge = inflow_edge.(Ref(graph), node_ids),
-        outflow_edges = outflow_edges.(Ref(graph), node_ids),
+        outflow_edge = outflow_edge.(Ref(graph), node_ids),
         active,
+        max_downstream_level,
         table = interpolations,
         time,
         control_mapping,
@@ -464,7 +475,13 @@ end
 
 function Pump(db::DB, config::Config, graph::MetaGraph)::Pump
     static = load_structvector(db, config, PumpStaticV1)
-    defaults = (; min_flow_rate = 0.0, max_flow_rate = Inf, active = true)
+    defaults = (;
+        min_flow_rate = 0.0,
+        max_flow_rate = Inf,
+        min_upstream_level = -Inf,
+        max_downstream_level = Inf,
+        active = true,
+    )
     parsed_parameters, valid = parse_static_and_time(db, config, Pump; static, defaults)
 
     if !valid
@@ -480,19 +497,26 @@ function Pump(db::DB, config::Config, graph::MetaGraph)::Pump
     return Pump(;
         node_id,
         inflow_edge = inflow_edge.(Ref(graph), node_id),
-        outflow_edges = outflow_edges.(Ref(graph), node_id),
+        outflow_edge = outflow_edge.(Ref(graph), node_id),
         parsed_parameters.active,
         flow_rate,
         parsed_parameters.min_flow_rate,
         parsed_parameters.max_flow_rate,
+        parsed_parameters.min_upstream_level,
+        parsed_parameters.max_downstream_level,
         parsed_parameters.control_mapping,
     )
 end
 
 function Outlet(db::DB, config::Config, graph::MetaGraph)::Outlet
     static = load_structvector(db, config, OutletStaticV1)
-    defaults =
-        (; min_flow_rate = 0.0, max_flow_rate = Inf, min_crest_level = -Inf, active = true)
+    defaults = (;
+        min_flow_rate = 0.0,
+        max_flow_rate = Inf,
+        min_upstream_level = -Inf,
+        max_downstream_level = Inf,
+        active = true,
+    )
     parsed_parameters, valid = parse_static_and_time(db, config, Outlet; static, defaults)
 
     if !valid
@@ -513,13 +537,14 @@ function Outlet(db::DB, config::Config, graph::MetaGraph)::Outlet
     return Outlet(;
         node_id,
         inflow_edge = inflow_edge.(Ref(graph), node_id),
-        outflow_edges = outflow_edges.(Ref(graph), node_id),
+        outflow_edge = outflow_edge.(Ref(graph), node_id),
         parsed_parameters.active,
         flow_rate,
         parsed_parameters.min_flow_rate,
         parsed_parameters.max_flow_rate,
-        parsed_parameters.min_crest_level,
         parsed_parameters.control_mapping,
+        parsed_parameters.min_upstream_level,
+        parsed_parameters.max_downstream_level,
     )
 end
 
@@ -546,6 +571,7 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     # both static and time are optional, but we need fallback defaults
     static = load_structvector(db, config, BasinStaticV1)
     time = load_structvector(db, config, BasinTimeV1)
+    state = load_structvector(db, config, BasinStateV1)
 
     set_static_value!(table, node_id, static)
     set_current_value!(table, node_id, time, config.starttime)
@@ -553,15 +579,12 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
 
     vertical_flux_from_input =
         ComponentVector(; precipitation, potential_evaporation, drainage, infiltration)
-    vertical_flux = cache(4 * n)
-    vertical_flux_prev = ComponentVector(;
-        precipitation = copy(precipitation),
-        evaporation,
-        drainage = copy(drainage),
-        infiltration = copy(infiltration),
+    vertical_flux_bmi = ComponentVector(;
+        precipitation = zero(precipitation),
+        evaporation = zero(evaporation),
+        drainage = zero(drainage),
+        infiltration = zero(infiltration),
     )
-    vertical_flux_integrated = zero(vertical_flux_prev)
-    vertical_flux_bmi = zero(vertical_flux_prev)
 
     demand = zeros(length(node_id))
 
@@ -615,14 +638,11 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
         error("Errors encountered when parsing Basin concentration data.")
     end
 
-    return Basin(;
+    basin = Basin(;
         node_id,
         inflow_ids = [collect(inflow_ids(graph, id)) for id in node_id],
         outflow_ids = [collect(outflow_ids(graph, id)) for id in node_id],
         vertical_flux_from_input,
-        vertical_flux,
-        vertical_flux_prev,
-        vertical_flux_integrated,
         vertical_flux_bmi,
         current_level,
         current_area,
@@ -632,6 +652,12 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
         time,
         concentration_external,
     )
+
+    storage0 = get_storages_from_levels(basin, state.level)
+    @assert length(storage0) == n "Basin / state length differs from number of Basins"
+    basin.storage0 .= storage0
+    basin.storage_prev_saveat .= storage0
+    return basin
 end
 
 """
@@ -672,7 +698,7 @@ function CompoundVariable(
 end
 
 function parse_variables_and_conditions(compound_variable, condition, ids, db, graph)
-    placeholder_vector = graph[].flow
+    placeholder_vector = cache(1)
     compound_variables = Vector{CompoundVariable}[]
     errors = false
 
@@ -798,15 +824,8 @@ function continuous_control_functions(db, config, ids)
     return functions, controlled_variables, errors
 end
 
-function continuous_control_compound_variables(
-    db::DB,
-    config::Config,
-    ids,
-    graph::MetaGraph,
-)
-    # This is a vector that is known to have a DiffCache if automatic differentiation
-    # is used. Therefore this vector is used as a placeholder with the correct type
-    placeholder_vector = graph[].flow
+function continuous_control_compound_variables(db::DB, config::Config, ids)
+    placeholder_vector = cache(1)
 
     data = load_structvector(db, config, ContinuousControlVariableV1)
     compound_variables = CompoundVariable[]
@@ -835,7 +854,7 @@ function ContinuousControl(db::DB, config::Config, graph::MetaGraph)::Continuous
 
     # Avoid using `function` as a variable name as that is recognized as a keyword
     func, controlled_variable, errors = continuous_control_functions(db, config, ids)
-    compound_variable = continuous_control_compound_variables(db, config, ids, graph)
+    compound_variable = continuous_control_compound_variables(db, config, ids)
 
     # References to the controlled parameters, filled in later when they are known
     target_refs = PreallocationRef[]
@@ -1223,7 +1242,6 @@ function Allocation(db::DB, config::Config, graph::MetaGraph)::Allocation
 end
 
 function Parameters(db::DB, config::Config)::Parameters
-    n_states = length(get_ids(db, "Basin")) + length(get_ids(db, "PidControl"))
     graph = create_graph(db, config)
     allocation = Allocation(db, config, graph)
 
@@ -1273,6 +1291,8 @@ function Parameters(db::DB, config::Config)::Parameters
         level_demand,
         flow_demand,
         subgrid,
+        config.solver.water_balance_abstol,
+        config.solver.water_balance_reltol,
     )
 
     collect_control_mappings!(p)
