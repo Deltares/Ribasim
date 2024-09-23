@@ -460,11 +460,9 @@ end
         normpath(@__DIR__, "../../generated_testmodels/invalid_priorities/ribasim.toml")
     @test ispath(toml_path)
 
-    config = Ribasim.Config(toml_path; allocation_use_allocation = true)
-
     logger = TestLogger()
     with_logger(logger) do
-        @test_throws "Priority parameter is missing" Ribasim.run(config)
+        @test_throws "Priority parameter is missing" Ribasim.run(toml_path)
     end
     @test length(logger.logs) == 3
     @test logger.logs[1].level == Error
