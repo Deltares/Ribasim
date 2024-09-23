@@ -290,7 +290,7 @@ class TableModel(FileModel, Generic[TableT]):
 
     @classmethod
     def _from_db(cls, path: Path, table: str) -> pd.DataFrame | None:
-        with connect(path) as connection:
+        with closing(connect(path)) as connection:
             if exists(connection, table):
                 query = f"select * from {esc_id(table)}"
                 df = pd.read_sql_query(
@@ -371,7 +371,7 @@ class SpatialTableModel(TableModel[TableT], Generic[TableT]):
 
     @classmethod
     def _from_db(cls, path: Path, table: str):
-        with connect(path) as connection:
+        with closing(connect(path)) as connection:
             if exists(connection, table):
                 # pyogrio hardcodes fid name on reading
                 df = gpd.read_file(path, layer=table, fid_as_index=True)
