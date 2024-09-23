@@ -23,6 +23,7 @@ def backwater_model():
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
+        solver=ribasim.Solver(autodiff=True),
     )
 
     model.flow_boundary.add(
