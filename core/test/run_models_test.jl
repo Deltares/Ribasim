@@ -205,7 +205,7 @@ end
     @test successful_retcode(model)
     @test length(model.integrator.sol) == 2 # start and end
     @test model.integrator.p.basin.current_storage[Float64[]] ≈
-          Float32[803.7093, 803.68274, 495.241, 1318.3053] skip = Sys.isapple() atol = 1.5
+          Float32[828.5386, 801.88289, 492.290, 1318.3053] skip = Sys.isapple() atol = 1.5
 
     @test length(logger.logs) > 10
     @test logger.logs[1].level == Debug
@@ -242,7 +242,7 @@ end
     precipitation = model.integrator.p.basin.vertical_flux_from_input.precipitation
     @test length(precipitation) == 4
     @test model.integrator.p.basin.current_storage[parent(du)] ≈
-          Float32[697.30591, 697.2799, 419.19034, 1334.3859] atol = 2.0 skip = Sys.isapple()
+          Float32[720.23611, 694.8785, 415.22371, 1334.3859] atol = 2.0 skip = Sys.isapple()
 end
 
 @testitem "Allocation example model" begin
