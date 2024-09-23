@@ -74,7 +74,8 @@ def _make_boundary(data, boundary_type):
         .reset_index()
         .reset_index(drop=True)
     )
-    piv.time = piv.time.dt.strftime("%Y/%m/%d-%H:%M:%S")
+    # Convert Arrow time to Numpy to avoid needing tzdata somehow
+    piv.time = pd.to_datetime(piv.time).dt.strftime("%Y-%m-%d %H:%M:%S")
     boundary = {
         "name": bid,
         "substances": list(map(_quote, piv.columns[1:])),

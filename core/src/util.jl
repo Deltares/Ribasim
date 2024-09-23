@@ -447,7 +447,7 @@ function get_all_priorities(db::DB, config::Config)::Vector{Int32}
         (FlowDemandTimeV1, "FlowDemand / time"),
     ]
         priority_col = load_structvector(db, config, type).priority
-        priority_col = coalesce.(priority_col, Int32(0))
+        priority_col = Int32.(coalesce.(priority_col, Int32(0)))
         if valid_priorities(priority_col, config.allocation.use_allocation)
             union!(priorities, priority_col)
         else
