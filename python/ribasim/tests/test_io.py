@@ -323,3 +323,12 @@ def test_minimal_toml():
     (toml_path.parent / "database.gpkg").touch()  # database file must exist for `read`
     model = ribasim.Model.read(toml_path)
     assert model.crs == "EPSG:28992"
+
+
+def test_closed_model(basic, tmp_path):
+    # Test whether we can write to a just opened model
+    # implicitly testing that the database is closed after read
+    toml_path = tmp_path / "basic/ribasim.toml"
+    basic.write(toml_path)
+    model = ribasim.Model.read(toml_path)
+    model.write(toml_path)

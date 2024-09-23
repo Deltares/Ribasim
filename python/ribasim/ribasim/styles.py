@@ -121,5 +121,6 @@ def _add_styles_to_geopackage(gpkg_path: Path, layer: str):
                     "update_date_time": update_date_time,
                 },
             )
+            connection.commit()
         else:
             logging.warning(f"Style not found for layer: {layer}")
