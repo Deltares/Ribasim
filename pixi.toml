@@ -38,14 +38,6 @@ initialize-julia = { depends_on = [
     "instantiate-julia",
 ] }
 # Docs
-build-julia-docs = { cmd = "julia --project docs/make.jl", depends_on = [
-    "initialize-julia",
-], inputs = [
-    "core",
-    "docs/make.jl",
-], outputs = [
-    "docs/build",
-] }
 quartodoc-build = { cmd = "quartodoc build && rm objects.json", cwd = "docs", inputs = [
     "docs/_quarto.yml",
     "python/ribasim",
@@ -61,7 +53,7 @@ quarto-render = { cmd = "julia --project --eval 'using Pkg; Pkg.build(\"IJulia\"
     "quartodoc-build",
     "generate-testmodels",
 ] }
-docs = { depends_on = ["build-julia-docs", "quarto-preview"] }
+docs = { depends_on = ["quarto-preview"] }
 # Lint
 mypy-ribasim-python = "mypy python/ribasim/ribasim"
 mypy-ribasim-testmodels = "mypy python/ribasim_testmodels/ribasim_testmodels"

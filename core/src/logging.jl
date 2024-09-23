@@ -36,15 +36,20 @@ function log_bottlenecks(model; converged::Bool)
     # Indicate convergence bottlenecks if possible with the current algorithm
     if hasproperty(cache, :nlsolver)
         flow_error = @. abs(cache.nlsolver.cache.atmp / u)
-        perm = sortperm(flow_error; rev = true)
         errors = Pair{Symbol, Float64}[]
-        for i in perm
+        error_count = 0
+        max_errors = 5
+        # Iterate over the errors in descending order
+        for i in sortperm(flow_error; rev = true)
             node_id = Symbol(id_from_state_index(p, u, i))
             error = flow_error[i]
-            if error < model.config.solver.reltol
+            isnan(error) && continue  # NaN are sorted as largest
+            # Stop reporting errors if they are too small or too many
+            if error < model.config.solver.reltol || error_count >= max_errors
                 break
             end
             push!(errors, node_id => error)
+            error_count += 1
         end
         if !isempty(errors)
             @logmsg level "Convergence bottlenecks in descending order of severity:" errors...

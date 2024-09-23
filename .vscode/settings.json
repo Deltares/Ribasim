@@ -4,8 +4,9 @@
     },
     "notebook.formatOnSave.enabled": false,
     "notebook.codeActionsOnSave": {
-        "source.fixAll.ruff": true,
-        "source.organizeImports.ruff": true
+        // https://github.com/astral-sh/ruff-vscode/issues/593
+        "source.fixAll.ruff": "never",
+        "source.organizeImports.ruff": "never"
     },
     "[python]": {
         "editor.defaultFormatter": "charliermarsh.ruff",
