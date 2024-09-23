@@ -106,7 +106,7 @@ const nodetypes = collect(keys(nodekinds))
     water_balance_reltol::Float64 = 1e-2
     maxiters::Int = 1e9
     sparse::Bool = true
-    autodiff::Bool = true
+    autodiff::Bool = false
 end
 
 # Separate struct, as basin clashes with nodetype
