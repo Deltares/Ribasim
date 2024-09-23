@@ -197,7 +197,7 @@ function save_basin_state(u, t, integrator)
     current_storage = basin.current_storage[parent(du)]
     current_level = basin.current_level[parent(du)]
     water_balance!(du, u, p, t)
-    SavedBasinState(; storage = copy(current_storage), level = copy(current_level))
+    SavedBasinState(; storage = copy(current_storage), level = copy(current_level), t)
 end
 
 """
@@ -206,10 +206,13 @@ Both computed by the solver and integrated exactly. Also computes the total hori
 inflow and outflow per basin.
 """
 function save_flow(u, t, integrator)
-    (; p, sol) = integrator
-    (; basin, state_inflow_edge, state_outflow_edge, flow_boundary) = p
+    (; p) = integrator
+    (; basin, state_inflow_edge, state_outflow_edge, flow_boundary, u_prev_saveat) = p
     Δt = get_Δt(integrator)
-    flow_mean = (u - sol(t - Δt)) / Δt
+    flow_mean = (u - u_prev_saveat) / Δt
+
+    # Current u is previous u in next computation
+    u_prev_saveat .= u
 
     inflow_mean = zeros(length(basin.node_id))
     outflow_mean = zeros(length(basin.node_id))
@@ -262,6 +265,7 @@ function save_flow(u, t, integrator)
         flow_boundary = flow_boundary_mean,
         precipitation,
         drainage,
+        t,
     )
     check_water_balance_error(integrator, saved_flow, Δt)
     return saved_flow
