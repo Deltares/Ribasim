@@ -291,12 +291,12 @@ def tabulated_rating_curve_model() -> ribasim.Model:
             tabulated_rating_curve.Time(
                 time=[
                     # test millisecond precision
-                    pd.Timestamp("2020-01-01 00:00:00.001"),
-                    pd.Timestamp("2020-01-01 00:00:00.001"),
-                    pd.Timestamp("2020-02"),
-                    pd.Timestamp("2020-02"),
-                    pd.Timestamp("2020-03"),
-                    pd.Timestamp("2020-03"),
+                    pd.Timestamp("2020-01-01"),
+                    pd.Timestamp("2020-01-01"),
+                    pd.Timestamp("2020-02-01 00:00:00.001"),
+                    pd.Timestamp("2020-02-01 00:00:00.001"),
+                    pd.Timestamp("2020-03-01"),
+                    pd.Timestamp("2020-03-01"),
                 ],
                 level=[0.0, 1.0, 0.0, 1.1, 0.0, 1.2],
                 flow_rate=[0.0, 10 / 86400, 0.0, 10 / 86400, 0.0, 10 / 86400],
