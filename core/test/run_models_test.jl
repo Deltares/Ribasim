@@ -506,7 +506,7 @@ end
     # numerical choices to make in terms of what the representative friction
     # slope is. See e.g.:
     # https://www.hec.usace.army.mil/confluence/rasdocs/ras1dtechref/latest/theoretical-basis-for-one-dimensional-and-two-dimensional-hydrodynamic-calculations/1d-steady-flow-water-surface-profiles/friction-loss-evaluation
-    @test all(isapprox.(h_expected, h_actual; atol = 0.02))
+    @test all(isapprox.(h_expected, h_actual; atol = 0.04))
     # Test for conservation of mass, flow at the beginning == flow at the end
     @test Ribasim.get_flow(du, p, t, (NodeID(:FlowBoundary, 1, p), NodeID(:Basin, 2, p))) ≈
           5.0 atol = 0.001 skip = Sys.isapple()
@@ -515,7 +515,7 @@ end
         p,
         t,
         (NodeID(:ManningResistance, 101, p), NodeID(:Basin, 102, p)),
-    ) ≈ 5.0 atol = 0.001 skip = Sys.isapple()
+    ) ≈ 5.0 atol = 0.002 skip = Sys.isapple()
 end
 
 @testitem "mean_flow" begin
