@@ -268,6 +268,7 @@ In-memory storage of saved mean flows for writing to results.
 - `flow_boundary`: The exact integrated mean flows of flow boundaries
 - `precipitation`: The exact integrated mean precipitation
 - `drainage`: The exact integrated mean drainage
+- `t`: Endtime of the interval over which is averaged
 """
 @kwdef struct SavedFlow{V}
     flow::V
@@ -276,6 +277,7 @@ In-memory storage of saved mean flows for writing to results.
     flow_boundary::Vector{Float64}
     precipitation::Vector{Float64}
     drainage::Vector{Float64}
+    t::Float64
 end
 
 """
@@ -284,6 +286,7 @@ In-memory storage of saved instantaneous storages and levels for writing to resu
 @kwdef struct SavedBasinState
     storage::Vector{Float64}
     level::Vector{Float64}
+    t::Float64
 end
 
 """
@@ -815,7 +818,7 @@ const ModelGraph = MetaGraph{
     Float64,
 }
 
-@kwdef struct Parameters{C1, C2, C3, C4, V1, V2}
+@kwdef struct Parameters{C1, C2, C3, C4, C5, V1, V2}
     starttime::DateTime
     graph::ModelGraph
     allocation::Allocation
@@ -843,6 +846,8 @@ const ModelGraph = MetaGraph{
     # Water balance tolerances
     water_balance_abstol::Float64
     water_balance_reltol::Float64
+    # State at previous saveat
+    u_prev_saveat::C5 = ComponentVector()
 end
 
 # To opt-out of type checking for ForwardDiff

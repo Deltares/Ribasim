@@ -203,7 +203,7 @@ end
     @test all(isconcretetype, fieldtypes(typeof(p)))
 
     @test successful_retcode(model)
-    @test allunique(Ribasim.tsaves(model))
+    @test length(model.integrator.sol) == 2 # start and end
     @test model.integrator.p.basin.current_storage[Float64[]] ≈
           Float32[803.7093, 803.68274, 495.241, 1318.3053] skip = Sys.isapple() atol = 1.5
 
