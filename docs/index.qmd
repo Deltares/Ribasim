@@ -8,9 +8,9 @@ Ribasim is written in the [Julia programming language](https://julialang.org/) a
 on top of the [SciML: Open Source Software for Scientific Machine Learning](https://sciml.ai/)
 libraries.
 
-The first version of Ribasim is developed by [Deltares](https://www.deltares.nl) as part of a consortium for the Dutch watersystem.
+The initial version of Ribasim is developed by [Deltares](https://www.deltares.nl) as part of a consortium for the Dutch watersystem.
 This activity is co-funded by [TKI Deltatechnology](https://tkideltatechnologie.nl/), a Dutch public–private partnership innovation program from the Ministry of Economic Affairs.
-It will be used as the surface water module of the [Netherlands Hydrologic Instrument (NHI)](https://nhi.nu/)
+Ribasim will be used as the surface water module of the [Netherlands Hydrologic Instrument (NHI)](https://nhi.nu/).
 
 ![](https://publicwiki.deltares.nl/download/attachments/232326570/image-2023-3-7_16-39-24-1.png?version=1&modificationDate=1678203564884&api=v2){fig-alt="TKI partner logos"}
 
