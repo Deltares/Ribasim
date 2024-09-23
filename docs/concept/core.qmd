@@ -13,7 +13,7 @@ can be found in the [Ribasim repository](https://github.com/Deltares/Ribasim) un
 `core/` folder. For developers we also advise to read the
 [developer documentation](/dev/core.qmd). Information on coupling can be found [here](/guide/coupling.qmd).
 
-An overview of all components is given in the [Get Started](/tutorial/index.qmd#sec-components) section.
+An overview of all components is given in the [installation](/install.qmd#sec-components) section.
 
 # The simulation loop {#sec-simulationloop}
 
