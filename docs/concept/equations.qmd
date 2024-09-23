@@ -81,17 +81,17 @@ i.e. $J_{i,j}$ quantifies how $f_j$. the time derivative of state $j$, changes w
 
 ## The water balance error
 
-The water balance error quantifies how well the water volume in the model is conserved for each basin over an output save period, i.e. whether no water erroneously appears or disappears. It looks at the storage rate
+The water balance error quantifies how well the water volume in the model is conserved for each Basin over an output save period, i.e. whether no water erroneously appears or disappears. It looks at the storage rate
 $$
 	\text{storage rate} = \frac{\Delta S_b}{\Delta t}
 $$
 
-in a basin over a time period $\Delta t = t_1 - t_0$ and compares that to the total inflows and outflows of that basin over that period. More precisely, we first compute the total inflow and outflow, where:
+in a Basin over a time period $\Delta t = t_1 - t_0$ and compares that to the total inflows and outflows of that Basin over that period. More precisely, we first compute the total inflow and outflow, where:
 
-- $\text{total inflow}$: the precipitation, drainage and horizontal flows into the basin;
-- $\text{total outflow}$: the evaporation, infiltration and horizontal flows out of the basin.
+- $\text{total inflow}$: the precipitation, drainage and horizontal flows into the Basin;
+- $\text{total outflow}$: the evaporation, infiltration and horizontal flows out of the Basin.
 
-Whether a flow is an inflow or an outflow depends on whether the flow contributes to or takes from the basin storage, and thus this is independent of the edge direction. This is determined for each solver timestep individually.
+Whether a flow is an inflow or an outflow depends on whether the flow contributes to or takes from the Basin storage, and thus this is independent of the edge direction. This is determined for each solver timestep individually.
 
 Then from this we compute the errors:
 
@@ -101,7 +101,7 @@ $$
 	\text{relative error}=&& \frac{\text{absolute error}}{0.5(\text{total inflow} + \text{total outflow})}
 	\end{align}
 $$
-Hence the reference used for computing the relative error is the average of the total inflow and total outflow of the basin (which are both non-negative).
+Hence the reference used for computing the relative error is the average of the total inflow and total outflow of the Basin (which are both non-negative).
 
 The default tolerances are $0.001 \text{ m}^3$ for the balance error and $0.01$ for the absolute error, which should not be exceeded for realistic models.
 
@@ -113,7 +113,7 @@ Say we have the following model:
 
 ![](https://s3.deltares.nl/ribasim/doc-image/concept/equations/subnetwork.png){fig-align="left"}
 
-and we want to calculate the water balance error for basin 6. We have the following data:
+and we want to calculate the water balance error for Basin 6. We have the following data:
 
 - Time period length: $10.0 \text{ s}$
 - Basin storage start: $100.0 \text{ m}^3$
@@ -131,7 +131,7 @@ $$
 	\text{total inflow} = && 5.0 + 3.5 &= & 8.5 \text{ m}^3/\text{s}\\
 	\text{total outflow} = && 10.0 + 4.0 &= & 14.0 \text{ m}^3/\text{s}\\
 	\text{balance error} = && -6.0 - (8.5 - 14.0) &= & -0.5 \text{ m}^3/\text{s}\\
-		\text{relative error} = && \frac{-0.5}{8.5 + 14.0} &\approx & -0.022
+	\text{relative error} = && \frac{-0.5}{8.5 + 14.0} &\approx & -0.022
 \end{align}
 $$
 Note that the balance error and relative error are negative, but we use their absolute value to compare to the respective tolerances.

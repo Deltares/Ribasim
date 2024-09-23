@@ -201,7 +201,7 @@ The Basin table contains:
   It can be used to check if the numerical error when solving the water balance is sufficiently small.
 - The `relative_error` is the fraction of the `balance_error` over the mean of the `total_inflow` and `total_outflow`.
 
-For a more in-depth explanation of the water balance error see [here](../concept/equations.qmd#the-water-balance-error).
+For a more in-depth explanation of the water balance error see [here](/concept/equations.qmd#the-water-balance-error).
 
 column         | type     | unit
 -------------- | ---------| ----
