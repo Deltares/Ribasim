@@ -1,6 +1,7 @@
 from datetime import datetime
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import pytest
 import ribasim
@@ -9,7 +10,7 @@ from pandas import DataFrame
 from pandas.testing import assert_frame_equal
 from pydantic import ValidationError
 from ribasim import Model, Node, Solver
-from ribasim.nodes import basin, pump, user_demand
+from ribasim.nodes import basin, flow_boundary, flow_demand, pump, user_demand
 from ribasim.utils import UsedIDs
 from shapely.geometry import Point
 
@@ -331,3 +332,58 @@ def test_closed_model(basic, tmp_path):
     basic.write(toml_path)
     model = ribasim.Model.read(toml_path)
     model.write(toml_path)
+
+
+def test_arrow_dtype():
+    # Below millisecond precision is not supported
+    with pytest.raises(ValidationError):
+        flow_boundary.Time(
+            time=["2021-01-01 00:00:00.1234"],
+            flow_rate=np.ones(1),
+        )
+
+    # Extra columns don't get coerced to Arrow types
+    df = flow_boundary.Time(
+        time=["2021-01-01 00:00:00.123", "2021-01-01 00:00:00.456"],
+        flow_rate=[1, 2.2],
+        meta_obj=["foo", "bar"],
+        meta_str=pd.Series(["a", pd.NA], dtype="string[pyarrow]"),
+    ).df
+
+    assert df["node_id"].isna().all()
+    assert df["node_id"].dtype == "int32[pyarrow]"
+    assert df["time"].dtype == "timestamp[ms][pyarrow]"
+    assert df["time"].dt.tz is None
+    assert df["time"].diff().iloc[1] == pd.Timedelta("333ms")
+    assert df["flow_rate"].dtype == "double[pyarrow]"
+    assert df["meta_obj"].dtype == object
+    assert df["meta_str"].dtype == "string[pyarrow]"
+    assert df["meta_str"].isna().iloc[1]
+
+    # Check a string column that is part of the schema and a boolean column
+    df = pump.Static(
+        flow_rate=np.ones(2),
+        control_state=["foo", pd.NA],
+        active=[None, False],
+    ).df
+
+    assert df["control_state"].dtype == "string[pyarrow]"
+    assert df["active"].dtype == "bool[pyarrow]"
+    assert df["active"].isna().iloc[0]
+
+    # Optional integer column
+    df = flow_demand.Static(
+        demand=[1, 2.2],
+        priority=[1, pd.NA],
+    ).df
+
+    assert df["priority"].dtype == "int32[pyarrow]"
+    assert df["priority"].isna().iloc[1]
+
+    # Missing optional integer column
+    df = flow_demand.Static(
+        demand=[1, 2.2],
+    ).df
+
+    assert df["priority"].dtype == "int32[pyarrow]"
+    assert df["priority"].isna().all()
