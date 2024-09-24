@@ -75,7 +75,7 @@ def _make_boundary(data, boundary_type):
         .reset_index(drop=True)
     )
     # Convert Arrow time to Numpy to avoid needing tzdata somehow
-    piv.time = piv.time.astype("datetime64[ns]").dt.strftime("%Y-%m-%d %H:%M:%S")
+    piv.time = piv.time.astype("datetime64[ns]").dt.strftime("%Y/%m/%d-%H:%M:%S")
     boundary = {
         "name": bid,
         "substances": list(map(_quote, piv.columns[1:])),
@@ -251,18 +251,25 @@ def _setup_boundaries(model):
     substances = set()
 
     if model.level_boundary.concentration.df is not None:
+        model.level_boundary.concentration.df["concentration"].fillna(
+            np.nan, inplace=True
+        )
         for _, rows in model.level_boundary.concentration.df.groupby(["node_id"]):
             boundary, substance = _make_boundary(rows, "LevelBoundary")
             boundaries.append(boundary)
             substances.update(substance)
 
     if model.flow_boundary.concentration.df is not None:
+        model.flow_boundary.concentration.df["concentration"].fillna(
+            np.nan, inplace=True
+        )
         for _, rows in model.flow_boundary.concentration.df.groupby("node_id"):
             boundary, substance = _make_boundary(rows, "FlowBoundary")
             boundaries.append(boundary)
             substances.update(substance)
 
     if model.basin.concentration.df is not None:
+        model.basin.concentration.df["concentration"].fillna(np.nan, inplace=True)
         for _, rows in model.basin.concentration.df.groupby(["node_id"]):
             for boundary_type in ("Drainage", "Precipitation"):
                 nrows = rows.rename(columns={boundary_type.lower(): "concentration"})
