@@ -5,7 +5,7 @@ import shutil
 from datetime import timedelta
 from pathlib import Path
 
-from ribasim.utils import MissingOptionalModule
+from ribasim.utils import MissingOptionalModule, _concat
 
 try:
     import networkx as nx
@@ -364,7 +364,7 @@ def generate(
             columns={boundary_type: "flow_rate"}
         )
         df["edge_id"] = edge_id
-        nflows = pd.concat([nflows, df], ignore_index=True)
+        nflows = _concat([nflows, df], ignore_index=True)
 
     # Save flows to Delwaq format
     nflows.sort_values(by=["time", "edge_id"], inplace=True)
