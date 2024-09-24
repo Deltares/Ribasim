@@ -62,8 +62,6 @@ node_names_snake_case = [
     "user_demand",
 ]
 
-gpd.options.io_engine = "pyogrio"
-
 context_file_loading: ContextVar[dict[str, Any]] = ContextVar(
     "file_loading", default={}
 )
@@ -406,6 +404,7 @@ class SpatialTableModel(TableModel[TableT], Generic[TableT]):
             driver="GPKG",
             index=True,
             fid=self.df.index.name,
+            engine="pyogrio",
         )
         _add_styles_to_geopackage(path, self.tablename())
 
