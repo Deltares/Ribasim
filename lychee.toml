@@ -1,0 +1,3 @@
+# https://lychee.cli.rs/usage/config/
+exclude = ["file://"]
+exclude_path = [".git", "*.html", "docs/_site", "build/ribasim", "models"]

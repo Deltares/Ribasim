@@ -28,3 +28,9 @@ repos:
     rev: v1.24.3
     hooks:
       - id: typos
+  - repo: https://github.com/lycheeverse/lychee.git
+    rev: v0.15.1
+    hooks:
+      - id: lychee
+        args: ["--no-progress", "."]
+        pass_filenames: false

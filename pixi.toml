@@ -210,6 +210,7 @@ quartodoc = "*"
 ruff = "*"
 rust = "*"
 twine = "*"
+lychee = "*"
 
 [feature.dev.pypi-dependencies]
 ptvsd = "*"

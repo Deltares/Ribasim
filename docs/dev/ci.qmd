@@ -3,7 +3,7 @@ title: "Continuous integration"
 ---
 
 Continuous integration (CI) is about commits being merged frequently, resulting in new features being released frequently.
-When proposing new changes to the code base a [pull request](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/about-pull-requests) is opened.
+When proposing new changes to the code base a [pull request](https://docs.github.com/en/push-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/about-pull-requests) is opened.
 When a new commit in that pull request, a series of tests will be done to make sure that this commit is error-free and robust in different environments.
 This process drive each new development through building, testing, quality checking.
 
@@ -13,6 +13,7 @@ graph LR
     B-->C[Merge]
 ```
 
+[Bad link](https://example.com/en/actions)
 
 This page contains an extensive explanation on how the Ribasim continuous integration works.
 
