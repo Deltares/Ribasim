@@ -242,6 +242,8 @@ class MultiNodeModel(NodeModel):
             )
             assert table.df is not None
             table_to_append = table.df.assign(node_id=node_id)
+            if isinstance(table_to_append, GeoDataFrame):
+                table_to_append.set_crs(self._parent.crs, inplace=True)
             new_table = _concat([existing_table, table_to_append], ignore_index=True)
             setattr(self, member_name, new_table)
 
