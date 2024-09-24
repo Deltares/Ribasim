@@ -234,11 +234,7 @@ class Model(FileModel):
 
     def node_table(self) -> NodeTable:
         """Compute the full sorted NodeTable from all node types."""
-        df_chunks = [
-            node.node.df
-            for node in self._nodes()
-            if node.node.df is not None and not node.node.df.empty
-        ]
+        df_chunks = [node.node.df for node in self._nodes()]
         df = (
             pd.concat(df_chunks)
             if df_chunks
