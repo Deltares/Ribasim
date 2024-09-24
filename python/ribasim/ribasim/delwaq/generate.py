@@ -70,7 +70,9 @@ def _make_boundary(data, boundary_type):
     """
     bid = _boundary_name(data.node_id.iloc[0], boundary_type)
     piv = (
-        data.pivot_table(index="time", columns="substance", values="concentration")
+        data.pivot_table(
+            index="time", columns="substance", values="concentration", fill_value=-999
+        )
         .reset_index()
         .reset_index(drop=True)
     )
@@ -79,9 +81,7 @@ def _make_boundary(data, boundary_type):
     boundary = {
         "name": bid,
         "substances": list(map(_quote, piv.columns[1:])),
-        "df": piv.to_string(
-            formatters={"time": _quote}, header=False, index=False, na_rep=-999
-        ),
+        "df": piv.to_string(formatters={"time": _quote}, header=False, index=False),
     }
     substances = data.substance.unique()
     return boundary, substances
@@ -182,7 +182,7 @@ def _setup_graph(nodes, edge, use_evaporation=True):
             boundary_id -= 1
             node_mapping[node_id] = boundary_id
         else:
-            raise Exception("Found unexpected node $node_id in delwaq graph.")
+            raise Exception(f"Found unexpected node {node_id} in delwaq graph.")
 
     nx.relabel_nodes(G, node_mapping, copy=False)
 
@@ -251,25 +251,18 @@ def _setup_boundaries(model):
     substances = set()
 
     if model.level_boundary.concentration.df is not None:
-        model.level_boundary.concentration.df["concentration"].fillna(
-            np.nan, inplace=True
-        )
         for _, rows in model.level_boundary.concentration.df.groupby(["node_id"]):
             boundary, substance = _make_boundary(rows, "LevelBoundary")
             boundaries.append(boundary)
             substances.update(substance)
 
     if model.flow_boundary.concentration.df is not None:
-        model.flow_boundary.concentration.df["concentration"].fillna(
-            np.nan, inplace=True
-        )
         for _, rows in model.flow_boundary.concentration.df.groupby("node_id"):
             boundary, substance = _make_boundary(rows, "FlowBoundary")
             boundaries.append(boundary)
             substances.update(substance)
 
     if model.basin.concentration.df is not None:
-        model.basin.concentration.df["concentration"].fillna(np.nan, inplace=True)
         for _, rows in model.basin.concentration.df.groupby(["node_id"]):
             for boundary_type in ("Drainage", "Precipitation"):
                 nrows = rows.rename(columns={boundary_type.lower(): "concentration"})
