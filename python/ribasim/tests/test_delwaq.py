@@ -31,9 +31,13 @@ def test_offline_delwaq_coupling():
         "Basin",
         "Cl",
         "Continuity",
+        "Drainage",
         "FlowBoundary",
         "Foo",
+        "Initial",
         "LevelBoundary",
+        "Precipitation",
         "Terminal",
         "Tracer",
+        "UserDemand",
     ]
