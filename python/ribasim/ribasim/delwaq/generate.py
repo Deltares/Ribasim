@@ -417,6 +417,8 @@ def generate(
         "FlowBoundary": 0.0,
         "Terminal": 0.0,
         "UserDemand": 0.0,
+        "Precipitation": 0.0,
+        "Drainage": 0.0,
     }
     substances.update(defaults.keys())
 
