@@ -80,7 +80,6 @@ def _concat(dfs, **kwargs):
         # the concat operation.
         filterwarnings(
             "ignore",
-            message="The behavior of array concatenation with empty entries is deprecated.",
             category=FutureWarning,
         )
         return pd.concat(dfs, **kwargs)

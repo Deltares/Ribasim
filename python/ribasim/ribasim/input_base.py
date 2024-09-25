@@ -15,7 +15,6 @@ from typing import (
 import geopandas as gpd
 import numpy as np
 import pandas as pd
-import pyogrio
 from pandera.typing import DataFrame
 from pandera.typing.geopandas import GeoDataFrame
 from pydantic import BaseModel as PydanticBaseModel
@@ -295,6 +294,8 @@ class TableModel(FileModel, Generic[TableT]):
                 df = pd.read_sql_query(
                     query,
                     connection,
+                    # we store TIMESTAMP in SQLite like "2025-05-29 14:16:00"
+                    # see https://www.sqlite.org/lang_datefunc.html
                     parse_dates={"time": {"format": "ISO8601"}},
                     dtype_backend="pyarrow",
                 )
@@ -376,11 +377,13 @@ class SpatialTableModel(TableModel[TableT], Generic[TableT]):
         with closing(connect(path)) as connection:
             if exists(connection, table):
                 # pyogrio hardcodes fid name on reading
-                df = pyogrio.read_dataframe(
+                df = gpd.read_file(
                     path,
                     layer=table,
+                    engine="pyogrio",
                     fid_as_index=True,
                     use_arrow=True,
+                    # tell pyarrow to map to pd.ArrowDtype rather than NumPy
                     arrow_to_pandas_kwargs={"types_mapper": pd.ArrowDtype},
                 )
                 df.index.rename(cls.tableschema()._index_name(), inplace=True)
