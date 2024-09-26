@@ -55,6 +55,7 @@ from ribasim.input_base import (
 from ribasim.utils import (
     MissingOptionalModule,
     UsedIDs,
+    _concat,
     _edge_lookup,
     _node_lookup,
     _node_lookup_numpy,
@@ -236,7 +237,7 @@ class Model(FileModel):
         """Compute the full sorted NodeTable from all node types."""
         df_chunks = [node.node.df for node in self._nodes()]
         df = (
-            pd.concat(df_chunks)
+            _concat(df_chunks)
             if df_chunks
             else pd.DataFrame(index=pd.Index([], name="node_id"))
         )
@@ -308,7 +309,7 @@ class Model(FileModel):
     def _validate_model(self):
         df_edge = self.edge.df
         df_chunks = [node.node.df for node in self._nodes()]
-        df_node = pd.concat(df_chunks)
+        df_node = _concat(df_chunks)
 
         df_graph = df_edge
         # Join df_edge with df_node to get to_node_type
@@ -416,7 +417,7 @@ class Model(FileModel):
                     f"{direction}_node_count": 0,
                     f"{direction}_node_type": node,
                 }
-                node_info = pd.concat(
+                node_info = _concat(
                     [node_info, pd.DataFrame([new_row])], ignore_index=True
                 )
 
@@ -454,8 +455,8 @@ class Model(FileModel):
 
         df_listen_edge = pd.DataFrame(
             data={
-                "control_node_id": pd.Series([], dtype=np.int32),
-                "listen_node_id": pd.Series([], dtype=np.int32),
+                "control_node_id": pd.Series([], dtype="int32[pyarrow]"),
+                "listen_node_id": pd.Series([], dtype="int32[pyarrow]"),
             }
         )
 
@@ -466,7 +467,7 @@ class Model(FileModel):
 
             to_add = table[["node_id", "listen_node_id"]].drop_duplicates()
             to_add.columns = ["control_node_id", "listen_node_id"]
-            df_listen_edge = pd.concat([df_listen_edge, to_add])
+            df_listen_edge = _concat([df_listen_edge, to_add])
 
         # Listen edges from ContinuousControl and DiscreteControl
         for table, name in (
@@ -481,7 +482,7 @@ class Model(FileModel):
                 "control_node_id",
                 "listen_node_id",
             ]
-            df_listen_edge = pd.concat([df_listen_edge, to_add])
+            df_listen_edge = _concat([df_listen_edge, to_add])
 
         # Collect geometry data
         node = self.node_table().df
@@ -654,8 +655,8 @@ class Model(FileModel):
                 "perhaps the model needs to be run first."
             )
 
-        basin_df = pd.read_feather(basin_path)
-        flow_df = pd.read_feather(flow_path)
+        basin_df = pd.read_feather(basin_path, dtype_backend="pyarrow")
+        flow_df = pd.read_feather(flow_path, dtype_backend="pyarrow")
         _time_in_ns(basin_df)
         _time_in_ns(flow_df)
 
@@ -695,6 +696,7 @@ class Model(FileModel):
         alloc_flow_df = pd.read_feather(
             alloc_flow_path,
             columns=["time", "edge_id", "flow_rate", "optimization_type", "priority"],
+            dtype_backend="pyarrow",
         )
         _time_in_ns(alloc_flow_df)
 

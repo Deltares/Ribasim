@@ -51,7 +51,7 @@ from ribasim.schemas import (
     UserDemandStaticSchema,
     UserDemandTimeSchema,
 )
-from ribasim.utils import _pascal_to_snake
+from ribasim.utils import _concat, _pascal_to_snake
 
 
 class Allocation(ChildModel):
@@ -242,11 +242,10 @@ class MultiNodeModel(NodeModel):
             )
             assert table.df is not None
             table_to_append = table.df.assign(node_id=node_id)
-            setattr(
-                self,
-                member_name,
-                pd.concat([existing_table, table_to_append], ignore_index=True),
-            )
+            if isinstance(table_to_append, GeoDataFrame):
+                table_to_append.set_crs(self._parent.crs, inplace=True)
+            new_table = _concat([existing_table, table_to_append], ignore_index=True)
+            setattr(self, member_name, new_table)
 
         node_table = node.into_geodataframe(
             node_type=self.__class__.__name__, node_id=node_id
@@ -255,7 +254,7 @@ class MultiNodeModel(NodeModel):
         if self.node.df is None:
             self.node.df = node_table
         else:
-            df = pd.concat([self.node.df, node_table])
+            df = _concat([self.node.df, node_table])
             self.node.df = df
 
         self._parent._used_node_ids.add(node_id)

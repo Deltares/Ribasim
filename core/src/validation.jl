@@ -673,10 +673,10 @@ function valid_sources(
     return !errors
 end
 
-function valid_priorities(priorities::Vector, use_allocation::Bool)::Bool
-    errors = false
-    if 0 in priorities && use_allocation
-        errors = true
+function valid_priorities(priorities::Vector{Int32}, use_allocation::Bool)::Bool
+    if use_allocation && any(iszero, priorities)
+        return false
+    else
+        return true
     end
-    return !errors
 end

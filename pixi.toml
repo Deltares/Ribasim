@@ -88,6 +88,7 @@ test-ribasim-regression = { cmd = "julia --project=core --eval 'using Pkg; Pkg.t
 generate-testmodels = { cmd = "python utils/generate-testmodels.py", inputs = [
     "python/ribasim",
     "python/ribasim_testmodels",
+    "utils/generate-testmodels.py",
 ], outputs = [
     "generated_testmodels",
 ] }
@@ -99,6 +100,7 @@ codegen = { cmd = "julia --project utils/gen_python.jl && ruff format python/rib
     "initialize-julia",
 ], inputs = [
     "core",
+    "utils",
 ], outputs = [
     "python/ribasim/ribasim/schemas.py",
     "python/ribasim/ribasim/validation.py",

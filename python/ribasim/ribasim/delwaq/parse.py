@@ -2,10 +2,8 @@
 
 from pathlib import Path
 
-import pandas as pd
-
 import ribasim
-from ribasim.utils import MissingOptionalModule
+from ribasim.utils import MissingOptionalModule, _concat
 
 try:
     import xugrid as xu
@@ -49,7 +47,7 @@ def parse(
 
         dfs.append(df)
 
-    df = pd.concat(dfs).reset_index(drop=True)
+    df = _concat(dfs).reset_index(drop=True)
     df.sort_values(["time", "node_id"], inplace=True)
 
     model.basin.concentration_external = df
