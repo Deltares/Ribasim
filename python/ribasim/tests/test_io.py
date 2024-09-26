@@ -350,7 +350,7 @@ def test_arrow_dtype():
         meta_str=pd.Series(["a", pd.NA], dtype="string[pyarrow]"),
     ).df
 
-    assert df["node_id"].isna().all()
+    assert (df["node_id"] == 0).all()
     assert df["node_id"].dtype == "int32[pyarrow]"
     assert df["time"].dtype == "timestamp[ms][pyarrow]"
     assert df["time"].dt.tz is None
