@@ -399,18 +399,17 @@ column        | type     | unit                     | restriction
 node_id       | Int32    | -                        | sorted
 time          | DateTime | -                        | sorted per node_id
 substance     | String   |                          | can correspond to known Delwaq substances
-drainage      | Float64  | $\text{g}/\text{m}^3$ | (optional)
-precipitation | Float64  | $\text{g}/\text{m}^3$ | (optional)
+drainage      | Float64  | $\text{g}/\text{m}^3$    | (optional)
+precipitation | Float64  | $\text{g}/\text{m}^3$    | (optional)
 
 ## ConcentrationState {#sec-basin-conc-state}
-This table defines the concentration(s) of (a) substance(s) in the basin at the start of the simulation.
+This table defines the concentration(s) of (a) substance(s) in the Basin at the start of the simulation.
 
 column         | type     | unit                     | restriction
 -------------- | -------- | ------------------------ | -----------
 node_id        | Int32    | -                        | sorted
-time           | DateTime | -                        | sorted per node_id
 substance      | String   | -                        | can correspond to known Delwaq substances
-concentration  | Float64  | $\text{g}/\text{m}^3$ |
+concentration  | Float64  | $\text{g}/\text{m}^3$    |
 
 ## ConcentrationExternal
 This table is used for (external) concentrations, that can be used for Control lookups.
@@ -420,7 +419,7 @@ column         | type     | unit                     | restriction
 node_id        | Int32    | -                        | sorted
 time           | DateTime | -                        | sorted per node_id
 substance      | String   | -                        | can correspond to known Delwaq substances
-concentration  | Float64  | $\text{g}/\text{m}^3$ |
+concentration  | Float64  | $\text{g}/\text{m}^3$    |
 
 # Equations
 
