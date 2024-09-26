@@ -286,7 +286,7 @@ class FlowDemandStaticSchema(_BaseSchema):
         nullable=False
     )
     priority: Series[Annotated[pd.ArrowDtype, pyarrow.int32()]] = pa.Field(
-        nullable=False
+        nullable=True
     )
 
 
@@ -302,7 +302,7 @@ class FlowDemandTimeSchema(_BaseSchema):
         nullable=False
     )
     priority: Series[Annotated[pd.ArrowDtype, pyarrow.int32()]] = pa.Field(
-        nullable=False
+        nullable=True
     )
 
 
@@ -358,7 +358,7 @@ class LevelDemandStaticSchema(_BaseSchema):
         nullable=True
     )
     priority: Series[Annotated[pd.ArrowDtype, pyarrow.int32()]] = pa.Field(
-        nullable=False
+        nullable=True
     )
 
 
@@ -377,7 +377,7 @@ class LevelDemandTimeSchema(_BaseSchema):
         nullable=True
     )
     priority: Series[Annotated[pd.ArrowDtype, pyarrow.int32()]] = pa.Field(
-        nullable=False
+        nullable=True
     )
 
 
@@ -582,7 +582,7 @@ class UserDemandStaticSchema(_BaseSchema):
         nullable=False
     )
     priority: Series[Annotated[pd.ArrowDtype, pyarrow.int32()]] = pa.Field(
-        nullable=False
+        nullable=True
     )
 
 
@@ -604,5 +604,5 @@ class UserDemandTimeSchema(_BaseSchema):
         nullable=False
     )
     priority: Series[Annotated[pd.ArrowDtype, pyarrow.int32()]] = pa.Field(
-        nullable=False
+        nullable=True
     )
