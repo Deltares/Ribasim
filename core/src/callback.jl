@@ -186,21 +186,19 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
             if flow > 0
                 basin.mass[from_flow.idx, :] .-=
                     basin.concentration_state[from_flow.idx, :] .* flow
-                basin.concentration_state[from_flow.idx, :] .* flow
             else
                 if to_flow.type == NodeType.Basin
                     basin.mass[from_flow.idx, :] .-=
                         basin.concentration_state[to_flow.idx, :] .* flow
-                    basin.concentration_state[to_flow.idx, :] .* flow
-
                 elseif to_flow.type == NodeType.LevelBoundary
                     basin.mass[from_flow.idx, :] .-=
                         level_boundary.concentration[to_flow.idx, :] .* flow
-                    level_boundary.concentration[to_flow.idx, :] .* flow
                 elseif to_flow.type == NodeType.UserDemand
                     basin.mass[from_flow.idx, :] .-=
                         user_demand.concentration[to_flow.idx, :] .* flow
                 else
+                    # Fix mass balance, even though Terminals should not leak
+                    basin.mass[from_flow.idx, :] .-= [1.0, 0, 0, 0, 0, 0, 0] .* flow
                     @warn "Unsupported outflow type $(to_flow.type)"
                 end
             end
@@ -212,21 +210,23 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
                 if from_flow.type == NodeType.Basin
                     basin.mass[to_flow.idx, :] .+=
                         basin.concentration_state[from_flow.idx, :] .* flow
-                    basin.concentration_state[from_flow.idx, :] .* flow
                 elseif from_flow.type == NodeType.LevelBoundary
                     basin.mass[to_flow.idx, :] .+=
                         level_boundary.concentration[from_flow.idx, :] .* flow
-                    level_boundary.concentration[from_flow.idx, :] .* flow
                 elseif from_flow.type == NodeType.UserDemand
                     basin.mass[to_flow.idx, :] .+=
                         user_demand.concentration[from_flow.idx, :] .* flow
+                elseif from_flow.type == NodeType.Terminal
+                    # TODO Apparently UserDemand outflow is discoupled from it's inflow
+                    # and its inflow_edge is Terminal #0 twice
+                    basin.mass[to_flow.idx, :] .+=
+                        user_demand.concentration[outflow_edge.edge[1].idx, :] .* flow
                 else
                     @warn "Unsupported inflow type $(from_flow.type)"
                 end
             else
                 basin.mass[to_flow.idx, :] .+=
                     basin.concentration_state[to_flow.idx, :] .* flow
-                basin.concentration_state[to_flow.idx, :] .* flow
             end
         end
     end
