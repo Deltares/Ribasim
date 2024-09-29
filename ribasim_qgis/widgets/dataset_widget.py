@@ -392,7 +392,6 @@ class DatasetWidget(QWidget):
     def refresh_results(self) -> None:
         self.__set_node_results()
         self.__set_edge_results()
-        self.__set_concentration_results()
 
     def __set_node_results(self) -> None:
         node_layer = self.ribasim_widget.node_layer
@@ -403,11 +402,6 @@ class DatasetWidget(QWidget):
         edge_layer = self.ribasim_widget.edge_layer
         assert edge_layer is not None
         self.__set_results(edge_layer, "edge_id", "flow.arrow")
-
-    def __set_concentration_results(self) -> None:
-        node_layer = self.ribasim_widget.node_layer
-        assert node_layer is not None
-        self.__set_results(node_layer, "node_id", "concentration.arrow")
 
     def __set_results(
         self,
