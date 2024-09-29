@@ -277,6 +277,7 @@ In-memory storage of saved mean flows for writing to results.
     flow_boundary::Vector{Float64}
     precipitation::Vector{Float64}
     drainage::Vector{Float64}
+    concentration::Matrix{Float64}
     t::Float64
 end
 
@@ -341,6 +342,9 @@ end
     # Data source for parameter updates
     time::StructVector{BasinTimeV1, C, Int}
     # Concentrations
+    concentration_state::Matrix{Float64}  # basin, substance
+    concentration::Array{Float64, 3}  # boundary, basin, substance
+    mass::Matrix{Float64}  # basin, substance
     concentration_external::Vector{Dict{String, ScalarInterpolation}} =
         Dict{String, ScalarInterpolation}[]
 end
@@ -460,6 +464,7 @@ level: the fixed level of this 'infinitely big basin'
     node_id::Vector{NodeID}
     active::Vector{Bool}
     level::Vector{ScalarInterpolation}
+    concentration::Matrix{Float64} = Matrix{Float64}()
 end
 
 """
@@ -477,6 +482,7 @@ flow_rate: flow rate (exact)
     cumulative_flow::Vector{Float64} = zeros(length(node_id))
     cumulative_flow_saveat::Vector{Float64} = zeros(length(node_id))
     flow_rate::Vector{ScalarInterpolation}
+    concentration::Matrix{Float64}
 end
 
 """
@@ -756,6 +762,7 @@ min_level: The level of the source basin below which the UserDemand does not abs
     allocated::Matrix{Float64}
     return_factor::Vector{ScalarInterpolation}
     min_level::Vector{Float64}
+    concentration::Matrix{Float64}
 end
 
 """
@@ -838,7 +845,7 @@ const ModelGraph = MetaGraph{
     level_demand::LevelDemand
     flow_demand::FlowDemand
     subgrid::Subgrid
-    # Per state the in- and outflow edges associated with that state (if theu exist)
+    # Per state the in- and outflow edges associated with that state (if they exist)
     state_inflow_edge::C3 = ComponentVector()
     state_outflow_edge::C4 = ComponentVector()
     all_nodes_active::Base.RefValue{Bool} = Ref(false)

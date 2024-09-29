@@ -32,6 +32,11 @@ function create_callbacks(
     basin_cb = PresetTimeCallback(tstops, update_basin!; save_positions = (false, false))
     push!(callbacks, basin_cb)
 
+    # Update boundary concentrations
+    # tstops = get_tstops(basin.concentration.time, starttime)
+    # conc_cb = PresetTimeCallback(tstops, update_conc; save_positions = (false, false))
+    # push!(callbacks, conc_cb)
+
     # Update TabulatedRatingCurve Q(h) relationships
     tstops = get_tstops(tabulated_rating_curve.time.time, starttime)
     tabulated_rating_curve_cb = PresetTimeCallback(
@@ -92,7 +97,15 @@ Update with the latest timestep:
 """
 function update_cumulative_flows!(u, t, integrator)::Nothing
     (; p, uprev, tprev, dt) = integrator
-    (; basin, user_demand, flow_boundary, allocation) = p
+    (;
+        basin,
+        state_inflow_edge,
+        state_outflow_edge,
+        user_demand,
+        level_boundary,
+        flow_boundary,
+        allocation,
+    ) = p
     (; vertical_flux_bmi, vertical_flux_from_input) = basin
 
     # Update tprev
@@ -104,9 +117,14 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
     @. vertical_flux_bmi.evaporation += u.evaporation - uprev.evaporation
     @. vertical_flux_bmi.infiltration += u.infiltration - uprev.infiltration
 
+    # TODO: This is physically incorrect, but useful for a correct mass balance
+    basin.mass .-= basin.concentration_state .* (u.evaporation - uprev.evaporation)
+    basin.mass .-= basin.concentration_state .* (u.infiltration - uprev.infiltration)
+
     # Update cumulative forcings which are integrated exactly
     @. basin.cumulative_drainage += vertical_flux_from_input.drainage * dt
     @. basin.cumulative_drainage_saveat += vertical_flux_from_input.drainage * dt
+    basin.mass .+= basin.concentration[1, :, :] .* vertical_flux_from_input.drainage * dt
 
     # Precipitation depends on fixed area
     for node_id in basin.node_id
@@ -117,15 +135,24 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
         vertical_flux_bmi.precipitation[node_id.idx] += added_precipitation
         basin.cumulative_precipitation[node_id.idx] += added_precipitation
         basin.cumulative_precipitation_saveat[node_id.idx] += added_precipitation
+        basin.mass[node_id.idx, :] .+=
+            basin.concentration[2, node_id.idx, :] .* added_precipitation
     end
 
     # Exact boundary flow over time step
-    for (id, flow_rate, active) in
-        zip(flow_boundary.node_id, flow_boundary.flow_rate, flow_boundary.active)
+    for (id, flow_rate, active, edge) in zip(
+        flow_boundary.node_id,
+        flow_boundary.flow_rate,
+        flow_boundary.active,
+        flow_boundary.outflow_edges,
+    )
         if active
+            outflow_id = edge[1].edge[2]
             volume = integral(flow_rate, tprev, t)
             flow_boundary.cumulative_flow[id.idx] += volume
             flow_boundary.cumulative_flow_saveat[id.idx] += volume
+            basin.mass[outflow_id.idx, :] .+=
+                flow_boundary.concentration[id.idx, :] .* volume
         end
     end
 
@@ -150,6 +177,62 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
             end
         end
     end
+
+    for (inflow_edge, outflow_edge) in zip(state_inflow_edge, state_outflow_edge)
+        from_flow = inflow_edge.edge[1]
+        to_flow = outflow_edge.edge[2]
+        if from_flow.type == NodeType.Basin
+            flow = flow_update_on_edge(integrator, inflow_edge.edge)
+            if flow > 0
+                basin.mass[from_flow.idx, :] .-=
+                    basin.concentration_state[from_flow.idx, :] .* flow
+                basin.concentration_state[from_flow.idx, :] .* flow
+            else
+                if to_flow.type == NodeType.Basin
+                    basin.mass[from_flow.idx, :] .-=
+                        basin.concentration_state[to_flow.idx, :] .* flow
+                    basin.concentration_state[to_flow.idx, :] .* flow
+
+                elseif to_flow.type == NodeType.LevelBoundary
+                    basin.mass[from_flow.idx, :] .-=
+                        level_boundary.concentration[to_flow.idx, :] .* flow
+                    level_boundary.concentration[to_flow.idx, :] .* flow
+                elseif to_flow.type == NodeType.UserDemand
+                    basin.mass[from_flow.idx, :] .-=
+                        user_demand.concentration[to_flow.idx, :] .* flow
+                else
+                    @warn "Unsupported outflow type $(to_flow.type)"
+                end
+            end
+        end
+
+        if to_flow.type == NodeType.Basin
+            flow = flow_update_on_edge(integrator, outflow_edge.edge)
+            if flow > 0
+                if from_flow.type == NodeType.Basin
+                    basin.mass[to_flow.idx, :] .+=
+                        basin.concentration_state[from_flow.idx, :] .* flow
+                    basin.concentration_state[from_flow.idx, :] .* flow
+                elseif from_flow.type == NodeType.LevelBoundary
+                    basin.mass[to_flow.idx, :] .+=
+                        level_boundary.concentration[from_flow.idx, :] .* flow
+                    level_boundary.concentration[from_flow.idx, :] .* flow
+                elseif from_flow.type == NodeType.UserDemand
+                    basin.mass[to_flow.idx, :] .+=
+                        user_demand.concentration[from_flow.idx, :] .* flow
+                else
+                    @warn "Unsupported inflow type $(from_flow.type)"
+                end
+            else
+                basin.mass[to_flow.idx, :] .+=
+                    basin.concentration_state[to_flow.idx, :] .* flow
+                basin.concentration_state[to_flow.idx, :] .* flow
+            end
+        end
+    end
+
+    basin.concentration_state .= basin.mass ./ basin.current_storage[parent(u)]
+
     return nothing
 end
 
@@ -258,6 +341,7 @@ function save_flow(u, t, integrator)
     @. basin.cumulative_precipitation_saveat = 0.0
     @. basin.cumulative_drainage_saveat = 0.0
 
+    concentration = copy(basin.concentration_state)
     saved_flow = SavedFlow(;
         flow = flow_mean,
         inflow = inflow_mean,
@@ -265,6 +349,7 @@ function save_flow(u, t, integrator)
         flow_boundary = flow_boundary_mean,
         precipitation,
         drainage,
+        concentration,
         t,
     )
     check_water_balance_error(integrator, saved_flow, Δt)

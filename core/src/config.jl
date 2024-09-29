@@ -107,6 +107,7 @@ const nodetypes = collect(keys(nodekinds))
     maxiters::Int = 1e9
     sparse::Bool = true
     autodiff::Bool = false
+    use_evaporation::Bool = false
 end
 
 # Separate struct, as basin clashes with nodetype

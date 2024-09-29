@@ -416,6 +416,7 @@ end
 function LevelBoundary(db::DB, config::Config)::LevelBoundary
     static = load_structvector(db, config, LevelBoundaryStaticV1)
     time = load_structvector(db, config, LevelBoundaryTimeV1)
+    concentration = load_structvector(db, config, LevelBoundaryConcentrationV1)
 
     _, _, node_ids, valid = static_and_time_node_ids(db, static, time, "LevelBoundary")
 
@@ -427,6 +428,10 @@ function LevelBoundary(db::DB, config::Config)::LevelBoundary
     parsed_parameters, valid =
         parse_static_and_time(db, config, LevelBoundary; static, time, time_interpolatables)
 
+    concentration = zeros(length(node_ids), 7)
+    concentration[:, 1] .= 1.0  # Continuity
+    concentration[:, 3] .= 1.0  # UserDemand
+
     if !valid
         error("Errors occurred when parsing LevelBoundary data.")
     end
@@ -435,6 +440,7 @@ function LevelBoundary(db::DB, config::Config)::LevelBoundary
         node_id = node_ids,
         parsed_parameters.active,
         parsed_parameters.level,
+        concentration,
     )
 end
 
@@ -461,6 +467,10 @@ function FlowBoundary(db::DB, config::Config, graph::MetaGraph)::FlowBoundary
         end
     end
 
+    concentration = zeros(length(node_ids), 7)
+    concentration[:, 1] .= 1.0  # Continuity
+    concentration[:, 4] .= 1.0  # UserDemand
+
     if !valid
         error("Errors occurred when parsing FlowBoundary data.")
     end
@@ -470,6 +480,7 @@ function FlowBoundary(db::DB, config::Config, graph::MetaGraph)::FlowBoundary
         outflow_edges = outflow_edges.(Ref(graph), node_ids),
         parsed_parameters.active,
         parsed_parameters.flow_rate,
+        concentration,
     )
 end
 
@@ -572,6 +583,36 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     static = load_structvector(db, config, BasinStaticV1)
     time = load_structvector(db, config, BasinTimeV1)
     state = load_structvector(db, config, BasinStateV1)
+    concentration_state = load_structvector(db, config, BasinConcentrationStateV1)
+    concentration_boundary = load_structvector(db, config, BasinConcentrationV1)
+
+    # TODO Also include all other unique substances (in boundary nodes)
+    # TODO Move into a function
+    substances = Set(Symbol.(concentration_state.substance))
+    substances = Set{Symbol}()
+    # Add fractions
+    union!(
+        substances,
+        (
+            :Continuity,
+            :Initial,
+            :LevelBoundary,
+            :FlowBoundary,
+            :UserDemand,
+            :Drainage,
+            :Precipitation,
+        ),
+    )
+    concentration_state = zeros(n, length(substances))
+    concentration_state[:, 1] .= 1.0  # Continuity
+    concentration_state[:, 2] .= 1.0  # Initial
+    mass = copy(concentration_state)
+
+    concentration = zeros(2, n, length(substances))
+    concentration[1, :, 1] .= 1.0  # Drainage / Continuity
+    concentration[1, :, 6] .= 1.0  # Drainage / Drainage
+    concentration[2, :, 1] .= 1.0  # Precipitation / Continuity
+    concentration[2, :, 7] .= 1.0  # Precipitation / Precipitation
 
     set_static_value!(table, node_id, static)
     set_current_value!(table, node_id, time, config.starttime)
@@ -650,6 +691,9 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
         level_to_area,
         demand,
         time,
+        concentration_state,
+        concentration,
+        mass,
         concentration_external,
     )
 
@@ -657,6 +701,8 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     @assert length(storage0) == n "Basin / state length differs from number of Basins"
     basin.storage0 .= storage0
     basin.storage_prev_saveat .= storage0
+    basin.mass .*= storage0  # total mass
+
     return basin
 end
 
@@ -1022,6 +1068,7 @@ end
 function UserDemand(db::DB, config::Config, graph::MetaGraph)::UserDemand
     static = load_structvector(db, config, UserDemandStaticV1)
     time = load_structvector(db, config, UserDemandTimeV1)
+    concentration = load_structvector(db, config, UserDemandConcentrationV1)
     ids = get_ids(db, "UserDemand")
 
     _, _, node_ids, valid = static_and_time_node_ids(db, static, time, "UserDemand")
@@ -1079,6 +1126,10 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)::UserDemand
         config,
     )
 
+    concentration = zeros(length(node_ids), 7)
+    concentration[:, 1] .= 1.0  # Continuity
+    concentration[:, 5] .= 1.0  # UserDemand
+
     if errors || !valid_demand(node_ids, demand_itp, priorities)
         error("Errors occurred when parsing UserDemand data.")
     end
@@ -1096,6 +1147,7 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)::UserDemand
         allocated,
         return_factor,
         min_level,
+        concentration,
     )
 end
 

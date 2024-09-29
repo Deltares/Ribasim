@@ -24,6 +24,11 @@ function write_results(model::Model)::Model
     path = results_path(config, RESULTS_FILENAME.flow)
     write_arrow(path, table, compress; remove_empty_table)
 
+    # concentrations
+    table = concentration_table(model)
+    path = results_path(config, RESULTS_FILENAME.concentration)
+    write_arrow(path, table, compress; remove_empty_table)
+
     # discrete control
     table = discrete_control_table(model)
     path = results_path(config, RESULTS_FILENAME.control)
@@ -57,6 +62,7 @@ const RESULTS_FILENAME = (
     basin_state = "basin_state.arrow",
     basin = "basin.arrow",
     flow = "flow.arrow",
+    concentration = "concentration.arrow",
     control = "control.arrow",
     allocation = "allocation.arrow",
     allocation_flow = "allocation_flow.arrow",
@@ -263,6 +269,50 @@ function flow_table(
     to_node_id = repeat(to_node_id; outer = ntsteps)
 
     return (; time, edge_id, from_node_id, to_node_id, flow_rate)
+end
+
+"Create a concentration result table from the saved data"
+function concentration_table(
+    model::Model,
+)::@NamedTuple{
+    time::Vector{DateTime},
+    node_id::Vector{Int32},
+    substance::Vector{String},
+    concentration::Vector{Float64},
+}
+    (; saved) = model
+    # The last timestep is not included; there is no period over which to compute flows.
+    data = get_storages_and_levels(model)
+
+    ntsteps = length(data.time) - 1
+    nbasin = length(data.node_id)
+    nsubstance = 7
+    nrows = ntsteps * nbasin * nsubstance
+
+    substances = [
+        "Continuity",
+        "Initial",
+        "LevelBoundary",
+        "FlowBoundary",
+        "UserDemand",
+        "Drainage",
+        "Precipitation",
+    ]
+    concentration = zeros(nrows)
+
+    idx_row = 0
+    for cvec in saved.flow.saveval
+        for concentration_ in vec(cvec.concentration)
+            idx_row += 1
+            concentration[idx_row] = concentration_
+        end
+    end
+
+    time = repeat(data.time[begin:(end - 1)]; inner = nbasin * nsubstance)
+    substance = repeat(substances; inner = nbasin, outer = ntsteps)
+    node_id = repeat(Int32.(data.node_id); outer = ntsteps * nsubstance)
+
+    return (; time, node_id, substance, concentration)
 end
 
 "Create a discrete control result table from the saved data"
