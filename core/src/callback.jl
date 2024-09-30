@@ -22,10 +22,10 @@ function create_callbacks(
     save_basin_state_cb = SavingCallback(save_basin_state, saved_basin_states; saveat)
     push!(callbacks, save_basin_state_cb)
 
-    # Update cumulative flows (exact integration and for BMI)
-    integrated_flows_cb =
+    # Update cumulative flows (exact integration and for allocation)
+    cumulative_flows_cb =
         FunctionCallingCallback(update_cumulative_flows!; func_start = false)
-    push!(callbacks, integrated_flows_cb)
+    push!(callbacks, cumulative_flows_cb)
 
     # Update Basin forcings
     tstops = get_tstops(basin.time.time, starttime)
@@ -84,7 +84,6 @@ end
 
 """
 Update with the latest timestep:
-- Cumulative flows/forcings which are exposed via the BMI
 - Cumulative flows/forcings which are integrated exactly
 - Cumulative flows/forcings which are input for the allocation algorithm
 - Cumulative flows/forcings which are realized demands in the allocation context
@@ -602,15 +601,13 @@ function update_allocation!(integrator)::Nothing
         return nothing
     end
 
-    # Divide by the allocation Δt to obtain the mean input flows
-    # from the integrated flows
+    # Divide by the allocation Δt to get the mean input flows from the cumulative flows
     (; Δt_allocation) = allocation_models[1]
     for edge in keys(mean_input_flows)
         mean_input_flows[edge] /= Δt_allocation
     end
 
-    # Divide by the allocation Δt to obtain the mean realized flows
-    # from the integrated flows
+    # Divide by the allocation Δt to get the mean realized flows from the cumulative flows
     for edge in keys(mean_realized_flows)
         mean_realized_flows[edge] /= Δt_allocation
     end

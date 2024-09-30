@@ -95,7 +95,7 @@ function set_current_basin_properties!(
     current_cumulative_precipitation = current_cumulative_precipitation[parent(du)]
     current_cumulative_drainage = current_cumulative_drainage[parent(du)]
 
-    # The exactly integrated precipitation and drainage up to the t of this water_balance call
+    # The exact cumulative precipitation and drainage up to the t of this water_balance call
     dt = t - p.tprev[]
     for node_id in basin.node_id
         fixed_area = basin_areas(basin, node_id.idx)[end]

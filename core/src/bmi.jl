@@ -40,15 +40,15 @@ function BMI.get_value_ptr(model::Model, name::AbstractString)::AbstractVector{F
         p.basin.vertical_flux.infiltration
     elseif name == "basin.drainage"
         p.basin.vertical_flux.drainage
-    elseif name == "basin.infiltration_integrated"  # TODO rename to basin.cumulative_infiltration
+    elseif name == "basin.cumulative_infiltration"
         u.infiltration
-    elseif name == "basin.drainage_integrated"  # TODO rename to basin.cumulative_drainage
+    elseif name == "basin.cumulative_drainage"
         p.basin.cumulative_drainage
     elseif name == "basin.subgrid_level"
         p.subgrid.level
     elseif name == "user_demand.demand"
         vec(p.user_demand.demand)
-    elseif name == "user_demand.realized"  # TODO rename to user_demand.inflow
+    elseif name == "user_demand.inflow"
         u.user_demand_inflow
     else
         error("Unknown variable $name")
