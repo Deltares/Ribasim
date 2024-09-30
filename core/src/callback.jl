@@ -91,30 +91,22 @@ Update with the latest timestep:
 
 """
 function update_cumulative_flows!(u, t, integrator)::Nothing
-    (; p, uprev, tprev, dt) = integrator
-    (; basin, user_demand, flow_boundary, allocation) = p
-    (; vertical_flux_bmi, vertical_flux_from_input) = basin
+    (; p, tprev, dt) = integrator
+    (; basin, flow_boundary, allocation) = p
+    (; vertical_flux) = basin
 
     # Update tprev
     p.tprev[] = t
 
-    # Update cumulative flows exposed via the BMI
-    @. user_demand.realized_bmi += u.user_demand_inflow - uprev.user_demand_inflow
-    @. vertical_flux_bmi.drainage += vertical_flux_from_input.drainage * dt
-    @. vertical_flux_bmi.evaporation += u.evaporation - uprev.evaporation
-    @. vertical_flux_bmi.infiltration += u.infiltration - uprev.infiltration
-
     # Update cumulative forcings which are integrated exactly
-    @. basin.cumulative_drainage += vertical_flux_from_input.drainage * dt
-    @. basin.cumulative_drainage_saveat += vertical_flux_from_input.drainage * dt
+    @. basin.cumulative_drainage += vertical_flux.drainage * dt
+    @. basin.cumulative_drainage_saveat += vertical_flux.drainage * dt
 
     # Precipitation depends on fixed area
     for node_id in basin.node_id
         fixed_area = basin_areas(basin, node_id.idx)[end]
-        added_precipitation =
-            fixed_area * vertical_flux_from_input.precipitation[node_id.idx] * dt
+        added_precipitation = fixed_area * vertical_flux.precipitation[node_id.idx] * dt
 
-        vertical_flux_bmi.precipitation[node_id.idx] += added_precipitation
         basin.cumulative_precipitation[node_id.idx] += added_precipitation
         basin.cumulative_precipitation_saveat[node_id.idx] += added_precipitation
     end
@@ -164,16 +156,14 @@ function flow_update_on_edge(
 )::Float64
     (; u, uprev, p, t, tprev, dt) = integrator
     (; basin, flow_boundary) = p
-    (; vertical_flux_from_input) = basin
+    (; vertical_flux) = basin
     from_id, to_id = edge_src
     if from_id == to_id
         @assert from_id.type == to_id.type == NodeType.Basin
         idx = from_id.idx
         fixed_area = basin_areas(basin, idx)[end]
-        (
-            fixed_area * vertical_flux_from_input.precipitation[idx] +
-            vertical_flux_from_input.drainage[idx]
-        ) * dt - (u.evaporation[idx] - uprev.evaporation[idx]) -
+        (fixed_area * vertical_flux.precipitation[idx] + vertical_flux.drainage[idx]) * dt -
+        (u.evaporation[idx] - uprev.evaporation[idx]) -
         (u.infiltration[idx] - uprev.infiltration[idx])
     elseif from_id.type == NodeType.FlowBoundary
         if flow_boundary.active[from_id.idx]
@@ -574,17 +564,17 @@ end
 function update_basin!(integrator)::Nothing
     (; p) = integrator
     (; basin) = p
-    (; node_id, time, vertical_flux_from_input) = basin
+    (; node_id, time, vertical_flux) = basin
     t = datetime_since(integrator.t, integrator.p.starttime)
 
     rows = searchsorted(time.time, t)
     timeblock = view(time, rows)
 
     table = (;
-        vertical_flux_from_input.precipitation,
-        vertical_flux_from_input.potential_evaporation,
-        vertical_flux_from_input.drainage,
-        vertical_flux_from_input.infiltration,
+        vertical_flux.precipitation,
+        vertical_flux.potential_evaporation,
+        vertical_flux.drainage,
+        vertical_flux.infiltration,
     )
 
     for row in timeblock

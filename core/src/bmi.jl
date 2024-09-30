@@ -31,24 +31,25 @@ function BMI.update_until(model::Model, time::Float64)::Model
 end
 
 function BMI.get_value_ptr(model::Model, name::AbstractString)::AbstractVector{Float64}
+    (; u, p) = model.integrator
     if name == "basin.storage"
-        model.integrator.p.basin.current_storage[parent(model.integrator.u)]
+        p.basin.current_storage[parent(u)]
     elseif name == "basin.level"
-        model.integrator.p.basin.current_level[parent(model.integrator.u)]
+        p.basin.current_level[parent(u)]
     elseif name == "basin.infiltration"
-        model.integrator.p.basin.vertical_flux_from_input.infiltration
+        p.basin.vertical_flux.infiltration
     elseif name == "basin.drainage"
-        model.integrator.p.basin.vertical_flux_from_input.drainage
-    elseif name == "basin.infiltration_integrated"
-        model.integrator.p.basin.vertical_flux_bmi.infiltration
-    elseif name == "basin.drainage_integrated"
-        model.integrator.p.basin.vertical_flux_bmi.drainage
+        p.basin.vertical_flux.drainage
+    elseif name == "basin.infiltration_integrated"  # TODO rename to basin.cumulative_infiltration
+        u.infiltration
+    elseif name == "basin.drainage_integrated"  # TODO rename to basin.cumulative_drainage
+        p.basin.cumulative_drainage
     elseif name == "basin.subgrid_level"
-        model.integrator.p.subgrid.level
+        p.subgrid.level
     elseif name == "user_demand.demand"
-        vec(model.integrator.p.user_demand.demand)
-    elseif name == "user_demand.realized"
-        model.integrator.p.user_demand.realized_bmi
+        vec(p.user_demand.demand)
+    elseif name == "user_demand.realized"  # TODO rename to user_demand.inflow
+        u.user_demand_inflow
     else
         error("Unknown variable $name")
     end
