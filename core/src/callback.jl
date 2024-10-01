@@ -92,7 +92,14 @@ Update with the latest timestep:
 """
 function update_cumulative_flows!(u, t, integrator)::Nothing
     (; p, uprev, tprev, dt) = integrator
-    (; basin, user_demand, flow_boundary, allocation) = p
+    (;
+        basin,
+        user_demand,
+        flow_boundary,
+        allocation,
+        state_inflow_edge,
+        state_outflow_edge,
+    ) = p
     (; vertical_flux_bmi, vertical_flux_from_input) = basin
 
     # Update tprev
@@ -150,6 +157,25 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
             end
         end
     end
+
+    for (inflow_edge, outflow_edge) in zip(state_inflow_edge, state_outflow_edge)
+        from_flow = inflow_edge.edge[1]
+        to_flow = outflow_edge.edge[2]
+        if from_flow.type == NodeType.Basin
+            flow = flow_update_on_edge(integrator, inflow_edge.edge)
+            if to_flow.type == NodeType.Terminal && flow < 0 && to_flow.value != 0
+                @warn "Unsupported inflow type $(to_flow.type) #$(to_flow.value) with flow $flow"
+            end
+        end
+
+        if to_flow.type == NodeType.Basin
+            flow = flow_update_on_edge(integrator, outflow_edge.edge)
+            if from_flow.type == NodeType.Terminal && flow > 0 && from_flow.value != 0
+                @warn "Unsupported outflow type $(from_flow.type) #$(from_flow.value) with flow $flow"
+            end
+        end
+    end
+
     return nothing
 end
 
