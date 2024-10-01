@@ -310,7 +310,7 @@ function check_water_balance_error(
         mean_flow_rate = (total_in + total_out) / 2
         relative_error = iszero(mean_flow_rate) ? 0.0 : balance_error / mean_flow_rate
 
-        if abs(balance_error) > water_balance_abstol &&
+        if abs(balance_error) > water_balance_abstol ||
            abs(relative_error) > water_balance_reltol
             errors = true
             @error "Too large water balance error" id balance_error relative_error
