@@ -140,6 +140,9 @@ using Tables: Tables, AbstractRow, columntable
 # Wrapper around a vector of structs to easily retrieve the same field from all elements.
 using StructArrays: StructVector
 
+# OrderedSet is used to store the order of the substances in the network.
+using DataStructures: OrderedSet
+
 export libribasim
 
 include("schema.jl")

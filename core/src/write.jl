@@ -280,24 +280,19 @@ function concentration_table(
     substance::Vector{String},
     concentration::Vector{Float64},
 }
-    (; saved) = model
+    (; saved, integrator) = model
+    (; p) = integrator
+    (; basin) = p
+
     # The last timestep is not included; there is no period over which to compute flows.
     data = get_storages_and_levels(model)
 
     ntsteps = length(data.time) - 1
     nbasin = length(data.node_id)
-    nsubstance = 7
+    nsubstance = length(basin.substances)
     nrows = ntsteps * nbasin * nsubstance
 
-    substances = [
-        "Continuity",
-        "Initial",
-        "LevelBoundary",
-        "FlowBoundary",
-        "UserDemand",
-        "Drainage",
-        "Precipitation",
-    ]
+    substances = String.(basin.substances)
     concentration = zeros(nrows)
 
     idx_row = 0

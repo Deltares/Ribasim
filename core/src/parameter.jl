@@ -347,6 +347,7 @@ end
     mass::Matrix{Float64}  # basin, substance
     concentration_external::Vector{Dict{String, ScalarInterpolation}} =
         Dict{String, ScalarInterpolation}[]
+    substances::OrderedSet{Symbol}
 end
 
 """
