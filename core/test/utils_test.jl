@@ -13,6 +13,7 @@ end
     using StructArrays: StructVector
     using Ribasim: NodeID, cache
     using DataInterpolations: LinearInterpolation, integral, invert_integral
+    using DataStructures: OrderedSet
 
     # create two basins with different bottoms/levels
     area = [[0.01, 1.0], [0.01, 1.0]]
@@ -24,6 +25,12 @@ end
     current_area = cache(2)
     current_level[Float64[]] .= [2.0, 3.0]
     current_area[Float64[]] .= [2.0, 3.0]
+
+    substances = OrderedSet([:test])
+    concentration_state = zeros(2, 1)
+    concentration = zeros(2, 2, 1)
+    mass = zeros(2, 1)
+
     basin = Ribasim.Basin(;
         node_id = NodeID.(:Basin, [5, 7], [1, 2]),
         current_level,
@@ -31,6 +38,10 @@ end
         storage_to_level,
         level_to_area,
         demand,
+        concentration_state,
+        concentration,
+        mass,
+        substances,
         time = StructVector{Ribasim.BasinTimeV1}(undef, 0),
     )
 
@@ -45,6 +56,7 @@ end
     using Logging
     using Ribasim: NodeID
     using DataInterpolations: LinearInterpolation, invert_integral
+    using DataStructures: OrderedSet
 
     level = [
         0.0,
@@ -73,12 +85,22 @@ end
     level_to_area = LinearInterpolation(area, level; extrapolate = true)
     storage_to_level = invert_integral(level_to_area)
     demand = zeros(1)
+
+    substances = OrderedSet([:test])
+    concentration_state = zeros(1, 1)
+    concentration = zeros(2, 1, 1)
+    mass = zeros(1, 1)
+
     basin = Ribasim.Basin(;
         node_id = NodeID.(:Basin, [1], 1),
         storage_to_level = [storage_to_level],
         level_to_area = [level_to_area],
         demand,
         time = StructVector{Ribasim.BasinTimeV1}(undef, 0),
+        concentration_state,
+        concentration,
+        mass,
+        substances,
     )
 
     logger = TestLogger()
