@@ -98,7 +98,7 @@ end
     model = Ribasim.Model(config)
     (; basin) = model.integrator.p
     starting_precipitation =
-        basin.vertical_flux_from_input.precipitation[1] * Ribasim.basin_areas(basin, 1)[end]
+        basin.vertical_flux.precipitation[1] * Ribasim.basin_areas(basin, 1)[end]
     BMI.update_until(model, saveat)
     mean_precipitation = only(model.saved.flow.saveval).precipitation[1]
     # Given that precipitation stops after 15 of the 20 days

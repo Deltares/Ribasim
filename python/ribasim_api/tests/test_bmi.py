@@ -143,13 +143,13 @@ def test_get_value_ptr_basin_forcing(libribasim, leaky_bucket, tmp_path):
     # Run model for a while to build up integrated forcing
     libribasim.update_until(60.0)
 
-    # Infiltration (integrated)
-    actual_infiltration = libribasim.get_value_ptr("basin.infiltration_integrated")
+    # Cumulative infiltration
+    actual_infiltration = libribasim.get_value_ptr("basin.cumulative_infiltration")
     expected_infiltration = np.array([0.0])
     assert_array_almost_equal(actual_infiltration, expected_infiltration)
 
-    # Drainage (integrated)
-    actual_drainage = libribasim.get_value_ptr("basin.drainage_integrated")
+    # Cumulative drainage
+    actual_drainage = libribasim.get_value_ptr("basin.cumulative_drainage")
     expected_drainage = np.array([0.003 * 60.0])
     assert_array_almost_equal(actual_drainage, expected_drainage)
 
@@ -167,10 +167,10 @@ def test_get_value_ptr_allocation(libribasim, user_demand, tmp_path):
     # Run model for a while to build up realized
     libribasim.update_until(60.0)
 
-    # Realized
-    actual_realized = libribasim.get_value_ptr("user_demand.realized")
-    expected_realized = np.array([1e-4 * 60.0, 0.0, 0.0])
-    assert_array_almost_equal(actual_realized, expected_realized)
+    # Realized inflow
+    actual_inflow = libribasim.get_value_ptr("user_demand.inflow")
+    expected_inflow = np.array([1e-4 * 60.0, 0.0, 0.0])
+    assert_array_almost_equal(actual_inflow, expected_inflow)
 
 
 def test_err_unknown_var(libribasim, basic, tmp_path):
