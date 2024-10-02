@@ -181,6 +181,7 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
     end
 
     # Placeholder concentration for Terminals and the like
+    # TODO Move to Terminal(?!)
     placeholder = zeros(length(basin.substances))
     placeholder[1] = 1.0  # Continuity
 
@@ -232,6 +233,8 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
             end
         end
     end
+
+    basin.concentration_state .= basin.mass ./ (basin.storage_prev .+ basin.cumulative_in)
 
     for (inflow_edge, outflow_edge) in zip(state_inflow_edge, state_outflow_edge)
         from_flow = inflow_edge.edge[1]
