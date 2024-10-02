@@ -342,6 +342,8 @@ end
     # Data source for parameter updates
     time::StructVector{BasinTimeV1, C, Int}
     # Concentrations
+    cumulative_in::Vector{Float64} = zeros(length(node_id))
+    storage_prev::Vector{Float64} = zeros(length(node_id))
     concentration_state::Matrix{Float64}  # basin, substance
     concentration::Array{Float64, 3}  # boundary, basin, substance
     mass::Matrix{Float64}  # basin, substance

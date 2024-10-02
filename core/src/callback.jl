@@ -111,20 +111,20 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
     # Update tprev
     p.tprev[] = t
 
+    # Reset cumulative flows
+    fill!(basin.cumulative_in, 0.0)
+
     # Update cumulative flows exposed via the BMI
     @. user_demand.realized_bmi += u.user_demand_inflow - uprev.user_demand_inflow
     @. vertical_flux_bmi.drainage += vertical_flux_from_input.drainage * dt
     @. vertical_flux_bmi.evaporation += u.evaporation - uprev.evaporation
     @. vertical_flux_bmi.infiltration += u.infiltration - uprev.infiltration
 
-    # TODO: This is physically incorrect, but useful for a correct mass balance
-    basin.mass .-= basin.concentration_state .* (u.evaporation - uprev.evaporation)
-    basin.mass .-= basin.concentration_state .* (u.infiltration - uprev.infiltration)
-
     # Update cumulative forcings which are integrated exactly
     @. basin.cumulative_drainage += vertical_flux_from_input.drainage * dt
     @. basin.cumulative_drainage_saveat += vertical_flux_from_input.drainage * dt
     basin.mass .+= basin.concentration[1, :, :] .* vertical_flux_from_input.drainage * dt
+    basin.cumulative_in .= vertical_flux_from_input.drainage * dt
 
     # Precipitation depends on fixed area
     for node_id in basin.node_id
@@ -137,6 +137,7 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
         basin.cumulative_precipitation_saveat[node_id.idx] += added_precipitation
         basin.mass[node_id.idx, :] .+=
             basin.concentration[2, node_id.idx, :] .* added_precipitation
+        basin.cumulative_in[node_id.idx] += added_precipitation
     end
 
     # Exact boundary flow over time step
@@ -153,6 +154,7 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
             flow_boundary.cumulative_flow_saveat[id.idx] += volume
             basin.mass[outflow_id.idx, :] .+=
                 flow_boundary.concentration[id.idx, :] .* volume
+            basin.cumulative_in[outflow_id.idx] += volume
         end
     end
 
@@ -178,15 +180,17 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
         end
     end
 
+    # Placeholder concentration for Terminals and the like
+    placeholder = zeros(length(basin.substances))
+    placeholder[1] = 1.0  # Continuity
+
     for (inflow_edge, outflow_edge) in zip(state_inflow_edge, state_outflow_edge)
         from_flow = inflow_edge.edge[1]
         to_flow = outflow_edge.edge[2]
         if from_flow.type == NodeType.Basin
             flow = flow_update_on_edge(integrator, inflow_edge.edge)
-            if flow > 0
-                basin.mass[from_flow.idx, :] .-=
-                    basin.concentration_state[from_flow.idx, :] .* flow
-            else
+            if flow < 0
+                basin.cumulative_in[from_flow.idx] -= flow
                 if to_flow.type == NodeType.Basin
                     basin.mass[from_flow.idx, :] .-=
                         basin.concentration_state[to_flow.idx, :] .* flow
@@ -198,8 +202,8 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
                         user_demand.concentration[to_flow.idx, :] .* flow
                 else
                     # Fix mass balance, even though Terminals should not leak
-                    basin.mass[from_flow.idx, :] .-= [1.0, 0, 0, 0, 0, 0, 0] .* flow
-                    @warn "Unsupported outflow type $(to_flow.type)"
+                    basin.mass[from_flow.idx, :] .-= placeholder .* flow
+                    @warn "Unsupported outflow type $(to_flow.type) #$(to_flow.value) with flow $flow"
                 end
             end
         end
@@ -207,6 +211,7 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
         if to_flow.type == NodeType.Basin
             flow = flow_update_on_edge(integrator, outflow_edge.edge)
             if flow > 0
+                basin.cumulative_in[to_flow.idx] += flow
                 if from_flow.type == NodeType.Basin
                     basin.mass[to_flow.idx, :] .+=
                         basin.concentration_state[from_flow.idx, :] .* flow
@@ -224,14 +229,37 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
                 else
                     @warn "Unsupported inflow type $(from_flow.type)"
                 end
-            else
+            end
+        end
+    end
+
+    for (inflow_edge, outflow_edge) in zip(state_inflow_edge, state_outflow_edge)
+        from_flow = inflow_edge.edge[1]
+        to_flow = outflow_edge.edge[2]
+        if from_flow.type == NodeType.Basin
+            flow = flow_update_on_edge(integrator, inflow_edge.edge)
+            if flow > 0
+                basin.mass[from_flow.idx, :] .-=
+                    basin.concentration_state[from_flow.idx, :] .* flow
+            end
+        end
+
+        if to_flow.type == NodeType.Basin
+            flow = flow_update_on_edge(integrator, outflow_edge.edge)
+            if flow < 0
                 basin.mass[to_flow.idx, :] .+=
                     basin.concentration_state[to_flow.idx, :] .* flow
             end
         end
     end
 
+    # TODO: This is physically incorrect, but useful for a correct mass balance
+    basin.mass .-= basin.concentration_state .* (u.evaporation - uprev.evaporation)
+    basin.mass .-= basin.concentration_state .* (u.infiltration - uprev.infiltration)
+
+    any(<(0), basin.mass) && error("Negative mass detected: $(basin.mass)")
     basin.concentration_state .= basin.mass ./ basin.current_storage[parent(u)]
+    basin.storage_prev .= basin.current_storage[parent(u)]
 
     return nothing
 end
@@ -589,6 +617,10 @@ function get_value(subvariable::NamedTuple, p::Parameters, du::AbstractVector, t
 
     elseif startswith(variable, "concentration_external.")
         value = basin.concentration_external[listen_node_id.idx][variable](t)
+    elseif startswith(variable, "concentration.")
+        substance = Symbol(last(split(variable, ".")))
+        var_idx = findfirst(==(substance), basin.substances)
+        value = basin.concentration_state[listen_node_id.idx, var_idx]
     else
         error("Unsupported condition variable $variable.")
     end
