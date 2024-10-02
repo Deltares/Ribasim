@@ -251,6 +251,13 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
     basin.mass .-= basin.concentration_state .* (u.evaporation - uprev.evaporation)
     basin.mass .-= basin.concentration_state .* (u.infiltration - uprev.infiltration)
 
+    # Take care of masses getting ever smaller, possibly becoming negative
+    # TODO Should this be bounded by the solver tolerances?
+    for I in eachindex(basin.mass)
+        if (0 - eps(Float64)) < basin.mass[I] < (0 + eps(Float64))
+            basin.mass[I] = 0.0
+        end
+    end
     any(<(0), basin.mass) && error("Negative mass detected: $(basin.mass)")
     basin.concentration_state .= basin.mass ./ basin.current_storage[parent(u)]
     basin.storage_prev .= basin.current_storage[parent(u)]
