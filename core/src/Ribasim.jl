@@ -35,6 +35,7 @@ using SciMLBase:
     ReturnCode,
     successful_retcode,
     CallbackSet,
+    u_modified!,
     ODEFunction,
     ODEProblem,
     ODESolution,
