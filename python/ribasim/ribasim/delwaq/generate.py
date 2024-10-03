@@ -87,7 +87,7 @@ def _make_boundary(data, boundary_type):
     return boundary, substances
 
 
-def _setup_graph(nodes, edge, use_evaporation=True):
+def _setup_graph(nodes, edge, evaporate_mass=True):
     G = nx.DiGraph()
 
     assert nodes.df is not None
@@ -219,7 +219,7 @@ def _setup_graph(nodes, edge, use_evaporation=True):
                 boundary=(node["id"], "precipitation"),
             )
 
-            if use_evaporation:
+            if evaporate_mass:
                 boundary_id -= 1
                 G.add_node(
                     boundary_id,
@@ -276,12 +276,12 @@ def _setup_boundaries(model):
 def generate(
     toml_path: Path,
     output_folder=output_folder,
-    use_evaporation=USE_EVAP,
 ) -> tuple[nx.DiGraph, set[str]]:
     """Generate a Delwaq model from a Ribasim model and results."""
 
     # Read in model and results
     model = ribasim.Model.read(toml_path)
+    evaporate_mass = model.solver.evaporate_mass
     basins = pd.read_feather(
         toml_path.parent / "results" / "basin.arrow", dtype_backend="pyarrow"
     )
@@ -293,7 +293,7 @@ def generate(
 
     # Setup flow network
     G, merge_edges, node_mapping, edge_mapping, basin_mapping = _setup_graph(
-        model.node_table(), model.edge, use_evaporation=use_evaporation
+        model.node_table(), model.edge, evaporate_mass=evaporate_mass
     )
 
     # Plot

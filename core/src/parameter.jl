@@ -341,6 +341,7 @@ end
     # Data source for parameter updates
     time::StructVector{BasinTimeV1, C, Int}
     # Concentrations
+    evaporate_mass::Bool = true
     cumulative_in::Vector{Float64} = zeros(length(node_id))
     storage_prev::Vector{Float64} = zeros(length(node_id))
     concentration_state::Matrix{Float64}  # basin, substance

@@ -575,6 +575,7 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     current_level = cache(n)
     current_area = cache(n)
 
+    evaporate_mass = config.solver.evaporate_mass
     precipitation = zeros(n)
     potential_evaporation = zeros(n)
     evaporation = zeros(n)
@@ -690,6 +691,7 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
         level_to_area,
         demand,
         time,
+        evaporate_mass,
         concentration_state,
         concentration,
         mass,

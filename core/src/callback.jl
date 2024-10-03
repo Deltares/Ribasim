@@ -247,8 +247,9 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
         end
     end
 
-    # TODO: This is physically incorrect, but useful for a correct mass balance
-    basin.mass .-= basin.concentration_state .* (u.evaporation - uprev.evaporation)
+    if basin.evaporate_mass
+        basin.mass .-= basin.concentration_state .* (u.evaporation - uprev.evaporation)
+    end
     basin.mass .-= basin.concentration_state .* (u.infiltration - uprev.infiltration)
 
     # Take care of masses getting ever smaller, possibly becoming negative

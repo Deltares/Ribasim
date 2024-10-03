@@ -122,6 +122,7 @@ class Solver(ChildModel):
     maxiters: int = 1000000000
     sparse: bool = True
     autodiff: bool = False
+    evaporate_mass: bool = True
 
 
 class Verbosity(str, Enum):
