@@ -224,7 +224,7 @@ Supported algorithms:
 - `ImplicitEuler`
 - `Euler`
 """
-algorithms = Dict{String, Type}(
+const algorithms = Dict{String, Type}(
     "QNDF" => QNDF,
     "FBDF" => FBDF,
     "Rosenbrock23" => Rosenbrock23,
