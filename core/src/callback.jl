@@ -267,7 +267,6 @@ function check_water_balance_error(
 )::Nothing
     (; u, p, t) = integrator
     (; basin, water_balance_abstol, water_balance_reltol) = p
-    errors = false
     current_storage = basin.current_storage[parent(u)]
     formulate_storages!(current_storage, u, u, p, t)
 
@@ -301,13 +300,8 @@ function check_water_balance_error(
 
         if abs(balance_error) > water_balance_abstol &&
            abs(relative_error) > water_balance_reltol
-            errors = true
-            @error "Too large water balance error" id balance_error relative_error
+            @error "Too large water balance error" id balance_error relative_error t
         end
-    end
-    if errors
-        t = datetime_since(t, p.starttime)
-        error("Too large water balance error(s) detected at t = $t")
     end
 
     @. basin.storage_prev_saveat = current_storage
