@@ -160,7 +160,7 @@ There are many things that can influence the calculations times, for instance:
 - [Solver tolerance](https://diffeq.sciml.ai/stable/basics/faq/#What-does-tolerance-mean-and-how-much-error-should-I-expect):
   By default we use absolute and relative tolerances of `1e-6` and `1e-5` respectively.
 - [ODE solvers](https://diffeq.sciml.ai/stable/solvers/ode_solve/):
-  The `QNDF` method we use is robust to oscillations and massive stiffness, however other solvers should be tried as well.
+  The `Rodas5P` method we use is robust to oscillations and massive stiffness, however other solvers should be tried as well.
 - Forcing: Every time new forcing data is injected into the model, it needs to pause.
   Moreover, the larger the forcing fluxes are, the bigger the shock to the system, leading to smaller timesteps and thus longer simulation times.
 

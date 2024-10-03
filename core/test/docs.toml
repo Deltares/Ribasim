@@ -25,7 +25,7 @@ timestep = 86400                   # optional (required if use_allocation = true
 use_allocation = false             # optional, default false
 
 [solver]
-algorithm = "QNDF"  # optional, default "QNDF"
+algorithm = "Rodas5P"  # optional, default "Rodas5P"
 saveat = 86400      # optional, default 86400, 0 saves every timestep, inf saves only at start- and endtime
 dt = 60.0           # optional, remove for adaptive time stepping
 dtmin = 0.0         # optional, default 0.0

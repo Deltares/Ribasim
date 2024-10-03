@@ -41,7 +41,7 @@ end
     using Ribasim: convert_saveat, convert_dt, Solver, algorithm
 
     solver = Solver()
-    @test solver.algorithm == "QNDF"
+    @test solver.algorithm == "Rodas5P"
     Solver(;
         algorithm = "Rosenbrock23",
         autodiff = true,

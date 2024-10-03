@@ -86,7 +86,7 @@ class Solver(ChildModel):
     Attributes
     ----------
     algorithm : str
-        The used numerical time integration algorithm (Optional, defaults to QNDF)
+        The used numerical time integration algorithm (Optional, defaults to Rodas5P)
     saveat : float
         Time interval in seconds between saves of output data.
         0 saves every timestep, inf only saves at start- and endtime. (Optional, defaults to 86400)
@@ -111,7 +111,7 @@ class Solver(ChildModel):
         Whether automatic differentiation instead of fine difference is used to compute the Jacobian. (Optional, defaults to true)
     """
 
-    algorithm: str = "QNDF"
+    algorithm: str = "Rodas5P"
     saveat: float = 86400.0
     dt: float | None = None
     dtmin: float | None = None

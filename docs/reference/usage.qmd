@@ -19,7 +19,7 @@ The solver section in the configuration file is entirely optional, since we aim 
 Common reasons to modify the solver settings are to adjust the calculation or result stepsizes: `dt`, and `saveat`.
 If your model does not converge, or your performance is lower than expected, it can help to adjust other solver settings as well.
 
-The default solver `algorithm = "QNDF"`, which is a multistep method similar to Matlab's `ode15s` [@shampine1997matlab].
+The default solver is `algorithm = "Rodas5P"`, which is a 5th order A-stable stiffly stable Rosenbrock method.
 It is an implicit method that supports the default adaptive timestepping.
 The full list of available solvers is: `QNDF`, `FBDF`, `Rosenbrock23`, `Rodas4P`, `Rodas5P`, `TRBDF2`, `KenCarp4`, `Tsit5`, `RK4`, `ImplicitEuler`, `Euler`.
 Information on the solver algorithms can be found on the [ODE solvers page](https://docs.sciml.ai/DiffEqDocs/stable/solvers/ode_solve/).

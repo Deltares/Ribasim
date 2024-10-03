@@ -29,7 +29,7 @@ def test_repr(basic):
 
 def test_solver():
     solver = Solver()
-    assert solver.algorithm == "QNDF"  # default
+    assert solver.algorithm == "Rodas5P"  # default
     assert solver.saveat == 86400.0
 
     solver = Solver(saveat=3600.0)
