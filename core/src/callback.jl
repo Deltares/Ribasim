@@ -663,3 +663,35 @@ function update_subgrid_level(model::Model)::Model
     update_subgrid_level!(model.integrator)
     return model
 end
+
+function reset_cumulatives!(integrator)::Nothing
+    (; u, p, t) = integrator
+
+    # Update the storage0 to the current storage
+    # such that the current storage is correct.
+    current_storage = p.basin.current_storage[parent(u)]
+    formulate_storages!(current_storage, u, u, p, t)
+    p.basin.storage0 .= current_storage
+
+    # Reset the cumulative states
+    u.tabulated_rating_curve .= 0.0
+    u.pump .= 0.0
+    u.outlet .= 0.0
+    u.user_demand_inflow .= 0.0
+    u.user_demand_outflow .= 0.0
+    u.linear_resistance .= 0.0
+    u.manning_resistance .= 0.0
+    u.evaporation .= 0.0
+    u.infiltration .= 0.0
+
+    # Reset the exact cumulative parameters
+    p.basin.cumulative_precipitation .= 0.0
+    p.basin.cumulative_drainage .= 0.0
+    p.basin.cumulative_drainage .= 0.0
+    p.flow_boundary.cumulative_flow .= 0.0
+
+    # Allow the solver to handle the discontinuity
+    u_modified!(integrator, true)
+
+    return nothing
+end
