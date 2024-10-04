@@ -17,6 +17,7 @@ jobs:
       - uses: prefix-dev/setup-pixi@v0.8.1
         with:
           pixi-version: v0.31.0
+          cache: false
       - name: Update Julia manifest file
         run: |
           pixi run install-julia
