@@ -36,7 +36,7 @@ jobs:
           cache-registries: "true"
       - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          pixi-version: v0.30.0
+          pixi-version: v0.31.0
       - name: Test Ribasim Core
         run: |
           pixi run test-ribasim-core-cov

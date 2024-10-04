@@ -19,7 +19,7 @@ jobs:
       - name: Set up pixi
         uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          pixi-version: v0.30.0
+          pixi-version: v0.31.0
           run-install: false
       - name: Update lockfiles
         run: |
