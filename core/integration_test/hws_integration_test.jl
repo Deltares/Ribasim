@@ -22,8 +22,8 @@
 
     timed = @timed Ribasim.run(toml_path)
 
-    # current benchmark is 600s
-    benchmark_runtime = 600
+    # current benchmark in seconds
+    benchmark_runtime = 12
     performance_diff =
         round((timed.time - benchmark_runtime) / benchmark_runtime * 100; digits = 2)
     if performance_diff < 0.0
