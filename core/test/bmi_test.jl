@@ -68,7 +68,7 @@ end
         "basin.cumulative_drainage",
         "basin.subgrid_level",
         "user_demand.demand",
-        "user_demand.inflow",
+        "user_demand.cumulative_inflow",
     ]
         value_first = BMI.get_value_ptr(model, name)
         BMI.update_until(model, 86400.0)

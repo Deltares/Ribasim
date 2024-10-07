@@ -48,7 +48,7 @@ function BMI.get_value_ptr(model::Model, name::AbstractString)::AbstractVector{F
         p.subgrid.level
     elseif name == "user_demand.demand"
         vec(p.user_demand.demand)
-    elseif name == "user_demand.inflow"
+    elseif name == "user_demand.cumulative_inflow"
         u.user_demand_inflow
     else
         error("Unknown variable $name")
