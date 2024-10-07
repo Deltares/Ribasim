@@ -21,7 +21,7 @@ If your model does not converge, or your performance is lower than expected, it 
 
 The default solver `algorithm = "QNDF"`, which is a multistep method similar to Matlab's `ode15s` [@shampine1997matlab].
 It is an implicit method that supports the default adaptive timestepping.
-The full list of available solvers is: `QNDF`, `Rosenbrock23`, `TRBDF2`, `Rodas5`, `KenCarp4`, `Tsit5`, `RK4`, `ImplicitEuler`, `Euler`.
+The full list of available solvers is: `QNDF`, `FBDF`, `Rosenbrock23`, `Rodas4P`, `Rodas5P`, `TRBDF2`, `KenCarp4`, `Tsit5`, `RK4`, `ImplicitEuler`, `Euler`.
 Information on the solver algorithms can be found on the [ODE solvers page](https://docs.sciml.ai/DiffEqDocs/stable/solvers/ode_solve/).
 
 By default Ribasim uses adaptive timestepping, though not all algorithms support adaptive timestepping.
