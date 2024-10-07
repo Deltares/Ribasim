@@ -170,7 +170,7 @@ class Node(pydantic.BaseModel):
     def __init__(
         self,
         node_id: Optional[NonNegativeInt] = None,
-        geometry: Point = Point("nan", "nan"),
+        geometry: Point = Point(),
         **kwargs,
     ) -> None:
         if is_empty(geometry):
