@@ -87,7 +87,7 @@ end
     config = Ribasim.Config(toml_path; allocation_use_allocation = false)
     model = Ribasim.Model(config)
     demand = BMI.get_value_ptr(model, "user_demand.demand")
-    inflow = BMI.get_value_ptr(model, "user_demand.inflow")
+    inflow = BMI.get_value_ptr(model, "user_demand.cumulative_inflow")
     # One year in seconds
     year = model.integrator.p.user_demand.demand_itp[2][1].t[2]
     demand_start = 1e-3
