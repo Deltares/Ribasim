@@ -101,7 +101,7 @@ class Solver(ChildModel):
     abstol : float
         The absolute tolerance for adaptive timestepping (Optional, defaults to 1e-6)
     reltol : float
-        The relative tolerance for adaptive timestepping (Optional, defaults to 1e-5)
+        The relative tolerance for adaptive timestepping (Optional, defaults to 1e-7)
     maxiters : int
         The total number of linear iterations over the whole simulation. (Defaults to 1e9, only needs to be increased for extremely long simulations)
     sparse : bool
