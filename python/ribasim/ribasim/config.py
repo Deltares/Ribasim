@@ -8,7 +8,6 @@ import pandas as pd
 import pydantic
 from geopandas import GeoDataFrame
 from pydantic import ConfigDict, Field, NonNegativeInt, model_validator
-from shapely import is_empty
 from shapely.geometry import Point
 
 from ribasim.geometry import BasinAreaSchema, NodeTable
@@ -173,7 +172,7 @@ class Node(pydantic.BaseModel):
         geometry: Point = Point(),
         **kwargs,
     ) -> None:
-        if is_empty(geometry):
+        if geometry.is_empty:
             raise (ValueError("Node geometry must be a valid Point"))
         super().__init__(node_id=node_id, geometry=geometry, **kwargs)
 
