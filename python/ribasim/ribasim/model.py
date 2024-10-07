@@ -104,7 +104,7 @@ class Model(FileModel):
     user_demand: UserDemand = Field(default_factory=UserDemand)
 
     edge: EdgeTable = Field(default_factory=EdgeTable)
-    use_validation: bool = Field(default=True)
+    use_validation: bool = Field(default=True, exclude=True)
 
     _used_node_ids: UsedIDs = PrivateAttr(default_factory=UsedIDs)
 
