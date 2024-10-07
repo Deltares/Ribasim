@@ -280,7 +280,7 @@ end
     @test sparse_fdm.integrator.u ≈ sparse_ad.integrator.u atol = 4
     @test dense_fdm.integrator.u ≈ sparse_ad.integrator.u atol = 4
 
-    config = Ribasim.Config(toml_path; solver_algorithm = "Rodas5", solver_autodiff = true)
+    config = Ribasim.Config(toml_path; solver_algorithm = "Rodas5P", solver_autodiff = true)
     time_ad = Ribasim.run(config)
     @test successful_retcode(time_ad)
     @test time_ad.integrator.u ≈ sparse_ad.integrator.u atol = 10
