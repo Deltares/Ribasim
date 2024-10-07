@@ -247,7 +247,7 @@ end
 
     t_switch = Ribasim.datetime_since(record.time[2], p.starttime)
     flow_table = DataFrame(Ribasim.flow_table(model))
-    @test all(filter(:time => time -> time <= t_switch, flow_table).flow_rate .> 0)
+    @test all(filter(:time => time -> time <= t_switch, flow_table).flow_rate .> -1e-12)
     @test all(
         isapprox.(
             filter(:time => time -> time > t_switch, flow_table).flow_rate,

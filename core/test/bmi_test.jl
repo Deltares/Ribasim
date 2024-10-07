@@ -11,10 +11,11 @@
     @test BMI.get_end_time(model) ≈ 3.16224e7
     BMI.update(model)
     @test BMI.get_current_time(model) ≈ dt0 atol = 5e-3
-    # cannot go back in time
-    @test_throws ErrorException BMI.update_until(model, dt0 / 2.0)
     @test BMI.get_current_time(model) ≈ dt0 atol = 5e-3
     BMI.update_until(model, 86400.0)
+    @test BMI.get_current_time(model) == 86400.0
+    # cannot go back in time
+    @test_throws ErrorException BMI.update_until(model, 3600.0)
     @test BMI.get_current_time(model) == 86400.0
 end
 
