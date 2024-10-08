@@ -30,9 +30,9 @@ install = { depends_on = [
     "install-pre-commit",
 ] }
 # Julia
-update-registry-julia = "julia --eval='using Pkg; Registry.update()'"
-update-manifest-julia = "julia --project --eval='using Pkg; Pkg.update()'"
-instantiate-julia = { cmd = "julia --project --eval='using Pkg; Pkg.instantiate()'", env = { JULIA_SSL_CA_ROOTS_PATH = "" } }
+update-registry-julia = "julia +1.10.5 --eval='using Pkg; Registry.update()'"
+update-manifest-julia = "julia +1.10.5 --project --eval='using Pkg; Pkg.update()'"
+instantiate-julia = { cmd = "julia +1.10.5 --project --eval='using Pkg; Pkg.instantiate()'", env = { JULIA_SSL_CA_ROOTS_PATH = "" } }
 initialize-julia = { depends_on = [
     "update-registry-julia",
     "instantiate-julia",
@@ -49,7 +49,7 @@ quarto-preview = { cmd = "quarto preview docs", depends_on = [
     "generate-testmodels",
 ] }
 quarto-check = { cmd = "quarto check all", depends_on = ["quartodoc-build"] }
-quarto-render = { cmd = "julia --project --eval 'using Pkg; Pkg.build(\"IJulia\")' && quarto render docs --to html --execute", depends_on = [
+quarto-render = { cmd = "julia +1.10.5 --project --eval 'using Pkg; Pkg.build(\"IJulia\")' && quarto render docs --to html --execute", depends_on = [
     "quartodoc-build",
     "generate-testmodels",
 ] }
@@ -67,21 +67,21 @@ lint = { depends_on = [
     "mypy-ribasim-qgis",
 ] }
 # Build
-build = { "cmd" = "julia --project build.jl", cwd = "build", depends_on = [
+build = { "cmd" = "julia +1.10.5 --project build.jl", cwd = "build", depends_on = [
     "generate-testmodels",
     "initialize-julia",
 ], env = { JULIA_SSL_CA_ROOTS_PATH = "" } }
-remove-artifacts = "julia --eval 'rm(joinpath(Base.DEPOT_PATH[1], \"artifacts\"), force=true, recursive=true)'"
+remove-artifacts = "julia +1.10.5 --eval 'rm(joinpath(Base.DEPOT_PATH[1], \"artifacts\"), force=true, recursive=true)'"
 # Tests
 test-ribasim-cli = "pytest --numprocesses=4 --basetemp=build/tests/temp --junitxml=report.xml build/tests"
-test-ribasim-core = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test()'", depends_on = [
+test-ribasim-core = { cmd = "julia +1.10.5 --project=core --eval 'using Pkg; Pkg.test()'", depends_on = [
     "generate-testmodels",
 ] }
 test-ribasim-migration = { cmd = "pytest --numprocesses=4 -m regression python/ribasim/tests" }
-test-ribasim-core-cov = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test(coverage=true, julia_args=[\"--check-bounds=yes\"])'", depends_on = [
+test-ribasim-core-cov = { cmd = "julia +1.10.5 --project=core --eval 'using Pkg; Pkg.test(coverage=true, julia_args=[\"--check-bounds=yes\"])'", depends_on = [
     "generate-testmodels",
 ] }
-test-ribasim-regression = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test(julia_args=[\"--check-bounds=yes\"], test_args=[\"regression\"])'", depends_on = [
+test-ribasim-regression = { cmd = "julia +1.10.5 --project=core --eval 'using Pkg; Pkg.test(julia_args=[\"--check-bounds=yes\"], test_args=[\"regression\"])'", depends_on = [
     "generate-testmodels",
     "test-ribasim-migration",
 ] }
@@ -94,9 +94,9 @@ generate-testmodels = { cmd = "python utils/generate-testmodels.py", inputs = [
 ] }
 tests = { depends_on = ["lint", "test-ribasim-python", "test-ribasim-core"] }
 delwaq = { cmd = "pytest python/ribasim/tests/test_delwaq.py" }
-model-integration-test = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test(test_args=[\"integration\"])'" }
+model-integration-test = { cmd = "julia +1.10.5 --project=core --eval 'using Pkg; Pkg.test(test_args=[\"integration\"])'" }
 # Codegen
-codegen = { cmd = "julia --project utils/gen_python.jl && ruff format python/ribasim/ribasim/schemas.py python/ribasim/ribasim/validation.py", depends_on = [
+codegen = { cmd = "julia +1.10.5 --project utils/gen_python.jl && ruff format python/ribasim/ribasim/schemas.py python/ribasim/ribasim/validation.py", depends_on = [
     "initialize-julia",
 ], inputs = [
     "core",
@@ -143,10 +143,10 @@ test-ribasim-qgis-cov = { cmd = "pytest --numprocesses=auto --cov=ribasim_qgis -
 ] }
 mypy-ribasim-qgis = "mypy ribasim_qgis"
 # Run
-ribasim-core = { cmd = "julia --project=core -e 'using Ribasim; Ribasim.main(ARGS)'", depends_on = [
+ribasim-core = { cmd = "julia +1.10.5 --project=core -e 'using Ribasim; Ribasim.main(ARGS)'", depends_on = [
     "initialize-julia",
 ] }
-ribasim-core-testmodels = { cmd = "julia --project --threads=4 utils/testmodelrun.jl", depends_on = [
+ribasim-core-testmodels = { cmd = "julia +1.10.5 --project --threads=4 utils/testmodelrun.jl", depends_on = [
     "generate-testmodels",
     "initialize-julia",
 ] }
