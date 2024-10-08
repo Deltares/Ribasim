@@ -19,6 +19,7 @@ jobs:
       - name: Set up pixi
         uses: prefix-dev/setup-pixi@v0.8.1
         with:
+          pixi-version: v0.30.0
           run-install: false
       - name: Update lockfiles
         run: |
@@ -31,7 +32,7 @@ jobs:
           commit-message: Update pixi lockfile
           title: Update pixi lockfile
           body-path: diff.md
-          branch: update-pixi
+          branch: update/pixi-lock
           base: main
           delete-branch: true
           add-paths: pixi.lock

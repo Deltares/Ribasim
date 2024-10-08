@@ -542,7 +542,9 @@ def concentration_condition_model() -> Model:
             basin.Profile(area=1000.0, level=[0.0, 1.0]),
             basin.State(level=[20.0]),
             basin.ConcentrationExternal(
-                time=pd.date_range(start="2020-01-01", end="2021-01-01", periods=100),
+                time=pd.date_range(
+                    start="2020-01-01", end="2021-01-01", periods=100, unit="ms"
+                ),
                 substance="kryptonite",
                 concentration=np.sin(np.linspace(0, 6 * np.pi, 100)) ** 2,
             ),

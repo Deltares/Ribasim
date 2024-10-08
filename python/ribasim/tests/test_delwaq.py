@@ -9,7 +9,13 @@ delwaq_dir = Path(__file__).parent
 
 
 @pytest.mark.skipif(
-    not bool(os.getenv("D3D_HOME")), reason="Requires Delwaq to be installed."
+    not (
+        ("D3D_HOME" in os.environ)
+        and (
+            delwaq_dir.parents[2] / "generated_testmodels/basic/results/flow.arrow"
+        ).is_file()
+    ),
+    reason="Requires Delwaq to be installed and basic model results.",
 )
 def test_offline_delwaq_coupling():
     repo_dir = delwaq_dir.parents[2]

@@ -22,10 +22,10 @@ function create_callbacks(
     save_basin_state_cb = SavingCallback(save_basin_state, saved_basin_states; saveat)
     push!(callbacks, save_basin_state_cb)
 
-    # Update cumulative flows (exact integration and for BMI)
-    integrated_flows_cb =
+    # Update cumulative flows (exact integration and for allocation)
+    cumulative_flows_cb =
         FunctionCallingCallback(update_cumulative_flows!; func_start = false)
-    push!(callbacks, integrated_flows_cb)
+    push!(callbacks, cumulative_flows_cb)
 
     # Update Basin forcings
     tstops = get_tstops(basin.time.time, starttime)
@@ -84,37 +84,28 @@ end
 
 """
 Update with the latest timestep:
-- Cumulative flows/forcings which are exposed via the BMI
 - Cumulative flows/forcings which are integrated exactly
 - Cumulative flows/forcings which are input for the allocation algorithm
 - Cumulative flows/forcings which are realized demands in the allocation context
 
 """
 function update_cumulative_flows!(u, t, integrator)::Nothing
-    (; p, uprev, tprev, dt) = integrator
-    (; basin, user_demand, flow_boundary, allocation) = p
-    (; vertical_flux_bmi, vertical_flux_from_input) = basin
+    (; p, tprev, dt) = integrator
+    (; basin, flow_boundary, allocation) = p
+    (; vertical_flux) = basin
 
     # Update tprev
     p.tprev[] = t
 
-    # Update cumulative flows exposed via the BMI
-    @. user_demand.realized_bmi += u.user_demand_inflow - uprev.user_demand_inflow
-    @. vertical_flux_bmi.drainage += vertical_flux_from_input.drainage * dt
-    @. vertical_flux_bmi.evaporation += u.evaporation - uprev.evaporation
-    @. vertical_flux_bmi.infiltration += u.infiltration - uprev.infiltration
-
     # Update cumulative forcings which are integrated exactly
-    @. basin.cumulative_drainage += vertical_flux_from_input.drainage * dt
-    @. basin.cumulative_drainage_saveat += vertical_flux_from_input.drainage * dt
+    @. basin.cumulative_drainage += vertical_flux.drainage * dt
+    @. basin.cumulative_drainage_saveat += vertical_flux.drainage * dt
 
     # Precipitation depends on fixed area
     for node_id in basin.node_id
         fixed_area = basin_areas(basin, node_id.idx)[end]
-        added_precipitation =
-            fixed_area * vertical_flux_from_input.precipitation[node_id.idx] * dt
+        added_precipitation = fixed_area * vertical_flux.precipitation[node_id.idx] * dt
 
-        vertical_flux_bmi.precipitation[node_id.idx] += added_precipitation
         basin.cumulative_precipitation[node_id.idx] += added_precipitation
         basin.cumulative_precipitation_saveat[node_id.idx] += added_precipitation
     end
@@ -164,16 +155,14 @@ function flow_update_on_edge(
 )::Float64
     (; u, uprev, p, t, tprev, dt) = integrator
     (; basin, flow_boundary) = p
-    (; vertical_flux_from_input) = basin
+    (; vertical_flux) = basin
     from_id, to_id = edge_src
     if from_id == to_id
         @assert from_id.type == to_id.type == NodeType.Basin
         idx = from_id.idx
         fixed_area = basin_areas(basin, idx)[end]
-        (
-            fixed_area * vertical_flux_from_input.precipitation[idx] +
-            vertical_flux_from_input.drainage[idx]
-        ) * dt - (u.evaporation[idx] - uprev.evaporation[idx]) -
+        (fixed_area * vertical_flux.precipitation[idx] + vertical_flux.drainage[idx]) * dt -
+        (u.evaporation[idx] - uprev.evaporation[idx]) -
         (u.infiltration[idx] - uprev.infiltration[idx])
     elseif from_id.type == NodeType.FlowBoundary
         if flow_boundary.active[from_id.idx]
@@ -574,17 +563,17 @@ end
 function update_basin!(integrator)::Nothing
     (; p) = integrator
     (; basin) = p
-    (; node_id, time, vertical_flux_from_input) = basin
+    (; node_id, time, vertical_flux) = basin
     t = datetime_since(integrator.t, integrator.p.starttime)
 
     rows = searchsorted(time.time, t)
     timeblock = view(time, rows)
 
     table = (;
-        vertical_flux_from_input.precipitation,
-        vertical_flux_from_input.potential_evaporation,
-        vertical_flux_from_input.drainage,
-        vertical_flux_from_input.infiltration,
+        vertical_flux.precipitation,
+        vertical_flux.potential_evaporation,
+        vertical_flux.drainage,
+        vertical_flux.infiltration,
     )
 
     for row in timeblock
@@ -612,15 +601,13 @@ function update_allocation!(integrator)::Nothing
         return nothing
     end
 
-    # Divide by the allocation Δt to obtain the mean input flows
-    # from the integrated flows
+    # Divide by the allocation Δt to get the mean input flows from the cumulative flows
     (; Δt_allocation) = allocation_models[1]
     for edge in keys(mean_input_flows)
         mean_input_flows[edge] /= Δt_allocation
     end
 
-    # Divide by the allocation Δt to obtain the mean realized flows
-    # from the integrated flows
+    # Divide by the allocation Δt to get the mean realized flows from the cumulative flows
     for edge in keys(mean_realized_flows)
         mean_realized_flows[edge] /= Δt_allocation
     end

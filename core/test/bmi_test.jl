@@ -63,11 +63,11 @@ end
         "basin.level",
         "basin.infiltration",
         "basin.drainage",
-        "basin.infiltration_integrated",
-        "basin.drainage_integrated",
+        "basin.cumulative_infiltration",
+        "basin.cumulative_drainage",
         "basin.subgrid_level",
         "user_demand.demand",
-        "user_demand.realized",
+        "user_demand.inflow",
     ]
         value_first = BMI.get_value_ptr(model, name)
         BMI.update_until(model, 86400.0)
@@ -77,7 +77,7 @@ end
     end
 end
 
-@testitem "realized_user_demand" begin
+@testitem "UserDemand inflow" begin
     import BasicModelInterface as BMI
 
     toml_path =
@@ -86,19 +86,19 @@ end
     config = Ribasim.Config(toml_path; allocation_use_allocation = false)
     model = Ribasim.Model(config)
     demand = BMI.get_value_ptr(model, "user_demand.demand")
-    realized = BMI.get_value_ptr(model, "user_demand.realized")
+    inflow = BMI.get_value_ptr(model, "user_demand.inflow")
     # One year in seconds
     year = model.integrator.p.user_demand.demand_itp[2][1].t[2]
     demand_start = 1e-3
     slope = 1e-3 / year
     day = 86400.0
     BMI.update_until(model, day)
-    @test realized ≈ [demand_start * day, demand_start * day + 0.5 * slope * day^2] atol =
+    @test inflow ≈ [demand_start * day, demand_start * day + 0.5 * slope * day^2] atol =
         1e-3
     demand_later = 2e-3
     demand[1] = demand_later
     BMI.update_until(model, 2day)
-    @test realized[1] ≈ demand_start * day + demand_later * day atol = 1e-3
+    @test inflow[1] ≈ demand_start * day + demand_later * day atol = 1e-3
 end
 
 @testitem "vertical basin flux" begin
@@ -114,6 +114,6 @@ end
     Δt = 5 * 86400.0
     BMI.update_until(model, Δt)
 
-    drainage_integrated = BMI.get_value_ptr(model, "basin.drainage_integrated")
-    @test drainage_integrated ≈ Δt * drainage_flux
+    cumulative_drainage = BMI.get_value_ptr(model, "basin.cumulative_drainage")
+    @test cumulative_drainage ≈ Δt * drainage_flux
 end
