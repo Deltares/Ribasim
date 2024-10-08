@@ -23,7 +23,14 @@ using OrdinaryDiffEqRosenbrock: Rosenbrock23, Rodas4P, Rodas5P
 
 export Config, Solver, Results, Logging, Toml
 export algorithm,
-    camel_case, snake_case, input_path, results_path, convert_saveat, convert_dt, nodetypes
+    camel_case,
+    snake_case,
+    input_path,
+    database_path,
+    results_path,
+    convert_saveat,
+    convert_dt,
+    nodetypes
 
 const schemas =
     getfield.(
@@ -133,7 +140,6 @@ end
     ribasim_version::String
     input_dir::String
     results_dir::String
-    database::String = "database.gpkg"
     allocation::Allocation = Allocation()
     solver::Solver = Solver()
     logging::Logging = Logging()
@@ -166,6 +172,11 @@ Base.dirname(config::Config) = getfield(config, :dir)
 "Construct a path relative to both the TOML directory and the optional `input_dir`"
 function input_path(config::Config, path::String)
     return normpath(dirname(config), config.input_dir, path)
+end
+
+"Construct the database path relative to both the TOML directory and the optional `input_dir`"
+function database_path(config::Config)
+    return normpath(dirname(config), config.input_dir, "database.gpkg")
 end
 
 "Construct a path relative to both the TOML directory and the optional `results_dir`"

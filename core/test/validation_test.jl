@@ -41,7 +41,7 @@ end
     @test ispath(toml_path)
 
     config = Ribasim.Config(toml_path)
-    db_path = Ribasim.input_path(config, config.database)
+    db_path = Ribasim.database_path(config)
     db = SQLite.DB(db_path)
     graph = Ribasim.create_graph(db, config)
 
@@ -194,7 +194,7 @@ end
     @test ispath(toml_path)
 
     cfg = Ribasim.Config(toml_path)
-    db_path = Ribasim.input_path(cfg, cfg.database)
+    db_path = Ribasim.database_path(cfg)
     db = SQLite.DB(db_path)
     p = Ribasim.Parameters(db, cfg)
     close(db)
@@ -274,7 +274,7 @@ end
     @test ispath(toml_path)
 
     cfg = Ribasim.Config(toml_path)
-    db_path = Ribasim.input_path(cfg, cfg.database)
+    db_path = Ribasim.database_path(cfg)
     db = SQLite.DB(db_path)
     logger = TestLogger()
     with_logger(logger) do
@@ -482,7 +482,7 @@ end
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
 
     cfg = Ribasim.Config(toml_path)
-    db_path = Ribasim.input_path(cfg, cfg.database)
+    db_path = Ribasim.database_path(cfg)
     db = SQLite.DB(db_path)
 
     logger = TestLogger()
