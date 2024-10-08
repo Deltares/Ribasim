@@ -1,5 +1,6 @@
 import datetime
 import logging
+import shutil
 from collections.abc import Generator
 from os import PathLike
 from pathlib import Path
@@ -190,7 +191,12 @@ class Model(FileModel):
         return fn
 
     def _save(self, directory: DirectoryPath, input_dir: DirectoryPath):
-        db_path = directory / input_dir / "database.gpkg"
+        # We write all tables to a temporary GeoPackage with a dot prefix,
+        # and at the end move this over the target file.
+        # This does not throw a PermissionError if the file is open in QGIS.
+        db_path = directory / input_dir / ".database.gpkg"
+
+        # avoid adding tables to existing model
         db_path.parent.mkdir(parents=True, exist_ok=True)
         db_path.unlink(missing_ok=True)
         context_file_writing.get()["database"] = db_path
@@ -206,6 +212,8 @@ class Model(FileModel):
 
         for sub in self._nodes():
             sub._save(directory, input_dir)
+
+        shutil.move(db_path, db_path.with_name("database.gpkg"))
 
     def set_crs(self, crs: str) -> None:
         """Set the coordinate reference system of the data in the model.
