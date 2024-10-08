@@ -417,7 +417,6 @@ def generate(
     defaults = {
         "Continuity": 1.0,
         "Initial": 1.0,
-        "Basin": 0.0,
         "LevelBoundary": 0.0,
         "FlowBoundary": 0.0,
         "Terminal": 0.0,

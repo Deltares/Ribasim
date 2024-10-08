@@ -22,7 +22,8 @@ def test_offline_delwaq_coupling():
     toml_path = repo_dir / "generated_testmodels/basic/ribasim.toml"
 
     model = Model.read(toml_path)
-    add_tracer(model, 17, "Foo")
+    add_tracer(model, 11, "Foo")
+    add_tracer(model, 15, "Bar")
     model.write(toml_path)
 
     graph, substances = generate(toml_path)
@@ -34,7 +35,7 @@ def test_offline_delwaq_coupling():
     assert df.shape[0] > 0
     assert df.node_id.nunique() == 4
     assert sorted(df.substance.unique()) == [
-        "Basin",
+        "Bar",
         "Cl",
         "Continuity",
         "Drainage",
