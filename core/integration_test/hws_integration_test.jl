@@ -22,8 +22,8 @@
 
     timed = @timed Ribasim.run(toml_path)
 
-    # current benchmark in seconds
-    benchmark_runtime = 25
+    # current benchmark in seconds, TeamCity is up to 4x slower than local
+    benchmark_runtime = 32
     performance_diff =
         round((timed.time - benchmark_runtime) / benchmark_runtime * 100; digits = 2)
     if performance_diff < 0.0
