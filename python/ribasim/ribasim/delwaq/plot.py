@@ -7,7 +7,6 @@ def plot_fraction(
     model,
     node_id,
     tracers=[
-        "Basin",
         "LevelBoundary",
         "FlowBoundary",
         "UserDemand",
