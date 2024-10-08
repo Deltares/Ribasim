@@ -11,10 +11,11 @@
     @test BMI.get_end_time(model) ≈ 3.16224e7
     BMI.update(model)
     @test BMI.get_current_time(model) ≈ dt0 atol = 5e-3
-    # cannot go back in time
-    @test_throws ErrorException BMI.update_until(model, dt0 / 2.0)
     @test BMI.get_current_time(model) ≈ dt0 atol = 5e-3
     BMI.update_until(model, 86400.0)
+    @test BMI.get_current_time(model) == 86400.0
+    # cannot go back in time
+    @test_throws ErrorException BMI.update_until(model, 3600.0)
     @test BMI.get_current_time(model) == 86400.0
 end
 
@@ -67,7 +68,7 @@ end
         "basin.cumulative_drainage",
         "basin.subgrid_level",
         "user_demand.demand",
-        "user_demand.inflow",
+        "user_demand.cumulative_inflow",
     ]
         value_first = BMI.get_value_ptr(model, name)
         BMI.update_until(model, 86400.0)
@@ -86,7 +87,7 @@ end
     config = Ribasim.Config(toml_path; allocation_use_allocation = false)
     model = Ribasim.Model(config)
     demand = BMI.get_value_ptr(model, "user_demand.demand")
-    inflow = BMI.get_value_ptr(model, "user_demand.inflow")
+    inflow = BMI.get_value_ptr(model, "user_demand.cumulative_inflow")
     # One year in seconds
     year = model.integrator.p.user_demand.demand_itp[2][1].t[2]
     demand_start = 1e-3
