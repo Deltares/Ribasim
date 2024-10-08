@@ -21,5 +21,16 @@ changeBuildType(RelativeId("Ribasim_MakeGitHubRelease")) {
             }
         }
 
+        expect(RelativeId("Windows_TestRibasimBinaries")) {
+            snapshot {
+                onDependencyFailure = FailureAction.FAIL_TO_START
+            }
+        }
+        update(RelativeId("Windows_TestRibasimBinaries")) {
+            snapshot {
+                reuseBuilds = ReuseBuilds.ANY
+            }
+        }
+
     }
 }
