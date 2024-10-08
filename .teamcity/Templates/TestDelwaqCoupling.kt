@@ -12,6 +12,9 @@ open class TestDelwaqCoupling(platformOs: String) : Template() {
             root(Ribasim, ". => ribasim")
             cleanCheckout = true
         }
+        params {
+            password("MiniO_credential_token", "credentialsJSON:86cbf3e5-724c-437d-9962-7a3f429b0aa2")
+        }
 
         steps {
             script {
@@ -31,6 +34,14 @@ open class TestDelwaqCoupling(platformOs: String) : Template() {
                 pixi run ribasim-core-testmodels basic
                 set D3D_HOME=%teamcity.build.checkoutDir%/dimr
                 pixi run delwaq
+                """.trimIndent()
+            }
+            script {
+                name = "Upload delwaq model"
+                id = "Delwaq_upload"
+                workingDir = "ribasim"
+                scriptContent = """
+                pixi run python utils/upload_benchmark.py --secretkey %MiniO_credential_token% "python/ribasim/ribasim/delwaq/model/delwaq_map.nc" "doc-image/delwaq/delwaq_map.nc"
                 """.trimIndent()
             }
         }
