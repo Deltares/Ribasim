@@ -52,6 +52,7 @@ quarto-check = { cmd = "quarto check all", depends_on = ["quartodoc-build"] }
 quarto-render = { cmd = "julia --project --eval 'using Pkg; Pkg.build(\"IJulia\")' && quarto render docs --to html --execute", depends_on = [
     "quartodoc-build",
     "generate-testmodels",
+    "initialize-julia",
 ] }
 docs = { depends_on = ["quarto-preview"] }
 # Lint
@@ -76,14 +77,17 @@ remove-artifacts = "julia --eval 'rm(joinpath(Base.DEPOT_PATH[1], \"artifacts\")
 test-ribasim-cli = "pytest --numprocesses=4 --basetemp=build/tests/temp --junitxml=report.xml build/tests"
 test-ribasim-core = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test()'", depends_on = [
     "generate-testmodels",
+    "initialize-julia",
 ] }
 test-ribasim-migration = { cmd = "pytest --numprocesses=4 -m regression python/ribasim/tests" }
 test-ribasim-core-cov = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test(coverage=true, julia_args=[\"--check-bounds=yes\"])'", depends_on = [
     "generate-testmodels",
+    "initialize-julia",
 ] }
 test-ribasim-regression = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test(julia_args=[\"--check-bounds=yes\"], test_args=[\"regression\"])'", depends_on = [
     "generate-testmodels",
     "test-ribasim-migration",
+    "initialize-julia",
 ] }
 generate-testmodels = { cmd = "python utils/generate-testmodels.py", inputs = [
     "python/ribasim",
@@ -94,7 +98,9 @@ generate-testmodels = { cmd = "python utils/generate-testmodels.py", inputs = [
 ] }
 tests = { depends_on = ["lint", "test-ribasim-python", "test-ribasim-core"] }
 delwaq = { cmd = "pytest python/ribasim/tests/test_delwaq.py" }
-model-integration-test = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test(test_args=[\"integration\"])'" }
+model-integration-test = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test(test_args=[\"integration\"])'", depends_on = [
+    "initialize-julia",
+] }
 # Codegen
 codegen = { cmd = "julia --project utils/gen_python.jl && ruff format python/ribasim/ribasim/schemas.py python/ribasim/ribasim/validation.py", depends_on = [
     "initialize-julia",
