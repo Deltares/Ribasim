@@ -11,7 +11,7 @@ from ribasim.nodes import (
     pid_control,
     pump,
 )
-from shapely import Point
+from shapely import MultiPolygon, Point, Polygon
 
 
 def test_duplicate_edge(basic):
@@ -171,3 +171,18 @@ def test_minimum_control_neighbor():
             ],
         )
         model.write("test.toml")
+
+
+def test_geometry_validation():
+    point = Point(0.0, 0.0)
+    poly = point.buffer(1.0)
+
+    assert isinstance(poly, Polygon)
+    basinarea = basin.Area(geometry=[poly])
+    assert isinstance(basinarea.df.geometry[0], MultiPolygon)
+
+    basinarea = basin.Area(geometry=[basinarea.df.geometry[0]])
+    assert isinstance(basinarea.df.geometry[0], MultiPolygon)
+
+    with pytest.raises(ValueError):
+        basin.Area(geometry=[point])

@@ -1,6 +1,6 @@
 [project]
 name = "Ribasim"
-version = "2024.10.0"
+version = "2024.11.0"
 description = "Water resources modeling"
 authors = ["Deltares and contributors <ribasim.info@deltares.nl>"]
 channels = ["conda-forge"]
@@ -107,8 +107,8 @@ codegen = { cmd = "julia --project utils/gen_python.jl && ruff format python/rib
 ] }
 # Publish
 add-ribasim-icon = { cmd = "rcedit build/ribasim/ribasim.exe --set-icon docs/assets/ribasim.ico" }
-build-ribasim-python-wheel = { cmd = "rm --recursive --force dist && python -m build && twine check dist/*", cwd = "python/ribasim" }
-build-ribasim-api-wheel = { cmd = "rm --recursive --force dist && python -m build && twine check dist/*", cwd = "python/ribasim_api" }
+build-ribasim-python-wheel = { cmd = "rm --recursive --force dist && hatch build && twine check dist/*", cwd = "python/ribasim" }
+build-ribasim-api-wheel = { cmd = "rm --recursive --force dist && hatch build && twine check dist/*", cwd = "python/ribasim_api" }
 build-wheels = { depends_on = [
     "build-ribasim-python-wheel",
     "build-ribasim-api-wheel",
@@ -199,6 +199,7 @@ ribasim_testmodels = { path = "python/ribasim_testmodels", editable = true }
 
 [feature.dev.dependencies]
 gh = "*"
+hatch = "*"
 juliaup = "*"
 jupyterlab = "*"
 libgdal-arrow-parquet = "*"

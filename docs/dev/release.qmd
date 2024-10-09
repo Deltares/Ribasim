@@ -22,7 +22,7 @@ Before starting the release process, ensure that all tests are passing and that 
 Determine the new version number like `2023.1.0`, filling in the current year, a bumped `MINOR` number for normal releases and a bumped `MICRO` number for non-breaking, hotfix releases.
 This follows `YYYY.MINOR.MICRO` from [calver](https://calver.org/).
 
-Create a branch that starts with `release`, like `release-2023-1.0`.
+Create a branch that starts with `release`, like `release-2023.1.0`.
 It needs to start with `release` to trigger extra TeamCity checks.
 
 Update the version numbers in the repository to the new version number.

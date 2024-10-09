@@ -12,6 +12,7 @@ def trivial_model() -> Model:
         endtime="2021-01-01",
         crs="EPSG:28992",
         results=Results(subgrid=True, compression=False),
+        use_validation=True,
     )
 
     # Convert steady forcing to m/s

@@ -5,35 +5,32 @@
     toml = Ribasim.Toml(;
         starttime = now(),
         endtime = now(),
-        database = "path/to/file",
         input_dir = ".",
         results_dir = "results",
         crs = "EPSG:28992",
         ribasim_version = string(Ribasim.pkgversion(Ribasim)),
     )
     config = Ribasim.Config(toml, "model")
-    @test Ribasim.input_path(config, "path/to/file") ==
-          normpath("model", "path", "to", "file")
+    @test Ribasim.database_path(config) == normpath("model/database.gpkg")
+    @test Ribasim.input_path(config, "path/to/file") == normpath("model/path/to/file")
 
     # also relative to inputdir
     toml = Ribasim.Toml(;
         starttime = now(),
         endtime = now(),
-        database = "path/to/file",
         input_dir = "input",
         results_dir = "results",
         crs = "EPSG:28992",
         ribasim_version = string(Ribasim.pkgversion(Ribasim)),
     )
     config = Ribasim.Config(toml, "model")
-    @test Ribasim.input_path(config, "path/to/file") ==
-          normpath("model", "input", "path", "to", "file")
+    @test Ribasim.database_path(config) == normpath("model/input/database.gpkg")
+    @test Ribasim.input_path(config, "path/to/file") == normpath("model/input/path/to/file")
 
     # absolute path
     toml = Ribasim.Toml(;
         starttime = now(),
         endtime = now(),
-        database = "/path/to/file",
         input_dir = ".",
         results_dir = "results",
         crs = "EPSG:28992",
@@ -92,7 +89,7 @@ end
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/basic_transient/ribasim.toml")
     config = Ribasim.Config(toml_path)
-    db_path = Ribasim.input_path(config, config.database)
+    db_path = Ribasim.database_path(config)
     db = SQLite.DB(db_path)
 
     # load a sorted table

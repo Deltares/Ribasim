@@ -8,7 +8,6 @@ import pandas as pd
 import pydantic
 from geopandas import GeoDataFrame
 from pydantic import ConfigDict, Field, NonNegativeInt, model_validator
-from shapely import is_empty
 from shapely.geometry import Point
 
 from ribasim.geometry import BasinAreaSchema, NodeTable
@@ -100,9 +99,9 @@ class Solver(ChildModel):
         If a smaller dt than dtmin is needed to meet the set error tolerances, the simulation stops, unless force_dtmin = true
         (Optional, defaults to False)
     abstol : float
-        The absolute tolerance for adaptive timestepping (Optional, defaults to 1e-6)
+        The absolute tolerance for adaptive timestepping (Optional, defaults to 1e-7)
     reltol : float
-        The relative tolerance for adaptive timestepping (Optional, defaults to 1e-5)
+        The relative tolerance for adaptive timestepping (Optional, defaults to 1e-7)
     maxiters : int
         The total number of linear iterations over the whole simulation. (Defaults to 1e9, only needs to be increased for extremely long simulations)
     sparse : bool
@@ -171,10 +170,10 @@ class Node(pydantic.BaseModel):
     def __init__(
         self,
         node_id: Optional[NonNegativeInt] = None,
-        geometry: Point = Point("nan", "nan"),
+        geometry: Point = Point(),
         **kwargs,
     ) -> None:
-        if is_empty(geometry):
+        if geometry.is_empty:
             raise (ValueError("Node geometry must be a valid Point"))
         super().__init__(node_id=node_id, geometry=geometry, **kwargs)
 

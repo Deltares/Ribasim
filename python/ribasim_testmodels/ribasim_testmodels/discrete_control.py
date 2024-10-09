@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 from ribasim.config import Node
-from ribasim.model import Model
+from ribasim.model import Model, Solver
 from ribasim.nodes import (
     basin,
     discrete_control,
@@ -388,6 +388,7 @@ def level_range_model() -> Model:
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
+        solver=Solver(abstol=1e-6, reltol=1e-5),
     )
 
     model.basin.add(
