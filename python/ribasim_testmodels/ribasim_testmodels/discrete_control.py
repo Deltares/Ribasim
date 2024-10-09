@@ -613,6 +613,13 @@ def continuous_concentration_condition_model() -> Model:
                 substance=["Cl"],
                 concentration=[1.0],  # start of slightly salty
             ),
+            basin.Concentration(
+                time=pd.date_range(
+                    start="2020-01-01", end="2021-01-01", periods=10, unit="ms"
+                ),
+                substance="Bar",
+                precipitation=0.1,
+            ),
         ],
     )
 
@@ -634,7 +641,7 @@ def continuous_concentration_condition_model() -> Model:
             level_boundary.Static(level=[25.0]),
             level_boundary.Concentration(
                 time=pd.date_range(
-                    start="2020-01-01", end="2021-01-01", periods=2, unit="ms"
+                    start="2020-01-01", end="2021-01-01", periods=10, unit="ms"
                 ),
                 substance="Cl",
                 concentration=35.0,
@@ -644,7 +651,16 @@ def continuous_concentration_condition_model() -> Model:
 
     flowb = model.flow_boundary.add(
         Node(4, Point(1, 0)),
-        [flow_boundary.Static(flow_rate=[10])],
+        [
+            flow_boundary.Static(flow_rate=[10]),
+            flow_boundary.Concentration(
+                time=pd.date_range(
+                    start="2020-01-01", end="2021-01-01", periods=11, unit="ms"
+                ),
+                substance="Foo",
+                concentration=1.0,
+            ),
+        ],
     )
 
     discretec = model.discrete_control.add(
