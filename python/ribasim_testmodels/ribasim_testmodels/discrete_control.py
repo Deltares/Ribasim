@@ -631,7 +631,7 @@ def continuous_concentration_condition_model() -> Model:
                 control_state=["On", "Off"],
                 # active=[True, False],
                 resistance=[0.001, 100],
-                max_flow_rate=[11, 0.0],
+                max_flow_rate=[0.11, 0.0],
             )
         ],
     )
@@ -653,7 +653,7 @@ def continuous_concentration_condition_model() -> Model:
     flowb = model.flow_boundary.add(
         Node(4, Point(1, 0)),
         [
-            flow_boundary.Static(flow_rate=[10]),
+            flow_boundary.Static(flow_rate=[0.1]),
             flow_boundary.Concentration(
                 time=pd.date_range(
                     start="2020-01-01", end="2021-01-01", periods=11, unit="ms"
@@ -678,7 +678,7 @@ def continuous_concentration_condition_model() -> Model:
         ],
     )
 
-    outl = model.outlet.add(Node(6, Point(0, -0.5)), [outlet.Static(flow_rate=[20])])
+    outl = model.outlet.add(Node(6, Point(0, -0.5)), [outlet.Static(flow_rate=[0.2])])
     term = model.terminal.add(Node(7, Point(0, -1)))
 
     model.edge.add(levelb, linearr)
