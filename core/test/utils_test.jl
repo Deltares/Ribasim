@@ -43,6 +43,7 @@ end
         mass,
         substances,
         time = StructVector{Ribasim.BasinTimeV1}(undef, 0),
+        concentration_time = StructVector{Ribasim.BasinConcentrationV1}(undef, 0),
     )
 
     @test Ribasim.basin_levels(basin, 2)[1] === 4.0
@@ -97,6 +98,7 @@ end
         level_to_area = [level_to_area],
         demand,
         time = StructVector{Ribasim.BasinTimeV1}(undef, 0),
+        concentration_time = StructVector{Ribasim.BasinConcentrationV1}(undef, 0),
         concentration_state,
         concentration,
         mass,
