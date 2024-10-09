@@ -306,7 +306,7 @@ else
     T = Vector{Float64}
 end
 """
-@kwdef struct Basin{C, V} <: AbstractParameterNode
+@kwdef struct Basin{C, D, V} <: AbstractParameterNode
     node_id::Vector{NodeID}
     inflow_ids::Vector{Vector{NodeID}} = [NodeID[]]
     outflow_ids::Vector{Vector{NodeID}} = [NodeID[]]
@@ -340,6 +340,7 @@ end
     demand::Vector{Float64}
     # Data source for parameter updates
     time::StructVector{BasinTimeV1, C, Int}
+    concentration_time::StructVector{BasinConcentrationV1, D, Int}
     # Concentrations
     evaporate_mass::Bool = true
     cumulative_in::Vector{Float64} = zeros(length(node_id))
@@ -463,11 +464,12 @@ node_id: node ID of the LevelBoundary node
 active: whether this node is active
 level: the fixed level of this 'infinitely big basin'
 """
-@kwdef struct LevelBoundary <: AbstractParameterNode
+@kwdef struct LevelBoundary{C} <: AbstractParameterNode
     node_id::Vector{NodeID}
     active::Vector{Bool}
     level::Vector{ScalarInterpolation}
     concentration::Matrix{Float64} = Matrix{Float64}()
+    concentration_time::StructVector{LevelBoundaryConcentrationV1, C, Int}
 end
 
 """
@@ -478,7 +480,7 @@ cumulative_flow: The exactly integrated cumulative boundary flow since the start
 cumulative_flow_saveat: The exactly integrated cumulative boundary flow since the last saveat
 flow_rate: flow rate (exact)
 """
-@kwdef struct FlowBoundary <: AbstractParameterNode
+@kwdef struct FlowBoundary{C} <: AbstractParameterNode
     node_id::Vector{NodeID}
     outflow_edges::Vector{Vector{EdgeMetadata}}
     active::Vector{Bool}
@@ -486,6 +488,7 @@ flow_rate: flow rate (exact)
     cumulative_flow_saveat::Vector{Float64} = zeros(length(node_id))
     flow_rate::Vector{ScalarInterpolation}
     concentration::Matrix{Float64}
+    concentration_time::StructVector{FlowBoundaryConcentrationV1, C, Int}
 end
 
 """
@@ -751,7 +754,7 @@ allocated: water flux currently allocated to UserDemand per priority (node_idx, 
 return_factor: the factor in [0,1] of how much of the abstracted water is given back to the system
 min_level: The level of the source basin below which the UserDemand does not abstract
 """
-@kwdef struct UserDemand <: AbstractDemandNode
+@kwdef struct UserDemand{C} <: AbstractDemandNode
     node_id::Vector{NodeID}
     inflow_edge::Vector{EdgeMetadata} = []
     outflow_edge::Vector{EdgeMetadata} = []
@@ -764,6 +767,7 @@ min_level: The level of the source basin below which the UserDemand does not abs
     return_factor::Vector{ScalarInterpolation}
     min_level::Vector{Float64}
     concentration::Matrix{Float64}
+    concentration_time::StructVector{UserDemandConcentrationV1, C, Int}
 end
 
 """

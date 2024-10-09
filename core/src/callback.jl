@@ -10,7 +10,14 @@ function create_callbacks(
     u0::ComponentVector,
     saveat,
 )::Tuple{CallbackSet, SavedResults}
-    (; starttime, basin, tabulated_rating_curve) = parameters
+    (;
+        starttime,
+        basin,
+        flow_boundary,
+        level_boundary,
+        user_demand,
+        tabulated_rating_curve,
+    ) = parameters
     callbacks = SciMLBase.DECallback[]
 
     # Check for negative storage
@@ -33,9 +40,25 @@ function create_callbacks(
     push!(callbacks, basin_cb)
 
     # Update boundary concentrations
-    # tstops = get_tstops(basin.concentration.time, starttime)
-    # conc_cb = PresetTimeCallback(tstops, update_conc; save_positions = (false, false))
-    # push!(callbacks, conc_cb)
+    tstops = get_tstops(basin.concentration_time.time, starttime)
+    conc_cb =
+        PresetTimeCallback(tstops, update_basin_conc!; save_positions = (false, false))
+    push!(callbacks, conc_cb)
+
+    tstops = get_tstops(flow_boundary.concentration_time.time, starttime)
+    conc_cb =
+        PresetTimeCallback(tstops, update_flowb_conc!; save_positions = (false, false))
+    push!(callbacks, conc_cb)
+
+    tstops = get_tstops(level_boundary.concentration_time.time, starttime)
+    conc_cb =
+        PresetTimeCallback(tstops, update_levelb_conc!; save_positions = (false, false))
+    push!(callbacks, conc_cb)
+
+    tstops = get_tstops(user_demand.concentration_time.time, starttime)
+    conc_cb =
+        PresetTimeCallback(tstops, update_userd_conc!; save_positions = (false, false))
+    push!(callbacks, conc_cb)
 
     # Update TabulatedRatingCurve Q(h) relationships
     tstops = get_tstops(tabulated_rating_curve.time.time, starttime)
@@ -710,6 +733,51 @@ function update_basin!(integrator)::Nothing
     end
     return nothing
 end
+
+"Load updates from 'Basin / concentration' into the parameters"
+function update_basin_conc!(integrator)::Nothing
+    (; p) = integrator
+    (; basin) = p
+    (; node_id, concentration, concentration_time, substances) = basin
+    t = datetime_since(integrator.t, integrator.p.starttime)
+
+    rows = searchsorted(concentration_time.time, t)
+    timeblock = view(concentration_time, rows)
+
+    for row in timeblock
+        i = searchsortedfirst(node_id, NodeID(NodeType.Basin, row.node_id, 0))
+        j = findfirst(==(Symbol(row.substance)), substances)
+        ismissing(row.drainage) || (concentration[1, i, j] = row.drainage)
+        ismissing(row.precipitation) || (concentration[2, i, j] = row.precipitation)
+    end
+    return nothing
+end
+
+"Load updates from 'concentration' tables into the parameters"
+function update_conc!(integrator, parameter, nodetype)::Nothing
+    (; p) = integrator
+    node = getproperty(p, parameter)
+    (; basin) = p
+    (; node_id, concentration, concentration_time) = node
+    (; substances) = basin
+    t = datetime_since(integrator.t, integrator.p.starttime)
+
+    rows = searchsorted(concentration_time.time, t)
+    timeblock = view(concentration_time, rows)
+
+    for row in timeblock
+        i = searchsortedfirst(node_id, NodeID(nodetype, row.node_id, 0))
+        j = findfirst(==(Symbol(row.substance)), substances)
+        ismissing(row.concentration) || (concentration[i, j] = row.concentration)
+    end
+    return nothing
+end
+update_flowb_conc!(integrator)::Nothing =
+    update_conc!(integrator, :flow_boundary, NodeType.FlowBoundary)
+update_levelb_conc!(integrator)::Nothing =
+    update_conc!(integrator, :level_boundary, NodeType.LevelBoundary)
+update_userd_conc!(integrator)::Nothing =
+    update_conc!(integrator, :user_demand, NodeType.UserDemand)
 
 "Solve the allocation problem for all demands and assign allocated abstractions."
 function update_allocation!(integrator)::Nothing
