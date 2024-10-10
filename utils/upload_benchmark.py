@@ -13,7 +13,7 @@ parser.add_argument("source", type=Path, help="The source file to upload")
 parser.add_argument("destination", help="The destination file in the MinIO server")
 parser.add_argument(
     "--accesskey",
-    help="The secret key to access the MinIO server",
+    help="The access key to access the MinIO server",
     default=os.environ.get("MINIO_ACCESS_KEY", "KwKRzscudy3GvRB8BN1Z"),
 )
 parser.add_argument(
