@@ -267,7 +267,6 @@ function check_water_balance_error(
 )::Nothing
     (; u, p, t) = integrator
     (; basin, water_balance_abstol, water_balance_reltol) = p
-    errors = false
     current_storage = basin.current_storage[parent(u)]
     formulate_storages!(current_storage, u, u, p, t)
 
@@ -301,13 +300,8 @@ function check_water_balance_error(
 
         if abs(balance_error) > water_balance_abstol &&
            abs(relative_error) > water_balance_reltol
-            errors = true
-            @error "Too large water balance error" id balance_error relative_error
+            @error "Too large water balance error" id balance_error relative_error t
         end
-    end
-    if errors
-        t = datetime_since(t, p.starttime)
-        error("Too large water balance error(s) detected at t = $t")
     end
 
     @. basin.storage_prev_saveat = current_storage
@@ -662,4 +656,36 @@ end
 function update_subgrid_level(model::Model)::Model
     update_subgrid_level!(model.integrator)
     return model
+end
+
+function reset_cumulatives!(integrator)::Nothing
+    (; u, p, t) = integrator
+
+    # Update the storage0 to the current storage
+    # such that the current storage is correct.
+    current_storage = p.basin.current_storage[parent(u)]
+    formulate_storages!(current_storage, u, u, p, t)
+    p.basin.storage0 .= current_storage
+
+    # Reset the cumulative states
+    u.tabulated_rating_curve .= 0.0
+    u.pump .= 0.0
+    u.outlet .= 0.0
+    u.user_demand_inflow .= 0.0
+    u.user_demand_outflow .= 0.0
+    u.linear_resistance .= 0.0
+    u.manning_resistance .= 0.0
+    u.evaporation .= 0.0
+    u.infiltration .= 0.0
+
+    # Reset the exact cumulative parameters
+    p.basin.cumulative_precipitation .= 0.0
+    p.basin.cumulative_drainage .= 0.0
+    p.basin.cumulative_drainage .= 0.0
+    p.flow_boundary.cumulative_flow .= 0.0
+
+    # Allow the solver to handle the discontinuity
+    u_modified!(integrator, true)
+
+    return nothing
 end
