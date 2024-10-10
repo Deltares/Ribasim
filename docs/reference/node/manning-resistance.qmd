@@ -136,9 +136,10 @@ where $s$ is a relaxed square root function:
 
 $$
 s(x; x_0)
+=
 \begin{align}
   \begin{cases}
-    \frac{x}{4\sqrt{x_0}}\left(5-\left(\frac{x}{x_0}\right)^2\right) &\text{ if } |x| < x_0 \\
+    \frac{\sqrt{x_0}}{4}\left(\frac{x}{p}\right)^3\left(9 - 5\left(\frac{x}{p}\right)^2\right) &\text{ if } |x| < x_0 \\
     \textrm{sign}(x)\sqrt{|x|} &\text{ if } |x| \ge x_0
   \end{cases}
 \end{align}
@@ -151,7 +152,8 @@ import matplotlib.pyplot as plt
 
 def s(x, threshold):
   if np.abs(x) < threshold:
-    return 1/4 * (x / np.sqrt(threshold)) * (5.0 - (x / threshold)**2)
+    x_scaled = x / threshold
+    return np.sqrt(threshold) * x_scaled**3 * (9 - 5*x_scaled**2) / 4
   else:
     return np.sign(x)*np.sqrt(np.abs(x))
 
@@ -165,7 +167,7 @@ y_s = [s(x_, threshold) for x_ in x]
 
 ax.plot(x, y_o, ls = ":", label = r"sign$(x)\sqrt{|x|}$")
 ax.plot(x, y_s, color = "C0", label = r"$s\left(x; 10^{-3}\right)$")
-ax.legend()
+ax.legend();
 ```
 
 :::{.callout-note}

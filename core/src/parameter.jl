@@ -268,6 +268,8 @@ In-memory storage of saved mean flows for writing to results.
 - `flow_boundary`: The exact integrated mean flows of flow boundaries
 - `precipitation`: The exact integrated mean precipitation
 - `drainage`: The exact integrated mean drainage
+- `balance_error`: The (absolute) water balance error
+- `relative_error`: The relative water balance error
 - `t`: Endtime of the interval over which is averaged
 """
 @kwdef struct SavedFlow{V}
@@ -277,6 +279,9 @@ In-memory storage of saved mean flows for writing to results.
     flow_boundary::Vector{Float64}
     precipitation::Vector{Float64}
     drainage::Vector{Float64}
+    storage_rate::Vector{Float64} = zero(precipitation)
+    balance_error::Vector{Float64} = zero(precipitation)
+    relative_error::Vector{Float64} = zero(precipitation)
     t::Float64
 end
 
@@ -313,7 +318,8 @@ end
     vertical_flux::V = zeros(length(node_id))
     # Initial_storage
     storage0::Vector{Float64} = zeros(length(node_id))
-    storage_prev_saveat::Vector{Float64} = zeros(length(node_id))
+    # Storage at previous saveat without storage0
+    Δstorage_prev_saveat::Vector{Float64} = zeros(length(node_id))
     # Analytically integrated forcings
     cumulative_precipitation::Vector{Float64} = zeros(length(node_id))
     cumulative_drainage::Vector{Float64} = zeros(length(node_id))
@@ -840,6 +846,8 @@ const ModelGraph = MetaGraph{
     state_outflow_edge::C4 = ComponentVector()
     all_nodes_active::Base.RefValue{Bool} = Ref(false)
     tprev::Base.RefValue{Float64} = Ref(0.0)
+    # Sparse matrix for combining flows into storages
+    flow_to_storage::SparseMatrixCSC{Float64, Int64} = spzeros(1, 1)
     # Water balance tolerances
     water_balance_abstol::Float64
     water_balance_reltol::Float64

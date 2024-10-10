@@ -104,6 +104,7 @@ function Model(config::Config)::Model
     du0 = zero(u0)
 
     parameters = set_state_flow_edges(parameters, u0)
+    parameters = build_flow_to_storage(parameters, u0)
     parameters = @set parameters.u_prev_saveat = zero(u0)
 
     # The Solver algorithm
