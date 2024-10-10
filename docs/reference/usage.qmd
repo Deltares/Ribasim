@@ -35,7 +35,7 @@ The calculation and result stepsize need not be the same.
 If you wish to save every calculation step, set `saveat = 0`.
 If you wish to not save any intermediate steps, set `saveat = inf`.
 
-The water balance error is a measure of the error in the consistency with which the core keeps track of the water resources per basin, for more details see [here](../concept/equations.qmd#the-water-balance-error).
+The water balance error is a measure of the error in the consistency with which the core keeps track of the water resources per Basin, for more details see [here](/concept/equations.qmd#the-water-balance-error).
 `water_balance_abstol` and `water_balance_reltol` give upper bounds on this error, above which an error is thrown.
 A too large error generally indicates an error in the code or floating point truncation errors.
 
