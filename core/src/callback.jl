@@ -256,13 +256,13 @@ function save_flow(u, t, integrator)
         drainage,
         t,
     )
-    check_water_balance_error(integrator, saved_flow, Δt)
+    check_water_balance_error!(saved_flow, integrator, Δt)
     return saved_flow
 end
 
-function check_water_balance_error(
-    integrator::DEIntegrator,
+function check_water_balance_error!(
     saved_flow::SavedFlow,
+    integrator::DEIntegrator,
     Δt::Float64,
 )::Nothing
     (; u, p, t) = integrator
@@ -307,6 +307,10 @@ function check_water_balance_error(
             errors = true
             @error "Too large water balance error" id balance_error relative_error
         end
+
+        saved_flow.storage_rate[id.idx] = storage_rate
+        saved_flow.balance_error[id.idx] = balance_error
+        saved_flow.relative_error[id.idx] = relative_error
     end
     if errors
         t = datetime_since(t, p.starttime)

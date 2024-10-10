@@ -268,6 +268,8 @@ In-memory storage of saved mean flows for writing to results.
 - `flow_boundary`: The exact integrated mean flows of flow boundaries
 - `precipitation`: The exact integrated mean precipitation
 - `drainage`: The exact integrated mean drainage
+- `balance_error`: The (absolute) water balance error
+- `relative_error`: The relative water balance error
 - `t`: Endtime of the interval over which is averaged
 """
 @kwdef struct SavedFlow{V}
@@ -277,6 +279,9 @@ In-memory storage of saved mean flows for writing to results.
     flow_boundary::Vector{Float64}
     precipitation::Vector{Float64}
     drainage::Vector{Float64}
+    storage_rate::Vector{Float64} = zero(precipitation)
+    balance_error::Vector{Float64} = zero(precipitation)
+    relative_error::Vector{Float64} = zero(precipitation)
     t::Float64
 end
 
