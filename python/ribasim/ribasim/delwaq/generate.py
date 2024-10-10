@@ -2,10 +2,11 @@
 
 import csv
 import shutil
+import sys
 from datetime import timedelta
 from pathlib import Path
 
-from ribasim.utils import MissingOptionalModule
+from ribasim.utils import MissingOptionalModule, _concat
 
 try:
     import networkx as nx
@@ -21,8 +22,7 @@ except ImportError:
     jinja2 = MissingOptionalModule("jinja2", "delwaq")  # type: ignore
 
 import ribasim
-
-from .util import (
+from ribasim.delwaq.util import (
     strfdelta,
     ugrid,
     write_flows,
@@ -70,17 +70,18 @@ def _make_boundary(data, boundary_type):
     """
     bid = _boundary_name(data.node_id.iloc[0], boundary_type)
     piv = (
-        data.pivot_table(index="time", columns="substance", values="concentration")
+        data.pivot_table(
+            index="time", columns="substance", values="concentration", fill_value=-999
+        )
         .reset_index()
         .reset_index(drop=True)
     )
-    piv.time = piv.time.dt.strftime("%Y/%m/%d-%H:%M:%S")
+    # Convert Arrow time to Numpy to avoid needing tzdata somehow
+    piv.time = piv.time.astype("datetime64[ns]").dt.strftime("%Y/%m/%d-%H:%M:%S")
     boundary = {
         "name": bid,
         "substances": list(map(_quote, piv.columns[1:])),
-        "df": piv.to_string(
-            formatters={"time": _quote}, header=False, index=False, na_rep=-999
-        ),
+        "df": piv.to_string(formatters={"time": _quote}, header=False, index=False),
     }
     substances = data.substance.unique()
     return boundary, substances
@@ -181,7 +182,7 @@ def _setup_graph(nodes, edge, use_evaporation=True):
             boundary_id -= 1
             node_mapping[node_id] = boundary_id
         else:
-            raise Exception("Found unexpected node $node_id in delwaq graph.")
+            raise Exception(f"Found unexpected node {node_id} in delwaq graph.")
 
     nx.relabel_nodes(G, node_mapping, copy=False)
 
@@ -281,8 +282,12 @@ def generate(
 
     # Read in model and results
     model = ribasim.Model.read(toml_path)
-    basins = pd.read_feather(toml_path.parent / "results" / "basin.arrow")
-    flows = pd.read_feather(toml_path.parent / "results" / "flow.arrow")
+    basins = pd.read_feather(
+        toml_path.parent / "results" / "basin.arrow", dtype_backend="pyarrow"
+    )
+    flows = pd.read_feather(
+        toml_path.parent / "results" / "flow.arrow", dtype_backend="pyarrow"
+    )
 
     output_folder.mkdir(exist_ok=True)
 
@@ -359,7 +364,7 @@ def generate(
             columns={boundary_type: "flow_rate"}
         )
         df["edge_id"] = edge_id
-        nflows = pd.concat([nflows, df], ignore_index=True)
+        nflows = _concat([nflows, df], ignore_index=True)
 
     # Save flows to Delwaq format
     nflows.sort_values(by=["time", "edge_id"], inplace=True)
@@ -488,6 +493,5 @@ def generate(
 
 if __name__ == "__main__":
     # Generate a Delwaq model from the default Ribasim model
-    repo_dir = delwaq_dir.parents[1]
-    toml_path = repo_dir / "generated_testmodels/basic/ribasim.toml"
-    graph, substances = generate(toml_path)
+    toml_path = Path(sys.argv[1])
+    graph, substances = generate(toml_path, toml_path.parent / "delwaq")

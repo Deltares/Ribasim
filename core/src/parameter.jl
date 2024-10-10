@@ -305,13 +305,12 @@ else
     T = Vector{Float64}
 end
 """
-@kwdef struct Basin{C, V1, V2} <: AbstractParameterNode
+@kwdef struct Basin{C, V} <: AbstractParameterNode
     node_id::Vector{NodeID}
     inflow_ids::Vector{Vector{NodeID}} = [NodeID[]]
     outflow_ids::Vector{Vector{NodeID}} = [NodeID[]]
     # Vertical fluxes
-    vertical_flux_from_input::V1 = zeros(length(node_id))
-    vertical_flux_bmi::V2 = zeros(length(node_id))
+    vertical_flux::V = zeros(length(node_id))
     # Initial_storage
     storage0::Vector{Float64} = zeros(length(node_id))
     # Storage at previous saveat without storage0
@@ -732,7 +731,6 @@ inflow_edge: incoming flow edge
 outflow_edge: outgoing flow edge metadata
     The ID of the source node is always the ID of the UserDemand node
 active: whether this node is active and thus demands water
-realized_bmi: Cumulative inflow volume, for read or reset by BMI only
 demand: water flux demand of UserDemand per priority (node_idx, priority_idx)
     Each UserDemand has a demand for all priorities,
     which is 0.0 if it is not provided explicitly.
@@ -749,7 +747,6 @@ min_level: The level of the source basin below which the UserDemand does not abs
     inflow_edge::Vector{EdgeMetadata} = []
     outflow_edge::Vector{EdgeMetadata} = []
     active::Vector{Bool} = fill(true, length(node_id))
-    realized_bmi::Vector{Float64} = zeros(length(node_id))
     demand::Matrix{Float64}
     demand_reduced::Matrix{Float64}
     demand_itp::Vector{Vector{ScalarInterpolation}}
@@ -819,11 +816,11 @@ const ModelGraph = MetaGraph{
     Float64,
 }
 
-@kwdef struct Parameters{C1, C2, C3, C4, C5, V1, V2}
+@kwdef struct Parameters{C1, C2, C3, C4, C5, V}
     starttime::DateTime
     graph::ModelGraph
     allocation::Allocation
-    basin::Basin{C1, V1, V2}
+    basin::Basin{C1, V}
     linear_resistance::LinearResistance
     manning_resistance::ManningResistance
     tabulated_rating_curve::TabulatedRatingCurve{C2}

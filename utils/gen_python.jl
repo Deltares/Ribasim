@@ -5,21 +5,17 @@ using Legolas
 using OteraEngine
 using Ribasim
 
-pythontype(::Type{<:AbstractString}) = "Series[str]"
-pythontype(::Type{<:Integer}) = "Series[Int32]"
-pythontype(::Type{<:AbstractFloat}) = "Series[float]"
-pythontype(::Type{<:Number}) = "Series[float]"
-pythontype(::Type{<:Bool}) = "Series[pa.BOOL]" # pa.BOOL is a nullable boolean type, bool is not nullable
-pythontype(::Type{<:Enum}) = "Series[str]"
-pythontype(::Type{<:DateTime}) = "Series[Timestamp]"
-pythontype(::Type{<:Any}) = "Series[Any]"
-function pythontype(T::Union)
-    nonmissingtypes = filter(x -> x != Missing, Base.uniontypes(T))
-    return join(map(pythontype, nonmissingtypes), " | ")
-end
+pythontype(::Type{Union{Missing, T}}) where {T} = pythontype(T)
+pythontype(::Type{<:AbstractString}) = "Series[Annotated[pd.ArrowDtype, pyarrow.string()]]"
+pythontype(::Type{<:Integer}) = "Series[Annotated[pd.ArrowDtype, pyarrow.int32()]]"
+pythontype(::Type{<:AbstractFloat}) = "Series[Annotated[pd.ArrowDtype, pyarrow.float64()]]"
+pythontype(::Type{<:Number}) = "Series[Annotated[pd.ArrowDtype, pyarrow.float64()]]"
+pythontype(::Type{<:Bool}) = "Series[Annotated[pd.ArrowDtype, pyarrow.bool_()]]"
+pythontype(::Type{<:Enum}) = "Series[Annotated[pd.ArrowDtype, pyarrow.string()]]"
+pythontype(::Type{<:DateTime}) = "Series[Annotated[pd.ArrowDtype, pyarrow.timestamp('ms')]]"
 
 isnullable(_) = "False"
-isnullable(T::Union) = typeintersect(T, Missing) == Missing ? "True" : "False"
+isnullable(::Type{T}) where {T >: Union{Missing}} = "True"
 
 function strip_prefix(T::DataType)
     n = string(T)

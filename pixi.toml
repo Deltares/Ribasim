@@ -1,6 +1,6 @@
 [project]
 name = "Ribasim"
-version = "2024.10.0"
+version = "2024.11.0"
 description = "Water resources modeling"
 authors = ["Deltares and contributors <ribasim.info@deltares.nl>"]
 channels = ["conda-forge"]
@@ -88,25 +88,28 @@ test-ribasim-regression = { cmd = "julia --project=core --eval 'using Pkg; Pkg.t
 generate-testmodels = { cmd = "python utils/generate-testmodels.py", inputs = [
     "python/ribasim",
     "python/ribasim_testmodels",
+    "utils/generate-testmodels.py",
 ], outputs = [
     "generated_testmodels",
 ] }
 tests = { depends_on = ["lint", "test-ribasim-python", "test-ribasim-core"] }
 delwaq = { cmd = "pytest python/ribasim/tests/test_delwaq.py" }
+gen-delwaq = { cmd = "python python/ribasim/ribasim/delwaq/generate.py" }
 model-integration-test = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test(test_args=[\"integration\"])'" }
 # Codegen
 codegen = { cmd = "julia --project utils/gen_python.jl && ruff format python/ribasim/ribasim/schemas.py python/ribasim/ribasim/validation.py", depends_on = [
     "initialize-julia",
 ], inputs = [
     "core",
+    "utils",
 ], outputs = [
     "python/ribasim/ribasim/schemas.py",
     "python/ribasim/ribasim/validation.py",
 ] }
 # Publish
 add-ribasim-icon = { cmd = "rcedit build/ribasim/ribasim.exe --set-icon docs/assets/ribasim.ico" }
-build-ribasim-python-wheel = { cmd = "rm --recursive --force dist && python -m build && twine check dist/*", cwd = "python/ribasim" }
-build-ribasim-api-wheel = { cmd = "rm --recursive --force dist && python -m build && twine check dist/*", cwd = "python/ribasim_api" }
+build-ribasim-python-wheel = { cmd = "rm --recursive --force dist && hatch build && twine check dist/*", cwd = "python/ribasim" }
+build-ribasim-api-wheel = { cmd = "rm --recursive --force dist && hatch build && twine check dist/*", cwd = "python/ribasim_api" }
 build-wheels = { depends_on = [
     "build-ribasim-python-wheel",
     "build-ribasim-api-wheel",
@@ -197,6 +200,7 @@ ribasim_testmodels = { path = "python/ribasim_testmodels", editable = true }
 
 [feature.dev.dependencies]
 gh = "*"
+hatch = "*"
 juliaup = "*"
 jupyterlab = "*"
 libgdal-arrow-parquet = "*"

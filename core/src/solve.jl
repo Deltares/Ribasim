@@ -87,7 +87,7 @@ function set_current_basin_properties!(
         current_cumulative_drainage,
         cumulative_precipitation,
         cumulative_drainage,
-        vertical_flux_from_input,
+        vertical_flux,
     ) = basin
     current_storage = current_storage[parent(du)]
     current_level = current_level[parent(du)]
@@ -95,16 +95,15 @@ function set_current_basin_properties!(
     current_cumulative_precipitation = current_cumulative_precipitation[parent(du)]
     current_cumulative_drainage = current_cumulative_drainage[parent(du)]
 
-    # The exactly integrated precipitation and drainage up to the t of this water_balance call
+    # The exact cumulative precipitation and drainage up to the t of this water_balance call
     dt = t - p.tprev[]
     for node_id in basin.node_id
         fixed_area = basin_areas(basin, node_id.idx)[end]
         current_cumulative_precipitation[node_id.idx] =
             cumulative_precipitation[node_id.idx] +
-            fixed_area * vertical_flux_from_input.precipitation[node_id.idx] * dt
+            fixed_area * vertical_flux.precipitation[node_id.idx] * dt
     end
-    @. current_cumulative_drainage =
-        cumulative_drainage + dt * vertical_flux_from_input.drainage
+    @. current_cumulative_drainage = cumulative_drainage + dt * vertical_flux.drainage
 
     formulate_storages!(current_storage, du, u, p, t)
 
@@ -186,7 +185,7 @@ Smoothly let the evaporation flux go to 0 when at small water depths
 Currently at less than 0.1 m.
 """
 function update_vertical_flux!(basin::Basin, du::AbstractVector)::Nothing
-    (; vertical_flux_from_input, current_level, current_area) = basin
+    (; vertical_flux, current_level, current_area) = basin
     current_level = current_level[parent(du)]
     current_area = current_area[parent(du)]
 
@@ -198,8 +197,8 @@ function update_vertical_flux!(basin::Basin, du::AbstractVector)::Nothing
         depth = max(level - bottom, 0.0)
         factor = reduction_factor(depth, 0.1)
 
-        evaporation = area * factor * vertical_flux_from_input.potential_evaporation[id.idx]
-        infiltration = factor * vertical_flux_from_input.infiltration[id.idx]
+        evaporation = area * factor * vertical_flux.potential_evaporation[id.idx]
+        infiltration = factor * vertical_flux.infiltration[id.idx]
 
         du.evaporation[id.idx] = evaporation
         du.infiltration[id.idx] = infiltration
@@ -292,7 +291,7 @@ Formulate the time derivative of the storage in a single Basin.
 """
 function formulate_dstorage(du::ComponentVector, p::Parameters, t::Number, node_id::NodeID)
     (; basin) = p
-    (; inflow_ids, outflow_ids, vertical_flux_from_input) = basin
+    (; inflow_ids, outflow_ids, vertical_flux) = basin
     @assert node_id.type == NodeType.Basin
     dstorage = 0.0
     for inflow_id in inflow_ids[node_id.idx]
@@ -303,8 +302,8 @@ function formulate_dstorage(du::ComponentVector, p::Parameters, t::Number, node_
     end
 
     fixed_area = basin_areas(basin, node_id.idx)[end]
-    dstorage += fixed_area * vertical_flux_from_input.precipitation[node_id.idx]
-    dstorage += vertical_flux_from_input.drainage[node_id.idx]
+    dstorage += fixed_area * vertical_flux.precipitation[node_id.idx]
+    dstorage += vertical_flux.drainage[node_id.idx]
     dstorage -= du.evaporation[node_id.idx]
     dstorage -= du.infiltration[node_id.idx]
 

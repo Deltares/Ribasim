@@ -14,7 +14,7 @@ from pydantic import NonNegativeInt, PrivateAttr, model_validator
 from shapely.geometry import LineString, MultiLineString, Point
 
 from ribasim.input_base import SpatialTableModel
-from ribasim.utils import UsedIDs
+from ribasim.utils import UsedIDs, _concat
 from ribasim.validation import (
     can_connect,
     control_edge_neighbor_amount,
@@ -131,7 +131,7 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
             index=pd.Index([edge_id], name="edge_id"),
         )
 
-        self.df = GeoDataFrame[EdgeSchema](pd.concat([self.df, table_to_append]))
+        self.df = GeoDataFrame[EdgeSchema](_concat([self.df, table_to_append]))
         if self.df.duplicated(subset=["from_node_id", "to_node_id"]).any():
             raise ValueError(
                 f"Edges have to be unique, but edge with from_node_id {from_node.node_id} to_node_id {to_node.node_id} already exists."

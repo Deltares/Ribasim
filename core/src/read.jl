@@ -577,14 +577,8 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     set_current_value!(table, node_id, time, config.starttime)
     check_no_nans(table, "Basin")
 
-    vertical_flux_from_input =
+    vertical_flux =
         ComponentVector(; precipitation, potential_evaporation, drainage, infiltration)
-    vertical_flux_bmi = ComponentVector(;
-        precipitation = zero(precipitation),
-        evaporation = zero(evaporation),
-        drainage = zero(drainage),
-        infiltration = zero(infiltration),
-    )
 
     demand = zeros(length(node_id))
 
@@ -642,8 +636,7 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
         node_id,
         inflow_ids = [collect(inflow_ids(graph, id)) for id in node_id],
         outflow_ids = [collect(outflow_ids(graph, id)) for id in node_id],
-        vertical_flux_from_input,
-        vertical_flux_bmi,
+        vertical_flux,
         current_level,
         current_area,
         storage_to_level,
@@ -1034,7 +1027,6 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)::UserDemand
     n_user = length(node_ids)
     n_priority = length(priorities)
     active = fill(true, n_user)
-    realized_bmi = zeros(n_user)
     demand = zeros(n_user, n_priority)
     demand_reduced = zeros(n_user, n_priority)
     trivial_timespan = [0.0, prevfloat(Inf)]
@@ -1087,7 +1079,6 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)::UserDemand
         inflow_edge = inflow_edge.(Ref(graph), node_ids),
         outflow_edge = outflow_edge.(Ref(graph), node_ids),
         active,
-        realized_bmi,
         demand,
         demand_reduced,
         demand_itp,

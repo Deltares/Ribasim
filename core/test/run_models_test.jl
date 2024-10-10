@@ -131,8 +131,8 @@ end
     @test model isa Ribasim.Model
     (; basin) = model.integrator.p
     @test basin.current_storage[Float64[]] ≈ [1000]
-    @test basin.vertical_flux_from_input.precipitation == [0.0]
-    @test basin.vertical_flux_from_input.drainage == [0.0]
+    @test basin.vertical_flux.precipitation == [0.0]
+    @test basin.vertical_flux.drainage == [0.0]
     du = get_du(model.integrator)
     @test du.evaporation == [0.0]
     @test du.infiltration == [0.0]
@@ -154,9 +154,9 @@ end
     (; u, p, t) = integrator
     Ribasim.water_balance!(du, u, p, t)
     stor = integrator.p.basin.current_storage[parent(du)]
-    prec = p.basin.vertical_flux_from_input.precipitation
+    prec = p.basin.vertical_flux.precipitation
     evap = du.evaporation
-    drng = p.basin.vertical_flux_from_input.drainage
+    drng = p.basin.vertical_flux.drainage
     infl = du.infiltration
     # The dynamic data has missings, but these are not set.
     @test prec == [0.0]
@@ -239,7 +239,7 @@ end
     @test successful_retcode(model)
     @test allunique(Ribasim.tsaves(model))
     du = get_du(model.integrator)
-    precipitation = model.integrator.p.basin.vertical_flux_from_input.precipitation
+    precipitation = model.integrator.p.basin.vertical_flux.precipitation
     @test length(precipitation) == 4
     @test model.integrator.p.basin.current_storage[parent(du)] ≈
           Float32[720.23611, 694.8785, 415.22371, 1334.3859] atol = 2.0 skip = Sys.isapple()
@@ -280,7 +280,7 @@ end
     @test sparse_fdm.integrator.u ≈ sparse_ad.integrator.u atol = 4
     @test dense_fdm.integrator.u ≈ sparse_ad.integrator.u atol = 4
 
-    config = Ribasim.Config(toml_path; solver_algorithm = "Rodas5", solver_autodiff = true)
+    config = Ribasim.Config(toml_path; solver_algorithm = "Rodas5P", solver_autodiff = true)
     time_ad = Ribasim.run(config)
     @test successful_retcode(time_ad)
     @test time_ad.integrator.u ≈ sparse_ad.integrator.u atol = 10

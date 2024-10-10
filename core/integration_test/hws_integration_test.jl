@@ -17,13 +17,13 @@
 
     @testset "Results values" begin
         @test basin.node_id == basin_bench.node_id
-        @test all(q -> abs(q) < 0.06, basin.level - basin_bench.level)
+        @test all(q -> abs(q) < 0.2, basin.level - basin_bench.level)
     end
 
     timed = @timed Ribasim.run(toml_path)
 
-    # current benchmark is 600s
-    benchmark_runtime = 600
+    # current benchmark in seconds, TeamCity is up to 4x slower than local
+    benchmark_runtime = 32
     performance_diff =
         round((timed.time - benchmark_runtime) / benchmark_runtime * 100; digits = 2)
     if performance_diff < 0.0

@@ -37,6 +37,8 @@ jobs:
       - uses: prefix-dev/setup-pixi@v0.8.1
         with:
           pixi-version: "latest"
+      - name: Prepare pixi
+        run: pixi run install-ci
       - name: Test Ribasim Core
         run: |
           pixi run test-ribasim-core-cov

@@ -5,6 +5,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [v2024.11.0] - 2024-10-08
+
+This major new release contains many improvements.
+A new formulation allows much smaller water balance errors, which is combined with several performance improvements.
+Ribasim Python does more validation that was previously only done in the core.
+The Ribasim QGIS plugin now sets the relations between tables for easier model inspection.
+Adding `min_upstream_level` and `max_downstream_level` to Pump and Outlet means DiscreteControl is often no longer needed.
+The most significant breaking change is making the `node_id` and `edge_id` the index of the Node and Edge table; these need to be globally unique.
+
+Starting from this release Ribasim is labeled as beta software.
+Since development is currently mainly driven by applications in the Dutch water system, we expect that addition work needs to be done for general use outside the Netherlands.
+
+For coupled simulation with MODFLOW and/or MetaSWAP, this release is part of the [iMOD Coupler](https://deltares.github.io/iMOD-Documentation/coupler.html), specifically release [v2024.4.0](https://github.com/Deltares/imod_coupler/releases/tag/v2024.4.0)
+
 ### Added
 
 - Support discrete control based on an external concentration condition. [#1660](https://github.com/Deltares/Ribasim/pull/1660)
@@ -39,6 +53,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Disallow missing priority parameter when using allocation. [#1745](https://github.com/Deltares/Ribasim/pull/1745)
 - Rename Outlet's `min_crest_level` to `min_upstream_level`. [#1788](https://github.com/Deltares/Ribasim/pull/1788)
 - Only allow flow under gravity in TabulatedRatingCurve. [#1795](https://github.com/Deltares/Ribasim/pull/1795)
+- Use `dtype_backend="pyarrow"` for Pandas DataFrames. [#1781](https://github.com/Deltares/Ribasim/pull/1781)
 
 ### Fixed
 - Remove oscillations in ManningResistance. [#1750](https://github.com/Deltares/Ribasim/pull/1750)

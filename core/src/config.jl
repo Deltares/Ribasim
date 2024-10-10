@@ -18,12 +18,19 @@ using OrdinaryDiffEqNonlinearSolve: NLNewton
 using OrdinaryDiffEqLowOrderRK: Euler, RK4
 using OrdinaryDiffEqTsit5: Tsit5
 using OrdinaryDiffEqSDIRK: ImplicitEuler, KenCarp4, TRBDF2
-using OrdinaryDiffEqBDF: QNDF
-using OrdinaryDiffEqRosenbrock: Rodas5, Rosenbrock23
+using OrdinaryDiffEqBDF: FBDF, QNDF
+using OrdinaryDiffEqRosenbrock: Rosenbrock23, Rodas4P, Rodas5P
 
 export Config, Solver, Results, Logging, Toml
 export algorithm,
-    camel_case, snake_case, input_path, results_path, convert_saveat, convert_dt, nodetypes
+    camel_case,
+    snake_case,
+    input_path,
+    database_path,
+    results_path,
+    convert_saveat,
+    convert_dt,
+    nodetypes
 
 const schemas =
     getfield.(
@@ -100,8 +107,8 @@ const nodetypes = collect(keys(nodekinds))
     dtmin::Float64 = 0.0
     dtmax::Union{Float64, Nothing} = nothing
     force_dtmin::Bool = false
-    abstol::Float64 = 1e-6
-    reltol::Float64 = 1e-5
+    abstol::Float64 = 1e-7
+    reltol::Float64 = 1e-7
     water_balance_abstol::Float64 = 1e-3
     water_balance_reltol::Float64 = 1e-2
     maxiters::Int = 1e9
@@ -133,7 +140,6 @@ end
     ribasim_version::String
     input_dir::String
     results_dir::String
-    database::String = "database.gpkg"
     allocation::Allocation = Allocation()
     solver::Solver = Solver()
     logging::Logging = Logging()
@@ -166,6 +172,11 @@ Base.dirname(config::Config) = getfield(config, :dir)
 "Construct a path relative to both the TOML directory and the optional `input_dir`"
 function input_path(config::Config, path::String)
     return normpath(dirname(config), config.input_dir, path)
+end
+
+"Construct the database path relative to both the TOML directory and the optional `input_dir`"
+function database_path(config::Config)
+    return normpath(dirname(config), config.input_dir, "database.gpkg")
 end
 
 "Construct a path relative to both the TOML directory and the optional `results_dir`"
@@ -213,9 +224,11 @@ Map from config string to a supported algorithm type from [OrdinaryDiffEq](https
 Supported algorithms:
 
 - `QNDF`
+- `FBDF`
 - `Rosenbrock23`
 - `TRBDF2`
-- `Rodas5`
+- `Rodas4P`
+- `Rodas5P`
 - `KenCarp4`
 - `Tsit5`
 - `RK4`
@@ -224,9 +237,11 @@ Supported algorithms:
 """
 const algorithms = Dict{String, Type}(
     "QNDF" => QNDF,
+    "FBDF" => FBDF,
     "Rosenbrock23" => Rosenbrock23,
     "TRBDF2" => TRBDF2,
-    "Rodas5" => Rodas5,
+    "Rodas4P" => Rodas4P,
+    "Rodas5P" => Rodas5P,
     "KenCarp4" => KenCarp4,
     "Tsit5" => Tsit5,
     "RK4" => RK4,

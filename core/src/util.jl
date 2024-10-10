@@ -446,11 +446,10 @@ function get_all_priorities(db::DB, config::Config)::Vector{Int32}
         (FlowDemandStaticV1, "FlowDemand / static"),
         (FlowDemandTimeV1, "FlowDemand / time"),
     ]
-        if valid_priorities(
-            load_structvector(db, config, type).priority,
-            config.allocation.use_allocation,
-        )
-            union!(priorities, load_structvector(db, config, type).priority)
+        priority_col = load_structvector(db, config, type).priority
+        priority_col = Int32.(coalesce.(priority_col, Int32(0)))
+        if valid_priorities(priority_col, config.allocation.use_allocation)
+            union!(priorities, priority_col)
         else
             is_valid = false
             @error "Missing priority parameter(s) for a $name node in the allocation problem."

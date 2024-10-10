@@ -83,9 +83,10 @@ def test_invalid_node_id():
 
 def test_tabulated_rating_curve_model(tabulated_rating_curve, tmp_path):
     model_orig = tabulated_rating_curve
-    model_orig.set_crs(model_orig.crs)
     basin_area = tabulated_rating_curve.basin.area.df
     assert basin_area is not None
+    assert basin_area.crs == CRS.from_epsg(28992)
+    model_orig.set_crs(model_orig.crs)
     assert basin_area.geometry.geom_type.iloc[0] == "MultiPolygon"
     assert basin_area.crs == CRS.from_epsg(28992)
     model_orig.write(tmp_path / "tabulated_rating_curve/ribasim.toml")
@@ -114,15 +115,15 @@ def test_write_adds_fid_in_tables(basic, tmp_path):
     model_orig.write(tmp_path / "basic/ribasim.toml")
     with connect(tmp_path / "basic/database.gpkg") as connection:
         query = f"select * from {esc_id('Basin / profile')}"
-        df = pd.read_sql_query(query, connection)
+        df = pd.read_sql_query(query, connection, dtype_backend="pyarrow")
         assert "fid" in df.columns
 
         query = "select node_id from Node"
-        df = pd.read_sql_query(query, connection)
+        df = pd.read_sql_query(query, connection, dtype_backend="pyarrow")
         assert "node_id" in df.columns
 
         query = "select edge_id from Edge"
-        df = pd.read_sql_query(query, connection)
+        df = pd.read_sql_query(query, connection, dtype_backend="pyarrow")
         assert "edge_id" in df.columns
 
 

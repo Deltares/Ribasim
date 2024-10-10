@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 from ribasim.config import Node
-from ribasim.model import Model
+from ribasim.model import Model, Solver
 from ribasim.nodes import (
     basin,
     discrete_control,
@@ -388,6 +388,7 @@ def level_range_model() -> Model:
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
+        solver=Solver(abstol=1e-6, reltol=1e-5),
     )
 
     model.basin.add(
@@ -542,7 +543,9 @@ def concentration_condition_model() -> Model:
             basin.Profile(area=1000.0, level=[0.0, 1.0]),
             basin.State(level=[20.0]),
             basin.ConcentrationExternal(
-                time=pd.date_range(start="2020-01-01", end="2021-01-01", periods=100),
+                time=pd.date_range(
+                    start="2020-01-01", end="2021-01-01", periods=100, unit="ms"
+                ),
                 substance="kryptonite",
                 concentration=np.sin(np.linspace(0, 6 * np.pi, 100)) ** 2,
             ),
