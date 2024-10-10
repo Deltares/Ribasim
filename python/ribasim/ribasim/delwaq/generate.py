@@ -2,6 +2,7 @@
 
 import csv
 import shutil
+import sys
 from datetime import timedelta
 from pathlib import Path
 
@@ -21,8 +22,7 @@ except ImportError:
     jinja2 = MissingOptionalModule("jinja2", "delwaq")  # type: ignore
 
 import ribasim
-
-from .util import (
+from ribasim.delwaq.util import (
     strfdelta,
     ugrid,
     write_flows,
@@ -493,6 +493,5 @@ def generate(
 
 if __name__ == "__main__":
     # Generate a Delwaq model from the default Ribasim model
-    repo_dir = delwaq_dir.parents[1]
-    toml_path = repo_dir / "generated_testmodels/basic/ribasim.toml"
-    graph, substances = generate(toml_path)
+    toml_path = Path(sys.argv[1])
+    graph, substances = generate(toml_path, toml_path.parent / "delwaq")
