@@ -277,6 +277,7 @@ In-memory storage of saved mean flows for writing to results.
     flow_boundary::Vector{Float64}
     precipitation::Vector{Float64}
     drainage::Vector{Float64}
+    concentration::Matrix{Float64}
     t::Float64
 end
 
@@ -305,7 +306,7 @@ else
     T = Vector{Float64}
 end
 """
-@kwdef struct Basin{C, V} <: AbstractParameterNode
+@kwdef struct Basin{C, D, V} <: AbstractParameterNode
     node_id::Vector{NodeID}
     inflow_ids::Vector{Vector{NodeID}} = [NodeID[]]
     outflow_ids::Vector{Vector{NodeID}} = [NodeID[]]
@@ -339,9 +340,17 @@ end
     demand::Vector{Float64}
     # Data source for parameter updates
     time::StructVector{BasinTimeV1, C, Int}
+    concentration_time::StructVector{BasinConcentrationV1, D, Int}
     # Concentrations
+    evaporate_mass::Bool = true
+    cumulative_in::Vector{Float64} = zeros(length(node_id))
+    storage_prev::Vector{Float64} = zeros(length(node_id))
+    concentration_state::Matrix{Float64}  # basin, substance
+    concentration::Array{Float64, 3}  # boundary, basin, substance
+    mass::Matrix{Float64}  # basin, substance
     concentration_external::Vector{Dict{String, ScalarInterpolation}} =
         Dict{String, ScalarInterpolation}[]
+    substances::OrderedSet{Symbol}
 end
 
 """
@@ -455,10 +464,12 @@ node_id: node ID of the LevelBoundary node
 active: whether this node is active
 level: the fixed level of this 'infinitely big basin'
 """
-@kwdef struct LevelBoundary <: AbstractParameterNode
+@kwdef struct LevelBoundary{C} <: AbstractParameterNode
     node_id::Vector{NodeID}
     active::Vector{Bool}
     level::Vector{ScalarInterpolation}
+    concentration::Matrix{Float64} = Matrix{Float64}()
+    concentration_time::StructVector{LevelBoundaryConcentrationV1, C, Int}
 end
 
 """
@@ -469,13 +480,15 @@ cumulative_flow: The exactly integrated cumulative boundary flow since the start
 cumulative_flow_saveat: The exactly integrated cumulative boundary flow since the last saveat
 flow_rate: flow rate (exact)
 """
-@kwdef struct FlowBoundary <: AbstractParameterNode
+@kwdef struct FlowBoundary{C} <: AbstractParameterNode
     node_id::Vector{NodeID}
     outflow_edges::Vector{Vector{EdgeMetadata}}
     active::Vector{Bool}
     cumulative_flow::Vector{Float64} = zeros(length(node_id))
     cumulative_flow_saveat::Vector{Float64} = zeros(length(node_id))
     flow_rate::Vector{ScalarInterpolation}
+    concentration::Matrix{Float64}
+    concentration_time::StructVector{FlowBoundaryConcentrationV1, C, Int}
 end
 
 """
@@ -741,7 +754,7 @@ allocated: water flux currently allocated to UserDemand per priority (node_idx, 
 return_factor: the factor in [0,1] of how much of the abstracted water is given back to the system
 min_level: The level of the source basin below which the UserDemand does not abstract
 """
-@kwdef struct UserDemand <: AbstractDemandNode
+@kwdef struct UserDemand{C} <: AbstractDemandNode
     node_id::Vector{NodeID}
     inflow_edge::Vector{EdgeMetadata} = []
     outflow_edge::Vector{EdgeMetadata} = []
@@ -753,6 +766,8 @@ min_level: The level of the source basin below which the UserDemand does not abs
     allocated::Matrix{Float64}
     return_factor::Vector{ScalarInterpolation}
     min_level::Vector{Float64}
+    concentration::Matrix{Float64}
+    concentration_time::StructVector{UserDemandConcentrationV1, C, Int}
 end
 
 """
@@ -815,36 +830,36 @@ const ModelGraph = MetaGraph{
     Float64,
 }
 
-@kwdef struct Parameters{C1, C2, C3, C4, C5, V}
+@kwdef struct Parameters{C1, C2, C3, C4, C5, C6, C7, C8, C9, V}
     starttime::DateTime
     graph::ModelGraph
     allocation::Allocation
-    basin::Basin{C1, V}
+    basin::Basin{C1, C2, V}
     linear_resistance::LinearResistance
     manning_resistance::ManningResistance
-    tabulated_rating_curve::TabulatedRatingCurve{C2}
-    level_boundary::LevelBoundary
-    flow_boundary::FlowBoundary
+    tabulated_rating_curve::TabulatedRatingCurve{C3}
+    level_boundary::LevelBoundary{C4}
+    flow_boundary::FlowBoundary{C5}
     pump::Pump
     outlet::Outlet
     terminal::Terminal
     discrete_control::DiscreteControl
     continuous_control::ContinuousControl
     pid_control::PidControl
-    user_demand::UserDemand
+    user_demand::UserDemand{C6}
     level_demand::LevelDemand
     flow_demand::FlowDemand
     subgrid::Subgrid
-    # Per state the in- and outflow edges associated with that state (if theu exist)
-    state_inflow_edge::C3 = ComponentVector()
-    state_outflow_edge::C4 = ComponentVector()
+    # Per state the in- and outflow edges associated with that state (if they exist)
+    state_inflow_edge::C7 = ComponentVector()
+    state_outflow_edge::C8 = ComponentVector()
     all_nodes_active::Base.RefValue{Bool} = Ref(false)
     tprev::Base.RefValue{Float64} = Ref(0.0)
     # Water balance tolerances
     water_balance_abstol::Float64
     water_balance_reltol::Float64
     # State at previous saveat
-    u_prev_saveat::C5 = ComponentVector()
+    u_prev_saveat::C9 = ComponentVector()
 end
 
 # To opt-out of type checking for ForwardDiff

@@ -566,6 +566,22 @@ class TabulatedRatingCurveTimeSchema(_BaseSchema):
     )
 
 
+class UserDemandConcentrationSchema(_BaseSchema):
+    fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
+    node_id: Series[Annotated[pd.ArrowDtype, pyarrow.int32()]] = pa.Field(
+        nullable=False, default=0
+    )
+    time: Series[Annotated[pd.ArrowDtype, pyarrow.timestamp("ms")]] = pa.Field(
+        nullable=False
+    )
+    substance: Series[Annotated[pd.ArrowDtype, pyarrow.string()]] = pa.Field(
+        nullable=False
+    )
+    concentration: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
+        nullable=False
+    )
+
+
 class UserDemandStaticSchema(_BaseSchema):
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: Series[Annotated[pd.ArrowDtype, pyarrow.int32()]] = pa.Field(

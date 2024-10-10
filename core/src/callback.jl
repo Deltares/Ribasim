@@ -10,7 +10,14 @@ function create_callbacks(
     u0::ComponentVector,
     saveat,
 )::Tuple{CallbackSet, SavedResults}
-    (; starttime, basin, tabulated_rating_curve) = parameters
+    (;
+        starttime,
+        basin,
+        flow_boundary,
+        level_boundary,
+        user_demand,
+        tabulated_rating_curve,
+    ) = parameters
     callbacks = SciMLBase.DECallback[]
 
     # Check for negative storage
@@ -31,6 +38,27 @@ function create_callbacks(
     tstops = get_tstops(basin.time.time, starttime)
     basin_cb = PresetTimeCallback(tstops, update_basin!; save_positions = (false, false))
     push!(callbacks, basin_cb)
+
+    # Update boundary concentrations
+    tstops = get_tstops(basin.concentration_time.time, starttime)
+    conc_cb =
+        PresetTimeCallback(tstops, update_basin_conc!; save_positions = (false, false))
+    push!(callbacks, conc_cb)
+
+    tstops = get_tstops(flow_boundary.concentration_time.time, starttime)
+    conc_cb =
+        PresetTimeCallback(tstops, update_flowb_conc!; save_positions = (false, false))
+    push!(callbacks, conc_cb)
+
+    tstops = get_tstops(level_boundary.concentration_time.time, starttime)
+    conc_cb =
+        PresetTimeCallback(tstops, update_levelb_conc!; save_positions = (false, false))
+    push!(callbacks, conc_cb)
+
+    tstops = get_tstops(user_demand.concentration_time.time, starttime)
+    conc_cb =
+        PresetTimeCallback(tstops, update_userd_conc!; save_positions = (false, false))
+    push!(callbacks, conc_cb)
 
     # Update TabulatedRatingCurve Q(h) relationships
     tstops = get_tstops(tabulated_rating_curve.time.time, starttime)
@@ -90,16 +118,29 @@ Update with the latest timestep:
 
 """
 function update_cumulative_flows!(u, t, integrator)::Nothing
-    (; p, tprev, dt) = integrator
-    (; basin, flow_boundary, allocation) = p
+    (; p, uprev, tprev, dt) = integrator
+    (;
+        basin,
+        state_inflow_edge,
+        state_outflow_edge,
+        user_demand,
+        level_boundary,
+        flow_boundary,
+        allocation,
+    ) = p
     (; vertical_flux) = basin
 
     # Update tprev
     p.tprev[] = t
 
+    # Reset cumulative flows
+    fill!(basin.cumulative_in, 0.0)
+
     # Update cumulative forcings which are integrated exactly
     @. basin.cumulative_drainage += vertical_flux.drainage * dt
     @. basin.cumulative_drainage_saveat += vertical_flux.drainage * dt
+    basin.mass .+= basin.concentration[1, :, :] .* vertical_flux.drainage * dt
+    basin.cumulative_in .= vertical_flux.drainage * dt
 
     # Precipitation depends on fixed area
     for node_id in basin.node_id
@@ -108,15 +149,26 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
 
         basin.cumulative_precipitation[node_id.idx] += added_precipitation
         basin.cumulative_precipitation_saveat[node_id.idx] += added_precipitation
+        basin.mass[node_id.idx, :] .+=
+            basin.concentration[2, node_id.idx, :] .* added_precipitation
+        basin.cumulative_in[node_id.idx] += added_precipitation
     end
 
     # Exact boundary flow over time step
-    for (id, flow_rate, active) in
-        zip(flow_boundary.node_id, flow_boundary.flow_rate, flow_boundary.active)
+    for (id, flow_rate, active, edge) in zip(
+        flow_boundary.node_id,
+        flow_boundary.flow_rate,
+        flow_boundary.active,
+        flow_boundary.outflow_edges,
+    )
         if active
+            outflow_id = edge[1].edge[2]
             volume = integral(flow_rate, tprev, t)
             flow_boundary.cumulative_flow[id.idx] += volume
             flow_boundary.cumulative_flow_saveat[id.idx] += volume
+            basin.mass[outflow_id.idx, :] .+=
+                flow_boundary.concentration[id.idx, :] .* volume
+            basin.cumulative_in[outflow_id.idx] += volume
         end
     end
 
@@ -141,6 +193,99 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
             end
         end
     end
+
+    # Placeholder concentration for Terminals and the like
+    # TODO Move to Terminal(?!)
+    placeholder = zeros(length(basin.substances))
+    placeholder[1] = 1.0  # Continuity
+
+    for (inflow_edge, outflow_edge) in zip(state_inflow_edge, state_outflow_edge)
+        from_flow = inflow_edge.edge[1]
+        to_flow = outflow_edge.edge[2]
+        if from_flow.type == NodeType.Basin
+            flow = flow_update_on_edge(integrator, inflow_edge.edge)
+            if flow < 0
+                basin.cumulative_in[from_flow.idx] -= flow
+                if to_flow.type == NodeType.Basin
+                    basin.mass[from_flow.idx, :] .-=
+                        basin.concentration_state[to_flow.idx, :] .* flow
+                elseif to_flow.type == NodeType.LevelBoundary
+                    basin.mass[from_flow.idx, :] .-=
+                        level_boundary.concentration[to_flow.idx, :] .* flow
+                elseif to_flow.type == NodeType.UserDemand
+                    basin.mass[from_flow.idx, :] .-=
+                        user_demand.concentration[to_flow.idx, :] .* flow
+                else
+                    # Fix mass balance, even though Terminals should not leak
+                    basin.mass[from_flow.idx, :] .-= placeholder .* flow
+                    @warn "Unsupported outflow type $(to_flow.type) #$(to_flow.value) with flow $flow"
+                end
+            end
+        end
+
+        if to_flow.type == NodeType.Basin
+            flow = flow_update_on_edge(integrator, outflow_edge.edge)
+            if flow > 0
+                basin.cumulative_in[to_flow.idx] += flow
+                if from_flow.type == NodeType.Basin
+                    basin.mass[to_flow.idx, :] .+=
+                        basin.concentration_state[from_flow.idx, :] .* flow
+                elseif from_flow.type == NodeType.LevelBoundary
+                    basin.mass[to_flow.idx, :] .+=
+                        level_boundary.concentration[from_flow.idx, :] .* flow
+                elseif from_flow.type == NodeType.UserDemand
+                    basin.mass[to_flow.idx, :] .+=
+                        user_demand.concentration[from_flow.idx, :] .* flow
+                elseif from_flow.type == NodeType.Terminal
+                    # TODO Apparently UserDemand outflow is discoupled from it's inflow
+                    # and its inflow_edge is Terminal #0 twice
+                    basin.mass[to_flow.idx, :] .+=
+                        user_demand.concentration[outflow_edge.edge[1].idx, :] .* flow
+                else
+                    @warn "Unsupported inflow type $(from_flow.type)"
+                end
+            end
+        end
+    end
+
+    basin.concentration_state .= basin.mass ./ (basin.storage_prev .+ basin.cumulative_in)
+
+    for (inflow_edge, outflow_edge) in zip(state_inflow_edge, state_outflow_edge)
+        from_flow = inflow_edge.edge[1]
+        to_flow = outflow_edge.edge[2]
+        if from_flow.type == NodeType.Basin
+            flow = flow_update_on_edge(integrator, inflow_edge.edge)
+            if flow > 0
+                basin.mass[from_flow.idx, :] .-=
+                    basin.concentration_state[from_flow.idx, :] .* flow
+            end
+        end
+
+        if to_flow.type == NodeType.Basin
+            flow = flow_update_on_edge(integrator, outflow_edge.edge)
+            if flow < 0
+                basin.mass[to_flow.idx, :] .+=
+                    basin.concentration_state[to_flow.idx, :] .* flow
+            end
+        end
+    end
+
+    if basin.evaporate_mass
+        basin.mass .-= basin.concentration_state .* (u.evaporation - uprev.evaporation)
+    end
+    basin.mass .-= basin.concentration_state .* (u.infiltration - uprev.infiltration)
+
+    # Take care of masses getting ever smaller, possibly becoming negative
+    # TODO Should this be bounded by the solver tolerances?
+    for I in eachindex(basin.mass)
+        if (0 - eps(Float64)) < basin.mass[I] < (0 + eps(Float64))
+            basin.mass[I] = 0.0
+        end
+    end
+    any(<(0), basin.mass) && error("Negative mass detected: $(basin.mass)")
+    basin.concentration_state .= basin.mass ./ basin.current_storage[parent(u)]
+    basin.storage_prev .= basin.current_storage[parent(u)]
+
     return nothing
 end
 
@@ -247,6 +392,7 @@ function save_flow(u, t, integrator)
     @. basin.cumulative_precipitation_saveat = 0.0
     @. basin.cumulative_drainage_saveat = 0.0
 
+    concentration = copy(basin.concentration_state)
     saved_flow = SavedFlow(;
         flow = flow_mean,
         inflow = inflow_mean,
@@ -254,6 +400,7 @@ function save_flow(u, t, integrator)
         flow_boundary = flow_boundary_mean,
         precipitation,
         drainage,
+        concentration,
         t,
     )
     check_water_balance_error(integrator, saved_flow, Δt)
@@ -493,6 +640,10 @@ function get_value(subvariable::NamedTuple, p::Parameters, du::AbstractVector, t
 
     elseif startswith(variable, "concentration_external.")
         value = basin.concentration_external[listen_node_id.idx][variable](t)
+    elseif startswith(variable, "concentration.")
+        substance = Symbol(last(split(variable, ".")))
+        var_idx = findfirst(==(substance), basin.substances)
+        value = basin.concentration_state[listen_node_id.idx, var_idx]
     else
         error("Unsupported condition variable $variable.")
     end
@@ -582,6 +733,51 @@ function update_basin!(integrator)::Nothing
     end
     return nothing
 end
+
+"Load updates from 'Basin / concentration' into the parameters"
+function update_basin_conc!(integrator)::Nothing
+    (; p) = integrator
+    (; basin) = p
+    (; node_id, concentration, concentration_time, substances) = basin
+    t = datetime_since(integrator.t, integrator.p.starttime)
+
+    rows = searchsorted(concentration_time.time, t)
+    timeblock = view(concentration_time, rows)
+
+    for row in timeblock
+        i = searchsortedfirst(node_id, NodeID(NodeType.Basin, row.node_id, 0))
+        j = findfirst(==(Symbol(row.substance)), substances)
+        ismissing(row.drainage) || (concentration[1, i, j] = row.drainage)
+        ismissing(row.precipitation) || (concentration[2, i, j] = row.precipitation)
+    end
+    return nothing
+end
+
+"Load updates from 'concentration' tables into the parameters"
+function update_conc!(integrator, parameter, nodetype)::Nothing
+    (; p) = integrator
+    node = getproperty(p, parameter)
+    (; basin) = p
+    (; node_id, concentration, concentration_time) = node
+    (; substances) = basin
+    t = datetime_since(integrator.t, integrator.p.starttime)
+
+    rows = searchsorted(concentration_time.time, t)
+    timeblock = view(concentration_time, rows)
+
+    for row in timeblock
+        i = searchsortedfirst(node_id, NodeID(nodetype, row.node_id, 0))
+        j = findfirst(==(Symbol(row.substance)), substances)
+        ismissing(row.concentration) || (concentration[i, j] = row.concentration)
+    end
+    return nothing
+end
+update_flowb_conc!(integrator)::Nothing =
+    update_conc!(integrator, :flow_boundary, NodeType.FlowBoundary)
+update_levelb_conc!(integrator)::Nothing =
+    update_conc!(integrator, :level_boundary, NodeType.LevelBoundary)
+update_userd_conc!(integrator)::Nothing =
+    update_conc!(integrator, :user_demand, NodeType.UserDemand)
 
 "Solve the allocation problem for all demands and assign allocated abstractions."
 function update_allocation!(integrator)::Nothing
