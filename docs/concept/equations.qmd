@@ -86,12 +86,12 @@ $$
 	\text{storage rate} = \frac{\Delta S_b}{\Delta t}
 $$
 
-in a Basin over a time period $\Delta t = t_1 - t_0$ and compares that to the total inflows and outflows of that Basin over that period. More precisely, we first compute the total inflow and outflow, where:
+in a Basin over a time period $\Delta t$ and compares that to the total inflows and outflows of that Basin over that period. More precisely, we first compute the total inflow and outflow, where:
 
 - $\text{total inflow}$: the precipitation, drainage and horizontal flows into the Basin;
 - $\text{total outflow}$: the evaporation, infiltration and horizontal flows out of the Basin.
 
-Whether a flow is an inflow or an outflow depends on whether the flow contributes to or takes from the Basin storage, and thus this is independent of the edge direction. This is determined for each solver timestep individually.
+Whether a flow is an inflow or an outflow depends on whether the flow contributes to or takes from the Basin storage, which means that this is independent of the edge direction. This is determined for each solver timestep individually.
 
 Then from this we compute the errors:
 
@@ -103,9 +103,9 @@ $$
 $$
 Hence the reference used for computing the relative error is the average of the total inflow and total outflow of the Basin (which are both non-negative).
 
-The default tolerances are $0.001 \text{ m}^3$ for the balance error and $0.01$ for the absolute error, which should not be exceeded for realistic models.
+The default tolerances are $0.001 \text{ m}^3$ for the balance error and $0.01$ for the relative error, which should not be exceeded for realistic models.
 
-In extreme cases where storage rate is many orders of magnitude smaller than the storage itself, these computations can have floating point truncation errors which can lead to large relative errors.  This is however only when the storage is roughly $10^{15}$ or more times bigger than the storage rate.
+In extreme cases where the storage rate is many orders of magnitude smaller than the storage itself, these computations can have floating point truncation errors which can lead to large relative errors.  This is however only when the storage is roughly $ \ge 10^{15}$ times bigger than the storage rate.
 
 ### Example calculation
 
