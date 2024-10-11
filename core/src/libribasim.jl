@@ -197,6 +197,12 @@ Base.@ccallable function get_value_ptr_double(
     get_value_ptr(name, value_ptr)
 end
 
+Base.@ccallable function prepare_time_step(dt::Cdouble)::Cint
+    @try_c begin
+        Ribasim.reset_cumulatives!(model.integrator)
+    end
+end
+
 # supporting code
 
 c_type_name(v::AbstractVector)::String = c_type_name(eltype(v))
