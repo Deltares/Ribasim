@@ -139,44 +139,26 @@ function basin_table(
 
     inflow_rate = FlatVector(saved.flow.saveval, :inflow)
     outflow_rate = FlatVector(saved.flow.saveval, :outflow)
-    precipitation = zeros(nrows)
-    evaporation = zeros(nrows)
-    drainage = zeros(nrows)
+    drainage = FlatVector(saved.flow.saveval, :drainage)
     infiltration = zeros(nrows)
-    balance_error = zeros(nrows)
-    relative_error = zeros(nrows)
+    evaporation = zeros(nrows)
+    precipitation = FlatVector(saved.flow.saveval, :precipitation)
+    storage_rate = FlatVector(saved.flow.saveval, :storage_rate)
+    balance_error = FlatVector(saved.flow.saveval, :balance_error)
+    relative_error = FlatVector(saved.flow.saveval, :relative_error)
 
     idx_row = 0
     for cvec in saved.flow.saveval
-        for (precipitation_, evaporation_, drainage_, infiltration_) in zip(
-            cvec.precipitation,
-            cvec.flow.evaporation,
-            cvec.drainage,
-            cvec.flow.infiltration,
-        )
+        for (evaporation_, infiltration_) in
+            zip(cvec.flow.evaporation, cvec.flow.infiltration)
             idx_row += 1
-            precipitation[idx_row] = precipitation_
             evaporation[idx_row] = evaporation_
-            drainage[idx_row] = drainage_
             infiltration[idx_row] = infiltration_
         end
     end
 
     time = repeat(data.time[begin:(end - 1)]; inner = nbasin)
-    Δtime_seconds = seconds.(diff(data.time))
-    Δtime = repeat(Δtime_seconds; inner = nbasin)
     node_id = repeat(Int32.(data.node_id); outer = ntsteps)
-    storage_rate = Δstorage ./ Δtime
-
-    for i in 1:nrows
-        total_in = inflow_rate[i] + precipitation[i] + drainage[i]
-        total_out = outflow_rate[i] + evaporation[i] + infiltration[i]
-        balance_error[i] = storage_rate[i] - (total_in - total_out)
-        mean_flow_rate = 0.5 * (total_in + total_out)
-        if mean_flow_rate != 0
-            relative_error[i] = balance_error[i] / mean_flow_rate
-        end
-    end
 
     return (;
         time,

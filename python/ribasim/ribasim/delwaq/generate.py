@@ -1,12 +1,13 @@
 """Setup a Delwaq model from a Ribasim model and results."""
 
+import argparse
 import csv
 import shutil
-import sys
 from datetime import timedelta
 from pathlib import Path
 
-from ribasim.utils import MissingOptionalModule, _concat
+from ribasim import nodes
+from ribasim.utils import MissingOptionalModule, _concat, _pascal_to_snake
 
 try:
     import networkx as nx
@@ -275,7 +276,8 @@ def _setup_boundaries(model):
 
 def generate(
     toml_path: Path,
-    output_folder=output_folder,
+    results_folder: Path = Path("results"),
+    output_folder: Path = output_folder,
 ) -> tuple[nx.DiGraph, set[str]]:
     """Generate a Delwaq model from a Ribasim model and results."""
 
@@ -283,10 +285,10 @@ def generate(
     model = ribasim.Model.read(toml_path)
     evaporate_mass = model.solver.evaporate_mass
     basins = pd.read_feather(
-        toml_path.parent / "results" / "basin.arrow", dtype_backend="pyarrow"
+        toml_path.parent / results_folder / "basin.arrow", dtype_backend="pyarrow"
     )
     flows = pd.read_feather(
-        toml_path.parent / "results" / "flow.arrow", dtype_backend="pyarrow"
+        toml_path.parent / results_folder / "flow.arrow", dtype_backend="pyarrow"
     )
 
     output_folder.mkdir(exist_ok=True)
@@ -414,10 +416,13 @@ def generate(
     # Setup initial basin concentrations
     defaults = {
         "Continuity": 1.0,
-        "Basin": 0.0,
+        "Initial": 1.0,
         "LevelBoundary": 0.0,
         "FlowBoundary": 0.0,
         "Terminal": 0.0,
+        "UserDemand": 0.0,
+        "Precipitation": 0.0,
+        "Drainage": 0.0,
     }
     substances.update(defaults.keys())
 
@@ -491,7 +496,56 @@ def generate(
     return G, substances
 
 
+def add_tracer(model, node_id, tracer_name):
+    """Add a tracer to the Delwaq model."""
+    n = model.node_table().df.loc[node_id]
+    node_type = n.node_type
+    if node_type not in [
+        "Basin",
+        "LevelBoundary",
+        "FlowBoundary",
+        "UserDemand",
+    ]:
+        raise ValueError("Can only trace Basins and boundaries")
+    snake_node_type = _pascal_to_snake(node_type)
+    nt = getattr(model, snake_node_type)
+
+    ct = getattr(nodes, snake_node_type)
+    table = ct.Concentration(
+        node_id=[node_id],
+        time=[model.starttime],
+        substance=[tracer_name],
+        concentration=[1.0],
+    )
+    if nt.concentration is None:
+        nt.concentration = table
+    else:
+        nt.concentration = pd.concat([nt.concentration.df, table.df], ignore_index=True)
+
+
 if __name__ == "__main__":
     # Generate a Delwaq model from the default Ribasim model
-    toml_path = Path(sys.argv[1])
-    graph, substances = generate(toml_path, toml_path.parent / "delwaq")
+
+    parser = argparse.ArgumentParser(
+        description="Generate Delwaq input from Ribasim results."
+    )
+    parser.add_argument(
+        "toml_path", type=Path, help="The path to the Ribasim TOML file."
+    )
+    parser.add_argument(
+        "--results_folder",
+        type=Path,
+        help="The relative path to the Ribasim results.",
+        default="results",
+    )
+    parser.add_argument(
+        "--output_path",
+        type=Path,
+        help="The relative path to store the Delwaq model.",
+        default="delwaq",
+    )
+    args = parser.parse_args()
+
+    graph, substances = generate(
+        args.toml_path, args.results_folder, args.toml_path.parent / args.output_path
+    )

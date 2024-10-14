@@ -46,6 +46,12 @@ using SciMLBase:
 # through operator overloading
 using SparseConnectivityTracer: TracerSparsityDetector, jacobian_sparsity, GradientTracer
 
+# For efficient sparse computations
+using SparseArrays: SparseMatrixCSC, spzeros
+
+# Linear algebra
+using LinearAlgebra: mul!
+
 # PreallocationTools is used because the RHS function (water_balance!) gets called with different input types
 # for u, du:
 # - Float64 for normal calls
@@ -92,7 +98,7 @@ using TerminalLoggers: TerminalLogger
 # Convenience wrapper around arrays, divides vectors in
 # separate sections which can be indexed individually.
 # Used for e.g. Basin forcing and the state vector.
-using ComponentArrays: ComponentVector, Axis
+using ComponentArrays: ComponentVector, ComponentArray, Axis, getaxes
 
 # Date and time handling; externally we use the proleptic Gregorian calendar,
 # internally we use a Float64; seconds since the start of the simulation.

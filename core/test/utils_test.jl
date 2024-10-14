@@ -198,6 +198,7 @@ end
     t0 = 0.0
     u0 = Ribasim.build_state_vector(p)
     du0 = copy(u0)
+    p = Ribasim.build_flow_to_storage(p, u0)
     jac_prototype = Ribasim.get_jac_prototype(du0, u0, p, t0)
 
     # rows, cols, _ = findnz(jac_prototype)
@@ -219,6 +220,7 @@ end
     close(db)
     u0 = Ribasim.build_state_vector(p)
     du0 = copy(u0)
+    p = Ribasim.build_flow_to_storage(p, u0)
     jac_prototype = Ribasim.get_jac_prototype(du0, u0, p, t0)
 
     #! format: off
@@ -346,5 +348,41 @@ end
             @test T <: AbstractParameterNode
             @test hasfield(Parameters, snake_case(nodetype))
         end
+    end
+end
+
+@testitem "flow_to_storage matrix" begin
+    using ComponentArrays: ComponentArray, Axis, getaxes
+    using LinearAlgebra: I
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
+    @test ispath(toml_path)
+    model = Ribasim.Model(toml_path)
+    (; u, p) = model.integrator
+    n_basins = length(u.evaporation)
+    (; flow_to_storage) = p
+    flow_to_storage =
+        ComponentArray(flow_to_storage, (Axis(; basins = 1:n_basins), only(getaxes(u))))
+
+    @test flow_to_storage[:, :evaporation] == -I
+    @test flow_to_storage[:, :infiltration] == -I
+
+    for node_name in
+        [:tabulated_rating_curve, :pump, :outlet, :linear_resistance, :manning_resistance]
+        flow_to_storage_node = flow_to_storage[:, node_name]
+        # In every column there is either 0 or 1 instance of 1.0 (flow into a basin)
+        @test all(
+            i -> i ∈ (0, 1),
+            count(==(1.0), collect(flow_to_storage[:, :tabulated_rating_curve]); dims = 1),
+        )
+
+        # In every column there is either 0 or 1 instance of -1.0 (flow out of a basin)
+        @test all(
+            i -> i ∈ (0, 1),
+            count(
+                ==(1 - 0.0),
+                collect(flow_to_storage[:, :tabulated_rating_curve]);
+                dims = 1,
+            ),
+        )
     end
 end

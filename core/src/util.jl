@@ -641,7 +641,7 @@ function get_variable_ref(
     variable::String;
     listen::Bool = true,
 )::Tuple{PreallocationRef, Bool}
-    (; basin, graph) = p
+    (; basin) = p
     errors = false
 
     # Only built here because it is needed to obtain indices
@@ -840,7 +840,8 @@ but the derivative is bounded at x = 0.
 """
 function relaxed_root(x, threshold)
     if abs(x) < threshold
-        1 / 4 * (x / sqrt(threshold)) * (5 - (x / threshold)^2)
+        x_scaled = x / threshold
+        sqrt(threshold) * x_scaled^3 * (9 - 5x_scaled^2) / 4
     else
         sign(x) * sqrt(abs(x))
     end
@@ -951,6 +952,56 @@ function build_state_vector(p::Parameters)
         infiltration = zeros(length(p.basin.node_id)),
         integral = zeros(length(p.pid_control.node_id)),
     )
+end
+
+function build_flow_to_storage(p::Parameters, u::ComponentVector)::Parameters
+    n_basins = length(p.basin.node_id)
+    n_states = length(u)
+    flow_to_storage = ComponentArray(
+        spzeros(n_basins, n_states),
+        (Axis(; basins = 1:n_basins), only(getaxes(u))),
+    )
+
+    for node_name in (
+        :tabulated_rating_curve,
+        :pump,
+        :outlet,
+        :linear_resistance,
+        :manning_resistance,
+        :user_demand,
+    )
+        node = getfield(p, node_name)
+
+        if node_name == :user_demand
+            flow_to_storage_node_inflow = view(flow_to_storage, :, :user_demand_inflow)
+            flow_to_storage_node_outflow = view(flow_to_storage, :, :user_demand_outflow)
+        else
+            flow_to_storage_node_inflow = view(flow_to_storage, :, node_name)
+            flow_to_storage_node_outflow = flow_to_storage_node_inflow
+        end
+
+        for (inflow_edge, outflow_edge) in zip(node.inflow_edge, node.outflow_edge)
+            inflow_id, node_id = inflow_edge.edge
+            if inflow_id.type == NodeType.Basin
+                flow_to_storage_node_inflow[inflow_id.idx, node_id.idx] = -1.0
+            end
+
+            outflow_id = outflow_edge.edge[2]
+            if outflow_id.type == NodeType.Basin
+                flow_to_storage_node_outflow[outflow_id.idx, node_id.idx] = 1.0
+            end
+        end
+    end
+
+    flow_to_storage_evaporation = view(flow_to_storage, :, :evaporation)
+    flow_to_storage_infiltration = view(flow_to_storage, :, :infiltration)
+
+    for i in 1:n_basins
+        flow_to_storage_evaporation[i, i] = -1.0
+        flow_to_storage_infiltration[i, i] = -1.0
+    end
+
+    @set p.flow_to_storage = parent(flow_to_storage)
 end
 
 """
