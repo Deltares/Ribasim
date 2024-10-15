@@ -2,7 +2,7 @@
 
 julia_version = "1.11.0"
 manifest_format = "2.0"
-project_hash = "a2d1a982c3293971ae40e0a7bdfb40a85bd30ac1"
+project_hash = "0257f2772e4bfed0b6316b6871c4495978c173b4"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "eea5d80188827b35333801ef97a40c2ed653b081"
@@ -347,9 +347,9 @@ version = "1.7.0"
 
 [[deps.DataInterpolations]]
 deps = ["FindFirstFunctions", "ForwardDiff", "LinearAlgebra", "PrettyTables", "RecipesBase", "Reexport"]
-git-tree-sha1 = "3944eaf2d6f6e785066d053df583af1882c16d95"
+git-tree-sha1 = "1e1a04e3345dee5292b0b89d1f44dd202454e319"
 uuid = "82cc6244-b520-54b8-b5a6-8a565e85f1d0"
-version = "6.5.1"
+version = "6.4.1"
 
     [deps.DataInterpolations.extensions]
     DataInterpolationsChainRulesCoreExt = "ChainRulesCore"
