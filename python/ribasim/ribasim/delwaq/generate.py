@@ -163,6 +163,20 @@ def _setup_graph(nodes, edge, use_evaporation=True):
                 merge_edges.extend(edge_ids)
                 G.remove_edge(*loop)
 
+    # Remove boundary to boundary edges
+    remove_double_edges = []
+    for x in G.edges(data=True):
+        a, b, d = x
+        if G.nodes[a]["type"] == "Terminal" and G.nodes[b]["type"] == "UserDemand":
+            print("Removing edge between Terminal and UserDemand")
+            remove_double_edges.append(a)
+        elif G.nodes[a]["type"] == "UserDemand" and G.nodes[b]["type"] == "Terminal":
+            remove_double_edges.append(b)
+            print("Removing edge between UserDemand and Terminal")
+
+    for node_id in remove_double_edges:
+        G.remove_node(node_id)
+
     # Relabel the nodes as consecutive integers for Delwaq
     # Note that the node["id"] is the original node_id
     basin_id = 0
@@ -463,6 +477,25 @@ def generate(
     bnd["fid"] = list(map(_boundary_name, bnd["node_id"], bnd["node_type"]))
     bnd["comment"] = ""
     bnd = bnd[["fid", "comment", "node_type"]]
+
+    def prefix(d):
+        """Replace duplicate boundary names with unique names.
+
+        As the string length is fixed, we replace the first
+        character with a unique number.
+        """
+        n = len(d)
+        if n == 1:
+            return d
+        elif n == 2:
+            print(f"Renaming duplicate boundaries {d.iloc[0]}")
+            return [str(i) for i in range(n)] + d.str.lstrip("U")
+        else:
+            raise ValueError("Found boundary with more than 2 duplicates.")
+
+    bnd["fid"] = bnd.groupby("fid").fid.transform(prefix)
+    assert bnd["fid"].is_unique
+
     bnd.to_csv(
         output_folder / "ribasim_bndlist.inc",
         index=False,
