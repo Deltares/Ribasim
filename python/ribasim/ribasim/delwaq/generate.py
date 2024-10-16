@@ -1,6 +1,7 @@
 """Setup a Delwaq model from a Ribasim model and results."""
 
 import csv
+import logging
 import shutil
 import sys
 from datetime import timedelta
@@ -31,6 +32,7 @@ from ribasim.delwaq.util import (
     write_volumes,
 )
 
+logger = logging.getLogger(__name__)
 delwaq_dir = Path(__file__).parent
 output_folder = delwaq_dir / "model"
 
@@ -131,7 +133,7 @@ def _setup_graph(nodes, edge, use_evaporation=True):
 
             for outneighbor_id in out.keys():
                 if outneighbor_id in remove_nodes:
-                    print("Not making edge to removed node.")
+                    logger.debug("Not making edge to removed node.")
                     continue
                 edge = (inneighbor_id, outneighbor_id)
                 edge_id = G.get_edge_data(node_id, outneighbor_id)["id"][0]
@@ -156,12 +158,26 @@ def _setup_graph(nodes, edge, use_evaporation=True):
                 G.nodes[loop[0]]["type"] != "UserDemand"
                 and G.nodes[loop[1]]["type"] != "UserDemand"
             ):
-                print("Found cycle that is not a UserDemand.")
+                logger.debug("Found cycle that is not a UserDemand.")
             else:
                 edge_ids = G.edges[loop]["id"]
                 G.edges[reversed(loop)]["id"].extend(edge_ids)
                 merge_edges.extend(edge_ids)
                 G.remove_edge(*loop)
+
+    # Remove boundary to boundary edges
+    remove_double_edges = []
+    for x in G.edges(data=True):
+        a, b, d = x
+        if G.nodes[a]["type"] == "Terminal" and G.nodes[b]["type"] == "UserDemand":
+            logger.debug("Removing edge between Terminal and UserDemand")
+            remove_double_edges.append(a)
+        elif G.nodes[a]["type"] == "UserDemand" and G.nodes[b]["type"] == "Terminal":
+            remove_double_edges.append(b)
+            logger.debug("Removing edge between UserDemand and Terminal")
+
+    for node_id in remove_double_edges:
+        G.remove_node(node_id)
 
     # Relabel the nodes as consecutive integers for Delwaq
     # Note that the node["id"] is the original node_id
@@ -183,7 +199,7 @@ def _setup_graph(nodes, edge, use_evaporation=True):
             boundary_id -= 1
             node_mapping[node_id] = boundary_id
         else:
-            raise Exception(f"Found unexpected node {node_id} in delwaq graph.")
+            raise ValueError(f"Found unexpected node {node_id} in delwaq graph.")
 
     nx.relabel_nodes(G, node_mapping, copy=False)
 
@@ -463,6 +479,25 @@ def generate(
     bnd["fid"] = list(map(_boundary_name, bnd["node_id"], bnd["node_type"]))
     bnd["comment"] = ""
     bnd = bnd[["fid", "comment", "node_type"]]
+
+    def prefix(d):
+        """Replace duplicate boundary names with unique names.
+
+        As the string length is fixed, we replace the first
+        character with a unique number.
+        """
+        n = len(d)
+        if n == 1:
+            return d
+        elif n == 2:
+            logger.debug(f"Renaming duplicate boundaries {d.iloc[0]}")
+            return [str(i) for i in range(n)] + d.str.lstrip("U")
+        else:
+            raise ValueError("Found boundary with more than 2 duplicates.")
+
+    bnd["fid"] = bnd.groupby("fid").fid.transform(prefix)
+    assert bnd["fid"].is_unique
+
     bnd.to_csv(
         output_folder / "ribasim_bndlist.inc",
         index=False,
