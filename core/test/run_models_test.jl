@@ -184,6 +184,7 @@ end
     using Logging: Debug, with_logger
     using LoggingExtras
     using SciMLBase: successful_retcode
+    using OrdinaryDiffEqBDF: QNDF
     import Tables
     using Dates
 
@@ -197,10 +198,16 @@ end
     end
 
     @test model isa Ribasim.Model
-    p = model.integrator.p
+
+    (; integrator) = model
+    (; p, alg) = integrator
+
     @test p isa Ribasim.Parameters
     @test isconcretetype(typeof(p))
     @test all(isconcretetype, fieldtypes(typeof(p)))
+
+    @test alg isa QNDF
+    @test alg.step_limiter! == Ribasim.limit_flow!
 
     @test successful_retcode(model)
     @test length(model.integrator.sol) == 2 # start and end
@@ -242,7 +249,7 @@ end
     precipitation = model.integrator.p.basin.vertical_flux.precipitation
     @test length(precipitation) == 4
     @test model.integrator.p.basin.current_storage[parent(du)] ≈
-          Float32[720.23611, 694.8785, 415.22371, 1334.3859] atol = 2.0 skip = Sys.isapple()
+          Float32[721.17656, 695.8066, 416.66188, 1334.4879] atol = 2.0 skip = Sys.isapple()
 end
 
 @testitem "Allocation example model" begin
