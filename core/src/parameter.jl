@@ -10,6 +10,9 @@ const SolverStats = @NamedTuple{
 @enumx EdgeType flow control none
 @eval @enumx NodeType $(config.nodetypes...)
 @enumx ContinuousControlType None Continuous PID
+@enumx Substance Continuity = 1 Initial = 2 LevelBoundary = 3 FlowBoundary = 4 UserDemand =
+    5 Drainage = 6 Precipitation = 7
+Base.to_index(id::Substance.T) = Int(id)  # used to index into concentration matrices
 
 # Support creating a NodeType enum instance from a symbol or string
 function NodeType.T(s::Symbol)::NodeType.T
@@ -268,6 +271,7 @@ In-memory storage of saved mean flows for writing to results.
 - `flow_boundary`: The exact integrated mean flows of flow boundaries
 - `precipitation`: The exact integrated mean precipitation
 - `drainage`: The exact integrated mean drainage
+- `concentration`: Concentrations for each basin and substance
 - `balance_error`: The (absolute) water balance error
 - `relative_error`: The relative water balance error
 - `t`: Endtime of the interval over which is averaged
@@ -346,17 +350,27 @@ end
     demand::Vector{Float64}
     # Data source for parameter updates
     time::StructVector{BasinTimeV1, C, Int}
+    # Data source for concentration updates
     concentration_time::StructVector{BasinConcentrationV1, D, Int}
+
     # Concentrations
+    # Config setting to enable/disable evaporation of mass
     evaporate_mass::Bool = true
+    # Cumulative inflow for each basin at a given time
     cumulative_in::Vector{Float64} = zeros(length(node_id))
+    # Storage for each basin at the previous time step
     storage_prev::Vector{Float64} = zeros(length(node_id))
+    # matrix with concentrations for each basin and substance
     concentration_state::Matrix{Float64}  # basin, substance
-    concentration::Array{Float64, 3}  # boundary, basin, substance
-    mass::Matrix{Float64}  # basin, substance
+    # matrix with boundary concentrations for each boundary, basin and substance
+    concentration::Array{Float64, 3}
+    # matrix with mass for each basin and substance
+    mass::Matrix{Float64}
+    # substances in use by the model (ordered like their axis in the concentration matrices)
+    substances::OrderedSet{Symbol}
+    # Data source for external concentrations (used in control)
     concentration_external::Vector{Dict{String, ScalarInterpolation}} =
         Dict{String, ScalarInterpolation}[]
-    substances::OrderedSet{Symbol}
 end
 
 """
@@ -469,12 +483,14 @@ end
 node_id: node ID of the LevelBoundary node
 active: whether this node is active
 level: the fixed level of this 'infinitely big basin'
+concentration: matrix with boundary concentrations for each basin and substance
+concentration_time: Data source for concentration updates
 """
 @kwdef struct LevelBoundary{C} <: AbstractParameterNode
     node_id::Vector{NodeID}
     active::Vector{Bool}
     level::Vector{ScalarInterpolation}
-    concentration::Matrix{Float64} = Matrix{Float64}()
+    concentration::Matrix{Float64}
     concentration_time::StructVector{LevelBoundaryConcentrationV1, C, Int}
 end
 
@@ -485,6 +501,8 @@ active: whether this node is active and thus contributes flow
 cumulative_flow: The exactly integrated cumulative boundary flow since the start of the simulation
 cumulative_flow_saveat: The exactly integrated cumulative boundary flow since the last saveat
 flow_rate: flow rate (exact)
+concentration: matrix with boundary concentrations for each basin and substance
+concentration_time: Data source for concentration updates
 """
 @kwdef struct FlowBoundary{C} <: AbstractParameterNode
     node_id::Vector{NodeID}
@@ -759,6 +777,8 @@ demand_from_timeseries: If false the demand comes from the BMI or is fixed
 allocated: water flux currently allocated to UserDemand per priority (node_idx, priority_idx)
 return_factor: the factor in [0,1] of how much of the abstracted water is given back to the system
 min_level: The level of the source basin below which the UserDemand does not abstract
+concentration: matrix with boundary concentrations for each basin and substance
+concentration_time: Data source for concentration updates
 """
 @kwdef struct UserDemand{C} <: AbstractDemandNode
     node_id::Vector{NodeID}

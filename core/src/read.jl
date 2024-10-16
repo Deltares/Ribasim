@@ -430,8 +430,8 @@ function LevelBoundary(db::DB, config::Config)::LevelBoundary
 
     substances = get_substances(db, config)
     concentration = zeros(length(node_ids), length(substances))
-    concentration[:, 1] .= 1.0  # Continuity
-    concentration[:, 3] .= 1.0  # UserDemand
+    concentration[:, Substance.Continuity] .= 1.0
+    concentration[:, Substance.UserDemand] .= 1.0
     set_concentrations!(concentration, concentration_time, substances, Int32.(node_ids))
 
     if !valid
@@ -473,8 +473,8 @@ function FlowBoundary(db::DB, config::Config, graph::MetaGraph)::FlowBoundary
 
     substances = get_substances(db, config)
     concentration = zeros(length(node_ids), length(substances))
-    concentration[:, 1] .= 1.0  # Continuity
-    concentration[:, 4] .= 1.0  # UserDemand
+    concentration[:, Substance.Continuity] .= 1.0
+    concentration[:, Substance.UserDemand] .= 1.0
     set_concentrations!(concentration, concentration_time, substances, Int32.(node_ids))
 
     if !valid
@@ -598,16 +598,16 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     # TODO Move into a function
     substances = get_substances(db, config)
     concentration_state = zeros(n, length(substances))
-    concentration_state[:, 1] .= 1.0  # Continuity
-    concentration_state[:, 2] .= 1.0  # Initial
+    concentration_state[:, Substance.Continuity] .= 1.0
+    concentration_state[:, Substance.Initial] .= 1.0
     set_concentrations!(concentration_state, concentration_state_data, substances, node_id)
     mass = copy(concentration_state)
 
     concentration = zeros(2, n, length(substances))
-    concentration[1, :, 1] .= 1.0  # Drainage / Continuity
-    concentration[1, :, 6] .= 1.0  # Drainage / Drainage
-    concentration[2, :, 1] .= 1.0  # Precipitation / Continuity
-    concentration[2, :, 7] .= 1.0  # Precipitation / Precipitation
+    concentration[1, :, Substance.Continuity] .= 1.0
+    concentration[1, :, Substance.Drainage] .= 1.0
+    concentration[2, :, Substance.Continuity] .= 1.0
+    concentration[2, :, Substance.Precipitation] .= 1.0
     set_concentrations!(
         view(concentration, 1, :, :),
         concentration_time,
@@ -706,7 +706,7 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     @assert length(storage0) == n "Basin / state length differs from number of Basins"
     basin.storage0 .= storage0
     basin.storage_prev .= storage0
-    basin.mass .*= storage0  # total mass
+    basin.mass .*= storage0  # was initialized by concentration_state, resulting in mass
 
     return basin
 end
@@ -1132,8 +1132,8 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)::UserDemand
 
     substances = get_substances(db, config)
     concentration = zeros(length(node_ids), length(substances))
-    concentration[:, 1] .= 1.0  # Continuity
-    concentration[:, 5] .= 1.0  # UserDemand
+    # Continuity concentration is zero, as the return flow (from a Basin) already includes it
+    concentration[:, Substance.UserDemand] .= 1.0
     set_concentrations!(concentration, concentration_time, substances, ids)
 
     if errors || !valid_demand(node_ids, demand_itp, priorities)
@@ -1506,15 +1506,7 @@ end
 "Determine all substances present in the input over multiple tables"
 function get_substances(db::DB, config::Config)::OrderedSet{Symbol}
     # Hardcoded tracers
-    substances = OrderedSet{Symbol}([
-        :Continuity,
-        :Initial,
-        :LevelBoundary,
-        :FlowBoundary,
-        :UserDemand,
-        :Drainage,
-        :Precipitation,
-    ])
+    substances = OrderedSet{Symbol}(Symbol.(instances(Substance.T)))
     for table in [
         BasinConcentrationStateV1,
         BasinConcentrationV1,

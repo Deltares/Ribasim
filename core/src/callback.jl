@@ -40,25 +40,16 @@ function create_callbacks(
     push!(callbacks, basin_cb)
 
     # Update boundary concentrations
-    tstops = get_tstops(basin.concentration_time.time, starttime)
-    conc_cb =
-        PresetTimeCallback(tstops, update_basin_conc!; save_positions = (false, false))
-    push!(callbacks, conc_cb)
-
-    tstops = get_tstops(flow_boundary.concentration_time.time, starttime)
-    conc_cb =
-        PresetTimeCallback(tstops, update_flowb_conc!; save_positions = (false, false))
-    push!(callbacks, conc_cb)
-
-    tstops = get_tstops(level_boundary.concentration_time.time, starttime)
-    conc_cb =
-        PresetTimeCallback(tstops, update_levelb_conc!; save_positions = (false, false))
-    push!(callbacks, conc_cb)
-
-    tstops = get_tstops(user_demand.concentration_time.time, starttime)
-    conc_cb =
-        PresetTimeCallback(tstops, update_userd_conc!; save_positions = (false, false))
-    push!(callbacks, conc_cb)
+    for (boundary, func) in (
+        (basin, update_basin_conc!),
+        (flow_boundary, update_flowb_conc!),
+        (level_boundary, update_levelb_conc!),
+        (user_demand, update_userd_conc!),
+    )
+        tstops = get_tstops(boundary.concentration_time.time, starttime)
+        conc_cb = PresetTimeCallback(tstops, func; save_positions = (false, false))
+        push!(callbacks, conc_cb)
+    end
 
     # Update TabulatedRatingCurve Q(h) relationships
     tstops = get_tstops(tabulated_rating_curve.time.time, starttime)
@@ -116,6 +107,10 @@ Update with the latest timestep:
 - Cumulative flows/forcings which are input for the allocation algorithm
 - Cumulative flows/forcings which are realized demands in the allocation context
 
+During these cumulative flow updates, we can also update the mass balance of the system,
+as each flow carries mass, based on the concentrations of the flow source.
+Specifically, we first use all the inflows to update the mass of the basins, recalculate
+the basin concentration(s) and then remove the mass that is being lost to the outflows.
 """
 function update_cumulative_flows!(u, t, integrator)::Nothing
     (; p, uprev, tprev, dt) = integrator
@@ -133,7 +128,8 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
     # Update tprev
     p.tprev[] = t
 
-    # Reset cumulative flows
+    # Reset cumulative flows, used to calculate the concentration
+    # of the basins after processing inflows only
     fill!(basin.cumulative_in, 0.0)
 
     # Update cumulative forcings which are integrated exactly
@@ -194,95 +190,128 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
         end
     end
 
-    # Placeholder concentration for Terminals and the like
-    # TODO Move to Terminal(?!)
-    placeholder = zeros(length(basin.substances))
-    placeholder[1] = 1.0  # Continuity
-
-    for (inflow_edge, outflow_edge) in zip(state_inflow_edge, state_outflow_edge)
-        from_flow = inflow_edge.edge[1]
-        to_flow = outflow_edge.edge[2]
-        if from_flow.type == NodeType.Basin
+    # Process mass updates for UserDemand separately
+    # as the inflow and outflow are decoupled in the states
+    for (inflow_edge, outflow_edge) in
+        zip(user_demand.inflow_edge, user_demand.outflow_edge)
+        from_node = inflow_edge.edge[1]
+        to_node = outflow_edge.edge[2]
+        userdemand_idx = outflow_edge.edge[1].idx
+        if from_node.type == NodeType.Basin
             flow = flow_update_on_edge(integrator, inflow_edge.edge)
             if flow < 0
-                basin.cumulative_in[from_flow.idx] -= flow
-                if to_flow.type == NodeType.Basin
-                    basin.mass[from_flow.idx, :] .-=
-                        basin.concentration_state[to_flow.idx, :] .* flow
-                elseif to_flow.type == NodeType.LevelBoundary
-                    basin.mass[from_flow.idx, :] .-=
-                        level_boundary.concentration[to_flow.idx, :] .* flow
-                elseif to_flow.type == NodeType.UserDemand
-                    basin.mass[from_flow.idx, :] .-=
-                        user_demand.concentration[to_flow.idx, :] .* flow
+                basin.mass[from_node.idx, :] .-=
+                    basin.concentration_state[to_node.idx, :] .* flow
+                basin.mass[from_node.idx, :] .-=
+                    user_demand.concentration[userdemand_idx, :] .* flow
+            end
+        end
+        if to_node.type == NodeType.Basin
+            flow = flow_update_on_edge(integrator, outflow_edge.edge)
+            if flow > 0
+                basin.mass[to_node.idx, :] .+=
+                    basin.concentration_state[from_node.idx, :] .* flow
+                basin.mass[to_node.idx, :] .+=
+                    user_demand.concentration[userdemand_idx, :] .* flow
+            end
+        end
+    end
+
+    # Process all mass inflows to basins
+    for (inflow_edge, outflow_edge) in zip(state_inflow_edge, state_outflow_edge)
+        from_node = inflow_edge.edge[1]
+        to_node = outflow_edge.edge[2]
+        if from_node.type == NodeType.Basin
+            flow = flow_update_on_edge(integrator, inflow_edge.edge)
+            if flow < 0
+                basin.cumulative_in[from_node.idx] -= flow
+                if to_node.type == NodeType.Basin
+                    basin.mass[from_node.idx, :] .-=
+                        basin.concentration_state[to_node.idx, :] .* flow
+                elseif to_node.type == NodeType.LevelBoundary
+                    basin.mass[from_node.idx, :] .-=
+                        level_boundary.concentration[to_node.idx, :] .* flow
+                elseif to_node.type == NodeType.UserDemand
+                    basin.mass[from_node.idx, :] .-=
+                        user_demand.concentration[to_node.idx, :] .* flow
                 else
-                    # Fix mass balance, even though Terminals should not leak
-                    basin.mass[from_flow.idx, :] .-= placeholder .* flow
-                    @warn "Unsupported outflow type $(to_flow.type) #$(to_flow.value) with flow $flow"
+                    @warn "Unsupported outflow from $(to_node.type) #$(to_node.value) to $(from_node.type) #$(from_node.value) with flow $flow"
                 end
             end
         end
 
-        if to_flow.type == NodeType.Basin
+        if to_node.type == NodeType.Basin
             flow = flow_update_on_edge(integrator, outflow_edge.edge)
             if flow > 0
-                basin.cumulative_in[to_flow.idx] += flow
-                if from_flow.type == NodeType.Basin
-                    basin.mass[to_flow.idx, :] .+=
-                        basin.concentration_state[from_flow.idx, :] .* flow
-                elseif from_flow.type == NodeType.LevelBoundary
-                    basin.mass[to_flow.idx, :] .+=
-                        level_boundary.concentration[from_flow.idx, :] .* flow
-                elseif from_flow.type == NodeType.UserDemand
-                    basin.mass[to_flow.idx, :] .+=
-                        user_demand.concentration[from_flow.idx, :] .* flow
-                elseif from_flow.type == NodeType.Terminal
-                    # TODO Apparently UserDemand outflow is discoupled from it's inflow
-                    # and its inflow_edge is Terminal #0 twice
-                    basin.mass[to_flow.idx, :] .+=
-                        user_demand.concentration[outflow_edge.edge[1].idx, :] .* flow
+                basin.cumulative_in[to_node.idx] += flow
+                if from_node.type == NodeType.Basin
+                    basin.mass[to_node.idx, :] .+=
+                        basin.concentration_state[from_node.idx, :] .* flow
+                elseif from_node.type == NodeType.LevelBoundary
+                    basin.mass[to_node.idx, :] .+=
+                        level_boundary.concentration[from_node.idx, :] .* flow
+                elseif from_node.type == NodeType.UserDemand
+                    basin.mass[to_node.idx, :] .+=
+                        user_demand.concentration[from_node.idx, :] .* flow
+                elseif from_node.type == NodeType.Terminal && from_node.value == 0
+                    # UserDemand outflow is discoupled from its inflow,
+                    # and the unset flow edge defaults to Terminal #0
+                    nothing
                 else
-                    @warn "Unsupported inflow type $(from_flow.type)"
+                    @warn "Unsupported outflow from $(from_node.type) #$(from_node.value) to $(to_node.type) #$(to_node.value) with flow $flow"
                 end
             end
         end
     end
 
+    # Update the basin concentrations based on the added mass and flows
     basin.concentration_state .= basin.mass ./ (basin.storage_prev .+ basin.cumulative_in)
 
+    # Process all mass outflows from basins
     for (inflow_edge, outflow_edge) in zip(state_inflow_edge, state_outflow_edge)
-        from_flow = inflow_edge.edge[1]
-        to_flow = outflow_edge.edge[2]
-        if from_flow.type == NodeType.Basin
+        from_node = inflow_edge.edge[1]
+        to_node = outflow_edge.edge[2]
+        if from_node.type == NodeType.Basin
             flow = flow_update_on_edge(integrator, inflow_edge.edge)
             if flow > 0
-                basin.mass[from_flow.idx, :] .-=
-                    basin.concentration_state[from_flow.idx, :] .* flow
+                basin.mass[from_node.idx, :] .-=
+                    basin.concentration_state[from_node.idx, :] .* flow
             end
         end
-
-        if to_flow.type == NodeType.Basin
+        if to_node.type == NodeType.Basin
             flow = flow_update_on_edge(integrator, outflow_edge.edge)
             if flow < 0
-                basin.mass[to_flow.idx, :] .+=
-                    basin.concentration_state[to_flow.idx, :] .* flow
+                basin.mass[to_node.idx, :] .+=
+                    basin.concentration_state[to_node.idx, :] .* flow
             end
         end
     end
 
+    # We might want to evaporate mass to keep the mass balance.
     if basin.evaporate_mass
         basin.mass .-= basin.concentration_state .* (u.evaporation - uprev.evaporation)
     end
     basin.mass .-= basin.concentration_state .* (u.infiltration - uprev.infiltration)
 
-    # Take care of masses getting ever smaller, possibly becoming negative
-    # TODO Should this be bounded by the solver tolerances?
+    # Take care of infinitely small masses, possibly becoming negative due to truncation.
     for I in eachindex(basin.mass)
-        if (0 - eps(Float64)) < basin.mass[I] < (0 + eps(Float64))
+        if (-eps(Float64)) < basin.mass[I] < (eps(Float64))
             basin.mass[I] = 0.0
         end
     end
-    any(<(0), basin.mass) && error("Negative mass detected: $(basin.mass)")
+
+    # Check for negative masses
+    if any(<(0), basin.mass)
+        R = CartesianIndices(basin.mass)
+        locations = findall(<(0), basin.mass)
+        for I in locations
+            basin_idx, substance_idx = Tuple(R[I])
+            @error "$(basin.node_id[basin_idx]) has negative mass $(basin.mass[I]) for substance $(basin.substances[substance_idx])"
+        end
+        error("Negative mass(es) detected")
+    end
+
+    # Update the basin concentrations again based on the removed mass
     basin.concentration_state .= basin.mass ./ basin.current_storage[parent(u)]
     basin.storage_prev .= basin.current_storage[parent(u)]
 
