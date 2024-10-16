@@ -20,7 +20,8 @@ def generate_model(args, datadir):
 
 if __name__ == "__main__":
     datadir = Path("generated_testmodels")
-    if datadir.is_dir():
+    # Don't remove all models if we only (re)generate a subset
+    if datadir.is_dir() and len(sys.argv) == 0:
         shutil.rmtree(datadir, ignore_errors=True)
 
     datadir.mkdir(exist_ok=True)

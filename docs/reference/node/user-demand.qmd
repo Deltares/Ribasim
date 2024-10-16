@@ -51,6 +51,16 @@ demand        | Float64  | $\text{m}^3/\text{s}$ | non-negative
 return_factor | Float64  | -                     | between [0 - 1]
 min_level     | Float64  | $\text{m}$            | -
 
+## Concentration
+This table defines the concentration(s) of (a) substance(s) for the flow from the UserDemand.
+
+column         | type     | unit                  | restriction
+-------------- | -------- | --------------------- | -----------
+node_id        | Int32    | -                     | sorted
+time           | DateTime | -                     | sorted per node_id
+substance      | String   | -                     | can correspond to known Delwaq substances
+concentration  | Float64  | $\text{g}/\text{m}^3$ |
+
 # Equations
 
 UserDemand receive an allocated flow rate $F^p$ per priority $p=1,2,\ldots, p_{\max}$, which is either determined by [allocation optimization](/concept/allocation.qmd) or simply equal to the demand at time $t$; $F^p = d^p(t)$.

@@ -581,3 +581,111 @@ def concentration_condition_model() -> Model:
     model.edge.add(model.discrete_control[4], model.pump[2])
 
     return model
+
+
+def continuous_concentration_condition_model() -> Model:
+    """
+    Set up a minimal model with discrete control based on a
+    continuous (calculated) concentration condition.
+    In this case, we setup a salt concentration and mimic
+    the Dutch coast.
+
+               dc
+             /   |
+    lb --> lr -> basin <-- fb
+                 |
+                out
+                 |
+                term
+    """
+
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2020-02-01",
+        crs="EPSG:28992",
+        solver=Solver(saveat=86400 / 8),
+    )
+
+    basi = model.basin.add(
+        Node(1, Point(0, 0)),
+        [
+            basin.Profile(area=[10.0, 100.0], level=[0.0, 1.0]),
+            basin.State(level=[10.0]),
+            basin.ConcentrationState(
+                substance=["Cl"],
+                concentration=[35.0],  # start of slightly salty
+            ),
+            basin.Concentration(
+                time=pd.date_range(
+                    start="2020-01-01", end="2021-01-01", periods=10, unit="ms"
+                ),
+                substance="Bar",
+                precipitation=0.1,
+            ),
+        ],
+    )
+
+    linearr = model.linear_resistance.add(
+        Node(2, Point(-1, 0)),
+        [
+            linear_resistance.Static(
+                control_state=["On", "Off"],
+                resistance=[0.001, 10],
+                max_flow_rate=[0.2, 0.0001],
+            )
+        ],
+    )
+
+    levelb = model.level_boundary.add(
+        Node(3, Point(-2, 0)),
+        [
+            level_boundary.Static(level=[35.0]),
+            level_boundary.Concentration(
+                time=pd.date_range(
+                    start="2020-01-01", end="2021-01-01", periods=10, unit="ms"
+                ),
+                substance="Cl",
+                concentration=35.0,
+            ),
+        ],
+    )
+
+    flowb = model.flow_boundary.add(
+        Node(4, Point(1, 0)),
+        [
+            flow_boundary.Static(flow_rate=[0.1]),
+            flow_boundary.Concentration(
+                time=pd.date_range(
+                    start="2020-01-01", end="2021-01-01", periods=11, unit="ms"
+                ),
+                substance="Foo",
+                concentration=1.0,
+            ),
+        ],
+    )
+
+    discretec = model.discrete_control.add(
+        Node(5, Point(0, 0.5)),
+        [
+            discrete_control.Variable(
+                listen_node_id=[1],
+                variable=["concentration.Cl"],
+                compound_variable_id=1,
+            ),
+            # More than 20% of seawater (35 g/L)
+            discrete_control.Condition(greater_than=[7], compound_variable_id=1),
+            discrete_control.Logic(truth_state=["T", "F"], control_state=["Off", "On"]),
+        ],
+    )
+
+    outl = model.outlet.add(Node(6, Point(0, -0.5)), [outlet.Static(flow_rate=[0.11])])
+    term = model.terminal.add(Node(7, Point(0, -1)))
+
+    model.edge.add(levelb, linearr)
+    model.edge.add(linearr, basi)
+    model.edge.add(flowb, basi)
+    model.edge.add(discretec, linearr)
+    model.edge.add(basi, outl)
+    model.edge.add(outl, term)
+
+    return model
