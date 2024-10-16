@@ -431,7 +431,7 @@ function LevelBoundary(db::DB, config::Config)::LevelBoundary
     substances = get_substances(db, config)
     concentration = zeros(length(node_ids), length(substances))
     concentration[:, Substance.Continuity] .= 1.0
-    concentration[:, Substance.UserDemand] .= 1.0
+    concentration[:, Substance.LevelBoundary] .= 1.0
     set_concentrations!(concentration, concentration_time, substances, Int32.(node_ids))
 
     if !valid
@@ -474,7 +474,7 @@ function FlowBoundary(db::DB, config::Config, graph::MetaGraph)::FlowBoundary
     substances = get_substances(db, config)
     concentration = zeros(length(node_ids), length(substances))
     concentration[:, Substance.Continuity] .= 1.0
-    concentration[:, Substance.UserDemand] .= 1.0
+    concentration[:, Substance.FlowBoundary] .= 1.0
     set_concentrations!(concentration, concentration_time, substances, Int32.(node_ids))
 
     if !valid
@@ -594,7 +594,6 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     concentration_state_data = load_structvector(db, config, BasinConcentrationStateV1)
     concentration_time = load_structvector(db, config, BasinConcentrationV1)
 
-    # TODO Also include all other unique substances (in boundary nodes)
     # TODO Move into a function
     substances = get_substances(db, config)
     concentration_state = zeros(n, length(substances))

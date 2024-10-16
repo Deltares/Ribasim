@@ -287,7 +287,7 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
         end
     end
 
-    # We might want to evaporate mass to keep the mass balance.
+    # Evaporate mass to keep the mass balance, if enabled in model config
     if basin.evaporate_mass
         basin.mass .-= basin.concentration_state .* (u.evaporation - uprev.evaporation)
     end
