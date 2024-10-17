@@ -144,6 +144,19 @@ class Logging(ChildModel):
     verbosity: Verbosity = Verbosity.info
 
 
+class Experimental(ChildModel):
+    """
+    Defines experimental features.
+
+    Attributes
+    ----------
+    concentration : bool
+        Whether to enable tracer support (default is False)
+    """
+
+    concentration: bool = False
+
+
 class Node(pydantic.BaseModel):
     """
     Defines a node for the model.
