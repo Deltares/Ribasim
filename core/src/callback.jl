@@ -109,8 +109,8 @@ Update with the latest timestep:
 
 During these cumulative flow updates, we can also update the mass balance of the system,
 as each flow carries mass, based on the concentrations of the flow source.
-Specifically, we first use all the inflows to update the mass of the basins, recalculate
-the basin concentration(s) and then remove the mass that is being lost to the outflows.
+Specifically, we first use all the inflows to update the mass of the Basins, recalculate
+the Basin concentration(s) and then remove the mass that is being lost to the outflows.
 """
 function update_cumulative_flows!(u, t, integrator)::Nothing
     (; p, uprev, tprev, dt) = integrator
@@ -130,7 +130,7 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
 
     # Reset cumulative flows, used to calculate the concentration
     # of the basins after processing inflows only
-    fill!(basin.cumulative_in, 0.0)
+    basin.cumulative_in .= 0.0
 
     # Update cumulative forcings which are integrated exactly
     @. basin.cumulative_drainage += vertical_flux.drainage * dt
@@ -264,10 +264,10 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
         end
     end
 
-    # Update the basin concentrations based on the added mass and flows
+    # Update the Basin concentrations based on the added mass and flows
     basin.concentration_state .= basin.mass ./ (basin.storage_prev .+ basin.cumulative_in)
 
-    # Process all mass outflows from basins
+    # Process all mass outflows from Basins
     for (inflow_edge, outflow_edge) in zip(state_inflow_edge, state_outflow_edge)
         from_node = inflow_edge.edge[1]
         to_node = outflow_edge.edge[2]
@@ -311,7 +311,7 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
         error("Negative mass(es) detected")
     end
 
-    # Update the basin concentrations again based on the removed mass
+    # Update the Basin concentrations again based on the removed mass
     basin.concentration_state .= basin.mass ./ basin.current_storage[parent(u)]
     basin.storage_prev .= basin.current_storage[parent(u)]
 
@@ -320,8 +320,8 @@ end
 
 """
 Given an edge (from_id, to_id), compute the cumulative flow over that
-edge over the latest timestep. If from_id and to_id are both the same basin,
-the function returns the sum of the basin forcings.
+edge over the latest timestep. If from_id and to_id are both the same Basin,
+the function returns the sum of the Basin forcings.
 """
 function flow_update_on_edge(
     integrator::DEIntegrator,
@@ -366,7 +366,7 @@ end
 """
 Save all cumulative forcings and flows over edges over the latest timestep,
 Both computed by the solver and integrated exactly. Also computes the total horizontal
-inflow and outflow per basin.
+inflow and outflow per Basin.
 """
 function save_flow(u, t, integrator)
     (; p) = integrator

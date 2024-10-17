@@ -613,7 +613,7 @@ def continuous_concentration_condition_model() -> Model:
             basin.State(level=[10.0]),
             basin.ConcentrationState(
                 substance=["Cl"],
-                concentration=[35.0],  # start of slightly salty
+                concentration=[35.0],  # slightly salty start
             ),
             basin.Concentration(
                 time=pd.date_range(
