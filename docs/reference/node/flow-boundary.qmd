@@ -38,7 +38,7 @@ time      | DateTime | -                     | sorted per node_id
 flow_rate | Float64  | $\text{m}^3/\text{s}$ | non-negative
 
 ## Concentration {#sec-flow-boundary-conc}
-This table defines the concentration(s) of (a) substance(s) for the flow from the FlowBoundary.
+This table defines the concentration of substances for the flow from the FlowBoundary.
 
 column         | type     | unit                  | restriction
 -------------- | -------- | --------------------- | -----------
