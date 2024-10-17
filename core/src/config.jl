@@ -134,6 +134,19 @@ end
     use_allocation::Bool = false
 end
 
+@option struct Experimental <: TableOption
+    concentration::Bool = false
+end
+# For logging enabled experimental features
+function Base.iterate(exp::Experimental, state = 0)
+    state >= nfields(exp) && return
+    return Base.getfield(exp, state + 1), state + 1
+end
+function Base.show(io::IO, exp::Experimental)
+    fields = (field for field in fieldnames(typeof(exp)) if getfield(exp, field))
+    print(io, join(fields, " "))
+end
+
 @option @addnodetypes struct Toml <: TableOption
     starttime::DateTime
     endtime::DateTime
@@ -145,6 +158,7 @@ end
     solver::Solver = Solver()
     logging::Logging = Logging()
     results::Results = Results()
+    experimental::Experimental = Experimental()
 end
 
 struct Config

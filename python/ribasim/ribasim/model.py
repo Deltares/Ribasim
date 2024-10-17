@@ -26,6 +26,7 @@ from ribasim.config import (
     Basin,
     ContinuousControl,
     DiscreteControl,
+    Experimental,
     FlowBoundary,
     FlowDemand,
     LevelBoundary,
@@ -85,6 +86,8 @@ class Model(FileModel):
     results: Results = Field(default_factory=Results)
 
     allocation: Allocation = Field(default_factory=Allocation)
+
+    experimental: Experimental = Field(default_factory=Experimental)
 
     basin: Basin = Field(default_factory=Basin)
     continuous_control: ContinuousControl = Field(default_factory=ContinuousControl)
