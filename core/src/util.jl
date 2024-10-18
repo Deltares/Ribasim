@@ -1134,3 +1134,12 @@ function isoutofdomain(u, p, t)
     formulate_storages!(current_storage, u, u, p, t)
     any(<(0), current_storage)
 end
+
+function get_demand(user_demand, id, priority_idx, t)::Float64
+    (; demand_from_timeseries, demand_itp, demand) = user_demand
+    if demand_from_timeseries[id.idx]
+        demand_itp[id.idx][priority_idx](t)
+    else
+        demand[id.idx, priority_idx]
+    end
+end
