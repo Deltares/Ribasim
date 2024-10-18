@@ -392,7 +392,7 @@ Note that the interpolation to subgrid water level is not constrained by any wat
 Generally, to create physically meaningful subgrid water levels, the subgrid table must be parametrized properly such that the spatially integrated water volume of the subgrid elements agrees with the total storage volume of the basin.
 
 ## Concentration {#sec-basin-conc}
-This table defines the concentration(s) of (a) substance(s) for the inflow boundaries of a Basin node.
+This table defines the concentration of substances for the inflow boundaries of a Basin node.
 
 column        | type     | unit                     | restriction
 ------------- | -------- | ------------------------ | -----------
@@ -403,7 +403,7 @@ drainage      | Float64  | $\text{g}/\text{m}^3$    | (optional)
 precipitation | Float64  | $\text{g}/\text{m}^3$    | (optional)
 
 ## ConcentrationState {#sec-basin-conc-state}
-This table defines the concentration(s) of (a) substance(s) in the Basin at the start of the simulation.
+This table defines the concentration of substances in the Basin at the start of the simulation.
 
 column         | type     | unit                     | restriction
 -------------- | -------- | ------------------------ | -----------

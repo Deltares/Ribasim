@@ -106,7 +106,7 @@ const ScalarInterpolation = LinearInterpolation{
     Float64,
 }
 
-set_zero!(v) = fill!(v, zero(eltype(v)))
+set_zero!(v) = v .= zero(eltype(v))
 const Cache = LazyBufferCache{Returns{Int}, typeof(set_zero!)}
 
 """
@@ -266,12 +266,12 @@ abstract type AbstractDemandNode <: AbstractParameterNode end
 In-memory storage of saved mean flows for writing to results.
 
 - `flow`: The mean flows on all edges and state-dependent forcings
-- `inflow`: The sum of the mean flows coming into each basin
-- `outflow`: The sum of the mean flows going out of each basin
+- `inflow`: The sum of the mean flows coming into each Basin
+- `outflow`: The sum of the mean flows going out of each Basin
 - `flow_boundary`: The exact integrated mean flows of flow boundaries
 - `precipitation`: The exact integrated mean precipitation
 - `drainage`: The exact integrated mean drainage
-- `concentration`: Concentrations for each basin and substance
+- `concentration`: Concentrations for each Basin and substance
 - `balance_error`: The (absolute) water balance error
 - `relative_error`: The relative water balance error
 - `t`: Endtime of the interval over which is averaged
@@ -356,15 +356,15 @@ end
     # Concentrations
     # Config setting to enable/disable evaporation of mass
     evaporate_mass::Bool = true
-    # Cumulative inflow for each basin at a given time
+    # Cumulative inflow for each Basin at a given time
     cumulative_in::Vector{Float64} = zeros(length(node_id))
-    # Storage for each basin at the previous time step
+    # Storage for each Basin at the previous time step
     storage_prev::Vector{Float64} = zeros(length(node_id))
-    # matrix with concentrations for each basin and substance
-    concentration_state::Matrix{Float64}  # basin, substance
-    # matrix with boundary concentrations for each boundary, basin and substance
+    # matrix with concentrations for each Basin and substance
+    concentration_state::Matrix{Float64}  # Basin, substance
+    # matrix with boundary concentrations for each boundary, Basin and substance
     concentration::Array{Float64, 3}
-    # matrix with mass for each basin and substance
+    # matrix with mass for each Basin and substance
     mass::Matrix{Float64}
     # substances in use by the model (ordered like their axis in the concentration matrices)
     substances::OrderedSet{Symbol}
@@ -482,8 +482,8 @@ end
 """
 node_id: node ID of the LevelBoundary node
 active: whether this node is active
-level: the fixed level of this 'infinitely big basin'
-concentration: matrix with boundary concentrations for each basin and substance
+level: the fixed level of this 'infinitely big Basin'
+concentration: matrix with boundary concentrations for each Basin and substance
 concentration_time: Data source for concentration updates
 """
 @kwdef struct LevelBoundary{C} <: AbstractParameterNode
@@ -501,7 +501,7 @@ active: whether this node is active and thus contributes flow
 cumulative_flow: The exactly integrated cumulative boundary flow since the start of the simulation
 cumulative_flow_saveat: The exactly integrated cumulative boundary flow since the last saveat
 flow_rate: flow rate (exact)
-concentration: matrix with boundary concentrations for each basin and substance
+concentration: matrix with boundary concentrations for each Basin and substance
 concentration_time: Data source for concentration updates
 """
 @kwdef struct FlowBoundary{C} <: AbstractParameterNode
@@ -776,8 +776,8 @@ demand_itp: Timeseries interpolation objects for demands
 demand_from_timeseries: If false the demand comes from the BMI or is fixed
 allocated: water flux currently allocated to UserDemand per priority (node_idx, priority_idx)
 return_factor: the factor in [0,1] of how much of the abstracted water is given back to the system
-min_level: The level of the source basin below which the UserDemand does not abstract
-concentration: matrix with boundary concentrations for each basin and substance
+min_level: The level of the source Basin below which the UserDemand does not abstract
+concentration: matrix with boundary concentrations for each Basin and substance
 concentration_time: Data source for concentration updates
 """
 @kwdef struct UserDemand{C} <: AbstractDemandNode
