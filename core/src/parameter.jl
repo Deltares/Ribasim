@@ -300,6 +300,21 @@ In-memory storage of saved instantaneous storages and levels for writing to resu
 end
 
 """
+Caches of current basin properties
+"""
+struct CurrentBasinProperties
+    current_storage::Cache
+    current_low_storage_factor::Cache
+    current_level::Cache
+    current_area::Cache
+    current_cumulative_precipitation::Cache
+    current_cumulative_drainage::Cache
+    function CurrentBasinProperties(n)
+        new((cache(n) for _ in 1:6)...)
+    end
+end
+
+"""
 Requirements:
 
 * Must be positive: precipitation, evaporation, infiltration, drainage
@@ -331,11 +346,7 @@ end
     cumulative_precipitation_saveat::Vector{Float64} = zeros(length(node_id))
     cumulative_drainage_saveat::Vector{Float64} = zeros(length(node_id))
     # Cache this to avoid recomputation
-    current_storage::Cache = cache(length(node_id))
-    current_level::Cache = cache(length(node_id))
-    current_area::Cache = cache(length(node_id))
-    current_cumulative_precipitation::Cache = cache(length(node_id))
-    current_cumulative_drainage::Cache = cache(length(node_id))
+    current_properties::CurrentBasinProperties = CurrentBasinProperties(length(node_id))
     # Discrete values for interpolation
     storage_to_level::Vector{
         LinearInterpolationIntInv{

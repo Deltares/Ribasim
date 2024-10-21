@@ -312,8 +312,9 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
     end
 
     # Update the Basin concentrations again based on the removed mass
-    basin.concentration_state .= basin.mass ./ basin.current_storage[parent(u)]
-    basin.storage_prev .= basin.current_storage[parent(u)]
+    basin.concentration_state .=
+        basin.mass ./ basin.current_properties.current_storage[parent(u)]
+    basin.storage_prev .= basin.current_properties.current_storage[parent(u)]
 
     return nothing
 end
@@ -357,8 +358,8 @@ function save_basin_state(u, t, integrator)
     (; p) = integrator
     (; basin) = p
     du = get_du(integrator)
-    current_storage = basin.current_storage[parent(du)]
-    current_level = basin.current_level[parent(du)]
+    current_storage = basin.current_properties.current_storage[parent(du)]
+    current_level = basin.current_properties.current_level[parent(du)]
     water_balance!(du, u, p, t)
     SavedBasinState(; storage = copy(current_storage), level = copy(current_level), t)
 end
@@ -444,7 +445,7 @@ function check_water_balance_error!(
     (; u, p, t) = integrator
     (; basin, water_balance_abstol, water_balance_reltol) = p
     errors = false
-    current_storage = basin.current_storage[parent(u)]
+    current_storage = basin.current_properties.current_storage[parent(u)]
 
     # The initial storage is irrelevant for the storage rate and can only cause
     # floating point truncation errors
@@ -510,7 +511,8 @@ end
 
 function check_negative_storage(u, t, integrator)::Nothing
     (; basin) = integrator.p
-    (; node_id, current_storage) = basin
+    (; node_id, current_properties) = basin
+    (; current_storage) = current_properties
     du = get_du(integrator)
     set_current_basin_properties!(du, u, integrator.p, t)
     current_storage = current_storage[parent(du)]
@@ -733,7 +735,7 @@ end
 function update_subgrid_level!(integrator)::Nothing
     (; p) = integrator
     du = get_du(integrator)
-    basin_level = p.basin.current_level[parent(du)]
+    basin_level = p.basin.current_properties.current_level[parent(du)]
     subgrid = integrator.p.subgrid
     for (i, (index, interp)) in enumerate(zip(subgrid.basin_index, subgrid.interpolations))
         subgrid.level[i] = interp(basin_level[index])
@@ -819,7 +821,7 @@ update_userd_conc!(integrator)::Nothing =
 function update_allocation!(integrator)::Nothing
     (; p, t, u) = integrator
     (; allocation, basin) = p
-    (; current_storage) = basin
+    (; current_storage) = basin.current_properties
     (; allocation_models, mean_input_flows, mean_realized_flows) = allocation
 
     # Make sure current storages are up to date

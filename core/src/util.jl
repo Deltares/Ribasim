@@ -375,17 +375,11 @@ function reduction_factor(x::T, threshold::Real)::T where {T <: Real}
     end
 end
 
-"If id is a Basin with storage below the threshold, return a reduction factor != 1"
-function low_storage_factor(
-    storage::AbstractVector{T},
+function get_low_storage_factor(
+    current_low_storage_factor::Vector{T},
     id::NodeID,
-    threshold::Real,
-)::T where {T <: Real}
-    if id.type == NodeType.Basin
-        reduction_factor(storage[id.idx], threshold)
-    else
-        one(T)
-    end
+)::T where {T}
+    return id.type == NodeType.Basin ? current_low_storage_factor[id.idx] : one(T)
 end
 
 """
@@ -393,16 +387,15 @@ For resistance nodes, give a reduction factor based on the upstream node
 as defined by the flow direction.
 """
 function low_storage_factor_resistance_node(
-    current_storage,
+    current_low_storage_factor,
     q,
     inflow_id,
     outflow_id,
-    threshold,
 )
     if q > 0
-        low_storage_factor(current_storage, inflow_id, threshold)
+        get_low_storage_factor(current_low_storage_factor, inflow_id)
     else
-        low_storage_factor(current_storage, outflow_id, threshold)
+        get_low_storage_factor(current_low_storage_factor, outflow_id)
     end
 end
 
@@ -648,7 +641,7 @@ function get_variable_ref(
     u = build_state_vector(p)
 
     ref = if node_id.type == NodeType.Basin && variable == "level"
-        PreallocationRef(basin.current_level, node_id.idx)
+        PreallocationRef(basin.current_properties.current_level, node_id.idx)
     elseif variable == "flow_rate" && node_id.type != NodeType.FlowBoundary
         if listen
             if node_id.type ∉ conservative_nodetypes
@@ -861,13 +854,7 @@ end
 
 # Custom overloads
 reduction_factor(x::GradientTracer, threshold::Real) = x
-low_storage_factor_resistance_node(
-    storage,
-    q::GradientTracer,
-    inflow_id,
-    outflow_id,
-    threshold,
-) = q
+low_storage_factor_resistance_node(storage, q::GradientTracer, inflow_id, outflow_id) = q
 relaxed_root(x::GradientTracer, threshold::Real) = x
 get_level_from_storage(basin::Basin, state_idx::Int, storage::GradientTracer) = storage
 stop_declining_negative_storage!(du, u::ComponentVector{<:GradientTracer}) = nothing
@@ -1129,7 +1116,7 @@ end
 Check whether any storages are negative given the state u.
 """
 function isoutofdomain(u, p, t)
-    (; current_storage) = p.basin
+    (; current_storage) = p.basin.current_properties
     current_storage = current_storage[parent(u)]
     formulate_storages!(current_storage, u, u, p, t)
     any(<(0), current_storage)
