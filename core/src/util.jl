@@ -1131,6 +1131,11 @@ function get_demand(user_demand, id, priority_idx, t)::Float64
     end
 end
 
+"""
+Estimate the minimum reduction factor achieved over the last time step by
+estimating the lowest storage achieved over the last time step. To make sure
+it is an underestimate of the minimum, 2LOW_STORAGE_THRESHOLD is subtracted from this lowest storage.
+"""
 function min_low_storage_factor(storage_now::Vector{T}, storage_prev, id) where {T}
     if id.type == NodeType.Basin
         reduction_factor(
@@ -1142,6 +1147,11 @@ function min_low_storage_factor(storage_now::Vector{T}, storage_prev, id) where 
     end
 end
 
+"""
+Estimate the minimum minimum level reduction factor achieved over the last time step by
+estimating the lowest level achieved over the last time step. To make sure
+it is an underestimate of the minimum, 2USER_DEMAND_MIN_LEVEL_THRESHOLD is subtracted from this lowest level.
+"""
 function min_low_user_demand_level_factor(
     level_now::Vector{T},
     level_prev,
