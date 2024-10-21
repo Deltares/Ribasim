@@ -125,7 +125,7 @@ user_demand->>basin: abstracted
 ::: {.callout-caution}
 This is an unsupported experimental feature and is disabled by default.
 We advise to use the [Delwaq coupling](@sec-waterquality) for tracer calculations.
-If you're interested in using this experimental feature, please [contact us](../contact.qmd).
+If you're interested in using this experimental feature, please [contact us](/contact.qmd).
 :::
 
 Ribasim can calculate concentrations of conservative tracers (i.e. substances that are non-reactive).
