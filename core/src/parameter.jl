@@ -10,6 +10,9 @@ const SolverStats = @NamedTuple{
 @enumx EdgeType flow control none
 @eval @enumx NodeType $(config.nodetypes...)
 @enumx ContinuousControlType None Continuous PID
+@enumx Substance Continuity = 1 Initial = 2 LevelBoundary = 3 FlowBoundary = 4 UserDemand =
+    5 Drainage = 6 Precipitation = 7
+Base.to_index(id::Substance.T) = Int(id)  # used to index into concentration matrices
 
 # Support creating a NodeType enum instance from a symbol or string
 function NodeType.T(s::Symbol)::NodeType.T
@@ -103,7 +106,7 @@ const ScalarInterpolation = LinearInterpolation{
     Float64,
 }
 
-set_zero!(v) = fill!(v, zero(eltype(v)))
+set_zero!(v) = v .= zero(eltype(v))
 const Cache = LazyBufferCache{Returns{Int}, typeof(set_zero!)}
 
 """
@@ -263,11 +266,12 @@ abstract type AbstractDemandNode <: AbstractParameterNode end
 In-memory storage of saved mean flows for writing to results.
 
 - `flow`: The mean flows on all edges and state-dependent forcings
-- `inflow`: The sum of the mean flows coming into each basin
-- `outflow`: The sum of the mean flows going out of each basin
+- `inflow`: The sum of the mean flows coming into each Basin
+- `outflow`: The sum of the mean flows going out of each Basin
 - `flow_boundary`: The exact integrated mean flows of flow boundaries
 - `precipitation`: The exact integrated mean precipitation
 - `drainage`: The exact integrated mean drainage
+- `concentration`: Concentrations for each Basin and substance
 - `balance_error`: The (absolute) water balance error
 - `relative_error`: The relative water balance error
 - `t`: Endtime of the interval over which is averaged
@@ -279,6 +283,7 @@ In-memory storage of saved mean flows for writing to results.
     flow_boundary::Vector{Float64}
     precipitation::Vector{Float64}
     drainage::Vector{Float64}
+    concentration::Matrix{Float64}
     storage_rate::Vector{Float64} = zero(precipitation)
     balance_error::Vector{Float64} = zero(precipitation)
     relative_error::Vector{Float64} = zero(precipitation)
@@ -310,7 +315,7 @@ else
     T = Vector{Float64}
 end
 """
-@kwdef struct Basin{C, V} <: AbstractParameterNode
+@kwdef struct Basin{C, D, V} <: AbstractParameterNode
     node_id::Vector{NodeID}
     inflow_ids::Vector{Vector{NodeID}} = [NodeID[]]
     outflow_ids::Vector{Vector{NodeID}} = [NodeID[]]
@@ -345,7 +350,25 @@ end
     demand::Vector{Float64}
     # Data source for parameter updates
     time::StructVector{BasinTimeV1, C, Int}
+    # Data source for concentration updates
+    concentration_time::StructVector{BasinConcentrationV1, D, Int}
+
     # Concentrations
+    # Config setting to enable/disable evaporation of mass
+    evaporate_mass::Bool = true
+    # Cumulative inflow for each Basin at a given time
+    cumulative_in::Vector{Float64} = zeros(length(node_id))
+    # Storage for each Basin at the previous time step
+    storage_prev::Vector{Float64} = zeros(length(node_id))
+    # matrix with concentrations for each Basin and substance
+    concentration_state::Matrix{Float64}  # Basin, substance
+    # matrix with boundary concentrations for each boundary, Basin and substance
+    concentration::Array{Float64, 3}
+    # matrix with mass for each Basin and substance
+    mass::Matrix{Float64}
+    # substances in use by the model (ordered like their axis in the concentration matrices)
+    substances::OrderedSet{Symbol}
+    # Data source for external concentrations (used in control)
     concentration_external::Vector{Dict{String, ScalarInterpolation}} =
         Dict{String, ScalarInterpolation}[]
 end
@@ -459,12 +482,16 @@ end
 """
 node_id: node ID of the LevelBoundary node
 active: whether this node is active
-level: the fixed level of this 'infinitely big basin'
+level: the fixed level of this 'infinitely big Basin'
+concentration: matrix with boundary concentrations for each Basin and substance
+concentration_time: Data source for concentration updates
 """
-@kwdef struct LevelBoundary <: AbstractParameterNode
+@kwdef struct LevelBoundary{C} <: AbstractParameterNode
     node_id::Vector{NodeID}
     active::Vector{Bool}
     level::Vector{ScalarInterpolation}
+    concentration::Matrix{Float64}
+    concentration_time::StructVector{LevelBoundaryConcentrationV1, C, Int}
 end
 
 """
@@ -474,14 +501,18 @@ active: whether this node is active and thus contributes flow
 cumulative_flow: The exactly integrated cumulative boundary flow since the start of the simulation
 cumulative_flow_saveat: The exactly integrated cumulative boundary flow since the last saveat
 flow_rate: flow rate (exact)
+concentration: matrix with boundary concentrations for each Basin and substance
+concentration_time: Data source for concentration updates
 """
-@kwdef struct FlowBoundary <: AbstractParameterNode
+@kwdef struct FlowBoundary{C} <: AbstractParameterNode
     node_id::Vector{NodeID}
     outflow_edges::Vector{Vector{EdgeMetadata}}
     active::Vector{Bool}
     cumulative_flow::Vector{Float64} = zeros(length(node_id))
     cumulative_flow_saveat::Vector{Float64} = zeros(length(node_id))
     flow_rate::Vector{ScalarInterpolation}
+    concentration::Matrix{Float64}
+    concentration_time::StructVector{FlowBoundaryConcentrationV1, C, Int}
 end
 
 """
@@ -745,9 +776,11 @@ demand_itp: Timeseries interpolation objects for demands
 demand_from_timeseries: If false the demand comes from the BMI or is fixed
 allocated: water flux currently allocated to UserDemand per priority (node_idx, priority_idx)
 return_factor: the factor in [0,1] of how much of the abstracted water is given back to the system
-min_level: The level of the source basin below which the UserDemand does not abstract
+min_level: The level of the source Basin below which the UserDemand does not abstract
+concentration: matrix with boundary concentrations for each Basin and substance
+concentration_time: Data source for concentration updates
 """
-@kwdef struct UserDemand <: AbstractDemandNode
+@kwdef struct UserDemand{C} <: AbstractDemandNode
     node_id::Vector{NodeID}
     inflow_edge::Vector{EdgeMetadata} = []
     outflow_edge::Vector{EdgeMetadata} = []
@@ -759,6 +792,8 @@ min_level: The level of the source basin below which the UserDemand does not abs
     allocated::Matrix{Float64}
     return_factor::Vector{ScalarInterpolation}
     min_level::Vector{Float64}
+    concentration::Matrix{Float64}
+    concentration_time::StructVector{UserDemandConcentrationV1, C, Int}
 end
 
 """
@@ -821,29 +856,29 @@ const ModelGraph = MetaGraph{
     Float64,
 }
 
-@kwdef struct Parameters{C1, C2, C3, C4, C5, V}
+@kwdef struct Parameters{C1, C2, C3, C4, C5, C6, C7, C8, C9, V}
     starttime::DateTime
     graph::ModelGraph
     allocation::Allocation
-    basin::Basin{C1, V}
+    basin::Basin{C1, C2, V}
     linear_resistance::LinearResistance
     manning_resistance::ManningResistance
-    tabulated_rating_curve::TabulatedRatingCurve{C2}
-    level_boundary::LevelBoundary
-    flow_boundary::FlowBoundary
+    tabulated_rating_curve::TabulatedRatingCurve{C3}
+    level_boundary::LevelBoundary{C4}
+    flow_boundary::FlowBoundary{C5}
     pump::Pump
     outlet::Outlet
     terminal::Terminal
     discrete_control::DiscreteControl
     continuous_control::ContinuousControl
     pid_control::PidControl
-    user_demand::UserDemand
+    user_demand::UserDemand{C6}
     level_demand::LevelDemand
     flow_demand::FlowDemand
     subgrid::Subgrid
-    # Per state the in- and outflow edges associated with that state (if theu exist)
-    state_inflow_edge::C3 = ComponentVector()
-    state_outflow_edge::C4 = ComponentVector()
+    # Per state the in- and outflow edges associated with that state (if they exist)
+    state_inflow_edge::C7 = ComponentVector()
+    state_outflow_edge::C8 = ComponentVector()
     all_nodes_active::Base.RefValue{Bool} = Ref(false)
     tprev::Base.RefValue{Float64} = Ref(0.0)
     # Sparse matrix for combining flows into storages
@@ -852,7 +887,7 @@ const ModelGraph = MetaGraph{
     water_balance_abstol::Float64
     water_balance_reltol::Float64
     # State at previous saveat
-    u_prev_saveat::C5 = ComponentVector()
+    u_prev_saveat::C9 = ComponentVector()
 end
 
 # To opt-out of type checking for ForwardDiff

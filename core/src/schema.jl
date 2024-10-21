@@ -29,6 +29,7 @@
 @schema "ribasim.outlet.static" OutletStatic
 @schema "ribasim.userdemand.static" UserDemandStatic
 @schema "ribasim.userdemand.time" UserDemandTime
+@schema "ribasim.userdemand.concentration" UserDemandConcentration
 @schema "ribasim.leveldemand.static" LevelDemandStatic
 @schema "ribasim.leveldemand.time" LevelDemandTime
 @schema "ribasim.flowdemand.static" FlowDemandStatic
@@ -296,6 +297,13 @@ end
     return_factor::Float64
     min_level::Float64
     priority::Union{Missing, Int32}
+end
+
+@version UserDemandConcentrationV1 begin
+    node_id::Int32
+    time::DateTime
+    substance::String
+    concentration::Float64
 end
 
 @version LevelDemandStaticV1 begin
