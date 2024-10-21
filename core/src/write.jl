@@ -5,7 +5,7 @@ Write all results to the Arrow files as specified in the model configuration.
 """
 function write_results(model::Model)::Model
     (; config) = model
-    (; results) = model.config
+    (; results, experimental) = model.config
     compress = get_compressor(results)
     remove_empty_table = model.integrator.t != 0
 
@@ -25,9 +25,11 @@ function write_results(model::Model)::Model
     write_arrow(path, table, compress; remove_empty_table)
 
     # concentrations
-    table = concentration_table(model)
-    path = results_path(config, RESULTS_FILENAME.concentration)
-    write_arrow(path, table, compress; remove_empty_table)
+    if experimental.concentration
+        table = concentration_table(model)
+        path = results_path(config, RESULTS_FILENAME.concentration)
+        write_arrow(path, table, compress; remove_empty_table)
+    end
 
     # discrete control
     table = discrete_control_table(model)
