@@ -160,3 +160,4 @@ playground/output
 ribasim_qgis/tests/data/database.gpkg
 ribasim_qgis/core/styles
 !*.dvc
+!models/integration.toml

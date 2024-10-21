@@ -10,17 +10,17 @@ stages:
       nfiles: 45
     - path: models/hws_2024_7_0
       hash: md5
-      md5: 786559d207a4c1a4ecb998ad77eaf634.dir
-      size: 45424646
+      md5: e88123c69a0f7e3590b94c55dbe0062e.dir
+      size: 45421022
       nfiles: 10
     params:
       models/integration.toml:
-        solver.abstol: 0.0001
+        solver.abstol: 1e-07
         solver.algorithm: QNDF
         solver.autodiff: false
-        solver.reltol: 1e-05
+        solver.reltol: 1e-07
     outs:
     - path: data/integration.toml
       hash: md5
-      md5: 2b3c8019040caf9f710fa4622ca550fc
-      size: 108
+      md5: aa6ff2820a6eda91df1073d3bc41755e
+      size: 109

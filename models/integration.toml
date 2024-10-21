@@ -7,6 +7,6 @@ ribasim_version = "2024.10.0"
 
 [solver]
 algorithm = "QNDF" # optional, default "QNDF"
-abstol = 1e-4      # optional, default 1e-7
-reltol = 1e-5      # optional, default 1e-7
+abstol = 1e-7      # optional, default 1e-7
+reltol = 1e-7      # optional, default 1e-7
 autodiff = false   # optional, default false
