@@ -1,6 +1,6 @@
 stages:
   integration:
-    cmd: pixi run model-integration-test models/integration.toml
+    cmd: pixi run model-integration-test
     deps:
       - core/
       - models/hws_2024_7_0

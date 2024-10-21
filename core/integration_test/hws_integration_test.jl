@@ -6,10 +6,7 @@
     using TOML
     include(joinpath(@__DIR__, "../test/utils.jl"))
 
-    # Accept different toml file
-    toml = length(ARGS) == 0 ? "hws.toml" : ARGS[1]
-
-    toml_path = normpath(@__DIR__, "../../models/hws_2024_7_0/$toml")
+    toml_path = normpath(@__DIR__, "../../models/integration.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
@@ -19,7 +16,8 @@
         read(normpath(@__DIR__, "../../models/hws_2024_7_0/benchmark/basin_state.arrow"))
     basin_bench = Arrow.Table(basin_bytes_bench)
 
-    basin_bytes = read(normpath(dirname(toml_path), "results/basin_state.arrow"))
+    basin_bytes =
+        read(normpath(dirname(toml_path), model.config.results_dir, "basin_state.arrow"))
     basin = Arrow.Table(basin_bytes)
 
     @testset "Results values" begin

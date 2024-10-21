@@ -1,0 +1,26 @@
+schema: '2.0'
+stages:
+  integration:
+    cmd: pixi run model-integration-test
+    deps:
+    - path: core/
+      hash: md5
+      md5: 6228f56acef895eeb5d4fdcd479cd1ee.dir
+      size: 474129
+      nfiles: 45
+    - path: models/hws_2024_7_0
+      hash: md5
+      md5: 786559d207a4c1a4ecb998ad77eaf634.dir
+      size: 45424646
+      nfiles: 10
+    params:
+      models/integration.toml:
+        solver.abstol: 0.0001
+        solver.algorithm: QNDF
+        solver.autodiff: false
+        solver.reltol: 1e-05
+    outs:
+    - path: data/integration.toml
+      hash: md5
+      md5: 2b3c8019040caf9f710fa4622ca550fc
+      size: 108
