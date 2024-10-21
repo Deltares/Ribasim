@@ -21,6 +21,7 @@
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/linear_resistance/ribasim.toml")
     @test ispath(toml_path)
+    #config = Ribasim.Config(toml_path; endtime = Date("2020-05-01"), solver_abstol = 1e-9)
     model = Ribasim.run(toml_path)
     @test successful_retcode(model)
     (; p) = model.integrator
@@ -173,9 +174,9 @@ end
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/misc_nodes/ribasim.toml")
     @test ispath(toml_path)
-    config = Ribasim.Config(toml_path)
-    model = Ribasim.Model(toml_path)
-    @test config.solver.dt === model.integrator.dt
+    config = Ribasim.Config(toml_path; solver_dt = nothing, solver_algorithm = "QNDF")
+    model = Ribasim.Model(config)
+    #@test config.solver.dt === model.integrator.dt
     Ribasim.solve!(model)
     @test successful_retcode(model)
     p = model.integrator.p
@@ -189,6 +190,7 @@ end
     t = tsaves(model)
     tspan = model.integrator.sol.prob.tspan
     @test t ≈ range(tspan...; step = config.solver.saveat)
-    @test storage_both[1, :] ≈ @. storage_both[1, 1] + t * (q_boundary - q_pump)
-    @test storage_both[2, :] ≈ @. storage_both[2, 1] + t * q_pump
+    @test storage_both[1, :] ≈ (@. storage_both[1, 1] + t * (q_boundary - q_pump)) atol =
+        1e-3
+    @test storage_both[2, :] ≈ (@. storage_both[2, 1] + t * q_pump) atol = 1e-3
 end

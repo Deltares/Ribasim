@@ -163,7 +163,10 @@ def pid_control_equation_model() -> Model:
     """Set up a model with pid control for an analytical solution test"""
 
     model = Model(
-        starttime="2020-01-01", endtime="2020-01-01 00:05:00", crs="EPSG:28992"
+        starttime="2020-01-01",
+        endtime="2020-01-01 00:05:00",
+        crs="EPSG:28992",
+        solver=Solver(saveat=0.0),
     )
     model.basin.add(
         Node(1, Point(0, 0)),

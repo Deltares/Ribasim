@@ -759,6 +759,7 @@ min_level: The level of the source basin below which the UserDemand does not abs
     allocated::Matrix{Float64}
     return_factor::Vector{ScalarInterpolation}
     min_level::Vector{Float64}
+    cumulative_inflow::Vector{Float64} = zeros(length(node_id))
 end
 
 """
@@ -821,7 +822,7 @@ const ModelGraph = MetaGraph{
     Float64,
 }
 
-@kwdef struct Parameters{C1, C2, C3, C4, C5, V}
+@kwdef struct Parameters{C1, C2, C3, C4, C5, C6, V}
     starttime::DateTime
     graph::ModelGraph
     allocation::Allocation
@@ -841,9 +842,16 @@ const ModelGraph = MetaGraph{
     level_demand::LevelDemand
     flow_demand::FlowDemand
     subgrid::Subgrid
-    # Per state the in- and outflow edges associated with that state (if theu exist)
-    state_inflow_edge::C3 = ComponentVector()
-    state_outflow_edge::C4 = ComponentVector()
+    # Time interval before t = 0 with constant extrapolated flows
+    # for stable average flow states
+    τ::Float64 = 1.0
+    # The instantaneous flow at t = 0
+    initial_flow::C3 = nothing
+    # Cumulative flows computed from the average flows
+    cumulative_flow::Cache = cache(1)
+    # Per state the in- and outflow edges associated with that state (if they exist)
+    state_inflow_edge::C4 = ComponentVector()
+    state_outflow_edge::C5 = ComponentVector()
     all_nodes_active::Base.RefValue{Bool} = Ref(false)
     tprev::Base.RefValue{Float64} = Ref(0.0)
     # Sparse matrix for combining flows into storages
@@ -851,8 +859,8 @@ const ModelGraph = MetaGraph{
     # Water balance tolerances
     water_balance_abstol::Float64
     water_balance_reltol::Float64
-    # State at previous saveat
-    u_prev_saveat::C5 = ComponentVector()
+    # State and time at previous saveat
+    u_prev_saveat::C6 = ComponentVector()
 end
 
 # To opt-out of type checking for ForwardDiff

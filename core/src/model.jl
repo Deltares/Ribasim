@@ -103,9 +103,7 @@ function Model(config::Config)::Model
     u0 = build_state_vector(parameters)
     du0 = zero(u0)
 
-    parameters = set_state_flow_edges(parameters, u0)
-    parameters = build_flow_to_storage(parameters, u0)
-    parameters = @set parameters.u_prev_saveat = zero(u0)
+    parameters = finalize_parameters(parameters, u0)
 
     # The Solver algorithm
     alg = algorithm(config.solver; u0)
@@ -136,6 +134,13 @@ function Model(config::Config)::Model
 
     callback, saved = create_callbacks(parameters, config, u0, saveat)
     @debug "Created callbacks."
+
+    # Obtain initial flows
+    water_balance!(du0, u0, parameters, t0; adjust_du = false)
+    parameters.initial_flow .= du0
+    @. u0 = parameters.τ * parameters.initial_flow
+    parameters.u_prev_saveat .= u0
+    u0.integral .= 0
 
     # Run water_balance! before initializing the integrator. This is because
     # at this initialization the discrete control callback is called for the first

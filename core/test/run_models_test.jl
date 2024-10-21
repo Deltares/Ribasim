@@ -150,9 +150,9 @@ end
     @test model isa Ribasim.Model
 
     (; integrator) = model
+    (; u, p) = integrator
     du = get_du(integrator)
-    (; u, p, t) = integrator
-    Ribasim.water_balance!(du, u, p, t)
+    Ribasim.water_balance!(integrator; adjust_du = false)
     stor = integrator.p.basin.current_storage[parent(du)]
     prec = p.basin.vertical_flux.precipitation
     evap = du.evaporation
@@ -184,6 +184,7 @@ end
     using Logging: Debug, with_logger
     using LoggingExtras
     using SciMLBase: successful_retcode
+    using OrdinaryDiffEqCore: get_du
     using OrdinaryDiffEqBDF: QNDF
     import Tables
     using Dates
@@ -201,6 +202,7 @@ end
 
     (; integrator) = model
     (; p, alg) = integrator
+    du = get_du(integrator)
 
     @test p isa Ribasim.Parameters
     @test isconcretetype(typeof(p))
@@ -211,6 +213,7 @@ end
 
     @test successful_retcode(model)
     @test length(model.integrator.sol) == 2 # start and end
+    Ribasim.water_balance!(model.integrator)
     @test model.integrator.p.basin.current_storage[Float64[]] ≈
           Float32[828.5386, 801.88289, 492.290, 1318.3053] skip = Sys.isapple() atol = 1.5
 
@@ -248,6 +251,7 @@ end
     du = get_du(model.integrator)
     precipitation = model.integrator.p.basin.vertical_flux.precipitation
     @test length(precipitation) == 4
+    Ribasim.water_balance!(model.integrator)
     @test model.integrator.p.basin.current_storage[parent(du)] ≈
           Float32[721.17656, 695.8066, 416.66188, 1334.4879] atol = 2.0 skip = Sys.isapple()
 end
@@ -295,6 +299,7 @@ end
 
 @testitem "TabulatedRatingCurve model" begin
     using SciMLBase: successful_retcode
+    using OrdinaryDiffEqCore: get_du
 
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/tabulated_rating_curve/ribasim.toml")
@@ -302,6 +307,7 @@ end
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
     @test successful_retcode(model)
+    Ribasim.water_balance!(model.integrator)
     @test model.integrator.p.basin.current_storage[Float64[]] ≈
           Float32[368.31558, 365.68442] skip = Sys.isapple()
     # the highest level in the dynamic table is updated to 1.2 from the callback
@@ -486,7 +492,7 @@ end
             while Δh > h_close
                 sf1 = friction_slope(Q, w, h1, n)
                 sf2 = friction_slope(Q, w, h2, n)
-                h2new = h1 + 0.5 * (sf1 + sf2) * L
+                h2new = h1 + 1.5 * (sf1 + sf2) * L
                 Δh = abs(h2new - h2)
                 h2 = h2new
             end
@@ -505,6 +511,7 @@ end
 
     du = get_du(model.integrator)
     (; p, t) = model.integrator
+    Ribasim.water_balance!(model.integrator)
     h_actual = p.basin.current_level[parent(du)][1:50]
     x = collect(10.0:20.0:990.0)
     h_expected = standard_step_method(x, 5.0, 1.0, 0.04, h_actual[end], 1.0e-6)

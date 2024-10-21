@@ -583,7 +583,7 @@ as input. Therefore we set the instantaneous flows as the mean flows as allocati
 """
 function set_initial_allocation_mean_flows!(integrator)::Nothing
     (; u, p, t) = integrator
-    (; allocation, graph) = p
+    (; allocation) = p
     (; mean_input_flows, mean_realized_flows, allocation_models) = allocation
     (; Δt_allocation) = allocation_models[1]
 
@@ -591,7 +591,7 @@ function set_initial_allocation_mean_flows!(integrator)::Nothing
     # gets called once at the problem initialization, this
     # one is just to make sure.
     du = get_du(integrator)
-    water_balance!(du, u, p, t)
+    water_balance!(integrator)
 
     for edge in keys(mean_input_flows)
         if edge[1] == edge[2]
@@ -1130,8 +1130,11 @@ Check whether any storages are negative given the state u.
 """
 function isoutofdomain(u, p, t)
     (; current_storage) = p.basin
+    (; cumulative_flow) = p
+    cumulative_flow = cumulative_flow[parent(u)]
+    u_to_cumulative_flow!(cumulative_flow, u, p, t)
     current_storage = current_storage[parent(u)]
-    formulate_storages!(current_storage, u, u, p, t)
+    formulate_storages!(current_storage, u, cumulative_flow, p, t)
     any(<(0), current_storage)
 end
 
@@ -1142,4 +1145,19 @@ function get_demand(user_demand, id, priority_idx, t)::Float64
     else
         demand[id.idx, priority_idx]
     end
+end
+
+function finalize_parameters(p::Parameters, u0::ComponentVector)
+    p = set_state_flow_edges(p, u0)
+    p = build_flow_to_storage(p, u0)
+    p = @set p.u_prev_saveat = zero(u0)
+    p = @set p.cumulative_flow = cache(length(u0))
+    p = @set p.initial_flow = zero(u0)
+    p
+end
+
+function u_to_cumulative_flow!(cumulative_flow, u, p, t)::Nothing
+    (; τ, initial_flow) = p
+    @. cumulative_flow = (t + τ) * u - τ * initial_flow
+    return nothing
 end

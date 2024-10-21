@@ -169,6 +169,7 @@ end
     end
 
     model = Ribasim.Model(toml_path)
+    Ribasim.water_balance!(model.integrator)
     storage2_begin = model.integrator.p.basin.current_storage[Float64[]]
     @test storage1_end ≈ storage2_begin
 end

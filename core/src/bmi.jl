@@ -33,8 +33,10 @@ end
 function BMI.get_value_ptr(model::Model, name::AbstractString)::AbstractVector{Float64}
     (; u, p) = model.integrator
     if name == "basin.storage"
+        water_balance!(model.integrator)
         p.basin.current_storage[parent(u)]
     elseif name == "basin.level"
+        water_balance!(model.integrator)
         p.basin.current_level[parent(u)]
     elseif name == "basin.infiltration"
         p.basin.vertical_flux.infiltration
@@ -49,7 +51,7 @@ function BMI.get_value_ptr(model::Model, name::AbstractString)::AbstractVector{F
     elseif name == "user_demand.demand"
         vec(p.user_demand.demand)
     elseif name == "user_demand.cumulative_inflow"
-        u.user_demand_inflow
+        p.user_demand.cumulative_inflow
     else
         error("Unknown variable $name")
     end

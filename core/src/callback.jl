@@ -88,11 +88,16 @@ Update with the latest timestep:
 - Cumulative flows/forcings which are input for the allocation algorithm
 - Cumulative flows/forcings which are realized demands in the allocation context
 
+Update for BMI:
+- cumulative UserDemand inflow
 """
 function update_cumulative_flows!(u, t, integrator)::Nothing
     (; p, tprev, dt) = integrator
-    (; basin, flow_boundary, allocation) = p
+    (; basin, flow_boundary, allocation, user_demand, τ, initial_flow) = p
     (; vertical_flux) = basin
+
+    @. user_demand.cumulative_inflow =
+        (t + τ) * u.user_demand_inflow - τ * initial_flow.user_demand_inflow
 
     # Update tprev
     p.tprev[] = t
@@ -146,7 +151,7 @@ end
 
 """
 Given an edge (from_id, to_id), compute the cumulative flow over that
-edge over the latest timestep. If from_id and to_id are both the same basin,
+edge over the latest time step. If from_id and to_id are both the same basin,
 the function returns the sum of the basin forcings.
 """
 function flow_update_on_edge(
@@ -154,16 +159,22 @@ function flow_update_on_edge(
     edge_src::Tuple{NodeID, NodeID},
 )::Float64
     (; u, uprev, p, t, tprev, dt) = integrator
-    (; basin, flow_boundary) = p
+    (; basin, flow_boundary, τ, initial_flow) = p
     (; vertical_flux) = basin
     from_id, to_id = edge_src
     if from_id == to_id
         @assert from_id.type == to_id.type == NodeType.Basin
         idx = from_id.idx
         fixed_area = basin_areas(basin, idx)[end]
-        (fixed_area * vertical_flux.precipitation[idx] + vertical_flux.drainage[idx]) * dt -
-        (u.evaporation[idx] - uprev.evaporation[idx]) -
-        (u.infiltration[idx] - uprev.infiltration[idx])
+        flow_update = fixed_area * vertical_flux.precipitation[idx] * dt
+        flow_update += vertical_flux.drainage[idx] * dt
+        flow_update +=
+            (tprev + τ) * (u.evaporation[idx] - uprev.evaporation[idx]) +
+            u.evaporation[idx] * dt
+        flow_update +=
+            (tprev + τ) * (u.infiltration[idx] - uprev.infiltration[idx]) +
+            u.infiltration[idx] * dt
+        flow_update
     elseif from_id.type == NodeType.FlowBoundary
         if flow_boundary.active[from_id.idx]
             integral(flow_boundary.flow_rate[from_id.idx], tprev, t)
@@ -172,7 +183,7 @@ function flow_update_on_edge(
         end
     else
         flow_idx = get_state_index(u, edge_src)
-        u[flow_idx] - uprev[flow_idx]
+        (tprev + τ) * (u[flow_idx] - uprev[flow_idx]) + u[flow_idx] * dt
     end
 end
 
@@ -180,25 +191,24 @@ end
 Save the storages and levels at the latest t.
 """
 function save_basin_state(u, t, integrator)
-    (; p) = integrator
-    (; basin) = p
+    (; basin) = integrator.p
     du = get_du(integrator)
     current_storage = basin.current_storage[parent(du)]
     current_level = basin.current_level[parent(du)]
-    water_balance!(du, u, p, t)
+    water_balance!(integrator)
     SavedBasinState(; storage = copy(current_storage), level = copy(current_level), t)
 end
 
 """
-Save all cumulative forcings and flows over edges over the latest timestep,
+Save all cumulative forcings and flows over edges over the latest time step,
 Both computed by the solver and integrated exactly. Also computes the total horizontal
 inflow and outflow per basin.
 """
 function save_flow(u, t, integrator)
     (; p) = integrator
-    (; basin, state_inflow_edge, state_outflow_edge, flow_boundary, u_prev_saveat) = p
+    (; basin, state_inflow_edge, state_outflow_edge, flow_boundary, u_prev_saveat, τ) = p
     Δt = get_Δt(integrator)
-    flow_mean = (u - u_prev_saveat) / Δt
+    flow_mean = @. (t - Δt + τ) / Δt * (u - u_prev_saveat) + u
 
     # Current u is previous u in next computation
     u_prev_saveat .= u
@@ -266,13 +276,22 @@ function check_water_balance_error!(
     Δt::Float64,
 )::Nothing
     (; u, p, t) = integrator
-    (; basin, water_balance_abstol, water_balance_reltol) = p
+    (; basin, water_balance_abstol, water_balance_reltol, cumulative_flow) = p
     errors = false
     current_storage = basin.current_storage[parent(u)]
+    cumulative_flow = cumulative_flow[parent(u)]
+    u_to_cumulative_flow!(cumulative_flow, u, p, t)
 
     # The initial storage is irrelevant for the storage rate and can only cause
     # floating point truncation errors
-    formulate_storages!(current_storage, u, u, p, t; add_initial_storage = false)
+    formulate_storages!(
+        current_storage,
+        u,
+        cumulative_flow,
+        p,
+        t;
+        add_initial_storage = false,
+    )
 
     for (
         inflow_rate,
@@ -314,7 +333,7 @@ function check_water_balance_error!(
     end
     if errors
         t = datetime_since(t, p.starttime)
-        error("Too large water balance error(s) detected at t = $t")
+        error("Too large water balance error(s) detected at t = $t ($(integrator.t) s).")
     end
 
     @. basin.Δstorage_prev_saveat = current_storage
@@ -374,7 +393,7 @@ function apply_discrete_control!(u, t, integrator)::Nothing
     (; discrete_control) = p
     (; node_id) = discrete_control
     du = get_du(integrator)
-    water_balance!(du, u, p, t)
+    water_balance!(integrator)
 
     # Loop over the discrete control nodes to determine their truth state
     # and detect possible control state changes

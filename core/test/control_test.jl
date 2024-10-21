@@ -9,7 +9,7 @@
         normpath(@__DIR__, "../../generated_testmodels/pump_discrete_control/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
-    p = model.integrator.p
+    (; u, p) = model.integrator
     (; discrete_control, graph) = p
 
     # Control input(flow rates)
@@ -57,6 +57,7 @@
     t_2_index = findfirst(>=(t_2), t)
     @test level[2, t_2_index] >= discrete_control.compound_variables[1][2].greater_than[1]
 
+    Ribasim.water_balance!(model.integrator; adjust_du = false)
     flow = get_du(model.integrator)[(:linear_resistance, :pump)]
     @test all(iszero, flow)
 end

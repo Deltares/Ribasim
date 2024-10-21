@@ -1,21 +1,25 @@
 """
 The right hand side function of the system of ODEs set up by Ribasim.
+adjust_du: Adjust du for having average flow states in stead of cumulative flow states.
 """
 function water_balance!(
     du::ComponentVector,
     u::ComponentVector,
     p::Parameters,
-    t::Number,
+    t::Number;
+    adjust_du::Bool = true,
 )::Nothing
-    (; basin, pid_control) = p
+    (; basin, pid_control, cumulative_flow) = p
 
     du .= 0.0
 
-    # Ensures current_* vectors are current
-    set_current_basin_properties!(du, u, p, t)
-
     current_storage = basin.current_storage[parent(du)]
     current_level = basin.current_level[parent(du)]
+    cumulative_flow = cumulative_flow[parent(du)]
+    u_to_cumulative_flow!(cumulative_flow, u, p, t)
+
+    # Ensures current_* vectors are current
+    set_current_basin_properties!(du, cumulative_flow, p, t)
 
     # Notes on the ordering of these formulations:
     # - Continuous control can depend on flows (which are not continuously controlled themselves),
@@ -55,7 +59,36 @@ function water_balance!(
         continuous_control_type = ContinuousControlType.PID,
     )
 
+    # Adjust du for average flow state in stead of cumulative flow state
+    adjust_du && adjust_for_average_flow!(du, u, p, t)
     return nothing
+end
+
+function adjust_for_average_flow!(du, u, p, t)::Nothing
+    (; τ) = p
+    for component_name in (
+        :tabulated_rating_curve,
+        :pump,
+        :outlet,
+        :linear_resistance,
+        :manning_resistance,
+        :user_demand_inflow,
+        :user_demand_outflow,
+        :evaporation,
+        :infiltration,
+    )
+        du_component = getproperty(du, component_name)
+        u_component = getproperty(u, component_name)
+        du_component .-= u_component
+        du_component ./= t + τ
+    end
+    return nothing
+end
+
+function water_balance!(integrator::DEIntegrator; adjust_du::Bool = false)::Nothing
+    du = get_du(integrator)
+    (; u, p, t) = integrator
+    water_balance!(du, u, p, t; adjust_du)
 end
 
 function formulate_continuous_control!(du, p, t)::Nothing
@@ -74,7 +107,7 @@ state u and the time t.
 """
 function set_current_basin_properties!(
     du::ComponentVector,
-    u::ComponentVector,
+    cumulative_flow::AbstractVector,
     p::Parameters,
     t::Number,
 )::Nothing
@@ -105,7 +138,7 @@ function set_current_basin_properties!(
     end
     @. current_cumulative_drainage = cumulative_drainage + dt * vertical_flux.drainage
 
-    formulate_storages!(current_storage, du, u, p, t)
+    formulate_storages!(current_storage, du, cumulative_flow, p, t)
 
     for (i, s) in enumerate(current_storage)
         current_level[i] = get_level_from_storage(basin, i, s)
@@ -116,7 +149,7 @@ end
 function formulate_storages!(
     current_storage::AbstractVector,
     du::ComponentVector,
-    u::ComponentVector,
+    cumulative_flow::AbstractVector,
     p::Parameters,
     t::Number;
     add_initial_storage::Bool = true,
@@ -130,7 +163,7 @@ function formulate_storages!(
     else
         current_storage .= 0.0
     end
-    mul!(current_storage, flow_to_storage, u, 1, 1)
+    mul!(current_storage, flow_to_storage, cumulative_flow, 1, 1)
     formulate_storage!(current_storage, basin, du)
     formulate_storage!(current_storage, tprev[], t, flow_boundary)
     return nothing
@@ -710,7 +743,7 @@ function limit_flow!(
     p::Parameters,
     t::Number,
 )::Nothing
-    (; uprev, dt) = integrator
+    (; uprev, tprev) = integrator
     (;
         pump,
         outlet,
@@ -719,7 +752,13 @@ function limit_flow!(
         tabulated_rating_curve,
         basin,
         allocation,
+        τ,
     ) = p
+
+    # integrator.dt is not updated yet
+    dt = t - tprev
+    u_factor = (tprev + τ) / (t + τ)
+    q_factor = dt / (t + τ)
 
     # TabulatedRatingCurve
     for (id, active) in zip(tabulated_rating_curve.node_id, tabulated_rating_curve.active)
@@ -730,20 +769,39 @@ function limit_flow!(
             0.0,
             Inf,
             active,
-            dt,
+            u_factor,
+            q_factor,
         )
     end
 
     # Pump
     for (id, min_flow_rate, max_flow_rate, active) in
         zip(pump.node_id, pump.min_flow_rate, pump.max_flow_rate, pump.active)
-        limit_flow!(u.pump, uprev.pump, id, min_flow_rate, max_flow_rate, active, dt)
+        limit_flow!(
+            u.pump,
+            uprev.pump,
+            id,
+            min_flow_rate,
+            max_flow_rate,
+            active,
+            u_factor,
+            q_factor,
+        )
     end
 
     # Outlet
     for (id, min_flow_rate, max_flow_rate, active) in
         zip(outlet.node_id, outlet.min_flow_rate, outlet.max_flow_rate, outlet.active)
-        limit_flow!(u.outlet, uprev.outlet, id, min_flow_rate, max_flow_rate, active, dt)
+        limit_flow!(
+            u.outlet,
+            uprev.outlet,
+            id,
+            min_flow_rate,
+            max_flow_rate,
+            active,
+            u_factor,
+            q_factor,
+        )
     end
 
     # LinearResistance
@@ -759,7 +817,8 @@ function limit_flow!(
             -max_flow_rate,
             max_flow_rate,
             active,
-            dt,
+            u_factor,
+            q_factor,
         )
     end
 
@@ -776,14 +835,33 @@ function limit_flow!(
             0.0,
             total_demand,
             active,
-            dt,
+            u_factor,
+            q_factor,
         )
     end
 
     # Evaporation and Infiltration
     for (id, infiltration) in zip(basin.node_id, basin.vertical_flux.infiltration)
-        limit_flow!(u.evaporation, uprev.evaporation, id, 0.0, Inf, true, dt)
-        limit_flow!(u.infiltration, uprev.infiltration, id, 0.0, infiltration, true, dt)
+        limit_flow!(
+            u.evaporation,
+            uprev.evaporation,
+            id,
+            0.0,
+            Inf,
+            true,
+            u_factor,
+            q_factor,
+        )
+        limit_flow!(
+            u.infiltration,
+            uprev.infiltration,
+            id,
+            0.0,
+            infiltration,
+            true,
+            u_factor,
+            q_factor,
+        )
     end
 
     return nothing
@@ -796,17 +874,18 @@ function limit_flow!(
     min_flow_rate::Number,
     max_flow_rate::Number,
     active::Bool,
-    dt::Number,
+    u_factor::Number,
+    q_factor::Number,
 )::Nothing
     u_prev = uprev_component[id.idx]
     if active
         u_component[id.idx] = clamp(
             u_component[id.idx],
-            u_prev + min_flow_rate * dt,
-            u_prev + max_flow_rate * dt,
+            u_factor * u_prev + q_factor * min_flow_rate,
+            u_factor * u_prev + q_factor * max_flow_rate,
         )
     else
-        u_component[id.idx] = uprev_component[id.idx]
+        u_component[id.idx] = u_factor * u_prev
     end
     return nothing
 end
