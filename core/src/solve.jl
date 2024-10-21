@@ -116,7 +116,7 @@ function set_current_basin_properties!(
 
     for (id, s) in zip(basin.node_id, current_storage)
         i = id.idx
-        current_low_storage_factor[i] = reduction_factor(s, 10.0)
+        current_low_storage_factor[i] = reduction_factor(s, LOW_STORAGE_THRESHOLD)
         current_level[i] = get_level_from_storage(basin, i, s)
         current_area[i] = basin.level_to_area[i](current_level[i])
     end
@@ -366,7 +366,7 @@ function formulate_flow!(
         # level reaches its minimum level
         source_level = get_level(p, inflow_id, t, current_level)
         Δsource_level = source_level - min_level
-        factor_level = reduction_factor(Δsource_level, 0.1)
+        factor_level = reduction_factor(Δsource_level, USER_DEMAND_MIN_LEVEL_THRESHOLD)
         q *= factor_level
         du.user_demand_inflow[id.idx] = q
         du.user_demand_outflow[id.idx] = q * return_factor(t)
@@ -759,6 +759,11 @@ function limit_flow!(
         allocation,
     ) = p
 
+    du = get_du(integrator)
+    set_current_basin_properties!(du, u, p, t)
+    current_storage = basin.current_properties.current_storage[parent(u)]
+    current_level = basin.current_properties.current_level[parent(u)]
+
     # TabulatedRatingCurve flow is in [0, ∞) and can be inactive
     for (id, active) in zip(tabulated_rating_curve.node_id, tabulated_rating_curve.active)
         limit_flow!(
@@ -801,28 +806,58 @@ function limit_flow!(
         )
     end
 
-    # UserDemand inflow is in [0, total_demand] and can be inactive
-    for (id, active) in zip(user_demand.node_id, user_demand.active)
-        total_demand = sum(
-            get_demand(user_demand, id, priority_idx, t) for
-            priority_idx in eachindex(allocation.priorities)
-        )
+    # UserDemand inflow bounds depend on multiple aspects of the simulation
+    for (id, active, inflow_edge, demand_from_timeseries) in zip(
+        user_demand.node_id,
+        user_demand.active,
+        user_demand.inflow_edge,
+        user_demand.demand_from_timeseries,
+    )
+        min_flow_rate, max_flow_rate = if demand_from_timeseries
+            # Bounding the flow rate if the demand comes from a time series is hard
+            0, Inf
+        else
+            inflow_id = inflow_edge.edge[1]
+            factor_basin_min =
+                min_low_storage_factor(current_storage, basin.storage_prev, inflow_id)
+            factor_level_min = min_low_user_demand_level_factor(
+                current_level,
+                basin.level_prev,
+                user_demand.min_level,
+                id,
+                inflow_id,
+            )
+            allocated_total =
+                is_active(allocation) ? sum(user_demand.allocated[id.idx, :]) :
+                sum(user_demand.demand[id.idx, :])
+            factor_basin_min * factor_level_min * allocated_total, allocated_total
+        end
         limit_flow!(
             u.user_demand_inflow,
             uprev.user_demand_inflow,
             id,
-            0.0,
-            total_demand,
+            min_flow_rate,
+            max_flow_rate,
             active,
             dt,
         )
     end
 
-    # Evaporation is in [0, ∞) (a stricter upper bound would require also estimating the area)
-    # Infiltration is in [0, infiltration]
+    # Evaporation is in [0, ∞) (stricter bounds would require also estimating the area)
+    # Infiltration is in [f * infiltration, infiltration] where f is a rough estimate of the smallest low storage factor
+    # reduction factor value that was attained over the last timestep
     for (id, infiltration) in zip(basin.node_id, basin.vertical_flux.infiltration)
+        factor_min = min_low_storage_factor(current_storage, basin.storage_prev, id)
         limit_flow!(u.evaporation, uprev.evaporation, id, 0.0, Inf, true, dt)
-        limit_flow!(u.infiltration, uprev.infiltration, id, 0.0, infiltration, true, dt)
+        limit_flow!(
+            u.infiltration,
+            uprev.infiltration,
+            id,
+            factor_min * infiltration,
+            infiltration,
+            true,
+            dt,
+        )
     end
 
     return nothing

@@ -410,7 +410,8 @@ end
     @test ispath(toml_path)
     model = Ribasim.Model(toml_path)
 
-    (; u, p, t, sol) = model.integrator
+    (; integrator) = model
+    (; u, p, t, sol) = integrator
     current_storage = p.basin.current_properties.current_storage[Float64[]]
 
     day = 86400.0

@@ -1,3 +1,6 @@
+const LOW_STORAGE_THRESHOLD = 10.0
+const USER_DEMAND_MIN_LEVEL_THRESHOLD = 0.1
+
 const SolverStats = @NamedTuple{
     time::Float64,
     rhs_calls::Int,
@@ -364,6 +367,8 @@ end
     # Data source for concentration updates
     concentration_time::StructVector{BasinConcentrationV1, D, Int}
 
+    # Level for each Basin at the previous time step
+    level_prev::Vector{Float64} = zeros(length(node_id))
     # Concentrations
     # Config setting to enable/disable evaporation of mass
     evaporate_mass::Bool = true

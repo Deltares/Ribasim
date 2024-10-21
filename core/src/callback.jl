@@ -315,6 +315,7 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
     basin.concentration_state .=
         basin.mass ./ basin.current_properties.current_storage[parent(u)]
     basin.storage_prev .= basin.current_properties.current_storage[parent(u)]
+    basin.level_prev .= basin.current_properties.current_level[parent(u)]
 
     return nothing
 end

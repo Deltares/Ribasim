@@ -1130,3 +1130,32 @@ function get_demand(user_demand, id, priority_idx, t)::Float64
         demand[id.idx, priority_idx]
     end
 end
+
+function min_low_storage_factor(storage_now::Vector{T}, storage_prev, id) where {T}
+    if id.type == NodeType.Basin
+        reduction_factor(
+            min(storage_now[id.idx], storage_prev[id.idx]) - 2LOW_STORAGE_THRESHOLD,
+            LOW_STORAGE_THRESHOLD,
+        )
+    else
+        one(T)
+    end
+end
+
+function min_low_user_demand_level_factor(
+    level_now::Vector{T},
+    level_prev,
+    min_level,
+    id_user_demand,
+    id_inflow,
+) where {T}
+    if id_inflow.type == NodeType.Basin
+        reduction_factor(
+            min(level_now[id_inflow.idx], level_prev[id_inflow.idx]) -
+            min_level[id_user_demand.idx] - 2USER_DEMAND_MIN_LEVEL_THRESHOLD,
+            USER_DEMAND_MIN_LEVEL_THRESHOLD,
+        )
+    else
+        one(T)
+    end
+end
