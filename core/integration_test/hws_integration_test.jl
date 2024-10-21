@@ -31,6 +31,7 @@
     timed = @timed Ribasim.run(toml_path)
     dt = Microsecond(round(Int, timed.time * 1000)) + Time(0)
 
+    @tcstatistic "time" timed.time
     @tcstatistic "min_diff" minimum(diff)
     @tcstatistic "max_diff" maximum(diff)
     @tcstatistic "med_diff" median(diff)

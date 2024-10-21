@@ -1,6 +1,6 @@
 macro tcstatus(message)
     if haskey(ENV, "TEAMCITY_VERSION")
-        return :(println("##teamcity[message text='", $message, "']"))
+        return :(println("##teamcity[buildStatus text='", $message, "']"))
     else
         return :(println($message))
     end
