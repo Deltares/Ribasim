@@ -85,7 +85,7 @@ verbosity         | String | Verbosity level: debug, info, warn, or error.
 ::: {.callout-important}
 Experimental features are completely unsupported. They can break at any time
 and results will be wrong. **Do not use them in production**. If you're interested
-in using an experimental feature, please [contact us](../contact.qmd).
+in using an experimental feature, please [contact us](/contact.qmd).
 :::
 
 One can enable experimental features in the `[experimental]` section.
