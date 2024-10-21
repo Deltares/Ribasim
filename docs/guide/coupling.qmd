@@ -6,7 +6,7 @@ title: "Coupling"
 
 Ribasim can also be (online) coupled to other kernels with the help of iMOD Coupler. The corresponding documentation can be found within the [iMOD Suite Documentation](https://deltares.github.io/iMOD-Documentation/coupler.html).
 
-# Water quality
+# Water quality {#sec-waterquality}
 
 Ribasim can be offline coupled to Delwaq, the Deltares Water Quality model.
 
