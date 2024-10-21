@@ -701,7 +701,7 @@ function formulate_flows!(
 end
 
 """
-Clamp the cumulative flow states between bounds given my minimum and maximum
+Clamp the cumulative flow states within the minimum and maximum
 flow rates for the last time step if these flow rate bounds are known.
 """
 function limit_flow!(
@@ -721,7 +721,7 @@ function limit_flow!(
         allocation,
     ) = p
 
-    # TabulatedRatingCurve
+    # TabulatedRatingCurve flow is in [0, ∞) and can be inactive
     for (id, active) in zip(tabulated_rating_curve.node_id, tabulated_rating_curve.active)
         limit_flow!(
             u.tabulated_rating_curve,
@@ -734,19 +734,19 @@ function limit_flow!(
         )
     end
 
-    # Pump
+    # Pump flow is in [min_flow_rate, max_flow_rate] and can be inactive
     for (id, min_flow_rate, max_flow_rate, active) in
         zip(pump.node_id, pump.min_flow_rate, pump.max_flow_rate, pump.active)
         limit_flow!(u.pump, uprev.pump, id, min_flow_rate, max_flow_rate, active, dt)
     end
 
-    # Outlet
+    # Outlet flow is in [min_flow_rate, max_flow_rate] and can be inactive
     for (id, min_flow_rate, max_flow_rate, active) in
         zip(outlet.node_id, outlet.min_flow_rate, outlet.max_flow_rate, outlet.active)
         limit_flow!(u.outlet, uprev.outlet, id, min_flow_rate, max_flow_rate, active, dt)
     end
 
-    # LinearResistance
+    # LinearResistance flow is in [-max_flow_rate, max_flow_rate] and can be inactive
     for (id, max_flow_rate, active) in zip(
         linear_resistance.node_id,
         linear_resistance.max_flow_rate,
@@ -763,7 +763,7 @@ function limit_flow!(
         )
     end
 
-    # UserDemand inflow
+    # UserDemand inflow is in [0, total_demand] and can be inactive
     for (id, active) in zip(user_demand.node_id, user_demand.active)
         total_demand = sum(
             get_demand(user_demand, id, priority_idx, t) for
@@ -780,7 +780,8 @@ function limit_flow!(
         )
     end
 
-    # Evaporation and Infiltration
+    # Evaporation is in [0, ∞) (a stricter upper bound would require also estimating the area)
+    # Infiltration is in [0, infiltration]
     for (id, infiltration) in zip(basin.node_id, basin.vertical_flux.infiltration)
         limit_flow!(u.evaporation, uprev.evaporation, id, 0.0, Inf, true, dt)
         limit_flow!(u.infiltration, uprev.infiltration, id, 0.0, infiltration, true, dt)
