@@ -320,29 +320,14 @@ function formulate_flow!(
 )::Nothing
     (; allocation) = p
     all_nodes_active = p.all_nodes_active[]
-    for (
-        id,
-        inflow_edge,
-        outflow_edge,
-        active,
-        demand_itp,
-        demand,
-        allocated,
-        return_factor,
-        min_level,
-        demand_from_timeseries,
-    ) in zip(
+    for (id, inflow_edge, outflow_edge, active, allocated, return_factor, min_level) in zip(
         user_demand.node_id,
         user_demand.inflow_edge,
         user_demand.outflow_edge,
         user_demand.active,
-        user_demand.demand_itp,
-        # TODO permute these so the nodes are the last dimension, for performance
-        eachrow(user_demand.demand),
         eachrow(user_demand.allocated),
         user_demand.return_factor,
         user_demand.min_level,
-        user_demand.demand_from_timeseries,
     )
         if !(active || all_nodes_active)
             continue
@@ -356,11 +341,7 @@ function formulate_flow!(
         # effectively allocated = demand.
         for priority_idx in eachindex(allocation.priorities)
             alloc_prio = allocated[priority_idx]
-            demand_prio = if demand_from_timeseries
-                demand_itp[priority_idx](t)
-            else
-                demand[priority_idx]
-            end
+            demand_prio = get_demand(user_demand, id, priority_idx, t)
             alloc = min(alloc_prio, demand_prio)
             q += alloc
         end
@@ -717,4 +698,116 @@ function formulate_flows!(
         formulate_flow!(du, tabulated_rating_curve, p, t, current_storage, current_level)
         formulate_flow!(du, user_demand, p, t, current_storage, current_level)
     end
+end
+
+"""
+Clamp the cumulative flow states within the minimum and maximum
+flow rates for the last time step if these flow rate bounds are known.
+"""
+function limit_flow!(
+    u::ComponentVector,
+    integrator::DEIntegrator,
+    p::Parameters,
+    t::Number,
+)::Nothing
+    (; uprev, dt) = integrator
+    (;
+        pump,
+        outlet,
+        linear_resistance,
+        user_demand,
+        tabulated_rating_curve,
+        basin,
+        allocation,
+    ) = p
+
+    # TabulatedRatingCurve flow is in [0, ∞) and can be inactive
+    for (id, active) in zip(tabulated_rating_curve.node_id, tabulated_rating_curve.active)
+        limit_flow!(
+            u.tabulated_rating_curve,
+            uprev.tabulated_rating_curve,
+            id,
+            0.0,
+            Inf,
+            active,
+            dt,
+        )
+    end
+
+    # Pump flow is in [min_flow_rate, max_flow_rate] and can be inactive
+    for (id, min_flow_rate, max_flow_rate, active) in
+        zip(pump.node_id, pump.min_flow_rate, pump.max_flow_rate, pump.active)
+        limit_flow!(u.pump, uprev.pump, id, min_flow_rate, max_flow_rate, active, dt)
+    end
+
+    # Outlet flow is in [min_flow_rate, max_flow_rate] and can be inactive
+    for (id, min_flow_rate, max_flow_rate, active) in
+        zip(outlet.node_id, outlet.min_flow_rate, outlet.max_flow_rate, outlet.active)
+        limit_flow!(u.outlet, uprev.outlet, id, min_flow_rate, max_flow_rate, active, dt)
+    end
+
+    # LinearResistance flow is in [-max_flow_rate, max_flow_rate] and can be inactive
+    for (id, max_flow_rate, active) in zip(
+        linear_resistance.node_id,
+        linear_resistance.max_flow_rate,
+        linear_resistance.active,
+    )
+        limit_flow!(
+            u.linear_resistance,
+            uprev.linear_resistance,
+            id,
+            -max_flow_rate,
+            max_flow_rate,
+            active,
+            dt,
+        )
+    end
+
+    # UserDemand inflow is in [0, total_demand] and can be inactive
+    for (id, active) in zip(user_demand.node_id, user_demand.active)
+        total_demand = sum(
+            get_demand(user_demand, id, priority_idx, t) for
+            priority_idx in eachindex(allocation.priorities)
+        )
+        limit_flow!(
+            u.user_demand_inflow,
+            uprev.user_demand_inflow,
+            id,
+            0.0,
+            total_demand,
+            active,
+            dt,
+        )
+    end
+
+    # Evaporation is in [0, ∞) (a stricter upper bound would require also estimating the area)
+    # Infiltration is in [0, infiltration]
+    for (id, infiltration) in zip(basin.node_id, basin.vertical_flux.infiltration)
+        limit_flow!(u.evaporation, uprev.evaporation, id, 0.0, Inf, true, dt)
+        limit_flow!(u.infiltration, uprev.infiltration, id, 0.0, infiltration, true, dt)
+    end
+
+    return nothing
+end
+
+function limit_flow!(
+    u_component,
+    uprev_component,
+    id::NodeID,
+    min_flow_rate::Number,
+    max_flow_rate::Number,
+    active::Bool,
+    dt::Number,
+)::Nothing
+    u_prev = uprev_component[id.idx]
+    if active
+        u_component[id.idx] = clamp(
+            u_component[id.idx],
+            u_prev + min_flow_rate * dt,
+            u_prev + max_flow_rate * dt,
+        )
+    else
+        u_component[id.idx] = uprev_component[id.idx]
+    end
+    return nothing
 end
