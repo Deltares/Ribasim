@@ -78,8 +78,8 @@ IOCapture = "0.2"
 IterTools = "1.4"
 JuMP = "1.15"
 Legolas = "0.5"
-LinearAlgebra = "1"
 LineSearches = "7"
+LinearAlgebra = "1"
 LinearSolve = "2.24"
 Logging = "1"
 LoggingExtras = "1"
@@ -112,6 +112,7 @@ CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 IOCapture = "b5f81e59-6552-4d32-b1f0-c071b021bf89"
 Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
 TerminalLoggers = "5d786b92-1e48-4d6f-9151-6b4477ca9bed"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
@@ -121,4 +122,4 @@ TestItemRunner = "f8b46487-2199-4994-9208-9a1283c18c0a"
 LoadMKL_JLL = false
 
 [targets]
-test = ["Aqua", "CSV", "DataFrames", "IOCapture", "Logging", "TerminalLoggers", "Test", "TOML", "TestItemRunner"]
+test = ["Aqua", "CSV", "DataFrames", "IOCapture", "Logging", "Statistics", "TerminalLoggers", "Test", "TOML", "TestItemRunner"]

@@ -1,0 +1,8 @@
+[core]
+    remote = minio
+['remote "minio"']  # for tracking artifacts with unreadable names
+    url = s3://ribasim/dvc
+    endpointurl = https://s3.deltares.nl
+['remote "minio_readonly"']  # for readable named models in the top-dir
+    url = s3://ribasim
+    endpointurl = https://s3.deltares.nl

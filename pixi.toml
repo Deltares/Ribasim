@@ -192,6 +192,7 @@ tomli-w = "*"
 xarray = "*"
 xmipy = "*"
 xugrid = "*"
+teamcity-messages = ">=1.32,<2"
 
 [pypi-dependencies]
 ribasim = { path = "python/ribasim", editable = true }
