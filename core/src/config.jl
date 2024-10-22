@@ -134,6 +134,19 @@ end
     use_allocation::Bool = false
 end
 
+@option struct Experimental <: TableOption
+    concentration::Bool = false
+end
+# For logging enabled experimental features
+function Base.iterate(exp::Experimental, state = 0)
+    state >= nfields(exp) && return
+    return Base.getfield(exp, state + 1), state + 1
+end
+function Base.show(io::IO, exp::Experimental)
+    fields = (field for field in fieldnames(typeof(exp)) if getfield(exp, field))
+    print(io, join(fields, " "))
+end
+
 @option @addnodetypes struct Toml <: TableOption
     starttime::DateTime
     endtime::DateTime
@@ -145,6 +158,7 @@ end
     solver::Solver = Solver()
     logging::Logging = Logging()
     results::Results = Results()
+    experimental::Experimental = Experimental()
 end
 
 struct Config
@@ -250,6 +264,18 @@ const algorithms = Dict{String, Type}(
     "Euler" => Euler,
 )
 
+"""
+Check whether the given function has a method that accepts the given kwarg.
+Note that it is possible that methods exist that accept :a and :b individually,
+but not both.
+"""
+function function_accepts_kwarg(f, kwarg)::Bool
+    for method in methods(f)
+        kwarg in Base.kwarg_decl(method) && return true
+    end
+    return false
+end
+
 "Create an OrdinaryDiffEqAlgorithm from solver config"
 function algorithm(solver::Solver; u0 = [])::OrdinaryDiffEqAlgorithm
     algotype = get(algorithms, solver.algorithm, nothing)
@@ -259,19 +285,22 @@ function algorithm(solver::Solver; u0 = [])::OrdinaryDiffEqAlgorithm
             Available options are: ($(options)).")
     end
     kwargs = Dict{Symbol, Any}()
+
     if algotype <: OrdinaryDiffEqNewtonAdaptiveAlgorithm
         kwargs[:nlsolve] = NLNewton(;
             relax = Ribasim.MonitoredBackTracking(; z_tmp = copy(u0), dz_tmp = copy(u0)),
         )
     end
-    # not all algorithms support this keyword
-    kwargs[:autodiff] = solver.autodiff
-    try
-        algotype(; kwargs...)
-    catch
-        pop!(kwargs, :autodiff)
-        algotype(; kwargs...)
+
+    if function_accepts_kwarg(algotype, :step_limiter!)
+        kwargs[:step_limiter!] = Ribasim.limit_flow!
     end
+
+    if function_accepts_kwarg(algotype, :autodiff)
+        kwargs[:autodiff] = solver.autodiff
+    end
+
+    algotype(; kwargs...)
 end
 
 "Convert the saveat Float64 from our Config to SciML's saveat"

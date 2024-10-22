@@ -48,3 +48,7 @@ verbosity = "info" # optional, default "info", can otherwise be "debug", "warn" 
 # These results files are always written
 compression = true  # optional, default true, using zstd compression
 compression_level = 6 # optional, default 6
+
+[experimental]
+# Experimental features, disabled by default
+concentration = false # tracer calculations
