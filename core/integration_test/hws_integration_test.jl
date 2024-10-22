@@ -22,14 +22,13 @@
 
     @testset "Results values" begin
         @test basin.node_id == basin_bench.node_id
-        # Disable this failing test for now
-        # @test all(q -> abs(q) < 0.2, basin.level - basin_bench.level)
+        @test all(q -> abs(q) < 0.2, basin.level - basin_bench.level)
     end
 
     diff = basin.level - basin_bench.level
 
     timed = @timed Ribasim.run(toml_path)
-    dt = Microsecond(round(Int, timed.time * 1000)) + Time(0)
+    dt = Millisecond(round(Int, timed.time * 1000)) + Time(0)
 
     @tcstatistic "time" timed.time
     @tcstatistic "min_diff" minimum(diff)

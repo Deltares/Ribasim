@@ -55,6 +55,8 @@ end
     using SciMLBase: successful_retcode
     import Arrow
     using Ribasim
+    using Statistics
+    include(joinpath(@__DIR__, "../test/utils.jl"))
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
     @test ispath(toml_path)
@@ -102,6 +104,14 @@ end
                 # Testbench for basin.arrow
                 @test basin.time == basin_bench.time
                 @test basin.node_id == basin_bench.node_id
+
+                # The storage seems to failing the most, so let's report it for now
+                sdiff = basin.storage - basin_bench.storage
+                key = "basic.$solver.$sparse_on_off.$autodiff_on_off"
+                @tcstatistic "$key.min_diff" minimum(sdiff)
+                @tcstatistic "$key.max_diff" maximum(sdiff)
+                @tcstatistic "$key.med_diff" median(sdiff)
+
                 @test all(q -> abs(q) < 1.0, basin.storage - basin_bench.storage)
                 @test all(q -> abs(q) < 0.5, basin.level - basin_bench.level)
                 @test all(q -> abs(q) < 1e-3, basin.balance_error)
