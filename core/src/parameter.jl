@@ -107,6 +107,7 @@ const ScalarInterpolation = LinearInterpolation{
     Vector{Float64},
     Vector{Float64},
     Float64,
+    (1,),
 }
 
 set_zero!(v) = v .= zero(eltype(v))
@@ -357,6 +358,7 @@ end
             Vector{Float64},
             ScalarInterpolation,
             Float64,
+            (1,),
         },
     }
     level_to_area::Vector{ScalarInterpolation}
