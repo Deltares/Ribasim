@@ -1,0 +1,14 @@
+md5: bda2339cc165379b0f6da21aa67039d9
+frozen: true
+deps:
+- md5: ab64e9bee55f9a7524f36ca317ade8fb.dir
+  size: 43307158
+  nfiles: 2
+  hash: md5
+  path: remote://minio_readonly/hws_migration_test
+outs:
+- md5: 6ca6218661d0f021bc53bf468000a62b.dir
+  size: 43307158
+  nfiles: 2
+  hash: md5
+  path: hws_migration_test

@@ -234,6 +234,10 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
                 elseif to_node.type == NodeType.UserDemand
                     basin.mass[from_node.idx, :] .-=
                         user_demand.concentration[to_node.idx, :] .* flow
+                elseif to_node.type == NodeType.Terminal && to_node.value == 0
+                    # UserDemand inflow is discoupled from its outflow,
+                    # and the unset flow edge defaults to Terminal #0
+                    nothing
                 else
                     @warn "Unsupported outflow from $(to_node.type) #$(to_node.value) to $(from_node.type) #$(from_node.value) with flow $flow"
                 end

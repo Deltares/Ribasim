@@ -1,0 +1,16 @@
+stages:
+  integration:
+    cmd: pixi run model-integration-test
+    deps:
+      - core/
+      - models/hws_2024_7_0
+    params:
+      - models/integration.toml:
+          - solver.algorithm
+          - solver.abstol
+          - solver.reltol
+          - solver.autodiff
+    outs:
+      - data/integration.toml
+metrics:
+  - data/integration.toml
