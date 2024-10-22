@@ -18,6 +18,6 @@ macro tcstatistic(key, value)
             )),
         )
     else
-        return esc(:(println($key, "=", $value)))
+        return esc(:(println($key, '=', $value)))
     end
 end
