@@ -333,8 +333,15 @@ def generate(
 
     # Write topology to delwaq pointer file
     pointer = pd.DataFrame(G.edges(), columns=["from_node_id", "to_node_id"])
-    pointer.to_csv(output_path / "network.csv", index=False)  # not needed
     write_pointer(output_path / "ribasim.poi", pointer)
+    pointer["riba_edge_id"] = [e[2] for e in G.edges.data("id")]
+    pointer["riba_from_node_id"] = pointer["from_node_id"].map(
+        {v: k for k, v in node_mapping.items()}
+    )
+    pointer["riba_to_node_id"] = pointer["to_node_id"].map(
+        {v: k for k, v in node_mapping.items()}
+    )
+    pointer.to_csv(output_path / "network.csv", index=False)  # not needed
 
     total_segments = len(basin_mapping)
     total_exchanges = len(pointer)
@@ -363,6 +370,7 @@ def generate(
     flows.loc[m, "flow_rate"] = flows.loc[m, "flow_rate"] * -1
 
     # Map edge_id to the new edge_id and merge any duplicate flows
+    flows["riba_edge_id"] = flows["edge_id"]
     flows["edge_id"] = flows["edge_id"].map(edge_mapping)
     flows.dropna(subset=["edge_id"], inplace=True)
     flows["edge_id"] = flows["edge_id"].astype("int32")
@@ -389,7 +397,7 @@ def generate(
     nflows.sort_values(by=["time", "edge_id"], inplace=True)
     nflows.to_csv(output_path / "flows.csv", index=False)  # not needed
     nflows.drop(
-        columns=["edge_id"],
+        columns=["edge_id", "riba_edge_id"],
         inplace=True,
     )
     write_flows(output_path / "ribasim.flo", nflows, timestep)
@@ -400,12 +408,13 @@ def generate(
     # Write volumes to Delwaq format
     basins.drop(columns=["level"], inplace=True)
     volumes = basins[["time", "node_id", "storage"]]
+    volumes["riba_node_id"] = volumes["node_id"]
     volumes.loc[:, "node_id"] = (
         volumes["node_id"].map(basin_mapping).astype(pd.Int32Dtype())
     )
     volumes = volumes.sort_values(by=["time", "node_id"])
     volumes.to_csv(output_path / "volumes.csv", index=False)  # not needed
-    volumes.drop(columns=["node_id"], inplace=True)
+    volumes.drop(columns=["node_id", "riba_node_id"], inplace=True)
     write_volumes(output_path / "ribasim.vol", volumes, timestep)
     write_volumes(
         output_path / "ribasim.vel", volumes, timestep
@@ -479,24 +488,9 @@ def generate(
     bnd["node_id"] = [G.nodes(data="id")[bid] for bid in bnd["bid"]]
     bnd["fid"] = list(map(_boundary_name, bnd["node_id"], bnd["node_type"]))
     bnd["comment"] = ""
+    bnd.to_csv(output_path / "bndlist.csv", index=False)
     bnd = bnd[["fid", "comment", "node_type"]]
-
-    def prefix(d):
-        """Replace duplicate boundary names with unique names.
-
-        As the string length is fixed, we replace the first
-        character with a unique number.
-        """
-        n = len(d)
-        if n == 1:
-            return d
-        elif n == 2:
-            logger.debug(f"Renaming duplicate boundaries {d.iloc[0]}")
-            return [str(i) for i in range(n)] + d.str.lstrip("U")
-        else:
-            raise ValueError("Found boundary with more than 2 duplicates.")
-
-    bnd["fid"] = bnd.groupby("fid").fid.transform(prefix)
+    bnd.drop_duplicates(subset="fid", inplace=True)
     assert bnd["fid"].is_unique
 
     bnd.to_csv(
