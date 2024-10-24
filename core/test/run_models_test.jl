@@ -593,3 +593,46 @@ end
     @test all(flow .≈ 1.0)
     @test length(flow) == length(tstops) - 1
 end
+
+@testitem "stroboscopic_forcing" begin
+    import BasicModelInterface as BMI
+    using SciMLBase: successful_retcode
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/bucket/ribasim.toml")
+    model = BMI.initialize(Ribasim.Model, toml_path)
+
+    drn = BMI.get_value_ptr(model, "basin.drainage")
+    drn_sum = BMI.get_value_ptr(model, "basin.cumulative_drainage")
+    inf = BMI.get_value_ptr(model, "basin.infiltration")
+    inf_sum = BMI.get_value_ptr(model, "basin.cumulative_infiltration")
+
+    nday = 300
+    inf_out = fill(NaN, nday)
+    drn_out = fill(NaN, nday)
+
+    Δt::Float64 = 86400.0
+
+    for day in 0:(nday - 1)
+        if iseven(day)
+            drn .= 25.0 / Δt
+            inf .= 0.0
+        else
+            drn .= 0.0
+            inf .= 25.0 / Δt
+        end
+        BMI.update_until(model, day * Δt)
+
+        inf_out[day + 1] = only(inf_sum)
+        drn_out[day + 1] = only(drn_sum)
+    end
+
+    @test successful_retcode(model)
+
+    Δdrn = diff(drn_out)
+    Δinf = diff(inf_out)
+
+    @test all(Δdrn[1:2:end] .== 0.0)
+    @test all(isapprox.(Δdrn[2:2:end], 25.0; atol = 1e-10))
+    @test all(isapprox.(Δinf[1:2:end], 25.0; atol = 1e-10))
+    @test all(Δinf[2:2:end] .== 0.0)
+end

@@ -118,6 +118,9 @@ function Model(config::Config)::Model
 
     # Synchronize level with storage
     set_current_basin_properties!(du0, u0, parameters, t0)
+
+    # Previous level is used to estimate the minimum level that was attained during a time step
+    # in limit_flow!
     parameters.basin.level_prev .=
         parameters.basin.current_properties.current_level[parent(u0)]
 

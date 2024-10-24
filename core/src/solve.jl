@@ -759,6 +759,9 @@ function limit_flow!(
         allocation,
     ) = p
 
+    # The current storage and level based on the proposed u are used to estimate the lowest
+    # storage and level attained in the last time step to estimate whether there was an effect
+    # of reduction factors
     du = get_du(integrator)
     set_current_basin_properties!(du, u, p, t)
     current_storage = basin.current_properties.current_storage[parent(u)]
@@ -817,6 +820,8 @@ function limit_flow!(
             # Bounding the flow rate if the demand comes from a time series is hard
             0, Inf
         else
+            # The lower bound is estimated as the lowest inflow given the minimum values
+            # of the reduction factors involved (with a margin)
             inflow_id = inflow_edge.edge[1]
             factor_basin_min =
                 min_low_storage_factor(current_storage, basin.storage_prev, inflow_id)

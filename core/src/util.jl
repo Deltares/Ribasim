@@ -1135,6 +1135,7 @@ end
 Estimate the minimum reduction factor achieved over the last time step by
 estimating the lowest storage achieved over the last time step. To make sure
 it is an underestimate of the minimum, 2LOW_STORAGE_THRESHOLD is subtracted from this lowest storage.
+This is done to not be too strict in clamping the flow in the limiter
 """
 function min_low_storage_factor(storage_now::Vector{T}, storage_prev, id) where {T}
     if id.type == NodeType.Basin
@@ -1148,9 +1149,10 @@ function min_low_storage_factor(storage_now::Vector{T}, storage_prev, id) where 
 end
 
 """
-Estimate the minimum minimum level reduction factor achieved over the last time step by
+Estimate the minimum level reduction factor achieved over the last time step by
 estimating the lowest level achieved over the last time step. To make sure
 it is an underestimate of the minimum, 2USER_DEMAND_MIN_LEVEL_THRESHOLD is subtracted from this lowest level.
+This is done to not be too strict in clamping the flow in the limiter
 """
 function min_low_user_demand_level_factor(
     level_now::Vector{T},

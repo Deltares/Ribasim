@@ -1,4 +1,8 @@
+
+# Universal reduction factor threshold for the low storage factor
 const LOW_STORAGE_THRESHOLD = 10.0
+
+# Universal reduction factor threshold for the minimum upstream level of UserDemand nodes
 const USER_DEMAND_MIN_LEVEL_THRESHOLD = 0.1
 
 const SolverStats = @NamedTuple{
@@ -308,6 +312,8 @@ Caches of current basin properties
 """
 struct CurrentBasinProperties
     current_storage::Cache
+    # Low storage factor for reducing flows out of drying basins
+    # given the current storages
     current_low_storage_factor::Cache
     current_level::Cache
     current_area::Cache
