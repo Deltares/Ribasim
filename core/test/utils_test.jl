@@ -21,10 +21,6 @@ end
     level_to_area = LinearInterpolation.(area, level)
     storage_to_level = invert_integral.(level_to_area)
     demand = zeros(2)
-    current_level = cache(2)
-    current_area = cache(2)
-    current_level[Float64[]] .= [2.0, 3.0]
-    current_area[Float64[]] .= [2.0, 3.0]
 
     substances = OrderedSet([:test])
     concentration_state = zeros(2, 1)
@@ -33,8 +29,6 @@ end
 
     basin = Ribasim.Basin(;
         node_id = NodeID.(:Basin, [5, 7], [1, 2]),
-        current_level,
-        current_area,
         storage_to_level,
         level_to_area,
         demand,
@@ -45,6 +39,11 @@ end
         time = StructVector{Ribasim.BasinTimeV1}(undef, 0),
         concentration_time = StructVector{Ribasim.BasinConcentrationV1}(undef, 0),
     )
+
+    (; current_level, current_area) = basin.current_properties
+
+    current_level[Float64[]] .= [2.0, 3.0]
+    current_area[Float64[]] .= [2.0, 3.0]
 
     @test Ribasim.basin_levels(basin, 2)[1] === 4.0
     @test Ribasim.basin_bottom(basin, NodeID(:Basin, 5, 1))[2] === 0.0
@@ -259,28 +258,6 @@ end
     @test reduction_factor(3.0, 2.0) === 1.0
     @test reduction_factor(Inf, 2.0) === 1.0
     @test reduction_factor(-Inf, 2.0) === 0.0
-end
-
-@testitem "low_storage_factor" begin
-    using Ribasim: NodeID, low_storage_factor, low_storage_factor_resistance_node
-
-    node_id = NodeID(:Basin, 5, 1)
-    @test low_storage_factor([-2.0], node_id, 2.0) === 0.0
-    @test low_storage_factor([0.0f0], node_id, 2.0) === 0.0f0
-    @test low_storage_factor([0.0], node_id, 2.0) === 0.0
-    @test low_storage_factor([1.0f0], node_id, 2.0) === 0.5f0
-    @test low_storage_factor([1.0], node_id, 2.0) === 0.5
-    @test low_storage_factor([3.0f0], node_id, 2.0) === 1.0f0
-    @test low_storage_factor([3.0], node_id, 2.0) === 1.0
-
-    node_id_1 = NodeID(:Basin, 5, 1)
-    node_id_2 = NodeID(:Basin, 6, 2)
-    @test low_storage_factor_resistance_node([3.0, 3.0], 1.0, node_id_1, node_id_2, 2.0) ==
-          1.0
-    @test low_storage_factor_resistance_node([1.0, 3.0], 1.0, node_id_1, node_id_2, 2.0) ==
-          0.5
-    @test low_storage_factor_resistance_node([1.0, 3.0], -1.0, node_id_1, node_id_2, 2.0) ==
-          1.0
 end
 
 @testitem "constraints_from_nodes" begin

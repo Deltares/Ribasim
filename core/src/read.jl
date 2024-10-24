@@ -574,13 +574,10 @@ end
 function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     node_id = get_ids(db, "Basin")
     n = length(node_id)
-    current_level = cache(n)
-    current_area = cache(n)
 
     evaporate_mass = config.solver.evaporate_mass
     precipitation = zeros(n)
     potential_evaporation = zeros(n)
-    evaporation = zeros(n)
     drainage = zeros(n)
     infiltration = zeros(n)
     table = (; precipitation, potential_evaporation, drainage, infiltration)
@@ -686,8 +683,6 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
         inflow_ids = [collect(inflow_ids(graph, id)) for id in node_id],
         outflow_ids = [collect(outflow_ids(graph, id)) for id in node_id],
         vertical_flux,
-        current_level,
-        current_area,
         storage_to_level,
         level_to_area,
         demand,
