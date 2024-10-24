@@ -148,7 +148,8 @@ python/ribasim_api/tests/temp/
 report.xml
 
 # Designated working dir for working on Ribasim models
-models/
+models/*
+!models/*.dvc
 playground/output
 
 # Ruff
