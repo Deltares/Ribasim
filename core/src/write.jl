@@ -107,7 +107,10 @@ function basin_state_table(
     # ensure the levels are up-to-date
     set_current_basin_properties!(du, u, p, t)
 
-    return (; node_id = Int32.(p.basin.node_id), level = p.basin.current_level[Float64[]])
+    return (;
+        node_id = Int32.(p.basin.node_id),
+        level = p.basin.current_properties.current_level[Float64[]],
+    )
 end
 
 "Create the basin result table from the saved data"

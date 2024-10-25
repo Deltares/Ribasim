@@ -130,7 +130,7 @@ end
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
     (; basin) = model.integrator.p
-    @test basin.current_storage[Float64[]] ≈ [1000]
+    @test basin.current_properties.current_storage[Float64[]] ≈ [1000]
     @test basin.vertical_flux.precipitation == [0.0]
     @test basin.vertical_flux.drainage == [0.0]
     du = get_du(model.integrator)
@@ -153,7 +153,7 @@ end
     du = get_du(integrator)
     (; u, p, t) = integrator
     Ribasim.water_balance!(du, u, p, t)
-    stor = integrator.p.basin.current_storage[parent(du)]
+    stor = integrator.p.basin.current_properties.current_storage[parent(du)]
     prec = p.basin.vertical_flux.precipitation
     evap = du.evaporation
     drng = p.basin.vertical_flux.drainage
@@ -211,7 +211,7 @@ end
 
     @test successful_retcode(model)
     @test length(model.integrator.sol) == 2 # start and end
-    @test model.integrator.p.basin.current_storage[Float64[]] ≈
+    @test model.integrator.p.basin.current_properties.current_storage[Float64[]] ≈
           Float32[828.5386, 801.88289, 492.290, 1318.3053] skip = Sys.isapple() atol = 1.5
 
     @test length(logger.logs) > 10
@@ -248,7 +248,7 @@ end
     du = get_du(model.integrator)
     precipitation = model.integrator.p.basin.vertical_flux.precipitation
     @test length(precipitation) == 4
-    @test model.integrator.p.basin.current_storage[parent(du)] ≈
+    @test model.integrator.p.basin.current_properties.current_storage[parent(du)] ≈
           Float32[721.17656, 695.8066, 416.66188, 1334.4879] atol = 2.0 skip = Sys.isapple()
 end
 
@@ -302,7 +302,7 @@ end
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
     @test successful_retcode(model)
-    @test model.integrator.p.basin.current_storage[Float64[]] ≈
+    @test model.integrator.p.basin.current_properties.current_storage[Float64[]] ≈
           Float32[368.31558, 365.68442] skip = Sys.isapple()
     # the highest level in the dynamic table is updated to 1.2 from the callback
     @test model.integrator.p.tabulated_rating_curve.table[end].t[end] == 1.2
@@ -410,8 +410,9 @@ end
     @test ispath(toml_path)
     model = Ribasim.Model(toml_path)
 
-    (; u, p, t, sol) = model.integrator
-    current_storage = p.basin.current_storage[Float64[]]
+    (; integrator) = model
+    (; u, p, t, sol) = integrator
+    current_storage = p.basin.current_properties.current_storage[Float64[]]
 
     day = 86400.0
 
@@ -505,7 +506,7 @@ end
 
     du = get_du(model.integrator)
     (; p, t) = model.integrator
-    h_actual = p.basin.current_level[parent(du)][1:50]
+    h_actual = p.basin.current_properties.current_level[parent(du)][1:50]
     x = collect(10.0:20.0:990.0)
     h_expected = standard_step_method(x, 5.0, 1.0, 0.04, h_actual[end], 1.0e-6)
 
@@ -591,4 +592,47 @@ end
     flow, tstops = get_flow(Δt, saveat)
     @test all(flow .≈ 1.0)
     @test length(flow) == length(tstops) - 1
+end
+
+@testitem "stroboscopic_forcing" begin
+    import BasicModelInterface as BMI
+    using SciMLBase: successful_retcode
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/bucket/ribasim.toml")
+    model = BMI.initialize(Ribasim.Model, toml_path)
+
+    drn = BMI.get_value_ptr(model, "basin.drainage")
+    drn_sum = BMI.get_value_ptr(model, "basin.cumulative_drainage")
+    inf = BMI.get_value_ptr(model, "basin.infiltration")
+    inf_sum = BMI.get_value_ptr(model, "basin.cumulative_infiltration")
+
+    nday = 300
+    inf_out = fill(NaN, nday)
+    drn_out = fill(NaN, nday)
+
+    Δt::Float64 = 86400.0
+
+    for day in 0:(nday - 1)
+        if iseven(day)
+            drn .= 25.0 / Δt
+            inf .= 0.0
+        else
+            drn .= 0.0
+            inf .= 25.0 / Δt
+        end
+        BMI.update_until(model, day * Δt)
+
+        inf_out[day + 1] = only(inf_sum)
+        drn_out[day + 1] = only(drn_sum)
+    end
+
+    @test successful_retcode(model)
+
+    Δdrn = diff(drn_out)
+    Δinf = diff(inf_out)
+
+    @test all(Δdrn[1:2:end] .== 0.0)
+    @test all(isapprox.(Δdrn[2:2:end], 25.0; atol = 1e-10))
+    @test all(isapprox.(Δinf[1:2:end], 25.0; atol = 1e-10))
+    @test all(Δinf[2:2:end] .== 0.0)
 end
