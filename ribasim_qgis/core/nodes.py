@@ -357,6 +357,64 @@ class BasinTime(Input):
         ]
 
 
+class BasinConcentrationExternal(Input):
+    @classmethod
+    def input_type(cls) -> str:
+        return "Basin / concentration_external"
+
+    @classmethod
+    def geometry_type(cls) -> str:
+        return "No Geometry"
+
+    @classmethod
+    def attributes(cls) -> list[QgsField]:
+        return [
+            QgsField("time", QVariant.DateTime),
+            QgsField("node_id", QVariant.Int),
+            QgsField("substance", QVariant.String),
+            QgsField("concentration", QVariant.Double),
+        ]
+
+
+class BasinConcentrationState(Input):
+    @classmethod
+    def input_type(cls) -> str:
+        return "Basin / concentration_state"
+
+    @classmethod
+    def geometry_type(cls) -> str:
+        return "No Geometry"
+
+    @classmethod
+    def attributes(cls) -> list[QgsField]:
+        return [
+            QgsField("time", QVariant.DateTime),
+            QgsField("node_id", QVariant.Int),
+            QgsField("substance", QVariant.String),
+            QgsField("concentration", QVariant.Double),
+        ]
+
+
+class BasinConcentration(Input):
+    @classmethod
+    def input_type(cls) -> str:
+        return "Basin / concentration"
+
+    @classmethod
+    def geometry_type(cls) -> str:
+        return "No Geometry"
+
+    @classmethod
+    def attributes(cls) -> list[QgsField]:
+        return [
+            QgsField("time", QVariant.DateTime),
+            QgsField("node_id", QVariant.Int),
+            QgsField("substance", QVariant.String),
+            QgsField("drainage", QVariant.Double),
+            QgsField("precipitation", QVariant.Double),
+        ]
+
+
 class BasinSubgridLevel(Input):
     @classmethod
     def input_type(cls) -> str:
@@ -570,7 +628,7 @@ class OutletStatic(Input):
             QgsField("flow_rate", QVariant.Double),
             QgsField("min_flow_rate", QVariant.Double),
             QgsField("max_flow_rate", QVariant.Double),
-            QgsField("min_crest_level", QVariant.Double),
+            QgsField("min_upstream_level", QVariant.Double),
             QgsField("control_state", QVariant.String),
         ]
 

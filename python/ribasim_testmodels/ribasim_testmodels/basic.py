@@ -290,13 +290,13 @@ def tabulated_rating_curve_model() -> ribasim.Model:
         [
             tabulated_rating_curve.Time(
                 time=[
-                    # test subsecond precision
-                    pd.Timestamp("2020-01-01 00:00:00.000001"),
-                    pd.Timestamp("2020-01"),
-                    pd.Timestamp("2020-02"),
-                    pd.Timestamp("2020-02"),
-                    pd.Timestamp("2020-03"),
-                    pd.Timestamp("2020-03"),
+                    # test millisecond precision
+                    pd.Timestamp("2020-01-01"),
+                    pd.Timestamp("2020-01-01"),
+                    pd.Timestamp("2020-02-01 00:00:00.001"),
+                    pd.Timestamp("2020-02-01 00:00:00.001"),
+                    pd.Timestamp("2020-03-01"),
+                    pd.Timestamp("2020-03-01"),
                 ],
                 level=[0.0, 1.0, 0.0, 1.1, 0.0, 1.2],
                 flow_rate=[0.0, 10 / 86400, 0.0, 10 / 86400, 0.0, 10 / 86400],
@@ -381,7 +381,7 @@ def outlet_model():
     # Setup the outlet
     model.outlet.add(
         Node(2, Point(1.0, 0.0)),
-        [outlet.Static(flow_rate=[1e-3], min_crest_level=[2.0])],
+        [outlet.Static(flow_rate=[1e-3], min_upstream_level=[2.0])],
     )
 
     # Setup the edges

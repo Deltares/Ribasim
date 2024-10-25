@@ -8,9 +8,11 @@ Ribasim.config is a submodule mainly to avoid name clashes between the configura
 """
 module config
 
+using ADTypes: AutoFiniteDiff, AutoForwardDiff
 using Configurations: Configurations, @option, from_toml, @type_alias
 using DataStructures: DefaultDict
 using Dates: DateTime
+using LineSearch: BackTracking
 using Logging: LogLevel, Debug, Info, Warn, Error
 using ..Ribasim: Ribasim, isnode, nodetype
 using OrdinaryDiffEqCore: OrdinaryDiffEqAlgorithm, OrdinaryDiffEqNewtonAdaptiveAlgorithm
@@ -18,14 +20,19 @@ using OrdinaryDiffEqNonlinearSolve: NLNewton, NonlinearSolveAlg, NewtonRaphson
 using OrdinaryDiffEqLowOrderRK: Euler, RK4
 using OrdinaryDiffEqTsit5: Tsit5
 using OrdinaryDiffEqSDIRK: ImplicitEuler, KenCarp4, TRBDF2
-using OrdinaryDiffEqBDF: QNDF
-using OrdinaryDiffEqRosenbrock: Rodas5, Rosenbrock23
-using LineSearches: BackTracking
-using ADTypes: AutoForwardDiff
+using OrdinaryDiffEqBDF: FBDF, QNDF
+# using OrdinaryDiffEqRosenbrock: Rosenbrock23, Rodas4P, Rodas5P
 
 export Config, Solver, Results, Logging, Toml
 export algorithm,
-    snake_case, input_path, results_path, convert_saveat, convert_dt, nodetypes
+    camel_case,
+    snake_case,
+    input_path,
+    database_path,
+    results_path,
+    convert_saveat,
+    convert_dt,
+    nodetypes
 
 const schemas =
     getfield.(
@@ -50,6 +57,15 @@ function snake_case(str::AbstractString)::String
 end
 
 snake_case(sym::Symbol)::Symbol = Symbol(snake_case(String(sym)))
+
+"Convert a string from snake_case to CamelCase."
+function camel_case(snake_case::AbstractString)::String
+    camel_case = replace(snake_case, r"_([a-z])" => s -> uppercase(s[2]))
+    camel_case = uppercase(first(camel_case)) * camel_case[2:end]
+    return camel_case
+end
+
+camel_case(sym::Symbol)::Symbol = Symbol(camel_case(String(sym)))
 
 """
 Add fieldnames with Union{String, Nothing} type to struct expression. Requires @option use before it.
@@ -93,11 +109,14 @@ const nodetypes = collect(keys(nodekinds))
     dtmin::Float64 = 0.0
     dtmax::Union{Float64, Nothing} = nothing
     force_dtmin::Bool = false
-    abstol::Float64 = 1e-6
-    reltol::Float64 = 1e-5
+    abstol::Float64 = 1e-7
+    reltol::Float64 = 1e-7
+    water_balance_abstol::Float64 = 1e-3
+    water_balance_reltol::Float64 = 1e-2
     maxiters::Int = 1e9
     sparse::Bool = true
-    autodiff::Bool = true
+    autodiff::Bool = false
+    evaporate_mass::Bool = true
 end
 
 # Separate struct, as basin clashes with nodetype
@@ -117,6 +136,19 @@ end
     use_allocation::Bool = false
 end
 
+@option struct Experimental <: TableOption
+    concentration::Bool = false
+end
+# For logging enabled experimental features
+function Base.iterate(exp::Experimental, state = 0)
+    state >= nfields(exp) && return
+    return Base.getfield(exp, state + 1), state + 1
+end
+function Base.show(io::IO, exp::Experimental)
+    fields = (field for field in fieldnames(typeof(exp)) if getfield(exp, field))
+    print(io, join(fields, " "))
+end
+
 @option @addnodetypes struct Toml <: TableOption
     starttime::DateTime
     endtime::DateTime
@@ -124,11 +156,11 @@ end
     ribasim_version::String
     input_dir::String
     results_dir::String
-    database::String = "database.gpkg"
     allocation::Allocation = Allocation()
     solver::Solver = Solver()
     logging::Logging = Logging()
     results::Results = Results()
+    experimental::Experimental = Experimental()
 end
 
 struct Config
@@ -157,6 +189,11 @@ Base.dirname(config::Config) = getfield(config, :dir)
 "Construct a path relative to both the TOML directory and the optional `input_dir`"
 function input_path(config::Config, path::String)
     return normpath(dirname(config), config.input_dir, path)
+end
+
+"Construct the database path relative to both the TOML directory and the optional `input_dir`"
+function database_path(config::Config)
+    return normpath(dirname(config), config.input_dir, "database.gpkg")
 end
 
 "Construct a path relative to both the TOML directory and the optional `results_dir`"
@@ -204,9 +241,11 @@ Map from config string to a supported algorithm type from [OrdinaryDiffEq](https
 Supported algorithms:
 
 - `QNDF`
+- `FBDF`
 - `Rosenbrock23`
 - `TRBDF2`
-- `Rodas5`
+- `Rodas4P`
+- `Rodas5P`
 - `KenCarp4`
 - `Tsit5`
 - `RK4`
@@ -215,15 +254,29 @@ Supported algorithms:
 """
 const algorithms = Dict{String, Type}(
     "QNDF" => QNDF,
-    "Rosenbrock23" => Rosenbrock23,
+    "FBDF" => FBDF,
+    # "Rosenbrock23" => Rosenbrock23,
     "TRBDF2" => TRBDF2,
-    "Rodas5" => Rodas5,
+    # "Rodas4P" => Rodas4P,
+    # "Rodas5P" => Rodas5P,
     "KenCarp4" => KenCarp4,
     "Tsit5" => Tsit5,
     "RK4" => RK4,
     "ImplicitEuler" => ImplicitEuler,
     "Euler" => Euler,
 )
+
+"""
+Check whether the given function has a method that accepts the given kwarg.
+Note that it is possible that methods exist that accept :a and :b individually,
+but not both.
+"""
+function function_accepts_kwarg(f, kwarg)::Bool
+    for method in methods(f)
+        kwarg in Base.kwarg_decl(method) && return true
+    end
+    return false
+end
 
 "Create an OrdinaryDiffEqAlgorithm from solver config"
 function algorithm(solver::Solver; u0 = [])::OrdinaryDiffEqAlgorithm
@@ -234,22 +287,25 @@ function algorithm(solver::Solver; u0 = [])::OrdinaryDiffEqAlgorithm
             Available options are: ($(options)).")
     end
     kwargs = Dict{Symbol, Any}()
+
     if algotype <: OrdinaryDiffEqNewtonAdaptiveAlgorithm
         # kwargs[:nlsolve] = NLNewton(;
         #     relax = Ribasim.MonitoredBackTracking(; z_tmp = copy(u0), dz_tmp = copy(u0)),
         # )
         kwargs[:nlsolve] = NonlinearSolveAlg(
-            NewtonRaphson(; linesearch = BackTracking(), autodiff = AutoForwardDiff()),
+            NewtonRaphson(; linesearch = BackTracking(), autodiff = AutoFiniteDiff()),
         )
     end
-    # not all algorithms support this keyword
-    kwargs[:autodiff] = solver.autodiff
-    try
-        algotype(; kwargs...)
-    catch
-        pop!(kwargs, :autodiff)
-        algotype(; kwargs...)
+
+    if function_accepts_kwarg(algotype, :step_limiter!)
+        kwargs[:step_limiter!] = Ribasim.limit_flow!
     end
+
+    if function_accepts_kwarg(algotype, :autodiff)
+        kwargs[:autodiff] = solver.autodiff
+    end
+
+    algotype(; kwargs...)
 end
 
 "Convert the saveat Float64 from our Config to SciML's saveat"

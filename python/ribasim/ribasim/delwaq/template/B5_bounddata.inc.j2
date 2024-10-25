@@ -3,8 +3,8 @@ CONCENTRATIONS 'Continuity' 'LevelBoundary'
 DATA 1 1
 
 ITEM 'Terminal'
-CONCENTRATIONS 'Continuity'
-DATA 1
+CONCENTRATIONS 'Terminal' 'Continuity'
+DATA 1 1
 
 ITEM 'FlowBoundary'
 CONCENTRATIONS 'Continuity' 'FlowBoundary'
@@ -16,6 +16,10 @@ DATA 1 1
 
 ITEM 'Precipitation'
 CONCENTRATIONS 'Continuity' 'Precipitation'
+DATA 1 1
+
+ITEM 'UserDemand'
+CONCENTRATIONS 'Continuity' 'UserDemand'
 DATA 1 1
 
 {% for boundary in boundaries -%}

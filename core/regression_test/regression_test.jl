@@ -8,7 +8,7 @@
     config = Ribasim.Config(toml_path)
 
     solver_list =
-        ["QNDF", "Rosenbrock23", "TRBDF2", "Rodas5", "KenCarp4", "Tsit5", "ImplicitEuler"]
+        ["QNDF", "Rosenbrock23", "TRBDF2", "Rodas5P", "KenCarp4", "Tsit5", "ImplicitEuler"]
     sparse_on = [true, false]
     autodiff_on = [true, false]
 
@@ -38,13 +38,13 @@
                 # subgrid = Arrow.Table(subgrid_bytes)
 
                 @testset "Results values" begin
-                    @test basin.storage[1] ≈ 1.0
-                    @test basin.level[1] ≈ 0.044711584
-                    @test basin.storage[end] ≈ 16.530443267
+                    @test basin.storage[1] ≈ 1.0f0
+                    @test basin.level[1] ≈ 0.044711584f0
+                    @test basin.storage[end] ≈ 16.530443267f0
                     @test basin.level[end] ≈ 0.181817438
-                    @test flow.flow_rate[1] == basin.outflow_rate[1]
+                    @test flow.flow_rate[1] ≈ basin.outflow_rate[1]
                     @test all(q -> abs(q) < 1e-7, basin.balance_error)
-                    @test all(q -> abs(q) < 0.01, basin.relative_error)
+                    @test all(err -> abs(err) < 0.01, basin.relative_error)
                 end
             end
         end
@@ -55,6 +55,8 @@ end
     using SciMLBase: successful_retcode
     import Arrow
     using Ribasim
+    using Statistics
+    include(joinpath(@__DIR__, "../test/utils.jl"))
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
     @test ispath(toml_path)
@@ -102,10 +104,18 @@ end
                 # Testbench for basin.arrow
                 @test basin.time == basin_bench.time
                 @test basin.node_id == basin_bench.node_id
+
+                # The storage seems to failing the most, so let's report it for now
+                sdiff = basin.storage - basin_bench.storage
+                key = "basic.$solver.$sparse_on_off.$autodiff_on_off"
+                @tcstatistic "$key.min_diff" minimum(sdiff)
+                @tcstatistic "$key.max_diff" maximum(sdiff)
+                @tcstatistic "$key.med_diff" median(sdiff)
+
                 @test all(q -> abs(q) < 1.0, basin.storage - basin_bench.storage)
                 @test all(q -> abs(q) < 0.5, basin.level - basin_bench.level)
                 @test all(q -> abs(q) < 1e-3, basin.balance_error)
-                @test all(q -> abs(q) < 2.5, basin.relative_error)
+                @test all(err -> abs(err) < 2.5, basin.relative_error)
             end
         end
     end
@@ -127,7 +137,7 @@ end
     flow_bench = Arrow.Table(flow_bytes_bench)
     basin_bench = Arrow.Table(basin_bytes_bench)
 
-    # TODO "Rosenbrock23" and "Rodas5" solver are resulting unsolvable gradients
+    # TODO "Rosenbrock23" and "Rodas5P" solver are resulting unsolvable gradients
     solver_list = ["QNDF"]
     sparse_on = [true, false]
     autodiff_on = [true, false]
@@ -167,7 +177,7 @@ end
                 @test basin.node_id == basin_bench.node_id
                 @test all(q -> abs(q) < 100.0, basin.storage - basin_bench.storage)
                 @test all(q -> abs(q) < 0.5, basin.level - basin_bench.level)
-                @test all(q -> abs(q) < 1e-3, basin.balance_error)
+                @test all(err -> abs(err) < 1e-3, basin.balance_error)
             end
         end
     end

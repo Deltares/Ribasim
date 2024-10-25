@@ -11,15 +11,15 @@ It can be used as a boundary condition like a measured upstream flow rate, or la
 
 We require that the edge connecting the FlowBoundary to the Basin should point towards the Basin,
 so that positive flow corresponds to water being added to the model.
-The set flow rate will be pumped unless the intake storage (for a negative flow rate) is less than $10~m^3$,
-in which case the flow rate will be linearly reduced to $0~m^3/s$.
+The set flow rate will be pumped unless the intake storage (for a negative flow rate) is less than $10~\text{ m}^3$,
+in which case the flow rate will be linearly reduced to $0~\text{ m}^3/s$.
 Note that the connected node must always be a Basin.
 
-column        | type    | unit         | restriction
-------------- | ------- | ------------ | -----------
-node_id       | Int32   | -            | sorted
-active        | Bool    | -            | (optional, default true)
-flow_rate     | Float64 | $m^3 s^{-1}$ | non-negative
+column        | type    | unit                  | restriction
+------------- | ------- | --------------------- | -----------
+node_id       | Int32   | -                     | sorted
+active        | Bool    | -                     | (optional, default true)
+flow_rate     | Float64 | $\text{m}^3/\text{s}$ | non-negative
 
 ## Time
 
@@ -31,21 +31,21 @@ flow rate is interpolated linearly, and outside the flow rate is constant given 
 nearest time value.
 Note that a `node_id` can be either in this table or in the static one, but not both.
 
-column    | type     | unit         | restriction
---------- | -------  | ------------ | -----------
-node_id   | Int32    | -            | sorted
-time      | DateTime | -            | sorted per node_id
-flow_rate | Float64  | $m^3 s^{-1}$ | non-negative
+column    | type     | unit                  | restriction
+--------- | -------  | --------------------- | -----------
+node_id   | Int32    | -                     | sorted
+time      | DateTime | -                     | sorted per node_id
+flow_rate | Float64  | $\text{m}^3/\text{s}$ | non-negative
 
 ## Concentration {#sec-flow-boundary-conc}
-This table defines the concentration(s) of (a) substance(s) for the flow from the FlowBoundary.
+This table defines the concentration of substances for the flow from the FlowBoundary.
 
-column         | type     | unit         | restriction
--------------- | -------- | ------------ | -----------
-node_id        | Int32    | -            | sorted
-time           | DateTime | -            | sorted per node_id
-substance      | String   | -            | can correspond to known Delwaq substances
-concentration  | Float64  | $g m^{-3}$   |
+column         | type     | unit                  | restriction
+-------------- | -------- | --------------------- | -----------
+node_id        | Int32    | -                     | sorted
+time           | DateTime | -                     | sorted per node_id
+substance      | String   | -                     | can correspond to known Delwaq substances
+concentration  | Float64  | $\text{g}/\text{m}^3$ |
 
 # Equations
 

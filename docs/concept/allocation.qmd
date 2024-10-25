@@ -251,7 +251,6 @@ allocation_model = p.allocation.allocation_models[1]
 t = 0.0
 priority_idx = 1
 
-Ribasim.set_flow!(p.graph, 1, 1.0, u)
 Ribasim.set_objective_priority!(allocation_model, p, u, t, priority_idx)
 Ribasim.set_initial_values!(allocation_model, p, u, t)
 

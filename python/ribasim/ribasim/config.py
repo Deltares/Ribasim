@@ -8,7 +8,6 @@ import pandas as pd
 import pydantic
 from geopandas import GeoDataFrame
 from pydantic import ConfigDict, Field, NonNegativeInt, model_validator
-from shapely import is_empty
 from shapely.geometry import Point
 
 from ribasim.geometry import BasinAreaSchema, NodeTable
@@ -51,7 +50,7 @@ from ribasim.schemas import (
     UserDemandStaticSchema,
     UserDemandTimeSchema,
 )
-from ribasim.utils import _pascal_to_snake
+from ribasim.utils import _concat, _pascal_to_snake
 
 
 class Allocation(ChildModel):
@@ -100,9 +99,9 @@ class Solver(ChildModel):
         If a smaller dt than dtmin is needed to meet the set error tolerances, the simulation stops, unless force_dtmin = true
         (Optional, defaults to False)
     abstol : float
-        The absolute tolerance for adaptive timestepping (Optional, defaults to 1e-6)
+        The absolute tolerance for adaptive timestepping (Optional, defaults to 1e-7)
     reltol : float
-        The relative tolerance for adaptive timestepping (Optional, defaults to 1e-5)
+        The relative tolerance for adaptive timestepping (Optional, defaults to 1e-7)
     maxiters : int
         The total number of linear iterations over the whole simulation. (Defaults to 1e9, only needs to be increased for extremely long simulations)
     sparse : bool
@@ -121,7 +120,8 @@ class Solver(ChildModel):
     reltol: float = 1e-05
     maxiters: int = 1000000000
     sparse: bool = True
-    autodiff: bool = True
+    autodiff: bool = False
+    evaporate_mass: bool = True
 
 
 class Verbosity(str, Enum):
@@ -142,6 +142,19 @@ class Logging(ChildModel):
     """
 
     verbosity: Verbosity = Verbosity.info
+
+
+class Experimental(ChildModel):
+    """
+    Defines experimental features.
+
+    Attributes
+    ----------
+    concentration : bool
+        Whether to enable tracer support (default is False)
+    """
+
+    concentration: bool = False
 
 
 class Node(pydantic.BaseModel):
@@ -170,10 +183,10 @@ class Node(pydantic.BaseModel):
     def __init__(
         self,
         node_id: Optional[NonNegativeInt] = None,
-        geometry: Point = Point("nan", "nan"),
+        geometry: Point = Point(),
         **kwargs,
     ) -> None:
-        if is_empty(geometry):
+        if geometry.is_empty:
             raise (ValueError("Node geometry must be a valid Point"))
         super().__init__(node_id=node_id, geometry=geometry, **kwargs)
 
@@ -242,19 +255,19 @@ class MultiNodeModel(NodeModel):
             )
             assert table.df is not None
             table_to_append = table.df.assign(node_id=node_id)
-            setattr(
-                self,
-                member_name,
-                pd.concat([existing_table, table_to_append], ignore_index=True),
-            )
+            if isinstance(table_to_append, GeoDataFrame):
+                table_to_append.set_crs(self._parent.crs, inplace=True)
+            new_table = _concat([existing_table, table_to_append], ignore_index=True)
+            setattr(self, member_name, new_table)
 
         node_table = node.into_geodataframe(
             node_type=self.__class__.__name__, node_id=node_id
         )
+        node_table.set_crs(self._parent.crs, inplace=True)
         if self.node.df is None:
             self.node.df = node_table
         else:
-            df = pd.concat([self.node.df, node_table])
+            df = _concat([self.node.df, node_table])
             self.node.df = df
 
         self._parent._used_node_ids.add(node_id)

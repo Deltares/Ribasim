@@ -10,6 +10,8 @@ website:
     left:
       - text: "Overview"
         file: index.qmd
+      - text: "Tutorials"
+        file: tutorial/natural-flow.ipynb
       - text: "How-to guides"
         file: guide/examples.ipynb
       - text: "Concepts"
@@ -30,6 +32,13 @@ website:
         - install.qmd
         - changelog.qmd
         - known_issues.qmd
+        - contact.qmd
+
+    - title: "Tutorials"
+      contents:
+        - tutorial/natural-flow.ipynb
+        - tutorial/irrigation-demand.ipynb
+        - tutorial/reservoir.ipynb
 
     - title: "How-to guides"
       contents:

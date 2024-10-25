@@ -123,22 +123,25 @@ end
 
 @testitem "bucket model" begin
     using SciMLBase: successful_retcode
+    using OrdinaryDiffEqCore: get_du
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/bucket/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
-    @test model.integrator.u.storage ≈ [1000]
-    vertical_flux = Ribasim.wrap_forcing(model.integrator.p.basin.vertical_flux[Float64[]])
-    @test vertical_flux.precipitation == [0.0]
-    @test vertical_flux.evaporation == [0.0]
-    @test vertical_flux.drainage == [0.0]
-    @test vertical_flux.infiltration == [0.0]
+    (; basin) = model.integrator.p
+    @test basin.current_properties.current_storage[Float64[]] ≈ [1000]
+    @test basin.vertical_flux.precipitation == [0.0]
+    @test basin.vertical_flux.drainage == [0.0]
+    du = get_du(model.integrator)
+    @test du.evaporation == [0.0]
+    @test du.infiltration == [0.0]
     @test successful_retcode(model)
 end
 
 @testitem "leaky bucket model" begin
     using SciMLBase: successful_retcode
+    using OrdinaryDiffEqCore: get_du
     import BasicModelInterface as BMI
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/leaky_bucket/ribasim.toml")
@@ -146,12 +149,15 @@ end
     model = Ribasim.Model(toml_path)
     @test model isa Ribasim.Model
 
-    stor = model.integrator.u.storage
-    vertical_flux = Ribasim.wrap_forcing(model.integrator.p.basin.vertical_flux[Float64[]])
-    prec = vertical_flux.precipitation
-    evap = vertical_flux.evaporation
-    drng = vertical_flux.drainage
-    infl = vertical_flux.infiltration
+    (; integrator) = model
+    du = get_du(integrator)
+    (; u, p, t) = integrator
+    Ribasim.water_balance!(du, u, p, t)
+    stor = integrator.p.basin.current_properties.current_storage[parent(du)]
+    prec = p.basin.vertical_flux.precipitation
+    evap = du.evaporation
+    drng = p.basin.vertical_flux.drainage
+    infl = du.infiltration
     # The dynamic data has missings, but these are not set.
     @test prec == [0.0]
     @test evap == [0.0]
@@ -178,6 +184,7 @@ end
     using Logging: Debug, with_logger
     using LoggingExtras
     using SciMLBase: successful_retcode
+    using OrdinaryDiffEqBDF: QNDF
     import Tables
     using Dates
 
@@ -191,15 +198,21 @@ end
     end
 
     @test model isa Ribasim.Model
-    p = model.integrator.p
+
+    (; integrator) = model
+    (; p, alg) = integrator
+
     @test p isa Ribasim.Parameters
     @test isconcretetype(typeof(p))
     @test all(isconcretetype, fieldtypes(typeof(p)))
 
+    @test alg isa QNDF
+    @test alg.step_limiter! == Ribasim.limit_flow!
+
     @test successful_retcode(model)
-    @test allunique(Ribasim.tsaves(model))
-    @test model.integrator.u ≈ Float32[519.8817, 519.8798, 339.3959, 1418.4331] skip =
-        Sys.isapple() atol = 1.5
+    @test length(model.integrator.sol) == 2 # start and end
+    @test model.integrator.p.basin.current_properties.current_storage[Float64[]] ≈
+          Float32[828.5386, 801.88289, 492.290, 1318.3053] skip = Sys.isapple() atol = 1.5
 
     @test length(logger.logs) > 10
     @test logger.logs[1].level == Debug
@@ -223,6 +236,7 @@ end
 
 @testitem "basic transient model" begin
     using SciMLBase: successful_retcode
+    using OrdinaryDiffEqCore: get_du
 
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/basic_transient/ribasim.toml")
@@ -231,13 +245,11 @@ end
     @test model isa Ribasim.Model
     @test successful_retcode(model)
     @test allunique(Ribasim.tsaves(model))
-    precipitation =
-        Ribasim.wrap_forcing(
-            model.integrator.p.basin.vertical_flux[Float64[]],
-        ).precipitation
+    du = get_du(model.integrator)
+    precipitation = model.integrator.p.basin.vertical_flux.precipitation
     @test length(precipitation) == 4
-    @test model.integrator.u ≈ Float32[472.06555, 472.06366, 367.23883, 1427.9957] atol =
-        2.0 skip = Sys.isapple()
+    @test model.integrator.p.basin.current_properties.current_storage[parent(du)] ≈
+          Float32[721.17656, 695.8066, 416.66188, 1334.4879] atol = 2.0 skip = Sys.isapple()
 end
 
 @testitem "Allocation example model" begin
@@ -275,10 +287,10 @@ end
     @test sparse_fdm.integrator.u ≈ sparse_ad.integrator.u atol = 4
     @test dense_fdm.integrator.u ≈ sparse_ad.integrator.u atol = 4
 
-    config = Ribasim.Config(toml_path; solver_algorithm = "Rodas5", solver_autodiff = true)
+    config = Ribasim.Config(toml_path; solver_algorithm = "Rodas5P", solver_autodiff = true)
     time_ad = Ribasim.run(config)
     @test successful_retcode(time_ad)
-    @test time_ad.integrator.u ≈ sparse_ad.integrator.u atol = 4
+    @test time_ad.integrator.u ≈ sparse_ad.integrator.u atol = 10
 end
 
 @testitem "TabulatedRatingCurve model" begin
@@ -290,7 +302,8 @@ end
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
     @test successful_retcode(model)
-    @test model.integrator.u ≈ Float32[7.783636, 726.16394] skip = Sys.isapple()
+    @test model.integrator.p.basin.current_properties.current_storage[Float64[]] ≈
+          Float32[368.31558, 365.68442] skip = Sys.isapple()
     # the highest level in the dynamic table is updated to 1.2 from the callback
     @test model.integrator.p.tabulated_rating_curve.table[end].t[end] == 1.2
 end
@@ -372,11 +385,11 @@ end
     outlet_flow =
         filter([:from_node_id, :to_node_id] => (from, to) -> from == 2 && to == 3, flow)
 
-    t_min_crest_level =
-        level.t[2] * (outlet.min_crest_level[1] - level.u[1]) / (level.u[2] - level.u[1])
+    t_min_upstream_level =
+        level.t[2] * (outlet.min_upstream_level[1] - level.u[1]) / (level.u[2] - level.u[1])
 
-    # No outlet flow when upstream level is below minimum crest level
-    @test all(@. outlet_flow.flow_rate[t <= t_min_crest_level] == 0)
+    # No outlet flow when upstream level is below minimum upstream level
+    @test all(@. outlet_flow.flow_rate[t <= t_min_upstream_level] == 0)
 
     t = Ribasim.tsaves(model)
     t_maximum_level = level.t[2]
@@ -390,18 +403,26 @@ end
     using SciMLBase: successful_retcode
     using Dates
     using DataFrames: DataFrame
+    using Ribasim: formulate_storages!
+    import BasicModelInterface as BMI
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/user_demand/ribasim.toml")
     @test ispath(toml_path)
-    model = Ribasim.run(toml_path)
-    @test successful_retcode(model)
+    model = Ribasim.Model(toml_path)
 
-    seconds_in_day = 86400.0
-    @test only(model.integrator.sol(0seconds_in_day)) == 1000.0
+    (; integrator) = model
+    (; u, p, t, sol) = integrator
+    current_storage = p.basin.current_properties.current_storage[Float64[]]
+
+    day = 86400.0
+
+    @test only(current_storage) ≈ 1000.0
     # constant UserDemand withdraws to 0.9m or 900m3 due to min level = 0.9
-    @test only(model.integrator.sol(150seconds_in_day)) ≈ 900 atol = 5
+    BMI.update_until(model, 150day)
+    @test only(current_storage) ≈ 900 atol = 5
     # dynamic UserDemand withdraws to 0.5m or 500m3 due to min level = 0.5
-    @test only(model.integrator.sol(220seconds_in_day)) ≈ 500 atol = 1
+    BMI.update_until(model, 220day)
+    @test only(current_storage) ≈ 500 atol = 1
 
     # Trasient return factor
     flow = DataFrame(Ribasim.flow_table(model))
@@ -421,6 +442,7 @@ end
 @testitem "ManningResistance" begin
     using PreallocationTools: get_tmp
     using SciMLBase: successful_retcode
+    using OrdinaryDiffEqCore: get_du
     using Ribasim: NodeID
 
     """
@@ -482,9 +504,9 @@ end
     model = Ribasim.run(toml_path)
     @test successful_retcode(model)
 
-    u = model.integrator.sol.u[end]
-    p = model.integrator.p
-    h_actual = p.basin.current_level[parent(u)][1:50]
+    du = get_du(model.integrator)
+    (; p, t) = model.integrator
+    h_actual = p.basin.current_properties.current_level[parent(du)][1:50]
     x = collect(10.0:20.0:990.0)
     h_expected = standard_step_method(x, 5.0, 1.0, 0.04, h_actual[end], 1.0e-6)
 
@@ -494,18 +516,13 @@ end
     # https://www.hec.usace.army.mil/confluence/rasdocs/ras1dtechref/latest/theoretical-basis-for-one-dimensional-and-two-dimensional-hydrodynamic-calculations/1d-steady-flow-water-surface-profiles/friction-loss-evaluation
     @test all(isapprox.(h_expected, h_actual; atol = 0.02))
     # Test for conservation of mass, flow at the beginning == flow at the end
-    n_self_loops = length(p.graph[].flow_dict)
+    @test Ribasim.get_flow(du, p, t, (NodeID(:FlowBoundary, 1, p), NodeID(:Basin, 2, p))) ≈
+          5.0 atol = 0.001 skip = Sys.isapple()
     @test Ribasim.get_flow(
-        p.graph,
-        NodeID(:FlowBoundary, 1, p),
-        NodeID(:Basin, 2, p),
-        parent(u),
-    ) ≈ 5.0 atol = 0.001 skip = Sys.isapple()
-    @test Ribasim.get_flow(
-        p.graph,
-        NodeID(:ManningResistance, 101, p),
-        NodeID(:Basin, 102, p),
-        parent(u),
+        du,
+        p,
+        t,
+        (NodeID(:ManningResistance, 101, p), NodeID(:Basin, 102, p)),
     ) ≈ 5.0 atol = 0.001 skip = Sys.isapple()
 end
 
@@ -575,4 +592,47 @@ end
     flow, tstops = get_flow(Δt, saveat)
     @test all(flow .≈ 1.0)
     @test length(flow) == length(tstops) - 1
+end
+
+@testitem "stroboscopic_forcing" begin
+    import BasicModelInterface as BMI
+    using SciMLBase: successful_retcode
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/bucket/ribasim.toml")
+    model = BMI.initialize(Ribasim.Model, toml_path)
+
+    drn = BMI.get_value_ptr(model, "basin.drainage")
+    drn_sum = BMI.get_value_ptr(model, "basin.cumulative_drainage")
+    inf = BMI.get_value_ptr(model, "basin.infiltration")
+    inf_sum = BMI.get_value_ptr(model, "basin.cumulative_infiltration")
+
+    nday = 300
+    inf_out = fill(NaN, nday)
+    drn_out = fill(NaN, nday)
+
+    Δt::Float64 = 86400.0
+
+    for day in 0:(nday - 1)
+        if iseven(day)
+            drn .= 25.0 / Δt
+            inf .= 0.0
+        else
+            drn .= 0.0
+            inf .= 25.0 / Δt
+        end
+        BMI.update_until(model, day * Δt)
+
+        inf_out[day + 1] = only(inf_sum)
+        drn_out[day + 1] = only(drn_sum)
+    end
+
+    @test successful_retcode(model)
+
+    Δdrn = diff(drn_out)
+    Δinf = diff(inf_out)
+
+    @test all(Δdrn[1:2:end] .== 0.0)
+    @test all(isapprox.(Δdrn[2:2:end], 25.0; atol = 1e-10))
+    @test all(isapprox.(Δinf[1:2:end], 25.0; atol = 1e-10))
+    @test all(Δinf[2:2:end] .== 0.0)
 end

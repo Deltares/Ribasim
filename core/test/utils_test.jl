@@ -13,6 +13,7 @@ end
     using StructArrays: StructVector
     using Ribasim: NodeID, cache
     using DataInterpolations: LinearInterpolation, integral, invert_integral
+    using DataStructures: OrderedSet
 
     # create two basins with different bottoms/levels
     area = [[0.01, 1.0], [0.01, 1.0]]
@@ -20,19 +21,29 @@ end
     level_to_area = LinearInterpolation.(area, level)
     storage_to_level = invert_integral.(level_to_area)
     demand = zeros(2)
-    current_level = cache(2)
-    current_area = cache(2)
-    current_level[Float64[]] .= [2.0, 3.0]
-    current_area[Float64[]] .= [2.0, 3.0]
+
+    substances = OrderedSet([:test])
+    concentration_state = zeros(2, 1)
+    concentration = zeros(2, 2, 1)
+    mass = zeros(2, 1)
+
     basin = Ribasim.Basin(;
         node_id = NodeID.(:Basin, [5, 7], [1, 2]),
-        current_level,
-        current_area,
         storage_to_level,
         level_to_area,
         demand,
+        concentration_state,
+        concentration,
+        mass,
+        substances,
         time = StructVector{Ribasim.BasinTimeV1}(undef, 0),
+        concentration_time = StructVector{Ribasim.BasinConcentrationV1}(undef, 0),
     )
+
+    (; current_level, current_area) = basin.current_properties
+
+    current_level[Float64[]] .= [2.0, 3.0]
+    current_area[Float64[]] .= [2.0, 3.0]
 
     @test Ribasim.basin_levels(basin, 2)[1] === 4.0
     @test Ribasim.basin_bottom(basin, NodeID(:Basin, 5, 1))[2] === 0.0
@@ -45,6 +56,7 @@ end
     using Logging
     using Ribasim: NodeID
     using DataInterpolations: LinearInterpolation, invert_integral
+    using DataStructures: OrderedSet
 
     level = [
         0.0,
@@ -73,12 +85,23 @@ end
     level_to_area = LinearInterpolation(area, level; extrapolate = true)
     storage_to_level = invert_integral(level_to_area)
     demand = zeros(1)
+
+    substances = OrderedSet([:test])
+    concentration_state = zeros(1, 1)
+    concentration = zeros(2, 1, 1)
+    mass = zeros(1, 1)
+
     basin = Ribasim.Basin(;
         node_id = NodeID.(:Basin, [1], 1),
         storage_to_level = [storage_to_level],
         level_to_area = [level_to_area],
         demand,
         time = StructVector{Ribasim.BasinTimeV1}(undef, 0),
+        concentration_time = StructVector{Ribasim.BasinConcentrationV1}(undef, 0),
+        concentration_state,
+        concentration,
+        mass,
+        substances,
     )
 
     logger = TestLogger()
@@ -161,46 +184,50 @@ end
 @testitem "Jacobian sparsity" begin
     import SQLite
     using ComponentArrays: ComponentVector
-    using SparseArrays: spzeros
+    using SparseArrays: sparse, findnz
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
 
     cfg = Ribasim.Config(toml_path)
-    db_path = Ribasim.input_path(cfg, cfg.database)
+    db_path = Ribasim.database_path(cfg)
     db = SQLite.DB(db_path)
 
     p = Ribasim.Parameters(db, cfg)
+    close(db)
     t0 = 0.0
-    u0 = ComponentVector{Float64}(;
-        storage = zeros(length(p.basin.node_id)),
-        integral = Float64[],
-    )
+    u0 = Ribasim.build_state_vector(p)
     du0 = copy(u0)
+    p = Ribasim.build_flow_to_storage(p, u0)
     jac_prototype = Ribasim.get_jac_prototype(du0, u0, p, t0)
 
-    jac_prototype_expected = spzeros(Bool, 4, 4)
-    jac_prototype_expected[1:2, 1:2] .= true
-    jac_prototype_expected[3:4, 2:3] .= true
-    jac_prototype_expected[4, 4] = true
+    # rows, cols, _ = findnz(jac_prototype)
+    #! format: off
+    rows_expected = [1, 2, 3, 6, 7, 9, 13, 1, 2, 3, 4, 6, 7, 9, 10, 13, 14, 1, 2, 3, 4, 5, 6, 7, 9, 11, 13, 15, 2, 3, 4, 5, 10, 11, 14, 15, 3, 4, 5, 11, 15, 1, 2, 3, 6, 7, 9, 13, 1, 2, 3, 6, 7, 8, 9, 12, 13, 7, 8, 12, 1, 2, 3, 6, 7, 9, 13, 2, 4, 10, 14, 3, 4, 5, 11, 15, 7, 8, 12, 1, 2, 3, 6, 7, 9, 13, 2, 4, 10, 14, 3, 4, 5, 11, 15]
+    cols_expected = [1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7, 7, 8, 8, 8, 9, 9, 9, 9, 9, 9, 9, 10, 10, 10, 10, 11, 11, 11, 11, 11, 12, 12, 12, 13, 13, 13, 13, 13, 13, 13, 14, 14, 14, 14, 15, 15, 15, 15, 15]
+    #! format: on
+    jac_prototype_expected =
+        sparse(rows_expected, cols_expected, true, size(jac_prototype)...)
     @test jac_prototype == jac_prototype_expected
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/pid_control/ribasim.toml")
 
     cfg = Ribasim.Config(toml_path)
-    db_path = Ribasim.input_path(cfg, cfg.database)
+    db_path = Ribasim.database_path(cfg)
     db = SQLite.DB(db_path)
 
     p = Ribasim.Parameters(db, cfg)
-    u0 = ComponentVector{Float64}(;
-        storage = zeros(length(p.basin.node_id)),
-        integral = zeros(length(p.pid_control.node_id)),
-    )
+    close(db)
+    u0 = Ribasim.build_state_vector(p)
     du0 = copy(u0)
+    p = Ribasim.build_flow_to_storage(p, u0)
     jac_prototype = Ribasim.get_jac_prototype(du0, u0, p, t0)
 
-    jac_prototype_expected = spzeros(Bool, 3, 3)
-    jac_prototype_expected[1, 1:3] .= true
-    jac_prototype_expected[2:3, 1] .= true
+    #! format: off
+    rows_expected = [1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6, 1, 2]
+    cols_expected = [1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 5, 6]
+    #! format: on
+    jac_prototype_expected =
+        sparse(rows_expected, cols_expected, true, size(jac_prototype)...)
     @test jac_prototype == jac_prototype_expected
 end
 
@@ -231,19 +258,6 @@ end
     @test reduction_factor(3.0, 2.0) === 1.0
     @test reduction_factor(Inf, 2.0) === 1.0
     @test reduction_factor(-Inf, 2.0) === 0.0
-end
-
-@testitem "low_storage_factor" begin
-    using Ribasim: NodeID, low_storage_factor, EdgeMetadata, EdgeType
-
-    node_id = NodeID(:Basin, 5, 1)
-    @test low_storage_factor([-2.0], node_id, 2.0) === 0.0
-    @test low_storage_factor([0.0f0], node_id, 2.0) === 0.0f0
-    @test low_storage_factor([0.0], node_id, 2.0) === 0.0
-    @test low_storage_factor([1.0f0], node_id, 2.0) === 0.5f0
-    @test low_storage_factor([1.0], node_id, 2.0) === 0.5
-    @test low_storage_factor([3.0f0], node_id, 2.0) === 1.0f0
-    @test low_storage_factor([3.0], node_id, 2.0) === 1.0
 end
 
 @testitem "constraints_from_nodes" begin
@@ -311,5 +325,41 @@ end
             @test T <: AbstractParameterNode
             @test hasfield(Parameters, snake_case(nodetype))
         end
+    end
+end
+
+@testitem "flow_to_storage matrix" begin
+    using ComponentArrays: ComponentArray, Axis, getaxes
+    using LinearAlgebra: I
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
+    @test ispath(toml_path)
+    model = Ribasim.Model(toml_path)
+    (; u, p) = model.integrator
+    n_basins = length(u.evaporation)
+    (; flow_to_storage) = p
+    flow_to_storage =
+        ComponentArray(flow_to_storage, (Axis(; basins = 1:n_basins), only(getaxes(u))))
+
+    @test flow_to_storage[:, :evaporation] == -I
+    @test flow_to_storage[:, :infiltration] == -I
+
+    for node_name in
+        [:tabulated_rating_curve, :pump, :outlet, :linear_resistance, :manning_resistance]
+        flow_to_storage_node = flow_to_storage[:, node_name]
+        # In every column there is either 0 or 1 instance of 1.0 (flow into a basin)
+        @test all(
+            i -> i ∈ (0, 1),
+            count(==(1.0), collect(flow_to_storage[:, :tabulated_rating_curve]); dims = 1),
+        )
+
+        # In every column there is either 0 or 1 instance of -1.0 (flow out of a basin)
+        @test all(
+            i -> i ∈ (0, 1),
+            count(
+                ==(1 - 0.0),
+                collect(flow_to_storage[:, :tabulated_rating_curve]);
+                dims = 1,
+            ),
+        )
     end
 end

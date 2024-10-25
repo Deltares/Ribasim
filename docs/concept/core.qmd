@@ -13,7 +13,7 @@ can be found in the [Ribasim repository](https://github.com/Deltares/Ribasim) un
 `core/` folder. For developers we also advise to read the
 [developer documentation](/dev/core.qmd). Information on coupling can be found [here](/guide/coupling.qmd).
 
-An overview of all components is given in the [Get Started](/tutorial/index.qmd#sec-components) section.
+An overview of all components is given in the [installation](/install.qmd#sec-components) section.
 
 # The simulation loop {#sec-simulationloop}
 
@@ -119,3 +119,30 @@ end
 allocation_subNetwork->>user_demand: allocated
 user_demand->>basin: abstracted
 ```
+
+# Substance (tracer) concentrations
+
+::: {.callout-caution}
+This is an unsupported experimental feature and is disabled by default.
+We advise to use the [Delwaq coupling](@sec-waterquality) for tracer calculations.
+If you're interested in using this experimental feature, please [contact us](/contact.qmd).
+:::
+
+Ribasim can calculate concentrations of conservative tracers (i.e. substances that are non-reactive).
+It does so by calculating the mass transports by flows for each timestep, in the `update_cumulative_flows!` callback.
+Specifically, for each Basin at each timestep it calculates:
+
+- all mass inflows ($flow * source\_concentration$) given the edge inflows
+- update the concentrations in the Basin based on the added storage ($previous storage + inflows$)
+- all mass outflows ($flow * basin\_concentration\_state$) give the edge outflows
+- update the concentrations in the Basin based on the current storage
+
+We thus keep track of both mass and concentration of substances for each Basin.
+Note that we have not added the substance mass to the states, and we assume that concentrations of flows are piecewise constant over a timestep.
+This excludes the use of tracer injections.
+
+By default the following source tracers are enabled.
+
+- Continuity (mass balance, fraction of all water sources, sum of all other source tracers)
+- Initial (fraction of initial storages)
+- LevelBoundary, FlowBoundary, UserDemand, Drainage, Precipitation (fraction of different boundaries)

@@ -61,8 +61,6 @@ node_names_snake_case = [
     "user_demand",
 ]
 
-gpd.options.io_engine = "pyogrio"
-
 context_file_loading: ContextVar[dict[str, Any]] = ContextVar(
     "file_loading", default={}
 )
@@ -177,7 +175,7 @@ class TableModel(FileModel, Generic[TableT]):
             if db_path is not None:
                 version = _get_db_schema_version(db_path)
                 if version < ribasim.__schema_version__:
-                    v = cls.tableschema().migrate(v)
+                    v = cls.tableschema().migrate(v, version)
             for colname in v.columns:
                 if colname not in cls.columns() and not colname.startswith("meta_"):
                     raise ValueError(
@@ -290,11 +288,16 @@ class TableModel(FileModel, Generic[TableT]):
 
     @classmethod
     def _from_db(cls, path: Path, table: str) -> pd.DataFrame | None:
-        with connect(path) as connection:
+        with closing(connect(path)) as connection:
             if exists(connection, table):
                 query = f"select * from {esc_id(table)}"
                 df = pd.read_sql_query(
-                    query, connection, parse_dates={"time": {"format": "ISO8601"}}
+                    query,
+                    connection,
+                    # we store TIMESTAMP in SQLite like "2025-05-29 14:16:00"
+                    # see https://www.sqlite.org/lang_datefunc.html
+                    parse_dates={"time": {"format": "ISO8601"}},
+                    dtype_backend="pyarrow",
                 )
                 df.set_index("fid", inplace=True)
             else:
@@ -305,7 +308,7 @@ class TableModel(FileModel, Generic[TableT]):
     @classmethod
     def _from_arrow(cls, path: Path) -> pd.DataFrame:
         directory = context_file_loading.get().get("directory", Path("."))
-        return pd.read_feather(directory / path)
+        return pd.read_feather(directory / path, dtype_backend="pyarrow")
 
     def sort(self):
         """Sort the table as required.
@@ -371,10 +374,18 @@ class SpatialTableModel(TableModel[TableT], Generic[TableT]):
 
     @classmethod
     def _from_db(cls, path: Path, table: str):
-        with connect(path) as connection:
+        with closing(connect(path)) as connection:
             if exists(connection, table):
                 # pyogrio hardcodes fid name on reading
-                df = gpd.read_file(path, layer=table, fid_as_index=True)
+                df = gpd.read_file(
+                    path,
+                    layer=table,
+                    engine="pyogrio",
+                    fid_as_index=True,
+                    use_arrow=True,
+                    # tell pyarrow to map to pd.ArrowDtype rather than NumPy
+                    arrow_to_pandas_kwargs={"types_mapper": pd.ArrowDtype},
+                )
                 df.index.rename(cls.tableschema()._index_name(), inplace=True)
             else:
                 df = None
@@ -396,6 +407,7 @@ class SpatialTableModel(TableModel[TableT], Generic[TableT]):
             driver="GPKG",
             index=True,
             fid=self.df.index.name,
+            engine="pyogrio",
         )
         _add_styles_to_geopackage(path, self.tablename())
 

@@ -298,6 +298,7 @@ function TabulatedRatingCurve(
     interpolations = ScalarInterpolation[]
     control_mapping = Dict{Tuple{NodeID, String}, ControlStateUpdate}()
     active = Bool[]
+    max_downstream_level = Float64[]
     errors = false
 
     for node_id in node_ids
@@ -317,12 +318,15 @@ function TabulatedRatingCurve(
                 IterTools.groupby(row -> coalesce(row.control_state, nothing), static_id)
                 control_state = first(group).control_state
                 is_active = coalesce(first(group).active, true)
+                max_level = coalesce(first(group).max_downstream_level, Inf)
                 table = StructVector(group)
-                if !valid_tabulated_rating_curve(node_id, table)
+                rowrange =
+                    findlastgroup(node_id, NodeID.(node_id.type, table.node_id, Ref(0)))
+                if !valid_tabulated_rating_curve(node_id, table, rowrange)
                     errors = true
                 end
                 interpolation = try
-                    qh_interpolation(node_id, table)
+                    qh_interpolation(table, rowrange)
                 catch
                     LinearInterpolation(Float64[], Float64[])
                 end
@@ -339,17 +343,23 @@ function TabulatedRatingCurve(
             end
             push!(interpolations, interpolation)
             push!(active, is_active)
+            push!(max_downstream_level, max_level)
         elseif node_id in time_node_ids
             source = "time"
             # get the timestamp that applies to the model starttime
             idx_starttime = searchsortedlast(time.time, config.starttime)
             pre_table = view(time, 1:idx_starttime)
-            if !valid_tabulated_rating_curve(node_id, pre_table)
+            rowrange =
+                findlastgroup(node_id, NodeID.(node_id.type, pre_table.node_id, Ref(0)))
+
+            if !valid_tabulated_rating_curve(node_id, pre_table, rowrange)
                 errors = true
             end
-            interpolation = qh_interpolation(node_id, pre_table)
+            interpolation = qh_interpolation(pre_table, rowrange)
+            max_level = coalesce(pre_table.max_downstream_level[rowrange][begin], Inf)
             push!(interpolations, interpolation)
             push!(active, true)
+            push!(max_downstream_level, max_level)
         else
             @error "$node_id data not in any table."
             errors = true
@@ -362,8 +372,9 @@ function TabulatedRatingCurve(
     return TabulatedRatingCurve(;
         node_id = node_ids,
         inflow_edge = inflow_edge.(Ref(graph), node_ids),
-        outflow_edges = outflow_edges.(Ref(graph), node_ids),
+        outflow_edge = outflow_edge.(Ref(graph), node_ids),
         active,
+        max_downstream_level,
         table = interpolations,
         time,
         control_mapping,
@@ -405,6 +416,7 @@ end
 function LevelBoundary(db::DB, config::Config)::LevelBoundary
     static = load_structvector(db, config, LevelBoundaryStaticV1)
     time = load_structvector(db, config, LevelBoundaryTimeV1)
+    concentration_time = load_structvector(db, config, LevelBoundaryConcentrationV1)
 
     _, _, node_ids, valid = static_and_time_node_ids(db, static, time, "LevelBoundary")
 
@@ -416,6 +428,12 @@ function LevelBoundary(db::DB, config::Config)::LevelBoundary
     parsed_parameters, valid =
         parse_static_and_time(db, config, LevelBoundary; static, time, time_interpolatables)
 
+    substances = get_substances(db, config)
+    concentration = zeros(length(node_ids), length(substances))
+    concentration[:, Substance.Continuity] .= 1.0
+    concentration[:, Substance.LevelBoundary] .= 1.0
+    set_concentrations!(concentration, concentration_time, substances, Int32.(node_ids))
+
     if !valid
         error("Errors occurred when parsing LevelBoundary data.")
     end
@@ -424,12 +442,15 @@ function LevelBoundary(db::DB, config::Config)::LevelBoundary
         node_id = node_ids,
         parsed_parameters.active,
         parsed_parameters.level,
+        concentration,
+        concentration_time,
     )
 end
 
 function FlowBoundary(db::DB, config::Config, graph::MetaGraph)::FlowBoundary
     static = load_structvector(db, config, FlowBoundaryStaticV1)
     time = load_structvector(db, config, FlowBoundaryTimeV1)
+    concentration_time = load_structvector(db, config, FlowBoundaryConcentrationV1)
 
     _, _, node_ids, valid = static_and_time_node_ids(db, static, time, "FlowBoundary")
 
@@ -450,6 +471,12 @@ function FlowBoundary(db::DB, config::Config, graph::MetaGraph)::FlowBoundary
         end
     end
 
+    substances = get_substances(db, config)
+    concentration = zeros(length(node_ids), length(substances))
+    concentration[:, Substance.Continuity] .= 1.0
+    concentration[:, Substance.FlowBoundary] .= 1.0
+    set_concentrations!(concentration, concentration_time, substances, Int32.(node_ids))
+
     if !valid
         error("Errors occurred when parsing FlowBoundary data.")
     end
@@ -459,12 +486,20 @@ function FlowBoundary(db::DB, config::Config, graph::MetaGraph)::FlowBoundary
         outflow_edges = outflow_edges.(Ref(graph), node_ids),
         parsed_parameters.active,
         parsed_parameters.flow_rate,
+        concentration,
+        concentration_time,
     )
 end
 
 function Pump(db::DB, config::Config, graph::MetaGraph)::Pump
     static = load_structvector(db, config, PumpStaticV1)
-    defaults = (; min_flow_rate = 0.0, max_flow_rate = Inf, active = true)
+    defaults = (;
+        min_flow_rate = 0.0,
+        max_flow_rate = Inf,
+        min_upstream_level = -Inf,
+        max_downstream_level = Inf,
+        active = true,
+    )
     parsed_parameters, valid = parse_static_and_time(db, config, Pump; static, defaults)
 
     if !valid
@@ -480,19 +515,26 @@ function Pump(db::DB, config::Config, graph::MetaGraph)::Pump
     return Pump(;
         node_id,
         inflow_edge = inflow_edge.(Ref(graph), node_id),
-        outflow_edges = outflow_edges.(Ref(graph), node_id),
+        outflow_edge = outflow_edge.(Ref(graph), node_id),
         parsed_parameters.active,
         flow_rate,
         parsed_parameters.min_flow_rate,
         parsed_parameters.max_flow_rate,
+        parsed_parameters.min_upstream_level,
+        parsed_parameters.max_downstream_level,
         parsed_parameters.control_mapping,
     )
 end
 
 function Outlet(db::DB, config::Config, graph::MetaGraph)::Outlet
     static = load_structvector(db, config, OutletStaticV1)
-    defaults =
-        (; min_flow_rate = 0.0, max_flow_rate = Inf, min_crest_level = -Inf, active = true)
+    defaults = (;
+        min_flow_rate = 0.0,
+        max_flow_rate = Inf,
+        min_upstream_level = -Inf,
+        max_downstream_level = Inf,
+        active = true,
+    )
     parsed_parameters, valid = parse_static_and_time(db, config, Outlet; static, defaults)
 
     if !valid
@@ -513,13 +555,14 @@ function Outlet(db::DB, config::Config, graph::MetaGraph)::Outlet
     return Outlet(;
         node_id,
         inflow_edge = inflow_edge.(Ref(graph), node_id),
-        outflow_edges = outflow_edges.(Ref(graph), node_id),
+        outflow_edge = outflow_edge.(Ref(graph), node_id),
         parsed_parameters.active,
         flow_rate,
         parsed_parameters.min_flow_rate,
         parsed_parameters.max_flow_rate,
-        parsed_parameters.min_crest_level,
         parsed_parameters.control_mapping,
+        parsed_parameters.min_upstream_level,
+        parsed_parameters.max_downstream_level,
     )
 end
 
@@ -531,12 +574,10 @@ end
 function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     node_id = get_ids(db, "Basin")
     n = length(node_id)
-    current_level = cache(n)
-    current_area = cache(n)
 
+    evaporate_mass = config.solver.evaporate_mass
     precipitation = zeros(n)
     potential_evaporation = zeros(n)
-    evaporation = zeros(n)
     drainage = zeros(n)
     infiltration = zeros(n)
     table = (; precipitation, potential_evaporation, drainage, infiltration)
@@ -546,22 +587,44 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     # both static and time are optional, but we need fallback defaults
     static = load_structvector(db, config, BasinStaticV1)
     time = load_structvector(db, config, BasinTimeV1)
+    state = load_structvector(db, config, BasinStateV1)
+    concentration_state_data = load_structvector(db, config, BasinConcentrationStateV1)
+    concentration_time = load_structvector(db, config, BasinConcentrationV1)
+
+    # TODO Move into a function
+    substances = get_substances(db, config)
+    concentration_state = zeros(n, length(substances))
+    concentration_state[:, Substance.Continuity] .= 1.0
+    concentration_state[:, Substance.Initial] .= 1.0
+    set_concentrations!(concentration_state, concentration_state_data, substances, node_id)
+    mass = copy(concentration_state)
+
+    concentration = zeros(2, n, length(substances))
+    concentration[1, :, Substance.Continuity] .= 1.0
+    concentration[1, :, Substance.Drainage] .= 1.0
+    concentration[2, :, Substance.Continuity] .= 1.0
+    concentration[2, :, Substance.Precipitation] .= 1.0
+    set_concentrations!(
+        view(concentration, 1, :, :),
+        concentration_time,
+        substances,
+        node_id;
+        concentration_column = :drainage,
+    )
+    set_concentrations!(
+        view(concentration, 1, :, :),
+        concentration_time,
+        substances,
+        node_id;
+        concentration_column = :precipitation,
+    )
 
     set_static_value!(table, node_id, static)
     set_current_value!(table, node_id, time, config.starttime)
     check_no_nans(table, "Basin")
 
-    vertical_flux_from_input =
+    vertical_flux =
         ComponentVector(; precipitation, potential_evaporation, drainage, infiltration)
-    vertical_flux = cache(4 * n)
-    vertical_flux_prev = ComponentVector(;
-        precipitation = copy(precipitation),
-        evaporation,
-        drainage = copy(drainage),
-        infiltration = copy(infiltration),
-    )
-    vertical_flux_integrated = zero(vertical_flux_prev)
-    vertical_flux_bmi = zero(vertical_flux_prev)
 
     demand = zeros(length(node_id))
 
@@ -615,23 +678,31 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
         error("Errors encountered when parsing Basin concentration data.")
     end
 
-    return Basin(;
+    basin = Basin(;
         node_id,
         inflow_ids = [collect(inflow_ids(graph, id)) for id in node_id],
         outflow_ids = [collect(outflow_ids(graph, id)) for id in node_id],
-        vertical_flux_from_input,
         vertical_flux,
-        vertical_flux_prev,
-        vertical_flux_integrated,
-        vertical_flux_bmi,
-        current_level,
-        current_area,
         storage_to_level,
         level_to_area,
         demand,
         time,
+        concentration_time,
+        evaporate_mass,
+        concentration_state,
+        concentration,
+        mass,
         concentration_external,
+        substances,
     )
+
+    storage0 = get_storages_from_levels(basin, state.level)
+    @assert length(storage0) == n "Basin / state length differs from number of Basins"
+    basin.storage0 .= storage0
+    basin.storage_prev .= storage0
+    basin.mass .*= storage0  # was initialized by concentration_state, resulting in mass
+
+    return basin
 end
 
 """
@@ -672,7 +743,7 @@ function CompoundVariable(
 end
 
 function parse_variables_and_conditions(compound_variable, condition, ids, db, graph)
-    placeholder_vector = graph[].flow
+    placeholder_vector = cache(1)
     compound_variables = Vector{CompoundVariable}[]
     errors = false
 
@@ -798,15 +869,8 @@ function continuous_control_functions(db, config, ids)
     return functions, controlled_variables, errors
 end
 
-function continuous_control_compound_variables(
-    db::DB,
-    config::Config,
-    ids,
-    graph::MetaGraph,
-)
-    # This is a vector that is known to have a DiffCache if automatic differentiation
-    # is used. Therefore this vector is used as a placeholder with the correct type
-    placeholder_vector = graph[].flow
+function continuous_control_compound_variables(db::DB, config::Config, ids)
+    placeholder_vector = cache(1)
 
     data = load_structvector(db, config, ContinuousControlVariableV1)
     compound_variables = CompoundVariable[]
@@ -835,7 +899,7 @@ function ContinuousControl(db::DB, config::Config, graph::MetaGraph)::Continuous
 
     # Avoid using `function` as a variable name as that is recognized as a keyword
     func, controlled_variable, errors = continuous_control_functions(db, config, ids)
-    compound_variable = continuous_control_compound_variables(db, config, ids, graph)
+    compound_variable = continuous_control_compound_variables(db, config, ids)
 
     # References to the controlled parameters, filled in later when they are known
     target_refs = PreallocationRef[]
@@ -1003,6 +1067,7 @@ end
 function UserDemand(db::DB, config::Config, graph::MetaGraph)::UserDemand
     static = load_structvector(db, config, UserDemandStaticV1)
     time = load_structvector(db, config, UserDemandTimeV1)
+    concentration_time = load_structvector(db, config, UserDemandConcentrationV1)
     ids = get_ids(db, "UserDemand")
 
     _, _, node_ids, valid = static_and_time_node_ids(db, static, time, "UserDemand")
@@ -1016,7 +1081,6 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)::UserDemand
     n_user = length(node_ids)
     n_priority = length(priorities)
     active = fill(true, n_user)
-    realized_bmi = zeros(n_user)
     demand = zeros(n_user, n_priority)
     demand_reduced = zeros(n_user, n_priority)
     trivial_timespan = [0.0, prevfloat(Inf)]
@@ -1060,6 +1124,12 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)::UserDemand
         config,
     )
 
+    substances = get_substances(db, config)
+    concentration = zeros(length(node_ids), length(substances))
+    # Continuity concentration is zero, as the return flow (from a Basin) already includes it
+    concentration[:, Substance.UserDemand] .= 1.0
+    set_concentrations!(concentration, concentration_time, substances, ids)
+
     if errors || !valid_demand(node_ids, demand_itp, priorities)
         error("Errors occurred when parsing UserDemand data.")
     end
@@ -1069,7 +1139,6 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)::UserDemand
         inflow_edge = inflow_edge.(Ref(graph), node_ids),
         outflow_edge = outflow_edge.(Ref(graph), node_ids),
         active,
-        realized_bmi,
         demand,
         demand_reduced,
         demand_itp,
@@ -1077,6 +1146,8 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)::UserDemand
         allocated,
         return_factor,
         min_level,
+        concentration,
+        concentration_time,
     )
 end
 
@@ -1223,7 +1294,6 @@ function Allocation(db::DB, config::Config, graph::MetaGraph)::Allocation
 end
 
 function Parameters(db::DB, config::Config)::Parameters
-    n_states = length(get_ids(db, "Basin")) + length(get_ids(db, "PidControl"))
     graph = create_graph(db, config)
     allocation = Allocation(db, config, graph)
 
@@ -1273,6 +1343,8 @@ function Parameters(db::DB, config::Config)::Parameters
         level_demand,
         flow_demand,
         subgrid,
+        config.solver.water_balance_abstol,
+        config.solver.water_balance_reltol,
     )
 
     collect_control_mappings!(p)
@@ -1423,4 +1495,44 @@ function create_storage_tables(
         push!(level, group_level)
     end
     return area, level
+end
+
+"Determine all substances present in the input over multiple tables"
+function get_substances(db::DB, config::Config)::OrderedSet{Symbol}
+    # Hardcoded tracers
+    substances = OrderedSet{Symbol}(Symbol.(instances(Substance.T)))
+    for table in [
+        BasinConcentrationStateV1,
+        BasinConcentrationV1,
+        FlowBoundaryConcentrationV1,
+        LevelBoundaryConcentrationV1,
+        UserDemandConcentrationV1,
+    ]
+        data = load_structvector(db, config, table)
+        for row in data
+            push!(substances, Symbol(row.substance))
+        end
+    end
+    return substances
+end
+
+"Set values in wide concentration matrix from a long input table."
+function set_concentrations!(
+    concentration,
+    concentration_data,
+    substances,
+    node_ids;
+    concentration_column = :concentration,
+)
+    for substance in unique(concentration_data.substance)
+        data_sub = filter(row -> row.substance == substance, concentration_data)
+        sub_idx = findfirst(==(Symbol(substance)), substances)
+        for group in IterTools.groupby(row -> row.node_id, data_sub)
+            first_row = first(group)
+            value = getproperty(first_row, concentration_column)
+            ismissing(value) && continue
+            node_idx = findfirst(==(first_row.node_id), node_ids)
+            concentration[node_idx, sub_idx] = value
+        end
+    end
 end

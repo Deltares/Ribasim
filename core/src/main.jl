@@ -39,7 +39,10 @@ function main(toml_path::AbstractString)::Cint
                 if config.ribasim_version != cli.ribasim_version
                     @warn "The Ribasim version in the TOML config file does not match the used Ribasim CLI version." config.ribasim_version cli.ribasim_version
                 end
-                @info "Starting a Ribasim simulation." cli.ribasim_version starttime endtime
+                @info "Starting a Ribasim simulation." toml_path cli.ribasim_version starttime endtime
+                if any(config.experimental)
+                    @warn "The following *experimental* features are enabled: $(config.experimental)"
+                end
 
                 try
                     model = run(config)

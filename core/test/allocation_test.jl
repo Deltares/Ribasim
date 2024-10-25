@@ -7,7 +7,7 @@
     toml_path = normpath(@__DIR__, "../../generated_testmodels/subnetwork/ribasim.toml")
     @test ispath(toml_path)
     cfg = Ribasim.Config(toml_path)
-    db_path = Ribasim.input_path(cfg, cfg.database)
+    db_path = Ribasim.database_path(cfg)
     db = SQLite.DB(db_path)
 
     p = Ribasim.Parameters(db, cfg)
@@ -77,7 +77,7 @@ end
     )
     @test ispath(toml_path)
     cfg = Ribasim.Config(toml_path)
-    db_path = Ribasim.input_path(cfg, cfg.database)
+    db_path = Ribasim.database_path(cfg)
     db = SQLite.DB(db_path)
     p = Ribasim.Parameters(db, cfg)
     close(db)
@@ -122,12 +122,9 @@ end
         "../../generated_testmodels/main_network_with_subnetworks/ribasim.toml",
     )
     @test ispath(toml_path)
-    cfg = Ribasim.Config(toml_path)
-    db_path = Ribasim.input_path(cfg, cfg.database)
-    db = SQLite.DB(db_path)
-    p = Ribasim.Parameters(db, cfg)
-    close(db)
+    model = Ribasim.Model(toml_path)
 
+    (; p) = model.integrator
     (; allocation, user_demand, graph, basin) = p
     (;
         allocation_models,
@@ -173,8 +170,7 @@ end
     (; Δt_allocation) = allocation_models[1]
     mean_input_flows[(NodeID(:FlowBoundary, 1, p), NodeID(:Basin, 2, p))] =
         4.5 * Δt_allocation
-    u = ComponentVector(; storage = zeros(length(p.basin.node_id)))
-    Ribasim.update_allocation!((; p, t, u))
+    Ribasim.update_allocation!(model.integrator)
 
     @test subnetwork_allocateds[NodeID(:Basin, 2, p), NodeID(:Pump, 11, p)] ≈
           [4, 0.49775, 0.0] atol = 1e-4
@@ -211,7 +207,7 @@ end
     )
     @test ispath(toml_path)
     cfg = Ribasim.Config(toml_path)
-    db_path = Ribasim.input_path(cfg, cfg.database)
+    db_path = Ribasim.database_path(cfg)
     db = SQLite.DB(db_path)
     p = Ribasim.Parameters(db, cfg)
     close(db)
@@ -246,6 +242,7 @@ end
     import JuMP
     using Ribasim: NodeID
     using DataFrames: DataFrame
+    using OrdinaryDiffEqCore: get_du
     using DataInterpolations: LinearInterpolation, integral
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/level_demand/ribasim.toml")
@@ -262,14 +259,15 @@ end
 
     storage = Ribasim.get_storages_and_levels(model).storage[1, :]
     t = Ribasim.tsaves(model)
+    du = get_du(model.integrator)
 
     d = user_demand.demand_itp[1][2](0)
     ϕ = 1e-3 # precipitation
     q = Ribasim.get_flow(
-        graph,
-        Ribasim.NodeID(:FlowBoundary, 1, p),
-        Ribasim.NodeID(:Basin, 2, p),
-        Float64[],
+        du,
+        p,
+        0.0,
+        (Ribasim.NodeID(:FlowBoundary, 1, p), Ribasim.NodeID(:Basin, 2, p)),
     )
     A = Ribasim.basin_areas(basin, 1)[1]
     l_max = level_demand.max_level[1](0)
@@ -323,13 +321,13 @@ end
     # Realized level demand
     record_demand = DataFrame(allocation.record_demand)
     df_basin_2 = record_demand[record_demand.node_id .== 2, :]
-    itp_basin_2 = t -> model.integrator.sol(t)[1]
+    itp_basin_2 = LinearInterpolation(storage, t)
     realized_numeric = diff(itp_basin_2.(df_basin_2.time)) / Δt_allocation
     @test all(isapprox.(realized_numeric, df_basin_2.realized[2:end], atol = 2e-4))
 
     # Realized user demand
     flow_table = DataFrame(Ribasim.flow_table(model))
-    flow_table_user_3 = flow_table[flow_table.edge_id .== 1, :]
+    flow_table_user_3 = flow_table[flow_table.edge_id .== 2, :]
     itp_user_3 = LinearInterpolation(
         flow_table_user_3.flow_rate,
         Ribasim.seconds_since.(flow_table_user_3.time, model.config.starttime),
@@ -465,7 +463,7 @@ end
     model = Ribasim.run(toml_path)
     record_demand = DataFrame(model.integrator.p.allocation.record_demand)
     df_rating_curve_2 = record_demand[record_demand.node_id .== 2, :]
-    @test all(df_rating_curve_2.realized .≈ 2e-3)
+    @test all(df_rating_curve_2.realized .≈ 0.002)
 
     @testset "Results" begin
         allocation_bytes = read(normpath(dirname(toml_path), "results/allocation.arrow"))
@@ -584,8 +582,8 @@ end
     (; allocation_models) = p.allocation
     (; basin, level_demand, graph) = p
 
-    fill!(level_demand.max_level[1].u, Inf)
-    fill!(level_demand.max_level[2].u, Inf)
+    level_demand.max_level[1].u .= Inf
+    level_demand.max_level[2].u .= Inf
 
     # Given a max_level of Inf, the basin capacity is 0.0 because it is not possible for the basin level to be > Inf
     @test Ribasim.get_basin_capacity(allocation_models[1], u, p, t, basin.node_id[1]) == 0.0

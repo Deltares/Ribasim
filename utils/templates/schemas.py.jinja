@@ -1,9 +1,11 @@
 # Automatically generated file. Do not modify.
 
-from typing import Any, Callable
+from typing import Annotated, Any, Callable
 
+import pandas as pd
 import pandera as pa
-from pandera.dtypes import Int32, Timestamp
+import pyarrow
+from pandera.dtypes import Int32
 from pandera.typing import Index, Series
 
 from ribasim import migrations
@@ -18,17 +20,17 @@ class _BaseSchema(pa.DataFrameModel):
         return "fid"
 
     @classmethod
-    def migrate(cls, df: Any) -> Any:
-        f: Callable[[Any], Any] = getattr(
-            migrations, str(cls.__name__).lower() + "_migration", lambda x: x
+    def migrate(cls, df: Any, schema_version: int) -> Any:
+        f: Callable[[Any, Any], Any] = getattr(
+            migrations, str(cls.__name__).lower() + "_migration", lambda x, _: x
         )
-        return f(df)
+        return f(df, schema_version)
 
 {% for m in models %}
 class {{m[:name]}}Schema(_BaseSchema):
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
   {% for f in m[:fields] %}
-    {% if (f[2] == "Series[Int32]") %}
+    {% if (f[1] == :node_id) %}
     {{ f[1] }}: {{ f[2] }} = pa.Field(nullable={{ f[3] }}, default=0)
     {% else %}
     {{ f[1] }}: {{ f[2] }} = pa.Field(nullable={{ f[3] }})

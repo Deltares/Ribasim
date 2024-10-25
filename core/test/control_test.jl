@@ -1,5 +1,6 @@
 @testitem "Pump discrete control" begin
     using Ribasim: NodeID
+    using OrdinaryDiffEqCore: get_du
     using Dates: DateTime
     import Arrow
     import Tables
@@ -56,7 +57,7 @@
     t_2_index = findfirst(>=(t_2), t)
     @test level[2, t_2_index] >= discrete_control.compound_variables[1][2].greater_than[1]
 
-    flow = graph[].flow[Float64[]]
+    flow = get_du(model.integrator)[(:linear_resistance, :pump)]
     @test all(iszero, flow)
 end
 
@@ -246,8 +247,14 @@ end
 
     t_switch = Ribasim.datetime_since(record.time[2], p.starttime)
     flow_table = DataFrame(Ribasim.flow_table(model))
-    @test all(filter(:time => time -> time <= t_switch, flow_table).flow_rate .> 0)
-    @test all(filter(:time => time -> time > t_switch, flow_table).flow_rate .== 0)
+    @test all(filter(:time => time -> time <= t_switch, flow_table).flow_rate .> -1e-12)
+    @test all(
+        isapprox.(
+            filter(:time => time -> time > t_switch, flow_table).flow_rate,
+            0;
+            atol = 1e-8,
+        ),
+    )
 end
 
 @testitem "Outlet continuous control" begin

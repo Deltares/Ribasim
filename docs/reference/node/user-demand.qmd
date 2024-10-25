@@ -22,14 +22,14 @@ The difference is consumed by the UserDemand.
 
 This table contains the static form of the `UserDemand` node.
 
-column        | type    | unit         | restriction
-------------- | ------- | ------------ | -----------
-node_id       | Int32   | -            | sorted
-active        | Bool    | -            | (optional, default true)
-demand        | Float64 | $m^3 s^{-1}$ | non-negative
-return_factor | Float64 | -            | between [0 - 1]
-min_level     | Float64 | $m$          | -
-priority      | Int32   | -            | positive, sorted per node id
+column        | type    | unit                  | restriction
+------------- | ------- | ----------------------| -----------
+node_id       | Int32   | -                     | sorted
+active        | Bool    | -                     | (optional, default true)
+demand        | Float64 | $\text{m}^3/\text{s}$ | non-negative
+return_factor | Float64 | -                     | between [0 - 1]
+min_level     | Float64 | $\text{m}$            | -
+priority      | Int32   | -                     | positive, sorted per node id
 
 ## Time
 
@@ -42,14 +42,24 @@ nearest time value.
 The `priority` is not allowed to change over time.
 Note that a `node_id` can be either in this table or in the static one, but not both.
 
-column        | type     | unit         | restriction
-------------- | -------- | ------------ | -----------
-node_id       | Int32    | -            | sorted
-priority      | Int32    | -            | positive, sorted per node id
-time          | DateTime | -            | sorted per priority per node id
-demand        | Float64  | $m^3 s^{-1}$ | non-negative
-return_factor | Float64  | -            | between [0 - 1]
-min_level     | Float64  | $m$          | -
+column        | type     | unit                  | restriction
+------------- | -------- | --------------------- | -----------
+node_id       | Int32    | -                     | sorted
+priority      | Int32    | -                     | positive, sorted per node id
+time          | DateTime | -                     | sorted per priority per node id
+demand        | Float64  | $\text{m}^3/\text{s}$ | non-negative
+return_factor | Float64  | -                     | between [0 - 1]
+min_level     | Float64  | $\text{m}$            | -
+
+## Concentration
+This table defines the concentration of substances for the flow from the UserDemand.
+
+column         | type     | unit                  | restriction
+-------------- | -------- | --------------------- | -----------
+node_id        | Int32    | -                     | sorted
+time           | DateTime | -                     | sorted per node_id
+substance      | String   | -                     | can correspond to known Delwaq substances
+concentration  | Float64  | $\text{g}/\text{m}^3$ |
 
 # Equations
 

@@ -1,4 +1,6 @@
 import datetime
+import logging
+import shutil
 from collections.abc import Generator
 from os import PathLike
 from pathlib import Path
@@ -24,6 +26,7 @@ from ribasim.config import (
     Basin,
     ContinuousControl,
     DiscreteControl,
+    Experimental,
     FlowBoundary,
     FlowDemand,
     LevelBoundary,
@@ -54,11 +57,13 @@ from ribasim.input_base import (
 from ribasim.utils import (
     MissingOptionalModule,
     UsedIDs,
+    _concat,
     _edge_lookup,
     _node_lookup,
     _node_lookup_numpy,
     _time_in_ns,
 )
+from ribasim.validation import control_edge_neighbor_amount, flow_edge_neighbor_amount
 
 try:
     import xugrid
@@ -82,6 +87,8 @@ class Model(FileModel):
 
     allocation: Allocation = Field(default_factory=Allocation)
 
+    experimental: Experimental = Field(default_factory=Experimental)
+
     basin: Basin = Field(default_factory=Basin)
     continuous_control: ContinuousControl = Field(default_factory=ContinuousControl)
     discrete_control: DiscreteControl = Field(default_factory=DiscreteControl)
@@ -101,6 +108,7 @@ class Model(FileModel):
     user_demand: UserDemand = Field(default_factory=UserDemand)
 
     edge: EdgeTable = Field(default_factory=EdgeTable)
+    use_validation: bool = Field(default=True, exclude=True)
 
     _used_node_ids: UsedIDs = PrivateAttr(default_factory=UsedIDs)
 
@@ -119,6 +127,17 @@ class Model(FileModel):
         if self.edge.df is None:
             self.edge.df = GeoDataFrame[EdgeSchema](index=pd.Index([], name="edge_id"))
         self.edge.df.set_geometry("geometry", inplace=True, crs=self.crs)
+        return self
+
+    @model_validator(mode="after")
+    def _update_used_ids(self) -> "Model":
+        # Only update the used node IDs if we read from a database
+        if "database" in context_file_loading.get():
+            df = self.node_table().df
+            assert df is not None
+            if len(df.index) > 0:
+                self._used_node_ids.node_ids.update(df.index)
+                self._used_node_ids.max_node_id = df.index.max()
         return self
 
     @field_serializer("input_dir", "results_dir")
@@ -175,9 +194,12 @@ class Model(FileModel):
         return fn
 
     def _save(self, directory: DirectoryPath, input_dir: DirectoryPath):
-        # Set CRS of the tables to the CRS stored in the Model object
-        self.set_crs(self.crs)
-        db_path = directory / input_dir / "database.gpkg"
+        # We write all tables to a temporary GeoPackage with a dot prefix,
+        # and at the end move this over the target file.
+        # This does not throw a PermissionError if the file is open in QGIS.
+        db_path = directory / input_dir / ".database.gpkg"
+
+        # avoid adding tables to existing model
         db_path.parent.mkdir(parents=True, exist_ok=True)
         db_path.unlink(missing_ok=True)
         context_file_writing.get()["database"] = db_path
@@ -193,6 +215,8 @@ class Model(FileModel):
 
         for sub in self._nodes():
             sub._save(directory, input_dir)
+
+        shutil.move(db_path, db_path.with_name("database.gpkg"))
 
     def set_crs(self, crs: str) -> None:
         """Set the coordinate reference system of the data in the model.
@@ -222,8 +246,12 @@ class Model(FileModel):
 
     def node_table(self) -> NodeTable:
         """Compute the full sorted NodeTable from all node types."""
-        df_chunks = [node.node.df.set_crs(self.crs) for node in self._nodes()]  # type:ignore
-        df = pd.concat(df_chunks)
+        df_chunks = [node.node.df for node in self._nodes()]
+        df = (
+            _concat(df_chunks)
+            if df_chunks
+            else pd.DataFrame(index=pd.Index([], name="node_id"))
+        )
         node_table = NodeTable(df=df)
         node_table.sort()
         assert node_table.df is not None
@@ -272,8 +300,10 @@ class Model(FileModel):
         filepath : str | PathLike[str]
             A file path with .toml extension.
         """
-        # TODO
-        # self.validate_model()
+
+        if self.use_validation:
+            self._validate_model()
+
         filepath = Path(filepath)
         self.filepath = filepath
         if not filepath.suffix == ".toml":
@@ -286,6 +316,123 @@ class Model(FileModel):
 
         context_file_writing.set({})
         return fn
+
+    def _validate_model(self):
+        df_edge = self.edge.df
+        df_chunks = [node.node.df for node in self._nodes()]
+        df_node = _concat(df_chunks)
+
+        df_graph = df_edge
+        # Join df_edge with df_node to get to_node_type
+        df_graph = df_graph.join(
+            df_node[["node_type"]], on="from_node_id", how="left", rsuffix="_from"
+        )
+        df_graph = df_graph.rename(columns={"node_type": "from_node_type"})
+
+        df_graph = df_graph.join(
+            df_node[["node_type"]], on="to_node_id", how="left", rsuffix="_to"
+        )
+        df_graph = df_graph.rename(columns={"node_type": "to_node_type"})
+
+        if not self._has_valid_neighbor_amount(
+            df_graph, flow_edge_neighbor_amount, "flow", df_node["node_type"]
+        ):
+            raise ValueError("Minimum flow inneighbor or outneighbor unsatisfied")
+        if not self._has_valid_neighbor_amount(
+            df_graph, control_edge_neighbor_amount, "control", df_node["node_type"]
+        ):
+            raise ValueError("Minimum control inneighbor or outneighbor unsatisfied")
+
+    def _has_valid_neighbor_amount(
+        self,
+        df_graph: pd.DataFrame,
+        edge_amount: dict[str, list[int]],
+        edge_type: str,
+        nodes,
+    ) -> bool:
+        """Check if the neighbor amount of the two nodes connected by the given edge meet the minimum requirements."""
+
+        is_valid = True
+
+        # filter graph by edge type
+        df_graph = df_graph.loc[df_graph["edge_type"] == edge_type]
+
+        # count occurrence of "from_node" which reflects the number of outneighbors
+        from_node_count = (
+            df_graph.groupby("from_node_id").size().reset_index(name="from_node_count")  # type: ignore
+        )
+
+        # append from_node_count column to from_node_id and from_node_type
+        from_node_info = (
+            df_graph[["from_node_id", "from_node_type"]]
+            .drop_duplicates()
+            .merge(from_node_count, on="from_node_id", how="left")
+        )
+        from_node_info = from_node_info[
+            ["from_node_id", "from_node_count", "from_node_type"]
+        ]
+
+        # add the node that is not the upstream of any other nodes
+        from_node_info = self._add_source_sink_node(nodes, from_node_info, "from")
+
+        # loop over all the "from_node" and check if they have enough outneighbor
+        for _, row in from_node_info.iterrows():
+            # from node's outneighbor
+            if row["from_node_count"] < edge_amount[row["from_node_type"]][2]:
+                is_valid = False
+                logging.error(
+                    f"Node {row['from_node_id']} must have at least {edge_amount[row['from_node_type']][2]} outneighbor(s) (got {row['from_node_count']})"
+                )
+
+        # count occurrence of "to_node" which reflects the number of inneighbors
+        to_node_count = (
+            df_graph.groupby("to_node_id").size().reset_index(name="to_node_count")  # type: ignore
+        )
+
+        # append to_node_count column to result
+        to_node_info = (
+            df_graph[["to_node_id", "to_node_type"]]
+            .drop_duplicates()
+            .merge(to_node_count, on="to_node_id", how="left")
+        )
+        to_node_info = to_node_info[["to_node_id", "to_node_count", "to_node_type"]]
+
+        # add the node that is not the downstream of any other nodes
+        to_node_info = self._add_source_sink_node(nodes, to_node_info, "to")
+
+        # loop over all the "to_node" and check if they have enough inneighbor
+        for _, row in to_node_info.iterrows():
+            if row["to_node_count"] < edge_amount[row["to_node_type"]][0]:
+                is_valid = False
+                logging.error(
+                    f"Node {row['to_node_id']} must have at least {edge_amount[row['to_node_type']][0]} inneighbor(s) (got {row['to_node_count']})"
+                )
+
+        return is_valid
+
+    def _add_source_sink_node(
+        self, nodes, node_info: pd.DataFrame, direction: str
+    ) -> pd.DataFrame:
+        """Loop over node table.
+
+        Add the nodes whose id are missing in the from_node and to_node column in the edge table because they are not the upstream or downstrem of other nodes.
+
+        Specify that their occurrence in from_node table or to_node table is 0.
+        """
+
+        # loop over nodes, add the one that is not the downstream (from) or upstream (to) of any other nodes
+        for index, node in enumerate(nodes):
+            if nodes.index[index] not in node_info[f"{direction}_node_id"].to_numpy():
+                new_row = {
+                    f"{direction}_node_id": nodes.index[index],
+                    f"{direction}_node_count": 0,
+                    f"{direction}_node_type": node,
+                }
+                node_info = _concat(
+                    [node_info, pd.DataFrame([new_row])], ignore_index=True
+                )
+
+        return node_info
 
     @classmethod
     def _load(cls, filepath: Path | None) -> dict[str, Any]:
@@ -319,8 +466,8 @@ class Model(FileModel):
 
         df_listen_edge = pd.DataFrame(
             data={
-                "control_node_id": pd.Series([], dtype=np.int32),
-                "listen_node_id": pd.Series([], dtype=np.int32),
+                "control_node_id": pd.Series([], dtype="int32[pyarrow]"),
+                "listen_node_id": pd.Series([], dtype="int32[pyarrow]"),
             }
         )
 
@@ -331,7 +478,7 @@ class Model(FileModel):
 
             to_add = table[["node_id", "listen_node_id"]].drop_duplicates()
             to_add.columns = ["control_node_id", "listen_node_id"]
-            df_listen_edge = pd.concat([df_listen_edge, to_add])
+            df_listen_edge = _concat([df_listen_edge, to_add])
 
         # Listen edges from ContinuousControl and DiscreteControl
         for table, name in (
@@ -346,7 +493,7 @@ class Model(FileModel):
                 "control_node_id",
                 "listen_node_id",
             ]
-            df_listen_edge = pd.concat([df_listen_edge, to_add])
+            df_listen_edge = _concat([df_listen_edge, to_add])
 
         # Collect geometry data
         node = self.node_table().df
@@ -519,8 +666,8 @@ class Model(FileModel):
                 "perhaps the model needs to be run first."
             )
 
-        basin_df = pd.read_feather(basin_path)
-        flow_df = pd.read_feather(flow_path)
+        basin_df = pd.read_feather(basin_path, dtype_backend="pyarrow")
+        flow_df = pd.read_feather(flow_path, dtype_backend="pyarrow")
         _time_in_ns(basin_df)
         _time_in_ns(flow_df)
 
@@ -560,6 +707,7 @@ class Model(FileModel):
         alloc_flow_df = pd.read_feather(
             alloc_flow_path,
             columns=["time", "edge_id", "flow_rate", "optimization_type", "priority"],
+            dtype_backend="pyarrow",
         )
         _time_in_ns(alloc_flow_df)
 

@@ -26,6 +26,10 @@ $$
 \frac{\mathrm{d}S}{\mathrm{d}t} = P + ET + Q_{rest}
 $$
 
+We don't use these equations directly.
+Rather, we use an equivalent formulation where solve for the cumulative flows instead of the Basin storages.
+For more details on this see [Equations](equations.qmd).
+
 ## Time
 
 The water balance equation can be applied on many timescales; years, weeks, days or hours.

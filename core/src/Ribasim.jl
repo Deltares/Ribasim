@@ -21,8 +21,8 @@ using OrdinaryDiffEqCore:
     get_du,
     AbstractNLSolver,
     calculate_residuals!
+using DiffEqBase: DiffEqBase
 using OrdinaryDiffEqNonlinearSolve: OrdinaryDiffEqNonlinearSolve, relax!, _compute_rhs!
-using LineSearches: BackTracking
 using DiffEqBase: remake
 
 # Interface for defining and solving the ODE problem of the physical layer.
@@ -45,6 +45,12 @@ using SciMLBase:
 # Automatically detecting the sparsity pattern of the Jacobian of water_balance!
 # through operator overloading
 using SparseConnectivityTracer: TracerSparsityDetector, jacobian_sparsity, GradientTracer
+
+# For efficient sparse computations
+using SparseArrays: SparseMatrixCSC, spzeros
+
+# Linear algebra
+using LinearAlgebra: mul!
 
 # PreallocationTools is used because the RHS function (water_balance!) gets called with different input types
 # for u, du:
@@ -92,7 +98,7 @@ using TerminalLoggers: TerminalLogger
 # Convenience wrapper around arrays, divides vectors in
 # separate sections which can be indexed individually.
 # Used for e.g. Basin forcing and the state vector.
-using ComponentArrays: ComponentVector, Axis
+using ComponentArrays: ComponentVector, ComponentArray, Axis, getaxes
 
 # Date and time handling; externally we use the proleptic Gregorian calendar,
 # internally we use a Float64; seconds since the start of the simulation.
@@ -139,6 +145,9 @@ using Tables: Tables, AbstractRow, columntable
 
 # Wrapper around a vector of structs to easily retrieve the same field from all elements.
 using StructArrays: StructVector
+
+# OrderedSet is used to store the order of the substances in the network.
+using DataStructures: OrderedSet
 
 export libribasim
 

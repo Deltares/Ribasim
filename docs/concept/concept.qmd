@@ -11,6 +11,7 @@ Besides a model simulation core, Ribasim also includes tooling to assist in buil
 The model and its results provides insights to decision makers, enabling them to build consensus amongst water users and make informed decisions about how to manage water resources optimally.
 
 The model concept of Ribasim is composed of multiple layers:
+
 - a physical layer representing water bodies and associated infrastructure as well as abstractions,
 - a rule-based control layer to manage the infrastructure, and
 - (optionally) a priority-based allocation layer to take centralized decisions on user abstractions.

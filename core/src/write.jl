@@ -5,7 +5,7 @@ Write all results to the Arrow files as specified in the model configuration.
 """
 function write_results(model::Model)::Model
     (; config) = model
-    (; results) = model.config
+    (; results, experimental) = model.config
     compress = get_compressor(results)
     remove_empty_table = model.integrator.t != 0
 
@@ -23,6 +23,13 @@ function write_results(model::Model)::Model
     table = flow_table(model)
     path = results_path(config, RESULTS_FILENAME.flow)
     write_arrow(path, table, compress; remove_empty_table)
+
+    # concentrations
+    if experimental.concentration
+        table = concentration_table(model)
+        path = results_path(config, RESULTS_FILENAME.concentration)
+        write_arrow(path, table, compress; remove_empty_table)
+    end
 
     # discrete control
     table = discrete_control_table(model)
@@ -57,6 +64,7 @@ const RESULTS_FILENAME = (
     basin_state = "basin_state.arrow",
     basin = "basin.arrow",
     flow = "flow.arrow",
+    concentration = "concentration.arrow",
     control = "control.arrow",
     allocation = "allocation.arrow",
     allocation_flow = "allocation_flow.arrow",
@@ -73,17 +81,17 @@ function get_storages_and_levels(
     storage::Matrix{Float64},
     level::Matrix{Float64},
 }
-    (; config, integrator) = model
-    (; sol, p) = integrator
+    (; config, integrator, saved) = model
+    (; p) = integrator
 
     node_id = p.basin.node_id::Vector{NodeID}
     tsteps = datetime_since.(tsaves(model), config.starttime)
 
-    storage = hcat([collect(u_.storage) for u_ in sol.u]...)
+    storage = zeros(length(node_id), length(tsteps))
     level = zero(storage)
-    for (i, basin_storage) in enumerate(eachrow(storage))
-        level[i, :] =
-            [get_level_from_storage(p.basin, i, storage) for storage in basin_storage]
+    for (i, cvec) in enumerate(saved.basin_state.saveval)
+        storage[:, i] .= cvec.storage
+        level[:, i] .= cvec.level
     end
 
     return (; time = tsteps, node_id, storage, level)
@@ -93,12 +101,16 @@ end
 function basin_state_table(
     model::Model,
 )::@NamedTuple{node_id::Vector{Int32}, level::Vector{Float64}}
-    (; basin) = model.integrator.p
+    du = get_du(model.integrator)
+    (; u, p, t) = model.integrator
 
     # ensure the levels are up-to-date
-    set_current_basin_properties!(basin, model.integrator.u, get_du(model.integrator))
+    set_current_basin_properties!(du, u, p, t)
 
-    return (; node_id = Int32.(basin.node_id), level = basin.current_level[Float64[]])
+    return (;
+        node_id = Int32.(p.basin.node_id),
+        level = p.basin.current_properties.current_level[Float64[]],
+    )
 end
 
 "Create the basin result table from the saved data"
@@ -132,40 +144,26 @@ function basin_table(
 
     inflow_rate = FlatVector(saved.flow.saveval, :inflow)
     outflow_rate = FlatVector(saved.flow.saveval, :outflow)
-    precipitation = zeros(nrows)
-    evaporation = zeros(nrows)
-    drainage = zeros(nrows)
+    drainage = FlatVector(saved.flow.saveval, :drainage)
     infiltration = zeros(nrows)
-    balance_error = zeros(nrows)
-    relative_error = zeros(nrows)
+    evaporation = zeros(nrows)
+    precipitation = FlatVector(saved.flow.saveval, :precipitation)
+    storage_rate = FlatVector(saved.flow.saveval, :storage_rate)
+    balance_error = FlatVector(saved.flow.saveval, :balance_error)
+    relative_error = FlatVector(saved.flow.saveval, :relative_error)
 
     idx_row = 0
-    for cvec in saved.vertical_flux.saveval
-        for (precipitation_, evaporation_, drainage_, infiltration_) in
-            zip(cvec.precipitation, cvec.evaporation, cvec.drainage, cvec.infiltration)
+    for cvec in saved.flow.saveval
+        for (evaporation_, infiltration_) in
+            zip(cvec.flow.evaporation, cvec.flow.infiltration)
             idx_row += 1
-            precipitation[idx_row] = precipitation_
             evaporation[idx_row] = evaporation_
-            drainage[idx_row] = drainage_
             infiltration[idx_row] = infiltration_
         end
     end
 
     time = repeat(data.time[begin:(end - 1)]; inner = nbasin)
-    Δtime_seconds = seconds.(diff(data.time))
-    Δtime = repeat(Δtime_seconds; inner = nbasin)
     node_id = repeat(Int32.(data.node_id); outer = ntsteps)
-    storage_rate = Δstorage ./ Δtime
-
-    for i in 1:nrows
-        total_in = inflow_rate[i] + precipitation[i] + drainage[i]
-        total_out = outflow_rate[i] + evaporation[i] + infiltration[i]
-        balance_error[i] = storage_rate[i] - (total_in - total_out)
-        mean_flow_rate = 0.5 * (total_in + total_out)
-        if mean_flow_rate != 0
-            relative_error[i] = balance_error[i] / mean_flow_rate
-        end
-    end
 
     return (;
         time,
@@ -214,21 +212,19 @@ function flow_table(
     edge_id::Vector{Union{Int32, Missing}},
     from_node_id::Vector{Int32},
     to_node_id::Vector{Int32},
-    flow_rate::FlatVector{Float64},
+    flow_rate::Vector{Float64},
 }
     (; config, saved, integrator) = model
     (; t, saveval) = saved.flow
-    (; graph) = integrator.p
-    (; flow_dict) = graph[]
+    (; p) = integrator
+    (; graph) = p
+    (; flow_edges) = graph[]
 
     from_node_id = Int32[]
     to_node_id = Int32[]
     unique_edge_ids_flow = Union{Int32, Missing}[]
 
-    flow_edge_ids = Vector{Tuple{NodeID, NodeID}}(undef, length(flow_dict))
-    for (edge_id, index) in flow_dict
-        flow_edge_ids[index] = edge_id
-    end
+    flow_edge_ids = [flow_edge.edge for flow_edge in flow_edges]
 
     for (from_id, to_id) in flow_edge_ids
         push!(from_node_id, from_id.value)
@@ -239,6 +235,16 @@ function flow_table(
     nflow = length(unique_edge_ids_flow)
     ntsteps = length(t)
 
+    flow_rate = zeros(nflow * ntsteps)
+
+    for (i, edge) in enumerate(flow_edge_ids)
+        for (j, cvec) in enumerate(saveval)
+            (; flow, flow_boundary) = cvec
+            flow_rate[i + (j - 1) * nflow] =
+                get_flow(flow, p, 0.0, edge; boundary_flow = flow_boundary)
+        end
+    end
+
     # the timestamp should represent the start of the period, not the end
     t_starts = circshift(t, 1)
     if !isempty(t)
@@ -248,9 +254,47 @@ function flow_table(
     edge_id = repeat(unique_edge_ids_flow; outer = ntsteps)
     from_node_id = repeat(from_node_id; outer = ntsteps)
     to_node_id = repeat(to_node_id; outer = ntsteps)
-    flow_rate = FlatVector(saveval, :flow)
 
     return (; time, edge_id, from_node_id, to_node_id, flow_rate)
+end
+
+"Create a concentration result table from the saved data"
+function concentration_table(
+    model::Model,
+)::@NamedTuple{
+    time::Vector{DateTime},
+    node_id::Vector{Int32},
+    substance::Vector{String},
+    concentration::Vector{Float64},
+}
+    (; saved, integrator) = model
+    (; p) = integrator
+    (; basin) = p
+
+    # The last timestep is not included; there is no period over which to compute flows.
+    data = get_storages_and_levels(model)
+
+    ntsteps = length(data.time) - 1
+    nbasin = length(data.node_id)
+    nsubstance = length(basin.substances)
+    nrows = ntsteps * nbasin * nsubstance
+
+    substances = String.(basin.substances)
+    concentration = zeros(nrows)
+
+    idx_row = 0
+    for cvec in saved.flow.saveval
+        for concentration_ in vec(cvec.concentration)
+            idx_row += 1
+            concentration[idx_row] = concentration_
+        end
+    end
+
+    time = repeat(data.time[begin:(end - 1)]; inner = nbasin * nsubstance)
+    substance = repeat(substances; inner = nbasin, outer = ntsteps)
+    node_id = repeat(Int32.(data.node_id); outer = ntsteps * nsubstance)
+
+    return (; time, node_id, substance, concentration)
 end
 
 "Create a discrete control result table from the saved data"

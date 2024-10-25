@@ -1,4 +1,5 @@
 import re
+from warnings import catch_warnings, filterwarnings
 
 import numpy as np
 import pandas as pd
@@ -68,6 +69,20 @@ def _time_in_ns(df) -> None:
     """Convert the time column to datetime64[ns] dtype."""
     # datetime64[ms] gives trouble; https://github.com/pydata/xarray/issues/6318
     df["time"] = df["time"].astype("datetime64[ns]")
+
+
+def _concat(dfs, **kwargs):
+    """Concatenate DataFrames with a warning filter."""
+    with catch_warnings():
+        # The behavior of array concatenation with empty entries is deprecated.
+        # In a future version, this will no longer exclude empty items when determining
+        # the result dtype. To retain the old behavior, exclude the empty entries before
+        # the concat operation.
+        filterwarnings(
+            "ignore",
+            category=FutureWarning,
+        )
+        return pd.concat(dfs, **kwargs)
 
 
 class UsedIDs(BaseModel):

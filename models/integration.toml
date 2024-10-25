@@ -1,0 +1,12 @@
+starttime = 2023-01-20 00:00:00
+endtime = 2023-07-01 00:00:00
+crs = "EPSG:28992"
+input_dir = "hws_2024_7_0"
+results_dir = "hws_2024_7_0/results"
+ribasim_version = "2024.10.0"
+
+[solver]
+algorithm = "QNDF" # optional, default "QNDF"
+abstol = 1e-7      # optional, default 1e-7
+reltol = 1e-7      # optional, default 1e-7
+autodiff = false   # optional, default false
