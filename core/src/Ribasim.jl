@@ -22,8 +22,6 @@ using OrdinaryDiffEqCore:
     AbstractNLSolver,
     calculate_residuals!
 using DiffEqBase: DiffEqBase
-using OrdinaryDiffEqNonlinearSolve: OrdinaryDiffEqNonlinearSolve, relax!, _compute_rhs!
-using DiffEqBase: remake
 
 # Interface for defining and solving the ODE problem of the physical layer.
 using SciMLBase:
