@@ -98,6 +98,7 @@ website:
         - dev/bmi.qmd
         - dev/ci.qmd
         - dev/release.qmd
+        - dev/callstacks.qmd
         - section: QGIS
           contents:
             - dev/qgis.qmd
