@@ -118,15 +118,12 @@ config = Ribasim.Config(toml_path)
 db_path = Ribasim.database_path(config)
 db = SQLite.DB(db_path)
 
-graph, verts = tracecall((Ribasim,), Ribasim.Parameters, (db, config))
+graph_orig, verts = tracecall((Ribasim,), Ribasim.Parameters, (db, config))
 close(db)
 ```
 
 ```{julia}
-for i in labels(graph)
-    graph[i].loc .= NaN
-end
-
+graph = copy(graph_orig)
 
 using GLMakie
 using Colors
@@ -134,7 +131,10 @@ using Colors
 f = Figure()
 ax = Axis(f[1, 1])
 
+# Options
 maxdepth = 5
+plot_non_Ribasim = false
+squash_per_depth = true
 
 # Get node depths
 depths = dijkstra_shortest_paths(graph, 1).dists
@@ -148,20 +148,73 @@ for (i, depth) in enumerate(depths)
     push!(nodes_per_depth[Int(depth)], i)
 end
 
+# Squash per depth nodes with the same name into one
+function squash!(graph, nodes_per_depth)
+    for depth in 1:maxdepth
+        names = Dict{String, Vector{Int}}()
+        nodes_at_depth = nodes_per_depth[depth]
+        for i in nodes_at_depth
+            nm = graph[i]
+            name = "$nm"
+            if name in keys(names)
+                push!(names[name], i)
+            else
+                names[name] = [i]
+            end
+        end
+        for nodes in values(names)
+            (length(nodes) == 1) && continue
+            survivor = first(nodes)
+
+            for i in nodes[2:end]
+                for i_in in inneighbor_labels(graph, i)
+                    graph[i_in, survivor] = nothing
+                    delete!(graph, i_in, i)
+                end
+
+                for i_out in outneighbor_labels(graph, i)
+                    graph[survivor, i_out] = nothing
+                    delete!(graph, i, i_out)
+                end
+
+                delete!(graph, i)
+                deleteat!(nodes_at_depth, findfirst(==(i), nodes_at_depth))
+            end
+        end
+    end
+end
+
+squash_per_depth && squash!(graph, nodes_per_depth)
+
+# Sort nodes by file for each depth
+for nodes in values(nodes_per_depth)
+    sort!(nodes, by = i -> graph[i].file)
+end
+
 # Set node coordinates
 for depth in 0:maxdepth
     nodes = nodes_per_depth[depth]
-    n_nodes = length(nodes)
+    n_nodes = if plot_non_Ribasim
+        length(nodes)
+    else
+        count(i -> graph[i].mod == :Ribasim, nodes)
+    end
     ys = n_nodes == 1 ? [0] : range(-1, 1, length = n_nodes)
-    for (i, y) in zip(nodes, ys)
-        graph[i].loc .= (depth, y)
+    idx = 1
+
+    for i in nodes
+        nm = graph[i]
+        if (nm.mod == :Ribasim || plot_non_Ribasim)
+            graph[i].loc .= (depth, ys[idx])
+            idx += 1
+        end
     end
 end
 
 # Plot edges
 for edge in edges(graph)
-    nm_src = graph[edge.src]
-    nm_dst = graph[edge.dst]
+    nm_src = graph[label_for(graph, edge.src)]
+    nm_dst = graph[label_for(graph, edge.dst)]
 
     (nm_dst.depth[] > maxdepth) && continue
 
@@ -171,7 +224,7 @@ for edge in edges(graph)
 end
 
 # Plot node labels
-files = unique(graph[i].file for i in labels(graph) if graph[i].mod == :Ribasim)
+files = sort(unique(graph[i].file for i in labels(graph) if graph[i].mod == :Ribasim), rev = true)
 colors = distinguishable_colors(length(files)+1)[2:end]
 color_dict = OrderedDict(zip(files, colors))
 
@@ -207,10 +260,4 @@ f
 # - Color boxes by file name and add legend
 # - Add boxes around names
 # - Let connection lines emerge from box boundaries
-
-for (k, v) in nodes_per_depth
-    for i in v
-        @assert graph[i].depth[] == k
-    end
-end
 ```
