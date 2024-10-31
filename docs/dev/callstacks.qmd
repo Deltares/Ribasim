@@ -43,11 +43,11 @@ end
 
 # per vertex: (module, name, file)
 function getdata(vertices)
-    data = Vector{NTuple{3, Symbol}}(undef, length(vertices))
+    data = Vector{Tuple{Symbol, Symbol, Symbol, Int}}(undef, length(vertices))
     for (k, v) in vertices
         k1 = first(k)
         file = Symbol(last(split(String(k1.file), "\\")))
-        data[v] = (Symbol(k1.module), k1.name, file)
+        data[v] = (Symbol(k1.module), k1.name, file, k1.line)
     end
     data
 end
@@ -57,14 +57,15 @@ end
     mod::Symbol
     name::Symbol
     file::Symbol
+    line::Int
     loc::Vector{Float64} = fill(NaN, 2)
     depth::Base.RefValue{Int} = Ref(0)
     isleaf::Base.RefValue{Bool} = Ref(false)
 end
 
 function Base.show(io::IO, nm::NodeMetadata)
-    (; mod, name) = nm
-    print(io, "$mod.$name")
+    (; mod, name, line) = nm
+    print(io, "$mod.$name (L$line)")
 end
 
 function construct_graph(callchains)
@@ -78,8 +79,8 @@ function construct_graph(callchains)
     )
 
     for (i, dat) in enumerate(data)
-        mod, name, file = dat
-        graph[i] = NodeMetadata(; i, mod, name, file)
+        mod, name, file, line = dat
+        graph[i] = NodeMetadata(; i, mod, name, file, line)
     end
 
     for chain in callchains
@@ -106,7 +107,7 @@ end
 
 #############################################
 
-using GLMakie
+using CairoMakie
 using Colors
 
 function cut_generated_calls!(graph)
@@ -144,13 +145,17 @@ function get_node_depths(graph)
     return nodes_per_depth
 end
 
-function squash!(graph, nodes_per_depth, max_depth)
+function squash!(graph, nodes_per_depth, max_depth, squash_methods)
     for depth in 1:max_depth
         names = Dict{String, Vector{Int}}()
         nodes_at_depth = nodes_per_depth[depth]
         for i in nodes_at_depth
             nm = graph[i]
-            name = "$nm"
+            name = if nm.name in squash_methods
+                "$(nm.mod).$(nm.name)"
+            else
+                "$nm"
+            end
             if name in keys(names)
                 push!(names[name], i)
             else
@@ -228,7 +233,7 @@ function plot_labels!(ax, graph, max_depth, color_dict)
             color = get(color_dict, nm.file, :black),
             font = :bold,
             strokecolor = :black,
-            strokewidth = 1,
+            strokewidth = 0.5,
             label = String(nm.file),
             align = (:center, :bottom)
         )
@@ -238,12 +243,14 @@ end
 
 function plot_graph(
     graph_orig::MetaGraph;
+    size = (1000,1000),
     max_depth::Int = 5,
     plot_non_Ribasim::Bool = false,
     squash_per_depth::Bool = true,
+    squash_methods::Vector{Symbol} = Symbol[],
 )
-
-    f = Figure()
+    delete!(theme(nothing), :resolution) # Needed because of a refactor in Makie going from resolution to size
+    f = Figure(; size = size)
     ax = Axis(f[1, 1])
 
     graph = copy(graph_orig)
@@ -254,7 +261,7 @@ function plot_graph(
     nodes_per_depth = get_node_depths(graph)
 
     # Squash per depth nodes with the same name into one
-    squash_per_depth && squash!(graph, nodes_per_depth, max_depth)
+    squash_per_depth && squash!(graph, nodes_per_depth, max_depth, squash_methods)
 
     set_coordinates!(graph, nodes_per_depth, max_depth, plot_non_Ribasim)
     plot_edges!(ax, graph, max_depth)
@@ -292,7 +299,16 @@ db = SQLite.DB(db_path)
 graph, verts = tracecall((Ribasim,), Ribasim.Parameters, (db, config))
 close(db)
 
-plot_graph(graph)
+plot_graph(
+    graph;
+    size = (1500, 1200),
+    squash_methods = [
+        :n_neighbor_bounds_flow,
+        :n_neighbor_bounds_control,
+        :sort_by_function,
+        :neighbortypes
+    ]
+)
 ```
 
 ## Water balance
