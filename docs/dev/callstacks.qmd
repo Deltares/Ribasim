@@ -106,51 +106,31 @@ end
 
 #############################################
 
-using Ribasim
-using SQLite
-```
-
-## Parameter initialization
-
-```{julia}
-toml_path = normpath(@__DIR__, "../../generated_testmodels/basic_transient/ribasim.toml")
-config = Ribasim.Config(toml_path)
-db_path = Ribasim.database_path(config)
-db = SQLite.DB(db_path)
-
-graph_orig, verts = tracecall((Ribasim,), Ribasim.Parameters, (db, config))
-close(db)
-```
-
-```{julia}
-graph = copy(graph_orig)
-
 using GLMakie
 using Colors
 
-f = Figure()
-ax = Axis(f[1, 1])
+function get_node_depths(graph)
+    depths = dijkstra_shortest_paths(graph, 1).dists
+    nodes_per_depth = Dict(Int(depth) => Int[] for depth in unique(depths))
 
-# Options
-maxdepth = 5
-plot_non_Ribasim = false
-squash_per_depth = true
+    for (i, depth) in enumerate(depths)
+        nm = graph[i]
+        nm.depth[] = depth
+        nm.loc[1] = depth
 
-# Get node depths
-depths = dijkstra_shortest_paths(graph, 1).dists
-nodes_per_depth = Dict(Int(depth) => Int[] for depth in unique(depths))
+        push!(nodes_per_depth[Int(depth)], i)
+    end
 
-for (i, depth) in enumerate(depths)
-    nm = graph[i]
-    nm.depth[] = depth
-    nm.loc[1] = depth
+    # Sort nodes by file for each depth
+    for nodes in values(nodes_per_depth)
+        sort!(nodes, by = i -> graph[i].file)
+    end
 
-    push!(nodes_per_depth[Int(depth)], i)
+    return nodes_per_depth
 end
 
-# Squash per depth nodes with the same name into one
-function squash!(graph, nodes_per_depth)
-    for depth in 1:maxdepth
+function squash!(graph, nodes_per_depth, max_depth)
+    for depth in 1:max_depth
         names = Dict{String, Vector{Int}}()
         nodes_at_depth = nodes_per_depth[depth]
         for i in nodes_at_depth
@@ -184,73 +164,120 @@ function squash!(graph, nodes_per_depth)
     end
 end
 
-squash_per_depth && squash!(graph, nodes_per_depth)
+function set_coordinates!(graph, nodes_per_depth, max_depth, plot_non_Ribasim)
+    for depth in 0:max_depth
+        nodes = nodes_per_depth[depth]
+        n_nodes = if plot_non_Ribasim
+            length(nodes)
+        else
+            count(i -> graph[i].mod == :Ribasim, nodes)
+        end
+        ys = n_nodes == 1 ? [0] : range(-1, 1, length = n_nodes)
+        idx = 1
 
-# Sort nodes by file for each depth
-for nodes in values(nodes_per_depth)
-    sort!(nodes, by = i -> graph[i].file)
-end
-
-# Set node coordinates
-for depth in 0:maxdepth
-    nodes = nodes_per_depth[depth]
-    n_nodes = if plot_non_Ribasim
-        length(nodes)
-    else
-        count(i -> graph[i].mod == :Ribasim, nodes)
-    end
-    ys = n_nodes == 1 ? [0] : range(-1, 1, length = n_nodes)
-    idx = 1
-
-    for i in nodes
-        nm = graph[i]
-        if (nm.mod == :Ribasim || plot_non_Ribasim)
-            graph[i].loc .= (depth, ys[idx])
-            idx += 1
+        for i in nodes
+            nm = graph[i]
+            if (nm.mod == :Ribasim || plot_non_Ribasim)
+                graph[i].loc .= (depth, ys[idx])
+                idx += 1
+            end
         end
     end
 end
 
-# Plot edges
-for edge in edges(graph)
-    nm_src = graph[label_for(graph, edge.src)]
-    nm_dst = graph[label_for(graph, edge.dst)]
+function plot_edges!(ax, graph, max_depth)
+    for edge in edges(graph)
+        nm_src = graph[label_for(graph, edge.src)]
+        nm_dst = graph[label_for(graph, edge.dst)]
 
-    (nm_dst.depth[] > maxdepth) && continue
+        (nm_dst.depth[] > max_depth) && continue
 
-    x = [nm_src.loc[1], nm_dst.loc[1]]
-    y = [nm_src.loc[2], nm_dst.loc[2]]
-    lines!(ax, x, y; color = :black)
+        x = [nm_src.loc[1], nm_dst.loc[1]]
+        y = [nm_src.loc[2], nm_dst.loc[2]]
+        lines!(ax, x, y; color = :black)
+    end
 end
 
-# Plot node labels
-files = sort(unique(graph[i].file for i in labels(graph) if graph[i].mod == :Ribasim), rev = true)
-colors = distinguishable_colors(length(files)+1)[2:end]
-color_dict = OrderedDict(zip(files, colors))
-
-get_color(file) = get(color_dict, file, :black)
-
-for node in labels(graph)
-    nm = graph[node]
-    (nm.depth[] > maxdepth) && continue
-    color = nm.mod == :Ribasim ? :green : :black
-    text!(ax, nm.loc...,
-        text = "$nm",
-        color = get_color(nm.file),
-        font = :bold,
-        strokecolor = :black,
-        strokewidth = 1,
-        label = String(nm.file)
-    )
+function plot_labels!(ax, graph, max_depth, color_dict)
+    for node in labels(graph)
+        nm = graph[node]
+        (nm.depth[] > max_depth) && continue
+        text!(ax, nm.loc...,
+            text = "$nm",
+            color = get(color_dict, nm.file, :black),
+            font = :bold,
+            strokecolor = :black,
+            strokewidth = 1,
+            label = String(nm.file)
+        )
+    end
 end
 
-Legend(
-    f[1,2],
-    [MarkerElement(color = c, marker = :rect) for c in values(color_dict)],
-    String.(files)
+function plot_graph(
+    graph_orig::MetaGraph;
+    max_depth::Int = 5,
+    plot_non_Ribasim::Bool = false,
+    squash_per_depth::Bool = true,
 )
 
-f
+    f = Figure()
+    ax = Axis(f[1, 1])
+
+    graph = copy(graph_orig)
+    nodes_per_depth = get_node_depths(graph)
+
+    # Squash per depth nodes with the same name into one
+    squash_per_depth && squash!(graph, nodes_per_depth, max_depth)
+
+    set_coordinates!(graph, nodes_per_depth, max_depth, plot_non_Ribasim)
+    plot_edges!(ax, graph, max_depth)
+
+    files = sort(unique(graph[i].file for i in labels(graph) if graph[i].mod == :Ribasim), rev = true)
+    colors = distinguishable_colors(length(files)+1)[2:end]
+    color_dict = OrderedDict(zip(files, colors))
+
+    plot_labels!(ax, graph, max_depth, color_dict)
+
+    Legend(
+        f[1,2],
+        [MarkerElement(color = c, marker = :rect) for c in values(color_dict)],
+        String.(files)
+    )
+
+    f
+end
+
+#############################################
+
+using Ribasim
+```
+
+## Parameter initialization
+
+```{julia}
+# | code-fold: true
+using SQLite
+toml_path = normpath(@__DIR__, "../../generated_testmodels/basic_transient/ribasim.toml")
+config = Ribasim.Config(toml_path)
+db_path = Ribasim.database_path(config)
+db = SQLite.DB(db_path)
+
+graph, verts = tracecall((Ribasim,), Ribasim.Parameters, (db, config))
+close(db)
+
+plot_graph(graph)
+```
+
+## Water balance
+
+```{julia}
+# | code-fold: true
+using OrdinaryDiffEqCore: get_du
+model = Ribasim.Model(toml_path)
+du = get_du(model.integrator)
+(; u, p, t) = model.integrator
+graph, verts = tracecall((Ribasim,), Ribasim.water_balance!, (du, u, p, t))
+plot_graph(graph)
 ```
 
 ```{julia}
