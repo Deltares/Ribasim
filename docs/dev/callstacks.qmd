@@ -257,8 +257,8 @@ function plot_graph(
     squash_methods::Vector{Symbol} = Symbol[],
 )
     delete!(theme(nothing), :resolution) # Needed because of a refactor in Makie going from resolution to size
-    f = Figure(; size = size, xlabel = "depth")
-    ax = Axis(f[1, 1])
+    f = Figure(; size = size)
+    ax = Axis(f[1, 1]; xlabel = "depth")
 
     graph = copy(graph_orig)
 
@@ -304,8 +304,12 @@ end
 using Ribasim
 using Random
 
-Random.seed!(1)
+Random.seed!(1);
 ```
+
+The plots below show the call stack within the Julia core for several important entrypoints. The function names are colored by the script in which they are defined, and the lines between the function names have random colors to be able to differentiate between them. Solid lines refer to calls to functions defined in the same script, dashed ones to functions defined in a different script.
+
+Note that these graphs are obtained by dynamic analysis, i.e. by running parts of the code with specific inputs. This means that there can be unshown paths through the code that are not reached for these particular inputs.
 
 ## Parameter initialization
 
@@ -332,7 +336,7 @@ plot_graph(
 )
 ```
 
-## Water balance
+## `water_balance!` (The ODE system right hand side function)
 
 ```{julia}
 # | code-fold: true
@@ -348,14 +352,27 @@ plot_graph(graph, size = (1600, 1000))
 ```{julia}
 # | code-fold: true
 toml_path = normpath(@__DIR__, "../../generated_testmodels/main_network_with_subnetworks/ribasim.toml")
-model = Ribasim.Model(toml_path)
-# graph, verts = tracecall((Ribasim,), Ribasim.initialize_allocation!, (model.integrator.p, model.config))
-# plot_graph(graph)
+config = Ribasim.Config(toml_path; allocation_use_allocation=false)
+db_path = Ribasim.database_path(config)
+db = SQLite.DB(db_path)
+p = Ribasim.Parameters(db, config)
+graph, verts = tracecall((Ribasim,), Ribasim.initialize_allocation!, (p, config))
+plot_graph(graph, size = (1700, 1000))
 ```
 
 ## Allocation run
 ```{julia}
 # | code-fold: true
+model = Ribasim.Model(toml_path)
 graph, verts = tracecall((Ribasim,), Ribasim.update_allocation!, (model.integrator,))
-plot_graph(graph, size = (1600, 1000))
+plot_graph(graph, size = (1800, 1000))
+```
+
+## Writing output
+```{julia}
+# | code-fold: true
+toml_path = normpath(@__DIR__, "../../generated_testmodels/basic_transient/ribasim.toml")
+model = Ribasim.Model(toml_path)
+graph, verts = tracecall((Ribasim,), Ribasim.write_results, (model,))
+plot_graph(graph, size = (1500, 1000))
 ```

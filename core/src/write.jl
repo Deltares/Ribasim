@@ -136,7 +136,6 @@ function basin_table(
     data = get_storages_and_levels(model)
     storage = vec(data.storage[:, begin:(end - 1)])
     level = vec(data.level[:, begin:(end - 1)])
-    Δstorage = vec(diff(data.storage; dims = 2))
 
     nbasin = length(data.node_id)
     ntsteps = length(data.time) - 1
