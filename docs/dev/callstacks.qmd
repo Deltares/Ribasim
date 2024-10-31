@@ -109,11 +109,26 @@ end
 using GLMakie
 using Colors
 
+function cut_generated_calls!(graph)
+    for i in collect(labels(graph))
+        nm = graph[i]
+        (; name) = nm
+        if startswith(String(name), "#")
+            for i_in in inneighbor_labels(graph, i)
+                for i_out in outneighbor_labels(graph, i)
+                    graph[i_in, i_out] = nothing
+                end
+            end
+            delete!(graph, i)
+        end
+    end
+end
+
 function get_node_depths(graph)
     depths = dijkstra_shortest_paths(graph, 1).dists
     nodes_per_depth = Dict(Int(depth) => Int[] for depth in unique(depths))
 
-    for (i, depth) in enumerate(depths)
+    for (i, depth) in zip(labels(graph), depths)
         nm = graph[i]
         nm.depth[] = depth
         nm.loc[1] = depth
@@ -123,7 +138,7 @@ function get_node_depths(graph)
 
     # Sort nodes by file for each depth
     for nodes in values(nodes_per_depth)
-        sort!(nodes, by = i -> graph[i].file)
+        sort!(nodes, by = i -> graph[i].file, rev = true)
     end
 
     return nodes_per_depth
@@ -185,15 +200,20 @@ function set_coordinates!(graph, nodes_per_depth, max_depth, plot_non_Ribasim)
     end
 end
 
-function plot_edges!(ax, graph, max_depth)
+function plot_edges!(ax, graph, max_depth, n_points = 25)
     for edge in edges(graph)
         nm_src = graph[label_for(graph, edge.src)]
         nm_dst = graph[label_for(graph, edge.dst)]
 
         (nm_dst.depth[] > max_depth) && continue
 
-        x = [nm_src.loc[1], nm_dst.loc[1]]
-        y = [nm_src.loc[2], nm_dst.loc[2]]
+        A = (nm_src.loc[2] - nm_dst.loc[2]) / 2
+        B = π / (nm_dst.loc[1] - nm_src.loc[1])
+        C = (nm_src.loc[2] + nm_dst.loc[2]) / 2
+
+        x = range(nm_src.loc[1], nm_dst.loc[1], length = n_points)
+        y = @. A * cos(B * (x - nm_src.loc[1])) + C
+
         lines!(ax, x, y; color = :black)
     end
 end
@@ -201,15 +221,18 @@ end
 function plot_labels!(ax, graph, max_depth, color_dict)
     for node in labels(graph)
         nm = graph[node]
+        x, y = nm.loc
         (nm.depth[] > max_depth) && continue
-        text!(ax, nm.loc...,
+        text!(ax, x, y,
             text = "$nm",
             color = get(color_dict, nm.file, :black),
             font = :bold,
             strokecolor = :black,
             strokewidth = 1,
-            label = String(nm.file)
+            label = String(nm.file),
+            align = (:center, :bottom)
         )
+        scatter!(ax, [x], [y], color = :black)
     end
 end
 
@@ -224,6 +247,10 @@ function plot_graph(
     ax = Axis(f[1, 1])
 
     graph = copy(graph_orig)
+
+    # Cut out calls whose name starts with '#'
+    cut_generated_calls!(graph)
+
     nodes_per_depth = get_node_depths(graph)
 
     # Squash per depth nodes with the same name into one
@@ -232,8 +259,8 @@ function plot_graph(
     set_coordinates!(graph, nodes_per_depth, max_depth, plot_non_Ribasim)
     plot_edges!(ax, graph, max_depth)
 
-    files = sort(unique(graph[i].file for i in labels(graph) if graph[i].mod == :Ribasim), rev = true)
-    colors = distinguishable_colors(length(files)+1)[2:end]
+    files = sort(unique(graph[i].file for i in labels(graph) if graph[i].mod == :Ribasim))
+    colors = distinguishable_colors(length(files)+1)[end:-1:2]
     color_dict = OrderedDict(zip(files, colors))
 
     plot_labels!(ax, graph, max_depth, color_dict)
