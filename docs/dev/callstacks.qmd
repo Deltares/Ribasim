@@ -192,7 +192,7 @@ function set_coordinates!(graph, nodes_per_depth, max_depth, plot_non_Ribasim)
         else
             count(i -> graph[i].mod == :Ribasim, nodes)
         end
-        ys = n_nodes == 1 ? [0] : range(-1, 1, length = n_nodes)
+        ys = n_nodes == 1 ? [0.5] : range(0, 1, length = n_nodes)
         idx = 1
 
         for i in nodes
@@ -205,21 +205,28 @@ function set_coordinates!(graph, nodes_per_depth, max_depth, plot_non_Ribasim)
     end
 end
 
-function plot_edges!(ax, graph, max_depth, n_points = 25)
-    for edge in edges(graph)
-        nm_src = graph[label_for(graph, edge.src)]
-        nm_dst = graph[label_for(graph, edge.dst)]
+function plot_edges!(ax, graph, max_depth, nodes_per_depth; n_points = 25)
+    for depth in 0:(max_depth - 1)
+        nodes_at_depth = nodes_per_depth[depth]
+        n_nodes = length(nodes_at_depth)
+        for (idx, i) in enumerate(nodes_at_depth)
+            nm_src = graph[i]
+            for i_out in outneighbor_labels(graph, i)
+                nm_dst = graph[i_out]
 
-        (nm_dst.depth[] > max_depth) && continue
+                A = (nm_src.loc[2] - nm_dst.loc[2]) / 2
+                B = π / (nm_dst.loc[1] - nm_src.loc[1])
+                C = (nm_src.loc[2] + nm_dst.loc[2]) / 2
 
-        A = (nm_src.loc[2] - nm_dst.loc[2]) / 2
-        B = π / (nm_dst.loc[1] - nm_src.loc[1])
-        C = (nm_src.loc[2] + nm_dst.loc[2]) / 2
+                x = range(nm_src.loc[1], nm_dst.loc[1], length = n_points)
+                y = @. A * cos(B * (x - nm_src.loc[1])) + C
 
-        x = range(nm_src.loc[1], nm_dst.loc[1], length = n_points)
-        y = @. A * cos(B * (x - nm_src.loc[1])) + C
 
-        lines!(ax, x, y; color = :black)
+                color = RGB((0.8 * rand(3))...)
+                linestyle = (nm_src.file == nm_dst.file) ? :solid : :dash
+                lines!(ax, x, y; color, linestyle)
+            end
+        end
     end
 end
 
@@ -250,7 +257,7 @@ function plot_graph(
     squash_methods::Vector{Symbol} = Symbol[],
 )
     delete!(theme(nothing), :resolution) # Needed because of a refactor in Makie going from resolution to size
-    f = Figure(; size = size)
+    f = Figure(; size = size, xlabel = "depth")
     ax = Axis(f[1, 1])
 
     graph = copy(graph_orig)
@@ -259,12 +266,13 @@ function plot_graph(
     cut_generated_calls!(graph)
 
     nodes_per_depth = get_node_depths(graph)
+    max_depth = min(max_depth, maximum(keys(nodes_per_depth)))
 
     # Squash per depth nodes with the same name into one
     squash_per_depth && squash!(graph, nodes_per_depth, max_depth, squash_methods)
 
     set_coordinates!(graph, nodes_per_depth, max_depth, plot_non_Ribasim)
-    plot_edges!(ax, graph, max_depth)
+    plot_edges!(ax, graph, max_depth, nodes_per_depth)
 
     files = sort(unique(graph[i].file for i in labels(graph) if graph[i].mod == :Ribasim))
     colors = distinguishable_colors(length(files)+1)[end:-1:2]
@@ -272,10 +280,20 @@ function plot_graph(
 
     plot_labels!(ax, graph, max_depth, color_dict)
 
+    # Build legend
+    elements = LegendElement[MarkerElement(color = c, marker = :rect) for c in values(color_dict)]
+    descriptions = String.(files)
+
+    push!(elements, LineElement(color = :black, linestyle = :dash))
+    push!(descriptions, "between scripts")
+
+    push!(elements, LineElement(color = :black, linestyle = :solid))
+    push!(descriptions, "within a script")
+
     Legend(
         f[1,2],
-        [MarkerElement(color = c, marker = :rect) for c in values(color_dict)],
-        String.(files)
+        elements,
+        descriptions
     )
 
     f
@@ -284,6 +302,9 @@ end
 #############################################
 
 using Ribasim
+using Random
+
+Random.seed!(1)
 ```
 
 ## Parameter initialization
@@ -301,7 +322,7 @@ close(db)
 
 plot_graph(
     graph;
-    size = (1500, 1200),
+    size = (1800, 1200),
     squash_methods = [
         :n_neighbor_bounds_flow,
         :n_neighbor_bounds_control,
@@ -320,14 +341,21 @@ model = Ribasim.Model(toml_path)
 du = get_du(model.integrator)
 (; u, p, t) = model.integrator
 graph, verts = tracecall((Ribasim,), Ribasim.water_balance!, (du, u, p, t))
-plot_graph(graph)
+plot_graph(graph, size = (1600, 1000))
 ```
 
+## Allocation initialization
 ```{julia}
-# TODO:
-# - Fix y coordinate of nodes that have no outneighbors
-# - Remove nodes (and everything downstream) from non-Ribasim calls
-# - Color boxes by file name and add legend
-# - Add boxes around names
-# - Let connection lines emerge from box boundaries
+# | code-fold: true
+toml_path = normpath(@__DIR__, "../../generated_testmodels/main_network_with_subnetworks/ribasim.toml")
+model = Ribasim.Model(toml_path)
+# graph, verts = tracecall((Ribasim,), Ribasim.initialize_allocation!, (model.integrator.p, model.config))
+# plot_graph(graph)
+```
+
+## Allocation run
+```{julia}
+# | code-fold: true
+graph, verts = tracecall((Ribasim,), Ribasim.update_allocation!, (model.integrator,))
+plot_graph(graph, size = (1600, 1000))
 ```
