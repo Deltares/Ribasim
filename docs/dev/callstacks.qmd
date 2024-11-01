@@ -145,6 +145,15 @@ function get_node_depths(graph)
     return nodes_per_depth
 end
 
+function prune_branch!(graph, start::Int; branch_base::Bool = true, to_delete::Vector{Int} = Int[])
+    branch_base && empty!(to_delete)
+    for i in outneighbor_labels(graph, start)
+        prune_branch!(graph, i; branch_base = false, to_delete)
+        push!(to_delete, i)
+    end
+    branch_base && delete!.(Ref(graph), to_delete)
+end
+
 function squash!(graph, nodes_per_depth, max_depth, squash_methods)
     for depth in 1:max_depth
         names = Dict{String, Vector{Int}}()
@@ -240,7 +249,7 @@ function plot_labels!(ax, graph, max_depth, color_dict)
             color = get(color_dict, nm.file, :black),
             font = :bold,
             strokecolor = :black,
-            strokewidth = 0.5,
+            strokewidth = 1.0,
             label = String(nm.file),
             align = (:center, :bottom)
         )
@@ -250,17 +259,25 @@ end
 
 function plot_graph(
     graph_orig::MetaGraph;
-    size = (1000,1000),
+    size = (1000, 1000),
     max_depth::Int = 5,
     plot_non_Ribasim::Bool = false,
     squash_per_depth::Bool = true,
     squash_methods::Vector{Symbol} = Symbol[],
+    prune_from::Vector{Symbol} = Symbol[],
+    xlims = nothing,
 )
-    delete!(theme(nothing), :resolution) # Needed because of a refactor in Makie going from resolution to size
-    f = Figure(; size = size)
-    ax = Axis(f[1, 1]; xlabel = "depth")
-
     graph = copy(graph_orig)
+
+    # Prune branches
+    for i in collect(labels(graph))
+        if haskey(graph, i)
+            nm = graph[i]
+            if nm.name in prune_from
+                prune_branch!(graph, i)
+            end
+        end
+    end
 
     # Cut out calls whose name starts with '#'
     cut_generated_calls!(graph)
@@ -272,13 +289,18 @@ function plot_graph(
     squash_per_depth && squash!(graph, nodes_per_depth, max_depth, squash_methods)
 
     set_coordinates!(graph, nodes_per_depth, max_depth, plot_non_Ribasim)
-    plot_edges!(ax, graph, max_depth, nodes_per_depth)
 
     files = sort(unique(graph[i].file for i in labels(graph) if graph[i].mod == :Ribasim))
     colors = distinguishable_colors(length(files)+1)[end:-1:2]
     color_dict = OrderedDict(zip(files, colors))
 
+    delete!(theme(nothing), :resolution) # Needed because of a refactor in Makie going from resolution to size
+    f = Figure(; size = size)
+    ax = Axis(f[1, 1]; xlabel = "depth", xticks = 0:max_depth)
+    plot_edges!(ax, graph, max_depth, nodes_per_depth)
     plot_labels!(ax, graph, max_depth, color_dict)
+    hideydecorations!(ax)
+    !isnothing(xlims) && xlims!(ax, xlims...)
 
     # Build legend
     elements = LegendElement[MarkerElement(color = c, marker = :rect) for c in values(color_dict)]
@@ -326,13 +348,14 @@ close(db)
 
 plot_graph(
     graph;
-    size = (1800, 1200),
+    size = (2000, 1200),
     squash_methods = [
         :n_neighbor_bounds_flow,
         :n_neighbor_bounds_control,
         :sort_by_function,
         :neighbortypes
-    ]
+    ],
+    xlims = (-0.4, 5.6)
 )
 ```
 
@@ -345,7 +368,7 @@ model = Ribasim.Model(toml_path)
 du = get_du(model.integrator)
 (; u, p, t) = model.integrator
 graph, verts = tracecall((Ribasim,), Ribasim.water_balance!, (du, u, p, t))
-plot_graph(graph, size = (1600, 1000))
+plot_graph(graph, size = (1700, 1000), xlims = (-0.4, 4.5))
 ```
 
 ## Allocation initialization
@@ -357,7 +380,7 @@ db_path = Ribasim.database_path(config)
 db = SQLite.DB(db_path)
 p = Ribasim.Parameters(db, config)
 graph, verts = tracecall((Ribasim,), Ribasim.initialize_allocation!, (p, config))
-plot_graph(graph, size = (1700, 1000))
+plot_graph(graph, size = (1800, 1000), xlims = (-0.5, 5.5))
 ```
 
 ## Allocation run
@@ -365,7 +388,19 @@ plot_graph(graph, size = (1700, 1000))
 # | code-fold: true
 model = Ribasim.Model(toml_path)
 graph, verts = tracecall((Ribasim,), Ribasim.update_allocation!, (model.integrator,))
-plot_graph(graph, size = (1800, 1000))
+plot_graph(graph, size = (2000, 1000), xlims = (-0.4, 5.5))
+```
+
+## Discrete control
+
+```{julia}
+# | code-fold: true
+toml_path = normpath(@__DIR__, "../../generated_testmodels/pump_discrete_control/ribasim.toml")
+model = Ribasim.Model(toml_path)
+(; u, t) = model.integrator
+model.integrator.p.basin.storage0 .= [0.1, 100.0]
+graph, verts = tracecall((Ribasim,), Ribasim.apply_discrete_control!, (u, t, model.integrator))
+plot_graph(graph; size = (1300, 500), prune_from = [:water_balance!], xlims = (-0.5, 3.5))
 ```
 
 ## Writing output
@@ -374,5 +409,5 @@ plot_graph(graph, size = (1800, 1000))
 toml_path = normpath(@__DIR__, "../../generated_testmodels/basic_transient/ribasim.toml")
 model = Ribasim.Model(toml_path)
 graph, verts = tracecall((Ribasim,), Ribasim.write_results, (model,))
-plot_graph(graph, size = (1500, 1000))
+plot_graph(graph, size = (1600, 1000), xlims = (-0.5, 4.5))
 ```
