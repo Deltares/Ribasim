@@ -50,7 +50,7 @@ plot_graph(
 
 ## `water_balance!`
 
-`water_balance!` is the right hand side function of the system of ODEs that is solved by the Ribasim core (for more details see [here]("../concept/eqautions.qmd#Formal-model-description")). The various `formulate_flow!` methods are for flow rates as determined by different node types.
+`water_balance!` is the right hand side function of the system of ODEs that is solved by the Ribasim core (for more details see [here](../concept/equations.qmd#formal-model-description)). The various `formulate_flow!` methods are for flow rates as determined by different node types.
 
 ```{julia}
 # | code-fold: true
