@@ -100,7 +100,7 @@ function set_objective_priority!(
 end
 
 """
-Assign the allocations to the UserDemand as determined by the solution of the allocation problem.
+Assign the allocations to the UserDemand or subnetwork as determined by the solution of the allocation problem.
 """
 function assign_allocations!(
     allocation_model::AllocationModel,
@@ -906,6 +906,17 @@ function allocate_to_users_from_connected_basin!(
     return nothing
 end
 
+function allocate_priority!(problem::JuMP.Model, priority::Int, subnetwork_id::Int)::Nothing
+    JuMP.optimize!(problem)
+    @debug JuMP.solution_summary(problem)
+    if JuMP.termination_status(problem) !== JuMP.OPTIMAL
+        error(
+            "Allocation of subnetwork $subnetwork_id, priority $priority couldn't find optimal solution.",
+        )
+    end
+    return nothing
+end
+
 function optimize_priority!(
     allocation_model::AllocationModel,
     u::ComponentVector,
@@ -914,7 +925,7 @@ function optimize_priority!(
     priority_idx::Int,
     optimization_type::OptimizationType.T,
 )::Nothing
-    (; problem, flow_priority) = allocation_model
+    (; problem, flow_priority, subnetwork_id) = allocation_model
     (; allocation) = p
     (; priorities) = allocation
 
@@ -937,22 +948,15 @@ function optimize_priority!(
     allocate_to_users_from_connected_basin!(allocation_model, p, priority_idx)
 
     # Solve the allocation problem for this priority
-    JuMP.optimize!(problem)
-    @debug JuMP.solution_summary(problem)
-    if JuMP.termination_status(problem) !== JuMP.OPTIMAL
-        (; subnetwork_id) = allocation_model
-        priority = priorities[priority_idx]
-        error(
-            "Allocation of subnetwork $subnetwork_id, priority $priority coudn't find optimal solution.",
-        )
-    end
+    priority = priorities[priority_idx]
+    allocate_priority!(problem, priority, subnetwork_id)
 
     # Add the values of the flows at this priority
     for edge in only(problem[:F].axes)
         flow_priority[edge] += JuMP.value(problem[:F][edge])
     end
 
-    # Assign the allocations to the UserDemand for this priority
+    # Assign the allocations to the UserDemand or subnetwork for this priority
     assign_allocations!(allocation_model, p, priority_idx, optimization_type)
 
     # Save the demands and allocated flows for all nodes that have these
@@ -1082,7 +1086,6 @@ function allocate_demands!(
 )::Nothing
     optimization_type = OptimizationType.allocate
     (; allocation) = p
-    (; subnetwork_id) = allocation_model
     (; priorities) = allocation
 
     set_initial_capacities_inlet!(allocation_model, p, optimization_type)
