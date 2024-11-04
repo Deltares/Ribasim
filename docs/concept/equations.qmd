@@ -105,7 +105,7 @@ Hence the reference used for computing the relative error is the average of the 
 
 The default tolerances are $0.001 \text{ m}^3$ for the balance error and $0.01$ for the relative error, which should not be exceeded for realistic models.
 
-In extreme cases where the storage rate is many orders of magnitude smaller than the storage itself, these computations can have floating point truncation errors which can lead to large relative errors.  This is however only when the storage is roughly $ \ge 10^{15}$ times bigger than the storage rate.
+In extreme cases where the storage rate is many orders of magnitude smaller than the storage itself, these computations can have floating point truncation errors which can lead to large relative errors.  This is however only when the storage is roughly $\geq 10^{15}$ times bigger than the storage rate.
 
 ### Example calculation
 

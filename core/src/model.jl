@@ -54,7 +54,7 @@ function Model(config::Config)::Model
         error("Invalid edge types found.")
     end
 
-    local parameters, state, n, tstops
+    local parameters, tstops
     try
         parameters = Parameters(db, config)
 
