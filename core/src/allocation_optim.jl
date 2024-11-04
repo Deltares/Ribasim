@@ -906,7 +906,11 @@ function allocate_to_users_from_connected_basin!(
     return nothing
 end
 
-function allocate_priority!(problem::JuMP.Model, priority::Int, subnetwork_id::Int)::Nothing
+function allocate_priority!(
+    problem::JuMP.Model,
+    priority::Integer,
+    subnetwork_id::Integer,
+)::Nothing
     JuMP.optimize!(problem)
     @debug JuMP.solution_summary(problem)
     if JuMP.termination_status(problem) !== JuMP.OPTIMAL

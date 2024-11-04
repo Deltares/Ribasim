@@ -128,12 +128,20 @@ The caches are always initialized with zeros
 """
 cache(len::Int)::Cache = LazyBufferCache(Returns(len); initializer! = set_zero!)
 
+@enumx AllocationSourceType edge basin main_to_sub buffer
+
+struct AllocationSource
+    edge::Tuple{NodeID, NodeID}
+    type::AllocationSourceType.T
+end
+
 """
 Store information for a subnetwork used for allocation.
 
 subnetwork_id: The ID of this allocation network
 capacity: The capacity per edge of the allocation network, as constrained by nodes that have a max_flow_rate
 flow_priority: The flows over all the edges in the subnetwork for a certain priority (used for allocation_flow output)
+sources: source data in preferred order of optimization
 problem: The JuMP.jl model for solving the allocation problem
 Δt_allocation: The time interval between consecutive allocation solves
 """
@@ -141,6 +149,7 @@ problem: The JuMP.jl model for solving the allocation problem
     subnetwork_id::Int32
     capacity::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}}
     flow_priority::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}}
+    sources::Vector{AllocationSource}
     problem::JuMP.Model
     Δt_allocation::Float64
 end

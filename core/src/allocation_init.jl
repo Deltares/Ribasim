@@ -544,6 +544,48 @@ function allocation_problem(
 end
 
 """
+TODO: Get preferred source order from input
+"""
+function get_sources_in_order(
+    problem::JuMP.Model,
+    p::Parameters,
+    subnetwork_id::Integer,
+)::Vector{AllocationSource}
+    (; basin, graph, allocation) = p
+
+    sources = AllocationSource[]
+
+    # Source edges (within subnetwork)
+    for edge in problem[:source].axes[1]
+        if graph[edge[1]].subnetwork_id == graph[edge[2]].subnetwork_id
+            push!(sources, AllocationSource(edge, AllocationSourceType.edge))
+        end
+    end
+
+    # Basins with level demand
+    for id in basin.node_id
+        if (graph[id].subnetwork_id == subnetwork_id) &&
+           has_external_demand(graph, id, :level_demand)[1]
+            push!(sources, AllocationSource((id, id), AllocationSourceType.basin))
+        end
+    end
+
+    # Main network to subnetwork connections
+    for edge in keys(allocation.subnetwork_demands)
+        if graph[edge[2]].subnetwork_id == subnetwork_id
+            push!(sources, AllocationSource(edge, AllocationSourceType.main_to_sub))
+        end
+    end
+
+    # Buffers
+    for id in problem[:F_flow_buffer_out].axes[1]
+        push!(sources, AllocationSource((id, id), AllocationSourceType.buffer))
+    end
+
+    sources
+end
+
+"""
 Construct the JuMP.jl problem for allocation.
 
 Inputs
@@ -563,7 +605,15 @@ function AllocationModel(
 )::AllocationModel
     capacity = get_capacity(p, subnetwork_id)
     problem = allocation_problem(p, capacity, subnetwork_id)
+    sources = get_sources_in_order(problem, p, subnetwork_id)
     flow_priority = JuMP.Containers.SparseAxisArray(Dict(only(problem[:F].axes) .=> 0.0))
 
-    return AllocationModel(; subnetwork_id, capacity, flow_priority, problem, Δt_allocation)
+    return AllocationModel(;
+        subnetwork_id,
+        capacity,
+        flow_priority,
+        sources,
+        problem,
+        Δt_allocation,
+    )
 end
