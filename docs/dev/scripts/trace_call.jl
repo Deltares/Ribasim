@@ -54,11 +54,14 @@ end
     loc::Vector{Float64} = fill(NaN, 2)
     depth::Base.RefValue{Int} = Ref(0)
     isleaf::Base.RefValue{Bool} = Ref(false)
+    show_module::Bool = false
 end
 
 function Base.show(io::IO, nm::NodeMetadata)
-    (; mod, name, line) = nm
-    print(io, "$mod.$name (L$line)")
+    (; mod, name, line, show_module) = nm
+    out = "$name (L$line)"
+    show_module && (out = "$mod.$out")
+    print(io, out)
 end
 
 function construct_graph(callchains)

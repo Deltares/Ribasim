@@ -2,7 +2,6 @@
 
 ```{julia}
 # | code-fold: true
-
 using CairoMakie
 using Colors
 using Graphs, MetaGraphsNext
@@ -80,7 +79,8 @@ plot_graph(graph, size = (1800, 1000), xlims = (-0.5, 5.5))
 
 ## Allocation run
 
-Running the allocation algorithm consists of running the optimization itself (which is handled in `JuMP.jl`), and all Ribasim functions around it are used for communicating data between the optimization problem and the physical layer, as well as gathering output data.
+Running the allocation algorithm consists of running the optimization itself (which is handled in `JuMP.jl`), and all Ribasim functions around it are used for communicating data between the optimization problem and the physical layer, as well as gathering output data. Fore more information on the allocation algorithm see [here](../concept/allocation.qmd).
+
 
 ```{julia}
 # | code-fold: true
@@ -105,7 +105,7 @@ plot_graph(graph; size = (1300, 500), prune_from = [:water_balance!], xlims = (-
 
 ## Writing output
 
-Writing output (currently) happens only after the full simulation is finished.
+Writing output (currently) happens only after the full simulation is finished. For more information on the different output tables see [here](../reference/usage.qmd#results).
 ```{julia}
 # | code-fold: true
 toml_path = normpath(@__DIR__, "../../generated_testmodels/basic_transient/ribasim.toml")
