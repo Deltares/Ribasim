@@ -123,7 +123,7 @@ function plot_edges!(ax, graph, max_depth, nodes_per_depth; n_points = 25)
                 x = range(nm_src.loc[1], nm_dst.loc[1]; length = n_points)
                 y = @. A * cos(B * (x - nm_src.loc[1])) + C
 
-                color = RGB((0.8 * rand(3))...)
+                color = RGBA((0.8 * rand(3))..., 0.5)
                 linestyle = (nm_src.file == nm_dst.file) ? :solid : :dash
                 lines!(ax, x, y; color, linestyle)
             end
@@ -141,10 +141,10 @@ function plot_labels!(ax, graph, max_depth, color_dict)
             x,
             y;
             text = "$nm",
-            color = get(color_dict, nm.file, :black),
+            color = :black,
             font = :bold,
-            strokecolor = :black,
-            strokewidth = 1.0,
+            strokecolor = get(color_dict, nm.file, :black),
+            strokewidth = 0.5,
             label = String(nm.file),
             align = (:center, :bottom),
         )
@@ -189,19 +189,23 @@ function plot_graph(
     colors = distinguishable_colors(length(files) + 1)[end:-1:2]
     color_dict = OrderedDict(zip(files, colors))
 
-    delete!(theme(nothing), :resolution) # Needed because of a refactor in Makie going from resolution to size
+    theme = theme_minimal()
+    set_theme!(theme)
+    delete!(theme, :resolution) # Needed because of a refactor in Makie going from resolution to size
     f = Figure(; size = size)
-    ax = Axis(f[1, 1]; xlabel = "depth", xticks = 0:max_depth)
+    ax = Axis(f[1, 1]; xlabel = "depth →", xticks = 0:max_depth)
     plot_edges!(ax, graph, max_depth, nodes_per_depth)
     plot_labels!(ax, graph, max_depth, color_dict)
     hideydecorations!(ax)
+    hidexdecorations!(ax)
+    hidespines!(ax)
     !isnothing(xlims) && xlims!(ax, xlims...)
 
     # Build legend
     elements = LegendElement[
         MarkerElement(; color = c, marker = :rect) for c in values(color_dict)
     ]
-    descriptions = String.(files)
+    descriptions = basename.(String.(files))
 
     push!(elements, LineElement(; color = :black, linestyle = :dash))
     push!(descriptions, "between scripts")
