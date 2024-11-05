@@ -551,7 +551,7 @@ function get_sources_in_order(
     p::Parameters,
     subnetwork_id::Integer,
 )::OrderedDict{Tuple{NodeID, NodeID}, AllocationSource}
-    (; basin, graph, allocation) = p
+    (; basin, user_demand, graph, allocation) = p
 
     sources = OrderedDict{Tuple{NodeID, NodeID}, AllocationSource}()
 
@@ -581,7 +581,7 @@ function get_sources_in_order(
 
     # User return flow
     for node_id in problem[:source_user].axes[1]
-        edge = (node_id, node_id)
+        edge = user_demand.outflow_edge[node_id.idx].edge
         sources[edge] = AllocationSource(; edge, type = AllocationSourceType.user_return)
     end
 
@@ -615,14 +615,7 @@ function AllocationModel(
     capacity = get_capacity(p, subnetwork_id)
     problem = allocation_problem(p, capacity, subnetwork_id)
     sources = get_sources_in_order(problem, p, subnetwork_id)
-    flow_priority = JuMP.Containers.SparseAxisArray(Dict(only(problem[:F].axes) .=> 0.0))
+    flow = JuMP.Containers.SparseAxisArray(Dict(only(problem[:F].axes) .=> 0.0))
 
-    return AllocationModel(;
-        subnetwork_id,
-        capacity,
-        flow_priority,
-        sources,
-        problem,
-        Δt_allocation,
-    )
+    return AllocationModel(; subnetwork_id, capacity, flow, sources, problem, Δt_allocation)
 end
