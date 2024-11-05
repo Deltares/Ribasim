@@ -169,11 +169,10 @@ function set_initial_capacities_inlet!(
     p::Parameters,
     optimization_type::OptimizationType.T,
 )::Nothing
-    (; problem) = allocation_model
+    (; sources) = allocation_model
     (; allocation) = p
     (; subnetwork_id) = allocation_model
     (; subnetwork_allocateds) = allocation
-    source_constraints = problem[:source]
 
     main_network_source_edges = get_main_network_connections(p, subnetwork_id)
 
@@ -188,7 +187,9 @@ function set_initial_capacities_inlet!(
             # Set the source capacity to the sum over priorities of the values allocated to the subnetwork over this edge
             sum(subnetwork_allocateds[edge_id])
         end
-        JuMP.set_normalized_rhs(source_constraints[edge_id], source_capacity)
+        source = sources[edge_id]
+        @assert source.type == AllocationSourceType.main_to_sub
+        source.capacity[] = source_capacity
     end
     return nothing
 end
@@ -201,11 +202,10 @@ function set_initial_capacities_source!(
     allocation_model::AllocationModel,
     p::Parameters,
 )::Nothing
-    (; problem) = allocation_model
+    (; sources) = allocation_model
     (; graph, allocation) = p
     (; mean_input_flows) = allocation
     (; subnetwork_id) = allocation_model
-    source_constraints = problem[:source]
     main_network_source_edges = get_main_network_connections(p, subnetwork_id)
 
     for edge_metadata in values(graph.edge_data)
@@ -214,12 +214,9 @@ function set_initial_capacities_source!(
             # If it is a source edge for this allocation problem
             if edge ∉ main_network_source_edges
                 # Reset the source to the averaged flow over the last allocation period
-                source_capacity = mean_input_flows[edge][]
-                JuMP.set_normalized_rhs(
-                    source_constraints[edge],
-                    # It is assumed that the allocation procedure does not have to be differentiated.
-                    source_capacity,
-                )
+                source = sources[edge]
+                @assert source.type == AllocationSourceType.edge
+                source.capacity[] = mean_input_flows[edge][]
             end
         end
     end
@@ -389,15 +386,13 @@ function set_initial_capacities_basin!(
     u::ComponentVector,
     t::Float64,
 )::Nothing
-    (; problem) = allocation_model
+    (; problem, sources) = allocation_model
     constraints_outflow = problem[:basin_outflow]
 
     for node_id in only(constraints_outflow.axes)
-        constraint = constraints_outflow[node_id]
-        JuMP.set_normalized_rhs(
-            constraint,
-            get_basin_capacity(allocation_model, u, p, t, node_id),
-        )
+        source = sources[(node_id, node_id)]
+        @assert source.type == AllocationSourceType.basin
+        source.capacity[] = get_basin_capacity(allocation_model, u, p, t, node_id)
     end
     return nothing
 end
@@ -479,13 +474,13 @@ end
 Set the initial capacities of the UserDemand return flow sources to 0.
 """
 function set_initial_capacities_returnflow!(allocation_model::AllocationModel)::Nothing
-    (; problem) = allocation_model
+    (; problem, sources) = allocation_model
     constraints_outflow = problem[:source_user]
 
     for node_id in only(constraints_outflow.axes)
-        constraint = constraints_outflow[node_id]
-        capacity = 0.0
-        JuMP.set_normalized_rhs(constraint, capacity)
+        source = sources[(node_id, node_id)]
+        @assert source.type == AllocationSourceType.user_return
+        source.capacity[] = 0.0
     end
     return nothing
 end
@@ -632,13 +627,13 @@ end
 Set the flow buffer of nodes with a flow demand to 0.0
 """
 function set_initial_capacities_buffer!(allocation_model::AllocationModel)::Nothing
-    (; problem) = allocation_model
+    (; problem, sources) = allocation_model
     constraints_flow_buffer = problem[:flow_buffer_outflow]
 
     for node_id in only(constraints_flow_buffer.axes)
-        constraint = constraints_flow_buffer[node_id]
-        buffer_capacity = 0.0
-        JuMP.set_normalized_rhs(constraint, buffer_capacity)
+        source = sources[(node_id, node_id)]
+        @assert source.type == AllocationSourceType.buffer
+        source.capacity[] = 0.0
     end
     return nothing
 end
@@ -906,17 +901,58 @@ function allocate_to_users_from_connected_basin!(
     return nothing
 end
 
-function allocate_priority!(
-    problem::JuMP.Model,
-    priority::Integer,
-    subnetwork_id::Integer,
+"""
+Set the capacity of the source that is currently being optimized for to its actual capacity,
+and the capacities of all other sources to 0.
+"""
+function set_source_capacity!(
+    allocation_model::AllocationModel,
+    source_current::AllocationSource,
 )::Nothing
-    JuMP.optimize!(problem)
-    @debug JuMP.solution_summary(problem)
-    if JuMP.termination_status(problem) !== JuMP.OPTIMAL
-        error(
-            "Allocation of subnetwork $subnetwork_id, priority $priority couldn't find optimal solution.",
-        )
+    (; problem, sources) = allocation_model
+    constraints_source_edge = problem[:source]
+    constraints_source_basin = problem[:basin_outflow]
+    constraints_source_user_out = problem[:source_user]
+    constraints_source_buffer = problem[:flow_buffer_outflow]
+
+    for source in sources
+        (; edge) = source
+        capacity_effective = (source == source_current) ? source_current.capacity[] : 0.0
+
+        constraint =
+            if source.type in (AllocationSourceType.edge, AllocationSourceType.main_to_sub)
+                constraints_source_edge[edge]
+            elseif source.type == AllocationSourceType.basin
+                constraints_source_basin[edge[1]]
+            elseif source.type == AllocationSourceType.user_return
+                constraints_source_user_out[edge[1]]
+            elseif source.type == AllocationSourceType.buffer
+                constraints_source_buffer[edge[1]]
+            end
+
+        JuMP.set_normalized_rhs(constraint, capacity_effective)
+    end
+
+    return nothing
+end
+
+function allocate_priority!(allocation_model::AllocationModel, priority::Integer)::Nothing
+    (; problem, sources, subnetwork_id) = allocation_model
+
+    for source in values(sources)
+        # Skip source when it has no capacity
+        source.capacity[] == 0.0 && continue
+
+        # Set only the capacity of the current source to nonzero
+        set_source_capacity!(allocation_model, source)
+
+        JuMP.optimize!(problem)
+        @debug JuMP.solution_summary(problem)
+        if JuMP.termination_status(problem) !== JuMP.OPTIMAL
+            error(
+                "Allocation of subnetwork $subnetwork_id, priority $priority, source $source couldn't find optimal solution.",
+            )
+        end
     end
     return nothing
 end
@@ -929,7 +965,7 @@ function optimize_priority!(
     priority_idx::Int,
     optimization_type::OptimizationType.T,
 )::Nothing
-    (; problem, flow_priority, subnetwork_id) = allocation_model
+    (; problem, flow_priority) = allocation_model
     (; allocation) = p
     (; priorities) = allocation
 
@@ -953,7 +989,7 @@ function optimize_priority!(
 
     # Solve the allocation problem for this priority
     priority = priorities[priority_idx]
-    allocate_priority!(problem, priority, subnetwork_id)
+    allocate_priority!(allocation_model, priority)
 
     # Add the values of the flows at this priority
     for edge in only(problem[:F].axes)

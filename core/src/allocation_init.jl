@@ -550,36 +550,45 @@ function get_sources_in_order(
     problem::JuMP.Model,
     p::Parameters,
     subnetwork_id::Integer,
-)::Vector{AllocationSource}
+)::OrderedDict{Tuple{NodeID, NodeID}, AllocationSource}
     (; basin, graph, allocation) = p
 
-    sources = AllocationSource[]
+    sources = OrderedDict{Tuple{NodeID, NodeID}, AllocationSource}()
 
     # Source edges (within subnetwork)
     for edge in problem[:source].axes[1]
         if graph[edge[1]].subnetwork_id == graph[edge[2]].subnetwork_id
-            push!(sources, AllocationSource(edge, AllocationSourceType.edge))
+            sources[edge] = AllocationSource(; edge, type = AllocationSourceType.edge)
         end
     end
 
     # Basins with level demand
-    for id in basin.node_id
-        if (graph[id].subnetwork_id == subnetwork_id) &&
-           has_external_demand(graph, id, :level_demand)[1]
-            push!(sources, AllocationSource((id, id), AllocationSourceType.basin))
+    for node_id in basin.node_id
+        if (graph[node_id].subnetwork_id == subnetwork_id) &&
+           has_external_demand(graph, node_id, :level_demand)[1]
+            edge = (node_id, node_id)
+            sources[edge] = AllocationSource(; edge, type = AllocationSourceType.basin)
         end
     end
 
     # Main network to subnetwork connections
     for edge in keys(allocation.subnetwork_demands)
         if graph[edge[2]].subnetwork_id == subnetwork_id
-            push!(sources, AllocationSource(edge, AllocationSourceType.main_to_sub))
+            sources[edge] =
+                AllocationSource(; edge, type = AllocationSourceType.main_to_sub)
         end
     end
 
+    # User return flow
+    for node_id in problem[:source_user].axes[1]
+        edge = (node_id, node_id)
+        sources[edge] = AllocationSource(; edge, type = AllocationSourceType.user_return)
+    end
+
     # Buffers
-    for id in problem[:F_flow_buffer_out].axes[1]
-        push!(sources, AllocationSource((id, id), AllocationSourceType.buffer))
+    for node_id in problem[:F_flow_buffer_out].axes[1]
+        edge = (node_id, node_id)
+        sources[edge] = AllocationSource(; edge, type = AllocationSourceType.buffer)
     end
 
     sources

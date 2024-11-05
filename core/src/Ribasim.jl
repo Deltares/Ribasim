@@ -147,7 +147,8 @@ using Tables: Tables, AbstractRow, columntable
 using StructArrays: StructVector
 
 # OrderedSet is used to store the order of the substances in the network.
-using DataStructures: OrderedSet
+# OrderedDict is used to store the order of the sources in a subnetwork.
+using DataStructures: OrderedSet, OrderedDict
 
 export libribasim
 

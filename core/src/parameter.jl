@@ -128,11 +128,17 @@ The caches are always initialized with zeros
 """
 cache(len::Int)::Cache = LazyBufferCache(Returns(len); initializer! = set_zero!)
 
-@enumx AllocationSourceType edge basin main_to_sub buffer
+@enumx AllocationSourceType edge basin main_to_sub user_return buffer
 
-struct AllocationSource
+@kwdef struct AllocationSource
     edge::Tuple{NodeID, NodeID}
     type::AllocationSourceType.T
+    capacity::Base.RefValue{Float64} = Ref(0.0)
+end
+
+function Base.show(io::IO, source::AllocationSource)
+    (; edge, type) = source
+    print(io, "AllocationSource of type $type at edge $edge")
 end
 
 """
@@ -149,7 +155,7 @@ problem: The JuMP.jl model for solving the allocation problem
     subnetwork_id::Int32
     capacity::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}}
     flow_priority::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}}
-    sources::Vector{AllocationSource}
+    sources::OrderedDict{Tuple{NodeID, NodeID}, AllocationSource}
     problem::JuMP.Model
     Δt_allocation::Float64
 end
