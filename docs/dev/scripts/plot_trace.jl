@@ -154,7 +154,7 @@ end
 
 function plot_graph(
     graph_orig::MetaGraph;
-    size = (1000, 1000),
+    size = (2000, 1000),
     max_depth::Int = 5,
     plot_non_Ribasim::Bool = false,
     squash_per_depth::Bool = true,
@@ -197,9 +197,8 @@ function plot_graph(
     plot_edges!(ax, graph, max_depth, nodes_per_depth)
     plot_labels!(ax, graph, max_depth, color_dict)
     hideydecorations!(ax)
-    hidexdecorations!(ax)
     hidespines!(ax)
-    !isnothing(xlims) && xlims!(ax, xlims...)
+    isnothing(xlims) ? xlims!(ax, -0.25, max_depth + 0.5) : xlims!(ax, xlims...)
 
     # Build legend
     elements = LegendElement[
@@ -213,7 +212,16 @@ function plot_graph(
     push!(elements, LineElement(; color = :black, linestyle = :solid))
     push!(descriptions, "within a script")
 
-    Legend(f[1, 2], elements, descriptions)
-
+    axislegend(
+        ax,
+        elements,
+        descriptions;
+        position = :lt,
+        framevisible = true,
+        margin = (20, 20, 20, 20),
+        padding = 10,
+        framecolor = :lightgrey,
+    )
+    resize_to_layout!(f)
     f
 end
