@@ -21,16 +21,16 @@
 
     # Last priority (= 2) flows
     @test flow[(NodeID(:Basin, 2, db), NodeID(:Pump, 5, db))] ≈ 0.0
-    @test flow[(NodeID(:Basin, 2, db), NodeID(:UserDemand, 10, db))] ≈ 0.95
-    @test flow[(NodeID(:Basin, 8, db), NodeID(:UserDemand, 12, db))] ≈ 2.85 rtol = 1e-5
-    @test flow[(NodeID(:Basin, 6, db), NodeID(:Outlet, 7, db))] ≈ 1.5 rtol = 1e-5
+    @test flow[(NodeID(:Basin, 2, db), NodeID(:UserDemand, 10, db))] ≈ 0.5
+    @test flow[(NodeID(:Basin, 8, db), NodeID(:UserDemand, 12, db))] ≈ 2.0 rtol = 1e-5
+    @test flow[(NodeID(:Basin, 6, db), NodeID(:Outlet, 7, db))] ≈ 2.0 rtol = 1e-5
     @test flow[(NodeID(:FlowBoundary, 1, db), NodeID(:Basin, 2, db))] ≈ 0.5
     @test flow[(NodeID(:Basin, 6, db), NodeID(:UserDemand, 11, db))] ≈ 0.0
 
     (; allocated) = p.user_demand
-    @test allocated[1, :] ≈ [0.0, 0.95]
-    @test allocated[2, :] ≈ [5.0, 0.0] rtol = 1e-5
-    @test allocated[3, :] ≈ [0.0, 2.85] rtol = 1e-5
+    @test allocated[1, :] ≈ [0.0, 0.5]
+    @test allocated[2, :] ≈ [4.0, 0.0]
+    @test allocated[3, :] ≈ [0.0, 2.0]
 
     close(db)
 end

@@ -134,6 +134,7 @@ cache(len::Int)::Cache = LazyBufferCache(Returns(len); initializer! = set_zero!)
     edge::Tuple{NodeID, NodeID}
     type::AllocationSourceType.T
     capacity::Base.RefValue{Float64} = Ref(0.0)
+    capacity_reduced::Base.RefValue{Float64} = Ref(0.0)
 end
 
 function Base.show(io::IO, source::AllocationSource)
@@ -383,8 +384,9 @@ end
         },
     }
     level_to_area::Vector{ScalarInterpolation}
-    # Demands for allocation if applicable
-    demand::Vector{Float64}
+    # Values for allocation if applicable
+    demand::Vector{Float64} = zeros(length(node_id))
+    allocated::Vector{Float64} = zeros(length(node_id))
     # Data source for parameter updates
     time::StructVector{BasinTimeV1, C, Int}
     # Data source for concentration updates

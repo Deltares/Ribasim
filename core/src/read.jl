@@ -626,8 +626,6 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     vertical_flux =
         ComponentVector(; precipitation, potential_evaporation, drainage, infiltration)
 
-    demand = zeros(length(node_id))
-
     node_id = NodeID.(NodeType.Basin, node_id, eachindex(node_id))
 
     is_valid = valid_profiles(node_id, level, area)
@@ -685,7 +683,6 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
         vertical_flux,
         storage_to_level,
         level_to_area,
-        demand,
         time,
         concentration_time,
         evaporate_mass,
