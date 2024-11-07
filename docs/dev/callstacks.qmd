@@ -1,3 +1,7 @@
+---
+lightbox: auto
+---
+
 # Call stacks
 
 ```{julia}
@@ -37,14 +41,12 @@ close(db)
 
 plot_graph(
     graph;
-    size = (2000, 1200),
     squash_methods = [
         :n_neighbor_bounds_flow,
         :n_neighbor_bounds_control,
         :sort_by_function,
-        :neighbortypes
+        :neighbortypes,
     ],
-    xlims = (-0.4, 5.6)
 )
 ```
 
@@ -59,7 +61,7 @@ model = Ribasim.Model(toml_path)
 du = get_du(model.integrator)
 (; u, p, t) = model.integrator
 graph, verts = tracecall((Ribasim,), Ribasim.water_balance!, (du, u, p, t))
-plot_graph(graph, size = (1700, 1000), xlims = (-0.4, 4.5))
+plot_graph(graph; max_depth = 4)
 ```
 
 ## Allocation initialization
@@ -68,13 +70,16 @@ In this part of the code the data structures for allocation are set up. Most end
 
 ```{julia}
 # | code-fold: true
-toml_path = normpath(@__DIR__, "../../generated_testmodels/main_network_with_subnetworks/ribasim.toml")
-config = Ribasim.Config(toml_path; allocation_use_allocation=false)
+toml_path = normpath(
+    @__DIR__,
+    "../../generated_testmodels/main_network_with_subnetworks/ribasim.toml",
+)
+config = Ribasim.Config(toml_path; allocation_use_allocation = false)
 db_path = Ribasim.database_path(config)
 db = SQLite.DB(db_path)
 p = Ribasim.Parameters(db, config)
 graph, verts = tracecall((Ribasim,), Ribasim.initialize_allocation!, (p, config))
-plot_graph(graph, size = (1800, 1000), xlims = (-0.5, 5.5))
+plot_graph(graph)
 ```
 
 ## Allocation run
@@ -86,7 +91,7 @@ Running the allocation algorithm consists of running the optimization itself (wh
 # | code-fold: true
 model = Ribasim.Model(toml_path)
 graph, verts = tracecall((Ribasim,), Ribasim.update_allocation!, (model.integrator,))
-plot_graph(graph, size = (2000, 1000), xlims = (-0.4, 5.5))
+plot_graph(graph)
 ```
 
 ## Discrete control
@@ -95,12 +100,14 @@ Discrete control works by a [`FunctionCallingCallback`](https://docs.sciml.ai/Di
 
 ```{julia}
 # | code-fold: true
-toml_path = normpath(@__DIR__, "../../generated_testmodels/pump_discrete_control/ribasim.toml")
+toml_path =
+    normpath(@__DIR__, "../../generated_testmodels/pump_discrete_control/ribasim.toml")
 model = Ribasim.Model(toml_path)
 (; u, t) = model.integrator
 model.integrator.p.basin.storage0 .= [0.1, 100.0]
-graph, verts = tracecall((Ribasim,), Ribasim.apply_discrete_control!, (u, t, model.integrator))
-plot_graph(graph; size = (1300, 500), prune_from = [:water_balance!], xlims = (-0.5, 3.5))
+graph, verts =
+    tracecall((Ribasim,), Ribasim.apply_discrete_control!, (u, t, model.integrator))
+plot_graph(graph; prune_from = [:water_balance!], max_depth = 3)
 ```
 
 ## Writing output
@@ -111,5 +118,5 @@ Writing output (currently) happens only after the full simulation is finished. F
 toml_path = normpath(@__DIR__, "../../generated_testmodels/basic_transient/ribasim.toml")
 model = Ribasim.Model(toml_path)
 graph, verts = tracecall((Ribasim,), Ribasim.write_results, (model,))
-plot_graph(graph, size = (1600, 1000), xlims = (-0.5, 4.5))
+plot_graph(graph; max_depth = 4)
 ```
