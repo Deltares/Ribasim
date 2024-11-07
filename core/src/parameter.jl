@@ -130,6 +130,13 @@ cache(len::Int)::Cache = LazyBufferCache(Returns(len); initializer! = set_zero!)
 
 @enumx AllocationSourceType edge basin main_to_sub user_return buffer
 
+"""
+Data structure for a single source within an allocation subnetwork.
+edge: The outflow edge of the source
+type: The type of source (edge, basin, main_to_sub, user_return, buffer)
+capacity: The initial capacity of the source as determined by the physical layer
+capacity_reduced: The capacity adjusted by passed optimizations
+"""
 @kwdef struct AllocationSource
     edge::Tuple{NodeID, NodeID}
     type::AllocationSourceType.T

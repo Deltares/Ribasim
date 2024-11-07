@@ -11,9 +11,6 @@
     db = SQLite.DB(db_path)
 
     p = Ribasim.Parameters(db, cfg)
-
-    model = Ribasim.Model(cfg)
-    (; p) = model.integrator
     (; graph, allocation) = p
 
     allocation.mean_input_flows[(NodeID(:FlowBoundary, 1, db), NodeID(:Basin, 2, db))] = 4.5

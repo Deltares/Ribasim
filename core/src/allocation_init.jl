@@ -462,6 +462,8 @@ function allocation_problem(
 end
 
 """
+Get the sources within the subnetwork in the order in which they will
+be optimized over.
 TODO: Get preferred source order from input
 """
 function get_sources_in_order(

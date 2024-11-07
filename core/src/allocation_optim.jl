@@ -223,6 +223,9 @@ function set_initial_capacities_source!(
     return nothing
 end
 
+"""
+Reduce the capacity of a source by the amount of flow taken from them in the latest optimization.
+"""
 function reduce_source_capacity!(problem::JuMP.Model, source::AllocationSource)::Nothing
     (; edge) = source
 
@@ -870,6 +873,10 @@ function set_source_capacity!(
     return nothing
 end
 
+"""
+Solve the allocation problem for a single priority by optimizing for each source
+in the subnetwork individually.
+"""
 function optimize_per_source!(
     allocation::Allocation,
     allocation_model::AllocationModel,
@@ -933,6 +940,9 @@ function optimize_per_source!(
     return nothing
 end
 
+"""
+Keep track of how much is taken from or added to the basins in the subnetwork.
+"""
 function increase_allocateds!(basin::Basin, problem::JuMP.Model)::Nothing
     (; allocated) = basin
 
@@ -999,7 +1009,7 @@ function optimize_priority!(
 end
 
 """
-Set the initial capacities and demands which are recuded by usage.
+Set the initial capacities and demands which are reduced by usage.
 """
 function set_initial_values!(
     allocation_model::AllocationModel,
