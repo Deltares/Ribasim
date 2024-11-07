@@ -275,10 +275,10 @@ function concentration_table(
 
     ntsteps = length(data.time) - 1
     nbasin = length(data.node_id)
-    nsubstance = length(basin.substances)
+    nsubstance = length(basin.concentration_data.substances)
     nrows = ntsteps * nbasin * nsubstance
 
-    substances = String.(basin.substances)
+    substances = String.(basin.concentration_data.substances)
     concentration = zeros(nrows)
 
     idx_row = 0

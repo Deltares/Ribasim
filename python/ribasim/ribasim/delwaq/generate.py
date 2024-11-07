@@ -453,8 +453,8 @@ def generate(
     substances.update(defaults.keys())
 
     # Add user defined substances
-    if model.basin.concentration_state.df is not None:
-        initial = model.basin.concentration_state.df
+    if model.basin.concentration_data.concentration_state.df is not None:
+        initial = model.basin.concentration_data.concentration_state.df
         substances.update(initial.substance.unique())
 
     # Make a wide table with the initial default concentrations
@@ -468,7 +468,7 @@ def generate(
     )
 
     # Override default concentrations with the user defined values
-    if model.basin.concentration_state.df is not None:
+    if model.basin.concentration_data.concentration_state.df is not None:
         for _, row in initial.iterrows():
             icdf.loc[basin_mapping[row.node_id], row.substance] = row.concentration
 

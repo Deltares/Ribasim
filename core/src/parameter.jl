@@ -324,6 +324,24 @@ struct CurrentBasinProperties
     end
 end
 
+@kwdef struct ConcentrationData
+    # Config setting to enable/disable evaporation of mass
+    evaporate_mass::Bool = true
+    # Cumulative inflow for each Basin at a given time
+    cumulative_in::Vector{Float64}
+    # matrix with concentrations for each Basin and substance
+    concentration_state::Matrix{Float64}  # Basin, substance
+    # matrix with boundary concentrations for each boundary, Basin and substance
+    concentration::Array{Float64, 3}
+    # matrix with mass for each Basin and substance
+    mass::Matrix{Float64}
+    # substances in use by the model (ordered like their axis in the concentration matrices)
+    substances::OrderedSet{Symbol}
+    # Data source for external concentrations (used in control)
+    concentration_external::Vector{Dict{String, ScalarInterpolation}} =
+        Dict{String, ScalarInterpolation}[]
+end
+
 """
 Requirements:
 
@@ -340,7 +358,7 @@ else
     T = Vector{Float64}
 end
 """
-@kwdef struct Basin{C, D, V} <: AbstractParameterNode
+@kwdef struct Basin{C, D, V, CD} <: AbstractParameterNode
     node_id::Vector{NodeID}
     inflow_ids::Vector{Vector{NodeID}} = [NodeID[]]
     outflow_ids::Vector{Vector{NodeID}} = [NodeID[]]
@@ -369,32 +387,17 @@ end
     }
     level_to_area::Vector{ScalarInterpolation}
     # Demands for allocation if applicable
-    demand::Vector{Float64}
+    demand::Vector{Float64} = zeros(length(node_id))
     # Data source for parameter updates
     time::StructVector{BasinTimeV1, C, Int}
-    # Data source for concentration updates
-    concentration_time::StructVector{BasinConcentrationV1, D, Int}
-
+    # Storage for each Basin at the previous time step
+    storage_prev::Vector{Float64} = zeros(length(node_id))
     # Level for each Basin at the previous time step
     level_prev::Vector{Float64} = zeros(length(node_id))
     # Concentrations
-    # Config setting to enable/disable evaporation of mass
-    evaporate_mass::Bool = true
-    # Cumulative inflow for each Basin at a given time
-    cumulative_in::Vector{Float64} = zeros(length(node_id))
-    # Storage for each Basin at the previous time step
-    storage_prev::Vector{Float64} = zeros(length(node_id))
-    # matrix with concentrations for each Basin and substance
-    concentration_state::Matrix{Float64}  # Basin, substance
-    # matrix with boundary concentrations for each boundary, Basin and substance
-    concentration::Array{Float64, 3}
-    # matrix with mass for each Basin and substance
-    mass::Matrix{Float64}
-    # substances in use by the model (ordered like their axis in the concentration matrices)
-    substances::OrderedSet{Symbol}
-    # Data source for external concentrations (used in control)
-    concentration_external::Vector{Dict{String, ScalarInterpolation}} =
-        Dict{String, ScalarInterpolation}[]
+    concentration_data::CD = nothing
+    # Data source for concentration updates
+    concentration_time::StructVector{BasinConcentrationV1, D, Int}
 end
 
 """
