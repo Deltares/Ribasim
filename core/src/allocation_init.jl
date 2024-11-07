@@ -390,56 +390,6 @@ function add_constraints_conservation_node!(
 end
 
 """
-Add the fractional flow constraints to the allocation problem.
-The constraint indices are allocation edges over a fractional flow node.
-
-Constraint:
-flow after fractional_flow node <= fraction * inflow
-"""
-function add_constraints_fractional_flow!(
-    problem::JuMP.Model,
-    p::Parameters,
-    subnetwork_id::Int32,
-)::Nothing
-    (; graph, fractional_flow) = p
-    F = problem[:F]
-    node_ids = graph[].node_ids[subnetwork_id]
-
-    # Find the nodes in this subnetwork with a FractionalFlow
-    # outneighbor, and collect the corresponding flow fractions
-    # and inflow variable
-    edges_to_fractional_flow = Tuple{NodeID, NodeID}[]
-    fractions = Dict{Tuple{NodeID, NodeID}, Float64}()
-    inflows = Dict{NodeID, JuMP.AffExpr}()
-
-    # Find edges of the form (node_id, outflow_id) where outflow_id
-    # is for a FractionalFlow node
-    for node_id in node_ids
-        for outflow_id in outflow_ids(graph, node_id)
-            if outflow_id.type == NodeType.FractionalFlow
-                edge = (node_id, outflow_id)
-                push!(edges_to_fractional_flow, edge)
-                fractions[edge] = fractional_flow.fraction[outflow_id.idx]
-                inflows[node_id] = sum([
-                    F[(inflow_id, node_id)] for inflow_id in inflow_ids(graph, node_id)
-                ])
-            end
-        end
-    end
-
-    # Create the constraints if there is at least one
-    if !isempty(edges_to_fractional_flow)
-        problem[:fractional_flow] = JuMP.@constraint(
-            problem,
-            [edge = edges_to_fractional_flow],
-            F[edge] <= fractions[edge] * inflows[edge[1]],
-            base_name = "fractional_flow"
-        )
-    end
-    return nothing
-end
-
-"""
 Add the Basin flow constraints to the allocation problem.
 The constraint indices are the Basin node IDs.
 
