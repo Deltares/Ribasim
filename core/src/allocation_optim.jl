@@ -749,7 +749,7 @@ function save_allocation_flows!(
     F_basin_in = problem[:F_basin_in]
     F_basin_out = problem[:F_basin_out]
 
-    edges_allocation = keys(capacity.data)
+    edges_allocation = keys(flow.data)
 
     skip = false
 
@@ -932,7 +932,7 @@ function allocate_priority!(
 
         # Add the values of the flows at this priority
         for edge in only(problem[:F].axes)
-            flow[edge] += JuMP.value(problem[:F][edge])
+            flow[edge] += max(JuMP.value(problem[:F][edge]), 0.0)
         end
 
         # Adjust capacities for the optimization for the next source
@@ -960,7 +960,7 @@ function increase_allocateds!(basin::Basin, problem::JuMP.Model)::Nothing
     F_basin_in = problem[:F_basin_in]
     F_basin_out = problem[:F_basin_out]
 
-    for node_id in F_basin_in.axes[1]
+    for node_id in only(F_basin_in.axes)
         allocated[node_id.idx] +=
             JuMP.value(F_basin_in[node_id]) - JuMP.value(F_basin_out[node_id])
     end
