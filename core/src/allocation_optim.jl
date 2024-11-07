@@ -39,6 +39,7 @@ function set_objective_priority!(
     (; node_id, demand_reduced) = user_demand
     (; main_network_connections, subnetwork_demands) = allocation
     F = problem[:F]
+    F_flow_buffer_in = problem[:F_flow_buffer_in]
 
     # Initialize an empty quadratic expression for the objective
     ex = JuMP.QuadExpr()
@@ -75,7 +76,7 @@ function set_objective_priority!(
                     priority_idx == flow_priority_idx ?
                     flow_demand.demand[demand_node_id.idx] : 0.0
 
-                F_fd = F[edge]
+                F_fd = F_flow_buffer_in[to_node_id]
                 add_objective_term!(ex, d, F_fd)
             end
         end
@@ -238,7 +239,7 @@ function reduce_source_capacity!(problem::JuMP.Model, source::AllocationSource):
             JuMP.value(problem[:F_flow_buffer_out][edge[1]])
         end
 
-    source.capacity_reduced[] = max(source.capacity[] - used_capacity, 0.0)
+    source.capacity_reduced[] = max(source.capacity_reduced[] - used_capacity, 0.0)
     return nothing
 end
 
@@ -265,7 +266,7 @@ function increase_source_capacities!(
             continue
         end
 
-        source.capacity[] += additional_capacity
+        source.capacity_reduced[] += additional_capacity
     end
     return nothing
 end
@@ -622,41 +623,6 @@ function set_initial_capacities_buffer!(allocation_model::AllocationModel)::Noth
 end
 
 """
-Set the capacity of the outflow edge from a node with a flow demand:
-- To Inf if the current priority is other than the priority of the flow demand
-- To 0.0 if the current priority is equal to the priority of the flow demand
-
-This is done so that flow can go towards the node with the flow demand into its buffer,
-to avoid the problem that the flow has nowhere to go after this node and to make sure
-that this flow can be used for later priorities
-"""
-function set_capacities_flow_demand_outflow!(
-    allocation_model::AllocationModel,
-    p::Parameters,
-    priority_idx::Int,
-)::Nothing
-    (; graph, allocation, flow_demand) = p
-    (; priorities) = allocation
-    (; problem) = allocation_model
-    priority = priorities[priority_idx]
-    constraints = problem[:flow_demand_outflow]
-
-    for node_id in only(constraints.axes)
-        constraint = constraints[node_id]
-        node_id_flow_demand = only(inneighbor_labels_type(graph, node_id, EdgeType.control))
-        priority_flow_demand = flow_demand.priority[node_id_flow_demand.idx]
-
-        capacity = if priority == priority_flow_demand
-            0.0
-        else
-            Inf
-        end
-
-        JuMP.set_normalized_rhs(constraint, capacity)
-    end
-end
-
-"""
 Save the demands and allocated flows for UserDemand and Basin.
 Note: Basin supply (negative demand) is only saved for the first priority.
 """
@@ -904,7 +870,7 @@ function set_source_capacity!(
     return nothing
 end
 
-function allocate_priority!(
+function optimize_per_source!(
     allocation::Allocation,
     allocation_model::AllocationModel,
     priority_idx::Integer,
@@ -921,7 +887,7 @@ function allocate_priority!(
     for source in values(sources)
         # Skip source when it has no capacity
         if optimization_type !== OptimizationType.collect_demands &&
-           source.capacity[] == 0.0
+           source.capacity_reduced[] == 0.0
             continue
         end
 
@@ -1000,14 +966,12 @@ function optimize_priority!(
     # Start the allocated amounts to basins at this priority at 0.0
     basin.allocated .= 0.0
 
-    set_capacities_flow_demand_outflow!(allocation_model, p, priority_idx)
-
     # Allocate to UserDemand nodes from the directly connected basin
     # This happens outside the JuMP optimization
     allocate_to_users_from_connected_basin!(allocation_model, p, priority_idx)
 
     # Solve the allocation problem for this priority
-    allocate_priority!(
+    optimize_per_source!(
         allocation,
         allocation_model,
         priority_idx,

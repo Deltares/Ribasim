@@ -426,37 +426,6 @@ function add_constraints_buffer!(problem::JuMP.Model)::Nothing
 end
 
 """
-Add the flow demand node outflow constraints to the allocation problem.
-The constraint indices are the node IDs of the nodes that have a flow demand.
-
-Constraint:
-flow out of node with flow demand <= ∞ if not at flow demand priority, 0.0 otherwise
-"""
-function add_constraints_flow_demand_outflow!(
-    problem::JuMP.Model,
-    p::Parameters,
-    subnetwork_id::Int32,
-)::Nothing
-    (; graph) = p
-    F = problem[:F]
-    node_ids = graph[].node_ids[subnetwork_id]
-
-    # Collect the node IDs in the subnetwork which have a flow demand
-    node_ids_flow_demand = [
-        node_id for
-        node_id in node_ids if has_external_demand(graph, node_id, :flow_demand)[1]
-    ]
-
-    problem[:flow_demand_outflow] = JuMP.@constraint(
-        problem,
-        [node_id = node_ids_flow_demand],
-        F[(node_id, outflow_id(graph, node_id))] <= 0.0,
-        base_name = "flow_demand_outflow"
-    )
-    return nothing
-end
-
-"""
 Construct the allocation problem for the current subnetwork as a JuMP model.
 """
 function allocation_problem(
@@ -487,7 +456,6 @@ function allocation_problem(
     add_constraints_source!(problem, p, subnetwork_id)
     add_constraints_user_source!(problem, p, subnetwork_id)
     add_constraints_basin_flow!(problem)
-    add_constraints_flow_demand_outflow!(problem, p, subnetwork_id)
     add_constraints_buffer!(problem)
 
     return problem
@@ -501,9 +469,18 @@ function get_sources_in_order(
     p::Parameters,
     subnetwork_id::Integer,
 )::OrderedDict{Tuple{NodeID, NodeID}, AllocationSource}
+    # NOTE: return flow has to be done before other sources, to prevent that
+    # return flow is directly used within the same priority
+
     (; basin, user_demand, graph, allocation) = p
 
     sources = OrderedDict{Tuple{NodeID, NodeID}, AllocationSource}()
+
+    # User return flow
+    for node_id in only(problem[:source_user].axes)
+        edge = user_demand.outflow_edge[node_id.idx].edge
+        sources[edge] = AllocationSource(; edge, type = AllocationSourceType.user_return)
+    end
 
     # Source edges (within subnetwork)
     for edge in only(problem[:source].axes)
@@ -527,12 +504,6 @@ function get_sources_in_order(
             sources[edge] =
                 AllocationSource(; edge, type = AllocationSourceType.main_to_sub)
         end
-    end
-
-    # User return flow
-    for node_id in only(problem[:source_user].axes)
-        edge = user_demand.outflow_edge[node_id.idx].edge
-        sources[edge] = AllocationSource(; edge, type = AllocationSourceType.user_return)
     end
 
     # Buffers

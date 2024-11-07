@@ -11,6 +11,9 @@
     db = SQLite.DB(db_path)
 
     p = Ribasim.Parameters(db, cfg)
+
+    model = Ribasim.Model(cfg)
+    (; p) = model.integrator
     (; graph, allocation) = p
 
     allocation.mean_input_flows[(NodeID(:FlowBoundary, 1, db), NodeID(:Basin, 2, db))] = 4.5
@@ -367,15 +370,15 @@ end
         :flow_demand,
     )[1]
 
-    allocation_model = allocation.allocation_models[1]
-    (; problem) = allocation_model
+    (; allocation_models, record_flow) = allocation
+    allocation_model = allocation_models[1]
+    (; problem, flow, sources) = allocation_model
 
     F = problem[:F]
     F_flow_buffer_in = problem[:F_flow_buffer_in]
     F_flow_buffer_out = problem[:F_flow_buffer_out]
 
     node_id_with_flow_demand = NodeID(:TabulatedRatingCurve, 2, p)
-    constraint_flow_out = problem[:flow_demand_outflow][node_id_with_flow_demand]
 
     # Test flow conservation constraint containing flow buffer
     constraint_with_flow_buffer =
@@ -386,15 +389,11 @@ end
           F_flow_buffer_in[node_id_with_flow_demand] +
           F_flow_buffer_out[node_id_with_flow_demand]
 
-    constraint_flow_demand_outflow = JuMP.constraint_object(constraint_flow_out)
-    @test constraint_flow_demand_outflow.func ==
-          F[(node_id_with_flow_demand, NodeID(:Basin, 3, p))] + 0.0
-    @test constraint_flow_demand_outflow.set.upper == 0.0
-
     t = 0.0
     (; u) = model.integrator
     optimization_type = OptimizationType.internal_sources
     Ribasim.set_initial_values!(allocation_model, u, p, t)
+    # sources[(NodeID(:LevelBoundary, 1, p), node_id_with_flow_demand)].capacity[] = 2e-3
 
     # Priority 1
     Ribasim.optimize_priority!(
@@ -406,10 +405,13 @@ end
         optimization_type,
     )
     objective = JuMP.objective_function(problem)
+    @test JuMP.UnorderedPair(
+        F_flow_buffer_in[node_id_with_flow_demand],
+        F_flow_buffer_in[node_id_with_flow_demand],
+    ) in keys(objective.terms)
 
     # Reduced demand
     @test flow_demand.demand[1] ≈ flow_demand.demand_itp[1](t) - 0.001 rtol = 1e-3
-    @test JuMP.normalized_rhs(constraint_flow_out) == Inf
 
     ## Priority 2
     Ribasim.optimize_priority!(
@@ -424,7 +426,6 @@ end
     @test flow_demand.demand[1] < 1e-10
     # Allocated
     @test JuMP.value(only(F_flow_buffer_in)) ≈ only(flow_demand.demand) atol = 1e-10
-    @test JuMP.normalized_rhs(constraint_flow_out) == 0.0
 
     ## Priority 3
     Ribasim.optimize_priority!(
@@ -435,10 +436,8 @@ end
         3,
         optimization_type,
     )
-    @test JuMP.normalized_rhs(constraint_flow_out) == Inf
     # The flow from the source is used up in previous priorities
-    @test JuMP.value(F[(NodeID(:LevelBoundary, 1, p), node_id_with_flow_demand)]) ≈ 0 atol =
-        1e-10
+    @test flow[(NodeID(:LevelBoundary, 1, p), node_id_with_flow_demand)] ≈ 0 atol = 1e-10
     # So flow from the flow buffer is used for UserDemand #4
     @test JuMP.value(F_flow_buffer_out[node_id_with_flow_demand]) ≈ 0.001 rtol = 1e-3
     # Flow taken from buffer
@@ -458,8 +457,8 @@ end
     )
     # Get demand from buffers
     d = user_demand.demand_itp[3][4](t)
-    # @test JuMP.value(F[(NodeID(:UserDemand, 4, p), NodeID(:Basin, 7, p))]) +
-    #       JuMP.value(F[(NodeID(:UserDemand, 6, p), NodeID(:Basin, 7, p))]) ≈ d rtol = 1e-3
+    @test JuMP.value(F[(NodeID(:UserDemand, 4, p), NodeID(:Basin, 7, p))]) +
+          JuMP.value(F[(NodeID(:UserDemand, 6, p), NodeID(:Basin, 7, p))]) ≈ d rtol = 1e-3
 
     # Realized flow demand
     model = Ribasim.run(toml_path)
