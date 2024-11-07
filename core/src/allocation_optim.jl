@@ -866,6 +866,7 @@ and the capacities of all other sources to 0.
 function set_source_capacity!(
     allocation_model::AllocationModel,
     source_current::AllocationSource,
+    optimization_type::OptimizationType.T,
 )::Nothing
     (; problem, sources) = allocation_model
     constraints_source_edge = problem[:source]
@@ -875,8 +876,16 @@ function set_source_capacity!(
 
     for source in values(sources)
         (; edge) = source
-        capacity_effective =
-            (source == source_current) ? source_current.capacity_reduced[] : 0.0
+
+        capacity_effective = if source == source_current
+            if optimization_type == OptimizationType.collect_demands
+                Inf
+            else
+                source_current.capacity_reduced[]
+            end
+        else
+            0.0
+        end
 
         constraint =
             if source.type in (AllocationSourceType.edge, AllocationSourceType.main_to_sub)
@@ -902,6 +911,7 @@ function allocate_priority!(
     u::ComponentVector,
     p::Parameters,
     t::AbstractFloat,
+    optimization_type::OptimizationType.T,
 )::Nothing
     (; problem, sources, subnetwork_id, flow) = allocation_model
     (; priorities) = allocation
@@ -910,7 +920,10 @@ function allocate_priority!(
 
     for source in values(sources)
         # Skip source when it has no capacity
-        source.capacity[] == 0.0 && continue
+        if optimization_type !== OptimizationType.collect_demands &&
+           source.capacity[] == 0.0
+            continue
+        end
 
         # Set the objective depending on the demands
         # A new objective function is set instead of modifying the coefficients
@@ -920,7 +933,7 @@ function allocate_priority!(
         set_objective_priority!(allocation_model, u, p, t, priority_idx)
 
         # Set only the capacity of the current source to nonzero
-        set_source_capacity!(allocation_model, source)
+        set_source_capacity!(allocation_model, source, optimization_type)
 
         JuMP.optimize!(problem)
         @debug JuMP.solution_summary(problem)
@@ -994,7 +1007,15 @@ function optimize_priority!(
     allocate_to_users_from_connected_basin!(allocation_model, p, priority_idx)
 
     # Solve the allocation problem for this priority
-    allocate_priority!(allocation, allocation_model, priority_idx, u, p, t)
+    allocate_priority!(
+        allocation,
+        allocation_model,
+        priority_idx,
+        u,
+        p,
+        t,
+        optimization_type,
+    )
 
     # Assign the allocations to the UserDemand or subnetwork for this priority
     assign_allocations!(allocation_model, p, priority_idx, optimization_type)

@@ -176,11 +176,11 @@ end
     Ribasim.update_allocation!(model.integrator)
 
     @test subnetwork_allocateds[NodeID(:Basin, 2, p), NodeID(:Pump, 11, p)] ≈
-          [4, 0.49775, 0.49775] atol = 1e-4
+          [4, 0.49775, 0.0] atol = 1e-4
     @test subnetwork_allocateds[NodeID(:Basin, 6, p), NodeID(:Pump, 24, p)] ≈
           [0.001, 0.0, 0.0] rtol = 1e-3
     @test subnetwork_allocateds[NodeID(:Basin, 10, p), NodeID(:Pump, 38, p)] ≈
-          [0.001, 0.00024888, 0.00024888] rtol = 1e-3
+          [0.001, 0.00024888, 0.002] rtol = 1e-3
 
     # Test for existence of edges in allocation flow record
     allocation_flow = DataFrame(record_flow)
@@ -194,8 +194,8 @@ end
     )
     @test all(allocation_flow.edge_exists)
 
-    @test user_demand.allocated[2, :] ≈ [5.0, 0.0, 0.0] atol = 1e-3
-    @test user_demand.allocated[7, :] ≈ [0.0, 0.0, 0.0] atol = 1e-4
+    @test user_demand.allocated[2, :] ≈ [4.0, 0.0, 0.0] atol = 1e-3
+    @test user_demand.allocated[7, :] ≈ [0.0, 0.0, 0.001] rtol = 1e-3
 end
 
 @testitem "Subnetworks with sources" begin
@@ -233,7 +233,7 @@ end
     # See the difference between these values here and in
     # "allocation with main network optimization problem", internal sources
     # lower the subnetwork demands
-    @test subnetwork_demands[(NodeID(:Basin, 2, p), NodeID(:Pump, 11, p))] ≈ [3.1, 4.9, 0.0] rtol =
+    @test subnetwork_demands[(NodeID(:Basin, 2, p), NodeID(:Pump, 11, p))] ≈ [0.0, 4.0, 0.0] rtol =
         1e-4
     @test subnetwork_demands[(NodeID(:Basin, 6, p), NodeID(:Pump, 24, p))] ≈
           [0.001, 0.0, 0.0] rtol = 1e-4
