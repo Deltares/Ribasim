@@ -167,6 +167,7 @@ include("read.jl")
 include("write.jl")
 include("bmi.jl")
 include("callback.jl")
+include("concentration.jl")
 include("main.jl")
 include("libribasim.jl")
 
