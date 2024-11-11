@@ -246,10 +246,11 @@ end
     model = Ribasim.run(toml_path)
     (; u, p, t) = model.integrator
     (; current_storage) = p.basin.current_properties
+    current_storage = current_storage[Float64[]]
     du = get_du(model.integrator)
     Ribasim.formulate_storages!(current_storage, du, u, p, t)
 
-    current_storage[Float64[]] ≈ Float32[
+    current_storage ≈ Float32[
         1.0346e6,
         1.0346e6,
         1.0346e6,
