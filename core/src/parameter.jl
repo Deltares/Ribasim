@@ -358,7 +358,7 @@ else
     T = Vector{Float64}
 end
 """
-@kwdef struct Basin{V, CD, C, D} <: AbstractParameterNode
+@kwdef struct Basin{V, C, CD, D} <: AbstractParameterNode
     node_id::Vector{NodeID}
     inflow_ids::Vector{Vector{NodeID}} = [NodeID[]]
     outflow_ids::Vector{Vector{NodeID}} = [NodeID[]]
@@ -883,29 +883,29 @@ const ModelGraph = MetaGraph{
     Float64,
 }
 
-@kwdef struct Parameters{C1, C2, C3, C4, C5, C6, C7, C8, C9, V}
+@kwdef struct Parameters{C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11}
     starttime::DateTime
     graph::ModelGraph
     allocation::Allocation
-    basin::Basin{C1, C2, V}
+    basin::Basin{C1, C2, C3, C4}
     linear_resistance::LinearResistance
     manning_resistance::ManningResistance
-    tabulated_rating_curve::TabulatedRatingCurve{C3}
-    level_boundary::LevelBoundary{C4}
-    flow_boundary::FlowBoundary{C5}
+    tabulated_rating_curve::TabulatedRatingCurve{C5}
+    level_boundary::LevelBoundary{C6}
+    flow_boundary::FlowBoundary{C7}
     pump::Pump
     outlet::Outlet
     terminal::Terminal
     discrete_control::DiscreteControl
     continuous_control::ContinuousControl
     pid_control::PidControl
-    user_demand::UserDemand{C6}
+    user_demand::UserDemand{C8}
     level_demand::LevelDemand
     flow_demand::FlowDemand
     subgrid::Subgrid
     # Per state the in- and outflow edges associated with that state (if they exist)
-    state_inflow_edge::C7 = ComponentVector()
-    state_outflow_edge::C8 = ComponentVector()
+    state_inflow_edge::C9 = ComponentVector()
+    state_outflow_edge::C10 = ComponentVector()
     all_nodes_active::Base.RefValue{Bool} = Ref(false)
     tprev::Base.RefValue{Float64} = Ref(0.0)
     # Sparse matrix for combining flows into storages
@@ -914,7 +914,7 @@ const ModelGraph = MetaGraph{
     water_balance_abstol::Float64
     water_balance_reltol::Float64
     # State at previous saveat
-    u_prev_saveat::C9 = ComponentVector()
+    u_prev_saveat::C11 = ComponentVector()
 end
 
 # To opt-out of type checking for ForwardDiff
