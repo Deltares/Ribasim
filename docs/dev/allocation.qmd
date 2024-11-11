@@ -28,10 +28,10 @@ More details on how allocation interacts with `JuMP.jl` is explained [here](#sec
 After initialization, as the simulation starts, the allocation problem is solved and updated after every allocation timestep (which is specified in the TOML).
 With every allocation timestep a new optimization problem is formulated and solved, using the latest available (simulation) model conditions and forcing and demand predictions.
 
-The update of allocation (`update_allocation`) is repeating and spread into three parts:
+The update of allocation (`update_allocation!`) is repeating and spread into three parts:
 
-- Updating the mean flows. The mean flow data is only used only for output, not used by any internal functions.
-- ["Collect demand"](/concept/allocation.qmd#sec-high-level-algorithm). This step initialize and solve the optimization problems that collects the demand from the subnetworks.
+- Updating the mean flows. The mean flow data is used for output and to act a determine the capacity of sources in the allocation model.
+- ["Collect demand"](/concept/allocation.qmd#sec-high-level-algorithm). This step initializes and solves the optimization problems that collects the demand from the subnetworks.
 - ["Allocate"](/concept/allocation.qmd#sec-high-level-algorithm). This step solves the optimization problems that allocates the demand. For the main network this step allocates to the subnetworks and demand nodes that are in the main network. For the subnetwork this step allocates to the demand nodes.
 
 The steps "collect demand" and "allocate" correspond to the function `collect_demand` and `allocate_demand` in the code.
