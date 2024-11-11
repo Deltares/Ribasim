@@ -149,9 +149,6 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
             volume = integral(flow_rate, tprev, t)
             flow_boundary.cumulative_flow[id.idx] += volume
             flow_boundary.cumulative_flow_saveat[id.idx] += volume
-            basin.concentration_data.mass[outflow_id.idx, :] .+=
-                flow_boundary.concentration[id.idx, :] .* volume
-            basin.concentration_data.cumulative_in[outflow_id.idx] += volume
         end
     end
 
