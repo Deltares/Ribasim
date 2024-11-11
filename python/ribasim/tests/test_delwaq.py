@@ -30,7 +30,7 @@ def test_offline_delwaq_coupling():
     run_delwaq()
     model = parse(toml_path, graph, substances)
 
-    df = model.basin.concentration_data.concentration_external.df
+    df = model.basin.concentration_external.df
     assert df is not None
     assert df.shape[0] > 0
     assert df.node_id.nunique() == 4

@@ -50,7 +50,7 @@ def parse(
     df = _concat(dfs).reset_index(drop=True)
     df.sort_values(["time", "node_id"], inplace=True)
 
-    model.basin.concentration_data.concentration_external = df
+    model.basin.concentration_external = df
     df.to_feather(toml_path.parent / "results" / "basin_concentration_external.arrow")
 
     return model

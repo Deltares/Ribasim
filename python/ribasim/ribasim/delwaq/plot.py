@@ -16,7 +16,7 @@ def plot_fraction(
         "Terminal",
     ],
 ):
-    table = model.basin.concentration_data.concentration_external.df
+    table = model.basin.concentration_external.df
     table = table[table["node_id"] == node_id]
     table = table[table["substance"].isin(tracers)]
 
@@ -44,7 +44,7 @@ def plot_fraction(
 
 
 def plot_spatial(model, tracer="Basin", versus=None, limit=0.001):
-    table = model.basin.concentration_data.concentration_external.df
+    table = model.basin.concentration_external.df
     table = table[table["time"] == table["time"].max()]
 
     if versus is not None:
