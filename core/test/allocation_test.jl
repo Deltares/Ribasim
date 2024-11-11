@@ -204,6 +204,7 @@ end
     using SQLite
     using Ribasim: NodeID, OptimizationType
     using ComponentArrays: ComponentVector
+    using OrdinaryDiffEqCore: get_du
     using JuMP
 
     toml_path = normpath(
@@ -241,6 +242,32 @@ end
           [0.001, 0.0, 0.0] rtol = 1e-4
     @test subnetwork_demands[(NodeID(:Basin, 10, p), NodeID(:Pump, 38, p))][1:2] ≈
           [0.001, 0.001] rtol = 1e-4
+
+    model = Ribasim.run(toml_path)
+    (; u, p, t) = model.integrator
+    (; current_storage) = p.basin.current_properties
+    du = get_du(model.integrator)
+    Ribasim.formulate_storages!(current_storage, du, u, p, t)
+
+    current_storage[Float64[]] ≈ Float32[
+        1.0346e6,
+        1.0346e6,
+        1.0346e6,
+        1.0346e6,
+        1.0346e6,
+        13.83,
+        40.10,
+        6.029e5,
+        4641,
+        2402,
+        6.03995,
+        928.8,
+        8.017,
+        10417,
+        5.619,
+        10417,
+        4.057,
+    ]
 end
 
 @testitem "Allocation level control" begin
