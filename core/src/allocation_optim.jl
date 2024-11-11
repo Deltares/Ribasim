@@ -847,7 +847,8 @@ function set_source_capacity!(
         (; edge) = source
 
         capacity_effective = if source == source_current
-            if optimization_type == OptimizationType.collect_demands
+            if optimization_type == OptimizationType.collect_demands &&
+               source.type == AllocationSourceType.main_to_sub
                 Inf
             else
                 source_current.capacity_reduced[]

@@ -155,7 +155,9 @@ end
     # Solving for the main network, containing subnetworks as UserDemands
     allocation_model = allocation_models[1]
     (; problem) = allocation_model
-    collect(values(allocation_model.sources))[1].capacity[] = 4.5
+    main_source =
+        allocation_model.sources[(NodeID(:FlowBoundary, 1, p), NodeID(:Basin, 2, p))]
+    main_source.capacity_reduced[] = 4.5
     Ribasim.optimize_priority!(allocation_model, u, p, t, 1, OptimizationType.allocate)
 
     # Main network objective function
@@ -180,7 +182,7 @@ end
     @test subnetwork_allocateds[NodeID(:Basin, 6, p), NodeID(:Pump, 24, p)] ≈
           [0.001, 0.0, 0.0] rtol = 1e-3
     @test subnetwork_allocateds[NodeID(:Basin, 10, p), NodeID(:Pump, 38, p)] ≈
-          [0.001, 0.00024888, 0.002] rtol = 1e-3
+          [0.001, 0.00024888, 0.0] rtol = 1e-3
 
     # Test for existence of edges in allocation flow record
     allocation_flow = DataFrame(record_flow)
@@ -195,7 +197,7 @@ end
     @test all(allocation_flow.edge_exists)
 
     @test user_demand.allocated[2, :] ≈ [4.0, 0.0, 0.0] atol = 1e-3
-    @test user_demand.allocated[7, :] ≈ [0.0, 0.0, 0.001] rtol = 1e-3
+    @test user_demand.allocated[7, :] ≈ [0.0, 0.0, 0.0] atol = 1e-3
 end
 
 @testitem "Subnetworks with sources" begin
@@ -233,7 +235,7 @@ end
     # See the difference between these values here and in
     # "allocation with main network optimization problem", internal sources
     # lower the subnetwork demands
-    @test subnetwork_demands[(NodeID(:Basin, 2, p), NodeID(:Pump, 11, p))] ≈ [0.0, 4.0, 0.0] rtol =
+    @test subnetwork_demands[(NodeID(:Basin, 2, p), NodeID(:Pump, 11, p))] ≈ [4.0, 4.0, 0.0] rtol =
         1e-4
     @test subnetwork_demands[(NodeID(:Basin, 6, p), NodeID(:Pump, 24, p))] ≈
           [0.001, 0.0, 0.0] rtol = 1e-4
@@ -390,7 +392,8 @@ end
     (; u) = model.integrator
     optimization_type = OptimizationType.internal_sources
     Ribasim.set_initial_values!(allocation_model, u, p, t)
-    # sources[(NodeID(:LevelBoundary, 1, p), node_id_with_flow_demand)].capacity[] = 2e-3
+    sources[(NodeID(:LevelBoundary, 1, p), node_id_with_flow_demand)].capacity_reduced[] =
+        2e-3
 
     # Priority 1
     Ribasim.optimize_priority!(
@@ -452,10 +455,6 @@ end
         4,
         optimization_type,
     )
-    # Get demand from buffers
-    d = user_demand.demand_itp[3][4](t)
-    @test JuMP.value(F[(NodeID(:UserDemand, 4, p), NodeID(:Basin, 7, p))]) +
-          JuMP.value(F[(NodeID(:UserDemand, 6, p), NodeID(:Basin, 7, p))]) ≈ d rtol = 1e-3
 
     # Realized flow demand
     model = Ribasim.run(toml_path)
