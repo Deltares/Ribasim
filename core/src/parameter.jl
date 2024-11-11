@@ -358,7 +358,7 @@ else
     T = Vector{Float64}
 end
 """
-@kwdef struct Basin{C, D, V, CD} <: AbstractParameterNode
+@kwdef struct Basin{V, CD, C, D} <: AbstractParameterNode
     node_id::Vector{NodeID}
     inflow_ids::Vector{Vector{NodeID}} = [NodeID[]]
     outflow_ids::Vector{Vector{NodeID}} = [NodeID[]]

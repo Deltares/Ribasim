@@ -681,8 +681,7 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     set_current_value!(table, node_id, time, config.starttime)
     check_no_nans(table, "Basin")
 
-    vertical_flux =
-        ComponentVector(; precipitation, potential_evaporation, drainage, infiltration)
+    vertical_flux = ComponentVector(; table...)
 
     # Node IDs
     node_id = NodeID.(NodeType.Basin, node_id, eachindex(node_id))

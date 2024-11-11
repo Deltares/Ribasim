@@ -1058,8 +1058,8 @@ function set_state_flow_edges(p::Parameters, u0::ComponentVector)::Parameters
     state_inflow_edge = ComponentVector(NamedTuple(zip(components, state_inflow_edges)))
     state_outflow_edge = ComponentVector(NamedTuple(zip(components, state_outflow_edges)))
 
-    p = @set p.state_inflow_edge = state_inflow_edge
-    p = @set p.state_outflow_edge = state_outflow_edge
+    @reset p.state_inflow_edge = state_inflow_edge
+    @reset p.state_outflow_edge = state_outflow_edge
     return p
 end
 

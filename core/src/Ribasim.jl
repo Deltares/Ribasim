@@ -132,7 +132,7 @@ using MetaGraphsNext:
 using EnumX: EnumX, @enumx
 
 # Easily change an immutable field of an object.
-using Accessors: @set
+using Accessors: @reset
 
 # Iteration utilities, used to partition and group tables.
 import IterTools

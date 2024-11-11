@@ -206,6 +206,13 @@ end
     @test isconcretetype(typeof(p))
     @test all(isconcretetype, fieldtypes(typeof(p)))
 
+    basin_type = fieldtypes(typeof(p))[4]
+    for (name, type) in zip(fieldnames(basin_type), fieldtypes(basin_type))
+        if !isconcretetype(type)
+            @show name, type
+        end
+    end
+
     @test alg isa QNDF
     @test alg.step_limiter! == Ribasim.limit_flow!
 
