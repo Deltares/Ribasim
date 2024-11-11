@@ -246,6 +246,10 @@ function reduce_source_capacity!(problem::JuMP.Model, source::AllocationSource):
     return nothing
 end
 
+"""
+Increase the capacity of sources if applicable. Possible for
+user return flow and flow demand buffers.
+"""
 function increase_source_capacities!(
     allocation_model::AllocationModel,
     p::Parameters,
