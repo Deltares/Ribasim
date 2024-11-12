@@ -479,13 +479,13 @@ function get_sources_in_order(
     sources = OrderedDict{Tuple{NodeID, NodeID}, AllocationSource}()
 
     # User return flow
-    for node_id in only(problem[:source_user].axes)
+    for node_id in sort(only(problem[:source_user].axes))
         edge = user_demand.outflow_edge[node_id.idx].edge
         sources[edge] = AllocationSource(; edge, type = AllocationSourceType.user_return)
     end
 
     # Source edges (within subnetwork)
-    for edge in only(problem[:source].axes)
+    for edge in sort(only(problem[:source].axes))
         if graph[edge[1]].subnetwork_id == graph[edge[2]].subnetwork_id
             sources[edge] = AllocationSource(; edge, type = AllocationSourceType.edge)
         end
@@ -501,7 +501,7 @@ function get_sources_in_order(
     end
 
     # Main network to subnetwork connections
-    for edge in keys(allocation.subnetwork_demands)
+    for edge in sort(collect(keys(allocation.subnetwork_demands)))
         if graph[edge[2]].subnetwork_id == subnetwork_id
             sources[edge] =
                 AllocationSource(; edge, type = AllocationSourceType.main_to_sub)
