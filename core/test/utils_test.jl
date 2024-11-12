@@ -49,6 +49,64 @@ end
     @test !Ribasim.basin_bottom(basin, NodeID(:Terminal, 6, 1))[1]
 end
 
+@testitem "Profile" begin
+    import Tables
+    using DataInterpolations: LinearInterpolation, integral, invert_integral
+
+    function lookup(profile, S)
+        level_to_area = LinearInterpolation(profile.A, profile.h; extrapolate = true)
+        storage_to_level = invert_integral(level_to_area)
+
+        level = storage_to_level(max(S, 0.0))
+        area = level_to_area(level)
+        return area, level
+    end
+
+    n_interpolations = 100
+    storage = range(0.0, 1000.0, n_interpolations)
+
+    # Covers interpolation for constant and non-constant area, extrapolation for constant area
+    A = [1e-9, 100.0, 100.0]
+    h = [0.0, 10.0, 15.0]
+    S = integral.(Ref(LinearInterpolation(A, h)), h)
+    profile = (; S, A, h)
+
+    # On profile points we reproduce the profile
+    for (; S, A, h) in Tables.rows(profile)
+        @test lookup(profile, S) == (A, h)
+    end
+
+    # Robust to negative storage
+    @test lookup(profile, -1.0) == (profile.A[1], profile.h[1])
+
+    # On the first segment
+    S = 100.0
+    A, h = lookup(profile, S)
+    @test h ≈ sqrt(S / 5)
+    @test A ≈ 10 * h
+
+    # On the second segment and extrapolation
+    for S in [500.0 + 100.0, 1000.0 + 100.0]
+        local A, h
+        S = 500.0 + 100.0
+        A, h = lookup(profile, S)
+        @test h ≈ 10.0 + (S - 500.0) / 100.0
+        @test A == 100.0
+    end
+
+    # Covers extrapolation for non-constant area
+    A = [1e-9, 100.0]
+    h = [0.0, 10.0]
+    S = integral.(Ref(LinearInterpolation(A, h)), h)
+
+    profile = (; A, h, S)
+
+    S = 500.0 + 100.0
+    A, h = lookup(profile, S)
+    @test h ≈ sqrt(S / 5)
+    @test A ≈ 10 * h
+end
+
 @testitem "Convert levels to storages" begin
     using StructArrays: StructVector
     using Logging

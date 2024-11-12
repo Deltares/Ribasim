@@ -485,7 +485,8 @@ function get_sources_in_order(
     end
 
     # Source edges (within subnetwork)
-    for edge in sort(only(problem[:source].axes))
+    for edge in
+        sort(only(problem[:source].axes); by = edge -> (edge[1].value, edge[2].value))
         if graph[edge[1]].subnetwork_id == graph[edge[2]].subnetwork_id
             sources[edge] = AllocationSource(; edge, type = AllocationSourceType.edge)
         end
@@ -501,7 +502,10 @@ function get_sources_in_order(
     end
 
     # Main network to subnetwork connections
-    for edge in sort(collect(keys(allocation.subnetwork_demands)))
+    for edge in sort(
+        collect(keys(allocation.subnetwork_demands));
+        by = edge -> (edge[1].value, edge[2].value),
+    )
         if graph[edge[2]].subnetwork_id == subnetwork_id
             sources[edge] =
                 AllocationSource(; edge, type = AllocationSourceType.main_to_sub)
@@ -509,7 +513,7 @@ function get_sources_in_order(
     end
 
     # Buffers
-    for node_id in only(problem[:F_flow_buffer_out].axes)
+    for node_id in sort(only(problem[:F_flow_buffer_out].axes))
         edge = (node_id, node_id)
         sources[edge] = AllocationSource(; edge, type = AllocationSourceType.buffer)
     end
