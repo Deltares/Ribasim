@@ -9,30 +9,31 @@
     cfg = Ribasim.Config(toml_path)
     db_path = Ribasim.database_path(cfg)
     db = SQLite.DB(db_path)
-
     p = Ribasim.Parameters(db, cfg)
+    close(db)
+
     (; graph, allocation) = p
 
-    allocation.mean_input_flows[(NodeID(:FlowBoundary, 1, db), NodeID(:Basin, 2, db))] = 4.5
+    allocation.mean_input_flows[(NodeID(:FlowBoundary, 1, p), NodeID(:Basin, 2, p))] = 4.5
     allocation_model = p.allocation.allocation_models[1]
     (; flow) = allocation_model
     u = ComponentVector(; storage = zeros(length(p.basin.node_id)))
-    Ribasim.allocate_demands!(p, allocation_model, 0.0, u)
+    t = 0.0
+    Ribasim.allocate_demands!(p, allocation_model, t, u)
 
     # Last priority (= 2) flows
-    @test flow[(NodeID(:Basin, 2, db), NodeID(:Pump, 5, db))] ≈ 0.0
-    @test flow[(NodeID(:Basin, 2, db), NodeID(:UserDemand, 10, db))] ≈ 0.5
-    @test flow[(NodeID(:Basin, 8, db), NodeID(:UserDemand, 12, db))] ≈ 2.0 rtol = 1e-5
-    @test flow[(NodeID(:Basin, 6, db), NodeID(:Outlet, 7, db))] ≈ 2.0 rtol = 1e-5
-    @test flow[(NodeID(:FlowBoundary, 1, db), NodeID(:Basin, 2, db))] ≈ 0.5
-    @test flow[(NodeID(:Basin, 6, db), NodeID(:UserDemand, 11, db))] ≈ 0.0
+    @test flow[(NodeID(:Basin, 2, p), NodeID(:Pump, 5, p))] ≈ 0.0
+    @test flow[(NodeID(:Basin, 2, p), NodeID(:UserDemand, 10, p))] ≈ 0.5
+    @test flow[(NodeID(:Basin, 8, p), NodeID(:UserDemand, 12, p))] ≈ 3.0 rtol = 1e-5
+    @test flow[(NodeID(:UserDemand, 12, p), NodeID(:Basin, 8, p))] ≈ 1.0 rtol = 1e-5
+    @test flow[(NodeID(:Basin, 6, p), NodeID(:Outlet, 7, p))] ≈ 2.0 rtol = 1e-5
+    @test flow[(NodeID(:FlowBoundary, 1, p), NodeID(:Basin, 2, p))] ≈ 0.5
+    @test flow[(NodeID(:Basin, 6, p), NodeID(:UserDemand, 11, p))] ≈ 0.0
 
     (; allocated) = p.user_demand
     @test allocated[1, :] ≈ [0.0, 0.5]
     @test allocated[2, :] ≈ [4.0, 0.0]
-    @test allocated[3, :] ≈ [0.0, 2.0]
-
-    close(db)
+    @test allocated[3, :] ≈ [0.0, 3.0] atol = 1e-5
 end
 
 @testitem "Allocation objective" begin
