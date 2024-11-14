@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from ribasim.config import Node
+from ribasim.config import Experimental, Node
 from ribasim.model import Model, Solver
 from ribasim.nodes import (
     basin,
@@ -604,6 +604,7 @@ def continuous_concentration_condition_model() -> Model:
         endtime="2020-02-01",
         crs="EPSG:28992",
         solver=Solver(saveat=86400 / 8),
+        experimental=Experimental(concentration=True),
     )
 
     basi = model.basin.add(
