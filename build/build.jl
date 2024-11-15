@@ -39,16 +39,15 @@ Usage: `ribasim path/to/model/ribasim.toml`
 Documentation: https://ribasim.org/
 """
 
-function set_version(filename, version; group = nothing)
+"Use the git tag for `ribasim --version`,
+so dev builds can be identified by <tag>-g<short-commit>"
+function set_version(filename::String, tag::String)::Nothing
     data = TOML.parsefile(filename)
-    if !isnothing(group)
-        data[group]["version"] = version
-    else
-        data["version"] = version
-    end
+    data["package"]["version"] = tag
     open(filename, "w") do io
         TOML.print(io, data)
     end
+    return nothing
 end
 
 """
@@ -119,7 +118,7 @@ function add_metadata(project_dir, license_file, output_dir, git_repo, readme)
     end
 
     # Override the Cargo.toml file with the git version
-    set_version("cli/Cargo.toml", tag; group = "package")
+    set_version("cli/Cargo.toml", tag)
 end
 
 main()
