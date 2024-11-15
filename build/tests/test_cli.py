@@ -33,7 +33,7 @@ def test_version():
 
     # ribasim --version is based on the git tag so can be different from
     # ribasim.__version__ during development
-    version_pattern = r"ribasim \d{4,}\.\d{1,}\.\d{1,}"
+    version_pattern = r"ribasim \d{4,}\.\d+\.\d+"
     assert re.match(version_pattern, result.stdout)
 
 
