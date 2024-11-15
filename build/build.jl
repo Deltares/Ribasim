@@ -82,15 +82,6 @@ function add_metadata(project_dir, license_file, output_dir, git_repo, readme)
         force = true,
     )
 
-    # since the exact Ribasim version may be hard to find in the Manifest.toml file
-    # we can also extract that information, and add it to the README.md
-    manifest = TOML.parsefile(normpath(git_repo, "Manifest.toml"))
-    if !haskey(manifest, "manifest_format")
-        error("Manifest.toml is in the old format, run Pkg.upgrade_manifest()")
-    end
-    julia_version = manifest["julia_version"]
-    ribasim_entry = only(manifest["deps"]["Ribasim"])
-    version = ribasim_entry["version"]
     repo = GitRepo(git_repo)
     branch = LibGit2.head(repo)
     commit = LibGit2.peel(LibGit2.GitCommit, branch)
@@ -120,11 +111,9 @@ function add_metadata(project_dir, license_file, output_dir, git_repo, readme)
         This build uses the Ribasim version mentioned below.
 
         ```toml
-        release = "$tag"
+        version = "$tag"
         commit = "$url/$short_commit"
         branch = "$url/$short_name"
-        julia_version = "$julia_version"
-        core_version = "$version"
         ```"""
         println(io, version_info)
     end
