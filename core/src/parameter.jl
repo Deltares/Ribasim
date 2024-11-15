@@ -266,10 +266,6 @@ for discrete control
     itp_update::Vector{ParameterUpdate{ScalarInterpolation}} = []
 end
 
-abstract type AbstractParameterNode end
-
-abstract type AbstractDemandNode <: AbstractParameterNode end
-
 """
 In-memory storage of saved mean flows for writing to results.
 
@@ -306,6 +302,10 @@ In-memory storage of saved instantaneous storages and levels for writing to resu
     level::Vector{Float64}
     t::Float64
 end
+
+abstract type AbstractParameterNode end
+
+abstract type AbstractDemandNode <: AbstractParameterNode end
 
 """
 Caches of current basin properties

@@ -359,6 +359,7 @@ function FlatVector(saveval::Vector{<:SavedFlow}, sym::Symbol)
     v = isempty(saveval) ? Vector{Float64}[] : getfield.(saveval, sym)
     FlatVector(v)
 end
+FlatVector(v::Vector{Matrix{Float64}}) = FlatVector(vec.(v))
 
 """
 Function that goes smoothly from 0 to 1 in the interval [0,threshold],
