@@ -1,3 +1,4 @@
+import re
 import subprocess
 from pathlib import Path
 
@@ -30,7 +31,10 @@ def test_version():
         [executable, "--version"], check=True, capture_output=True, text=True
     )
 
-    assert ribasim.__version__ in result.stdout
+    # ribasim --version is based on the git tag so can be different from
+    # ribasim.__version__ during development
+    version_pattern = r"ribasim \d{4,}\.\d{1,}\.\d{1,}"
+    assert re.match(version_pattern, result.stdout)
 
 
 def test_help():
