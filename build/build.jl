@@ -39,16 +39,15 @@ Usage: `ribasim path/to/model/ribasim.toml`
 Documentation: https://ribasim.org/
 """
 
-function set_version(filename, version; group = nothing)
+"Use the git tag for `ribasim --version`,
+so dev builds can be identified by <tag>-g<short-commit>"
+function set_version(filename::String, tag::String)::Nothing
     data = TOML.parsefile(filename)
-    if !isnothing(group)
-        data[group]["version"] = version
-    else
-        data["version"] = version
-    end
+    data["package"]["version"] = tag
     open(filename, "w") do io
         TOML.print(io, data)
     end
+    return nothing
 end
 
 """
@@ -82,15 +81,6 @@ function add_metadata(project_dir, license_file, output_dir, git_repo, readme)
         force = true,
     )
 
-    # since the exact Ribasim version may be hard to find in the Manifest.toml file
-    # we can also extract that information, and add it to the README.md
-    manifest = TOML.parsefile(normpath(git_repo, "Manifest.toml"))
-    if !haskey(manifest, "manifest_format")
-        error("Manifest.toml is in the old format, run Pkg.upgrade_manifest()")
-    end
-    julia_version = manifest["julia_version"]
-    ribasim_entry = only(manifest["deps"]["Ribasim"])
-    version = ribasim_entry["version"]
     repo = GitRepo(git_repo)
     branch = LibGit2.head(repo)
     commit = LibGit2.peel(LibGit2.GitCommit, branch)
@@ -120,17 +110,15 @@ function add_metadata(project_dir, license_file, output_dir, git_repo, readme)
         This build uses the Ribasim version mentioned below.
 
         ```toml
-        release = "$tag"
+        version = "$tag"
         commit = "$url/$short_commit"
         branch = "$url/$short_name"
-        julia_version = "$julia_version"
-        core_version = "$version"
         ```"""
         println(io, version_info)
     end
 
     # Override the Cargo.toml file with the git version
-    set_version("cli/Cargo.toml", tag; group = "package")
+    set_version("cli/Cargo.toml", tag)
 end
 
 main()
