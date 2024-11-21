@@ -143,6 +143,11 @@ def _setup_graph(nodes, edge, evaporate_mass=True):
                 else:
                     G.add_edge(*edge, id=[edge_id])
 
+    iso = nx.number_of_isolates(G)
+    if iso > 0:
+        logger.debug(f"Found {iso} isolated nodes in the network.")
+        remove_nodes.extend(list(nx.isolates(G)))
+
     for node_id in remove_nodes:
         G.remove_node(node_id)
 
