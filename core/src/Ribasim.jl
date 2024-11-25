@@ -132,7 +132,7 @@ using MetaGraphsNext:
 using EnumX: EnumX, @enumx
 
 # Easily change an immutable field of an object.
-using Accessors: @set
+using Accessors: @set, @reset
 
 # Iteration utilities, used to partition and group tables.
 import IterTools
@@ -167,6 +167,7 @@ include("read.jl")
 include("write.jl")
 include("bmi.jl")
 include("callback.jl")
+include("concentration.jl")
 include("main.jl")
 include("libribasim.jl")
 

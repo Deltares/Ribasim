@@ -297,7 +297,7 @@ end
     flow_edge_0 = filter(:edge_id => id -> id == 0, flow_data)
     t = Ribasim.seconds_since.(flow_edge_0.time, model.config.starttime)
     itp =
-        model.integrator.p.basin.concentration_external[1]["concentration_external.kryptonite"]
+        model.integrator.p.basin.concentration_data.concentration_external[1]["concentration_external.kryptonite"]
     concentration = itp.(t)
     threshold = 0.5
     above_threshold = concentration .> threshold
