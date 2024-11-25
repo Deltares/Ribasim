@@ -29,6 +29,7 @@ end
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/basic_transient/ribasim.toml")
     @test ispath(toml_path)
+    config = Ribasim.Config(toml_path; solver_saveat = 0)
     model = Ribasim.run(toml_path)
     (; p) = model.integrator
     (; basin) = p
@@ -39,15 +40,19 @@ end
     t_end = time_table.time[end]
     filter!(:time => t -> t !== t_end, time_table)
 
+    function get_area(basin, idx, storage)
+        level = Ribasim.get_level_from_storage(basin, idx, storage)
+        basin.level_to_area[idx](level)
+    end
+
     time_table[!, "basin_idx"] =
         [node_id.idx for node_id in Ribasim.NodeID.(:Basin, time_table.node_id, Ref(p))]
     time_table[!, "area"] = [
-        Ribasim.get_area_and_level(basin, idx, storage)[1] for
+        get_area(basin, idx, storage) for
         (idx, storage) in zip(time_table.basin_idx, basin_table.storage)
     ]
-    # Mean areas are sufficient to compute the mean flows
-    # (assuming the saveats coincide with the solver timepoints),
-    # as the potential evaporation is constant over the saveat intervals
+    # Mean areas over the timestep are computed as an approximation of
+    # how the area changes over the timestep, affecting evaporation
     time_table[!, "mean_area"] .= 0.0
     n_basins = length(basin.node_id)
     n_times = length(unique(time_table.time)) - 1
@@ -64,7 +69,7 @@ end
         isapprox(
             basin_table.evaporation,
             time_table.mean_area .* time_table.potential_evaporation;
-            rtol = 1e-4,
+            rtol = 1e-2,
         ),
     )
 
@@ -78,7 +83,6 @@ end
 
 @testitem "Integrate over discontinuity" begin
     import BasicModelInterface as BMI
-    using Ribasim: get_tmp
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/level_demand/ribasim.toml")
     @test ispath(toml_path)
@@ -92,10 +96,11 @@ end
         solver_algorithm = "Euler",
     )
     model = Ribasim.Model(config)
+    (; basin) = model.integrator.p
     starting_precipitation =
-        get_tmp(model.integrator.p.basin.vertical_flux, 0).precipitation[1]
+        basin.vertical_flux.precipitation[1] * Ribasim.basin_areas(basin, 1)[end]
     BMI.update_until(model, saveat)
-    mean_precipitation = only(model.saved.vertical_flux.saveval).precipitation[1]
+    mean_precipitation = only(model.saved.flow.saveval).precipitation[1]
     # Given that precipitation stops after 15 of the 20 days
     @test mean_precipitation ≈ 3 / 4 * starting_precipitation
 end

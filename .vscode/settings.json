@@ -4,8 +4,9 @@
     },
     "notebook.formatOnSave.enabled": false,
     "notebook.codeActionsOnSave": {
-        "source.fixAll.ruff": true,
-        "source.organizeImports.ruff": true
+        // https://github.com/astral-sh/ruff-vscode/issues/593
+        "source.fixAll.ruff": "never",
+        "source.organizeImports.ruff": "never"
     },
     "[python]": {
         "editor.defaultFormatter": "charliermarsh.ruff",
@@ -23,5 +24,58 @@
     "julia.lint.disabledDirs": [
         ".pixi"
     ],
-    "julia.lint.run": true
+    "julia.lint.run": true,
+    "files.insertFinalNewline": true,
+    "cSpell.enabledLanguageIds": [
+        "asciidoc",
+        "c",
+        "cpp",
+        "csharp",
+        "css",
+        "elixir",
+        "erlang",
+        "git-commit",
+        "go",
+        "graphql",
+        "handlebars",
+        "haskell",
+        "html",
+        "jade",
+        "java",
+        "javascript",
+        "javascriptreact",
+        "json",
+        "jsonc",
+        "jupyter",
+        "latex",
+        "less",
+        "markdown",
+        "php",
+        "plaintext",
+        "python",
+        "pug",
+        "restructuredtext",
+        "rust",
+        "scala",
+        "scss",
+        "scminput",
+        "swift",
+        "text",
+        "typescript",
+        "typescriptreact",
+        "vue",
+        "yaml",
+        "yml",
+        "quarto",
+        "julia"
+    ],
+    "cSpell.words": [
+        "gpkg",
+        "ipynb",
+        "pixi",
+        "pkgdown",
+        "qgis",
+        "quartodoc",
+        "Ribasim"
+    ]
 }

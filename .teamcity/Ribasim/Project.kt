@@ -1,12 +1,15 @@
 package Ribasim
 
-import Ribasim.buildTypes.*
-import Ribasim.vcsRoots.*
+import Ribasim.buildTypes.GenerateTestmodels
+import Ribasim.buildTypes.Ribasim_MakeGitHubRelease
+import Ribasim.buildTypes.Ribasim_MakeQgisPlugin
+import Ribasim.vcsRoots.Ribasim
+import Ribasim_Linux.RibasimLinuxProject
+import Ribasim_Windows.RibasimWindowsProject
+import Templates.*
+import Testbench.Testbench
 import jetbrains.buildServer.configs.kotlin.Project
-import jetbrains.buildServer.configs.kotlin.projectFeatures.activeStorage
-import jetbrains.buildServer.configs.kotlin.projectFeatures.awsConnection
-import jetbrains.buildServer.configs.kotlin.projectFeatures.githubIssues
-import jetbrains.buildServer.configs.kotlin.projectFeatures.s3Storage
+import jetbrains.buildServer.configs.kotlin.projectFeatures.*
 
 object Project : Project({
 
@@ -16,9 +19,12 @@ object Project : Project({
     buildType(Ribasim_MakeQgisPlugin)
     buildType(Ribasim_MakeGitHubRelease)
 
-    template(GitHubIntegrationTemplate)
-    template(Linux_1)
-    template(Windows_1)
+    template(GithubCommitStatusIntegration)
+    template(GithubPullRequestsIntegration)
+    template(WindowsAgent)
+    template(BuildWindows)
+    template(LinuxAgent)
+    template(BuildLinux)
 
     features {
         awsConnection {
@@ -26,20 +32,27 @@ object Project : Project({
             name = "Amazon Web Services (AWS)"
             regionName = "eu-west-3"
             credentialsType = static {
-                accessKeyId = "AKIAQBIN2MPWXSD2IZ5F"
-                secretAccessKey = "credentialsJSON:dba90026-9856-4f87-94d9-bab91f3f2d5c"
+                accessKeyId = "KwKRzscudy3GvRB8BN1Z"
+                secretAccessKey = "credentialsJSON:86cbf3e5-724c-437d-9962-7a3f429b0aa2"
                 useSessionCredentials = false
-                stsEndpoint = "https://sts.eu-west-3.amazonaws.com"
+                stsEndpoint = "https://s3-console.deltares.nl"
             }
-        }
-        activeStorage {
-            id = "PROJECT_EXT_106"
-            activeStorageID = "s3_ribasim"
         }
         githubIssues {
             id = "PROJECT_EXT_107"
             displayName = "Ribasim GitHub Issues"
             repositoryURL = "https://github.com/Deltares/Ribasim"
+        }
+        s3CompatibleStorage {
+            id = "PROJECT_EXT_171"
+            accessKeyID = "KwKRzscudy3GvRB8BN1Z"
+            accessKey = "credentialsJSON:86cbf3e5-724c-437d-9962-7a3f429b0aa2"
+            endpoint = "https://s3.deltares.nl"
+            bucketName = "ribasim"
+        }
+        activeStorage {
+            id = "PROJECT_EXT_172"
+            activeStorageID = "PROJECT_EXT_171"
         }
         s3Storage {
             id = "s3_ribasim"
@@ -55,6 +68,7 @@ object Project : Project({
         }
     }
 
-    subProject(Ribasim_Linux.Project)
-    subProject(Ribasim_Windows.Project)
+    subProject(RibasimLinuxProject)
+    subProject(RibasimWindowsProject)
+    subProject(Testbench)
 })

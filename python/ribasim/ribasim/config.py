@@ -1,7 +1,7 @@
 import numbers
 from collections.abc import Sequence
 from enum import Enum
-from typing import Any
+from typing import Any, Optional
 
 import numpy as np
 import pandas as pd
@@ -24,6 +24,8 @@ from ribasim.schemas import (
     BasinStaticSchema,
     BasinSubgridSchema,
     BasinTimeSchema,
+    ContinuousControlFunctionSchema,
+    ContinuousControlVariableSchema,
     DiscreteControlConditionSchema,
     DiscreteControlLogicSchema,
     DiscreteControlVariableSchema,
@@ -48,10 +50,22 @@ from ribasim.schemas import (
     UserDemandStaticSchema,
     UserDemandTimeSchema,
 )
-from ribasim.utils import _pascal_to_snake
+from ribasim.utils import _concat, _pascal_to_snake
 
 
 class Allocation(ChildModel):
+    """
+    Defines the allocation optimization algorithm options.
+
+    Attributes
+    ----------
+    timestep : float
+        The simulated time in seconds between successive allocation calls (Optional, defaults to 86400)
+    use_allocation : bool
+        Whether the allocation algorithm should be active. If not, `UserDemand` nodes attempt to
+        abstract their full demand (Optional, defaults to False)
+    """
+
     timestep: float = 86400.0
     use_allocation: bool = False
 
@@ -64,6 +78,38 @@ class Results(ChildModel):
 
 
 class Solver(ChildModel):
+    """
+    Defines the numerical solver options.
+    For more details see <https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/#solver_options>.
+
+    Attributes
+    ----------
+    algorithm : str
+        The used numerical time integration algorithm (Optional, defaults to QNDF)
+    saveat : float
+        Time interval in seconds between saves of output data.
+        0 saves every timestep, inf only saves at start- and endtime. (Optional, defaults to 86400)
+    dt : float
+        Timestep of the solver. (Optional, defaults to None which implies adaptive timestepping)
+    dtmin : float
+        The minimum allowed timestep of the solver (Optional, defaults to 0.0)
+    dtmax : float
+        The maximum allowed timestep size (Optional, defaults to 0.0 which implies the total length of the simulation)
+    force_dtmin : bool
+        If a smaller dt than dtmin is needed to meet the set error tolerances, the simulation stops, unless force_dtmin = true
+        (Optional, defaults to False)
+    abstol : float
+        The absolute tolerance for adaptive timestepping (Optional, defaults to 1e-7)
+    reltol : float
+        The relative tolerance for adaptive timestepping (Optional, defaults to 1e-7)
+    maxiters : int
+        The total number of linear iterations over the whole simulation. (Defaults to 1e9, only needs to be increased for extremely long simulations)
+    sparse : bool
+        Whether a sparse Jacobian matrix is used, which gives a significant speedup for models with >~10 basins.
+    autodiff : bool
+        Whether automatic differentiation instead of fine difference is used to compute the Jacobian. (Optional, defaults to true)
+    """
+
     algorithm: str = "QNDF"
     saveat: float = 86400.0
     dt: float | None = None
@@ -74,7 +120,8 @@ class Solver(ChildModel):
     reltol: float = 1e-05
     maxiters: int = 1000000000
     sparse: bool = True
-    autodiff: bool = True
+    autodiff: bool = False
+    evaporate_mass: bool = True
 
 
 class Verbosity(str, Enum):
@@ -85,26 +132,69 @@ class Verbosity(str, Enum):
 
 
 class Logging(ChildModel):
+    """
+    Defines the logging behavior of the core.
+
+    Attributes
+    ----------
+    verbosity : Verbosity
+        The verbosity of the logging: debug/info/warn/error (Optional, defaults to info)
+    """
+
     verbosity: Verbosity = Verbosity.info
-    timing: bool = False
+
+
+class Experimental(ChildModel):
+    """
+    Defines experimental features.
+
+    Attributes
+    ----------
+    concentration : bool
+        Whether to enable tracer support (default is False)
+    """
+
+    concentration: bool = False
 
 
 class Node(pydantic.BaseModel):
-    node_id: NonNegativeInt
+    """
+    Defines a node for the model.
+
+    Attributes
+    ----------
+    node_id : Optional[NonNegativeInt]
+        Integer ID of the node. Must be unique for the model.
+    geometry : shapely.geometry.Point
+        The coordinates of the node.
+    name : str
+        An optional name of the node.
+    subnetwork_id : int
+        Optionally adds this node to a subnetwork, which is input for the allocation algorithm.
+    """
+
+    node_id: Optional[NonNegativeInt] = None
     geometry: Point
     name: str = ""
     subnetwork_id: int | None = None
 
     model_config = ConfigDict(arbitrary_types_allowed=True, extra="allow")
 
-    def __init__(self, node_id: int, geometry: Point, **kwargs) -> None:
+    def __init__(
+        self,
+        node_id: Optional[NonNegativeInt] = None,
+        geometry: Point = Point(),
+        **kwargs,
+    ) -> None:
+        if geometry.is_empty:
+            raise (ValueError("Node geometry must be a valid Point"))
         super().__init__(node_id=node_id, geometry=geometry, **kwargs)
 
-    def into_geodataframe(self, node_type: str) -> GeoDataFrame:
+    def into_geodataframe(self, node_type: str, node_id: int) -> GeoDataFrame:
         extra = self.model_extra if self.model_extra is not None else {}
-        return GeoDataFrame(
+        gdf = GeoDataFrame(
             data={
-                "node_id": pd.Series([self.node_id], dtype=np.int32),
+                "node_id": pd.Series([node_id], dtype=np.int32),
                 "node_type": pd.Series([node_type], dtype=str),
                 "name": pd.Series([self.name], dtype=str),
                 "subnetwork_id": pd.Series([self.subnetwork_id], dtype=pd.Int32Dtype()),
@@ -112,6 +202,8 @@ class Node(pydantic.BaseModel):
             },
             geometry=[self.geometry],
         )
+        gdf.set_index("node_id", inplace=True)
+        return gdf
 
 
 class MultiNodeModel(NodeModel):
@@ -123,14 +215,36 @@ class MultiNodeModel(NodeModel):
         self.node.filter(self.__class__.__name__)
         return self
 
-    def add(self, node: Node, tables: Sequence[TableModel[Any]] | None = None) -> None:
+    def add(
+        self, node: Node, tables: Sequence[TableModel[Any]] | None = None
+    ) -> NodeData:
+        """Add a node and the associated data to the model.
+
+        Parameters
+        ----------
+        node : Ribasim.Node
+        tables : Sequence[TableModel[Any]] | None
+
+        Raises
+        ------
+        ValueError
+            When the given node ID already exists for this node type
+        """
         if tables is None:
             tables = []
 
         node_id = node.node_id
-        if self.node.df is not None and node_id in self.node.df["node_id"].to_numpy():
+
+        if self._parent is None:
             raise ValueError(
-                f"Node IDs have to be unique, but {node_id=} already exists."
+                f"You can only add to a {self._node_type} MultiNodeModel when attached to a Model."
+            )
+
+        if node_id is None:
+            node_id = self._parent._used_node_ids.new_id()
+        elif node_id in self._parent._used_node_ids:
+            raise ValueError(
+                f"Node IDs have to be unique, but {node_id} already exists."
             )
 
         for table in tables:
@@ -141,16 +255,23 @@ class MultiNodeModel(NodeModel):
             )
             assert table.df is not None
             table_to_append = table.df.assign(node_id=node_id)
-            setattr(self, member_name, pd.concat([existing_table, table_to_append]))
+            if isinstance(table_to_append, GeoDataFrame):
+                table_to_append.set_crs(self._parent.crs, inplace=True)
+            new_table = _concat([existing_table, table_to_append], ignore_index=True)
+            setattr(self, member_name, new_table)
 
         node_table = node.into_geodataframe(
-            node_type=self.__class__.__name__,
+            node_type=self.__class__.__name__, node_id=node_id
         )
-        self.node.df = (
-            node_table
-            if self.node.df is None
-            else pd.concat([self.node.df, node_table])
-        )
+        node_table.set_crs(self._parent.crs, inplace=True)
+        if self.node.df is None:
+            self.node.df = node_table
+        else:
+            df = _concat([self.node.df, node_table])
+            self.node.df = df
+
+        self._parent._used_node_ids.add(node_id)
+        return self[node_id]
 
     def __getitem__(self, index: int) -> NodeData:
         # Unlike TableModel, support only indexing single rows.
@@ -161,7 +282,7 @@ class MultiNodeModel(NodeModel):
                 f"{node_model_name} index must be an integer, not {indextype}"
             )
 
-        row = self.node[index].iloc[0]
+        row = self.node.df.loc[index]
         return NodeData(
             node_id=int(index), node_type=row["node_type"], geometry=row["geometry"]
         )
@@ -314,7 +435,6 @@ class DiscreteControl(MultiNodeModel):
         json_schema_extra={
             "sort_keys": [
                 "node_id",
-                "listen_node_type",
                 "listen_node_id",
                 "variable",
             ]
@@ -347,4 +467,15 @@ class LinearResistance(MultiNodeModel):
     static: TableModel[LinearResistanceStaticSchema] = Field(
         default_factory=TableModel[LinearResistanceStaticSchema],
         json_schema_extra={"sort_keys": ["node_id", "control_state"]},
+    )
+
+
+class ContinuousControl(MultiNodeModel):
+    variable: TableModel[ContinuousControlVariableSchema] = Field(
+        default_factory=TableModel[ContinuousControlVariableSchema],
+        json_schema_extra={"sort_keys": ["node_id"]},
+    )
+    function: TableModel[ContinuousControlFunctionSchema] = Field(
+        default_factory=TableModel[ContinuousControlFunctionSchema],
+        json_schema_extra={"sort_keys": ["node_id", "input"]},
     )

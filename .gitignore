@@ -148,9 +148,15 @@ python/ribasim_api/tests/temp/
 report.xml
 
 # Designated working dir for working on Ribasim models
-models/
+models/*
+!models/*.dvc
 playground/output
 
 # Ruff
 .ruff_cache
 .teamcity/.idea/
+.idea/
+
+# https://github.com/Deltares/Ribasim/issues/1652
+ribasim_qgis/tests/data/database.gpkg
+ribasim_qgis/core/styles

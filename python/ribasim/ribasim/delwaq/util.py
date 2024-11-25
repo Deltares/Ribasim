@@ -122,7 +122,7 @@ def ugrid(G) -> xugrid.UgridDataset:
     to_node_id = edge_df.to_node_id.to_numpy()
 
     # from node_id to the node_dim index
-    node_lookup: pd.Series[int] = pd.Series(
+    node_lookup = pd.Series(
         index=node_id,
         data=node_id.argsort().astype(np.int32),
         name="node_index",
@@ -168,8 +168,9 @@ def run_delwaq() -> None:
         subprocess.run(
             [binfolder / "run_delwaq.bat", "delwaq.inp"],
             cwd=(folder / "model").absolute(),
+            check=True,
         )
     elif system == "Linux":
-        subprocess.run([binfolder / "run_delwaq.sh", inp_path.absolute()])
+        subprocess.run([binfolder / "run_delwaq.sh", inp_path.absolute()], check=True)
     else:
         raise OSError(f"No support for running Delwaq automatically on {system}.")

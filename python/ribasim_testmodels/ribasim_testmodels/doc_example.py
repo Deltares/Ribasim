@@ -104,7 +104,6 @@ def local_pidcontrolled_cascade_model():
 
     # Set up pid control
     pid_control_data = {
-        "listen_node_type": "Basin",
         "proportional": [0.1],
         "integral": [0.00],
         "derivative": [0.0],
@@ -135,23 +134,23 @@ def local_pidcontrolled_cascade_model():
     # Set up outlet
     model.outlet.add(
         Node(2, Point(0.0, -1.0)),
-        [outlet.Static(flow_rate=[4 * 0.5 / 3600], min_crest_level=[0.0])],
+        [outlet.Static(flow_rate=[4 * 0.5 / 3600], min_upstream_level=[0.0])],
     )
     model.outlet.add(
         Node(5, Point(0.0, -3.0)),
-        [outlet.Static(flow_rate=[0.5 / 3600], min_crest_level=[1.95])],
+        [outlet.Static(flow_rate=[0.5 / 3600], min_upstream_level=[1.95])],
     )
     model.outlet.add(
         Node(7, Point(1.0, -4.0)),
-        [outlet.Static(flow_rate=[4 * 0.5 / 3600], min_crest_level=[1.45])],
+        [outlet.Static(flow_rate=[4 * 0.5 / 3600], min_upstream_level=[1.45])],
     )
     model.outlet.add(
         Node(9, Point(3.0, -4.0)),
-        [outlet.Static(flow_rate=[0.5 / 3600], min_crest_level=[0.95])],
+        [outlet.Static(flow_rate=[0.5 / 3600], min_upstream_level=[0.95])],
     )
     model.outlet.add(
         Node(11, Point(4.0, -3.0)),
-        [outlet.Static(flow_rate=[0.5 / 3600], min_crest_level=[0.45])],
+        [outlet.Static(flow_rate=[0.5 / 3600], min_upstream_level=[0.45])],
     )
 
     model.edge.add(model.basin[1], model.outlet[2])

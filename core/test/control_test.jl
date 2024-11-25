@@ -1,6 +1,6 @@
 @testitem "Pump discrete control" begin
-    using PreallocationTools: get_tmp
     using Ribasim: NodeID
+    using OrdinaryDiffEqCore: get_du
     using Dates: DateTime
     import Arrow
     import Tables
@@ -57,7 +57,7 @@
     t_2_index = findfirst(>=(t_2), t)
     @test level[2, t_2_index] >= discrete_control.compound_variables[1][2].greater_than[1]
 
-    flow = get_tmp(graph[].flow, 0)
+    flow = get_du(model.integrator)[(:linear_resistance, :pump)]
     @test all(iszero, flow)
 end
 
@@ -247,6 +247,60 @@ end
 
     t_switch = Ribasim.datetime_since(record.time[2], p.starttime)
     flow_table = DataFrame(Ribasim.flow_table(model))
-    @test all(filter(:time => time -> time <= t_switch, flow_table).flow_rate .> 0)
-    @test all(filter(:time => time -> time > t_switch, flow_table).flow_rate .== 0)
+    @test all(filter(:time => time -> time <= t_switch, flow_table).flow_rate .> -1e-12)
+    @test all(
+        isapprox.(
+            filter(:time => time -> time > t_switch, flow_table).flow_rate,
+            0;
+            atol = 1e-8,
+        ),
+    )
+end
+
+@testitem "Outlet continuous control" begin
+    using DataFrames: DataFrame
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/outlet_continuous_control/ribasim.toml",
+    )
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+    flow_data = DataFrame(Ribasim.flow_table(model))
+
+    function get_edge_flow(from_node_id, to_node_id)
+        data = filter(
+            [:from_node_id, :to_node_id] =>
+                (a, b) -> (a == from_node_id) && (b == to_node_id),
+            flow_data,
+        )
+        return data.flow_rate
+    end
+
+    inflow = get_edge_flow(2, 3)
+    @test get_edge_flow(3, 4) ≈ max.(0.6 .* inflow, 0) rtol = 1e-4
+    @test get_edge_flow(4, 6) ≈ max.(0.6 .* inflow, 0) rtol = 1e-4
+    @test get_edge_flow(3, 5) ≈ max.(0.4 .* inflow, 0) rtol = 1e-4
+    @test get_edge_flow(5, 7) ≈ max.(0.4 .* inflow, 0) rtol = 1e-4
+end
+
+@testitem "Concentration discrete control" begin
+    using DataFrames: DataFrame
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/concentration_condition/ribasim.toml",
+    )
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+    flow_data = DataFrame(Ribasim.flow_table(model))
+    flow_edge_0 = filter(:edge_id => id -> id == 0, flow_data)
+    t = Ribasim.seconds_since.(flow_edge_0.time, model.config.starttime)
+    itp =
+        model.integrator.p.basin.concentration_data.concentration_external[1]["concentration_external.kryptonite"]
+    concentration = itp.(t)
+    threshold = 0.5
+    above_threshold = concentration .> threshold
+    @test all(isapprox.(flow_edge_0.flow_rate[above_threshold], 1e-3, rtol = 1e-2))
+    @test all(isapprox.(flow_edge_0.flow_rate[.!above_threshold], 0.0, atol = 1e-5))
 end

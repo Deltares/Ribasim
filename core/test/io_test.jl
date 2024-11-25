@@ -5,35 +5,32 @@
     toml = Ribasim.Toml(;
         starttime = now(),
         endtime = now(),
-        database = "path/to/file",
         input_dir = ".",
         results_dir = "results",
         crs = "EPSG:28992",
         ribasim_version = string(Ribasim.pkgversion(Ribasim)),
     )
     config = Ribasim.Config(toml, "model")
-    @test Ribasim.input_path(config, "path/to/file") ==
-          normpath("model", "path", "to", "file")
+    @test Ribasim.database_path(config) == normpath("model/database.gpkg")
+    @test Ribasim.input_path(config, "path/to/file") == normpath("model/path/to/file")
 
     # also relative to inputdir
     toml = Ribasim.Toml(;
         starttime = now(),
         endtime = now(),
-        database = "path/to/file",
         input_dir = "input",
         results_dir = "results",
         crs = "EPSG:28992",
         ribasim_version = string(Ribasim.pkgversion(Ribasim)),
     )
     config = Ribasim.Config(toml, "model")
-    @test Ribasim.input_path(config, "path/to/file") ==
-          normpath("model", "input", "path", "to", "file")
+    @test Ribasim.database_path(config) == normpath("model/input/database.gpkg")
+    @test Ribasim.input_path(config, "path/to/file") == normpath("model/input/path/to/file")
 
     # absolute path
     toml = Ribasim.Toml(;
         starttime = now(),
         endtime = now(),
-        database = "/path/to/file",
         input_dir = ".",
         results_dir = "results",
         crs = "EPSG:28992",
@@ -92,11 +89,12 @@ end
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/basic_transient/ribasim.toml")
     config = Ribasim.Config(toml_path)
-    db_path = Ribasim.input_path(config, config.database)
+    db_path = Ribasim.database_path(config)
     db = SQLite.DB(db_path)
 
     # load a sorted table
     table = Ribasim.load_structvector(db, config, Ribasim.BasinTimeV1)
+    close(db)
     by = Ribasim.sort_by_function(table)
     @test by == Ribasim.sort_by_time_id
     # reverse it so it needs sorting
@@ -137,4 +135,41 @@ end
     ribasim_version = string(pkgversion(Ribasim))
     @test Arrow.getmetadata(tbl) ===
           Base.ImmutableDict("ribasim_version" => ribasim_version)
+end
+
+@testitem "warm state" begin
+    using IOCapture: capture
+    using Ribasim: solve!, write_results
+    import TOML
+
+    model_path_src = normpath(@__DIR__, "../../generated_testmodels/basic/")
+
+    # avoid changing the original model for other tests
+    model_path = normpath(@__DIR__, "../../generated_testmodels/basic_warm/")
+    cp(model_path_src, model_path; force = true)
+    toml_path = normpath(model_path, "ribasim.toml")
+
+    config = Ribasim.Config(toml_path)
+    model = Ribasim.Model(config)
+    storage1_begin =
+        copy(model.integrator.p.basin.current_properties.current_storage[Float64[]])
+    solve!(model)
+    storage1_end = model.integrator.p.basin.current_properties.current_storage[Float64[]]
+    @test storage1_begin != storage1_end
+
+    # copy state results to input
+    write_results(model)
+    state_path = Ribasim.results_path(config, Ribasim.RESULTS_FILENAME.basin_state)
+    cp(state_path, Ribasim.input_path(config, "warm_state.arrow"))
+
+    # point TOML to the warm state
+    toml_dict = TOML.parsefile(toml_path)
+    toml_dict["basin"] = Dict("state" => "warm_state.arrow")
+    open(toml_path, "w") do io
+        TOML.print(io, toml_dict)
+    end
+
+    model = Ribasim.Model(toml_path)
+    storage2_begin = model.integrator.p.basin.current_properties.current_storage[Float64[]]
+    @test storage1_end ≈ storage2_begin
 end

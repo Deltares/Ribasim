@@ -1,9 +1,8 @@
 # Allowed types for downstream (to_node_id) nodes given the type of the upstream (from_node_id) node
-neighbortypes(nodetype::Symbol) = neighbortypes(Val(nodetype))
+neighbortypes(nodetype::Symbol) = neighbortypes(Val(config.snake_case(nodetype)))
 neighbortypes(::Val{:pump}) = Set((:basin, :terminal, :level_boundary))
 neighbortypes(::Val{:outlet}) = Set((:basin, :terminal, :level_boundary))
-neighbortypes(::Val{:user_demand}) =
-    Set((:basin, :terminal, :level_boundary))
+neighbortypes(::Val{:user_demand}) = Set((:basin, :terminal, :level_boundary))
 neighbortypes(::Val{:level_demand}) = Set((:basin,))
 neighbortypes(::Val{:basin}) = Set((
     :linear_resistance,
@@ -14,12 +13,12 @@ neighbortypes(::Val{:basin}) = Set((
     :user_demand,
 ))
 neighbortypes(::Val{:terminal}) = Set{Symbol}() # only endnode
-neighbortypes(::Val{:flow_boundary}) =
-    Set((:basin, :terminal, :level_boundary))
+neighbortypes(::Val{:flow_boundary}) = Set((:basin, :terminal, :level_boundary))
 neighbortypes(::Val{:level_boundary}) =
     Set((:linear_resistance, :pump, :outlet, :tabulated_rating_curve))
 neighbortypes(::Val{:linear_resistance}) = Set((:basin, :level_boundary))
 neighbortypes(::Val{:manning_resistance}) = Set((:basin,))
+neighbortypes(::Val{:continuous_control}) = Set((:pump, :outlet))
 neighbortypes(::Val{:discrete_control}) = Set((
     :pump,
     :outlet,
@@ -29,8 +28,7 @@ neighbortypes(::Val{:discrete_control}) = Set((
     :pid_control,
 ))
 neighbortypes(::Val{:pid_control}) = Set((:pump, :outlet))
-neighbortypes(::Val{:tabulated_rating_curve}) =
-    Set((:basin, :terminal, :level_boundary))
+neighbortypes(::Val{:tabulated_rating_curve}) = Set((:basin, :terminal, :level_boundary))
 neighbortypes(::Val{:flow_demand}) =
     Set((:linear_resistance, :manning_resistance, :tabulated_rating_curve, :pump, :outlet))
 neighbortypes(::Any) = Set{Symbol}()
@@ -47,15 +45,15 @@ n_neighbor_bounds_flow(nodetype::Symbol) = n_neighbor_bounds_flow(Val(nodetype))
 n_neighbor_bounds_flow(::Val{:Basin}) = n_neighbor_bounds(0, typemax(Int), 0, typemax(Int))
 n_neighbor_bounds_flow(::Val{:LinearResistance}) = n_neighbor_bounds(1, 1, 1, 1)
 n_neighbor_bounds_flow(::Val{:ManningResistance}) = n_neighbor_bounds(1, 1, 1, 1)
-n_neighbor_bounds_flow(::Val{:TabulatedRatingCurve}) =
-    n_neighbor_bounds(1, 1, 1, typemax(Int))
+n_neighbor_bounds_flow(::Val{:TabulatedRatingCurve}) = n_neighbor_bounds(1, 1, 1, 1)
 n_neighbor_bounds_flow(::Val{:LevelBoundary}) =
     n_neighbor_bounds(0, typemax(Int), 0, typemax(Int))
 n_neighbor_bounds_flow(::Val{:FlowBoundary}) = n_neighbor_bounds(0, 0, 1, typemax(Int))
-n_neighbor_bounds_flow(::Val{:Pump}) = n_neighbor_bounds(1, 1, 1, typemax(Int))
+n_neighbor_bounds_flow(::Val{:Pump}) = n_neighbor_bounds(1, 1, 1, 1)
 n_neighbor_bounds_flow(::Val{:Outlet}) = n_neighbor_bounds(1, 1, 1, 1)
 n_neighbor_bounds_flow(::Val{:Terminal}) = n_neighbor_bounds(1, typemax(Int), 0, 0)
 n_neighbor_bounds_flow(::Val{:PidControl}) = n_neighbor_bounds(0, 0, 0, 0)
+n_neighbor_bounds_flow(::Val{:ContinuousControl}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_flow(::Val{:DiscreteControl}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_flow(::Val{:UserDemand}) = n_neighbor_bounds(1, 1, 1, 1)
 n_neighbor_bounds_flow(::Val{:LevelDemand}) = n_neighbor_bounds(0, 0, 0, 0)
@@ -74,6 +72,8 @@ n_neighbor_bounds_control(::Val{:Pump}) = n_neighbor_bounds(0, 1, 0, 0)
 n_neighbor_bounds_control(::Val{:Outlet}) = n_neighbor_bounds(0, 1, 0, 0)
 n_neighbor_bounds_control(::Val{:Terminal}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_control(::Val{:PidControl}) = n_neighbor_bounds(0, 1, 1, 1)
+n_neighbor_bounds_control(::Val{:ContinuousControl}) =
+    n_neighbor_bounds(0, 0, 1, typemax(Int))
 n_neighbor_bounds_control(::Val{:DiscreteControl}) =
     n_neighbor_bounds(0, 0, 1, typemax(Int))
 n_neighbor_bounds_control(::Val{:UserDemand}) = n_neighbor_bounds(0, 0, 0, 0)
@@ -109,9 +109,9 @@ sort_by_time_id_level(row) = (row.time, row.node_id, row.level)
 sort_by_priority(row) = (row.node_id, row.priority)
 sort_by_priority_time(row) = (row.node_id, row.priority, row.time)
 sort_by_subgrid_level(row) = (row.subgrid_id, row.basin_level)
-sort_by_variable(row) =
-    (row.node_id, row.listen_node_type, row.listen_node_id, row.variable)
+sort_by_variable(row) = (row.node_id, row.listen_node_id, row.variable)
 sort_by_condition(row) = (row.node_id, row.compound_variable_id, row.greater_than)
+sort_by_id_input(row) = (row.node_id, row.input)
 
 # get the right sort by function given the Schema, with sort_by_id as the default
 sort_by_function(table::StructVector{<:Legolas.AbstractRecord}) = sort_by_id
@@ -123,6 +123,7 @@ sort_by_function(table::StructVector{UserDemandTimeV1}) = sort_by_priority_time
 sort_by_function(table::StructVector{BasinSubgridV1}) = sort_by_subgrid_level
 sort_by_function(table::StructVector{DiscreteControlVariableV1}) = sort_by_variable
 sort_by_function(table::StructVector{DiscreteControlConditionV1}) = sort_by_condition
+sort_by_function(table::StructVector{ContinuousControlFunctionV1}) = sort_by_id_input
 
 const TimeSchemas = Union{
     BasinTimeV1,
@@ -171,13 +172,11 @@ end
 function valid_nodes(db::DB)::Bool
     errors = false
 
-    sql = "SELECT node_type, node_id FROM Node GROUP BY node_type, node_id HAVING COUNT(*) > 1"
-    node_type, node_id = execute(columntable, db, sql)
-
-    for (node_type, node_id) in zip(node_type, node_id)
+    sql = "SELECT node_id FROM Node GROUP BY node_id HAVING COUNT(*) > 1"
+    node_ids = only(execute(columntable, db, sql))
+    for node_id in node_ids
         errors = true
-        id = NodeID(node_type, node_id)
-        @error "Multiple occurrences of node $id found in Node table."
+        @error "Multiple occurrences of node_id $node_id found in Node table."
     end
 
     return !errors
@@ -358,18 +357,22 @@ function valid_demand(
 end
 
 """
-Validate Outlet crest level and fill in default values
+Validate Outlet or Pump `min_upstream_level` and fill in default values
 """
-function valid_outlet_crest_level!(graph::MetaGraph, outlet::Outlet, basin::Basin)::Bool
+function valid_min_upstream_level!(
+    graph::MetaGraph,
+    node::Union{Outlet, Pump},
+    basin::Basin,
+)::Bool
     errors = false
-    for (id, crest) in zip(outlet.node_id, outlet.min_crest_level)
+    for (id, min_upstream_level) in zip(node.node_id, node.min_upstream_level)
         id_in = inflow_id(graph, id)
         if id_in.type == NodeType.Basin
             basin_bottom_level = basin_bottom(basin, id_in)[2]
-            if crest == -Inf
-                outlet.min_crest_level[id.idx] = basin_bottom_level
-            elseif crest < basin_bottom_level
-                @error "Minimum crest level of $id is lower than bottom of upstream $id_in" crest basin_bottom_level
+            if min_upstream_level == -Inf
+                node.min_upstream_level[id.idx] = basin_bottom_level
+            elseif min_upstream_level < basin_bottom_level
+                @error "Minimum upstream level of $id is lower than bottom of upstream $id_in" min_upstream_level basin_bottom_level
                 errors = true
             end
         end
@@ -389,8 +392,8 @@ function valid_tabulated_curve_level(
             basin_bottom_level = basin_bottom(basin, id_in)[2]
             # the second level is the bottom, the first is added to control extrapolation
             if table.t[1] + 1.0 < basin_bottom_level
-                @error "Lowest levels of $id is lower than bottom of upstream $id_in" table.t[1] +
-                                                                                      1.0 basin_bottom_level
+                @error "Lowest level of $id is lower than bottom of upstream $id_in" table.t[1] +
+                                                                                     1.0 basin_bottom_level
                 errors = true
             end
         end
@@ -398,10 +401,13 @@ function valid_tabulated_curve_level(
     return !errors
 end
 
-function valid_tabulated_rating_curve(node_id::NodeID, table::StructVector)::Bool
+function valid_tabulated_rating_curve(
+    node_id::NodeID,
+    table::StructVector,
+    rowrange::UnitRange{Int},
+)::Bool
     errors = false
 
-    rowrange = findlastgroup(node_id, NodeID.(node_id.type, table.node_id, Ref(0)))
     level = table.level[rowrange]
     flow_rate = table.flow_rate[rowrange]
 
@@ -510,14 +516,14 @@ end
 function valid_edge_types(db::DB)::Bool
     edge_rows = execute(
         db,
-        "SELECT fid, from_node_id, to_node_id, edge_type FROM Edge ORDER BY fid",
+        "SELECT edge_id, from_node_id, to_node_id, edge_type FROM Edge ORDER BY edge_id",
     )
     errors = false
 
-    for (; fid, from_node_id, to_node_id, edge_type) in edge_rows
+    for (; edge_id, from_node_id, to_node_id, edge_type) in edge_rows
         if edge_type ∉ ["flow", "control"]
             errors = true
-            @error "Invalid edge type '$edge_type' for edge #$fid from node #$from_node_id to node #$to_node_id."
+            @error "Invalid edge type '$edge_type' for edge #$edge_id from node #$from_node_id to node #$to_node_id."
         end
     end
     return !errors
@@ -621,7 +627,9 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
 end
 
 """
-The source nodes must only have one allocation outneighbor and no allocation inneighbors.
+An allocation source edge is valid if either:
+    - The edge connects the main network to a subnetwork
+    - The edge comes from a source node
 """
 function valid_sources(
     p::Parameters,
@@ -632,12 +640,18 @@ function valid_sources(
 
     errors = false
 
+    # Loop over edges that were assigned a capacity
     for edge in keys(capacity.data)
+
+        # For an edge (id_a, id_b) in the physical model
+        # the reverse (id_b, id_a) can exist in the allocation subnetwork
         if !haskey(graph, edge...)
             edge = reverse(edge)
         end
 
         (id_source, id_dst) = edge
+
+        # Whether the current edge is a source for the current subnetwork
         if graph[edge...].subnetwork_id_source == subnetwork_id
             from_source_node = id_source.type in allocation_source_nodetypes
 
@@ -657,4 +671,12 @@ function valid_sources(
         end
     end
     return !errors
+end
+
+function valid_priorities(priorities::Vector{Int32}, use_allocation::Bool)::Bool
+    if use_allocation && any(iszero, priorities)
+        return false
+    else
+        return true
+    end
 end

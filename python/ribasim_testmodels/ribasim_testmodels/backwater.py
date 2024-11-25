@@ -23,6 +23,7 @@ def backwater_model():
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
+        solver=ribasim.Solver(autodiff=True),
     )
 
     model.flow_boundary.add(
@@ -69,7 +70,7 @@ def backwater_model():
 
     model.basin.add(
         Node(102, Point(1010.0, 0.0)),
-        [basin.State(level=[2.0]), basin.Profile(level=[0.0, 1.0], area=1e20)],
+        [basin.State(level=[2.0]), basin.Profile(level=[0.0, 1.0], area=1e10)],
     )
     model.edge.add(
         model.manning_resistance[101],

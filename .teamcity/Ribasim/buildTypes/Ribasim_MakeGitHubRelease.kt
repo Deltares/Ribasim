@@ -1,11 +1,16 @@
 package Ribasim.buildTypes
 
+import Ribasim_Linux.Linux_BuildRibasim
+import Ribasim_Linux.Linux_TestRibasimBinaries
+import Ribasim_Windows.Windows_BuildRibasim
+import Ribasim_Windows.Windows_TestRibasimBinaries
+import Templates.LinuxAgent
 import jetbrains.buildServer.configs.kotlin.*
 import jetbrains.buildServer.configs.kotlin.buildSteps.script
 import jetbrains.buildServer.configs.kotlin.triggers.vcs
 
 object Ribasim_MakeGitHubRelease : BuildType({
-    templates(Linux_1)
+    templates(LinuxAgent)
     name = "Make GitHub Release"
 
     params {
@@ -14,6 +19,7 @@ object Ribasim_MakeGitHubRelease : BuildType({
 
     vcs {
         root(Ribasim.vcsRoots.Ribasim)
+        cleanCheckout = true
     }
 
     steps {
@@ -52,7 +58,7 @@ object Ribasim_MakeGitHubRelease : BuildType({
                 artifactRules = "generated_testmodels.zip"
             }
         }
-        dependency(Ribasim_Linux.buildTypes.Linux_BuildRibasim) {
+        dependency(Linux_BuildRibasim) {
             snapshot {
                 onDependencyFailure = FailureAction.FAIL_TO_START
             }
@@ -62,7 +68,7 @@ object Ribasim_MakeGitHubRelease : BuildType({
                 artifactRules = "ribasim_linux.zip"
             }
         }
-        snapshot(Ribasim_Linux.buildTypes.Linux_TestRibasimBinaries) {
+        snapshot(Linux_TestRibasimBinaries) {
             onDependencyFailure = FailureAction.FAIL_TO_START
         }
         dependency(Ribasim_MakeQgisPlugin) {
@@ -75,7 +81,7 @@ object Ribasim_MakeGitHubRelease : BuildType({
                 artifactRules = "ribasim_qgis.zip"
             }
         }
-        dependency(Ribasim_Windows.buildTypes.Windows_BuildRibasim) {
+        dependency(Windows_BuildRibasim) {
             snapshot {
                 onDependencyFailure = FailureAction.FAIL_TO_START
             }
@@ -85,7 +91,7 @@ object Ribasim_MakeGitHubRelease : BuildType({
                 artifactRules = "ribasim_windows.zip"
             }
         }
-        snapshot(Ribasim_Windows.buildTypes.Windows_TestRibasimBinaries) {
+        snapshot(Windows_TestRibasimBinaries) {
             onDependencyFailure = FailureAction.FAIL_TO_START
         }
     }

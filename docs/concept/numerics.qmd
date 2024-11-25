@@ -10,13 +10,14 @@ $$
 \end{cases},
 $$ {#eq-prob}
 
-where $\mathbf{f}$ denotes `water_balance!` and $\mathbf{u_0}$ the initial storages (and the PID integrals which start out at $0$).
+where $\mathbf{f}$ denotes `water_balance!` and $\mathbf{u_0} = \mathbf{0}$ the initial cumulative flows (and the PID integrals which also start out at $0$).
 
-In general $\mathbf{f}$ is a non-linear function in $\mathbf{u}$. These non-linearities are introduced by:
+In general $\mathbf{f}$ is a non-linear function in $\mathbf{u}$. These non-linearities are introduced by e.g.:
 
 - `ManningResistance` nodes;
 - `Basin` profiles;
-- `TabulatedRatingCurve` Q(h) relations.
+- `TabulatedRatingCurve` Q(h) relations
+- `ContinuousControl` functions.
 
 The problem @eq-prob can be solved by various numerical time-integration methods. To do this the time interval $[t_0,t_\text{end}]$ is discretized into a finite number of time points $t_0 < t_1 < \ldots < t_N = t_\text{end}$ for which approximate solutions $\mathbf{w}_n \approx \mathbf{u}(t_n)$ are computed. In general we do not assume a fixed timestep (the interval between successive points in time). Rather, the solver attempts to make as large a step as possible while keeping error tolerances within requirements. The [solver settings](/reference/usage.qmd#sec-solver-settings) section details the available configuration options.
 
@@ -100,7 +101,7 @@ where the continuity of this term is given by the least continuous of $Q$ and $h
 
 ## Empty basins
 
-[Reduction factors](/concept/equations.qmd#the-reduction-factor) are introduced at several points in the definition of $\mathbf{f}$ to smooth out otherwise discontinuous transitions (e.g. the flow rate of a pump going to zero when the source basin dries out).
+[Reduction factors](/reference/node/basin.qmd#sec-reduction-factor) are introduced at several points in the definition of $\mathbf{f}$ to smooth out otherwise discontinuous transitions (e.g. the flow rate of a pump going to zero when the source basin dries out).
 If flows are not too large with respect to basin storage, this will prevent basins from reaching 0.
 Rather, the basin gets a very small storage.
 The reduction factors help with performance, but are also an important tool to avoid getting negative storage in basins.

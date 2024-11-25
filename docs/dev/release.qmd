@@ -22,7 +22,7 @@ Before starting the release process, ensure that all tests are passing and that 
 Determine the new version number like `2023.1.0`, filling in the current year, a bumped `MINOR` number for normal releases and a bumped `MICRO` number for non-breaking, hotfix releases.
 This follows `YYYY.MINOR.MICRO` from [calver](https://calver.org/).
 
-Create a branch that starts with `release`, like `release-2023-1.0`.
+Create a branch that starts with `release`, like `release-2023.1.0`.
 It needs to start with `release` to trigger extra TeamCity checks.
 
 Update the version numbers in the repository to the new version number.
@@ -33,7 +33,7 @@ Don't change the old version numbers in `changelog.qmd`.
 
 ## Update the changelog
 
-The `docs/changelog.qmd` file, hosted on https://deltares.github.io/Ribasim/changelog, records the most important changes for users.
+The `docs/changelog.qmd` file, hosted on [ribasim.org/changelog](https://ribasim.org/changelog), records the most important changes for users.
 Review the commits since the [latest Ribasim release](https://github.com/Deltares/Ribasim/releases/latest) to make sure these are listed.
 Change the "Unreleased" section to the new version number and date, and create a new empty "Unreleased" section at the top.
 
@@ -59,8 +59,7 @@ git push --tags
 This will trigger a workflow on TeamCity that will publish a new release on GitHub as soon as it is finished.
 You can follow the progress [here](https://dpcbuild.deltares.nl/buildConfiguration/Ribasim_Ribasim_MakeGitHubRelease?mode=builds).
 It also auto-generates a changelog.
-You'll probably want to curate that by rearranging the most important changes for users to the top in the form of [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
-The possibly long list of generated release notes can put below an "All changes" collapsed item as such:
+You need to edit that by moving the auto-generated contents, except the "Full Changelog" link, in a collapsed details block as shown below.
 
 ```
 <details>
@@ -74,6 +73,8 @@ All changes
 
 ```
 
+Now copy the manually edited changelog entry from changelog.qmd above the details, such that the edited changelog can be seen both from our documentation as well as GitHub releases.
+
 ## Release the Ribasim Python packages to PyPI
 
 To be able to install packages with `pip`, they need to be released on the Python Package Index (PyPI).
@@ -83,10 +84,10 @@ In order to publish Ribasim Python or Ribasim API follow the following steps:
 
 2) Open a terminal and run `pixi run publish-ribasim-api`
 
-## Do manual checks
+## QGIS manual testing
 
 Our continuous integration (CI) should have caught most issues.
-A current weak spot in our testing is the QGIS plugin, so it is a good idea to do some manual checks to see if it works properly.
+A current weak spot in our testing is the QGIS plugin, so a manual test plan is in place.
 Start with running the automated task to see if it can be correctly installed.
 
 ```sh
@@ -95,10 +96,10 @@ Start with running the automated task to see if it can be correctly installed.
 pixi run test-ribasim-qgis-ui
 ```
 
-It is a good idea to load new test models if there are any, or test any other changed functionality.
+Then follow the instructions as described in the [QGIS manual test plan](/dev/qgis_test_plan.qmd).
 
 ## Announce release
 
 Announce the release in appropriate channels.
 Include a link to the release notes and assets, which is whatever [this](https://github.com/Deltares/Ribasim/releases/latest) resolves to at that time.
-Also include a link to the [documentation](https://deltares.github.io/Ribasim/).
+Also include a link to the [documentation](https://ribasim.org/).

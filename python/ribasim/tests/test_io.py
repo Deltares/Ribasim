@@ -1,6 +1,8 @@
 from datetime import datetime
+from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import pytest
 import ribasim
 import tomli
@@ -8,7 +10,8 @@ from pandas import DataFrame
 from pandas.testing import assert_frame_equal
 from pydantic import ValidationError
 from ribasim import Model, Node, Solver
-from ribasim.nodes import basin, pump, user_demand
+from ribasim.nodes import basin, flow_boundary, flow_demand, pump, user_demand
+from ribasim.utils import UsedIDs
 from shapely.geometry import Point
 
 
@@ -21,8 +24,6 @@ def __assert_equal(a: DataFrame, b: DataFrame) -> None:
 
     a = a.reset_index(drop=True)
     b = b.reset_index(drop=True)
-    a.drop(columns=["fid"], inplace=True, errors="ignore")
-    b.drop(columns=["fid"], inplace=True, errors="ignore")
 
     assert_frame_equal(a, b)
 
@@ -63,7 +64,7 @@ def test_basic_transient(basic_transient, tmp_path):
 
     time = model_loaded.basin.time
     assert model_orig.basin.time.df.time.iloc[0] == time.df.time.iloc[0]
-    assert time.df.node_id.dtype == np.int32
+    assert time.df.node_id.dtype == "int32[pyarrow]"
     __assert_equal(model_orig.basin.time.df, time.df)
     assert time.df.shape == (1468, 6)
 
@@ -93,6 +94,11 @@ def test_extra_columns():
         pump.Static(extra=[-2], flow_rate=[1.2])
 
 
+def test_index_tables():
+    p = pump.Static(flow_rate=[1.2])
+    assert p.df.index.name == "fid"
+
+
 def test_extra_spatial_columns():
     model = Model(
         starttime="2020-01-01",
@@ -120,11 +126,120 @@ def test_extra_spatial_columns():
 
     with pytest.raises(ValidationError):
         model.basin.add(
-            Node(2, Point(0, 0), foo=1),
+            Node(3, Point(0, 0), foo=1),
             [basin.Profile(area=1000.0, level=[0.0, 1.0]), basin.State(level=[1.0])],
         )
     with pytest.raises(ValidationError):
-        model.edge.add(model.basin[1], model.user_demand[2], foo=1)
+        model.user_demand.add(
+            Node(4, Point(1, -0.5), meta_id=3),
+            [
+                user_demand.Static(
+                    demand=[1e-4], return_factor=0.9, min_level=0.9, priority=1
+                )
+            ],
+        )
+        model.edge.add(model.basin[1], model.user_demand[4], foo=1)
+
+
+def test_edge_autoincrement(basic):
+    model = basic
+    model.edge.df = model.edge.df.iloc[0:0]  # clear the table
+    model.edge._used_edge_ids = UsedIDs()  # and reset the counter
+
+    model.edge.add(model.basin[1], model.manning_resistance[2], edge_id=20)
+    assert model.edge.df.index[-1] == 20
+
+    model.edge.add(model.manning_resistance[2], model.basin[3])
+    assert model.edge.df.index[-1] == 21
+
+    # Can use any remaining positive integer
+    model.edge.add(model.basin[3], model.tabulated_rating_curve[8], edge_id=1)
+    assert model.edge.df.index[-1] == 1
+
+    with pytest.raises(
+        ValueError,
+        match="Edge IDs have to be unique, but 1 already exists.",
+    ):
+        model.edge.add(
+            model.linear_resistance[10],
+            model.level_boundary[17],
+            edge_id=1,
+        )
+
+
+def test_node_autoincrement():
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2021-01-01",
+        crs="EPSG:28992",
+        solver=Solver(algorithm="Tsit5"),
+    )
+
+    model.basin.add(Node(20, Point(0, 0)), [basin.State(level=[1.0])])
+    with pytest.raises(
+        ValueError, match="Node IDs have to be unique, but 20 already exists."
+    ):
+        model.user_demand.add(
+            Node(20, Point(1, 0.5)),
+            [
+                user_demand.Static(
+                    demand=[1e-4], return_factor=0.9, min_level=0.9, priority=1
+                )
+            ],
+        )
+
+    nbasin = model.basin.add(Node(geometry=Point(0, 0)), [basin.State(level=[1.0])])
+    assert nbasin.node_id == 21
+
+    # Can use any remaining positive integer
+    model.basin.add(Node(1, geometry=Point(0, 0)), [basin.State(level=[1.0])])
+    nbasin = model.basin.add(Node(geometry=Point(0, 0)), [basin.State(level=[1.0])])
+    assert nbasin.node_id == 22
+
+    model.basin.add(Node(100, geometry=Point(0, 0)), [basin.State(level=[1.0])])
+
+    nbasin = model.basin.add(Node(geometry=Point(0, 0)), [basin.State(level=[1.0])])
+    assert nbasin.node_id == 101
+
+
+def test_node_autoincrement_existing_model(basic, tmp_path):
+    model = basic
+
+    model.write(tmp_path / "ribasim.toml")
+    nmodel = Model.read(tmp_path / "ribasim.toml")
+
+    assert nmodel._used_node_ids.max_node_id == 17
+    assert nmodel._used_node_ids.node_ids == set(range(1, 18)) - {13}
+
+    assert nmodel.edge._used_edge_ids.max_node_id == 16
+    assert nmodel.edge._used_edge_ids.node_ids == set(range(1, 17))
+
+
+def test_node_empty_geometry():
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2021-01-01",
+        crs="EPSG:28992",
+    )
+
+    with pytest.raises(ValueError, match="Node geometry must be a valid Point"):
+        model.user_demand.add(
+            Node(),
+            [
+                user_demand.Static(
+                    demand=[1e-4], return_factor=0.9, min_level=0.9, priority=1
+                )
+            ],
+        )
+    with pytest.raises(ValueError, match="Node geometry must be a valid Point"):
+        model.user_demand.add(
+            Node(2),
+            [
+                user_demand.Static(
+                    demand=[1e-4], return_factor=0.9, min_level=0.9, priority=1
+                )
+            ],
+        )
 
 
 def test_sort(level_range, tmp_path):
@@ -144,7 +259,6 @@ def test_sort(level_range, tmp_path):
     assert table.df.iloc[0]["greater_than"] == 5.0
 
     # The edge table is not sorted
-    assert edge.df.iloc[1]["from_node_type"] == "Pump"
     assert edge.df.iloc[1]["from_node_id"] == 3
 
     # re-apply wrong sort, then check if it gets sorted on write
@@ -156,7 +270,6 @@ def test_sort(level_range, tmp_path):
     table_loaded = model_loaded.discrete_control.condition
     edge_loaded = model_loaded.edge
     assert table_loaded.df.iloc[0]["greater_than"] == 5.0
-    assert edge.df.iloc[1]["from_node_type"] == "Pump"
     assert edge.df.iloc[1]["from_node_id"] == 3
     __assert_equal(table.df, table_loaded.df)
     __assert_equal(edge.df, edge_loaded.df)
@@ -165,7 +278,7 @@ def test_sort(level_range, tmp_path):
 def test_roundtrip(trivial, tmp_path):
     model1 = trivial
     # set custom Edge index
-    model1.edge.df.index = [15, 12]
+    model1.edge.df.index = pd.Index([15, 12], name="edge_id")
     model1dir = tmp_path / "model1"
     model2dir = tmp_path / "model2"
     # read a model and then write it to a different path
@@ -202,3 +315,75 @@ def test_datetime_timezone():
     assert isinstance(model.endtime, datetime)
     assert model.starttime.tzinfo is None
     assert model.endtime.tzinfo is None
+
+
+def test_minimal_toml():
+    # Check if the TOML used in QGIS tests is still valid.
+    toml_path = Path(__file__).parents[3] / "ribasim_qgis/tests/data/simple_valid.toml"
+    (toml_path.parent / "database.gpkg").touch()  # database file must exist for `read`
+    model = ribasim.Model.read(toml_path)
+    assert model.crs == "EPSG:28992"
+
+
+def test_closed_model(basic, tmp_path):
+    # Test whether we can write to a just opened model
+    # implicitly testing that the database is closed after read
+    toml_path = tmp_path / "basic/ribasim.toml"
+    basic.write(toml_path)
+    model = ribasim.Model.read(toml_path)
+    model.write(toml_path)
+
+
+def test_arrow_dtype():
+    # Below millisecond precision is not supported
+    with pytest.raises(ValidationError):
+        flow_boundary.Time(
+            time=["2021-01-01 00:00:00.1234"],
+            flow_rate=np.ones(1),
+        )
+
+    # Extra columns don't get coerced to Arrow types
+    df = flow_boundary.Time(
+        time=["2021-01-01 00:00:00.123", "2021-01-01 00:00:00.456"],
+        flow_rate=[1, 2.2],
+        meta_obj=["foo", "bar"],
+        meta_str=pd.Series(["a", pd.NA], dtype="string[pyarrow]"),
+    ).df
+
+    assert (df["node_id"] == 0).all()
+    assert df["node_id"].dtype == "int32[pyarrow]"
+    assert df["time"].dtype == "timestamp[ms][pyarrow]"
+    assert df["time"].dt.tz is None
+    assert df["time"].diff().iloc[1] == pd.Timedelta("333ms")
+    assert df["flow_rate"].dtype == "double[pyarrow]"
+    assert df["meta_obj"].dtype == object
+    assert df["meta_str"].dtype == "string[pyarrow]"
+    assert df["meta_str"].isna().iloc[1]
+
+    # Check a string column that is part of the schema and a boolean column
+    df = pump.Static(
+        flow_rate=np.ones(2),
+        control_state=["foo", pd.NA],
+        active=[None, False],
+    ).df
+
+    assert df["control_state"].dtype == "string[pyarrow]"
+    assert df["active"].dtype == "bool[pyarrow]"
+    assert df["active"].isna().iloc[0]
+
+    # Optional integer column
+    df = flow_demand.Static(
+        demand=[1, 2.2],
+        priority=[1, pd.NA],
+    ).df
+
+    assert df["priority"].dtype == "int32[pyarrow]"
+    assert df["priority"].isna().iloc[1]
+
+    # Missing optional integer column
+    df = flow_demand.Static(
+        demand=[1, 2.2],
+    ).df
+
+    assert df["priority"].dtype == "int32[pyarrow]"
+    assert df["priority"].isna().all()

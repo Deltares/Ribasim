@@ -21,7 +21,7 @@ If your model does not converge, or your performance is lower than expected, it 
 
 The default solver `algorithm = "QNDF"`, which is a multistep method similar to Matlab's `ode15s` [@shampine1997matlab].
 It is an implicit method that supports the default adaptive timestepping.
-The full list of available solvers is: `QNDF`, `Rosenbrock23`, `TRBDF2`, `Rodas5`, `KenCarp4`, `Tsit5`, `RK4`, `ImplicitEuler`, `Euler`.
+The full list of available solvers is: `QNDF`, `FBDF`, `Rosenbrock23`, `Rodas4P`, `Rodas5P`, `TRBDF2`, `KenCarp4`, `Tsit5`, `RK4`, `ImplicitEuler`, `Euler`.
 Information on the solver algorithms can be found on the [ODE solvers page](https://docs.sciml.ai/DiffEqDocs/stable/solvers/ode_solve/).
 
 By default Ribasim uses adaptive timestepping, though not all algorithms support adaptive timestepping.
@@ -34,6 +34,10 @@ The default result stepsize, `saveat = 86400` will save results after every day 
 The calculation and result stepsize need not be the same.
 If you wish to save every calculation step, set `saveat = 0`.
 If you wish to not save any intermediate steps, set `saveat = inf`.
+
+The water balance error is a measure of the error in the consistency with which the core keeps track of the water resources per Basin, for more details see [here](/concept/equations.qmd#the-water-balance-error).
+`water_balance_abstol` and `water_balance_reltol` give upper bounds on this error, above which an error is thrown.
+A too large error generally indicates an error in the code or floating point truncation errors.
 
 The Jacobian matrix provides information about the local sensitivity of the model with respect to changes in the states.
 For implicit solvers it must be calculated often, which can be expensive to do.
@@ -49,6 +53,9 @@ For small or highly connected models it could be faster to use a dense Jacobian 
 The total maximum number of iterations `maxiters = 1e9`, can normally stay as-is unless doing extremely long simulations.
 
 The absolute and relative tolerance for adaptive timestepping can be set with `abstol` and `reltol`. For more information on these and other solver options, see the [DifferentialEquations.jl docs](https://docs.sciml.ai/DiffEqDocs/latest/basics/common_solver_opts/#solver_options).
+
+Finally there's the `evaporate_mass = true` setting, which determines whether mass is lost due to evaporation in water quality calculations, by default set to true.
+While physically incorrect, it is useful for a first correctness check on a model in terms of mass balance (Continuity tracer should always have a concentration of 1). To simulate increasing concentrations (e.g. salinity) due to evaporation, change the setting to `false`.
 
 ## Allocation settings
 Currently there are the following allocation settings:
@@ -67,12 +74,28 @@ subgrid           | Bool   | Compute and output more detailed water levels.
 
 ## Logging settings
 
-The following entries can be set in the configuration in the `[logging]` section.
+The following can be set in the configuration in the `[logging]` section.
 
 entry             | type   | description
 ----------------- | ------ | -----------
 verbosity         | String | Verbosity level: debug, info, warn, or error.
-timing            | Bool   | Enable timings.
+
+## Experimental features
+
+::: {.callout-important}
+Experimental features are completely unsupported. They can break at any time
+and results will be wrong. **Do not use them in production**. If you're interested
+in using an experimental feature, please [contact us](/contact.qmd).
+:::
+
+One can enable experimental features in the `[experimental]` section.
+Currently the following features can be enabled (all are disabled by default).
+
+entry             | type   | description
+----------------- | ------ | -----------
+concentration     | Bool   | Whether to enable tracer calculations or not.
+
+
 
 # GeoPackage database and Arrow tables {#sec-geopackage}
 
@@ -195,25 +218,29 @@ The Basin table contains:
   It will be placed in a separate output state file in the future.
 - The `inflow_rate` and `outflow_rate` are the sum of the flows from other nodes into and out of the Basin respectively.
   The actual flows determine in which term they are counted, not the edge direction.
-- The `storage_rate` is flow that adds to the storage in the Basin, increasing the water level. In the equations below this number is split out into two non-negative numbers, `storage_increase` and `storage_decrease`.
-- The `balance_error` is the difference of all Basin inflows (`total_inflow`) and outflows (`total_outflow`), that is (`inflow_rate` + `precipitation` + `drainage` - `storage_increase`) - (`outflow_rate` + `evaporation` + `infiltration` - `storage_decrease`).
+- The `storage_rate` is the net mean flow that is needed to achieve the storage change between timesteps.
+- The `inflow_rate` consists of the sum of all modelled flows into the basin: `inflow_rate` (horizontal flows into the basin, independent of edge direction) + `precipitation` + `drainage`.
+- The `outflow_rate` consists of the sum of all modelled flows out of the basin: `outflow_rate` (horizontal flows out of the basin, idependent of edge direction) + `evaporation` + `infiltration`.
+- The `balance_error` is the difference between the `storage_rate` on one side and the `inflow_rate` and `outflow_rate` on the other side: `storage_rate` - (`inflow_rate` - `outflow_rate`).
   It can be used to check if the numerical error when solving the water balance is sufficiently small.
 - The `relative_error` is the fraction of the `balance_error` over the mean of the `total_inflow` and `total_outflow`.
+
+For a more in-depth explanation of the water balance error see [here](/concept/equations.qmd#the-water-balance-error).
 
 column         | type     | unit
 -------------- | ---------| ----
 time           | DateTime | -
 node_id        | Int32    | -
-storage        | Float64  | $m^3$
-level          | Float64  | $m$
-inflow_rate    | Float64  | $m^3 s^{-1}$
-outflow_rate   | Float64  | $m^3 s^{-1}$
-storage_rate   | Float64  | $m^3 s^{-1}$
-precipitation  | Float64  | $m^3 s^{-1}$
-evaporation    | Float64  | $m^3 s^{-1}$
-drainage       | Float64  | $m^3 s^{-1}$
-infiltration   | Float64  | $m^3 s^{-1}$
-balance_error  | Float64  | $m^3 s^{-1}$
+storage        | Float64  | $\text{m}^3$
+level          | Float64  | $\text{m}$
+inflow_rate    | Float64  | $\text{m}^3/\text{s}$
+outflow_rate   | Float64  | $\text{m}^3/\text{s}$
+storage_rate   | Float64  | $\text{m}^3/\text{s}$
+precipitation  | Float64  | $\text{m}^3/\text{s}$
+evaporation    | Float64  | $\text{m}^3/\text{s}$
+drainage       | Float64  | $\text{m}^3/\text{s}$
+infiltration   | Float64  | $\text{m}^3/\text{s}$
+balance_error  | Float64  | $\text{m}^3/\text{s}$
 relative_error | Float64  | -
 
 The table is sorted by time, and per time it is sorted by `node_id`.
@@ -231,11 +258,22 @@ from_node_type | String                | -
 from_node_id   | Int32                 | -
 to_node_type   | String                | -
 to_node_id     | Int32                 | -
-flow_rate      | Float64               | $m^3 s^{-1}$
+flow_rate      | Float64               | $\text{m}^3/\text{s}$
 
 The table is sorted by time, and per time the same `edge_id` order is used, though not sorted.
 The `edge_id` value is the same as the `fid` written to the Edge table, and can be used to directly look up the Edge geometry.
 Flows from the "from" to the "to" node have a positive sign, and if the flow is reversed it will be negative.
+
+## State - `basin_state.arrow` {#sec-state}
+
+The Basin state table contains the water levels in each Basin at the end of the simulation.
+
+column    | type    | unit
+--------- | ------- | ------------
+node_id   | Int32   | -
+level     | Float64 | $\text{m}$
+
+To use this result as the initial condition of another simulation, see the [Basin / state](/reference/node/basin.qmd#sec-state) table reference.
 
 ## DiscreteControl - `control.arrow`
 
@@ -305,3 +343,15 @@ column         | type
 time           | DateTime
 subgrid_id     | Int32
 subgrid_level  | Float64
+
+## Solver statistics - `solver_stats.arrow`
+
+This result file contains statistics about the solver, which can give an insight into how well the solver is performing over time. The data is solved by `saveat` (see [configuration file](#configuration-file)). `water_balance` refers to the right-hand-side function of the system of differential equations solved by the Ribasim core.
+
+column              | type
+--------------------| -----
+time                | DateTime
+water_balance_calls | Int
+linear_solves       | Int
+accepted_timesteps  | Int
+rejected_timesteps  | Int

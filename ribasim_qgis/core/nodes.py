@@ -24,29 +24,22 @@ from __future__ import annotations
 
 import abc
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
-from PyQt5.QtCore import Qt, QVariant
-from PyQt5.QtGui import QColor
+from PyQt5.QtCore import QVariant
 from qgis.core import (
     Qgis,
-    QgsCategorizedSymbolRenderer,
     QgsCoordinateReferenceSystem,
     QgsEditorWidgetSetup,
-    QgsFeatureRenderer,
     QgsField,
-    QgsLineSymbol,
-    QgsMarkerLineSymbolLayer,
-    QgsMarkerSymbol,
     QgsPalLayerSettings,
-    QgsRendererCategory,
-    QgsSimpleMarkerSymbolLayer,
-    QgsSimpleMarkerSymbolLayerBase,
     QgsVectorLayer,
     QgsVectorLayerSimpleLabeling,
 )
 
 from ribasim_qgis.core import geopackage
+
+STYLE_DIR = Path(__file__).parent / "styles"
 
 
 class Input(abc.ABC):
@@ -60,8 +53,12 @@ class Input(abc.ABC):
     def input_type(cls) -> str: ...
 
     @classmethod
-    @abc.abstractmethod
-    def geometry_type(cls) -> str: ...
+    def geometry_type(cls) -> str:
+        return "No Geometry"
+
+    @classmethod
+    def qgis_geometry_type(cls) -> Qgis.GeometryType:
+        return Qgis.GeometryType.NullGeometry  # type: ignore
 
     @classmethod
     @abc.abstractmethod
@@ -70,6 +67,10 @@ class Input(abc.ABC):
     @classmethod
     def is_spatial(cls):
         return False
+
+    @classmethod
+    def fid_column(cls) -> str:
+        return "fid"
 
     @classmethod
     def nodetype(cls):
@@ -86,6 +87,8 @@ class Input(abc.ABC):
             raise ValueError(f"Name already exists in geopackage: {cls.input_type()}")
         instance = cls(path)
         instance.layer = instance.new_layer(crs)
+        # Load style from QML file
+        instance.load_default_style()
         return instance
 
     def new_layer(self, crs: QgsCoordinateReferenceSystem) -> QgsVectorLayer:
@@ -120,12 +123,17 @@ class Input(abc.ABC):
         )
         layer.setEditorWidgetSetup(index, setup)
 
+    def set_unique(self, name: str) -> None:
+        layer = self.layer
+        index = layer.fields().indexFromName(name)
+        setup = QgsEditorWidgetSetup(
+            "UniqueValues",
+            {},
+        )
+        layer.setEditorWidgetSetup(index, setup)
+
     def set_read_only(self) -> None:
         pass
-
-    @property
-    def renderer(self) -> QgsFeatureRenderer | None:
-        return None
 
     @property
     def labels(self) -> Any:
@@ -135,14 +143,23 @@ class Input(abc.ABC):
         self.layer = QgsVectorLayer(
             f"{self._path}|layername={self.input_type()}", self.input_type()
         )
+        # Load style from database if exists, otherwise load and save default qml style
+        _, success = self.layer.loadDefaultStyle()
+        if not success:
+            self.load_default_style()
+            self.save_style()
+        # Connect signal to save style to database when changed
+        self.layer.styleChanged.connect(self.save_style)
         return self.layer
 
-    def from_geopackage(self) -> tuple[QgsVectorLayer, Any, Any]:
+    def from_geopackage(self) -> tuple[QgsVectorLayer, Any]:
         self.layer_from_geopackage()
-        return (self.layer, self.renderer, self.labels)
+        return (self.layer, self.labels)
 
     def write(self) -> None:
-        self.layer = geopackage.write_layer(self._path, self.layer, self.input_type())
+        self.layer = geopackage.write_layer(
+            self._path, self.layer, self.input_type(), fid=self.fid_column()
+        )
         self.set_defaults()
 
     def remove_from_geopackage(self) -> None:
@@ -151,6 +168,16 @@ class Input(abc.ABC):
     def set_editor_widget(self) -> None:
         # Calling during new_layer doesn't have any effect...
         pass
+
+    def stylename(self) -> str:
+        return f"{self.input_type().replace(' / ', '_')}Style"
+
+    def load_default_style(self):
+        fn = STYLE_DIR / f"{self.stylename()}.qml"
+        self.layer.loadNamedStyle(str(fn))
+
+    def save_style(self):
+        self.layer.saveStyleToDatabase(self.stylename(), "", True, "")
 
 
 class Node(Input):
@@ -163,11 +190,15 @@ class Node(Input):
         return "Point"
 
     @classmethod
+    def qgis_geometry_type(cls) -> Qgis.GeometryType:
+        return Qgis.GeometryType.PointGeometry  # type: ignore
+
+    @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
+            QgsField("node_id", QVariant.Int),
             QgsField("name", QVariant.String),
             QgsField("node_type", QVariant.String),
-            QgsField("node_id", QVariant.Int),
             QgsField("subnetwork_id", QVariant.Int),
         ]
 
@@ -175,74 +206,33 @@ class Node(Input):
     def is_spatial(cls):
         return True
 
+    @classmethod
+    def fid_column(cls):
+        return "node_id"
+
     def write(self) -> None:
         # Special case the Node layer write because it needs to generate a new file.
         self.layer = geopackage.write_layer(
-            self._path, self.layer, self.input_type(), newfile=True
+            self._path,
+            self.layer,
+            self.input_type(),
+            newfile=True,
+            fid=self.fid_column(),
         )
         self.set_defaults()
         return
 
     def set_editor_widget(self) -> None:
         layer = self.layer
-        node_type_field = layer.fields().indexFromName("node_type")
+        node_type_field_index = layer.fields().indexFromName("node_type")
         self.set_dropdown("node_type", NONSPATIALNODETYPES)
+        self.set_unique("node_id")
 
         layer_form_config = layer.editFormConfig()
-        layer_form_config.setReuseLastValue(node_type_field, True)
+        layer_form_config.setReuseLastValue(node_type_field_index, True)
         layer.setEditFormConfig(layer_form_config)
 
         return
-
-    @property
-    def renderer(self) -> QgsCategorizedSymbolRenderer:
-        shape = Qgis.MarkerShape
-        MARKERS: dict[str, tuple[QColor, str, Qgis.MarkerShape]] = {
-            "Basin": (QColor("blue"), "Basin", shape.Circle),
-            "LinearResistance": (
-                QColor("green"),
-                "LinearResistance",
-                shape.Triangle,
-            ),
-            "TabulatedRatingCurve": (
-                QColor("green"),
-                "TabulatedRatingCurve",
-                shape.Diamond,
-            ),
-            "LevelBoundary": (QColor("green"), "LevelBoundary", shape.Circle),
-            "FlowBoundary": (QColor("purple"), "FlowBoundary", shape.Hexagon),
-            "Pump": (QColor("gray"), "Pump", shape.Hexagon),
-            "Outlet": (QColor("green"), "Outlet", shape.Hexagon),
-            "ManningResistance": (QColor("red"), "ManningResistance", shape.Diamond),
-            "Terminal": (QColor("purple"), "Terminal", shape.Square),
-            "DiscreteControl": (QColor("black"), "DiscreteControl", shape.Star),
-            "PidControl": (QColor("black"), "PidControl", shape.Cross2),
-            "UserDemand": (QColor("green"), "UserDemand", shape.Square),
-            "LevelDemand": (
-                QColor("black"),
-                "LevelDemand",
-                shape.Circle,
-            ),
-            "FlowDemand": (QColor("red"), "FlowDemand", shape.Hexagon),
-            # All other nodes, or incomplete input
-            "": (QColor("white"), "", shape.Circle),
-        }
-
-        categories = []
-        for value, (color, label, marker_shape) in MARKERS.items():
-            symbol = QgsMarkerSymbol()
-            cast(QgsSimpleMarkerSymbolLayerBase, symbol.symbolLayer(0)).setShape(
-                marker_shape
-            )
-            symbol.setColor(QColor(color))
-            symbol.setSize(4)
-            category = QgsRendererCategory(value, symbol, label, render=True)
-            categories.append(category)
-
-        renderer = QgsCategorizedSymbolRenderer(
-            attrName="node_type", categories=categories
-        )
-        return renderer
 
     @property
     def labels(self) -> Any:
@@ -258,10 +248,9 @@ class Edge(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
+            QgsField("edge_id", QVariant.Int),
             QgsField("name", QVariant.String),
-            QgsField("from_node_type", QVariant.String),
             QgsField("from_node_id", QVariant.Int),
-            QgsField("to_node_type", QVariant.String),
             QgsField("to_node_id", QVariant.Int),
             QgsField("edge_type", QVariant.String),
             QgsField("subnetwork_id", QVariant.Int),
@@ -272,6 +261,10 @@ class Edge(Input):
         return "LineString"
 
     @classmethod
+    def qgis_geometry_type(cls) -> Qgis.GeometryType:
+        return Qgis.GeometryType.LineGeometry  # type: ignore
+
+    @classmethod
     def input_type(cls) -> str:
         return "Edge"
 
@@ -279,12 +272,15 @@ class Edge(Input):
     def is_spatial(cls):
         return True
 
+    @classmethod
+    def fid_column(cls):
+        return "edge_id"
+
     def set_editor_widget(self) -> None:
         layer = self.layer
 
         self.set_dropdown("edge_type", EDGETYPES)
-        self.set_dropdown("from_node_type", NONSPATIALNODETYPES)
-        self.set_dropdown("to_node_type", NONSPATIALNODETYPES)
+        self.set_unique("edge_id")
 
         layer_form_config = layer.editFormConfig()
         layer.setEditFormConfig(layer_form_config)
@@ -292,51 +288,9 @@ class Edge(Input):
         return
 
     @property
-    def renderer(self) -> QgsCategorizedSymbolRenderer:
-        MARKERS = {
-            "flow": (QColor("#3690c0"), "flow"),  # lightblue
-            "control": (QColor("gray"), "control"),
-            "": (QColor("black"), ""),  # All other edges, or incomplete input
-        }
-
-        categories = []
-        for value, (colour, label) in MARKERS.items():
-            # Create line
-            symbol = QgsLineSymbol()
-            symbol.setColor(QColor(colour))
-            symbol.setWidth(0.5)
-
-            # Create an arrow marker to indicate directionality
-            arrow_marker = QgsSimpleMarkerSymbolLayer()
-            arrow_marker.setShape(Qgis.MarkerShape.ArrowHeadFilled)
-            arrow_marker.setColor(QColor(colour))
-            arrow_marker.setSize(3)
-            arrow_marker.setStrokeStyle(Qt.PenStyle(Qt.NoPen))
-
-            # Add marker to line
-            marker_symbol = QgsMarkerSymbol()
-            marker_symbol.changeSymbolLayer(0, arrow_marker)
-            marker_line_symbol_layer = cast(
-                QgsMarkerLineSymbolLayer,
-                QgsMarkerLineSymbolLayer.create({"placements": "CentralPoint"}),
-            )
-
-            marker_line_symbol_layer.setSubSymbol(marker_symbol)
-            symbol.appendSymbolLayer(marker_line_symbol_layer)
-
-            category = QgsRendererCategory(value, symbol, label)
-            category.setRenderState(True)
-            categories.append(category)
-
-        renderer = QgsCategorizedSymbolRenderer(
-            attrName="edge_type", categories=categories
-        )
-        return renderer
-
-    @property
     def labels(self) -> Any:
         pal_layer = QgsPalLayerSettings()
-        pal_layer.fieldName = """concat("name", ' #', "fid")"""
+        pal_layer.fieldName = """concat("name", ' #', "edge_id")"""
         pal_layer.isExpression = True
         pal_layer.placement = Qgis.LabelPlacement.Line
         pal_layer.dist = 1.0
@@ -403,6 +357,64 @@ class BasinTime(Input):
         ]
 
 
+class BasinConcentrationExternal(Input):
+    @classmethod
+    def input_type(cls) -> str:
+        return "Basin / concentration_external"
+
+    @classmethod
+    def geometry_type(cls) -> str:
+        return "No Geometry"
+
+    @classmethod
+    def attributes(cls) -> list[QgsField]:
+        return [
+            QgsField("time", QVariant.DateTime),
+            QgsField("node_id", QVariant.Int),
+            QgsField("substance", QVariant.String),
+            QgsField("concentration", QVariant.Double),
+        ]
+
+
+class BasinConcentrationState(Input):
+    @classmethod
+    def input_type(cls) -> str:
+        return "Basin / concentration_state"
+
+    @classmethod
+    def geometry_type(cls) -> str:
+        return "No Geometry"
+
+    @classmethod
+    def attributes(cls) -> list[QgsField]:
+        return [
+            QgsField("time", QVariant.DateTime),
+            QgsField("node_id", QVariant.Int),
+            QgsField("substance", QVariant.String),
+            QgsField("concentration", QVariant.Double),
+        ]
+
+
+class BasinConcentration(Input):
+    @classmethod
+    def input_type(cls) -> str:
+        return "Basin / concentration"
+
+    @classmethod
+    def geometry_type(cls) -> str:
+        return "No Geometry"
+
+    @classmethod
+    def attributes(cls) -> list[QgsField]:
+        return [
+            QgsField("time", QVariant.DateTime),
+            QgsField("node_id", QVariant.Int),
+            QgsField("substance", QVariant.String),
+            QgsField("drainage", QVariant.Double),
+            QgsField("precipitation", QVariant.Double),
+        ]
+
+
 class BasinSubgridLevel(Input):
     @classmethod
     def input_type(cls) -> str:
@@ -433,7 +445,11 @@ class BasinArea(Input):
 
     @classmethod
     def geometry_type(cls) -> str:
-        return "Polygon"
+        return "MultiPolygon"
+
+    @classmethod
+    def qgis_geometry_type(cls) -> Qgis.GeometryType:
+        return Qgis.GeometryType.PolygonGeometry  # type: ignore
 
     @classmethod
     def attributes(cls) -> list[QgsField]:
@@ -612,7 +628,7 @@ class OutletStatic(Input):
             QgsField("flow_rate", QVariant.Double),
             QgsField("min_flow_rate", QVariant.Double),
             QgsField("max_flow_rate", QVariant.Double),
-            QgsField("min_crest_level", QVariant.Double),
+            QgsField("min_upstream_level", QVariant.Double),
             QgsField("control_state", QVariant.String),
         ]
 
@@ -667,7 +683,6 @@ class DiscreteControlVariable(Input):
         return [
             QgsField("node_id", QVariant.Int),
             QgsField("compound_variable_id", QVariant.Int),
-            QgsField("listen_node_type", QVariant.String),
             QgsField("listen_node_id", QVariant.Int),
             QgsField("variable", QVariant.String),
             QgsField("weight", QVariant.Double),
@@ -711,6 +726,45 @@ class DiscreteControlLogic(Input):
         ]
 
 
+class ContinuousControlVariable(Input):
+    @classmethod
+    def input_type(cls) -> str:
+        return "ContinuousControl / variable"
+
+    @classmethod
+    def geometry_type(cs) -> str:
+        return "No Geometry"
+
+    @classmethod
+    def attributes(cls) -> list[QgsField]:
+        return [
+            QgsField("node_id", QVariant.Int),
+            QgsField("listen_node_id", QVariant.Int),
+            QgsField("variable", QVariant.String),
+            QgsField("weight", QVariant.Double),
+            QgsField("look_ahead", QVariant.Double),
+        ]
+
+
+class ContinuousControlFunction(Input):
+    @classmethod
+    def input_type(cls) -> str:
+        return "ContinuousControl / function"
+
+    @classmethod
+    def geometry_type(cls) -> str:
+        return "No Geometry"
+
+    @classmethod
+    def attributes(cls) -> list[QgsField]:
+        return [
+            QgsField("node_id", QVariant.Int),
+            QgsField("input", QVariant.Double),
+            QgsField("output", QVariant.Double),
+            QgsField("controlled_variable", QVariant.String),
+        ]
+
+
 class PidControlStatic(Input):
     @classmethod
     def input_type(cls) -> str:
@@ -725,7 +779,6 @@ class PidControlStatic(Input):
         return [
             QgsField("node_id", QVariant.Int),
             QgsField("active", QVariant.Bool),
-            QgsField("listen_node_type", QVariant.String),
             QgsField("listen_node_id", QVariant.Int),
             QgsField("target", QVariant.Double),
             QgsField("proportional", QVariant.Double),
@@ -747,7 +800,6 @@ class PidControlTime(Input):
     def attributes(cls) -> list[QgsField]:
         return [
             QgsField("node_id", QVariant.Int),
-            QgsField("listen_node_type", QVariant.String),
             QgsField("listen_node_id", QVariant.Int),
             QgsField("time", QVariant.DateTime),
             QgsField("target", QVariant.Double),
@@ -879,9 +931,15 @@ NODES: dict[str, type[Input]] = {
 }
 NONSPATIALNODETYPES: set[str] = {
     cls.nodetype() for cls in Input.__subclasses__() if not cls.is_spatial()
-}
+} | {"Terminal"}
 EDGETYPES = {"flow", "control"}
-SPATIALCONTROLNODETYPES = {"LevelDemand", "FlowDemand", "DiscreteControl", "PidControl"}
+SPATIALCONTROLNODETYPES = {
+    "ContinuousControl",
+    "DiscreteControl",
+    "FlowDemand",
+    "LevelDemand",
+    "PidControl",
+}
 
 
 def load_nodes_from_geopackage(path: Path) -> dict[str, Input]:

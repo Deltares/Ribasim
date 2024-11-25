@@ -17,6 +17,7 @@ from pathlib import Path
 # Importing from plugins directly for mypy
 from plugins import processing
 from qgis.core import QgsVectorFileWriter, QgsVectorLayer
+from qgis.PyQt.QtXml import QDomDocument
 
 
 @contextmanager
@@ -27,6 +28,7 @@ def sqlite3_cursor(path: Path):
         yield cursor
     finally:
         cursor.close()
+        connection.commit()
         connection.close()
 
 
@@ -49,8 +51,31 @@ def layers(path: Path) -> list[str]:
     return layers
 
 
+def write_schema_version(path: Path, version: int = 2) -> None:
+    """Write the schema version to the geopackage."""
+    with sqlite3_cursor(path) as cursor:
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS ribasim_metadata (
+                key TEXT PRIMARY KEY,
+                value TEXT
+            );
+            """
+        )
+        cursor.execute(
+            "INSERT OR REPLACE INTO ribasim_metadata (key, value) VALUES ('schema_version', ?)",
+            (version,),
+        )
+        sql = "INSERT INTO gpkg_contents (table_name, data_type, identifier) VALUES (?, ?, ?)"
+        cursor.execute(sql, ("ribasim_metadata", "attributes", "ribasim_metadata"))
+
+
 def write_layer(
-    path: Path, layer: QgsVectorLayer, layername: str, newfile: bool = False
+    path: Path,
+    layer: QgsVectorLayer,
+    layername: str,
+    newfile: bool = False,
+    fid: str = "fid",
 ) -> QgsVectorLayer:
     """
     Write a QgsVectorLayer to a GeoPackage database.
@@ -75,6 +100,12 @@ def write_layer(
     options = QgsVectorFileWriter.SaveVectorOptions()
     options.driverName = "gpkg"
     options.layerName = layername
+    options.layerOptions = [f"FID={fid}"]
+
+    # Store the current layer style
+    doc = QDomDocument()
+    layer.exportNamedStyle(doc)
+
     if not newfile:
         options.actionOnExistingFile = (
             QgsVectorFileWriter.ActionOnExistingFile.CreateOrOverwriteLayer
@@ -88,6 +119,11 @@ def write_layer(
             f" with error: {error_message}"
         )
     layer = QgsVectorLayer(f"{path}|layername={layername}", layername, "ogr")
+
+    # Load the stored layer style, and save it to the geopackage
+    layer.importNamedStyle(doc)
+    stylename = f"{layername.replace(' / ', '_')}Style"
+    layer.saveStyleToDatabase(stylename, "", True, "")
     return layer
 
 

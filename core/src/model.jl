@@ -1,7 +1,8 @@
-struct SavedResults{V1 <: ComponentVector{Float64}}
-    flow::SavedValues{Float64, SavedFlow}
-    vertical_flux::SavedValues{Float64, V1}
+struct SavedResults{V <: ComponentVector{Float64}}
+    flow::SavedValues{Float64, SavedFlow{V}}
+    basin_state::SavedValues{Float64, SavedBasinState}
     subgrid_level::SavedValues{Float64, Vector{Float64}}
+    solver_stats::SavedValues{Float64, SolverStats}
 end
 
 """
@@ -36,16 +37,10 @@ function Model(config_path::AbstractString)::Model
 end
 
 function Model(config::Config)::Model
-    alg = algorithm(config.solver)
-    db_path = input_path(config, config.database)
+    db_path = database_path(config)
     if !isfile(db_path)
         @error "Database file not found" db_path
         error("Database file not found")
-    end
-
-    # Setup timing logging
-    if config.logging.timing
-        TimerOutputs.enable_debug_timings(Ribasim)  # causes recompilation (!)
     end
 
     # All data from the database that we need during runtime is copied into memory,
@@ -59,7 +54,7 @@ function Model(config::Config)::Model
         error("Invalid edge types found.")
     end
 
-    local parameters, state, n, tstops
+    local parameters, tstops
     try
         parameters = Parameters(db, config)
 
@@ -67,17 +62,21 @@ function Model(config::Config)::Model
             error("Invalid discrete control state definition(s).")
         end
 
-        (; pid_control, graph, outlet, basin, tabulated_rating_curve) = parameters
+        (; pid_control, graph, outlet, pump, basin, tabulated_rating_curve) = parameters
         if !valid_pid_connectivity(pid_control.node_id, pid_control.listen_node_id, graph)
             error("Invalid PidControl connectivity.")
         end
 
-        if !valid_outlet_crest_level!(graph, outlet, basin)
-            error("Invalid minimum crest level of outlet")
+        if !valid_min_upstream_level!(graph, outlet, basin)
+            error("Invalid minimum upstream level of Outlet.")
+        end
+
+        if !valid_min_upstream_level!(graph, pump, basin)
+            error("Invalid minimum upstream level of Pump.")
         end
 
         if !valid_tabulated_curve_level(graph, tabulated_rating_curve, basin)
-            error("Invalid level of tabulated rating curve")
+            error("Invalid level of TabulatedRatingCurve.")
         end
 
         # tell the solver to stop when new data comes in
@@ -95,66 +94,73 @@ function Model(config::Config)::Model
             push!(tstops, get_tstops(time_schema.time, config.starttime))
         end
 
-        # use state
-        state = load_structvector(db, config, BasinStateV1)
-        n = length(get_ids(db, "Basin"))
-
     finally
         # always close the database, also in case of an error
         close(db)
     end
     @debug "Read database into memory."
 
-    storage = get_storages_from_levels(parameters.basin, state.level)
+    u0 = build_state_vector(parameters)
+    du0 = zero(u0)
 
-    # Synchronize level with storage
-    set_current_basin_properties!(parameters.basin, storage)
+    parameters = set_state_flow_edges(parameters, u0)
+    parameters = build_flow_to_storage(parameters, u0)
+    @reset parameters.u_prev_saveat = zero(u0)
 
-    @assert length(storage) == n "Basin / state length differs from number of Basins"
-    # Integrals for PID control
-    integral = zeros(length(parameters.pid_control.node_id))
-    u0 = ComponentVector{Float64}(; storage, integral)
+    # The Solver algorithm
+    alg = algorithm(config.solver; u0)
+
     # for Float32 this method allows max ~1000 year simulations without accuracy issues
     t_end = seconds_since(config.endtime, config.starttime)
     @assert eps(t_end) < 3600 "Simulation time too long"
     t0 = zero(t_end)
     timespan = (t0, t_end)
 
+    # Synchronize level with storage
+    set_current_basin_properties!(du0, u0, parameters, t0)
+
+    # Previous level is used to estimate the minimum level that was attained during a time step
+    # in limit_flow!
+    parameters.basin.level_prev .=
+        parameters.basin.current_properties.current_level[parent(u0)]
+
     saveat = convert_saveat(config.solver.saveat, t_end)
     saveat isa Float64 && push!(tstops, range(0, t_end; step = saveat))
     tstops = sort(unique(vcat(tstops...)))
     adaptive, dt = convert_dt(config.solver.dt)
 
-    jac_prototype = config.solver.sparse ? get_jac_prototype(parameters) : nothing
+    jac_prototype = if config.solver.sparse
+        get_jac_prototype(du0, u0, parameters, t0)
+    else
+        nothing
+    end
     RHS = ODEFunction(water_balance!; jac_prototype)
 
-    @timeit_debug to "Setup ODEProblem" begin
-        prob = ODEProblem(RHS, u0, timespan, parameters)
-    end
+    prob = ODEProblem(RHS, u0, timespan, parameters)
     @debug "Setup ODEProblem."
 
-    callback, saved = create_callbacks(parameters, config, saveat)
+    callback, saved = create_callbacks(parameters, config, u0, saveat)
     @debug "Created callbacks."
 
     # Run water_balance! before initializing the integrator. This is because
     # at this initialization the discrete control callback is called for the first
     # time which depends on the flows formulated in water_balance!
-    water_balance!(copy(u0), u0, parameters, t0)
+    water_balance!(du0, u0, parameters, t0)
 
     # Initialize the integrator, providing all solver options as described in
     # https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/
     # Not all keyword arguments (e.g. `dt`) support `nothing`, in which case we follow
     # https://github.com/SciML/OrdinaryDiffEq.jl/blob/v6.57.0/src/solve.jl#L10
-    @timeit_debug to "Setup integrator" integrator = init(
+    integrator = init(
         prob,
         alg;
         progress = true,
         progress_name = "Simulating",
         progress_steps = 100,
+        save_everystep = false,
         callback,
         tstops,
-        isoutofdomain = (u, p, t) -> any(<(0), u.storage),
-        saveat,
+        isoutofdomain,
         adaptive,
         dt,
         config.solver.dtmin,
@@ -166,10 +172,6 @@ function Model(config::Config)::Model
     )
     @debug "Setup integrator."
 
-    if config.logging.timing
-        @show Ribasim.to
-    end
-
     if config.allocation.use_allocation && is_active(parameters.allocation)
         set_initial_allocation_mean_flows!(integrator)
     end
@@ -180,7 +182,8 @@ function Model(config::Config)::Model
 end
 
 "Get all saved times in seconds since start"
-tsaves(model::Model)::Vector{Float64} = model.integrator.sol.t
+tsaves(model::Model)::Vector{Float64} =
+    [0.0, (cvec.t for cvec in model.saved.flow.saveval)...]
 
 "Get all saved times as a Vector{DateTime}"
 function datetimes(model::Model)::Vector{DateTime}
@@ -213,7 +216,6 @@ function SciMLBase.step!(model::Model, dt::Float64)::Model
     if round(ntimes) ≈ ntimes
         update_allocation!(integrator)
     end
-    set_previous_flows!(integrator)
     step!(integrator, dt, true)
     return model
 end

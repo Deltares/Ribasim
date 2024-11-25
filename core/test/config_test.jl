@@ -32,12 +32,12 @@
     @testset "docs" begin
         config = Ribasim.Config(normpath(@__DIR__, "docs.toml"))
         @test config isa Ribasim.Config
-        @test config.solver.autodiff
+        @test !config.solver.autodiff
     end
 end
 
 @testitem "Solver" begin
-    using OrdinaryDiffEq: alg_autodiff, AutoFiniteDiff, AutoForwardDiff
+    using OrdinaryDiffEqCore: alg_autodiff, AutoFiniteDiff, AutoForwardDiff
     using Ribasim: convert_saveat, convert_dt, Solver, algorithm
 
     solver = Solver()
@@ -60,7 +60,7 @@ end
           AutoForwardDiff()
     @test alg_autodiff(algorithm(Solver(; algorithm = "QNDF", autodiff = false))) ==
           AutoFiniteDiff()
-    @test alg_autodiff(algorithm(Solver(; algorithm = "QNDF"))) == AutoForwardDiff()
+    @test alg_autodiff(algorithm(Solver(; algorithm = "QNDF"))) == AutoFiniteDiff()
     # autodiff is not a kwargs for explicit algorithms, but we use try-catch to bypass
     algorithm(Solver(; algorithm = "Euler", autodiff = true))
 
@@ -81,4 +81,16 @@ end
     @test Ribasim.snake_case("CamelCase") == "camel_case"
     @test Ribasim.snake_case("ABCdef") == "a_b_cdef"
     @test Ribasim.snake_case("snake_case") == "snake_case"
+    @test Ribasim.snake_case(:CamelCase) == :camel_case
+    @test Ribasim.snake_case(:ABCdef) == :a_b_cdef
+    @test Ribasim.snake_case(:snake_case) == :snake_case
+end
+
+@testitem "camel_case" begin
+    @test Ribasim.camel_case("camel_case") == "CamelCase"
+    @test Ribasim.camel_case("a_b_cdef") == "ABCdef"
+    @test Ribasim.camel_case("CamelCase") == "CamelCase"
+    @test Ribasim.camel_case(:camel_case) == :CamelCase
+    @test Ribasim.camel_case(:a_b_cdef) == :ABCdef
+    @test Ribasim.camel_case(:CamelCase) == :CamelCase
 end

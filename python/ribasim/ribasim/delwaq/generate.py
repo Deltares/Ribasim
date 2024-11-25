@@ -1,11 +1,14 @@
 """Setup a Delwaq model from a Ribasim model and results."""
 
+import argparse
 import csv
+import logging
 import shutil
 from datetime import timedelta
 from pathlib import Path
 
-from ribasim.utils import MissingOptionalModule
+from ribasim import nodes
+from ribasim.utils import MissingOptionalModule, _concat, _pascal_to_snake
 
 try:
     import networkx as nx
@@ -21,8 +24,7 @@ except ImportError:
     jinja2 = MissingOptionalModule("jinja2", "delwaq")  # type: ignore
 
 import ribasim
-
-from .util import (
+from ribasim.delwaq.util import (
     strfdelta,
     ugrid,
     write_flows,
@@ -30,7 +32,9 @@ from .util import (
     write_volumes,
 )
 
+logger = logging.getLogger(__name__)
 delwaq_dir = Path(__file__).parent
+output_path = delwaq_dir / "model"
 
 env = jinja2.Environment(
     autoescape=True, loader=jinja2.FileSystemLoader(delwaq_dir / "template")
@@ -41,37 +45,71 @@ env = jinja2.Environment(
 USE_EVAP = True
 
 
-def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
-    """Generate a Delwaq model from a Ribasim model and results."""
+def _boundary_name(id, type):
+    # Delwaq has a limit of 12 characters for the boundary name
+    return type[:9] + "_" + str(id)
 
-    # Read in model and results
-    model = ribasim.Model.read(toml_path)
-    basins = pd.read_feather(toml_path.parent / "results" / "basin.arrow")
-    flows = pd.read_feather(toml_path.parent / "results" / "flow.arrow")
 
-    output_folder = delwaq_dir / "model"
-    output_folder.mkdir(exist_ok=True)
+def _quote(value):
+    return f"'{value}'"
 
-    # Setup flow network
+
+def _make_boundary(data, boundary_type):
+    """
+    Create a Delwaq boundary definition with the given data and boundary type.
+    Pivot our data from long to wide format, and convert the time to a string.
+
+    Specifically, we go from a table:
+        `node_id, substance, time, concentration`
+    to
+        ```
+        ITEM 'Drainage_6'
+        CONCENTRATIONS 'Cl' 'Tracer'
+        ABSOLUTE TIME
+        LINEAR DATA 'Cl' 'Tracer'
+        '2020/01/01-00:00:00' 0.0  1.0
+        '2020/01/02-00:00:00' 1.0 -999
+        ```
+    """
+    bid = _boundary_name(data.node_id.iloc[0], boundary_type)
+    piv = (
+        data.pivot_table(
+            index="time", columns="substance", values="concentration", fill_value=-999
+        )
+        .reset_index()
+        .reset_index(drop=True)
+    )
+    # Convert Arrow time to Numpy to avoid needing tzdata somehow
+    piv.time = piv.time.astype("datetime64[ns]").dt.strftime("%Y/%m/%d-%H:%M:%S")
+    boundary = {
+        "name": bid,
+        "substances": list(map(_quote, piv.columns[1:])),
+        "df": piv.to_string(formatters={"time": _quote}, header=False, index=False),
+    }
+    substances = data.substance.unique()
+    return boundary, substances
+
+
+def _setup_graph(nodes, edge, evaporate_mass=True):
     G = nx.DiGraph()
-    nodes = model.node_table()
+
     assert nodes.df is not None
     for row in nodes.df.itertuples():
         if row.node_type not in ribasim.geometry.edge.SPATIALCONTROLNODETYPES:
             G.add_node(
-                f"{row.node_type} #{row.node_id}",
+                row.Index,
                 type=row.node_type,
-                id=row.node_id,
+                id=row.Index,
                 x=row.geometry.x,
                 y=row.geometry.y,
                 pos=(row.geometry.x, row.geometry.y),
             )
-    assert model.edge.df is not None
-    for row in model.edge.df.itertuples():
+    assert edge.df is not None
+    for row in edge.df.itertuples():
         if row.edge_type == "flow":
             G.add_edge(
-                f"{row.from_node_type} #{row.from_node_id}",
-                f"{row.to_node_type} #{row.to_node_id}",
+                row.from_node_id,
+                row.to_node_id,
                 id=[row.Index],
                 duplicate=None,
             )
@@ -95,7 +133,7 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
 
             for outneighbor_id in out.keys():
                 if outneighbor_id in remove_nodes:
-                    print("Not making edge to removed node.")
+                    logger.debug("Not making edge to removed node.")
                     continue
                 edge = (inneighbor_id, outneighbor_id)
                 edge_id = G.get_edge_data(node_id, outneighbor_id)["id"][0]
@@ -104,6 +142,11 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
                     data["id"].append(edge_id)
                 else:
                     G.add_edge(*edge, id=[edge_id])
+
+    iso = nx.number_of_isolates(G)
+    if iso > 0:
+        logger.debug(f"Found {iso} isolated nodes in the network.")
+        remove_nodes.extend(list(nx.isolates(G)))
 
     for node_id in remove_nodes:
         G.remove_node(node_id)
@@ -120,12 +163,26 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
                 G.nodes[loop[0]]["type"] != "UserDemand"
                 and G.nodes[loop[1]]["type"] != "UserDemand"
             ):
-                print("Found cycle that is not a UserDemand.")
+                logger.debug("Found cycle that is not a UserDemand.")
             else:
                 edge_ids = G.edges[loop]["id"]
                 G.edges[reversed(loop)]["id"].extend(edge_ids)
                 merge_edges.extend(edge_ids)
                 G.remove_edge(*loop)
+
+    # Remove boundary to boundary edges
+    remove_double_edges = []
+    for x in G.edges(data=True):
+        a, b, d = x
+        if G.nodes[a]["type"] == "Terminal" and G.nodes[b]["type"] == "UserDemand":
+            logger.debug("Removing edge between Terminal and UserDemand")
+            remove_double_edges.append(a)
+        elif G.nodes[a]["type"] == "UserDemand" and G.nodes[b]["type"] == "Terminal":
+            remove_double_edges.append(b)
+            logger.debug("Removing edge between UserDemand and Terminal")
+
+    for node_id in remove_double_edges:
+        G.remove_node(node_id)
 
     # Relabel the nodes as consecutive integers for Delwaq
     # Note that the node["id"] is the original node_id
@@ -147,7 +204,7 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
             boundary_id -= 1
             node_mapping[node_id] = boundary_id
         else:
-            raise Exception("Found unexpected node $node_id in delwaq graph.")
+            raise ValueError(f"Found unexpected node {node_id} in delwaq graph.")
 
     nx.relabel_nodes(G, node_mapping, copy=False)
 
@@ -184,7 +241,7 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
                 boundary=(node["id"], "precipitation"),
             )
 
-            if USE_EVAP:
+            if evaporate_mass:
                 boundary_id -= 1
                 G.add_node(
                     boundary_id,
@@ -206,6 +263,63 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
         for edge_id in d["id"]:
             edge_mapping[edge_id] = i
 
+    assert len(basin_mapping) == basin_id
+
+    return G, merge_edges, node_mapping, edge_mapping, basin_mapping
+
+
+def _setup_boundaries(model):
+    boundaries = []
+    substances = set()
+
+    if model.level_boundary.concentration.df is not None:
+        for _, rows in model.level_boundary.concentration.df.groupby(["node_id"]):
+            boundary, substance = _make_boundary(rows, "LevelBoundary")
+            boundaries.append(boundary)
+            substances.update(substance)
+
+    if model.flow_boundary.concentration.df is not None:
+        for _, rows in model.flow_boundary.concentration.df.groupby("node_id"):
+            boundary, substance = _make_boundary(rows, "FlowBoundary")
+            boundaries.append(boundary)
+            substances.update(substance)
+
+    if model.basin.concentration.df is not None:
+        for _, rows in model.basin.concentration.df.groupby(["node_id"]):
+            for boundary_type in ("Drainage", "Precipitation"):
+                nrows = rows.rename(columns={boundary_type.lower(): "concentration"})
+                boundary, substance = _make_boundary(nrows, boundary_type)
+                boundaries.append(boundary)
+                substances.update(substance)
+
+    return boundaries, substances
+
+
+def generate(
+    toml_path: Path,
+    output_path: Path = output_path,
+) -> tuple[nx.DiGraph, set[str]]:
+    """Generate a Delwaq model from a Ribasim model and results."""
+
+    # Read in model and results
+    model = ribasim.Model.read(toml_path)
+    results_folder = toml_path.parent / model.results_dir
+    evaporate_mass = model.solver.evaporate_mass
+
+    basins = pd.read_feather(
+        toml_path.parent / results_folder / "basin.arrow", dtype_backend="pyarrow"
+    )
+    flows = pd.read_feather(
+        toml_path.parent / results_folder / "flow.arrow", dtype_backend="pyarrow"
+    )
+
+    output_path.mkdir(exist_ok=True)
+
+    # Setup flow network
+    G, merge_edges, node_mapping, edge_mapping, basin_mapping = _setup_graph(
+        model.node_table(), model.edge, evaporate_mass=evaporate_mass
+    )
+
     # Plot
     # plt.figure(figsize=(18, 18))
     # nx.draw(
@@ -224,15 +338,22 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
 
     # Write topology to delwaq pointer file
     pointer = pd.DataFrame(G.edges(), columns=["from_node_id", "to_node_id"])
-    pointer.to_csv(output_folder / "network.csv", index=False)  # not needed
-    write_pointer(output_folder / "ribasim.poi", pointer)
+    write_pointer(output_path / "ribasim.poi", pointer)
+    pointer["riba_edge_id"] = [e[2] for e in G.edges.data("id")]
+    pointer["riba_from_node_id"] = pointer["from_node_id"].map(
+        {v: k for k, v in node_mapping.items()}
+    )
+    pointer["riba_to_node_id"] = pointer["to_node_id"].map(
+        {v: k for k, v in node_mapping.items()}
+    )
+    pointer.to_csv(output_path / "network.csv", index=False)  # not needed
 
-    total_segments = basin_id
+    total_segments = len(basin_mapping)
     total_exchanges = len(pointer)
 
     # Write attributes template
     template = env.get_template("delwaq.atr.j2")
-    with open(output_folder / "ribasim.atr", mode="w") as f:
+    with open(output_path / "ribasim.atr", mode="w") as f:
         f.write(
             template.render(
                 nsegments=total_segments,
@@ -241,7 +362,7 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
 
     # Generate mesh and write to NetCDF
     uds = ugrid(G)
-    uds.ugrid.to_netcdf(output_folder / "ribasim.nc")
+    uds.ugrid.to_netcdf(output_path / "ribasim.nc")
 
     # Generate area and flows
     # File format is int32, float32 based
@@ -254,13 +375,14 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
     flows.loc[m, "flow_rate"] = flows.loc[m, "flow_rate"] * -1
 
     # Map edge_id to the new edge_id and merge any duplicate flows
+    flows["riba_edge_id"] = flows["edge_id"]
     flows["edge_id"] = flows["edge_id"].map(edge_mapping)
     flows.dropna(subset=["edge_id"], inplace=True)
     flows["edge_id"] = flows["edge_id"].astype("int32")
     nflows = flows.copy()
     nflows = flows.groupby(["time", "edge_id"]).sum().reset_index()
     nflows.drop(
-        columns=["from_node_id", "from_node_type", "to_node_id", "to_node_type"],
+        columns=["from_node_id", "to_node_id"],
         inplace=True,
     )
 
@@ -274,108 +396,47 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
             columns={boundary_type: "flow_rate"}
         )
         df["edge_id"] = edge_id
-        nflows = pd.concat([nflows, df], ignore_index=True)
+        nflows = _concat([nflows, df], ignore_index=True)
 
     # Save flows to Delwaq format
     nflows.sort_values(by=["time", "edge_id"], inplace=True)
-    nflows.to_csv(output_folder / "flows.csv", index=False)  # not needed
+    nflows.to_csv(output_path / "flows.csv", index=False)  # not needed
     nflows.drop(
-        columns=["edge_id"],
+        columns=["edge_id", "riba_edge_id"],
         inplace=True,
     )
-    write_flows(output_folder / "ribasim.flo", nflows, timestep)
+    write_flows(output_path / "ribasim.flo", nflows, timestep)
     write_flows(
-        output_folder / "ribasim.are", nflows, timestep
+        output_path / "ribasim.are", nflows, timestep
     )  # same as flow, so area becomes 1
 
     # Write volumes to Delwaq format
     basins.drop(columns=["level"], inplace=True)
     volumes = basins[["time", "node_id", "storage"]]
+    volumes["riba_node_id"] = volumes["node_id"]
     volumes.loc[:, "node_id"] = (
         volumes["node_id"].map(basin_mapping).astype(pd.Int32Dtype())
     )
     volumes = volumes.sort_values(by=["time", "node_id"])
-    volumes.to_csv(output_folder / "volumes.csv", index=False)  # not needed
-    volumes.drop(columns=["node_id"], inplace=True)
-    write_volumes(output_folder / "ribasim.vol", volumes, timestep)
+    volumes.to_csv(output_path / "volumes.csv", index=False)  # not needed
+    volumes.drop(columns=["node_id", "riba_node_id"], inplace=True)
+    write_volumes(output_path / "ribasim.vol", volumes, timestep)
     write_volumes(
-        output_folder / "ribasim.vel", volumes, timestep
+        output_path / "ribasim.vel", volumes, timestep
     )  # same as volume, so vel becomes 1
 
     # Length file
     lengths = nflows.copy()
     lengths.flow_rate = 1
     lengths.iloc[np.repeat(np.arange(len(lengths)), 2)]
-    write_flows(output_folder / "ribasim.len", lengths, timestep)
+    write_flows(output_path / "ribasim.len", lengths, timestep)
 
     # Find all boundary substances and concentrations
-    boundaries = []
-    substances = set()
-
-    def boundary_name(id, type):
-        # Delwaq has a limit of 12 characters for the boundary name
-        return type[:9] + "_" + str(id)
-
-    def quote(value):
-        return f"'{value}'"
-
-    def make_boundary(data, boundary_type):
-        """
-        Create a Delwaq boundary definition with the given data and boundary type.
-        Pivot our data from long to wide format, and convert the time to a string.
-
-        Specifically, we go from a table:
-            `node_id, substance, time, concentration`
-        to
-            ```
-            ITEM 'Drainage_6'
-            CONCENTRATIONS 'Cl' 'Tracer'
-            ABSOLUTE TIME
-            LINEAR DATA 'Cl' 'Tracer'
-            '2020/01/01-00:00:00' 0.0  1.0
-            '2020/01/02-00:00:00' 1.0 -999
-            ```
-        """
-        bid = boundary_name(data.node_id.iloc[0], boundary_type)
-        piv = (
-            data.pivot_table(index="time", columns="substance", values="concentration")
-            .reset_index()
-            .reset_index(drop=True)
-        )
-        piv.time = piv.time.dt.strftime("%Y/%m/%d-%H:%M:%S")
-        boundary = {
-            "name": bid,
-            "substances": list(map(quote, piv.columns[1:])),
-            "df": piv.to_string(
-                formatters={"time": quote}, header=False, index=False, na_rep=-999
-            ),
-        }
-        substances = data.substance.unique()
-        return boundary, substances
-
-    if model.level_boundary.concentration.df is not None:
-        for _, rows in model.level_boundary.concentration.df.groupby(["node_id"]):
-            boundary, substance = make_boundary(rows, "LevelBoundary")
-            boundaries.append(boundary)
-            substances.update(substance)
-
-    if model.flow_boundary.concentration.df is not None:
-        for _, rows in model.flow_boundary.concentration.df.groupby("node_id"):
-            boundary, substance = make_boundary(rows, "FlowBoundary")
-            boundaries.append(boundary)
-            substances.update(substance)
-
-    if model.basin.concentration.df is not None:
-        for _, rows in model.basin.concentration.df.groupby(["node_id"]):
-            for boundary_type in ("Drainage", "Precipitation"):
-                nrows = rows.rename(columns={boundary_type.lower(): "concentration"})
-                boundary, substance = make_boundary(nrows, boundary_type)
-                boundaries.append(boundary)
-                substances.update(substance)
+    boundaries, substances = _setup_boundaries(model)
 
     # Write boundary data with substances and concentrations
     template = env.get_template("B5_bounddata.inc.j2")
-    with open(output_folder / "B5_bounddata.inc", mode="w") as f:
+    with open(output_path / "B5_bounddata.inc", mode="w") as f:
         f.write(
             template.render(
                 states=[],  # no states yet
@@ -386,10 +447,13 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
     # Setup initial basin concentrations
     defaults = {
         "Continuity": 1.0,
-        "Basin": 0.0,
+        "Initial": 1.0,
         "LevelBoundary": 0.0,
         "FlowBoundary": 0.0,
         "Terminal": 0.0,
+        "UserDemand": 0.0,
+        "Precipitation": 0.0,
+        "Drainage": 0.0,
     }
     substances.update(defaults.keys())
 
@@ -427,11 +491,15 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
     bnd.sort_values(by="bid", ascending=False, inplace=True)
     bnd["node_type"] = [G.nodes(data="type")[bid] for bid in bnd["bid"]]
     bnd["node_id"] = [G.nodes(data="id")[bid] for bid in bnd["bid"]]
-    bnd["fid"] = list(map(boundary_name, bnd["node_id"], bnd["node_type"]))
+    bnd["fid"] = list(map(_boundary_name, bnd["node_id"], bnd["node_type"]))
     bnd["comment"] = ""
+    bnd.to_csv(output_path / "bndlist.csv", index=False)
     bnd = bnd[["fid", "comment", "node_type"]]
+    bnd.drop_duplicates(subset="fid", inplace=True)
+    assert bnd["fid"].is_unique
+
     bnd.to_csv(
-        output_folder / "ribasim_bndlist.inc",
+        output_path / "ribasim_bndlist.inc",
         index=False,
         header=False,
         sep=" ",
@@ -441,11 +509,11 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
 
     # Setup DIMR configuration for running Delwaq via DIMR
     dimrc = delwaq_dir / "reference/dimr_config.xml"
-    shutil.copy(dimrc, output_folder / "dimr_config.xml")
+    shutil.copy(dimrc, output_path / "dimr_config.xml")
 
     # Write main Delwaq input file
     template = env.get_template("delwaq.inp.j2")
-    with open(output_folder / "delwaq.inp", mode="w") as f:
+    with open(output_path / "delwaq.inp", mode="w") as f:
         f.write(
             template.render(
                 startime=model.starttime,
@@ -463,8 +531,50 @@ def generate(toml_path: Path) -> tuple[nx.DiGraph, set[str]]:
     return G, substances
 
 
+def add_tracer(model, node_id, tracer_name):
+    """Add a tracer to the Delwaq model."""
+    n = model.node_table().df.loc[node_id]
+    node_type = n.node_type
+    if node_type not in [
+        "Basin",
+        "LevelBoundary",
+        "FlowBoundary",
+        "UserDemand",
+    ]:
+        raise ValueError("Can only trace Basins and boundaries")
+    snake_node_type = _pascal_to_snake(node_type)
+    nt = getattr(model, snake_node_type)
+
+    ct = getattr(nodes, snake_node_type)
+    table = ct.Concentration(
+        node_id=[node_id],
+        time=[model.starttime],
+        substance=[tracer_name],
+        concentration=[1.0],
+    )
+    if nt.concentration is None:
+        nt.concentration = table
+    else:
+        nt.concentration = pd.concat([nt.concentration.df, table.df], ignore_index=True)
+
+
 if __name__ == "__main__":
     # Generate a Delwaq model from the default Ribasim model
-    repo_dir = delwaq_dir.parents[1]
-    toml_path = repo_dir / "generated_testmodels/basic/ribasim.toml"
-    graph, substances = generate(toml_path)
+
+    parser = argparse.ArgumentParser(
+        description="Generate Delwaq input from Ribasim results."
+    )
+    parser.add_argument(
+        "toml_path", type=Path, help="The path to the Ribasim TOML file."
+    )
+    parser.add_argument(
+        "--output_path",
+        type=Path,
+        help="The relative path to store the Delwaq model.",
+        default="delwaq",
+    )
+    args = parser.parse_args()
+
+    graph, substances = generate(
+        args.toml_path, args.toml_path.parent / args.output_path
+    )

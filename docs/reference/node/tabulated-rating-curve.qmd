@@ -10,13 +10,14 @@ Use it for instance to model flow over a weir.
 
 ## Static
 
-column        | type    | unit         | restriction
-------------- | ------- | ------------ | -----------
-node_id       | Int32   | -            | sorted
-control_state | String  | -            | (optional) sorted per node_id
-active        | Bool    | -            | (optional, default true)
-level         | Float64 | $m$          | sorted per control_state, unique
-flow_rate     | Float64 | $m^3 s^{-1}$ | start at 0, increasing
+column               | type    | unit                  | restriction
+-------------        | ------- | --------------------- | -----------
+node_id              | Int32   | -                     | sorted
+control_state        | String  | -                     | (optional) sorted per node_id
+active               | Bool    | -                     | (optional, default true)
+max_downstream_level | Float64 | $\text{m}$            | (optional)
+level                | Float64 | $\text{m}$            | sorted per control_state, unique
+flow_rate            | Float64 | $\text{m}^3/\text{s}$ | start at 0, increasing
 
 Thus a single rating curve can be given by the following table:
 
@@ -31,6 +32,51 @@ Below the lowest given level of -0.10, the flow rate is kept at 0.
 Between given levels the flow rate is interpolated linearly.
 Above the maximum given level of 20.09, the flow rate keeps increases linearly according to the slope of the last segment.
 
+### Interpolation
+
+The $Q(h)$ relationship of a tabulated rating curve is defined as a linear interpolation.
+
+```{python}
+# | code-fold: true
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from IPython.display import display, Markdown
+
+np.random.seed(0)
+fontsize = 15
+
+N = 10
+level = np.cumsum(np.random.rand(N))
+flow = level**2 + np.random.rand(N)
+flow[0] = 0.0
+fig, ax = plt.subplots()
+ax.set_xticks([])
+ax.set_yticks([0])
+ax.scatter(level, flow, label = "data")
+ax.plot(level, flow, label = "interpolation", color = "C0")
+ax.plot([level[0] - 1, level[0]], [0, 0], label = "extrapolation", linestyle = "dashed")
+ax.legend()
+ax.set_xlabel("level", fontsize = fontsize)
+ax.set_ylabel("flow", fontsize = fontsize)
+
+level_extrap = 2 * level[-1] - level[-2]
+flow_extrap = 2 * flow[-1] - flow[-2]
+ax.plot([level[-1], level_extrap], [flow[-1], flow_extrap], color = "C0", linestyle = "dashed")
+ax.set_xlim(level[0] - 0.5, (level[-1] + level_extrap)/2)
+
+markdown_table = pd.DataFrame(
+        data = {
+            "level" : level,
+            "flow" : flow
+        }
+    ).to_markdown(index = False)
+
+display(Markdown(markdown_table))
+```
+
+Here it is validated that the flow starts at $0$ and is non-decreasing. The flow is extrapolated as $0$ backward and linearly forward.
+
 ## Time
 
 This table is the transient form of the `TabulatedRatingCurve` table.
@@ -39,26 +85,30 @@ The table must by sorted by time, and per time it must be sorted by `node_id`.
 With this the rating curves can be updated over time.
 Note that a `node_id` can be either in this table or in the static one, but not both.
 
-column    | type     | unit         | restriction
---------- | -------  | ------------ | -----------
-node_id   | Int32    | -            | sorted
-time      | DateTime | -            | sorted per node_id
-level     | Float64  | $m$          | sorted per node_id per time
-flow_rate | Float64  | $m^3 s^{-1}$ | non-negative
+column               | type     | unit                  | restriction
+-------------------- | -------  | --------------------- | -----------
+node_id              | Int32    | -                     | sorted
+time                 | DateTime | -                     | sorted per node_id
+level                | Float64  | $\text{m}$            | sorted per node_id per time
+flow_rate            | Float64  | $\text{m}^3/\text{s}$ | non-negative
+max_downstream_level | Float64  | $\text{m}$            | (optional)
 
 # Equations
 
-The Tabulated Rating Curve is a tabulation of a basin's discharge behavior.
+The TabulatedRatingCurve is a tabulation of a Basin's discharge behavior.
 It describes a piecewise linear relationship between the Basin's level and its discharge.
 It can be understood as an empirical description of a Basin's properties.
 This can include a weir, but also the lumped hydraulic behavior of the upstream channels.
 
 $$
-Q = \phi(u; 10.0) f(h_a)
+Q = \phi f(h)
 $$
 
 Where:
 
-- $h_a$ is the upstream water level
-- $\phi$ is the reduction factor for the upstream Basin drying out
+- $h$ is the upstream water level
 - $f$ is a piecewise linear function describing the given rating curve $Q(h)$
+- $\phi$ is the reduction factor, which smoothly reduces flow based on all of these criteria:
+  - The upstream volume is below $10 m^3$.
+  - The upstream level is less than $0.02 m$ above the downstream level.
+  - The downstream level is above `max_downstream_level` - $0.02 m$

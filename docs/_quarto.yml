@@ -1,8 +1,7 @@
 project:
   type: website
   resources:
-    - schema/*.schema.json
-
+    - CNAME
 website:
   title: "Ribasim"
   page-navigation: true
@@ -12,11 +11,11 @@ website:
       - text: "Overview"
         file: index.qmd
       - text: "Tutorials"
-        file: tutorial/index.qmd
+        file: tutorial/natural-flow.ipynb
       - text: "How-to guides"
-        file: guide/index.qmd
+        file: guide/examples.ipynb
       - text: "Concepts"
-        file: concept/index.qmd
+        file: concept/concept.qmd
       - text: "Reference"
         file: reference/index.qmd
     right:
@@ -32,21 +31,26 @@ website:
         - index.qmd
         - install.qmd
         - changelog.qmd
+        - known_issues.qmd
+        - contact.qmd
 
     - title: "Tutorials"
       contents:
-        - tutorial/index.qmd
-        - tutorial/qgis.qmd
+        - tutorial/natural-flow.ipynb
+        - tutorial/irrigation-demand.ipynb
+        - tutorial/reservoir.ipynb
 
     - title: "How-to guides"
       contents:
-        - guide/index.qmd
         - guide/examples.ipynb
+        - guide/qgis.qmd
         - guide/coupling.qmd
+        - section: "Coupling guides"
+          contents:
+          - guide/delwaq.ipynb
 
     - title: "Concepts"
       contents:
-        - concept/index.qmd
         - concept/concept.qmd
         - section: "Numerics"
           contents:
@@ -80,18 +84,25 @@ website:
             - reference/node/manning-resistance.qmd
             - reference/node/terminal.qmd
             - reference/node/discrete-control.qmd
+            - reference/node/continuous-control.qmd
             - reference/node/pid-control.qmd
 
-    - title: "Dev docs"
+    - title: "Contributing"
       contents:
         - dev/index.qmd
         - dev/core.qmd
+        - dev/benchmark.qmd
         - dev/addnode.qmd
         - dev/python.qmd
-        - dev/qgis.qmd
+        - dev/allocation.qmd
         - dev/bmi.qmd
         - dev/ci.qmd
         - dev/release.qmd
+        - dev/callstacks.qmd
+        - section: QGIS
+          contents:
+            - dev/qgis.qmd
+            - dev/qgis_test_plan.qmd
 
 format:
   html:

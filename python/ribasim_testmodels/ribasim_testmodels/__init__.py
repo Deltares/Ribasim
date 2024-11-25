@@ -27,9 +27,12 @@ from ribasim_testmodels.basic import (
     tabulated_rating_curve_model,
 )
 from ribasim_testmodels.bucket import bucket_model, leaky_bucket_model
+from ribasim_testmodels.continuous_control import outlet_continuous_control_model
 from ribasim_testmodels.discrete_control import (
     compound_variable_condition_model,
+    concentration_condition_model,
     connector_node_flow_condition_model,
+    continuous_concentration_condition_model,
     flow_condition_model,
     level_boundary_condition_model,
     level_range_model,
@@ -47,6 +50,7 @@ from ribasim_testmodels.equations import (
 from ribasim_testmodels.invalid import (
     invalid_discrete_control_model,
     invalid_edge_types_model,
+    invalid_priorities_model,
     invalid_qh_model,
     invalid_unstable_model,
 )
@@ -66,6 +70,9 @@ __all__ = [
     "basic_transient_model",
     "bucket_model",
     "compound_variable_condition_model",
+    "concentration_condition_model",
+    "continuous_concentration_condition_model",
+    "connector_node_flow_condition_model",
     "discrete_control_of_pid_control_model",
     "fair_distribution_model",
     "flow_boundary_time_model",
@@ -73,6 +80,7 @@ __all__ = [
     "flow_demand_model",
     "invalid_discrete_control_model",
     "invalid_edge_types_model",
+    "invalid_priorities_model",
     "invalid_qh_model",
     "invalid_unstable_model",
     "leaky_bucket_model",
@@ -87,7 +95,7 @@ __all__ = [
     "manning_resistance_model",
     "minimal_subnetwork_model",
     "misc_nodes_model",
-    "connector_node_flow_condition_model",
+    "outlet_continuous_control_model",
     "outlet_model",
     "pid_control_equation_model",
     "pid_control_model",

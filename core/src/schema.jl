@@ -3,6 +3,8 @@
 @schema "ribasim.discretecontrol.variable" DiscreteControlVariable
 @schema "ribasim.discretecontrol.condition" DiscreteControlCondition
 @schema "ribasim.discretecontrol.logic" DiscreteControlLogic
+@schema "ribasim.continuouscontrol.variable" ContinuousControlVariable
+@schema "ribasim.continuouscontrol.function" ContinuousControlFunction
 @schema "ribasim.basin.static" BasinStatic
 @schema "ribasim.basin.time" BasinTime
 @schema "ribasim.basin.profile" BasinProfile
@@ -27,6 +29,7 @@
 @schema "ribasim.outlet.static" OutletStatic
 @schema "ribasim.userdemand.static" UserDemandStatic
 @schema "ribasim.userdemand.time" UserDemandTime
+@schema "ribasim.userdemand.concentration" UserDemandConcentration
 @schema "ribasim.leveldemand.static" LevelDemandStatic
 @schema "ribasim.leveldemand.time" LevelDemandTime
 @schema "ribasim.flowdemand.static" FlowDemandStatic
@@ -52,7 +55,12 @@ function nodetype(
     record = Legolas.record_type(sv)
     node = last(split(string(Symbol(record)), '.'; limit = 3))
 
-    elements = split(string(T), '.'; limit = 3)
+    type_string = string(T)
+    elements = split(type_string, '.'; limit = 3)
+    last_element = last(elements)
+    if startswith(last_element, "concentration") && length(last_element) > 13
+        elements[end] = "concentration_$(last_element[14:end])"
+    end
     if isnode(sv)
         n = elements[2]
         k = Symbol(elements[3])
@@ -70,6 +78,8 @@ end
     flow_rate::Float64
     min_flow_rate::Union{Missing, Float64}
     max_flow_rate::Union{Missing, Float64}
+    min_upstream_level::Union{Missing, Float64}
+    max_downstream_level::Union{Missing, Float64}
     control_state::Union{Missing, String}
 end
 
@@ -79,7 +89,8 @@ end
     flow_rate::Float64
     min_flow_rate::Union{Missing, Float64}
     max_flow_rate::Union{Missing, Float64}
-    min_crest_level::Union{Missing, Float64}
+    min_upstream_level::Union{Missing, Float64}
+    max_downstream_level::Union{Missing, Float64}
     control_state::Union{Missing, String}
 end
 
@@ -200,6 +211,7 @@ end
     active::Union{Missing, Bool}
     level::Float64
     flow_rate::Float64
+    max_downstream_level::Union{Missing, Float64}
     control_state::Union{Missing, String}
 end
 
@@ -208,12 +220,12 @@ end
     time::DateTime
     level::Float64
     flow_rate::Float64
+    max_downstream_level::Union{Missing, Float64}
 end
 
 @version DiscreteControlVariableV1 begin
     node_id::Int32
     compound_variable_id::Int32
-    listen_node_type::String
     listen_node_id::Int32
     variable::String
     weight::Union{Missing, Float64}
@@ -232,10 +244,24 @@ end
     control_state::String
 end
 
+@version ContinuousControlVariableV1 begin
+    node_id::Int32
+    listen_node_id::Int32
+    variable::String
+    weight::Union{Missing, Float64}
+    look_ahead::Union{Missing, Float64}
+end
+
+@version ContinuousControlFunctionV1 begin
+    node_id::Int32
+    input::Float64
+    output::Float64
+    controlled_variable::String
+end
+
 @version PidControlStaticV1 begin
     node_id::Int32
     active::Union{Missing, Bool}
-    listen_node_type::String
     listen_node_id::Int32
     target::Float64
     proportional::Float64
@@ -246,7 +272,6 @@ end
 
 @version PidControlTimeV1 begin
     node_id::Int32
-    listen_node_type::String
     listen_node_id::Int32
     time::DateTime
     target::Float64
@@ -262,7 +287,7 @@ end
     demand::Union{Missing, Float64}
     return_factor::Float64
     min_level::Float64
-    priority::Int32
+    priority::Union{Missing, Int32}
 end
 
 @version UserDemandTimeV1 begin
@@ -271,14 +296,21 @@ end
     demand::Float64
     return_factor::Float64
     min_level::Float64
-    priority::Int32
+    priority::Union{Missing, Int32}
+end
+
+@version UserDemandConcentrationV1 begin
+    node_id::Int32
+    time::DateTime
+    substance::String
+    concentration::Float64
 end
 
 @version LevelDemandStaticV1 begin
     node_id::Int32
     min_level::Union{Missing, Float64}
     max_level::Union{Missing, Float64}
-    priority::Int32
+    priority::Union{Missing, Int32}
 end
 
 @version LevelDemandTimeV1 begin
@@ -286,18 +318,18 @@ end
     time::DateTime
     min_level::Union{Missing, Float64}
     max_level::Union{Missing, Float64}
-    priority::Int32
+    priority::Union{Missing, Int32}
 end
 
 @version FlowDemandStaticV1 begin
     node_id::Int
     demand::Float64
-    priority::Int32
+    priority::Union{Missing, Int32}
 end
 
 @version FlowDemandTimeV1 begin
     node_id::Int
     time::DateTime
     demand::Float64
-    priority::Int32
+    priority::Union{Missing, Int32}
 end

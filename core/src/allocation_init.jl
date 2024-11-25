@@ -3,7 +3,7 @@ function find_subnetwork_connections!(p::Parameters)::Nothing
     (; allocation, graph, allocation) = p
     n_priorities = length(allocation.priorities)
     (; subnetwork_demands, subnetwork_allocateds) = allocation
-    # Find edges where the source node has subnetwork id 1 and the
+    # Find edges (node_id, outflow_id) where the source node has subnetwork id 1 and the
     # destination node subnetwork id ≠1
     for node_id in graph[].node_ids[1]
         for outflow_id in outflow_ids(graph, node_id)
@@ -22,8 +22,25 @@ function find_subnetwork_connections!(p::Parameters)::Nothing
     return nothing
 end
 
+function get_main_network_connections(
+    p::Parameters,
+    subnetwork_id::Int32,
+)::Vector{Tuple{NodeID, NodeID}}
+    (; allocation) = p
+    (; subnetwork_ids, main_network_connections) = allocation
+    idx = findsorted(subnetwork_ids, subnetwork_id)
+    if isnothing(idx)
+        error("Invalid allocation network ID $subnetwork_id.")
+    else
+        return main_network_connections[idx]
+    end
+    return
+end
+
 """
-Get the fixed capacity of the edges in the subnetwork
+Get the fixed capacity (∈[0,∞]) of the edges in the subnetwork in a JuMP.Containers.SparseAxisArray,
+which is a type of sparse arrays that in this case takes NodeID in stead of Int as indices.
+E.g. capacity[(node_a, node_b)] gives the capacity of edge (node_a, node_b).
 """
 function get_subnetwork_capacity(
     p::Parameters,
@@ -61,6 +78,7 @@ function get_subnetwork_capacity(
                 capacity_edge = min(capacity_edge, capacity_node_dst)
             end
 
+            # Set the capacity
             capacity[edge_metadata.edge] = capacity_edge
 
             # If allowed by the nodes from this edge,
@@ -82,7 +100,7 @@ const allocation_source_nodetypes =
 
 """
 Add the edges connecting the main network work to a subnetwork to both the main network
-and subnetwork allocation network.
+and subnetwork allocation network (defined by their capacity objects).
 """
 function add_subnetwork_connections!(
     capacity::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}},
@@ -151,6 +169,8 @@ function add_variables_basin!(
     subnetwork_id::Int32,
 )::Nothing
     (; graph) = p
+
+    # Get the node IDs from the subnetwork for basins that have a level demand
     node_ids_basin = [
         node_id for
         node_id in graph[].node_ids[subnetwork_id] if graph[node_id].type == :basin &&
@@ -313,7 +333,8 @@ function add_constraints_conservation_node!(
 
     for node_id in node_ids
 
-        # No flow conservation constraint on sources/sinks
+        # If a node is a source or a sink (i.e. a boundary node),
+        # there is no flow conservation on that node
         is_source_sink = node_id.type in
         [NodeType.FlowBoundary, NodeType.LevelBoundary, NodeType.UserDemand]
 
@@ -365,6 +386,56 @@ function add_constraints_conservation_node!(
         base_name = "flow_conservation"
     )
 
+    return nothing
+end
+
+"""
+Add the fractional flow constraints to the allocation problem.
+The constraint indices are allocation edges over a fractional flow node.
+
+Constraint:
+flow after fractional_flow node <= fraction * inflow
+"""
+function add_constraints_fractional_flow!(
+    problem::JuMP.Model,
+    p::Parameters,
+    subnetwork_id::Int32,
+)::Nothing
+    (; graph, fractional_flow) = p
+    F = problem[:F]
+    node_ids = graph[].node_ids[subnetwork_id]
+
+    # Find the nodes in this subnetwork with a FractionalFlow
+    # outneighbor, and collect the corresponding flow fractions
+    # and inflow variable
+    edges_to_fractional_flow = Tuple{NodeID, NodeID}[]
+    fractions = Dict{Tuple{NodeID, NodeID}, Float64}()
+    inflows = Dict{NodeID, JuMP.AffExpr}()
+
+    # Find edges of the form (node_id, outflow_id) where outflow_id
+    # is for a FractionalFlow node
+    for node_id in node_ids
+        for outflow_id in outflow_ids(graph, node_id)
+            if outflow_id.type == NodeType.FractionalFlow
+                edge = (node_id, outflow_id)
+                push!(edges_to_fractional_flow, edge)
+                fractions[edge] = fractional_flow.fraction[outflow_id.idx]
+                inflows[node_id] = sum([
+                    F[(inflow_id, node_id)] for inflow_id in inflow_ids(graph, node_id)
+                ])
+            end
+        end
+    end
+
+    # Create the constraints if there is at least one
+    if !isempty(edges_to_fractional_flow)
+        problem[:fractional_flow] = JuMP.@constraint(
+            problem,
+            [edge = edges_to_fractional_flow],
+            F[edge] <= fractions[edge] * inflows[edge[1]],
+            base_name = "fractional_flow"
+        )
+    end
     return nothing
 end
 
@@ -492,6 +563,7 @@ function AllocationModel(
 )::AllocationModel
     capacity = get_capacity(p, subnetwork_id)
     problem = allocation_problem(p, capacity, subnetwork_id)
+    flow_priority = JuMP.Containers.SparseAxisArray(Dict(only(problem[:F].axes) .=> 0.0))
 
-    return AllocationModel(; subnetwork_id, capacity, problem, Δt_allocation)
+    return AllocationModel(; subnetwork_id, capacity, flow_priority, problem, Δt_allocation)
 end

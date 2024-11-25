@@ -3,44 +3,6 @@ using PackageCompiler
 using TOML
 using LibGit2
 
-"""
-# Ribasim CLI
-
-In order to find out about it's usage call `ribasim --help`
-
-# Libribasim
-
-Libribasim is a shared library that exposes Ribasim functionality to external (non-Julian)
-programs. It can be compiled using [PackageCompiler's
-create_lib](https://julialang.github.io/PackageCompiler.jl/stable/libs.html), which is set
-up in this directory. The C API that is offered to control Ribasim is the C API of the
-[Basic Model Interface](https://bmi.readthedocs.io/en/latest/), also known as BMI.
-
-Not all BMI functions are implemented yet, this has been set up as a proof of concept to
-demonstrate that we can use other software such as
-[`imod_coupler`](https://github.com/Deltares/imod_coupler) to control Ribasim and couple it to
-other models.
-
-Here is an example of using libribasim from Python:
-
-```python
-In [1]: from ctypes import CDLL, c_int, c_char_p, create_string_buffer, byref
-
-In [2]: c_dll = CDLL("libribasim", winmode=0x08)  # winmode for Windows
-
-In [3]: argument = create_string_buffer(0)
-   ...: c_dll.init_julia(c_int(0), byref(argument))
-Out[3]: 1
-
-In [4]: config_path = "ribasim.toml"
-
-In [5]: c_dll.initialize(c_char_p(config_path.encode()))
-Out[5]: 0
-
-In [6]: c_dll.update()
-Out[6]: 0
-```
-"""
 function main()
     project_dir = "../core"
     license_file = "../LICENSE"
@@ -61,23 +23,31 @@ function main()
         force = true,
     )
 
-    readme = @doc(build_app)
-    add_metadata(project_dir, license_file, output_dir, git_repo, readme)
+    add_metadata(project_dir, license_file, output_dir, git_repo, readme_start)
     run(Cmd(`cargo build --release`; dir = "cli"))
     ribasim = Sys.iswindows() ? "ribasim.exe" : "ribasim"
     cp("cli/target/release/$ribasim", "ribasim/$ribasim"; force = true)
 end
 
-function set_version(filename, version; group = nothing)
+readme_start = """
+# Ribasim
+
+Ribasim is a water resources model to simulate the physical behavior of a managed open water system
+based on a set of control rules and a prioritized water allocation strategy.
+
+Usage: `ribasim path/to/model/ribasim.toml`
+Documentation: https://ribasim.org/
+"""
+
+"Use the git tag for `ribasim --version`,
+so dev builds can be identified by <tag>-g<short-commit>"
+function set_version(filename::String, tag::String)::Nothing
     data = TOML.parsefile(filename)
-    if !isnothing(group)
-        data[group]["version"] = version
-    else
-        data["version"] = version
-    end
+    data["package"]["version"] = tag
     open(filename, "w") do io
         TOML.print(io, data)
     end
+    return nothing
 end
 
 """
@@ -111,15 +81,6 @@ function add_metadata(project_dir, license_file, output_dir, git_repo, readme)
         force = true,
     )
 
-    # since the exact Ribasim version may be hard to find in the Manifest.toml file
-    # we can also extract that information, and add it to the README.md
-    manifest = TOML.parsefile(normpath(git_repo, "Manifest.toml"))
-    if !haskey(manifest, "manifest_format")
-        error("Manifest.toml is in the old format, run Pkg.upgrade_manifest()")
-    end
-    julia_version = manifest["julia_version"]
-    ribasim_entry = only(manifest["deps"]["Ribasim"])
-    version = ribasim_entry["version"]
     repo = GitRepo(git_repo)
     branch = LibGit2.head(repo)
     commit = LibGit2.peel(LibGit2.GitCommit, branch)
@@ -149,17 +110,15 @@ function add_metadata(project_dir, license_file, output_dir, git_repo, readme)
         This build uses the Ribasim version mentioned below.
 
         ```toml
-        release = "$tag"
+        version = "$tag"
         commit = "$url/$short_commit"
         branch = "$url/$short_name"
-        julia_version = "$julia_version"
-        core_version = "$version"
         ```"""
         println(io, version_info)
     end
 
     # Override the Cargo.toml file with the git version
-    set_version("cli/Cargo.toml", tag; group = "package")
+    set_version("cli/Cargo.toml", tag)
 end
 
 main()

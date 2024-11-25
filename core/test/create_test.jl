@@ -3,7 +3,7 @@
     using Graphs
     using Logging
     using Ribasim: NodeID
-    using Accessors: @set
+    using Accessors: @set, @reset
 
     graph = MetaGraph(
         DiGraph();
@@ -25,7 +25,7 @@
     push!(node_ids[-1], NodeID(:Basin, 2, 1))
 
     graph_data = (; node_ids,)
-    graph = @set graph.graph_data = graph_data
+    @reset graph.graph_data = graph_data
 
     logger = TestLogger()
     with_logger(logger) do

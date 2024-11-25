@@ -2,10 +2,8 @@
 
 from pathlib import Path
 
-import pandas as pd
-
 import ribasim
-from ribasim.utils import MissingOptionalModule
+from ribasim.utils import MissingOptionalModule, _concat
 
 try:
     import xugrid as xu
@@ -17,7 +15,9 @@ repo_dir = delwaq_dir.parents[1]
 output_folder = delwaq_dir / "model"
 
 
-def parse(toml_path: Path, graph, substances) -> ribasim.Model:
+def parse(
+    toml_path: Path, graph, substances, output_folder=output_folder
+) -> ribasim.Model:
     model = ribasim.Model.read(toml_path)
 
     # Output of Delwaq
@@ -47,7 +47,7 @@ def parse(toml_path: Path, graph, substances) -> ribasim.Model:
 
         dfs.append(df)
 
-    df = pd.concat(dfs).reset_index(drop=True)
+    df = _concat(dfs).reset_index(drop=True)
     df.sort_values(["time", "node_id"], inplace=True)
 
     model.basin.concentration_external = df

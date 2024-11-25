@@ -4,8 +4,11 @@ title: "UserDemand"
 
 A UserDemand takes water from the Basin that supplies it.
 
-When allocation is not used, UserDemand attempts to extract the full demand from the Basin.
-When allocation is used, water is allocated based on its priority, where priority 1 denotes the most important demand.
+When allocation is not used, a `UserDemand` node attempts to extract the full demand from the connected Basin.
+When allocation is used, the amount a `UserDemand` node is allowed to abstract is determined by the [allocation algorithm](../../concept/allocation.qmd).
+This algorithm first tries to allocate from the directly connected basin, and then from other sources whose flow can reach the `UserDemand` node.
+Note that `priority` is used to determine the order in which the UserDemands are allocated water.
+This parameter is only used when allocation is active and is optional when allocation is not active.
 
 When the connected Basin is almost empty or reaches the minimum level at which the UserDemand can extract water (`min_level`), it will stop extraction.
 
@@ -17,14 +20,16 @@ The difference is consumed by the UserDemand.
 
 ## Static
 
-column        | type    | unit         | restriction
-------------- | ------- | ------------ | -----------
-node_id       | Int32   | -            | sorted
-active        | Bool    | -            | (optional, default true)
-demand        | Float64 | $m^3 s^{-1}$ | non-negative
-return_factor | Float64 | -            | between [0 - 1]
-min_level     | Float64 | $m$          | -
-priority      | Int32   | -            | positive, sorted per node id
+This table contains the static form of the `UserDemand` node.
+
+column        | type    | unit                  | restriction
+------------- | ------- | ----------------------| -----------
+node_id       | Int32   | -                     | sorted
+active        | Bool    | -                     | (optional, default true)
+demand        | Float64 | $\text{m}^3/\text{s}$ | non-negative
+return_factor | Float64 | -                     | between [0 - 1]
+min_level     | Float64 | $\text{m}$            | -
+priority      | Int32   | -                     | positive, sorted per node id
 
 ## Time
 
@@ -34,16 +39,27 @@ The table must by sorted by time, and per time it must be sorted by `node_id`.
 With this the demand can be updated over time. In between the given times the
 demand is interpolated linearly, and outside the demand is constant given by the
 nearest time value.
+The `priority` is not allowed to change over time.
 Note that a `node_id` can be either in this table or in the static one, but not both.
 
-column        | type     | unit         | restriction
-------------- | -------- | ------------ | -----------
-node_id       | Int32    | -            | sorted
-priority      | Int32    | -            | positive, sorted per node id
-time          | DateTime | -            | sorted per priority per node id
-demand        | Float64  | $m^3 s^{-1}$ | non-negative
-return_factor | Float64  | -            | between [0 - 1]
-min_level     | Float64  | $m$          | -
+column        | type     | unit                  | restriction
+------------- | -------- | --------------------- | -----------
+node_id       | Int32    | -                     | sorted
+priority      | Int32    | -                     | positive, sorted per node id
+time          | DateTime | -                     | sorted per priority per node id
+demand        | Float64  | $\text{m}^3/\text{s}$ | non-negative
+return_factor | Float64  | -                     | between [0 - 1]
+min_level     | Float64  | $\text{m}$            | -
+
+## Concentration
+This table defines the concentration of substances for the flow from the UserDemand.
+
+column         | type     | unit                  | restriction
+-------------- | -------- | --------------------- | -----------
+node_id        | Int32    | -                     | sorted
+time           | DateTime | -                     | sorted per node_id
+substance      | String   | -                     | can correspond to known Delwaq substances
+concentration  | Float64  | $\text{g}/\text{m}^3$ |
 
 # Equations
 

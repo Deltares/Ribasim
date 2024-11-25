@@ -5,7 +5,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 import ribasim
-from ribasim.config import Node
+from ribasim.config import Experimental, Node
 from ribasim.input_base import TableModel
 from ribasim.nodes import (
     basin,
@@ -17,7 +17,7 @@ from ribasim.nodes import (
     pump,
     tabulated_rating_curve,
 )
-from shapely.geometry import Point
+from shapely.geometry import MultiPolygon, Point
 
 
 def basic_model() -> ribasim.Model:
@@ -26,6 +26,7 @@ def basic_model() -> ribasim.Model:
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
+        experimental=Experimental(concentration=True),
     )
     model.logging = ribasim.Logging(verbosity="debug")
 
@@ -91,7 +92,7 @@ def basic_model() -> ribasim.Model:
     # Setup TabulatedRatingCurve
     q = 10 / 86400  # 10 m³/day
     model.tabulated_rating_curve.add(
-        Node(6, Point(4.0, 0.0)),
+        Node(8, Point(4.0, 0.0)),
         [
             tabulated_rating_curve.Static(
                 level=[0.0, 1.0],
@@ -100,7 +101,7 @@ def basic_model() -> ribasim.Model:
         ],
     )
     model.tabulated_rating_curve.add(
-        Node(3, Point(3.0, 1.0)),
+        Node(5, Point(3.0, 1.0)),
         [
             tabulated_rating_curve.Static(
                 level=[0.0, 1.0],
@@ -109,7 +110,7 @@ def basic_model() -> ribasim.Model:
         ],
     )
     model.tabulated_rating_curve.add(
-        Node(1, Point(3.0, -1.0)),
+        Node(4, Point(3.0, -1.0)),
         [
             tabulated_rating_curve.Static(
                 level=[0.0, 1.0],
@@ -161,19 +162,19 @@ def basic_model() -> ribasim.Model:
     model.edge.add(model.manning_resistance[2], model.basin[3])
     model.edge.add(
         model.basin[3],
-        model.tabulated_rating_curve[6],
+        model.tabulated_rating_curve[8],
     )
     model.edge.add(
         model.basin[3],
-        model.tabulated_rating_curve[3],
+        model.tabulated_rating_curve[5],
     )
     model.edge.add(
         model.basin[3],
-        model.tabulated_rating_curve[1],
+        model.tabulated_rating_curve[4],
     )
-    model.edge.add(model.tabulated_rating_curve[3], model.basin[6])
+    model.edge.add(model.tabulated_rating_curve[5], model.basin[6])
     model.edge.add(model.basin[6], model.pump[7])
-    model.edge.add(model.tabulated_rating_curve[6], model.basin[9])
+    model.edge.add(model.tabulated_rating_curve[8], model.basin[9])
     model.edge.add(model.pump[7], model.basin[9])
     model.edge.add(model.basin[9], model.linear_resistance[10])
     model.edge.add(
@@ -185,7 +186,7 @@ def basic_model() -> ribasim.Model:
         model.basin[3],
     )
     model.edge.add(
-        model.tabulated_rating_curve[1],
+        model.tabulated_rating_curve[4],
         model.terminal[14],
     )
     model.edge.add(
@@ -290,13 +291,13 @@ def tabulated_rating_curve_model() -> ribasim.Model:
         [
             tabulated_rating_curve.Time(
                 time=[
-                    # test subsecond precision
-                    pd.Timestamp("2020-01-01 00:00:00.000001"),
-                    pd.Timestamp("2020-01"),
-                    pd.Timestamp("2020-02"),
-                    pd.Timestamp("2020-02"),
-                    pd.Timestamp("2020-03"),
-                    pd.Timestamp("2020-03"),
+                    # test millisecond precision
+                    pd.Timestamp("2020-01-01"),
+                    pd.Timestamp("2020-01-01"),
+                    pd.Timestamp("2020-02-01 00:00:00.001"),
+                    pd.Timestamp("2020-02-01 00:00:00.001"),
+                    pd.Timestamp("2020-03-01"),
+                    pd.Timestamp("2020-03-01"),
                 ],
                 level=[0.0, 1.0, 0.0, 1.1, 0.0, 1.2],
                 flow_rate=[0.0, 10 / 86400, 0.0, 10 / 86400, 0.0, 10 / 86400],
@@ -314,7 +315,7 @@ def tabulated_rating_curve_model() -> ribasim.Model:
         Node(1, basin_geometry_1),
         [
             basin.Static(precipitation=[0.002 / 86400]),
-            basin.Area(geometry=[basin_geometry_1.buffer(1.0)]),
+            basin.Area(geometry=[MultiPolygon([basin_geometry_1.buffer(1.0)])]),
             *node_data,
         ],
     )
@@ -323,7 +324,7 @@ def tabulated_rating_curve_model() -> ribasim.Model:
         Node(4, basin_geometry_2),
         [
             basin.Static(precipitation=[0.0]),
-            basin.Area(geometry=[basin_geometry_2.buffer(1.0)]),
+            basin.Area(geometry=[MultiPolygon([basin_geometry_2.buffer(1.0)])]),
             *node_data,
         ],
     )
@@ -381,7 +382,7 @@ def outlet_model():
     # Setup the outlet
     model.outlet.add(
         Node(2, Point(1.0, 0.0)),
-        [outlet.Static(flow_rate=[1e-3], min_crest_level=[2.0])],
+        [outlet.Static(flow_rate=[1e-3], min_upstream_level=[2.0])],
     )
 
     # Setup the edges

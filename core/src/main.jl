@@ -39,44 +39,42 @@ function main(toml_path::AbstractString)::Cint
                 if config.ribasim_version != cli.ribasim_version
                     @warn "The Ribasim version in the TOML config file does not match the used Ribasim CLI version." config.ribasim_version cli.ribasim_version
                 end
-                @info "Starting a Ribasim simulation." cli.ribasim_version starttime endtime
-                model = run(config)
-                if successful_retcode(model)
-                    @info "The model finished successfully"
-                    return 0
+                @info "Starting a Ribasim simulation." toml_path cli.ribasim_version starttime endtime
+                if any(config.experimental)
+                    @warn "The following *experimental* features are enabled: $(config.experimental)"
                 end
 
-                t = datetime_since(model.integrator.t, starttime)
-                retcode = model.integrator.sol.retcode
-                @error "The model exited at model time $t with return code $retcode.\nSee https://docs.sciml.ai/DiffEqDocs/stable/basics/solution/#retcodes"
+                try
+                    model = run(config)
 
-                (; cache, p, u) = model.integrator
-                (; basin) = p
-                # Indicate convergence bottlenecks if possible with the current algorithm
-                if hasproperty(cache, :nlsolver)
-                    storage_error = @. abs(cache.nlsolver.cache.atmp.storage / u.storage)
-                    perm = sortperm(storage_error; rev = true)
-                    println(
-                        "The following basins were identified as convergence bottlenecks (in descending order of severity):",
-                    )
-                    for i in perm
-                        node_id = basin.node_id[i]
-                        error = storage_error[i]
-                        if error < config.solver.reltol
-                            break
-                        end
-                        println("$node_id, error = $error")
+                    if successful_retcode(model)
+                        log_bottlenecks(model; converged = true)
+                        @info "The model finished successfully."
+                        return 0
+                    else
+                        # OrdinaryDiffEq doesn't error on e.g. convergence failure,
+                        # but we want a non-zero exit code in that case.
+                        log_bottlenecks(model; converged = false)
+                        t = datetime_since(model.integrator.t, starttime)
+                        retcode = model.integrator.sol.retcode
+                        @error """The model exited at model time $t with return code $retcode.
+                        See https://docs.sciml.ai/DiffEqDocs/stable/basics/solution/#retcodes"""
+                        return 1
                     end
-                else
-                    algorithm = model.config.solver_algorithm
-                    println(
-                        "The current algorithm ($algorithm) does not support indicating convergence bottlenecks, for that try a different one.",
-                    )
+
+                catch
+                    # Both validation errors that we throw and unhandled exceptions are caught here.
+                    # To make it easier to find the cause, log the stacktrace to the terminal and log file.
+                    stack = current_exceptions()
+                    Base.invokelatest(Base.display_error, stack)
+                    Base.invokelatest(Base.display_error, io, stack)
+                    return 1
                 end
-                return 1
             end
         end
     catch
+        # If it fails before we get to setup the logger, we can't log to a file.
+        # This happens if e.g. the config is invalid.
         Base.invokelatest(Base.display_error, current_exceptions())
         return 1
     end
