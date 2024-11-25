@@ -275,9 +275,9 @@ function concentration_table(
 
     ntsteps = length(data.time) - 1
     nbasin = length(data.node_id)
-    nsubstance = length(basin.substances)
+    nsubstance = length(basin.concentration_data.substances)
 
-    substances = String.(basin.substances)
+    substances = String.(basin.concentration_data.substances)
     concentration = FlatVector(saved.flow.saveval, :concentration)
 
     time = repeat(data.time[begin:(end - 1)]; inner = nbasin * nsubstance)

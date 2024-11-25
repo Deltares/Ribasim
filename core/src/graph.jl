@@ -107,7 +107,7 @@ function create_graph(db::DB, config::Config)::MetaGraph
     end
 
     graph_data = (; node_ids, edges_source, flow_edges, config.solver.saveat)
-    graph = @set graph.graph_data = graph_data
+    @reset graph.graph_data = graph_data
 
     return graph
 end

@@ -20,22 +20,11 @@ end
     level = [[0.0, 1.0], [4.0, 5.0]]
     level_to_area = LinearInterpolation.(area, level)
     storage_to_level = invert_integral.(level_to_area)
-    demand = zeros(2)
-
-    substances = OrderedSet([:test])
-    concentration_state = zeros(2, 1)
-    concentration = zeros(2, 2, 1)
-    mass = zeros(2, 1)
 
     basin = Ribasim.Basin(;
         node_id = NodeID.(:Basin, [5, 7], [1, 2]),
         storage_to_level,
         level_to_area,
-        demand,
-        concentration_state,
-        concentration,
-        mass,
-        substances,
         time = StructVector{Ribasim.BasinTimeV1}(undef, 0),
         concentration_time = StructVector{Ribasim.BasinConcentrationV1}(undef, 0),
     )
@@ -84,24 +73,13 @@ end
     ]
     level_to_area = LinearInterpolation(area, level; extrapolate = true)
     storage_to_level = invert_integral(level_to_area)
-    demand = zeros(1)
-
-    substances = OrderedSet([:test])
-    concentration_state = zeros(1, 1)
-    concentration = zeros(2, 1, 1)
-    mass = zeros(1, 1)
 
     basin = Ribasim.Basin(;
         node_id = NodeID.(:Basin, [1], 1),
         storage_to_level = [storage_to_level],
         level_to_area = [level_to_area],
-        demand,
         time = StructVector{Ribasim.BasinTimeV1}(undef, 0),
         concentration_time = StructVector{Ribasim.BasinConcentrationV1}(undef, 0),
-        concentration_state,
-        concentration,
-        mass,
-        substances,
     )
 
     logger = TestLogger()
