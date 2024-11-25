@@ -4,16 +4,11 @@ title: "FlowBoundary"
 
 A FlowBoundary adds water to the model at a specified flow rate.
 It can be used as a boundary condition like a measured upstream flow rate, or lateral inflow.
+We require that an edge connected to a FlowBoundary is always outgoing, and points towards a Basin.
 
 # Tables
 
 ## Static
-
-We require that the edge connecting the FlowBoundary to the Basin should point towards the Basin,
-so that positive flow corresponds to water being added to the model.
-The set flow rate will be pumped unless the intake storage (for a negative flow rate) is less than $10~\text{ m}^3$,
-in which case the flow rate will be linearly reduced to $0~\text{ m}^3/s$.
-Note that the connected node must always be a Basin.
 
 column        | type    | unit                  | restriction
 ------------- | ------- | --------------------- | -----------
@@ -24,7 +19,7 @@ flow_rate     | Float64 | $\text{m}^3/\text{s}$ | non-negative
 ## Time
 
 This table is the transient form of the `FlowBoundary` table.
-The only differences are that a time column is added and the nodes are assumed to be active so this column is removed.
+The only differences are that a time column is added and the nodes are assumed to be active so this column is not present.
 The table must by sorted by time, and per time it must be sorted by `node_id`.
 With this the flow rates can be updated over time. In between the given times the
 flow rate is interpolated linearly, and outside the flow rate is constant given by the
