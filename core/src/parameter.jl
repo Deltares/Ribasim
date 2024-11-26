@@ -137,11 +137,11 @@ type: The type of source (edge, basin, main_to_sub, user_return, buffer)
 capacity: The initial capacity of the source as determined by the physical layer
 capacity_reduced: The capacity adjusted by passed optimizations
 """
-@kwdef struct AllocationSource
-    edge::Tuple{NodeID, NodeID}
-    type::AllocationSourceType.T
-    capacity::Base.RefValue{Float64} = Ref(0.0)
-    capacity_reduced::Base.RefValue{Float64} = Ref(0.0)
+@kwdef mutable struct AllocationSource
+    const edge::Tuple{NodeID, NodeID}
+    const type::AllocationSourceType.T
+    capacity::Float64 = 0.0
+    capacity_reduced::Float64 = 0.0
 end
 
 function Base.show(io::IO, source::AllocationSource)
@@ -907,38 +907,38 @@ const ModelGraph = MetaGraph{
     Float64,
 }
 
-@kwdef struct Parameters{C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11}
-    starttime::DateTime
-    graph::ModelGraph
-    allocation::Allocation
-    basin::Basin{C1, C2, C3, C4}
-    linear_resistance::LinearResistance
-    manning_resistance::ManningResistance
-    tabulated_rating_curve::TabulatedRatingCurve{C5}
-    level_boundary::LevelBoundary{C6}
-    flow_boundary::FlowBoundary{C7}
-    pump::Pump
-    outlet::Outlet
-    terminal::Terminal
-    discrete_control::DiscreteControl
-    continuous_control::ContinuousControl
-    pid_control::PidControl
-    user_demand::UserDemand{C8}
-    level_demand::LevelDemand
-    flow_demand::FlowDemand
-    subgrid::Subgrid
+@kwdef mutable struct Parameters{C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11}
+    const starttime::DateTime
+    const graph::ModelGraph
+    const allocation::Allocation
+    const basin::Basin{C1, C2, C3, C4}
+    const linear_resistance::LinearResistance
+    const manning_resistance::ManningResistance
+    const tabulated_rating_curve::TabulatedRatingCurve{C5}
+    const level_boundary::LevelBoundary{C6}
+    const flow_boundary::FlowBoundary{C7}
+    const pump::Pump
+    const outlet::Outlet
+    const terminal::Terminal
+    const discrete_control::DiscreteControl
+    const continuous_control::ContinuousControl
+    const pid_control::PidControl
+    const user_demand::UserDemand{C8}
+    const level_demand::LevelDemand
+    const flow_demand::FlowDemand
+    const subgrid::Subgrid
     # Per state the in- and outflow edges associated with that state (if they exist)
-    state_inflow_edge::C9 = ComponentVector()
-    state_outflow_edge::C10 = ComponentVector()
-    all_nodes_active::Base.RefValue{Bool} = Ref(false)
-    tprev::Base.RefValue{Float64} = Ref(0.0)
+    const state_inflow_edge::C9 = ComponentVector()
+    const state_outflow_edge::C10 = ComponentVector()
+    all_nodes_active::Bool = false
+    tprev::Float64 = 0.0
     # Sparse matrix for combining flows into storages
-    flow_to_storage::SparseMatrixCSC{Float64, Int64} = spzeros(1, 1)
+    const flow_to_storage::SparseMatrixCSC{Float64, Int64} = spzeros(1, 1)
     # Water balance tolerances
-    water_balance_abstol::Float64
-    water_balance_reltol::Float64
+    const water_balance_abstol::Float64
+    const water_balance_reltol::Float64
     # State at previous saveat
-    u_prev_saveat::C11 = ComponentVector()
+    const u_prev_saveat::C11 = ComponentVector()
 end
 
 # To opt-out of type checking for ForwardDiff
