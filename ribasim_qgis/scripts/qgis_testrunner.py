@@ -50,6 +50,12 @@ import signal
 import sys
 import traceback
 
+# Monkey patch QGIS Python console
+from console.console_output import writeOut
+
+# Start as soon as the initializationCompleted signal is fired
+from qgis.core import QgsApplication, QgsProject, QgsProjectBadLayerHandler
+from qgis.PyQt.QtCore import QDir
 from qgis.utils import iface
 
 assert iface is not None
@@ -81,18 +87,9 @@ def __get_test_function(test_module_name):
     return getattr(test_module, function_name, None)
 
 
-# Start as soon as the initializationCompleted signal is fired
-from qgis.core import QgsApplication, QgsProject, QgsProjectBadLayerHandler
-from qgis.PyQt.QtCore import QDir
-
-
 class QgsProjectBadLayerDefaultHandler(QgsProjectBadLayerHandler):
     def handleBadLayers(self, layers, dom):
         pass
-
-
-# Monkey patch QGIS Python console
-from console.console_output import writeOut
 
 
 def _write(self, m):

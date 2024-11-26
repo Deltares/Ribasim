@@ -6,7 +6,6 @@ target-version = "py39"
 # See https://docs.astral.sh/ruff/rules/
 select = ["C4", "D2", "D3", "D4", "E", "F", "I", "NPY", "PD", "UP"]
 ignore = [
-    "E402",
     "E501",
     "E703",
     "PD002",
