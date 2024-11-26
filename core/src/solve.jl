@@ -103,7 +103,7 @@ function set_current_basin_properties!(
     current_cumulative_drainage = current_cumulative_drainage[parent(du)]
 
     # The exact cumulative precipitation and drainage up to the t of this water_balance call
-    dt = t - p.tprev[]
+    dt = t - p.tprev
     for node_id in basin.node_id
         fixed_area = basin_areas(basin, node_id.idx)[end]
         current_cumulative_precipitation[node_id.idx] =
@@ -141,7 +141,7 @@ function formulate_storages!(
     end
     mul!(current_storage, flow_to_storage, u, 1, 1)
     formulate_storage!(current_storage, basin, du)
-    formulate_storage!(current_storage, tprev[], t, flow_boundary)
+    formulate_storage!(current_storage, tprev, t, flow_boundary)
     return nothing
 end
 

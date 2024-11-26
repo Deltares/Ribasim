@@ -158,7 +158,7 @@ end
     (; problem) = allocation_model
     main_source =
         allocation_model.sources[(NodeID(:FlowBoundary, 1, p), NodeID(:Basin, 2, p))]
-    main_source.capacity_reduced[] = 4.5
+    main_source.capacity_reduced = 4.5
     Ribasim.optimize_priority!(allocation_model, u, p, t, 1, OptimizationType.allocate)
 
     # Main network objective function
@@ -421,7 +421,7 @@ end
     (; u) = model.integrator
     optimization_type = OptimizationType.internal_sources
     Ribasim.set_initial_values!(allocation_model, u, p, t)
-    sources[(NodeID(:LevelBoundary, 1, p), node_id_with_flow_demand)].capacity_reduced[] =
+    sources[(NodeID(:LevelBoundary, 1, p), node_id_with_flow_demand)].capacity_reduced =
         2e-3
 
     # Priority 1
