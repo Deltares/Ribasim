@@ -1,5 +1,5 @@
 """
-This module forms the high level DockWidget.
+High level RibasimWidget.
 
 It ensures the underlying widgets can talk to each other.  It also manages the
 connection to the QGIS Layers Panel, and ensures there is a group for the

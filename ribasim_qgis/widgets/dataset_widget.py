@@ -1,8 +1,7 @@
 """
-This widgets displays the available input layers in the GeoPackage.
+A widget that displays the available input layers in the GeoPackage.
 
-This widget also allows enabling or disabling individual elements for a
-computation.
+It also allows enabling or disabling individual elements for a computation.
 """
 
 from __future__ import annotations

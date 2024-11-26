@@ -1,5 +1,5 @@
 """
-This module contains the classes to represent the Ribasim node layers.
+Classes to represent the Ribasim node layers.
 
 The classes specify:
 
