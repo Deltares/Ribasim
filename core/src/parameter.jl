@@ -289,10 +289,6 @@ for discrete control
     itp_update::Vector{ParameterUpdate{ScalarInterpolation}} = []
 end
 
-abstract type AbstractParameterNode end
-
-abstract type AbstractDemandNode <: AbstractParameterNode end
-
 """
 In-memory storage of saved mean flows for writing to results.
 
@@ -330,6 +326,10 @@ In-memory storage of saved instantaneous storages and levels for writing to resu
     t::Float64
 end
 
+abstract type AbstractParameterNode end
+
+abstract type AbstractDemandNode <: AbstractParameterNode end
+
 """
 Caches of current basin properties
 """
@@ -345,6 +345,24 @@ struct CurrentBasinProperties
     function CurrentBasinProperties(n)
         new((cache(n) for _ in 1:6)...)
     end
+end
+
+@kwdef struct ConcentrationData
+    # Config setting to enable/disable evaporation of mass
+    evaporate_mass::Bool = true
+    # Cumulative inflow for each Basin at a given time
+    cumulative_in::Vector{Float64}
+    # matrix with concentrations for each Basin and substance
+    concentration_state::Matrix{Float64}  # Basin, substance
+    # matrix with boundary concentrations for each boundary, Basin and substance
+    concentration::Array{Float64, 3}
+    # matrix with mass for each Basin and substance
+    mass::Matrix{Float64}
+    # substances in use by the model (ordered like their axis in the concentration matrices)
+    substances::OrderedSet{Symbol}
+    # Data source for external concentrations (used in control)
+    concentration_external::Vector{Dict{String, ScalarInterpolation}} =
+        Dict{String, ScalarInterpolation}[]
 end
 
 """
@@ -363,7 +381,7 @@ else
     T = Vector{Float64}
 end
 """
-@kwdef struct Basin{C, D, V} <: AbstractParameterNode
+@kwdef struct Basin{V, C, CD, D} <: AbstractParameterNode
     node_id::Vector{NodeID}
     inflow_ids::Vector{Vector{NodeID}} = [NodeID[]]
     outflow_ids::Vector{Vector{NodeID}} = [NodeID[]]
@@ -396,29 +414,14 @@ end
     allocated::Vector{Float64} = zeros(length(node_id))
     # Data source for parameter updates
     time::StructVector{BasinTimeV1, C, Int}
-    # Data source for concentration updates
-    concentration_time::StructVector{BasinConcentrationV1, D, Int}
-
+    # Storage for each Basin at the previous time step
+    storage_prev::Vector{Float64} = zeros(length(node_id))
     # Level for each Basin at the previous time step
     level_prev::Vector{Float64} = zeros(length(node_id))
     # Concentrations
-    # Config setting to enable/disable evaporation of mass
-    evaporate_mass::Bool = true
-    # Cumulative inflow for each Basin at a given time
-    cumulative_in::Vector{Float64} = zeros(length(node_id))
-    # Storage for each Basin at the previous time step
-    storage_prev::Vector{Float64} = zeros(length(node_id))
-    # matrix with concentrations for each Basin and substance
-    concentration_state::Matrix{Float64}  # Basin, substance
-    # matrix with boundary concentrations for each boundary, Basin and substance
-    concentration::Array{Float64, 3}
-    # matrix with mass for each Basin and substance
-    mass::Matrix{Float64}
-    # substances in use by the model (ordered like their axis in the concentration matrices)
-    substances::OrderedSet{Symbol}
-    # Data source for external concentrations (used in control)
-    concentration_external::Vector{Dict{String, ScalarInterpolation}} =
-        Dict{String, ScalarInterpolation}[]
+    concentration_data::CD = nothing
+    # Data source for concentration updates
+    concentration_time::StructVector{BasinConcentrationV1, D, Int}
 end
 
 """
@@ -904,29 +907,29 @@ const ModelGraph = MetaGraph{
     Float64,
 }
 
-@kwdef struct Parameters{C1, C2, C3, C4, C5, C6, C7, C8, C9, V}
+@kwdef struct Parameters{C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11}
     starttime::DateTime
     graph::ModelGraph
     allocation::Allocation
-    basin::Basin{C1, C2, V}
+    basin::Basin{C1, C2, C3, C4}
     linear_resistance::LinearResistance
     manning_resistance::ManningResistance
-    tabulated_rating_curve::TabulatedRatingCurve{C3}
-    level_boundary::LevelBoundary{C4}
-    flow_boundary::FlowBoundary{C5}
+    tabulated_rating_curve::TabulatedRatingCurve{C5}
+    level_boundary::LevelBoundary{C6}
+    flow_boundary::FlowBoundary{C7}
     pump::Pump
     outlet::Outlet
     terminal::Terminal
     discrete_control::DiscreteControl
     continuous_control::ContinuousControl
     pid_control::PidControl
-    user_demand::UserDemand{C6}
+    user_demand::UserDemand{C8}
     level_demand::LevelDemand
     flow_demand::FlowDemand
     subgrid::Subgrid
     # Per state the in- and outflow edges associated with that state (if they exist)
-    state_inflow_edge::C7 = ComponentVector()
-    state_outflow_edge::C8 = ComponentVector()
+    state_inflow_edge::C9 = ComponentVector()
+    state_outflow_edge::C10 = ComponentVector()
     all_nodes_active::Base.RefValue{Bool} = Ref(false)
     tprev::Base.RefValue{Float64} = Ref(0.0)
     # Sparse matrix for combining flows into storages
@@ -935,7 +938,7 @@ const ModelGraph = MetaGraph{
     water_balance_abstol::Float64
     water_balance_reltol::Float64
     # State at previous saveat
-    u_prev_saveat::C9 = ComponentVector()
+    u_prev_saveat::C11 = ComponentVector()
 end
 
 # To opt-out of type checking for ForwardDiff

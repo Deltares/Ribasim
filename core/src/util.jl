@@ -359,6 +359,7 @@ function FlatVector(saveval::Vector{<:SavedFlow}, sym::Symbol)
     v = isempty(saveval) ? Vector{Float64}[] : getfield.(saveval, sym)
     FlatVector(v)
 end
+FlatVector(v::Vector{Matrix{Float64}}) = FlatVector(vec.(v))
 
 """
 Function that goes smoothly from 0 to 1 in the interval [0,threshold],
@@ -1058,8 +1059,8 @@ function set_state_flow_edges(p::Parameters, u0::ComponentVector)::Parameters
     state_inflow_edge = ComponentVector(NamedTuple(zip(components, state_inflow_edges)))
     state_outflow_edge = ComponentVector(NamedTuple(zip(components, state_outflow_edges)))
 
-    p = @set p.state_inflow_edge = state_inflow_edge
-    p = @set p.state_outflow_edge = state_outflow_edge
+    @reset p.state_inflow_edge = state_inflow_edge
+    @reset p.state_outflow_edge = state_outflow_edge
     return p
 end
 
