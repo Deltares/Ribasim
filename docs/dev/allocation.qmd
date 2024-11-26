@@ -2,12 +2,12 @@
 title: "Allocation"
 ---
 # Overview of allocation implementation {#sec-allocation-overview}
-In this document, the allocation workflow is explained. Below is an overview of it.
+In this document the allocation workflow is explained. Below is an overview of it.
 ```{mermaid}
 flowchart TD
     subgraph update_allocation
         direction TB
-        G[update mean flows]-->E[collect demand]
+        G[update mean physical flows for allocation input]-->E[collect demand]
         E-->F[allocate]
     end
     style update_allocation fill:#9ff
@@ -21,50 +21,30 @@ If allocation is used in a model, [Allocation structs](#sec-allocation-struct) a
 The allocation struct stores the data that is needed for the calculations and stores also the results of the calculation.
 In allocation, optimization is an essential part.
 `JuMP.jl` is used to model and solve the optimization problems that are defined by allocation.
-The [AllocationModel struct](#sec-allocation-model-struct) is used for constructing the JuMP model.
+The [`AllocationModel` struct](#sec-allocation-model-struct) is used for constructing the JuMP model.
 When an instance of `AllocationModel` is created, a JuMP optimization model is defined and initialized in the instance.
 More details on how allocation interacts with `JuMP.jl` is explained [here](#sec-jump-problem).
 
 After initialization, as the simulation starts, the allocation problem is solved and updated after every allocation timestep (which is specified in the TOML).
-With every allocation timestep a new optimization problem is formulated and solved, using the latest available (simulation) model conditions and forcing and demand predictions.
+With every allocation timestep a new optimization problem is formulated and solved, using the latest available data from the physical layer model and demands of the demand nodes.
 
-The update of allocation (`update_allocation`) is repeating and spread into three parts:
+The update of allocation (`update_allocation!`) is repeating and divided into three parts:
 
-- Updating the mean flows. The mean flow data is only used only for output, not used by any internal functions.
-- ["Collect demand"](/concept/allocation.qmd#sec-high-level-algorithm). This step initialize and solve the optimization problems that collects the demand from the subnetworks.
+- Updating the mean flows. The mean flow data is used for output and to determine the capacity of sources in the allocation model.
+- ["Collect demand"](/concept/allocation.qmd#sec-high-level-algorithm). This step initializes and solves the optimization problems that collects the demand from the subnetworks.
 - ["Allocate"](/concept/allocation.qmd#sec-high-level-algorithm). This step solves the optimization problems that allocates the demand. For the main network this step allocates to the subnetworks and demand nodes that are in the main network. For the subnetwork this step allocates to the demand nodes.
 
-The steps "collect demand" and "allocate" correspond to the function `collect_demand` and `allocate_demand` in the code.
+The steps "collect demand" and "allocate" correspond to the function `collect_demand!` and `allocate_demands!` in the code.
 
-The iteration stops when it reaches the end time step.
+The iteration stops when it reaches the end time of the simulation.
 
 ## The `Allocation` struct {#sec-allocation-struct}
 
 The `Allocation` struct stores necessary data and calculation results.
 
-|field     | type              |  description|
-|------------ | -------- |---------------------------------------- |
-|subnetwork_ids     | Vector{Int32}     | The unique sorted allocation network IDs|
-|allocation_models     | AllocationModel   | The allocation models for the main network and subnetworks corresponding to subnetwork_ids|
-|main_network_connections  |Vector{Vector{Tuple{NodeID, NodeID}}} | (from_id, to_id) from the main network to the subnetwork per subnetwork|
-|priorities        |Vector{Int32}| All used priority values.|
-|subnetwork_demands   | Dict{Tuple{NodeID, NodeID}, Vector{Float64}}   | The demand of an edge from the main network to a subnetwork|
-|subnetwork_allocateds |Dict{Tuple{NodeID, NodeID}, Vector{Float64}}   | The allocated flow of an edge from the main network to a subnetwork|
-|mean_input_flows    |  Dict{Tuple{NodeID, NodeID}, Float64}   | Flows averaged over Δt_allocation over edges that are allocation sources|
-|mean_realized_flows  | Dict{Tuple{NodeID, NodeID}, Float64}   | Flows averaged over Δt_allocation over edges that realize a demand|
-|record_demand      |      | A record of demands and allocated flows for nodes that have these|
-|record_flow       |       | A record of all flows computed by allocation optimization, eventually saved to output file|
-
 ## The `AllocationModel` struct {#sec-allocation-model-struct}
 
 The `AllocationModel` struct has all the data that is needed for the JuMP optimization problem.
-
-|field     | type              |  description|
-|------------  | -------- |---------------------------------------- |
-|subnetwork_id |Int32 |The ID of this allocation network|
-|capacity | JuMP.Containers.SparseAxisArray | The capacity per edge of the allocation network, as constrained by nodes that have a max_flow_rate|
-|problem | JuMP.Model | The JuMP.jl model for solving the allocation problem|
-|Δt_allocation | Float64 | The time interval between consecutive allocation solves   |
 
 ## JuMP problem interaction {#sec-jump-problem}
 When working with optimization problems using JuMP, there are three fundamental components that need to be defined:
@@ -82,15 +62,15 @@ More details about setting up variables in allocation can be found in the sectio
 - Constraints: These are the constraints that the optimization variables must satisfy.
 They are defined using the [`@constraint`](https://jump.dev/JuMP.jl/stable/api/JuMP/#@constraint) macro.
 The definition of the edge capacity constraints is shown in section [below](#sec-constraints-and-capacities).
-`add_constraints_...` functions are used to [add constraints](#sec-initial-constraints) to the optimization problem.
-The [initial value of the constraints](#sec-constraints-and-capacities) is set in the function `set_initial_values_...`.
+`add_constraints_*` functions are used to [add constraints](#sec-initial-constraints) to the optimization problem.
+The [initial value of the constraints](#sec-constraints-and-capacities) is set in the function `set_initial_values_*`.
 During the iteration, the constraints are updated based on the current state of the allocation network.
-When [looping over priorities](#updating-capacities), the constraints are updated by the function `adjust_...`.
+When [looping over priorities](#updating-capacities), the constraints are updated by the function `adjust_*`.
 
 - Objective function: This is the function that sets the objective of the optimization problem.
 It is defined using the [`@objective`](https://jump.dev/JuMP.jl/stable/api/JuMP/#@objective) macro.
 
-The functions `JuMP.normalized_rhs` and `JuMP.set_normalized_rhs` are used to read and write the constant right hand side of constraints.
+The functions `JuMP.normalized_rhs` and `JuMP.set_normalized_rhs` are used to read and write the constant right hand side of constraints respectively.
 
 For example, to update the capacity of one of the edges, `JuMP.normalized_rhs` moves all the constants to the right-hand sides and all variables to the left-hand side and `JuMP.set_normalized_rhs` sets the new right-hand-side value.
 ```julia
@@ -125,7 +105,7 @@ There are three types of variables in the optimization problems:
 - flows in and out of a basin with a level demand
 - flows in and out of nodes that have a buffer, which are nodes that have a flow demand
 
-The function `add_variables_flow` is used to add the variable of flows between the edges. The variables are obtained from the capacity array.
+The function `add_variables_flow!` is used to add the variable of flows between the edges. The variables are obtained from the capacity array.
 And variables named by `F($startnode, $endnode)` are created.
 
 ```julia
@@ -157,7 +137,7 @@ All the variables are greater and equal to 0. This is set when the variables are
 
 Other constraints are `capacity`, `source_user`, `source`, `flow_conservation`, `fractional_flow`, `basin_outflow`, `flow_buffer_outflow` and `flow_demand_outflow`.
 
-For each set of constraints, a function named `add_constrains_[constraints name]` is created.
+For each set of constraints, a function named `add_constrains_[constraints name]!` exists.
 
 Take `add_constraints_user_source` as an example, the nodes that are relevant for the constraints are added to the optimization problem by calling JuMP.\@constraint.
 

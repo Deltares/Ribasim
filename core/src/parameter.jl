@@ -128,19 +128,42 @@ The caches are always initialized with zeros
 """
 cache(len::Int)::Cache = LazyBufferCache(Returns(len); initializer! = set_zero!)
 
+@enumx AllocationSourceType edge basin main_to_sub user_return buffer
+
+"""
+Data structure for a single source within an allocation subnetwork.
+edge: The outflow edge of the source
+type: The type of source (edge, basin, main_to_sub, user_return, buffer)
+capacity: The initial capacity of the source as determined by the physical layer
+capacity_reduced: The capacity adjusted by passed optimizations
+"""
+@kwdef struct AllocationSource
+    edge::Tuple{NodeID, NodeID}
+    type::AllocationSourceType.T
+    capacity::Base.RefValue{Float64} = Ref(0.0)
+    capacity_reduced::Base.RefValue{Float64} = Ref(0.0)
+end
+
+function Base.show(io::IO, source::AllocationSource)
+    (; edge, type) = source
+    print(io, "AllocationSource of type $type at edge $edge")
+end
+
 """
 Store information for a subnetwork used for allocation.
 
 subnetwork_id: The ID of this allocation network
 capacity: The capacity per edge of the allocation network, as constrained by nodes that have a max_flow_rate
-flow_priority: The flows over all the edges in the subnetwork for a certain priority (used for allocation_flow output)
+flow: The flows over all the edges in the subnetwork for a certain priority (used for allocation_flow output)
+sources: source data in preferred order of optimization
 problem: The JuMP.jl model for solving the allocation problem
 Δt_allocation: The time interval between consecutive allocation solves
 """
 @kwdef struct AllocationModel
     subnetwork_id::Int32
     capacity::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}}
-    flow_priority::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}}
+    flow::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}}
+    sources::OrderedDict{Tuple{NodeID, NodeID}, AllocationSource}
     problem::JuMP.Model
     Δt_allocation::Float64
 end
@@ -386,8 +409,9 @@ end
         },
     }
     level_to_area::Vector{ScalarInterpolation}
-    # Demands for allocation if applicable
+    # Values for allocation if applicable
     demand::Vector{Float64} = zeros(length(node_id))
+    allocated::Vector{Float64} = zeros(length(node_id))
     # Data source for parameter updates
     time::StructVector{BasinTimeV1, C, Int}
     # Storage for each Basin at the previous time step

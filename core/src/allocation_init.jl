@@ -390,56 +390,6 @@ function add_constraints_conservation_node!(
 end
 
 """
-Add the fractional flow constraints to the allocation problem.
-The constraint indices are allocation edges over a fractional flow node.
-
-Constraint:
-flow after fractional_flow node <= fraction * inflow
-"""
-function add_constraints_fractional_flow!(
-    problem::JuMP.Model,
-    p::Parameters,
-    subnetwork_id::Int32,
-)::Nothing
-    (; graph, fractional_flow) = p
-    F = problem[:F]
-    node_ids = graph[].node_ids[subnetwork_id]
-
-    # Find the nodes in this subnetwork with a FractionalFlow
-    # outneighbor, and collect the corresponding flow fractions
-    # and inflow variable
-    edges_to_fractional_flow = Tuple{NodeID, NodeID}[]
-    fractions = Dict{Tuple{NodeID, NodeID}, Float64}()
-    inflows = Dict{NodeID, JuMP.AffExpr}()
-
-    # Find edges of the form (node_id, outflow_id) where outflow_id
-    # is for a FractionalFlow node
-    for node_id in node_ids
-        for outflow_id in outflow_ids(graph, node_id)
-            if outflow_id.type == NodeType.FractionalFlow
-                edge = (node_id, outflow_id)
-                push!(edges_to_fractional_flow, edge)
-                fractions[edge] = fractional_flow.fraction[outflow_id.idx]
-                inflows[node_id] = sum([
-                    F[(inflow_id, node_id)] for inflow_id in inflow_ids(graph, node_id)
-                ])
-            end
-        end
-    end
-
-    # Create the constraints if there is at least one
-    if !isempty(edges_to_fractional_flow)
-        problem[:fractional_flow] = JuMP.@constraint(
-            problem,
-            [edge = edges_to_fractional_flow],
-            F[edge] <= fractions[edge] * inflows[edge[1]],
-            base_name = "fractional_flow"
-        )
-    end
-    return nothing
-end
-
-"""
 Add the Basin flow constraints to the allocation problem.
 The constraint indices are the Basin node IDs.
 
@@ -476,37 +426,6 @@ function add_constraints_buffer!(problem::JuMP.Model)::Nothing
 end
 
 """
-Add the flow demand node outflow constraints to the allocation problem.
-The constraint indices are the node IDs of the nodes that have a flow demand.
-
-Constraint:
-flow out of node with flow demand <= ∞ if not at flow demand priority, 0.0 otherwise
-"""
-function add_constraints_flow_demand_outflow!(
-    problem::JuMP.Model,
-    p::Parameters,
-    subnetwork_id::Int32,
-)::Nothing
-    (; graph) = p
-    F = problem[:F]
-    node_ids = graph[].node_ids[subnetwork_id]
-
-    # Collect the node IDs in the subnetwork which have a flow demand
-    node_ids_flow_demand = [
-        node_id for
-        node_id in node_ids if has_external_demand(graph, node_id, :flow_demand)[1]
-    ]
-
-    problem[:flow_demand_outflow] = JuMP.@constraint(
-        problem,
-        [node_id = node_ids_flow_demand],
-        F[(node_id, outflow_id(graph, node_id))] <= 0.0,
-        base_name = "flow_demand_outflow"
-    )
-    return nothing
-end
-
-"""
 Construct the allocation problem for the current subnetwork as a JuMP model.
 """
 function allocation_problem(
@@ -537,10 +456,69 @@ function allocation_problem(
     add_constraints_source!(problem, p, subnetwork_id)
     add_constraints_user_source!(problem, p, subnetwork_id)
     add_constraints_basin_flow!(problem)
-    add_constraints_flow_demand_outflow!(problem, p, subnetwork_id)
     add_constraints_buffer!(problem)
 
     return problem
+end
+
+"""
+Get the sources within the subnetwork in the order in which they will
+be optimized over.
+TODO: Get preferred source order from input
+"""
+function get_sources_in_order(
+    problem::JuMP.Model,
+    p::Parameters,
+    subnetwork_id::Integer,
+)::OrderedDict{Tuple{NodeID, NodeID}, AllocationSource}
+    # NOTE: return flow has to be done before other sources, to prevent that
+    # return flow is directly used within the same priority
+
+    (; basin, user_demand, graph, allocation) = p
+
+    sources = OrderedDict{Tuple{NodeID, NodeID}, AllocationSource}()
+
+    # User return flow
+    for node_id in sort(only(problem[:source_user].axes))
+        edge = user_demand.outflow_edge[node_id.idx].edge
+        sources[edge] = AllocationSource(; edge, type = AllocationSourceType.user_return)
+    end
+
+    # Source edges (within subnetwork)
+    for edge in
+        sort(only(problem[:source].axes); by = edge -> (edge[1].value, edge[2].value))
+        if graph[edge[1]].subnetwork_id == graph[edge[2]].subnetwork_id
+            sources[edge] = AllocationSource(; edge, type = AllocationSourceType.edge)
+        end
+    end
+
+    # Basins with level demand
+    for node_id in basin.node_id
+        if (graph[node_id].subnetwork_id == subnetwork_id) &&
+           has_external_demand(graph, node_id, :level_demand)[1]
+            edge = (node_id, node_id)
+            sources[edge] = AllocationSource(; edge, type = AllocationSourceType.basin)
+        end
+    end
+
+    # Main network to subnetwork connections
+    for edge in sort(
+        collect(keys(allocation.subnetwork_demands));
+        by = edge -> (edge[1].value, edge[2].value),
+    )
+        if graph[edge[2]].subnetwork_id == subnetwork_id
+            sources[edge] =
+                AllocationSource(; edge, type = AllocationSourceType.main_to_sub)
+        end
+    end
+
+    # Buffers
+    for node_id in sort(only(problem[:F_flow_buffer_out].axes))
+        edge = (node_id, node_id)
+        sources[edge] = AllocationSource(; edge, type = AllocationSourceType.buffer)
+    end
+
+    sources
 end
 
 """
@@ -563,7 +541,8 @@ function AllocationModel(
 )::AllocationModel
     capacity = get_capacity(p, subnetwork_id)
     problem = allocation_problem(p, capacity, subnetwork_id)
-    flow_priority = JuMP.Containers.SparseAxisArray(Dict(only(problem[:F].axes) .=> 0.0))
+    sources = get_sources_in_order(problem, p, subnetwork_id)
+    flow = JuMP.Containers.SparseAxisArray(Dict(only(problem[:F].axes) .=> 0.0))
 
-    return AllocationModel(; subnetwork_id, capacity, flow_priority, problem, Δt_allocation)
+    return AllocationModel(; subnetwork_id, capacity, flow, sources, problem, Δt_allocation)
 end
