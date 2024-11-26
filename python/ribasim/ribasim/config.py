@@ -80,6 +80,7 @@ class Results(ChildModel):
 class Solver(ChildModel):
     """
     Defines the numerical solver options.
+
     For more details see <https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/#solver_options>.
 
     Attributes

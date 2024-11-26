@@ -264,6 +264,7 @@ def basic_transient_model() -> ribasim.Model:
 def tabulated_rating_curve_model() -> ribasim.Model:
     """
     Set up a model where the upstream Basin has two TabulatedRatingCurve attached.
+
     They both flow to the same downstream Basin, but one has a static rating curve,
     and the other one a time-varying rating curve.
     Only the upstream Basin receives a (constant) precipitation.

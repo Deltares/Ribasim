@@ -77,8 +77,10 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
         edge_id: Optional[NonNegativeInt] = None,
         **kwargs,
     ):
-        """Add an edge between nodes. The type of the edge (flow or control)
-        is automatically inferred from the type of the `from_node`.
+        """
+        Add an edge between nodes.
+
+        The type of the edge (flow or control) is automatically inferred from the type of the `from_node`.
 
         Parameters
         ----------

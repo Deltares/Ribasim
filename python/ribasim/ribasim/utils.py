@@ -32,6 +32,7 @@ class MissingOptionalModule:
 
 def _node_lookup_numpy(node_id) -> Series[Int32]:
     """Create a lookup table from from node_id to the node dimension index.
+
     Used when adding data onto the nodes of an xugrid dataset.
     """
     return pd.Series(
@@ -43,6 +44,7 @@ def _node_lookup_numpy(node_id) -> Series[Int32]:
 
 def _node_lookup(uds) -> Series[Int32]:
     """Create a lookup table from from node_id to the node dimension index.
+
     Used when adding data onto the nodes of an xugrid dataset.
     """
     return pd.Series(

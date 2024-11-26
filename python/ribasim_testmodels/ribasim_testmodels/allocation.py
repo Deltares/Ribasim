@@ -89,6 +89,7 @@ def user_demand_model() -> Model:
 
 def subnetwork_model() -> Model:
     """Create a UserDemand testmodel representing a subnetwork.
+
     This model is merged into main_network_with_subnetworks_model.
     """
     model = Model(
@@ -173,6 +174,7 @@ def subnetwork_model() -> Model:
 
 def looped_subnetwork_model() -> Model:
     """Create a UserDemand testmodel representing a subnetwork containing a loop in the topology.
+
     This model is merged into main_network_with_subnetworks_model.
     """
     model = Model(
@@ -883,10 +885,7 @@ def linear_resistance_demand_model():
 
 
 def fair_distribution_model():
-    """
-    Small model with little restrictions within the graph to see the behavior of
-    allocation in that case.
-    """
+    """See the behavior of allocation with few restrictions within the graph."""
     model = Model(
         starttime="2020-01-01 00:00:00",
         endtime="2020-01-07 00:00:00",

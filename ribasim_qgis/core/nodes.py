@@ -93,8 +93,9 @@ class Input(abc.ABC):
 
     def new_layer(self, crs: QgsCoordinateReferenceSystem) -> QgsVectorLayer:
         """
-        Separate creation of the instance with creating the layer, since the
-        layer might also come from an existing geopackage.
+        Separate creation of the instance with creating the layer.
+
+        Needed since the layer might also come from an existing geopackage.
         """
         layer = QgsVectorLayer(self.geometry_type(), self.input_type(), "memory")
         provider = layer.dataProvider()

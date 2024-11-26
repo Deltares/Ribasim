@@ -363,12 +363,7 @@ class DatasetWidget(QWidget):
         self.dataset_tree.sortByColumn(0, Qt.SortOrder.AscendingOrder)
 
     def remove_geopackage_layer(self) -> None:
-        """
-        Remove layers from:
-        * The dataset tree widget
-        * The QGIS layer panel
-        * The geopackage
-        """
+        """Remove layers from the dataset tree widget, QGIS layer panel and the GeoPackage."""
         self.dataset_tree.remove_geopackage_layers()
 
     def suppress_popup_changed(self):

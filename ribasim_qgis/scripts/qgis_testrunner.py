@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 """
-***************************************************************************
     Launches a unit test inside QGIS and exit the application.
 
     Arguments:

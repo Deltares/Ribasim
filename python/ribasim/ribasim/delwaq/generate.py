@@ -57,8 +57,8 @@ def _quote(value):
 def _make_boundary(data, boundary_type):
     """
     Create a Delwaq boundary definition with the given data and boundary type.
-    Pivot our data from long to wide format, and convert the time to a string.
 
+    Pivot our data from long to wide format, and convert the time to a string.
     Specifically, we go from a table:
         `node_id, substance, time, concentration`
     to

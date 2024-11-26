@@ -19,7 +19,8 @@ from shapely.geometry import Point
 
 def invalid_qh_model() -> Model:
     """
-    Invalid TabulatedRatingCurve Q(h) table:
+    Invalid TabulatedRatingCurve Q(h) table.
+
     - levels must be unique
     - flow_rate must start at 0
     - flow_rate must not be decreasing

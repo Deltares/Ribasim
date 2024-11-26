@@ -110,9 +110,9 @@ class RibasimWidget(QWidget):
         self.create_subgroup(name, "Ribasim Input")
 
     def add_to_group(self, maplayer: Any, destination: str, on_top: bool):
-        """
-        Try to add to a group; it might have been deleted. In that case, we add
-        as many groups as required.
+        """Try to add to a group.
+
+        It might have been deleted. In that case, we add as many groups as required.
         """
         group = self.groups[destination]
         try:
