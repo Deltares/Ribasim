@@ -113,7 +113,6 @@ def invalid_discrete_control_model() -> Model:
 
 def invalid_edge_types_model() -> Model:
     """Set up a minimal model with invalid edge types."""
-
     model = Model(
         starttime="2020-01-01",
         endtime="2020-12-01",
@@ -147,7 +146,6 @@ def invalid_edge_types_model() -> Model:
 
 def invalid_unstable_model() -> Model:
     """Model with several extremely quickly emptying basins."""
-
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
@@ -174,7 +172,6 @@ def invalid_unstable_model() -> Model:
 
 def invalid_priorities_model() -> Model:
     """Model with allocation active but missing priority parameter(s)."""
-
     model = Model(
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",

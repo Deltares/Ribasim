@@ -185,7 +185,6 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
         **kwargs : Dict
             Supported: 'ax', 'color_flow', 'color_control'
         """
-
         assert self.df is not None
         kwargs = kwargs.copy()  # Avoid side-effects
         ax = kwargs.get("ax", None)

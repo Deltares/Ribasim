@@ -80,7 +80,6 @@ class DatasetTreeWidget(QTreeWidget):
         * The QGIS layer panel
         * The geopackage
         """
-
         # Collect the selected items
         selection = self.selectedItems()
 

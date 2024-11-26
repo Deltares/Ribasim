@@ -300,7 +300,6 @@ def generate(
     output_path: Path = output_path,
 ) -> tuple[nx.DiGraph, set[str]]:
     """Generate a Delwaq model from a Ribasim model and results."""
-
     # Read in model and results
     model = ribasim.Model.read(toml_path)
     results_folder = toml_path.parent / model.results_dir

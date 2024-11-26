@@ -214,7 +214,6 @@ def basic_arrow_model() -> ribasim.Model:
 
 def basic_transient_model() -> ribasim.Model:
     """Update the basic model with transient forcing"""
-
     model = basic_model()
     time = pd.date_range(model.starttime, model.endtime)
     day_of_year = time.day_of_year.to_numpy()
@@ -269,7 +268,6 @@ def tabulated_rating_curve_model() -> ribasim.Model:
     and the other one a time-varying rating curve.
     Only the upstream Basin receives a (constant) precipitation.
     """
-
     # Setup a model:
     model = ribasim.Model(
         starttime="2020-01-01",

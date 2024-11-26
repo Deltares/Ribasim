@@ -22,7 +22,6 @@ from shapely.geometry import Point
 
 def user_demand_model() -> Model:
     """Create a UserDemand test model with static and dynamic UserDemand on the same basin."""
-
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
@@ -92,7 +91,6 @@ def subnetwork_model() -> Model:
     """Create a UserDemand testmodel representing a subnetwork.
     This model is merged into main_network_with_subnetworks_model.
     """
-
     model = Model(
         starttime="2020-01-01",
         endtime="2020-04-01",
@@ -177,7 +175,6 @@ def looped_subnetwork_model() -> Model:
     """Create a UserDemand testmodel representing a subnetwork containing a loop in the topology.
     This model is merged into main_network_with_subnetworks_model.
     """
-
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
@@ -304,7 +301,6 @@ def looped_subnetwork_model() -> Model:
 
 def minimal_subnetwork_model() -> Model:
     """Create a subnetwork that is minimal with non-trivial allocation."""
-
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
@@ -361,7 +357,6 @@ def minimal_subnetwork_model() -> Model:
 
 def allocation_example_model() -> Model:
     """Generate a model that is used as an example of allocation in the docs."""
-
     model = Model(
         starttime="2020-01-01",
         endtime="2020-01-20",
@@ -424,7 +419,6 @@ def allocation_example_model() -> Model:
 
 def main_network_with_subnetworks_model() -> Model:
     """Generate a model which consists of a main network and multiple connected subnetworks."""
-
     model = Model(
         starttime="2020-01-01",
         endtime="2020-03-01",
@@ -701,7 +695,6 @@ def main_network_with_subnetworks_model() -> Model:
 
 def subnetworks_with_sources_model() -> Model:
     """Generate a model with subnetworks which contain sources."""
-
     model = main_network_with_subnetworks_model()
 
     model.flow_boundary.add(
@@ -721,7 +714,6 @@ def subnetworks_with_sources_model() -> Model:
 
 def level_demand_model() -> Model:
     """Small model with LevelDemand nodes."""
-
     model = Model(
         starttime="2020-01-01",
         endtime="2020-02-01",
@@ -782,7 +774,6 @@ def level_demand_model() -> Model:
 
 def flow_demand_model() -> Model:
     """Small model with a FlowDemand."""
-
     model = Model(
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",
@@ -858,7 +849,6 @@ def flow_demand_model() -> Model:
 
 def linear_resistance_demand_model():
     """Small model with a FlowDemand for a node with a max flow rate."""
-
     model = Model(
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",
@@ -897,7 +887,6 @@ def fair_distribution_model():
     Small model with little restrictions within the graph to see the behavior of
     allocation in that case.
     """
-
     model = Model(
         starttime="2020-01-01 00:00:00",
         endtime="2020-01-07 00:00:00",

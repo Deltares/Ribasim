@@ -18,7 +18,6 @@ def two_basin_model() -> Model:
     infiltrates in the left basin, and exfiltrates in the right basin.
     The right basin fills up and discharges over the rating curve.
     """
-
     model = Model(starttime="2020-01-01", endtime="2021-01-01", crs="EPSG:28992")
 
     model.flow_boundary.add(

@@ -57,7 +57,6 @@ def _edge_lookup(uds) -> Series[Int32]:
 
     Used when adding data onto the edges of an xugrid dataset.
     """
-
     return pd.Series(
         index=uds["edge_id"],
         data=uds[uds.grid.edge_dimension],
