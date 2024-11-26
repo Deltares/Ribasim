@@ -7,7 +7,7 @@ Allocation is the process of assigning an allocated flow rate to demand nodes in
 
 The allocation problem is solved per subnetwork (and main network) of the Ribasim model. Each subnetwork is used to formulate an optimization problem with the [JuMP](https://jump.dev/JuMP.jl/stable/) package, which is solved using the [HiGHS solver](https://highs.dev/). For more in-depth information see also the example of solving the maximum flow problem with `JuMP.jl` [here](https://jump.dev/JuMP.jl/stable/tutorials/linear/network_flows/#The-max-flow-problem).
 
-Before the optimization for each priority there is a simple step that tries to allocate flow to the `UserDemand` nodes from the basin directly upstream.
+Before the optimization for each priority there is a simple step that tries to allocate flow to the UserDemand nodes from the Basin directly upstream.
 
 :::{.callout-note}
 within this *Allocation* section the main network is also considered to be a subnetwork.
@@ -77,7 +77,7 @@ for all $i \in FD_S$. Here $d^{p_{\text{df}}}$ is given by the original flow dem
 
 ### Vertical fluxes and local storage
 
-Apart from the source flows denoted by edges, there are other sources of water in the subnetwork, associated with the basins in the subnetwork $B_S = B \cap S$. First, there is the average over the last allocation interval $\Delta t_{\text{alloc}}$ of the vertical fluxes (precipitation, evaporation, infiltration and drainage) for each basin:
+Apart from the source flows denoted by edges, there are other sources of water in the subnetwork, associated with the Basins in the subnetwork $B_S = B \cap S$. First, there is the average over the last allocation interval $\Delta t_{\text{alloc}}$ of the vertical fluxes (precipitation, evaporation, infiltration and drainage) for each Basin:
 $$
     \phi_i(t) = \frac{1}{\Delta t_{\text{alloc}}}\int_{t - \Delta t_{\text{alloc}}}^t \left[Q_{P,i}(t') - Q_{E,i}(t') + Q_{\text{drn},i}(t') - Q_{\text{inf},i}(t') \right] dt', \quad \forall i \in B_S.
 $$

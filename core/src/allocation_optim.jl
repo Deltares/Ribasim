@@ -240,6 +240,8 @@ function reduce_source_capacity!(problem::JuMP.Model, source::AllocationSource):
             JuMP.value(problem[:F_basin_out][edge[1]])
         elseif source.type == AllocationSourceType.buffer
             JuMP.value(problem[:F_flow_buffer_out][edge[1]])
+        else
+            error("Unknown source type")
         end
 
     source.capacity_reduced[] = max(source.capacity_reduced[] - used_capacity, 0.0)
@@ -641,9 +643,8 @@ function save_demands_and_allocations!(
 )::Nothing
     (; graph, allocation, user_demand, flow_demand, basin) = p
     (; record_demand, priorities, mean_realized_flows) = allocation
-    (; subnetwork_id, problem, sources, flow) = allocation_model
+    (; subnetwork_id, sources, flow) = allocation_model
     node_ids = graph[].node_ids[subnetwork_id]
-    constraints_outflow = problem[:basin_outflow]
 
     # Loop over nodes in subnetwork
     for node_id in node_ids
@@ -716,7 +717,7 @@ function save_allocation_flows!(
     priority::Int32,
     optimization_type::OptimizationType.T,
 )::Nothing
-    (; flow, problem, subnetwork_id, capacity) = allocation_model
+    (; flow, problem, subnetwork_id) = allocation_model
     (; allocation, graph) = p
     (; record_flow) = allocation
     F_basin_in = problem[:F_basin_in]
