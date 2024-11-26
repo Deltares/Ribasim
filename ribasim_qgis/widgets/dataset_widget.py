@@ -73,13 +73,7 @@ class DatasetTreeWidget(QTreeWidget):
         return item
 
     def remove_geopackage_layers(self) -> None:
-        """
-        Remove layers from:
-
-        * The dataset tree widget
-        * The QGIS layer panel
-        * The geopackage
-        """
+        """Remove layers from the dataset tree widget, QGIS layer panel and the GeoPackage."""
         # Collect the selected items
         selection = self.selectedItems()
 
@@ -168,7 +162,7 @@ class DatasetWidget(QWidget):
 
     @property
     def path(self) -> Path:
-        """Returns currently active path to Ribasim model (.toml)"""
+        """Returns currently active path to Ribasim model (.toml)."""
         return Path(self.dataset_line_edit.text())
 
     def connect_nodes(self) -> None:
@@ -239,7 +233,7 @@ class DatasetWidget(QWidget):
         from_layer.setEditorWidgetSetup(field_index, setup)
 
     def load_geopackage(self) -> None:
-        """Load the layers of a GeoPackage into the Layers Panel"""
+        """Load the layers of a GeoPackage into the Layers Panel."""
         self.dataset_tree.clear()
         geo_path = get_database_path_from_model_file(self.path)
         nodes = load_nodes_from_geopackage(geo_path)

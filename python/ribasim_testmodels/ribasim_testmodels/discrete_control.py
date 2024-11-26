@@ -119,7 +119,7 @@ def pump_discrete_control_model() -> Model:
 
 
 def flow_condition_model() -> Model:
-    """Set up a basic model that involves discrete control based on a flow condition"""
+    """Set up a basic model that involves discrete control based on a flow condition."""
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",

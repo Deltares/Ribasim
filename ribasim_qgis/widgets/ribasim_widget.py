@@ -70,7 +70,7 @@ class RibasimWidget(QWidget):
 
     @property
     def crs(self) -> QgsCoordinateReferenceSystem:
-        """Returns coordinate reference system of current mapview"""
+        """Returns coordinate reference system of current mapview."""
         map_canvas = self.iface.mapCanvas()
         assert map_canvas is not None
         map_settings = map_canvas.mapSettings()
@@ -138,7 +138,7 @@ class RibasimWidget(QWidget):
         labels: QgsAbstractVectorLayerLabeling | None = None,
     ) -> QgsMapLayer | None:
         """
-        Add a layer to the Layers Panel
+        Add a layer to the Layers Panel.
 
         Parameters
         ----------

@@ -7,7 +7,7 @@ from shapely.geometry import Point
 
 
 def flow_boundary_time_model() -> Model:
-    """Set up a minimal model with time-varying flow boundary"""
+    """Set up a minimal model with time-varying flow boundary."""
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",

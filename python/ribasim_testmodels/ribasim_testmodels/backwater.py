@@ -10,7 +10,7 @@ from shapely.geometry import Point
 
 
 def backwater_model():
-    """Backwater curve as an integration test for ManningResistance"""
+    """Backwater curve as an integration test for ManningResistance."""
     node_type = np.full(102, "ManningResistance")
     node_type[1::2] = "Basin"
     node_type[0] = "FlowBoundary"

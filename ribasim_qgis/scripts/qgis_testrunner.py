@@ -56,7 +56,7 @@ assert iface is not None
 
 
 def __get_test_function(test_module_name):
-    """Load the test module and return the test function"""
+    """Load the test module and return the test function."""
     print(f"QGIS Test Runner - Trying to import {test_module_name}")
     try:
         test_module = importlib.import_module(test_module_name)

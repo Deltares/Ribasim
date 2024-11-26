@@ -156,7 +156,7 @@ def misc_nodes_model() -> Model:
 
 
 def pid_control_equation_model() -> Model:
-    """Set up a model with pid control for an analytical solution test"""
+    """Set up a model with pid control for an analytical solution test."""
     model = Model(
         starttime="2020-01-01", endtime="2020-01-01 00:05:00", crs="EPSG:28992"
     )

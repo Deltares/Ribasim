@@ -175,7 +175,7 @@ def test_get_value_ptr_allocation(libribasim, user_demand, tmp_path):
 
 def test_err_unknown_var(libribasim, basic, tmp_path):
     """
-    Unknown or invalid variable address
+    Unknown or invalid variable address.
 
     Should trigger Python Exception, print the kernel error, and not crash the library.
     """
