@@ -7,7 +7,6 @@ target-version = "py39"
 select = ["C4", "D2", "D3", "D4", "E", "F", "I", "NPY", "PD", "UP"]
 ignore = [
     "E501",
-    "E703",
     "PD002",
     "PD901",
 ]
