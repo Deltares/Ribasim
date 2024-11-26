@@ -74,6 +74,13 @@ function create_graph(db::DB, config::Config)::MetaGraph
         end
         id_src = NodeID(from_node_type, from_node_id, db)
         id_dst = NodeID(to_node_type, to_node_id, db)
+        if !ismissing(subnetwork_id)
+            Base.depwarn(
+                "Sources for allocation are automatically inferred and no longer have to be specified in the `Edge` table.",
+                :create_graph;
+                force = true,
+            )
+        end
         if ismissing(subnetwork_id)
             subnetwork_id = 0
         end
@@ -101,6 +108,12 @@ function create_graph(db::DB, config::Config)::MetaGraph
     if errors
         error("Invalid edges found")
     end
+    # if edge_depwarn
+    #     Base.depwarn(
+    #         "Sources for allocation are automatically inferred and no longer have to be specified in the `Edge` table.",
+    #         :create_graph,
+    #     )
+    # end
 
     if incomplete_subnetwork(graph, node_ids)
         error("Incomplete connectivity in subnetwork")

@@ -1,6 +1,7 @@
 import datetime
 import logging
 import shutil
+import warnings
 from collections.abc import Generator
 from os import PathLike
 from pathlib import Path
@@ -69,6 +70,8 @@ try:
     import xugrid
 except ImportError:
     xugrid = MissingOptionalModule("xugrid")
+
+warnings.simplefilter("always", DeprecationWarning)
 
 
 class Model(FileModel):
@@ -303,6 +306,12 @@ class Model(FileModel):
 
         if self.use_validation:
             self._validate_model()
+
+        if self.edge.df.subnetwork_id.notna().any():
+            warnings.warn(
+                "Sources for allocation are automatically inferred and no longer have to be specified in the `Edge` table.",
+                DeprecationWarning,
+            )
 
         filepath = Path(filepath)
         self.filepath = filepath
