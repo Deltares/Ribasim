@@ -96,7 +96,7 @@ function get_subnetwork_capacity(
 end
 
 const allocation_source_nodetypes =
-    Set{NodeType.T}([NodeType.LevelBoundary, NodeType.FlowBoundary])
+    Set{NodeType.T}([NodeType.LevelBoundary, NodeType.FlowBoundary, NodeType.UserDemand])
 
 """
 Add the edges connecting the main network work to a subnetwork to both the main network
@@ -137,10 +137,6 @@ function get_capacity(
 )::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}}
     capacity = get_subnetwork_capacity(p, subnetwork_id)
     add_subnetwork_connections!(capacity, p, subnetwork_id)
-
-    if !valid_sources(p, capacity, subnetwork_id)
-        error("Errors in sources in allocation network.")
-    end
 
     return capacity
 end
@@ -290,9 +286,10 @@ function add_constraints_source!(
 
     # Find the edges in the whole model which are a source for
     # this subnetwork
-    for edge_metadata in values(graph.edge_data)
-        (; edge) = edge_metadata
-        if graph[edge...].subnetwork_id_source == subnetwork_id
+    for edge in keys(p.allocation.mean_input_flows[subnetwork_id])
+        from_id, to_id = edge
+        if graph[from_id].subnetwork_id == subnetwork_id &&
+           graph[to_id].subnetwork_id == subnetwork_id
             push!(edges_source, edge)
         end
     end

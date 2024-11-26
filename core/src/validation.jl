@@ -626,53 +626,6 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
     return !errors
 end
 
-"""
-An allocation source edge is valid if either:
-    - The edge connects the main network to a subnetwork
-    - The edge comes from a source node
-"""
-function valid_sources(
-    p::Parameters,
-    capacity::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}},
-    subnetwork_id::Int32,
-)::Bool
-    (; graph) = p
-
-    errors = false
-
-    # Loop over edges that were assigned a capacity
-    for edge in keys(capacity.data)
-
-        # For an edge (id_a, id_b) in the physical model
-        # the reverse (id_b, id_a) can exist in the allocation subnetwork
-        if !haskey(graph, edge...)
-            edge = reverse(edge)
-        end
-
-        (id_source, id_dst) = edge
-
-        # Whether the current edge is a source for the current subnetwork
-        if graph[edge...].subnetwork_id_source == subnetwork_id
-            from_source_node = id_source.type in allocation_source_nodetypes
-
-            if is_main_network(subnetwork_id)
-                if !from_source_node
-                    errors = true
-                    @error "The source node of source edge $edge in the main network must be one of $allocation_source_nodetypes."
-                end
-            else
-                from_main_network = is_main_network(graph[id_source].subnetwork_id)
-
-                if !from_source_node && !from_main_network
-                    errors = true
-                    @error "The source node of source edge $edge for subnetwork $subnetwork_id is neither a source node nor is it coming from the main network."
-                end
-            end
-        end
-    end
-    return !errors
-end
-
 function valid_priorities(priorities::Vector{Int32}, use_allocation::Bool)::Bool
     if use_allocation && any(iszero, priorities)
         return false

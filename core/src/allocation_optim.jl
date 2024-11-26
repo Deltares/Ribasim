@@ -203,21 +203,18 @@ function set_initial_capacities_source!(
     p::Parameters,
 )::Nothing
     (; sources) = allocation_model
-    (; graph, allocation) = p
+    (; allocation) = p
     (; mean_input_flows) = allocation
     (; subnetwork_id) = allocation_model
     main_network_source_edges = get_main_network_connections(p, subnetwork_id)
 
-    for edge_metadata in values(graph.edge_data)
-        (; edge) = edge_metadata
-        if graph[edge...].subnetwork_id_source == subnetwork_id
-            # If it is a source edge for this allocation problem
-            if edge ∉ main_network_source_edges
-                # Reset the source to the averaged flow over the last allocation period
-                source = sources[edge]
-                @assert source.type == AllocationSourceType.edge
-                source.capacity[] = mean_input_flows[edge][]
-            end
+    for edge in keys(p.allocation.mean_input_flows[subnetwork_id])
+        # If it is a source edge for this allocation problem
+        if edge ∉ main_network_source_edges
+            # Reset the source to the averaged flow over the last allocation period
+            source = sources[edge]
+            @assert source.type == AllocationSourceType.edge
+            source.capacity[] = mean_input_flows[edge][]
         end
     end
     return nothing

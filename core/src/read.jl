@@ -1268,13 +1268,18 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
 end
 
 function Allocation(db::DB, config::Config, graph::MetaGraph)::Allocation
-    mean_input_flows = Dict{Tuple{NodeID, NodeID}, Float64}()
+    mean_input_flows = Dict{Int32, Dict{Tuple{NodeID, NodeID}, Float64}}()
 
     # Find edges which serve as sources in allocation
     for edge_metadata in values(graph.edge_data)
-        (; subnetwork_id_source, edge) = edge_metadata
-        if subnetwork_id_source != 0
-            mean_input_flows[edge] = 0.0
+        (; edge) = edge_metadata
+        id_source, _ = edge
+        if id_source in allocation_source_nodetypes
+            (; subnetwork_id) = graph[id_source]
+            if !haskey(mean_input_flows, subnetwork_id)
+                mean_input_flows[subnetwork_id] = Dict{Tuple{NodeID, NodeID}, Float64}()
+            end
+            mean_input_flows[subnetwork_id][edge] = 0.0
         end
     end
 

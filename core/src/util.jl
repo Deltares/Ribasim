@@ -1004,12 +1004,8 @@ function set_state_flow_edges(p::Parameters, u0::ComponentVector)::Parameters
     state_inflow_edges = Vector{EdgeMetadata}[]
     state_outflow_edges = Vector{EdgeMetadata}[]
 
-    placeholder_edge = EdgeMetadata(
-        0,
-        EdgeType.flow,
-        0,
-        (NodeID(:Terminal, 0, 0), NodeID(:Terminal, 0, 0)),
-    )
+    placeholder_edge =
+        EdgeMetadata(0, EdgeType.flow, (NodeID(:Terminal, 0, 0), NodeID(:Terminal, 0, 0)))
 
     for node_name in keys(u0)
         if hasfield(Parameters, node_name)

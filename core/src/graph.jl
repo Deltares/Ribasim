@@ -28,8 +28,7 @@ function create_graph(db::DB, config::Config)::MetaGraph
     )
     # Node IDs per subnetwork
     node_ids = Dict{Int32, Set{NodeID}}()
-    # Source edges per subnetwork
-    edges_source = Dict{Int32, Set{EdgeMetadata}}()
+
     # The metadata of the flow edges in the order in which they are in the input
     # and will be in the output
     flow_edges = EdgeMetadata[]
@@ -81,15 +80,8 @@ function create_graph(db::DB, config::Config)::MetaGraph
                 force = true,
             )
         end
-        if ismissing(subnetwork_id)
-            subnetwork_id = 0
-        end
-        edge_metadata = EdgeMetadata(;
-            id = edge_id,
-            type = edge_type,
-            subnetwork_id_source = subnetwork_id,
-            edge = (id_src, id_dst),
-        )
+        edge_metadata =
+            EdgeMetadata(; id = edge_id, type = edge_type, edge = (id_src, id_dst))
         if edge_type == EdgeType.flow
             push!(flow_edges, edge_metadata)
         end
@@ -98,28 +90,16 @@ function create_graph(db::DB, config::Config)::MetaGraph
             @error "Duplicate edge" id_src id_dst
         end
         graph[id_src, id_dst] = edge_metadata
-        if subnetwork_id != 0
-            if !haskey(edges_source, subnetwork_id)
-                edges_source[subnetwork_id] = Set{EdgeMetadata}()
-            end
-            push!(edges_source[subnetwork_id], edge_metadata)
-        end
     end
     if errors
         error("Invalid edges found")
     end
-    # if edge_depwarn
-    #     Base.depwarn(
-    #         "Sources for allocation are automatically inferred and no longer have to be specified in the `Edge` table.",
-    #         :create_graph,
-    #     )
-    # end
 
     if incomplete_subnetwork(graph, node_ids)
         error("Incomplete connectivity in subnetwork")
     end
 
-    graph_data = (; node_ids, edges_source, flow_edges, config.solver.saveat)
+    graph_data = (; node_ids, flow_edges, config.solver.saveat)
     @reset graph.graph_data = graph_data
 
     return graph
