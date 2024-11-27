@@ -307,7 +307,7 @@ class Model(FileModel):
         if self.use_validation:
             self._validate_model()
 
-        if self.edge.df.subnetwork_id.notna().any():
+        if self.edge.df is not None and self.edge.df["subnetwork_id"].notna().any():
             warnings.warn(
                 "Sources for allocation are automatically inferred and no longer have to be specified in the `Edge` table.",
                 DeprecationWarning,
