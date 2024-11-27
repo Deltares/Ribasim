@@ -189,7 +189,7 @@ function set_initial_capacities_inlet!(
         end
         source = sources[edge_id]
         @assert source.type == AllocationSourceType.main_to_sub
-        source.capacity[] = source_capacity
+        source.capacity = source_capacity
     end
     return nothing
 end
@@ -214,7 +214,7 @@ function set_initial_capacities_source!(
             # Reset the source to the averaged flow over the last allocation period
             source = sources[edge]
             @assert source.type == AllocationSourceType.edge
-            source.capacity[] = mean_input_flows[edge][]
+            source.capacity = mean_input_flows[subnetwork_id][edge]
         end
     end
     return nothing
@@ -241,7 +241,7 @@ function reduce_source_capacity!(problem::JuMP.Model, source::AllocationSource):
             error("Unknown source type")
         end
 
-    source.capacity_reduced[] = max(source.capacity_reduced[] - used_capacity, 0.0)
+    source.capacity_reduced = max(source.capacity_reduced - used_capacity, 0.0)
     return nothing
 end
 
@@ -272,7 +272,7 @@ function increase_source_capacities!(
             continue
         end
 
-        source.capacity_reduced[] += additional_capacity
+        source.capacity_reduced += additional_capacity
     end
     return nothing
 end
@@ -429,7 +429,7 @@ function set_initial_capacities_basin!(
     for node_id in only(constraints_outflow.axes)
         source = sources[(node_id, node_id)]
         @assert source.type == AllocationSourceType.basin
-        source.capacity[] = get_basin_capacity(allocation_model, u, p, t, node_id)
+        source.capacity = get_basin_capacity(allocation_model, u, p, t, node_id)
     end
     return nothing
 end
@@ -499,7 +499,7 @@ function set_initial_capacities_returnflow!(
     for node_id in only(constraints_outflow.axes)
         source = sources[user_demand.outflow_edge[node_id.idx].edge]
         @assert source.type == AllocationSourceType.user_return
-        source.capacity[] = 0.0
+        source.capacity = 0.0
     end
     return nothing
 end
@@ -623,7 +623,7 @@ function set_initial_capacities_buffer!(allocation_model::AllocationModel)::Noth
     for node_id in only(constraints_flow_buffer.axes)
         source = sources[(node_id, node_id)]
         @assert source.type == AllocationSourceType.buffer
-        source.capacity[] = 0.0
+        source.capacity = 0.0
     end
     return nothing
 end
@@ -813,14 +813,14 @@ function allocate_to_users_from_connected_basin!(
             # The capacity of the upstream basin
             source = sources[(upstream_basin_id, upstream_basin_id)]
             @assert source.type == AllocationSourceType.basin
-            capacity = source.capacity[]
+            capacity = source.capacity
 
             # The allocated amount
             allocated = min(demand, capacity)
 
             # Subtract the allocated amount from the user demand and basin capacity
             user_demand.demand_reduced[node_id.idx, priority_idx] -= allocated
-            source.capacity[] -= allocated
+            source.capacity -= allocated
 
             # Add the allocated flow
             flow[(upstream_basin_id, node_id)] += allocated
@@ -853,7 +853,7 @@ function set_source_capacity!(
                source.type == AllocationSourceType.main_to_sub
                 Inf
             else
-                source_current.capacity_reduced[]
+                source_current.capacity_reduced
             end
         else
             0.0
@@ -897,7 +897,7 @@ function optimize_per_source!(
     for source in values(sources)
         # Skip source when it has no capacity
         if optimization_type !== OptimizationType.collect_demands &&
-           source.capacity_reduced[] == 0.0
+           source.capacity_reduced == 0.0
             continue
         end
 
@@ -1027,7 +1027,7 @@ function set_initial_values!(
     set_initial_capacities_returnflow!(allocation_model, p)
 
     for source in values(allocation_model.sources)
-        source.capacity_reduced[] = source.capacity[]
+        source.capacity_reduced = source.capacity
     end
 
     set_initial_demands_user!(allocation_model, p, t)

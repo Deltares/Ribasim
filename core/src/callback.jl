@@ -122,7 +122,7 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
     (; vertical_flux) = basin
 
     # Update tprev
-    p.tprev[] = t
+    p.tprev = t
 
     # Update cumulative forcings which are integrated exactly
     @. basin.cumulative_drainage += vertical_flux.drainage * dt
