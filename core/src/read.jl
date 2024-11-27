@@ -1268,25 +1268,31 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
 end
 
 function Allocation(db::DB, config::Config, graph::MetaGraph)::Allocation
-    mean_input_flows = Dict{Int32, Dict{Tuple{NodeID, NodeID}, Float64}}()
+    mean_input_flows = Dict{Tuple{NodeID, NodeID}, Float64}[]
+
+    subnetwork_ids = sort(collect(keys(graph[].node_ids)))
+
+    for subnetwork_id in subnetwork_ids
+        push!(mean_input_flows, Dict{Tuple{NodeID, NodeID}, Float64}())
+    end
 
     # Find edges which serve as sources in allocation
     for edge_metadata in values(graph.edge_data)
         (; edge) = edge_metadata
         id_source, _ = edge
-        if id_source in allocation_source_nodetypes
+        if id_source.type in boundary_source_nodetypes
             (; subnetwork_id) = graph[id_source]
-            if !haskey(mean_input_flows, subnetwork_id)
-                mean_input_flows[subnetwork_id] = Dict{Tuple{NodeID, NodeID}, Float64}()
-            end
-            mean_input_flows[subnetwork_id][edge] = 0.0
+            subnetwork_idx = searchsortedfirst(subnetwork_ids, subnetwork_id)
+            mean_input_flows[subnetwork_idx][edge] = 0.0
         end
     end
 
     # Find basins with a level demand
     for node_id in values(graph.vertex_labels)
         if has_external_demand(graph, node_id, :level_demand)[1]
-            mean_input_flows[(node_id, node_id)] = 0.0
+            subnetwork_id = graph[node_id].subnetwork_id
+            subnetwork_idx = searchsortedfirst(subnetwork_ids, subnetwork_id)
+            mean_input_flows[subnetwork_idx][(node_id, node_id)] = 0.0
         end
     end
 

@@ -127,8 +127,7 @@ function assign_allocations!(
         # If this edge is a source edge from the main network to a subnetwork,
         # and demands are being collected, add its flow to the demand of this edge
         if optimization_type == OptimizationType.collect_demands
-            if graph[edge...].subnetwork_id_source == subnetwork_id &&
-               edge ∈ main_network_source_edges
+            if edge in main_network_source_edges
                 allocated = flow[edge]
                 subnetwork_demands[edge][priority_idx] += allocated
             end
@@ -206,16 +205,12 @@ function set_initial_capacities_source!(
     (; allocation) = p
     (; mean_input_flows) = allocation
     (; subnetwork_id) = allocation_model
-    main_network_source_edges = get_main_network_connections(p, subnetwork_id)
 
-    for edge in keys(p.allocation.mean_input_flows[subnetwork_id])
-        # If it is a source edge for this allocation problem
-        if edge ∉ main_network_source_edges
-            # Reset the source to the averaged flow over the last allocation period
-            source = sources[edge]
-            @assert source.type == AllocationSourceType.edge
-            source.capacity = mean_input_flows[subnetwork_id][edge]
-        end
+    mean_input_flows_subnetwork_ = mean_input_flows_subnetwork(p, subnetwork_id)
+
+    for edge in keys(mean_input_flows_subnetwork_)
+        source = sources[edge]
+        source.capacity = mean_input_flows_subnetwork_[edge]
     end
     return nothing
 end
@@ -228,7 +223,7 @@ function reduce_source_capacity!(problem::JuMP.Model, source::AllocationSource):
 
     used_capacity =
         if source.type in (
-            AllocationSourceType.edge,
+            AllocationSourceType.boundary_node,
             AllocationSourceType.main_to_sub,
             AllocationSourceType.user_return,
         )
@@ -340,11 +335,10 @@ function get_basin_data(
     u::ComponentVector,
     node_id::NodeID,
 )
-    (; graph, allocation, basin) = p
-    (; Δt_allocation) = allocation_model
-    (; mean_input_flows) = allocation
+    (; graph, basin) = p
+    (; Δt_allocation, subnetwork_id) = allocation_model
     @assert node_id.type == NodeType.Basin
-    influx = mean_input_flows[(node_id, node_id)][]
+    influx = mean_input_flows_subnetwork(p, subnetwork_id)[(node_id, node_id)]
     storage_basin = basin.current_properties.current_storage[parent(u)][node_id.idx]
     control_inneighbors = inneighbor_labels_type(graph, node_id, EdgeType.control)
     if isempty(control_inneighbors)
@@ -840,9 +834,10 @@ function set_source_capacity!(
     optimization_type::OptimizationType.T,
 )::Nothing
     (; problem, sources) = allocation_model
-    constraints_source_edge = problem[:source]
-    constraints_source_basin = problem[:basin_outflow]
+    constraints_source_boundary = problem[:source_boundary]
     constraints_source_user_out = problem[:source_user]
+    constraints_source_main_network = problem[:source_main_network]
+    constraints_source_basin = problem[:basin_outflow]
     constraints_source_buffer = problem[:flow_buffer_outflow]
 
     for source in values(sources)
@@ -859,16 +854,17 @@ function set_source_capacity!(
             0.0
         end
 
-        constraint =
-            if source.type in (AllocationSourceType.edge, AllocationSourceType.main_to_sub)
-                constraints_source_edge[edge]
-            elseif source.type == AllocationSourceType.basin
-                constraints_source_basin[edge[1]]
-            elseif source.type == AllocationSourceType.user_return
-                constraints_source_user_out[edge[1]]
-            elseif source.type == AllocationSourceType.buffer
-                constraints_source_buffer[edge[1]]
-            end
+        constraint = if source.type == AllocationSourceType.boundary_node
+            constraints_source_boundary[edge]
+        elseif source.type == AllocationSourceType.main_to_sub
+            constraints_source_main_network[edge]
+        elseif source.type == AllocationSourceType.basin
+            constraints_source_basin[edge[1]]
+        elseif source.type == AllocationSourceType.user_return
+            constraints_source_user_out[edge[1]]
+        elseif source.type == AllocationSourceType.buffer
+            constraints_source_buffer[edge[1]]
+        end
 
         JuMP.set_normalized_rhs(constraint, capacity_effective)
     end
@@ -1043,7 +1039,8 @@ function empty_sources!(allocation_model::AllocationModel, allocation::Allocatio
     (; problem) = allocation_model
     (; subnetwork_demands) = allocation
 
-    for constraint_set_name in [:source, :source_user, :basin_outflow, :flow_buffer_outflow]
+    for constraint_set_name in
+        [:source_boundary, :source_user, :basin_outflow, :flow_buffer_outflow]
         constraint_set = problem[constraint_set_name]
         for key in only(constraint_set.axes)
             # Do not set the capacity to 0.0 if the edge

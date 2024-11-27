@@ -184,13 +184,14 @@ record_flow: A record of all flows computed by allocation optimization, eventual
     output file
 """
 @kwdef struct Allocation
-    subnetwork_ids::Vector{Int32} = []
-    allocation_models::Vector{AllocationModel} = []
-    main_network_connections::Vector{Vector{Tuple{NodeID, NodeID}}} = []
+    subnetwork_ids::Vector{Int32} = Int32[]
+    allocation_models::Vector{AllocationModel} = AllocationModel[]
+    main_network_connections::Vector{Vector{Tuple{NodeID, NodeID}}} =
+        Vector{Tuple{NodeID, NodeID}}[]
     priorities::Vector{Int32}
     subnetwork_demands::Dict{Tuple{NodeID, NodeID}, Vector{Float64}} = Dict()
     subnetwork_allocateds::Dict{Tuple{NodeID, NodeID}, Vector{Float64}} = Dict()
-    mean_input_flows::Dict{Int32, Dict{Tuple{NodeID, NodeID}, Float64}}
+    mean_input_flows::Vector{Dict{Tuple{NodeID, NodeID}, Float64}}
     mean_realized_flows::Dict{Tuple{NodeID, NodeID}, Float64}
     record_demand::@NamedTuple{
         time::Vector{Float64},
