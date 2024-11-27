@@ -202,8 +202,6 @@ function set_initial_capacities_source!(
     p::Parameters,
 )::Nothing
     (; sources) = allocation_model
-    (; allocation) = p
-    (; mean_input_flows) = allocation
     (; subnetwork_id) = allocation_model
 
     mean_input_flows_subnetwork_ = mean_input_flows_subnetwork(p, subnetwork_id)

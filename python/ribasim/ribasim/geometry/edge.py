@@ -91,8 +91,7 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
         name : str
             An optional name for the edge.
         subnetwork_id : int | None
-            An optional subnetwork id for the edge. This edge indicates a source for
-            the allocation algorithm, and should thus not be set for every edge in a subnetwork.
+            Deprecated: Sources for allocation are automatically inferred and no longer have to be specified in the `Edge` table.
         **kwargs : Dict
         """
         if not can_connect(from_node.node_type, to_node.node_type):

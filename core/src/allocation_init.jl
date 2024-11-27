@@ -268,18 +268,19 @@ function add_constraints_user_source!(
 end
 
 """
-Add the source constraints to the allocation problem.
+Add the boundary source constraints to the allocation problem.
 The actual threshold values will be set before each allocation solve.
 The constraint indices are (edge_source_id, edge_dst_id).
 
 Constraint:
-flow over source edge <= source flow in subnetwork
+flow over source edge <= source flow in physical layer
 """
 function add_constraints_boundary_source!(
     problem::JuMP.Model,
     p::Parameters,
     subnetwork_id::Int32,
 )::Nothing
+    # Source edges (without the basins)
     edges_source =
         [edge for edge in source_edges_subnetwork(p, subnetwork_id) if edge[1] != edge[2]]
     F = problem[:F]
@@ -293,6 +294,14 @@ function add_constraints_boundary_source!(
     return nothing
 end
 
+"""
+Add main network source constraints to the allocation problem.
+The actual threshold values will be set before each allocation solve.
+The constraint indices are (edge_source_id, edge_dst_id).
+
+Constraint:
+flow over main network to subnetwork connection edge <= either 0 or allocated amount from the main network
+"""
 function add_constraints_main_network_source!(
     problem::JuMP.Model,
     p::Parameters,
