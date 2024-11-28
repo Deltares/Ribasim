@@ -89,6 +89,7 @@ def __get_test_function(test_module_name):
 
 class QgsProjectBadLayerDefaultHandler(QgsProjectBadLayerHandler):
     def handleBadLayers(self, layers, dom):
+        # Ignore bad layers
         pass
 
 
