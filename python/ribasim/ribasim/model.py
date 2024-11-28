@@ -71,8 +71,6 @@ try:
 except ImportError:
     xugrid = MissingOptionalModule("xugrid")
 
-warnings.simplefilter("always", DeprecationWarning)
-
 
 class Model(FileModel):
     """A model of inland water resources systems."""
@@ -306,12 +304,6 @@ class Model(FileModel):
 
         if self.use_validation:
             self._validate_model()
-
-        if self.edge.df is not None and self.edge.df["subnetwork_id"].notna().any():
-            warnings.warn(
-                "Sources for allocation are automatically inferred and no longer have to be specified in the `Edge` table.",
-                DeprecationWarning,
-            )
 
         filepath = Path(filepath)
         self.filepath = filepath

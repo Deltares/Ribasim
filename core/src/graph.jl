@@ -56,15 +56,8 @@ function create_graph(db::DB, config::Config)::MetaGraph
     end
 
     errors = false
-    for (;
-        edge_id,
-        from_node_type,
-        from_node_id,
-        to_node_type,
-        to_node_id,
-        edge_type,
-        subnetwork_id,
-    ) in edge_rows
+    for (; edge_id, from_node_type, from_node_id, to_node_type, to_node_id, edge_type) in
+        edge_rows
         try
             # hasfield does not work
             edge_type = getfield(EdgeType, Symbol(edge_type))
@@ -73,13 +66,6 @@ function create_graph(db::DB, config::Config)::MetaGraph
         end
         id_src = NodeID(from_node_type, from_node_id, db)
         id_dst = NodeID(to_node_type, to_node_id, db)
-        if !ismissing(subnetwork_id)
-            Base.depwarn(
-                "Sources for allocation are automatically inferred and no longer have to be specified in the `Edge` table.",
-                :create_graph;
-                force = true,
-            )
-        end
         edge_metadata =
             EdgeMetadata(; id = edge_id, type = edge_type, edge = (id_src, id_dst))
         if edge_type == EdgeType.flow

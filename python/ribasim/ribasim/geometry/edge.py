@@ -90,8 +90,6 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
             The geometry of a line. If not supplied, it creates a straight line between the nodes.
         name : str
             An optional name for the edge.
-        subnetwork_id : int | None
-            Deprecated: Sources for allocation are automatically inferred and no longer have to be specified in the `Edge` table.
         **kwargs : Dict
         """
         if not can_connect(from_node.node_type, to_node.node_type):
