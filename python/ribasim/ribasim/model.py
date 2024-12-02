@@ -1,7 +1,6 @@
 import datetime
 import logging
 import shutil
-import warnings
 from collections.abc import Generator
 from os import PathLike
 from pathlib import Path

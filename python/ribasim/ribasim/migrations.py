@@ -29,7 +29,7 @@ def edgeschema_migration(gdf: GeoDataFrame, schema_version: int) -> GeoDataFrame
         gdf.set_index("edge_id", inplace=True)
     if "subnetwork_id" in gdf.columns and schema_version == 0:
         warnings.warn("Migrating outdated Edge table.", UserWarning)
-        gdf.drop(columns="subnetwork_id", inplace = True, errors = "ignore")
+        gdf.drop(columns="subnetwork_id", inplace=True, errors="ignore")
 
     return gdf
 
