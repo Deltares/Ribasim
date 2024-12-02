@@ -182,6 +182,14 @@ function valid_nodes(db::DB)::Bool
     return !errors
 end
 
+function database_warning(db::DB)::Nothing
+    cols = SQLite.columns(db, "Edge")
+    if "subnetwork_id" in cols.name
+        @warn "The 'subnetwork_id' column in the 'Edge' table is deprecated since ribasim v2024.12."
+    end
+    return nothing
+end
+
 """
 Test for each node given its node type whether the nodes that
 # are downstream ('down-edge') of this node are of an allowed type

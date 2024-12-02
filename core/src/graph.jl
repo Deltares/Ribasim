@@ -19,8 +19,7 @@ function create_graph(db::DB, config::Config)::MetaGraph
             FromNode.node_type AS from_node_type,
             ToNode.node_id AS to_node_id,
             ToNode.node_type AS to_node_type,
-            Edge.edge_type,
-            Edge.subnetwork_id
+            Edge.edge_type
         FROM Edge
         LEFT JOIN Node AS FromNode ON FromNode.node_id = Edge.from_node_id
         LEFT JOIN Node AS ToNode ON ToNode.node_id = Edge.to_node_id

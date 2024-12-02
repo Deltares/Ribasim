@@ -47,6 +47,7 @@ function Model(config::Config)::Model
     # so we can directly close it again.
     db = SQLite.DB(db_path)
 
+    database_warning(db)
     if !valid_nodes(db)
         error("Invalid nodes found.")
     end
