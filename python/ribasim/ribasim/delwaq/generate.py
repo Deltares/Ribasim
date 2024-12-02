@@ -57,8 +57,8 @@ def _quote(value):
 def _make_boundary(data, boundary_type):
     """
     Create a Delwaq boundary definition with the given data and boundary type.
-    Pivot our data from long to wide format, and convert the time to a string.
 
+    Pivot our data from long to wide format, and convert the time to a string.
     Specifically, we go from a table:
         `node_id, substance, time, concentration`
     to
@@ -300,7 +300,6 @@ def generate(
     output_path: Path = output_path,
 ) -> tuple[nx.DiGraph, set[str]]:
     """Generate a Delwaq model from a Ribasim model and results."""
-
     # Read in model and results
     model = ribasim.Model.read(toml_path)
     results_folder = toml_path.parent / model.results_dir

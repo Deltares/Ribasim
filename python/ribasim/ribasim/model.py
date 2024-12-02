@@ -300,7 +300,6 @@ class Model(FileModel):
         filepath : str | PathLike[str]
             A file path with .toml extension.
         """
-
         if self.use_validation:
             self._validate_model()
 
@@ -351,7 +350,6 @@ class Model(FileModel):
         nodes,
     ) -> bool:
         """Check if the neighbor amount of the two nodes connected by the given edge meet the minimum requirements."""
-
         is_valid = True
 
         # filter graph by edge type
@@ -419,7 +417,6 @@ class Model(FileModel):
 
         Specify that their occurrence in from_node table or to_node table is 0.
         """
-
         # loop over nodes, add the one that is not the downstream (from) or upstream (to) of any other nodes
         for index, node in enumerate(nodes):
             if nodes.index[index] not in node_info[f"{direction}_node_id"].to_numpy():
@@ -463,7 +460,6 @@ class Model(FileModel):
 
     def plot_control_listen(self, ax):
         """Plot the implicit listen edges of the model."""
-
         df_listen_edge = pd.DataFrame(
             data={
                 "control_node_id": pd.Series([], dtype="int32[pyarrow]"),
@@ -598,7 +594,6 @@ class Model(FileModel):
         add_allocation : bool
             add allocation results (Optional, defaults to False)
         """
-
         if add_flow and add_allocation:
             raise ValueError("Cannot add both allocation and flow results.")
 

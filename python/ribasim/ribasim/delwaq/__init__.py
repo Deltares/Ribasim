@@ -7,7 +7,6 @@ __all__ = [
     "generate",
     "parse",
     "run_delwaq",
-    "plot",
     "add_tracer",
     "plot_fraction",
     "plot_spatial",

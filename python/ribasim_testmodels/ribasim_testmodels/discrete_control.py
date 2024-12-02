@@ -17,10 +17,10 @@ from shapely.geometry import Point
 
 def pump_discrete_control_model() -> Model:
     """
-    Set up a basic model with a pump controlled based on basin levels.
+    Set up a basic model with a Pump controlled based on Basin levels.
+
     The LinearResistance is deactivated when the levels are almost equal.
     """
-
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
@@ -119,8 +119,7 @@ def pump_discrete_control_model() -> Model:
 
 
 def flow_condition_model() -> Model:
-    """Set up a basic model that involves discrete control based on a flow condition"""
-
+    """Set up a basic model that involves discrete control based on a flow condition."""
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
@@ -184,7 +183,6 @@ def flow_condition_model() -> Model:
 
 def level_boundary_condition_model() -> Model:
     """Set up a small model with a condition on a level boundary."""
-
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
@@ -259,7 +257,6 @@ def tabulated_rating_curve_control_model() -> Model:
     node will effectively increase the crest level to prevent further drainage
     at some threshold level.
     """
-
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
@@ -321,11 +318,7 @@ def tabulated_rating_curve_control_model() -> Model:
 
 
 def compound_variable_condition_model() -> Model:
-    """
-    Set up a minimal model containing a condition on a compound variable
-    for discrete control.
-    """
-
+    """Model with a condition on a compound variable for DiscreteControl."""
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
@@ -379,11 +372,10 @@ def compound_variable_condition_model() -> Model:
 
 def level_range_model() -> Model:
     """
-    Set up a minimal model in which the level of a basin is kept within an acceptable range
-    around a setpoint while being affected by time-varying forcing.
+    Keep the level of a Basin within a range around a setpoint, under the influence of time-varying forcing.
+
     This is done by bringing the level back to the setpoint once the level goes beyond this range.
     """
-
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
@@ -472,11 +464,7 @@ def level_range_model() -> Model:
 
 
 def connector_node_flow_condition_model() -> Model:
-    """
-    Set up a minimal model with discrete control with a condition on
-    the flow through a connector node.
-    """
-
+    """DiscreteControl with a condition on the flow through a connector node."""
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
@@ -526,11 +514,7 @@ def connector_node_flow_condition_model() -> Model:
 
 
 def concentration_condition_model() -> Model:
-    """
-    Set up a minimal model with discrete control based on a
-    concentration condition.
-    """
-
+    """DiscreteControl based on a concentration condition."""
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
@@ -585,10 +569,9 @@ def concentration_condition_model() -> Model:
 
 def continuous_concentration_condition_model() -> Model:
     """
-    Set up a minimal model with discrete control based on a
-    continuous (calculated) concentration condition.
-    In this case, we setup a salt concentration and mimic
-    the Dutch coast.
+    DiscreteControl based on a continuous (calculated) concentration condition.
+
+    In this case, we setup a salt concentration and mimic the Dutch coast.
 
                dc
              /   |
@@ -598,7 +581,6 @@ def continuous_concentration_condition_model() -> Model:
                  |
                 term
     """
-
     model = Model(
         starttime="2020-01-01",
         endtime="2020-02-01",
