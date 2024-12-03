@@ -32,6 +32,7 @@ install = { depends_on = [
 # Julia
 # Clear SSL_CERT_DIR to avoid Julia warnings, see https://github.com/JuliaLang/Downloads.jl/issues/244
 update-registry-julia = { cmd = "julia --eval='using Pkg; Registry.update()'", env = { SSL_CERT_DIR = "" } }
+update-manifest-julia = { cmd = "julia --project --eval='using Pkg; Pkg.update()'", env = { SSL_CERT_DIR = "" } }
 instantiate-julia = { cmd = "julia --project --eval='using Pkg; Pkg.instantiate()'", env = { SSL_CERT_DIR = "" } }
 initialize-julia = { depends_on = [
     "update-registry-julia",
@@ -167,32 +168,32 @@ install-ci = { depends_on = [
 [dependencies]
 geopandas = "*"
 hatchling = "*"
-ipykernel = ">=6.29"
-ipywidgets = ">=8.1.3,<8.2"
+ipykernel = "*"
+ipywidgets = "*"
 jinja2 = "*"
 matplotlib = "*"
 minio = "*"
-netCDF4 = "*"
-networkx = ">=3.3"
+netcdf4 = "*"
+networkx = "*"
 numpy = "*"
 pandas = "*"
 pandas-stubs = "*"
-pandera = ">=0.20"
+pandera = "*"
 pip = "*"
 pyarrow = "*"
-pydantic = ">=2"
+pydantic = "*"
 pyogrio = "*"
 pytest = "*"
 pytest-cov = "*"
 pytest-xdist = "*"
-python = ">=3.10"
-shapely = ">=2.0"
+python = "*"
+shapely = "*"
+teamcity-messages = "*"
 tomli = "*"
 tomli-w = "*"
 xarray = "*"
 xmipy = "*"
 xugrid = "*"
-teamcity-messages = ">=1.32,<2"
 
 [pypi-dependencies]
 ribasim = { path = "python/ribasim", editable = true }
