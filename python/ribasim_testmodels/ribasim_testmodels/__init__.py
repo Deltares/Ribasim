@@ -7,6 +7,7 @@ from ribasim.model import Model
 import ribasim_testmodels
 from ribasim_testmodels.allocation import (
     allocation_example_model,
+    allocation_training_model,
     fair_distribution_model,
     flow_demand_model,
     level_demand_model,
@@ -63,6 +64,7 @@ from ribasim_testmodels.trivial import trivial_model
 from ribasim_testmodels.two_basin import two_basin_model
 
 __all__ = [
+    "allocation_training_model",
     "allocation_example_model",
     "backwater_model",
     "basic_arrow_model",
