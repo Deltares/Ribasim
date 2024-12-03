@@ -97,17 +97,15 @@ def infer_edge_type(from_node_type: str) -> str:
 
 def set_edge_properties(node: QgsVectorLayer, edge: QgsVectorLayer) -> None:
     """
+    Set edge properties based on the node and edge geometries.
+
     Based on the location of the first and last vertex of every edge geometry,
     derive which nodes it connects.
 
     Sets values for:
-
-    * from_node_type
     * from_node_id
-    * to_node_type
     * to_node_id
     * edge_type
-
     """
     node_xy, node_index, node_identifiers = collect_node_properties(node)
     edge_xy = collect_edge_coordinates(edge)

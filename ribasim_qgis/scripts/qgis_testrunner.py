@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 """
-***************************************************************************
     Launches a unit test inside QGIS and exit the application.
 
     Arguments:
@@ -51,13 +50,19 @@ import signal
 import sys
 import traceback
 
+# Monkey patch QGIS Python console
+from console.console_output import writeOut
+
+# Start as soon as the initializationCompleted signal is fired
+from qgis.core import QgsApplication, QgsProject, QgsProjectBadLayerHandler
+from qgis.PyQt.QtCore import QDir
 from qgis.utils import iface
 
 assert iface is not None
 
 
 def __get_test_function(test_module_name):
-    """Load the test module and return the test function"""
+    """Load the test module and return the test function."""
     print(f"QGIS Test Runner - Trying to import {test_module_name}")
     try:
         test_module = importlib.import_module(test_module_name)
@@ -82,18 +87,10 @@ def __get_test_function(test_module_name):
     return getattr(test_module, function_name, None)
 
 
-# Start as soon as the initializationCompleted signal is fired
-from qgis.core import QgsApplication, QgsProject, QgsProjectBadLayerHandler
-from qgis.PyQt.QtCore import QDir
-
-
 class QgsProjectBadLayerDefaultHandler(QgsProjectBadLayerHandler):
     def handleBadLayers(self, layers, dom):
+        # Ignore bad layers
         pass
-
-
-# Monkey patch QGIS Python console
-from console.console_output import writeOut
 
 
 def _write(self, m):

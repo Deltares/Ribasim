@@ -14,7 +14,6 @@ from shapely.geometry import Point
 
 def outlet_continuous_control_model() -> Model:
     """Set up a small model that distributes flow over 2 branches."""
-
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",

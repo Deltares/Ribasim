@@ -75,8 +75,10 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
         edge_id: Optional[NonNegativeInt] = None,
         **kwargs,
     ):
-        """Add an edge between nodes. The type of the edge (flow or control)
-        is automatically inferred from the type of the `from_node`.
+        """
+        Add an edge between nodes.
+
+        The type of the edge (flow or control) is automatically inferred from the type of the `from_node`.
 
         Parameters
         ----------
@@ -181,7 +183,6 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
         **kwargs : Dict
             Supported: 'ax', 'color_flow', 'color_control'
         """
-
         assert self.df is not None
         kwargs = kwargs.copy()  # Avoid side-effects
         ax = kwargs.get("ax", None)

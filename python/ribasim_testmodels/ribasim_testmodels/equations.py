@@ -19,7 +19,6 @@ from shapely.geometry import Point
 
 def linear_resistance_model() -> Model:
     """Set up a minimal model which uses a linear_resistance node."""
-
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
@@ -50,7 +49,6 @@ def linear_resistance_model() -> Model:
 
 def rating_curve_model() -> Model:
     """Set up a minimal model which uses a tabulated_rating_curve node."""
-
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
@@ -89,7 +87,6 @@ def rating_curve_model() -> Model:
 
 def manning_resistance_model() -> Model:
     """Set up a minimal model which uses a manning_resistance node."""
-
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
@@ -123,7 +120,6 @@ def manning_resistance_model() -> Model:
 
 def misc_nodes_model() -> Model:
     """Set up a minimal model using flow_boundary and pump nodes."""
-
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
@@ -160,8 +156,7 @@ def misc_nodes_model() -> Model:
 
 
 def pid_control_equation_model() -> Model:
-    """Set up a model with pid control for an analytical solution test"""
-
+    """Set up a model with pid control for an analytical solution test."""
     model = Model(
         starttime="2020-01-01", endtime="2020-01-01 00:05:00", crs="EPSG:28992"
     )

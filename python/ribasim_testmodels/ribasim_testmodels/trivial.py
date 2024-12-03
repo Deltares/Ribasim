@@ -5,8 +5,7 @@ from shapely.geometry import Point
 
 
 def trivial_model() -> Model:
-    """Trivial model with just a basin, tabulated rating curve and terminal node"""
-
+    """Trivial model with just a basin, tabulated rating curve and terminal node."""
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",

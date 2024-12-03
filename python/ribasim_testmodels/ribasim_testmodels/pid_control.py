@@ -15,7 +15,6 @@ from shapely.geometry import Point
 
 def pid_control_model() -> Model:
     """Set up a basic model with a PID controlled pump controlling a basin with abundant inflow."""
-
     model = Model(
         starttime="2020-01-01",
         endtime="2020-12-01",
@@ -87,7 +86,6 @@ def pid_control_model() -> Model:
 
 def discrete_control_of_pid_control_model() -> Model:
     """Set up a basic model where a discrete control node sets the target level of a pid control node."""
-
     model = Model(
         starttime="2020-01-01",
         endtime="2020-12-01",

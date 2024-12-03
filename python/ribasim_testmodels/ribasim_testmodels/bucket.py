@@ -10,7 +10,6 @@ from shapely.geometry import Point
 
 def bucket_model() -> ribasim.Model:
     """Bucket model with just a single basin at Deltares' headquarter."""
-
     model = ribasim.Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
@@ -38,7 +37,6 @@ def bucket_model() -> ribasim.Model:
 
 def leaky_bucket_model() -> ribasim.Model:
     """Bucket model with dynamic forcing with missings at Deltares' headquarter."""
-
     model = ribasim.Model(
         starttime="2020-01-01",
         endtime="2020-01-05",

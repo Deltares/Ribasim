@@ -706,11 +706,9 @@ function save_allocation_flows!(
     priority::Int32,
     optimization_type::OptimizationType.T,
 )::Nothing
-    (; flow, problem, subnetwork_id) = allocation_model
+    (; flow, subnetwork_id, sources) = allocation_model
     (; allocation, graph) = p
     (; record_flow) = allocation
-    F_basin_in = problem[:F_basin_in]
-    F_basin_out = problem[:F_basin_out]
 
     edges_allocation = keys(flow.data)
 
@@ -765,7 +763,7 @@ function save_allocation_flows!(
     for node_id in graph[].node_ids[subnetwork_id]
         if node_id.type == NodeType.Basin &&
            has_external_demand(graph, node_id, :level_demand)[1]
-            flow_rate = JuMP.value(F_basin_out[node_id]) - JuMP.value(F_basin_in[node_id])
+            flow_rate = sources[(node_id, node_id)].basin_flow_rate
             push!(record_flow.time, t)
             push!(record_flow.edge_id, 0)
             push!(record_flow.from_node_type, string(NodeType.Basin))
@@ -885,6 +883,15 @@ function optimize_per_source!(
 )::Nothing
     (; problem, sources, subnetwork_id, flow) = allocation_model
     (; priorities) = allocation
+    F_basin_in = problem[:F_basin_in]
+    F_basin_out = problem[:F_basin_out]
+
+    # Start the cumulative basin flow rates at 0
+    for source in values(sources)
+        if source.type == AllocationSourceType.basin
+            source.basin_flow_rate = 0.0
+        end
+    end
 
     priority = priorities[priority_idx]
 
@@ -928,6 +935,15 @@ function optimize_per_source!(
             demand_node = getfield(p, parameter)
             if demand_node isa AbstractDemandNode
                 reduce_demands!(allocation_model, p, priority_idx, demand_node)
+            end
+        end
+
+        # Add to the basin cumulative flow rate
+        for (edge, source) in sources
+            if source.type == AllocationSourceType.basin
+                node_id = edge[1]
+                source.basin_flow_rate +=
+                    JuMP.value(F_basin_out[node_id]) - JuMP.value(F_basin_in[node_id])
             end
         end
 

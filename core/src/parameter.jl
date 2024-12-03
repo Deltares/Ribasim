@@ -136,12 +136,15 @@ edge: The outflow edge of the source
 type: The type of source (edge, basin, main_to_sub, user_return, buffer)
 capacity: The initial capacity of the source as determined by the physical layer
 capacity_reduced: The capacity adjusted by passed optimizations
+basin_flow_rate: The total outflow rate of a basin when optimized over all sources for one priority.
+    Ignored when the source is not a basin.
 """
 @kwdef mutable struct AllocationSource
     const edge::Tuple{NodeID, NodeID}
     const type::AllocationSourceType.T
     capacity::Float64 = 0.0
     capacity_reduced::Float64 = 0.0
+    basin_flow_rate::Float64 = 0.0
 end
 
 function Base.show(io::IO, source::AllocationSource)
