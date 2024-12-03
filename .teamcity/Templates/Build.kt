@@ -12,7 +12,7 @@ fun generateBuildHeader(platformOs: String): String {
                 source /usr/share/Modules/init/bash
 
                 module load pixi
-                module load gcc/11.3.0
+                module load gcc/12.2.0_gcc12.2.0
             """.trimIndent() + System.lineSeparator()
     }
 

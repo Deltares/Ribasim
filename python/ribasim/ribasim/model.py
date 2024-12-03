@@ -357,7 +357,7 @@ class Model(FileModel):
 
         # count occurrence of "from_node" which reflects the number of outneighbors
         from_node_count = (
-            df_graph.groupby("from_node_id").size().reset_index(name="from_node_count")  # type: ignore
+            df_graph.groupby("from_node_id").size().reset_index(name="from_node_count")
         )
 
         # append from_node_count column to from_node_id and from_node_type
@@ -384,7 +384,7 @@ class Model(FileModel):
 
         # count occurrence of "to_node" which reflects the number of inneighbors
         to_node_count = (
-            df_graph.groupby("to_node_id").size().reset_index(name="to_node_count")  # type: ignore
+            df_graph.groupby("to_node_id").size().reset_index(name="to_node_count")
         )
 
         # append to_node_count column to result
