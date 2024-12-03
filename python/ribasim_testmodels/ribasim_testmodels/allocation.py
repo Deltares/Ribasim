@@ -153,7 +153,7 @@ def subnetwork_model() -> Model:
     )
     model.outlet.add(Node(13, Point(2, 4), subnetwork_id=2), outlet_data)
 
-    model.edge.add(model.flow_boundary[1], model.basin[2], subnetwork_id=2)
+    model.edge.add(model.flow_boundary[1], model.basin[2])
     model.edge.add(model.basin[2], model.outlet[3])
     model.edge.add(model.outlet[3], model.terminal[4])
     model.edge.add(model.basin[2], model.user_demand[10])
@@ -268,7 +268,7 @@ def looped_subnetwork_model() -> Model:
         ],
     )
 
-    model.edge.add(model.flow_boundary[5], model.basin[2], subnetwork_id=2)
+    model.edge.add(model.flow_boundary[5], model.basin[2])
     model.edge.add(model.basin[2], model.outlet[3])
     model.edge.add(model.outlet[3], model.terminal[4])
     model.edge.add(model.basin[2], model.user_demand[1])
@@ -346,7 +346,7 @@ def minimal_subnetwork_model() -> Model:
         ],
     )
 
-    model.edge.add(model.flow_boundary[1], model.basin[2], subnetwork_id=2)
+    model.edge.add(model.flow_boundary[1], model.basin[2])
     model.edge.add(model.basin[2], model.pump[3])
     model.edge.add(model.pump[3], model.basin[4])
     model.edge.add(model.basin[4], model.user_demand[5])
@@ -406,7 +406,7 @@ def allocation_example_model() -> Model:
     )
     model.terminal.add(Node(8, Point(5, 0), subnetwork_id=2))
 
-    model.edge.add(model.flow_boundary[1], model.basin[2], subnetwork_id=2)
+    model.edge.add(model.flow_boundary[1], model.basin[2])
     model.edge.add(model.basin[2], model.user_demand[3])
     model.edge.add(model.basin[2], model.linear_resistance[4])
     model.edge.add(model.linear_resistance[4], model.basin[5])
@@ -628,7 +628,7 @@ def main_network_with_subnetworks_model() -> Model:
         [user_demand.Static(return_factor=[0.9], priority=2, min_level=0.0)],
     )
 
-    model.edge.add(model.flow_boundary[1], model.basin[2], subnetwork_id=1)
+    model.edge.add(model.flow_boundary[1], model.basin[2])
     model.edge.add(model.basin[2], model.linear_resistance[3])
     model.edge.add(model.linear_resistance[3], model.basin[4])
     model.edge.add(model.basin[4], model.linear_resistance[5])
@@ -686,9 +686,9 @@ def main_network_with_subnetworks_model() -> Model:
     model.edge.add(model.user_demand[53], model.basin[50])
     model.edge.add(model.basin[44], model.user_demand[57])
     model.edge.add(model.user_demand[57], model.basin[44])
-    model.edge.add(model.basin[2], model.pump[11], subnetwork_id=3)
-    model.edge.add(model.basin[6], model.pump[24], subnetwork_id=5)
-    model.edge.add(model.basin[10], model.pump[38], subnetwork_id=7)
+    model.edge.add(model.basin[2], model.pump[11])
+    model.edge.add(model.basin[6], model.pump[24])
+    model.edge.add(model.basin[10], model.pump[38])
     model.edge.add(model.basin[8], model.user_demand[60])
     model.edge.add(model.user_demand[60], model.basin[8])
 
@@ -708,8 +708,8 @@ def subnetworks_with_sources_model() -> Model:
         [flow_boundary.Static(flow_rate=[0.003])],
     )
 
-    model.edge.add(model.flow_boundary[58], model.basin[16], subnetwork_id=3)
-    model.edge.add(model.flow_boundary[59], model.basin[44], subnetwork_id=7)
+    model.edge.add(model.flow_boundary[58], model.basin[16])
+    model.edge.add(model.flow_boundary[59], model.basin[44])
 
     return model
 
@@ -763,7 +763,7 @@ def level_demand_model() -> Model:
         [basin.Profile(area=1000.0, level=[0.0, 1.0]), basin.State(level=[2.0])],
     )
 
-    model.edge.add(model.flow_boundary[1], model.basin[2], subnetwork_id=2)
+    model.edge.add(model.flow_boundary[1], model.basin[2])
     model.edge.add(model.basin[2], model.user_demand[3])
     model.edge.add(model.level_demand[4], model.basin[2])
     model.edge.add(model.user_demand[3], model.basin[5])
@@ -835,7 +835,6 @@ def flow_demand_model() -> Model:
     model.edge.add(
         model.level_boundary[1],
         model.tabulated_rating_curve[2],
-        subnetwork_id=2,
     )
     model.edge.add(model.tabulated_rating_curve[2], model.basin[3])
     model.edge.add(model.basin[3], model.user_demand[4])
@@ -877,7 +876,7 @@ def linear_resistance_demand_model():
         [flow_demand.Static(priority=[1], demand=2.0)],
     )
 
-    model.edge.add(model.basin[1], model.linear_resistance[2], subnetwork_id=1)
+    model.edge.add(model.basin[1], model.linear_resistance[2])
     model.edge.add(model.linear_resistance[2], model.basin[3])
     model.edge.add(model.flow_demand[4], model.linear_resistance[2])
 
@@ -966,7 +965,7 @@ def fair_distribution_model():
         ],
     )
 
-    model.edge.add(model.level_boundary[1], model.pump[2], subnetwork_id=1)
+    model.edge.add(model.level_boundary[1], model.pump[2])
     model.edge.add(model.pump[2], model.basin[3])
     model.edge.add(model.basin[3], model.linear_resistance[4])
     model.edge.add(model.linear_resistance[4], model.basin[5])

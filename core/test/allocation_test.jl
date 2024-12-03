@@ -14,7 +14,8 @@
 
     (; graph, allocation) = p
 
-    allocation.mean_input_flows[(NodeID(:FlowBoundary, 1, p), NodeID(:Basin, 2, p))] = 4.5
+    allocation.mean_input_flows[1][(NodeID(:FlowBoundary, 1, p), NodeID(:Basin, 2, p))] =
+        4.5
     allocation_model = p.allocation.allocation_models[1]
     (; flow) = allocation_model
     u = ComponentVector(; storage = zeros(length(p.basin.node_id)))
@@ -105,11 +106,11 @@ end
 
     # In each subnetwork, the connection from the main network to the subnetwork is
     # interpreted as a source
-    @test Ribasim.get_allocation_model(p, Int32(3)).problem[:source].axes[1] ==
+    @test Ribasim.get_allocation_model(p, Int32(3)).problem[:source_main_network].axes[1] ==
           [(NodeID(:Basin, 2, p), NodeID(:Pump, 11, p))]
-    @test Ribasim.get_allocation_model(p, Int32(5)).problem[:source].axes[1] ==
+    @test Ribasim.get_allocation_model(p, Int32(5)).problem[:source_main_network].axes[1] ==
           [(NodeID(:Basin, 6, p), NodeID(:Pump, 24, p))]
-    @test Ribasim.get_allocation_model(p, Int32(7)).problem[:source].axes[1] ==
+    @test Ribasim.get_allocation_model(p, Int32(7)).problem[:source_main_network].axes[1] ==
           [(NodeID(:Basin, 10, p), NodeID(:Pump, 38, p))]
 end
 
@@ -174,7 +175,7 @@ end
 
     # Running full allocation algorithm
     (; Δt_allocation) = allocation_models[1]
-    mean_input_flows[(NodeID(:FlowBoundary, 1, p), NodeID(:Basin, 2, p))] =
+    mean_input_flows[1][(NodeID(:FlowBoundary, 1, p), NodeID(:Basin, 2, p))] =
         4.5 * Δt_allocation
     Ribasim.update_allocation!(model.integrator)
 
@@ -224,9 +225,9 @@ end
         allocation
     t = 0.0
 
-    # Set flows of sources in
-    mean_input_flows[(NodeID(:FlowBoundary, 58, p), NodeID(:Basin, 16, p))] = 1.0
-    mean_input_flows[(NodeID(:FlowBoundary, 59, p), NodeID(:Basin, 44, p))] = 1e-3
+    # Set flows of sources in subnetworks
+    mean_input_flows[2][(NodeID(:FlowBoundary, 58, p), NodeID(:Basin, 16, p))] = 1.0
+    mean_input_flows[4][(NodeID(:FlowBoundary, 59, p), NodeID(:Basin, 44, p))] = 1e-3
 
     # Collecting demands
     u = ComponentVector(; storage = zeros(length(basin.node_id)))
@@ -251,24 +252,24 @@ end
     du = get_du(model.integrator)
     Ribasim.formulate_storages!(current_storage, du, u, p, t)
 
-    current_storage ≈ Float32[
-        1.0346e6,
-        1.0346e6,
-        1.0346e6,
-        1.0346e6,
-        1.0346e6,
-        13.83,
-        40.10,
-        6.029e5,
-        4641,
-        2402,
-        6.03995,
-        928.8,
-        8.017,
-        10417,
-        5.619,
-        10417,
-        4.057,
+    @test current_storage ≈ Float32[
+        1.0346908f6,
+        1.03469f6,
+        1.0346894f6,
+        1.034689f6,
+        1.0346888f6,
+        13.833241,
+        40.109993,
+        187761.73,
+        4641.365,
+        2402.6687,
+        6.039952,
+        928.84283,
+        8.0175905,
+        10419.247,
+        5.619053,
+        10419.156,
+        4.057502,
     ]
 end
 
@@ -287,7 +288,7 @@ end
     (; user_demand, graph, allocation, basin, level_demand) = p
 
     # Initial "integrated" vertical flux
-    @test allocation.mean_input_flows[(NodeID(:Basin, 2, p), NodeID(:Basin, 2, p))] ≈ 1e2
+    @test allocation.mean_input_flows[1][(NodeID(:Basin, 2, p), NodeID(:Basin, 2, p))] ≈ 1e2
 
     Ribasim.solve!(model)
 
@@ -614,5 +615,5 @@ end
     # Given a max_level of Inf, the basin capacity is 0.0 because it is not possible for the basin level to be > Inf
     @test Ribasim.get_basin_capacity(allocation_models[1], u, p, t, basin.node_id[1]) == 0.0
     @test Ribasim.get_basin_capacity(allocation_models[1], u, p, t, basin.node_id[2]) == 0.0
-    @test Ribasim.get_basin_capacity(allocation_models[1], u, p, t, basin.node_id[3]) == 0.0
+    @test Ribasim.get_basin_capacity(allocation_models[2], u, p, t, basin.node_id[3]) == 0.0
 end

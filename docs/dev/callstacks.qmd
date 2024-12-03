@@ -74,10 +74,12 @@ toml_path = normpath(
     @__DIR__,
     "../../generated_testmodels/main_network_with_subnetworks/ribasim.toml",
 )
-config = Ribasim.Config(toml_path; allocation_use_allocation = false)
+config = Ribasim.Config(toml_path)
 db_path = Ribasim.database_path(config)
 db = SQLite.DB(db_path)
 p = Ribasim.Parameters(db, config)
+empty!(p.allocation.subnetwork_ids)
+empty!(p.allocation.main_network_connections)
 graph, verts = tracecall((Ribasim,), Ribasim.initialize_allocation!, (p, config))
 plot_graph(graph)
 ```

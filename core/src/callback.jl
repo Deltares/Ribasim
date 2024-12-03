@@ -153,8 +153,11 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
     end
 
     # Update realized flows for allocation input
-    for edge in keys(allocation.mean_input_flows)
-        allocation.mean_input_flows[edge] += flow_update_on_edge(integrator, edge)
+    for subnetwork_id in allocation.subnetwork_ids
+        mean_input_flows_subnetwork_ = mean_input_flows_subnetwork(p, subnetwork_id)
+        for edge in keys(mean_input_flows_subnetwork_)
+            mean_input_flows_subnetwork_[edge] += flow_update_on_edge(integrator, edge)
+        end
     end
 
     # Update realized flows for allocation output
@@ -773,8 +776,10 @@ function update_allocation!(integrator)::Nothing
 
     # Divide by the allocation Δt to get the mean input flows from the cumulative flows
     (; Δt_allocation) = allocation_models[1]
-    for edge in keys(mean_input_flows)
-        mean_input_flows[edge] /= Δt_allocation
+    for mean_input_flows_subnetwork in values(mean_input_flows)
+        for edge in keys(mean_input_flows_subnetwork)
+            mean_input_flows_subnetwork[edge] /= Δt_allocation
+        end
     end
 
     # Divide by the allocation Δt to get the mean realized flows from the cumulative flows
@@ -797,10 +802,13 @@ function update_allocation!(integrator)::Nothing
     end
 
     # Reset the mean flows
-    for mean_flows in (mean_input_flows, mean_realized_flows)
+    for mean_flows in mean_input_flows
         for edge in keys(mean_flows)
             mean_flows[edge] = 0.0
         end
+    end
+    for edge in keys(mean_realized_flows)
+        mean_realized_flows[edge] = 0.0
     end
 end
 

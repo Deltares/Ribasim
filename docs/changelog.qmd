@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+- The Edge table no longer supports `subnetwork_id`; this is automatically inferred. [#1956](https://github.com/Deltares/Ribasim/pull/1956)
+
 ## [v2024.11.0] - 2024-10-08
 
 This major new release contains many improvements.

@@ -42,9 +42,9 @@ The allocation problem is solved per subnetwork, which is given by a subset $S \
 
 Sources are indicated by a set of edges in the subnetwork
 $$
-E_S^\text{source} \subset E.
+E_S^\text{source} \subset E,
 $$
-That is, if $(i,j) \in E_S^\text{source}$, then the average over the last allocation interval $\Delta t_{\text{alloc}}$ of the of the flow over this edge
+which are automatically inferred as all edges that point out of LevelBoundary or FlowBoundary nodes. That is, if $(i,j) \in E_S^\text{source}$, then the average over the last allocation interval $\Delta t_{\text{alloc}}$ of the of the flow over this edge
 $$
     \frac{1}{\Delta t_{\text{alloc}}}\int_{t - \Delta t_{\text{alloc}}}^tQ_{ij}(t') dt'
 $$

@@ -214,7 +214,6 @@ def invalid_priorities_model() -> Model:
     model.edge.add(
         model.level_boundary[1],
         model.tabulated_rating_curve[2],
-        subnetwork_id=2,
     )
     model.edge.add(model.tabulated_rating_curve[2], model.basin[3])
     model.edge.add(model.basin[3], model.user_demand[4])

@@ -145,7 +145,6 @@ def test_edge_table(basic):
     df = model.edge.df
     assert df.geometry.is_unique
     assert df.from_node_id.dtype == np.int32
-    assert df.subnetwork_id.dtype == pd.Int32Dtype()
     assert df.crs == CRS.from_epsg(28992)
 
 
