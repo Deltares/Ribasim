@@ -802,10 +802,13 @@ function update_allocation!(integrator)::Nothing
     end
 
     # Reset the mean flows
-    for mean_flows in (mean_input_flows..., mean_realized_flows)
+    for mean_flows in mean_input_flows
         for edge in keys(mean_flows)
             mean_flows[edge] = 0.0
         end
+    end
+    for edge in keys(mean_realized_flows)
+        mean_realized_flows[edge] = 0.0
     end
 end
 

@@ -1283,8 +1283,11 @@ function Allocation(db::DB, config::Config, graph::MetaGraph)::Allocation
             id_source, _ = edge
             if id_source.type in boundary_source_nodetypes
                 (; subnetwork_id) = graph[id_source]
-                subnetwork_idx = searchsortedfirst(subnetwork_ids, subnetwork_id)
-                mean_input_flows[subnetwork_idx][edge] = 0.0
+                # Check whether the source node is part of a subnetwork
+                if subnetwork_id ≠ 0
+                    subnetwork_idx = searchsortedfirst(subnetwork_ids, subnetwork_id)
+                    mean_input_flows[subnetwork_idx][edge] = 0.0
+                end
             end
         end
 
