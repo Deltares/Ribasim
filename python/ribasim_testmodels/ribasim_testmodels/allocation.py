@@ -980,3 +980,181 @@ def fair_distribution_model():
     model.edge.add(model.user_demand[9], model.basin[5])
 
     return model
+
+
+def allocation_training_model():
+    model = Model(
+        starttime="2022-01-01",
+        endtime="2023-01-01",
+        crs="EPSG:4326",
+        allocation=Allocation(use_allocation=True),
+    )
+
+    flow_boundary_times = pd.date_range(start="2022-01-01", end="2023-01-01", freq="MS")
+
+    # Flow boundaries
+    main = model.flow_boundary.add(
+        Node(1, Point(0.0, 0.0), subnetwork_id=1, name="Main"),
+        [
+            flow_boundary.Time(
+                time=flow_boundary_times,
+                flow_rate=[
+                    47.3,
+                    156.7,
+                    77.6,
+                    47.8,
+                    26.6,
+                    23.1,
+                    18.6,
+                    15.6,
+                    23.1,
+                    35.6,
+                    24.4,
+                    20.0,
+                    29.4,
+                ],
+            )
+        ],
+    )
+
+    minor = model.flow_boundary.add(
+        Node(2, Point(-3.0, 0.0), subnetwork_id=1, name="Minor"),
+        [
+            flow_boundary.Time(
+                time=flow_boundary_times,
+                flow_rate=[
+                    0.2,
+                    28.3,
+                    16.0,
+                    11.2,
+                    8.5,
+                    9.6,
+                    9.2,
+                    7.9,
+                    7.5,
+                    7.2,
+                    7.4,
+                    10.0,
+                    8.3,
+                ],
+            )
+        ],
+    )
+
+    level = model.level_demand.add(
+        Node(11, Point(1, 1), subnetwork_id=1, name="test"),
+        [
+            level_demand.Static(
+                min_level=[2],
+                max_level=5,
+                priority=1,
+            )
+        ],
+    )
+
+    # Confluence
+    conf = model.basin.add(
+        Node(3, Point(-1.5, -1), subnetwork_id=1, name="confluence"),
+        [
+            basin.Profile(area=[672000, 5600000], level=[0, 6]),
+            basin.State(level=[4]),
+        ],
+    )
+
+    tbr_conf = model.tabulated_rating_curve.add(
+        Node(4, Point(-1.5, -1.5), subnetwork_id=1, name="tbr_conf"),
+        [
+            tabulated_rating_curve.Static(
+                level=[0.0, 2, 5],
+                flow_rate=[0.0, 50, 200],
+            )
+        ],
+    )
+
+    # Irrigation
+    irr = model.user_demand.add(
+        Node(6, Point(-1.5, 0.5), subnetwork_id=1, name="irrigation"),
+        [
+            user_demand.Time(
+                demand=[0.0, 0.0, 10, 12, 12, 0.0],
+                return_factor=0,
+                min_level=0,
+                priority=3,
+                time=[
+                    "2022-01-01",
+                    "2022-03-31",
+                    "2022-04-01",
+                    "2022-07-01",
+                    "2022-09-30",
+                    "2022-10-01",
+                ],
+            )
+        ],
+    )
+
+    # Reservoir
+    reservoir = model.basin.add(
+        Node(7, Point(-0.75, -0.5), subnetwork_id=1, name="reservoir"),
+        [
+            basin.Profile(area=[20000000, 32300000], level=[0, 7]),
+            basin.State(level=[3.5]),
+        ],
+    )
+
+    rsv_weir = model.tabulated_rating_curve.add(
+        Node(8, Point(-1.125, -0.75), subnetwork_id=1, name="rsv_weir"),
+        [
+            tabulated_rating_curve.Static(
+                level=[0.0, 1.5, 5],
+                flow_rate=[0.0, 45, 200],
+            )
+        ],
+    )
+
+    # Public water use
+    city = model.user_demand.add(
+        Node(9, Point(-0.75, -1), subnetwork_id=1, name="city"),
+        [
+            user_demand.Time(
+                # Total demand in m³/s
+                demand=[2.0, 2.3, 2.3, 2.4, 3, 3, 4, 3, 2.5, 2.2, 2.0, 2.0],
+                return_factor=0.4,
+                min_level=0,
+                priority=2,
+                time=pd.date_range(start="2022-01-01", periods=12, freq="MS"),
+            )
+        ],
+    )
+
+    # Industry
+    industry = model.user_demand.add(
+        Node(10, Point(0, -1.5), subnetwork_id=1, name="industry"),
+        [
+            user_demand.Time(
+                # Total demand in m³/s
+                demand=[4, 4, 4.5, 5, 5, 6, 7.5, 8, 5, 4, 3, 2.0],
+                return_factor=0.5,
+                min_level=0,
+                priority=1,
+                time=pd.date_range(start="2022-01-01", periods=12, freq="MS"),
+            )
+        ],
+    )
+
+    sea = model.terminal.add(Node(5, Point(-1.5, -3.0), subnetwork_id=1, name="sea"))
+
+    model.edge.add(main, reservoir, name="main")
+    model.edge.add(minor, conf, name="minor")
+    model.edge.add(reservoir, irr, name="irr supplied")
+    model.edge.add(irr, conf, name="irr drain")
+    model.edge.add(reservoir, city, name="city supplied")
+    model.edge.add(city, conf, name="city returnflow")
+    model.edge.add(reservoir, rsv_weir, name="rsv2weir")
+    model.edge.add(rsv_weir, conf, name="weir2conf")
+    model.edge.add(conf, tbr_conf, name="conf2tbr")
+    model.edge.add(level, reservoir)
+    model.edge.add(reservoir, industry, name="industry supplied")
+    model.edge.add(industry, conf, name="ind2conf")
+    model.edge.add(tbr_conf, sea, name="sea")
+
+    return model
