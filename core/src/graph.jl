@@ -19,8 +19,7 @@ function create_graph(db::DB, config::Config)::MetaGraph
             FromNode.node_type AS from_node_type,
             ToNode.node_id AS to_node_id,
             ToNode.node_type AS to_node_type,
-            Edge.edge_type,
-            Edge.subnetwork_id
+            Edge.edge_type
         FROM Edge
         LEFT JOIN Node AS FromNode ON FromNode.node_id = Edge.from_node_id
         LEFT JOIN Node AS ToNode ON ToNode.node_id = Edge.to_node_id
@@ -28,8 +27,7 @@ function create_graph(db::DB, config::Config)::MetaGraph
     )
     # Node IDs per subnetwork
     node_ids = Dict{Int32, Set{NodeID}}()
-    # Source edges per subnetwork
-    edges_source = Dict{Int32, Set{EdgeMetadata}}()
+
     # The metadata of the flow edges in the order in which they are in the input
     # and will be in the output
     flow_edges = EdgeMetadata[]
@@ -57,15 +55,8 @@ function create_graph(db::DB, config::Config)::MetaGraph
     end
 
     errors = false
-    for (;
-        edge_id,
-        from_node_type,
-        from_node_id,
-        to_node_type,
-        to_node_id,
-        edge_type,
-        subnetwork_id,
-    ) in edge_rows
+    for (; edge_id, from_node_type, from_node_id, to_node_type, to_node_id, edge_type) in
+        edge_rows
         try
             # hasfield does not work
             edge_type = getfield(EdgeType, Symbol(edge_type))
@@ -74,15 +65,8 @@ function create_graph(db::DB, config::Config)::MetaGraph
         end
         id_src = NodeID(from_node_type, from_node_id, db)
         id_dst = NodeID(to_node_type, to_node_id, db)
-        if ismissing(subnetwork_id)
-            subnetwork_id = 0
-        end
-        edge_metadata = EdgeMetadata(;
-            id = edge_id,
-            type = edge_type,
-            subnetwork_id_source = subnetwork_id,
-            edge = (id_src, id_dst),
-        )
+        edge_metadata =
+            EdgeMetadata(; id = edge_id, type = edge_type, edge = (id_src, id_dst))
         if edge_type == EdgeType.flow
             push!(flow_edges, edge_metadata)
         end
@@ -91,12 +75,6 @@ function create_graph(db::DB, config::Config)::MetaGraph
             @error "Duplicate edge" id_src id_dst
         end
         graph[id_src, id_dst] = edge_metadata
-        if subnetwork_id != 0
-            if !haskey(edges_source, subnetwork_id)
-                edges_source[subnetwork_id] = Set{EdgeMetadata}()
-            end
-            push!(edges_source[subnetwork_id], edge_metadata)
-        end
     end
     if errors
         error("Invalid edges found")
@@ -106,7 +84,7 @@ function create_graph(db::DB, config::Config)::MetaGraph
         error("Incomplete connectivity in subnetwork")
     end
 
-    graph_data = (; node_ids, edges_source, flow_edges, config.solver.saveat)
+    graph_data = (; node_ids, flow_edges, config.solver.saveat)
     @reset graph.graph_data = graph_data
 
     return graph

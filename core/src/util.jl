@@ -587,15 +587,17 @@ function set_initial_allocation_mean_flows!(integrator)::Nothing
     du = get_du(integrator)
     water_balance!(du, u, p, t)
 
-    for edge in keys(mean_input_flows)
-        if edge[1] == edge[2]
-            q = get_influx(du, edge[1], p)
-        else
-            q = get_flow(du, p, t, edge)
+    for mean_input_flows_subnetwork in values(mean_input_flows)
+        for edge in keys(mean_input_flows_subnetwork)
+            if edge[1] == edge[2]
+                q = get_influx(du, edge[1], p)
+            else
+                q = get_flow(du, p, t, edge)
+            end
+            # Multiply by Δt_allocation as averaging divides by this factor
+            # in update_allocation!
+            mean_input_flows_subnetwork[edge] = q * Δt_allocation
         end
-        # Multiply by Δt_allocation as averaging divides by this factor
-        # in update_allocation!
-        mean_input_flows[edge] = q * Δt_allocation
     end
 
     # Mean realized demands for basins are calculated as Δstorage/Δt
@@ -1004,12 +1006,8 @@ function set_state_flow_edges(p::Parameters, u0::ComponentVector)::Parameters
     state_inflow_edges = Vector{EdgeMetadata}[]
     state_outflow_edges = Vector{EdgeMetadata}[]
 
-    placeholder_edge = EdgeMetadata(
-        0,
-        EdgeType.flow,
-        0,
-        (NodeID(:Terminal, 0, 0), NodeID(:Terminal, 0, 0)),
-    )
+    placeholder_edge =
+        EdgeMetadata(0, EdgeType.flow, (NodeID(:Terminal, 0, 0), NodeID(:Terminal, 0, 0)))
 
     for node_name in keys(u0)
         if hasfield(Parameters, node_name)
@@ -1172,3 +1170,12 @@ function min_low_user_demand_level_factor(
         one(T)
     end
 end
+
+function mean_input_flows_subnetwork(p::Parameters, subnetwork_id::Int32)
+    (; mean_input_flows, subnetwork_ids) = p.allocation
+    subnetwork_idx = searchsortedfirst(subnetwork_ids, subnetwork_id)
+    return mean_input_flows[subnetwork_idx]
+end
+
+source_edges_subnetwork(p::Parameters, subnetwork_id::Int32) =
+    keys(mean_input_flows_subnetwork(p, subnetwork_id))

@@ -1268,40 +1268,56 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
 end
 
 function Allocation(db::DB, config::Config, graph::MetaGraph)::Allocation
-    mean_input_flows = Dict{Tuple{NodeID, NodeID}, Float64}()
-
-    # Find edges which serve as sources in allocation
-    for edge_metadata in values(graph.edge_data)
-        (; subnetwork_id_source, edge) = edge_metadata
-        if subnetwork_id_source != 0
-            mean_input_flows[edge] = 0.0
-        end
-    end
-
-    # Find basins with a level demand
-    for node_id in values(graph.vertex_labels)
-        if has_external_demand(graph, node_id, :level_demand)[1]
-            mean_input_flows[(node_id, node_id)] = 0.0
-        end
-    end
-
+    mean_input_flows = Dict{Tuple{NodeID, NodeID}, Float64}[]
     mean_realized_flows = Dict{Tuple{NodeID, NodeID}, Float64}()
+    subnetwork_ids = sort(collect(keys(graph[].node_ids)))
 
-    # Find edges that realize a demand
-    for edge_metadata in values(graph.edge_data)
-        (; type, edge) = edge_metadata
+    if config.allocation.use_allocation
+        for subnetwork_id in subnetwork_ids
+            push!(mean_input_flows, Dict{Tuple{NodeID, NodeID}, Float64}())
+        end
 
-        src_id, dst_id = edge
-        user_demand_inflow = (type == EdgeType.flow) && (dst_id.type == NodeType.UserDemand)
-        level_demand_inflow =
-            (type == EdgeType.control) && (src_id.type == NodeType.LevelDemand)
-        flow_demand_inflow =
-            (type == EdgeType.flow) && has_external_demand(graph, dst_id, :flow_demand)[1]
+        # Find edges which serve as sources in allocation
+        for edge_metadata in values(graph.edge_data)
+            (; edge) = edge_metadata
+            id_source, _ = edge
+            if id_source.type in boundary_source_nodetypes
+                (; subnetwork_id) = graph[id_source]
+                # Check whether the source node is part of a subnetwork
+                if subnetwork_id ≠ 0
+                    subnetwork_idx = searchsortedfirst(subnetwork_ids, subnetwork_id)
+                    mean_input_flows[subnetwork_idx][edge] = 0.0
+                end
+            end
+        end
 
-        if user_demand_inflow || flow_demand_inflow
-            mean_realized_flows[edge] = 0.0
-        elseif level_demand_inflow
-            mean_realized_flows[(dst_id, dst_id)] = 0.0
+        # Find basins with a level demand
+        for node_id in values(graph.vertex_labels)
+            if has_external_demand(graph, node_id, :level_demand)[1]
+                subnetwork_id = graph[node_id].subnetwork_id
+                subnetwork_idx = searchsortedfirst(subnetwork_ids, subnetwork_id)
+                mean_input_flows[subnetwork_idx][(node_id, node_id)] = 0.0
+            end
+        end
+
+        # Find edges that realize a demand
+        for edge_metadata in values(graph.edge_data)
+            (; type, edge) = edge_metadata
+
+            src_id, dst_id = edge
+            user_demand_inflow =
+                (type == EdgeType.flow) && (dst_id.type == NodeType.UserDemand)
+            level_demand_inflow =
+                (type == EdgeType.control) && (src_id.type == NodeType.LevelDemand)
+            flow_demand_inflow =
+                (type == EdgeType.flow) &&
+                has_external_demand(graph, dst_id, :flow_demand)[1]
+
+            if user_demand_inflow || flow_demand_inflow
+                mean_realized_flows[edge] = 0.0
+            elseif level_demand_inflow
+                mean_realized_flows[(dst_id, dst_id)] = 0.0
+            end
         end
     end
 

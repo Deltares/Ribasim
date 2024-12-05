@@ -86,12 +86,7 @@ end
     graph[NodeID(:Pump, 6, 1)] = NodeMetadata(:pump, 9)
 
     function set_edge_metadata!(id_1, id_2, edge_type)
-        graph[id_1, id_2] = EdgeMetadata(;
-            id = 0,
-            type = edge_type,
-            subnetwork_id_source = 0,
-            edge = (id_1, id_2),
-        )
+        graph[id_1, id_2] = EdgeMetadata(; id = 0, type = edge_type, edge = (id_1, id_2))
         return nothing
     end
 
@@ -148,12 +143,7 @@ end
     graph[NodeID(:Basin, 7, 1)] = NodeMetadata(:basin, 0)
 
     function set_edge_metadata!(id_1, id_2, edge_type)
-        graph[id_1, id_2] = EdgeMetadata(;
-            id = 0,
-            type = edge_type,
-            subnetwork_id_source = 0,
-            edge = (id_1, id_2),
-        )
+        graph[id_1, id_2] = EdgeMetadata(; id = 0, type = edge_type, edge = (id_1, id_2))
         return nothing
     end
 

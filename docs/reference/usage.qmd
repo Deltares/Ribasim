@@ -200,7 +200,6 @@ to_node_id    | Int32                         | -
 edge_type     | String                        | must be "flow" or "control"
 geom          | LineString or MultiLineString | (optional)
 name          | String                        | (optional, does not have to be unique)
-subnetwork_id | Int32                         | (optional, denotes source in allocation network)
 
 Similarly to the node table, you can use a geometry to visualize the connections between the
 nodes in QGIS. For instance, you can draw a line connecting the two node coordinates.

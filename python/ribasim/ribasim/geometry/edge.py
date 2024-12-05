@@ -47,7 +47,6 @@ class EdgeSchema(_GeoBaseSchema):
     from_node_id: Series[Int32] = pa.Field(default=0)
     to_node_id: Series[Int32] = pa.Field(default=0)
     edge_type: Series[str] = pa.Field(default="flow")
-    subnetwork_id: Series[pd.Int32Dtype] = pa.Field(default=pd.NA, nullable=True)
     geometry: GeoSeries[LineString] = pa.Field(default=None, nullable=True)
 
     @classmethod
@@ -73,7 +72,6 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
         to_node: NodeData,
         geometry: LineString | MultiLineString | None = None,
         name: str = "",
-        subnetwork_id: int | None = None,
         edge_id: Optional[NonNegativeInt] = None,
         **kwargs,
     ):
@@ -92,9 +90,8 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
             The geometry of a line. If not supplied, it creates a straight line between the nodes.
         name : str
             An optional name for the edge.
-        subnetwork_id : int | None
-            An optional subnetwork id for the edge. This edge indicates a source for
-            the allocation algorithm, and should thus not be set for every edge in a subnetwork.
+        id : int
+            An optional non-negative edge ID. If not supplied, it will be automatically generated.
         **kwargs : Dict
         """
         if not can_connect(from_node.node_type, to_node.node_type):
@@ -125,7 +122,6 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
                 "to_node_id": [to_node.node_id],
                 "edge_type": [edge_type],
                 "name": [name],
-                "subnetwork_id": [subnetwork_id],
                 **kwargs,
             },
             geometry=geometry_to_append,

@@ -128,7 +128,7 @@ The caches are always initialized with zeros
 """
 cache(len::Int)::Cache = LazyBufferCache(Returns(len); initializer! = set_zero!)
 
-@enumx AllocationSourceType edge basin main_to_sub user_return buffer
+@enumx AllocationSourceType boundary_node basin main_to_sub user_return buffer
 
 """
 Data structure for a single source within an allocation subnetwork.
@@ -180,20 +180,21 @@ main_network_connections: (from_id, to_id) from the main network to the subnetwo
 priorities: All used priority values.
 subnetwork_demands: The demand of an edge from the main network to a subnetwork
 subnetwork_allocateds: The allocated flow of an edge from the main network to a subnetwork
-mean_input_flows: Flows averaged over Δt_allocation over edges that are allocation sources
+mean_input_flows: Per subnetwork, flows averaged over Δt_allocation over edges that are allocation sources
 mean_realized_flows: Flows averaged over Δt_allocation over edges that realize a demand
 record_demand: A record of demands and allocated flows for nodes that have these
 record_flow: A record of all flows computed by allocation optimization, eventually saved to
     output file
 """
 @kwdef struct Allocation
-    subnetwork_ids::Vector{Int32} = []
-    allocation_models::Vector{AllocationModel} = []
-    main_network_connections::Vector{Vector{Tuple{NodeID, NodeID}}} = []
+    subnetwork_ids::Vector{Int32} = Int32[]
+    allocation_models::Vector{AllocationModel} = AllocationModel[]
+    main_network_connections::Vector{Vector{Tuple{NodeID, NodeID}}} =
+        Vector{Tuple{NodeID, NodeID}}[]
     priorities::Vector{Int32}
     subnetwork_demands::Dict{Tuple{NodeID, NodeID}, Vector{Float64}} = Dict()
     subnetwork_allocateds::Dict{Tuple{NodeID, NodeID}, Vector{Float64}} = Dict()
-    mean_input_flows::Dict{Tuple{NodeID, NodeID}, Float64}
+    mean_input_flows::Vector{Dict{Tuple{NodeID, NodeID}, Float64}}
     mean_realized_flows::Dict{Tuple{NodeID, NodeID}, Float64}
     record_demand::@NamedTuple{
         time::Vector{Float64},
@@ -255,14 +256,11 @@ end
 Type for storing metadata of edges in the graph:
 id: ID of the edge (only used for labeling flow output)
 type: type of the edge
-subnetwork_id_source: ID of subnetwork where this edge is a source
-  (0 if not a source)
 edge: (from node ID, to node ID)
 """
 @kwdef struct EdgeMetadata
     id::Int32
     type::EdgeType.T
-    subnetwork_id_source::Int32
     edge::Tuple{NodeID, NodeID}
 end
 
@@ -902,7 +900,6 @@ const ModelGraph = MetaGraph{
     EdgeMetadata,
     @NamedTuple{
         node_ids::Dict{Int32, Set{NodeID}},
-        edges_source::Dict{Int32, Set{EdgeMetadata}},
         flow_edges::Vector{EdgeMetadata},
         saveat::Float64,
     },

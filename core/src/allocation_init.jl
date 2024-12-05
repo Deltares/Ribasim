@@ -95,7 +95,7 @@ function get_subnetwork_capacity(
     return capacity
 end
 
-const allocation_source_nodetypes =
+const boundary_source_nodetypes =
     Set{NodeType.T}([NodeType.LevelBoundary, NodeType.FlowBoundary])
 
 """
@@ -137,10 +137,6 @@ function get_capacity(
 )::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}}
     capacity = get_subnetwork_capacity(p, subnetwork_id)
     add_subnetwork_connections!(capacity, p, subnetwork_id)
-
-    if !valid_sources(p, capacity, subnetwork_id)
-        error("Errors in sources in allocation network.")
-    end
 
     return capacity
 end
@@ -272,36 +268,55 @@ function add_constraints_user_source!(
 end
 
 """
-Add the source constraints to the allocation problem.
+Add the boundary source constraints to the allocation problem.
 The actual threshold values will be set before each allocation solve.
 The constraint indices are (edge_source_id, edge_dst_id).
 
 Constraint:
-flow over source edge <= source flow in subnetwork
+flow over source edge <= source flow in physical layer
 """
-function add_constraints_source!(
+function add_constraints_boundary_source!(
     problem::JuMP.Model,
     p::Parameters,
     subnetwork_id::Int32,
 )::Nothing
-    (; graph) = p
-    edges_source = Tuple{NodeID, NodeID}[]
+    # Source edges (without the basins)
+    edges_source =
+        [edge for edge in source_edges_subnetwork(p, subnetwork_id) if edge[1] != edge[2]]
     F = problem[:F]
 
-    # Find the edges in the whole model which are a source for
-    # this subnetwork
-    for edge_metadata in values(graph.edge_data)
-        (; edge) = edge_metadata
-        if graph[edge...].subnetwork_id_source == subnetwork_id
-            push!(edges_source, edge)
-        end
-    end
-
-    problem[:source] = JuMP.@constraint(
+    problem[:source_boundary] = JuMP.@constraint(
         problem,
         [edge_id = edges_source],
         F[edge_id] <= 0.0,
-        base_name = "source"
+        base_name = "source_boundary"
+    )
+    return nothing
+end
+
+"""
+Add main network source constraints to the allocation problem.
+The actual threshold values will be set before each allocation solve.
+The constraint indices are (edge_source_id, edge_dst_id).
+
+Constraint:
+flow over main network to subnetwork connection edge <= either 0 or allocated amount from the main network
+"""
+function add_constraints_main_network_source!(
+    problem::JuMP.Model,
+    p::Parameters,
+    subnetwork_id::Int32,
+)::Nothing
+    F = problem[:F]
+    (; main_network_connections, subnetwork_ids) = p.allocation
+    subnetwork_id = searchsortedfirst(subnetwork_ids, subnetwork_id)
+    edges_source = main_network_connections[subnetwork_id]
+
+    problem[:source_main_network] = JuMP.@constraint(
+        problem,
+        [edge_id = edges_source],
+        F[edge_id] <= 0.0,
+        base_name = "source_main_network"
     )
     return nothing
 end
@@ -451,9 +466,9 @@ function allocation_problem(
 
     # Add constraints to problem
     add_constraints_conservation_node!(problem, p, subnetwork_id)
-
     add_constraints_capacity!(problem, capacity, p, subnetwork_id)
-    add_constraints_source!(problem, p, subnetwork_id)
+    add_constraints_boundary_source!(problem, p, subnetwork_id)
+    add_constraints_main_network_source!(problem, p, subnetwork_id)
     add_constraints_user_source!(problem, p, subnetwork_id)
     add_constraints_basin_flow!(problem)
     add_constraints_buffer!(problem)
@@ -484,12 +499,12 @@ function get_sources_in_order(
         sources[edge] = AllocationSource(; edge, type = AllocationSourceType.user_return)
     end
 
-    # Source edges (within subnetwork)
-    for edge in
-        sort(only(problem[:source].axes); by = edge -> (edge[1].value, edge[2].value))
-        if graph[edge[1]].subnetwork_id == graph[edge[2]].subnetwork_id
-            sources[edge] = AllocationSource(; edge, type = AllocationSourceType.edge)
-        end
+    # Boundary node sources
+    for edge in sort(
+        only(problem[:source_boundary].axes);
+        by = edge -> (edge[1].value, edge[2].value),
+    )
+        sources[edge] = AllocationSource(; edge, type = AllocationSourceType.boundary_node)
     end
 
     # Basins with level demand
