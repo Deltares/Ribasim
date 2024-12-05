@@ -20,7 +20,6 @@ test-ribasim-api = "pytest --basetemp=python/ribasim_api/tests/temp --junitxml=r
 
 [feature.dev.tasks]
 # Installation
-# Also update the base environment in quarto-render
 install-julia = "juliaup add 1.10.7 && juliaup override set 1.10.7"
 install-pre-commit = "pre-commit install"
 # Note that this has a Windows specific override
@@ -51,7 +50,7 @@ quarto-preview = { cmd = "quarto preview docs", depends_on = [
     "generate-testmodels",
 ] }
 quarto-check = { cmd = "quarto check all", depends_on = ["quartodoc-build"] }
-quarto-render = { cmd = "julia --project=@1.10 --eval 'using Pkg; Pkg.add(\"IJulia\"); Pkg.build(\"IJulia\")' && quarto render docs --to html --execute", env = { CONDA_JL_HOME = "$CONDA_PREFIX", SSL_CERT_DIR = "" }, depends_on = [
+quarto-render = { cmd = "julia --project --eval 'using Pkg; Pkg.build(\"IJulia\")' && quarto render docs --to html --execute", env = { CONDA_JL_HOME = "$CONDA_PREFIX" }, depends_on = [
     "quartodoc-build",
     "generate-testmodels",
 ] }
