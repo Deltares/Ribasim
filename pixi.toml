@@ -242,5 +242,13 @@ py310 = ["py310"]
 [system-requirements]
 linux = "3.10.0"
 
-[activation]
+# TODO find out why one [activation] for all targets doesn't work
+# like documented in https://pixi.sh/latest/reference/pixi_manifest/#the-activation-table
+[target.win-64.activation]
+env = { CONDA_JL_HOME = "$CONDA_PREFIX" }
+
+[target.linux-64.activation]
+env = { CONDA_JL_HOME = "$CONDA_PREFIX" }
+
+[target.osx-arm64.activation]
 env = { CONDA_JL_HOME = "$CONDA_PREFIX" }
