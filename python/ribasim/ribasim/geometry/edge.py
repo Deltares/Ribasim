@@ -90,7 +90,7 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
             The geometry of a line. If not supplied, it creates a straight line between the nodes.
         name : str
             An optional name for the edge.
-        id : int
+        edge_id : int
             An optional non-negative edge ID. If not supplied, it will be automatically generated.
         **kwargs : Dict
         """
