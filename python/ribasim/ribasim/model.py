@@ -126,7 +126,7 @@ class Model(FileModel):
     def _ensure_edge_table_is_present(self) -> "Model":
         if self.edge.df is None:
             self.edge.df = GeoDataFrame[EdgeSchema](index=pd.Index([], name="edge_id"))
-        self.edge.df.set_geometry("geometry", inplace=True, crs=self.crs)
+        self.edge.df = self.edge.df.set_geometry("geometry", crs=self.crs)
         return self
 
     @model_validator(mode="after")
