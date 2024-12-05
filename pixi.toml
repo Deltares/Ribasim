@@ -166,6 +166,7 @@ install-ci = { depends_on = [
 ] }
 
 [dependencies]
+conda = "*"
 geopandas = "*"
 hatchling = "*"
 ipykernel = ">=6.29"
