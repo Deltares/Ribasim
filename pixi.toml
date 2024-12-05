@@ -50,7 +50,7 @@ quarto-preview = { cmd = "quarto preview docs", depends_on = [
     "generate-testmodels",
 ] }
 quarto-check = { cmd = "quarto check all", depends_on = ["quartodoc-build"] }
-quarto-render = { cmd = "julia --project --eval 'using Pkg; Pkg.build(\"IJulia\")' && quarto render docs --to html --execute", env = { CONDA_JL_HOME = "$CONDA_PREFIX" }, depends_on = [
+quarto-render = { cmd = "julia --project --eval 'using Pkg; Pkg.build(\"IJulia\")' && quarto render docs --to html --execute", depends_on = [
     "quartodoc-build",
     "generate-testmodels",
 ] }
@@ -241,3 +241,6 @@ py310 = ["py310"]
 
 [system-requirements]
 linux = "3.10.0"
+
+[activation]
+env = { CONDA_JL_HOME = "$CONDA_PREFIX" }
