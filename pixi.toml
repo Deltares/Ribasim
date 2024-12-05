@@ -32,8 +32,8 @@ install = { depends_on = [
 # Julia
 # Clear SSL_CERT_DIR to avoid Julia warnings, see https://github.com/JuliaLang/Downloads.jl/issues/244
 update-registry-julia = { cmd = "julia --eval='using Pkg; Registry.update()'", env = { SSL_CERT_DIR = "" } }
-update-manifest-julia = { cmd = "julia --project --eval='using Pkg; Pkg.update()'", env = { SSL_CERT_DIR = "" } }
-instantiate-julia = { cmd = "julia --project --eval='using Pkg; Pkg.instantiate()'", env = { SSL_CERT_DIR = "" } }
+update-manifest-julia = { cmd = "julia --project --eval='using Pkg; Pkg.update()'", env = { SSL_CERT_DIR = "", CONDA_JL_HOME = "$CONDA_PREFIX"} }
+instantiate-julia = { cmd = "julia --project --eval='using Pkg; Pkg.instantiate()'", env = { SSL_CERT_DIR = "", CONDA_JL_HOME = "$CONDA_PREFIX" } }
 initialize-julia = { depends_on = [
     "update-registry-julia",
     "instantiate-julia",
@@ -50,7 +50,7 @@ quarto-preview = { cmd = "quarto preview docs", depends_on = [
     "generate-testmodels",
 ] }
 quarto-check = { cmd = "quarto check all", depends_on = ["quartodoc-build"] }
-quarto-render = { cmd = "julia --project --eval 'using Pkg; Pkg.build(\"IJulia\")' && quarto render docs --to html --execute", depends_on = [
+quarto-render = { cmd = "julia --project --eval 'using Pkg; Pkg.build(\"IJulia\")' && quarto render docs --to html --execute", env = { CONDA_JL_HOME = "$CONDA_PREFIX" }, depends_on = [
     "quartodoc-build",
     "generate-testmodels",
 ] }
@@ -241,14 +241,3 @@ py310 = ["py310"]
 
 [system-requirements]
 linux = "3.10.0"
-
-# TODO find out why one [activation] for all targets doesn't work
-# like documented in https://pixi.sh/latest/reference/pixi_manifest/#the-activation-table
-[target.win-64.activation]
-env = { CONDA_JL_HOME = "$CONDA_PREFIX" }
-
-[target.linux-64.activation]
-env = { CONDA_JL_HOME = "$CONDA_PREFIX" }
-
-[target.osx-arm64.activation]
-env = { CONDA_JL_HOME = "$CONDA_PREFIX" }
