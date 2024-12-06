@@ -219,7 +219,7 @@ The Basin table contains:
   The actual flows determine in which term they are counted, not the edge direction.
 - The `storage_rate` is the net mean flow that is needed to achieve the storage change between timesteps.
 - The `inflow_rate` consists of the sum of all modelled flows into the basin: `inflow_rate` (horizontal flows into the basin, independent of edge direction) + `precipitation` + `drainage`.
-- The `outflow_rate` consists of the sum of all modelled flows out of the basin: `outflow_rate` (horizontal flows out of the basin, idependent of edge direction) + `evaporation` + `infiltration`.
+- The `outflow_rate` consists of the sum of all modelled flows out of the basin: `outflow_rate` (horizontal flows out of the basin, independent of edge direction) + `evaporation` + `infiltration`.
 - The `balance_error` is the difference between the `storage_rate` on one side and the `inflow_rate` and `outflow_rate` on the other side: `storage_rate` - (`inflow_rate` - `outflow_rate`).
   It can be used to check if the numerical error when solving the water balance is sufficiently small.
 - The `relative_error` is the fraction of the `balance_error` over the mean of the `total_inflow` and `total_outflow`.

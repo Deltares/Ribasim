@@ -20,7 +20,7 @@ test-ribasim-api = "pytest --basetemp=python/ribasim_api/tests/temp --junitxml=r
 
 [feature.dev.tasks]
 # Installation
-install-julia = "juliaup add 1.11.1 && juliaup override unset && juliaup override set 1.11.1"
+install-julia = "juliaup add 1.10.7 && juliaup override set 1.10.7"
 install-pre-commit = "pre-commit install"
 # Note that this has a Windows specific override
 install-ci = { depends_on = ["install-julia", "update-registry-julia"] }
@@ -32,6 +32,7 @@ install = { depends_on = [
 # Julia
 # Clear SSL_CERT_DIR to avoid Julia warnings, see https://github.com/JuliaLang/Downloads.jl/issues/244
 update-registry-julia = { cmd = "julia --eval='using Pkg; Registry.update()'", env = { SSL_CERT_DIR = "" } }
+update-manifest-julia = { cmd = "julia --project --eval='using Pkg; Pkg.update()'", env = { SSL_CERT_DIR = "" } }
 instantiate-julia = { cmd = "julia --project --eval='using Pkg; Pkg.instantiate()'", env = { SSL_CERT_DIR = "" } }
 initialize-julia = { depends_on = [
     "update-registry-julia",
@@ -172,7 +173,7 @@ ipywidgets = ">=8.1.3,<8.2"
 jinja2 = "*"
 matplotlib = "*"
 minio = "*"
-netCDF4 = "*"
+netcdf4 = "*"
 networkx = ">=3.3"
 numpy = "*"
 pandas = "*"
@@ -187,12 +188,12 @@ pytest-cov = "*"
 pytest-xdist = "*"
 python = ">=3.10"
 shapely = ">=2.0"
+teamcity-messages = "*"
 tomli = "*"
 tomli-w = "*"
 xarray = "*"
 xmipy = "*"
 xugrid = "*"
-teamcity-messages = ">=1.32,<2"
 
 [pypi-dependencies]
 ribasim = { path = "python/ribasim", editable = true }
