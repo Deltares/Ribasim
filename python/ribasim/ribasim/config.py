@@ -71,7 +71,6 @@ class Allocation(ChildModel):
 
 
 class Results(ChildModel):
-    outstate: str | None = None
     compression: bool = True
     compression_level: int = 6
     subgrid: bool = False
