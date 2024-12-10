@@ -45,9 +45,9 @@ evaporate_mass = true  # optional, default true to simulate a correct mass balan
 verbosity = "info" # optional, default "info", can otherwise be "debug", "warn" or "error"
 
 [results]
-# These results files are always written
-compression = true  # optional, default true, using zstd compression
+compression = true    # optional, default true, using zstd compression
 compression_level = 6 # optional, default 6
+subgrid = false       # optional, default false
 
 [experimental]
 # Experimental features, disabled by default

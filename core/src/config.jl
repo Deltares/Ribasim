@@ -119,7 +119,6 @@ end
 
 # Separate struct, as basin clashes with nodetype
 @option struct Results <: TableOption
-    outstate::Union{String, Nothing} = nothing
     compression::Bool = true
     compression_level::Int = 6
     subgrid::Bool = false
