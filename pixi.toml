@@ -160,7 +160,7 @@ github-release = "python utils/github-release.py"
 # Upstream issue: https://github.com/JuliaLang/julia/issues/52272
 reset-artifact-permissions = "icacls $homedrive/$homepath/.julia/artifacts /q /c /t /reset"
 install-ci = { depends_on = [
-    "reset-artifact-permissions",
+    # "reset-artifact-permissions",  # see #1972
     "install-julia",
     "update-registry-julia",
 ] }
