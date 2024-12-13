@@ -228,7 +228,7 @@ ax.legend()
 
 for converting the initial state in terms of levels to an initial state in terms of storages used in the core.
 
-#### Interactive basin example
+#### Interactive Basin example
 
 The profile data is not detailed enough to create a full 3D picture of the basin. However, if we assume the profile data is for a stretch of canal of given length, the following plot shows a cross section of the basin.
 ```{python}
@@ -391,6 +391,15 @@ Water levels beyond the last `basin_level` are linearly extrapolated.
 Note that the interpolation to subgrid water level is not constrained by any water balance within Ribasim.
 Generally, to create physically meaningful subgrid water levels, the subgrid table must be parametrized properly such that the spatially integrated water volume of the subgrid elements agrees with the total storage volume of the basin.
 
+## Subgrid time
+
+This table is the transient form of the Subgrid table.
+The only difference is that a time column is added.
+The table must by sorted by time, and per time it must be sorted by `subgrid_id`.
+With this the subgrid relations can be updated over time.
+Note that a `node_id` can be either in this table or in the static one, but not both.
+That means for each Basin all subgrid relations are either static or dynamic.
+
 ## Concentration {#sec-basin-conc}
 This table defines the concentration of substances for the inflow boundaries of a Basin node.
 
@@ -402,7 +411,7 @@ substance     | String   |                          | can correspond to known De
 drainage      | Float64  | $\text{g}/\text{m}^3$    | (optional)
 precipitation | Float64  | $\text{g}/\text{m}^3$    | (optional)
 
-## ConcentrationState {#sec-basin-conc-state}
+## Concentration state {#sec-basin-conc-state}
 This table defines the concentration of substances in the Basin at the start of the simulation.
 
 column         | type     | unit                     | restriction
@@ -411,7 +420,7 @@ node_id        | Int32    | -                        | sorted
 substance      | String   | -                        | can correspond to known Delwaq substances
 concentration  | Float64  | $\text{g}/\text{m}^3$    |
 
-## ConcentrationExternal
+## Concentration external
 This table is used for (external) concentrations, that can be used for Control lookups.
 
 column         | type     | unit                     | restriction

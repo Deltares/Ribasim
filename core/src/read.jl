@@ -187,6 +187,12 @@ function parse_static_and_time(
     return out, !errors
 end
 
+"""
+Validate the split of node IDs between static and time tables.
+
+For node types that can have a part of the parameters defined statically and a part dynamically,
+this checks if each ID is defined exactly once in either table.
+"""
 function static_and_time_node_ids(
     db::DB,
     static::StructVector,
