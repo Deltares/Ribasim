@@ -217,7 +217,6 @@ class TableModel(FileModel, Generic[TableT]):
 
         # Enable initialization with a DataFrame.
         if isinstance(value, pd.DataFrame | gpd.GeoDataFrame):
-            value.index.rename("fid", inplace=True)
             value = {"df": value}
 
         return value
@@ -386,7 +385,6 @@ class SpatialTableModel(TableModel[TableT], Generic[TableT]):
                     # tell pyarrow to map to pd.ArrowDtype rather than NumPy
                     arrow_to_pandas_kwargs={"types_mapper": pd.ArrowDtype},
                 )
-                df.index.rename(cls.tableschema()._index_name(), inplace=True)
             else:
                 df = None
 

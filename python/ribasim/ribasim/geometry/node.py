@@ -27,9 +27,10 @@ class NodeSchema(_GeoBaseSchema):
     )
     geometry: GeoSeries[Point] = pa.Field(default=None, nullable=True)
 
-    @classmethod
-    def _index_name(self) -> str:
-        return "node_id"
+    @pa.dataframe_parser
+    def _name_index(cls, df):
+        df.index.name = "node_id"
+        return df
 
 
 class NodeTable(SpatialTableModel[NodeSchema]):

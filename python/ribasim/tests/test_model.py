@@ -112,6 +112,12 @@ def test_write_adds_fid_in_tables(basic, tmp_path):
     assert model_orig.edge.df.index.name == "edge_id"
     assert model_orig.edge.df.index.equals(pd.RangeIndex(1, nrow + 1))
 
+    # Index name is applied by _name_index
+    df = model_orig.edge.df.copy()
+    df.index.name = "other"
+    model_orig.edge.df = df
+    assert model_orig.edge.df.index.name == "edge_id"
+
     model_orig.write(tmp_path / "basic/ribasim.toml")
     with connect(tmp_path / "basic/database.gpkg") as connection:
         query = f"select * from {esc_id('Basin / profile')}"

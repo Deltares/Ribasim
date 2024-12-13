@@ -16,9 +16,12 @@ class _BaseSchema(pa.DataFrameModel):
         add_missing_columns = True
         coerce = True
 
-    @classmethod
-    def _index_name(self) -> str:
-        return "fid"
+    @pa.dataframe_parser
+    def _name_index(cls, df):
+        # Node and Edge have different index names, avoid running both parsers
+        if cls.__name__ not in ("NodeSchema", "EdgeSchema"):
+            df.index.name = "fid"
+        return df
 
     @classmethod
     def migrate(cls, df: Any, schema_version: int) -> Any:

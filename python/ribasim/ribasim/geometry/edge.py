@@ -49,9 +49,10 @@ class EdgeSchema(_GeoBaseSchema):
     edge_type: Series[str] = pa.Field(default="flow")
     geometry: GeoSeries[LineString] = pa.Field(default=None, nullable=True)
 
-    @classmethod
-    def _index_name(self) -> str:
-        return "edge_id"
+    @pa.dataframe_parser
+    def _name_index(cls, df):
+        df.index.name = "edge_id"
+        return df
 
 
 class EdgeTable(SpatialTableModel[EdgeSchema]):
