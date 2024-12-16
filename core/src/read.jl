@@ -1232,17 +1232,40 @@ function FlowDemand(db::DB, config::Config)::FlowDemand
     )
 end
 
-function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
-    node_to_basin = Dict(node_id => index for (index, node_id) in enumerate(basin.node_id))
-    tables = load_structvector(db, config, BasinSubgridV1)
+function push_lookup!(
+    current_interpolation_index::Vector{IndexLookup},
+    lookup_index::Vector{Int},
+    lookup_time::Vector{Float64},
+)
+    index_lookup = ConstantInterpolation(
+        lookup_index,
+        lookup_time;
+        extrapolate = true,
+        cache_parameters = true,
+    )
+    push!(current_interpolation_index, index_lookup)
+end
 
+function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
+    time = load_structvector(db, config, BasinSubgridTimeV1)
+    static = load_structvector(db, config, BasinSubgridV1)
+
+    _, _, _, valid = static_and_time_node_ids(db, static, time, "Basin")
+    if !valid
+        error("Problems encountered when parsing Subgrid static and time node IDs.")
+    end
+
+    node_to_basin = Dict{Int32, Int}(
+        Int32(node_id) => index for (index, node_id) in enumerate(basin.node_id)
+    )
     subgrid_ids = Int32[]
     basin_index = Int32[]
     interpolations = ScalarInterpolation[]
     has_error = false
-    for group in IterTools.groupby(row -> row.subgrid_id, tables)
+
+    for group in IterTools.groupby(row -> row.subgrid_id, static)
         subgrid_id = first(getproperty.(group, :subgrid_id))
-        node_id = NodeID(NodeType.Basin, first(getproperty.(group, :node_id)), db)
+        node_id = first(getproperty.(group, :node_id))
         basin_level = getproperty.(group, :basin_level)
         subgrid_level = getproperty.(group, :subgrid_level)
 
@@ -1268,9 +1291,75 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
     end
 
     has_error && error("Invalid Basin / subgrid table.")
-    level = fill(NaN, length(subgrid_ids))
 
-    return Subgrid(; subgrid_id = subgrid_ids, basin_index, interpolations, level)
+    subgrid_id_time = Int32[first(time.subgrid_id)]
+    basin_index_time = Int32[node_to_basin[first(time.node_id)]]
+    interpolations_time = ScalarInterpolation[]
+    current_interpolation_index = IndexLookup[]
+
+    # Initialize index_lookup contents
+    lookup_time = Float64[]
+    lookup_index = Int[]
+
+    interpolation_index = 0
+    for group in IterTools.groupby(row -> (row.subgrid_id, row.time), time)
+        interpolation_index += 1
+        subgrid_id = first(getproperty.(group, :subgrid_id))
+        time_group = seconds_since(first(getproperty.(group, :time)), config.starttime)
+        node_id = first(getproperty.(group, :node_id))
+        basin_level = getproperty.(group, :basin_level)
+        subgrid_level = getproperty.(group, :subgrid_level)
+
+        is_valid =
+            valid_subgrid(subgrid_id, node_id, node_to_basin, basin_level, subgrid_level)
+
+        if is_valid
+            # Ensure it doesn't extrapolate before the first value.
+            pushfirst!(subgrid_level, first(subgrid_level))
+            pushfirst!(basin_level, nextfloat(-Inf))
+            new_interp = LinearInterpolation(
+                subgrid_level,
+                basin_level;
+                extrapolate = true,
+                cache_parameters = true,
+            )
+            # # These should only be pushed when the subgrid_id has changed
+            if subgrid_id_time[end] != subgrid_id
+                # Push the completed index_lookup of the previous subgrid_id
+                push_lookup!(current_interpolation_index, lookup_index, lookup_time)
+                # Push the new subgrid_id and basin_index
+                push!(subgrid_id_time, subgrid_id)
+                push!(basin_index_time, node_to_basin[node_id])
+                # Start new index_lookup contents
+                lookup_time = Float64[]
+                lookup_index = Int[]
+            end
+            push!(lookup_index, interpolation_index)
+            push!(lookup_time, time_group)
+            push!(interpolations_time, new_interp)
+        else
+            has_error = true
+        end
+    end
+
+    # Push completed IndexLookup of the last group
+    if interpolation_index > 0
+        push_lookup!(current_interpolation_index, lookup_index, lookup_time)
+    end
+
+    has_error && error("Invalid Basin / subgrid_time table.")
+    level = fill(NaN, length(subgrid_ids) + length(subgrid_id_time))
+
+    return Subgrid(;
+        level,
+        subgrid_id = subgrid_ids,
+        basin_index,
+        interpolations,
+        subgrid_id_time,
+        basin_index_time,
+        interpolations_time,
+        current_interpolation_index,
+    )
 end
 
 function Allocation(db::DB, config::Config, graph::MetaGraph)::Allocation

@@ -105,6 +105,7 @@ end
 
 Base.to_index(id::NodeID) = Int(id.value)
 
+"LinearInterpolation from a Float64 to a Float64"
 const ScalarInterpolation = LinearInterpolation{
     Vector{Float64},
     Vector{Float64},
@@ -113,6 +114,10 @@ const ScalarInterpolation = LinearInterpolation{
     Float64,
     (1,),
 }
+
+"ConstantInterpolation from a Float64 to an Int, used to look up indices"
+const IndexLookup =
+    ConstantInterpolation{Vector{Int64}, Vector{Float64}, Vector{Float64}, Int64, (1,)}
 
 set_zero!(v) = v .= zero(eltype(v))
 const Cache = LazyBufferCache{Returns{Int}, typeof(set_zero!)}
@@ -876,10 +881,20 @@ end
 
 "Subgrid linearly interpolates basin levels."
 @kwdef struct Subgrid
+    # cache the current level for static subgrids followed by dynamic subgrids
+    level::Vector{Float64}
+    # static
     subgrid_id::Vector{Int32}
     basin_index::Vector{Int32}
+    # per subgrid one relation
     interpolations::Vector{ScalarInterpolation}
-    level::Vector{Float64}
+    # dynamic
+    subgrid_id_time::Vector{Int32}
+    basin_index_time::Vector{Int32}
+    # per subgrid n relations, n being the number of timesteps for that subgrid
+    interpolations_time::Vector{ScalarInterpolation}
+    # per subgrid 1 lookup from t to an index in interpolations_time
+    current_interpolation_index::Vector{IndexLookup}
 end
 
 """
