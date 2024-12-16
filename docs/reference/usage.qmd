@@ -230,8 +230,8 @@ column         | type     | unit
 -------------- | ---------| ----
 time           | DateTime | -
 node_id        | Int32    | -
-storage        | Float64  | $\text{m}^3$
 level          | Float64  | $\text{m}$
+storage        | Float64  | $\text{m}^3$
 inflow_rate    | Float64  | $\text{m}^3/\text{s}$
 outflow_rate   | Float64  | $\text{m}^3/\text{s}$
 storage_rate   | Float64  | $\text{m}^3/\text{s}$

@@ -119,8 +119,8 @@ function basin_table(
 )::@NamedTuple{
     time::Vector{DateTime},
     node_id::Vector{Int32},
-    storage::Vector{Float64},
     level::Vector{Float64},
+    storage::Vector{Float64},
     inflow_rate::Vector{Float64},
     outflow_rate::Vector{Float64},
     storage_rate::Vector{Float64},
@@ -167,8 +167,8 @@ function basin_table(
     return (;
         time,
         node_id,
-        storage,
         level,
+        storage,
         inflow_rate,
         outflow_rate,
         storage_rate,

@@ -20,6 +20,11 @@ class _BaseSchema(pa.DataFrameModel):
     def _index_name(self) -> str:
         return "fid"
 
+    @pa.dataframe_parser
+    def _name_index(cls, df):
+        df.index.name = cls._index_name()
+        return df
+
     @classmethod
     def migrate(cls, df: Any, schema_version: int) -> Any:
         f: Callable[[Any, Any], Any] = getattr(
