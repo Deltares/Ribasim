@@ -45,8 +45,8 @@
             (
                 :time,
                 :node_id,
-                :storage,
                 :level,
+                :storage,
                 :inflow_rate,
                 :outflow_rate,
                 :storage_rate,
