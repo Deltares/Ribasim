@@ -97,6 +97,11 @@ def test_extra_columns():
 def test_index_tables():
     p = pump.Static(flow_rate=[1.2])
     assert p.df.index.name == "fid"
+    # Index name is applied by _name_index
+    df = p.df.reset_index(drop=True)
+    assert df.index.name is None
+    p.df = df
+    assert p.df.index.name == "fid"
 
 
 def test_extra_spatial_columns():
