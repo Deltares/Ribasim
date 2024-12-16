@@ -607,4 +607,5 @@ end
     basin_level = copy(BMI.get_value_ptr(model, "basin.level"))
     basin_level[2] += 1
     @test basin_level ≈ df.subgrid_level[(end - 1):end]
+    @test basin_level ≈ model.integrator.p.subgrid.level
 end
