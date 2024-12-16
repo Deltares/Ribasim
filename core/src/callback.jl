@@ -676,18 +676,23 @@ function update_subgrid_level!(integrator)::Nothing
     basin_level = p.basin.current_properties.current_level[parent(du)]
     subgrid = integrator.p.subgrid
 
-    i = 0
     # First update the all the subgrids with static h(h) relations
-    for (index, hh_itp) in zip(subgrid.basin_index, subgrid.interpolations)
-        i += 1
-        subgrid.level[i] = hh_itp(basin_level[index])
+    for (level_index, basin_index, hh_itp) in zip(
+        subgrid.level_index_static,
+        subgrid.basin_index_static,
+        subgrid.interpolations_static,
+    )
+        subgrid.level[level_index] = hh_itp(basin_level[basin_index])
     end
     # Then update the subgrids with dynamic h(h) relations
-    for (index, lookup) in zip(subgrid.basin_index_time, current_interpolation_index)
-        i += 1
+    for (level_index, basin_index, lookup) in zip(
+        subgrid.level_index_time,
+        subgrid.basin_index_time,
+        subgrid.current_interpolation_index,
+    )
         itp_index = lookup(t)
         hh_itp = subgrid.interpolations_time[itp_index]
-        subgrid.level[i] = hh_itp(basin_level[index])
+        subgrid.level[level_index] = hh_itp(basin_level[basin_index])
     end
 end
 

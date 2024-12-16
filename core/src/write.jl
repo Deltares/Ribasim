@@ -376,11 +376,14 @@ function subgrid_level_table(
     (; t, saveval) = saved.subgrid_level
     subgrid = integrator.p.subgrid
 
-    nelem = length(subgrid.subgrid_id)
+    nelem = length(subgrid.level)
     ntsteps = length(t)
 
     time = repeat(datetime_since.(t, config.starttime); inner = nelem)
-    subgrid_id = repeat(subgrid.subgrid_id; outer = ntsteps)
+    subgrid_id = repeat(
+        sort(vcat(subgrid.subgrid_id_static, subgrid.subgrid_id_time));
+        outer = ntsteps,
+    )
     subgrid_level = FlatVector(saveval)
     return (; time, subgrid_id, subgrid_level)
 end
@@ -412,9 +415,9 @@ function write_arrow(
     mkpath(dirname(path))
     try
         Arrow.write(path, table; compress, metadata)
-    catch
+    catch e
         @error "Failed to write results, file may be locked." path
-        error("Failed to write results.")
+        rethrow(e)
     end
     return nothing
 end

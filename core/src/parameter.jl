@@ -881,16 +881,22 @@ end
 
 "Subgrid linearly interpolates basin levels."
 @kwdef struct Subgrid
-    # cache the current level for static subgrids followed by dynamic subgrids
+    # level of each subgrid (static and dynamic) ordered by subgrid_id
     level::Vector{Float64}
     # static
-    subgrid_id::Vector{Int32}
-    basin_index::Vector{Int32}
+    subgrid_id_static::Vector{Int32}
+    # index into the basin.current_level vector for each static subgrid_id
+    basin_index_static::Vector{Int}
+    # index into the subgrid.level vector for each static subgrid_id
+    level_index_static::Vector{Int}
     # per subgrid one relation
-    interpolations::Vector{ScalarInterpolation}
+    interpolations_static::Vector{ScalarInterpolation}
     # dynamic
     subgrid_id_time::Vector{Int32}
-    basin_index_time::Vector{Int32}
+    # index into the basin.current_level vector for each dynamic subgrid_id
+    basin_index_time::Vector{Int}
+    # index into the subgrid.level vector for each dynamic subgrid_id
+    level_index_time::Vector{Int}
     # per subgrid n relations, n being the number of timesteps for that subgrid
     interpolations_time::Vector{ScalarInterpolation}
     # per subgrid 1 lookup from t to an index in interpolations_time

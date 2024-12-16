@@ -1258,9 +1258,9 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
     node_to_basin = Dict{Int32, Int}(
         Int32(node_id) => index for (index, node_id) in enumerate(basin.node_id)
     )
-    subgrid_ids = Int32[]
-    basin_index = Int32[]
-    interpolations = ScalarInterpolation[]
+    subgrid_id_static = Int32[]
+    basin_index_static = Int[]
+    interpolations_static = ScalarInterpolation[]
     has_error = false
 
     for group in IterTools.groupby(row -> row.subgrid_id, static)
@@ -1276,15 +1276,15 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
             # Ensure it doesn't extrapolate before the first value.
             pushfirst!(subgrid_level, first(subgrid_level))
             pushfirst!(basin_level, nextfloat(-Inf))
-            new_interp = LinearInterpolation(
+            hh_itp = LinearInterpolation(
                 subgrid_level,
                 basin_level;
                 extrapolate = true,
                 cache_parameters = true,
             )
-            push!(subgrid_ids, subgrid_id)
-            push!(basin_index, node_to_basin[node_id])
-            push!(interpolations, new_interp)
+            push!(subgrid_id_static, subgrid_id)
+            push!(basin_index_static, node_to_basin[node_id])
+            push!(interpolations_static, hh_itp)
         else
             has_error = true
         end
@@ -1293,7 +1293,7 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
     has_error && error("Invalid Basin / subgrid table.")
 
     subgrid_id_time = Int32[first(time.subgrid_id)]
-    basin_index_time = Int32[node_to_basin[first(time.node_id)]]
+    basin_index_time = Int[node_to_basin[first(time.node_id)]]
     interpolations_time = ScalarInterpolation[]
     current_interpolation_index = IndexLookup[]
 
@@ -1317,7 +1317,7 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
             # Ensure it doesn't extrapolate before the first value.
             pushfirst!(subgrid_level, first(subgrid_level))
             pushfirst!(basin_level, nextfloat(-Inf))
-            new_interp = LinearInterpolation(
+            hh_itp = LinearInterpolation(
                 subgrid_level,
                 basin_level;
                 extrapolate = true,
@@ -1336,7 +1336,7 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
             end
             push!(lookup_index, interpolation_index)
             push!(lookup_time, time_group)
-            push!(interpolations_time, new_interp)
+            push!(interpolations_time, hh_itp)
         else
             has_error = true
         end
@@ -1348,15 +1348,28 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
     end
 
     has_error && error("Invalid Basin / subgrid_time table.")
-    level = fill(NaN, length(subgrid_ids) + length(subgrid_id_time))
+    level = fill(NaN, length(subgrid_id_static) + length(subgrid_id_time))
+
+    # Find the level indices
+    level_index_static = zeros(Int, length(subgrid_id_static))
+    level_index_time = zeros(Int, length(subgrid_id_time))
+    subgrid_ids = sort(vcat(subgrid_id_static, subgrid_id_time))
+    for (i, subgrid_id) in enumerate(subgrid_id_static)
+        level_index_static[i] = findsorted(subgrid_ids, subgrid_id)
+    end
+    for (i, subgrid_id) in enumerate(subgrid_id_time)
+        level_index_time[i] = findsorted(subgrid_ids, subgrid_id)
+    end
 
     return Subgrid(;
         level,
-        subgrid_id = subgrid_ids,
-        basin_index,
-        interpolations,
+        subgrid_id_static,
+        basin_index_static,
+        level_index_static,
+        interpolations_static,
         subgrid_id_time,
         basin_index_time,
+        level_index_time,
         interpolations_time,
         current_interpolation_index,
     )

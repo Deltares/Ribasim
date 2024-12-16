@@ -1,6 +1,6 @@
 from typing import Any
 
-from ribasim.config import Node
+from ribasim.config import Node, Results
 from ribasim.input_base import TableModel
 from ribasim.model import Model
 from ribasim.nodes import basin, flow_boundary, tabulated_rating_curve
@@ -18,7 +18,12 @@ def two_basin_model() -> Model:
     infiltrates in the left basin, and exfiltrates in the right basin.
     The right basin fills up and discharges over the rating curve.
     """
-    model = Model(starttime="2020-01-01", endtime="2021-01-01", crs="EPSG:28992")
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2021-01-01",
+        crs="EPSG:28992",
+        results=Results(subgrid=True),
+    )
 
     model.flow_boundary.add(
         Node(1, Point(0, 0)), [flow_boundary.Static(flow_rate=[1e-2])]
