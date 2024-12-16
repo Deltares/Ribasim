@@ -197,7 +197,8 @@ function static_and_time_node_ids(
     db::DB,
     static::StructVector,
     time::StructVector,
-    node_type::String,
+    node_type::String;
+    is_complete::Bool = true,
 )::Tuple{Set{NodeID}, Set{NodeID}, Vector{NodeID}, Bool}
     ids = get_ids(db, node_type)
     idx = searchsortedfirst.(Ref(ids), static.node_id)
@@ -211,7 +212,7 @@ function static_and_time_node_ids(
         errors = true
         @error "$node_type cannot be in both static and time tables, found these node IDs in both: $doubles."
     end
-    if !issetequal(node_ids, union(static_node_ids, time_node_ids))
+    if is_complete && !issetequal(node_ids, union(static_node_ids, time_node_ids))
         errors = true
         @error "$node_type node IDs don't match."
     end
@@ -1250,7 +1251,9 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
     time = load_structvector(db, config, BasinSubgridTimeV1)
     static = load_structvector(db, config, BasinSubgridV1)
 
-    _, _, _, valid = static_and_time_node_ids(db, static, time, "Basin")
+    # Since not all Basins need to have subgrids, don't enforce completeness.
+    _, _, _, valid =
+        static_and_time_node_ids(db, static, time, "Basin"; is_complete = false)
     if !valid
         error("Problems encountered when parsing Subgrid static and time node IDs.")
     end
@@ -1291,11 +1294,16 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
     end
 
     has_error && error("Invalid Basin / subgrid table.")
-
-    subgrid_id_time = Int32[first(time.subgrid_id)]
-    basin_index_time = Int[node_to_basin[first(time.node_id)]]
+    subgrid_id_time = Int32[]
+    basin_index_time = Int[]
     interpolations_time = ScalarInterpolation[]
     current_interpolation_index = IndexLookup[]
+
+    # Push the first subgrid_id and basin_index
+    if length(time) > 0
+        push!(subgrid_id_time, first(time.subgrid_id))
+        push!(basin_index_time, node_to_basin[first(time.node_id)])
+    end
 
     # Initialize index_lookup contents
     lookup_time = Float64[]
