@@ -39,7 +39,6 @@ SQLite.esc_id(x::NodeType.T) = esc_id(string(x))
 
 """
     NodeID(type::Union{NodeType.T, Symbol, AbstractString}, value::Integer, idx::Int)
-    NodeID(type::Union{NodeType.T, Symbol, AbstractString}, value::Integer, db::DB)
     NodeID(type::Union{NodeType.T, Symbol, AbstractString}, value::Integer, p::Parameters)
     NodeID(type::Union{NodeType.T, Symbol, AbstractString}, value::Integer, node_ids::Vector{NodeID})
 
