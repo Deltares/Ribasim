@@ -77,6 +77,7 @@ end
     )
     @test ispath(toml_path)
     model = Ribasim.Model(toml_path)
+    p = model.integrator.p
     (; allocation, graph) = p
     (; main_network_connections, subnetwork_ids, allocation_models) = allocation
     @test Ribasim.has_main_network(allocation)
