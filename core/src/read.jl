@@ -192,6 +192,10 @@ Validate the split of node IDs between static and time tables.
 
 For node types that can have a part of the parameters defined statically and a part dynamically,
 this checks if each ID is defined exactly once in either table.
+
+The `is_complete` argument allows disabling the check that all Node IDs of type `node_type`
+are either in the `static` or `time` table.
+This is not required for Subgrid since not all Basins need to have subgrids.
 """
 function static_and_time_node_ids(
     db::DB,
@@ -1264,7 +1268,6 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
     subgrid_id_static = Int32[]
     basin_index_static = Int[]
     interpolations_static = ScalarInterpolation[]
-    has_error = false
 
     for group in IterTools.groupby(row -> row.subgrid_id, static)
         subgrid_id = first(getproperty.(group, :subgrid_id))
@@ -1274,26 +1277,22 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
 
         is_valid =
             valid_subgrid(subgrid_id, node_id, node_to_basin, basin_level, subgrid_level)
+        !is_valid && error("Invalid Basin / subgrid table.")
 
-        if is_valid
-            # Ensure it doesn't extrapolate before the first value.
-            pushfirst!(subgrid_level, first(subgrid_level))
-            pushfirst!(basin_level, nextfloat(-Inf))
-            hh_itp = LinearInterpolation(
-                subgrid_level,
-                basin_level;
-                extrapolate = true,
-                cache_parameters = true,
-            )
-            push!(subgrid_id_static, subgrid_id)
-            push!(basin_index_static, node_to_basin[node_id])
-            push!(interpolations_static, hh_itp)
-        else
-            has_error = true
-        end
+        # Ensure it doesn't extrapolate before the first value.
+        pushfirst!(subgrid_level, first(subgrid_level))
+        pushfirst!(basin_level, nextfloat(-Inf))
+        hh_itp = LinearInterpolation(
+            subgrid_level,
+            basin_level;
+            extrapolate = true,
+            cache_parameters = true,
+        )
+        push!(subgrid_id_static, subgrid_id)
+        push!(basin_index_static, node_to_basin[node_id])
+        push!(interpolations_static, hh_itp)
     end
 
-    has_error && error("Invalid Basin / subgrid table.")
     subgrid_id_time = Int32[]
     basin_index_time = Int[]
     interpolations_time = ScalarInterpolation[]
@@ -1320,34 +1319,31 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
 
         is_valid =
             valid_subgrid(subgrid_id, node_id, node_to_basin, basin_level, subgrid_level)
+        !is_valid && error("Invalid Basin / subgrid_time table.")
 
-        if is_valid
-            # Ensure it doesn't extrapolate before the first value.
-            pushfirst!(subgrid_level, first(subgrid_level))
-            pushfirst!(basin_level, nextfloat(-Inf))
-            hh_itp = LinearInterpolation(
-                subgrid_level,
-                basin_level;
-                extrapolate = true,
-                cache_parameters = true,
-            )
-            # # These should only be pushed when the subgrid_id has changed
-            if subgrid_id_time[end] != subgrid_id
-                # Push the completed index_lookup of the previous subgrid_id
-                push_lookup!(current_interpolation_index, lookup_index, lookup_time)
-                # Push the new subgrid_id and basin_index
-                push!(subgrid_id_time, subgrid_id)
-                push!(basin_index_time, node_to_basin[node_id])
-                # Start new index_lookup contents
-                lookup_time = Float64[]
-                lookup_index = Int[]
-            end
-            push!(lookup_index, interpolation_index)
-            push!(lookup_time, time_group)
-            push!(interpolations_time, hh_itp)
-        else
-            has_error = true
+        # Ensure it doesn't extrapolate before the first value.
+        pushfirst!(subgrid_level, first(subgrid_level))
+        pushfirst!(basin_level, nextfloat(-Inf))
+        hh_itp = LinearInterpolation(
+            subgrid_level,
+            basin_level;
+            extrapolate = true,
+            cache_parameters = true,
+        )
+        # # These should only be pushed when the subgrid_id has changed
+        if subgrid_id_time[end] != subgrid_id
+            # Push the completed index_lookup of the previous subgrid_id
+            push_lookup!(current_interpolation_index, lookup_index, lookup_time)
+            # Push the new subgrid_id and basin_index
+            push!(subgrid_id_time, subgrid_id)
+            push!(basin_index_time, node_to_basin[node_id])
+            # Start new index_lookup contents
+            lookup_time = Float64[]
+            lookup_index = Int[]
         end
+        push!(lookup_index, interpolation_index)
+        push!(lookup_time, time_group)
+        push!(interpolations_time, hh_itp)
     end
 
     # Push completed IndexLookup of the last group
