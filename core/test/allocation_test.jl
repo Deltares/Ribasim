@@ -6,11 +6,8 @@
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/subnetwork/ribasim.toml")
     @test ispath(toml_path)
-    cfg = Ribasim.Config(toml_path)
-    db_path = Ribasim.database_path(cfg)
-    db = SQLite.DB(db_path)
-    p = Ribasim.Parameters(db, cfg)
-    close(db)
+    model = Ribasim.Model(toml_path)
+    p = model.integrator.p
 
     (; graph, allocation) = p
 
@@ -47,8 +44,7 @@ end
         normpath(@__DIR__, "../../generated_testmodels/minimal_subnetwork/ribasim.toml")
     @test ispath(toml_path)
 
-    config = Ribasim.Config(toml_path)
-    model = Ribasim.run(config)
+    model = Ribasim.run(toml_path)
     @test successful_retcode(model)
     (; u, p, t) = model.integrator
     (; user_demand) = p
@@ -80,11 +76,8 @@ end
         "../../generated_testmodels/main_network_with_subnetworks/ribasim.toml",
     )
     @test ispath(toml_path)
-    cfg = Ribasim.Config(toml_path)
-    db_path = Ribasim.database_path(cfg)
-    db = SQLite.DB(db_path)
-    p = Ribasim.Parameters(db, cfg)
-    close(db)
+    model = Ribasim.Model(toml_path)
+    p = model.integrator.p
     (; allocation, graph) = p
     (; main_network_connections, subnetwork_ids, allocation_models) = allocation
     @test Ribasim.has_main_network(allocation)
@@ -214,11 +207,8 @@ end
         "../../generated_testmodels/subnetworks_with_sources/ribasim.toml",
     )
     @test ispath(toml_path)
-    cfg = Ribasim.Config(toml_path)
-    db_path = Ribasim.database_path(cfg)
-    db = SQLite.DB(db_path)
-    p = Ribasim.Parameters(db, cfg)
-    close(db)
+    model = Ribasim.Model(toml_path)
+    p = model.integrator.p
 
     (; allocation, user_demand, graph, basin) = p
     (; allocation_models, subnetwork_demands, subnetwork_allocateds, mean_input_flows) =

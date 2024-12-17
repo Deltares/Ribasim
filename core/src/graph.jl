@@ -6,6 +6,7 @@ and data of edges (EdgeMetadata):
 [`EdgeMetadata`](@ref)
 """
 function create_graph(db::DB, config::Config)::MetaGraph
+    node_table = get_node_ids(db)
     node_rows = execute(
         db,
         "SELECT node_id, node_type, subnetwork_id FROM Node ORDER BY node_type, node_id",
@@ -40,7 +41,7 @@ function create_graph(db::DB, config::Config)::MetaGraph
         graph_data = nothing,
     )
     for row in node_rows
-        node_id = NodeID(row.node_type, row.node_id, db)
+        node_id = NodeID(row.node_type, row.node_id, node_table)
         # Process allocation network ID
         if ismissing(row.subnetwork_id)
             subnetwork_id = 0
@@ -63,8 +64,8 @@ function create_graph(db::DB, config::Config)::MetaGraph
         catch
             error("Invalid edge type $edge_type.")
         end
-        id_src = NodeID(from_node_type, from_node_id, db)
-        id_dst = NodeID(to_node_type, to_node_id, db)
+        id_src = NodeID(from_node_type, from_node_id, node_table)
+        id_dst = NodeID(to_node_type, to_node_id, node_table)
         edge_metadata =
             EdgeMetadata(; id = edge_id, type = edge_type, edge = (id_src, id_dst))
         if edge_type == EdgeType.flow

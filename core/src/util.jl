@@ -180,11 +180,11 @@ Data is matched based on the node_id, which is sorted.
 """
 function set_static_value!(
     table::NamedTuple,
-    node_id::Vector{Int32},
+    node_id::Vector{NodeID},
     static::StructVector,
 )::NamedTuple
     for (i, id) in enumerate(node_id)
-        idx = findsorted(static.node_id, id)
+        idx = findsorted(static.node_id, Int32(id))
         idx === nothing && continue
         row = static[idx]
         set_table_row!(table, row, i)
@@ -199,7 +199,7 @@ The most recent applicable data is non-NaN data for a given ID that is on or bef
 """
 function set_current_value!(
     table::NamedTuple,
-    node_id::Vector{Int32},
+    node_id::Vector{NodeID},
     time::StructVector,
     t::DateTime,
 )::NamedTuple
@@ -209,7 +209,7 @@ function set_current_value!(
     for (i, id) in enumerate(node_id)
         for (symbol, vector) in pairs(table)
             idx = findlast(
-                row -> row.node_id == id && !ismissing(getproperty(row, symbol)),
+                row -> row.node_id == Int32(id) && !ismissing(getproperty(row, symbol)),
                 pre_table,
             )
             if idx !== nothing

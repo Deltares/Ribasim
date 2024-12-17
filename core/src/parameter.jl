@@ -31,11 +31,16 @@ function NodeType.T(s::Symbol)::NodeType.T
 end
 
 NodeType.T(str::AbstractString) = NodeType.T(Symbol(str))
+NodeType.T(x::NodeType.T) = x
+Base.convert(::Type{NodeType.T}, x::String) = NodeType.T(x)
+Base.convert(::Type{NodeType.T}, x::Symbol) = NodeType.T(x)
+
+SQLite.esc_id(x::NodeType.T) = esc_id(string(x))
 
 """
     NodeID(type::Union{NodeType.T, Symbol, AbstractString}, value::Integer, idx::Int)
-    NodeID(type::Union{NodeType.T, Symbol, AbstractString}, value::Integer, db::DB)
     NodeID(type::Union{NodeType.T, Symbol, AbstractString}, value::Integer, p::Parameters)
+    NodeID(type::Union{NodeType.T, Symbol, AbstractString}, value::Integer, node_ids::Vector{NodeID})
 
 NodeID is a unique identifier for a node in the model, as well as an index into the internal node type struct.
 
@@ -52,42 +57,28 @@ This index can be passed directly, or calculated from the database or parameters
     idx::Int
 end
 
-NodeID(type::Symbol, value::Integer, idx::Int) = NodeID(NodeType.T(type), value, idx)
-NodeID(type::AbstractString, value::Integer, idx::Int) =
-    NodeID(NodeType.T(type), value, idx)
-
-function NodeID(type::Union{Symbol, AbstractString}, value::Integer, db::DB)::NodeID
-    return NodeID(NodeType.T(type), value, db)
+function NodeID(node_type, value::Integer, node_ids::Vector{NodeID})::NodeID
+    node_type = NodeType.T(node_type)
+    index = searchsortedfirst(node_ids, value; by = Int32)
+    if index == lastindex(node_ids) + 1
+        @error "Node ID $node_type #$value is not in the Node table."
+        error("Node ID not found")
+    end
+    node_id = node_ids[index]
+    if node_id.type !== node_type
+        @error "Requested node ID #$value is of type $(node_id.type), not $node_type"
+        error("Node ID is of the wrong type")
+    end
+    return node_id
 end
 
-function NodeID(type::NodeType.T, value::Integer, db::DB)::NodeID
-    node_type_string = string(type)
-    # The index is equal to the number of nodes of the same type with a lower or equal ID
-    idx = only(
-        only(
-            execute(
-                columntable,
-                db,
-                "SELECT COUNT(*) FROM Node WHERE node_type == $(esc_id(node_type_string)) AND node_id <= $value",
-            ),
-        ),
-    )
-    if idx <= 0
-        error("Node ID #$value of type $type is not in the Node table.")
+function NodeID(value::Integer, node_ids::Vector{NodeID})::NodeID
+    index = searchsortedfirst(node_ids, value; by = Int32)
+    if index == lastindex(node_ids) + 1
+        @error "Node ID #$value is not in the Node table."
+        error("Node ID not found")
     end
-    return NodeID(type, value, idx)
-end
-
-function NodeID(value::Integer, db::DB)::NodeID
-    (idx, type) = execute(
-        columntable,
-        db,
-        "SELECT COUNT(*), node_type FROM Node WHERE node_type == (SELECT node_type FROM Node WHERE node_id == $value) AND node_id <= $value",
-    )
-    if only(idx) <= 0
-        error("Node ID #$value is not in the Node table.")
-    end
-    return NodeID(only(type), value, only(idx))
+    return node_ids[index]
 end
 
 Base.Int32(id::NodeID) = id.value
