@@ -741,9 +741,10 @@ function CompoundVariable(
         weight::Float64,
         look_ahead::Float64,
     }[]
+    node_ids = get_node_ids(db)
     # Each row defines a subvariable
     for row in compound_variable_data
-        listen_node_id = NodeID(row.listen_node_id, db)
+        listen_node_id = NodeID(row.listen_node_id, node_ids)
         # Placeholder until actual ref is known
         variable_ref = PreallocationRef(placeholder_vector, 0)
         variable = row.variable
@@ -756,7 +757,7 @@ function CompoundVariable(
     end
 
     # The ID of the node listening to this CompoundVariable
-    node_id = NodeID(node_type, only(unique(compound_variable_data.node_id)), db)
+    node_id = NodeID(node_type, only(unique(compound_variable_data.node_id)), node_ids)
     return CompoundVariable(node_id, subvariables, greater_than)
 end
 
@@ -967,7 +968,8 @@ function PidControl(db::DB, config::Config, graph::MetaGraph)::PidControl
     end
     controlled_basins = collect(controlled_basins)
 
-    listen_node_id = NodeID.(parsed_parameters.listen_node_id, Ref(db))
+    all_node_ids = get_node_ids(db)
+    listen_node_id = NodeID.(parsed_parameters.listen_node_id, Ref(all_node_ids))
 
     return PidControl(;
         node_id = node_ids,

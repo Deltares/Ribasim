@@ -58,7 +58,7 @@ This index can be passed directly, or calculated from the database or parameters
     idx::Int
 end
 
-function NodeID(node_type, value::Integer, node_ids::Vector{NodeID})
+function NodeID(node_type, value::Integer, node_ids::Vector{NodeID})::NodeID
     node_type = NodeType.T(node_type)
     index = searchsortedfirst(node_ids, value; by = Int32)
     if index == lastindex(node_ids) + 1
@@ -71,6 +71,15 @@ function NodeID(node_type, value::Integer, node_ids::Vector{NodeID})
         error("Node ID is of the wrong type")
     end
     return node_id
+end
+
+function NodeID(value::Integer, node_ids::Vector{NodeID})::NodeID
+    index = searchsortedfirst(node_ids, value; by = Int32)
+    if index == lastindex(node_ids) + 1
+        @error "Node ID #$value is not in the Node table."
+        error("Node ID not found")
+    end
+    return node_ids[index]
 end
 
 Base.Int32(id::NodeID) = id.value
