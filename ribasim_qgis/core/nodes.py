@@ -348,8 +348,8 @@ class BasinTime(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("time", QVariant.DateTime),
             QgsField("node_id", QVariant.Int),
+            QgsField("time", QVariant.DateTime),
             QgsField("drainage", QVariant.Double),
             QgsField("potential_evaporation", QVariant.Double),
             QgsField("infiltration", QVariant.Double),
@@ -369,8 +369,8 @@ class BasinConcentrationExternal(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("time", QVariant.DateTime),
             QgsField("node_id", QVariant.Int),
+            QgsField("time", QVariant.DateTime),
             QgsField("substance", QVariant.String),
             QgsField("concentration", QVariant.Double),
         ]
@@ -388,8 +388,8 @@ class BasinConcentrationState(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("time", QVariant.DateTime),
             QgsField("node_id", QVariant.Int),
+            QgsField("time", QVariant.DateTime),
             QgsField("substance", QVariant.String),
             QgsField("concentration", QVariant.Double),
         ]
@@ -407,15 +407,15 @@ class BasinConcentration(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("time", QVariant.DateTime),
             QgsField("node_id", QVariant.Int),
+            QgsField("time", QVariant.DateTime),
             QgsField("substance", QVariant.String),
             QgsField("drainage", QVariant.Double),
             QgsField("precipitation", QVariant.Double),
         ]
 
 
-class BasinSubgridLevel(Input):
+class BasinSubgrid(Input):
     @classmethod
     def input_type(cls) -> str:
         return "Basin / subgrid"
@@ -429,6 +429,26 @@ class BasinSubgridLevel(Input):
         return [
             QgsField("subgrid_id", QVariant.Int),
             QgsField("node_id", QVariant.Int),
+            QgsField("basin_level", QVariant.Double),
+            QgsField("subgrid_level", QVariant.Double),
+        ]
+
+
+class BasinSubgridTime(Input):
+    @classmethod
+    def input_type(cls) -> str:
+        return "Basin / subgrid_time"
+
+    @classmethod
+    def geometry_type(cls) -> str:
+        return "No Geometry"
+
+    @classmethod
+    def attributes(cls) -> list[QgsField]:
+        return [
+            QgsField("subgrid_id", QVariant.Int),
+            QgsField("node_id", QVariant.Int),
+            QgsField("time", QVariant.DateTime),
             QgsField("basin_level", QVariant.Double),
             QgsField("subgrid_level", QVariant.Double),
         ]
@@ -505,8 +525,8 @@ class TabulatedRatingCurveTime(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("time", QVariant.DateTime),
             QgsField("node_id", QVariant.Int),
+            QgsField("time", QVariant.DateTime),
             QgsField("level", QVariant.Double),
             QgsField("flow_rate", QVariant.Double),
         ]
@@ -583,7 +603,6 @@ class LevelBoundaryTime(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("time", QVariant.DateTime),
             QgsField("node_id", QVariant.Int),
             QgsField("time", QVariant.DateTime),
             QgsField("level", QVariant.Double),
@@ -663,8 +682,8 @@ class FlowBoundaryTime(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("time", QVariant.DateTime),
             QgsField("node_id", QVariant.Int),
+            QgsField("time", QVariant.DateTime),
             QgsField("flow_rate", QVariant.Double),
         ]
 

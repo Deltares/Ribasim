@@ -8,6 +8,7 @@ from ribasim.schemas import (
     BasinStateSchema,
     BasinStaticSchema,
     BasinSubgridSchema,
+    BasinSubgridTimeSchema,
     BasinTimeSchema,
 )
 
@@ -18,6 +19,7 @@ __all__ = [
     "State",
     "Static",
     "Subgrid",
+    "SubgridTime",
     "Time",
 ]
 
@@ -39,6 +41,10 @@ class Profile(TableModel[BasinProfileSchema]):
 
 
 class Subgrid(TableModel[BasinSubgridSchema]):
+    pass
+
+
+class SubgridTime(TableModel[BasinSubgridTimeSchema]):
     pass
 
 

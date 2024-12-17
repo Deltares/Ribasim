@@ -10,6 +10,7 @@
 @schema "ribasim.basin.profile" BasinProfile
 @schema "ribasim.basin.state" BasinState
 @schema "ribasim.basin.subgrid" BasinSubgrid
+@schema "ribasim.basin.subgridtime" BasinSubgridTime
 @schema "ribasim.basin.concentration" BasinConcentration
 @schema "ribasim.basin.concentrationexternal" BasinConcentrationExternal
 @schema "ribasim.basin.concentrationstate" BasinConcentrationState
@@ -58,8 +59,12 @@ function nodetype(
     type_string = string(T)
     elements = split(type_string, '.'; limit = 3)
     last_element = last(elements)
+    # Special case last elements that need an underscore
     if startswith(last_element, "concentration") && length(last_element) > 13
         elements[end] = "concentration_$(last_element[14:end])"
+    end
+    if last_element == "subgridtime"
+        elements[end] = "subgrid_time"
     end
     if isnode(sv)
         n = elements[2]
@@ -146,6 +151,14 @@ end
 @version BasinSubgridV1 begin
     subgrid_id::Int32
     node_id::Int32
+    basin_level::Float64
+    subgrid_level::Float64
+end
+
+@version BasinSubgridTimeV1 begin
+    subgrid_id::Int32
+    node_id::Int32
+    time::DateTime
     basin_level::Float64
     subgrid_level::Float64
 end
