@@ -657,7 +657,7 @@ function get_variable_ref(
                 PreallocationRef(cache(1), flow_idx; from_du = true)
             end
         else
-            node = getfield(p, snake_case(Symbol(node_id.type)))
+            node = getfield(p, snake_case(node_id))
             PreallocationRef(node.flow_rate, node_id.idx)
         end
     else
@@ -814,7 +814,7 @@ function collect_control_mappings!(p)::Nothing
 
     for node_type in instances(NodeType.T)
         node_type == NodeType.Terminal && continue
-        node = getfield(p, Symbol(snake_case(string(node_type))))
+        node = getfield(p, snake_case(node_type))
         if hasfield(typeof(node), :control_mapping)
             control_mappings[node_type] = node.control_mapping
         end
@@ -1096,7 +1096,7 @@ function get_state_index(
     component_name = if id.type == NodeType.UserDemand
         inflow ? :user_demand_inflow : :user_demand_outflow
     else
-        snake_case(Symbol(id.type))
+        snake_case(id)
     end
     for (comp, range) in pairs(NT)
         if comp == component_name
