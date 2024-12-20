@@ -1258,7 +1258,7 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
 
     # Since not all Basins need to have subgrids, don't enforce completeness.
     _, _, _, valid =
-        static_and_time_node_ids(db, static, time, "Basin"; is_complete = false)
+        static_and_time_node_ids(db, static, time, NodeType.Basin; is_complete = false)
     if !valid
         error("Problems encountered when parsing Subgrid static and time node IDs.")
     end
