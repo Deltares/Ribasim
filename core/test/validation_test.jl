@@ -465,20 +465,14 @@ end
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
 
-    cfg = Ribasim.Config(toml_path)
-    db_path = Ribasim.database_path(cfg)
-    db = SQLite.DB(db_path)
+    v = Ribasim.get_node_ids(toml_path)
 
     logger = TestLogger()
     with_logger(logger) do
-        @test_throws "Node ID #1 of type PidControl is not in the Node table." Ribasim.NodeID(
-            :PidControl,
-            1,
-            db,
-        )
+        @test_throws "Node ID is of the wrong type" Ribasim.NodeID(:PidControl, 1, v)
     end
 
     with_logger(logger) do
-        @test_throws "Node ID #20 is not in the Node table." Ribasim.NodeID(20, db)
+        @test_throws "Node ID not found" Ribasim.NodeID(:Pump, 20, v)
     end
 end

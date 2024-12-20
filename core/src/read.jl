@@ -32,9 +32,9 @@ function parse_static_and_time(
     # of the current type
     vals_out = []
 
-    node_type_string = split(string(node_type), '.')[end]
-    ids = get_ids(db, node_type_string)
-    node_ids = NodeID.(node_type_string, ids, eachindex(ids))
+    node_type_string = String(split(string(node_type), '.')[end])
+    node_ids = get_node_ids(db, node_type_string)
+    ids = Int32.(node_ids)
     n_nodes = length(node_ids)
 
     # Initialize the vectors for the output
@@ -201,15 +201,15 @@ function static_and_time_node_ids(
     db::DB,
     static::StructVector,
     time::StructVector,
-    node_type::String;
+    node_type::NodeType.T,
     is_complete::Bool = true,
 )::Tuple{Set{NodeID}, Set{NodeID}, Vector{NodeID}, Bool}
-    ids = get_ids(db, node_type)
+    node_ids = get_node_ids(db, node_type)
+    ids = Int32.(node_ids)
     idx = searchsortedfirst.(Ref(ids), static.node_id)
     static_node_ids = Set(NodeID.(Ref(node_type), static.node_id, idx))
     idx = searchsortedfirst.(Ref(ids), time.node_id)
     time_node_ids = Set(NodeID.(Ref(node_type), time.node_id, idx))
-    node_ids = NodeID.(Ref(node_type), ids, eachindex(ids))
     doubles = intersect(static_node_ids, time_node_ids)
     errors = false
     if !isempty(doubles)
@@ -298,7 +298,7 @@ function TabulatedRatingCurve(
     time = load_structvector(db, config, TabulatedRatingCurveTimeV1)
 
     static_node_ids, time_node_ids, node_ids, valid =
-        static_and_time_node_ids(db, static, time, "TabulatedRatingCurve")
+        static_and_time_node_ids(db, static, time, NodeType.TabulatedRatingCurve)
 
     if !valid
         error(
@@ -429,7 +429,8 @@ function LevelBoundary(db::DB, config::Config)::LevelBoundary
     time = load_structvector(db, config, LevelBoundaryTimeV1)
     concentration_time = load_structvector(db, config, LevelBoundaryConcentrationV1)
 
-    _, _, node_ids, valid = static_and_time_node_ids(db, static, time, "LevelBoundary")
+    _, _, node_ids, valid =
+        static_and_time_node_ids(db, static, time, NodeType.LevelBoundary)
 
     if !valid
         error("Problems encountered when parsing LevelBoundary static and time node IDs.")
@@ -463,7 +464,8 @@ function FlowBoundary(db::DB, config::Config, graph::MetaGraph)::FlowBoundary
     time = load_structvector(db, config, FlowBoundaryTimeV1)
     concentration_time = load_structvector(db, config, FlowBoundaryConcentrationV1)
 
-    _, _, node_ids, valid = static_and_time_node_ids(db, static, time, "FlowBoundary")
+    _, _, node_ids, valid =
+        static_and_time_node_ids(db, static, time, NodeType.FlowBoundary)
 
     if !valid
         error("Problems encountered when parsing FlowBoundary static and time node IDs.")
@@ -578,8 +580,8 @@ function Outlet(db::DB, config::Config, graph::MetaGraph)::Outlet
 end
 
 function Terminal(db::DB, config::Config)::Terminal
-    node_id = get_ids(db, "Terminal")
-    return Terminal(NodeID.(NodeType.Terminal, node_id, eachindex(node_id)))
+    node_id = get_node_ids(db, NodeType.Terminal)
+    return Terminal(node_id)
 end
 
 function ConcentrationData(
@@ -673,7 +675,7 @@ function ConcentrationData(
 end
 
 function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
-    node_id = get_ids(db, "Basin")
+    node_id = get_node_ids(db, NodeType.Basin)
     n = length(node_id)
 
     # both static and time are optional, but we need fallback defaults
@@ -693,9 +695,6 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     check_no_nans(table, "Basin")
 
     vertical_flux = ComponentVector(; table...)
-
-    # Node IDs
-    node_id = NodeID.(NodeType.Basin, node_id, eachindex(node_id))
 
     # Profiles
     area, level = create_storage_tables(db, config)
@@ -753,9 +752,10 @@ function CompoundVariable(
         weight::Float64,
         look_ahead::Float64,
     }[]
+    node_ids = get_node_ids(db)
     # Each row defines a subvariable
     for row in compound_variable_data
-        listen_node_id = NodeID(row.listen_node_id, db)
+        listen_node_id = NodeID(row.listen_node_id, node_ids)
         # Placeholder until actual ref is known
         variable_ref = PreallocationRef(placeholder_vector, 0)
         variable = row.variable
@@ -768,7 +768,7 @@ function CompoundVariable(
     end
 
     # The ID of the node listening to this CompoundVariable
-    node_id = NodeID(node_type, only(unique(compound_variable_data.node_id)), db)
+    node_id = NodeID(node_type, only(unique(compound_variable_data.node_id)), node_ids)
     return CompoundVariable(node_id, subvariables, greater_than)
 end
 
@@ -822,8 +822,8 @@ function DiscreteControl(db::DB, config::Config, graph::MetaGraph)::DiscreteCont
     condition = load_structvector(db, config, DiscreteControlConditionV1)
     compound_variable = load_structvector(db, config, DiscreteControlVariableV1)
 
-    ids = get_ids(db, "DiscreteControl")
-    node_id = NodeID.(:DiscreteControl, ids, eachindex(ids))
+    node_id = get_node_ids(db, NodeType.DiscreteControl)
+    ids = Int32.(node_id)
     compound_variables, valid =
         parse_variables_and_conditions(compound_variable, condition, ids, db, graph)
 
@@ -924,8 +924,8 @@ end
 function ContinuousControl(db::DB, config::Config, graph::MetaGraph)::ContinuousControl
     compound_variable = load_structvector(db, config, ContinuousControlVariableV1)
 
-    ids = get_ids(db, "ContinuousControl")
-    node_id = NodeID.(:ContinuousControl, ids, eachindex(ids))
+    node_id = get_node_ids(db, NodeType.ContinuousControl)
+    ids = Int32.(node_id)
 
     # Avoid using `function` as a variable name as that is recognized as a keyword
     func, controlled_variable, errors = continuous_control_functions(db, config, ids)
@@ -951,7 +951,7 @@ function PidControl(db::DB, config::Config, graph::MetaGraph)::PidControl
     static = load_structvector(db, config, PidControlStaticV1)
     time = load_structvector(db, config, PidControlTimeV1)
 
-    _, _, node_ids, valid = static_and_time_node_ids(db, static, time, "PidControl")
+    _, _, node_ids, valid = static_and_time_node_ids(db, static, time, NodeType.PidControl)
 
     if !valid
         error("Problems encountered when parsing PidControl static and time node IDs.")
@@ -979,7 +979,8 @@ function PidControl(db::DB, config::Config, graph::MetaGraph)::PidControl
     end
     controlled_basins = collect(controlled_basins)
 
-    listen_node_id = NodeID.(parsed_parameters.listen_node_id, Ref(db))
+    all_node_ids = get_node_ids(db)
+    listen_node_id = NodeID.(parsed_parameters.listen_node_id, Ref(all_node_ids))
 
     return PidControl(;
         node_id = node_ids,
@@ -1098,9 +1099,9 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)::UserDemand
     static = load_structvector(db, config, UserDemandStaticV1)
     time = load_structvector(db, config, UserDemandTimeV1)
     concentration_time = load_structvector(db, config, UserDemandConcentrationV1)
-    ids = get_ids(db, "UserDemand")
 
-    _, _, node_ids, valid = static_and_time_node_ids(db, static, time, "UserDemand")
+    _, _, node_ids, valid = static_and_time_node_ids(db, static, time, NodeType.UserDemand)
+    ids = Int32.(node_ids)
 
     if !valid
         error("Problems encountered when parsing UserDemand static and time node IDs.")
@@ -1254,6 +1255,7 @@ end
 function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
     time = load_structvector(db, config, BasinSubgridTimeV1)
     static = load_structvector(db, config, BasinSubgridV1)
+    node_table = get_node_ids(db, NodeType.Basin)
 
     # Since not all Basins need to have subgrids, don't enforce completeness.
     _, _, _, valid =
@@ -1506,9 +1508,50 @@ function Parameters(db::DB, config::Config)::Parameters
     return p
 end
 
-function get_ids(db::DB, nodetype)::Vector{Int32}
-    sql = "SELECT node_id FROM Node WHERE node_type = $(esc_id(nodetype)) ORDER BY node_id"
+function get_node_ids_int32(db::DB, node_type)::Vector{Int32}
+    sql = "SELECT node_id FROM Node WHERE node_type = $(esc_id(node_type)) ORDER BY node_id"
     return only(execute(columntable, db, sql))
+end
+
+function get_node_ids_types(
+    db::DB,
+)::@NamedTuple{node_id::Vector{Int32}, node_type::Vector{NodeType.T}}
+    sql = "SELECT node_id, node_type FROM Node ORDER BY node_id"
+    table = execute(columntable, db, sql)
+    # convert from String to NodeType
+    node_type = NodeType.T.(table.node_type)
+    return (; table.node_id, node_type)
+end
+
+function get_node_ids(db::DB)::Vector{NodeID}
+    nt = get_node_ids_types(db)
+    node_ids = Vector{Ribasim.NodeID}(undef, length(nt.node_id))
+    count = counter(Ribasim.NodeType.T)
+    for (i, (; node_id, node_type)) in enumerate(Tables.rows(nt))
+        index = inc!(count, node_type)
+        node_ids[i] = NodeID(node_type, node_id, index)
+    end
+    return node_ids
+end
+
+# Convenience method for tests
+function get_node_ids(toml_path::String)::Vector{NodeID}
+    cfg = Config(toml_path)
+    db_path = database_path(cfg)
+    db = SQLite.DB(db_path)
+    node_ids = get_node_ids(db)
+    close(db)
+    return node_ids
+end
+
+function get_node_ids(db::DB, node_type)::Vector{NodeID}
+    node_type = NodeType.T(node_type)
+    node_ints = get_node_ids_int32(db, node_type)
+    node_ids = Vector{Ribasim.NodeID}(undef, length(node_ints))
+    for (index, node_int) in enumerate(node_ints)
+        node_ids[index] = NodeID(node_type, node_int, index)
+    end
+    return node_ids
 end
 
 function exists(db::DB, tablename::String)
