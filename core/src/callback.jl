@@ -190,15 +190,15 @@ function update_concentrations!(u, t, integrator)::Nothing
     # of the basins after processing inflows only
     cumulative_in .= 0.0
 
-    mass .+= concentration[1, :, :] .* vertical_flux.drainage * dt
+    @views mass .+= concentration[1, :, :] .* vertical_flux.drainage * dt
     basin.concentration_data.cumulative_in .= vertical_flux.drainage * dt
 
     # Precipitation depends on fixed area
     for node_id in basin.node_id
         fixed_area = basin_areas(basin, node_id.idx)[end]
         added_precipitation = fixed_area * vertical_flux.precipitation[node_id.idx] * dt
-
-        mass[node_id.idx, :] .+= concentration[2, node_id.idx, :] .* added_precipitation
+        @views mass[node_id.idx, :] .+=
+            concentration[2, node_id.idx, :] .* added_precipitation
         cumulative_in[node_id.idx] += added_precipitation
     end
 
@@ -212,7 +212,8 @@ function update_concentrations!(u, t, integrator)::Nothing
         if active
             outflow_id = edge[1].edge[2]
             volume = integral(flow_rate, tprev, t)
-            mass[outflow_id.idx, :] .+= flow_boundary.concentration[id.idx, :] .* volume
+            @views mass[outflow_id.idx, :] .+=
+                flow_boundary.concentration[id.idx, :] .* volume
             cumulative_in[outflow_id.idx] += volume
         end
     end
