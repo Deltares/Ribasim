@@ -115,7 +115,7 @@ const ScalarInterpolation = LinearInterpolation{
     (1,),
 }
 
-"ConstantInterpolation from a Float64 to an Int, used to look up indices"
+"ConstantInterpolation from a Float64 to an Int, used to look up indices over time"
 const IndexLookup =
     ConstantInterpolation{Vector{Int64}, Vector{Float64}, Vector{Float64}, Int64, (1,)}
 
@@ -881,9 +881,11 @@ end
 
 "Subgrid linearly interpolates basin levels."
 @kwdef struct Subgrid
-    # level of each subgrid (static and dynamic) ordered by subgrid_id
+    # current level of each subgrid (static and dynamic) ordered by subgrid_id
     level::Vector{Float64}
-    # static
+
+    # Static part
+    # Static subgrid ids
     subgrid_id_static::Vector{Int32}
     # index into the basin.current_level vector for each static subgrid_id
     basin_index_static::Vector{Int}
@@ -891,7 +893,9 @@ end
     level_index_static::Vector{Int}
     # per subgrid one relation
     interpolations_static::Vector{ScalarInterpolation}
-    # dynamic
+
+    # Dynamic part
+    # Dynamic subgrid ids
     subgrid_id_time::Vector{Int32}
     # index into the basin.current_level vector for each dynamic subgrid_id
     basin_index_time::Vector{Int}
