@@ -201,7 +201,7 @@ function static_and_time_node_ids(
     db::DB,
     static::StructVector,
     time::StructVector,
-    node_type::NodeType.T,
+    node_type::NodeType.T;
     is_complete::Bool = true,
 )::Tuple{Set{NodeID}, Set{NodeID}, Vector{NodeID}, Bool}
     node_ids = get_node_ids(db, node_type)
