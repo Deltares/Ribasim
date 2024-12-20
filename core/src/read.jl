@@ -1351,7 +1351,6 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
         push_lookup!(current_interpolation_index, lookup_index, lookup_time)
     end
 
-    has_error && error("Invalid Basin / subgrid_time table.")
     level = fill(NaN, length(subgrid_id_static) + length(subgrid_id_time))
 
     # Find the level indices

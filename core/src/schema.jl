@@ -62,8 +62,7 @@ function nodetype(
     # Special case last elements that need an underscore
     if startswith(last_element, "concentration") && length(last_element) > 13
         elements[end] = "concentration_$(last_element[14:end])"
-    end
-    if last_element == "subgridtime"
+    elseif last_element == "subgridtime"
         elements[end] = "subgrid_time"
     end
     if isnode(sv)

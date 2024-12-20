@@ -597,6 +597,7 @@ end
     @test nrow(df) == ntime * 2
     @test df.subgrid_id == repeat(1:2; outer = ntime)
     @test extrema(df.time) == (DateTime(2020), DateTime(2021))
+    @test allunique(df.time[1:2:(end - 1)])
     @test all(df.subgrid_level[1:2] .== 0.01)
 
     # After a month the h(h) of subgrid_id 2 increases by a meter
