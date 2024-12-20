@@ -121,6 +121,25 @@ class BasinStaticSchema(_BaseSchema):
     )
 
 
+class BasinSubgridTimeSchema(_BaseSchema):
+    fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
+    subgrid_id: Series[Annotated[pd.ArrowDtype, pyarrow.int32()]] = pa.Field(
+        nullable=False
+    )
+    node_id: Series[Annotated[pd.ArrowDtype, pyarrow.int32()]] = pa.Field(
+        nullable=False, default=0
+    )
+    time: Series[Annotated[pd.ArrowDtype, pyarrow.timestamp("ms")]] = pa.Field(
+        nullable=False
+    )
+    basin_level: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
+        nullable=False
+    )
+    subgrid_level: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
+        nullable=False
+    )
+
+
 class BasinSubgridSchema(_BaseSchema):
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     subgrid_id: Series[Annotated[pd.ArrowDtype, pyarrow.int32()]] = pa.Field(

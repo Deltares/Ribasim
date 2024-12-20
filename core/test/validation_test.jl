@@ -285,30 +285,24 @@ end
     using Ribasim: valid_subgrid, NodeID
     using Logging
 
-    node_to_basin = Dict(NodeID(:Basin, 9, 1) => 1)
+    node_to_basin = Dict(Int32(9) => 1)
 
     logger = TestLogger()
     with_logger(logger) do
-        @test !valid_subgrid(
-            Int32(1),
-            NodeID(:Basin, 10, 1),
-            node_to_basin,
-            [-1.0, 0.0],
-            [-1.0, 0.0],
-        )
+        @test !valid_subgrid(Int32(1), Int32(10), node_to_basin, [-1.0, 0.0], [-1.0, 0.0])
     end
 
     @test length(logger.logs) == 1
     @test logger.logs[1].level == Error
     @test logger.logs[1].message == "The node_id of the Basin / subgrid does not exist."
-    @test logger.logs[1].kwargs[:node_id] == NodeID(:Basin, 10, 1)
+    @test logger.logs[1].kwargs[:node_id] == Int32(10)
     @test logger.logs[1].kwargs[:subgrid_id] == 1
 
     logger = TestLogger()
     with_logger(logger) do
         @test !valid_subgrid(
             Int32(1),
-            NodeID(:Basin, 9, 1),
+            Int32(9),
             node_to_basin,
             [-1.0, 0.0, 0.0],
             [-1.0, 0.0, 0.0],
