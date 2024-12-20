@@ -34,25 +34,30 @@ function create_callbacks(
         FunctionCallingCallback(update_cumulative_flows!; func_start = false)
     push!(callbacks, cumulative_flows_cb)
 
-    # Update concentrations
-    concentrations_cb = FunctionCallingCallback(update_concentrations!; func_start = false)
-    push!(callbacks, concentrations_cb)
+    if config.experimental.concentration
+        # Update concentrations
+        concentrations_cb =
+            FunctionCallingCallback(update_concentrations!; func_start = false)
+        push!(callbacks, concentrations_cb)
+    end
 
     # Update Basin forcings
     tstops = get_tstops(basin.time.time, starttime)
     basin_cb = PresetTimeCallback(tstops, update_basin!; save_positions = (false, false))
     push!(callbacks, basin_cb)
 
-    # Update boundary concentrations
-    for (boundary, func) in (
-        (basin, update_basin_conc!),
-        (flow_boundary, update_flowb_conc!),
-        (level_boundary, update_levelb_conc!),
-        (user_demand, update_userd_conc!),
-    )
-        tstops = get_tstops(boundary.concentration_time.time, starttime)
-        conc_cb = PresetTimeCallback(tstops, func; save_positions = (false, false))
-        push!(callbacks, conc_cb)
+    if config.experimental.concentration
+        # Update boundary concentrations
+        for (boundary, func) in (
+            (basin, update_basin_conc!),
+            (flow_boundary, update_flowb_conc!),
+            (level_boundary, update_levelb_conc!),
+            (user_demand, update_userd_conc!),
+        )
+            tstops = get_tstops(boundary.concentration_time.time, starttime)
+            conc_cb = PresetTimeCallback(tstops, func; save_positions = (false, false))
+            push!(callbacks, conc_cb)
+        end
     end
 
     # Update TabulatedRatingCurve Q(h) relationships
