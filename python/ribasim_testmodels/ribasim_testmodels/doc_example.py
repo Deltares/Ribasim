@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from ribasim import Model, Node
+from ribasim.config import Experimental
 from ribasim.nodes import (
     basin,
     outlet,
@@ -12,7 +13,12 @@ from shapely.geometry import Point
 
 def local_pidcontrolled_cascade_model():
     """Demonstrating model for the cascade polder project from our partner."""
-    model = Model(starttime="2020-01-01", endtime="2021-01-01", crs="EPSG:28992")
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2021-01-01",
+        crs="EPSG:28992",
+        experimental=Experimental(concentration=True),
+    )
 
     # Set up basins
     time = pd.date_range(model.starttime, model.endtime)

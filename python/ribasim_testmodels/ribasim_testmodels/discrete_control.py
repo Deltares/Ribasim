@@ -25,6 +25,7 @@ def pump_discrete_control_model() -> Model:
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
+        experimental=Experimental(concentration=True),
     )
 
     model.basin.add(
@@ -124,6 +125,7 @@ def flow_condition_model() -> Model:
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
+        experimental=Experimental(concentration=True),
     )
 
     model.flow_boundary.add(
@@ -187,6 +189,7 @@ def level_boundary_condition_model() -> Model:
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
+        experimental=Experimental(concentration=True),
     )
 
     model.level_boundary.add(
@@ -261,6 +264,7 @@ def tabulated_rating_curve_control_model() -> Model:
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
+        experimental=Experimental(concentration=True),
     )
 
     model.basin.add(
@@ -323,6 +327,7 @@ def compound_variable_condition_model() -> Model:
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
+        experimental=Experimental(concentration=True),
     )
 
     model.basin.add(
@@ -381,6 +386,7 @@ def level_range_model() -> Model:
         endtime="2021-01-01",
         crs="EPSG:28992",
         solver=Solver(abstol=1e-6, reltol=1e-5),
+        experimental=Experimental(concentration=True),
     )
 
     model.basin.add(
@@ -469,6 +475,7 @@ def connector_node_flow_condition_model() -> Model:
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
+        experimental=Experimental(concentration=True),
     )
 
     model.basin.add(
@@ -519,6 +526,7 @@ def concentration_condition_model() -> Model:
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
+        experimental=Experimental(concentration=True),
     )
 
     model.basin.add(

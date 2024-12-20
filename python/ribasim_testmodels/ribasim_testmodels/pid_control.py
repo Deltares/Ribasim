@@ -1,4 +1,4 @@
-from ribasim.config import Node
+from ribasim.config import Experimental, Node
 from ribasim.model import Model
 from ribasim.nodes import (
     basin,
@@ -19,6 +19,7 @@ def pid_control_model() -> Model:
         starttime="2020-01-01",
         endtime="2020-12-01",
         crs="EPSG:28992",
+        experimental=Experimental(concentration=True),
     )
 
     model.flow_boundary.add(
@@ -90,6 +91,7 @@ def discrete_control_of_pid_control_model() -> Model:
         starttime="2020-01-01",
         endtime="2020-12-01",
         crs="EPSG:28992",
+        experimental=Experimental(concentration=True),
     )
 
     model.level_boundary.add(

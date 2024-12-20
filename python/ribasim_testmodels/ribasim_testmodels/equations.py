@@ -1,7 +1,7 @@
 from typing import Any
 
 import numpy as np
-from ribasim.config import Node, Solver
+from ribasim.config import Experimental, Node, Solver
 from ribasim.input_base import TableModel
 from ribasim.model import Model
 from ribasim.nodes import (
@@ -23,6 +23,7 @@ def linear_resistance_model() -> Model:
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
+        experimental=Experimental(concentration=True),
     )
 
     model.basin.add(
@@ -53,6 +54,7 @@ def rating_curve_model() -> Model:
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
+        experimental=Experimental(concentration=True),
     )
 
     model.basin.add(
@@ -91,6 +93,7 @@ def manning_resistance_model() -> Model:
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
+        experimental=Experimental(concentration=True),
     )
 
     basin_profile = basin.Profile(area=[0.01, 100.0, 100.0], level=[0.0, 1.0, 2.0])
@@ -125,6 +128,7 @@ def misc_nodes_model() -> Model:
         endtime="2021-01-01",
         crs="EPSG:28992",
         solver=Solver(dt=24 * 60 * 60, algorithm="Euler"),
+        experimental=Experimental(concentration=True),
     )
 
     basin_shared: list[TableModel[Any]] = [
@@ -158,7 +162,10 @@ def misc_nodes_model() -> Model:
 def pid_control_equation_model() -> Model:
     """Set up a model with pid control for an analytical solution test."""
     model = Model(
-        starttime="2020-01-01", endtime="2020-01-01 00:05:00", crs="EPSG:28992"
+        starttime="2020-01-01",
+        endtime="2020-01-01 00:05:00",
+        crs="EPSG:28992",
+        experimental=Experimental(concentration=True),
     )
     model.basin.add(
         Node(1, Point(0, 0)),

@@ -1,6 +1,6 @@
 import numpy as np
 import ribasim
-from ribasim.config import Node
+from ribasim.config import Experimental, Node
 from ribasim.nodes import (
     basin,
     flow_boundary,
@@ -23,6 +23,7 @@ def backwater_model():
         endtime="2021-01-01",
         crs="EPSG:28992",
         solver=ribasim.Solver(autodiff=True),
+        experimental=Experimental(concentration=True),
     )
 
     model.flow_boundary.add(
