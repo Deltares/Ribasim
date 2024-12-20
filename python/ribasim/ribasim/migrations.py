@@ -8,7 +8,7 @@ from pandas import DataFrame
 
 
 def nodeschema_migration(gdf: GeoDataFrame, schema_version: int) -> GeoDataFrame:
-    if "node_id" in gdf.columns and schema_version == 0:
+    if schema_version == 0 and "node_id" in gdf.columns:
         warnings.warn("Migrating outdated Node table.", UserWarning)
         assert gdf["node_id"].is_unique, "Node IDs have to be unique."
         gdf.set_index("node_id", inplace=True)
@@ -27,7 +27,7 @@ def edgeschema_migration(gdf: GeoDataFrame, schema_version: int) -> GeoDataFrame
         warnings.warn("Migrating outdated Edge table.", UserWarning)
         assert gdf["edge_id"].is_unique, "Edge IDs have to be unique."
         gdf.set_index("edge_id", inplace=True)
-    if "subnetwork_id" in gdf.columns:
+    if schema_version < 3 and "subnetwork_id" in gdf.columns:
         warnings.warn("Migrating outdated Edge table.", UserWarning)
         gdf.drop(columns="subnetwork_id", inplace=True, errors="ignore")
 
