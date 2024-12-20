@@ -1397,7 +1397,7 @@ function Parameters(db::DB, config::Config)::Parameters
     return p
 end
 
-function get_node_ints(db::DB, node_type)::Vector{Int32}
+function get_node_ids_int32(db::DB, node_type)::Vector{Int32}
     sql = "SELECT node_id FROM Node WHERE node_type = $(esc_id(node_type)) ORDER BY node_id"
     return only(execute(columntable, db, sql))
 end
@@ -1435,7 +1435,7 @@ end
 
 function get_node_ids(db::DB, node_type)::Vector{NodeID}
     node_type = NodeType.T(node_type)
-    node_ints = get_node_ints(db, node_type)
+    node_ints = get_node_ids_int32(db, node_type)
     node_ids = Vector{Ribasim.NodeID}(undef, length(node_ints))
     for (index, node_int) in enumerate(node_ints)
         node_ids[index] = NodeID(node_type, node_int, index)
