@@ -395,7 +395,7 @@ Generally, to create physically meaningful subgrid water levels, the subgrid tab
 
 This table is the transient form of the Subgrid table.
 The only difference is that a time column is added.
-The table must by sorted by time, and per time it must be sorted by `subgrid_id`.
+The table must by sorted by `subgrid_id`, and per `subgrid_id` it must be sorted by `time`.
 With this the subgrid relations can be updated over time.
 Note that a `node_id` can be either in this table or in the static one, but not both.
 That means for each Basin all subgrid relations are either static or dynamic.

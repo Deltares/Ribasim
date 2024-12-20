@@ -1255,7 +1255,6 @@ end
 function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
     time = load_structvector(db, config, BasinSubgridTimeV1)
     static = load_structvector(db, config, BasinSubgridV1)
-    node_table = get_node_ids(db, NodeType.Basin)
 
     # Since not all Basins need to have subgrids, don't enforce completeness.
     _, _, _, valid =
@@ -1271,6 +1270,8 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
     basin_index_static = Int[]
     interpolations_static = ScalarInterpolation[]
 
+    # In the static table, each subgrid ID has 1 h(h) relation. We process one relation
+    # at a time and push the results to the respective vectors.
     for group in IterTools.groupby(row -> row.subgrid_id, static)
         subgrid_id = first(getproperty.(group, :subgrid_id))
         node_id = first(getproperty.(group, :node_id))
@@ -1311,6 +1312,11 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
     lookup_index = Int[]
 
     interpolation_index = 0
+    # In the time table, each subgrid ID can have a different number of relations over time.
+    # We group over the combination of subgrid ID and time such that this group has 1 h(h) relation.
+    # We process one relation at a time and push the results to the respective vectors.
+    # Some vectors are pushed only when the subgrid_id has changed. This can be done in
+    # sequence since it is first sorted by subgrid_id and then by time.
     for group in IterTools.groupby(row -> (row.subgrid_id, row.time), time)
         interpolation_index += 1
         subgrid_id = first(getproperty.(group, :subgrid_id))
@@ -1332,7 +1338,7 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
             extrapolate = true,
             cache_parameters = true,
         )
-        # # These should only be pushed when the subgrid_id has changed
+        # These should only be pushed when the subgrid_id has changed
         if subgrid_id_time[end] != subgrid_id
             # Push the completed index_lookup of the previous subgrid_id
             push_lookup!(current_interpolation_index, lookup_index, lookup_time)
