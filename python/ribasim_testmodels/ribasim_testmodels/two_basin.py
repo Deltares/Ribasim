@@ -1,6 +1,6 @@
 from typing import Any
 
-from ribasim.config import Node, Results
+from ribasim.config import Experimental, Node, Results
 from ribasim.input_base import TableModel
 from ribasim.model import Model
 from ribasim.nodes import basin, flow_boundary, tabulated_rating_curve
@@ -22,6 +22,7 @@ def two_basin_model() -> Model:
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
+        experimental=Experimental(concentration=True),
         results=Results(subgrid=True),
     )
 

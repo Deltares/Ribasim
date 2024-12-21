@@ -274,6 +274,7 @@ def tabulated_rating_curve_model() -> ribasim.Model:
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
+        experimental=Experimental(concentration=True),
     )
 
     # Setup tabulated rating curve:
@@ -352,6 +353,7 @@ def outlet_model():
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
+        experimental=Experimental(concentration=True),
     )
 
     # Set up the basins

@@ -2,7 +2,7 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-from ribasim.config import Allocation, Node, Solver
+from ribasim.config import Allocation, Experimental, Node, Solver
 from ribasim.input_base import TableModel
 from ribasim.model import Model
 from ribasim.nodes import (
@@ -27,6 +27,7 @@ def user_demand_model() -> Model:
         endtime="2021-01-01",
         crs="EPSG:28992",
         solver=Solver(algorithm="Tsit5"),
+        experimental=Experimental(concentration=True),
     )
 
     model.basin.add(
@@ -97,6 +98,7 @@ def subnetwork_model() -> Model:
         endtime="2020-04-01",
         crs="EPSG:28992",
         allocation=Allocation(use_allocation=True, timestep=86400),
+        experimental=Experimental(concentration=True),
     )
 
     basin_data: list[TableModel[Any]] = [
@@ -182,6 +184,7 @@ def looped_subnetwork_model() -> Model:
         endtime="2021-01-01",
         crs="EPSG:28992",
         allocation=Allocation(use_allocation=True, timestep=86400),
+        experimental=Experimental(concentration=True),
     )
 
     basin_data: list[TableModel[Any]] = [
@@ -308,6 +311,7 @@ def minimal_subnetwork_model() -> Model:
         endtime="2021-01-01",
         crs="EPSG:28992",
         allocation=Allocation(use_allocation=True, timestep=86400),
+        experimental=Experimental(concentration=True),
     )
 
     basin_data: list[TableModel[Any]] = [
@@ -364,6 +368,7 @@ def allocation_example_model() -> Model:
         endtime="2020-01-20",
         crs="EPSG:28992",
         allocation=Allocation(use_allocation=True, timestep=86400),
+        experimental=Experimental(concentration=True),
     )
 
     basin_data: list[TableModel[Any]] = [
@@ -426,6 +431,7 @@ def main_network_with_subnetworks_model() -> Model:
         endtime="2020-03-01",
         crs="EPSG:28992",
         allocation=Allocation(use_allocation=True, timestep=86400),
+        experimental=Experimental(concentration=True),
     )
 
     basin_data: list[TableModel[Any]] = [
@@ -721,6 +727,7 @@ def level_demand_model() -> Model:
         endtime="2020-02-01",
         crs="EPSG:28992",
         allocation=Allocation(use_allocation=True, timestep=1e5),
+        experimental=Experimental(concentration=True),
     )
     model.flow_boundary.add(
         Node(1, Point(0, 0), subnetwork_id=2), [flow_boundary.Static(flow_rate=[1e-3])]
@@ -781,6 +788,7 @@ def flow_demand_model() -> Model:
         endtime="2021-01-01 00:00:00",
         crs="EPSG:28992",
         allocation=Allocation(use_allocation=True, timestep=1e5),
+        experimental=Experimental(concentration=True),
     )
 
     model.tabulated_rating_curve.add(
@@ -855,6 +863,7 @@ def linear_resistance_demand_model():
         endtime="2021-01-01 00:00:00",
         crs="EPSG:28992",
         allocation=Allocation(use_allocation=True),
+        experimental=Experimental(concentration=True),
     )
 
     model.basin.add(
@@ -890,6 +899,7 @@ def fair_distribution_model():
         endtime="2020-01-07 00:00:00",
         crs="EPSG:28992",
         allocation=Allocation(use_allocation=True),
+        experimental=Experimental(concentration=True),
     )
 
     model.level_boundary.add(
@@ -987,6 +997,7 @@ def allocation_training_model():
         endtime="2023-01-01",
         crs="EPSG:4326",
         allocation=Allocation(use_allocation=True),
+        experimental=Experimental(concentration=True),
     )
 
     flow_boundary_times = pd.date_range(start="2022-01-01", end="2023-01-01", freq="MS")

@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from ribasim.config import Node
+from ribasim.config import Experimental, Node
 from ribasim.model import Model
 from ribasim.nodes import basin, flow_boundary
 from shapely.geometry import Point
@@ -12,6 +12,7 @@ def flow_boundary_time_model() -> Model:
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
+        experimental=Experimental(concentration=True),
     )
 
     model.flow_boundary.add(

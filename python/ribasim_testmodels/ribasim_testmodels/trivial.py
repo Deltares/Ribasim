@@ -1,4 +1,4 @@
-from ribasim.config import Node, Results
+from ribasim.config import Experimental, Node, Results
 from ribasim.model import Model
 from ribasim.nodes import basin, tabulated_rating_curve
 from shapely.geometry import Point
@@ -12,6 +12,7 @@ def trivial_model() -> Model:
         crs="EPSG:28992",
         results=Results(subgrid=True, compression=False),
         use_validation=True,
+        experimental=Experimental(concentration=True),
     )
 
     # Convert steady forcing to m/s
