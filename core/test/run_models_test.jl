@@ -583,3 +583,30 @@ end
     @test all(isapprox.(Δinf[1:2:end], 25.0; atol = 1e-10))
     @test all(Δinf[2:2:end] .== 0.0)
 end
+
+@testitem "two_basin" begin
+    using DataFrames: DataFrame, nrow
+    using Dates: DateTime
+    import BasicModelInterface as BMI
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/two_basin/ribasim.toml")
+    model = Ribasim.run(toml_path)
+    df = DataFrame(Ribasim.subgrid_level_table(model))
+
+    ntime = 367
+    @test nrow(df) == ntime * 2
+    @test df.subgrid_id == repeat(1:2; outer = ntime)
+    @test extrema(df.time) == (DateTime(2020), DateTime(2021))
+    @test allunique(df.time[1:2:(end - 1)])
+    @test all(df.subgrid_level[1:2] .== 0.01)
+
+    # After a month the h(h) of subgrid_id 2 increases by a meter
+    i_change = searchsortedfirst(df.time, DateTime(2020, 2))
+    @test df.subgrid_level[i_change + 1] - df.subgrid_level[i_change - 1] ≈ 1.0f0
+
+    # Besides the 1 meter shift the h(h) relations are 1:1
+    basin_level = copy(BMI.get_value_ptr(model, "basin.level"))
+    basin_level[2] += 1
+    @test basin_level ≈ df.subgrid_level[(end - 1):end]
+    @test basin_level ≈ model.integrator.p.subgrid.level
+end

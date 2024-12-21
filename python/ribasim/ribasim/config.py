@@ -23,6 +23,7 @@ from ribasim.schemas import (
     BasinStateSchema,
     BasinStaticSchema,
     BasinSubgridSchema,
+    BasinSubgridTimeSchema,
     BasinTimeSchema,
     ContinuousControlFunctionSchema,
     ContinuousControlVariableSchema,
@@ -403,6 +404,10 @@ class Basin(MultiNodeModel):
     subgrid: TableModel[BasinSubgridSchema] = Field(
         default_factory=TableModel[BasinSubgridSchema],
         json_schema_extra={"sort_keys": ["subgrid_id", "basin_level"]},
+    )
+    subgrid_time: TableModel[BasinSubgridTimeSchema] = Field(
+        default_factory=TableModel[BasinSubgridTimeSchema],
+        json_schema_extra={"sort_keys": ["subgrid_id", "time", "basin_level"]},
     )
     area: SpatialTableModel[BasinAreaSchema] = Field(
         default_factory=SpatialTableModel[BasinAreaSchema],

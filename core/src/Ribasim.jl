@@ -65,6 +65,7 @@ using PreallocationTools: LazyBufferCache
 # basin profiles and TabulatedRatingCurve. See also the node
 # references in the docs.
 using DataInterpolations:
+    ConstantInterpolation,
     LinearInterpolation,
     LinearInterpolationIntInv,
     invert_integral,

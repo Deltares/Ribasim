@@ -195,15 +195,15 @@ function update_concentrations!(u, t, integrator)::Nothing
     # of the basins after processing inflows only
     cumulative_in .= 0.0
 
-    mass .+= concentration[1, :, :] .* vertical_flux.drainage * dt
+    @views mass .+= concentration[1, :, :] .* vertical_flux.drainage * dt
     basin.concentration_data.cumulative_in .= vertical_flux.drainage * dt
 
     # Precipitation depends on fixed area
     for node_id in basin.node_id
         fixed_area = basin_areas(basin, node_id.idx)[end]
         added_precipitation = fixed_area * vertical_flux.precipitation[node_id.idx] * dt
-
-        mass[node_id.idx, :] .+= concentration[2, node_id.idx, :] .* added_precipitation
+        @views mass[node_id.idx, :] .+=
+            concentration[2, node_id.idx, :] .* added_precipitation
         cumulative_in[node_id.idx] += added_precipitation
     end
 
@@ -217,7 +217,8 @@ function update_concentrations!(u, t, integrator)::Nothing
         if active
             outflow_id = edge[1].edge[2]
             volume = integral(flow_rate, tprev, t)
-            mass[outflow_id.idx, :] .+= flow_boundary.concentration[id.idx, :] .* volume
+            @views mass[outflow_id.idx, :] .+=
+                flow_boundary.concentration[id.idx, :] .* volume
             cumulative_in[outflow_id.idx] += volume
         end
     end
@@ -676,12 +677,28 @@ function apply_parameter_update!(parameter_update)::Nothing
 end
 
 function update_subgrid_level!(integrator)::Nothing
-    (; p) = integrator
+    (; p, t) = integrator
     du = get_du(integrator)
     basin_level = p.basin.current_properties.current_level[parent(du)]
     subgrid = integrator.p.subgrid
-    for (i, (index, interp)) in enumerate(zip(subgrid.basin_index, subgrid.interpolations))
-        subgrid.level[i] = interp(basin_level[index])
+
+    # First update the all the subgrids with static h(h) relations
+    for (level_index, basin_index, hh_itp) in zip(
+        subgrid.level_index_static,
+        subgrid.basin_index_static,
+        subgrid.interpolations_static,
+    )
+        subgrid.level[level_index] = hh_itp(basin_level[basin_index])
+    end
+    # Then update the subgrids with dynamic h(h) relations
+    for (level_index, basin_index, lookup) in zip(
+        subgrid.level_index_time,
+        subgrid.basin_index_time,
+        subgrid.current_interpolation_index,
+    )
+        itp_index = lookup(t)
+        hh_itp = subgrid.interpolations_time[itp_index]
+        subgrid.level[level_index] = hh_itp(basin_level[basin_index])
     end
 end
 

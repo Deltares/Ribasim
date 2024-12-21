@@ -6,8 +6,8 @@ function mass_updates_user_demand!(integrator::DEIntegrator)::Nothing
     (; basin, user_demand) = integrator.p
     (; concentration_state, mass) = basin.concentration_data
 
-    for (inflow_edge, outflow_edge) in
-        zip(user_demand.inflow_edge, user_demand.outflow_edge)
+    @views for (inflow_edge, outflow_edge) in
+               zip(user_demand.inflow_edge, user_demand.outflow_edge)
         from_node = inflow_edge.edge[1]
         to_node = outflow_edge.edge[2]
         userdemand_idx = outflow_edge.edge[1].idx
@@ -41,7 +41,7 @@ function mass_inflows_basin!(integrator::DEIntegrator)::Nothing
     for (inflow_edge, outflow_edge) in zip(state_inflow_edge, state_outflow_edge)
         from_node = inflow_edge.edge[1]
         to_node = outflow_edge.edge[2]
-        if from_node.type == NodeType.Basin
+        @views if from_node.type == NodeType.Basin
             flow = flow_update_on_edge(integrator, inflow_edge.edge)
             if flow < 0
                 cumulative_in[from_node.idx] -= flow
@@ -67,7 +67,7 @@ function mass_inflows_basin!(integrator::DEIntegrator)::Nothing
             flow = flow_update_on_edge(integrator, outflow_edge.edge)
             if flow > 0
                 cumulative_in[to_node.idx] += flow
-                if from_node.type == NodeType.Basin
+                @views if from_node.type == NodeType.Basin
                     mass[to_node.idx, :] .+= concentration_state[from_node.idx, :] .* flow
                 elseif from_node.type == NodeType.LevelBoundary
                     mass[to_node.idx, :] .+=
@@ -95,7 +95,7 @@ function mass_outflows_basin!(integrator::DEIntegrator)::Nothing
     (; state_inflow_edge, state_outflow_edge, basin) = integrator.p
     (; mass, concentration_state) = basin.concentration_data
 
-    for (inflow_edge, outflow_edge) in zip(state_inflow_edge, state_outflow_edge)
+    @views for (inflow_edge, outflow_edge) in zip(state_inflow_edge, state_outflow_edge)
         from_node = inflow_edge.edge[1]
         to_node = outflow_edge.edge[2]
         if from_node.type == NodeType.Basin
