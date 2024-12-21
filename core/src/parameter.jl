@@ -21,6 +21,17 @@ const SolverStats = @NamedTuple{
     5 Drainage = 6 Precipitation = 7
 Base.to_index(id::Substance.T) = Int(id)  # used to index into concentration matrices
 
+@generated function config.snake_case(nt::NodeType.T)
+    ex = quote end
+    for (sym, _) in EnumX.symbol_map(NodeType.T)
+        sc = QuoteNode(config.snake_case(sym))
+        t = NodeType.T(sym)
+        push!(ex.args, :(nt === $t && return $sc))
+    end
+    push!(ex.args, :(return :nothing))  # type stability
+    ex
+end
+
 # Support creating a NodeType enum instance from a symbol or string
 function NodeType.T(s::Symbol)::NodeType.T
     symbol_map = EnumX.symbol_map(NodeType.T)
@@ -86,6 +97,7 @@ Base.convert(::Type{Int32}, id::NodeID) = id.value
 Base.broadcastable(id::NodeID) = Ref(id)
 Base.:(==)(id_1::NodeID, id_2::NodeID) = id_1.type == id_2.type && id_1.value == id_2.value
 Base.show(io::IO, id::NodeID) = print(io, id.type, " #", id.value)
+config.snake_case(id::NodeID) = config.snake_case(id.type)
 
 function Base.isless(id_1::NodeID, id_2::NodeID)::Bool
     if id_1.type != id_2.type
