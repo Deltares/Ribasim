@@ -17,6 +17,7 @@ function main()
         output_dir;
         lib_name = "libribasim",
         precompile_execution_file = "precompile.jl",
+        filter_stdlibs = true,
         include_lazy_artifacts = false,
         include_transitive_dependencies = false,
         include_preferences = true,
