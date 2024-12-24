@@ -78,12 +78,17 @@ end
 end
 
 @testitem "snake_case" begin
+    using Ribasim: NodeType
     @test Ribasim.snake_case("CamelCase") == "camel_case"
     @test Ribasim.snake_case("ABCdef") == "a_b_cdef"
     @test Ribasim.snake_case("snake_case") == "snake_case"
-    @test Ribasim.snake_case(:CamelCase) == :camel_case
-    @test Ribasim.snake_case(:ABCdef) == :a_b_cdef
-    @test Ribasim.snake_case(:snake_case) == :snake_case
+    @test Ribasim.snake_case(:CamelCase) === :camel_case
+    @test Ribasim.snake_case(:ABCdef) === :a_b_cdef
+    @test Ribasim.snake_case(:snake_case) === :snake_case
+    @test Ribasim.snake_case(NodeType.PidControl) === :pid_control
+    for nt in instances(NodeType.T)
+        @test Ribasim.snake_case(nt) isa Symbol
+    end
 end
 
 @testitem "camel_case" begin
