@@ -116,8 +116,10 @@ def test_extra_spatial_columns():
         Node(1, Point(0, 0), meta_id=1),
         [basin.Profile(area=1000.0, level=[0.0, 1.0]), basin.State(level=[1.0])],
     )
+    node = Node(2, Point(1, 0.5, 3.0), meta_id=2)
+    assert not node.geometry.has_z
     model.user_demand.add(
-        Node(2, Point(1, 0.5), meta_id=2),
+        node,
         [
             user_demand.Static(
                 demand=[1e-4], return_factor=0.9, min_level=0.9, priority=1

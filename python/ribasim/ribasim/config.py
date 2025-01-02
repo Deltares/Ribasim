@@ -189,6 +189,9 @@ class Node(pydantic.BaseModel):
     ) -> None:
         if geometry.is_empty:
             raise (ValueError("Node geometry must be a valid Point"))
+        elif geometry.has_z:
+            # Remove any Z coordinate, this will cause issues connecting 2D and 3D nodes
+            geometry = Point(geometry.x, geometry.y)
         super().__init__(node_id=node_id, geometry=geometry, **kwargs)
 
     def into_geodataframe(self, node_type: str, node_id: int) -> GeoDataFrame:
