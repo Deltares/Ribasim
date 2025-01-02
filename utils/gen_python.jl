@@ -48,7 +48,7 @@ model_template = Template(
 
 # Write schemas.py
 open(normpath(@__DIR__, "..", "python", "ribasim", "ribasim", "schemas.py"), "w") do io
-    init = Dict("models" => get_models())
+    init = Dict(:models => get_models())
     println(io, model_template(; init = init))
 end
 
@@ -75,6 +75,6 @@ connection_template = Template(
 
 # Write validation.py
 open(normpath(@__DIR__, "..", "python", "ribasim", "ribasim", "validation.py"), "w") do io
-    init = Dict("nodes" => get_connectivity())
+    init = Dict(:nodes => get_connectivity())
     println(io, connection_template(; init = init))
 end
