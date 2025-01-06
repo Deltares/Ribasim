@@ -100,42 +100,65 @@ function variable_nt(s::Any)
     NamedTuple{names}((getfield(s, x) for x in names))
 end
 
-# functions used by sort(x; by)
-sort_by_id(row) = row.node_id
-sort_by_time_id(row) = (row.time, row.node_id)
-sort_by_id_level(row) = (row.node_id, row.level)
-sort_by_id_state_level(row) = (row.node_id, row.control_state, row.level)
-sort_by_time_id_level(row) = (row.time, row.node_id, row.level)
-sort_by_priority(row) = (row.node_id, row.priority)
-sort_by_priority_time(row) = (row.node_id, row.priority, row.time)
-sort_by_subgrid_level(row) = (row.subgrid_id, row.basin_level)
-sort_by_variable(row) = (row.node_id, row.listen_node_id, row.variable)
-sort_by_condition(row) = (row.node_id, row.compound_variable_id, row.greater_than)
-sort_by_id_input(row) = (row.node_id, row.input)
+"Get the right sort by function (by in `sort(x; by)`) given the Schema"
+function sort_by end
+# Not using any fallbacks to avoid forgetting to add the correct sorting.
 
-# get the right sort by function given the Schema, with sort_by_id as the default
-sort_by_function(table::StructVector{<:Legolas.AbstractRecord}) = sort_by_id
-sort_by_function(table::StructVector{TabulatedRatingCurveStaticV1}) = sort_by_id_state_level
-sort_by_function(table::StructVector{TabulatedRatingCurveTimeV1}) = sort_by_time_id_level
-sort_by_function(table::StructVector{BasinProfileV1}) = sort_by_id_level
-sort_by_function(table::StructVector{UserDemandStaticV1}) = sort_by_priority
-sort_by_function(table::StructVector{UserDemandTimeV1}) = sort_by_priority_time
-sort_by_function(table::StructVector{BasinSubgridV1}) = sort_by_subgrid_level
-sort_by_function(table::StructVector{DiscreteControlVariableV1}) = sort_by_variable
-sort_by_function(table::StructVector{DiscreteControlConditionV1}) = sort_by_condition
-sort_by_function(table::StructVector{ContinuousControlFunctionV1}) = sort_by_id_input
+sort_by(::StructVector{BasinConcentrationV1}) = x -> (x.node_id, x.substance, x.time)
+sort_by(::StructVector{BasinConcentrationExternalV1}) =
+    x -> (x.node_id, x.substance, x.time)
+sort_by(::StructVector{BasinConcentrationStateV1}) = x -> (x.node_id, x.substance)
+sort_by(::StructVector{BasinProfileV1}) = x -> (x.node_id, x.level)
+sort_by(::StructVector{BasinStateV1}) = x -> (x.node_id)
+sort_by(::StructVector{BasinStaticV1}) = x -> (x.node_id)
+sort_by(::StructVector{BasinSubgridV1}) = x -> (x.subgrid_id, x.basin_level)
+sort_by(::StructVector{BasinSubgridTimeV1}) = x -> (x.subgrid_id, x.time, x.basin_level)
+# TODO BasinTimeV1 (x.node_id, x.time), like in python
+sort_by(::StructVector{BasinTimeV1}) = x -> (x.time, x.node_id)
 
-const TimeSchemas = Union{
-    BasinTimeV1,
-    FlowBoundaryTimeV1,
-    FlowDemandTimeV1,
-    LevelBoundaryTimeV1,
-    PidControlTimeV1,
-    UserDemandTimeV1,
-}
-function sort_by_function(table::StructVector{<:TimeSchemas})
-    return sort_by_time_id
-end
+sort_by(::StructVector{ContinuousControlFunctionV1}) = x -> (x.node_id, x.input)
+sort_by(::StructVector{ContinuousControlVariableV1}) =
+    x -> (x.node_id, x.listen_node_id, x.variable)
+
+sort_by(::StructVector{DiscreteControlConditionV1}) =
+    x -> (x.node_id, x.compound_variable_id, x.greater_than)
+sort_by(::StructVector{DiscreteControlLogicV1}) = x -> (x.node_id, x.truth_state)
+sort_by(::StructVector{DiscreteControlVariableV1}) =
+    x -> (x.node_id, x.compound_variable_id, x.listen_node_id, x.variable)
+
+sort_by(::StructVector{FlowBoundaryConcentrationV1}) = x -> (x.node_id, x.substance, x.time)
+sort_by(::StructVector{FlowBoundaryStaticV1}) = x -> (x.node_id)
+sort_by(::StructVector{FlowBoundaryTimeV1}) = x -> (x.node_id, x.time)
+
+sort_by(::StructVector{FlowDemandStaticV1}) = x -> (x.node_id, x.priority)
+sort_by(::StructVector{FlowDemandTimeV1}) = x -> (x.node_id, x.priority, x.time)
+
+sort_by(::StructVector{LevelBoundaryConcentrationV1}) =
+    x -> (x.node_id, x.substance, x.time)
+sort_by(::StructVector{LevelBoundaryStaticV1}) = x -> (x.node_id)
+sort_by(::StructVector{LevelBoundaryTimeV1}) = x -> (x.node_id, x.time)
+
+sort_by(::StructVector{LevelDemandStaticV1}) = x -> (x.node_id, x.priority)
+sort_by(::StructVector{LevelDemandTimeV1}) = x -> (x.node_id, x.priority, x.time)
+
+sort_by(::StructVector{LinearResistanceStaticV1}) = x -> (x.node_id, x.control_state)
+
+sort_by(::StructVector{ManningResistanceStaticV1}) = x -> (x.node_id, x.control_state)
+
+sort_by(::StructVector{OutletStaticV1}) = x -> (x.node_id, x.control_state)
+
+sort_by(::StructVector{PidControlStaticV1}) = x -> (x.node_id, x.control_state)
+sort_by(::StructVector{PidControlTimeV1}) = x -> (x.node_id, x.time)
+
+sort_by(::StructVector{PumpStaticV1}) = x -> (x.node_id, x.control_state)
+
+sort_by(::StructVector{TabulatedRatingCurveStaticV1}) =
+    x -> (x.node_id, x.control_state, x.level)
+sort_by(::StructVector{TabulatedRatingCurveTimeV1}) = x -> (x.node_id, x.time, x.level)
+
+sort_by(::StructVector{UserDemandConcentrationV1}) = x -> (x.node_id, x.substance, x.time)
+sort_by(::StructVector{UserDemandStaticV1}) = x -> (x.node_id, x.priority)
+sort_by(::StructVector{UserDemandTimeV1}) = x -> (x.node_id, x.priority, x.time)
 
 """
 Depending on if a table can be sorted, either sort it or assert that it is sorted.
@@ -146,7 +169,7 @@ Tables loaded from Arrow files are memory mapped and can therefore not be sorted
 function sorted_table!(
     table::StructVector{<:Legolas.AbstractRecord},
 )::StructVector{<:Legolas.AbstractRecord}
-    by = sort_by_function(table)
+    by = sort_by(table)
     if any((typeof(col) <: Arrow.Primitive for col in Tables.columns(table)))
         et = eltype(table)
         if !issorted(table; by)

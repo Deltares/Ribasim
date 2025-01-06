@@ -99,12 +99,9 @@ Base.:(==)(id_1::NodeID, id_2::NodeID) = id_1.type == id_2.type && id_1.value ==
 Base.show(io::IO, id::NodeID) = print(io, id.type, " #", id.value)
 config.snake_case(id::NodeID) = config.snake_case(id.type)
 
-function Base.isless(id_1::NodeID, id_2::NodeID)::Bool
-    if id_1.type != id_2.type
-        error("Cannot compare NodeIDs of different types")
-    end
-    return id_1.value < id_2.value
-end
+Base.isless(id_1::NodeID, id_2::NodeID)::Bool = id_1.value < id_2.value
+Base.isless(id_1::Integer, id_2::NodeID)::Bool = id_1 < id_2.value
+Base.isless(id_1::NodeID, id_2::Integer)::Bool = id_1.value < id_2
 
 Base.to_index(id::NodeID) = Int(id.value)
 
