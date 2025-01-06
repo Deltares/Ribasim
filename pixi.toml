@@ -23,8 +23,8 @@ test-ribasim-api = "pytest --basetemp=python/ribasim_api/tests/temp --junitxml=r
 install-julia = "juliaup add 1.10.7 && juliaup override set 1.10.7"
 install-pre-commit = "pre-commit install"
 # Note that this has a Windows specific override
-install-ci = { depends_on = ["install-julia", "update-registry-julia"] }
-install = { depends_on = [
+install-ci = { depends-on = ["install-julia", "update-registry-julia"] }
+install = { depends-on = [
     "install-ci",
     "install-qgis-plugins",
     "install-pre-commit",
@@ -34,7 +34,7 @@ install = { depends_on = [
 update-registry-julia = { cmd = "julia --eval='using Pkg; Registry.update()'", env = { SSL_CERT_DIR = "" } }
 update-manifest-julia = { cmd = "julia --project --eval='using Pkg; Pkg.update()'", env = { SSL_CERT_DIR = "" } }
 instantiate-julia = { cmd = "julia --project --eval='using Pkg; Pkg.instantiate()'", env = { SSL_CERT_DIR = "" } }
-initialize-julia = { depends_on = [
+initialize-julia = { depends-on = [
     "update-registry-julia",
     "instantiate-julia",
 ] }
@@ -45,22 +45,22 @@ quartodoc-build = { cmd = "quartodoc build && rm objects.json", cwd = "docs", in
 ], outputs = [
     "docs/reference/python",
 ] }
-quarto-preview = { cmd = "quarto preview docs", depends_on = [
+quarto-preview = { cmd = "quarto preview docs", depends-on = [
     "quartodoc-build",
     "generate-testmodels",
 ] }
-quarto-check = { cmd = "quarto check all", depends_on = ["quartodoc-build"] }
-quarto-render = { cmd = "julia --project --eval 'using Pkg; Pkg.build(\"IJulia\")' && quarto render docs --to html --execute", depends_on = [
+quarto-check = { cmd = "quarto check all", depends-on = ["quartodoc-build"] }
+quarto-render = { cmd = "julia --project --eval 'using Pkg; Pkg.build(\"IJulia\")' && quarto render docs --to html --execute", depends-on = [
     "quartodoc-build",
     "generate-testmodels",
 ] }
-docs = { depends_on = ["quarto-preview"] }
+docs = { depends-on = ["quarto-preview"] }
 # Lint
 mypy-ribasim-python = "mypy python/ribasim/ribasim"
 mypy-ribasim-testmodels = "mypy python/ribasim_testmodels/ribasim_testmodels"
 mypy-ribasim-api = "mypy python/ribasim_api/ribasim_api"
 pre-commit = "pre-commit run --all-files"
-lint = { depends_on = [
+lint = { depends-on = [
     "pre-commit",
     "mypy-ribasim-python",
     "mypy-ribasim-testmodels",
@@ -68,21 +68,21 @@ lint = { depends_on = [
     "mypy-ribasim-qgis",
 ] }
 # Build
-build = { "cmd" = "julia --project build.jl", cwd = "build", depends_on = [
+build = { "cmd" = "julia --project build.jl", cwd = "build", depends-on = [
     "generate-testmodels",
     "initialize-julia",
 ], env = { SSL_CERT_DIR = "", JULIA_SSL_CA_ROOTS_PATH = "" } }
 remove-artifacts = "julia --eval 'rm(joinpath(Base.DEPOT_PATH[1], \"artifacts\"), force=true, recursive=true)'"
 # Tests
 test-ribasim-cli = "pytest --numprocesses=4 --basetemp=build/tests/temp --junitxml=report.xml build/tests"
-test-ribasim-core = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test()'", depends_on = [
+test-ribasim-core = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test()'", depends-on = [
     "generate-testmodels",
 ] }
 test-ribasim-migration = { cmd = "pytest --numprocesses=4 -m regression python/ribasim/tests" }
-test-ribasim-core-cov = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test(coverage=true, julia_args=[\"--check-bounds=yes\"])'", depends_on = [
+test-ribasim-core-cov = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test(coverage=true, julia_args=[\"--check-bounds=yes\"])'", depends-on = [
     "generate-testmodels",
 ] }
-test-ribasim-regression = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test(julia_args=[\"--check-bounds=yes\"], test_args=[\"regression\"])'", depends_on = [
+test-ribasim-regression = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test(julia_args=[\"--check-bounds=yes\"], test_args=[\"regression\"])'", depends-on = [
     "generate-testmodels",
     "test-ribasim-migration",
 ] }
@@ -93,12 +93,12 @@ generate-testmodels = { cmd = "python utils/generate-testmodels.py", inputs = [
 ], outputs = [
     "generated_testmodels",
 ] }
-tests = { depends_on = ["lint", "test-ribasim-python", "test-ribasim-core"] }
+tests = { depends-on = ["lint", "test-ribasim-python", "test-ribasim-core"] }
 delwaq = { cmd = "pytest python/ribasim/tests/test_delwaq.py" }
 gen-delwaq = { cmd = "python python/ribasim/ribasim/delwaq/generate.py" }
 model-integration-test = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test(test_args=[\"integration\"])'" }
 # Codegen
-codegen = { cmd = "julia --project utils/gen_python.jl && ruff format python/ribasim/ribasim/schemas.py python/ribasim/ribasim/validation.py", depends_on = [
+codegen = { cmd = "julia --project utils/gen_python.jl && ruff format python/ribasim/ribasim/schemas.py python/ribasim/ribasim/validation.py", depends-on = [
     "initialize-julia",
 ], inputs = [
     "core",
@@ -111,14 +111,14 @@ codegen = { cmd = "julia --project utils/gen_python.jl && ruff format python/rib
 add-ribasim-icon = { cmd = "rcedit build/ribasim/ribasim.exe --set-icon docs/assets/ribasim.ico" }
 build-ribasim-python-wheel = { cmd = "rm --recursive --force dist && hatch build && twine check dist/*", cwd = "python/ribasim" }
 build-ribasim-api-wheel = { cmd = "rm --recursive --force dist && hatch build && twine check dist/*", cwd = "python/ribasim_api" }
-build-wheels = { depends_on = [
+build-wheels = { depends-on = [
     "build-ribasim-python-wheel",
     "build-ribasim-api-wheel",
 ] }
-publish-ribasim-python = { cmd = "twine upload dist/*", cwd = "python/ribasim", depends_on = [
+publish-ribasim-python = { cmd = "twine upload dist/*", cwd = "python/ribasim", depends-on = [
     "build-ribasim-python-wheel",
 ] }
-publish-ribasim-api = { cmd = "twine upload dist/*", cwd = "python/ribasim_api", depends_on = [
+publish-ribasim-api = { cmd = "twine upload dist/*", cwd = "python/ribasim_api", depends-on = [
     "build-ribasim-api-wheel",
 ] }
 # QGIS
@@ -128,27 +128,27 @@ install-imod-qgis = "python ribasim_qgis/scripts/install_qgis_plugin.py iMOD && 
 install-plugin-reloader-qgis = "python ribasim_qgis/scripts/install_qgis_plugin.py \"Plugin Reloader\" && python ribasim_qgis/scripts/enable_plugin.py plugin_reloader"
 install-debugvs-qgis = "python ribasim_qgis/scripts/install_qgis_plugin.py debugvs==0.7 && python ribasim_qgis/scripts/enable_plugin.py debug_vs"
 test-ribasim-qgis-docker = { cmd = "sh ./start.sh; sh ./test.sh; sh ./stop.sh", cwd = ".docker" }
-install-qgis-plugins = { depends_on = [
+install-qgis-plugins = { depends-on = [
     "install-plugin-reloader-qgis",
     "install-ribasim-qgis",
     "install-imod-qgis",
     "install-debugvs-qgis",
 ] }
-test-ribasim-qgis-ui = { cmd = "python ribasim_qgis/scripts/run_qgis_ui_tests.py", depends_on = [
+test-ribasim-qgis-ui = { cmd = "python ribasim_qgis/scripts/run_qgis_ui_tests.py", depends-on = [
     "install-ribasim-qgis",
 ] }
-test-ribasim-qgis = { cmd = "pytest --numprocesses=auto ribasim_qgis/tests/core", depends_on = [
+test-ribasim-qgis = { cmd = "pytest --numprocesses=auto ribasim_qgis/tests/core", depends-on = [
     "install-ribasim-qgis",
 ] }
-test-ribasim-qgis-cov = { cmd = "pytest --numprocesses=auto --cov=ribasim_qgis --cov-report=xml --cov-config=ribasim_qgis/.coveragerc ribasim_qgis/tests/core", depends_on = [
+test-ribasim-qgis-cov = { cmd = "pytest --numprocesses=auto --cov=ribasim_qgis --cov-report=xml --cov-config=ribasim_qgis/.coveragerc ribasim_qgis/tests/core", depends-on = [
     "install-ribasim-qgis",
 ] }
 mypy-ribasim-qgis = "mypy ribasim_qgis"
 # Run
-ribasim-core = { cmd = "julia --project=core -e 'using Ribasim; Ribasim.main(ARGS)'", depends_on = [
+ribasim-core = { cmd = "julia --project=core -e 'using Ribasim; Ribasim.main(ARGS)'", depends-on = [
     "initialize-julia",
 ] }
-ribasim-core-testmodels = { cmd = "julia --project --threads=4 utils/testmodelrun.jl", depends_on = [
+ribasim-core-testmodels = { cmd = "julia --project --threads=4 utils/testmodelrun.jl", depends-on = [
     "generate-testmodels",
     "initialize-julia",
 ] }
@@ -159,7 +159,7 @@ github-release = "python utils/github-release.py"
 # Workaround rare issue on Windows where the permissions of the artifacts directory are incorrect
 # Upstream issue: https://github.com/JuliaLang/julia/issues/52272
 reset-artifact-permissions = "icacls $homedrive/$homepath/.julia/artifacts /q /c /t /reset"
-install-ci = { depends_on = [
+install-ci = { depends-on = [
     # "reset-artifact-permissions",  # see #1972
     "install-julia",
     "update-registry-julia",
