@@ -11,7 +11,7 @@ FlowDemand nodes can set a flow demand only for a single connector node.
 
 column        | type     | unit                  | restriction
 ------------- | -------- | --------------------- | -----------
-node_id       | Int32    | -                     | sorted
+node_id       | Int32    | -                     |
 priority      | Int32    | -                     | positive
 demand        | Float64  | $\text{m}^3/\text{s}$ | non-negative
 
@@ -22,7 +22,7 @@ Similar to the static version, only a single priority per `FlowDemand` node can 
 
 column        | type     | unit                  | restriction
 ------------- | -------- | --------------------- | -----------
-node_id       | Int32    | -                     | sorted
-time          | DateTime | -                     | sorted per node_id
+node_id       | Int32    | -                     |
+time          | DateTime | -                     |
 priority      | Int32    | -                     | positive
 demand        | Float64  | $\text{m}^3/\text{s}$ | non-negative

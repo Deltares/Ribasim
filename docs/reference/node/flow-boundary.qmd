@@ -12,7 +12,7 @@ We require that an edge connected to a FlowBoundary is always outgoing, and poin
 
 column        | type    | unit                  | restriction
 ------------- | ------- | --------------------- | -----------
-node_id       | Int32   | -                     | sorted
+node_id       | Int32   | -                     |
 active        | Bool    | -                     | (optional, default true)
 flow_rate     | Float64 | $\text{m}^3/\text{s}$ | non-negative
 
@@ -20,7 +20,6 @@ flow_rate     | Float64 | $\text{m}^3/\text{s}$ | non-negative
 
 This table is the transient form of the `FlowBoundary` table.
 The only differences are that a time column is added and the nodes are assumed to be active so this column is not present.
-The table must by sorted by time, and per time it must be sorted by `node_id`.
 With this the flow rates can be updated over time. In between the given times the
 flow rate is interpolated linearly, and outside the flow rate is constant given by the
 nearest time value.
@@ -28,8 +27,8 @@ Note that a `node_id` can be either in this table or in the static one, but not 
 
 column    | type     | unit                  | restriction
 --------- | -------  | --------------------- | -----------
-node_id   | Int32    | -                     | sorted
-time      | DateTime | -                     | sorted per node_id
+node_id   | Int32    | -                     |
+time      | DateTime | -                     |
 flow_rate | Float64  | $\text{m}^3/\text{s}$ | non-negative
 
 ## Concentration {#sec-flow-boundary-conc}
@@ -37,8 +36,8 @@ This table defines the concentration of substances for the flow from the FlowBou
 
 column         | type     | unit                  | restriction
 -------------- | -------- | --------------------- | -----------
-node_id        | Int32    | -                     | sorted
-time           | DateTime | -                     | sorted per node_id
+node_id        | Int32    | -                     |
+time           | DateTime | -                     |
 substance      | String   | -                     | can correspond to known Delwaq substances
 concentration  | Float64  | $\text{g}/\text{m}^3$ |
 

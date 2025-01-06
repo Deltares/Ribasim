@@ -12,11 +12,11 @@ Use it for instance to model flow over a weir.
 
 column               | type    | unit                  | restriction
 -------------        | ------- | --------------------- | -----------
-node_id              | Int32   | -                     | sorted
-control_state        | String  | -                     | (optional) sorted per node_id
+node_id              | Int32   | -                     |
+control_state        | String  | -                     | (optional)
 active               | Bool    | -                     | (optional, default true)
 max_downstream_level | Float64 | $\text{m}$            | (optional)
-level                | Float64 | $\text{m}$            | sorted per control_state, unique
+level                | Float64 | $\text{m}$            | unique
 flow_rate            | Float64 | $\text{m}^3/\text{s}$ | start at 0, increasing
 
 Thus a single rating curve can be given by the following table:
@@ -81,15 +81,14 @@ Here it is validated that the flow starts at $0$ and is non-decreasing. The flow
 
 This table is the transient form of the `TabulatedRatingCurve` table.
 The only difference is that a time column is added.
-The table must by sorted by time, and per time it must be sorted by `node_id`.
 With this the rating curves can be updated over time.
 Note that a `node_id` can be either in this table or in the static one, but not both.
 
 column               | type     | unit                  | restriction
 -------------------- | -------  | --------------------- | -----------
-node_id              | Int32    | -                     | sorted
-time                 | DateTime | -                     | sorted per node_id
-level                | Float64  | $\text{m}$            | sorted per node_id per time
+node_id              | Int32    | -                     |
+time                 | DateTime | -                     |
+level                | Float64  | $\text{m}$            |
 flow_rate            | Float64  | $\text{m}^3/\text{s}$ | non-negative
 max_downstream_level | Float64  | $\text{m}$            | (optional)
 

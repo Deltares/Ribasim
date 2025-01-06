@@ -24,18 +24,17 @@ This table contains the static form of the `UserDemand` node.
 
 column        | type    | unit                  | restriction
 ------------- | ------- | ----------------------| -----------
-node_id       | Int32   | -                     | sorted
+node_id       | Int32   | -                     |
 active        | Bool    | -                     | (optional, default true)
 demand        | Float64 | $\text{m}^3/\text{s}$ | non-negative
 return_factor | Float64 | -                     | between [0 - 1]
 min_level     | Float64 | $\text{m}$            | -
-priority      | Int32   | -                     | positive, sorted per node id
+priority      | Int32   | -                     | positive
 
 ## Time
 
 This table is the transient form of the `UserDemand` table.
 The only difference is that a time column is added and activity is assumed to be true.
-The table must by sorted by time, and per time it must be sorted by `node_id`.
 With this the demand can be updated over time. In between the given times the
 demand is interpolated linearly, and outside the demand is constant given by the
 nearest time value.
@@ -44,9 +43,9 @@ Note that a `node_id` can be either in this table or in the static one, but not 
 
 column        | type     | unit                  | restriction
 ------------- | -------- | --------------------- | -----------
-node_id       | Int32    | -                     | sorted
-priority      | Int32    | -                     | positive, sorted per node id
-time          | DateTime | -                     | sorted per priority per node id
+node_id       | Int32    | -                     |
+priority      | Int32    | -                     | positive
+time          | DateTime | -                     |
 demand        | Float64  | $\text{m}^3/\text{s}$ | non-negative
 return_factor | Float64  | -                     | between [0 - 1]
 min_level     | Float64  | $\text{m}$            | -
@@ -56,8 +55,8 @@ This table defines the concentration of substances for the flow from the UserDem
 
 column         | type     | unit                  | restriction
 -------------- | -------- | --------------------- | -----------
-node_id        | Int32    | -                     | sorted
-time           | DateTime | -                     | sorted per node_id
+node_id        | Int32    | -                     |
+time           | DateTime | -                     |
 substance      | String   | -                     | can correspond to known Delwaq substances
 concentration  | Float64  | $\text{g}/\text{m}^3$ |
 

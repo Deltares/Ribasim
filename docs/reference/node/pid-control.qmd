@@ -15,10 +15,9 @@ In the future controlling the flow on a particular edge could be supported.
 
 column           | type     | unit            | restriction
 ---------------- | -------- | --------------- | -----------
-node_id          | Int32    | -               | sorted
-control_state    | String   | -               | (optional) sorted per node_id
+node_id          | Int32    | -               |
+control_state    | String   | -               | (optional)
 active           | Bool     | -               | (optional, default true)
-listen_node_type | String   | -               | known node type
 listen_node_id   | Int32    | -               | -
 target           | Float64  | $\text{m}$      | -
 proportional     | Float64  | $\text{s}^{-1}$ | -
@@ -29,7 +28,6 @@ derivative       | Float64  | -               | -
 
 This table is the transient form of the `PidControl` table.
 The differences are that a time column is added and the nodes are assumed to be active so this column is removed.
-The table must by sorted by time, and per time it must be sorted by `node_id`.
 With this the target level and PID coefficients can be updated over time. In between the given times the
 these values interpolated linearly, and outside these values area constant given by the
 nearest time value.
@@ -37,9 +35,8 @@ Note that a `node_id` can be either in this table or in the static one, but not 
 
 column           | type     | unit            | restriction
 ---------------- | -------- | --------------- | -----------
-node_id          | Int32    | -               | sorted
-time             | DateTime | -               | sorted per node_id
-listen_node_type | Int32    | -               | known node type
+node_id          | Int32    | -               |
+time             | DateTime | -               |
 listen_node_id   | Int32    | -               | -
 target           | Float64  | $\text{m}$      | -
 proportional     | Float64  | $\text{s}^{-1}$ | -
