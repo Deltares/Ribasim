@@ -787,7 +787,7 @@ function add_control_state!(
         ParameterUpdate(:active, parameter_values[active_idx])
     end
 
-    itp_update = ParameterUpdate{AbstractInterpolation}[]
+    itp_update = []
     scalar_update = ParameterUpdate{Float64}[]
     for (parameter_name, parameter_value) in zip(parameter_names, parameter_values)
         if parameter_name in controllablefields(Symbol(node_type)) &&
@@ -803,7 +803,13 @@ function add_control_state!(
             end
         end
     end
-    itp_update = [x for x in itp_update]  # get a concrete type
+    # This is a not so great way to get a concrete type,
+    # which is used as a ControlStateUpdate type parameter.
+    itp_update = if isempty(itp_update)
+        ParameterUpdate{ScalarInterpolation}[]
+    else
+        [x for x in itp_update]
+    end
     control_state_update = ControlStateUpdate(; active, scalar_update, itp_update)
 
     if add_control_state
