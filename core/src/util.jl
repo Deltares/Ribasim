@@ -65,26 +65,6 @@ function get_level_from_storage(basin::Basin, state_idx::Int, storage)
     end
 end
 
-"""
-For an element `id` and a vector of elements `ids`, get the range of indices of the last
-consecutive block of `id`.
-Returns the empty range `1:0` if `id` is not in `ids`.
-"""
-function findlastgroup(id::NodeID, ids::AbstractVector{NodeID})::UnitRange{Int}
-    idx_block_end = findlast(==(id), ids)
-    if idx_block_end === nothing
-        return 1:0
-    end
-    idx_block_begin = findprev(!=(id), ids, idx_block_end)
-    idx_block_begin = if idx_block_begin === nothing
-        1
-    else
-        # can happen if that id is the only ID in ids
-        idx_block_begin + 1
-    end
-    return idx_block_begin:idx_block_end
-end
-
 "Linear interpolation of a scalar with constant extrapolation."
 function get_scalar_interpolation(
     starttime::DateTime,
@@ -120,15 +100,37 @@ function get_scalar_interpolation(
 end
 
 """
-From a table with columns node_id, flow_rate (Q) and level (h),
-create a ScalarInterpolation from level to flow rate for a given node_id.
+Create a valid Qh ScalarInterpolation.
+Takes a node_id for validation logging, and a vector of level (h) and flow_rate (Q).
 """
 function qh_interpolation(
-    table::StructVector,
-    rowrange::UnitRange{Int},
+    node_id::NodeID,
+    level::Vector{Float64},
+    flow_rate::Vector{Float64},
 )::ScalarInterpolation
-    level = table.level[rowrange]
-    flow_rate = table.flow_rate[rowrange]
+    errors = false
+    n = length(level)
+    if n < 2
+        @error "At least two datapoints are needed." node_id n
+        errors = true
+    end
+    Q0 = first(flow_rate)
+    if Q0 != 0.0
+        @error "The `flow_rate` must start at 0." node_id flow_rate = Q0
+        errors = true
+    end
+
+    if !allunique(level)
+        @error "The `level` cannot be repeated." node_id
+        errors = true
+    end
+
+    if any(diff(flow_rate) .< 0.0)
+        @error "The `flow_rate` cannot decrease with increasing `level`." node_id
+        errors = true
+    end
+
+    errors && error("Errors occurred when parsing $node_id.")
 
     # Ensure that that Q stays 0 below the first level
     pushfirst!(level, first(level) - 1)

@@ -374,9 +374,6 @@ function formulate_flow!(
     return nothing
 end
 
-"""
-Directed graph: outflow is positive!
-"""
 function formulate_flow!(
     du::ComponentVector,
     linear_resistance::LinearResistance,
@@ -411,9 +408,6 @@ function formulate_flow!(
     return nothing
 end
 
-"""
-Directed graph: outflow is positive!
-"""
 function formulate_flow!(
     du::AbstractVector,
     tabulated_rating_curve::TabulatedRatingCurve,
@@ -423,7 +417,8 @@ function formulate_flow!(
     current_level::Vector,
 )::Nothing
     all_nodes_active = p.all_nodes_active[]
-    (; node_id, active, table) = tabulated_rating_curve
+    (; node_id, active, interpolations, current_interpolation_index) =
+        tabulated_rating_curve
 
     for id in node_id
         inflow_edge = tabulated_rating_curve.inflow_edge[id.idx]
@@ -438,7 +433,9 @@ function formulate_flow!(
 
         if active[id.idx] || all_nodes_active
             factor = get_low_storage_factor(current_low_storage_factor, inflow_id)
-            q = factor * table[id.idx](h_a)
+            interpolation_index = current_interpolation_index[id.idx](t)
+            qh = interpolations[interpolation_index]
+            q = factor * qh(h_a)
             q *= reduction_factor(Δh, 0.02)
             q *= reduction_factor(max_downstream_level - h_b, 0.02)
         else

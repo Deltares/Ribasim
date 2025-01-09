@@ -82,6 +82,7 @@ Here it is validated that the flow starts at $0$ and is non-decreasing. The flow
 This table is the transient form of the `TabulatedRatingCurve` table.
 The only difference is that a time column is added.
 With this the rating curves can be updated over time.
+The `max_downstream_level` currently cannot be updated over time.
 Note that a `node_id` can be either in this table or in the static one, but not both.
 
 column               | type     | unit                  | restriction

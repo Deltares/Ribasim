@@ -60,15 +60,6 @@ function create_callbacks(
         end
     end
 
-    # Update TabulatedRatingCurve Q(h) relationships
-    tstops = get_tstops(tabulated_rating_curve.time.time, starttime)
-    tabulated_rating_curve_cb = PresetTimeCallback(
-        tstops,
-        update_tabulated_rating_curve!;
-        save_positions = (false, false),
-    )
-    push!(callbacks, tabulated_rating_curve_cb)
-
     # If saveat is a vector which contains 0.0 this callback will still be called
     # at t = 0.0 despite save_start = false
     saveat = saveat isa Vector ? filter(x -> x != 0.0, saveat) : saveat
@@ -832,31 +823,6 @@ function update_allocation!(integrator)::Nothing
     for edge in keys(mean_realized_flows)
         mean_realized_flows[edge] = 0.0
     end
-end
-
-"Load updates from 'TabulatedRatingCurve / time' into the parameters"
-function update_tabulated_rating_curve!(integrator)::Nothing
-    (; node_id, table, time) = integrator.p.tabulated_rating_curve
-    t = datetime_since(integrator.t, integrator.p.starttime)
-
-    # get groups of consecutive node_id for the current timestamp
-    rows = searchsorted(time.time, t)
-    timeblock = view(time, rows)
-
-    for group in IterTools.groupby(row -> row.node_id, timeblock)
-        # update the existing LinearInterpolation
-        id = first(group).node_id
-        level = [row.level for row in group]
-        flow_rate = [row.flow_rate for row in group]
-        i = searchsortedfirst(node_id, NodeID(NodeType.TabulatedRatingCurve, id, 0))
-        table[i] = LinearInterpolation(
-            flow_rate,
-            level;
-            extrapolate = true,
-            cache_parameters = true,
-        )
-    end
-    return nothing
 end
 
 function update_subgrid_level(model::Model)::Model

@@ -417,52 +417,27 @@ function valid_tabulated_curve_level(
     basin::Basin,
 )::Bool
     errors = false
-    for (id, table) in zip(tabulated_rating_curve.node_id, tabulated_rating_curve.table)
+    for (id, index_lookup) in zip(
+        tabulated_rating_curve.node_id,
+        tabulated_rating_curve.current_interpolation_index,
+    )
         id_in = inflow_id(graph, id)
         if id_in.type == NodeType.Basin
             basin_bottom_level = basin_bottom(basin, id_in)[2]
-            # the second level is the bottom, the first is added to control extrapolation
-            if table.t[1] + 1.0 < basin_bottom_level
-                @error "Lowest level of $id is lower than bottom of upstream $id_in" table.t[1] +
-                                                                                     1.0 basin_bottom_level
-                errors = true
+            # for the complete timeseries this needs to hold
+            # use unique to avoid double reporting the dummy two point ConstantInterpolation
+            # when a TabulatedRatingCurve is static.
+            for interpolation_index in unique(index_lookup.u)
+                # the second level is the bottom, the first is added to control extrapolation
+                qh = tabulated_rating_curve.interpolations[interpolation_index]
+                h_min = qh.t[1] + 1.0
+                if h_min < basin_bottom_level
+                    @error "Lowest level of $id is lower than bottom of upstream $id_in" h_min basin_bottom_level
+                    errors = true
+                end
             end
         end
     end
-    return !errors
-end
-
-function valid_tabulated_rating_curve(
-    node_id::NodeID,
-    table::StructVector,
-    rowrange::UnitRange{Int},
-)::Bool
-    errors = false
-
-    level = table.level[rowrange]
-    flow_rate = table.flow_rate[rowrange]
-
-    n = length(level)
-    if n < 2
-        @error "At least two datapoints are needed." node_id n
-        errors = true
-    end
-    Q0 = first(flow_rate)
-    if Q0 != 0.0
-        @error "The `flow_rate` must start at 0." node_id flow_rate = Q0
-        errors = true
-    end
-
-    if !allunique(level)
-        @error "The `level` cannot be repeated." node_id
-        errors = true
-    end
-
-    if any(diff(flow_rate) .< 0.0)
-        @error "The `flow_rate` cannot decrease with increasing `level`." node_id
-        errors = true
-    end
-
     return !errors
 end
 

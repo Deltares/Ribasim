@@ -1,5 +1,5 @@
 @testitem "Basin profile validation" begin
-    using Ribasim: NodeID, valid_profiles, qh_interpolation, ScalarInterpolation
+    using Ribasim: NodeID, valid_profiles
     using Logging
     using StructArrays: StructVector
 
@@ -21,9 +21,17 @@
     @test logger.logs[2].kwargs[:area] == 0
     @test logger.logs[3].level == Error
     @test logger.logs[3].message == "Basin #1 profile cannot have decreasing areas."
+end
 
-    table = StructVector(; flow_rate = [0.0, 0.1], level = [1.0, 2.0], node_id = [5, 5])
-    itp = qh_interpolation(table, 1:2)
+@testitem "Q(h) validation" begin
+    import SQLite
+    using Logging
+    using Ribasim: NodeID, qh_interpolation, ScalarInterpolation
+
+    node_id = NodeID(:TabulatedRatingCurve, 1, 1)
+    level = [1.0, 2.0]
+    flow_rate = [0.0, 0.1]
+    itp = qh_interpolation(node_id, level, flow_rate)
     # constant extrapolation at the bottom end, linear extrapolation at the top end
     itp(0.0) ≈ 0.0
     itp(1.0) ≈ 0.0
@@ -31,11 +39,6 @@
     itp(2.0) ≈ 0.1
     itp(3.0) ≈ 0.2
     @test itp isa ScalarInterpolation
-end
-
-@testitem "Q(h) validation" begin
-    import SQLite
-    using Logging
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/invalid_qh/ribasim.toml")
     @test ispath(toml_path)
@@ -47,7 +50,7 @@ end
 
     logger = TestLogger()
     with_logger(logger) do
-        @test_throws "Errors occurred when parsing TabulatedRatingCurve data." Ribasim.TabulatedRatingCurve(
+        @test_throws "Errors occurred when parsing TabulatedRatingCurve #1." Ribasim.TabulatedRatingCurve(
             db,
             config,
             graph,
@@ -372,7 +375,7 @@ end
     parameters = model.integrator.p
 
     (; graph, tabulated_rating_curve, basin) = parameters
-    tabulated_rating_curve.table[1].t[1] = invalid_level
+    tabulated_rating_curve.interpolations[1].t[1] = invalid_level
 
     logger = TestLogger()
     with_logger(logger) do
