@@ -786,7 +786,9 @@ function add_control_state!(
         add_control_state = true
         ParameterUpdate(:active, parameter_values[active_idx])
     end
-    control_state_update = ControlStateUpdate(; active)
+
+    itp_update = ParameterUpdate{AbstractInterpolation}[]
+    scalar_update = ParameterUpdate{Float64}[]
     for (parameter_name, parameter_value) in zip(parameter_names, parameter_values)
         if parameter_name in controllablefields(Symbol(node_type)) &&
            parameter_name !== :active
@@ -795,12 +797,15 @@ function add_control_state!(
 
             # Differentiate between scalar parameters and interpolation parameters
             if parameter_name in time_interpolatables
-                push!(control_state_update.itp_update, parameter_update)
+                push!(itp_update, parameter_update)
             else
-                push!(control_state_update.scalar_update, parameter_update)
+                push!(scalar_update, parameter_update)
             end
         end
     end
+    itp_update = [x for x in itp_update]  # get a concrete type
+    control_state_update = ControlStateUpdate(; active, scalar_update, itp_update)
+
     if add_control_state
         control_mapping[(node_id, control_state_key)] = control_state_update
     end

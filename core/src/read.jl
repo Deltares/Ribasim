@@ -312,11 +312,14 @@ function TabulatedRatingCurve(
     state = nothing  # initial iterator state
 
     for node_id in node_ids
-        interpolation_index += 1
         if node_id in static_node_ids
             # Loop over all static rating curves (groups) with this node_id.
             # If it has a control_state add it to control_mapping.
             # The last rating curve forms the initial condition and activity.
+            # For the static case the interpolation index does not depend on time,
+            # but it can be changed by DiscreteControl. For simplicity we do create an
+            # index lookup that doesn't change with time just like the dynamic case.
+            # DiscreteControl will then change this lookup object.
             rows = searchsorted(
                 NodeID.(NodeType.TabulatedRatingCurve, static.node_id, node_id.idx),
                 node_id,
@@ -325,6 +328,7 @@ function TabulatedRatingCurve(
             # coalesce control_state to nothing to avoid boolean groupby logic on missing
             for qh_group in
                 IterTools.groupby(row -> coalesce(row.control_state, nothing), static_id)
+                interpolation_index += 1
                 first_row = first(qh_group)
                 control_state = first_row.control_state
                 is_active = coalesce(first_row.active, true)
@@ -333,17 +337,16 @@ function TabulatedRatingCurve(
                 interpolation =
                     qh_interpolation(node_id, qh_table.level, qh_table.flow_rate)
                 if !ismissing(control_state)
-                    control_mapping[(
-                        NodeID(NodeType.TabulatedRatingCurve, node_id, node_id.idx),
-                        control_state,
-                    )] = ControlStateUpdate(
+                    # let control swap out the static lookup object
+                    index_lookup = static_lookup(interpolation_index)
+                    control_mapping[(node_id, control_state)] = ControlStateUpdate(
                         ParameterUpdate(:active, is_active),
                         ParameterUpdate{Float64}[],
-                        [ParameterUpdate(:table, interpolation)],
+                        [ParameterUpdate(:current_interpolation_index, index_lookup)],
                     )
                 end
+                push!(interpolations, interpolation)
             end
-            push!(interpolations, interpolation)
             push_lookup!(current_interpolation_index, interpolation_index)
             push!(active, is_active)
             push!(max_downstream_level, max_level)
@@ -372,10 +375,10 @@ function TabulatedRatingCurve(
                     interpolation =
                         qh_interpolation(node_id, qh_table.level, qh_table.flow_rate)
 
+                    interpolation_index += 1
                     push!(interpolations, interpolation)
                     push!(lookup_index, interpolation_index)
                     push!(lookup_time, t)
-                    interpolation_index += 1
                 else
                     # end of group, new timeseries for different node has started,
                     # don't accept the new state
@@ -1268,15 +1271,20 @@ end
 
 "Create and push a static ConstantInterpolation to the current_interpolation_index."
 function push_lookup!(current_interpolation_index::Vector{IndexLookup}, lookup_index::Int)
+    index_lookup = static_lookup(lookup_index)
+    push!(current_interpolation_index, index_lookup)
+end
+
+"Create an interpolation object that always returns `lookup_index`."
+function static_lookup(lookup_index::Int)::IndexLookup
     # TODO if https://github.com/SciML/DataInterpolations.jl/issues/373 is fixed,
     # make these size 1 vectors, and remove `unique` from `valid_tabulated_curve_level`
-    index_lookup = ConstantInterpolation(
+    return ConstantInterpolation(
         [lookup_index, lookup_index],
         [0.0, 0.0];
         extrapolate = true,
         cache_parameters = true,
     )
-    push!(current_interpolation_index, index_lookup)
 end
 
 function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid

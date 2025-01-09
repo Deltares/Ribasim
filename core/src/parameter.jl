@@ -292,10 +292,10 @@ end
 The parameter update associated with a certain control state
 for discrete control
 """
-@kwdef struct ControlStateUpdate
+@kwdef struct ControlStateUpdate{T <: AbstractInterpolation}
     active::ParameterUpdate{Bool}
     scalar_update::Vector{ParameterUpdate{Float64}} = []
-    itp_update::Vector{ParameterUpdate{ScalarInterpolation}} = []
+    itp_update::Vector{ParameterUpdate{T}} = []
 end
 
 """
