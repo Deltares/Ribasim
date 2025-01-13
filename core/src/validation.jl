@@ -113,8 +113,7 @@ sort_by(::StructVector{BasinStateV1}) = x -> (x.node_id)
 sort_by(::StructVector{BasinStaticV1}) = x -> (x.node_id)
 sort_by(::StructVector{BasinSubgridV1}) = x -> (x.subgrid_id, x.basin_level)
 sort_by(::StructVector{BasinSubgridTimeV1}) = x -> (x.subgrid_id, x.time, x.basin_level)
-# TODO BasinTimeV1 (x.node_id, x.time), like in python
-sort_by(::StructVector{BasinTimeV1}) = x -> (x.time, x.node_id)
+sort_by(::StructVector{BasinTimeV1}) = x -> (x.node_id, x.time)
 
 sort_by(::StructVector{ContinuousControlFunctionV1}) = x -> (x.node_id, x.input)
 sort_by(::StructVector{ContinuousControlVariableV1}) =

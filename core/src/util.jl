@@ -73,30 +73,23 @@ function get_scalar_interpolation(
     node_id::NodeID,
     param::Symbol;
     default_value::Float64 = 0.0,
-)::Tuple{ScalarInterpolation, Bool}
-    nodetype = node_id.type
-    rows = searchsorted(NodeID.(nodetype, time.node_id, Ref(0)), node_id)
+    interpolation_type::Type{<:AbstractInterpolation},
+)::interpolation_type
+    rows = searchsorted(time.node_id, node_id)
     parameter = getfield.(time, param)[rows]
-    parameter = coalesce(parameter, default_value)
+    parameter = coalesce.(parameter, default_value)
     times = seconds_since.(time.time[rows], starttime)
-    # Add extra timestep at start for constant extrapolation
-    if times[1] > 0
-        pushfirst!(times, 0.0)
-        pushfirst!(parameter, parameter[1])
-    end
     # Add extra timestep at end for constant extrapolation
     if times[end] < t_end
         push!(times, t_end)
         push!(parameter, parameter[end])
     end
 
-    return LinearInterpolation(
-        parameter,
-        times;
-        extrapolate = true,
-        cache_parameters = true,
-    ),
-    allunique(times)
+    if !allunique(times)
+        @error "The time series for $node_id has repeated times, this can not be interpolated."
+        error("Invalid time series.")
+    end
+    return interpolation_type(parameter, times; extrapolate = true, cache_parameters = true)
 end
 
 """
@@ -158,76 +151,6 @@ function findsorted(a, x)::Union{Int, Nothing}
     else
         error("Multiple occurrences of $x found.")
     end
-end
-
-"""
-Update `table` at row index `i`, with the values of a given row.
-`table` must be a NamedTuple of vectors with all variables that must be loaded.
-The row must contain all the column names that are present in the table.
-If a value is missing, it is not set.
-"""
-function set_table_row!(table::NamedTuple, row, i::Int)::NamedTuple
-    for (symbol, vector) in pairs(table)
-        val = getproperty(row, symbol)
-        if !ismissing(val)
-            vector[i] = val
-        end
-    end
-    return table
-end
-
-"""
-Load data from a source table `static` into a destination `table`.
-Data is matched based on the node_id, which is sorted.
-"""
-function set_static_value!(
-    table::NamedTuple,
-    node_id::Vector{NodeID},
-    static::StructVector,
-)::NamedTuple
-    for (i, id) in enumerate(node_id)
-        idx = findsorted(static.node_id, Int32(id))
-        idx === nothing && continue
-        row = static[idx]
-        set_table_row!(table, row, i)
-    end
-    return table
-end
-
-"""
-From a timeseries table `time`, load the most recent applicable data into `table`.
-`table` must be a NamedTuple of vectors with all variables that must be loaded.
-The most recent applicable data is non-NaN data for a given ID that is on or before `t`.
-"""
-function set_current_value!(
-    table::NamedTuple,
-    node_id::Vector{NodeID},
-    time::StructVector,
-    t::DateTime,
-)::NamedTuple
-    idx_starttime = searchsortedlast(time.time, t)
-    pre_table = view(time, 1:idx_starttime)
-
-    for (i, id) in enumerate(node_id)
-        for (symbol, vector) in pairs(table)
-            idx = findlast(
-                row -> row.node_id == Int32(id) && !ismissing(getproperty(row, symbol)),
-                pre_table,
-            )
-            if idx !== nothing
-                vector[i] = getproperty(pre_table, symbol)[idx]
-            end
-        end
-    end
-    return table
-end
-
-function check_no_nans(table::NamedTuple, nodetype::String)
-    for (symbol, vector) in pairs(table)
-        any(isnan, vector) &&
-            error("Missing initial data for the $nodetype variable $symbol")
-    end
-    return nothing
 end
 
 "From an iterable of DateTimes, find the times the solver needs to stop"

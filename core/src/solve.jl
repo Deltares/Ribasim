@@ -13,6 +13,8 @@ function water_balance!(
 
     du .= 0.0
 
+    set_vertical_flux!(basin, t)
+
     # Ensures current_* vectors are current
     set_current_basin_properties!(du, u, p, t)
 
@@ -188,6 +190,35 @@ function formulate_storage!(
             end
         end
     end
+end
+
+"Update a current vertical flux from an interpolation at time t."
+function set_flux!(
+    fluxes::AbstractVector{Float64},
+    interpolations::Vector{ScalarConstantInterpolation},
+    i::Int,
+    t,
+)::Nothing
+    val = interpolations[i](t)
+    # keep old value if new value is NaN
+    if !isnan(val)
+        fluxes[i] = val
+    end
+    return nothing
+end
+
+"Update all current vertical fluxes from an interpolation at time t."
+function set_vertical_flux!(basin::Basin, t)::Nothing
+    (; vertical_flux, precipitation, potential_evaporation, infiltration, drainage) = basin
+    for id in basin.node_id
+        i = id.idx
+        set_flux!(vertical_flux.precipitation, precipitation, i, t)
+        set_flux!(vertical_flux.potential_evaporation, potential_evaporation, i, t)
+        set_flux!(vertical_flux.infiltration, infiltration, i, t)
+        set_flux!(vertical_flux.drainage, drainage, i, t)
+    end
+
+    return nothing
 end
 
 """

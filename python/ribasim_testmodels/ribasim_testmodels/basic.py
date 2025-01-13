@@ -255,6 +255,7 @@ def basic_transient_model() -> ribasim.Model:
             "level": 1.4,
         }
     )
+    model.basin.static.df = None  # A node cannot have both static and dynamic forcing
     model.basin.time = forcing  # type: ignore # TODO: Fix implicit typing from pydantic. See TableModel.check_dataframe
     model.basin.state = state  # type: ignore # TODO: Fix implicit typing from pydantic. See TableModel.check_dataframe
 

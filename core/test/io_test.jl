@@ -82,7 +82,7 @@ end
     table = Ribasim.load_structvector(db, config, Ribasim.BasinTimeV1)
     close(db)
     by = Ribasim.sort_by(table)
-    @test by((; node_id = 1, time = 2)) == (2, 1)
+    @test by((; node_id = 1, time = 2)) == (1, 2)
     # reverse it so it needs sorting
     reversed_table = sort(table; by, rev = true)
     @test issorted(table; by)

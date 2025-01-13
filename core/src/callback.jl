@@ -41,11 +41,6 @@ function create_callbacks(
         push!(callbacks, concentrations_cb)
     end
 
-    # Update Basin forcings
-    tstops = get_tstops(basin.time.time, starttime)
-    basin_cb = PresetTimeCallback(tstops, update_basin!; save_positions = (false, false))
-    push!(callbacks, basin_cb)
-
     if config.experimental.concentration
         # Update boundary concentrations
         for (boundary, func) in (
@@ -697,30 +692,6 @@ end
 function save_subgrid_level(u, t, integrator)
     update_subgrid_level!(integrator)
     return copy(integrator.p.subgrid.level)
-end
-
-"Load updates from 'Basin / time' into the parameters"
-function update_basin!(integrator)::Nothing
-    (; p) = integrator
-    (; basin) = p
-    (; node_id, time, vertical_flux) = basin
-    t = datetime_since(integrator.t, integrator.p.starttime)
-
-    rows = searchsorted(time.time, t)
-    timeblock = view(time, rows)
-
-    table = (;
-        vertical_flux.precipitation,
-        vertical_flux.potential_evaporation,
-        vertical_flux.drainage,
-        vertical_flux.infiltration,
-    )
-
-    for row in timeblock
-        i = searchsortedfirst(node_id, NodeID(NodeType.Basin, row.node_id, 0))
-        set_table_row!(table, row, i)
-    end
-    return nothing
 end
 
 "Load updates from 'Basin / concentration' into the parameters"
