@@ -48,6 +48,7 @@ from ribasim.schemas import (
     PumpStaticSchema,
     TabulatedRatingCurveStaticSchema,
     TabulatedRatingCurveTimeSchema,
+    UserDemandConcentrationSchema,
     UserDemandStaticSchema,
     UserDemandTimeSchema,
 )
@@ -348,12 +349,16 @@ class UserDemand(MultiNodeModel):
         default_factory=TableModel[UserDemandTimeSchema],
         json_schema_extra={"sort_keys": ["node_id", "priority", "time"]},
     )
+    concentration: TableModel[UserDemandConcentrationSchema] = Field(
+        default_factory=TableModel[UserDemandConcentrationSchema],
+        json_schema_extra={"sort_keys": ["node_id", "substance", "time"]},
+    )
 
 
 class LevelDemand(MultiNodeModel):
     static: TableModel[LevelDemandStaticSchema] = Field(
         default_factory=TableModel[LevelDemandStaticSchema],
-        json_schema_extra={"sort_keys": ["node_id"]},
+        json_schema_extra={"sort_keys": ["node_id", "priority"]},
     )
     time: TableModel[LevelDemandTimeSchema] = Field(
         default_factory=TableModel[LevelDemandTimeSchema],
@@ -379,11 +384,11 @@ class FlowBoundary(MultiNodeModel):
 class FlowDemand(MultiNodeModel):
     static: TableModel[FlowDemandStaticSchema] = Field(
         default_factory=TableModel[FlowDemandStaticSchema],
-        json_schema_extra={"sort_keys": ["node_id"]},
+        json_schema_extra={"sort_keys": ["node_id", "priority"]},
     )
     time: TableModel[FlowDemandTimeSchema] = Field(
         default_factory=TableModel[FlowDemandTimeSchema],
-        json_schema_extra={"sort_keys": ["node_id", "time"]},
+        json_schema_extra={"sort_keys": ["node_id", "priority", "time"]},
     )
 
 
@@ -443,6 +448,7 @@ class DiscreteControl(MultiNodeModel):
         json_schema_extra={
             "sort_keys": [
                 "node_id",
+                "compound_variable_id",
                 "listen_node_id",
                 "variable",
             ]
@@ -481,7 +487,7 @@ class LinearResistance(MultiNodeModel):
 class ContinuousControl(MultiNodeModel):
     variable: TableModel[ContinuousControlVariableSchema] = Field(
         default_factory=TableModel[ContinuousControlVariableSchema],
-        json_schema_extra={"sort_keys": ["node_id"]},
+        json_schema_extra={"sort_keys": ["node_id", "listen_node_id", "variable"]},
     )
     function: TableModel[ContinuousControlFunctionSchema] = Field(
         default_factory=TableModel[ContinuousControlFunctionSchema],

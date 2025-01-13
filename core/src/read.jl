@@ -145,20 +145,14 @@ function parse_static_and_time(
                 )
             end
         elseif node_id in time_node_ids
-            # TODO replace (time, node_id) order by (node_id, time)
-            # this fits our access pattern better, so we can use views
-            idx = findall(==(node_id), time_node_id_vec)
-            time_subset = time[idx]
-
-            time_first_idx = searchsortedfirst(time_node_id_vec[idx], node_id)
-
+            time_first_idx = searchsortedfirst(time.node_id, node_id)
             for parameter_name in parameter_names
                 # If the parameter is interpolatable, create an interpolation object
                 if parameter_name in time_interpolatables
                     val, is_valid = get_scalar_interpolation(
                         config.starttime,
                         t_end,
-                        time_subset,
+                        time,
                         node_id,
                         parameter_name;
                         default_value = hasproperty(defaults, parameter_name) ?
@@ -174,7 +168,7 @@ function parse_static_and_time(
                         val = true
                     else
                         # If the parameter is not interpolatable, get the instance in the first row
-                        val = getfield(time_subset[time_first_idx], parameter_name)
+                        val = getfield(time[time_first_idx], parameter_name)
                     end
                 end
                 getfield(out, parameter_name)[node_id.idx] = val
@@ -300,75 +294,98 @@ function TabulatedRatingCurve(
     static_node_ids, time_node_ids, node_ids, valid =
         static_and_time_node_ids(db, static, time, NodeType.TabulatedRatingCurve)
 
-    if !valid
-        error(
-            "Problems encountered when parsing TabulatedRatingcurve static and time node IDs.",
-        )
-    end
+    valid || error(
+        "Problems encountered when parsing TabulatedRatingcurve static and time node IDs.",
+    )
 
     interpolations = ScalarInterpolation[]
+    current_interpolation_index = IndexLookup[]
+    interpolation_index = 0
     control_mapping = Dict{Tuple{NodeID, String}, ControlStateUpdate}()
     active = Bool[]
     max_downstream_level = Float64[]
     errors = false
+
+    local is_active, interpolation, max_level
+
+    qh_iterator = IterTools.groupby(row -> (row.node_id, row.time), time)
+    state = nothing  # initial iterator state
 
     for node_id in node_ids
         if node_id in static_node_ids
             # Loop over all static rating curves (groups) with this node_id.
             # If it has a control_state add it to control_mapping.
             # The last rating curve forms the initial condition and activity.
-            source = "static"
+            # For the static case the interpolation index does not depend on time,
+            # but it can be changed by DiscreteControl. For simplicity we do create an
+            # index lookup that doesn't change with time just like the dynamic case.
+            # DiscreteControl will then change this lookup object.
             rows = searchsorted(
                 NodeID.(NodeType.TabulatedRatingCurve, static.node_id, node_id.idx),
                 node_id,
             )
             static_id = view(static, rows)
-            local is_active, interpolation
             # coalesce control_state to nothing to avoid boolean groupby logic on missing
-            for group in
+            for qh_group in
                 IterTools.groupby(row -> coalesce(row.control_state, nothing), static_id)
-                control_state = first(group).control_state
-                is_active = coalesce(first(group).active, true)
-                max_level = coalesce(first(group).max_downstream_level, Inf)
-                table = StructVector(group)
-                rowrange =
-                    findlastgroup(node_id, NodeID.(node_id.type, table.node_id, Ref(0)))
-                if !valid_tabulated_rating_curve(node_id, table, rowrange)
-                    errors = true
-                end
-                interpolation = try
-                    qh_interpolation(table, rowrange)
-                catch
-                    LinearInterpolation(Float64[], Float64[])
-                end
+                interpolation_index += 1
+                first_row = first(qh_group)
+                control_state = first_row.control_state
+                is_active = coalesce(first_row.active, true)
+                max_level = coalesce(first_row.max_downstream_level, Inf)
+                qh_table = StructVector(qh_group)
+                interpolation =
+                    qh_interpolation(node_id, qh_table.level, qh_table.flow_rate)
                 if !ismissing(control_state)
-                    control_mapping[(
-                        NodeID(NodeType.TabulatedRatingCurve, node_id, node_id.idx),
-                        control_state,
-                    )] = ControlStateUpdate(
+                    # let control swap out the static lookup object
+                    index_lookup = static_lookup(interpolation_index)
+                    control_mapping[(node_id, control_state)] = ControlStateUpdate(
                         ParameterUpdate(:active, is_active),
                         ParameterUpdate{Float64}[],
-                        [ParameterUpdate(:table, interpolation)],
+                        [ParameterUpdate(:current_interpolation_index, index_lookup)],
                     )
                 end
+                push!(interpolations, interpolation)
             end
-            push!(interpolations, interpolation)
+            push_lookup!(current_interpolation_index, interpolation_index)
             push!(active, is_active)
             push!(max_downstream_level, max_level)
         elseif node_id in time_node_ids
-            source = "time"
-            # get the timestamp that applies to the model starttime
-            idx_starttime = searchsortedlast(time.time, config.starttime)
-            pre_table = view(time, 1:idx_starttime)
-            rowrange =
-                findlastgroup(node_id, NodeID.(node_id.type, pre_table.node_id, Ref(0)))
+            lookup_time = Float64[]
+            lookup_index = Int[]
+            while true
+                val_state = iterate(qh_iterator, state)
+                if val_state === nothing
+                    # end of table
+                    break
+                end
+                qh_group, new_state = val_state
 
-            if !valid_tabulated_rating_curve(node_id, pre_table, rowrange)
-                errors = true
+                first_row = first(qh_group)
+                group_node_id = first_row.node_id
+                # max_level just document that it doesn't work and use the first or last
+                max_level = coalesce(first_row.max_downstream_level, Inf)
+                t = seconds_since(first_row.time, config.starttime)
+
+                qh_table = StructVector(qh_group)
+                if group_node_id == node_id
+                    # continue iterator
+                    state = new_state
+
+                    interpolation =
+                        qh_interpolation(node_id, qh_table.level, qh_table.flow_rate)
+
+                    interpolation_index += 1
+                    push!(interpolations, interpolation)
+                    push!(lookup_index, interpolation_index)
+                    push!(lookup_time, t)
+                else
+                    # end of group, new timeseries for different node has started,
+                    # don't accept the new state
+                    break
+                end
             end
-            interpolation = qh_interpolation(pre_table, rowrange)
-            max_level = coalesce(pre_table.max_downstream_level[rowrange][begin], Inf)
-            push!(interpolations, interpolation)
+            push_lookup!(current_interpolation_index, lookup_index, lookup_time)
             push!(active, true)
             push!(max_downstream_level, max_level)
         else
@@ -377,17 +394,16 @@ function TabulatedRatingCurve(
         end
     end
 
-    if errors
-        error("Errors occurred when parsing TabulatedRatingCurve data.")
-    end
+    errors && error("Errors occurred when parsing TabulatedRatingCurve data.")
+
     return TabulatedRatingCurve(;
         node_id = node_ids,
         inflow_edge = inflow_edge.(Ref(graph), node_ids),
         outflow_edge = outflow_edge.(Ref(graph), node_ids),
         active,
         max_downstream_level,
-        table = interpolations,
-        time,
+        interpolations,
+        current_interpolation_index,
         control_mapping,
     )
 end
@@ -1238,6 +1254,7 @@ function FlowDemand(db::DB, config::Config)::FlowDemand
     )
 end
 
+"Create and push a ConstantInterpolation to the current_interpolation_index."
 function push_lookup!(
     current_interpolation_index::Vector{IndexLookup},
     lookup_index::Vector{Int},
@@ -1250,6 +1267,24 @@ function push_lookup!(
         cache_parameters = true,
     )
     push!(current_interpolation_index, index_lookup)
+end
+
+"Create and push a static ConstantInterpolation to the current_interpolation_index."
+function push_lookup!(current_interpolation_index::Vector{IndexLookup}, lookup_index::Int)
+    index_lookup = static_lookup(lookup_index)
+    push!(current_interpolation_index, index_lookup)
+end
+
+"Create an interpolation object that always returns `lookup_index`."
+function static_lookup(lookup_index::Int)::IndexLookup
+    # TODO if https://github.com/SciML/DataInterpolations.jl/issues/373 is fixed,
+    # make these size 1 vectors, and remove `unique` from `valid_tabulated_curve_level`
+    return ConstantInterpolation(
+        [lookup_index, lookup_index],
+        [0.0, 0.0];
+        extrapolate = true,
+        cache_parameters = true,
+    )
 end
 
 function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid

@@ -309,8 +309,16 @@ end
     @test successful_retcode(model)
     @test model.integrator.p.basin.current_properties.current_storage[Float64[]] ≈
           Float32[368.31558, 365.68442] skip = Sys.isapple()
+    (; tabulated_rating_curve) = model.integrator.p
+    # The first node is static, the first interpolation object always applies
+    @test all(tabulated_rating_curve.current_interpolation_index[1].u .== 1)
+    # The second node is dynamic, switching from interpolation 2 to 3 to 4
+    @test tabulated_rating_curve.current_interpolation_index[2].u == [2, 3, 4]
+    @test tabulated_rating_curve.current_interpolation_index[2].t ≈
+          [0.0f0, 2.6784f6, 5.184f6]
+    @test length(tabulated_rating_curve.interpolations) == 4
     # the highest level in the dynamic table is updated to 1.2 from the callback
-    @test model.integrator.p.tabulated_rating_curve.table[end].t[end] == 1.2
+    @test tabulated_rating_curve.interpolations[4].t[end] == 1.2
 end
 
 @testitem "Outlet constraints" begin

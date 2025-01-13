@@ -1,40 +1,40 @@
 # These schemas define the name of database tables and the configuration file structure
 # The identifier is parsed as ribasim.nodetype.kind, no capitals or underscores are allowed.
-@schema "ribasim.discretecontrol.variable" DiscreteControlVariable
-@schema "ribasim.discretecontrol.condition" DiscreteControlCondition
-@schema "ribasim.discretecontrol.logic" DiscreteControlLogic
-@schema "ribasim.continuouscontrol.variable" ContinuousControlVariable
-@schema "ribasim.continuouscontrol.function" ContinuousControlFunction
-@schema "ribasim.basin.static" BasinStatic
-@schema "ribasim.basin.time" BasinTime
-@schema "ribasim.basin.profile" BasinProfile
-@schema "ribasim.basin.state" BasinState
-@schema "ribasim.basin.subgrid" BasinSubgrid
-@schema "ribasim.basin.subgridtime" BasinSubgridTime
 @schema "ribasim.basin.concentration" BasinConcentration
 @schema "ribasim.basin.concentrationexternal" BasinConcentrationExternal
 @schema "ribasim.basin.concentrationstate" BasinConcentrationState
+@schema "ribasim.basin.profile" BasinProfile
+@schema "ribasim.basin.state" BasinState
+@schema "ribasim.basin.static" BasinStatic
+@schema "ribasim.basin.subgrid" BasinSubgrid
+@schema "ribasim.basin.subgridtime" BasinSubgridTime
+@schema "ribasim.basin.time" BasinTime
+@schema "ribasim.continuouscontrol.function" ContinuousControlFunction
+@schema "ribasim.continuouscontrol.variable" ContinuousControlVariable
+@schema "ribasim.discretecontrol.condition" DiscreteControlCondition
+@schema "ribasim.discretecontrol.logic" DiscreteControlLogic
+@schema "ribasim.discretecontrol.variable" DiscreteControlVariable
+@schema "ribasim.flowboundary.concentration" FlowBoundaryConcentration
 @schema "ribasim.flowboundary.static" FlowBoundaryStatic
 @schema "ribasim.flowboundary.time" FlowBoundaryTime
-@schema "ribasim.flowboundary.concentration" FlowBoundaryConcentration
+@schema "ribasim.flowdemand.static" FlowDemandStatic
+@schema "ribasim.flowdemand.time" FlowDemandTime
+@schema "ribasim.levelboundary.concentration" LevelBoundaryConcentration
 @schema "ribasim.levelboundary.static" LevelBoundaryStatic
 @schema "ribasim.levelboundary.time" LevelBoundaryTime
-@schema "ribasim.levelboundary.concentration" LevelBoundaryConcentration
+@schema "ribasim.leveldemand.static" LevelDemandStatic
+@schema "ribasim.leveldemand.time" LevelDemandTime
 @schema "ribasim.linearresistance.static" LinearResistanceStatic
 @schema "ribasim.manningresistance.static" ManningResistanceStatic
+@schema "ribasim.outlet.static" OutletStatic
 @schema "ribasim.pidcontrol.static" PidControlStatic
 @schema "ribasim.pidcontrol.time" PidControlTime
 @schema "ribasim.pump.static" PumpStatic
 @schema "ribasim.tabulatedratingcurve.static" TabulatedRatingCurveStatic
 @schema "ribasim.tabulatedratingcurve.time" TabulatedRatingCurveTime
-@schema "ribasim.outlet.static" OutletStatic
+@schema "ribasim.userdemand.concentration" UserDemandConcentration
 @schema "ribasim.userdemand.static" UserDemandStatic
 @schema "ribasim.userdemand.time" UserDemandTime
-@schema "ribasim.userdemand.concentration" UserDemandConcentration
-@schema "ribasim.leveldemand.static" LevelDemandStatic
-@schema "ribasim.leveldemand.time" LevelDemandTime
-@schema "ribasim.flowdemand.static" FlowDemandStatic
-@schema "ribasim.flowdemand.time" FlowDemandTime
 
 const delimiter = " / "
 tablename(sv::Type{SchemaVersion{T, N}}) where {T, N} = tablename(sv())

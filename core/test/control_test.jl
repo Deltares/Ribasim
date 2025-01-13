@@ -146,15 +146,27 @@ end
 
 @testitem "TabulatedRatingCurve control" begin
     using Dates: Date
+    import BasicModelInterface as BMI
 
     toml_path = normpath(
         @__DIR__,
         "../../generated_testmodels/tabulated_rating_curve_control/ribasim.toml",
     )
     @test ispath(toml_path)
-    model = Ribasim.run(toml_path)
-    p = model.integrator.p
-    (; discrete_control) = p
+    model = Ribasim.Model(toml_path)
+    (; discrete_control, tabulated_rating_curve) = model.integrator.p
+    (; current_interpolation_index, interpolations) = tabulated_rating_curve
+
+    index_high, index_low = 1, 2
+    @test interpolations[index_high].t[end] == 1.0
+    @test interpolations[index_low].t[end] == 1.2
+
+    # Take a timestep to make discrete control set the rating curve to "high"
+    BMI.update(model)
+    @test only(current_interpolation_index)(0.0) == index_high
+    # Then run to completion
+    Ribasim.solve!(model)
+
     # it takes some months to fill the Basin above 0.5 m
     # with the initial "high" control_state
     @test discrete_control.record.control_state == ["high", "low"]
@@ -162,7 +174,7 @@ end
     t = Ribasim.datetime_since(discrete_control.record.time[2], model.config.starttime)
     @test Date(t) == Date("2020-03-16")
     # then the rating curve is updated to the "low" control_state
-    @test last(only(p.tabulated_rating_curve.table).t) == 1.2
+    @test only(current_interpolation_index)(0.0) == index_low
 end
 
 @testitem "Set PID target with DiscreteControl" begin

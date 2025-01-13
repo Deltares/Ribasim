@@ -13,7 +13,7 @@ Connect the LevelBoundary to a node that will look at the level to calculate the
 
 column        | type    | unit         | restriction
 ------------- | ------- | ------------ | -----------
-node_id       | Int32   | -            | sorted
+node_id       | Int32   | -            |
 active        | Bool    | -            | (optional, default true)
 level         | Float64 | $\text{m}$          | -
 
@@ -21,7 +21,6 @@ level         | Float64 | $\text{m}$          | -
 
 This table is the transient form of the `LevelBoundary` table.
 The only difference is that a time column is added and activity is assumed to be true.
-The table must by sorted by time, and per time it must be sorted by `node_id`.
 With this the levels can be updated over time. In between the given times the
 level is interpolated linearly, and outside the flow rate is constant given by the
 nearest time value.
@@ -29,8 +28,8 @@ Note that a `node_id` can be either in this table or in the static one, but not 
 
 column    | type     | unit         | restriction
 --------- | -------  | ------------ | -----------
-node_id   | Int32    | -            | sorted
-time      | DateTime | -            | sorted per node_id
+node_id   | Int32    | -            |
+time      | DateTime | -            |
 level     | Float64  | $\text{m}$   | -
 
 ## Concentration {#sec-level-boundary-conc}
@@ -38,8 +37,8 @@ This table defines the concentration of substances for the flow from the LevelBo
 
 column         | type     | unit                  | restriction
 -------------- | -------- | --------------------- | -----------
-node_id        | Int32    | -                     | sorted
-time           | DateTime | -                     | sorted per node_id
+node_id        | Int32    | -                     |
+time           | DateTime | -                     |
 substance      | String   | -                     | can correspond to known Delwaq substances
 concentration  | Float64  | $\text{g}/\text{m}^3$ |
 

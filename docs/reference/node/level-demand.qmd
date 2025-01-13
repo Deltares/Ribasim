@@ -19,7 +19,7 @@ If both are missing, `LevelDemand` won't have any effects on allocation.
 
 column        | type    | unit         | restriction
 ------------- | ------- | ------------ | -----------
-node_id       | Int32   | -            | sorted
+node_id       | Int32   | -            |
 min_level     | Float64 | $\text{m}$   | (optional, default -Inf)
 max_level     | Float64 | $\text{m}$   | (optional, default Inf)
 priority      | Int32   | -            | positive
@@ -31,8 +31,8 @@ Similar to the static version, only a single priority per `LevelDemand` node can
 
 column        | type     | unit         | restriction
 ------------- | -------  | ------------ | -----------
-node_id       | Int32    | -            | sorted
-time          | DateTime | -            | sorted per node id
+node_id       | Int32    | -            |
+time          | DateTime | -            |
 min_level     | Float64  | $\text{m}$   | -
 max_level     | Float64  | $\text{m}$   | -
 priority      | Int32    | -            | positive

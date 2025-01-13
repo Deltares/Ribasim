@@ -48,18 +48,17 @@ which can be for instance an average or a difference of variables. If a variable
 
 column               | type     | unit       | restriction
 -------------------- | -------- | -----------| -----------
-node_id              | Int32    | -          | sorted
-compound_variable_id | Int32    | -          | sorted per node_id
-listen_node_type     | String   | -          | known node type
-listen_node_id       | Int32    | -          | sorted per node_id
-variable             | String   | -          | must be "level" or "flow_rate", sorted per listen_node_id
+node_id              | Int32    | -          |
+compound_variable_id | Int32    | -          |
+listen_node_id       | Int32    | -          |
+variable             | String   | -          | must be "level" or "flow_rate"
 weight               | Float64  | -          | (optional, default 1.0)
 look_ahead           | Float64  | $\text{s}$ | Only on transient boundary conditions, non-negative (optional, default 0.0).
 
 These variables can be listened to:
 - The level of a Basin
 - The level of a LevelBoundary (supports look ahead)
-- The flow  rate through one of these node types: Pump, Outlet, TabulatedRatingCurve, LinearResistance, ManningResistance
+- The flow rate through one of these node types: Pump, Outlet, TabulatedRatingCurve, LinearResistance, ManningResistance
 - The flow rate of a FlowBoundary (supports look ahead)
 
 ## Condition
@@ -76,9 +75,9 @@ Note the strict inequality '$>$' in the equation above. This means for instance 
 
 column               | type     | unit    | restriction
 -------------------- | -------- | ------- | -----------
-node_id              | Int32    | -       | sorted
+node_id              | Int32    | -       |
 compound_variable_id | Int32    | -       | -
-greater_than         | Float64  | various | sorted per variable
+greater_than         | Float64  | various |
 
 ## Logic
 
@@ -95,11 +94,11 @@ DiscreteControl is applied in the Julia core as follows:
 
 :::{.callout-note}
 When creating truth states, it is important to not use the order of the condition table as you provide it, but the order as it is written to the file.
-Users can provide tables in any order, but when writing the model it gets sorted in the required order as specified in the schema.
+Users can provide tables in any order, but when writing the model it gets sorted in the required order.
 :::
 
 column         | type     | unit | restriction
 -------------- | -------- | ---- | -----------
-node_id        | Int32    | -    | sorted
+node_id        | Int32    | -    |
 control_state  | String   | -    | -
-truth_state    | String   | -    | Consists of the characters "T" (true), "F" (false), "U" (upcrossing), "D" (downcrossing) and "*" (any), sorted per node_id
+truth_state    | String   | -    | Consists of the characters "T" (true), "F" (false), "U" (upcrossing), "D" (downcrossing) and "*" (any)

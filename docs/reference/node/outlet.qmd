@@ -13,8 +13,8 @@ When PID controlled, the Outlet must point towards the controlled Basin in terms
 
 column                | type    | unit                   | restriction
 ---------             | ------- | ---------------------- | -----------
-node_id               | Int32   | -                      | sorted
-control_state         | String  | -                      | (optional) sorted per node_id
+node_id               | Int32   | -                      |
+control_state         | String  | -                      | (optional)
 active                | Bool    | -                      | (optional, default true)
 flow_rate             | Float64 | $\text{m}^3/\text{s}\$ | non-negative
 min_flow_rate         | Float64 | $\text{m}^3/\text{s}\$ | (optional, default 0.0)

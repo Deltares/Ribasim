@@ -4,7 +4,9 @@
     id = NodeID(:Basin, 2, 1)
     @test sprint(show, id) === "Basin #2"
     @test id < NodeID(:Basin, 3, 1)
-    @test_throws ErrorException id < NodeID(:Pump, 3, 1)
+    @test id < NodeID(:Pump, 3, 1)
+    @test 2 < NodeID(:Pump, 3, 1)
+    @test id < 3
     @test Int32(id) === Int32(2)
     @test convert(Int32, id) === Int32(2)
 end

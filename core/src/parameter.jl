@@ -95,18 +95,18 @@ end
 Base.Int32(id::NodeID) = id.value
 Base.convert(::Type{Int32}, id::NodeID) = id.value
 Base.broadcastable(id::NodeID) = Ref(id)
-Base.:(==)(id_1::NodeID, id_2::NodeID) = id_1.type == id_2.type && id_1.value == id_2.value
 Base.show(io::IO, id::NodeID) = print(io, id.type, " #", id.value)
 config.snake_case(id::NodeID) = config.snake_case(id.type)
-
-function Base.isless(id_1::NodeID, id_2::NodeID)::Bool
-    if id_1.type != id_2.type
-        error("Cannot compare NodeIDs of different types")
-    end
-    return id_1.value < id_2.value
-end
-
 Base.to_index(id::NodeID) = Int(id.value)
+
+# Compare only by value for working with a mix of integers from tables and processed NodeIDs
+Base.:(==)(id_1::NodeID, id_2::NodeID) = id_1.value == id_2.value
+Base.:(==)(id_1::Integer, id_2::NodeID) = id_1 == id_2.value
+Base.:(==)(id_1::NodeID, id_2::Integer) = id_1.value == id_2
+
+Base.isless(id_1::NodeID, id_2::NodeID)::Bool = id_1.value < id_2.value
+Base.isless(id_1::Integer, id_2::NodeID)::Bool = id_1 < id_2.value
+Base.isless(id_1::NodeID, id_2::Integer)::Bool = id_1.value < id_2
 
 "LinearInterpolation from a Float64 to a Float64"
 const ScalarInterpolation = LinearInterpolation{
@@ -275,7 +275,7 @@ end
 Base.length(::EdgeMetadata) = 1
 
 """
-The update of an parameter given by a value and a reference to the target
+The update of a parameter given by a value and a reference to the target
 location of the variable in memory
 """
 struct ParameterUpdate{T}
@@ -289,13 +289,12 @@ function ParameterUpdate(name::Symbol, value::T)::ParameterUpdate{T} where {T}
 end
 
 """
-The parameter update associated with a certain control state
-for discrete control
+The parameter update associated with a certain control state for discrete control
 """
-@kwdef struct ControlStateUpdate
+@kwdef struct ControlStateUpdate{T <: AbstractInterpolation}
     active::ParameterUpdate{Bool}
     scalar_update::Vector{ParameterUpdate{Float64}} = []
-    itp_update::Vector{ParameterUpdate{ScalarInterpolation}} = []
+    itp_update::Vector{ParameterUpdate{T}} = ParameterUpdate{ScalarInterpolation}[]
 end
 
 """
@@ -434,15 +433,10 @@ end
 end
 
 """
-    struct TabulatedRatingCurve{C}
+    struct TabulatedRatingCurve
 
 Rating curve from level to flow rate. The rating curve is a lookup table with linear
-interpolation in between. Relation can be updated in time, which is done by moving data from
-the `time` field into the `tables`, which is done in the `update_tabulated_rating_curve`
-callback.
-
-Type parameter C indicates the content backing the StructVector, which can be a NamedTuple
-of Vectors or Arrow Primitives, and is added to avoid type instabilities.
+interpolation in between. Relations can be updated in time.
 
 node_id: node ID of the TabulatedRatingCurve node
 inflow_edge: incoming flow edge metadata
@@ -451,18 +445,18 @@ outflow_edge: outgoing flow edge metadata
     The ID of the source node is always the ID of the TabulatedRatingCurve node
 active: whether this node is active and thus contributes flows
 max_downstream_level: The downstream level above which the TabulatedRatingCurve flow goes to zero
-table: The current Q(h) relationships
-time: The time table used for updating the tables
+interpolations: All Q(h) relationships for the nodes over time
+current_interpolation_index: Per node 1 lookup from t to an index in `interpolations`
 control_mapping: dictionary from (node_id, control_state) to Q(h) and/or active state
 """
-@kwdef struct TabulatedRatingCurve{C} <: AbstractParameterNode
+@kwdef struct TabulatedRatingCurve <: AbstractParameterNode
     node_id::Vector{NodeID}
     inflow_edge::Vector{EdgeMetadata}
     outflow_edge::Vector{EdgeMetadata}
     active::Vector{Bool}
     max_downstream_level::Vector{Float64} = fill(Inf, length(node_id))
-    table::Vector{ScalarInterpolation}
-    time::StructVector{TabulatedRatingCurveTimeV1, C, Int}
+    interpolations::Vector{ScalarInterpolation}
+    current_interpolation_index::Vector{IndexLookup}
     control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate}
 end
 
@@ -935,14 +929,14 @@ const ModelGraph = MetaGraph{
     Float64,
 }
 
-@kwdef mutable struct Parameters{C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11}
+@kwdef mutable struct Parameters{C1, C2, C3, C4, C6, C7, C8, C9, C10, C11}
     const starttime::DateTime
     const graph::ModelGraph
     const allocation::Allocation
     const basin::Basin{C1, C2, C3, C4}
     const linear_resistance::LinearResistance
     const manning_resistance::ManningResistance
-    const tabulated_rating_curve::TabulatedRatingCurve{C5}
+    const tabulated_rating_curve::TabulatedRatingCurve
     const level_boundary::LevelBoundary{C6}
     const flow_boundary::FlowBoundary{C7}
     const pump::Pump
