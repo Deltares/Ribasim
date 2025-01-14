@@ -781,7 +781,7 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     )
 
     # Ensure the initial data is loaded at t0 for BMI
-    set_vertical_flux!(basin, 0.0)
+    update_basin!(basin, 0.0)
 
     storage0 = get_storages_from_levels(basin, state.level)
     @assert length(storage0) == n "Basin / state length differs from number of Basins"

@@ -10,14 +10,7 @@ function create_callbacks(
     u0::ComponentVector,
     saveat,
 )::Tuple{CallbackSet, SavedResults}
-    (;
-        starttime,
-        basin,
-        flow_boundary,
-        level_boundary,
-        user_demand,
-        tabulated_rating_curve,
-    ) = parameters
+    (; starttime, basin, flow_boundary, level_boundary, user_demand) = parameters
     callbacks = SciMLBase.DECallback[]
 
     # Check for negative storage
@@ -40,6 +33,17 @@ function create_callbacks(
             FunctionCallingCallback(update_concentrations!; func_start = false)
         push!(callbacks, concentrations_cb)
     end
+
+    # Update Basin forcings
+    # All variables are given at the same time, so just precipitation works
+    times = [itp.t for itp in basin.precipitation]
+    tstops = Float64[]
+    for t in times
+        append!(tstops, t)
+    end
+    unique!(sort!(tstops))
+    basin_cb = PresetTimeCallback(tstops, update_basin!; save_positions = (false, false))
+    push!(callbacks, basin_cb)
 
     if config.experimental.concentration
         # Update boundary concentrations
@@ -692,6 +696,48 @@ end
 function save_subgrid_level(u, t, integrator)
     update_subgrid_level!(integrator)
     return copy(integrator.p.subgrid.level)
+end
+
+"Update one current vertical flux from an interpolation at time t."
+function set_flux!(
+    fluxes::AbstractVector{Float64},
+    interpolations::Vector{ScalarConstantInterpolation},
+    i::Int,
+    t,
+)::Nothing
+    val = interpolations[i](t)
+    # keep old value if new value is NaN
+    if !isnan(val)
+        fluxes[i] = val
+    end
+    return nothing
+end
+
+"""
+Update all current vertical fluxes from an interpolation at time t.
+
+This runs in a callback rather than the RHS since that gives issues with the discontinuities
+in the ConstantInterpolations we use, failing the vertical_flux_means test.
+"""
+function update_basin!(integrator)::Nothing
+    (; p, t) = integrator
+    (; basin) = p
+
+    update_basin!(basin, t)
+    return nothing
+end
+
+function update_basin!(basin::Basin, t)::Nothing
+    (; vertical_flux, precipitation, potential_evaporation, infiltration, drainage) = basin
+    for id in basin.node_id
+        i = id.idx
+        set_flux!(vertical_flux.precipitation, precipitation, i, t)
+        set_flux!(vertical_flux.potential_evaporation, potential_evaporation, i, t)
+        set_flux!(vertical_flux.infiltration, infiltration, i, t)
+        set_flux!(vertical_flux.drainage, drainage, i, t)
+    end
+
+    return nothing
 end
 
 "Load updates from 'Basin / concentration' into the parameters"

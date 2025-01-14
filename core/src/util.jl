@@ -79,6 +79,11 @@ function get_scalar_interpolation(
     parameter = getfield.(time, param)[rows]
     parameter = coalesce.(parameter, default_value)
     times = seconds_since.(time.time[rows], starttime)
+    # Add extra timestep at start for constant extrapolation
+    if times[1] > 0
+        pushfirst!(times, nextfloat(-Inf))
+        pushfirst!(parameter, parameter[1])
+    end
     # Add extra timestep at end for constant extrapolation
     if times[end] < t_end
         push!(times, t_end)
