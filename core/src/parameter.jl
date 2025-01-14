@@ -108,6 +108,10 @@ Base.isless(id_1::NodeID, id_2::NodeID)::Bool = id_1.value < id_2.value
 Base.isless(id_1::Integer, id_2::NodeID)::Bool = id_1 < id_2.value
 Base.isless(id_1::NodeID, id_2::Integer)::Bool = id_1.value < id_2
 
+"ConstantInterpolation from a Float64 to a Float64"
+const ScalarConstantInterpolation =
+    ConstantInterpolation{Vector{Float64}, Vector{Float64}, Vector{Float64}, Float64, (1,)}
+
 "LinearInterpolation from a Float64 to a Float64"
 const ScalarInterpolation = LinearInterpolation{
     Vector{Float64},
@@ -374,6 +378,20 @@ end
 end
 
 """
+Data source for Basin parameter updates over time
+
+This is used for both static and dynamic values,
+the length of each Vector is the number of Basins.
+"""
+@kwdef struct BasinForcing
+    precipitation::Vector{ScalarConstantInterpolation} = ScalarConstantInterpolation[]
+    potential_evaporation::Vector{ScalarConstantInterpolation} =
+        ScalarConstantInterpolation[]
+    drainage::Vector{ScalarConstantInterpolation} = ScalarConstantInterpolation[]
+    infiltration::Vector{ScalarConstantInterpolation} = ScalarConstantInterpolation[]
+end
+
+"""
 Requirements:
 
 * Must be positive: precipitation, evaporation, infiltration, drainage
@@ -389,7 +407,7 @@ else
     T = Vector{Float64}
 end
 """
-@kwdef struct Basin{V, C, CD, D} <: AbstractParameterNode
+@kwdef struct Basin{V, CD, D} <: AbstractParameterNode
     node_id::Vector{NodeID}
     inflow_ids::Vector{Vector{NodeID}} = [NodeID[]]
     outflow_ids::Vector{Vector{NodeID}} = [NodeID[]]
@@ -420,8 +438,7 @@ end
     # Values for allocation if applicable
     demand::Vector{Float64} = zeros(length(node_id))
     allocated::Vector{Float64} = zeros(length(node_id))
-    # Data source for parameter updates
-    time::StructVector{BasinTimeV1, C, Int}
+    forcing::BasinForcing = BasinForcing()
     # Storage for each Basin at the previous time step
     storage_prev::Vector{Float64} = zeros(length(node_id))
     # Level for each Basin at the previous time step
@@ -929,11 +946,11 @@ const ModelGraph = MetaGraph{
     Float64,
 }
 
-@kwdef mutable struct Parameters{C1, C2, C3, C4, C6, C7, C8, C9, C10, C11}
+@kwdef mutable struct Parameters{C1, C3, C4, C6, C7, C8, C9, C10, C11}
     const starttime::DateTime
     const graph::ModelGraph
     const allocation::Allocation
-    const basin::Basin{C1, C2, C3, C4}
+    const basin::Basin{C1, C3, C4}
     const linear_resistance::LinearResistance
     const manning_resistance::ManningResistance
     const tabulated_rating_curve::TabulatedRatingCurve

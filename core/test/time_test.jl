@@ -24,7 +24,7 @@
 end
 
 @testitem "vertical_flux_means" begin
-    using DataFrames: DataFrame, transform!, ByRow
+    using DataFrames: DataFrame, groupby
 
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/basic_transient/ribasim.toml")
@@ -36,49 +36,17 @@ end
     n_basin = length(basin.node_id)
     basin_table = DataFrame(Ribasim.basin_table(model))
 
-    time_table = DataFrame(basin.time)
-    t_end = time_table.time[end]
-    filter!(:time => t -> t !== t_end, time_table)
+    seconds = Ribasim.seconds_since.(unique(basin_table.time), basin_table.time[1])
 
-    function get_area(basin, idx, storage)
-        level = Ribasim.get_level_from_storage(basin, idx, storage)
-        basin.level_to_area[idx](level)
+    for (i, gb) in enumerate(groupby(basin_table, :node_id))
+        area = basin.level_to_area[i](gb.level)
+        pot_evap = basin.forcing.potential_evaporation[i](seconds)
+        # high tolerance since the area is only approximate
+        @test gb.evaporation ≈ area .* pot_evap atol = 1e-5
+        prec = basin.forcing.precipitation[i](seconds)
+        fixed_area = Ribasim.basin_areas(basin, i)[end]
+        @test gb.precipitation ≈ fixed_area .* prec
     end
-
-    time_table[!, "basin_idx"] =
-        [node_id.idx for node_id in Ribasim.NodeID.(:Basin, time_table.node_id, Ref(p))]
-    time_table[!, "area"] = [
-        get_area(basin, idx, storage) for
-        (idx, storage) in zip(time_table.basin_idx, basin_table.storage)
-    ]
-    # Mean areas over the timestep are computed as an approximation of
-    # how the area changes over the timestep, affecting evaporation
-    time_table[!, "mean_area"] .= 0.0
-    n_basins = length(basin.node_id)
-    n_times = length(unique(time_table.time)) - 1
-    for basin_idx in 1:n_basins
-        for time_idx in 1:n_times
-            idx_1 = n_basins * (time_idx - 1) + basin_idx
-            idx_2 = n_basins * time_idx + basin_idx
-            mean_area = (time_table.area[idx_1] + time_table.area[idx_2]) / 2
-            time_table.mean_area[idx_1] = mean_area
-        end
-    end
-
-    @test all(
-        isapprox(
-            basin_table.evaporation,
-            time_table.mean_area .* time_table.potential_evaporation;
-            rtol = 1e-2,
-        ),
-    )
-
-    fixed_area =
-        Dict(id.value => Ribasim.basin_areas(basin, id.idx)[end] for id in basin.node_id)
-    transform!(time_table, :node_id => ByRow(id -> fixed_area[id]) => :fixed_area)
-    @test all(
-        basin_table.precipitation .≈ time_table.fixed_area .* time_table.precipitation,
-    )
 end
 
 @testitem "Integrate over discontinuity" begin

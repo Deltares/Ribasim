@@ -83,6 +83,7 @@ function Model(config::Config)::Model
         # tell the solver to stop when new data comes in
         tstops = Vector{Float64}[]
         for schema_version in [
+            BasinTimeV1,
             FlowBoundaryTimeV1,
             LevelBoundaryTimeV1,
             UserDemandTimeV1,

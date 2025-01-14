@@ -15,6 +15,8 @@ function parse_static_and_time(
     time::Union{StructVector, Nothing} = nothing,
     defaults::NamedTuple = (; active = true),
     time_interpolatables::Vector{Symbol} = Symbol[],
+    interpolation_type::Type{<:AbstractInterpolation} = LinearInterpolation,
+    is_complete::Bool = true,
 )::Tuple{NamedTuple, Bool}
     # E.g. `PumpStatic`
     static_type = eltype(static)
@@ -42,7 +44,16 @@ function parse_static_and_time(
         # If the type is a union, then the associated parameter is optional and
         # the type is of the form Union{Missing,ActualType}
         parameter_type = if parameter_name in time_interpolatables
-            ScalarInterpolation
+            # We need the concrete type to store in the parameters
+            # The interpolation_type is not concrete because they don't have the
+            # constructors we use
+            if interpolation_type == LinearInterpolation
+                ScalarInterpolation
+            elseif interpolation_type == ConstantInterpolation
+                ScalarConstantInterpolation
+            else
+                error("Unknown interpolation type.")
+            end
         elseif isa(parameter_type, Union)
             nonmissingtype(parameter_type)
         else
@@ -120,7 +131,7 @@ function parse_static_and_time(
                         val = defaults[parameter_name]
                     end
                     if parameter_name in time_interpolatables
-                        val = LinearInterpolation(
+                        val = interpolation_type(
                             [val, val],
                             trivial_timespan;
                             cache_parameters = true,
@@ -149,7 +160,7 @@ function parse_static_and_time(
             for parameter_name in parameter_names
                 # If the parameter is interpolatable, create an interpolation object
                 if parameter_name in time_interpolatables
-                    val, is_valid = get_scalar_interpolation(
+                    val = get_scalar_interpolation(
                         config.starttime,
                         t_end,
                         time,
@@ -157,11 +168,8 @@ function parse_static_and_time(
                         parameter_name;
                         default_value = hasproperty(defaults, parameter_name) ?
                                         defaults[parameter_name] : NaN,
+                        interpolation_type,
                     )
-                    if !is_valid
-                        errors = true
-                        @error "A $parameter_name time series for $node_id has repeated times, this can not be interpolated."
-                    end
                 else
                     # Activity of transient nodes is assumed to be true
                     if parameter_name == :active
@@ -170,6 +178,19 @@ function parse_static_and_time(
                         # If the parameter is not interpolatable, get the instance in the first row
                         val = getfield(time[time_first_idx], parameter_name)
                     end
+                end
+                getfield(out, parameter_name)[node_id.idx] = val
+            end
+        elseif !is_complete
+            # Apply the defaults just like if it was in static but missing
+            for parameter_name in parameter_names
+                val = defaults[parameter_name]
+                if parameter_name in time_interpolatables
+                    val = interpolation_type(
+                        [val, val],
+                        trivial_timespan;
+                        cache_parameters = true,
+                    )
                 end
                 getfield(out, parameter_name)[node_id.idx] = val
             end
@@ -651,23 +672,19 @@ function ConcentrationData(
         for group in IterTools.groupby(row -> row.substance, data_id)
             first_row = first(group)
             substance = first_row.substance
-            itp, no_duplication = get_scalar_interpolation(
+            itp = get_scalar_interpolation(
                 config.starttime,
                 t_end,
                 StructVector(group),
                 NodeID(:Basin, first_row.node_id, 0),
-                :concentration,
+                :concentration;
+                interpolation_type = LinearInterpolation,
             )
             concentration_external_id["concentration_external.$substance"] = itp
             if any(itp.u .< 0)
                 errors = true
                 @error "Found negative concentration(s) in `Basin / concentration_external`." node_id =
                     id, substance
-            end
-            if !no_duplication
-                errors = true
-                @error "There are repeated time values for in `Basin / concentration_external`." node_id =
-                    id substance
             end
         end
         push!(concentration_external, concentration_external_id)
@@ -691,26 +708,52 @@ function ConcentrationData(
 end
 
 function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
-    node_id = get_node_ids(db, NodeType.Basin)
-    n = length(node_id)
-
     # both static and time are optional, but we need fallback defaults
     static = load_structvector(db, config, BasinStaticV1)
     time = load_structvector(db, config, BasinTimeV1)
     state = load_structvector(db, config, BasinStateV1)
 
-    # Forcing
-    precipitation = zeros(n)
-    potential_evaporation = zeros(n)
-    drainage = zeros(n)
-    infiltration = zeros(n)
-    table = (; precipitation, potential_evaporation, drainage, infiltration)
+    _, _, node_id, valid =
+        static_and_time_node_ids(db, static, time, NodeType.Basin; is_complete = false)
+    if !valid
+        error("Problems encountered when parsing Basin static and time node IDs.")
+    end
 
-    set_static_value!(table, node_id, static)
-    set_current_value!(table, node_id, time, config.starttime)
-    check_no_nans(table, "Basin")
+    time_interpolatables =
+        [:precipitation, :potential_evaporation, :drainage, :infiltration]
+    parsed_parameters, valid = parse_static_and_time(
+        db,
+        config,
+        Basin;
+        static,
+        time,
+        time_interpolatables,
+        interpolation_type = ConstantInterpolation,
+        defaults = (;
+            precipitation = NaN,
+            potential_evaporation = NaN,
+            drainage = NaN,
+            infiltration = NaN,
+        ),
+        is_complete = false,
+    )
 
-    vertical_flux = ComponentVector(; table...)
+    forcing = BasinForcing(;
+        parsed_parameters.precipitation,
+        parsed_parameters.potential_evaporation,
+        parsed_parameters.drainage,
+        parsed_parameters.infiltration,
+    )
+
+    # Current forcing is stored as separate array for BMI access
+    # These are updated from the interpolation objects at runtime
+    n = length(node_id)
+    vertical_flux = ComponentVector(;
+        precipitation = zeros(n),
+        potential_evaporation = zeros(n),
+        drainage = zeros(n),
+        infiltration = zeros(n),
+    )
 
     # Profiles
     area, level = create_storage_tables(db, config)
@@ -736,10 +779,13 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
         vertical_flux,
         storage_to_level,
         level_to_area,
-        time,
+        forcing,
         concentration_data,
         concentration_time,
     )
+
+    # Ensure the initial data is loaded at t0 for BMI
+    update_basin!(basin, 0.0)
 
     storage0 = get_storages_from_levels(basin, state.level)
     @assert length(storage0) == n "Basin / state length differs from number of Basins"
@@ -1074,39 +1120,30 @@ function user_demand_time!(
 
         active[user_demand_idx] = true
         demand_from_timeseries[user_demand_idx] = true
-        return_factor_itp, is_valid_return = get_scalar_interpolation(
+        return_factor_itp = get_scalar_interpolation(
             config.starttime,
             t_end,
             StructVector(group),
             NodeID(:UserDemand, first_row.node_id, 0),
             :return_factor;
+            interpolation_type = LinearInterpolation,
         )
-        if is_valid_return
-            return_factor[user_demand_idx] = return_factor_itp
-        else
-            @error "The return_factor(t) relationship for UserDemand $(first_row.node_id) from the time table has repeated timestamps, this can not be interpolated."
-            errors = true
-        end
+        return_factor[user_demand_idx] = return_factor_itp
 
         min_level[user_demand_idx] = first_row.min_level
 
         priority_idx = findsorted(priorities, first_row.priority)
-        demand_p_itp, is_valid_demand = get_scalar_interpolation(
+        demand_p_itp = get_scalar_interpolation(
             config.starttime,
             t_end,
             StructVector(group),
             NodeID(:UserDemand, first_row.node_id, 0),
             :demand;
             default_value = 0.0,
+            interpolation_type = LinearInterpolation,
         )
         demand[user_demand_idx, priority_idx] = demand_p_itp(0.0)
-
-        if is_valid_demand
-            demand_itp[user_demand_idx][priority_idx] = demand_p_itp
-        else
-            @error "The demand(t) relationship for UserDemand $(first_row.node_id) of priority $(first_row.priority_idx) from the time table has repeated timestamps, this can not be interpolated."
-            errors = true
-        end
+        demand_itp[user_demand_idx][priority_idx] = demand_p_itp
     end
     return errors
 end

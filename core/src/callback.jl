@@ -10,14 +10,7 @@ function create_callbacks(
     u0::ComponentVector,
     saveat,
 )::Tuple{CallbackSet, SavedResults}
-    (;
-        starttime,
-        basin,
-        flow_boundary,
-        level_boundary,
-        user_demand,
-        tabulated_rating_curve,
-    ) = parameters
+    (; starttime, basin, flow_boundary, level_boundary, user_demand) = parameters
     callbacks = SciMLBase.DECallback[]
 
     # Check for negative storage
@@ -42,7 +35,13 @@ function create_callbacks(
     end
 
     # Update Basin forcings
-    tstops = get_tstops(basin.time.time, starttime)
+    # All variables are given at the same time, so just precipitation works
+    times = [itp.t for itp in basin.forcing.precipitation]
+    tstops = Float64[]
+    for t in times
+        append!(tstops, t)
+    end
+    unique!(sort!(tstops))
     basin_cb = PresetTimeCallback(tstops, update_basin!; save_positions = (false, false))
     push!(callbacks, basin_cb)
 
@@ -699,27 +698,45 @@ function save_subgrid_level(u, t, integrator)
     return copy(integrator.p.subgrid.level)
 end
 
-"Load updates from 'Basin / time' into the parameters"
-function update_basin!(integrator)::Nothing
-    (; p) = integrator
-    (; basin) = p
-    (; node_id, time, vertical_flux) = basin
-    t = datetime_since(integrator.t, integrator.p.starttime)
-
-    rows = searchsorted(time.time, t)
-    timeblock = view(time, rows)
-
-    table = (;
-        vertical_flux.precipitation,
-        vertical_flux.potential_evaporation,
-        vertical_flux.drainage,
-        vertical_flux.infiltration,
-    )
-
-    for row in timeblock
-        i = searchsortedfirst(node_id, NodeID(NodeType.Basin, row.node_id, 0))
-        set_table_row!(table, row, i)
+"Update one current vertical flux from an interpolation at time t."
+function set_flux!(
+    fluxes::AbstractVector{Float64},
+    interpolations::Vector{ScalarConstantInterpolation},
+    i::Int,
+    t,
+)::Nothing
+    val = interpolations[i](t)
+    # keep old value if new value is NaN
+    if !isnan(val)
+        fluxes[i] = val
     end
+    return nothing
+end
+
+"""
+Update all current vertical fluxes from an interpolation at time t.
+
+This runs in a callback rather than the RHS since that gives issues with the discontinuities
+in the ConstantInterpolations we use, failing the vertical_flux_means test.
+"""
+function update_basin!(integrator)::Nothing
+    (; p, t) = integrator
+    (; basin) = p
+
+    update_basin!(basin, t)
+    return nothing
+end
+
+function update_basin!(basin::Basin, t)::Nothing
+    (; vertical_flux, forcing) = basin
+    for id in basin.node_id
+        i = id.idx
+        set_flux!(vertical_flux.precipitation, forcing.precipitation, i, t)
+        set_flux!(vertical_flux.potential_evaporation, forcing.potential_evaporation, i, t)
+        set_flux!(vertical_flux.infiltration, forcing.infiltration, i, t)
+        set_flux!(vertical_flux.drainage, forcing.drainage, i, t)
+    end
+
     return nothing
 end
 

@@ -27,7 +27,6 @@ end
         node_id = NodeID.(:Basin, [5, 7], [1, 2]),
         storage_to_level,
         level_to_area,
-        time = StructVector{Ribasim.BasinTimeV1}(undef, 0),
         concentration_time = StructVector{Ribasim.BasinConcentrationV1}(undef, 0),
     )
 
@@ -138,7 +137,6 @@ end
         node_id = NodeID.(:Basin, [1], 1),
         storage_to_level = [storage_to_level],
         level_to_area = [level_to_area],
-        time = StructVector{Ribasim.BasinTimeV1}(undef, 0),
         concentration_time = StructVector{Ribasim.BasinConcentrationV1}(undef, 0),
     )
 
