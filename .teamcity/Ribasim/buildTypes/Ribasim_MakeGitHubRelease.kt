@@ -81,7 +81,7 @@ object Ribasim_MakeGitHubRelease : BuildType({
                 artifactRules = "ribasim_qgis.zip"
             }
         }
-        dependency(Windows_BuildRibasim) {
+        dependency(AbsoluteId("SigningAndCertificates_Ribasim_SigningRibasimRelease")) {
             snapshot {
                 onDependencyFailure = FailureAction.FAIL_TO_START
             }
