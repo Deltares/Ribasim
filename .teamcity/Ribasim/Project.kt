@@ -2,6 +2,7 @@ package Ribasim
 
 import Ribasim.buildTypes.GenerateTestmodels
 import Ribasim.buildTypes.Ribasim_MakeGitHubRelease
+import Ribasim.buildTypes.Ribasim_MakeNightlyRelease
 import Ribasim.buildTypes.Ribasim_MakeQgisPlugin
 import Ribasim.vcsRoots.Ribasim
 import Ribasim_Linux.RibasimLinuxProject
@@ -18,6 +19,7 @@ object Project : Project({
     buildType(GenerateTestmodels)
     buildType(Ribasim_MakeQgisPlugin)
     buildType(Ribasim_MakeGitHubRelease)
+    buildType(Ribasim_MakeNightlyRelease)
 
     template(GithubCommitStatusIntegration)
     template(GithubPullRequestsIntegration)
