@@ -6,6 +6,7 @@ import Ribasim_Windows.Windows_BuildRibasim
 import Ribasim_Windows.Windows_TestRibasimBinaries
 import Templates.LinuxAgent
 import jetbrains.buildServer.configs.kotlin.*
+import jetbrains.buildServer.configs.kotlin.buildFeatures.provideAwsCredentials
 import jetbrains.buildServer.configs.kotlin.buildSteps.script
 import jetbrains.buildServer.configs.kotlin.triggers.vcs
 
