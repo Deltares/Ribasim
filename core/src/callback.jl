@@ -36,7 +36,7 @@ function create_callbacks(
 
     # Update Basin forcings
     # All variables are given at the same time, so just precipitation works
-    times = [itp.t for itp in basin.precipitation]
+    times = [itp.t for itp in basin.forcing.precipitation]
     tstops = Float64[]
     for t in times
         append!(tstops, t)
@@ -728,13 +728,13 @@ function update_basin!(integrator)::Nothing
 end
 
 function update_basin!(basin::Basin, t)::Nothing
-    (; vertical_flux, precipitation, potential_evaporation, infiltration, drainage) = basin
+    (; vertical_flux, forcing) = basin
     for id in basin.node_id
         i = id.idx
-        set_flux!(vertical_flux.precipitation, precipitation, i, t)
-        set_flux!(vertical_flux.potential_evaporation, potential_evaporation, i, t)
-        set_flux!(vertical_flux.infiltration, infiltration, i, t)
-        set_flux!(vertical_flux.drainage, drainage, i, t)
+        set_flux!(vertical_flux.precipitation, forcing.precipitation, i, t)
+        set_flux!(vertical_flux.potential_evaporation, forcing.potential_evaporation, i, t)
+        set_flux!(vertical_flux.infiltration, forcing.infiltration, i, t)
+        set_flux!(vertical_flux.drainage, forcing.drainage, i, t)
     end
 
     return nothing

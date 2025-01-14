@@ -378,6 +378,20 @@ end
 end
 
 """
+Data source for Basin parameter updates over time
+
+This is used for both static and dynamic values,
+the length of each Vector is the number of Basins.
+"""
+@kwdef struct BasinForcing
+    precipitation::Vector{ScalarConstantInterpolation} = ScalarConstantInterpolation[]
+    potential_evaporation::Vector{ScalarConstantInterpolation} =
+        ScalarConstantInterpolation[]
+    drainage::Vector{ScalarConstantInterpolation} = ScalarConstantInterpolation[]
+    infiltration::Vector{ScalarConstantInterpolation} = ScalarConstantInterpolation[]
+end
+
+"""
 Requirements:
 
 * Must be positive: precipitation, evaporation, infiltration, drainage
@@ -424,12 +438,7 @@ end
     # Values for allocation if applicable
     demand::Vector{Float64} = zeros(length(node_id))
     allocated::Vector{Float64} = zeros(length(node_id))
-    # Data source for parameter updates
-    precipitation::Vector{ScalarConstantInterpolation} = ScalarConstantInterpolation[]
-    potential_evaporation::Vector{ScalarConstantInterpolation} =
-        ScalarConstantInterpolation[]
-    drainage::Vector{ScalarConstantInterpolation} = ScalarConstantInterpolation[]
-    infiltration::Vector{ScalarConstantInterpolation} = ScalarConstantInterpolation[]
+    forcing::BasinForcing = BasinForcing()
     # Storage for each Basin at the previous time step
     storage_prev::Vector{Float64} = zeros(length(node_id))
     # Level for each Basin at the previous time step

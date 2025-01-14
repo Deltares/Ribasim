@@ -738,6 +738,13 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
         is_complete = false,
     )
 
+    forcing = BasinForcing(;
+        parsed_parameters.precipitation,
+        parsed_parameters.potential_evaporation,
+        parsed_parameters.drainage,
+        parsed_parameters.infiltration,
+    )
+
     # Current forcing is stored as separate array for BMI access
     # These are updated from the interpolation objects at runtime
     n = length(node_id)
@@ -772,10 +779,7 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
         vertical_flux,
         storage_to_level,
         level_to_area,
-        parsed_parameters.precipitation,
-        parsed_parameters.potential_evaporation,
-        parsed_parameters.drainage,
-        parsed_parameters.infiltration,
+        forcing,
         concentration_data,
         concentration_time,
     )
