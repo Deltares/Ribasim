@@ -186,7 +186,7 @@ pyogrio = "*"
 pytest = "*"
 pytest-cov = "*"
 pytest-xdist = "*"
-python = ">=3.10"
+python = ">=3.11"
 shapely = ">=2.0"
 teamcity-messages = "*"
 tomli = "*"
@@ -220,24 +220,24 @@ twine = "*"
 [feature.dev.pypi-dependencies]
 ptvsd = "*"
 
+[feature.py313.dependencies]
+python = "3.13.*"
+
 [feature.py312.dependencies]
 python = "3.12.*"
 
 [feature.py311.dependencies]
 python = "3.11.*"
 
-[feature.py310.dependencies]
-python = "3.10.*"
-
 [target.win-64.dependencies]
 rcedit = "*"
 
 [environments]
-default = { features = ["py312"], solve-group = "py312" }
-dev = { features = ["py312", "dev"], solve-group = "py312" }
-py312 = { features = ["py312"], solve-group = "py312" }
+default = { features = ["py313"], solve-group = "py313" }
+dev = { features = ["py313", "dev"], solve-group = "py313" }
+py313 = { features = ["py313"], solve-group = "py313" }
+py312 = ["py312"]
 py311 = ["py311"]
-py310 = ["py310"]
 
 [system-requirements]
 linux = "3.10.0"
