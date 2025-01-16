@@ -1,7 +1,7 @@
 import numbers
 from collections.abc import Sequence
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -175,7 +175,7 @@ class Node(pydantic.BaseModel):
         Optionally adds this node to a subnetwork, which is input for the allocation algorithm.
     """
 
-    node_id: Optional[NonNegativeInt] = None
+    node_id: NonNegativeInt | None = None
     geometry: Point
     name: str = ""
     subnetwork_id: int | None = None
@@ -184,7 +184,7 @@ class Node(pydantic.BaseModel):
 
     def __init__(
         self,
-        node_id: Optional[NonNegativeInt] = None,
+        node_id: NonNegativeInt | None = None,
         geometry: Point = Point(),
         **kwargs,
     ) -> None:

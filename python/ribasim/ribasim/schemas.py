@@ -1,6 +1,7 @@
 # Automatically generated file. Do not modify.
 
-from typing import Annotated, Any, Callable
+from collections.abc import Callable
+from typing import Annotated, Any
 
 import pandas as pd
 import pandera as pa

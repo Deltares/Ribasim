@@ -12,8 +12,13 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Hydrology",
 ]
-requires-python = ">=3.10"
-dependencies = ["ribasim", "geopandas", "numpy", "pandas"]
+requires-python = ">=3.11"
+dependencies = [
+    "geopandas >=1.0",
+    "numpy >=1.25",
+    "pandas >=2.0",
+    "ribasim",
+]
 dynamic = ["version"]
 
 [project.optional-dependencies]

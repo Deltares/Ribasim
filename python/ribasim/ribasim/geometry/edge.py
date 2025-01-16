@@ -1,4 +1,4 @@
-from typing import NamedTuple, Optional
+from typing import NamedTuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -72,7 +72,7 @@ class EdgeTable(SpatialTableModel[EdgeSchema]):
         to_node: NodeData,
         geometry: LineString | MultiLineString | None = None,
         name: str = "",
-        edge_id: Optional[NonNegativeInt] = None,
+        edge_id: NonNegativeInt | None = None,
         **kwargs,
     ):
         """
