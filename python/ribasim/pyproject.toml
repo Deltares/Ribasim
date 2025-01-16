@@ -16,17 +16,17 @@ classifiers = [
 ]
 requires-python = ">=3.11"
 dependencies = [
-    "geopandas",
-    "matplotlib",
-    "numpy",
-    "pandas",
-    "pandera >= 0.20",
-    "pyarrow",
-    "pydantic ~= 2.0",
-    "pyogrio",
-    "shapely >= 2.0",
-    "tomli",
-    "tomli-w",
+    "geopandas >=1.0",
+    "matplotlib >=3.7",
+    "numpy >=1.25",
+    "pandas >=2.0",
+    "pandera >=0.20",
+    "pyarrow >=17.0",
+    "pydantic >=2.0",
+    "pyogrio >=0.8",
+    "shapely >=2.0",
+    "tomli >=2.0",
+    "tomli-w >=1.0",
 ]
 dynamic = ["version"]
 
