@@ -10,7 +10,7 @@ import jetbrains.buildServer.configs.kotlin.buildFeatures.provideAwsCredentials
 import jetbrains.buildServer.configs.kotlin.buildSteps.script
 import jetbrains.buildServer.configs.kotlin.triggers.vcs
 
-object Ribasim_MakeNightlyRelease : BuildType({
+object Ribasim_UploadToMinio : BuildType({
     templates(LinuxAgent)
     name = "Make Nightly Release"
 
@@ -49,6 +49,10 @@ object Ribasim_MakeNightlyRelease : BuildType({
 
     triggers {
         vcs {
+            id = "riba_main_minio_trigger"
+            branchFilter = """
+                +:<default>
+            """.trimIndent()
         }
     }
 
