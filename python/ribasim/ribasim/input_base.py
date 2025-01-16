@@ -169,7 +169,7 @@ class TableModel(FileModel, Generic[TableT]):
     @classmethod
     def _check_schema(cls, v: DataFrame[TableT]):
         """Allow only extra columns with `meta_` prefix."""
-        if isinstance(v, (pd.DataFrame, gpd.GeoDataFrame)):
+        if isinstance(v, pd.DataFrame | gpd.GeoDataFrame):
             # On reading from geopackage, migrate the tables when necessary
             db_path = context_file_loading.get().get("database")
             if db_path is not None:
@@ -435,7 +435,7 @@ class NodeModel(ChildModel):
     @classmethod
     def set_sort_keys(cls, v: Any, info: ValidationInfo) -> Any:
         """Set sort keys for all TableModels if present in FieldInfo."""
-        if isinstance(v, (TableModel,)):
+        if isinstance(v, TableModel):
             field = cls.model_fields[getattr(info, "field_name")]
             extra = field.json_schema_extra
             if extra is not None and isinstance(extra, dict):

@@ -1,6 +1,6 @@
 exclude = ["ribasim_qgis/tomllib/*"]
 extend-include = ["*.ipynb"]
-target-version = "py39"
+target-version = "py311"
 
 [lint]
 # See https://docs.astral.sh/ruff/rules/
