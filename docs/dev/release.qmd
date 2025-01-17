@@ -17,6 +17,20 @@ This section provides a guide for developers to follow when preparing a new rele
 
 Before starting the release process, ensure that all tests are passing and that all features intended for the release are complete and merged into the main branch.
 
+## QGIS manual testing
+
+Our continuous integration (CI) should have caught most issues.
+A current weak spot in our testing is the QGIS plugin, so a manual test plan is in place.
+Start with running the automated task to see if it can be correctly installed.
+
+```sh
+# This test might give a fatal error on the first run, this is most likely a timing issue.
+# Try to run it again when that happens.
+pixi run test-ribasim-qgis-ui
+```
+
+Then follow the instructions as described in the [QGIS manual test plan](/dev/qgis_test_plan.qmd).
+
 ## Update version numbers of the components
 
 Determine the new version number like `2023.1.0`, filling in the current year, a bumped `MINOR` number for normal releases and a bumped `MICRO` number for non-breaking, hotfix releases.
@@ -83,20 +97,6 @@ In order to publish Ribasim Python or Ribasim API follow the following steps:
 1) Open a terminal and run `pixi run publish-ribasim-python`
 
 2) Open a terminal and run `pixi run publish-ribasim-api`
-
-## QGIS manual testing
-
-Our continuous integration (CI) should have caught most issues.
-A current weak spot in our testing is the QGIS plugin, so a manual test plan is in place.
-Start with running the automated task to see if it can be correctly installed.
-
-```sh
-# This test might give a fatal error on the first run, this is most likely a timing issue.
-# Try to run it again when that happens.
-pixi run test-ribasim-qgis-ui
-```
-
-Then follow the instructions as described in the [QGIS manual test plan](/dev/qgis_test_plan.qmd).
 
 ## Announce release
 
