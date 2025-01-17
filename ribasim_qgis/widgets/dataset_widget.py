@@ -77,7 +77,7 @@ class DatasetTreeWidget(QTreeWidget):
         selection = self.selectedItems()
 
         # Warn before deletion
-        message = "\n".join([f"- {item.text(1)}" for item in selection])
+        message = "\n".join([f"- {item.text(0)}" for item in selection])
         reply = QMessageBox.question(
             self,
             "Deleting from Geopackage",
