@@ -12,17 +12,13 @@ import jetbrains.buildServer.configs.kotlin.triggers.vcs
 
 object Ribasim_UploadToMinio : BuildType({
     templates(LinuxAgent)
-    name = "Make Nightly Release"
+    name = "Upload binaries to Minio"
 
     params {
         param("env.GITHUB_TOKEN", "%github_deltares-service-account_access_token%")
         param("env.AWS_ENDPOINT_URL", "https://s3.deltares.nl")
-    }
-
-    features {
-        provideAwsCredentials {
-            awsConnectionId = "AmazonWebServicesAws"
-        }
+        param("env.AWS_ACCESS_KEY_ID", "KwKRzscudy3GvRB8BN1Z")
+        param("env.AWS_SECRET_ACCESS_KEY", "credentialsJSON:86cbf3e5-724c-437d-9962-7a3f429b0aa2")
     }
 
     vcs {
@@ -39,10 +35,10 @@ object Ribasim_UploadToMinio : BuildType({
                 . /usr/share/Modules/init/bash
                 module load aws
 
-                aws s3 cp ribasim_windows.zip s3://ribasim/teamcity/Ribasim_Ribasim/BuildRibasimCliWindows/latest/ribasim_windows.zip
-                aws s3 cp ribasim_linux.zip s3://ribasim/teamcity/Ribasim_Ribasim/BuildRibasimCliWindows/latest/ribasim_linux.zip
-                aws s3 cp ribasim_qgis.zip s3://ribasim/teamcity/Ribasim_Ribasim/BuildRibasimCliWindows/latest/ribasim_qgis.zip
-                aws s3 cp generated_testmodels.zip s3://ribasim/teamcity/Ribasim_Ribasim/BuildRibasimCliWindows/latest/generated_testmodels.zip
+                aws s3 cp ribasim_windows.zip s3://ribasim/Ribasim/Ribasim_UploadToMinio/latest/ribasim_windows.zip
+                aws s3 cp ribasim_linux.zip s3://ribasim/Ribasim/Ribasim_UploadToMinio/latest/ribasim_linux.zip
+                aws s3 cp ribasim_qgis.zip s3://ribasim/Ribasim/Ribasim_UploadToMinio/latest/ribasim_qgis.zip
+                aws s3 cp generated_testmodels.zip s3://ribasim/Ribasim/Ribasim_UploadToMinio/latest/generated_testmodels.zip
             """.trimIndent()
         }
     }
