@@ -5,8 +5,35 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [v2025.1.0] - 2025-01-17
+
+The first release of 2025 makes the Ribasim core more robust and stable, and speeds up
+initialization for large models. The biggest new feature is the experimental support for
+calculating tracers in Ribasim directly, which will hopefully make it easier to track where
+the water resources are heading.
+
+### Added
+- Remove Z coordinate on constructing Node in Python. [#1986](https://github.com/Deltares/Ribasim/pull/1986)
+- Add "Basin / subgrid_time" table. [#1975](https://github.com/Deltares/Ribasim/pull/1975)
+- Sign Ribasim binaries. [#2007](https://github.com/Deltares/Ribasim/pull/2007)
+- Experimental: Calculate tracer concentrations internally. [#1849](https://github.com/Deltares/Ribasim/pull/1849)
+- Document [parsing Delwaq results](https://ribasim.org/guide/delwaq). [#1845](https://github.com/Deltares/Ribasim/pull/1845)
+
+### Removed
+- Drop Python 3.10 support. [#2012](https://github.com/Deltares/Ribasim/pull/2012)
+
 ### Changed
+- Allocation: optimize per source. [#1927](https://github.com/Deltares/Ribasim/pull/1927)
 - The Edge table no longer supports `subnetwork_id`; this is automatically inferred. [#1956](https://github.com/Deltares/Ribasim/pull/1956)
+
+### Fixed
+- ManningResistance is more stable around Δh=0. [#1896](https://github.com/Deltares/Ribasim/pull/1896)
+- Fixes to Delwaq model generation. [#1903](https://github.com/Deltares/Ribasim/pull/1903) [#1917](https://github.com/Deltares/Ribasim/pull/1917) [#1948](https://github.com/Deltares/Ribasim/pull/1948)
+- Add step limiter to avoid negative flows or too large flows. [#1911](https://github.com/Deltares/Ribasim/pull/1911) [#1912](https://github.com/Deltares/Ribasim/pull/1912)
+- Fix README.md in builds. [#1935](https://github.com/Deltares/Ribasim/pull/1935) [#1938](https://github.com/Deltares/Ribasim/pull/1938)
+- Speed up initialization. [#1977](https://github.com/Deltares/Ribasim/pull/1977)
+- Automatically name index in Python. [#1974](https://github.com/Deltares/Ribasim/pull/1974)
+- Table sorting related fixes. [#2003](https://github.com/Deltares/Ribasim/pull/2003)
 
 ## [v2024.11.0] - 2024-10-08
 
