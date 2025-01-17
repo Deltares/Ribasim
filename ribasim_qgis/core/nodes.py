@@ -609,6 +609,25 @@ class LevelBoundaryTime(Input):
         ]
 
 
+class LevelBoundaryConcentration(Input):
+    @classmethod
+    def input_type(cls) -> str:
+        return "LevelBoundary / concentration"
+
+    @classmethod
+    def geometry_type(cls) -> str:
+        return "No Geometry"
+
+    @classmethod
+    def attributes(cls) -> list[QgsField]:
+        return [
+            QgsField("node_id", QVariant.Int),
+            QgsField("time", QVariant.DateTime),
+            QgsField("substance", QVariant.String),
+            QgsField("concentration", QVariant.Double),
+        ]
+
+
 class PumpStatic(Input):
     @classmethod
     def input_type(cls) -> str:
@@ -685,6 +704,25 @@ class FlowBoundaryTime(Input):
             QgsField("node_id", QVariant.Int),
             QgsField("time", QVariant.DateTime),
             QgsField("flow_rate", QVariant.Double),
+        ]
+
+
+class FlowBoundaryConcentration(Input):
+    @classmethod
+    def input_type(cls) -> str:
+        return "FlowBoundary / concentration"
+
+    @classmethod
+    def geometry_type(cls) -> str:
+        return "No Geometry"
+
+    @classmethod
+    def attributes(cls) -> list[QgsField]:
+        return [
+            QgsField("node_id", QVariant.Int),
+            QgsField("time", QVariant.DateTime),
+            QgsField("substance", QVariant.String),
+            QgsField("concentration", QVariant.Double),
         ]
 
 
@@ -865,6 +903,25 @@ class UserDemandTime(Input):
             QgsField("demand", QVariant.Double),
             QgsField("return_factor", QVariant.Double),
             QgsField("priority", QVariant.Int),
+        ]
+
+
+class UserDemandConcentration(Input):
+    @classmethod
+    def input_type(cls) -> str:
+        return "UserDemand / concentration"
+
+    @classmethod
+    def geometry_type(cls) -> str:
+        return "No Geometry"
+
+    @classmethod
+    def attributes(cls) -> list[QgsField]:
+        return [
+            QgsField("node_id", QVariant.Int),
+            QgsField("time", QVariant.DateTime),
+            QgsField("substance", QVariant.String),
+            QgsField("concentration", QVariant.Double),
         ]
 
 

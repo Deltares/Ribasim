@@ -77,7 +77,7 @@ class DatasetTreeWidget(QTreeWidget):
         selection = self.selectedItems()
 
         # Warn before deletion
-        message = "\n".join([f"- {item.text(1)}" for item in selection])
+        message = "\n".join([f"- {item.text(0)}" for item in selection])
         reply = QMessageBox.question(
             self,
             "Deleting from Geopackage",
@@ -337,7 +337,7 @@ class DatasetWidget(QWidget):
                     f'crs = "{self.ribasim_widget.crs.authid()}"\n',
                     'input_dir = "."\n',
                     'results_dir = "results"\n',
-                    'ribasim_version = "2024.11.0"\n',
+                    'ribasim_version = "2025.1.0"\n',
                 ]
             )
 
