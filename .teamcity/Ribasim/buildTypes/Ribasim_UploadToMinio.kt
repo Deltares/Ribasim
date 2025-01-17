@@ -18,7 +18,7 @@ object Ribasim_UploadToMinio : BuildType({
         param("env.GITHUB_TOKEN", "%github_deltares-service-account_access_token%")
         param("env.AWS_ENDPOINT_URL", "https://s3.deltares.nl")
         param("env.AWS_ACCESS_KEY_ID", "KwKRzscudy3GvRB8BN1Z")
-        param("env.AWS_SECRET_ACCESS_KEY", "credentialsJSON:86cbf3e5-724c-437d-9962-7a3f429b0aa2")
+        password("env.AWS_SECRET_ACCESS_KEY", "credentialsJSON:86cbf3e5-724c-437d-9962-7a3f429b0aa2")
     }
 
     vcs {
