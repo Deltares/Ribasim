@@ -21908,7 +21908,7 @@ packages:
   timestamp: 1598024297745
 - pypi: python/ribasim
   name: ribasim
-  version: 2024.11.0
+  version: 2025.1.0
   sha256: bc76f0d6b28e203efbaa6ced5c6e7c542e2304e784989ec6c3152a516cd1c041
   requires_dist:
   - geopandas>=1.0
@@ -21943,7 +21943,7 @@ packages:
   editable: true
 - pypi: python/ribasim_api
   name: ribasim-api
-  version: 2024.11.0
+  version: 2025.1.0
   sha256: 73658444714bf6027302b5bf1ec3da2cad1a265d8d1e3c0f4dcb9a17c02b704c
   requires_dist:
   - xmipy>=1.3
