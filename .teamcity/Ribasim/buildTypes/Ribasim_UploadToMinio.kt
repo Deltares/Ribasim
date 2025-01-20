@@ -35,6 +35,9 @@ object Ribasim_UploadToMinio : BuildType({
                 . /usr/share/Modules/init/bash
                 module load aws
 
+                # Disable the multipart upload, as it fails with MinIO
+                aws configure set default.s3.multipart_threshold 1024MB
+
                 aws s3 cp ribasim_windows.zip s3://ribasim/Ribasim/Ribasim_UploadToMinio/latest/ribasim_windows.zip
                 aws s3 cp ribasim_linux.zip s3://ribasim/Ribasim/Ribasim_UploadToMinio/latest/ribasim_linux.zip
                 aws s3 cp ribasim_qgis.zip s3://ribasim/Ribasim/Ribasim_UploadToMinio/latest/ribasim_qgis.zip
