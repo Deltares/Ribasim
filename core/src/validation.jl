@@ -207,7 +207,7 @@ end
 function database_warning(db::DB)::Nothing
     cols = SQLite.columns(db, "Edge")
     if "subnetwork_id" in cols.name
-        @warn "The 'subnetwork_id' column in the 'Edge' table is deprecated since ribasim v2024.12."
+        @warn "The 'subnetwork_id' column in the 'Edge' table is deprecated since ribasim v2025.1."
     end
     return nothing
 end
