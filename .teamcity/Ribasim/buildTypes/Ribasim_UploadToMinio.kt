@@ -38,10 +38,10 @@ object Ribasim_UploadToMinio : BuildType({
                 # Disable the multipart upload, as it fails with MinIO
                 aws configure set default.s3.multipart_threshold 1024MB
 
-                aws s3 cp ribasim_windows.zip s3://ribasim/Ribasim/Ribasim_UploadToMinio/latest/ribasim_windows.zip
-                aws s3 cp ribasim_linux.zip s3://ribasim/Ribasim/Ribasim_UploadToMinio/latest/ribasim_linux.zip
-                aws s3 cp ribasim_qgis.zip s3://ribasim/Ribasim/Ribasim_UploadToMinio/latest/ribasim_qgis.zip
-                aws s3 cp generated_testmodels.zip s3://ribasim/Ribasim/Ribasim_UploadToMinio/latest/generated_testmodels.zip
+                aws --debug s3 cp --no-progress ribasim_windows.zip s3://ribasim/Ribasim/Ribasim_UploadToMinio/latest/ribasim_windows.zip
+                aws --debug s3 cp --no-progress ribasim_linux.zip s3://ribasim/Ribasim/Ribasim_UploadToMinio/latest/ribasim_linux.zip
+                aws --debug s3 cp --no-progress ribasim_qgis.zip s3://ribasim/Ribasim/Ribasim_UploadToMinio/latest/ribasim_qgis.zip
+                aws --debug s3 cp --no-progress generated_testmodels.zip s3://ribasim/Ribasim/Ribasim_UploadToMinio/latest/generated_testmodels.zip
             """.trimIndent()
         }
     }
