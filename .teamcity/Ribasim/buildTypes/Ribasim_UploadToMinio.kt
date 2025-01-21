@@ -104,19 +104,4 @@ object Ribasim_UploadToMinio : BuildType({
         }
     }
 
-    cleanup {
-        keepRule {
-            id = "KEEP_RULE_10"
-            keepAtLeast = allBuilds()
-            applyToBuilds {
-                withStatus = successful()
-            }
-            dataToKeep = everything()
-            applyPerEachBranch = true
-            preserveArtifactsDependencies = true
-        }
-        baseRule {
-            option("disableCleanupPolicies", true)
-        }
-    }
 })
