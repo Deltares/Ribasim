@@ -20,7 +20,7 @@ test-ribasim-api = "pytest --basetemp=python/ribasim_api/tests/temp --junitxml=r
 
 [feature.dev.tasks]
 # Installation
-install-julia = "juliaup add 1.10.7 && juliaup override set 1.10.7"
+install-julia = "juliaup add 1.10.8 && juliaup override set 1.10.8"
 install-pre-commit = "pre-commit install"
 # Note that this has a Windows specific override
 install-ci = { depends-on = ["install-julia", "update-registry-julia"] }
