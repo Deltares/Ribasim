@@ -33,26 +33,31 @@ function BMI.update_until(model::Model, time::Float64)::Nothing
     return nothing
 end
 
-function BMI.get_value_ptr(model::Model, name::AbstractString)::AbstractVector{Float64}
+"""
+    BMI.get_value_ptr(model::Model, name::String)::Vector{Float64}
+
+This uses a typeassert to ensure that we don't create a copy to the return type.
+"""
+function BMI.get_value_ptr(model::Model, name::String)::Vector{Float64}
     (; u, p) = model.integrator
     if name == "basin.storage"
-        p.basin.current_properties.current_storage[parent(u)]
+        p.basin.current_properties.current_storage[parent(u)]::Vector{Float64}
     elseif name == "basin.level"
-        p.basin.current_properties.current_level[parent(u)]
+        p.basin.current_properties.current_level[parent(u)]::Vector{Float64}
     elseif name == "basin.infiltration"
-        p.basin.vertical_flux.infiltration
+        p.basin.vertical_flux.infiltration::Vector{Float64}
     elseif name == "basin.drainage"
-        p.basin.vertical_flux.drainage
+        p.basin.vertical_flux.drainage::Vector{Float64}
     elseif name == "basin.cumulative_infiltration"
-        u.infiltration
+        unsafe_array(u.infiltration)::Vector{Float64}
     elseif name == "basin.cumulative_drainage"
-        p.basin.cumulative_drainage
+        p.basin.cumulative_drainage::Vector{Float64}
     elseif name == "basin.subgrid_level"
-        p.subgrid.level
+        p.subgrid.level::Vector{Float64}
     elseif name == "user_demand.demand"
-        vec(p.user_demand.demand)
+        vec(p.user_demand.demand)::Vector{Float64}
     elseif name == "user_demand.cumulative_inflow"
-        u.user_demand_inflow
+        unsafe_array(u.user_demand_inflow)::Vector{Float64}
     else
         error("Unknown variable $name")
     end

@@ -1120,3 +1120,10 @@ end
 
 source_edges_subnetwork(p::Parameters, subnetwork_id::Int32) =
     keys(mean_input_flows_subnetwork(p, subnetwork_id))
+
+"Wrap the data of a SubArray into a Vector. Ensure that the data is not freed."
+function unsafe_array(
+    A::SubArray{Float64, 1, Vector{Float64}, Tuple{UnitRange{Int64}}, true},
+)::Vector{Float64}
+    unsafe_wrap(Array, pointer(A), length(A))
+end

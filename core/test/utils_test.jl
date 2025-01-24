@@ -399,3 +399,15 @@ end
         )
     end
 end
+
+@testitem "unsafe_array" begin
+    using ComponentArrays: ComponentVector
+    x = ComponentVector(; a = [1.0, 2.0, 3.0], b = [4.0, 5.0, 6.0])
+    y = Ribasim.unsafe_array(x.b)
+    @test x.b isa SubArray
+    @test y isa Vector{Float64}
+    @test y == x.b
+    # changing the input changes the output; no data copy is made
+    x.b[2] = 10.0
+    @test y[2] === 10.0
+end

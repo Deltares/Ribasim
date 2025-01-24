@@ -391,6 +391,20 @@ the length of each Vector is the number of Basins.
     infiltration::Vector{ScalarConstantInterpolation} = ScalarConstantInterpolation[]
 end
 
+"""Current values of the vertical fluxes in a Basin, per node ID.
+
+Current forcing is stored as separate array for BMI access.
+These are updated from BasinForcing at runtime.
+"""
+@kwdef struct VerticalFlux
+    precipitation::Vector{Float64}
+    potential_evaporation::Vector{Float64}
+    drainage::Vector{Float64}
+    infiltration::Vector{Float64}
+end
+
+VerticalFlux(n::Int) = VerticalFlux(zeros(n), zeros(n), zeros(n), zeros(n))
+
 """
 Requirements:
 
@@ -398,21 +412,15 @@ Requirements:
 * Index points to a Basin
 * volume, area, level must all be positive and monotonic increasing.
 
-Type parameter C indicates the content backing the StructVector, which can be a NamedTuple
+Type parameter D indicates the content backing the StructVector, which can be a NamedTuple
 of vectors or Arrow Tables, and is added to avoid type instabilities.
-
-if autodiff
-    T = DiffCache{Vector{Float64}}
-else
-    T = Vector{Float64}
-end
 """
-@kwdef struct Basin{V, CD, D} <: AbstractParameterNode
+@kwdef struct Basin{CD, D} <: AbstractParameterNode
     node_id::Vector{NodeID}
     inflow_ids::Vector{Vector{NodeID}} = [NodeID[]]
     outflow_ids::Vector{Vector{NodeID}} = [NodeID[]]
     # Vertical fluxes
-    vertical_flux::V = zeros(length(node_id))
+    vertical_flux::VerticalFlux = VerticalFlux(length(node_id))
     # Initial_storage
     storage0::Vector{Float64} = zeros(length(node_id))
     # Storage at previous saveat without storage0
@@ -946,11 +954,11 @@ const ModelGraph = MetaGraph{
     Float64,
 }
 
-@kwdef mutable struct Parameters{C1, C3, C4, C6, C7, C8, C9, C10, C11}
+@kwdef mutable struct Parameters{C3, C4, C6, C7, C8, C9, C10, C11}
     const starttime::DateTime
     const graph::ModelGraph
     const allocation::Allocation
-    const basin::Basin{C1, C3, C4}
+    const basin::Basin{C3, C4}
     const linear_resistance::LinearResistance
     const manning_resistance::ManningResistance
     const tabulated_rating_curve::TabulatedRatingCurve

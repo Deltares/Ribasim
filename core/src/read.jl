@@ -745,16 +745,6 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
         parsed_parameters.infiltration,
     )
 
-    # Current forcing is stored as separate array for BMI access
-    # These are updated from the interpolation objects at runtime
-    n = length(node_id)
-    vertical_flux = ComponentVector(;
-        precipitation = zeros(n),
-        potential_evaporation = zeros(n),
-        drainage = zeros(n),
-        infiltration = zeros(n),
-    )
-
     # Profiles
     area, level = create_storage_tables(db, config)
 
@@ -776,7 +766,6 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
         node_id,
         inflow_ids = [collect(inflow_ids(graph, id)) for id in node_id],
         outflow_ids = [collect(outflow_ids(graph, id)) for id in node_id],
-        vertical_flux,
         storage_to_level,
         level_to_area,
         forcing,
@@ -788,7 +777,6 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     update_basin!(basin, 0.0)
 
     storage0 = get_storages_from_levels(basin, state.level)
-    @assert length(storage0) == n "Basin / state length differs from number of Basins"
     basin.storage0 .= storage0
     basin.storage_prev .= storage0
     basin.concentration_data.mass .*= storage0  # was initialized by concentration_state, resulting in mass
