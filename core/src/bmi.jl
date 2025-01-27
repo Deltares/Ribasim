@@ -36,7 +36,7 @@ end
 """
     BMI.get_value_ptr(model::Model, name::String)::Vector{Float64}
 
-This uses a typeassert to ensure that we don't create a copy to the return type.
+This uses a typeassert to ensure that the return type annotation doesn't create a copy.
 """
 function BMI.get_value_ptr(model::Model, name::String)::Vector{Float64}
     (; u, p) = model.integrator
