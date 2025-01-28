@@ -33,7 +33,7 @@ jobs:
         with:
           pixi-version: "latest"
       - name: Prepare pixi
-        run: pixi run install-ci
+        run: pixi run --environment=docs install-ci
 
       - name: Check Quarto installation and all engines
         run: pixi run quarto-check

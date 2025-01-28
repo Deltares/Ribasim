@@ -37,7 +37,8 @@ open class Build(platformOs: String) : Template() {
                 scriptContent = header +
                 """
                 pixi --version
-                pixi run install-ci
+                pixi run --environment=dev install-ci
+                pixi install --environment=rust
                 """.trimIndent()
             }
             script {

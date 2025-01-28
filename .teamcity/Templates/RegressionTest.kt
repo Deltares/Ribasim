@@ -49,7 +49,7 @@ open class RegressionTest (platformOs: String) : Template() {
                 scriptContent = header +
                         """
                 pixi --version
-                pixi run install-ci
+                pixi run --environment=dev install-ci
                 """.trimIndent()
             }
             script {

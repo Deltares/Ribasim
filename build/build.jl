@@ -24,7 +24,7 @@ function main()
     )
 
     add_metadata(project_dir, license_file, output_dir, git_repo, readme_start)
-    run(Cmd(`cargo build --release`; dir = "cli"))
+    run(Cmd(`pixi run --environment=rust cargo build --release`; dir = "cli"))
     ribasim = Sys.iswindows() ? "ribasim.exe" : "ribasim"
     cp("cli/target/release/$ribasim", "ribasim/$ribasim"; force = true)
 end

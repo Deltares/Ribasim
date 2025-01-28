@@ -42,7 +42,7 @@ open class TestBinaries (platformOs: String) : Template() {
                 scriptContent = header +
                 """
                 pixi --version
-                pixi run install-ci
+                pixi install --environment=dev
                 """.trimIndent()
             }
             script {
