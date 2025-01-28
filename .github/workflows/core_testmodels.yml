@@ -50,4 +50,4 @@ jobs:
         run: pixi run --environment=dev install-ci
       - name: Run testmodels with Ribasim Core
         run: |
-          pixi run ribasim-core-testmodels
+          pixi run --environment=dev ribasim-core-testmodels

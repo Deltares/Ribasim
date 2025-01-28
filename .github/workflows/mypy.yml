@@ -22,13 +22,13 @@ jobs:
           pixi-version: "latest"
       - name: Run mypy on python/ribasim
         run: |
-          pixi run mypy-ribasim-python
+          pixi run --environment=dev mypy-ribasim-python
       - name: Run mypy on python/ribasim_testmodels
         run: |
-          pixi run mypy-ribasim-testmodels
+          pixi run --environment=dev mypy-ribasim-testmodels
       - name: Run mypy on python/ribasim_api
         run: |
-          pixi run mypy-ribasim-api
+          pixi --environment=dev run mypy-ribasim-api
       - name: Run mypy on ribasim_qgis
         run: |
-          pixi run mypy-ribasim-qgis
+          pixi --environment=qgis run mypy-ribasim-qgis

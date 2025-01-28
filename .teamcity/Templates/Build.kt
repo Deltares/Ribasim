@@ -47,8 +47,8 @@ open class Build(platformOs: String) : Template() {
                 workingDir = "ribasim"
                 scriptContent = header +
                 """
-                pixi run remove-artifacts
-                pixi run build
+                pixi run --environment=dev remove-artifacts
+                pixi run --environment=dev build
                 """.trimIndent()
             }
         }

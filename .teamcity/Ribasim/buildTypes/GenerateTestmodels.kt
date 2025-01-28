@@ -41,7 +41,7 @@ object GenerateTestmodels : BuildType({
                 source /usr/share/Modules/init/bash
 
                 module load pixi
-                pixi run generate-testmodels
+                pixi run --environment=dev generate-testmodels
             """.trimIndent()
         }
     }

@@ -21,6 +21,6 @@ jobs:
         with:
           pixi-version: "latest"
       - name: Test if codegen runs without errors
-        run: pixi run codegen
+        run: pixi run --environment=dev codegen
       - name: Ensure that no code has been generated
         run: git diff --exit-code

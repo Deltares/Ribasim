@@ -207,8 +207,6 @@ pre-commit = "*"
 pytest = "*"
 pytest-cov = "*"
 pytest-xdist = "*"
-quarto = "*"
-quartodoc = "*"
 ruff = "*"
 teamcity-messages = "*"
 twine = "*"
@@ -227,14 +225,19 @@ qgis-plugin-manager = "*"
 [feature.qgis.pypi-dependencies]
 ptvsd = "*"
 
+[feature.docs.dependencies]
+nbformat = "*"
+quarto = "*"
+quartodoc = "*"
+
 [feature.rust.dependencies]
 rust = "*"
 
 [environments]
 default = { features = ["py312"], solve-group = "py312" }
 dev = { features = ["py312", "dev"], solve-group = "py312" }
-py312 = { features = ["py312"], solve-group = "py312" }
-py311 = ["py311"]
+py312 = { features = ["py312", "dev"], solve-group = "py312" }
+py311 = ["py311", "dev"]
 qgis = { features = ["qgis", "dev"], solve-group = "py312" }
 docs = { features = ["docs", "dev"], solve-group = "py312" }
 rust = { features = ["rust"], no-default-feature = true }
