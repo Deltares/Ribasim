@@ -9,7 +9,7 @@ title: "Python tooling development"
 In order to run tests on Ribasim Python execute
 
 ```sh
-pixi run test-ribasim-python
+pixi run --environment=dev test-ribasim-python
 ```
 
 ## Updating example notebooks
@@ -37,7 +37,7 @@ Install the [Python](https://marketplace.visualstudio.com/items?itemName=ms-pyth
 To run our linting suite locally, execute:
 
 ```sh
-pixi run lint
+pixi run --environment=dev lint
 ```
 
 # Code maintenance {#sec-codecov}

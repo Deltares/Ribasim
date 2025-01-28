@@ -1,7 +1,7 @@
 schema: '2.0'
 stages:
   integration:
-    cmd: pixi run model-integration-test
+    cmd: pixi run --environment=dev model-integration-test
     deps:
     - path: core/
       hash: md5

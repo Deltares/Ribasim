@@ -39,7 +39,7 @@ jobs:
         run: pixi run quarto-check
 
       - name: Render Quarto Project
-        run: pixi run --environment=docs quarto-render
+        run: pixi run quarto-render
 
       - name: Publish Quarto Project
         if: github.ref == 'refs/heads/main'

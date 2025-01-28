@@ -31,7 +31,7 @@ open class TestDelwaqCoupling(platformOs: String) : Template() {
                 id = "Run_Delwaq"
                 workingDir = "ribasim"
                 scriptContent = """
-                pixi run --environment dev ribasim-core-testmodels basic
+                pixi run --environment=dev ribasim-core-testmodels basic
                 set D3D_HOME=%teamcity.build.checkoutDir%/dimr
                 pixi run --environment=dev delwaq
                 """.trimIndent()
@@ -41,7 +41,7 @@ open class TestDelwaqCoupling(platformOs: String) : Template() {
                 id = "Delwaq_upload"
                 workingDir = "ribasim"
                 scriptContent = """
-                pixi run python utils/upload_benchmark.py --secretkey %MiniO_credential_token% "python/ribasim/ribasim/delwaq/model/delwaq_map.nc" "doc-image/delwaq/delwaq_map.nc"
+                pixi run --environment=dev python utils/upload_benchmark.py --secretkey %MiniO_credential_token% "python/ribasim/ribasim/delwaq/model/delwaq_map.nc" "doc-image/delwaq/delwaq_map.nc"
                 """.trimIndent()
             }
         }

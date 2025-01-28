@@ -13,10 +13,7 @@ documentation = "https://ribasim.org/"
 repository = "https://github.com/Deltares/Ribasim"
 
 [tasks]
-# Tests
-test-ribasim-python = "pytest --numprocesses=4 -m 'not regression' python/ribasim/tests"
-test-ribasim-python-cov = "pytest --numprocesses=4 --cov=ribasim --cov-report=xml -m 'not regression' python/ribasim/tests"
-test-ribasim-api = "pytest --basetemp=python/ribasim_api/tests/temp --junitxml=report.xml python/ribasim_api/tests"
+test-ribasim-qgis-docker = { cmd = "sh ./start.sh; sh ./test.sh; sh ./stop.sh", cwd = ".docker" }
 
 [feature.dev.tasks]
 # Installation
@@ -50,6 +47,10 @@ lint = { depends-on = [
     "mypy-ribasim-api",
     "mypy-ribasim-qgis",
 ] }
+# Tests
+test-ribasim-python = "pytest --numprocesses=4 -m 'not regression' python/ribasim/tests"
+test-ribasim-python-cov = "pytest --numprocesses=4 --cov=ribasim --cov-report=xml -m 'not regression' python/ribasim/tests"
+test-ribasim-api = "pytest --basetemp=python/ribasim_api/tests/temp --junitxml=report.xml python/ribasim_api/tests"
 # Build
 build = { "cmd" = "julia --project build.jl", cwd = "build", depends-on = [
     "generate-testmodels",
@@ -131,7 +132,6 @@ install-ribasim-qgis = "python ribasim_qgis/scripts/install_ribasim_qgis.py"
 install-imod-qgis = "python ribasim_qgis/scripts/install_qgis_plugin.py iMOD && python ribasim_qgis/scripts/enable_plugin.py imodqgis"
 install-plugin-reloader-qgis = "python ribasim_qgis/scripts/install_qgis_plugin.py \"Plugin Reloader\" && python ribasim_qgis/scripts/enable_plugin.py plugin_reloader"
 install-debugvs-qgis = "python ribasim_qgis/scripts/install_qgis_plugin.py debugvs==0.7 && python ribasim_qgis/scripts/enable_plugin.py debug_vs"
-test-ribasim-qgis-docker = { cmd = "sh ./start.sh; sh ./test.sh; sh ./stop.sh", cwd = ".docker" }
 install-qgis-plugins = { depends-on = [
     "install-plugin-reloader-qgis",
     "install-ribasim-qgis",
@@ -177,6 +177,7 @@ networkx = ">=3.3"
 numpy = ">=1.25"
 pandas = ">=2.0"
 pandera = ">=0.20"
+plotly = "*"
 pyarrow = ">=17.0"
 pydantic = ">=2.0"
 pyogrio = ">=0.8"

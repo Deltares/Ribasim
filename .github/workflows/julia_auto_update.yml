@@ -20,7 +20,7 @@ jobs:
       - name: Update Julia manifest file
         run: |
           pixi run --environment=dev install-julia
-          pixi run update-manifest-julia
+          pixi run --environment=dev update-manifest-julia
       - uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}

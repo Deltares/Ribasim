@@ -51,8 +51,8 @@ open class TestBinaries (platformOs: String) : Template() {
                 workingDir = "ribasim"
                 scriptContent = header +
                 """
-                pixi run test-ribasim-api
-                pixi run test-ribasim-cli
+                pixi run --environment=dev test-ribasim-api
+                pixi run --environment=dev test-ribasim-cli
                 """.trimIndent()
             }
         }

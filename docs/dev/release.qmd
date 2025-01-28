@@ -94,9 +94,9 @@ Now copy the manually edited changelog entry from changelog.qmd above the detail
 To be able to install packages with `pip`, they need to be released on the Python Package Index (PyPI).
 In order to publish Ribasim Python or Ribasim API follow the following steps:
 
-1) Open a terminal and run `pixi run publish-ribasim-python`
+1) Open a terminal and run `pixi run --environment=dev publish-ribasim-python`
 
-2) Open a terminal and run `pixi run publish-ribasim-api`
+2) Open a terminal and run `pixi run --environment=dev publish-ribasim-api`
 
 ## Announce release
 

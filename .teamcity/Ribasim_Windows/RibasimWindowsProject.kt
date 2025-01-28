@@ -59,7 +59,7 @@ object Windows_BuildRibasim : BuildType({
             name = "add Ribasim logo to .exe"
             id = "RUNNER_2417"
             workingDir = "ribasim"
-            scriptContent = "pixi run add-ribasim-icon"
+            scriptContent = "pixi run --environment=dev add-ribasim-icon"
         }
     }
     artifactRules = """ribasim\build\ribasim => ribasim_windows.zip!/ribasim"""

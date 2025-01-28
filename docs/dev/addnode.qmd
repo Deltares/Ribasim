@@ -232,5 +232,5 @@ it is a good idea to run both the [Python test suite](/dev/python.qmd#test) and 
 You can run all tests with:
 
 ```
-pixi run tests
+pixi run --environment=dev tests
 ```

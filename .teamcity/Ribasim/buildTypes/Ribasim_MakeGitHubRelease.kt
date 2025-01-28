@@ -32,7 +32,7 @@ object Ribasim_MakeGitHubRelease : BuildType({
                 . /usr/share/Modules/init/bash
 
                 module load pixi
-                pixi run github-release
+                pixi run --environment=dev github-release
             """.trimIndent()
         }
     }

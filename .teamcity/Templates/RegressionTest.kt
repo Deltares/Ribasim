@@ -58,9 +58,9 @@ open class RegressionTest (platformOs: String) : Template() {
                 workingDir = "ribasim"
                 scriptContent = header +
                         """
-                pixi run python utils/get_benchmark.py --secretkey %MiniO_credential_token% "benchmark/"
-                pixi run python utils/get_benchmark.py --secretkey %MiniO_credential_token% "hws_migration_test/"
-                pixi run test-ribasim-regression
+                pixi run --environment=dev python utils/get_benchmark.py --secretkey %MiniO_credential_token% "benchmark/"
+                pixi run --environment=dev python utils/get_benchmark.py --secretkey %MiniO_credential_token% "hws_migration_test/"
+                pixi run --environment=dev test-ribasim-regression
                 """.trimIndent()
             }
         }
