@@ -28,7 +28,7 @@ jobs:
           pixi run --environment=dev mypy-ribasim-testmodels
       - name: Run mypy on python/ribasim_api
         run: |
-          pixi --environment=dev run mypy-ribasim-api
+          pixi run --environment=dev mypy-ribasim-api
       - name: Run mypy on ribasim_qgis
         run: |
           pixi --environment=qgis run mypy-ribasim-qgis
