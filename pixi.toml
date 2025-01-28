@@ -229,6 +229,7 @@ ptvsd = "*"
 nbformat = "*"
 quarto = "*"
 quartodoc = "*"
+nbclient = "*"
 
 [feature.rust.dependencies]
 rust = "*"
