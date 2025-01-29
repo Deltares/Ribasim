@@ -107,7 +107,7 @@ def _setup_graph(nodes, link, evaporate_mass=True):
     assert link.df is not None
     for row in link.df.itertuples():
         if row.link_type == "flow":
-            G.add_link(
+            G.add_edge(
                 row.from_node_id,
                 row.to_node_id,
                 id=[row.Index],
@@ -136,12 +136,12 @@ def _setup_graph(nodes, link, evaporate_mass=True):
                     logger.debug("Not making link to removed node.")
                     continue
                 link = (inneighbor_id, outneighbor_id)
-                link_id = G.get_link_data(node_id, outneighbor_id)["id"][0]
-                if G.has_link(*link):
-                    data = G.get_link_data(*link)
+                link_id = G.get_edge_data(node_id, outneighbor_id)["id"][0]
+                if G.has_edge(*link):
+                    data = G.get_edge_data(*link)
                     data["id"].append(link_id)
                 else:
-                    G.add_link(*link, id=[link_id])
+                    G.add_edge(*link, id=[link_id])
 
     iso = nx.number_of_isolates(G)
     if iso > 0:
@@ -218,7 +218,7 @@ def _setup_graph(nodes, link, evaporate_mass=True):
                 id=node["id"],
                 pos=(node["pos"][0] - 0.5, node["pos"][1] + 0.5),
             )
-            G.add_link(
+            G.add_edge(
                 boundary_id,
                 node_id,
                 key=link_id,
@@ -233,7 +233,7 @@ def _setup_graph(nodes, link, evaporate_mass=True):
                 id=node["id"],
                 pos=(node["pos"][0] + 0, node["pos"][1] + 0.5),
             )
-            G.add_link(
+            G.add_edge(
                 boundary_id,
                 node_id,
                 key=link_id,
@@ -249,7 +249,7 @@ def _setup_graph(nodes, link, evaporate_mass=True):
                     id=node["id"],
                     pos=(node["pos"][0] + 0.5, node["pos"][1] + 0.5),
                 )
-                G.add_link(
+                G.add_edge(
                     node_id,
                     boundary_id,
                     key=link_id,

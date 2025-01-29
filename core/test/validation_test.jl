@@ -78,7 +78,7 @@ end
         DiGraph();
         label_type = NodeID,
         vertex_data_type = NodeMetadata,
-        link_data_type = LinkMetadata,
+        edge_data_type = LinkMetadata,
         graph_data = nothing,
     )
 
@@ -133,7 +133,7 @@ end
         DiGraph();
         label_type = NodeID,
         vertex_data_type = NodeMetadata,
-        link_data_type = LinkMetadata,
+        edge_data_type = LinkMetadata,
         graph_data = nothing,
     )
 

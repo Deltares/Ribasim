@@ -24,7 +24,7 @@ the water resources are heading.
 
 ### Changed
 - Allocation: optimize per source. [#1927](https://github.com/Deltares/Ribasim/pull/1927)
-- The Link table no longer supports `subnetwork_id`; this is automatically inferred. [#1956](https://github.com/Deltares/Ribasim/pull/1956)
+- The Edge table no longer supports `subnetwork_id`; this is automatically inferred. [#1956](https://github.com/Deltares/Ribasim/pull/1956)
 
 ### Fixed
 - ManningResistance is more stable around Δh=0. [#1896](https://github.com/Deltares/Ribasim/pull/1896)
@@ -42,7 +42,7 @@ A new formulation allows much smaller water balance errors, which is combined wi
 Ribasim Python does more validation that was previously only done in the core.
 The Ribasim QGIS plugin now sets the relations between tables for easier model inspection.
 Adding `min_upstream_level` and `max_downstream_level` to Pump and Outlet means DiscreteControl is often no longer needed.
-The most significant breaking change is making the `node_id` and `link_id` the index of the Node and Link table; these need to be globally unique.
+The most significant breaking change is making the `node_id` and `edge_id` the index of the Node and Edge table; these need to be globally unique.
 
 Starting from this release Ribasim is labeled as beta software.
 Since development is currently mainly driven by applications in the Dutch water system, we expect that addition work needs to be done for general use outside the Netherlands.
