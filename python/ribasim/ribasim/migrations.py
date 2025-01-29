@@ -104,3 +104,17 @@ def outletstaticschema_migration(df: DataFrame, schema_version: int) -> DataFram
         _rename_column(df, "min_crest_level", "min_upstream_level")
 
     return df
+
+
+for node_type in ["UserDemand", "LevelDemand", "FlowDemand"]:
+    for table_type in ["static", "time"]:
+
+        def migration_func(df: DataFrame, schema_version: int) -> DataFrame:
+            if schema_version < 4:
+                warnings.warn(
+                    f"Migrating outdated {node_type} / {table_type} table.", UserWarning
+                )
+                df.rename(columns={"priority": "demand_priority"}, inplace=True)
+            return df
+
+        globals()[f"{node_type.lower()}{table_type}_migration"] = migration_func

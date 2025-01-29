@@ -60,7 +60,8 @@ While physically incorrect, it is useful for a first correctness check on a mode
 ## Allocation settings
 Currently there are the following allocation settings:
 - `use_allocation`: A boolean which says whether allocation should be used or not;
-- `timestep`: a float value in seconds which dictates the update interval for allocations.
+- `timestep`: A float value in seconds which dictates the update interval for allocations;
+- `source_priority`: An integer per source type for the allocation algorithm: `user_demand`, `boundary`, `level_demand`, `flow_demand`, `subnetwork_inlet`. Flow boundaries and level boundaries are combined in the single category `boundary`. By default all nodes of the same type have the same source priority, so to obtain a strict source ordering the sources are sorted by node ID for each source priority within a subnetwork.  When no default source priorities are specified, default defaults are applied (see the TOML example above).
 
 ## Results settings
 
@@ -163,13 +164,14 @@ in some way. Counter intuitively, even systems you may think of as links, such a
 are nodes in Ribasim. This is because links only define direct instantaneous couplings
 between nodes, and never have storage of their own.
 
-column        | type     | restriction
---------------| -------- | -----------
-node_type     | String   | sorted, known node type
-node_id       | Int32    | sorted per node_type
-geom          | Point    | (optional)
-name          | String   | (optional, does not have to be unique)
-subnetwork_id | Int32    | (optional)
+column          | type     | restriction
+--------------- | -------- | -----------
+node_type       | String   | sorted, known node type
+node_id         | Int32    | sorted per node_type
+geom            | Point    | (optional)
+name            | String   | (optional, does not have to be unique)
+subnetwork_id   | Int32    | (optional)
+source_priority | Int32    | (optional, does not have to be unique)
 
 Adding a point geometry to the node table can be helpful to examine models in [QGIS](https://qgis.org/en/site/), as it will show the location of the nodes on the map.
 The geometry is not used by Ribasim.

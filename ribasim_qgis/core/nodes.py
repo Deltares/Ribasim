@@ -201,6 +201,7 @@ class Node(Input):
             QgsField("name", QVariant.String),
             QgsField("node_type", QVariant.String),
             QgsField("subnetwork_id", QVariant.Int),
+            QgsField("source_priority", QVariant.Int),
         ]
 
     @classmethod
@@ -882,7 +883,7 @@ class UserDemandStatic(Input):
             QgsField("active", QVariant.Bool),
             QgsField("demand", QVariant.Double),
             QgsField("return_factor", QVariant.Double),
-            QgsField("priority", QVariant.Int),
+            QgsField("demand_priority", QVariant.Int),
         ]
 
 
@@ -902,7 +903,7 @@ class UserDemandTime(Input):
             QgsField("time", QVariant.DateTime),
             QgsField("demand", QVariant.Double),
             QgsField("return_factor", QVariant.Double),
-            QgsField("priority", QVariant.Int),
+            QgsField("demand_priority", QVariant.Int),
         ]
 
 
@@ -940,7 +941,7 @@ class LevelDemandStatic(Input):
             QgsField("node_id", QVariant.Int),
             QgsField("min_level", QVariant.Double),
             QgsField("max_level", QVariant.Double),
-            QgsField("priority", QVariant.Int),
+            QgsField("demand_priority", QVariant.Int),
         ]
 
 
@@ -960,7 +961,7 @@ class LevelDemandTime(Input):
             QgsField("time", QVariant.DateTime),
             QgsField("min_level", QVariant.Double),
             QgsField("max_level", QVariant.Double),
-            QgsField("priority", QVariant.Int),
+            QgsField("demand_priority", QVariant.Int),
         ]
 
 
@@ -978,7 +979,7 @@ class FlowDemandStatic(Input):
         return [
             QgsField("node_id", QVariant.Int),
             QgsField("demand", QVariant.Double),
-            QgsField("priority", QVariant.Int),
+            QgsField("demand_priority", QVariant.Int),
         ]
 
 
@@ -997,7 +998,7 @@ class FlowDemandTime(Input):
             QgsField("node_id", QVariant.Int),
             QgsField("time", QVariant.DateTime),
             QgsField("demand", QVariant.Double),
-            QgsField("priority", QVariant.Int),
+            QgsField("demand_priority", QVariant.Int),
         ]
 
 

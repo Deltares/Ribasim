@@ -80,7 +80,7 @@ db = SQLite.DB(db_path)
 p = Ribasim.Parameters(db, config)
 empty!(p.allocation.subnetwork_ids)
 empty!(p.allocation.main_network_connections)
-graph, verts = tracecall((Ribasim,), Ribasim.initialize_allocation!, (p, config))
+graph, verts = tracecall((Ribasim,), Ribasim.initialize_allocation!, (p, db, config))
 plot_graph(graph)
 ```
 

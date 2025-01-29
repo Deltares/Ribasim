@@ -358,35 +358,40 @@ function is_main_network(subnetwork_id::Int32)::Bool
     return subnetwork_id == 1
 end
 
-function get_all_priorities(db::DB, config::Config)::Vector{Int32}
-    priorities = Set{Int32}()
+function get_all_demand_priorities(db::DB, config::Config;)::Vector{Int32}
+    demand_priorities = Set{Int32}()
     is_valid = true
-    # TODO: Is there a way to automatically grab all tables with a priority column?
-    for (type, name) in [
-        (UserDemandStaticV1, "UserDemand / static"),
-        (UserDemandTimeV1, "UserDemand / time"),
-        (LevelDemandStaticV1, "LevelDemand / static"),
-        (LevelDemandTimeV1, "LevelDemand / time"),
-        (FlowDemandStaticV1, "FlowDemand / static"),
-        (FlowDemandTimeV1, "FlowDemand / time"),
-    ]
-        priority_col = load_structvector(db, config, type).priority
-        priority_col = Int32.(coalesce.(priority_col, Int32(0)))
-        if valid_priorities(priority_col, config.allocation.use_allocation)
-            union!(priorities, priority_col)
+
+    for name in names(Ribasim; all = true)
+        type = getfield(Ribasim, name)
+        if !(
+            (type isa DataType) &&
+            type <: Legolas.AbstractRecord &&
+            hasfield(type, :demand_priority)
+        )
+            continue
+        end
+
+        data = load_structvector(db, config, type)
+        demand_priority_col = data.demand_priority
+        demand_priority_col = Int32.(coalesce.(demand_priority_col, Int32(0)))
+        if valid_demand_priorities(demand_priority_col, config.allocation.use_allocation)
+            union!(demand_priorities, demand_priority_col)
         else
             is_valid = false
-            @error "Missing priority parameter(s) for a $name node in the allocation problem."
+            node, kind = nodetype(Legolas._schema_version_from_record_type(type))
+            table_name = "$node / $kind"
+            @error "Missing demand_priority parameter(s) for a $table_name node in the allocation problem."
         end
     end
     if is_valid
-        return sort(collect(priorities))
+        return sort(collect(demand_priorities))
     else
-        error("Priority parameter is missing")
+        error("Missing demand priority parameter(s).")
     end
 end
 
-function get_external_priority_idx(p::Parameters, node_id::NodeID)::Int
+function get_external_demand_priority_idx(p::Parameters, node_id::NodeID)::Int
     (; graph, level_demand, flow_demand, allocation) = p
     inneighbor_control_ids = inneighbor_labels_type(graph, node_id, LinkType.control)
     if isempty(inneighbor_control_ids)
@@ -395,14 +400,14 @@ function get_external_priority_idx(p::Parameters, node_id::NodeID)::Int
     inneighbor_control_id = only(inneighbor_control_ids)
     type = inneighbor_control_id.type
     if type == NodeType.LevelDemand
-        priority = level_demand.priority[inneighbor_control_id.idx]
+        demand_priority = level_demand.demand_priority[inneighbor_control_id.idx]
     elseif type == NodeType.FlowDemand
-        priority = flow_demand.priority[inneighbor_control_id.idx]
+        demand_priority = flow_demand.demand_priority[inneighbor_control_id.idx]
     else
-        error("Nodes of type $type have no priority.")
+        error("Nodes of type $type have no demand_priority.")
     end
 
-    return findsorted(allocation.priorities, priority)
+    return findsorted(allocation.demand_priorities_all, demand_priority)
 end
 
 """
@@ -1062,12 +1067,12 @@ function isoutofdomain(u, p, t)
     any(<(0), current_storage)
 end
 
-function get_demand(user_demand, id, priority_idx, t)::Float64
+function get_demand(user_demand, id, demand_priority_idx, t)::Float64
     (; demand_from_timeseries, demand_itp, demand) = user_demand
     if demand_from_timeseries[id.idx]
-        demand_itp[id.idx][priority_idx](t)
+        demand_itp[id.idx][demand_priority_idx](t)
     else
-        demand[id.idx, priority_idx]
+        demand[id.idx, demand_priority_idx]
     end
 end
 
