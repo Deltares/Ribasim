@@ -218,7 +218,7 @@ Test for each node given its node type whether the nodes that
 """
 function valid_links(graph::MetaGraph)::Bool
     errors = false
-    for e in links(graph)
+    for e in edges(graph)
         id_src = label_for(graph, e.src)
         id_dst = label_for(graph, e.dst)
         type_src = graph[id_src].type

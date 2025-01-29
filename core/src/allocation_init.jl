@@ -52,7 +52,7 @@ function get_subnetwork_capacity(
     dict = Dict{Tuple{NodeID, NodeID}, Float64}()
     capacity = JuMP.Containers.SparseAxisArray(dict)
 
-    for link_metadata in values(graph.link_data)
+    for link_metadata in values(graph.edge_data)
         # Only flow links are used for allocation
         if link_metadata.type != LinkType.flow
             continue

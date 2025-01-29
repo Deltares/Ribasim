@@ -195,7 +195,7 @@ These capacities determine the constraints of the optimization problem.
 Take `set_initial_capacities_source` as an example, the right-hand-side values of the `source_constraints` are set to the `source_capacity`.
 
 ```julia
-for link_metadata in values(graph.link_data)
+for link_metadata in values(graph.edge_data)
     (; link) = link_metadata
     if graph[link...].subnetwork_id_source == subnetwork_id
         # If it is a source link for this allocation problem

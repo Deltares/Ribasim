@@ -1457,7 +1457,7 @@ function Allocation(db::DB, config::Config, graph::MetaGraph)::Allocation
         end
 
         # Find links which serve as sources in allocation
-        for link_metadata in values(graph.link_data)
+        for link_metadata in values(graph.edge_data)
             (; link) = link_metadata
             id_source, _ = link
             if id_source.type in boundary_source_nodetypes
@@ -1480,7 +1480,7 @@ function Allocation(db::DB, config::Config, graph::MetaGraph)::Allocation
         end
 
         # Find links that realize a demand
-        for link_metadata in values(graph.link_data)
+        for link_metadata in values(graph.edge_data)
             (; type, link) = link_metadata
 
             src_id, dst_id = link

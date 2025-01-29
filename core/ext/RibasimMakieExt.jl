@@ -34,7 +34,7 @@ end
 function Ribasim.plot_flow(model::Model; skip_conservative_out = true)
     f = Figure()
     ax = Axis(f[1, 1]; xlabel = "time", ylabel = "flow rate [m³s⁻¹]")
-    for link_metadata in values(model.integrator.p.graph.link_data)
+    for link_metadata in values(model.integrator.p.graph.edge_data)
         if skip_conservative_out &&
            link_metadata.link[1].type in Ribasim.conservative_nodetypes
             continue
