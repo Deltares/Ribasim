@@ -36,11 +36,11 @@ def linear_resistance_model() -> Model:
     )
     model.level_boundary.add(Node(3, Point(2, 0)), [level_boundary.Static(level=[5.0])])
 
-    model.edge.add(
+    model.link.add(
         model.basin[1],
         model.linear_resistance[2],
     )
-    model.edge.add(
+    model.link.add(
         model.linear_resistance[2],
         model.level_boundary[3],
     )
@@ -75,11 +75,11 @@ def rating_curve_model() -> Model:
 
     model.terminal.add(Node(3, Point(2, 0)))
 
-    model.edge.add(
+    model.link.add(
         model.basin[1],
         model.tabulated_rating_curve[2],
     )
-    model.edge.add(
+    model.link.add(
         model.tabulated_rating_curve[2],
         model.terminal[3],
     )
@@ -109,11 +109,11 @@ def manning_resistance_model() -> Model:
     )
     model.basin.add(Node(3, Point(2, 0)), [basin_profile, basin.State(level=[4.5])])
 
-    model.edge.add(
+    model.link.add(
         model.basin[1],
         model.manning_resistance[2],
     )
-    model.edge.add(
+    model.link.add(
         model.manning_resistance[2],
         model.basin[3],
     )
@@ -143,15 +143,15 @@ def misc_nodes_model() -> Model:
     model.pump.add(Node(4, Point(0, 3)), [pump.Static(flow_rate=[1e-4])])
     model.basin.add(Node(5, Point(0, 4)), basin_shared)
 
-    model.edge.add(
+    model.link.add(
         model.flow_boundary[1],
         model.basin[3],
     )
-    model.edge.add(
+    model.link.add(
         model.basin[3],
         model.pump[4],
     )
-    model.edge.add(
+    model.link.add(
         model.pump[4],
         model.basin[5],
     )
@@ -190,15 +190,15 @@ def pid_control_equation_model() -> Model:
         ],
     )
 
-    model.edge.add(
+    model.link.add(
         model.basin[1],
         model.pump[2],
     )
-    model.edge.add(
+    model.link.add(
         model.pump[2],
         model.terminal[3],
     )
-    model.edge.add(
+    model.link.add(
         model.pid_control[4],
         model.pump[2],
     )

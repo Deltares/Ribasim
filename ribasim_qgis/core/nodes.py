@@ -245,15 +245,15 @@ class Node(Input):
         return labels
 
 
-class Edge(Input):
+class Link(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("edge_id", QVariant.Int),
+            QgsField("link_id", QVariant.Int),
             QgsField("name", QVariant.String),
             QgsField("from_node_id", QVariant.Int),
             QgsField("to_node_id", QVariant.Int),
-            QgsField("edge_type", QVariant.String),
+            QgsField("link_type", QVariant.String),
         ]
 
     @classmethod
@@ -266,7 +266,7 @@ class Edge(Input):
 
     @classmethod
     def input_type(cls) -> str:
-        return "Edge"
+        return "Link"
 
     @classmethod
     def is_spatial(cls):
@@ -274,13 +274,13 @@ class Edge(Input):
 
     @classmethod
     def fid_column(cls):
-        return "edge_id"
+        return "link_id"
 
     def set_editor_widget(self) -> None:
         layer = self.layer
 
-        self.set_dropdown("edge_type", EDGETYPES)
-        self.set_unique("edge_id")
+        self.set_dropdown("link_type", EDGETYPES)
+        self.set_unique("link_id")
 
         layer_form_config = layer.editFormConfig()
         layer.setEditFormConfig(layer_form_config)
@@ -290,7 +290,7 @@ class Edge(Input):
     @property
     def labels(self) -> Any:
         pal_layer = QgsPalLayerSettings()
-        pal_layer.fieldName = """concat("name", ' #', "edge_id")"""
+        pal_layer.fieldName = """concat("name", ' #', "link_id")"""
         pal_layer.isExpression = True
         pal_layer.placement = Qgis.LabelPlacement.Line
         pal_layer.dist = 1.0

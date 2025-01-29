@@ -335,7 +335,7 @@ function is_flow_constraining(type::NodeType.T)::Bool
     type in (NodeType.LinearResistance, NodeType.Pump, NodeType.Outlet)
 end
 
-"""Whether the given node is flow direction constraining (only in direction of edges)."""
+"""Whether the given node is flow direction constraining (only in direction of links)."""
 function is_flow_direction_constraining(type::NodeType.T)::Bool
     type in (
         NodeType.Pump,
@@ -388,7 +388,7 @@ end
 
 function get_external_priority_idx(p::Parameters, node_id::NodeID)::Int
     (; graph, level_demand, flow_demand, allocation) = p
-    inneighbor_control_ids = inneighbor_labels_type(graph, node_id, EdgeType.control)
+    inneighbor_control_ids = inneighbor_labels_type(graph, node_id, LinkType.control)
     if isempty(inneighbor_control_ids)
         return 0
     end
@@ -436,7 +436,7 @@ function set_continuous_control_type!(
     errors = false
 
     for id in node_id
-        id_controlled = only(outneighbor_labels_type(graph, id, EdgeType.control))
+        id_controlled = only(outneighbor_labels_type(graph, id, LinkType.control))
         if id_controlled.type == NodeType.Pump
             pump.continuous_control_type[id_controlled.idx] = continuous_control_type
         elseif id_controlled.type == NodeType.Outlet
@@ -454,7 +454,7 @@ function has_external_demand(
     node_id::NodeID,
     node_type::Symbol,
 )::Tuple{Bool, Union{NodeID, Nothing}}
-    control_inneighbors = inneighbor_labels_type(graph, node_id, EdgeType.control)
+    control_inneighbors = inneighbor_labels_type(graph, node_id, LinkType.control)
     for id in control_inneighbors
         if graph[id].type == node_type
             return true, id
@@ -496,9 +496,9 @@ function get_Δt(integrator)::Float64
     end
 end
 
-inflow_edge(graph, node_id)::EdgeMetadata = graph[inflow_id(graph, node_id), node_id]
-outflow_edge(graph, node_id)::EdgeMetadata = graph[node_id, outflow_id(graph, node_id)]
-outflow_edges(graph, node_id)::Vector{EdgeMetadata} =
+inflow_link(graph, node_id)::LinkMetadata = graph[inflow_id(graph, node_id), node_id]
+outflow_link(graph, node_id)::LinkMetadata = graph[node_id, outflow_id(graph, node_id)]
+outflow_links(graph, node_id)::Vector{LinkMetadata} =
     [graph[node_id, outflow_id] for outflow_id in outflow_ids(graph, node_id)]
 
 """
@@ -518,26 +518,26 @@ function set_initial_allocation_mean_flows!(integrator)::Nothing
     water_balance!(du, u, p, t)
 
     for mean_input_flows_subnetwork in values(mean_input_flows)
-        for edge in keys(mean_input_flows_subnetwork)
-            if edge[1] == edge[2]
-                q = get_influx(du, edge[1], p)
+        for link in keys(mean_input_flows_subnetwork)
+            if link[1] == link[2]
+                q = get_influx(du, link[1], p)
             else
-                q = get_flow(du, p, t, edge)
+                q = get_flow(du, p, t, link)
             end
             # Multiply by Δt_allocation as averaging divides by this factor
             # in update_allocation!
-            mean_input_flows_subnetwork[edge] = q * Δt_allocation
+            mean_input_flows_subnetwork[link] = q * Δt_allocation
         end
     end
 
     # Mean realized demands for basins are calculated as Δstorage/Δt
     # This sets the realized demands as -storage_old
-    for edge in keys(mean_realized_flows)
-        if edge[1] == edge[2]
-            mean_realized_flows[edge] = -u[edge[1].idx]
+    for link in keys(mean_realized_flows)
+        if link[1] == link[2]
+            mean_realized_flows[link] = -u[link[1].idx]
         else
-            q = get_flow(du, p, t, edge)
-            mean_realized_flows[edge] = q * Δt_allocation
+            q = get_flow(du, p, t, link)
+            mean_realized_flows[link] = q * Δt_allocation
         end
     end
 
@@ -673,7 +673,7 @@ function set_continuously_controlled_variable_refs!(p::Parameters)::Nothing
         (pid_control, fill("flow_rate", length(pid_control.node_id))),
     )
         for (id, controlled_variable) in zip(node.node_id, controlled_variable)
-            controlled_node_id = only(outneighbor_labels_type(graph, id, EdgeType.control))
+            controlled_node_id = only(outneighbor_labels_type(graph, id, LinkType.control))
             ref, error =
                 get_variable_ref(p, controlled_node_id, controlled_variable; listen = false)
             push!(node.target_ref, ref)
@@ -870,7 +870,7 @@ end
 
 function build_state_vector(p::Parameters)
     # It is assumed that the horizontal flow states come first in
-    # p.state_inflow_edge and p.state_outflow_edge
+    # p.state_inflow_link and p.state_outflow_link
     return ComponentVector{Float64}(;
         tabulated_rating_curve = zeros(length(p.tabulated_rating_curve.node_id)),
         pump = zeros(length(p.pump.node_id)),
@@ -911,13 +911,13 @@ function build_flow_to_storage(p::Parameters, u::ComponentVector)::Parameters
             flow_to_storage_node_outflow = flow_to_storage_node_inflow
         end
 
-        for (inflow_edge, outflow_edge) in zip(node.inflow_edge, node.outflow_edge)
-            inflow_id, node_id = inflow_edge.edge
+        for (inflow_link, outflow_link) in zip(node.inflow_link, node.outflow_link)
+            inflow_id, node_id = inflow_link.link
             if inflow_id.type == NodeType.Basin
                 flow_to_storage_node_inflow[inflow_id.idx, node_id.idx] = -1.0
             end
 
-            outflow_id = outflow_edge.edge[2]
+            outflow_id = outflow_link.link[2]
             if outflow_id.type == NodeType.Basin
                 flow_to_storage_node_outflow[outflow_id.idx, node_id.idx] = 1.0
             end
@@ -936,70 +936,70 @@ function build_flow_to_storage(p::Parameters, u::ComponentVector)::Parameters
 end
 
 """
-Create vectors state_inflow_edge and state_outflow_edge which give for each state
-in the state vector in order the metadata of the edge that is associated with that state.
+Create vectors state_inflow_link and state_outflow_link which give for each state
+in the state vector in order the metadata of the link that is associated with that state.
 Only for horizontal flows, which are assumed to come first in the state vector.
 """
-function set_state_flow_edges(p::Parameters, u0::ComponentVector)::Parameters
+function set_state_flow_links(p::Parameters, u0::ComponentVector)::Parameters
     (; user_demand, graph) = p
 
     components = Symbol[]
-    state_inflow_edges = Vector{EdgeMetadata}[]
-    state_outflow_edges = Vector{EdgeMetadata}[]
+    state_inflow_links = Vector{LinkMetadata}[]
+    state_outflow_links = Vector{LinkMetadata}[]
 
-    placeholder_edge =
-        EdgeMetadata(0, EdgeType.flow, (NodeID(:Terminal, 0, 0), NodeID(:Terminal, 0, 0)))
+    placeholder_link =
+        LinkMetadata(0, LinkType.flow, (NodeID(:Terminal, 0, 0), NodeID(:Terminal, 0, 0)))
 
     for node_name in keys(u0)
         if hasfield(Parameters, node_name)
             node::AbstractParameterNode = getfield(p, node_name)
             push!(components, node_name)
-            state_inflow_edges_component = EdgeMetadata[]
-            state_outflow_edges_component = EdgeMetadata[]
+            state_inflow_links_component = LinkMetadata[]
+            state_outflow_links_component = LinkMetadata[]
             for id in node.node_id
                 inflow_ids_ = collect(inflow_ids(p.graph, id))
                 outflow_ids_ = collect(outflow_ids(p.graph, id))
 
-                inflow_edge = if length(inflow_ids_) == 0
-                    placeholder_edge
+                inflow_link = if length(inflow_ids_) == 0
+                    placeholder_link
                 elseif length(inflow_ids_) == 1
                     inflow_id = only(inflow_ids_)
                     graph[inflow_id, id]
                 else
                     error("Multiple inflows not supported")
                 end
-                push!(state_inflow_edges_component, inflow_edge)
+                push!(state_inflow_links_component, inflow_link)
 
-                outflow_edge = if length(outflow_ids_) == 0
-                    placeholder_edge
+                outflow_link = if length(outflow_ids_) == 0
+                    placeholder_link
                 elseif length(outflow_ids_) == 1
                     outflow_id = only(outflow_ids_)
                     graph[id, outflow_id]
                 else
                     error("Multiple outflows not supported")
                 end
-                push!(state_outflow_edges_component, outflow_edge)
+                push!(state_outflow_links_component, outflow_link)
             end
-            push!(state_inflow_edges, state_inflow_edges_component)
-            push!(state_outflow_edges, state_outflow_edges_component)
+            push!(state_inflow_links, state_inflow_links_component)
+            push!(state_outflow_links, state_outflow_links_component)
         elseif startswith(String(node_name), "user_demand")
             push!(components, node_name)
-            placeholder_edges = fill(placeholder_edge, length(user_demand.node_id))
+            placeholder_links = fill(placeholder_link, length(user_demand.node_id))
             if node_name == :user_demand_inflow
-                push!(state_inflow_edges, user_demand.inflow_edge)
-                push!(state_outflow_edges, placeholder_edges)
+                push!(state_inflow_links, user_demand.inflow_link)
+                push!(state_outflow_links, placeholder_links)
             elseif node_name == :user_demand_outflow
-                push!(state_inflow_edges, placeholder_edges)
-                push!(state_outflow_edges, user_demand.outflow_edge)
+                push!(state_inflow_links, placeholder_links)
+                push!(state_outflow_links, user_demand.outflow_link)
             end
         end
     end
 
-    state_inflow_edge = ComponentVector(NamedTuple(zip(components, state_inflow_edges)))
-    state_outflow_edge = ComponentVector(NamedTuple(zip(components, state_outflow_edges)))
+    state_inflow_link = ComponentVector(NamedTuple(zip(components, state_inflow_links)))
+    state_outflow_link = ComponentVector(NamedTuple(zip(components, state_outflow_links)))
 
-    @reset p.state_inflow_edge = state_inflow_edge
-    @reset p.state_outflow_edge = state_outflow_edge
+    @reset p.state_inflow_link = state_inflow_link
+    @reset p.state_outflow_link = state_outflow_link
     return p
 end
 
@@ -1047,9 +1047,9 @@ function get_state_index(
     return nothing
 end
 
-function get_state_index(u::ComponentVector, edge::Tuple{NodeID, NodeID})::Int
-    idx = get_state_index(edge[2], u)
-    isnothing(idx) ? get_state_index(edge[1], u; inflow = false) : idx
+function get_state_index(u::ComponentVector, link::Tuple{NodeID, NodeID})::Int
+    idx = get_state_index(link[2], u)
+    isnothing(idx) ? get_state_index(link[1], u; inflow = false) : idx
 end
 
 """
@@ -1118,7 +1118,7 @@ function mean_input_flows_subnetwork(p::Parameters, subnetwork_id::Int32)
     return mean_input_flows[subnetwork_idx]
 end
 
-source_edges_subnetwork(p::Parameters, subnetwork_id::Int32) =
+source_links_subnetwork(p::Parameters, subnetwork_id::Int32) =
     keys(mean_input_flows_subnetwork(p, subnetwork_id))
 
 """

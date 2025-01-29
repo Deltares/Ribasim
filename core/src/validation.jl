@@ -205,20 +205,20 @@ function valid_nodes(db::DB)::Bool
 end
 
 function database_warning(db::DB)::Nothing
-    cols = SQLite.columns(db, "Edge")
+    cols = SQLite.columns(db, "Link")
     if "subnetwork_id" in cols.name
-        @warn "The 'subnetwork_id' column in the 'Edge' table is deprecated since ribasim v2025.1."
+        @warn "The 'subnetwork_id' column in the 'Link' table is deprecated since ribasim v2025.1."
     end
     return nothing
 end
 
 """
 Test for each node given its node type whether the nodes that
-# are downstream ('down-edge') of this node are of an allowed type
+# are downstream ('down-link') of this node are of an allowed type
 """
-function valid_edges(graph::MetaGraph)::Bool
+function valid_links(graph::MetaGraph)::Bool
     errors = false
-    for e in edges(graph)
+    for e in links(graph)
         id_src = label_for(graph, e.src)
         id_dst = label_for(graph, e.dst)
         type_src = graph[id_src].type
@@ -323,7 +323,7 @@ function valid_pid_connectivity(
         end
 
         controlled_id =
-            only(outneighbor_labels_type(graph, pid_control_id, EdgeType.control))
+            only(outneighbor_labels_type(graph, pid_control_id, LinkType.control))
         @assert controlled_id.type in [NodeType.Pump, NodeType.Outlet]
 
         id_inflow = inflow_id(graph, controlled_id)
@@ -486,30 +486,30 @@ function valid_n_neighbors(node_name::Symbol, graph::MetaGraph)::Bool
     # return !errors
     for node_id in labels(graph)
         node_id.type == node_type || continue
-        for (bounds, edge_type) in
-            zip((bounds_flow, bounds_control), (EdgeType.flow, EdgeType.control))
+        for (bounds, link_type) in
+            zip((bounds_flow, bounds_control), (LinkType.flow, LinkType.control))
             n_inneighbors =
-                count(x -> true, inneighbor_labels_type(graph, node_id, edge_type))
+                count(x -> true, inneighbor_labels_type(graph, node_id, link_type))
             n_outneighbors =
-                count(x -> true, outneighbor_labels_type(graph, node_id, edge_type))
+                count(x -> true, outneighbor_labels_type(graph, node_id, link_type))
 
             if n_inneighbors < bounds.in_min
-                @error "$node_id must have at least $(bounds.in_min) $edge_type inneighbor(s) (got $n_inneighbors)."
+                @error "$node_id must have at least $(bounds.in_min) $link_type inneighbor(s) (got $n_inneighbors)."
                 errors = true
             end
 
             if n_inneighbors > bounds.in_max
-                @error "$node_id can have at most $(bounds.in_max) $edge_type inneighbor(s) (got $n_inneighbors)."
+                @error "$node_id can have at most $(bounds.in_max) $link_type inneighbor(s) (got $n_inneighbors)."
                 errors = true
             end
 
             if n_outneighbors < bounds.out_min
-                @error "$node_id must have at least $(bounds.out_min) $edge_type outneighbor(s) (got $n_outneighbors)."
+                @error "$node_id must have at least $(bounds.out_min) $link_type outneighbor(s) (got $n_outneighbors)."
                 errors = true
             end
 
             if n_outneighbors > bounds.out_max
-                @error "$node_id can have at most $(bounds.out_max) $edge_type outneighbor(s) (got $n_outneighbors)."
+                @error "$node_id can have at most $(bounds.out_max) $link_type outneighbor(s) (got $n_outneighbors)."
                 errors = true
             end
         end
@@ -517,18 +517,18 @@ function valid_n_neighbors(node_name::Symbol, graph::MetaGraph)::Bool
     return !errors
 end
 
-"Check that only supported edge types are declared."
-function valid_edge_types(db::DB)::Bool
-    edge_rows = execute(
+"Check that only supported link types are declared."
+function valid_link_types(db::DB)::Bool
+    link_rows = execute(
         db,
-        "SELECT edge_id, from_node_id, to_node_id, edge_type FROM Edge ORDER BY edge_id",
+        "SELECT link_id, from_node_id, to_node_id, link_type FROM Link ORDER BY link_id",
     )
     errors = false
 
-    for (; edge_id, from_node_id, to_node_id, edge_type) in edge_rows
-        if edge_type ∉ ["flow", "control"]
+    for (; link_id, from_node_id, to_node_id, link_type) in link_rows
+        if link_type ∉ ["flow", "control"]
             errors = true
-            @error "Invalid edge type '$edge_type' for edge #$edge_id from node #$from_node_id to node #$to_node_id."
+            @error "Invalid link type '$link_type' for link #$link_id from node #$from_node_id to node #$to_node_id."
         end
     end
     return !errors
@@ -576,7 +576,7 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
 
         # Check whether these control states are defined for the
         # control outneighbors
-        for id_outneighbor in outneighbor_labels_type(graph, id, EdgeType.control)
+        for id_outneighbor in outneighbor_labels_type(graph, id, LinkType.control)
 
             # Node object for the outneighbor node type
             node = getfield(p, graph[id_outneighbor].type)

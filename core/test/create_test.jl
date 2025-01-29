@@ -9,7 +9,7 @@
         DiGraph();
         label_type = NodeID,
         vertex_data_type = Ribasim.NodeMetadata,
-        edge_data_type = Symbol,
+        link_data_type = Symbol,
         graph_data = Tuple,
     )
 
@@ -51,7 +51,7 @@ end
         DiGraph();
         label_type = NodeID,
         vertex_data_type = Ribasim.NodeMetadata,
-        edge_data_type = Symbol,
+        link_data_type = Symbol,
         graph_data = Tuple,
     )
 

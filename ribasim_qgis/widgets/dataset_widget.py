@@ -40,8 +40,8 @@ from ribasim_qgis.core.model import (
     get_database_path_from_model_file,
     get_directory_path_from_model_file,
 )
-from ribasim_qgis.core.nodes import Edge, Input, Node, load_nodes_from_geopackage
-from ribasim_qgis.core.topology import set_edge_properties
+from ribasim_qgis.core.nodes import Input, Link, Node, load_nodes_from_geopackage
+from ribasim_qgis.core.topology import set_link_properties
 
 
 class DatasetTreeWidget(QTreeWidget):
@@ -141,7 +141,7 @@ class DatasetWidget(QWidget):
         self.suppress_popup_checkbox.stateChanged.connect(self.suppress_popup_changed)
         self.remove_button.clicked.connect(self.remove_geopackage_layer)
         self.add_button.clicked.connect(self.add_selection_to_qgis)
-        self.edge_layer: QgsVectorLayer | None = None
+        self.link_layer: QgsVectorLayer | None = None
         self.node_layer: QgsVectorLayer | None = None
 
         # Layout
@@ -166,12 +166,12 @@ class DatasetWidget(QWidget):
 
     def connect_nodes(self) -> None:
         node = self.node_layer
-        edge = self.edge_layer
-        assert edge is not None
+        link = self.link_layer
+        assert link is not None
         assert node is not None
 
-        if (node.featureCount() > 0) and (edge.featureCount() > 0):
-            set_edge_properties(node, edge)
+        if (node.featureCount() > 0) and (link.featureCount() > 0):
+            set_link_properties(node, link)
 
         return
 
@@ -240,20 +240,20 @@ class DatasetWidget(QWidget):
         name = self.path.stem
         self.ribasim_widget.create_groups(name)
 
-        # Make sure "Node", "Edge", "Basin / area" are the top three layers
+        # Make sure "Node", "Link", "Basin / area" are the top three layers
         node = nodes.pop("Node")
         item = self.dataset_tree.add_node_layer(node)
         self.add_item_to_qgis(item)
         # Make sure node_id shows up in relationships
         node.layer.setDisplayExpression("node_id")
 
-        edge = nodes.pop("Edge")
-        item = self.dataset_tree.add_node_layer(edge)
+        link = nodes.pop("Link")
+        item = self.dataset_tree.add_node_layer(link)
         self.add_item_to_qgis(item)
         self.add_relationship(
-            edge.layer, node.layer.id(), "EdgeFromNode", "from_node_id"
+            link.layer, node.layer.id(), "LinkFromNode", "from_node_id"
         )
-        self.add_relationship(edge.layer, node.layer.id(), "EdgeToNode", "to_node_id")
+        self.add_relationship(link.layer, node.layer.id(), "LinkToNode", "to_node_id")
 
         basin_area_layer = nodes.pop("Basin / area", None)
         if basin_area_layer is not None:
@@ -269,11 +269,11 @@ class DatasetWidget(QWidget):
             self.add_item_to_qgis(item)
             self.add_relationship(node_layer.layer, node.layer.id(), table_name)
 
-        # Connect node and edge layer to derive connectivities.
+        # Connect node and link layer to derive connectivities.
         self.node_layer = node.layer
         assert self.node_layer is not None
-        self.edge_layer = edge.layer
-        self.edge_layer.editingStopped.connect(self.connect_nodes)
+        self.link_layer = link.layer
+        self.link_layer.editingStopped.connect(self.connect_nodes)
 
         def filterbyrel(relationships, feature_ids):
             """Filter all related tables by the selected features in the node table."""
@@ -286,24 +286,24 @@ class DatasetWidget(QWidget):
             rel.referencingLayer().selectByIds(ids)
 
         # When the Node selection changes, filter all related tables
-        edge_rels = []
+        link_rels = []
         instance = QgsProject.instance()
         assert instance is not None
         rel_manager = instance.relationManager()
         assert rel_manager is not None
         for rel in rel_manager.relations().values():
-            # Edge relations are special, they have two references to the Node table
+            # Link relations are special, they have two references to the Node table
             referencing = rel.referencingLayer()
             referenced = rel.referencedLayer()
             assert referencing is not None
             assert referenced is not None
 
-            if referencing.name() == "Edge":
-                edge_rels.append(rel)
+            if referencing.name() == "Link":
+                link_rels.append(rel)
             else:
                 referenced.selectionChanged.connect(partial(filterbyrel, [rel]))
 
-        self.node_layer.selectionChanged.connect(partial(filterbyrel, edge_rels))
+        self.node_layer.selectionChanged.connect(partial(filterbyrel, link_rels))
         return
 
     def new_model(self) -> None:
@@ -317,7 +317,7 @@ class DatasetWidget(QWidget):
             geo_path = self.path.with_name("database.gpkg")
             self._write_toml()
 
-            for input_type in (Node, Edge):
+            for input_type in (Node, Link):
                 instance = input_type.create(
                     geo_path,
                     self.ribasim_widget.crs,
@@ -378,17 +378,17 @@ class DatasetWidget(QWidget):
 
     def refresh_results(self) -> None:
         self.__set_node_results()
-        self.__set_edge_results()
+        self.__set_link_results()
 
     def __set_node_results(self) -> None:
         node_layer = self.ribasim_widget.node_layer
         assert node_layer is not None
         self.__set_results(node_layer, "node_id", "basin.arrow")
 
-    def __set_edge_results(self) -> None:
-        edge_layer = self.ribasim_widget.edge_layer
-        assert edge_layer is not None
-        self.__set_results(edge_layer, "edge_id", "flow.arrow")
+    def __set_link_results(self) -> None:
+        link_layer = self.ribasim_widget.link_layer
+        assert link_layer is not None
+        self.__set_results(link_layer, "link_id", "flow.arrow")
 
     def __set_results(
         self,

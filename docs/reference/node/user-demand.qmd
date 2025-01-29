@@ -12,7 +12,7 @@ This parameter is only used when allocation is active and is optional when alloc
 
 When the connected Basin is almost empty or reaches the minimum level at which the UserDemand can extract water (`min_level`), it will stop extraction.
 
-UserDemands need an outgoing flow edge along which they can send their return flow, this can also be to the same Basin from which it extracts water.
+UserDemands need an outgoing flow link along which they can send their return flow, this can also be to the same Basin from which it extracts water.
 The amount of return flow is always a fraction of the inflow into the UserDemand.
 The difference is consumed by the UserDemand.
 

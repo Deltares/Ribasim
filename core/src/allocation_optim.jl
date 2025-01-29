@@ -57,14 +57,14 @@ function set_objective_priority!(
     end
 
     # Terms for UserDemand nodes and FlowDemand nodes
-    for edge in keys(capacity.data)
-        to_node_id = edge[2]
+    for link in keys(capacity.data)
+        to_node_id = link[2]
 
         if to_node_id.type == NodeType.UserDemand
             # UserDemand
             user_demand_idx = to_node_id.idx
             d = demand_reduced[user_demand_idx, priority_idx]
-            F_ud = F[edge]
+            F_ud = F[link]
             add_objective_term!(ex, d, F_ud)
         else
             has_demand, demand_node_id =
@@ -117,24 +117,24 @@ function assign_allocations!(
         subnetwork_ids,
         main_network_connections,
     ) = allocation
-    main_network_source_edges = get_main_network_connections(p, subnetwork_id)
-    for edge in keys(capacity.data)
-        # If this edge does not exist in the physical model then it comes from a
-        # bidirectional edge, and thus does not have directly allocating flow
-        if !haskey(graph, edge...)
+    main_network_source_links = get_main_network_connections(p, subnetwork_id)
+    for link in keys(capacity.data)
+        # If this link does not exist in the physical model then it comes from a
+        # bidirectional link, and thus does not have directly allocating flow
+        if !haskey(graph, link...)
             continue
         end
-        # If this edge is a source edge from the main network to a subnetwork,
-        # and demands are being collected, add its flow to the demand of this edge
+        # If this link is a source link from the main network to a subnetwork,
+        # and demands are being collected, add its flow to the demand of this link
         if optimization_type == OptimizationType.collect_demands
-            if edge in main_network_source_edges
-                allocated = flow[edge]
-                subnetwork_demands[edge][priority_idx] += allocated
+            if link in main_network_source_links
+                allocated = flow[link]
+                subnetwork_demands[link][priority_idx] += allocated
             end
         elseif optimization_type == OptimizationType.allocate
-            user_demand_node_id = edge[2]
+            user_demand_node_id = link[2]
             if user_demand_node_id.type == NodeType.UserDemand
-                allocated = flow[edge]
+                allocated = flow[link]
                 user_demand.allocated[user_demand_node_id.idx, priority_idx] = allocated
             end
         end
@@ -143,13 +143,13 @@ function assign_allocations!(
     # Write the flows to the subnetworks as allocated flows
     # in the allocation object
     if is_main_network(subnetwork_id)
-        for (subnetwork_id, main_network_source_edges) in
+        for (subnetwork_id, main_network_source_links) in
             zip(subnetwork_ids, main_network_connections)
             if is_main_network(subnetwork_id)
                 continue
             end
-            for edge_id in main_network_source_edges
-                subnetwork_allocateds[edge_id][priority_idx] = flow[edge_id]
+            for link_id in main_network_source_links
+                subnetwork_allocateds[link_id][priority_idx] = flow[link_id]
             end
         end
     end
@@ -173,9 +173,9 @@ function set_initial_capacities_inlet!(
     (; subnetwork_id) = allocation_model
     (; subnetwork_allocateds) = allocation
 
-    main_network_source_edges = get_main_network_connections(p, subnetwork_id)
+    main_network_source_links = get_main_network_connections(p, subnetwork_id)
 
-    for edge_id in main_network_source_edges
+    for link_id in main_network_source_links
         source_capacity = if optimization_type == OptimizationType.internal_sources
             # Set the source capacity to 0 if optimization is being done for the internal subnetwork sources
             0.0
@@ -183,10 +183,10 @@ function set_initial_capacities_inlet!(
             # Set the source capacity to effectively unlimited if subnetwork demands are being collected
             Inf
         elseif optimization_type == OptimizationType.allocate
-            # Set the source capacity to the sum over priorities of the values allocated to the subnetwork over this edge
-            sum(subnetwork_allocateds[edge_id])
+            # Set the source capacity to the sum over priorities of the values allocated to the subnetwork over this link
+            sum(subnetwork_allocateds[link_id])
         end
-        source = sources[edge_id]
+        source = sources[link_id]
         @assert source.type == AllocationSourceType.main_to_sub
         source.capacity = source_capacity
     end
@@ -206,9 +206,9 @@ function set_initial_capacities_source!(
 
     mean_input_flows_subnetwork_ = mean_input_flows_subnetwork(p, subnetwork_id)
 
-    for edge in keys(mean_input_flows_subnetwork_)
-        source = sources[edge]
-        source.capacity = mean_input_flows_subnetwork_[edge]
+    for link in keys(mean_input_flows_subnetwork_)
+        source = sources[link]
+        source.capacity = mean_input_flows_subnetwork_[link]
     end
     return nothing
 end
@@ -217,7 +217,7 @@ end
 Reduce the capacity of a source by the amount of flow taken from them in the latest optimization.
 """
 function reduce_source_capacity!(problem::JuMP.Model, source::AllocationSource)::Nothing
-    (; edge) = source
+    (; link) = source
 
     used_capacity =
         if source.type in (
@@ -225,11 +225,11 @@ function reduce_source_capacity!(problem::JuMP.Model, source::AllocationSource):
             AllocationSourceType.main_to_sub,
             AllocationSourceType.user_return,
         )
-            JuMP.value(problem[:F][edge])
+            JuMP.value(problem[:F][link])
         elseif source.type == AllocationSourceType.basin
-            JuMP.value(problem[:F_basin_out][edge[1]])
+            JuMP.value(problem[:F_basin_out][link[1]])
         elseif source.type == AllocationSourceType.buffer
-            JuMP.value(problem[:F_flow_buffer_out][edge[1]])
+            JuMP.value(problem[:F_flow_buffer_out][link[1]])
         else
             error("Unknown source type")
         end
@@ -251,15 +251,15 @@ function increase_source_capacities!(
     (; user_demand) = p
 
     for source in values(sources)
-        (; edge) = source
+        (; link) = source
 
         additional_capacity = if source.type == AllocationSourceType.user_return
-            id_user_demand = edge[1]
-            inflow_edge = user_demand.inflow_edge[id_user_demand.idx].edge
+            id_user_demand = link[1]
+            inflow_link = user_demand.inflow_link[id_user_demand.idx].link
             user_demand.return_factor[id_user_demand.idx](t) *
-            JuMP.value(problem[:F][inflow_edge])
+            JuMP.value(problem[:F][inflow_link])
         elseif source.type == AllocationSourceType.buffer
-            id_connector_node = edge[1]
+            id_connector_node = link[1]
             JuMP.value(problem[:F_flow_buffer_in][id_connector_node])
         else
             continue
@@ -271,26 +271,26 @@ function increase_source_capacities!(
 end
 
 """
-Set the capacities of the allocation flow edges as determined by
-the smallest max_flow_rate of a node on this edge
+Set the capacities of the allocation flow links as determined by
+the smallest max_flow_rate of a node on this link
 """
-function set_initial_capacities_edge!(
+function set_initial_capacities_link!(
     allocation_model::AllocationModel,
     p::Parameters,
 )::Nothing
     (; problem, capacity, subnetwork_id) = allocation_model
     constraints_capacity = problem[:capacity]
-    main_network_source_edges = get_main_network_connections(p, subnetwork_id)
+    main_network_source_links = get_main_network_connections(p, subnetwork_id)
 
-    for (edge_id, c) in capacity.data
+    for (link_id, c) in capacity.data
 
-        # These edges have no capacity constraints:
+        # These links have no capacity constraints:
         # - With infinite capacity
         # - Being a source from the main network to a subnetwork
-        if isinf(c) || edge_id ∈ main_network_source_edges
+        if isinf(c) || link_id ∈ main_network_source_links
             continue
         end
-        JuMP.set_normalized_rhs(constraints_capacity[edge_id], c)
+        JuMP.set_normalized_rhs(constraints_capacity[link_id], c)
     end
 
     return nothing
@@ -298,21 +298,21 @@ end
 
 """
 Before an allocation solve, subtract the flow used by allocation for the previous priority
-from the edge capacities.
+from the link capacities.
 """
-function reduce_edge_capacities!(allocation_model::AllocationModel)::Nothing
+function reduce_link_capacities!(allocation_model::AllocationModel)::Nothing
     (; problem) = allocation_model
     constraints_capacity = problem[:capacity]
     F = problem[:F]
 
-    for edge_id in only(constraints_capacity.axes)
+    for link_id in only(constraints_capacity.axes)
         # Before an allocation solve, subtract the flow used by allocation for the previous priority
-        # from the edge capacities
+        # from the link capacities
         JuMP.set_normalized_rhs(
-            constraints_capacity[edge_id],
+            constraints_capacity[link_id],
             max(
                 0.0,
-                JuMP.normalized_rhs(constraints_capacity[edge_id]) - JuMP.value(F[edge_id]),
+                JuMP.normalized_rhs(constraints_capacity[link_id]) - JuMP.value(F[link_id]),
             ),
         )
     end
@@ -338,7 +338,7 @@ function get_basin_data(
     @assert node_id.type == NodeType.Basin
     influx = mean_input_flows_subnetwork(p, subnetwork_id)[(node_id, node_id)]
     storage_basin = basin.current_properties.current_storage[parent(u)][node_id.idx]
-    control_inneighbors = inneighbor_labels_type(graph, node_id, EdgeType.control)
+    control_inneighbors = inneighbor_labels_type(graph, node_id, LinkType.control)
     if isempty(control_inneighbors)
         level_demand_idx = 0
     else
@@ -489,7 +489,7 @@ function set_initial_capacities_returnflow!(
     constraints_outflow = problem[:source_user]
 
     for node_id in only(constraints_outflow.axes)
-        source = sources[user_demand.outflow_edge[node_id.idx].edge]
+        source = sources[user_demand.outflow_link[node_id.idx].link]
         @assert source.type == AllocationSourceType.user_return
         source.capacity = 0.0
     end
@@ -594,7 +594,7 @@ function reduce_demands!(
         end
 
         node_with_demand_id =
-            only(outneighbor_labels_type(graph, node_id, EdgeType.control))
+            only(outneighbor_labels_type(graph, node_id, LinkType.control))
 
         flow_demand.demand[node_id.idx] = max(
             0.0,
@@ -697,7 +697,7 @@ function save_demands_and_allocations!(
 end
 
 """
-Save the allocation flows per basin and physical edge.
+Save the allocation flows per basin and physical link.
 """
 function save_allocation_flows!(
     p::Parameters,
@@ -710,13 +710,13 @@ function save_allocation_flows!(
     (; allocation, graph) = p
     (; record_flow) = allocation
 
-    edges_allocation = keys(flow.data)
+    links_allocation = keys(flow.data)
 
     skip = false
 
-    # Loop over all tuples of 2 consecutive edges so that they can be processed
-    # simultaneously if they represent the same edge in both directions
-    for (edge_1, edge_2) in IterTools.partition(edges_allocation, 2, 1)
+    # Loop over all tuples of 2 consecutive links so that they can be processed
+    # simultaneously if they represent the same link in both directions
+    for (link_1, link_2) in IterTools.partition(links_allocation, 2, 1)
         if skip
             skip = false
             continue
@@ -724,31 +724,31 @@ function save_allocation_flows!(
 
         flow_rate = 0.0
 
-        if haskey(graph, edge_1...)
-            flow_rate += flow[edge_1]
+        if haskey(graph, link_1...)
+            flow_rate += flow[link_1]
             sign_2 = -1.0
-            edge_metadata = graph[edge_1...]
+            link_metadata = graph[link_1...]
         else
-            edge_1_reverse = reverse(edge_1)
-            flow_rate -= flow[edge_1_reverse]
+            link_1_reverse = reverse(link_1)
+            flow_rate -= flow[link_1_reverse]
             sign_2 = 1.0
-            edge_metadata = graph[edge_1_reverse...]
+            link_metadata = graph[link_1_reverse...]
         end
 
-        # Check whether the next edge is the current one reversed
-        # and the edge does not have a UserDemand end
-        if edge_2 == reverse(edge_1) &&
-           !(edge_1[1].type == NodeType.UserDemand || edge_1[2].type == NodeType.UserDemand)
-            # If so, these edges are both processed in this iteration
-            flow_rate += sign_2 * flow[edge_2]
+        # Check whether the next link is the current one reversed
+        # and the link does not have a UserDemand end
+        if link_2 == reverse(link_1) &&
+           !(link_1[1].type == NodeType.UserDemand || link_1[2].type == NodeType.UserDemand)
+            # If so, these links are both processed in this iteration
+            flow_rate += sign_2 * flow[link_2]
             skip = true
         end
 
-        id_from = edge_metadata.edge[1]
-        id_to = edge_metadata.edge[2]
+        id_from = link_metadata.link[1]
+        id_to = link_metadata.link[2]
 
         push!(record_flow.time, t)
-        push!(record_flow.edge_id, edge_metadata.id)
+        push!(record_flow.link_id, link_metadata.id)
         push!(record_flow.from_node_type, string(id_from.type))
         push!(record_flow.from_node_id, Int32(id_from))
         push!(record_flow.to_node_type, string(id_to.type))
@@ -765,7 +765,7 @@ function save_allocation_flows!(
            has_external_demand(graph, node_id, :level_demand)[1]
             flow_rate = sources[(node_id, node_id)].basin_flow_rate
             push!(record_flow.time, t)
-            push!(record_flow.edge_id, 0)
+            push!(record_flow.link_id, 0)
             push!(record_flow.from_node_type, string(NodeType.Basin))
             push!(record_flow.from_node_id, node_id)
             push!(record_flow.to_node_type, string(NodeType.Basin))
@@ -794,7 +794,7 @@ function allocate_to_users_from_connected_basin!(
 
         # Check whether the upstream basin has a level demand
         # and thus can act as a source
-        upstream_basin_id = user_demand.inflow_edge[node_id.idx].edge[1]
+        upstream_basin_id = user_demand.inflow_link[node_id.idx].link[1]
         if has_external_demand(graph, upstream_basin_id, :level_demand)[1]
 
             # The demand of the UserDemand node at the current priority
@@ -837,7 +837,7 @@ function set_source_capacity!(
     constraints_source_buffer = problem[:flow_buffer_outflow]
 
     for source in values(sources)
-        (; edge) = source
+        (; link) = source
 
         capacity_effective = if source == source_current
             if optimization_type == OptimizationType.collect_demands &&
@@ -851,15 +851,15 @@ function set_source_capacity!(
         end
 
         constraint = if source.type == AllocationSourceType.boundary_node
-            constraints_source_boundary[edge]
+            constraints_source_boundary[link]
         elseif source.type == AllocationSourceType.main_to_sub
-            constraints_source_main_network[edge]
+            constraints_source_main_network[link]
         elseif source.type == AllocationSourceType.basin
-            constraints_source_basin[edge[1]]
+            constraints_source_basin[link[1]]
         elseif source.type == AllocationSourceType.user_return
-            constraints_source_user_out[edge[1]]
+            constraints_source_user_out[link[1]]
         elseif source.type == AllocationSourceType.buffer
-            constraints_source_buffer[edge[1]]
+            constraints_source_buffer[link[1]]
         end
 
         JuMP.set_normalized_rhs(constraint, capacity_effective)
@@ -921,14 +921,14 @@ function optimize_per_source!(
         end
 
         # Add the values of the flows at this priority
-        for edge in only(problem[:F].axes)
-            flow[edge] += max(JuMP.value(problem[:F][edge]), 0.0)
+        for link in only(problem[:F].axes)
+            flow[link] += max(JuMP.value(problem[:F][link]), 0.0)
         end
 
         # Adjust capacities for the optimization for the next source
         increase_source_capacities!(allocation_model, p, t)
         reduce_source_capacity!(problem, source)
-        reduce_edge_capacities!(allocation_model)
+        reduce_link_capacities!(allocation_model)
 
         # Adjust demands for next optimization (in case of internal_sources -> collect_demands)
         for parameter in propertynames(p)
@@ -939,9 +939,9 @@ function optimize_per_source!(
         end
 
         # Add to the basin cumulative flow rate
-        for (edge, source) in sources
+        for (link, source) in sources
             if source.type == AllocationSourceType.basin
-                node_id = edge[1]
+                node_id = link[1]
                 source.basin_flow_rate +=
                     JuMP.value(F_basin_out[node_id]) - JuMP.value(F_basin_in[node_id])
             end
@@ -982,8 +982,8 @@ function optimize_priority!(
     (; priorities) = allocation
 
     # Start the values of the flows at this priority at 0.0
-    for edge in keys(flow.data)
-        flow[edge] = 0.0
+    for link in keys(flow.data)
+        flow[link] = 0.0
     end
 
     # Start the allocated amounts to basins at this priority at 0.0
@@ -1010,7 +1010,7 @@ function optimize_priority!(
     # Save the demands and allocated flows for all nodes that have these
     save_demands_and_allocations!(p, allocation_model, t, priority_idx)
 
-    # Save the flows over all edges in the subnetwork
+    # Save the flows over all links in the subnetwork
     save_allocation_flows!(
         p,
         t,
@@ -1031,7 +1031,7 @@ function set_initial_values!(
     t::Float64,
 )::Nothing
     set_initial_capacities_source!(allocation_model, p)
-    set_initial_capacities_edge!(allocation_model, p)
+    set_initial_capacities_link!(allocation_model, p)
     set_initial_capacities_basin!(allocation_model, u, p, t)
     set_initial_capacities_buffer!(allocation_model)
     set_initial_capacities_returnflow!(allocation_model, p)
@@ -1047,7 +1047,7 @@ function set_initial_values!(
 end
 
 """
-Set the capacities of all edges that denote a source to 0.0.
+Set the capacities of all links that denote a source to 0.0.
 """
 function empty_sources!(allocation_model::AllocationModel, allocation::Allocation)::Nothing
     (; problem) = allocation_model
@@ -1057,8 +1057,8 @@ function empty_sources!(allocation_model::AllocationModel, allocation::Allocatio
         [:source_boundary, :source_user, :basin_outflow, :flow_buffer_outflow]
         constraint_set = problem[constraint_set_name]
         for key in only(constraint_set.axes)
-            # Do not set the capacity to 0.0 if the edge
-            # is a main to subnetwork connection edge
+            # Do not set the capacity to 0.0 if the link
+            # is a main to subnetwork connection link
             if key ∉ keys(subnetwork_demands)
                 JuMP.set_normalized_rhs(constraint_set[key], 0.0)
             end
@@ -1094,11 +1094,11 @@ function collect_demands!(
     ## Collect demand
     optimization_type = OptimizationType.collect_demands
 
-    main_network_source_edges = get_main_network_connections(p, subnetwork_id)
+    main_network_source_links = get_main_network_connections(p, subnetwork_id)
 
     # Reset the subnetwork demands to 0.0
     for main_network_connection in keys(subnetwork_demands)
-        if main_network_connection in main_network_source_edges
+        if main_network_connection in main_network_source_links
             subnetwork_demands[main_network_connection] .= 0.0
         end
     end

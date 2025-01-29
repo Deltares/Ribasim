@@ -16,19 +16,19 @@ def nodeschema_migration(gdf: GeoDataFrame, schema_version: int) -> GeoDataFrame
     return gdf
 
 
-def edgeschema_migration(gdf: GeoDataFrame, schema_version: int) -> GeoDataFrame:
+def linkschema_migration(gdf: GeoDataFrame, schema_version: int) -> GeoDataFrame:
     if schema_version == 0:
-        warnings.warn("Migrating outdated Edge table.", UserWarning)
+        warnings.warn("Migrating outdated Link table.", UserWarning)
         gdf.drop(columns="from_node_type", inplace=True, errors="ignore")
     if schema_version == 0:
-        warnings.warn("Migrating outdated Edge table.", UserWarning)
+        warnings.warn("Migrating outdated Link table.", UserWarning)
         gdf.drop(columns="to_node_type", inplace=True, errors="ignore")
     if "edge_id" in gdf.columns and schema_version == 0:
-        warnings.warn("Migrating outdated Edge table.", UserWarning)
-        assert gdf["edge_id"].is_unique, "Edge IDs have to be unique."
+        warnings.warn("Migrating outdated Link table.", UserWarning)
+        assert gdf["edge_id"].is_unique, "Link IDs have to be unique."
         gdf.set_index("edge_id", inplace=True)
     if schema_version < 3 and "subnetwork_id" in gdf.columns:
-        warnings.warn("Migrating outdated Edge table.", UserWarning)
+        warnings.warn("Migrating outdated Link table.", UserWarning)
         gdf.drop(columns="subnetwork_id", inplace=True, errors="ignore")
 
     return gdf

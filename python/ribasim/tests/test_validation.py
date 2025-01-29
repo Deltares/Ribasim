@@ -14,15 +14,15 @@ from ribasim.nodes import (
 from shapely import MultiPolygon, Point, Polygon
 
 
-def test_duplicate_edge(basic):
+def test_duplicate_link(basic):
     model = basic
     with pytest.raises(
         ValueError,
         match=re.escape(
-            "Edges have to be unique, but edge with from_node_id 16 to_node_id 1 already exists."
+            "Links have to be unique, but link with from_node_id 16 to_node_id 1 already exists."
         ),
     ):
-        model.edge.add(
+        model.link.add(
             model.flow_boundary[16],
             model.basin[1],
             name="duplicate",
@@ -37,14 +37,14 @@ def test_connectivity(trivial):
             "Node of type Terminal cannot be downstream of node of type Basin. Possible downstream node: ['LinearResistance', 'UserDemand', 'Outlet', 'TabulatedRatingCurve', 'ManningResistance', 'Pump']"
         ),
     ):
-        model.edge.add(model.basin[6], model.terminal[2147483647])
+        model.link.add(model.basin[6], model.terminal[2147483647])
 
 
 def test_maximum_flow_neighbor(outlet):
     model = outlet
     with pytest.raises(
         ValueError,
-        match=re.escape("Node 2 can have at most 1 flow edge outneighbor(s) (got 1)"),
+        match=re.escape("Node 2 can have at most 1 flow link outneighbor(s) (got 1)"),
     ):
         model.basin.add(
             Node(4, Point(1.0, 1.0)),
@@ -53,24 +53,24 @@ def test_maximum_flow_neighbor(outlet):
                 basin.State(level=[0.0]),
             ],
         )
-        model.edge.add(model.outlet[2], model.basin[4])
+        model.link.add(model.outlet[2], model.basin[4])
 
     with pytest.raises(
         ValueError,
-        match=re.escape("Node 2 can have at most 1 flow edge inneighbor(s) (got 1)"),
+        match=re.escape("Node 2 can have at most 1 flow link inneighbor(s) (got 1)"),
     ):
         model.level_boundary.add(
             Node(5, Point(0.0, 1.0)),
             [level_boundary.Static(level=[3.0])],
         )
-        model.edge.add(model.level_boundary[5], model.outlet[2])
+        model.link.add(model.level_boundary[5], model.outlet[2])
 
 
 def test_maximum_control_neighbor(pid_control_equation):
     model = pid_control_equation
     with pytest.raises(
         ValueError,
-        match=re.escape("Node 2 can have at most 1 control edge inneighbor(s) (got 1)"),
+        match=re.escape("Node 2 can have at most 1 control link inneighbor(s) (got 1)"),
     ):
         model.pid_control.add(
             Node(5, Point(0.5, -1.0)),
@@ -84,18 +84,18 @@ def test_maximum_control_neighbor(pid_control_equation):
                 )
             ],
         )
-        model.edge.add(
+        model.link.add(
             model.pid_control[5],
             model.pump[2],
         )
     with pytest.raises(
         ValueError,
         match=re.escape(
-            "Node 4 can have at most 1 control edge outneighbor(s) (got 1)"
+            "Node 4 can have at most 1 control link outneighbor(s) (got 1)"
         ),
     ):
         model.pump.add(Node(6, Point(-1.0, 0)), [pump.Static(flow_rate=[0.0])])
-        model.edge.add(
+        model.link.add(
             model.pid_control[4],
             model.pump[6],
         )
@@ -126,7 +126,7 @@ def test_minimum_flow_neighbor():
         ValueError,
         match=re.escape("Minimum flow inneighbor or outneighbor unsatisfied"),
     ):
-        model.edge.add(model.basin[3], model.outlet[2])
+        model.link.add(model.basin[3], model.outlet[2])
         model.write("test.toml")
 
 
@@ -151,8 +151,8 @@ def test_minimum_control_neighbor():
     )
     model.terminal.add(Node(4, Point(3.0, -2.0)))
 
-    model.edge.add(model.basin[3], model.outlet[2])
-    model.edge.add(model.outlet[2], model.terminal[4])
+    model.link.add(model.basin[3], model.outlet[2])
+    model.link.add(model.outlet[2], model.terminal[4])
 
     with pytest.raises(
         ValueError,

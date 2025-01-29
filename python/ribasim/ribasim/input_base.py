@@ -366,9 +366,9 @@ class SpatialTableModel(TableModel[TableT], Generic[TableT]):
     df: GeoDataFrame[TableT] | None = Field(default=None, exclude=True, repr=False)
 
     def sort(self):
-        # Only sort the index (node_id / edge_id) since this needs to be sorted in a GeoPackage.
+        # Only sort the index (node_id / link_id) since this needs to be sorted in a GeoPackage.
         # Under most circumstances, this retains the input order,
-        # making the edge_id as stable as possible; useful for post-processing.
+        # making the link_id as stable as possible; useful for post-processing.
         self.df.sort_index(inplace=True)
 
     @classmethod

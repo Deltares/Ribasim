@@ -5,7 +5,7 @@ title: "Outlet"
 The Outlet lets water flow downstream with a prescribed flow rate.
 It is similar to the Pump, except that water only flows down, by gravity.
 
-When PID controlled, the Outlet must point towards the controlled Basin in terms of edges.
+When PID controlled, the Outlet must point towards the controlled Basin in terms of links.
 
 # Tables
 

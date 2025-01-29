@@ -4,7 +4,7 @@ title: "LevelDemand"
 
 A `LevelDemand` node associates a minimum and a maximum level with connected Basins to be used by the allocation algorithm.
 
-Since this connection conveys information rather than flow, an outgoing control edge must be used.
+Since this connection conveys information rather than flow, an outgoing control link must be used.
 Below the minimum level the Basin has a demand, above the maximum level the Basin has a surplus and acts as a source.
 The source can be used by all nodes with demands in order of priority.
 

@@ -1,5 +1,5 @@
 from ribasim.geometry.area import BasinAreaSchema
-from ribasim.geometry.edge import EdgeTable
+from ribasim.geometry.link import LinkTable
 from ribasim.geometry.node import NodeTable
 
-__all__ = ["BasinAreaSchema", "EdgeTable", "NodeTable"]
+__all__ = ["BasinAreaSchema", "LinkTable", "NodeTable"]

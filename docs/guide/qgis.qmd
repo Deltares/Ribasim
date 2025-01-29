@@ -69,9 +69,9 @@ snapping mode by clicking the magnet and set the snapping distance to 25 pixels.
 
 ![](https://user-images.githubusercontent.com/4471859/224939328-8359272a-30bb-4eb1-ab6c-968318ac3997.png){fig-align="left"}
 
-### Creating connecting edges
+### Creating connecting links
 
-Select the Edge layer and turn on the edit mode.
+Select the Link layer and turn on the edit mode.
 
 ![](https://user-images.githubusercontent.com/4471859/224939342-c6939331-a60d-4526-a350-3cddb122c62d.png){fig-align="left"}
 
@@ -81,11 +81,11 @@ Select "Add line feature".
 
 Create a connection by left clicking a source node and right clicking the destination node.
 
-<img alt="Create an edge" src="https://github.com/user-attachments/assets/048d342d-dd2b-4e67-b8a0-7bbb8fe3f243" class="img-fluid"/>
+<img alt="Create an link" src="https://github.com/user-attachments/assets/048d342d-dd2b-4e67-b8a0-7bbb8fe3f243" class="img-fluid"/>
 
-A form where one can change the edge attributes will pop up. Once done with editing, click ok.
+A form where one can change the link attributes will pop up. Once done with editing, click ok.
 
-<img alt="Edge form" src="https://github.com/user-attachments/assets/bee6af6f-7623-4d1e-98ed-edc26c524377" class="img-fluid"/>
+<img alt="Link form" src="https://github.com/user-attachments/assets/bee6af6f-7623-4d1e-98ed-edc26c524377" class="img-fluid"/>
 
 Now leave the edit mode and save the results to the layer. Your model is now ready to run. See
 
@@ -100,7 +100,7 @@ Now leave the edit mode and save the results to the layer. Your model is now rea
 # Inspect a (large) model {#sec-inspect}
 
 For larger models the node tables can grow quite large. To facilitate inspection,
-the tables are linked via the `node_id` field to the Node table, and react to the selection of the Node layer. That is, on selection of certain nodes---either via the map or the attribute table---the selection is also made in all related tables. This is also the case for the Edge layer.
+the tables are linked via the `node_id` field to the Node table, and react to the selection of the Node layer. That is, on selection of certain nodes---either via the map or the attribute table---the selection is also made in all related tables. This is also the case for the Link layer.
 It helps to set the attribute table of a table of interest to show selected features only (using the dropdown button on the bottom left).
 
 <img alt="Selection change" src="https://github.com/user-attachments/assets/074c1f58-926b-4d5e-a640-86a5a746a4c2" class="img-fluid"/>
@@ -116,7 +116,7 @@ Click the "Time Series" button of the iMOD plugin.
 
 Select the layer that you wish to plot.
 From the "Node" layer you can plot level or storage on Basin nodes.
-From the "Edge" layer you can plot flow over flow edges.
+From the "Link" layer you can plot flow over flow links.
 Note that before switching between these, you typically have to click "Clear" to clear the selection.
 If you run a simulation with the model open in QGIS, you have to close and re-open the "iMOD Time Series Plot" panel for the new results to be loaded.
 

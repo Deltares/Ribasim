@@ -3,7 +3,7 @@ __version__ = "2025.1.0"
 __schema_version__ = 3
 
 from ribasim.config import Allocation, Logging, Node, Solver
-from ribasim.geometry.edge import EdgeTable
+from ribasim.geometry.link import LinkTable
 from ribasim.model import Model
 
-__all__ = ["EdgeTable", "Allocation", "Logging", "Model", "Solver", "Node"]
+__all__ = ["LinkTable", "Allocation", "Logging", "Model", "Solver", "Node"]

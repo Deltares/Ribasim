@@ -31,7 +31,7 @@ end
     import TOML
     using Ribasim: Config, results_path
 
-    model_path = normpath(@__DIR__, "../../generated_testmodels/invalid_edge_types/")
+    model_path = normpath(@__DIR__, "../../generated_testmodels/invalid_link_types/")
     toml_path = normpath(model_path, "ribasim.toml")
 
     @test ispath(toml_path)

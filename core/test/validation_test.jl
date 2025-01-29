@@ -72,13 +72,13 @@ end
     using Graphs: DiGraph
     using Logging
     using MetaGraphsNext: MetaGraph
-    using Ribasim: NodeID, NodeMetadata, EdgeMetadata, EdgeType
+    using Ribasim: NodeID, NodeMetadata, LinkMetadata, LinkType
 
     graph = MetaGraph(
         DiGraph();
         label_type = NodeID,
         vertex_data_type = NodeMetadata,
-        edge_data_type = EdgeMetadata,
+        link_data_type = LinkMetadata,
         graph_data = nothing,
     )
 
@@ -88,14 +88,14 @@ end
     graph[NodeID(:Basin, 4, 1)] = NodeMetadata(:pump, 9)
     graph[NodeID(:Pump, 6, 1)] = NodeMetadata(:pump, 9)
 
-    function set_edge_metadata!(id_1, id_2, edge_type)
-        graph[id_1, id_2] = EdgeMetadata(; id = 0, type = edge_type, edge = (id_1, id_2))
+    function set_link_metadata!(id_1, id_2, link_type)
+        graph[id_1, id_2] = LinkMetadata(; id = 0, type = link_type, link = (id_1, id_2))
         return nothing
     end
 
-    set_edge_metadata!(NodeID(:Basin, 2, 1), NodeID(:Pump, 1, 1), EdgeType.flow)
-    set_edge_metadata!(NodeID(:Basin, 3, 1), NodeID(:Pump, 1, 1), EdgeType.flow)
-    set_edge_metadata!(NodeID(:Pump, 6, 1), NodeID(:Basin, 2, 1), EdgeType.flow)
+    set_link_metadata!(NodeID(:Basin, 2, 1), NodeID(:Pump, 1, 1), LinkType.flow)
+    set_link_metadata!(NodeID(:Basin, 3, 1), NodeID(:Pump, 1, 1), LinkType.flow)
+    set_link_metadata!(NodeID(:Pump, 6, 1), NodeID(:Basin, 2, 1), LinkType.flow)
 
     logger = TestLogger()
     with_logger(logger) do
@@ -124,7 +124,7 @@ end
     using Graphs: DiGraph
     using Logging
     using MetaGraphsNext: MetaGraph
-    using Ribasim: NodeID, NodeMetadata, EdgeMetadata, NodeID, EdgeType
+    using Ribasim: NodeID, NodeMetadata, LinkMetadata, NodeID, LinkType
 
     pid_control_node_id = NodeID.(:PidControl, [1, 6], 1)
     pid_control_listen_node_id = [NodeID(:Terminal, 3, 1), NodeID(:Basin, 5, 1)]
@@ -133,7 +133,7 @@ end
         DiGraph();
         label_type = NodeID,
         vertex_data_type = NodeMetadata,
-        edge_data_type = EdgeMetadata,
+        link_data_type = LinkMetadata,
         graph_data = nothing,
     )
 
@@ -145,18 +145,18 @@ end
     graph[NodeID(:Basin, 5, 1)] = NodeMetadata(:basin, 0)
     graph[NodeID(:Basin, 7, 1)] = NodeMetadata(:basin, 0)
 
-    function set_edge_metadata!(id_1, id_2, edge_type)
-        graph[id_1, id_2] = EdgeMetadata(; id = 0, type = edge_type, edge = (id_1, id_2))
+    function set_link_metadata!(id_1, id_2, link_type)
+        graph[id_1, id_2] = LinkMetadata(; id = 0, type = link_type, link = (id_1, id_2))
         return nothing
     end
 
-    set_edge_metadata!(NodeID(:Terminal, 3, 1), NodeID(:Pump, 4, 1), EdgeType.flow)
-    set_edge_metadata!(NodeID(:Basin, 7, 1), NodeID(:Pump, 2, 1), EdgeType.flow)
-    set_edge_metadata!(NodeID(:Pump, 2, 1), NodeID(:Basin, 7, 1), EdgeType.flow)
-    set_edge_metadata!(NodeID(:Pump, 4, 1), NodeID(:Basin, 7, 1), EdgeType.flow)
+    set_link_metadata!(NodeID(:Terminal, 3, 1), NodeID(:Pump, 4, 1), LinkType.flow)
+    set_link_metadata!(NodeID(:Basin, 7, 1), NodeID(:Pump, 2, 1), LinkType.flow)
+    set_link_metadata!(NodeID(:Pump, 2, 1), NodeID(:Basin, 7, 1), LinkType.flow)
+    set_link_metadata!(NodeID(:Pump, 4, 1), NodeID(:Basin, 7, 1), LinkType.flow)
 
-    set_edge_metadata!(NodeID(:PidControl, 1, 1), NodeID(:Pump, 4, 1), EdgeType.control)
-    set_edge_metadata!(NodeID(:PidControl, 6, 1), NodeID(:Pump, 2, 1), EdgeType.control)
+    set_link_metadata!(NodeID(:PidControl, 1, 1), NodeID(:Pump, 4, 1), LinkType.control)
+    set_link_metadata!(NodeID(:PidControl, 6, 1), NodeID(:Pump, 2, 1), LinkType.control)
 
     logger = TestLogger()
     with_logger(logger) do
@@ -258,12 +258,12 @@ end
           "Pump #1 flow rates must be non-negative, found -1.0 for control state 'foo'."
 end
 
-@testitem "Edge type validation" begin
+@testitem "Link type validation" begin
     import SQLite
     using Logging
 
     toml_path =
-        normpath(@__DIR__, "../../generated_testmodels/invalid_edge_types/ribasim.toml")
+        normpath(@__DIR__, "../../generated_testmodels/invalid_link_types/ribasim.toml")
     @test ispath(toml_path)
 
     cfg = Ribasim.Config(toml_path)
@@ -271,17 +271,17 @@ end
     db = SQLite.DB(db_path)
     logger = TestLogger()
     with_logger(logger) do
-        @test !Ribasim.valid_edge_types(db)
+        @test !Ribasim.valid_link_types(db)
     end
     close(db)
 
     @test length(logger.logs) == 2
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
-          "Invalid edge type 'foo' for edge #1 from node #1 to node #2."
+          "Invalid link type 'foo' for link #1 from node #1 to node #2."
     @test logger.logs[2].level == Error
     @test logger.logs[2].message ==
-          "Invalid edge type 'bar' for edge #2 from node #2 to node #3."
+          "Invalid link type 'bar' for link #2 from node #2 to node #3."
 end
 
 @testitem "Subgrid validation" begin

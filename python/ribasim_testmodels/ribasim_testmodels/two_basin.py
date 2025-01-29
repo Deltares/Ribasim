@@ -67,12 +67,12 @@ def two_basin_model() -> Model:
     )
     model.terminal.add(Node(5, Point(1100, 0)))
 
-    model.edge.add(model.flow_boundary[1], model.basin[2])
-    model.edge.add(
+    model.link.add(model.flow_boundary[1], model.basin[2])
+    model.link.add(
         model.basin[3],
         model.tabulated_rating_curve[4],
     )
-    model.edge.add(
+    model.link.add(
         model.tabulated_rating_curve[4],
         model.terminal[5],
     )

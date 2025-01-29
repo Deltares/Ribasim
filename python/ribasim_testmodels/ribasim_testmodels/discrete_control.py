@@ -91,27 +91,27 @@ def pump_discrete_control_model() -> Model:
         ],
     )
 
-    model.edge.add(
+    model.link.add(
         model.basin[1],
         model.linear_resistance[2],
     )
-    model.edge.add(
+    model.link.add(
         model.linear_resistance[2],
         model.basin[3],
     )
-    model.edge.add(
+    model.link.add(
         model.basin[1],
         model.pump[4],
     )
-    model.edge.add(
+    model.link.add(
         model.pump[4],
         model.basin[3],
     )
-    model.edge.add(
+    model.link.add(
         model.discrete_control[5],
         model.pump[4],
     )
-    model.edge.add(
+    model.link.add(
         model.discrete_control[6],
         model.linear_resistance[2],
     )
@@ -163,19 +163,19 @@ def flow_condition_model() -> Model:
         ],
     )
 
-    model.edge.add(
+    model.link.add(
         model.flow_boundary[1],
         model.basin[2],
     )
-    model.edge.add(
+    model.link.add(
         model.basin[2],
         model.pump[3],
     )
-    model.edge.add(
+    model.link.add(
         model.pump[3],
         model.terminal[4],
     )
-    model.edge.add(
+    model.link.add(
         model.discrete_control[5],
         model.pump[3],
     )
@@ -229,23 +229,23 @@ def level_boundary_condition_model() -> Model:
         ],
     )
 
-    model.edge.add(
+    model.link.add(
         model.level_boundary[1],
         model.linear_resistance[2],
     )
-    model.edge.add(
+    model.link.add(
         model.linear_resistance[2],
         model.basin[3],
     )
-    model.edge.add(
+    model.link.add(
         model.basin[3],
         model.outlet[4],
     )
-    model.edge.add(
+    model.link.add(
         model.outlet[4],
         model.terminal[5],
     )
-    model.edge.add(
+    model.link.add(
         model.discrete_control[6],
         model.outlet[4],
     )
@@ -305,15 +305,15 @@ def tabulated_rating_curve_control_model() -> Model:
         ],
     )
 
-    model.edge.add(
+    model.link.add(
         model.basin[1],
         model.tabulated_rating_curve[2],
     )
-    model.edge.add(
+    model.link.add(
         model.tabulated_rating_curve[2],
         model.terminal[3],
     )
-    model.edge.add(
+    model.link.add(
         model.discrete_control[4],
         model.tabulated_rating_curve[2],
     )
@@ -366,11 +366,11 @@ def compound_variable_condition_model() -> Model:
         ],
     )
 
-    model.edge.add(model.flow_boundary[2], model.basin[1])
-    model.edge.add(model.flow_boundary[3], model.basin[1])
-    model.edge.add(model.basin[1], model.pump[4])
-    model.edge.add(model.pump[4], model.terminal[5])
-    model.edge.add(model.discrete_control[6], model.pump[4])
+    model.link.add(model.flow_boundary[2], model.basin[1])
+    model.link.add(model.flow_boundary[3], model.basin[1])
+    model.link.add(model.basin[1], model.pump[4])
+    model.link.add(model.pump[4], model.terminal[5])
+    model.link.add(model.discrete_control[6], model.pump[4])
 
     return model
 
@@ -433,35 +433,35 @@ def level_range_model() -> Model:
         ],
     )
 
-    model.edge.add(
+    model.link.add(
         model.basin[1],
         model.pump[3],
     )
-    model.edge.add(
+    model.link.add(
         model.pump[3],
         model.level_boundary[4],
     )
-    model.edge.add(
+    model.link.add(
         model.level_boundary[4],
         model.pump[2],
     )
-    model.edge.add(
+    model.link.add(
         model.pump[2],
         model.basin[1],
     )
-    model.edge.add(
+    model.link.add(
         model.basin[1],
         model.tabulated_rating_curve[5],
     )
-    model.edge.add(
+    model.link.add(
         model.tabulated_rating_curve[5],
         model.terminal[6],
     )
-    model.edge.add(
+    model.link.add(
         model.discrete_control[7],
         model.pump[2],
     )
-    model.edge.add(
+    model.link.add(
         model.discrete_control[7],
         model.pump[3],
     )
@@ -513,9 +513,9 @@ def connector_node_flow_condition_model() -> Model:
         ],
     )
 
-    model.edge.add(model.basin[1], model.linear_resistance[2])
-    model.edge.add(model.linear_resistance[2], model.basin[3])
-    model.edge.add(model.discrete_control[4], model.linear_resistance[2])
+    model.link.add(model.basin[1], model.linear_resistance[2])
+    model.link.add(model.linear_resistance[2], model.basin[3])
+    model.link.add(model.discrete_control[4], model.linear_resistance[2])
 
     return model
 
@@ -568,9 +568,9 @@ def concentration_condition_model() -> Model:
         ],
     )
 
-    model.edge.add(model.basin[1], model.pump[2])
-    model.edge.add(model.pump[2], model.terminal[3])
-    model.edge.add(model.discrete_control[4], model.pump[2])
+    model.link.add(model.basin[1], model.pump[2])
+    model.link.add(model.pump[2], model.terminal[3])
+    model.link.add(model.discrete_control[4], model.pump[2])
 
     return model
 
@@ -672,11 +672,11 @@ def continuous_concentration_condition_model() -> Model:
     outl = model.outlet.add(Node(6, Point(0, -0.5)), [outlet.Static(flow_rate=[0.11])])
     term = model.terminal.add(Node(7, Point(0, -1)))
 
-    model.edge.add(levelb, linearr)
-    model.edge.add(linearr, basi)
-    model.edge.add(flowb, basi)
-    model.edge.add(discretec, linearr)
-    model.edge.add(basi, outl)
-    model.edge.add(outl, term)
+    model.link.add(levelb, linearr)
+    model.link.add(linearr, basi)
+    model.link.add(flowb, basi)
+    model.link.add(discretec, linearr)
+    model.link.add(basi, outl)
+    model.link.add(outl, term)
 
     return model

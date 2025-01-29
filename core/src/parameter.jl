@@ -13,8 +13,8 @@ const SolverStats = @NamedTuple{
     rejected_timesteps::Int,
 }
 
-# EdgeType.flow and NodeType.FlowBoundary
-@enumx EdgeType flow control none
+# LinkType.flow and NodeType.FlowBoundary
+@enumx LinkType flow control none
 @eval @enumx NodeType $(config.nodetypes...)
 @enumx ContinuousControlType None Continuous PID
 @enumx Substance Continuity = 1 Initial = 2 LevelBoundary = 3 FlowBoundary = 4 UserDemand =
@@ -144,15 +144,15 @@ cache(len::Int)::Cache = LazyBufferCache(Returns(len); initializer! = set_zero!)
 
 """
 Data structure for a single source within an allocation subnetwork.
-edge: The outflow edge of the source
-type: The type of source (edge, basin, main_to_sub, user_return, buffer)
+link: The outflow link of the source
+type: The type of source (link, basin, main_to_sub, user_return, buffer)
 capacity: The initial capacity of the source as determined by the physical layer
 capacity_reduced: The capacity adjusted by passed optimizations
 basin_flow_rate: The total outflow rate of a basin when optimized over all sources for one priority.
     Ignored when the source is not a basin.
 """
 @kwdef mutable struct AllocationSource
-    const edge::Tuple{NodeID, NodeID}
+    const link::Tuple{NodeID, NodeID}
     const type::AllocationSourceType.T
     capacity::Float64 = 0.0
     capacity_reduced::Float64 = 0.0
@@ -160,16 +160,16 @@ basin_flow_rate: The total outflow rate of a basin when optimized over all sourc
 end
 
 function Base.show(io::IO, source::AllocationSource)
-    (; edge, type) = source
-    print(io, "AllocationSource of type $type at edge $edge")
+    (; link, type) = source
+    print(io, "AllocationSource of type $type at link $link")
 end
 
 """
 Store information for a subnetwork used for allocation.
 
 subnetwork_id: The ID of this allocation network
-capacity: The capacity per edge of the allocation network, as constrained by nodes that have a max_flow_rate
-flow: The flows over all the edges in the subnetwork for a certain priority (used for allocation_flow output)
+capacity: The capacity per link of the allocation network, as constrained by nodes that have a max_flow_rate
+flow: The flows over all the links in the subnetwork for a certain priority (used for allocation_flow output)
 sources: source data in preferred order of optimization
 problem: The JuMP.jl model for solving the allocation problem
 Δt_allocation: The time interval between consecutive allocation solves
@@ -190,10 +190,10 @@ allocation_models: The allocation models for the main network and subnetworks co
     subnetwork_ids
 main_network_connections: (from_id, to_id) from the main network to the subnetwork per subnetwork
 priorities: All used priority values.
-subnetwork_demands: The demand of an edge from the main network to a subnetwork
-subnetwork_allocateds: The allocated flow of an edge from the main network to a subnetwork
-mean_input_flows: Per subnetwork, flows averaged over Δt_allocation over edges that are allocation sources
-mean_realized_flows: Flows averaged over Δt_allocation over edges that realize a demand
+subnetwork_demands: The demand of an link from the main network to a subnetwork
+subnetwork_allocateds: The allocated flow of an link from the main network to a subnetwork
+mean_input_flows: Per subnetwork, flows averaged over Δt_allocation over links that are allocation sources
+mean_realized_flows: Flows averaged over Δt_allocation over links that realize a demand
 record_demand: A record of demands and allocated flows for nodes that have these
 record_flow: A record of all flows computed by allocation optimization, eventually saved to
     output file
@@ -229,7 +229,7 @@ record_flow: A record of all flows computed by allocation optimization, eventual
     )
     record_flow::@NamedTuple{
         time::Vector{Float64},
-        edge_id::Vector{Int32},
+        link_id::Vector{Int32},
         from_node_type::Vector{String},
         from_node_id::Vector{Int32},
         to_node_type::Vector{String},
@@ -240,7 +240,7 @@ record_flow: A record of all flows computed by allocation optimization, eventual
         optimization_type::Vector{String},
     } = (;
         time = Float64[],
-        edge_id = Int32[],
+        link_id = Int32[],
         from_node_type = String[],
         from_node_id = Int32[],
         to_node_type = String[],
@@ -265,18 +265,18 @@ subnetwork_id: Allocation network ID (0 if not in subnetwork)
 end
 
 """
-Type for storing metadata of edges in the graph:
-id: ID of the edge (only used for labeling flow output)
-type: type of the edge
-edge: (from node ID, to node ID)
+Type for storing metadata of links in the graph:
+id: ID of the link (only used for labeling flow output)
+type: type of the link
+link: (from node ID, to node ID)
 """
-@kwdef struct EdgeMetadata
+@kwdef struct LinkMetadata
     id::Int32
-    type::EdgeType.T
-    edge::Tuple{NodeID, NodeID}
+    type::LinkType.T
+    link::Tuple{NodeID, NodeID}
 end
 
-Base.length(::EdgeMetadata) = 1
+Base.length(::LinkMetadata) = 1
 
 """
 The update of a parameter given by a value and a reference to the target
@@ -304,7 +304,7 @@ end
 """
 In-memory storage of saved mean flows for writing to results.
 
-- `flow`: The mean flows on all edges and state-dependent forcings
+- `flow`: The mean flows on all links and state-dependent forcings
 - `inflow`: The sum of the mean flows coming into each Basin
 - `outflow`: The sum of the mean flows going out of each Basin
 - `flow_boundary`: The exact integrated mean flows of flow boundaries
@@ -464,9 +464,9 @@ Rating curve from level to flow rate. The rating curve is a lookup table with li
 interpolation in between. Relations can be updated in time.
 
 node_id: node ID of the TabulatedRatingCurve node
-inflow_edge: incoming flow edge metadata
+inflow_link: incoming flow link metadata
     The ID of the destination node is always the ID of the TabulatedRatingCurve node
-outflow_edge: outgoing flow edge metadata
+outflow_link: outgoing flow link metadata
     The ID of the source node is always the ID of the TabulatedRatingCurve node
 active: whether this node is active and thus contributes flows
 max_downstream_level: The downstream level above which the TabulatedRatingCurve flow goes to zero
@@ -476,8 +476,8 @@ control_mapping: dictionary from (node_id, control_state) to Q(h) and/or active 
 """
 @kwdef struct TabulatedRatingCurve <: AbstractParameterNode
     node_id::Vector{NodeID}
-    inflow_edge::Vector{EdgeMetadata}
-    outflow_edge::Vector{EdgeMetadata}
+    inflow_link::Vector{LinkMetadata}
+    outflow_link::Vector{LinkMetadata}
     active::Vector{Bool}
     max_downstream_level::Vector{Float64} = fill(Inf, length(node_id))
     interpolations::Vector{ScalarInterpolation}
@@ -487,9 +487,9 @@ end
 
 """
 node_id: node ID of the LinearResistance node
-inflow_edge: incoming flow edge metadata
+inflow_link: incoming flow link metadata
     The ID of the destination node is always the ID of the LinearResistance node
-outflow_edge: outgoing flow edge metadata
+outflow_link: outgoing flow link metadata
     The ID of the source node is always the ID of the LinearResistance node
 active: whether this node is active and thus contributes flows
 resistance: the resistance to flow; `Q_unlimited = Δh/resistance`
@@ -498,8 +498,8 @@ control_mapping: dictionary from (node_id, control_state) to resistance and/or a
 """
 @kwdef struct LinearResistance <: AbstractParameterNode
     node_id::Vector{NodeID}
-    inflow_edge::Vector{EdgeMetadata}
-    outflow_edge::Vector{EdgeMetadata}
+    inflow_link::Vector{LinkMetadata}
+    outflow_link::Vector{LinkMetadata}
     active::Vector{Bool}
     resistance::Vector{Float64}
     max_flow_rate::Vector{Float64}
@@ -510,9 +510,9 @@ end
 This is a simple Manning-Gauckler reach connection.
 
 node_id: node ID of the ManningResistance node
-inflow_edge: incoming flow edge metadata
+inflow_link: incoming flow link metadata
     The ID of the destination node is always the ID of the ManningResistance node
-outflow_edge: outgoing flow edge metadata
+outflow_link: outgoing flow link metadata
     The ID of the source node is always the ID of the ManningResistance node
 length: reach length
 manning_n: roughness; Manning's n in (SI units).
@@ -546,8 +546,8 @@ Requirements:
 """
 @kwdef struct ManningResistance <: AbstractParameterNode
     node_id::Vector{NodeID}
-    inflow_edge::Vector{EdgeMetadata}
-    outflow_edge::Vector{EdgeMetadata}
+    inflow_link::Vector{LinkMetadata}
+    outflow_link::Vector{LinkMetadata}
     active::Vector{Bool}
     length::Vector{Float64}
     manning_n::Vector{Float64}
@@ -575,7 +575,7 @@ end
 
 """
 node_id: node ID of the FlowBoundary node
-outflow_edges: The outgoing flow edge metadata
+outflow_links: The outgoing flow link metadata
 active: whether this node is active and thus contributes flow
 cumulative_flow: The exactly integrated cumulative boundary flow since the start of the simulation
 cumulative_flow_saveat: The exactly integrated cumulative boundary flow since the last saveat
@@ -585,7 +585,7 @@ concentration_time: Data source for concentration updates
 """
 @kwdef struct FlowBoundary{C} <: AbstractParameterNode
     node_id::Vector{NodeID}
-    outflow_edges::Vector{Vector{EdgeMetadata}}
+    outflow_links::Vector{Vector{LinkMetadata}}
     active::Vector{Bool}
     cumulative_flow::Vector{Float64} = zeros(length(node_id))
     cumulative_flow_saveat::Vector{Float64} = zeros(length(node_id))
@@ -596,9 +596,9 @@ end
 
 """
 node_id: node ID of the Pump node
-inflow_edge: incoming flow edge metadata
+inflow_link: incoming flow link metadata
     The ID of the destination node is always the ID of the Pump node
-outflow_edge: outgoing flow edge metadata
+outflow_link: outgoing flow link metadata
     The ID of the source node is always the ID of the Pump node
 active: whether this node is active and thus contributes flow
 flow_rate: target flow rate
@@ -611,8 +611,8 @@ continuous_control_type: one of None, ContinuousControl, PidControl
 """
 @kwdef struct Pump <: AbstractParameterNode
     node_id::Vector{NodeID}
-    inflow_edge::Vector{EdgeMetadata} = []
-    outflow_edge::Vector{EdgeMetadata} = []
+    inflow_link::Vector{LinkMetadata} = []
+    outflow_link::Vector{LinkMetadata} = []
     active::Vector{Bool} = fill(true, length(node_id))
     flow_rate::Cache = cache(length(node_id))
     min_flow_rate::Vector{Float64} = zeros(length(node_id))
@@ -625,8 +625,8 @@ continuous_control_type: one of None, ContinuousControl, PidControl
 
     function Pump(
         node_id,
-        inflow_edge,
-        outflow_edge,
+        inflow_link,
+        outflow_link,
         active,
         flow_rate,
         min_flow_rate,
@@ -639,8 +639,8 @@ continuous_control_type: one of None, ContinuousControl, PidControl
         if valid_flow_rates(node_id, flow_rate[Float64[]], control_mapping)
             return new(
                 node_id,
-                inflow_edge,
-                outflow_edge,
+                inflow_link,
+                outflow_link,
                 active,
                 flow_rate,
                 min_flow_rate,
@@ -658,9 +658,9 @@ end
 
 """
 node_id: node ID of the Outlet node
-inflow_edge: incoming flow edge metadata.
+inflow_link: incoming flow link metadata.
     The ID of the destination node is always the ID of the Outlet node
-outflow_edge: outgoing flow edge metadata.
+outflow_link: outgoing flow link metadata.
     The ID of the source node is always the ID of the Outlet node
 active: whether this node is active and thus contributes flow
 flow_rate: target flow rate
@@ -673,8 +673,8 @@ continuous_control_type: one of None, ContinuousControl, PidControl
 """
 @kwdef struct Outlet <: AbstractParameterNode
     node_id::Vector{NodeID}
-    inflow_edge::Vector{EdgeMetadata} = []
-    outflow_edge::Vector{EdgeMetadata} = []
+    inflow_link::Vector{LinkMetadata} = []
+    outflow_link::Vector{LinkMetadata} = []
     active::Vector{Bool} = fill(true, length(node_id))
     flow_rate::Cache = cache(length(node_id))
     min_flow_rate::Vector{Float64} = zeros(length(node_id))
@@ -687,8 +687,8 @@ continuous_control_type: one of None, ContinuousControl, PidControl
 
     function Outlet(
         node_id,
-        inflow_edge,
-        outflow_edge,
+        inflow_link,
+        outflow_link,
         active,
         flow_rate,
         min_flow_rate,
@@ -701,8 +701,8 @@ continuous_control_type: one of None, ContinuousControl, PidControl
         if valid_flow_rates(node_id, flow_rate[Float64[]], control_mapping)
             return new(
                 node_id,
-                inflow_edge,
-                outflow_edge,
+                inflow_link,
+                outflow_link,
                 active,
                 flow_rate,
                 min_flow_rate,
@@ -841,9 +841,9 @@ end
 
 """
 node_id: node ID of the UserDemand node
-inflow_edge: incoming flow edge
+inflow_link: incoming flow link
     The ID of the destination node is always the ID of the UserDemand node
-outflow_edge: outgoing flow edge metadata
+outflow_link: outgoing flow link metadata
     The ID of the source node is always the ID of the UserDemand node
 active: whether this node is active and thus demands water
 demand: water flux demand of UserDemand per priority (node_idx, priority_idx)
@@ -861,8 +861,8 @@ concentration_time: Data source for concentration updates
 """
 @kwdef struct UserDemand{C} <: AbstractDemandNode
     node_id::Vector{NodeID}
-    inflow_edge::Vector{EdgeMetadata} = []
-    outflow_edge::Vector{EdgeMetadata} = []
+    inflow_link::Vector{LinkMetadata} = []
+    outflow_link::Vector{LinkMetadata} = []
     active::Vector{Bool} = fill(true, length(node_id))
     demand::Matrix{Float64}
     demand_reduced::Matrix{Float64}
@@ -933,10 +933,10 @@ end
 The metadata of the graph (the fields of the NamedTuple) can be accessed
     e.g. using graph[].flow.
 node_ids: mapping subnetwork ID -> node IDs in that subnetwork
-edges_source: mapping subnetwork ID -> metadata of allocation
-    source edges in that subnetwork
-flow_edges: The metadata of all flow edges
-    of the flow over that edge
+links_source: mapping subnetwork ID -> metadata of allocation
+    source links in that subnetwork
+flow_links: The metadata of all flow links
+    of the flow over that link
 saveat: The time interval between saves of output data (storage, flow, ...)
 """
 const ModelGraph = MetaGraph{
@@ -944,10 +944,10 @@ const ModelGraph = MetaGraph{
     DiGraph{Int64},
     NodeID,
     NodeMetadata,
-    EdgeMetadata,
+    LinkMetadata,
     @NamedTuple{
         node_ids::Dict{Int32, Set{NodeID}},
-        flow_edges::Vector{EdgeMetadata},
+        flow_links::Vector{LinkMetadata},
         saveat::Float64,
     },
     MetaGraphsNext.var"#11#13",
@@ -974,9 +974,9 @@ const ModelGraph = MetaGraph{
     const level_demand::LevelDemand
     const flow_demand::FlowDemand
     const subgrid::Subgrid
-    # Per state the in- and outflow edges associated with that state (if they exist)
-    const state_inflow_edge::C9 = ComponentVector()
-    const state_outflow_edge::C10 = ComponentVector()
+    # Per state the in- and outflow links associated with that state (if they exist)
+    const state_inflow_link::C9 = ComponentVector()
+    const state_outflow_link::C10 = ComponentVector()
     all_nodes_active::Bool = false
     tprev::Float64 = 0.0
     # Sparse matrix for combining flows into storages

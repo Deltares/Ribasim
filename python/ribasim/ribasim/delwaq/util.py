@@ -30,7 +30,7 @@ def strfdelta(tdelta) -> str:
 def write_pointer(fn: Path | str, data: pd.DataFrame) -> None:
     """Write pointer file for Delwaq.
 
-    The format is a matrix of int32 of edges
+    The format is a matrix of int32 of links
     with 4 columns: from_node_id, to_node_id, 0, 0
 
     This saves as column major order for Fortran compatibility.
@@ -45,9 +45,9 @@ def write_pointer(fn: Path | str, data: pd.DataFrame) -> None:
 def write_lengths(fn: Path | str, data: npt.NDArray[np.float32]) -> None:
     """Write lengths file for Delwaq.
 
-    The format is an int defining time/edges (?)
-    Followed by a matrix of float32 of 2, n_edges
-    Defining the length of the half-edges.
+    The format is an int defining time/links (?)
+    Followed by a matrix of float32 of 2, n_links
+    Defining the length of the half-links.
 
     This saves as column major order for Fortran compatibility.
 
@@ -84,7 +84,7 @@ def write_flows(fn: Path | str, data: pd.DataFrame, timestep: timedelta) -> None
     """Write flows file for Delwaq.
 
     The format is an int defining the time
-    followed by the flow for each edge
+    followed by the flow for each link
     The order should be the same as the nodes in the pointer.
 
     This saves as column major order for Fortran compatibility.
@@ -104,22 +104,22 @@ def write_flows(fn: Path | str, data: pd.DataFrame, timestep: timedelta) -> None
 
 def ugrid(G) -> xugrid.UgridDataset:
     # TODO Deduplicate with ribasim.Model.to_xugrid
-    edge_df = pd.DataFrame(G.edges(), columns=["from_node_id", "to_node_id"])
+    link_df = pd.DataFrame(G.edges(), columns=["from_node_id", "to_node_id"])
     node_df = pd.DataFrame(G.nodes(), columns=["node_id"])
     node_df["x"] = [i[1] for i in G.nodes(data="x")]
     node_df["y"] = [i[1] for i in G.nodes(data="y")]
     node_df = node_df[node_df.node_id > 0].reset_index(drop=True)
     node_df.set_index("node_id", drop=False, inplace=True)
     node_df.sort_index(inplace=True)
-    edge_df = edge_df[
-        edge_df.from_node_id.isin(node_df.node_id)
-        & edge_df.to_node_id.isin(node_df.node_id)
+    link_df = link_df[
+        link_df.from_node_id.isin(node_df.node_id)
+        & link_df.to_node_id.isin(node_df.node_id)
     ].reset_index(drop=True)
 
     node_id = node_df.node_id.to_numpy()
-    edge_id = edge_df.index.to_numpy()
-    from_node_id = edge_df.from_node_id.to_numpy()
-    to_node_id = edge_df.to_node_id.to_numpy()
+    link_id = link_df.index.to_numpy()
+    from_node_id = link_df.from_node_id.to_numpy()
+    to_node_id = link_df.to_node_id.to_numpy()
 
     # from node_id to the node_dim index
     node_lookup = pd.Series(
@@ -141,14 +141,14 @@ def ugrid(G) -> xugrid.UgridDataset:
         name="ribasim",
     )
 
-    edge_dim = grid.edge_dimension
+    link_dim = grid.edge_dimension
     node_dim = grid.node_dimension
 
     uds = xugrid.UgridDataset(None, grid)
     uds = uds.assign_coords(node_id=(node_dim, node_id))
-    uds = uds.assign_coords(edge_id=(edge_dim, edge_id))
-    uds = uds.assign_coords(from_node_id=(edge_dim, from_node_id))
-    uds = uds.assign_coords(to_node_id=(edge_dim, to_node_id))
+    uds = uds.assign_coords(link_id=(link_dim, link_id))
+    uds = uds.assign_coords(from_node_id=(link_dim, from_node_id))
+    uds = uds.assign_coords(to_node_id=(link_dim, to_node_id))
 
     return uds
 

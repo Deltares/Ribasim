@@ -157,47 +157,47 @@ def basic_model() -> ribasim.Model:
     # Setup terminal
     model.terminal.add(Node(14, Point(3.0, -2.0)))
 
-    # Setup edges
-    model.edge.add(model.basin[1], model.manning_resistance[2])
-    model.edge.add(model.manning_resistance[2], model.basin[3])
-    model.edge.add(
+    # Setup links
+    model.link.add(model.basin[1], model.manning_resistance[2])
+    model.link.add(model.manning_resistance[2], model.basin[3])
+    model.link.add(
         model.basin[3],
         model.tabulated_rating_curve[8],
     )
-    model.edge.add(
+    model.link.add(
         model.basin[3],
         model.tabulated_rating_curve[5],
     )
-    model.edge.add(
+    model.link.add(
         model.basin[3],
         model.tabulated_rating_curve[4],
     )
-    model.edge.add(model.tabulated_rating_curve[5], model.basin[6])
-    model.edge.add(model.basin[6], model.pump[7])
-    model.edge.add(model.tabulated_rating_curve[8], model.basin[9])
-    model.edge.add(model.pump[7], model.basin[9])
-    model.edge.add(model.basin[9], model.linear_resistance[10])
-    model.edge.add(
+    model.link.add(model.tabulated_rating_curve[5], model.basin[6])
+    model.link.add(model.basin[6], model.pump[7])
+    model.link.add(model.tabulated_rating_curve[8], model.basin[9])
+    model.link.add(model.pump[7], model.basin[9])
+    model.link.add(model.basin[9], model.linear_resistance[10])
+    model.link.add(
         model.level_boundary[11],
         model.linear_resistance[12],
     )
-    model.edge.add(
+    model.link.add(
         model.linear_resistance[12],
         model.basin[3],
     )
-    model.edge.add(
+    model.link.add(
         model.tabulated_rating_curve[4],
         model.terminal[14],
     )
-    model.edge.add(
+    model.link.add(
         model.flow_boundary[15],
         model.basin[6],
     )
-    model.edge.add(
+    model.link.add(
         model.flow_boundary[16],
         model.basin[1],
     )
-    model.edge.add(
+    model.link.add(
         model.linear_resistance[10],
         model.level_boundary[17],
     )
@@ -329,19 +329,19 @@ def tabulated_rating_curve_model() -> ribasim.Model:
             *node_data,
         ],
     )
-    model.edge.add(
+    model.link.add(
         model.basin[1],
         model.tabulated_rating_curve[2],
     )
-    model.edge.add(
+    model.link.add(
         model.basin[1],
         model.tabulated_rating_curve[3],
     )
-    model.edge.add(
+    model.link.add(
         model.tabulated_rating_curve[2],
         model.basin[4],
     )
-    model.edge.add(
+    model.link.add(
         model.tabulated_rating_curve[3],
         model.basin[4],
     )
@@ -387,8 +387,8 @@ def outlet_model():
         [outlet.Static(flow_rate=[1e-3], min_upstream_level=[2.0])],
     )
 
-    # Setup the edges
-    model.edge.add(model.level_boundary[1], model.outlet[2])
-    model.edge.add(model.outlet[2], model.basin[3])
+    # Setup the links
+    model.link.add(model.level_boundary[1], model.outlet[2])
+    model.link.add(model.outlet[2], model.basin[3])
 
     return model
