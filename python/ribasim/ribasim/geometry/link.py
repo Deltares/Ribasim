@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import NamedTuple
 
 import matplotlib.pyplot as plt
@@ -13,6 +14,7 @@ from pandera.typing.geopandas import GeoDataFrame, GeoSeries
 from pydantic import NonNegativeInt, PrivateAttr, model_validator
 from shapely.geometry import LineString, MultiLineString, Point
 
+from ribasim.db_utils import _get_db_schema_version
 from ribasim.input_base import SpatialTableModel
 from ribasim.utils import UsedIDs, _concat
 from ribasim.validation import (
@@ -65,6 +67,14 @@ class LinkTable(SpatialTableModel[LinkSchema]):
             self._used_link_ids.node_ids.update(self.df.index)
             self._used_link_ids.max_node_id = self.df.index.max()
         return self
+
+    @classmethod
+    def _from_db(cls, path: Path, table: str) -> pd.DataFrame | None:
+        schema_version = _get_db_schema_version(path)
+        # The table name was changed from "Edge" to "Link" in schema_version 4.
+        if schema_version < 4:
+            table = "Edge"
+        return super()._from_db(path, table)
 
     def add(
         self,

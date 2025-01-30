@@ -30,6 +30,12 @@ def linkschema_migration(gdf: GeoDataFrame, schema_version: int) -> GeoDataFrame
     if schema_version < 3 and "subnetwork_id" in gdf.columns:
         warnings.warn("Migrating outdated Link table.", UserWarning)
         gdf.drop(columns="subnetwork_id", inplace=True, errors="ignore")
+    if schema_version < 4 and gdf.index.name == "edge_id":
+        warnings.warn("Migrating outdated Link table.", UserWarning)
+        gdf.index.rename("link_id", inplace=True)
+    if schema_version < 4 and "edge_type" in gdf.columns:
+        warnings.warn("Migrating outdated Link table.", UserWarning)
+        gdf.rename(columns={"edge_type": "link_type"}, inplace=True)
 
     return gdf
 
