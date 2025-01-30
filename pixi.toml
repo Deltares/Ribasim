@@ -17,8 +17,6 @@ repository = "https://github.com/Deltares/Ribasim"
 test-ribasim-python = "pytest --numprocesses=4 -m 'not regression' python/ribasim/tests"
 test-ribasim-python-cov = "pytest --numprocesses=4 --cov=ribasim --cov-report=xml -m 'not regression' python/ribasim/tests"
 test-ribasim-api = "pytest --basetemp=python/ribasim_api/tests/temp --junitxml=report.xml python/ribasim_api/tests"
-
-[feature.dev.tasks]
 # Installation
 install-julia = "juliaup add 1.10.8 && juliaup override set 1.10.8"
 install-pre-commit = "pre-commit install"
@@ -154,7 +152,7 @@ ribasim-core-testmodels = { cmd = "julia --project --threads=4 utils/testmodelru
 # Release
 github-release = "python utils/github-release.py"
 
-[feature.dev.target.win.tasks]
+[target.win.tasks]
 add-ribasim-icon = { cmd = "rcedit build/ribasim/ribasim.exe --set-icon docs/assets/ribasim.ico" }
 # Workaround rare issue on Windows where the permissions of the artifacts directory are incorrect
 # Upstream issue: https://github.com/JuliaLang/julia/issues/52272
@@ -167,10 +165,15 @@ install-ci = { depends-on = [
 
 [dependencies]
 geopandas = ">=1.0"
+gh = "*"
+hatch = "*"
 hatchling = "*"
 jinja2 = "*"
+juliaup = "*"
+jupyter = "*"
 matplotlib = ">=3.7"
 minio = "*"
+mypy = "*"
 netcdf4 = "*"
 networkx = ">=3.3"
 numpy = ">=1.25"
@@ -178,44 +181,35 @@ pandas = ">=2.0"
 pandas-stubs = "*"
 pandera = ">=0.20"
 plotly = "*"
+pre-commit = "*"
 pyarrow = ">=17.0"
 pydantic = ">=2.0"
 pyogrio = ">=0.8"
+pyqt-stubs = "*"
 pytest = "*"
 pytest-cov = "*"
 pytest-xdist = "*"
 python = ">=3.11"
-shapely = ">=2.0"
-teamcity-messages = "*"
-tomli = ">=2.0"
-tomli-w = ">=1.0"
-xarray = "*"
-xmipy = ">=1.3"
-xugrid = "*"
-
-[pypi-dependencies]
-ribasim = { path = "python/ribasim", editable = true }
-ribasim_api = { path = "python/ribasim_api", editable = true }
-ribasim_testmodels = { path = "python/ribasim_testmodels", editable = true }
-
-[feature.dev.dependencies]
-gh = "*"
-hatch = "*"
-juliaup = "*"
-jupyter = "*"
-mypy = "*"
-pre-commit = "*"
-pyqt-stubs = "*"
 qgis = ">=3.34"
 qgis-plugin-manager = "*"
 quarto = "*"
 quartodoc = "*"
 ruff = "*"
 rust = "*"
+shapely = ">=2.0"
+teamcity-messages = "*"
+tomli = ">=2.0"
+tomli-w = ">=1.0"
 twine = "*"
+xarray = "*"
+xmipy = ">=1.3"
+xugrid = "*"
 
-[feature.dev.pypi-dependencies]
+[pypi-dependencies]
 ptvsd = "*"
+ribasim = { path = "python/ribasim", editable = true }
+ribasim_api = { path = "python/ribasim_api", editable = true }
+ribasim_testmodels = { path = "python/ribasim_testmodels", editable = true }
 
 [feature.py312.dependencies]
 python = "3.12.*"
@@ -227,9 +221,7 @@ python = "3.11.*"
 rcedit = "*"
 
 [environments]
-default = { features = ["py312"], solve-group = "py312" }
-dev = { features = ["py312", "dev"], solve-group = "py312" }
-py312 = { features = ["py312"], solve-group = "py312" }
+default = ["py312"]
 py311 = ["py311"]
 
 [system-requirements]
