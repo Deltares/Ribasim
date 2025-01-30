@@ -86,7 +86,7 @@ def can_connect(node_type_up: str, node_type_down: str) -> bool:
     return False
 
 
-flow_edge_neighbor_amount: dict[str, list[int]] = {
+flow_link_neighbor_amount: dict[str, list[int]] = {
     "PidControl": [0, 0, 0, 0],
     "LevelBoundary": [0, 9223372036854775807, 0, 9223372036854775807],
     "Pump": [1, 1, 1, 1],
@@ -104,7 +104,7 @@ flow_edge_neighbor_amount: dict[str, list[int]] = {
     "Terminal": [1, 9223372036854775807, 0, 0],
 }
 
-control_edge_neighbor_amount: dict[str, list[int]] = {
+control_link_neighbor_amount: dict[str, list[int]] = {
     "PidControl": [0, 1, 1, 1],
     "LevelBoundary": [0, 0, 0, 0],
     "Pump": [0, 1, 0, 0],

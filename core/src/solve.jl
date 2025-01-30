@@ -171,9 +171,9 @@ function formulate_storage!(
     t::Number,
     flow_boundary::FlowBoundary,
 )
-    for (flow_rate, outflow_edges, active, cumulative_flow) in zip(
+    for (flow_rate, outflow_links, active, cumulative_flow) in zip(
         flow_boundary.flow_rate,
-        flow_boundary.outflow_edges,
+        flow_boundary.outflow_links,
         flow_boundary.active,
         flow_boundary.cumulative_flow,
     )
@@ -181,8 +181,8 @@ function formulate_storage!(
         if active
             volume += integral(flow_rate, tprev, t)
         end
-        for outflow_edge in outflow_edges
-            outflow_id = outflow_edge.edge[2]
+        for outflow_link in outflow_links
+            outflow_id = outflow_link.link[2]
             if outflow_id.type == NodeType.Basin
                 current_storage[outflow_id.idx] += volume
             end
@@ -331,10 +331,10 @@ function formulate_flow!(
 )::Nothing
     (; allocation) = p
     all_nodes_active = p.all_nodes_active[]
-    for (id, inflow_edge, outflow_edge, active, allocated, return_factor, min_level) in zip(
+    for (id, inflow_link, outflow_link, active, allocated, return_factor, min_level) in zip(
         user_demand.node_id,
-        user_demand.inflow_edge,
-        user_demand.outflow_edge,
+        user_demand.inflow_link,
+        user_demand.outflow_link,
         user_demand.active,
         eachrow(user_demand.allocated),
         user_demand.return_factor,
@@ -358,7 +358,7 @@ function formulate_flow!(
         end
 
         # Smoothly let abstraction go to 0 as the source basin dries out
-        inflow_id = inflow_edge.edge[1]
+        inflow_id = inflow_link.link[1]
         factor_basin = get_low_storage_factor(current_low_storage_factor, inflow_id)
         q *= factor_basin
 
@@ -385,11 +385,11 @@ function formulate_flow!(
     all_nodes_active = p.all_nodes_active[]
     (; node_id, active, resistance, max_flow_rate) = linear_resistance
     for id in node_id
-        inflow_edge = linear_resistance.inflow_edge[id.idx]
-        outflow_edge = linear_resistance.outflow_edge[id.idx]
+        inflow_link = linear_resistance.inflow_link[id.idx]
+        outflow_link = linear_resistance.outflow_link[id.idx]
 
-        inflow_id = inflow_edge.edge[1]
-        outflow_id = outflow_edge.edge[2]
+        inflow_id = inflow_link.link[1]
+        outflow_id = outflow_link.link[2]
 
         if (active[id.idx] || all_nodes_active)
             h_a = get_level(p, inflow_id, t, current_level)
@@ -421,10 +421,10 @@ function formulate_flow!(
         tabulated_rating_curve
 
     for id in node_id
-        inflow_edge = tabulated_rating_curve.inflow_edge[id.idx]
-        outflow_edge = tabulated_rating_curve.outflow_edge[id.idx]
-        inflow_id = inflow_edge.edge[1]
-        outflow_id = outflow_edge.edge[2]
+        inflow_link = tabulated_rating_curve.inflow_link[id.idx]
+        outflow_link = tabulated_rating_curve.outflow_link[id.idx]
+        inflow_id = inflow_link.link[1]
+        outflow_id = outflow_link.link[2]
         max_downstream_level = tabulated_rating_curve.max_downstream_level[id.idx]
 
         h_a = get_level(p, inflow_id, t, current_level)
@@ -506,11 +506,11 @@ function formulate_flow!(
     ) = manning_resistance
     all_nodes_active = p.all_nodes_active[]
     for id in node_id
-        inflow_edge = manning_resistance.inflow_edge[id.idx]
-        outflow_edge = manning_resistance.outflow_edge[id.idx]
+        inflow_link = manning_resistance.inflow_link[id.idx]
+        outflow_link = manning_resistance.outflow_link[id.idx]
 
-        inflow_id = inflow_edge.edge[1]
-        outflow_id = outflow_edge.edge[2]
+        inflow_id = inflow_link.link[1]
+        outflow_id = outflow_link.link[2]
 
         if !(active[id.idx] || all_nodes_active)
             continue
@@ -568,8 +568,8 @@ function formulate_flow!(
     all_nodes_active = p.all_nodes_active[]
     for (
         id,
-        inflow_edge,
-        outflow_edge,
+        inflow_link,
+        outflow_link,
         active,
         flow_rate,
         min_flow_rate,
@@ -579,8 +579,8 @@ function formulate_flow!(
         continuous_control_type,
     ) in zip(
         pump.node_id,
-        pump.inflow_edge,
-        pump.outflow_edge,
+        pump.inflow_link,
+        pump.outflow_link,
         pump.active,
         pump.flow_rate[parent(du)],
         pump.min_flow_rate,
@@ -594,8 +594,8 @@ function formulate_flow!(
             continue
         end
 
-        inflow_id = inflow_edge.edge[1]
-        outflow_id = outflow_edge.edge[2]
+        inflow_id = inflow_link.link[1]
+        outflow_id = outflow_link.link[2]
         src_level = get_level(p, inflow_id, t, current_level)
         dst_level = get_level(p, outflow_id, t, current_level)
 
@@ -623,8 +623,8 @@ function formulate_flow!(
     all_nodes_active = p.all_nodes_active[]
     for (
         id,
-        inflow_edge,
-        outflow_edge,
+        inflow_link,
+        outflow_link,
         active,
         flow_rate,
         min_flow_rate,
@@ -634,8 +634,8 @@ function formulate_flow!(
         max_downstream_level,
     ) in zip(
         outlet.node_id,
-        outlet.inflow_edge,
-        outlet.outflow_edge,
+        outlet.inflow_link,
+        outlet.outflow_link,
         outlet.active,
         outlet.flow_rate[parent(du)],
         outlet.min_flow_rate,
@@ -649,8 +649,8 @@ function formulate_flow!(
             continue
         end
 
-        inflow_id = inflow_edge.edge[1]
-        outflow_id = outflow_edge.edge[2]
+        inflow_id = inflow_link.link[1]
+        outflow_id = outflow_link.link[2]
         src_level = get_level(p, inflow_id, t, current_level)
         dst_level = get_level(p, outflow_id, t, current_level)
 
@@ -807,10 +807,10 @@ function limit_flow!(
     end
 
     # UserDemand inflow bounds depend on multiple aspects of the simulation
-    for (id, active, inflow_edge, demand_from_timeseries) in zip(
+    for (id, active, inflow_link, demand_from_timeseries) in zip(
         user_demand.node_id,
         user_demand.active,
-        user_demand.inflow_edge,
+        user_demand.inflow_link,
         user_demand.demand_from_timeseries,
     )
         min_flow_rate, max_flow_rate = if demand_from_timeseries
@@ -819,7 +819,7 @@ function limit_flow!(
         else
             # The lower bound is estimated as the lowest inflow given the minimum values
             # of the reduction factors involved (with a margin)
-            inflow_id = inflow_edge.edge[1]
+            inflow_id = inflow_link.link[1]
             factor_basin_min =
                 min_low_storage_factor(current_storage, basin.storage_prev, inflow_id)
             factor_level_min = min_low_user_demand_level_factor(

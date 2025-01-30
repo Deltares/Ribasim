@@ -38,7 +38,7 @@
 
     @testset "Schema" begin
         @test Tables.schema(flow) == Tables.Schema(
-            (:time, :edge_id, :from_node_id, :to_node_id, :flow_rate),
+            (:time, :link_id, :from_node_id, :to_node_id, :flow_rate),
             (DateTime, Union{Int32, Missing}, Int32, Int32, Float64),
         )
         @test Tables.schema(basin) == Tables.Schema(
@@ -86,7 +86,7 @@
     @testset "Results size" begin
         nsaved = length(tsaves(model))
         @test nsaved > 10
-        # t0 has no flow, 2 flow edges
+        # t0 has no flow, 2 flow links
         @test nrow(flow) == (nsaved - 1) * 2
         @test nrow(basin) == nsaved - 1
         @test nrow(subgrid) == nsaved * length(p.subgrid.level)
@@ -94,7 +94,7 @@
 
     @testset "Results values" begin
         @test flow.time[1] == DateTime(2020)
-        @test coalesce.(flow.edge_id[1:2], -1) == [100, 101]
+        @test coalesce.(flow.link_id[1:2], -1) == [100, 101]
         @test flow.from_node_id[1:2] == [6, 0]
         @test flow.to_node_id[1:2] == [0, 2147483647]
 

@@ -6,7 +6,7 @@ Pump water from a source node to a destination node.
 The set flow rate will be pumped unless the intake storage is less than $10~m^3$,
 in which case the flow rate will be linearly reduced to $0~m^3/s$.
 The intake must be either a Basin or LevelBoundary.
-When PID controlled, the pump must point away from the controlled basin in terms of edges.
+When PID controlled, the pump must point away from the controlled basin in terms of links.
 
 # Tables
 

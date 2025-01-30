@@ -162,7 +162,7 @@ class NewNodeTypeStatic:
 
 The new node type might have associated restrictions for a model with the new node type so that it behaves properly. Basic node ID and node type validation happens in `Model.validate_model` in `python/ribasim/ribasim/model.py`, which automatically considers all node types in the `node_types` module.
 
-Connectivity validation happens in `valid_edges` and `valid_n_flow_neighbors` in `core/src/solve.jl`. Connectivity rules are specified in `core/src/validation.jl`. Allowed upstream and downstream neighbor types for `new_node_type` (the snake case version of `NewNodeType`) are specified as follows:
+Connectivity validation happens in `valid_links` and `valid_n_flow_neighbors` in `core/src/solve.jl`. Connectivity rules are specified in `core/src/validation.jl`. Allowed upstream and downstream neighbor types for `new_node_type` (the snake case version of `NewNodeType`) are specified as follows:
 
 ```julia
 # set allowed downstream types

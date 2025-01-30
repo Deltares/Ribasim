@@ -74,13 +74,13 @@ def pid_control_model() -> Model:
         ],
     )
 
-    model.edge.add(model.flow_boundary[1], model.basin[2])
-    model.edge.add(model.basin[2], model.pump[3])
-    model.edge.add(model.pump[3], model.level_boundary[4])
-    model.edge.add(model.level_boundary[4], model.outlet[6])
-    model.edge.add(model.pid_control[5], model.pump[3])
-    model.edge.add(model.outlet[6], model.basin[2])
-    model.edge.add(model.pid_control[7], model.outlet[6])
+    model.link.add(model.flow_boundary[1], model.basin[2])
+    model.link.add(model.basin[2], model.pump[3])
+    model.link.add(model.pump[3], model.level_boundary[4])
+    model.link.add(model.level_boundary[4], model.outlet[6])
+    model.link.add(model.pid_control[5], model.pump[3])
+    model.link.add(model.outlet[6], model.basin[2])
+    model.link.add(model.pid_control[7], model.outlet[6])
 
     return model
 
@@ -141,27 +141,27 @@ def discrete_control_of_pid_control_model() -> Model:
         ],
     )
 
-    model.edge.add(
+    model.link.add(
         model.level_boundary[1],
         model.outlet[2],
     )
-    model.edge.add(
+    model.link.add(
         model.outlet[2],
         model.basin[3],
     )
-    model.edge.add(
+    model.link.add(
         model.basin[3],
         model.tabulated_rating_curve[4],
     )
-    model.edge.add(
+    model.link.add(
         model.tabulated_rating_curve[4],
         model.terminal[5],
     )
-    model.edge.add(
+    model.link.add(
         model.pid_control[6],
         model.outlet[2],
     )
-    model.edge.add(
+    model.link.add(
         model.discrete_control[7],
         model.pid_control[6],
     )

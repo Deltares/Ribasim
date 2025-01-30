@@ -10,7 +10,7 @@ $$
 
 which is a system of coupled first order differential equations.
 
-The model is given by a directed graph, consisting of a set of node IDs (vertices) $V$ and edges $E$, consisting of ordered pairs of node IDs.
+The model is given by a directed graph, consisting of a set of node IDs (vertices) $V$ and links $E$, consisting of ordered pairs of node IDs.
 We denote the subset of the nodes given by the Basins $B \subset V$, and the subset of nodes that prescribe flow $N \subset V$.
 
 The states $\mathbf{u}$ of the model are given by cumulative flows since the start of the simulation as prescribed by the nodes $N$:
@@ -91,7 +91,7 @@ in a Basin over a time period $\Delta t$ and compares that to the total inflows 
 - $\text{total inflow}$: the precipitation, drainage and horizontal flows into the Basin;
 - $\text{total outflow}$: the evaporation, infiltration and horizontal flows out of the Basin.
 
-Whether a flow is an inflow or an outflow depends on whether the flow contributes to or takes from the Basin storage, which means that this is independent of the edge direction. This is determined for each solver timestep individually.
+Whether a flow is an inflow or an outflow depends on whether the flow contributes to or takes from the Basin storage, which means that this is independent of the link direction. This is determined for each solver timestep individually.
 
 Then from this we compute the errors:
 

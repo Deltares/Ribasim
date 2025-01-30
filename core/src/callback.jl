@@ -133,14 +133,14 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
     end
 
     # Exact boundary flow over time step
-    for (id, flow_rate, active, edge) in zip(
+    for (id, flow_rate, active, link) in zip(
         flow_boundary.node_id,
         flow_boundary.flow_rate,
         flow_boundary.active,
-        flow_boundary.outflow_edges,
+        flow_boundary.outflow_links,
     )
         if active
-            outflow_id = edge[1].edge[2]
+            outflow_id = link[1].link[2]
             volume = integral(flow_rate, tprev, t)
             flow_boundary.cumulative_flow[id.idx] += volume
             flow_boundary.cumulative_flow_saveat[id.idx] += volume
@@ -150,24 +150,24 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
     # Update realized flows for allocation input
     for subnetwork_id in allocation.subnetwork_ids
         mean_input_flows_subnetwork_ = mean_input_flows_subnetwork(p, subnetwork_id)
-        for edge in keys(mean_input_flows_subnetwork_)
-            mean_input_flows_subnetwork_[edge] += flow_update_on_edge(integrator, edge)
+        for link in keys(mean_input_flows_subnetwork_)
+            mean_input_flows_subnetwork_[link] += flow_update_on_link(integrator, link)
         end
     end
 
     # Update realized flows for allocation output
-    for edge in keys(allocation.mean_realized_flows)
-        allocation.mean_realized_flows[edge] += flow_update_on_edge(integrator, edge)
-        if edge[1] == edge[2]
-            basin_id = edge[1]
+    for link in keys(allocation.mean_realized_flows)
+        allocation.mean_realized_flows[link] += flow_update_on_link(integrator, link)
+        if link[1] == link[2]
+            basin_id = link[1]
             @assert basin_id.type == NodeType.Basin
             for inflow_id in basin.inflow_ids[basin_id.idx]
-                allocation.mean_realized_flows[edge] +=
-                    flow_update_on_edge(integrator, (inflow_id, basin_id))
+                allocation.mean_realized_flows[link] +=
+                    flow_update_on_link(integrator, (inflow_id, basin_id))
             end
             for outflow_id in basin.outflow_ids[basin_id.idx]
-                allocation.mean_realized_flows[edge] -=
-                    flow_update_on_edge(integrator, (basin_id, outflow_id))
+                allocation.mean_realized_flows[link] -=
+                    flow_update_on_link(integrator, (basin_id, outflow_id))
             end
         end
     end
@@ -198,14 +198,14 @@ function update_concentrations!(u, t, integrator)::Nothing
     end
 
     # Exact boundary flow over time step
-    for (id, flow_rate, active, edge) in zip(
+    for (id, flow_rate, active, link) in zip(
         flow_boundary.node_id,
         flow_boundary.flow_rate,
         flow_boundary.active,
-        flow_boundary.outflow_edges,
+        flow_boundary.outflow_links,
     )
         if active
-            outflow_id = edge[1].edge[2]
+            outflow_id = link[1].link[2]
             volume = integral(flow_rate, tprev, t)
             @views mass[outflow_id.idx, :] .+=
                 flow_boundary.concentration[id.idx, :] .* volume
@@ -253,18 +253,18 @@ function update_concentrations!(u, t, integrator)::Nothing
 end
 
 """
-Given an edge (from_id, to_id), compute the cumulative flow over that
-edge over the latest timestep. If from_id and to_id are both the same Basin,
+Given an link (from_id, to_id), compute the cumulative flow over that
+link over the latest timestep. If from_id and to_id are both the same Basin,
 the function returns the sum of the Basin forcings.
 """
-function flow_update_on_edge(
+function flow_update_on_link(
     integrator::DEIntegrator,
-    edge_src::Tuple{NodeID, NodeID},
+    link_src::Tuple{NodeID, NodeID},
 )::Float64
     (; u, uprev, p, t, tprev, dt) = integrator
     (; basin, flow_boundary) = p
     (; vertical_flux) = basin
-    from_id, to_id = edge_src
+    from_id, to_id = link_src
     if from_id == to_id
         @assert from_id.type == to_id.type == NodeType.Basin
         idx = from_id.idx
@@ -279,7 +279,7 @@ function flow_update_on_edge(
             0.0
         end
     else
-        flow_idx = get_state_index(u, edge_src)
+        flow_idx = get_state_index(u, link_src)
         u[flow_idx] - uprev[flow_idx]
     end
 end
@@ -298,13 +298,13 @@ function save_basin_state(u, t, integrator)
 end
 
 """
-Save all cumulative forcings and flows over edges over the latest timestep,
+Save all cumulative forcings and flows over links over the latest timestep,
 Both computed by the solver and integrated exactly. Also computes the total horizontal
 inflow and outflow per Basin.
 """
 function save_flow(u, t, integrator)
     (; p) = integrator
-    (; basin, state_inflow_edge, state_outflow_edge, flow_boundary, u_prev_saveat) = p
+    (; basin, state_inflow_link, state_outflow_link, flow_boundary, u_prev_saveat) = p
     Δt = get_Δt(integrator)
     flow_mean = (u - u_prev_saveat) / Δt
 
@@ -315,9 +315,9 @@ function save_flow(u, t, integrator)
     outflow_mean = zeros(length(basin.node_id))
 
     # Flow contributions from horizontal flow states
-    for (flow, inflow_edge, outflow_edge) in
-        zip(flow_mean, state_inflow_edge, state_outflow_edge)
-        inflow_id = inflow_edge.edge[1]
+    for (flow, inflow_link, outflow_link) in
+        zip(flow_mean, state_inflow_link, state_outflow_link)
+        inflow_id = inflow_link.link[1]
         if inflow_id.type == NodeType.Basin
             if flow > 0
                 outflow_mean[inflow_id.idx] += flow
@@ -326,7 +326,7 @@ function save_flow(u, t, integrator)
             end
         end
 
-        outflow_id = outflow_edge.edge[2]
+        outflow_id = outflow_link.link[2]
         if outflow_id.type == NodeType.Basin
             if flow > 0
                 inflow_mean[outflow_id.idx] += flow
@@ -340,10 +340,10 @@ function save_flow(u, t, integrator)
     flow_boundary_mean = copy(flow_boundary.cumulative_flow_saveat) ./ Δt
     flow_boundary.cumulative_flow_saveat .= 0.0
 
-    for (outflow_edges, id) in zip(flow_boundary.outflow_edges, flow_boundary.node_id)
+    for (outflow_links, id) in zip(flow_boundary.outflow_links, flow_boundary.node_id)
         flow = flow_boundary_mean[id.idx]
-        for outflow_edge in outflow_edges
-            outflow_id = outflow_edge.edge[2]
+        for outflow_link in outflow_links
+            outflow_id = outflow_link.link[2]
             if outflow_id.type == NodeType.Basin
                 inflow_mean[outflow_id.idx] += flow
             end
@@ -807,14 +807,14 @@ function update_allocation!(integrator)::Nothing
     # Divide by the allocation Δt to get the mean input flows from the cumulative flows
     (; Δt_allocation) = allocation_models[1]
     for mean_input_flows_subnetwork in values(mean_input_flows)
-        for edge in keys(mean_input_flows_subnetwork)
-            mean_input_flows_subnetwork[edge] /= Δt_allocation
+        for link in keys(mean_input_flows_subnetwork)
+            mean_input_flows_subnetwork[link] /= Δt_allocation
         end
     end
 
     # Divide by the allocation Δt to get the mean realized flows from the cumulative flows
-    for edge in keys(mean_realized_flows)
-        mean_realized_flows[edge] /= Δt_allocation
+    for link in keys(mean_realized_flows)
+        mean_realized_flows[link] /= Δt_allocation
     end
 
     # If a main network is present, collect demands of subnetworks
@@ -833,12 +833,12 @@ function update_allocation!(integrator)::Nothing
 
     # Reset the mean flows
     for mean_flows in mean_input_flows
-        for edge in keys(mean_flows)
-            mean_flows[edge] = 0.0
+        for link in keys(mean_flows)
+            mean_flows[link] = 0.0
         end
     end
-    for edge in keys(mean_realized_flows)
-        mean_realized_flows[edge] = 0.0
+    for link in keys(mean_realized_flows)
+        mean_realized_flows[link] = 0.0
     end
 end
 

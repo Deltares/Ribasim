@@ -65,8 +65,8 @@ class RibasimWidget(QWidget):
         return self.__dataset_widget.node_layer
 
     @property
-    def edge_layer(self) -> QgsVectorLayer | None:
-        return self.__dataset_widget.edge_layer
+    def link_layer(self) -> QgsVectorLayer | None:
+        return self.__dataset_widget.link_layer
 
     @property
     def crs(self) -> QgsCoordinateReferenceSystem:

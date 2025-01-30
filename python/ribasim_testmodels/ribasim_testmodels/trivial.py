@@ -49,7 +49,7 @@ def trivial_model() -> Model:
         [tabulated_rating_curve.Static(level=[0.0, 1.0], flow_rate=[0.0, 10 / 86400])],
     )
 
-    model.edge.add(basin6, trc0, edge_id=100)
-    model.edge.add(trc0, term)
+    model.link.add(basin6, trc0, link_id=100)
+    model.link.add(trc0, term)
 
     return model

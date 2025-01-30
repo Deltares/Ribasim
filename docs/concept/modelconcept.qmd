@@ -75,7 +75,7 @@ Internally a directed graph is used.
 The direction is defined to be the positive flow direction, and is generally set in the dominant flow direction.
 The basins are the nodes of the network graph.
 Basin states and properties such storage volume and wetted area are associated with the nodes (A, B, C, D), as are most forcing data such as precipitation, evaporation, or water demand.
-Basin connection properties and interbasin flows are associated with the edges (the
+Basin connection properties and interbasin flows are associated with the links (the
 lines between A, B, C, and D) instead.
 
 Multiple basins may exist within the same spatial polygon, representing different aspects of the surface water system (perennial ditches, ephemeral ditches, or even surface ponding).
@@ -120,8 +120,8 @@ or over a fixed structure.
 situations or situations where head difference over a structure determines its actual flow capacity.
 - [ManningResistance](/reference/node/manning-resistance.qmd): bi-directional flow based on head difference and resistance using Manning-Gauckler formula. Same usage as LinearResistance,
 providing a better hydrological meaning to the resistance parameterization.
-- [Pump](/reference/node/pump.qmd): one-directional structure with a set flow rate. Node type typically used in combination with control to force water over the edge.
-- [Outlet](/reference/node/outlet.qmd): one-directional gravity structure with a set flow rate. Node type typically used in combination with control to force water over the edge, even if
+- [Pump](/reference/node/pump.qmd): one-directional structure with a set flow rate. Node type typically used in combination with control to force water over the link.
+- [Outlet](/reference/node/outlet.qmd): one-directional gravity structure with a set flow rate. Node type typically used in combination with control to force water over the link, even if
 their is a mismatch in actual hydraulic capacity. The node type has an automated mechanism to stop the flow when the head difference is zero.
 
 The control layer can activate or deactivate nodes, set flow rates for the Pump and Outlet, or choose different parameterizations for TabulatedRatingCurve, LinearResistance or ManningResistance.

@@ -48,8 +48,8 @@ Before starting with data, perform the following tests to see if the plugin does
 - Press the "New" button in the Model tab: _file navigation window pops up_.
 - Fill in a name ("test1").
 - Press OK: _A TOML and database file are created on the given location_.
-- _The layers tab shows a group with a "Node" and "Edge" layer, the canvas is empty._
-- _The Ribasim panel shows a Node and Edge layer, the file path is set in the text field, all nodes buttons are enabled_.
+- _The layers tab shows a group with a "Node" and "Link" layer, the canvas is empty._
+- _The Ribasim panel shows a Node and Link layer, the file path is set in the text field, all nodes buttons are enabled_.
 - Cleanup: Delete the created files from disk.
 
 ## New model in same folder
@@ -120,7 +120,7 @@ Intended behavior: The same model is loaded twice, but there is only a connectio
 - Fill in a name ("test1").
 - Press OK: _A TOML and database file are created on the given location_.
 - Press "Add to QGIS": _Nothing happens_.
-- Press the "Edge" layer in the Model tab: _"Add to QGIS" button is disabled_.
+- Press the "Link" layer in the Model tab: _"Add to QGIS" button is disabled_.
 
 ❌ [Failing](https://github.com/Deltares/Ribasim/issues/1683)
 
@@ -131,10 +131,10 @@ Intended behavior: The same model is loaded twice, but there is only a connectio
 - Press the "New" button in the Model tab: _file navigation window pops up_.
 - Fill in a name ("test1").
 - Press OK: _A TOML and database file are created on the given location_.
-- Press the "Edge" layer in the Model tab, press "Remove from Dataset": _Popup shows "Deleting: Edge"_.
-- Press "Yes": "Edge" layer is removed from Layers panel and from Model tab.
+- Press the "Link" layer in the Model tab, press "Remove from Dataset": _Popup shows "Deleting: Link"_.
+- Press "Yes": "Link" layer is removed from Layers panel and from Model tab.
 
-Unsure if this is wanted behavior, it is now impossible to load the model afterwards because it no longer contains an Edge layer.
+Unsure if this is wanted behavior, it is now impossible to load the model afterwards because it no longer contains an Link layer.
 Perhaps better if we only allow removal of the optional tables. See this [bug report](https://github.com/Deltares/Ribasim/issues/1684).
 
 # Nodes tab button interaction tests
@@ -183,7 +183,7 @@ Unexpected behavior: The default type of the nodes is NULL, and therefore undefi
 Should be enforced and validated.
 See [issue](https://github.com/Deltares/Ribasim/issues/1688#issuecomment-2265315907).
 
-## Add edges to Edge layer
+## Add links to Link layer
 
 - Open QGIS and ensure that the Ribasim plugin is installed and enabled.
 - Open the application via the Ribasim button on the QGIS toolbar: _Ribasim panel opens_.
@@ -196,7 +196,7 @@ See [issue](https://github.com/Deltares/Ribasim/issues/1688#issuecomment-2265315
 - Add a node id of 1, press OK: _The first Node appears on the map_.
 - Click in the canvas again: _Popup appears with Feature Attributes to fill in_.
 - Add a node id of 2, press OK: _The second Node appears on the map_.
-- Select the Edge layer in the Layers tab: _edit buttons in the toolbar become enabled_.
+- Select the Link layer in the Layers tab: _edit buttons in the toolbar become enabled_.
 - Enable snapping under View > Toolbars > Snapping Toolbars: _Magnet button is enabled and active_.
 - Press the Add Line Feature button: _Mouse becomes a crosshair_.
 - Snap a line between the two nodes, click the two nodes and then right click to finish: _Popup shows with input, most fields are set to NULL_.
@@ -211,8 +211,8 @@ See [issue](https://github.com/Deltares/Ribasim/issues/1688#issuecomment-2265315
 - Press the "Open" button in the Model tab: _file navigation window pops up_.
 - Choose an existing model from the `generated_testmodels` folder.
 - Press OK: _The model layers appear in the layer panel and on the map_.
-- Select the node layer, and make a subselection of nodes on the map: _Nodes are highlighted in yellow, including their edges_.
-- Open the Edge attribute table: _The highlighted rows are those with a from/to node\_id that was selected_.
+- Select the node layer, and make a subselection of nodes on the map: _Nodes are highlighted in yellow, including their links_.
+- Open the Link attribute table: _The highlighted rows are those with a from/to node\_id that was selected_.
 - Open any non-spatial attribute table: _The highlighted rows are those with an node\_id that was selected_.
 
 

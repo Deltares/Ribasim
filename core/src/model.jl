@@ -51,8 +51,8 @@ function Model(config::Config)::Model
     if !valid_nodes(db)
         error("Invalid nodes found.")
     end
-    if !valid_edge_types(db)
-        error("Invalid edge types found.")
+    if !valid_link_types(db)
+        error("Invalid link types found.")
     end
 
     local parameters, tstops
@@ -105,7 +105,7 @@ function Model(config::Config)::Model
     u0 = build_state_vector(parameters)
     du0 = zero(u0)
 
-    parameters = set_state_flow_edges(parameters, u0)
+    parameters = set_state_flow_links(parameters, u0)
     parameters = build_flow_to_storage(parameters, u0)
     @reset parameters.u_prev_saveat = zero(u0)
 

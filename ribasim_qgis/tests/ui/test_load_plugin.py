@@ -50,7 +50,7 @@ class TestPlugin(unittest.TestCase):
         self.assertTrue(Path("database.gpkg").exists(), "database.gpkg not created")
         self.assertTrue(
             len(QgsProject.instance().mapLayers()) == 2,
-            "Not just the Node and Edge layers",
+            "Not just the Node and Link layers",
         )
 
         # Check schema version
@@ -64,5 +64,5 @@ class TestPlugin(unittest.TestCase):
         datawidget._open_model("test.toml")
         self.assertTrue(
             len(QgsProject.instance().mapLayers()) == 4,
-            "Not just the Node and Edge layers twice",
+            "Not just the Node and Link layers twice",
         )

@@ -10,7 +10,7 @@ from pydantic import ValidationError
 from pyproj import CRS
 from ribasim import Node
 from ribasim.config import Solver
-from ribasim.geometry.edge import NodeData
+from ribasim.geometry.link import NodeData
 from ribasim.input_base import esc_id
 from ribasim.model import Model
 from ribasim_testmodels import (
@@ -107,16 +107,16 @@ def test_write_adds_fid_in_tables(basic, tmp_path):
     nrow = len(model_orig.basin.node.df)
     assert model_orig.basin.node.df.index.name == "node_id"
 
-    # for edge an explicit index was provided
-    nrow = len(model_orig.edge.df)
-    assert model_orig.edge.df.index.name == "edge_id"
-    assert model_orig.edge.df.index.equals(pd.RangeIndex(1, nrow + 1))
+    # for link an explicit index was provided
+    nrow = len(model_orig.link.df)
+    assert model_orig.link.df.index.name == "link_id"
+    assert model_orig.link.df.index.equals(pd.RangeIndex(1, nrow + 1))
 
     # Index name is applied by _name_index
-    df = model_orig.edge.df.copy()
+    df = model_orig.link.df.copy()
     df.index.name = "other"
-    model_orig.edge.df = df
-    assert model_orig.edge.df.index.name == "edge_id"
+    model_orig.link.df = df
+    assert model_orig.link.df.index.name == "link_id"
 
     model_orig.write(tmp_path / "basic/ribasim.toml")
     with connect(tmp_path / "basic/database.gpkg") as connection:
@@ -128,9 +128,9 @@ def test_write_adds_fid_in_tables(basic, tmp_path):
         df = pd.read_sql_query(query, connection, dtype_backend="pyarrow")
         assert "node_id" in df.columns
 
-        query = "select edge_id from Edge"
+        query = "select link_id from Link"
         df = pd.read_sql_query(query, connection, dtype_backend="pyarrow")
-        assert "edge_id" in df.columns
+        assert "link_id" in df.columns
 
 
 def test_node_table(basic):
@@ -146,9 +146,9 @@ def test_node_table(basic):
     assert df.crs == CRS.from_epsg(28992)
 
 
-def test_edge_table(basic):
+def test_link_table(basic):
     model = basic
-    df = model.edge.df
+    df = model.link.df
     assert df.geometry.is_unique
     assert df.from_node_id.dtype == np.int32
     assert df.crs == CRS.from_epsg(28992)

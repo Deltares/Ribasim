@@ -27,7 +27,7 @@ The figure below gives a more detailed description of the simulation loop in the
 
 - Allocation optimization; activated when the allocation timestep has been passed;
 - Control actions; activated when some discrete control callback is triggered;
-- Water balance; computing the flows over flow edges happens each timestep;
+- Water balance; computing the flows over flow links happens each timestep;
 - Time integration step; done by the integrator from `OrdinaryDiffEq.jl`.
 
 ```{mermaid}
@@ -65,7 +65,7 @@ sequenceDiagram
             activate Sim
             State-->>Sim: Input
             Param-->>Sim: Input
-            Sim->>Sim: Compute flows over edges per node type
+            Sim->>Sim: Compute flows over links per node type
             Sim-->>Param: Set flows
             deactivate Sim
         end
@@ -132,9 +132,9 @@ Ribasim can calculate concentrations of conservative tracers (i.e. substances th
 It does so by calculating the mass transports by flows for each timestep, in the `update_cumulative_flows!` callback.
 Specifically, for each Basin at each timestep it calculates:
 
-- all mass inflows ($flow * source\_concentration$) given the edge inflows
+- all mass inflows ($flow * source\_concentration$) given the link inflows
 - update the concentrations in the Basin based on the added storage ($previous storage + inflows$)
-- all mass outflows ($flow * basin\_concentration\_state$) give the edge outflows
+- all mass outflows ($flow * basin\_concentration\_state$) give the link outflows
 - update the concentrations in the Basin based on the current storage
 
 We thus keep track of both mass and concentration of substances for each Basin.

@@ -4,7 +4,7 @@ title: "FlowBoundary"
 
 A FlowBoundary adds water to the model at a specified flow rate.
 It can be used as a boundary condition like a measured upstream flow rate, or lateral inflow.
-We require that an edge connected to a FlowBoundary is always outgoing, and points towards a Basin.
+We require that an link connected to a FlowBoundary is always outgoing, and points towards a Basin.
 
 # Tables
 

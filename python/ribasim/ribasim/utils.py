@@ -54,15 +54,15 @@ def _node_lookup(uds) -> Series[Int32]:
     )
 
 
-def _edge_lookup(uds) -> Series[Int32]:
-    """Create a lookup table from edge_id to the edge dimension index.
+def _link_lookup(uds) -> Series[Int32]:
+    """Create a lookup table from link_id to the link dimension index.
 
-    Used when adding data onto the edges of an xugrid dataset.
+    Used when adding data onto the links of an xugrid dataset.
     """
     return pd.Series(
-        index=uds["edge_id"],
+        index=uds["link_id"],
         data=uds[uds.grid.edge_dimension],
-        name="edge_index",
+        name="link_index",
     )
 
 
@@ -91,7 +91,7 @@ class UsedIDs(BaseModel):
 
     We keep track of all IDs in the model,
     and keep track of the maximum to provide new IDs.
-    MultiNodeModels and Edge will check this instance on `add`.
+    MultiNodeModels and Link will check this instance on `add`.
     """
 
     node_ids: set[int] = set()

@@ -41,7 +41,7 @@ markdown_table(df)
 
 # Neighbor amounts
 
-The table below shows for each node type between which bounds the amount of in- and outneighbors must be, for both flow and control edges.
+The table below shows for each node type between which bounds the amount of in- and outneighbors must be, for both flow and control links.
 
 ```{julia}
 # | code-fold: true

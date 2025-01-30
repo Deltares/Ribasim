@@ -107,7 +107,7 @@ function set_coordinates!(graph, nodes_per_depth, max_depth, plot_non_Ribasim)
     end
 end
 
-function plot_edges!(ax, graph, max_depth, nodes_per_depth; n_points = 25)
+function plot_links!(ax, graph, max_depth, nodes_per_depth; n_points = 25)
     for depth in 0:(max_depth - 1)
         nodes_at_depth = nodes_per_depth[depth]
         n_nodes = length(nodes_at_depth)
@@ -194,7 +194,7 @@ function plot_graph(
     delete!(theme, :resolution) # Needed because of a refactor in Makie going from resolution to size
     f = Figure(; size = size)
     ax = Axis(f[1, 1]; xlabel = "depth →", xticks = 0:max_depth)
-    plot_edges!(ax, graph, max_depth, nodes_per_depth)
+    plot_links!(ax, graph, max_depth, nodes_per_depth)
     plot_labels!(ax, graph, max_depth, color_dict)
     hideydecorations!(ax)
     hidespines!(ax)

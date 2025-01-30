@@ -23,10 +23,10 @@ function Ribasim.plot_basin_data(model::Model)
     f
 end
 
-function Ribasim.plot_flow!(model::Model, ax::Axis, edge_metadata::Ribasim.EdgeMetadata)
+function Ribasim.plot_flow!(model::Model, ax::Axis, link_metadata::Ribasim.LinkMetadata)
     flow_data = DataFrame(Ribasim.flow_table(model))
-    flow_data = filter(:edge_id => ==(edge_metadata.id), flow_data)
-    label = "$(edge_metadata.edge[1]) → $(edge_metadata.edge[2])"
+    flow_data = filter(:link_id => ==(link_metadata.id), flow_data)
+    label = "$(link_metadata.link[1]) → $(link_metadata.link[2])"
     scatterlines!(ax, flow_data.time, flow_data.flow_rate; label)
     return nothing
 end
@@ -34,12 +34,12 @@ end
 function Ribasim.plot_flow(model::Model; skip_conservative_out = true)
     f = Figure()
     ax = Axis(f[1, 1]; xlabel = "time", ylabel = "flow rate [m³s⁻¹]")
-    for edge_metadata in values(model.integrator.p.graph.edge_data)
+    for link_metadata in values(model.integrator.p.graph.edge_data)
         if skip_conservative_out &&
-           edge_metadata.edge[1].type in Ribasim.conservative_nodetypes
+           link_metadata.link[1].type in Ribasim.conservative_nodetypes
             continue
         end
-        Ribasim.plot_flow!(model, ax, edge_metadata)
+        Ribasim.plot_flow!(model, ax, link_metadata)
     end
     axislegend(ax)
     f

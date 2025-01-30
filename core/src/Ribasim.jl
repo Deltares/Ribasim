@@ -115,7 +115,7 @@ using DiffEqCallbacks:
     SavedValues,
     SavingCallback
 
-# The network defined by the Node and Edge table is converted to a graph internally.
+# The network defined by the Node and Link table is converted to a graph internally.
 using Graphs:
     DiGraph, Edge, edges, inneighbors, nv, outneighbors, induced_subgraph, is_connected
 # Convenience functionality built on top of Graphs. Used to store e.g. node and edge metadata

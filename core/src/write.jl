@@ -208,7 +208,7 @@ function flow_table(
     model::Model,
 )::@NamedTuple{
     time::Vector{DateTime},
-    edge_id::Vector{Union{Int32, Missing}},
+    link_id::Vector{Union{Int32, Missing}},
     from_node_id::Vector{Int32},
     to_node_id::Vector{Int32},
     flow_rate::Vector{Float64},
@@ -217,30 +217,30 @@ function flow_table(
     (; t, saveval) = saved.flow
     (; p) = integrator
     (; graph) = p
-    (; flow_edges) = graph[]
+    (; flow_links) = graph[]
 
     from_node_id = Int32[]
     to_node_id = Int32[]
-    unique_edge_ids_flow = Union{Int32, Missing}[]
+    unique_link_ids_flow = Union{Int32, Missing}[]
 
-    flow_edge_ids = [flow_edge.edge for flow_edge in flow_edges]
+    flow_link_ids = [flow_link.link for flow_link in flow_links]
 
-    for (from_id, to_id) in flow_edge_ids
+    for (from_id, to_id) in flow_link_ids
         push!(from_node_id, from_id.value)
         push!(to_node_id, to_id.value)
-        push!(unique_edge_ids_flow, graph[from_id, to_id].id)
+        push!(unique_link_ids_flow, graph[from_id, to_id].id)
     end
 
-    nflow = length(unique_edge_ids_flow)
+    nflow = length(unique_link_ids_flow)
     ntsteps = length(t)
 
     flow_rate = zeros(nflow * ntsteps)
 
-    for (i, edge) in enumerate(flow_edge_ids)
+    for (i, link) in enumerate(flow_link_ids)
         for (j, cvec) in enumerate(saveval)
             (; flow, flow_boundary) = cvec
             flow_rate[i + (j - 1) * nflow] =
-                get_flow(flow, p, 0.0, edge; boundary_flow = flow_boundary)
+                get_flow(flow, p, 0.0, link; boundary_flow = flow_boundary)
         end
     end
 
@@ -250,11 +250,11 @@ function flow_table(
         t_starts[1] = 0.0
     end
     time = repeat(datetime_since.(t_starts, config.starttime); inner = nflow)
-    edge_id = repeat(unique_edge_ids_flow; outer = ntsteps)
+    link_id = repeat(unique_link_ids_flow; outer = ntsteps)
     from_node_id = repeat(from_node_id; outer = ntsteps)
     to_node_id = repeat(to_node_id; outer = ntsteps)
 
-    return (; time, edge_id, from_node_id, to_node_id, flow_rate)
+    return (; time, link_id, from_node_id, to_node_id, flow_rate)
 end
 
 "Create a concentration result table from the saved data"
@@ -336,7 +336,7 @@ function allocation_flow_table(
     model::Model,
 )::@NamedTuple{
     time::Vector{DateTime},
-    edge_id::Vector{Int32},
+    link_id::Vector{Int32},
     from_node_type::Vector{String},
     from_node_id::Vector{Int32},
     to_node_type::Vector{String},
@@ -353,7 +353,7 @@ function allocation_flow_table(
 
     return (;
         time,
-        record_flow.edge_id,
+        record_flow.link_id,
         record_flow.from_node_type,
         record_flow.from_node_id,
         record_flow.to_node_type,

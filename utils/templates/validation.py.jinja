@@ -16,14 +16,14 @@ def can_connect(node_type_up: str, node_type_down: str) -> bool:
         return node_type_down in node_type_connectivity[node_type_up]
     return False
 
-flow_edge_neighbor_amount: dict[str, list[int]] = {
+flow_link_neighbor_amount: dict[str, list[int]] = {
 {% for n in nodes %}
     '{{n[:name]}}':
     [{{ n[:flow_neighbor_bound].in_min }}, {{ n[:flow_neighbor_bound].in_max }}, {{ n[:flow_neighbor_bound].out_min }}, {{ n[:flow_neighbor_bound].out_max }}],
 {% end %}
 }
 
-control_edge_neighbor_amount: dict[str, list[int]] = {
+control_link_neighbor_amount: dict[str, list[int]] = {
 {% for n in nodes %}
     '{{n[:name]}}':
     [{{ n[:control_neighbor_bound].in_min }}, {{ n[:control_neighbor_bound].in_max }}, {{ n[:control_neighbor_bound].out_min }}, {{ n[:control_neighbor_bound].out_max }}],

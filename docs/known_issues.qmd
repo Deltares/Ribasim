@@ -9,7 +9,7 @@ Besides the issues that need to be fixed, there are also considerations that had
 
 - The QGIS plugin does not have a dynamic relation between its own plugin and the layers that are loaded in the QGIS project.
   That means that deleting a layer from the layers panel does not automatically remove it from the GeoPackage, as the layers are clones.
-- Tables and geometries are not linked. If you remove an edge or a node, the tables containing information about those objects will remain.
+- Tables and geometries are not linked. If you remove an link or a node, the tables containing information about those objects will remain.
   It is up to the user to clean up all tables.
-- The QGIS plugin does not update edges when nodes are moved.
+- The QGIS plugin does not update links when nodes are moved.
   Snapping is only used to grab the information of the node the user points to.

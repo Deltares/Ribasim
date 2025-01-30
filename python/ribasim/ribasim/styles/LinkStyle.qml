@@ -144,7 +144,7 @@
    </symbol>
   </profileMarkerSymbol>
  </elevation>
- <renderer-v2 attr="edge_type" forceraster="0" symbollevels="0" enableorderby="0" referencescale="-1" type="categorizedSymbol">
+ <renderer-v2 attr="link_type" forceraster="0" symbollevels="0" enableorderby="0" referencescale="-1" type="categorizedSymbol">
   <categories>
    <category symbol="0" uuid="{2b7d4f46-a443-4f70-b593-ed5815fd4ec6}" value="flow" label="flow" render="true" type="string"/>
    <category symbol="1" uuid="{dfe16deb-00fb-49c2-bd1e-70cc227329f9}" value="control" label="control" render="true" type="string"/>
@@ -555,7 +555,7 @@
  </selection>
  <labeling type="simple">
   <settings calloutType="simple">
-   <text-style textOrientation="horizontal" textOpacity="1" tabStopDistanceMapUnitScale="3x:0,0,0,0,0,0" fontItalic="0" fontSizeUnit="Point" textColor="50,50,50,255,rgb:0.19607843137254902,0.19607843137254902,0.19607843137254902,1" fontUnderline="0" fontFamily="Open Sans" fontStrikeout="0" fontKerning="1" namedStyle="Regular" fontWordSpacing="0" tabStopDistanceUnit="Point" capitalization="0" fontLetterSpacing="0" fontSize="10" blendMode="0" isExpression="1" fontWeight="50" useSubstitutions="0" forcedBold="0" forcedItalic="0" tabStopDistance="80" allowHtml="0" multilineHeight="1" fontSizeMapUnitScale="3x:0,0,0,0,0,0" previewBkgrdColor="255,255,255,255,rgb:1,1,1,1" legendString="Aa" fieldName="concat(&quot;name&quot;, ' #', &quot;edge_id&quot;)" multilineHeightUnit="Percentage">
+   <text-style textOrientation="horizontal" textOpacity="1" tabStopDistanceMapUnitScale="3x:0,0,0,0,0,0" fontItalic="0" fontSizeUnit="Point" textColor="50,50,50,255,rgb:0.19607843137254902,0.19607843137254902,0.19607843137254902,1" fontUnderline="0" fontFamily="Open Sans" fontStrikeout="0" fontKerning="1" namedStyle="Regular" fontWordSpacing="0" tabStopDistanceUnit="Point" capitalization="0" fontLetterSpacing="0" fontSize="10" blendMode="0" isExpression="1" fontWeight="50" useSubstitutions="0" forcedBold="0" forcedItalic="0" tabStopDistance="80" allowHtml="0" multilineHeight="1" fontSizeMapUnitScale="3x:0,0,0,0,0,0" previewBkgrdColor="255,255,255,255,rgb:1,1,1,1" legendString="Aa" fieldName="concat(&quot;name&quot;, ' #', &quot;link_id&quot;)" multilineHeightUnit="Percentage">
     <families/>
     <text-buffer bufferJoinStyle="128" bufferSize="1" bufferDraw="0" bufferNoFill="1" bufferColor="250,250,250,255,rgb:0.98039215686274506,0.98039215686274506,0.98039215686274506,1" bufferSizeMapUnitScale="3x:0,0,0,0,0,0" bufferBlendMode="0" bufferOpacity="1" bufferSizeUnits="MM"/>
     <text-mask maskSize2="1.5" maskEnabled="0" maskedSymbolLayers="" maskSizeMapUnitScale="3x:0,0,0,0,0,0" maskSize="1.5" maskSizeUnits="MM" maskJoinStyle="128" maskOpacity="1" maskType="0"/>
@@ -679,7 +679,7 @@
  </labeling>
  <customproperties>
   <Option type="Map">
-   <Option name="arrow_fid_column" value="edge_id" type="QString"/>
+   <Option name="arrow_fid_column" value="link_id" type="QString"/>
    <Option name="arrow_path" value="/Users/evetion/code/Ribasim.jl/generated_testmodels/basic/results/flow.arrow" type="QString"/>
    <Option name="arrow_type" value="timeseries" type="QString"/>
    <Option name="embeddedWidgets/count" value="0" type="int"/>
@@ -836,7 +836,7 @@
     </config>
    </editWidget>
   </field>
-  <field name="edge_type" configurationFlags="NoFlag">
+  <field name="link_type" configurationFlags="NoFlag">
    <editWidget type="ValueMap">
     <config>
      <Option type="Map">
@@ -863,7 +863,7 @@
   <alias name="" field="from_node_id" index="3"/>
   <alias name="" field="to_node_type" index="4"/>
   <alias name="" field="to_node_id" index="5"/>
-  <alias name="" field="edge_type" index="6"/>
+  <alias name="" field="link_type" index="6"/>
   <alias name="" field="subnetwork_id" index="7"/>
  </aliases>
  <splitPolicies>
@@ -873,7 +873,7 @@
   <policy field="from_node_id" policy="Duplicate"/>
   <policy field="to_node_type" policy="Duplicate"/>
   <policy field="to_node_id" policy="Duplicate"/>
-  <policy field="edge_type" policy="Duplicate"/>
+  <policy field="link_type" policy="Duplicate"/>
   <policy field="subnetwork_id" policy="Duplicate"/>
  </splitPolicies>
  <duplicatePolicies>
@@ -883,7 +883,7 @@
   <policy field="from_node_id" policy="Duplicate"/>
   <policy field="to_node_type" policy="Duplicate"/>
   <policy field="to_node_id" policy="Duplicate"/>
-  <policy field="edge_type" policy="Duplicate"/>
+  <policy field="link_type" policy="Duplicate"/>
   <policy field="subnetwork_id" policy="Duplicate"/>
  </duplicatePolicies>
  <defaults>
@@ -893,7 +893,7 @@
   <default field="from_node_id" applyOnUpdate="0" expression=""/>
   <default field="to_node_type" applyOnUpdate="0" expression=""/>
   <default field="to_node_id" applyOnUpdate="0" expression=""/>
-  <default field="edge_type" applyOnUpdate="0" expression=""/>
+  <default field="link_type" applyOnUpdate="0" expression=""/>
   <default field="subnetwork_id" applyOnUpdate="0" expression=""/>
  </defaults>
  <constraints>
@@ -903,7 +903,7 @@
   <constraint field="from_node_id" constraints="0" unique_strength="0" notnull_strength="0" exp_strength="0"/>
   <constraint field="to_node_type" constraints="0" unique_strength="0" notnull_strength="0" exp_strength="0"/>
   <constraint field="to_node_id" constraints="0" unique_strength="0" notnull_strength="0" exp_strength="0"/>
-  <constraint field="edge_type" constraints="0" unique_strength="0" notnull_strength="0" exp_strength="0"/>
+  <constraint field="link_type" constraints="0" unique_strength="0" notnull_strength="0" exp_strength="0"/>
   <constraint field="subnetwork_id" constraints="0" unique_strength="0" notnull_strength="0" exp_strength="0"/>
  </constraints>
  <constraintExpressions>
@@ -913,7 +913,7 @@
   <constraint field="from_node_id" exp="" desc=""/>
   <constraint field="to_node_type" exp="" desc=""/>
   <constraint field="to_node_id" exp="" desc=""/>
-  <constraint field="edge_type" exp="" desc=""/>
+  <constraint field="link_type" exp="" desc=""/>
   <constraint field="subnetwork_id" exp="" desc=""/>
  </constraintExpressions>
  <expressionfields/>
@@ -928,7 +928,7 @@
    <column name="from_node_id" hidden="0" width="-1" type="field"/>
    <column name="to_node_type" hidden="0" width="-1" type="field"/>
    <column name="to_node_id" hidden="0" width="-1" type="field"/>
-   <column name="edge_type" hidden="0" width="-1" type="field"/>
+   <column name="link_type" hidden="0" width="-1" type="field"/>
    <column name="subnetwork_id" hidden="0" width="-1" type="field"/>
    <column hidden="1" width="-1" type="actions"/>
   </columns>
@@ -961,7 +961,7 @@ control = dialog.findChild(QWidget, "MyLineEdit")
  <featformsuppress>0</featformsuppress>
  <editorlayout>generatedlayout</editorlayout>
  <editable>
-  <field name="edge_type" editable="1"/>
+  <field name="link_type" editable="1"/>
   <field name="fid" editable="1"/>
   <field name="from_node_id" editable="1"/>
   <field name="from_node_type" editable="1"/>
@@ -971,7 +971,7 @@ control = dialog.findChild(QWidget, "MyLineEdit")
   <field name="to_node_type" editable="1"/>
  </editable>
  <labelOnTop>
-  <field name="edge_type" labelOnTop="0"/>
+  <field name="link_type" labelOnTop="0"/>
   <field name="fid" labelOnTop="0"/>
   <field name="from_node_id" labelOnTop="0"/>
   <field name="from_node_type" labelOnTop="0"/>
@@ -981,7 +981,7 @@ control = dialog.findChild(QWidget, "MyLineEdit")
   <field name="to_node_type" labelOnTop="0"/>
  </labelOnTop>
  <reuseLastValue>
-  <field name="edge_type" reuseLastValue="0"/>
+  <field name="link_type" reuseLastValue="0"/>
   <field name="fid" reuseLastValue="0"/>
   <field name="from_node_id" reuseLastValue="0"/>
   <field name="from_node_type" reuseLastValue="0"/>
