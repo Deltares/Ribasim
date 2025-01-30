@@ -22,7 +22,7 @@ jobs:
           - macOS-latest
           - windows-latest
         pixi-environment:
-          - py312
+          - default
           - py311
     steps:
       - uses: actions/checkout@v4
