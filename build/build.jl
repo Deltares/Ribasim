@@ -3,7 +3,7 @@ using PackageCompiler
 using TOML
 using LibGit2
 
-function main()
+function (@main)()
     project_dir = "../core"
     license_file = "../LICENSE"
     output_dir = "ribasim"
@@ -120,5 +120,3 @@ function add_metadata(project_dir, license_file, output_dir, git_repo, readme)
     # Override the Cargo.toml file with the git version
     set_version("cli/Cargo.toml", tag)
 end
-
-main()

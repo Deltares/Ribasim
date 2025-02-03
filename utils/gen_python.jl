@@ -1,9 +1,8 @@
-using Configurations
-using Dates
-using InteractiveUtils
-using Legolas
-using OteraEngine
-using Ribasim
+import Legolas
+import Ribasim
+using Dates: DateTime
+using InteractiveUtils: subtypes
+using OteraEngine: Template
 
 pythontype(::Type{Union{Missing, T}}) where {T} = pythontype(T)
 pythontype(::Type{<:AbstractString}) = "Series[Annotated[pd.ArrowDtype, pyarrow.string()]]"
@@ -39,19 +38,6 @@ function get_models()
     ]
 end
 
-# Setup template with whitespace settings that mainly strips whitespace.
-# See schemas.py.jinja for the layout of the template.
-model_template = Template(
-    normpath(@__DIR__, "templates", "schemas.py.jinja");
-    config = Dict("trim_blocks" => true, "lstrip_blocks" => true, "autoescape" => false),
-)
-
-# Write schemas.py
-open(normpath(@__DIR__, "..", "python", "ribasim", "ribasim", "schemas.py"), "w") do io
-    init = Dict(:models => get_models())
-    println(io, model_template(; init = init))
-end
-
 function get_connectivity()
     """
     Set up a vector contains all possible connecting node for all node types.
@@ -68,13 +54,31 @@ function get_connectivity()
     ]
 end
 
-connection_template = Template(
+# Setup template with whitespace settings that mainly strips whitespace.
+# See schemas.py.jinja for the layout of the template.
+MODEL_TEMPLATE = Template(
+    normpath(@__DIR__, "templates", "schemas.py.jinja");
+    config = Dict("trim_blocks" => true, "lstrip_blocks" => true, "autoescape" => false),
+)
+
+CONNECTION_TEMPLATE = Template(
     normpath(@__DIR__, "templates", "validation.py.jinja");
     config = Dict("trim_blocks" => true, "lstrip_blocks" => true, "autoescape" => false),
 )
 
-# Write validation.py
-open(normpath(@__DIR__, "..", "python", "ribasim", "ribasim", "validation.py"), "w") do io
-    init = Dict(:nodes => get_connectivity())
-    println(io, connection_template(; init = init))
+function (@main)(_)
+    # Write schemas.py
+    open(normpath(@__DIR__, "..", "python", "ribasim", "ribasim", "schemas.py"), "w") do io
+        init = Dict(:models => get_models())
+        println(io, MODEL_TEMPLATE(; init = init))
+    end
+
+    # Write validation.py
+    open(
+        normpath(@__DIR__, "..", "python", "ribasim", "ribasim", "validation.py"),
+        "w",
+    ) do io
+        init = Dict(:nodes => get_connectivity())
+        println(io, CONNECTION_TEMPLATE(; init = init))
+    end
 end

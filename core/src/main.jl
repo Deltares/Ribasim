@@ -14,13 +14,11 @@ function run(config::Config)::Model
     return model
 end
 
-main(ARGS::Vector{String})::Cint = main(only(ARGS))
-main()::Cint = main(ARGS)
+(@main)(args::Vector{String})::Cint = main(only(args))
 
 """
     main(toml_path::AbstractString)::Cint
     main(ARGS::Vector{String})::Cint
-    main()::Cint
 
 This is the main entry point of the application.
 Performs argument parsing and sets up logging for both terminal and file.
