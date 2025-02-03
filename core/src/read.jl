@@ -1591,8 +1591,8 @@ end
 
 function get_node_ids(db::DB)::Vector{NodeID}
     nt = get_node_ids_types(db)
-    node_ids = Vector{Ribasim.NodeID}(undef, length(nt.node_id))
-    count = counter(Ribasim.NodeType.T)
+    node_ids = Vector{NodeID}(undef, length(nt.node_id))
+    count = counter(NodeType.T)
     for (i, (; node_id, node_type)) in enumerate(Tables.rows(nt))
         index = inc!(count, node_type)
         node_ids[i] = NodeID(node_type, node_id, index)
@@ -1613,7 +1613,7 @@ end
 function get_node_ids(db::DB, node_type)::Vector{NodeID}
     node_type = NodeType.T(node_type)
     node_ints = get_node_ids_int32(db, node_type)
-    node_ids = Vector{Ribasim.NodeID}(undef, length(node_ints))
+    node_ids = Vector{NodeID}(undef, length(node_ints))
     for (index, node_int) in enumerate(node_ints)
         node_ids[index] = NodeID(node_type, node_int, index)
     end

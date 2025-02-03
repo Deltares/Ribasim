@@ -31,7 +31,7 @@ function log_bottlenecks(model; converged::Bool)
     (; cache, p, u) = model.integrator
     (; basin) = p
 
-    level = converged ? LoggingExtras.Info : LoggingExtras.Warn
+    level = converged ? Logging.Info : Logging.Warn
 
     # Indicate convergence bottlenecks if possible with the current algorithm
     if hasproperty(cache, :nlsolver)
