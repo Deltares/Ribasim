@@ -3,7 +3,7 @@ using PackageCompiler
 using TOML
 using LibGit2
 
-function (@main)()
+function (@main)(_)
     project_dir = "../core"
     license_file = "../LICENSE"
     output_dir = "ribasim"
