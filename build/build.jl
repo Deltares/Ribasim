@@ -3,7 +3,7 @@ using PackageCompiler
 using TOML
 using LibGit2
 
-function (@main)(_)
+function (@main)(_)::Cint
     project_dir = "../core"
     license_file = "../LICENSE"
     output_dir = "ribasim"
@@ -27,6 +27,7 @@ function (@main)(_)
     run(Cmd(`cargo build --release`; dir = "cli"))
     ribasim = Sys.iswindows() ? "ribasim.exe" : "ribasim"
     cp("cli/target/release/$ribasim", "ribasim/$ribasim"; force = true)
+    return 0
 end
 
 readme_start = """

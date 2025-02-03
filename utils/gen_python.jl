@@ -66,7 +66,7 @@ CONNECTION_TEMPLATE = Template(
     config = Dict("trim_blocks" => true, "lstrip_blocks" => true, "autoescape" => false),
 )
 
-function (@main)(_)
+function (@main)(_)::Cint
     # Write schemas.py
     open(normpath(@__DIR__, "..", "python", "ribasim", "ribasim", "schemas.py"), "w") do io
         init = Dict(:models => get_models())
@@ -81,4 +81,5 @@ function (@main)(_)
         init = Dict(:nodes => get_connectivity())
         println(io, CONNECTION_TEMPLATE(; init = init))
     end
+    return 0
 end
