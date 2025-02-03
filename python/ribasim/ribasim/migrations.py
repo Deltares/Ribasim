@@ -12,7 +12,7 @@ def _rename_column(df, from_colname, to_colname):
     # If a column has a default value, or is nullable, they are always added.
     # Remove that column first, then rename the old column.
     # Only call this if from_colname is in the DataFrame.
-    df.drop(columns="link_type", inplace=True, errors="ignore")
+    df.drop(columns=to_colname, inplace=True, errors="ignore")
     df.rename(columns={from_colname: to_colname}, inplace=True, errors="raise")
     return df
 
