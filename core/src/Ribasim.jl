@@ -84,7 +84,7 @@ using SQLite: SQLite, DB, Query, esc_id
 using DBInterface: execute
 
 # Logging to both the console and a file
-using Logging: Logging, with_logger, @logmsg, LogLevel, AbstractLogger
+using Logging: with_logger, @logmsg, LogLevel, AbstractLogger
 import LoggingExtras
 using TerminalLoggers: TerminalLogger
 
