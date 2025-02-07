@@ -1003,6 +1003,9 @@ function set_state_flow_links(p::Parameters, u0::ComponentVector)::Parameters
     return p
 end
 
+# Extract the range from type of a ViewAxis{1:1, nothing, Shaped1DAxis{(1,)}}
+axis_range(::ViewAxis{T}) where {T} = T
+
 function id_from_state_index(
     p::Parameters,
     ::ComponentVector{Float64, Vector{Float64}, <:Tuple{<:Axis{NT}}},
@@ -1010,7 +1013,8 @@ function id_from_state_index(
 )::NodeID where {NT}
     local_idx = 0
     component = Symbol()
-    for (comp, range) in pairs(NT)
+    for (comp, axis) in pairs(NT)
+        range = axis_range(axis)
         if global_idx in range
             component = comp
             local_idx = global_idx - first(range) + 1
@@ -1033,7 +1037,7 @@ function get_state_index(
     id::NodeID,
     ::ComponentVector{A, B, <:Tuple{<:Axis{NT}}};
     inflow::Bool = true,
-) where {A, B, NT}
+)::Union{Int, Nothing} where {A, B, NT}
     component_name = if id.type == NodeType.UserDemand
         inflow ? :user_demand_inflow : :user_demand_outflow
     else
@@ -1041,7 +1045,8 @@ function get_state_index(
     end
     for (comp, range) in pairs(NT)
         if comp == component_name
-            return range[id.idx]
+            component_index = range[id.idx]
+            return component_index.idx
         end
     end
     return nothing
