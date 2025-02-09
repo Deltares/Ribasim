@@ -2,17 +2,17 @@
     "[julia]": {
         "editor.formatOnSave": true
     },
-    "notebook.formatOnSave.enabled": false,
+    "notebook.formatOnSave.enabled": true,
     "notebook.codeActionsOnSave": {
-        // https://github.com/astral-sh/ruff-vscode/issues/593
-        "source.fixAll.ruff": "never",
-        "source.organizeImports.ruff": "never"
+        "notebook.source.fixAll": "explicit",
+        "notebook.source.organizeImports": "explicit"
     },
     "[python]": {
         "editor.defaultFormatter": "charliermarsh.ruff",
         "editor.formatOnSave": true,
         "editor.codeActionsOnSave": {
-            "source.fixAll": "explicit"
+            "source.fixAll": "explicit",
+            "source.organizeImports": "explicit"
         }
     },
     "mypy-type-checker.importStrategy": "fromEnvironment",

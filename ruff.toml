@@ -1,5 +1,4 @@
 exclude = ["ribasim_qgis/tomllib/*"]
-extend-include = ["*.ipynb"]
 target-version = "py311"
 
 [lint]
