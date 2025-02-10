@@ -79,7 +79,7 @@ test-ribasim-core = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test()'
 test-ribasim-migration = { cmd = "pytest --numprocesses=4 -m regression python/ribasim/tests" }
 test-ribasim-core-cov = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test(coverage=true, julia_args=[\"--check-bounds=yes\"])'", depends-on = [
     "generate-testmodels",
-] }
+], env = { SSL_CERT_DIR = "", JULIA_SSL_CA_ROOTS_PATH = "" } }
 test-ribasim-regression = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test(julia_args=[\"--check-bounds=yes\"], test_args=[\"regression\"])'", depends-on = [
     "generate-testmodels",
     "test-ribasim-migration",
