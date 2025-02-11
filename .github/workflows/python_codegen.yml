@@ -20,7 +20,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          pixi-version: "latest"
+          pixi-version: "v0.41.1"
       - name: Prepare pixi
         run: pixi run install-ci
       - name: Test if codegen runs without errors
