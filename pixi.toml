@@ -71,7 +71,6 @@ build = { "cmd" = "julia --project build.jl", cwd = "build", depends-on = [
     "generate-testmodels",
     "initialize-julia",
 ], env = { SSL_CERT_DIR = "", JULIA_SSL_CA_ROOTS_PATH = "" } }
-remove-artifacts = "julia --eval 'rm(joinpath(Base.DEPOT_PATH[1], \"artifacts\"), force=true, recursive=true)'"
 # Tests
 test-ribasim-cli = "pytest --numprocesses=4 --basetemp=build/tests/temp --junitxml=report.xml build/tests"
 test-ribasim-core = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test()'", depends-on = [
@@ -155,11 +154,7 @@ github-release = "python utils/github-release.py"
 
 [target.win.tasks]
 add-ribasim-icon = { cmd = "rcedit build/ribasim/ribasim.exe --set-icon docs/assets/ribasim.ico" }
-# Workaround rare issue on Windows where the permissions of the artifacts directory are incorrect
-# Upstream issue: https://github.com/JuliaLang/julia/issues/52272
-reset-artifact-permissions = "icacls $homedrive/$homepath/.julia/artifacts /q /c /t /reset"
 install-ci = { depends-on = [
-    # "reset-artifact-permissions",  # see #1972
     "install-julia",
     "update-registry-julia",
 ] }
