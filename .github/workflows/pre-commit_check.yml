@@ -5,6 +5,7 @@ on:
   merge_group:
   push:
     branches: [main, update/pre-commit-hooks, update/pixi-lock]
+  workflow_dispatch:
 
 jobs:
   check:
