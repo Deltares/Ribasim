@@ -3,7 +3,7 @@ title: "Allocation"
 ---
 
 # Introduction
-Allocation is the process of assigning an allocated flow rate to demand nodes in the physical layer of the model based on information about sources, the different demand nodes over various priorities, constraints introduced by nodes, local water availability and graph topology. The allocation procedure implemented in Ribasim is heavily inspired by the [maximum flow problem](https://en.wikipedia.org/wiki/Maximum_flow_problem).
+Allocation is the process of assigning an allocated flow rate to demand nodes in the physical layer of the model based on information about sources and their source priorities, the different demand nodes over various demand priorities, constraints introduced by nodes, local water availability and graph topology. The allocation procedure implemented in Ribasim is heavily inspired by the [maximum flow problem](https://en.wikipedia.org/wiki/Maximum_flow_problem).
 
 The allocation problem is solved per subnetwork (and main network) of the Ribasim model. Each subnetwork is used to formulate an optimization problem with the [JuMP](https://jump.dev/JuMP.jl/stable/) package, which is solved using the [HiGHS solver](https://highs.dev/). For more in-depth information see also the example of solving the maximum flow problem with `JuMP.jl` [here](https://jump.dev/JuMP.jl/stable/tutorials/linear/network_flows/#The-max-flow-problem).
 
@@ -36,7 +36,7 @@ The following data of the parameters and state of a Ribasim model are relevant f
 
 ### The subnetwork
 
-The allocation problem is solved per subnetwork, which is given by a subset $S \subset V$ of node IDs. Different subnetworks are disjoint from eachother. Nodes can also not be part of any subnetwork.
+The allocation problem is solved per subnetwork, which is given by a subset $S \subset V$ of node IDs. Different subnetworks are disjoint from each other. Nodes can also not be part of any subnetwork.
 
 ### Source flows
 
@@ -84,7 +84,7 @@ $$
 
 We consider fluxes into the basin to be positive and out of the basin to be negative. For more information see [the natural water balance terms](/concept/equations.qmd#natural-water-balance-terms).
 
-Secondly, there is either a supply or demand from the storage in the basin. Given a minimum level $\ell_{\min, i}$ and a maximum level $\ell_{\max, i}$ which correspond to a minimum storage $s_{\min, i}$ and maximum storage $s_{\max, i}$ respectively, we get a flow supply of
+Secondly, there is either a supply or demand from the storage in the Basin if the Basin has a level demand. Given a minimum level $\ell_{\min, i}$ and a maximum level $\ell_{\max, i}$ which correspond to a minimum storage $s_{\min, i}$ and maximum storage $s_{\max, i}$ respectively, we get a flow supply of
 $$
     F^{\text{basin out}}_{\max, i} = \max\left(0.0, \frac{u_i(t)-s_{\max,i}}{\Delta t_{\text{alloc}}} + \phi_i(t)\right)
 $$
@@ -206,11 +206,10 @@ $$
     F^{\text{basin out}}_{i} \le F^{\text{basin out}}_{\max, i}, \quad \forall i \in B_S.
 $$
 
-:::{.callout-note}
+
 There are several things to note about the source constraints:
 - The sources are not all used at once. There is an optimization for each source in a subnetwork, where only one source has nonzero capacity.
 - When performing subnetwork demand collection, these capacities are set to $\infty$ for links which connect the main network to a subnetwork.
-:::
 
 Similar constraints hold for the flow out of basins, flow demand buffers and user demand outflow sources:
 $$
@@ -252,7 +251,7 @@ allocation_model = p.allocation.allocation_models[1]
 priority_idx = 1
 
 Ribasim.set_initial_values!(allocation_model, u, p, t)
-Ribasim.set_objective_priority!(allocation_model, u, p, t, priority_idx)
+Ribasim.set_objective_demand_priority!(allocation_model, u, p, t, priority_idx)
 
 println(p.allocation.allocation_models[1].problem)
 ```

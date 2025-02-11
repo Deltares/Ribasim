@@ -310,7 +310,7 @@ class FlowDemandStaticSchema(_BaseSchema):
     demand: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
         nullable=False
     )
-    priority: Series[Annotated[pd.ArrowDtype, pyarrow.int32()]] = pa.Field(
+    demand_priority: Series[Annotated[pd.ArrowDtype, pyarrow.int32()]] = pa.Field(
         nullable=True
     )
 
@@ -326,7 +326,7 @@ class FlowDemandTimeSchema(_BaseSchema):
     demand: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
         nullable=False
     )
-    priority: Series[Annotated[pd.ArrowDtype, pyarrow.int32()]] = pa.Field(
+    demand_priority: Series[Annotated[pd.ArrowDtype, pyarrow.int32()]] = pa.Field(
         nullable=True
     )
 
@@ -382,7 +382,7 @@ class LevelDemandStaticSchema(_BaseSchema):
     max_level: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
         nullable=True
     )
-    priority: Series[Annotated[pd.ArrowDtype, pyarrow.int32()]] = pa.Field(
+    demand_priority: Series[Annotated[pd.ArrowDtype, pyarrow.int32()]] = pa.Field(
         nullable=True
     )
 
@@ -401,7 +401,7 @@ class LevelDemandTimeSchema(_BaseSchema):
     max_level: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
         nullable=True
     )
-    priority: Series[Annotated[pd.ArrowDtype, pyarrow.int32()]] = pa.Field(
+    demand_priority: Series[Annotated[pd.ArrowDtype, pyarrow.int32()]] = pa.Field(
         nullable=True
     )
 
@@ -622,7 +622,7 @@ class UserDemandStaticSchema(_BaseSchema):
     min_level: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
         nullable=False
     )
-    priority: Series[Annotated[pd.ArrowDtype, pyarrow.int32()]] = pa.Field(
+    demand_priority: Series[Annotated[pd.ArrowDtype, pyarrow.int32()]] = pa.Field(
         nullable=True
     )
 
@@ -644,6 +644,6 @@ class UserDemandTimeSchema(_BaseSchema):
     min_level: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
         nullable=False
     )
-    priority: Series[Annotated[pd.ArrowDtype, pyarrow.int32()]] = pa.Field(
+    demand_priority: Series[Annotated[pd.ArrowDtype, pyarrow.int32()]] = pa.Field(
         nullable=True
     )

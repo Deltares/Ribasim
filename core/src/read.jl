@@ -246,7 +246,95 @@ const conservative_nodetypes = Set{NodeType.T}([
     NodeType.ManningResistance,
 ])
 
-function initialize_allocation!(p::Parameters, config::Config)::Nothing
+function get_source_priority_data(
+    p::Parameters,
+    db::DB,
+    config::Config,
+)::Vector{SOURCE_TUPLE}
+    (; graph) = p
+    default_source_priority = config.allocation.source_priority
+
+    node_rows = execute(
+        db,
+        "SELECT node_id, node_type, subnetwork_id, source_priority FROM Node ORDER BY subnetwork_id, source_priority",
+    )
+
+    # Build dictionary source type -> default source priority (e.g. "user_demand" => 1000)
+    source_types = propertynames(default_source_priority)
+    default_source_priority_dict = Dict{Symbol, Int32}(
+        source_type => getfield(default_source_priority, source_type) for
+        source_type in source_types
+    )
+    default_source_priority_dict[:flow_boundary] = default_source_priority.boundary
+    default_source_priority_dict[:level_boundary] = default_source_priority.boundary
+
+    # Get named tuples (; node_id, subnetwork_id, source_priority)
+    source_priority_tuples = SOURCE_TUPLE[]
+
+    errors = false
+
+    for row in node_rows
+        # Only source nodes that are part of a subnetwork are relevant
+        is_source = false
+        # One source priority can apply to multiple sources in the case of a LevelDemand
+        # node which connects to multiple basins
+        node_ids = [NodeID(Symbol(row.node_type), row.node_id, p)]
+        if !ismissing(row.subnetwork_id)
+            node_type = Symbol(snake_case(row.node_type))
+
+            if node_type ∈ source_types
+                # The case where the node type is also a source type
+                source_priority =
+                    coalesce(row.source_priority, default_source_priority_dict[node_type])
+                source_type = AllocationSourceType.T(node_type)
+                is_source = true
+                # If the row is for a level demand or flow demand, make node_ids
+                # for the node(s) that has/have the demand
+                if only(node_ids).type ∈ (NodeType.LevelDemand, NodeType.FlowDemand)
+                    node_ids =
+                        outneighbor_labels_type(graph, only(node_ids), EdgeType.control)
+                end
+            elseif node_type ∈ (:flow_boundary, :level_boundary)
+                # The case where the node type is a boundary source node type
+                source_priority =
+                    coalesce(row.source_priority, default_source_priority_dict[node_type])
+                source_type = AllocationSourceType.boundary
+                is_source = true
+            elseif row.subnetwork_id != 1 # Not in the main network
+                for id in filter!(
+                    id -> graph[id].subnetwork_id == 1, # Connects to the main network
+                    collect(inflow_ids(p.graph, only(node_ids))),
+                )
+                    is_source = true
+                    source_priority = default_source_priority_dict[:subnetwork_inlet]
+                    source_type = AllocationSourceType.subnetwork_inlet
+                    break
+                end
+            end
+        end
+
+        if is_source
+            for node_id in node_ids
+                push!(
+                    source_priority_tuples,
+                    (; node_id, row.subnetwork_id, source_priority, source_type),
+                )
+            end
+        elseif !ismissing(row.source_priority)
+            errors = true
+            @error "$(only(node_ids)) has a source priority ($(row.source_priority)) but is not interpreted as a source by allocation."
+        end
+    end
+
+    if errors
+        error("Errors encountered when processing the allocation source priority data.")
+    end
+
+    sort!(source_priority_tuples; by = x -> (x.subnetwork_id, x.source_priority))
+    source_priority_tuples
+end
+
+function initialize_allocation!(p::Parameters, db::DB, config::Config)::Nothing
     (; graph, allocation) = p
     (; subnetwork_ids, allocation_models, main_network_connections) = allocation
     subnetwork_ids_ = sort(collect(keys(graph[].node_ids)))
@@ -269,10 +357,17 @@ function initialize_allocation!(p::Parameters, config::Config)::Nothing
         find_subnetwork_connections!(p)
     end
 
+    source_priority_tuples = get_source_priority_data(p, db, config)
+
     for subnetwork_id in subnetwork_ids_
         push!(
             allocation_models,
-            AllocationModel(subnetwork_id, p, config.allocation.timestep),
+            AllocationModel(
+                subnetwork_id,
+                p,
+                source_priority_tuples,
+                config.allocation.timestep,
+            ),
         )
     end
     return nothing
@@ -1055,7 +1150,7 @@ function user_demand_static!(
     min_level::Vector{Float64},
     static::StructVector{UserDemandStaticV1},
     ids::Vector{Int32},
-    priorities::Vector{Int32},
+    demand_priorities::Vector{Int32},
 )::Nothing
     for group in IterTools.groupby(row -> row.node_id, static)
         first_row = first(group)
@@ -1072,16 +1167,16 @@ function user_demand_static!(
         min_level[user_demand_idx] = first_row.min_level
 
         for row in group
-            priority_idx = findsorted(priorities, row.priority)
+            demand_priority_idx = findsorted(demand_priorities, row.demand_priority)
             demand_row = coalesce(row.demand, 0.0)
-            demand_itp_old = demand_itp[user_demand_idx][priority_idx]
-            demand_itp[user_demand_idx][priority_idx] = LinearInterpolation(
+            demand_itp_old = demand_itp[user_demand_idx][demand_priority_idx]
+            demand_itp[user_demand_idx][demand_priority_idx] = LinearInterpolation(
                 fill(demand_row, 2),
                 demand_itp_old.t;
                 extrapolate = true,
                 cache_parameters = true,
             )
-            demand[user_demand_idx, priority_idx] = demand_row
+            demand[user_demand_idx, demand_priority_idx] = demand_row
         end
     end
     return nothing
@@ -1096,13 +1191,13 @@ function user_demand_time!(
     min_level::Vector{Float64},
     time::StructVector{UserDemandTimeV1},
     ids::Vector{Int32},
-    priorities::Vector{Int32},
+    demand_priorities::Vector{Int32},
     config::Config,
 )::Bool
     errors = false
     t_end = seconds_since(config.endtime, config.starttime)
 
-    for group in IterTools.groupby(row -> (row.node_id, row.priority), time)
+    for group in IterTools.groupby(row -> (row.node_id, row.demand_priority), time)
         first_row = first(group)
         user_demand_idx = findsorted(ids, first_row.node_id)
 
@@ -1120,7 +1215,7 @@ function user_demand_time!(
 
         min_level[user_demand_idx] = first_row.min_level
 
-        priority_idx = findsorted(priorities, first_row.priority)
+        demand_priority_idx = findsorted(demand_priorities, first_row.demand_priority)
         demand_p_itp = get_scalar_interpolation(
             config.starttime,
             t_end,
@@ -1130,8 +1225,8 @@ function user_demand_time!(
             default_value = 0.0,
             interpolation_type = LinearInterpolation,
         )
-        demand[user_demand_idx, priority_idx] = demand_p_itp(0.0)
-        demand_itp[user_demand_idx][priority_idx] = demand_p_itp
+        demand[user_demand_idx, demand_priority_idx] = demand_p_itp(0.0)
+        demand_itp[user_demand_idx][demand_priority_idx] = demand_p_itp
     end
     return errors
 end
@@ -1149,21 +1244,21 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)::UserDemand
     end
 
     # Initialize vectors for UserDemand fields
-    priorities = get_all_priorities(db, config)
+    demand_priorities = get_all_demand_priorities(db, config)
     n_user = length(node_ids)
-    n_priority = length(priorities)
+    n_demand_priority = length(demand_priorities)
     active = fill(true, n_user)
-    demand = zeros(n_user, n_priority)
-    demand_reduced = zeros(n_user, n_priority)
+    demand = zeros(n_user, n_demand_priority)
+    demand_reduced = zeros(n_user, n_demand_priority)
     trivial_timespan = [0.0, prevfloat(Inf)]
     demand_itp = [
         ScalarInterpolation[
             LinearInterpolation(zeros(2), trivial_timespan; cache_parameters = true) for
-            i in eachindex(priorities)
+            i in eachindex(demand_priorities)
         ] for j in eachindex(node_ids)
     ]
     demand_from_timeseries = fill(false, n_user)
-    allocated = fill(Inf, n_user, n_priority)
+    allocated = fill(Inf, n_user, n_demand_priority)
     return_factor = [
         LinearInterpolation(zeros(2), trivial_timespan; cache_parameters = true) for
         i in eachindex(node_ids)
@@ -1179,7 +1274,7 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)::UserDemand
         min_level,
         static,
         ids,
-        priorities,
+        demand_priorities,
     )
 
     # Process time table
@@ -1192,7 +1287,7 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)::UserDemand
         min_level,
         time,
         ids,
-        priorities,
+        demand_priorities,
         config,
     )
 
@@ -1202,7 +1297,7 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)::UserDemand
     concentration[:, Substance.UserDemand] .= 1.0
     set_concentrations!(concentration, concentration_time, substances, node_ids)
 
-    if errors || !valid_demand(node_ids, demand_itp, priorities)
+    if errors || !valid_demand(node_ids, demand_itp, demand_priorities)
         error("Errors occurred when parsing UserDemand data.")
     end
 
@@ -1247,7 +1342,7 @@ function LevelDemand(db::DB, config::Config)::LevelDemand
         NodeID.(NodeType.LevelDemand, node_id, eachindex(node_id)),
         parsed_parameters.min_level,
         parsed_parameters.max_level,
-        parsed_parameters.priority,
+        parsed_parameters.demand_priority,
     )
 end
 
@@ -1275,7 +1370,7 @@ function FlowDemand(db::DB, config::Config)::FlowDemand
         node_id = NodeID.(NodeType.FlowDemand, node_id, eachindex(node_id)),
         demand_itp = parsed_parameters.demand,
         demand,
-        parsed_parameters.priority,
+        parsed_parameters.demand_priority,
     )
 end
 
@@ -1452,7 +1547,7 @@ function Allocation(db::DB, config::Config, graph::MetaGraph)::Allocation
     subnetwork_ids = sort(collect(keys(graph[].node_ids)))
 
     if config.allocation.use_allocation
-        for subnetwork_id in subnetwork_ids
+        for _ in subnetwork_ids
             push!(mean_input_flows, Dict{Tuple{NodeID, NodeID}, Float64}())
         end
 
@@ -1501,7 +1596,7 @@ function Allocation(db::DB, config::Config, graph::MetaGraph)::Allocation
     end
 
     return Allocation(;
-        priorities = get_all_priorities(db, config),
+        demand_priorities_all = get_all_demand_priorities(db, config),
         mean_input_flows,
         mean_realized_flows,
     )
@@ -1569,7 +1664,7 @@ function Parameters(db::DB, config::Config)::Parameters
 
     # Allocation data structures
     if config.allocation.use_allocation
-        initialize_allocation!(p, config)
+        initialize_allocation!(p, db, config)
     end
     return p
 end
