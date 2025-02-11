@@ -491,8 +491,8 @@ function AllocationSource(
 )
     (; user_demand) = p
     (; node_id, source_priority) = source_tuple
-    edge = user_demand.outflow_edge[node_id.idx].edge
-    AllocationSource(; edge, source_priority, type = AllocationSourceType.user_demand)
+    link = user_demand.outflow_link[node_id.idx].link
+    AllocationSource(; link, source_priority, type = AllocationSourceType.user_demand)
 end
 
 # Boundary node sources
@@ -503,8 +503,8 @@ function AllocationSource(
 )
     (; graph) = p
     (; node_id, source_priority) = source_tuple
-    edge = outflow_edge(graph, node_id).edge
-    AllocationSource(; edge, source_priority, type = AllocationSourceType.boundary)
+    link = outflow_link(graph, node_id).link
+    AllocationSource(; link, source_priority, type = AllocationSourceType.boundary)
 end
 
 # Basins with level demand
@@ -514,8 +514,8 @@ function AllocationSource(
     ::Val{AllocationSourceType.level_demand},
 )
     (; node_id, source_priority) = source_tuple
-    edge = (node_id, node_id)
-    AllocationSource(; edge, source_priority, type = AllocationSourceType.level_demand)
+    link = (node_id, node_id)
+    AllocationSource(; link, source_priority, type = AllocationSourceType.level_demand)
 end
 
 # Main network to subnetwork connections
@@ -525,8 +525,8 @@ function AllocationSource(
     ::Val{AllocationSourceType.subnetwork_inlet},
 )
     (; node_id, source_priority) = source_tuple
-    edge = (inflow_id(p.graph, node_id), node_id)
-    AllocationSource(; edge, source_priority, type = AllocationSourceType.subnetwork_inlet)
+    link = (inflow_id(p.graph, node_id), node_id)
+    AllocationSource(; link, source_priority, type = AllocationSourceType.subnetwork_inlet)
 end
 
 # Connector nodes with a flow demand
@@ -536,8 +536,8 @@ function AllocationSource(
     ::Val{AllocationSourceType.flow_demand},
 )
     (; node_id, source_priority) = source_tuple
-    edge = (node_id, node_id)
-    AllocationSource(; edge, source_priority, type = AllocationSourceType.flow_demand)
+    link = (node_id, node_id)
+    AllocationSource(; link, source_priority, type = AllocationSourceType.flow_demand)
 end
 
 """
@@ -560,7 +560,7 @@ function get_sources_in_order(
 
     for source_tuple in source_priority_tuples_subnetwork
         source = AllocationSource(p, source_tuple, Val(source_tuple.source_type))
-        sources[source.edge] = source
+        sources[source.link] = source
     end
 
     sources

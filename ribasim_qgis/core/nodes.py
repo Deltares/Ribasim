@@ -280,7 +280,7 @@ class Link(Input):
     def set_editor_widget(self) -> None:
         layer = self.layer
 
-        self.set_dropdown("link_type", EDGETYPES)
+        self.set_dropdown("link_type", LINKTYPES)
         self.set_unique("link_id")
 
         layer_form_config = layer.editFormConfig()
@@ -1009,7 +1009,7 @@ NODES: dict[str, type[Input]] = {
 NONSPATIALNODETYPES: set[str] = {
     cls.nodetype() for cls in Input.__subclasses__() if not cls.is_spatial()
 } | {"Terminal"}
-EDGETYPES = {"flow", "control"}
+LINKTYPES = {"flow", "control"}
 SPATIALCONTROLNODETYPES = {
     "ContinuousControl",
     "DiscreteControl",
