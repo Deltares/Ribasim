@@ -292,7 +292,7 @@ function get_source_priority_data(
                 # for the node(s) that has/have the demand
                 if only(node_ids).type ∈ (NodeType.LevelDemand, NodeType.FlowDemand)
                     node_ids =
-                        outneighbor_labels_type(graph, only(node_ids), EdgeType.control)
+                        outneighbor_labels_type(graph, only(node_ids), LinkType.control)
                 end
             elseif node_type ∈ (:flow_boundary, :level_boundary)
                 # The case where the node type is a boundary source node type
