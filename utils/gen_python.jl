@@ -40,7 +40,7 @@ end
 
 function get_connectivity()
     """
-    Set up a vector contains all possible connecting node for all node types.
+    Set up a vector containing all possible downstream node types per node type.
     """
     [
         (
