@@ -96,7 +96,9 @@ class BaseModel(PydanticBaseModel):
     def model_dump(self, **kwargs) -> dict[str, Any]:
         return super().model_dump(serialize_as_any=True, **kwargs)
 
-    # From Pydantic itself, edited to remove the comparison of private attrs
+    # __eq__ from Pydantic BaseModel itself, edited to remove the comparison of private attrs
+    # https://github.com/pydantic/pydantic/blob/ff3789d4cc06ee024b7253b919d3e36748a72829/pydantic/main.py#L1069
+    # The MIT License (MIT) | Copyright (c) 2017 to present Pydantic Services Inc. and individual contributors.
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, BaseModel):
             self_type = self.__pydantic_generic_metadata__["origin"] or self.__class__
@@ -104,7 +106,6 @@ class BaseModel(PydanticBaseModel):
                 other.__pydantic_generic_metadata__["origin"] or other.__class__
             )
 
-            # Perform common checks first
             if not (
                 self_type == other_type
                 # This comparison has been removed, otherwise we recurse because
@@ -138,7 +139,7 @@ class BaseModel(PydanticBaseModel):
                 return getter(self_fields_proxy) == getter(other_fields_proxy)
 
         else:
-            return NotImplemented  # delegate to the other item in the comparison
+            return NotImplemented
 
 
 class FileModel(BaseModel, ABC):
