@@ -128,13 +128,13 @@ class BaseModel(PydanticBaseModel):
             getter = (
                 operator.itemgetter(*model_fields)
                 if model_fields
-                else lambda _: pydantic._utils._SENTINEL
+                else lambda _: pydantic._utils._SENTINEL  # type: ignore
             )
             try:
                 return getter(self.__dict__) == getter(other.__dict__)
             except KeyError:
-                self_fields_proxy = pydantic._utils.SafeGetItemProxy(self.__dict__)
-                other_fields_proxy = pydantic._utils.SafeGetItemProxy(other.__dict__)
+                self_fields_proxy = pydantic._utils.SafeGetItemProxy(self.__dict__)  # type: ignore
+                other_fields_proxy = pydantic._utils.SafeGetItemProxy(other.__dict__)  # type: ignore
                 return getter(self_fields_proxy) == getter(other_fields_proxy)
 
         else:
@@ -219,9 +219,12 @@ class TableModel(FileModel, Generic[TableT]):
         if isinstance(other, TableModel):
             if self.df is None and other.df is None:
                 return True
-            return self.df.equals(other.df)
+            if self.df is None or other.df is None:
+                return False
+            else:
+                return self.df.equals(other.df)
 
-        return False
+        return NotImplemented
 
     @field_validator("df")
     @classmethod
