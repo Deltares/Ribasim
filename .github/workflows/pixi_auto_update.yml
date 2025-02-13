@@ -1,16 +1,13 @@
 name: Update Pixi lockfile
-
 permissions:
   contents: write
   pull-requests: write
-
 on:
   schedule:
-  # At 03:00 on day 3 of the month
+    # At 03:00 on day 3 of the month
     - cron: "0 3 3 * *"
   # on demand
   workflow_dispatch:
-
 jobs:
   pixi-update:
     runs-on: ubuntu-latest
