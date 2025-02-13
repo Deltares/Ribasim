@@ -32,7 +32,7 @@ jobs:
           commit-message: Update pixi lockfile
           title: Update pixi lockfile
           body-path: diff.md
-          branch: update/pixi-lock
+          branch: "update/pixi-lock"
           base: main
           delete-branch: true
           add-paths: pixi.lock

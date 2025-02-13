@@ -21,7 +21,7 @@ jobs:
       - uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          branch: update/pre-commit-hooks
+          branch: "update/pre-commit-hooks"
           title: Update pre-commit hooks
           commit-message: "Update pre-commit hooks"
           body: Update versions of pre-commit hooks to latest version.

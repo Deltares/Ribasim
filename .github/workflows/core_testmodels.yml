@@ -1,7 +1,7 @@
 name: Julia Run Testmodels
 on:
   push:
-    branches: [main, update/pixi-lock, update/julia-manifest]
+    branches: [main, "update/pixi-lock", "update/julia-manifest"]
     paths-ignore: [".teamcity/**"]
     tags: ["*"]
   pull_request:
