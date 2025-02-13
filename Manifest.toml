@@ -1850,10 +1850,10 @@ uuid = "b1df2697-797e-41e3-8120-5422d3b24e4a"
 version = "1.1.0"
 
 [[deps.OteraEngine]]
-deps = ["Markdown", "Pkg", "TOML"]
-git-tree-sha1 = "13ddb53617c492c9d63c7336a553b0b60b6c7e1a"
+deps = ["Markdown", "TOML"]
+git-tree-sha1 = "9e0a1f6d31570bba27b502b0e62080b3a4f7a1cb"
 uuid = "b2d7f28f-acd6-4007-8b26-bc27716e5513"
-version = "1.0.0"
+version = "1.1.0"
 
 [[deps.PCRE2_jll]]
 deps = ["Artifacts", "Libdl"]
