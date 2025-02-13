@@ -54,17 +54,18 @@ function get_connectivity()
     ]
 end
 
-# Setup template with whitespace settings that mainly strips whitespace.
-# See schemas.py.jinja for the layout of the template.
-MODEL_TEMPLATE = Template(
-    normpath(@__DIR__, "templates", "schemas.py.jinja");
-    config = Dict("trim_blocks" => true, "lstrip_blocks" => true, "autoescape" => false),
+config = Dict(
+    "trim_blocks" => true,
+    "lstrip_blocks" => true,
+    "autoescape" => false,
+    "newline" => "\n",
 )
 
-CONNECTION_TEMPLATE = Template(
-    normpath(@__DIR__, "templates", "validation.py.jinja");
-    config = Dict("trim_blocks" => true, "lstrip_blocks" => true, "autoescape" => false),
-)
+# Setup template with whitespace settings that mainly strips whitespace.
+# See schemas.py.jinja for the layout of the template.
+MODEL_TEMPLATE = Template(normpath(@__DIR__, "templates", "schemas.py.jinja"); config)
+CONNECTION_TEMPLATE =
+    Template(normpath(@__DIR__, "templates", "validation.py.jinja"); config)
 
 function (@main)(_)::Cint
     # Write schemas.py
