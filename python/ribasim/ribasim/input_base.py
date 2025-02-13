@@ -1,3 +1,4 @@
+import operator
 import re
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Generator
@@ -15,6 +16,7 @@ from typing import (
 import geopandas as gpd
 import numpy as np
 import pandas as pd
+import pydantic
 from pandera.typing import DataFrame
 from pandera.typing.geopandas import GeoDataFrame
 from pydantic import BaseModel as PydanticBaseModel
@@ -23,6 +25,7 @@ from pydantic import (
     DirectoryPath,
     Field,
     PrivateAttr,
+    SerializationInfo,
     ValidationInfo,
     field_validator,
     model_serializer,
@@ -89,6 +92,54 @@ class BaseModel(PydanticBaseModel):
     def _fields(cls) -> list[str]:
         """Return the names of the fields contained in the Model."""
         return list(cls.model_fields.keys())
+
+    def model_dump(self, **kwargs) -> dict[str, Any]:
+        return super().model_dump(serialize_as_any=True, **kwargs)
+
+    # __eq__ from Pydantic BaseModel itself, edited to remove the comparison of private attrs
+    # https://github.com/pydantic/pydantic/blob/ff3789d4cc06ee024b7253b919d3e36748a72829/pydantic/main.py#L1069
+    # The MIT License (MIT) | Copyright (c) 2017 to present Pydantic Services Inc. and individual contributors.
+    def __eq__(self, other: Any) -> bool:
+        if isinstance(other, BaseModel):
+            self_type = self.__pydantic_generic_metadata__["origin"] or self.__class__
+            other_type = (
+                other.__pydantic_generic_metadata__["origin"] or other.__class__
+            )
+
+            if not (
+                self_type == other_type
+                # This comparison has been removed, otherwise we recurse because
+                # we store the parent of the model in a private attribute
+                # and getattr(self, "__pydantic_private__", None)
+                # == getattr(other, "__pydantic_private__", None)
+                and self.__pydantic_extra__ == other.__pydantic_extra__
+            ):
+                return False
+
+            if self.__dict__ == other.__dict__:
+                return True
+
+            model_fields = type(self).__pydantic_fields__.keys()
+            if (
+                self.__dict__.keys() <= model_fields
+                and other.__dict__.keys() <= model_fields
+            ):
+                return False
+
+            getter = (
+                operator.itemgetter(*model_fields)
+                if model_fields
+                else lambda _: pydantic._utils._SENTINEL  # type: ignore
+            )
+            try:
+                return getter(self.__dict__) == getter(other.__dict__)
+            except KeyError:
+                self_fields_proxy = pydantic._utils.SafeGetItemProxy(self.__dict__)  # type: ignore
+                other_fields_proxy = pydantic._utils.SafeGetItemProxy(other.__dict__)  # type: ignore
+                return getter(self_fields_proxy) == getter(other_fields_proxy)
+
+        else:
+            return NotImplemented
 
 
 class FileModel(BaseModel, ABC):
@@ -165,6 +216,17 @@ class TableModel(FileModel, Generic[TableT]):
     df: DataFrame[TableT] | None = Field(default=None, exclude=True, repr=False)
     _sort_keys: list[str] = PrivateAttr(default=[])
 
+    def __eq__(self, other: Any) -> bool:
+        if isinstance(other, TableModel):
+            if self.df is None and other.df is None:
+                return True
+            if self.df is None or other.df is None:
+                return False
+            else:
+                return self.df.equals(other.df)
+
+        return NotImplemented
+
     @field_validator("df")
     @classmethod
     def _check_schema(cls, v: DataFrame[TableT]):
@@ -184,8 +246,12 @@ class TableModel(FileModel, Generic[TableT]):
         return v
 
     @model_serializer
-    def _set_model(self) -> str | None:
-        return str(self.filepath.name) if self.filepath is not None else None
+    def _set_model(self, info: SerializationInfo) -> "str | TableModel[TableT] | None":
+        # When writing, only return the filename.
+        if info.context == "write":
+            return str(self.filepath.name) if self.filepath is not None else None
+        else:
+            return self
 
     @classmethod
     def tablename(cls) -> str:
