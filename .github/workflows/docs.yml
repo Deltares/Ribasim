@@ -1,7 +1,7 @@
 name: Docs
 on:
   push:
-    branches: [main, update/pixi-lock, update/julia-manifest]
+    branches: [main, "update/pixi-lock", "update/julia-manifest"]
     paths-ignore: [".teamcity/**"]
   pull_request:
     paths-ignore: [".teamcity/**"]
