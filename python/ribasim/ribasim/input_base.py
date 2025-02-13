@@ -107,7 +107,7 @@ class BaseModel(PydanticBaseModel):
             # Perform common checks first
             if not (
                 self_type == other_type
-                # This comparison has been removed, otherwise we recuse because
+                # This comparison has been removed, otherwise we recurse because
                 # we store the parent of the model in a private attribute
                 # and getattr(self, "__pydantic_private__", None)
                 # == getattr(other, "__pydantic_private__", None)

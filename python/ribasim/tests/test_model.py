@@ -258,6 +258,7 @@ def test_model_equals(basic):
     nbasic.solver.saveat = 0
     assert nbasic.solver.saveat != basic.solver.saveat
     assert nbasic.solver != basic.solver
+    assert nbasic.basin == basic.basin
     assert nbasic != basic
 
     nbasic.solver.saveat = basic.solver.saveat
