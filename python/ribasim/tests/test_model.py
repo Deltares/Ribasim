@@ -13,6 +13,7 @@ from ribasim.config import Solver
 from ribasim.geometry.link import NodeData
 from ribasim.input_base import esc_id
 from ribasim.model import Model
+from ribasim.nodes import basin
 from ribasim_testmodels import (
     basic_model,
     outlet_model,
@@ -245,3 +246,27 @@ def test_non_existent_files(tmp_path):
 
     with pytest.raises(FileNotFoundError, match=r"Database file .* does not exist\."):
         Model.read(toml_path)
+
+
+def test_model_equals(basic):
+    nbasic = basic.model_copy(deep=True)
+
+    assert nbasic.basin.static == basic.basin.static
+    assert nbasic.basin == basic.basin
+    assert nbasic == basic
+
+    nbasic.solver.saveat = 0
+    assert nbasic.solver.saveat != basic.solver.saveat
+    assert nbasic.solver != basic.solver
+    assert nbasic != basic
+
+    nbasic.solver.saveat = basic.solver.saveat
+    nbasic.basin.add(
+        Node(None, Point(-1.5, -1), name="confluence"),
+        [
+            basin.Static(precipitation=[4]),
+        ],
+    )
+    assert nbasic.basin.static != basic.basin.static
+    assert nbasic.basin != basic.basin
+    assert nbasic != basic

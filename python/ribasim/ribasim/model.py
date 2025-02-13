@@ -186,7 +186,9 @@ class Model(FileModel):
         Path
             The file path of the written TOML file.
         """
-        content = self.model_dump(exclude_unset=True, exclude_none=True, by_alias=True)
+        content = self.model_dump(
+            exclude_unset=True, exclude_none=True, by_alias=True, context="write"
+        )
         # Filter empty dicts (default Nodes)
         content = dict(filter(lambda x: x[1], content.items()))
         content["ribasim_version"] = ribasim.__version__
