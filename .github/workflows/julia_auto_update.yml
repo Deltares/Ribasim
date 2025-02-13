@@ -24,7 +24,7 @@ jobs:
       - uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.CI_PR_PAT }}
-          branch: "update/julia-manifest"
+          branch: update/julia-manifest
           title: Update Julia manifest
           commit-message: "Update Julia manifest"
           body: Update Julia dependencies to the latest version.
