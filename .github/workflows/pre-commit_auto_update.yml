@@ -20,8 +20,8 @@ jobs:
       - uses: browniebroke/pre-commit-autoupdate-action@main
       - uses: peter-evans/create-pull-request@v7
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          branch: "update/pre-commit-hooks"
+          token: ${{ secrets.CI_PR_PAT }}
+          branch: update/pre-commit-hooks
           title: Update pre-commit hooks
           commit-message: "Update pre-commit hooks"
           body: Update versions of pre-commit hooks to latest version.

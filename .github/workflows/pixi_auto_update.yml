@@ -28,11 +28,11 @@ jobs:
       - name: Create pull request
         uses: peter-evans/create-pull-request@v7
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.CI_PR_PAT }}
           commit-message: Update pixi lockfile
           title: Update pixi lockfile
           body-path: diff.md
-          branch: "update/pixi-lock"
+          branch: update/pixi-lock
           base: main
           delete-branch: true
           add-paths: pixi.lock

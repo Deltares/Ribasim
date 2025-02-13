@@ -23,8 +23,8 @@ jobs:
           pixi run update-manifest-julia
       - uses: peter-evans/create-pull-request@v7
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          branch: "update/julia-manifest"
+          token: ${{ secrets.CI_PR_PAT }}
+          branch: update/julia-manifest
           title: Update Julia manifest
           commit-message: "Update Julia manifest"
           body: Update Julia dependencies to the latest version.
