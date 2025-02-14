@@ -18,7 +18,7 @@ jobs:
       - name: Update Julia manifest file
         run: |
           pixi run install-julia
-          pixi run update-manifest-julia.md
+          pixi run update-manifest-julia
       - uses: peter-evans/create-pull-request@v7
         env:
           JULIA_PKG_PRECOMPILE_AUTO: "0"
