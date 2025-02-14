@@ -20,7 +20,10 @@ for node_type in fieldtypes(Ribasim.Parameters)
         controllable_fields = Ribasim.controllablefields(node_name)
         controllable_fields = sort!(string.(controllable_fields))
         if node_name == :TabulatedRatingCurve
-            controllable_fields = map(s -> replace(s, "table" => "q(h) relationship (given by level, flow_rate)"), controllable_fields)
+            controllable_fields = map(
+                s -> replace(s, "table" => "q(h) relationship (given by level, flow_rate)"),
+                controllable_fields,
+            )
         end
         if !isempty(controllable_fields)
             push!(node_names, Ribasim.snake_case(node_name))
@@ -86,11 +89,9 @@ DiscreteControl is applied in the Julia core as follows:
 
 - During the simulation it is checked whether the truth of any of the conditions changes.
 - When a condition changes, the corresponding DiscreteControl node ID is retrieved (node_id in the condition schema above).
-- The truth value of all the conditions this DiscreteControl node listens to are retrieved, **in the sorted order as specified in the condition schema**. This is then converted into a string of "T" for true and "F" for false. This string we call the truth state.*
+- The truth value of all the conditions this DiscreteControl node listens to are retrieved, **in the sorted order as specified in the condition schema**. This is then converted into a string of "T" for true and "F" for false. This string we call the truth state.
 - The table below determines for the given DiscreteControl node ID and truth state what the corresponding control state is.
 - For all the nodes this DiscreteControl node affects (as given by the "control" links in [Links / static](/reference/usage.qmd#link)), their parameters are set to those parameters in `NodeType / static` corresponding to the determined control state.
-
-*.  There is also a second truth state created in which for the last condition that changed it is specified whether it was an upcrossing ("U") or downcrossing ("D") of the threshold (greater than) value. If a control state is specified for a truth state that is crossing-specific, this takes precedence over the control state for the truth state that contains only "T" and "F".
 
 :::{.callout-note}
 When creating truth states, it is important to not use the order of the condition table as you provide it, but the order as it is written to the file.
@@ -101,4 +102,4 @@ column         | type     | unit | restriction
 -------------- | -------- | ---- | -----------
 node_id        | Int32    | -    |
 control_state  | String   | -    | -
-truth_state    | String   | -    | Consists of the characters "T" (true), "F" (false), "U" (upcrossing), "D" (downcrossing) and "*" (any)
+truth_state    | String   | -    | Consists of the characters "T" (true), "F" (false) and "*" (any)
