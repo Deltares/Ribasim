@@ -18,12 +18,14 @@ jobs:
       - name: Update Julia manifest file
         run: |
           pixi run install-julia
-          pixi run update-manifest-julia
+          pixi run update-manifest-julia.md
       - uses: peter-evans/create-pull-request@v7
+        env:
+          JULIA_PKG_PRECOMPILE_AUTO: "0"
         with:
           token: ${{ secrets.CI_PR_PAT }}
           branch: update/julia-manifest
           title: Update Julia manifest
           commit-message: "Update Julia manifest"
-          body: Update Julia dependencies to the latest version.
+          body-path: .pixi/update-manifest-julia.md.md
           author: "GitHub <noreply@github.com>"
