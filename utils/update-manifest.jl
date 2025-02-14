@@ -7,6 +7,7 @@ const DETAILS_BEGIN = """
 All package versions
 </summary>
 
+```
 """
 
 """
@@ -17,9 +18,9 @@ function (@main)(_)
     path = normpath(@__DIR__, "../.pixi/update-manifest-julia.md")
     redirect_stdio(; stdout = path, stderr = path) do
         println("Update the Julia Manifest.toml to get the latest dependencies.\n")
-        println("__Changed packages__`\n```")
+        println("__Changed packages__\n```")
         Pkg.update()
-        println("```\n\n__Packages still outdated after update__`\n```")
+        println("```\n\n__Packages still outdated after update__\n```")
         Pkg.status(; outdated = true)
         println("```")
     end
@@ -41,6 +42,6 @@ function (@main)(_)
         println(io, DETAILS_BEGIN)
         sort!(installed_lines)
         foreach(line -> println(io, line), installed_lines)
-        println("\n\n</details>")
+        println("```\n\n</details>")
     end
 end
