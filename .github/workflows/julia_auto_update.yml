@@ -27,5 +27,5 @@ jobs:
           branch: update/julia-manifest
           title: Update Julia manifest
           commit-message: "Update Julia manifest"
-          body-path: .pixi/update-manifest-julia.md.md
+          body-path: .pixi/update-manifest-julia.md
           author: "GitHub <noreply@github.com>"
