@@ -24,7 +24,6 @@ website:
       - icon: github
         href: https://github.com/Deltares/Ribasim
         aria-label: GitHub
-
   sidebar:
     - title: "Overview"
       contents:
@@ -33,13 +32,11 @@ website:
         - changelog.qmd
         - known_issues.qmd
         - contact.qmd
-
     - title: "Tutorials"
       contents:
         - tutorial/natural-flow.ipynb
         - tutorial/irrigation-demand.ipynb
         - tutorial/reservoir.ipynb
-
     - title: "How-to guides"
       contents:
         - guide/examples.ipynb
@@ -47,21 +44,19 @@ website:
         - guide/coupling.qmd
         - section: "Coupling guides"
           contents:
-          - guide/delwaq.ipynb
-
+            - guide/delwaq.ipynb
     - title: "Concepts"
       contents:
         - concept/concept.qmd
         - section: "Numerics"
           contents:
-          - concept/modelconcept.qmd
-          - concept/equations.qmd
-          - concept/numerics.qmd
+            - concept/modelconcept.qmd
+            - concept/equations.qmd
+            - concept/numerics.qmd
         - section: "Implementation"
           contents:
-          - concept/core.qmd
-          - concept/allocation.qmd
-
+            - concept/core.qmd
+            - concept/allocation.qmd
     - title: "Reference"
       contents:
         - reference/index.qmd
@@ -86,7 +81,6 @@ website:
             - reference/node/discrete-control.qmd
             - reference/node/continuous-control.qmd
             - reference/node/pid-control.qmd
-
     - title: "Contributing"
       contents:
         - dev/index.qmd
@@ -103,16 +97,13 @@ website:
           contents:
             - dev/qgis.qmd
             - dev/qgis_test_plan.qmd
-
 format:
   html:
     theme: cosmo
     css: assets/styles.css
     toc: true
-
 bibliography: references.bib
 number-sections: true
-
 quartodoc:
   style: pkgdown
   dir: reference/python

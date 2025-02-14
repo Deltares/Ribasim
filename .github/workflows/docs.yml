@@ -35,13 +35,10 @@ jobs:
           pixi-version: "latest"
       - name: Prepare pixi
         run: pixi run install-ci
-
       - name: Check Quarto installation and all engines
         run: pixi run quarto-check
-
       - name: Render Quarto Project
         run: pixi run quarto-render
-
       - name: Publish Quarto Project
         if: github.ref == 'refs/heads/main'
         uses: peaceiris/actions-gh-pages@v4
