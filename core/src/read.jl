@@ -246,12 +246,15 @@ const conservative_nodetypes = Set{NodeType.T}([
     NodeType.ManningResistance,
 ])
 
-function get_source_priority_data(
+function get_allocation_sources_in_order!(
     p::Parameters,
     db::DB,
     config::Config,
-)::Vector{SOURCE_TUPLE}
-    (; graph) = p
+)::OrderedDict{Tuple{NodeID, NodeID}, AllocationSource}
+    (; graph, user_demand, allocation) = p
+    (; subnetwork_demands, subnetwork_allocateds, demand_priorities_all) = allocation
+    n_demand_priorities = length(demand_priorities_all)
+
     default_source_priority = config.allocation.source_priority
 
     node_rows = execute(
@@ -268,31 +271,47 @@ function get_source_priority_data(
     default_source_priority_dict[:flow_boundary] = default_source_priority.boundary
     default_source_priority_dict[:level_boundary] = default_source_priority.boundary
 
-    # Get named tuples (; node_id, subnetwork_id, source_priority)
-    source_priority_tuples = SOURCE_TUPLE[]
+    # NOTE: return flow has to be done before other sources, to prevent that
+    # return flow is directly used within the same source priority by the same node
+    sources = OrderedDict{Tuple{NodeID, NodeID}, AllocationSource}()
 
     errors = false
 
     for row in node_rows
         # Only source nodes that are part of a subnetwork are relevant
         is_source = false
-        # One source priority can apply to multiple sources in the case of a LevelDemand
-        # node which connects to multiple basins
-        node_ids = [NodeID(Symbol(row.node_type), row.node_id, p)]
+        # One row can yield multiple sources:
+        # - One source priority can apply to multiple sources in the case of a LevelDemand
+        #   node which connects to multiple basins
+        # - One source node can imply multiple sources in the case of a LevelBoundary with multiple
+        #   neighbors
+        node_id = NodeID(Symbol(row.node_type), row.node_id, p)
+        links = Tuple{NodeID, NodeID}[]
         if !ismissing(row.subnetwork_id)
+            # E.g. :manning_resistance
             node_type = Symbol(snake_case(row.node_type))
 
             if node_type ∈ source_types
                 # The case where the node type is also a source type
                 source_priority =
                     coalesce(row.source_priority, default_source_priority_dict[node_type])
+                # E.g. AllocationSourceType.level_demand
                 source_type = AllocationSourceType.T(node_type)
                 is_source = true
-                # If the row is for a level demand or flow demand, make node_ids
-                # for the node(s) that has/have the demand
-                if only(node_ids).type ∈ (NodeType.LevelDemand, NodeType.FlowDemand)
-                    node_ids =
-                        outneighbor_labels_type(graph, only(node_ids), LinkType.control)
+                if source_type == AllocationSourceType.level_demand
+                    # If the row is for a level demand, make a source for each connected basin
+                    for basin_id in
+                        outneighbor_labels_type(graph, node_id, LinkType.control)
+                        push!(links, (basin_id, basin_id))
+                    end
+                elseif source_type == AllocationSourceType.flow_demand
+                    # If the row is for a flow demand, make a source for the connected connector node
+                    id_with_demand = only(
+                        outneighbor_labels_type(graph, only(node_ids), LinkType.control),
+                    )
+                    push!(links, (id_with_demand, id_with_demand))
+                else # if source_type == AllocationSourceType.user_demand
+                    push!(links, user_demand.outflow_link[node_id.idx].link)
                 end
             elseif node_type ∈ (:flow_boundary, :level_boundary)
                 # The case where the node type is a boundary source node type
@@ -300,24 +319,37 @@ function get_source_priority_data(
                     coalesce(row.source_priority, default_source_priority_dict[node_type])
                 source_type = AllocationSourceType.boundary
                 is_source = true
+                # Always consider the edge going out of the source, even if only the reverse edge
+                # exists in the physical layer
+                for inoutflow_id in inoutflow_ids(graph, node_id)
+                    push!(links, (node_id, inoutflow_id))
+                end
             elseif row.subnetwork_id != 1 # Not in the main network
-                for id in filter!(
+                for main_network_id in filter!(
                     id -> graph[id].subnetwork_id == 1, # Connects to the main network
-                    collect(inflow_ids(p.graph, only(node_ids))),
+                    collect(inflow_ids(p.graph, node_id)),
                 )
                     is_source = true
                     source_priority = default_source_priority_dict[:subnetwork_inlet]
                     source_type = AllocationSourceType.subnetwork_inlet
-                    break
+                    link = (main_network_id, node_id)
+                    push!(links, link)
+                    # Allocate memory for the demands and demand priorities
+                    # from the subnetwork via this link
+                    subnetwork_demands[link] = zeros(n_demand_priorities)
+                    subnetwork_allocateds[link] = zeros(n_demand_priorities)
                 end
             end
         end
 
         if is_source
-            for node_id in node_ids
-                push!(
-                    source_priority_tuples,
-                    (; node_id, row.subnetwork_id, source_priority, source_type),
+            for link in links
+                sources[link] = AllocationSource(;
+                    link,
+                    type = source_type,
+                    source_priority,
+                    row.subnetwork_id,
+                    node_id,
                 )
             end
         elseif !ismissing(row.source_priority)
@@ -330,8 +362,12 @@ function get_source_priority_data(
         error("Errors encountered when processing the allocation source priority data.")
     end
 
-    sort!(source_priority_tuples; by = x -> (x.subnetwork_id, x.source_priority))
-    source_priority_tuples
+    OrderedDict(
+        sort!(
+            collect(sources);
+            by = pair -> (pair[2].subnetwork_id, pair[2].source_priority, pair[2].node_id),
+        ),
+    )
 end
 
 function initialize_allocation!(p::Parameters, db::DB, config::Config)::Nothing
@@ -353,21 +389,12 @@ function initialize_allocation!(p::Parameters, db::DB, config::Config)::Nothing
         push!(main_network_connections, Tuple{NodeID, NodeID}[])
     end
 
-    if first(subnetwork_ids_) == 1
-        find_subnetwork_connections!(p)
-    end
-
-    source_priority_tuples = get_source_priority_data(p, db, config)
+    sources = get_allocation_sources_in_order!(p, db, config)
 
     for subnetwork_id in subnetwork_ids_
         push!(
             allocation_models,
-            AllocationModel(
-                subnetwork_id,
-                p,
-                source_priority_tuples,
-                config.allocation.timestep,
-            ),
+            AllocationModel(subnetwork_id, p, sources, config.allocation.timestep),
         )
     end
     return nothing

@@ -1,27 +1,3 @@
-"""Find the links from the main network to a subnetwork."""
-function find_subnetwork_connections!(p::Parameters)::Nothing
-    (; allocation, graph, allocation) = p
-    n_demand_priorities = length(allocation.demand_priorities_all)
-    (; subnetwork_demands, subnetwork_allocateds) = allocation
-    # Find links (node_id, outflow_id) where the source node has subnetwork id 1 and the
-    # destination node subnetwork id ≠1
-    for node_id in graph[].node_ids[1]
-        for outflow_id in outflow_ids(graph, node_id)
-            if (graph[outflow_id].subnetwork_id != 1)
-                main_network_source_links =
-                    get_main_network_connections(p, graph[outflow_id].subnetwork_id)
-                link = (node_id, outflow_id)
-                push!(main_network_source_links, link)
-                # Allocate memory for the demands and demand priorities
-                # from the subnetwork via this link
-                subnetwork_demands[link] = zeros(n_demand_priorities)
-                subnetwork_allocateds[link] = zeros(n_demand_priorities)
-            end
-        end
-    end
-    return nothing
-end
-
 function get_main_network_connections(
     p::Parameters,
     subnetwork_id::Int32,
@@ -161,17 +137,15 @@ The variable indices are the node IDs of the basins in the subnetwork.
 """
 function add_variables_basin!(
     problem::JuMP.Model,
-    p::Parameters,
-    subnetwork_id::Int32,
+    sources::OrderedDict{Tuple{NodeID, NodeID}, AllocationSource},
 )::Nothing
-    (; graph) = p
 
     # Get the node IDs from the subnetwork for basins that have a level demand
     node_ids_basin = [
-        node_id for
-        node_id in graph[].node_ids[subnetwork_id] if graph[node_id].type == :basin &&
-        has_external_demand(graph, node_id, :level_demand)[1]
+        source.link[1] for
+        source in values(sources) if source.type == AllocationSourceType.level_demand
     ]
+
     problem[:F_basin_in] =
         JuMP.@variable(problem, F_basin_in[node_id = node_ids_basin,] >= 0.0)
     problem[:F_basin_out] =
@@ -185,18 +159,12 @@ The variable indices are the node IDs of the nodes with a buffer in the subnetwo
 """
 function add_variables_flow_buffer!(
     problem::JuMP.Model,
-    p::Parameters,
-    subnetwork_id::Int32,
+    sources::OrderedDict{Tuple{NodeID, NodeID}, AllocationSource},
 )::Nothing
-    (; graph) = p
-
-    # Collect the nodes in the subnetwork that have a flow demand
-    node_ids_flow_demand = NodeID[]
-    for node_id in graph[].node_ids[subnetwork_id]
-        if has_external_demand(graph, node_id, :flow_demand)[1]
-            push!(node_ids_flow_demand, node_id)
-        end
-    end
+    node_ids_flow_demand = [
+        source.link[1] for
+        source in values(sources) if source.type == AllocationSourceType.flow_demand
+    ]
 
     problem[:F_flow_buffer_in] =
         JuMP.@variable(problem, F_flow_buffer_in[node_id = node_ids_flow_demand,] >= 0.0)
@@ -248,20 +216,19 @@ flow over UserDemand link outflow link <= cumulative return flow from previous d
 """
 function add_constraints_user_source!(
     problem::JuMP.Model,
-    p::Parameters,
-    subnetwork_id::Int32,
+    sources::OrderedDict{Tuple{NodeID, NodeID}, AllocationSource},
 )::Nothing
-    (; graph) = p
     F = problem[:F]
-    node_ids = graph[].node_ids[subnetwork_id]
 
-    # Find the UserDemand nodes in the subnetwork
-    node_ids_user = [node_id for node_id in node_ids if node_id.type == NodeType.UserDemand]
+    return_links = Dict(
+        source.link[1] => source.link for
+        source in values(sources) if source.type == AllocationSourceType.user_demand
+    )
 
     problem[:source_user] = JuMP.@constraint(
         problem,
-        [node_id = node_ids_user],
-        F[(node_id, outflow_id(graph, node_id))] <= 0.0,
+        [node_id = keys(return_links)],
+        F[return_links[node_id]] <= 0.0,
         base_name = "source_user"
     )
     return nothing
@@ -277,12 +244,12 @@ flow over source link <= source flow in physical layer
 """
 function add_constraints_boundary_source!(
     problem::JuMP.Model,
-    p::Parameters,
-    subnetwork_id::Int32,
+    sources::OrderedDict{Tuple{NodeID, NodeID}, AllocationSource},
 )::Nothing
-    # Source links (without the basins)
-    links_source =
-        [link for link in source_links_subnetwork(p, subnetwork_id) if link[1] != link[2]]
+    links_source = [
+        source.link for
+        source in values(sources) if source.type == AllocationSourceType.boundary
+    ]
     F = problem[:F]
 
     problem[:source_boundary] = JuMP.@constraint(
@@ -304,13 +271,14 @@ flow over main network to subnetwork connection link <= either 0 or allocated am
 """
 function add_constraints_main_network_source!(
     problem::JuMP.Model,
-    p::Parameters,
-    subnetwork_id::Int32,
+    sources::OrderedDict{Tuple{NodeID, NodeID}, AllocationSource},
 )::Nothing
     F = problem[:F]
-    (; main_network_connections, subnetwork_ids) = p.allocation
-    subnetwork_id = searchsortedfirst(subnetwork_ids, subnetwork_id)
-    links_source = main_network_connections[subnetwork_id]
+
+    links_source = [
+        source.link for source in values(sources) if
+        source.type == AllocationSourceType.subnetwork_inlet
+    ]
 
     problem[:source_main_network] = JuMP.@constraint(
         problem,
@@ -445,6 +413,7 @@ Construct the allocation problem for the current subnetwork as a JuMP model.
 """
 function allocation_problem(
     p::Parameters,
+    sources::OrderedDict{Tuple{NodeID, NodeID}, AllocationSource},
     capacity::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}},
     subnetwork_id::Int32,
 )::JuMP.Model
@@ -461,109 +430,19 @@ function allocation_problem(
 
     # Add variables to problem
     add_variables_flow!(problem, capacity)
-    add_variables_basin!(problem, p, subnetwork_id)
-    add_variables_flow_buffer!(problem, p, subnetwork_id)
+    add_variables_basin!(problem, sources)
+    add_variables_flow_buffer!(problem, sources)
 
     # Add constraints to problem
     add_constraints_conservation_node!(problem, p, subnetwork_id)
     add_constraints_capacity!(problem, capacity, p, subnetwork_id)
-    add_constraints_boundary_source!(problem, p, subnetwork_id)
-    add_constraints_main_network_source!(problem, p, subnetwork_id)
-    add_constraints_user_source!(problem, p, subnetwork_id)
+    add_constraints_boundary_source!(problem, sources)
+    add_constraints_main_network_source!(problem, sources)
+    add_constraints_user_source!(problem, sources)
     add_constraints_basin_flow!(problem)
     add_constraints_buffer!(problem)
 
     return problem
-end
-
-const SOURCE_TUPLE = @NamedTuple{
-    node_id::NodeID,
-    subnetwork_id::Int32,
-    source_priority::Int32,
-    source_type::AllocationSourceType.T,
-}
-
-# User return flow
-function AllocationSource(
-    p::Parameters,
-    source_tuple::SOURCE_TUPLE,
-    ::Val{AllocationSourceType.user_demand},
-)
-    (; user_demand) = p
-    (; node_id, source_priority) = source_tuple
-    link = user_demand.outflow_link[node_id.idx].link
-    AllocationSource(; link, source_priority, type = AllocationSourceType.user_demand)
-end
-
-# Boundary node sources
-function AllocationSource(
-    p::Parameters,
-    source_tuple::SOURCE_TUPLE,
-    ::Val{AllocationSourceType.boundary},
-)
-    (; graph) = p
-    (; node_id, source_priority) = source_tuple
-    link = outflow_link(graph, node_id).link
-    AllocationSource(; link, source_priority, type = AllocationSourceType.boundary)
-end
-
-# Basins with level demand
-function AllocationSource(
-    ::Parameters,
-    source_tuple::SOURCE_TUPLE,
-    ::Val{AllocationSourceType.level_demand},
-)
-    (; node_id, source_priority) = source_tuple
-    link = (node_id, node_id)
-    AllocationSource(; link, source_priority, type = AllocationSourceType.level_demand)
-end
-
-# Main network to subnetwork connections
-function AllocationSource(
-    p::Parameters,
-    source_tuple::SOURCE_TUPLE,
-    ::Val{AllocationSourceType.subnetwork_inlet},
-)
-    (; node_id, source_priority) = source_tuple
-    link = (inflow_id(p.graph, node_id), node_id)
-    AllocationSource(; link, source_priority, type = AllocationSourceType.subnetwork_inlet)
-end
-
-# Connector nodes with a flow demand
-function AllocationSource(
-    ::Parameters,
-    source_tuple::SOURCE_TUPLE,
-    ::Val{AllocationSourceType.flow_demand},
-)
-    (; node_id, source_priority) = source_tuple
-    link = (node_id, node_id)
-    AllocationSource(; link, source_priority, type = AllocationSourceType.flow_demand)
-end
-
-"""
-Get the sources within the subnetwork in the order in which they will
-be optimized over.
-"""
-function get_sources_in_order(
-    p::Parameters,
-    source_priority_tuples::Vector{SOURCE_TUPLE},
-    subnetwork_id::Integer,
-)::OrderedDict{Tuple{NodeID, NodeID}, AllocationSource}
-    # NOTE: return flow has to be done before other sources, to prevent that
-    # return flow is directly used within the same source priority
-    sources = OrderedDict{Tuple{NodeID, NodeID}, AllocationSource}()
-
-    source_priority_tuples_subnetwork = view(
-        source_priority_tuples,
-        searchsorted(source_priority_tuples, (; subnetwork_id); by = x -> x.subnetwork_id),
-    )
-
-    for source_tuple in source_priority_tuples_subnetwork
-        source = AllocationSource(p, source_tuple, Val(source_tuple.source_type))
-        sources[source.link] = source
-    end
-
-    sources
 end
 
 """
@@ -572,13 +451,16 @@ Construct the JuMP.jl problem for allocation.
 function AllocationModel(
     subnetwork_id::Int32,
     p::Parameters,
-    source_priority_tuples::Vector{SOURCE_TUPLE},
+    sources::OrderedDict{Tuple{NodeID, NodeID}, AllocationSource},
     Δt_allocation::Float64,
 )::AllocationModel
     capacity = get_capacity(p, subnetwork_id)
-    sources = get_sources_in_order(p, source_priority_tuples, subnetwork_id)
     source_priorities = unique(source.source_priority for source in values(sources))
-    problem = allocation_problem(p, capacity, subnetwork_id)
+    sources = OrderedDict(
+        link => source for
+        (link, source) in sources if source.subnetwork_id == subnetwork_id
+    )
+    problem = allocation_problem(p, sources, capacity, subnetwork_id)
     flow = JuMP.Containers.SparseAxisArray(Dict(only(problem[:F].axes) .=> 0.0))
 
     return AllocationModel(;

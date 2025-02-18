@@ -156,6 +156,8 @@ Data structure for a single source within an allocation subnetwork.
 link: The outflow link of the source
 type: The type of source (link, basin, main_to_sub, user_return, buffer)
 source_priority: The priority of the source
+subnetwork_id: The ID of the subnetwork this source belongs to
+node_id: The ID of the node from which this source was created. Mainly used for sorting the sources.
 capacity: The initial capacity of the source as determined by the physical layer
 capacity_reduced: The capacity adjusted by passed optimizations
 basin_flow_rate: The total outflow rate of a basin when optimized over all sources for one demand priority.
@@ -165,6 +167,8 @@ basin_flow_rate: The total outflow rate of a basin when optimized over all sourc
     const link::Tuple{NodeID, NodeID}
     const type::AllocationSourceType.T
     const source_priority::Int32
+    const subnetwork_id::Int32
+    const node_id::NodeID
     capacity::Float64 = 0.0
     capacity_reduced::Float64 = 0.0
     basin_flow_rate::Float64 = 0.0
