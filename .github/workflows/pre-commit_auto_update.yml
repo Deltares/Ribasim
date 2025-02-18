@@ -1,12 +1,10 @@
 name: Pre-commit auto update
-
 on:
   schedule:
-  # At 03:00 on day 1 of the month
+    # At 03:00 on day 1 of the month
     - cron: "0 3 1 * *"
   # on demand
   workflow_dispatch:
-
 jobs:
   auto-update:
     runs-on: ubuntu-latest
@@ -20,7 +18,7 @@ jobs:
       - uses: browniebroke/pre-commit-autoupdate-action@main
       - uses: peter-evans/create-pull-request@v7
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.CI_PR_PAT }}
           branch: update/pre-commit-hooks
           title: Update pre-commit hooks
           commit-message: "Update pre-commit hooks"

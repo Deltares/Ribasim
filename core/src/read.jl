@@ -1908,7 +1908,7 @@ function set_concentrations!(
 )
     for substance in unique(concentration_data.substance)
         data_sub = filter(row -> row.substance == substance, concentration_data)
-        sub_idx = findfirst(==(Symbol(substance)), substances)
+        sub_idx = find_index(Symbol(substance), substances)
         for group in IterTools.groupby(row -> row.node_id, data_sub)
             first_row = first(group)
             value = getproperty(first_row, concentration_column)

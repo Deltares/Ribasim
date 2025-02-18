@@ -18,9 +18,9 @@ jobs:
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
-      - uses: prefix-dev/setup-pixi@v0.8.1
+      - uses: prefix-dev/setup-pixi@v0.8.2
         with:
-          pixi-version: "v0.41.1"
+          pixi-version: "latest"
       - name: Run mypy on python/ribasim
         run: |
           pixi run mypy-ribasim-python

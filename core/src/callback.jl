@@ -614,7 +614,7 @@ function get_value(subvariable::NamedTuple, p::Parameters, du::AbstractVector, t
             basin.concentration_data.concentration_external[listen_node_id.idx][variable](t)
     elseif startswith(variable, "concentration.")
         substance = Symbol(last(split(variable, ".")))
-        var_idx = findfirst(==(substance), basin.concentration_data.substances)
+        var_idx = find_index(substance, basin.concentration_data.substances)
         value = basin.concentration_data.concentration_state[listen_node_id.idx, var_idx]
     else
         error("Unsupported condition variable $variable.")
@@ -753,7 +753,7 @@ function update_basin_conc!(integrator)::Nothing
 
     for row in timeblock
         i = searchsortedfirst(node_id, NodeID(NodeType.Basin, row.node_id, 0))
-        j = findfirst(==(Symbol(row.substance)), substances)
+        j = find_index(Symbol(row.substance), substances)
         ismissing(row.drainage) || (concentration[1, i, j] = row.drainage)
         ismissing(row.precipitation) || (concentration[2, i, j] = row.precipitation)
     end
@@ -774,7 +774,7 @@ function update_conc!(integrator, parameter, nodetype)::Nothing
 
     for row in timeblock
         i = searchsortedfirst(node_id, NodeID(nodetype, row.node_id, 0))
-        j = findfirst(==(Symbol(row.substance)), substances)
+        j = find_index(Symbol(row.substance), substances)
         ismissing(row.concentration) || (concentration[i, j] = row.concentration)
     end
     return nothing

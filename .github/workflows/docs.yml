@@ -30,18 +30,15 @@ jobs:
         # https://github.com/JuliaPy/Conda.jl/issues/251
         run: |
           mkdir -p "/home/runner/.julia/conda/3/x86_64"
-      - uses: prefix-dev/setup-pixi@v0.8.1
+      - uses: prefix-dev/setup-pixi@v0.8.2
         with:
-          pixi-version: "v0.41.1"
+          pixi-version: "latest"
       - name: Prepare pixi
         run: pixi run install-ci
-
       - name: Check Quarto installation and all engines
         run: pixi run quarto-check
-
       - name: Render Quarto Project
         run: pixi run quarto-render
-
       - name: Publish Quarto Project
         if: github.ref == 'refs/heads/main'
         uses: peaceiris/actions-gh-pages@v4

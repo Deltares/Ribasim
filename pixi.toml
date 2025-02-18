@@ -31,7 +31,7 @@ install = { depends-on = [
 # Julia
 # Clear SSL_CERT_DIR to avoid Julia warnings, see https://github.com/JuliaLang/Downloads.jl/issues/244
 update-registry-julia = { cmd = "julia --eval='using Pkg; Registry.update()'", env = { SSL_CERT_DIR = "" } }
-update-manifest-julia = { cmd = "julia --project --eval='using Pkg; Pkg.update()'", env = { SSL_CERT_DIR = "" } }
+update-manifest-julia = { cmd = "julia --project utils/update-manifest.jl", env = { SSL_CERT_DIR = "", JULIA_SSL_CA_ROOTS_PATH = "" } }
 instantiate-julia = { cmd = "julia --project --eval='using Pkg; Pkg.instantiate()'", env = { SSL_CERT_DIR = "", JULIA_SSL_CA_ROOTS_PATH = "" } }
 initialize-julia = { depends-on = [
     "update-registry-julia",
