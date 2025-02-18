@@ -44,14 +44,14 @@ end
 @testitem "Profile" begin
     import Tables
     using DataInterpolations: LinearInterpolation, integral, invert_integral
-    using DataInterpolations.ExtrapolationType: Constant, Linear
+    using DataInterpolations.ExtrapolationType: Constant, Extension
 
     function lookup(profile, S)
         level_to_area = LinearInterpolation(
             profile.A,
             profile.h;
             extrapolation_left = Constant,
-            extrapolation_right = Linear,
+            extrapolation_right = Extension,
         )
         storage_to_level = invert_integral(level_to_area)
 
@@ -73,7 +73,7 @@ end
                     A,
                     h;
                     extrapolation_left = Constant,
-                    extrapolation_right = Linear,
+                    extrapolation_right = Extension,
                 ),
             ),
             h,
@@ -113,7 +113,7 @@ end
                     A,
                     h;
                     extrapolation_left = Constant,
-                    extrapolation_right = Linear,
+                    extrapolation_right = Extension,
                 ),
             ),
             h,
@@ -132,7 +132,7 @@ end
     using Logging
     using Ribasim: NodeID
     using DataInterpolations: LinearInterpolation, invert_integral
-    using DataInterpolations.ExtrapolationType: Constant, Linear
+    using DataInterpolations.ExtrapolationType: Constant, Extension
     using DataStructures: OrderedSet
 
     level = [
@@ -163,7 +163,7 @@ end
         area,
         level;
         extrapolation_left = Constant,
-        extrapolation_right = Linear,
+        extrapolation_right = Extension,
     )
     storage_to_level = invert_integral(level_to_area)
 

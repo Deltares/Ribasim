@@ -851,7 +851,7 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
             area,
             level;
             extrapolation_left = Constant,
-            extrapolation_right = Linear,
+            extrapolation_right = Extension,
             cache_parameters = true,
         )
     storage_to_level = invert_integral.(level_to_area)

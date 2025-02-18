@@ -64,7 +64,7 @@ using DataInterpolations:
     derivative,
     integral,
     AbstractInterpolation
-using DataInterpolations.ExtrapolationType: Constant, Linear
+using DataInterpolations.ExtrapolationType: Constant, Extension
 
 # Modeling language for Mathematical Optimization.
 # Used for allocation, see the docs: https://ribasim.org/dev/allocation.html
