@@ -1287,6 +1287,9 @@ def bommelerwaard_model():
             [2.8, 2.9],
         ],
     ):
+        # Skip this control node as it causes stability problems
+        if node_id == 49:
+            continue
         model.discrete_control.add(
             get_node(node_id),
             [
@@ -1343,7 +1346,6 @@ def bommelerwaard_model():
     # fmt: off
     from_node_id = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 18, 41, 35, 44, 34, 43, 33, 10, 40, 32, 38, 39, 26, 31, 36, 37, 26, 42, 45, 46, 47, 48, 49, 50, 51, 31, 52, 32, 53, 33, 54, 34, 55, 35, 56, 8, 57, 28, 58, 59, 60, 61]
     to_node_id = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 41, 35, 44, 33, 43, 33, 42, 40, 34, 39, 32, 26, 38, 37, 31, 26, 36, 26, 36, 37, 38, 39, 42, 41, 40, 52, 31, 53, 32, 54, 33, 55, 34, 56, 35, 57, 8, 58, 28, 31, 32, 8]
-    link_type = ['flow', 'flow', 'flow', 'flow', 'flow', 'flow', 'flow', 'flow', 'flow', 'flow', 'flow', 'flow', 'flow', 'flow', 'flow', 'flow', 'flow', 'flow', 'flow', 'flow', 'flow', 'flow', 'flow', 'flow', 'flow', 'flow', 'flow', 'flow', 'flow', 'flow', 'flow', 'flow', 'flow', 'flow', 'flow', 'flow', 'flow', 'flow', 'flow', 'flow', 'flow', 'flow', 'flow', 'flow', 'flow', 'flow', 'flow', 'control', 'control', 'control', 'control', 'control', 'control', 'control', 'flow', 'flow', 'flow', 'flow', 'flow', 'flow', 'flow', 'flow', 'flow', 'flow', 'flow', 'flow', 'flow', 'flow', 'control', 'control', 'control']
     # fmt: on
 
     node_df = model.node_table().df
@@ -1353,9 +1355,11 @@ def bommelerwaard_model():
         node_type = node_df.loc[node_df.index == node_id, "node_type"].to_numpy()[0]
         return NodeData(node_id, node_type, node_geom)
 
-    for from_node_id_, to_node_id_, link_type_ in zip(
-        from_node_id, to_node_id, link_type
-    ):
+    # Add edges
+    for from_node_id_, to_node_id_ in zip(from_node_id, to_node_id):
+        # Skip DiscreteControl #49 as it causes stability problems
+        if 49 in [from_node_id_, to_node_id_]:
+            continue
         from_node_data = get_node_data(from_node_id_)
         to_node_data = get_node_data(to_node_id_)
         model.link.add(from_node_data, to_node_data)
