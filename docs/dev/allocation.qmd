@@ -95,7 +95,7 @@ The function `get_capacity` obtains the capacities of the links within a subnetw
 
 ### Handling the connection between the main network and subnetworks
 The function `find_subnetwork_connetions` finds the links that connected the main network to a subnetwork. `subnetwork_demands` and `subnetwork_allocateds` will be created, which stores demands and allocated values for subnetworks as a whole.
-`main_network_connections` is a vector of links that connect a subnetwork with the main network.
+`main_network_connections` is a dictionary of links that connect a subnetwork with the main network.
 
 ## The optimization problem {#sec-optimization-problem}
 ### Setting up the optimization variables

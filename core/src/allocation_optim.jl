@@ -47,7 +47,10 @@ function set_objective_demand_priority!(
     # Terms for subnetworks acting as UserDemand on the main network
     if is_main_network(subnetwork_id)
         # Loop over the connections between main and subnetwork
-        for connections_subnetwork in main_network_connections[2:end]
+        for (subnetwork_id, connections_subnetwork) in main_network_connections
+            if is_main_network(subnetwork_id)
+                continue
+            end
             for connection in connections_subnetwork
                 d = subnetwork_demands[connection][demand_priority_idx]
                 F_inlet = F[connection]
@@ -111,13 +114,8 @@ function assign_allocations!(
 )::Nothing
     (; subnetwork_id, capacity, flow) = allocation_model
     (; graph, user_demand, allocation) = p
-    (;
-        subnetwork_demands,
-        subnetwork_allocateds,
-        subnetwork_ids,
-        main_network_connections,
-    ) = allocation
-    main_network_source_links = get_main_network_connections(p, subnetwork_id)
+    (; subnetwork_demands, subnetwork_allocateds, main_network_connections) = allocation
+    main_network_source_links = main_network_connections[subnetwork_id]
     for link in keys(capacity.data)
         # If this link does not exist in the physical model then it comes from a
         # bidirectional link, and thus does not have directly allocating flow
@@ -144,8 +142,7 @@ function assign_allocations!(
     # Write the flows to the subnetworks as allocated flows
     # in the allocation object
     if is_main_network(subnetwork_id)
-        for (subnetwork_id, main_network_source_links) in
-            zip(subnetwork_ids, main_network_connections)
+        for (subnetwork_id, main_network_source_links) in main_network_connections
             if is_main_network(subnetwork_id)
                 continue
             end
@@ -172,9 +169,9 @@ function set_initial_capacities_inlet!(
     (; sources) = allocation_model
     (; allocation) = p
     (; subnetwork_id) = allocation_model
-    (; subnetwork_allocateds) = allocation
+    (; subnetwork_allocateds, main_network_connections) = allocation
 
-    main_network_source_links = get_main_network_connections(p, subnetwork_id)
+    main_network_source_links = main_network_connections[subnetwork_id]
 
     for link_id in main_network_source_links
         source_capacity = if optimization_type == OptimizationType.internal_sources
@@ -279,9 +276,10 @@ function set_initial_capacities_link!(
     allocation_model::AllocationModel,
     p::Parameters,
 )::Nothing
+    (; main_network_connections) = p.allocation
     (; problem, capacity, subnetwork_id) = allocation_model
     constraints_capacity = problem[:capacity]
-    main_network_source_links = get_main_network_connections(p, subnetwork_id)
+    main_network_source_links = main_network_connections[subnetwork_id]
 
     for (link_id, c) in capacity.data
 
@@ -1070,7 +1068,7 @@ function collect_demands!(
 )::Nothing
     (; allocation) = p
     (; subnetwork_id) = allocation_model
-    (; demand_priorities_all, subnetwork_demands) = allocation
+    (; demand_priorities_all, subnetwork_demands, main_network_connections) = allocation
 
     ## Find internal sources
     optimization_type = OptimizationType.internal_sources
@@ -1092,7 +1090,7 @@ function collect_demands!(
     ## Collect demand
     optimization_type = OptimizationType.collect_demands
 
-    main_network_source_links = get_main_network_connections(p, subnetwork_id)
+    main_network_source_links = main_network_connections[subnetwork_id]
 
     # Reset the subnetwork demands to 0.0
     for main_network_connection in keys(subnetwork_demands)
