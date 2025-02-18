@@ -1,5 +1,5 @@
-struct SavedResults{V <: ComponentVector{Float64}}
-    flow::SavedValues{Float64, SavedFlow{V}}
+struct SavedResults
+    flow::SavedValues{Float64, SavedFlow{StateVector{Float64}}}
     basin_state::SavedValues{Float64, SavedBasinState}
     subgrid_level::SavedValues{Float64, Vector{Float64}}
     solver_stats::SavedValues{Float64, SolverStats}
@@ -103,7 +103,7 @@ function Model(config::Config)::Model
     end
     @debug "Read database into memory."
 
-    u0 = build_state_vector(parameters)
+    u0 = StateVector(parameters)
     du0 = zero(u0)
 
     parameters = set_state_flow_links(parameters, u0)

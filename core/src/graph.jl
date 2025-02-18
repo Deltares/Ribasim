@@ -227,7 +227,7 @@ the state vector, given an link (inflow_id, outflow_id).
 from the parameters, but integrated/averaged FlowBoundary flows must be provided via `boundary_flow`.
 """
 function get_flow(
-    flow::ComponentVector,
+    flow::StateVector,
     p::Parameters,
     t::Number,
     link::Tuple{NodeID, NodeID};
@@ -247,7 +247,7 @@ function get_flow(
     end
 end
 
-function get_influx(du::ComponentVector, id::NodeID, p::Parameters)
+function get_influx(du::StateVector, id::NodeID, p::Parameters)
     @assert id.type == NodeType.Basin
     (; basin) = p
     (; vertical_flux) = basin

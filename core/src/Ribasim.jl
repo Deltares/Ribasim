@@ -98,6 +98,9 @@ using ComponentArrays: ComponentVector, ComponentArray, Axis, getaxes
 # internally we use a Float64; seconds since the start of the simulation.
 using Dates: Dates, DateTime, Millisecond, @dateformat_str
 
+# We customize broadcasting for our StateVector.
+using Base.Broadcast: Broadcasted, ArrayStyle
+
 # Callbacks are used to trigger function calls at specific points in the similation.
 # E.g. after each timestep for discrete control,
 # or at each saveat for saving storage and flow results.

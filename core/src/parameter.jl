@@ -140,6 +140,90 @@ The caches are always initialized with zeros
 """
 cache(len::Int)::Cache = LazyBufferCache(Returns(len); initializer! = set_zero!)
 
+"""
+StateVector is a vector that holds the Ribasim state variables.
+
+All data is in one dense Vector. All named components of the state are stored as SubArrays
+of the data Vector. This is a minimal and hardcoded alternative to ComponentArrays.jl.
+
+"""
+@kwdef struct StateVector{T} <: AbstractVector{T}
+    data::Vector{T} = Float64[]
+    node_id::Vector{NodeID} = NodeID[]
+    tabulated_rating_curve::SubArray{T, 1, Vector{T}, Tuple{UnitRange{Int64}}, true} =
+        view(data, 1:0)
+    pump::SubArray{T, 1, Vector{T}, Tuple{UnitRange{Int64}}, true} = view(data, 1:0)
+    outlet::SubArray{T, 1, Vector{T}, Tuple{UnitRange{Int64}}, true} = view(data, 1:0)
+    user_demand_inflow::SubArray{T, 1, Vector{T}, Tuple{UnitRange{Int64}}, true} =
+        view(data, 1:0)
+    user_demand_outflow::SubArray{T, 1, Vector{T}, Tuple{UnitRange{Int64}}, true} =
+        view(data, 1:0)
+    linear_resistance::SubArray{T, 1, Vector{T}, Tuple{UnitRange{Int64}}, true} =
+        view(data, 1:0)
+    manning_resistance::SubArray{T, 1, Vector{T}, Tuple{UnitRange{Int64}}, true} =
+        view(data, 1:0)
+    evaporation::SubArray{T, 1, Vector{T}, Tuple{UnitRange{Int64}}, true} = view(data, 1:0)
+    infiltration::SubArray{T, 1, Vector{T}, Tuple{UnitRange{Int64}}, true} = view(data, 1:0)
+    integral::SubArray{T, 1, Vector{T}, Tuple{UnitRange{Int64}}, true} = view(data, 1:0)
+end
+
+Base.setindex!(u::StateVector, value, i::Int) = (u.data[i] = value)
+Base.size(u::StateVector) = size(u.data)
+Base.length(u::StateVector) = length(u.data)
+Base.getindex(u::StateVector, i::Int) = u.data[i]
+Base.IndexStyle(::Type{StateVector}) = IndexLinear()
+
+function Base.propertynames(::StateVector)
+    Tuple(x for x in fieldnames(StateVector) if !(x in (:data, :node_id)))
+end
+
+Base.keys(u::StateVector) = propertynames(u)
+Base.values(u::StateVector) = (getproperty(u, x) for x in propertynames(u))
+Base.pairs(u::StateVector) = (x => getproperty(u, x) for x in propertynames(u))
+
+Base.copy(u::StateVector) =
+    StateVector(; data = copy(u.data), node_id = copy(u.node_id), pairs(u)...)
+Base.zero(u::StateVector) =
+    StateVector(; data = zero(u.data), node_id = copy(u.node_id), pairs(u)...)
+Base.similar(u::StateVector) =
+    StateVector(; data = similar(u.data), node_id = copy(u.node_id), pairs(u)...)
+
+function Base.similar(u::StateVector, ::Type{T}) where {T}
+    data = similar(u.data, T)
+    subvecs = [k => view(data, get_range(v)) for (k, v) in pairs(u)]
+    StateVector(; data, node_id = copy(u.node_id), subvecs...)
+end
+
+# Implement broadcasting such that `u - uprev` returns a StateVector.
+# Based on https://docs.julialang.org/en/v1/manual/interfaces/#Selecting-an-appropriate-output-array
+find_statevec(bc::Broadcasted) = find_statevec(bc.args)
+find_statevec(args::Tuple) = find_statevec(find_statevec(args[1]), Base.tail(args))
+find_statevec(x) = x
+find_statevec(::Tuple{}) = nothing
+find_statevec(a::StateVector, rest) = a
+find_statevec(::Any, rest) = find_statevec(rest)
+
+Base.BroadcastStyle(::Type{<:StateVector}) = ArrayStyle{StateVector}()
+
+function Base.similar(bc::Broadcasted{ArrayStyle{StateVector}}, ::Type{T}) where {T}
+    u = find_statevec(bc)
+    StateVector(; data = similar(Vector{T}, axes(bc)), node_id = u.node_id, pairs(u)...)
+end
+
+# uses SubArray internals
+get_range(v::SubArray)::UnitRange = only(v.indices)
+
+function Base.show(io::IO, u::StateVector)
+    summary(io, u)
+    println()
+    for name in keys(u)
+        subvec = getproperty(u, name)
+        isempty(subvec) && continue
+        print(name, ": ")
+        println(subvec)
+    end
+end
+
 @eval @enumx AllocationSourceType $(fieldnames(Ribasim.config.SourcePriority)...)
 
 # Support creating a AllocationSourceTuple enum instance from a symbol
@@ -998,7 +1082,7 @@ const ModelGraph = MetaGraph{
     const water_balance_abstol::Float64
     const water_balance_reltol::Float64
     # State at previous saveat
-    const u_prev_saveat::C11 = ComponentVector()
+    const u_prev_saveat::C11 = StateVector()
 end
 
 # To opt-out of type checking for ForwardDiff
