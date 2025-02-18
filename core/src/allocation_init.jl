@@ -1,18 +1,3 @@
-function get_main_network_connections(
-    p::Parameters,
-    subnetwork_id::Int32,
-)::Vector{Tuple{NodeID, NodeID}}
-    (; allocation) = p
-    (; subnetwork_ids, main_network_connections) = allocation
-    idx = findsorted(subnetwork_ids, subnetwork_id)
-    if isnothing(idx)
-        error("Invalid allocation network ID $subnetwork_id.")
-    else
-        return main_network_connections[idx]
-    end
-    return
-end
-
 """
 Get the fixed capacity (∈[0,∞]) of the links in the subnetwork in a JuMP.Containers.SparseAxisArray,
 which is a type of sparse arrays that in this case takes NodeID in stead of Int as indices.
@@ -88,14 +73,14 @@ function add_subnetwork_connections!(
 
     # Add the connections to the main network
     if is_main_network(subnetwork_id)
-        for connections in main_network_connections
+        for connections in values(main_network_connections)
             for connection in connections
                 capacity[connection...] = Inf
             end
         end
     else
         # Add the connections to this subnetwork
-        for connection in get_main_network_connections(p, subnetwork_id)
+        for connection in main_network_connections[subnetwork_id]
             capacity[connection...] = Inf
         end
     end
@@ -187,7 +172,8 @@ function add_constraints_capacity!(
     p::Parameters,
     subnetwork_id::Int32,
 )::Nothing
-    main_network_source_links = get_main_network_connections(p, subnetwork_id)
+    (; main_network_connections) = p.allocation
+    main_network_source_links = main_network_connections[subnetwork_id]
     F = problem[:F]
 
     # Find the links within the subnetwork with finite capacity

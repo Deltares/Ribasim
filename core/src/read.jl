@@ -252,7 +252,12 @@ function get_allocation_sources_in_order!(
     config::Config,
 )::OrderedDict{Tuple{NodeID, NodeID}, AllocationSource}
     (; graph, user_demand, allocation) = p
-    (; subnetwork_demands, subnetwork_allocateds, demand_priorities_all) = allocation
+    (;
+        subnetwork_demands,
+        subnetwork_allocateds,
+        demand_priorities_all,
+        main_network_connections,
+    ) = allocation
     n_demand_priorities = length(demand_priorities_all)
 
     default_source_priority = config.allocation.source_priority
@@ -306,9 +311,8 @@ function get_allocation_sources_in_order!(
                     end
                 elseif source_type == AllocationSourceType.flow_demand
                     # If the row is for a flow demand, make a source for the connected connector node
-                    id_with_demand = only(
-                        outneighbor_labels_type(graph, only(node_ids), LinkType.control),
-                    )
+                    id_with_demand =
+                        only(outneighbor_labels_type(graph, node_id, LinkType.control))
                     push!(links, (id_with_demand, id_with_demand))
                 else # if source_type == AllocationSourceType.user_demand
                     push!(links, user_demand.outflow_link[node_id.idx].link)
@@ -334,6 +338,7 @@ function get_allocation_sources_in_order!(
                     source_type = AllocationSourceType.subnetwork_inlet
                     link = (main_network_id, node_id)
                     push!(links, link)
+                    push!(main_network_connections[row.subnetwork_id], link)
                     # Allocate memory for the demands and demand priorities
                     # from the subnetwork via this link
                     subnetwork_demands[link] = zeros(n_demand_priorities)
@@ -386,7 +391,7 @@ function initialize_allocation!(p::Parameters, db::DB, config::Config)::Nothing
 
     for subnetwork_id in subnetwork_ids_
         push!(subnetwork_ids, subnetwork_id)
-        push!(main_network_connections, Tuple{NodeID, NodeID}[])
+        main_network_connections[subnetwork_id] = Tuple{NodeID, NodeID}[]
     end
 
     sources = get_allocation_sources_in_order!(p, db, config)
