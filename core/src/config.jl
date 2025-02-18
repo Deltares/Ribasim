@@ -13,6 +13,7 @@ using DataStructures: DefaultDict
 using Dates: DateTime
 using Logging: LogLevel, Debug, Info, Warn, Error
 using ..Ribasim: Ribasim, isnode, nodetype
+using ADTypes: AutoForwardDiff, AutoFiniteDiff
 using OrdinaryDiffEqCore: OrdinaryDiffEqAlgorithm, OrdinaryDiffEqNewtonAdaptiveAlgorithm
 using OrdinaryDiffEqNonlinearSolve: NLNewton
 using OrdinaryDiffEqLowOrderRK: Euler, RK4
@@ -305,7 +306,7 @@ function algorithm(solver::Solver; u0 = [])::OrdinaryDiffEqAlgorithm
     end
 
     if function_accepts_kwarg(algotype, :autodiff)
-        kwargs[:autodiff] = solver.autodiff
+        kwargs[:autodiff] = solver.autodiff ? AutoForwardDiff() : AutoFiniteDiff()
     end
 
     algotype(; kwargs...)

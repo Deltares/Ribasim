@@ -411,3 +411,12 @@ end
     x.b[2] = 10.0
     @test y[2] === 10.0
 end
+
+@testitem "find_index" begin
+    using Ribasim: find_index
+    using DataStructures: OrderedSet
+    s = OrderedSet([:a, :b, :c])
+    @test find_index(:a, s) === 1
+    @test find_index(:c, s) === 3
+    @test_throws "not found" find_index(:d, s)
+end
