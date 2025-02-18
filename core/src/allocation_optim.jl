@@ -146,7 +146,6 @@ function assign_allocations!(
             if is_main_network(subnetwork_id)
                 continue
             end
-            @show main_network_source_links
             for link_id in main_network_source_links
                 subnetwork_allocateds[link_id][demand_priority_idx] = flow[link_id]
             end
