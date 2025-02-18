@@ -7,7 +7,7 @@ Returns the CallbackSet and the SavedValues for flow.
 function create_callbacks(
     parameters::Parameters,
     config::Config,
-    u0::ComponentVector,
+    u0::StateVector,
     saveat,
 )::Tuple{CallbackSet, SavedResults}
     (; starttime, basin, flow_boundary, level_boundary, user_demand) = parameters

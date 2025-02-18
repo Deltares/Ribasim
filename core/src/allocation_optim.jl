@@ -29,7 +29,7 @@ Set the objective for the given demand priority.
 """
 function set_objective_demand_priority!(
     allocation_model::AllocationModel,
-    u::ComponentVector,
+    u::StateVector,
     p::Parameters,
     t::Float64,
     demand_priority_idx::Int,
@@ -331,7 +331,7 @@ Get several variables associated with a basin:
 function get_basin_data(
     allocation_model::AllocationModel,
     p::Parameters,
-    u::ComponentVector,
+    u::StateVector,
     node_id::NodeID,
 )
     (; graph, basin) = p
@@ -358,7 +358,7 @@ Storages are converted to flows by dividing by the allocation timestep.
 """
 function get_basin_capacity(
     allocation_model::AllocationModel,
-    u::ComponentVector,
+    u::StateVector,
     p::Parameters,
     t::Float64,
     node_id::NodeID,
@@ -388,7 +388,7 @@ Storages are converted to flows by dividing by the allocation timestep.
 """
 function get_basin_demand(
     allocation_model::AllocationModel,
-    u::ComponentVector,
+    u::StateVector,
     p::Parameters,
     t::Float64,
     node_id::NodeID,
@@ -412,7 +412,7 @@ vertical fluxes + the disk of storage above the maximum level / Δt_allocation
 """
 function set_initial_capacities_basin!(
     allocation_model::AllocationModel,
-    u::ComponentVector,
+    u::StateVector,
     p::Parameters,
     t::Float64,
 )::Nothing
@@ -460,7 +460,7 @@ Set the initial demand of each basin in the subnetwork as
 """
 function set_initial_demands_level!(
     allocation_model::AllocationModel,
-    u::ComponentVector,
+    u::StateVector,
     p::Parameters,
     t::Float64,
 )::Nothing
@@ -876,7 +876,7 @@ Solve the allocation problem for a single (demand_priority, source_priority) pai
 function optimize_per_source!(
     allocation_model::AllocationModel,
     demand_priority_idx::Integer,
-    u::ComponentVector,
+    u::StateVector,
     p::Parameters,
     t::AbstractFloat,
     optimization_type::OptimizationType.T,
@@ -970,7 +970,7 @@ end
 
 function optimize_demand_priority!(
     allocation_model::AllocationModel,
-    u::ComponentVector,
+    u::StateVector,
     p::Parameters,
     t::Float64,
     demand_priority_idx::Int,
@@ -1017,7 +1017,7 @@ Set the initial capacities and demands which are reduced by usage.
 """
 function set_initial_values!(
     allocation_model::AllocationModel,
-    u::ComponentVector,
+    u::StateVector,
     p::Parameters,
     t::Float64,
 )::Nothing
@@ -1066,7 +1066,7 @@ function collect_demands!(
     p::Parameters,
     allocation_model::AllocationModel,
     t::Float64,
-    u::ComponentVector,
+    u::StateVector,
 )::Nothing
     (; allocation) = p
     (; subnetwork_id) = allocation_model
@@ -1124,7 +1124,7 @@ function allocate_demands!(
     p::Parameters,
     allocation_model::AllocationModel,
     t::Float64,
-    u::ComponentVector,
+    u::StateVector,
 )::Nothing
     optimization_type = OptimizationType.allocate
     (; demand_priorities_all) = p.allocation

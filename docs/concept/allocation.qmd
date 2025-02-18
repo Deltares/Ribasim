@@ -241,7 +241,6 @@ The following is an example of an optimization problem for the example shown [he
 using Ribasim
 using Ribasim: NodeID
 using SQLite
-using ComponentArrays: ComponentVector
 
 toml_path = normpath(@__DIR__, "../../generated_testmodels/allocation_example/ribasim.toml")
 model = Ribasim.Model(toml_path)

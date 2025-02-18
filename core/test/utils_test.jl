@@ -253,7 +253,6 @@ end
 
 @testitem "Jacobian sparsity" begin
     import SQLite
-    using ComponentArrays: ComponentVector
     using SparseArrays: sparse, findnz
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
@@ -265,7 +264,7 @@ end
     p = Ribasim.Parameters(db, cfg)
     close(db)
     t0 = 0.0
-    u0 = Ribasim.build_state_vector(p)
+    u0 = Ribasim.StateVector(p)
     du0 = copy(u0)
     p = Ribasim.build_flow_to_storage(p, u0)
     jac_prototype = Ribasim.get_jac_prototype(du0, u0, p, t0)
@@ -287,7 +286,7 @@ end
 
     p = Ribasim.Parameters(db, cfg)
     close(db)
-    u0 = Ribasim.build_state_vector(p)
+    u0 = Ribasim.StateVector(p)
     du0 = copy(u0)
     p = Ribasim.build_flow_to_storage(p, u0)
     jac_prototype = Ribasim.get_jac_prototype(du0, u0, p, t0)
@@ -435,15 +434,16 @@ end
 end
 
 @testitem "unsafe_array" begin
-    using ComponentArrays: ComponentVector
-    x = ComponentVector(; a = [1.0, 2.0, 3.0], b = [4.0, 5.0, 6.0])
-    y = Ribasim.unsafe_array(x.b)
-    @test x.b isa SubArray
+    using Ribasim: StateVector
+    data = rand(3)
+    u = StateVector(; data, pump = view(data, 1:2), outlet = view(data, 3:3))
+    y = Ribasim.unsafe_array(u, :outlet)
+    @test u.outlet isa SubArray
     @test y isa Vector{Float64}
-    @test y == x.b
+    @test y == u.outlet
     # changing the input changes the output; no data copy is made
-    x.b[2] = 10.0
-    @test y[2] === 10.0
+    u.outlet[1] = 10.0
+    @test y[1] === 10.0
 end
 
 @testitem "find_index" begin
