@@ -1138,3 +1138,16 @@ function unsafe_array(
 )::Vector{Float64}
     GC.@preserve A unsafe_wrap(Array, pointer(A), length(A))
 end
+
+"""
+Find the index of a symbol in an ordered set using iteration.
+
+This replaces `findfirst(==(x), s)` which triggered this depwarn:
+> indexing is deprecated for OrderedSet, please rewrite your code to use iteration
+"""
+function find_index(x::Symbol, s::OrderedSet{Symbol})
+    for (i, s) in enumerate(s)
+        s === x && return i
+    end
+    error(lazy"$x not found in $s.")
+end
