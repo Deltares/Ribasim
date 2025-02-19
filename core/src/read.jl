@@ -927,13 +927,12 @@ function CompoundVariable(
     starttime = nothing,
     placeholder_vector,
 )::CompoundVariable
-    subvariables = @NamedTuple{
-        listen_node_id::NodeID,
-        variable_ref::PreallocationRef,
-        variable::String,
-        weight::Float64,
-        look_ahead::Float64,
-    }[]
+    # The ID of the node listening to this CompoundVariable
+    node_id =
+        NodeID(node_type, only(unique(variables_compound_variable.node_id)), node_ids_all)
+
+    compound_variable = CompoundVariable(; node_id)
+    (; subvariables, greater_than) = compound_variable
 
     # Each row defines a subvariable
     for row in variables_compound_variable
@@ -945,19 +944,15 @@ function CompoundVariable(
         weight = coalesce(row.weight, 1.0)
         # Default to look_ahead = 0.0 if not specified
         look_ahead = coalesce(row.look_ahead, 0.0)
-        subvariable = (; listen_node_id, variable_ref, variable, weight, look_ahead)
+        subvariable =
+            SubVariable(listen_node_id, variable_ref, variable, weight, look_ahead)
         push!(subvariables, subvariable)
     end
 
     # Build greater_than ConstantInterpolation objects
-    greater_than = ScalarConstantInterpolation[]
     !isnothing(conditions_compound_variable) &&
         get_greater_than!(greater_than, conditions_compound_variable, starttime)
-
-    # The ID of the node listening to this CompoundVariable
-    node_id =
-        NodeID(node_type, only(unique(variables_compound_variable.node_id)), node_ids_all)
-    return CompoundVariable(node_id, subvariables, greater_than)
+    return compound_variable
 end
 
 function parse_variables_and_conditions(ids::Vector{Int32}, db::DB, config::Config)
@@ -1000,15 +995,17 @@ function parse_variables_and_conditions(ids::Vector{Int32}, db::DB, config::Conf
                 errors = true
                 @error "compound_variable_id $compound_variable_id for DiscreteControl #$id in condition table but not in variable table"
             else
-                compound_variable = CompoundVariable(
-                    variables_compound_variable,
-                    NodeType.DiscreteControl,
-                    node_ids_all;
-                    conditions_compound_variable,
-                    placeholder_vector,
-                    config.starttime,
+                push!(
+                    compound_variables_node,
+                    CompoundVariable(
+                        variables_compound_variable,
+                        NodeType.DiscreteControl,
+                        node_ids_all;
+                        conditions_compound_variable,
+                        placeholder_vector,
+                        config.starttime,
+                    ),
                 )
-                push!(compound_variables_node, compound_variable)
             end
         end
         push!(compound_variables, compound_variables_node)
@@ -1095,6 +1092,7 @@ end
 
 function continuous_control_compound_variables(db::DB, config::Config, ids)
     placeholder_vector = cache(1)
+    node_ids_all = get_node_ids(db)
 
     data = load_structvector(db, config, ContinuousControlVariableV1)
     compound_variables = CompoundVariable[]
@@ -1107,7 +1105,7 @@ function continuous_control_compound_variables(db::DB, config::Config, ids)
             CompoundVariable(
                 variable_data,
                 NodeType.ContinuousControl,
-                db;
+                node_ids_all;
                 placeholder_vector,
             ),
         )

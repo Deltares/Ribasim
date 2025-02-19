@@ -501,7 +501,8 @@ function apply_discrete_control!(u, t, integrator)::Nothing
 
             # Loop over the greater_than interpolations associated with the current compound variable
             for greater_than in compound_variable.greater_than
-                truth_value_old = truth_value_new = (value > greater_than(t))
+                truth_value_old = truth_state_node[truth_state_idx]
+                truth_value_new = (value > greater_than(t))
 
                 if truth_value_old != truth_value_new
                     truth_state_change = true
@@ -562,7 +563,7 @@ end
 Get a value for a condition. Currently supports getting levels from basins and flows
 from flow boundaries.
 """
-function get_value(subvariable::NamedTuple, p::Parameters, du::AbstractVector, t::Float64)
+function get_value(subvariable::SubVariable, p::Parameters, du::AbstractVector, t::Float64)
     (; flow_boundary, level_boundary, basin) = p
     (; listen_node_id, look_ahead, variable, variable_ref) = subvariable
 
