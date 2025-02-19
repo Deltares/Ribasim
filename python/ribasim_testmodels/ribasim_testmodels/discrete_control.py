@@ -431,7 +431,7 @@ def level_range_model() -> Model:
                 # min, max
                 greater_than=[5.0, 15.0],
                 compound_variable_id=1,
-                condition_id=1,
+                condition_id=[1, 2],
             ),
             discrete_control.Logic(
                 truth_state=["FF", "TF", "TT"],
