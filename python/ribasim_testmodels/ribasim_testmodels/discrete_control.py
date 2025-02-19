@@ -65,6 +65,7 @@ def pump_discrete_control_model() -> Model:
             discrete_control.Condition(
                 greater_than=[0.8, 0.4],
                 compound_variable_id=[1, 2],
+                condition_id=[1, 1],
             ),
             discrete_control.Logic(
                 truth_state=["FF", "TF", "FT", "TT"],
@@ -83,6 +84,7 @@ def pump_discrete_control_model() -> Model:
             discrete_control.Condition(
                 greater_than=[0.45],
                 compound_variable_id=1,
+                condition_id=1,
             ),
             discrete_control.Logic(
                 truth_state=["T", "F"],
@@ -158,6 +160,7 @@ def flow_condition_model() -> Model:
             discrete_control.Condition(
                 greater_than=[20 / (86400)],
                 compound_variable_id=1,
+                condition_id=1,
             ),
             discrete_control.Logic(truth_state=["T", "F"], control_state=["off", "on"]),
         ],
@@ -224,6 +227,7 @@ def level_boundary_condition_model() -> Model:
             discrete_control.Condition(
                 greater_than=[6.0],
                 compound_variable_id=1,
+                condition_id=1,
             ),
             discrete_control.Logic(truth_state=["T", "F"], control_state=["on", "off"]),
         ],
@@ -298,6 +302,7 @@ def tabulated_rating_curve_control_model() -> Model:
             discrete_control.Condition(
                 greater_than=[0.5],
                 compound_variable_id=1,
+                condition_id=1,
             ),
             discrete_control.Logic(
                 truth_state=["T", "F"], control_state=["low", "high"]
@@ -361,6 +366,7 @@ def compound_variable_condition_model() -> Model:
             discrete_control.Condition(
                 greater_than=[0.5],
                 compound_variable_id=1,
+                condition_id=1,
             ),
             discrete_control.Logic(truth_state=["T", "F"], control_state=["On", "Off"]),
         ],
@@ -425,6 +431,7 @@ def level_range_model() -> Model:
                 # min, max
                 greater_than=[5.0, 15.0],
                 compound_variable_id=1,
+                condition_id=1,
             ),
             discrete_control.Logic(
                 truth_state=["FF", "TF", "TT"],
@@ -508,7 +515,9 @@ def connector_node_flow_condition_model() -> Model:
                 variable=["flow_rate"],
                 compound_variable_id=1,
             ),
-            discrete_control.Condition(greater_than=[1e-4], compound_variable_id=1),
+            discrete_control.Condition(
+                greater_than=[1e-4], compound_variable_id=1, condition_id=1
+            ),
             discrete_control.Logic(truth_state=["T", "F"], control_state=["On", "Off"]),
         ],
     )
@@ -563,7 +572,9 @@ def concentration_condition_model() -> Model:
                 variable=["concentration_external.kryptonite"],
                 compound_variable_id=1,
             ),
-            discrete_control.Condition(greater_than=[0.5], compound_variable_id=1),
+            discrete_control.Condition(
+                greater_than=[0.5], compound_variable_id=1, condition_id=1
+            ),
             discrete_control.Logic(truth_state=["T", "F"], control_state=["On", "Off"]),
         ],
     )
@@ -664,7 +675,9 @@ def continuous_concentration_condition_model() -> Model:
                 compound_variable_id=1,
             ),
             # More than 20% of seawater (35 g/L)
-            discrete_control.Condition(greater_than=[7], compound_variable_id=1),
+            discrete_control.Condition(
+                greater_than=[7], compound_variable_id=1, condition_id=1
+            ),
             discrete_control.Logic(truth_state=["T", "F"], control_state=["Off", "On"]),
         ],
     )
@@ -678,5 +691,49 @@ def continuous_concentration_condition_model() -> Model:
     model.link.add(discretec, linearr)
     model.link.add(basi, outl)
     model.link.add(outl, term)
+
+    return model
+
+
+def transient_condition_model() -> Model:
+    """DiscreteControl based on transient condition."""
+    model = Model(starttime="2020-01-01", endtime="2020-03-01", crs="EPSG:28992")
+
+    lb = model.level_boundary.add(
+        Node(1, Point(0, 0)), [level_boundary.Static(level=[2.0])]
+    )
+
+    pmp = model.pump.add(
+        Node(2, Point(1, 0)),
+        [pump.Static(control_state=["A", "B"], flow_rate=[1.0, 2.0])],
+    )
+
+    bsn = model.basin.add(
+        Node(3, Point(2, 0)),
+        [
+            basin.State(level=[2.0]),
+            basin.Profile(level=[0.0, 1.0], area=[100.0, 100.0]),
+        ],
+    )
+
+    dc = model.discrete_control.add(
+        Node(4, Point(1, 1)),
+        [
+            discrete_control.Variable(
+                listen_node_id=[1], variable=["level"], compound_variable_id=1
+            ),
+            discrete_control.Condition(
+                compound_variable_id=1,
+                condition_id=1,
+                greater_than=[1.0, 3.0],
+                time=["2020-01-01", "2020-02-01"],
+            ),
+            discrete_control.Logic(truth_state=["F", "T"], control_state=["A", "B"]),
+        ],
+    )
+
+    model.edge.add(lb, pmp)
+    model.edge.add(pmp, bsn)
+    model.edge.add(dc, pmp)
 
     return model

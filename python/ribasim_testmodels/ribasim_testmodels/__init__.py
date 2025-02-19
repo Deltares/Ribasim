@@ -39,6 +39,7 @@ from ribasim_testmodels.discrete_control import (
     level_range_model,
     pump_discrete_control_model,
     tabulated_rating_curve_control_model,
+    transient_condition_model,
 )
 from ribasim_testmodels.doc_example import local_pidcontrolled_cascade_model
 from ribasim_testmodels.equations import (
@@ -107,6 +108,7 @@ __all__ = [
     "subnetworks_with_sources_model",
     "tabulated_rating_curve_control_model",
     "tabulated_rating_curve_model",
+    "transient_condition_model",
     "trivial_model",
     "two_basin_model",
     "user_demand_model",
