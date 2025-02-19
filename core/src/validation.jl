@@ -120,7 +120,7 @@ sort_by(::StructVector{ContinuousControlVariableV1}) =
     x -> (x.node_id, x.listen_node_id, x.variable)
 
 sort_by(::StructVector{DiscreteControlConditionV1}) =
-    x -> (x.node_id, x.compound_variable_id, x.greater_than)
+    x -> (x.node_id, x.compound_variable_id, x.condition_id)
 sort_by(::StructVector{DiscreteControlLogicV1}) = x -> (x.node_id, x.truth_state)
 sort_by(::StructVector{DiscreteControlVariableV1}) =
     x -> (x.node_id, x.compound_variable_id, x.listen_node_id, x.variable)

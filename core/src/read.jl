@@ -463,7 +463,8 @@ function TabulatedRatingCurve(
                 end
                 push!(interpolations, interpolation)
             end
-            push_lookup!(current_interpolation_index, interpolation_index)
+            index_lookup = static_lookup(lookup_index)
+            push!(current_interpolation_index, index_lookup)
             push!(active, is_active)
             push!(max_downstream_level, max_level)
         elseif node_id in time_node_ids
@@ -501,7 +502,11 @@ function TabulatedRatingCurve(
                     break
                 end
             end
-            push_lookup!(current_interpolation_index, lookup_index, lookup_time)
+            push_constant_interpolation!(
+                current_interpolation_index,
+                lookup_index,
+                lookup_time,
+            )
             push!(active, true)
             push!(max_downstream_level, max_level)
         else
@@ -879,16 +884,40 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     return basin
 end
 
+function get_greater_than!(greater_than, conditions_compound_variable, starttime)::Nothing
+    (; node_id) = first(conditions_compound_variable)
+    errors = false
+
+    for condition_group in
+        IterTools.groupby(row -> row.condition_id, conditions_compound_variable)
+        t = length(condition_group) == 1 ? [0.0] : condition_group.time
+
+        if any(ismissing, t)
+            (; condition_id) = first(condition_group)
+            @error(
+                "Condition $condition_id for $node_id has multiple input rows and missing time values."
+            )
+            errors = true
+        end
+        push_constant_interpolation!(greater_than, u, seconds_since.(t, starttime))
+    end
+
+    if errors
+        error("Invalid conditions encountered for $node_id.")
+    end
+end
+
 """
 Get a CompoundVariable object given its definition in the input data.
 References to listened parameters are added later.
 """
 function CompoundVariable(
-    compound_variable_data,
+    variables_compound_variable,
     node_type::NodeType.T,
-    db::DB;
-    greater_than = Float64[],
-    placeholder_vector = Float64[],
+    node_ids_all::Vector{NodeID};
+    conditions_compound_variable = nothing,
+    starttime = nothing,
+    placeholder_vector,
 )::CompoundVariable
     subvariables = @NamedTuple{
         listen_node_id::NodeID,
@@ -897,10 +926,10 @@ function CompoundVariable(
         weight::Float64,
         look_ahead::Float64,
     }[]
-    node_ids = get_node_ids(db)
+
     # Each row defines a subvariable
-    for row in compound_variable_data
-        listen_node_id = NodeID(row.listen_node_id, node_ids)
+    for row in variables_compound_variable
+        listen_node_id = NodeID(row.listen_node_id, node_ids_all)
         # Placeholder until actual ref is known
         variable_ref = PreallocationRef(placeholder_vector, 0)
         variable = row.variable
@@ -912,50 +941,67 @@ function CompoundVariable(
         push!(subvariables, subvariable)
     end
 
+    # Build greater_than ConstantInterpolation objects
+    greater_than = ScalarConstantInterpolation[]
+    isnothing(conditions_compound_variable) &&
+        get_greater_than!(greater_than, conditions_compound_variable, starttime)
+
     # The ID of the node listening to this CompoundVariable
-    node_id = NodeID(node_type, only(unique(compound_variable_data.node_id)), node_ids)
+    node_id =
+        NodeID(node_type, only(unique(variables_compound_variable.node_id)), node_ids_all)
     return CompoundVariable(node_id, subvariables, greater_than)
 end
 
-function parse_variables_and_conditions(compound_variable, condition, ids, db, graph)
+function parse_variables_and_conditions(ids::Vector{NodeID}, db::DB, config::Config)
+    condition = load_structvector(db, config, DiscreteControlConditionV1)
+    compound_variable = load_structvector(db, config, DiscreteControlVariableV1)
+
     placeholder_vector = cache(1)
     compound_variables = Vector{CompoundVariable}[]
     errors = false
 
+    node_ids_all = get_node_ids(db)
+
     # Loop over unique discrete_control node IDs
-    for (i, id) in enumerate(ids)
-        discrete_control_id = NodeID(NodeType.DiscreteControl, id, i)
+    for id in ids
 
-        condition_group_id = filter(row -> row.node_id == id, condition)
-        variable_group_id = filter(row -> row.node_id == id, compound_variable)
+        # Conditions associated with the current DiscreteControl node
+        conditions_node = filter(row -> row.node_id == id, condition)
 
+        # Variables associated with the current Discretecontrol node
+        variables_node = filter(row -> row.node_id == id, compound_variable)
+
+        # Compound variables associated with the current DiscreteControl node
         compound_variables_node = CompoundVariable[]
 
-        # Loop over compound variables for this node ID
+        # Loop over compound variables for the current DiscreteControl node
         for compound_variable_id in unique(condition_group_id.compound_variable_id)
-            condition_group_variable = filter(
+
+            # Conditions associated with the current compound variable
+            conditions_compound_variable = filter(
                 row -> row.compound_variable_id == compound_variable_id,
-                condition_group_id,
+                conditions_node,
             )
-            variable_group_variable = filter(
+
+            # Variables associated with the current compound variable
+            variables_compound_variable = filter(
                 row -> row.compound_variable_id == compound_variable_id,
-                variable_group_id,
+                variables_node,
             )
-            if isempty(variable_group_variable)
+
+            if isempty(variables_compound_variable)
                 errors = true
-                @error "compound_variable_id $compound_variable_id for $discrete_control_id in condition table but not in variable table"
+                @error "compound_variable_id $compound_variable_id for DiscreteControl #$id in condition table but not in variable table"
             else
-                greater_than = condition_group_variable.greater_than
-                push!(
-                    compound_variables_node,
-                    CompoundVariable(
-                        variable_group_variable,
-                        NodeType.DiscreteControl,
-                        db;
-                        greater_than,
-                        placeholder_vector,
-                    ),
+                compound_variable = CompoundVariable(
+                    variables_compound_variable,
+                    NodeType.DiscreteControl,
+                    node_ids_all;
+                    conditions_compound_variable,
+                    placeholder_vector,
+                    config.starttime,
                 )
+                push!(compound_variables_node, compound_variable)
             end
         end
         push!(compound_variables, compound_variables_node)
@@ -964,13 +1010,9 @@ function parse_variables_and_conditions(compound_variable, condition, ids, db, g
 end
 
 function DiscreteControl(db::DB, config::Config, graph::MetaGraph)::DiscreteControl
-    condition = load_structvector(db, config, DiscreteControlConditionV1)
-    compound_variable = load_structvector(db, config, DiscreteControlVariableV1)
-
     node_id = get_node_ids(db, NodeType.DiscreteControl)
     ids = Int32.(node_id)
-    compound_variables, valid =
-        parse_variables_and_conditions(compound_variable, condition, ids, db, graph)
+    compound_variables, valid = parse_variables_and_conditions(ids, db, config)
 
     if !valid
         error("Problems encountered when parsing DiscreteControl variables and conditions.")
@@ -1374,25 +1416,14 @@ function FlowDemand(db::DB, config::Config)::FlowDemand
     )
 end
 
-"Create and push a ConstantInterpolation to the current_interpolation_index."
-function push_lookup!(
-    current_interpolation_index::Vector{IndexLookup},
-    lookup_index::Vector{Int},
-    lookup_time::Vector{Float64},
-)
-    index_lookup = ConstantInterpolation(
-        lookup_index,
-        lookup_time;
-        extrapolate = true,
-        cache_parameters = true,
-    )
-    push!(current_interpolation_index, index_lookup)
-end
-
-"Create and push a static ConstantInterpolation to the current_interpolation_index."
-function push_lookup!(current_interpolation_index::Vector{IndexLookup}, lookup_index::Int)
-    index_lookup = static_lookup(lookup_index)
-    push!(current_interpolation_index, index_lookup)
+"Create and push a ConstantInterpolation to the constant_interpolations."
+function push_constant_interpolation!(
+    constant_interpolations::Vector{<:ConstantInterpolation{uType, tType}},
+    output::uType,
+    input::tType,
+)::Nothing
+    itp = ConstantInterpolation(output, input; extrapolate = true, cache_parameters = true)
+    push!(constant_interpolations, itp)
 end
 
 "Create an interpolation object that always returns `lookup_index`."
@@ -1496,7 +1527,11 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
         # These should only be pushed when the subgrid_id has changed
         if subgrid_id_time[end] != subgrid_id
             # Push the completed index_lookup of the previous subgrid_id
-            push_lookup!(current_interpolation_index, lookup_index, lookup_time)
+            push_constant_interpolation!(
+                current_interpolation_index,
+                lookup_index,
+                lookup_time,
+            )
             # Push the new subgrid_id and basin_index
             push!(subgrid_id_time, subgrid_id)
             push!(basin_index_time, node_to_basin[node_id])
@@ -1511,7 +1546,7 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
 
     # Push completed IndexLookup of the last group
     if interpolation_index > 0
-        push_lookup!(current_interpolation_index, lookup_index, lookup_time)
+        push_constant_interpolation!(current_interpolation_index, lookup_index, lookup_time)
     end
 
     level = fill(NaN, length(subgrid_id_static) + length(subgrid_id_time))

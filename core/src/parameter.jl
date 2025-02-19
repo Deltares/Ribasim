@@ -778,7 +778,7 @@ greater_than: the thresholds this compound variable will be
             look_ahead::Float64,
         }
     }
-    greater_than::Vector{Float64}
+    greater_than::Vector{ScalarConstantInterpolation}
 end
 
 """
