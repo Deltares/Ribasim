@@ -500,7 +500,7 @@ function apply_discrete_control!(u, t, integrator)::Nothing
             value = compound_variable_value(compound_variable, p, du, t)
 
             # Loop over the greater_than interpolations associated with the current compound variable
-            for greater_than in compound_variable_greater_than
+            for greater_than in compound_variable.greater_than
                 truth_value_old = truth_value_new = (value > greater_than(t))
 
                 if truth_value_old != truth_value_new
@@ -514,7 +514,7 @@ function apply_discrete_control!(u, t, integrator)::Nothing
 
         # Set a new control state if applicable
         if (t == 0) || truth_state_change
-            set_new_control_state!(integrator, id, truth_state)
+            set_new_control_state!(integrator, node_id, truth_state_node)
         end
     end
     return nothing

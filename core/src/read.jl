@@ -463,8 +463,7 @@ function TabulatedRatingCurve(
                 end
                 push!(interpolations, interpolation)
             end
-            index_lookup = static_lookup(lookup_index)
-            push!(current_interpolation_index, index_lookup)
+            push!(current_interpolation_index, static_lookup(interpolation_index))
             push!(active, is_active)
             push!(max_downstream_level, max_level)
         elseif node_id in time_node_ids
@@ -890,16 +889,21 @@ function get_greater_than!(greater_than, conditions_compound_variable, starttime
 
     for condition_group in
         IterTools.groupby(row -> row.condition_id, conditions_compound_variable)
-        t = length(condition_group) == 1 ? [0.0] : condition_group.time
+        condition_group = StructVector(condition_group)
 
-        if any(ismissing, t)
+        if any(ismissing, condition_group.time)
             (; condition_id) = first(condition_group)
             @error(
                 "Condition $condition_id for $node_id has multiple input rows and missing time values."
             )
             errors = true
+        else
+            push_constant_interpolation!(
+                greater_than,
+                condition_group.greater_than,
+                seconds_since.(condition_group.time, starttime),
+            )
         end
-        push_constant_interpolation!(greater_than, u, seconds_since.(t, starttime))
     end
 
     if errors
@@ -943,7 +947,7 @@ function CompoundVariable(
 
     # Build greater_than ConstantInterpolation objects
     greater_than = ScalarConstantInterpolation[]
-    isnothing(conditions_compound_variable) &&
+    !isnothing(conditions_compound_variable) &&
         get_greater_than!(greater_than, conditions_compound_variable, starttime)
 
     # The ID of the node listening to this CompoundVariable
@@ -952,7 +956,7 @@ function CompoundVariable(
     return CompoundVariable(node_id, subvariables, greater_than)
 end
 
-function parse_variables_and_conditions(ids::Vector{NodeID}, db::DB, config::Config)
+function parse_variables_and_conditions(ids::Vector{Int32}, db::DB, config::Config)
     condition = load_structvector(db, config, DiscreteControlConditionV1)
     compound_variable = load_structvector(db, config, DiscreteControlVariableV1)
 
@@ -964,7 +968,6 @@ function parse_variables_and_conditions(ids::Vector{NodeID}, db::DB, config::Con
 
     # Loop over unique discrete_control node IDs
     for id in ids
-
         # Conditions associated with the current DiscreteControl node
         conditions_node = filter(row -> row.node_id == id, condition)
 
@@ -975,7 +978,7 @@ function parse_variables_and_conditions(ids::Vector{NodeID}, db::DB, config::Con
         compound_variables_node = CompoundVariable[]
 
         # Loop over compound variables for the current DiscreteControl node
-        for compound_variable_id in unique(condition_group_id.compound_variable_id)
+        for compound_variable_id in unique(conditions_node.compound_variable_id)
 
             # Conditions associated with the current compound variable
             conditions_compound_variable = filter(
@@ -1421,7 +1424,7 @@ function push_constant_interpolation!(
     constant_interpolations::Vector{<:ConstantInterpolation{uType, tType}},
     output::uType,
     input::tType,
-)::Nothing
+) where {uType, tType}
     itp = ConstantInterpolation(output, input; extrapolate = true, cache_parameters = true)
     push!(constant_interpolations, itp)
 end
@@ -1844,10 +1847,15 @@ function load_structvector(
         nt = merge(
             nt,
             (;
-                time = DateTime.(
-                    replace.(nt.time, r"(\.\d{3})\d+$" => s"\1"),  # remove sub ms precision
-                    dateformat"yyyy-mm-dd HH:MM:SS.s",
-                )
+                time = map(
+                    val ->
+                        ismissing(val) ? DateTime(0) :
+                        DateTime(
+                            replace(val, r"(\.\d{3})\d+$" => s"\1"),  # remove sub ms precision
+                            dateformat"yyyy-mm-dd HH:MM:SS.s",
+                        ),
+                    nt.time,
+                ),
             ),
         )
     end
