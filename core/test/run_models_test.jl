@@ -374,9 +374,11 @@ end
     @test only(current_storage) ≈ 1000.0
     # constant UserDemand withdraws to 0.9m or 900m3 due to min level = 0.9
     BMI.update_until(model, 150day)
+    formulate_storages!(current_storage, u, u, p, t)
     @test only(current_storage) ≈ 900 atol = 5
     # dynamic UserDemand withdraws to 0.5m or 500m3 due to min level = 0.5
     BMI.update_until(model, 220day)
+    formulate_storages!(current_storage, u, u, p, t)
     @test only(current_storage) ≈ 500 atol = 1
 
     # Trasient return factor

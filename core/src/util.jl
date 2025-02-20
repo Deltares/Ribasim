@@ -151,7 +151,7 @@ end
 
 "From an iterable of DateTimes, find the times the solver needs to stop"
 function get_tstops(time, starttime::DateTime)::Vector{Float64}
-    unique_times = unique(time)
+    unique_times = filter(!ismissing, unique(time))
     return seconds_since.(unique_times, starttime)
 end
 

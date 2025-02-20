@@ -134,6 +134,7 @@ def discrete_control_of_pid_control_model() -> Model:
             discrete_control.Condition(
                 greater_than=[5.0],
                 compound_variable_id=1,
+                condition_id=1,
             ),
             discrete_control.Logic(
                 truth_state=["T", "F"], control_state=["target_high", "target_low"]
