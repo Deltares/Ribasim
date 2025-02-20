@@ -154,12 +154,10 @@ github-release = "python utils/github-release.py"
 
 [target.win.tasks]
 add-ribasim-icon = { cmd = "rcedit build/ribasim/ribasim.exe --set-icon docs/assets/ribasim.ico" }
-install-ci = { depends-on = [
-    "install-julia",
-    "update-registry-julia",
-] }
+install-ci = { depends-on = ["install-julia", "update-registry-julia"] }
 
 [dependencies]
+datacompy = ">=0.16"
 geopandas = ">=1.0"
 gh = "*"
 hatch = "*"
