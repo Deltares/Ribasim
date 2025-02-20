@@ -103,7 +103,7 @@ function Model(config::Config)::Model
     end
     @debug "Read database into memory."
 
-    u0 = build_state_vector(parameters)
+    u0 = StateVector(parameters)
     du0 = zero(u0)
 
     parameters = set_state_flow_links(parameters, u0)

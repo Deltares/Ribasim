@@ -567,7 +567,7 @@ function get_variable_ref(
     errors = false
 
     # Only built here because it is needed to obtain indices
-    u = build_state_vector(p)
+    u = StateVector(p)
 
     ref = if node_id.type == NodeType.Basin && variable == "level"
         PreallocationRef(basin.current_properties.current_level, node_id.idx)
@@ -797,7 +797,7 @@ reduction_factor(x::GradientTracer, threshold::Real) = x
 low_storage_factor_resistance_node(storage, q::GradientTracer, inflow_id, outflow_id) = q
 relaxed_root(x::GradientTracer, threshold::Real) = x
 get_level_from_storage(basin::Basin, state_idx::Int, storage::GradientTracer) = storage
-stop_declining_negative_storage!(du, u::ComponentVector{<:GradientTracer}) = nothing
+stop_declining_negative_storage!(du, u::StateVector{<:GradientTracer}) = nothing
 
 @kwdef struct MonitoredBackTracking{B, V}
     linesearch::B = BackTracking()
@@ -864,30 +864,48 @@ function OrdinaryDiffEqNonlinearSolve.relax!(
     end
 end
 
-function build_state_vector(p::Parameters)
+function StateVector(p::Parameters)
     # It is assumed that the horizontal flow states come first in
     # p.state_inflow_link and p.state_outflow_link
-    return ComponentVector{Float64}(;
-        tabulated_rating_curve = zeros(length(p.tabulated_rating_curve.node_id)),
-        pump = zeros(length(p.pump.node_id)),
-        outlet = zeros(length(p.outlet.node_id)),
-        user_demand_inflow = zeros(length(p.user_demand.node_id)),
-        user_demand_outflow = zeros(length(p.user_demand.node_id)),
-        linear_resistance = zeros(length(p.linear_resistance.node_id)),
-        manning_resistance = zeros(length(p.manning_resistance.node_id)),
-        evaporation = zeros(length(p.basin.node_id)),
-        infiltration = zeros(length(p.basin.node_id)),
-        integral = zeros(length(p.pid_control.node_id)),
+    lengths = Int[
+        length(p.tabulated_rating_curve.node_id),
+        length(p.pump.node_id),
+        length(p.outlet.node_id),
+        length(p.user_demand.node_id),
+        length(p.user_demand.node_id),
+        length(p.linear_resistance.node_id),
+        length(p.manning_resistance.node_id),
+        length(p.basin.node_id),
+        length(p.basin.node_id),
+        length(p.pid_control.node_id),
+    ]
+
+    # from a lengths array like [n_pump, n_outlet]
+    # construct [1:n_pump, (n_pump+1):(n_pump+n_outlet)]
+    # which are used to create views into the data array
+    bounds = pushfirst!(cumsum(lengths), 1)
+    ranges = [range(p...) for p in IterTools.partition(bounds, 2, 1)]
+    data = zeros(last(bounds))
+
+    return StateVector(;
+        data,
+        tabulated_rating_curve = view(data, ranges[1]),
+        pump = view(data, ranges[2]),
+        outlet = view(data, ranges[3]),
+        user_demand_inflow = view(data, ranges[4]),
+        user_demand_outflow = view(data, ranges[5]),
+        linear_resistance = view(data, ranges[6]),
+        manning_resistance = view(data, ranges[7]),
+        evaporation = view(data, ranges[8]),
+        infiltration = view(data, ranges[9]),
+        integral = view(data, ranges[10]),
     )
 end
 
-function build_flow_to_storage(p::Parameters, u::ComponentVector)::Parameters
+function build_flow_to_storage(p::Parameters, u::StateVector)::Parameters
     n_basins = length(p.basin.node_id)
     n_states = length(u)
-    flow_to_storage = ComponentArray(
-        spzeros(n_basins, n_states),
-        (Axis(; basins = 1:n_basins), only(getaxes(u))),
-    )
+    flow_to_storage = spzeros(n_basins, n_states)
 
     for node_name in (
         :tabulated_rating_curve,
@@ -900,10 +918,13 @@ function build_flow_to_storage(p::Parameters, u::ComponentVector)::Parameters
         node = getfield(p, node_name)
 
         if node_name == :user_demand
-            flow_to_storage_node_inflow = view(flow_to_storage, :, :user_demand_inflow)
-            flow_to_storage_node_outflow = view(flow_to_storage, :, :user_demand_outflow)
+            sel = get_range(u.user_demand_inflow)
+            flow_to_storage_node_inflow = view(flow_to_storage, :, sel)
+            sel = get_range(u.user_demand_outflow)
+            flow_to_storage_node_outflow = view(flow_to_storage, :, sel)
         else
-            flow_to_storage_node_inflow = view(flow_to_storage, :, node_name)
+            sel = get_range(getproperty(u, node_name))
+            flow_to_storage_node_inflow = view(flow_to_storage, :, sel)
             flow_to_storage_node_outflow = flow_to_storage_node_inflow
         end
 
@@ -920,15 +941,17 @@ function build_flow_to_storage(p::Parameters, u::ComponentVector)::Parameters
         end
     end
 
-    flow_to_storage_evaporation = view(flow_to_storage, :, :evaporation)
-    flow_to_storage_infiltration = view(flow_to_storage, :, :infiltration)
+    sel = get_range(u.evaporation)
+    flow_to_storage_evaporation = view(flow_to_storage, :, sel)
+    sel = get_range(u.infiltration)
+    flow_to_storage_infiltration = view(flow_to_storage, :, sel)
 
     for i in 1:n_basins
         flow_to_storage_evaporation[i, i] = -1.0
         flow_to_storage_infiltration[i, i] = -1.0
     end
 
-    @set p.flow_to_storage = parent(flow_to_storage)
+    @set p.flow_to_storage = flow_to_storage
 end
 
 """
@@ -936,7 +959,7 @@ Create vectors state_inflow_link and state_outflow_link which give for each stat
 in the state vector in order the metadata of the link that is associated with that state.
 Only for horizontal flows, which are assumed to come first in the state vector.
 """
-function set_state_flow_links(p::Parameters, u0::ComponentVector)::Parameters
+function set_state_flow_links(p::Parameters, u0::StateVector)::Parameters
     (; user_demand, graph) = p
 
     components = Symbol[]
@@ -1118,15 +1141,14 @@ source_links_subnetwork(p::Parameters, subnetwork_id::Int32) =
     keys(mean_input_flows_subnetwork(p, subnetwork_id))
 
 """
-Wrap the data of a SubArray into a Vector.
+Wrap the data of a StateVector SubArray into a Vector.
 
-This function is labeled unsafe because it will crash if pointer is not a valid memory
+This function is labeled unsafe because it will crash if the pointer is not a valid memory
 address to data of the requested length, and it will not prevent the input array A from
 being freed.
 """
-function unsafe_array(
-    A::SubArray{Float64, 1, Vector{Float64}, Tuple{UnitRange{Int64}}, true},
-)::Vector{Float64}
+function unsafe_array(u::StateVector, name::Symbol)::Vector{Float64}
+    A = getproperty(sv, name)
     GC.@preserve A unsafe_wrap(Array, pointer(A), length(A))
 end
 

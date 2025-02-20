@@ -140,6 +140,66 @@ The caches are always initialized with zeros
 """
 cache(len::Int)::Cache = LazyBufferCache(Returns(len); initializer! = set_zero!)
 
+"""
+StateVector is a vector that holds the Ribasim state variables.
+
+All data is in one dense Vector. All named components of the state are stored as SubArrays
+of the data Vector. This is a minimal and hardcoded alternative to ComponentArrays.jl.
+
+"""
+@kwdef struct StateVector{T} <: AbstractVector{T}
+    data::Vector{T} = zeros(0)
+    tabulated_rating_curve::SubArray{T, 1, Vector{T}, Tuple{UnitRange{Int64}}, true} =
+        view(data, 1:0)
+    pump::SubArray{T, 1, Vector{T}, Tuple{UnitRange{Int64}}, true} = view(data, 1:0)
+    outlet::SubArray{T, 1, Vector{T}, Tuple{UnitRange{Int64}}, true} = view(data, 1:0)
+    user_demand_inflow::SubArray{T, 1, Vector{T}, Tuple{UnitRange{Int64}}, true} =
+        view(data, 1:0)
+    user_demand_outflow::SubArray{T, 1, Vector{T}, Tuple{UnitRange{Int64}}, true} =
+        view(data, 1:0)
+    linear_resistance::SubArray{T, 1, Vector{T}, Tuple{UnitRange{Int64}}, true} =
+        view(data, 1:0)
+    manning_resistance::SubArray{T, 1, Vector{T}, Tuple{UnitRange{Int64}}, true} =
+        view(data, 1:0)
+    evaporation::SubArray{T, 1, Vector{T}, Tuple{UnitRange{Int64}}, true} = view(data, 1:0)
+    infiltration::SubArray{T, 1, Vector{T}, Tuple{UnitRange{Int64}}, true} = view(data, 1:0)
+    integral::SubArray{T, 1, Vector{T}, Tuple{UnitRange{Int64}}, true} = view(data, 1:0)
+end
+
+Base.setindex!(u::StateVector, value, i::Int) = (u.data[i] = value)
+Base.size(u::StateVector) = size(u.data)
+Base.length(u::StateVector) = length(u.data)
+Base.getindex(u::StateVector, i::Int) = u.data[i]
+Base.IndexStyle(::Type{StateVector}) = IndexLinear()
+
+Base.keys(u::StateVector) = (x for x in propertynames(u) if x !== :data)
+Base.values(u::StateVector) = (getproperty(u, x) for x in keys(u))
+Base.pairs(u::StateVector) = (x => getproperty(u, x) for x in keys(u))
+
+Base.copy(u::StateVector) = StateVector(; data = copy(u.data), pairs(u)...)
+Base.zero(u::StateVector) = StateVector(; data = zero(u.data), pairs(u)...)
+Base.similar(u::StateVector) = StateVector(; data = similar(u.data), pairs(u)...)
+
+function Base.similar(u::StateVector, ::Type{T}) where {T}
+    data = similar(u.data, T)
+    subvecs = [k => view(data, get_range(v)) for (k, v) in pairs(u)]
+    StateVector(; data, subvecs...)
+end
+
+# uses SubArray internals
+get_range(v::SubArray)::UnitRange = only(v.indices)
+
+function Base.show(io::IO, u::StateVector)
+    summary(io, u)
+    println()
+    for name in keys(u)
+        subvec = getproperty(u, name)
+        isempty(subvec) && continue
+        print(name, ": ")
+        println(subvec)
+    end
+end
+
 @eval @enumx AllocationSourceType $(fieldnames(Ribasim.config.SourcePriority)...)
 
 # Support creating a AllocationSourceTuple enum instance from a symbol
@@ -998,7 +1058,7 @@ const ModelGraph = MetaGraph{
     const water_balance_abstol::Float64
     const water_balance_reltol::Float64
     # State at previous saveat
-    const u_prev_saveat::C11 = ComponentVector()
+    const u_prev_saveat::C11 = StateVector()
 end
 
 # To opt-out of type checking for ForwardDiff
