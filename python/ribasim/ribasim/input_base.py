@@ -13,6 +13,7 @@ from typing import (
     cast,
 )
 
+import datacompy
 import geopandas as gpd
 import numpy as np
 import pandas as pd
@@ -95,6 +96,28 @@ class BaseModel(PydanticBaseModel):
 
     def model_dump(self, **kwargs) -> dict[str, Any]:
         return super().model_dump(serialize_as_any=True, **kwargs)
+
+    def diff(self, other: "BaseModel") -> dict[str, Any] | None:
+        """
+        Compare two instances of a BaseModel.
+
+        If they are equal, return None. Otherwise, return a dictionary with the differences.
+        """
+        if self == other:
+            return None
+        data = {}
+        for key in self._fields():
+            self_attr = getattr(self, key)
+            other_attr = getattr(other, key)
+            if self_attr == other_attr:
+                continue
+            if isinstance(self_attr, BaseModel):
+                data[key] = self_attr.diff(
+                    other_attr,
+                )
+            else:
+                data[key] = {"self": self_attr, "other": other_attr}
+        return data
 
     # __eq__ from Pydantic BaseModel itself, edited to remove the comparison of private attrs
     # https://github.com/pydantic/pydantic/blob/ff3789d4cc06ee024b7253b919d3e36748a72829/pydantic/main.py#L1069
@@ -226,6 +249,21 @@ class TableModel(FileModel, Generic[TableT]):
                 return self.df.equals(other.df)
 
         return NotImplemented
+
+    def diff(self, other: BaseModel) -> dict[str, Any] | None:
+        if not (
+            isinstance(other, TableModel) and other.tableschema() == self.tableschema()
+        ):
+            raise ValueError(f"Cannot compare {self} with {other}")
+        if self == other:
+            return None
+        elif self.df is not None and other.df is not None:
+            comp = datacompy.Compare(
+                self.df, other.df, on_index=True, df1_name="self", df2_name="other"
+            )
+            return {"diff": comp}
+        else:
+            return {"self": self.df, "other": other.df}
 
     @field_validator("df")
     @classmethod

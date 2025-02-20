@@ -200,6 +200,7 @@ twine = "*"
 xarray = "*"
 xmipy = ">=1.3"
 xugrid = "*"
+datacompy = ">=0.16.2,<0.17"
 
 [pypi-dependencies]
 ptvsd = "*"
