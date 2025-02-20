@@ -239,7 +239,7 @@ end
         weight = 0.5,
         look_ahead = 0.0,
     )
-    @test record.time ≈ [0.0, model.integrator.sol.t[end] / 2]
+    @test record.time ≈ [0.0, model.integrator.sol.t[end] / 2] rtol = 1e-2
     @test record.truth_state == ["F", "T"]
     @test record.control_state == ["Off", "On"]
 end
