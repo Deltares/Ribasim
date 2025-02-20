@@ -318,3 +318,21 @@ end
     @test all(isapprox.(flow_link_0.flow_rate[above_threshold], 1e-3, rtol = 1e-2))
     @test all(isapprox.(flow_link_0.flow_rate[.!above_threshold], 0.0, atol = 1e-5))
 end
+
+@testitem "Transient discrete control condition" begin
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/transient_condition/ribasim.toml")
+    @test ispath(toml_path)
+
+    model = Ribasim.run(toml_path)
+    (; record, compound_variables) = model.integrator.p.discrete_control
+
+    t_condition_change = compound_variables[1][1].greater_than[1].t[2]
+
+    @test record.control_node_id == [4, 4]
+    @test record.truth_state == ["T", "F"]
+    @test record.control_state == ["B", "A"]
+
+    # Control state changes precisely when the condition changes
+    @test record.time == [0, t_condition_change]
+end
