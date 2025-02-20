@@ -97,12 +97,37 @@ class BaseModel(PydanticBaseModel):
     def model_dump(self, **kwargs) -> dict[str, Any]:
         return super().model_dump(serialize_as_any=True, **kwargs)
 
-    def diff(self, other: "BaseModel") -> dict[str, Any] | None:
+    def diff(
+        self, other: "BaseModel", ignore_meta: bool = False
+    ) -> dict[str, Any] | None:
         """
         Compare two instances of a BaseModel.
 
-        If they are equal, return None. Otherwise, return a dictionary with the differences.
+        ** Warning: This method is experimental and is likely to change. **
+
+        If they are equal, return None. Otherwise, return a nested dictionary with the differences.
+        When the differences are not a DataFrame (like the toml config),
+        the dict has self and other as key.
+        For DataFrames we return a dict with diff as key, and a datacompy Comparison object.
+
+        When ignore_meta is set to True, the meta_* columns in the DataFrames are ignored.
+        Note that in that case the key will still be returned and the value will be None.
+
+        Examples
+        --------
+        >>> nbasic == basic
+        False
+        >>> x = nbasic.diff(basic)
+        {'basin': {'node': {'diff': <datacompy.core.Compare object at 0x16e5a45c0>},
+                'static': {'diff': <datacompy.core.Compare object at 0x16eb90080>}},
+        'solver': {'saveat': {'other': 86400.0, 'self': 0.0}}}
+        >>> x["basin"]["static"]["diff"].report()
+        DataComPy Comparison
+        --------------------
+        ...
         """
+        if not (isinstance(other, self.__class__)):
+            raise ValueError(f"Cannot compare {self} with {other}")
         if self == other:
             return None
         data = {}
@@ -114,6 +139,7 @@ class BaseModel(PydanticBaseModel):
             if isinstance(self_attr, BaseModel):
                 data[key] = self_attr.diff(
                     other_attr,
+                    ignore_meta=ignore_meta,
                 )
             else:
                 data[key] = {"self": self_attr, "other": other_attr}
@@ -250,18 +276,31 @@ class TableModel(FileModel, Generic[TableT]):
 
         return NotImplemented
 
-    def diff(self, other: BaseModel) -> dict[str, Any] | None:
-        if not (
-            isinstance(other, TableModel) and other.tableschema() == self.tableschema()
-        ):
+    def diff(self, other: BaseModel, ignore_meta=False) -> dict[str, Any] | None:
+        # Only diff with other TableModel[TableT] instances
+        if not (isinstance(other, self.__class__)):
             raise ValueError(f"Cannot compare {self} with {other}")
-        if self == other:
+        # Both are None
+        if self.df is None and other.df is None:
             return None
+        # Both are DataFrames
         elif self.df is not None and other.df is not None:
+            # Differences might've been in the meta columns
+            # so we check if the DataFrames are equal again
+            if ignore_meta:
+                a = self.df.loc[:, self.columns()]
+                b = other.df.loc[:, self.columns()]
+                if a.equals(b):
+                    return None
+            else:
+                a = self.df
+                b = other.df
+
             comp = datacompy.Compare(
-                self.df, other.df, on_index=True, df1_name="self", df2_name="other"
+                a, b, on_index=True, df1_name="self", df2_name="other"
             )
             return {"diff": comp}
+        # One of the instances is None
         else:
             return {"self": self.df, "other": other.df}
 

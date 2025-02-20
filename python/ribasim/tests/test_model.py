@@ -275,13 +275,20 @@ def test_model_equals(basic):
 
 
 def test_model_diff(basic):
+    # Create a copy of the model to compare with
     nbasic = basic.model_copy(deep=True)
     x = nbasic.diff(basic)
     assert x is None
 
+    # Test unequal comparisons for both paths
+    with pytest.raises(ValueError):
+        nbasic.diff(basic.solver)
+    with pytest.raises(ValueError):
+        basic.basin.static.diff(basic.basin.node)
+
+    # Change the solver settings and compare
     nbasic.solver.saveat = 0
     x = nbasic.diff(basic)
-
     assert isinstance(x, dict)
     assert "solver" in x
     assert len(x) == 1  # only solver is different
@@ -289,20 +296,32 @@ def test_model_diff(basic):
     assert x["solver"]["saveat"]["self"] == 0
     assert x["solver"]["saveat"]["other"] == 86400.0
 
+    # Add metadata information to the static node
+    nbasic.basin.static.df["meta_data"] = 1
+    x = nbasic.basin.static.diff(basic.basin.static, ignore_meta=True)
+    assert x is None
+    x = nbasic.basin.static.diff(basic.basin.static, ignore_meta=False)
+    assert isinstance(x, dict)
+    assert "diff" in x
+    assert isinstance(x["diff"], datacompy.Compare)
+
     # Reset and add new basin / static node.
+    nbasic.basin.static.df = basic.basin.static.df.copy()
     nbasic.solver.saveat = basic.solver.saveat
     nbasic.basin.add(
         Node(None, Point(-1.5, -1), name="confluence"),
         [
-            basin.Static(precipitation=[4]),
+            basin.Static(precipitation=[4], meta_data=1),
         ],
     )
 
+    # Test DataFrame difference on TableModel level
     x = nbasic.basin.static.diff(basic.basin.static)
     assert isinstance(x, dict)
     assert "diff" in x
     assert isinstance(x["diff"], datacompy.Compare)
 
+    # Test DataFrame difference on model level
     x = nbasic.diff(basic)
     assert isinstance(x, dict)
     assert "basin" in x
