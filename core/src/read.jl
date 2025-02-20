@@ -107,7 +107,6 @@ function parse_static_and_time(
     end
 
     errors = false
-    t_end = seconds_since(config.endtime, config.starttime)
     trivial_timespan = [0.0, prevfloat(Inf)]
 
     for node_id in node_ids
@@ -895,10 +894,10 @@ function get_greater_than!(greater_than, conditions_compound_variable, starttime
         IterTools.groupby(row -> row.condition_id, conditions_compound_variable)
         condition_group = StructVector(condition_group)
 
-        if any(ismissing, condition_group.time)
+        if !allunique(condition_group.time)
             (; condition_id) = first(condition_group)
             @error(
-                "Condition $condition_id for $node_id has multiple input rows and missing time values."
+                "Condition $condition_id for $node_id has multiple input rows with the same (possibly unspecified) timestamp."
             )
             errors = true
         else
@@ -1848,7 +1847,7 @@ function load_structvector(
             (;
                 time = map(
                     val ->
-                        ismissing(val) ? DateTime(0) :
+                        ismissing(val) ? DateTime(config.starttime) :
                         DateTime(
                             replace(val, r"(\.\d{3})\d+$" => s"\1"),  # remove sub ms precision
                             dateformat"yyyy-mm-dd HH:MM:SS.s",

@@ -129,5 +129,5 @@ def discretecontrolconditionschema_migration(
         )
         n_rows = len(df)
         df["time"] = Series([None] * n_rows, dtype="timestamp[ms][pyarrow]")
-        df["time"] = Series(range(n_rows), dtype="int32[pyarrow]")
+        df["condition_id"] = Series(range(n_rows), dtype="int32[pyarrow]")
     return df

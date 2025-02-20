@@ -247,8 +247,8 @@ end
 @version DiscreteControlConditionV1 begin
     node_id::Int32
     compound_variable_id::Int32
-    greater_than::Float64
     condition_id::Int32
+    greater_than::Float64
     time::Union{Missing, DateTime}
 end
 

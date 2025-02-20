@@ -222,10 +222,10 @@ class DiscreteControlConditionSchema(_BaseSchema):
     compound_variable_id: Series[Annotated[pd.ArrowDtype, pyarrow.int32()]] = pa.Field(
         nullable=False
     )
-    greater_than: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
+    condition_id: Series[Annotated[pd.ArrowDtype, pyarrow.int32()]] = pa.Field(
         nullable=False
     )
-    condition_id: Series[Annotated[pd.ArrowDtype, pyarrow.int32()]] = pa.Field(
+    greater_than: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
         nullable=False
     )
     time: Series[Annotated[pd.ArrowDtype, pyarrow.timestamp("ms")]] = pa.Field(

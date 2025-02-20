@@ -482,6 +482,7 @@ function apply_discrete_control!(u, t, integrator)::Nothing
     (; discrete_control) = p
     (; node_id, truth_state, compound_variables) = discrete_control
     du = get_du(integrator)
+    water_balance!(du, u, p, t)
 
     # Loop over the discrete control nodes to determine their truth state
     # and detect possible control state changes

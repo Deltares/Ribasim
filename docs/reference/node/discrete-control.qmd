@@ -80,8 +80,8 @@ column               | type     | unit    | restriction
 -------------------- | -------- | ------- | -----------
 node_id              | Int32    | -       | -
 compound_variable_id | Int32    | -       | -
-greater_than         | Float64  | various | -
 condition_id         | Int32    | -       | -
+greater_than         | Float64  | various | -
 time                 | DateTime | -       | (optional)
 
 When no (or only a single) `time` is supplied for a given `condition_id`, the `greater_than` value of this condition is unchanging over time.
