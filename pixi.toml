@@ -157,6 +157,7 @@ add-ribasim-icon = { cmd = "rcedit build/ribasim/ribasim.exe --set-icon docs/ass
 install-ci = { depends-on = ["install-julia", "update-registry-julia"] }
 
 [dependencies]
+datacompy = ">=0.16"
 geopandas = ">=1.0"
 gh = "*"
 hatch = "*"
@@ -197,7 +198,6 @@ twine = "*"
 xarray = "*"
 xmipy = ">=1.3"
 xugrid = "*"
-datacompy = ">=0.16"
 
 [pypi-dependencies]
 ptvsd = "*"
