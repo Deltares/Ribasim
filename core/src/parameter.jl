@@ -764,6 +764,14 @@ function set_value!(ref::PreallocationRef, value, du)::Nothing
     return nothing
 end
 
+@kwdef struct SubVariable
+    listen_node_id::NodeID
+    variable_ref::PreallocationRef
+    variable::String
+    weight::Float64
+    look_ahead::Float64
+end
+
 """
 The data for a single compound variable
 node_id:: The ID of the DiscreteControl that listens to this variable
@@ -773,16 +781,8 @@ greater_than: the thresholds this compound variable will be
 """
 @kwdef struct CompoundVariable
     node_id::NodeID
-    subvariables::Vector{
-        @NamedTuple{
-            listen_node_id::NodeID,
-            variable_ref::PreallocationRef,
-            variable::String,
-            weight::Float64,
-            look_ahead::Float64,
-        }
-    }
-    greater_than::Vector{Float64}
+    subvariables::Vector{SubVariable} = SubVariable[]
+    greater_than::Vector{ScalarConstantInterpolation} = ScalarConstantInterpolation[]
 end
 
 """

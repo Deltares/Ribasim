@@ -66,21 +66,25 @@ These variables can be listened to:
 
 ## Condition
 
-The condition schema defines conditions of the form 'the `discrete_control` node with this `node_id` listens to whether the variable given by the `node_id` and `compound_variable_id` is greater than `greater_than`'. In equation form:
+The condition schema defines conditions of the form 'the `discrete_control` node with this `node_id` listens to whether the variable given by the `node_id` and `compound_variable_id` is greater than `greater_than`' (at time $t$). In equation form:
 
 $$
-    \text{weight}_1 * \text{variable}_1 + \text{weight}_2 * \text{variable}_2 + \ldots > \text{greater\_than}.
+    \text{weight}_1 * \text{variable}_1 + \text{weight}_2 * \text{variable}_2 + \ldots > \text{greater\_than}(t).
 $$
 
-Multiple conditions with different `greater_than` values can be defined on the same compound_variable.
+Multiple conditions with different `greater_than` values can be defined on the same compound_variable, each with their own unique `condition_id`.
 
 Note the strict inequality '$>$' in the equation above. This means for instance that if a simulation starts with a compound variable exactly at the `greater_than` value, the condition is false.
 
 column               | type     | unit    | restriction
 -------------------- | -------- | ------- | -----------
-node_id              | Int32    | -       |
+node_id              | Int32    | -       | -
 compound_variable_id | Int32    | -       | -
-greater_than         | Float64  | various |
+condition_id         | Int32    | -       | -
+greater_than         | Float64  | various | -
+time                 | DateTime | -       | (optional)
+
+When no (or only a single) `time` is supplied for a given `condition_id`, the `greater_than` value of this condition is unchanging over time.
 
 ## Logic
 
@@ -89,14 +93,9 @@ DiscreteControl is applied in the Julia core as follows:
 
 - During the simulation it is checked whether the truth of any of the conditions changes.
 - When a condition changes, the corresponding DiscreteControl node ID is retrieved (node_id in the condition schema above).
-- The truth value of all the conditions this DiscreteControl node listens to are retrieved, **in the sorted order as specified in the condition schema**. This is then converted into a string of "T" for true and "F" for false. This string we call the truth state.
+- The truth value of all the conditions this DiscreteControl node listens to are retrieved, in the order of the condition IDs. This is then converted into a string of "T" for true and "F" for false. This string we call the truth state.
 - The table below determines for the given DiscreteControl node ID and truth state what the corresponding control state is.
 - For all the nodes this DiscreteControl node affects (as given by the "control" links in [Links / static](/reference/usage.qmd#link)), their parameters are set to those parameters in `NodeType / static` corresponding to the determined control state.
-
-:::{.callout-note}
-When creating truth states, it is important to not use the order of the condition table as you provide it, but the order as it is written to the file.
-Users can provide tables in any order, but when writing the model it gets sorted in the required order.
-:::
 
 column         | type     | unit | restriction
 -------------- | -------- | ---- | -----------

@@ -120,7 +120,7 @@ sort_by(::StructVector{ContinuousControlVariableV1}) =
     x -> (x.node_id, x.listen_node_id, x.variable)
 
 sort_by(::StructVector{DiscreteControlConditionV1}) =
-    x -> (x.node_id, x.compound_variable_id, x.greater_than)
+    x -> (x.node_id, x.compound_variable_id, x.condition_id)
 sort_by(::StructVector{DiscreteControlLogicV1}) = x -> (x.node_id, x.truth_state)
 sort_by(::StructVector{DiscreteControlVariableV1}) =
     x -> (x.node_id, x.compound_variable_id, x.listen_node_id, x.variable)
@@ -424,12 +424,9 @@ function valid_tabulated_curve_level(
         if id_in.type == NodeType.Basin
             basin_bottom_level = basin_bottom(basin, id_in)[2]
             # for the complete timeseries this needs to hold
-            # use unique to avoid double reporting the dummy two point ConstantInterpolation
-            # when a TabulatedRatingCurve is static.
-            for interpolation_index in unique(index_lookup.u)
-                # the second level is the bottom, the first is added to control extrapolation
+            for interpolation_index in index_lookup.u
                 qh = tabulated_rating_curve.interpolations[interpolation_index]
-                h_min = qh.t[1] + 1.0
+                h_min = qh.t[1]
                 if h_min < basin_bottom_level
                     @error "Lowest level of $id is lower than bottom of upstream $id_in" h_min basin_bottom_level
                     errors = true

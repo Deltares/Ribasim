@@ -16,6 +16,7 @@ classifiers = [
 ]
 requires-python = ">=3.11"
 dependencies = [
+    "datacompy >=0.16",
     "geopandas >=1.0",
     "matplotlib >=3.7",
     "numpy >=1.25",

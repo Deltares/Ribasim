@@ -85,6 +85,7 @@ def invalid_discrete_control_model() -> Model:
             discrete_control.Condition(
                 greater_than=[0.5, 1.5, 1.5],
                 compound_variable_id=[1, 2, 3],
+                condition_id=1,
             ),
             # Invalid: DiscreteControl node #4 has 2 conditions so
             # truth states have to be of length 2

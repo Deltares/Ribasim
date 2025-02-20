@@ -52,7 +52,7 @@ def layers(path: Path) -> list[str]:
 
 
 # Keep version synced __schema_version__ in ribasim/__init__.py
-def write_schema_version(path: Path, version: int = 4) -> None:
+def write_schema_version(path: Path, version: int = 5) -> None:
     """Write the schema version to the geopackage."""
     with sqlite3_cursor(path) as cursor:
         cursor.execute(
