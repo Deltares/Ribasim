@@ -407,9 +407,10 @@ def cyclic_forcing_model() -> Model:
         [
             basin.Profile(level=[0.0, 1.0], area=100.0),
             basin.Time(
-                time=["2020-01-01", "2020-05-01", "2021-09-01", "2020-01-01"],
+                time=["2020-01-01", "2020-05-01", "2020-09-01", "2021-01-01"],
                 precipitation=[1.0, 2.0, 1.0, 2.0],
             ),
+            basin.State(level=[5.0]),
         ],
     )
 

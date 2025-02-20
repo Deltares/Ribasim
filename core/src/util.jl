@@ -65,7 +65,7 @@ function get_level_from_storage(basin::Basin, state_idx::Int, storage)
     end
 end
 
-"Linear interpolation of a scalar with constant extrapolation."
+"Linear interpolation of a scalar."
 function get_scalar_interpolation(
     starttime::DateTime,
     time::AbstractVector,
@@ -73,6 +73,7 @@ function get_scalar_interpolation(
     param::Symbol;
     default_value::Float64 = 0.0,
     interpolation_type::Type{<:AbstractInterpolation},
+    extrapolation::ExtrapolationType.T = Constant,
 )::interpolation_type
     rows = searchsorted(time.node_id, node_id)
     parameter = getproperty(time, param)[rows]
@@ -83,12 +84,7 @@ function get_scalar_interpolation(
         @error "The time series for $node_id has repeated times, this can not be interpolated."
         error("Invalid time series.")
     end
-    return interpolation_type(
-        parameter,
-        times;
-        extrapolation = Constant,
-        cache_parameters = true,
-    )
+    return interpolation_type(parameter, times; extrapolation, cache_parameters = true)
 end
 
 """
