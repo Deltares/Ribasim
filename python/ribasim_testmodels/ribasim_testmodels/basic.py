@@ -5,6 +5,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 import ribasim
+from ribasim import Model
 from ribasim.config import Experimental, Node
 from ribasim.input_base import TableModel
 from ribasim.nodes import (
@@ -20,9 +21,9 @@ from ribasim.nodes import (
 from shapely.geometry import MultiPolygon, Point
 
 
-def basic_model() -> ribasim.Model:
+def basic_model() -> Model:
     # Setup model
-    model = ribasim.Model(
+    model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
@@ -205,14 +206,14 @@ def basic_model() -> ribasim.Model:
     return model
 
 
-def basic_arrow_model() -> ribasim.Model:
+def basic_arrow_model() -> Model:
     model = basic_model()
     model.basin.profile.set_filepath(Path("profile.arrow"))
     model.input_dir = Path("input")
     return model
 
 
-def basic_transient_model() -> ribasim.Model:
+def basic_transient_model() -> Model:
     """Update the basic model with transient forcing."""
     model = basic_model()
     time = pd.date_range(model.starttime, model.endtime)
@@ -262,7 +263,7 @@ def basic_transient_model() -> ribasim.Model:
     return model
 
 
-def tabulated_rating_curve_model() -> ribasim.Model:
+def tabulated_rating_curve_model() -> Model:
     """
     Set up a model where the upstream Basin has two TabulatedRatingCurve attached.
 
@@ -271,7 +272,7 @@ def tabulated_rating_curve_model() -> ribasim.Model:
     Only the upstream Basin receives a (constant) precipitation.
     """
     # Setup a model:
-    model = ribasim.Model(
+    model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
@@ -350,7 +351,7 @@ def tabulated_rating_curve_model() -> ribasim.Model:
 
 def outlet_model():
     """Set up a basic model with an outlet that encounters various physical constraints."""
-    model = ribasim.Model(
+    model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
@@ -390,5 +391,49 @@ def outlet_model():
     # Setup the links
     model.link.add(model.level_boundary[1], model.outlet[2])
     model.link.add(model.outlet[2], model.basin[3])
+
+    return model
+
+
+def cyclic_forcing_model() -> Model:
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2021-01-01",
+        crs="EPSG:28992",
+    )
+
+    bsn = model.basin.add(
+        Node(1, Point(0, 0), cyclic_forcing=True),
+        [
+            basin.Profile(level=[0.0, 1.0], area=100.0),
+            basin.Time(
+                time=["2020-01-01", "2020-05-01", "2021-09-01", "2020-01-01"],
+                precipitation=[1.0, 2.0, 1.0, 2.0],
+            ),
+        ],
+    )
+
+    lr = model.linear_resistance.add(
+        Node(2, Point(1, 0)), [linear_resistance.Static(resistance=[1.0])]
+    )
+
+    lb = model.level_boundary.add(
+        Node(3, Point(2, 0), cyclic_forcing=True),
+        [
+            level_boundary.Time(
+                time=["2020-01-01", "2020-05-01"],
+                level=[2.0, 3.0],
+            )
+        ],
+    )
+
+    fb = model.flow_boundary.add(
+        Node(4, Point(0, 1), cyclic_forcing=True),
+        [flow_boundary.Time(time=["2020-01-01", "2020-07-01"], flow_rate=[1.0, 2.0])],
+    )
+
+    model.edge.add(bsn, lr)
+    model.edge.add(lr, lb)
+    model.edge.add(fb, bsn)
 
     return model

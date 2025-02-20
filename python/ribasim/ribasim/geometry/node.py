@@ -28,6 +28,7 @@ class NodeSchema(_GeoBaseSchema):
     source_priority: Series[pd.Int32Dtype] = pa.Field(
         default=pd.NA, nullable=True, coerce=True
     )
+    cyclic_forcing: Series[bool] = pa.Field(default=False)
     geometry: GeoSeries[Point] = pa.Field(default=None, nullable=True)
 
     @classmethod
