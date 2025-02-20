@@ -1302,6 +1302,7 @@ def bommelerwaard_model():
                 discrete_control.Condition(
                     node_id=2 * [node_id],
                     compound_variable_id=2 * [node_id],
+                    condition_id=[1, 2],
                     greater_than=greater_than,
                 ),
                 discrete_control.Logic(
