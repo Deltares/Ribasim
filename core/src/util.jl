@@ -867,7 +867,7 @@ end
 function build_state_vector(p::Parameters)
     # It is assumed that the horizontal flow states come first in
     # p.state_inflow_link and p.state_outflow_link
-    return ComponentVector{Float64}(;
+    u = ComponentVector{Float64}(;
         tabulated_rating_curve = zeros(length(p.tabulated_rating_curve.node_id)),
         pump = zeros(length(p.pump.node_id)),
         outlet = zeros(length(p.outlet.node_id)),
@@ -879,6 +879,8 @@ function build_state_vector(p::Parameters)
         infiltration = zeros(length(p.basin.node_id)),
         integral = zeros(length(p.pid_control.node_id)),
     )
+    @assert length(u) == length(p.node_id)
+    return u
 end
 
 function build_flow_to_storage(p::Parameters, u::ComponentVector)::Parameters
@@ -997,32 +999,6 @@ function set_state_flow_links(p::Parameters, u0::ComponentVector)::Parameters
     @reset p.state_inflow_link = state_inflow_link
     @reset p.state_outflow_link = state_outflow_link
     return p
-end
-
-function id_from_state_index(
-    p::Parameters,
-    ::ComponentVector{Float64, Vector{Float64}, <:Tuple{<:Axis{NT}}},
-    global_idx::Int,
-)::NodeID where {NT}
-    local_idx = 0
-    component = Symbol()
-    for (comp, range) in pairs(NT)
-        if global_idx in range
-            component = comp
-            local_idx = global_idx - first(range) + 1
-            break
-        end
-    end
-    component_string = String(component)
-    if endswith(component_string, "_inflow") || endswith(component_string, "_outflow")
-        component = :user_demand
-    elseif component == :integral
-        component = :pid_control
-    elseif component in [:infiltration, :evaporation]
-        component = :basin
-    end
-
-    getfield(p, component).node_id[local_idx]
 end
 
 function get_state_index(

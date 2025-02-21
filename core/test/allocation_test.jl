@@ -15,7 +15,7 @@
         4.5
     allocation_model = p.allocation.allocation_models[1]
     (; flow) = allocation_model
-    u = ComponentVector(; storage = zeros(length(p.basin.node_id)))
+    u = ComponentVector()
     t = 0.0
     Ribasim.allocate_demands!(p, allocation_model, t, u)
 
@@ -133,7 +133,7 @@ end
     t = 0.0
 
     # Collecting demands
-    u = ComponentVector(; storage = zeros(length(basin.node_id)))
+    u = ComponentVector()
     for allocation_model in allocation_models[2:end]
         Ribasim.collect_demands!(p, allocation_model, t, u)
     end
@@ -227,7 +227,7 @@ end
     mean_input_flows[4][(NodeID(:FlowBoundary, 59, p), NodeID(:Basin, 44, p))] = 1e-3
 
     # Collecting demands
-    u = ComponentVector(; storage = zeros(length(basin.node_id)))
+    u = ComponentVector()
     for allocation_model in allocation_models[2:end]
         Ribasim.collect_demands!(p, allocation_model, t, u)
     end

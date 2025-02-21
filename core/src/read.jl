@@ -1700,6 +1700,20 @@ function Parameters(db::DB, config::Config)::Parameters
 
     subgrid = Subgrid(db, config, basin)
 
+    # aligned with the state
+    node_id = vcat(
+        tabulated_rating_curve.node_id,
+        pump.node_id,
+        outlet.node_id,
+        user_demand.node_id,
+        user_demand.node_id,
+        linear_resistance.node_id,
+        manning_resistance.node_id,
+        basin.node_id,
+        basin.node_id,
+        pid_control.node_id,
+    )
+
     p = Parameters(;
         config.starttime,
         graph,
@@ -1722,6 +1736,7 @@ function Parameters(db::DB, config::Config)::Parameters
         subgrid,
         config.solver.water_balance_abstol,
         config.solver.water_balance_reltol,
+        node_id,
     )
 
     collect_control_mappings!(p)
