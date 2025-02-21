@@ -99,7 +99,7 @@ using ComponentArrays: ComponentVector, ComponentArray, Axis, getaxes
 using Dates: Dates, DateTime, Millisecond, @dateformat_str
 
 # We customize broadcasting for our StateVector.
-using Base.Broadcast: Broadcasted, ArrayStyle
+using Base.Broadcast: Broadcasted, ArrayStyle, Extruded
 
 # Callbacks are used to trigger function calls at specific points in the similation.
 # E.g. after each timestep for discrete control,

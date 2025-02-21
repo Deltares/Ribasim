@@ -797,7 +797,6 @@ reduction_factor(x::GradientTracer, threshold::Real) = x
 low_storage_factor_resistance_node(storage, q::GradientTracer, inflow_id, outflow_id) = q
 relaxed_root(x::GradientTracer, threshold::Real) = x
 get_level_from_storage(basin::Basin, state_idx::Int, storage::GradientTracer) = storage
-stop_declining_negative_storage!(du, u::StateVector{<:GradientTracer}) = nothing
 
 @kwdef struct MonitoredBackTracking{B, V}
     linesearch::B = BackTracking()
@@ -895,8 +894,8 @@ function StateVector(p::Parameters)
     # from a lengths array like [n_pump, n_outlet]
     # construct [1:n_pump, (n_pump+1):(n_pump+n_outlet)]
     # which are used to create views into the data array
-    bounds = pushfirst!(cumsum(lengths), 1)
-    ranges = [range(p...) for p in IterTools.partition(bounds, 2, 1)]
+    bounds = pushfirst!(cumsum(lengths), 0)
+    ranges = [range(p[1] + 1, p[2]) for p in IterTools.partition(bounds, 2, 1)]
     data = zeros(last(bounds))
 
     return StateVector(;
@@ -1035,32 +1034,6 @@ function set_state_flow_links(p::Parameters, u0::StateVector)::Parameters
     return p
 end
 
-function id_from_state_index(
-    p::Parameters,
-    ::ComponentVector{Float64, Vector{Float64}, <:Tuple{<:Axis{NT}}},
-    global_idx::Int,
-)::NodeID where {NT}
-    local_idx = 0
-    component = Symbol()
-    for (comp, range) in pairs(NT)
-        if global_idx in range
-            component = comp
-            local_idx = global_idx - first(range) + 1
-            break
-        end
-    end
-    component_string = String(component)
-    if endswith(component_string, "_inflow") || endswith(component_string, "_outflow")
-        component = :user_demand
-    elseif component == :integral
-        component = :pid_control
-    elseif component in [:infiltration, :evaporation]
-        component = :basin
-    end
-
-    getfield(p, component).node_id[local_idx]
-end
-
 """
 Get the index of the StateVector corresponding to the given NodeID.
 Use the inflow Boolean argument to disambiguite for node types that have multiple states.
@@ -1167,7 +1140,7 @@ address to data of the requested length, and it will not prevent the input array
 being freed.
 """
 function unsafe_array(u::StateVector, name::Symbol)::Vector{Float64}
-    A = getproperty(sv, name)
+    A = getproperty(u, name)
     GC.@preserve A unsafe_wrap(Array, pointer(A), length(A))
 end
 

@@ -1,5 +1,5 @@
 struct SavedResults
-    flow::SavedValues{Float64, SavedFlow{StateVector{Float64}}}
+    flow::SavedValues{Float64, SavedFlow{StateVector{Float64, Float64}}}
     basin_state::SavedValues{Float64, SavedBasinState}
     subgrid_level::SavedValues{Float64, Vector{Float64}}
     solver_stats::SavedValues{Float64, SolverStats}
