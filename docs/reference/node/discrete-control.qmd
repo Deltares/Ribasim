@@ -93,7 +93,7 @@ DiscreteControl is applied in the Julia core as follows:
 
 - During the simulation it is checked whether the truth of any of the conditions changes.
 - When a condition changes, the corresponding DiscreteControl node ID is retrieved (node_id in the condition schema above).
-- The truth value of all the conditions this DiscreteControl node listens to are retrieved, in the order of the condition IDs. This is then converted into a string of "T" for true and "F" for false. This string we call the truth state.*
+- The truth value of all the conditions this DiscreteControl node listens to are retrieved, in the order of the condition IDs. This is then converted into a string of "T" for true and "F" for false. This string we call the truth state.
 - The table below determines for the given DiscreteControl node ID and truth state what the corresponding control state is.
 - For all the nodes this DiscreteControl node affects (as given by the "control" links in [Links / static](/reference/usage.qmd#link)), their parameters are set to those parameters in `NodeType / static` corresponding to the determined control state.
 

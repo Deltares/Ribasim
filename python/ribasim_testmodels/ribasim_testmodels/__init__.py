@@ -8,6 +8,7 @@ import ribasim_testmodels
 from ribasim_testmodels.allocation import (
     allocation_example_model,
     allocation_training_model,
+    bommelerwaard_model,
     fair_distribution_model,
     flow_demand_model,
     level_demand_model,
@@ -71,6 +72,7 @@ __all__ = [
     "basic_arrow_model",
     "basic_model",
     "basic_transient_model",
+    "bommelerwaard_model",
     "bucket_model",
     "compound_variable_condition_model",
     "concentration_condition_model",

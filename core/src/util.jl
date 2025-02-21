@@ -1114,9 +1114,6 @@ function mean_input_flows_subnetwork(p::Parameters, subnetwork_id::Int32)
     return mean_input_flows[subnetwork_idx]
 end
 
-source_links_subnetwork(p::Parameters, subnetwork_id::Int32) =
-    keys(mean_input_flows_subnetwork(p, subnetwork_id))
-
 """
 Wrap the data of a SubArray into a Vector.
 
