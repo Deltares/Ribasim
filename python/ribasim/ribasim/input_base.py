@@ -1,5 +1,6 @@
 import operator
 import re
+import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Generator
 from contextlib import closing
@@ -13,7 +14,10 @@ from typing import (
     cast,
 )
 
-import datacompy
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    import datacompy
+
 import geopandas as gpd
 import numpy as np
 import pandas as pd
