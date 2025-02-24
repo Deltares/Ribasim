@@ -263,6 +263,7 @@ end
     db = SQLite.DB(db_path)
 
     p = Ribasim.Parameters(db, cfg)
+    @test p.node_id == [4, 5, 8, 7, 10, 12, 2, 1, 3, 6, 9, 1, 3, 6, 9]
     close(db)
     t0 = 0.0
     u0 = Ribasim.build_state_vector(p)

@@ -1003,6 +1003,8 @@ const ModelGraph = MetaGraph{
     const water_balance_reltol::Float64
     # State at previous saveat
     const u_prev_saveat::C11 = ComponentVector()
+    # Node ID associated with each state
+    const node_id::Vector{NodeID} = NodeID[]
 end
 
 # To opt-out of type checking for ForwardDiff
