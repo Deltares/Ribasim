@@ -864,22 +864,41 @@ function OrdinaryDiffEqNonlinearSolve.relax!(
     end
 end
 
+"Create a NamedTuple of the node IDs per state component in the state order"
+function state_node_ids(p::Union{Parameters, NamedTuple})::NamedTuple
+    (;
+        tabulated_rating_curve = p.tabulated_rating_curve.node_id,
+        pump = p.pump.node_id,
+        outlet = p.outlet.node_id,
+        user_demand_inflow = p.user_demand.node_id,
+        user_demand_outflow = p.user_demand.node_id,
+        linear_resistance = p.linear_resistance.node_id,
+        manning_resistance = p.manning_resistance.node_id,
+        evaporation = p.basin.node_id,
+        infiltration = p.basin.node_id,
+        integral = p.pid_control.node_id,
+    )
+end
+
 function build_state_vector(p::Parameters)
     # It is assumed that the horizontal flow states come first in
     # p.state_inflow_link and p.state_outflow_link
+    u_ids = state_node_ids(p)
     u = ComponentVector{Float64}(;
-        tabulated_rating_curve = zeros(length(p.tabulated_rating_curve.node_id)),
-        pump = zeros(length(p.pump.node_id)),
-        outlet = zeros(length(p.outlet.node_id)),
-        user_demand_inflow = zeros(length(p.user_demand.node_id)),
-        user_demand_outflow = zeros(length(p.user_demand.node_id)),
-        linear_resistance = zeros(length(p.linear_resistance.node_id)),
-        manning_resistance = zeros(length(p.manning_resistance.node_id)),
-        evaporation = zeros(length(p.basin.node_id)),
-        infiltration = zeros(length(p.basin.node_id)),
-        integral = zeros(length(p.pid_control.node_id)),
+        tabulated_rating_curve = zeros(length(u_ids.tabulated_rating_curve)),
+        pump = zeros(length(u_ids.pump)),
+        outlet = zeros(length(u_ids.outlet)),
+        user_demand_inflow = zeros(length(u_ids.user_demand_inflow)),
+        user_demand_outflow = zeros(length(u_ids.user_demand_outflow)),
+        linear_resistance = zeros(length(u_ids.linear_resistance)),
+        manning_resistance = zeros(length(u_ids.manning_resistance)),
+        evaporation = zeros(length(u_ids.evaporation)),
+        infiltration = zeros(length(u_ids.infiltration)),
+        integral = zeros(length(u_ids.integral)),
     )
+    # Ensure p.node_id and u have the same length and order
     @assert length(u) == length(p.node_id)
+    @assert keys(u) == keys(u_ids)
     return u
 end
 

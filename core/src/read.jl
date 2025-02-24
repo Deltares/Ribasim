@@ -1700,19 +1700,17 @@ function Parameters(db::DB, config::Config)::Parameters
 
     subgrid = Subgrid(db, config, basin)
 
-    # aligned with the state
-    node_id = vcat(
-        tabulated_rating_curve.node_id,
-        pump.node_id,
-        outlet.node_id,
-        user_demand.node_id,
-        user_demand.node_id,
-        linear_resistance.node_id,
-        manning_resistance.node_id,
-        basin.node_id,
-        basin.node_id,
-        pid_control.node_id,
-    )
+    u_ids = state_node_ids((;
+        tabulated_rating_curve,
+        pump,
+        outlet,
+        user_demand,
+        linear_resistance,
+        manning_resistance,
+        basin,
+        pid_control,
+    ))
+    node_id = reduce(vcat, u_ids)
 
     p = Parameters(;
         config.starttime,
