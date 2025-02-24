@@ -11,8 +11,6 @@ Optional inputs:
 - `time`: The StructVector with the transient node data
 - `time_interpolatables`: The names of the variables which can be interpolated over time
 - `interpolation_type`: The type of interpolation used for the time interpolatable variables
-- `extrapolation_left`: The extrapolation type before the time series if not cyclic
-- `extrapolation_right`: The extrapolation type after the time sreies if not cyclic
 - `is_complete`: Toggles whether it should be checked that an id that exists in the Node table should be
    in either the static or time table. Defaults to `true`.
 """

@@ -407,8 +407,14 @@ def cyclic_forcing_model() -> Model:
         [
             basin.Profile(level=[0.0, 1.0], area=100.0),
             basin.Time(
-                time=["2020-01-01", "2020-05-01", "2020-09-01", "2021-01-01"],
-                precipitation=[1.0, 2.0, 1.0, 2.0],
+                time=[
+                    "2020-01-01",
+                    "2020-04-01",
+                    "2020-07-01",
+                    "2020-10-01",
+                    "2021-01-01",
+                ],
+                precipitation=[1.0, 2.0, 1.0, 2.0, 1.0],
             ),
             basin.State(level=[5.0]),
         ],
@@ -422,15 +428,20 @@ def cyclic_forcing_model() -> Model:
         Node(3, Point(2, 0), cyclic_forcing=True),
         [
             level_boundary.Time(
-                time=["2020-01-01", "2020-05-01"],
-                level=[2.0, 3.0],
+                time=["2020-01-01", "2020-05-01", "2020-10-01"],
+                level=[2.0, 3.0, 2.0],
             )
         ],
     )
 
     fb = model.flow_boundary.add(
         Node(4, Point(0, 1), cyclic_forcing=True),
-        [flow_boundary.Time(time=["2020-01-01", "2020-07-01"], flow_rate=[1.0, 2.0])],
+        [
+            flow_boundary.Time(
+                time=["2020-01-01", "2020-07-01", "2020-08-01"],
+                flow_rate=[1.0, 2.0, 1.0],
+            )
+        ],
     )
 
     model.edge.add(bsn, lr)
