@@ -86,8 +86,10 @@ controllablefields(nodetype::Symbol) = controllablefields(Val(nodetype))
 controllablefields(::Val{:LinearResistance}) = Set((:active, :resistance))
 controllablefields(::Val{:ManningResistance}) = Set((:active, :manning_n))
 controllablefields(::Val{:TabulatedRatingCurve}) = Set((:active, :table))
-controllablefields(::Val{:Pump}) = Set((:active, :flow_rate))
-controllablefields(::Val{:Outlet}) = Set((:active, :flow_rate))
+controllablefields(::Val{:Pump}) =
+    Set((:active, :flow_rate, :min_upstream_level, :max_downstream_level))
+controllablefields(::Val{:Outlet}) =
+    Set((:active, :flow_rate, :min_upstream_level, :max_downstream_level))
 controllablefields(::Val{:PidControl}) =
     Set((:active, :target, :proportional, :integral, :derivative))
 controllablefields(nodetype) = Set{Symbol}()
@@ -285,8 +287,8 @@ function valid_flow_rates(
     for (key, control_state_update) in pairs(control_mapping)
         id_controlled = key[1]
         push!(ids_controlled, id_controlled)
-        flow_rate_update = only(control_state_update.scalar_update)
-        @assert flow_rate_update.name == :flow_rate
+        i = findfirst(x -> x.name === :flow_rate, control_state_update.scalar_update)
+        flow_rate_update = control_state_update.scalar_update[i]
         flow_rate_ = flow_rate_update.value
 
         if flow_rate_ < 0.0
