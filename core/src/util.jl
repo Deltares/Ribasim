@@ -86,10 +86,16 @@ function get_scalar_interpolation(
         @error "(One of) the time series for $node_id has repeated times, this can not be interpolated."
     end
 
-    if extrapolation == Periodic &&
-       !(all(isnan, parameter) || (first(parameter) == last(parameter)))
-        errors = true
-        @error "$node_id is denoted as cyclic but in (one of) its time series the first and last value are not the same."
+    if extrapolation == Periodic
+        if !(all(isnan, parameter) || (first(parameter) == last(parameter)))
+            errors = true
+            @error "$node_id is denoted as cyclic but in (one of) its time series the first and last value are not the same."
+        end
+
+        if length(times) < 2
+            errors = true
+            @error "$node_id is denoted as cyclic but (one of) its time series has fewer than 2 data points."
+        end
     end
 
     errors && error("Invalid time series.")
@@ -1149,16 +1155,22 @@ function get_cyclic_tstops(itp::AbstractInterpolation, endtime::Float64)::Vector
 
     # How many periods forward from first(itp.t) are needed
     nT_forward =
-        itp.extrapolation_right == Periodic ? Int(ceil((endtime - (first(itp.t)) / T))) : 0
+        itp.extrapolation_right == Periodic ? Int(ceil((endtime - first(itp.t)) / T)) : 0
 
     tstops = Float64[]
 
     for i in (-nT_back):nT_forward
         # Append the timepoints of the interpolation shifted by an integer amount of
         # periods to the tstops, filtering out values outside the simulation period
-        append!(tstops, filter(t -> 0 ≤ t ≤ endtime, itp.t .+ i * T))
+        if i == nT_forward
+            append!(tstops, filter(t -> 0 ≤ t ≤ endtime, itp.t .+ i * T))
+        else
+            # Because of floating point errors last(itp.t) = first(itp.t) + T
+            # does not always hold exactly, so to prevent that these become separate
+            # very close tstops we only use the last time point of the period in the last period
+            append!(tstops, filter(t -> 0 ≤ t ≤ endtime, itp.t[1:(end - 1)] .+ i * T))
+        end
     end
 
-    # Get rid of last tstop of one period being the same as first tstop of next period
-    return unique(tstops)
+    return tstops
 end

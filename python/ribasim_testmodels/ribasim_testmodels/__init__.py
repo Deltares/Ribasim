@@ -25,7 +25,7 @@ from ribasim_testmodels.basic import (
     basic_arrow_model,
     basic_model,
     basic_transient_model,
-    cyclic_forcing_model,
+    cyclic_time_model,
     outlet_model,
     tabulated_rating_curve_model,
 )
@@ -79,7 +79,7 @@ __all__ = [
     "concentration_condition_model",
     "continuous_concentration_condition_model",
     "connector_node_flow_condition_model",
-    "cyclic_forcing_model",
+    "cyclic_time_model",
     "discrete_control_of_pid_control_model",
     "fair_distribution_model",
     "flow_boundary_time_model",

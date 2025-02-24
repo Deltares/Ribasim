@@ -42,7 +42,7 @@ function parse_static_and_time(
     vals_out = []
 
     node_ids = get_node_ids(db, node_type_string)
-    cyclic_forcings = get_cyclic_forcing(db, node_type_string)
+    cyclic_times = get_cyclic_time(db, node_type_string)
     ids = Int32.(node_ids)
     n_nodes = length(node_ids)
 
@@ -116,7 +116,7 @@ function parse_static_and_time(
     errors = false
     trivial_timespan = [0.0, prevfloat(Inf)]
 
-    for (cyclic_forcing, node_id) in zip(cyclic_forcings, node_ids)
+    for (cyclic_time, node_id) in zip(cyclic_times, node_ids)
         if node_id in static_node_ids
             # The interval of rows of the static table that have the current node_id
             rows = searchsorted(static_node_id_vec, node_id)
@@ -174,7 +174,7 @@ function parse_static_and_time(
                         default_value = hasproperty(defaults, parameter_name) ?
                                         defaults[parameter_name] : NaN,
                         interpolation_type,
-                        extrapolation = cyclic_forcing ? Periodic : Constant,
+                        extrapolation = cyclic_time ? Periodic : Constant,
                     )
                 else
                     # Activity of transient nodes is assumed to be true
@@ -1818,8 +1818,8 @@ function get_node_ids(db::DB, node_type)::Vector{NodeID}
     return node_ids
 end
 
-function get_cyclic_forcing(db::DB, node_type)::Vector{Bool}
-    sql = "SELECT cyclic_forcing FROM Node WHERE node_type = $(esc_id(node_type)) ORDER BY node_id"
+function get_cyclic_time(db::DB, node_type)::Vector{Bool}
+    sql = "SELECT cyclic_time FROM Node WHERE node_type = $(esc_id(node_type)) ORDER BY node_id"
     return only(execute(columntable, db, sql))
 end
 

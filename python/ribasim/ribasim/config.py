@@ -190,7 +190,7 @@ class Node(pydantic.BaseModel):
         Optionally adds this node to a subnetwork, which is input for the allocation algorithm.
     source_priority : int
         Optionally overrides the source priority for this node, which is used in the allocation algorithm.
-    cyclic_forcing : bool
+    cyclic_time : bool
         Optionally extrapolate forcing timeseries periodically. Defaults to False.
     """
 
@@ -199,7 +199,7 @@ class Node(pydantic.BaseModel):
     name: str = ""
     subnetwork_id: int | None = None
     source_priority: int | None = None
-    cyclic_forcing: bool = False
+    cyclic_time: bool = False
 
     model_config = ConfigDict(arbitrary_types_allowed=True, extra="allow")
 
@@ -227,7 +227,7 @@ class Node(pydantic.BaseModel):
                 "source_priority": pd.Series(
                     [self.source_priority], dtype=pd.Int32Dtype()
                 ),
-                "cyclic_forcing": pd.Series([self.cyclic_forcing], dtype=bool),
+                "cyclic_time": pd.Series([self.cyclic_time], dtype=bool),
                 **extra,
             },
             geometry=[self.geometry],
