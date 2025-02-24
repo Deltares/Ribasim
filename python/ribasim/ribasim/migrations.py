@@ -1,7 +1,7 @@
 import warnings
 
 from geopandas import GeoDataFrame
-from pandas import DataFrame
+from pandas import DataFrame, Series
 
 # On each breaking change, increment the __schema_version__ by one.
 # Do the same for write_schema_version in ribasim_qgis/core/geopackage.py
@@ -118,3 +118,16 @@ for node_type in ["UserDemand", "LevelDemand", "FlowDemand"]:
             return df
 
         globals()[f"{node_type.lower()}{table_type}_migration"] = migration_func
+
+
+def discretecontrolconditionschema_migration(
+    df: DataFrame, schema_version: int
+) -> DataFrame:
+    if schema_version < 5:
+        warnings.warn(
+            "Migrating outdated DiscreteControl / condition table.", UserWarning
+        )
+        n_rows = len(df)
+        df["time"] = Series([None] * n_rows, dtype="timestamp[ms][pyarrow]")
+        df["condition_id"] = Series(range(n_rows), dtype="int32[pyarrow]")
+    return df

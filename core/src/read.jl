@@ -253,12 +253,20 @@ const conservative_nodetypes = Set{NodeType.T}([
     NodeType.ManningResistance,
 ])
 
-function get_source_priority_data(
+function get_allocation_sources_in_order!(
     p::Parameters,
     db::DB,
     config::Config,
-)::Vector{SOURCE_TUPLE}
-    (; graph) = p
+)::OrderedDict{Tuple{NodeID, NodeID}, AllocationSource}
+    (; graph, user_demand, allocation) = p
+    (;
+        subnetwork_demands,
+        subnetwork_allocateds,
+        demand_priorities_all,
+        main_network_connections,
+    ) = allocation
+    n_demand_priorities = length(demand_priorities_all)
+
     default_source_priority = config.allocation.source_priority
 
     node_rows = execute(
@@ -275,31 +283,46 @@ function get_source_priority_data(
     default_source_priority_dict[:flow_boundary] = default_source_priority.boundary
     default_source_priority_dict[:level_boundary] = default_source_priority.boundary
 
-    # Get named tuples (; node_id, subnetwork_id, source_priority)
-    source_priority_tuples = SOURCE_TUPLE[]
+    # NOTE: return flow has to be done before other sources, to prevent that
+    # return flow is directly used within the same source priority by the same node
+    sources = OrderedDict{Tuple{NodeID, NodeID}, AllocationSource}()
 
     errors = false
 
     for row in node_rows
         # Only source nodes that are part of a subnetwork are relevant
         is_source = false
-        # One source priority can apply to multiple sources in the case of a LevelDemand
-        # node which connects to multiple basins
-        node_ids = [NodeID(Symbol(row.node_type), row.node_id, p)]
+        # One row can yield multiple sources:
+        # - One source priority can apply to multiple sources in the case of a LevelDemand
+        #   node which connects to multiple basins
+        # - One source node can imply multiple sources in the case of a LevelBoundary with multiple
+        #   neighbors
+        node_id = NodeID(Symbol(row.node_type), row.node_id, p)
+        links = Tuple{NodeID, NodeID}[]
         if !ismissing(row.subnetwork_id)
+            # E.g. :manning_resistance
             node_type = Symbol(snake_case(row.node_type))
 
             if node_type ∈ source_types
                 # The case where the node type is also a source type
                 source_priority =
                     coalesce(row.source_priority, default_source_priority_dict[node_type])
+                # E.g. AllocationSourceType.level_demand
                 source_type = AllocationSourceType.T(node_type)
                 is_source = true
-                # If the row is for a level demand or flow demand, make node_ids
-                # for the node(s) that has/have the demand
-                if only(node_ids).type ∈ (NodeType.LevelDemand, NodeType.FlowDemand)
-                    node_ids =
-                        outneighbor_labels_type(graph, only(node_ids), LinkType.control)
+                if source_type == AllocationSourceType.level_demand
+                    # If the row is for a level demand, make a source for each connected basin
+                    for basin_id in
+                        outneighbor_labels_type(graph, node_id, LinkType.control)
+                        push!(links, (basin_id, basin_id))
+                    end
+                elseif source_type == AllocationSourceType.flow_demand
+                    # If the row is for a flow demand, make a source for the connected connector node
+                    id_with_demand =
+                        only(outneighbor_labels_type(graph, node_id, LinkType.control))
+                    push!(links, (id_with_demand, id_with_demand))
+                else # if source_type == AllocationSourceType.user_demand
+                    push!(links, user_demand.outflow_link[node_id.idx].link)
                 end
             elseif node_type ∈ (:flow_boundary, :level_boundary)
                 # The case where the node type is a boundary source node type
@@ -307,24 +330,38 @@ function get_source_priority_data(
                     coalesce(row.source_priority, default_source_priority_dict[node_type])
                 source_type = AllocationSourceType.boundary
                 is_source = true
+                # Always consider the edge going out of the source, even if only the reverse edge
+                # exists in the physical layer
+                for inoutflow_id in inoutflow_ids(graph, node_id)
+                    push!(links, (node_id, inoutflow_id))
+                end
             elseif row.subnetwork_id != 1 # Not in the main network
-                for id in filter!(
+                for main_network_id in filter!(
                     id -> graph[id].subnetwork_id == 1, # Connects to the main network
-                    collect(inflow_ids(p.graph, only(node_ids))),
+                    collect(inflow_ids(p.graph, node_id)),
                 )
                     is_source = true
                     source_priority = default_source_priority_dict[:subnetwork_inlet]
                     source_type = AllocationSourceType.subnetwork_inlet
-                    break
+                    link = (main_network_id, node_id)
+                    push!(links, link)
+                    push!(main_network_connections[row.subnetwork_id], link)
+                    # Allocate memory for the demands and demand priorities
+                    # from the subnetwork via this link
+                    subnetwork_demands[link] = zeros(n_demand_priorities)
+                    subnetwork_allocateds[link] = zeros(n_demand_priorities)
                 end
             end
         end
 
         if is_source
-            for node_id in node_ids
-                push!(
-                    source_priority_tuples,
-                    (; node_id, row.subnetwork_id, source_priority, source_type),
+            for link in links
+                sources[link] = AllocationSource(;
+                    link,
+                    type = source_type,
+                    source_priority,
+                    row.subnetwork_id,
+                    node_id,
                 )
             end
         elseif !ismissing(row.source_priority)
@@ -337,8 +374,12 @@ function get_source_priority_data(
         error("Errors encountered when processing the allocation source priority data.")
     end
 
-    sort!(source_priority_tuples; by = x -> (x.subnetwork_id, x.source_priority))
-    source_priority_tuples
+    OrderedDict(
+        sort!(
+            collect(sources);
+            by = pair -> (pair[2].subnetwork_id, pair[2].source_priority, pair[2].node_id),
+        ),
+    )
 end
 
 function initialize_allocation!(p::Parameters, db::DB, config::Config)::Nothing
@@ -357,24 +398,15 @@ function initialize_allocation!(p::Parameters, db::DB, config::Config)::Nothing
 
     for subnetwork_id in subnetwork_ids_
         push!(subnetwork_ids, subnetwork_id)
-        push!(main_network_connections, Tuple{NodeID, NodeID}[])
+        main_network_connections[subnetwork_id] = Tuple{NodeID, NodeID}[]
     end
 
-    if first(subnetwork_ids_) == 1
-        find_subnetwork_connections!(p)
-    end
-
-    source_priority_tuples = get_source_priority_data(p, db, config)
+    sources = get_allocation_sources_in_order!(p, db, config)
 
     for subnetwork_id in subnetwork_ids_
         push!(
             allocation_models,
-            AllocationModel(
-                subnetwork_id,
-                p,
-                source_priority_tuples,
-                config.allocation.timestep,
-            ),
+            AllocationModel(subnetwork_id, p, sources, config.allocation.timestep),
         )
     end
     return nothing
@@ -470,7 +502,7 @@ function TabulatedRatingCurve(
                 end
                 push!(interpolations, interpolation)
             end
-            push_lookup!(current_interpolation_index, interpolation_index)
+            push!(current_interpolation_index, static_lookup(interpolation_index))
             push!(active, is_active)
             push!(max_downstream_level, max_level)
         elseif node_id in time_node_ids
@@ -508,7 +540,11 @@ function TabulatedRatingCurve(
                     break
                 end
             end
-            push_lookup!(current_interpolation_index, lookup_index, lookup_time)
+            push_constant_interpolation!(
+                current_interpolation_index,
+                lookup_index,
+                lookup_time,
+            )
             push!(active, true)
             push!(max_downstream_level, max_level)
         else
@@ -904,28 +940,56 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     return basin
 end
 
+function get_greater_than!(greater_than, conditions_compound_variable, starttime)::Nothing
+    (; node_id) = first(conditions_compound_variable)
+    errors = false
+
+    for condition_group in
+        IterTools.groupby(row -> row.condition_id, conditions_compound_variable)
+        condition_group = StructVector(condition_group)
+
+        if !allunique(condition_group.time)
+            (; condition_id) = first(condition_group)
+            @error(
+                "Condition $condition_id for $node_id has multiple input rows with the same (possibly unspecified) timestamp."
+            )
+            errors = true
+        else
+            push_constant_interpolation!(
+                greater_than,
+                condition_group.greater_than,
+                seconds_since.(condition_group.time, starttime),
+            )
+        end
+    end
+
+    if errors
+        error("Invalid conditions encountered for $node_id.")
+    end
+end
+
 """
 Get a CompoundVariable object given its definition in the input data.
 References to listened parameters are added later.
 """
 function CompoundVariable(
-    compound_variable_data,
+    variables_compound_variable,
     node_type::NodeType.T,
-    db::DB;
-    greater_than = Float64[],
-    placeholder_vector = Float64[],
+    node_ids_all::Vector{NodeID};
+    conditions_compound_variable = nothing,
+    starttime = nothing,
+    placeholder_vector,
 )::CompoundVariable
-    subvariables = @NamedTuple{
-        listen_node_id::NodeID,
-        variable_ref::PreallocationRef,
-        variable::String,
-        weight::Float64,
-        look_ahead::Float64,
-    }[]
-    node_ids = get_node_ids(db)
+    # The ID of the node listening to this CompoundVariable
+    node_id =
+        NodeID(node_type, only(unique(variables_compound_variable.node_id)), node_ids_all)
+
+    compound_variable = CompoundVariable(; node_id)
+    (; subvariables, greater_than) = compound_variable
+
     # Each row defines a subvariable
-    for row in compound_variable_data
-        listen_node_id = NodeID(row.listen_node_id, node_ids)
+    for row in variables_compound_variable
+        listen_node_id = NodeID(row.listen_node_id, node_ids_all)
         # Placeholder until actual ref is known
         variable_ref = PreallocationRef(placeholder_vector, 0)
         variable = row.variable
@@ -933,52 +997,66 @@ function CompoundVariable(
         weight = coalesce(row.weight, 1.0)
         # Default to look_ahead = 0.0 if not specified
         look_ahead = coalesce(row.look_ahead, 0.0)
-        subvariable = (; listen_node_id, variable_ref, variable, weight, look_ahead)
+        subvariable =
+            SubVariable(listen_node_id, variable_ref, variable, weight, look_ahead)
         push!(subvariables, subvariable)
     end
 
-    # The ID of the node listening to this CompoundVariable
-    node_id = NodeID(node_type, only(unique(compound_variable_data.node_id)), node_ids)
-    return CompoundVariable(node_id, subvariables, greater_than)
+    # Build greater_than ConstantInterpolation objects
+    !isnothing(conditions_compound_variable) &&
+        get_greater_than!(greater_than, conditions_compound_variable, starttime)
+    return compound_variable
 end
 
-function parse_variables_and_conditions(compound_variable, condition, ids, db, graph)
+function parse_variables_and_conditions(ids::Vector{Int32}, db::DB, config::Config)
+    condition = load_structvector(db, config, DiscreteControlConditionV1)
+    compound_variable = load_structvector(db, config, DiscreteControlVariableV1)
+
     placeholder_vector = cache(1)
     compound_variables = Vector{CompoundVariable}[]
     errors = false
 
+    node_ids_all = get_node_ids(db)
+
     # Loop over unique discrete_control node IDs
-    for (i, id) in enumerate(ids)
-        discrete_control_id = NodeID(NodeType.DiscreteControl, id, i)
+    for id in ids
+        # Conditions associated with the current DiscreteControl node
+        conditions_node = filter(row -> row.node_id == id, condition)
 
-        condition_group_id = filter(row -> row.node_id == id, condition)
-        variable_group_id = filter(row -> row.node_id == id, compound_variable)
+        # Variables associated with the current Discretecontrol node
+        variables_node = filter(row -> row.node_id == id, compound_variable)
 
+        # Compound variables associated with the current DiscreteControl node
         compound_variables_node = CompoundVariable[]
 
-        # Loop over compound variables for this node ID
-        for compound_variable_id in unique(condition_group_id.compound_variable_id)
-            condition_group_variable = filter(
+        # Loop over compound variables for the current DiscreteControl node
+        for compound_variable_id in unique(conditions_node.compound_variable_id)
+
+            # Conditions associated with the current compound variable
+            conditions_compound_variable = filter(
                 row -> row.compound_variable_id == compound_variable_id,
-                condition_group_id,
+                conditions_node,
             )
-            variable_group_variable = filter(
+
+            # Variables associated with the current compound variable
+            variables_compound_variable = filter(
                 row -> row.compound_variable_id == compound_variable_id,
-                variable_group_id,
+                variables_node,
             )
-            if isempty(variable_group_variable)
+
+            if isempty(variables_compound_variable)
                 errors = true
-                @error "compound_variable_id $compound_variable_id for $discrete_control_id in condition table but not in variable table"
+                @error "compound_variable_id $compound_variable_id for DiscreteControl #$id in condition table but not in variable table"
             else
-                greater_than = condition_group_variable.greater_than
                 push!(
                     compound_variables_node,
                     CompoundVariable(
-                        variable_group_variable,
+                        variables_compound_variable,
                         NodeType.DiscreteControl,
-                        db;
-                        greater_than,
+                        node_ids_all;
+                        conditions_compound_variable,
                         placeholder_vector,
+                        config.starttime,
                     ),
                 )
             end
@@ -989,13 +1067,9 @@ function parse_variables_and_conditions(compound_variable, condition, ids, db, g
 end
 
 function DiscreteControl(db::DB, config::Config, graph::MetaGraph)::DiscreteControl
-    condition = load_structvector(db, config, DiscreteControlConditionV1)
-    compound_variable = load_structvector(db, config, DiscreteControlVariableV1)
-
     node_id = get_node_ids(db, NodeType.DiscreteControl)
     ids = Int32.(node_id)
-    compound_variables, valid =
-        parse_variables_and_conditions(compound_variable, condition, ids, db, graph)
+    compound_variables, valid = parse_variables_and_conditions(ids, db, config)
 
     if !valid
         error("Problems encountered when parsing DiscreteControl variables and conditions.")
@@ -1071,6 +1145,7 @@ end
 
 function continuous_control_compound_variables(db::DB, config::Config, ids)
     placeholder_vector = cache(1)
+    node_ids_all = get_node_ids(db)
 
     data = load_structvector(db, config, ContinuousControlVariableV1)
     compound_variables = CompoundVariable[]
@@ -1083,7 +1158,7 @@ function continuous_control_compound_variables(db::DB, config::Config, ids)
             CompoundVariable(
                 variable_data,
                 NodeType.ContinuousControl,
-                db;
+                node_ids_all;
                 placeholder_vector,
             ),
         )
@@ -1397,25 +1472,19 @@ function FlowDemand(db::DB, config::Config)::FlowDemand
     )
 end
 
-"Create and push a ConstantInterpolation to the current_interpolation_index."
-function push_lookup!(
-    current_interpolation_index::Vector{IndexLookup},
-    lookup_index::Vector{Int},
-    lookup_time::Vector{Float64},
-)
-    index_lookup = ConstantInterpolation(
-        lookup_index,
-        lookup_time;
+"Create and push a ConstantInterpolation to the constant_interpolations."
+function push_constant_interpolation!(
+    constant_interpolations::Vector{<:ConstantInterpolation{uType, tType}},
+    output::uType,
+    input::tType,
+) where {uType, tType}
+    itp = ConstantInterpolation(
+        output,
+        input;
         extrapolation = Constant,
         cache_parameters = true,
     )
-    push!(current_interpolation_index, index_lookup)
-end
-
-"Create and push a static ConstantInterpolation to the current_interpolation_index."
-function push_lookup!(current_interpolation_index::Vector{IndexLookup}, lookup_index::Int)
-    index_lookup = static_lookup(lookup_index)
-    push!(current_interpolation_index, index_lookup)
+    push!(constant_interpolations, itp)
 end
 
 "Create an interpolation object that always returns `lookup_index`."
@@ -1513,7 +1582,11 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
         # These should only be pushed when the subgrid_id has changed
         if subgrid_id_time[end] != subgrid_id
             # Push the completed index_lookup of the previous subgrid_id
-            push_lookup!(current_interpolation_index, lookup_index, lookup_time)
+            push_constant_interpolation!(
+                current_interpolation_index,
+                lookup_index,
+                lookup_time,
+            )
             # Push the new subgrid_id and basin_index
             push!(subgrid_id_time, subgrid_id)
             push!(basin_index_time, node_to_basin[node_id])
@@ -1528,7 +1601,7 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
 
     # Push completed IndexLookup of the last group
     if interpolation_index > 0
-        push_lookup!(current_interpolation_index, lookup_index, lookup_time)
+        push_constant_interpolation!(current_interpolation_index, lookup_index, lookup_time)
     end
 
     level = fill(NaN, length(subgrid_id_static) + length(subgrid_id_time))
@@ -1649,6 +1722,18 @@ function Parameters(db::DB, config::Config)::Parameters
 
     subgrid = Subgrid(db, config, basin)
 
+    u_ids = state_node_ids((;
+        tabulated_rating_curve,
+        pump,
+        outlet,
+        user_demand,
+        linear_resistance,
+        manning_resistance,
+        basin,
+        pid_control,
+    ))
+    node_id = reduce(vcat, u_ids)
+
     p = Parameters(;
         config.starttime,
         graph,
@@ -1671,6 +1756,7 @@ function Parameters(db::DB, config::Config)::Parameters
         subgrid,
         config.solver.water_balance_abstol,
         config.solver.water_balance_reltol,
+        node_id,
     )
 
     collect_control_mappings!(p)
@@ -1831,10 +1917,15 @@ function load_structvector(
         nt = merge(
             nt,
             (;
-                time = DateTime.(
-                    replace.(nt.time, r"(\.\d{3})\d+$" => s"\1"),  # remove sub ms precision
-                    dateformat"yyyy-mm-dd HH:MM:SS.s",
-                )
+                time = map(
+                    val ->
+                        ismissing(val) ? DateTime(config.starttime) :
+                        DateTime(
+                            replace(val, r"(\.\d{3})\d+$" => s"\1"),  # remove sub ms precision
+                            dateformat"yyyy-mm-dd HH:MM:SS.s",
+                        ),
+                    nt.time,
+                ),
             ),
         )
     end

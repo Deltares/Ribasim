@@ -15,7 +15,7 @@
         4.5
     allocation_model = p.allocation.allocation_models[1]
     (; flow) = allocation_model
-    u = ComponentVector(; storage = zeros(length(p.basin.node_id)))
+    u = ComponentVector()
     t = 0.0
     Ribasim.allocate_demands!(p, allocation_model, t, u)
 
@@ -85,9 +85,9 @@ end
 
     # Connections from main network to subnetworks
     @test isempty(main_network_connections[1])
-    @test only(main_network_connections[2]) == (NodeID(:Basin, 2, p), NodeID(:Pump, 11, p))
-    @test only(main_network_connections[3]) == (NodeID(:Basin, 6, p), NodeID(:Pump, 24, p))
-    @test only(main_network_connections[4]) == (NodeID(:Basin, 10, p), NodeID(:Pump, 38, p))
+    @test only(main_network_connections[3]) == (NodeID(:Basin, 2, p), NodeID(:Pump, 11, p))
+    @test only(main_network_connections[5]) == (NodeID(:Basin, 6, p), NodeID(:Pump, 24, p))
+    @test only(main_network_connections[7]) == (NodeID(:Basin, 10, p), NodeID(:Pump, 38, p))
 
     # main-sub connections are part of main network allocation network
     allocation_model_main_network = Ribasim.get_allocation_model(p, Int32(1))
@@ -133,7 +133,7 @@ end
     t = 0.0
 
     # Collecting demands
-    u = ComponentVector(; storage = zeros(length(basin.node_id)))
+    u = ComponentVector()
     for allocation_model in allocation_models[2:end]
         Ribasim.collect_demands!(p, allocation_model, t, u)
     end
@@ -227,7 +227,7 @@ end
     mean_input_flows[4][(NodeID(:FlowBoundary, 59, p), NodeID(:Basin, 44, p))] = 1e-3
 
     # Collecting demands
-    u = ComponentVector(; storage = zeros(length(basin.node_id)))
+    u = ComponentVector()
     for allocation_model in allocation_models[2:end]
         Ribasim.collect_demands!(p, allocation_model, t, u)
     end

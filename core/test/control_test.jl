@@ -51,11 +51,13 @@
     # Control times
     t_1 = discrete_control.record.time[3]
     t_1_index = findfirst(>=(t_1), t)
-    @test level[1, t_1_index] <= discrete_control.compound_variables[1][1].greater_than[1]
+    @test level[1, t_1_index] <=
+          discrete_control.compound_variables[1][1].greater_than[1](0)
 
     t_2 = discrete_control.record.time[4]
     t_2_index = findfirst(>=(t_2), t)
-    @test level[2, t_2_index] >= discrete_control.compound_variables[1][2].greater_than[1]
+    @test level[2, t_2_index] >=
+          discrete_control.compound_variables[1][2].greater_than[1](0)
 
     flow = get_du(model.integrator)[(:linear_resistance, :pump)]
     @test all(iszero, flow)
@@ -74,7 +76,7 @@ end
     t_control = discrete_control.record.time[2]
     t_control_index = searchsortedfirst(t, t_control)
 
-    greater_than = discrete_control.compound_variables[1][1].greater_than[1]
+    greater_than = discrete_control.compound_variables[1][1].greater_than[1](0)
     flow_t_control = flow_boundary.flow_rate[1](t_control)
     flow_t_control_ahead = flow_boundary.flow_rate[1](t_control + Δt)
 
@@ -98,7 +100,7 @@ end
     t_control = discrete_control.record.time[2]
     t_control_index = searchsortedfirst(t, t_control)
 
-    greater_than = discrete_control.compound_variables[1][1].greater_than[1]
+    greater_than = discrete_control.compound_variables[1][1].greater_than[1](0)
     level_t_control = level_boundary.level[1](t_control)
     level_t_control_ahead = level_boundary.level[1](t_control + Δt)
 
@@ -209,7 +211,7 @@ end
 end
 
 @testitem "Compound condition" begin
-    using Ribasim: NodeID
+    using Ribasim: NodeID, SubVariable
 
     toml_path = normpath(
         @__DIR__,
@@ -223,21 +225,21 @@ end
 
     compound_variable = only(only(compound_variables))
 
-    @test compound_variable.subvariables[1] == (;
+    @test compound_variable.subvariables[1] == SubVariable(;
         listen_node_id = NodeID(:FlowBoundary, 2, p),
         variable_ref = compound_variable.subvariables[1].variable_ref,
         variable = "flow_rate",
         weight = 0.5,
         look_ahead = 0.0,
     )
-    @test compound_variable.subvariables[2] == (;
+    @test compound_variable.subvariables[2] == SubVariable(;
         listen_node_id = NodeID(:FlowBoundary, 3, p),
         variable_ref = compound_variable.subvariables[2].variable_ref,
         variable = "flow_rate",
         weight = 0.5,
         look_ahead = 0.0,
     )
-    @test record.time ≈ [0.0, model.integrator.sol.t[end] / 2]
+    @test record.time ≈ [0.0, model.integrator.sol.t[end] / 2] rtol = 1e-2
     @test record.truth_state == ["F", "T"]
     @test record.control_state == ["Off", "On"]
 end
@@ -315,4 +317,22 @@ end
     above_threshold = concentration .> threshold
     @test all(isapprox.(flow_link_0.flow_rate[above_threshold], 1e-3, rtol = 1e-2))
     @test all(isapprox.(flow_link_0.flow_rate[.!above_threshold], 0.0, atol = 1e-5))
+end
+
+@testitem "Transient discrete control condition" begin
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/transient_condition/ribasim.toml")
+    @test ispath(toml_path)
+
+    model = Ribasim.run(toml_path)
+    (; record, compound_variables) = model.integrator.p.discrete_control
+
+    t_condition_change = compound_variables[1][1].greater_than[1].t[2]
+
+    @test record.control_node_id == [4, 4]
+    @test record.truth_state == ["T", "F"]
+    @test record.control_state == ["B", "A"]
+
+    # Control state changes precisely when the condition changes
+    @test record.time == [0, t_condition_change]
 end

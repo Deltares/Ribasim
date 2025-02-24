@@ -98,11 +98,12 @@ function Model(config::Config)::Model
         # tell the solver to stop when new data comes in
         tstops = Vector{Float64}[]
         for schema_version in [
-            UserDemandTimeV1,
-            LevelDemandTimeV1,
+            DiscreteControlConditionV1,
             FlowDemandTimeV1,
-            TabulatedRatingCurveTimeV1,
+            LevelDemandTimeV1,
             PidControlTimeV1,
+            TabulatedRatingCurveTimeV1,
+            UserDemandTimeV1,
         ]
             time_schema = load_structvector(db, config, schema_version)
             push!(tstops, get_tstops(time_schema.time, config.starttime))

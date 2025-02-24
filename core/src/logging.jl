@@ -41,7 +41,7 @@ function log_bottlenecks(model; converged::Bool)
         max_errors = 5
         # Iterate over the errors in descending order
         for i in sortperm(flow_error; rev = true)
-            node_id = Symbol(id_from_state_index(p, u, i))
+            node_id = Symbol(p.node_id[i])
             error = flow_error[i]
             isnan(error) && continue  # NaN are sorted as largest
             # Stop reporting errors if they are too small or too many

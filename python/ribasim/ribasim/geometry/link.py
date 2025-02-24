@@ -106,7 +106,7 @@ class LinkTable(SpatialTableModel[LinkSchema]):
         """
         if not can_connect(from_node.node_type, to_node.node_type):
             raise ValueError(
-                f"Node of type {to_node.node_type} cannot be downstream of node of type {from_node.node_type}. Possible downstream node: {node_type_connectivity[from_node.node_type]}."
+                f"Node #{to_node.node_id} of type {to_node.node_type} cannot be downstream of node #{from_node.node_id} of type {from_node.node_type}. Possible downstream node types: {node_type_connectivity[from_node.node_type]}."
             )
 
         geometry_to_append = (

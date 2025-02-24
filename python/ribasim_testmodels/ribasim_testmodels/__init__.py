@@ -8,6 +8,7 @@ import ribasim_testmodels
 from ribasim_testmodels.allocation import (
     allocation_example_model,
     allocation_training_model,
+    bommelerwaard_model,
     fair_distribution_model,
     flow_demand_model,
     level_demand_model,
@@ -40,6 +41,7 @@ from ribasim_testmodels.discrete_control import (
     level_range_model,
     pump_discrete_control_model,
     tabulated_rating_curve_control_model,
+    transient_condition_model,
 )
 from ribasim_testmodels.doc_example import local_pidcontrolled_cascade_model
 from ribasim_testmodels.equations import (
@@ -71,6 +73,7 @@ __all__ = [
     "basic_arrow_model",
     "basic_model",
     "basic_transient_model",
+    "bommelerwaard_model",
     "bucket_model",
     "compound_variable_condition_model",
     "concentration_condition_model",
@@ -109,6 +112,7 @@ __all__ = [
     "subnetworks_with_sources_model",
     "tabulated_rating_curve_control_model",
     "tabulated_rating_curve_model",
+    "transient_condition_model",
     "trivial_model",
     "two_basin_model",
     "user_demand_model",

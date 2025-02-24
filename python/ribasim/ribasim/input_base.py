@@ -1,5 +1,6 @@
 import operator
 import re
+import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Generator
 from contextlib import closing
@@ -12,6 +13,10 @@ from typing import (
     TypeVar,
     cast,
 )
+
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    import datacompy
 
 import geopandas as gpd
 import numpy as np
@@ -95,6 +100,54 @@ class BaseModel(PydanticBaseModel):
 
     def model_dump(self, **kwargs) -> dict[str, Any]:
         return super().model_dump(serialize_as_any=True, **kwargs)
+
+    def diff(
+        self, other: "BaseModel", ignore_meta: bool = False
+    ) -> dict[str, Any] | None:
+        """
+        Compare two instances of a BaseModel.
+
+        ** Warning: This method is experimental and is likely to change. **
+
+        If they are equal, return None. Otherwise, return a nested dictionary with the differences.
+        When the differences are not a DataFrame (like the toml config),
+        the dict has self and other as key.
+        For DataFrames we return a dict with diff as key, and a datacompy Comparison object.
+
+        When ignore_meta is set to True, the meta_* columns in the DataFrames are ignored.
+        Note that in that case the key will still be returned and the value will be None.
+
+        Examples
+        --------
+        >>> nbasic == basic
+        False
+        >>> x = nbasic.diff(basic)
+        {'basin': {'node': {'diff': <datacompy.core.Compare object at 0x16e5a45c0>},
+                'static': {'diff': <datacompy.core.Compare object at 0x16eb90080>}},
+        'solver': {'saveat': {'other': 86400.0, 'self': 0.0}}}
+        >>> x["basin"]["static"]["diff"].report()
+        DataComPy Comparison
+        --------------------
+        ...
+        """
+        if not (isinstance(other, self.__class__)):
+            raise ValueError(f"Cannot compare {self} with {other}")
+        if self == other:
+            return None
+        data = {}
+        for key in self._fields():
+            self_attr = getattr(self, key)
+            other_attr = getattr(other, key)
+            if self_attr == other_attr:
+                continue
+            if isinstance(self_attr, BaseModel):
+                data[key] = self_attr.diff(
+                    other_attr,
+                    ignore_meta=ignore_meta,
+                )
+            else:
+                data[key] = {"self": self_attr, "other": other_attr}
+        return data
 
     # __eq__ from Pydantic BaseModel itself, edited to remove the comparison of private attrs
     # https://github.com/pydantic/pydantic/blob/ff3789d4cc06ee024b7253b919d3e36748a72829/pydantic/main.py#L1069
@@ -226,6 +279,34 @@ class TableModel(FileModel, Generic[TableT]):
                 return self.df.equals(other.df)
 
         return NotImplemented
+
+    def diff(self, other: BaseModel, ignore_meta=False) -> dict[str, Any] | None:
+        # Only diff with other TableModel[TableT] instances
+        if not (isinstance(other, self.__class__)):
+            raise ValueError(f"Cannot compare {self} with {other}")
+        # Both are None
+        if self.df is None and other.df is None:
+            return None
+        # Both are DataFrames
+        elif self.df is not None and other.df is not None:
+            # Differences might've been in the meta columns
+            # so we check if the DataFrames are equal again
+            if ignore_meta:
+                a = self.df.loc[:, self.columns()]
+                b = other.df.loc[:, self.columns()]
+                if a.equals(b):
+                    return None
+            else:
+                a = self.df
+                b = other.df
+
+            comp = datacompy.Compare(
+                a, b, on_index=True, df1_name="self", df2_name="other"
+            )
+            return {"diff": comp}
+        # One of the instances is None
+        else:
+            return {"self": self.df, "other": other.df}
 
     @field_validator("df")
     @classmethod

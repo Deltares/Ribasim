@@ -469,13 +469,10 @@ end
 Apply the discrete control logic. There's somewhat of a complex structure:
 - Each DiscreteControl node can have one or multiple compound variables it listens to
 - A compound variable is defined as a linear combination of state/time derived parameters of the model
-- Each compound variable has associated with it a sorted vector of greater_than values, which define an ordered
-    list of conditions of the form (compound variable value) => greater_than
-- Thus, to find out which conditions are true, we only need to find the largest index in the greater than values
-    such that the above condition is true
-- The truth value (true/false) of all these conditions for all variables of a DiscreteControl node are concatenated
-    (in preallocated memory) into what is called the nodes truth state. This concatenation happens in the order in which
-    the compound variables appear in discrete_control.compound_variables
+- Each compound variable has associated with it a vector greater_than of forward fill interpolation objects over time
+  which defines a list of conditions of the form (compound_variable_value) > greater_than[i](t)
+- The boolean truth value of all these conditions of a discrete control node, sorted first by compound_variable_id and then by
+  condition_id, are concatenated into what is called the node's truth state
 - The DiscreteControl node maps this truth state via the logic mapping to a control state, which is a string
 - The nodes that are controlled by this DiscreteControl node must have the same control state, for which they have
     parameter values associated with that control state defined in their control_mapping
@@ -483,61 +480,44 @@ Apply the discrete control logic. There's somewhat of a complex structure:
 function apply_discrete_control!(u, t, integrator)::Nothing
     (; p) = integrator
     (; discrete_control) = p
-    (; node_id) = discrete_control
+    (; node_id, truth_state, compound_variables) = discrete_control
     du = get_du(integrator)
     water_balance!(du, u, p, t)
 
     # Loop over the discrete control nodes to determine their truth state
     # and detect possible control state changes
-    for i in eachindex(node_id)
-        id = node_id[i]
-        truth_state = discrete_control.truth_state[i]
-        compound_variables = discrete_control.compound_variables[i]
+    for (node_id, truth_state_node, compound_variables_node) in
+        zip(node_id, truth_state, compound_variables)
 
         # Whether a change in truth state was detected, and thus whether
         # a change in control state is possible
         truth_state_change = false
 
-        # As the truth state of this node is being updated for the different variables
-        # it listens to, this is the first index of the truth values for the current variable
-        truth_value_variable_idx = 1
+        # The index in the truth state associated with the current discrete control node
+        truth_state_idx = 1
 
-        # Loop over the variables listened to by this discrete control node
-        for compound_variable in compound_variables
+        # Loop over the compound variables listened to by this discrete control node
+        for compound_variable in compound_variables_node
             value = compound_variable_value(compound_variable, p, du, t)
 
-            # The thresholds the value of this variable is being compared with
-            greater_thans = compound_variable.greater_than
-            n_greater_than = length(greater_thans)
+            # Loop over the greater_than interpolations associated with the current compound variable
+            for greater_than in compound_variable.greater_than
+                truth_value_old = truth_state_node[truth_state_idx]
+                truth_value_new = (value > greater_than(t))
 
-            # Find the largest index i within the greater thans for this variable
-            # such that value >= greater_than and shift towards the index in the truth state
-            largest_true_index =
-                truth_value_variable_idx - 1 + searchsortedlast(greater_thans, value)
-
-            # Update the truth values in the truth states for the current discrete control node
-            # corresponding to the conditions on the current variable
-            for truth_value_idx in
-                truth_value_variable_idx:(truth_value_variable_idx + n_greater_than - 1)
-                new_truth_state = (truth_value_idx <= largest_true_index)
-                # If no truth state change was detected yet, check whether there is a change
-                # at this position
-                if !truth_state_change
-                    truth_state_change = (new_truth_state != truth_state[truth_value_idx])
+                if truth_value_old != truth_value_new
+                    truth_state_change = true
+                    truth_state_node[truth_state_idx] = truth_value_new
                 end
-                truth_state[truth_value_idx] = new_truth_state
+
+                truth_state_idx += 1
             end
-
-            truth_value_variable_idx += n_greater_than
         end
 
-        # If no truth state change whas detected for this node, no control
-        # state change is possible either
-        if !((t == 0) || truth_state_change)
-            continue
+        # Set a new control state if applicable
+        if (t == 0) || truth_state_change
+            set_new_control_state!(integrator, node_id, truth_state_node)
         end
-
-        set_new_control_state!(integrator, id, truth_state)
     end
     return nothing
 end
@@ -584,7 +564,7 @@ end
 Get a value for a condition. Currently supports getting levels from basins and flows
 from flow boundaries.
 """
-function get_value(subvariable::NamedTuple, p::Parameters, du::AbstractVector, t::Float64)
+function get_value(subvariable::SubVariable, p::Parameters, du::AbstractVector, t::Float64)
     (; flow_boundary, level_boundary, basin) = p
     (; listen_node_id, look_ahead, variable, variable_ref) = subvariable
 

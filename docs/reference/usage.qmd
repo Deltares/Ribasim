@@ -198,9 +198,7 @@ There are currently 2 possible link types:
 
 column        | type                          | restriction
 --------------| ----------------------------- | -----------
-from_node_type| String                        | -
 from_node_id  | Int32                         | -
-to_node_type  | String                        | -
 to_node_id    | Int32                         | -
 link_type     | String                        | must be "flow" or "control"
 geom          | LineString or MultiLineString | (optional)
