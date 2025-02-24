@@ -72,3 +72,15 @@ end
     # Given that precipitation stops after 15 of the 20 days
     @test mean_precipitation ≈ 3 / 4 * starting_precipitation
 end
+
+@testitem "get_cyclic_tstops" begin
+    using Ribasim: get_cyclic_tstops
+    using DataInterpolations: LinearInterpolation
+    using DataInterpolations.ExtrapolationType: Periodic
+
+    itp = LinearInterpolation(zeros(3), [0.5, 1.0, 1.5])
+    @test get_cyclic_tstops(itp, 5.0) == itp.t
+
+    itp = LinearInterpolation(zeros(3), [0.5, 1.0, 1.5]; extrapolation = Periodic)
+    @test get_cyclic_tstops(itp, 5.0) == 0:0.5:5
+end

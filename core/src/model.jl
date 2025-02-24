@@ -55,6 +55,12 @@ function Model(config::Config)::Model
         error("Invalid link types found.")
     end
 
+    # for Float32 this method allows max ~1000 year simulations without accuracy issues
+    t_end = seconds_since(config.endtime, config.starttime)
+    @assert eps(t_end) < 3600 "Simulation time too long"
+    t0 = zero(t_end)
+    timespan = (t0, t_end)
+
     local parameters, tstops
     try
         parameters = Parameters(db, config)
@@ -63,7 +69,16 @@ function Model(config::Config)::Model
             error("Invalid discrete control state definition(s).")
         end
 
-        (; pid_control, graph, outlet, pump, basin, tabulated_rating_curve) = parameters
+        (;
+            pid_control,
+            graph,
+            outlet,
+            pump,
+            basin,
+            tabulated_rating_curve,
+            level_boundary,
+            flow_boundary,
+        ) = parameters
         if !valid_pid_connectivity(pid_control.node_id, pid_control.listen_node_id, graph)
             error("Invalid PidControl connectivity.")
         end
@@ -83,9 +98,6 @@ function Model(config::Config)::Model
         # tell the solver to stop when new data comes in
         tstops = Vector{Float64}[]
         for schema_version in [
-            BasinTimeV1,
-            FlowBoundaryTimeV1,
-            LevelBoundaryTimeV1,
             UserDemandTimeV1,
             LevelDemandTimeV1,
             FlowDemandTimeV1,
@@ -94,6 +106,21 @@ function Model(config::Config)::Model
         ]
             time_schema = load_structvector(db, config, schema_version)
             push!(tstops, get_tstops(time_schema.time, config.starttime))
+        end
+
+        # Tell the solver to stop at all data points from periodically extrapolated
+        # if applicable, otherwise just the original timeseries
+        for interpolations in [
+            basin.forcing.precipitation,
+            basin.forcing.potential_evaporation,
+            basin.forcing.drainage,
+            basin.forcing.infiltration,
+            level_boundary.level,
+            flow_boundary.flow_rate,
+        ]
+            for itp in interpolations
+                push!(tstops, get_cyclic_tstops(itp, t_end))
+            end
         end
 
     finally
@@ -111,12 +138,6 @@ function Model(config::Config)::Model
 
     # The Solver algorithm
     alg = algorithm(config.solver; u0)
-
-    # for Float32 this method allows max ~1000 year simulations without accuracy issues
-    t_end = seconds_since(config.endtime, config.starttime)
-    @assert eps(t_end) < 3600 "Simulation time too long"
-    t0 = zero(t_end)
-    timespan = (t0, t_end)
 
     # Synchronize level with storage
     set_current_basin_properties!(du0, u0, parameters, t0)

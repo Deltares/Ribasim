@@ -1138,3 +1138,26 @@ function find_index(x::Symbol, s::OrderedSet{Symbol})
     end
     error(lazy"$x not found in $s.")
 end
+
+function get_cyclic_tstops(itp::AbstractInterpolation, endtime::Float64)::Vector{Float64}
+    # The length of the period
+    T = last(itp.t) - first(itp.t)
+
+    # How many periods back from first(itp.t) are needed
+    nT_back = itp.extrapolation_left == Periodic ? Int(ceil((first(itp.t)) / T)) : 0
+
+    # How many periods forward from first(itp.t) are needed
+    nT_forward =
+        itp.extrapolation_right == Periodic ? Int(ceil((endtime - (first(itp.t)) / T))) : 0
+
+    tstops = Float64[]
+
+    for i in (-nT_back):nT_forward
+        # Append the timepoints of the interpolation shifted by an integer amount of
+        # periods to the tstops, filtering out values outside the simulation period
+        append!(tstops, filter(t -> 0 ≤ t ≤ endtime, itp.t .+ i * T))
+    end
+
+    # Get rid of last tstop of one period being the same as first tstop of next period
+    return unique(tstops)
+end
