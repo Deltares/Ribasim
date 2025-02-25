@@ -447,6 +447,7 @@ function TabulatedRatingCurve(
 
     static_node_ids, time_node_ids, node_ids, valid =
         static_and_time_node_ids(db, static, time, NodeType.TabulatedRatingCurve)
+    cyclic_times = get_cyclic_time(db, "TabulatedRatingCurve")
 
     valid || error(
         "Problems encountered when parsing TabulatedRatingcurve static and time node IDs.",
@@ -465,7 +466,7 @@ function TabulatedRatingCurve(
     qh_iterator = IterTools.groupby(row -> (row.node_id, row.time), time)
     state = nothing  # initial iterator state
 
-    for node_id in node_ids
+    for (node_id, cyclic_time) in zip(node_ids, cyclic_times)
         if node_id in static_node_ids
             # Loop over all static rating curves (groups) with this node_id.
             # If it has a control_state add it to control_mapping.
@@ -539,11 +540,22 @@ function TabulatedRatingCurve(
                     break
                 end
             end
+            if cyclic_time
+                itp_first = interpolations[first(lookup_index)]
+                itp_last = interpolations[last(lookup_index)]
+                if !((itp_first.t == itp_last.t) && (itp_first.u == itp_last.u))
+                    @error "For $node_id with cyclic_time the first and last rating curves are not equal."
+                    errors = true
+                end
+                lookup_index[end] = first(lookup_index)
+            end
+
             push_constant_interpolation!(
                 current_interpolation_index,
                 lookup_index,
                 lookup_time,
-                node_id,
+                node_id;
+                cyclic_time,
             )
             push!(active, true)
             push!(max_downstream_level, max_level)
@@ -1841,7 +1853,7 @@ function get_node_ids(db::DB, node_type)::Vector{NodeID}
     return node_ids
 end
 
-function get_cyclic_time(db::DB, node_type)::Vector{Bool}
+function get_cyclic_time(db::DB, node_type::String)::Vector{Bool}
     sql = "SELECT cyclic_time FROM Node WHERE node_type = $(esc_id(node_type)) ORDER BY node_id"
     return only(execute(columntable, db, sql))
 end
