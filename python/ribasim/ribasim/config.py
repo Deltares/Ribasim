@@ -190,6 +190,8 @@ class Node(pydantic.BaseModel):
         Optionally adds this node to a subnetwork, which is input for the allocation algorithm.
     source_priority : int
         Optionally overrides the source priority for this node, which is used in the allocation algorithm.
+    cyclic_time : bool
+        Optionally extrapolate forcing timeseries periodically. Defaults to False.
     """
 
     node_id: NonNegativeInt | None = None
@@ -197,6 +199,7 @@ class Node(pydantic.BaseModel):
     name: str = ""
     subnetwork_id: int | None = None
     source_priority: int | None = None
+    cyclic_time: bool = False
 
     model_config = ConfigDict(arbitrary_types_allowed=True, extra="allow")
 
@@ -224,6 +227,7 @@ class Node(pydantic.BaseModel):
                 "source_priority": pd.Series(
                     [self.source_priority], dtype=pd.Int32Dtype()
                 ),
+                "cyclic_time": pd.Series([self.cyclic_time], dtype=bool),
                 **extra,
             },
             geometry=[self.geometry],
@@ -478,11 +482,7 @@ class DiscreteControl(MultiNodeModel):
     condition: TableModel[DiscreteControlConditionSchema] = Field(
         default_factory=TableModel[DiscreteControlConditionSchema],
         json_schema_extra={
-            "sort_keys": [
-                "node_id",
-                "compound_variable_id",
-                "greater_than",
-            ]
+            "sort_keys": ["node_id", "compound_variable_id", "condition_id"]
         },
     )
     logic: TableModel[DiscreteControlLogicSchema] = Field(

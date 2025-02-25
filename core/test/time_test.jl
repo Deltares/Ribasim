@@ -72,3 +72,37 @@ end
     # Given that precipitation stops after 15 of the 20 days
     @test mean_precipitation ≈ 3 / 4 * starting_precipitation
 end
+
+@testitem "get_cyclic_tstops" begin
+    using Ribasim: get_cyclic_tstops
+    using DataInterpolations: LinearInterpolation, ConstantInterpolation
+    using DataInterpolations.ExtrapolationType: Periodic
+
+    itp = LinearInterpolation(zeros(3), [0.5, 1.0, 1.5])
+    @test get_cyclic_tstops(itp, 5.0) == itp.t
+
+    itp = LinearInterpolation(zeros(3), [0.5, 1.0, 1.5]; extrapolation = Periodic)
+    @test get_cyclic_tstops(itp, 5.0) == 0:0.5:5
+
+    itp = ConstantInterpolation(zeros(2), [0.3, 0.5]; extrapolation = Periodic)
+    @test get_cyclic_tstops(itp, 1.0) ≈ 0.1:0.2:0.9
+end
+
+@testitem "cyclic time" begin
+    using DataInterpolations.ExtrapolationType: Periodic
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/cyclic_time/ribasim.toml")
+    @test ispath(toml_path)
+
+    model = Ribasim.Model(toml_path)
+    (; level_boundary, flow_boundary, basin) = model.integrator.p
+
+    function test_extrapolation(itp)
+        @test itp.extrapolation_left == Periodic
+        @test itp.extrapolation_right == Periodic
+    end
+
+    test_extrapolation(basin.forcing.precipitation[1])
+    test_extrapolation(level_boundary.level[1])
+    test_extrapolation(flow_boundary.flow_rate[1])
+end

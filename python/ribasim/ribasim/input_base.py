@@ -79,9 +79,6 @@ context_file_writing: ContextVar[dict[str, Any]] = ContextVar(
 TableT = TypeVar("TableT", bound=_BaseSchema)
 
 
-TABLES = ["profile", "state", "static", "time", "logic", "condition"]
-
-
 class BaseModel(PydanticBaseModel):
     """Overrides Pydantic BaseModel to set our own config."""
 

@@ -1,16 +1,23 @@
 """
 Process the data in the static and time tables for a given node type.
-The 'defaults' named tuple dictates how missing data is filled in.
-'time_interpolatables' is a vector of Symbols of parameter names
-for which a time interpolation (linear) object must be constructed.
-The control mapping for DiscreteControl is also constructed in this function.
-This function currently does not support node states that are defined by more
-than one row in a table, as is the case for TabulatedRatingCurve.
+
+Inputs:
+- `db`: The Ribasim GeoPackage database
+- `config`: The configuration object
+- `node_type_string`: A string representation of a node type, e.g. "LinearResistance"
+
+Optional inputs:
+- `static`: The StructVector with the static node data
+- `time`: The StructVector with the transient node data
+- `time_interpolatables`: The names of the variables which can be interpolated over time
+- `interpolation_type`: The type of interpolation used for the time interpolatable variables
+- `is_complete`: Toggles whether it should be checked that an id that exists in the Node table should be
+   in either the static or time table. Defaults to `true`.
 """
 function parse_static_and_time(
     db::DB,
     config::Config,
-    node_type::Type;
+    node_type_string::String;
     static::Union{StructVector, Nothing} = nothing,
     time::Union{StructVector, Nothing} = nothing,
     defaults::NamedTuple = (; active = true),
@@ -30,12 +37,12 @@ function parse_static_and_time(
     # The types of the variables that can define a control state
     parameter_types = collect(fieldtypes(static_type))[mask]
 
-    # A vector of vectors, for each parameter the (initial) values for all nodes
+    # A vector of vectors and dicts, for each parameter the (initial) values for all nodes
     # of the current type
     vals_out = []
 
-    node_type_string = String(split(string(node_type), '.')[end])
     node_ids = get_node_ids(db, node_type_string)
+    cyclic_times = get_cyclic_time(db, node_type_string)
     ids = Int32.(node_ids)
     n_nodes = length(node_ids)
 
@@ -109,7 +116,7 @@ function parse_static_and_time(
     errors = false
     trivial_timespan = [0.0, prevfloat(Inf)]
 
-    for node_id in node_ids
+    for (cyclic_time, node_id) in zip(cyclic_times, node_ids)
         if node_id in static_node_ids
             # The interval of rows of the static table that have the current node_id
             rows = searchsorted(static_node_id_vec, node_id)
@@ -167,6 +174,7 @@ function parse_static_and_time(
                         default_value = hasproperty(defaults, parameter_name) ?
                                         defaults[parameter_name] : NaN,
                         interpolation_type,
+                        extrapolation = cyclic_time ? Periodic : Constant,
                     )
                 else
                     # Activity of transient nodes is assumed to be true
@@ -188,6 +196,7 @@ function parse_static_and_time(
                         [val, val],
                         trivial_timespan;
                         cache_parameters = true,
+                        extrapolation = Constant,
                     )
                 end
                 getfield(out, parameter_name)[node_id.idx] = val
@@ -407,7 +416,7 @@ function LinearResistance(db::DB, config::Config, graph::MetaGraph)::LinearResis
     static = load_structvector(db, config, LinearResistanceStaticV1)
     defaults = (; max_flow_rate = Inf, active = true)
     parsed_parameters, valid =
-        parse_static_and_time(db, config, LinearResistance; static, defaults)
+        parse_static_and_time(db, config, "LinearResistance"; static, defaults)
 
     if !valid
         error(
@@ -565,7 +574,8 @@ function ManningResistance(
     basin::Basin,
 )::ManningResistance
     static = load_structvector(db, config, ManningResistanceStaticV1)
-    parsed_parameters, valid = parse_static_and_time(db, config, ManningResistance; static)
+    parsed_parameters, valid =
+        parse_static_and_time(db, config, "ManningResistance"; static)
 
     if !valid
         error("Errors occurred when parsing ManningResistance data.")
@@ -603,8 +613,14 @@ function LevelBoundary(db::DB, config::Config)::LevelBoundary
     end
 
     time_interpolatables = [:level]
-    parsed_parameters, valid =
-        parse_static_and_time(db, config, LevelBoundary; static, time, time_interpolatables)
+    parsed_parameters, valid = parse_static_and_time(
+        db,
+        config,
+        "LevelBoundary";
+        static,
+        time,
+        time_interpolatables,
+    )
 
     substances = get_substances(db, config)
     concentration = zeros(length(node_ids), length(substances))
@@ -638,8 +654,14 @@ function FlowBoundary(db::DB, config::Config, graph::MetaGraph)::FlowBoundary
     end
 
     time_interpolatables = [:flow_rate]
-    parsed_parameters, valid =
-        parse_static_and_time(db, config, FlowBoundary; static, time, time_interpolatables)
+    parsed_parameters, valid = parse_static_and_time(
+        db,
+        config,
+        "FlowBoundary";
+        static,
+        time,
+        time_interpolatables,
+    )
 
     for itp in parsed_parameters.flow_rate
         if any(itp.u .< 0.0)
@@ -679,7 +701,7 @@ function Pump(db::DB, config::Config, graph::MetaGraph)::Pump
         max_downstream_level = Inf,
         active = true,
     )
-    parsed_parameters, valid = parse_static_and_time(db, config, Pump; static, defaults)
+    parsed_parameters, valid = parse_static_and_time(db, config, "Pump"; static, defaults)
 
     if !valid
         error("Errors occurred when parsing Pump data.")
@@ -714,7 +736,7 @@ function Outlet(db::DB, config::Config, graph::MetaGraph)::Outlet
         max_downstream_level = Inf,
         active = true,
     )
-    parsed_parameters, valid = parse_static_and_time(db, config, Outlet; static, defaults)
+    parsed_parameters, valid = parse_static_and_time(db, config, "Outlet"; static, defaults)
 
     if !valid
         error("Errors occurred when parsing Outlet data.")
@@ -852,7 +874,7 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     parsed_parameters, valid = parse_static_and_time(
         db,
         config,
-        Basin;
+        "Basin";
         static,
         time,
         time_interpolatables,
@@ -1182,7 +1204,7 @@ function PidControl(db::DB, config::Config, graph::MetaGraph)::PidControl
 
     time_interpolatables = [:target, :proportional, :integral, :derivative]
     parsed_parameters, valid =
-        parse_static_and_time(db, config, PidControl; static, time, time_interpolatables)
+        parse_static_and_time(db, config, "PidControl"; static, time, time_interpolatables)
 
     if !valid
         error("Errors occurred when parsing PidControl data.")
@@ -1401,7 +1423,7 @@ function LevelDemand(db::DB, config::Config)::LevelDemand
     parsed_parameters, valid = parse_static_and_time(
         db,
         config,
-        LevelDemand;
+        "LevelDemand";
         static,
         time,
         time_interpolatables = [:min_level, :max_level],
@@ -1429,7 +1451,7 @@ function FlowDemand(db::DB, config::Config)::FlowDemand
     parsed_parameters, valid = parse_static_and_time(
         db,
         config,
-        FlowDemand;
+        "FlowDemand";
         static,
         time,
         time_interpolatables = [:demand],
@@ -1794,6 +1816,11 @@ function get_node_ids(db::DB, node_type)::Vector{NodeID}
         node_ids[index] = NodeID(node_type, node_int, index)
     end
     return node_ids
+end
+
+function get_cyclic_time(db::DB, node_type)::Vector{Bool}
+    sql = "SELECT cyclic_time FROM Node WHERE node_type = $(esc_id(node_type)) ORDER BY node_id"
+    return only(execute(columntable, db, sql))
 end
 
 function exists(db::DB, tablename::String)

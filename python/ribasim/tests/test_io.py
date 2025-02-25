@@ -260,7 +260,7 @@ def test_sort(level_range, tmp_path):
     assert table._sort_keys == [
         "node_id",
         "compound_variable_id",
-        "greater_than",
+        "condition_id",
     ]
     table.sort()
     assert table.df.iloc[0]["greater_than"] == 5.0

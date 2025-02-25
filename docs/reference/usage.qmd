@@ -172,9 +172,16 @@ geom            | Point    | (optional)
 name            | String   | (optional, does not have to be unique)
 subnetwork_id   | Int32    | (optional)
 source_priority | Int32    | (optional, does not have to be unique)
+cyclic_time     | Bool     | (optional, defaults to false)
 
 Adding a point geometry to the node table can be helpful to examine models in [QGIS](https://qgis.org/en/site/), as it will show the location of the nodes on the map.
 The geometry is not used by Ribasim.
+
+## Cyclic time series
+
+When `cyclic_time` is set to true for a node in the Node table, every time series associated with that node in the corresponding table(s) will be interpreted as cyclic. That is: the time series is exactly repeated left and right of the original time interval to cover the whole simulation period. For this it is validated that the first and last data values in the timeseries are the same. For instance, quarterly precipitation requires giving values for every quarter at the start of the quarter, and then the value for the first quarter again at the start of the next year.
+
+Note that periods like months or years are not of constant length in the calendar, so over long simulation periods the timeseries can get out of sync with these periods on the calendar.
 
 # Link {#sec-link}
 
