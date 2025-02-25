@@ -621,6 +621,8 @@ end
 end
 
 @testitem "cyclic_demand" begin
+    using DataInterpolations.ExtrapolationType: Periodic
+
     toml_path = normpath(@__DIR__, "../../generated_testmodels/cyclic_demand/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)

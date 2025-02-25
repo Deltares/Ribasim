@@ -543,6 +543,7 @@ function TabulatedRatingCurve(
                 current_interpolation_index,
                 lookup_index,
                 lookup_time,
+                node_id,
             )
             push!(active, true)
             push!(max_downstream_level, max_level)
@@ -936,7 +937,12 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     return basin
 end
 
-function get_greater_than!(greater_than, conditions_compound_variable, starttime)::Nothing
+function get_greater_than!(
+    greater_than::Vector{<:AbstractInterpolation},
+    conditions_compound_variable,
+    starttime::DateTime,
+    cyclic_time::Bool,
+)::Nothing
     (; node_id) = first(conditions_compound_variable)
     errors = false
 
@@ -955,6 +961,8 @@ function get_greater_than!(greater_than, conditions_compound_variable, starttime
                 greater_than,
                 condition_group.greater_than,
                 seconds_since.(condition_group.time, starttime),
+                NodeID(:UserDemand, node_id, 0);
+                cyclic_time,
             )
         end
     end
@@ -971,10 +979,11 @@ References to listened parameters are added later.
 function CompoundVariable(
     variables_compound_variable,
     node_type::NodeType.T,
-    node_ids_all::Vector{NodeID};
+    node_ids_all::Vector{NodeID},
+    placeholder_vector;
     conditions_compound_variable = nothing,
     starttime = nothing,
-    placeholder_vector,
+    cyclic_time = false,
 )::CompoundVariable
     # The ID of the node listening to this CompoundVariable
     node_id =
@@ -999,8 +1008,12 @@ function CompoundVariable(
     end
 
     # Build greater_than ConstantInterpolation objects
-    !isnothing(conditions_compound_variable) &&
-        get_greater_than!(greater_than, conditions_compound_variable, starttime)
+    !isnothing(conditions_compound_variable) && get_greater_than!(
+        greater_than,
+        conditions_compound_variable,
+        starttime,
+        cyclic_time,
+    )
     return compound_variable
 end
 
@@ -1010,12 +1023,13 @@ function parse_variables_and_conditions(ids::Vector{Int32}, db::DB, config::Conf
 
     placeholder_vector = cache(1)
     compound_variables = Vector{CompoundVariable}[]
+    cyclic_times = get_cyclic_time(db, "DiscreteControl")
     errors = false
 
     node_ids_all = get_node_ids(db)
 
     # Loop over unique discrete_control node IDs
-    for id in ids
+    for (id, cyclic_time) in zip(ids, cyclic_times)
         # Conditions associated with the current DiscreteControl node
         conditions_node = filter(row -> row.node_id == id, condition)
 
@@ -1049,10 +1063,11 @@ function parse_variables_and_conditions(ids::Vector{Int32}, db::DB, config::Conf
                     CompoundVariable(
                         variables_compound_variable,
                         NodeType.DiscreteControl,
-                        node_ids_all;
+                        node_ids_all,
+                        placeholder_vector;
                         conditions_compound_variable,
-                        placeholder_vector,
                         config.starttime,
+                        cyclic_time,
                     ),
                 )
             end
@@ -1154,7 +1169,7 @@ function continuous_control_compound_variables(db::DB, config::Config, ids)
             CompoundVariable(
                 variable_data,
                 NodeType.ContinuousControl,
-                node_ids_all;
+                node_ids_all,
                 placeholder_vector,
             ),
         )
@@ -1475,11 +1490,15 @@ function push_constant_interpolation!(
     constant_interpolations::Vector{<:ConstantInterpolation{uType, tType}},
     output::uType,
     input::tType,
+    node_id::NodeID;
+    cyclic_time::Bool = false,
 ) where {uType, tType}
+    valid = valid_time_interpolation(input, output, node_id, cyclic_time)
+    !valid && error("Invalid time series.")
     itp = ConstantInterpolation(
         output,
         input;
-        extrapolation = Constant,
+        extrapolation = cyclic_time ? Periodic : Constant,
         cache_parameters = true,
     )
     push!(constant_interpolations, itp)
@@ -1584,6 +1603,7 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
                 current_interpolation_index,
                 lookup_index,
                 lookup_time,
+                node_id,
             )
             # Push the new subgrid_id and basin_index
             push!(subgrid_id_time, subgrid_id)
@@ -1599,7 +1619,12 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
 
     # Push completed IndexLookup of the last group
     if interpolation_index > 0
-        push_constant_interpolation!(current_interpolation_index, lookup_index, lookup_time)
+        push_constant_interpolation!(
+            current_interpolation_index,
+            lookup_index,
+            lookup_time,
+            last(basin.node_id),
+        )
     end
 
     level = fill(NaN, length(subgrid_id_static) + length(subgrid_id_time))

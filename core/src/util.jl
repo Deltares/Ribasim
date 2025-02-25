@@ -79,26 +79,8 @@ function get_scalar_interpolation(
     parameter = coalesce.(parameter, default_value)
     times = seconds_since.(time.time[rows], starttime)
 
-    errors = false
-
-    if !allunique(times)
-        errors = true
-        @error "(One of) the time series for $node_id has repeated times, this can not be interpolated."
-    end
-
-    if cyclic_time
-        if !(all(isnan, parameter) || (first(parameter) == last(parameter)))
-            errors = true
-            @error "$node_id is denoted as cyclic but in (one of) its time series the first and last value are not the same."
-        end
-
-        if length(times) < 2
-            errors = true
-            @error "$node_id is denoted as cyclic but (one of) its time series has fewer than 2 data points."
-        end
-    end
-
-    errors && error("Invalid time series.")
+    valid = valid_time_interpolation(times, parameter, node_id, cyclic_time)
+    !valid && error("Invalid time series.")
     return interpolation_type(
         parameter,
         times;
