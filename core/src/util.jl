@@ -71,8 +71,8 @@ function get_scalar_interpolation(
     node_id::NodeID,
     param::Symbol;
     default_value::Float64 = 0.0,
-    interpolation_type::Type{<:AbstractInterpolation},
-    extrapolation::ExtrapolationType.T = Constant,
+    interpolation_type::Type{<:AbstractInterpolation} = LinearInterpolation,
+    cyclic_time::Bool = false,
 )::interpolation_type
     rows = searchsorted(time.node_id, node_id)
     parameter = getproperty(time, param)[rows]
@@ -86,7 +86,7 @@ function get_scalar_interpolation(
         @error "(One of) the time series for $node_id has repeated times, this can not be interpolated."
     end
 
-    if extrapolation == Periodic
+    if cyclic_time
         if !(all(isnan, parameter) || (first(parameter) == last(parameter)))
             errors = true
             @error "$node_id is denoted as cyclic but in (one of) its time series the first and last value are not the same."
@@ -99,7 +99,12 @@ function get_scalar_interpolation(
     end
 
     errors && error("Invalid time series.")
-    return interpolation_type(parameter, times; extrapolation, cache_parameters = true)
+    return interpolation_type(
+        parameter,
+        times;
+        extrapolation = cyclic_time ? Periodic : Constant,
+        cache_parameters = true,
+    )
 end
 
 """

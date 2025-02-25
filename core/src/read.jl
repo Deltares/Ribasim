@@ -171,10 +171,9 @@ function parse_static_and_time(
                         time,
                         node_id,
                         parameter_name;
-                        default_value = hasproperty(defaults, parameter_name) ?
-                                        defaults[parameter_name] : NaN,
+                        default_value = get(defaults, parameter_name, NaN),
                         interpolation_type,
-                        extrapolation = cyclic_time ? Periodic : Constant,
+                        cyclic_time,
                     )
                 else
                     # Activity of transient nodes is assumed to be true
@@ -810,8 +809,6 @@ function ConcentrationData(
         concentration_column = :precipitation,
     )
 
-    t_end = seconds_since(config.endtime, config.starttime)
-
     errors = false
 
     concentration_external_data =
@@ -828,7 +825,6 @@ function ConcentrationData(
                 StructVector(group),
                 NodeID(:Basin, first_row.node_id, 0),
                 :concentration;
-                interpolation_type = LinearInterpolation,
             )
             concentration_external_id["concentration_external.$substance"] = itp
             if any(itp.u .< 0)
@@ -1291,11 +1287,11 @@ function user_demand_time!(
     min_level::Vector{Float64},
     time::StructVector{UserDemandTimeV1},
     ids::Vector{Int32},
+    cyclic_times::Vector{Bool},
     demand_priorities::Vector{Int32},
     config::Config,
 )::Bool
     errors = false
-    t_end = seconds_since(config.endtime, config.starttime)
 
     for group in IterTools.groupby(row -> (row.node_id, row.demand_priority), time)
         first_row = first(group)
@@ -1303,12 +1299,13 @@ function user_demand_time!(
 
         active[user_demand_idx] = true
         demand_from_timeseries[user_demand_idx] = true
+        cyclic_time = cyclic_times[user_demand_idx]
         return_factor_itp = get_scalar_interpolation(
             config.starttime,
             StructVector(group),
             NodeID(:UserDemand, first_row.node_id, 0),
             :return_factor;
-            interpolation_type = LinearInterpolation,
+            cyclic_time,
         )
         return_factor[user_demand_idx] = return_factor_itp
 
@@ -1320,8 +1317,7 @@ function user_demand_time!(
             StructVector(group),
             NodeID(:UserDemand, first_row.node_id, 0),
             :demand;
-            default_value = 0.0,
-            interpolation_type = LinearInterpolation,
+            cyclic_time,
         )
         demand[user_demand_idx, demand_priority_idx] = demand_p_itp(0.0)
         demand_itp[user_demand_idx][demand_priority_idx] = demand_p_itp
@@ -1336,6 +1332,7 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)::UserDemand
 
     _, _, node_ids, valid = static_and_time_node_ids(db, static, time, NodeType.UserDemand)
     ids = Int32.(node_ids)
+    cyclic_times = get_cyclic_time(db, "UserDemand")
 
     if !valid
         error("Problems encountered when parsing UserDemand static and time node IDs.")
@@ -1385,6 +1382,7 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)::UserDemand
         min_level,
         time,
         ids,
+        cyclic_times,
         demand_priorities,
         config,
     )
