@@ -1,8 +1,8 @@
 name: Pre-commit auto update
 on:
   schedule:
-    # At 03:00 on day 1 of the month
-    - cron: "0 3 1 * *"
+    # At 03:00 on day 3 of the month
+    - cron: "0 3 3 * *"
   # on demand
   workflow_dispatch:
 jobs:
