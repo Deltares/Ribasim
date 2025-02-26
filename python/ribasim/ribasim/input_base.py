@@ -305,7 +305,7 @@ class TableModel(FileModel, Generic[TableT]):
         else:
             return {"self": self.df, "other": other.df}
 
-    @field_validator("df")
+    @field_validator("df", mode="before")
     @classmethod
     def _check_schema(cls, v: DataFrame[TableT]):
         """Allow only extra columns with `meta_` prefix."""
