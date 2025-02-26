@@ -324,12 +324,8 @@ class TableModel(FileModel, Generic[TableT]):
         return v
 
     @model_serializer
-    def _set_model(self, info: SerializationInfo) -> "str | TableModel[TableT] | None":
-        # When writing, only return the filename.
-        if info.context == "write":
-            return str(self.filepath.name) if self.filepath is not None else None
-        else:
-            return self
+    def _set_model(self, info: SerializationInfo) -> "str | None":
+        return str(self.filepath.name) if self.filepath is not None else None
 
     @classmethod
     def tablename(cls) -> str:
