@@ -120,7 +120,6 @@ for node_type in ["UserDemand", "LevelDemand", "FlowDemand"]:
             node_type: str = node_type,
             table_type: str = table_type,
         ) -> DataFrame:
-            print(df, schema_version)
             if schema_version < 4:
                 warnings.warn(
                     f"Migrating outdated {node_type} / {table_type} table.", UserWarning
