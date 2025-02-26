@@ -60,5 +60,4 @@ def test_column_rename():
     _rename_column(df, "edge_type", "link_type")
     assert_frame_equal(df, pd.DataFrame({"link_type": [1]}))
     df = pd.DataFrame({"link_type": [2]})
-    with pytest.raises(KeyError, match="\['edge_type'\] not found in axis"):
-        _rename_column(df, "edge_type", "link_type")
+    assert_frame_equal(df, _rename_column(df, "edge_type", "link_type"))
