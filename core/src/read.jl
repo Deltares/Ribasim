@@ -791,6 +791,7 @@ function ConcentrationData(
     config::Config,
 )::ConcentrationData
     n = length(node_id)
+    cyclic_times = get_cyclic_time(db, "Basin")
 
     concentration_state_data = load_structvector(db, config, BasinConcentrationStateV1)
 
@@ -827,7 +828,7 @@ function ConcentrationData(
     concentration_external_data =
         load_structvector(db, config, BasinConcentrationExternalV1)
     concentration_external = Dict{String, ScalarInterpolation}[]
-    for id in node_id
+    for (id, cyclic_time) in zip(node_id, cyclic_times)
         concentration_external_id = Dict{String, ScalarInterpolation}()
         data_id = filter(row -> row.node_id == id.value, concentration_external_data)
         for group in IterTools.groupby(row -> row.substance, data_id)
@@ -838,6 +839,7 @@ function ConcentrationData(
                 StructVector(group),
                 NodeID(:Basin, first_row.node_id, 0),
                 :concentration;
+                cyclic_time,
             )
             concentration_external_id["concentration_external.$substance"] = itp
             if any(itp.u .< 0)
