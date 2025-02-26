@@ -1,7 +1,7 @@
 import warnings
 
 from geopandas import GeoDataFrame
-from pandas import DataFrame, Series
+from pandas import DataFrame
 
 # On each breaking change, increment the __schema_version__ by one.
 # Do the same for write_schema_version in ribasim_qgis/core/geopackage.py
@@ -11,7 +11,12 @@ def _rename_column(df, from_colname, to_colname):
     """Rename a column, ensuring we don't end up with two of the same name."""
     # If a column has a default value, or is nullable, they are always added.
     # Remove that column first, then rename the old column.
-    # Only call this if from_colname is in the DataFrame.
+    if to_colname in df.columns and from_colname not in df.columns:
+        warnings.warn(
+            "Already migrated, your model (version) might be inconsistent.", UserWarning
+        )
+        return df
+
     df.drop(columns=to_colname, inplace=True, errors="ignore")
     df.rename(columns={from_colname: to_colname}, inplace=True, errors="raise")
     return df
@@ -109,7 +114,13 @@ def outletstaticschema_migration(df: DataFrame, schema_version: int) -> DataFram
 for node_type in ["UserDemand", "LevelDemand", "FlowDemand"]:
     for table_type in ["static", "time"]:
 
-        def migration_func(df: DataFrame, schema_version: int) -> DataFrame:
+        def migration_func(
+            df: DataFrame,
+            schema_version: int,
+            node_type: str = node_type,
+            table_type: str = table_type,
+        ) -> DataFrame:
+            print(df, schema_version)
             if schema_version < 4:
                 warnings.warn(
                     f"Migrating outdated {node_type} / {table_type} table.", UserWarning
@@ -117,7 +128,7 @@ for node_type in ["UserDemand", "LevelDemand", "FlowDemand"]:
                 df.rename(columns={"priority": "demand_priority"}, inplace=True)
             return df
 
-        globals()[f"{node_type.lower()}{table_type}_migration"] = migration_func
+        globals()[f"{node_type.lower()}{table_type}schema_migration"] = migration_func
 
 
 def discretecontrolconditionschema_migration(
@@ -128,7 +139,6 @@ def discretecontrolconditionschema_migration(
             "Migrating outdated DiscreteControl / condition table.", UserWarning
         )
         n_rows = len(df)
-        df["time"] = Series([None] * n_rows, dtype="timestamp[ms][pyarrow]")
-        df["condition_id"] = Series(range(n_rows), dtype="int32[pyarrow]")
-        df["condition_id"] = Series(range(n_rows + 1), dtype="int32[pyarrow]")
+        df["time"] = [None] * n_rows
+        df["condition_id"] = range(1, n_rows + 1)
     return df
