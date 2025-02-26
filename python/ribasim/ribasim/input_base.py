@@ -30,7 +30,6 @@ from pydantic import (
     DirectoryPath,
     Field,
     PrivateAttr,
-    SerializationInfo,
     ValidationInfo,
     field_validator,
     model_serializer,
@@ -324,7 +323,7 @@ class TableModel(FileModel, Generic[TableT]):
         return v
 
     @model_serializer
-    def _set_model(self, info: SerializationInfo) -> "str | None":
+    def _set_model(self) -> "str | None":
         return str(self.filepath.name) if self.filepath is not None else None
 
     @classmethod
