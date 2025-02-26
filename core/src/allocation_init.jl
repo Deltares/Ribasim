@@ -394,6 +394,109 @@ function add_constraints_buffer!(problem::JuMP.Model)::Nothing
     return nothing
 end
 
+function add_basin_profiles!(
+    problem::JuMP.Model,
+    p::Parameters,
+    subnetwork_id::Int32,
+)::Nothing
+    (; graph, basin) = p
+    (; node_id, storage_to_level) = basin
+    n_samples_per_interval = 5
+
+    # TODO: This function is getting quite large, better split it up in a function
+    # adding variables and a function adding constraints
+
+    # Basin node IDs within the current subnetwork
+    node_ids = filter(id -> graph[id].subnetwork_id == subnetwork_id, node_id)
+
+    # Define the storages and levels of the basin
+    problem[:basin_storage] = JuMP.@variable(problem, basin_storage[node_ids] >= 0)
+    problem[:basin_level] = JuMP.@variable(problem, basin_level[node_ids] >= 0)
+
+    # The number of points in the piecewise linear approximation
+    # of the level(storage) relationship
+    n_points = Dict{NodeID, Int}()
+
+    # The data for the piecewise linear basin profile approximations
+    storages = Dict{NodeID, Vector{Float64}}()
+    levels = Dict{NodeID, Vector{Float64}}()
+
+    for id in node_ids
+        itp = storage_to_level[id.idx]
+        (graph[id].subnetwork_id != subnetwork_id) && continue
+
+        # TODO: What do to with extrapolation?
+        # Get (storage, level) points for linear approximation by evaluating the smooth
+        # interpolation at n_samples_per_interval evenly spaced points between the data points
+        storage = unique(
+            vcat(
+                [
+                    itp.(
+                        range(itp.t[i], itp.t[i + 1]; length = n_samples_per_interval + 1)
+                    ) for i in 1:(length(itp.t) - 1)
+                ]...,
+            ),
+        )
+        level = itp.(storage)
+
+        storages[id] = storage
+        levels[id] = level
+        n_points[id] = length(storage)
+    end
+
+    # Define auxiliary variables for the basin profiles within this subnetwork
+    indices_points =
+        Iterators.flatten(map(id -> ((id, i) for i in 1:n_points[id]), node_ids))
+    problem[:aux_basin_profile] =
+        JuMP.@variable(problem, aux_basin_profile[indices_points] >= 0)
+
+    # Unity sum of auxiliary variables
+    problem[:aux_basin_profile_unity_sum] = JuMP.@constraint(
+        problem,
+        [id = node_ids],
+        sum(problem[:aux_basin_profile][(id, i)] for i in 1:n_points[id]) == 1,
+        base_name = "Basin_profile_aux_sum"
+    )
+
+    # Define binary variables for in which interval the storage lies
+    indices_intervals =
+        Iterators.flatten(map(id -> ((id, i) for i in 1:(n_points[id] - 1)), node_ids))
+    intv_bool_basin_profile =
+        JuMP.@variable(problem, intv_bool_basin_profile[indices_intervals], Bin)
+    problem[:intv_bool_basin_profile] = intv_bool_basin_profile
+
+    # The sum of the binary variables per basin is 1 => the storage can only lie in one interval
+    problem[:intv_bool_basin_profile_sum] = JuMP.@constraint(
+        problem,
+        [id = node_ids],
+        sum(intv_bool_basin_profile[(id, i)] for i in 1:(n_points[id] - 1)) == 1,
+        base_name = "intv_bool_basin_profile_sum"
+    )
+
+    # The constraints describing the piecewise linear approximation of the basin profiles
+    problem[:basin_profile_storage] = JuMP.@constraint(
+        problem,
+        [id = node_ids],
+        sum(
+            intv_bool_basin_profile[(id, i)] * (
+                storages[id][i] * aux_basin_profile[(id, i)] +
+                storages[id][i + 1] * aux_basin_profile[(id, i + 1)]
+            ) for i in 1:(n_points[id] - 1)
+        ) == basin_storage[id]
+    )
+    problem[:basin_profile_level] = JuMP.@constraint(
+        problem,
+        [id = node_ids],
+        sum(
+            intv_bool_basin_profile[(id, i)] * (
+                levels[id][i] * aux_basin_profile[(id, i)] +
+                levels[id][i + 1] * aux_basin_profile[(id, i + 1)]
+            ) for i in 1:(n_points[id] - 1)
+        ) == basin_level[id]
+    )
+    return nothing
+end
+
 """
 Construct the allocation problem for the current subnetwork as a JuMP model.
 """
