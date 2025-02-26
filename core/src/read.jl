@@ -1529,6 +1529,7 @@ end
 function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
     time = load_structvector(db, config, BasinSubgridTimeV1)
     static = load_structvector(db, config, BasinSubgridV1)
+    cyclic_times = get_cyclic_time(db, "Basin")
 
     # Since not all Basins need to have subgrids, don't enforce completeness.
     _, _, _, valid =
@@ -1583,6 +1584,8 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
     lookup_time = Float64[]
     lookup_index = Int[]
 
+    errors = false
+
     interpolation_index = 0
     # In the time table, each subgrid ID can have a different number of relations over time.
     # We group over the combination of subgrid ID and time such that this group has 1 h(h) relation.
@@ -1599,7 +1602,9 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
 
         is_valid =
             valid_subgrid(subgrid_id, node_id, node_to_basin, basin_level, subgrid_level)
-        !is_valid && error("Invalid Basin / subgrid_time table.")
+        errors |= !is_valid
+        !is_valid &&
+            @error "Invalid subgrid for Basin #$node_id, subgrid_id $subgrid_id in time table."
 
         hh_itp = LinearInterpolation(
             subgrid_level,
@@ -1610,12 +1615,23 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
         )
         # These should only be pushed when the subgrid_id has changed
         if subgrid_id_time[end] != subgrid_id
+            cyclic_time = cyclic_times[node_to_basin[node_id]]
+            if cyclic_time
+                itp_first = interpolations_time[first(lookup_index)]
+                itp_last = interpolations_time[last(lookup_index)]
+                if !((itp_first.t == itp_last.t) && (itp_first.u == itp_last.u))
+                    @error "For $node_id with cyclic_time the first and last h(h) relations for subgrid_id $subgrid_id are not equal."
+                    errors = true
+                end
+                lookup_index[end] = first(lookup_index)
+            end
             # Push the completed index_lookup of the previous subgrid_id
             push_constant_interpolation!(
                 current_interpolation_index,
                 lookup_index,
                 lookup_time,
-                node_id,
+                node_id;
+                cyclic_time,
             )
             # Push the new subgrid_id and basin_index
             push!(subgrid_id_time, subgrid_id)
@@ -1628,6 +1644,8 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
         push!(lookup_time, time_group)
         push!(interpolations_time, hh_itp)
     end
+
+    errors && @error("Errors encountered when parsing Basin / subgrid_time data.")
 
     # Push completed IndexLookup of the last group
     if interpolation_index > 0
