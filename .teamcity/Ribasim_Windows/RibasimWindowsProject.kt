@@ -104,10 +104,13 @@ object Windows_TestDelwaqCoupling : BuildType({
     }
 
     dependencies {
-        artifacts(AbsoluteId("Dimr_DimrCollectors_2bDimrCollectorReleaseSigned")) {
+        artifacts(AbsoluteId("DWaqDPart_Windows_Build")) {
             id = "ARTIFACT_DEPENDENCY_4206"
-            buildRule = tag("DIMRset_2.27.09")
-            artifactRules = "dimrset_x64_signed_*.zip!/x64 => dimr"
+            buildRule = lastSuccessful()
+            artifactRules = """
+                DIMR_win64_Release_Visual Studio 16 2019_ifort_*.zip => dimr
+                DWAQ_win64_Release_Visual Studio 16 2019_ifort_*.zip => dimr
+            """.trimIndent()
         }
     }
 })
