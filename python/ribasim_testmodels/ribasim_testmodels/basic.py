@@ -289,7 +289,7 @@ def tabulated_rating_curve_model() -> Model:
         ],
     )
     model.tabulated_rating_curve.add(
-        Node(3, Point(1.0, -1.0)),
+        Node(3, Point(1.0, -1.0), cyclic_time=True),
         [
             tabulated_rating_curve.Time(
                 time=[
@@ -300,9 +300,11 @@ def tabulated_rating_curve_model() -> Model:
                     pd.Timestamp("2020-02-01 00:00:00.001"),
                     pd.Timestamp("2020-03-01"),
                     pd.Timestamp("2020-03-01"),
+                    pd.Timestamp("2020-04-01"),
+                    pd.Timestamp("2020-04-01"),
                 ],
-                level=[0.0, 1.0, 0.0, 1.1, 0.0, 1.2],
-                flow_rate=[0.0, 10 / 86400, 0.0, 10 / 86400, 0.0, 10 / 86400],
+                level=[0.0, 1.0, 0.0, 1.1, 0.0, 1.2, 0.0, 1.0],
+                flow_rate=4 * [0.0, 10 / 86400],
             ),
         ],
     )

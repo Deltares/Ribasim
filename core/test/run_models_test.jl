@@ -300,6 +300,7 @@ end
 
 @testitem "TabulatedRatingCurve model" begin
     using SciMLBase: successful_retcode
+    using DataInterpolations.ExtrapolationType: Constant, Periodic
 
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/tabulated_rating_curve/ribasim.toml")
@@ -311,12 +312,17 @@ end
           Float32[368.31558, 365.68442] skip = Sys.isapple()
     (; tabulated_rating_curve) = model.integrator.p
     # The first node is static, the first interpolation object always applies
-    @test all(tabulated_rating_curve.current_interpolation_index[1].u .== 1)
+    index_itp1 = tabulated_rating_curve.current_interpolation_index[1]
+    @test only(index_itp1.u) == 1
+    @test index_itp1.extrapolation_left == Constant
+    @test index_itp1.extrapolation_right == Constant
     # The second node is dynamic, switching from interpolation 2 to 3 to 4
-    @test tabulated_rating_curve.current_interpolation_index[2].u == [2, 3, 4]
-    @test tabulated_rating_curve.current_interpolation_index[2].t ≈
-          [0.0f0, 2.6784f6, 5.184f6]
-    @test length(tabulated_rating_curve.interpolations) == 4
+    index_itp2 = tabulated_rating_curve.current_interpolation_index[2]
+    @test index_itp2.u == [2, 3, 4, 2]
+    @test index_itp2.t ≈ [0.0f0, 2.6784f6, 5.184f6, 7.8624e6]
+    @test index_itp2.extrapolation_left == Periodic
+    @test index_itp2.extrapolation_right == Periodic
+    @test length(tabulated_rating_curve.interpolations) == 5
     # the highest level in the dynamic table is updated to 1.2 from the callback
     @test tabulated_rating_curve.interpolations[4].t[end] == 1.2
 end

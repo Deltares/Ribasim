@@ -1366,3 +1366,79 @@ def bommelerwaard_model():
         model.link.add(from_node_data, to_node_data)
 
     return model
+
+
+def cyclic_demand_model():
+    """Create a model that has cyclic User- Flow- and LevelDemand."""
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2021-01-01",
+        crs="EPSG:28992",
+        allocation=Allocation(use_allocation=True),
+    )
+
+    fb = model.flow_boundary.add(
+        Node(1, Point(0, 0), subnetwork_id=1), [flow_boundary.Static(flow_rate=[1.0])]
+    )
+
+    bsn1 = model.basin.add(
+        Node(2, Point(1, 0), subnetwork_id=1),
+        [
+            basin.Profile(level=[0.0, 1.0], area=[100.0, 100.0]),
+            basin.State(level=[1.0]),
+        ],
+    )
+
+    pmp = model.pump.add(
+        Node(3, Point(2, 0), subnetwork_id=1), [pump.Static(flow_rate=[1.0])]
+    )
+
+    bsn2 = model.basin.add(
+        Node(4, Point(3, 0), subnetwork_id=1),
+        [
+            basin.Profile(level=[0.0, 1.0], area=[100.0, 100.0]),
+            basin.State(level=[1.0]),
+        ],
+    )
+
+    time = ["2020-01-01", "2020-02-01", "2020-03-01"]
+
+    ld = model.level_demand.add(
+        Node(5, Point(1, 1), subnetwork_id=1, cyclic_time=True),
+        [
+            level_demand.Time(
+                time=time,
+                min_level=[0.5, 0.7, 0.5],
+                max_level=[0.7, 0.9, 0.7],
+                demand_priority=1,
+            )
+        ],
+    )
+
+    fd = model.flow_demand.add(
+        Node(6, Point(2, -1), subnetwork_id=1, cyclic_time=True),
+        [flow_demand.Time(time=time, demand=[0.5, 0.8, 0.5], demand_priority=2)],
+    )
+
+    ud = model.user_demand.add(
+        Node(7, Point(3, -1), subnetwork_id=1, cyclic_time=True),
+        [
+            user_demand.Time(
+                time=2 * time,
+                demand_priority=[1, 1, 1, 2, 2, 2],
+                demand=[0.2, 0.6, 0.2, 0.5, 0.3, 0.5],
+                return_factor=[0.5, 0.7, 0.5, 0.5, 0.7, 0.5],
+                min_level=0.0,
+            )
+        ],
+    )
+
+    model.link.add(fb, bsn1)
+    model.link.add(bsn1, pmp)
+    model.link.add(pmp, bsn2)
+    model.link.add(ld, bsn1)
+    model.link.add(fd, pmp)
+    model.link.add(bsn2, ud)
+    model.link.add(ud, bsn2)
+
+    return model
