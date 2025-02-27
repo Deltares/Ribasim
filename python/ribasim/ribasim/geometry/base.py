@@ -1,8 +1,9 @@
 from typing import Any, get_type_hints
 
 import pandera as pa
+from geopandas import GeoSeries as _GeoSeries
 from pandera.typing import Series
-from pandera.typing.geopandas import GeoDataFrame, GeoSeries
+from pandera.typing.geopandas import GeoSeries
 
 from ribasim.schemas import _BaseSchema
 
@@ -13,7 +14,10 @@ class _GeoBaseSchema(_BaseSchema):
         T = get_type_hints(cls)["geometry"].__args__[0]
         return geoseries.map(lambda geom: isinstance(geom, T))
 
-    @pa.check_types
-    def force_2d(cls, gdf: GeoDataFrame[Any]) -> GeoDataFrame[Any]:
-        gdf.geometry = gdf.geometry.force_2d()
-        return gdf
+    @pa.parser("geometry")
+    def force_2d(cls, geometry: GeoSeries[Any]) -> GeoSeries[Any]:
+        if isinstance(geometry, _GeoSeries):
+            # Pandera requires GeoSeries to have a name
+            return GeoSeries(geometry.force_2d(), name=geometry.name)
+        else:
+            return geometry
