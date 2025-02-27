@@ -126,7 +126,7 @@ function Model(config::Config)::Model
                     cvs in discrete_control.compound_variables
                 ];
                 init = ScalarConstantInterpolation[],
-            ),
+            )...,
         ]
             for itp in interpolations
                 push!(tstops, get_timeseries_tstops(itp, t_end))
