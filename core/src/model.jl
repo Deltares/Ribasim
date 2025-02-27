@@ -99,15 +99,9 @@ function Model(config::Config)::Model
             error("Invalid level of TabulatedRatingCurve.")
         end
 
-        # tell the solver to stop when new data comes in
+        # Tell the solver to stop at all data points from timeseries,
+        # extrapolating periodically if applicable.
         tstops = Vector{Float64}[]
-        for schema_version in [PidControlTimeV1, TabulatedRatingCurveTimeV1]
-            time_schema = load_structvector(db, config, schema_version)
-            push!(tstops, get_tstops(time_schema.time, config.starttime))
-        end
-
-        # Tell the solver to stop at all data points from periodically extrapolated
-        # if applicable, otherwise just the original timeseries
         for interpolations in [
             basin.forcing.drainage,
             basin.forcing.infiltration,
@@ -118,6 +112,11 @@ function Model(config::Config)::Model
             level_boundary.level,
             level_demand.max_level,
             level_demand.min_level,
+            pid_control.derivative,
+            pid_control.integral,
+            pid_control.proportional,
+            pid_control.target,
+            tabulated_rating_curve.current_interpolation_index,
             user_demand.demand_itp...,
             user_demand.return_factor,
             reduce(
@@ -125,11 +124,12 @@ function Model(config::Config)::Model
                 [
                     [cv.greater_than for cv in cvs] for
                     cvs in discrete_control.compound_variables
-                ],
-            )...,
+                ];
+                init = ScalarConstantInterpolation[],
+            ),
         ]
             for itp in interpolations
-                push!(tstops, get_cyclic_tstops(itp, t_end))
+                push!(tstops, get_timeseries_tstops(itp, t_end))
             end
         end
 

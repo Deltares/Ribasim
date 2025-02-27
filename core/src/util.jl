@@ -1133,7 +1133,10 @@ function find_index(x::Symbol, s::OrderedSet{Symbol})
     error(lazy"$x not found in $s.")
 end
 
-function get_cyclic_tstops(itp::AbstractInterpolation, endtime::Float64)::Vector{Float64}
+function get_timeseries_tstops(
+    itp::AbstractInterpolation,
+    endtime::Float64,
+)::Vector{Float64}
     # The length of the period
     T = last(itp.t) - first(itp.t)
 
