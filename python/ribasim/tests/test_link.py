@@ -44,3 +44,8 @@ def test_link_plot(link):
 def test_link_indexing(link):
     with pytest.raises(NotImplementedError):
         link[1]
+
+
+def test_invalid_retour_link(basic):
+    with pytest.raises(ValueError):
+        basic.link.add(basic.manning_resistance[2], basic.basin[1])

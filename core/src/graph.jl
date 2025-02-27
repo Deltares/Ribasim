@@ -74,6 +74,10 @@ function create_graph(db::DB, config::Config)::MetaGraph
         if haskey(graph, id_src, id_dst)
             errors = true
             @error "Duplicate link" id_src id_dst
+        elseif haskey(graph, id_dst, id_src) &&
+               (NodeType.UserDemand ∉ (id_src.type, id_dst.type))
+            errors = true
+            @error "Invalid return link" id_src id_dst
         end
         graph[id_src, id_dst] = link_metadata
     end
