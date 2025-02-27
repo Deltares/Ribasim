@@ -7,7 +7,7 @@ A UserDemand takes water from the Basin that supplies it.
 When allocation is not used, a `UserDemand` node attempts to extract the full demand from the connected Basin.
 When allocation is used, the amount a `UserDemand` node is allowed to abstract is determined by the [allocation algorithm](../../concept/allocation.qmd).
 This algorithm first tries to allocate from the directly connected basin, and then from other sources whose flow can reach the `UserDemand` node.
-Note that `priority` is used to determine the order in which the UserDemands are allocated water.
+Note that `demand_priority` is used to determine the order in which the UserDemands are allocated water.
 This parameter is only used when allocation is active and is optional when allocation is not active.
 
 When the connected Basin is almost empty or reaches the minimum level at which the UserDemand can extract water (`min_level`), it will stop extraction.
@@ -22,14 +22,14 @@ The difference is consumed by the UserDemand.
 
 This table contains the static form of the `UserDemand` node.
 
-column        | type    | unit                  | restriction
-------------- | ------- | ----------------------| -----------
-node_id       | Int32   | -                     |
-active        | Bool    | -                     | (optional, default true)
-demand        | Float64 | $\text{m}^3/\text{s}$ | non-negative
-return_factor | Float64 | -                     | between [0 - 1]
-min_level     | Float64 | $\text{m}$            | -
-priority      | Int32   | -                     | positive
+column          | type    | unit                  | restriction
+--------------- | ------- | ----------------------| -----------
+node_id         | Int32   | -                     |
+active          | Bool    | -                     | (optional, default true)
+demand          | Float64 | $\text{m}^3/\text{s}$ | non-negative
+return_factor   | Float64 | -                     | between [0 - 1]
+min_level       | Float64 | $\text{m}$            | -
+demand_priority | Int32   | -                     | positive
 
 ## Time
 
@@ -38,17 +38,21 @@ The only difference is that a time column is added and activity is assumed to be
 With this the demand can be updated over time. In between the given times the
 demand is interpolated linearly, and outside the demand is constant given by the
 nearest time value.
-The `priority` is not allowed to change over time.
+The `demand_priority` is not allowed to change over time.
 Note that a `node_id` can be either in this table or in the static one, but not both.
 
-column        | type     | unit                  | restriction
-------------- | -------- | --------------------- | -----------
-node_id       | Int32    | -                     |
-priority      | Int32    | -                     | positive
-time          | DateTime | -                     |
-demand        | Float64  | $\text{m}^3/\text{s}$ | non-negative
-return_factor | Float64  | -                     | between [0 - 1]
-min_level     | Float64  | $\text{m}$            | -
+column          | type     | unit                  | restriction
+-------------   | -------- | --------------------- | -----------
+node_id         | Int32    | -                     |
+demand_priority | Int32    | -                     | positive
+time            | DateTime | -                     |
+demand          | Float64  | $\text{m}^3/\text{s}$ | non-negative
+return_factor   | Float64  | -                     | between [0 - 1]
+min_level       | Float64  | $\text{m}$            | -
+
+::: {.callout-note}
+Although it may seem that way, this table does *not* describe demands that change `demand_priority` over time. Rather, this table defines a `demand(time)` relationship for every occurring `demand_priority` in the table for a certain `node_id`.
+:::
 
 ## Concentration
 This table defines the concentration of substances for the flow from the UserDemand.
@@ -62,7 +66,7 @@ concentration  | Float64  | $\text{g}/\text{m}^3$ |
 
 # Equations
 
-UserDemand receive an allocated flow rate $F^p$ per priority $p=1,2,\ldots, p_{\max}$, which is either determined by [allocation optimization](/concept/allocation.qmd) or simply equal to the demand at time $t$; $F^p = d^p(t)$.
+UserDemand receive an allocated flow rate $F^p$ per demand priority $p=1,2,\ldots, p_{\max}$, which is either determined by [allocation optimization](/concept/allocation.qmd) or simply equal to the demand at time $t$; $F^p = d^p(t)$.
 The realized abstraction rate of a UserDemand is given by
 $$
     Q_\text{in} = \phi(u, 10.0)\phi(h-l_{\min}, 0.1)\sum_{p=1}^{p_{\max}} \min\left(F^p, d^p(t)\right).
@@ -73,7 +77,7 @@ From left to right:
 - The first reduction factor lets the UserDemand abstraction go smoothly to $0$ as the source Basin dries out;
 - The second reduction factor lets the UserDemand abstraction go smoothly to $0$ as the source Basin level approaches the minimum source Basin level (from above);
 - The last term is the sum of the allocations over the priorities.
-  If the current demand happens to be lower than the allocation at some priority, the demand is taken instead.
+  If the current demand happens to be lower than the allocation at some demand priority, the demand is taken instead.
 
 UserDemands also have a return factor $0 \le r \le 1$, which determines the return flow (outflow) of the UserDemand:
 
