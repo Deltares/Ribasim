@@ -719,7 +719,6 @@ function Pump(db::DB, config::Config, graph::MetaGraph)::Pump
         defaults,
         time_interpolatables,
     )
-    println(parsed_parameters)
 
     if !valid
         error("Errors occurred when parsing Pump data.")
