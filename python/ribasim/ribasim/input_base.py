@@ -30,7 +30,6 @@ from pydantic import (
     DirectoryPath,
     Field,
     PrivateAttr,
-    SerializationInfo,
     ValidationInfo,
     field_validator,
     model_serializer,
@@ -305,7 +304,7 @@ class TableModel(FileModel, Generic[TableT]):
         else:
             return {"self": self.df, "other": other.df}
 
-    @field_validator("df")
+    @field_validator("df", mode="before")
     @classmethod
     def _check_schema(cls, v: DataFrame[TableT]):
         """Allow only extra columns with `meta_` prefix."""
@@ -324,12 +323,8 @@ class TableModel(FileModel, Generic[TableT]):
         return v
 
     @model_serializer
-    def _set_model(self, info: SerializationInfo) -> "str | TableModel[TableT] | None":
-        # When writing, only return the filename.
-        if info.context == "write":
-            return str(self.filepath.name) if self.filepath is not None else None
-        else:
-            return self
+    def _set_model(self) -> "str | None":
+        return str(self.filepath.name) if self.filepath is not None else None
 
     @classmethod
     def tablename(cls) -> str:
