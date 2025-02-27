@@ -454,7 +454,7 @@ function add_basin_profiles!(
     problem[:aux_basin_profile_unity_sum] = JuMP.@constraint(
         problem,
         [id = node_ids],
-        sum(problem[:aux_basin_profile][(id, i)] for i in 1:n_points[id]) == 1,
+        sum(aux_basin_profile[(id, i)] for i in 1:n_points[id]) == 1,
         base_name = "Basin_profile_aux_sum"
     )
 
