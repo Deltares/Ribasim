@@ -120,11 +120,12 @@ function Model(config::Config)::Model
             level_demand.min_level,
             user_demand.demand_itp...,
             user_demand.return_factor,
-            vcat(
+            reduce(
+                vcat,
                 [
                     [cv.greater_than for cv in cvs] for
                     cvs in discrete_control.compound_variables
-                ]...,
+                ],
             )...,
         ]
             for itp in interpolations
