@@ -632,10 +632,10 @@ continuous_control_type: one of None, ContinuousControl, PidControl
     outflow_link::Vector{LinkMetadata} = []
     active::Vector{Bool} = fill(true, length(node_id))
     flow_rate::Cache = cache(length(node_id))
-    min_flow_rate::Vector{Float64} = zeros(length(node_id))
-    max_flow_rate::Vector{Float64} = fill(Inf, length(node_id))
-    min_upstream_level::Vector{Float64} = fill(-Inf, length(node_id))
-    max_downstream_level::Vector{Float64} = fill(Inf, length(node_id))
+    min_flow_rate::Vector{ScalarInterpolation} = zeros(length(node_id))
+    max_flow_rate::Vector{ScalarInterpolation} = fill(Inf, length(node_id))
+    min_upstream_level::Vector{ScalarInterpolation} = fill(-Inf, length(node_id))
+    max_downstream_level::Vector{ScalarInterpolation} = fill(Inf, length(node_id))
     control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate}
     continuous_control_type::Vector{ContinuousControlType.T} =
         fill(ContinuousControlType.None, length(node_id))
@@ -694,10 +694,10 @@ continuous_control_type: one of None, ContinuousControl, PidControl
     outflow_link::Vector{LinkMetadata} = []
     active::Vector{Bool} = fill(true, length(node_id))
     flow_rate::Cache = cache(length(node_id))
-    min_flow_rate::Vector{Float64} = zeros(length(node_id))
-    max_flow_rate::Vector{Float64} = fill(Inf, length(node_id))
-    min_upstream_level::Vector{Float64} = fill(-Inf, length(node_id))
-    max_downstream_level::Vector{Float64} = fill(Inf, length(node_id))
+    min_flow_rate::Vector{ScalarInterpolation} = zeros(length(node_id))
+    max_flow_rate::Vector{ScalarInterpolation} = fill(Inf, length(node_id))
+    min_upstream_level::Vector{ScalarInterpolation} = fill(-Inf, length(node_id))
+    max_downstream_level::Vector{ScalarInterpolation} = fill(Inf, length(node_id))
     control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate} = Dict()
     continuous_control_type::Vector{ContinuousControlType.T} =
         fill(ContinuousControlType.None, length(node_id))

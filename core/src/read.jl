@@ -694,6 +694,7 @@ end
 
 function Pump(db::DB, config::Config, graph::MetaGraph)::Pump
     static = load_structvector(db, config, PumpStaticV1)
+    time = load_structvector(db, config, PumpTimeV1)
     defaults = (;
         min_flow_rate = 0.0,
         max_flow_rate = Inf,
@@ -701,7 +702,24 @@ function Pump(db::DB, config::Config, graph::MetaGraph)::Pump
         max_downstream_level = Inf,
         active = true,
     )
-    parsed_parameters, valid = parse_static_and_time(db, config, "Pump"; static, defaults)
+    time_interpolatables = [
+        :flow_rate,
+        :min_flow_rate,
+        :max_flow_rate,
+        :min_upstream_level,
+        :max_downstream_level,
+    ]
+
+    parsed_parameters, valid = parse_static_and_time(
+        db,
+        config,
+        "Pump";
+        static,
+        time,
+        defaults,
+        time_interpolatables,
+    )
+    println(parsed_parameters)
 
     if !valid
         error("Errors occurred when parsing Pump data.")
@@ -729,6 +747,7 @@ end
 
 function Outlet(db::DB, config::Config, graph::MetaGraph)::Outlet
     static = load_structvector(db, config, OutletStaticV1)
+    time = load_structvector(db, config, OutletTimeV1)
     defaults = (;
         min_flow_rate = 0.0,
         max_flow_rate = Inf,
@@ -736,7 +755,23 @@ function Outlet(db::DB, config::Config, graph::MetaGraph)::Outlet
         max_downstream_level = Inf,
         active = true,
     )
-    parsed_parameters, valid = parse_static_and_time(db, config, "Outlet"; static, defaults)
+    time_interpolatables = [
+        :flow_rate,
+        :min_flow_rate,
+        :max_flow_rate,
+        :min_upstream_level,
+        :max_downstream_level,
+    ]
+
+    parsed_parameters, valid = parse_static_and_time(
+        db,
+        config,
+        "Outlet";
+        static,
+        time,
+        defaults,
+        time_interpolatables,
+    )
 
     if !valid
         error("Errors occurred when parsing Outlet data.")

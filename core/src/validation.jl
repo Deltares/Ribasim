@@ -145,11 +145,13 @@ sort_by(::StructVector{LinearResistanceStaticV1}) = x -> (x.node_id, x.control_s
 sort_by(::StructVector{ManningResistanceStaticV1}) = x -> (x.node_id, x.control_state)
 
 sort_by(::StructVector{OutletStaticV1}) = x -> (x.node_id, x.control_state)
+sort_by(::StructVector{OutletTimeV1}) = x -> (x.node_id, x.time)
 
 sort_by(::StructVector{PidControlStaticV1}) = x -> (x.node_id, x.control_state)
 sort_by(::StructVector{PidControlTimeV1}) = x -> (x.node_id, x.time)
 
 sort_by(::StructVector{PumpStaticV1}) = x -> (x.node_id, x.control_state)
+sort_by(::StructVector{PumpTimeV1}) = x -> (x.node_id, x.time)
 
 sort_by(::StructVector{TabulatedRatingCurveStaticV1}) =
     x -> (x.node_id, x.control_state, x.level)

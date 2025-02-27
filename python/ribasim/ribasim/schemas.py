@@ -478,6 +478,31 @@ class OutletStaticSchema(_BaseSchema):
     )
 
 
+class OutletTimeSchema(_BaseSchema):
+    fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
+    node_id: Series[Annotated[pd.ArrowDtype, pyarrow.int32()]] = pa.Field(
+        nullable=False, default=0
+    )
+    time: Series[Annotated[pd.ArrowDtype, pyarrow.timestamp("ms")]] = pa.Field(
+        nullable=False
+    )
+    flow_rate: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
+        nullable=False
+    )
+    min_flow_rate: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
+        nullable=True
+    )
+    max_flow_rate: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
+        nullable=True
+    )
+    min_upstream_level: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
+        nullable=True
+    )
+    max_downstream_level: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = (
+        pa.Field(nullable=True)
+    )
+
+
 class PidControlStaticSchema(_BaseSchema):
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: Series[Annotated[pd.ArrowDtype, pyarrow.int32()]] = pa.Field(
@@ -527,9 +552,6 @@ class PidControlTimeSchema(_BaseSchema):
     derivative: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
         nullable=False
     )
-    control_state: Series[Annotated[pd.ArrowDtype, pyarrow.string()]] = pa.Field(
-        nullable=True
-    )
 
 
 class PumpStaticSchema(_BaseSchema):
@@ -555,6 +577,31 @@ class PumpStaticSchema(_BaseSchema):
     )
     control_state: Series[Annotated[pd.ArrowDtype, pyarrow.string()]] = pa.Field(
         nullable=True
+    )
+
+
+class PumpTimeSchema(_BaseSchema):
+    fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
+    node_id: Series[Annotated[pd.ArrowDtype, pyarrow.int32()]] = pa.Field(
+        nullable=False, default=0
+    )
+    time: Series[Annotated[pd.ArrowDtype, pyarrow.timestamp("ms")]] = pa.Field(
+        nullable=False
+    )
+    flow_rate: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
+        nullable=False
+    )
+    min_flow_rate: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
+        nullable=True
+    )
+    max_flow_rate: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
+        nullable=True
+    )
+    min_upstream_level: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
+        nullable=True
+    )
+    max_downstream_level: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = (
+        pa.Field(nullable=True)
     )
 
 

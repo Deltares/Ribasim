@@ -121,7 +121,10 @@ def basic_model() -> Model:
     )
 
     # Setup pump
-    model.pump.add(Node(7, Point(4.0, 1.0)), [pump.Static(flow_rate=[0.5 / 3600])])
+    model.pump.add(
+        Node(7, Point(4.0, 1.0)),
+        [pump.Time(time=["2020-01-01 00:00:00"], flow_rate=[0.5 / 3600])],
+    )
 
     # Setup flow boundary
     flow_boundary_data: Sequence[TableModel[Any]] = [
@@ -385,7 +388,11 @@ def outlet_model():
     # Setup the outlet
     model.outlet.add(
         Node(2, Point(1.0, 0.0)),
-        [outlet.Static(flow_rate=[1e-3], min_upstream_level=[2.0])],
+        [
+            outlet.Time(
+                time=["2020-01-01 00:00:00"], flow_rate=[1e-3], min_upstream_level=[2.0]
+            )
+        ],
     )
 
     # Setup the links
