@@ -2,7 +2,7 @@ import geopandas as gpd
 import pytest
 import shapely.geometry as sg
 from pydantic import ValidationError
-from ribasim.geometry.link import LinkTable
+from ribasim.geometry.link import LinkTable, NodeData
 
 
 @pytest.fixture(scope="session")
@@ -47,5 +47,10 @@ def test_link_indexing(link):
 
 
 def test_invalid_retour_link(basic):
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="opposite link already exists"):
         basic.link.add(basic.manning_resistance[2], basic.basin[1])
+
+
+def test_node_data():
+    node = NodeData(node_id=5, node_type="Pump", geometry=sg.Point(0, 0))
+    assert repr(node) == "Pump #5"
