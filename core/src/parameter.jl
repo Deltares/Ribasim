@@ -21,15 +21,40 @@ const SolverStats = @NamedTuple{
     5 Drainage = 6 Precipitation = 7
 Base.to_index(id::Substance.T) = Int(id)  # used to index into concentration matrices
 
-@generated function config.snake_case(nt::NodeType.T)
-    ex = quote end
-    for (sym, _) in EnumX.symbol_map(NodeType.T)
-        sc = QuoteNode(config.snake_case(sym))
-        t = NodeType.T(sym)
-        push!(ex.args, :(nt === $t && return $sc))
+function config.snake_case(nt::NodeType.T)::Symbol
+    if nt == NodeType.Basin
+        return :basin
+    elseif nt == NodeType.TabulatedRatingCurve
+        return :tabulated_rating_curve
+    elseif nt == NodeType.Pump
+        return :pump
+    elseif nt == NodeType.Outlet
+        return :outlet
+    elseif nt == NodeType.UserDemand
+        return :user_demand
+    elseif nt == NodeType.FlowDemand
+        return :flow_demand
+    elseif nt == NodeType.LevelDemand
+        return :level_demand
+    elseif nt == NodeType.FlowBoundary
+        return :flow_boundary
+    elseif nt == NodeType.LevelBoundary
+        return :level_boundary
+    elseif nt == NodeType.LinearResistance
+        return :linear_resistance
+    elseif nt == NodeType.ManningResistance
+        return :manning_resistance
+    elseif nt == NodeType.Terminal
+        return :terminal
+    elseif nt == NodeType.DiscreteControl
+        return :discrete_control
+    elseif nt == NodeType.ContinuousControl
+        return :continuous_control
+    elseif nt == NodeType.PidControl
+        return :pid_control
+    else
+        error("Unknown node type: $nt")
     end
-    push!(ex.args, :(return :nothing))  # type stability
-    ex
 end
 
 # Support creating a NodeType enum instance from a symbol or string
