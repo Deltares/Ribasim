@@ -886,14 +886,7 @@ function build_state_vector(p::Parameters)
     u = zeros(length(p.node_id))
     # Ensure p.node_id, p.state_ranges and u have the same length and order
     ranges = (getproperty(state_ranges, x) for x in propertynames(state_ranges))
-    @info "len" length(u) length(p.node_id) mapreduce(length, +, ranges) length(
-        p.state_inflow_link,
-    ) length(p.state_outflow_link)
-    @assert length(u) ==
-            length(p.node_id) ==
-            mapreduce(length, +, ranges) ==
-            length(p.state_inflow_link) ==
-            length(p.state_outflow_link)
+    @assert length(u) == length(p.node_id) == mapreduce(length, +, ranges)
     @assert keys(u_ids) == fieldnames(StateRanges)
     return u
 end
