@@ -267,7 +267,6 @@ end
     t0 = 0.0
     u0 = Ribasim.build_state_vector(p)
     du0 = copy(u0)
-    p = Ribasim.build_flow_to_storage(p, u0)
     jac_prototype = Ribasim.get_jac_prototype(du0, u0, p, t0)
 
     # rows, cols, _ = findnz(jac_prototype)
@@ -289,7 +288,6 @@ end
     close(db)
     u0 = Ribasim.build_state_vector(p)
     du0 = copy(u0)
-    p = Ribasim.build_flow_to_storage(p, u0)
     jac_prototype = Ribasim.get_jac_prototype(du0, u0, p, t0)
 
     #! format: off

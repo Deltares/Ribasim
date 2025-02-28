@@ -1787,8 +1787,18 @@ function Parameters(db::DB, config::Config)::Parameters
         basin,
         pid_control,
     ))
+    connector_nodes = (;
+        tabulated_rating_curve,
+        pump,
+        outlet,
+        linear_resistance,
+        manning_resistance,
+        user_demand,
+    )
     node_id = reduce(vcat, u_ids)
+    n_states = length(node_id)
     state_ranges = StateRanges(u_ids)
+    flow_to_storage = build_flow_to_storage(state_ranges, n_states, basin, connector_nodes)
 
     p = Parameters(;
         config.starttime,
@@ -1810,6 +1820,7 @@ function Parameters(db::DB, config::Config)::Parameters
         level_demand,
         flow_demand,
         subgrid,
+        flow_to_storage,
         config.solver.water_balance_abstol,
         config.solver.water_balance_reltol,
         node_id,

@@ -891,27 +891,22 @@ function build_state_vector(p::Parameters)
     return u
 end
 
-function build_flow_to_storage(p::Parameters, u::Vector)::Parameters
-    (; user_demand_inflow, user_demand_outflow, evaporation, infiltration) = p.state_ranges
-    n_basins = length(p.basin.node_id)
-    n_states = length(u)
+function build_flow_to_storage(
+    state_ranges::StateRanges,
+    n_states::Int,
+    basin::Basin,
+    connector_nodes::NamedTuple,
+)::SparseMatrixCSC{Float64, Int}
+    (; user_demand_inflow, user_demand_outflow, evaporation, infiltration) = state_ranges
+    n_basins = length(basin.node_id)
     flow_to_storage = spzeros(n_basins, n_states)
 
-    for node_name in (
-        :tabulated_rating_curve,
-        :pump,
-        :outlet,
-        :linear_resistance,
-        :manning_resistance,
-        :user_demand,
-    )
-        node = getproperty(p, node_name)
-
+    for (node_name, node) in pairs(connector_nodes)
         if node_name == :user_demand
             flow_to_storage_node_inflow = view(flow_to_storage, :, user_demand_inflow)
             flow_to_storage_node_outflow = view(flow_to_storage, :, user_demand_outflow)
         else
-            state_range = getproperty(p.state_ranges, node_name)
+            state_range = getproperty(state_ranges, node_name)
             flow_to_storage_node_inflow = view(flow_to_storage, :, state_range)
             flow_to_storage_node_outflow = flow_to_storage_node_inflow
         end
@@ -937,8 +932,7 @@ function build_flow_to_storage(p::Parameters, u::Vector)::Parameters
         flow_to_storage_infiltration[i, i] = -1.0
     end
 
-    @set p.flow_to_storage = flow_to_storage
-    return p
+    return flow_to_storage
 end
 
 """
