@@ -602,10 +602,10 @@ function formulate_flow!(
         factor = get_low_storage_factor(current_low_storage_factor, inflow_id)
         q = flow_rate * factor
 
-        q *= reduction_factor(src_level - min_upstream_level, 0.02)
-        q *= reduction_factor(max_downstream_level - dst_level, 0.02)
+        q *= reduction_factor(src_level - min_upstream_level(t), 0.02)
+        q *= reduction_factor(max_downstream_level(t) - dst_level, 0.02)
 
-        q = clamp(q, min_flow_rate, max_flow_rate)
+        q = clamp(q, min_flow_rate(t), max_flow_rate(t))
         du.pump[id.idx] = q
     end
     return nothing
@@ -660,10 +660,10 @@ function formulate_flow!(
         # No flow of outlet if source level is lower than target level
         Δlevel = src_level - dst_level
         q *= reduction_factor(Δlevel, 0.02)
-        q *= reduction_factor(src_level - min_upstream_level, 0.02)
-        q *= reduction_factor(max_downstream_level - dst_level, 0.02)
+        q *= reduction_factor(src_level - min_upstream_level(t), 0.02)
+        q *= reduction_factor(max_downstream_level(t) - dst_level, 0.02)
 
-        q = clamp(q, min_flow_rate, max_flow_rate)
+        q = clamp(q, min_flow_rate(t), max_flow_rate(t))
         du.outlet[id.idx] = q
     end
     return nothing

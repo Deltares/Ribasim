@@ -646,7 +646,31 @@ class PumpStatic(Input):
             QgsField("flow_rate", QVariant.Double),
             QgsField("min_flow_rate", QVariant.Double),
             QgsField("max_flow_rate", QVariant.Double),
+            QgsField("min_upstream_level", QVariant.Double),
+            QgsField("max_upstream_level", QVariant.Double),
             QgsField("control_state", QVariant.String),
+        ]
+
+
+class PumpTime(Input):
+    @classmethod
+    def input_type(cls) -> str:
+        return "Pump / time"
+
+    @classmethod
+    def geometry_type(cls) -> str:
+        return "No Geometry"
+
+    @classmethod
+    def attributes(cls) -> list[QgsField]:
+        return [
+            QgsField("node_id", QVariant.Int),
+            QgsField("time", QVariant.DateTime),
+            QgsField("flow_rate", QVariant.Double),
+            QgsField("min_flow_rate", QVariant.Double),
+            QgsField("max_flow_rate", QVariant.Double),
+            QgsField("min_upstream_level", QVariant.Double),
+            QgsField("max_upstream_level", QVariant.Double),
         ]
 
 
@@ -668,7 +692,30 @@ class OutletStatic(Input):
             QgsField("min_flow_rate", QVariant.Double),
             QgsField("max_flow_rate", QVariant.Double),
             QgsField("min_upstream_level", QVariant.Double),
+            QgsField("max_upstream_level", QVariant.Double),
             QgsField("control_state", QVariant.String),
+        ]
+
+
+class OutletTime(Input):
+    @classmethod
+    def input_type(cls) -> str:
+        return "Outlet / time"
+
+    @classmethod
+    def geometry_type(cls) -> str:
+        return "No Geometry"
+
+    @classmethod
+    def attributes(cls) -> list[QgsField]:
+        return [
+            QgsField("node_id", QVariant.Int),
+            QgsField("time", QVariant.DateTime),
+            QgsField("flow_rate", QVariant.Double),
+            QgsField("min_flow_rate", QVariant.Double),
+            QgsField("max_flow_rate", QVariant.Double),
+            QgsField("min_upstream_level", QVariant.Double),
+            QgsField("max_upstream_level", QVariant.Double),
         ]
 
 

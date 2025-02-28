@@ -23,6 +23,25 @@ max_flow_rate         | Float64 | $\text{m}^3/\text{s}$ | (optional)
 min_upstream_level    | Float64 | $\text{m}$          | (optional)
 max_downstream_level  | Float64 | $\text{m}$          | (optional)
 
+## Time
+
+This table is the transient form of the `Pump` table.
+With this the flow_rate can be updated over time. In between the given times the
+flow_rate is interpolated linearly, and outside the flow rate is constant given by the
+nearest time value.
+Note that a `node_id` can be either in this table or in the static one, but not both.
+
+column                | type    | unit         | restriction
+---------             | ------- | ------------ | -----------
+node_id               | Int32   | -            |
+time                  | DateTime| -            |
+control_state         | String  | -            | (optional)
+flow_rate             | Float64 | $\text{m}^3/\text{s}$ | non-negative
+min_flow_rate         | Float64 | $\text{m}^3/\text{s}$ | (optional, default 0.0)
+max_flow_rate         | Float64 | $\text{m}^3/\text{s}$ | (optional)
+min_upstream_level    | Float64 | $\text{m}$          | (optional)
+max_downstream_level  | Float64 | $\text{m}$          | (optional)
+
 # Equations
 
 The behavior of a Pump is simple if these nodes are not PID controlled.

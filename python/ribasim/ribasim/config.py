@@ -43,9 +43,11 @@ from ribasim.schemas import (
     LinearResistanceStaticSchema,
     ManningResistanceStaticSchema,
     OutletStaticSchema,
+    OutletTimeSchema,
     PidControlStaticSchema,
     PidControlTimeSchema,
     PumpStaticSchema,
+    PumpTimeSchema,
     TabulatedRatingCurveStaticSchema,
     TabulatedRatingCurveTimeSchema,
     UserDemandConcentrationSchema,
@@ -352,6 +354,10 @@ class Pump(MultiNodeModel):
         default_factory=TableModel[PumpStaticSchema],
         json_schema_extra={"sort_keys": ["node_id", "control_state"]},
     )
+    time: TableModel[PumpTimeSchema] = Field(
+        default_factory=TableModel[PumpTimeSchema],
+        json_schema_extra={"sort_keys": ["node_id", "time"]},
+    )
 
 
 class TabulatedRatingCurve(MultiNodeModel):
@@ -495,6 +501,10 @@ class Outlet(MultiNodeModel):
     static: TableModel[OutletStaticSchema] = Field(
         default_factory=TableModel[OutletStaticSchema],
         json_schema_extra={"sort_keys": ["node_id", "control_state"]},
+    )
+    time: TableModel[OutletTimeSchema] = Field(
+        default_factory=TableModel[OutletTimeSchema],
+        json_schema_extra={"sort_keys": ["node_id", "time"]},
     )
 
 
