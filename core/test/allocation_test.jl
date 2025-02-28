@@ -619,3 +619,22 @@ end
     @test Ribasim.get_basin_capacity(allocation_models[1], u, p, t, basin.node_id[2]) == 0.0
     @test Ribasim.get_basin_capacity(allocation_models[2], u, p, t, basin.node_id[3]) == 0.0
 end
+
+@testitem "cyclic_demand" begin
+    using DataInterpolations.ExtrapolationType: Periodic
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/cyclic_demand/ribasim.toml")
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+    (; level_demand, user_demand, flow_demand) = model.integrator.p
+
+    function test_extrapolation(itp)
+        @test itp.extrapolation_left == Periodic
+        @test itp.extrapolation_right == Periodic
+    end
+
+    test_extrapolation(only(level_demand.min_level))
+    test_extrapolation(only(level_demand.max_level))
+    test_extrapolation(only(flow_demand.demand_itp))
+    test_extrapolation.(only(user_demand.demand_itp))
+end

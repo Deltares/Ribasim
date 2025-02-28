@@ -14,9 +14,12 @@
 
     # Control input(flow rates)
     pump_control_mapping = p.pump.control_mapping
-    @test only(pump_control_mapping[(NodeID(:Pump, 4, p), "off")].scalar_update).value == 0
-    @test only(pump_control_mapping[(NodeID(:Pump, 4, p), "on")].scalar_update).value ==
-          1.0e-5
+    control_state_update = pump_control_mapping[(NodeID(:Pump, 4, p), "off")]
+    i = findfirst(x -> x.name === :flow_rate, control_state_update.scalar_update)
+    @test control_state_update.scalar_update[i].value == 0
+    control_state_update = pump_control_mapping[(NodeID(:Pump, 4, p), "on")]
+    i = findfirst(x -> x.name === :flow_rate, control_state_update.scalar_update)
+    @test control_state_update.scalar_update[i].value == 1.0e-5
 
     logic_mapping::Vector{Dict{Vector{Bool}, String}} = [
         Dict(
@@ -320,6 +323,7 @@ end
 end
 
 @testitem "Transient discrete control condition" begin
+    using DataInterpolations.ExtrapolationType: Periodic
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/transient_condition/ribasim.toml")
     @test ispath(toml_path)
@@ -327,12 +331,16 @@ end
     model = Ribasim.run(toml_path)
     (; record, compound_variables) = model.integrator.p.discrete_control
 
-    t_condition_change = compound_variables[1][1].greater_than[1].t[2]
+    itp = compound_variables[1][1].greater_than[1]
+    @test itp.extrapolation_left == Periodic
+    @test itp.extrapolation_right == Periodic
 
-    @test record.control_node_id == [4, 4]
-    @test record.truth_state == ["T", "F"]
-    @test record.control_state == ["B", "A"]
+    t_condition_change = itp.t[2]
+
+    @test record.control_node_id == [4, 4, 4]
+    @test record.truth_state == ["T", "F", "T"]
+    @test record.control_state == ["B", "A", "B"]
 
     # Control state changes precisely when the condition changes
-    @test record.time == [0, t_condition_change]
+    @test record.time[1:2] ≈ [0, t_condition_change]
 end

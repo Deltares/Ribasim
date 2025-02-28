@@ -42,6 +42,9 @@ class NodeData(NamedTuple):
     node_type: str
     geometry: Point
 
+    def __repr__(self) -> str:
+        return f"{self.node_type} #{self.node_id}"
+
 
 class LinkSchema(_GeoBaseSchema):
     link_id: Index[Int32] = pa.Field(default=0, ge=0, check_name=True)
@@ -108,6 +111,18 @@ class LinkTable(SpatialTableModel[LinkSchema]):
             raise ValueError(
                 f"Node #{to_node.node_id} of type {to_node.node_type} cannot be downstream of node #{from_node.node_id} of type {from_node.node_type}. Possible downstream node types: {node_type_connectivity[from_node.node_type]}."
             )
+
+        if self.df is not None:
+            if (
+                "UserDemand" not in [from_node.node_type, to_node.node_type]
+                and not self.df[
+                    (self.df.from_node_id == to_node.node_id)
+                    & (self.df.to_node_id == from_node.node_id)
+                ].empty
+            ):
+                raise ValueError(
+                    f"Link ({from_node}, {to_node}) is not allowed since the opposite link already exists (this is only allowed for UserDemand)."
+                )
 
         geometry_to_append = (
             [LineString([from_node.geometry, to_node.geometry])]
