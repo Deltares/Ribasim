@@ -186,3 +186,9 @@ def test_geometry_validation():
 
     with pytest.raises(ValueError):
         basin.Area(geometry=[point])
+
+    # Drop third dimension on geometry on initialization
+    threed = basinarea.df.geometry.force_3d()
+    assert threed.has_z.iloc[0]
+    basinarea = basin.Area(geometry=threed)
+    assert not basinarea.df.geometry.has_z.iloc[0]
