@@ -632,9 +632,33 @@ function valid_demand_priorities(
     demand_priorities::Vector{Int32},
     use_allocation::Bool,
 )::Bool
-    if use_allocation && any(iszero, demand_priorities)
-        return false
-    else
-        return true
+    return !(use_allocation && any(iszero, demand_priorities))
+end
+
+function valid_time_interpolation(
+    times::Vector{Float64},
+    parameter::AbstractVector,
+    node_id::NodeID,
+    cyclic_time::Bool,
+)::Bool
+    errors = false
+
+    if !allunique(times)
+        errors = true
+        @error "(One of) the time series for $node_id has repeated times, this can not be interpolated."
     end
+
+    if cyclic_time
+        if !(all(isnan, parameter) || (first(parameter) == last(parameter)))
+            errors = true
+            @error "$node_id is denoted as cyclic but in (one of) its time series the first and last value are not the same."
+        end
+
+        if length(times) < 2
+            errors = true
+            @error "$node_id is denoted as cyclic but (one of) its time series has fewer than 2 data points."
+        end
+    end
+
+    return !errors
 end

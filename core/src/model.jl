@@ -70,14 +70,18 @@ function Model(config::Config)::Model
         end
 
         (;
-            pid_control,
-            graph,
-            outlet,
-            pump,
             basin,
-            tabulated_rating_curve,
-            level_boundary,
+            discrete_control,
             flow_boundary,
+            flow_demand,
+            graph,
+            level_boundary,
+            level_demand,
+            outlet,
+            pid_control,
+            pump,
+            tabulated_rating_curve,
+            user_demand,
         ) = parameters
         if !valid_pid_connectivity(pid_control.node_id, pid_control.listen_node_id, graph)
             error("Invalid PidControl connectivity.")
@@ -95,32 +99,37 @@ function Model(config::Config)::Model
             error("Invalid level of TabulatedRatingCurve.")
         end
 
-        # tell the solver to stop when new data comes in
+        # Tell the solver to stop at all data points from timeseries,
+        # extrapolating periodically if applicable.
         tstops = Vector{Float64}[]
-        for schema_version in [
-            DiscreteControlConditionV1,
-            FlowDemandTimeV1,
-            LevelDemandTimeV1,
-            PidControlTimeV1,
-            TabulatedRatingCurveTimeV1,
-            UserDemandTimeV1,
-        ]
-            time_schema = load_structvector(db, config, schema_version)
-            push!(tstops, get_tstops(time_schema.time, config.starttime))
-        end
-
-        # Tell the solver to stop at all data points from periodically extrapolated
-        # if applicable, otherwise just the original timeseries
         for interpolations in [
-            basin.forcing.precipitation,
-            basin.forcing.potential_evaporation,
             basin.forcing.drainage,
             basin.forcing.infiltration,
-            level_boundary.level,
+            basin.forcing.potential_evaporation,
+            basin.forcing.precipitation,
             flow_boundary.flow_rate,
+            flow_demand.demand_itp,
+            level_boundary.level,
+            level_demand.max_level,
+            level_demand.min_level,
+            pid_control.derivative,
+            pid_control.integral,
+            pid_control.proportional,
+            pid_control.target,
+            tabulated_rating_curve.current_interpolation_index,
+            user_demand.demand_itp...,
+            user_demand.return_factor,
+            reduce(
+                vcat,
+                [
+                    [cv.greater_than for cv in cvs] for
+                    cvs in discrete_control.compound_variables
+                ];
+                init = ScalarConstantInterpolation[],
+            )...,
         ]
             for itp in interpolations
-                push!(tstops, get_cyclic_tstops(itp, t_end))
+                push!(tstops, get_timeseries_tstops(itp, t_end))
             end
         end
 

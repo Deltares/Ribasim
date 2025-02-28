@@ -71,35 +71,22 @@ function get_scalar_interpolation(
     node_id::NodeID,
     param::Symbol;
     default_value::Float64 = 0.0,
-    interpolation_type::Type{<:AbstractInterpolation},
-    extrapolation::ExtrapolationType.T = Constant,
+    interpolation_type::Type{<:AbstractInterpolation} = LinearInterpolation,
+    cyclic_time::Bool = false,
 )::interpolation_type
     rows = searchsorted(time.node_id, node_id)
     parameter = getproperty(time, param)[rows]
     parameter = coalesce.(parameter, default_value)
     times = seconds_since.(time.time[rows], starttime)
 
-    errors = false
-
-    if !allunique(times)
-        errors = true
-        @error "(One of) the time series for $node_id has repeated times, this can not be interpolated."
-    end
-
-    if extrapolation == Periodic
-        if !(all(isnan, parameter) || (first(parameter) == last(parameter)))
-            errors = true
-            @error "$node_id is denoted as cyclic but in (one of) its time series the first and last value are not the same."
-        end
-
-        if length(times) < 2
-            errors = true
-            @error "$node_id is denoted as cyclic but (one of) its time series has fewer than 2 data points."
-        end
-    end
-
-    errors && error("Invalid time series.")
-    return interpolation_type(parameter, times; extrapolation, cache_parameters = true)
+    valid = valid_time_interpolation(times, parameter, node_id, cyclic_time)
+    !valid && error("Invalid time series.")
+    return interpolation_type(
+        parameter,
+        times;
+        extrapolation = cyclic_time ? Periodic : Constant,
+        cache_parameters = true,
+    )
 end
 
 """
@@ -1146,7 +1133,10 @@ function find_index(x::Symbol, s::OrderedSet{Symbol})
     error(lazy"$x not found in $s.")
 end
 
-function get_cyclic_tstops(itp::AbstractInterpolation, endtime::Float64)::Vector{Float64}
+function get_timeseries_tstops(
+    itp::AbstractInterpolation,
+    endtime::Float64,
+)::Vector{Float64}
     # The length of the period
     T = last(itp.t) - first(itp.t)
 
