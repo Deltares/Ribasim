@@ -157,12 +157,6 @@ include("concentration.jl")
 include("main.jl")
 include("libribasim.jl")
 
-# Define names used in Makie extension
-function plot_basin_data end
-function plot_basin_data! end
-function plot_flow end
-function plot_flow! end
-
 @setup_workload begin
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
     isfile(toml_path) || return
