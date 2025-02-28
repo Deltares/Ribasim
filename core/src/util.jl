@@ -274,7 +274,7 @@ function Base.getindex(fv::FlatVector, i::Int)
 end
 
 "Construct a FlatVector from one of the fields of SavedFlow."
-function FlatVector(saveval::Vector{<:SavedFlow}, sym::Symbol)
+function FlatVector(saveval::Vector{SavedFlow}, sym::Symbol)
     v = isempty(saveval) ? Vector{Float64}[] : getfield.(saveval, sym)
     FlatVector(v)
 end

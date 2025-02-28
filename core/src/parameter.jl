@@ -332,8 +332,8 @@ In-memory storage of saved mean flows for writing to results.
 - `relative_error`: The relative water balance error
 - `t`: Endtime of the interval over which is averaged
 """
-@kwdef struct SavedFlow{V}
-    flow::V
+@kwdef struct SavedFlow
+    flow::Vector{Float64}
     inflow::Vector{Float64}
     outflow::Vector{Float64}
     flow_boundary::Vector{Float64}

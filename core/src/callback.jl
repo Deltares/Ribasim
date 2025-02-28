@@ -64,7 +64,7 @@ function create_callbacks(
     saveat = saveat isa Vector ? filter(x -> x != 0.0, saveat) : saveat
 
     # save the flows averaged over the saveat intervals
-    saved_flow = SavedValues(Float64, SavedFlow{typeof(u0)})
+    saved_flow = SavedValues(Float64, SavedFlow)
     save_flow_cb = SavingCallback(save_flow, saved_flow; saveat, save_start = false)
     push!(callbacks, save_flow_cb)
 
@@ -387,13 +387,16 @@ function check_water_balance_error!(
     Δt::Float64,
 )::Nothing
     (; u, p, t) = integrator
-    (; basin, water_balance_abstol, water_balance_reltol) = p
+    (; basin, water_balance_abstol, water_balance_reltol, state_ranges) = p
     errors = false
     current_storage = basin.current_properties.current_storage[u]
 
     # The initial storage is irrelevant for the storage rate and can only cause
     # floating point truncation errors
     formulate_storages!(current_storage, u, u, p, t; add_initial_storage = false)
+
+    evaporation = view(saved_flow.flow, state_ranges.evaporation)
+    infiltration = view(saved_flow.flow, state_ranges.infiltration)
 
     for (
         inflow_rate,
@@ -410,8 +413,8 @@ function check_water_balance_error!(
         saved_flow.outflow,
         saved_flow.precipitation,
         saved_flow.drainage,
-        saved_flow.flow.evaporation,
-        saved_flow.flow.infiltration,
+        evaporation,
+        infiltration,
         current_storage,
         basin.Δstorage_prev_saveat,
         basin.node_id,
