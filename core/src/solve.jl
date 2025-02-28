@@ -747,8 +747,8 @@ function limit_flow!(u::Vector, integrator::DEIntegrator, p::Parameters, t::Numb
     # of reduction factors
     du = get_du(integrator)
     set_current_basin_properties!(du, u, p, t)
-    current_storage = basin.current_properties.current_storage[parent(u)]
-    current_level = basin.current_properties.current_level[parent(u)]
+    current_storage = basin.current_properties.current_storage[u]
+    current_level = basin.current_properties.current_level[u]
 
     # TabulatedRatingCurve flow is in [0, ∞) and can be inactive
     for (id, active) in zip(tabulated_rating_curve.node_id, tabulated_rating_curve.active)

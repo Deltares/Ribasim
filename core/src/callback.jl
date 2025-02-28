@@ -246,9 +246,9 @@ function update_concentrations!(u, t, integrator)::Nothing
     end
 
     # Update the Basin concentrations again based on the removed mass
-    concentration_state .= mass ./ basin.current_properties.current_storage[parent(u)]
-    basin.storage_prev .= basin.current_properties.current_storage[parent(u)]
-    basin.level_prev .= basin.current_properties.current_level[parent(u)]
+    concentration_state .= mass ./ basin.current_properties.current_storage[u]
+    basin.storage_prev .= basin.current_properties.current_storage[u]
+    basin.level_prev .= basin.current_properties.current_level[u]
     return nothing
 end
 
@@ -378,7 +378,7 @@ function check_water_balance_error!(
     (; u, p, t) = integrator
     (; basin, water_balance_abstol, water_balance_reltol) = p
     errors = false
-    current_storage = basin.current_properties.current_storage[parent(u)]
+    current_storage = basin.current_properties.current_storage[u]
 
     # The initial storage is irrelevant for the storage rate and can only cause
     # floating point truncation errors

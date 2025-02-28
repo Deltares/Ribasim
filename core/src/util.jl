@@ -892,6 +892,7 @@ function build_state_vector(p::Parameters)
 end
 
 function build_flow_to_storage(p::Parameters, u::Vector)::Parameters
+    (; user_demand_inflow, user_demand_outflow, evaporation, infiltration) = p.state_ranges
     n_basins = length(p.basin.node_id)
     n_states = length(u)
     flow_to_storage = spzeros(n_basins, n_states)
@@ -907,13 +908,11 @@ function build_flow_to_storage(p::Parameters, u::Vector)::Parameters
         node = getproperty(p, node_name)
 
         if node_name == :user_demand
-            sel = p.state_ranges.user_demand_inflow
-            flow_to_storage_node_inflow = view(flow_to_storage, :, sel)
-            sel = p.state_ranges.user_demand_outflow
-            flow_to_storage_node_outflow = view(flow_to_storage, :, sel)
+            flow_to_storage_node_inflow = view(flow_to_storage, :, user_demand_inflow)
+            flow_to_storage_node_outflow = view(flow_to_storage, :, user_demand_outflow)
         else
-            sel = getproperty(p.state_ranges, node_name)
-            flow_to_storage_node_inflow = view(flow_to_storage, :, sel)
+            state_range = getproperty(p.state_ranges, node_name)
+            flow_to_storage_node_inflow = view(flow_to_storage, :, state_range)
             flow_to_storage_node_outflow = flow_to_storage_node_inflow
         end
 
@@ -930,10 +929,8 @@ function build_flow_to_storage(p::Parameters, u::Vector)::Parameters
         end
     end
 
-    sel = p.state_ranges.evaporation
-    flow_to_storage_evaporation = view(flow_to_storage, :, sel)
-    sel = p.state_ranges.infiltration
-    flow_to_storage_infiltration = view(flow_to_storage, :, sel)
+    flow_to_storage_evaporation = view(flow_to_storage, :, evaporation)
+    flow_to_storage_infiltration = view(flow_to_storage, :, infiltration)
 
     for i in 1:n_basins
         flow_to_storage_evaporation[i, i] = -1.0
@@ -1032,8 +1029,8 @@ function get_state_index(
     end
 
     if hasproperty(state_ranges, component_name)
-        sel = getproperty(state_ranges, component_name)
-        return sel[id.idx]
+        state_range = getproperty(state_ranges, component_name)
+        return state_range[id.idx]
     else
         return nothing
     end
@@ -1050,7 +1047,7 @@ Check whether any storages are negative given the state u.
 """
 function isoutofdomain(u, p, t)
     (; current_storage) = p.basin.current_properties
-    current_storage = current_storage[parent(u)]
+    current_storage = current_storage[u]
     formulate_storages!(current_storage, u, u, p, t)
     any(<(0), current_storage)
 end
