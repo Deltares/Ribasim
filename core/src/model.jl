@@ -1,5 +1,5 @@
-struct SavedResults{V <: ComponentVector{Float64}}
-    flow::SavedValues{Float64, SavedFlow{V}}
+struct SavedResults
+    flow::SavedValues{Float64, SavedFlow}
     basin_state::SavedValues{Float64, SavedBasinState}
     subgrid_level::SavedValues{Float64, Vector{Float64}}
     solver_stats::SavedValues{Float64, SolverStats}
@@ -142,8 +142,6 @@ function Model(config::Config)::Model
     u0 = build_state_vector(parameters)
     du0 = zero(u0)
 
-    parameters = set_state_flow_links(parameters, u0)
-    parameters = build_flow_to_storage(parameters, u0)
     @reset parameters.u_prev_saveat = zero(u0)
 
     # The Solver algorithm
@@ -154,8 +152,7 @@ function Model(config::Config)::Model
 
     # Previous level is used to estimate the minimum level that was attained during a time step
     # in limit_flow!
-    parameters.basin.level_prev .=
-        parameters.basin.current_properties.current_level[parent(u0)]
+    parameters.basin.level_prev .= parameters.basin.current_properties.current_level[u0]
 
     saveat = convert_saveat(config.solver.saveat, t_end)
     saveat isa Float64 && push!(tstops, range(0, t_end; step = saveat))

@@ -132,6 +132,8 @@ function basin_table(
     relative_error::Vector{Float64},
 }
     (; saved) = model
+    (; state_ranges) = model.integrator.p
+
     # The last timestep is not included; there is no period over which to compute flows.
     data = get_storages_and_levels(model)
     storage = vec(data.storage[:, begin:(end - 1)])
@@ -152,9 +154,10 @@ function basin_table(
     relative_error = FlatVector(saved.flow.saveval, :relative_error)
 
     idx_row = 0
-    for cvec in saved.flow.saveval
-        for (evaporation_, infiltration_) in
-            zip(cvec.flow.evaporation, cvec.flow.infiltration)
+    for saved_flow in saved.flow.saveval
+        saved_evaporation = view(saved_flow.flow, state_ranges.evaporation)
+        saved_infiltration = view(saved_flow.flow, state_ranges.infiltration)
+        for (evaporation_, infiltration_) in zip(saved_evaporation, saved_infiltration)
             idx_row += 1
             evaporation[idx_row] = evaporation_
             infiltration[idx_row] = infiltration_

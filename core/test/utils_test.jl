@@ -253,7 +253,6 @@ end
 
 @testitem "Jacobian sparsity" begin
     import SQLite
-    using ComponentArrays: ComponentVector
     using SparseArrays: sparse, findnz
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
@@ -263,12 +262,10 @@ end
     db = SQLite.DB(db_path)
 
     p = Ribasim.Parameters(db, cfg)
-    @test p.node_id == [4, 5, 8, 7, 10, 12, 2, 1, 3, 6, 9, 1, 3, 6, 9]
     close(db)
     t0 = 0.0
     u0 = Ribasim.build_state_vector(p)
     du0 = copy(u0)
-    p = Ribasim.build_flow_to_storage(p, u0)
     jac_prototype = Ribasim.get_jac_prototype(du0, u0, p, t0)
 
     # rows, cols, _ = findnz(jac_prototype)
@@ -290,7 +287,6 @@ end
     close(db)
     u0 = Ribasim.build_state_vector(p)
     du0 = copy(u0)
-    p = Ribasim.build_flow_to_storage(p, u0)
     jac_prototype = Ribasim.get_jac_prototype(du0, u0, p, t0)
 
     #! format: off
@@ -400,27 +396,29 @@ end
 end
 
 @testitem "flow_to_storage matrix" begin
-    using ComponentArrays: ComponentArray, Axis, getaxes
     using LinearAlgebra: I
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.Model(toml_path)
-    (; u, p) = model.integrator
-    n_basins = length(u.evaporation)
-    (; flow_to_storage) = p
-    flow_to_storage =
-        ComponentArray(flow_to_storage, (Axis(; basins = 1:n_basins), only(getaxes(u))))
+    (; p) = model.integrator
+    n_basins = length(p.basin.node_id)
+    (; flow_to_storage, state_ranges) = p
 
-    @test flow_to_storage[:, :evaporation] == -I
-    @test flow_to_storage[:, :infiltration] == -I
+    @test flow_to_storage[:, state_ranges.evaporation] == -I
+    @test flow_to_storage[:, state_ranges.infiltration] == -I
 
     for node_name in
         [:tabulated_rating_curve, :pump, :outlet, :linear_resistance, :manning_resistance]
-        flow_to_storage_node = flow_to_storage[:, node_name]
+        state_range = getproperty(state_ranges, node_name)
+        flow_to_storage_node = flow_to_storage[:, state_range]
         # In every column there is either 0 or 1 instance of 1.0 (flow into a basin)
         @test all(
             i -> i ∈ (0, 1),
-            count(==(1.0), collect(flow_to_storage[:, :tabulated_rating_curve]); dims = 1),
+            count(
+                ==(1.0),
+                collect(flow_to_storage[:, state_ranges.tabulated_rating_curve]);
+                dims = 1,
+            ),
         )
 
         # In every column there is either 0 or 1 instance of -1.0 (flow out of a basin)
@@ -428,7 +426,7 @@ end
             i -> i ∈ (0, 1),
             count(
                 ==(1 - 0.0),
-                collect(flow_to_storage[:, :tabulated_rating_curve]);
+                collect(flow_to_storage[:, state_ranges.tabulated_rating_curve]);
                 dims = 1,
             ),
         )
@@ -436,14 +434,15 @@ end
 end
 
 @testitem "unsafe_array" begin
-    using ComponentArrays: ComponentVector
-    x = ComponentVector(; a = [1.0, 2.0, 3.0], b = [4.0, 5.0, 6.0])
-    y = Ribasim.unsafe_array(x.b)
-    @test x.b isa SubArray
+    a = [1.0, 2.0, 3.0]
+    b = [4.0, 5.0, 6.0]
+    x = vcat(a, b)
+
+    y = Ribasim.unsafe_array(view(x, 4:6))
     @test y isa Vector{Float64}
-    @test y == x.b
+    @test y == b
     # changing the input changes the output; no data copy is made
-    x.b[2] = 10.0
+    x[5] = 10.0
     @test y[2] === 10.0
 end
 
