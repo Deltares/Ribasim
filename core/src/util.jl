@@ -795,7 +795,7 @@ reduction_factor(x::GradientTracer, threshold::Real) = x
 low_storage_factor_resistance_node(storage, q::GradientTracer, inflow_id, outflow_id) = q
 relaxed_root(x::GradientTracer, threshold::Real) = x
 get_level_from_storage(basin::Basin, state_idx::Int, storage::GradientTracer) = storage
-stop_declining_negative_storage!(du, u::ComponentVector{<:GradientTracer}) = nothing
+stop_declining_negative_storage!(du, u::Vector{<:GradientTracer}) = nothing
 
 @kwdef struct MonitoredBackTracking{B, V}
     linesearch::B = BackTracking()
@@ -902,7 +902,7 @@ function build_state_vector(p::Parameters)
     return u
 end
 
-function build_flow_to_storage(p::Parameters, u::ComponentVector)::Parameters
+function build_flow_to_storage(p::Parameters, u::Vector)::Parameters
     n_basins = length(p.basin.node_id)
     n_states = length(u)
     flow_to_storage = ComponentArray(
@@ -1038,7 +1038,7 @@ function get_state_index(
     return nothing
 end
 
-function get_state_index(u::ComponentVector, link::Tuple{NodeID, NodeID})::Int
+function get_state_index(u::Vector, link::Tuple{NodeID, NodeID})::Int
     idx = get_state_index(link[2], u)
     isnothing(idx) ? get_state_index(link[1], u; inflow = false) : idx
 end

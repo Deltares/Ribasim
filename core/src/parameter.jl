@@ -1032,7 +1032,7 @@ end
     const water_balance_abstol::Float64
     const water_balance_reltol::Float64
     # State at previous saveat
-    const u_prev_saveat::C11 = ComponentVector()
+    const u_prev_saveat::C11 = Vector()
     # Node ID associated with each state
     const node_id::Vector{NodeID} = NodeID[]
     # Range per states component

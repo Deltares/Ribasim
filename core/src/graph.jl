@@ -251,7 +251,7 @@ function get_flow(
     end
 end
 
-function get_influx(du::ComponentVector, id::NodeID, p::Parameters)
+function get_influx(du::Vector, id::NodeID, p::Parameters)
     @assert id.type == NodeType.Basin
     (; basin) = p
     (; vertical_flux) = basin

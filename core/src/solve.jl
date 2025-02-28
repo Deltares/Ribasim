@@ -1,12 +1,7 @@
 """
 The right hand side function of the system of ODEs set up by Ribasim.
 """
-function water_balance!(
-    du::ComponentVector,
-    u::ComponentVector,
-    p::Parameters,
-    t::Number,
-)::Nothing
+function water_balance!(du::Vector, u::Vector, p::Parameters, t::Number)::Nothing
     (; basin, pid_control) = p
     (; current_storage, current_low_storage_factor, current_level) =
         basin.current_properties
@@ -78,8 +73,8 @@ Compute the storages, levels and areas of all Basins given the
 state u and the time t.
 """
 function set_current_basin_properties!(
-    du::ComponentVector,
-    u::ComponentVector,
+    du::Vector,
+    u::Vector,
     p::Parameters,
     t::Number,
 )::Nothing
@@ -124,8 +119,8 @@ end
 
 function formulate_storages!(
     current_storage::AbstractVector,
-    du::ComponentVector,
-    u::ComponentVector,
+    du::Vector,
+    u::Vector,
     p::Parameters,
     t::Number;
     add_initial_storage::Bool = true,
@@ -148,11 +143,7 @@ end
 """
 The storage contributions of the forcings that are not part of the state.
 """
-function formulate_storage!(
-    current_storage::AbstractVector,
-    basin::Basin,
-    du::ComponentVector,
-)
+function formulate_storage!(current_storage::AbstractVector, basin::Basin, du::Vector)
     (; current_cumulative_precipitation, current_cumulative_drainage) =
         basin.current_properties
 
@@ -218,7 +209,7 @@ function update_vertical_flux!(basin::Basin, du::AbstractVector)::Nothing
     return nothing
 end
 
-function set_error!(pid_control::PidControl, p::Parameters, du::ComponentVector, t::Number)
+function set_error!(pid_control::PidControl, p::Parameters, du::Vector, t::Number)
     (; basin) = p
     (; listen_node_id, target, error) = pid_control
     error = error[parent(du)]
@@ -232,8 +223,8 @@ function set_error!(pid_control::PidControl, p::Parameters, du::ComponentVector,
 end
 
 function formulate_pid_control!(
-    u::ComponentVector,
-    du::ComponentVector,
+    u::Vector,
+    du::Vector,
     pid_control::PidControl,
     p::Parameters,
     t::Number,
@@ -300,7 +291,7 @@ end
 """
 Formulate the time derivative of the storage in a single Basin.
 """
-function formulate_dstorage(du::ComponentVector, p::Parameters, t::Number, node_id::NodeID)
+function formulate_dstorage(du::Vector, p::Parameters, t::Number, node_id::NodeID)
     (; basin) = p
     (; inflow_ids, outflow_ids, vertical_flux) = basin
     @assert node_id.type == NodeType.Basin
@@ -322,7 +313,7 @@ function formulate_dstorage(du::ComponentVector, p::Parameters, t::Number, node_
 end
 
 function formulate_flow!(
-    du::ComponentVector,
+    du::Vector,
     user_demand::UserDemand,
     p::Parameters,
     t::Number,
@@ -375,7 +366,7 @@ function formulate_flow!(
 end
 
 function formulate_flow!(
-    du::ComponentVector,
+    du::Vector,
     linear_resistance::LinearResistance,
     p::Parameters,
     t::Number,
@@ -739,12 +730,7 @@ end
 Clamp the cumulative flow states within the minimum and maximum
 flow rates for the last time step if these flow rate bounds are known.
 """
-function limit_flow!(
-    u::ComponentVector,
-    integrator::DEIntegrator,
-    p::Parameters,
-    t::Number,
-)::Nothing
+function limit_flow!(u::Vector, integrator::DEIntegrator, p::Parameters, t::Number)::Nothing
     (; uprev, dt) = integrator
     (;
         pump,
