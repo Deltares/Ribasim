@@ -157,7 +157,7 @@ end
     du = get_du(integrator)
     (; u, p, t) = integrator
     Ribasim.water_balance!(du, u, p, t)
-    stor = integrator.p.basin.current_properties.current_storage[parent(du)]
+    stor = integrator.p.basin.current_properties.current_storage[du]
     prec = p.basin.vertical_flux.precipitation
     evap = du.evaporation
     drng = p.basin.vertical_flux.drainage
@@ -258,7 +258,7 @@ end
     du = get_du(model.integrator)
     precipitation = model.integrator.p.basin.vertical_flux.precipitation
     @test length(precipitation) == 4
-    @test model.integrator.p.basin.current_properties.current_storage[parent(du)] ≈
+    @test model.integrator.p.basin.current_properties.current_storage[du] ≈
           Float32[721.17656, 695.8066, 416.66188, 1334.4879] atol = 2.0 skip = Sys.isapple()
 end
 
@@ -474,7 +474,7 @@ end
 
     du = get_du(model.integrator)
     (; p, t) = model.integrator
-    h_actual = p.basin.current_properties.current_level[parent(du)][1:50]
+    h_actual = p.basin.current_properties.current_level[du][1:50]
     x = collect(10.0:20.0:990.0)
     h_expected = standard_step_method(x, 5.0, 1.0, 0.04, h_actual[end], 1.0e-6)
 

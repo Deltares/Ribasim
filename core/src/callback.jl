@@ -291,8 +291,8 @@ function save_basin_state(u, t, integrator)
     (; p) = integrator
     (; basin) = p
     du = get_du(integrator)
-    current_storage = basin.current_properties.current_storage[parent(du)]
-    current_level = basin.current_properties.current_level[parent(du)]
+    current_storage = basin.current_properties.current_storage[du]
+    current_level = basin.current_properties.current_level[du]
     water_balance!(du, u, p, t)
     SavedBasinState(; storage = copy(current_storage), level = copy(current_level), t)
 end
@@ -448,7 +448,7 @@ function check_negative_storage(u, t, integrator)::Nothing
     (; current_storage) = current_properties
     du = get_du(integrator)
     set_current_basin_properties!(du, u, integrator.p, t)
-    current_storage = current_storage[parent(du)]
+    current_storage = current_storage[du]
 
     errors = false
     for id in node_id
@@ -649,7 +649,7 @@ end
 function update_subgrid_level!(integrator)::Nothing
     (; p, t) = integrator
     du = get_du(integrator)
-    basin_level = p.basin.current_properties.current_level[parent(du)]
+    basin_level = p.basin.current_properties.current_level[du]
     subgrid = integrator.p.subgrid
 
     # First update the all the subgrids with static h(h) relations
@@ -775,7 +775,7 @@ function update_allocation!(integrator)::Nothing
 
     # Make sure current storages are up to date
     du = get_du(integrator)
-    current_storage = current_storage[parent(du)]
+    current_storage = current_storage[du]
     formulate_storages!(current_storage, du, u, p, t)
 
     # Don't run the allocation algorithm if allocation is not active

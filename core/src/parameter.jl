@@ -756,11 +756,10 @@ struct PreallocationRef
     end
 end
 
-get_value(ref::PreallocationRef, du) =
-    ref.from_du ? du[ref.idx] : ref.vector[parent(du)][ref.idx]
+get_value(ref::PreallocationRef, du) = ref.from_du ? du[ref.idx] : ref.vector[du][ref.idx]
 
 function set_value!(ref::PreallocationRef, value, du)::Nothing
-    ref.vector[parent(du)][ref.idx] = value
+    ref.vector[du][ref.idx] = value
     return nothing
 end
 

@@ -11,9 +11,9 @@ function water_balance!(du::Vector, u::Vector, p::Parameters, t::Number)::Nothin
     # Ensures current_* vectors are current
     set_current_basin_properties!(du, u, p, t)
 
-    current_storage = current_storage[parent(du)]
-    current_low_storage_factor = current_low_storage_factor[parent(du)]
-    current_level = current_level[parent(du)]
+    current_storage = current_storage[du]
+    current_low_storage_factor = current_low_storage_factor[du]
+    current_level = current_level[du]
 
     # Notes on the ordering of these formulations:
     # - Continuous control can depend on flows (which are not continuously controlled themselves),
@@ -90,12 +90,12 @@ function set_current_basin_properties!(
         current_cumulative_drainage,
     ) = current_properties
 
-    current_storage = current_storage[parent(du)]
-    current_low_storage_factor = current_low_storage_factor[parent(du)]
-    current_level = current_level[parent(du)]
-    current_area = current_area[parent(du)]
-    current_cumulative_precipitation = current_cumulative_precipitation[parent(du)]
-    current_cumulative_drainage = current_cumulative_drainage[parent(du)]
+    current_storage = current_storage[du]
+    current_low_storage_factor = current_low_storage_factor[du]
+    current_level = current_level[du]
+    current_area = current_area[du]
+    current_cumulative_precipitation = current_cumulative_precipitation[du]
+    current_cumulative_drainage = current_cumulative_drainage[du]
 
     # The exact cumulative precipitation and drainage up to the t of this water_balance call
     dt = t - p.tprev
@@ -147,8 +147,8 @@ function formulate_storage!(current_storage::AbstractVector, basin::Basin, du::V
     (; current_cumulative_precipitation, current_cumulative_drainage) =
         basin.current_properties
 
-    current_cumulative_precipitation = current_cumulative_precipitation[parent(du)]
-    current_cumulative_drainage = current_cumulative_drainage[parent(du)]
+    current_cumulative_precipitation = current_cumulative_precipitation[du]
+    current_cumulative_drainage = current_cumulative_drainage[du]
     current_storage .+= current_cumulative_precipitation
     current_storage .+= current_cumulative_drainage
 end
@@ -188,8 +188,8 @@ Currently at less than 0.1 m.
 function update_vertical_flux!(basin::Basin, du::AbstractVector)::Nothing
     (; vertical_flux, current_properties) = basin
     (; current_level, current_area) = current_properties
-    current_level = current_level[parent(du)]
-    current_area = current_area[parent(du)]
+    current_level = current_level[du]
+    current_area = current_area[du]
 
     for id in basin.node_id
         level = current_level[id.idx]
@@ -212,8 +212,8 @@ end
 function set_error!(pid_control::PidControl, p::Parameters, du::Vector, t::Number)
     (; basin) = p
     (; listen_node_id, target, error) = pid_control
-    error = error[parent(du)]
-    current_level = basin.current_properties.current_level[parent(du)]
+    error = error[du]
+    current_level = basin.current_properties.current_level[du]
 
     for i in eachindex(listen_node_id)
         listened_node_id = listen_node_id[i]
@@ -233,8 +233,8 @@ function formulate_pid_control!(
     (; node_id, active, target, listen_node_id, error) = pid_control
     (; current_area) = basin.current_properties
 
-    current_area = current_area[parent(du)]
-    error = error[parent(du)]
+    current_area = current_area[du]
+    error = error[du]
     all_nodes_active = p.all_nodes_active[]
 
     set_error!(pid_control, p, du, t)
@@ -573,7 +573,7 @@ function formulate_flow!(
         pump.inflow_link,
         pump.outflow_link,
         pump.active,
-        pump.flow_rate[parent(du)],
+        pump.flow_rate[du],
         pump.min_flow_rate,
         pump.max_flow_rate,
         pump.min_upstream_level,
@@ -628,7 +628,7 @@ function formulate_flow!(
         outlet.inflow_link,
         outlet.outflow_link,
         outlet.active,
-        outlet.flow_rate[parent(du)],
+        outlet.flow_rate[du],
         outlet.min_flow_rate,
         outlet.max_flow_rate,
         outlet.continuous_control_type,
