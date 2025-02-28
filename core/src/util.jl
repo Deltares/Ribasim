@@ -882,6 +882,7 @@ function build_state_vector(p::Parameters)
     # It is assumed that the horizontal flow states come first in
     # p.state_inflow_link and p.state_outflow_link
     u_ids = state_node_ids(p)
+    state_ranges = p.state_ranges
     u = ComponentVector{Float64}(;
         tabulated_rating_curve = zeros(length(u_ids.tabulated_rating_curve)),
         pump = zeros(length(u_ids.pump)),
@@ -894,9 +895,10 @@ function build_state_vector(p::Parameters)
         infiltration = zeros(length(u_ids.infiltration)),
         integral = zeros(length(u_ids.integral)),
     )
-    # Ensure p.node_id and u have the same length and order
-    @assert length(u) == length(p.node_id)
-    @assert keys(u) == keys(u_ids)
+    # Ensure p.node_id, p.state_ranges and u have the same length and order
+    ranges = (getproperty(state_ranges, x) for x in propertynames(state_ranges))
+    @assert length(u) == length(p.node_id) == mapreduce(length, +, ranges)
+    @assert keys(u) == keys(u_ids) == fieldnames(StateRanges)
     return u
 end
 

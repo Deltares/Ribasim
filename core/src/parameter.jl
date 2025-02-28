@@ -971,6 +971,36 @@ const ModelGraph = MetaGraph{
     Float64,
 }
 
+"""
+Collection of ranges that cover all the components of the state vector `u`."
+
+It is used to create views of `u`, and an low-latency alternative to making `u` a ComponentArray.
+"""
+@kwdef struct StateRanges
+    tabulated_rating_curve::UnitRange{Int64} = 1:0
+    pump::UnitRange{Int64} = 1:0
+    outlet::UnitRange{Int64} = 1:0
+    user_demand_inflow::UnitRange{Int64} = 1:0
+    user_demand_outflow::UnitRange{Int64} = 1:0
+    linear_resistance::UnitRange{Int64} = 1:0
+    manning_resistance::UnitRange{Int64} = 1:0
+    evaporation::UnitRange{Int64} = 1:0
+    infiltration::UnitRange{Int64} = 1:0
+    integral::UnitRange{Int64} = 1:0
+end
+
+function StateRanges(u_ids::NamedTuple)::StateRanges
+    lengths = map(length, u_ids)
+    # from the lengths of the components
+    # construct [1:n_pump, (n_pump+1):(n_pump+n_outlet)]
+    # which are used to create views into the data array
+    bounds = pushfirst!(cumsum(lengths), 0)
+    ranges = [range(p[1] + 1, p[2]) for p in IterTools.partition(bounds, 2, 1)]
+    # standardize empty ranges to 1:0 for easier testing
+    replace!(x -> isempty(x) ? (1:0) : x, ranges)
+    return StateRanges(ranges...)
+end
+
 @kwdef mutable struct Parameters{C3, C4, C6, C7, C8, C9, C10, C11}
     const starttime::DateTime
     const graph::ModelGraph
@@ -1005,6 +1035,8 @@ const ModelGraph = MetaGraph{
     const u_prev_saveat::C11 = ComponentVector()
     # Node ID associated with each state
     const node_id::Vector{NodeID} = NodeID[]
+    # Range per states component
+    const state_ranges::StateRanges = StateRanges()
 end
 
 # To opt-out of type checking for ForwardDiff

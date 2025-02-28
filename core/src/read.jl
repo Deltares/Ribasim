@@ -1788,6 +1788,7 @@ function Parameters(db::DB, config::Config)::Parameters
         pid_control,
     ))
     node_id = reduce(vcat, u_ids)
+    state_ranges = StateRanges(u_ids)
 
     p = Parameters(;
         config.starttime,
@@ -1812,6 +1813,7 @@ function Parameters(db::DB, config::Config)::Parameters
         config.solver.water_balance_abstol,
         config.solver.water_balance_reltol,
         node_id,
+        state_ranges,
     )
 
     collect_control_mappings!(p)

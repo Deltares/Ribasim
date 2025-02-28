@@ -4,7 +4,7 @@
     using Tables.DataAPI: nrow
     using Dates: DateTime
     import Arrow
-    using Ribasim: get_tstops, tsaves
+    using Ribasim: get_tstops, tsaves, StateRanges
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/trivial/ribasim.toml")
     @test ispath(toml_path)
@@ -21,6 +21,10 @@
     @test model isa Ribasim.Model
     @test successful_retcode(model)
     (; p) = model.integrator
+
+    @test p.node_id == [0, 6, 6]
+    @test p.state_ranges ==
+          StateRanges(; tabulated_rating_curve = 1:1, evaporation = 2:2, infiltration = 3:3)
 
     @test !ispath(control_path)
 
@@ -205,6 +209,7 @@ end
     @test p isa Ribasim.Parameters
     @test isconcretetype(typeof(p))
     @test all(isconcretetype, fieldtypes(typeof(p)))
+    @test p.node_id == [4, 5, 8, 7, 10, 12, 2, 1, 3, 6, 9, 1, 3, 6, 9]
 
     @test alg isa QNDF
     @test alg.step_limiter! == Ribasim.limit_flow!
