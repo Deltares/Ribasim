@@ -401,8 +401,8 @@ end
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.Model(toml_path)
-    (; u, p) = model.integrator
-    n_basins = length(u.evaporation)
+    (; p) = model.integrator
+    n_basins = length(p.basin.node_id)
     (; flow_to_storage) = p
 
     @test flow_to_storage[:, :evaporation] == -I

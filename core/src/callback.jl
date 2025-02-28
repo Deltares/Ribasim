@@ -176,10 +176,15 @@ end
 
 function update_concentrations!(u, t, integrator)::Nothing
     (; uprev, p, tprev, dt) = integrator
-    (; basin, flow_boundary) = p
+    (; basin, flow_boundary, state_ranges) = p
     (; vertical_flux, concentration_data) = basin
     (; evaporate_mass, cumulative_in, concentration_state, concentration, mass) =
         concentration_data
+
+    u_evaporation = view(u, state_ranges.evaporation)
+    u_infiltration = view(u, state_ranges.infiltration)
+    uprev_evaporation = view(uprev, state_ranges.evaporation)
+    uprev_infiltration = view(uprev, state_ranges.infiltration)
 
     # Reset cumulative flows, used to calculate the concentration
     # of the basins after processing inflows only
@@ -223,9 +228,9 @@ function update_concentrations!(u, t, integrator)::Nothing
 
     # Evaporate mass to keep the mass balance, if enabled in model config
     if evaporate_mass
-        mass .-= concentration_state .* (u.evaporation - uprev.evaporation)
+        mass .-= concentration_state .* (u_evaporation - uprev_evaporation)
     end
-    mass .-= concentration_state .* (u.infiltration - uprev.infiltration)
+    mass .-= concentration_state .* (u_infiltration - uprev_infiltration)
 
     # Take care of infinitely small masses, possibly becoming negative due to truncation.
     for I in eachindex(basin.concentration_data.mass)
@@ -262,16 +267,22 @@ function flow_update_on_link(
     link_src::Tuple{NodeID, NodeID},
 )::Float64
     (; u, uprev, p, t, tprev, dt) = integrator
-    (; basin, flow_boundary) = p
+    (; basin, flow_boundary, state_ranges) = p
     (; vertical_flux) = basin
+
+    u_evaporation = view(u, state_ranges.evaporation)
+    u_infiltration = view(u, state_ranges.infiltration)
+    uprev_evaporation = view(uprev, state_ranges.evaporation)
+    uprev_infiltration = view(uprev, state_ranges.infiltration)
+
     from_id, to_id = link_src
     if from_id == to_id
         @assert from_id.type == to_id.type == NodeType.Basin
         idx = from_id.idx
         fixed_area = basin_areas(basin, idx)[end]
         (fixed_area * vertical_flux.precipitation[idx] + vertical_flux.drainage[idx]) * dt -
-        (u.evaporation[idx] - uprev.evaporation[idx]) -
-        (u.infiltration[idx] - uprev.infiltration[idx])
+        (u_evaporation[idx] - uprev_evaporation[idx]) -
+        (u_infiltration[idx] - uprev_infiltration[idx])
     elseif from_id.type == NodeType.FlowBoundary
         if flow_boundary.active[from_id.idx]
             integral(flow_boundary.flow_rate[from_id.idx], tprev, t)

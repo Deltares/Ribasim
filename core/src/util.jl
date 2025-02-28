@@ -1015,9 +1015,6 @@ function get_state_index(
 )::Union{Int, Nothing}
     component_name = if id.type == NodeType.UserDemand
         inflow ? :user_demand_inflow : :user_demand_outflow
-    elseif id.type == NodeType.Basin
-        # Can be supported via kwargs if needed
-        error("Ambiguous state index for Basin node, can be evaporation or infiltration")
     else
         snake_case(id)
     end

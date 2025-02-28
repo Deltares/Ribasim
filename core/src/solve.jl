@@ -2,9 +2,8 @@
 The right hand side function of the system of ODEs set up by Ribasim.
 """
 function water_balance!(du::Vector, u::Vector, p::Parameters, t::Number)::Nothing
-    (; basin, pid_control) = p
     (; current_storage, current_low_storage_factor, current_level) =
-        basin.current_properties
+        p.basin.current_properties
 
     du .= 0.0
 
@@ -22,7 +21,7 @@ function water_balance!(du::Vector, u::Vector, p::Parameters, t::Number)::Nothin
     #   because of the error derivative term.
 
     # Basin forcings
-    update_vertical_flux!(basin, du)
+    update_vertical_flux!(du, p)
 
     # Formulate intermediate flows (non continuously controlled)
     formulate_flows!(du, p, t, current_storage, current_low_storage_factor, current_level)
@@ -42,7 +41,7 @@ function water_balance!(du::Vector, u::Vector, p::Parameters, t::Number)::Nothin
     )
 
     # Compute PID control
-    formulate_pid_control!(u, du, pid_control, p, t)
+    formulate_pid_control!(du, u, p, t)
 
     # Formulate intermediate flow (controlled by PID control)
     formulate_flows!(
@@ -185,11 +184,14 @@ end
 Smoothly let the evaporation flux go to 0 when at small water depths
 Currently at less than 0.1 m.
 """
-function update_vertical_flux!(basin::Basin, du::AbstractVector)::Nothing
+function update_vertical_flux!(du::AbstractVector, p::Parameters)::Nothing
+    (; basin, state_ranges) = p
     (; vertical_flux, current_properties) = basin
     (; current_level, current_area) = current_properties
     current_level = current_level[du]
     current_area = current_area[du]
+    du_evaporation = view(du, state_ranges.evaporation)
+    du_infiltration = view(du, state_ranges.infiltration)
 
     for id in basin.node_id
         level = current_level[id.idx]
@@ -202,8 +204,8 @@ function update_vertical_flux!(basin::Basin, du::AbstractVector)::Nothing
         evaporation = area * factor * vertical_flux.potential_evaporation[id.idx]
         infiltration = factor * vertical_flux.infiltration[id.idx]
 
-        du.evaporation[id.idx] = evaporation
-        du.infiltration[id.idx] = infiltration
+        du_evaporation[id.idx] = evaporation
+        du_infiltration[id.idx] = infiltration
     end
 
     return nothing
@@ -222,16 +224,12 @@ function set_error!(pid_control::PidControl, p::Parameters, du::Vector, t::Numbe
     end
 end
 
-function formulate_pid_control!(
-    u::Vector,
-    du::Vector,
-    pid_control::PidControl,
-    p::Parameters,
-    t::Number,
-)::Nothing
-    (; basin) = p
+function formulate_pid_control!(du::Vector, u::Vector, p::Parameters, t::Number)::Nothing
+    (; basin, state_ranges, pid_control) = p
     (; node_id, active, target, listen_node_id, error) = pid_control
     (; current_area) = basin.current_properties
+    du_integral = view(du, state_ranges.integral)
+    u_integral = view(u, state_ranges.integral)
 
     current_area = current_area[du]
     error = error[du]
@@ -241,12 +239,12 @@ function formulate_pid_control!(
 
     for (i, id) in enumerate(node_id)
         if !(active[i] || all_nodes_active)
-            du.integral[i] = 0.0
-            u.integral[i] = 0.0
+            du_integral[i] = 0.0
+            u_integral[i] = 0.0
             continue
         end
 
-        du.integral[i] = error[i]
+        du_integral[i] = error[i]
 
         listened_node_id = listen_node_id[i]
 
@@ -270,7 +268,7 @@ function formulate_pid_control!(
         end
 
         if !iszero(K_i)
-            flow_rate += K_i * u.integral[i] / D
+            flow_rate += K_i * u_integral[i] / D
         end
 
         if !iszero(K_d)
@@ -292,8 +290,10 @@ end
 Formulate the time derivative of the storage in a single Basin.
 """
 function formulate_dstorage(du::Vector, p::Parameters, t::Number, node_id::NodeID)
-    (; basin) = p
+    (; basin, state_ranges) = p
     (; inflow_ids, outflow_ids, vertical_flux) = basin
+    du_evaporation = view(du, state_ranges.evaporation)
+    du_infiltration = view(du, state_ranges.infiltration)
     @assert node_id.type == NodeType.Basin
     dstorage = 0.0
     for inflow_id in inflow_ids[node_id.idx]
@@ -306,10 +306,10 @@ function formulate_dstorage(du::Vector, p::Parameters, t::Number, node_id::NodeI
     fixed_area = basin_areas(basin, node_id.idx)[end]
     dstorage += fixed_area * vertical_flux.precipitation[node_id.idx]
     dstorage += vertical_flux.drainage[node_id.idx]
-    dstorage -= du.evaporation[node_id.idx]
-    dstorage -= du.infiltration[node_id.idx]
+    dstorage -= du_evaporation[node_id.idx]
+    dstorage -= du_infiltration[node_id.idx]
 
-    dstorage
+    return dstorage
 end
 
 function formulate_flow!(
@@ -320,8 +320,12 @@ function formulate_flow!(
     current_low_storage_factor::Vector,
     current_level::Vector,
 )::Nothing
-    (; allocation) = p
+    (; allocation, state_ranges) = p
     all_nodes_active = p.all_nodes_active[]
+
+    du_user_demand_inflow = view(du, state_ranges.user_demand_inflow)
+    du_user_demand_outflow = view(du, state_ranges.user_demand_outflow)
+
     for (id, inflow_link, outflow_link, active, allocated, return_factor, min_level) in zip(
         user_demand.node_id,
         user_demand.inflow_link,
@@ -359,8 +363,8 @@ function formulate_flow!(
         Δsource_level = source_level - min_level
         factor_level = reduction_factor(Δsource_level, USER_DEMAND_MIN_LEVEL_THRESHOLD)
         q *= factor_level
-        du.user_demand_inflow[id.idx] = q
-        du.user_demand_outflow[id.idx] = q * return_factor(t)
+        du_user_demand_inflow[id.idx] = q
+        du_user_demand_outflow[id.idx] = q * return_factor(t)
     end
     return nothing
 end
@@ -375,6 +379,7 @@ function formulate_flow!(
 )::Nothing
     all_nodes_active = p.all_nodes_active[]
     (; node_id, active, resistance, max_flow_rate) = linear_resistance
+    du_linear_resistance = view(du, p.state_ranges.linear_resistance)
     for id in node_id
         inflow_link = linear_resistance.inflow_link[id.idx]
         outflow_link = linear_resistance.outflow_link[id.idx]
@@ -393,7 +398,7 @@ function formulate_flow!(
                 inflow_id,
                 outflow_id,
             )
-            du.linear_resistance[id.idx] = q
+            du_linear_resistance[id.idx] = q
         end
     end
     return nothing
@@ -410,6 +415,8 @@ function formulate_flow!(
     all_nodes_active = p.all_nodes_active[]
     (; node_id, active, interpolations, current_interpolation_index) =
         tabulated_rating_curve
+
+    du_tabulated_rating_curve = view(du, p.state_ranges.tabulated_rating_curve)
 
     for id in node_id
         inflow_link = tabulated_rating_curve.inflow_link[id.idx]
@@ -433,7 +440,7 @@ function formulate_flow!(
             q = 0.0
         end
 
-        du.tabulated_rating_curve[id.idx] = q
+        du_tabulated_rating_curve[id.idx] = q
     end
     return nothing
 end
@@ -495,6 +502,9 @@ function formulate_flow!(
         upstream_bottom,
         downstream_bottom,
     ) = manning_resistance
+
+    du_manning_resistance = view(du, p.state_ranges.manning_resistance)
+
     all_nodes_active = p.all_nodes_active[]
     for id in node_id
         inflow_link = manning_resistance.inflow_link[id.idx]
@@ -542,7 +552,7 @@ function formulate_flow!(
             inflow_id,
             outflow_id,
         )
-        du.manning_resistance[id.idx] = q
+        du_manning_resistance[id.idx] = q
     end
     return nothing
 end
@@ -556,6 +566,7 @@ function formulate_flow!(
     current_level::Vector,
     continuous_control_type_::ContinuousControlType.T,
 )::Nothing
+    du_pump = view(du, p.state_ranges.pump)
     all_nodes_active = p.all_nodes_active[]
     for (
         id,
@@ -597,7 +608,7 @@ function formulate_flow!(
         q *= reduction_factor(max_downstream_level - dst_level, 0.02)
 
         q = clamp(q, min_flow_rate, max_flow_rate)
-        du.pump[id.idx] = q
+        du_pump[id.idx] = q
     end
     return nothing
 end
@@ -611,6 +622,7 @@ function formulate_flow!(
     current_level::Vector,
     continuous_control_type_::ContinuousControlType.T,
 )::Nothing
+    du_outlet = view(du, p.state_ranges.outlet)
     all_nodes_active = p.all_nodes_active[]
     for (
         id,
@@ -655,7 +667,7 @@ function formulate_flow!(
         q *= reduction_factor(max_downstream_level - dst_level, 0.02)
 
         q = clamp(q, min_flow_rate, max_flow_rate)
-        du.outlet[id.idx] = q
+        du_outlet[id.idx] = q
     end
     return nothing
 end
@@ -740,7 +752,24 @@ function limit_flow!(u::Vector, integrator::DEIntegrator, p::Parameters, t::Numb
         tabulated_rating_curve,
         basin,
         allocation,
+        state_ranges,
     ) = p
+
+    u_tabulated_rating_curve = view(u, state_ranges.tabulated_rating_curve)
+    u_pump = view(u, state_ranges.pump)
+    u_outlet = view(u, state_ranges.outlet)
+    u_linear_resistance = view(u, state_ranges.linear_resistance)
+    u_user_demand_inflow = view(u, state_ranges.user_demand_inflow)
+    u_evaporation = view(u, state_ranges.evaporation)
+    u_infiltration = view(u, state_ranges.infiltration)
+
+    uprev_tabulated_rating_curve = view(uprev, state_ranges.tabulated_rating_curve)
+    uprev_pump = view(uprev, state_ranges.pump)
+    uprev_outlet = view(uprev, state_ranges.outlet)
+    uprev_linear_resistance = view(uprev, state_ranges.linear_resistance)
+    uprev_user_demand_inflow = view(uprev, state_ranges.user_demand_inflow)
+    uprev_evaporation = view(uprev, state_ranges.evaporation)
+    uprev_infiltration = view(uprev, state_ranges.infiltration)
 
     # The current storage and level based on the proposed u are used to estimate the lowest
     # storage and level attained in the last time step to estimate whether there was an effect
@@ -753,8 +782,8 @@ function limit_flow!(u::Vector, integrator::DEIntegrator, p::Parameters, t::Numb
     # TabulatedRatingCurve flow is in [0, ∞) and can be inactive
     for (id, active) in zip(tabulated_rating_curve.node_id, tabulated_rating_curve.active)
         limit_flow!(
-            u.tabulated_rating_curve,
-            uprev.tabulated_rating_curve,
+            u_tabulated_rating_curve,
+            uprev_tabulated_rating_curve,
             id,
             0.0,
             Inf,
@@ -766,13 +795,13 @@ function limit_flow!(u::Vector, integrator::DEIntegrator, p::Parameters, t::Numb
     # Pump flow is in [min_flow_rate, max_flow_rate] and can be inactive
     for (id, min_flow_rate, max_flow_rate, active) in
         zip(pump.node_id, pump.min_flow_rate, pump.max_flow_rate, pump.active)
-        limit_flow!(u.pump, uprev.pump, id, min_flow_rate, max_flow_rate, active, dt)
+        limit_flow!(u_pump, uprev_pump, id, min_flow_rate, max_flow_rate, active, dt)
     end
 
     # Outlet flow is in [min_flow_rate, max_flow_rate] and can be inactive
     for (id, min_flow_rate, max_flow_rate, active) in
         zip(outlet.node_id, outlet.min_flow_rate, outlet.max_flow_rate, outlet.active)
-        limit_flow!(u.outlet, uprev.outlet, id, min_flow_rate, max_flow_rate, active, dt)
+        limit_flow!(u_outlet, uprev_outlet, id, min_flow_rate, max_flow_rate, active, dt)
     end
 
     # LinearResistance flow is in [-max_flow_rate, max_flow_rate] and can be inactive
@@ -782,8 +811,8 @@ function limit_flow!(u::Vector, integrator::DEIntegrator, p::Parameters, t::Numb
         linear_resistance.active,
     )
         limit_flow!(
-            u.linear_resistance,
-            uprev.linear_resistance,
+            u_linear_resistance,
+            uprev_linear_resistance,
             id,
             -max_flow_rate,
             max_flow_rate,
@@ -821,8 +850,8 @@ function limit_flow!(u::Vector, integrator::DEIntegrator, p::Parameters, t::Numb
             factor_basin_min * factor_level_min * allocated_total, allocated_total
         end
         limit_flow!(
-            u.user_demand_inflow,
-            uprev.user_demand_inflow,
+            u_user_demand_inflow,
+            uprev_user_demand_inflow,
             id,
             min_flow_rate,
             max_flow_rate,
@@ -836,10 +865,10 @@ function limit_flow!(u::Vector, integrator::DEIntegrator, p::Parameters, t::Numb
     # reduction factor value that was attained over the last timestep
     for (id, infiltration) in zip(basin.node_id, basin.vertical_flux.infiltration)
         factor_min = min_low_storage_factor(current_storage, basin.storage_prev, id)
-        limit_flow!(u.evaporation, uprev.evaporation, id, 0.0, Inf, true, dt)
+        limit_flow!(u_evaporation, uprev_evaporation, id, 0.0, Inf, true, dt)
         limit_flow!(
-            u.infiltration,
-            uprev.infiltration,
+            u_infiltration,
+            uprev_infiltration,
             id,
             factor_min * infiltration,
             infiltration,

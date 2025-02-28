@@ -133,13 +133,15 @@ end
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
-    (; basin) = model.integrator.p
+    (; basin, state_ranges) = model.integrator.p
     @test basin.current_properties.current_storage[Float64[]] ≈ [1000]
     @test basin.vertical_flux.precipitation == [0.0]
     @test basin.vertical_flux.drainage == [0.0]
     du = get_du(model.integrator)
-    @test du.evaporation == [0.0]
-    @test du.infiltration == [0.0]
+    du_evaporation = view(du, state_ranges.evaporation)
+    du_infiltration = view(du, state_ranges.infiltration)
+    @test du_evaporation == [0.0]
+    @test du_infiltration == [0.0]
     @test successful_retcode(model)
 end
 
@@ -159,9 +161,9 @@ end
     Ribasim.water_balance!(du, u, p, t)
     stor = integrator.p.basin.current_properties.current_storage[du]
     prec = p.basin.vertical_flux.precipitation
-    evap = du.evaporation
+    evap = view(du, p.state_ranges.evaporation)
     drng = p.basin.vertical_flux.drainage
-    infl = du.infiltration
+    infl = view(du, p.state_ranges.infiltration)
     # The dynamic data has missings, but these are not set.
     @test prec == [0.0]
     @test evap == [0.0]

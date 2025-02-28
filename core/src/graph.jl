@@ -253,9 +253,11 @@ end
 
 function get_influx(du::Vector, id::NodeID, p::Parameters)
     @assert id.type == NodeType.Basin
-    (; basin) = p
+    (; basin, state_ranges) = p
     (; vertical_flux) = basin
+    du_evaporation = view(du, state_ranges.evaporation)
+    du_infiltration = view(du, state_ranges.infiltration)
     fixed_area = basin_areas(basin, id.idx)[end]
     return fixed_area * vertical_flux.precipitation[id.idx] +
-           vertical_flux.drainage[id.idx] - du.evaporation[id.idx] - du.infiltration[id.idx]
+           vertical_flux.drainage[id.idx] - du_evaporation[id.idx] - du_infiltration[id.idx]
 end
