@@ -253,7 +253,6 @@ end
 
 @testitem "Jacobian sparsity" begin
     import SQLite
-    using ComponentArrays: ComponentVector
     using SparseArrays: sparse, findnz
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
@@ -403,18 +402,23 @@ end
     model = Ribasim.Model(toml_path)
     (; p) = model.integrator
     n_basins = length(p.basin.node_id)
-    (; flow_to_storage) = p
+    (; flow_to_storage, state_ranges) = p
 
-    @test flow_to_storage[:, :evaporation] == -I
-    @test flow_to_storage[:, :infiltration] == -I
+    @test flow_to_storage[:, state_ranges.evaporation] == -I
+    @test flow_to_storage[:, state_ranges.infiltration] == -I
 
     for node_name in
         [:tabulated_rating_curve, :pump, :outlet, :linear_resistance, :manning_resistance]
-        flow_to_storage_node = flow_to_storage[:, node_name]
+        state_range = getproperty(state_ranges, node_name)
+        flow_to_storage_node = flow_to_storage[:, state_range]
         # In every column there is either 0 or 1 instance of 1.0 (flow into a basin)
         @test all(
             i -> i ∈ (0, 1),
-            count(==(1.0), collect(flow_to_storage[:, :tabulated_rating_curve]); dims = 1),
+            count(
+                ==(1.0),
+                collect(flow_to_storage[:, state_ranges.tabulated_rating_curve]);
+                dims = 1,
+            ),
         )
 
         # In every column there is either 0 or 1 instance of -1.0 (flow out of a basin)
@@ -422,7 +426,7 @@ end
             i -> i ∈ (0, 1),
             count(
                 ==(1 - 0.0),
-                collect(flow_to_storage[:, :tabulated_rating_curve]);
+                collect(flow_to_storage[:, state_ranges.tabulated_rating_curve]);
                 dims = 1,
             ),
         )
