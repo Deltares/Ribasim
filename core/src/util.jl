@@ -577,7 +577,7 @@ function get_variable_ref(
                 Ref(Float64[], 0)
             else
                 # Index in the state vector (inflow)
-                flow_idx = get_state_index(node_id, u)
+                flow_idx = get_state_index(p.state_ranges, node_id)
                 PreallocationRef(cache(1), flow_idx; from_du = true)
             end
         else
@@ -883,32 +883,18 @@ function build_state_vector(p::Parameters)
     # p.state_inflow_link and p.state_outflow_link
     u_ids = state_node_ids(p)
     state_ranges = p.state_ranges
-    u = ComponentVector{Float64}(;
-        tabulated_rating_curve = zeros(length(u_ids.tabulated_rating_curve)),
-        pump = zeros(length(u_ids.pump)),
-        outlet = zeros(length(u_ids.outlet)),
-        user_demand_inflow = zeros(length(u_ids.user_demand_inflow)),
-        user_demand_outflow = zeros(length(u_ids.user_demand_outflow)),
-        linear_resistance = zeros(length(u_ids.linear_resistance)),
-        manning_resistance = zeros(length(u_ids.manning_resistance)),
-        evaporation = zeros(length(u_ids.evaporation)),
-        infiltration = zeros(length(u_ids.infiltration)),
-        integral = zeros(length(u_ids.integral)),
-    )
+    u = zeros(length(p.node_id))
     # Ensure p.node_id, p.state_ranges and u have the same length and order
     ranges = (getproperty(state_ranges, x) for x in propertynames(state_ranges))
     @assert length(u) == length(p.node_id) == mapreduce(length, +, ranges)
-    @assert keys(u) == keys(u_ids) == fieldnames(StateRanges)
+    @assert keys(u_ids) == fieldnames(StateRanges)
     return u
 end
 
 function build_flow_to_storage(p::Parameters, u::Vector)::Parameters
     n_basins = length(p.basin.node_id)
     n_states = length(u)
-    flow_to_storage = ComponentArray(
-        spzeros(n_basins, n_states),
-        (Axis(; basins = 1:n_basins), only(getaxes(u))),
-    )
+    flow_to_storage = spzeros(n_basins, n_states)
 
     for node_name in (
         :tabulated_rating_curve,
@@ -918,13 +904,16 @@ function build_flow_to_storage(p::Parameters, u::Vector)::Parameters
         :manning_resistance,
         :user_demand,
     )
-        node = getfield(p, node_name)
+        node = getproperty(p, node_name)
 
         if node_name == :user_demand
-            flow_to_storage_node_inflow = view(flow_to_storage, :, :user_demand_inflow)
-            flow_to_storage_node_outflow = view(flow_to_storage, :, :user_demand_outflow)
+            sel = p.state_ranges.user_demand_inflow
+            flow_to_storage_node_inflow = view(flow_to_storage, :, sel)
+            sel = p.state_ranges.user_demand_outflow
+            flow_to_storage_node_outflow = view(flow_to_storage, :, sel)
         else
-            flow_to_storage_node_inflow = view(flow_to_storage, :, node_name)
+            sel = getproperty(p.state_ranges, node_name)
+            flow_to_storage_node_inflow = view(flow_to_storage, :, sel)
             flow_to_storage_node_outflow = flow_to_storage_node_inflow
         end
 
@@ -941,15 +930,18 @@ function build_flow_to_storage(p::Parameters, u::Vector)::Parameters
         end
     end
 
-    flow_to_storage_evaporation = view(flow_to_storage, :, :evaporation)
-    flow_to_storage_infiltration = view(flow_to_storage, :, :infiltration)
+    sel = p.state_ranges.evaporation
+    flow_to_storage_evaporation = view(flow_to_storage, :, sel)
+    sel = p.state_ranges.infiltration
+    flow_to_storage_infiltration = view(flow_to_storage, :, sel)
 
     for i in 1:n_basins
         flow_to_storage_evaporation[i, i] = -1.0
         flow_to_storage_infiltration[i, i] = -1.0
     end
 
-    @set p.flow_to_storage = parent(flow_to_storage)
+    @set p.flow_to_storage = flow_to_storage
+    return p
 end
 
 """
@@ -957,7 +949,7 @@ Create vectors state_inflow_link and state_outflow_link which give for each stat
 in the state vector in order the metadata of the link that is associated with that state.
 Only for horizontal flows, which are assumed to come first in the state vector.
 """
-function set_state_flow_links(p::Parameters, u0::ComponentVector)::Parameters
+function set_state_flow_links(p::Parameters, u0::Vector)::Parameters
     (; user_demand, graph) = p
 
     components = Symbol[]
@@ -967,7 +959,7 @@ function set_state_flow_links(p::Parameters, u0::ComponentVector)::Parameters
     placeholder_link =
         LinkMetadata(0, LinkType.flow, (NodeID(:Terminal, 0, 0), NodeID(:Terminal, 0, 0)))
 
-    for node_name in keys(u0)
+    for node_name in fieldnames(StateRanges)
         if hasfield(Parameters, node_name)
             node::AbstractParameterNode = getfield(p, node_name)
             push!(components, node_name)
@@ -1020,27 +1012,37 @@ function set_state_flow_links(p::Parameters, u0::ComponentVector)::Parameters
     return p
 end
 
+"""
+Get the index of the state vector corresponding to the given NodeID.
+Use the inflow Boolean argument to disambiguite for node types that have multiple states.
+Can return nothing for node types that do not have a state, like Terminal.
+"""
 function get_state_index(
-    id::NodeID,
-    ::ComponentVector{A, B, <:Tuple{<:Axis{NT}}};
+    state_ranges::StateRanges,
+    id::NodeID;
     inflow::Bool = true,
-) where {A, B, NT}
+)::Union{Int, Nothing}
     component_name = if id.type == NodeType.UserDemand
         inflow ? :user_demand_inflow : :user_demand_outflow
+    elseif id.type == NodeType.Basin
+        # Can be supported via kwargs if needed
+        error("Ambiguous state index for Basin node, can be evaporation or infiltration")
     else
         snake_case(id)
     end
-    for (comp, range) in pairs(NT)
-        if comp == component_name
-            return range[id.idx]
-        end
+
+    if hasproperty(state_ranges, component_name)
+        sel = getproperty(state_ranges, component_name)
+        return sel[id.idx]
+    else
+        return nothing
     end
-    return nothing
 end
 
-function get_state_index(u::Vector, link::Tuple{NodeID, NodeID})::Int
-    idx = get_state_index(link[2], u)
-    isnothing(idx) ? get_state_index(link[1], u; inflow = false) : idx
+"Get the state index of the to-node of the link if it exists, otherwise the from-node."
+function get_state_index(state_ranges::StateRanges, link::Tuple{NodeID, NodeID})::Int
+    idx = get_state_index(state_ranges, link[2])
+    isnothing(idx) ? get_state_index(state_ranges, link[1]; inflow = false) : idx
 end
 
 """

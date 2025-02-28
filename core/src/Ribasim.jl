@@ -93,7 +93,7 @@ using TerminalLoggers: TerminalLogger
 # Convenience wrapper around arrays, divides vectors in
 # separate sections which can be indexed individually.
 # Used for e.g. Basin forcing and the state vector.
-using ComponentArrays: ComponentVector, ComponentArray, Axis, getaxes
+using ComponentArrays: ComponentVector
 
 # Date and time handling; externally we use the proleptic Gregorian calendar,
 # internally we use a Float64; seconds since the start of the simulation.

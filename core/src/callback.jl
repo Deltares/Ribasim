@@ -7,7 +7,7 @@ Returns the CallbackSet and the SavedValues for flow.
 function create_callbacks(
     parameters::Parameters,
     config::Config,
-    u0::ComponentVector,
+    u0::Vector,
     saveat,
 )::Tuple{CallbackSet, SavedResults}
     (; starttime, basin, flow_boundary, level_boundary, user_demand) = parameters
@@ -279,7 +279,7 @@ function flow_update_on_link(
             0.0
         end
     else
-        flow_idx = get_state_index(u, link_src)
+        flow_idx = get_state_index(p.state_ranges, link_src)
         u[flow_idx] - uprev[flow_idx]
     end
 end

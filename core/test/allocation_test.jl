@@ -1,6 +1,5 @@
 @testitem "Allocation solve" begin
     using Ribasim: NodeID, OptimizationType
-    using ComponentArrays: ComponentVector
     import SQLite
     import JuMP
 
@@ -15,7 +14,7 @@
         4.5
     allocation_model = p.allocation.allocation_models[1]
     (; flow) = allocation_model
-    u = ComponentVector()
+    u = Float64[]
     t = 0.0
     Ribasim.allocate_demands!(p, allocation_model, t, u)
 
@@ -110,7 +109,6 @@ end
 @testitem "Allocation with main network optimization problem" begin
     using SQLite
     using Ribasim: NodeID, NodeType, OptimizationType
-    using ComponentArrays: ComponentVector
     using JuMP
     using DataFrames: DataFrame, ByRow, transform!
 
@@ -133,7 +131,7 @@ end
     t = 0.0
 
     # Collecting demands
-    u = ComponentVector()
+    u = Float64[]
     for allocation_model in allocation_models[2:end]
         Ribasim.collect_demands!(p, allocation_model, t, u)
     end
@@ -205,7 +203,6 @@ end
 @testitem "Subnetworks with sources" begin
     using SQLite
     using Ribasim: NodeID, OptimizationType
-    using ComponentArrays: ComponentVector
     using OrdinaryDiffEqCore: get_du
     using JuMP
 
@@ -227,7 +224,7 @@ end
     mean_input_flows[4][(NodeID(:FlowBoundary, 59, p), NodeID(:Basin, 44, p))] = 1e-3
 
     # Collecting demands
-    u = ComponentVector()
+    u = Float64[]
     for allocation_model in allocation_models[2:end]
         Ribasim.collect_demands!(p, allocation_model, t, u)
     end

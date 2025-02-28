@@ -231,7 +231,7 @@ the state vector, given an link (inflow_id, outflow_id).
 from the parameters, but integrated/averaged FlowBoundary flows must be provided via `boundary_flow`.
 """
 function get_flow(
-    flow::ComponentVector,
+    flow::Vector,
     p::Parameters,
     t::Number,
     link::Tuple{NodeID, NodeID};
@@ -247,7 +247,7 @@ function get_flow(
             boundary_flow[from_id.idx]
         end
     else
-        flow[get_state_index(flow, link)]
+        flow[get_state_index(p.state_ranges, link)]
     end
 end
 
