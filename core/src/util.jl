@@ -886,7 +886,14 @@ function build_state_vector(p::Parameters)
     u = zeros(length(p.node_id))
     # Ensure p.node_id, p.state_ranges and u have the same length and order
     ranges = (getproperty(state_ranges, x) for x in propertynames(state_ranges))
-    @assert length(u) == length(p.node_id) == mapreduce(length, +, ranges)
+    @info "len" length(u) length(p.node_id) mapreduce(length, +, ranges) length(
+        p.state_inflow_link,
+    ) length(p.state_outflow_link)
+    @assert length(u) ==
+            length(p.node_id) ==
+            mapreduce(length, +, ranges) ==
+            length(p.state_inflow_link) ==
+            length(p.state_outflow_link)
     @assert keys(u_ids) == fieldnames(StateRanges)
     return u
 end
@@ -940,25 +947,23 @@ Create vectors state_inflow_link and state_outflow_link which give for each stat
 in the state vector in order the metadata of the link that is associated with that state.
 Only for horizontal flows, which are assumed to come first in the state vector.
 """
-function set_state_flow_links(p::Parameters, u0::Vector)::Parameters
-    (; user_demand, graph) = p
-
-    components = Symbol[]
-    state_inflow_links = Vector{LinkMetadata}[]
-    state_outflow_links = Vector{LinkMetadata}[]
+function get_state_flow_links(
+    graph::MetaGraph,
+    nodes::NamedTuple,
+)::Tuple{Vector{LinkMetadata}, Vector{LinkMetadata}}
+    (; user_demand) = nodes
+    state_inflow_link = LinkMetadata[]
+    state_outflow_link = LinkMetadata[]
 
     placeholder_link =
         LinkMetadata(0, LinkType.flow, (NodeID(:Terminal, 0, 0), NodeID(:Terminal, 0, 0)))
 
     for node_name in fieldnames(StateRanges)
-        if hasfield(Parameters, node_name)
-            node::AbstractParameterNode = getfield(p, node_name)
-            push!(components, node_name)
-            state_inflow_links_component = LinkMetadata[]
-            state_outflow_links_component = LinkMetadata[]
+        if hasproperty(nodes, node_name)
+            node::AbstractParameterNode = getproperty(nodes, node_name)
             for id in node.node_id
-                inflow_ids_ = collect(inflow_ids(p.graph, id))
-                outflow_ids_ = collect(outflow_ids(p.graph, id))
+                inflow_ids_ = collect(inflow_ids(graph, id))
+                outflow_ids_ = collect(outflow_ids(graph, id))
 
                 inflow_link = if length(inflow_ids_) == 0
                     placeholder_link
@@ -968,7 +973,7 @@ function set_state_flow_links(p::Parameters, u0::Vector)::Parameters
                 else
                     error("Multiple inflows not supported")
                 end
-                push!(state_inflow_links_component, inflow_link)
+                push!(state_inflow_link, inflow_link)
 
                 outflow_link = if length(outflow_ids_) == 0
                     placeholder_link
@@ -978,29 +983,21 @@ function set_state_flow_links(p::Parameters, u0::Vector)::Parameters
                 else
                     error("Multiple outflows not supported")
                 end
-                push!(state_outflow_links_component, outflow_link)
+                push!(state_outflow_link, outflow_link)
             end
-            push!(state_inflow_links, state_inflow_links_component)
-            push!(state_outflow_links, state_outflow_links_component)
         elseif startswith(String(node_name), "user_demand")
-            push!(components, node_name)
             placeholder_links = fill(placeholder_link, length(user_demand.node_id))
             if node_name == :user_demand_inflow
-                push!(state_inflow_links, user_demand.inflow_link)
-                push!(state_outflow_links, placeholder_links)
+                append!(state_inflow_link, user_demand.inflow_link)
+                append!(state_outflow_link, placeholder_links)
             elseif node_name == :user_demand_outflow
-                push!(state_inflow_links, placeholder_links)
-                push!(state_outflow_links, user_demand.outflow_link)
+                append!(state_inflow_link, placeholder_links)
+                append!(state_outflow_link, user_demand.outflow_link)
             end
         end
     end
 
-    state_inflow_link = ComponentVector(NamedTuple(zip(components, state_inflow_links)))
-    state_outflow_link = ComponentVector(NamedTuple(zip(components, state_outflow_links)))
-
-    @reset p.state_inflow_link = state_inflow_link
-    @reset p.state_outflow_link = state_outflow_link
-    return p
+    return state_inflow_link, state_outflow_link
 end
 
 """

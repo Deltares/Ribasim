@@ -142,7 +142,6 @@ function Model(config::Config)::Model
     u0 = build_state_vector(parameters)
     du0 = zero(u0)
 
-    parameters = set_state_flow_links(parameters, u0)
     @reset parameters.u_prev_saveat = zero(u0)
 
     # The Solver algorithm

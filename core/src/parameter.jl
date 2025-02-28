@@ -1000,7 +1000,7 @@ function StateRanges(u_ids::NamedTuple)::StateRanges
     return StateRanges(ranges...)
 end
 
-@kwdef mutable struct Parameters{C3, C4, C6, C7, C8, C9, C10, C11}
+@kwdef mutable struct Parameters{C3, C4, C6, C7, C8}
     const starttime::DateTime
     const graph::ModelGraph
     const allocation::Allocation
@@ -1021,8 +1021,8 @@ end
     const flow_demand::FlowDemand
     const subgrid::Subgrid
     # Per state the in- and outflow links associated with that state (if they exist)
-    const state_inflow_link::C9 = ComponentVector()
-    const state_outflow_link::C10 = ComponentVector()
+    const state_inflow_link::Vector{LinkMetadata} = LinkMetadata[]
+    const state_outflow_link::Vector{LinkMetadata} = LinkMetadata[]
     all_nodes_active::Bool = false
     tprev::Float64 = 0.0
     # Sparse matrix for combining flows into storages
@@ -1031,7 +1031,7 @@ end
     const water_balance_abstol::Float64
     const water_balance_reltol::Float64
     # State at previous saveat
-    const u_prev_saveat::C11 = Vector()
+    const u_prev_saveat::Vector{Float64} = Float64[]
     # Node ID associated with each state
     const node_id::Vector{NodeID} = NodeID[]
     # Range per states component
