@@ -33,6 +33,10 @@ open class TestBinaries (platformOs: String) : Template() {
             cleanCheckout = true
         }
 
+        params {
+            password("MiniO_credential_token", "credentialsJSON:86cbf3e5-724c-437d-9962-7a3f429b0aa2")
+        }
+
         val header = generateTestBinariesHeader(platformOs)
         steps {
             script {
@@ -53,6 +57,8 @@ open class TestBinaries (platformOs: String) : Template() {
                 """
                 pixi run test-ribasim-api
                 pixi run test-ribasim-cli
+                pixi run python utils/get_benchmark.py --secretkey %MiniO_credential_token% "hws_2024_7_0/"
+                pixi run model-integration-test
                 """.trimIndent()
             }
         }
