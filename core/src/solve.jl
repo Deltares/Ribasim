@@ -184,7 +184,7 @@ end
 Smoothly let the evaporation flux go to 0 when at small water depths
 Currently at less than 0.1 m.
 """
-function update_vertical_flux!(du::AbstractVector, p::Parameters)::Nothing
+function update_vertical_flux!(du::Vector, p::Parameters)::Nothing
     (; basin, state_ranges) = p
     (; vertical_flux, current_properties) = basin
     (; current_level, current_area) = current_properties
