@@ -14,8 +14,10 @@ object RibasimLinuxProject : Project({
     buildType(Linux_Main)
     buildType(Linux_BuildRibasim)
     buildType(Linux_TestRibasimBinaries)
+    buildType(Linux_GenerateCache)
 
     template(TestBinariesLinux)
+    template(GenerateCacheLinux)
 })
 
 object Linux_Main : BuildType({
@@ -71,6 +73,23 @@ object Linux_TestRibasimBinaries : BuildType({
                     ribasim_linux.zip!/ribasim/** => ribasim/build/ribasim
                 """.trimIndent()
             }
+        }
+    }
+})
+
+object Linux_GenerateCache : BuildType({
+    templates(LinuxAgent, GithubCommitStatusIntegration, GenerateCacheLinux)
+    name = "Generate TC cache"
+
+    triggers {
+        vcs {
+            id = "TRIGGER_RIBA_L1"
+            triggerRules = """
+                +:Manifest.toml
+                +:Project.toml
+                +:pixi.lock
+                +:pixi.toml
+            """.trimIndent()
         }
     }
 })
