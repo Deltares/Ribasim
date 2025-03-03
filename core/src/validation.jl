@@ -86,8 +86,10 @@ controllablefields(nodetype::Symbol) = controllablefields(Val(nodetype))
 controllablefields(::Val{:LinearResistance}) = Set((:active, :resistance))
 controllablefields(::Val{:ManningResistance}) = Set((:active, :manning_n))
 controllablefields(::Val{:TabulatedRatingCurve}) = Set((:active, :table))
-controllablefields(::Val{:Pump}) = Set((:active, :flow_rate))
-controllablefields(::Val{:Outlet}) = Set((:active, :flow_rate))
+controllablefields(::Val{:Pump}) =
+    Set((:active, :flow_rate, :min_upstream_level, :max_downstream_level))
+controllablefields(::Val{:Outlet}) =
+    Set((:active, :flow_rate, :min_upstream_level, :max_downstream_level))
 controllablefields(::Val{:PidControl}) =
     Set((:active, :target, :proportional, :integral, :derivative))
 controllablefields(nodetype) = Set{Symbol}()
@@ -287,8 +289,8 @@ function valid_flow_rates(
     for (key, control_state_update) in pairs(control_mapping)
         id_controlled = key[1]
         push!(ids_controlled, id_controlled)
-        flow_rate_update = only(control_state_update.scalar_update)
-        @assert flow_rate_update.name == :flow_rate
+        i = findfirst(x -> x.name === :flow_rate, control_state_update.scalar_update)
+        flow_rate_update = control_state_update.scalar_update[i]
         flow_rate_ = flow_rate_update.value
 
         if flow_rate_ < 0.0
@@ -634,9 +636,33 @@ function valid_demand_priorities(
     demand_priorities::Vector{Int32},
     use_allocation::Bool,
 )::Bool
-    if use_allocation && any(iszero, demand_priorities)
-        return false
-    else
-        return true
+    return !(use_allocation && any(iszero, demand_priorities))
+end
+
+function valid_time_interpolation(
+    times::Vector{Float64},
+    parameter::AbstractVector,
+    node_id::NodeID,
+    cyclic_time::Bool,
+)::Bool
+    errors = false
+
+    if !allunique(times)
+        errors = true
+        @error "(One of) the time series for $node_id has repeated times, this can not be interpolated."
     end
+
+    if cyclic_time
+        if !(all(isnan, parameter) || (first(parameter) == last(parameter)))
+            errors = true
+            @error "$node_id is denoted as cyclic but in (one of) its time series the first and last value are not the same."
+        end
+
+        if length(times) < 2
+            errors = true
+            @error "$node_id is denoted as cyclic but (one of) its time series has fewer than 2 data points."
+        end
+    end
+
+    return !errors
 end

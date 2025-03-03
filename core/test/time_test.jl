@@ -74,18 +74,18 @@ end
 end
 
 @testitem "get_cyclic_tstops" begin
-    using Ribasim: get_cyclic_tstops
+    using Ribasim: get_timeseries_tstops
     using DataInterpolations: LinearInterpolation, ConstantInterpolation
     using DataInterpolations.ExtrapolationType: Periodic
 
     itp = LinearInterpolation(zeros(3), [0.5, 1.0, 1.5])
-    @test get_cyclic_tstops(itp, 5.0) == itp.t
+    @test get_timeseries_tstops(itp, 5.0) == itp.t
 
     itp = LinearInterpolation(zeros(3), [0.5, 1.0, 1.5]; extrapolation = Periodic)
-    @test get_cyclic_tstops(itp, 5.0) == 0:0.5:5
+    @test get_timeseries_tstops(itp, 5.0) == 0:0.5:5
 
     itp = ConstantInterpolation(zeros(2), [0.3, 0.5]; extrapolation = Periodic)
-    @test get_cyclic_tstops(itp, 1.0) ≈ 0.1:0.2:0.9
+    @test get_timeseries_tstops(itp, 1.0) ≈ 0.1:0.2:0.9
 end
 
 @testitem "cyclic time" begin

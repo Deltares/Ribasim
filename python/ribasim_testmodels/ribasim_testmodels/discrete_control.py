@@ -717,7 +717,7 @@ def transient_condition_model() -> Model:
     )
 
     dc = model.discrete_control.add(
-        Node(4, Point(1, 1)),
+        Node(4, Point(1, 1), cyclic_time=True),
         [
             discrete_control.Variable(
                 listen_node_id=[1], variable=["level"], compound_variable_id=1
@@ -725,8 +725,8 @@ def transient_condition_model() -> Model:
             discrete_control.Condition(
                 compound_variable_id=1,
                 condition_id=1,
-                greater_than=[1.0, 3.0],
-                time=["2020-01-01", "2020-02-01"],
+                greater_than=[1.0, 3.0, 1.0],
+                time=["2020-01-01", "2020-02-01", "2020-03-01"],
             ),
             discrete_control.Logic(truth_state=["F", "T"], control_state=["A", "B"]),
         ],
