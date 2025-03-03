@@ -83,7 +83,7 @@ VALUES (
 """
 
 SQL_STYLES_EXIST = """
-SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type="table" AND name="layer_styles");
+SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type='table' AND name='layer_styles');
 """
 
 SQL_STYLES_STYLE_EXISTS = """
