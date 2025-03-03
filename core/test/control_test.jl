@@ -15,11 +15,11 @@
     # Control input(flow rates)
     pump_control_mapping = p.pump.control_mapping
     control_state_update = pump_control_mapping[(NodeID(:Pump, 4, p), "off")]
-    i = findfirst(x -> x.name === :flow_rate, control_state_update.scalar_update)
-    @test control_state_update.scalar_update[i].value == 0
+    i = findfirst(x -> x.name === :flow_rate, control_state_update.itp_update)
+    @test unique(control_state_update.itp_update[i].value.u) == [0]
     control_state_update = pump_control_mapping[(NodeID(:Pump, 4, p), "on")]
-    i = findfirst(x -> x.name === :flow_rate, control_state_update.scalar_update)
-    @test control_state_update.scalar_update[i].value == 1.0e-5
+    i = findfirst(x -> x.name === :flow_rate, control_state_update.itp_update)
+    @test unique(control_state_update.itp_update[i].value.u) == [1.0e-5]
 
     logic_mapping::Vector{Dict{Vector{Bool}, String}} = [
         Dict(

@@ -582,7 +582,7 @@ function get_variable_ref(
             end
         else
             node = getfield(p, snake_case(node_id))
-            PreallocationRef(node.flow_rate, node_id.idx)
+            PreallocationRef(node.flow_rate_cache, node_id.idx)
         end
     else
         # Placeholder to obtain correct type
@@ -686,13 +686,13 @@ Add a control state to a logic mapping. The references to the targets in memory
 for the parameter values are added later when these references are known
 """
 function add_control_state!(
-    control_mapping,
-    time_interpolatables,
-    parameter_names,
-    parameter_values,
-    node_type,
-    control_state,
-    node_id,
+    control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate},
+    time_interpolatables::Vector{Symbol},
+    parameter_names::NTuple{N, Symbol} where {N},
+    parameter_values::Vector,
+    node_type::String,
+    control_state::Union{Missing, String},
+    node_id::NodeID,
 )::Nothing
     ismissing(control_state) && return nothing
 
@@ -709,7 +709,7 @@ function add_control_state!(
         ParameterUpdate(:active, parameter_values[active_idx])
     end
 
-    itp_update = []
+    itp_update = ParameterUpdate{ScalarInterpolation}[]
     scalar_update = ParameterUpdate{Float64}[]
     for (parameter_name, parameter_value) in zip(parameter_names, parameter_values)
         if parameter_name in controllablefields(Symbol(node_type)) &&
@@ -735,7 +735,7 @@ function add_control_state!(
     control_state_update = ControlStateUpdate(; active, scalar_update, itp_update)
 
     if add_control_state
-        control_mapping[(node_id, control_state_key)] = control_state_update
+        control_mapping[(node_id, control_state)] = control_state_update
     end
     return nothing
 end

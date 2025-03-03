@@ -182,7 +182,7 @@ end
     (; flow_boundary, pump) = p
 
     q_boundary = flow_boundary.flow_rate[1].u[1]
-    pump_flow_rate = pump.flow_rate[Float64[]]
+    pump_flow_rate = pump.flow_rate_cache[Float64[]]
     q_pump = pump_flow_rate[1]
 
     storage_both = get_storages_and_levels(model).storage

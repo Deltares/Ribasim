@@ -289,9 +289,9 @@ function valid_flow_rates(
     for (key, control_state_update) in pairs(control_mapping)
         id_controlled = key[1]
         push!(ids_controlled, id_controlled)
-        i = findfirst(x -> x.name === :flow_rate, control_state_update.scalar_update)
-        flow_rate_update = control_state_update.scalar_update[i]
-        flow_rate_ = flow_rate_update.value
+        i = findfirst(x -> x.name === :flow_rate, control_state_update.itp_update)
+        flow_rate_update = control_state_update.itp_update[i]
+        flow_rate_ = minimum(flow_rate_update.value.u)
 
         if flow_rate_ < 0.0
             errors = true

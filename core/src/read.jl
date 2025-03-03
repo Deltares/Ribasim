@@ -129,7 +129,7 @@ function parse_static_and_time(
                     hasproperty(row, :control_state) ? row.control_state : missing
                 # Get the parameter values, and turn them into trivial interpolation objects
                 # if this parameter can be transient
-                parameter_values = Any[]
+                parameter_values = []
                 for parameter_name in parameter_names
                     val = getfield(row, parameter_name)
                     # Set default parameter value if no value was given
@@ -738,17 +738,17 @@ function Pump(db::DB, config::Config, graph::MetaGraph)::Pump
 
     (; node_id) = parsed_parameters
 
-    # If flow rate is set by PID or Continuous control, it is part of the AD Jacobian computations
-    flow_rate = cache(length(node_id))
-    flow_rate[Float64[]] .= [itp(0) for itp in parsed_parameters.flow_rate]
+    # If flow rate is set by PidControl or ContinuousControl, it is part of the AD Jacobian computations
+    flow_rate_cache = cache(length(node_id))
+    flow_rate_cache[Float64[]] .= [itp(0) for itp in parsed_parameters.flow_rate]
 
     return Pump(;
         node_id,
         inflow_link = inflow_link.(Ref(graph), node_id),
         outflow_link = outflow_link.(Ref(graph), node_id),
         parsed_parameters.active,
-        flow_rate,
-        flow_rate_itp = parsed_parameters.flow_rate,
+        flow_rate_cache,
+        parsed_parameters.flow_rate,
         parsed_parameters.min_flow_rate,
         parsed_parameters.max_flow_rate,
         parsed_parameters.min_upstream_level,
@@ -796,17 +796,18 @@ function Outlet(db::DB, config::Config, graph::MetaGraph)::Outlet
             eachindex(parsed_parameters.node_id),
         )
 
-    # If flow rate is set by PID control, it is part of the AD Jacobian computations
-    flow_rate = cache(length(node_id))
-    flow_rate[Float64[], length(node_id)] .= [itp(0) for itp in parsed_parameters.flow_rate]
+    # If flow rate is set by PidControl or ContinuousControl, it is part of the AD Jacobian computations
+    flow_rate_cache = cache(length(node_id))
+    flow_rate_cache[Float64[], length(node_id)] .=
+        [itp(0) for itp in parsed_parameters.flow_rate]
 
     return Outlet(;
         node_id,
         inflow_link = inflow_link.(Ref(graph), node_id),
         outflow_link = outflow_link.(Ref(graph), node_id),
         parsed_parameters.active,
-        flow_rate,
-        flow_rate_itp = parsed_parameters.flow_rate,
+        flow_rate_cache,
+        parsed_parameters.flow_rate,
         parsed_parameters.min_flow_rate,
         parsed_parameters.max_flow_rate,
         parsed_parameters.control_mapping,

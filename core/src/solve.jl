@@ -571,7 +571,7 @@ function formulate_flow!(
         inflow_link,
         outflow_link,
         active,
-        flow_rate,
+        flow_rate_from_cache,
         flow_rate_itp,
         min_flow_rate,
         max_flow_rate,
@@ -583,8 +583,8 @@ function formulate_flow!(
         pump.inflow_link,
         pump.outflow_link,
         pump.active,
-        pump.flow_rate[du],
-        pump.flow_rate_itp,
+        pump.flow_rate_cache[du],
+        pump.flow_rate,
         pump.min_flow_rate,
         pump.max_flow_rate,
         pump.min_upstream_level,
@@ -596,8 +596,10 @@ function formulate_flow!(
             continue
         end
 
-        if continuous_control_type == ContinuousControlType.None
+        flow_rate = if continuous_control_type == ContinuousControlType.None
             flow_rate = flow_rate_itp(t)
+        else
+            flow_rate_from_cache
         end
 
         inflow_id = inflow_link.link[1]
@@ -633,7 +635,7 @@ function formulate_flow!(
         inflow_link,
         outflow_link,
         active,
-        flow_rate,
+        flow_rate_from_cache,
         flow_rate_itp,
         min_flow_rate,
         max_flow_rate,
@@ -645,8 +647,8 @@ function formulate_flow!(
         outlet.inflow_link,
         outlet.outflow_link,
         outlet.active,
-        outlet.flow_rate[du],
-        outlet.flow_rate_itp,
+        outlet.flow_rate_cache[du],
+        outlet.flow_rate,
         outlet.min_flow_rate,
         outlet.max_flow_rate,
         outlet.continuous_control_type,
@@ -658,8 +660,10 @@ function formulate_flow!(
             continue
         end
 
-        if continuous_control_type == ContinuousControlType.None
-            flow_rate = flow_rate_itp(t)
+        flow_rate = if continuous_control_type == ContinuousControlType.None
+            flow_rate_itp(t)
+        else
+            flow_rate_from_cache
         end
 
         inflow_id = inflow_link.link[1]
