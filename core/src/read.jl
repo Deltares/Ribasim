@@ -1795,59 +1795,77 @@ function Parameters(db::DB, config::Config)::Parameters
     end
 
     basin = Basin(db, config, graph)
-
-    linear_resistance = LinearResistance(db, config, graph)
-    manning_resistance = ManningResistance(db, config, graph, basin)
-    tabulated_rating_curve = TabulatedRatingCurve(db, config, graph)
-    level_boundary = LevelBoundary(db, config)
-    flow_boundary = FlowBoundary(db, config, graph)
-    pump = Pump(db, config, graph)
-    outlet = Outlet(db, config, graph)
-    terminal = Terminal(db, config)
-    discrete_control = DiscreteControl(db, config, graph)
-    continuous_control = ContinuousControl(db, config, graph)
-    pid_control = PidControl(db, config, graph)
-    user_demand = UserDemand(db, config, graph)
-    level_demand = LevelDemand(db, config)
-    flow_demand = FlowDemand(db, config)
+    nodes = (;
+        basin,
+        linear_resistance = LinearResistance(db, config, graph),
+        manning_resistance = ManningResistance(db, config, graph, basin),
+        tabulated_rating_curve = TabulatedRatingCurve(db, config, graph),
+        level_boundary = LevelBoundary(db, config),
+        flow_boundary = FlowBoundary(db, config, graph),
+        pump = Pump(db, config, graph),
+        outlet = Outlet(db, config, graph),
+        terminal = Terminal(db, config),
+        discrete_control = DiscreteControl(db, config, graph),
+        continuous_control = ContinuousControl(db, config, graph),
+        pid_control = PidControl(db, config, graph),
+        user_demand = UserDemand(db, config, graph),
+        level_demand = LevelDemand(db, config),
+        flow_demand = FlowDemand(db, config),
+    )
 
     subgrid = Subgrid(db, config, basin)
 
     u_ids = state_node_ids((;
-        tabulated_rating_curve,
-        pump,
-        outlet,
-        user_demand,
-        linear_resistance,
-        manning_resistance,
-        basin,
-        pid_control,
+        nodes.tabulated_rating_curve,
+        nodes.pump,
+        nodes.outlet,
+        nodes.user_demand,
+        nodes.linear_resistance,
+        nodes.manning_resistance,
+        nodes.basin,
+        nodes.pid_control,
     ))
+    connector_nodes = (;
+        nodes.tabulated_rating_curve,
+        nodes.pump,
+        nodes.outlet,
+        nodes.linear_resistance,
+        nodes.manning_resistance,
+        nodes.user_demand,
+    )
     node_id = reduce(vcat, u_ids)
+    n_states = length(node_id)
+    state_ranges = StateRanges(u_ids)
+    flow_to_storage = build_flow_to_storage(state_ranges, n_states, basin, connector_nodes)
+    state_inflow_link, state_outflow_link = get_state_flow_links(graph, nodes)
 
     p = Parameters(;
         config.starttime,
         graph,
         allocation,
         basin,
-        linear_resistance,
-        manning_resistance,
-        tabulated_rating_curve,
-        level_boundary,
-        flow_boundary,
-        pump,
-        outlet,
-        terminal,
-        discrete_control,
-        continuous_control,
-        pid_control,
-        user_demand,
-        level_demand,
-        flow_demand,
+        nodes.linear_resistance,
+        nodes.manning_resistance,
+        nodes.tabulated_rating_curve,
+        nodes.level_boundary,
+        nodes.flow_boundary,
+        nodes.pump,
+        nodes.outlet,
+        nodes.terminal,
+        nodes.discrete_control,
+        nodes.continuous_control,
+        nodes.pid_control,
+        nodes.user_demand,
+        nodes.level_demand,
+        nodes.flow_demand,
         subgrid,
+        state_inflow_link,
+        state_outflow_link,
+        flow_to_storage,
         config.solver.water_balance_abstol,
         config.solver.water_balance_reltol,
         node_id,
+        state_ranges,
     )
 
     collect_control_mappings!(p)

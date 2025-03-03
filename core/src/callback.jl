@@ -7,7 +7,7 @@ Returns the CallbackSet and the SavedValues for flow.
 function create_callbacks(
     parameters::Parameters,
     config::Config,
-    u0::ComponentVector,
+    u0::Vector,
     saveat,
 )::Tuple{CallbackSet, SavedResults}
     (; starttime, basin, flow_boundary, level_boundary, user_demand) = parameters
@@ -64,7 +64,7 @@ function create_callbacks(
     saveat = saveat isa Vector ? filter(x -> x != 0.0, saveat) : saveat
 
     # save the flows averaged over the saveat intervals
-    saved_flow = SavedValues(Float64, SavedFlow{typeof(u0)})
+    saved_flow = SavedValues(Float64, SavedFlow)
     save_flow_cb = SavingCallback(save_flow, saved_flow; saveat, save_start = false)
     push!(callbacks, save_flow_cb)
 
@@ -176,10 +176,15 @@ end
 
 function update_concentrations!(u, t, integrator)::Nothing
     (; uprev, p, tprev, dt) = integrator
-    (; basin, flow_boundary) = p
+    (; basin, flow_boundary, state_ranges) = p
     (; vertical_flux, concentration_data) = basin
     (; evaporate_mass, cumulative_in, concentration_state, concentration, mass) =
         concentration_data
+
+    u_evaporation = view(u, state_ranges.evaporation)
+    u_infiltration = view(u, state_ranges.infiltration)
+    uprev_evaporation = view(uprev, state_ranges.evaporation)
+    uprev_infiltration = view(uprev, state_ranges.infiltration)
 
     # Reset cumulative flows, used to calculate the concentration
     # of the basins after processing inflows only
@@ -223,9 +228,9 @@ function update_concentrations!(u, t, integrator)::Nothing
 
     # Evaporate mass to keep the mass balance, if enabled in model config
     if evaporate_mass
-        mass .-= concentration_state .* (u.evaporation - uprev.evaporation)
+        mass .-= concentration_state .* (u_evaporation - uprev_evaporation)
     end
-    mass .-= concentration_state .* (u.infiltration - uprev.infiltration)
+    mass .-= concentration_state .* (u_infiltration - uprev_infiltration)
 
     # Take care of infinitely small masses, possibly becoming negative due to truncation.
     for I in eachindex(basin.concentration_data.mass)
@@ -246,9 +251,9 @@ function update_concentrations!(u, t, integrator)::Nothing
     end
 
     # Update the Basin concentrations again based on the removed mass
-    concentration_state .= mass ./ basin.current_properties.current_storage[parent(u)]
-    basin.storage_prev .= basin.current_properties.current_storage[parent(u)]
-    basin.level_prev .= basin.current_properties.current_level[parent(u)]
+    concentration_state .= mass ./ basin.current_properties.current_storage[u]
+    basin.storage_prev .= basin.current_properties.current_storage[u]
+    basin.level_prev .= basin.current_properties.current_level[u]
     return nothing
 end
 
@@ -262,16 +267,22 @@ function flow_update_on_link(
     link_src::Tuple{NodeID, NodeID},
 )::Float64
     (; u, uprev, p, t, tprev, dt) = integrator
-    (; basin, flow_boundary) = p
+    (; basin, flow_boundary, state_ranges) = p
     (; vertical_flux) = basin
+
+    u_evaporation = view(u, state_ranges.evaporation)
+    u_infiltration = view(u, state_ranges.infiltration)
+    uprev_evaporation = view(uprev, state_ranges.evaporation)
+    uprev_infiltration = view(uprev, state_ranges.infiltration)
+
     from_id, to_id = link_src
     if from_id == to_id
         @assert from_id.type == to_id.type == NodeType.Basin
         idx = from_id.idx
         fixed_area = basin_areas(basin, idx)[end]
         (fixed_area * vertical_flux.precipitation[idx] + vertical_flux.drainage[idx]) * dt -
-        (u.evaporation[idx] - uprev.evaporation[idx]) -
-        (u.infiltration[idx] - uprev.infiltration[idx])
+        (u_evaporation[idx] - uprev_evaporation[idx]) -
+        (u_infiltration[idx] - uprev_infiltration[idx])
     elseif from_id.type == NodeType.FlowBoundary
         if flow_boundary.active[from_id.idx]
             integral(flow_boundary.flow_rate[from_id.idx], tprev, t)
@@ -279,7 +290,7 @@ function flow_update_on_link(
             0.0
         end
     else
-        flow_idx = get_state_index(u, link_src)
+        flow_idx = get_state_index(p.state_ranges, link_src)
         u[flow_idx] - uprev[flow_idx]
     end
 end
@@ -291,8 +302,8 @@ function save_basin_state(u, t, integrator)
     (; p) = integrator
     (; basin) = p
     du = get_du(integrator)
-    current_storage = basin.current_properties.current_storage[parent(du)]
-    current_level = basin.current_properties.current_level[parent(du)]
+    current_storage = basin.current_properties.current_storage[du]
+    current_level = basin.current_properties.current_level[du]
     water_balance!(du, u, p, t)
     SavedBasinState(; storage = copy(current_storage), level = copy(current_level), t)
 end
@@ -376,13 +387,16 @@ function check_water_balance_error!(
     Δt::Float64,
 )::Nothing
     (; u, p, t) = integrator
-    (; basin, water_balance_abstol, water_balance_reltol) = p
+    (; basin, water_balance_abstol, water_balance_reltol, state_ranges) = p
     errors = false
-    current_storage = basin.current_properties.current_storage[parent(u)]
+    current_storage = basin.current_properties.current_storage[u]
 
     # The initial storage is irrelevant for the storage rate and can only cause
     # floating point truncation errors
     formulate_storages!(current_storage, u, u, p, t; add_initial_storage = false)
+
+    evaporation = view(saved_flow.flow, state_ranges.evaporation)
+    infiltration = view(saved_flow.flow, state_ranges.infiltration)
 
     for (
         inflow_rate,
@@ -399,8 +413,8 @@ function check_water_balance_error!(
         saved_flow.outflow,
         saved_flow.precipitation,
         saved_flow.drainage,
-        saved_flow.flow.evaporation,
-        saved_flow.flow.infiltration,
+        evaporation,
+        infiltration,
         current_storage,
         basin.Δstorage_prev_saveat,
         basin.node_id,
@@ -448,7 +462,7 @@ function check_negative_storage(u, t, integrator)::Nothing
     (; current_storage) = current_properties
     du = get_du(integrator)
     set_current_basin_properties!(du, u, integrator.p, t)
-    current_storage = current_storage[parent(du)]
+    current_storage = current_storage[du]
 
     errors = false
     for id in node_id
@@ -649,7 +663,7 @@ end
 function update_subgrid_level!(integrator)::Nothing
     (; p, t) = integrator
     du = get_du(integrator)
-    basin_level = p.basin.current_properties.current_level[parent(du)]
+    basin_level = p.basin.current_properties.current_level[du]
     subgrid = integrator.p.subgrid
 
     # First update the all the subgrids with static h(h) relations
@@ -775,7 +789,7 @@ function update_allocation!(integrator)::Nothing
 
     # Make sure current storages are up to date
     du = get_du(integrator)
-    current_storage = current_storage[parent(du)]
+    current_storage = current_storage[du]
     formulate_storages!(current_storage, du, u, p, t)
 
     # Don't run the allocation algorithm if allocation is not active

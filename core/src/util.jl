@@ -274,7 +274,7 @@ function Base.getindex(fv::FlatVector, i::Int)
 end
 
 "Construct a FlatVector from one of the fields of SavedFlow."
-function FlatVector(saveval::Vector{<:SavedFlow}, sym::Symbol)
+function FlatVector(saveval::Vector{SavedFlow}, sym::Symbol)
     v = isempty(saveval) ? Vector{Float64}[] : getfield.(saveval, sym)
     FlatVector(v)
 end
@@ -573,11 +573,11 @@ function get_variable_ref(
         if listen
             if node_id.type ∉ conservative_nodetypes
                 errors = true
-                @error "Cannot listen to flow_rate of $node_id, the node type must be one of $conservative_node_types"
+                @error "Cannot listen to flow_rate of $node_id, the node type must be one of $conservative_node_types."
                 Ref(Float64[], 0)
             else
                 # Index in the state vector (inflow)
-                flow_idx = get_state_index(node_id, u)
+                flow_idx = get_state_index(p.state_ranges, node_id)
                 PreallocationRef(cache(1), flow_idx; from_du = true)
             end
         else
@@ -694,7 +694,7 @@ function add_control_state!(
     control_state,
     node_id,
 )::Nothing
-    control_state_key = coalesce(control_state, "")
+    ismissing(control_state) && return nothing
 
     # Control state is only added if a control state update can be defined
     add_control_state = false
@@ -795,7 +795,7 @@ reduction_factor(x::GradientTracer, threshold::Real) = x
 low_storage_factor_resistance_node(storage, q::GradientTracer, inflow_id, outflow_id) = q
 relaxed_root(x::GradientTracer, threshold::Real) = x
 get_level_from_storage(basin::Basin, state_idx::Int, storage::GradientTracer) = storage
-stop_declining_negative_storage!(du, u::ComponentVector{<:GradientTracer}) = nothing
+stop_declining_negative_storage!(du, u::Vector{<:GradientTracer}) = nothing
 
 @kwdef struct MonitoredBackTracking{B, V}
     linesearch::B = BackTracking()
@@ -882,47 +882,32 @@ function build_state_vector(p::Parameters)
     # It is assumed that the horizontal flow states come first in
     # p.state_inflow_link and p.state_outflow_link
     u_ids = state_node_ids(p)
-    u = ComponentVector{Float64}(;
-        tabulated_rating_curve = zeros(length(u_ids.tabulated_rating_curve)),
-        pump = zeros(length(u_ids.pump)),
-        outlet = zeros(length(u_ids.outlet)),
-        user_demand_inflow = zeros(length(u_ids.user_demand_inflow)),
-        user_demand_outflow = zeros(length(u_ids.user_demand_outflow)),
-        linear_resistance = zeros(length(u_ids.linear_resistance)),
-        manning_resistance = zeros(length(u_ids.manning_resistance)),
-        evaporation = zeros(length(u_ids.evaporation)),
-        infiltration = zeros(length(u_ids.infiltration)),
-        integral = zeros(length(u_ids.integral)),
-    )
-    # Ensure p.node_id and u have the same length and order
-    @assert length(u) == length(p.node_id)
-    @assert keys(u) == keys(u_ids)
+    state_ranges = p.state_ranges
+    u = zeros(length(p.node_id))
+    # Ensure p.node_id, p.state_ranges and u have the same length and order
+    ranges = (getproperty(state_ranges, x) for x in propertynames(state_ranges))
+    @assert length(u) == length(p.node_id) == mapreduce(length, +, ranges)
+    @assert keys(u_ids) == fieldnames(StateRanges)
     return u
 end
 
-function build_flow_to_storage(p::Parameters, u::ComponentVector)::Parameters
-    n_basins = length(p.basin.node_id)
-    n_states = length(u)
-    flow_to_storage = ComponentArray(
-        spzeros(n_basins, n_states),
-        (Axis(; basins = 1:n_basins), only(getaxes(u))),
-    )
+function build_flow_to_storage(
+    state_ranges::StateRanges,
+    n_states::Int,
+    basin::Basin,
+    connector_nodes::NamedTuple,
+)::SparseMatrixCSC{Float64, Int}
+    (; user_demand_inflow, user_demand_outflow, evaporation, infiltration) = state_ranges
+    n_basins = length(basin.node_id)
+    flow_to_storage = spzeros(n_basins, n_states)
 
-    for node_name in (
-        :tabulated_rating_curve,
-        :pump,
-        :outlet,
-        :linear_resistance,
-        :manning_resistance,
-        :user_demand,
-    )
-        node = getfield(p, node_name)
-
+    for (node_name, node) in pairs(connector_nodes)
         if node_name == :user_demand
-            flow_to_storage_node_inflow = view(flow_to_storage, :, :user_demand_inflow)
-            flow_to_storage_node_outflow = view(flow_to_storage, :, :user_demand_outflow)
+            flow_to_storage_node_inflow = view(flow_to_storage, :, user_demand_inflow)
+            flow_to_storage_node_outflow = view(flow_to_storage, :, user_demand_outflow)
         else
-            flow_to_storage_node_inflow = view(flow_to_storage, :, node_name)
+            state_range = getproperty(state_ranges, node_name)
+            flow_to_storage_node_inflow = view(flow_to_storage, :, state_range)
             flow_to_storage_node_outflow = flow_to_storage_node_inflow
         end
 
@@ -939,15 +924,15 @@ function build_flow_to_storage(p::Parameters, u::ComponentVector)::Parameters
         end
     end
 
-    flow_to_storage_evaporation = view(flow_to_storage, :, :evaporation)
-    flow_to_storage_infiltration = view(flow_to_storage, :, :infiltration)
+    flow_to_storage_evaporation = view(flow_to_storage, :, evaporation)
+    flow_to_storage_infiltration = view(flow_to_storage, :, infiltration)
 
     for i in 1:n_basins
         flow_to_storage_evaporation[i, i] = -1.0
         flow_to_storage_infiltration[i, i] = -1.0
     end
 
-    @set p.flow_to_storage = parent(flow_to_storage)
+    return flow_to_storage
 end
 
 """
@@ -955,25 +940,23 @@ Create vectors state_inflow_link and state_outflow_link which give for each stat
 in the state vector in order the metadata of the link that is associated with that state.
 Only for horizontal flows, which are assumed to come first in the state vector.
 """
-function set_state_flow_links(p::Parameters, u0::ComponentVector)::Parameters
-    (; user_demand, graph) = p
-
-    components = Symbol[]
-    state_inflow_links = Vector{LinkMetadata}[]
-    state_outflow_links = Vector{LinkMetadata}[]
+function get_state_flow_links(
+    graph::MetaGraph,
+    nodes::NamedTuple,
+)::Tuple{Vector{LinkMetadata}, Vector{LinkMetadata}}
+    (; user_demand) = nodes
+    state_inflow_link = LinkMetadata[]
+    state_outflow_link = LinkMetadata[]
 
     placeholder_link =
         LinkMetadata(0, LinkType.flow, (NodeID(:Terminal, 0, 0), NodeID(:Terminal, 0, 0)))
 
-    for node_name in keys(u0)
-        if hasfield(Parameters, node_name)
-            node::AbstractParameterNode = getfield(p, node_name)
-            push!(components, node_name)
-            state_inflow_links_component = LinkMetadata[]
-            state_outflow_links_component = LinkMetadata[]
+    for node_name in fieldnames(StateRanges)
+        if hasproperty(nodes, node_name)
+            node::AbstractParameterNode = getproperty(nodes, node_name)
             for id in node.node_id
-                inflow_ids_ = collect(inflow_ids(p.graph, id))
-                outflow_ids_ = collect(outflow_ids(p.graph, id))
+                inflow_ids_ = collect(inflow_ids(graph, id))
+                outflow_ids_ = collect(outflow_ids(graph, id))
 
                 inflow_link = if length(inflow_ids_) == 0
                     placeholder_link
@@ -983,7 +966,7 @@ function set_state_flow_links(p::Parameters, u0::ComponentVector)::Parameters
                 else
                     error("Multiple inflows not supported")
                 end
-                push!(state_inflow_links_component, inflow_link)
+                push!(state_inflow_link, inflow_link)
 
                 outflow_link = if length(outflow_ids_) == 0
                     placeholder_link
@@ -993,52 +976,51 @@ function set_state_flow_links(p::Parameters, u0::ComponentVector)::Parameters
                 else
                     error("Multiple outflows not supported")
                 end
-                push!(state_outflow_links_component, outflow_link)
+                push!(state_outflow_link, outflow_link)
             end
-            push!(state_inflow_links, state_inflow_links_component)
-            push!(state_outflow_links, state_outflow_links_component)
         elseif startswith(String(node_name), "user_demand")
-            push!(components, node_name)
             placeholder_links = fill(placeholder_link, length(user_demand.node_id))
             if node_name == :user_demand_inflow
-                push!(state_inflow_links, user_demand.inflow_link)
-                push!(state_outflow_links, placeholder_links)
+                append!(state_inflow_link, user_demand.inflow_link)
+                append!(state_outflow_link, placeholder_links)
             elseif node_name == :user_demand_outflow
-                push!(state_inflow_links, placeholder_links)
-                push!(state_outflow_links, user_demand.outflow_link)
+                append!(state_inflow_link, placeholder_links)
+                append!(state_outflow_link, user_demand.outflow_link)
             end
         end
     end
 
-    state_inflow_link = ComponentVector(NamedTuple(zip(components, state_inflow_links)))
-    state_outflow_link = ComponentVector(NamedTuple(zip(components, state_outflow_links)))
-
-    @reset p.state_inflow_link = state_inflow_link
-    @reset p.state_outflow_link = state_outflow_link
-    return p
+    return state_inflow_link, state_outflow_link
 end
 
+"""
+Get the index of the state vector corresponding to the given NodeID.
+Use the inflow Boolean argument to disambiguite for node types that have multiple states.
+Can return nothing for node types that do not have a state, like Terminal.
+"""
 function get_state_index(
-    id::NodeID,
-    ::ComponentVector{A, B, <:Tuple{<:Axis{NT}}};
+    state_ranges::StateRanges,
+    id::NodeID;
     inflow::Bool = true,
-) where {A, B, NT}
+)::Union{Int, Nothing}
     component_name = if id.type == NodeType.UserDemand
         inflow ? :user_demand_inflow : :user_demand_outflow
     else
         snake_case(id)
     end
-    for (comp, range) in pairs(NT)
-        if comp == component_name
-            return range[id.idx]
-        end
+
+    if hasproperty(state_ranges, component_name)
+        state_range = getproperty(state_ranges, component_name)
+        return state_range[id.idx]
+    else
+        return nothing
     end
-    return nothing
 end
 
-function get_state_index(u::ComponentVector, link::Tuple{NodeID, NodeID})::Int
-    idx = get_state_index(link[2], u)
-    isnothing(idx) ? get_state_index(link[1], u; inflow = false) : idx
+"Get the state index of the to-node of the link if it exists, otherwise the from-node."
+function get_state_index(state_ranges::StateRanges, link::Tuple{NodeID, NodeID})::Int
+    idx = get_state_index(state_ranges, link[2])
+    isnothing(idx) ? get_state_index(state_ranges, link[1]; inflow = false) : idx
 end
 
 """
@@ -1046,7 +1028,7 @@ Check whether any storages are negative given the state u.
 """
 function isoutofdomain(u, p, t)
     (; current_storage) = p.basin.current_properties
-    current_storage = current_storage[parent(u)]
+    current_storage = current_storage[u]
     formulate_storages!(current_storage, u, u, p, t)
     any(<(0), current_storage)
 end
