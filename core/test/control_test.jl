@@ -10,7 +10,7 @@
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     p = model.integrator.p
-    (; discrete_control, graph) = p
+    (; discrete_control, graph, state_ranges) = p
 
     # Control input(flow rates)
     pump_control_mapping = p.pump.control_mapping
@@ -62,8 +62,11 @@
     @test level[2, t_2_index] >=
           discrete_control.compound_variables[1][2].greater_than[1](0)
 
-    flow = get_du(model.integrator)[(:linear_resistance, :pump)]
-    @test all(iszero, flow)
+    du = get_du(model.integrator)
+    du_linear_resistance = view(du, state_ranges.linear_resistance)
+    du_pump = view(du, state_ranges.pump)
+    @test all(iszero, du_linear_resistance)
+    @test all(iszero, du_pump)
 end
 
 @testitem "Flow condition control" begin

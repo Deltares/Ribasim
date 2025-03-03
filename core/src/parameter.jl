@@ -357,8 +357,8 @@ In-memory storage of saved mean flows for writing to results.
 - `relative_error`: The relative water balance error
 - `t`: Endtime of the interval over which is averaged
 """
-@kwdef struct SavedFlow{V}
-    flow::V
+@kwdef struct SavedFlow
+    flow::Vector{Float64}
     inflow::Vector{Float64}
     outflow::Vector{Float64}
     flow_boundary::Vector{Float64}
@@ -781,11 +781,10 @@ struct PreallocationRef
     end
 end
 
-get_value(ref::PreallocationRef, du) =
-    ref.from_du ? du[ref.idx] : ref.vector[parent(du)][ref.idx]
+get_value(ref::PreallocationRef, du) = ref.from_du ? du[ref.idx] : ref.vector[du][ref.idx]
 
 function set_value!(ref::PreallocationRef, value, du)::Nothing
-    ref.vector[parent(du)][ref.idx] = value
+    ref.vector[du][ref.idx] = value
     return nothing
 end
 
@@ -996,7 +995,37 @@ const ModelGraph = MetaGraph{
     Float64,
 }
 
-@kwdef mutable struct Parameters{C3, C4, C6, C7, C8, C9, C10, C11}
+"""
+Collection of ranges that cover all the components of the state vector `u`."
+
+It is used to create views of `u`, and an low-latency alternative to making `u` a ComponentArray.
+"""
+@kwdef struct StateRanges
+    tabulated_rating_curve::UnitRange{Int64} = 1:0
+    pump::UnitRange{Int64} = 1:0
+    outlet::UnitRange{Int64} = 1:0
+    user_demand_inflow::UnitRange{Int64} = 1:0
+    user_demand_outflow::UnitRange{Int64} = 1:0
+    linear_resistance::UnitRange{Int64} = 1:0
+    manning_resistance::UnitRange{Int64} = 1:0
+    evaporation::UnitRange{Int64} = 1:0
+    infiltration::UnitRange{Int64} = 1:0
+    integral::UnitRange{Int64} = 1:0
+end
+
+function StateRanges(u_ids::NamedTuple)::StateRanges
+    lengths = map(length, u_ids)
+    # from the lengths of the components
+    # construct [1:n_pump, (n_pump+1):(n_pump+n_outlet)]
+    # which are used to create views into the data array
+    bounds = pushfirst!(cumsum(lengths), 0)
+    ranges = [range(p[1] + 1, p[2]) for p in IterTools.partition(bounds, 2, 1)]
+    # standardize empty ranges to 1:0 for easier testing
+    replace!(x -> isempty(x) ? (1:0) : x, ranges)
+    return StateRanges(ranges...)
+end
+
+@kwdef mutable struct Parameters{C3, C4, C6, C7, C8}
     const starttime::DateTime
     const graph::ModelGraph
     const allocation::Allocation
@@ -1017,8 +1046,8 @@ const ModelGraph = MetaGraph{
     const flow_demand::FlowDemand
     const subgrid::Subgrid
     # Per state the in- and outflow links associated with that state (if they exist)
-    const state_inflow_link::C9 = ComponentVector()
-    const state_outflow_link::C10 = ComponentVector()
+    const state_inflow_link::Vector{LinkMetadata} = LinkMetadata[]
+    const state_outflow_link::Vector{LinkMetadata} = LinkMetadata[]
     all_nodes_active::Bool = false
     tprev::Float64 = 0.0
     # Sparse matrix for combining flows into storages
@@ -1027,9 +1056,11 @@ const ModelGraph = MetaGraph{
     const water_balance_abstol::Float64
     const water_balance_reltol::Float64
     # State at previous saveat
-    const u_prev_saveat::C11 = ComponentVector()
+    const u_prev_saveat::Vector{Float64} = Float64[]
     # Node ID associated with each state
     const node_id::Vector{NodeID} = NodeID[]
+    # Range per states component
+    const state_ranges::StateRanges = StateRanges()
 end
 
 # To opt-out of type checking for ForwardDiff

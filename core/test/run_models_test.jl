@@ -4,7 +4,7 @@
     using Tables.DataAPI: nrow
     using Dates: DateTime
     import Arrow
-    using Ribasim: get_tstops, tsaves
+    using Ribasim: get_tstops, tsaves, StateRanges
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/trivial/ribasim.toml")
     @test ispath(toml_path)
@@ -21,6 +21,10 @@
     @test model isa Ribasim.Model
     @test successful_retcode(model)
     (; p) = model.integrator
+
+    @test p.node_id == [0, 6, 6]
+    @test p.state_ranges ==
+          StateRanges(; tabulated_rating_curve = 1:1, evaporation = 2:2, infiltration = 3:3)
 
     @test !ispath(control_path)
 
@@ -129,13 +133,15 @@ end
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
-    (; basin) = model.integrator.p
+    (; basin, state_ranges) = model.integrator.p
     @test basin.current_properties.current_storage[Float64[]] ≈ [1000]
     @test basin.vertical_flux.precipitation == [0.0]
     @test basin.vertical_flux.drainage == [0.0]
     du = get_du(model.integrator)
-    @test du.evaporation == [0.0]
-    @test du.infiltration == [0.0]
+    du_evaporation = view(du, state_ranges.evaporation)
+    du_infiltration = view(du, state_ranges.infiltration)
+    @test du_evaporation == [0.0]
+    @test du_infiltration == [0.0]
     @test successful_retcode(model)
 end
 
@@ -153,11 +159,11 @@ end
     du = get_du(integrator)
     (; u, p, t) = integrator
     Ribasim.water_balance!(du, u, p, t)
-    stor = integrator.p.basin.current_properties.current_storage[parent(du)]
+    stor = integrator.p.basin.current_properties.current_storage[du]
     prec = p.basin.vertical_flux.precipitation
-    evap = du.evaporation
+    evap = view(du, p.state_ranges.evaporation)
     drng = p.basin.vertical_flux.drainage
-    infl = du.infiltration
+    infl = view(du, p.state_ranges.infiltration)
     # The dynamic data has missings, but these are not set.
     @test prec == [0.0]
     @test evap == [0.0]
@@ -205,6 +211,7 @@ end
     @test p isa Ribasim.Parameters
     @test isconcretetype(typeof(p))
     @test all(isconcretetype, fieldtypes(typeof(p)))
+    @test p.node_id == [4, 5, 8, 7, 10, 12, 2, 1, 3, 6, 9, 1, 3, 6, 9]
 
     @test alg isa QNDF
     @test alg.step_limiter! == Ribasim.limit_flow!
@@ -253,7 +260,7 @@ end
     du = get_du(model.integrator)
     precipitation = model.integrator.p.basin.vertical_flux.precipitation
     @test length(precipitation) == 4
-    @test model.integrator.p.basin.current_properties.current_storage[parent(du)] ≈
+    @test model.integrator.p.basin.current_properties.current_storage[du] ≈
           Float32[721.17656, 695.8066, 416.66188, 1334.4879] atol = 2.0 skip = Sys.isapple()
 end
 
@@ -469,7 +476,7 @@ end
 
     du = get_du(model.integrator)
     (; p, t) = model.integrator
-    h_actual = p.basin.current_properties.current_level[parent(du)][1:50]
+    h_actual = p.basin.current_properties.current_level[du][1:50]
     x = collect(10.0:20.0:990.0)
     h_expected = standard_step_method(x, 5.0, 1.0, 0.04, h_actual[end], 1.0e-6)
 
