@@ -14,14 +14,16 @@ open class GenerateCache(platformOs: String) : Template() {
             cleanCheckout = true
         }
 
-        buildCache {
-            id = "Ribasim${platformOs}Cache"
-            name = "Ribasim ${platformOs} Cache"
-            use = false
-            rules = """
-                %teamcity.agent.home.dir%/.julia
-                %teamcity.agent.home.dir%/.pixi
-            """.trimIndent()
+        features {
+            buildCache {
+                id = "Ribasim${platformOs}Cache"
+                name = "Ribasim ${platformOs} Cache"
+                use = false
+                rules = """
+                    %teamcity.agent.home.dir%/.julia
+                    %teamcity.agent.home.dir%/.pixi
+                """.trimIndent()
+            }
         }
 
         steps {
