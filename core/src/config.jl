@@ -189,23 +189,28 @@ function Config(config_path::AbstractString; kwargs...)::Config
     Config(toml, dir)
 end
 
-Base.getproperty(config::Config, sym::Symbol) = getproperty(getfield(config, :toml), sym)
-
-Base.dirname(config::Config) = getfield(config, :dir)
+function Base.getproperty(config::Config, sym::Symbol)
+    if sym === :dir
+        return getfield(config, :toml)
+    else
+        toml = getfield(config, :toml)
+        return getproperty(toml, sym)
+    end
+end
 
 "Construct a path relative to both the TOML directory and the optional `input_dir`"
 function input_path(config::Config, path::String)
-    return normpath(dirname(config), config.input_dir, path)
+    return normpath(config.dir, config.input_dir, path)
 end
 
 "Construct the database path relative to both the TOML directory and the optional `input_dir`"
 function database_path(config::Config)
-    return normpath(dirname(config), config.input_dir, "database.gpkg")
+    return normpath(config.dir, config.input_dir, "database.gpkg")
 end
 
 "Construct a path relative to both the TOML directory and the optional `results_dir`"
 function results_path(config::Config, path::String)
-    return normpath(dirname(config), config.results_dir, path)
+    return normpath(config.dir, config.results_dir, path)
 end
 
 function Configurations.from_dict(::Type{Logging}, ::Type{LogLevel}, level::AbstractString)
