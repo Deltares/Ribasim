@@ -26,12 +26,14 @@ open class GenerateCache(platformOs: String) : Template() {
             }
         }
 
+        val header = generateTestBinariesHeader(platformOs)
         steps {
             script {
                 name = "Set up pixi"
                 id = "Set_up_pixi"
                 workingDir = "ribasim"
-                scriptContent = """
+                scriptContent =  header +
+                """
                 pixi --version
                 pixi run install-ci
                 pixi run instantiate-julia
