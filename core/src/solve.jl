@@ -30,7 +30,7 @@ function water_balance!(
     update_vertical_flux!(basin, du)
 
     # Formulate intermediate flows (non continuously controlled)
-    formulate_flows!(du, p, t, current_storage, current_low_storage_factor, current_level)
+    formulate_flows!(du, p, t, current_low_storage_factor, current_level)
 
     # Compute continuous control
     formulate_continuous_control!(du, p, t)
@@ -40,7 +40,6 @@ function water_balance!(
         du,
         p,
         t,
-        current_storage,
         current_low_storage_factor,
         current_level;
         continuous_control_type = ContinuousControlType.Continuous,
@@ -54,7 +53,6 @@ function water_balance!(
         du,
         p,
         t,
-        current_storage,
         current_low_storage_factor,
         current_level;
         continuous_control_type = ContinuousControlType.PID,
@@ -572,6 +570,7 @@ function formulate_flow!(
         outflow_link,
         active,
         flow_rate,
+        flow_rate_itp,
         min_flow_rate,
         max_flow_rate,
         min_upstream_level,
@@ -583,6 +582,7 @@ function formulate_flow!(
         pump.outflow_link,
         pump.active,
         pump.flow_rate[parent(du)],
+        pump.flow_rate_itp,
         pump.min_flow_rate,
         pump.max_flow_rate,
         pump.min_upstream_level,
@@ -592,6 +592,10 @@ function formulate_flow!(
         if !(active || all_nodes_active) ||
            (continuous_control_type != continuous_control_type_)
             continue
+        end
+
+        if continuous_control_type == ContinuousControlType.None
+            flow_rate = flow_rate_itp(t)
         end
 
         inflow_id = inflow_link.link[1]
@@ -627,6 +631,7 @@ function formulate_flow!(
         outflow_link,
         active,
         flow_rate,
+        flow_rate_itp,
         min_flow_rate,
         max_flow_rate,
         continuous_control_type,
@@ -638,6 +643,7 @@ function formulate_flow!(
         outlet.outflow_link,
         outlet.active,
         outlet.flow_rate[parent(du)],
+        outlet_flow_rate_itp,
         outlet.min_flow_rate,
         outlet.max_flow_rate,
         outlet.continuous_control_type,
@@ -647,6 +653,10 @@ function formulate_flow!(
         if !(active || all_nodes_active) ||
            (continuous_control_type != continuous_control_type_)
             continue
+        end
+
+        if continuous_control_type == ContinuousControlType.None
+            flow_rate = flow_rate_itp(t)
         end
 
         inflow_id = inflow_link.link[1]
@@ -673,7 +683,6 @@ function formulate_flows!(
     du::AbstractVector,
     p::Parameters,
     t::Number,
-    current_storage::Vector,
     current_low_storage_factor::Vector,
     current_level::Vector;
     continuous_control_type::ContinuousControlType.T = ContinuousControlType.None,

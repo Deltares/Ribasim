@@ -726,9 +726,10 @@ function Pump(db::DB, config::Config, graph::MetaGraph)::Pump
 
     (; node_id) = parsed_parameters
 
-    # If flow rate is set by PID control, it is part of the AD Jacobian computations
+    # If flow rate is set by PID or Continuous control, it is part of the AD Jacobian computations
     flow_rate = cache(length(node_id))
-    flow_rate[Float64[]] .= parsed_parameters.flow_rate
+    flow_rate[Float64[]] .= [itp(0) for itp in parsed_parameters.flow_rate]
+    @show parsed_parameters.control_mapping
 
     return Pump(;
         node_id,
@@ -736,6 +737,7 @@ function Pump(db::DB, config::Config, graph::MetaGraph)::Pump
         outflow_link = outflow_link.(Ref(graph), node_id),
         parsed_parameters.active,
         flow_rate,
+        flow_rate_itp = parsed_parameters.flow_rate,
         parsed_parameters.min_flow_rate,
         parsed_parameters.max_flow_rate,
         parsed_parameters.min_upstream_level,
@@ -785,7 +787,7 @@ function Outlet(db::DB, config::Config, graph::MetaGraph)::Outlet
 
     # If flow rate is set by PID control, it is part of the AD Jacobian computations
     flow_rate = cache(length(node_id))
-    flow_rate[Float64[], length(node_id)] .= parsed_parameters.flow_rate
+    flow_rate[Float64[], length(node_id)] .= [itp(0) for itp in parsed_parameters.flow_rate]
 
     return Outlet(;
         node_id,
@@ -793,6 +795,7 @@ function Outlet(db::DB, config::Config, graph::MetaGraph)::Outlet
         outflow_link = outflow_link.(Ref(graph), node_id),
         parsed_parameters.active,
         flow_rate,
+        flow_rate_itp = parsed_parameters.flow_rate,
         parsed_parameters.min_flow_rate,
         parsed_parameters.max_flow_rate,
         parsed_parameters.control_mapping,
@@ -843,8 +846,6 @@ function ConcentrationData(
         node_id;
         concentration_column = :precipitation,
     )
-
-    t_end = seconds_since(config.endtime, config.starttime)
 
     errors = false
 
