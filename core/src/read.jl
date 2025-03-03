@@ -741,7 +741,6 @@ function Pump(db::DB, config::Config, graph::MetaGraph)::Pump
     # If flow rate is set by PID or Continuous control, it is part of the AD Jacobian computations
     flow_rate = cache(length(node_id))
     flow_rate[Float64[]] .= [itp(0) for itp in parsed_parameters.flow_rate]
-    @show parsed_parameters.control_mapping
 
     return Pump(;
         node_id,

@@ -643,7 +643,7 @@ function formulate_flow!(
         outlet.outflow_link,
         outlet.active,
         outlet.flow_rate[parent(du)],
-        outlet_flow_rate_itp,
+        outlet.flow_rate_itp,
         outlet.min_flow_rate,
         outlet.max_flow_rate,
         outlet.continuous_control_type,
