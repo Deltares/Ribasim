@@ -41,5 +41,5 @@ open class GenerateCache(platformOs: String) : Template() {
     }
 }
 
-object GenerateCacheWindows : TestDelwaqCoupling("Windows")
-object GenerateCacheLinux : TestDelwaqCoupling("Linux")
+object GenerateCacheWindows : GenerateCache("Windows")
+object GenerateCacheLinux : GenerateCache("Linux")
