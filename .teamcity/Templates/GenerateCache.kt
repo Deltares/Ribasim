@@ -20,8 +20,8 @@ open class GenerateCache(platformOs: String) : Template() {
                 name = "Ribasim ${platformOs} Cache"
                 use = false
                 rules = """
-                    %teamcity.agent.home.dir%/.julia
-                    %teamcity.agent.home.dir%/.pixi
+                    %teamcity.agent.jvm.user.home%/.julia
+                    %teamcity.agent.jvm.user.home%/.pixi
                 """.trimIndent()
             }
         }
