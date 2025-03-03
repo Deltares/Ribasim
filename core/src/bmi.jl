@@ -40,16 +40,18 @@ This uses a typeassert to ensure that the return type annotation doesn't create 
 """
 function BMI.get_value_ptr(model::Model, name::String)::Vector{Float64}
     (; u, p) = model.integrator
+    (; infiltration, user_demand_inflow) = p.state_ranges
+
     if name == "basin.storage"
-        p.basin.current_properties.current_storage[parent(u)]::Vector{Float64}
+        p.basin.current_properties.current_storage[u]::Vector{Float64}
     elseif name == "basin.level"
-        p.basin.current_properties.current_level[parent(u)]::Vector{Float64}
+        p.basin.current_properties.current_level[u]::Vector{Float64}
     elseif name == "basin.infiltration"
         p.basin.vertical_flux.infiltration::Vector{Float64}
     elseif name == "basin.drainage"
         p.basin.vertical_flux.drainage::Vector{Float64}
     elseif name == "basin.cumulative_infiltration"
-        unsafe_array(u.infiltration)::Vector{Float64}
+        unsafe_array(view(u, infiltration))::Vector{Float64}
     elseif name == "basin.cumulative_drainage"
         p.basin.cumulative_drainage::Vector{Float64}
     elseif name == "basin.subgrid_level"
@@ -57,7 +59,7 @@ function BMI.get_value_ptr(model::Model, name::String)::Vector{Float64}
     elseif name == "user_demand.demand"
         vec(p.user_demand.demand)::Vector{Float64}
     elseif name == "user_demand.cumulative_inflow"
-        unsafe_array(u.user_demand_inflow)::Vector{Float64}
+        unsafe_array(view(u, user_demand_inflow))::Vector{Float64}
     else
         error("Unknown variable $name")
     end
