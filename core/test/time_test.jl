@@ -111,7 +111,8 @@ end
     using DataFrames: DataFrame
 
     toml_path =
-        raw"C:\Users\konin_bt\Repositories\Deltares\Ribasim\generated_testmodels/transient_pump_outlet/ribasim.toml"
+        normpath(@__DIR__, "../../generated_testmodels/transient_pump_outlet/ribasim.toml")
+    @test ispath(toml_path)
 
     model = Ribasim.run(toml_path)
     storage = Ribasim.get_storages_and_levels(model).storage
