@@ -1383,14 +1383,14 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)::UserDemand
     demand_itp = [
         ScalarInterpolation[
             LinearInterpolation(zeros(2), trivial_timespan; cache_parameters = true) for
-            _ in eachindex(demand_priorities)
-        ] for _ in eachindex(node_ids)
+            _ in demand_priorities
+        ] for _ in node_ids
     ]
     demand_from_timeseries = fill(false, n_user)
     allocated = fill(Inf, n_user, n_demand_priority)
     return_factor = [
         LinearInterpolation(zeros(2), trivial_timespan; cache_parameters = true) for
-        _ in eachindex(node_ids)
+        _ in node_ids
     ]
     min_level = zeros(n_user)
 
