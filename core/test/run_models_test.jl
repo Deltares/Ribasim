@@ -354,7 +354,8 @@ end
         filter([:from_node_id, :to_node_id] => (from, to) -> from == 2 && to == 3, flow)
 
     t_min_upstream_level =
-        level.t[2] * (outlet.min_upstream_level[1] - level.u[1]) / (level.u[2] - level.u[1])
+        level.t[2] * (outlet.min_upstream_level[1](0.0) - level.u[1]) /
+        (level.u[2] - level.u[1])
 
     # No outlet flow when upstream level is below minimum upstream level
     @test all(@. outlet_flow.flow_rate[t <= t_min_upstream_level] == 0)

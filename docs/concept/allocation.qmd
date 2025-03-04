@@ -121,7 +121,7 @@ Each link in the subnetwork has an associated capacity. These capacities are col
 The capacities are determined in different ways:
 
 - If an link does not exist in the allocation network, i.e. $(i,j) \notin E_S$ for certain $1 \le i,j\le n'$, then $(C_S)_{i,j} = 0$;
-- The capacity of the link $e \in E_S$ is given by the smallest `max_flow_rate` of the nodes along the equivalent links in the subnetwork. If there are no nodes with a `max_flow_rate`, the link capacity is infinite;
+- The capacity of the link $e \in E_S$ is given by the smallest `max_flow_rate` of the nodes along the equivalent links in the subnetwork. If there are no nodes with a `max_flow_rate`, the link capacity is infinite. If the `max_flow_rate` is time-dependent, only the value at the starttime of the simulation is considered;
 - If the link is a source, the capacity of the link is given by the flow rate of that source;
 
 There are also capacities for special links:

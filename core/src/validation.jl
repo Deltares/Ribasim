@@ -145,11 +145,13 @@ sort_by(::StructVector{LinearResistanceStaticV1}) = x -> (x.node_id, x.control_s
 sort_by(::StructVector{ManningResistanceStaticV1}) = x -> (x.node_id, x.control_state)
 
 sort_by(::StructVector{OutletStaticV1}) = x -> (x.node_id, x.control_state)
+sort_by(::StructVector{OutletTimeV1}) = x -> (x.node_id, x.time)
 
 sort_by(::StructVector{PidControlStaticV1}) = x -> (x.node_id, x.control_state)
 sort_by(::StructVector{PidControlTimeV1}) = x -> (x.node_id, x.time)
 
 sort_by(::StructVector{PumpStaticV1}) = x -> (x.node_id, x.control_state)
+sort_by(::StructVector{PumpTimeV1}) = x -> (x.node_id, x.time)
 
 sort_by(::StructVector{TabulatedRatingCurveStaticV1}) =
     x -> (x.node_id, x.control_state, x.level)
@@ -285,9 +287,9 @@ function valid_flow_rates(
     for (key, control_state_update) in pairs(control_mapping)
         id_controlled = key[1]
         push!(ids_controlled, id_controlled)
-        flow_rate_update = only(control_state_update.scalar_update)
+        flow_rate_update = only(control_state_update.itp_update)
         @assert flow_rate_update.name == :flow_rate
-        flow_rate_ = flow_rate_update.value
+        flow_rate_ = minimum(flow_rate_update.value.u)
 
         if flow_rate_ < 0.0
             errors = true
@@ -399,9 +401,9 @@ function valid_min_upstream_level!(
         id_in = inflow_id(graph, id)
         if id_in.type == NodeType.Basin
             basin_bottom_level = basin_bottom(basin, id_in)[2]
-            if min_upstream_level == -Inf
-                node.min_upstream_level[id.idx] = basin_bottom_level
-            elseif min_upstream_level < basin_bottom_level
+            if all(==(-Inf), min_upstream_level.u)
+                min_upstream_level.u .= basin_bottom_level
+            elseif minimum(min_upstream_level.u) < basin_bottom_level
                 @error "Minimum upstream level of $id is lower than bottom of upstream $id_in" min_upstream_level basin_bottom_level
                 errors = true
             end

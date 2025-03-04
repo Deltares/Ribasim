@@ -314,7 +314,7 @@ The parameter update associated with a certain control state for discrete contro
 """
 @kwdef struct ControlStateUpdate{T <: AbstractInterpolation}
     active::ParameterUpdate{Bool}
-    scalar_update::Vector{ParameterUpdate{Float64}} = []
+    scalar_update::Vector{ParameterUpdate{Float64}} = ParameterUpdate{Float64}[]
     itp_update::Vector{ParameterUpdate{T}} = ParameterUpdate{ScalarInterpolation}[]
 end
 
@@ -618,7 +618,8 @@ inflow_link: incoming flow link metadata
 outflow_link: outgoing flow link metadata
     The ID of the source node is always the ID of the Pump node
 active: whether this node is active and thus contributes flow
-flow_rate: target flow rate
+flow_rate_cache: target flow rate
+flow_rate: timeseries for transient flow data if available
 min_flow_rate: The minimal flow rate of the pump
 max_flow_rate: The maximum flow rate of the pump
 min_upstream_level: The upstream level below which the Pump flow goes to zero
@@ -631,11 +632,12 @@ continuous_control_type: one of None, ContinuousControl, PidControl
     inflow_link::Vector{LinkMetadata} = []
     outflow_link::Vector{LinkMetadata} = []
     active::Vector{Bool} = fill(true, length(node_id))
-    flow_rate::Cache = cache(length(node_id))
-    min_flow_rate::Vector{Float64} = zeros(length(node_id))
-    max_flow_rate::Vector{Float64} = fill(Inf, length(node_id))
-    min_upstream_level::Vector{Float64} = fill(-Inf, length(node_id))
-    max_downstream_level::Vector{Float64} = fill(Inf, length(node_id))
+    flow_rate_cache::Cache = cache(length(node_id))
+    flow_rate::Vector{ScalarInterpolation} = ScalarInterpolation[]
+    min_flow_rate::Vector{ScalarInterpolation} = ScalarInterpolation[]
+    max_flow_rate::Vector{ScalarInterpolation} = ScalarInterpolation[]
+    min_upstream_level::Vector{ScalarInterpolation} = ScalarInterpolation[]
+    max_downstream_level::Vector{ScalarInterpolation} = ScalarInterpolation[]
     control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate}
     continuous_control_type::Vector{ContinuousControlType.T} =
         fill(ContinuousControlType.None, length(node_id))
@@ -645,6 +647,7 @@ continuous_control_type: one of None, ContinuousControl, PidControl
         inflow_link,
         outflow_link,
         active,
+        flow_rate_cache,
         flow_rate,
         min_flow_rate,
         max_flow_rate,
@@ -659,6 +662,7 @@ continuous_control_type: one of None, ContinuousControl, PidControl
                 inflow_link,
                 outflow_link,
                 active,
+                flow_rate_cache,
                 flow_rate,
                 min_flow_rate,
                 max_flow_rate,
@@ -680,7 +684,8 @@ inflow_link: incoming flow link metadata.
 outflow_link: outgoing flow link metadata.
     The ID of the source node is always the ID of the Outlet node
 active: whether this node is active and thus contributes flow
-flow_rate: target flow rate
+flow_rate_cache: target flow rate
+flow_rate: timeseries for transient flow data if available
 min_flow_rate: The minimal flow rate of the outlet
 max_flow_rate: The maximum flow rate of the outlet
 min_upstream_level: The upstream level below which the Outlet flow goes to zero
@@ -693,11 +698,12 @@ continuous_control_type: one of None, ContinuousControl, PidControl
     inflow_link::Vector{LinkMetadata} = []
     outflow_link::Vector{LinkMetadata} = []
     active::Vector{Bool} = fill(true, length(node_id))
-    flow_rate::Cache = cache(length(node_id))
-    min_flow_rate::Vector{Float64} = zeros(length(node_id))
-    max_flow_rate::Vector{Float64} = fill(Inf, length(node_id))
-    min_upstream_level::Vector{Float64} = fill(-Inf, length(node_id))
-    max_downstream_level::Vector{Float64} = fill(Inf, length(node_id))
+    flow_rate_cache::Cache = cache(length(node_id))
+    flow_rate::Vector{ScalarInterpolation} = ScalarInterpolation[]
+    min_flow_rate::Vector{ScalarInterpolation} = ScalarInterpolation[]
+    max_flow_rate::Vector{ScalarInterpolation} = ScalarInterpolation[]
+    min_upstream_level::Vector{ScalarInterpolation} = ScalarInterpolation[]
+    max_downstream_level::Vector{ScalarInterpolation} = ScalarInterpolation[]
     control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate} = Dict()
     continuous_control_type::Vector{ContinuousControlType.T} =
         fill(ContinuousControlType.None, length(node_id))
@@ -707,6 +713,7 @@ continuous_control_type: one of None, ContinuousControl, PidControl
         inflow_link,
         outflow_link,
         active,
+        flow_rate_cache,
         flow_rate,
         min_flow_rate,
         max_flow_rate,
@@ -721,6 +728,7 @@ continuous_control_type: one of None, ContinuousControl, PidControl
                 inflow_link,
                 outflow_link,
                 active,
+                flow_rate_cache,
                 flow_rate,
                 min_flow_rate,
                 max_flow_rate,

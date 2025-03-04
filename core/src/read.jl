@@ -129,7 +129,7 @@ function parse_static_and_time(
                     hasproperty(row, :control_state) ? row.control_state : missing
                 # Get the parameter values, and turn them into trivial interpolation objects
                 # if this parameter can be transient
-                parameter_values = Any[]
+                parameter_values = []
                 for parameter_name in parameter_names
                     val = getfield(row, parameter_name)
                     # Set default parameter value if no value was given
@@ -706,6 +706,7 @@ end
 
 function Pump(db::DB, config::Config, graph::MetaGraph)::Pump
     static = load_structvector(db, config, PumpStaticV1)
+    time = load_structvector(db, config, PumpTimeV1)
     defaults = (;
         min_flow_rate = 0.0,
         max_flow_rate = Inf,
@@ -713,7 +714,23 @@ function Pump(db::DB, config::Config, graph::MetaGraph)::Pump
         max_downstream_level = Inf,
         active = true,
     )
-    parsed_parameters, valid = parse_static_and_time(db, config, "Pump"; static, defaults)
+    time_interpolatables = [
+        :flow_rate,
+        :min_flow_rate,
+        :max_flow_rate,
+        :min_upstream_level,
+        :max_downstream_level,
+    ]
+
+    parsed_parameters, valid = parse_static_and_time(
+        db,
+        config,
+        "Pump";
+        static,
+        time,
+        defaults,
+        time_interpolatables,
+    )
 
     if !valid
         error("Errors occurred when parsing Pump data.")
@@ -721,16 +738,17 @@ function Pump(db::DB, config::Config, graph::MetaGraph)::Pump
 
     (; node_id) = parsed_parameters
 
-    # If flow rate is set by PID control, it is part of the AD Jacobian computations
-    flow_rate = cache(length(node_id))
-    flow_rate[Float64[]] .= parsed_parameters.flow_rate
+    # If flow rate is set by PidControl or ContinuousControl, it is part of the AD Jacobian computations
+    flow_rate_cache = cache(length(node_id))
+    flow_rate_cache[Float64[]] .= [itp(0) for itp in parsed_parameters.flow_rate]
 
     return Pump(;
         node_id,
         inflow_link = inflow_link.(Ref(graph), node_id),
         outflow_link = outflow_link.(Ref(graph), node_id),
         parsed_parameters.active,
-        flow_rate,
+        flow_rate_cache,
+        parsed_parameters.flow_rate,
         parsed_parameters.min_flow_rate,
         parsed_parameters.max_flow_rate,
         parsed_parameters.min_upstream_level,
@@ -741,6 +759,7 @@ end
 
 function Outlet(db::DB, config::Config, graph::MetaGraph)::Outlet
     static = load_structvector(db, config, OutletStaticV1)
+    time = load_structvector(db, config, OutletTimeV1)
     defaults = (;
         min_flow_rate = 0.0,
         max_flow_rate = Inf,
@@ -748,7 +767,23 @@ function Outlet(db::DB, config::Config, graph::MetaGraph)::Outlet
         max_downstream_level = Inf,
         active = true,
     )
-    parsed_parameters, valid = parse_static_and_time(db, config, "Outlet"; static, defaults)
+    time_interpolatables = [
+        :flow_rate,
+        :min_flow_rate,
+        :max_flow_rate,
+        :min_upstream_level,
+        :max_downstream_level,
+    ]
+
+    parsed_parameters, valid = parse_static_and_time(
+        db,
+        config,
+        "Outlet";
+        static,
+        time,
+        defaults,
+        time_interpolatables,
+    )
 
     if !valid
         error("Errors occurred when parsing Outlet data.")
@@ -761,16 +796,18 @@ function Outlet(db::DB, config::Config, graph::MetaGraph)::Outlet
             eachindex(parsed_parameters.node_id),
         )
 
-    # If flow rate is set by PID control, it is part of the AD Jacobian computations
-    flow_rate = cache(length(node_id))
-    flow_rate[Float64[], length(node_id)] .= parsed_parameters.flow_rate
+    # If flow rate is set by PidControl or ContinuousControl, it is part of the AD Jacobian computations
+    flow_rate_cache = cache(length(node_id))
+    flow_rate_cache[Float64[], length(node_id)] .=
+        [itp(0) for itp in parsed_parameters.flow_rate]
 
     return Outlet(;
         node_id,
         inflow_link = inflow_link.(Ref(graph), node_id),
         outflow_link = outflow_link.(Ref(graph), node_id),
         parsed_parameters.active,
-        flow_rate,
+        flow_rate_cache,
+        parsed_parameters.flow_rate,
         parsed_parameters.min_flow_rate,
         parsed_parameters.max_flow_rate,
         parsed_parameters.control_mapping,

@@ -24,7 +24,7 @@ function water_balance!(du::Vector, u::Vector, p::Parameters, t::Number)::Nothin
     update_vertical_flux!(du, p)
 
     # Formulate intermediate flows (non continuously controlled)
-    formulate_flows!(du, p, t, current_storage, current_low_storage_factor, current_level)
+    formulate_flows!(du, p, t, current_low_storage_factor, current_level)
 
     # Compute continuous control
     formulate_continuous_control!(du, p, t)
@@ -34,7 +34,6 @@ function water_balance!(du::Vector, u::Vector, p::Parameters, t::Number)::Nothin
         du,
         p,
         t,
-        current_storage,
         current_low_storage_factor,
         current_level;
         continuous_control_type = ContinuousControlType.Continuous,
@@ -48,7 +47,6 @@ function water_balance!(du::Vector, u::Vector, p::Parameters, t::Number)::Nothin
         du,
         p,
         t,
-        current_storage,
         current_low_storage_factor,
         current_level;
         continuous_control_type = ContinuousControlType.PID,
@@ -573,7 +571,8 @@ function formulate_flow!(
         inflow_link,
         outflow_link,
         active,
-        flow_rate,
+        flow_rate_from_cache,
+        flow_rate_itp,
         min_flow_rate,
         max_flow_rate,
         min_upstream_level,
@@ -584,7 +583,8 @@ function formulate_flow!(
         pump.inflow_link,
         pump.outflow_link,
         pump.active,
-        pump.flow_rate[du],
+        pump.flow_rate_cache[du],
+        pump.flow_rate,
         pump.min_flow_rate,
         pump.max_flow_rate,
         pump.min_upstream_level,
@@ -596,6 +596,12 @@ function formulate_flow!(
             continue
         end
 
+        flow_rate = if continuous_control_type == ContinuousControlType.None
+            flow_rate_itp(t)
+        else
+            flow_rate_from_cache
+        end
+
         inflow_id = inflow_link.link[1]
         outflow_id = outflow_link.link[2]
         src_level = get_level(p, inflow_id, t, current_level)
@@ -604,10 +610,10 @@ function formulate_flow!(
         factor = get_low_storage_factor(current_low_storage_factor, inflow_id)
         q = flow_rate * factor
 
-        q *= reduction_factor(src_level - min_upstream_level, 0.02)
-        q *= reduction_factor(max_downstream_level - dst_level, 0.02)
+        q *= reduction_factor(src_level - min_upstream_level(t), 0.02)
+        q *= reduction_factor(max_downstream_level(t) - dst_level, 0.02)
 
-        q = clamp(q, min_flow_rate, max_flow_rate)
+        q = clamp(q, min_flow_rate(t), max_flow_rate(t))
         du_pump[id.idx] = q
     end
     return nothing
@@ -629,7 +635,8 @@ function formulate_flow!(
         inflow_link,
         outflow_link,
         active,
-        flow_rate,
+        flow_rate_from_cache,
+        flow_rate_itp,
         min_flow_rate,
         max_flow_rate,
         continuous_control_type,
@@ -640,7 +647,8 @@ function formulate_flow!(
         outlet.inflow_link,
         outlet.outflow_link,
         outlet.active,
-        outlet.flow_rate[du],
+        outlet.flow_rate_cache[du],
+        outlet.flow_rate,
         outlet.min_flow_rate,
         outlet.max_flow_rate,
         outlet.continuous_control_type,
@@ -650,6 +658,12 @@ function formulate_flow!(
         if !(active || all_nodes_active) ||
            (continuous_control_type != continuous_control_type_)
             continue
+        end
+
+        flow_rate = if continuous_control_type == ContinuousControlType.None
+            flow_rate_itp(t)
+        else
+            flow_rate_from_cache
         end
 
         inflow_id = inflow_link.link[1]
@@ -663,10 +677,10 @@ function formulate_flow!(
         # No flow of outlet if source level is lower than target level
         Δlevel = src_level - dst_level
         q *= reduction_factor(Δlevel, 0.02)
-        q *= reduction_factor(src_level - min_upstream_level, 0.02)
-        q *= reduction_factor(max_downstream_level - dst_level, 0.02)
+        q *= reduction_factor(src_level - min_upstream_level(t), 0.02)
+        q *= reduction_factor(max_downstream_level(t) - dst_level, 0.02)
 
-        q = clamp(q, min_flow_rate, max_flow_rate)
+        q = clamp(q, min_flow_rate(t), max_flow_rate(t))
         du_outlet[id.idx] = q
     end
     return nothing
@@ -676,7 +690,6 @@ function formulate_flows!(
     du::AbstractVector,
     p::Parameters,
     t::Number,
-    current_storage::Vector,
     current_low_storage_factor::Vector,
     current_level::Vector;
     continuous_control_type::ContinuousControlType.T = ContinuousControlType.None,
@@ -795,13 +808,21 @@ function limit_flow!(u::Vector, integrator::DEIntegrator, p::Parameters, t::Numb
     # Pump flow is in [min_flow_rate, max_flow_rate] and can be inactive
     for (id, min_flow_rate, max_flow_rate, active) in
         zip(pump.node_id, pump.min_flow_rate, pump.max_flow_rate, pump.active)
-        limit_flow!(u_pump, uprev_pump, id, min_flow_rate, max_flow_rate, active, dt)
+        limit_flow!(u_pump, uprev_pump, id, min_flow_rate(t), max_flow_rate(t), active, dt)
     end
 
     # Outlet flow is in [min_flow_rate, max_flow_rate] and can be inactive
     for (id, min_flow_rate, max_flow_rate, active) in
         zip(outlet.node_id, outlet.min_flow_rate, outlet.max_flow_rate, outlet.active)
-        limit_flow!(u_outlet, uprev_outlet, id, min_flow_rate, max_flow_rate, active, dt)
+        limit_flow!(
+            u_outlet,
+            uprev_outlet,
+            id,
+            min_flow_rate(t),
+            max_flow_rate(t),
+            active,
+            dt,
+        )
     end
 
     # LinearResistance flow is in [-max_flow_rate, max_flow_rate] and can be inactive

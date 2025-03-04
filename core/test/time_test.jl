@@ -106,3 +106,19 @@ end
     test_extrapolation(level_boundary.level[1])
     test_extrapolation(flow_boundary.flow_rate[1])
 end
+
+@testitem "transient_pump_weir" begin
+    using DataFrames: DataFrame
+
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/transient_pump_outlet/ribasim.toml")
+    @test ispath(toml_path)
+
+    model = Ribasim.run(toml_path)
+    storage = Ribasim.get_storages_and_levels(model).storage
+    @test all(isapprox.(storage[1, 2:end], storage[1, end]; rtol = 1e-4))
+
+    t_end = model.integrator.t
+    flow_rate_end = model.integrator.p.pump.flow_rate[1].u[end]
+    @test storage[2, end] ≈ storage[2, 1] + 0.5 * flow_rate_end * t_end
+end
