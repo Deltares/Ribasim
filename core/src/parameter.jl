@@ -870,6 +870,8 @@ inflow_link: incoming flow link
 outflow_link: outgoing flow link metadata
     The ID of the source node is always the ID of the UserDemand node
 active: whether this node is active and thus demands water
+has_priority: boolean matrix stating per UserDemand node per demand priority index whether the (node_idx, demand_priority_idx)
+    node will ever have a demand of that priority
 demand: water flux demand of UserDemand per demand priority (node_idx, demand_priority_idx)
     Each UserDemand has a demand for all demand priorities,
     which is 0.0 if it is not provided explicitly.
@@ -888,6 +890,7 @@ concentration_time: Data source for concentration updates
     inflow_link::Vector{LinkMetadata} = []
     outflow_link::Vector{LinkMetadata} = []
     active::Vector{Bool} = fill(true, length(node_id))
+    has_priority::Matrix{Bool}
     demand::Matrix{Float64}
     demand_reduced::Matrix{Float64}
     demand_itp::Vector{Vector{ScalarInterpolation}}

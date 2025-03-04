@@ -205,6 +205,7 @@ end
     using Ribasim: NodeID, OptimizationType
     using OrdinaryDiffEqCore: get_du
     using JuMP
+    using DataFrames: DataFrame
 
     toml_path = normpath(
         @__DIR__,
@@ -215,8 +216,13 @@ end
     p = model.integrator.p
 
     (; allocation, user_demand, graph, basin) = p
-    (; allocation_models, subnetwork_demands, subnetwork_allocateds, mean_input_flows) =
-        allocation
+    (;
+        allocation_models,
+        subnetwork_demands,
+        subnetwork_allocateds,
+        mean_input_flows,
+        record_demand,
+    ) = allocation
     t = 0.0
 
     # Set flows of sources in subnetworks
@@ -265,6 +271,15 @@ end
         10419.156,
         4.057502,
     ]
+
+    # The output should only contain data for the demand_priority for which
+    # a node has a demand
+    @test isempty(
+        filter(
+            row -> (row.node_id == 53) && (row.demand_priority != 3),
+            DataFrame(record_demand),
+        ),
+    )
 end
 
 @testitem "Allocation level control" begin
@@ -323,6 +338,13 @@ end
     stage_3_start_idx = findfirst(stage_3)
     u_stage_3(τ) = storage[stage_3_start_idx] + (q + ϕ - d) * (τ - t[stage_3_start_idx])
     @test storage[stage_3] ≈ u_stage_3.(t[stage_3]) rtol = 1e-4
+    @test all(
+        filter(
+            row ->
+                (8 * Δt_allocation <= row.time <= 13 * Δt_allocation) && (row.node_id == 2),
+            DataFrame(allocation.record_demand),
+        ).demand .< 0,
+    )
 
     # At the start of this section precipitation stops, and so the UserDemand
     # partly uses surplus water from the basin to fulfill its demand
