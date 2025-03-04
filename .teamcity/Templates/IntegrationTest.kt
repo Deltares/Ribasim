@@ -3,6 +3,7 @@ package Templates
 import Ribasim_Windows.Windows_BuildRibasim
 import Ribasim_Linux.Linux_BuildRibasim
 import jetbrains.buildServer.configs.kotlin.Template
+import jetbrains.buildServer.configs.kotlin.buildFeatures.buildCache
 import jetbrains.buildServer.configs.kotlin.buildFeatures.XmlReport
 import jetbrains.buildServer.configs.kotlin.buildFeatures.xmlReport
 import jetbrains.buildServer.configs.kotlin.buildSteps.script
@@ -36,9 +37,19 @@ open class IntegrationTest (platformOs: String) : Template() {
             root(Ribasim.vcsRoots.Ribasim, ". => ribasim")
             cleanCheckout = true
         }
+
         params {
             password("MiniO_credential_token", "credentialsJSON:86cbf3e5-724c-437d-9962-7a3f429b0aa2")
         }
+
+        features {
+            buildCache {
+                id = "Ribasim${platformOs}Cache"
+                name = "Ribasim ${platformOs} Cache"
+                publish = false
+            }
+        }
+
         val header = generateIntegrationTestHeader(platformOs)
 
         steps {

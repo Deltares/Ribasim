@@ -3,6 +3,7 @@ package Templates
 import Ribasim.vcsRoots.Ribasim
 import jetbrains.buildServer.configs.kotlin.Template
 import jetbrains.buildServer.configs.kotlin.buildSteps.script
+import jetbrains.buildServer.configs.kotlin.buildFeatures.buildCache
 
 open class TestDelwaqCoupling(platformOs: String) : Template() {
     init {
@@ -12,8 +13,17 @@ open class TestDelwaqCoupling(platformOs: String) : Template() {
             root(Ribasim, ". => ribasim")
             cleanCheckout = true
         }
+
         params {
             password("MiniO_credential_token", "credentialsJSON:86cbf3e5-724c-437d-9962-7a3f429b0aa2")
+        }
+
+        features {
+            buildCache {
+                id = "Ribasim${platformOs}Cache"
+                name = "Ribasim ${platformOs} Cache"
+                publish = false
+            }
         }
 
         steps {
