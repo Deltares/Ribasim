@@ -14,8 +14,10 @@ open class TestDelwaqCoupling(platformOs: String) : Template() {
             cleanCheckout = true
         }
 
+        val depot_path = generateJuliaDepotPath(platformOs)
         params {
             password("MiniO_credential_token", "credentialsJSON:86cbf3e5-724c-437d-9962-7a3f429b0aa2")
+            param("env.JULIA_DEPOT_PATH", depot_path)
         }
 
         features {

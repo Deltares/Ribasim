@@ -29,6 +29,11 @@ open class Build(platformOs: String) : Template() {
             cleanCheckout = true
         }
 
+        val depot_path = generateJuliaDepotPath(platformOs)
+        params {
+            param("env.JULIA_DEPOT_PATH", depot_path)
+        }
+
         features {
             buildCache {
                 id = "Ribasim${platformOs}Cache"
