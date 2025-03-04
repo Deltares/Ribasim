@@ -14,14 +14,19 @@ open class GenerateCache(platformOs: String) : Template() {
             cleanCheckout = true
         }
 
+        params {
+            param("env.PIXI_CACHE_DIR", "%teamcity.build.checkoutDir%/.cache")
+            param("env.JULIA_DEPOT_PATH", "%teamcity.build.checkoutDir%/.julia:")
+        }
+
         features {
             buildCache {
                 id = "Ribasim${platformOs}Cache"
                 name = "Ribasim ${platformOs} Cache"
                 use = false
                 rules = """
-                    %teamcity.agent.jvm.user.home%/.julia
-                    %teamcity.agent.jvm.user.home%/.pixi
+                    %teamcity.build.checkoutDir%/.cache
+                    %teamcity.build.checkoutDir%/.julia
                 """.trimIndent()
             }
         }

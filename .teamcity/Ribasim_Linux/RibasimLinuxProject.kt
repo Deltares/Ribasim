@@ -90,6 +90,7 @@ object Linux_GenerateCache : BuildType({
                 +:pixi.lock
                 +:pixi.toml
             """.trimIndent()
+            branchFilter = "+:<default>"
         }
     }
 })

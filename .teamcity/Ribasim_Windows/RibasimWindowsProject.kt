@@ -129,6 +129,7 @@ object Windows_GenerateCache : BuildType({
                 +:pixi.lock
                 +:pixi.toml
             """.trimIndent()
+            branchFilter = "+:<default>"
         }
     }
 })
