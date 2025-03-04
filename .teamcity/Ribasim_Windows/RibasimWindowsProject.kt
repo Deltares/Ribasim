@@ -17,9 +17,11 @@ object RibasimWindowsProject : Project({
     buildType(Windows_BuildRibasim)
     buildType(Windows_TestDelwaqCoupling)
     buildType(Windows_TestRibasimBinaries)
+    buildType(Windows_GenerateCache)
 
     template(TestBinariesWindows)
     template(TestDelwaqCouplingWindows)
+    template(GenerateCacheWindows)
 })
 
 object Windows_Main : BuildType({
@@ -110,6 +112,24 @@ object Windows_TestDelwaqCoupling : BuildType({
             artifactRules = """
                 DWAQ_win64_Release_Visual Studio 16 2019_ifx_*.zip!** => dimr
             """.trimIndent()
+        }
+    }
+})
+
+object Windows_GenerateCache : BuildType({
+    templates(WindowsAgent, GithubCommitStatusIntegration, GenerateCacheWindows)
+    name = "Generate TC cache"
+
+    triggers {
+        vcs {
+            id = "TRIGGER_RIBA_W1"
+            triggerRules = """
+                +:Manifest.toml
+                +:Project.toml
+                +:pixi.lock
+                +:pixi.toml
+            """.trimIndent()
+            branchFilter = "+:<default>"
         }
     }
 })
