@@ -597,7 +597,7 @@ function formulate_flow!(
         end
 
         flow_rate = if continuous_control_type == ContinuousControlType.None
-            flow_rate = flow_rate_itp(t)
+            flow_rate_itp(t)
         else
             flow_rate_from_cache
         end

@@ -401,7 +401,7 @@ function valid_min_upstream_level!(
         id_in = inflow_id(graph, id)
         if id_in.type == NodeType.Basin
             basin_bottom_level = basin_bottom(basin, id_in)[2]
-            if unique(min_upstream_level.u) == [-Inf]
+            if all(==(-Inf), min_upstream_level.u)
                 min_upstream_level.u .= basin_bottom_level
             elseif minimum(min_upstream_level.u) < basin_bottom_level
                 @error "Minimum upstream level of $id is lower than bottom of upstream $id_in" min_upstream_level basin_bottom_level

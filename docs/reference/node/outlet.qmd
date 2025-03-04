@@ -25,7 +25,7 @@ max_downstream_level  | Float64 | $\text{m}$             | (optional)
 ## Time
 
 This table is the transient form of the `Outlet` table.
-With this the flow_rate can be updated over time. In between the given times the
+With this all parameters can be updated over time. In between the given times the
 flow_rate is interpolated linearly, and outside the flow rate is constant given by the
 nearest time value.
 Note that a `node_id` can be either in this table or in the static one, but not both.
@@ -34,7 +34,6 @@ column                | type    | unit                   | restriction
 ---------             | ------- | ---------------------- | -----------
 node_id               | Int32   | -                      |
 time                  | DateTime| -                      |
-control_state         | String  | -                      | (optional)
 flow_rate             | Float64 | $\text{m}^3/\text{s}\$ | non-negative
 min_flow_rate         | Float64 | $\text{m}^3/\text{s}\$ | (optional, default 0.0)
 max_flow_rate         | Float64 | $\text{m}^3/\text{s}\$ | (optional)

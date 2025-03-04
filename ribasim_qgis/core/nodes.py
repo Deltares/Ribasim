@@ -647,7 +647,7 @@ class PumpStatic(Input):
             QgsField("min_flow_rate", QVariant.Double),
             QgsField("max_flow_rate", QVariant.Double),
             QgsField("min_upstream_level", QVariant.Double),
-            QgsField("max_upstream_level", QVariant.Double),
+            QgsField("max_downstream_level", QVariant.Double),
             QgsField("control_state", QVariant.String),
         ]
 
@@ -670,7 +670,7 @@ class PumpTime(Input):
             QgsField("min_flow_rate", QVariant.Double),
             QgsField("max_flow_rate", QVariant.Double),
             QgsField("min_upstream_level", QVariant.Double),
-            QgsField("max_upstream_level", QVariant.Double),
+            QgsField("max_downstream_level", QVariant.Double),
         ]
 
 
@@ -692,7 +692,7 @@ class OutletStatic(Input):
             QgsField("min_flow_rate", QVariant.Double),
             QgsField("max_flow_rate", QVariant.Double),
             QgsField("min_upstream_level", QVariant.Double),
-            QgsField("max_upstream_level", QVariant.Double),
+            QgsField("max_downstream_level", QVariant.Double),
             QgsField("control_state", QVariant.String),
         ]
 
@@ -715,7 +715,7 @@ class OutletTime(Input):
             QgsField("min_flow_rate", QVariant.Double),
             QgsField("max_flow_rate", QVariant.Double),
             QgsField("min_upstream_level", QVariant.Double),
-            QgsField("max_upstream_level", QVariant.Double),
+            QgsField("max_downstream_level", QVariant.Double),
         ]
 
 
