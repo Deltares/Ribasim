@@ -5,6 +5,14 @@ import jetbrains.buildServer.configs.kotlin.Template
 import jetbrains.buildServer.configs.kotlin.buildSteps.script
 import jetbrains.buildServer.configs.kotlin.buildFeatures.buildCache
 
+fun generateJuliaDepotPath(platformOs: String): String {
+    if (platformOs == "Linux") {
+        return "%teamcity.build.checkoutDir%/.julia:"
+    } else {
+        return "%teamcity.build.checkoutDir%/.julia;"
+    }
+}
+
 open class GenerateCache(platformOs: String) : Template() {
     init {
         name = "GenerateCache${platformOs}_Template"
@@ -14,9 +22,9 @@ open class GenerateCache(platformOs: String) : Template() {
             cleanCheckout = true
         }
 
+        val depot_path = generateJuliaDepotPath(platformOs)
         params {
-            param("env.PIXI_CACHE_DIR", "%teamcity.build.checkoutDir%/.cache")
-            param("env.JULIA_DEPOT_PATH", "%teamcity.build.checkoutDir%/.julia:")
+            param("env.JULIA_DEPOT_PATH", depot_path)
         }
 
         features {
@@ -25,7 +33,6 @@ open class GenerateCache(platformOs: String) : Template() {
                 name = "Ribasim ${platformOs} Cache"
                 use = false
                 rules = """
-                    %teamcity.build.checkoutDir%/.cache
                     %teamcity.build.checkoutDir%/.julia
                 """.trimIndent()
             }
