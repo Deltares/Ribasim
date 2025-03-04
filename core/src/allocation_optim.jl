@@ -650,7 +650,7 @@ function save_demands_and_allocations!(
 
         elseif node_id.type == NodeType.Basin &&
                has_external_demand(graph, node_id, :level_demand)[1]
-            # Basins
+            # Basins with level demand
             basin_demand_priority_idx = get_external_demand_priority_idx(p, node_id)
 
             if demand_priority_idx == 1 || basin_demand_priority_idx == demand_priority_idx

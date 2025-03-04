@@ -338,6 +338,13 @@ end
     stage_3_start_idx = findfirst(stage_3)
     u_stage_3(τ) = storage[stage_3_start_idx] + (q + ϕ - d) * (τ - t[stage_3_start_idx])
     @test storage[stage_3] ≈ u_stage_3.(t[stage_3]) rtol = 1e-4
+    @test all(
+        filter(
+            row ->
+                (8 * Δt_allocation <= row.time <= 13 * Δt_allocation) && (row.node_id == 2),
+            DataFrame(allocation.record_demand),
+        ).demand .< 0,
+    )
 
     # At the start of this section precipitation stops, and so the UserDemand
     # partly uses surplus water from the basin to fulfill its demand
