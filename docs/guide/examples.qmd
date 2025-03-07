@@ -1,7 +1,12 @@
 ---
 title: Examples
-jupyter: python3
+engine: julia
 ---
+
+```{julia}
+#| include: false
+import PythonCall
+```
 
 # Basic model with static forcing
 
@@ -221,19 +226,10 @@ toml_path = datadir / "basic/ribasim.toml"
 model.write(toml_path)
 ```
 
-```{python}
+```{julia}
 #| include: false
-from subprocess import run
-
-run(
-    [
-        "julia",
-        "--project=../../core",
-        "--eval",
-        f'using Ribasim; Ribasim.main("{toml_path.as_posix()}")',
-    ],
-    check=True,
-)
+import Ribasim
+Ribasim.main(toml_path)
 ```
 
 ## Running a model
@@ -392,19 +388,10 @@ datadir = Path("data")
 model.write(datadir / "level_range/ribasim.toml")
 ```
 
-```{python}
+```{julia}
 #| include: false
-from subprocess import run
-
-run(
-    [
-        "julia",
-        "--project=../../core",
-        "--eval",
-        f'using Ribasim; Ribasim.main("{datadir.as_posix()}/level_range/ribasim.toml")',
-    ],
-    check=True,
-)
+import Ribasim
+Ribasim.main("$datadir/level_range/ribasim.toml")
 ```
 
 Now run the model (for running instructions see [here](#running-a-model)).
@@ -544,19 +531,10 @@ datadir = Path("data")
 model.write(datadir / "pid_control/ribasim.toml")
 ```
 
-```{python}
+```{julia}
 #| include: false
-from subprocess import run
-
-run(
-    [
-        "julia",
-        "--project=../../core",
-        "--eval",
-        f'using Ribasim; Ribasim.main("{datadir.as_posix()}/pid_control/ribasim.toml")',
-    ],
-    check=True,
-)
+import Ribasim
+Ribasim.main("$datadir/pid_control/ribasim.toml")
 ```
 
 Now run the model (for running instructions see [here](#running-a-model)).
@@ -697,19 +675,10 @@ datadir = Path("data")
 model.write(datadir / "allocation_example/ribasim.toml")
 ```
 
-```{python}
+```{julia}
 #| include: false
-from subprocess import run
-
-run(
-    [
-        "julia",
-        "--project=../../core",
-        "--eval",
-        f'using Ribasim; Ribasim.main("{datadir.as_posix()}/allocation_example/ribasim.toml")',
-    ],
-    check=True,
-)
+import Ribasim
+Ribasim.main("$datadir/allocation_example/ribasim.toml")
 ```
 
 Now run the model (for running instructions see [here](#running-a-model)).
@@ -868,19 +837,10 @@ Write the model to a TOML and GeoPackage:
 model.write(datadir / "level_demand/ribasim.toml")
 ```
 
-```{python}
+```{julia}
 #| include: false
-from subprocess import run
-
-run(
-    [
-        "julia",
-        "--project=../../core",
-        "--eval",
-        f'using Ribasim; Ribasim.main("{datadir.as_posix()}/level_demand/ribasim.toml")',
-    ],
-    check=True,
-)
+import Ribasim
+Ribasim.main("$datadir/level_demand/ribasim.toml")
 ```
 
 Now run the model (for running instructions see [here](#running-a-model)).
@@ -1125,19 +1085,10 @@ datadir = Path("data")
 model.write(datadir / "local_pidcontrolled_cascade/ribasim.toml")
 ```
 
-```{python}
+```{julia}
 #| include: false
-from subprocess import run
-
-run(
-    [
-        "julia",
-        "--project=../../core",
-        "--eval",
-        f'using Ribasim; Ribasim.main("{datadir.as_posix()}/local_pidcontrolled_cascade/ribasim.toml")',
-    ],
-    check=True,
-)
+import Ribasim
+Ribasim.main("$datadir/local_pidcontrolled_cascade/ribasim.toml")
 ```
 
 Now run the model (for running instructions see [here](#running-a-model)).
@@ -1311,19 +1262,10 @@ toml_path = datadir / "outlet_continuous_control/ribasim.toml"
 model.write(toml_path)
 ```
 
-```{python}
+```{julia}
 #| include: false
-from subprocess import run
-
-run(
-    [
-        "julia",
-        "--project=../../core",
-        "--eval",
-        f'using Ribasim; Ribasim.main("{toml_path.as_posix()}")',
-    ],
-    check=True,
-)
+import Ribasim
+Ribasim.main(toml_path)
 ```
 
 Now run the model (for running instructions see [here](#running-a-model)).

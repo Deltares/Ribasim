@@ -49,10 +49,12 @@ quarto-preview = { cmd = "quarto preview docs", depends-on = [
     "generate-testmodels",
 ] }
 quarto-check = { cmd = "quarto check all", depends-on = ["quartodoc-build"] }
-quarto-render = { cmd = "julia --project --eval 'using Pkg; Pkg.build(\"IJulia\")' && quarto render docs --to html --execute", depends-on = [
+# Use QUARTO_JULIA_PROJECT to point to our QuartoNotebookRunner v0.14+ install
+# rather than the older one that is bundled with quarto doesn't support Python code blocks.
+quarto-render = { cmd = "quarto render docs --to html --execute", depends-on = [
     "quartodoc-build",
     "generate-testmodels",
-] }
+], env = { QUARTO_JULIA_PROJECT = "$PIXI_PROJECT_ROOT" } }
 docs = { depends-on = ["quarto-preview"] }
 # Lint
 mypy-ribasim-python = "mypy python/ribasim/ribasim"
@@ -159,6 +161,9 @@ install-ci = { depends-on = ["install-julia", "update-registry-julia"] }
 [target.win.activation]
 # Workaround a conflict between conda openssl activation and julia < 1.12
 scripts = ["utils/unset-ssl-cert.bat"]
+
+[activation.env]
+JULIA_CONDAPKG_BACKEND = "Null"
 
 [dependencies]
 datacompy = ">=0.16"

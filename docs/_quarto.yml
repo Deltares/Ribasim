@@ -11,9 +11,9 @@ website:
       - text: "Overview"
         file: index.qmd
       - text: "Tutorials"
-        file: tutorial/natural-flow.ipynb
+        file: tutorial/natural-flow.qmd
       - text: "How-to guides"
-        file: guide/examples.ipynb
+        file: guide/examples.qmd
       - text: "Concepts"
         file: concept/concept.qmd
       - text: "Reference"
@@ -34,17 +34,17 @@ website:
         - contact.qmd
     - title: "Tutorials"
       contents:
-        - tutorial/natural-flow.ipynb
-        - tutorial/irrigation-demand.ipynb
-        - tutorial/reservoir.ipynb
+        - tutorial/natural-flow.qmd
+        - tutorial/irrigation-demand.qmd
+        - tutorial/reservoir.qmd
     - title: "How-to guides"
       contents:
-        - guide/examples.ipynb
+        - guide/examples.qmd
         - guide/qgis.qmd
         - guide/coupling.qmd
         - section: "Coupling guides"
           contents:
-            - guide/delwaq.ipynb
+            - guide/delwaq.qmd
     - title: "Concepts"
       contents:
         - concept/concept.qmd
