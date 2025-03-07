@@ -60,6 +60,7 @@ import pandas as pd
 from ribasim import Model, Node
 from ribasim.nodes import basin, flow_boundary, tabulated_rating_curve
 from shapely.geometry import Point
+from IPython.display import display
 ```
 
 ### Setup paths and model configuration
@@ -243,7 +244,7 @@ After running `model.write` a subfolder `Crystal-1` is created, which contains t
 ```{julia}
 #| include: false
 import Ribasim
-Ribasim.main(toml_path)
+Ribasim.main("crystal-basin/Crystal-1/ribasim.toml")
 ```
 
 Now run the model. You can open a terminal and run it from there. For example:

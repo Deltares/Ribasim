@@ -24,6 +24,7 @@ This Ribasim model already has substance concentrations for `Cl` and `Tracer` in
 
 ```{python}
 from ribasim import Model
+from IPython.display import display
 
 model = Model.read(toml_path)
 
@@ -54,7 +55,7 @@ model.write(toml_path)
 ```{julia}
 #| include: false
 import Ribasim
-Ribasim.main(toml_path)
+Ribasim.main("../../generated_testmodels/basic/ribasim.toml")
 ```
 
 Given the path to a completed Ribasim simulation, we can call `ribasim.delwaq.generate` for generating the required input files for Delwaq from scratch.

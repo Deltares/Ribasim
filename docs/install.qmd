@@ -106,7 +106,7 @@ The Ribasim Python package is [registered in PyPI](https://pypi.org/project/riba
 pip install ribasim
 ```
 
-For documentation please see the [examples](/guide/examples.ipynb) and [API reference](/reference/reference).
+For documentation please see the [examples](/guide/examples.qmd) and [API reference](/reference/reference).
 
 # Install Ribasim QGIS plugin
 

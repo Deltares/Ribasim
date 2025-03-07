@@ -229,7 +229,7 @@ model.write(toml_path)
 ```{julia}
 #| include: false
 import Ribasim
-Ribasim.main(toml_path)
+Ribasim.main("data/basic/ribasim.toml")
 ```
 
 ## Running a model
@@ -391,7 +391,7 @@ model.write(datadir / "level_range/ribasim.toml")
 ```{julia}
 #| include: false
 import Ribasim
-Ribasim.main("$datadir/level_range/ribasim.toml")
+Ribasim.main("data/level_range/ribasim.toml")
 ```
 
 Now run the model (for running instructions see [here](#running-a-model)).
@@ -534,7 +534,7 @@ model.write(datadir / "pid_control/ribasim.toml")
 ```{julia}
 #| include: false
 import Ribasim
-Ribasim.main("$datadir/pid_control/ribasim.toml")
+Ribasim.main("data/pid_control/ribasim.toml")
 ```
 
 Now run the model (for running instructions see [here](#running-a-model)).
@@ -678,7 +678,7 @@ model.write(datadir / "allocation_example/ribasim.toml")
 ```{julia}
 #| include: false
 import Ribasim
-Ribasim.main("$datadir/allocation_example/ribasim.toml")
+Ribasim.main("data/allocation_example/ribasim.toml")
 ```
 
 Now run the model (for running instructions see [here](#running-a-model)).
@@ -840,7 +840,7 @@ model.write(datadir / "level_demand/ribasim.toml")
 ```{julia}
 #| include: false
 import Ribasim
-Ribasim.main("$datadir/level_demand/ribasim.toml")
+Ribasim.main("data/level_demand/ribasim.toml")
 ```
 
 Now run the model (for running instructions see [here](#running-a-model)).
@@ -1088,7 +1088,7 @@ model.write(datadir / "local_pidcontrolled_cascade/ribasim.toml")
 ```{julia}
 #| include: false
 import Ribasim
-Ribasim.main("$datadir/local_pidcontrolled_cascade/ribasim.toml")
+Ribasim.main("data/local_pidcontrolled_cascade/ribasim.toml")
 ```
 
 Now run the model (for running instructions see [here](#running-a-model)).
@@ -1265,7 +1265,7 @@ model.write(toml_path)
 ```{julia}
 #| include: false
 import Ribasim
-Ribasim.main(toml_path)
+Ribasim.main("data/outlet_continuous_control/ribasim.toml")
 ```
 
 Now run the model (for running instructions see [here](#running-a-model)).
