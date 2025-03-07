@@ -245,8 +245,8 @@ def A(h):
 fig = go.Figure()
 
 x = area/2
-x = np.concat([-x[::-1], x])
-y = np.concat([level[::-1], level])
+x = np.concatenate([-x[::-1], x])
+y = np.concatenate([level[::-1], level])
 
 # Basin profile
 fig.add_trace(
@@ -308,8 +308,8 @@ for h in np.linspace(level[0], level_extrap, 100):
     i = min(max(0, np.searchsorted(level, h)-1), len(level)-2)
     fill_area = np.append(area[:i+1], a)
     fill_level = np.append(level[:i+1], h)
-    fill_x = np.concat([-fill_area[::-1]/2, fill_area/2])
-    fill_y = np.concat([fill_level[::-1], fill_level])
+    fill_x = np.concatenate([-fill_area[::-1]/2, fill_area/2])
+    fill_y = np.concatenate([fill_level[::-1], fill_level])
 
     step = dict(
         method = "update",
