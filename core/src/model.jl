@@ -36,17 +36,17 @@ function get_jac_eval(du::Vector, u::Vector, p::Parameters, solver::Solver)
     end
 
     if solver.sparse
-        backend = AutoSparse(backend)
+        backend = AutoSparse(backend; sparsity_detector = TracerSparsityDetector())
     end
 
     t = 0.0
 
     # Activate all nodes to catch all possible state dependencies
     p.all_nodes_active = true
-    prep = prepare_jacobian((du, u) -> water_balance(du, u, p, t), du, backend, u)
+    prep = prepare_jacobian((du, u) -> water_balance!(du, u, p, t), du, backend, u)
     p.all_nodes_active = false
 
-    jac_prototype = sparsity_pattern(prep)
+    jac_prototype = solver.sparse ? sparsity_pattern(prep) : nothing
 
     jac =
         (J, u, p, t) ->

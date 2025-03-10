@@ -257,16 +257,16 @@ end
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
 
-    cfg = Ribasim.Config(toml_path)
-    db_path = Ribasim.database_path(cfg)
+    config = Ribasim.Config(toml_path)
+    db_path = Ribasim.database_path(config)
     db = SQLite.DB(db_path)
 
-    p = Ribasim.Parameters(db, cfg)
+    p = Ribasim.Parameters(db, config)
     close(db)
     t0 = 0.0
     u0 = Ribasim.build_state_vector(p)
     du0 = copy(u0)
-    jac_prototype = Ribasim.get_jac_prototype(du0, u0, p, t0)
+    jac_prototype, _ = Ribasim.get_jac_eval(du0, u0, p, config.solver)
 
     # rows, cols, _ = findnz(jac_prototype)
     #! format: off
@@ -279,15 +279,15 @@ end
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/pid_control/ribasim.toml")
 
-    cfg = Ribasim.Config(toml_path)
-    db_path = Ribasim.database_path(cfg)
+    config = Ribasim.Config(toml_path)
+    db_path = Ribasim.database_path(config)
     db = SQLite.DB(db_path)
 
-    p = Ribasim.Parameters(db, cfg)
+    p = Ribasim.Parameters(db, config)
     close(db)
     u0 = Ribasim.build_state_vector(p)
     du0 = copy(u0)
-    jac_prototype = Ribasim.get_jac_prototype(du0, u0, p, t0)
+    jac_prototype, _ = Ribasim.get_jac_eval(du0, u0, p, config.solver)
 
     #! format: off
     rows_expected = [1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6, 1, 2]
