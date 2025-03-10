@@ -2,7 +2,7 @@
 
 julia_version = "1.11.3"
 manifest_format = "2.0"
-project_hash = "7591f8aefbf83678f96ece6aa98d0232f3c083ff"
+project_hash = "f1f6d1cb011ce63d93f72a0bbd984e2839b32e42"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "fb97701c117c8162e84dfcf80215caa904aef44f"
@@ -2083,7 +2083,7 @@ weakdeps = ["Distributed"]
     DistributedExt = "Distributed"
 
 [[deps.Ribasim]]
-deps = ["ADTypes", "Accessors", "Arrow", "BasicModelInterface", "CodecZstd", "Configurations", "DBInterface", "DataInterpolations", "DataStructures", "Dates", "DiffEqBase", "DiffEqCallbacks", "EnumX", "FiniteDiff", "Graphs", "HiGHS", "IterTools", "JuMP", "Legolas", "LineSearches", "LinearAlgebra", "LinearSolve", "Logging", "LoggingExtras", "MetaGraphsNext", "OrdinaryDiffEqBDF", "OrdinaryDiffEqCore", "OrdinaryDiffEqLowOrderRK", "OrdinaryDiffEqNonlinearSolve", "OrdinaryDiffEqRosenbrock", "OrdinaryDiffEqSDIRK", "OrdinaryDiffEqTsit5", "PreallocationTools", "SQLite", "SciMLBase", "SparseArrays", "SparseConnectivityTracer", "StructArrays", "Tables", "TerminalLoggers", "TranscodingStreams"]
+deps = ["ADTypes", "Accessors", "Arrow", "BasicModelInterface", "CodecZstd", "Configurations", "DBInterface", "DataInterpolations", "DataStructures", "Dates", "DiffEqBase", "DiffEqCallbacks", "DifferentiationInterface", "EnumX", "FiniteDiff", "Graphs", "HiGHS", "IterTools", "JuMP", "Legolas", "LineSearches", "LinearAlgebra", "LinearSolve", "Logging", "LoggingExtras", "MetaGraphsNext", "OrdinaryDiffEqBDF", "OrdinaryDiffEqCore", "OrdinaryDiffEqLowOrderRK", "OrdinaryDiffEqNonlinearSolve", "OrdinaryDiffEqRosenbrock", "OrdinaryDiffEqSDIRK", "OrdinaryDiffEqTsit5", "PreallocationTools", "SQLite", "SciMLBase", "SparseArrays", "SparseConnectivityTracer", "SparseMatrixColorings", "StructArrays", "Tables", "TerminalLoggers", "TranscodingStreams"]
 path = "core"
 uuid = "aac5e3d9-0b8f-4d4f-8241-b1a7a9632635"
 version = "2025.1.0"

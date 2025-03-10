@@ -28,6 +28,33 @@ struct Model{T}
     end
 end
 
+function get_jac_eval(du::Vector, u::Vector, p::Parameters, solver::Solver)
+    backend = if solver.autodiff
+        AutoForwardDiff()
+    else
+        AutoFiniteDiff()
+    end
+
+    if solver.sparse
+        backend = AutoSparse(backend)
+    end
+
+    t = 0.0
+
+    # Activate all nodes to catch all possible state dependencies
+    p.all_nodes_active = true
+    prep = prepare_jacobian((du, u) -> water_balance(du, u, p, t), du, backend, u)
+    p.all_nodes_active = false
+
+    jac_prototype = sparsity_pattern(prep)
+
+    jac =
+        (J, u, p, t) ->
+            jacobian!((du, u) -> water_balance!(du, u, p, t), du, J, prep, backend, u)
+
+    return jac_prototype, jac
+end
+
 function Model(config_path::AbstractString)::Model
     config = Config(config_path)
     if !valid_config(config)
@@ -159,17 +186,13 @@ function Model(config::Config)::Model
     tstops = sort(unique(vcat(tstops...)))
     adaptive, dt = convert_dt(config.solver.dt)
 
-    jac_prototype = if config.solver.sparse
-        get_jac_prototype(du0, u0, parameters, t0)
-    else
-        nothing
-    end
-    RHS = ODEFunction(water_balance!; jac_prototype)
+    jac_prototype, jac = get_jac_eval(du0, u0, parameters, config.solver)
+    RHS = ODEFunction(water_balance!; jac_prototype, jac)
 
     prob = ODEProblem(RHS, u0, timespan, parameters)
     @debug "Setup ODEProblem."
 
-    callback, saved = create_callbacks(parameters, config, u0, saveat)
+    callback, saved = create_callbacks(parameters, config, saveat)
     @debug "Created callbacks."
 
     # Run water_balance! before initializing the integrator. This is because

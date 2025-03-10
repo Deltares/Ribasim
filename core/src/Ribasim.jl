@@ -14,6 +14,10 @@ For more granular access, see:
 """
 module Ribasim
 
+using ADTypes: AutoForwardDiff, AutoFiniteDiff
+using DifferentiationInterface: AutoSparse, prepare_jacobian, jacobian!
+using SparseMatrixColorings: sparsity_pattern
+
 # Algorithms for solving ODEs.
 using OrdinaryDiffEqCore: OrdinaryDiffEqCore, get_du, AbstractNLSolver
 using DiffEqBase: DiffEqBase, calculate_residuals!
@@ -36,7 +40,7 @@ using SciMLBase:
 
 # Automatically detecting the sparsity pattern of the Jacobian of water_balance!
 # through operator overloading
-using SparseConnectivityTracer: TracerSparsityDetector, jacobian_sparsity, GradientTracer
+using SparseConnectivityTracer: GradientTracer
 
 # For efficient sparse computations
 using SparseArrays: SparseMatrixCSC, spzeros
