@@ -1140,3 +1140,20 @@ function get_timeseries_tstops(
 
     return tstops
 end
+
+"""
+If for a certain node the "Ribasim.allocation" control state is defined,
+make this the (initial) control type of that node
+"""
+function set_allocation_controlled!(
+    control_type::Vector{ControlType.T},
+    node_id::Vector{NodeID},
+    control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate},
+)::Nothing
+    for id in node_id
+        if (id, "Ribasim.allocation") in keys(control_mapping)
+            control_type[id.idx] = ControlType.Allocation
+        end
+    end
+    return nothing
+end

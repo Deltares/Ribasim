@@ -742,7 +742,10 @@ function Pump(db::DB, config::Config, graph::MetaGraph)::Pump
     flow_rate_cache = cache(length(node_id))
     flow_rate_cache[Float64[]] .= [itp(0) for itp in parsed_parameters.flow_rate]
 
-    return Pump(;
+    control_type = fill(ControlType.None, length(node_id))
+    set_allocation_controlled!(control_type, node_id, parsed_parameters.control_mapping)
+
+    Pump(;
         node_id,
         inflow_link = inflow_link.(Ref(graph), node_id),
         outflow_link = outflow_link.(Ref(graph), node_id),
@@ -754,6 +757,7 @@ function Pump(db::DB, config::Config, graph::MetaGraph)::Pump
         parsed_parameters.min_upstream_level,
         parsed_parameters.max_downstream_level,
         parsed_parameters.control_mapping,
+        control_type,
     )
 end
 
@@ -801,6 +805,9 @@ function Outlet(db::DB, config::Config, graph::MetaGraph)::Outlet
     flow_rate_cache[Float64[], length(node_id)] .=
         [itp(0) for itp in parsed_parameters.flow_rate]
 
+    control_type = fill(ControlType.None, length(node_id))
+    set_allocation_controlled!(control_type, node_id, parsed_parameters.control_mapping)
+
     return Outlet(;
         node_id,
         inflow_link = inflow_link.(Ref(graph), node_id),
@@ -813,6 +820,7 @@ function Outlet(db::DB, config::Config, graph::MetaGraph)::Outlet
         parsed_parameters.control_mapping,
         parsed_parameters.min_upstream_level,
         parsed_parameters.max_downstream_level,
+        control_type,
     )
 end
 
