@@ -92,14 +92,6 @@ controllablefields(::Val{:PidControl}) =
     Set((:active, :target, :proportional, :integral, :derivative))
 controllablefields(nodetype) = Set{Symbol}()
 
-function variable_names(s::Any)
-    filter(x -> !(x in (:node_id, :control_state)), fieldnames(s))
-end
-function variable_nt(s::Any)
-    names = variable_names(typeof(s))
-    NamedTuple{names}((getfield(s, x) for x in names))
-end
-
 "Get the right sort by function (by in `sort(x; by)`) given the Schema"
 function sort_by end
 # Not using any fallbacks to avoid forgetting to add the correct sorting.

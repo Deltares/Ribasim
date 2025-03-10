@@ -457,17 +457,6 @@ function has_external_demand(
     return false, nothing
 end
 
-function Base.get(
-    constraints::JuMP.Containers.DenseAxisArray,
-    node_id::NodeID,
-)::Union{JuMP.ConstraintRef, Nothing}
-    if node_id in only(constraints.axes)
-        constraints[node_id]
-    else
-        nothing
-    end
-end
-
 """
 Get the time interval between (flow) saves
 """
@@ -563,9 +552,6 @@ function get_variable_ref(
 )::Tuple{PreallocationRef, Bool}
     (; basin) = p
     errors = false
-
-    # Only built here because it is needed to obtain indices
-    u = build_state_vector(p)
 
     ref = if node_id.type == NodeType.Basin && variable == "level"
         PreallocationRef(basin.current_properties.current_level, node_id.idx)
@@ -791,11 +777,10 @@ function get_jac_prototype(du0, u0, p, t0)
 end
 
 # Custom overloads
-reduction_factor(x::GradientTracer, threshold::Real) = x
+reduction_factor(x::GradientTracer, ::Real) = x
 low_storage_factor_resistance_node(storage, q::GradientTracer, inflow_id, outflow_id) = q
 relaxed_root(x::GradientTracer, threshold::Real) = x
 get_level_from_storage(basin::Basin, state_idx::Int, storage::GradientTracer) = storage
-stop_declining_negative_storage!(du, u::Vector{<:GradientTracer}) = nothing
 
 @kwdef struct MonitoredBackTracking{B, V}
     linesearch::B = BackTracking()
