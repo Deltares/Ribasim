@@ -651,7 +651,7 @@ end
 function apply_parameter_update!(parameter_update)::Nothing
     (; name, value, ref) = parameter_update
 
-    # Ignore this parameter update of the associated node does
+    # Ignore this parameter update if the associated node does
     # not have an 'active' field
     if name == :active && ref.i == 0
         return nothing

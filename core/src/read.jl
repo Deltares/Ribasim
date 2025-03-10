@@ -1878,7 +1878,7 @@ function Parameters(db::DB, config::Config)::Parameters
     )
 
     collect_control_mappings!(p)
-    set_continuous_control_type!(p)
+    set_control_type!(p)
     set_listen_variable_refs!(p)
     set_discrete_controlled_variable_refs!(p)
     set_continuously_controlled_variable_refs!(p)

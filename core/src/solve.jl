@@ -36,7 +36,7 @@ function water_balance!(du::Vector, u::Vector, p::Parameters, t::Number)::Nothin
         t,
         current_low_storage_factor,
         current_level;
-        continuous_control_type = ContinuousControlType.Continuous,
+        control_type = ControlType.Continuous,
     )
 
     # Compute PID control
@@ -49,7 +49,7 @@ function water_balance!(du::Vector, u::Vector, p::Parameters, t::Number)::Nothin
         t,
         current_low_storage_factor,
         current_level;
-        continuous_control_type = ContinuousControlType.PID,
+        control_type = ControlType.PID,
     )
 
     return nothing
@@ -562,7 +562,7 @@ function formulate_flow!(
     t::Number,
     current_low_storage_factor::Vector,
     current_level::Vector,
-    continuous_control_type_::ContinuousControlType.T,
+    control_type_::ControlType.T,
 )::Nothing
     du_pump = view(du, p.state_ranges.pump)
     all_nodes_active = p.all_nodes_active[]
@@ -577,7 +577,7 @@ function formulate_flow!(
         max_flow_rate,
         min_upstream_level,
         max_downstream_level,
-        continuous_control_type,
+        control_type,
     ) in zip(
         pump.node_id,
         pump.inflow_link,
@@ -589,14 +589,13 @@ function formulate_flow!(
         pump.max_flow_rate,
         pump.min_upstream_level,
         pump.max_downstream_level,
-        pump.continuous_control_type,
+        pump.control_type,
     )
-        if !(active || all_nodes_active) ||
-           (continuous_control_type != continuous_control_type_)
+        if !(active || all_nodes_active) || (control_type != control_type_)
             continue
         end
 
-        flow_rate = if continuous_control_type == ContinuousControlType.None
+        flow_rate = if control_type == ControlType.None
             flow_rate_itp(t)
         else
             flow_rate_from_cache
@@ -626,7 +625,7 @@ function formulate_flow!(
     t::Number,
     current_low_storage_factor::Vector,
     current_level::Vector,
-    continuous_control_type_::ContinuousControlType.T,
+    control_type_::ControlType.T,
 )::Nothing
     du_outlet = view(du, p.state_ranges.outlet)
     all_nodes_active = p.all_nodes_active[]
@@ -639,7 +638,7 @@ function formulate_flow!(
         flow_rate_itp,
         min_flow_rate,
         max_flow_rate,
-        continuous_control_type,
+        control_type,
         min_upstream_level,
         max_downstream_level,
     ) in zip(
@@ -651,16 +650,15 @@ function formulate_flow!(
         outlet.flow_rate,
         outlet.min_flow_rate,
         outlet.max_flow_rate,
-        outlet.continuous_control_type,
+        outlet.control_type,
         outlet.min_upstream_level,
         outlet.max_downstream_level,
     )
-        if !(active || all_nodes_active) ||
-           (continuous_control_type != continuous_control_type_)
+        if !(active || all_nodes_active) || (control_type != control_type_)
             continue
         end
 
-        flow_rate = if continuous_control_type == ContinuousControlType.None
+        flow_rate = if control_type == ControlType.None
             flow_rate_itp(t)
         else
             flow_rate_from_cache
@@ -692,7 +690,7 @@ function formulate_flows!(
     t::Number,
     current_low_storage_factor::Vector,
     current_level::Vector;
-    continuous_control_type::ContinuousControlType.T = ContinuousControlType.None,
+    control_type::ControlType.T = ControlType.None,
 )::Nothing
     (;
         linear_resistance,
@@ -703,15 +701,7 @@ function formulate_flows!(
         user_demand,
     ) = p
 
-    formulate_flow!(
-        du,
-        pump,
-        p,
-        t,
-        current_low_storage_factor,
-        current_level,
-        continuous_control_type,
-    )
+    formulate_flow!(du, pump, p, t, current_low_storage_factor, current_level, control_type)
     formulate_flow!(
         du,
         outlet,
@@ -719,10 +709,10 @@ function formulate_flows!(
         t,
         current_low_storage_factor,
         current_level,
-        continuous_control_type,
+        control_type,
     )
 
-    if continuous_control_type == ContinuousControlType.None
+    if control_type == ControlType.None
         formulate_flow!(
             du,
             linear_resistance,

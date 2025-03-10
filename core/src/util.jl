@@ -400,20 +400,14 @@ function get_external_demand_priority_idx(p::Parameters, node_id::NodeID)::Int
 end
 
 """
-Set continuous_control_type for those pumps and outlets that are controlled by either
+Set control_type for those pumps and outlets that are controlled by either
 PidControl or ContinuousControl
 """
-function set_continuous_control_type!(p::Parameters)::Nothing
+function set_control_type!(p::Parameters)::Nothing
     (; continuous_control, pid_control) = p
-    errors = false
 
-    errors = set_continuous_control_type!(
-        p,
-        continuous_control.node_id,
-        ContinuousControlType.Continuous,
-    )
-    errors |=
-        set_continuous_control_type!(p, pid_control.node_id, ContinuousControlType.PID)
+    errors = set_control_type!(p, continuous_control.node_id, ControlType.Continuous)
+    errors |= set_control_type!(p, pid_control.node_id, ControlType.PID)
 
     if errors
         error("Errors occurred when parsing ContinuousControl and PidControl connectivity")
@@ -421,10 +415,10 @@ function set_continuous_control_type!(p::Parameters)::Nothing
     return nothing
 end
 
-function set_continuous_control_type!(
+function set_control_type!(
     p::Parameters,
     node_id::Vector{NodeID},
-    continuous_control_type::ContinuousControlType.T,
+    control_type::ControlType.T,
 )::Bool
     (; graph, pump, outlet) = p
     errors = false
@@ -432,9 +426,9 @@ function set_continuous_control_type!(
     for id in node_id
         id_controlled = only(outneighbor_labels_type(graph, id, LinkType.control))
         if id_controlled.type == NodeType.Pump
-            pump.continuous_control_type[id_controlled.idx] = continuous_control_type
+            pump.control_type[id_controlled.idx] = control_type
         elseif id_controlled.type == NodeType.Outlet
-            outlet.continuous_control_type[id_controlled.idx] = continuous_control_type
+            outlet.control_type[id_controlled.idx] = control_type
         else
             errors = true
             @error "Only Pump and Outlet can be controlled by PidController, got $id_controlled"
