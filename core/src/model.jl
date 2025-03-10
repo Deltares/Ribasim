@@ -29,14 +29,14 @@ struct Model{T}
 end
 
 function get_jac_eval(du::Vector, u::Vector, p::Parameters, solver::Solver)
-    backend = if solver.autodiff
-        AutoForwardDiff()
-    else
-        AutoFiniteDiff()
-    end
+    backend = get_ad_type(solver)
 
     if solver.sparse
-        backend = AutoSparse(backend; sparsity_detector = TracerSparsityDetector())
+        backend = AutoSparse(
+            backend;
+            sparsity_detector = TracerSparsityDetector(),
+            coloring_algorithm = GreedyColoringAlgorithm(),
+        )
     end
 
     t = 0.0
@@ -48,9 +48,8 @@ function get_jac_eval(du::Vector, u::Vector, p::Parameters, solver::Solver)
 
     jac_prototype = solver.sparse ? sparsity_pattern(prep) : nothing
 
-    jac =
-        (J, u, p, t) ->
-            jacobian!((du, u) -> water_balance!(du, u, p, t), du, J, prep, backend, u)
+    jac(J, u, p, t) =
+        jacobian!((du, u) -> water_balance!(du, u, p, t), du, J, prep, backend, u)
 
     return jac_prototype, jac
 end

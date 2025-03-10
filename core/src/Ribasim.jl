@@ -15,8 +15,8 @@ For more granular access, see:
 module Ribasim
 
 using ADTypes: AutoForwardDiff, AutoFiniteDiff
-using DifferentiationInterface: AutoSparse, prepare_jacobian, jacobian!
-using SparseMatrixColorings: sparsity_pattern
+using DifferentiationInterface: AutoSparse, Constant, prepare_jacobian, jacobian!
+using SparseMatrixColorings: GreedyColoringAlgorithm, sparsity_pattern
 
 # Algorithms for solving ODEs.
 using OrdinaryDiffEqCore: OrdinaryDiffEqCore, get_du, AbstractNLSolver
@@ -69,7 +69,8 @@ using DataInterpolations:
     integral,
     AbstractInterpolation,
     ExtrapolationType
-using DataInterpolations.ExtrapolationType: Constant, Periodic, Extension, Linear
+using DataInterpolations.ExtrapolationType:
+    Constant as ConstantExtrapolation, Periodic, Extension, Linear
 
 # Modeling language for Mathematical Optimization.
 # Used for allocation, see the docs: https://ribasim.org/dev/allocation.html

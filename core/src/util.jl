@@ -84,7 +84,7 @@ function get_scalar_interpolation(
     return interpolation_type(
         parameter,
         times;
-        extrapolation = cyclic_time ? Periodic : Constant,
+        extrapolation = cyclic_time ? Periodic : ConstantExtrapolation,
         cache_parameters = true,
     )
 end
@@ -125,7 +125,7 @@ function qh_interpolation(
     return LinearInterpolation(
         flow_rate,
         level;
-        extrapolation_left = Constant,
+        extrapolation_left = ConstantExtrapolation,
         extrapolation_right = Linear,
         cache_parameters = true,
     )
@@ -294,6 +294,8 @@ function reduction_factor(x::T, threshold::Real)::T where {T <: Real}
         one(T)
     end
 end
+
+# SparseConnectivityTracer overloads
 
 function get_low_storage_factor(
     current_low_storage_factor::Vector{T},

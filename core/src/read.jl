@@ -195,7 +195,7 @@ function parse_static_and_time(
                         [val, val],
                         trivial_timespan;
                         cache_parameters = true,
-                        extrapolation = Constant,
+                        extrapolation = ConstantExtrapolation,
                     )
                 end
                 getfield(out, parameter_name)[node_id.idx] = val
@@ -955,7 +955,7 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
         LinearInterpolation.(
             area,
             level;
-            extrapolation_left = Constant,
+            extrapolation_left = ConstantExtrapolation,
             extrapolation_right = Extension,
             cache_parameters = true,
         )
@@ -1324,7 +1324,7 @@ function user_demand_static!(
         return_factor[user_demand_idx] = LinearInterpolation(
             fill(first_row.return_factor, 2),
             return_factor_old.t;
-            extrapolation = Constant,
+            extrapolation = ConstantExtrapolation,
             cache_parameters = true,
         )
         min_level[user_demand_idx] = first_row.min_level
@@ -1337,7 +1337,7 @@ function user_demand_static!(
             demand_itp[user_demand_idx][demand_priority_idx] = LinearInterpolation(
                 fill(demand_row, 2),
                 demand_itp_old.t;
-                extrapolation = Constant,
+                extrapolation = ConstantExtrapolation,
                 cache_parameters = true,
             )
             demand[user_demand_idx, demand_priority_idx] = demand_row
@@ -1557,7 +1557,7 @@ function push_constant_interpolation!(
     itp = ConstantInterpolation(
         output,
         input;
-        extrapolation = cyclic_time ? Periodic : Constant,
+        extrapolation = cyclic_time ? Periodic : ConstantExtrapolation,
         cache_parameters = true,
     )
     push!(constant_interpolations, itp)
@@ -1568,7 +1568,7 @@ function static_lookup(lookup_index::Int)::IndexLookup
     return ConstantInterpolation(
         [lookup_index],
         [0.0];
-        extrapolation = Constant,
+        extrapolation = ConstantExtrapolation,
         cache_parameters = true,
     )
 end
@@ -1607,7 +1607,7 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
         hh_itp = LinearInterpolation(
             subgrid_level,
             basin_level;
-            extrapolation_left = Constant,
+            extrapolation_left = ConstantExtrapolation,
             extrapolation_right = Linear,
             cache_parameters = true,
         )
@@ -1656,7 +1656,7 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
         hh_itp = LinearInterpolation(
             subgrid_level,
             basin_level;
-            extrapolation_left = Constant,
+            extrapolation_left = ConstantExtrapolation,
             extrapolation_right = Linear,
             cache_parameters = true,
         )

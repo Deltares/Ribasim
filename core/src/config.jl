@@ -25,6 +25,7 @@ using OrdinaryDiffEqRosenbrock: Rosenbrock23, Rodas4P, Rodas5P
 export Config, Solver, Results, Logging, Toml
 export algorithm,
     camel_case,
+    get_ad_type,
     snake_case,
     input_path,
     database_path,
@@ -290,6 +291,9 @@ function function_accepts_kwarg(f, kwarg)::Bool
     return false
 end
 
+get_ad_type(solver::Solver) =
+    solver.autodiff ? AutoForwardDiff(; tag = :Ribasim) : AutoFiniteDiff()
+
 "Create an OrdinaryDiffEqAlgorithm from solver config"
 function algorithm(solver::Solver; u0 = [])::OrdinaryDiffEqAlgorithm
     algotype = get(algorithms, solver.algorithm, nothing)
@@ -311,7 +315,7 @@ function algorithm(solver::Solver; u0 = [])::OrdinaryDiffEqAlgorithm
     end
 
     if function_accepts_kwarg(algotype, :autodiff)
-        kwargs[:autodiff] = solver.autodiff ? AutoForwardDiff() : AutoFiniteDiff()
+        kwargs[:autodiff] = get_ad_type(solver)
     end
 
     algotype(; kwargs...)
