@@ -129,7 +129,7 @@ if the head in basin $b$ is larger than in basin $a$.
 This expression however has a derivative which tends to $\infty$ as $\Delta h$ tends to $0$, which can lead to instabilities in simulation. Therefore we use the modified expression
 
 $$
-Q = \frac{A}{n} R_h^{2/3}s\left(\frac{\Delta h}{L}; 10^{-3}\right),
+Q = \frac{A}{n} R_h^{2/3}s\left(\frac{\Delta h}{L}; 10^{-5}\right),
 $$
 
 where $s$ is a relaxed square root function:
