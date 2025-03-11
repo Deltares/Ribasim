@@ -129,7 +129,7 @@ function parse_static_and_time(
                     hasproperty(row, :control_state) ? row.control_state : missing
                 # Get the parameter values, and turn them into trivial interpolation objects
                 # if this parameter can be transient
-                parameter_values = Any[]
+                parameter_values = []
                 for parameter_name in parameter_names
                     val = getfield(row, parameter_name)
                     # Set default parameter value if no value was given
@@ -706,6 +706,7 @@ end
 
 function Pump(db::DB, config::Config, graph::MetaGraph)::Pump
     static = load_structvector(db, config, PumpStaticV1)
+    time = load_structvector(db, config, PumpTimeV1)
     defaults = (;
         min_flow_rate = 0.0,
         max_flow_rate = Inf,
@@ -713,7 +714,23 @@ function Pump(db::DB, config::Config, graph::MetaGraph)::Pump
         max_downstream_level = Inf,
         active = true,
     )
-    parsed_parameters, valid = parse_static_and_time(db, config, "Pump"; static, defaults)
+    time_interpolatables = [
+        :flow_rate,
+        :min_flow_rate,
+        :max_flow_rate,
+        :min_upstream_level,
+        :max_downstream_level,
+    ]
+
+    parsed_parameters, valid = parse_static_and_time(
+        db,
+        config,
+        "Pump";
+        static,
+        time,
+        defaults,
+        time_interpolatables,
+    )
 
     if !valid
         error("Errors occurred when parsing Pump data.")
@@ -721,16 +738,17 @@ function Pump(db::DB, config::Config, graph::MetaGraph)::Pump
 
     (; node_id) = parsed_parameters
 
-    # If flow rate is set by PID control, it is part of the AD Jacobian computations
-    flow_rate = cache(length(node_id))
-    flow_rate[Float64[]] .= parsed_parameters.flow_rate
+    # If flow rate is set by PidControl or ContinuousControl, it is part of the AD Jacobian computations
+    flow_rate_cache = cache(length(node_id))
+    flow_rate_cache[Float64[]] .= [itp(0) for itp in parsed_parameters.flow_rate]
 
     return Pump(;
         node_id,
         inflow_link = inflow_link.(Ref(graph), node_id),
         outflow_link = outflow_link.(Ref(graph), node_id),
         parsed_parameters.active,
-        flow_rate,
+        flow_rate_cache,
+        parsed_parameters.flow_rate,
         parsed_parameters.min_flow_rate,
         parsed_parameters.max_flow_rate,
         parsed_parameters.min_upstream_level,
@@ -741,6 +759,7 @@ end
 
 function Outlet(db::DB, config::Config, graph::MetaGraph)::Outlet
     static = load_structvector(db, config, OutletStaticV1)
+    time = load_structvector(db, config, OutletTimeV1)
     defaults = (;
         min_flow_rate = 0.0,
         max_flow_rate = Inf,
@@ -748,7 +767,23 @@ function Outlet(db::DB, config::Config, graph::MetaGraph)::Outlet
         max_downstream_level = Inf,
         active = true,
     )
-    parsed_parameters, valid = parse_static_and_time(db, config, "Outlet"; static, defaults)
+    time_interpolatables = [
+        :flow_rate,
+        :min_flow_rate,
+        :max_flow_rate,
+        :min_upstream_level,
+        :max_downstream_level,
+    ]
+
+    parsed_parameters, valid = parse_static_and_time(
+        db,
+        config,
+        "Outlet";
+        static,
+        time,
+        defaults,
+        time_interpolatables,
+    )
 
     if !valid
         error("Errors occurred when parsing Outlet data.")
@@ -761,16 +796,18 @@ function Outlet(db::DB, config::Config, graph::MetaGraph)::Outlet
             eachindex(parsed_parameters.node_id),
         )
 
-    # If flow rate is set by PID control, it is part of the AD Jacobian computations
-    flow_rate = cache(length(node_id))
-    flow_rate[Float64[], length(node_id)] .= parsed_parameters.flow_rate
+    # If flow rate is set by PidControl or ContinuousControl, it is part of the AD Jacobian computations
+    flow_rate_cache = cache(length(node_id))
+    flow_rate_cache[Float64[], length(node_id)] .=
+        [itp(0) for itp in parsed_parameters.flow_rate]
 
     return Outlet(;
         node_id,
         inflow_link = inflow_link.(Ref(graph), node_id),
         outflow_link = outflow_link.(Ref(graph), node_id),
         parsed_parameters.active,
-        flow_rate,
+        flow_rate_cache,
+        parsed_parameters.flow_rate,
         parsed_parameters.min_flow_rate,
         parsed_parameters.max_flow_rate,
         parsed_parameters.control_mapping,
@@ -1276,6 +1313,7 @@ function user_demand_static!(
     static::StructVector{UserDemandStaticV1},
     ids::Vector{Int32},
     demand_priorities::Vector{Int32},
+    has_priority::Matrix{Bool},
 )::Nothing
     for group in IterTools.groupby(row -> row.node_id, static)
         first_row = first(group)
@@ -1293,6 +1331,7 @@ function user_demand_static!(
 
         for row in group
             demand_priority_idx = findsorted(demand_priorities, row.demand_priority)
+            has_priority[user_demand_idx, demand_priority_idx] = true
             demand_row = coalesce(row.demand, 0.0)
             demand_itp_old = demand_itp[user_demand_idx][demand_priority_idx]
             demand_itp[user_demand_idx][demand_priority_idx] = LinearInterpolation(
@@ -1318,6 +1357,7 @@ function user_demand_time!(
     ids::Vector{Int32},
     cyclic_times::Vector{Bool},
     demand_priorities::Vector{Int32},
+    has_priority::Matrix{Bool},
     config::Config,
 )::Bool
     errors = false
@@ -1341,6 +1381,7 @@ function user_demand_time!(
         min_level[user_demand_idx] = first_row.min_level
 
         demand_priority_idx = findsorted(demand_priorities, first_row.demand_priority)
+        has_priority[user_demand_idx, demand_priority_idx] = true
         demand_p_itp = get_scalar_interpolation(
             config.starttime,
             StructVector(group),
@@ -1372,20 +1413,21 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)::UserDemand
     n_user = length(node_ids)
     n_demand_priority = length(demand_priorities)
     active = fill(true, n_user)
+    has_priority = zeros(Bool, n_user, n_demand_priority)
     demand = zeros(n_user, n_demand_priority)
     demand_reduced = zeros(n_user, n_demand_priority)
     trivial_timespan = [0.0, prevfloat(Inf)]
     demand_itp = [
         ScalarInterpolation[
             LinearInterpolation(zeros(2), trivial_timespan; cache_parameters = true) for
-            i in eachindex(demand_priorities)
-        ] for j in eachindex(node_ids)
+            _ in demand_priorities
+        ] for _ in node_ids
     ]
     demand_from_timeseries = fill(false, n_user)
     allocated = fill(Inf, n_user, n_demand_priority)
     return_factor = [
         LinearInterpolation(zeros(2), trivial_timespan; cache_parameters = true) for
-        i in eachindex(node_ids)
+        _ in node_ids
     ]
     min_level = zeros(n_user)
 
@@ -1399,6 +1441,7 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)::UserDemand
         static,
         ids,
         demand_priorities,
+        has_priority,
     )
 
     # Process time table
@@ -1413,6 +1456,7 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)::UserDemand
         ids,
         cyclic_times,
         demand_priorities,
+        has_priority,
         config,
     )
 
@@ -1431,6 +1475,7 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)::UserDemand
         inflow_link = inflow_link.(Ref(graph), node_ids),
         outflow_link = outflow_link.(Ref(graph), node_ids),
         active,
+        has_priority,
         demand,
         demand_reduced,
         demand_itp,

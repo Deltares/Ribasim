@@ -121,7 +121,10 @@ def basic_model() -> Model:
     )
 
     # Setup pump
-    model.pump.add(Node(7, Point(4.0, 1.0)), [pump.Static(flow_rate=[0.5 / 3600])])
+    model.pump.add(
+        Node(7, Point(4.0, 1.0)),
+        [pump.Static(flow_rate=[0.5 / 3600])],
+    )
 
     # Setup flow boundary
     flow_boundary_data: Sequence[TableModel[Any]] = [
