@@ -401,48 +401,24 @@ function get_external_demand_priority_idx(p::Parameters, node_id::NodeID)::Int
     return findsorted(allocation.demand_priorities_all, demand_priority)
 end
 
-"""
-Set continuous_control_type for those pumps and outlets that are controlled by either
-PidControl or ContinuousControl
-"""
-function set_continuous_control_type!(p::Parameters)::Nothing
-    (; continuous_control, pid_control) = p
-    errors = false
+const control_type_mapping = Dict{NodeType.T, ContinuousControlType.T}(
+    NodeType.PidControl => ContinuousControlType.PID,
+    NodeType.ContinuousControl => ContinuousControlType.Continuous,
+)
 
-    errors = set_continuous_control_type!(
-        p,
-        continuous_control.node_id,
-        ContinuousControlType.Continuous,
-    )
-    errors |=
-        set_continuous_control_type!(p, pid_control.node_id, ContinuousControlType.PID)
-
-    if errors
-        error("Errors occurred when parsing ContinuousControl and PidControl connectivity")
-    end
-    return nothing
-end
-
-function set_continuous_control_type!(
-    p::Parameters,
-    node_id::Vector{NodeID},
-    continuous_control_type::ContinuousControlType.T,
-)::Bool
-    (; graph, pump, outlet) = p
-    errors = false
-
+function get_continuous_control_type(graph::MetaGraph, node_id::Vector{NodeID})
+    continuous_control_type = fill(ContinuousControlType.None, length(node_id))
     for id in node_id
-        id_controlled = only(outneighbor_labels_type(graph, id, LinkType.control))
-        if id_controlled.type == NodeType.Pump
-            pump.continuous_control_type[id_controlled.idx] = continuous_control_type
-        elseif id_controlled.type == NodeType.Outlet
-            outlet.continuous_control_type[id_controlled.idx] = continuous_control_type
-        else
-            errors = true
-            @error "Only Pump and Outlet can be controlled by PidController, got $id_controlled"
+        control_inneighbors = collect(inneighbor_labels_type(graph, id, LinkType.control))
+        if length(control_inneighbors) == 1
+            control_inneighbor = only(control_inneighbors)
+            continuous_control_type[id.idx] =
+                get(control_type_mapping, control_inneighbor.type, ContinuousControl.None)
+        elseif length(control_inneighbors) > 1
+            error("$id has more than 1 control inneighbors.")
         end
     end
-    return errors
+    return continuous_control_type
 end
 
 function has_external_demand(
@@ -536,9 +512,9 @@ function convert_truth_state(boolean_vector)::String
     String(UInt8.(ifelse.(boolean_vector, 'T', 'F')))
 end
 
-function NodeID(type::Symbol, value::Integer, p::Parameters)::NodeID
+function NodeID(type::Symbol, value::Integer, p_non_diff::ParametersNonDiff)::NodeID
     node_type = NodeType.T(type)
-    node = getfield(p, snake_case(type))
+    node = getfield(p_non_diff, snake_case(type))
     idx = searchsortedfirst(node.node_id, NodeID(node_type, value, 0))
     return NodeID(node_type, value, idx)
 end
@@ -547,34 +523,41 @@ end
 Get the reference to a parameter
 """
 function get_variable_ref(
-    p::Parameters,
     node_id::NodeID,
-    variable::String;
+    variable::String,
+    state_ranges::StateRanges;
     listen::Bool = true,
-)::Tuple{PreallocationRef, Bool}
-    (; basin) = p
+)::Tuple{ParametersDiffRef, Bool}
     errors = false
 
     ref = if node_id.type == NodeType.Basin && variable == "level"
-        PreallocationRef(basin.current_properties.current_level, node_id.idx)
+        ParametersDiffRef(; type = ParameterDiffType.basin_level, node_id.idx)
     elseif variable == "flow_rate" && node_id.type != NodeType.FlowBoundary
         if listen
             if node_id.type ∉ conservative_nodetypes
                 errors = true
                 @error "Cannot listen to flow_rate of $node_id, the node type must be one of $conservative_node_types."
-                Ref(Float64[], 0)
+                ParametersDiffRef()
             else
                 # Index in the state vector (inflow)
-                flow_idx = get_state_index(p.state_ranges, node_id)
-                PreallocationRef(cache(1), flow_idx; from_du = true)
+                idx = get_state_index(state_ranges, node_id)
+                ParametersDiffRef(; idx, from_du = true)
             end
         else
-            node = getfield(p, snake_case(node_id))
-            PreallocationRef(node.flow_rate_cache, node_id.idx)
+            type = if node_id.type == NodeType.Pump
+                ParameterDiffType.flow_rate_pump
+            elseif node_id.type == NodeType.Outlet
+                ParameterDiffType.flow_rate_outlet
+            else
+                errors = true
+                @error "Cannot set the flow rate of $node_id."
+                ParameterDiffType.flow_rate_pump
+            end
+            ParametersDiffRef(; type, node_id.idx)
         end
     else
         # Placeholder to obtain correct type
-        PreallocationRef(cache(1), 0)
+        ParametersDiffRef()
     end
     return ref, errors
 end
@@ -582,8 +565,8 @@ end
 """
 Set references to all variables that are listened to by discrete/continuous control
 """
-function set_listen_variable_refs!(p::Parameters)::Nothing
-    (; discrete_control, continuous_control) = p
+function set_listen_variable_refs!(p_non_diff::ParametersNonDiff)::Nothing
+    (; discrete_control, continuous_control, state_ranges) = p_non_diff
     compound_variable_sets =
         [discrete_control.compound_variables..., continuous_control.compound_variable]
     errors = false
@@ -592,8 +575,11 @@ function set_listen_variable_refs!(p::Parameters)::Nothing
         for compound_variable in compound_variables
             (; subvariables) = compound_variable
             for (j, subvariable) in enumerate(subvariables)
-                ref, error =
-                    get_variable_ref(p, subvariable.listen_node_id, subvariable.variable)
+                ref, error = get_variable_ref(
+                    subvariable.listen_node_id,
+                    subvariable.variable,
+                    state_ranges,
+                )
                 if !error
                     subvariables[j] = @set subvariable.variable_ref = ref
                 end
@@ -611,9 +597,9 @@ end
 """
 Set references to all variables that are controlled by discrete control
 """
-function set_discrete_controlled_variable_refs!(p::Parameters)::Nothing
-    for nodetype in propertynames(p)
-        node = getfield(p, nodetype)
+function set_discrete_controlled_variable_refs!(p_non_diff::ParametersNonDiff)::Nothing
+    for nodetype in propertynames(p_non_diff)
+        node = getfield(p_non_diff, nodetype)
         if node isa AbstractParameterNode && hasfield(typeof(node), :control_mapping)
             control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate} =
                 node.control_mapping
@@ -647,26 +633,22 @@ function set_discrete_controlled_variable_refs!(p::Parameters)::Nothing
     return nothing
 end
 
-function set_continuously_controlled_variable_refs!(p::Parameters)::Nothing
-    (; continuous_control, pid_control, graph) = p
+function set_target_ref!(
+    target_ref::Vector{ParametersDiffRef},
+    node_id::Vector{NodeID},
+    controlled_variable::Vector{String},
+    state_ranges::StateRanges,
+)
     errors = false
-    for (node, controlled_variable) in (
-        (continuous_control, continuous_control.controlled_variable),
-        (pid_control, fill("flow_rate", length(pid_control.node_id))),
-    )
-        for (id, controlled_variable) in zip(node.node_id, controlled_variable)
-            controlled_node_id = only(outneighbor_labels_type(graph, id, LinkType.control))
-            ref, error =
-                get_variable_ref(p, controlled_node_id, controlled_variable; listen = false)
-            push!(node.target_ref, ref)
-            errors |= error
-        end
+    for (i, (id, variable)) in enumerate(zip(node_id, controlled_variable))
+        ref, error = get_variable_ref(id, variable, state_ranges; listen = false)
+        target_ref[i] = ref
+        errors |= error
     end
 
     if errors
         error("Errors encountered when setting continuously controlled variable refs.")
     end
-    return nothing
 end
 
 """
@@ -732,12 +714,12 @@ end
 Collect the control mappings of all controllable nodes in
 the DiscreteControl object for easy access
 """
-function collect_control_mappings!(p)::Nothing
-    (; control_mappings) = p.discrete_control
+function collect_control_mappings!(p_non_diff::ParametersNonDiff)::Nothing
+    (; control_mappings) = p_non_diff.discrete_control
 
     for node_type in instances(NodeType.T)
         node_type == NodeType.Terminal && continue
-        node = getfield(p, snake_case(node_type))
+        node = getfield(p_non_diff, snake_case(node_type))
         if hasfield(typeof(node), :control_mapping)
             control_mappings[node_type] = node.control_mapping
         end
@@ -838,7 +820,7 @@ function OrdinaryDiffEqNonlinearSolve.relax!(
 end
 
 "Create a NamedTuple of the node IDs per state component in the state order"
-function state_node_ids(p::Union{Parameters, NamedTuple})::NamedTuple
+function state_node_ids(p::Union{ParametersNonDiff, NamedTuple})::NamedTuple
     (;
         tabulated_rating_curve = p.tabulated_rating_curve.node_id,
         pump = p.pump.node_id,
@@ -853,15 +835,15 @@ function state_node_ids(p::Union{Parameters, NamedTuple})::NamedTuple
     )
 end
 
-function build_state_vector(p::Parameters)
+function build_state_vector(p_non_diff::ParametersNonDiff)
     # It is assumed that the horizontal flow states come first in
-    # p.state_inflow_link and p.state_outflow_link
-    u_ids = state_node_ids(p)
-    state_ranges = p.state_ranges
-    u = zeros(length(p.node_id))
-    # Ensure p.node_id, p.state_ranges and u have the same length and order
+    # p_non_diff.state_inflow_link and p_non_diff.state_outflow_link
+    u_ids = state_node_ids(p_non_diff)
+    state_ranges = p_non_diff.state_ranges
+    u = zeros(length(p_non_diff.node_id))
+    # Ensure p_non_diff.node_id, p_non_diff.state_ranges and u have the same length and order
     ranges = (getproperty(state_ranges, x) for x in propertynames(state_ranges))
-    @assert length(u) == length(p.node_id) == mapreduce(length, +, ranges)
+    @assert length(u) == length(p_non_diff.node_id) == mapreduce(length, +, ranges)
     @assert keys(u_ids) == fieldnames(StateRanges)
     return u
 end

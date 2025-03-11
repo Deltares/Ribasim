@@ -1,14 +1,25 @@
+# Wrapper method used by OrdinaryDiffEq; the other method is used
+# for Jacobian evaluation with DifferentiationInterface.jl
+water_balance!(du::Vector, u::Vector, p::Parameters, t::Number)::Nothing =
+    water_balance(du, u, p.p_non_diff, p.p_diff, p.p_mutable, t)
+
 """
 The right hand side function of the system of ODEs set up by Ribasim.
 """
-function water_balance!(du::Vector, u::Vector, p::Parameters, t::Number)::Nothing
-    (; current_storage, current_low_storage_factor, current_level) =
-        p.basin.current_properties
+function water_balance!(
+    du::Vector,
+    u::Vector,
+    p_non_diff::ParametersNonDiff,
+    p_diff::ParametersDiff,
+    p_mutable::ParametersMutable,
+    t::Number,
+)::Nothing
+    (; current_storage, current_low_storage_factor, current_level) = p_diff.cache_basin
 
     du .= 0.0
 
     # Ensures current_* vectors are current
-    set_current_basin_properties!(du, u, p, t)
+    set_current_basin_properties!(du, u, p_non_diff, p_diff, p_mutable, t)
 
     current_storage = current_storage[du]
     current_low_storage_factor = current_low_storage_factor[du]
@@ -72,12 +83,13 @@ state u and the time t.
 function set_current_basin_properties!(
     du::Vector,
     u::Vector,
-    p::Parameters,
+    p_non_diff::ParametersNonDiff,
+    p_diff::ParametersDiff,
+    p_mutable::ParametersMutable,
     t::Number,
 )::Nothing
-    (; basin) = p
-    (; current_properties, cumulative_precipitation, cumulative_drainage, vertical_flux) =
-        basin
+    (; basin) = p_non_diff
+    (; cumulative_precipitation, cumulative_drainage, vertical_flux) = p_non_diff.basin
     (;
         current_storage,
         current_low_storage_factor,
@@ -85,17 +97,10 @@ function set_current_basin_properties!(
         current_area,
         current_cumulative_precipitation,
         current_cumulative_drainage,
-    ) = current_properties
-
-    current_storage = current_storage[du]
-    current_low_storage_factor = current_low_storage_factor[du]
-    current_level = current_level[du]
-    current_area = current_area[du]
-    current_cumulative_precipitation = current_cumulative_precipitation[du]
-    current_cumulative_drainage = current_cumulative_drainage[du]
+    ) = p_diff.cache_basin
 
     # The exact cumulative precipitation and drainage up to the t of this water_balance call
-    dt = t - p.tprev
+    dt = t - p_mutable.tprev
     for node_id in basin.node_id
         fixed_area = basin_areas(basin, node_id.idx)[end]
         current_cumulative_precipitation[node_id.idx] =
@@ -104,7 +109,7 @@ function set_current_basin_properties!(
     end
     @. current_cumulative_drainage = cumulative_drainage + dt * vertical_flux.drainage
 
-    formulate_storages!(current_storage, du, u, p, t)
+    formulate_storages!(current_storage, u, p_non_diff, p_diff, p_mutable, t)
 
     for (id, s) in zip(basin.node_id, current_storage)
         i = id.idx
@@ -116,13 +121,16 @@ end
 
 function formulate_storages!(
     current_storage::AbstractVector,
-    du::Vector,
     u::Vector,
-    p::Parameters,
+    p_non_diff::ParametersNonDiff,
+    p_diff::ParametersDiff,
+    p_mutable::ParametersMutable,
     t::Number;
     add_initial_storage::Bool = true,
 )::Nothing
-    (; basin, flow_boundary, tprev, flow_to_storage) = p
+    (; basin, flow_boundary, flow_to_storage) = p_non_diff
+    (; cache_basin) = p_diff
+    (; tprev) = p_mutable
     # Current storage: initial condition +
     # total inflows and outflows since the start
     # of the simulation
@@ -132,7 +140,7 @@ function formulate_storages!(
         current_storage .= 0.0
     end
     mul!(current_storage, flow_to_storage, u, 1, 1)
-    formulate_storage!(current_storage, basin, du)
+    formulate_storage!(cache_basin)
     formulate_storage!(current_storage, tprev, t, flow_boundary)
     return nothing
 end
@@ -140,12 +148,10 @@ end
 """
 The storage contributions of the forcings that are not part of the state.
 """
-function formulate_storage!(current_storage::AbstractVector, basin::Basin, du::Vector)
-    (; current_cumulative_precipitation, current_cumulative_drainage) =
-        basin.current_properties
+function formulate_storage!(cache_basin::BasinCache)
+    (; current_storage, current_cumulative_precipitation, current_cumulative_drainage) =
+        cache_basin
 
-    current_cumulative_precipitation = current_cumulative_precipitation[du]
-    current_cumulative_drainage = current_cumulative_drainage[du]
     current_storage .+= current_cumulative_precipitation
     current_storage .+= current_cumulative_drainage
 end
@@ -757,6 +763,7 @@ flow rates for the last time step if these flow rate bounds are known.
 """
 function limit_flow!(u::Vector, integrator::DEIntegrator, p::Parameters, t::Number)::Nothing
     (; uprev, dt) = integrator
+    (; p_non_diff, p_diff, p_mutable) = p
     (;
         pump,
         outlet,
@@ -766,7 +773,7 @@ function limit_flow!(u::Vector, integrator::DEIntegrator, p::Parameters, t::Numb
         basin,
         allocation,
         state_ranges,
-    ) = p
+    ) = p_non_diff
 
     u_tabulated_rating_curve = view(u, state_ranges.tabulated_rating_curve)
     u_pump = view(u, state_ranges.pump)
@@ -788,7 +795,7 @@ function limit_flow!(u::Vector, integrator::DEIntegrator, p::Parameters, t::Numb
     # storage and level attained in the last time step to estimate whether there was an effect
     # of reduction factors
     du = get_du(integrator)
-    set_current_basin_properties!(du, u, p, t)
+    set_current_basin_properties!(du, u, p_non_diff, p_diff, p_mutable, t)
     current_storage = basin.current_properties.current_storage[u]
     current_level = basin.current_properties.current_level[u]
 

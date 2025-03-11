@@ -29,6 +29,7 @@ struct Model{T}
 end
 
 function get_jac_eval(du::Vector, u::Vector, p::Parameters, solver::Solver)
+    (; p_non_diff, p_diff, p_mutable) = p
     backend = get_ad_type(solver)
 
     if solver.sparse
@@ -42,14 +43,33 @@ function get_jac_eval(du::Vector, u::Vector, p::Parameters, solver::Solver)
     t = 0.0
 
     # Activate all nodes to catch all possible state dependencies
-    p.all_nodes_active = true
-    prep = prepare_jacobian((du, u) -> water_balance!(du, u, p, t), du, backend, u)
-    p.all_nodes_active = false
+    p_mutable.all_nodes_active = true
+    prep = prepare_jacobian(
+        water_balance!,
+        du,
+        backend,
+        u,
+        Constant(p_non_diff),
+        Cache(p_diff),
+        Constant(p_mutable),
+        Constant(t),
+    )
+    p_mutable.all_nodes_active = false
 
     jac_prototype = solver.sparse ? sparsity_pattern(prep) : nothing
 
-    jac(J, u, p, t) =
-        jacobian!((du, u) -> water_balance!(du, u, p, t), du, J, prep, backend, u)
+    jac(J, u, p, t) = jacobian!(
+        water_balance!,
+        du,
+        J,
+        prep,
+        backend,
+        u,
+        Constant(p.p_non_diff),
+        Cache(p.p_diff),
+        Constant(p.p_mutable),
+        Constant(t),
+    )
 
     return jac_prototype, jac
 end
@@ -87,11 +107,12 @@ function Model(config::Config)::Model
     t0 = zero(t_end)
     timespan = (t0, t_end)
 
-    local parameters, tstops
+    local parameters, p_non_diff, p_diff, p_mutable, tstops
     try
         parameters = Parameters(db, config)
+        (; p_non_diff, p_diff, p_mutable) = parameters
 
-        if !valid_discrete_control(parameters, config)
+        if !valid_discrete_control(parameters.p_non_diff, config)
             error("Invalid discrete control state definition(s).")
         end
 
@@ -108,7 +129,7 @@ function Model(config::Config)::Model
             pump,
             tabulated_rating_curve,
             user_demand,
-        ) = parameters
+        ) = p_non_diff
         if !valid_pid_connectivity(pid_control.node_id, pid_control.listen_node_id, graph)
             error("Invalid PidControl connectivity.")
         end
@@ -165,20 +186,20 @@ function Model(config::Config)::Model
     end
     @debug "Read database into memory."
 
-    u0 = build_state_vector(parameters)
+    u0 = build_state_vector(parameters.p_non_diff)
     du0 = zero(u0)
 
-    @reset parameters.u_prev_saveat = zero(u0)
+    @reset p_non_diff.u_prev_saveat = zero(u0)
 
     # The Solver algorithm
     alg = algorithm(config.solver; u0)
 
     # Synchronize level with storage
-    set_current_basin_properties!(du0, u0, parameters, t0)
+    set_current_basin_properties!(du0, u0, p_non_diff, p_diff, p_mutable, t0)
 
     # Previous level is used to estimate the minimum level that was attained during a time step
     # in limit_flow!
-    parameters.basin.level_prev .= parameters.basin.current_properties.current_level[u0]
+    p_non_diff.basin.level_prev .= p_diff.cache_basin.current_level
 
     saveat = convert_saveat(config.solver.saveat, t_end)
     saveat isa Float64 && push!(tstops, range(0, t_end; step = saveat))

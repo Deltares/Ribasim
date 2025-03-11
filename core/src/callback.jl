@@ -456,11 +456,11 @@ function save_solver_stats(u, t, integrator)
 end
 
 function check_negative_storage(u, t, integrator)::Nothing
-    (; basin) = integrator.p
-    (; node_id, current_properties) = basin
-    (; current_storage) = current_properties
+    (; p_non_diff, p_diff, p_mutable) = p
+    node_id = p_non_diff.basin
+    (; current_storage) = p_diff.basin_cache
     du = get_du(integrator)
-    set_current_basin_properties!(du, u, integrator.p, t)
+    set_current_basin_properties!(du, u, p_non_diff, p_diff, p_mutable, t)
     current_storage = current_storage[du]
 
     errors = false

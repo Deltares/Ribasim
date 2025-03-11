@@ -14,8 +14,9 @@ For more granular access, see:
 """
 module Ribasim
 
+# Requirements for automatic differentiation
 using ADTypes: AutoForwardDiff, AutoFiniteDiff
-using DifferentiationInterface: AutoSparse, Constant, prepare_jacobian, jacobian!
+using DifferentiationInterface: AutoSparse, Constant, Cache, prepare_jacobian, jacobian!
 using SparseMatrixColorings: GreedyColoringAlgorithm, sparsity_pattern
 
 # Algorithms for solving ODEs.
@@ -47,15 +48,6 @@ using SparseArrays: SparseMatrixCSC, spzeros
 
 # Linear algebra
 using LinearAlgebra: mul!
-
-# PreallocationTools is used because the RHS function (water_balance!) gets called with different input types
-# for u, du:
-# - Float64 for normal calls
-# - Dual numbers for automatic differentiation with ForwardDiff
-# - GradientTracer for automatic Jacobian sparsity detection with SparseConnectivityTracer
-# The computations inside the rhs go trough preallocated arrays of the required type which are created by LazyBufferCache.
-# Retrieving a cache from a LazyBufferCache looks like indexing: https://docs.sciml.ai/PreallocationTools/stable/#LazyBufferCache
-using PreallocationTools: LazyBufferCache
 
 # Interpolation functionality, used for e.g.
 # basin profiles and TabulatedRatingCurve. See also the node
