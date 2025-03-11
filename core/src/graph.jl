@@ -77,7 +77,7 @@ function create_graph(db::DB, config::Config)::MetaGraph
         elseif haskey(graph, id_dst, id_src) &&
                (NodeType.UserDemand ∉ (id_src.type, id_dst.type))
             errors = true
-            @error "Invalid link: the opposite link already exists (this is only allowed for UserDemand)." id_src id_dst
+            @error "Invalid link: the opposite link already exists (this is only allowed for UserDemand)." link_id id_src id_dst
         end
         graph[id_src, id_dst] = link_metadata
     end
