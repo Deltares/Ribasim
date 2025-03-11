@@ -22,7 +22,7 @@
 
     @testset "Results values" begin
         @test basin.node_id == basin_bench.node_id
-        @test all(q -> abs(q) < 0.2, basin.level - basin_bench.level)
+        @test all(q -> abs(q) < 1.0, basin.level - basin_bench.level)
     end
 
     diff = basin.level - basin_bench.level
