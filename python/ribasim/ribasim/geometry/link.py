@@ -121,7 +121,7 @@ class LinkTable(SpatialTableModel[LinkSchema]):
                 ].empty
             ):
                 raise ValueError(
-                    f"Link ({from_node}, {to_node}) is not allowed since the opposite link already exists (this is only allowed for UserDemand)."
+                    f"Link ({link_id=}, {from_node=}, {to_node=}) is not allowed since the opposite link already exists (this is only allowed for UserDemand)."
                 )
 
         geometry_to_append = (
