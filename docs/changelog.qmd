@@ -5,6 +5,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [v2025.2.0] - 2025-03-10
+
+In this release, time is of the essence. We now support dynamic Pumps and Outlets, as well as DiscreteControl thresholds.
+For each node, timeseries can be marked as cyclic, such that yearly recurring timeseries can be easily used without repetition.
+We also developed tools to compare model input in Python.
+
+The most visible change is the renaming of Edge to Link. Like always, existing models are migrated to the new version by reading them with Ribasim Python, and writing out the updated version. For now in Python `model.edge` will continue to work to ease the transition.
+
+### Added
+
+- Check Model equality in Python. [#2057](https://github.com/Deltares/Ribasim/pull/2057)
+- Compare two models in Python. [#2080](https://github.com/Deltares/Ribasim/pull/2080)
+- Support cyclic input timeseries. [#2081](https://github.com/Deltares/Ribasim/pull/2081) [#2102](https://github.com/Deltares/Ribasim/pull/2102)
+- Time dependent `greater_than` thresholds in DiscreteControl. [#2079](https://github.com/Deltares/Ribasim/pull/2079)
+- Validation error on connector nodes having the same from and to Basin. [#2112](https://github.com/Deltares/Ribasim/pull/2112)
+- Support time dependent Pump and Outlet tables. [#2110](https://github.com/Deltares/Ribasim/pull/2110)
+
+### Changed
+- Edges are now called links. [#2023](https://github.com/Deltares/Ribasim/pull/2023)
+- All geometries are coerced to 2D. [#2111](https://github.com/Deltares/Ribasim/pull/2111)
+
+### Fixed
+- Faster initialization of large tables. [#2026](https://github.com/Deltares/Ribasim/issues/2026)
+- Declare incompatibility with Pandera v0.23+. [#2120](https://github.com/Deltares/Ribasim/issues/2120)
+
 ## [v2025.1.0] - 2025-01-17
 
 The first release of 2025 makes the Ribasim core more robust and stable, and speeds up
