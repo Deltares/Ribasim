@@ -543,7 +543,7 @@ function formulate_flow!(
 
         Δh = h_a - h_b
 
-        q = A / n * ∛(R_h^2) * relaxed_root(Δh / L, 1e-3)
+        q = A / n * ∛(R_h^2) * relaxed_root(Δh / L, 1e-5)
         q *= low_storage_factor_resistance_node(
             current_low_storage_factor,
             q,
