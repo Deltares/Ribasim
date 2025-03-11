@@ -1009,7 +1009,36 @@ function optimize_demand_priority!(
         demand_priorities_all[demand_priority_idx],
         optimization_type,
     )
+
+    if optimization_type == OptimizationType.allocate
+        apply_control_from_allocation!(p, allocation_model)
+    end
     return nothing
+end
+
+function apply_control_from_allocation!(p::Parameters, allocation_model::AllocationModel)
+    (; pump, outlet, graph) = p
+
+    apply_control_from_allocation!(pump, allocation_model, graph)
+    apply_control_from_allocation!(outlet, allocation_model, graph)
+end
+
+function apply_control_from_allocation!(
+    node::Union{Pump, Outlet},
+    allocation_model::AllocationModel,
+    graph::MetaGraph,
+)
+    (; node_id, control_type, inflow_link) = node
+    (; flow, subnetwork_id) = allocation_model
+    cache = node.flow_rate_cache[Float64[]] # TODO: Make non-allocating
+
+    for (id, c_type, link_in) in zip(node_id, control_type, inflow_link)
+        in_subnetwork = (graph[id].subnetwork_id != subnetwork_id)
+        allocation_controlled = (c_type == ControlType.Allocation)
+        if in_subnetwork && allocation_controlled
+            cache[id.idx] = flow[link_in.link]
+        end
+    end
 end
 
 """
