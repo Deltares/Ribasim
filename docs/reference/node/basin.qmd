@@ -2,16 +2,16 @@
 title: "Basin"
 ---
 
-The Basin node represents a flexible, generalized control volume that can be used to model various water bodies and systems, including reservoirs, lakes, river reaches, and canals. 
+The Basin node represents a flexible, generalized control volume that can be used to model various water bodies and systems, including reservoirs, lakes, river reaches, and canals.
 While the term "Basin" may traditionally suggest a watershed, in this context, it serves as an abstraction that can represent a wide range of water bodies and control volumes, including those that may not conform to the typical geographical definition of a basin.
 
-The Basin node is the central node in each schematization, as it is the only one that stores water. 
-It can exchange water with all other connected nodes, but it has no flow behavior of its own. 
+The Basin node is the central node in each schematization, as it is the only one that stores water.
+It can exchange water with all other connected nodes, but it has no flow behavior of its own.
 The connected nodes determine how water is exchanged with the Basin, depending on their specific characteristics and the flow dynamics between them.
 
 # Using the Basin Node for Different Water Bodies
 
-For each system, the Basin node will generally require configuration of parameters such as area, water levels, inflow, and outflow. 
+For each system, the Basin node will generally require configuration of parameters such as area, water levels, inflow, and outflow.
 These parameters help define how water is stored and managed in the system. Below are some examples of how the Basin node can be used to represent different water bodies:
 
 Reservoirs: The Basin node can represent a reservoir by specifying its area and water level in the profile table. Although the Basin node does not directly define volume, the area and level parameters effectively determine the storage capacity and dynamics. The time and static tables are used to define inflows and outflows (e.g., precipitation, drainage) over time.
@@ -23,7 +23,7 @@ River Reaches: For river reaches, the Basin node can represent a segment of the 
 Canals: A canal can also be modeled as a Basin, where water flow is managed along the canal system. The profile table defines the cross-sectional area, and the static or time tables are used for dynamic inflows or other relevant parameters.
 
 # Confluence Representation
-A Confluence where multiple links converge into a single node are also modeled using the Basin node. 
+A Confluence where multiple links converge into a single node are also modeled using the Basin node.
 Since Ribasim does not have a dedicated confluence node yet, the Basin node is used to represent the combined flow at the point where multiple water sources converge.
 
 To model a confluence, you would define the appropriate profile table for the Basin, specifying parameters such as area and water level. The flow behavior at the confluence will depend on the incoming flows from the connected nodes and how they interact at the confluence point.
