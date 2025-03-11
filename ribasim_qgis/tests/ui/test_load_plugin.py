@@ -58,7 +58,7 @@ class TestPlugin(unittest.TestCase):
             cursor.execute(
                 "SELECT value FROM ribasim_metadata WHERE key='schema_version'"
             )
-            self.assertTrue(int(cursor.fetchone()[0]) == 1, "schema_version is wrong")
+            self.assertTrue(int(cursor.fetchone()[0]) == 5, "schema_version is wrong")
 
         # Open the model
         datawidget._open_model("test.toml")
