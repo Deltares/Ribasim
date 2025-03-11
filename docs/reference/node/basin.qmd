@@ -9,7 +9,7 @@ The Basin node is the central node in each schematization, as it is the only one
 It can exchange water with all other connected nodes, but it has no flow behavior of its own.
 The connected nodes determine how water is exchanged with the Basin, depending on their specific characteristics and the flow dynamics between them.
 
-# Using the Basin Node for Different Water Bodies
+# Modeling different water body types
 
 For each system, the Basin node will generally require configuration of parameters such as area, water levels, inflow, and outflow.
 These parameters help define how water is stored and managed in the system. Below are some examples of how the Basin node can be used to represent different water bodies:
