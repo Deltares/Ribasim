@@ -370,22 +370,6 @@ abstract type AbstractParameterNode end
 
 abstract type AbstractDemandNode <: AbstractParameterNode end
 
-"""
-Caches of current basin properties
-"""
-struct BasinCache{T}
-    current_storage::Vector{T}
-    # Low storage factor for reducing flows out of drying basins
-    # given the current storages
-    current_low_storage_factor::Vector{T}
-    current_level::Vector{T}
-    current_area::Vector{T}
-    current_cumulative_precipitation::Vector{T}
-    current_cumulative_drainage::Vector{T}
-end
-
-BasinCache(n) = BasinCache((zeros(n) for _ in 1:6)...)
-
 @kwdef struct ConcentrationData
     # Config setting to enable/disable evaporation of mass
     evaporate_mass::Bool = true
@@ -686,47 +670,61 @@ node_id: node ID of the Terminal node
     node_id::Vector{NodeID}
 end
 
-@kwdef struct ParametersDiff{T} <: AbstractVector{T}
-    cache_basin::BasinCache{T} = BasinCache(0)
-    cache_flow_rate_pump::Vector{T} = Float64[]
-    cache_flow_rate_outlet::Vector{T} = Float64[]
-    cache_error_pid_control::Vector{T} = Float64[]
+"""
+Collection of ranges that cover all the components of the cache vector `diff_cache`."
+
+It is used to create views of `diff_cache`, which allows `diff_cache` to be a vector
+in stead of a custom struct which is compatible with more automatic differentiation backends.
+"""
+@kwdef struct CacheRanges
+    current_storage::UnitRange{Int64} = 1:0
+    # Low storage factor for reducing flows out of drying basins
+    # given the current storages
+    current_low_storage_factor::UnitRange{Int64} = 1:0
+    current_level::UnitRange{Int64} = 1:0
+    current_area::UnitRange{Int64} = 1:0
+    current_cumulative_precipitation::UnitRange{Int64} = 1:0
+    current_cumulative_drainage::UnitRange{Int64} = 1:0
+    flow_rate_pump::UnitRange{Int64} = 1:0
+    flow_rate_outlet::UnitRange{Int64} = 1:0
+    error_pid_control::UnitRange{Int64} = 1:0
 end
 
-@enumx ParameterDiffType flow_rate_pump flow_rate_outlet basin_level
+function CacheRanges(nodes::NamedTuple)
+    n_basin = length(nodes.basin.node_id)
+    n_pump = length(nodes.pump.node_id)
+    n_outlet = length(nodes.outlet.node_id)
+    n_pid_control = length(nodes.pid_control.node_id)
+    lengths = [fill(n_basin, 6)..., n_pump, n_outlet, n_pid_control]
+    CacheRanges(ranges(lengths)...)
+end
 
-@kwdef struct ParametersDiffRef
-    type::ParameterDiffType.T = ParameterDiffType.pump_flow_rate
+@enumx DiffCacheType flow_rate_pump flow_rate_outlet basin_level
+
+@kwdef struct DiffCacheRef
+    type::DiffCacheType.T = DiffCacheType.pump_flow_rate
     idx::Int = 0
     from_du::Bool = false
 end
 
-function get_vector(type::ParameterDiffType.T, p_diff::ParametersDiff)
-    if type == ParameterDiffType.flow_rate_pump
-        p_diff.cache_flow_rate_pump
-    elseif type == ParameterDiffType.flow_rate_outlet
-        p_diff.cache_flow_rate_outlet
-    else # type == ParameterDiffType.basin_level
-        p_diff.cache_basin.current_level
+function get_cache_view(
+    diff_cache::Vector,
+    type::DiffCacheType.T,
+    cache_ranges::CacheRanges,
+)
+    cache_range = if type == DiffCacheType.flow_rate_pump
+        cache_ranges.flow_rate_pump
+    elseif type == DiffCacheType.flow_rate_outlet
+        cache_ranges.flow_rate_outlet
+    else # type == DiffCacheType.basin_level
+        cache_ranges.current_level
     end
-end
-
-function get_value(ref::ParametersDiffRef, p_diff::ParametersDiff, du::Vector)
-    if ref.from_du
-        du[ref.idx]
-    else
-        get_vector(ref.type, p_diff)[ref.idx]
-    end
-end
-
-function set_value!(ref::ParametersDiffRef, p_diff::ParametersDiff, value)
-    @assert !ref.from_du
-    get_vector(ref.type, p_diff)[ref.idx] = value
+    view(diff_cache, cache_range)
 end
 
 @kwdef struct SubVariable
     listen_node_id::NodeID
-    variable_ref::ParametersDiffRef
+    variable_ref::DiffCacheRef
     variable::String
     weight::Float64
     look_ahead::Float64
@@ -783,7 +781,7 @@ end
     node_id::Vector{NodeID}
     compound_variable::Vector{CompoundVariable}
     controlled_variable::Vector{String}
-    target_ref::Vector{ParametersDiffRef}
+    target_ref::Vector{DiffCacheRef}
     func::Vector{ScalarInterpolation}
 end
 
@@ -806,8 +804,7 @@ control_mapping: dictionary from (node_id, control_state) to target flow rate
     active::Vector{Bool}
     listen_node_id::Vector{NodeID}
     target::Vector{ScalarInterpolation}
-    target_ref::Vector{ParametersDiffRef} =
-        Vector{ParametersDiffRef}(undef, length(node_id))
+    target_ref::Vector{DiffCacheRef} = Vector{DiffCacheRef}(undef, length(node_id))
     proportional::Vector{ScalarInterpolation}
     integral::Vector{ScalarInterpolation}
     derivative::Vector{ScalarInterpolation}
@@ -950,17 +947,7 @@ It is used to create views of `u`, and an low-latency alternative to making `u` 
     integral::UnitRange{Int64} = 1:0
 end
 
-function StateRanges(u_ids::NamedTuple)::StateRanges
-    lengths = map(length, u_ids)
-    # from the lengths of the components
-    # construct [1:n_pump, (n_pump+1):(n_pump+n_outlet)]
-    # which are used to create views into the data array
-    bounds = pushfirst!(cumsum(lengths), 0)
-    ranges = [range(p[1] + 1, p[2]) for p in IterTools.partition(bounds, 2, 1)]
-    # standardize empty ranges to 1:0 for easier testing
-    replace!(x -> isempty(x) ? (1:0) : x, ranges)
-    return StateRanges(ranges...)
-end
+StateRanges(u_ids::NamedTuple) = StateRanges(ranges(map(length, collect(u_ids)))...)
 
 @kwdef mutable struct ParametersMutable
     all_nodes_active::Bool = false
@@ -999,17 +986,32 @@ end
     u_prev_saveat::Vector{Float64} = Float64[]
     # Node ID associated with each state
     node_id::Vector{NodeID} = NodeID[]
-    # Range per states component
+    # Range per states or cache component
     state_ranges::StateRanges = StateRanges()
+    cache_ranges::CacheRanges = CacheRanges()
 end
 
-@kwdef struct Parameters{C1, C2, C3, C4, C5}
+length_cache(p_non_diff::ParametersNonDiff) =
+    6 * length(p_non_diff.basin.node_id) +
+    length(p_non_diff.pump.node_id) +
+    length(p_non_diff.outlet.node_id) +
+    length(p_non_diff.pid_control.node_id)
+
+@kwdef struct Parameters{C1, C2, C3, C4, C5, T}
     p_non_diff::ParametersNonDiff{C1, C2, C3, C4, C5}
-    p_diff::ParametersDiff{Float64} = ParametersDiff(;
-        cache_basin = BasinCache(length(p_non_diff.basin.node_id)),
-        cache_flow_rate_pump = zeros(length(p_non_diff.pump.node_id)),
-        cache_flow_rate_outlet = zeros(length(p_non_diff.pump.node_id)),
-        cache_error_pid_control = zeros(length(p_non_diff.pid_control.node_id)),
-    )
+    diff_cache::Vector{T} = zeros(length_cache(p_non_diff))
     p_mutable::ParametersMutable = ParametersMutable()
+end
+
+function get_value(ref::DiffCacheRef, p::Parameters, du::Vector)
+    if ref.from_du
+        du[ref.idx]
+    else
+        get_cache_view(p.diff_cache, ref.type, p.non_diff.cache_ranges)[ref.idx]
+    end
+end
+
+function set_value!(ref::DiffCacheRef, p::Parameters, value)
+    @assert !ref.from_du
+    get_cache_view(p.diff_cache, ref.type, p.non_diff.cache_ranges)[ref.idx] = value
 end

@@ -1038,7 +1038,7 @@ function CompoundVariable(
     for row in variables_compound_variable
         listen_node_id = NodeID(row.listen_node_id, node_ids_all)
         # Placeholder until actual ref is known
-        variable_ref = ParametersDiffRef()
+        variable_ref = DiffCacheRef()
         variable = row.variable
         # Default to weight = 1.0 if not specified
         weight = coalesce(row.weight, 1.0)
@@ -1226,7 +1226,7 @@ function ContinuousControl(db::DB, config::Config)::ContinuousControl
     compound_variable = continuous_control_compound_variables(db, config, ids)
 
     # References to the controlled parameters, filled in later when they are known
-    target_refs = ParametersDiffRef[]
+    target_refs = DiffCacheRef[]
 
     if errors
         error("Errors encountered when parsing ContinuousControl data.")
@@ -1815,6 +1815,7 @@ function Parameters(db::DB, config::Config)::Parameters
     node_id = reduce(vcat, u_ids)
     n_states = length(node_id)
     state_ranges = StateRanges(u_ids)
+    cache_ranges = CacheRanges(nodes)
     flow_to_storage = build_flow_to_storage(state_ranges, n_states, basin, connector_nodes)
     state_inflow_link, state_outflow_link = get_state_flow_links(graph, nodes)
 
@@ -1836,8 +1837,10 @@ function Parameters(db::DB, config::Config)::Parameters
         flow_to_storage,
         config.solver.water_balance_abstol,
         config.solver.water_balance_reltol,
+        u_prev_saveat = zeros(n_states),
         node_id,
         state_ranges,
+        cache_ranges,
     )
 
     collect_control_mappings!(p_non_diff)

@@ -29,16 +29,16 @@ struct Model{T}
 end
 
 function get_jac_eval(du::Vector, u::Vector, p::Parameters, solver::Solver)
-    (; p_non_diff, p_diff, p_mutable) = p
+    (; p_non_diff, diff_cache, p_mutable) = p
     backend = get_ad_type(solver)
 
-    if solver.sparse
-        backend = AutoSparse(
-            backend;
-            sparsity_detector = TracerSparsityDetector(),
-            coloring_algorithm = GreedyColoringAlgorithm(),
-        )
-    end
+    # if solver.sparse
+    #     backend = AutoSparse(
+    #         backend;
+    #         sparsity_detector = TracerSparsityDetector(),
+    #         coloring_algorithm = GreedyColoringAlgorithm(),
+    #     )
+    # end
 
     t = 0.0
 
@@ -50,13 +50,14 @@ function get_jac_eval(du::Vector, u::Vector, p::Parameters, solver::Solver)
         backend,
         u,
         Constant(p_non_diff),
-        Cache(p_diff),
+        Cache(diff_cache),
         Constant(p_mutable),
         Constant(t),
     )
     p_mutable.all_nodes_active = false
 
-    jac_prototype = solver.sparse ? sparsity_pattern(prep) : nothing
+    #jac_prototype = solver.sparse ? sparsity_pattern(prep) : nothing
+    jac_prototype = nothing
 
     jac(J, u, p, t) = jacobian!(
         water_balance!,
@@ -66,7 +67,7 @@ function get_jac_eval(du::Vector, u::Vector, p::Parameters, solver::Solver)
         backend,
         u,
         Constant(p.p_non_diff),
-        Cache(p.p_diff),
+        Cache(diff_cache),
         Constant(p.p_mutable),
         Constant(t),
     )
@@ -107,10 +108,10 @@ function Model(config::Config)::Model
     t0 = zero(t_end)
     timespan = (t0, t_end)
 
-    local parameters, p_non_diff, p_diff, p_mutable, tstops
+    local parameters, p_non_diff, diff_cache, p_mutable, tstops
     try
         parameters = Parameters(db, config)
-        (; p_non_diff, p_diff, p_mutable) = parameters
+        (; p_non_diff, diff_cache, p_mutable) = parameters
 
         if !valid_discrete_control(parameters.p_non_diff, config)
             error("Invalid discrete control state definition(s).")
@@ -189,17 +190,15 @@ function Model(config::Config)::Model
     u0 = build_state_vector(parameters.p_non_diff)
     du0 = zero(u0)
 
-    @reset p_non_diff.u_prev_saveat = zero(u0)
-
     # The Solver algorithm
     alg = algorithm(config.solver; u0)
 
     # Synchronize level with storage
-    set_current_basin_properties!(du0, u0, p_non_diff, p_diff, p_mutable, t0)
+    set_current_basin_properties!(u0, parameters, t0)
 
     # Previous level is used to estimate the minimum level that was attained during a time step
     # in limit_flow!
-    p_non_diff.basin.level_prev .= p_diff.cache_basin.current_level
+    p_non_diff.basin.level_prev .= view(diff_cache, p_non_diff.cache_ranges.current_level)
 
     saveat = convert_saveat(config.solver.saveat, t_end)
     saveat isa Float64 && push!(tstops, range(0, t_end; step = saveat))
@@ -212,7 +211,7 @@ function Model(config::Config)::Model
     prob = ODEProblem(RHS, u0, timespan, parameters)
     @debug "Setup ODEProblem."
 
-    callback, saved = create_callbacks(parameters, config, saveat)
+    callback, saved = create_callbacks(p_non_diff, config, saveat)
     @debug "Created callbacks."
 
     # Run water_balance! before initializing the integrator. This is because
@@ -245,7 +244,7 @@ function Model(config::Config)::Model
     )
     @debug "Setup integrator."
 
-    if config.allocation.use_allocation && is_active(parameters.allocation)
+    if config.allocation.use_allocation && is_active(p_non_diff.allocation)
         set_initial_allocation_mean_flows!(integrator)
     end
 

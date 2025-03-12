@@ -237,7 +237,7 @@ function get_flow(
     link::Tuple{NodeID, NodeID};
     boundary_flow = nothing,
 )
-    (; flow_boundary) = p
+    (; flow_boundary) = p.p_non_diff
     from_id = link[1]
     if from_id.type == NodeType.FlowBoundary
         if boundary_flow === nothing
@@ -247,13 +247,13 @@ function get_flow(
             boundary_flow[from_id.idx]
         end
     else
-        flow[get_state_index(p.state_ranges, link)]
+        flow[get_state_index(p.p_non_diff.state_ranges, link)]
     end
 end
 
 function get_influx(du::Vector, id::NodeID, p::Parameters)
     @assert id.type == NodeType.Basin
-    (; basin, state_ranges) = p
+    (; basin, state_ranges) = p.non_diff
     (; vertical_flux) = basin
     du_evaporation = view(du, state_ranges.evaporation)
     du_infiltration = view(du, state_ranges.infiltration)

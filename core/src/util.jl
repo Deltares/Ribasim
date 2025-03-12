@@ -158,11 +158,14 @@ Get the current water level of a node ID.
 The ID can belong to either a Basin or a LevelBoundary.
 du: tells ForwardDiff whether this call is for differentiation or not
 """
-function get_level(p::Parameters, node_id::NodeID, t::Number, current_level::Vector)::Number
+function get_level(p::Parameters, node_id::NodeID, t::Number)::Number
+    (; p_non_diff, diff_cache) = p
+    (; cache_ranges) = p_non_diff
     if node_id.type == NodeType.Basin
+        current_level = view(diff_cache, cache_ranges.current_level)
         current_level[node_id.idx]
     elseif node_id.type == NodeType.LevelBoundary
-        p.level_boundary.level[node_id.idx](t)
+        p_non_diff.level_boundary.level[node_id.idx](t)
     elseif node_id.type == NodeType.Terminal
         # Terminal is like a bottomless pit.
         # A level at -Inf ensures we don't hit `max_downstream_level` reduction factors.
@@ -297,11 +300,15 @@ end
 
 # SparseConnectivityTracer overloads
 
-function get_low_storage_factor(
-    current_low_storage_factor::Vector{T},
-    id::NodeID,
-)::T where {T}
-    return id.type == NodeType.Basin ? current_low_storage_factor[id.idx] : one(T)
+function get_low_storage_factor(p::Parameters, id::NodeID)
+    (; p_non_diff, diff_cache) = p
+    (; cache_ranges) = p_non_diff
+    current_low_storage_factor = view(diff_cache, cache_ranges.current_low_storage_factor)
+    if id.type == NodeType.Basin
+        current_low_storage_factor[id.idx]
+    else
+        one(eltype(current_low_storage_factor))
+    end
 end
 
 """
@@ -309,15 +316,15 @@ For resistance nodes, give a reduction factor based on the upstream node
 as defined by the flow direction.
 """
 function low_storage_factor_resistance_node(
-    current_low_storage_factor,
-    q,
-    inflow_id,
-    outflow_id,
+    p::Parameters,
+    q::Number,
+    inflow_id::NodeID,
+    outflow_id::NodeID,
 )
     if q > 0
-        get_low_storage_factor(current_low_storage_factor, inflow_id)
+        get_low_storage_factor(p, inflow_id)
     else
-        get_low_storage_factor(current_low_storage_factor, outflow_id)
+        get_low_storage_factor(p, outflow_id)
     end
 end
 
@@ -440,7 +447,7 @@ Get the time interval between (flow) saves
 """
 function get_Δt(integrator)::Float64
     (; p, t, dt) = integrator
-    (; saveat) = p.graph[]
+    (; saveat) = p.p_non_diff.graph[]
     if iszero(saveat)
         dt
     elseif isinf(saveat)
@@ -468,7 +475,7 @@ as input. Therefore we set the instantaneous flows as the mean flows as allocati
 """
 function set_initial_allocation_mean_flows!(integrator)::Nothing
     (; u, p, t) = integrator
-    (; allocation, graph) = p
+    (; allocation) = p.p_non_diff
     (; mean_input_flows, mean_realized_flows, allocation_models) = allocation
     (; Δt_allocation) = allocation_models[1]
 
@@ -527,37 +534,37 @@ function get_variable_ref(
     variable::String,
     state_ranges::StateRanges;
     listen::Bool = true,
-)::Tuple{ParametersDiffRef, Bool}
+)::Tuple{DiffCacheRef, Bool}
     errors = false
 
     ref = if node_id.type == NodeType.Basin && variable == "level"
-        ParametersDiffRef(; type = ParameterDiffType.basin_level, node_id.idx)
+        DiffCacheRef(; type = DiffCacheType.basin_level, node_id.idx)
     elseif variable == "flow_rate" && node_id.type != NodeType.FlowBoundary
         if listen
             if node_id.type ∉ conservative_nodetypes
                 errors = true
                 @error "Cannot listen to flow_rate of $node_id, the node type must be one of $conservative_node_types."
-                ParametersDiffRef()
+                DiffCacheRef()
             else
                 # Index in the state vector (inflow)
                 idx = get_state_index(state_ranges, node_id)
-                ParametersDiffRef(; idx, from_du = true)
+                DiffCacheRef(; idx, from_du = true)
             end
         else
             type = if node_id.type == NodeType.Pump
-                ParameterDiffType.flow_rate_pump
+                DiffCacheType.flow_rate_pump
             elseif node_id.type == NodeType.Outlet
-                ParameterDiffType.flow_rate_outlet
+                DiffCacheType.flow_rate_outlet
             else
                 errors = true
                 @error "Cannot set the flow rate of $node_id."
-                ParameterDiffType.flow_rate_pump
+                DiffCacheType.flow_rate_pump
             end
-            ParametersDiffRef(; type, node_id.idx)
+            DiffCacheRef(; type, node_id.idx)
         end
     else
         # Placeholder to obtain correct type
-        ParametersDiffRef()
+        DiffCacheRef()
     end
     return ref, errors
 end
@@ -634,7 +641,7 @@ function set_discrete_controlled_variable_refs!(p_non_diff::ParametersNonDiff)::
 end
 
 function set_target_ref!(
-    target_ref::Vector{ParametersDiffRef},
+    target_ref::Vector{DiffCacheRef},
     node_id::Vector{NodeID},
     controlled_variable::Vector{String},
     state_ranges::StateRanges,
@@ -984,9 +991,9 @@ end
 Check whether any storages are negative given the state u.
 """
 function isoutofdomain(u, p, t)
-    (; current_storage) = p.basin.current_properties
-    current_storage = current_storage[u]
-    formulate_storages!(current_storage, u, u, p, t)
+    (; p_non_diff, diff_cache) = p
+    current_storage = view(diff_cache, p_non_diff.cache_ranges.current_storage)
+    formulate_storages!(u, p, t)
     any(<(0), current_storage)
 end
 
@@ -1005,7 +1012,7 @@ estimating the lowest storage achieved over the last time step. To make sure
 it is an underestimate of the minimum, 2LOW_STORAGE_THRESHOLD is subtracted from this lowest storage.
 This is done to not be too strict in clamping the flow in the limiter
 """
-function min_low_storage_factor(storage_now::Vector{T}, storage_prev, id) where {T}
+function min_low_storage_factor(storage_now::AbstractVector{T}, storage_prev, id) where {T}
     if id.type == NodeType.Basin
         reduction_factor(
             min(storage_now[id.idx], storage_prev[id.idx]) - 2LOW_STORAGE_THRESHOLD,
@@ -1023,7 +1030,7 @@ it is an underestimate of the minimum, 2USER_DEMAND_MIN_LEVEL_THRESHOLD is subtr
 This is done to not be too strict in clamping the flow in the limiter
 """
 function min_low_user_demand_level_factor(
-    level_now::Vector{T},
+    level_now::AbstractVector{T},
     level_prev,
     min_level,
     id_user_demand,
@@ -1040,8 +1047,8 @@ function min_low_user_demand_level_factor(
     end
 end
 
-function mean_input_flows_subnetwork(p::Parameters, subnetwork_id::Int32)
-    (; mean_input_flows, subnetwork_ids) = p.allocation
+function mean_input_flows_subnetwork(p_non_diff::ParametersNonDiff, subnetwork_id::Int32)
+    (; mean_input_flows, subnetwork_ids) = p_non_diff.allocation
     subnetwork_idx = searchsortedfirst(subnetwork_ids, subnetwork_id)
     return mean_input_flows[subnetwork_idx]
 end
@@ -1102,4 +1109,15 @@ function get_timeseries_tstops(
     end
 
     return tstops
+end
+
+function ranges(lengths::Vector{<:Integer})
+    # from the lengths of the components
+    # construct [1:n_pump, (n_pump+1):(n_pump+n_outlet)]
+    # which are used to create views into the data array
+    bounds = pushfirst!(cumsum(lengths), 0)
+    ranges = [range(p[1] + 1, p[2]) for p in IterTools.partition(bounds, 2, 1)]
+    # standardize empty ranges to 1:0 for easier testing
+    replace!(x -> isempty(x) ? (1:0) : x, ranges)
+    return ranges
 end
