@@ -40,22 +40,25 @@ This uses a typeassert to ensure that the return type annotation doesn't create 
 """
 function BMI.get_value_ptr(model::Model, name::String)::Vector{Float64}
     (; u, p) = model.integrator
-    (; infiltration, user_demand_inflow) = p.state_ranges
+    (; p_non_diff, diff_cache) = p
+    (; state_ranges, cache_ranges, basin) = p_non_diff
+    (; infiltration, user_demand_inflow) = state_ranges
+    (; current_storage, current_level) = cache_ranges
 
     if name == "basin.storage"
-        p.basin.current_properties.current_storage[u]::Vector{Float64}
+        unsafe_array(view(diff_cache, current_storage))::Vector{Float64}
     elseif name == "basin.level"
-        p.basin.current_properties.current_level[u]::Vector{Float64}
+        unsafe_array(view(diff_cache, current_level))::Vector{Float64}
     elseif name == "basin.infiltration"
-        p.basin.vertical_flux.infiltration::Vector{Float64}
+        basin.vertical_flux.infiltration::Vector{Float64}
     elseif name == "basin.drainage"
-        p.basin.vertical_flux.drainage::Vector{Float64}
+        basin.vertical_flux.drainage::Vector{Float64}
     elseif name == "basin.cumulative_infiltration"
         unsafe_array(view(u, infiltration))::Vector{Float64}
     elseif name == "basin.cumulative_drainage"
-        p.basin.cumulative_drainage::Vector{Float64}
+        basin.cumulative_drainage::Vector{Float64}
     elseif name == "basin.subgrid_level"
-        p.subgrid.level::Vector{Float64}
+        subgrid.level::Vector{Float64}
     elseif name == "user_demand.demand"
         vec(p.user_demand.demand)::Vector{Float64}
     elseif name == "user_demand.cumulative_inflow"

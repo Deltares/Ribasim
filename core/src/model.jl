@@ -28,28 +28,34 @@ struct Model{T}
     end
 end
 
-function get_jac_eval(du::Vector, u::Vector, p::Parameters, solver::Solver)
+"""
+Get the Jacobian evaluation function via DifferentiationInterface.jl.
+The time derivative is also supplied in case a Rosenbrock method is used.
+"""
+function get_diff_eval(du::Vector, u::Vector, p::Parameters, solver::Solver)
     (; p_non_diff, diff_cache, p_mutable) = p
     backend = get_ad_type(solver)
 
-    if solver.sparse
-        backend = AutoSparse(
+    backend_jac = if solver.sparse
+        AutoSparse(
             backend;
             sparsity_detector = TracerSparsityDetector(),
             coloring_algorithm = GreedyColoringAlgorithm(),
         )
+    else
+        backend
     end
 
     t = 0.0
     diff_cache_SCT =
-        similar(diff_cache, GradientTracer{IndexSetGradientPattern{Int64, BitSet}})
+        zeros(GradientTracer{IndexSetGradientPattern{Int64, BitSet}}, length(diff_cache))
 
     # Activate all nodes to catch all possible state dependencies
     p_mutable.all_nodes_active = true
-    prep = prepare_jacobian(
+    jac_prep = prepare_jacobian(
         water_balance!,
         du,
-        backend,
+        backend_jac,
         u,
         Constant(p_non_diff),
         Cache(diff_cache_SCT),
@@ -58,15 +64,14 @@ function get_jac_eval(du::Vector, u::Vector, p::Parameters, solver::Solver)
     )
     p_mutable.all_nodes_active = false
 
-    #jac_prototype = solver.sparse ? sparsity_pattern(prep) : nothing
-    jac_prototype = nothing
+    jac_prototype = solver.sparse ? sparsity_pattern(jac_prep) : nothing
 
     jac(J, u, p, t) = jacobian!(
         water_balance!,
         du,
         J,
-        prep,
-        backend,
+        jac_prep,
+        backend_jac,
         u,
         Constant(p.p_non_diff),
         Cache(diff_cache),
@@ -74,7 +79,30 @@ function get_jac_eval(du::Vector, u::Vector, p::Parameters, solver::Solver)
         Constant(t),
     )
 
-    return jac_prototype, jac
+    tgrad_prep = prepare_derivative(
+        water_balance!,
+        du,
+        backend,
+        t,
+        Constant(u),
+        Constant(p_non_diff),
+        Cache(diff_cache),
+        Constant(p_mutable),
+    )
+    tgrad(dT, u, p, t) = derivative!(
+        water_balance!,
+        du,
+        dT,
+        tgrad_prep,
+        backend,
+        t,
+        Constant(u),
+        Constant(p.p_non_diff),
+        Cache(p.diff_cache),
+        Constant(p.p_mutable),
+    )
+
+    return jac_prototype, jac, tgrad
 end
 
 function Model(config_path::AbstractString)::Model
@@ -207,8 +235,8 @@ function Model(config::Config)::Model
     tstops = sort(unique(vcat(tstops...)))
     adaptive, dt = convert_dt(config.solver.dt)
 
-    jac_prototype, jac = get_jac_eval(du0, u0, parameters, config.solver)
-    RHS = ODEFunction(water_balance!; jac_prototype, jac)
+    jac_prototype, jac, tgrad = get_diff_eval(du0, u0, parameters, config.solver)
+    RHS = ODEFunction(water_balance!; jac_prototype, jac, tgrad)
 
     prob = ODEProblem(RHS, u0, timespan, parameters)
     @debug "Setup ODEProblem."

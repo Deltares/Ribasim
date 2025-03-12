@@ -487,7 +487,7 @@ function check_negative_storage(u, t, integrator)::Nothing
     end
 
     if errors
-        t_datetime = datetime_since(integrator.t, integrator.p.starttime)
+        t_datetime = datetime_since(integrator.t, p_non_diff.starttime)
         error("Negative storages found at $t_datetime.")
     end
     return nothing
@@ -556,7 +556,7 @@ function set_new_control_state!(
     truth_state::Vector{Bool},
 )::Nothing
     (; p) = integrator
-    (; discrete_control) = p
+    (; discrete_control) = p.p_non_diff
 
     # Get the control state corresponding to the new truth state,
     # if one is defined
@@ -593,11 +593,11 @@ Get a value for a condition. Currently supports getting levels from basins and f
 from flow boundaries.
 """
 function get_value(subvariable::SubVariable, p::Parameters, du::AbstractVector, t::Float64)
-    (; flow_boundary, level_boundary, basin) = p
-    (; listen_node_id, look_ahead, variable, variable_ref) = subvariable
+    (; flow_boundary, level_boundary, basin) = p.p_non_diff
+    (; listen_node_id, look_ahead, variable, diff_cache_ref) = subvariable
 
-    if !iszero(variable_ref.idx)
-        return get_value(variable_ref, du)
+    if !iszero(diff_cache_ref.idx)
+        return get_value(diff_cache_ref, p, du)
     end
 
     if variable == "level"
@@ -651,7 +651,7 @@ function get_allocation_model(p::Parameters, subnetwork_id::Int32)::AllocationMo
 end
 
 function set_control_params!(p::Parameters, node_id::NodeID, control_state::String)::Nothing
-    (; discrete_control, allocation) = p
+    (; discrete_control) = p.p_non_diff
     (; control_mappings) = discrete_control
     control_state_update = control_mappings[node_id.type][(node_id, control_state)]
     (; active, scalar_update, itp_update) = control_state_update

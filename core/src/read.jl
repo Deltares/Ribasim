@@ -743,6 +743,14 @@ function Pump(db::DB, config::Config, graph::MetaGraph)::Pump
     (; node_id) = parsed_parameters
     continuous_control_type = get_continuous_control_type(graph, node_id)
 
+    if !valid_flow_rates(
+        node_id,
+        parsed_parameters.flow_rate,
+        parsed_parameters.control_mapping,
+    )
+        error("Invalid pump flow_rates found.")
+    end
+
     return Pump(;
         node_id,
         inflow_link = inflow_link.(Ref(graph), node_id),
@@ -792,6 +800,14 @@ function Outlet(db::DB, config::Config, graph::MetaGraph)::Outlet
 
     (; node_id) = parsed_parameters
     continuous_control_type = get_continuous_control_type(graph, node_id)
+
+    if !valid_flow_rates(
+        node_id,
+        parsed_parameters.flow_rate,
+        parsed_parameters.control_mapping,
+    )
+        error("Invalid pump flow_rates found.")
+    end
 
     return Outlet(;
         node_id,
@@ -1038,14 +1054,14 @@ function CompoundVariable(
     for row in variables_compound_variable
         listen_node_id = NodeID(row.listen_node_id, node_ids_all)
         # Placeholder until actual ref is known
-        variable_ref = DiffCacheRef()
+        diff_cache_ref = DiffCacheRef()
         variable = row.variable
         # Default to weight = 1.0 if not specified
         weight = coalesce(row.weight, 1.0)
         # Default to look_ahead = 0.0 if not specified
         look_ahead = coalesce(row.look_ahead, 0.0)
         subvariable =
-            SubVariable(listen_node_id, variable_ref, variable, weight, look_ahead)
+            SubVariable(listen_node_id, diff_cache_ref, variable, weight, look_ahead)
         push!(subvariables, subvariable)
     end
 
@@ -1824,6 +1840,7 @@ function Parameters(db::DB, config::Config)::Parameters
         nodes.pid_control.node_id,
         fill("flow_rate", length(node_id)),
         state_ranges,
+        graph,
     )
 
     p_non_diff = ParametersNonDiff(;
@@ -1844,8 +1861,8 @@ function Parameters(db::DB, config::Config)::Parameters
     )
 
     collect_control_mappings!(p_non_diff)
-    set_listen_variable_refs!(p_non_diff)
-    set_discrete_controlled_variable_refs!(p_non_diff)
+    set_listen_diff_cache_refs!(p_non_diff)
+    set_discrete_controlled_diff_cache_refs!(p_non_diff)
 
     # Allocation data structures
     if config.allocation.use_allocation

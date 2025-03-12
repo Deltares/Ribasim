@@ -532,7 +532,7 @@ end
 """
 Get the reference to a parameter
 """
-function get_variable_ref(
+function get_diff_cache_ref(
     node_id::NodeID,
     variable::String,
     state_ranges::StateRanges;
@@ -575,7 +575,7 @@ end
 """
 Set references to all variables that are listened to by discrete/continuous control
 """
-function set_listen_variable_refs!(p_non_diff::ParametersNonDiff)::Nothing
+function set_listen_diff_cache_refs!(p_non_diff::ParametersNonDiff)::Nothing
     (; discrete_control, continuous_control, state_ranges) = p_non_diff
     compound_variable_sets =
         [discrete_control.compound_variables..., continuous_control.compound_variable]
@@ -585,13 +585,13 @@ function set_listen_variable_refs!(p_non_diff::ParametersNonDiff)::Nothing
         for compound_variable in compound_variables
             (; subvariables) = compound_variable
             for (j, subvariable) in enumerate(subvariables)
-                ref, error = get_variable_ref(
+                ref, error = get_diff_cache_ref(
                     subvariable.listen_node_id,
                     subvariable.variable,
                     state_ranges,
                 )
                 if !error
-                    subvariables[j] = @set subvariable.variable_ref = ref
+                    subvariables[j] = @set subvariable.diff_cache_ref = ref
                 end
                 errors |= error
             end
@@ -607,7 +607,7 @@ end
 """
 Set references to all variables that are controlled by discrete control
 """
-function set_discrete_controlled_variable_refs!(p_non_diff::ParametersNonDiff)::Nothing
+function set_discrete_controlled_diff_cache_refs!(p_non_diff::ParametersNonDiff)::Nothing
     for nodetype in propertynames(p_non_diff)
         node = getfield(p_non_diff, nodetype)
         if node isa AbstractParameterNode && hasfield(typeof(node), :control_mapping)
@@ -648,10 +648,13 @@ function set_target_ref!(
     node_id::Vector{NodeID},
     controlled_variable::Vector{String},
     state_ranges::StateRanges,
+    graph::MetaGraph,
 )
     errors = false
     for (i, (id, variable)) in enumerate(zip(node_id, controlled_variable))
-        ref, error = get_variable_ref(id, variable, state_ranges; listen = false)
+        controlled_node_id = only(outneighbor_labels_type(graph, id, LinkType.control))
+        ref, error =
+            get_diff_cache_ref(controlled_node_id, variable, state_ranges; listen = false)
         target_ref[i] = ref
         errors |= error
     end
@@ -760,7 +763,7 @@ end
 
 # Custom overloads
 reduction_factor(x::GradientTracer, ::Real) = x
-low_storage_factor_resistance_node(storage, q::GradientTracer, inflow_id, outflow_id) = q
+low_storage_factor_resistance_node(::Parameters, q::GradientTracer, ::NodeID, ::NodeID) = q
 relaxed_root(x::GradientTracer, threshold::Real) = x
 get_level_from_storage(basin::Basin, state_idx::Int, storage::GradientTracer) = storage
 

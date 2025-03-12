@@ -323,10 +323,11 @@ end
 """
 The parameter update associated with a certain control state for discrete control
 """
-@kwdef struct ControlStateUpdate{T <: AbstractInterpolation}
+@kwdef struct ControlStateUpdate
     active::ParameterUpdate{Bool}
     scalar_update::Vector{ParameterUpdate{Float64}} = ParameterUpdate{Float64}[]
-    itp_update::Vector{ParameterUpdate{T}} = ParameterUpdate{ScalarInterpolation}[]
+    itp_update::Vector{ParameterUpdate{ScalarInterpolation}} =
+        ParameterUpdate{ScalarInterpolation}[]
 end
 
 """
@@ -724,7 +725,7 @@ end
 
 @kwdef struct SubVariable
     listen_node_id::NodeID
-    variable_ref::DiffCacheRef
+    diff_cache_ref::DiffCacheRef
     variable::String
     weight::Float64
     look_ahead::Float64
@@ -1007,11 +1008,11 @@ function get_value(ref::DiffCacheRef, p::Parameters, du::Vector)
     if ref.from_du
         du[ref.idx]
     else
-        get_cache_view(p.diff_cache, ref.type, p.non_diff.cache_ranges)[ref.idx]
+        get_cache_view(p.diff_cache, ref.type, p.p_non_diff.cache_ranges)[ref.idx]
     end
 end
 
 function set_value!(ref::DiffCacheRef, p::Parameters, value)
     @assert !ref.from_du
-    get_cache_view(p.diff_cache, ref.type, p.non_diff.cache_ranges)[ref.idx] = value
+    get_cache_view(p.diff_cache, ref.type, p.p_non_diff.cache_ranges)[ref.idx] = value
 end

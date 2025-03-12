@@ -267,8 +267,8 @@ Test whether static or discrete controlled flow rates are indeed non-negative.
 """
 function valid_flow_rates(
     node_id::Vector{NodeID},
-    flow_rate::Vector,
-    control_mapping::Dict,
+    flow_rate::Vector{ScalarInterpolation},
+    control_mapping::Dict{Tuple{NodeID, String}, <:ControlStateUpdate},
 )::Bool
     errors = false
 
@@ -286,7 +286,7 @@ function valid_flow_rates(
         if flow_rate_ < 0.0
             errors = true
             control_state = key[2]
-            @error "$id_controlled flow rates must be non-negative, found $flow_rate_ for control state '$control_state'."
+            @error "Negative flow rate(s) for $id_controlled, control state '$control_state' found."
         end
     end
 
@@ -294,9 +294,9 @@ function valid_flow_rates(
         if id in ids_controlled
             continue
         end
-        if flow_rate_ < 0.0
+        if minimum(flow_rate_.u) < 0.0
             errors = true
-            @error "$id flow rates must be non-negative, found $flow_rate_."
+            @error "Negative flow rate(s) for $id found."
         end
     end
 

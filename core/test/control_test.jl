@@ -233,14 +233,14 @@ end
 
     @test compound_variable.subvariables[1] == SubVariable(;
         listen_node_id = NodeID(:FlowBoundary, 2, p),
-        variable_ref = compound_variable.subvariables[1].variable_ref,
+        diff_cache_ref = compound_variable.subvariables[1].diff_cache_ref,
         variable = "flow_rate",
         weight = 0.5,
         look_ahead = 0.0,
     )
     @test compound_variable.subvariables[2] == SubVariable(;
         listen_node_id = NodeID(:FlowBoundary, 3, p),
-        variable_ref = compound_variable.subvariables[2].variable_ref,
+        diff_cache_ref = compound_variable.subvariables[2].diff_cache_ref,
         variable = "flow_rate",
         weight = 0.5,
         look_ahead = 0.0,

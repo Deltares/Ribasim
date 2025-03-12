@@ -1,11 +1,20 @@
-# Wrapper method used by OrdinaryDiffEq; the other method is used
-# for Jacobian evaluation with DifferentiationInterface.jl
-water_balance!(du::Vector, u::Vector, p::Parameters, t::Number)::Nothing =
-    water_balance!(du, u, p.p_non_diff, p.diff_cache, p.p_mutable, t)
-
 """
 The right hand side function of the system of ODEs set up by Ribasim.
 """
+water_balance!(du::Vector, u::Vector, p::Parameters, t::Number)::Nothing =
+    water_balance!(du, u, p.p_non_diff, p.diff_cache, p.p_mutable, t)
+
+# Method with `t` as second argument parsable by DifferentiationInterface.jl for time derivative computation
+water_balance!(
+    du::Vector,
+    t::Number,
+    u::Vector,
+    p_non_diff::ParametersNonDiff,
+    diff_cache::Vector,
+    p_mutable::ParametersMutable,
+) = water_balance!(du, u, p_non_diff, diff_cache, p_mutable, t)
+
+# Method with separate parameter parsable by DifferentiationInterface.jl for Jacobian computation
 function water_balance!(
     du::Vector,
     u::Vector,
@@ -262,7 +271,7 @@ function formulate_pid_control!(du::Vector, u::Vector, p::Parameters, t::Number)
         end
 
         # Set flow_rate
-        set_value!(pid_control.target_ref[i], flow_rate, du)
+        set_value!(pid_control.target_ref[i], p, flow_rate)
     end
     return nothing
 end

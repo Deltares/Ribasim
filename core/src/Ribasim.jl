@@ -16,7 +16,14 @@ module Ribasim
 
 # Requirements for automatic differentiation
 using ADTypes: AutoForwardDiff, AutoFiniteDiff
-using DifferentiationInterface: AutoSparse, Constant, Cache, prepare_jacobian, jacobian!
+using DifferentiationInterface:
+    AutoSparse,
+    Constant,
+    Cache,
+    prepare_jacobian,
+    jacobian!,
+    prepare_derivative,
+    derivative!
 
 # Algorithms for solving ODEs.
 using OrdinaryDiffEqCore: OrdinaryDiffEqCore, get_du, AbstractNLSolver
