@@ -103,7 +103,7 @@ function formulate_storages!(
     (; p_non_diff, diff_cache, p_mutable) = p
     (; basin, flow_boundary, flow_to_storage, cache_ranges) = p_non_diff
     (; tprev) = p_mutable
-    current_storage = view(diff_cache, cache_ranges.current_level)
+    current_storage = view(diff_cache, cache_ranges.current_storage)
     # Current storage: initial condition +
     # total inflows and outflows since the start
     # of the simulation

@@ -32,15 +32,17 @@ function get_jac_eval(du::Vector, u::Vector, p::Parameters, solver::Solver)
     (; p_non_diff, diff_cache, p_mutable) = p
     backend = get_ad_type(solver)
 
-    # if solver.sparse
-    #     backend = AutoSparse(
-    #         backend;
-    #         sparsity_detector = TracerSparsityDetector(),
-    #         coloring_algorithm = GreedyColoringAlgorithm(),
-    #     )
-    # end
+    if solver.sparse
+        backend = AutoSparse(
+            backend;
+            sparsity_detector = TracerSparsityDetector(),
+            coloring_algorithm = GreedyColoringAlgorithm(),
+        )
+    end
 
     t = 0.0
+    diff_cache_SCT =
+        similar(diff_cache, GradientTracer{IndexSetGradientPattern{Int64, BitSet}})
 
     # Activate all nodes to catch all possible state dependencies
     p_mutable.all_nodes_active = true
@@ -50,7 +52,7 @@ function get_jac_eval(du::Vector, u::Vector, p::Parameters, solver::Solver)
         backend,
         u,
         Constant(p_non_diff),
-        Cache(diff_cache),
+        Cache(diff_cache_SCT),
         Constant(p_mutable),
         Constant(t),
     )

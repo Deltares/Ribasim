@@ -189,12 +189,12 @@ end
     cfg = Ribasim.Config(toml_path)
     db_path = Ribasim.database_path(cfg)
     db = SQLite.DB(db_path)
-    p = Ribasim.Parameters(db, cfg)
+    (; p_non_diff) = Ribasim.Parameters(db, cfg)
     close(db)
 
     logger = TestLogger()
     with_logger(logger) do
-        @test !Ribasim.valid_discrete_control(p, cfg)
+        @test !Ribasim.valid_discrete_control(p_non_diff, cfg)
     end
 
     @test length(logger.logs) == 5
@@ -217,7 +217,7 @@ end
 
 @testitem "Pump/outlet flow rate sign validation" begin
     using Logging
-    using Ribasim: NodeID, NodeType, ControlStateUpdate, ParameterUpdate, cache
+    using Ribasim: NodeID, NodeType, ControlStateUpdate, ParameterUpdate
     using DataInterpolations: LinearInterpolation
 
     logger = TestLogger()

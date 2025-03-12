@@ -17,7 +17,6 @@ module Ribasim
 # Requirements for automatic differentiation
 using ADTypes: AutoForwardDiff, AutoFiniteDiff
 using DifferentiationInterface: AutoSparse, Constant, Cache, prepare_jacobian, jacobian!
-using SparseMatrixColorings: GreedyColoringAlgorithm, sparsity_pattern
 
 # Algorithms for solving ODEs.
 using OrdinaryDiffEqCore: OrdinaryDiffEqCore, get_du, AbstractNLSolver
@@ -41,7 +40,9 @@ using SciMLBase:
 
 # Automatically detecting the sparsity pattern of the Jacobian of water_balance!
 # through operator overloading
-using SparseConnectivityTracer: GradientTracer, TracerSparsityDetector
+using SparseConnectivityTracer:
+    GradientTracer, TracerSparsityDetector, IndexSetGradientPattern
+using SparseMatrixColorings: GreedyColoringAlgorithm, sparsity_pattern
 
 # For efficient sparse computations
 using SparseArrays: SparseMatrixCSC, spzeros

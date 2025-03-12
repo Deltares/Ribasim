@@ -216,7 +216,8 @@ function flow_table(
 }
     (; config, saved, integrator) = model
     (; t, saveval) = saved.flow
-    (; p_non_diff) = integrator.p
+    (; p) = integrator
+    (; p_non_diff) = p
     (; graph) = p_non_diff
     (; flow_links) = graph[]
 

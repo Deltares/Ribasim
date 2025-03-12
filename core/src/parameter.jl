@@ -702,7 +702,7 @@ end
 @enumx DiffCacheType flow_rate_pump flow_rate_outlet basin_level
 
 @kwdef struct DiffCacheRef
-    type::DiffCacheType.T = DiffCacheType.pump_flow_rate
+    type::DiffCacheType.T = DiffCacheType.flow_rate_pump
     idx::Int = 0
     from_du::Bool = false
 end

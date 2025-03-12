@@ -419,8 +419,11 @@ function get_continuous_control_type(graph::MetaGraph, node_id::Vector{NodeID})
         control_inneighbors = collect(inneighbor_labels_type(graph, id, LinkType.control))
         if length(control_inneighbors) == 1
             control_inneighbor = only(control_inneighbors)
-            continuous_control_type[id.idx] =
-                get(control_type_mapping, control_inneighbor.type, ContinuousControl.None)
+            continuous_control_type[id.idx] = get(
+                control_type_mapping,
+                control_inneighbor.type,
+                ContinuousControlType.None,
+            )
         elseif length(control_inneighbors) > 1
             error("$id has more than 1 control inneighbors.")
         end
