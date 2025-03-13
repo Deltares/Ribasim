@@ -498,10 +498,11 @@ function TabulatedRatingCurve(
                 if !ismissing(control_state)
                     # let control swap out the static lookup object
                     index_lookup = static_lookup(interpolation_index)
-                    control_mapping[(node_id, control_state)] = ControlStateUpdate(
-                        ParameterUpdate(:active, is_active),
-                        ParameterUpdate{Float64}[],
-                        [ParameterUpdate(:current_interpolation_index, index_lookup)],
+                    control_mapping[(node_id, control_state)] = ControlStateUpdate(;
+                        active = ParameterUpdate(:active, is_active),
+                        itp_update_lookup = [
+                            ParameterUpdate(:current_interpolation_index, index_lookup),
+                        ],
                     )
                 end
                 push!(interpolations, interpolation)
@@ -1220,12 +1221,7 @@ function continuous_control_compound_variables(db::DB, config::Config, ids)
         variable_data = filter(row -> row.node_id == id, data)
         push!(
             compound_variables,
-            CompoundVariable(
-                variable_data,
-                NodeType.ContinuousControl,
-                node_ids_all,
-                placeholder_vector,
-            ),
+            CompoundVariable(variable_data, NodeType.ContinuousControl, node_ids_all),
         )
     end
     compound_variables
@@ -1862,7 +1858,7 @@ function Parameters(db::DB, config::Config)::Parameters
 
     collect_control_mappings!(p_non_diff)
     set_listen_diff_cache_refs!(p_non_diff)
-    set_discrete_controlled_diff_cache_refs!(p_non_diff)
+    set_discrete_controlled_variable_refs!(p_non_diff)
 
     # Allocation data structures
     if config.allocation.use_allocation

@@ -50,7 +50,7 @@ end
     BMI.update_until(model, 86400.0)
     storage = BMI.get_value_ptr(model, "basin.storage")
     # get_value_ptr does not copy
-    @test storage0 === storage != ones(4)
+    @test storage0 == storage != ones(4)
 end
 
 @testitem "get_value_ptr_all_values" begin

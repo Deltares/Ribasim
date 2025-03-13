@@ -16,11 +16,13 @@
     pump_control_mapping = pump.control_mapping
     @test unique(
         only(
-            pump_control_mapping[(NodeID(:Pump, 4, p_non_diff), "off")].itp_update,
+            pump_control_mapping[(NodeID(:Pump, 4, p_non_diff), "off")].itp_update_linear,
         ).value.u,
     ) == [0]
     @test unique(
-        only(pump_control_mapping[(NodeID(:Pump, 4, p_non_diff), "on")].itp_update).value.u,
+        only(
+            pump_control_mapping[(NodeID(:Pump, 4, p_non_diff), "on")].itp_update_linear,
+        ).value.u,
     ) == [1.0e-5]
 
     logic_mapping::Vector{Dict{Vector{Bool}, String}} = [
@@ -202,11 +204,11 @@ end
     target_high = pid_control.control_mapping[(
         NodeID(:PidControl, 6, p_non_diff),
         "target_high",
-    )].itp_update[1].value.u[1]
+    )].itp_update_linear[1].value.u[1]
     target_low = pid_control.control_mapping[(
         NodeID(:PidControl, 6, p_non_diff),
         "target_low",
-    )].itp_update[1].value.u[1]
+    )].itp_update_linear[1].value.u[1]
 
     t_target_jump = discrete_control.record.time[2]
     t_idx_target_jump = searchsortedlast(t, t_target_jump)

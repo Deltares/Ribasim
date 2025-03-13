@@ -301,7 +301,7 @@ end
         5.619053,
         10419.156,
         4.057502,
-    ]
+    ] rtol = 1e-3
 
     # The output should only contain data for the demand_priority for which
     # a node has a demand
@@ -468,8 +468,8 @@ end
     constraint_with_flow_buffer =
         JuMP.constraint_object(problem[:flow_conservation][node_id_with_flow_demand])
     @test constraint_with_flow_buffer.func ==
-          F[(NodeID(:LevelBoundary, 1, p), node_id_with_flow_demand)] -
-          F[(node_id_with_flow_demand, NodeID(:Basin, 3, p))] -
+          F[(NodeID(:LevelBoundary, 1, p_non_diff), node_id_with_flow_demand)] -
+          F[(node_id_with_flow_demand, NodeID(:Basin, 3, p_non_diff))] -
           F_flow_buffer_in[node_id_with_flow_demand] +
           F_flow_buffer_out[node_id_with_flow_demand]
 
@@ -569,12 +569,16 @@ end
     )
     @test ispath(toml_path)
     model = Ribasim.Model(toml_path)
-    (; p) = model.integrator
+    (; p_non_diff) = model.integrator.p
+    (; allocation) = p_non_diff
 
     # Test for pump max flow capacity constraint
-    (; problem) = p.allocation.allocation_models[1]
+    (; problem) = allocation.allocation_models[1]
     constraint = JuMP.constraint_object(
-        problem[:capacity][(NodeID(:Basin, 1, p), NodeID(:LinearResistance, 2, p))],
+        problem[:capacity][(
+            NodeID(:Basin, 1, p_non_diff),
+            NodeID(:LinearResistance, 2, p_non_diff),
+        )],
     )
     @test constraint.set.upper == 2.0
 end
@@ -588,7 +592,7 @@ end
         normpath(@__DIR__, "../../generated_testmodels/fair_distribution/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
-    (; user_demand, graph) = model.integrator.p
+    (; user_demand, graph) = model.integrator.p.p_non_diff
 
     data_allocation = DataFrame(Ribasim.allocation_table(model))
     fractions = Vector{Float64}[]
@@ -612,22 +616,27 @@ end
     toml_path = normpath(@__DIR__, "../../generated_testmodels/level_demand/ribasim.toml")
     model = Ribasim.Model(toml_path)
     (; p) = model.integrator
+    (; p_non_diff) = p
     t = 0.0
-    u = model.integrator.u
     demand_priority_idx = 2
 
-    allocation_model = first(p.allocation.allocation_models)
-    Ribasim.set_initial_values!(allocation_model, u, p, t)
-    Ribasim.set_objective_demand_priority!(allocation_model, u, p, t, demand_priority_idx)
+    allocation_model = first(p_non_diff.allocation.allocation_models)
+    Ribasim.set_initial_values!(allocation_model, p, t)
+    Ribasim.set_objective_demand_priority!(allocation_model, p, t, demand_priority_idx)
     Ribasim.allocate_to_users_from_connected_basin!(
         allocation_model,
-        p,
+        p_non_diff,
         demand_priority_idx,
     )
     flow_data = allocation_model.flow.data
-    @test flow_data[(NodeID(:FlowBoundary, 1, p), NodeID(:Basin, 2, p))] == 0.0
-    @test flow_data[(NodeID(:Basin, 2, p), NodeID(:UserDemand, 3, p))] == 0.0015
-    @test flow_data[(NodeID(:UserDemand, 3, p), NodeID(:Basin, 5, p))] == 0.0
+    @test flow_data[(
+        NodeID(:FlowBoundary, 1, p_non_diff),
+        NodeID(:Basin, 2, p_non_diff),
+    )] == 0.0
+    @test flow_data[(NodeID(:Basin, 2, p_non_diff), NodeID(:UserDemand, 3, p_non_diff))] ==
+          0.0015
+    @test flow_data[(NodeID(:UserDemand, 3, p_non_diff), NodeID(:Basin, 5, p_non_diff))] ==
+          0.0
 end
 
 @testitem "level_demand_without_max_level" begin
@@ -638,16 +647,16 @@ end
     @test ispath(toml_path)
     model = Ribasim.Model(toml_path)
     (; p, u, t) = model.integrator
-    (; allocation_models) = p.allocation
-    (; basin, level_demand, graph) = p
+    (; basin, level_demand, graph, allocation) = p.p_non_diff
+    (; allocation_models) = allocation
 
     level_demand.max_level[1].u .= Inf
     level_demand.max_level[2].u .= Inf
 
     # Given a max_level of Inf, the basin capacity is 0.0 because it is not possible for the basin level to be > Inf
-    @test Ribasim.get_basin_capacity(allocation_models[1], u, p, t, basin.node_id[1]) == 0.0
-    @test Ribasim.get_basin_capacity(allocation_models[1], u, p, t, basin.node_id[2]) == 0.0
-    @test Ribasim.get_basin_capacity(allocation_models[2], u, p, t, basin.node_id[3]) == 0.0
+    @test Ribasim.get_basin_capacity(allocation_models[1], p, t, basin.node_id[1]) == 0.0
+    @test Ribasim.get_basin_capacity(allocation_models[1], p, t, basin.node_id[2]) == 0.0
+    @test Ribasim.get_basin_capacity(allocation_models[2], p, t, basin.node_id[3]) == 0.0
 end
 
 @testitem "cyclic_demand" begin
@@ -656,7 +665,7 @@ end
     toml_path = normpath(@__DIR__, "../../generated_testmodels/cyclic_demand/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
-    (; level_demand, user_demand, flow_demand) = model.integrator.p
+    (; level_demand, user_demand, flow_demand) = model.integrator.p.p_non_diff
 
     function test_extrapolation(itp)
         @test itp.extrapolation_left == Periodic

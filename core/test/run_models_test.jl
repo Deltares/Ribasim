@@ -501,13 +501,13 @@ end
     # Test for conservation of mass, flow at the beginning == flow at the end
     @test Ribasim.get_flow(
         du,
-        p,
+        p_non_diff,
         t,
         (NodeID(:FlowBoundary, 1, p_non_diff), NodeID(:Basin, 2, p_non_diff)),
     ) ≈ 5.0 atol = 0.001 skip = Sys.isapple()
     @test Ribasim.get_flow(
         du,
-        p,
+        p_non_diff,
         t,
         (NodeID(:ManningResistance, 101, p_non_diff), NodeID(:Basin, 102, p_non_diff)),
     ) ≈ 5.0 atol = 0.001 skip = Sys.isapple()

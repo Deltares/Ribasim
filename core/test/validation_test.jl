@@ -240,7 +240,7 @@ end
         control_mapping = Dict(
             (NodeID(:Pump, 1, 1), "foo") => ControlStateUpdate(;
                 active = ParameterUpdate(:active, true),
-                itp_update = [
+                itp_update_linear = [
                     ParameterUpdate(
                         :flow_rate,
                         LinearInterpolation([-1.0, -1.0], [0.0, 1.0]),

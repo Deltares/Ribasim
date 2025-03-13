@@ -656,10 +656,11 @@ function set_control_params!(p::Parameters, node_id::NodeID, control_state::Stri
     (; discrete_control) = p.p_non_diff
     (; control_mappings) = discrete_control
     control_state_update = control_mappings[node_id.type][(node_id, control_state)]
-    (; active, scalar_update, itp_update) = control_state_update
+    (; active, scalar_update, itp_update_linear, itp_update_lookup) = control_state_update
     apply_parameter_update!(active)
     apply_parameter_update!.(scalar_update)
-    apply_parameter_update!.(itp_update)
+    apply_parameter_update!.(itp_update_linear)
+    apply_parameter_update!.(itp_update_lookup)
 
     return nothing
 end

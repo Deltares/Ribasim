@@ -547,9 +547,9 @@ version = "1.15.1"
 
 [[deps.DifferentiationInterface]]
 deps = ["ADTypes", "LinearAlgebra"]
-git-tree-sha1 = "258fa016b2d03f19e4d0d1cd8e30c84907af1528"
+git-tree-sha1 = "479214d2988a837e6d21ac38afdcb03cb2d0994e"
 uuid = "a0c0ee7d-e4b9-4e03-894e-1c5f64a51d63"
-version = "0.6.42"
+version = "0.6.43"
 
     [deps.DifferentiationInterface.extensions]
     DifferentiationInterfaceChainRulesCoreExt = "ChainRulesCore"
@@ -2291,9 +2291,9 @@ version = "1.11.0"
 
 [[deps.SparseConnectivityTracer]]
 deps = ["ADTypes", "DocStringExtensions", "FillArrays", "LinearAlgebra", "Random", "SparseArrays"]
-git-tree-sha1 = "6651f4663027f3b30a31429d257185f56a571184"
+git-tree-sha1 = "e60ba2f27bf0c85cc20ac326a158182630032bb6"
 uuid = "9f842d2f-2579-4b1d-911e-f412cf18a3f5"
-version = "0.6.13"
+version = "0.6.14"
 
     [deps.SparseConnectivityTracer.extensions]
     SparseConnectivityTracerDataInterpolationsExt = "DataInterpolations"

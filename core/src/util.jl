@@ -611,7 +611,7 @@ end
 """
 Set references to all variables that are controlled by discrete control
 """
-function set_discrete_controlled_diff_cache_refs!(p_non_diff::ParametersNonDiff)::Nothing
+function set_discrete_controlled_variable_refs!(p_non_diff::ParametersNonDiff)::Nothing
     for nodetype in propertynames(p_non_diff)
         node = getfield(p_non_diff, nodetype)
         if node isa AbstractParameterNode && hasfield(typeof(node), :control_mapping)
@@ -619,21 +619,27 @@ function set_discrete_controlled_diff_cache_refs!(p_non_diff::ParametersNonDiff)
                 node.control_mapping
 
             for ((node_id, control_state), control_state_update) in control_mapping
-                (; scalar_update, itp_update) = control_state_update
+                (; scalar_update, itp_update_linear, itp_update_lookup) =
+                    control_state_update
 
                 # References to scalar parameters
                 for (i, parameter_update) in enumerate(scalar_update)
                     field = getfield(node, parameter_update.name)
-                    if field isa Cache
-                        field = field[Float64[]]
-                    end
                     scalar_update[i] = @set parameter_update.ref = Ref(field, node_id.idx)
                 end
 
-                # References to interpolation parameters
-                for (i, parameter_update) in enumerate(itp_update)
+                # References to linear interpolation parameters
+                for (i, parameter_update) in enumerate(itp_update_linear)
                     field = getfield(node, parameter_update.name)
-                    itp_update[i] = @set parameter_update.ref = Ref(field, node_id.idx)
+                    itp_update_linear[i] =
+                        @set parameter_update.ref = Ref(field, node_id.idx)
+                end
+
+                # References to index interpolation parameters
+                for (i, parameter_update) in enumerate(itp_update_lookup)
+                    field = getfield(node, parameter_update.name)
+                    itp_update_lookup[i] =
+                        @set parameter_update.ref = Ref(field, node_id.idx)
                 end
 
                 # Reference to 'active' parameter if it exists
@@ -714,12 +720,12 @@ function add_control_state!(
     end
     # This is a not so great way to get a concrete type,
     # which is used as a ControlStateUpdate type parameter.
-    itp_update = if isempty(itp_update)
+    itp_update_linear = if isempty(itp_update)
         ParameterUpdate{ScalarInterpolation}[]
     else
         [x for x in itp_update]
     end
-    control_state_update = ControlStateUpdate(; active, scalar_update, itp_update)
+    control_state_update = ControlStateUpdate(; active, scalar_update, itp_update_linear)
 
     if add_control_state
         control_mapping[(node_id, control_state)] = control_state_update

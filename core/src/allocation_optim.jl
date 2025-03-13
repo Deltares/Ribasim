@@ -669,7 +669,8 @@ function save_demands_and_allocations!(
                 has_external_demand(graph, node_id, :flow_demand)
             if has_demand
                 # Full demand, not the possibly reduced demand
-                flow_demand_priority_idx = get_external_demand_priority_idx(p, node_id)
+                flow_demand_priority_idx =
+                    get_external_demand_priority_idx(p_non_diff, node_id)
                 demand =
                     demand_priority_idx == flow_demand_priority_idx ?
                     flow_demand.demand[flow_demand_node_id.idx,] : 0.0

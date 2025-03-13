@@ -279,7 +279,7 @@ function valid_flow_rates(
     for (key, control_state_update) in pairs(control_mapping)
         id_controlled = key[1]
         push!(ids_controlled, id_controlled)
-        flow_rate_update = only(control_state_update.itp_update)
+        flow_rate_update = only(control_state_update.itp_update_linear)
         @assert flow_rate_update.name == :flow_rate
         flow_rate_ = minimum(flow_rate_update.value.u)
 

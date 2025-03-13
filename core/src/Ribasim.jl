@@ -48,7 +48,7 @@ using SciMLBase:
 # Automatically detecting the sparsity pattern of the Jacobian of water_balance!
 # through operator overloading
 using SparseConnectivityTracer:
-    GradientTracer, TracerSparsityDetector, IndexSetGradientPattern
+    GradientTracer, TracerSparsityDetector, IndexSetGradientPattern, jacobian_buffer
 using SparseMatrixColorings: GreedyColoringAlgorithm, sparsity_pattern
 
 # For efficient sparse computations

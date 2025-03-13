@@ -326,8 +326,9 @@ The parameter update associated with a certain control state for discrete contro
 @kwdef struct ControlStateUpdate
     active::ParameterUpdate{Bool}
     scalar_update::Vector{ParameterUpdate{Float64}} = ParameterUpdate{Float64}[]
-    itp_update::Vector{ParameterUpdate{ScalarInterpolation}} =
+    itp_update_linear::Vector{ParameterUpdate{ScalarInterpolation}} =
         ParameterUpdate{ScalarInterpolation}[]
+    itp_update_lookup::Vector{ParameterUpdate{IndexLookup}} = ParameterUpdate{IndexLookup}[]
 end
 
 """

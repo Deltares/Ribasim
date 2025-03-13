@@ -35,18 +35,16 @@ The time derivative is also supplied in case a Rosenbrock method is used.
 function get_diff_eval(du::Vector, u::Vector, p::Parameters, solver::Solver)
     (; p_non_diff, diff_cache, p_mutable) = p
     backend = get_ad_type(solver)
+    sparsity_detector = TracerSparsityDetector()
 
     backend_jac = if solver.sparse
-        AutoSparse(
-            backend;
-            sparsity_detector = TracerSparsityDetector(),
-            coloring_algorithm = GreedyColoringAlgorithm(),
-        )
+        AutoSparse(backend; sparsity_detector, coloring_algorithm = GreedyColoringAlgorithm())
     else
         backend
     end
 
     t = 0.0
+    # diff_cache_SCT = jacobian_buffer(diff_cache, sparsity_detector)
     diff_cache_SCT =
         zeros(GradientTracer{IndexSetGradientPattern{Int64, BitSet}}, length(diff_cache))
 
