@@ -14,6 +14,8 @@ For more granular access, see:
 """
 module Ribasim
 
+using PrecompileTools: @setup_workload, @compile_workload
+
 # Algorithms for solving ODEs.
 using OrdinaryDiffEqCore: OrdinaryDiffEqCore, get_du, AbstractNLSolver
 using DiffEqBase: DiffEqBase, calculate_residuals!
@@ -149,5 +151,13 @@ include("callback.jl")
 include("concentration.jl")
 include("main.jl")
 include("libribasim.jl")
+
+@setup_workload begin
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
+    isfile(toml_path) || return
+    @compile_workload begin
+        Ribasim.main(toml_path)
+    end
+end
 
 end  # module Ribasim
