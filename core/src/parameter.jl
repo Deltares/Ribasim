@@ -906,10 +906,6 @@ end
     current_interpolation_index::Vector{IndexLookup}
 end
 
-# This function is the same as the MetaGraphsNext default anonymous function,
-# but has a stable type for the type alias below.
-weight_function(::Any) = 1.0
-
 """
 The metadata of the graph (the fields of the NamedTuple) can be accessed
     e.g. using graph[].flow.
@@ -931,7 +927,7 @@ const ModelGraph = MetaGraph{
         flow_links::Vector{LinkMetadata},
         saveat::Float64,
     },
-    typeof(weight_function),
+    Returns{Float64},
     Float64,
 }
 
