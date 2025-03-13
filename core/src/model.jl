@@ -44,7 +44,6 @@ function get_diff_eval(du::Vector, u::Vector, p::Parameters, solver::Solver)
     end
 
     t = 0.0
-    diff_cache_SCT = jacobian_buffer(diff_cache, sparsity_detector)
 
     # Activate all nodes to catch all possible state dependencies
     p_mutable.all_nodes_active = true
@@ -54,7 +53,7 @@ function get_diff_eval(du::Vector, u::Vector, p::Parameters, solver::Solver)
         backend_jac,
         u,
         Constant(p_non_diff),
-        Cache(diff_cache_SCT),
+        Cache(diff_cache),
         Constant(p_mutable),
         Constant(t),
     )
