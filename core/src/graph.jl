@@ -39,7 +39,7 @@ function create_graph(db::DB, config::Config)::MetaGraph
         vertex_data_type = NodeMetadata,
         edge_data_type = LinkMetadata,
         graph_data = nothing,
-        Returns(1.0),
+        weight_function = Returns(1.0),
     )
     for row in node_rows
         node_id = NodeID(row.node_type, row.node_id, node_table)
