@@ -41,7 +41,7 @@ This uses a typeassert to ensure that the return type annotation doesn't create 
 function BMI.get_value_ptr(model::Model, name::String)::Vector{Float64}
     (; u, p) = model.integrator
     (; p_non_diff, diff_cache) = p
-    (; state_ranges, cache_ranges, basin) = p_non_diff
+    (; state_ranges, cache_ranges, basin, user_demand, subgrid) = p_non_diff
     (; infiltration, user_demand_inflow) = state_ranges
     (; current_storage, current_level) = cache_ranges
 
@@ -60,7 +60,7 @@ function BMI.get_value_ptr(model::Model, name::String)::Vector{Float64}
     elseif name == "basin.subgrid_level"
         subgrid.level::Vector{Float64}
     elseif name == "user_demand.demand"
-        vec(p.user_demand.demand)::Vector{Float64}
+        vec(user_demand.demand)::Vector{Float64}
     elseif name == "user_demand.cumulative_inflow"
         unsafe_array(view(u, user_demand_inflow))::Vector{Float64}
     else

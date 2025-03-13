@@ -263,7 +263,8 @@ function formulate_pid_control!(du::Vector, u::Vector, p::Parameters, t::Number)
 
         if !iszero(K_d)
             dlevel_demand = derivative(target[i], t)
-            dstorage_listened_basin_old = formulate_dstorage(du, p, t, listened_node_id)
+            dstorage_listened_basin_old =
+                formulate_dstorage(du, p_non_diff, t, listened_node_id)
             # The expression below is the solution to an implicit equation for
             # dstorage_listened_basin. This equation results from the fact that if the derivative
             # term in the PID controller is used, the controlled pump flow rate depends on itself.
@@ -279,18 +280,23 @@ end
 """
 Formulate the time derivative of the storage in a single Basin.
 """
-function formulate_dstorage(du::Vector, p::Parameters, t::Number, node_id::NodeID)
-    (; basin, state_ranges) = p
+function formulate_dstorage(
+    du::Vector,
+    p_non_diff::ParametersNonDiff,
+    t::Number,
+    node_id::NodeID,
+)
+    (; basin, state_ranges) = p_non_diff
     (; inflow_ids, outflow_ids, vertical_flux) = basin
     du_evaporation = view(du, state_ranges.evaporation)
     du_infiltration = view(du, state_ranges.infiltration)
     @assert node_id.type == NodeType.Basin
     dstorage = 0.0
     for inflow_id in inflow_ids[node_id.idx]
-        dstorage += get_flow(du, p, t, (inflow_id, node_id))
+        dstorage += get_flow(du, p_non_diff, t, (inflow_id, node_id))
     end
     for outflow_id in outflow_ids[node_id.idx]
-        dstorage -= get_flow(du, p, t, (node_id, outflow_id))
+        dstorage -= get_flow(du, p_non_diff, t, (node_id, outflow_id))
     end
 
     fixed_area = basin_areas(basin, node_id.idx)[end]

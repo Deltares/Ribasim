@@ -639,9 +639,11 @@ function compound_variable_value(compound_variable::CompoundVariable, p, du, t)
     return value
 end
 
-function get_allocation_model(p::Parameters, subnetwork_id::Int32)::AllocationModel
-    (; allocation) = p
-    (; subnetwork_ids, allocation_models) = allocation
+function get_allocation_model(
+    p_non_diff::ParametersNonDiff,
+    subnetwork_id::Int32,
+)::AllocationModel
+    (; subnetwork_ids, allocation_models) = p_non_diff.allocation
     idx = findsorted(subnetwork_ids, subnetwork_id)
     if isnothing(idx)
         error("Invalid allocation network ID $subnetwork_id.")
@@ -826,7 +828,7 @@ function update_allocation!(integrator)::Nothing
     # If a main network is present, collect demands of subnetworks
     if has_main_network(allocation)
         for allocation_model in Iterators.drop(allocation_models, 1)
-            collect_demands!(p_non_diff, allocation_model, t, u)
+            collect_demands!(p, allocation_model, t)
         end
     end
 
@@ -834,7 +836,7 @@ function update_allocation!(integrator)::Nothing
     # If a main network is present this is solved first,
     # which provides allocation to the subnetworks
     for allocation_model in allocation_models
-        allocate_demands!(p_non_diff, allocation_model, t, u)
+        allocate_demands!(p, allocation_model, t)
     end
 
     # Reset the mean flows

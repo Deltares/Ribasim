@@ -389,8 +389,11 @@ function get_all_demand_priorities(db::DB, config::Config;)::Vector{Int32}
     end
 end
 
-function get_external_demand_priority_idx(p::Parameters, node_id::NodeID)::Int
-    (; graph, level_demand, flow_demand, allocation) = p
+function get_external_demand_priority_idx(
+    p_non_diff::ParametersNonDiff,
+    node_id::NodeID,
+)::Int
+    (; graph, level_demand, flow_demand, allocation) = p_non_diff
     inneighbor_control_ids = inneighbor_labels_type(graph, node_id, LinkType.control)
     if isempty(inneighbor_control_ids)
         return 0
@@ -478,7 +481,8 @@ as input. Therefore we set the instantaneous flows as the mean flows as allocati
 """
 function set_initial_allocation_mean_flows!(integrator)::Nothing
     (; u, p, t) = integrator
-    (; allocation) = p.p_non_diff
+    (; p_non_diff) = p
+    (; allocation) = p_non_diff
     (; mean_input_flows, mean_realized_flows, allocation_models) = allocation
     (; Δt_allocation) = allocation_models[1]
 
@@ -493,7 +497,7 @@ function set_initial_allocation_mean_flows!(integrator)::Nothing
             if link[1] == link[2]
                 q = get_influx(du, link[1], p)
             else
-                q = get_flow(du, p, t, link)
+                q = get_flow(du, p_non_diff, t, link)
             end
             # Multiply by Δt_allocation as averaging divides by this factor
             # in update_allocation!
@@ -507,7 +511,7 @@ function set_initial_allocation_mean_flows!(integrator)::Nothing
         if link[1] == link[2]
             mean_realized_flows[link] = -u[link[1].idx]
         else
-            q = get_flow(du, p, t, link)
+            q = get_flow(du, p_non_diff, t, link)
             mean_realized_flows[link] = q * Δt_allocation
         end
     end

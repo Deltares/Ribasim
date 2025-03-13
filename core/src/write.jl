@@ -242,7 +242,7 @@ function flow_table(
         for (j, cvec) in enumerate(saveval)
             (; flow, flow_boundary) = cvec
             flow_rate[i + (j - 1) * nflow] =
-                get_flow(flow, p, 0.0, link; boundary_flow = flow_boundary)
+                get_flow(flow, p_non_diff, 0.0, link; boundary_flow = flow_boundary)
         end
     end
 

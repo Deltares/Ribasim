@@ -261,7 +261,7 @@ end
     t0 = 0.0
     u0 = Ribasim.build_state_vector(p.p_non_diff)
     du0 = copy(u0)
-    jac_prototype, _ = Ribasim.get_jac_eval(du0, u0, p, config.solver)
+    jac_prototype, _, _ = Ribasim.get_diff_eval(du0, u0, p, config.solver)
 
     # rows, cols, _ = findnz(jac_prototype)
     #! format: off
@@ -283,7 +283,7 @@ end
     close(db)
     u0 = Ribasim.build_state_vector(p_non_diff)
     du0 = copy(u0)
-    jac_prototype, _ = Ribasim.get_jac_eval(du0, u0, p, config.solver)
+    jac_prototype, _, _ = Ribasim.get_diff_eval(du0, u0, p, config.solver)
 
     #! format: off
     rows_expected = [1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6, 1, 2]

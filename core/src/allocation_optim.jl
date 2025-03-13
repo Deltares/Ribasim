@@ -29,12 +29,12 @@ Set the objective for the given demand priority.
 """
 function set_objective_demand_priority!(
     allocation_model::AllocationModel,
-    u::Vector,
-    p_non_diff::ParametersNonDiff,
+    p::Parameters,
     t::Float64,
     demand_priority_idx::Int,
 )::Nothing
     (; problem, subnetwork_id, capacity) = allocation_model
+    (; p_non_diff) = p
     (; graph, user_demand, flow_demand, allocation, basin) = p_non_diff
     (; node_id, demand_reduced) = user_demand
     (; main_network_connections, subnetwork_demands) = allocation
@@ -92,7 +92,7 @@ function set_objective_demand_priority!(
         basin_demand_priority_idx = get_external_demand_priority_idx(p_non_diff, node_id)
         d =
             basin_demand_priority_idx == demand_priority_idx ?
-            get_basin_demand(allocation_model, u, p, t, node_id) : 0.0
+            get_basin_demand(allocation_model, p, t, node_id) : 0.0
         basin.demand[node_id.idx] = d
         F_ld = F_basin_in[node_id]
         add_objective_term!(ex, d, F_ld)
@@ -327,17 +327,13 @@ Get several variables associated with a basin:
   node does not exist)
 - The index of the basin
 """
-function get_basin_data(
-    allocation_model::AllocationModel,
-    p::Parameters,
-    u::Vector,
-    node_id::NodeID,
-)
-    (; graph, basin) = p
+function get_basin_data(allocation_model::AllocationModel, p::Parameters, node_id::NodeID)
+    (; p_non_diff, diff_cache) = p
+    (; graph, cache_ranges) = p_non_diff
     (; Δt_allocation, subnetwork_id) = allocation_model
     @assert node_id.type == NodeType.Basin
-    influx = mean_input_flows_subnetwork(p, subnetwork_id)[(node_id, node_id)]
-    storage_basin = basin.current_properties.current_storage[u][node_id.idx]
+    influx = mean_input_flows_subnetwork(p_non_diff, subnetwork_id)[(node_id, node_id)]
+    storage_basin = view(diff_cache, cache_ranges.current_storage)[node_id.idx]
     control_inneighbors = inneighbor_labels_type(graph, node_id, LinkType.control)
     if isempty(control_inneighbors)
         level_demand_idx = 0
@@ -357,15 +353,15 @@ Storages are converted to flows by dividing by the allocation timestep.
 """
 function get_basin_capacity(
     allocation_model::AllocationModel,
-    u::Vector,
     p::Parameters,
     t::Float64,
     node_id::NodeID,
 )::Float64
-    (; level_demand) = p
+    (; p_non_diff) = p
+    (; level_demand, basin) = p_non_diff
     @assert node_id.type == NodeType.Basin
     storage_basin, Δt_allocation, influx, level_demand_idx, basin_idx =
-        get_basin_data(allocation_model, p, u, node_id)
+        get_basin_data(allocation_model, p, node_id)
     if iszero(level_demand_idx)
         return 0.0
     else
@@ -373,7 +369,7 @@ function get_basin_capacity(
         if isinf(level_max)
             storage_max = Inf
         else
-            storage_max = get_storage_from_level(p.basin, basin_idx, level_max)
+            storage_max = get_storage_from_level(basin, basin_idx, level_max)
         end
         return max(0.0, (storage_basin - storage_max) / Δt_allocation + influx)
     end
@@ -387,20 +383,19 @@ Storages are converted to flows by dividing by the allocation timestep.
 """
 function get_basin_demand(
     allocation_model::AllocationModel,
-    u::Vector,
     p::Parameters,
     t::Float64,
     node_id::NodeID,
 )::Float64
-    (; level_demand) = p
+    (; level_demand, basin) = p.p_non_diff
     @assert node_id.type == NodeType.Basin
     storage_basin, Δt_allocation, influx, level_demand_idx, basin_idx =
-        get_basin_data(allocation_model, p, u, node_id)
+        get_basin_data(allocation_model, p, node_id)
     if iszero(level_demand_idx)
         return 0.0
     else
         level_min = level_demand.min_level[level_demand_idx](t)
-        storage_min = get_storage_from_level(p.basin, basin_idx, level_min)
+        storage_min = get_storage_from_level(basin, basin_idx, level_min)
         return max(0.0, (storage_min - storage_basin) / Δt_allocation - influx)
     end
 end
@@ -411,8 +406,7 @@ vertical fluxes + the disk of storage above the maximum level / Δt_allocation
 """
 function set_initial_capacities_basin!(
     allocation_model::AllocationModel,
-    u::Vector,
-    p_non_diff::ParametersNonDiff,
+    p::Parameters,
     t::Float64,
 )::Nothing
     (; problem, sources) = allocation_model
@@ -421,7 +415,7 @@ function set_initial_capacities_basin!(
     for node_id in only(constraints_outflow.axes)
         source = sources[(node_id, node_id)]
         @assert source.type == AllocationSourceType.level_demand
-        source.capacity = get_basin_capacity(allocation_model, u, p_non_diff, t, node_id)
+        source.capacity = get_basin_capacity(allocation_model, p, t, node_id)
     end
     return nothing
 end
@@ -459,19 +453,18 @@ Set the initial demand of each basin in the subnetwork as
 """
 function set_initial_demands_level!(
     allocation_model::AllocationModel,
-    u::Vector,
-    p_non_diff::ParametersNonDiff,
+    p::Parameters,
     t::Float64,
 )::Nothing
     (; subnetwork_id, problem) = allocation_model
-    (; graph, basin) = p_non_diff
+    (; graph, basin) = p.p_non_diff
     (; demand) = basin
 
     node_ids_level_demand = only(problem[:basin_outflow].axes)
 
     for id in node_ids_level_demand
         if graph[id].subnetwork_id == subnetwork_id
-            demand[id.idx] = get_basin_demand(allocation_model, u, p_non_diff, t, id)
+            demand[id.idx] = get_basin_demand(allocation_model, p, t, id)
         end
     end
 
@@ -652,7 +645,8 @@ function save_demands_and_allocations!(
         elseif node_id.type == NodeType.Basin &&
                has_external_demand(graph, node_id, :level_demand)[1]
             # Basins with level demand
-            basin_demand_priority_idx = get_external_demand_priority_idx(p, node_id)
+            basin_demand_priority_idx =
+                get_external_demand_priority_idx(p_non_diff, node_id)
 
             if demand_priority_idx == 1 || basin_demand_priority_idx == demand_priority_idx
                 has_demand = true
@@ -877,12 +871,12 @@ Solve the allocation problem for a single (demand_priority, source_priority) pai
 function optimize_per_source!(
     allocation_model::AllocationModel,
     demand_priority_idx::Integer,
-    u::Vector,
-    p_non_diff::ParametersNonDiff,
+    p::Parameters,
     t::AbstractFloat,
     optimization_type::OptimizationType.T,
 )::Nothing
     (; problem, sources, subnetwork_id, flow) = allocation_model
+    (; p_non_diff) = p
     (; demand_priorities_all) = p_non_diff.allocation
     F_basin_in = problem[:F_basin_in]
     F_basin_out = problem[:F_basin_out]
@@ -906,13 +900,7 @@ function optimize_per_source!(
         # of an existing objective function because this is not supported for
         # quadratic terms:
         # https://jump.dev/JuMP.jl/v1.16/manual/objective/#Modify-an-objective-coefficient
-        set_objective_demand_priority!(
-            allocation_model,
-            u,
-            p_non_diff,
-            t,
-            demand_priority_idx,
-        )
+        set_objective_demand_priority!(allocation_model, p, t, demand_priority_idx)
 
         # Set only the capacity of the current source to nonzero
         set_source_capacity!(allocation_model, source, optimization_type)
@@ -982,13 +970,13 @@ end
 
 function optimize_demand_priority!(
     allocation_model::AllocationModel,
-    u::Vector,
-    p_non_diff::ParametersNonDiff,
+    p::Parameters,
     t::Float64,
     demand_priority_idx::Int,
     optimization_type::OptimizationType.T,
 )::Nothing
     (; flow) = allocation_model
+    (; p_non_diff) = p
     (; basin, allocation) = p_non_diff
     (; demand_priorities_all) = allocation
 
@@ -1009,14 +997,7 @@ function optimize_demand_priority!(
     )
 
     # Solve the allocation problem for this demand priority per source
-    optimize_per_source!(
-        allocation_model,
-        demand_priority_idx,
-        u,
-        p_non_diff,
-        t,
-        optimization_type,
-    )
+    optimize_per_source!(allocation_model, demand_priority_idx, p, t, optimization_type)
 
     # Assign the allocations to the UserDemand or subnetwork for this demand priority
     assign_allocations!(
@@ -1045,13 +1026,13 @@ Set the initial capacities and demands which are reduced by usage.
 """
 function set_initial_values!(
     allocation_model::AllocationModel,
-    u::Vector,
-    p_non_diff::ParametersNonDiff,
+    p::Parameters,
     t::Float64,
 )::Nothing
+    (; p_non_diff) = p
     set_initial_capacities_source!(allocation_model, p_non_diff)
     set_initial_capacities_link!(allocation_model, p_non_diff)
-    set_initial_capacities_basin!(allocation_model, u, p_non_diff, t)
+    set_initial_capacities_basin!(allocation_model, p, t)
     set_initial_capacities_buffer!(allocation_model)
     set_initial_capacities_returnflow!(allocation_model, p_non_diff)
 
@@ -1060,7 +1041,7 @@ function set_initial_values!(
     end
 
     set_initial_demands_user!(allocation_model, p_non_diff, t)
-    set_initial_demands_level!(allocation_model, u, p_non_diff, t)
+    set_initial_demands_level!(allocation_model, p, t)
     set_initial_demands_flow!(allocation_model, p_non_diff, t)
     return nothing
 end
@@ -1091,11 +1072,11 @@ Update the allocation optimization problem for the given subnetwork with the pro
 and flows, solve the allocation problem and assign the results to the UserDemand.
 """
 function collect_demands!(
-    p_non_diff::ParametersNonDiff,
+    p::Parameters,
     allocation_model::AllocationModel,
     t::Float64,
-    u::Vector,
 )::Nothing
+    (; p_non_diff) = p
     (; allocation) = p_non_diff
     (; subnetwork_id) = allocation_model
     (; demand_priorities_all, subnetwork_demands, main_network_connections) = allocation
@@ -1103,14 +1084,13 @@ function collect_demands!(
     ## Find internal sources
     optimization_type = OptimizationType.internal_sources
     set_initial_capacities_inlet!(allocation_model, p_non_diff, optimization_type)
-    set_initial_values!(allocation_model, u, p_non_diff, t)
+    set_initial_values!(allocation_model, p, t)
 
     # Loop over demand priorities
     for demand_priority_idx in eachindex(demand_priorities_all)
         optimize_demand_priority!(
             allocation_model,
-            u,
-            p_non_diff,
+            p,
             t,
             demand_priority_idx,
             optimization_type,
@@ -1139,8 +1119,7 @@ function collect_demands!(
     for demand_priority_idx in eachindex(demand_priorities_all)
         optimize_demand_priority!(
             allocation_model,
-            u,
-            p_non_diff,
+            p,
             t,
             demand_priority_idx,
             optimization_type,
@@ -1149,24 +1128,23 @@ function collect_demands!(
 end
 
 function allocate_demands!(
-    p_non_diff::ParametersNonDiff,
+    p::Parameters,
     allocation_model::AllocationModel,
     t::Float64,
-    u::Vector,
 )::Nothing
     optimization_type = OptimizationType.allocate
+    (; p_non_diff) = p
     (; demand_priorities_all) = p_non_diff.allocation
 
     set_initial_capacities_inlet!(allocation_model, p_non_diff, optimization_type)
 
-    set_initial_values!(allocation_model, u, p_non_diff, t)
+    set_initial_values!(allocation_model, p, t)
 
     # Loop over the demand priorities
     for demand_priority_idx in eachindex(demand_priorities_all)
         optimize_demand_priority!(
             allocation_model,
-            u,
-            p_non_diff,
+            p,
             t,
             demand_priority_idx,
             optimization_type,
