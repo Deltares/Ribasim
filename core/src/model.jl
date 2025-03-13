@@ -44,9 +44,7 @@ function get_diff_eval(du::Vector, u::Vector, p::Parameters, solver::Solver)
     end
 
     t = 0.0
-    # diff_cache_SCT = jacobian_buffer(diff_cache, sparsity_detector)
-    diff_cache_SCT =
-        zeros(GradientTracer{IndexSetGradientPattern{Int64, BitSet}}, length(diff_cache))
+    diff_cache_SCT = jacobian_buffer(diff_cache, sparsity_detector)
 
     # Activate all nodes to catch all possible state dependencies
     p_mutable.all_nodes_active = true
