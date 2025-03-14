@@ -1033,7 +1033,7 @@ function apply_control_from_allocation!(
     cache = node.flow_rate_cache[Float64[]] # TODO: Make non-allocating
 
     for (id, c_type, link_in) in zip(node_id, control_type, inflow_link)
-        in_subnetwork = (graph[id].subnetwork_id != subnetwork_id)
+        in_subnetwork = (graph[id].subnetwork_id == subnetwork_id)
         allocation_controlled = (c_type == ControlType.Allocation)
         if in_subnetwork && allocation_controlled
             cache[id.idx] = flow[link_in.link]
