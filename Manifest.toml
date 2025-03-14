@@ -547,12 +547,12 @@ version = "1.15.1"
 
 [[deps.DifferentiationInterface]]
 deps = ["ADTypes", "LinearAlgebra"]
-git-tree-sha1 = "5c14e3a9e56bc55cc7360833107a0c1b508d76b8"
-repo-rev = "main"
+git-tree-sha1 = "a523c3c7068b02b964c22e10a86791d90fcb16a2"
+repo-rev = "gd/prep_cache"
 repo-subdir = "DifferentiationInterface"
 repo-url = "https://github.com/JuliaDiff/DifferentiationInterface.jl.git"
 uuid = "a0c0ee7d-e4b9-4e03-894e-1c5f64a51d63"
-version = "0.6.45"
+version = "0.6.46"
 
     [deps.DifferentiationInterface.extensions]
     DifferentiationInterfaceChainRulesCoreExt = "ChainRulesCore"
