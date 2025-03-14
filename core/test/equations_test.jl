@@ -23,15 +23,15 @@
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test successful_retcode(model)
-    (; p) = model.integrator
+    (; level_boundary, basin, linear_resistance) = model.integrator.p.p_non_diff
 
     t = Ribasim.tsaves(model)
     storage = Ribasim.get_storages_and_levels(model).storage[1, :]
-    A = Ribasim.basin_areas(p.basin, 1)[2]  # needs to be constant
+    A = Ribasim.basin_areas(basin, 1)[2]  # needs to be constant
     u0 = A * 10.0
-    L = p.level_boundary.level[1].u[1]
-    R = p.linear_resistance.resistance[1]
-    Q_max = p.linear_resistance.max_flow_rate[1]
+    L = level_boundary.level[1].u[1]
+    R = linear_resistance.resistance[1]
+    Q_max = linear_resistance.max_flow_rate[1]
 
     # derivation in https://github.com/Deltares/Ribasim/pull/1100#issuecomment-1934799342
     t_shift = (u0 - A * (L + R * Q_max)) / Q_max
@@ -55,11 +55,11 @@ end
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test successful_retcode(model)
-    p = model.integrator.p
+    (; basin) = model.integrator.p.p_non_diff
 
     t = Ribasim.tsaves(model)
     storage = Ribasim.get_storages_and_levels(model).storage[1, :]
-    basin_area = Ribasim.basin_areas(p.basin, 1)[2]
+    basin_area = Ribasim.basin_areas(basin, 1)[2]
     storage_min = 50.005
     α = 24 * 60 * 60
     storage_analytic =
@@ -90,15 +90,14 @@ end
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test successful_retcode(model)
-    p = model.integrator.p
-    (; manning_resistance) = p
+    (; manning_resistance, basin) = model.integrator.p.p_non_diff
 
     t = Ribasim.tsaves(model)
     storage_both = Ribasim.get_storages_and_levels(model).storage
     storage = storage_both[1, :]
     storage_min = 50.005
     level_min = 1.0
-    basin_area = Ribasim.basin_areas(p.basin, 1)[2]
+    basin_area = Ribasim.basin_areas(basin, 1)[2]
     level = @. level_min + (storage - storage_min) / basin_area
     C = sum(storage_both[:, 1])
     Λ = 2 * level_min + (C - 2 * storage_min) / basin_area
@@ -127,8 +126,7 @@ end
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test successful_retcode(model)
-    p = model.integrator.p
-    (; basin, pid_control) = p
+    (; basin, pid_control) = model.integrator.p.p_non_diff
 
     storage = Ribasim.get_storages_and_levels(model).storage[:]
     t = Ribasim.tsaves(model)
@@ -178,11 +176,11 @@ end
     @test config.solver.dt === model.integrator.dt
     Ribasim.solve!(model)
     @test successful_retcode(model)
-    p = model.integrator.p
-    (; flow_boundary, pump) = p
+    (; p_non_diff, diff_cache) = model.integrator.p
+    (; flow_boundary, pump, cache_ranges) = p_non_diff
 
     q_boundary = flow_boundary.flow_rate[1].u[1]
-    pump_flow_rate = pump.flow_rate_cache[Float64[]]
+    pump_flow_rate = view(diff_cache, cache_ranges.flow_rate_pump)
     q_pump = pump_flow_rate[1]
 
     storage_both = get_storages_and_levels(model).storage

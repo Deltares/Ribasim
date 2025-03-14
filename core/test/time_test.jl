@@ -31,8 +31,7 @@ end
     @test ispath(toml_path)
     config = Ribasim.Config(toml_path; solver_saveat = 0)
     model = Ribasim.run(toml_path)
-    (; p) = model.integrator
-    (; basin) = p
+    (; basin) = model.integrator.p.p_non_diff
     n_basin = length(basin.node_id)
     basin_table = DataFrame(Ribasim.basin_table(model))
 
@@ -64,7 +63,7 @@ end
         solver_algorithm = "Euler",
     )
     model = Ribasim.Model(config)
-    (; basin) = model.integrator.p
+    (; basin) = model.integrator.p.p_non_diff
     starting_precipitation =
         basin.vertical_flux.precipitation[1] * Ribasim.basin_areas(basin, 1)[end]
     BMI.update_until(model, saveat)
@@ -95,7 +94,7 @@ end
     @test ispath(toml_path)
 
     model = Ribasim.Model(toml_path)
-    (; level_boundary, flow_boundary, basin) = model.integrator.p
+    (; level_boundary, flow_boundary, basin) = model.integrator.p.p_non_diff
 
     function test_extrapolation(itp)
         @test itp.extrapolation_left == Periodic
@@ -107,7 +106,7 @@ end
     test_extrapolation(flow_boundary.flow_rate[1])
 end
 
-@testitem "transient_pump_weir" begin
+@testitem "transient_pump_outlet" begin
     using DataFrames: DataFrame
 
     toml_path =
@@ -119,6 +118,6 @@ end
     @test all(isapprox.(storage[1, 2:end], storage[1, end]; rtol = 1e-4))
 
     t_end = model.integrator.t
-    flow_rate_end = model.integrator.p.pump.flow_rate[1].u[end]
+    flow_rate_end = model.integrator.p.p_non_diff.pump.flow_rate[1].u[end]
     @test storage[2, end] ≈ storage[2, 1] + 0.5 * flow_rate_end * t_end
 end

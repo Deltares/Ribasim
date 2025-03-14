@@ -137,10 +137,11 @@ end
 
     config = Ribasim.Config(toml_path)
     model = Ribasim.Model(config)
-    storage1_begin =
-        copy(model.integrator.p.basin.current_properties.current_storage[Float64[]])
+    (; p_non_diff, diff_cache) = model.integrator.p
+    current_storage = view(diff_cache, p_non_diff.cache_ranges.current_storage)
+    storage1_begin = copy(current_storage)
     solve!(model)
-    storage1_end = model.integrator.p.basin.current_properties.current_storage[Float64[]]
+    storage1_end = current_storage
     @test storage1_begin != storage1_end
 
     # copy state results to input
@@ -156,6 +157,8 @@ end
     end
 
     model = Ribasim.Model(toml_path)
-    storage2_begin = model.integrator.p.basin.current_properties.current_storage[Float64[]]
+    (; p_non_diff, diff_cache) = model.integrator.p
+    current_storage = view(diff_cache, p_non_diff.cache_ranges.current_storage)
+    storage2_begin = current_storage
     @test storage1_end ≈ storage2_begin
 end
