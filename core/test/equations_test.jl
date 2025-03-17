@@ -176,13 +176,11 @@ end
     @test config.solver.dt === model.integrator.dt
     Ribasim.solve!(model)
     @test successful_retcode(model)
-    (; p_non_diff, diff_cache) = model.integrator.p
+    (; p_non_diff) = model.integrator.p
     (; flow_boundary, pump, cache_ranges) = p_non_diff
 
     q_boundary = flow_boundary.flow_rate[1].u[1]
-    pump_flow_rate = view(diff_cache, cache_ranges.flow_rate_pump)
-    q_pump = pump_flow_rate[1]
-
+    q_pump = pump.flow_rate[1].u[1]
     storage_both = get_storages_and_levels(model).storage
     t = tsaves(model)
     tspan = model.integrator.sol.prob.tspan

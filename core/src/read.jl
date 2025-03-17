@@ -1237,20 +1237,11 @@ function ContinuousControl(db::DB, config::Config)::ContinuousControl
     func, controlled_variable, errors = continuous_control_functions(db, config, ids)
     compound_variable = continuous_control_compound_variables(db, config, ids)
 
-    # References to the controlled parameters, filled in later when they are known
-    target_refs = DiffCacheRef[]
-
     if errors
         error("Errors encountered when parsing ContinuousControl data.")
     end
 
-    return ContinuousControl(
-        node_id,
-        compound_variable,
-        controlled_variable,
-        target_refs,
-        func,
-    )
+    return ContinuousControl(; node_id, compound_variable, controlled_variable, func)
 end
 
 function PidControl(db::DB, config::Config)::PidControl
@@ -1838,6 +1829,13 @@ function Parameters(db::DB, config::Config)::Parameters
         state_ranges,
         graph,
     )
+    set_target_ref!(
+        nodes.continuous_control.target_ref,
+        nodes.continuous_control.node_id,
+        nodes.continuous_control.controlled_variable,
+        state_ranges,
+        graph,
+    )
 
     p_non_diff = ParametersNonDiff(;
         config.starttime,
@@ -1864,8 +1862,6 @@ function Parameters(db::DB, config::Config)::Parameters
     if config.allocation.use_allocation
         initialize_allocation!(p_non_diff, db, config)
     end
-
-    # TODO: Set and check pump and outlet flow rates
 
     return Parameters(; p_non_diff)
 end

@@ -57,12 +57,12 @@ function water_balance!(
     return nothing
 end
 
-function formulate_continuous_control!(du, p, t)::Nothing
+function formulate_continuous_control!(du::Vector, p::Parameters, t::Number)::Nothing
     (; compound_variable, target_ref, func) = p.p_non_diff.continuous_control
 
     for (cvar, ref, func_) in zip(compound_variable, target_ref, func)
         value = compound_variable_value(cvar, p, du, t)
-        set_value!(ref, func_(value), du)
+        set_value!(ref, p, func_(value))
     end
     return nothing
 end
@@ -227,7 +227,7 @@ function formulate_pid_control!(du::Vector, u::Vector, p::Parameters, t::Number)
 
     set_error!(pid_control, p, t)
 
-    for (i, id) in enumerate(node_id)
+    for (i, _) in enumerate(node_id)
         if !(active[i] || all_nodes_active)
             du_integral[i] = 0.0
             u_integral[i] = 0.0
@@ -620,7 +620,7 @@ function formulate_flow!(
     (; state_ranges, cache_ranges) = p_non_diff
 
     du_outlet = view(du, state_ranges.outlet)
-    cache_flow_rate = view(diff_cache, cache_ranges.flow_rate_pump)
+    cache_flow_rate = view(diff_cache, cache_ranges.flow_rate_outlet)
 
     all_nodes_active = p_mutable.all_nodes_active[]
     for (

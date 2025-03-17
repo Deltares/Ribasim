@@ -783,7 +783,7 @@ end
     node_id::Vector{NodeID}
     compound_variable::Vector{CompoundVariable}
     controlled_variable::Vector{String}
-    target_ref::Vector{DiffCacheRef}
+    target_ref::Vector{DiffCacheRef} = Vector{DiffCacheRef}(undef, length(node_id))
     func::Vector{ScalarInterpolation}
 end
 

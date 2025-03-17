@@ -659,7 +659,7 @@ function set_target_ref!(
     controlled_variable::Vector{String},
     state_ranges::StateRanges,
     graph::MetaGraph,
-)
+)::Nothing
     errors = false
     for (i, (id, variable)) in enumerate(zip(node_id, controlled_variable))
         controlled_node_id = only(outneighbor_labels_type(graph, id, LinkType.control))
@@ -672,6 +672,7 @@ function set_target_ref!(
     if errors
         error("Errors encountered when setting continuously controlled variable refs.")
     end
+    return nothing
 end
 
 """
