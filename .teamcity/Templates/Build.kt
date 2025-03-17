@@ -3,6 +3,7 @@ package Templates
 
 import jetbrains.buildServer.configs.kotlin.Template
 import jetbrains.buildServer.configs.kotlin.buildSteps.script
+import jetbrains.buildServer.configs.kotlin.buildFeatures.buildCache
 
 fun generateBuildHeader(platformOs: String): String {
     if (platformOs == "Linux") {
@@ -26,6 +27,19 @@ open class Build(platformOs: String) : Template() {
         vcs {
             root(Ribasim.vcsRoots.Ribasim, ". => ribasim")
             cleanCheckout = true
+        }
+
+        val depot_path = generateJuliaDepotPath(platformOs)
+        params {
+            param("env.JULIA_DEPOT_PATH", depot_path)
+        }
+
+        features {
+            buildCache {
+                id = "Ribasim${platformOs}Cache"
+                name = "Ribasim ${platformOs} Cache"
+                publish = false
+            }
         }
 
         val header = generateBuildHeader(platformOs)

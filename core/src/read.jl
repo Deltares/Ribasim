@@ -129,7 +129,7 @@ function parse_static_and_time(
                     hasproperty(row, :control_state) ? row.control_state : missing
                 # Get the parameter values, and turn them into trivial interpolation objects
                 # if this parameter can be transient
-                parameter_values = Any[]
+                parameter_values = []
                 for parameter_name in parameter_names
                     val = getfield(row, parameter_name)
                     # Set default parameter value if no value was given
@@ -171,10 +171,9 @@ function parse_static_and_time(
                         time,
                         node_id,
                         parameter_name;
-                        default_value = hasproperty(defaults, parameter_name) ?
-                                        defaults[parameter_name] : NaN,
+                        default_value = get(defaults, parameter_name, NaN),
                         interpolation_type,
-                        extrapolation = cyclic_time ? Periodic : Constant,
+                        cyclic_time,
                     )
                 else
                     # Activity of transient nodes is assumed to be true
@@ -448,6 +447,7 @@ function TabulatedRatingCurve(
 
     static_node_ids, time_node_ids, node_ids, valid =
         static_and_time_node_ids(db, static, time, NodeType.TabulatedRatingCurve)
+    cyclic_times = get_cyclic_time(db, "TabulatedRatingCurve")
 
     valid || error(
         "Problems encountered when parsing TabulatedRatingcurve static and time node IDs.",
@@ -466,7 +466,7 @@ function TabulatedRatingCurve(
     qh_iterator = IterTools.groupby(row -> (row.node_id, row.time), time)
     state = nothing  # initial iterator state
 
-    for node_id in node_ids
+    for (node_id, cyclic_time) in zip(node_ids, cyclic_times)
         if node_id in static_node_ids
             # Loop over all static rating curves (groups) with this node_id.
             # If it has a control_state add it to control_mapping.
@@ -540,10 +540,22 @@ function TabulatedRatingCurve(
                     break
                 end
             end
+            if cyclic_time
+                itp_first = interpolations[first(lookup_index)]
+                itp_last = interpolations[last(lookup_index)]
+                if !((itp_first.t == itp_last.t) && (itp_first.u == itp_last.u))
+                    @error "For $node_id with cyclic_time the first and last rating curves are not equal."
+                    errors = true
+                end
+                lookup_index[end] = first(lookup_index)
+            end
+
             push_constant_interpolation!(
                 current_interpolation_index,
                 lookup_index,
                 lookup_time,
+                node_id;
+                cyclic_time,
             )
             push!(active, true)
             push!(max_downstream_level, max_level)
@@ -694,6 +706,7 @@ end
 
 function Pump(db::DB, config::Config, graph::MetaGraph)::Pump
     static = load_structvector(db, config, PumpStaticV1)
+    time = load_structvector(db, config, PumpTimeV1)
     defaults = (;
         min_flow_rate = 0.0,
         max_flow_rate = Inf,
@@ -701,7 +714,23 @@ function Pump(db::DB, config::Config, graph::MetaGraph)::Pump
         max_downstream_level = Inf,
         active = true,
     )
-    parsed_parameters, valid = parse_static_and_time(db, config, "Pump"; static, defaults)
+    time_interpolatables = [
+        :flow_rate,
+        :min_flow_rate,
+        :max_flow_rate,
+        :min_upstream_level,
+        :max_downstream_level,
+    ]
+
+    parsed_parameters, valid = parse_static_and_time(
+        db,
+        config,
+        "Pump";
+        static,
+        time,
+        defaults,
+        time_interpolatables,
+    )
 
     if !valid
         error("Errors occurred when parsing Pump data.")
@@ -709,16 +738,17 @@ function Pump(db::DB, config::Config, graph::MetaGraph)::Pump
 
     (; node_id) = parsed_parameters
 
-    # If flow rate is set by PID control, it is part of the AD Jacobian computations
-    flow_rate = cache(length(node_id))
-    flow_rate[Float64[]] .= parsed_parameters.flow_rate
+    # If flow rate is set by PidControl or ContinuousControl, it is part of the AD Jacobian computations
+    flow_rate_cache = cache(length(node_id))
+    flow_rate_cache[Float64[]] .= [itp(0) for itp in parsed_parameters.flow_rate]
 
     return Pump(;
         node_id,
         inflow_link = inflow_link.(Ref(graph), node_id),
         outflow_link = outflow_link.(Ref(graph), node_id),
         parsed_parameters.active,
-        flow_rate,
+        flow_rate_cache,
+        parsed_parameters.flow_rate,
         parsed_parameters.min_flow_rate,
         parsed_parameters.max_flow_rate,
         parsed_parameters.min_upstream_level,
@@ -729,6 +759,7 @@ end
 
 function Outlet(db::DB, config::Config, graph::MetaGraph)::Outlet
     static = load_structvector(db, config, OutletStaticV1)
+    time = load_structvector(db, config, OutletTimeV1)
     defaults = (;
         min_flow_rate = 0.0,
         max_flow_rate = Inf,
@@ -736,7 +767,23 @@ function Outlet(db::DB, config::Config, graph::MetaGraph)::Outlet
         max_downstream_level = Inf,
         active = true,
     )
-    parsed_parameters, valid = parse_static_and_time(db, config, "Outlet"; static, defaults)
+    time_interpolatables = [
+        :flow_rate,
+        :min_flow_rate,
+        :max_flow_rate,
+        :min_upstream_level,
+        :max_downstream_level,
+    ]
+
+    parsed_parameters, valid = parse_static_and_time(
+        db,
+        config,
+        "Outlet";
+        static,
+        time,
+        defaults,
+        time_interpolatables,
+    )
 
     if !valid
         error("Errors occurred when parsing Outlet data.")
@@ -749,16 +796,18 @@ function Outlet(db::DB, config::Config, graph::MetaGraph)::Outlet
             eachindex(parsed_parameters.node_id),
         )
 
-    # If flow rate is set by PID control, it is part of the AD Jacobian computations
-    flow_rate = cache(length(node_id))
-    flow_rate[Float64[], length(node_id)] .= parsed_parameters.flow_rate
+    # If flow rate is set by PidControl or ContinuousControl, it is part of the AD Jacobian computations
+    flow_rate_cache = cache(length(node_id))
+    flow_rate_cache[Float64[], length(node_id)] .=
+        [itp(0) for itp in parsed_parameters.flow_rate]
 
     return Outlet(;
         node_id,
         inflow_link = inflow_link.(Ref(graph), node_id),
         outflow_link = outflow_link.(Ref(graph), node_id),
         parsed_parameters.active,
-        flow_rate,
+        flow_rate_cache,
+        parsed_parameters.flow_rate,
         parsed_parameters.min_flow_rate,
         parsed_parameters.max_flow_rate,
         parsed_parameters.control_mapping,
@@ -779,6 +828,7 @@ function ConcentrationData(
     config::Config,
 )::ConcentrationData
     n = length(node_id)
+    cyclic_times = get_cyclic_time(db, "Basin")
 
     concentration_state_data = load_structvector(db, config, BasinConcentrationStateV1)
 
@@ -810,14 +860,12 @@ function ConcentrationData(
         concentration_column = :precipitation,
     )
 
-    t_end = seconds_since(config.endtime, config.starttime)
-
     errors = false
 
     concentration_external_data =
         load_structvector(db, config, BasinConcentrationExternalV1)
     concentration_external = Dict{String, ScalarInterpolation}[]
-    for id in node_id
+    for (id, cyclic_time) in zip(node_id, cyclic_times)
         concentration_external_id = Dict{String, ScalarInterpolation}()
         data_id = filter(row -> row.node_id == id.value, concentration_external_data)
         for group in IterTools.groupby(row -> row.substance, data_id)
@@ -828,7 +876,7 @@ function ConcentrationData(
                 StructVector(group),
                 NodeID(:Basin, first_row.node_id, 0),
                 :concentration;
-                interpolation_type = LinearInterpolation,
+                cyclic_time,
             )
             concentration_external_id["concentration_external.$substance"] = itp
             if any(itp.u .< 0)
@@ -940,7 +988,12 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     return basin
 end
 
-function get_greater_than!(greater_than, conditions_compound_variable, starttime)::Nothing
+function get_greater_than!(
+    greater_than::Vector{<:AbstractInterpolation},
+    conditions_compound_variable,
+    starttime::DateTime,
+    cyclic_time::Bool,
+)::Nothing
     (; node_id) = first(conditions_compound_variable)
     errors = false
 
@@ -959,6 +1012,8 @@ function get_greater_than!(greater_than, conditions_compound_variable, starttime
                 greater_than,
                 condition_group.greater_than,
                 seconds_since.(condition_group.time, starttime),
+                NodeID(:UserDemand, node_id, 0);
+                cyclic_time,
             )
         end
     end
@@ -975,10 +1030,11 @@ References to listened parameters are added later.
 function CompoundVariable(
     variables_compound_variable,
     node_type::NodeType.T,
-    node_ids_all::Vector{NodeID};
+    node_ids_all::Vector{NodeID},
+    placeholder_vector;
     conditions_compound_variable = nothing,
     starttime = nothing,
-    placeholder_vector,
+    cyclic_time = false,
 )::CompoundVariable
     # The ID of the node listening to this CompoundVariable
     node_id =
@@ -1003,8 +1059,12 @@ function CompoundVariable(
     end
 
     # Build greater_than ConstantInterpolation objects
-    !isnothing(conditions_compound_variable) &&
-        get_greater_than!(greater_than, conditions_compound_variable, starttime)
+    !isnothing(conditions_compound_variable) && get_greater_than!(
+        greater_than,
+        conditions_compound_variable,
+        starttime,
+        cyclic_time,
+    )
     return compound_variable
 end
 
@@ -1014,12 +1074,13 @@ function parse_variables_and_conditions(ids::Vector{Int32}, db::DB, config::Conf
 
     placeholder_vector = cache(1)
     compound_variables = Vector{CompoundVariable}[]
+    cyclic_times = get_cyclic_time(db, "DiscreteControl")
     errors = false
 
     node_ids_all = get_node_ids(db)
 
     # Loop over unique discrete_control node IDs
-    for id in ids
+    for (id, cyclic_time) in zip(ids, cyclic_times)
         # Conditions associated with the current DiscreteControl node
         conditions_node = filter(row -> row.node_id == id, condition)
 
@@ -1053,10 +1114,11 @@ function parse_variables_and_conditions(ids::Vector{Int32}, db::DB, config::Conf
                     CompoundVariable(
                         variables_compound_variable,
                         NodeType.DiscreteControl,
-                        node_ids_all;
+                        node_ids_all,
+                        placeholder_vector;
                         conditions_compound_variable,
-                        placeholder_vector,
                         config.starttime,
+                        cyclic_time,
                     ),
                 )
             end
@@ -1158,7 +1220,7 @@ function continuous_control_compound_variables(db::DB, config::Config, ids)
             CompoundVariable(
                 variable_data,
                 NodeType.ContinuousControl,
-                node_ids_all;
+                node_ids_all,
                 placeholder_vector,
             ),
         )
@@ -1251,6 +1313,7 @@ function user_demand_static!(
     static::StructVector{UserDemandStaticV1},
     ids::Vector{Int32},
     demand_priorities::Vector{Int32},
+    has_priority::Matrix{Bool},
 )::Nothing
     for group in IterTools.groupby(row -> row.node_id, static)
         first_row = first(group)
@@ -1268,6 +1331,7 @@ function user_demand_static!(
 
         for row in group
             demand_priority_idx = findsorted(demand_priorities, row.demand_priority)
+            has_priority[user_demand_idx, demand_priority_idx] = true
             demand_row = coalesce(row.demand, 0.0)
             demand_itp_old = demand_itp[user_demand_idx][demand_priority_idx]
             demand_itp[user_demand_idx][demand_priority_idx] = LinearInterpolation(
@@ -1291,11 +1355,12 @@ function user_demand_time!(
     min_level::Vector{Float64},
     time::StructVector{UserDemandTimeV1},
     ids::Vector{Int32},
+    cyclic_times::Vector{Bool},
     demand_priorities::Vector{Int32},
+    has_priority::Matrix{Bool},
     config::Config,
 )::Bool
     errors = false
-    t_end = seconds_since(config.endtime, config.starttime)
 
     for group in IterTools.groupby(row -> (row.node_id, row.demand_priority), time)
         first_row = first(group)
@@ -1303,25 +1368,26 @@ function user_demand_time!(
 
         active[user_demand_idx] = true
         demand_from_timeseries[user_demand_idx] = true
+        cyclic_time = cyclic_times[user_demand_idx]
         return_factor_itp = get_scalar_interpolation(
             config.starttime,
             StructVector(group),
             NodeID(:UserDemand, first_row.node_id, 0),
             :return_factor;
-            interpolation_type = LinearInterpolation,
+            cyclic_time,
         )
         return_factor[user_demand_idx] = return_factor_itp
 
         min_level[user_demand_idx] = first_row.min_level
 
         demand_priority_idx = findsorted(demand_priorities, first_row.demand_priority)
+        has_priority[user_demand_idx, demand_priority_idx] = true
         demand_p_itp = get_scalar_interpolation(
             config.starttime,
             StructVector(group),
             NodeID(:UserDemand, first_row.node_id, 0),
             :demand;
-            default_value = 0.0,
-            interpolation_type = LinearInterpolation,
+            cyclic_time,
         )
         demand[user_demand_idx, demand_priority_idx] = demand_p_itp(0.0)
         demand_itp[user_demand_idx][demand_priority_idx] = demand_p_itp
@@ -1336,6 +1402,7 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)::UserDemand
 
     _, _, node_ids, valid = static_and_time_node_ids(db, static, time, NodeType.UserDemand)
     ids = Int32.(node_ids)
+    cyclic_times = get_cyclic_time(db, "UserDemand")
 
     if !valid
         error("Problems encountered when parsing UserDemand static and time node IDs.")
@@ -1346,20 +1413,21 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)::UserDemand
     n_user = length(node_ids)
     n_demand_priority = length(demand_priorities)
     active = fill(true, n_user)
+    has_priority = zeros(Bool, n_user, n_demand_priority)
     demand = zeros(n_user, n_demand_priority)
     demand_reduced = zeros(n_user, n_demand_priority)
     trivial_timespan = [0.0, prevfloat(Inf)]
     demand_itp = [
         ScalarInterpolation[
             LinearInterpolation(zeros(2), trivial_timespan; cache_parameters = true) for
-            i in eachindex(demand_priorities)
-        ] for j in eachindex(node_ids)
+            _ in demand_priorities
+        ] for _ in node_ids
     ]
     demand_from_timeseries = fill(false, n_user)
     allocated = fill(Inf, n_user, n_demand_priority)
     return_factor = [
         LinearInterpolation(zeros(2), trivial_timespan; cache_parameters = true) for
-        i in eachindex(node_ids)
+        _ in node_ids
     ]
     min_level = zeros(n_user)
 
@@ -1373,6 +1441,7 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)::UserDemand
         static,
         ids,
         demand_priorities,
+        has_priority,
     )
 
     # Process time table
@@ -1385,7 +1454,9 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)::UserDemand
         min_level,
         time,
         ids,
+        cyclic_times,
         demand_priorities,
+        has_priority,
         config,
     )
 
@@ -1404,6 +1475,7 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)::UserDemand
         inflow_link = inflow_link.(Ref(graph), node_ids),
         outflow_link = outflow_link.(Ref(graph), node_ids),
         active,
+        has_priority,
         demand,
         demand_reduced,
         demand_itp,
@@ -1477,11 +1549,15 @@ function push_constant_interpolation!(
     constant_interpolations::Vector{<:ConstantInterpolation{uType, tType}},
     output::uType,
     input::tType,
+    node_id::NodeID;
+    cyclic_time::Bool = false,
 ) where {uType, tType}
+    valid = valid_time_interpolation(input, output, node_id, cyclic_time)
+    !valid && error("Invalid time series.")
     itp = ConstantInterpolation(
         output,
         input;
-        extrapolation = Constant,
+        extrapolation = cyclic_time ? Periodic : Constant,
         cache_parameters = true,
     )
     push!(constant_interpolations, itp)
@@ -1500,6 +1576,7 @@ end
 function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
     time = load_structvector(db, config, BasinSubgridTimeV1)
     static = load_structvector(db, config, BasinSubgridV1)
+    cyclic_times = get_cyclic_time(db, "Basin")
 
     # Since not all Basins need to have subgrids, don't enforce completeness.
     _, _, _, valid =
@@ -1554,6 +1631,8 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
     lookup_time = Float64[]
     lookup_index = Int[]
 
+    errors = false
+
     interpolation_index = 0
     # In the time table, each subgrid ID can have a different number of relations over time.
     # We group over the combination of subgrid ID and time such that this group has 1 h(h) relation.
@@ -1570,7 +1649,9 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
 
         is_valid =
             valid_subgrid(subgrid_id, node_id, node_to_basin, basin_level, subgrid_level)
-        !is_valid && error("Invalid Basin / subgrid_time table.")
+        errors |= !is_valid
+        !is_valid &&
+            @error "Invalid subgrid for Basin #$node_id, subgrid_id $subgrid_id in time table."
 
         hh_itp = LinearInterpolation(
             subgrid_level,
@@ -1581,11 +1662,23 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
         )
         # These should only be pushed when the subgrid_id has changed
         if subgrid_id_time[end] != subgrid_id
+            cyclic_time = cyclic_times[node_to_basin[node_id]]
+            if cyclic_time
+                itp_first = interpolations_time[first(lookup_index)]
+                itp_last = interpolations_time[last(lookup_index)]
+                if !((itp_first.t == itp_last.t) && (itp_first.u == itp_last.u))
+                    @error "For $node_id with cyclic_time the first and last h(h) relations for subgrid_id $subgrid_id are not equal."
+                    errors = true
+                end
+                lookup_index[end] = first(lookup_index)
+            end
             # Push the completed index_lookup of the previous subgrid_id
             push_constant_interpolation!(
                 current_interpolation_index,
                 lookup_index,
                 lookup_time,
+                node_id;
+                cyclic_time,
             )
             # Push the new subgrid_id and basin_index
             push!(subgrid_id_time, subgrid_id)
@@ -1599,9 +1692,16 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
         push!(interpolations_time, hh_itp)
     end
 
+    errors && @error("Errors encountered when parsing Basin / subgrid_time data.")
+
     # Push completed IndexLookup of the last group
     if interpolation_index > 0
-        push_constant_interpolation!(current_interpolation_index, lookup_index, lookup_time)
+        push_constant_interpolation!(
+            current_interpolation_index,
+            lookup_index,
+            lookup_time,
+            last(basin.node_id),
+        )
     end
 
     level = fill(NaN, length(subgrid_id_static) + length(subgrid_id_time))
@@ -1704,59 +1804,77 @@ function Parameters(db::DB, config::Config)::Parameters
     end
 
     basin = Basin(db, config, graph)
-
-    linear_resistance = LinearResistance(db, config, graph)
-    manning_resistance = ManningResistance(db, config, graph, basin)
-    tabulated_rating_curve = TabulatedRatingCurve(db, config, graph)
-    level_boundary = LevelBoundary(db, config)
-    flow_boundary = FlowBoundary(db, config, graph)
-    pump = Pump(db, config, graph)
-    outlet = Outlet(db, config, graph)
-    terminal = Terminal(db, config)
-    discrete_control = DiscreteControl(db, config, graph)
-    continuous_control = ContinuousControl(db, config, graph)
-    pid_control = PidControl(db, config, graph)
-    user_demand = UserDemand(db, config, graph)
-    level_demand = LevelDemand(db, config)
-    flow_demand = FlowDemand(db, config)
+    nodes = (;
+        basin,
+        linear_resistance = LinearResistance(db, config, graph),
+        manning_resistance = ManningResistance(db, config, graph, basin),
+        tabulated_rating_curve = TabulatedRatingCurve(db, config, graph),
+        level_boundary = LevelBoundary(db, config),
+        flow_boundary = FlowBoundary(db, config, graph),
+        pump = Pump(db, config, graph),
+        outlet = Outlet(db, config, graph),
+        terminal = Terminal(db, config),
+        discrete_control = DiscreteControl(db, config, graph),
+        continuous_control = ContinuousControl(db, config, graph),
+        pid_control = PidControl(db, config, graph),
+        user_demand = UserDemand(db, config, graph),
+        level_demand = LevelDemand(db, config),
+        flow_demand = FlowDemand(db, config),
+    )
 
     subgrid = Subgrid(db, config, basin)
 
     u_ids = state_node_ids((;
-        tabulated_rating_curve,
-        pump,
-        outlet,
-        user_demand,
-        linear_resistance,
-        manning_resistance,
-        basin,
-        pid_control,
+        nodes.tabulated_rating_curve,
+        nodes.pump,
+        nodes.outlet,
+        nodes.user_demand,
+        nodes.linear_resistance,
+        nodes.manning_resistance,
+        nodes.basin,
+        nodes.pid_control,
     ))
+    connector_nodes = (;
+        nodes.tabulated_rating_curve,
+        nodes.pump,
+        nodes.outlet,
+        nodes.linear_resistance,
+        nodes.manning_resistance,
+        nodes.user_demand,
+    )
     node_id = reduce(vcat, u_ids)
+    n_states = length(node_id)
+    state_ranges = StateRanges(u_ids)
+    flow_to_storage = build_flow_to_storage(state_ranges, n_states, basin, connector_nodes)
+    state_inflow_link, state_outflow_link = get_state_flow_links(graph, nodes)
 
     p = Parameters(;
         config.starttime,
         graph,
         allocation,
         basin,
-        linear_resistance,
-        manning_resistance,
-        tabulated_rating_curve,
-        level_boundary,
-        flow_boundary,
-        pump,
-        outlet,
-        terminal,
-        discrete_control,
-        continuous_control,
-        pid_control,
-        user_demand,
-        level_demand,
-        flow_demand,
+        nodes.linear_resistance,
+        nodes.manning_resistance,
+        nodes.tabulated_rating_curve,
+        nodes.level_boundary,
+        nodes.flow_boundary,
+        nodes.pump,
+        nodes.outlet,
+        nodes.terminal,
+        nodes.discrete_control,
+        nodes.continuous_control,
+        nodes.pid_control,
+        nodes.user_demand,
+        nodes.level_demand,
+        nodes.flow_demand,
         subgrid,
+        state_inflow_link,
+        state_outflow_link,
+        flow_to_storage,
         config.solver.water_balance_abstol,
         config.solver.water_balance_reltol,
         node_id,
+        state_ranges,
     )
 
     collect_control_mappings!(p)
@@ -1818,7 +1936,7 @@ function get_node_ids(db::DB, node_type)::Vector{NodeID}
     return node_ids
 end
 
-function get_cyclic_time(db::DB, node_type)::Vector{Bool}
+function get_cyclic_time(db::DB, node_type::String)::Vector{Bool}
     sql = "SELECT cyclic_time FROM Node WHERE node_type = $(esc_id(node_type)) ORDER BY node_id"
     return only(execute(columntable, db, sql))
 end

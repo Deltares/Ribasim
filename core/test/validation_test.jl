@@ -218,6 +218,7 @@ end
 @testitem "Pump/outlet flow rate sign validation" begin
     using Logging
     using Ribasim: NodeID, NodeType, ControlStateUpdate, ParameterUpdate, cache
+    using DataInterpolations: LinearInterpolation
 
     logger = TestLogger()
 
@@ -237,15 +238,20 @@ end
     logger = TestLogger()
 
     with_logger(logger) do
-        flow_rate = cache(1)
-        flow_rate[Float64[]] .= -1
+        flow_rate_cache = cache(1)
+        flow_rate_cache[Float64[]] .= -1
         @test_throws "Invalid Pump flow rate(s)." Ribasim.Pump(;
             node_id = [NodeID(:Pump, 1, 1)],
-            flow_rate,
+            flow_rate_cache,
             control_mapping = Dict(
                 (NodeID(:Pump, 1, 1), "foo") => ControlStateUpdate(;
                     active = ParameterUpdate(:active, true),
-                    scalar_update = [ParameterUpdate(:flow_rate, -1.0)],
+                    itp_update = [
+                        ParameterUpdate(
+                            :flow_rate,
+                            LinearInterpolation([-1.0, -1.0], [0.0, 1.0]),
+                        ),
+                    ],
                 ),
             ),
         )
@@ -392,6 +398,7 @@ end
 
 @testitem "Outlet upstream level validation" begin
     using Ribasim: valid_min_upstream_level!
+    using DataInterpolations: LinearInterpolation
     using Logging
 
     toml_path = normpath(
@@ -407,7 +414,7 @@ end
     parameters = model.integrator.p
 
     (; graph, outlet, basin) = parameters
-    outlet.min_upstream_level[1] = invalid_level
+    outlet.min_upstream_level[1] = LinearInterpolation(fill(invalid_level, 2), zeros(2))
 
     logger = TestLogger()
     with_logger(logger) do

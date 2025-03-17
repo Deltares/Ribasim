@@ -21,15 +21,40 @@ const SolverStats = @NamedTuple{
     5 Drainage = 6 Precipitation = 7
 Base.to_index(id::Substance.T) = Int(id)  # used to index into concentration matrices
 
-@generated function config.snake_case(nt::NodeType.T)
-    ex = quote end
-    for (sym, _) in EnumX.symbol_map(NodeType.T)
-        sc = QuoteNode(config.snake_case(sym))
-        t = NodeType.T(sym)
-        push!(ex.args, :(nt === $t && return $sc))
+function config.snake_case(nt::NodeType.T)::Symbol
+    if nt == NodeType.Basin
+        return :basin
+    elseif nt == NodeType.TabulatedRatingCurve
+        return :tabulated_rating_curve
+    elseif nt == NodeType.Pump
+        return :pump
+    elseif nt == NodeType.Outlet
+        return :outlet
+    elseif nt == NodeType.UserDemand
+        return :user_demand
+    elseif nt == NodeType.FlowDemand
+        return :flow_demand
+    elseif nt == NodeType.LevelDemand
+        return :level_demand
+    elseif nt == NodeType.FlowBoundary
+        return :flow_boundary
+    elseif nt == NodeType.LevelBoundary
+        return :level_boundary
+    elseif nt == NodeType.LinearResistance
+        return :linear_resistance
+    elseif nt == NodeType.ManningResistance
+        return :manning_resistance
+    elseif nt == NodeType.Terminal
+        return :terminal
+    elseif nt == NodeType.DiscreteControl
+        return :discrete_control
+    elseif nt == NodeType.ContinuousControl
+        return :continuous_control
+    elseif nt == NodeType.PidControl
+        return :pid_control
+    else
+        error("Unknown node type: $nt")
     end
-    push!(ex.args, :(return :nothing))  # type stability
-    ex
 end
 
 # Support creating a NodeType enum instance from a symbol or string
@@ -314,7 +339,7 @@ The parameter update associated with a certain control state for discrete contro
 """
 @kwdef struct ControlStateUpdate{T <: AbstractInterpolation}
     active::ParameterUpdate{Bool}
-    scalar_update::Vector{ParameterUpdate{Float64}} = []
+    scalar_update::Vector{ParameterUpdate{Float64}} = ParameterUpdate{Float64}[]
     itp_update::Vector{ParameterUpdate{T}} = ParameterUpdate{ScalarInterpolation}[]
 end
 
@@ -332,8 +357,8 @@ In-memory storage of saved mean flows for writing to results.
 - `relative_error`: The relative water balance error
 - `t`: Endtime of the interval over which is averaged
 """
-@kwdef struct SavedFlow{V}
-    flow::V
+@kwdef struct SavedFlow
+    flow::Vector{Float64}
     inflow::Vector{Float64}
     outflow::Vector{Float64}
     flow_boundary::Vector{Float64}
@@ -618,7 +643,8 @@ inflow_link: incoming flow link metadata
 outflow_link: outgoing flow link metadata
     The ID of the source node is always the ID of the Pump node
 active: whether this node is active and thus contributes flow
-flow_rate: target flow rate
+flow_rate_cache: target flow rate
+flow_rate: timeseries for transient flow data if available
 min_flow_rate: The minimal flow rate of the pump
 max_flow_rate: The maximum flow rate of the pump
 min_upstream_level: The upstream level below which the Pump flow goes to zero
@@ -631,11 +657,12 @@ continuous_control_type: one of None, ContinuousControl, PidControl
     inflow_link::Vector{LinkMetadata} = []
     outflow_link::Vector{LinkMetadata} = []
     active::Vector{Bool} = fill(true, length(node_id))
-    flow_rate::Cache = cache(length(node_id))
-    min_flow_rate::Vector{Float64} = zeros(length(node_id))
-    max_flow_rate::Vector{Float64} = fill(Inf, length(node_id))
-    min_upstream_level::Vector{Float64} = fill(-Inf, length(node_id))
-    max_downstream_level::Vector{Float64} = fill(Inf, length(node_id))
+    flow_rate_cache::Cache = cache(length(node_id))
+    flow_rate::Vector{ScalarInterpolation} = ScalarInterpolation[]
+    min_flow_rate::Vector{ScalarInterpolation} = ScalarInterpolation[]
+    max_flow_rate::Vector{ScalarInterpolation} = ScalarInterpolation[]
+    min_upstream_level::Vector{ScalarInterpolation} = ScalarInterpolation[]
+    max_downstream_level::Vector{ScalarInterpolation} = ScalarInterpolation[]
     control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate}
     continuous_control_type::Vector{ContinuousControlType.T} =
         fill(ContinuousControlType.None, length(node_id))
@@ -645,6 +672,7 @@ continuous_control_type: one of None, ContinuousControl, PidControl
         inflow_link,
         outflow_link,
         active,
+        flow_rate_cache,
         flow_rate,
         min_flow_rate,
         max_flow_rate,
@@ -659,6 +687,7 @@ continuous_control_type: one of None, ContinuousControl, PidControl
                 inflow_link,
                 outflow_link,
                 active,
+                flow_rate_cache,
                 flow_rate,
                 min_flow_rate,
                 max_flow_rate,
@@ -680,7 +709,8 @@ inflow_link: incoming flow link metadata.
 outflow_link: outgoing flow link metadata.
     The ID of the source node is always the ID of the Outlet node
 active: whether this node is active and thus contributes flow
-flow_rate: target flow rate
+flow_rate_cache: target flow rate
+flow_rate: timeseries for transient flow data if available
 min_flow_rate: The minimal flow rate of the outlet
 max_flow_rate: The maximum flow rate of the outlet
 min_upstream_level: The upstream level below which the Outlet flow goes to zero
@@ -693,11 +723,12 @@ continuous_control_type: one of None, ContinuousControl, PidControl
     inflow_link::Vector{LinkMetadata} = []
     outflow_link::Vector{LinkMetadata} = []
     active::Vector{Bool} = fill(true, length(node_id))
-    flow_rate::Cache = cache(length(node_id))
-    min_flow_rate::Vector{Float64} = zeros(length(node_id))
-    max_flow_rate::Vector{Float64} = fill(Inf, length(node_id))
-    min_upstream_level::Vector{Float64} = fill(-Inf, length(node_id))
-    max_downstream_level::Vector{Float64} = fill(Inf, length(node_id))
+    flow_rate_cache::Cache = cache(length(node_id))
+    flow_rate::Vector{ScalarInterpolation} = ScalarInterpolation[]
+    min_flow_rate::Vector{ScalarInterpolation} = ScalarInterpolation[]
+    max_flow_rate::Vector{ScalarInterpolation} = ScalarInterpolation[]
+    min_upstream_level::Vector{ScalarInterpolation} = ScalarInterpolation[]
+    max_downstream_level::Vector{ScalarInterpolation} = ScalarInterpolation[]
     control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate} = Dict()
     continuous_control_type::Vector{ContinuousControlType.T} =
         fill(ContinuousControlType.None, length(node_id))
@@ -707,6 +738,7 @@ continuous_control_type: one of None, ContinuousControl, PidControl
         inflow_link,
         outflow_link,
         active,
+        flow_rate_cache,
         flow_rate,
         min_flow_rate,
         max_flow_rate,
@@ -721,6 +753,7 @@ continuous_control_type: one of None, ContinuousControl, PidControl
                 inflow_link,
                 outflow_link,
                 active,
+                flow_rate_cache,
                 flow_rate,
                 min_flow_rate,
                 max_flow_rate,
@@ -756,11 +789,10 @@ struct PreallocationRef
     end
 end
 
-get_value(ref::PreallocationRef, du) =
-    ref.from_du ? du[ref.idx] : ref.vector[parent(du)][ref.idx]
+get_value(ref::PreallocationRef, du) = ref.from_du ? du[ref.idx] : ref.vector[du][ref.idx]
 
 function set_value!(ref::PreallocationRef, value, du)::Nothing
-    ref.vector[parent(du)][ref.idx] = value
+    ref.vector[du][ref.idx] = value
     return nothing
 end
 
@@ -863,6 +895,8 @@ inflow_link: incoming flow link
 outflow_link: outgoing flow link metadata
     The ID of the source node is always the ID of the UserDemand node
 active: whether this node is active and thus demands water
+has_priority: boolean matrix stating per UserDemand node per demand priority index whether the (node_idx, demand_priority_idx)
+    node will ever have a demand of that priority
 demand: water flux demand of UserDemand per demand priority (node_idx, demand_priority_idx)
     Each UserDemand has a demand for all demand priorities,
     which is 0.0 if it is not provided explicitly.
@@ -881,6 +915,7 @@ concentration_time: Data source for concentration updates
     inflow_link::Vector{LinkMetadata} = []
     outflow_link::Vector{LinkMetadata} = []
     active::Vector{Bool} = fill(true, length(node_id))
+    has_priority::Matrix{Bool}
     demand::Matrix{Float64}
     demand_reduced::Matrix{Float64}
     demand_itp::Vector{Vector{ScalarInterpolation}}
@@ -946,6 +981,10 @@ end
     current_interpolation_index::Vector{IndexLookup}
 end
 
+# This function is the same as the MetaGraphsNext default anonymous function,
+# but has a stable type for the type alias below.
+weight_function(::Any) = 1.0
+
 """
 The metadata of the graph (the fields of the NamedTuple) can be accessed
     e.g. using graph[].flow.
@@ -967,11 +1006,41 @@ const ModelGraph = MetaGraph{
         flow_links::Vector{LinkMetadata},
         saveat::Float64,
     },
-    MetaGraphsNext.var"#11#13",
+    typeof(weight_function),
     Float64,
 }
 
-@kwdef mutable struct Parameters{C3, C4, C6, C7, C8, C9, C10, C11}
+"""
+Collection of ranges that cover all the components of the state vector `u`."
+
+It is used to create views of `u`, and an low-latency alternative to making `u` a ComponentArray.
+"""
+@kwdef struct StateRanges
+    tabulated_rating_curve::UnitRange{Int64} = 1:0
+    pump::UnitRange{Int64} = 1:0
+    outlet::UnitRange{Int64} = 1:0
+    user_demand_inflow::UnitRange{Int64} = 1:0
+    user_demand_outflow::UnitRange{Int64} = 1:0
+    linear_resistance::UnitRange{Int64} = 1:0
+    manning_resistance::UnitRange{Int64} = 1:0
+    evaporation::UnitRange{Int64} = 1:0
+    infiltration::UnitRange{Int64} = 1:0
+    integral::UnitRange{Int64} = 1:0
+end
+
+function StateRanges(u_ids::NamedTuple)::StateRanges
+    lengths = map(length, u_ids)
+    # from the lengths of the components
+    # construct [1:n_pump, (n_pump+1):(n_pump+n_outlet)]
+    # which are used to create views into the data array
+    bounds = pushfirst!(cumsum(lengths), 0)
+    ranges = [range(p[1] + 1, p[2]) for p in IterTools.partition(bounds, 2, 1)]
+    # standardize empty ranges to 1:0 for easier testing
+    replace!(x -> isempty(x) ? (1:0) : x, ranges)
+    return StateRanges(ranges...)
+end
+
+@kwdef mutable struct Parameters{C3, C4, C6, C7, C8}
     const starttime::DateTime
     const graph::ModelGraph
     const allocation::Allocation
@@ -992,8 +1061,8 @@ const ModelGraph = MetaGraph{
     const flow_demand::FlowDemand
     const subgrid::Subgrid
     # Per state the in- and outflow links associated with that state (if they exist)
-    const state_inflow_link::C9 = ComponentVector()
-    const state_outflow_link::C10 = ComponentVector()
+    const state_inflow_link::Vector{LinkMetadata} = LinkMetadata[]
+    const state_outflow_link::Vector{LinkMetadata} = LinkMetadata[]
     all_nodes_active::Bool = false
     tprev::Float64 = 0.0
     # Sparse matrix for combining flows into storages
@@ -1002,9 +1071,11 @@ const ModelGraph = MetaGraph{
     const water_balance_abstol::Float64
     const water_balance_reltol::Float64
     # State at previous saveat
-    const u_prev_saveat::C11 = ComponentVector()
+    const u_prev_saveat::Vector{Float64} = Float64[]
     # Node ID associated with each state
     const node_id::Vector{NodeID} = NodeID[]
+    # Range per states component
+    const state_ranges::StateRanges = StateRanges()
 end
 
 # To opt-out of type checking for ForwardDiff

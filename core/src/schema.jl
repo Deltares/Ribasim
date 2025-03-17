@@ -27,9 +27,11 @@
 @schema "ribasim.linearresistance.static" LinearResistanceStatic
 @schema "ribasim.manningresistance.static" ManningResistanceStatic
 @schema "ribasim.outlet.static" OutletStatic
+@schema "ribasim.outlet.time" OutletTime
 @schema "ribasim.pidcontrol.static" PidControlStatic
 @schema "ribasim.pidcontrol.time" PidControlTime
 @schema "ribasim.pump.static" PumpStatic
+@schema "ribasim.pump.time" PumpTime
 @schema "ribasim.tabulatedratingcurve.static" TabulatedRatingCurveStatic
 @schema "ribasim.tabulatedratingcurve.time" TabulatedRatingCurveTime
 @schema "ribasim.userdemand.concentration" UserDemandConcentration
@@ -87,6 +89,16 @@ end
     control_state::Union{Missing, String}
 end
 
+@version PumpTimeV1 begin
+    node_id::Int32
+    time::DateTime
+    flow_rate::Float64
+    min_flow_rate::Union{Missing, Float64}
+    max_flow_rate::Union{Missing, Float64}
+    min_upstream_level::Union{Missing, Float64}
+    max_downstream_level::Union{Missing, Float64}
+end
+
 @version OutletStaticV1 begin
     node_id::Int32
     active::Union{Missing, Bool}
@@ -96,6 +108,16 @@ end
     min_upstream_level::Union{Missing, Float64}
     max_downstream_level::Union{Missing, Float64}
     control_state::Union{Missing, String}
+end
+
+@version OutletTimeV1 begin
+    node_id::Int32
+    time::DateTime
+    flow_rate::Float64
+    min_flow_rate::Union{Missing, Float64}
+    max_flow_rate::Union{Missing, Float64}
+    min_upstream_level::Union{Missing, Float64}
+    max_downstream_level::Union{Missing, Float64}
 end
 
 @version BasinStaticV1 begin
@@ -292,7 +314,6 @@ end
     proportional::Float64
     integral::Float64
     derivative::Float64
-    control_state::Union{Missing, String}
 end
 
 @version UserDemandStaticV1 begin

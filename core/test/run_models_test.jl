@@ -4,7 +4,7 @@
     using Tables.DataAPI: nrow
     using Dates: DateTime
     import Arrow
-    using Ribasim: get_tstops, tsaves
+    using Ribasim: get_tstops, tsaves, StateRanges
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/trivial/ribasim.toml")
     @test ispath(toml_path)
@@ -21,6 +21,10 @@
     @test model isa Ribasim.Model
     @test successful_retcode(model)
     (; p) = model.integrator
+
+    @test p.node_id == [0, 6, 6]
+    @test p.state_ranges ==
+          StateRanges(; tabulated_rating_curve = 1:1, evaporation = 2:2, infiltration = 3:3)
 
     @test !ispath(control_path)
 
@@ -129,13 +133,15 @@ end
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
-    (; basin) = model.integrator.p
+    (; basin, state_ranges) = model.integrator.p
     @test basin.current_properties.current_storage[Float64[]] ≈ [1000]
     @test basin.vertical_flux.precipitation == [0.0]
     @test basin.vertical_flux.drainage == [0.0]
     du = get_du(model.integrator)
-    @test du.evaporation == [0.0]
-    @test du.infiltration == [0.0]
+    du_evaporation = view(du, state_ranges.evaporation)
+    du_infiltration = view(du, state_ranges.infiltration)
+    @test du_evaporation == [0.0]
+    @test du_infiltration == [0.0]
     @test successful_retcode(model)
 end
 
@@ -153,11 +159,11 @@ end
     du = get_du(integrator)
     (; u, p, t) = integrator
     Ribasim.water_balance!(du, u, p, t)
-    stor = integrator.p.basin.current_properties.current_storage[parent(du)]
+    stor = integrator.p.basin.current_properties.current_storage[du]
     prec = p.basin.vertical_flux.precipitation
-    evap = du.evaporation
+    evap = view(du, p.state_ranges.evaporation)
     drng = p.basin.vertical_flux.drainage
-    infl = du.infiltration
+    infl = view(du, p.state_ranges.infiltration)
     # The dynamic data has missings, but these are not set.
     @test prec == [0.0]
     @test evap == [0.0]
@@ -205,6 +211,7 @@ end
     @test p isa Ribasim.Parameters
     @test isconcretetype(typeof(p))
     @test all(isconcretetype, fieldtypes(typeof(p)))
+    @test p.node_id == [4, 5, 8, 7, 10, 12, 2, 1, 3, 6, 9, 1, 3, 6, 9]
 
     @test alg isa QNDF
     @test alg.step_limiter! == Ribasim.limit_flow!
@@ -212,7 +219,7 @@ end
     @test successful_retcode(model)
     @test length(model.integrator.sol) == 2 # start and end
     @test model.integrator.p.basin.current_properties.current_storage[Float64[]] ≈
-          Float32[828.5386, 801.88289, 492.290, 1318.3053] skip = Sys.isapple() atol = 1.5
+          Float32[804.22156, 803.6474, 495.18243, 1318.3053] skip = Sys.isapple() atol = 1.5
 
     @test length(logger.logs) > 10
     @test logger.logs[1].level == Debug
@@ -253,8 +260,8 @@ end
     du = get_du(model.integrator)
     precipitation = model.integrator.p.basin.vertical_flux.precipitation
     @test length(precipitation) == 4
-    @test model.integrator.p.basin.current_properties.current_storage[parent(du)] ≈
-          Float32[721.17656, 695.8066, 416.66188, 1334.4879] atol = 2.0 skip = Sys.isapple()
+    @test model.integrator.p.basin.current_properties.current_storage[du] ≈
+          Float32[698.6895, 698.143, 420.57407, 1334.486] atol = 2.0 skip = Sys.isapple()
 end
 
 @testitem "Allocation example model" begin
@@ -300,6 +307,7 @@ end
 
 @testitem "TabulatedRatingCurve model" begin
     using SciMLBase: successful_retcode
+    using DataInterpolations.ExtrapolationType: Constant, Periodic
 
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/tabulated_rating_curve/ribasim.toml")
@@ -311,12 +319,17 @@ end
           Float32[368.31558, 365.68442] skip = Sys.isapple()
     (; tabulated_rating_curve) = model.integrator.p
     # The first node is static, the first interpolation object always applies
-    @test all(tabulated_rating_curve.current_interpolation_index[1].u .== 1)
+    index_itp1 = tabulated_rating_curve.current_interpolation_index[1]
+    @test only(index_itp1.u) == 1
+    @test index_itp1.extrapolation_left == Constant
+    @test index_itp1.extrapolation_right == Constant
     # The second node is dynamic, switching from interpolation 2 to 3 to 4
-    @test tabulated_rating_curve.current_interpolation_index[2].u == [2, 3, 4]
-    @test tabulated_rating_curve.current_interpolation_index[2].t ≈
-          [0.0f0, 2.6784f6, 5.184f6]
-    @test length(tabulated_rating_curve.interpolations) == 4
+    index_itp2 = tabulated_rating_curve.current_interpolation_index[2]
+    @test index_itp2.u == [2, 3, 4, 2]
+    @test index_itp2.t ≈ [0.0f0, 2.6784f6, 5.184f6, 7.8624e6]
+    @test index_itp2.extrapolation_left == Periodic
+    @test index_itp2.extrapolation_right == Periodic
+    @test length(tabulated_rating_curve.interpolations) == 5
     # the highest level in the dynamic table is updated to 1.2 from the callback
     @test tabulated_rating_curve.interpolations[4].t[end] == 1.2
 end
@@ -341,7 +354,8 @@ end
         filter([:from_node_id, :to_node_id] => (from, to) -> from == 2 && to == 3, flow)
 
     t_min_upstream_level =
-        level.t[2] * (outlet.min_upstream_level[1] - level.u[1]) / (level.u[2] - level.u[1])
+        level.t[2] * (outlet.min_upstream_level[1](0.0) - level.u[1]) /
+        (level.u[2] - level.u[1])
 
     # No outlet flow when upstream level is below minimum upstream level
     @test all(@. outlet_flow.flow_rate[t <= t_min_upstream_level] == 0)
@@ -463,7 +477,7 @@ end
 
     du = get_du(model.integrator)
     (; p, t) = model.integrator
-    h_actual = p.basin.current_properties.current_level[parent(du)][1:50]
+    h_actual = p.basin.current_properties.current_level[du][1:50]
     x = collect(10.0:20.0:990.0)
     h_expected = standard_step_method(x, 5.0, 1.0, 0.04, h_actual[end], 1.0e-6)
 

@@ -30,12 +30,19 @@ function get_subnetwork_capacity(
             if is_flow_constraining(id_src.type)
                 node_src = getfield(p, graph[id_src].type)
 
-                capacity_node_src = node_src.max_flow_rate[id_src.idx]
+                max_flow_rate = node_src.max_flow_rate[id_src.idx]
+                capacity_node_src =
+                    max_flow_rate isa AbstractInterpolation ? max_flow_rate(0) :
+                    max_flow_rate
                 capacity_link = min(capacity_link, capacity_node_src)
             end
             if is_flow_constraining(id_dst.type)
                 node_dst = getfield(p, graph[id_dst].type)
-                capacity_node_dst = node_dst.max_flow_rate[id_dst.idx]
+
+                max_flow_rate = node_dst.max_flow_rate[id_dst.idx]
+                capacity_node_dst =
+                    max_flow_rate isa AbstractInterpolation ? max_flow_rate(0) :
+                    max_flow_rate
                 capacity_link = min(capacity_link, capacity_node_dst)
             end
 

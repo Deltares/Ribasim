@@ -9,6 +9,7 @@ from ribasim_testmodels.allocation import (
     allocation_example_model,
     allocation_training_model,
     bommelerwaard_model,
+    cyclic_demand_model,
     fair_distribution_model,
     flow_demand_model,
     level_demand_model,
@@ -62,7 +63,10 @@ from ribasim_testmodels.pid_control import (
     discrete_control_of_pid_control_model,
     pid_control_model,
 )
-from ribasim_testmodels.time import flow_boundary_time_model
+from ribasim_testmodels.time import (
+    flow_boundary_time_model,
+    transient_pump_outlet_model,
+)
 from ribasim_testmodels.trivial import trivial_model
 from ribasim_testmodels.two_basin import two_basin_model
 
@@ -79,6 +83,7 @@ __all__ = [
     "concentration_condition_model",
     "continuous_concentration_condition_model",
     "connector_node_flow_condition_model",
+    "cyclic_demand_model",
     "cyclic_time_model",
     "discrete_control_of_pid_control_model",
     "fair_distribution_model",
@@ -113,6 +118,7 @@ __all__ = [
     "tabulated_rating_curve_control_model",
     "tabulated_rating_curve_model",
     "transient_condition_model",
+    "transient_pump_outlet_model",
     "trivial_model",
     "two_basin_model",
     "user_demand_model",

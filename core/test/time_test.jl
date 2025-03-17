@@ -74,18 +74,18 @@ end
 end
 
 @testitem "get_cyclic_tstops" begin
-    using Ribasim: get_cyclic_tstops
+    using Ribasim: get_timeseries_tstops
     using DataInterpolations: LinearInterpolation, ConstantInterpolation
     using DataInterpolations.ExtrapolationType: Periodic
 
     itp = LinearInterpolation(zeros(3), [0.5, 1.0, 1.5])
-    @test get_cyclic_tstops(itp, 5.0) == itp.t
+    @test get_timeseries_tstops(itp, 5.0) == itp.t
 
     itp = LinearInterpolation(zeros(3), [0.5, 1.0, 1.5]; extrapolation = Periodic)
-    @test get_cyclic_tstops(itp, 5.0) == 0:0.5:5
+    @test get_timeseries_tstops(itp, 5.0) == 0:0.5:5
 
     itp = ConstantInterpolation(zeros(2), [0.3, 0.5]; extrapolation = Periodic)
-    @test get_cyclic_tstops(itp, 1.0) ≈ 0.1:0.2:0.9
+    @test get_timeseries_tstops(itp, 1.0) ≈ 0.1:0.2:0.9
 end
 
 @testitem "cyclic time" begin
@@ -105,4 +105,20 @@ end
     test_extrapolation(basin.forcing.precipitation[1])
     test_extrapolation(level_boundary.level[1])
     test_extrapolation(flow_boundary.flow_rate[1])
+end
+
+@testitem "transient_pump_weir" begin
+    using DataFrames: DataFrame
+
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/transient_pump_outlet/ribasim.toml")
+    @test ispath(toml_path)
+
+    model = Ribasim.run(toml_path)
+    storage = Ribasim.get_storages_and_levels(model).storage
+    @test all(isapprox.(storage[1, 2:end], storage[1, end]; rtol = 1e-4))
+
+    t_end = model.integrator.t
+    flow_rate_end = model.integrator.p.pump.flow_rate[1].u[end]
+    @test storage[2, end] ≈ storage[2, 1] + 0.5 * flow_rate_end * t_end
 end

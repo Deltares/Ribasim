@@ -3,6 +3,7 @@ package Templates
 import Ribasim_Windows.Windows_BuildRibasim
 import Ribasim_Linux.Linux_BuildRibasim
 import jetbrains.buildServer.configs.kotlin.Template
+import jetbrains.buildServer.configs.kotlin.buildFeatures.buildCache
 import jetbrains.buildServer.configs.kotlin.buildFeatures.XmlReport
 import jetbrains.buildServer.configs.kotlin.buildFeatures.xmlReport
 import jetbrains.buildServer.configs.kotlin.buildSteps.script
@@ -36,9 +37,21 @@ open class RegressionTest (platformOs: String) : Template() {
             root(Ribasim.vcsRoots.Ribasim, ". => ribasim")
             cleanCheckout = true
         }
+
+        val depot_path = generateJuliaDepotPath(platformOs)
         params {
             password("MiniO_credential_token", "credentialsJSON:86cbf3e5-724c-437d-9962-7a3f429b0aa2")
+            param("env.JULIA_DEPOT_PATH", depot_path)
         }
+
+        features {
+            buildCache {
+                id = "Ribasim${platformOs}Cache"
+                name = "Ribasim ${platformOs} Cache"
+                publish = false
+            }
+        }
+
         val header = generateRegressionTestHeader(platformOs)
 
         steps {

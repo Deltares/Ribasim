@@ -1,6 +1,5 @@
 @testitem "Allocation solve" begin
     using Ribasim: NodeID, OptimizationType
-    using ComponentArrays: ComponentVector
     import SQLite
     import JuMP
 
@@ -15,7 +14,7 @@
         4.5
     allocation_model = p.allocation.allocation_models[1]
     (; flow) = allocation_model
-    u = ComponentVector()
+    u = Float64[]
     t = 0.0
     Ribasim.allocate_demands!(p, allocation_model, t, u)
 
@@ -110,7 +109,6 @@ end
 @testitem "Allocation with main network optimization problem" begin
     using SQLite
     using Ribasim: NodeID, NodeType, OptimizationType
-    using ComponentArrays: ComponentVector
     using JuMP
     using DataFrames: DataFrame, ByRow, transform!
 
@@ -133,7 +131,7 @@ end
     t = 0.0
 
     # Collecting demands
-    u = ComponentVector()
+    u = Float64[]
     for allocation_model in allocation_models[2:end]
         Ribasim.collect_demands!(p, allocation_model, t, u)
     end
@@ -205,9 +203,9 @@ end
 @testitem "Subnetworks with sources" begin
     using SQLite
     using Ribasim: NodeID, OptimizationType
-    using ComponentArrays: ComponentVector
     using OrdinaryDiffEqCore: get_du
     using JuMP
+    using DataFrames: DataFrame
 
     toml_path = normpath(
         @__DIR__,
@@ -218,8 +216,13 @@ end
     p = model.integrator.p
 
     (; allocation, user_demand, graph, basin) = p
-    (; allocation_models, subnetwork_demands, subnetwork_allocateds, mean_input_flows) =
-        allocation
+    (;
+        allocation_models,
+        subnetwork_demands,
+        subnetwork_allocateds,
+        mean_input_flows,
+        record_demand,
+    ) = allocation
     t = 0.0
 
     # Set flows of sources in subnetworks
@@ -227,7 +230,7 @@ end
     mean_input_flows[4][(NodeID(:FlowBoundary, 59, p), NodeID(:Basin, 44, p))] = 1e-3
 
     # Collecting demands
-    u = ComponentVector()
+    u = Float64[]
     for allocation_model in allocation_models[2:end]
         Ribasim.collect_demands!(p, allocation_model, t, u)
     end
@@ -268,6 +271,15 @@ end
         10419.156,
         4.057502,
     ]
+
+    # The output should only contain data for the demand_priority for which
+    # a node has a demand
+    @test isempty(
+        filter(
+            row -> (row.node_id == 53) && (row.demand_priority != 3),
+            DataFrame(record_demand),
+        ),
+    )
 end
 
 @testitem "Allocation level control" begin
@@ -326,6 +338,13 @@ end
     stage_3_start_idx = findfirst(stage_3)
     u_stage_3(τ) = storage[stage_3_start_idx] + (q + ϕ - d) * (τ - t[stage_3_start_idx])
     @test storage[stage_3] ≈ u_stage_3.(t[stage_3]) rtol = 1e-4
+    @test all(
+        filter(
+            row ->
+                (8 * Δt_allocation <= row.time <= 13 * Δt_allocation) && (row.node_id == 2),
+            DataFrame(allocation.record_demand),
+        ).demand .< 0,
+    )
 
     # At the start of this section precipitation stops, and so the UserDemand
     # partly uses surplus water from the basin to fulfill its demand
@@ -618,4 +637,23 @@ end
     @test Ribasim.get_basin_capacity(allocation_models[1], u, p, t, basin.node_id[1]) == 0.0
     @test Ribasim.get_basin_capacity(allocation_models[1], u, p, t, basin.node_id[2]) == 0.0
     @test Ribasim.get_basin_capacity(allocation_models[2], u, p, t, basin.node_id[3]) == 0.0
+end
+
+@testitem "cyclic_demand" begin
+    using DataInterpolations.ExtrapolationType: Periodic
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/cyclic_demand/ribasim.toml")
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+    (; level_demand, user_demand, flow_demand) = model.integrator.p
+
+    function test_extrapolation(itp)
+        @test itp.extrapolation_left == Periodic
+        @test itp.extrapolation_right == Periodic
+    end
+
+    test_extrapolation(only(level_demand.min_level))
+    test_extrapolation(only(level_demand.max_level))
+    test_extrapolation(only(flow_demand.demand_itp))
+    test_extrapolation.(only(user_demand.demand_itp))
 end

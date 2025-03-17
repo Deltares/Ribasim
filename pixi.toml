@@ -1,6 +1,6 @@
 [project]
 name = "Ribasim"
-version = "2025.1.0"
+version = "2025.2.0"
 description = "Water resources modeling"
 authors = ["Deltares and contributors <ribasim.info@deltares.nl>"]
 channels = ["conda-forge"]
@@ -30,9 +30,9 @@ install = { depends-on = [
 ] }
 # Julia
 # Clear SSL_CERT_DIR to avoid Julia warnings, see https://github.com/JuliaLang/Downloads.jl/issues/244
-update-registry-julia = { cmd = "julia --eval='using Pkg; Registry.update()'", env = { SSL_CERT_DIR = "" } }
-update-manifest-julia = { cmd = "julia --project utils/update-manifest.jl", env = { SSL_CERT_DIR = "", JULIA_SSL_CA_ROOTS_PATH = "" } }
-instantiate-julia = { cmd = "julia --project --eval='using Pkg; Pkg.instantiate()'", env = { SSL_CERT_DIR = "", JULIA_SSL_CA_ROOTS_PATH = "" } }
+update-registry-julia = { cmd = "julia --eval='using Pkg; Registry.update()'"}
+update-manifest-julia = { cmd = "julia --project utils/update-manifest.jl"}
+instantiate-julia = { cmd = "julia --project --eval='using Pkg; Pkg.instantiate()'"}
 initialize-julia = { depends-on = [
     "update-registry-julia",
     "instantiate-julia",
@@ -70,7 +70,7 @@ lint = { depends-on = [
 build = { "cmd" = "julia --project build.jl", cwd = "build", depends-on = [
     "generate-testmodels",
     "initialize-julia",
-], env = { SSL_CERT_DIR = "", JULIA_SSL_CA_ROOTS_PATH = "" } }
+] }
 # Tests
 test-ribasim-cli = "pytest --numprocesses=4 --basetemp=build/tests/temp --junitxml=report.xml build/tests"
 test-ribasim-core = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test()'", depends-on = [
@@ -79,11 +79,11 @@ test-ribasim-core = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test()'
 test-ribasim-migration = { cmd = "pytest --numprocesses=4 -m regression python/ribasim/tests" }
 test-ribasim-core-cov = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test(coverage=true, julia_args=[\"--check-bounds=yes\"])'", depends-on = [
     "generate-testmodels",
-], env = { SSL_CERT_DIR = "", JULIA_SSL_CA_ROOTS_PATH = "" } }
+] }
 test-ribasim-regression = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test(julia_args=[\"--check-bounds=yes\"], test_args=[\"regression\"])'", depends-on = [
     "generate-testmodels",
     "test-ribasim-migration",
-], env = { SSL_CERT_DIR = "", JULIA_SSL_CA_ROOTS_PATH = "" } }
+] }
 generate-testmodels = { cmd = "python utils/generate-testmodels.py", inputs = [
     "python/ribasim",
     "python/ribasim_testmodels",
@@ -94,7 +94,7 @@ generate-testmodels = { cmd = "python utils/generate-testmodels.py", inputs = [
 tests = { depends-on = ["lint", "test-ribasim-python", "test-ribasim-core"] }
 delwaq = { cmd = "pytest python/ribasim/tests/test_delwaq.py" }
 gen-delwaq = { cmd = "python python/ribasim/ribasim/delwaq/generate.py" }
-model-integration-test = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test(test_args=[\"integration\"])'", env = { SSL_CERT_DIR = "", JULIA_SSL_CA_ROOTS_PATH = "" } }
+model-integration-test = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test(test_args=[\"integration\"])'" }
 # Codegen
 codegen = { cmd = "julia --project utils/gen_python.jl && ruff format python/ribasim/ribasim/schemas.py python/ribasim/ribasim/validation.py", depends-on = [
     "initialize-julia",
@@ -156,6 +156,10 @@ github-release = "python utils/github-release.py"
 add-ribasim-icon = { cmd = "rcedit build/ribasim/ribasim.exe --set-icon docs/assets/ribasim.ico" }
 install-ci = { depends-on = ["install-julia", "update-registry-julia"] }
 
+[target.win.activation]
+# Workaround a conflict between conda openssl activation and julia < 1.12
+scripts = ["utils/unset-ssl-cert.bat"]
+
 [dependencies]
 datacompy = ">=0.16"
 geopandas = ">=1.0"
@@ -173,7 +177,7 @@ networkx = ">=3.3"
 numpy = ">=1.25"
 pandas = ">=2.0"
 pandas-stubs = "*"
-pandera = ">=0.20"
+pandera = ">=0.20, <0.23"
 plotly = "5.*"
 pre-commit = "*"
 pyarrow = ">=17.0"
