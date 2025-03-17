@@ -3,6 +3,7 @@
         "editor.formatOnSave": true
     },
     "julia.executablePath": "julia +1.11.3",
+    "julia.numTestProcesses": 6,
     "notebook.formatOnSave.enabled": true,
     "notebook.codeActionsOnSave": {
         "notebook.source.fixAll": "explicit",
