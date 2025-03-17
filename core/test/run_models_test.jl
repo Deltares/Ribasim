@@ -421,7 +421,6 @@ end
 end
 
 @testitem "ManningResistance" begin
-    using PreallocationTools: get_tmp
     using SciMLBase: successful_retcode
     using OrdinaryDiffEqCore: get_du
     using Ribasim: NodeID

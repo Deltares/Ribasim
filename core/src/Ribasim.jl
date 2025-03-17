@@ -15,7 +15,6 @@ For more granular access, see:
 module Ribasim
 
 # Requirements for automatic differentiation
-using ADTypes: AutoForwardDiff, AutoFiniteDiff
 using DifferentiationInterface:
     AutoSparse,
     Constant,
