@@ -99,6 +99,11 @@ object Windows_TestDelwaqCoupling : BuildType({
 
     templates(GithubPullRequestsIntegration)
 
+    vcs {
+        root(RibasimVcs, ". => ribasim")
+        cleanCheckout = true
+    }
+
     artifactRules = "ribasim/python/ribasim/ribasim/delwaq/model"
 
     triggers {
@@ -113,6 +118,7 @@ object Windows_TestDelwaqCoupling : BuildType({
                 +:ribasim/core/**
                 +:ribasim/python/**
                 +:ribasim/ribasim_testmodels/**
+                -:comment=^[skip ci]:**
             """.trimIndent()
         }
     }
