@@ -41,7 +41,7 @@ object Linux_Main : BuildType({
                 +:refs/pull/*
                 +:pull/*
             """.trimIndent()
-            triggerRules = "-:comment=^\[skip ci]:**"
+            triggerRules = "-:comment=^\\[skip ci]:**"
         }
     }
 

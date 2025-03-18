@@ -45,7 +45,7 @@ object Windows_Main : BuildType({
                 +:refs/pull/*
                 +:pull/*
             """.trimIndent()
-            triggerRules = "-:comment=^\[skip ci]:**"
+            triggerRules = "-:comment=^\\[skip ci]:**"
         }
     }
 
@@ -120,7 +120,7 @@ object Windows_TestDelwaqCoupling : BuildType({
                 +:ribasim/core/**
                 +:ribasim/python/**
                 +:ribasim/ribasim_testmodels/**
-                -:comment=^\[skip ci]:**
+                -:comment=^\\[skip ci]:**
             """.trimIndent()
         }
     }
