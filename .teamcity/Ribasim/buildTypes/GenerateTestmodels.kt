@@ -55,8 +55,9 @@ object GenerateTestmodels : BuildType({
             branchFilter = """
                 +:<default>
                 +:refs/pull/*
+                +:pull/*
             """.trimIndent()
-            triggerRules = "-:comment=^[skip ci]:**"
+            triggerRules = "-:comment=skip ci:**"
         }
     }
 

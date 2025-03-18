@@ -50,7 +50,7 @@ object Ribasim_UploadToMinio : BuildType({
     triggers {
         vcs {
             id = "riba_main_minio_trigger"
-            triggerRules = "-:comment=^[skip ci]:**"
+            triggerRules = "-:comment=skip ci:**"
             branchFilter = """
                 +:<default>
             """.trimIndent()
