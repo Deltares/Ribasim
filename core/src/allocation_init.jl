@@ -167,7 +167,7 @@ function add_variables_basin_profile!(
     indices_intervals =
         Iterators.flatten(map(id -> ((id, i) for i in 1:(n_points[id] - 1)), node_ids))
     problem[:bool_basin_profile] =
-        JuMP.@variable(problem, bool_basin_profile[indices_intervals], Bin)
+        JuMP.@variable(problem, bool_basin_profile[indices_intervals], binary = true)
 
     return n_points
 end
