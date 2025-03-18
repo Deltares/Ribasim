@@ -39,8 +39,9 @@ object Linux_Main : BuildType({
             branchFilter = """
                 +:<default>
                 +:refs/pull/*
+                +:pull/*
             """.trimIndent()
-            triggerRules = "-:comment=^[skip ci]:**"
+            triggerRules = "-:comment=^\[skip ci]:**"
         }
     }
 
