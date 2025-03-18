@@ -15,6 +15,7 @@ from pandera.typing.geopandas import GeoDataFrame
 from pydantic import (
     DirectoryPath,
     Field,
+    FilePath,
     PrivateAttr,
     field_serializer,
     model_validator,
@@ -57,11 +58,11 @@ from ribasim.input_base import (
 from ribasim.utils import (
     MissingOptionalModule,
     UsedIDs,
+    _add_cf_attributes,
     _concat,
     _link_lookup,
     _node_lookup,
     _node_lookup_numpy,
-    _time_in_ns,
 )
 from ribasim.validation import control_link_neighbor_amount, flow_link_neighbor_amount
 
@@ -584,7 +585,7 @@ class Model(FileModel):
 
         return ax
 
-    def to_xugrid(self, add_flow: bool = False, add_allocation: bool = False):
+    def to_xugrid(self, flow: bool = False, allocation: bool = False):
         """Convert the network to a `xugrid.UgridDataset`.
 
         Either the flow or the allocation data can be added, but not both simultaneously.
@@ -592,12 +593,12 @@ class Model(FileModel):
 
         Parameters
         ----------
-        add_flow : bool
+        flow : bool
             add flow results (Optional, defaults to False)
-        add_allocation : bool
+        allocation : bool
             add allocation results (Optional, defaults to False)
         """
-        if add_flow and add_allocation:
+        if flow and allocation:
             raise ValueError("Cannot add both allocation and flow results.")
 
         node_df = self.node_table().df
@@ -638,36 +639,41 @@ class Model(FileModel):
         uds = uds.assign_coords(from_node_id=(link_dim, from_node_id))
         uds = uds.assign_coords(to_node_id=(link_dim, to_node_id))
 
-        if add_flow:
+        if flow:
             uds = self._add_flow(uds, node_lookup)
-        elif add_allocation:
+        elif allocation:
             uds = self._add_allocation(uds)
 
         return uds
 
-    def _checked_toml_path(self) -> Path:
+    def _toml_path(self) -> FilePath:
+        """Get the path to the TOML file, raising an error if it doesn't exist."""
         toml_path = self.filepath
         if toml_path is None:
-            raise FileNotFoundError("Model must be written to disk to add results.")
-        return toml_path
+            raise FileNotFoundError("Model must be written to disk.")
+        return FilePath(toml_path)
+
+    def _results_dir(self) -> DirectoryPath:
+        """Get the path to the results directory, raising an error if there are no results."""
+        toml_path = self._toml_path()
+        results_dir = DirectoryPath(toml_path.parent / self.results_dir)
+        # This only checks results that are always written.
+        # Some results like allocation_flow.arrow are optional.
+        filenames = ["basin_state.arrow", "basin.arrow", "flow.arrow"]
+        for filename in filenames:
+            if not (results_dir / filename).is_file():
+                raise FileNotFoundError(
+                    f"Cannot find {filename} in '{results_dir}', "
+                    "perhaps the model needs to be run first."
+                )
+        return results_dir
 
     def _add_flow(self, uds, node_lookup):
-        toml_path = self._checked_toml_path()
-
-        results_path = toml_path.parent / self.results_dir
-        basin_path = results_path / "basin.arrow"
-        flow_path = results_path / "flow.arrow"
-
-        if not basin_path.is_file() or not flow_path.is_file():
-            raise FileNotFoundError(
-                f"Cannot find results in '{results_path}', "
-                "perhaps the model needs to be run first."
-            )
-
+        results_dir = self._results_dir()
+        basin_path = results_dir / "basin.arrow"
+        flow_path = results_dir / "flow.arrow"
         basin_df = pd.read_feather(basin_path, dtype_backend="pyarrow")
         flow_df = pd.read_feather(flow_path, dtype_backend="pyarrow")
-        _time_in_ns(basin_df)
-        _time_in_ns(flow_df)
 
         # add the xugrid dimension indices to the dataframes
         link_dim = uds.grid.edge_dimension
@@ -691,9 +697,7 @@ class Model(FileModel):
         return uds
 
     def _add_allocation(self, uds):
-        toml_path = self._checked_toml_path()
-
-        results_path = toml_path.parent / self.results_dir
+        results_path = self._results_dir()
         alloc_flow_path = results_path / "allocation_flow.arrow"
 
         if not alloc_flow_path.is_file():
@@ -713,7 +717,6 @@ class Model(FileModel):
             ],
             dtype_backend="pyarrow",
         )
-        _time_in_ns(alloc_flow_df)
 
         # add the xugrid link dimension index to the dataframe
         link_dim = uds.grid.edge_dimension
@@ -738,3 +741,67 @@ class Model(FileModel):
             uds[varname] = da
 
         return uds
+
+    def to_fews(
+        self,
+        region_home: str | PathLike[str],
+        network: bool = True,
+        results: bool = True,
+    ) -> None:
+        """
+        Write the model network and results into files used by Delft-FEWS.
+
+        ** Warning: This method is experimental and is likely to change. **
+
+        To run this method, the model needs to be written to disk, and have results.
+        The Node and Link tables are written to shapefiles in the Config directory.
+        The results are written to NetCDF files in the Modules directory.
+        The netCDF files are NetCDF4 with CF-conventions.
+
+        Parameters
+        ----------
+        region_home: str | PathLike[str]
+            Path to the Delft-FEWS REGION_HOME directory.
+        """
+        region_home = DirectoryPath(region_home)
+        if network:
+            self._network_to_fews(region_home)
+        if results:
+            self._results_to_fews(region_home)
+
+    def _network_to_fews(self, region_home: DirectoryPath) -> None:
+        """Write the Node and Link tables to shapefiles for use in Delft-FEWS."""
+        df_link = self.link.df
+        df_node = self.node_table().df
+        assert df_link is not None
+        assert df_node is not None
+
+        network_dir = region_home / "Config/MapLayerFiles/{ModelId}"
+        link_path = network_dir / "{ModelId}Links.shp"
+        node_path = network_dir / "{ModelId}Nodes.shp"
+
+        df_link.to_file(link_path)
+        df_node.to_file(node_path)
+
+    def _results_to_fews(self, region_home: DirectoryPath) -> None:
+        """Convert the model results to NetCDF with CF-conventions for importing into Delft-FEWS."""
+        # Delft-FEWS doesn't support our UGRID from `model.to_xugrid` yet,
+        # so we convert Arrow to regular CF-NetCDF4.
+
+        results_dir = self._results_dir()
+        basin_path = results_dir / "basin.arrow"
+        flow_path = results_dir / "flow.arrow"
+
+        basin_df = pd.read_feather(basin_path)
+        flow_df = pd.read_feather(flow_path)
+
+        ds_basin = _add_cf_attributes(
+            basin_df.set_index(["time", "node_id"]).to_xarray(), "node_id"
+        )
+        ds_flow = _add_cf_attributes(
+            flow_df.set_index(["time", "link_id"]).to_xarray(), "link_id"
+        )
+
+        results_dir = region_home / "Modules/ribasim/{ModelId}/work/results"
+        ds_basin.to_netcdf(results_dir / "basin.nc")
+        ds_flow.to_netcdf(results_dir / "flow.nc")

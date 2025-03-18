@@ -66,12 +66,6 @@ def _link_lookup(uds) -> Series[Int32]:
     )
 
 
-def _time_in_ns(df) -> None:
-    """Convert the time column to datetime64[ns] dtype."""
-    # datetime64[ms] gives trouble; https://github.com/pydata/xarray/issues/6318
-    df["time"] = df["time"].astype("datetime64[ns]")
-
-
 def _concat(dfs, **kwargs):
     """Concatenate DataFrames with a warning filter."""
     with catch_warnings():
@@ -84,6 +78,20 @@ def _concat(dfs, **kwargs):
             category=FutureWarning,
         )
         return pd.concat(dfs, **kwargs)
+
+
+def _add_cf_attributes(ds, timeseries_id):
+    """Add CF attributes to an xarray.Dataset."""
+    ds.attrs.update(
+        {
+            "Conventions": "CF-1.8",
+            "title": "Ribasim model results",
+            "references": "https://ribasim.org",
+        }
+    )
+    ds["time"].attrs.update({"standard_name": "time", "axis": "T"})
+    ds[timeseries_id].attrs.update({"cf_role": "timeseries_id"})
+    return ds
 
 
 class UsedIDs(BaseModel):
