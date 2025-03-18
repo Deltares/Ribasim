@@ -124,24 +124,46 @@ function add_variables_flow!(
 end
 
 """
-Add the variables for supply/demand of a basin to the problem.
-The variable indices are the node IDs of the basins in the subnetwork.
+Add the variables for describing the basin profile and its contents to the problem.
+These are:
+-
 """
-function add_variables_basin!(
+function add_variables_basin_profile!(
     problem::JuMP.Model,
-    sources::OrderedDict{Tuple{NodeID, NodeID}, AllocationSource},
+    p::Parameters,
+    subnetwork_id::Int32,
 )::Nothing
+    (; graph, basin) = p
+    (; node_id, storage_to_level) = basin
+    n_samples_per_interval = 5
 
-    # Get the node IDs from the subnetwork for basins that have a level demand
-    node_ids_basin = [
-        source.link[1] for
-        source in values(sources) if source.type == AllocationSourceType.level_demand
-    ]
+    # Basin node IDs within the current subnetwork
+    node_ids = filter(id -> graph[id].subnetwork_id == subnetwork_id, node_id)
 
-    problem[:F_basin_in] =
-        JuMP.@variable(problem, F_basin_in[node_id = node_ids_basin,] >= 0.0)
-    problem[:F_basin_out] =
-        JuMP.@variable(problem, F_basin_out[node_id = node_ids_basin,] >= 0.0)
+    # Define the storages and levels of the basin
+    problem[:basin_storage] = JuMP.@variable(problem, basin_storage[node_ids] >= 0)
+    problem[:basin_level] = JuMP.@variable(problem, basin_level[node_ids] >= 0)
+
+    # The number of points in the piecewise linear approximation
+    # of the level(storage) relationship
+    n_points = Dict{NodeID, Int}()
+
+    for (i, id) in enumerate(node_ids)
+        n_points[id] = (length(storage_to_level[id.idx].t) - 1) * n_samples_per_interval + 1
+    end
+
+    # Define auxiliary variables for the basin profiles within this subnetwork
+    indices_points =
+        Iterators.flatten(map(id -> ((id, i) for i in 1:n_points[id]), node_ids))
+    problem[:aux_basin_profile] =
+        JuMP.@variable(problem, 0 <= aux_basin_profile[indices_points] <= 1)
+
+    # Define binary variables for in which interval the storage lies
+    indices_intervals =
+        Iterators.flatten(map(id -> ((id, i) for i in 1:(n_points[id] - 1)), node_ids))
+    problem[:bool_basin_profile] =
+        JuMP.@variable(problem, bool_basin_profile[indices_intervals], Bin)
+
     return nothing
 end
 
@@ -365,21 +387,75 @@ function add_constraints_conservation_node!(
     return nothing
 end
 
-"""
-Add the Basin flow constraints to the allocation problem.
-The constraint indices are the Basin node IDs.
+function add_constraints_basin_profile!(
+    problem::JuMP.Model,
+    p::Parameters,
+    subnetwork_id::Int32,
+)::Nothing
+    n_samples_per_interval = 5
+    (; storage_to_level) = p.basin
+    bool_basin_profile = problem[:bool_basin_profile]
+    aux_basin_profile = problem[:aux_basin_profile]
 
-Constraint:
-flow out of basin <= basin capacity
-"""
-function add_constraints_basin_flow!(problem::JuMP.Model)::Nothing
-    F_basin_out = problem[:F_basin_out]
-    problem[:basin_outflow] = JuMP.@constraint(
+    # Basin node IDs within the current subnetwork
+    node_ids = filter(id -> graph[id].subnetwork_id == subnetwork_id, node_id)
+
+    # The data for the piecewise linear basin profile approximations
+    storages = Dict{NodeID, Vector{Float64}}()
+    levels = Dict{NodeID, Vector{Float64}}()
+
+    for id in node_ids
+        itp = storage_to_level[id.idx]
+        storage = vcat(
+            [
+                itp.(
+                    range(itp.t[i], itp.t[i + 1]; length = n_samples_per_interval + 1)[1:(end - 1)]
+                ),
+            ]...,
+        )
+        push!(storage, itp.t[end])
+        storages[id] = storage
+        levels[id] = itp.(storage)
+    end
+
+    # The constraints describing the basin profile approximation
+    problem[:basin_profile_storage] = JuMP.@constraint(
         problem,
-        [node_id = only(F_basin_out.axes)],
-        F_basin_out[node_id] <= 0.0,
-        base_name = "basin_outflow"
+        [id = node_ids],
+        sum(
+            bool_basin_profile[(id, i)] * (
+                storages[id][i] * aux_basin_profile[(id, i)] +
+                storages[id][i + 1] * aux_basin_profile[(id, i + 1)]
+            ) for i in 1:(n_points[id] - 1)
+        ) == basin_storage[id]
     )
+    problem[:basin_profile_level] = JuMP.@constraint(
+        problem,
+        [id = node_ids],
+        sum(
+            bool_basin_profile[(id, i)] * (
+                levels[id][i] * aux_basin_profile[(id, i)] +
+                levels[id][i + 1] * aux_basin_profile[(id, i + 1)]
+            ) for i in 1:(n_points[id] - 1)
+        ) == basin_level[id]
+    )
+
+    # Unity sum of auxiliary variables
+    problem[:aux_basin_profile_unity_sum] = JuMP.@constraint(
+        problem,
+        [id = node_ids],
+        sum(aux_basin_profile[(id, i)] for i in 1:n_points[id]) == 1,
+        base_name = "aux_basin_profile_unity_sum"
+    )
+
+    # The sum of the binary variables per basin is 1 => the storage can only lie in one interval
+    problem[:bool_basin_profile_sum] = JuMP.@constraint(
+        problem,
+        [id = node_ids],
+        sum(intv_bool_basin_profile[(id, i)] for i in 1:(n_points[id] - 1)) == 1,
+        base_name = "bool_basin_profile_sum"
+    )
+
     return nothing
 end
 
@@ -415,10 +491,6 @@ function add_basin_profiles!(
 
     # Basin node IDs within the current subnetwork
     node_ids = filter(id -> graph[id].subnetwork_id == subnetwork_id, node_id)
-
-    # Define the storages and levels of the basin
-    problem[:basin_storage] = JuMP.@variable(problem, basin_storage[node_ids] >= 0)
-    problem[:basin_level] = JuMP.@variable(problem, basin_level[node_ids] >= 0)
 
     # The number of points in the piecewise linear approximation
     # of the level(storage) relationship
@@ -480,7 +552,7 @@ function add_basin_profiles!(
         base_name = "intv_bool_basin_profile_sum"
     )
 
-    # The constraints describing the piecewise linear approximation of the basin profiles
+    # The constraints describing the basin profile approximation
     problem[:basin_profile_storage] = JuMP.@constraint(
         problem,
         [id = node_ids],
@@ -526,7 +598,7 @@ function allocation_problem(
 
     # Add variables to problem
     add_variables_flow!(problem, capacity)
-    add_variables_basin!(problem, sources)
+    add_variables_basin_profile!(problem, p, subnetwork_id)
     add_variables_flow_buffer!(problem, sources)
 
     # Add constraints to problem
@@ -535,7 +607,7 @@ function allocation_problem(
     add_constraints_boundary_source!(problem, sources)
     add_constraints_main_network_source!(problem, sources)
     add_constraints_user_source!(problem, sources)
-    add_constraints_basin_flow!(problem)
+    add_constraints_basin_profile!(problem, p, subnetwork_id)
     add_constraints_buffer!(problem)
 
     return problem
