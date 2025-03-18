@@ -16,7 +16,7 @@ const SolverStats = @NamedTuple{
 # LinkType.flow and NodeType.FlowBoundary
 @enumx LinkType flow control none
 @eval @enumx NodeType $(config.nodetypes...)
-@enumx ContinuousControlType None Continuous PID
+@enumx ControlType None Continuous PID Allocation
 @enumx Substance Continuity = 1 Initial = 2 LevelBoundary = 3 FlowBoundary = 4 UserDemand =
     5 Drainage = 6 Precipitation = 7
 Base.to_index(id::Substance.T) = Int(id)  # used to index into concentration matrices
@@ -650,7 +650,7 @@ max_flow_rate: The maximum flow rate of the pump
 min_upstream_level: The upstream level below which the Pump flow goes to zero
 max_downstream_level: The downstream level above which the Pump flow goes to zero
 control_mapping: dictionary from (node_id, control_state) to target flow rate
-continuous_control_type: one of None, ContinuousControl, PidControl
+control_type: one of None, ContinuousControl, PidControl, Allocation
 """
 @kwdef struct Pump <: AbstractParameterNode
     node_id::Vector{NodeID}
@@ -664,8 +664,7 @@ continuous_control_type: one of None, ContinuousControl, PidControl
     min_upstream_level::Vector{ScalarInterpolation} = ScalarInterpolation[]
     max_downstream_level::Vector{ScalarInterpolation} = ScalarInterpolation[]
     control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate}
-    continuous_control_type::Vector{ContinuousControlType.T} =
-        fill(ContinuousControlType.None, length(node_id))
+    control_type::Vector{ControlType.T} = fill(ControlType.None, length(node_id))
 
     function Pump(
         node_id,
@@ -679,7 +678,7 @@ continuous_control_type: one of None, ContinuousControl, PidControl
         min_upstream_level,
         max_downstream_level,
         control_mapping,
-        continuous_control_type,
+        control_type,
     )
         if valid_flow_rates(node_id, flow_rate[Float64[]], control_mapping)
             return new(
@@ -694,7 +693,7 @@ continuous_control_type: one of None, ContinuousControl, PidControl
                 min_upstream_level,
                 max_downstream_level,
                 control_mapping,
-                continuous_control_type,
+                control_type,
             )
         else
             error("Invalid Pump flow rate(s).")
@@ -716,7 +715,7 @@ max_flow_rate: The maximum flow rate of the outlet
 min_upstream_level: The upstream level below which the Outlet flow goes to zero
 max_downstream_level: The downstream level above which the Outlet flow goes to zero
 control_mapping: dictionary from (node_id, control_state) to target flow rate
-continuous_control_type: one of None, ContinuousControl, PidControl
+control_type: one of None, ContinuousControl, PidControl, Allocation
 """
 @kwdef struct Outlet <: AbstractParameterNode
     node_id::Vector{NodeID}
@@ -730,8 +729,7 @@ continuous_control_type: one of None, ContinuousControl, PidControl
     min_upstream_level::Vector{ScalarInterpolation} = ScalarInterpolation[]
     max_downstream_level::Vector{ScalarInterpolation} = ScalarInterpolation[]
     control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate} = Dict()
-    continuous_control_type::Vector{ContinuousControlType.T} =
-        fill(ContinuousControlType.None, length(node_id))
+    control_type::Vector{ControlType.T} = fill(ControlType.None, length(node_id))
 
     function Outlet(
         node_id,
@@ -745,7 +743,7 @@ continuous_control_type: one of None, ContinuousControl, PidControl
         min_upstream_level,
         max_downstream_level,
         control_mapping,
-        continuous_control_type,
+        control_type,
     )
         if valid_flow_rates(node_id, flow_rate[Float64[]], control_mapping)
             return new(
@@ -760,7 +758,7 @@ continuous_control_type: one of None, ContinuousControl, PidControl
                 min_upstream_level,
                 max_downstream_level,
                 control_mapping,
-                continuous_control_type,
+                control_type,
             )
         else
             error("Invalid Outlet flow rate(s).")
