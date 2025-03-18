@@ -78,8 +78,9 @@ config = Ribasim.Config(toml_path)
 db_path = Ribasim.database_path(config)
 db = SQLite.DB(db_path)
 p = Ribasim.Parameters(db, config)
-empty!(p.allocation.subnetwork_ids)
-empty!(p.allocation.main_network_connections)
+(; allocation) = p.p_non_diff
+empty!(allocation.subnetwork_ids)
+empty!(allocation.main_network_connections)
 graph, verts = tracecall((Ribasim,), Ribasim.initialize_allocation!, (p, db, config))
 plot_graph(graph)
 ```
