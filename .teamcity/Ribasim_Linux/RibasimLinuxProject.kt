@@ -36,7 +36,10 @@ object Linux_Main : BuildType({
     triggers {
         vcs {
             id = "TRIGGER_RIBA_SKIPL1"
-            branchFilter = "+:<default>"
+            branchFilter = """
+                +:<default>
+                +:refs/pull/*
+            """.trimIndent()
             triggerRules = "-:comment=^[skip ci]:**"
         }
     }

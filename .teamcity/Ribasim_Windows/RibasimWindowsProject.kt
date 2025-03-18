@@ -40,7 +40,10 @@ object Windows_Main : BuildType({
     triggers {
         vcs {
             id = "TRIGGER_RIBA_SKIPW1"
-            branchFilter = "+:<default>"
+            branchFilter = """
+                +:<default>
+                +:refs/pull/*
+            """.trimIndent()
             triggerRules = "-:comment=^[skip ci]:**"
         }
     }

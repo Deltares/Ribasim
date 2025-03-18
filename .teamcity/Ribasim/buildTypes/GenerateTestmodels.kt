@@ -52,7 +52,10 @@ object GenerateTestmodels : BuildType({
     triggers {
         vcs {
             id = "TRIGGER_646"
-            branchFilter = "+:<default>"
+            branchFilter = """
+                +:<default>
+                +:refs/pull/*
+            """.trimIndent()
             triggerRules = "-:comment=^[skip ci]:**"
         }
     }
