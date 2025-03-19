@@ -22,7 +22,7 @@ using OrdinaryDiffEqLowOrderRK: Euler, RK4
 using OrdinaryDiffEqTsit5: Tsit5
 using OrdinaryDiffEqSDIRK: ImplicitEuler, KenCarp4, TRBDF2
 using OrdinaryDiffEqBDF: FBDF, QNDF
-# using OrdinaryDiffEqRosenbrock: Rosenbrock23, Rodas4P, Rodas5P
+using OrdinaryDiffEqRosenbrock: Rosenbrock23, Rodas4P, Rodas5P
 
 export Config, Solver, Results, Logging, Toml
 export algorithm,
@@ -269,10 +269,10 @@ Supported algorithms:
 const algorithms = Dict{String, Type}(
     "QNDF" => QNDF,
     "FBDF" => FBDF,
-    # "Rosenbrock23" => Rosenbrock23,
+    "Rosenbrock23" => Rosenbrock23,
     "TRBDF2" => TRBDF2,
-    # "Rodas4P" => Rodas4P,
-    # "Rodas5P" => Rodas5P,
+    "Rodas4P" => Rodas4P,
+    "Rodas5P" => Rodas5P,
     "KenCarp4" => KenCarp4,
     "Tsit5" => Tsit5,
     "RK4" => RK4,
