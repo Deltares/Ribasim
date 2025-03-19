@@ -755,7 +755,7 @@ class Model(FileModel):
 
         To run this method, the model needs to be written to disk, and have results.
         The Node and Link tables are written to shapefiles in the REGION_HOME/Config directory.
-        The results are written to NetCDF files in the Modules directory.
+        The results are written to NetCDF files in the REGION_HOME/Modules directory.
         The netCDF files are NetCDF4 with CF-conventions.
 
         Parameters
