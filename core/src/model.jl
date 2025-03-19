@@ -55,7 +55,8 @@ function get_diff_eval(du::Vector, u::Vector, p::Parameters, solver::Solver)
         Constant(p_non_diff),
         Cache(diff_cache),
         Constant(p_mutable),
-        Constant(t),
+        Constant(t);
+        strict = Val(true),
     )
     p_mutable.all_nodes_active = false
 
@@ -82,7 +83,8 @@ function get_diff_eval(du::Vector, u::Vector, p::Parameters, solver::Solver)
         Constant(u),
         Constant(p_non_diff),
         Cache(diff_cache),
-        Constant(p_mutable),
+        Constant(p_mutable);
+        strict = Val(true),
     )
     tgrad(dT, u, p, t) = derivative!(
         water_balance!,
@@ -223,7 +225,7 @@ function Model(config::Config)::Model
 
     # Previous level is used to estimate the minimum level that was attained during a time step
     # in limit_flow!
-    p_non_diff.basin.level_prev .= view(diff_cache, p_non_diff.cache_ranges.current_level)
+    p_non_diff.basin.level_prev .= diff_cache.current_level
 
     saveat = convert_saveat(config.solver.saveat, t_end)
     saveat isa Float64 && push!(tstops, range(0, t_end; step = saveat))

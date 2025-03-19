@@ -177,7 +177,7 @@ end
     Ribasim.solve!(model)
     @test successful_retcode(model)
     (; p_non_diff) = model.integrator.p
-    (; flow_boundary, pump, cache_ranges) = p_non_diff
+    (; flow_boundary, pump) = p_non_diff
 
     q_boundary = flow_boundary.flow_rate[1].u[1]
     q_pump = pump.flow_rate[1].u[1]

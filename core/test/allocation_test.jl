@@ -281,7 +281,7 @@ end
     model = Ribasim.run(toml_path)
     (; u, p, t) = model.integrator
     Ribasim.formulate_storages!(u, p, t)
-    current_storage = view(p.diff_cache, p.p_non_diff.cache_ranges.current_storage)
+    (; current_storage) = p.diff_cache
 
     @test current_storage ≈ Float32[
         1.0346908f6,

@@ -10,7 +10,7 @@ water_balance!(
     t::Number,
     u::Vector,
     p_non_diff::ParametersNonDiff,
-    diff_cache::Vector,
+    diff_cache::DiffCache,
     p_mutable::ParametersMutable,
 ) = water_balance!(du, u, p_non_diff, diff_cache, p_mutable, t)
 
@@ -19,7 +19,7 @@ function water_balance!(
     du::Vector,
     u::Vector,
     p_non_diff::ParametersNonDiff,
-    diff_cache::Vector,
+    diff_cache::DiffCache,
     p_mutable::ParametersMutable,
     t::Number,
 )::Nothing
@@ -73,33 +73,28 @@ state u and the time t.
 """
 function set_current_basin_properties!(u::Vector, p::Parameters, t::Number)::Nothing
     (; p_non_diff, diff_cache, p_mutable) = p
-    (; basin, cache_ranges) = p_non_diff
+    (; basin) = p_non_diff
     (; node_id, cumulative_precipitation, cumulative_drainage, vertical_flux) = basin
-    current_storage = view(diff_cache, cache_ranges.current_storage)
-    current_low_storage_factor = view(diff_cache, cache_ranges.current_low_storage_factor)
-    current_level = view(diff_cache, cache_ranges.current_level)
-    current_area = view(diff_cache, cache_ranges.current_area)
-    current_cumulative_precipitation =
-        view(diff_cache, cache_ranges.current_cumulative_precipitation)
-    current_cumulative_drainage = view(diff_cache, cache_ranges.current_cumulative_drainage)
 
     # The exact cumulative precipitation and drainage up to the t of this water_balance call
     dt = t - p_mutable.tprev
     for node_id in node_id
         fixed_area = basin_areas(basin, node_id.idx)[end]
-        current_cumulative_precipitation[node_id.idx] =
+        diff_cache.current_cumulative_precipitation[node_id.idx] =
             cumulative_precipitation[node_id.idx] +
             fixed_area * vertical_flux.precipitation[node_id.idx] * dt
     end
-    @. current_cumulative_drainage = cumulative_drainage + dt * vertical_flux.drainage
+    @. diff_cache.current_cumulative_drainage =
+        cumulative_drainage + dt * vertical_flux.drainage
 
     formulate_storages!(u, p, t)
 
-    for (id, s) in zip(basin.node_id, current_storage)
+    for (id, s) in zip(basin.node_id, diff_cache.current_storage)
         i = id.idx
-        current_low_storage_factor[i] = reduction_factor(s, LOW_STORAGE_THRESHOLD)
-        current_level[i] = get_level_from_storage(basin, i, s)
-        current_area[i] = basin.level_to_area[i](current_level[i])
+        diff_cache.current_low_storage_factor[i] =
+            reduction_factor(s, LOW_STORAGE_THRESHOLD)
+        diff_cache.current_level[i] = get_level_from_storage(basin, i, s)
+        diff_cache.current_area[i] = basin.level_to_area[i](diff_cache.current_level[i])
     end
 end
 
@@ -110,34 +105,21 @@ function formulate_storages!(
     add_initial_storage::Bool = true,
 )::Nothing
     (; p_non_diff, diff_cache, p_mutable) = p
-    (; basin, flow_boundary, flow_to_storage, cache_ranges) = p_non_diff
+    (; basin, flow_boundary, flow_to_storage) = p_non_diff
     (; tprev) = p_mutable
-    current_storage = view(diff_cache, cache_ranges.current_storage)
     # Current storage: initial condition +
     # total inflows and outflows since the start
     # of the simulation
     if add_initial_storage
-        current_storage .= basin.storage0
+        diff_cache.current_storage .= basin.storage0
     else
-        current_storage .= 0.0
+        diff_cache.current_storage .= 0.0
     end
-    mul!(current_storage, flow_to_storage, u, 1, 1)
-    formulate_storage!(diff_cache, cache_ranges)
-    formulate_storage!(current_storage, tprev, t, flow_boundary)
+    mul!(diff_cache.current_storage, flow_to_storage, u, 1, 1)
+    diff_cache.current_storage .+= diff_cache.current_cumulative_precipitation
+    diff_cache.current_storage .+= diff_cache.current_cumulative_drainage
+    formulate_storage!(diff_cache.current_storage, tprev, t, flow_boundary)
     return nothing
-end
-
-"""
-The storage contributions of the forcings that are not part of the state.
-"""
-function formulate_storage!(diff_cache::Vector, cache_ranges::CacheRanges)
-    current_storage = view(diff_cache, cache_ranges.current_storage)
-    current_cumulative_precipitation =
-        view(diff_cache, cache_ranges.current_cumulative_precipitation)
-    current_cumulative_drainage = view(diff_cache, cache_ranges.current_cumulative_drainage)
-
-    current_storage .+= current_cumulative_precipitation
-    current_storage .+= current_cumulative_drainage
 end
 
 """
@@ -174,10 +156,9 @@ Currently at less than 0.1 m.
 """
 function update_vertical_flux!(du::Vector, p::Parameters)::Nothing
     (; p_non_diff, diff_cache) = p
-    (; basin, state_ranges, cache_ranges) = p_non_diff
+    (; basin, state_ranges) = p_non_diff
     (; vertical_flux) = basin
-    current_level = view(diff_cache, cache_ranges.current_level)
-    current_area = view(diff_cache, cache_ranges.current_area)
+    (; current_level, current_area) = diff_cache
     du_evaporation = view(du, state_ranges.evaporation)
     du_infiltration = view(du, state_ranges.infiltration)
 
@@ -200,28 +181,24 @@ function update_vertical_flux!(du::Vector, p::Parameters)::Nothing
 end
 
 function set_error!(pid_control::PidControl, p::Parameters, t::Number)
-    (; p_non_diff, diff_cache) = p
-    (; cache_ranges) = p_non_diff
+    (; diff_cache) = p
     (; listen_node_id, target) = pid_control
-    current_level = view(diff_cache, cache_ranges.current_level)
-    error = view(diff_cache, cache_ranges.error_pid_control)
 
     for i in eachindex(listen_node_id)
         listened_node_id = listen_node_id[i]
         @assert listened_node_id.type == NodeType.Basin lazy"Listen node $listened_node_id is not a Basin."
-        error[i] = target[i](t) - current_level[listened_node_id.idx]
+        diff_cache.error_pid_control[i] =
+            target[i](t) - diff_cache.current_level[listened_node_id.idx]
     end
 end
 
 function formulate_pid_control!(du::Vector, u::Vector, p::Parameters, t::Number)::Nothing
     (; p_non_diff, diff_cache, p_mutable) = p
-    (; state_ranges, cache_ranges, pid_control) = p_non_diff
+    (; state_ranges, pid_control) = p_non_diff
     (; node_id, active, target, listen_node_id) = pid_control
 
     du_integral = view(du, state_ranges.integral)
     u_integral = view(u, state_ranges.integral)
-    current_area = view(diff_cache, cache_ranges.current_area)
-    error = view(diff_cache, cache_ranges.error_pid_control)
 
     all_nodes_active = p_mutable.all_nodes_active[]
 
@@ -234,7 +211,7 @@ function formulate_pid_control!(du::Vector, u::Vector, p::Parameters, t::Number)
             continue
         end
 
-        du_integral[i] = error[i]
+        du_integral[i] = diff_cache.error_pid_control[i]
 
         listened_node_id = listen_node_id[i]
 
@@ -247,14 +224,14 @@ function formulate_pid_control!(du::Vector, u::Vector, p::Parameters, t::Number)
         if !iszero(K_d)
             # dlevel/dstorage = 1/area
             # TODO: replace by DataInterpolations.derivative(storage_to_level, storage)
-            area = current_area[listened_node_id.idx]
+            area = diff_cache.current_area[listened_node_id.idx]
             D = 1.0 - K_d / area
         else
             D = 1.0
         end
 
         if !iszero(K_p)
-            flow_rate += K_p * error[i] / D
+            flow_rate += K_p * diff_cache.error_pid_control[i] / D
         end
 
         if !iszero(K_i)
@@ -552,10 +529,9 @@ function formulate_flow!(
     continuous_control_type_::ContinuousControlType.T,
 )::Nothing
     (; p_non_diff, diff_cache, p_mutable) = p
-    (; state_ranges, cache_ranges) = p_non_diff
+    (; state_ranges) = p_non_diff
 
     du_pump = view(du, state_ranges.pump)
-    cache_flow_rate = view(diff_cache, cache_ranges.flow_rate_pump)
 
     all_nodes_active = p_mutable.all_nodes_active[]
     for (
@@ -589,7 +565,7 @@ function formulate_flow!(
         flow_rate = if continuous_control_type == ContinuousControlType.None
             flow_rate_itp(t)
         else
-            cache_flow_rate[id.idx]
+            diff_cache.flow_rate_pump[id.idx]
         end
 
         inflow_id = inflow_link.link[1]
@@ -617,10 +593,9 @@ function formulate_flow!(
     continuous_control_type_::ContinuousControlType.T,
 )::Nothing
     (; p_non_diff, diff_cache, p_mutable) = p
-    (; state_ranges, cache_ranges) = p_non_diff
+    (; state_ranges) = p_non_diff
 
     du_outlet = view(du, state_ranges.outlet)
-    cache_flow_rate = view(diff_cache, cache_ranges.flow_rate_outlet)
 
     all_nodes_active = p_mutable.all_nodes_active[]
     for (
@@ -654,7 +629,7 @@ function formulate_flow!(
         flow_rate = if continuous_control_type == ContinuousControlType.None
             flow_rate_itp(t)
         else
-            cache_flow_rate[id.idx]
+            diff_cache.flow_rate_outlet[id.idx]
         end
 
         inflow_id = inflow_link.link[1]
@@ -719,8 +694,8 @@ function limit_flow!(u::Vector, integrator::DEIntegrator, p::Parameters, t::Numb
         basin,
         allocation,
         state_ranges,
-        cache_ranges,
     ) = p_non_diff
+    (; current_storage, current_level) = diff_cache
 
     u_tabulated_rating_curve = view(u, state_ranges.tabulated_rating_curve)
     u_pump = view(u, state_ranges.pump)
@@ -743,8 +718,6 @@ function limit_flow!(u::Vector, integrator::DEIntegrator, p::Parameters, t::Numb
     # of reduction factors
     du = get_du(integrator)
     set_current_basin_properties!(du, p, t)
-    current_storage = view(diff_cache, cache_ranges.current_storage)
-    current_level = view(diff_cache, cache_ranges.current_level)
 
     # TabulatedRatingCurve flow is in [0, ∞) and can be inactive
     for (id, active) in zip(tabulated_rating_curve.node_id, tabulated_rating_curve.active)

@@ -160,10 +160,8 @@ du: tells ForwardDiff whether this call is for differentiation or not
 """
 function get_level(p::Parameters, node_id::NodeID, t::Number)::Number
     (; p_non_diff, diff_cache) = p
-    (; cache_ranges) = p_non_diff
     if node_id.type == NodeType.Basin
-        current_level = view(diff_cache, cache_ranges.current_level)
-        current_level[node_id.idx]
+        diff_cache.current_level[node_id.idx]
     elseif node_id.type == NodeType.LevelBoundary
         p_non_diff.level_boundary.level[node_id.idx](t)
     elseif node_id.type == NodeType.Terminal
@@ -301,9 +299,7 @@ end
 # SparseConnectivityTracer overloads
 
 function get_low_storage_factor(p::Parameters, id::NodeID)
-    (; p_non_diff, diff_cache) = p
-    (; cache_ranges) = p_non_diff
-    current_low_storage_factor = view(diff_cache, cache_ranges.current_low_storage_factor)
+    (; current_low_storage_factor) = p.diff_cache
     if id.type == NodeType.Basin
         current_low_storage_factor[id.idx]
     else
@@ -1008,8 +1004,7 @@ end
 Check whether any storages are negative given the state u.
 """
 function isoutofdomain(u, p, t)
-    (; p_non_diff, diff_cache) = p
-    current_storage = view(diff_cache, p_non_diff.cache_ranges.current_storage)
+    (; current_storage) = p.diff_cache
     formulate_storages!(u, p, t)
     any(<(0), current_storage)
 end

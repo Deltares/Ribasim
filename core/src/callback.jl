@@ -178,7 +178,8 @@ end
 function update_concentrations!(u, t, integrator)::Nothing
     (; uprev, p, tprev, dt) = integrator
     (; p_non_diff, diff_cache) = p
-    (; basin, flow_boundary, state_ranges, cache_ranges) = p_non_diff
+    (; current_storage, current_level) = diff_cache
+    (; basin, flow_boundary, state_ranges) = p_non_diff
     (; vertical_flux, concentration_data) = basin
     (; evaporate_mass, cumulative_in, concentration_state, concentration, mass) =
         concentration_data
@@ -253,9 +254,6 @@ function update_concentrations!(u, t, integrator)::Nothing
     end
 
     # Update the Basin concentrations again based on the removed mass
-    current_storage = view(diff_cache, cache_ranges.current_storage)
-    current_level = view(diff_cache, cache_ranges.current_level)
-
     concentration_state .= mass ./ current_storage
     basin.storage_prev .= current_storage
     basin.level_prev .= current_level
@@ -304,13 +302,9 @@ end
 Save the storages and levels at the latest t.
 """
 function save_basin_state(u, t, integrator)
-    (; p) = integrator
-    (; p_non_diff, diff_cache) = p
-    (; cache_ranges) = p_non_diff
-    current_storage = view(diff_cache, cache_ranges.current_storage)
-    current_level = view(diff_cache, cache_ranges.current_level)
+    (; current_storage, current_level) = integrator.p.diff_cache
     du = get_du(integrator)
-    water_balance!(du, u, p, t)
+    water_balance!(du, u, integrator.p, t)
     SavedBasinState(; storage = copy(current_storage), level = copy(current_level), t)
 end
 
@@ -395,16 +389,9 @@ function check_water_balance_error!(
 )::Nothing
     (; u, p, t) = integrator
     (; p_non_diff, diff_cache) = p
-    (;
-        basin,
-        water_balance_abstol,
-        water_balance_reltol,
-        state_ranges,
-        cache_ranges,
-        starttime,
-    ) = p_non_diff
+    (; basin, water_balance_abstol, water_balance_reltol, state_ranges, starttime) =
+        p_non_diff
     errors = false
-    current_storage = view(diff_cache, cache_ranges.current_storage)
 
     # The initial storage is irrelevant for the storage rate and can only cause
     # floating point truncation errors
@@ -430,7 +417,7 @@ function check_water_balance_error!(
         saved_flow.drainage,
         evaporation,
         infiltration,
-        current_storage,
+        diff_cache.current_storage,
         basin.Δstorage_prev_saveat,
         basin.node_id,
     )
@@ -456,7 +443,7 @@ function check_water_balance_error!(
         error("Too large water balance error(s) detected at t = $t")
     end
 
-    @. basin.Δstorage_prev_saveat = current_storage
+    @. basin.Δstorage_prev_saveat = diff_cache.current_storage
     return nothing
 end
 
@@ -474,13 +461,12 @@ end
 function check_negative_storage(u, t, integrator)::Nothing
     (; p) = integrator
     (; p_non_diff, diff_cache) = p
-    (; basin, cache_ranges) = p_non_diff
-    current_storage = view(diff_cache, cache_ranges.current_storage)
+    (; basin) = p_non_diff
     set_current_basin_properties!(u, p, t)
 
     errors = false
     for id in basin.node_id
-        if current_storage[id.idx] < 0
+        if diff_cache.current_storage[id.idx] < 0
             @error "Negative storage detected in $id"
             errors = true
         end
@@ -680,7 +666,6 @@ end
 function update_subgrid_level!(integrator)::Nothing
     (; p, t) = integrator
     (; p_non_diff, diff_cache) = p
-    basin_level = view(diff_cache, p_non_diff.cache_ranges.current_level)
     subgrid = p_non_diff.subgrid
 
     # First update the all the subgrids with static h(h) relations
@@ -689,7 +674,7 @@ function update_subgrid_level!(integrator)::Nothing
         subgrid.basin_index_static,
         subgrid.interpolations_static,
     )
-        subgrid.level[level_index] = hh_itp(basin_level[basin_index])
+        subgrid.level[level_index] = hh_itp(diff_cache.current_level[basin_index])
     end
     # Then update the subgrids with dynamic h(h) relations
     for (level_index, basin_index, lookup) in zip(
@@ -699,7 +684,7 @@ function update_subgrid_level!(integrator)::Nothing
     )
         itp_index = lookup(t)
         hh_itp = subgrid.interpolations_time[itp_index]
-        subgrid.level[level_index] = hh_itp(basin_level[basin_index])
+        subgrid.level[level_index] = hh_itp(diff_cache.current_level[basin_index])
     end
 end
 

@@ -102,8 +102,7 @@ function basin_state_table(
     model::Model,
 )::@NamedTuple{node_id::Vector{Int32}, level::Vector{Float64}}
     (; u, p, t) = model.integrator
-    (; p_non_diff, diff_cache) = p
-    current_level = view(diff_cache, p_non_diff.cache_ranges.current_level)
+    (; current_level) = p.diff_cache
 
     # ensure the levels are up-to-date
     set_current_basin_properties!(u, p, t)

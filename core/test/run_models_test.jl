@@ -134,9 +134,8 @@ end
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
     (; p_non_diff, diff_cache) = model.integrator.p
-    (; basin, state_ranges, cache_ranges) = p_non_diff
-    current_storage = view(diff_cache, cache_ranges.current_storage)
-    @test current_storage ≈ [1000]
+    (; basin, state_ranges) = p_non_diff
+    @test diff_cache.current_storage ≈ [1000]
     @test basin.vertical_flux.precipitation == [0.0]
     @test basin.vertical_flux.drainage == [0.0]
     du = get_du(model.integrator)
@@ -161,10 +160,10 @@ end
     du = get_du(integrator)
     (; u, p, t) = integrator
     (; p_non_diff, diff_cache) = p
-    (; basin, state_ranges, cache_ranges) = p_non_diff
+    (; basin, state_ranges) = p_non_diff
 
     Ribasim.water_balance!(du, u, p, t)
-    stor = view(diff_cache, cache_ranges.current_storage)
+    stor = diff_cache.current_storage
     prec = basin.vertical_flux.precipitation
     evap = view(du, state_ranges.evaporation)
     drng = basin.vertical_flux.drainage
@@ -224,8 +223,7 @@ end
 
     @test successful_retcode(model)
     @test length(model.integrator.sol) == 2 # start and end
-    current_storage = view(diff_cache, p_non_diff.cache_ranges.current_storage)
-    @test current_storage ≈ Float32[804.22156, 803.6474, 495.18243, 1318.3053] skip =
+    @test diff_cache.current_storage ≈ Float32[804.22156, 803.6474, 495.18243, 1318.3053] skip =
         Sys.isapple() atol = 1.5
 
     @test length(logger.logs) > 10
@@ -267,9 +265,8 @@ end
     (; p_non_diff, diff_cache) = model.integrator.p
     precipitation = p_non_diff.basin.vertical_flux.precipitation
     @test length(precipitation) == 4
-    current_storage = view(diff_cache, p_non_diff.cache_ranges.current_storage)
-    @test current_storage ≈ Float32[698.6895, 698.143, 420.57407, 1334.486] atol = 2.0 skip =
-        Sys.isapple()
+    @test diff_cache.current_storage ≈ Float32[698.6895, 698.143, 420.57407, 1334.486] atol =
+        2.0 skip = Sys.isapple()
 end
 
 @testitem "Allocation example model" begin
@@ -324,8 +321,7 @@ end
     @test model isa Ribasim.Model
     @test successful_retcode(model)
     (; p_non_diff, diff_cache) = model.integrator.p
-    current_storage = view(diff_cache, p_non_diff.cache_ranges.current_storage)
-    @test current_storage ≈ Float32[368.31558, 365.68442] skip = Sys.isapple()
+    @test diff_cache.current_storage ≈ Float32[368.31558, 365.68442] skip = Sys.isapple()
     (; tabulated_rating_curve) = p_non_diff
     # The first node is static, the first interpolation object always applies
     index_itp1 = tabulated_rating_curve.current_interpolation_index[1]
@@ -391,19 +387,18 @@ end
     (; u, p, t, sol) = integrator
     (; p_non_diff, diff_cache) = p
     (; p_non_diff, diff_cache) = model.integrator.p
-    current_storage = view(diff_cache, p_non_diff.cache_ranges.current_storage)
 
     day = 86400.0
 
-    @test only(current_storage) ≈ 1000.0
+    @test only(diff_cache.current_storage) ≈ 1000.0
     # constant UserDemand withdraws to 0.9m or 900m3 due to min level = 0.9
     BMI.update_until(model, 150day)
     formulate_storages!(u, p, t)
-    @test only(current_storage) ≈ 900 atol = 5
+    @test only(diff_cache.current_storage) ≈ 900 atol = 5
     # dynamic UserDemand withdraws to 0.5m or 500m3 due to min level = 0.5
     BMI.update_until(model, 220day)
     formulate_storages!(u, p, t)
-    @test only(current_storage) ≈ 500 atol = 1
+    @test only(diff_cache.current_storage) ≈ 500 atol = 1
 
     # Trasient return factor
     flow = DataFrame(Ribasim.flow_table(model))
@@ -487,7 +482,7 @@ end
     du = get_du(model.integrator)
     (; p, t) = model.integrator
     (; p_non_diff, diff_cache) = p
-    current_level = view(diff_cache, p_non_diff.cache_ranges.current_level)
+    (; current_level) = diff_cache
     h_actual = current_level[1:50]
     x = collect(10.0:20.0:990.0)
     h_expected = standard_step_method(x, 5.0, 1.0, 0.04, h_actual[end], 1.0e-6)

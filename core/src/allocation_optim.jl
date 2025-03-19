@@ -329,11 +329,11 @@ Get several variables associated with a basin:
 """
 function get_basin_data(allocation_model::AllocationModel, p::Parameters, node_id::NodeID)
     (; p_non_diff, diff_cache) = p
-    (; graph, cache_ranges) = p_non_diff
+    (; graph) = p_non_diff
     (; Δt_allocation, subnetwork_id) = allocation_model
     @assert node_id.type == NodeType.Basin
     influx = mean_input_flows_subnetwork(p_non_diff, subnetwork_id)[(node_id, node_id)]
-    storage_basin = view(diff_cache, cache_ranges.current_storage)[node_id.idx]
+    storage_basin = diff_cache.current_storage[node_id.idx]
     control_inneighbors = inneighbor_labels_type(graph, node_id, LinkType.control)
     if isempty(control_inneighbors)
         level_demand_idx = 0

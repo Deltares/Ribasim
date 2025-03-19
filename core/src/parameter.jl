@@ -672,34 +672,17 @@ node_id: node ID of the Terminal node
     node_id::Vector{NodeID}
 end
 
-"""
-Collection of ranges that cover all the components of the cache vector `diff_cache`."
-
-It is used to create views of `diff_cache`, which allows `diff_cache` to be a vector
-in stead of a custom struct which is compatible with more automatic differentiation backends.
-"""
-@kwdef struct CacheRanges
-    current_storage::UnitRange{Int64} = 1:0
-    # Low storage factor for reducing flows out of drying basins
-    # given the current storages
-    current_low_storage_factor::UnitRange{Int64} = 1:0
-    current_level::UnitRange{Int64} = 1:0
-    current_area::UnitRange{Int64} = 1:0
-    current_cumulative_precipitation::UnitRange{Int64} = 1:0
-    current_cumulative_drainage::UnitRange{Int64} = 1:0
-    flow_rate_pump::UnitRange{Int64} = 1:0
-    flow_rate_outlet::UnitRange{Int64} = 1:0
-    error_pid_control::UnitRange{Int64} = 1:0
-end
-
-function CacheRanges(nodes::NamedTuple)
-    n_basin = length(nodes.basin.node_id)
-    n_pump = length(nodes.pump.node_id)
-    n_outlet = length(nodes.outlet.node_id)
-    n_pid_control = length(nodes.pid_control.node_id)
-    lengths = [fill(n_basin, 6)..., n_pump, n_outlet, n_pid_control]
-    CacheRanges(ranges(lengths)...)
-end
+const DiffCache{T} = @NamedTuple{
+    current_storage::Vector{T},
+    current_low_storage_factor::Vector{T},
+    current_level::Vector{T},
+    current_area::Vector{T},
+    current_cumulative_precipitation::Vector{T},
+    current_cumulative_drainage::Vector{T},
+    flow_rate_pump::Vector{T},
+    flow_rate_outlet::Vector{T},
+    error_pid_control::Vector{T},
+} where {T}
 
 @enumx DiffCacheType flow_rate_pump flow_rate_outlet basin_level
 
@@ -709,19 +692,14 @@ end
     from_du::Bool = false
 end
 
-function get_cache_view(
-    diff_cache::Vector,
-    type::DiffCacheType.T,
-    cache_ranges::CacheRanges,
-)
-    cache_range = if type == DiffCacheType.flow_rate_pump
-        cache_ranges.flow_rate_pump
+function get_cache_vector(diff_cache::DiffCache, type::DiffCacheType.T)
+    if type == DiffCacheType.flow_rate_pump
+        diff_cache.flow_rate_pump
     elseif type == DiffCacheType.flow_rate_outlet
-        cache_ranges.flow_rate_outlet
+        diff_cache.flow_rate_outlet
     else # type == DiffCacheType.basin_level
-        cache_ranges.current_level
+        diff_cache.current_level
     end
-    view(diff_cache, cache_range)
 end
 
 @kwdef struct SubVariable
@@ -990,18 +968,27 @@ end
     node_id::Vector{NodeID} = NodeID[]
     # Range per states or cache component
     state_ranges::StateRanges = StateRanges()
-    cache_ranges::CacheRanges = CacheRanges()
 end
 
-length_cache(p_non_diff::ParametersNonDiff) =
-    6 * length(p_non_diff.basin.node_id) +
-    length(p_non_diff.pump.node_id) +
-    length(p_non_diff.outlet.node_id) +
-    length(p_non_diff.pid_control.node_id)
+function DiffCache(p_non_diff::ParametersNonDiff)
+    (; basin, pump, outlet, pid_control) = p_non_diff
+    n_basin = length(basin.node_id)
+    return (;
+        current_storage = zeros(n_basin),
+        current_low_storage_factor = zeros(n_basin),
+        current_level = zeros(n_basin),
+        current_area = zeros(n_basin),
+        current_cumulative_precipitation = zeros(n_basin),
+        current_cumulative_drainage = zeros(n_basin),
+        flow_rate_pump = zeros(length(pump.node_id)),
+        flow_rate_outlet = zeros(length(outlet.node_id)),
+        error_pid_control = zeros(length(pid_control.node_id)),
+    )
+end
 
 @kwdef struct Parameters{C1, C2, C3, C4, C5, T}
     p_non_diff::ParametersNonDiff{C1, C2, C3, C4, C5}
-    diff_cache::Vector{T} = zeros(length_cache(p_non_diff))
+    diff_cache::DiffCache{T} = DiffCache(p_non_diff)
     p_mutable::ParametersMutable = ParametersMutable()
 end
 
@@ -1009,11 +996,11 @@ function get_value(ref::DiffCacheRef, p::Parameters, du::Vector)
     if ref.from_du
         du[ref.idx]
     else
-        get_cache_view(p.diff_cache, ref.type, p.p_non_diff.cache_ranges)[ref.idx]
+        get_cache_vector(p.diff_cache, ref.type)[ref.idx]
     end
 end
 
 function set_value!(ref::DiffCacheRef, p::Parameters, value)
     @assert !ref.from_du
-    get_cache_view(p.diff_cache, ref.type, p.p_non_diff.cache_ranges)[ref.idx] = value
+    get_cache_vector(p.diff_cache, ref.type)[ref.idx] = value
 end

@@ -41,14 +41,13 @@ This uses a typeassert to ensure that the return type annotation doesn't create 
 function BMI.get_value_ptr(model::Model, name::String)::Vector{Float64}
     (; u, p) = model.integrator
     (; p_non_diff, diff_cache) = p
-    (; state_ranges, cache_ranges, basin, user_demand, subgrid) = p_non_diff
+    (; state_ranges, basin, user_demand, subgrid) = p_non_diff
     (; infiltration, user_demand_inflow) = state_ranges
-    (; current_storage, current_level) = cache_ranges
 
     if name == "basin.storage"
-        unsafe_array(view(diff_cache, current_storage))::Vector{Float64}
+        diff_cache.current_storage
     elseif name == "basin.level"
-        unsafe_array(view(diff_cache, current_level))::Vector{Float64}
+        diff_cache.current_level
     elseif name == "basin.infiltration"
         basin.vertical_flux.infiltration::Vector{Float64}
     elseif name == "basin.drainage"
