@@ -65,79 +65,68 @@ function get_level_from_storage(basin::Basin, state_idx::Int, storage)
     end
 end
 
-"""
-For an element `id` and a vector of elements `ids`, get the range of indices of the last
-consecutive block of `id`.
-Returns the empty range `1:0` if `id` is not in `ids`.
-"""
-function findlastgroup(id::NodeID, ids::AbstractVector{NodeID})::UnitRange{Int}
-    idx_block_end = findlast(==(id), ids)
-    if idx_block_end === nothing
-        return 1:0
-    end
-    idx_block_begin = findprev(!=(id), ids, idx_block_end)
-    idx_block_begin = if idx_block_begin === nothing
-        1
-    else
-        # can happen if that id is the only ID in ids
-        idx_block_begin + 1
-    end
-    return idx_block_begin:idx_block_end
-end
-
-"Linear interpolation of a scalar with constant extrapolation."
 function get_scalar_interpolation(
     starttime::DateTime,
-    t_end::Float64,
     time::AbstractVector,
     node_id::NodeID,
     param::Symbol;
     default_value::Float64 = 0.0,
-)::Tuple{ScalarInterpolation, Bool}
-    nodetype = node_id.type
-    rows = searchsorted(NodeID.(nodetype, time.node_id, Ref(0)), node_id)
-    parameter = getfield.(time, param)[rows]
-    parameter = coalesce(parameter, default_value)
+    interpolation_type::Type{<:AbstractInterpolation} = LinearInterpolation,
+    cyclic_time::Bool = false,
+)::interpolation_type
+    rows = searchsorted(time.node_id, node_id)
+    parameter = getproperty(time, param)[rows]
+    parameter = coalesce.(parameter, default_value)
     times = seconds_since.(time.time[rows], starttime)
-    # Add extra timestep at start for constant extrapolation
-    if times[1] > 0
-        pushfirst!(times, 0.0)
-        pushfirst!(parameter, parameter[1])
-    end
-    # Add extra timestep at end for constant extrapolation
-    if times[end] < t_end
-        push!(times, t_end)
-        push!(parameter, parameter[end])
-    end
 
-    return LinearInterpolation(
+    valid = valid_time_interpolation(times, parameter, node_id, cyclic_time)
+    !valid && error("Invalid time series.")
+    return interpolation_type(
         parameter,
         times;
-        extrapolate = true,
+        extrapolation = cyclic_time ? Periodic : Constant,
         cache_parameters = true,
-    ),
-    allunique(times)
+    )
 end
 
 """
-From a table with columns node_id, flow_rate (Q) and level (h),
-create a ScalarInterpolation from level to flow rate for a given node_id.
+Create a valid Qh ScalarInterpolation.
+Takes a node_id for validation logging, and a vector of level (h) and flow_rate (Q).
 """
 function qh_interpolation(
-    table::StructVector,
-    rowrange::UnitRange{Int},
+    node_id::NodeID,
+    level::Vector{Float64},
+    flow_rate::Vector{Float64},
 )::ScalarInterpolation
-    level = table.level[rowrange]
-    flow_rate = table.flow_rate[rowrange]
+    errors = false
+    n = length(level)
+    if n < 2
+        @error "At least two datapoints are needed." node_id n
+        errors = true
+    end
+    Q0 = first(flow_rate)
+    if Q0 != 0.0
+        @error "The `flow_rate` must start at 0." node_id flow_rate = Q0
+        errors = true
+    end
 
-    # Ensure that that Q stays 0 below the first level
-    pushfirst!(level, first(level) - 1)
-    pushfirst!(flow_rate, first(flow_rate))
+    if !allunique(level)
+        @error "The `level` cannot be repeated." node_id
+        errors = true
+    end
+
+    if any(diff(flow_rate) .< 0.0)
+        @error "The `flow_rate` cannot decrease with increasing `level`." node_id
+        errors = true
+    end
+
+    errors && error("Errors occurred when parsing $node_id.")
 
     return LinearInterpolation(
         flow_rate,
         level;
-        extrapolate = true,
+        extrapolation_left = Constant,
+        extrapolation_right = Linear,
         cache_parameters = true,
     )
 end
@@ -158,79 +147,9 @@ function findsorted(a, x)::Union{Int, Nothing}
     end
 end
 
-"""
-Update `table` at row index `i`, with the values of a given row.
-`table` must be a NamedTuple of vectors with all variables that must be loaded.
-The row must contain all the column names that are present in the table.
-If a value is missing, it is not set.
-"""
-function set_table_row!(table::NamedTuple, row, i::Int)::NamedTuple
-    for (symbol, vector) in pairs(table)
-        val = getproperty(row, symbol)
-        if !ismissing(val)
-            vector[i] = val
-        end
-    end
-    return table
-end
-
-"""
-Load data from a source table `static` into a destination `table`.
-Data is matched based on the node_id, which is sorted.
-"""
-function set_static_value!(
-    table::NamedTuple,
-    node_id::Vector{Int32},
-    static::StructVector,
-)::NamedTuple
-    for (i, id) in enumerate(node_id)
-        idx = findsorted(static.node_id, id)
-        idx === nothing && continue
-        row = static[idx]
-        set_table_row!(table, row, i)
-    end
-    return table
-end
-
-"""
-From a timeseries table `time`, load the most recent applicable data into `table`.
-`table` must be a NamedTuple of vectors with all variables that must be loaded.
-The most recent applicable data is non-NaN data for a given ID that is on or before `t`.
-"""
-function set_current_value!(
-    table::NamedTuple,
-    node_id::Vector{Int32},
-    time::StructVector,
-    t::DateTime,
-)::NamedTuple
-    idx_starttime = searchsortedlast(time.time, t)
-    pre_table = view(time, 1:idx_starttime)
-
-    for (i, id) in enumerate(node_id)
-        for (symbol, vector) in pairs(table)
-            idx = findlast(
-                row -> row.node_id == id && !ismissing(getproperty(row, symbol)),
-                pre_table,
-            )
-            if idx !== nothing
-                vector[i] = getproperty(pre_table, symbol)[idx]
-            end
-        end
-    end
-    return table
-end
-
-function check_no_nans(table::NamedTuple, nodetype::String)
-    for (symbol, vector) in pairs(table)
-        any(isnan, vector) &&
-            error("Missing initial data for the $nodetype variable $symbol")
-    end
-    return nothing
-end
-
 "From an iterable of DateTimes, find the times the solver needs to stop"
 function get_tstops(time, starttime::DateTime)::Vector{Float64}
-    unique_times = unique(time)
+    unique_times = filter(!ismissing, unique(time))
     return seconds_since.(unique_times, starttime)
 end
 
@@ -355,10 +274,11 @@ function Base.getindex(fv::FlatVector, i::Int)
 end
 
 "Construct a FlatVector from one of the fields of SavedFlow."
-function FlatVector(saveval::Vector{<:SavedFlow}, sym::Symbol)
+function FlatVector(saveval::Vector{SavedFlow}, sym::Symbol)
     v = isempty(saveval) ? Vector{Float64}[] : getfield.(saveval, sym)
     FlatVector(v)
 end
+FlatVector(v::Vector{Matrix{Float64}}) = FlatVector(vec.(v))
 
 """
 Function that goes smoothly from 0 to 1 in the interval [0,threshold],
@@ -404,7 +324,7 @@ function is_flow_constraining(type::NodeType.T)::Bool
     type in (NodeType.LinearResistance, NodeType.Pump, NodeType.Outlet)
 end
 
-"""Whether the given node is flow direction constraining (only in direction of edges)."""
+"""Whether the given node is flow direction constraining (only in direction of links)."""
 function is_flow_direction_constraining(type::NodeType.T)::Bool
     type in (
         NodeType.Pump,
@@ -427,51 +347,56 @@ function is_main_network(subnetwork_id::Int32)::Bool
     return subnetwork_id == 1
 end
 
-function get_all_priorities(db::DB, config::Config)::Vector{Int32}
-    priorities = Set{Int32}()
+function get_all_demand_priorities(db::DB, config::Config;)::Vector{Int32}
+    demand_priorities = Set{Int32}()
     is_valid = true
-    # TODO: Is there a way to automatically grab all tables with a priority column?
-    for (type, name) in [
-        (UserDemandStaticV1, "UserDemand / static"),
-        (UserDemandTimeV1, "UserDemand / time"),
-        (LevelDemandStaticV1, "LevelDemand / static"),
-        (LevelDemandTimeV1, "LevelDemand / time"),
-        (FlowDemandStaticV1, "FlowDemand / static"),
-        (FlowDemandTimeV1, "FlowDemand / time"),
-    ]
-        priority_col = load_structvector(db, config, type).priority
-        priority_col = Int32.(coalesce.(priority_col, Int32(0)))
-        if valid_priorities(priority_col, config.allocation.use_allocation)
-            union!(priorities, priority_col)
+
+    for name in names(Ribasim; all = true)
+        type = getfield(Ribasim, name)
+        if !(
+            (type isa DataType) &&
+            type <: Legolas.AbstractRecord &&
+            hasfield(type, :demand_priority)
+        )
+            continue
+        end
+
+        data = load_structvector(db, config, type)
+        demand_priority_col = data.demand_priority
+        demand_priority_col = Int32.(coalesce.(demand_priority_col, Int32(0)))
+        if valid_demand_priorities(demand_priority_col, config.allocation.use_allocation)
+            union!(demand_priorities, demand_priority_col)
         else
             is_valid = false
-            @error "Missing priority parameter(s) for a $name node in the allocation problem."
+            node, kind = nodetype(Legolas._schema_version_from_record_type(type))
+            table_name = "$node / $kind"
+            @error "Missing demand_priority parameter(s) for a $table_name node in the allocation problem."
         end
     end
     if is_valid
-        return sort(collect(priorities))
+        return sort(collect(demand_priorities))
     else
-        error("Priority parameter is missing")
+        error("Missing demand priority parameter(s).")
     end
 end
 
-function get_external_priority_idx(p::Parameters, node_id::NodeID)::Int
+function get_external_demand_priority_idx(p::Parameters, node_id::NodeID)::Int
     (; graph, level_demand, flow_demand, allocation) = p
-    inneighbor_control_ids = inneighbor_labels_type(graph, node_id, EdgeType.control)
+    inneighbor_control_ids = inneighbor_labels_type(graph, node_id, LinkType.control)
     if isempty(inneighbor_control_ids)
         return 0
     end
     inneighbor_control_id = only(inneighbor_control_ids)
     type = inneighbor_control_id.type
     if type == NodeType.LevelDemand
-        priority = level_demand.priority[inneighbor_control_id.idx]
+        demand_priority = level_demand.demand_priority[inneighbor_control_id.idx]
     elseif type == NodeType.FlowDemand
-        priority = flow_demand.priority[inneighbor_control_id.idx]
+        demand_priority = flow_demand.demand_priority[inneighbor_control_id.idx]
     else
-        error("Nodes of type $type have no priority.")
+        error("Nodes of type $type have no demand_priority.")
     end
 
-    return findsorted(allocation.priorities, priority)
+    return findsorted(allocation.demand_priorities_all, demand_priority)
 end
 
 """
@@ -505,7 +430,7 @@ function set_continuous_control_type!(
     errors = false
 
     for id in node_id
-        id_controlled = only(outneighbor_labels_type(graph, id, EdgeType.control))
+        id_controlled = only(outneighbor_labels_type(graph, id, LinkType.control))
         if id_controlled.type == NodeType.Pump
             pump.continuous_control_type[id_controlled.idx] = continuous_control_type
         elseif id_controlled.type == NodeType.Outlet
@@ -523,7 +448,7 @@ function has_external_demand(
     node_id::NodeID,
     node_type::Symbol,
 )::Tuple{Bool, Union{NodeID, Nothing}}
-    control_inneighbors = inneighbor_labels_type(graph, node_id, EdgeType.control)
+    control_inneighbors = inneighbor_labels_type(graph, node_id, LinkType.control)
     for id in control_inneighbors
         if graph[id].type == node_type
             return true, id
@@ -565,9 +490,9 @@ function get_Δt(integrator)::Float64
     end
 end
 
-inflow_edge(graph, node_id)::EdgeMetadata = graph[inflow_id(graph, node_id), node_id]
-outflow_edge(graph, node_id)::EdgeMetadata = graph[node_id, outflow_id(graph, node_id)]
-outflow_edges(graph, node_id)::Vector{EdgeMetadata} =
+inflow_link(graph, node_id)::LinkMetadata = graph[inflow_id(graph, node_id), node_id]
+outflow_link(graph, node_id)::LinkMetadata = graph[node_id, outflow_id(graph, node_id)]
+outflow_links(graph, node_id)::Vector{LinkMetadata} =
     [graph[node_id, outflow_id] for outflow_id in outflow_ids(graph, node_id)]
 
 """
@@ -586,25 +511,27 @@ function set_initial_allocation_mean_flows!(integrator)::Nothing
     du = get_du(integrator)
     water_balance!(du, u, p, t)
 
-    for edge in keys(mean_input_flows)
-        if edge[1] == edge[2]
-            q = get_influx(du, edge[1], p)
-        else
-            q = get_flow(du, p, t, edge)
+    for mean_input_flows_subnetwork in values(mean_input_flows)
+        for link in keys(mean_input_flows_subnetwork)
+            if link[1] == link[2]
+                q = get_influx(du, link[1], p)
+            else
+                q = get_flow(du, p, t, link)
+            end
+            # Multiply by Δt_allocation as averaging divides by this factor
+            # in update_allocation!
+            mean_input_flows_subnetwork[link] = q * Δt_allocation
         end
-        # Multiply by Δt_allocation as averaging divides by this factor
-        # in update_allocation!
-        mean_input_flows[edge] = q * Δt_allocation
     end
 
     # Mean realized demands for basins are calculated as Δstorage/Δt
     # This sets the realized demands as -storage_old
-    for edge in keys(mean_realized_flows)
-        if edge[1] == edge[2]
-            mean_realized_flows[edge] = -u[edge[1].idx]
+    for link in keys(mean_realized_flows)
+        if link[1] == link[2]
+            mean_realized_flows[link] = -u[link[1].idx]
         else
-            q = get_flow(du, p, t, edge)
-            mean_realized_flows[edge] = q * Δt_allocation
+            q = get_flow(du, p, t, link)
+            mean_realized_flows[link] = q * Δt_allocation
         end
     end
 
@@ -646,16 +573,16 @@ function get_variable_ref(
         if listen
             if node_id.type ∉ conservative_nodetypes
                 errors = true
-                @error "Cannot listen to flow_rate of $node_id, the node type must be one of $conservative_node_types"
+                @error "Cannot listen to flow_rate of $node_id, the node type must be one of $conservative_node_types."
                 Ref(Float64[], 0)
             else
                 # Index in the state vector (inflow)
-                flow_idx = get_state_index(node_id, u)
+                flow_idx = get_state_index(p.state_ranges, node_id)
                 PreallocationRef(cache(1), flow_idx; from_du = true)
             end
         else
-            node = getfield(p, snake_case(Symbol(node_id.type)))
-            PreallocationRef(node.flow_rate, node_id.idx)
+            node = getfield(p, snake_case(node_id))
+            PreallocationRef(node.flow_rate_cache, node_id.idx)
         end
     else
         # Placeholder to obtain correct type
@@ -740,7 +667,7 @@ function set_continuously_controlled_variable_refs!(p::Parameters)::Nothing
         (pid_control, fill("flow_rate", length(pid_control.node_id))),
     )
         for (id, controlled_variable) in zip(node.node_id, controlled_variable)
-            controlled_node_id = only(outneighbor_labels_type(graph, id, EdgeType.control))
+            controlled_node_id = only(outneighbor_labels_type(graph, id, LinkType.control))
             ref, error =
                 get_variable_ref(p, controlled_node_id, controlled_variable; listen = false)
             push!(node.target_ref, ref)
@@ -759,15 +686,15 @@ Add a control state to a logic mapping. The references to the targets in memory
 for the parameter values are added later when these references are known
 """
 function add_control_state!(
-    control_mapping,
-    time_interpolatables,
-    parameter_names,
-    parameter_values,
-    node_type,
-    control_state,
-    node_id,
+    control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate},
+    time_interpolatables::Vector{Symbol},
+    parameter_names::NTuple{N, Symbol} where {N},
+    parameter_values::Vector,
+    node_type::String,
+    control_state::Union{Missing, String},
+    node_id::NodeID,
 )::Nothing
-    control_state_key = coalesce(control_state, "")
+    ismissing(control_state) && return nothing
 
     # Control state is only added if a control state update can be defined
     add_control_state = false
@@ -781,7 +708,9 @@ function add_control_state!(
         add_control_state = true
         ParameterUpdate(:active, parameter_values[active_idx])
     end
-    control_state_update = ControlStateUpdate(; active)
+
+    itp_update = ParameterUpdate{ScalarInterpolation}[]
+    scalar_update = ParameterUpdate{Float64}[]
     for (parameter_name, parameter_value) in zip(parameter_names, parameter_values)
         if parameter_name in controllablefields(Symbol(node_type)) &&
            parameter_name !== :active
@@ -790,14 +719,23 @@ function add_control_state!(
 
             # Differentiate between scalar parameters and interpolation parameters
             if parameter_name in time_interpolatables
-                push!(control_state_update.itp_update, parameter_update)
+                push!(itp_update, parameter_update)
             else
-                push!(control_state_update.scalar_update, parameter_update)
+                push!(scalar_update, parameter_update)
             end
         end
     end
+    # This is a not so great way to get a concrete type,
+    # which is used as a ControlStateUpdate type parameter.
+    itp_update = if isempty(itp_update)
+        ParameterUpdate{ScalarInterpolation}[]
+    else
+        [x for x in itp_update]
+    end
+    control_state_update = ControlStateUpdate(; active, scalar_update, itp_update)
+
     if add_control_state
-        control_mapping[(node_id, control_state_key)] = control_state_update
+        control_mapping[(node_id, control_state)] = control_state_update
     end
     return nothing
 end
@@ -811,7 +749,7 @@ function collect_control_mappings!(p)::Nothing
 
     for node_type in instances(NodeType.T)
         node_type == NodeType.Terminal && continue
-        node = getfield(p, Symbol(snake_case(string(node_type))))
+        node = getfield(p, snake_case(node_type))
         if hasfield(typeof(node), :control_mapping)
             control_mappings[node_type] = node.control_mapping
         end
@@ -841,14 +779,14 @@ function relaxed_root(x, threshold)
 end
 
 function get_jac_prototype(du0, u0, p, t0)
-    p.all_nodes_active[] = true
+    p.all_nodes_active = true
     jac_prototype = jacobian_sparsity(
         (du, u) -> water_balance!(du, u, p, t0),
         du0,
         u0,
         TracerSparsityDetector(),
     )
-    p.all_nodes_active[] = false
+    p.all_nodes_active = false
     jac_prototype
 end
 
@@ -857,194 +795,167 @@ reduction_factor(x::GradientTracer, threshold::Real) = x
 low_storage_factor_resistance_node(storage, q::GradientTracer, inflow_id, outflow_id) = q
 relaxed_root(x::GradientTracer, threshold::Real) = x
 get_level_from_storage(basin::Basin, state_idx::Int, storage::GradientTracer) = storage
-stop_declining_negative_storage!(du, u::ComponentVector{<:GradientTracer}) = nothing
+stop_declining_negative_storage!(du, u::Vector{<:GradientTracer}) = nothing
 
-function build_state_vector(p::Parameters)
-    # It is assumed that the horizontal flow states come first in
-    # p.state_inflow_edge and p.state_outflow_edge
-    return ComponentVector{Float64}(;
-        tabulated_rating_curve = zeros(length(p.tabulated_rating_curve.node_id)),
-        pump = zeros(length(p.pump.node_id)),
-        outlet = zeros(length(p.outlet.node_id)),
-        user_demand_inflow = zeros(length(p.user_demand.node_id)),
-        user_demand_outflow = zeros(length(p.user_demand.node_id)),
-        linear_resistance = zeros(length(p.linear_resistance.node_id)),
-        manning_resistance = zeros(length(p.manning_resistance.node_id)),
-        evaporation = zeros(length(p.basin.node_id)),
-        infiltration = zeros(length(p.basin.node_id)),
-        integral = zeros(length(p.pid_control.node_id)),
+"Create a NamedTuple of the node IDs per state component in the state order"
+function state_node_ids(p::Union{Parameters, NamedTuple})::NamedTuple
+    (;
+        tabulated_rating_curve = p.tabulated_rating_curve.node_id,
+        pump = p.pump.node_id,
+        outlet = p.outlet.node_id,
+        user_demand_inflow = p.user_demand.node_id,
+        user_demand_outflow = p.user_demand.node_id,
+        linear_resistance = p.linear_resistance.node_id,
+        manning_resistance = p.manning_resistance.node_id,
+        evaporation = p.basin.node_id,
+        infiltration = p.basin.node_id,
+        integral = p.pid_control.node_id,
     )
 end
 
-function build_flow_to_storage(p::Parameters, u::ComponentVector)::Parameters
-    n_basins = length(p.basin.node_id)
-    n_states = length(u)
-    flow_to_storage = ComponentArray(
-        spzeros(n_basins, n_states),
-        (Axis(; basins = 1:n_basins), only(getaxes(u))),
-    )
+function build_state_vector(p::Parameters)
+    # It is assumed that the horizontal flow states come first in
+    # p.state_inflow_link and p.state_outflow_link
+    u_ids = state_node_ids(p)
+    state_ranges = p.state_ranges
+    u = zeros(length(p.node_id))
+    # Ensure p.node_id, p.state_ranges and u have the same length and order
+    ranges = (getproperty(state_ranges, x) for x in propertynames(state_ranges))
+    @assert length(u) == length(p.node_id) == mapreduce(length, +, ranges)
+    @assert keys(u_ids) == fieldnames(StateRanges)
+    return u
+end
 
-    for node_name in (
-        :tabulated_rating_curve,
-        :pump,
-        :outlet,
-        :linear_resistance,
-        :manning_resistance,
-        :user_demand,
-    )
-        node = getfield(p, node_name)
+function build_flow_to_storage(
+    state_ranges::StateRanges,
+    n_states::Int,
+    basin::Basin,
+    connector_nodes::NamedTuple,
+)::SparseMatrixCSC{Float64, Int}
+    (; user_demand_inflow, user_demand_outflow, evaporation, infiltration) = state_ranges
+    n_basins = length(basin.node_id)
+    flow_to_storage = spzeros(n_basins, n_states)
 
+    for (node_name, node) in pairs(connector_nodes)
         if node_name == :user_demand
-            flow_to_storage_node_inflow = view(flow_to_storage, :, :user_demand_inflow)
-            flow_to_storage_node_outflow = view(flow_to_storage, :, :user_demand_outflow)
+            flow_to_storage_node_inflow = view(flow_to_storage, :, user_demand_inflow)
+            flow_to_storage_node_outflow = view(flow_to_storage, :, user_demand_outflow)
         else
-            flow_to_storage_node_inflow = view(flow_to_storage, :, node_name)
+            state_range = getproperty(state_ranges, node_name)
+            flow_to_storage_node_inflow = view(flow_to_storage, :, state_range)
             flow_to_storage_node_outflow = flow_to_storage_node_inflow
         end
 
-        for (inflow_edge, outflow_edge) in zip(node.inflow_edge, node.outflow_edge)
-            inflow_id, node_id = inflow_edge.edge
+        for (inflow_link, outflow_link) in zip(node.inflow_link, node.outflow_link)
+            inflow_id, node_id = inflow_link.link
             if inflow_id.type == NodeType.Basin
                 flow_to_storage_node_inflow[inflow_id.idx, node_id.idx] = -1.0
             end
 
-            outflow_id = outflow_edge.edge[2]
+            outflow_id = outflow_link.link[2]
             if outflow_id.type == NodeType.Basin
                 flow_to_storage_node_outflow[outflow_id.idx, node_id.idx] = 1.0
             end
         end
     end
 
-    flow_to_storage_evaporation = view(flow_to_storage, :, :evaporation)
-    flow_to_storage_infiltration = view(flow_to_storage, :, :infiltration)
+    flow_to_storage_evaporation = view(flow_to_storage, :, evaporation)
+    flow_to_storage_infiltration = view(flow_to_storage, :, infiltration)
 
     for i in 1:n_basins
         flow_to_storage_evaporation[i, i] = -1.0
         flow_to_storage_infiltration[i, i] = -1.0
     end
 
-    @set p.flow_to_storage = parent(flow_to_storage)
+    return flow_to_storage
 end
 
 """
-Create vectors state_inflow_edge and state_outflow_edge which give for each state
-in the state vector in order the metadata of the edge that is associated with that state.
+Create vectors state_inflow_link and state_outflow_link which give for each state
+in the state vector in order the metadata of the link that is associated with that state.
 Only for horizontal flows, which are assumed to come first in the state vector.
 """
-function set_state_flow_edges(p::Parameters, u0::ComponentVector)::Parameters
-    (; user_demand, graph) = p
+function get_state_flow_links(
+    graph::MetaGraph,
+    nodes::NamedTuple,
+)::Tuple{Vector{LinkMetadata}, Vector{LinkMetadata}}
+    (; user_demand) = nodes
+    state_inflow_link = LinkMetadata[]
+    state_outflow_link = LinkMetadata[]
 
-    components = Symbol[]
-    state_inflow_edges = Vector{EdgeMetadata}[]
-    state_outflow_edges = Vector{EdgeMetadata}[]
+    placeholder_link =
+        LinkMetadata(0, LinkType.flow, (NodeID(:Terminal, 0, 0), NodeID(:Terminal, 0, 0)))
 
-    placeholder_edge = EdgeMetadata(
-        0,
-        EdgeType.flow,
-        0,
-        (NodeID(:Terminal, 0, 0), NodeID(:Terminal, 0, 0)),
-    )
-
-    for node_name in keys(u0)
-        if hasfield(Parameters, node_name)
-            node::AbstractParameterNode = getfield(p, node_name)
-            push!(components, node_name)
-            state_inflow_edges_component = EdgeMetadata[]
-            state_outflow_edges_component = EdgeMetadata[]
+    for node_name in fieldnames(StateRanges)
+        if hasproperty(nodes, node_name)
+            node::AbstractParameterNode = getproperty(nodes, node_name)
             for id in node.node_id
-                inflow_ids_ = collect(inflow_ids(p.graph, id))
-                outflow_ids_ = collect(outflow_ids(p.graph, id))
+                inflow_ids_ = collect(inflow_ids(graph, id))
+                outflow_ids_ = collect(outflow_ids(graph, id))
 
-                inflow_edge = if length(inflow_ids_) == 0
-                    placeholder_edge
+                inflow_link = if length(inflow_ids_) == 0
+                    placeholder_link
                 elseif length(inflow_ids_) == 1
                     inflow_id = only(inflow_ids_)
                     graph[inflow_id, id]
                 else
                     error("Multiple inflows not supported")
                 end
-                push!(state_inflow_edges_component, inflow_edge)
+                push!(state_inflow_link, inflow_link)
 
-                outflow_edge = if length(outflow_ids_) == 0
-                    placeholder_edge
+                outflow_link = if length(outflow_ids_) == 0
+                    placeholder_link
                 elseif length(outflow_ids_) == 1
                     outflow_id = only(outflow_ids_)
                     graph[id, outflow_id]
                 else
                     error("Multiple outflows not supported")
                 end
-                push!(state_outflow_edges_component, outflow_edge)
+                push!(state_outflow_link, outflow_link)
             end
-            push!(state_inflow_edges, state_inflow_edges_component)
-            push!(state_outflow_edges, state_outflow_edges_component)
         elseif startswith(String(node_name), "user_demand")
-            push!(components, node_name)
-            placeholder_edges = fill(placeholder_edge, length(user_demand.node_id))
+            placeholder_links = fill(placeholder_link, length(user_demand.node_id))
             if node_name == :user_demand_inflow
-                push!(state_inflow_edges, user_demand.inflow_edge)
-                push!(state_outflow_edges, placeholder_edges)
+                append!(state_inflow_link, user_demand.inflow_link)
+                append!(state_outflow_link, placeholder_links)
             elseif node_name == :user_demand_outflow
-                push!(state_inflow_edges, placeholder_edges)
-                push!(state_outflow_edges, user_demand.outflow_edge)
+                append!(state_inflow_link, placeholder_links)
+                append!(state_outflow_link, user_demand.outflow_link)
             end
         end
     end
 
-    state_inflow_edge = ComponentVector(NamedTuple(zip(components, state_inflow_edges)))
-    state_outflow_edge = ComponentVector(NamedTuple(zip(components, state_outflow_edges)))
-
-    p = @set p.state_inflow_edge = state_inflow_edge
-    p = @set p.state_outflow_edge = state_outflow_edge
-    return p
+    return state_inflow_link, state_outflow_link
 end
 
-function id_from_state_index(
-    p::Parameters,
-    ::ComponentVector{Float64, Vector{Float64}, <:Tuple{<:Axis{NT}}},
-    global_idx::Int,
-)::NodeID where {NT}
-    local_idx = 0
-    component = Symbol()
-    for (comp, range) in pairs(NT)
-        if global_idx in range
-            component = comp
-            local_idx = global_idx - first(range) + 1
-            break
-        end
-    end
-    component_string = String(component)
-    if endswith(component_string, "_inflow") || endswith(component_string, "_outflow")
-        component = :user_demand
-    elseif component == :integral
-        component = :pid_control
-    elseif component in [:infiltration, :evaporation]
-        component = :basin
-    end
-
-    getfield(p, component).node_id[local_idx]
-end
-
+"""
+Get the index of the state vector corresponding to the given NodeID.
+Use the inflow Boolean argument to disambiguite for node types that have multiple states.
+Can return nothing for node types that do not have a state, like Terminal.
+"""
 function get_state_index(
-    id::NodeID,
-    ::ComponentVector{A, B, <:Tuple{<:Axis{NT}}};
+    state_ranges::StateRanges,
+    id::NodeID;
     inflow::Bool = true,
-) where {A, B, NT}
+)::Union{Int, Nothing}
     component_name = if id.type == NodeType.UserDemand
         inflow ? :user_demand_inflow : :user_demand_outflow
     else
-        snake_case(Symbol(id.type))
+        snake_case(id)
     end
-    for (comp, range) in pairs(NT)
-        if comp == component_name
-            return range[id.idx]
-        end
+
+    if hasproperty(state_ranges, component_name)
+        state_range = getproperty(state_ranges, component_name)
+        return state_range[id.idx]
+    else
+        return nothing
     end
-    return nothing
 end
 
-function get_state_index(u::ComponentVector, edge::Tuple{NodeID, NodeID})::Int
-    idx = get_state_index(edge[2], u)
-    isnothing(idx) ? get_state_index(edge[1], u; inflow = false) : idx
+"Get the state index of the to-node of the link if it exists, otherwise the from-node."
+function get_state_index(state_ranges::StateRanges, link::Tuple{NodeID, NodeID})::Int
+    idx = get_state_index(state_ranges, link[2])
+    isnothing(idx) ? get_state_index(state_ranges, link[1]; inflow = false) : idx
 end
 
 """
@@ -1052,17 +963,17 @@ Check whether any storages are negative given the state u.
 """
 function isoutofdomain(u, p, t)
     (; current_storage) = p.basin.current_properties
-    current_storage = current_storage[parent(u)]
+    current_storage = current_storage[u]
     formulate_storages!(current_storage, u, u, p, t)
     any(<(0), current_storage)
 end
 
-function get_demand(user_demand, id, priority_idx, t)::Float64
+function get_demand(user_demand, id, demand_priority_idx, t)::Float64
     (; demand_from_timeseries, demand_itp, demand) = user_demand
     if demand_from_timeseries[id.idx]
-        demand_itp[id.idx][priority_idx](t)
+        demand_itp[id.idx][demand_priority_idx](t)
     else
-        demand[id.idx, priority_idx]
+        demand[id.idx, demand_priority_idx]
     end
 end
 
@@ -1105,4 +1016,68 @@ function min_low_user_demand_level_factor(
     else
         one(T)
     end
+end
+
+function mean_input_flows_subnetwork(p::Parameters, subnetwork_id::Int32)
+    (; mean_input_flows, subnetwork_ids) = p.allocation
+    subnetwork_idx = searchsortedfirst(subnetwork_ids, subnetwork_id)
+    return mean_input_flows[subnetwork_idx]
+end
+
+"""
+Wrap the data of a SubArray into a Vector.
+
+This function is labeled unsafe because it will crash if pointer is not a valid memory
+address to data of the requested length, and it will not prevent the input array A from
+being freed.
+"""
+function unsafe_array(
+    A::SubArray{Float64, 1, Vector{Float64}, Tuple{UnitRange{Int64}}, true},
+)::Vector{Float64}
+    GC.@preserve A unsafe_wrap(Array, pointer(A), length(A))
+end
+
+"""
+Find the index of a symbol in an ordered set using iteration.
+
+This replaces `findfirst(==(x), s)` which triggered this depwarn:
+> indexing is deprecated for OrderedSet, please rewrite your code to use iteration
+"""
+function find_index(x::Symbol, s::OrderedSet{Symbol})
+    for (i, s) in enumerate(s)
+        s === x && return i
+    end
+    error(lazy"$x not found in $s.")
+end
+
+function get_timeseries_tstops(
+    itp::AbstractInterpolation,
+    endtime::Float64,
+)::Vector{Float64}
+    # The length of the period
+    T = last(itp.t) - first(itp.t)
+
+    # How many periods back from first(itp.t) are needed
+    nT_back = itp.extrapolation_left == Periodic ? Int(ceil((first(itp.t)) / T)) : 0
+
+    # How many periods forward from first(itp.t) are needed
+    nT_forward =
+        itp.extrapolation_right == Periodic ? Int(ceil((endtime - first(itp.t)) / T)) : 0
+
+    tstops = Float64[]
+
+    for i in (-nT_back):nT_forward
+        # Append the timepoints of the interpolation shifted by an integer amount of
+        # periods to the tstops, filtering out values outside the simulation period
+        if i == nT_forward
+            append!(tstops, filter(t -> 0 ≤ t ≤ endtime, itp.t .+ i * T))
+        else
+            # Because of floating point errors last(itp.t) = first(itp.t) + T
+            # does not always hold exactly, so to prevent that these become separate
+            # very close tstops we only use the last time point of the period in the last period
+            append!(tstops, filter(t -> 0 ≤ t ≤ endtime, itp.t[1:(end - 1)] .+ i * T))
+        end
+    end
+
+    return tstops
 end

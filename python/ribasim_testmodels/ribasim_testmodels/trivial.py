@@ -1,18 +1,18 @@
-from ribasim.config import Node, Results
+from ribasim.config import Experimental, Node, Results
 from ribasim.model import Model
 from ribasim.nodes import basin, tabulated_rating_curve
 from shapely.geometry import Point
 
 
 def trivial_model() -> Model:
-    """Trivial model with just a basin, tabulated rating curve and terminal node"""
-
+    """Trivial model with just a basin, tabulated rating curve and terminal node."""
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
         results=Results(subgrid=True, compression=False),
         use_validation=True,
+        experimental=Experimental(concentration=True),
     )
 
     # Convert steady forcing to m/s
@@ -49,7 +49,7 @@ def trivial_model() -> Model:
         [tabulated_rating_curve.Static(level=[0.0, 1.0], flow_rate=[0.0, 10 / 86400])],
     )
 
-    model.edge.add(basin6, trc0, edge_id=100)
-    model.edge.add(trc0, term)
+    model.link.add(basin6, trc0, link_id=100)
+    model.link.add(trc0, term)
 
     return model

@@ -19,7 +19,8 @@ from shapely.geometry import Point
 
 def invalid_qh_model() -> Model:
     """
-    Invalid TabulatedRatingCurve Q(h) table:
+    Invalid TabulatedRatingCurve Q(h) table.
+
     - levels must be unique
     - flow_rate must start at 0
     - flow_rate must not be decreasing
@@ -84,6 +85,7 @@ def invalid_discrete_control_model() -> Model:
             discrete_control.Condition(
                 greater_than=[0.5, 1.5, 1.5],
                 compound_variable_id=[1, 2, 3],
+                condition_id=1,
             ),
             # Invalid: DiscreteControl node #4 has 2 conditions so
             # truth states have to be of length 2
@@ -91,19 +93,19 @@ def invalid_discrete_control_model() -> Model:
         ],
     )
 
-    model.edge.add(
+    model.link.add(
         model.basin[1],
         model.pump[2],
     )
-    model.edge.add(
+    model.link.add(
         model.pump[2],
         model.basin[3],
     )
-    model.edge.add(
+    model.link.add(
         model.flow_boundary[4],
         model.basin[3],
     )
-    model.edge.add(
+    model.link.add(
         model.discrete_control[5],
         model.pump[2],
     )
@@ -111,9 +113,8 @@ def invalid_discrete_control_model() -> Model:
     return model
 
 
-def invalid_edge_types_model() -> Model:
-    """Set up a minimal model with invalid edge types."""
-
+def invalid_link_types_model() -> Model:
+    """Set up a minimal model with invalid link types."""
     model = Model(
         starttime="2020-01-01",
         endtime="2020-12-01",
@@ -130,24 +131,23 @@ def invalid_edge_types_model() -> Model:
     model.pump.add(Node(2, Point(1, 0)), [pump.Static(flow_rate=[0.5 / 3600])])
     model.basin.add(Node(3, Point(2, 0)), basin_shared)
 
-    model.edge.add(
+    model.link.add(
         model.basin[1],
         model.pump[2],
     )
-    model.edge.add(
+    model.link.add(
         model.pump[2],
         model.basin[3],
     )
 
-    assert model.edge.df is not None
-    model.edge.df["edge_type"] = ["foo", "bar"]
+    assert model.link.df is not None
+    model.link.df["link_type"] = ["foo", "bar"]
 
     return model
 
 
 def invalid_unstable_model() -> Model:
     """Model with several extremely quickly emptying basins."""
-
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
@@ -167,14 +167,13 @@ def invalid_unstable_model() -> Model:
         )
         model.terminal.add(Node(3 + id_shift * i, Point(i, 2)))
 
-        model.edge.add(model.basin[1 + id_shift * i], model.pump[2 + id_shift * i])
-        model.edge.add(model.pump[2 + id_shift * i], model.terminal[3 + id_shift * i])
+        model.link.add(model.basin[1 + id_shift * i], model.pump[2 + id_shift * i])
+        model.link.add(model.pump[2 + id_shift * i], model.terminal[3 + id_shift * i])
     return model
 
 
 def invalid_priorities_model() -> Model:
-    """Model with allocation active but missing priority parameter(s)."""
-
+    """Model with allocation active but missing demand_priority parameter(s)."""
     model = Model(
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",
@@ -213,14 +212,13 @@ def invalid_priorities_model() -> Model:
         [flow_demand.Static(demand=[2e-3])],
     )
 
-    model.edge.add(
+    model.link.add(
         model.level_boundary[1],
         model.tabulated_rating_curve[2],
-        subnetwork_id=2,
     )
-    model.edge.add(model.tabulated_rating_curve[2], model.basin[3])
-    model.edge.add(model.basin[3], model.user_demand[4])
-    model.edge.add(model.level_demand[6], model.basin[3])
-    model.edge.add(model.flow_demand[5], model.tabulated_rating_curve[2])
+    model.link.add(model.tabulated_rating_curve[2], model.basin[3])
+    model.link.add(model.basin[3], model.user_demand[4])
+    model.link.add(model.level_demand[6], model.basin[3])
+    model.link.add(model.flow_demand[5], model.tabulated_rating_curve[2])
 
     return model

@@ -1,5 +1,5 @@
-struct SavedResults{V <: ComponentVector{Float64}}
-    flow::SavedValues{Float64, SavedFlow{V}}
+struct SavedResults
+    flow::SavedValues{Float64, SavedFlow}
     basin_state::SavedValues{Float64, SavedBasinState}
     subgrid_level::SavedValues{Float64, Vector{Float64}}
     solver_stats::SavedValues{Float64, SolverStats}
@@ -47,14 +47,21 @@ function Model(config::Config)::Model
     # so we can directly close it again.
     db = SQLite.DB(db_path)
 
+    database_warning(db)
     if !valid_nodes(db)
         error("Invalid nodes found.")
     end
-    if !valid_edge_types(db)
-        error("Invalid edge types found.")
+    if !valid_link_types(db)
+        error("Invalid link types found.")
     end
 
-    local parameters, state, n, tstops
+    # for Float32 this method allows max ~1000 year simulations without accuracy issues
+    t_end = seconds_since(config.endtime, config.starttime)
+    @assert eps(t_end) < 3600 "Simulation time too long"
+    t0 = zero(t_end)
+    timespan = (t0, t_end)
+
+    local parameters, tstops
     try
         parameters = Parameters(db, config)
 
@@ -62,7 +69,20 @@ function Model(config::Config)::Model
             error("Invalid discrete control state definition(s).")
         end
 
-        (; pid_control, graph, outlet, pump, basin, tabulated_rating_curve) = parameters
+        (;
+            basin,
+            discrete_control,
+            flow_boundary,
+            flow_demand,
+            graph,
+            level_boundary,
+            level_demand,
+            outlet,
+            pid_control,
+            pump,
+            tabulated_rating_curve,
+            user_demand,
+        ) = parameters
         if !valid_pid_connectivity(pid_control.node_id, pid_control.listen_node_id, graph)
             error("Invalid PidControl connectivity.")
         end
@@ -79,19 +99,38 @@ function Model(config::Config)::Model
             error("Invalid level of TabulatedRatingCurve.")
         end
 
-        # tell the solver to stop when new data comes in
+        # Tell the solver to stop at all data points from timeseries,
+        # extrapolating periodically if applicable.
         tstops = Vector{Float64}[]
-        for schema_version in [
-            FlowBoundaryTimeV1,
-            LevelBoundaryTimeV1,
-            UserDemandTimeV1,
-            LevelDemandTimeV1,
-            FlowDemandTimeV1,
-            TabulatedRatingCurveTimeV1,
-            PidControlTimeV1,
+        for interpolations in [
+            basin.forcing.drainage,
+            basin.forcing.infiltration,
+            basin.forcing.potential_evaporation,
+            basin.forcing.precipitation,
+            flow_boundary.flow_rate,
+            flow_demand.demand_itp,
+            level_boundary.level,
+            level_demand.max_level,
+            level_demand.min_level,
+            pid_control.derivative,
+            pid_control.integral,
+            pid_control.proportional,
+            pid_control.target,
+            tabulated_rating_curve.current_interpolation_index,
+            user_demand.demand_itp...,
+            user_demand.return_factor,
+            reduce(
+                vcat,
+                [
+                    [cv.greater_than for cv in cvs] for
+                    cvs in discrete_control.compound_variables
+                ];
+                init = ScalarConstantInterpolation[],
+            )...,
         ]
-            time_schema = load_structvector(db, config, schema_version)
-            push!(tstops, get_tstops(time_schema.time, config.starttime))
+            for itp in interpolations
+                push!(tstops, get_timeseries_tstops(itp, t_end))
+            end
         end
 
     finally
@@ -103,26 +142,17 @@ function Model(config::Config)::Model
     u0 = build_state_vector(parameters)
     du0 = zero(u0)
 
-    parameters = set_state_flow_edges(parameters, u0)
-    parameters = build_flow_to_storage(parameters, u0)
-    parameters = @set parameters.u_prev_saveat = zero(u0)
+    @reset parameters.u_prev_saveat = zero(u0)
 
     # The Solver algorithm
     alg = algorithm(config.solver; u0)
-
-    # for Float32 this method allows max ~1000 year simulations without accuracy issues
-    t_end = seconds_since(config.endtime, config.starttime)
-    @assert eps(t_end) < 3600 "Simulation time too long"
-    t0 = zero(t_end)
-    timespan = (t0, t_end)
 
     # Synchronize level with storage
     set_current_basin_properties!(du0, u0, parameters, t0)
 
     # Previous level is used to estimate the minimum level that was attained during a time step
     # in limit_flow!
-    parameters.basin.level_prev .=
-        parameters.basin.current_properties.current_level[parent(u0)]
+    parameters.basin.level_prev .= parameters.basin.current_properties.current_level[u0]
 
     saveat = convert_saveat(config.solver.saveat, t_end)
     saveat isa Float64 && push!(tstops, range(0, t_end; step = saveat))

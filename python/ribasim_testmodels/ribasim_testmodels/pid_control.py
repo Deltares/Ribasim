@@ -1,4 +1,4 @@
-from ribasim.config import Node
+from ribasim.config import Experimental, Node
 from ribasim.model import Model
 from ribasim.nodes import (
     basin,
@@ -15,11 +15,11 @@ from shapely.geometry import Point
 
 def pid_control_model() -> Model:
     """Set up a basic model with a PID controlled pump controlling a basin with abundant inflow."""
-
     model = Model(
         starttime="2020-01-01",
         endtime="2020-12-01",
         crs="EPSG:28992",
+        experimental=Experimental(concentration=True),
     )
 
     model.flow_boundary.add(
@@ -74,24 +74,24 @@ def pid_control_model() -> Model:
         ],
     )
 
-    model.edge.add(model.flow_boundary[1], model.basin[2])
-    model.edge.add(model.basin[2], model.pump[3])
-    model.edge.add(model.pump[3], model.level_boundary[4])
-    model.edge.add(model.level_boundary[4], model.outlet[6])
-    model.edge.add(model.pid_control[5], model.pump[3])
-    model.edge.add(model.outlet[6], model.basin[2])
-    model.edge.add(model.pid_control[7], model.outlet[6])
+    model.link.add(model.flow_boundary[1], model.basin[2])
+    model.link.add(model.basin[2], model.pump[3])
+    model.link.add(model.pump[3], model.level_boundary[4])
+    model.link.add(model.level_boundary[4], model.outlet[6])
+    model.link.add(model.pid_control[5], model.pump[3])
+    model.link.add(model.outlet[6], model.basin[2])
+    model.link.add(model.pid_control[7], model.outlet[6])
 
     return model
 
 
 def discrete_control_of_pid_control_model() -> Model:
     """Set up a basic model where a discrete control node sets the target level of a pid control node."""
-
     model = Model(
         starttime="2020-01-01",
         endtime="2020-12-01",
         crs="EPSG:28992",
+        experimental=Experimental(concentration=True),
     )
 
     model.level_boundary.add(
@@ -134,6 +134,7 @@ def discrete_control_of_pid_control_model() -> Model:
             discrete_control.Condition(
                 greater_than=[5.0],
                 compound_variable_id=1,
+                condition_id=1,
             ),
             discrete_control.Logic(
                 truth_state=["T", "F"], control_state=["target_high", "target_low"]
@@ -141,27 +142,27 @@ def discrete_control_of_pid_control_model() -> Model:
         ],
     )
 
-    model.edge.add(
+    model.link.add(
         model.level_boundary[1],
         model.outlet[2],
     )
-    model.edge.add(
+    model.link.add(
         model.outlet[2],
         model.basin[3],
     )
-    model.edge.add(
+    model.link.add(
         model.basin[3],
         model.tabulated_rating_curve[4],
     )
-    model.edge.add(
+    model.link.add(
         model.tabulated_rating_curve[4],
         model.terminal[5],
     )
-    model.edge.add(
+    model.link.add(
         model.pid_control[6],
         model.outlet[2],
     )
-    model.edge.add(
+    model.link.add(
         model.discrete_control[7],
         model.pid_control[6],
     )

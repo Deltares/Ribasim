@@ -10,13 +10,16 @@
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     p = model.integrator.p
-    (; discrete_control, graph) = p
+    (; discrete_control, graph, state_ranges) = p
 
     # Control input(flow rates)
     pump_control_mapping = p.pump.control_mapping
-    @test only(pump_control_mapping[(NodeID(:Pump, 4, p), "off")].scalar_update).value == 0
-    @test only(pump_control_mapping[(NodeID(:Pump, 4, p), "on")].scalar_update).value ==
-          1.0e-5
+    @test unique(
+        only(pump_control_mapping[(NodeID(:Pump, 4, p), "off")].itp_update).value.u,
+    ) == [0]
+    @test unique(
+        only(pump_control_mapping[(NodeID(:Pump, 4, p), "on")].itp_update).value.u,
+    ) == [1.0e-5]
 
     logic_mapping::Vector{Dict{Vector{Bool}, String}} = [
         Dict(
@@ -51,14 +54,19 @@
     # Control times
     t_1 = discrete_control.record.time[3]
     t_1_index = findfirst(>=(t_1), t)
-    @test level[1, t_1_index] <= discrete_control.compound_variables[1][1].greater_than[1]
+    @test level[1, t_1_index] <=
+          discrete_control.compound_variables[1][1].greater_than[1](0)
 
     t_2 = discrete_control.record.time[4]
     t_2_index = findfirst(>=(t_2), t)
-    @test level[2, t_2_index] >= discrete_control.compound_variables[1][2].greater_than[1]
+    @test level[2, t_2_index] >=
+          discrete_control.compound_variables[1][2].greater_than[1](0)
 
-    flow = get_du(model.integrator)[(:linear_resistance, :pump)]
-    @test all(iszero, flow)
+    du = get_du(model.integrator)
+    du_linear_resistance = view(du, state_ranges.linear_resistance)
+    du_pump = view(du, state_ranges.pump)
+    @test all(iszero, du_linear_resistance)
+    @test all(iszero, du_pump)
 end
 
 @testitem "Flow condition control" begin
@@ -74,7 +82,7 @@ end
     t_control = discrete_control.record.time[2]
     t_control_index = searchsortedfirst(t, t_control)
 
-    greater_than = discrete_control.compound_variables[1][1].greater_than[1]
+    greater_than = discrete_control.compound_variables[1][1].greater_than[1](0)
     flow_t_control = flow_boundary.flow_rate[1](t_control)
     flow_t_control_ahead = flow_boundary.flow_rate[1](t_control + Δt)
 
@@ -98,7 +106,7 @@ end
     t_control = discrete_control.record.time[2]
     t_control_index = searchsortedfirst(t, t_control)
 
-    greater_than = discrete_control.compound_variables[1][1].greater_than[1]
+    greater_than = discrete_control.compound_variables[1][1].greater_than[1](0)
     level_t_control = level_boundary.level[1](t_control)
     level_t_control_ahead = level_boundary.level[1](t_control + Δt)
 
@@ -146,15 +154,27 @@ end
 
 @testitem "TabulatedRatingCurve control" begin
     using Dates: Date
+    import BasicModelInterface as BMI
 
     toml_path = normpath(
         @__DIR__,
         "../../generated_testmodels/tabulated_rating_curve_control/ribasim.toml",
     )
     @test ispath(toml_path)
-    model = Ribasim.run(toml_path)
-    p = model.integrator.p
-    (; discrete_control) = p
+    model = Ribasim.Model(toml_path)
+    (; discrete_control, tabulated_rating_curve) = model.integrator.p
+    (; current_interpolation_index, interpolations) = tabulated_rating_curve
+
+    index_high, index_low = 1, 2
+    @test interpolations[index_high].t[end] == 1.0
+    @test interpolations[index_low].t[end] == 1.2
+
+    # Take a timestep to make discrete control set the rating curve to "high"
+    BMI.update(model)
+    @test only(current_interpolation_index)(0.0) == index_high
+    # Then run to completion
+    Ribasim.solve!(model)
+
     # it takes some months to fill the Basin above 0.5 m
     # with the initial "high" control_state
     @test discrete_control.record.control_state == ["high", "low"]
@@ -162,7 +182,7 @@ end
     t = Ribasim.datetime_since(discrete_control.record.time[2], model.config.starttime)
     @test Date(t) == Date("2020-03-16")
     # then the rating curve is updated to the "low" control_state
-    @test last(only(p.tabulated_rating_curve.table).t) == 1.2
+    @test only(current_interpolation_index)(0.0) == index_low
 end
 
 @testitem "Set PID target with DiscreteControl" begin
@@ -197,7 +217,7 @@ end
 end
 
 @testitem "Compound condition" begin
-    using Ribasim: NodeID
+    using Ribasim: NodeID, SubVariable
 
     toml_path = normpath(
         @__DIR__,
@@ -211,21 +231,21 @@ end
 
     compound_variable = only(only(compound_variables))
 
-    @test compound_variable.subvariables[1] == (;
+    @test compound_variable.subvariables[1] == SubVariable(;
         listen_node_id = NodeID(:FlowBoundary, 2, p),
         variable_ref = compound_variable.subvariables[1].variable_ref,
         variable = "flow_rate",
         weight = 0.5,
         look_ahead = 0.0,
     )
-    @test compound_variable.subvariables[2] == (;
+    @test compound_variable.subvariables[2] == SubVariable(;
         listen_node_id = NodeID(:FlowBoundary, 3, p),
         variable_ref = compound_variable.subvariables[2].variable_ref,
         variable = "flow_rate",
         weight = 0.5,
         look_ahead = 0.0,
     )
-    @test record.time ≈ [0.0, model.integrator.sol.t[end] / 2]
+    @test record.time ≈ [0.0, model.integrator.sol.t[end] / 2] rtol = 1e-2
     @test record.truth_state == ["F", "T"]
     @test record.control_state == ["Off", "On"]
 end
@@ -268,7 +288,7 @@ end
     model = Ribasim.run(toml_path)
     flow_data = DataFrame(Ribasim.flow_table(model))
 
-    function get_edge_flow(from_node_id, to_node_id)
+    function get_link_flow(from_node_id, to_node_id)
         data = filter(
             [:from_node_id, :to_node_id] =>
                 (a, b) -> (a == from_node_id) && (b == to_node_id),
@@ -277,11 +297,11 @@ end
         return data.flow_rate
     end
 
-    inflow = get_edge_flow(2, 3)
-    @test get_edge_flow(3, 4) ≈ max.(0.6 .* inflow, 0) rtol = 1e-4
-    @test get_edge_flow(4, 6) ≈ max.(0.6 .* inflow, 0) rtol = 1e-4
-    @test get_edge_flow(3, 5) ≈ max.(0.4 .* inflow, 0) rtol = 1e-4
-    @test get_edge_flow(5, 7) ≈ max.(0.4 .* inflow, 0) rtol = 1e-4
+    inflow = get_link_flow(2, 3)
+    @test get_link_flow(3, 4) ≈ max.(0.6 .* inflow, 0) rtol = 1e-4
+    @test get_link_flow(4, 6) ≈ max.(0.6 .* inflow, 0) rtol = 1e-4
+    @test get_link_flow(3, 5) ≈ max.(0.4 .* inflow, 0) rtol = 1e-4
+    @test get_link_flow(5, 7) ≈ max.(0.4 .* inflow, 0) rtol = 1e-4
 end
 
 @testitem "Concentration discrete control" begin
@@ -294,13 +314,36 @@ end
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     flow_data = DataFrame(Ribasim.flow_table(model))
-    flow_edge_0 = filter(:edge_id => id -> id == 0, flow_data)
-    t = Ribasim.seconds_since.(flow_edge_0.time, model.config.starttime)
+    flow_link_0 = filter(:link_id => id -> id == 0, flow_data)
+    t = Ribasim.seconds_since.(flow_link_0.time, model.config.starttime)
     itp =
-        model.integrator.p.basin.concentration_external[1]["concentration_external.kryptonite"]
+        model.integrator.p.basin.concentration_data.concentration_external[1]["concentration_external.kryptonite"]
     concentration = itp.(t)
     threshold = 0.5
     above_threshold = concentration .> threshold
-    @test all(isapprox.(flow_edge_0.flow_rate[above_threshold], 1e-3, rtol = 1e-2))
-    @test all(isapprox.(flow_edge_0.flow_rate[.!above_threshold], 0.0, atol = 1e-5))
+    @test all(isapprox.(flow_link_0.flow_rate[above_threshold], 1e-3, rtol = 1e-2))
+    @test all(isapprox.(flow_link_0.flow_rate[.!above_threshold], 0.0, atol = 1e-5))
+end
+
+@testitem "Transient discrete control condition" begin
+    using DataInterpolations.ExtrapolationType: Periodic
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/transient_condition/ribasim.toml")
+    @test ispath(toml_path)
+
+    model = Ribasim.run(toml_path)
+    (; record, compound_variables) = model.integrator.p.discrete_control
+
+    itp = compound_variables[1][1].greater_than[1]
+    @test itp.extrapolation_left == Periodic
+    @test itp.extrapolation_right == Periodic
+
+    t_condition_change = itp.t[2]
+
+    @test record.control_node_id == [4, 4, 4]
+    @test record.truth_state == ["T", "F", "T"]
+    @test record.control_state == ["B", "A", "B"]
+
+    # Control state changes precisely when the condition changes
+    @test record.time[1:2] ≈ [0, t_condition_change]
 end

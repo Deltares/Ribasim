@@ -1,5 +1,5 @@
 """
-This module forms the high level DockWidget.
+High level RibasimWidget.
 
 It ensures the underlying widgets can talk to each other.  It also manages the
 connection to the QGIS Layers Panel, and ensures there is a group for the
@@ -65,12 +65,12 @@ class RibasimWidget(QWidget):
         return self.__dataset_widget.node_layer
 
     @property
-    def edge_layer(self) -> QgsVectorLayer | None:
-        return self.__dataset_widget.edge_layer
+    def link_layer(self) -> QgsVectorLayer | None:
+        return self.__dataset_widget.link_layer
 
     @property
     def crs(self) -> QgsCoordinateReferenceSystem:
-        """Returns coordinate reference system of current mapview"""
+        """Returns coordinate reference system of current mapview."""
         map_canvas = self.iface.mapCanvas()
         assert map_canvas is not None
         map_settings = map_canvas.mapSettings()
@@ -110,9 +110,9 @@ class RibasimWidget(QWidget):
         self.create_subgroup(name, "Ribasim Input")
 
     def add_to_group(self, maplayer: Any, destination: str, on_top: bool):
-        """
-        Try to add to a group; it might have been deleted. In that case, we add
-        as many groups as required.
+        """Try to add to a group.
+
+        It might have been deleted. In that case, we add as many groups as required.
         """
         group = self.groups[destination]
         try:
@@ -138,7 +138,7 @@ class RibasimWidget(QWidget):
         labels: QgsAbstractVectorLayerLabeling | None = None,
     ) -> QgsMapLayer | None:
         """
-        Add a layer to the Layers Panel
+        Add a layer to the Layers Panel.
 
         Parameters
         ----------

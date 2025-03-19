@@ -17,7 +17,7 @@ time table, it is empty, or all timestamps of that variable are missing.
 
 column                | type    | unit                  | restriction
 ---------             | ------- | --------------------- | -----------
-node_id               | Int32   | -                     | sorted
+node_id               | Int32   | -                     |
 precipitation         | Float64 | $\text{m}/\text{s}$   | non-negative
 potential_evaporation | Float64 | $\text{m}/\text{s}$   | non-negative
 drainage              | Float64 | $\text{m}^3/\text{s}$ | non-negative
@@ -31,7 +31,6 @@ to have a reasonable and safe default, a value must be provided in the static ta
 
 This table is the transient form of the `Basin` table.
 The only difference is that a time column is added.
-The table must by sorted by time, and per time it must be sorted by `node_id`.
 
 ### Interpolation
 
@@ -92,7 +91,7 @@ The state table gives the initial water levels of all Basins.
 
 column    | type    | unit         | restriction
 --------- | ------- | ------------ | -----------
-node_id   | Int32   | -            | sorted
+node_id   | Int32   | -            |
 level     | Float64 | $\text{m}$   | $\ge$ basin bottom
 
 Each Basin ID needs to be in the table.
@@ -113,9 +112,9 @@ The profile table defines the physical dimensions of the storage reservoir of ea
 
 column    | type    | unit         | restriction
 --------- | ------- | ------------ | -----------
-node_id   | Int32   | -            | sorted
+node_id   | Int32   | -            |
 area      | Float64 | $\text{m}^2$ | non-negative, per node_id: start positive and not decreasing
-level     | Float64 | $\text{m}$   | per node_id: increasing
+level     | Float64 | $\text{m}$   | increasing
 
 The level is the level at the basin outlet. All levels are defined in meters above a datum
 that is the same for the entire model. An example of the first 4 rows of such a table is
@@ -228,7 +227,7 @@ ax.legend()
 
 for converting the initial state in terms of levels to an initial state in terms of storages used in the core.
 
-#### Interactive basin example
+#### Interactive Basin example
 
 The profile data is not detailed enough to create a full 3D picture of the basin. However, if we assume the profile data is for a stretch of canal of given length, the following plot shows a cross section of the basin.
 ```{python}
@@ -356,7 +355,7 @@ Using this makes it easier to recognize which water or land surfaces are represe
 
 column    | type                    | restriction
 --------- | ----------------------- | -----------
-node_id   | Int32                   | sorted
+node_id   | Int32                   |
 geom      | Polygon or MultiPolygon | (optional)
 
 ## Subgrid
@@ -367,10 +366,10 @@ This functionality can be used to translate a single lumped basin level to a mor
 
 column        | type    | unit         | restriction
 ------------- | ------- | ------------ | ------------------------
-subgrid_id    | Int32   | -            | sorted
+subgrid_id    | Int32   | -            |
 node_id       | Int32   | -            | constant per subgrid_id
-basin_level   | Float64 | $\text{m}$   | sorted per subgrid_id
-subgrid_level | Float64 | $\text{m}$   | sorted per subgrid_id
+basin_level   | Float64 | $\text{m}$   |
+subgrid_level | Float64 | $\text{m}$   |
 
 The table below shows example input for two subgrid elements:
 
@@ -391,33 +390,41 @@ Water levels beyond the last `basin_level` are linearly extrapolated.
 Note that the interpolation to subgrid water level is not constrained by any water balance within Ribasim.
 Generally, to create physically meaningful subgrid water levels, the subgrid table must be parametrized properly such that the spatially integrated water volume of the subgrid elements agrees with the total storage volume of the basin.
 
+## Subgrid time
+
+This table is the transient form of the Subgrid table.
+The only difference is that a time column is added.
+With this the subgrid relations can be updated over time.
+Note that a `node_id` can be either in this table or in the static one, but not both.
+That means for each Basin all subgrid relations are either static or dynamic.
+
 ## Concentration {#sec-basin-conc}
 This table defines the concentration of substances for the inflow boundaries of a Basin node.
 
 column        | type     | unit                     | restriction
 ------------- | -------- | ------------------------ | -----------
-node_id       | Int32    | -                        | sorted
-time          | DateTime | -                        | sorted per node_id
+node_id       | Int32    | -                        |
+time          | DateTime | -                        |
 substance     | String   |                          | can correspond to known Delwaq substances
 drainage      | Float64  | $\text{g}/\text{m}^3$    | (optional)
 precipitation | Float64  | $\text{g}/\text{m}^3$    | (optional)
 
-## ConcentrationState {#sec-basin-conc-state}
+## Concentration state {#sec-basin-conc-state}
 This table defines the concentration of substances in the Basin at the start of the simulation.
 
 column         | type     | unit                     | restriction
 -------------- | -------- | ------------------------ | -----------
-node_id        | Int32    | -                        | sorted
+node_id        | Int32    | -                        |
 substance      | String   | -                        | can correspond to known Delwaq substances
 concentration  | Float64  | $\text{g}/\text{m}^3$    |
 
-## ConcentrationExternal
+## Concentration external
 This table is used for (external) concentrations, that can be used for Control lookups.
 
 column         | type     | unit                     | restriction
 -------------- | -------- | ------------------------ | -----------
-node_id        | Int32    | -                        | sorted
-time           | DateTime | -                        | sorted per node_id
+node_id        | Int32    | -                        |
+time           | DateTime | -                        |
 substance      | String   | -                        | can correspond to known Delwaq substances
 concentration  | Float64  | $\text{g}/\text{m}^3$    |
 

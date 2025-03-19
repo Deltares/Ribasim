@@ -12,7 +12,7 @@ crs = "EPSG:4326"      # required
 input_dir = "."         # required
 results_dir = "results" # required
 
-ribasim_version = "2024.11.0" # required
+ribasim_version = "2025.2.0" # required
 
 # Specific tables can also go into Arrow files rather than the database.
 # For large tables this can benefit from better compressed file sizes.
@@ -21,8 +21,14 @@ ribasim_version = "2024.11.0" # required
 time = "basin/time.arrow"
 
 [allocation]
-timestep = 86400                   # optional (required if use_allocation = true), default 86400
-use_allocation = false             # optional, default false
+timestep = 86400                                 # optional (required if use_allocation = true), default 86400
+use_allocation = false                           # optional, default false
+[allocation.source_priority]
+user_demand = 1000       # optional, default 1000
+boundary = 2000          # optional, default 2000
+level_demand = 3000      # optional, default 3000
+flow_demand = 4000       # optional, default 4000
+subnetwork_inlet = 5000  # optional, default 5000
 
 [solver]
 algorithm = "QNDF"  # optional, default "QNDF"
@@ -45,9 +51,9 @@ evaporate_mass = true  # optional, default true to simulate a correct mass balan
 verbosity = "info" # optional, default "info", can otherwise be "debug", "warn" or "error"
 
 [results]
-# These results files are always written
-compression = true  # optional, default true, using zstd compression
+compression = true    # optional, default true, using zstd compression
 compression_level = 6 # optional, default 6
+subgrid = false       # optional, default false
 
 [experimental]
 # Experimental features, disabled by default

@@ -15,7 +15,7 @@ class NodesWidget(QWidget):
         self.ribasim_widget = cast(RibasimWidget, parent)
         self.node_buttons: dict[str, QPushButton] = {}
         for node in NODES:
-            if node in ("Node", "Edge"):
+            if node in ("Node", "Link"):
                 continue
             button = QPushButton(node)
             button.clicked.connect(partial(self.new_node_layer, node_type=node))

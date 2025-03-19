@@ -4,7 +4,9 @@
     id = NodeID(:Basin, 2, 1)
     @test sprint(show, id) === "Basin #2"
     @test id < NodeID(:Basin, 3, 1)
-    @test_throws ErrorException id < NodeID(:Pump, 3, 1)
+    @test id < NodeID(:Pump, 3, 1)
+    @test 2 < NodeID(:Pump, 3, 1)
+    @test id < 3
     @test Int32(id) === Int32(2)
     @test convert(Int32, id) === Int32(2)
 end
@@ -20,23 +22,11 @@ end
     level = [[0.0, 1.0], [4.0, 5.0]]
     level_to_area = LinearInterpolation.(area, level)
     storage_to_level = invert_integral.(level_to_area)
-    demand = zeros(2)
-
-    substances = OrderedSet([:test])
-    concentration_state = zeros(2, 1)
-    concentration = zeros(2, 2, 1)
-    mass = zeros(2, 1)
 
     basin = Ribasim.Basin(;
         node_id = NodeID.(:Basin, [5, 7], [1, 2]),
         storage_to_level,
         level_to_area,
-        demand,
-        concentration_state,
-        concentration,
-        mass,
-        substances,
-        time = StructVector{Ribasim.BasinTimeV1}(undef, 0),
         concentration_time = StructVector{Ribasim.BasinConcentrationV1}(undef, 0),
     )
 
@@ -51,11 +41,98 @@ end
     @test !Ribasim.basin_bottom(basin, NodeID(:Terminal, 6, 1))[1]
 end
 
+@testitem "Profile" begin
+    import Tables
+    using DataInterpolations: LinearInterpolation, integral, invert_integral
+    using DataInterpolations.ExtrapolationType: Constant, Extension
+
+    function lookup(profile, S)
+        level_to_area = LinearInterpolation(
+            profile.A,
+            profile.h;
+            extrapolation_left = Constant,
+            extrapolation_right = Extension,
+        )
+        storage_to_level = invert_integral(level_to_area)
+
+        level = storage_to_level(max(S, 0.0))
+        area = level_to_area(level)
+        return area, level
+    end
+
+    n_interpolations = 100
+    storage = range(0.0, 1000.0, n_interpolations)
+
+    # Covers interpolation for constant and non-constant area, extrapolation for constant area
+    A = [1e-9, 100.0, 100.0]
+    h = [0.0, 10.0, 15.0]
+    S =
+        integral.(
+            Ref(
+                LinearInterpolation(
+                    A,
+                    h;
+                    extrapolation_left = Constant,
+                    extrapolation_right = Extension,
+                ),
+            ),
+            h,
+        )
+    profile = (; S, A, h)
+
+    # On profile points we reproduce the profile
+    for (; S, A, h) in Tables.rows(profile)
+        @test lookup(profile, S) == (A, h)
+    end
+
+    # Robust to negative storage
+    @test lookup(profile, -1.0) == (profile.A[1], profile.h[1])
+
+    # On the first segment
+    S = 100.0
+    A, h = lookup(profile, S)
+    @test h ≈ sqrt(S / 5)
+    @test A ≈ 10 * h
+
+    # On the second segment and extrapolation
+    for S in [500.0 + 100.0, 1000.0 + 100.0]
+        local A, h
+        S = 500.0 + 100.0
+        A, h = lookup(profile, S)
+        @test h ≈ 10.0 + (S - 500.0) / 100.0
+        @test A == 100.0
+    end
+
+    # Covers extrapolation for non-constant area
+    A = [1e-9, 100.0]
+    h = [0.0, 10.0]
+    S =
+        integral.(
+            Ref(
+                LinearInterpolation(
+                    A,
+                    h;
+                    extrapolation_left = Constant,
+                    extrapolation_right = Extension,
+                ),
+            ),
+            h,
+        )
+
+    profile = (; A, h, S)
+
+    S = 500.0 + 100.0
+    A, h = lookup(profile, S)
+    @test h ≈ sqrt(S / 5)
+    @test A ≈ 10 * h
+end
+
 @testitem "Convert levels to storages" begin
     using StructArrays: StructVector
     using Logging
     using Ribasim: NodeID
     using DataInterpolations: LinearInterpolation, invert_integral
+    using DataInterpolations.ExtrapolationType: Constant, Extension
     using DataStructures: OrderedSet
 
     level = [
@@ -82,26 +159,19 @@ end
         0.10659325339342585,
         1.1,
     ]
-    level_to_area = LinearInterpolation(area, level; extrapolate = true)
+    level_to_area = LinearInterpolation(
+        area,
+        level;
+        extrapolation_left = Constant,
+        extrapolation_right = Extension,
+    )
     storage_to_level = invert_integral(level_to_area)
-    demand = zeros(1)
-
-    substances = OrderedSet([:test])
-    concentration_state = zeros(1, 1)
-    concentration = zeros(2, 1, 1)
-    mass = zeros(1, 1)
 
     basin = Ribasim.Basin(;
         node_id = NodeID.(:Basin, [1], 1),
         storage_to_level = [storage_to_level],
         level_to_area = [level_to_area],
-        demand,
-        time = StructVector{Ribasim.BasinTimeV1}(undef, 0),
         concentration_time = StructVector{Ribasim.BasinConcentrationV1}(undef, 0),
-        concentration_state,
-        concentration,
-        mass,
-        substances,
     )
 
     logger = TestLogger()
@@ -183,7 +253,6 @@ end
 
 @testitem "Jacobian sparsity" begin
     import SQLite
-    using ComponentArrays: ComponentVector
     using SparseArrays: sparse, findnz
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
@@ -197,7 +266,6 @@ end
     t0 = 0.0
     u0 = Ribasim.build_state_vector(p)
     du0 = copy(u0)
-    p = Ribasim.build_flow_to_storage(p, u0)
     jac_prototype = Ribasim.get_jac_prototype(du0, u0, p, t0)
 
     # rows, cols, _ = findnz(jac_prototype)
@@ -219,7 +287,6 @@ end
     close(db)
     u0 = Ribasim.build_state_vector(p)
     du0 = copy(u0)
-    p = Ribasim.build_flow_to_storage(p, u0)
     jac_prototype = Ribasim.get_jac_prototype(du0, u0, p, t0)
 
     #! format: off
@@ -329,27 +396,29 @@ end
 end
 
 @testitem "flow_to_storage matrix" begin
-    using ComponentArrays: ComponentArray, Axis, getaxes
     using LinearAlgebra: I
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.Model(toml_path)
-    (; u, p) = model.integrator
-    n_basins = length(u.evaporation)
-    (; flow_to_storage) = p
-    flow_to_storage =
-        ComponentArray(flow_to_storage, (Axis(; basins = 1:n_basins), only(getaxes(u))))
+    (; p) = model.integrator
+    n_basins = length(p.basin.node_id)
+    (; flow_to_storage, state_ranges) = p
 
-    @test flow_to_storage[:, :evaporation] == -I
-    @test flow_to_storage[:, :infiltration] == -I
+    @test flow_to_storage[:, state_ranges.evaporation] == -I
+    @test flow_to_storage[:, state_ranges.infiltration] == -I
 
     for node_name in
         [:tabulated_rating_curve, :pump, :outlet, :linear_resistance, :manning_resistance]
-        flow_to_storage_node = flow_to_storage[:, node_name]
+        state_range = getproperty(state_ranges, node_name)
+        flow_to_storage_node = flow_to_storage[:, state_range]
         # In every column there is either 0 or 1 instance of 1.0 (flow into a basin)
         @test all(
             i -> i ∈ (0, 1),
-            count(==(1.0), collect(flow_to_storage[:, :tabulated_rating_curve]); dims = 1),
+            count(
+                ==(1.0),
+                collect(flow_to_storage[:, state_ranges.tabulated_rating_curve]);
+                dims = 1,
+            ),
         )
 
         # In every column there is either 0 or 1 instance of -1.0 (flow out of a basin)
@@ -357,9 +426,31 @@ end
             i -> i ∈ (0, 1),
             count(
                 ==(1 - 0.0),
-                collect(flow_to_storage[:, :tabulated_rating_curve]);
+                collect(flow_to_storage[:, state_ranges.tabulated_rating_curve]);
                 dims = 1,
             ),
         )
     end
+end
+
+@testitem "unsafe_array" begin
+    a = [1.0, 2.0, 3.0]
+    b = [4.0, 5.0, 6.0]
+    x = vcat(a, b)
+
+    y = Ribasim.unsafe_array(view(x, 4:6))
+    @test y isa Vector{Float64}
+    @test y == b
+    # changing the input changes the output; no data copy is made
+    x[5] = 10.0
+    @test y[2] === 10.0
+end
+
+@testitem "find_index" begin
+    using Ribasim: find_index
+    using DataStructures: OrderedSet
+    s = OrderedSet([:a, :b, :c])
+    @test find_index(:a, s) === 1
+    @test find_index(:c, s) === 3
+    @test_throws "not found" find_index(:d, s)
 end

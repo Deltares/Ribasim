@@ -2,27 +2,27 @@
 title: "FlowDemand"
 ---
 
-A `FlowDemand` node associates a non-consuming flow demand to a connector node (e.g. `Pump`, `TabulatedRatingCurve`) for one single priority.
+A `FlowDemand` node associates a non-consuming flow demand to a connector node (e.g. `Pump`, `TabulatedRatingCurve`) for one single demand priority.
 FlowDemand nodes can set a flow demand only for a single connector node.
 
 # Tables
 
 ## Static
 
-column        | type     | unit                  | restriction
-------------- | -------- | --------------------- | -----------
-node_id       | Int32    | -                     | sorted
-priority      | Int32    | -                     | positive
-demand        | Float64  | $\text{m}^3/\text{s}$ | non-negative
+column          | type     | unit                  | restriction
+--------------- | -------- | --------------------- | -----------
+node_id         | Int32    | -                     |
+demand_priority | Int32    | -                     | positive
+demand          | Float64  | $\text{m}^3/\text{s}$ | non-negative
 
 ## Time
 
 This table is the transient form of the `FlowDemand` table, in which a time-dependent demand can be supplied.
 Similar to the static version, only a single priority per `FlowDemand` node can be provided.
 
-column        | type     | unit                  | restriction
-------------- | -------- | --------------------- | -----------
-node_id       | Int32    | -                     | sorted
-time          | DateTime | -                     | sorted per node_id
-priority      | Int32    | -                     | positive
-demand        | Float64  | $\text{m}^3/\text{s}$ | non-negative
+column          | type     | unit                  | restriction
+--------------- | -------- | --------------------- | -----------
+node_id         | Int32    | -                     |
+time            | DateTime | -                     |
+demand_priority | Int32    | -                     | positive
+demand          | Float64  | $\text{m}^3/\text{s}$ | non-negative

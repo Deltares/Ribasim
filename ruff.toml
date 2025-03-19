@@ -1,19 +1,11 @@
 exclude = ["ribasim_qgis/tomllib/*"]
-extend-include = ["*.ipynb"]
-target-version = "py39"
+target-version = "py311"
 
 [lint]
 # See https://docs.astral.sh/ruff/rules/
 select = ["C4", "D2", "D3", "D4", "E", "F", "I", "NPY", "PD", "UP"]
 ignore = [
-    "D202",
-    "D205",
-    "D206",
-    "D400",
-    "D404",
-    "E402",
     "E501",
-    "E703",
     "PD002",
     "PD901",
 ]

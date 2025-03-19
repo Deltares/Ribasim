@@ -1,39 +1,42 @@
 # These schemas define the name of database tables and the configuration file structure
 # The identifier is parsed as ribasim.nodetype.kind, no capitals or underscores are allowed.
-@schema "ribasim.discretecontrol.variable" DiscreteControlVariable
-@schema "ribasim.discretecontrol.condition" DiscreteControlCondition
-@schema "ribasim.discretecontrol.logic" DiscreteControlLogic
-@schema "ribasim.continuouscontrol.variable" ContinuousControlVariable
-@schema "ribasim.continuouscontrol.function" ContinuousControlFunction
-@schema "ribasim.basin.static" BasinStatic
-@schema "ribasim.basin.time" BasinTime
-@schema "ribasim.basin.profile" BasinProfile
-@schema "ribasim.basin.state" BasinState
-@schema "ribasim.basin.subgrid" BasinSubgrid
 @schema "ribasim.basin.concentration" BasinConcentration
 @schema "ribasim.basin.concentrationexternal" BasinConcentrationExternal
 @schema "ribasim.basin.concentrationstate" BasinConcentrationState
+@schema "ribasim.basin.profile" BasinProfile
+@schema "ribasim.basin.state" BasinState
+@schema "ribasim.basin.static" BasinStatic
+@schema "ribasim.basin.subgrid" BasinSubgrid
+@schema "ribasim.basin.subgridtime" BasinSubgridTime
+@schema "ribasim.basin.time" BasinTime
+@schema "ribasim.continuouscontrol.function" ContinuousControlFunction
+@schema "ribasim.continuouscontrol.variable" ContinuousControlVariable
+@schema "ribasim.discretecontrol.condition" DiscreteControlCondition
+@schema "ribasim.discretecontrol.logic" DiscreteControlLogic
+@schema "ribasim.discretecontrol.variable" DiscreteControlVariable
+@schema "ribasim.flowboundary.concentration" FlowBoundaryConcentration
 @schema "ribasim.flowboundary.static" FlowBoundaryStatic
 @schema "ribasim.flowboundary.time" FlowBoundaryTime
-@schema "ribasim.flowboundary.concentration" FlowBoundaryConcentration
+@schema "ribasim.flowdemand.static" FlowDemandStatic
+@schema "ribasim.flowdemand.time" FlowDemandTime
+@schema "ribasim.levelboundary.concentration" LevelBoundaryConcentration
 @schema "ribasim.levelboundary.static" LevelBoundaryStatic
 @schema "ribasim.levelboundary.time" LevelBoundaryTime
-@schema "ribasim.levelboundary.concentration" LevelBoundaryConcentration
+@schema "ribasim.leveldemand.static" LevelDemandStatic
+@schema "ribasim.leveldemand.time" LevelDemandTime
 @schema "ribasim.linearresistance.static" LinearResistanceStatic
 @schema "ribasim.manningresistance.static" ManningResistanceStatic
+@schema "ribasim.outlet.static" OutletStatic
+@schema "ribasim.outlet.time" OutletTime
 @schema "ribasim.pidcontrol.static" PidControlStatic
 @schema "ribasim.pidcontrol.time" PidControlTime
 @schema "ribasim.pump.static" PumpStatic
+@schema "ribasim.pump.time" PumpTime
 @schema "ribasim.tabulatedratingcurve.static" TabulatedRatingCurveStatic
 @schema "ribasim.tabulatedratingcurve.time" TabulatedRatingCurveTime
-@schema "ribasim.outlet.static" OutletStatic
+@schema "ribasim.userdemand.concentration" UserDemandConcentration
 @schema "ribasim.userdemand.static" UserDemandStatic
 @schema "ribasim.userdemand.time" UserDemandTime
-@schema "ribasim.userdemand.concentration" UserDemandConcentration
-@schema "ribasim.leveldemand.static" LevelDemandStatic
-@schema "ribasim.leveldemand.time" LevelDemandTime
-@schema "ribasim.flowdemand.static" FlowDemandStatic
-@schema "ribasim.flowdemand.time" FlowDemandTime
 
 const delimiter = " / "
 tablename(sv::Type{SchemaVersion{T, N}}) where {T, N} = tablename(sv())
@@ -58,8 +61,11 @@ function nodetype(
     type_string = string(T)
     elements = split(type_string, '.'; limit = 3)
     last_element = last(elements)
+    # Special case last elements that need an underscore
     if startswith(last_element, "concentration") && length(last_element) > 13
         elements[end] = "concentration_$(last_element[14:end])"
+    elseif last_element == "subgridtime"
+        elements[end] = "subgrid_time"
     end
     if isnode(sv)
         n = elements[2]
@@ -83,6 +89,16 @@ end
     control_state::Union{Missing, String}
 end
 
+@version PumpTimeV1 begin
+    node_id::Int32
+    time::DateTime
+    flow_rate::Float64
+    min_flow_rate::Union{Missing, Float64}
+    max_flow_rate::Union{Missing, Float64}
+    min_upstream_level::Union{Missing, Float64}
+    max_downstream_level::Union{Missing, Float64}
+end
+
 @version OutletStaticV1 begin
     node_id::Int32
     active::Union{Missing, Bool}
@@ -92,6 +108,16 @@ end
     min_upstream_level::Union{Missing, Float64}
     max_downstream_level::Union{Missing, Float64}
     control_state::Union{Missing, String}
+end
+
+@version OutletTimeV1 begin
+    node_id::Int32
+    time::DateTime
+    flow_rate::Float64
+    min_flow_rate::Union{Missing, Float64}
+    max_flow_rate::Union{Missing, Float64}
+    min_upstream_level::Union{Missing, Float64}
+    max_downstream_level::Union{Missing, Float64}
 end
 
 @version BasinStaticV1 begin
@@ -146,6 +172,14 @@ end
 @version BasinSubgridV1 begin
     subgrid_id::Int32
     node_id::Int32
+    basin_level::Float64
+    subgrid_level::Float64
+end
+
+@version BasinSubgridTimeV1 begin
+    subgrid_id::Int32
+    node_id::Int32
+    time::DateTime
     basin_level::Float64
     subgrid_level::Float64
 end
@@ -235,7 +269,9 @@ end
 @version DiscreteControlConditionV1 begin
     node_id::Int32
     compound_variable_id::Int32
+    condition_id::Int32
     greater_than::Float64
+    time::Union{Missing, DateTime}
 end
 
 @version DiscreteControlLogicV1 begin
@@ -278,7 +314,6 @@ end
     proportional::Float64
     integral::Float64
     derivative::Float64
-    control_state::Union{Missing, String}
 end
 
 @version UserDemandStaticV1 begin
@@ -287,7 +322,7 @@ end
     demand::Union{Missing, Float64}
     return_factor::Float64
     min_level::Float64
-    priority::Union{Missing, Int32}
+    demand_priority::Union{Missing, Int32}
 end
 
 @version UserDemandTimeV1 begin
@@ -296,7 +331,7 @@ end
     demand::Float64
     return_factor::Float64
     min_level::Float64
-    priority::Union{Missing, Int32}
+    demand_priority::Union{Missing, Int32}
 end
 
 @version UserDemandConcentrationV1 begin
@@ -310,7 +345,7 @@ end
     node_id::Int32
     min_level::Union{Missing, Float64}
     max_level::Union{Missing, Float64}
-    priority::Union{Missing, Int32}
+    demand_priority::Union{Missing, Int32}
 end
 
 @version LevelDemandTimeV1 begin
@@ -318,18 +353,18 @@ end
     time::DateTime
     min_level::Union{Missing, Float64}
     max_level::Union{Missing, Float64}
-    priority::Union{Missing, Int32}
+    demand_priority::Union{Missing, Int32}
 end
 
 @version FlowDemandStaticV1 begin
     node_id::Int
     demand::Float64
-    priority::Union{Missing, Int32}
+    demand_priority::Union{Missing, Int32}
 end
 
 @version FlowDemandTimeV1 begin
     node_id::Int
     time::DateTime
     demand::Float64
-    priority::Union{Missing, Int32}
+    demand_priority::Union{Missing, Int32}
 end

@@ -1,5 +1,5 @@
 @testitem "Basin profile validation" begin
-    using Ribasim: NodeID, valid_profiles, qh_interpolation, ScalarInterpolation
+    using Ribasim: NodeID, valid_profiles
     using Logging
     using StructArrays: StructVector
 
@@ -21,9 +21,17 @@
     @test logger.logs[2].kwargs[:area] == 0
     @test logger.logs[3].level == Error
     @test logger.logs[3].message == "Basin #1 profile cannot have decreasing areas."
+end
 
-    table = StructVector(; flow_rate = [0.0, 0.1], level = [1.0, 2.0], node_id = [5, 5])
-    itp = qh_interpolation(table, 1:2)
+@testitem "Q(h) validation" begin
+    import SQLite
+    using Logging
+    using Ribasim: NodeID, qh_interpolation, ScalarInterpolation
+
+    node_id = NodeID(:TabulatedRatingCurve, 1, 1)
+    level = [1.0, 2.0]
+    flow_rate = [0.0, 0.1]
+    itp = qh_interpolation(node_id, level, flow_rate)
     # constant extrapolation at the bottom end, linear extrapolation at the top end
     itp(0.0) ≈ 0.0
     itp(1.0) ≈ 0.0
@@ -31,11 +39,6 @@
     itp(2.0) ≈ 0.1
     itp(3.0) ≈ 0.2
     @test itp isa ScalarInterpolation
-end
-
-@testitem "Q(h) validation" begin
-    import SQLite
-    using Logging
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/invalid_qh/ribasim.toml")
     @test ispath(toml_path)
@@ -47,7 +50,7 @@ end
 
     logger = TestLogger()
     with_logger(logger) do
-        @test_throws "Errors occurred when parsing TabulatedRatingCurve data." Ribasim.TabulatedRatingCurve(
+        @test_throws "Errors occurred when parsing TabulatedRatingCurve #1." Ribasim.TabulatedRatingCurve(
             db,
             config,
             graph,
@@ -69,13 +72,13 @@ end
     using Graphs: DiGraph
     using Logging
     using MetaGraphsNext: MetaGraph
-    using Ribasim: NodeID, NodeMetadata, EdgeMetadata, EdgeType
+    using Ribasim: NodeID, NodeMetadata, LinkMetadata, LinkType
 
     graph = MetaGraph(
         DiGraph();
         label_type = NodeID,
         vertex_data_type = NodeMetadata,
-        edge_data_type = EdgeMetadata,
+        edge_data_type = LinkMetadata,
         graph_data = nothing,
     )
 
@@ -85,19 +88,14 @@ end
     graph[NodeID(:Basin, 4, 1)] = NodeMetadata(:pump, 9)
     graph[NodeID(:Pump, 6, 1)] = NodeMetadata(:pump, 9)
 
-    function set_edge_metadata!(id_1, id_2, edge_type)
-        graph[id_1, id_2] = EdgeMetadata(;
-            id = 0,
-            type = edge_type,
-            subnetwork_id_source = 0,
-            edge = (id_1, id_2),
-        )
+    function set_link_metadata!(id_1, id_2, link_type)
+        graph[id_1, id_2] = LinkMetadata(; id = 0, type = link_type, link = (id_1, id_2))
         return nothing
     end
 
-    set_edge_metadata!(NodeID(:Basin, 2, 1), NodeID(:Pump, 1, 1), EdgeType.flow)
-    set_edge_metadata!(NodeID(:Basin, 3, 1), NodeID(:Pump, 1, 1), EdgeType.flow)
-    set_edge_metadata!(NodeID(:Pump, 6, 1), NodeID(:Basin, 2, 1), EdgeType.flow)
+    set_link_metadata!(NodeID(:Basin, 2, 1), NodeID(:Pump, 1, 1), LinkType.flow)
+    set_link_metadata!(NodeID(:Basin, 3, 1), NodeID(:Pump, 1, 1), LinkType.flow)
+    set_link_metadata!(NodeID(:Pump, 6, 1), NodeID(:Basin, 2, 1), LinkType.flow)
 
     logger = TestLogger()
     with_logger(logger) do
@@ -126,7 +124,7 @@ end
     using Graphs: DiGraph
     using Logging
     using MetaGraphsNext: MetaGraph
-    using Ribasim: NodeID, NodeMetadata, EdgeMetadata, NodeID, EdgeType
+    using Ribasim: NodeID, NodeMetadata, LinkMetadata, NodeID, LinkType
 
     pid_control_node_id = NodeID.(:PidControl, [1, 6], 1)
     pid_control_listen_node_id = [NodeID(:Terminal, 3, 1), NodeID(:Basin, 5, 1)]
@@ -135,7 +133,7 @@ end
         DiGraph();
         label_type = NodeID,
         vertex_data_type = NodeMetadata,
-        edge_data_type = EdgeMetadata,
+        edge_data_type = LinkMetadata,
         graph_data = nothing,
     )
 
@@ -147,23 +145,18 @@ end
     graph[NodeID(:Basin, 5, 1)] = NodeMetadata(:basin, 0)
     graph[NodeID(:Basin, 7, 1)] = NodeMetadata(:basin, 0)
 
-    function set_edge_metadata!(id_1, id_2, edge_type)
-        graph[id_1, id_2] = EdgeMetadata(;
-            id = 0,
-            type = edge_type,
-            subnetwork_id_source = 0,
-            edge = (id_1, id_2),
-        )
+    function set_link_metadata!(id_1, id_2, link_type)
+        graph[id_1, id_2] = LinkMetadata(; id = 0, type = link_type, link = (id_1, id_2))
         return nothing
     end
 
-    set_edge_metadata!(NodeID(:Terminal, 3, 1), NodeID(:Pump, 4, 1), EdgeType.flow)
-    set_edge_metadata!(NodeID(:Basin, 7, 1), NodeID(:Pump, 2, 1), EdgeType.flow)
-    set_edge_metadata!(NodeID(:Pump, 2, 1), NodeID(:Basin, 7, 1), EdgeType.flow)
-    set_edge_metadata!(NodeID(:Pump, 4, 1), NodeID(:Basin, 7, 1), EdgeType.flow)
+    set_link_metadata!(NodeID(:Terminal, 3, 1), NodeID(:Pump, 4, 1), LinkType.flow)
+    set_link_metadata!(NodeID(:Basin, 7, 1), NodeID(:Pump, 2, 1), LinkType.flow)
+    set_link_metadata!(NodeID(:Pump, 2, 1), NodeID(:Basin, 7, 1), LinkType.flow)
+    set_link_metadata!(NodeID(:Pump, 4, 1), NodeID(:Basin, 7, 1), LinkType.flow)
 
-    set_edge_metadata!(NodeID(:PidControl, 1, 1), NodeID(:Pump, 4, 1), EdgeType.control)
-    set_edge_metadata!(NodeID(:PidControl, 6, 1), NodeID(:Pump, 2, 1), EdgeType.control)
+    set_link_metadata!(NodeID(:PidControl, 1, 1), NodeID(:Pump, 4, 1), LinkType.control)
+    set_link_metadata!(NodeID(:PidControl, 6, 1), NodeID(:Pump, 2, 1), LinkType.control)
 
     logger = TestLogger()
     with_logger(logger) do
@@ -225,6 +218,7 @@ end
 @testitem "Pump/outlet flow rate sign validation" begin
     using Logging
     using Ribasim: NodeID, NodeType, ControlStateUpdate, ParameterUpdate, cache
+    using DataInterpolations: LinearInterpolation
 
     logger = TestLogger()
 
@@ -244,15 +238,20 @@ end
     logger = TestLogger()
 
     with_logger(logger) do
-        flow_rate = cache(1)
-        flow_rate[Float64[]] .= -1
+        flow_rate_cache = cache(1)
+        flow_rate_cache[Float64[]] .= -1
         @test_throws "Invalid Pump flow rate(s)." Ribasim.Pump(;
             node_id = [NodeID(:Pump, 1, 1)],
-            flow_rate,
+            flow_rate_cache,
             control_mapping = Dict(
                 (NodeID(:Pump, 1, 1), "foo") => ControlStateUpdate(;
                     active = ParameterUpdate(:active, true),
-                    scalar_update = [ParameterUpdate(:flow_rate, -1.0)],
+                    itp_update = [
+                        ParameterUpdate(
+                            :flow_rate,
+                            LinearInterpolation([-1.0, -1.0], [0.0, 1.0]),
+                        ),
+                    ],
                 ),
             ),
         )
@@ -265,12 +264,12 @@ end
           "Pump #1 flow rates must be non-negative, found -1.0 for control state 'foo'."
 end
 
-@testitem "Edge type validation" begin
+@testitem "Link type validation" begin
     import SQLite
     using Logging
 
     toml_path =
-        normpath(@__DIR__, "../../generated_testmodels/invalid_edge_types/ribasim.toml")
+        normpath(@__DIR__, "../../generated_testmodels/invalid_link_types/ribasim.toml")
     @test ispath(toml_path)
 
     cfg = Ribasim.Config(toml_path)
@@ -278,47 +277,41 @@ end
     db = SQLite.DB(db_path)
     logger = TestLogger()
     with_logger(logger) do
-        @test !Ribasim.valid_edge_types(db)
+        @test !Ribasim.valid_link_types(db)
     end
     close(db)
 
     @test length(logger.logs) == 2
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
-          "Invalid edge type 'foo' for edge #1 from node #1 to node #2."
+          "Invalid link type 'foo' for link #1 from node #1 to node #2."
     @test logger.logs[2].level == Error
     @test logger.logs[2].message ==
-          "Invalid edge type 'bar' for edge #2 from node #2 to node #3."
+          "Invalid link type 'bar' for link #2 from node #2 to node #3."
 end
 
 @testitem "Subgrid validation" begin
     using Ribasim: valid_subgrid, NodeID
     using Logging
 
-    node_to_basin = Dict(NodeID(:Basin, 9, 1) => 1)
+    node_to_basin = Dict(Int32(9) => 1)
 
     logger = TestLogger()
     with_logger(logger) do
-        @test !valid_subgrid(
-            Int32(1),
-            NodeID(:Basin, 10, 1),
-            node_to_basin,
-            [-1.0, 0.0],
-            [-1.0, 0.0],
-        )
+        @test !valid_subgrid(Int32(1), Int32(10), node_to_basin, [-1.0, 0.0], [-1.0, 0.0])
     end
 
     @test length(logger.logs) == 1
     @test logger.logs[1].level == Error
     @test logger.logs[1].message == "The node_id of the Basin / subgrid does not exist."
-    @test logger.logs[1].kwargs[:node_id] == NodeID(:Basin, 10, 1)
+    @test logger.logs[1].kwargs[:node_id] == Int32(10)
     @test logger.logs[1].kwargs[:subgrid_id] == 1
 
     logger = TestLogger()
     with_logger(logger) do
         @test !valid_subgrid(
             Int32(1),
-            NodeID(:Basin, 9, 1),
+            Int32(9),
             node_to_basin,
             [-1.0, 0.0, 0.0],
             [-1.0, 0.0, 0.0],
@@ -337,21 +330,23 @@ end
 @testitem "negative demand" begin
     using Logging
     using DataInterpolations: LinearInterpolation
+    using DataInterpolations.ExtrapolationType: Constant
     using Ribasim: NodeID, valid_demand
 
     logger = TestLogger()
 
     with_logger(logger) do
         node_id = [NodeID(:UserDemand, 1, 1)]
-        demand_itp = [[LinearInterpolation([-5.0, -5.0], [-1.8, 1.8])]]
-        priorities = Int32[1]
-        @test !valid_demand(node_id, demand_itp, priorities)
+        demand_itp =
+            [[LinearInterpolation([-5.0, -5.0], [-1.8, 1.8]; extrapolation = Constant)]]
+        demand_priorities = Int32[1]
+        @test !valid_demand(node_id, demand_itp, demand_priorities)
     end
 
     @test length(logger.logs) == 1
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
-          "Demand of UserDemand #1 with priority 1 should be non-negative"
+          "Demand of UserDemand #1 with demand_priority 1 should be non-negative"
 end
 
 @testitem "negative storage" begin
@@ -388,7 +383,7 @@ end
     parameters = model.integrator.p
 
     (; graph, tabulated_rating_curve, basin) = parameters
-    tabulated_rating_curve.table[1].t[1] = invalid_level
+    tabulated_rating_curve.interpolations[1].t[1] = invalid_level
 
     logger = TestLogger()
     with_logger(logger) do
@@ -403,6 +398,7 @@ end
 
 @testitem "Outlet upstream level validation" begin
     using Ribasim: valid_min_upstream_level!
+    using DataInterpolations: LinearInterpolation
     using Logging
 
     toml_path = normpath(
@@ -418,7 +414,7 @@ end
     parameters = model.integrator.p
 
     (; graph, outlet, basin) = parameters
-    outlet.min_upstream_level[1] = invalid_level
+    outlet.min_upstream_level[1] = LinearInterpolation(fill(invalid_level, 2), zeros(2))
 
     logger = TestLogger()
     with_logger(logger) do
@@ -451,7 +447,7 @@ end
     @test occursin("Pump #52 = ", output)
 end
 
-@testitem "Missing priority when allocation is active" begin
+@testitem "Missing demand priority when allocation is active" begin
     using Ribasim
     using Logging
     using IOCapture: capture
@@ -462,16 +458,16 @@ end
 
     logger = TestLogger()
     with_logger(logger) do
-        @test_throws "Priority parameter is missing" Ribasim.run(toml_path)
+        @test_throws "Missing demand priority parameter(s)." Ribasim.run(toml_path)
     end
     @test length(logger.logs) == 3
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
-          "Missing priority parameter(s) for a UserDemand / static node in the allocation problem."
+          "Missing demand_priority parameter(s) for a FlowDemand / static node in the allocation problem."
     @test logger.logs[2].message ==
-          "Missing priority parameter(s) for a LevelDemand / static node in the allocation problem."
+          "Missing demand_priority parameter(s) for a LevelDemand / static node in the allocation problem."
     @test logger.logs[3].message ==
-          "Missing priority parameter(s) for a FlowDemand / static node in the allocation problem."
+          "Missing demand_priority parameter(s) for a UserDemand / static node in the allocation problem."
 end
 
 @testitem "Node ID not in Node table" begin
@@ -481,20 +477,14 @@ end
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
 
-    cfg = Ribasim.Config(toml_path)
-    db_path = Ribasim.database_path(cfg)
-    db = SQLite.DB(db_path)
+    v = Ribasim.get_node_ids(toml_path)
 
     logger = TestLogger()
     with_logger(logger) do
-        @test_throws "Node ID #1 of type PidControl is not in the Node table." Ribasim.NodeID(
-            :PidControl,
-            1,
-            db,
-        )
+        @test_throws "Node ID is of the wrong type" Ribasim.NodeID(:PidControl, 1, v)
     end
 
     with_logger(logger) do
-        @test_throws "Node ID #20 is not in the Node table." Ribasim.NodeID(20, db)
+        @test_throws "Node ID not found" Ribasim.NodeID(:Pump, 20, v)
     end
 end

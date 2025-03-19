@@ -1,7 +1,7 @@
 from typing import Any
 
 import numpy as np
-from ribasim.config import Node, Solver
+from ribasim.config import Experimental, Node, Solver
 from ribasim.input_base import TableModel
 from ribasim.model import Model
 from ribasim.nodes import (
@@ -19,11 +19,11 @@ from shapely.geometry import Point
 
 def linear_resistance_model() -> Model:
     """Set up a minimal model which uses a linear_resistance node."""
-
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
+        experimental=Experimental(concentration=True),
     )
 
     model.basin.add(
@@ -36,11 +36,11 @@ def linear_resistance_model() -> Model:
     )
     model.level_boundary.add(Node(3, Point(2, 0)), [level_boundary.Static(level=[5.0])])
 
-    model.edge.add(
+    model.link.add(
         model.basin[1],
         model.linear_resistance[2],
     )
-    model.edge.add(
+    model.link.add(
         model.linear_resistance[2],
         model.level_boundary[3],
     )
@@ -50,11 +50,11 @@ def linear_resistance_model() -> Model:
 
 def rating_curve_model() -> Model:
     """Set up a minimal model which uses a tabulated_rating_curve node."""
-
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
+        experimental=Experimental(concentration=True),
     )
 
     model.basin.add(
@@ -75,11 +75,11 @@ def rating_curve_model() -> Model:
 
     model.terminal.add(Node(3, Point(2, 0)))
 
-    model.edge.add(
+    model.link.add(
         model.basin[1],
         model.tabulated_rating_curve[2],
     )
-    model.edge.add(
+    model.link.add(
         model.tabulated_rating_curve[2],
         model.terminal[3],
     )
@@ -89,11 +89,11 @@ def rating_curve_model() -> Model:
 
 def manning_resistance_model() -> Model:
     """Set up a minimal model which uses a manning_resistance node."""
-
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
+        experimental=Experimental(concentration=True),
     )
 
     basin_profile = basin.Profile(area=[0.01, 100.0, 100.0], level=[0.0, 1.0, 2.0])
@@ -109,11 +109,11 @@ def manning_resistance_model() -> Model:
     )
     model.basin.add(Node(3, Point(2, 0)), [basin_profile, basin.State(level=[4.5])])
 
-    model.edge.add(
+    model.link.add(
         model.basin[1],
         model.manning_resistance[2],
     )
-    model.edge.add(
+    model.link.add(
         model.manning_resistance[2],
         model.basin[3],
     )
@@ -123,12 +123,12 @@ def manning_resistance_model() -> Model:
 
 def misc_nodes_model() -> Model:
     """Set up a minimal model using flow_boundary and pump nodes."""
-
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
         solver=Solver(dt=24 * 60 * 60, algorithm="Euler"),
+        experimental=Experimental(concentration=True),
     )
 
     basin_shared: list[TableModel[Any]] = [
@@ -143,15 +143,15 @@ def misc_nodes_model() -> Model:
     model.pump.add(Node(4, Point(0, 3)), [pump.Static(flow_rate=[1e-4])])
     model.basin.add(Node(5, Point(0, 4)), basin_shared)
 
-    model.edge.add(
+    model.link.add(
         model.flow_boundary[1],
         model.basin[3],
     )
-    model.edge.add(
+    model.link.add(
         model.basin[3],
         model.pump[4],
     )
-    model.edge.add(
+    model.link.add(
         model.pump[4],
         model.basin[5],
     )
@@ -160,10 +160,12 @@ def misc_nodes_model() -> Model:
 
 
 def pid_control_equation_model() -> Model:
-    """Set up a model with pid control for an analytical solution test"""
-
+    """Set up a model with pid control for an analytical solution test."""
     model = Model(
-        starttime="2020-01-01", endtime="2020-01-01 00:05:00", crs="EPSG:28992"
+        starttime="2020-01-01",
+        endtime="2020-01-01 00:05:00",
+        crs="EPSG:28992",
+        experimental=Experimental(concentration=True),
     )
     model.basin.add(
         Node(1, Point(0, 0)),
@@ -188,15 +190,15 @@ def pid_control_equation_model() -> Model:
         ],
     )
 
-    model.edge.add(
+    model.link.add(
         model.basin[1],
         model.pump[2],
     )
-    model.edge.add(
+    model.link.add(
         model.pump[2],
         model.terminal[3],
     )
-    model.edge.add(
+    model.link.add(
         model.pid_control[4],
         model.pump[2],
     )

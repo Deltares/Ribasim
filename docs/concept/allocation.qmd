@@ -3,11 +3,11 @@ title: "Allocation"
 ---
 
 # Introduction
-Allocation is the process of assigning an allocated flow rate to demand nodes in the physical layer of the model based on information about sources, the different demand nodes over various priorities, constraints introduced by nodes, local water availability and graph topology. The allocation procedure implemented in Ribasim is heavily inspired by the [maximum flow problem](https://en.wikipedia.org/wiki/Maximum_flow_problem).
+Allocation is the process of assigning an allocated flow rate to demand nodes in the physical layer of the model based on information about sources and their source priorities, the different demand nodes over various demand priorities, constraints introduced by nodes, local water availability and graph topology. The allocation procedure implemented in Ribasim is heavily inspired by the [maximum flow problem](https://en.wikipedia.org/wiki/Maximum_flow_problem).
 
 The allocation problem is solved per subnetwork (and main network) of the Ribasim model. Each subnetwork is used to formulate an optimization problem with the [JuMP](https://jump.dev/JuMP.jl/stable/) package, which is solved using the [HiGHS solver](https://highs.dev/). For more in-depth information see also the example of solving the maximum flow problem with `JuMP.jl` [here](https://jump.dev/JuMP.jl/stable/tutorials/linear/network_flows/#The-max-flow-problem).
 
-Before the optimization for each priority there is a simple step that tries to allocate flow to the `UserDemand` nodes from the their directly connected basin.
+Before the optimization for each priority there is a simple step that tries to allocate flow to the UserDemand nodes from the Basin directly upstream.
 
 :::{.callout-note}
 within this *Allocation* section the main network is also considered to be a subnetwork.
@@ -36,19 +36,19 @@ The following data of the parameters and state of a Ribasim model are relevant f
 
 ### The subnetwork
 
-The allocation problem is solved per subnetwork, which is given by a subset $S \subset V$ of node ids. Different subnetworks are disjoint from eachother.
+The allocation problem is solved per subnetwork, which is given by a subset $S \subset V$ of node IDs. Different subnetworks are disjoint from each other. Nodes can also not be part of any subnetwork.
 
 ### Source flows
 
-Sources are indicated by a set of edges in the subnetwork
+Sources are indicated by a set of links in the subnetwork
 $$
-E_S^\text{source} \subset E.
+E_S^\text{source} \subset E,
 $$
-That is, if $(i,j) \in E_S^\text{source}$, then the average over the last allocation interval $\Delta t_{\text{alloc}}$ of the of the flow over this edge
+which are automatically inferred as all links that point out of LevelBoundary or FlowBoundary nodes. That is, if $(i,j) \in E_S^\text{source}$, then the average over the last allocation interval $\Delta t_{\text{alloc}}$ of the of the flow over this link
 $$
     \frac{1}{\Delta t_{\text{alloc}}}\int_{t - \Delta t_{\text{alloc}}}^tQ_{ij}(t') dt'
 $$
- is treated as a source flow in the allocation problem. These edges are either coming from a boundary/source node (e.g. a level or flow boundary) or connect the main network to a subnetwork. For the definition of $Q_{ij}$ see [the formal model description](/concept/equations.qmd#formal-model-description).
+ is treated as a source flow in the allocation problem. These links are either coming from a boundary/source node (e.g. a level or flow boundary) or connect the main network to a subnetwork. For the definition of $Q_{ij}$ see [the formal model description](/concept/equations.qmd#formal-model-description).
 
 ### User demands
 
@@ -63,7 +63,7 @@ On this page we assume that the priorities are given by all integers from $1$ to
 
 ### Flow demands
 
-The subnetwork contains a subset of nodes $FD_S \subset S$ which have a demand of a single priority $p_{\text{fd}}$. With this we define
+The subnetwork contains a subset of nodes $FD_S \subset S$ which have a demand of a single priority $p_{\text{fd}}$ for the flow through that node. With this we define
 $$
     d^p_i(t) =
     \begin{cases}
@@ -77,14 +77,14 @@ for all $i \in FD_S$. Here $d^{p_{\text{df}}}$ is given by the original flow dem
 
 ### Vertical fluxes and local storage
 
-Apart from the source flows denoted by edges, there are other sources of water in the subnetwork, associated with the basins in the subnetwork $B_S = B \cap S$. Firstly there is the average over the last allocation interval $\Delta t_{\text{alloc}}$ of the vertical fluxes (precipitation, evaporation, infiltration and drainage) for each basin:
+Apart from the source flows denoted by links, there are other sources of water in the subnetwork, associated with the Basins in the subnetwork $B_S = B \cap S$. First, there is the average over the last allocation interval $\Delta t_{\text{alloc}}$ of the vertical fluxes (precipitation, evaporation, infiltration and drainage) for each Basin:
 $$
     \phi_i(t) = \frac{1}{\Delta t_{\text{alloc}}}\int_{t - \Delta t_{\text{alloc}}}^t \left[Q_{P,i}(t') - Q_{E,i}(t') + Q_{\text{drn},i}(t') - Q_{\text{inf},i}(t') \right] dt', \quad \forall i \in B_S.
 $$
 
 We consider fluxes into the basin to be positive and out of the basin to be negative. For more information see [the natural water balance terms](/concept/equations.qmd#natural-water-balance-terms).
 
-Secondly, there is either a supply or demand from the storage in the basin. Given a minimum level $\ell_{\min, i}$ and a maximum level $\ell_{\max, i}$ which correspond to a minimum storage $s_{\min, i}$ and maximum storage $s_{\max, i}$ respectively, we get a flow supply of
+Secondly, there is either a supply or demand from the storage in the Basin if the Basin has a level demand. Given a minimum level $\ell_{\min, i}$ and a maximum level $\ell_{\max, i}$ which correspond to a minimum storage $s_{\min, i}$ and maximum storage $s_{\max, i}$ respectively, we get a flow supply of
 $$
     F^{\text{basin out}}_{\max, i} = \max\left(0.0, \frac{u_i(t)-s_{\max,i}}{\Delta t_{\text{alloc}}} + \phi_i(t)\right)
 $$
@@ -102,30 +102,29 @@ for all $i \in B_S$. Note that the basin demand has only a single priority, so f
 Nodes in the Ribasim model that have a `max_flow_rate`, i.e. Pump, Outlet and LinearResistance, put a constraint on the flow through that node. Some nodes only allow flow in one direction, like Pump, Outlet and TabulatedRatingCurve.
 
 #### UserDemand return flows
-UserDemand nodes dictate proportional relationships between flows over edges in the subnetwork. The return factor is given by $0 \le r_i \le 1, i \in U_S$.
+UserDemand nodes dictate proportional relationships between flows over links in the subnetwork. The return factor is given by $0 \le r_i(t) \le 1, i \in U_S$.
 
 ## The subnetwork
-The subnetwork consists of a set of nodes $S \subset V$ and edges
+The subnetwork consists of a set of nodes $S \subset V$ and links
 
 $$
     E_S = (S \times S) \cup E_S^\text{source},
 $$
 
-i.e. the edges that lie within the subnetwork together with the source edges (which can be partially outside the subnetwork).
+i.e. the links that lie within the subnetwork together with the source links (which can be partially outside the subnetwork).
 The nodes in $S$ together with the connected nodes outside the subnetwork are called the extended subnetwork.
 
 ### Capacities
 
-Each edge in the subnetwork has an associated capacity. These capacities are collected in the sparse capacity matrix $C_S \in \overline{\mathbb{R}}_{\ge 0}^{n\times n}$ where $n$ is the number of nodes in the extended subnetwork. An edge capacity is infinite if there is nothing in the model constraining the capacity.
+Each link in the subnetwork has an associated capacity. These capacities are collected in the sparse capacity matrix $C_S \in \overline{\mathbb{R}}_{\ge 0}^{n\times n}$ where $n$ is the number of nodes in the extended subnetwork. An link capacity is infinite if there is nothing in the model constraining the capacity.
 
 The capacities are determined in different ways:
 
-- If an edge does not exist in the allocation network, i.e. $(i,j) \notin E_S$ for certain $1 \le i,j\le n'$, then $(C_S)_{i,j} = 0$;
-- The capacity of the edge $e \in E_S$ is given by the smallest `max_flow_rate` of the nodes along the equivalent edges in the subnetwork. If there are no nodes with a `max_flow_rate`, the edge capacity is infinite;
-- If the edge is a source, the capacity of the edge is given by the flow rate of that source;
-- If an edge comes from a node with a flow demand, it has infinite capacity at priorities other than this of this flow demand, and zero capacity otherwise.
+- If an link does not exist in the allocation network, i.e. $(i,j) \notin E_S$ for certain $1 \le i,j\le n'$, then $(C_S)_{i,j} = 0$;
+- The capacity of the link $e \in E_S$ is given by the smallest `max_flow_rate` of the nodes along the equivalent links in the subnetwork. If there are no nodes with a `max_flow_rate`, the link capacity is infinite. If the `max_flow_rate` is time-dependent, only the value at the starttime of the simulation is considered;
+- If the link is a source, the capacity of the link is given by the flow rate of that source;
 
-There are also capacities for special edges:
+There are also capacities for special links:
 
 - $C^{LD}_S \in \mathbb{R}^b_{\ge 0}$ where $b = \# B_S$ is the number of basins, for the flow supplied by basins based on level demand (this capacity is 0 for basins that have no level demand).
 - $C^{FD}_S \in \mathbb{R}^c_{\ge 0}$ where $c = \# FD_S$ is the number of nodes with a flow demand, for the flow supplied by flow buffers at these nodes with a flow demand.
@@ -133,19 +132,19 @@ There are also capacities for special edges:
 
 # The optimization problem
 
-The optimization problem for a subnetwork is a linear optimization problem consisting of an objective function with associated constraints on a set of variables, all of which are introduced below.
+The optimization problem for a subnetwork consists of a quadratic objective function with associated linear constraints on a set of variables, all of which are introduced below.
 
 ## The optimization variables
 
 There are several types of variable whose value has to be determined to solve the allocation problem:
 
-- The flows $F \in \mathbb{R}_{\ge 0}^{n\times n}$ over the edges in the allocation network;
+- The flows $F \in \mathbb{R}_{\ge 0}^{n\times n}$ over the links in the allocation network;
 - The flows $F^\text{basin out}_{i}, F^\text{basin in}_{i} \geq 0$ for all $i \in B_S$ supplied and consumed by the basins with a level demand respectively;
 - The flows $F^\text{buffer out}_{i}, F^\text{buffer in}_{i} \ge 0$ for all $i \in FD_S \cup FF_S$ supplied and consumed by the flow buffers of nodes with a flow demand.
 
 ## The optimization objective
 
-The goal of allocation is to get the flow to nodes with demands as close as possible to these demands. To achieve this, a sum error of terms is minimized.
+The goal of allocation is to get the flow to nodes with demands as close as possible to these demands. To achieve this, a sum of error terms is minimized.
 
 $$
     \min E_{\text{user demand}} + E_{\text{level demand}} + E_{\text{flow demand}}
@@ -197,7 +196,7 @@ In here, we have the following special flows:
 In the above, the placement of the basin and buffer flows might seem counter-intuitive. Think of the storage or buffer as a separate node connected to the node with the demand.
 :::
 
-- Capacity: the flows over the edges are bounded by the edge capacity:
+- Capacity: the flows over the links are bounded by the link capacity:
 $$
     F_{ij} \le \left(C_S\right)_{ij}, \quad \forall(i,j) \in E_S.
 $$ {#eq-capacityconstraint}
@@ -207,9 +206,10 @@ $$
     F^{\text{basin out}}_{i} \le F^{\text{basin out}}_{\max, i}, \quad \forall i \in B_S.
 $$
 
-:::{.callout-note}
-When performing subnetwork demand collection, these capacities are set to $\infty$ for edges which connect the main network to a subnetwork. For all other sources the capacity is set to $0$, so that demand collection only uses flow from the main network inlet.
-:::
+
+There are several things to note about the source constraints:
+- The sources are not all used at once. There is an optimization for each source in a subnetwork, where only one source has nonzero capacity.
+- When performing subnetwork demand collection, these capacities are set to $\infty$ for links which connect the main network to a subnetwork.
 
 Similar constraints hold for the flow out of basins, flow demand buffers and user demand outflow sources:
 $$
@@ -223,9 +223,9 @@ $$
 $$
 F_{ij} \le (C^{UD}_S)_i, \quad \forall i \in U_S, \quad V_S^{\text{out}}(i) = \{j\}.
 $$
-Here we use that each UserDemand node in the allocation network has a unique  outflow edge. The user outflow source capacities are increased after each optimization solve by the return fraction:
+Here we use that each UserDemand node in the allocation network has a unique  outflow link. The user outflow source capacities are increased after each optimization solve by the return fraction:
 $$
-    r_i \cdot F_{ki}, \quad V_S^{\text{in}}(i) = \{k\}.
+    r_i(t) \cdot F_{ki}, \quad V_S^{\text{in}}(i) = \{k\}.
 $$
 
 - Flow sign: Furthermore there are the non-negativity constraints for the flows and allocations, see [The optimization variables](/concept/allocation.qmd#the-optimization-variables).
@@ -241,18 +241,16 @@ The following is an example of an optimization problem for the example shown [he
 using Ribasim
 using Ribasim: NodeID
 using SQLite
-using ComponentArrays: ComponentVector
 
 toml_path = normpath(@__DIR__, "../../generated_testmodels/allocation_example/ribasim.toml")
-p = Ribasim.Model(toml_path).integrator.p
-u = ComponentVector(; storage = zeros(length(p.basin.node_id)))
+model = Ribasim.Model(toml_path)
+(; u, p, t) = model.integrator
 
 allocation_model = p.allocation.allocation_models[1]
-t = 0.0
 priority_idx = 1
 
-Ribasim.set_objective_priority!(allocation_model, p, u, t, priority_idx)
-Ribasim.set_initial_values!(allocation_model, p, u, t)
+Ribasim.set_initial_values!(allocation_model, u, p, t)
+Ribasim.set_objective_demand_priority!(allocation_model, u, p, t, priority_idx)
 
 println(p.allocation.allocation_models[1].problem)
 ```

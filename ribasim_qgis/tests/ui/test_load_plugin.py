@@ -15,7 +15,6 @@ class TestPlugin(unittest.TestCase):
 
     def test_plugin(self):
         """Triggers Ribasim button and checks that Dock is added."""
-
         # This checks the *actual* QGIS interface, not just a stub
         self.assertTrue(iface is not None, "QGIS interface not available")
 
@@ -51,7 +50,7 @@ class TestPlugin(unittest.TestCase):
         self.assertTrue(Path("database.gpkg").exists(), "database.gpkg not created")
         self.assertTrue(
             len(QgsProject.instance().mapLayers()) == 2,
-            "Not just the Node and Edge layers",
+            "Not just the Node and Link layers",
         )
 
         # Check schema version
@@ -59,11 +58,11 @@ class TestPlugin(unittest.TestCase):
             cursor.execute(
                 "SELECT value FROM ribasim_metadata WHERE key='schema_version'"
             )
-            self.assertTrue(int(cursor.fetchone()[0]) == 1, "schema_version is wrong")
+            self.assertTrue(int(cursor.fetchone()[0]) == 5, "schema_version is wrong")
 
         # Open the model
         datawidget._open_model("test.toml")
         self.assertTrue(
             len(QgsProject.instance().mapLayers()) == 4,
-            "Not just the Node and Edge layers twice",
+            "Not just the Node and Link layers twice",
         )

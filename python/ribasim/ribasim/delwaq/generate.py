@@ -40,7 +40,7 @@ env = jinja2.Environment(
     autoescape=True, loader=jinja2.FileSystemLoader(delwaq_dir / "template")
 )
 
-# Add evaporation edges, so mass balance is correct
+# Add evaporation links, so mass balance is correct
 # To simulate salt increase due to evaporation, set to False
 USE_EVAP = True
 
@@ -57,8 +57,8 @@ def _quote(value):
 def _make_boundary(data, boundary_type):
     """
     Create a Delwaq boundary definition with the given data and boundary type.
-    Pivot our data from long to wide format, and convert the time to a string.
 
+    Pivot our data from long to wide format, and convert the time to a string.
     Specifically, we go from a table:
         `node_id, substance, time, concentration`
     to
@@ -90,12 +90,12 @@ def _make_boundary(data, boundary_type):
     return boundary, substances
 
 
-def _setup_graph(nodes, edge, evaporate_mass=True):
+def _setup_graph(nodes, link, evaporate_mass=True):
     G = nx.DiGraph()
 
     assert nodes.df is not None
     for row in nodes.df.itertuples():
-        if row.node_type not in ribasim.geometry.edge.SPATIALCONTROLNODETYPES:
+        if row.node_type not in ribasim.geometry.link.SPATIALCONTROLNODETYPES:
             G.add_node(
                 row.Index,
                 type=row.node_type,
@@ -104,9 +104,9 @@ def _setup_graph(nodes, edge, evaporate_mass=True):
                 y=row.geometry.y,
                 pos=(row.geometry.x, row.geometry.y),
             )
-    assert edge.df is not None
-    for row in edge.df.itertuples():
-        if row.edge_type == "flow":
+    assert link.df is not None
+    for row in link.df.itertuples():
+        if row.link_type == "flow":
             G.add_edge(
                 row.from_node_id,
                 row.to_node_id,
@@ -116,7 +116,7 @@ def _setup_graph(nodes, edge, evaporate_mass=True):
 
     # Simplify network, only keeping Basins and Boundaries.
     # We find an unwanted node, remove it,
-    # and merge the flow edges to/from the node.
+    # and merge the flow links to/from the node.
     remove_nodes = []
     for node_id, out in G.succ.items():
         if G.nodes[node_id]["type"] not in [
@@ -133,15 +133,20 @@ def _setup_graph(nodes, edge, evaporate_mass=True):
 
             for outneighbor_id in out.keys():
                 if outneighbor_id in remove_nodes:
-                    logger.debug("Not making edge to removed node.")
+                    logger.debug("Not making link to removed node.")
                     continue
-                edge = (inneighbor_id, outneighbor_id)
-                edge_id = G.get_edge_data(node_id, outneighbor_id)["id"][0]
-                if G.has_edge(*edge):
-                    data = G.get_edge_data(*edge)
-                    data["id"].append(edge_id)
+                link = (inneighbor_id, outneighbor_id)
+                link_id = G.get_edge_data(node_id, outneighbor_id)["id"][0]
+                if G.has_edge(*link):
+                    data = G.get_edge_data(*link)
+                    data["id"].append(link_id)
                 else:
-                    G.add_edge(*edge, id=[edge_id])
+                    G.add_edge(*link, id=[link_id])
+
+    iso = nx.number_of_isolates(G)
+    if iso > 0:
+        logger.debug(f"Found {iso} isolated nodes in the network.")
+        remove_nodes.extend(list(nx.isolates(G)))
 
     for node_id in remove_nodes:
         G.remove_node(node_id)
@@ -149,9 +154,9 @@ def _setup_graph(nodes, edge, evaporate_mass=True):
     # Due to the simplification, we can end up with cycles of length 2.
     # This happens when a UserDemand is connected to and from a Basin,
     # but can also happen in other cases (rivers with a outlet and pump),
-    # for which we do nothing. We merge these UserDemand cycles edges to
-    # a single edge, and later merge the flows.
-    merge_edges = []
+    # for which we do nothing. We merge these UserDemand cycles links to
+    # a single link, and later merge the flows.
+    merge_links = []
     for loop in nx.simple_cycles(G):
         if len(loop) == 2:
             if (
@@ -160,23 +165,23 @@ def _setup_graph(nodes, edge, evaporate_mass=True):
             ):
                 logger.debug("Found cycle that is not a UserDemand.")
             else:
-                edge_ids = G.edges[loop]["id"]
-                G.edges[reversed(loop)]["id"].extend(edge_ids)
-                merge_edges.extend(edge_ids)
-                G.remove_edge(*loop)
+                link_ids = G.edges[loop]["id"]
+                G.edges[reversed(loop)]["id"].extend(link_ids)
+                merge_links.extend(link_ids)
+                G.remove_link(*loop)
 
-    # Remove boundary to boundary edges
-    remove_double_edges = []
+    # Remove boundary to boundary links
+    remove_double_links = []
     for x in G.edges(data=True):
         a, b, d = x
         if G.nodes[a]["type"] == "Terminal" and G.nodes[b]["type"] == "UserDemand":
-            logger.debug("Removing edge between Terminal and UserDemand")
-            remove_double_edges.append(a)
+            logger.debug("Removing link between Terminal and UserDemand")
+            remove_double_links.append(a)
         elif G.nodes[a]["type"] == "UserDemand" and G.nodes[b]["type"] == "Terminal":
-            remove_double_edges.append(b)
-            logger.debug("Removing edge between UserDemand and Terminal")
+            remove_double_links.append(b)
+            logger.debug("Removing link between UserDemand and Terminal")
 
-    for node_id in remove_double_edges:
+    for node_id in remove_double_links:
         G.remove_node(node_id)
 
     # Relabel the nodes as consecutive integers for Delwaq
@@ -216,7 +221,7 @@ def _setup_graph(nodes, edge, evaporate_mass=True):
             G.add_edge(
                 boundary_id,
                 node_id,
-                key=edge_id,
+                key=link_id,
                 id=[-1],
                 boundary=(node["id"], "drainage"),
             )
@@ -231,7 +236,7 @@ def _setup_graph(nodes, edge, evaporate_mass=True):
             G.add_edge(
                 boundary_id,
                 node_id,
-                key=edge_id,
+                key=link_id,
                 id=[-1],
                 boundary=(node["id"], "precipitation"),
             )
@@ -247,20 +252,20 @@ def _setup_graph(nodes, edge, evaporate_mass=True):
                 G.add_edge(
                     node_id,
                     boundary_id,
-                    key=edge_id,
+                    key=link_id,
                     id=[-1],
                     boundary=(node["id"], "evaporation"),
                 )
 
-    # Setup edge mapping
-    edge_mapping = {}
+    # Setup link mapping
+    link_mapping = {}
     for i, (a, b, d) in enumerate(G.edges(data=True)):
-        for edge_id in d["id"]:
-            edge_mapping[edge_id] = i
+        for link_id in d["id"]:
+            link_mapping[link_id] = i
 
     assert len(basin_mapping) == basin_id
 
-    return G, merge_edges, node_mapping, edge_mapping, basin_mapping
+    return G, merge_links, node_mapping, link_mapping, basin_mapping
 
 
 def _setup_boundaries(model):
@@ -295,7 +300,6 @@ def generate(
     output_path: Path = output_path,
 ) -> tuple[nx.DiGraph, set[str]]:
     """Generate a Delwaq model from a Ribasim model and results."""
-
     # Read in model and results
     model = ribasim.Model.read(toml_path)
     results_folder = toml_path.parent / model.results_dir
@@ -311,8 +315,8 @@ def generate(
     output_path.mkdir(exist_ok=True)
 
     # Setup flow network
-    G, merge_edges, node_mapping, edge_mapping, basin_mapping = _setup_graph(
-        model.node_table(), model.edge, evaporate_mass=evaporate_mass
+    G, merge_links, node_mapping, link_mapping, basin_mapping = _setup_graph(
+        model.node_table(), model.link, evaporate_mass=evaporate_mass
     )
 
     # Plot
@@ -334,7 +338,7 @@ def generate(
     # Write topology to delwaq pointer file
     pointer = pd.DataFrame(G.edges(), columns=["from_node_id", "to_node_id"])
     write_pointer(output_path / "ribasim.poi", pointer)
-    pointer["riba_edge_id"] = [e[2] for e in G.edges.data("id")]
+    pointer["riba_link_id"] = [e[2] for e in G.edges.data("id")]
     pointer["riba_from_node_id"] = pointer["from_node_id"].map(
         {v: k for k, v in node_mapping.items()}
     )
@@ -365,24 +369,24 @@ def generate(
     flows.time = (flows.time - flows.time[0]).dt.total_seconds().astype("int32")
     basins.time = (basins.time - basins.time[0]).dt.total_seconds().astype("int32")
 
-    # Invert flows for half-edge of cycles so later summing is correct
-    m = flows.edge_id.isin(merge_edges)
+    # Invert flows for half-link of cycles so later summing is correct
+    m = flows.link_id.isin(merge_links)
     flows.loc[m, "flow_rate"] = flows.loc[m, "flow_rate"] * -1
 
-    # Map edge_id to the new edge_id and merge any duplicate flows
-    flows["riba_edge_id"] = flows["edge_id"]
-    flows["edge_id"] = flows["edge_id"].map(edge_mapping)
-    flows.dropna(subset=["edge_id"], inplace=True)
-    flows["edge_id"] = flows["edge_id"].astype("int32")
+    # Map link_id to the new link_id and merge any duplicate flows
+    flows["riba_link_id"] = flows["link_id"]
+    flows["link_id"] = flows["link_id"].map(link_mapping)
+    flows.dropna(subset=["link_id"], inplace=True)
+    flows["link_id"] = flows["link_id"].astype("int32")
     nflows = flows.copy()
-    nflows = flows.groupby(["time", "edge_id"]).sum().reset_index()
+    nflows = flows.groupby(["time", "link_id"]).sum().reset_index()
     nflows.drop(
         columns=["from_node_id", "to_node_id"],
         inplace=True,
     )
 
     # Add basin boundaries to flows
-    for edge_id, (a, b, (node_id, boundary_type)) in enumerate(
+    for link_id, (a, b, (node_id, boundary_type)) in enumerate(
         G.edges(data="boundary", default=(None, None))
     ):
         if boundary_type is None:
@@ -390,14 +394,14 @@ def generate(
         df = basins[basins.node_id == node_id][["time", boundary_type]].rename(
             columns={boundary_type: "flow_rate"}
         )
-        df["edge_id"] = edge_id
+        df["link_id"] = link_id
         nflows = _concat([nflows, df], ignore_index=True)
 
     # Save flows to Delwaq format
-    nflows.sort_values(by=["time", "edge_id"], inplace=True)
+    nflows.sort_values(by=["time", "link_id"], inplace=True)
     nflows.to_csv(output_path / "flows.csv", index=False)  # not needed
     nflows.drop(
-        columns=["edge_id", "riba_edge_id"],
+        columns=["link_id", "riba_link_id"],
         inplace=True,
     )
     write_flows(output_path / "ribasim.flo", nflows, timestep)
@@ -479,7 +483,7 @@ def generate(
     initial_concentrations = icdf.to_string(header=False, index=False)
 
     # Write boundary list, ordered by bid to map the unique boundary names
-    # to the edges described in the pointer file.
+    # to the links described in the pointer file.
     bnd = pointer.copy()
     bnd["bid"] = np.minimum(bnd["from_node_id"], bnd["to_node_id"])
     bnd = bnd[bnd["bid"] < 0]
@@ -521,7 +525,7 @@ def generate(
             )
         )
 
-    # Return the graph with original edges and the substances
+    # Return the graph with original links and the substances
     # so we can parse the results back to the original model
     return G, substances
 

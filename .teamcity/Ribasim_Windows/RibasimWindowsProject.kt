@@ -17,9 +17,11 @@ object RibasimWindowsProject : Project({
     buildType(Windows_BuildRibasim)
     buildType(Windows_TestDelwaqCoupling)
     buildType(Windows_TestRibasimBinaries)
+    buildType(Windows_GenerateCache)
 
     template(TestBinariesWindows)
     template(TestDelwaqCouplingWindows)
+    template(GenerateCacheWindows)
 })
 
 object Windows_Main : BuildType({
@@ -37,6 +39,13 @@ object Windows_Main : BuildType({
 
     triggers {
         vcs {
+            id = "TRIGGER_RIBA_SKIPW1"
+            branchFilter = """
+                +:<default>
+                +:refs/pull/*
+                +:pull/*
+            """.trimIndent()
+            triggerRules = "-:comment=skip ci:**"
         }
     }
 
@@ -86,28 +95,59 @@ object Windows_TestRibasimBinaries : BuildType({
 })
 
 object Windows_TestDelwaqCoupling : BuildType({
-    templates(WindowsAgent, GithubCommitStatusIntegration, TestDelwaqCouplingWindows)
+    templates(WindowsAgent, GithubCommitStatusIntegration, TestDelwaqCouplingWindows, GithubPullRequestsIntegration)
     name = "Test Delwaq coupling"
+
+    vcs {
+        root(RibasimVcs, ". => ribasim")
+        cleanCheckout = true
+    }
 
     artifactRules = "ribasim/python/ribasim/ribasim/delwaq/model"
 
     triggers {
         vcs {
             id = "TRIGGER_304"
+            branchFilter = """
+                +:<default>
+                +:refs/pull/*
+                +:pull/*
+            """.trimIndent()
             triggerRules = """
                 +:ribasim/coupling/delwaq/**
                 +:ribasim/core/**
                 +:ribasim/python/**
                 +:ribasim/ribasim_testmodels/**
+                -:comment=skip ci:**
             """.trimIndent()
         }
     }
 
     dependencies {
-        artifacts(AbsoluteId("Dimr_DimrCollectors_2bDimrCollectorReleaseSigned")) {
+        artifacts(AbsoluteId("DWaqDPart_Windows_Build")) {
             id = "ARTIFACT_DEPENDENCY_4206"
-            buildRule = tag("DIMRset_2.27.09")
-            artifactRules = "dimrset_x64_signed_*.zip!/x64 => dimr"
+            buildRule = lastSuccessful()
+            artifactRules = """
+                DWAQ_win64_Release_Visual Studio 16 2019_ifx_*.zip!** => dimr
+            """.trimIndent()
+        }
+    }
+})
+
+object Windows_GenerateCache : BuildType({
+    templates(WindowsAgent, GithubCommitStatusIntegration, GenerateCacheWindows)
+    name = "Generate TC cache"
+
+    triggers {
+        vcs {
+            id = "TRIGGER_RIBA_W1"
+            triggerRules = """
+                +:root=Ribasim_Ribasim:/Manifest.toml
+                +:root=Ribasim_Ribasim:/Project.toml
+                +:root=Ribasim_Ribasim:/pixi.lock
+                +:root=Ribasim_Ribasim:/pixi.toml
+            """.trimIndent()
+            branchFilter = "+:<default>"
         }
     }
 })

@@ -15,6 +15,7 @@ using Dates: DateTime
 using LineSearch: BackTracking
 using Logging: LogLevel, Debug, Info, Warn, Error
 using ..Ribasim: Ribasim, isnode, nodetype
+using ADTypes: AutoForwardDiff, AutoFiniteDiff
 using OrdinaryDiffEqCore: OrdinaryDiffEqAlgorithm, OrdinaryDiffEqNewtonAdaptiveAlgorithm
 using OrdinaryDiffEqNonlinearSolve: NonlinearSolveAlg, NewtonRaphson
 using OrdinaryDiffEqLowOrderRK: Euler, RK4
@@ -121,7 +122,6 @@ end
 
 # Separate struct, as basin clashes with nodetype
 @option struct Results <: TableOption
-    outstate::Union{String, Nothing} = nothing
     compression::Bool = true
     compression_level::Int = 6
     subgrid::Bool = false
@@ -131,9 +131,18 @@ end
     verbosity::LogLevel = Info
 end
 
+@option struct SourcePriority <: TableOption
+    user_demand::Int32 = 1000
+    boundary::Int32 = 2000 # boundary = {flow_boundary, level_boundary}
+    level_demand::Int32 = 3000
+    flow_demand::Int32 = 4000
+    subnetwork_inlet::Int32 = 5000
+end
+
 @option struct Allocation <: TableOption
     timestep::Float64 = 86400
     use_allocation::Bool = false
+    source_priority::SourcePriority = SourcePriority()
 end
 
 @option struct Experimental <: TableOption
@@ -182,23 +191,28 @@ function Config(config_path::AbstractString; kwargs...)::Config
     Config(toml, dir)
 end
 
-Base.getproperty(config::Config, sym::Symbol) = getproperty(getfield(config, :toml), sym)
-
-Base.dirname(config::Config) = getfield(config, :dir)
+function Base.getproperty(config::Config, sym::Symbol)
+    if sym === :dir
+        return getfield(config, :dir)
+    else
+        toml = getfield(config, :toml)
+        return getproperty(toml, sym)
+    end
+end
 
 "Construct a path relative to both the TOML directory and the optional `input_dir`"
 function input_path(config::Config, path::String)
-    return normpath(dirname(config), config.input_dir, path)
+    return normpath(config.dir, config.input_dir, path)
 end
 
 "Construct the database path relative to both the TOML directory and the optional `input_dir`"
 function database_path(config::Config)
-    return normpath(dirname(config), config.input_dir, "database.gpkg")
+    return normpath(config.dir, config.input_dir, "database.gpkg")
 end
 
 "Construct a path relative to both the TOML directory and the optional `results_dir`"
 function results_path(config::Config, path::String)
-    return normpath(dirname(config), config.results_dir, path)
+    return normpath(config.dir, config.results_dir, path)
 end
 
 function Configurations.from_dict(::Type{Logging}, ::Type{LogLevel}, level::AbstractString)
@@ -299,7 +313,7 @@ function algorithm(solver::Solver; u0 = [])::OrdinaryDiffEqAlgorithm
     end
 
     if function_accepts_kwarg(algotype, :autodiff)
-        kwargs[:autodiff] = solver.autodiff
+        kwargs[:autodiff] = solver.autodiff ? AutoForwardDiff() : AutoFiniteDiff()
     end
 
     algotype(; kwargs...)

@@ -45,7 +45,7 @@ from ribasim.config import (
     UserDemand,
 )
 from ribasim.db_utils import _set_db_schema_version
-from ribasim.geometry.edge import EdgeSchema, EdgeTable
+from ribasim.geometry.link import LinkSchema, LinkTable
 from ribasim.geometry.node import NodeTable
 from ribasim.input_base import (
     ChildModel,
@@ -58,12 +58,12 @@ from ribasim.utils import (
     MissingOptionalModule,
     UsedIDs,
     _concat,
-    _edge_lookup,
+    _link_lookup,
     _node_lookup,
     _node_lookup_numpy,
     _time_in_ns,
 )
-from ribasim.validation import control_edge_neighbor_amount, flow_edge_neighbor_amount
+from ribasim.validation import control_link_neighbor_amount, flow_link_neighbor_amount
 
 try:
     import xugrid
@@ -107,7 +107,7 @@ class Model(FileModel):
     terminal: Terminal = Field(default_factory=Terminal)
     user_demand: UserDemand = Field(default_factory=UserDemand)
 
-    edge: EdgeTable = Field(default_factory=EdgeTable)
+    link: LinkTable = Field(default_factory=LinkTable)
     use_validation: bool = Field(default=True, exclude=True)
 
     _used_node_ids: UsedIDs = PrivateAttr(default_factory=UsedIDs)
@@ -123,10 +123,10 @@ class Model(FileModel):
         return self
 
     @model_validator(mode="after")
-    def _ensure_edge_table_is_present(self) -> "Model":
-        if self.edge.df is None:
-            self.edge.df = GeoDataFrame[EdgeSchema](index=pd.Index([], name="edge_id"))
-        self.edge.df.set_geometry("geometry", inplace=True, crs=self.crs)
+    def _ensure_link_table_is_present(self) -> "Model":
+        if self.link.df is None:
+            self.link.df = GeoDataFrame[LinkSchema](index=pd.Index([], name="link_id"))
+        self.link.df = self.link.df.set_geometry("geometry", crs=self.crs)
         return self
 
     @model_validator(mode="after")
@@ -150,6 +150,7 @@ class Model(FileModel):
         # By overriding `BaseModel.model_post_init` we can set them explicitly,
         # and enforce that they are always written.
         self.model_fields_set.update({"input_dir", "results_dir"})
+        self.edge = self.link  # Backwards compatible alias for link
 
     def __repr__(self) -> str:
         """Generate a succinct overview of the Model content.
@@ -160,8 +161,8 @@ class Model(FileModel):
         INDENT = "    "
         for field in self._fields():
             attr = getattr(self, field)
-            if isinstance(attr, EdgeTable):
-                content.append(f"{INDENT}{field}=Edge(...),")
+            if isinstance(attr, LinkTable):
+                content.append(f"{INDENT}{field}=Link(...),")
             else:
                 if isinstance(attr, MultiNodeModel) and attr.node.df is None:
                     # Skip unused node types
@@ -185,7 +186,9 @@ class Model(FileModel):
         Path
             The file path of the written TOML file.
         """
-        content = self.model_dump(exclude_unset=True, exclude_none=True, by_alias=True)
+        content = self.model_dump(
+            exclude_unset=True, exclude_none=True, by_alias=True, context="write"
+        )
         # Filter empty dicts (default Nodes)
         content = dict(filter(lambda x: x[1], content.items()))
         content["ribasim_version"] = ribasim.__version__
@@ -204,7 +207,7 @@ class Model(FileModel):
         db_path.unlink(missing_ok=True)
         context_file_writing.get()["database"] = db_path
 
-        self.edge._save(directory, input_dir)
+        self.link._save(directory, input_dir)
         node = self.node_table()
 
         assert node.df is not None
@@ -235,7 +238,7 @@ class Model(FileModel):
 
     def _apply_crs_function(self, function_name: str, crs: str) -> None:
         """Apply `function_name`, with `crs` as the first and only argument to all spatial tables."""
-        getattr(self.edge.df, function_name)(crs, inplace=True)
+        getattr(self.link.df, function_name)(crs, inplace=True)
         for sub in self._nodes():
             if sub.node.df is not None:
                 getattr(sub.node.df, function_name)(crs, inplace=True)
@@ -300,7 +303,6 @@ class Model(FileModel):
         filepath : str | PathLike[str]
             A file path with .toml extension.
         """
-
         if self.use_validation:
             self._validate_model()
 
@@ -318,12 +320,12 @@ class Model(FileModel):
         return fn
 
     def _validate_model(self):
-        df_edge = self.edge.df
+        df_link = self.link.df
         df_chunks = [node.node.df for node in self._nodes()]
         df_node = _concat(df_chunks)
 
-        df_graph = df_edge
-        # Join df_edge with df_node to get to_node_type
+        df_graph = df_link
+        # Join df_link with df_node to get to_node_type
         df_graph = df_graph.join(
             df_node[["node_type"]], on="from_node_id", how="left", rsuffix="_from"
         )
@@ -335,31 +337,30 @@ class Model(FileModel):
         df_graph = df_graph.rename(columns={"node_type": "to_node_type"})
 
         if not self._has_valid_neighbor_amount(
-            df_graph, flow_edge_neighbor_amount, "flow", df_node["node_type"]
+            df_graph, flow_link_neighbor_amount, "flow", df_node["node_type"]
         ):
             raise ValueError("Minimum flow inneighbor or outneighbor unsatisfied")
         if not self._has_valid_neighbor_amount(
-            df_graph, control_edge_neighbor_amount, "control", df_node["node_type"]
+            df_graph, control_link_neighbor_amount, "control", df_node["node_type"]
         ):
             raise ValueError("Minimum control inneighbor or outneighbor unsatisfied")
 
     def _has_valid_neighbor_amount(
         self,
         df_graph: pd.DataFrame,
-        edge_amount: dict[str, list[int]],
-        edge_type: str,
+        link_amount: dict[str, list[int]],
+        link_type: str,
         nodes,
     ) -> bool:
-        """Check if the neighbor amount of the two nodes connected by the given edge meet the minimum requirements."""
-
+        """Check if the neighbor amount of the two nodes connected by the given link meet the minimum requirements."""
         is_valid = True
 
-        # filter graph by edge type
-        df_graph = df_graph.loc[df_graph["edge_type"] == edge_type]
+        # filter graph by link type
+        df_graph = df_graph.loc[df_graph["link_type"] == link_type]
 
         # count occurrence of "from_node" which reflects the number of outneighbors
         from_node_count = (
-            df_graph.groupby("from_node_id").size().reset_index(name="from_node_count")  # type: ignore
+            df_graph.groupby("from_node_id").size().reset_index(name="from_node_count")
         )
 
         # append from_node_count column to from_node_id and from_node_type
@@ -378,15 +379,15 @@ class Model(FileModel):
         # loop over all the "from_node" and check if they have enough outneighbor
         for _, row in from_node_info.iterrows():
             # from node's outneighbor
-            if row["from_node_count"] < edge_amount[row["from_node_type"]][2]:
+            if row["from_node_count"] < link_amount[row["from_node_type"]][2]:
                 is_valid = False
                 logging.error(
-                    f"Node {row['from_node_id']} must have at least {edge_amount[row['from_node_type']][2]} outneighbor(s) (got {row['from_node_count']})"
+                    f"Node {row['from_node_id']} must have at least {link_amount[row['from_node_type']][2]} outneighbor(s) (got {row['from_node_count']})"
                 )
 
         # count occurrence of "to_node" which reflects the number of inneighbors
         to_node_count = (
-            df_graph.groupby("to_node_id").size().reset_index(name="to_node_count")  # type: ignore
+            df_graph.groupby("to_node_id").size().reset_index(name="to_node_count")
         )
 
         # append to_node_count column to result
@@ -402,10 +403,10 @@ class Model(FileModel):
 
         # loop over all the "to_node" and check if they have enough inneighbor
         for _, row in to_node_info.iterrows():
-            if row["to_node_count"] < edge_amount[row["to_node_type"]][0]:
+            if row["to_node_count"] < link_amount[row["to_node_type"]][0]:
                 is_valid = False
                 logging.error(
-                    f"Node {row['to_node_id']} must have at least {edge_amount[row['to_node_type']][0]} inneighbor(s) (got {row['to_node_count']})"
+                    f"Node {row['to_node_id']} must have at least {link_amount[row['to_node_type']][0]} inneighbor(s) (got {row['to_node_count']})"
                 )
 
         return is_valid
@@ -415,11 +416,10 @@ class Model(FileModel):
     ) -> pd.DataFrame:
         """Loop over node table.
 
-        Add the nodes whose id are missing in the from_node and to_node column in the edge table because they are not the upstream or downstrem of other nodes.
+        Add the nodes whose id are missing in the from_node and to_node column in the link table because they are not the upstream or downstrem of other nodes.
 
         Specify that their occurrence in from_node table or to_node table is 0.
         """
-
         # loop over nodes, add the one that is not the downstream (from) or upstream (to) of any other nodes
         for index, node in enumerate(nodes):
             if nodes.index[index] not in node_info[f"{direction}_node_id"].to_numpy():
@@ -462,25 +462,24 @@ class Model(FileModel):
         return self
 
     def plot_control_listen(self, ax):
-        """Plot the implicit listen edges of the model."""
-
-        df_listen_edge = pd.DataFrame(
+        """Plot the implicit listen links of the model."""
+        df_listen_link = pd.DataFrame(
             data={
                 "control_node_id": pd.Series([], dtype="int32[pyarrow]"),
                 "listen_node_id": pd.Series([], dtype="int32[pyarrow]"),
             }
         )
 
-        # Listen edges from PidControl
+        # Listen links from PidControl
         for table in (self.pid_control.static.df, self.pid_control.time.df):
             if table is None:
                 continue
 
             to_add = table[["node_id", "listen_node_id"]].drop_duplicates()
             to_add.columns = ["control_node_id", "listen_node_id"]
-            df_listen_edge = _concat([df_listen_edge, to_add])
+            df_listen_link = _concat([df_listen_link, to_add])
 
-        # Listen edges from ContinuousControl and DiscreteControl
+        # Listen links from ContinuousControl and DiscreteControl
         for table, name in (
             (self.continuous_control.variable.df, "ContinuousControl"),
             (self.discrete_control.variable.df, "DiscreteControl"),
@@ -493,25 +492,25 @@ class Model(FileModel):
                 "control_node_id",
                 "listen_node_id",
             ]
-            df_listen_edge = _concat([df_listen_edge, to_add])
+            df_listen_link = _concat([df_listen_link, to_add])
 
         # Collect geometry data
         node = self.node_table().df
-        control_nodes_geometry = df_listen_edge.merge(
+        control_nodes_geometry = df_listen_link.merge(
             node,
             left_on=["control_node_id"],
             right_on=["node_id"],
             how="left",
         )["geometry"]
 
-        listen_nodes_geometry = df_listen_edge.merge(
+        listen_nodes_geometry = df_listen_link.merge(
             node,
             left_on=["listen_node_id"],
             right_on=["node_id"],
             how="left",
         )["geometry"]
 
-        # Plot listen edges
+        # Plot listen links
         for i, (point_listen, point_control) in enumerate(
             zip(listen_nodes_geometry, control_nodes_geometry)
         ):
@@ -520,7 +519,7 @@ class Model(FileModel):
                 [point_listen.y, point_control.y],
                 color="gray",
                 ls="--",
-                label="Listen edge" if i == 0 else None,
+                label="Listen link" if i == 0 else None,
             )
         return
 
@@ -530,7 +529,7 @@ class Model(FileModel):
         indicate_subnetworks: bool = True,
         aspect_ratio_bound: float = 0.33,
     ) -> Any:
-        """Plot the nodes, edges and allocation networks of the model.
+        """Plot the nodes, links and allocation networks of the model.
 
         Parameters
         ----------
@@ -552,7 +551,7 @@ class Model(FileModel):
             ax.axis("off")
 
         node = self.node_table()
-        self.edge.plot(ax=ax, zorder=2)
+        self.link.plot(ax=ax, zorder=2)
         self.plot_control_listen(ax)
         node.plot(ax=ax, zorder=3)
 
@@ -598,22 +597,21 @@ class Model(FileModel):
         add_allocation : bool
             add allocation results (Optional, defaults to False)
         """
-
         if add_flow and add_allocation:
             raise ValueError("Cannot add both allocation and flow results.")
 
         node_df = self.node_table().df
         assert node_df is not None
 
-        assert self.edge.df is not None
-        edge_df = self.edge.df.copy()
+        assert self.link.df is not None
+        link_df = self.link.df.copy()
         # We assume only the flow network is of interest.
-        edge_df = edge_df[edge_df.edge_type == "flow"]
+        link_df = link_df[link_df.link_type == "flow"]
 
         node_id = node_df.index.to_numpy()
-        edge_id = edge_df.index.to_numpy()
-        from_node_id = edge_df.from_node_id.to_numpy()
-        to_node_id = edge_df.to_node_id.to_numpy()
+        link_id = link_df.index.to_numpy()
+        from_node_id = link_df.from_node_id.to_numpy()
+        to_node_id = link_df.to_node_id.to_numpy()
         node_lookup = _node_lookup_numpy(node_id)
 
         grid = xugrid.Ugrid1d(
@@ -631,14 +629,14 @@ class Model(FileModel):
             crs=node_df.crs,
         )
 
-        edge_dim = grid.edge_dimension
+        link_dim = grid.edge_dimension
         node_dim = grid.node_dimension
 
         uds = xugrid.UgridDataset(None, grid)
         uds = uds.assign_coords(node_id=(node_dim, node_id))
-        uds = uds.assign_coords(edge_id=(edge_dim, edge_id))
-        uds = uds.assign_coords(from_node_id=(edge_dim, from_node_id))
-        uds = uds.assign_coords(to_node_id=(edge_dim, to_node_id))
+        uds = uds.assign_coords(link_id=(link_dim, link_id))
+        uds = uds.assign_coords(from_node_id=(link_dim, from_node_id))
+        uds = uds.assign_coords(to_node_id=(link_dim, to_node_id))
 
         if add_flow:
             uds = self._add_flow(uds, node_lookup)
@@ -672,15 +670,15 @@ class Model(FileModel):
         _time_in_ns(flow_df)
 
         # add the xugrid dimension indices to the dataframes
-        edge_dim = uds.grid.edge_dimension
+        link_dim = uds.grid.edge_dimension
         node_dim = uds.grid.node_dimension
         node_lookup = _node_lookup(uds)
-        edge_lookup = _edge_lookup(uds)
-        flow_df[edge_dim] = edge_lookup[flow_df["edge_id"]].to_numpy()
+        link_lookup = _link_lookup(uds)
+        flow_df[link_dim] = link_lookup[flow_df["link_id"]].to_numpy()
         basin_df[node_dim] = node_lookup[basin_df["node_id"]].to_numpy()
 
         # add flow results to the UgridDataset
-        flow_da = flow_df.set_index(["time", edge_dim])["flow_rate"].to_xarray()
+        flow_da = flow_df.set_index(["time", link_dim])["flow_rate"].to_xarray()
         uds[flow_da.name] = flow_da
 
         # add basin results to the UgridDataset
@@ -706,31 +704,37 @@ class Model(FileModel):
 
         alloc_flow_df = pd.read_feather(
             alloc_flow_path,
-            columns=["time", "edge_id", "flow_rate", "optimization_type", "priority"],
+            columns=[
+                "time",
+                "link_id",
+                "flow_rate",
+                "optimization_type",
+                "demand_priority",
+            ],
             dtype_backend="pyarrow",
         )
         _time_in_ns(alloc_flow_df)
 
-        # add the xugrid edge dimension index to the dataframe
-        edge_dim = uds.grid.edge_dimension
-        edge_lookup = _edge_lookup(uds)
-        alloc_flow_df[edge_dim] = edge_lookup[alloc_flow_df["edge_id"]].to_numpy()
+        # add the xugrid link dimension index to the dataframe
+        link_dim = uds.grid.edge_dimension
+        link_lookup = _link_lookup(uds)
+        alloc_flow_df[link_dim] = link_lookup[alloc_flow_df["link_id"]].to_numpy()
 
-        # "flow_rate_allocated" is the sum of all allocated flow rates over the priorities
+        # "flow_rate_allocated" is the sum of all allocated flow rates over the demand priorities
         allocate_df = alloc_flow_df.loc[
             alloc_flow_df["optimization_type"] == "allocate"
         ]
         uds["flow_rate_allocated"] = (
-            allocate_df.groupby(["time", edge_dim])["flow_rate"].sum().to_xarray()
+            allocate_df.groupby(["time", link_dim])["flow_rate"].sum().to_xarray()
         )
 
-        # also add the individual priorities and optimization types
+        # also add the individual demand priorities and optimization types
         # added as separate variables to ensure QGIS / MDAL compatibility
-        for (optimization_type, priority), group in alloc_flow_df.groupby(
-            ["optimization_type", "priority"]
+        for (optimization_type, demand_priority), group in alloc_flow_df.groupby(
+            ["optimization_type", "demand_priority"]
         ):
-            varname = f"{optimization_type}_priority_{priority}"
-            da = group.set_index(["time", edge_dim])["flow_rate"].to_xarray()
+            varname = f"{optimization_type}_priority_{demand_priority}"
+            da = group.set_index(["time", link_dim])["flow_rate"].to_xarray()
             uds[varname] = da
 
         return uds

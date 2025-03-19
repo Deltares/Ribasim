@@ -26,16 +26,15 @@ which can be for instance an average or a difference of variables. If a variable
 
 column               | type     | unit       | restriction
 -------------------- | -------- | ---------- | -----------
-node_id              | Int32    | -          | sorted
-listen_node_type     | String   | -          | known node type
-listen_node_id       | Int32    | -          | sorted per node_id
-variable             | String   | -          | must be "level" or "flow_rate", sorted per listen_node_id
+node_id              | Int32    | -          |
+listen_node_id       | Int32    | -          |
+variable             | String   | -          | must be "level" or "flow_rate"
 weight               | Float64  | -          | (optional, default 1.0)
 look_ahead           | Float64  | $\text{s}$ | Only on transient boundary conditions, non-negative (optional, default 0.0).
 
 ## Function
 
-The function table defines a piecewise linear function $f$ interpolating between `(input, output)` datapoints for each `ContinuousControl` node. The total computation thus looks like
+The function table defines a piecewise linear function $f$ interpolating between `(input, output)` datapoints for each `ContinuousControl` node. It linearly extrapolates. The total computation thus looks like
 
 $$
     f(\text{weight}_1 * \text{variable}_1 + \text{weight}_2 * \text{variable}_2 + \ldots).
@@ -43,7 +42,7 @@ $$
 
 column               | type    | unit    | restriction
 -------------------- | ------- | ------- | -----------
-node_id              | Int32   | -       | sorted
-input                | Float64 | -       | sorted per node_id
+node_id              | Int32   | -       |
+input                | Float64 | -       |
 output               | Float64 | -       | -
 controlled_variable  | String  | -       | must be "level" or "flow_rate"

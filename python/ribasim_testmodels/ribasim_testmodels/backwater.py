@@ -1,6 +1,6 @@
 import numpy as np
 import ribasim
-from ribasim.config import Node
+from ribasim.config import Experimental, Node
 from ribasim.nodes import (
     basin,
     flow_boundary,
@@ -10,8 +10,7 @@ from shapely.geometry import Point
 
 
 def backwater_model():
-    """Backwater curve as an integration test for ManningResistance"""
-
+    """Backwater curve as an integration test for ManningResistance."""
     node_type = np.full(102, "ManningResistance")
     node_type[1::2] = "Basin"
     node_type[0] = "FlowBoundary"
@@ -24,6 +23,7 @@ def backwater_model():
         endtime="2021-01-01",
         crs="EPSG:28992",
         solver=ribasim.Solver(autodiff=True),
+        experimental=Experimental(concentration=True),
     )
 
     model.flow_boundary.add(
@@ -53,17 +53,17 @@ def backwater_model():
             ],
         )
         if id == 2:
-            model.edge.add(
+            model.link.add(
                 model.flow_boundary[1],
                 model.basin[2],
             )
         else:
-            model.edge.add(
+            model.link.add(
                 model.manning_resistance[id - 1],
                 model.basin[id],
             )
 
-        model.edge.add(
+        model.link.add(
             model.basin[id],
             model.manning_resistance[id + 1],
         )
@@ -72,7 +72,7 @@ def backwater_model():
         Node(102, Point(1010.0, 0.0)),
         [basin.State(level=[2.0]), basin.Profile(level=[0.0, 1.0], area=1e10)],
     )
-    model.edge.add(
+    model.link.add(
         model.manning_resistance[101],
         model.basin[102],
     )

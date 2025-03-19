@@ -1,6 +1,7 @@
 package Templates
 
 import jetbrains.buildServer.configs.kotlin.Template
+import jetbrains.buildServer.configs.kotlin.buildFeatures.buildCache
 import jetbrains.buildServer.configs.kotlin.buildFeatures.XmlReport
 import jetbrains.buildServer.configs.kotlin.buildFeatures.xmlReport
 import jetbrains.buildServer.configs.kotlin.buildSteps.script
@@ -33,6 +34,20 @@ open class TestBinaries (platformOs: String) : Template() {
             cleanCheckout = true
         }
 
+        val depot_path = generateJuliaDepotPath(platformOs)
+        params {
+            password("MiniO_credential_token", "credentialsJSON:86cbf3e5-724c-437d-9962-7a3f429b0aa2")
+            param("env.JULIA_DEPOT_PATH", depot_path)
+        }
+
+        features {
+            buildCache {
+                id = "Ribasim${platformOs}Cache"
+                name = "Ribasim ${platformOs} Cache"
+                publish = false
+            }
+        }
+
         val header = generateTestBinariesHeader(platformOs)
         steps {
             script {
@@ -53,6 +68,8 @@ open class TestBinaries (platformOs: String) : Template() {
                 """
                 pixi run test-ribasim-api
                 pixi run test-ribasim-cli
+                pixi run python utils/get_benchmark.py --secretkey %MiniO_credential_token% "hws_2024_7_0/"
+                pixi run model-integration-test
                 """.trimIndent()
             }
         }

@@ -7,7 +7,7 @@ See also [PID controller](https://en.wikipedia.org/wiki/PID_controller).
 
 When a PidControl node is made inactive, the node under its control retains the last flow rate value, and the error integral is reset to 0.
 
-In the future controlling the flow on a particular edge could be supported.
+In the future controlling the flow on a particular link could be supported.
 
 # Tables
 
@@ -15,10 +15,9 @@ In the future controlling the flow on a particular edge could be supported.
 
 column           | type     | unit            | restriction
 ---------------- | -------- | --------------- | -----------
-node_id          | Int32    | -               | sorted
-control_state    | String   | -               | (optional) sorted per node_id
+node_id          | Int32    | -               |
+control_state    | String   | -               | (optional)
 active           | Bool     | -               | (optional, default true)
-listen_node_type | String   | -               | known node type
 listen_node_id   | Int32    | -               | -
 target           | Float64  | $\text{m}$      | -
 proportional     | Float64  | $\text{s}^{-1}$ | -
@@ -29,7 +28,6 @@ derivative       | Float64  | -               | -
 
 This table is the transient form of the `PidControl` table.
 The differences are that a time column is added and the nodes are assumed to be active so this column is removed.
-The table must by sorted by time, and per time it must be sorted by `node_id`.
 With this the target level and PID coefficients can be updated over time. In between the given times the
 these values interpolated linearly, and outside these values area constant given by the
 nearest time value.
@@ -37,9 +35,8 @@ Note that a `node_id` can be either in this table or in the static one, but not 
 
 column           | type     | unit            | restriction
 ---------------- | -------- | --------------- | -----------
-node_id          | Int32    | -               | sorted
-time             | DateTime | -               | sorted per node_id
-listen_node_type | Int32    | -               | known node type
+node_id          | Int32    | -               |
+time             | DateTime | -               |
 listen_node_id   | Int32    | -               | -
 target           | Float64  | $\text{m}$      | -
 proportional     | Float64  | $\text{s}^{-1}$ | -
@@ -110,5 +107,5 @@ Note that to compute this, $\hat{f}_\text{PID}$ has to be known first, meaning t
 
 Note by @eq-error that the error is positive if the setpoint is larger than the Basin level and negative if the setpoint is smaller than the Basin level.
 
-We enforce the convention that when a Pump is controlled, its edge points away from the Basin, and when an Outlet is controlled, its edge points towards the Basin, so that the main flow direction along these edges is positive.
+We enforce the convention that when a Pump is controlled, its link points away from the Basin, and when an Outlet is controlled, its link points towards the Basin, so that the main flow direction along these links is positive.
 Therefore, positive flows of the Pump and Outlet have opposite effects on the Basin, and thus the parameters $K_p,K_i,K_d$ of the Pump and Outlet must have opposite signs to achieve the same goal.

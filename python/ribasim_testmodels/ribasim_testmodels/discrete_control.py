@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from ribasim.config import Node
+from ribasim.config import Experimental, Node
 from ribasim.model import Model, Solver
 from ribasim.nodes import (
     basin,
@@ -17,14 +17,15 @@ from shapely.geometry import Point
 
 def pump_discrete_control_model() -> Model:
     """
-    Set up a basic model with a pump controlled based on basin levels.
+    Set up a basic model with a Pump controlled based on Basin levels.
+
     The LinearResistance is deactivated when the levels are almost equal.
     """
-
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
+        experimental=Experimental(concentration=True),
     )
 
     model.basin.add(
@@ -64,6 +65,7 @@ def pump_discrete_control_model() -> Model:
             discrete_control.Condition(
                 greater_than=[0.8, 0.4],
                 compound_variable_id=[1, 2],
+                condition_id=[1, 1],
             ),
             discrete_control.Logic(
                 truth_state=["FF", "TF", "FT", "TT"],
@@ -82,6 +84,7 @@ def pump_discrete_control_model() -> Model:
             discrete_control.Condition(
                 greater_than=[0.45],
                 compound_variable_id=1,
+                condition_id=1,
             ),
             discrete_control.Logic(
                 truth_state=["T", "F"],
@@ -90,27 +93,27 @@ def pump_discrete_control_model() -> Model:
         ],
     )
 
-    model.edge.add(
+    model.link.add(
         model.basin[1],
         model.linear_resistance[2],
     )
-    model.edge.add(
+    model.link.add(
         model.linear_resistance[2],
         model.basin[3],
     )
-    model.edge.add(
+    model.link.add(
         model.basin[1],
         model.pump[4],
     )
-    model.edge.add(
+    model.link.add(
         model.pump[4],
         model.basin[3],
     )
-    model.edge.add(
+    model.link.add(
         model.discrete_control[5],
         model.pump[4],
     )
-    model.edge.add(
+    model.link.add(
         model.discrete_control[6],
         model.linear_resistance[2],
     )
@@ -119,12 +122,12 @@ def pump_discrete_control_model() -> Model:
 
 
 def flow_condition_model() -> Model:
-    """Set up a basic model that involves discrete control based on a flow condition"""
-
+    """Set up a basic model that involves discrete control based on a flow condition."""
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
+        experimental=Experimental(concentration=True),
     )
 
     model.flow_boundary.add(
@@ -157,24 +160,25 @@ def flow_condition_model() -> Model:
             discrete_control.Condition(
                 greater_than=[20 / (86400)],
                 compound_variable_id=1,
+                condition_id=1,
             ),
             discrete_control.Logic(truth_state=["T", "F"], control_state=["off", "on"]),
         ],
     )
 
-    model.edge.add(
+    model.link.add(
         model.flow_boundary[1],
         model.basin[2],
     )
-    model.edge.add(
+    model.link.add(
         model.basin[2],
         model.pump[3],
     )
-    model.edge.add(
+    model.link.add(
         model.pump[3],
         model.terminal[4],
     )
-    model.edge.add(
+    model.link.add(
         model.discrete_control[5],
         model.pump[3],
     )
@@ -184,11 +188,11 @@ def flow_condition_model() -> Model:
 
 def level_boundary_condition_model() -> Model:
     """Set up a small model with a condition on a level boundary."""
-
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
+        experimental=Experimental(concentration=True),
     )
 
     model.level_boundary.add(
@@ -223,28 +227,29 @@ def level_boundary_condition_model() -> Model:
             discrete_control.Condition(
                 greater_than=[6.0],
                 compound_variable_id=1,
+                condition_id=1,
             ),
             discrete_control.Logic(truth_state=["T", "F"], control_state=["on", "off"]),
         ],
     )
 
-    model.edge.add(
+    model.link.add(
         model.level_boundary[1],
         model.linear_resistance[2],
     )
-    model.edge.add(
+    model.link.add(
         model.linear_resistance[2],
         model.basin[3],
     )
-    model.edge.add(
+    model.link.add(
         model.basin[3],
         model.outlet[4],
     )
-    model.edge.add(
+    model.link.add(
         model.outlet[4],
         model.terminal[5],
     )
-    model.edge.add(
+    model.link.add(
         model.discrete_control[6],
         model.outlet[4],
     )
@@ -259,11 +264,11 @@ def tabulated_rating_curve_control_model() -> Model:
     node will effectively increase the crest level to prevent further drainage
     at some threshold level.
     """
-
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
+        experimental=Experimental(concentration=True),
     )
 
     model.basin.add(
@@ -297,6 +302,7 @@ def tabulated_rating_curve_control_model() -> Model:
             discrete_control.Condition(
                 greater_than=[0.5],
                 compound_variable_id=1,
+                condition_id=1,
             ),
             discrete_control.Logic(
                 truth_state=["T", "F"], control_state=["low", "high"]
@@ -304,15 +310,15 @@ def tabulated_rating_curve_control_model() -> Model:
         ],
     )
 
-    model.edge.add(
+    model.link.add(
         model.basin[1],
         model.tabulated_rating_curve[2],
     )
-    model.edge.add(
+    model.link.add(
         model.tabulated_rating_curve[2],
         model.terminal[3],
     )
-    model.edge.add(
+    model.link.add(
         model.discrete_control[4],
         model.tabulated_rating_curve[2],
     )
@@ -321,15 +327,12 @@ def tabulated_rating_curve_control_model() -> Model:
 
 
 def compound_variable_condition_model() -> Model:
-    """
-    Set up a minimal model containing a condition on a compound variable
-    for discrete control.
-    """
-
+    """Model with a condition on a compound variable for DiscreteControl."""
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
+        experimental=Experimental(concentration=True),
     )
 
     model.basin.add(
@@ -363,32 +366,33 @@ def compound_variable_condition_model() -> Model:
             discrete_control.Condition(
                 greater_than=[0.5],
                 compound_variable_id=1,
+                condition_id=1,
             ),
             discrete_control.Logic(truth_state=["T", "F"], control_state=["On", "Off"]),
         ],
     )
 
-    model.edge.add(model.flow_boundary[2], model.basin[1])
-    model.edge.add(model.flow_boundary[3], model.basin[1])
-    model.edge.add(model.basin[1], model.pump[4])
-    model.edge.add(model.pump[4], model.terminal[5])
-    model.edge.add(model.discrete_control[6], model.pump[4])
+    model.link.add(model.flow_boundary[2], model.basin[1])
+    model.link.add(model.flow_boundary[3], model.basin[1])
+    model.link.add(model.basin[1], model.pump[4])
+    model.link.add(model.pump[4], model.terminal[5])
+    model.link.add(model.discrete_control[6], model.pump[4])
 
     return model
 
 
 def level_range_model() -> Model:
     """
-    Set up a minimal model in which the level of a basin is kept within an acceptable range
-    around a setpoint while being affected by time-varying forcing.
+    Keep the level of a Basin within a range around a setpoint, under the influence of time-varying forcing.
+
     This is done by bringing the level back to the setpoint once the level goes beyond this range.
     """
-
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
         solver=Solver(abstol=1e-6, reltol=1e-5),
+        experimental=Experimental(concentration=True),
     )
 
     model.basin.add(
@@ -427,6 +431,7 @@ def level_range_model() -> Model:
                 # min, max
                 greater_than=[5.0, 15.0],
                 compound_variable_id=1,
+                condition_id=[1, 2],
             ),
             discrete_control.Logic(
                 truth_state=["FF", "TF", "TT"],
@@ -435,35 +440,35 @@ def level_range_model() -> Model:
         ],
     )
 
-    model.edge.add(
+    model.link.add(
         model.basin[1],
         model.pump[3],
     )
-    model.edge.add(
+    model.link.add(
         model.pump[3],
         model.level_boundary[4],
     )
-    model.edge.add(
+    model.link.add(
         model.level_boundary[4],
         model.pump[2],
     )
-    model.edge.add(
+    model.link.add(
         model.pump[2],
         model.basin[1],
     )
-    model.edge.add(
+    model.link.add(
         model.basin[1],
         model.tabulated_rating_curve[5],
     )
-    model.edge.add(
+    model.link.add(
         model.tabulated_rating_curve[5],
         model.terminal[6],
     )
-    model.edge.add(
+    model.link.add(
         model.discrete_control[7],
         model.pump[2],
     )
-    model.edge.add(
+    model.link.add(
         model.discrete_control[7],
         model.pump[3],
     )
@@ -472,15 +477,12 @@ def level_range_model() -> Model:
 
 
 def connector_node_flow_condition_model() -> Model:
-    """
-    Set up a minimal model with discrete control with a condition on
-    the flow through a connector node.
-    """
-
+    """DiscreteControl with a condition on the flow through a connector node."""
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
+        experimental=Experimental(concentration=True),
     )
 
     model.basin.add(
@@ -513,28 +515,27 @@ def connector_node_flow_condition_model() -> Model:
                 variable=["flow_rate"],
                 compound_variable_id=1,
             ),
-            discrete_control.Condition(greater_than=[1e-4], compound_variable_id=1),
+            discrete_control.Condition(
+                greater_than=[1e-4], compound_variable_id=1, condition_id=1
+            ),
             discrete_control.Logic(truth_state=["T", "F"], control_state=["On", "Off"]),
         ],
     )
 
-    model.edge.add(model.basin[1], model.linear_resistance[2])
-    model.edge.add(model.linear_resistance[2], model.basin[3])
-    model.edge.add(model.discrete_control[4], model.linear_resistance[2])
+    model.link.add(model.basin[1], model.linear_resistance[2])
+    model.link.add(model.linear_resistance[2], model.basin[3])
+    model.link.add(model.discrete_control[4], model.linear_resistance[2])
 
     return model
 
 
 def concentration_condition_model() -> Model:
-    """
-    Set up a minimal model with discrete control based on a
-    concentration condition.
-    """
-
+    """DiscreteControl based on a concentration condition."""
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
+        experimental=Experimental(concentration=True),
     )
 
     model.basin.add(
@@ -571,24 +572,25 @@ def concentration_condition_model() -> Model:
                 variable=["concentration_external.kryptonite"],
                 compound_variable_id=1,
             ),
-            discrete_control.Condition(greater_than=[0.5], compound_variable_id=1),
+            discrete_control.Condition(
+                greater_than=[0.5], compound_variable_id=1, condition_id=1
+            ),
             discrete_control.Logic(truth_state=["T", "F"], control_state=["On", "Off"]),
         ],
     )
 
-    model.edge.add(model.basin[1], model.pump[2])
-    model.edge.add(model.pump[2], model.terminal[3])
-    model.edge.add(model.discrete_control[4], model.pump[2])
+    model.link.add(model.basin[1], model.pump[2])
+    model.link.add(model.pump[2], model.terminal[3])
+    model.link.add(model.discrete_control[4], model.pump[2])
 
     return model
 
 
 def continuous_concentration_condition_model() -> Model:
     """
-    Set up a minimal model with discrete control based on a
-    continuous (calculated) concentration condition.
-    In this case, we setup a salt concentration and mimic
-    the Dutch coast.
+    DiscreteControl based on a continuous (calculated) concentration condition.
+
+    In this case, we setup a salt concentration and mimic the Dutch coast.
 
                dc
              /   |
@@ -598,12 +600,12 @@ def continuous_concentration_condition_model() -> Model:
                  |
                 term
     """
-
     model = Model(
         starttime="2020-01-01",
         endtime="2020-02-01",
         crs="EPSG:28992",
         solver=Solver(saveat=86400 / 8),
+        experimental=Experimental(concentration=True),
     )
 
     basi = model.basin.add(
@@ -673,7 +675,9 @@ def continuous_concentration_condition_model() -> Model:
                 compound_variable_id=1,
             ),
             # More than 20% of seawater (35 g/L)
-            discrete_control.Condition(greater_than=[7], compound_variable_id=1),
+            discrete_control.Condition(
+                greater_than=[7], compound_variable_id=1, condition_id=1
+            ),
             discrete_control.Logic(truth_state=["T", "F"], control_state=["Off", "On"]),
         ],
     )
@@ -681,11 +685,55 @@ def continuous_concentration_condition_model() -> Model:
     outl = model.outlet.add(Node(6, Point(0, -0.5)), [outlet.Static(flow_rate=[0.11])])
     term = model.terminal.add(Node(7, Point(0, -1)))
 
-    model.edge.add(levelb, linearr)
-    model.edge.add(linearr, basi)
-    model.edge.add(flowb, basi)
-    model.edge.add(discretec, linearr)
-    model.edge.add(basi, outl)
-    model.edge.add(outl, term)
+    model.link.add(levelb, linearr)
+    model.link.add(linearr, basi)
+    model.link.add(flowb, basi)
+    model.link.add(discretec, linearr)
+    model.link.add(basi, outl)
+    model.link.add(outl, term)
+
+    return model
+
+
+def transient_condition_model() -> Model:
+    """DiscreteControl based on transient condition."""
+    model = Model(starttime="2020-01-01", endtime="2020-03-01", crs="EPSG:28992")
+
+    lb = model.level_boundary.add(
+        Node(1, Point(0, 0)), [level_boundary.Static(level=[2.0])]
+    )
+
+    pmp = model.pump.add(
+        Node(2, Point(1, 0)),
+        [pump.Static(control_state=["A", "B"], flow_rate=[1.0, 2.0])],
+    )
+
+    bsn = model.basin.add(
+        Node(3, Point(2, 0)),
+        [
+            basin.State(level=[2.0]),
+            basin.Profile(level=[0.0, 1.0], area=[100.0, 100.0]),
+        ],
+    )
+
+    dc = model.discrete_control.add(
+        Node(4, Point(1, 1), cyclic_time=True),
+        [
+            discrete_control.Variable(
+                listen_node_id=[1], variable=["level"], compound_variable_id=1
+            ),
+            discrete_control.Condition(
+                compound_variable_id=1,
+                condition_id=1,
+                greater_than=[1.0, 3.0, 1.0],
+                time=["2020-01-01", "2020-02-01", "2020-03-01"],
+            ),
+            discrete_control.Logic(truth_state=["F", "T"], control_state=["A", "B"]),
+        ],
+    )
+
+    model.edge.add(lb, pmp)
+    model.edge.add(pmp, bsn)
+    model.edge.add(dc, pmp)
 
     return model

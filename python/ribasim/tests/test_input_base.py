@@ -15,5 +15,5 @@ def test_tablename():
     cls = nodes.basin.ConcentrationExternal
     assert cls.tablename() == "Basin / concentration_external"
 
-    cls = geometry.edge.EdgeTable
-    assert cls.tablename() == "Edge"
+    cls = geometry.link.LinkTable
+    assert cls.tablename() == "Link"

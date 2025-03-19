@@ -1,5 +1,5 @@
 """
-This module contains the classes to represent the Ribasim node layers.
+Classes to represent the Ribasim node layers.
 
 The classes specify:
 
@@ -93,8 +93,9 @@ class Input(abc.ABC):
 
     def new_layer(self, crs: QgsCoordinateReferenceSystem) -> QgsVectorLayer:
         """
-        Separate creation of the instance with creating the layer, since the
-        layer might also come from an existing geopackage.
+        Separate creation of the instance with creating the layer.
+
+        Needed since the layer might also come from an existing geopackage.
         """
         layer = QgsVectorLayer(self.geometry_type(), self.input_type(), "memory")
         provider = layer.dataProvider()
@@ -200,6 +201,7 @@ class Node(Input):
             QgsField("name", QVariant.String),
             QgsField("node_type", QVariant.String),
             QgsField("subnetwork_id", QVariant.Int),
+            QgsField("source_priority", QVariant.Int),
         ]
 
     @classmethod
@@ -244,16 +246,15 @@ class Node(Input):
         return labels
 
 
-class Edge(Input):
+class Link(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("edge_id", QVariant.Int),
+            QgsField("link_id", QVariant.Int),
             QgsField("name", QVariant.String),
             QgsField("from_node_id", QVariant.Int),
             QgsField("to_node_id", QVariant.Int),
-            QgsField("edge_type", QVariant.String),
-            QgsField("subnetwork_id", QVariant.Int),
+            QgsField("link_type", QVariant.String),
         ]
 
     @classmethod
@@ -266,7 +267,7 @@ class Edge(Input):
 
     @classmethod
     def input_type(cls) -> str:
-        return "Edge"
+        return "Link"
 
     @classmethod
     def is_spatial(cls):
@@ -274,13 +275,13 @@ class Edge(Input):
 
     @classmethod
     def fid_column(cls):
-        return "edge_id"
+        return "link_id"
 
     def set_editor_widget(self) -> None:
         layer = self.layer
 
-        self.set_dropdown("edge_type", EDGETYPES)
-        self.set_unique("edge_id")
+        self.set_dropdown("link_type", LINKTYPES)
+        self.set_unique("link_id")
 
         layer_form_config = layer.editFormConfig()
         layer.setEditFormConfig(layer_form_config)
@@ -290,7 +291,7 @@ class Edge(Input):
     @property
     def labels(self) -> Any:
         pal_layer = QgsPalLayerSettings()
-        pal_layer.fieldName = """concat("name", ' #', "edge_id")"""
+        pal_layer.fieldName = """concat("name", ' #', "link_id")"""
         pal_layer.isExpression = True
         pal_layer.placement = Qgis.LabelPlacement.Line
         pal_layer.dist = 1.0
@@ -348,8 +349,8 @@ class BasinTime(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("time", QVariant.DateTime),
             QgsField("node_id", QVariant.Int),
+            QgsField("time", QVariant.DateTime),
             QgsField("drainage", QVariant.Double),
             QgsField("potential_evaporation", QVariant.Double),
             QgsField("infiltration", QVariant.Double),
@@ -369,8 +370,8 @@ class BasinConcentrationExternal(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("time", QVariant.DateTime),
             QgsField("node_id", QVariant.Int),
+            QgsField("time", QVariant.DateTime),
             QgsField("substance", QVariant.String),
             QgsField("concentration", QVariant.Double),
         ]
@@ -388,8 +389,8 @@ class BasinConcentrationState(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("time", QVariant.DateTime),
             QgsField("node_id", QVariant.Int),
+            QgsField("time", QVariant.DateTime),
             QgsField("substance", QVariant.String),
             QgsField("concentration", QVariant.Double),
         ]
@@ -407,15 +408,15 @@ class BasinConcentration(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("time", QVariant.DateTime),
             QgsField("node_id", QVariant.Int),
+            QgsField("time", QVariant.DateTime),
             QgsField("substance", QVariant.String),
             QgsField("drainage", QVariant.Double),
             QgsField("precipitation", QVariant.Double),
         ]
 
 
-class BasinSubgridLevel(Input):
+class BasinSubgrid(Input):
     @classmethod
     def input_type(cls) -> str:
         return "Basin / subgrid"
@@ -429,6 +430,26 @@ class BasinSubgridLevel(Input):
         return [
             QgsField("subgrid_id", QVariant.Int),
             QgsField("node_id", QVariant.Int),
+            QgsField("basin_level", QVariant.Double),
+            QgsField("subgrid_level", QVariant.Double),
+        ]
+
+
+class BasinSubgridTime(Input):
+    @classmethod
+    def input_type(cls) -> str:
+        return "Basin / subgrid_time"
+
+    @classmethod
+    def geometry_type(cls) -> str:
+        return "No Geometry"
+
+    @classmethod
+    def attributes(cls) -> list[QgsField]:
+        return [
+            QgsField("subgrid_id", QVariant.Int),
+            QgsField("node_id", QVariant.Int),
+            QgsField("time", QVariant.DateTime),
             QgsField("basin_level", QVariant.Double),
             QgsField("subgrid_level", QVariant.Double),
         ]
@@ -505,8 +526,8 @@ class TabulatedRatingCurveTime(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("time", QVariant.DateTime),
             QgsField("node_id", QVariant.Int),
+            QgsField("time", QVariant.DateTime),
             QgsField("level", QVariant.Double),
             QgsField("flow_rate", QVariant.Double),
         ]
@@ -583,10 +604,28 @@ class LevelBoundaryTime(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("time", QVariant.DateTime),
             QgsField("node_id", QVariant.Int),
             QgsField("time", QVariant.DateTime),
             QgsField("level", QVariant.Double),
+        ]
+
+
+class LevelBoundaryConcentration(Input):
+    @classmethod
+    def input_type(cls) -> str:
+        return "LevelBoundary / concentration"
+
+    @classmethod
+    def geometry_type(cls) -> str:
+        return "No Geometry"
+
+    @classmethod
+    def attributes(cls) -> list[QgsField]:
+        return [
+            QgsField("node_id", QVariant.Int),
+            QgsField("time", QVariant.DateTime),
+            QgsField("substance", QVariant.String),
+            QgsField("concentration", QVariant.Double),
         ]
 
 
@@ -607,7 +646,31 @@ class PumpStatic(Input):
             QgsField("flow_rate", QVariant.Double),
             QgsField("min_flow_rate", QVariant.Double),
             QgsField("max_flow_rate", QVariant.Double),
+            QgsField("min_upstream_level", QVariant.Double),
+            QgsField("max_downstream_level", QVariant.Double),
             QgsField("control_state", QVariant.String),
+        ]
+
+
+class PumpTime(Input):
+    @classmethod
+    def input_type(cls) -> str:
+        return "Pump / time"
+
+    @classmethod
+    def geometry_type(cls) -> str:
+        return "No Geometry"
+
+    @classmethod
+    def attributes(cls) -> list[QgsField]:
+        return [
+            QgsField("node_id", QVariant.Int),
+            QgsField("time", QVariant.DateTime),
+            QgsField("flow_rate", QVariant.Double),
+            QgsField("min_flow_rate", QVariant.Double),
+            QgsField("max_flow_rate", QVariant.Double),
+            QgsField("min_upstream_level", QVariant.Double),
+            QgsField("max_downstream_level", QVariant.Double),
         ]
 
 
@@ -629,7 +692,30 @@ class OutletStatic(Input):
             QgsField("min_flow_rate", QVariant.Double),
             QgsField("max_flow_rate", QVariant.Double),
             QgsField("min_upstream_level", QVariant.Double),
+            QgsField("max_downstream_level", QVariant.Double),
             QgsField("control_state", QVariant.String),
+        ]
+
+
+class OutletTime(Input):
+    @classmethod
+    def input_type(cls) -> str:
+        return "Outlet / time"
+
+    @classmethod
+    def geometry_type(cls) -> str:
+        return "No Geometry"
+
+    @classmethod
+    def attributes(cls) -> list[QgsField]:
+        return [
+            QgsField("node_id", QVariant.Int),
+            QgsField("time", QVariant.DateTime),
+            QgsField("flow_rate", QVariant.Double),
+            QgsField("min_flow_rate", QVariant.Double),
+            QgsField("max_flow_rate", QVariant.Double),
+            QgsField("min_upstream_level", QVariant.Double),
+            QgsField("max_downstream_level", QVariant.Double),
         ]
 
 
@@ -663,9 +749,28 @@ class FlowBoundaryTime(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("time", QVariant.DateTime),
             QgsField("node_id", QVariant.Int),
+            QgsField("time", QVariant.DateTime),
             QgsField("flow_rate", QVariant.Double),
+        ]
+
+
+class FlowBoundaryConcentration(Input):
+    @classmethod
+    def input_type(cls) -> str:
+        return "FlowBoundary / concentration"
+
+    @classmethod
+    def geometry_type(cls) -> str:
+        return "No Geometry"
+
+    @classmethod
+    def attributes(cls) -> list[QgsField]:
+        return [
+            QgsField("node_id", QVariant.Int),
+            QgsField("time", QVariant.DateTime),
+            QgsField("substance", QVariant.String),
+            QgsField("concentration", QVariant.Double),
         ]
 
 
@@ -825,7 +930,7 @@ class UserDemandStatic(Input):
             QgsField("active", QVariant.Bool),
             QgsField("demand", QVariant.Double),
             QgsField("return_factor", QVariant.Double),
-            QgsField("priority", QVariant.Int),
+            QgsField("demand_priority", QVariant.Int),
         ]
 
 
@@ -845,7 +950,26 @@ class UserDemandTime(Input):
             QgsField("time", QVariant.DateTime),
             QgsField("demand", QVariant.Double),
             QgsField("return_factor", QVariant.Double),
-            QgsField("priority", QVariant.Int),
+            QgsField("demand_priority", QVariant.Int),
+        ]
+
+
+class UserDemandConcentration(Input):
+    @classmethod
+    def input_type(cls) -> str:
+        return "UserDemand / concentration"
+
+    @classmethod
+    def geometry_type(cls) -> str:
+        return "No Geometry"
+
+    @classmethod
+    def attributes(cls) -> list[QgsField]:
+        return [
+            QgsField("node_id", QVariant.Int),
+            QgsField("time", QVariant.DateTime),
+            QgsField("substance", QVariant.String),
+            QgsField("concentration", QVariant.Double),
         ]
 
 
@@ -864,7 +988,7 @@ class LevelDemandStatic(Input):
             QgsField("node_id", QVariant.Int),
             QgsField("min_level", QVariant.Double),
             QgsField("max_level", QVariant.Double),
-            QgsField("priority", QVariant.Int),
+            QgsField("demand_priority", QVariant.Int),
         ]
 
 
@@ -884,7 +1008,7 @@ class LevelDemandTime(Input):
             QgsField("time", QVariant.DateTime),
             QgsField("min_level", QVariant.Double),
             QgsField("max_level", QVariant.Double),
-            QgsField("priority", QVariant.Int),
+            QgsField("demand_priority", QVariant.Int),
         ]
 
 
@@ -902,7 +1026,7 @@ class FlowDemandStatic(Input):
         return [
             QgsField("node_id", QVariant.Int),
             QgsField("demand", QVariant.Double),
-            QgsField("priority", QVariant.Int),
+            QgsField("demand_priority", QVariant.Int),
         ]
 
 
@@ -921,7 +1045,7 @@ class FlowDemandTime(Input):
             QgsField("node_id", QVariant.Int),
             QgsField("time", QVariant.DateTime),
             QgsField("demand", QVariant.Double),
-            QgsField("priority", QVariant.Int),
+            QgsField("demand_priority", QVariant.Int),
         ]
 
 
@@ -932,7 +1056,7 @@ NODES: dict[str, type[Input]] = {
 NONSPATIALNODETYPES: set[str] = {
     cls.nodetype() for cls in Input.__subclasses__() if not cls.is_spatial()
 } | {"Terminal"}
-EDGETYPES = {"flow", "control"}
+LINKTYPES = {"flow", "control"}
 SPATIALCONTROLNODETYPES = {
     "ContinuousControl",
     "DiscreteControl",

@@ -119,8 +119,8 @@ function basin_table(
 )::@NamedTuple{
     time::Vector{DateTime},
     node_id::Vector{Int32},
-    storage::Vector{Float64},
     level::Vector{Float64},
+    storage::Vector{Float64},
     inflow_rate::Vector{Float64},
     outflow_rate::Vector{Float64},
     storage_rate::Vector{Float64},
@@ -132,11 +132,12 @@ function basin_table(
     relative_error::Vector{Float64},
 }
     (; saved) = model
+    (; state_ranges) = model.integrator.p
+
     # The last timestep is not included; there is no period over which to compute flows.
     data = get_storages_and_levels(model)
     storage = vec(data.storage[:, begin:(end - 1)])
     level = vec(data.level[:, begin:(end - 1)])
-    Δstorage = vec(diff(data.storage; dims = 2))
 
     nbasin = length(data.node_id)
     ntsteps = length(data.time) - 1
@@ -153,9 +154,10 @@ function basin_table(
     relative_error = FlatVector(saved.flow.saveval, :relative_error)
 
     idx_row = 0
-    for cvec in saved.flow.saveval
-        for (evaporation_, infiltration_) in
-            zip(cvec.flow.evaporation, cvec.flow.infiltration)
+    for saved_flow in saved.flow.saveval
+        saved_evaporation = view(saved_flow.flow, state_ranges.evaporation)
+        saved_infiltration = view(saved_flow.flow, state_ranges.infiltration)
+        for (evaporation_, infiltration_) in zip(saved_evaporation, saved_infiltration)
             idx_row += 1
             evaporation[idx_row] = evaporation_
             infiltration[idx_row] = infiltration_
@@ -168,8 +170,8 @@ function basin_table(
     return (;
         time,
         node_id,
-        storage,
         level,
+        storage,
         inflow_rate,
         outflow_rate,
         storage_rate,
@@ -209,7 +211,7 @@ function flow_table(
     model::Model,
 )::@NamedTuple{
     time::Vector{DateTime},
-    edge_id::Vector{Union{Int32, Missing}},
+    link_id::Vector{Union{Int32, Missing}},
     from_node_id::Vector{Int32},
     to_node_id::Vector{Int32},
     flow_rate::Vector{Float64},
@@ -218,30 +220,30 @@ function flow_table(
     (; t, saveval) = saved.flow
     (; p) = integrator
     (; graph) = p
-    (; flow_edges) = graph[]
+    (; flow_links) = graph[]
 
     from_node_id = Int32[]
     to_node_id = Int32[]
-    unique_edge_ids_flow = Union{Int32, Missing}[]
+    unique_link_ids_flow = Union{Int32, Missing}[]
 
-    flow_edge_ids = [flow_edge.edge for flow_edge in flow_edges]
+    flow_link_ids = [flow_link.link for flow_link in flow_links]
 
-    for (from_id, to_id) in flow_edge_ids
+    for (from_id, to_id) in flow_link_ids
         push!(from_node_id, from_id.value)
         push!(to_node_id, to_id.value)
-        push!(unique_edge_ids_flow, graph[from_id, to_id].id)
+        push!(unique_link_ids_flow, graph[from_id, to_id].id)
     end
 
-    nflow = length(unique_edge_ids_flow)
+    nflow = length(unique_link_ids_flow)
     ntsteps = length(t)
 
     flow_rate = zeros(nflow * ntsteps)
 
-    for (i, edge) in enumerate(flow_edge_ids)
+    for (i, link) in enumerate(flow_link_ids)
         for (j, cvec) in enumerate(saveval)
             (; flow, flow_boundary) = cvec
             flow_rate[i + (j - 1) * nflow] =
-                get_flow(flow, p, 0.0, edge; boundary_flow = flow_boundary)
+                get_flow(flow, p, 0.0, link; boundary_flow = flow_boundary)
         end
     end
 
@@ -251,11 +253,11 @@ function flow_table(
         t_starts[1] = 0.0
     end
     time = repeat(datetime_since.(t_starts, config.starttime); inner = nflow)
-    edge_id = repeat(unique_edge_ids_flow; outer = ntsteps)
+    link_id = repeat(unique_link_ids_flow; outer = ntsteps)
     from_node_id = repeat(from_node_id; outer = ntsteps)
     to_node_id = repeat(to_node_id; outer = ntsteps)
 
-    return (; time, edge_id, from_node_id, to_node_id, flow_rate)
+    return (; time, link_id, from_node_id, to_node_id, flow_rate)
 end
 
 "Create a concentration result table from the saved data"
@@ -276,19 +278,10 @@ function concentration_table(
 
     ntsteps = length(data.time) - 1
     nbasin = length(data.node_id)
-    nsubstance = length(basin.substances)
-    nrows = ntsteps * nbasin * nsubstance
+    nsubstance = length(basin.concentration_data.substances)
 
-    substances = String.(basin.substances)
-    concentration = zeros(nrows)
-
-    idx_row = 0
-    for cvec in saved.flow.saveval
-        for concentration_ in vec(cvec.concentration)
-            idx_row += 1
-            concentration[idx_row] = concentration_
-        end
-    end
+    substances = String.(basin.concentration_data.substances)
+    concentration = FlatVector(saved.flow.saveval, :concentration)
 
     time = repeat(data.time[begin:(end - 1)]; inner = nbasin * nsubstance)
     substance = repeat(substances; inner = nbasin, outer = ntsteps)
@@ -321,7 +314,7 @@ function allocation_table(
     subnetwork_id::Vector{Int32},
     node_type::Vector{String},
     node_id::Vector{Int32},
-    priority::Vector{Int32},
+    demand_priority::Vector{Int32},
     demand::Vector{Float64},
     allocated::Vector{Float64},
     realized::Vector{Float64},
@@ -335,7 +328,7 @@ function allocation_table(
         record_demand.subnetwork_id,
         record_demand.node_type,
         record_demand.node_id,
-        record_demand.priority,
+        record_demand.demand_priority,
         record_demand.demand,
         record_demand.allocated,
         record_demand.realized,
@@ -346,13 +339,13 @@ function allocation_flow_table(
     model::Model,
 )::@NamedTuple{
     time::Vector{DateTime},
-    edge_id::Vector{Int32},
+    link_id::Vector{Int32},
     from_node_type::Vector{String},
     from_node_id::Vector{Int32},
     to_node_type::Vector{String},
     to_node_id::Vector{Int32},
     subnetwork_id::Vector{Int32},
-    priority::Vector{Int32},
+    demand_priority::Vector{Int32},
     flow_rate::Vector{Float64},
     optimization_type::Vector{String},
 }
@@ -363,13 +356,13 @@ function allocation_flow_table(
 
     return (;
         time,
-        record_flow.edge_id,
+        record_flow.link_id,
         record_flow.from_node_type,
         record_flow.from_node_id,
         record_flow.to_node_type,
         record_flow.to_node_id,
         record_flow.subnetwork_id,
-        record_flow.priority,
+        record_flow.demand_priority,
         record_flow.flow_rate,
         record_flow.optimization_type,
     )
@@ -386,11 +379,14 @@ function subgrid_level_table(
     (; t, saveval) = saved.subgrid_level
     subgrid = integrator.p.subgrid
 
-    nelem = length(subgrid.subgrid_id)
+    nelem = length(subgrid.level)
     ntsteps = length(t)
 
     time = repeat(datetime_since.(t, config.starttime); inner = nelem)
-    subgrid_id = repeat(subgrid.subgrid_id; outer = ntsteps)
+    subgrid_id = repeat(
+        sort(vcat(subgrid.subgrid_id_static, subgrid.subgrid_id_time));
+        outer = ntsteps,
+    )
     subgrid_level = FlatVector(saveval)
     return (; time, subgrid_id, subgrid_level)
 end
@@ -422,9 +418,9 @@ function write_arrow(
     mkpath(dirname(path))
     try
         Arrow.write(path, table; compress, metadata)
-    catch
+    catch e
         @error "Failed to write results, file may be locked." path
-        error("Failed to write results.")
+        rethrow(e)
     end
     return nothing
 end

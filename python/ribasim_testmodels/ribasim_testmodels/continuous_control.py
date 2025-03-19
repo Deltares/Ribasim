@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from ribasim.config import Node
+from ribasim.config import Experimental, Node
 from ribasim.model import Model
 from ribasim.nodes import (
     basin,
@@ -14,11 +14,11 @@ from shapely.geometry import Point
 
 def outlet_continuous_control_model() -> Model:
     """Set up a small model that distributes flow over 2 branches."""
-
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
+        experimental=Experimental(concentration=True),
     )
 
     model.level_boundary.add(
@@ -80,13 +80,13 @@ def outlet_continuous_control_model() -> Model:
         ],
     )
 
-    model.edge.add(model.level_boundary[1], model.linear_resistance[2])
-    model.edge.add(model.linear_resistance[2], model.basin[3])
-    model.edge.add(model.basin[3], model.outlet[4])
-    model.edge.add(model.basin[3], model.outlet[5])
-    model.edge.add(model.outlet[4], model.terminal[6])
-    model.edge.add(model.outlet[5], model.terminal[7])
-    model.edge.add(model.continuous_control[8], model.outlet[4])
-    model.edge.add(model.continuous_control[9], model.outlet[5])
+    model.link.add(model.level_boundary[1], model.linear_resistance[2])
+    model.link.add(model.linear_resistance[2], model.basin[3])
+    model.link.add(model.basin[3], model.outlet[4])
+    model.link.add(model.basin[3], model.outlet[5])
+    model.link.add(model.outlet[4], model.terminal[6])
+    model.link.add(model.outlet[5], model.terminal[7])
+    model.link.add(model.continuous_control[8], model.outlet[4])
+    model.link.add(model.continuous_control[9], model.outlet[5])
 
     return model

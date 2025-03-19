@@ -5,7 +5,8 @@ from typing import Any
 import numpy as np
 import pandas as pd
 import ribasim
-from ribasim.config import Node
+from ribasim import Model
+from ribasim.config import Experimental, Node
 from ribasim.input_base import TableModel
 from ribasim.nodes import (
     basin,
@@ -20,12 +21,13 @@ from ribasim.nodes import (
 from shapely.geometry import MultiPolygon, Point
 
 
-def basic_model() -> ribasim.Model:
+def basic_model() -> Model:
     # Setup model
-    model = ribasim.Model(
+    model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
+        experimental=Experimental(concentration=True),
     )
     model.logging = ribasim.Logging(verbosity="debug")
 
@@ -119,7 +121,10 @@ def basic_model() -> ribasim.Model:
     )
 
     # Setup pump
-    model.pump.add(Node(7, Point(4.0, 1.0)), [pump.Static(flow_rate=[0.5 / 3600])])
+    model.pump.add(
+        Node(7, Point(4.0, 1.0)),
+        [pump.Static(flow_rate=[0.5 / 3600])],
+    )
 
     # Setup flow boundary
     flow_boundary_data: Sequence[TableModel[Any]] = [
@@ -156,47 +161,47 @@ def basic_model() -> ribasim.Model:
     # Setup terminal
     model.terminal.add(Node(14, Point(3.0, -2.0)))
 
-    # Setup edges
-    model.edge.add(model.basin[1], model.manning_resistance[2])
-    model.edge.add(model.manning_resistance[2], model.basin[3])
-    model.edge.add(
+    # Setup links
+    model.link.add(model.basin[1], model.manning_resistance[2])
+    model.link.add(model.manning_resistance[2], model.basin[3])
+    model.link.add(
         model.basin[3],
         model.tabulated_rating_curve[8],
     )
-    model.edge.add(
+    model.link.add(
         model.basin[3],
         model.tabulated_rating_curve[5],
     )
-    model.edge.add(
+    model.link.add(
         model.basin[3],
         model.tabulated_rating_curve[4],
     )
-    model.edge.add(model.tabulated_rating_curve[5], model.basin[6])
-    model.edge.add(model.basin[6], model.pump[7])
-    model.edge.add(model.tabulated_rating_curve[8], model.basin[9])
-    model.edge.add(model.pump[7], model.basin[9])
-    model.edge.add(model.basin[9], model.linear_resistance[10])
-    model.edge.add(
+    model.link.add(model.tabulated_rating_curve[5], model.basin[6])
+    model.link.add(model.basin[6], model.pump[7])
+    model.link.add(model.tabulated_rating_curve[8], model.basin[9])
+    model.link.add(model.pump[7], model.basin[9])
+    model.link.add(model.basin[9], model.linear_resistance[10])
+    model.link.add(
         model.level_boundary[11],
         model.linear_resistance[12],
     )
-    model.edge.add(
+    model.link.add(
         model.linear_resistance[12],
         model.basin[3],
     )
-    model.edge.add(
+    model.link.add(
         model.tabulated_rating_curve[4],
         model.terminal[14],
     )
-    model.edge.add(
+    model.link.add(
         model.flow_boundary[15],
         model.basin[6],
     )
-    model.edge.add(
+    model.link.add(
         model.flow_boundary[16],
         model.basin[1],
     )
-    model.edge.add(
+    model.link.add(
         model.linear_resistance[10],
         model.level_boundary[17],
     )
@@ -204,16 +209,15 @@ def basic_model() -> ribasim.Model:
     return model
 
 
-def basic_arrow_model() -> ribasim.Model:
+def basic_arrow_model() -> Model:
     model = basic_model()
     model.basin.profile.set_filepath(Path("profile.arrow"))
     model.input_dir = Path("input")
     return model
 
 
-def basic_transient_model() -> ribasim.Model:
-    """Update the basic model with transient forcing"""
-
+def basic_transient_model() -> Model:
+    """Update the basic model with transient forcing."""
     model = basic_model()
     time = pd.date_range(model.starttime, model.endtime)
     day_of_year = time.day_of_year.to_numpy()
@@ -255,25 +259,27 @@ def basic_transient_model() -> ribasim.Model:
             "level": 1.4,
         }
     )
+    model.basin.static.df = None  # A node cannot have both static and dynamic forcing
     model.basin.time = forcing  # type: ignore # TODO: Fix implicit typing from pydantic. See TableModel.check_dataframe
     model.basin.state = state  # type: ignore # TODO: Fix implicit typing from pydantic. See TableModel.check_dataframe
 
     return model
 
 
-def tabulated_rating_curve_model() -> ribasim.Model:
+def tabulated_rating_curve_model() -> Model:
     """
     Set up a model where the upstream Basin has two TabulatedRatingCurve attached.
+
     They both flow to the same downstream Basin, but one has a static rating curve,
     and the other one a time-varying rating curve.
     Only the upstream Basin receives a (constant) precipitation.
     """
-
     # Setup a model:
-    model = ribasim.Model(
+    model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
+        experimental=Experimental(concentration=True),
     )
 
     # Setup tabulated rating curve:
@@ -286,7 +292,7 @@ def tabulated_rating_curve_model() -> ribasim.Model:
         ],
     )
     model.tabulated_rating_curve.add(
-        Node(3, Point(1.0, -1.0)),
+        Node(3, Point(1.0, -1.0), cyclic_time=True),
         [
             tabulated_rating_curve.Time(
                 time=[
@@ -297,9 +303,11 @@ def tabulated_rating_curve_model() -> ribasim.Model:
                     pd.Timestamp("2020-02-01 00:00:00.001"),
                     pd.Timestamp("2020-03-01"),
                     pd.Timestamp("2020-03-01"),
+                    pd.Timestamp("2020-04-01"),
+                    pd.Timestamp("2020-04-01"),
                 ],
-                level=[0.0, 1.0, 0.0, 1.1, 0.0, 1.2],
-                flow_rate=[0.0, 10 / 86400, 0.0, 10 / 86400, 0.0, 10 / 86400],
+                level=[0.0, 1.0, 0.0, 1.1, 0.0, 1.2, 0.0, 1.0],
+                flow_rate=4 * [0.0, 10 / 86400],
             ),
         ],
     )
@@ -327,19 +335,19 @@ def tabulated_rating_curve_model() -> ribasim.Model:
             *node_data,
         ],
     )
-    model.edge.add(
+    model.link.add(
         model.basin[1],
         model.tabulated_rating_curve[2],
     )
-    model.edge.add(
+    model.link.add(
         model.basin[1],
         model.tabulated_rating_curve[3],
     )
-    model.edge.add(
+    model.link.add(
         model.tabulated_rating_curve[2],
         model.basin[4],
     )
-    model.edge.add(
+    model.link.add(
         model.tabulated_rating_curve[3],
         model.basin[4],
     )
@@ -348,10 +356,11 @@ def tabulated_rating_curve_model() -> ribasim.Model:
 
 def outlet_model():
     """Set up a basic model with an outlet that encounters various physical constraints."""
-    model = ribasim.Model(
+    model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
+        experimental=Experimental(concentration=True),
     )
 
     # Set up the basins
@@ -384,8 +393,64 @@ def outlet_model():
         [outlet.Static(flow_rate=[1e-3], min_upstream_level=[2.0])],
     )
 
-    # Setup the edges
-    model.edge.add(model.level_boundary[1], model.outlet[2])
-    model.edge.add(model.outlet[2], model.basin[3])
+    # Setup the links
+    model.link.add(model.level_boundary[1], model.outlet[2])
+    model.link.add(model.outlet[2], model.basin[3])
+
+    return model
+
+
+def cyclic_time_model() -> Model:
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2021-01-01",
+        crs="EPSG:28992",
+    )
+
+    bsn = model.basin.add(
+        Node(1, Point(0, 0), cyclic_time=True),
+        [
+            basin.Profile(level=[0.0, 1.0], area=100.0),
+            basin.Time(
+                time=[
+                    "2020-01-01",
+                    "2020-04-01",
+                    "2020-07-01",
+                    "2020-10-01",
+                    "2021-01-01",
+                ],
+                precipitation=[1.0, 2.0, 1.0, 2.0, 1.0],
+            ),
+            basin.State(level=[5.0]),
+        ],
+    )
+
+    lr = model.linear_resistance.add(
+        Node(2, Point(1, 0)), [linear_resistance.Static(resistance=[1.0])]
+    )
+
+    lb = model.level_boundary.add(
+        Node(3, Point(2, 0), cyclic_time=True),
+        [
+            level_boundary.Time(
+                time=["2020-01-01", "2020-05-01", "2020-10-01"],
+                level=[2.0, 3.0, 2.0],
+            )
+        ],
+    )
+
+    fb = model.flow_boundary.add(
+        Node(4, Point(0, 1), cyclic_time=True),
+        [
+            flow_boundary.Time(
+                time=["2020-01-01", "2020-07-01", "2020-08-01"],
+                flow_rate=[1.0, 2.0, 1.0],
+            )
+        ],
+    )
+
+    model.edge.add(bsn, lr)
+    model.edge.add(lr, lb)
+    model.edge.add(fb, bsn)
 
     return model

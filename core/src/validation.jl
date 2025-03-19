@@ -100,42 +100,66 @@ function variable_nt(s::Any)
     NamedTuple{names}((getfield(s, x) for x in names))
 end
 
-# functions used by sort(x; by)
-sort_by_id(row) = row.node_id
-sort_by_time_id(row) = (row.time, row.node_id)
-sort_by_id_level(row) = (row.node_id, row.level)
-sort_by_id_state_level(row) = (row.node_id, row.control_state, row.level)
-sort_by_time_id_level(row) = (row.time, row.node_id, row.level)
-sort_by_priority(row) = (row.node_id, row.priority)
-sort_by_priority_time(row) = (row.node_id, row.priority, row.time)
-sort_by_subgrid_level(row) = (row.subgrid_id, row.basin_level)
-sort_by_variable(row) = (row.node_id, row.listen_node_id, row.variable)
-sort_by_condition(row) = (row.node_id, row.compound_variable_id, row.greater_than)
-sort_by_id_input(row) = (row.node_id, row.input)
+"Get the right sort by function (by in `sort(x; by)`) given the Schema"
+function sort_by end
+# Not using any fallbacks to avoid forgetting to add the correct sorting.
 
-# get the right sort by function given the Schema, with sort_by_id as the default
-sort_by_function(table::StructVector{<:Legolas.AbstractRecord}) = sort_by_id
-sort_by_function(table::StructVector{TabulatedRatingCurveStaticV1}) = sort_by_id_state_level
-sort_by_function(table::StructVector{TabulatedRatingCurveTimeV1}) = sort_by_time_id_level
-sort_by_function(table::StructVector{BasinProfileV1}) = sort_by_id_level
-sort_by_function(table::StructVector{UserDemandStaticV1}) = sort_by_priority
-sort_by_function(table::StructVector{UserDemandTimeV1}) = sort_by_priority_time
-sort_by_function(table::StructVector{BasinSubgridV1}) = sort_by_subgrid_level
-sort_by_function(table::StructVector{DiscreteControlVariableV1}) = sort_by_variable
-sort_by_function(table::StructVector{DiscreteControlConditionV1}) = sort_by_condition
-sort_by_function(table::StructVector{ContinuousControlFunctionV1}) = sort_by_id_input
+sort_by(::StructVector{BasinConcentrationV1}) = x -> (x.node_id, x.substance, x.time)
+sort_by(::StructVector{BasinConcentrationExternalV1}) =
+    x -> (x.node_id, x.substance, x.time)
+sort_by(::StructVector{BasinConcentrationStateV1}) = x -> (x.node_id, x.substance)
+sort_by(::StructVector{BasinProfileV1}) = x -> (x.node_id, x.level)
+sort_by(::StructVector{BasinStateV1}) = x -> (x.node_id)
+sort_by(::StructVector{BasinStaticV1}) = x -> (x.node_id)
+sort_by(::StructVector{BasinSubgridV1}) = x -> (x.subgrid_id, x.basin_level)
+sort_by(::StructVector{BasinSubgridTimeV1}) = x -> (x.subgrid_id, x.time, x.basin_level)
+sort_by(::StructVector{BasinTimeV1}) = x -> (x.node_id, x.time)
 
-const TimeSchemas = Union{
-    BasinTimeV1,
-    FlowBoundaryTimeV1,
-    FlowDemandTimeV1,
-    LevelBoundaryTimeV1,
-    PidControlTimeV1,
-    UserDemandTimeV1,
-}
-function sort_by_function(table::StructVector{<:TimeSchemas})
-    return sort_by_time_id
-end
+sort_by(::StructVector{ContinuousControlFunctionV1}) = x -> (x.node_id, x.input)
+sort_by(::StructVector{ContinuousControlVariableV1}) =
+    x -> (x.node_id, x.listen_node_id, x.variable)
+
+sort_by(::StructVector{DiscreteControlConditionV1}) =
+    x -> (x.node_id, x.compound_variable_id, x.condition_id)
+sort_by(::StructVector{DiscreteControlLogicV1}) = x -> (x.node_id, x.truth_state)
+sort_by(::StructVector{DiscreteControlVariableV1}) =
+    x -> (x.node_id, x.compound_variable_id, x.listen_node_id, x.variable)
+
+sort_by(::StructVector{FlowBoundaryConcentrationV1}) = x -> (x.node_id, x.substance, x.time)
+sort_by(::StructVector{FlowBoundaryStaticV1}) = x -> (x.node_id)
+sort_by(::StructVector{FlowBoundaryTimeV1}) = x -> (x.node_id, x.time)
+
+sort_by(::StructVector{FlowDemandStaticV1}) = x -> (x.node_id, x.demand_priority)
+sort_by(::StructVector{FlowDemandTimeV1}) = x -> (x.node_id, x.demand_priority, x.time)
+
+sort_by(::StructVector{LevelBoundaryConcentrationV1}) =
+    x -> (x.node_id, x.substance, x.time)
+sort_by(::StructVector{LevelBoundaryStaticV1}) = x -> (x.node_id)
+sort_by(::StructVector{LevelBoundaryTimeV1}) = x -> (x.node_id, x.time)
+
+sort_by(::StructVector{LevelDemandStaticV1}) = x -> (x.node_id, x.demand_priority)
+sort_by(::StructVector{LevelDemandTimeV1}) = x -> (x.node_id, x.demand_priority, x.time)
+
+sort_by(::StructVector{LinearResistanceStaticV1}) = x -> (x.node_id, x.control_state)
+
+sort_by(::StructVector{ManningResistanceStaticV1}) = x -> (x.node_id, x.control_state)
+
+sort_by(::StructVector{OutletStaticV1}) = x -> (x.node_id, x.control_state)
+sort_by(::StructVector{OutletTimeV1}) = x -> (x.node_id, x.time)
+
+sort_by(::StructVector{PidControlStaticV1}) = x -> (x.node_id, x.control_state)
+sort_by(::StructVector{PidControlTimeV1}) = x -> (x.node_id, x.time)
+
+sort_by(::StructVector{PumpStaticV1}) = x -> (x.node_id, x.control_state)
+sort_by(::StructVector{PumpTimeV1}) = x -> (x.node_id, x.time)
+
+sort_by(::StructVector{TabulatedRatingCurveStaticV1}) =
+    x -> (x.node_id, x.control_state, x.level)
+sort_by(::StructVector{TabulatedRatingCurveTimeV1}) = x -> (x.node_id, x.time, x.level)
+
+sort_by(::StructVector{UserDemandConcentrationV1}) = x -> (x.node_id, x.substance, x.time)
+sort_by(::StructVector{UserDemandStaticV1}) = x -> (x.node_id, x.demand_priority)
+sort_by(::StructVector{UserDemandTimeV1}) = x -> (x.node_id, x.demand_priority, x.time)
 
 """
 Depending on if a table can be sorted, either sort it or assert that it is sorted.
@@ -146,7 +170,7 @@ Tables loaded from Arrow files are memory mapped and can therefore not be sorted
 function sorted_table!(
     table::StructVector{<:Legolas.AbstractRecord},
 )::StructVector{<:Legolas.AbstractRecord}
-    by = sort_by_function(table)
+    by = sort_by(table)
     if any((typeof(col) <: Arrow.Primitive for col in Tables.columns(table)))
         et = eltype(table)
         if !issorted(table; by)
@@ -182,11 +206,19 @@ function valid_nodes(db::DB)::Bool
     return !errors
 end
 
+function database_warning(db::DB)::Nothing
+    cols = SQLite.columns(db, "Link")
+    if "subnetwork_id" in cols.name
+        @warn "The 'subnetwork_id' column in the 'Link' table is deprecated since ribasim v2025.1."
+    end
+    return nothing
+end
+
 """
 Test for each node given its node type whether the nodes that
-# are downstream ('down-edge') of this node are of an allowed type
+# are downstream ('down-link') of this node are of an allowed type
 """
-function valid_edges(graph::MetaGraph)::Bool
+function valid_links(graph::MetaGraph)::Bool
     errors = false
     for e in edges(graph)
         id_src = label_for(graph, e.src)
@@ -255,9 +287,9 @@ function valid_flow_rates(
     for (key, control_state_update) in pairs(control_mapping)
         id_controlled = key[1]
         push!(ids_controlled, id_controlled)
-        flow_rate_update = only(control_state_update.scalar_update)
+        flow_rate_update = only(control_state_update.itp_update)
         @assert flow_rate_update.name == :flow_rate
-        flow_rate_ = flow_rate_update.value
+        flow_rate_ = minimum(flow_rate_update.value.u)
 
         if flow_rate_ < 0.0
             errors = true
@@ -293,7 +325,7 @@ function valid_pid_connectivity(
         end
 
         controlled_id =
-            only(outneighbor_labels_type(graph, pid_control_id, EdgeType.control))
+            only(outneighbor_labels_type(graph, pid_control_id, LinkType.control))
         @assert controlled_id.type in [NodeType.Pump, NodeType.Outlet]
 
         id_inflow = inflow_id(graph, controlled_id)
@@ -313,8 +345,8 @@ Validate the entries for a single subgrid element.
 """
 function valid_subgrid(
     subgrid_id::Int32,
-    node_id::NodeID,
-    node_to_basin::Dict{NodeID, Int},
+    node_id::Int32,
+    node_to_basin::Dict{Int32, Int},
     basin_level::Vector{Float64},
     subgrid_level::Vector{Float64},
 )::Bool
@@ -341,14 +373,14 @@ end
 function valid_demand(
     node_id::Vector{NodeID},
     demand_itp::Vector{Vector{ScalarInterpolation}},
-    priorities::Vector{Int32},
+    demand_priorities::Vector{Int32},
 )::Bool
     errors = false
 
     for (col, id) in zip(demand_itp, node_id)
-        for (demand_p_itp, p_itp) in zip(col, priorities)
+        for (demand_p_itp, p_itp) in zip(col, demand_priorities)
             if any(demand_p_itp.u .< 0.0)
-                @error "Demand of $id with priority $p_itp should be non-negative"
+                @error "Demand of $id with demand_priority $p_itp should be non-negative"
                 errors = true
             end
         end
@@ -369,9 +401,9 @@ function valid_min_upstream_level!(
         id_in = inflow_id(graph, id)
         if id_in.type == NodeType.Basin
             basin_bottom_level = basin_bottom(basin, id_in)[2]
-            if min_upstream_level == -Inf
-                node.min_upstream_level[id.idx] = basin_bottom_level
-            elseif min_upstream_level < basin_bottom_level
+            if all(==(-Inf), min_upstream_level.u)
+                min_upstream_level.u .= basin_bottom_level
+            elseif minimum(min_upstream_level.u) < basin_bottom_level
                 @error "Minimum upstream level of $id is lower than bottom of upstream $id_in" min_upstream_level basin_bottom_level
                 errors = true
             end
@@ -386,52 +418,24 @@ function valid_tabulated_curve_level(
     basin::Basin,
 )::Bool
     errors = false
-    for (id, table) in zip(tabulated_rating_curve.node_id, tabulated_rating_curve.table)
+    for (id, index_lookup) in zip(
+        tabulated_rating_curve.node_id,
+        tabulated_rating_curve.current_interpolation_index,
+    )
         id_in = inflow_id(graph, id)
         if id_in.type == NodeType.Basin
             basin_bottom_level = basin_bottom(basin, id_in)[2]
-            # the second level is the bottom, the first is added to control extrapolation
-            if table.t[1] + 1.0 < basin_bottom_level
-                @error "Lowest level of $id is lower than bottom of upstream $id_in" table.t[1] +
-                                                                                     1.0 basin_bottom_level
-                errors = true
+            # for the complete timeseries this needs to hold
+            for interpolation_index in index_lookup.u
+                qh = tabulated_rating_curve.interpolations[interpolation_index]
+                h_min = qh.t[1]
+                if h_min < basin_bottom_level
+                    @error "Lowest level of $id is lower than bottom of upstream $id_in" h_min basin_bottom_level
+                    errors = true
+                end
             end
         end
     end
-    return !errors
-end
-
-function valid_tabulated_rating_curve(
-    node_id::NodeID,
-    table::StructVector,
-    rowrange::UnitRange{Int},
-)::Bool
-    errors = false
-
-    level = table.level[rowrange]
-    flow_rate = table.flow_rate[rowrange]
-
-    n = length(level)
-    if n < 2
-        @error "At least two datapoints are needed." node_id n
-        errors = true
-    end
-    Q0 = first(flow_rate)
-    if Q0 != 0.0
-        @error "The `flow_rate` must start at 0." node_id flow_rate = Q0
-        errors = true
-    end
-
-    if !allunique(level)
-        @error "The `level` cannot be repeated." node_id
-        errors = true
-    end
-
-    if any(diff(flow_rate) .< 0.0)
-        @error "The `flow_rate` cannot decrease with increasing `level`." node_id
-        errors = true
-    end
-
     return !errors
 end
 
@@ -481,30 +485,30 @@ function valid_n_neighbors(node_name::Symbol, graph::MetaGraph)::Bool
     # return !errors
     for node_id in labels(graph)
         node_id.type == node_type || continue
-        for (bounds, edge_type) in
-            zip((bounds_flow, bounds_control), (EdgeType.flow, EdgeType.control))
+        for (bounds, link_type) in
+            zip((bounds_flow, bounds_control), (LinkType.flow, LinkType.control))
             n_inneighbors =
-                count(x -> true, inneighbor_labels_type(graph, node_id, edge_type))
+                count(x -> true, inneighbor_labels_type(graph, node_id, link_type))
             n_outneighbors =
-                count(x -> true, outneighbor_labels_type(graph, node_id, edge_type))
+                count(x -> true, outneighbor_labels_type(graph, node_id, link_type))
 
             if n_inneighbors < bounds.in_min
-                @error "$node_id must have at least $(bounds.in_min) $edge_type inneighbor(s) (got $n_inneighbors)."
+                @error "$node_id must have at least $(bounds.in_min) $link_type inneighbor(s) (got $n_inneighbors)."
                 errors = true
             end
 
             if n_inneighbors > bounds.in_max
-                @error "$node_id can have at most $(bounds.in_max) $edge_type inneighbor(s) (got $n_inneighbors)."
+                @error "$node_id can have at most $(bounds.in_max) $link_type inneighbor(s) (got $n_inneighbors)."
                 errors = true
             end
 
             if n_outneighbors < bounds.out_min
-                @error "$node_id must have at least $(bounds.out_min) $edge_type outneighbor(s) (got $n_outneighbors)."
+                @error "$node_id must have at least $(bounds.out_min) $link_type outneighbor(s) (got $n_outneighbors)."
                 errors = true
             end
 
             if n_outneighbors > bounds.out_max
-                @error "$node_id can have at most $(bounds.out_max) $edge_type outneighbor(s) (got $n_outneighbors)."
+                @error "$node_id can have at most $(bounds.out_max) $link_type outneighbor(s) (got $n_outneighbors)."
                 errors = true
             end
         end
@@ -512,18 +516,18 @@ function valid_n_neighbors(node_name::Symbol, graph::MetaGraph)::Bool
     return !errors
 end
 
-"Check that only supported edge types are declared."
-function valid_edge_types(db::DB)::Bool
-    edge_rows = execute(
+"Check that only supported link types are declared."
+function valid_link_types(db::DB)::Bool
+    link_rows = execute(
         db,
-        "SELECT edge_id, from_node_id, to_node_id, edge_type FROM Edge ORDER BY edge_id",
+        "SELECT link_id, from_node_id, to_node_id, link_type FROM Link ORDER BY link_id",
     )
     errors = false
 
-    for (; edge_id, from_node_id, to_node_id, edge_type) in edge_rows
-        if edge_type ∉ ["flow", "control"]
+    for (; link_id, from_node_id, to_node_id, link_type) in link_rows
+        if link_type ∉ ["flow", "control"]
             errors = true
-            @error "Invalid edge type '$edge_type' for edge #$edge_id from node #$from_node_id to node #$to_node_id."
+            @error "Invalid link type '$link_type' for link #$link_id from node #$from_node_id to node #$to_node_id."
         end
     end
     return !errors
@@ -571,7 +575,7 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
 
         # Check whether these control states are defined for the
         # control outneighbors
-        for id_outneighbor in outneighbor_labels_type(graph, id, EdgeType.control)
+        for id_outneighbor in outneighbor_labels_type(graph, id, LinkType.control)
 
             # Node object for the outneighbor node type
             node = getfield(p, graph[id_outneighbor].type)
@@ -626,57 +630,37 @@ function valid_discrete_control(p::Parameters, config::Config)::Bool
     return !errors
 end
 
-"""
-An allocation source edge is valid if either:
-    - The edge connects the main network to a subnetwork
-    - The edge comes from a source node
-"""
-function valid_sources(
-    p::Parameters,
-    capacity::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}},
-    subnetwork_id::Int32,
+function valid_demand_priorities(
+    demand_priorities::Vector{Int32},
+    use_allocation::Bool,
 )::Bool
-    (; graph) = p
-
-    errors = false
-
-    # Loop over edges that were assigned a capacity
-    for edge in keys(capacity.data)
-
-        # For an edge (id_a, id_b) in the physical model
-        # the reverse (id_b, id_a) can exist in the allocation subnetwork
-        if !haskey(graph, edge...)
-            edge = reverse(edge)
-        end
-
-        (id_source, id_dst) = edge
-
-        # Whether the current edge is a source for the current subnetwork
-        if graph[edge...].subnetwork_id_source == subnetwork_id
-            from_source_node = id_source.type in allocation_source_nodetypes
-
-            if is_main_network(subnetwork_id)
-                if !from_source_node
-                    errors = true
-                    @error "The source node of source edge $edge in the main network must be one of $allocation_source_nodetypes."
-                end
-            else
-                from_main_network = is_main_network(graph[id_source].subnetwork_id)
-
-                if !from_source_node && !from_main_network
-                    errors = true
-                    @error "The source node of source edge $edge for subnetwork $subnetwork_id is neither a source node nor is it coming from the main network."
-                end
-            end
-        end
-    end
-    return !errors
+    return !(use_allocation && any(iszero, demand_priorities))
 end
 
-function valid_priorities(priorities::Vector{Int32}, use_allocation::Bool)::Bool
-    if use_allocation && any(iszero, priorities)
-        return false
-    else
-        return true
+function valid_time_interpolation(
+    times::Vector{Float64},
+    parameter::AbstractVector,
+    node_id::NodeID,
+    cyclic_time::Bool,
+)::Bool
+    errors = false
+
+    if !allunique(times)
+        errors = true
+        @error "(One of) the time series for $node_id has repeated times, this can not be interpolated."
     end
+
+    if cyclic_time
+        if !(all(isnan, parameter) || (first(parameter) == last(parameter)))
+            errors = true
+            @error "$node_id is denoted as cyclic but in (one of) its time series the first and last value are not the same."
+        end
+
+        if length(times) < 2
+            errors = true
+            @error "$node_id is denoted as cyclic but (one of) its time series has fewer than 2 data points."
+        end
+    end
+
+    return !errors
 end

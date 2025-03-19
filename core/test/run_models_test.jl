@@ -4,7 +4,7 @@
     using Tables.DataAPI: nrow
     using Dates: DateTime
     import Arrow
-    using Ribasim: get_tstops, tsaves
+    using Ribasim: get_tstops, tsaves, StateRanges
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/trivial/ribasim.toml")
     @test ispath(toml_path)
@@ -22,6 +22,10 @@
     @test successful_retcode(model)
     (; p) = model.integrator
 
+    @test p.node_id == [0, 6, 6]
+    @test p.state_ranges ==
+          StateRanges(; tabulated_rating_curve = 1:1, evaporation = 2:2, infiltration = 3:3)
+
     @test !ispath(control_path)
 
     # read all results as bytes first to avoid memory mapping
@@ -38,15 +42,15 @@
 
     @testset "Schema" begin
         @test Tables.schema(flow) == Tables.Schema(
-            (:time, :edge_id, :from_node_id, :to_node_id, :flow_rate),
+            (:time, :link_id, :from_node_id, :to_node_id, :flow_rate),
             (DateTime, Union{Int32, Missing}, Int32, Int32, Float64),
         )
         @test Tables.schema(basin) == Tables.Schema(
             (
                 :time,
                 :node_id,
-                :storage,
                 :level,
+                :storage,
                 :inflow_rate,
                 :outflow_rate,
                 :storage_rate,
@@ -86,7 +90,7 @@
     @testset "Results size" begin
         nsaved = length(tsaves(model))
         @test nsaved > 10
-        # t0 has no flow, 2 flow edges
+        # t0 has no flow, 2 flow links
         @test nrow(flow) == (nsaved - 1) * 2
         @test nrow(basin) == nsaved - 1
         @test nrow(subgrid) == nsaved * length(p.subgrid.level)
@@ -94,7 +98,7 @@
 
     @testset "Results values" begin
         @test flow.time[1] == DateTime(2020)
-        @test coalesce.(flow.edge_id[1:2], -1) == [100, 101]
+        @test coalesce.(flow.link_id[1:2], -1) == [100, 101]
         @test flow.from_node_id[1:2] == [6, 0]
         @test flow.to_node_id[1:2] == [0, 2147483647]
 
@@ -129,13 +133,15 @@ end
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
-    (; basin) = model.integrator.p
+    (; basin, state_ranges) = model.integrator.p
     @test basin.current_properties.current_storage[Float64[]] ≈ [1000]
     @test basin.vertical_flux.precipitation == [0.0]
     @test basin.vertical_flux.drainage == [0.0]
     du = get_du(model.integrator)
-    @test du.evaporation == [0.0]
-    @test du.infiltration == [0.0]
+    du_evaporation = view(du, state_ranges.evaporation)
+    du_infiltration = view(du, state_ranges.infiltration)
+    @test du_evaporation == [0.0]
+    @test du_infiltration == [0.0]
     @test successful_retcode(model)
 end
 
@@ -153,11 +159,11 @@ end
     du = get_du(integrator)
     (; u, p, t) = integrator
     Ribasim.water_balance!(du, u, p, t)
-    stor = integrator.p.basin.current_properties.current_storage[parent(du)]
+    stor = integrator.p.basin.current_properties.current_storage[du]
     prec = p.basin.vertical_flux.precipitation
-    evap = du.evaporation
+    evap = view(du, p.state_ranges.evaporation)
     drng = p.basin.vertical_flux.drainage
-    infl = du.infiltration
+    infl = view(du, p.state_ranges.infiltration)
     # The dynamic data has missings, but these are not set.
     @test prec == [0.0]
     @test evap == [0.0]
@@ -205,6 +211,7 @@ end
     @test p isa Ribasim.Parameters
     @test isconcretetype(typeof(p))
     @test all(isconcretetype, fieldtypes(typeof(p)))
+    @test p.node_id == [4, 5, 8, 7, 10, 12, 2, 1, 3, 6, 9, 1, 3, 6, 9]
 
     @test alg isa QNDF
     @test alg.step_limiter! == Ribasim.limit_flow!
@@ -212,7 +219,7 @@ end
     @test successful_retcode(model)
     @test length(model.integrator.sol) == 2 # start and end
     @test model.integrator.p.basin.current_properties.current_storage[Float64[]] ≈
-          Float32[828.5386, 801.88289, 492.290, 1318.3053] skip = Sys.isapple() atol = 1.5
+          Float32[804.22156, 803.6474, 495.18243, 1318.3053] skip = Sys.isapple() atol = 1.5
 
     @test length(logger.logs) > 10
     @test logger.logs[1].level == Debug
@@ -222,6 +229,11 @@ end
 
     # flows are recorded at the end of each period, and are undefined at the start
     @test unique(table.time) == Ribasim.datetimes(model)[1:(end - 1)]
+
+    @test isfile(joinpath(dirname(toml_path), "results/concentration.arrow"))
+    table = Ribasim.concentration_table(model)
+    @test "Continuity" in table.substance
+    @test all(isapprox.(table.concentration[table.substance .== "Continuity"], 1.0))
 end
 
 @testitem "basic arrow model" begin
@@ -248,8 +260,8 @@ end
     du = get_du(model.integrator)
     precipitation = model.integrator.p.basin.vertical_flux.precipitation
     @test length(precipitation) == 4
-    @test model.integrator.p.basin.current_properties.current_storage[parent(du)] ≈
-          Float32[721.17656, 695.8066, 416.66188, 1334.4879] atol = 2.0 skip = Sys.isapple()
+    @test model.integrator.p.basin.current_properties.current_storage[du] ≈
+          Float32[698.6895, 698.143, 420.57407, 1334.486] atol = 2.0 skip = Sys.isapple()
 end
 
 @testitem "Allocation example model" begin
@@ -295,6 +307,7 @@ end
 
 @testitem "TabulatedRatingCurve model" begin
     using SciMLBase: successful_retcode
+    using DataInterpolations.ExtrapolationType: Constant, Periodic
 
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/tabulated_rating_curve/ribasim.toml")
@@ -304,66 +317,21 @@ end
     @test successful_retcode(model)
     @test model.integrator.p.basin.current_properties.current_storage[Float64[]] ≈
           Float32[368.31558, 365.68442] skip = Sys.isapple()
+    (; tabulated_rating_curve) = model.integrator.p
+    # The first node is static, the first interpolation object always applies
+    index_itp1 = tabulated_rating_curve.current_interpolation_index[1]
+    @test only(index_itp1.u) == 1
+    @test index_itp1.extrapolation_left == Constant
+    @test index_itp1.extrapolation_right == Constant
+    # The second node is dynamic, switching from interpolation 2 to 3 to 4
+    index_itp2 = tabulated_rating_curve.current_interpolation_index[2]
+    @test index_itp2.u == [2, 3, 4, 2]
+    @test index_itp2.t ≈ [0.0f0, 2.6784f6, 5.184f6, 7.8624e6]
+    @test index_itp2.extrapolation_left == Periodic
+    @test index_itp2.extrapolation_right == Periodic
+    @test length(tabulated_rating_curve.interpolations) == 5
     # the highest level in the dynamic table is updated to 1.2 from the callback
-    @test model.integrator.p.tabulated_rating_curve.table[end].t[end] == 1.2
-end
-
-@testitem "Profile" begin
-    import Tables
-    using DataInterpolations: LinearInterpolation, integral, invert_integral
-
-    function lookup(profile, S)
-        level_to_area = LinearInterpolation(profile.A, profile.h; extrapolate = true)
-        storage_to_level = invert_integral(level_to_area)
-
-        level = storage_to_level(max(S, 0.0))
-        area = level_to_area(level)
-        return area, level
-    end
-
-    n_interpolations = 100
-    storage = range(0.0, 1000.0, n_interpolations)
-
-    # Covers interpolation for constant and non-constant area, extrapolation for constant area
-    A = [1e-9, 100.0, 100.0]
-    h = [0.0, 10.0, 15.0]
-    S = integral.(Ref(LinearInterpolation(A, h)), h)
-    profile = (; S, A, h)
-
-    # On profile points we reproduce the profile
-    for (; S, A, h) in Tables.rows(profile)
-        @test lookup(profile, S) == (A, h)
-    end
-
-    # Robust to negative storage
-    @test lookup(profile, -1.0) == (profile.A[1], profile.h[1])
-
-    # On the first segment
-    S = 100.0
-    A, h = lookup(profile, S)
-    @test h ≈ sqrt(S / 5)
-    @test A ≈ 10 * h
-
-    # On the second segment and extrapolation
-    for S in [500.0 + 100.0, 1000.0 + 100.0]
-        local A, h
-        S = 500.0 + 100.0
-        A, h = lookup(profile, S)
-        @test h ≈ 10.0 + (S - 500.0) / 100.0
-        @test A == 100.0
-    end
-
-    # Covers extrapolation for non-constant area
-    A = [1e-9, 100.0]
-    h = [0.0, 10.0]
-    S = integral.(Ref(LinearInterpolation(A, h)), h)
-
-    profile = (; A, h, S)
-
-    S = 500.0 + 100.0
-    A, h = lookup(profile, S)
-    @test h ≈ sqrt(S / 5)
-    @test A ≈ 10 * h
+    @test tabulated_rating_curve.interpolations[4].t[end] == 1.2
 end
 
 @testitem "Outlet constraints" begin
@@ -386,7 +354,8 @@ end
         filter([:from_node_id, :to_node_id] => (from, to) -> from == 2 && to == 3, flow)
 
     t_min_upstream_level =
-        level.t[2] * (outlet.min_upstream_level[1] - level.u[1]) / (level.u[2] - level.u[1])
+        level.t[2] * (outlet.min_upstream_level[1](0.0) - level.u[1]) /
+        (level.u[2] - level.u[1])
 
     # No outlet flow when upstream level is below minimum upstream level
     @test all(@. outlet_flow.flow_rate[t <= t_min_upstream_level] == 0)
@@ -419,9 +388,11 @@ end
     @test only(current_storage) ≈ 1000.0
     # constant UserDemand withdraws to 0.9m or 900m3 due to min level = 0.9
     BMI.update_until(model, 150day)
+    formulate_storages!(current_storage, u, u, p, t)
     @test only(current_storage) ≈ 900 atol = 5
     # dynamic UserDemand withdraws to 0.5m or 500m3 due to min level = 0.5
     BMI.update_until(model, 220day)
+    formulate_storages!(current_storage, u, u, p, t)
     @test only(current_storage) ≈ 500 atol = 1
 
     # Trasient return factor
@@ -506,7 +477,7 @@ end
 
     du = get_du(model.integrator)
     (; p, t) = model.integrator
-    h_actual = p.basin.current_properties.current_level[parent(du)][1:50]
+    h_actual = p.basin.current_properties.current_level[du][1:50]
     x = collect(10.0:20.0:990.0)
     h_expected = standard_step_method(x, 5.0, 1.0, 0.04, h_actual[end], 1.0e-6)
 
@@ -635,4 +606,31 @@ end
     @test all(isapprox.(Δdrn[2:2:end], 25.0; atol = 1e-10))
     @test all(isapprox.(Δinf[1:2:end], 25.0; atol = 1e-10))
     @test all(Δinf[2:2:end] .== 0.0)
+end
+
+@testitem "two_basin" begin
+    using DataFrames: DataFrame, nrow
+    using Dates: DateTime
+    import BasicModelInterface as BMI
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/two_basin/ribasim.toml")
+    model = Ribasim.run(toml_path)
+    df = DataFrame(Ribasim.subgrid_level_table(model))
+
+    ntime = 367
+    @test nrow(df) == ntime * 2
+    @test df.subgrid_id == repeat(1:2; outer = ntime)
+    @test extrema(df.time) == (DateTime(2020), DateTime(2021))
+    @test allunique(df.time[1:2:(end - 1)])
+    @test all(df.subgrid_level[1:2] .== 0.01)
+
+    # After a month the h(h) of subgrid_id 2 increases by a meter
+    i_change = searchsortedfirst(df.time, DateTime(2020, 2))
+    @test df.subgrid_level[i_change + 1] - df.subgrid_level[i_change - 1] ≈ 1.0f0
+
+    # Besides the 1 meter shift the h(h) relations are 1:1
+    basin_level = copy(BMI.get_value_ptr(model, "basin.level"))
+    basin_level[2] += 1
+    @test basin_level ≈ df.subgrid_level[(end - 1):end]
+    @test basin_level ≈ model.integrator.p.subgrid.level
 end

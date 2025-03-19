@@ -15,13 +15,10 @@ For more granular access, see:
 module Ribasim
 
 # Algorithms for solving ODEs.
-using OrdinaryDiffEqCore:
-    OrdinaryDiffEqCore,
-    OrdinaryDiffEqRosenbrockAdaptiveAlgorithm,
-    get_du,
-    AbstractNLSolver,
-    calculate_residuals!
-using DiffEqBase: DiffEqBase
+using OrdinaryDiffEqCore: OrdinaryDiffEqCore, get_du, AbstractNLSolver
+using DiffEqBase: DiffEqBase, calculate_residuals!
+using OrdinaryDiffEqNonlinearSolve: OrdinaryDiffEqNonlinearSolve, relax!, _compute_rhs!
+using LineSearches: BackTracking
 
 # Interface for defining and solving the ODE problem of the physical layer.
 using SciMLBase:
@@ -30,13 +27,10 @@ using SciMLBase:
     step!,
     check_error!,
     SciMLBase,
-    ReturnCode,
     successful_retcode,
     CallbackSet,
     ODEFunction,
     ODEProblem,
-    ODESolution,
-    VectorContinuousCallback,
     get_proposed_dt,
     DEIntegrator
 
@@ -63,12 +57,15 @@ using PreallocationTools: LazyBufferCache
 # basin profiles and TabulatedRatingCurve. See also the node
 # references in the docs.
 using DataInterpolations:
+    ConstantInterpolation,
     LinearInterpolation,
     LinearInterpolationIntInv,
     invert_integral,
     derivative,
     integral,
-    AbstractInterpolation
+    AbstractInterpolation,
+    ExtrapolationType
+using DataInterpolations.ExtrapolationType: Constant, Periodic, Extension, Linear
 
 # Modeling language for Mathematical Optimization.
 # Used for allocation, see the docs: https://ribasim.org/dev/allocation.html
@@ -93,11 +90,6 @@ using Logging: with_logger, @logmsg, LogLevel, AbstractLogger
 import LoggingExtras
 using TerminalLoggers: TerminalLogger
 
-# Convenience wrapper around arrays, divides vectors in
-# separate sections which can be indexed individually.
-# Used for e.g. Basin forcing and the state vector.
-using ComponentArrays: ComponentVector, ComponentArray, Axis, getaxes
-
 # Date and time handling; externally we use the proleptic Gregorian calendar,
 # internally we use a Float64; seconds since the start of the simulation.
 using Dates: Dates, DateTime, Millisecond, @dateformat_str
@@ -106,31 +98,19 @@ using Dates: Dates, DateTime, Millisecond, @dateformat_str
 # E.g. after each timestep for discrete control,
 # or at each saveat for saving storage and flow results.
 using DiffEqCallbacks:
-    FunctionCallingCallback,
-    PeriodicCallback,
-    PresetTimeCallback,
-    SavedValues,
-    SavingCallback
+    FunctionCallingCallback, PresetTimeCallback, SavedValues, SavingCallback
 
-# The network defined by the Node and Edge table is converted to a graph internally.
-using Graphs:
-    DiGraph, Edge, edges, inneighbors, nv, outneighbors, induced_subgraph, is_connected
+# The network defined by the Node and Link table is converted to a graph internally.
+using Graphs: DiGraph, edges, inneighbors, outneighbors, induced_subgraph, is_connected
 # Convenience functionality built on top of Graphs. Used to store e.g. node and edge metadata
 # alongside the graph. Extra metadata is stored in a NamedTuple retrieved as graph[].
-using MetaGraphsNext:
-    MetaGraphsNext,
-    MetaGraph,
-    label_for,
-    code_for,
-    labels,
-    outneighbor_labels,
-    inneighbor_labels
+using MetaGraphsNext: MetaGraphsNext, MetaGraph, label_for, code_for, labels
 
 # Improved enumeration type compared to Base, used for e.g. node types.
 using EnumX: EnumX, @enumx
 
 # Easily change an immutable field of an object.
-using Accessors: @set
+using Accessors: @set, @reset
 
 # Iteration utilities, used to partition and group tables.
 import IterTools
@@ -145,7 +125,8 @@ using Tables: Tables, AbstractRow, columntable
 using StructArrays: StructVector
 
 # OrderedSet is used to store the order of the substances in the network.
-using DataStructures: OrderedSet
+# OrderedDict is used to store the order of the sources in a subnetwork.
+using DataStructures: OrderedSet, OrderedDict, counter, inc!
 
 export libribasim
 
@@ -165,13 +146,8 @@ include("read.jl")
 include("write.jl")
 include("bmi.jl")
 include("callback.jl")
+include("concentration.jl")
 include("main.jl")
 include("libribasim.jl")
-
-# Define names used in Makie extension
-function plot_basin_data end
-function plot_basin_data! end
-function plot_flow end
-function plot_flow! end
 
 end  # module Ribasim

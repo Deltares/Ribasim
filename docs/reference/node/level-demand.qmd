@@ -4,9 +4,9 @@ title: "LevelDemand"
 
 A `LevelDemand` node associates a minimum and a maximum level with connected Basins to be used by the allocation algorithm.
 
-Since this connection conveys information rather than flow, an outgoing control edge must be used.
+Since this connection conveys information rather than flow, an outgoing control link must be used.
 Below the minimum level the Basin has a demand, above the maximum level the Basin has a surplus and acts as a source.
-The source can be used by all nodes with demands in order of priority.
+The source can be used by all nodes with demands in order of demand priority.
 
 The same `LevelDemand` node can be used for Basins in different subnetworks.
 
@@ -17,22 +17,22 @@ If both are missing, `LevelDemand` won't have any effects on allocation.
 
 ## Static
 
-column        | type    | unit         | restriction
-------------- | ------- | ------------ | -----------
-node_id       | Int32   | -            | sorted
-min_level     | Float64 | $\text{m}$   | (optional, default -Inf)
-max_level     | Float64 | $\text{m}$   | (optional, default Inf)
-priority      | Int32   | -            | positive
+column          | type    | unit         | restriction
+--------------- | ------- | ------------ | -----------
+node_id         | Int32   | -            |
+min_level       | Float64 | $\text{m}$   | (optional, default -Inf)
+max_level       | Float64 | $\text{m}$   | (optional, default Inf)
+demand_priority | Int32   | -            | positive
 
 ## Time
 
 This table is the transient form of the `LevelDemand` table, in which time-dependent minimum and maximum levels can be supplied.
 Similar to the static version, only a single priority per `LevelDemand` node can be provided.
 
-column        | type     | unit         | restriction
-------------- | -------  | ------------ | -----------
-node_id       | Int32    | -            | sorted
-time          | DateTime | -            | sorted per node id
-min_level     | Float64  | $\text{m}$   | -
-max_level     | Float64  | $\text{m}$   | -
-priority      | Int32    | -            | positive
+column          | type     | unit         | restriction
+--------------- | -------  | ------------ | -----------
+node_id         | Int32    | -            |
+time            | DateTime | -            |
+min_level       | Float64  | $\text{m}$   | -
+max_level       | Float64  | $\text{m}$   | -
+demand_priority | Int32    | -            | positive

@@ -6,6 +6,7 @@ on:
   pull_request:
     paths-ignore: [".teamcity/**"]
   merge_group:
+  workflow_dispatch:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -25,18 +26,19 @@ jobs:
         with:
           cache-compiled: "true"
           cache-registries: "true"
-      - uses: prefix-dev/setup-pixi@v0.8.1
+      - name: "Manually add Conda.jl folder due to bug in its build step"
+        # https://github.com/JuliaPy/Conda.jl/issues/251
+        run: |
+          mkdir -p "/home/runner/.julia/conda/3/x86_64"
+      - uses: prefix-dev/setup-pixi@v0.8.3
         with:
           pixi-version: "latest"
       - name: Prepare pixi
         run: pixi run install-ci
-
       - name: Check Quarto installation and all engines
         run: pixi run quarto-check
-
       - name: Render Quarto Project
         run: pixi run quarto-render
-
       - name: Publish Quarto Project
         if: github.ref == 'refs/heads/main'
         uses: peaceiris/actions-gh-pages@v4

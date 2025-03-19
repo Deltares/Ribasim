@@ -1,6 +1,7 @@
 # Automatically generated file. Do not modify.
 
-from typing import Annotated, Any, Callable
+from collections.abc import Callable
+from typing import Annotated, Any
 
 import pandas as pd
 import pandera as pa
@@ -19,6 +20,11 @@ class _BaseSchema(pa.DataFrameModel):
     @classmethod
     def _index_name(self) -> str:
         return "fid"
+
+    @pa.dataframe_parser
+    def _name_index(cls, df):
+        df.index.name = cls._index_name()
+        return df
 
     @classmethod
     def migrate(cls, df: Any, schema_version: int) -> Any:
@@ -116,6 +122,25 @@ class BasinStaticSchema(_BaseSchema):
     )
 
 
+class BasinSubgridTimeSchema(_BaseSchema):
+    fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
+    subgrid_id: Series[Annotated[pd.ArrowDtype, pyarrow.int32()]] = pa.Field(
+        nullable=False
+    )
+    node_id: Series[Annotated[pd.ArrowDtype, pyarrow.int32()]] = pa.Field(
+        nullable=False, default=0
+    )
+    time: Series[Annotated[pd.ArrowDtype, pyarrow.timestamp("ms")]] = pa.Field(
+        nullable=False
+    )
+    basin_level: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
+        nullable=False
+    )
+    subgrid_level: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
+        nullable=False
+    )
+
+
 class BasinSubgridSchema(_BaseSchema):
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     subgrid_id: Series[Annotated[pd.ArrowDtype, pyarrow.int32()]] = pa.Field(
@@ -197,8 +222,14 @@ class DiscreteControlConditionSchema(_BaseSchema):
     compound_variable_id: Series[Annotated[pd.ArrowDtype, pyarrow.int32()]] = pa.Field(
         nullable=False
     )
+    condition_id: Series[Annotated[pd.ArrowDtype, pyarrow.int32()]] = pa.Field(
+        nullable=False
+    )
     greater_than: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
         nullable=False
+    )
+    time: Series[Annotated[pd.ArrowDtype, pyarrow.timestamp("ms")]] = pa.Field(
+        nullable=True
     )
 
 
@@ -285,7 +316,7 @@ class FlowDemandStaticSchema(_BaseSchema):
     demand: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
         nullable=False
     )
-    priority: Series[Annotated[pd.ArrowDtype, pyarrow.int32()]] = pa.Field(
+    demand_priority: Series[Annotated[pd.ArrowDtype, pyarrow.int32()]] = pa.Field(
         nullable=True
     )
 
@@ -301,7 +332,7 @@ class FlowDemandTimeSchema(_BaseSchema):
     demand: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
         nullable=False
     )
-    priority: Series[Annotated[pd.ArrowDtype, pyarrow.int32()]] = pa.Field(
+    demand_priority: Series[Annotated[pd.ArrowDtype, pyarrow.int32()]] = pa.Field(
         nullable=True
     )
 
@@ -357,7 +388,7 @@ class LevelDemandStaticSchema(_BaseSchema):
     max_level: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
         nullable=True
     )
-    priority: Series[Annotated[pd.ArrowDtype, pyarrow.int32()]] = pa.Field(
+    demand_priority: Series[Annotated[pd.ArrowDtype, pyarrow.int32()]] = pa.Field(
         nullable=True
     )
 
@@ -376,7 +407,7 @@ class LevelDemandTimeSchema(_BaseSchema):
     max_level: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
         nullable=True
     )
-    priority: Series[Annotated[pd.ArrowDtype, pyarrow.int32()]] = pa.Field(
+    demand_priority: Series[Annotated[pd.ArrowDtype, pyarrow.int32()]] = pa.Field(
         nullable=True
     )
 
@@ -447,6 +478,31 @@ class OutletStaticSchema(_BaseSchema):
     )
 
 
+class OutletTimeSchema(_BaseSchema):
+    fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
+    node_id: Series[Annotated[pd.ArrowDtype, pyarrow.int32()]] = pa.Field(
+        nullable=False, default=0
+    )
+    time: Series[Annotated[pd.ArrowDtype, pyarrow.timestamp("ms")]] = pa.Field(
+        nullable=False
+    )
+    flow_rate: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
+        nullable=False
+    )
+    min_flow_rate: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
+        nullable=True
+    )
+    max_flow_rate: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
+        nullable=True
+    )
+    min_upstream_level: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
+        nullable=True
+    )
+    max_downstream_level: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = (
+        pa.Field(nullable=True)
+    )
+
+
 class PidControlStaticSchema(_BaseSchema):
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: Series[Annotated[pd.ArrowDtype, pyarrow.int32()]] = pa.Field(
@@ -496,9 +552,6 @@ class PidControlTimeSchema(_BaseSchema):
     derivative: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
         nullable=False
     )
-    control_state: Series[Annotated[pd.ArrowDtype, pyarrow.string()]] = pa.Field(
-        nullable=True
-    )
 
 
 class PumpStaticSchema(_BaseSchema):
@@ -524,6 +577,31 @@ class PumpStaticSchema(_BaseSchema):
     )
     control_state: Series[Annotated[pd.ArrowDtype, pyarrow.string()]] = pa.Field(
         nullable=True
+    )
+
+
+class PumpTimeSchema(_BaseSchema):
+    fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
+    node_id: Series[Annotated[pd.ArrowDtype, pyarrow.int32()]] = pa.Field(
+        nullable=False, default=0
+    )
+    time: Series[Annotated[pd.ArrowDtype, pyarrow.timestamp("ms")]] = pa.Field(
+        nullable=False
+    )
+    flow_rate: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
+        nullable=False
+    )
+    min_flow_rate: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
+        nullable=True
+    )
+    max_flow_rate: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
+        nullable=True
+    )
+    min_upstream_level: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
+        nullable=True
+    )
+    max_downstream_level: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = (
+        pa.Field(nullable=True)
     )
 
 
@@ -597,7 +675,7 @@ class UserDemandStaticSchema(_BaseSchema):
     min_level: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
         nullable=False
     )
-    priority: Series[Annotated[pd.ArrowDtype, pyarrow.int32()]] = pa.Field(
+    demand_priority: Series[Annotated[pd.ArrowDtype, pyarrow.int32()]] = pa.Field(
         nullable=True
     )
 
@@ -619,6 +697,6 @@ class UserDemandTimeSchema(_BaseSchema):
     min_level: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
         nullable=False
     )
-    priority: Series[Annotated[pd.ArrowDtype, pyarrow.int32()]] = pa.Field(
+    demand_priority: Series[Annotated[pd.ArrowDtype, pyarrow.int32()]] = pa.Field(
         nullable=True
     )

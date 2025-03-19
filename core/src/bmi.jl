@@ -10,53 +10,67 @@ BMI.initialize(T::Type{Model}, config_path::AbstractString)::Model = Model(confi
 
 Write all results to the configured files.
 """
-BMI.finalize(model::Model)::Model = write_results(model)
-
-function BMI.update(model::Model)::Model
-    step!(model.integrator)
-    return model
+function BMI.finalize(model::Model)::Nothing
+    write_results(model)
+    return nothing
 end
 
-function BMI.update_until(model::Model, time::Float64)::Model
+function BMI.update(model::Model)::Nothing
+    step!(model.integrator)
+    return nothing
+end
+
+function BMI.update_until(model::Model, time::Float64)::Nothing
     (; t) = model.integrator
     dt = time - t
     if dt < 0
         error("The model has already passed the given timestamp.")
     elseif dt == 0
-        return model
+        return nothing
     else
         step!(model, dt)
     end
-    return model
+    return nothing
 end
 
-function BMI.get_value_ptr(model::Model, name::AbstractString)::AbstractVector{Float64}
+"""
+    BMI.get_value_ptr(model::Model, name::String)::Vector{Float64}
+
+This uses a typeassert to ensure that the return type annotation doesn't create a copy.
+"""
+function BMI.get_value_ptr(model::Model, name::String)::Vector{Float64}
     (; u, p) = model.integrator
+    (; infiltration, user_demand_inflow) = p.state_ranges
+
     if name == "basin.storage"
-        p.basin.current_properties.current_storage[parent(u)]
+        p.basin.current_properties.current_storage[u]::Vector{Float64}
     elseif name == "basin.level"
-        p.basin.current_properties.current_level[parent(u)]
+        p.basin.current_properties.current_level[u]::Vector{Float64}
     elseif name == "basin.infiltration"
-        p.basin.vertical_flux.infiltration
+        p.basin.vertical_flux.infiltration::Vector{Float64}
     elseif name == "basin.drainage"
-        p.basin.vertical_flux.drainage
+        p.basin.vertical_flux.drainage::Vector{Float64}
     elseif name == "basin.cumulative_infiltration"
-        u.infiltration
+        unsafe_array(view(u, infiltration))::Vector{Float64}
     elseif name == "basin.cumulative_drainage"
-        p.basin.cumulative_drainage
+        p.basin.cumulative_drainage::Vector{Float64}
     elseif name == "basin.subgrid_level"
-        p.subgrid.level
+        p.subgrid.level::Vector{Float64}
     elseif name == "user_demand.demand"
-        vec(p.user_demand.demand)
+        vec(p.user_demand.demand)::Vector{Float64}
     elseif name == "user_demand.cumulative_inflow"
-        u.user_demand_inflow
+        unsafe_array(view(u, user_demand_inflow))::Vector{Float64}
     else
         error("Unknown variable $name")
     end
 end
 
-BMI.get_current_time(model::Model) = model.integrator.t
-BMI.get_start_time(model::Model) = 0.0
-BMI.get_end_time(model::Model) = seconds_since(model.config.endtime, model.config.starttime)
-BMI.get_time_units(model::Model) = "s"
-BMI.get_time_step(model::Model) = get_proposed_dt(model.integrator)
+BMI.get_current_time(model::Model)::Float64 = model.integrator.t
+BMI.get_start_time(model::Model)::Float64 = 0.0
+BMI.get_time_step(model::Model)::Float64 = get_proposed_dt(model.integrator)
+
+function BMI.get_end_time(model::Model)::Float64
+    seconds_since(model.config.endtime, model.config.starttime)
+end
+
+BMI.get_time_units(model::Model)::String = "s"

@@ -18,30 +18,30 @@ else:
 def derive_connectivity(
     node_index: NDArray[np.int_],
     node_xy: NDArray[np.float64],
-    edge_xy: NDArray[np.float64],
+    link_xy: NDArray[np.float64],
 ) -> tuple[NDArray[np.int_], NDArray[np.int_]]:
     """
     Derive connectivity on the basis of xy locations.
 
-    If the first and last vertices of the edges have been setup neatly through
+    If the first and last vertices of the links have been setup neatly through
     snapping in QGIS, the points should be the same.
     """
     # collect xy
     # stack all into a single array
-    xy = np.vstack([node_xy, edge_xy])
+    xy = np.vstack([node_xy, link_xy])
     _, index, inverse = np.unique(xy, return_index=True, return_inverse=True, axis=0)
     uniques_index = index[inverse]
 
-    node_node_id, edge_node_id = np.split(uniques_index, [len(node_xy)])
-    if not np.isin(edge_node_id, node_node_id).all():
+    node_node_id, link_node_id = np.split(uniques_index, [len(node_xy)])
+    if not np.isin(link_node_id, node_node_id).all():
         raise ValueError(
-            "Edge layer contains coordinates that are not in the node layer. "
-            "Please ensure all edges are snapped to nodes exactly."
+            "Link layer contains coordinates that are not in the node layer. "
+            "Please ensure all links are snapped to nodes exactly."
         )
 
-    edge_node_id = edge_node_id.reshape((-1, 2))
-    from_id = node_index[edge_node_id[:, 0]]
-    to_id = node_index[edge_node_id[:, 1]]
+    link_node_id = link_node_id.reshape((-1, 2))
+    from_id = node_index[link_node_id[:, 0]]
+    to_id = node_index[link_node_id[:, 1]]
     return from_id, to_id
 
 
@@ -70,70 +70,68 @@ def collect_node_properties(
     return node_xy, node_index, node_identifiers
 
 
-def collect_edge_coordinates(edge: QgsVectorLayer) -> NDArray[np.float64]:
-    # Collect the coordinates of the first and last vertex of every edge
+def collect_link_coordinates(link: QgsVectorLayer) -> NDArray[np.float64]:
+    # Collect the coordinates of the first and last vertex of every link
     # geometry.
-    n_edge = edge.featureCount()
-    edge_xy = np.empty((n_edge, 2, 2), dtype=float)
-    edge_iterator = cast(Iterable[QgsFeature], edge.getFeatures())
-    for i, feature in enumerate(edge_iterator):
+    n_link = link.featureCount()
+    link_xy = np.empty((n_link, 2, 2), dtype=float)
+    link_iterator = cast(Iterable[QgsFeature], link.getFeatures())
+    for i, feature in enumerate(link_iterator):
         geometry = feature.geometry().asPolyline()
         first = geometry[0]
         last = geometry[-1]
-        edge_xy[i, 0, 0] = first.x()
-        edge_xy[i, 0, 1] = first.y()
-        edge_xy[i, 1, 0] = last.x()
-        edge_xy[i, 1, 1] = last.y()
-    edge_xy = edge_xy.reshape((-1, 2))
-    return edge_xy
+        link_xy[i, 0, 0] = first.x()
+        link_xy[i, 0, 1] = first.y()
+        link_xy[i, 1, 0] = last.x()
+        link_xy[i, 1, 1] = last.y()
+    link_xy = link_xy.reshape((-1, 2))
+    return link_xy
 
 
-def infer_edge_type(from_node_type: str) -> str:
+def infer_link_type(from_node_type: str) -> str:
     if from_node_type in SPATIALCONTROLNODETYPES:
         return "control"
     else:
         return "flow"
 
 
-def set_edge_properties(node: QgsVectorLayer, edge: QgsVectorLayer) -> None:
+def set_link_properties(node: QgsVectorLayer, link: QgsVectorLayer) -> None:
     """
-    Based on the location of the first and last vertex of every edge geometry,
+    Set link properties based on the node and link geometries.
+
+    Based on the location of the first and last vertex of every link geometry,
     derive which nodes it connects.
 
     Sets values for:
-
-    * from_node_type
     * from_node_id
-    * to_node_type
     * to_node_id
-    * edge_type
-
+    * link_type
     """
     node_xy, node_index, node_identifiers = collect_node_properties(node)
-    edge_xy = collect_edge_coordinates(edge)
-    from_fid, to_fid = derive_connectivity(node_index, node_xy, edge_xy)
+    link_xy = collect_link_coordinates(link)
+    from_fid, to_fid = derive_connectivity(node_index, node_xy, link_xy)
 
-    edge_fields = edge.fields()
-    from_id_field = edge_fields.indexFromName("from_node_id")
-    to_id_field = edge_fields.indexFromName("to_node_id")
-    edge_type_field = edge_fields.indexFromName("edge_type")
+    link_fields = link.fields()
+    from_id_field = link_fields.indexFromName("from_node_id")
+    to_id_field = link_fields.indexFromName("to_node_id")
+    link_type_field = link_fields.indexFromName("link_type")
 
     try:
         # Avoid infinite recursion
-        edge.blockSignals(True)
-        with edit(edge):
-            edge_iterator = cast(Iterable[QgsFeature], edge.getFeatures())
-            for feature, fid1, fid2 in zip(edge_iterator, from_fid, to_fid):
+        link.blockSignals(True)
+        with edit(link):
+            link_iterator = cast(Iterable[QgsFeature], link.getFeatures())
+            for feature, fid1, fid2 in zip(link_iterator, from_fid, to_fid):
                 type1, id1 = node_identifiers[fid1]
                 _, id2 = node_identifiers[fid2]
-                edge_type = infer_edge_type(type1)
+                link_type = infer_link_type(type1)
 
                 fid = feature.id()
-                edge.changeAttributeValue(fid, from_id_field, id1)
-                edge.changeAttributeValue(fid, to_id_field, id2)
-                edge.changeAttributeValue(fid, edge_type_field, edge_type)
+                link.changeAttributeValue(fid, from_id_field, id1)
+                link.changeAttributeValue(fid, to_id_field, id2)
+                link.changeAttributeValue(fid, link_type_field, link_type)
 
     finally:
-        edge.blockSignals(False)
+        link.blockSignals(False)
 
     return
