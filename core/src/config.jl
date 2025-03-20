@@ -293,7 +293,7 @@ function function_accepts_kwarg(f, kwarg)::Bool
 end
 
 "Create an OrdinaryDiffEqAlgorithm from solver config"
-function algorithm(solver::Solver; u0 = [])::OrdinaryDiffEqAlgorithm
+function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
     algotype = get(algorithms, solver.algorithm, nothing)
     if algotype === nothing
         options = join(keys(algorithms), ", ")

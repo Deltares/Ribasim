@@ -52,7 +52,7 @@ end
 """
 Compute the level of a basin given its storage.
 """
-function get_level_from_storage(basin::Basin, state_idx::Int, storage)
+function get_level_from_storage(basin::Basin, state_idx::Int, storage::T)::T where {T}
     storage_to_level = basin.storage_to_level[state_idx]
     if storage >= 0
         return storage_to_level(storage)
