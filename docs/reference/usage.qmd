@@ -339,9 +339,22 @@ priority        | Int32
 flow_rate       | Float64
 collect_demands | Bool
 
+## Concentration - `concentration.arrow`
+
+If the [experimental concentration feature]((/reference/usage.qmd#experimental-features)) is enabled, the results are written to `concentration.arrow`.
+This file records the Basin concentrations for each substance over time.
+The schema below is identical to the [external Basin concentration input](/reference/node/basin.qmd#concentration-external).
+
+column         | type     | unit                     | restriction
+-------------- | -------- | ------------------------ | -----------
+node_id        | Int32    | -                        | Basin nodes only
+time           | DateTime | -                        |
+substance      | String   | -                        | can correspond to known Delwaq substances
+concentration  | Float64  | $\text{g}/\text{m}^3$    |
+
 ## Subgrid level - `subgrid_level.arrow`
 
-This result file is only written if the model contains a [Basin / subgrid](node/basin.qmd#subgrid) table.
+This result file is only written if the model contains a [Basin / subgrid](/reference/node/basin.qmd#subgrid) table.
 See there for more information on the meaning of this output.
 
 column         | type
