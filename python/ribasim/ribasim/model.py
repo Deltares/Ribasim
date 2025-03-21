@@ -780,7 +780,7 @@ class Model(FileModel):
         ** Warning: This method is experimental and is likely to change. **
 
         To run this method, the model needs to be written to disk, and have results.
-        The Node and Link tables are written to shapefiles in the REGION_HOME/Config directory.
+        The Node, Link and Basin / area tables are written to shapefiles in the REGION_HOME/Config directory.
         The results are written to NetCDF files in the REGION_HOME/Modules directory.
         The netCDF files are NetCDF4 with CF-conventions.
 
@@ -806,10 +806,16 @@ class Model(FileModel):
         assert df_link is not None
         assert df_node is not None
 
+        df_basin_area = self.basin.area.df
+        if df_basin_area is None:
+            # Fall back to the Basin points if the area polygons are not set
+            df_basin_area = df_node[df_node["node_type"] == "Basin"]
+
         network_dir = region_home / "Config/MapLayerFiles/{ModelId}"
         network_dir.mkdir(parents=True, exist_ok=True)
         link_path = network_dir / "{ModelId}Links.shp"
         node_path = network_dir / "{ModelId}Nodes.shp"
+        basin_area_path = network_dir / "{ModelId}Areas.shp"
 
         with warnings.catch_warnings():
             warnings.filterwarnings(
@@ -822,6 +828,7 @@ class Model(FileModel):
             )
             df_link.to_file(link_path)
             df_node.to_file(node_path)
+            df_basin_area.to_file(basin_area_path)
 
     def _results_to_fews(self, region_home: DirectoryPath) -> None:
         """Convert the model results to NetCDF with CF-conventions for importing into Delft-FEWS."""
