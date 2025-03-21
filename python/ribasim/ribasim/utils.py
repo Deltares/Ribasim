@@ -80,7 +80,7 @@ def _concat(dfs, **kwargs):
         return pd.concat(dfs, **kwargs)
 
 
-def _add_cf_attributes(ds, timeseries_id):
+def _add_cf_attributes(ds, timeseries_id: str, realization: str | None = None) -> None:
     """Add CF attributes to an xarray.Dataset."""
     ds.attrs.update(
         {
@@ -91,6 +91,9 @@ def _add_cf_attributes(ds, timeseries_id):
     )
     ds["time"].attrs.update({"standard_name": "time", "axis": "T"})
     ds[timeseries_id].attrs.update({"cf_role": "timeseries_id"})
+    if realization:
+        # https://confluence.ecmwf.int/display/COPSRV/Metadata+recommendations+for+encoding+NetCDF+products+based+on+CF+convention#MetadatarecommendationsforencodingNetCDFproductsbasedonCFconvention-3.4Realizationdiscretecoordinates
+        ds[realization].attrs.update({"standard_name": "realization", "axis": "E"})
     return ds
 
 

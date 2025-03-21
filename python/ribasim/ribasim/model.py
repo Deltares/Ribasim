@@ -837,18 +837,23 @@ class Model(FileModel):
 
         basin_path = self.results_path / "basin.arrow"
         flow_path = self.results_path / "flow.arrow"
+        concentration_path = self.results_path / "concentration.arrow"
 
         basin_df = pd.read_feather(basin_path)
         flow_df = pd.read_feather(flow_path)
 
-        ds_basin = _add_cf_attributes(
-            basin_df.set_index(["time", "node_id"]).to_xarray(), "node_id"
-        )
-        ds_flow = _add_cf_attributes(
-            flow_df.set_index(["time", "link_id"]).to_xarray(), "link_id"
-        )
+        ds_basin = basin_df.set_index(["time", "node_id"]).to_xarray()
+        _add_cf_attributes(ds_basin, timeseries_id="node_id")
+        ds_flow = flow_df.set_index(["time", "link_id"]).to_xarray()
+        _add_cf_attributes(ds_flow, timeseries_id="link_id")
 
         results_dir = region_home / "Modules/ribasim/{ModelId}/work/results"
         results_dir.mkdir(parents=True, exist_ok=True)
         ds_basin.to_netcdf(results_dir / "basin.nc")
         ds_flow.to_netcdf(results_dir / "flow.nc")
+
+        if concentration_path.is_file():
+            df = pd.read_feather(concentration_path)
+            ds = df.set_index(["time", "node_id", "substance"]).to_xarray()
+            _add_cf_attributes(ds, timeseries_id="node_id", realization="substance")
+            ds.to_netcdf(results_dir / "concentration.nc")
