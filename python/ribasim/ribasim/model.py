@@ -1,6 +1,7 @@
 import datetime
 import logging
 import shutil
+import warnings
 from collections.abc import Generator
 from os import PathLike
 from pathlib import Path
@@ -462,6 +463,55 @@ class Model(FileModel):
         context_file_loading.set({})
         return self
 
+    @property
+    def toml_path(self) -> FilePath:
+        """
+        Get the path to the TOML file if it exists.
+
+        Raises
+        ------
+        FileNotFoundError
+            If the model has not been written to disk.
+
+        Returns
+        -------
+        FilePath
+            The path to the TOML file.
+        """
+        if self.filepath is None:
+            raise FileNotFoundError("Model must be written to disk.")
+        return FilePath(self.filepath)
+
+    @property
+    def results_path(self) -> DirectoryPath:
+        """
+        Get the path to the results directory if it exists.
+
+        This checks for the presence of required result files in the directory.
+
+        Raises
+        ------
+        FileNotFoundError
+            If any of the required result files are missing.
+
+        Returns
+        -------
+        DirectoryPath
+            The path to the results directory.
+        """
+        toml_path = self.toml_path
+        results_dir = DirectoryPath(toml_path.parent / self.results_dir)
+        # This only checks results that are always written.
+        # Some results like allocation_flow.arrow are optional.
+        filenames = ["basin_state.arrow", "basin.arrow", "flow.arrow"]
+        for filename in filenames:
+            if not (results_dir / filename).is_file():
+                raise FileNotFoundError(
+                    f"Cannot find {filename} in '{results_dir}', "
+                    "perhaps the model needs to be run first."
+                )
+        return results_dir
+
     def plot_control_listen(self, ax):
         """Plot the implicit listen links of the model."""
         df_listen_link = pd.DataFrame(
@@ -585,7 +635,7 @@ class Model(FileModel):
 
         return ax
 
-    def to_xugrid(self, flow: bool = False, allocation: bool = False):
+    def to_xugrid(self, add_flow: bool = False, add_allocation: bool = False):
         """Convert the network to a `xugrid.UgridDataset`.
 
         Either the flow or the allocation data can be added, but not both simultaneously.
@@ -593,12 +643,12 @@ class Model(FileModel):
 
         Parameters
         ----------
-        flow : bool
+        add_flow : bool
             add flow results (Optional, defaults to False)
-        allocation : bool
+        add_allocation : bool
             add allocation results (Optional, defaults to False)
         """
-        if flow and allocation:
+        if add_flow and add_allocation:
             raise ValueError("Cannot add both allocation and flow results.")
 
         node_df = self.node_table().df
@@ -639,39 +689,16 @@ class Model(FileModel):
         uds = uds.assign_coords(from_node_id=(link_dim, from_node_id))
         uds = uds.assign_coords(to_node_id=(link_dim, to_node_id))
 
-        if flow:
+        if add_flow:
             uds = self._add_flow(uds, node_lookup)
-        elif allocation:
+        elif add_allocation:
             uds = self._add_allocation(uds)
 
         return uds
 
-    def _toml_path(self) -> FilePath:
-        """Get the path to the TOML file, raising an error if it doesn't exist."""
-        toml_path = self.filepath
-        if toml_path is None:
-            raise FileNotFoundError("Model must be written to disk.")
-        return FilePath(toml_path)
-
-    def _results_dir(self) -> DirectoryPath:
-        """Get the path to the results directory, raising an error if there are no results."""
-        toml_path = self._toml_path()
-        results_dir = DirectoryPath(toml_path.parent / self.results_dir)
-        # This only checks results that are always written.
-        # Some results like allocation_flow.arrow are optional.
-        filenames = ["basin_state.arrow", "basin.arrow", "flow.arrow"]
-        for filename in filenames:
-            if not (results_dir / filename).is_file():
-                raise FileNotFoundError(
-                    f"Cannot find {filename} in '{results_dir}', "
-                    "perhaps the model needs to be run first."
-                )
-        return results_dir
-
     def _add_flow(self, uds, node_lookup):
-        results_dir = self._results_dir()
-        basin_path = results_dir / "basin.arrow"
-        flow_path = results_dir / "flow.arrow"
+        basin_path = self.results_path / "basin.arrow"
+        flow_path = self.results_path / "flow.arrow"
         basin_df = pd.read_feather(basin_path, dtype_backend="pyarrow")
         flow_df = pd.read_feather(flow_path, dtype_backend="pyarrow")
 
@@ -697,8 +724,7 @@ class Model(FileModel):
         return uds
 
     def _add_allocation(self, uds):
-        results_path = self._results_dir()
-        alloc_flow_path = results_path / "allocation_flow.arrow"
+        alloc_flow_path = self.results_path / "allocation_flow.arrow"
 
         if not alloc_flow_path.is_file():
             raise FileNotFoundError(
@@ -745,8 +771,8 @@ class Model(FileModel):
     def to_fews(
         self,
         region_home: str | PathLike[str],
-        network: bool = True,
-        results: bool = True,
+        add_network: bool = True,
+        add_results: bool = True,
     ) -> None:
         """
         Write the model network and results into files used by Delft-FEWS.
@@ -762,11 +788,15 @@ class Model(FileModel):
         ----------
         region_home: str | PathLike[str]
             Path to the Delft-FEWS REGION_HOME directory.
+        add_network: bool, optional
+            Write shapefiles representing the network, enabled by default.
+        add_results: bool, optional
+            Write the results to NetCDF files, enabled by default.
         """
         region_home = DirectoryPath(region_home)
-        if network:
+        if add_network:
             self._network_to_fews(region_home)
-        if results:
+        if add_results:
             self._results_to_fews(region_home)
 
     def _network_to_fews(self, region_home: DirectoryPath) -> None:
@@ -777,20 +807,29 @@ class Model(FileModel):
         assert df_node is not None
 
         network_dir = region_home / "Config/MapLayerFiles/{ModelId}"
+        network_dir.mkdir(parents=True, exist_ok=True)
         link_path = network_dir / "{ModelId}Links.shp"
         node_path = network_dir / "{ModelId}Nodes.shp"
 
-        df_link.to_file(link_path)
-        df_node.to_file(node_path)
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore", "Normalized/laundered field name", RuntimeWarning
+            )
+            warnings.filterwarnings(
+                "ignore",
+                "Column names longer than 10 characters will be truncated when saved to ESRI Shapefile.",
+                UserWarning,
+            )
+            df_link.to_file(link_path)
+            df_node.to_file(node_path)
 
     def _results_to_fews(self, region_home: DirectoryPath) -> None:
         """Convert the model results to NetCDF with CF-conventions for importing into Delft-FEWS."""
         # Delft-FEWS doesn't support our UGRID from `model.to_xugrid` yet,
         # so we convert Arrow to regular CF-NetCDF4.
 
-        results_dir = self._results_dir()
-        basin_path = results_dir / "basin.arrow"
-        flow_path = results_dir / "flow.arrow"
+        basin_path = self.results_path / "basin.arrow"
+        flow_path = self.results_path / "flow.arrow"
 
         basin_df = pd.read_feather(basin_path)
         flow_df = pd.read_feather(flow_path)
@@ -803,5 +842,6 @@ class Model(FileModel):
         )
 
         results_dir = region_home / "Modules/ribasim/{ModelId}/work/results"
+        results_dir.mkdir(parents=True, exist_ok=True)
         ds_basin.to_netcdf(results_dir / "basin.nc")
         ds_flow.to_netcdf(results_dir / "flow.nc")
