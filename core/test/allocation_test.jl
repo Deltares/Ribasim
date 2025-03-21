@@ -6,28 +6,33 @@
     toml_path = normpath(@__DIR__, "../../generated_testmodels/subnetwork/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.Model(toml_path)
-    p = model.integrator.p
 
-    (; graph, allocation) = p
+    (; p) = model.integrator
+    (; p_non_diff) = p
+    (; graph, allocation, user_demand) = p_non_diff
 
-    allocation.mean_input_flows[1][(NodeID(:FlowBoundary, 1, p), NodeID(:Basin, 2, p))] =
-        4.5
-    allocation_model = p.allocation.allocation_models[1]
+    allocation.mean_input_flows[1][(
+        NodeID(:FlowBoundary, 1, p_non_diff),
+        NodeID(:Basin, 2, p_non_diff),
+    )] = 4.5
+    allocation_model = allocation.allocation_models[1]
     (; flow) = allocation_model
-    u = Float64[]
     t = 0.0
-    Ribasim.allocate_demands!(p, allocation_model, t, u)
+    Ribasim.allocate_demands!(p, allocation_model, t)
 
     # Last demand priority (= 2) flows
-    @test flow[(NodeID(:Basin, 2, p), NodeID(:Pump, 5, p))] ≈ 0.0
-    @test flow[(NodeID(:Basin, 2, p), NodeID(:UserDemand, 10, p))] ≈ 0.5
-    @test flow[(NodeID(:Basin, 8, p), NodeID(:UserDemand, 12, p))] ≈ 3.0 rtol = 1e-5
-    @test flow[(NodeID(:UserDemand, 12, p), NodeID(:Basin, 8, p))] ≈ 1.0 rtol = 1e-5
-    @test flow[(NodeID(:Basin, 6, p), NodeID(:Outlet, 7, p))] ≈ 2.0 rtol = 1e-5
-    @test flow[(NodeID(:FlowBoundary, 1, p), NodeID(:Basin, 2, p))] ≈ 0.5
-    @test flow[(NodeID(:Basin, 6, p), NodeID(:UserDemand, 11, p))] ≈ 0.0
+    @test flow[(NodeID(:Basin, 2, p_non_diff), NodeID(:Pump, 5, p_non_diff))] ≈ 0.0
+    @test flow[(NodeID(:Basin, 2, p_non_diff), NodeID(:UserDemand, 10, p_non_diff))] ≈ 0.5
+    @test flow[(NodeID(:Basin, 8, p_non_diff), NodeID(:UserDemand, 12, p_non_diff))] ≈ 3.0 rtol =
+        1e-5
+    @test flow[(NodeID(:UserDemand, 12, p_non_diff), NodeID(:Basin, 8, p_non_diff))] ≈ 1.0 rtol =
+        1e-5
+    @test flow[(NodeID(:Basin, 6, p_non_diff), NodeID(:Outlet, 7, p_non_diff))] ≈ 2.0 rtol =
+        1e-5
+    @test flow[(NodeID(:FlowBoundary, 1, p_non_diff), NodeID(:Basin, 2, p_non_diff))] ≈ 0.5
+    @test flow[(NodeID(:Basin, 6, p_non_diff), NodeID(:UserDemand, 11, p_non_diff))] ≈ 0.0
 
-    (; allocated) = p.user_demand
+    (; allocated) = user_demand
     @test allocated[1, :] ≈ [0.0, 0.5]
     @test allocated[2, :] ≈ [4.0, 0.0] rtol = 1e-5
     @test allocated[3, :] ≈ [0.0, 3.0] atol = 1e-5
@@ -45,17 +50,18 @@ end
 
     model = Ribasim.run(toml_path)
     @test successful_retcode(model)
-    (; u, p, t) = model.integrator
-    (; user_demand) = p
-    allocation_model = p.allocation.allocation_models[1]
-    Ribasim.set_initial_values!(allocation_model, u, p, t)
-    Ribasim.set_objective_demand_priority!(allocation_model, u, p, t, 1)
+    (; p, t) = model.integrator
+    (; p_non_diff) = p
+    (; user_demand, allocation) = p_non_diff
+    allocation_model = allocation.allocation_models[1]
+    Ribasim.set_initial_values!(allocation_model, p, t)
+    Ribasim.set_objective_demand_priority!(allocation_model, p, t, 1)
     objective = JuMP.objective_function(allocation_model.problem)
     @test objective isa JuMP.QuadExpr # Quadratic expression
     F = allocation_model.problem[:F]
 
-    to_user_5 = F[(NodeID(:Basin, 4, p), NodeID(:UserDemand, 5, p))]
-    to_user_6 = F[(NodeID(:Basin, 4, p), NodeID(:UserDemand, 6, p))]
+    to_user_5 = F[(NodeID(:Basin, 4, p_non_diff), NodeID(:UserDemand, 5, p_non_diff))]
+    to_user_6 = F[(NodeID(:Basin, 4, p_non_diff), NodeID(:UserDemand, 6, p_non_diff))]
 
     @test objective.aff.constant ≈ sum(user_demand.demand)
     @test objective.aff.terms[to_user_5] ≈ -2.0
@@ -76,34 +82,37 @@ end
     )
     @test ispath(toml_path)
     model = Ribasim.Model(toml_path)
-    p = model.integrator.p
-    (; allocation, graph) = p
+    (; p_non_diff) = model.integrator.p
+    (; allocation, graph) = p_non_diff
     (; main_network_connections, subnetwork_ids, allocation_models) = allocation
     @test Ribasim.has_main_network(allocation)
     @test Ribasim.is_main_network(first(subnetwork_ids))
 
     # Connections from main network to subnetworks
     @test isempty(main_network_connections[1])
-    @test only(main_network_connections[3]) == (NodeID(:Basin, 2, p), NodeID(:Pump, 11, p))
-    @test only(main_network_connections[5]) == (NodeID(:Basin, 6, p), NodeID(:Pump, 24, p))
-    @test only(main_network_connections[7]) == (NodeID(:Basin, 10, p), NodeID(:Pump, 38, p))
+    @test only(main_network_connections[3]) ==
+          (NodeID(:Basin, 2, p_non_diff), NodeID(:Pump, 11, p_non_diff))
+    @test only(main_network_connections[5]) ==
+          (NodeID(:Basin, 6, p_non_diff), NodeID(:Pump, 24, p_non_diff))
+    @test only(main_network_connections[7]) ==
+          (NodeID(:Basin, 10, p_non_diff), NodeID(:Pump, 38, p_non_diff))
 
     # main-sub connections are part of main network allocation network
-    allocation_model_main_network = Ribasim.get_allocation_model(p, Int32(1))
+    allocation_model_main_network = Ribasim.get_allocation_model(p_non_diff, Int32(1))
     @test [
-        (NodeID(:Basin, 2, p), NodeID(:Pump, 11, p)),
-        (NodeID(:Basin, 6, p), NodeID(:Pump, 24, p)),
-        (NodeID(:Basin, 10, p), NodeID(:Pump, 38, p)),
+        (NodeID(:Basin, 2, p_non_diff), NodeID(:Pump, 11, p_non_diff)),
+        (NodeID(:Basin, 6, p_non_diff), NodeID(:Pump, 24, p_non_diff)),
+        (NodeID(:Basin, 10, p_non_diff), NodeID(:Pump, 38, p_non_diff)),
     ] ⊆ keys(allocation_model_main_network.capacity.data)
 
     # In each subnetwork, the connection from the main network to the subnetwork is
     # interpreted as a source
-    @test Ribasim.get_allocation_model(p, Int32(3)).problem[:source_main_network].axes[1] ==
-          [(NodeID(:Basin, 2, p), NodeID(:Pump, 11, p))]
-    @test Ribasim.get_allocation_model(p, Int32(5)).problem[:source_main_network].axes[1] ==
-          [(NodeID(:Basin, 6, p), NodeID(:Pump, 24, p))]
-    @test Ribasim.get_allocation_model(p, Int32(7)).problem[:source_main_network].axes[1] ==
-          [(NodeID(:Basin, 10, p), NodeID(:Pump, 38, p))]
+    @test Ribasim.get_allocation_model(p_non_diff, Int32(3)).problem[:source_main_network].axes[1] ==
+          [(NodeID(:Basin, 2, p_non_diff), NodeID(:Pump, 11, p_non_diff))]
+    @test Ribasim.get_allocation_model(p_non_diff, Int32(5)).problem[:source_main_network].axes[1] ==
+          [(NodeID(:Basin, 6, p_non_diff), NodeID(:Pump, 24, p_non_diff))]
+    @test Ribasim.get_allocation_model(p_non_diff, Int32(7)).problem[:source_main_network].axes[1] ==
+          [(NodeID(:Basin, 10, p_non_diff), NodeID(:Pump, 38, p_non_diff))]
 end
 
 @testitem "Allocation with main network optimization problem" begin
@@ -120,7 +129,8 @@ end
     model = Ribasim.Model(toml_path)
 
     (; p) = model.integrator
-    (; allocation, user_demand, graph, basin) = p
+    (; p_non_diff) = p
+    (; allocation, user_demand, graph, basin) = p_non_diff
     (;
         allocation_models,
         subnetwork_demands,
@@ -133,56 +143,65 @@ end
     # Collecting demands
     u = Float64[]
     for allocation_model in allocation_models[2:end]
-        Ribasim.collect_demands!(p, allocation_model, t, u)
+        Ribasim.collect_demands!(p, allocation_model, t)
     end
 
     # See the difference between these values here and in
     # "subnetworks_with_sources"
-    @test subnetwork_demands[(NodeID(:Basin, 2, p), NodeID(:Pump, 11, p))] ≈ [4.0, 4.0, 0.0] atol =
-        1e-4
-    @test subnetwork_demands[(NodeID(:Basin, 6, p), NodeID(:Pump, 24, p))] ≈
-          [0.001, 0.0, 0.0] atol = 1e-4
-    @test subnetwork_demands[(NodeID(:Basin, 10, p), NodeID(:Pump, 38, p))][1:2] ≈
-          [0.001, 0.002] atol = 1e-4
+    @test subnetwork_demands[(
+        NodeID(:Basin, 2, p_non_diff),
+        NodeID(:Pump, 11, p_non_diff),
+    )] ≈ [4.0, 4.0, 0.0] atol = 1e-4
+    @test subnetwork_demands[(
+        NodeID(:Basin, 6, p_non_diff),
+        NodeID(:Pump, 24, p_non_diff),
+    )] ≈ [0.001, 0.0, 0.0] atol = 1e-4
+    @test subnetwork_demands[(
+        NodeID(:Basin, 10, p_non_diff),
+        NodeID(:Pump, 38, p_non_diff),
+    )][1:2] ≈ [0.001, 0.002] atol = 1e-4
 
     # Solving for the main network, containing subnetworks as UserDemands
     allocation_model = allocation_models[1]
     (; problem) = allocation_model
-    main_source =
-        allocation_model.sources[(NodeID(:FlowBoundary, 1, p), NodeID(:Basin, 2, p))]
+    main_source = allocation_model.sources[(
+        NodeID(:FlowBoundary, 1, p_non_diff),
+        NodeID(:Basin, 2, p_non_diff),
+    )]
     main_source.capacity_reduced = 4.5
-    Ribasim.optimize_demand_priority!(
-        allocation_model,
-        u,
-        p,
-        t,
-        1,
-        OptimizationType.allocate,
-    )
+    Ribasim.optimize_demand_priority!(allocation_model, p, t, 1, OptimizationType.allocate)
 
     # Main network objective function
     F = problem[:F]
     objective = JuMP.objective_function(problem)
     objective_links = keys(objective.terms)
-    F_1 = F[(NodeID(:Basin, 2, p), NodeID(:Pump, 11, p))]
-    F_2 = F[(NodeID(:Basin, 6, p), NodeID(:Pump, 24, p))]
-    F_3 = F[(NodeID(:Basin, 10, p), NodeID(:Pump, 38, p))]
+    F_1 = F[(NodeID(:Basin, 2, p_non_diff), NodeID(:Pump, 11, p_non_diff))]
+    F_2 = F[(NodeID(:Basin, 6, p_non_diff), NodeID(:Pump, 24, p_non_diff))]
+    F_3 = F[(NodeID(:Basin, 10, p_non_diff), NodeID(:Pump, 38, p_non_diff))]
     @test JuMP.UnorderedPair(F_1, F_1) ∈ objective_links
     @test JuMP.UnorderedPair(F_2, F_2) ∈ objective_links
     @test JuMP.UnorderedPair(F_3, F_3) ∈ objective_links
 
     # Running full allocation algorithm
     (; Δt_allocation) = allocation_models[1]
-    mean_input_flows[1][(NodeID(:FlowBoundary, 1, p), NodeID(:Basin, 2, p))] =
-        4.5 * Δt_allocation
+    mean_input_flows[1][(
+        NodeID(:FlowBoundary, 1, p_non_diff),
+        NodeID(:Basin, 2, p_non_diff),
+    )] = 4.5 * Δt_allocation
     Ribasim.update_allocation!(model.integrator)
 
-    @test subnetwork_allocateds[NodeID(:Basin, 2, p), NodeID(:Pump, 11, p)] ≈
-          [4.0, 0.49775, 0.0] atol = 1e-4
-    @test subnetwork_allocateds[NodeID(:Basin, 6, p), NodeID(:Pump, 24, p)] ≈
-          [0.001, 0.0, 0.0] rtol = 1e-3
-    @test subnetwork_allocateds[NodeID(:Basin, 10, p), NodeID(:Pump, 38, p)] ≈
-          [0.001, 0.00024888, 0.0] rtol = 1e-3
+    @test subnetwork_allocateds[
+        NodeID(:Basin, 2, p_non_diff),
+        NodeID(:Pump, 11, p_non_diff),
+    ] ≈ [4.0, 0.49775, 0.0] atol = 1e-4
+    @test subnetwork_allocateds[
+        NodeID(:Basin, 6, p_non_diff),
+        NodeID(:Pump, 24, p_non_diff),
+    ] ≈ [0.001, 0.0, 0.0] rtol = 1e-3
+    @test subnetwork_allocateds[
+        NodeID(:Basin, 10, p_non_diff),
+        NodeID(:Pump, 38, p_non_diff),
+    ] ≈ [0.001, 0.00024888, 0.0] rtol = 1e-3
 
     # Test for existence of links in allocation flow record
     allocation_flow = DataFrame(record_flow)
@@ -190,8 +209,11 @@ end
         allocation_flow,
         [:from_node_type, :from_node_id, :to_node_type, :to_node_id] =>
             ByRow(
-                (a, b, c, d) ->
-                    haskey(graph, NodeID(Symbol(a), b, p), NodeID(Symbol(c), d, p)),
+                (a, b, c, d) -> haskey(
+                    graph,
+                    NodeID(Symbol(a), b, p_non_diff),
+                    NodeID(Symbol(c), d, p_non_diff),
+                ),
             ) => :link_exists,
     )
     @test all(allocation_flow.link_exists)
@@ -213,9 +235,9 @@ end
     )
     @test ispath(toml_path)
     model = Ribasim.Model(toml_path)
-    p = model.integrator.p
-
-    (; allocation, user_demand, graph, basin) = p
+    (; p) = model.integrator
+    (; p_non_diff) = p
+    (; allocation, user_demand, graph, basin) = p_non_diff
     (;
         allocation_models,
         subnetwork_demands,
@@ -226,31 +248,40 @@ end
     t = 0.0
 
     # Set flows of sources in subnetworks
-    mean_input_flows[2][(NodeID(:FlowBoundary, 58, p), NodeID(:Basin, 16, p))] = 1.0
-    mean_input_flows[4][(NodeID(:FlowBoundary, 59, p), NodeID(:Basin, 44, p))] = 1e-3
+    mean_input_flows[2][(
+        NodeID(:FlowBoundary, 58, p_non_diff),
+        NodeID(:Basin, 16, p_non_diff),
+    )] = 1.0
+    mean_input_flows[4][(
+        NodeID(:FlowBoundary, 59, p_non_diff),
+        NodeID(:Basin, 44, p_non_diff),
+    )] = 1e-3
 
     # Collecting demands
-    u = Float64[]
     for allocation_model in allocation_models[2:end]
-        Ribasim.collect_demands!(p, allocation_model, t, u)
+        Ribasim.collect_demands!(p, allocation_model, t)
     end
 
     # See the difference between these values here and in
     # "allocation with main network optimization problem", internal sources
     # lower the subnetwork demands
-    @test subnetwork_demands[(NodeID(:Basin, 2, p), NodeID(:Pump, 11, p))] ≈ [4.0, 4.0, 0.0] rtol =
-        1e-4
-    @test subnetwork_demands[(NodeID(:Basin, 6, p), NodeID(:Pump, 24, p))] ≈
-          [0.001, 0.0, 0.0] rtol = 1e-4
-    @test subnetwork_demands[(NodeID(:Basin, 10, p), NodeID(:Pump, 38, p))][1:2] ≈
-          [0.001, 0.001] rtol = 1e-4
+    @test subnetwork_demands[(
+        NodeID(:Basin, 2, p_non_diff),
+        NodeID(:Pump, 11, p_non_diff),
+    )] ≈ [4.0, 4.0, 0.0] rtol = 1e-4
+    @test subnetwork_demands[(
+        NodeID(:Basin, 6, p_non_diff),
+        NodeID(:Pump, 24, p_non_diff),
+    )] ≈ [0.001, 0.0, 0.0] rtol = 1e-4
+    @test subnetwork_demands[(
+        NodeID(:Basin, 10, p_non_diff),
+        NodeID(:Pump, 38, p_non_diff),
+    )][1:2] ≈ [0.001, 0.001] rtol = 1e-4
 
     model = Ribasim.run(toml_path)
     (; u, p, t) = model.integrator
-    (; current_storage) = p.basin.current_properties
-    current_storage = current_storage[Float64[]]
-    du = get_du(model.integrator)
-    Ribasim.formulate_storages!(current_storage, du, u, p, t)
+    Ribasim.formulate_storages!(u, p, t)
+    (; current_storage) = p.diff_cache
 
     @test current_storage ≈ Float32[
         1.0346908f6,
@@ -270,7 +301,7 @@ end
         5.619053,
         10419.156,
         4.057502,
-    ]
+    ] rtol = 1e-3
 
     # The output should only contain data for the demand_priority for which
     # a node has a demand
@@ -292,12 +323,14 @@ end
     toml_path = normpath(@__DIR__, "../../generated_testmodels/level_demand/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.Model(toml_path)
-
-    p = model.integrator.p
-    (; user_demand, graph, allocation, basin, level_demand) = p
+    (; p_non_diff) = model.integrator.p
+    (; user_demand, graph, allocation, basin, level_demand) = p_non_diff
 
     # Initial "integrated" vertical flux
-    @test allocation.mean_input_flows[1][(NodeID(:Basin, 2, p), NodeID(:Basin, 2, p))] ≈ 1e2
+    @test allocation.mean_input_flows[1][(
+        NodeID(:Basin, 2, p_non_diff),
+        NodeID(:Basin, 2, p_non_diff),
+    )] ≈ 1e2
 
     Ribasim.solve!(model)
 
@@ -309,9 +342,12 @@ end
     ϕ = 1e-3 # precipitation
     q = Ribasim.get_flow(
         du,
-        p,
+        p_non_diff,
         0.0,
-        (Ribasim.NodeID(:FlowBoundary, 1, p), Ribasim.NodeID(:Basin, 2, p)),
+        (
+            Ribasim.NodeID(:FlowBoundary, 1, p_non_diff),
+            Ribasim.NodeID(:Basin, 2, p_non_diff),
+        ),
     )
     A = Ribasim.basin_areas(basin, 1)[1]
     l_max = level_demand.max_level[1](0)
@@ -404,7 +440,8 @@ end
     @test ispath(toml_path)
     model = Ribasim.Model(toml_path)
     (; p) = model.integrator
-    (; graph, allocation, flow_demand, user_demand, level_boundary) = p
+    (; p_non_diff) = p
+    (; graph, allocation, flow_demand, user_demand, level_boundary) = p_non_diff
 
     # Test has_external_demand
     @test !any(
@@ -413,7 +450,7 @@ end
     )
     @test Ribasim.has_external_demand(
         graph,
-        NodeID(:TabulatedRatingCurve, 2, p),
+        NodeID(:TabulatedRatingCurve, 2, p_non_diff),
         :flow_demand,
     )[1]
 
@@ -425,33 +462,27 @@ end
     F_flow_buffer_in = problem[:F_flow_buffer_in]
     F_flow_buffer_out = problem[:F_flow_buffer_out]
 
-    node_id_with_flow_demand = NodeID(:TabulatedRatingCurve, 2, p)
+    node_id_with_flow_demand = NodeID(:TabulatedRatingCurve, 2, p_non_diff)
 
     # Test flow conservation constraint containing flow buffer
     constraint_with_flow_buffer =
         JuMP.constraint_object(problem[:flow_conservation][node_id_with_flow_demand])
     @test constraint_with_flow_buffer.func ==
-          F[(NodeID(:LevelBoundary, 1, p), node_id_with_flow_demand)] -
-          F[(node_id_with_flow_demand, NodeID(:Basin, 3, p))] -
+          F[(NodeID(:LevelBoundary, 1, p_non_diff), node_id_with_flow_demand)] -
+          F[(node_id_with_flow_demand, NodeID(:Basin, 3, p_non_diff))] -
           F_flow_buffer_in[node_id_with_flow_demand] +
           F_flow_buffer_out[node_id_with_flow_demand]
 
     t = 0.0
-    (; u) = model.integrator
     optimization_type = OptimizationType.internal_sources
-    Ribasim.set_initial_values!(allocation_model, u, p, t)
-    sources[(NodeID(:LevelBoundary, 1, p), node_id_with_flow_demand)].capacity_reduced =
-        2e-3
+    Ribasim.set_initial_values!(allocation_model, p, t)
+    sources[(
+        NodeID(:LevelBoundary, 1, p_non_diff),
+        node_id_with_flow_demand,
+    )].capacity_reduced = 2e-3
 
     # Priority 1
-    Ribasim.optimize_demand_priority!(
-        allocation_model,
-        model.integrator.u,
-        p,
-        t,
-        1,
-        optimization_type,
-    )
+    Ribasim.optimize_demand_priority!(allocation_model, p, t, 1, optimization_type)
     objective = JuMP.objective_function(problem)
     @test JuMP.UnorderedPair(
         F_flow_buffer_in[node_id_with_flow_demand],
@@ -462,50 +493,30 @@ end
     @test flow_demand.demand[1] ≈ flow_demand.demand_itp[1](t) - 0.001 rtol = 1e-3
 
     ## Priority 2
-    Ribasim.optimize_demand_priority!(
-        allocation_model,
-        model.integrator.u,
-        p,
-        t,
-        2,
-        optimization_type,
-    )
+    Ribasim.optimize_demand_priority!(allocation_model, p, t, 2, optimization_type)
     # No demand left
     @test flow_demand.demand[1] < 1e-10
     # Allocated
     @test JuMP.value(only(F_flow_buffer_in)) ≈ only(flow_demand.demand) atol = 1e-10
 
     ## Priority 3
-    Ribasim.optimize_demand_priority!(
-        allocation_model,
-        model.integrator.u,
-        p,
-        t,
-        3,
-        optimization_type,
-    )
+    Ribasim.optimize_demand_priority!(allocation_model, p, t, 3, optimization_type)
     # The flow from the source is used up in previous demand priorities
-    @test flow[(NodeID(:LevelBoundary, 1, p), node_id_with_flow_demand)] ≈ 0 atol = 1e-10
+    @test flow[(NodeID(:LevelBoundary, 1, p_non_diff), node_id_with_flow_demand)] ≈ 0 atol =
+        1e-10
     # So flow from the flow buffer is used for UserDemand #4
-    @test flow[(node_id_with_flow_demand, NodeID(:Basin, 3, p))] ≈ 0.001
-    @test flow[(NodeID(:Basin, 3, p), NodeID(:UserDemand, 4, p))] ≈ 0.001
+    @test flow[(node_id_with_flow_demand, NodeID(:Basin, 3, p_non_diff))] ≈ 0.001
+    @test flow[(NodeID(:Basin, 3, p_non_diff), NodeID(:UserDemand, 4, p_non_diff))] ≈ 0.001
     # No flow coming from level boundary
     @test JuMP.value(F[(only(level_boundary.node_id), node_id_with_flow_demand)]) ≈ 0 atol =
         1e-10
 
     ## Priority 4
-    Ribasim.optimize_demand_priority!(
-        allocation_model,
-        model.integrator.u,
-        p,
-        t,
-        4,
-        optimization_type,
-    )
+    Ribasim.optimize_demand_priority!(allocation_model, p, t, 4, optimization_type)
 
     # Realized flow demand
     model = Ribasim.run(toml_path)
-    record_demand = DataFrame(model.integrator.p.allocation.record_demand)
+    record_demand = DataFrame(model.integrator.p.p_non_diff.allocation.record_demand)
     df_rating_curve_2 = record_demand[record_demand.node_id .== 2, :]
     @test all(df_rating_curve_2.realized .≈ 0.002)
 
@@ -558,12 +569,16 @@ end
     )
     @test ispath(toml_path)
     model = Ribasim.Model(toml_path)
-    (; p) = model.integrator
+    (; p_non_diff) = model.integrator.p
+    (; allocation) = p_non_diff
 
     # Test for pump max flow capacity constraint
-    (; problem) = p.allocation.allocation_models[1]
+    (; problem) = allocation.allocation_models[1]
     constraint = JuMP.constraint_object(
-        problem[:capacity][(NodeID(:Basin, 1, p), NodeID(:LinearResistance, 2, p))],
+        problem[:capacity][(
+            NodeID(:Basin, 1, p_non_diff),
+            NodeID(:LinearResistance, 2, p_non_diff),
+        )],
     )
     @test constraint.set.upper == 2.0
 end
@@ -577,7 +592,7 @@ end
         normpath(@__DIR__, "../../generated_testmodels/fair_distribution/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
-    (; user_demand, graph) = model.integrator.p
+    (; user_demand, graph) = model.integrator.p.p_non_diff
 
     data_allocation = DataFrame(Ribasim.allocation_table(model))
     fractions = Vector{Float64}[]
@@ -601,22 +616,27 @@ end
     toml_path = normpath(@__DIR__, "../../generated_testmodels/level_demand/ribasim.toml")
     model = Ribasim.Model(toml_path)
     (; p) = model.integrator
+    (; p_non_diff) = p
     t = 0.0
-    u = model.integrator.u
     demand_priority_idx = 2
 
-    allocation_model = first(p.allocation.allocation_models)
-    Ribasim.set_initial_values!(allocation_model, u, p, t)
-    Ribasim.set_objective_demand_priority!(allocation_model, u, p, t, demand_priority_idx)
+    allocation_model = first(p_non_diff.allocation.allocation_models)
+    Ribasim.set_initial_values!(allocation_model, p, t)
+    Ribasim.set_objective_demand_priority!(allocation_model, p, t, demand_priority_idx)
     Ribasim.allocate_to_users_from_connected_basin!(
         allocation_model,
-        p,
+        p_non_diff,
         demand_priority_idx,
     )
     flow_data = allocation_model.flow.data
-    @test flow_data[(NodeID(:FlowBoundary, 1, p), NodeID(:Basin, 2, p))] == 0.0
-    @test flow_data[(NodeID(:Basin, 2, p), NodeID(:UserDemand, 3, p))] == 0.0015
-    @test flow_data[(NodeID(:UserDemand, 3, p), NodeID(:Basin, 5, p))] == 0.0
+    @test flow_data[(
+        NodeID(:FlowBoundary, 1, p_non_diff),
+        NodeID(:Basin, 2, p_non_diff),
+    )] == 0.0
+    @test flow_data[(NodeID(:Basin, 2, p_non_diff), NodeID(:UserDemand, 3, p_non_diff))] ==
+          0.0015
+    @test flow_data[(NodeID(:UserDemand, 3, p_non_diff), NodeID(:Basin, 5, p_non_diff))] ==
+          0.0
 end
 
 @testitem "level_demand_without_max_level" begin
@@ -627,16 +647,16 @@ end
     @test ispath(toml_path)
     model = Ribasim.Model(toml_path)
     (; p, u, t) = model.integrator
-    (; allocation_models) = p.allocation
-    (; basin, level_demand, graph) = p
+    (; basin, level_demand, graph, allocation) = p.p_non_diff
+    (; allocation_models) = allocation
 
     level_demand.max_level[1].u .= Inf
     level_demand.max_level[2].u .= Inf
 
     # Given a max_level of Inf, the basin capacity is 0.0 because it is not possible for the basin level to be > Inf
-    @test Ribasim.get_basin_capacity(allocation_models[1], u, p, t, basin.node_id[1]) == 0.0
-    @test Ribasim.get_basin_capacity(allocation_models[1], u, p, t, basin.node_id[2]) == 0.0
-    @test Ribasim.get_basin_capacity(allocation_models[2], u, p, t, basin.node_id[3]) == 0.0
+    @test Ribasim.get_basin_capacity(allocation_models[1], p, t, basin.node_id[1]) == 0.0
+    @test Ribasim.get_basin_capacity(allocation_models[1], p, t, basin.node_id[2]) == 0.0
+    @test Ribasim.get_basin_capacity(allocation_models[2], p, t, basin.node_id[3]) == 0.0
 end
 
 @testitem "cyclic_demand" begin
@@ -645,7 +665,7 @@ end
     toml_path = normpath(@__DIR__, "../../generated_testmodels/cyclic_demand/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
-    (; level_demand, user_demand, flow_demand) = model.integrator.p
+    (; level_demand, user_demand, flow_demand) = model.integrator.p.p_non_diff
 
     function test_extrapolation(itp)
         @test itp.extrapolation_left == Periodic

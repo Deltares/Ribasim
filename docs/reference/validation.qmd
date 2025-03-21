@@ -16,7 +16,8 @@ using MarkdownTables
 
 node_names_snake_case = Symbol[]
 node_names_camel_case = Symbol[]
-for (node_name, node_type) in zip(fieldnames(Ribasim.Parameters), fieldtypes(Ribasim.Parameters))
+for (node_name, node_type) in
+    zip(fieldnames(Ribasim.ParametersNonDiff), fieldtypes(Ribasim.ParametersNonDiff))
     if node_type <: Ribasim.AbstractParameterNode
         push!(node_names_snake_case, node_name)
         push!(node_names_camel_case, nameof(node_type))
@@ -27,13 +28,14 @@ function to_symbol(b::Bool)::String
     return b ? "✓" : "x"
 end
 
-
 df = DataFrame()
 df[!, :downstream] = node_names_snake_case
 
 for node_name in node_names_snake_case
-    df[!, node_name] =
-        [(to_symbol(node_name_ in Ribasim.neighbortypes(node_name))) for node_name_ in node_names_snake_case]
+    df[!, node_name] = [
+        (to_symbol(node_name_ in Ribasim.neighbortypes(node_name))) for
+        node_name_ in node_names_snake_case
+    ]
 end
 
 markdown_table(df)
@@ -70,11 +72,9 @@ for node_name in node_names_camel_case
     push!(control_in_max, unbounded(bounds_control.in_max))
     push!(control_out_min, string(bounds_control.out_min))
     push!(control_out_max, unbounded(bounds_control.out_max))
-
 end
 
-df = DataFrame(
-    ;
+df = DataFrame(;
     node_type = node_names_snake_case,
     flow_in_min,
     flow_in_max,

@@ -57,7 +57,7 @@ end
         Solver(; algorithm = "DoesntExist"),
     )
     @test alg_autodiff(algorithm(Solver(; algorithm = "QNDF", autodiff = true))) ==
-          AutoForwardDiff()
+          AutoForwardDiff(; tag = :Ribasim)
     @test alg_autodiff(algorithm(Solver(; algorithm = "QNDF", autodiff = false))) ==
           AutoFiniteDiff()
     @test alg_autodiff(algorithm(Solver(; algorithm = "QNDF"))) == AutoFiniteDiff()

@@ -151,20 +151,6 @@ const ScalarInterpolation = LinearInterpolation{
 const IndexLookup =
     ConstantInterpolation{Vector{Int64}, Vector{Float64}, Vector{Float64}, Int64, (1,)}
 
-set_zero!(v) = v .= zero(eltype(v))
-const Cache = LazyBufferCache{Returns{Int}, typeof(set_zero!)}
-
-"""
-Cache for in place computations within water_balance!, with different eltypes
-for different situations:
-- Symbolics.Num for Jacobian sparsity detection
-- ForwardDiff.Dual for automatic differentiation
-- Float64 for normal calls
-
-The caches are always initialized with zeros
-"""
-cache(len::Int)::Cache = LazyBufferCache(Returns(len); initializer! = set_zero!)
-
 @eval @enumx AllocationSourceType $(fieldnames(Ribasim.config.SourcePriority)...)
 
 # Support creating a AllocationSourceTuple enum instance from a symbol
@@ -337,10 +323,12 @@ end
 """
 The parameter update associated with a certain control state for discrete control
 """
-@kwdef struct ControlStateUpdate{T <: AbstractInterpolation}
+@kwdef struct ControlStateUpdate
     active::ParameterUpdate{Bool}
     scalar_update::Vector{ParameterUpdate{Float64}} = ParameterUpdate{Float64}[]
-    itp_update::Vector{ParameterUpdate{T}} = ParameterUpdate{ScalarInterpolation}[]
+    itp_update_linear::Vector{ParameterUpdate{ScalarInterpolation}} =
+        ParameterUpdate{ScalarInterpolation}[]
+    itp_update_lookup::Vector{ParameterUpdate{IndexLookup}} = ParameterUpdate{IndexLookup}[]
 end
 
 """
@@ -383,23 +371,6 @@ end
 abstract type AbstractParameterNode end
 
 abstract type AbstractDemandNode <: AbstractParameterNode end
-
-"""
-Caches of current basin properties
-"""
-struct CurrentBasinProperties
-    current_storage::Cache
-    # Low storage factor for reducing flows out of drying basins
-    # given the current storages
-    current_low_storage_factor::Cache
-    current_level::Cache
-    current_area::Cache
-    current_cumulative_precipitation::Cache
-    current_cumulative_drainage::Cache
-    function CurrentBasinProperties(n)
-        new((cache(n) for _ in 1:6)...)
-    end
-end
 
 @kwdef struct ConcentrationData
     # Config setting to enable/disable evaporation of mass
@@ -472,8 +443,6 @@ of vectors or Arrow Tables, and is added to avoid type instabilities.
     cumulative_drainage::Vector{Float64} = zeros(length(node_id))
     cumulative_precipitation_saveat::Vector{Float64} = zeros(length(node_id))
     cumulative_drainage_saveat::Vector{Float64} = zeros(length(node_id))
-    # Cache this to avoid recomputation
-    current_properties::CurrentBasinProperties = CurrentBasinProperties(length(node_id))
     # Discrete values for interpolation
     storage_to_level::Vector{
         LinearInterpolationIntInv{
@@ -643,7 +612,6 @@ inflow_link: incoming flow link metadata
 outflow_link: outgoing flow link metadata
     The ID of the source node is always the ID of the Pump node
 active: whether this node is active and thus contributes flow
-flow_rate_cache: target flow rate
 flow_rate: timeseries for transient flow data if available
 min_flow_rate: The minimal flow rate of the pump
 max_flow_rate: The maximum flow rate of the pump
@@ -657,7 +625,6 @@ continuous_control_type: one of None, ContinuousControl, PidControl
     inflow_link::Vector{LinkMetadata} = []
     outflow_link::Vector{LinkMetadata} = []
     active::Vector{Bool} = fill(true, length(node_id))
-    flow_rate_cache::Cache = cache(length(node_id))
     flow_rate::Vector{ScalarInterpolation} = ScalarInterpolation[]
     min_flow_rate::Vector{ScalarInterpolation} = ScalarInterpolation[]
     max_flow_rate::Vector{ScalarInterpolation} = ScalarInterpolation[]
@@ -666,40 +633,6 @@ continuous_control_type: one of None, ContinuousControl, PidControl
     control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate}
     continuous_control_type::Vector{ContinuousControlType.T} =
         fill(ContinuousControlType.None, length(node_id))
-
-    function Pump(
-        node_id,
-        inflow_link,
-        outflow_link,
-        active,
-        flow_rate_cache,
-        flow_rate,
-        min_flow_rate,
-        max_flow_rate,
-        min_upstream_level,
-        max_downstream_level,
-        control_mapping,
-        continuous_control_type,
-    )
-        if valid_flow_rates(node_id, flow_rate[Float64[]], control_mapping)
-            return new(
-                node_id,
-                inflow_link,
-                outflow_link,
-                active,
-                flow_rate_cache,
-                flow_rate,
-                min_flow_rate,
-                max_flow_rate,
-                min_upstream_level,
-                max_downstream_level,
-                control_mapping,
-                continuous_control_type,
-            )
-        else
-            error("Invalid Pump flow rate(s).")
-        end
-    end
 end
 
 """
@@ -709,7 +642,6 @@ inflow_link: incoming flow link metadata.
 outflow_link: outgoing flow link metadata.
     The ID of the source node is always the ID of the Outlet node
 active: whether this node is active and thus contributes flow
-flow_rate_cache: target flow rate
 flow_rate: timeseries for transient flow data if available
 min_flow_rate: The minimal flow rate of the outlet
 max_flow_rate: The maximum flow rate of the outlet
@@ -723,7 +655,6 @@ continuous_control_type: one of None, ContinuousControl, PidControl
     inflow_link::Vector{LinkMetadata} = []
     outflow_link::Vector{LinkMetadata} = []
     active::Vector{Bool} = fill(true, length(node_id))
-    flow_rate_cache::Cache = cache(length(node_id))
     flow_rate::Vector{ScalarInterpolation} = ScalarInterpolation[]
     min_flow_rate::Vector{ScalarInterpolation} = ScalarInterpolation[]
     max_flow_rate::Vector{ScalarInterpolation} = ScalarInterpolation[]
@@ -732,40 +663,6 @@ continuous_control_type: one of None, ContinuousControl, PidControl
     control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate} = Dict()
     continuous_control_type::Vector{ContinuousControlType.T} =
         fill(ContinuousControlType.None, length(node_id))
-
-    function Outlet(
-        node_id,
-        inflow_link,
-        outflow_link,
-        active,
-        flow_rate_cache,
-        flow_rate,
-        min_flow_rate,
-        max_flow_rate,
-        min_upstream_level,
-        max_downstream_level,
-        control_mapping,
-        continuous_control_type,
-    )
-        if valid_flow_rates(node_id, flow_rate[Float64[]], control_mapping)
-            return new(
-                node_id,
-                inflow_link,
-                outflow_link,
-                active,
-                flow_rate_cache,
-                flow_rate,
-                min_flow_rate,
-                max_flow_rate,
-                min_upstream_level,
-                max_downstream_level,
-                control_mapping,
-                continuous_control_type,
-            )
-        else
-            error("Invalid Outlet flow rate(s).")
-        end
-    end
 end
 
 """
@@ -775,30 +672,39 @@ node_id: node ID of the Terminal node
     node_id::Vector{NodeID}
 end
 
-"""
-A variant on `Base.Ref` where the source array is a vector that is possibly wrapped in a ForwardDiff.LazyBufferCache,
-or a reference to the state derivative vector du.
-Retrieve value with get_value(ref::PreallocationRef, val) where `val` determines the return type.
-"""
-struct PreallocationRef
-    vector::Cache
-    idx::Int
-    from_du::Bool
-    function PreallocationRef(vector::Cache, idx::Int; from_du = false)
-        new(vector, idx, from_du)
-    end
+const DiffCache{T} = @NamedTuple{
+    current_storage::Vector{T},
+    current_low_storage_factor::Vector{T},
+    current_level::Vector{T},
+    current_area::Vector{T},
+    current_cumulative_precipitation::Vector{T},
+    current_cumulative_drainage::Vector{T},
+    flow_rate_pump::Vector{T},
+    flow_rate_outlet::Vector{T},
+    error_pid_control::Vector{T},
+} where {T}
+
+@enumx DiffCacheType flow_rate_pump flow_rate_outlet basin_level
+
+@kwdef struct DiffCacheRef
+    type::DiffCacheType.T = DiffCacheType.flow_rate_pump
+    idx::Int = 0
+    from_du::Bool = false
 end
 
-get_value(ref::PreallocationRef, du) = ref.from_du ? du[ref.idx] : ref.vector[du][ref.idx]
-
-function set_value!(ref::PreallocationRef, value, du)::Nothing
-    ref.vector[du][ref.idx] = value
-    return nothing
+function get_cache_vector(diff_cache::DiffCache, type::DiffCacheType.T)
+    if type == DiffCacheType.flow_rate_pump
+        diff_cache.flow_rate_pump
+    elseif type == DiffCacheType.flow_rate_outlet
+        diff_cache.flow_rate_outlet
+    else # type == DiffCacheType.basin_level
+        diff_cache.current_level
+    end
 end
 
 @kwdef struct SubVariable
     listen_node_id::NodeID
-    variable_ref::PreallocationRef
+    diff_cache_ref::DiffCacheRef
     variable::String
     weight::Float64
     look_ahead::Float64
@@ -855,7 +761,7 @@ end
     node_id::Vector{NodeID}
     compound_variable::Vector{CompoundVariable}
     controlled_variable::Vector{String}
-    target_ref::Vector{PreallocationRef}
+    target_ref::Vector{DiffCacheRef} = Vector{DiffCacheRef}(undef, length(node_id))
     func::Vector{ScalarInterpolation}
 end
 
@@ -871,20 +777,17 @@ target_ref: reference to the controlled flow_rate value
 proportional: proportionality coefficient error
 integral: proportionality coefficient error integral
 derivative: proportionality coefficient error derivative
-error: the current error; basin_target - current_level
-dictionary from (node_id, control_state) to target flow rate
+control_mapping: dictionary from (node_id, control_state) to target flow rate
 """
 @kwdef struct PidControl <: AbstractParameterNode
     node_id::Vector{NodeID}
     active::Vector{Bool}
     listen_node_id::Vector{NodeID}
     target::Vector{ScalarInterpolation}
-    target_ref::Vector{PreallocationRef}
+    target_ref::Vector{DiffCacheRef} = Vector{DiffCacheRef}(undef, length(node_id))
     proportional::Vector{ScalarInterpolation}
     integral::Vector{ScalarInterpolation}
     derivative::Vector{ScalarInterpolation}
-    error::Cache = cache(length(node_id))
-    controlled_basins::Vector{NodeID}
     control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate}
 end
 
@@ -981,10 +884,6 @@ end
     current_interpolation_index::Vector{IndexLookup}
 end
 
-# This function is the same as the MetaGraphsNext default anonymous function,
-# but has a stable type for the type alias below.
-weight_function(::Any) = 1.0
-
 """
 The metadata of the graph (the fields of the NamedTuple) can be accessed
     e.g. using graph[].flow.
@@ -1006,7 +905,7 @@ const ModelGraph = MetaGraph{
         flow_links::Vector{LinkMetadata},
         saveat::Float64,
     },
-    typeof(weight_function),
+    Returns{Float64},
     Float64,
 }
 
@@ -1028,57 +927,80 @@ It is used to create views of `u`, and an low-latency alternative to making `u` 
     integral::UnitRange{Int64} = 1:0
 end
 
-function StateRanges(u_ids::NamedTuple)::StateRanges
-    lengths = map(length, u_ids)
-    # from the lengths of the components
-    # construct [1:n_pump, (n_pump+1):(n_pump+n_outlet)]
-    # which are used to create views into the data array
-    bounds = pushfirst!(cumsum(lengths), 0)
-    ranges = [range(p[1] + 1, p[2]) for p in IterTools.partition(bounds, 2, 1)]
-    # standardize empty ranges to 1:0 for easier testing
-    replace!(x -> isempty(x) ? (1:0) : x, ranges)
-    return StateRanges(ranges...)
-end
+StateRanges(u_ids::NamedTuple) = StateRanges(ranges(map(length, collect(u_ids)))...)
 
-@kwdef mutable struct Parameters{C3, C4, C6, C7, C8}
-    const starttime::DateTime
-    const graph::ModelGraph
-    const allocation::Allocation
-    const basin::Basin{C3, C4}
-    const linear_resistance::LinearResistance
-    const manning_resistance::ManningResistance
-    const tabulated_rating_curve::TabulatedRatingCurve
-    const level_boundary::LevelBoundary{C6}
-    const flow_boundary::FlowBoundary{C7}
-    const pump::Pump
-    const outlet::Outlet
-    const terminal::Terminal
-    const discrete_control::DiscreteControl
-    const continuous_control::ContinuousControl
-    const pid_control::PidControl
-    const user_demand::UserDemand{C8}
-    const level_demand::LevelDemand
-    const flow_demand::FlowDemand
-    const subgrid::Subgrid
-    # Per state the in- and outflow links associated with that state (if they exist)
-    const state_inflow_link::Vector{LinkMetadata} = LinkMetadata[]
-    const state_outflow_link::Vector{LinkMetadata} = LinkMetadata[]
+@kwdef mutable struct ParametersMutable
     all_nodes_active::Bool = false
     tprev::Float64 = 0.0
-    # Sparse matrix for combining flows into storages
-    const flow_to_storage::SparseMatrixCSC{Float64, Int64} = spzeros(1, 1)
-    # Water balance tolerances
-    const water_balance_abstol::Float64
-    const water_balance_reltol::Float64
-    # State at previous saveat
-    const u_prev_saveat::Vector{Float64} = Float64[]
-    # Node ID associated with each state
-    const node_id::Vector{NodeID} = NodeID[]
-    # Range per states component
-    const state_ranges::StateRanges = StateRanges()
 end
 
-# To opt-out of type checking for ForwardDiff
-function DiffEqBase.anyeltypedual(::Parameters, ::Type{Val{counter}}) where {counter}
-    Any
+@kwdef struct ParametersNonDiff{C1, C2, C3, C4, C5}
+    starttime::DateTime
+    graph::ModelGraph
+    allocation::Allocation
+    basin::Basin{C1, C2}
+    linear_resistance::LinearResistance
+    manning_resistance::ManningResistance
+    tabulated_rating_curve::TabulatedRatingCurve
+    level_boundary::LevelBoundary{C3}
+    flow_boundary::FlowBoundary{C4}
+    pump::Pump
+    outlet::Outlet
+    terminal::Terminal
+    discrete_control::DiscreteControl
+    continuous_control::ContinuousControl
+    pid_control::PidControl
+    user_demand::UserDemand{C5}
+    level_demand::LevelDemand
+    flow_demand::FlowDemand
+    subgrid::Subgrid
+    # Per state the in- and outflow links associated with that state (if they exist)
+    state_inflow_link::Vector{LinkMetadata} = LinkMetadata[]
+    state_outflow_link::Vector{LinkMetadata} = LinkMetadata[]
+    # Sparse matrix for combining flows into storages
+    flow_to_storage::SparseMatrixCSC{Float64, Int64} = spzeros(1, 1)
+    # Water balance tolerances
+    water_balance_abstol::Float64
+    water_balance_reltol::Float64
+    # State at previous saveat
+    u_prev_saveat::Vector{Float64} = Float64[]
+    # Node ID associated with each state
+    node_id::Vector{NodeID} = NodeID[]
+    # Range per states or cache component
+    state_ranges::StateRanges = StateRanges()
+end
+
+function DiffCache(p_non_diff::ParametersNonDiff)
+    (; basin, pump, outlet, pid_control) = p_non_diff
+    n_basin = length(basin.node_id)
+    return (;
+        current_storage = zeros(n_basin),
+        current_low_storage_factor = zeros(n_basin),
+        current_level = zeros(n_basin),
+        current_area = zeros(n_basin),
+        current_cumulative_precipitation = zeros(n_basin),
+        current_cumulative_drainage = zeros(n_basin),
+        flow_rate_pump = zeros(length(pump.node_id)),
+        flow_rate_outlet = zeros(length(outlet.node_id)),
+        error_pid_control = zeros(length(pid_control.node_id)),
+    )
+end
+
+@kwdef struct Parameters{C1, C2, C3, C4, C5, T}
+    p_non_diff::ParametersNonDiff{C1, C2, C3, C4, C5}
+    diff_cache::DiffCache{T} = DiffCache(p_non_diff)
+    p_mutable::ParametersMutable = ParametersMutable()
+end
+
+function get_value(ref::DiffCacheRef, p::Parameters, du::Vector)
+    if ref.from_du
+        du[ref.idx]
+    else
+        get_cache_vector(p.diff_cache, ref.type)[ref.idx]
+    end
+end
+
+function set_value!(ref::DiffCacheRef, p::Parameters, value)
+    @assert !ref.from_du
+    get_cache_vector(p.diff_cache, ref.type)[ref.idx] = value
 end

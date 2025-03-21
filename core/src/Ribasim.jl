@@ -14,6 +14,16 @@ For more granular access, see:
 """
 module Ribasim
 
+# Requirements for automatic differentiation
+using DifferentiationInterface:
+    AutoSparse,
+    Constant,
+    Cache,
+    prepare_jacobian,
+    jacobian!,
+    prepare_derivative,
+    derivative!
+
 # Algorithms for solving ODEs.
 using OrdinaryDiffEqCore: OrdinaryDiffEqCore, get_du, AbstractNLSolver
 using DiffEqBase: DiffEqBase, calculate_residuals!
@@ -36,22 +46,15 @@ using SciMLBase:
 
 # Automatically detecting the sparsity pattern of the Jacobian of water_balance!
 # through operator overloading
-using SparseConnectivityTracer: TracerSparsityDetector, jacobian_sparsity, GradientTracer
+using SparseConnectivityTracer:
+    GradientTracer, TracerSparsityDetector, IndexSetGradientPattern
+using SparseMatrixColorings: GreedyColoringAlgorithm, sparsity_pattern
 
 # For efficient sparse computations
 using SparseArrays: SparseMatrixCSC, spzeros
 
 # Linear algebra
 using LinearAlgebra: mul!
-
-# PreallocationTools is used because the RHS function (water_balance!) gets called with different input types
-# for u, du:
-# - Float64 for normal calls
-# - Dual numbers for automatic differentiation with ForwardDiff
-# - GradientTracer for automatic Jacobian sparsity detection with SparseConnectivityTracer
-# The computations inside the rhs go trough preallocated arrays of the required type which are created by LazyBufferCache.
-# Retrieving a cache from a LazyBufferCache looks like indexing: https://docs.sciml.ai/PreallocationTools/stable/#LazyBufferCache
-using PreallocationTools: LazyBufferCache
 
 # Interpolation functionality, used for e.g.
 # basin profiles and TabulatedRatingCurve. See also the node
@@ -65,7 +68,8 @@ using DataInterpolations:
     integral,
     AbstractInterpolation,
     ExtrapolationType
-using DataInterpolations.ExtrapolationType: Constant, Periodic, Extension, Linear
+using DataInterpolations.ExtrapolationType:
+    Constant as ConstantExtrapolation, Periodic, Extension, Linear
 
 # Modeling language for Mathematical Optimization.
 # Used for allocation, see the docs: https://ribasim.org/dev/allocation.html
