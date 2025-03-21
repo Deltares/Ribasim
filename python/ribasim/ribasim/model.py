@@ -837,6 +837,7 @@ class Model(FileModel):
 
         basin_path = self.results_path / "basin.arrow"
         flow_path = self.results_path / "flow.arrow"
+        concentration_path = self.results_path / "concentration.arrow"
 
         basin_df = pd.read_feather(basin_path)
         flow_df = pd.read_feather(flow_path)
@@ -852,3 +853,10 @@ class Model(FileModel):
         results_dir.mkdir(parents=True, exist_ok=True)
         ds_basin.to_netcdf(results_dir / "basin.nc")
         ds_flow.to_netcdf(results_dir / "flow.nc")
+
+        if concentration_path.is_file():
+            df = pd.read_feather(concentration_path)
+            ds = _add_cf_attributes(
+                df.set_index(["time", "node_id", "substance"]).to_xarray(), "node_id"
+            )
+            ds.to_netcdf(results_dir / "concentration.nc")
