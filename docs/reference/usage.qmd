@@ -341,7 +341,7 @@ collect_demands | Bool
 
 ## Concentration - `concentration.arrow`
 
-If the [experimental concentration feature]((/reference/usage.qmd#experimental-features)) is enabled, the results are written to `concentration.arrow`.
+If the [experimental concentration feature](/reference/usage.qmd#experimental-features) is enabled, the results are written to `concentration.arrow`.
 This file records the Basin concentrations for each substance over time.
 The schema below is identical to the [external Basin concentration input](/reference/node/basin.qmd#concentration-external).
 
