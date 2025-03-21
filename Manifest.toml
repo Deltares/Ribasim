@@ -2,7 +2,7 @@
 
 julia_version = "1.11.3"
 manifest_format = "2.0"
-project_hash = "f7fa41237a3c78d42148159bc809f1a1d9367f72"
+project_hash = "08df9cf37f934d9c54c355f731e7bb06c158c106"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "fb97701c117c8162e84dfcf80215caa904aef44f"
@@ -547,9 +547,9 @@ version = "1.15.1"
 
 [[deps.DifferentiationInterface]]
 deps = ["ADTypes", "LinearAlgebra"]
-git-tree-sha1 = "69a55d601c88c9340d8d9ea82ff40f6c677eac10"
+git-tree-sha1 = "cf6dcb4b21bdd893fd45be70791d6dc89ca16506"
 uuid = "a0c0ee7d-e4b9-4e03-894e-1c5f64a51d63"
-version = "0.6.46"
+version = "0.6.48"
 
     [deps.DifferentiationInterface.extensions]
     DifferentiationInterfaceChainRulesCoreExt = "ChainRulesCore"
@@ -2333,9 +2333,9 @@ version = "2.23.1"
 
 [[deps.SparseMatrixColorings]]
 deps = ["ADTypes", "DataStructures", "DocStringExtensions", "LinearAlgebra", "Random", "SparseArrays"]
-git-tree-sha1 = "97092c0a40d6033b7da27ea15bcf75fd5b446254"
+git-tree-sha1 = "e0ae9189392572abe85bc9fd4ce35e772b1e1e10"
 uuid = "0a514795-09f3-496d-8182-132a7b665d35"
-version = "0.4.13"
+version = "0.4.14"
 weakdeps = ["Colors"]
 
     [deps.SparseMatrixColorings.extensions]
