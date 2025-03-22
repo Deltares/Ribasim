@@ -158,17 +158,13 @@ function update_vertical_flux!(du::Vector, p::Parameters)::Nothing
     (; p_non_diff, diff_cache) = p
     (; basin, state_ranges) = p_non_diff
     (; vertical_flux) = basin
-    (; current_level, current_area) = diff_cache
+    (; current_area, current_low_storage_factor) = diff_cache
     du_evaporation = view(du, state_ranges.evaporation)
     du_infiltration = view(du, state_ranges.infiltration)
 
     for id in basin.node_id
-        level = current_level[id.idx]
         area = current_area[id.idx]
-
-        bottom = basin_levels(basin, id.idx)[1]
-        depth = max(level - bottom, 0.0)
-        factor = reduction_factor(depth, 0.1)
+        factor = current_low_storage_factor[id.idx]
 
         evaporation = area * factor * vertical_flux.potential_evaporation[id.idx]
         infiltration = factor * vertical_flux.infiltration[id.idx]
