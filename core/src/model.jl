@@ -145,7 +145,7 @@ function Model(config::Config)::Model
     @reset parameters.u_prev_saveat = zero(u0)
 
     # The Solver algorithm
-    alg = algorithm(config.solver; u0)
+    alg = algorithm(config.solver)
 
     # Synchronize level with storage
     set_current_basin_properties!(du0, u0, parameters, t0)

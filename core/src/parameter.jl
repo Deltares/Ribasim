@@ -1077,8 +1077,3 @@ end
     # Range per states component
     const state_ranges::StateRanges = StateRanges()
 end
-
-# To opt-out of type checking for ForwardDiff
-function DiffEqBase.anyeltypedual(::Parameters, ::Type{Val{counter}}) where {counter}
-    Any
-end
