@@ -699,8 +699,8 @@ class Model(FileModel):
     def _add_flow(self, uds, node_lookup):
         basin_path = self.results_path / "basin.arrow"
         flow_path = self.results_path / "flow.arrow"
-        basin_df = pd.read_feather(basin_path, dtype_backend="pyarrow")
-        flow_df = pd.read_feather(flow_path, dtype_backend="pyarrow")
+        basin_df = pd.read_feather(basin_path)
+        flow_df = pd.read_feather(flow_path)
 
         # add the xugrid dimension indices to the dataframes
         link_dim = uds.grid.edge_dimension
@@ -741,7 +741,6 @@ class Model(FileModel):
                 "optimization_type",
                 "demand_priority",
             ],
-            dtype_backend="pyarrow",
         )
 
         # add the xugrid link dimension index to the dataframe
