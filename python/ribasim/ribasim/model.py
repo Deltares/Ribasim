@@ -844,8 +844,26 @@ class Model(FileModel):
 
         ds_basin = basin_df.set_index(["time", "node_id"]).to_xarray()
         _add_cf_attributes(ds_basin, timeseries_id="node_id")
+        ds_basin["level"].attrs.update({"units": "m"})
+        ds_basin["storage"].attrs.update({"units": "m3"})
+        ds_basin["relative_error"].attrs.update({"units": "1"})
+
+        flow_rate_variables = [
+            "inflow_rate",
+            "outflow_rate",
+            "storage_rate",
+            "precipitation",
+            "evaporation",
+            "drainage",
+            "infiltration",
+            "balance_error",
+        ]
+        for var in flow_rate_variables:
+            ds_basin[var].attrs.update({"units": "m3 s-1"})
+
         ds_flow = flow_df.set_index(["time", "link_id"]).to_xarray()
         _add_cf_attributes(ds_flow, timeseries_id="link_id")
+        ds_flow["flow_rate"].attrs.update({"units": "m3 s-1"})
 
         results_dir = region_home / "Modules/ribasim/{ModelId}/work/results"
         results_dir.mkdir(parents=True, exist_ok=True)
@@ -856,4 +874,5 @@ class Model(FileModel):
             df = pd.read_feather(concentration_path)
             ds = df.set_index(["time", "node_id", "substance"]).to_xarray()
             _add_cf_attributes(ds, timeseries_id="node_id", realization="substance")
+            ds["concentration"].attrs.update({"units": "g m-3"})
             ds.to_netcdf(results_dir / "concentration.nc")

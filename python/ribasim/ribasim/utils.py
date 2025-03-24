@@ -89,11 +89,19 @@ def _add_cf_attributes(ds, timeseries_id: str, realization: str | None = None) -
             "references": "https://ribasim.org",
         }
     )
-    ds["time"].attrs.update({"standard_name": "time", "axis": "T"})
-    ds[timeseries_id].attrs.update({"cf_role": "timeseries_id"})
+    ds["time"].attrs.update({"standard_name": "time", "axis": "T", "long_name": "time"})
+    ds[timeseries_id].attrs.update(
+        {"cf_role": "timeseries_id", "long_name": "station identification code"}
+    )
     if realization:
         # https://confluence.ecmwf.int/display/COPSRV/Metadata+recommendations+for+encoding+NetCDF+products+based+on+CF+convention#MetadatarecommendationsforencodingNetCDFproductsbasedonCFconvention-3.4Realizationdiscretecoordinates
-        ds[realization].attrs.update({"standard_name": "realization", "axis": "E"})
+        ds[realization].attrs.update(
+            {
+                "standard_name": "realization",
+                "units": "1",
+                "long_name": "substance name",
+            }
+        )
     return ds
 
 
