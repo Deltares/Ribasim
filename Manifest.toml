@@ -448,11 +448,9 @@ version = "1.7.0"
 
 [[deps.DataInterpolations]]
 deps = ["EnumX", "FindFirstFunctions", "ForwardDiff", "LinearAlgebra", "PrettyTables", "RecipesBase", "Reexport"]
-git-tree-sha1 = "d5d0c33722cc7d828970253a87336e30dfc92d76"
-repo-rev = "4a337ac81e53f361c9ca9826bc73ae772fb4c322"
-repo-url = "https://github.com/SciML/DataInterpolations.jl.git"
+git-tree-sha1 = "95c1e057596c7c8838f7658b6f29be509a0e56e6"
 uuid = "82cc6244-b520-54b8-b5a6-8a565e85f1d0"
-version = "7.2.0"
+version = "8.0.0"
 
     [deps.DataInterpolations.extensions]
     DataInterpolationsChainRulesCoreExt = "ChainRulesCore"
@@ -2291,9 +2289,11 @@ version = "1.11.0"
 
 [[deps.SparseConnectivityTracer]]
 deps = ["ADTypes", "DocStringExtensions", "FillArrays", "LinearAlgebra", "Random", "SparseArrays"]
-git-tree-sha1 = "6651f4663027f3b30a31429d257185f56a571184"
+git-tree-sha1 = "2816c3630a53d3343f0b44e59cc180ff22cf948b"
+repo-rev = "datainterpolations-8"
+repo-url = "https://github.com/visr/SparseConnectivityTracer.jl"
 uuid = "9f842d2f-2579-4b1d-911e-f412cf18a3f5"
-version = "0.6.13"
+version = "0.6.15"
 
     [deps.SparseConnectivityTracer.extensions]
     SparseConnectivityTracerDataInterpolationsExt = "DataInterpolations"
