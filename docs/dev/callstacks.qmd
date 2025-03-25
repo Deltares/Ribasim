@@ -77,10 +77,12 @@ toml_path = normpath(
 config = Ribasim.Config(toml_path)
 db_path = Ribasim.database_path(config)
 db = SQLite.DB(db_path)
-p = Ribasim.Parameters(db, config)
-empty!(p.allocation.subnetwork_ids)
-empty!(p.allocation.main_network_connections)
-graph, verts = tracecall((Ribasim,), Ribasim.initialize_allocation!, (p, db, config))
+(; p_non_diff) = Ribasim.Parameters(db, config)
+(; allocation) = p_non_diff
+empty!(allocation.subnetwork_ids)
+empty!(allocation.main_network_connections)
+graph, verts =
+    tracecall((Ribasim,), Ribasim.initialize_allocation!, (p_non_diff, db, config))
 plot_graph(graph)
 ```
 
@@ -106,7 +108,7 @@ toml_path =
     normpath(@__DIR__, "../../generated_testmodels/pump_discrete_control/ribasim.toml")
 model = Ribasim.Model(toml_path)
 (; u, t) = model.integrator
-model.integrator.p.basin.storage0 .= [0.1, 100.0]
+model.integrator.p.p_non_diff.basin.storage0 .= [0.1, 100.0]
 graph, verts =
     tracecall((Ribasim,), Ribasim.apply_discrete_control!, (u, t, model.integrator))
 plot_graph(graph; prune_from = [:water_balance!], max_depth = 3)

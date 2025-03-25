@@ -195,7 +195,7 @@ function parse_static_and_time(
                         [val, val],
                         trivial_timespan;
                         cache_parameters = true,
-                        extrapolation = Constant,
+                        extrapolation = ConstantExtrapolation,
                     )
                 end
                 getfield(out, parameter_name)[node_id.idx] = val
@@ -253,11 +253,11 @@ const conservative_nodetypes = Set{NodeType.T}([
 ])
 
 function get_allocation_sources_in_order!(
-    p::Parameters,
+    p_non_diff::ParametersNonDiff,
     db::DB,
     config::Config,
 )::OrderedDict{Tuple{NodeID, NodeID}, AllocationSource}
-    (; graph, user_demand, allocation) = p
+    (; graph, user_demand, allocation) = p_non_diff
     (;
         subnetwork_demands,
         subnetwork_allocateds,
@@ -296,7 +296,7 @@ function get_allocation_sources_in_order!(
         #   node which connects to multiple basins
         # - One source node can imply multiple sources in the case of a LevelBoundary with multiple
         #   neighbors
-        node_id = NodeID(Symbol(row.node_type), row.node_id, p)
+        node_id = NodeID(Symbol(row.node_type), row.node_id, p_non_diff)
         links = Tuple{NodeID, NodeID}[]
         if !ismissing(row.subnetwork_id)
             # E.g. :manning_resistance
@@ -337,7 +337,7 @@ function get_allocation_sources_in_order!(
             elseif row.subnetwork_id != 1 # Not in the main network
                 for main_network_id in filter!(
                     id -> graph[id].subnetwork_id == 1, # Connects to the main network
-                    collect(inflow_ids(p.graph, node_id)),
+                    collect(inflow_ids(graph, node_id)),
                 )
                     is_source = true
                     source_priority = default_source_priority_dict[:subnetwork_inlet]
@@ -381,8 +381,12 @@ function get_allocation_sources_in_order!(
     )
 end
 
-function initialize_allocation!(p::Parameters, db::DB, config::Config)::Nothing
-    (; graph, allocation) = p
+function initialize_allocation!(
+    p_non_diff::ParametersNonDiff,
+    db::DB,
+    config::Config,
+)::Nothing
+    (; graph, allocation) = p_non_diff
     (; subnetwork_ids, allocation_models, main_network_connections) = allocation
     subnetwork_ids_ = sort(collect(keys(graph[].node_ids)))
 
@@ -400,12 +404,12 @@ function initialize_allocation!(p::Parameters, db::DB, config::Config)::Nothing
         main_network_connections[subnetwork_id] = Tuple{NodeID, NodeID}[]
     end
 
-    sources = get_allocation_sources_in_order!(p, db, config)
+    sources = get_allocation_sources_in_order!(p_non_diff, db, config)
 
     for subnetwork_id in subnetwork_ids_
         push!(
             allocation_models,
-            AllocationModel(subnetwork_id, p, sources, config.allocation.timestep),
+            AllocationModel(subnetwork_id, p_non_diff, sources, config.allocation.timestep),
         )
     end
     return nothing
@@ -494,10 +498,11 @@ function TabulatedRatingCurve(
                 if !ismissing(control_state)
                     # let control swap out the static lookup object
                     index_lookup = static_lookup(interpolation_index)
-                    control_mapping[(node_id, control_state)] = ControlStateUpdate(
-                        ParameterUpdate(:active, is_active),
-                        ParameterUpdate{Float64}[],
-                        [ParameterUpdate(:current_interpolation_index, index_lookup)],
+                    control_mapping[(node_id, control_state)] = ControlStateUpdate(;
+                        active = ParameterUpdate(:active, is_active),
+                        itp_update_lookup = [
+                            ParameterUpdate(:current_interpolation_index, index_lookup),
+                        ],
                     )
                 end
                 push!(interpolations, interpolation)
@@ -737,23 +742,28 @@ function Pump(db::DB, config::Config, graph::MetaGraph)::Pump
     end
 
     (; node_id) = parsed_parameters
+    continuous_control_type = get_continuous_control_type(graph, node_id)
 
-    # If flow rate is set by PidControl or ContinuousControl, it is part of the AD Jacobian computations
-    flow_rate_cache = cache(length(node_id))
-    flow_rate_cache[Float64[]] .= [itp(0) for itp in parsed_parameters.flow_rate]
+    if !valid_flow_rates(
+        node_id,
+        parsed_parameters.flow_rate,
+        parsed_parameters.control_mapping,
+    )
+        error("Invalid pump flow_rates found.")
+    end
 
     return Pump(;
         node_id,
         inflow_link = inflow_link.(Ref(graph), node_id),
         outflow_link = outflow_link.(Ref(graph), node_id),
         parsed_parameters.active,
-        flow_rate_cache,
         parsed_parameters.flow_rate,
         parsed_parameters.min_flow_rate,
         parsed_parameters.max_flow_rate,
         parsed_parameters.min_upstream_level,
         parsed_parameters.max_downstream_level,
         parsed_parameters.control_mapping,
+        continuous_control_type,
     )
 end
 
@@ -789,30 +799,29 @@ function Outlet(db::DB, config::Config, graph::MetaGraph)::Outlet
         error("Errors occurred when parsing Outlet data.")
     end
 
-    node_id =
-        NodeID.(
-            NodeType.Outlet,
-            parsed_parameters.node_id,
-            eachindex(parsed_parameters.node_id),
-        )
+    (; node_id) = parsed_parameters
+    continuous_control_type = get_continuous_control_type(graph, node_id)
 
-    # If flow rate is set by PidControl or ContinuousControl, it is part of the AD Jacobian computations
-    flow_rate_cache = cache(length(node_id))
-    flow_rate_cache[Float64[], length(node_id)] .=
-        [itp(0) for itp in parsed_parameters.flow_rate]
+    if !valid_flow_rates(
+        node_id,
+        parsed_parameters.flow_rate,
+        parsed_parameters.control_mapping,
+    )
+        error("Invalid pump flow_rates found.")
+    end
 
     return Outlet(;
         node_id,
         inflow_link = inflow_link.(Ref(graph), node_id),
         outflow_link = outflow_link.(Ref(graph), node_id),
         parsed_parameters.active,
-        flow_rate_cache,
         parsed_parameters.flow_rate,
         parsed_parameters.min_flow_rate,
         parsed_parameters.max_flow_rate,
         parsed_parameters.control_mapping,
         parsed_parameters.min_upstream_level,
         parsed_parameters.max_downstream_level,
+        continuous_control_type,
     )
 end
 
@@ -955,7 +964,7 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
         LinearInterpolation.(
             area,
             level;
-            extrapolation_left = Constant,
+            extrapolation_left = ConstantExtrapolation,
             extrapolation_right = Extension,
             cache_parameters = true,
         )
@@ -1030,8 +1039,7 @@ References to listened parameters are added later.
 function CompoundVariable(
     variables_compound_variable,
     node_type::NodeType.T,
-    node_ids_all::Vector{NodeID},
-    placeholder_vector;
+    node_ids_all::Vector{NodeID};
     conditions_compound_variable = nothing,
     starttime = nothing,
     cyclic_time = false,
@@ -1047,14 +1055,14 @@ function CompoundVariable(
     for row in variables_compound_variable
         listen_node_id = NodeID(row.listen_node_id, node_ids_all)
         # Placeholder until actual ref is known
-        variable_ref = PreallocationRef(placeholder_vector, 0)
+        diff_cache_ref = DiffCacheRef()
         variable = row.variable
         # Default to weight = 1.0 if not specified
         weight = coalesce(row.weight, 1.0)
         # Default to look_ahead = 0.0 if not specified
         look_ahead = coalesce(row.look_ahead, 0.0)
         subvariable =
-            SubVariable(listen_node_id, variable_ref, variable, weight, look_ahead)
+            SubVariable(listen_node_id, diff_cache_ref, variable, weight, look_ahead)
         push!(subvariables, subvariable)
     end
 
@@ -1071,8 +1079,6 @@ end
 function parse_variables_and_conditions(ids::Vector{Int32}, db::DB, config::Config)
     condition = load_structvector(db, config, DiscreteControlConditionV1)
     compound_variable = load_structvector(db, config, DiscreteControlVariableV1)
-
-    placeholder_vector = cache(1)
     compound_variables = Vector{CompoundVariable}[]
     cyclic_times = get_cyclic_time(db, "DiscreteControl")
     errors = false
@@ -1114,8 +1120,7 @@ function parse_variables_and_conditions(ids::Vector{Int32}, db::DB, config::Conf
                     CompoundVariable(
                         variables_compound_variable,
                         NodeType.DiscreteControl,
-                        node_ids_all,
-                        placeholder_vector;
+                        node_ids_all;
                         conditions_compound_variable,
                         config.starttime,
                         cyclic_time,
@@ -1206,7 +1211,6 @@ function continuous_control_functions(db, config, ids)
 end
 
 function continuous_control_compound_variables(db::DB, config::Config, ids)
-    placeholder_vector = cache(1)
     node_ids_all = get_node_ids(db)
 
     data = load_structvector(db, config, ContinuousControlVariableV1)
@@ -1217,18 +1221,13 @@ function continuous_control_compound_variables(db::DB, config::Config, ids)
         variable_data = filter(row -> row.node_id == id, data)
         push!(
             compound_variables,
-            CompoundVariable(
-                variable_data,
-                NodeType.ContinuousControl,
-                node_ids_all,
-                placeholder_vector,
-            ),
+            CompoundVariable(variable_data, NodeType.ContinuousControl, node_ids_all),
         )
     end
     compound_variables
 end
 
-function ContinuousControl(db::DB, config::Config, graph::MetaGraph)::ContinuousControl
+function ContinuousControl(db::DB, config::Config)::ContinuousControl
     compound_variable = load_structvector(db, config, ContinuousControlVariableV1)
 
     node_id = get_node_ids(db, NodeType.ContinuousControl)
@@ -1238,27 +1237,18 @@ function ContinuousControl(db::DB, config::Config, graph::MetaGraph)::Continuous
     func, controlled_variable, errors = continuous_control_functions(db, config, ids)
     compound_variable = continuous_control_compound_variables(db, config, ids)
 
-    # References to the controlled parameters, filled in later when they are known
-    target_refs = PreallocationRef[]
-
     if errors
         error("Errors encountered when parsing ContinuousControl data.")
     end
 
-    return ContinuousControl(
-        node_id,
-        compound_variable,
-        controlled_variable,
-        target_refs,
-        func,
-    )
+    return ContinuousControl(; node_id, compound_variable, controlled_variable, func)
 end
 
-function PidControl(db::DB, config::Config, graph::MetaGraph)::PidControl
+function PidControl(db::DB, config::Config)::PidControl
     static = load_structvector(db, config, PidControlStaticV1)
     time = load_structvector(db, config, PidControlTimeV1)
 
-    _, _, node_ids, valid = static_and_time_node_ids(db, static, time, NodeType.PidControl)
+    _, _, node_id, valid = static_and_time_node_ids(db, static, time, NodeType.PidControl)
 
     if !valid
         error("Problems encountered when parsing PidControl static and time node IDs.")
@@ -1272,34 +1262,17 @@ function PidControl(db::DB, config::Config, graph::MetaGraph)::PidControl
         error("Errors occurred when parsing PidControl data.")
     end
 
-    pid_error = cache(length(node_ids))
-    target_ref = PreallocationRef[]
-
-    controlled_basins = Set{NodeID}()
-    for id in node_ids
-        controlled_node = only(outneighbor_labels_type(graph, id, LinkType.control))
-        for id_inout in inoutflow_ids(graph, controlled_node)
-            if id_inout.type == NodeType.Basin
-                push!(controlled_basins, id_inout)
-            end
-        end
-    end
-    controlled_basins = collect(controlled_basins)
-
     all_node_ids = get_node_ids(db)
     listen_node_id = NodeID.(parsed_parameters.listen_node_id, Ref(all_node_ids))
 
     return PidControl(;
-        node_id = node_ids,
+        node_id,
         parsed_parameters.active,
         listen_node_id,
         parsed_parameters.target,
-        target_ref,
         parsed_parameters.proportional,
         parsed_parameters.integral,
         parsed_parameters.derivative,
-        error = pid_error,
-        controlled_basins,
         parsed_parameters.control_mapping,
     )
 end
@@ -1324,7 +1297,7 @@ function user_demand_static!(
         return_factor[user_demand_idx] = LinearInterpolation(
             fill(first_row.return_factor, 2),
             return_factor_old.t;
-            extrapolation = Constant,
+            extrapolation = ConstantExtrapolation,
             cache_parameters = true,
         )
         min_level[user_demand_idx] = first_row.min_level
@@ -1337,7 +1310,7 @@ function user_demand_static!(
             demand_itp[user_demand_idx][demand_priority_idx] = LinearInterpolation(
                 fill(demand_row, 2),
                 demand_itp_old.t;
-                extrapolation = Constant,
+                extrapolation = ConstantExtrapolation,
                 cache_parameters = true,
             )
             demand[user_demand_idx, demand_priority_idx] = demand_row
@@ -1557,7 +1530,7 @@ function push_constant_interpolation!(
     itp = ConstantInterpolation(
         output,
         input;
-        extrapolation = cyclic_time ? Periodic : Constant,
+        extrapolation = cyclic_time ? Periodic : ConstantExtrapolation,
         cache_parameters = true,
     )
     push!(constant_interpolations, itp)
@@ -1568,7 +1541,7 @@ function static_lookup(lookup_index::Int)::IndexLookup
     return ConstantInterpolation(
         [lookup_index],
         [0.0];
-        extrapolation = Constant,
+        extrapolation = ConstantExtrapolation,
         cache_parameters = true,
     )
 end
@@ -1607,7 +1580,7 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
         hh_itp = LinearInterpolation(
             subgrid_level,
             basin_level;
-            extrapolation_left = Constant,
+            extrapolation_left = ConstantExtrapolation,
             extrapolation_right = Linear,
             cache_parameters = true,
         )
@@ -1656,7 +1629,7 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
         hh_itp = LinearInterpolation(
             subgrid_level,
             basin_level;
-            extrapolation_left = Constant,
+            extrapolation_left = ConstantExtrapolation,
             extrapolation_right = Linear,
             cache_parameters = true,
         )
@@ -1815,8 +1788,8 @@ function Parameters(db::DB, config::Config)::Parameters
         outlet = Outlet(db, config, graph),
         terminal = Terminal(db, config),
         discrete_control = DiscreteControl(db, config, graph),
-        continuous_control = ContinuousControl(db, config, graph),
-        pid_control = PidControl(db, config, graph),
+        continuous_control = ContinuousControl(db, config),
+        pid_control = PidControl(db, config),
         user_demand = UserDemand(db, config, graph),
         level_demand = LevelDemand(db, config),
         flow_demand = FlowDemand(db, config),
@@ -1848,46 +1821,47 @@ function Parameters(db::DB, config::Config)::Parameters
     flow_to_storage = build_flow_to_storage(state_ranges, n_states, basin, connector_nodes)
     state_inflow_link, state_outflow_link = get_state_flow_links(graph, nodes)
 
-    p = Parameters(;
+    set_target_ref!(
+        nodes.pid_control.target_ref,
+        nodes.pid_control.node_id,
+        fill("flow_rate", length(node_id)),
+        state_ranges,
+        graph,
+    )
+    set_target_ref!(
+        nodes.continuous_control.target_ref,
+        nodes.continuous_control.node_id,
+        nodes.continuous_control.controlled_variable,
+        state_ranges,
+        graph,
+    )
+
+    p_non_diff = ParametersNonDiff(;
         config.starttime,
         graph,
         allocation,
-        basin,
-        nodes.linear_resistance,
-        nodes.manning_resistance,
-        nodes.tabulated_rating_curve,
-        nodes.level_boundary,
-        nodes.flow_boundary,
-        nodes.pump,
-        nodes.outlet,
-        nodes.terminal,
-        nodes.discrete_control,
-        nodes.continuous_control,
-        nodes.pid_control,
-        nodes.user_demand,
-        nodes.level_demand,
-        nodes.flow_demand,
+        nodes...,
         subgrid,
         state_inflow_link,
         state_outflow_link,
         flow_to_storage,
         config.solver.water_balance_abstol,
         config.solver.water_balance_reltol,
+        u_prev_saveat = zeros(n_states),
         node_id,
         state_ranges,
     )
 
-    collect_control_mappings!(p)
-    set_continuous_control_type!(p)
-    set_listen_variable_refs!(p)
-    set_discrete_controlled_variable_refs!(p)
-    set_continuously_controlled_variable_refs!(p)
+    collect_control_mappings!(p_non_diff)
+    set_listen_diff_cache_refs!(p_non_diff)
+    set_discrete_controlled_variable_refs!(p_non_diff)
 
     # Allocation data structures
     if config.allocation.use_allocation
-        initialize_allocation!(p, db, config)
+        initialize_allocation!(p_non_diff, db, config)
     end
-    return p
+
+    return Parameters(; p_non_diff)
 end
 
 function get_node_ids_int32(db::DB, node_type)::Vector{Int32}

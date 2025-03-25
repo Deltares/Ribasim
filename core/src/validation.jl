@@ -92,14 +92,6 @@ controllablefields(::Val{:PidControl}) =
     Set((:active, :target, :proportional, :integral, :derivative))
 controllablefields(nodetype) = Set{Symbol}()
 
-function variable_names(s::Any)
-    filter(x -> !(x in (:node_id, :control_state)), fieldnames(s))
-end
-function variable_nt(s::Any)
-    names = variable_names(typeof(s))
-    NamedTuple{names}((getfield(s, x) for x in names))
-end
-
 "Get the right sort by function (by in `sort(x; by)`) given the Schema"
 function sort_by end
 # Not using any fallbacks to avoid forgetting to add the correct sorting.
@@ -275,8 +267,8 @@ Test whether static or discrete controlled flow rates are indeed non-negative.
 """
 function valid_flow_rates(
     node_id::Vector{NodeID},
-    flow_rate::Vector,
-    control_mapping::Dict,
+    flow_rate::Vector{ScalarInterpolation},
+    control_mapping::Dict{Tuple{NodeID, String}, <:ControlStateUpdate},
 )::Bool
     errors = false
 
@@ -287,14 +279,14 @@ function valid_flow_rates(
     for (key, control_state_update) in pairs(control_mapping)
         id_controlled = key[1]
         push!(ids_controlled, id_controlled)
-        flow_rate_update = only(control_state_update.itp_update)
+        flow_rate_update = only(control_state_update.itp_update_linear)
         @assert flow_rate_update.name == :flow_rate
         flow_rate_ = minimum(flow_rate_update.value.u)
 
         if flow_rate_ < 0.0
             errors = true
             control_state = key[2]
-            @error "$id_controlled flow rates must be non-negative, found $flow_rate_ for control state '$control_state'."
+            @error "Negative flow rate(s) found." node_id = id_controlled control_state
         end
     end
 
@@ -302,9 +294,9 @@ function valid_flow_rates(
         if id in ids_controlled
             continue
         end
-        if flow_rate_ < 0.0
+        if minimum(flow_rate_.u) < 0.0
             errors = true
-            @error "$id flow rates must be non-negative, found $flow_rate_."
+            @error "Negative flow rate(s) for $id found."
         end
     end
 
@@ -539,7 +531,7 @@ Check:
 - Whether the supplied truth states have the proper length;
 - Whether look_ahead is only supplied for condition variables given by a time-series.
 """
-function valid_discrete_control(p::Parameters, config::Config)::Bool
+function valid_discrete_control(p::ParametersNonDiff, config::Config)::Bool
     (; discrete_control, graph) = p
     (; node_id, logic_mapping) = discrete_control
 
