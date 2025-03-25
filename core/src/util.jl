@@ -296,8 +296,6 @@ function reduction_factor(x::T, threshold::Real)::T where {T <: Real}
     end
 end
 
-# SparseConnectivityTracer overloads
-
 function get_low_storage_factor(p::Parameters, id::NodeID)
     (; current_low_storage_factor) = p.diff_cache
     if id.type == NodeType.Basin
@@ -768,7 +766,7 @@ function relaxed_root(x, threshold)
     end
 end
 
-# Custom overloads
+# Overloads for SparseConnectivityTracer
 reduction_factor(x::GradientTracer, ::Real) = x
 low_storage_factor_resistance_node(::Parameters, q::GradientTracer, ::NodeID, ::NodeID) = q
 relaxed_root(x::GradientTracer, threshold::Real) = x

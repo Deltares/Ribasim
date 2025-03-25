@@ -670,6 +670,11 @@ node_id: node ID of the Terminal node
     node_id::Vector{NodeID}
 end
 
+"""
+A cache for intermediate results in 'water_balance!' which depend on the state vector `u`. A second version of
+this cache is required for automatic differentiation, where e.g. ForwardDiff requires these vectors to
+be of `ForwardDiff.Dual` type. This second version of the cache is created by DifferentiationInterface.
+"""
 const DiffCache{T} = @NamedTuple{
     current_storage::Vector{T},
     current_low_storage_factor::Vector{T},
@@ -684,19 +689,29 @@ const DiffCache{T} = @NamedTuple{
 
 @enumx DiffCacheType flow_rate_pump flow_rate_outlet basin_level
 
+"""
+A reference to an element of either the DiffCache of the state derivative `du`.
+This is not a direct reference to the memory, because it depends on the type of call
+of `water_balance!` (AD versus 'normal') which version of these objects is passed.
+"""
 @kwdef struct DiffCacheRef
     type::DiffCacheType.T = DiffCacheType.flow_rate_pump
     idx::Int = 0
     from_du::Bool = false
 end
 
+"""
+Get one of the vectors of the DiffCache based on the passed type.
+"""
 function get_cache_vector(diff_cache::DiffCache, type::DiffCacheType.T)
     if type == DiffCacheType.flow_rate_pump
         diff_cache.flow_rate_pump
     elseif type == DiffCacheType.flow_rate_outlet
         diff_cache.flow_rate_outlet
-    else # type == DiffCacheType.basin_level
+    elseif type == DiffCacheType.basin_level
         diff_cache.current_level
+    else
+        error("Invalid DiffCacheType $type passed.")
     end
 end
 
@@ -927,11 +942,20 @@ end
 
 StateRanges(u_ids::NamedTuple) = StateRanges(ranges(map(length, collect(u_ids)))...)
 
+"""
+The part of the parameters passed to the rhs and callbacks that are mutable.
+"""
 @kwdef mutable struct ParametersMutable
     all_nodes_active::Bool = false
     tprev::Float64 = 0.0
 end
 
+"""
+The part of the parameters passed to the rhs and callbacks that are non-mutable,
+and not derived from the state vector `u` (or the time `t`). In this context e.g. a vector
+of floats (not dependent on `u`) is not considered mutable, because even though it's elements are mutable,
+the object itself is not.
+"""
 @kwdef struct ParametersNonDiff{C1, C2, C3, C4, C5}
     starttime::DateTime
     graph::ModelGraph
@@ -968,6 +992,9 @@ end
     state_ranges::StateRanges = StateRanges()
 end
 
+"""
+Initialize the DiffCache based on node amounts obtained from ParametersNonDiff.
+"""
 function DiffCache(p_non_diff::ParametersNonDiff)
     (; basin, pump, outlet, pid_control) = p_non_diff
     n_basin = length(basin.node_id)
@@ -984,6 +1011,9 @@ function DiffCache(p_non_diff::ParametersNonDiff)
     )
 end
 
+"""
+The collection of all parameters that are passed to the rhs (`water_balance!`) and callbacks.
+"""
 @kwdef struct Parameters{C1, C2, C3, C4, C5, T}
     p_non_diff::ParametersNonDiff{C1, C2, C3, C4, C5}
     diff_cache::DiffCache{T} = DiffCache(p_non_diff)
