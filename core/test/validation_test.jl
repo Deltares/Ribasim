@@ -254,8 +254,7 @@ end
     # Only the invalid control state flow_rate yields an error
     @test length(logger.logs) == 1
     @test logger.logs[1].level == Error
-    @test logger.logs[1].message ==
-          "Negative flow rate(s) for Pump #1, control state 'foo' found."
+    @test logger.logs[1].message == "Negative flow rate(s) found."
 end
 
 @testitem "Link type validation" begin

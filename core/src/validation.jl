@@ -286,7 +286,7 @@ function valid_flow_rates(
         if flow_rate_ < 0.0
             errors = true
             control_state = key[2]
-            @error "Negative flow rate(s) for $id_controlled, control state '$control_state' found."
+            @error "Negative flow rate(s) found." node_id = id_controlled control_state
         end
     end
 
