@@ -80,8 +80,23 @@ def _concat(dfs, **kwargs):
         return pd.concat(dfs, **kwargs)
 
 
-def _add_cf_attributes(ds, timeseries_id):
-    """Add CF attributes to an xarray.Dataset."""
+def _add_cf_attributes(ds, timeseries_id: str, realization: str | None = None) -> None:
+    """
+    Add CF attributes to an xarray.Dataset.
+
+    Parameters
+    ----------
+    ds : xarray.Dataset
+        The dataset to which CF attributes will be added.
+    timeseries_id : str
+        The name of the variable that identifies the timeseries.
+    realization : str | None, optional
+        The name of the variable representing realizations (e.g., "substance"), if applicable.
+
+    Returns
+    -------
+    None
+    """
     ds.attrs.update(
         {
             "Conventions": "CF-1.8",
@@ -89,8 +104,21 @@ def _add_cf_attributes(ds, timeseries_id):
             "references": "https://ribasim.org",
         }
     )
-    ds["time"].attrs.update({"standard_name": "time", "axis": "T"})
-    ds[timeseries_id].attrs.update({"cf_role": "timeseries_id"})
+    ds["time"].attrs.update({"standard_name": "time", "axis": "T", "long_name": "time"})
+    ds[timeseries_id].attrs.update(
+        {"cf_role": "timeseries_id", "long_name": "station identification code"}
+    )
+    if realization:
+        # Use realization as the standard name as recommended by ECMWF.
+        # axis = "E" is not currently enabled since it seemed to confuse Delft-FEWS.
+        # https://confluence.ecmwf.int/display/COPSRV/Metadata+recommendations+for+encoding+NetCDF+products+based+on+CF+convention#MetadatarecommendationsforencodingNetCDFproductsbasedonCFconvention-3.4Realizationdiscretecoordinates
+        ds[realization].attrs.update(
+            {
+                "standard_name": "realization",
+                "units": "1",
+                "long_name": "substance name",
+            }
+        )
     return ds
 
 
