@@ -135,7 +135,7 @@ Base.isless(id_1::NodeID, id_2::Integer)::Bool = id_1.value < id_2
 
 "ConstantInterpolation from a Float64 to a Float64"
 const ScalarConstantInterpolation =
-    ConstantInterpolation{Vector{Float64}, Vector{Float64}, Vector{Float64}, Float64, (1,)}
+    ConstantInterpolation{Vector{Float64}, Vector{Float64}, Vector{Float64}, Float64}
 
 "LinearInterpolation from a Float64 to a Float64"
 const ScalarInterpolation = LinearInterpolation{
@@ -144,12 +144,11 @@ const ScalarInterpolation = LinearInterpolation{
     Vector{Float64},
     Vector{Float64},
     Float64,
-    (1,),
 }
 
 "ConstantInterpolation from a Float64 to an Int, used to look up indices over time"
 const IndexLookup =
-    ConstantInterpolation{Vector{Int64}, Vector{Float64}, Vector{Float64}, Int64, (1,)}
+    ConstantInterpolation{Vector{Int64}, Vector{Float64}, Vector{Float64}, Int64}
 
 @eval @enumx AllocationSourceType $(fieldnames(Ribasim.config.SourcePriority)...)
 
@@ -450,7 +449,6 @@ of vectors or Arrow Tables, and is added to avoid type instabilities.
             Vector{Float64},
             ScalarInterpolation,
             Float64,
-            (1,),
         },
     }
     level_to_area::Vector{ScalarInterpolation}
