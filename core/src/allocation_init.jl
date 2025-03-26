@@ -460,7 +460,7 @@ function add_constraints_objective!(
             Dict(id => F[user_demand.inflow_link[id.idx].link] for id in node_ids)
         elseif node_name == :level_demand
             problem[:F_basin_in]
-        elseif node_name == "flow_demand"
+        elseif node_name == :flow_demand
             problem[:F_flow_buffer_in]
         else # node_name == "subnetwork"
             inflows = Dict{NodeID, JuMP.VariableRef}()

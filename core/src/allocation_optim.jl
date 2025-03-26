@@ -40,9 +40,9 @@ function update_objective_constraints!(
     t::Float64,
     demand_priority_idx::Int,
 )::Nothing
-    (; problem, subnetwork_id, sources) = allocation_model
+    (; problem, subnetwork_id) = allocation_model
     (; p_non_diff) = p
-    (; graph, user_demand, allocation) = p_non_diff
+    (; graph, user_demand, flow_demand, allocation) = p_non_diff
     (; main_network_connections, subnetwork_demands) = allocation
 
     total_demand_priority = 0.0
@@ -69,8 +69,7 @@ function update_objective_constraints!(
             has_demand, demand_node_id = has_external_demand(graph, node_id, :flow_demand)
             !has_demand && continue
 
-            flow_demand_priority_idx =
-                get_external_demand_priority_idx(p_non_diff, to_node_id)
+            flow_demand_priority_idx = get_external_demand_priority_idx(p_non_diff, node_id)
 
             node_name = :flow_demand
             demand =
@@ -108,10 +107,9 @@ function update_objective_constraints!(
         end
     end
 
-    target_fraction = min(1.0, total_source_capacity / total_demand_priority)
-
-    @show total_demand_priority
-    @show total_source_capacity
+    target_fraction =
+        iszero(total_demand_priority) ? 0.0 :
+        min(1.0, total_source_capacity / total_demand_priority)
 
     for node_name in (:user_demand, :level_demand, :flow_demand, :subnetwork)
         update_objective_constraints!(problem, node_name, target_fraction)
@@ -896,7 +894,8 @@ function optimize_per_source!(
 )::Nothing
     (; problem, sources, subnetwork_id, flow) = allocation_model
     (; p_non_diff) = p
-    (; demand_priorities_all) = p_non_diff.allocation
+    (; allocation, user_demand, level_demand, flow_demand) = p_non_diff
+    (; demand_priorities_all) = allocation
     F_basin_in = problem[:F_basin_in]
     F_basin_out = problem[:F_basin_out]
 
@@ -922,7 +921,6 @@ function optimize_per_source!(
 
         JuMP.optimize!(problem)
         @debug JuMP.solution_summary(problem)
-        println(problem)
         termination_status = JuMP.termination_status(problem)
         if termination_status !== JuMP.OPTIMAL
             demand_priority = demand_priorities_all[demand_priority_idx]
@@ -942,17 +940,9 @@ function optimize_per_source!(
         reduce_link_capacities!(allocation_model)
 
         # Adjust demands for next optimization (in case of internal_sources -> collect_demands)
-        for parameter in propertynames(p_non_diff)
-            demand_node = getfield(p_non_diff, parameter)
-            if demand_node isa AbstractDemandNode
-                reduce_demands!(
-                    allocation_model,
-                    p_non_diff,
-                    demand_priority_idx,
-                    demand_node,
-                )
-            end
-        end
+        reduce_demands!(allocation_model, p_non_diff, demand_priority_idx, user_demand)
+        reduce_demands!(allocation_model, p_non_diff, demand_priority_idx, level_demand)
+        reduce_demands!(allocation_model, p_non_diff, demand_priority_idx, flow_demand)
 
         # Add to the basin cumulative flow rate
         for (link, source) in sources
