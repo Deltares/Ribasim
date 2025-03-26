@@ -165,6 +165,10 @@ function add_variables_flow_buffer!(
     return nothing
 end
 
+"""
+Add the variables denoting the upper error and the lower error when comparing allocated flows
+to the target amount (target_fraction * demand).
+"""
 function add_variables_objective!(
     problem::JuMP.Model,
     p_non_diff::ParametersNonDiff,
@@ -435,6 +439,14 @@ function add_constraints_buffer!(problem::JuMP.Model)::Nothing
     return nothing
 end
 
+"""
+Add constraints of the form
+
+demand * lower_error ≥ allocation_flow - target_fraction * demand
+demand * upper_error ≥ target_fraction * demand - allocation_flow
+
+for all demands in the subnetwork.
+"""
 function add_constraints_objective!(
     problem::JuMP.Model,
     p_non_diff::ParametersNonDiff,
@@ -491,6 +503,10 @@ function add_constraints_objective!(
     return nothing
 end
 
+"""
+Add the objective, which sums up the lower and upper errors for all demands in the
+subnetwork.
+"""
 function add_objective!(problem::JuMP.Model)::Nothing
     objective = JuMP.AffExpr()
     for node_name in (:user_demand, :level_demand, :flow_demand)

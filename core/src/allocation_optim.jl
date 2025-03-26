@@ -1,5 +1,9 @@
 @enumx OptimizationType internal_sources collect_demands allocate
 
+"""
+Update the allocation error constraints with for the demands associated with the given
+node name and node ID with the given demand.
+"""
 function update_objective_constraints!(
     problem::JuMP.Model,
     node_name::Symbol,
@@ -15,6 +19,10 @@ function update_objective_constraints!(
     JuMP.set_normalized_coefficient(upper_error_constraints[node_id], upper_error, demand)
 end
 
+"""
+Update the allocation error constraints with for the demands associated with the given
+node name with the given target fraction of the demand.
+"""
 function update_objective_constraints!(
     problem::JuMP.Model,
     node_name::Symbol,
@@ -34,6 +42,11 @@ function update_objective_constraints!(
     return nothing
 end
 
+"""
+Update the constraints for the upper and lower allocation errors with the
+demands for the current demand priority and the target fraction that follows from
+those demands and the total available capacity.
+"""
 function update_objective_constraints!(
     allocation_model::AllocationModel,
     p::Parameters,
