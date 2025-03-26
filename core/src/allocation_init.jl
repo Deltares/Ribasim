@@ -165,6 +165,40 @@ function add_variables_flow_buffer!(
     return nothing
 end
 
+function add_variables_objective!(
+    problem::JuMP.Model,
+    p_non_diff::ParametersNonDiff,
+    subnetwork_id::Int32,
+)::Nothing
+    (; graph, allocation) = p_non_diff
+    (; subnetwork_demands) = allocation
+
+    for node_name in (:user_demand, :level_demand, :flow_demand, :subnetwork)
+        node_ids = if node_name == :user_demand
+            [id for id in graph[].node_ids[subnetwork_id] if id.type == NodeType.UserDemand]
+        elseif node_name == :level_demand
+            only(problem[:F_basin_in].axes)
+        elseif node_name == :flow_demand
+            only(problem[:F_flow_buffer_in].axes)
+        else # node_name == :subnetwork
+            if is_main_network(subnetwork_id)
+                [link[2] for link in keys(subnetwork_demands)]
+            else
+                NodeID[]
+            end
+        end
+
+        lower_error_name = "lower_error_$node_name"
+        upper_error_name = "upper_error_$node_name"
+
+        problem[Symbol(lower_error_name)] =
+            JuMP.@variable(problem, [node_id = node_ids], base_name = lower_error_name)
+        problem[Symbol(upper_error_name)] =
+            JuMP.@variable(problem, [node_id = node_ids], base_name = upper_error_name)
+    end
+    return nothing
+end
+
 """
 Add the flow capacity constraints to the allocation problem.
 Only finite capacities get a constraint.
@@ -401,6 +435,77 @@ function add_constraints_buffer!(problem::JuMP.Model)::Nothing
     return nothing
 end
 
+function add_constraints_objective!(
+    problem::JuMP.Model,
+    p_non_diff::ParametersNonDiff,
+    subnetwork_id::Int32,
+)::Nothing
+    F = problem[:F]
+    (; user_demand, allocation) = p_non_diff
+    (; subnetwork_demands) = allocation
+
+    for node_name in (:user_demand, :level_demand, :flow_demand, :subnetwork)
+        lower_error_name = "lower_error_$node_name"
+        upper_error_name = "upper_error_$node_name"
+
+        lower_error = problem[Symbol(lower_error_name)]
+        upper_error = problem[Symbol(upper_error_name)]
+
+        lower_error_constraint_name = "lower_error_$(node_name)_constraint"
+        upper_error_constraint_name = "upper_error_$(node_name)_constraint"
+
+        node_ids = only(lower_error.axes)
+
+        inflows = if node_name == :user_demand
+            Dict(id => F[user_demand.inflow_link[id.idx].link] for id in node_ids)
+        elseif node_name == :level_demand
+            problem[:F_basin_in]
+        elseif node_name == "flow_demand"
+            problem[:F_flow_buffer_in]
+        else # node_name == "subnetwork"
+            inflows = Dict{NodeID, JuMP.VariableRef}()
+            if is_main_network(subnetwork_id)
+                for link in keys(subnetwork_demands)
+                    inflows[link[2]] = F[link]
+                end
+            end
+            inflows
+        end
+
+        problem[Symbol(lower_error_constraint_name)] = JuMP.@constraint(
+            problem,
+            [node_id = node_ids],
+            lower_error[node_id] + inflows[node_id] >= 1.0,
+            base_name = lower_error_constraint_name
+        )
+        problem[Symbol(upper_error_constraint_name)] = JuMP.@constraint(
+            problem,
+            [node_id = node_ids],
+            upper_error[node_id] - inflows[node_id] >= -1.0,
+            base_name = upper_error_constraint_name
+        )
+        JuMP.@constraint(problem, lower_error .>= 0)
+        JuMP.@constraint(problem, upper_error .>= 0)
+    end
+
+    return nothing
+end
+
+function add_objective!(problem::JuMP.Model)::Nothing
+    objective = JuMP.AffExpr()
+    for node_name in (:user_demand, :level_demand, :flow_demand)
+        lower_error = problem[Symbol("lower_error_$node_name")]
+        upper_error = problem[Symbol("upper_error_$node_name")]
+        if !isempty(lower_error)
+            objective += sum(lower_error)
+            objective += sum(upper_error)
+        end
+    end
+
+    JuMP.@objective(problem, Min, JuMP.@expression(problem, objective))
+    return nothing
+end
+
 """
 Construct the allocation problem for the current subnetwork as a JuMP model.
 """
@@ -413,7 +518,6 @@ function allocation_problem(
     optimizer = JuMP.optimizer_with_attributes(
         HiGHS.Optimizer,
         "log_to_console" => false,
-        "objective_bound" => 0.0,
         "time_limit" => 60.0,
         "random_seed" => 0,
         "primal_feasibility_tolerance" => 1e-5,
@@ -425,6 +529,7 @@ function allocation_problem(
     add_variables_flow!(problem, capacity)
     add_variables_basin!(problem, sources)
     add_variables_flow_buffer!(problem, sources)
+    add_variables_objective!(problem, p_non_diff, subnetwork_id)
 
     # Add constraints to problem
     add_constraints_conservation_node!(problem, p_non_diff, subnetwork_id)
@@ -434,6 +539,10 @@ function allocation_problem(
     add_constraints_user_source!(problem, sources)
     add_constraints_basin_flow!(problem)
     add_constraints_buffer!(problem)
+    add_constraints_objective!(problem, p_non_diff, subnetwork_id)
+
+    # Add objective to the problem
+    add_objective!(problem)
 
     return problem
 end
