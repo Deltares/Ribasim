@@ -52,7 +52,7 @@ end
 """
 Compute the level of a basin given its storage.
 """
-function get_level_from_storage(basin::Basin, state_idx::Int, storage)
+function get_level_from_storage(basin::Basin, state_idx::Int, storage::T)::T where {T}
     storage_to_level = basin.storage_to_level[state_idx]
     if storage >= 0
         return storage_to_level(storage)
@@ -84,7 +84,7 @@ function get_scalar_interpolation(
     return interpolation_type(
         parameter,
         times;
-        extrapolation = cyclic_time ? Periodic : Constant,
+        extrapolation = cyclic_time ? Periodic : ConstantExtrapolation,
         cache_parameters = true,
     )
 end
@@ -125,7 +125,7 @@ function qh_interpolation(
     return LinearInterpolation(
         flow_rate,
         level;
-        extrapolation_left = Constant,
+        extrapolation_left = ConstantExtrapolation,
         extrapolation_right = Linear,
         cache_parameters = true,
     )
@@ -158,11 +158,12 @@ Get the current water level of a node ID.
 The ID can belong to either a Basin or a LevelBoundary.
 du: tells ForwardDiff whether this call is for differentiation or not
 """
-function get_level(p::Parameters, node_id::NodeID, t::Number, current_level::Vector)::Number
+function get_level(p::Parameters, node_id::NodeID, t::Number)::Number
+    (; p_non_diff, diff_cache) = p
     if node_id.type == NodeType.Basin
-        current_level[node_id.idx]
+        diff_cache.current_level[node_id.idx]
     elseif node_id.type == NodeType.LevelBoundary
-        p.level_boundary.level[node_id.idx](t)
+        p_non_diff.level_boundary.level[node_id.idx](t)
     elseif node_id.type == NodeType.Terminal
         # Terminal is like a bottomless pit.
         # A level at -Inf ensures we don't hit `max_downstream_level` reduction factors.
@@ -295,11 +296,13 @@ function reduction_factor(x::T, threshold::Real)::T where {T <: Real}
     end
 end
 
-function get_low_storage_factor(
-    current_low_storage_factor::Vector{T},
-    id::NodeID,
-)::T where {T}
-    return id.type == NodeType.Basin ? current_low_storage_factor[id.idx] : one(T)
+function get_low_storage_factor(p::Parameters, id::NodeID)
+    (; current_low_storage_factor) = p.diff_cache
+    if id.type == NodeType.Basin
+        current_low_storage_factor[id.idx]
+    else
+        one(eltype(current_low_storage_factor))
+    end
 end
 
 """
@@ -307,15 +310,15 @@ For resistance nodes, give a reduction factor based on the upstream node
 as defined by the flow direction.
 """
 function low_storage_factor_resistance_node(
-    current_low_storage_factor,
-    q,
-    inflow_id,
-    outflow_id,
+    p::Parameters,
+    q::Number,
+    inflow_id::NodeID,
+    outflow_id::NodeID,
 )
     if q > 0
-        get_low_storage_factor(current_low_storage_factor, inflow_id)
+        get_low_storage_factor(p, inflow_id)
     else
-        get_low_storage_factor(current_low_storage_factor, outflow_id)
+        get_low_storage_factor(p, outflow_id)
     end
 end
 
@@ -380,8 +383,11 @@ function get_all_demand_priorities(db::DB, config::Config;)::Vector{Int32}
     end
 end
 
-function get_external_demand_priority_idx(p::Parameters, node_id::NodeID)::Int
-    (; graph, level_demand, flow_demand, allocation) = p
+function get_external_demand_priority_idx(
+    p_non_diff::ParametersNonDiff,
+    node_id::NodeID,
+)::Int
+    (; graph, level_demand, flow_demand, allocation) = p_non_diff
     inneighbor_control_ids = inneighbor_labels_type(graph, node_id, LinkType.control)
     if isempty(inneighbor_control_ids)
         return 0
@@ -399,48 +405,27 @@ function get_external_demand_priority_idx(p::Parameters, node_id::NodeID)::Int
     return findsorted(allocation.demand_priorities_all, demand_priority)
 end
 
-"""
-Set continuous_control_type for those pumps and outlets that are controlled by either
-PidControl or ContinuousControl
-"""
-function set_continuous_control_type!(p::Parameters)::Nothing
-    (; continuous_control, pid_control) = p
-    errors = false
+const control_type_mapping = Dict{NodeType.T, ContinuousControlType.T}(
+    NodeType.PidControl => ContinuousControlType.PID,
+    NodeType.ContinuousControl => ContinuousControlType.Continuous,
+)
 
-    errors = set_continuous_control_type!(
-        p,
-        continuous_control.node_id,
-        ContinuousControlType.Continuous,
-    )
-    errors |=
-        set_continuous_control_type!(p, pid_control.node_id, ContinuousControlType.PID)
-
-    if errors
-        error("Errors occurred when parsing ContinuousControl and PidControl connectivity")
-    end
-    return nothing
-end
-
-function set_continuous_control_type!(
-    p::Parameters,
-    node_id::Vector{NodeID},
-    continuous_control_type::ContinuousControlType.T,
-)::Bool
-    (; graph, pump, outlet) = p
-    errors = false
-
+function get_continuous_control_type(graph::MetaGraph, node_id::Vector{NodeID})
+    continuous_control_type = fill(ContinuousControlType.None, length(node_id))
     for id in node_id
-        id_controlled = only(outneighbor_labels_type(graph, id, LinkType.control))
-        if id_controlled.type == NodeType.Pump
-            pump.continuous_control_type[id_controlled.idx] = continuous_control_type
-        elseif id_controlled.type == NodeType.Outlet
-            outlet.continuous_control_type[id_controlled.idx] = continuous_control_type
-        else
-            errors = true
-            @error "Only Pump and Outlet can be controlled by PidController, got $id_controlled"
+        control_inneighbors = collect(inneighbor_labels_type(graph, id, LinkType.control))
+        if length(control_inneighbors) == 1
+            control_inneighbor = only(control_inneighbors)
+            continuous_control_type[id.idx] = get(
+                control_type_mapping,
+                control_inneighbor.type,
+                ContinuousControlType.None,
+            )
+        elseif length(control_inneighbors) > 1
+            error("$id has more than 1 control inneighbors.")
         end
     end
-    return errors
+    return continuous_control_type
 end
 
 function has_external_demand(
@@ -457,23 +442,12 @@ function has_external_demand(
     return false, nothing
 end
 
-function Base.get(
-    constraints::JuMP.Containers.DenseAxisArray,
-    node_id::NodeID,
-)::Union{JuMP.ConstraintRef, Nothing}
-    if node_id in only(constraints.axes)
-        constraints[node_id]
-    else
-        nothing
-    end
-end
-
 """
 Get the time interval between (flow) saves
 """
 function get_Δt(integrator)::Float64
     (; p, t, dt) = integrator
-    (; saveat) = p.graph[]
+    (; saveat) = p.p_non_diff.graph[]
     if iszero(saveat)
         dt
     elseif isinf(saveat)
@@ -501,7 +475,8 @@ as input. Therefore we set the instantaneous flows as the mean flows as allocati
 """
 function set_initial_allocation_mean_flows!(integrator)::Nothing
     (; u, p, t) = integrator
-    (; allocation, graph) = p
+    (; p_non_diff) = p
+    (; allocation) = p_non_diff
     (; mean_input_flows, mean_realized_flows, allocation_models) = allocation
     (; Δt_allocation) = allocation_models[1]
 
@@ -516,7 +491,7 @@ function set_initial_allocation_mean_flows!(integrator)::Nothing
             if link[1] == link[2]
                 q = get_influx(du, link[1], p)
             else
-                q = get_flow(du, p, t, link)
+                q = get_flow(du, p_non_diff, t, link)
             end
             # Multiply by Δt_allocation as averaging divides by this factor
             # in update_allocation!
@@ -530,7 +505,7 @@ function set_initial_allocation_mean_flows!(integrator)::Nothing
         if link[1] == link[2]
             mean_realized_flows[link] = -u[link[1].idx]
         else
-            q = get_flow(du, p, t, link)
+            q = get_flow(du, p_non_diff, t, link)
             mean_realized_flows[link] = q * Δt_allocation
         end
     end
@@ -545,9 +520,9 @@ function convert_truth_state(boolean_vector)::String
     String(UInt8.(ifelse.(boolean_vector, 'T', 'F')))
 end
 
-function NodeID(type::Symbol, value::Integer, p::Parameters)::NodeID
+function NodeID(type::Symbol, value::Integer, p_non_diff::ParametersNonDiff)::NodeID
     node_type = NodeType.T(type)
-    node = getfield(p, snake_case(type))
+    node = getfield(p_non_diff, snake_case(type))
     idx = searchsortedfirst(node.node_id, NodeID(node_type, value, 0))
     return NodeID(node_type, value, idx)
 end
@@ -555,38 +530,42 @@ end
 """
 Get the reference to a parameter
 """
-function get_variable_ref(
-    p::Parameters,
+function get_diff_cache_ref(
     node_id::NodeID,
-    variable::String;
+    variable::String,
+    state_ranges::StateRanges;
     listen::Bool = true,
-)::Tuple{PreallocationRef, Bool}
-    (; basin) = p
+)::Tuple{DiffCacheRef, Bool}
     errors = false
 
-    # Only built here because it is needed to obtain indices
-    u = build_state_vector(p)
-
     ref = if node_id.type == NodeType.Basin && variable == "level"
-        PreallocationRef(basin.current_properties.current_level, node_id.idx)
+        DiffCacheRef(; type = DiffCacheType.basin_level, node_id.idx)
     elseif variable == "flow_rate" && node_id.type != NodeType.FlowBoundary
         if listen
             if node_id.type ∉ conservative_nodetypes
                 errors = true
                 @error "Cannot listen to flow_rate of $node_id, the node type must be one of $conservative_node_types."
-                Ref(Float64[], 0)
+                DiffCacheRef()
             else
                 # Index in the state vector (inflow)
-                flow_idx = get_state_index(p.state_ranges, node_id)
-                PreallocationRef(cache(1), flow_idx; from_du = true)
+                idx = get_state_index(state_ranges, node_id)
+                DiffCacheRef(; idx, from_du = true)
             end
         else
-            node = getfield(p, snake_case(node_id))
-            PreallocationRef(node.flow_rate_cache, node_id.idx)
+            type = if node_id.type == NodeType.Pump
+                DiffCacheType.flow_rate_pump
+            elseif node_id.type == NodeType.Outlet
+                DiffCacheType.flow_rate_outlet
+            else
+                errors = true
+                @error "Cannot set the flow rate of $node_id."
+                DiffCacheType.flow_rate_pump
+            end
+            DiffCacheRef(; type, node_id.idx)
         end
     else
         # Placeholder to obtain correct type
-        PreallocationRef(cache(1), 0)
+        DiffCacheRef()
     end
     return ref, errors
 end
@@ -594,8 +573,8 @@ end
 """
 Set references to all variables that are listened to by discrete/continuous control
 """
-function set_listen_variable_refs!(p::Parameters)::Nothing
-    (; discrete_control, continuous_control) = p
+function set_listen_diff_cache_refs!(p_non_diff::ParametersNonDiff)::Nothing
+    (; discrete_control, continuous_control, state_ranges) = p_non_diff
     compound_variable_sets =
         [discrete_control.compound_variables..., continuous_control.compound_variable]
     errors = false
@@ -604,10 +583,13 @@ function set_listen_variable_refs!(p::Parameters)::Nothing
         for compound_variable in compound_variables
             (; subvariables) = compound_variable
             for (j, subvariable) in enumerate(subvariables)
-                ref, error =
-                    get_variable_ref(p, subvariable.listen_node_id, subvariable.variable)
+                ref, error = get_diff_cache_ref(
+                    subvariable.listen_node_id,
+                    subvariable.variable,
+                    state_ranges,
+                )
                 if !error
-                    subvariables[j] = @set subvariable.variable_ref = ref
+                    subvariables[j] = @set subvariable.diff_cache_ref = ref
                 end
                 errors |= error
             end
@@ -623,29 +605,35 @@ end
 """
 Set references to all variables that are controlled by discrete control
 """
-function set_discrete_controlled_variable_refs!(p::Parameters)::Nothing
-    for nodetype in propertynames(p)
-        node = getfield(p, nodetype)
+function set_discrete_controlled_variable_refs!(p_non_diff::ParametersNonDiff)::Nothing
+    for nodetype in propertynames(p_non_diff)
+        node = getfield(p_non_diff, nodetype)
         if node isa AbstractParameterNode && hasfield(typeof(node), :control_mapping)
             control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate} =
                 node.control_mapping
 
             for ((node_id, control_state), control_state_update) in control_mapping
-                (; scalar_update, itp_update) = control_state_update
+                (; scalar_update, itp_update_linear, itp_update_lookup) =
+                    control_state_update
 
                 # References to scalar parameters
                 for (i, parameter_update) in enumerate(scalar_update)
                     field = getfield(node, parameter_update.name)
-                    if field isa Cache
-                        field = field[Float64[]]
-                    end
                     scalar_update[i] = @set parameter_update.ref = Ref(field, node_id.idx)
                 end
 
-                # References to interpolation parameters
-                for (i, parameter_update) in enumerate(itp_update)
+                # References to linear interpolation parameters
+                for (i, parameter_update) in enumerate(itp_update_linear)
                     field = getfield(node, parameter_update.name)
-                    itp_update[i] = @set parameter_update.ref = Ref(field, node_id.idx)
+                    itp_update_linear[i] =
+                        @set parameter_update.ref = Ref(field, node_id.idx)
+                end
+
+                # References to index interpolation parameters
+                for (i, parameter_update) in enumerate(itp_update_lookup)
+                    field = getfield(node, parameter_update.name)
+                    itp_update_lookup[i] =
+                        @set parameter_update.ref = Ref(field, node_id.idx)
                 end
 
                 # Reference to 'active' parameter if it exists
@@ -659,20 +647,20 @@ function set_discrete_controlled_variable_refs!(p::Parameters)::Nothing
     return nothing
 end
 
-function set_continuously_controlled_variable_refs!(p::Parameters)::Nothing
-    (; continuous_control, pid_control, graph) = p
+function set_target_ref!(
+    target_ref::Vector{DiffCacheRef},
+    node_id::Vector{NodeID},
+    controlled_variable::Vector{String},
+    state_ranges::StateRanges,
+    graph::MetaGraph,
+)::Nothing
     errors = false
-    for (node, controlled_variable) in (
-        (continuous_control, continuous_control.controlled_variable),
-        (pid_control, fill("flow_rate", length(pid_control.node_id))),
-    )
-        for (id, controlled_variable) in zip(node.node_id, controlled_variable)
-            controlled_node_id = only(outneighbor_labels_type(graph, id, LinkType.control))
-            ref, error =
-                get_variable_ref(p, controlled_node_id, controlled_variable; listen = false)
-            push!(node.target_ref, ref)
-            errors |= error
-        end
+    for (i, (id, variable)) in enumerate(zip(node_id, controlled_variable))
+        controlled_node_id = only(outneighbor_labels_type(graph, id, LinkType.control))
+        ref, error =
+            get_diff_cache_ref(controlled_node_id, variable, state_ranges; listen = false)
+        target_ref[i] = ref
+        errors |= error
     end
 
     if errors
@@ -727,12 +715,12 @@ function add_control_state!(
     end
     # This is a not so great way to get a concrete type,
     # which is used as a ControlStateUpdate type parameter.
-    itp_update = if isempty(itp_update)
+    itp_update_linear = if isempty(itp_update)
         ParameterUpdate{ScalarInterpolation}[]
     else
         [x for x in itp_update]
     end
-    control_state_update = ControlStateUpdate(; active, scalar_update, itp_update)
+    control_state_update = ControlStateUpdate(; active, scalar_update, itp_update_linear)
 
     if add_control_state
         control_mapping[(node_id, control_state)] = control_state_update
@@ -744,12 +732,12 @@ end
 Collect the control mappings of all controllable nodes in
 the DiscreteControl object for easy access
 """
-function collect_control_mappings!(p)::Nothing
-    (; control_mappings) = p.discrete_control
+function collect_control_mappings!(p_non_diff::ParametersNonDiff)::Nothing
+    (; control_mappings) = p_non_diff.discrete_control
 
     for node_type in instances(NodeType.T)
         node_type == NodeType.Terminal && continue
-        node = getfield(p, snake_case(node_type))
+        node = getfield(p_non_diff, snake_case(node_type))
         if hasfield(typeof(node), :control_mapping)
             control_mappings[node_type] = node.control_mapping
         end
@@ -778,24 +766,11 @@ function relaxed_root(x, threshold)
     end
 end
 
-function get_jac_prototype(du0, u0, p, t0)
-    p.all_nodes_active = true
-    jac_prototype = jacobian_sparsity(
-        (du, u) -> water_balance!(du, u, p, t0),
-        du0,
-        u0,
-        TracerSparsityDetector(),
-    )
-    p.all_nodes_active = false
-    jac_prototype
-end
-
-# Custom overloads
-reduction_factor(x::GradientTracer, threshold::Real) = x
-low_storage_factor_resistance_node(storage, q::GradientTracer, inflow_id, outflow_id) = q
+# Overloads for SparseConnectivityTracer
+reduction_factor(x::GradientTracer, ::Real) = x
+low_storage_factor_resistance_node(::Parameters, q::GradientTracer, ::NodeID, ::NodeID) = q
 relaxed_root(x::GradientTracer, threshold::Real) = x
 get_level_from_storage(basin::Basin, state_idx::Int, storage::GradientTracer) = storage
-stop_declining_negative_storage!(du, u::Vector{<:GradientTracer}) = nothing
 
 @kwdef struct MonitoredBackTracking{B, V}
     linesearch::B = BackTracking()
@@ -863,7 +838,7 @@ function OrdinaryDiffEqNonlinearSolve.relax!(
 end
 
 "Create a NamedTuple of the node IDs per state component in the state order"
-function state_node_ids(p::Union{Parameters, NamedTuple})::NamedTuple
+function state_node_ids(p::Union{ParametersNonDiff, NamedTuple})::NamedTuple
     (;
         tabulated_rating_curve = p.tabulated_rating_curve.node_id,
         pump = p.pump.node_id,
@@ -878,15 +853,15 @@ function state_node_ids(p::Union{Parameters, NamedTuple})::NamedTuple
     )
 end
 
-function build_state_vector(p::Parameters)
+function build_state_vector(p_non_diff::ParametersNonDiff)
     # It is assumed that the horizontal flow states come first in
-    # p.state_inflow_link and p.state_outflow_link
-    u_ids = state_node_ids(p)
-    state_ranges = p.state_ranges
-    u = zeros(length(p.node_id))
-    # Ensure p.node_id, p.state_ranges and u have the same length and order
+    # p_non_diff.state_inflow_link and p_non_diff.state_outflow_link
+    u_ids = state_node_ids(p_non_diff)
+    state_ranges = p_non_diff.state_ranges
+    u = zeros(length(p_non_diff.node_id))
+    # Ensure p_non_diff.node_id, p_non_diff.state_ranges and u have the same length and order
     ranges = (getproperty(state_ranges, x) for x in propertynames(state_ranges))
-    @assert length(u) == length(p.node_id) == mapreduce(length, +, ranges)
+    @assert length(u) == length(p_non_diff.node_id) == mapreduce(length, +, ranges)
     @assert keys(u_ids) == fieldnames(StateRanges)
     return u
 end
@@ -1027,9 +1002,8 @@ end
 Check whether any storages are negative given the state u.
 """
 function isoutofdomain(u, p, t)
-    (; current_storage) = p.basin.current_properties
-    current_storage = current_storage[u]
-    formulate_storages!(current_storage, u, u, p, t)
+    (; current_storage) = p.diff_cache
+    formulate_storages!(u, p, t)
     any(<(0), current_storage)
 end
 
@@ -1048,7 +1022,7 @@ estimating the lowest storage achieved over the last time step. To make sure
 it is an underestimate of the minimum, 2LOW_STORAGE_THRESHOLD is subtracted from this lowest storage.
 This is done to not be too strict in clamping the flow in the limiter
 """
-function min_low_storage_factor(storage_now::Vector{T}, storage_prev, id) where {T}
+function min_low_storage_factor(storage_now::AbstractVector{T}, storage_prev, id) where {T}
     if id.type == NodeType.Basin
         reduction_factor(
             min(storage_now[id.idx], storage_prev[id.idx]) - 2LOW_STORAGE_THRESHOLD,
@@ -1066,7 +1040,7 @@ it is an underestimate of the minimum, 2USER_DEMAND_MIN_LEVEL_THRESHOLD is subtr
 This is done to not be too strict in clamping the flow in the limiter
 """
 function min_low_user_demand_level_factor(
-    level_now::Vector{T},
+    level_now::AbstractVector{T},
     level_prev,
     min_level,
     id_user_demand,
@@ -1083,8 +1057,8 @@ function min_low_user_demand_level_factor(
     end
 end
 
-function mean_input_flows_subnetwork(p::Parameters, subnetwork_id::Int32)
-    (; mean_input_flows, subnetwork_ids) = p.allocation
+function mean_input_flows_subnetwork(p_non_diff::ParametersNonDiff, subnetwork_id::Int32)
+    (; mean_input_flows, subnetwork_ids) = p_non_diff.allocation
     subnetwork_idx = searchsortedfirst(subnetwork_ids, subnetwork_id)
     return mean_input_flows[subnetwork_idx]
 end
@@ -1145,4 +1119,15 @@ function get_timeseries_tstops(
     end
 
     return tstops
+end
+
+function ranges(lengths::Vector{<:Integer})
+    # from the lengths of the components
+    # construct [1:n_pump, (n_pump+1):(n_pump+n_outlet)]
+    # which are used to create views into the data array
+    bounds = pushfirst!(cumsum(lengths), 0)
+    ranges = [range(p[1] + 1, p[2]) for p in IterTools.partition(bounds, 2, 1)]
+    # standardize empty ranges to 1:0 for easier testing
+    replace!(x -> isempty(x) ? (1:0) : x, ranges)
+    return ranges
 end

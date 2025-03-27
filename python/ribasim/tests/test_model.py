@@ -75,6 +75,16 @@ def test_exclude_unset(basic):
     assert d["solver"]["saveat"] == 86400.0
 
 
+def test_toml_path(basic):
+    with pytest.raises(FileNotFoundError, match="Model must be written to disk"):
+        basic.toml_path
+
+
+def test_results_path(basic):
+    with pytest.raises(FileNotFoundError, match="Model must be written to disk"):
+        basic.results_path
+
+
 def test_invalid_node_id():
     with pytest.raises(
         ValueError,
@@ -191,7 +201,7 @@ def test_indexing(basic):
     "model",
     [basic_model(), outlet_model(), pid_control_equation_model(), trivial_model()],
 )
-def test_xugrid(model, tmp_path):
+def test_to_xugrid(model, tmp_path):
     uds = model.to_xugrid(add_flow=False)
     assert isinstance(uds, xugrid.UgridDataset)
     assert uds.grid.edge_dimension == "ribasim_nEdges"
@@ -206,12 +216,35 @@ def test_xugrid(model, tmp_path):
         model.to_xugrid(add_flow=True)
 
     model.write(tmp_path / "ribasim.toml")
-    with pytest.raises(FileNotFoundError, match="Cannot find results"):
+    with pytest.raises(FileNotFoundError, match="Cannot find basin_state.arrow"):
         model.to_xugrid(add_flow=True)
-    with pytest.raises(FileNotFoundError, match="or allocation is not used"):
+    with pytest.raises(FileNotFoundError, match="Cannot find basin_state.arrow"):
         model.to_xugrid(add_flow=False, add_allocation=True)
     with pytest.raises(ValueError, match="Cannot add both allocation and flow results"):
         model.to_xugrid(add_flow=True, add_allocation=True)
+
+
+@pytest.mark.parametrize(
+    "model",
+    [basic_model(), outlet_model(), pid_control_equation_model(), trivial_model()],
+)
+def test_to_fews(model, tmp_path):
+    region_home = tmp_path
+    network_dir = region_home / "Config/MapLayerFiles/{ModelId}"
+
+    with pytest.raises(FileNotFoundError, match="Model must be written to disk"):
+        model.to_fews(region_home)
+
+    model.write(tmp_path / "model/ribasim.toml")
+    model.to_fews(region_home, add_results=False)
+    assert (network_dir / "{ModelId}Links.dbf").is_file()
+    assert (network_dir / "{ModelId}Links.shp").is_file()
+    assert (network_dir / "{ModelId}Nodes.dbf").is_file()
+    assert (network_dir / "{ModelId}Nodes.shp").is_file()
+
+    # Cannot test results=True without results
+    with pytest.raises(FileNotFoundError, match="Cannot find basin_state.arrow"):
+        model.to_fews(region_home, add_results=True)
 
 
 def test_to_crs(bucket: Model):

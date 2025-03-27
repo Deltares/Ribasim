@@ -39,7 +39,7 @@ function create_graph(db::DB, config::Config)::MetaGraph
         vertex_data_type = NodeMetadata,
         edge_data_type = LinkMetadata,
         graph_data = nothing,
-        weight_function,
+        weight_function = Returns(1.0),
     )
     for row in node_rows
         node_id = NodeID(row.node_type, row.node_id, node_table)
@@ -233,12 +233,12 @@ from the parameters, but integrated/averaged FlowBoundary flows must be provided
 """
 function get_flow(
     flow::Vector,
-    p::Parameters,
+    p_non_diff::ParametersNonDiff,
     t::Number,
     link::Tuple{NodeID, NodeID};
     boundary_flow = nothing,
 )
-    (; flow_boundary) = p
+    (; flow_boundary) = p_non_diff
     from_id = link[1]
     if from_id.type == NodeType.FlowBoundary
         if boundary_flow === nothing
@@ -248,13 +248,13 @@ function get_flow(
             boundary_flow[from_id.idx]
         end
     else
-        flow[get_state_index(p.state_ranges, link)]
+        flow[get_state_index(p_non_diff.state_ranges, link)]
     end
 end
 
 function get_influx(du::Vector, id::NodeID, p::Parameters)
     @assert id.type == NodeType.Basin
-    (; basin, state_ranges) = p
+    (; basin, state_ranges) = p.p_non_diff
     (; vertical_flux) = basin
     du_evaporation = view(du, state_ranges.evaporation)
     du_infiltration = view(du, state_ranges.infiltration)

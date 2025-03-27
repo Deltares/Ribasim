@@ -1,5 +1,6 @@
 package Ribasim.buildTypes
 
+import Templates.*
 import Ribasim_Linux.Linux_BuildRibasim
 import Ribasim_Linux.Linux_TestRibasimBinaries
 import Ribasim_Windows.Windows_BuildRibasim
@@ -60,6 +61,7 @@ object Ribasim_MakeGitHubRelease : BuildType({
         }
         dependency(Linux_BuildRibasim) {
             snapshot {
+                reuseBuilds = ReuseBuilds.NO
                 onDependencyFailure = FailureAction.FAIL_TO_START
             }
 
@@ -83,6 +85,7 @@ object Ribasim_MakeGitHubRelease : BuildType({
         }
         dependency(AbsoluteId("SigningAndCertificates_Ribasim_SigningRibasimRelease")) {
             snapshot {
+                reuseBuilds = ReuseBuilds.NO
                 onDependencyFailure = FailureAction.FAIL_TO_START
             }
 

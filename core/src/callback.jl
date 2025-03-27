@@ -5,12 +5,11 @@ are combined to a CallbackSet that goes to the integrator.
 Returns the CallbackSet and the SavedValues for flow.
 """
 function create_callbacks(
-    parameters::Parameters,
+    p_non_diff::ParametersNonDiff,
     config::Config,
-    u0::Vector,
     saveat,
 )::Tuple{CallbackSet, SavedResults}
-    (; starttime, basin, flow_boundary, level_boundary, user_demand) = parameters
+    (; starttime, basin, flow_boundary, level_boundary, user_demand) = p_non_diff
     callbacks = SciMLBase.DECallback[]
 
     # Check for negative storage
@@ -112,12 +111,13 @@ Specifically, we first use all the inflows to update the mass of the Basins, rec
 the Basin concentration(s) and then remove the mass that is being lost to the outflows.
 """
 function update_cumulative_flows!(u, t, integrator)::Nothing
+    (; p_non_diff, p_mutable) = integrator.p
     (; p, tprev, dt) = integrator
-    (; basin, flow_boundary, allocation) = p
+    (; basin, flow_boundary, allocation) = p_non_diff
     (; vertical_flux) = basin
 
     # Update tprev
-    p.tprev = t
+    p_mutable.tprev = t
 
     # Update cumulative forcings which are integrated exactly
     @. basin.cumulative_drainage += vertical_flux.drainage * dt
@@ -149,7 +149,8 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
 
     # Update realized flows for allocation input
     for subnetwork_id in allocation.subnetwork_ids
-        mean_input_flows_subnetwork_ = mean_input_flows_subnetwork(p, subnetwork_id)
+        mean_input_flows_subnetwork_ =
+            mean_input_flows_subnetwork(p_non_diff, subnetwork_id)
         for link in keys(mean_input_flows_subnetwork_)
             mean_input_flows_subnetwork_[link] += flow_update_on_link(integrator, link)
         end
@@ -176,7 +177,9 @@ end
 
 function update_concentrations!(u, t, integrator)::Nothing
     (; uprev, p, tprev, dt) = integrator
-    (; basin, flow_boundary, state_ranges) = p
+    (; p_non_diff, diff_cache) = p
+    (; current_storage, current_level) = diff_cache
+    (; basin, flow_boundary, state_ranges) = p_non_diff
     (; vertical_flux, concentration_data) = basin
     (; evaporate_mass, cumulative_in, concentration_state, concentration, mass) =
         concentration_data
@@ -251,9 +254,9 @@ function update_concentrations!(u, t, integrator)::Nothing
     end
 
     # Update the Basin concentrations again based on the removed mass
-    concentration_state .= mass ./ basin.current_properties.current_storage[u]
-    basin.storage_prev .= basin.current_properties.current_storage[u]
-    basin.level_prev .= basin.current_properties.current_level[u]
+    concentration_state .= mass ./ current_storage
+    basin.storage_prev .= current_storage
+    basin.level_prev .= current_level
     return nothing
 end
 
@@ -267,7 +270,7 @@ function flow_update_on_link(
     link_src::Tuple{NodeID, NodeID},
 )::Float64
     (; u, uprev, p, t, tprev, dt) = integrator
-    (; basin, flow_boundary, state_ranges) = p
+    (; basin, flow_boundary, state_ranges) = p.p_non_diff
     (; vertical_flux) = basin
 
     u_evaporation = view(u, state_ranges.evaporation)
@@ -290,7 +293,7 @@ function flow_update_on_link(
             0.0
         end
     else
-        flow_idx = get_state_index(p.state_ranges, link_src)
+        flow_idx = get_state_index(state_ranges, link_src)
         u[flow_idx] - uprev[flow_idx]
     end
 end
@@ -299,12 +302,9 @@ end
 Save the storages and levels at the latest t.
 """
 function save_basin_state(u, t, integrator)
-    (; p) = integrator
-    (; basin) = p
+    (; current_storage, current_level) = integrator.p.diff_cache
     du = get_du(integrator)
-    current_storage = basin.current_properties.current_storage[du]
-    current_level = basin.current_properties.current_level[du]
-    water_balance!(du, u, p, t)
+    water_balance!(du, u, integrator.p, t)
     SavedBasinState(; storage = copy(current_storage), level = copy(current_level), t)
 end
 
@@ -315,7 +315,8 @@ inflow and outflow per Basin.
 """
 function save_flow(u, t, integrator)
     (; p) = integrator
-    (; basin, state_inflow_link, state_outflow_link, flow_boundary, u_prev_saveat) = p
+    (; basin, state_inflow_link, state_outflow_link, flow_boundary, u_prev_saveat) =
+        p.p_non_diff
     Δt = get_Δt(integrator)
     flow_mean = (u - u_prev_saveat) / Δt
 
@@ -387,13 +388,14 @@ function check_water_balance_error!(
     Δt::Float64,
 )::Nothing
     (; u, p, t) = integrator
-    (; basin, water_balance_abstol, water_balance_reltol, state_ranges) = p
+    (; p_non_diff, diff_cache) = p
+    (; basin, water_balance_abstol, water_balance_reltol, state_ranges, starttime) =
+        p_non_diff
     errors = false
-    current_storage = basin.current_properties.current_storage[u]
 
     # The initial storage is irrelevant for the storage rate and can only cause
     # floating point truncation errors
-    formulate_storages!(current_storage, u, u, p, t; add_initial_storage = false)
+    formulate_storages!(u, p, t; add_initial_storage = false)
 
     evaporation = view(saved_flow.flow, state_ranges.evaporation)
     infiltration = view(saved_flow.flow, state_ranges.infiltration)
@@ -415,7 +417,7 @@ function check_water_balance_error!(
         saved_flow.drainage,
         evaporation,
         infiltration,
-        current_storage,
+        diff_cache.current_storage,
         basin.Δstorage_prev_saveat,
         basin.node_id,
     )
@@ -437,11 +439,11 @@ function check_water_balance_error!(
         saved_flow.relative_error[id.idx] = relative_error
     end
     if errors
-        t = datetime_since(t, p.starttime)
+        t = datetime_since(t, starttime)
         error("Too large water balance error(s) detected at t = $t")
     end
 
-    @. basin.Δstorage_prev_saveat = current_storage
+    @. basin.Δstorage_prev_saveat = diff_cache.current_storage
     return nothing
 end
 
@@ -457,23 +459,21 @@ function save_solver_stats(u, t, integrator)
 end
 
 function check_negative_storage(u, t, integrator)::Nothing
-    (; basin) = integrator.p
-    (; node_id, current_properties) = basin
-    (; current_storage) = current_properties
-    du = get_du(integrator)
-    set_current_basin_properties!(du, u, integrator.p, t)
-    current_storage = current_storage[du]
+    (; p) = integrator
+    (; p_non_diff, diff_cache) = p
+    (; basin) = p_non_diff
+    set_current_basin_properties!(u, p, t)
 
     errors = false
-    for id in node_id
-        if current_storage[id.idx] < 0
+    for id in basin.node_id
+        if diff_cache.current_storage[id.idx] < 0
             @error "Negative storage detected in $id"
             errors = true
         end
     end
 
     if errors
-        t_datetime = datetime_since(integrator.t, integrator.p.starttime)
+        t_datetime = datetime_since(integrator.t, p_non_diff.starttime)
         error("Negative storages found at $t_datetime.")
     end
     return nothing
@@ -493,7 +493,7 @@ Apply the discrete control logic. There's somewhat of a complex structure:
 """
 function apply_discrete_control!(u, t, integrator)::Nothing
     (; p) = integrator
-    (; discrete_control) = p
+    (; discrete_control) = p.p_non_diff
     (; node_id, truth_state, compound_variables) = discrete_control
     du = get_du(integrator)
     water_balance!(du, u, p, t)
@@ -542,7 +542,7 @@ function set_new_control_state!(
     truth_state::Vector{Bool},
 )::Nothing
     (; p) = integrator
-    (; discrete_control) = p
+    (; discrete_control) = p.p_non_diff
 
     # Get the control state corresponding to the new truth state,
     # if one is defined
@@ -579,11 +579,11 @@ Get a value for a condition. Currently supports getting levels from basins and f
 from flow boundaries.
 """
 function get_value(subvariable::SubVariable, p::Parameters, du::AbstractVector, t::Float64)
-    (; flow_boundary, level_boundary, basin) = p
-    (; listen_node_id, look_ahead, variable, variable_ref) = subvariable
+    (; flow_boundary, level_boundary, basin) = p.p_non_diff
+    (; listen_node_id, look_ahead, variable, diff_cache_ref) = subvariable
 
-    if !iszero(variable_ref.idx)
-        return get_value(variable_ref, du)
+    if !iszero(diff_cache_ref.idx)
+        return get_value(diff_cache_ref, p, du)
     end
 
     if variable == "level"
@@ -625,9 +625,11 @@ function compound_variable_value(compound_variable::CompoundVariable, p, du, t)
     return value
 end
 
-function get_allocation_model(p::Parameters, subnetwork_id::Int32)::AllocationModel
-    (; allocation) = p
-    (; subnetwork_ids, allocation_models) = allocation
+function get_allocation_model(
+    p_non_diff::ParametersNonDiff,
+    subnetwork_id::Int32,
+)::AllocationModel
+    (; subnetwork_ids, allocation_models) = p_non_diff.allocation
     idx = findsorted(subnetwork_ids, subnetwork_id)
     if isnothing(idx)
         error("Invalid allocation network ID $subnetwork_id.")
@@ -637,13 +639,14 @@ function get_allocation_model(p::Parameters, subnetwork_id::Int32)::AllocationMo
 end
 
 function set_control_params!(p::Parameters, node_id::NodeID, control_state::String)::Nothing
-    (; discrete_control, allocation) = p
+    (; discrete_control) = p.p_non_diff
     (; control_mappings) = discrete_control
     control_state_update = control_mappings[node_id.type][(node_id, control_state)]
-    (; active, scalar_update, itp_update) = control_state_update
+    (; active, scalar_update, itp_update_linear, itp_update_lookup) = control_state_update
     apply_parameter_update!(active)
     apply_parameter_update!.(scalar_update)
-    apply_parameter_update!.(itp_update)
+    apply_parameter_update!.(itp_update_linear)
+    apply_parameter_update!.(itp_update_lookup)
 
     return nothing
 end
@@ -662,9 +665,8 @@ end
 
 function update_subgrid_level!(integrator)::Nothing
     (; p, t) = integrator
-    du = get_du(integrator)
-    basin_level = p.basin.current_properties.current_level[du]
-    subgrid = integrator.p.subgrid
+    (; p_non_diff, diff_cache) = p
+    subgrid = p_non_diff.subgrid
 
     # First update the all the subgrids with static h(h) relations
     for (level_index, basin_index, hh_itp) in zip(
@@ -672,7 +674,7 @@ function update_subgrid_level!(integrator)::Nothing
         subgrid.basin_index_static,
         subgrid.interpolations_static,
     )
-        subgrid.level[level_index] = hh_itp(basin_level[basin_index])
+        subgrid.level[level_index] = hh_itp(diff_cache.current_level[basin_index])
     end
     # Then update the subgrids with dynamic h(h) relations
     for (level_index, basin_index, lookup) in zip(
@@ -682,14 +684,14 @@ function update_subgrid_level!(integrator)::Nothing
     )
         itp_index = lookup(t)
         hh_itp = subgrid.interpolations_time[itp_index]
-        subgrid.level[level_index] = hh_itp(basin_level[basin_index])
+        subgrid.level[level_index] = hh_itp(diff_cache.current_level[basin_index])
     end
 end
 
 "Interpolate the levels and save them to SavedValues"
 function save_subgrid_level(u, t, integrator)
     update_subgrid_level!(integrator)
-    return copy(integrator.p.subgrid.level)
+    return copy(integrator.p.p_non_diff.subgrid.level)
 end
 
 "Update one current vertical flux from an interpolation at time t."
@@ -715,7 +717,7 @@ in the ConstantInterpolations we use, failing the vertical_flux_means test.
 """
 function update_basin!(integrator)::Nothing
     (; p, t) = integrator
-    (; basin) = p
+    (; basin) = p.p_non_diff
 
     update_basin!(basin, t)
     return nothing
@@ -736,11 +738,11 @@ end
 
 "Load updates from 'Basin / concentration' into the parameters"
 function update_basin_conc!(integrator)::Nothing
-    (; p) = integrator
-    (; basin) = p
+    (; p_non_diff) = integrator.p
+    (; basin, starttime) = p_non_diff
     (; node_id, concentration_data, concentration_time) = basin
     (; concentration, substances) = concentration_data
-    t = datetime_since(integrator.t, integrator.p.starttime)
+    t = datetime_since(integrator.t, starttime)
 
     rows = searchsorted(concentration_time.time, t)
     timeblock = view(concentration_time, rows)
@@ -756,12 +758,12 @@ end
 
 "Load updates from 'concentration' tables into the parameters"
 function update_conc!(integrator, parameter, nodetype)::Nothing
-    (; p) = integrator
-    node = getproperty(p, parameter)
-    (; basin) = p
+    (; p_non_diff) = integrator.p
+    (; basin, starttime) = p_non_diff
+    node = getproperty(p_non_diff, parameter)
     (; node_id, concentration, concentration_time) = node
     (; substances) = basin.concentration_data
-    t = datetime_since(integrator.t, integrator.p.starttime)
+    t = datetime_since(integrator.t, starttime)
 
     rows = searchsorted(concentration_time.time, t)
     timeblock = view(concentration_time, rows)
@@ -783,14 +785,12 @@ update_userd_conc!(integrator)::Nothing =
 "Solve the allocation problem for all demands and assign allocated abstractions."
 function update_allocation!(integrator)::Nothing
     (; p, t, u) = integrator
-    (; allocation, basin) = p
-    (; current_storage) = basin.current_properties
+    (; p_non_diff) = p
+    (; allocation) = p_non_diff
     (; allocation_models, mean_input_flows, mean_realized_flows) = allocation
 
     # Make sure current storages are up to date
-    du = get_du(integrator)
-    current_storage = current_storage[du]
-    formulate_storages!(current_storage, du, u, p, t)
+    formulate_storages!(u, p, t)
 
     # Don't run the allocation algorithm if allocation is not active
     # (Specifically for running Ribasim via the BMI)
@@ -814,7 +814,7 @@ function update_allocation!(integrator)::Nothing
     # If a main network is present, collect demands of subnetworks
     if has_main_network(allocation)
         for allocation_model in Iterators.drop(allocation_models, 1)
-            collect_demands!(p, allocation_model, t, u)
+            collect_demands!(p, allocation_model, t)
         end
     end
 
@@ -822,7 +822,7 @@ function update_allocation!(integrator)::Nothing
     # If a main network is present this is solved first,
     # which provides allocation to the subnetworks
     for allocation_model in allocation_models
-        allocate_demands!(p, allocation_model, t, u)
+        allocate_demands!(p, allocation_model, t)
     end
 
     # Reset the mean flows
