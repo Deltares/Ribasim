@@ -54,22 +54,14 @@ end
     (; p_non_diff) = p
     (; user_demand, allocation) = p_non_diff
     allocation_model = allocation.allocation_models[1]
+    (; problem) = allocation_model
     Ribasim.set_initial_values!(allocation_model, p, t)
-    Ribasim.set_objective_demand_priority!(allocation_model, p, t, 1)
-    objective = JuMP.objective_function(allocation_model.problem)
-    @test objective isa JuMP.QuadExpr # Quadratic expression
-    F = allocation_model.problem[:F]
-
-    to_user_5 = F[(NodeID(:Basin, 4, p_non_diff), NodeID(:UserDemand, 5, p_non_diff))]
-    to_user_6 = F[(NodeID(:Basin, 4, p_non_diff), NodeID(:UserDemand, 6, p_non_diff))]
-
-    @test objective.aff.constant ≈ sum(user_demand.demand)
-    @test objective.aff.terms[to_user_5] ≈ -2.0
-    @test objective.aff.terms[to_user_6] ≈ -2.0
-    @test objective.terms[JuMP.UnorderedPair(to_user_5, to_user_5)] ≈
-          1 / user_demand.demand[1]
-    @test objective.terms[JuMP.UnorderedPair(to_user_6, to_user_6)] ≈
-          1 / user_demand.demand[2]
+    Ribasim.update_objective_constraints!(allocation_model, p, t, 1)
+    objective = JuMP.objective_function(problem)
+    @test objective isa JuMP.AffExpr # Linear expression
+    @test objective.constant == 0.0
+    @test Set(objective.terms.keys) ==
+          Set([problem[:lower_error_user_demand]..., problem[:upper_error_user_demand]...])
 end
 
 @testitem "main allocation network initialization" begin
@@ -483,11 +475,6 @@ end
 
     # Priority 1
     Ribasim.optimize_demand_priority!(allocation_model, p, t, 1, optimization_type)
-    objective = JuMP.objective_function(problem)
-    @test JuMP.UnorderedPair(
-        F_flow_buffer_in[node_id_with_flow_demand],
-        F_flow_buffer_in[node_id_with_flow_demand],
-    ) in keys(objective.terms)
 
     # Reduced demand
     @test flow_demand.demand[1] ≈ flow_demand.demand_itp[1](t) - 0.001 rtol = 1e-3
@@ -622,7 +609,7 @@ end
 
     allocation_model = first(p_non_diff.allocation.allocation_models)
     Ribasim.set_initial_values!(allocation_model, p, t)
-    Ribasim.set_objective_demand_priority!(allocation_model, p, t, demand_priority_idx)
+    Ribasim.update_objective_constraints!(allocation_model, p, t, demand_priority_idx)
     Ribasim.allocate_to_users_from_connected_basin!(
         allocation_model,
         p_non_diff,
