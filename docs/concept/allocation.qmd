@@ -44,11 +44,11 @@ Sources are indicated by a set of links in the subnetwork
 $$
 E_S^\text{source} \subset E,
 $$
-which are automatically inferred as all links that point out of LevelBoundary or FlowBoundary nodes. That is, if $(i,j) \in E_S^\text{source}$, then the average over the last allocation interval $\Delta t_{\text{alloc}}$ of the of the flow over this link
+which are automatically inferred as all links that point out of LevelBoundary or FlowBoundary nodes, or connect the main network to a subnetwork. That is, if $(i,j) \in E_S^\text{source}$, then the average over the last allocation interval $\Delta t_{\text{alloc}}$ of the of the flow over this link
 $$
     \frac{1}{\Delta t_{\text{alloc}}}\int_{t - \Delta t_{\text{alloc}}}^tQ_{ij}(t') dt'
 $$
- is treated as a source flow in the allocation problem. These links are either coming from a boundary/source node (e.g. a level or flow boundary) or connect the main network to a subnetwork. For the definition of $Q_{ij}$ see [the formal model description](/concept/equations.qmd#formal-model-description).
+ is treated as a source flow in the allocation problem (apart from the main network to subnetwork sources). For the definition of $Q_{ij}$ see [the formal model description](/concept/equations.qmd#formal-model-description).
 
 ### User demands
 
@@ -144,7 +144,20 @@ There are several types of variable whose value has to be determined to solve th
 
 ## The optimization objective
 
-The goal of allocation is to get the flow to nodes with demands as close as possible to these demands. To achieve this, a sum of error terms is minimized.
+The goal of allocation is to get the flow to nodes with demands as close as possible to these demands. We want the allocation of water to be fair in periods of scarcity, where we interpret 'fair' as each demand node receiving the same fraction of its demand for a certain demand priority. Ideally this fraction is given by the *target fraction* $f$ of the total source capacity $T$ and the total demand $T$ in the model for a certain demand priority:
+
+$$
+    \begin{align}
+    f =
+    \begin{cases}
+        0 &\text{if}& D = 0 \\
+        \frac{T}{D} &\text{if}& T \le D \\
+        1 &\text{if}& T > D
+    \end{cases}.
+    \end{align}
+$$
+
+To achieve this, a sum of error terms is minimized.
 
 $$
     \min E_{\text{user demand}} + E_{\text{level demand}} + E_{\text{flow demand}}
