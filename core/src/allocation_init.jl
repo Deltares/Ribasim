@@ -319,7 +319,7 @@ function add_constraints_storage_conservation!(
     subnetwork_id::Int32,
     Δt_allocation::Float64,
 )::Nothing
-    (; graph, basin) = p_non_diff
+    (; basin, graph) = p_non_diff
     (; node_id) = basin
     storage = problem[:basin_storage]
     F = problem[:F]
