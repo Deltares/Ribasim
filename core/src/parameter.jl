@@ -1,4 +1,3 @@
-
 # Universal reduction factor threshold for the low storage factor
 const LOW_STORAGE_THRESHOLD = 10.0
 
@@ -14,7 +13,7 @@ const SolverStats = @NamedTuple{
 }
 
 # LinkType.flow and NodeType.FlowBoundary
-@enumx LinkType flow control none
+@enumx LinkType flow control junction none
 @eval @enumx NodeType $(config.nodetypes...)
 @enumx ContinuousControlType None Continuous PID
 @enumx Substance Continuity = 1 Initial = 2 LevelBoundary = 3 FlowBoundary = 4 UserDemand =
@@ -46,6 +45,8 @@ function config.snake_case(nt::NodeType.T)::Symbol
         return :manning_resistance
     elseif nt == NodeType.Terminal
         return :terminal
+    elseif nt == NodeType.Junction
+        return :junction
     elseif nt == NodeType.DiscreteControl
         return :discrete_control
     elseif nt == NodeType.ContinuousControl
@@ -671,6 +672,13 @@ node_id: node ID of the Terminal node
 end
 
 """
+node_id: node ID of the Junction node
+"""
+@kwdef struct Junction <: AbstractParameterNode
+    node_id::Vector{NodeID}
+end
+
+"""
 A cache for intermediate results in 'water_balance!' which depend on the state vector `u`. A second version of
 this cache is required for automatic differentiation, where e.g. ForwardDiff requires these vectors to
 be of `ForwardDiff.Dual` type. This second version of the cache is created by DifferentiationInterface.
@@ -917,6 +925,8 @@ const ModelGraph = MetaGraph{
         node_ids::Dict{Int32, Set{NodeID}},
         flow_links::Vector{LinkMetadata},
         saveat::Float64,
+        junction_links::Vector{LinkMetadata},
+        junction_map::SparseMatrixCSC{Bool, Int32},
     },
     Returns{Float64},
     Float64,
@@ -969,6 +979,7 @@ the object itself is not.
     pump::Pump
     outlet::Outlet
     terminal::Terminal
+    junction::Junction
     discrete_control::DiscreteControl
     continuous_control::ContinuousControl
     pid_control::PidControl
