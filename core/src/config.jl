@@ -12,10 +12,11 @@ using ADTypes: AutoForwardDiff, AutoFiniteDiff
 using Configurations: Configurations, @option, from_toml, @type_alias
 using DataStructures: DefaultDict
 using Dates: DateTime
+using LineSearch: BackTracking
 using Logging: LogLevel, Debug, Info, Warn, Error
 using ..Ribasim: Ribasim, isnode, nodetype
 using OrdinaryDiffEqCore: OrdinaryDiffEqAlgorithm, OrdinaryDiffEqNewtonAdaptiveAlgorithm
-using OrdinaryDiffEqNonlinearSolve: NLNewton
+using OrdinaryDiffEqNonlinearSolve: NonlinearSolveAlg, NewtonRaphson
 using OrdinaryDiffEqLowOrderRK: Euler, RK4
 using OrdinaryDiffEqTsit5: Tsit5
 using OrdinaryDiffEqSDIRK: ImplicitEuler, KenCarp4, TRBDF2
@@ -303,11 +304,11 @@ function algorithm(solver::Solver; u0 = [])::OrdinaryDiffEqAlgorithm
             Available options are: ($(options)).")
     end
     kwargs = Dict{Symbol, Any}()
+    autodiff = get_ad_type(solver)
 
     if algotype <: OrdinaryDiffEqNewtonAdaptiveAlgorithm
-        kwargs[:nlsolve] = NLNewton(;
-            relax = Ribasim.MonitoredBackTracking(; z_tmp = copy(u0), dz_tmp = copy(u0)),
-        )
+        kwargs[:nlsolve] =
+            NonlinearSolveAlg(NewtonRaphson(; linesearch = BackTracking(), autodiff))
     end
 
     if function_accepts_kwarg(algotype, :step_limiter!)
@@ -315,7 +316,7 @@ function algorithm(solver::Solver; u0 = [])::OrdinaryDiffEqAlgorithm
     end
 
     if function_accepts_kwarg(algotype, :autodiff)
-        kwargs[:autodiff] = get_ad_type(solver)
+        kwargs[:autodiff] = autodiff
     end
 
     algotype(; kwargs...)
