@@ -60,7 +60,8 @@ end
           AutoForwardDiff(; tag = :Ribasim)
     @test alg_autodiff(algorithm(Solver(; algorithm = "QNDF", autodiff = false))) ==
           AutoFiniteDiff()
-    @test alg_autodiff(algorithm(Solver(; algorithm = "QNDF"))) == AutoFiniteDiff()
+    @test alg_autodiff(algorithm(Solver(; algorithm = "QNDF"))) ==
+          AutoForwardDiff(; tag = :Ribasim)
     # autodiff is not a kwargs for explicit algorithms, but we use try-catch to bypass
     algorithm(Solver(; algorithm = "Euler", autodiff = true))
 
