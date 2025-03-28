@@ -835,6 +835,7 @@ function OrdinaryDiffEqNonlinearSolve.relax!(
     if resid_after > resid_before
         @. dz = dz_tmp
     end
+    return dz
 end
 
 "Create a NamedTuple of the node IDs per state component in the state order"

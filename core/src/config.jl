@@ -116,7 +116,7 @@ const nodetypes = collect(keys(nodekinds))
     water_balance_reltol::Float64 = 1e-2
     maxiters::Int = 1e9
     sparse::Bool = true
-    autodiff::Bool = false
+    autodiff::Bool = true
     evaporate_mass::Bool = true
 end
 
