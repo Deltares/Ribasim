@@ -56,6 +56,7 @@ node_type_connectivity: dict[str, list[str]] = {
     "Basin": [
         "LinearResistance",
         "UserDemand",
+        "Junction",
         "Outlet",
         "TabulatedRatingCurve",
         "ManningResistance",
@@ -103,7 +104,7 @@ def can_connect(node_type_up: str, node_type_down: str) -> bool:
 
 
 flow_link_neighbor_amount: dict[str, list[int]] = {
-    "Junction": [1, 9223372036854775807, 1, 1],
+    "Junction": [1, 9223372036854775807, 1, 9223372036854775807],
     "PidControl": [0, 0, 0, 0],
     "LevelBoundary": [0, 9223372036854775807, 0, 9223372036854775807],
     "Pump": [1, 1, 1, 1],

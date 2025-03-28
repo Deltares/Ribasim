@@ -644,3 +644,40 @@ end
     @test basin_level ≈ df.subgrid_level[(end - 1):end]
     @test basin_level ≈ model.integrator.p.p_non_diff.subgrid.level
 end
+
+@testitem "junction" begin
+    import SQLite
+    import MetaGraphsNext: labels
+
+    # Combined (confluence and bifurcation) model
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/junction_combined/ribasim.toml")
+
+    config = Ribasim.Config(toml_path)
+    db_path = Ribasim.database_path(config)
+    db = SQLite.DB(db_path)
+    graph = Ribasim.create_graph(db, config)
+
+    (; internal_flow_links, external_flow_links, flow_link_map) = graph.graph_data
+    @test length(internal_flow_links) == 8
+    @test length(external_flow_links) == 10
+    @test all(node.type != Ribasim.NodeType.Junction for node in labels(graph))
+
+    # Chained model
+    model = Ribasim.run(toml_path)
+
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/junction_chained/ribasim.toml")
+
+    config = Ribasim.Config(toml_path)
+    db_path = Ribasim.database_path(config)
+    db = SQLite.DB(db_path)
+    graph = Ribasim.create_graph(db, config)
+
+    (; internal_flow_links, external_flow_links, flow_link_map) = graph.graph_data
+    @test length(internal_flow_links) == 6
+    @test length(external_flow_links) == 8
+    @test all(node.type != Ribasim.NodeType.Junction for node in labels(graph))
+
+    model = Ribasim.run(toml_path)
+end
