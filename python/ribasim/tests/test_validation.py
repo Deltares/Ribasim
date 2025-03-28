@@ -34,7 +34,7 @@ def test_connectivity(trivial):
     with pytest.raises(
         ValueError,
         match=re.escape(
-            "Node #2147483647 of type Terminal cannot be downstream of node #6 of type Basin. Possible downstream node types: ['LinearResistance', 'UserDemand', 'Outlet', 'TabulatedRatingCurve', 'ManningResistance', 'Pump']"
+            "Node #2147483647 of type Terminal cannot be downstream of node #6 of type Basin. Possible downstream node types: ['LinearResistance', 'UserDemand', 'Junction', 'Outlet', 'TabulatedRatingCurve', 'ManningResistance', 'Pump']"
         ),
     ):
         model.link.add(model.basin[6], model.terminal[2147483647])
