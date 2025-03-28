@@ -3,7 +3,7 @@ on:
   pull_request:
   merge_group:
   push:
-    branches: [main, update/pre-commit-hooks, update/pixi-lock]
+    branches: [main]
   workflow_dispatch:
 jobs:
   check:
