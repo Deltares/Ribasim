@@ -773,7 +773,7 @@ relaxed_root(x::GradientTracer, threshold::Real) = x
 get_level_from_storage(basin::Basin, state_idx::Int, storage::GradientTracer) = storage
 
 @kwdef struct MonitoredBackTracking{B, V}
-    linesearch::B = BackTracking()
+    linesearch::B = BackTracking(; iterations = 1000)
     dz_tmp::V = []
     z_tmp::V = []
 end

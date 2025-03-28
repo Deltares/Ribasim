@@ -21,6 +21,32 @@ using OrdinaryDiffEqTsit5: Tsit5
 using OrdinaryDiffEqSDIRK: ImplicitEuler, KenCarp4, TRBDF2
 using OrdinaryDiffEqBDF: FBDF, QNDF
 using OrdinaryDiffEqRosenbrock: Rosenbrock23, Rodas4P, Rodas5P
+# import MKL
+using LinearSolve: LinearSolve, MKLLUFactorization, KrylovJL_GMRES
+using AlgebraicMultigrid: AlgebraicMultigrid
+using AlgebraicMultigrid
+using IncompleteLU
+
+function incompletelu(W, du, u, p, t, newW, Plprev, Prprev, solverdata)
+    if newW === nothing || newW
+        Pl = ilu(convert(AbstractMatrix, W); τ = 50.0)
+    else
+        Pl = Plprev
+    end
+    Pl, nothing
+end
+
+function algebraicmultigrid(W, du, u, p, t, newW, Plprev, Prprev, solverdata)
+    if newW === nothing || newW
+        Pl = aspreconditioner(ruge_stuben(convert(AbstractMatrix, W)))
+    else
+        Pl = Plprev
+    end
+    Pl, nothing
+end
+
+# Required due to a bug in Krylov.jl: https://github.com/JuliaSmoothOptimizers/Krylov.jl/pull/477
+# Base.eltype(::IncompleteLU.ILUFactorization{Tv, Ti}) where {Tv, Ti} = Tv
 
 export Config, Solver, Results, Logging, Toml
 export algorithm,
@@ -318,7 +344,18 @@ function algorithm(solver::Solver; u0 = [])::OrdinaryDiffEqAlgorithm
         kwargs[:autodiff] = get_ad_type(solver)
     end
 
-    algotype(; kwargs...)
+    # kwargs[:linsolve] = MKLLUFactorization()
+    # kwargs[:linsolve] = KrylovJL_GMRES()
+    # kwargs[:precs] = incompletelu
+    # kwargs[:concrete_jac] = true
+
+    algotype(;
+        # precs = incompletelu,
+        linsolve = KrylovJL_GMRES(; atol = 1e-8, rtol = 1e-8),
+        precs = algebraicmultigrid,
+        concrete_jac = true,
+        kwargs...,
+    )
 end
 
 "Convert the saveat Float64 from our Config to SciML's saveat"
