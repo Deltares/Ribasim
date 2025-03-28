@@ -13,7 +13,7 @@ const SolverStats = @NamedTuple{
 }
 
 # LinkType.flow and NodeType.FlowBoundary
-@enumx LinkType flow control junction none
+@enumx LinkType flow control none
 @eval @enumx NodeType $(config.nodetypes...)
 @enumx ContinuousControlType None Continuous PID
 @enumx Substance Continuity = 1 Initial = 2 LevelBoundary = 3 FlowBoundary = 4 UserDemand =
@@ -909,11 +909,10 @@ end
 The metadata of the graph (the fields of the NamedTuple) can be accessed
     e.g. using graph[].flow.
 node_ids: mapping subnetwork ID -> node IDs in that subnetwork
-links_source: mapping subnetwork ID -> metadata of allocation
-    source links in that subnetwork
-flow_links: The metadata of all flow links
-    of the flow over that link
 saveat: The time interval between saves of output data (storage, flow, ...)
+internal_flow_links: The metadata of the flow links used in the core without any Junctions.
+external_flow_links: The metadata of all flow links including those with Junctions.
+flow_link_map: A sparse matrix mapping internal_flow_ids to external_flow_ids.
 """
 const ModelGraph = MetaGraph{
     Int64,
@@ -923,10 +922,10 @@ const ModelGraph = MetaGraph{
     LinkMetadata,
     @NamedTuple{
         node_ids::Dict{Int32, Set{NodeID}},
-        flow_links::Vector{LinkMetadata},
         saveat::Float64,
-        junction_links::Vector{LinkMetadata},
-        junction_map::SparseMatrixCSC{Bool, Int32},
+        internal_flow_links::Vector{LinkMetadata},
+        external_flow_links::Vector{LinkMetadata},
+        flow_link_map::SparseMatrixCSC{Bool, Int32},
     },
     Returns{Float64},
     Float64,

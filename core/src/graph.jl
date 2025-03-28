@@ -31,8 +31,8 @@ function create_graph(db::DB, config::Config)::MetaGraph
 
     # The metadata of the flow links in the order in which they are in the input
     # and will be in the output
-    flow_links = LinkMetadata[]
-    junction_links = LinkMetadata[]
+    internal_flow_links = LinkMetadata[]
+    external_flow_links = LinkMetadata[]
 
     # Dictionary from flow link to index in flow vector
     graph = MetaGraph(
@@ -64,6 +64,8 @@ function create_graph(db::DB, config::Config)::MetaGraph
     end
 
     errors = false
+    new_link_id = 0
+
     for (; link_id, from_node_type, from_node_id, to_node_type, to_node_id, link_type) in
         link_rows
         try
@@ -78,9 +80,9 @@ function create_graph(db::DB, config::Config)::MetaGraph
             LinkMetadata(; id = link_id, type = link_type, link = (id_src, id_dst))
         if link_type == LinkType.flow
             if id_src.type != NodeType.Junction && id_dst.type != NodeType.Junction
-                push!(flow_links, link_metadata)
+                push!(internal_flow_links, link_metadata)
             end
-            push!(junction_links, link_metadata)
+            push!(external_flow_links, link_metadata)
         end
         if haskey(graph, id_src, id_dst)
             errors = true
@@ -90,14 +92,17 @@ function create_graph(db::DB, config::Config)::MetaGraph
             errors = true
             @error "Invalid link: the opposite link already exists (this is only allowed for UserDemand)." link_id id_src id_dst
         end
+        new_link_id = max(link_id, new_link_id)
         graph[id_src, id_dst] = link_metadata
     end
 
     # Setup sparse matrix for junctions mapping
-    flow_link_ids = [flow_link.id for flow_link in flow_links]
+    flow_link_ids = [flow_link.id for flow_link in internal_flow_links]
     I, J = flow_link_ids, copy(flow_link_ids)
-    mapping = Dict{Int32, Vector{Int32}}()
-    current_link_id = maximum(flow_link_ids) + 1
+
+    # Map internal (simplified) link IDs to external (with junctions) link IDs
+    link_mapping = Dict{Int32, Vector{Int32}}()
+    new_link_id += 1
 
     # Remove junctions by iteratively simplifying from IN--J--OUT to IN--OUT
     for junction_id in junctions
@@ -105,36 +110,35 @@ function create_graph(db::DB, config::Config)::MetaGraph
             out_nb in collect(outneighbor_labels(graph, junction_id))
 
             link_id = graph[in_nb, junction_id].id
-            edge_ids = get(mapping, link_id, [link_id])
+            external_link_ids = get(link_mapping, link_id, [link_id])
 
             link_id = graph[junction_id, out_nb].id
-            append!(edge_ids, get(mapping, link_id, [link_id]))
+            append!(external_link_ids, get(link_mapping, link_id, [link_id]))
 
             link_metadata = LinkMetadata(;
-                id = current_link_id,
+                id = new_link_id,
                 type = LinkType.flow,
                 link = (in_nb, out_nb),
             )
 
             # Create new flow link when no Junctions remain
             if in_nb.type != NodeType.Junction && out_nb.type != NodeType.Junction
-                # TODO Validate this new connection
-                for edge_id in edge_ids
-                    push!(I, current_link_id)
-                    push!(J, edge_id)
+                for external_link_id in external_link_ids
+                    push!(I, new_link_id)
+                    push!(J, external_link_id)
                 end
-                push!(flow_links, link_metadata)
+                push!(internal_flow_links, link_metadata)
             end
 
-            mapping[current_link_id] = edge_ids
-            current_link_id += 1
+            link_mapping[new_link_id] = external_link_ids
+            new_link_id += 1
             graph[in_nb, out_nb] = link_metadata
         end
         # Will also remove the edges
         rem_vertex!(graph, code_for(graph, junction_id))
     end
 
-    junction_map = sparse(I, J, true)
+    flow_link_map = sparse(I, J, true)
 
     if errors
         error("Invalid links found")
@@ -144,8 +148,13 @@ function create_graph(db::DB, config::Config)::MetaGraph
         error("Incomplete connectivity in subnetwork")
     end
 
-    graph_data =
-        (; node_ids, flow_links, config.solver.saveat, junction_links, junction_map)
+    graph_data = (;
+        node_ids,
+        config.solver.saveat,
+        internal_flow_links,
+        external_flow_links,
+        flow_link_map,
+    )
     @reset graph.graph_data = graph_data
 
     return graph

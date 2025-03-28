@@ -4,8 +4,14 @@
 # "Basin": ["LinearResistance"] means that the downstream of basin can be LinearResistance only
 node_type_connectivity: dict[str, list[str]] = {
     "Junction": [
+        "LinearResistance",
+        "UserDemand",
         "Junction",
+        "Outlet",
         "Basin",
+        "TabulatedRatingCurve",
+        "ManningResistance",
+        "Pump",
     ],
     "PidControl": [
         "Outlet",

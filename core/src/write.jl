@@ -218,13 +218,13 @@ function flow_table(
     (; p) = integrator
     (; p_non_diff) = p
     (; graph) = p_non_diff
-    (; flow_links, junction_links, junction_map) = graph[]
+    (; internal_flow_links, external_flow_links, flow_link_map) = graph[]
 
     from_node_id = Int32[]
     to_node_id = Int32[]
     unique_link_ids_flow = Union{Int32, Missing}[]
 
-    for flow_link in junction_links
+    for flow_link in external_flow_links
         push!(from_node_id, flow_link.link[1].value)
         push!(to_node_id, flow_link.link[2].value)
         push!(unique_link_ids_flow, flow_link.id)
@@ -235,10 +235,10 @@ function flow_table(
     flow_rate = zeros(nflow * ntsteps)
 
     flow_link_mapping = Vector{Tuple{NodeID, NodeID}}[]
-    for flow_link in junction_links
-        simple_link_ids = findall(junction_map[:, flow_link.id])
-        simple_links = filter(x -> x.id in simple_link_ids, flow_links)
-        push!(flow_link_mapping, [simple_link.link for simple_link in simple_links])
+    for junction_link in external_flow_links
+        internal_link_ids = findall(flow_link_map[:, junction_link.id])
+        internal_links = filter(x -> x.id in internal_link_ids, internal_flow_links)
+        push!(flow_link_mapping, [internal_link.link for internal_link in internal_links])
     end
 
     for (i, links) in enumerate(flow_link_mapping)

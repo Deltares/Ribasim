@@ -13,7 +13,16 @@ neighbortypes(::Val{:basin}) = Set((
     :user_demand,
 ))
 neighbortypes(::Val{:terminal}) = Set{Symbol}()
-neighbortypes(::Val{:junction}) = Set((:basin, :junction))
+neighbortypes(::Val{:junction}) = Set((
+    :basin,
+    :junction,
+    :linear_resistance,
+    :tabulated_rating_curve,
+    :manning_resistance,
+    :pump,
+    :outlet,
+    :user_demand,
+))
 neighbortypes(::Val{:flow_boundary}) = Set((:basin, :terminal, :level_boundary))
 neighbortypes(::Val{:level_boundary}) =
     Set((:linear_resistance, :pump, :outlet, :tabulated_rating_curve))
