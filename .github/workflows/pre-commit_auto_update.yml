@@ -19,6 +19,7 @@ jobs:
       - name: Run pre-commit on all files
         run: |
           pixi run pre-commit
+        continue-on-error: true
       - uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.CI_PR_PAT }}
