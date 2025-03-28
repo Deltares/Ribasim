@@ -773,7 +773,7 @@ relaxed_root(x::GradientTracer, threshold::Real) = x
 get_level_from_storage(basin::Basin, state_idx::Int, storage::GradientTracer) = storage
 
 @kwdef struct MonitoredBackTracking{B, V}
-    linesearch::B = BackTracking()
+    linesearch::B = BackTracking(; iterations = 10)
     dz_tmp::V = []
     z_tmp::V = []
 end
@@ -824,17 +824,22 @@ function OrdinaryDiffEqNonlinearSolve.relax!(
     # Store step before relaxation
     @. dz_tmp = dz
 
-    # Apply relaxation and measure the residual change
-    @. z_tmp = nlsolver.z + dz
-    resid_before = residual(z_tmp, integrator, nlsolver, f)
-    relax!(dz, nlsolver, integrator, f, linesearch)
-    @. z_tmp = nlsolver.z + dz
-    resid_after = residual(z_tmp, integrator, nlsolver, f)
+    try
+        # Apply relaxation and measure the residual change
+        @. z_tmp = nlsolver.z + dz
+        resid_before = residual(z_tmp, integrator, nlsolver, f)
+        relax!(dz, nlsolver, integrator, f, linesearch)
+        @. z_tmp = nlsolver.z + dz
+        resid_after = residual(z_tmp, integrator, nlsolver, f)
 
-    # If the residual increased due to the relaxation, reject it
-    if resid_after > resid_before
+        # If the residual increased due to the relaxation, reject it
+        if resid_after > resid_before
+            @. dz = dz_tmp
+        end
+    catch # LineSearchException
         @. dz = dz_tmp
     end
+
     return dz
 end
 
