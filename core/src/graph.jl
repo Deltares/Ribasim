@@ -132,7 +132,12 @@ function create_graph(db::DB, config::Config)::MetaGraph
 
             link_mapping[new_link_id] = external_link_ids
             new_link_id += 1
-            graph[in_nb, out_nb] = link_metadata
+            if haskey(graph, in_nb, out_nb)
+                errors = true
+                @error "Duplicate link: Junction links form cycle." in_nb out_nb external_link_ids
+            else
+                graph[in_nb, out_nb] = link_metadata
+            end
         end
         # Will also remove the edges
         rem_vertex!(graph, code_for(graph, junction_id))
