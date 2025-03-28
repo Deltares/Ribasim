@@ -1065,9 +1065,9 @@ def allocation_training_model():
         ],
     )
 
-    # Confluence
+    # Junction
     conf = model.basin.add(
-        Node(3, Point(-1.5, -1), subnetwork_id=1, name="confluence"),
+        Node(3, Point(-1.5, -1), subnetwork_id=1, name="junction"),
         [
             basin.Profile(area=[672000, 5600000], level=[0, 6]),
             basin.State(level=[4]),

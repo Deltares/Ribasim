@@ -47,8 +47,9 @@ for sv in nodeschemas
     node, kind = nodetype(sv)
     push!(nodekinds[node], kind)
 end
-# Terminal has no tables
+# Terminal and Junction have no tables
 nodekinds[:Terminal] = Symbol[]
+nodekinds[:Junction] = Symbol[]
 
 "Convert a string from CamelCase to snake_case."
 function snake_case(str::AbstractString)::String

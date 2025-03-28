@@ -218,30 +218,36 @@ function flow_table(
     (; p) = integrator
     (; p_non_diff) = p
     (; graph) = p_non_diff
-    (; flow_links) = graph[]
+    (; internal_flow_links, external_flow_links, flow_link_map) = graph[]
 
     from_node_id = Int32[]
     to_node_id = Int32[]
     unique_link_ids_flow = Union{Int32, Missing}[]
 
-    flow_link_ids = [flow_link.link for flow_link in flow_links]
-
-    for (from_id, to_id) in flow_link_ids
-        push!(from_node_id, from_id.value)
-        push!(to_node_id, to_id.value)
-        push!(unique_link_ids_flow, graph[from_id, to_id].id)
+    for flow_link in external_flow_links
+        push!(from_node_id, flow_link.link[1].value)
+        push!(to_node_id, flow_link.link[2].value)
+        push!(unique_link_ids_flow, flow_link.id)
     end
 
     nflow = length(unique_link_ids_flow)
     ntsteps = length(t)
-
     flow_rate = zeros(nflow * ntsteps)
 
-    for (i, link) in enumerate(flow_link_ids)
+    flow_link_mapping = Vector{Tuple{NodeID, NodeID}}[]
+    for junction_link in external_flow_links
+        internal_link_ids = findall(flow_link_map[:, junction_link.id])
+        internal_links = filter(x -> x.id in internal_link_ids, internal_flow_links)
+        push!(flow_link_mapping, [internal_link.link for internal_link in internal_links])
+    end
+
+    for (i, links) in enumerate(flow_link_mapping)
         for (j, cvec) in enumerate(saveval)
             (; flow, flow_boundary) = cvec
-            flow_rate[i + (j - 1) * nflow] =
-                get_flow(flow, p_non_diff, 0.0, link; boundary_flow = flow_boundary)
+            for link in links
+                f = get_flow(flow, p_non_diff, 0.0, link; boundary_flow = flow_boundary)
+                flow_rate[i + (j - 1) * nflow] += f
+            end
         end
     end
 

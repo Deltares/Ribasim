@@ -323,6 +323,9 @@ class MultiNodeModel(NodeModel):
 class Terminal(MultiNodeModel): ...
 
 
+class Junction(MultiNodeModel): ...
+
+
 class PidControl(MultiNodeModel):
     static: TableModel[PidControlStaticSchema] = Field(
         default_factory=TableModel[PidControlStaticSchema],

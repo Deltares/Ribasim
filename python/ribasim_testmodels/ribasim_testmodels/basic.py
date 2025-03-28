@@ -93,7 +93,7 @@ def basic_model() -> Model:
     # Setup TabulatedRatingCurve
     q = 10 / 86400  # 10 m³/day
     model.tabulated_rating_curve.add(
-        Node(8, Point(4.0, 0.0)),
+        Node(8, Point(3.0, 0.0)),
         [
             tabulated_rating_curve.Static(
                 level=[0.0, 1.0],
@@ -158,6 +158,9 @@ def basic_model() -> Model:
         ],
     )
 
+    # Setup junction
+    model.junction.add(Node(13, Point(4.0, 0.0)))
+
     # Setup terminal
     model.terminal.add(Node(14, Point(3.0, -2.0)))
 
@@ -178,8 +181,9 @@ def basic_model() -> Model:
     )
     model.link.add(model.tabulated_rating_curve[5], model.basin[6])
     model.link.add(model.basin[6], model.pump[7])
-    model.link.add(model.tabulated_rating_curve[8], model.basin[9])
-    model.link.add(model.pump[7], model.basin[9])
+    model.link.add(model.tabulated_rating_curve[8], model.junction[13])
+    model.link.add(model.pump[7], model.junction[13])
+    model.link.add(model.junction[13], model.basin[9])
     model.link.add(model.basin[9], model.linear_resistance[10])
     model.link.add(
         model.level_boundary[11],

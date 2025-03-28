@@ -31,6 +31,7 @@ from ribasim.config import (
     Experimental,
     FlowBoundary,
     FlowDemand,
+    Junction,
     LevelBoundary,
     LevelDemand,
     LinearResistance,
@@ -92,6 +93,7 @@ class Model(FileModel):
     experimental: Experimental = Field(default_factory=Experimental)
 
     basin: Basin = Field(default_factory=Basin)
+    junction: Junction = Field(default_factory=Junction)
     continuous_control: ContinuousControl = Field(default_factory=ContinuousControl)
     discrete_control: DiscreteControl = Field(default_factory=DiscreteControl)
     flow_boundary: FlowBoundary = Field(default_factory=FlowBoundary)

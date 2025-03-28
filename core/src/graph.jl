@@ -31,7 +31,9 @@ function create_graph(db::DB, config::Config)::MetaGraph
 
     # The metadata of the flow links in the order in which they are in the input
     # and will be in the output
-    flow_links = LinkMetadata[]
+    internal_flow_links = LinkMetadata[]
+    external_flow_links = LinkMetadata[]
+
     # Dictionary from flow link to index in flow vector
     graph = MetaGraph(
         DiGraph();
@@ -41,6 +43,10 @@ function create_graph(db::DB, config::Config)::MetaGraph
         graph_data = nothing,
         weight_function = Returns(1.0),
     )
+
+    # Junctions to be removed
+    junctions = NodeID[]
+
     for row in node_rows
         node_id = NodeID(row.node_type, row.node_id, node_table)
         # Process allocation network ID
@@ -53,10 +59,13 @@ function create_graph(db::DB, config::Config)::MetaGraph
             end
             push!(node_ids[subnetwork_id], node_id)
         end
+        node_id.type == NodeType.Junction && push!(junctions, node_id)
         graph[node_id] = NodeMetadata(Symbol(snake_case(row.node_type)), subnetwork_id)
     end
 
     errors = false
+    new_link_id = 0
+
     for (; link_id, from_node_type, from_node_id, to_node_type, to_node_id, link_type) in
         link_rows
         try
@@ -70,7 +79,10 @@ function create_graph(db::DB, config::Config)::MetaGraph
         link_metadata =
             LinkMetadata(; id = link_id, type = link_type, link = (id_src, id_dst))
         if link_type == LinkType.flow
-            push!(flow_links, link_metadata)
+            if id_src.type != NodeType.Junction && id_dst.type != NodeType.Junction
+                push!(internal_flow_links, link_metadata)
+            end
+            push!(external_flow_links, link_metadata)
         end
         if haskey(graph, id_src, id_dst)
             errors = true
@@ -80,8 +92,59 @@ function create_graph(db::DB, config::Config)::MetaGraph
             errors = true
             @error "Invalid link: the opposite link already exists (this is only allowed for UserDemand)." link_id id_src id_dst
         end
+        new_link_id = max(link_id, new_link_id)
         graph[id_src, id_dst] = link_metadata
     end
+
+    # Setup sparse matrix for junctions mapping
+    flow_link_ids = [flow_link.id for flow_link in internal_flow_links]
+    I, J = flow_link_ids, copy(flow_link_ids)
+
+    # Map internal (simplified) link IDs to external (with junctions) link IDs
+    link_mapping = Dict{Int32, Vector{Int32}}()
+    new_link_id += 1
+
+    # Remove junctions by iteratively simplifying from IN--J--OUT to IN--OUT
+    for junction_id in junctions
+        for in_nb in collect(inneighbor_labels(graph, junction_id)),
+            out_nb in collect(outneighbor_labels(graph, junction_id))
+
+            link_id = graph[in_nb, junction_id].id
+            external_link_ids = get(link_mapping, link_id, [link_id])
+
+            link_id = graph[junction_id, out_nb].id
+            append!(external_link_ids, get(link_mapping, link_id, [link_id]))
+
+            link_metadata = LinkMetadata(;
+                id = new_link_id,
+                type = LinkType.flow,
+                link = (in_nb, out_nb),
+            )
+
+            # Create new flow link when no Junctions remain
+            if in_nb.type != NodeType.Junction && out_nb.type != NodeType.Junction
+                for external_link_id in external_link_ids
+                    push!(I, new_link_id)
+                    push!(J, external_link_id)
+                end
+                push!(internal_flow_links, link_metadata)
+            end
+
+            link_mapping[new_link_id] = external_link_ids
+            new_link_id += 1
+            if haskey(graph, in_nb, out_nb)
+                errors = true
+                @error "Duplicate link: Junction links form cycle." in_nb out_nb external_link_ids
+            else
+                graph[in_nb, out_nb] = link_metadata
+            end
+        end
+        # Will also remove the edges
+        rem_vertex!(graph, code_for(graph, junction_id))
+    end
+
+    flow_link_map = sparse(I, J, true)
+
     if errors
         error("Invalid links found")
     end
@@ -90,7 +153,13 @@ function create_graph(db::DB, config::Config)::MetaGraph
         error("Incomplete connectivity in subnetwork")
     end
 
-    graph_data = (; node_ids, flow_links, config.solver.saveat)
+    graph_data = (;
+        node_ids,
+        config.solver.saveat,
+        internal_flow_links,
+        external_flow_links,
+        flow_link_map,
+    )
     @reset graph.graph_data = graph_data
 
     return graph

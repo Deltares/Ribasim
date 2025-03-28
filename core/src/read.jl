@@ -825,9 +825,14 @@ function Outlet(db::DB, config::Config, graph::MetaGraph)::Outlet
     )
 end
 
-function Terminal(db::DB, config::Config)::Terminal
+function Terminal(db::DB, _::Config)::Terminal
     node_id = get_node_ids(db, NodeType.Terminal)
     return Terminal(node_id)
+end
+
+function Junction(db::DB, _::Config)::Junction
+    node_id = get_node_ids(db, NodeType.Junction)
+    return Junction(; node_id)
 end
 
 function ConcentrationData(
@@ -1787,6 +1792,7 @@ function Parameters(db::DB, config::Config)::Parameters
         pump = Pump(db, config, graph),
         outlet = Outlet(db, config, graph),
         terminal = Terminal(db, config),
+        junction = Junction(db, config),
         discrete_control = DiscreteControl(db, config, graph),
         continuous_control = ContinuousControl(db, config),
         pid_control = PidControl(db, config),

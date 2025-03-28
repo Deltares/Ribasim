@@ -59,6 +59,10 @@ from ribasim_testmodels.invalid import (
     invalid_qh_model,
     invalid_unstable_model,
 )
+from ribasim_testmodels.junction import (
+    junction_chained,
+    junction_combined,
+)
 from ribasim_testmodels.pid_control import (
     discrete_control_of_pid_control_model,
     pid_control_model,
@@ -95,6 +99,8 @@ __all__ = [
     "invalid_priorities_model",
     "invalid_qh_model",
     "invalid_unstable_model",
+    "junction_combined",
+    "junction_chained",
     "leaky_bucket_model",
     "level_boundary_condition_model",
     "level_demand_model",

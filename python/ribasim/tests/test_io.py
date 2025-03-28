@@ -216,10 +216,10 @@ def test_node_autoincrement_existing_model(basic, tmp_path):
     nmodel = Model.read(tmp_path / "ribasim.toml")
 
     assert nmodel._used_node_ids.max_node_id == 17
-    assert nmodel._used_node_ids.node_ids == set(range(1, 18)) - {13}
+    assert nmodel._used_node_ids.node_ids == set(range(1, 18))
 
-    assert nmodel.link._used_link_ids.max_node_id == 16
-    assert nmodel.link._used_link_ids.node_ids == set(range(1, 17))
+    assert nmodel.link._used_link_ids.max_node_id == 17
+    assert nmodel.link._used_link_ids.node_ids == set(range(1, 18))
 
 
 def test_node_empty_geometry():
