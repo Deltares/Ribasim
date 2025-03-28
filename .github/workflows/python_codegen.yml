@@ -1,7 +1,7 @@
 name: Python Codegen
 on:
   push:
-    branches: [main, update/pixi-lock]
+    branches: [main]
     paths-ignore: [".teamcity/**"]
     tags: ["*"]
   pull_request:
