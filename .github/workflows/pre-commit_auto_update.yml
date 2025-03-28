@@ -9,9 +9,20 @@ jobs:
   auto-update:
     runs-on: ubuntu-latest
     steps:
-      - uses: browniebroke/pre-commit-autoupdate-action@v1
-        secrets:
-          gh_pat: ${{ secrets.CI_PR_PAT }}
+      - uses: actions/checkout@v4
+      - uses: prefix-dev/setup-pixi@v0.8.3
         with:
-          pull_request_title: Update pre-commit hooks
-          commit_message: Update pre-commit hooks
+          pixi-version: "latest"
+      - name: Update pre-commit hooks
+        run: |
+          pixi run pre-commit-autoupdate
+      - name: Run pre-commit on all files
+        run: |
+          pixi run pre-commit
+      - uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.CI_PR_PAT }}
+          branch: update/pre-commit
+          title: Update pre-commit hooks
+          commit-message: "Update pre-commit hooks"
+          author: "GitHub <noreply@github.com>"

@@ -58,6 +58,7 @@ docs = { depends-on = ["quarto-preview"] }
 mypy-ribasim-python = "mypy python/ribasim/ribasim"
 mypy-ribasim-testmodels = "mypy python/ribasim_testmodels/ribasim_testmodels"
 mypy-ribasim-api = "mypy python/ribasim_api/ribasim_api"
+pre-commit-autoupdate = "pre-commit autoupdate"
 pre-commit = "pre-commit run --all-files"
 lint = { depends-on = [
     "pre-commit",
