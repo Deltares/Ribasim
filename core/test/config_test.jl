@@ -32,7 +32,7 @@
     @testset "docs" begin
         config = Ribasim.Config(normpath(@__DIR__, "docs.toml"))
         @test config isa Ribasim.Config
-        @test !config.solver.autodiff
+        @test config.solver.autodiff
     end
 end
 
