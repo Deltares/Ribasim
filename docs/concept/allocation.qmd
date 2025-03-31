@@ -165,14 +165,16 @@ $$
 
 The error between the flows and user demands is denoted by $E_{\text{user demand}}$, where
 $$
-    E_{\text{user demand}} = \sum_{(i,j)\in E_S\;:\; i\in U_S} d_j^p(t)\left(1 - \frac{F_{ij}}{d_j^p(t)}\right)^2
+    E_{\text{user demand}} = \sum_{(i,j)\in E_S\;:\; i\in U_S} \left|F_{ij} - fd_j^p(t)\right|,
 $$
+
+which is implemented using auxiliary variables.
 
 :::{.callout-note}
 When performing main network allocation, the connections to subnetworks are also interpreted as UserDemand nodes with demands determined by subnetwork demand collection.
 :::
 
-This type of objective cares about the fraction of the demand allocated, and will lead to an equal fraction of all demands allocated when possible. For a discussion on this see [here](https://github.com/Deltares/Ribasim/pull/1366).
+This type of objective cares about the fraction of the demand allocated, and will lead to an equal fraction of all demands allocated when possible.
 
 Likewise, the error of level demands from basins is the squared relative difference between flows consumed by basins and basin demands.
 $$
