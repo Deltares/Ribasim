@@ -131,9 +131,9 @@ function formulate_storage!(
     t::Number,
     flow_boundary::FlowBoundary,
 )
-    for (flow_rate, outflow_links, active, cumulative_flow) in zip(
+    for (flow_rate, outflow_link, active, cumulative_flow) in zip(
         flow_boundary.flow_rate,
-        flow_boundary.outflow_links,
+        flow_boundary.outflow_link,
         flow_boundary.active,
         flow_boundary.cumulative_flow,
     )
@@ -141,11 +141,9 @@ function formulate_storage!(
         if active
             volume += integral(flow_rate, tprev, t)
         end
-        for outflow_link in outflow_links
-            outflow_id = outflow_link.link[2]
-            if outflow_id.type == NodeType.Basin
-                current_storage[outflow_id.idx] += volume
-            end
+        outflow_id = outflow_link.link[2]
+        if outflow_id.type == NodeType.Basin
+            current_storage[outflow_id.idx] += volume
         end
     end
 end
