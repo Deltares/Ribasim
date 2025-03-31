@@ -133,14 +133,14 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
     end
 
     # Exact boundary flow over time step
-    for (id, flow_rate, active, link) in zip(
+    for (id, flow_rate, active, outflow_link) in zip(
         flow_boundary.node_id,
         flow_boundary.flow_rate,
         flow_boundary.active,
-        flow_boundary.outflow_links,
+        flow_boundary.outflow_link,
     )
         if active
-            outflow_id = link[1].link[2]
+            outflow_id = outflow_link.link[2]
             volume = integral(flow_rate, tprev, t)
             flow_boundary.cumulative_flow[id.idx] += volume
             flow_boundary.cumulative_flow_saveat[id.idx] += volume
@@ -206,14 +206,14 @@ function update_concentrations!(u, t, integrator)::Nothing
     end
 
     # Exact boundary flow over time step
-    for (id, flow_rate, active, link) in zip(
+    for (id, flow_rate, active, outflow_link) in zip(
         flow_boundary.node_id,
         flow_boundary.flow_rate,
         flow_boundary.active,
-        flow_boundary.outflow_links,
+        flow_boundary.outflow_link,
     )
         if active
-            outflow_id = link[1].link[2]
+            outflow_id = outflow_link.link[2]
             volume = integral(flow_rate, tprev, t)
             @views mass[outflow_id.idx, :] .+=
                 flow_boundary.concentration[id.idx, :] .* volume
@@ -352,13 +352,11 @@ function save_flow(u, t, integrator)
     flow_boundary_mean = copy(flow_boundary.cumulative_flow_saveat) ./ Δt
     flow_boundary.cumulative_flow_saveat .= 0.0
 
-    for (outflow_links, id) in zip(flow_boundary.outflow_links, flow_boundary.node_id)
+    for (outflow_link, id) in zip(flow_boundary.outflow_link, flow_boundary.node_id)
         flow = flow_boundary_mean[id.idx]
-        for outflow_link in outflow_links
-            outflow_id = outflow_link.link[2]
-            if outflow_id.type == NodeType.Basin
-                inflow_mean[outflow_id.idx] += flow
-            end
+        outflow_id = outflow_link.link[2]
+        if outflow_id.type == NodeType.Basin
+            inflow_mean[outflow_id.idx] += flow
         end
     end
 

@@ -466,8 +466,6 @@ end
 
 inflow_link(graph, node_id)::LinkMetadata = graph[inflow_id(graph, node_id), node_id]
 outflow_link(graph, node_id)::LinkMetadata = graph[node_id, outflow_id(graph, node_id)]
-outflow_links(graph, node_id)::Vector{LinkMetadata} =
-    [graph[node_id, outflow_id] for outflow_id in outflow_ids(graph, node_id)]
 
 """
 We want to perform allocation at t = 0 but there are no mean flows available
