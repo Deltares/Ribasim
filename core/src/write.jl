@@ -241,9 +241,9 @@ function flow_table(
         push!(flow_link_mapping, [internal_link.link for internal_link in internal_links])
     end
 
-    for (i, links) in enumerate(flow_link_mapping)
-        for (j, cvec) in enumerate(saveval)
-            (; flow, flow_boundary) = cvec
+    for (j, cvec) in enumerate(saveval)
+        (; flow, flow_boundary) = cvec
+        for (i, links) in enumerate(flow_link_mapping)
             for link in links
                 f = get_flow(flow, p_non_diff, 0.0, link; boundary_flow = flow_boundary)
                 flow_rate[i + (j - 1) * nflow] += f

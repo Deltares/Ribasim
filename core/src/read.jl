@@ -825,12 +825,12 @@ function Outlet(db::DB, config::Config, graph::MetaGraph)::Outlet
     )
 end
 
-function Terminal(db::DB, _::Config)::Terminal
+function Terminal(db::DB)::Terminal
     node_id = get_node_ids(db, NodeType.Terminal)
     return Terminal(node_id)
 end
 
-function Junction(db::DB, _::Config)::Junction
+function Junction(db::DB)::Junction
     node_id = get_node_ids(db, NodeType.Junction)
     return Junction(; node_id)
 end
@@ -1791,8 +1791,8 @@ function Parameters(db::DB, config::Config)::Parameters
         flow_boundary = FlowBoundary(db, config, graph),
         pump = Pump(db, config, graph),
         outlet = Outlet(db, config, graph),
-        terminal = Terminal(db, config),
-        junction = Junction(db, config),
+        terminal = Terminal(db),
+        junction = Junction(db),
         discrete_control = DiscreteControl(db, config, graph),
         continuous_control = ContinuousControl(db, config),
         pid_control = PidControl(db, config),

@@ -2,8 +2,7 @@
 title: "Junction"
 ---
 
-A Junction is a node that does nothing, but can be used to simplify networks that would otherwise result in many overlapping edges.
-It can act as a confluence and/or bifurcation.
+A Junction node allows explicitly representing confluences and bifurcations in the network. It doesn't introduce new behavior but makes it easier to make the network layout recognizable.
 
 Junctions can connect to other Junctions, but are not allowed to form cycles. Note that a confluence Junction followed by bifurcation Junction is generally invalid, as it will connect a connector node with multiple basins.
 

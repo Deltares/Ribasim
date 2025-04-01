@@ -31,10 +31,8 @@ function create_graph(db::DB, config::Config)::MetaGraph
 
     # The metadata of the flow links in the order in which they are in the input
     # and will be in the output
-    internal_flow_links = LinkMetadata[]
     external_flow_links = LinkMetadata[]
 
-    # Dictionary from flow link to index in flow vector
     graph = MetaGraph(
         DiGraph();
         label_type = NodeID,
@@ -43,9 +41,6 @@ function create_graph(db::DB, config::Config)::MetaGraph
         graph_data = nothing,
         weight_function = Returns(1.0),
     )
-
-    # Junctions to be removed
-    junctions = NodeID[]
 
     for row in node_rows
         node_id = NodeID(row.node_type, row.node_id, node_table)
@@ -59,12 +54,11 @@ function create_graph(db::DB, config::Config)::MetaGraph
             end
             push!(node_ids[subnetwork_id], node_id)
         end
-        node_id.type == NodeType.Junction && push!(junctions, node_id)
         graph[node_id] = NodeMetadata(Symbol(snake_case(row.node_type)), subnetwork_id)
     end
 
     errors = false
-    new_link_id = 0
+    max_link_id = 0
 
     for (; link_id, from_node_type, from_node_id, to_node_type, to_node_id, link_type) in
         link_rows
@@ -79,9 +73,6 @@ function create_graph(db::DB, config::Config)::MetaGraph
         link_metadata =
             LinkMetadata(; id = link_id, type = link_type, link = (id_src, id_dst))
         if link_type == LinkType.flow
-            if id_src.type != NodeType.Junction && id_dst.type != NodeType.Junction
-                push!(internal_flow_links, link_metadata)
-            end
             push!(external_flow_links, link_metadata)
         end
         if haskey(graph, id_src, id_dst)
@@ -92,8 +83,48 @@ function create_graph(db::DB, config::Config)::MetaGraph
             errors = true
             @error "Invalid link: the opposite link already exists (this is only allowed for UserDemand)." link_id id_src id_dst
         end
-        new_link_id = max(link_id, new_link_id)
+        max_link_id = max(link_id, max_link_id)
         graph[id_src, id_dst] = link_metadata
+    end
+
+    # Remove junctions and create new (internal) flow links
+    flow_link_map, internal_flow_links, jerrors =
+        simplify_graph!(graph, db, external_flow_links, max_link_id + 1)
+    errors |= jerrors
+
+    if errors
+        error("Invalid links found")
+    end
+
+    if incomplete_subnetwork(graph, node_ids)
+        error("Incomplete connectivity in subnetwork")
+    end
+
+    graph_data = (;
+        node_ids,
+        config.solver.saveat,
+        internal_flow_links,
+        external_flow_links,
+        flow_link_map,
+    )
+    @reset graph.graph_data = graph_data
+
+    return graph
+end
+
+function simplify_graph!(
+    graph::MetaGraph,
+    db::DB,
+    external_flow_links::Vector{LinkMetadata},
+    new_link_id::Int,
+)
+    internal_flow_links = LinkMetadata[]
+    for link_metadata in external_flow_links
+        id_src = link_metadata.link[1]
+        id_dst = link_metadata.link[2]
+        if id_src.type != NodeType.Junction && id_dst.type != NodeType.Junction
+            push!(internal_flow_links, link_metadata)
+        end
     end
 
     # Setup sparse matrix for junctions mapping
@@ -102,10 +133,10 @@ function create_graph(db::DB, config::Config)::MetaGraph
 
     # Map internal (simplified) link IDs to external (with junctions) link IDs
     link_mapping = Dict{Int32, Vector{Int32}}()
-    new_link_id += 1
+    errors = false
 
     # Remove junctions by iteratively simplifying from IN--J--OUT to IN--OUT
-    for junction_id in junctions
+    for junction_id in get_node_ids(db, NodeType.Junction)
         for in_nb in collect(inneighbor_labels(graph, junction_id)),
             out_nb in collect(outneighbor_labels(graph, junction_id))
 
@@ -145,24 +176,7 @@ function create_graph(db::DB, config::Config)::MetaGraph
 
     flow_link_map = sparse(I, J, true)
 
-    if errors
-        error("Invalid links found")
-    end
-
-    if incomplete_subnetwork(graph, node_ids)
-        error("Incomplete connectivity in subnetwork")
-    end
-
-    graph_data = (;
-        node_ids,
-        config.solver.saveat,
-        internal_flow_links,
-        external_flow_links,
-        flow_link_map,
-    )
-    @reset graph.graph_data = graph_data
-
-    return graph
+    return flow_link_map, internal_flow_links, errors
 end
 
 abstract type AbstractNeighbors end
