@@ -32,11 +32,9 @@ using LineSearches: BackTracking
 
 # Interface for defining and solving the ODE problem of the physical layer.
 using SciMLBase:
-    init,
-    solve!,
-    step!,
-    check_error!,
     SciMLBase,
+    init,
+    check_error!,
     successful_retcode,
     CallbackSet,
     ODEFunction,

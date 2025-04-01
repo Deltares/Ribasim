@@ -321,7 +321,7 @@ end
 
 Take Model timesteps until `t + dt` is reached exactly.
 """
-function SciMLBase.step!(model::Model, dt::Float64)::Model
+function step!(model::Model, dt::Float64)::Model
     (; config, integrator) = model
     (; t) = integrator
     # If we are at an allocation time, run allocation before the next physical
@@ -331,7 +331,7 @@ function SciMLBase.step!(model::Model, dt::Float64)::Model
     if round(ntimes) ≈ ntimes
         update_allocation!(integrator)
     end
-    step!(integrator, dt, true)
+    SciMLBase.step!(integrator, dt, true)
     return model
 end
 
@@ -340,23 +340,26 @@ end
 
 Solve a Model until the configured `endtime`.
 """
-function SciMLBase.solve!(model::Model)::Model
+function solve!(model::Model)::Model
     (; config, integrator) = model
-    (; t, sol) = integrator
-    (; tspan) = sol.prob
+    (; tspan) = integrator.sol.prob
     if config.allocation.use_allocation
         (; timestep) = config.allocation
         allocation_times = 0:timestep:(tspan[end] - timestep)
         n_allocation_times = length(allocation_times)
         for _ in 1:n_allocation_times
             update_allocation!(integrator)
-            step!(integrator, timestep, true)
+            SciMLBase.step!(integrator, timestep, true)
+        end
+        # Any possible remaining step (< allocation.timestep) after the last allocation
+        dt = tspan[end] - integrator.t
+        if dt > 0
+            update_allocation!(integrator)
+            SciMLBase.step!(integrator, dt, true)
         end
     else
-        tspan_left = tspan[end] - t
-        if tspan_left > 0
-            step!(integrator, tspan_left, true)
-        end
+        dt = tspan[end] - integrator.t
+        dt > 0 && SciMLBase.step!(integrator, dt, true)
     end
     check_error!(integrator)
     return model
