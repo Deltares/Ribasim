@@ -925,7 +925,7 @@ const ModelGraph = MetaGraph{
         saveat::Float64,
         internal_flow_links::Vector{LinkMetadata},
         external_flow_links::Vector{LinkMetadata},
-        flow_link_map::SparseMatrixCSC{Bool, Int32},
+        flow_link_map::SparseMatrixCSC{Bool, Int},
     },
     Returns{Float64},
     Float64,

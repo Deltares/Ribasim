@@ -128,8 +128,8 @@ function simplify_graph!(
     end
 
     # Setup sparse matrix for junctions mapping
-    flow_link_ids = [flow_link.id for flow_link in internal_flow_links]
-    I, J = flow_link_ids, copy(flow_link_ids)
+    internal_flow_link_ids = [flow_link.id for flow_link in internal_flow_links]
+    I, J = internal_flow_link_ids, copy(internal_flow_link_ids)
 
     # Map internal (simplified) link IDs to external (with junctions) link IDs
     link_mapping = Dict{Int32, Vector{Int32}}()
@@ -155,8 +155,8 @@ function simplify_graph!(
             # Create new flow link when no Junctions remain
             if in_nb.type != NodeType.Junction && out_nb.type != NodeType.Junction
                 for external_link_id in external_link_ids
-                    push!(I, new_link_id)
-                    push!(J, external_link_id)
+                    push!(I, external_link_id)
+                    push!(J, new_link_id)
                 end
                 push!(internal_flow_links, link_metadata)
             end
@@ -174,6 +174,11 @@ function simplify_graph!(
         rem_vertex!(graph, code_for(graph, junction_id))
     end
 
+    # Map link_ids to logical indices
+    internal_flow_link_ids = [flow_link.id for flow_link in internal_flow_links]
+    external_flow_link_ids = [flow_link.id for flow_link in external_flow_links]
+    I = findfirst.(isequal.(I), Ref(external_flow_link_ids))
+    J = findfirst.(isequal.(J), Ref(internal_flow_link_ids))
     flow_link_map = sparse(I, J, true)
 
     return flow_link_map, internal_flow_links, errors

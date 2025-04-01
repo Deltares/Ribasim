@@ -233,22 +233,19 @@ function flow_table(
     nflow = length(unique_link_ids_flow)
     ntsteps = length(t)
     flow_rate = zeros(nflow * ntsteps)
+    internal_flow_rate = zeros(length(internal_flow_links))
 
-    flow_link_mapping = Vector{Tuple{NodeID, NodeID}}[]
-    for junction_link in external_flow_links
-        internal_link_ids = findall(flow_link_map[:, junction_link.id])
-        internal_links = filter(x -> x.id in internal_link_ids, internal_flow_links)
-        push!(flow_link_mapping, [internal_link.link for internal_link in internal_links])
-    end
-
-    for (j, cvec) in enumerate(saveval)
+    for (ti, cvec) in enumerate(saveval)
         (; flow, flow_boundary) = cvec
-        for (i, links) in enumerate(flow_link_mapping)
-            for link in links
-                f = get_flow(flow, p_non_diff, 0.0, link; boundary_flow = flow_boundary)
-                flow_rate[i + (j - 1) * nflow] += f
-            end
+        for (fi, link) in enumerate(internal_flow_links)
+            internal_flow_rate[fi] =
+                get_flow(flow, p_non_diff, 0.0, link.link; boundary_flow = flow_boundary)
         end
+        mul!(
+            view(flow_rate, (1 + (ti - 1) * nflow):(ti * nflow)),
+            flow_link_map,
+            internal_flow_rate,
+        )
     end
 
     # the timestamp should represent the start of the period, not the end
