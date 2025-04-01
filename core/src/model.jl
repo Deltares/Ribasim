@@ -296,8 +296,24 @@ function Base.show(io::IO, model::Model)
     println(io, "Model(ts: $nsaved, t: $t)")
 end
 
-function SciMLBase.successful_retcode(model::Model)::Bool
-    return SciMLBase.successful_retcode(model.integrator.sol)
+"""
+    Base.success(model::Model)::Bool
+
+Returns true if the model has finished successfully.
+"""
+function Base.success(model::Model)::Bool
+    return successful_retcode(model.integrator.sol) && is_finished(model)
+end
+
+"""
+    is_finished(model::Model)::Bool
+
+Returns true if the model has reached the configured `endtime`.
+"""
+function is_finished(model::Model)::Bool
+    (; starttime, endtime) = model.config
+    t = datetime_since(model.integrator.t, starttime)
+    return t >= endtime
 end
 
 """

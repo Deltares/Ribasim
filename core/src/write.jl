@@ -6,6 +6,8 @@ Write all results to the Arrow files as specified in the model configuration.
 function write_results(model::Model)::Model
     (; config) = model
     (; results, experimental) = model.config
+    @debug "Writing results."
+
     compress = get_compressor(results)
     remove_empty_table = model.integrator.t != 0
 

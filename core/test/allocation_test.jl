@@ -40,7 +40,6 @@ end
 
 @testitem "Allocation objective" begin
     using DataFrames: DataFrame
-    using SciMLBase: successful_retcode
     using Ribasim: NodeID
     import JuMP
 
@@ -49,7 +48,7 @@ end
     @test ispath(toml_path)
 
     model = Ribasim.run(toml_path)
-    @test successful_retcode(model)
+    @test success(model)
     (; p, t) = model.integrator
     (; p_non_diff) = p
     (; user_demand, allocation) = p_non_diff
