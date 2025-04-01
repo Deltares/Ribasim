@@ -342,7 +342,8 @@ Solve a Model until the configured `endtime`.
 """
 function SciMLBase.solve!(model::Model)::Model
     (; config, integrator) = model
-    (; tspan) = integrator.sol.prob
+    (; t, sol) = integrator
+    (; tspan) = sol.prob
     if config.allocation.use_allocation
         (; timestep) = config.allocation
         allocation_times = 0:timestep:(tspan[end] - timestep)
@@ -352,7 +353,10 @@ function SciMLBase.solve!(model::Model)::Model
             step!(integrator, timestep, true)
         end
     else
-        step!(integrator, tspan[end], true)
+        tspan_left = tspan[end] - t
+        if tspan_left > 0
+            step!(integrator, tspan_left, true)
+        end
     end
     check_error!(integrator)
     return model
