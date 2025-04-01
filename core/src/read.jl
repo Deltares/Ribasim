@@ -1059,6 +1059,10 @@ function CompoundVariable(
     # Each row defines a subvariable
     for row in variables_compound_variable
         listen_node_id = NodeID(row.listen_node_id, node_ids_all)
+        if listen_node_id.type == NodeType.Junction
+            @error "Cannot listen to Junction #$(listen_node_id.value)"
+            error("Invalid `listen_node_id` for CompoundVariable #$(node_id.value).")
+        end
         # Placeholder until actual ref is known
         diff_cache_ref = DiffCacheRef()
         variable = row.variable

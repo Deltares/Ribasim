@@ -27,7 +27,7 @@ which can be for instance an average or a difference of variables. If a variable
 column               | type     | unit       | restriction
 -------------------- | -------- | ---------- | -----------
 node_id              | Int32    | -          |
-listen_node_id       | Int32    | -          |
+listen_node_id       | Int32    | -          | cannot be a Junction
 variable             | String   | -          | must be "level" or "flow_rate"
 weight               | Float64  | -          | (optional, default 1.0)
 look_ahead           | Float64  | $\text{s}$ | Only on transient boundary conditions, non-negative (optional, default 0.0).
