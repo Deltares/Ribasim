@@ -208,7 +208,7 @@ function add_variables_objective!(
         node_ids = if node_name == :user_demand
             [id for id in graph[].node_ids[subnetwork_id] if id.type == NodeType.UserDemand]
         elseif node_name == :level_demand
-            only(problem[:F_basin_in].axes)
+            [id for id in graph[].node_ids[subnetwork_id] if id.type == NodeType.Basin]
         elseif node_name == :flow_demand
             only(problem[:F_flow_buffer_in].axes)
         else # node_name == :subnetwork
@@ -482,22 +482,13 @@ function add_constraints_basin_profile!(
     problem[:basin_profile_storage] = JuMP.@constraint(
         problem,
         [id = node_ids],
-        sum(
-            bool_basin_profile[(id, i)] * (
-                storages[id][i] * aux_basin_profile[(id, i)] +
-                storages[id][i + 1] * aux_basin_profile[(id, i + 1)]
-            ) for i in 1:(n_points[id] - 1)
-        ) == basin_storage[(id, :end)]
+        sum(storages[id][i] * aux_basin_profile[(id, i)] for i in 1:(n_points[id] - 1)) == basin_storage[(id, :end)]
     )
     problem[:basin_profile_level] = JuMP.@constraint(
         problem,
         [id = node_ids],
-        sum(
-            bool_basin_profile[(id, i)] * (
-                levels[(id, :end)][i] * aux_basin_profile[(id, i)] +
-                levels[(id, :end)][i + 1] * aux_basin_profile[(id, i + 1)]
-            ) for i in 1:(n_points[id] - 1)
-        ) == basin_level[(id, :end)]
+        sum(levels[id][i] * aux_basin_profile[(id, i)] for i in 1:(n_points[id] - 1)) ==
+        basin_level[(id, :end)]
     )
 
     # Unity sum of auxiliary variables
@@ -508,11 +499,25 @@ function add_constraints_basin_profile!(
         base_name = "aux_basin_profile_unity_sum"
     )
 
+    # Only 2 successive auxiliary variables are non-zero
+    idxs = vcat([[(id, i) for i in 1:n_points[id]] for id in node_ids]...)
+    problem[:aux_basin_profile_restrict] = JuMP.@constraint(
+        problem,
+        [idx = idxs],
+        aux_basin_profile[idx] <= if idx[2] == 1
+            bool_basin_profile[idx]
+        elseif idx[2] == n_points[idx[1]]
+            bool_basin_profile[(idx[1], idx[2] - 1)]
+        else
+            bool_basin_profile[(idx[1], idx[2] - 1)] + bool_basin_profile[idx]
+        end
+    )
+
     # The sum of the binary variables per basin is 1 => the storage can only lie in one interval
     problem[:bool_basin_profile_sum] = JuMP.@constraint(
         problem,
         [id = node_ids],
-        sum(intv_bool_basin_profile[(id, i)] for i in 1:(n_points[id] - 1)) == 1,
+        sum(bool_basin_profile[(id, i)] for i in 1:(n_points[id] - 1)) == 1,
         base_name = "bool_basin_profile_sum"
     )
 
