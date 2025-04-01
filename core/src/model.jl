@@ -313,7 +313,7 @@ Returns true if the model has reached the configured `endtime`.
 function is_finished(model::Model)::Bool
     (; starttime, endtime) = model.config
     t = datetime_since(model.integrator.t, starttime)
-    return t >= endtime
+    return t == endtime
 end
 
 """
@@ -342,8 +342,8 @@ Solve a Model until the configured `endtime`.
 """
 function SciMLBase.solve!(model::Model)::Model
     (; config, integrator) = model
+    (; tspan) = integrator.sol.prob
     if config.allocation.use_allocation
-        (; tspan) = integrator.sol.prob
         (; timestep) = config.allocation
         allocation_times = 0:timestep:(tspan[end] - timestep)
         n_allocation_times = length(allocation_times)
@@ -351,9 +351,9 @@ function SciMLBase.solve!(model::Model)::Model
             update_allocation!(integrator)
             step!(integrator, timestep, true)
         end
-        check_error!(integrator)
     else
-        solve!(integrator)
+        step!(integrator, tspan[end], true)
     end
+    check_error!(integrator)
     return model
 end
