@@ -218,7 +218,7 @@ end
     @test alg.step_limiter! == Ribasim.limit_flow!
 
     @test success(model)
-    @test length(model.integrator.sol) == 1
+    @test length(model.integrator.sol) == 2 # start and end
     @test diff_cache.current_storage ≈ Float32[804.22156, 803.6474, 495.18243, 1318.3053] skip =
         Sys.isapple() atol = 1.5
 

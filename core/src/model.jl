@@ -358,8 +358,7 @@ function solve!(model::Model)::Model
             SciMLBase.step!(integrator, dt, true)
         end
     else
-        dt = tspan[end] - integrator.t
-        dt > 0 && SciMLBase.step!(integrator, dt, true)
+        SciMLBase.solve!(integrator)
     end
     check_error!(integrator)
     return model
