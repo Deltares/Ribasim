@@ -997,17 +997,16 @@ Initialize the DiffCache based on node amounts obtained from ParametersNonDiff.
 """
 function DiffCache(p_non_diff::ParametersNonDiff)
     (; basin, pump, outlet, pid_control) = p_non_diff
-    n_basin = length(basin.node_id)
     return (;
-        current_storage = zeros(n_basin),
-        current_low_storage_factor = zeros(n_basin),
-        current_level = zeros(n_basin),
-        current_area = zeros(n_basin),
-        current_cumulative_precipitation = zeros(n_basin),
-        current_cumulative_drainage = zeros(n_basin),
-        flow_rate_pump = zeros(length(pump.node_id)),
-        flow_rate_outlet = zeros(length(outlet.node_id)),
-        error_pid_control = zeros(length(pid_control.node_id)),
+        current_storage = zero_per_node(basin),
+        current_low_storage_factor = zero_per_node(basin),
+        current_level = zero_per_node(basin),
+        current_area = zero_per_node(basin),
+        current_cumulative_precipitation = zero_per_node(basin),
+        current_cumulative_drainage = zero_per_node(basin),
+        flow_rate_pump = zero_per_node(pump),
+        flow_rate_outlet = zero_per_node(outlet),
+        error_pid_control = zero_per_node(pid_control),
     )
 end
 
@@ -1020,7 +1019,7 @@ The collection of all parameters that are passed to the rhs (`water_balance!`) a
     p_mutable::ParametersMutable = ParametersMutable()
 end
 
-function get_value(ref::DiffCacheRef, p::Parameters, du::Vector)
+function get_value(ref::DiffCacheRef, p::Parameters, du::NamedArrayPartition)
     if ref.from_du
         du[ref.idx]
     else

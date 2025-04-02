@@ -32,7 +32,12 @@ end
 Get the Jacobian evaluation function via DifferentiationInterface.jl.
 The time derivative is also supplied in case a Rosenbrock method is used.
 """
-function get_diff_eval(du::Vector, u::Vector, p::Parameters, solver::Solver)
+function get_diff_eval(
+    du::NamedArrayPartition,
+    u::NamedArrayPartition,
+    p::Parameters,
+    solver::Solver,
+)
     (; p_non_diff, diff_cache, p_mutable) = p
     backend = get_ad_type(solver)
     sparsity_detector = TracerSparsityDetector()

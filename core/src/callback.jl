@@ -179,15 +179,10 @@ function update_concentrations!(u, t, integrator)::Nothing
     (; uprev, p, tprev, dt) = integrator
     (; p_non_diff, diff_cache) = p
     (; current_storage, current_level) = diff_cache
-    (; basin, flow_boundary, state_ranges) = p_non_diff
+    (; basin, flow_boundary) = p_non_diff
     (; vertical_flux, concentration_data) = basin
     (; evaporate_mass, cumulative_in, concentration_state, concentration, mass) =
         concentration_data
-
-    u_evaporation = view(u, state_ranges.evaporation)
-    u_infiltration = view(u, state_ranges.infiltration)
-    uprev_evaporation = view(uprev, state_ranges.evaporation)
-    uprev_infiltration = view(uprev, state_ranges.infiltration)
 
     # Reset cumulative flows, used to calculate the concentration
     # of the basins after processing inflows only
@@ -231,9 +226,9 @@ function update_concentrations!(u, t, integrator)::Nothing
 
     # Evaporate mass to keep the mass balance, if enabled in model config
     if evaporate_mass
-        mass .-= concentration_state .* (u_evaporation - uprev_evaporation)
+        mass .-= concentration_state .* (u.evaporation - uprev.evaporation)
     end
-    mass .-= concentration_state .* (u_infiltration - uprev_infiltration)
+    mass .-= concentration_state .* (u.infiltration - uprev.infiltration)
 
     # Take care of infinitely small masses, possibly becoming negative due to truncation.
     for I in eachindex(basin.concentration_data.mass)
@@ -270,13 +265,8 @@ function flow_update_on_link(
     link_src::Tuple{NodeID, NodeID},
 )::Float64
     (; u, uprev, p, t, tprev, dt) = integrator
-    (; basin, flow_boundary, state_ranges) = p.p_non_diff
+    (; basin, flow_boundary) = p.p_non_diff
     (; vertical_flux) = basin
-
-    u_evaporation = view(u, state_ranges.evaporation)
-    u_infiltration = view(u, state_ranges.infiltration)
-    uprev_evaporation = view(uprev, state_ranges.evaporation)
-    uprev_infiltration = view(uprev, state_ranges.infiltration)
 
     from_id, to_id = link_src
     if from_id == to_id
@@ -284,8 +274,8 @@ function flow_update_on_link(
         idx = from_id.idx
         fixed_area = basin_areas(basin, idx)[end]
         (fixed_area * vertical_flux.precipitation[idx] + vertical_flux.drainage[idx]) * dt -
-        (u_evaporation[idx] - uprev_evaporation[idx]) -
-        (u_infiltration[idx] - uprev_infiltration[idx])
+        (u.evaporation[idx] - uprev.evaporation[idx]) -
+        (u.infiltration[idx] - uprev.infiltration[idx])
     elseif from_id.type == NodeType.FlowBoundary
         if flow_boundary.active[from_id.idx]
             integral(flow_boundary.flow_rate[from_id.idx], tprev, t)
@@ -293,7 +283,7 @@ function flow_update_on_link(
             0.0
         end
     else
-        flow_idx = get_state_index(state_ranges, link_src)
+        flow_idx = get_state_index(u, link_src)
         u[flow_idx] - uprev[flow_idx]
     end
 end
@@ -323,8 +313,8 @@ function save_flow(u, t, integrator)
     # Current u is previous u in next computation
     u_prev_saveat .= u
 
-    inflow_mean = zeros(length(basin.node_id))
-    outflow_mean = zeros(length(basin.node_id))
+    inflow_mean = zero_per_node(basin)
+    outflow_mean = zero_per_node(basin)
 
     # Flow contributions from horizontal flow states
     for (flow, inflow_link, outflow_link) in
@@ -387,16 +377,12 @@ function check_water_balance_error!(
 )::Nothing
     (; u, p, t) = integrator
     (; p_non_diff, diff_cache) = p
-    (; basin, water_balance_abstol, water_balance_reltol, state_ranges, starttime) =
-        p_non_diff
+    (; basin, water_balance_abstol, water_balance_reltol, starttime) = p_non_diff
     errors = false
 
     # The initial storage is irrelevant for the storage rate and can only cause
     # floating point truncation errors
     formulate_storages!(u, p, t; add_initial_storage = false)
-
-    evaporation = view(saved_flow.flow, state_ranges.evaporation)
-    infiltration = view(saved_flow.flow, state_ranges.infiltration)
 
     for (
         inflow_rate,
@@ -413,8 +399,8 @@ function check_water_balance_error!(
         saved_flow.outflow,
         saved_flow.precipitation,
         saved_flow.drainage,
-        evaporation,
-        infiltration,
+        saved_flow.flow.evaporation,
+        saved_flow.flow.infiltration,
         diff_cache.current_storage,
         basin.Δstorage_prev_saveat,
         basin.node_id,

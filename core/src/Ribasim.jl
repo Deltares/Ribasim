@@ -30,6 +30,9 @@ using DiffEqBase: DiffEqBase, calculate_residuals!
 using OrdinaryDiffEqNonlinearSolve: OrdinaryDiffEqNonlinearSolve, relax!, _compute_rhs!
 using LineSearches: BackTracking
 
+# Representing the state as a partition of different types
+using RecursiveArrayTools: NamedArrayPartition
+
 # Interface for defining and solving the ODE problem of the physical layer.
 using SciMLBase:
     init,
