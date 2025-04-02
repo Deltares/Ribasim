@@ -584,7 +584,7 @@ end
 
 """
 node_id: node ID of the FlowBoundary node
-outflow_links: The outgoing flow link metadata
+outflow_link: The outgoing flow link metadata
 active: whether this node is active and thus contributes flow
 cumulative_flow: The exactly integrated cumulative boundary flow since the start of the simulation
 cumulative_flow_saveat: The exactly integrated cumulative boundary flow since the last saveat
@@ -594,7 +594,7 @@ concentration_time: Data source for concentration updates
 """
 @kwdef struct FlowBoundary{C} <: AbstractParameterNode
     node_id::Vector{NodeID}
-    outflow_links::Vector{Vector{LinkMetadata}}
+    outflow_link::Vector{LinkMetadata} = []
     active::Vector{Bool}
     cumulative_flow::Vector{Float64} = zeros(length(node_id))
     cumulative_flow_saveat::Vector{Float64} = zeros(length(node_id))

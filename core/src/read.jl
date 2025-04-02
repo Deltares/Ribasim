@@ -701,7 +701,7 @@ function FlowBoundary(db::DB, config::Config, graph::MetaGraph)::FlowBoundary
 
     return FlowBoundary(;
         node_id = node_ids,
-        outflow_links = outflow_links.(Ref(graph), node_ids),
+        outflow_link = outflow_link.(Ref(graph), node_ids),
         parsed_parameters.active,
         parsed_parameters.flow_rate,
         concentration,
