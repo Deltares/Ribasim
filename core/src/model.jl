@@ -345,8 +345,7 @@ function solve!(model::Model)::Model
     (; tspan) = integrator.sol.prob
     if config.allocation.use_allocation
         (; timestep) = config.allocation
-        allocation_times = 0:timestep:(tspan[end] - timestep)
-        n_allocation_times = length(allocation_times)
+        n_allocation_times = floor(Int, tspan[end] / timestep)
         for _ in 1:n_allocation_times
             update_allocation!(integrator)
             SciMLBase.step!(integrator, timestep, true)
