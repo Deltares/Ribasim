@@ -137,23 +137,24 @@ function simplify_graph!(
 
     # Remove junctions by iteratively simplifying from IN--J--OUT to IN--OUT
     for junction_id in get_node_ids(db, NodeType.Junction)
-        for in_nb in collect(inneighbor_labels(graph, junction_id)),
-            out_nb in collect(outneighbor_labels(graph, junction_id))
+        for in_neighbor in collect(inneighbor_labels(graph, junction_id)),
+            out_neighbor in collect(outneighbor_labels(graph, junction_id))
 
-            link_id = graph[in_nb, junction_id].id
+            link_id = graph[in_neighbor, junction_id].id
             external_link_ids = get(link_mapping, link_id, [link_id])
 
-            link_id = graph[junction_id, out_nb].id
+            link_id = graph[junction_id, out_neighbor].id
             append!(external_link_ids, get(link_mapping, link_id, [link_id]))
 
             link_metadata = LinkMetadata(;
                 id = new_link_id,
                 type = LinkType.flow,
-                link = (in_nb, out_nb),
+                link = (in_neighbor, out_neighbor),
             )
 
             # Create new flow link when no Junctions remain
-            if in_nb.type != NodeType.Junction && out_nb.type != NodeType.Junction
+            if in_neighbor.type != NodeType.Junction &&
+               out_neighbor.type != NodeType.Junction
                 for external_link_id in external_link_ids
                     push!(I, external_link_id)
                     push!(J, new_link_id)
@@ -163,11 +164,11 @@ function simplify_graph!(
 
             link_mapping[new_link_id] = external_link_ids
             new_link_id += 1
-            if haskey(graph, in_nb, out_nb)
+            if haskey(graph, in_neighbor, out_neighbor)
                 errors = true
-                @error "Duplicate link: Junction links form cycle." in_nb out_nb external_link_ids
+                @error "Duplicate link: Junction links form cycle." in_neighbor out_neighbor external_link_ids
             else
-                graph[in_nb, out_nb] = link_metadata
+                graph[in_neighbor, out_neighbor] = link_metadata
             end
         end
         # Will also remove the edges
