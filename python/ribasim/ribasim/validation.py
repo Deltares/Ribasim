@@ -93,7 +93,7 @@ flow_link_neighbor_amount: dict[str, list[int]] = {
     "UserDemand": [1, 1, 1, 1],
     "TabulatedRatingCurve": [1, 1, 1, 1],
     "FlowDemand": [0, 0, 0, 0],
-    "FlowBoundary": [0, 0, 1, 9223372036854775807],
+    "FlowBoundary": [0, 0, 1, 1],
     "Basin": [0, 9223372036854775807, 0, 9223372036854775807],
     "ManningResistance": [1, 1, 1, 1],
     "LevelDemand": [0, 0, 0, 0],

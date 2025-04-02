@@ -43,7 +43,13 @@ function main(toml_path::AbstractString)::Cint
                 end
 
                 try
-                    model = run(config)
+                    model = Model(config)
+                    try
+                        solve!(model)
+                    finally
+                        @warn "Simulation crashed or interrupted. Writing results."
+                        write_results(model)
+                    end
 
                     if successful_retcode(model)
                         log_bottlenecks(model; converged = true)
