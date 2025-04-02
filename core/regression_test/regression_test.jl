@@ -1,5 +1,4 @@
 @testitem "regression_ode_solvers_trivial" begin
-    using SciMLBase: successful_retcode
     import Arrow
     using Ribasim
 
@@ -24,7 +23,7 @@
                 )
                 model = Ribasim.run(config)
                 @test model isa Ribasim.Model
-                @test successful_retcode(model)
+                @test success(model)
                 (; p) = model.integrator
 
                 # read all results as bytes first to avoid memory mapping
@@ -52,7 +51,6 @@
 end
 
 @testitem "regression_ode_solvers_basic" begin
-    using SciMLBase: successful_retcode
     import Arrow
     using Ribasim
     using Statistics
@@ -83,7 +81,7 @@ end
                 )
                 model = Ribasim.run(config)
                 @test model isa Ribasim.Model
-                @test successful_retcode(model)
+                @test success(model)
                 (; p) = model.integrator
 
                 # read all results as bytes first to avoid memory mapping
@@ -122,7 +120,6 @@ end
 end
 
 @testitem "regression_ode_solvers_pid_control" begin
-    using SciMLBase: successful_retcode
     import Arrow
     using Ribasim
 
@@ -154,7 +151,7 @@ end
                 )
                 model = Ribasim.run(config)
                 @test model isa Ribasim.Model
-                @test successful_retcode(model)
+                @test success(model)
                 (; p) = model.integrator
 
                 # read all results as bytes first to avoid memory mapping
@@ -184,7 +181,6 @@ end
 end
 
 @testitem "regression_ode_solvers_allocation" begin
-    using SciMLBase: successful_retcode
     import Arrow
     using Ribasim
 
@@ -221,7 +217,7 @@ end
                 )
                 model = Ribasim.run(config)
                 @test model isa Ribasim.Model
-                @test successful_retcode(model)
+                @test success(model)
                 (; p) = model.integrator
 
                 # read all results as bytes first to avoid memory mapping
