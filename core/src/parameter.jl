@@ -1,4 +1,3 @@
-
 # Universal reduction factor threshold for the low storage factor
 const LOW_STORAGE_THRESHOLD = 10.0
 
@@ -46,6 +45,8 @@ function config.snake_case(nt::NodeType.T)::Symbol
         return :manning_resistance
     elseif nt == NodeType.Terminal
         return :terminal
+    elseif nt == NodeType.Junction
+        return :junction
     elseif nt == NodeType.DiscreteControl
         return :discrete_control
     elseif nt == NodeType.ContinuousControl
@@ -671,6 +672,13 @@ node_id: node ID of the Terminal node
 end
 
 """
+node_id: node ID of the Junction node
+"""
+@kwdef struct Junction <: AbstractParameterNode
+    node_id::Vector{NodeID}
+end
+
+"""
 A cache for intermediate results in 'water_balance!' which depend on the state vector `u`. A second version of
 this cache is required for automatic differentiation, where e.g. ForwardDiff requires these vectors to
 be of `ForwardDiff.Dual` type. This second version of the cache is created by DifferentiationInterface.
@@ -901,11 +909,10 @@ end
 The metadata of the graph (the fields of the NamedTuple) can be accessed
     e.g. using graph[].flow.
 node_ids: mapping subnetwork ID -> node IDs in that subnetwork
-links_source: mapping subnetwork ID -> metadata of allocation
-    source links in that subnetwork
-flow_links: The metadata of all flow links
-    of the flow over that link
 saveat: The time interval between saves of output data (storage, flow, ...)
+internal_flow_links: The metadata of the flow links used in the core without any Junctions.
+external_flow_links: The metadata of all flow links including those with Junctions.
+flow_link_map: A sparse matrix mapping internal_flow_ids to external_flow_ids.
 """
 const ModelGraph = MetaGraph{
     Int64,
@@ -915,8 +922,10 @@ const ModelGraph = MetaGraph{
     LinkMetadata,
     @NamedTuple{
         node_ids::Dict{Int32, Set{NodeID}},
-        flow_links::Vector{LinkMetadata},
         saveat::Float64,
+        internal_flow_links::Vector{LinkMetadata},
+        external_flow_links::Vector{LinkMetadata},
+        flow_link_map::SparseMatrixCSC{Bool, Int},
     },
     Returns{Float64},
     Float64,
@@ -969,6 +978,7 @@ the object itself is not.
     pump::Pump
     outlet::Outlet
     terminal::Terminal
+    junction::Junction
     discrete_control::DiscreteControl
     continuous_control::ContinuousControl
     pid_control::PidControl

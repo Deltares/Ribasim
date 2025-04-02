@@ -220,31 +220,34 @@ function flow_table(
     (; p) = integrator
     (; p_non_diff) = p
     (; graph) = p_non_diff
-    (; flow_links) = graph[]
+    (; internal_flow_links, external_flow_links, flow_link_map) = graph[]
 
     from_node_id = Int32[]
     to_node_id = Int32[]
     unique_link_ids_flow = Union{Int32, Missing}[]
 
-    flow_link_ids = [flow_link.link for flow_link in flow_links]
-
-    for (from_id, to_id) in flow_link_ids
-        push!(from_node_id, from_id.value)
-        push!(to_node_id, to_id.value)
-        push!(unique_link_ids_flow, graph[from_id, to_id].id)
+    for flow_link in external_flow_links
+        push!(from_node_id, flow_link.link[1].value)
+        push!(to_node_id, flow_link.link[2].value)
+        push!(unique_link_ids_flow, flow_link.id)
     end
 
     nflow = length(unique_link_ids_flow)
     ntsteps = length(t)
-
     flow_rate = zeros(nflow * ntsteps)
+    internal_flow_rate = zeros(length(internal_flow_links))
 
-    for (i, link) in enumerate(flow_link_ids)
-        for (j, cvec) in enumerate(saveval)
-            (; flow, flow_boundary) = cvec
-            flow_rate[i + (j - 1) * nflow] =
-                get_flow(flow, p_non_diff, 0.0, link; boundary_flow = flow_boundary)
+    for (ti, cvec) in enumerate(saveval)
+        (; flow, flow_boundary) = cvec
+        for (fi, link) in enumerate(internal_flow_links)
+            internal_flow_rate[fi] =
+                get_flow(flow, p_non_diff, 0.0, link.link; boundary_flow = flow_boundary)
         end
+        mul!(
+            view(flow_rate, (1 + (ti - 1) * nflow):(ti * nflow)),
+            flow_link_map,
+            internal_flow_rate,
+        )
     end
 
     # the timestamp should represent the start of the period, not the end
