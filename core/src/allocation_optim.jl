@@ -112,7 +112,6 @@ function update_objective_constraints!(
         problem[:source_boundary],
         problem[:source_user],
         problem[:source_main_network],
-        problem[:basin_outflow],
         problem[:flow_buffer_outflow],
     )
         for source_constraint in source_constraints
@@ -430,26 +429,6 @@ function get_basin_demand(
 end
 
 """
-Set the initial capacity of each basin in the subnetwork as
-vertical fluxes + the disk of storage above the maximum level / Δt_allocation
-"""
-function set_initial_capacities_basin!(
-    allocation_model::AllocationModel,
-    p::Parameters,
-    t::Float64,
-)::Nothing
-    (; problem, sources) = allocation_model
-    constraints_outflow = problem[:basin_outflow]
-
-    for node_id in only(constraints_outflow.axes)
-        source = sources[(node_id, node_id)]
-        @assert source.type == AllocationSourceType.level_demand
-        source.capacity = get_basin_capacity(allocation_model, p, t, node_id)
-    end
-    return nothing
-end
-
-"""
 Set the demands of the user demand nodes as given
 by either a coupled model or a timeseries
 """
@@ -489,7 +468,7 @@ function set_initial_demands_level!(
     (; graph, basin) = p.p_non_diff
     (; demand) = basin
 
-    node_ids_level_demand = only(problem[:basin_outflow].axes)
+    node_ids_level_demand = only(problem[:lower_error_level_demand].axes)
 
     for id in node_ids_level_demand
         if graph[id].subnetwork_id == subnetwork_id
@@ -561,13 +540,14 @@ function reduce_demands!(
 )::Nothing
     (; graph, basin) = p_non_diff
     (; demand) = basin
-    (; subnetwork_id, problem) = allocation_model
-    F_basin_in = problem[:F_basin_in]
+    (; subnetwork_id, problem, Δt_allocation) = allocation_model
+    lower_error_basin = problem[:lower_error_level_Demand]
+    storage = problem[:storage_basin]
 
-    # Reduce the demand by what was allocated
-    for id in only(F_basin_in.axes)
+    # Set the demand by the deviation from the target storage
+    for id in only(lower_error_basin.axes)
         if graph[id].subnetwork_id == subnetwork_id
-            demand[id.idx] -= JuMP.value(F_basin_in[id])
+            demand[id.idx] = (storage[(id, :end)] - target_storage) / Δt_allocation
         end
     end
 
@@ -860,7 +840,6 @@ function set_source_capacity!(
     constraints_source_boundary = problem[:source_boundary]
     constraints_source_user_out = problem[:source_user]
     constraints_source_main_network = problem[:source_main_network]
-    constraints_source_basin = problem[:basin_outflow]
     constraints_source_buffer = problem[:flow_buffer_outflow]
 
     for source in values(sources)
@@ -909,8 +888,6 @@ function optimize_per_source!(
     (; p_non_diff) = p
     (; allocation, user_demand, level_demand, flow_demand) = p_non_diff
     (; demand_priorities_all) = allocation
-    F_basin_in = problem[:F_basin_in]
-    F_basin_out = problem[:F_basin_out]
 
     # Start the cumulative basin flow rates at 0
     for source in values(sources)
@@ -1052,7 +1029,6 @@ function set_initial_values!(
     (; p_non_diff) = p
     set_initial_capacities_source!(allocation_model, p_non_diff)
     set_initial_capacities_link!(allocation_model, p_non_diff)
-    set_initial_capacities_basin!(allocation_model, p, t)
     set_initial_capacities_buffer!(allocation_model)
     set_initial_capacities_returnflow!(allocation_model, p_non_diff)
 
@@ -1073,8 +1049,7 @@ function empty_sources!(allocation_model::AllocationModel, allocation::Allocatio
     (; problem) = allocation_model
     (; subnetwork_demands) = allocation
 
-    for constraint_set_name in
-        [:source_boundary, :source_user, :basin_outflow, :flow_buffer_outflow]
+    for constraint_set_name in [:source_boundary, :source_user, :flow_buffer_outflow]
         constraint_set = problem[constraint_set_name]
         for key in only(constraint_set.axes)
             # Do not set the capacity to 0.0 if the link

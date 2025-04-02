@@ -208,7 +208,11 @@ function add_variables_objective!(
         node_ids = if node_name == :user_demand
             [id for id in graph[].node_ids[subnetwork_id] if id.type == NodeType.UserDemand]
         elseif node_name == :level_demand
-            [id for id in graph[].node_ids[subnetwork_id] if id.type == NodeType.Basin]
+            [
+                id for
+                id in graph[].node_ids[subnetwork_id] if id.type == NodeType.Basin &&
+                    has_external_demand(graph, id, :level_demand)[1]
+            ]
         elseif node_name == :flow_demand
             only(problem[:F_flow_buffer_in].axes)
         else # node_name == :subnetwork
@@ -554,8 +558,10 @@ function add_constraints_objective!(
     problem::JuMP.Model,
     p_non_diff::ParametersNonDiff,
     subnetwork_id::Int32,
+    Δt_allocation::Float64,
 )::Nothing
     F = problem[:F]
+    storage = problem[:basin_storage]
     (; user_demand, allocation) = p_non_diff
     (; subnetwork_demands) = allocation
 
@@ -574,7 +580,10 @@ function add_constraints_objective!(
         inflows = if node_name == :user_demand
             Dict(id => F[user_demand.inflow_link[id.idx].link] for id in node_ids)
         elseif node_name == :level_demand
-            problem[:F_basin_in]
+            Dict(
+                id => (storage[(id, :end)] - storage[(id, :start)]) / Δt_allocation for
+                id in node_ids
+            )
         elseif node_name == :flow_demand
             problem[:F_flow_buffer_in]
         else # node_name == "subnetwork"
@@ -660,7 +669,7 @@ function allocation_problem(
     add_constraints_user_source!(problem, sources)
     add_constraints_basin_profile!(problem, p_non_diff, subnetwork_id, n_points)
     add_constraints_buffer!(problem)
-    add_constraints_objective!(problem, p_non_diff, subnetwork_id)
+    add_constraints_objective!(problem, p_non_diff, subnetwork_id, Δt_allocation)
 
     # Add objective to the problem
     add_objective!(problem)
