@@ -852,17 +852,21 @@ function state_node_ids(p::Union{ParametersNonDiff, NamedTuple})::NamedTuple
     )
 end
 
+zero_per_node(node::AbstractParameterNode) = zeros(length(node.node_id))
+
 function build_state_vector(p_non_diff::ParametersNonDiff)
-    # It is assumed that the horizontal flow states come first in
-    # p_non_diff.state_inflow_link and p_non_diff.state_outflow_link
-    u_ids = state_node_ids(p_non_diff)
-    state_ranges = p_non_diff.state_ranges
-    u = zeros(length(p_non_diff.node_id))
-    # Ensure p_non_diff.node_id, p_non_diff.state_ranges and u have the same length and order
-    ranges = (getproperty(state_ranges, x) for x in propertynames(state_ranges))
-    @assert length(u) == length(p_non_diff.node_id) == mapreduce(length, +, ranges)
-    @assert keys(u_ids) == fieldnames(StateRanges)
-    return u
+    return NamedArrayPartition(;
+        tabulated_rating_curve = zero_per_node(p_non_diff.tabulated_rating_curve),
+        pump = zero_per_node(p_non_diff.pump),
+        outlet = zero_per_node(p_non_diff.outlet),
+        user_demand_inflow = zero_per_node(p_non_diff.user_demand),
+        user_demand_outflow = zero_per_node(p_non_diff.user_demand),
+        linear_resistance = zero_per_node(p_non_diff.linear_resistance),
+        manning_resistance = zero_per_node(p_non_diff.manning_resistance),
+        evaporation = zero_per_node(p_non_diff.basin),
+        infiltration = zero_per_node(p_non_diff.basin),
+        integral = zero_per_node(p_non_diff.pid_control),
+    )
 end
 
 function build_flow_to_storage(
