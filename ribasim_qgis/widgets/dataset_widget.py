@@ -386,6 +386,10 @@ class DatasetWidget(QWidget):
 
     def generate_topology_action(self, menu: QMenu) -> None:
         """Generate checkable show topology action in the context menu."""
+        for action in menu.actions():
+            if action.text() == "Show topology":
+                return
+
         layer = self.ribasim_widget.iface.activeLayer()
         if (
             not layer
