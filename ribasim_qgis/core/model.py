@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Any
 
 import ribasim_qgis.tomllib as tomllib
 
@@ -18,6 +19,11 @@ def get_directory_path_from_model_file(model_path: Path, *, property: str) -> Pa
     # The .joinpath method (/) of pathlib.Path will take care of an absolute input_dir.
     # No need to check it ourselves!
     return (Path(model_path).parent / found_property).resolve()
+
+
+def get_toml_dict(model_path: Path) -> dict[str, Any]:
+    with open(model_path, "rb") as f:
+        return tomllib.load(f)
 
 
 def get_database_path_from_model_file(model_path: Path) -> Path:

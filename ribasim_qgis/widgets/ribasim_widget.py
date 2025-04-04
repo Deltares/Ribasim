@@ -108,6 +108,7 @@ class RibasimWidget(QWidget):
         assert root is not None
         self.group = root.insertGroup(0, name)  # insert at the top
         self.create_subgroup(name, "Ribasim Input")
+        self.create_subgroup(name, "Ribasim Results")
 
     def add_to_group(self, maplayer: Any, destination: str, on_top: bool):
         """Try to add to a group.
