@@ -187,6 +187,7 @@ function solver_stats_table(
     model::Model,
 )::@NamedTuple{
     time::Vector{DateTime},
+    computation_time::Vector{Float64},
     rhs_calls::Vector{Int},
     linear_solves::Vector{Int},
     accepted_timesteps::Vector{Int},
@@ -198,6 +199,8 @@ function solver_stats_table(
             solver_stats.time[1:(end - 1)],
             model.integrator.p.p_non_diff.starttime,
         ),
+        # convert nanosecond to millisecond
+        computation_time = diff(solver_stats.time_ns) .* 1e-6,
         rhs_calls = diff(solver_stats.rhs_calls),
         linear_solves = diff(solver_stats.linear_solves),
         accepted_timesteps = diff(solver_stats.accepted_timesteps),

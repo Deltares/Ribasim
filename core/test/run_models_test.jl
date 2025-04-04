@@ -81,8 +81,15 @@
             (DateTime, Int32, Float64),
         )
         @test Tables.schema(solver_stats) == Tables.Schema(
-            (:time, :rhs_calls, :linear_solves, :accepted_timesteps, :rejected_timesteps),
-            (DateTime, Int, Int, Int, Int),
+            (
+                :time,
+                :computation_time,
+                :rhs_calls,
+                :linear_solves,
+                :accepted_timesteps,
+                :rejected_timesteps,
+            ),
+            (DateTime, Float64, Int, Int, Int, Int),
         )
     end
 
