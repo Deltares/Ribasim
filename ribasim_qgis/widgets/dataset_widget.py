@@ -158,9 +158,16 @@ class DatasetWidget(QWidget):
         self.add_button.clicked.connect(self.add_selection_to_qgis)
         self.link_layer: QgsVectorLayer | None = None
         self.node_layer: QgsVectorLayer | None = None
+
+        # Results
         self.flowlink_layer: QgsVectorLayer | None = None
         self.basinnode_layer: QgsVectorLayer | None = None
         self.results: dict[str, pd.DataFrame] = {}
+
+        # Remove our references to layers when they are about to be deleted
+        instance = QgsProject.instance()
+        if instance is not None:
+            instance.layersWillBeRemoved.connect(self.remove_results)
 
         # Layout
         dataset_layout = QVBoxLayout()
@@ -176,6 +183,21 @@ class DatasetWidget(QWidget):
         layer_row.addWidget(self.remove_button)
         dataset_layout.addLayout(layer_row)
         self.setLayout(dataset_layout)
+
+    def remove_results(self, layer_ids: list[str]) -> None:
+        """Remove Python references to layers that will be deleted."""
+        for attr, layer in self._layers():
+            if layer is not None and layer.id() in layer_ids:
+                setattr(self, attr, None)
+
+    def _layers(self) -> list[tuple[str, QgsVectorLayer | None]]:
+        """Return a list of tuples with layer names and their references."""
+        return [
+            ("link_layer", self.link_layer),
+            ("node_layer", self.node_layer),
+            ("flowlink_layer", self.flowlink_layer),
+            ("basinnode_layer", self.basinnode_layer),
+        ]
 
     @property
     def path(self) -> Path:
