@@ -88,11 +88,12 @@ class RibasimWidget(QWidget):
 
     # QGIS layers
     # -----------
-    def create_subgroup(self, name: str, part: str) -> None:
+    def create_subgroup(self, name: str, part: str, visible=True) -> None:
         try:
             assert self.group is not None
             value = self.group.addGroup(f"{name}-{part}")
             assert value is not None
+            value.setItemVisibilityChecked(visible)
             self.groups[part] = value
         except RuntimeError as e:
             if e.args[0] == PYQT_DELETED_ERROR:
@@ -108,7 +109,7 @@ class RibasimWidget(QWidget):
         assert root is not None
         self.group = root.insertGroup(0, name)  # insert at the top
         self.create_subgroup(name, "Ribasim Input")
-        self.create_subgroup(name, "Ribasim Results")
+        self.create_subgroup(name, "Ribasim Results", visible=False)
 
     def add_to_group(self, maplayer: Any, destination: str, on_top: bool):
         """Try to add to a group.
