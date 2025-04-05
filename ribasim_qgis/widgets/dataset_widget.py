@@ -6,18 +6,22 @@ It also allows enabling or disabling individual elements for a computation.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import datetime
 from functools import partial
 from pathlib import Path
 from typing import Any, cast
 
-from PyQt5.QtCore import Qt
+import pandas as pd
+from osgeo import ogr
+from PyQt5.QtCore import QDateTime, Qt, QVariant
 from PyQt5.QtWidgets import (
     QAbstractItemView,
     QCheckBox,
     QFileDialog,
     QHBoxLayout,
     QLineEdit,
+    QMenu,
     QMessageBox,
     QPushButton,
     QSizePolicy,
@@ -27,20 +31,34 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 from qgis.core import (
+    Qgis,
+    QgsDateTimeRange,
     QgsEditorWidgetSetup,
+    QgsExpressionContextUtils,
     QgsFeatureRequest,
+    QgsField,
+    QgsInterval,
     QgsMapLayer,
     QgsProject,
     QgsRelation,
+    QgsTemporalNavigationObject,
     QgsVectorLayer,
+    QgsVectorLayerTemporalProperties,
 )
 
 from ribasim_qgis.core.geopackage import write_schema_version
 from ribasim_qgis.core.model import (
     get_database_path_from_model_file,
     get_directory_path_from_model_file,
+    get_toml_dict,
 )
-from ribasim_qgis.core.nodes import Input, Link, Node, load_nodes_from_geopackage
+from ribasim_qgis.core.nodes import (
+    STYLE_DIR,
+    Input,
+    Link,
+    Node,
+    load_nodes_from_geopackage,
+)
 from ribasim_qgis.core.topology import set_link_properties
 
 
@@ -144,6 +162,16 @@ class DatasetWidget(QWidget):
         self.link_layer: QgsVectorLayer | None = None
         self.node_layer: QgsVectorLayer | None = None
 
+        # Results
+        self.flowlink_layer: QgsVectorLayer | None = None
+        self.basinnode_layer: QgsVectorLayer | None = None
+        self.results: dict[str, pd.DataFrame] = {}
+
+        # Remove our references to layers when they are about to be deleted
+        instance = QgsProject.instance()
+        if instance is not None:
+            instance.layersWillBeRemoved.connect(self.remove_results)
+
         # Layout
         dataset_layout = QVBoxLayout()
         dataset_row = QHBoxLayout()
@@ -158,6 +186,21 @@ class DatasetWidget(QWidget):
         layer_row.addWidget(self.remove_button)
         dataset_layout.addLayout(layer_row)
         self.setLayout(dataset_layout)
+
+    def remove_results(self, layer_ids: list[str]) -> None:
+        """Remove Python references to layers that will be deleted."""
+        for attr, layer in self._layers():
+            if layer is not None and layer.id() in layer_ids:
+                setattr(self, attr, None)
+
+    def _layers(self) -> list[tuple[str, QgsVectorLayer | None]]:
+        """Return a list of tuples with layer names and their references."""
+        return [
+            ("link_layer", self.link_layer),
+            ("node_layer", self.node_layer),
+            ("flowlink_layer", self.flowlink_layer),
+            ("basinnode_layer", self.basinnode_layer),
+        ]
 
     @property
     def path(self) -> Path:
@@ -350,7 +393,9 @@ class DatasetWidget(QWidget):
     def _open_model(self, path: str) -> None:
         if path != "":  # Empty string in case of cancel button press
             self.dataset_line_edit.setText(path)
+            self.set_current_time_extent()
             self.load_geopackage()
+            self.add_topology_context()
             self.ribasim_widget.toggle_node_buttons(True)
             self.refresh_results()
         self.dataset_tree.sortByColumn(0, Qt.SortOrder.AscendingOrder)
@@ -358,6 +403,52 @@ class DatasetWidget(QWidget):
     def remove_geopackage_layer(self) -> None:
         """Remove layers from the dataset tree widget, QGIS layer panel and the GeoPackage."""
         self.dataset_tree.remove_geopackage_layers()
+
+    def add_topology_context(self) -> None:
+        """Connect to the layer context (right-click) menu opening."""
+        ltv = self.ribasim_widget.iface.layerTreeView()
+        if ltv is not None:
+            ltv.contextMenuAboutToShow.connect(self.generate_topology_action)
+
+    def generate_topology_action(self, menu: QMenu) -> None:
+        """Generate checkable show topology action in the context menu."""
+        for action in menu.actions():
+            if action.text() == "Show topology":
+                return
+
+        layer = self.ribasim_widget.iface.activeLayer()
+        if (
+            not layer
+            or layer.type() != Qgis.LayerType.Vector
+            or "Link" not in layer.name()
+        ):
+            return
+
+        # We store the state as a variable in the layer context (properties->variables)
+        # This variable can be used by the layers style to show the topology.
+        scope = QgsExpressionContextUtils.layerScope(layer)
+        checked = scope is not None and scope.variable("layer_topology") == "True"
+
+        # Always add action, as it's lives only during this context menu
+        menu.addSeparator()
+        action = menu.addAction("Show topology")
+        action.setCheckable(True)
+        action.setChecked(checked)
+        action.triggered.connect(self.show_topology)
+
+    def show_topology(self, checked: bool) -> None:
+        """Set the topology switch variable and redraw the layer."""
+        layer = self.ribasim_widget.iface.activeLayer()
+        if layer is None:
+            return
+
+        value = "True" if checked else "False"
+        QgsExpressionContextUtils.setLayerVariable(
+            layer,
+            "layer_topology",
+            value,
+        )
+        layer.triggerRepaint()
 
     def suppress_popup_changed(self):
         suppress = self.suppress_popup_checkbox.isChecked()
@@ -377,25 +468,232 @@ class DatasetWidget(QWidget):
         self.dataset_tree.add_node_layer(element)
 
     def refresh_results(self) -> None:
-        self.__set_node_results()
-        self.__set_link_results()
+        self._set_node_results()
+        self._set_link_results()
+        canvas = self.ribasim_widget.iface.mapCanvas()
+        assert canvas is not None
+        temporalController = canvas.temporalController()
+        assert temporalController is not None
+        temporalController.updateTemporalRange.connect(self._update_arrow_layers)
 
-    def __set_node_results(self) -> None:
+    def get_current_time(self) -> datetime:
+        """Retrieve the current (frame) time from the temporal controller."""
+        canvas = self.ribasim_widget.iface.mapCanvas()
+        assert canvas is not None
+        temporalController = canvas.temporalController()
+        assert temporalController is not None
+        temporalController = cast(QgsTemporalNavigationObject, temporalController)
+        f = temporalController.currentFrameNumber()
+        currentDateTimeRange = temporalController.dateTimeRangeForFrameNumber(f)
+        return currentDateTimeRange.begin().toPyDateTime()
+
+    def set_current_time_extent(self) -> None:
+        """Set the current time extent and interval of the temporal controller."""
+        toml = get_toml_dict(self.path)
+
+        canvas = self.ribasim_widget.iface.mapCanvas()
+        assert canvas is not None
+        temporalController = canvas.temporalController()
+        assert temporalController is not None
+        temporalController = cast(QgsTemporalNavigationObject, temporalController)
+
+        trange = QgsDateTimeRange(
+            QDateTime(toml["starttime"]), QDateTime(toml["endtime"])
+        )
+        canvas.setTemporalRange(trange)
+        temporalController.setTemporalExtents(trange)
+        temporalController.setFrameDuration(
+            QgsInterval(toml.get("solver", {}).get("timestep", 86400))
+        )
+        canvas.setTemporalController(temporalController)
+
+    def _set_node_results(self) -> None:
         node_layer = self.ribasim_widget.node_layer
         assert node_layer is not None
-        self.__set_results(node_layer, "node_id", "basin.arrow")
+        path = self._set_results(node_layer, "node_id", "basin.arrow")
+        if not path.exists():
+            return
 
-    def __set_link_results(self) -> None:
+        self.basinnode_layer = self._duplicate_layer(
+            node_layer, "BasinNode", "node_id", "node_type", "Basin"
+        )
+        assert self.basinnode_layer is not None
+        self._add_arrow_layer(path, self.basinnode_layer, "node_id")
+
+        # Add the concentration output
+        path = (
+            get_directory_path_from_model_file(
+                self.ribasim_widget.path, property="results_dir"
+            )
+            / "concentration.arrow"
+        )
+        if not path.exists():
+            return
+        self._add_arrow_layer(
+            path, self.basinnode_layer, "node_id", postprocess_concentration_arrow
+        )
+
+    def _set_link_results(self) -> None:
         link_layer = self.ribasim_widget.link_layer
         assert link_layer is not None
-        self.__set_results(link_layer, "link_id", "flow.arrow")
+        path = self._set_results(link_layer, "link_id", "flow.arrow")
+        if not path.exists():
+            return
+        self.flowlink_layer = self._duplicate_layer(
+            link_layer, "FlowLink", "link_id", "link_type", "flow"
+        )
+        assert self.flowlink_layer is not None
+        self._add_arrow_layer(path, self.flowlink_layer, "link_id")
 
-    def __set_results(
+    def _duplicate_layer(self, layer, name, fid_column, filterkey, filtervalue):
+        """Duplicate a layer for use with output data."""
+        duplicate = layer.materialize(
+            QgsFeatureRequest().setFilterExpression(f"{filterkey} = '{filtervalue}'")
+        )
+        duplicate.setName(name)
+        fn = STYLE_DIR / f"{name}Style.qml"
+        if fn.exists():
+            duplicate.loadNamedStyle(str(fn))
+
+        # The fids of a duplicated layer in memory are not the same
+        # as our node/link_ids anymore, and can't be set as such.
+        # To update the layer with arrow data we need to guarantee
+        # both types of ids are sorted, so we can use the new fids.
+        fids = []
+        rids = []
+        for feature in duplicate.getFeatures():
+            fids.append(feature.id())
+            rids.append(feature[fid_column])
+        if sorted(fids) != fids or sorted(rids) != rids:
+            self.ribasim_widget.iface.messageBar().pushMessage(
+                "Ribasim",
+                "Cannot duplicate layer, fids are not sorted",
+                level=Qgis.Critical,
+                duration=3,
+            )
+            return
+
+        maplayer = self.add_layer(duplicate, "Ribasim Results", False, labels=None)
+
+        toml = get_toml_dict(self.path)
+        trange = QgsDateTimeRange(
+            QDateTime(toml["starttime"]), QDateTime(toml["endtime"])
+        )
+        tprop = maplayer.temporalProperties()
+        tprop.setMode(QgsVectorLayerTemporalProperties.ModeFixedTemporalRange)
+        tprop.setFixedTemporalRange(trange)
+        tprop.setIsActive(True)
+
+        return duplicate
+
+    def _add_arrow_layer(
+        self,
+        path: Path,
+        layer: QgsVectorLayer,
+        fid_column: str,
+        postprocess: Callable[[pd.DataFrame], pd.DataFrame] = lambda df: df.set_index(
+            pd.DatetimeIndex(df["time"])
+        ),
+    ) -> None:
+        """Add arrow output data to the layer and setup its update mechanism."""
+        dataset = ogr.Open(path)
+        dlayer = dataset.GetLayer(0)
+        stream = dlayer.GetArrowStreamAsNumPy()
+        data = stream.GetNextRecordBatch()
+
+        df = pd.DataFrame(data=data)
+        df = postprocess(df)
+        self.results[path.stem] = df
+
+        # Add the arrow fields to the layer if they doesn't exist
+        layer.startEditing()
+        for column in df.columns.tolist():
+            if (
+                column == fid_column or column == "time"
+            ):  # skip the fid (link/node_id) column
+                continue
+            dataprovider = layer.dataProvider()
+            if dataprovider is not None and dataprovider.fieldNameIndex(column) == -1:
+                dataprovider.addAttributes([QgsField(column, QVariant.Double)])
+            layer.updateFields()
+        layer.commitChanges()
+
+        self._update_arrow_layer(
+            layer, df, fid_column, self.get_current_time(), force=True
+        )
+
+    def _update_arrow_layer(
+        self,
+        layer: QgsVectorLayer | None,
+        df: pd.DataFrame | None,
+        fid_column: str,
+        time: datetime,
+        force: bool = False,
+    ) -> None:
+        """Update the layer with the current arrow time slice."""
+        if layer is None or df is None:
+            return
+
+        # If we're out of bounds, do nothing, assuming
+        # the previous time slice is most valid, unless forced
+        # to update on initial load (without a valid datetime).
+        if time not in df.index:
+            if force:
+                time = df.index[-1]
+            else:
+                print(f"Skipping update, out of bounds for {time}")
+                return
+
+        timeslice = df.loc[[time], :]
+
+        layer.startEditing()
+        layer.beginEditCommand("Group all undos for performance.")
+
+        fids = sorted(layer.allFeatureIds())
+        for column in df.columns.tolist():
+            if (
+                column == fid_column or column == "time"
+            ):  # skip the fid (link/node_id) column
+                continue
+            dataprovider = layer.dataProvider()
+            assert dataprovider is not None
+            column_id = dataprovider.fieldNameIndex(column)
+            for fid, variable in zip(fids, timeslice[column]):
+                layer.changeAttributeValue(
+                    fid,
+                    column_id,
+                    variable,
+                )
+
+        layer.endEditCommand()
+        layer.commitChanges()
+
+    def _update_arrow_layers(self, timerange: QgsDateTimeRange) -> None:
+        """Update the result layers with the current arrow time slice."""
+        # Handle edge case when disabling the temporal controller
+        if timerange.isEmpty() or timerange.isInfinite():
+            return
+
+        time = timerange.begin().toPyDateTime()
+        self._update_arrow_layer(
+            self.basinnode_layer, self.results.get("basin"), "node_id", time
+        )
+        self._update_arrow_layer(
+            self.basinnode_layer,
+            self.results.get("concentration"),
+            "node_id",
+            time,
+        )
+        self._update_arrow_layer(
+            self.flowlink_layer, self.results.get("flow"), "link_id", time
+        )
+
+    def _set_results(
         self,
         layer: QgsVectorLayer,
         column: str,
         output_file_name: str,
-    ) -> None:
+    ) -> Path:
         path = (
             get_directory_path_from_model_file(
                 self.ribasim_widget.path, property="results_dir"
@@ -406,3 +704,13 @@ class DatasetWidget(QWidget):
             layer.setCustomProperty("arrow_type", "timeseries")
             layer.setCustomProperty("arrow_path", str(path))
             layer.setCustomProperty("arrow_fid_column", column)
+
+        return path
+
+
+def postprocess_concentration_arrow(df: pd.DataFrame) -> pd.DataFrame:
+    """Postprocess the concentration arrow data to a wide format."""
+    ndf = pd.pivot_table(df, columns="substance", index=["time", "node_id"])
+    ndf.columns = ndf.columns.droplevel(0).str.decode("utf-8")
+    ndf.reset_index("node_id", inplace=True)
+    return ndf
