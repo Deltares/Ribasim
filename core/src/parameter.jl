@@ -6,6 +6,7 @@ const USER_DEMAND_MIN_LEVEL_THRESHOLD = 0.1
 
 const SolverStats = @NamedTuple{
     time::Float64,
+    time_ns::UInt64,
     rhs_calls::Int,
     linear_solves::Int,
     accepted_timesteps::Int,

@@ -343,7 +343,8 @@ Solve a Model until the configured `endtime`.
 function solve!(model::Model)::Model
     (; config, integrator) = model
     (; tspan) = integrator.sol.prob
-    if config.allocation.use_allocation
+
+    comptime_s = @elapsed if config.allocation.use_allocation
         (; timestep) = config.allocation
         n_allocation_times = floor(Int, tspan[end] / timestep)
         for _ in 1:n_allocation_times
@@ -360,5 +361,7 @@ function solve!(model::Model)::Model
         SciMLBase.solve!(integrator)
     end
     check_error!(integrator)
+    comptime = canonicalize(Millisecond(round(Int, comptime_s * 1000)))
+    @info "Computation time: $comptime"
     return model
 end
