@@ -1179,6 +1179,7 @@ def bommelerwaard_model():
         endtime="2016-03-31",
         crs="EPSG:28992",
         allocation=Allocation(use_allocation=True),
+        experimental=Experimental(concentration=True),
     )
 
     # Node coordinates
