@@ -796,7 +796,7 @@ def postprocess_concentration_arrow(df: pd.DataFrame) -> pd.DataFrame:
     ndf.columns = ndf.columns.droplevel(0)
     # Depending on the arrow backend, substances can be bytes
     ndf.columns = ndf.columns.where(
-        pd.Series(ndf.columns).apply(type) is bytes,  # noqa: E721, type: ignore
+        pd.Series(ndf.columns).apply(type) is bytes,  # type: ignore # noqa: E721
         ndf.columns.str.decode("utf-8"),
     )
     ndf.reset_index("node_id", inplace=True)
