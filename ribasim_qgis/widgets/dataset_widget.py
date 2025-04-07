@@ -648,7 +648,7 @@ class DatasetWidget(QWidget):
         postprocess: Callable[[pd.DataFrame], pd.DataFrame] = lambda df: df.set_index(
             pd.DatetimeIndex(df["time"])
         ),
-    ) -> None:
+    ) -> pd.DataFrame:
         """Add arrow output data to the layer and setup its update mechanism."""
         try:
             from pyarrow.feather import read_feather
@@ -794,6 +794,11 @@ def postprocess_concentration_arrow(df: pd.DataFrame) -> pd.DataFrame:
     """Postprocess the concentration arrow data to a wide format."""
     ndf = pd.pivot_table(df, columns="substance", index=["time", "node_id"])
     ndf.columns = ndf.columns.droplevel(0)
+    # Depending on the arrow backend, substances can be bytes
+    ndf.columns = ndf.columns.where(
+        pd.Series(ndf.columns).apply(type) is bytes,  # noqa: E721, type: ignore
+        ndf.columns.str.decode("utf-8"),
+    )
     ndf.reset_index("node_id", inplace=True)
     return ndf
 
