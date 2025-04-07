@@ -43,7 +43,7 @@ def get_database_path_from_model_file(model_path: Path) -> Path:
     )
 
 
-@qgsfunction(args="auto", group="Custom", referenced_columns=[])
+@qgsfunction(args="auto", group="Custom", referenced_columns=[])  # type: ignore
 def label_flow_rate(value: float) -> str:
     """
     Format the label for `flow_rate`.
