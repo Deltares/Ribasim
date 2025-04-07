@@ -166,10 +166,10 @@ Currently at less than 0.1 m.
 """
 function update_vertical_flux!(du::NamedArrayPartition, p::Parameters)::Nothing
     (; p_non_diff, diff_cache) = p
-    (; vertical_flux) = p_non_diff.basin
+    (; vertical_flux, node_id) = p_non_diff.basin
     (; current_area, current_low_storage_factor) = diff_cache
 
-    for id in basin.node_id
+    for id in node_id
         area = current_area[id.idx]
         factor = current_low_storage_factor[id.idx]
 
@@ -202,7 +202,8 @@ function formulate_pid_control!(
     t::Number,
 )::Nothing
     (; p_non_diff, diff_cache, p_mutable) = p
-    (; node_id, active, target, listen_node_id) = p_non_diff.pid_control
+    (; pid_control) = p_non_diff
+    (; node_id, active, target, listen_node_id) = pid_control
 
     all_nodes_active = p_mutable.all_nodes_active[]
 
