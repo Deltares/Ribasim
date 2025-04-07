@@ -149,8 +149,7 @@ class Input(abc.ABC):
         if not success:
             self.load_default_style()
             self.save_style()
-        # Connect signal to save style to database when changed
-        self.layer.styleChanged.connect(self.save_style)
+
         return self.layer
 
     def from_geopackage(self) -> tuple[QgsVectorLayer, Any]:
