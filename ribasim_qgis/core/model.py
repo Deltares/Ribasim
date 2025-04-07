@@ -50,7 +50,7 @@ def label_flow_rate(value: float) -> str:
 
     Above 1, show 2 decimals.
     Show 0 as 0.
-    Below 1, show 3 significant digits and scientific notation.
+    Between 0 and 1, and below 1, show 3 significant digits and scientific notation.
     Example outputs: 0, 1.23e-06, 12345.68
     """
     if abs(value) >= 1:
