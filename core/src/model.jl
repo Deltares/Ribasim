@@ -296,8 +296,24 @@ function Base.show(io::IO, model::Model)
     println(io, "Model(ts: $nsaved, t: $t)")
 end
 
-function SciMLBase.successful_retcode(model::Model)::Bool
-    return SciMLBase.successful_retcode(model.integrator.sol)
+"""
+    Base.success(model::Model)::Bool
+
+Returns true if the model has finished successfully.
+"""
+function Base.success(model::Model)::Bool
+    return successful_retcode(model.integrator.sol) && is_finished(model)
+end
+
+"""
+    is_finished(model::Model)::Bool
+
+Returns true if the model has reached the configured `endtime`.
+"""
+function is_finished(model::Model)::Bool
+    (; starttime, endtime) = model.config
+    t = datetime_since(model.integrator.t, starttime)
+    return t == endtime
 end
 
 """
@@ -305,7 +321,7 @@ end
 
 Take Model timesteps until `t + dt` is reached exactly.
 """
-function SciMLBase.step!(model::Model, dt::Float64)::Model
+function step!(model::Model, dt::Float64)::Model
     (; config, integrator) = model
     (; t) = integrator
     # If we are at an allocation time, run allocation before the next physical
@@ -315,7 +331,7 @@ function SciMLBase.step!(model::Model, dt::Float64)::Model
     if round(ntimes) ≈ ntimes
         update_allocation!(integrator)
     end
-    step!(integrator, dt, true)
+    SciMLBase.step!(integrator, dt, true)
     return model
 end
 
@@ -324,20 +340,28 @@ end
 
 Solve a Model until the configured `endtime`.
 """
-function SciMLBase.solve!(model::Model)::Model
+function solve!(model::Model)::Model
     (; config, integrator) = model
-    if config.allocation.use_allocation
-        (; tspan) = integrator.sol.prob
+    (; tspan) = integrator.sol.prob
+
+    comptime_s = @elapsed if config.allocation.use_allocation
         (; timestep) = config.allocation
-        allocation_times = 0:timestep:(tspan[end] - timestep)
-        n_allocation_times = length(allocation_times)
+        n_allocation_times = floor(Int, tspan[end] / timestep)
         for _ in 1:n_allocation_times
             update_allocation!(integrator)
-            step!(integrator, timestep, true)
+            SciMLBase.step!(integrator, timestep, true)
         end
-        check_error!(integrator)
+        # Any possible remaining step (< allocation.timestep) after the last allocation
+        dt = tspan[end] - integrator.t
+        if dt > 0
+            update_allocation!(integrator)
+            SciMLBase.step!(integrator, dt, true)
+        end
     else
-        solve!(integrator)
+        SciMLBase.solve!(integrator)
     end
+    check_error!(integrator)
+    comptime = canonicalize(Millisecond(round(Int, comptime_s * 1000)))
+    @info "Computation time: $comptime"
     return model
 end

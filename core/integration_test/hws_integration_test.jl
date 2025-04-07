@@ -1,5 +1,4 @@
 @testitem "HWS model integration test" begin
-    using SciMLBase: successful_retcode
     using Dates
     using Statistics
     using Arrow
@@ -10,7 +9,7 @@
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
-    @test successful_retcode(model)
+    @test success(model)
 
     basin_bytes_bench =
         read(normpath(@__DIR__, "../../models/hws_2024_7_0/benchmark/basin_state.arrow"))

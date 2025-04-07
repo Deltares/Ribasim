@@ -5,20 +5,24 @@ title: "Test models"
 Ribasim developers use the following models in their testbench and in order to test new features.
 
 ```{python}
+# | output: asis
 # | code-fold: true
 import ribasim_testmodels
 import matplotlib.pyplot as plt
+from IPython.display import Markdown, display
 
 for model_name, model_constructor in ribasim_testmodels.constructors.items():
     if model_name.startswith("invalid"):
         continue
 
+    display(Markdown(f"\n# {model_name}\n"))
+    if model_constructor.__doc__ is not None:
+        display(Markdown(model_constructor.__doc__))
+
     model = model_constructor()
-    fig, ax = plt.subplots(figsize = (6, 4))
+    fig, ax = plt.subplots(figsize=(6, 4))
     model.plot(ax)
-    ax.set_title(label=model_name, loc="left")
-    fig.text(0, 1, model_constructor.__doc__)
-    ax.axis('off')
+    ax.axis("off")
     plt.show()
     plt.close(fig)
 ```

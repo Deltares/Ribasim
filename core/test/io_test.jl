@@ -106,14 +106,13 @@ end
 end
 
 @testitem "results" begin
-    using SciMLBase: successful_retcode
     import Arrow
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/bucket/ribasim.toml")
     @test ispath(toml_path)
     config = Ribasim.Config(toml_path)
     model = Ribasim.run(config)
-    @test successful_retcode(model)
+    @test success(model)
 
     path = Ribasim.results_path(config, Ribasim.RESULTS_FILENAME.basin)
     bytes = read(path)
