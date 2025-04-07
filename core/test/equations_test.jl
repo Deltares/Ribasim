@@ -16,13 +16,11 @@
 # Solution: storage(t) = limit_storage + (storage0 - limit_storage)*exp(-t/(basin_area*resistance))
 # Here limit_storage is the storage at which the level of the basin is equal to the level of the level boundary
 @testitem "LinearResistance" begin
-    using SciMLBase: successful_retcode
-
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/linear_resistance/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
-    @test successful_retcode(model)
+    @test success(model)
     (; level_boundary, basin, linear_resistance) = model.integrator.p.p_non_diff
 
     t = Ribasim.tsaves(model)
@@ -49,12 +47,10 @@ end
 # Solution: w = 1/(α(t-t0)/basin_area + 1/w(t0)),
 # storage = storage_min + 1/(α(t-t0)/basin_area^2 + 1/(storage(t0)-storage_min))
 @testitem "TabulatedRatingCurve" begin
-    using SciMLBase: successful_retcode
-
     toml_path = normpath(@__DIR__, "../../generated_testmodels/rating_curve/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
-    @test successful_retcode(model)
+    @test success(model)
     (; basin) = model.integrator.p.p_non_diff
 
     t = Ribasim.tsaves(model)
@@ -83,13 +79,11 @@ end
 # Note: The Wolfram Alpha solution contains a factor of the hypergeometric function 2F1, but these values are
 # so close to 1 that they are omitted.
 @testitem "ManningResistance" begin
-    using SciMLBase: successful_retcode
-
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/manning_resistance/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
-    @test successful_retcode(model)
+    @test success(model)
     (; manning_resistance, basin) = model.integrator.p.p_non_diff
 
     t = Ribasim.tsaves(model)
@@ -119,13 +113,11 @@ end
 # differentiating the equation for the storage of the controlled basin
 # once to time to get rid of the integral term.
 @testitem "PID control" begin
-    using SciMLBase: successful_retcode
-
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/pid_control_equation/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
-    @test successful_retcode(model)
+    @test success(model)
     (; basin, pid_control) = model.integrator.p.p_non_diff
 
     storage = Ribasim.get_storages_and_levels(model).storage[:]
@@ -166,7 +158,6 @@ end
 # storage2 = storage2(t0) + (t-t0)*q_pump
 # Note: uses Euler algorithm
 @testitem "MiscellaneousNodes" begin
-    using SciMLBase: successful_retcode
     using Ribasim: tsaves, get_storages_and_levels
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/misc_nodes/ribasim.toml")
@@ -175,7 +166,7 @@ end
     model = Ribasim.Model(toml_path)
     @test config.solver.dt === model.integrator.dt
     Ribasim.solve!(model)
-    @test successful_retcode(model)
+    @test success(model)
     (; p_non_diff) = model.integrator.p
     (; flow_boundary, pump) = p_non_diff
 

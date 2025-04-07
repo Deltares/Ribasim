@@ -16,7 +16,7 @@ function BMI.finalize(model::Model)::Nothing
 end
 
 function BMI.update(model::Model)::Nothing
-    step!(model.integrator)
+    SciMLBase.step!(model.integrator)
     return nothing
 end
 

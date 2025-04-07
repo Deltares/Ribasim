@@ -374,6 +374,7 @@ end
         :LinearResistance,
         :ManningResistance,
         :Outlet,
+        :Junction,
         :PidControl,
         :Pump,
         :TabulatedRatingCurve,

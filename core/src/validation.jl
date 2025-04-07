@@ -1,8 +1,8 @@
 # Allowed types for downstream (to_node_id) nodes given the type of the upstream (from_node_id) node
 neighbortypes(nodetype::Symbol) = neighbortypes(Val(config.snake_case(nodetype)))
-neighbortypes(::Val{:pump}) = Set((:basin, :terminal, :level_boundary))
-neighbortypes(::Val{:outlet}) = Set((:basin, :terminal, :level_boundary))
-neighbortypes(::Val{:user_demand}) = Set((:basin, :terminal, :level_boundary))
+neighbortypes(::Val{:pump}) = Set((:basin, :terminal, :level_boundary, :junction))
+neighbortypes(::Val{:outlet}) = Set((:basin, :terminal, :level_boundary, :junction))
+neighbortypes(::Val{:user_demand}) = Set((:basin, :terminal, :level_boundary, :junction))
 neighbortypes(::Val{:level_demand}) = Set((:basin,))
 neighbortypes(::Val{:basin}) = Set((
     :linear_resistance,
@@ -11,13 +11,24 @@ neighbortypes(::Val{:basin}) = Set((
     :pump,
     :outlet,
     :user_demand,
+    :junction,
 ))
-neighbortypes(::Val{:terminal}) = Set{Symbol}() # only endnode
-neighbortypes(::Val{:flow_boundary}) = Set((:basin, :terminal, :level_boundary))
+neighbortypes(::Val{:terminal}) = Set{Symbol}()
+neighbortypes(::Val{:junction}) = Set((
+    :basin,
+    :junction,
+    :linear_resistance,
+    :tabulated_rating_curve,
+    :manning_resistance,
+    :pump,
+    :outlet,
+    :user_demand,
+))
+neighbortypes(::Val{:flow_boundary}) = Set((:basin, :terminal, :level_boundary, :junction))
 neighbortypes(::Val{:level_boundary}) =
     Set((:linear_resistance, :pump, :outlet, :tabulated_rating_curve))
-neighbortypes(::Val{:linear_resistance}) = Set((:basin, :level_boundary))
-neighbortypes(::Val{:manning_resistance}) = Set((:basin,))
+neighbortypes(::Val{:linear_resistance}) = Set((:basin, :level_boundary, :junction))
+neighbortypes(::Val{:manning_resistance}) = Set((:basin, :junction))
 neighbortypes(::Val{:continuous_control}) = Set((:pump, :outlet))
 neighbortypes(::Val{:discrete_control}) = Set((
     :pump,
@@ -28,7 +39,8 @@ neighbortypes(::Val{:discrete_control}) = Set((
     :pid_control,
 ))
 neighbortypes(::Val{:pid_control}) = Set((:pump, :outlet))
-neighbortypes(::Val{:tabulated_rating_curve}) = Set((:basin, :terminal, :level_boundary))
+neighbortypes(::Val{:tabulated_rating_curve}) =
+    Set((:basin, :terminal, :level_boundary, :junction))
 neighbortypes(::Val{:flow_demand}) =
     Set((:linear_resistance, :manning_resistance, :tabulated_rating_curve, :pump, :outlet))
 neighbortypes(::Any) = Set{Symbol}()
@@ -52,6 +64,8 @@ n_neighbor_bounds_flow(::Val{:FlowBoundary}) = n_neighbor_bounds(0, 0, 1, 1)
 n_neighbor_bounds_flow(::Val{:Pump}) = n_neighbor_bounds(1, 1, 1, 1)
 n_neighbor_bounds_flow(::Val{:Outlet}) = n_neighbor_bounds(1, 1, 1, 1)
 n_neighbor_bounds_flow(::Val{:Terminal}) = n_neighbor_bounds(1, typemax(Int), 0, 0)
+n_neighbor_bounds_flow(::Val{:Junction}) =
+    n_neighbor_bounds(1, typemax(Int), 1, typemax(Int))
 n_neighbor_bounds_flow(::Val{:PidControl}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_flow(::Val{:ContinuousControl}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_flow(::Val{:DiscreteControl}) = n_neighbor_bounds(0, 0, 0, 0)
@@ -71,6 +85,7 @@ n_neighbor_bounds_control(::Val{:FlowBoundary}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_control(::Val{:Pump}) = n_neighbor_bounds(0, 1, 0, 0)
 n_neighbor_bounds_control(::Val{:Outlet}) = n_neighbor_bounds(0, 1, 0, 0)
 n_neighbor_bounds_control(::Val{:Terminal}) = n_neighbor_bounds(0, 0, 0, 0)
+n_neighbor_bounds_control(::Val{:Junction}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_control(::Val{:PidControl}) = n_neighbor_bounds(0, 1, 1, 1)
 n_neighbor_bounds_control(::Val{:ContinuousControl}) =
     n_neighbor_bounds(0, 0, 1, typemax(Int))

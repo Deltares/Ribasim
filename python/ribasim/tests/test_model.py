@@ -297,7 +297,7 @@ def test_model_equals(basic):
 
     nbasic.solver.saveat = basic.solver.saveat
     nbasic.basin.add(
-        Node(None, Point(-1.5, -1), name="confluence"),
+        Node(None, Point(-1.5, -1), name="junction"),
         [
             basin.Static(precipitation=[4]),
         ],
@@ -342,7 +342,7 @@ def test_model_diff(basic):
     nbasic.basin.static.df = basic.basin.static.df.copy()
     nbasic.solver.saveat = basic.solver.saveat
     nbasic.basin.add(
-        Node(None, Point(-1.5, -1), name="confluence"),
+        Node(None, Point(-1.5, -1), name="junction"),
         [
             basin.Static(precipitation=[4], meta_data=1),
         ],

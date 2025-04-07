@@ -435,6 +435,7 @@ function save_solver_stats(u, t, integrator)
     (; stats) = integrator.sol
     (;
         time = t,
+        time_ns = time_ns(),
         rhs_calls = stats.nf,
         linear_solves = stats.nsolve,
         accepted_timesteps = stats.naccept,

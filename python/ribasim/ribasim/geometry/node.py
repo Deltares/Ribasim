@@ -117,6 +117,7 @@ class NodeTable(SpatialTableModel[NodeSchema]):
             "Pump": "h",
             "TabulatedRatingCurve": "D",
             "Terminal": "s",
+            "Junction": ">",
             "UserDemand": "s",
             "": "o",
         }
@@ -136,6 +137,7 @@ class NodeTable(SpatialTableModel[NodeSchema]):
             "Pump": "0.5",  # grayscale level
             "TabulatedRatingCurve": "g",
             "Terminal": "m",
+            "Junction": "r",
             "UserDemand": "g",
             "": "k",
         }

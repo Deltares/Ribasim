@@ -565,7 +565,7 @@ class NodeModel(ChildModel):
 
     @model_serializer(mode="wrap")
     def set_modeld(
-        self, serializer: Callable[[type["NodeModel"]], dict[str, Any]]
+        self, serializer: Callable[["NodeModel"], dict[str, Any]]
     ) -> dict[str, Any]:
         content = serializer(self)
         return dict(filter(lambda x: x[1], content.items()))

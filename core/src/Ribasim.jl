@@ -35,11 +35,9 @@ using RecursiveArrayTools: NamedArrayPartition
 
 # Interface for defining and solving the ODE problem of the physical layer.
 using SciMLBase:
-    init,
-    solve!,
-    step!,
-    check_error!,
     SciMLBase,
+    init,
+    check_error!,
     successful_retcode,
     CallbackSet,
     ODEFunction,
@@ -54,7 +52,7 @@ using SparseConnectivityTracer:
 using SparseMatrixColorings: GreedyColoringAlgorithm, sparsity_pattern
 
 # For efficient sparse computations
-using SparseArrays: SparseMatrixCSC, spzeros
+using SparseArrays: SparseMatrixCSC, spzeros, sparse
 
 # Linear algebra
 using LinearAlgebra: mul!
@@ -99,7 +97,7 @@ using TerminalLoggers: TerminalLogger
 
 # Date and time handling; externally we use the proleptic Gregorian calendar,
 # internally we use a Float64; seconds since the start of the simulation.
-using Dates: Dates, DateTime, Millisecond, @dateformat_str
+using Dates: Dates, DateTime, Millisecond, @dateformat_str, canonicalize
 
 # Callbacks are used to trigger function calls at specific points in the similation.
 # E.g. after each timestep for discrete control,
@@ -108,10 +106,25 @@ using DiffEqCallbacks:
     FunctionCallingCallback, PresetTimeCallback, SavedValues, SavingCallback
 
 # The network defined by the Node and Link table is converted to a graph internally.
-using Graphs: DiGraph, edges, inneighbors, outneighbors, induced_subgraph, is_connected
+using Graphs:
+    DiGraph,
+    edges,
+    inneighbors,
+    outneighbors,
+    induced_subgraph,
+    is_connected,
+    rem_edge!,
+    rem_vertex!
 # Convenience functionality built on top of Graphs. Used to store e.g. node and edge metadata
 # alongside the graph. Extra metadata is stored in a NamedTuple retrieved as graph[].
-using MetaGraphsNext: MetaGraphsNext, MetaGraph, label_for, code_for, labels
+using MetaGraphsNext:
+    MetaGraphsNext,
+    MetaGraph,
+    label_for,
+    code_for,
+    labels,
+    outneighbor_labels,
+    inneighbor_labels
 
 # Improved enumeration type compared to Base, used for e.g. node types.
 using EnumX: EnumX, @enumx
