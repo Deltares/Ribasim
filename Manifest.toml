@@ -2,7 +2,7 @@
 
 julia_version = "1.11.4"
 manifest_format = "2.0"
-project_hash = "d0b4669e6bf76a813fb1713c65869e1682a8fc95"
+project_hash = "08df9cf37f934d9c54c355f731e7bb06c158c106"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "e2478490447631aedba0823d4d7a80b2cc8cdb32"
@@ -1777,9 +1777,6 @@ weakdeps = ["EnzymeCore"]
 [[deps.OrdinaryDiffEqDifferentiation]]
 deps = ["ADTypes", "ArrayInterface", "ConcreteStructs", "ConstructionBase", "DiffEqBase", "DifferentiationInterface", "FastBroadcast", "FiniteDiff", "ForwardDiff", "FunctionWrappersWrappers", "LinearAlgebra", "LinearSolve", "OrdinaryDiffEqCore", "SciMLBase", "SciMLOperators", "SparseArrays", "SparseMatrixColorings", "StaticArrayInterface", "StaticArrays"]
 git-tree-sha1 = "dafdc71c19e05744876302babdc91149829c2e0a"
-repo-rev = "master"
-repo-subdir = "lib/OrdinaryDiffEqDifferentiation"
-repo-url = "https://github.com/SciML/OrdinaryDiffEq.jl.git"
 uuid = "4302a76b-040a-498a-8c04-15b101fed76b"
 version = "1.6.0"
 
