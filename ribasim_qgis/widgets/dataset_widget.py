@@ -163,8 +163,11 @@ class DatasetWidget(QWidget):
         self.node_layer: QgsVectorLayer | None = None
 
         # Results
-        self.flowlink_layer: QgsVectorLayer | None = None
-        self.basinnode_layer: QgsVectorLayer | None = None
+        self.flow_layer: QgsVectorLayer | None = None
+        self.basin_layer: QgsVectorLayer | None = None
+        self.concentration_layer: QgsVectorLayer | None = None
+        self.allocation_layer: QgsVectorLayer | None = None
+        self.allocation_flow_layer: QgsVectorLayer | None = None
         self.results: dict[str, pd.DataFrame] = {}
 
         # Remove our references to layers when they are about to be deleted
@@ -198,8 +201,11 @@ class DatasetWidget(QWidget):
         return [
             ("link_layer", self.link_layer),
             ("node_layer", self.node_layer),
-            ("flowlink_layer", self.flowlink_layer),
-            ("basinnode_layer", self.basinnode_layer),
+            ("flow_layer", self.flow_layer),
+            ("basin_layer", self.basin_layer),
+            ("concentration_layer", self.concentration_layer),
+            ("allocation_layer", self.allocation_layer),
+            ("allocation_flow_layer", self.allocation_flow_layer),
         ]
 
     @property
@@ -420,7 +426,7 @@ class DatasetWidget(QWidget):
         if (
             not layer
             or layer.type() != Qgis.LayerType.Vector
-            or "Link" not in layer.name()
+            or ("Link" not in layer.name() and "Flow" not in layer.name())
         ):
             return
 
@@ -511,14 +517,13 @@ class DatasetWidget(QWidget):
         node_layer = self.ribasim_widget.node_layer
         assert node_layer is not None
         path = self._set_results(node_layer, "node_id", "basin.arrow")
-        if not path.exists():
-            return
-
-        self.basinnode_layer = self._duplicate_layer(
-            node_layer, "BasinNode", "node_id", "node_type", "Basin"
-        )
-        assert self.basinnode_layer is not None
-        self._add_arrow_layer(path, self.basinnode_layer, "node_id")
+        if path.exists():
+            df = self._add_arrow_layer(path)
+            self.basin_layer = self._duplicate_layer(
+                node_layer, "Basin", "node_id", "node_type", "Basin"
+            )
+            assert self.basin_layer is not None
+            self._edit_arrow_layer(df, self.basin_layer, "node_id")
 
         # Add the concentration output
         path = (
@@ -527,29 +532,80 @@ class DatasetWidget(QWidget):
             )
             / "concentration.arrow"
         )
-        if not path.exists():
-            return
-        self._add_arrow_layer(
-            path, self.basinnode_layer, "node_id", postprocess_concentration_arrow
+        if path.exists():
+            df = self._add_arrow_layer(path, postprocess_concentration_arrow)
+            self.concentration_layer = self._duplicate_layer(
+                node_layer, "Concentration", "node_id", "node_type", "Basin"
+            )
+            assert self.concentration_layer is not None
+            self._edit_arrow_layer(
+                df,
+                self.concentration_layer,
+                "node_id",
+            )
+
+        # Add the allocation output
+        path = (
+            get_directory_path_from_model_file(
+                self.ribasim_widget.path, property="results_dir"
+            )
+            / "allocation.arrow"
         )
+        if path.exists():
+            df = self._add_arrow_layer(path, postprocess_allocation_arrow)
+            self.allocation_layer = self._duplicate_layer(
+                node_layer, "Allocation", "node_id", fids=list(df["node_id"].unique())
+            )
+            assert self.allocation_layer is not None
+            self._edit_arrow_layer(df, self.allocation_layer, "node_id")
 
     def _set_link_results(self) -> None:
         link_layer = self.ribasim_widget.link_layer
         assert link_layer is not None
         path = self._set_results(link_layer, "link_id", "flow.arrow")
-        if not path.exists():
-            return
-        self.flowlink_layer = self._duplicate_layer(
-            link_layer, "FlowLink", "link_id", "link_type", "flow"
-        )
-        assert self.flowlink_layer is not None
-        self._add_arrow_layer(path, self.flowlink_layer, "link_id")
+        if path.exists():
+            df = self._add_arrow_layer(path, postprocess_flow_arrow)
+            self.flow_layer = self._duplicate_layer(
+                link_layer, "Flow", "link_id", "link_type", "flow"
+            )
+            assert self.flow_layer is not None
+            self._edit_arrow_layer(df, self.flow_layer, "link_id")
 
-    def _duplicate_layer(self, layer, name, fid_column, filterkey, filtervalue):
-        """Duplicate a layer for use with output data."""
-        duplicate = layer.materialize(
-            QgsFeatureRequest().setFilterExpression(f"{filterkey} = '{filtervalue}'")
+        # Add the allocation flow output
+        path = (
+            get_directory_path_from_model_file(
+                self.ribasim_widget.path, property="results_dir"
+            )
+            / "allocation_flow.arrow"
         )
+        if path.exists():
+            df = self._add_arrow_layer(path, postprocess_allocation_flow_arrow)
+            self.allocation_flow_layer = self._duplicate_layer(
+                link_layer,
+                "AllocationFlow",
+                "link_id",
+                fids=list(df["link_id"].unique()),
+            )
+            assert self.allocation_flow_layer is not None
+            self._edit_arrow_layer(
+                df,
+                self.allocation_flow_layer,
+                "link_id",
+            )
+
+    def _duplicate_layer(
+        self, layer, name, fid_column, filterkey=1, filtervalue=1, fids=None
+    ):
+        """Duplicate a layer for use with output data."""
+        if fids is None:
+            duplicate = layer.materialize(
+                QgsFeatureRequest().setFilterExpression(
+                    f"{filterkey} = '{filtervalue}'"
+                )
+            )
+        else:
+            duplicate = layer.materialize(QgsFeatureRequest().setFilterFids(fids))
+
         duplicate.setName(name)
         fn = STYLE_DIR / f"{name}Style.qml"
         if fn.exists():
@@ -589,6 +645,29 @@ class DatasetWidget(QWidget):
     def _add_arrow_layer(
         self,
         path: Path,
+        postprocess: Callable[[pd.DataFrame], pd.DataFrame] = lambda df: df.set_index(
+            pd.DatetimeIndex(df["time"])
+        ),
+    ) -> pd.DataFrame:
+        """Add arrow output data to the layer and setup its update mechanism."""
+        try:
+            from pyarrow.feather import read_feather
+
+            df = read_feather(path, memory_map=True)
+        except ImportError:
+            dataset = ogr.Open(path)
+            dlayer = dataset.GetLayer(0)
+            stream = dlayer.GetArrowStreamAsNumPy()
+            data = stream.GetNextRecordBatch()
+            df = pd.DataFrame(data=data)
+
+        df = postprocess(df)
+        self.results[path.stem] = df
+        return df
+
+    def _edit_arrow_layer(
+        self,
+        df: pd.DataFrame,
         layer: QgsVectorLayer,
         fid_column: str,
         postprocess: Callable[[pd.DataFrame], pd.DataFrame] = lambda df: df.set_index(
@@ -596,15 +675,6 @@ class DatasetWidget(QWidget):
         ),
     ) -> None:
         """Add arrow output data to the layer and setup its update mechanism."""
-        dataset = ogr.Open(path)
-        dlayer = dataset.GetLayer(0)
-        stream = dlayer.GetArrowStreamAsNumPy()
-        data = stream.GetNextRecordBatch()
-
-        df = pd.DataFrame(data=data)
-        df = postprocess(df)
-        self.results[path.stem] = df
-
         # Add the arrow fields to the layer if they doesn't exist
         layer.startEditing()
         for column in df.columns.tolist():
@@ -676,16 +746,28 @@ class DatasetWidget(QWidget):
 
         time = timerange.begin().toPyDateTime()
         self._update_arrow_layer(
-            self.basinnode_layer, self.results.get("basin"), "node_id", time
+            self.basin_layer, self.results.get("basin"), "node_id", time
         )
         self._update_arrow_layer(
-            self.basinnode_layer,
+            self.flow_layer, self.results.get("flow"), "link_id", time
+        )
+        self._update_arrow_layer(
+            self.concentration_layer,
             self.results.get("concentration"),
             "node_id",
             time,
         )
         self._update_arrow_layer(
-            self.flowlink_layer, self.results.get("flow"), "link_id", time
+            self.allocation_layer,
+            self.results.get("allocation"),
+            "node_id",
+            time,
+        )
+        self._update_arrow_layer(
+            self.allocation_flow_layer,
+            self.results.get("allocation_flow"),
+            "link_id",
+            time,
         )
 
     def _set_results(
@@ -711,6 +793,34 @@ class DatasetWidget(QWidget):
 def postprocess_concentration_arrow(df: pd.DataFrame) -> pd.DataFrame:
     """Postprocess the concentration arrow data to a wide format."""
     ndf = pd.pivot_table(df, columns="substance", index=["time", "node_id"])
-    ndf.columns = ndf.columns.droplevel(0).str.decode("utf-8")
+    ndf.columns = ndf.columns.droplevel(0)
+    # Depending on the arrow backend, substances can be bytes
+    ndf.columns = ndf.columns.where(
+        pd.Series(ndf.columns).apply(type) is bytes,  # type: ignore # noqa: E721
+        ndf.columns.str.decode("utf-8"),
+    )
     ndf.reset_index("node_id", inplace=True)
+    return ndf
+
+
+def postprocess_allocation_arrow(df: pd.DataFrame) -> pd.DataFrame:
+    """Postprocess the allocation arrow data to a wide format by summing over priorities."""
+    ndf = df.groupby(["time", "node_id"]).aggregate(
+        {"demand": "sum", "allocated": "sum", "realized": "sum"}
+    )
+    ndf.reset_index("node_id", inplace=True)
+    return ndf
+
+
+def postprocess_allocation_flow_arrow(df: pd.DataFrame) -> pd.DataFrame:
+    """Postprocess the allocation flow arrow data to a wide format by summing over priorities."""
+    ndf = df.groupby(["time", "link_id"]).aggregate({"flow_rate": "sum"})
+    ndf.reset_index("link_id", inplace=True)
+    return ndf
+
+
+def postprocess_flow_arrow(df: pd.DataFrame) -> pd.DataFrame:
+    """Postprocess the allocation flow arrow data to a wide format by summing over priorities."""
+    ndf = df.set_index(pd.DatetimeIndex(df["time"]))
+    ndf.drop(columns=["time", "from_node_id", "to_node_id"], inplace=True)
     return ndf
