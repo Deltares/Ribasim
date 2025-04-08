@@ -661,6 +661,11 @@ class DatasetWidget(QWidget):
             data = stream.GetNextRecordBatch()
             df = pd.DataFrame(data=data)
 
+            # The OGR path introduces strings columns as bytes
+            for column in df.columns:
+                if df.dtypes[column] == object:  # noqa: E721
+                    df[column] = df[column].str.decode("utf-8")
+
         df = postprocess(df)
         self.results[path.stem] = df
         return df
@@ -708,7 +713,7 @@ class DatasetWidget(QWidget):
         # the previous time slice is most valid, unless forced
         # to update on initial load (without a valid datetime).
         if time not in df.index:
-            if force:
+            if force and len(df.index) > 0:
                 time = df.index[-1]
             else:
                 print(f"Skipping update, out of bounds for {time}")
@@ -794,11 +799,6 @@ def postprocess_concentration_arrow(df: pd.DataFrame) -> pd.DataFrame:
     """Postprocess the concentration arrow data to a wide format."""
     ndf = pd.pivot_table(df, columns="substance", index=["time", "node_id"])
     ndf.columns = ndf.columns.droplevel(0)
-    # Depending on the arrow backend, substances can be bytes
-    ndf.columns = ndf.columns.where(
-        pd.Series(ndf.columns).apply(type) is bytes,  # type: ignore # noqa: E721
-        ndf.columns.str.decode("utf-8"),
-    )
     ndf.reset_index("node_id", inplace=True)
     return ndf
 
