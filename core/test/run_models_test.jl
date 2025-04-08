@@ -1,5 +1,4 @@
 @testitem "trivial model" begin
-    using SciMLBase: successful_retcode
     using Tables: Tables
     using Tables.DataAPI: nrow
     using Dates: DateTime
@@ -19,7 +18,7 @@
     config = Ribasim.Config(toml_path)
     model = Ribasim.run(config)
     @test model isa Ribasim.Model
-    @test successful_retcode(model)
+    @test success(model)
     (; p_non_diff) = model.integrator.p
 
     @test p_non_diff.node_id == [0, 6, 6]
@@ -82,8 +81,15 @@
             (DateTime, Int32, Float64),
         )
         @test Tables.schema(solver_stats) == Tables.Schema(
-            (:time, :rhs_calls, :linear_solves, :accepted_timesteps, :rejected_timesteps),
-            (DateTime, Int, Int, Int, Int),
+            (
+                :time,
+                :computation_time,
+                :rhs_calls,
+                :linear_solves,
+                :accepted_timesteps,
+                :rejected_timesteps,
+            ),
+            (DateTime, Float64, Int, Int, Int, Int),
         )
     end
 
@@ -126,7 +132,6 @@
 end
 
 @testitem "bucket model" begin
-    using SciMLBase: successful_retcode
     using OrdinaryDiffEqCore: get_du
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/bucket/ribasim.toml")
@@ -143,11 +148,10 @@ end
     du_infiltration = view(du, state_ranges.infiltration)
     @test du_evaporation == [0.0]
     @test du_infiltration == [0.0]
-    @test successful_retcode(model)
+    @test success(model)
 end
 
 @testitem "leaky bucket model" begin
-    using SciMLBase: successful_retcode
     using OrdinaryDiffEqCore: get_du
     import BasicModelInterface as BMI
 
@@ -187,13 +191,12 @@ end
     @test drng == [0.001]
     @test infl == [0.002]
     stor ≈ Float32[init_stor + 86400 * (0.003 * 2.0 + 0.001 * 0.5 - 0.001 - 0.002 * 0.5)]
-    @test successful_retcode(Ribasim.solve!(model))
+    @test success(Ribasim.solve!(model))
 end
 
 @testitem "basic model" begin
     using Logging: Debug, with_logger
     using LoggingExtras
-    using SciMLBase: successful_retcode
     using OrdinaryDiffEqBDF: QNDF
     import Tables
     using Dates
@@ -221,7 +224,7 @@ end
     @test alg isa QNDF
     @test alg.step_limiter! == Ribasim.limit_flow!
 
-    @test successful_retcode(model)
+    @test success(model)
     @test length(model.integrator.sol) == 2 # start and end
     @test diff_cache.current_storage ≈ Float32[804.22156, 803.6474, 495.18243, 1318.3053] skip =
         Sys.isapple() atol = 1.5
@@ -242,17 +245,14 @@ end
 end
 
 @testitem "basic arrow model" begin
-    using SciMLBase: successful_retcode
-
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic_arrow/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
-    @test successful_retcode(model)
+    @test success(model)
 end
 
 @testitem "basic transient model" begin
-    using SciMLBase: successful_retcode
     using OrdinaryDiffEqCore: get_du
 
     toml_path =
@@ -260,7 +260,7 @@ end
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
-    @test successful_retcode(model)
+    @test success(model)
     @test allunique(Ribasim.tsaves(model))
     (; p_non_diff, diff_cache) = model.integrator.p
     precipitation = p_non_diff.basin.vertical_flux.precipitation
@@ -270,19 +270,15 @@ end
 end
 
 @testitem "Allocation example model" begin
-    using SciMLBase: successful_retcode
-
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/allocation_example/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
-    @test successful_retcode(model)
+    @test success(model)
 end
 
 @testitem "sparse and AD/FDM jac solver options" begin
-    using SciMLBase: successful_retcode
-
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/basic_transient/ribasim.toml")
 
@@ -295,10 +291,10 @@ end
     config = Ribasim.Config(toml_path; solver_sparse = false, solver_autodiff = false)
     dense_fdm = Ribasim.run(config)
 
-    @test successful_retcode(sparse_ad)
-    @test successful_retcode(dense_ad)
-    @test successful_retcode(sparse_fdm)
-    @test successful_retcode(dense_fdm)
+    @test success(sparse_ad)
+    @test success(dense_ad)
+    @test success(sparse_fdm)
+    @test success(dense_fdm)
 
     @test dense_ad.integrator.u ≈ sparse_ad.integrator.u atol = 0.1
     @test sparse_fdm.integrator.u ≈ sparse_ad.integrator.u atol = 4
@@ -306,12 +302,11 @@ end
 
     config = Ribasim.Config(toml_path; solver_algorithm = "Rodas5P", solver_autodiff = true)
     time_ad = Ribasim.run(config)
-    @test successful_retcode(time_ad)
+    @test success(time_ad)
     @test time_ad.integrator.u ≈ sparse_ad.integrator.u atol = 10
 end
 
 @testitem "TabulatedRatingCurve model" begin
-    using SciMLBase: successful_retcode
     using DataInterpolations.ExtrapolationType: Constant, Periodic
 
     toml_path =
@@ -319,7 +314,7 @@ end
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
-    @test successful_retcode(model)
+    @test success(model)
     (; p_non_diff, diff_cache) = model.integrator.p
     @test diff_cache.current_storage ≈ Float32[368.31558, 365.68442] skip = Sys.isapple()
     (; tabulated_rating_curve) = p_non_diff
@@ -341,13 +336,12 @@ end
 
 @testitem "Outlet constraints" begin
     using DataFrames: DataFrame
-    using SciMLBase: successful_retcode
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/outlet/ribasim.toml")
     @test ispath(toml_path)
 
     model = Ribasim.run(toml_path)
-    @test successful_retcode(model)
+    @test success(model)
     (; level_boundary, outlet) = model.integrator.p.p_non_diff
     (; level) = level_boundary
     level = level[1]
@@ -373,7 +367,6 @@ end
 end
 
 @testitem "UserDemand" begin
-    using SciMLBase: successful_retcode
     using Dates
     using DataFrames: DataFrame
     using Ribasim: formulate_storages!
@@ -416,7 +409,6 @@ end
 end
 
 @testitem "ManningResistance" begin
-    using SciMLBase: successful_retcode
     using OrdinaryDiffEqCore: get_du
     using Ribasim: NodeID
 
@@ -477,7 +469,7 @@ end
     toml_path = normpath(@__DIR__, "../../generated_testmodels/backwater/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
-    @test successful_retcode(model)
+    @test success(model)
 
     du = get_du(model.integrator)
     (; p, t) = model.integrator
@@ -576,8 +568,9 @@ end
 end
 
 @testitem "stroboscopic_forcing" begin
-    import BasicModelInterface as BMI
     using SciMLBase: successful_retcode
+    using Ribasim: is_finished
+    import BasicModelInterface as BMI
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/bucket/ribasim.toml")
     model = BMI.initialize(Ribasim.Model, toml_path)
@@ -607,7 +600,8 @@ end
         drn_out[day + 1] = only(drn_sum)
     end
 
-    @test successful_retcode(model)
+    @test successful_retcode(model.integrator.sol)
+    @test !is_finished(model)
 
     Δdrn = diff(drn_out)
     Δinf = diff(inf_out)
@@ -643,4 +637,41 @@ end
     basin_level[2] += 1
     @test basin_level ≈ df.subgrid_level[(end - 1):end]
     @test basin_level ≈ model.integrator.p.p_non_diff.subgrid.level
+end
+
+@testitem "junction" begin
+    import SQLite
+    import MetaGraphsNext: labels
+
+    # Combined (confluence and bifurcation) model
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/junction_combined/ribasim.toml")
+
+    config = Ribasim.Config(toml_path)
+    db_path = Ribasim.database_path(config)
+    db = SQLite.DB(db_path)
+    graph = Ribasim.create_graph(db, config)
+
+    (; internal_flow_links, external_flow_links, flow_link_map) = graph.graph_data
+    @test length(internal_flow_links) == 8
+    @test length(external_flow_links) == 10
+    @test all(node.type != Ribasim.NodeType.Junction for node in labels(graph))
+
+    # Chained model
+    model = Ribasim.run(toml_path)
+
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/junction_chained/ribasim.toml")
+
+    config = Ribasim.Config(toml_path)
+    db_path = Ribasim.database_path(config)
+    db = SQLite.DB(db_path)
+    graph = Ribasim.create_graph(db, config)
+
+    (; internal_flow_links, external_flow_links, flow_link_map) = graph.graph_data
+    @test length(internal_flow_links) == 6
+    @test length(external_flow_links) == 8
+    @test all(node.type != Ribasim.NodeType.Junction for node in labels(graph))
+
+    model = Ribasim.run(toml_path)
 end

@@ -825,9 +825,14 @@ function Outlet(db::DB, config::Config, graph::MetaGraph)::Outlet
     )
 end
 
-function Terminal(db::DB, config::Config)::Terminal
+function Terminal(db::DB)::Terminal
     node_id = get_node_ids(db, NodeType.Terminal)
     return Terminal(node_id)
+end
+
+function Junction(db::DB)::Junction
+    node_id = get_node_ids(db, NodeType.Junction)
+    return Junction(; node_id)
 end
 
 function ConcentrationData(
@@ -1054,6 +1059,10 @@ function CompoundVariable(
     # Each row defines a subvariable
     for row in variables_compound_variable
         listen_node_id = NodeID(row.listen_node_id, node_ids_all)
+        if listen_node_id.type == NodeType.Junction
+            @error "Cannot listen to Junction node" listen_node_id node_id
+            error("Invalid `listen_node_id`.")
+        end
         # Placeholder until actual ref is known
         diff_cache_ref = DiffCacheRef()
         variable = row.variable
@@ -1786,7 +1795,8 @@ function Parameters(db::DB, config::Config)::Parameters
         flow_boundary = FlowBoundary(db, config, graph),
         pump = Pump(db, config, graph),
         outlet = Outlet(db, config, graph),
-        terminal = Terminal(db, config),
+        terminal = Terminal(db),
+        junction = Junction(db),
         discrete_control = DiscreteControl(db, config, graph),
         continuous_control = ContinuousControl(db, config),
         pid_control = PidControl(db, config),
