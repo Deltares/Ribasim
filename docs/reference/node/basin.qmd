@@ -6,7 +6,7 @@ The Basin node represents a flexible, generalized control volume that can be use
 It can exchange water with all other connected nodes, but it has no flow behavior of its own.
 The connected nodes determine how water is exchanged with the Basin, depending on their specific characteristics and the flow dynamics between them.
 
-While the term "Basin" may traditionally suggest a watershed, in this context, it serves as a wide range of water bodies and control volumes, 
+While the term "Basin" may traditionally suggest a watershed, in this context, it serves as a wide range of water bodies and control volumes,
 including those that may not conform to the typical geographical definition of a basin.
 
 # Modeling different water body types
@@ -20,7 +20,7 @@ These parameters help define how water is stored and managed in the system. Belo
 * Canals: Similar to a river reach a canal can also be modeled as a Basin, where water flow is managed along the canal system
 
 # Confluence Representation
-A Confluence where multiple links converge into a single node can be modeled using a [Junction node](https://ribasim.org/reference/node/junction.html) 
+A Confluence where multiple links converge into a single node can be modeled using a [Junction node](https://ribasim.org/reference/node/junction.html)
 
 # Tables
 
