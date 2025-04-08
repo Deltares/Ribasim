@@ -4,6 +4,7 @@ description = "Meta-project used to share the Manifest of Ribasim and its depend
 
 [deps]
 Accessors = "7d9f7c33-5ae7-4f3b-8dc6-eff91059b697"
+AllocCheck = "9b6a8646-10ed-4001-bbdc-1d2f46dfbb1a"
 Arrow = "69666777-d1a9-59fb-9406-91d4454c9d45"
 Artifacts = "56f22d72-fd6d-98f1-02f0-08ddc0907c33"
 BasicModelInterface = "59605e27-edc0-445a-b93d-c09a3a50b330"
