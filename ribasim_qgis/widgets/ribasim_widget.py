@@ -19,6 +19,7 @@ from qgis.core import (
     QgsLayerTreeGroup,
     QgsMapLayer,
     QgsProject,
+    QgsSettings,
     QgsVectorLayer,
 )
 from qgis.gui import QgisInterface
@@ -52,7 +53,22 @@ class RibasimWidget(QWidget):
         self.group: QgsLayerTreeGroup | None = None
         self.groups: dict[str, QgsLayerTreeGroup] = {}
 
-        return
+        # Prevent warning message on closing project/QGIS
+        # when using output layers, but save original setting
+        settings = QgsSettings()
+        self.askToSaveMemoryLayers = settings.value("app/askToSaveMemoryLayers")
+        self.warn_on_closing(False)
+
+        # And restore the setting it after the project is closed
+        project = QgsProject.instance()
+        assert project is not None
+        project.aboutToBeCleared.connect(self.warn_on_closing)
+
+    def warn_on_closing(self, value: bool | None = None) -> None:
+        """Set user warning on closing project if memory layers are present."""
+        value = value if value is not None else self.askToSaveMemoryLayers
+        settings = QgsSettings()
+        settings.setValue("app/askToSaveMemoryLayers", value)
 
     # Inter-widget communication
     # --------------------------
@@ -110,6 +126,8 @@ class RibasimWidget(QWidget):
         self.group = root.insertGroup(0, name)  # insert at the top
         self.create_subgroup(name, "Ribasim Input")
         self.create_subgroup(name, "Ribasim Results", visible=False)
+        assert self.group is not None
+        self.group.setIsMutuallyExclusive(True)
 
     def add_to_group(self, maplayer: Any, destination: str, on_top: bool):
         """Try to add to a group.
