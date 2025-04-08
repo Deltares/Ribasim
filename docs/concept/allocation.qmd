@@ -163,12 +163,12 @@ $$
     \min E_{\text{user demand}} + E_{\text{level demand}} + E_{\text{flow demand}}
 $$
 
-The error between the flows and user demands is denoted by $E_{\text{user demand}}$, where
+The error between the flows and user demands is denoted by $E_{\text{user demand}}$, where[^1]
 $$
-    E_{\text{user demand}} = \sum_{(i,j)\in E_S\;:\; i\in U_S} \left|F_{ij} - fd_j^p(t)\right|,
+    E_{\text{user demand}} = \sum_{(i,j)\in E_S\;:\; i\in U_S} \left|F_{ij} - fd_j^p(t)\right|.
 $$
 
-which is implemented using auxiliary variables.
+[^1]: This is implemented using auxiliary variables, see e.g. [here](https://optimization.cbe.cornell.edu/index.php?title=Optimization_with_absolute_values).
 
 :::{.callout-note}
 When performing main network allocation, the connections to subnetworks are also interpreted as UserDemand nodes with demands determined by subnetwork demand collection.

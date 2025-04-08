@@ -166,7 +166,7 @@ function add_variables_flow_buffer!(
 end
 
 """
-Add the variables denoting the upper error and the lower error when comparing allocated flows
+Add the variables denoting the upper relative error and the lower relative error when comparing allocated flows
 to the target amount (target_fraction * demand).
 """
 function add_variables_objective!(
@@ -195,10 +195,18 @@ function add_variables_objective!(
         lower_error_name = "lower_error_$node_name"
         upper_error_name = "upper_error_$node_name"
 
-        problem[Symbol(lower_error_name)] =
-            JuMP.@variable(problem, [node_id = node_ids], base_name = lower_error_name)
-        problem[Symbol(upper_error_name)] =
-            JuMP.@variable(problem, [node_id = node_ids], base_name = upper_error_name)
+        problem[Symbol(lower_error_name)] = JuMP.@variable(
+            problem,
+            [node_id = node_ids],
+            base_name = lower_error_name,
+            lower_bound = 0.0
+        )
+        problem[Symbol(upper_error_name)] = JuMP.@variable(
+            problem,
+            [node_id = node_ids],
+            base_name = upper_error_name,
+            lower_bound = 0.0
+        )
     end
     return nothing
 end
@@ -484,20 +492,22 @@ function add_constraints_objective!(
             inflows
         end
 
+        # Example values
+        f = 1.0
+        d = 1.0
+
         problem[Symbol(lower_error_constraint_name)] = JuMP.@constraint(
             problem,
             [node_id = node_ids],
-            lower_error[node_id] + inflows[node_id] >= 1.0,
+            d * lower_error[node_id] >= f * d - inflows[node_id],
             base_name = lower_error_constraint_name
         )
         problem[Symbol(upper_error_constraint_name)] = JuMP.@constraint(
             problem,
             [node_id = node_ids],
-            upper_error[node_id] - inflows[node_id] >= -1.0,
+            d * upper_error[node_id] >= inflows[node_id] - f * d,
             base_name = upper_error_constraint_name
         )
-        JuMP.@constraint(problem, lower_error .>= 0)
-        JuMP.@constraint(problem, upper_error .>= 0)
     end
 
     return nothing
