@@ -725,6 +725,12 @@ class DatasetWidget(QWidget):
         layer.beginEditCommand("Group all undos for performance.")
 
         fids = sorted(layer.allFeatureIds())
+        if not len(fids) == len(timeslice):
+            print(
+                f"Can't join data at {time}, shapes of Link and Allocation tables differ."
+            )
+            return
+
         for column in df.columns.tolist():
             if (
                 column == fid_column or column == "time"
@@ -815,6 +821,8 @@ def postprocess_allocation_arrow(df: pd.DataFrame) -> pd.DataFrame:
 def postprocess_allocation_flow_arrow(df: pd.DataFrame) -> pd.DataFrame:
     """Postprocess the allocation flow arrow data to a wide format by summing over priorities."""
     ndf = df.groupby(["time", "link_id"]).aggregate({"flow_rate": "sum"})
+    # Drop Basin to Basin flows, as we can't join/visualize them
+    ndf.drop(ndf[ndf.index.get_level_values("link_id") == 0].index, inplace=True)
     ndf.reset_index("link_id", inplace=True)
     return ndf
 
