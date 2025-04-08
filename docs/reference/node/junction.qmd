@@ -1,0 +1,64 @@
+---
+title: "Junction"
+---
+
+A Junction node allows explicitly representing confluences and bifurcations in the network. It doesn't introduce new behavior but makes it easier to make the network layout recognizable.
+
+Junctions can connect to other Junctions, but are not allowed to form cycles. Note that a confluence Junction followed by bifurcation Junction is generally invalid, as it will connect a connector node with multiple basins.
+
+
+# Tables
+
+No tables are required for Junction nodes.
+
+# Equations
+
+Junctions connect all upstream nodes with all downstream nodes,
+and are not used in the equations themselves.
+
+# Examples
+
+This testmodel (juction_combined) with Junctions
+```{mermaid}
+flowchart LR
+    C{Boundary} --> E[/Junction\]
+    E --> F((Basin))
+    E --> G((Basin))
+    F --> H{Connector}
+    G --> I{Connector}
+    H --> J[/Junction\]
+    I --> J
+    J --> K((Basin))
+```
+
+translates to the following model:
+
+```{mermaid}
+flowchart LR
+    C{Boundary} --> F((Basin))
+    C --> G((Basin))
+    F --> H{Connector}
+    G --> I{Connector}
+    H --> K((Basin))
+    I --> K
+```
+
+And this testmodel (junction_chained) with Junctions
+
+```{mermaid}
+flowchart LR
+    A{Connector} --> D[/Junction\]
+    B{Connector} --> D[/Junction\]
+    C{Connector} --> E[/Junction\]
+    D --> E
+    E --> F((Basin))
+```
+
+translates to the following model:
+
+```{mermaid}
+flowchart LR
+    A{Connector} --> F((Basin))
+    B{Connector} --> F
+    C{Connector} --> F
+```

@@ -1,7 +1,7 @@
 name: Docs
 on:
   push:
-    branches: [main, update/pixi-lock, update/julia-manifest]
+    branches: [main]
     paths-ignore: [".teamcity/**"]
   pull_request:
     paths-ignore: [".teamcity/**"]
@@ -30,7 +30,7 @@ jobs:
         # https://github.com/JuliaPy/Conda.jl/issues/251
         run: |
           mkdir -p "/home/runner/.julia/conda/3/x86_64"
-      - uses: prefix-dev/setup-pixi@v0.8.3
+      - uses: prefix-dev/setup-pixi@v0.8.4
         with:
           pixi-version: "latest"
       - name: Prepare pixi

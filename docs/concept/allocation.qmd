@@ -244,13 +244,14 @@ using SQLite
 
 toml_path = normpath(@__DIR__, "../../generated_testmodels/allocation_example/ribasim.toml")
 model = Ribasim.Model(toml_path)
-(; u, p, t) = model.integrator
+(; p, t) = model.integrator
+(; allocation) = p.p_non_diff
 
-allocation_model = p.allocation.allocation_models[1]
+allocation_model = allocation.allocation_models[1]
 priority_idx = 1
 
-Ribasim.set_initial_values!(allocation_model, u, p, t)
-Ribasim.set_objective_demand_priority!(allocation_model, u, p, t, priority_idx)
+Ribasim.set_initial_values!(allocation_model, p, t)
+Ribasim.set_objective_demand_priority!(allocation_model, p, t, priority_idx)
 
-println(p.allocation.allocation_models[1].problem)
+println(allocation.allocation_models[1].problem)
 ```

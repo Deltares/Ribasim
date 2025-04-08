@@ -1,5 +1,6 @@
 package Ribasim.buildTypes
 
+import Templates.*
 import Templates.GithubCommitStatusIntegration
 import jetbrains.buildServer.configs.kotlin.*
 import jetbrains.buildServer.configs.kotlin.buildSteps.script
@@ -8,6 +9,8 @@ import jetbrains.buildServer.configs.kotlin.triggers.vcs
 object GenerateTestmodels : BuildType({
     templates(GithubCommitStatusIntegration)
     name = "Generate Testmodels"
+
+    templates(GithubPullRequestsIntegration)
 
     artifactRules = """ribasim\generated_testmodels => generated_testmodels.zip"""
     publishArtifacts = PublishMode.SUCCESSFUL
@@ -49,6 +52,12 @@ object GenerateTestmodels : BuildType({
     triggers {
         vcs {
             id = "TRIGGER_646"
+            branchFilter = """
+                +:<default>
+                +:refs/pull/*
+                +:pull/*
+            """.trimIndent()
+            triggerRules = "-:comment=skip ci:**"
         }
     }
 

@@ -3,7 +3,7 @@ Process mass updates for UserDemand separately
 as the inflow and outflow are decoupled in the states
 """
 function mass_updates_user_demand!(integrator::DEIntegrator)::Nothing
-    (; basin, user_demand) = integrator.p
+    (; basin, user_demand) = integrator.p.p_non_diff
     (; concentration_state, mass) = basin.concentration_data
 
     @views for (inflow_link, outflow_link) in
@@ -35,7 +35,8 @@ end
 Process all mass inflows to basins
 """
 function mass_inflows_basin!(integrator::DEIntegrator)::Nothing
-    (; basin, state_inflow_link, state_outflow_link, level_boundary) = integrator.p
+    (; basin, state_inflow_link, state_outflow_link, level_boundary) =
+        integrator.p.p_non_diff
     (; cumulative_in, concentration_state, mass) = basin.concentration_data
 
     for (inflow_link, outflow_link) in zip(state_inflow_link, state_outflow_link)
@@ -92,7 +93,7 @@ end
 Process all mass outflows from Basins
 """
 function mass_outflows_basin!(integrator::DEIntegrator)::Nothing
-    (; state_inflow_link, state_outflow_link, basin) = integrator.p
+    (; state_inflow_link, state_outflow_link, basin) = integrator.p.p_non_diff
     (; mass, concentration_state) = basin.concentration_data
 
     @views for (inflow_link, outflow_link) in zip(state_inflow_link, state_outflow_link)

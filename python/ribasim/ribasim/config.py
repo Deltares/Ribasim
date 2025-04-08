@@ -139,7 +139,7 @@ class Solver(ChildModel):
     reltol: float = 1e-05
     maxiters: int = 1000000000
     sparse: bool = True
-    autodiff: bool = False
+    autodiff: bool = True
     evaporate_mass: bool = True
 
 
@@ -321,6 +321,9 @@ class MultiNodeModel(NodeModel):
 
 
 class Terminal(MultiNodeModel): ...
+
+
+class Junction(MultiNodeModel): ...
 
 
 class PidControl(MultiNodeModel):

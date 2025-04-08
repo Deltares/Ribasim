@@ -189,12 +189,12 @@ end
     cfg = Ribasim.Config(toml_path)
     db_path = Ribasim.database_path(cfg)
     db = SQLite.DB(db_path)
-    p = Ribasim.Parameters(db, cfg)
+    (; p_non_diff) = Ribasim.Parameters(db, cfg)
     close(db)
 
     logger = TestLogger()
     with_logger(logger) do
-        @test !Ribasim.valid_discrete_control(p, cfg)
+        @test !Ribasim.valid_discrete_control(p_non_diff, cfg)
     end
 
     @test length(logger.logs) == 5
@@ -217,51 +217,44 @@ end
 
 @testitem "Pump/outlet flow rate sign validation" begin
     using Logging
-    using Ribasim: NodeID, NodeType, ControlStateUpdate, ParameterUpdate, cache
+    using Ribasim: NodeID, NodeType, ControlStateUpdate, ParameterUpdate, valid_flow_rates
     using DataInterpolations: LinearInterpolation
 
     logger = TestLogger()
+    flow_rate = [LinearInterpolation([-1.0, 2.0], [0.0, 1.0])]
 
     with_logger(logger) do
-        flow_rate = cache(1)
-        flow_rate[Float64[]] .= -1
-        @test_throws "Invalid Outlet flow rate(s)." Ribasim.Outlet(;
-            node_id = [NodeID(:Outlet, 1, 1)],
-            flow_rate,
-        )
+        node_id = [NodeID(:Outlet, 1, 1)]
+        control_mapping = Dict{Tuple{NodeID, String}, ControlStateUpdate}()
+        @test !valid_flow_rates(node_id, flow_rate, control_mapping)
     end
 
     @test length(logger.logs) == 1
     @test logger.logs[1].level == Error
-    @test logger.logs[1].message == "Outlet #1 flow rates must be non-negative, found -1.0."
+    @test logger.logs[1].message == "Negative flow rate(s) for Outlet #1 found."
 
     logger = TestLogger()
 
     with_logger(logger) do
-        flow_rate_cache = cache(1)
-        flow_rate_cache[Float64[]] .= -1
-        @test_throws "Invalid Pump flow rate(s)." Ribasim.Pump(;
-            node_id = [NodeID(:Pump, 1, 1)],
-            flow_rate_cache,
-            control_mapping = Dict(
-                (NodeID(:Pump, 1, 1), "foo") => ControlStateUpdate(;
-                    active = ParameterUpdate(:active, true),
-                    itp_update = [
-                        ParameterUpdate(
-                            :flow_rate,
-                            LinearInterpolation([-1.0, -1.0], [0.0, 1.0]),
-                        ),
-                    ],
-                ),
+        node_id = [NodeID(:Pump, 1, 1)]
+        control_mapping = Dict(
+            (NodeID(:Pump, 1, 1), "foo") => ControlStateUpdate(;
+                active = ParameterUpdate(:active, true),
+                itp_update_linear = [
+                    ParameterUpdate(
+                        :flow_rate,
+                        LinearInterpolation([-1.0, -1.0], [0.0, 1.0]),
+                    ),
+                ],
             ),
         )
+        @test !valid_flow_rates(node_id, flow_rate, control_mapping)
     end
 
     # Only the invalid control state flow_rate yields an error
     @test length(logger.logs) == 1
     @test logger.logs[1].level == Error
-    @test logger.logs[1].message ==
-          "Pump #1 flow rates must be non-negative, found -1.0 for control state 'foo'."
+    @test logger.logs[1].message == "Negative flow rate(s) found."
 end
 
 @testitem "Link type validation" begin
@@ -380,9 +373,9 @@ end
     config = Ribasim.Config(toml_path)
     model = Ribasim.Model(config)
 
-    parameters = model.integrator.p
+    (; p_non_diff) = model.integrator.p
 
-    (; graph, tabulated_rating_curve, basin) = parameters
+    (; graph, tabulated_rating_curve, basin) = p_non_diff
     tabulated_rating_curve.interpolations[1].t[1] = invalid_level
 
     logger = TestLogger()
@@ -411,9 +404,9 @@ end
     config = Ribasim.Config(toml_path)
     model = Ribasim.Model(config)
 
-    parameters = model.integrator.p
+    (; p_non_diff) = model.integrator.p
 
-    (; graph, outlet, basin) = parameters
+    (; graph, outlet, basin) = p_non_diff
     outlet.min_upstream_level[1] = LinearInterpolation(fill(invalid_level, 2), zeros(2))
 
     logger = TestLogger()

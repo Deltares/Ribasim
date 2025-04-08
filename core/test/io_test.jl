@@ -106,14 +106,13 @@ end
 end
 
 @testitem "results" begin
-    using SciMLBase: successful_retcode
     import Arrow
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/bucket/ribasim.toml")
     @test ispath(toml_path)
     config = Ribasim.Config(toml_path)
     model = Ribasim.run(config)
-    @test successful_retcode(model)
+    @test success(model)
 
     path = Ribasim.results_path(config, Ribasim.RESULTS_FILENAME.basin)
     bytes = read(path)
@@ -137,10 +136,11 @@ end
 
     config = Ribasim.Config(toml_path)
     model = Ribasim.Model(config)
-    storage1_begin =
-        copy(model.integrator.p.basin.current_properties.current_storage[Float64[]])
+    (; p_non_diff, diff_cache) = model.integrator.p
+    (; current_storage) = diff_cache
+    storage1_begin = copy(current_storage)
     solve!(model)
-    storage1_end = model.integrator.p.basin.current_properties.current_storage[Float64[]]
+    storage1_end = current_storage
     @test storage1_begin != storage1_end
 
     # copy state results to input
@@ -156,6 +156,8 @@ end
     end
 
     model = Ribasim.Model(toml_path)
-    storage2_begin = model.integrator.p.basin.current_properties.current_storage[Float64[]]
+    (; p_non_diff, diff_cache) = model.integrator.p
+    (; current_storage) = diff_cache
+    storage2_begin = current_storage
     @test storage1_end ≈ storage2_begin
 end

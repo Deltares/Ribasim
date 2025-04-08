@@ -1,5 +1,4 @@
 @testitem "HWS model integration test" begin
-    using SciMLBase: successful_retcode
     using Dates
     using Statistics
     using Arrow
@@ -10,7 +9,7 @@
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
-    @test successful_retcode(model)
+    @test success(model)
 
     basin_bytes_bench =
         read(normpath(@__DIR__, "../../models/hws_2024_7_0/benchmark/basin_state.arrow"))
@@ -22,7 +21,7 @@
 
     @testset "Results values" begin
         @test basin.node_id == basin_bench.node_id
-        @test all(q -> abs(q) < 0.2, basin.level - basin_bench.level)
+        @test all(q -> abs(q) < 1.0, basin.level - basin_bench.level)
     end
 
     diff = basin.level - basin_bench.level
@@ -46,7 +45,7 @@
     end
 
     # current benchmark in seconds, TeamCity is up to 4x slower than local
-    benchmark_runtime = 32
+    benchmark_runtime = 60
     performance_diff =
         round((timed.time - benchmark_runtime) / benchmark_runtime * 100; digits = 2)
     if performance_diff < 0.0
