@@ -305,10 +305,12 @@ function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
             Available options are: ($(options)).")
     end
     kwargs = Dict{Symbol, Any}()
+    autodiff = get_ad_type(solver)
 
     if algotype <: OrdinaryDiffEqNewtonAdaptiveAlgorithm
-        kwargs[:nlsolve] =
-            NonlinearSolveAlg(NewtonRaphson(; linesearch = BackTracking(; maxiters = 10)))
+        kwargs[:nlsolve] = NonlinearSolveAlg(
+            NewtonRaphson(; linesearch = BackTracking(; maxiters = 10), autodiff),
+        )
     end
 
     if function_accepts_kwarg(algotype, :step_limiter!)
