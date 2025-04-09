@@ -31,16 +31,17 @@ function create_graph(db::DB, config::Config)::MetaGraph
 
     # The metadata of the flow links in the order in which they are in the input
     # and will be in the output
-    flow_links = LinkMetadata[]
-    # Dictionary from flow link to index in flow vector
+    external_flow_links = LinkMetadata[]
+
     graph = MetaGraph(
         DiGraph();
         label_type = NodeID,
         vertex_data_type = NodeMetadata,
         edge_data_type = LinkMetadata,
         graph_data = nothing,
-        weight_function,
+        weight_function = Returns(1.0),
     )
+
     for row in node_rows
         node_id = NodeID(row.node_type, row.node_id, node_table)
         # Process allocation network ID
@@ -57,6 +58,8 @@ function create_graph(db::DB, config::Config)::MetaGraph
     end
 
     errors = false
+    max_link_id = 0
+
     for (; link_id, from_node_type, from_node_id, to_node_type, to_node_id, link_type) in
         link_rows
         try
@@ -70,7 +73,7 @@ function create_graph(db::DB, config::Config)::MetaGraph
         link_metadata =
             LinkMetadata(; id = link_id, type = link_type, link = (id_src, id_dst))
         if link_type == LinkType.flow
-            push!(flow_links, link_metadata)
+            push!(external_flow_links, link_metadata)
         end
         if haskey(graph, id_src, id_dst)
             errors = true
@@ -80,8 +83,15 @@ function create_graph(db::DB, config::Config)::MetaGraph
             errors = true
             @error "Invalid link: the opposite link already exists (this is only allowed for UserDemand)." link_id id_src id_dst
         end
+        max_link_id = max(link_id, max_link_id)
         graph[id_src, id_dst] = link_metadata
     end
+
+    # Remove junctions and create new (internal) flow links
+    flow_link_map, internal_flow_links, jerrors =
+        simplify_graph!(graph, db, external_flow_links, max_link_id + 1)
+    errors |= jerrors
+
     if errors
         error("Invalid links found")
     end
@@ -90,10 +100,89 @@ function create_graph(db::DB, config::Config)::MetaGraph
         error("Incomplete connectivity in subnetwork")
     end
 
-    graph_data = (; node_ids, flow_links, config.solver.saveat)
+    graph_data = (;
+        node_ids,
+        config.solver.saveat,
+        internal_flow_links,
+        external_flow_links,
+        flow_link_map,
+    )
     @reset graph.graph_data = graph_data
 
     return graph
+end
+
+function simplify_graph!(
+    graph::MetaGraph,
+    db::DB,
+    external_flow_links::Vector{LinkMetadata},
+    new_link_id::Int,
+)
+    internal_flow_links = LinkMetadata[]
+    for link_metadata in external_flow_links
+        id_src = link_metadata.link[1]
+        id_dst = link_metadata.link[2]
+        if id_src.type != NodeType.Junction && id_dst.type != NodeType.Junction
+            push!(internal_flow_links, link_metadata)
+        end
+    end
+
+    # Setup sparse matrix for junctions mapping
+    internal_flow_link_ids = [flow_link.id for flow_link in internal_flow_links]
+    I, J = internal_flow_link_ids, copy(internal_flow_link_ids)
+
+    # Map internal (simplified) link IDs to external (with junctions) link IDs
+    link_mapping = Dict{Int32, Vector{Int32}}()
+    errors = false
+
+    # Remove junctions by iteratively simplifying from IN--J--OUT to IN--OUT
+    for junction_id in get_node_ids(db, NodeType.Junction)
+        for in_neighbor in collect(inneighbor_labels(graph, junction_id)),
+            out_neighbor in collect(outneighbor_labels(graph, junction_id))
+
+            link_id = graph[in_neighbor, junction_id].id
+            external_link_ids = get(link_mapping, link_id, [link_id])
+
+            link_id = graph[junction_id, out_neighbor].id
+            append!(external_link_ids, get(link_mapping, link_id, [link_id]))
+
+            link_metadata = LinkMetadata(;
+                id = new_link_id,
+                type = LinkType.flow,
+                link = (in_neighbor, out_neighbor),
+            )
+
+            # Create new flow link when no Junctions remain
+            if in_neighbor.type != NodeType.Junction &&
+               out_neighbor.type != NodeType.Junction
+                for external_link_id in external_link_ids
+                    push!(I, external_link_id)
+                    push!(J, new_link_id)
+                end
+                push!(internal_flow_links, link_metadata)
+            end
+
+            link_mapping[new_link_id] = external_link_ids
+            new_link_id += 1
+            if haskey(graph, in_neighbor, out_neighbor)
+                errors = true
+                @error "Duplicate link: Junction links form cycle." in_neighbor out_neighbor external_link_ids
+            else
+                graph[in_neighbor, out_neighbor] = link_metadata
+            end
+        end
+        # Will also remove the edges
+        rem_vertex!(graph, code_for(graph, junction_id))
+    end
+
+    # Map link_ids to logical indices
+    internal_flow_link_ids = [flow_link.id for flow_link in internal_flow_links]
+    external_flow_link_ids = [flow_link.id for flow_link in external_flow_links]
+    I = findfirst.(isequal.(I), Ref(external_flow_link_ids))
+    J = findfirst.(isequal.(J), Ref(internal_flow_link_ids))
+    flow_link_map = sparse(I, J, true)
+
+    return flow_link_map, internal_flow_links, errors
 end
 
 abstract type AbstractNeighbors end
@@ -233,12 +322,12 @@ from the parameters, but integrated/averaged FlowBoundary flows must be provided
 """
 function get_flow(
     flow::Vector,
-    p::Parameters,
+    p_non_diff::ParametersNonDiff,
     t::Number,
     link::Tuple{NodeID, NodeID};
     boundary_flow = nothing,
 )
-    (; flow_boundary) = p
+    (; flow_boundary) = p_non_diff
     from_id = link[1]
     if from_id.type == NodeType.FlowBoundary
         if boundary_flow === nothing
@@ -248,13 +337,13 @@ function get_flow(
             boundary_flow[from_id.idx]
         end
     else
-        flow[get_state_index(p.state_ranges, link)]
+        flow[get_state_index(p_non_diff.state_ranges, link)]
     end
 end
 
 function get_influx(du::Vector, id::NodeID, p::Parameters)
     @assert id.type == NodeType.Basin
-    (; basin, state_ranges) = p
+    (; basin, state_ranges) = p.p_non_diff
     (; vertical_flux) = basin
     du_evaporation = view(du, state_ranges.evaporation)
     du_infiltration = view(du, state_ranges.infiltration)

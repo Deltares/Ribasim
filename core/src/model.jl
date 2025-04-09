@@ -28,6 +28,80 @@ struct Model{T}
     end
 end
 
+"""
+Get the Jacobian evaluation function via DifferentiationInterface.jl.
+The time derivative is also supplied in case a Rosenbrock method is used.
+"""
+function get_diff_eval(du::Vector, u::Vector, p::Parameters, solver::Solver)
+    (; p_non_diff, diff_cache, p_mutable) = p
+    backend = get_ad_type(solver)
+    sparsity_detector = TracerSparsityDetector()
+
+    backend_jac = if solver.sparse
+        AutoSparse(backend; sparsity_detector, coloring_algorithm = GreedyColoringAlgorithm())
+    else
+        backend
+    end
+
+    t = 0.0
+
+    # Activate all nodes to catch all possible state dependencies
+    p_mutable.all_nodes_active = true
+    jac_prep = prepare_jacobian(
+        water_balance!,
+        du,
+        backend_jac,
+        u,
+        Constant(p_non_diff),
+        Cache(diff_cache),
+        Constant(p_mutable),
+        Constant(t);
+        strict = Val(true),
+    )
+    p_mutable.all_nodes_active = false
+
+    jac_prototype = solver.sparse ? sparsity_pattern(jac_prep) : nothing
+
+    jac(J, u, p, t) = jacobian!(
+        water_balance!,
+        du,
+        J,
+        jac_prep,
+        backend_jac,
+        u,
+        Constant(p.p_non_diff),
+        Cache(diff_cache),
+        Constant(p.p_mutable),
+        Constant(t),
+    )
+
+    tgrad_prep = prepare_derivative(
+        water_balance!,
+        du,
+        backend,
+        t,
+        Constant(u),
+        Constant(p_non_diff),
+        Cache(diff_cache),
+        Constant(p_mutable);
+        strict = Val(true),
+    )
+    tgrad(dT, u, p, t) = derivative!(
+        water_balance!,
+        du,
+        dT,
+        tgrad_prep,
+        backend,
+        t,
+        Constant(u),
+        Constant(p.p_non_diff),
+        Cache(p.diff_cache),
+        Constant(p.p_mutable),
+    )
+
+    return jac_prototype, jac, tgrad
+end
+
 function Model(config_path::AbstractString)::Model
     config = Config(config_path)
     if !valid_config(config)
@@ -61,11 +135,12 @@ function Model(config::Config)::Model
     t0 = zero(t_end)
     timespan = (t0, t_end)
 
-    local parameters, tstops
+    local parameters, p_non_diff, diff_cache, p_mutable, tstops
     try
         parameters = Parameters(db, config)
+        (; p_non_diff, diff_cache, p_mutable) = parameters
 
-        if !valid_discrete_control(parameters, config)
+        if !valid_discrete_control(parameters.p_non_diff, config)
             error("Invalid discrete control state definition(s).")
         end
 
@@ -82,7 +157,7 @@ function Model(config::Config)::Model
             pump,
             tabulated_rating_curve,
             user_demand,
-        ) = parameters
+        ) = p_non_diff
         if !valid_pid_connectivity(pid_control.node_id, pid_control.listen_node_id, graph)
             error("Invalid PidControl connectivity.")
         end
@@ -139,37 +214,31 @@ function Model(config::Config)::Model
     end
     @debug "Read database into memory."
 
-    u0 = build_state_vector(parameters)
+    u0 = build_state_vector(parameters.p_non_diff)
     du0 = zero(u0)
-
-    @reset parameters.u_prev_saveat = zero(u0)
 
     # The Solver algorithm
     alg = algorithm(config.solver)
 
     # Synchronize level with storage
-    set_current_basin_properties!(du0, u0, parameters, t0)
+    set_current_basin_properties!(u0, parameters, t0)
 
     # Previous level is used to estimate the minimum level that was attained during a time step
     # in limit_flow!
-    parameters.basin.level_prev .= parameters.basin.current_properties.current_level[u0]
+    p_non_diff.basin.level_prev .= diff_cache.current_level
 
     saveat = convert_saveat(config.solver.saveat, t_end)
     saveat isa Float64 && push!(tstops, range(0, t_end; step = saveat))
     tstops = sort(unique(vcat(tstops...)))
     adaptive, dt = convert_dt(config.solver.dt)
 
-    jac_prototype = if config.solver.sparse
-        get_jac_prototype(du0, u0, parameters, t0)
-    else
-        nothing
-    end
-    RHS = ODEFunction(water_balance!; jac_prototype)
+    jac_prototype, jac, tgrad = get_diff_eval(du0, u0, parameters, config.solver)
+    RHS = ODEFunction(water_balance!; jac_prototype, jac, tgrad)
 
     prob = ODEProblem(RHS, u0, timespan, parameters)
     @debug "Setup ODEProblem."
 
-    callback, saved = create_callbacks(parameters, config, u0, saveat)
+    callback, saved = create_callbacks(p_non_diff, config, saveat)
     @debug "Created callbacks."
 
     # Run water_balance! before initializing the integrator. This is because
@@ -202,7 +271,7 @@ function Model(config::Config)::Model
     )
     @debug "Setup integrator."
 
-    if config.allocation.use_allocation && is_active(parameters.allocation)
+    if config.allocation.use_allocation && is_active(p_non_diff.allocation)
         set_initial_allocation_mean_flows!(integrator)
     end
 
@@ -227,8 +296,24 @@ function Base.show(io::IO, model::Model)
     println(io, "Model(ts: $nsaved, t: $t)")
 end
 
-function SciMLBase.successful_retcode(model::Model)::Bool
-    return SciMLBase.successful_retcode(model.integrator.sol)
+"""
+    Base.success(model::Model)::Bool
+
+Returns true if the model has finished successfully.
+"""
+function Base.success(model::Model)::Bool
+    return successful_retcode(model.integrator.sol) && is_finished(model)
+end
+
+"""
+    is_finished(model::Model)::Bool
+
+Returns true if the model has reached the configured `endtime`.
+"""
+function is_finished(model::Model)::Bool
+    (; starttime, endtime) = model.config
+    t = datetime_since(model.integrator.t, starttime)
+    return t == endtime
 end
 
 """
@@ -236,7 +321,7 @@ end
 
 Take Model timesteps until `t + dt` is reached exactly.
 """
-function SciMLBase.step!(model::Model, dt::Float64)::Model
+function step!(model::Model, dt::Float64)::Model
     (; config, integrator) = model
     (; t) = integrator
     # If we are at an allocation time, run allocation before the next physical
@@ -246,7 +331,7 @@ function SciMLBase.step!(model::Model, dt::Float64)::Model
     if round(ntimes) ≈ ntimes
         update_allocation!(integrator)
     end
-    step!(integrator, dt, true)
+    SciMLBase.step!(integrator, dt, true)
     return model
 end
 
@@ -255,20 +340,28 @@ end
 
 Solve a Model until the configured `endtime`.
 """
-function SciMLBase.solve!(model::Model)::Model
+function solve!(model::Model)::Model
     (; config, integrator) = model
-    if config.allocation.use_allocation
-        (; tspan) = integrator.sol.prob
+    (; tspan) = integrator.sol.prob
+
+    comptime_s = @elapsed if config.allocation.use_allocation
         (; timestep) = config.allocation
-        allocation_times = 0:timestep:(tspan[end] - timestep)
-        n_allocation_times = length(allocation_times)
+        n_allocation_times = floor(Int, tspan[end] / timestep)
         for _ in 1:n_allocation_times
             update_allocation!(integrator)
-            step!(integrator, timestep, true)
+            SciMLBase.step!(integrator, timestep, true)
         end
-        check_error!(integrator)
+        # Any possible remaining step (< allocation.timestep) after the last allocation
+        dt = tspan[end] - integrator.t
+        if dt > 0
+            update_allocation!(integrator)
+            SciMLBase.step!(integrator, dt, true)
+        end
     else
-        solve!(integrator)
+        SciMLBase.solve!(integrator)
     end
+    check_error!(integrator)
+    comptime = canonicalize(Millisecond(round(Int, comptime_s * 1000)))
+    @info "Computation time: $comptime"
     return model
 end

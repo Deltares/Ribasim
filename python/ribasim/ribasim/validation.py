@@ -3,6 +3,16 @@
 # Table for connectivity
 # "Basin": ["LinearResistance"] means that the downstream of basin can be LinearResistance only
 node_type_connectivity: dict[str, list[str]] = {
+    "Junction": [
+        "LinearResistance",
+        "UserDemand",
+        "Junction",
+        "Outlet",
+        "Basin",
+        "TabulatedRatingCurve",
+        "ManningResistance",
+        "Pump",
+    ],
     "PidControl": [
         "Outlet",
         "Pump",
@@ -14,16 +24,19 @@ node_type_connectivity: dict[str, list[str]] = {
         "Pump",
     ],
     "Pump": [
+        "Junction",
         "LevelBoundary",
         "Basin",
         "Terminal",
     ],
     "UserDemand": [
+        "Junction",
         "LevelBoundary",
         "Basin",
         "Terminal",
     ],
     "TabulatedRatingCurve": [
+        "Junction",
         "LevelBoundary",
         "Basin",
         "Terminal",
@@ -36,6 +49,7 @@ node_type_connectivity: dict[str, list[str]] = {
         "Pump",
     ],
     "FlowBoundary": [
+        "Junction",
         "LevelBoundary",
         "Basin",
         "Terminal",
@@ -43,12 +57,14 @@ node_type_connectivity: dict[str, list[str]] = {
     "Basin": [
         "LinearResistance",
         "UserDemand",
+        "Junction",
         "Outlet",
         "TabulatedRatingCurve",
         "ManningResistance",
         "Pump",
     ],
     "ManningResistance": [
+        "Junction",
         "Basin",
     ],
     "LevelDemand": [
@@ -63,6 +79,7 @@ node_type_connectivity: dict[str, list[str]] = {
         "Pump",
     ],
     "Outlet": [
+        "Junction",
         "LevelBoundary",
         "Basin",
         "Terminal",
@@ -72,6 +89,7 @@ node_type_connectivity: dict[str, list[str]] = {
         "Pump",
     ],
     "LinearResistance": [
+        "Junction",
         "LevelBoundary",
         "Basin",
     ],
@@ -87,13 +105,14 @@ def can_connect(node_type_up: str, node_type_down: str) -> bool:
 
 
 flow_link_neighbor_amount: dict[str, list[int]] = {
+    "Junction": [1, 9223372036854775807, 1, 9223372036854775807],
     "PidControl": [0, 0, 0, 0],
     "LevelBoundary": [0, 9223372036854775807, 0, 9223372036854775807],
     "Pump": [1, 1, 1, 1],
     "UserDemand": [1, 1, 1, 1],
     "TabulatedRatingCurve": [1, 1, 1, 1],
     "FlowDemand": [0, 0, 0, 0],
-    "FlowBoundary": [0, 0, 1, 9223372036854775807],
+    "FlowBoundary": [0, 0, 1, 1],
     "Basin": [0, 9223372036854775807, 0, 9223372036854775807],
     "ManningResistance": [1, 1, 1, 1],
     "LevelDemand": [0, 0, 0, 0],
@@ -105,6 +124,7 @@ flow_link_neighbor_amount: dict[str, list[int]] = {
 }
 
 control_link_neighbor_amount: dict[str, list[int]] = {
+    "Junction": [0, 0, 0, 0],
     "PidControl": [0, 1, 1, 1],
     "LevelBoundary": [0, 0, 0, 0],
     "Pump": [0, 1, 0, 0],

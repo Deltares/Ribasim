@@ -1,5 +1,6 @@
 @testitem "adaptive timestepping" begin
     import BasicModelInterface as BMI
+    using Ribasim: is_finished
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
     model = BMI.initialize(Ribasim.Model, toml_path)
@@ -8,15 +9,21 @@
     @test BMI.get_time_step(model) ≈ dt0 atol = 5e-3
     @test BMI.get_start_time(model) === 0.0
     @test BMI.get_current_time(model) === 0.0
-    @test BMI.get_end_time(model) ≈ 3.16224e7
+    endtime = BMI.get_end_time(model)
+    @test endtime ≈ 3.16224e7
     BMI.update(model)
-    @test BMI.get_current_time(model) ≈ dt0 atol = 5e-3
     @test BMI.get_current_time(model) ≈ dt0 atol = 5e-3
     BMI.update_until(model, 86400.0)
     @test BMI.get_current_time(model) == 86400.0
     # cannot go back in time
     @test_throws ErrorException BMI.update_until(model, 3600.0)
     @test BMI.get_current_time(model) == 86400.0
+    @test !is_finished(model)
+    @test !success(model)
+    BMI.update_until(model, endtime)
+    @test BMI.get_current_time(model) == endtime
+    @test is_finished(model)
+    @test success(model)
 end
 
 @testitem "fixed timestepping" begin
@@ -50,7 +57,7 @@ end
     BMI.update_until(model, 86400.0)
     storage = BMI.get_value_ptr(model, "basin.storage")
     # get_value_ptr does not copy
-    @test storage0 === storage != ones(4)
+    @test storage0 == storage != ones(4)
 end
 
 @testitem "get_value_ptr_all_values" begin
@@ -89,7 +96,7 @@ end
     demand = BMI.get_value_ptr(model, "user_demand.demand")
     inflow = BMI.get_value_ptr(model, "user_demand.cumulative_inflow")
     # One year in seconds
-    year = model.integrator.p.user_demand.demand_itp[2][1].t[2]
+    year = model.integrator.p.p_non_diff.user_demand.demand_itp[2][1].t[2]
     demand_start = 1e-3
     slope = 1e-3 / year
     day = 86400.0

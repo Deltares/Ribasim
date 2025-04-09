@@ -66,12 +66,6 @@ def _link_lookup(uds) -> Series[Int32]:
     )
 
 
-def _time_in_ns(df) -> None:
-    """Convert the time column to datetime64[ns] dtype."""
-    # datetime64[ms] gives trouble; https://github.com/pydata/xarray/issues/6318
-    df["time"] = df["time"].astype("datetime64[ns]")
-
-
 def _concat(dfs, **kwargs):
     """Concatenate DataFrames with a warning filter."""
     with catch_warnings():
@@ -84,6 +78,48 @@ def _concat(dfs, **kwargs):
             category=FutureWarning,
         )
         return pd.concat(dfs, **kwargs)
+
+
+def _add_cf_attributes(ds, timeseries_id: str, realization: str | None = None) -> None:
+    """
+    Add CF attributes to an xarray.Dataset.
+
+    Parameters
+    ----------
+    ds : xarray.Dataset
+        The dataset to which CF attributes will be added.
+    timeseries_id : str
+        The name of the variable that identifies the timeseries.
+    realization : str | None, optional
+        The name of the variable representing realizations (e.g., "substance"), if applicable.
+
+    Returns
+    -------
+    None
+    """
+    ds.attrs.update(
+        {
+            "Conventions": "CF-1.8",
+            "title": "Ribasim model results",
+            "references": "https://ribasim.org",
+        }
+    )
+    ds["time"].attrs.update({"standard_name": "time", "axis": "T", "long_name": "time"})
+    ds[timeseries_id].attrs.update(
+        {"cf_role": "timeseries_id", "long_name": "station identification code"}
+    )
+    if realization:
+        # Use realization as the standard name as recommended by ECMWF.
+        # axis = "E" is not currently enabled since it seemed to confuse Delft-FEWS.
+        # https://confluence.ecmwf.int/display/COPSRV/Metadata+recommendations+for+encoding+NetCDF+products+based+on+CF+convention#MetadatarecommendationsforencodingNetCDFproductsbasedonCFconvention-3.4Realizationdiscretecoordinates
+        ds[realization].attrs.update(
+            {
+                "standard_name": "realization",
+                "units": "1",
+                "long_name": "substance name",
+            }
+        )
+    return ds
 
 
 class UsedIDs(BaseModel):

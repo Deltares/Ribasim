@@ -17,7 +17,7 @@ stages:
       models/integration.toml:
         solver.abstol: 1e-07
         solver.algorithm: QNDF
-        solver.autodiff: false
+        solver.autodiff: true
         solver.reltol: 1e-07
     outs:
     - path: data/integration.toml

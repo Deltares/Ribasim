@@ -127,21 +127,20 @@ def _setup_graph(nodes, link, evaporate_mass=True):
             "UserDemand",
         ]:
             inneighbor_ids = G.pred[node_id]
-            assert len(inneighbor_ids) == 1
-            inneighbor_id = list(inneighbor_ids)[0]
             remove_nodes.append(node_id)
 
-            for outneighbor_id in out.keys():
-                if outneighbor_id in remove_nodes:
-                    logger.debug("Not making link to removed node.")
-                    continue
-                link = (inneighbor_id, outneighbor_id)
-                link_id = G.get_edge_data(node_id, outneighbor_id)["id"][0]
-                if G.has_edge(*link):
-                    data = G.get_edge_data(*link)
-                    data["id"].append(link_id)
-                else:
-                    G.add_edge(*link, id=[link_id])
+            for inneighbor_id in inneighbor_ids:
+                for outneighbor_id in out.keys():
+                    if outneighbor_id in remove_nodes:
+                        logger.debug("Not making link to removed node.")
+                        continue
+                    link = (inneighbor_id, outneighbor_id)
+                    link_id = G.get_edge_data(node_id, outneighbor_id)["id"][0]
+                    if G.has_edge(*link):
+                        data = G.get_edge_data(*link)
+                        data["id"].append(link_id)
+                    else:
+                        G.add_edge(*link, id=[link_id])
 
     iso = nx.number_of_isolates(G)
     if iso > 0:

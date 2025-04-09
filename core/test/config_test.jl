@@ -32,7 +32,7 @@
     @testset "docs" begin
         config = Ribasim.Config(normpath(@__DIR__, "docs.toml"))
         @test config isa Ribasim.Config
-        @test !config.solver.autodiff
+        @test config.solver.autodiff
     end
 end
 
@@ -58,10 +58,11 @@ end
         Solver(; algorithm = "DoesntExist"),
     )
     @test alg_autodiff(algorithm(Solver(; algorithm = "QNDF", autodiff = true))) ==
-          AutoForwardDiff()
+          AutoForwardDiff(; tag = :Ribasim)
     @test alg_autodiff(algorithm(Solver(; algorithm = "QNDF", autodiff = false))) ==
           AutoFiniteDiff()
-    @test alg_autodiff(algorithm(Solver(; algorithm = "QNDF"))) == AutoFiniteDiff()
+    @test alg_autodiff(algorithm(Solver(; algorithm = "QNDF"))) ==
+          AutoForwardDiff(; tag = :Ribasim)
     # autodiff is not a kwargs for explicit algorithms, but we use try-catch to bypass
     algorithm(Solver(; algorithm = "Euler", autodiff = true))
 
