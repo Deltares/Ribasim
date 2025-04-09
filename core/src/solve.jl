@@ -786,7 +786,7 @@ function limit_flow!(u::Vector, integrator::DEIntegrator, p::Parameters, t::Numb
                 id,
                 inflow_id,
             )
-            allocated_total =
+            @views allocated_total =
                 is_active(allocation) ? sum(user_demand.allocated[id.idx, :]) :
                 sum(user_demand.demand[id.idx, :])
             factor_basin_min * factor_level_min * allocated_total, allocated_total
