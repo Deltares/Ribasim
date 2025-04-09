@@ -305,20 +305,14 @@ function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
             Available options are: ($(options)).")
     end
     kwargs = Dict{Symbol, Any}()
-    autodiff = get_ad_type(solver)
 
     if algotype <: OrdinaryDiffEqNewtonAdaptiveAlgorithm
-        kwargs[:nlsolve] = NonlinearSolveAlg(
-            NewtonRaphson(; linesearch = BackTracking(; maxiters = 10), autodiff),
-        )
+        kwargs[:nlsolve] =
+            NonlinearSolveAlg(NewtonRaphson(; linesearch = BackTracking(; maxiters = 10)))
     end
 
     if function_accepts_kwarg(algotype, :step_limiter!)
         kwargs[:step_limiter!] = Ribasim.limit_flow!
-    end
-
-    if function_accepts_kwarg(algotype, :autodiff)
-        kwargs[:autodiff] = autodiff
     end
 
     algotype(; kwargs...)
