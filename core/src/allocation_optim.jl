@@ -541,13 +541,17 @@ function reduce_demands!(
     (; graph, basin) = p_non_diff
     (; demand) = basin
     (; subnetwork_id, problem, Δt_allocation) = allocation_model
-    lower_error_basin = problem[:lower_error_level_Demand]
-    storage = problem[:storage_basin]
+    lower_error_basin = problem[:lower_error_level_demand]
+    storage = problem[:basin_storage]
 
     # Set the demand by the deviation from the target storage
     for id in only(lower_error_basin.axes)
         if graph[id].subnetwork_id == subnetwork_id
-            demand[id.idx] = (storage[(id, :end)] - target_storage) / Δt_allocation
+            demand[id.idx] -= clamp(
+                storage[(id, :end)] - storage[(id, :start)] / Δt_allocation,
+                0,
+                demand[id.idx],
+            )
         end
     end
 
@@ -954,13 +958,13 @@ Keep track of how much is taken from or added to the basins in the subnetwork.
 """
 function increase_allocateds!(basin::Basin, problem::JuMP.Model)::Nothing
     (; allocated) = basin
+    basin_storage = problem[:basin_storage]
 
-    F_basin_in = problem[:F_basin_in]
-    F_basin_out = problem[:F_basin_out]
-
-    for node_id in only(F_basin_in.axes)
+    for (node_id, symb) in only(basin_storage.axes)
+        symb != :start && continue
         allocated[node_id.idx] +=
-            JuMP.value(F_basin_in[node_id]) - JuMP.value(F_basin_out[node_id])
+            JuMP.value(basin_storage[(node_id, :end)]) -
+            JuMP.value(basin_storage[(node_id, :start)])
     end
     return nothing
 end
