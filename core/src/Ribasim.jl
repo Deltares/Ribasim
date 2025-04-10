@@ -25,10 +25,7 @@ using DifferentiationInterface:
     derivative!
 
 # Algorithms for solving ODEs.
-using OrdinaryDiffEqCore: OrdinaryDiffEqCore, get_du, AbstractNLSolver
-using DiffEqBase: DiffEqBase, calculate_residuals!
-using OrdinaryDiffEqNonlinearSolve: OrdinaryDiffEqNonlinearSolve, relax!, _compute_rhs!
-using LineSearches: BackTracking
+using OrdinaryDiffEqCore: OrdinaryDiffEqCore, get_du
 
 # Interface for defining and solving the ODE problem of the physical layer.
 using SciMLBase:
@@ -44,8 +41,7 @@ using SciMLBase:
 
 # Automatically detecting the sparsity pattern of the Jacobian of water_balance!
 # through operator overloading
-using SparseConnectivityTracer:
-    GradientTracer, TracerSparsityDetector, IndexSetGradientPattern
+using SparseConnectivityTracer: GradientTracer, TracerSparsityDetector
 using SparseMatrixColorings: GreedyColoringAlgorithm, sparsity_pattern
 
 # For efficient sparse computations
