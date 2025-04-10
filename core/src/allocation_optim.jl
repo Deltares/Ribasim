@@ -1,106 +1,133 @@
 @enumx OptimizationType internal_sources collect_demands allocate
 
 """
-Add an objective term `demand * (1 - flow/demand)²`. If the absolute
-value of the demand is very small, this would lead to huge coefficients,
-so in that case a term of the form (flow - demand)² is used.
+Update the allocation error constraints with for the demands associated with the given
+node name and node ID with the given demand.
 """
-function add_objective_term!(
-    ex::JuMP.QuadExpr,
+function update_objective_constraints!(
+    problem::JuMP.Model,
+    node_name::Symbol,
+    node_id::NodeID,
     demand::Float64,
-    F::JuMP.VariableRef,
+)
+    lower_error = problem[Symbol("lower_error_$(node_name)")][node_id]
+    upper_error = problem[Symbol("upper_error_$(node_name)")][node_id]
+    lower_error_constraints = problem[Symbol("lower_error_$(node_name)_constraint")]
+    upper_error_constraints = problem[Symbol("upper_error_$(node_name)_constraint")]
+
+    JuMP.set_normalized_coefficient(lower_error_constraints[node_id], lower_error, demand)
+    JuMP.set_normalized_coefficient(upper_error_constraints[node_id], upper_error, demand)
+end
+
+"""
+Update the allocation error constraints with for the demands associated with the given
+node name with the given target fraction of the demand.
+"""
+function update_objective_constraints!(
+    problem::JuMP.Model,
+    node_name::Symbol,
+    target_fraction::Float64,
 )::Nothing
-    if abs(demand) < 1e-5
-        # Error term (F - d)² = F² - 2dF + d²
-        JuMP.add_to_expression!(ex, 1.0, F, F)
-        JuMP.add_to_expression!(ex, -2.0 * demand, F)
-        JuMP.add_to_expression!(ex, demand^2)
-    else
-        # Error term d*(1 - F/d)² = F²/d - 2F + d
-        JuMP.add_to_expression!(ex, 1.0 / demand, F, F)
-        JuMP.add_to_expression!(ex, -2.0, F)
-        JuMP.add_to_expression!(ex, demand)
+    lower_errors = problem[Symbol("lower_error_$(node_name)")]
+    lower_error_constraints = problem[Symbol("lower_error_$(node_name)_constraint")]
+    upper_error_constraints = problem[Symbol("upper_error_$(node_name)_constraint")]
+
+    for (lower_error, lower_error_constraint, upper_error_constraint) in
+        zip(lower_errors, lower_error_constraints, upper_error_constraints)
+        demand = JuMP.normalized_coefficient(lower_error_constraint, lower_error)
+        target_allocation = demand * target_fraction
+        JuMP.set_normalized_rhs(lower_error_constraint, target_allocation)
+        JuMP.set_normalized_rhs(upper_error_constraint, -target_allocation)
     end
     return nothing
 end
 
 """
-Set the objective for the given demand priority.
+Update the constraints for the upper and lower allocation errors with the
+demands for the current demand priority and the target fraction that follows from
+those demands and the total available capacity.
 """
-function set_objective_demand_priority!(
+function update_objective_constraints!(
     allocation_model::AllocationModel,
     p::Parameters,
     t::Float64,
     demand_priority_idx::Int,
 )::Nothing
-    (; problem, subnetwork_id, capacity) = allocation_model
+    (; problem, subnetwork_id) = allocation_model
     (; p_non_diff) = p
-    (; graph, user_demand, flow_demand, allocation, basin) = p_non_diff
-    (; node_id, demand_reduced) = user_demand
+    (; graph, user_demand, flow_demand, allocation) = p_non_diff
     (; main_network_connections, subnetwork_demands) = allocation
-    F = problem[:F]
-    F_flow_buffer_in = problem[:F_flow_buffer_in]
 
-    # Initialize an empty quadratic expression for the objective
-    ex = JuMP.QuadExpr()
+    total_demand_priority = 0.0
 
-    # Terms for subnetworks acting as UserDemand on the main network
+    for node_id in graph[].node_ids[subnetwork_id]
+        if node_id.type == NodeType.UserDemand
+            # Constraints for user demands
+            node_name = :user_demand
+            demand = user_demand.demand_reduced[node_id.idx, demand_priority_idx]
+        elseif node_id.type == NodeType.Basin
+            # Constraints for level demands
+            has_demand, demand_node_id = has_external_demand(graph, node_id, :level_demand)
+            !has_demand && continue
+
+            level_demand_priority_idx =
+                get_external_demand_priority_idx(p_non_diff, node_id)
+
+            node_name = :level_demand
+            demand =
+                level_demand_priority_idx == demand_priority_idx ?
+                get_basin_demand(allocation_model, p, t, node_id) : 0.0
+        else
+            # Constraints for flow demands
+            has_demand, demand_node_id = has_external_demand(graph, node_id, :flow_demand)
+            !has_demand && continue
+
+            flow_demand_priority_idx = get_external_demand_priority_idx(p_non_diff, node_id)
+
+            node_name = :flow_demand
+            demand =
+                demand_priority_idx == flow_demand_priority_idx ?
+                flow_demand.demand[demand_node_id.idx] : 0.0
+        end
+
+        total_demand_priority += demand
+        update_objective_constraints!(problem, node_name, node_id, demand)
+    end
+
+    # Constraints for subnetwork demands
     if is_main_network(subnetwork_id)
         # Loop over the connections between main and subnetwork
         for (subnetwork_id, connections_subnetwork) in main_network_connections
-            if is_main_network(subnetwork_id)
-                continue
-            end
+            is_main_network(subnetwork_id) && continue
             for connection in connections_subnetwork
-                d = subnetwork_demands[connection][demand_priority_idx]
-                F_inlet = F[connection]
-                add_objective_term!(ex, d, F_inlet)
+                demand = subnetwork_demands[connection][demand_priority_idx]
+                update_objective_constraints!(problem, :subnetwork, connection[2], demand)
+                total_demand_priority += demand
             end
         end
     end
 
-    # Terms for UserDemand nodes and FlowDemand nodes
-    for link in keys(capacity.data)
-        to_node_id = link[2]
-
-        if to_node_id.type == NodeType.UserDemand
-            # UserDemand
-            user_demand_idx = to_node_id.idx
-            d = demand_reduced[user_demand_idx, demand_priority_idx]
-            F_ud = F[link]
-            add_objective_term!(ex, d, F_ud)
-        else
-            has_demand, demand_node_id =
-                has_external_demand(graph, to_node_id, :flow_demand)
-            # FlowDemand
-            if has_demand
-                flow_demand_priority_idx =
-                    get_external_demand_priority_idx(p_non_diff, to_node_id)
-                d =
-                    demand_priority_idx == flow_demand_priority_idx ?
-                    flow_demand.demand[demand_node_id.idx] : 0.0
-
-                F_fd = F_flow_buffer_in[to_node_id]
-                add_objective_term!(ex, d, F_fd)
-            end
+    total_source_capacity = 0.0
+    for source_constraints in (
+        problem[:source_boundary],
+        problem[:source_user],
+        problem[:source_main_network],
+        problem[:basin_outflow],
+        problem[:flow_buffer_outflow],
+    )
+        for source_constraint in source_constraints
+            total_source_capacity += JuMP.normalized_rhs(source_constraint)
         end
     end
 
-    # Terms for LevelDemand nodes
-    F_basin_in = problem[:F_basin_in]
-    for node_id in only(F_basin_in.axes)
-        basin_demand_priority_idx = get_external_demand_priority_idx(p_non_diff, node_id)
-        d =
-            basin_demand_priority_idx == demand_priority_idx ?
-            get_basin_demand(allocation_model, p, t, node_id) : 0.0
-        basin.demand[node_id.idx] = d
-        F_ld = F_basin_in[node_id]
-        add_objective_term!(ex, d, F_ld)
+    target_fraction =
+        iszero(total_demand_priority) ? 0.0 :
+        min(1.0, total_source_capacity / total_demand_priority)
+
+    for node_name in (:user_demand, :level_demand, :flow_demand, :subnetwork)
+        update_objective_constraints!(problem, node_name, target_fraction)
     end
 
-    # Add the new objective to the problem
-    new_objective = JuMP.@expression(problem, ex)
-    JuMP.@objective(problem, Min, new_objective)
     return nothing
 end
 
@@ -207,7 +234,9 @@ function set_initial_capacities_source!(
 
     for link in keys(mean_input_flows_subnetwork_)
         source = sources[link]
-        source.capacity = mean_input_flows_subnetwork_[link]
+        capacity = mean_input_flows_subnetwork_[link]
+        source.capacity = capacity
+        source.capacity_reduced = capacity
     end
     return nothing
 end
@@ -878,7 +907,8 @@ function optimize_per_source!(
 )::Nothing
     (; problem, sources, subnetwork_id, flow) = allocation_model
     (; p_non_diff) = p
-    (; demand_priorities_all) = p_non_diff.allocation
+    (; allocation, user_demand, level_demand, flow_demand) = p_non_diff
+    (; demand_priorities_all) = allocation
     F_basin_in = problem[:F_basin_in]
     F_basin_out = problem[:F_basin_out]
 
@@ -896,22 +926,19 @@ function optimize_per_source!(
             continue
         end
 
-        # Set the objective depending on the demands
-        # A new objective function is set instead of modifying the coefficients
-        # of an existing objective function because this is not supported for
-        # quadratic terms:
-        # https://jump.dev/JuMP.jl/v1.16/manual/objective/#Modify-an-objective-coefficient
-        set_objective_demand_priority!(allocation_model, p, t, demand_priority_idx)
-
         # Set only the capacity of the current source to nonzero
         set_source_capacity!(allocation_model, source, optimization_type)
 
+        # Set the objective depending on the demands
+        update_objective_constraints!(allocation_model, p, t, demand_priority_idx)
+
         JuMP.optimize!(problem)
         @debug JuMP.solution_summary(problem)
-        if JuMP.termination_status(problem) !== JuMP.OPTIMAL
+        termination_status = JuMP.termination_status(problem)
+        if termination_status !== JuMP.OPTIMAL
             demand_priority = demand_priorities_all[demand_priority_idx]
             error(
-                "Allocation of subnetwork $subnetwork_id, demand priority $demand_priority and source $source couldn't find optimal solution.",
+                "Allocation of subnetwork $subnetwork_id, demand priority $demand_priority and source $source couldn't find optimal solution. Termination status: $termination_status.",
             )
         end
 
@@ -926,17 +953,9 @@ function optimize_per_source!(
         reduce_link_capacities!(allocation_model)
 
         # Adjust demands for next optimization (in case of internal_sources -> collect_demands)
-        for parameter in propertynames(p_non_diff)
-            demand_node = getfield(p_non_diff, parameter)
-            if demand_node isa AbstractDemandNode
-                reduce_demands!(
-                    allocation_model,
-                    p_non_diff,
-                    demand_priority_idx,
-                    demand_node,
-                )
-            end
-        end
+        reduce_demands!(allocation_model, p_non_diff, demand_priority_idx, user_demand)
+        reduce_demands!(allocation_model, p_non_diff, demand_priority_idx, level_demand)
+        reduce_demands!(allocation_model, p_non_diff, demand_priority_idx, flow_demand)
 
         # Add to the basin cumulative flow rate
         for (link, source) in sources

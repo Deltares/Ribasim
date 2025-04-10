@@ -44,11 +44,11 @@ Sources are indicated by a set of links in the subnetwork
 $$
 E_S^\text{source} \subset E,
 $$
-which are automatically inferred as all links that point out of LevelBoundary or FlowBoundary nodes. That is, if $(i,j) \in E_S^\text{source}$, then the average over the last allocation interval $\Delta t_{\text{alloc}}$ of the of the flow over this link
+which are automatically inferred as all links that point out of LevelBoundary or FlowBoundary nodes, or connect the main network to a subnetwork. That is, if $(i,j) \in E_S^\text{source}$, then the average over the last allocation interval $\Delta t_{\text{alloc}}$ of the of the flow over this link
 $$
     \frac{1}{\Delta t_{\text{alloc}}}\int_{t - \Delta t_{\text{alloc}}}^tQ_{ij}(t') dt'
 $$
- is treated as a source flow in the allocation problem. These links are either coming from a boundary/source node (e.g. a level or flow boundary) or connect the main network to a subnetwork. For the definition of $Q_{ij}$ see [the formal model description](/concept/equations.qmd#formal-model-description).
+ is treated as a source flow in the allocation problem (apart from the main network to subnetwork sources). For the definition of $Q_{ij}$ see [the formal model description](/concept/equations.qmd#formal-model-description).
 
 ### User demands
 
@@ -144,22 +144,37 @@ There are several types of variable whose value has to be determined to solve th
 
 ## The optimization objective
 
-The goal of allocation is to get the flow to nodes with demands as close as possible to these demands. To achieve this, a sum of error terms is minimized.
+The goal of allocation is to get the flow to nodes with demands as close as possible to these demands. We want the allocation of water to be fair in periods of scarcity, where we interpret 'fair' as each demand node receiving the same fraction of its demand for a certain demand priority. Ideally this fraction is given by the *target fraction* $f$ of the total source capacity $T$ and the total demand $T$ in the model for a certain demand priority:
+
+$$
+    \begin{align}
+    f =
+    \begin{cases}
+        0 &\text{if}& D = 0 \\
+        \frac{T}{D} &\text{if}& T \le D \\
+        1 &\text{if}& T > D
+    \end{cases}.
+    \end{align}
+$$
+
+To achieve this, a sum of error terms is minimized.
 
 $$
     \min E_{\text{user demand}} + E_{\text{level demand}} + E_{\text{flow demand}}
 $$
 
-The error between the flows and user demands is denoted by $E_{\text{user demand}}$, where
+The error between the flows and user demands is denoted by $E_{\text{user demand}}$, where[^1]
 $$
-    E_{\text{user demand}} = \sum_{(i,j)\in E_S\;:\; i\in U_S} d_j^p(t)\left(1 - \frac{F_{ij}}{d_j^p(t)}\right)^2
+    E_{\text{user demand}} = \sum_{(i,j)\in E_S\;:\; i\in U_S} \left|F_{ij} - fd_j^p(t)\right|.
 $$
+
+[^1]: This is implemented using auxiliary variables, see e.g. [here](https://optimization.cbe.cornell.edu/index.php?title=Optimization_with_absolute_values).
 
 :::{.callout-note}
 When performing main network allocation, the connections to subnetworks are also interpreted as UserDemand nodes with demands determined by subnetwork demand collection.
 :::
 
-This type of objective cares about the fraction of the demand allocated, and will lead to an equal fraction of all demands allocated when possible. For a discussion on this see [here](https://github.com/Deltares/Ribasim/pull/1366).
+This type of objective cares about the fraction of the demand allocated, and will lead to an equal fraction of all demands allocated when possible.
 
 Likewise, the error of level demands from basins is the squared relative difference between flows consumed by basins and basin demands.
 $$
@@ -251,7 +266,7 @@ allocation_model = allocation.allocation_models[1]
 priority_idx = 1
 
 Ribasim.set_initial_values!(allocation_model, p, t)
-Ribasim.set_objective_demand_priority!(allocation_model, p, t, priority_idx)
+Ribasim.update_objective_constraints!(allocation_model, p, t, priority_idx)
 
 println(allocation.allocation_models[1].problem)
 ```
