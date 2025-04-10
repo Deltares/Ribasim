@@ -193,7 +193,7 @@ function add_variables_flow_buffer!(
 end
 
 """
-Add the variables denoting the upper error and the lower error when comparing allocated flows
+Add the variables denoting the upper relative error and the lower relative error when comparing allocated flows
 to the target amount (target_fraction * demand).
 """
 function add_variables_objective!(
@@ -226,10 +226,18 @@ function add_variables_objective!(
         lower_error_name = "lower_error_$node_name"
         upper_error_name = "upper_error_$node_name"
 
-        problem[Symbol(lower_error_name)] =
-            JuMP.@variable(problem, [node_id = node_ids], base_name = lower_error_name)
-        problem[Symbol(upper_error_name)] =
-            JuMP.@variable(problem, [node_id = node_ids], base_name = upper_error_name)
+        problem[Symbol(lower_error_name)] = JuMP.@variable(
+            problem,
+            [node_id = node_ids],
+            base_name = lower_error_name,
+            lower_bound = 0.0
+        )
+        problem[Symbol(upper_error_name)] = JuMP.@variable(
+            problem,
+            [node_id = node_ids],
+            base_name = upper_error_name,
+            lower_bound = 0.0
+        )
     end
     return nothing
 end
@@ -558,10 +566,8 @@ function add_constraints_objective!(
     problem::JuMP.Model,
     p_non_diff::ParametersNonDiff,
     subnetwork_id::Int32,
-    Δt_allocation::Float64,
 )::Nothing
     F = problem[:F]
-    storage = problem[:basin_storage]
     (; user_demand, allocation) = p_non_diff
     (; subnetwork_demands) = allocation
 
@@ -596,20 +602,24 @@ function add_constraints_objective!(
             inflows
         end
 
+        # Example values
+        f = 1.0
+        d = 1.0
+
         problem[Symbol(lower_error_constraint_name)] = JuMP.@constraint(
             problem,
             [node_id = node_ids],
-            lower_error[node_id] + inflows[node_id] >= 1.0,
+            d * lower_error[node_id] >= f * d - inflows[node_id],
+            lower_bound = 0.0,
             base_name = lower_error_constraint_name
         )
         problem[Symbol(upper_error_constraint_name)] = JuMP.@constraint(
             problem,
             [node_id = node_ids],
-            upper_error[node_id] - inflows[node_id] >= -1.0,
+            d * upper_error[node_id] >= inflows[node_id] - f * d,
+            lower_bound,
             base_name = upper_error_constraint_name
         )
-        JuMP.@constraint(problem, lower_error .>= 0)
-        JuMP.@constraint(problem, upper_error .>= 0)
     end
 
     return nothing
@@ -669,7 +679,7 @@ function allocation_problem(
     add_constraints_user_source!(problem, sources)
     add_constraints_basin_profile!(problem, p_non_diff, subnetwork_id, n_points)
     add_constraints_buffer!(problem)
-    add_constraints_objective!(problem, p_non_diff, subnetwork_id, Δt_allocation)
+    add_constraints_objective!(problem, p_non_diff, subnetwork_id)
 
     # Add objective to the problem
     add_objective!(problem)

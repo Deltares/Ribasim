@@ -50,7 +50,7 @@ def label_flow_rate(value: float) -> str:
 
     Above 1, show 2 decimals.
     Show 0 as 0.
-    Between 0 and 1, and below 1, show 3 significant digits and scientific notation.
+    Between 0 and 1, and below 1, show scientific notation and 2 decimals.
     Example outputs: 0, 1.23e-06, 12345.68
     """
     if abs(value) >= 1:
@@ -59,3 +59,13 @@ def label_flow_rate(value: float) -> str:
         return "0"
     else:
         return f"{value:.2e}"
+
+
+@qgsfunction(args="auto", group="Custom", referenced_columns=[])  # type: ignore
+def label_scientific(value: float) -> str:
+    """
+    Format the label for `concentration`.
+
+    Uses scientific notation with 3 decimals.
+    """
+    return f"{value:.3e}"
