@@ -780,18 +780,13 @@ end
 Compute the residual of the non-linear solver, i.e. a measure of the
 error in the solution to the implicit equation defined by the solver algorithm
 """
-function residual(z, integrator, nlsolver, f)
+function residual(z, integrator, nlsolver, f::TF) where {TF}
     (; uprev, t, p, dt, opts, isdae) = integrator
     (; tmp, ztmp, γ, α, cache, method) = nlsolver
     (; ustep, atmp, tstep, k, invγdt, tstep, k, invγdt) = cache
-    if isdae
-        _uprev = get_dae_uprev(integrator, uprev)
-        b, ustep2 =
-            _compute_rhs!(tmp, ztmp, ustep, α, tstep, k, invγdt, p, _uprev, f::TF, z)
-    else
-        b, ustep2 =
-            _compute_rhs!(tmp, ztmp, ustep, γ, α, tstep, k, invγdt, method, p, dt, f, z)
-    end
+    @assert !isdae
+    b, ustep2 =
+        _compute_rhs!(tmp, ztmp, ustep, γ, α, tstep, k, invγdt, method, p, dt, f::TF, z)
     calculate_residuals!(
         atmp,
         b,
