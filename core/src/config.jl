@@ -12,6 +12,7 @@ using ADTypes: AutoForwardDiff, AutoFiniteDiff
 using Configurations: Configurations, @option, from_toml, @type_alias
 using DataStructures: DefaultDict
 using Dates: DateTime
+using LineSearches: BackTracking
 using Logging: LogLevel, Debug, Info, Warn, Error
 using ..Ribasim: Ribasim, isnode, nodetype
 using OrdinaryDiffEqCore: OrdinaryDiffEqAlgorithm, OrdinaryDiffEqNewtonAdaptiveAlgorithm
@@ -306,9 +307,7 @@ function algorithm(solver::Solver; u0 = [])::OrdinaryDiffEqAlgorithm
     kwargs = Dict{Symbol, Any}()
 
     if algotype <: OrdinaryDiffEqNewtonAdaptiveAlgorithm
-        kwargs[:nlsolve] = NLNewton(;
-            relax = Ribasim.MonitoredBackTracking(; z_tmp = copy(u0), dz_tmp = copy(u0)),
-        )
+        kwargs[:nlsolve] = NLNewton(; relax = BackTracking())
     end
 
     if function_accepts_kwarg(algotype, :step_limiter!)

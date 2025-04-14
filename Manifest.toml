@@ -1790,7 +1790,7 @@ version = "1.2.0"
 
 [[deps.OrdinaryDiffEqNonlinearSolve]]
 deps = ["ADTypes", "ArrayInterface", "DiffEqBase", "FastBroadcast", "FastClosures", "ForwardDiff", "LinearAlgebra", "LinearSolve", "MuladdMacro", "NonlinearSolve", "OrdinaryDiffEqCore", "OrdinaryDiffEqDifferentiation", "PreallocationTools", "RecursiveArrayTools", "SciMLBase", "SciMLOperators", "SciMLStructures", "SimpleNonlinearSolve", "StaticArrays"]
-git-tree-sha1 = "dbc4ca97a9051595d86a0d0fc31ded2de9cdfd7e"
+path = "C:\\Users\\konin_bt\\Repositories\\SciML\\OrdinaryDiffEq.jl\\lib\\OrdinaryDiffEqNonlinearSolve"
 uuid = "127b3ac7-2247-4354-8eb6-78cf4e7c58e8"
 version = "1.6.0"
 
