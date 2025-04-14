@@ -390,6 +390,7 @@ function check_water_balance_error!(
     (; basin, water_balance_abstol, water_balance_reltol, state_ranges, starttime) =
         p_non_diff
     errors = false
+    reset = false
 
     # The initial storage is irrelevant for the storage rate and can only cause
     # floating point truncation errors
@@ -430,19 +431,43 @@ function check_water_balance_error!(
            abs(relative_error) > water_balance_reltol
             errors = true
             @error "Too large water balance error" id balance_error relative_error
+        elseif abs(balance_error) > 0.01 * water_balance_abstol &&
+               abs(relative_error) > 0.01 * water_balance_reltol
+            reset = true
         end
 
         saved_flow.storage_rate[id.idx] = storage_rate
         saved_flow.balance_error[id.idx] = balance_error
         saved_flow.relative_error[id.idx] = relative_error
     end
+
     if errors
         t = datetime_since(t, starttime)
         error("Too large water balance error(s) detected at t = $t")
+    elseif reset
+        reset_cumulative_flows!(integrator)
     end
 
     @. basin.Δstorage_prev_saveat = diff_cache.current_storage
     return nothing
+end
+
+function reset_cumulative_flows!(integrator)
+    (; u, p) = integrator
+    (; p_non_diff, diff_cache) = p
+    (; basin, flow_boundary, state_ranges) = p_non_diff
+    (; storage0) = basin
+
+    storage0 .= p.diff_cache.current_storage
+
+    diff_cache.current_cumulative_precipitation .= 0
+    diff_cache.current_cumulative_drainage .= 0
+    flow_boundary.cumulative_flow .= 0
+
+    for name in propertynames(state_ranges)
+        name == :integral && continue
+        view(u, getfield(state_ranges, name)) .= 0
+    end
 end
 
 function save_solver_stats(u, t, integrator)
