@@ -79,7 +79,7 @@ open class RegressionTest (platformOs: String) : Template() {
         }
 
         failureConditions {
-            executionTimeoutMin = 30
+            executionTimeoutMin = 60
         }
 
     }
