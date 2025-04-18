@@ -435,7 +435,7 @@ of vectors or Arrow Tables, and is added to avoid type instabilities.
     outflow_ids::Vector{Vector{NodeID}} = [NodeID[]]
     # Vertical fluxes
     vertical_flux::VerticalFlux = VerticalFlux(length(node_id))
-    # Initial_storage
+    # Initial (or reset) storage
     storage0::Vector{Float64} = zeros(length(node_id))
     # Storage at previous saveat without storage0
     Δstorage_prev_saveat::Vector{Float64} = zeros(length(node_id))
