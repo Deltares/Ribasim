@@ -754,22 +754,40 @@ function OrdinaryDiffEqNonlinearSolve.relax!(
     linesearch::MonitoredBackTracking,
 )
     (; linesearch, dz_tmp, z_tmp) = linesearch
+    atmp::Vector{Float64} = nlsolver.cache.atmp
 
-    # Store step before relaxation
-    @. dz_tmp = dz
+    let dz = dz,
+        integrator = integrator,
+        nlsolver = nlsolver,
+        f = f,
+        linesearch = linesearch
 
-    # Apply relaxation and measure the residual change
-    @. z_tmp = nlsolver.z + dz
-    resid_before = residual(z_tmp, integrator, nlsolver, f)
-    relax!(dz, nlsolver, integrator, f, linesearch)
-    @. z_tmp = nlsolver.z + dz
-    resid_after = residual(z_tmp, integrator, nlsolver, f)
+        function ϕ(α)
+            @. atmp = nlsolver.z - dz * α
+            residual(atmp, integrator, nlsolver, f)
+        end
 
-    # If the residual increased due to the relaxation, reject it
-    if resid_after > resid_before
-        @. dz = dz_tmp
+        # Store step before relaxation
+        @. dz_tmp = dz
+
+        # Apply relaxation and measure the residual change
+        @. z_tmp = nlsolver.z + dz
+        resid_before = residual(z_tmp, integrator, nlsolver, f)
+        α0 = 1.0
+        ϕ0 = ϕ(0.0)
+        ϵ = sqrt(eps())
+        dϕ0 = (ϕ(ϵ) - ϕ0) / ϵ
+
+        # This linesearch method is specific to BackTracking
+        α, resid_after = linesearch(ϕ, α0, ϕ0, dϕ0)
+        @. z_tmp = nlsolver.z + α * dz
+
+        # If the residual increased due to the relaxation, reject it
+        if resid_after > resid_before
+            @. dz = dz_tmp
+        end
+        return dz
     end
-    return dz
 end
 
 "Create a NamedTuple of the node IDs per state component in the state order"
