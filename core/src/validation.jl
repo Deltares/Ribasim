@@ -353,7 +353,7 @@ Validate the entries for a single subgrid element.
 function valid_subgrid(
     subgrid_id::Int32,
     node_id::Int32,
-    node_to_basin::Dict{Int32, Int},
+    node_to_basin::Dict{Int32, NodeID},
     basin_level::Vector{Float64},
     subgrid_level::Vector{Float64},
 )::Bool
