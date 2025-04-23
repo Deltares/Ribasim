@@ -5,6 +5,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [v2025.3.0] - 2025-04-14
+
+The only breaking change in this release is to disallow connecting a single FlowBoundary to multiple Basins.
+There are large improvements in the ability to visualize results on the map in QGIS.
+We also welcome the Junction node to the family, which will help laying out networks in a recognizable manner.
+
+### Added
+- Add spatio-temporal results layers to QGIS. [#2208](https://github.com/Deltares/Ribasim/pull/2208)
+- Add topological (straight line) link view toggle to QGIS. [#2208](https://github.com/Deltares/Ribasim/pull/2208)
+- Added [Junction](https://ribasim.org/reference/node/junction.html) node type. [#2175](https://github.com/Deltares/Ribasim/pull/2175)
+- Write results and log bottlenecks also on an interrupt or crash. [#2191](https://github.com/Deltares/Ribasim/pull/2191) [#2200](https://github.com/Deltares/Ribasim/pull/2200)
+- Log computation time and save it to `solver_stats.arrow`. [#2209](https://github.com/Deltares/Ribasim/pull/)
+- Experimental support for writing the model network and results into files used by Delft-FEWS, [`model.to_fews`](`https://ribasim.org/reference/python/Model.html#ribasim.Model.to_fews`). [#2161](https://github.com/Deltares/Ribasim/pull/2161)
+- Document [`results/concentration.arrow`](https://ribasim.org/reference/usage.html#concentration---concentration.arrow). [#2165](https://github.com/Deltares/Ribasim/pull/2165)
+
+### Changed
+- Allow max 1 outflow neighbour for FlowBoundary. [#2192](https://github.com/Deltares/Ribasim/pull/2192)
+- Automatic differentiation is enabled by default again, `autodiff = true`, leading to better performance. [#2137](https://github.com/Deltares/Ribasim/pull/2137) [#2183](https://github.com/Deltares/Ribasim/pull/2183)
+
 ## [v2025.2.0] - 2025-03-10
 
 In this release, time is of the essence. We now support dynamic Pumps and Outlets, as well as DiscreteControl thresholds.
