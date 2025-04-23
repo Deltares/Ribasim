@@ -63,7 +63,7 @@
         "Ribasim"
     ],
     "files.insertFinalNewline": true,
-    "julia.executablePath": "julia +1.11.4",
+    "julia.executablePath": "julia +1.11.5",
     "julia.lint.disabledDirs": [
         ".pixi"
     ],
