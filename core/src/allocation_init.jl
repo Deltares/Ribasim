@@ -569,7 +569,8 @@ function add_constraints_objective!(
 )::Nothing
     F = problem[:F]
     (; user_demand, allocation) = p_non_diff
-    (; subnetwork_demands) = allocation
+    (; subnetwork_demands, Δt_allocation) = allocation
+    storage = problem[:basin_storage]
 
     for node_name in (:user_demand, :level_demand, :flow_demand, :subnetwork)
         lower_error_name = "lower_error_$node_name"
@@ -610,14 +611,12 @@ function add_constraints_objective!(
             problem,
             [node_id = node_ids],
             d * lower_error[node_id] >= f * d - inflows[node_id],
-            lower_bound = 0.0,
             base_name = lower_error_constraint_name
         )
         problem[Symbol(upper_error_constraint_name)] = JuMP.@constraint(
             problem,
             [node_id = node_ids],
             d * upper_error[node_id] >= inflows[node_id] - f * d,
-            lower_bound,
             base_name = upper_error_constraint_name
         )
     end

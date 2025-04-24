@@ -1771,6 +1771,7 @@ function Allocation(db::DB, config::Config, graph::MetaGraph)::Allocation
         demand_priorities_all = get_all_demand_priorities(db, config),
         mean_input_flows,
         mean_realized_flows,
+        Δt_allocation = config.allocation.timestep,
     )
 end
 

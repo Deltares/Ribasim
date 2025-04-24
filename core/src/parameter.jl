@@ -223,6 +223,7 @@ subnetwork_demands: The demand of an link from the main network to a subnetwork
 subnetwork_allocateds: The allocated flow of an link from the main network to a subnetwork
 mean_input_flows: Per subnetwork, flows averaged over Δt_allocation over links that are allocation sources
 mean_realized_flows: Flows averaged over Δt_allocation over links that realize a demand
+Δt_allocation: The time interval between consecutive allocation solves
 record_demand: A record of demands and allocated flows for nodes that have these
 record_flow: A record of all flows computed by allocation optimization, eventually saved to
     output file
@@ -237,6 +238,7 @@ record_flow: A record of all flows computed by allocation optimization, eventual
     subnetwork_allocateds::Dict{Tuple{NodeID, NodeID}, Vector{Float64}} = Dict()
     mean_input_flows::Vector{Dict{Tuple{NodeID, NodeID}, Float64}}
     mean_realized_flows::Dict{Tuple{NodeID, NodeID}, Float64}
+    Δt_allocation::Float64
     record_demand::@NamedTuple{
         time::Vector{Float64},
         subnetwork_id::Vector{Int32},
