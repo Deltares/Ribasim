@@ -15,6 +15,9 @@ end
 const CVector{T, NT} = CArray{T, 1, NT}
 const CMatrix{T, NT} = CArray{T, 2, NT}
 
+CVector(data::DenseVector, axes) = CArray(data, axes)
+CMatrix(data::DenseMatrix, axes) = CArray(data, axes)
+
 getdata(x::CArray) = getfield(x, :data)
 getaxes(x::CArray) = getfield(x, :axes)
 

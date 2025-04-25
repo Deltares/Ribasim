@@ -1,5 +1,5 @@
 @testitem "UnitRange" begin
-    using Ribasim: CArray, CVector
+    using Ribasim.CArrays: CArray, CVector, getdata, getaxes
     data = [1.0, 2.0, 3.0]
     axes = (a = 1:1, b = 2:3)
     x = CArray(data, axes)
@@ -20,7 +20,7 @@
 end
 
 @testitem "Int" begin
-    using Ribasim: CArray, CVector
+    using Ribasim.CArrays: CArray, CVector
     data = [1.0, 2.0, 3.0]
     axes = (a = 1, b = 2:3)
     x = CArray(data, axes)
@@ -33,7 +33,7 @@ end
 end
 
 @testitem "Nested" begin
-    using Ribasim: CArray, CVector
+    using Ribasim.CArrays: CArray, CVector, getdata, getaxes
     data = [1.0, 2.0, 3.0]
     axes = (; a = (; b = 1, c = 2:3))
     x = CArray(data, axes)
@@ -41,7 +41,7 @@ end
     @test xa isa CVector
     @test getdata(xa) === data
     @test getaxes(xa) === axes.a
-    @test_throws FieldError x.b
+    @test_throws ErrorException x.b
     @test x.a.b === 1.0
     @test x.a.c isa SubArray
     @test x.a.c == [2.0, 3.0]
@@ -52,7 +52,7 @@ end
 end
 
 @testitem "CMatrix" begin
-    using Ribasim: CArray, CVector
+    using Ribasim.CArrays: CArray, CMatrix
     data = [1.0; 2; 3;; 4; 5; 6]
     axes = (a = 1, b = 2, c = CartesianIndex(3, 2))
     x = CArray(data, axes)
