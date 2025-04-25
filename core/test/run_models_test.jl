@@ -3,7 +3,8 @@
     using Tables.DataAPI: nrow
     using Dates: DateTime
     import Arrow
-    using Ribasim: get_tstops, tsaves, StateRanges
+    using Ribasim: get_tstops, tsaves
+    using Ribasim.CArrays: CVector, getaxes
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/trivial/ribasim.toml")
     @test ispath(toml_path)
@@ -19,11 +20,13 @@
     model = Ribasim.run(config)
     @test model isa Ribasim.Model
     @test success(model)
+    (; u, du) = model.integrator
     (; p_non_diff) = model.integrator.p
 
     @test p_non_diff.node_id == [0, 6, 6]
-    @test p_non_diff.state_ranges ==
-          StateRanges(; tabulated_rating_curve = 1:1, evaporation = 2:2, infiltration = 3:3)
+    @test u isa CVector
+    @test filter(!isempty, getaxes(u)) ==
+          (; tabulated_rating_curve = 1:1, evaporation = 2:2, infiltration = 3:3)
 
     @test !ispath(control_path)
 
@@ -139,7 +142,7 @@ end
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
     (; p_non_diff, diff_cache) = model.integrator.p
-    (; basin, state_ranges) = p_non_diff
+    (; basin) = p_non_diff
     @test diff_cache.current_storage ≈ [1000]
     @test basin.vertical_flux.precipitation == [0.0]
     @test basin.vertical_flux.drainage == [0.0]
@@ -162,7 +165,7 @@ end
     du = get_du(integrator)
     (; u, p, t) = integrator
     (; p_non_diff, diff_cache) = p
-    (; basin, state_ranges) = p_non_diff
+    (; basin) = p_non_diff
 
     Ribasim.water_balance!(du, u, p, t)
     stor = diff_cache.current_storage

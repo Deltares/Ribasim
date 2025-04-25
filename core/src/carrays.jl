@@ -12,6 +12,24 @@ struct CArray{T, N, A <: DenseArray{T, N}, NT} <: DenseArray{T, N}
     axes::NT
 end
 
+function CArray{T, N, A, NT}(
+    ::UndefInitializer,
+    n::Int,
+) where {T, N, A <: DenseArray{T, N}, NT}
+    data = similar(A, n)
+    # We can say `axes = (;)`, but this doesn't preserve axes type, problematic for
+    # https://github.com/JuliaSmoothOptimizers/Krylov.jl/blob/v0.9.10/src/krylov_solvers.jl#L2500
+    # https://github.com/SciML/ComponentArrays.jl/issues/128
+    # https://github.com/JuliaSmoothOptimizers/Krylov.jl/issues/701
+    # Instead we use this hack specific to UnitRange{Int} to keep the axes type.
+    @assert NT.types[1] == UnitRange{Int}
+    @assert allequal(NT.types)
+    n_components = length(NT.types)
+    empty_axes = ntuple(Returns(1:0), n_components)
+    axes = NT(empty_axes)
+    CArray(data, axes)
+end
+
 const CVector{T, NT} = CArray{T, 1, NT}
 const CMatrix{T, NT} = CArray{T, 2, NT}
 
@@ -22,10 +40,13 @@ getdata(x::CArray) = getfield(x, :data)
 getaxes(x::CArray) = getfield(x, :axes)
 
 Base.setindex!(x::CArray, value, i::Int) = (getdata(x)[i] = value)
+Base.setindex!(x::CArray, value, I...) = (getdata(x)[I...] = value)
 Base.size(x::CArray) = size(getdata(x))
 Base.length(x::CArray) = length(getdata(x))
 Base.getindex(x::CArray, i::Int) = getdata(x)[i]
+Base.getindex(x::CArray, I...) = getdata(x)[I...]
 Base.IndexStyle(::Type{CArray}) = IndexLinear()
+Base.elsize(x::CArray) = Base.elsize(getdata(x))
 
 # Linear algebra
 Base.pointer(x::CArray) = pointer(getdata(x))

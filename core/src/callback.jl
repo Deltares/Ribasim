@@ -283,6 +283,7 @@ function flow_update_on_link(
             0.0
         end
     else
+        state_ranges = getaxes(u)
         flow_idx = get_state_index(state_ranges, link_src)
         u[flow_idx] - uprev[flow_idx]
     end
@@ -377,9 +378,9 @@ function check_water_balance_error!(
 )::Nothing
     (; u, p, t) = integrator
     (; p_non_diff, diff_cache) = p
-    (; basin, water_balance_abstol, water_balance_reltol, state_ranges, starttime) =
-        p_non_diff
+    (; basin, water_balance_abstol, water_balance_reltol, starttime) = p_non_diff
     errors = false
+    state_ranges = getaxes(u)
 
     # The initial storage is irrelevant for the storage rate and can only cause
     # floating point truncation errors

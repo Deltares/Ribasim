@@ -10,7 +10,7 @@
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     (; p_non_diff) = model.integrator.p
-    (; discrete_control, pump, graph, state_ranges) = p_non_diff
+    (; discrete_control, pump, graph) = p_non_diff
 
     # Control input(flow rates)
     pump_control_mapping = pump.control_mapping
