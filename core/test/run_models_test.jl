@@ -144,10 +144,8 @@ end
     @test basin.vertical_flux.precipitation == [0.0]
     @test basin.vertical_flux.drainage == [0.0]
     du = get_du(model.integrator)
-    du_evaporation = view(du, state_ranges.evaporation)
-    du_infiltration = view(du, state_ranges.infiltration)
-    @test du_evaporation == [0.0]
-    @test du_infiltration == [0.0]
+    @test du.evaporation == [0.0]
+    @test du.infiltration == [0.0]
     @test success(model)
 end
 
@@ -169,9 +167,9 @@ end
     Ribasim.water_balance!(du, u, p, t)
     stor = diff_cache.current_storage
     prec = basin.vertical_flux.precipitation
-    evap = view(du, state_ranges.evaporation)
+    evap = du.evaporation
     drng = basin.vertical_flux.drainage
-    infl = view(du, state_ranges.infiltration)
+    infl = du.infiltration
     # The dynamic data has missings, but these are not set.
     @test prec == [0.0]
     @test evap == [0.0]

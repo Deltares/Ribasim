@@ -67,10 +67,8 @@
           discrete_control.compound_variables[1][2].greater_than[1](0)
 
     du = get_du(model.integrator)
-    du_linear_resistance = view(du, state_ranges.linear_resistance)
-    du_pump = view(du, state_ranges.pump)
-    @test all(iszero, du_linear_resistance)
-    @test all(iszero, du_pump)
+    @test all(iszero, du.linear_resistance)
+    @test all(iszero, du.pump)
 end
 
 @testitem "Flow condition control" begin
