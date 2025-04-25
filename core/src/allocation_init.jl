@@ -124,25 +124,52 @@ function add_variables_flow!(
 end
 
 """
-Add the variables for supply/demand of a basin to the problem.
-The variable indices are the node IDs of the basins in the subnetwork.
+Add the variables for describing the profile and its contents for each basin to the problem.
+These are:
+- The level and storage at the start and end of the allocation interval
+- Auxiliary and boolean variables for enforcing the storage-level relationship
 """
-function add_variables_basin!(
+function add_variables_basin_profile!(
     problem::JuMP.Model,
-    sources::OrderedDict{Tuple{NodeID, NodeID}, AllocationSource},
-)::Nothing
+    p_non_diff::ParametersNonDiff,
+    subnetwork_id::Int32,
+)::Dict{NodeID, Int}
+    (; graph, basin) = p_non_diff
+    (; node_id, storage_to_level) = basin
+    n_samples_per_interval = 5
 
-    # Get the node IDs from the subnetwork for basins that have a level demand
-    node_ids_basin = [
-        source.link[1] for
-        source in values(sources) if source.type == AllocationSourceType.level_demand
-    ]
+    # Basin node IDs within the current subnetwork
+    node_ids = filter(id -> graph[id].subnetwork_id == subnetwork_id, node_id)
 
-    problem[:F_basin_in] =
-        JuMP.@variable(problem, F_basin_in[node_id = node_ids_basin,] >= 0.0)
-    problem[:F_basin_out] =
-        JuMP.@variable(problem, F_basin_out[node_id = node_ids_basin,] >= 0.0)
-    return nothing
+    # Indices for states at the beginning and end of the allocation interval
+    state_indices = IterTools.product(node_ids, [:start, :end])
+
+    # Define the storages and levels of the basin
+    # TODO: Not sure the initial level is needed
+    problem[:basin_storage] = JuMP.@variable(problem, basin_storage[state_indices] >= 0)
+    problem[:basin_level] = JuMP.@variable(problem, basin_level[state_indices] >= 0)
+
+    # The number of points in the piecewise linear approximation
+    # of the level(storage) relationship
+    n_points = Dict{NodeID, Int}()
+
+    for id in node_ids
+        n_points[id] = (length(storage_to_level[id.idx].t) - 1) * n_samples_per_interval + 1
+    end
+
+    # Define auxiliary variables for the basin profiles within this subnetwork
+    indices_points =
+        Iterators.flatten(map(id -> ((id, i) for i in 1:n_points[id]), node_ids))
+    problem[:aux_basin_profile] =
+        JuMP.@variable(problem, 0 <= aux_basin_profile[indices_points] <= 1)
+
+    # Define binary variables for in which interval the storage lies
+    indices_intervals =
+        Iterators.flatten(map(id -> ((id, i) for i in 1:(n_points[id] - 1)), node_ids))
+    problem[:bool_basin_profile] =
+        JuMP.@variable(problem, bool_basin_profile[indices_intervals], binary = true)
+
+    return n_points
 end
 
 """
@@ -181,7 +208,11 @@ function add_variables_objective!(
         node_ids = if node_name == :user_demand
             [id for id in graph[].node_ids[subnetwork_id] if id.type == NodeType.UserDemand]
         elseif node_name == :level_demand
-            only(problem[:F_basin_in].axes)
+            [
+                id for
+                id in graph[].node_ids[subnetwork_id] if id.type == NodeType.Basin &&
+                    has_external_demand(graph, id, :level_demand)[1]
+            ]
         elseif node_name == :flow_demand
             only(problem[:F_flow_buffer_in].axes)
         else # node_name == :subnetwork
@@ -329,48 +360,33 @@ function add_constraints_main_network_source!(
 end
 
 """
-Add the basin flow conservation constraints to the allocation problem.
-The constraint indices are Basin node IDs.
-
-Constraint:
-sum(flows out of basin) == sum(flows into basin) + flow from storage and vertical fluxes
+Per basin, collect the in- and outflows and equate their cumulative flow over the
+allocation optimization interval to the storage difference.
 """
-function add_constraints_conservation_node!(
+function add_constraints_storage_conservation!(
     problem::JuMP.Model,
     p_non_diff::ParametersNonDiff,
     subnetwork_id::Int32,
+    Δt_allocation::Float64,
 )::Nothing
-    (; graph) = p_non_diff
+    (; basin, graph) = p_non_diff
+    (; node_id) = basin
+    storage = problem[:basin_storage]
     F = problem[:F]
-    F_basin_in = problem[:F_basin_in]
-    F_basin_out = problem[:F_basin_out]
-    F_flow_buffer_in = problem[:F_flow_buffer_in]
-    F_flow_buffer_out = problem[:F_flow_buffer_out]
-    node_ids = graph[].node_ids[subnetwork_id]
+
+    links_allocation = only(F.axes)
+
+    # Basin node IDs within the current subnetwork
+    node_ids = filter(id -> graph[id].subnetwork_id == subnetwork_id, node_id)
 
     inflows = Dict{NodeID, Set{JuMP.VariableRef}}()
     outflows = Dict{NodeID, Set{JuMP.VariableRef}}()
 
-    links_allocation = only(F.axes)
-
-    for node_id in node_ids
-
-        # If a node is a source or a sink (i.e. a boundary node),
-        # there is no flow conservation on that node
-        is_source_sink = node_id.type in
-        [NodeType.FlowBoundary, NodeType.LevelBoundary, NodeType.UserDemand]
-
-        if is_source_sink
-            continue
-        end
-
+    for id in node_ids
         inflows_node = Set{JuMP.VariableRef}()
         outflows_node = Set{JuMP.VariableRef}()
-        inflows[node_id] = inflows_node
-        outflows[node_id] = outflows_node
 
-        # Find in- and outflow allocation links of this node
-        for neighbor_id in inoutflow_ids(graph, node_id)
+        for neighbor_id in inoutflow_ids(graph, id)
             link_in = (neighbor_id, node_id)
             if link_in in links_allocation
                 push!(inflows_node, F[link_in])
@@ -381,51 +397,142 @@ function add_constraints_conservation_node!(
             end
         end
 
-        # If the node is a Basin with a level demand, add basin in- and outflow
-        if has_external_demand(graph, node_id, :level_demand)[1]
-            push!(inflows_node, F_basin_out[node_id])
-            push!(outflows_node, F_basin_in[node_id])
-        end
-
-        # If the node has a buffer
-        if has_external_demand(graph, node_id, :flow_demand)[1]
-            push!(inflows_node, F_flow_buffer_out[node_id])
-            push!(outflows_node, F_flow_buffer_in[node_id])
-        end
+        inflows[id] = inflows_node
+        outflows[id] = outflows_node
     end
 
-    # Only the node IDs with conservation constraints on them
-    # Discard constraints of the form 0 == 0
-    node_ids = [
-        node_id for node_id in keys(inflows) if
-        !(isempty(inflows[node_id]) && isempty(outflows[node_id]))
-    ]
-
-    problem[:flow_conservation] = JuMP.@constraint(
+    problem[:storage_conservation] = JuMP.@constraint(
         problem,
         [node_id = node_ids],
-        sum(inflows[node_id]) == sum(outflows[node_id]);
-        base_name = "flow_conservation"
+        storage[(node_id, :end)] ==
+        storage[(node_id, :start)] +
+        Δt_allocation * (sum(inflows[node_id]) - sum(outflows[node_id]));
+        base_name = "storage_conservation"
     )
 
     return nothing
 end
 
 """
-Add the Basin flow constraints to the allocation problem.
-The constraint indices are the Basin node IDs.
-
-Constraint:
-flow out of basin <= basin capacity
+Add constraints stating that for conservative connector nodes the inflow is equal to the outflow.
 """
-function add_constraints_basin_flow!(problem::JuMP.Model)::Nothing
-    F_basin_out = problem[:F_basin_out]
-    problem[:basin_outflow] = JuMP.@constraint(
+function add_constraints_flow_conservation!(
+    problem::JuMP.Model,
+    p_non_diff::ParametersNonDiff,
+    subnetwork_id::Int32,
+)::Nothing
+    (; graph, pump, outlet, linear_resistance, manning_resistance, tabulated_rating_curve) =
+        p_non_diff
+    add_constraints_flow_conservation!(problem, pump, graph, subnetwork_id)
+    add_constraints_flow_conservation!(problem, outlet, graph, subnetwork_id)
+    add_constraints_flow_conservation!(problem, linear_resistance, graph, subnetwork_id)
+    add_constraints_flow_conservation!(problem, manning_resistance, graph, subnetwork_id)
+    add_constraints_flow_conservation!(
         problem,
-        [node_id = only(F_basin_out.axes)],
-        F_basin_out[node_id] <= 0.0,
-        base_name = "basin_outflow"
+        tabulated_rating_curve,
+        graph,
+        subnetwork_id,
     )
+    return nothing
+end
+
+function add_constraints_flow_conservation!(
+    problem::JuMP.Model,
+    node::AbstractParameterNode,
+    graph::MetaGraph,
+    subnetwork_id::Int32,
+)::Nothing
+    (; node_id, inflow_link, outflow_link) = node
+    node_ids = filter(id -> graph[id].subnetwork_id == subnetwork_id, node_id)
+    F = problem[:F]
+
+    problem[:flow_conservation] = JuMP.@constraint(
+        problem,
+        [node_id = node_ids],
+        F[inflow_link[node_id.idx].link] == F[outflow_link[node_id.idx].link]
+    )
+
+    return nothing
+end
+
+function add_constraints_basin_profile!(
+    problem::JuMP.Model,
+    p_non_diff::ParametersNonDiff,
+    subnetwork_id::Int32,
+    n_points::Dict{NodeID, Int},
+)::Nothing
+    n_samples_per_interval = 5
+    (; basin, graph) = p_non_diff
+    (; node_id, storage_to_level) = basin
+    bool_basin_profile = problem[:bool_basin_profile]
+    aux_basin_profile = problem[:aux_basin_profile]
+    basin_storage = problem[:basin_storage]
+    basin_level = problem[:basin_level]
+
+    # Basin node IDs within the current subnetwork
+    node_ids = filter(id -> graph[id].subnetwork_id == subnetwork_id, node_id)
+
+    # The data for the piecewise linear basin profile approximations
+    storages = Dict{NodeID, Vector{Float64}}()
+    levels = Dict{NodeID, Vector{Float64}}()
+
+    for id in node_ids
+        itp = storage_to_level[id.idx]
+        storage = vcat(
+            [
+                itp.(
+                    range(itp.t[i], itp.t[i + 1]; length = n_samples_per_interval + 1)[1:(end - 1)]
+                ) for i in 1:(length(itp.t) - 1)
+            ]...,
+        )
+        push!(storage, itp.t[end])
+        storages[id] = storage
+        levels[id] = itp.(storage)
+    end
+
+    # The constraints describing the basin profile approximation
+    problem[:basin_profile_storage] = JuMP.@constraint(
+        problem,
+        [id = node_ids],
+        sum(storages[id][i] * aux_basin_profile[(id, i)] for i in 1:(n_points[id] - 1)) == basin_storage[(id, :end)]
+    )
+    problem[:basin_profile_level] = JuMP.@constraint(
+        problem,
+        [id = node_ids],
+        sum(levels[id][i] * aux_basin_profile[(id, i)] for i in 1:(n_points[id] - 1)) ==
+        basin_level[(id, :end)]
+    )
+
+    # Unity sum of auxiliary variables
+    problem[:aux_basin_profile_unity_sum] = JuMP.@constraint(
+        problem,
+        [id = node_ids],
+        sum(aux_basin_profile[(id, i)] for i in 1:n_points[id]) == 1,
+        base_name = "aux_basin_profile_unity_sum"
+    )
+
+    # Only 2 successive auxiliary variables are non-zero
+    idxs = vcat([[(id, i) for i in 1:n_points[id]] for id in node_ids]...)
+    problem[:aux_basin_profile_restrict] = JuMP.@constraint(
+        problem,
+        [idx = idxs],
+        aux_basin_profile[idx] <= if idx[2] == 1
+            bool_basin_profile[idx]
+        elseif idx[2] == n_points[idx[1]]
+            bool_basin_profile[(idx[1], idx[2] - 1)]
+        else
+            bool_basin_profile[(idx[1], idx[2] - 1)] + bool_basin_profile[idx]
+        end
+    )
+
+    # The sum of the binary variables per basin is 1 => the storage can only lie in one interval
+    problem[:bool_basin_profile_sum] = JuMP.@constraint(
+        problem,
+        [id = node_ids],
+        sum(bool_basin_profile[(id, i)] for i in 1:(n_points[id] - 1)) == 1,
+        base_name = "bool_basin_profile_sum"
+    )
+
     return nothing
 end
 
@@ -462,7 +569,8 @@ function add_constraints_objective!(
 )::Nothing
     F = problem[:F]
     (; user_demand, allocation) = p_non_diff
-    (; subnetwork_demands) = allocation
+    (; subnetwork_demands, Δt_allocation) = allocation
+    storage = problem[:basin_storage]
 
     for node_name in (:user_demand, :level_demand, :flow_demand, :subnetwork)
         lower_error_name = "lower_error_$node_name"
@@ -479,7 +587,10 @@ function add_constraints_objective!(
         inflows = if node_name == :user_demand
             Dict(id => F[user_demand.inflow_link[id.idx].link] for id in node_ids)
         elseif node_name == :level_demand
-            problem[:F_basin_in]
+            Dict(
+                id => (storage[(id, :end)] - storage[(id, :start)]) / Δt_allocation for
+                id in node_ids
+            )
         elseif node_name == :flow_demand
             problem[:F_flow_buffer_in]
         else # node_name == "subnetwork"
@@ -540,6 +651,7 @@ function allocation_problem(
     sources::OrderedDict{Tuple{NodeID, NodeID}, AllocationSource},
     capacity::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}},
     subnetwork_id::Int32,
+    Δt_allocation::Float64,
 )::JuMP.Model
     optimizer = JuMP.optimizer_with_attributes(
         HiGHS.Optimizer,
@@ -553,17 +665,18 @@ function allocation_problem(
 
     # Add variables to problem
     add_variables_flow!(problem, capacity)
-    add_variables_basin!(problem, sources)
+    n_points = add_variables_basin_profile!(problem, p_non_diff, subnetwork_id)
     add_variables_flow_buffer!(problem, sources)
     add_variables_objective!(problem, p_non_diff, subnetwork_id)
 
     # Add constraints to problem
-    add_constraints_conservation_node!(problem, p_non_diff, subnetwork_id)
+    add_constraints_storage_conservation!(problem, p_non_diff, subnetwork_id, Δt_allocation)
+    add_constraints_flow_conservation!(problem, p_non_diff, subnetwork_id)
     add_constraints_capacity!(problem, capacity, p_non_diff, subnetwork_id)
     add_constraints_boundary_source!(problem, sources)
     add_constraints_main_network_source!(problem, sources)
     add_constraints_user_source!(problem, sources)
-    add_constraints_basin_flow!(problem)
+    add_constraints_basin_profile!(problem, p_non_diff, subnetwork_id, n_points)
     add_constraints_buffer!(problem)
     add_constraints_objective!(problem, p_non_diff, subnetwork_id)
 
@@ -588,7 +701,8 @@ function AllocationModel(
         link => source for
         (link, source) in sources if source.subnetwork_id == subnetwork_id
     )
-    problem = allocation_problem(p_non_diff, sources, capacity, subnetwork_id)
+    problem =
+        allocation_problem(p_non_diff, sources, capacity, subnetwork_id, Δt_allocation)
     flow = JuMP.Containers.SparseAxisArray(Dict(only(problem[:F].axes) .=> 0.0))
 
     return AllocationModel(;
