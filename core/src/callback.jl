@@ -577,7 +577,7 @@ end
 Get a value for a condition. Currently supports getting levels from basins and flows
 from flow boundaries.
 """
-function get_value(subvariable::SubVariable, p::Parameters, du::AbstractVector, t::Float64)
+function get_value(subvariable::SubVariable, p::Parameters, du::CVector, t::Float64)
     (; flow_boundary, level_boundary, basin) = p.p_non_diff
     (; listen_node_id, look_ahead, variable, diff_cache_ref) = subvariable
 
