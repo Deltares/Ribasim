@@ -6,6 +6,7 @@ echo "Installation of the plugin Ribasim"
 docker exec -t qgis sh -c "qgis_setup.sh ribasim_qgis"
 echo "Containers are running"
 
+docker exec -t qgis sh -c "python3 -m pip install pandas"
 docker exec -t qgis sh -c "cd /tests_directory && xvfb-run -a qgis_testrunner.sh ribasim_qgis.tests"
 exit_code=$?
 
