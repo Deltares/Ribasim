@@ -3,7 +3,7 @@ title: "Allocation"
 ---
 
 # Introduction
-Allocation is the process of assigning an allocated flow rate to demand nodes in the physical layer of the model based on information about sources and their source priorities, the different demand nodes over various demand priorities, constraints introduced by nodes, local water availability and graph topology. The allocation procedure implemented in Ribasim is heavily inspired by the [maximum flow problem](https://en.wikipedia.org/wiki/Maximum_flow_problem).
+Allocation is the process of assigning an allocated flow rate to demand nodes in the physical layer of the model based on information about sources and their source priorities, the different demand nodes over various demand priorities, constraints and physical processes introduced by nodes, local water availability and graph topology.
 
 The allocation problem is solved per subnetwork (and main network) of the Ribasim model. Each subnetwork is used to formulate an optimization problem with the [JuMP](https://jump.dev/JuMP.jl/stable/) package, which is solved using the [HiGHS solver](https://highs.dev/). For more in-depth information see also the example of solving the maximum flow problem with `JuMP.jl` [here](https://jump.dev/JuMP.jl/stable/tutorials/linear/network_flows/#The-max-flow-problem).
 
@@ -52,7 +52,7 @@ $$
 
 ### User demands
 
-The subnetwork contains a subset of UserDemand nodes $U_S \subset S$, who all have static or time varying demands over various priorities $p$:
+The subnetwork contains a subset of UserDemand nodes $U_S \subset S$, who all have static or time varying demands over various demand priorities $p$:
 $$
     d^p_i(t), \quad i \in U_S, p = 1,2,\ldots, p_{\max}.
 $$

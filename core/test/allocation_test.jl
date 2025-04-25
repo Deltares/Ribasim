@@ -649,8 +649,11 @@ end
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/cyclic_demand/ribasim.toml")
     @test ispath(toml_path)
-    model = Ribasim.run(toml_path)
-    (; level_demand, user_demand, flow_demand) = model.integrator.p.p_non_diff
+    model = Ribasim.Model(toml_path)
+    (; level_demand, user_demand, flow_demand, allocation) = model.integrator.p.p_non_diff
+
+    @test allocation.demand_priorities_all == [1, 2, 3]
+    @test allocation.is_level_priority == [false, false, true]
 
     function test_extrapolation(itp)
         @test itp.extrapolation_left == Periodic
@@ -660,5 +663,5 @@ end
     test_extrapolation(only(level_demand.min_level))
     test_extrapolation(only(level_demand.max_level))
     test_extrapolation(only(flow_demand.demand_itp))
-    test_extrapolation.(only(user_demand.demand_itp))
+    test_extrapolation.(only(user_demand.demand_itp)[1:2])
 end

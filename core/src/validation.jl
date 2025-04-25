@@ -644,6 +644,29 @@ function valid_demand_priorities(
     return !(use_allocation && any(iszero, demand_priorities))
 end
 
+function valid_demand_types!(p::ParametersNonDiff)
+    (; user_demand, level_demand, flow_demand, allocation) = p
+    (; demand_priorities_all, is_level_priority) = allocation
+
+    level_priorities = unique(level_demand.demand_priority)
+    user_demand_priorities = [
+        demand_priorities_all[demand_priority_idx] for
+        demand_priority_idx in eachindex(demand_priorities_all) if
+        any(view(user_demand.has_demand_priority, :, demand_priority_idx))
+    ]
+    for level_priority in level_priorities
+        is_level_priority[findfirst(==(level_priority), demand_priorities_all)] = true
+    end
+    flow_priorities = unique(vcat(user_demand_priorities, flow_demand.demand_priority))
+    priorities_both = intersect(level_priorities, flow_priorities)
+    if !isempty(priorities_both)
+        @error "Level demands (LevelDemand) and flow demands (UserDemand, FlowDemand) must be in separate demand priorities, found demand priorities that have both types." priorities_both
+        return false
+    else
+        return true
+    end
+end
+
 function valid_time_interpolation(
     times::Vector{Float64},
     parameter::AbstractVector,

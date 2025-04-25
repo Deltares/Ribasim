@@ -219,6 +219,8 @@ allocation_models: The allocation models for the main network and subnetworks co
     subnetwork_ids
 main_network_connections: (from_id, to_id) from the main network to the subnetwork per subnetwork
 demand_priorities_all: All used demand priority values from all subnetworks
+is_level_priority: Boolean per demand priority to state whether it is a level demand priority (true)
+    or a flow demand priority (false)
 subnetwork_demands: The demand of an link from the main network to a subnetwork
 subnetwork_allocateds: The allocated flow of an link from the main network to a subnetwork
 mean_input_flows: Per subnetwork, flows averaged over Δt_allocation over links that are allocation sources
@@ -234,6 +236,7 @@ record_flow: A record of all flows computed by allocation optimization, eventual
     main_network_connections::Dict{Int32, Vector{Tuple{NodeID, NodeID}}} =
         Dict{Int, Vector{Tuple{NodeID, NodeID}}}()
     demand_priorities_all::Vector{Int32}
+    is_level_priority::Vector{Bool} = fill(false, length(demand_priorities_all))
     subnetwork_demands::Dict{Tuple{NodeID, NodeID}, Vector{Float64}} = Dict()
     subnetwork_allocateds::Dict{Tuple{NodeID, NodeID}, Vector{Float64}} = Dict()
     mean_input_flows::Vector{Dict{Tuple{NodeID, NodeID}, Float64}}
@@ -822,7 +825,7 @@ inflow_link: incoming flow link
 outflow_link: outgoing flow link metadata
     The ID of the source node is always the ID of the UserDemand node
 active: whether this node is active and thus demands water
-has_priority: boolean matrix stating per UserDemand node per demand priority index whether the (node_idx, demand_priority_idx)
+has_demand_priority: boolean matrix stating per UserDemand node per demand priority index whether the (node_idx, demand_priority_idx)
     node will ever have a demand of that priority
 demand: water flux demand of UserDemand per demand priority (node_idx, demand_priority_idx)
     Each UserDemand has a demand for all demand priorities,
@@ -842,7 +845,7 @@ concentration_time: Data source for concentration updates
     inflow_link::Vector{LinkMetadata} = []
     outflow_link::Vector{LinkMetadata} = []
     active::Vector{Bool} = fill(true, length(node_id))
-    has_priority::Matrix{Bool}
+    has_demand_priority::Matrix{Bool}
     demand::Matrix{Float64}
     demand_reduced::Matrix{Float64}
     demand_itp::Vector{Vector{ScalarInterpolation}}
