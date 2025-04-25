@@ -668,65 +668,6 @@ function set_target_ref!(
 end
 
 """
-Add a control state to a logic mapping. The references to the targets in memory
-for the parameter values are added later when these references are known
-"""
-function add_control_state!(
-    control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate},
-    time_interpolatables::Vector{Symbol},
-    parameter_names::NTuple{N, Symbol} where {N},
-    parameter_values::Vector,
-    node_type::String,
-    control_state::Union{Missing, String},
-    node_id::NodeID,
-)::Nothing
-    ismissing(control_state) && return nothing
-
-    # Control state is only added if a control state update can be defined
-    add_control_state = false
-
-    # Create 'active' parameter update if it exists, otherwise this gets
-    # ignored
-    active_idx = findfirst(==(:active), parameter_names)
-    active = if isnothing(active_idx)
-        ParameterUpdate(:active, true)
-    else
-        add_control_state = true
-        ParameterUpdate(:active, parameter_values[active_idx])
-    end
-
-    itp_update = ParameterUpdate{ScalarInterpolation}[]
-    scalar_update = ParameterUpdate{Float64}[]
-    for (parameter_name, parameter_value) in zip(parameter_names, parameter_values)
-        if parameter_name in controllablefields(Symbol(node_type)) &&
-           parameter_name !== :active
-            add_control_state = true
-            parameter_update = ParameterUpdate(parameter_name, parameter_value)
-
-            # Differentiate between scalar parameters and interpolation parameters
-            if parameter_name in time_interpolatables
-                push!(itp_update, parameter_update)
-            else
-                push!(scalar_update, parameter_update)
-            end
-        end
-    end
-    # This is a not so great way to get a concrete type,
-    # which is used as a ControlStateUpdate type parameter.
-    itp_update_linear = if isempty(itp_update)
-        ParameterUpdate{ScalarInterpolation}[]
-    else
-        [x for x in itp_update]
-    end
-    control_state_update = ControlStateUpdate(; active, scalar_update, itp_update_linear)
-
-    if add_control_state
-        control_mapping[(node_id, control_state)] = control_state_update
-    end
-    return nothing
-end
-
-"""
 Collect the control mappings of all controllable nodes in
 the DiscreteControl object for easy access
 """

@@ -635,7 +635,7 @@ function save_demands_and_allocations!(
 
         if node_id.type == NodeType.UserDemand
             # UserDemand nodes
-            if user_demand.has_priority[node_id.idx, demand_priority_idx]
+            if user_demand.has_demand_priority[node_id.idx, demand_priority_idx]
                 has_demand = true
                 demand = user_demand.demand[node_id.idx, demand_priority_idx]
                 allocated = user_demand.allocated[node_id.idx, demand_priority_idx]

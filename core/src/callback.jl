@@ -668,22 +668,22 @@ function update_subgrid_level!(integrator)::Nothing
     subgrid = p_non_diff.subgrid
 
     # First update the all the subgrids with static h(h) relations
-    for (level_index, basin_index, hh_itp) in zip(
+    for (level_index, basin_id, hh_itp) in zip(
         subgrid.level_index_static,
-        subgrid.basin_index_static,
+        subgrid.basin_id_static,
         subgrid.interpolations_static,
     )
-        subgrid.level[level_index] = hh_itp(diff_cache.current_level[basin_index])
+        subgrid.level[level_index] = hh_itp(diff_cache.current_level[basin_id.idx])
     end
     # Then update the subgrids with dynamic h(h) relations
-    for (level_index, basin_index, lookup) in zip(
+    for (level_index, basin_id, lookup) in zip(
         subgrid.level_index_time,
-        subgrid.basin_index_time,
+        subgrid.basin_id_time,
         subgrid.current_interpolation_index,
     )
         itp_index = lookup(t)
         hh_itp = subgrid.interpolations_time[itp_index]
-        subgrid.level[level_index] = hh_itp(diff_cache.current_level[basin_index])
+        subgrid.level[level_index] = hh_itp(diff_cache.current_level[basin_id.idx])
     end
 end
 

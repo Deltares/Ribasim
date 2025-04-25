@@ -33,11 +33,11 @@ end
     flow_rate = [0.0, 0.1]
     itp = qh_interpolation(node_id, level, flow_rate)
     # constant extrapolation at the bottom end, linear extrapolation at the top end
-    itp(0.0) ≈ 0.0
-    itp(1.0) ≈ 0.0
-    itp(1.5) ≈ 0.05
-    itp(2.0) ≈ 0.1
-    itp(3.0) ≈ 0.2
+    @test itp(0.0) ≈ 0.0
+    @test itp(1.0) ≈ 0.0
+    @test itp(1.5) ≈ 0.05
+    @test itp(2.0) ≈ 0.1
+    @test itp(3.0) ≈ 0.2
     @test itp isa ScalarInterpolation
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/invalid_qh/ribasim.toml")
@@ -50,7 +50,7 @@ end
 
     logger = TestLogger()
     with_logger(logger) do
-        @test_throws "Errors occurred when parsing TabulatedRatingCurve #1." Ribasim.TabulatedRatingCurve(
+        @test_throws "Errors occurred when parsing TabulatedRatingCurve #2." Ribasim.TabulatedRatingCurve(
             db,
             config,
             graph,
@@ -287,7 +287,7 @@ end
     using Ribasim: valid_subgrid, NodeID
     using Logging
 
-    node_to_basin = Dict(Int32(9) => 1)
+    node_to_basin = Dict(Int32(9) => NodeID(:Basin, 1, 1))
 
     logger = TestLogger()
     with_logger(logger) do
