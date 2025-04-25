@@ -124,7 +124,7 @@ install-ribasim-qgis = "python ribasim_qgis/scripts/install_ribasim_qgis.py"
 install-imod-qgis = "python ribasim_qgis/scripts/install_qgis_plugin.py iMOD && python ribasim_qgis/scripts/enable_plugin.py imodqgis"
 install-plugin-reloader-qgis = "python ribasim_qgis/scripts/install_qgis_plugin.py \"Plugin Reloader\" && python ribasim_qgis/scripts/enable_plugin.py plugin_reloader"
 install-debugvs-qgis = "python ribasim_qgis/scripts/install_qgis_plugin.py debugvs==0.7 && python ribasim_qgis/scripts/enable_plugin.py debug_vs"
-test-ribasim-qgis-docker = { cmd = "sh ./start.sh; sh ./test.sh; sh ./stop.sh", cwd = ".docker" }
+test-ribasim-qgis-docker = { cmd = "sh ./test.sh", cwd = ".docker" }
 install-qgis-plugins = { depends-on = [
     "install-plugin-reloader-qgis",
     "install-ribasim-qgis",
