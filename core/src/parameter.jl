@@ -13,6 +13,21 @@ const SolverStats = @NamedTuple{
     rejected_timesteps::Int,
 }
 
+const state_components = (
+    :tabulated_rating_curve,
+    :pump,
+    :outlet,
+    :user_demand_inflow,
+    :user_demand_outflow,
+    :linear_resistance,
+    :manning_resistance,
+    :evaporation,
+    :infiltration,
+    :integral,
+)
+const n_components = length(state_components)
+const StateTuple{V} = NamedTuple{state_components, NTuple{n_components, V}}
+
 # LinkType.flow and NodeType.FlowBoundary
 @enumx LinkType flow control none
 @eval @enumx NodeType $(config.nodetypes...)
@@ -980,26 +995,6 @@ const ModelGraph = MetaGraph{
 }
 
 """
-Collection of ranges that cover all the components of the state vector `u`."
-
-It is used to create views of `u`, and an low-latency alternative to making `u` a ComponentArray.
-"""
-@kwdef struct StateRanges
-    tabulated_rating_curve::UnitRange{Int64} = 1:0
-    pump::UnitRange{Int64} = 1:0
-    outlet::UnitRange{Int64} = 1:0
-    user_demand_inflow::UnitRange{Int64} = 1:0
-    user_demand_outflow::UnitRange{Int64} = 1:0
-    linear_resistance::UnitRange{Int64} = 1:0
-    manning_resistance::UnitRange{Int64} = 1:0
-    evaporation::UnitRange{Int64} = 1:0
-    infiltration::UnitRange{Int64} = 1:0
-    integral::UnitRange{Int64} = 1:0
-end
-
-StateRanges(u_ids::NamedTuple) = StateRanges(ranges(map(length, collect(u_ids)))...)
-
-"""
 The part of the parameters passed to the rhs and callbacks that are mutable.
 """
 @kwdef mutable struct ParametersMutable
@@ -1046,8 +1041,6 @@ the object itself is not.
     u_prev_saveat::Vector{Float64} = Float64[]
     # Node ID associated with each state
     node_id::Vector{NodeID} = NodeID[]
-    # Range per states or cache component
-    state_ranges::StateRanges = StateRanges()
 end
 
 """
@@ -1078,7 +1071,7 @@ The collection of all parameters that are passed to the rhs (`water_balance!`) a
     p_mutable::ParametersMutable = ParametersMutable()
 end
 
-function get_value(ref::DiffCacheRef, p::Parameters, du::Vector)
+function get_value(ref::DiffCacheRef, p::Parameters, du::CVector)
     if ref.from_du
         du[ref.idx]
     else
