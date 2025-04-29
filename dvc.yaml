@@ -3,7 +3,7 @@ stages:
     cmd: pixi run model-integration-test
     deps:
       - core/
-      - models/hws_2024_7_0
+      - models/hws_2025_4_0
     params:
       - models/integration.toml:
           - solver.algorithm

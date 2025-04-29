@@ -5,10 +5,10 @@ deps:
   size: 43269986
   nfiles: 4
   hash: md5
-  path: remote://minio_readonly/hws_2024_7_0
+  path: remote://minio_readonly/hws_2025_4_0
 outs:
 - md5: bc02da0ad6e562f31ae8b61d34884a11.dir
   size: 43269986
   nfiles: 4
   hash: md5
-  path: hws_2024_7_0
+  path: hws_2025_4_0
