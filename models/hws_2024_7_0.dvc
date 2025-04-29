@@ -7,8 +7,8 @@ deps:
   hash: md5
   path: remote://minio_readonly/hws_2025_4_0
 outs:
-- md5: bc02da0ad6e562f31ae8b61d34884a11.dir
-  size: 43269986
-  nfiles: 4
+- md5: ba7c476e3d8b0759c73b838693b9e54e.dir
+  size: 42621406
+  nfiles: 3
   hash: md5
   path: hws_2025_4_0
