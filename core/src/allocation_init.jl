@@ -28,17 +28,12 @@ function add_basin!(
     values_level = Dict{NodeID, Vector{Float64}}()
 
     for node_id in basin_ids_subnetwork
-        # TODO: What are good estimation bounds?
-        # see https://lico-labs.github.io/PiecewiseLinApprox.jl/
-        # Things to choose:
-        # - What is an acceptable error in level?
-        # - Are over- or underestimations worse?
         itp = storage_to_level[node_id.idx]
         pwl = Linearize(
             t -> itp(t),
             0.0,
             2 * last(itp.t),
-            Absolute(0.1);
+            Relative(0.02);
             ConcavityChanges = [],
         )
         values_storage_node = [seg.xMin for seg in pwl]
@@ -411,6 +406,36 @@ function add_level_boundary!(
         JuMP.@variable(problem, boundary_level[level_boundary_ids_subnetwork] == 0)
 
     return nothing
+end
+
+function get_level(problem::JuMP.Model, node_id::NodeID)
+    if node_id.type == NodeType.Basin
+        problem[:basin_level][node_id]
+    else
+        problem[:boundary_level][node_id]
+    end
+end
+
+function add_tabulated_rating_curve!(
+    problem::JuMP.Model,
+    p_non_diff::ParametersNonDiff,
+    subnetwork_id::Int32,
+)
+    (; interpolations, current_interpolation_index) = p_non_diff.tabulated_rating_curve
+    rating_curve_ids_subnetwork =
+        get_subnetwork_ids(graph, NodeType.TabulatedRatingCurve, subnetwork_id)
+
+    # Add constraints: flow(upstream level) relationship of tabulated rating curves
+    flow = problem[:flow]
+    problem[:rating_curve] = JuMP.@constraint(
+        problem,
+        [node_id = rating_curve_ids_subnetwork],
+        base_name = "rating_curve",
+        flow[tabulated_rating_curve.inflow_link[node_id.idx]] == begin
+            itp = interpolations[current_interpolation_index[node_id.idx](0.0)]
+            piecewiselinear(problem, get_level(problem, node_id), itp.t, ipt.u)
+        end
+    )
 end
 
 """
