@@ -74,6 +74,10 @@ using DataInterpolations.ExtrapolationType:
 import JuMP
 # The optimization backend of JuMP.
 import HiGHS
+# Optimal piecewise linear approximations of differentiable functions used for allocation
+using PiecewiseLinApprox
+# Represent piecewise linear functions in JuMP
+using PiecewiseLinearOpt: piecewiselinear
 
 # The BMI is a standard for interacting with a Ribasim model,
 # see the docs: https://ribasim.org/dev/bmi.html

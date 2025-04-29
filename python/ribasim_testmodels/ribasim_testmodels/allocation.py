@@ -1092,7 +1092,7 @@ def allocation_training_model():
                 demand=[0.0, 0.0, 10, 12, 12, 0.0],
                 return_factor=0,
                 min_level=0,
-                demand_priority=3,
+                demand_priority=4,
                 time=[
                     "2022-01-01",
                     "2022-03-31",
@@ -1133,7 +1133,7 @@ def allocation_training_model():
                 demand=[2.0, 2.3, 2.3, 2.4, 3, 3, 4, 3, 2.5, 2.2, 2.0, 2.0],
                 return_factor=0.4,
                 min_level=0,
-                demand_priority=2,
+                demand_priority=3,
                 time=pd.date_range(start="2022-01-01", periods=12, freq="MS"),
             )
         ],
@@ -1148,7 +1148,7 @@ def allocation_training_model():
                 demand=[4, 4, 4.5, 5, 5, 6, 7.5, 8, 5, 4, 3, 2.0],
                 return_factor=0.5,
                 min_level=0,
-                demand_priority=1,
+                demand_priority=2,
                 time=pd.date_range(start="2022-01-01", periods=12, freq="MS"),
             )
         ],

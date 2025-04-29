@@ -1,419 +1,503 @@
+get_subnetwork_ids(graph::MetaGraph, node_type::NodeType.T, subnetwork_id::Int32) =
+    filter(node_id -> node_id.type == node_type, graph[].node_ids[subnetwork_id])
+
 """
-Get the fixed capacity (∈[0,∞]) of the links in the subnetwork in a JuMP.Containers.SparseAxisArray,
-which is a type of sparse arrays that in this case takes NodeID in stead of Int as indices.
-E.g. capacity[(node_a, node_b)] gives the capacity of link (node_a, node_b).
+Add variables and constraints defining the basin profile.
 """
-function get_subnetwork_capacity(
+function add_basin!(
+    problem::JuMP.Model,
     p_non_diff::ParametersNonDiff,
     subnetwork_id::Int32,
-)::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}}
-    (; graph) = p_non_diff
-    node_ids_subnetwork = graph[].node_ids[subnetwork_id]
+)::Dict{NodeID, Float64}
+    (; graph, basin) = p_non_diff
+    (; storage_to_level) = basin
 
-    dict = Dict{Tuple{NodeID, NodeID}, Float64}()
-    capacity = JuMP.Containers.SparseAxisArray(dict)
+    # Basin node IDs within the subnetwork
+    basin_ids_subnetwork = get_subnetwork_ids(graph, NodeType.Basin, subnetwork_id)
+
+    # Storage and level indices
+    indices = IterTools.product(basin_ids_subnetwork, [:start, :end])
+
+    # Define variables: storage and level
+    storage = problem[:basin_storage] = JuMP.@variable(problem, basin_storage[indices] >= 0)
+    level = problem[:basin_level] = JuMP.@variable(problem, basin_level[indices] >= 0)
+
+    # Piecewise linear Basin profile approximations
+    # (from storage 0.0 to twice the largest storage)
+    values_storage = Dict{NodeID, Vector{Float64}}()
+    values_level = Dict{NodeID, Vector{Float64}}()
+
+    for node_id in basin_ids_subnetwork
+        # TODO: What are good estimation bounds?
+        # see https://lico-labs.github.io/PiecewiseLinApprox.jl/
+        # Things to choose:
+        # - What is an acceptable error in level?
+        # - Are over- or underestimations worse?
+        itp = storage_to_level[node_id.idx]
+        pwl = Linearize(
+            t -> itp(t),
+            0.0,
+            2 * last(itp.t),
+            Absolute(0.1);
+            ConcavityChanges = [],
+        )
+        values_storage_node = [seg.xMin for seg in pwl]
+        push!(values_storage_node, last(pwl).xMax)
+        values_level_node = pwl.(values_storage_node)
+        values_storage[node_id] = values_storage_node
+        values_level[node_id] = values_level_node
+    end
+
+    # Define constraints: levels are given by the storages and profiles
+    problem[:basin_profile] = JuMP.@constraint(
+        problem,
+        [node_id = basin_ids_subnetwork],
+        level[(node_id, :end)] == piecewiselinear(
+            problem,
+            storage[(node_id, :end)],
+            values_storage[node_id],
+            values_level[node_id],
+        ),
+        base_name = "basin_profile"
+    )
+    return Dict(basin_ids_subnetwork .=> 0.0)
+end
+
+function flow_capacity_lower_bound(
+    link::Tuple{NodeID, NodeID},
+    p_non_diff::ParametersNonDiff,
+)
+    lower_bound = -Inf
+    for id in link
+        min_flow_rate_id = if id.type == NodeType.Pump
+            max(0.0, p_non_diff.pump.min_flow_rate[id.idx](0))
+        elseif id.type == NodeType.Outlet
+            max(0.0, p_non_diff.outlet.min_flow_rate[id.idx](0))
+        elseif id.type == NodeType.LinearResistance
+            -p_non_diff.linear_resistance.max_flow_rate[id.idx]
+        elseif id.type ∈ (NodeType.UserDemand, NodeType.FlowBoundary)
+            # Flow direction constraint
+            0.0
+        else
+            -Inf
+        end
+
+        lower_bound = max(lower_bound, min_flow_rate_id)
+    end
+
+    return lower_bound
+end
+
+function flow_capacity_upper_bound(
+    link::Tuple{NodeID, NodeID},
+    p_non_diff::ParametersNonDiff,
+)
+    upper_bound = Inf
+    for id in link
+        max_flow_rate_id = if id.type == NodeType.Pump
+            p_non_diff.pump.max_flow_rate[id.idx](0)
+        elseif id.type == NodeType.Outlet
+            p_non_diff.outlet.max_flow_rate[id.idx](0)
+        elseif id.type == NodeType.LinearResistance
+            p_non_diff.linear_resistance.max_flow_rate[id.idx]
+        else
+            Inf
+        end
+
+        upper_bound = min(upper_bound, max_flow_rate_id)
+    end
+
+    return upper_bound
+end
+
+"""
+Add flow variables with capacity constraints derived from connected nodes.
+"""
+function add_flow!(
+    problem::JuMP.Model,
+    p_non_diff::ParametersNonDiff,
+    subnetwork_id::Int32,
+)::Nothing
+    (; graph) = p_non_diff
+
+    node_ids_subnetwork = graph[].node_ids[subnetwork_id]
+    flow_links_subnetwork = Vector{Tuple{NodeID, NodeID}}()
 
     for link_metadata in values(graph.edge_data)
-        # Only flow links are used for allocation
-        if link_metadata.type != LinkType.flow
-            continue
-        end
-
-        # If this link is part of this subnetwork
-        # links between the main network and a subnetwork are added in add_subnetwork_connections!
-        if link_metadata.link ⊆ node_ids_subnetwork
-            id_src, id_dst = link_metadata.link
-
-            capacity_link = Inf
-
-            # Find flow constraints for this link
-            if is_flow_constraining(id_src.type)
-                node_src = getfield(p_non_diff, graph[id_src].type)
-
-                max_flow_rate = node_src.max_flow_rate[id_src.idx]
-                capacity_node_src =
-                    max_flow_rate isa AbstractInterpolation ? max_flow_rate(0) :
-                    max_flow_rate
-                capacity_link = min(capacity_link, capacity_node_src)
-            end
-            if is_flow_constraining(id_dst.type)
-                node_dst = getfield(p_non_diff, graph[id_dst].type)
-
-                max_flow_rate = node_dst.max_flow_rate[id_dst.idx]
-                capacity_node_dst =
-                    max_flow_rate isa AbstractInterpolation ? max_flow_rate(0) :
-                    max_flow_rate
-                capacity_link = min(capacity_link, capacity_node_dst)
-            end
-
-            # Set the capacity
-            capacity[link_metadata.link] = capacity_link
-
-            # If allowed by the nodes from this link,
-            # allow allocation flow in opposite direction of the link
-            if !(
-                is_flow_direction_constraining(id_src.type) ||
-                is_flow_direction_constraining(id_dst.type)
-            )
-                capacity[reverse(link_metadata.link)] = capacity_link
-            end
+        (; type, link) = link_metadata
+        if (type == LinkType.flow) && link ⊆ node_ids_subnetwork
+            push!(flow_links_subnetwork, link)
         end
     end
 
-    return capacity
+    # Define variables: flow over flow links
+    problem[:flow] = JuMP.@variable(
+        problem,
+        flow_capacity_lower_bound(link, p_non_diff) ≤
+        flow[link = flow_links_subnetwork] ≤
+        flow_capacity_upper_bound(link, p_non_diff)
+    )
+
+    # Define fixed variables: Basin forcing (values to be filled in before optimizing)
+    basin_ids_subnetwork = filter(id -> id.type == NodeType.Basin, node_ids_subnetwork)
+    problem[:basin_forcing] =
+        JuMP.@variable(problem, basin_forcing[basin_ids_subnetwork] == 0.0)
+
+    return nothing
 end
 
-const boundary_source_nodetypes =
-    Set{NodeType.T}([NodeType.LevelBoundary, NodeType.FlowBoundary])
-
 """
-Add the links connecting the main network work to a subnetwork to both the main network
-and subnetwork allocation network (defined by their capacity objects).
+Equate the inflow and outflow of conservative nodes
 """
-function add_subnetwork_connections!(
-    capacity::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}},
-    p_non_diff::ParametersNonDiff,
+function add_flow_conservation!(
+    problem::JuMP.Model,
+    node::AbstractParameterNode,
+    graph::MetaGraph,
     subnetwork_id::Int32,
 )::Nothing
-    (; allocation) = p_non_diff
-    (; main_network_connections) = allocation
-
-    # Add the connections to the main network
-    if is_main_network(subnetwork_id)
-        for connections in values(main_network_connections)
-            for connection in connections
-                capacity[connection...] = Inf
-            end
-        end
-    else
-        # Add the connections to this subnetwork
-        for connection in main_network_connections[subnetwork_id]
-            capacity[connection...] = Inf
-        end
-    end
-    return nothing
-end
-
-"""
-Get the capacity of all links in the subnetwork in a JuMP
-dictionary wrapper. The keys of this dictionary define
-the which links are used in the allocation optimization problem.
-"""
-function get_capacity(
-    p_non_diff::ParametersNonDiff,
-    subnetwork_id::Int32,
-)::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}}
-    capacity = get_subnetwork_capacity(p_non_diff, subnetwork_id)
-    add_subnetwork_connections!(capacity, p_non_diff, subnetwork_id)
-
-    return capacity
-end
-
-"""
-Add the flow variables F to the allocation problem.
-The variable indices are (link_source_id, link_dst_id).
-Non-negativivity constraints are also immediately added to the flow variables.
-"""
-function add_variables_flow!(
-    problem::JuMP.Model,
-    capacity::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}},
-)::Nothing
-    links = keys(capacity.data)
-    problem[:F] = JuMP.@variable(problem, F[link = links] >= 0.0)
-    return nothing
-end
-
-"""
-Add the variables for supply/demand of a basin to the problem.
-The variable indices are the node IDs of the basins in the subnetwork.
-"""
-function add_variables_basin!(
-    problem::JuMP.Model,
-    sources::OrderedDict{Tuple{NodeID, NodeID}, AllocationSource},
-)::Nothing
-
-    # Get the node IDs from the subnetwork for basins that have a level demand
-    node_ids_basin = [
-        source.link[1] for
-        source in values(sources) if source.type == AllocationSourceType.level_demand
-    ]
-
-    problem[:F_basin_in] =
-        JuMP.@variable(problem, F_basin_in[node_id = node_ids_basin,] >= 0.0)
-    problem[:F_basin_out] =
-        JuMP.@variable(problem, F_basin_out[node_id = node_ids_basin,] >= 0.0)
-    return nothing
-end
-
-"""
-Add the variables for supply/demand of the buffer of a node with a flow demand to the problem.
-The variable indices are the node IDs of the nodes with a buffer in the subnetwork.
-"""
-function add_variables_flow_buffer!(
-    problem::JuMP.Model,
-    sources::OrderedDict{Tuple{NodeID, NodeID}, AllocationSource},
-)::Nothing
-    node_ids_flow_demand = [
-        source.link[1] for
-        source in values(sources) if source.type == AllocationSourceType.flow_demand
-    ]
-
-    problem[:F_flow_buffer_in] =
-        JuMP.@variable(problem, F_flow_buffer_in[node_id = node_ids_flow_demand,] >= 0.0)
-    problem[:F_flow_buffer_out] =
-        JuMP.@variable(problem, F_flow_buffer_out[node_id = node_ids_flow_demand,] >= 0.0)
-    return nothing
-end
-
-"""
-Add the flow capacity constraints to the allocation problem.
-Only finite capacities get a constraint.
-The constraint indices are (link_source_id, link_dst_id).
-
-Constraint:
-flow over link <= link capacity
-"""
-function add_constraints_capacity!(
-    problem::JuMP.Model,
-    capacity::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}},
-    p_non_diff::ParametersNonDiff,
-    subnetwork_id::Int32,
-)::Nothing
-    (; main_network_connections) = p_non_diff.allocation
-    main_network_source_links = main_network_connections[subnetwork_id]
-    F = problem[:F]
-
-    # Find the links within the subnetwork with finite capacity
-    link_ids_finite_capacity = Tuple{NodeID, NodeID}[]
-    for (link, c) in capacity.data
-        if !isinf(c) && link ∉ main_network_source_links
-            push!(link_ids_finite_capacity, link)
-        end
-    end
-
-    problem[:capacity] = JuMP.@constraint(
-        problem,
-        [link = link_ids_finite_capacity],
-        F[link] <= capacity[link...],
-        base_name = "capacity"
-    )
-    return nothing
-end
-
-"""
-Add capacity constraints to the outflow link of UserDemand nodes.
-The constraint indices are the UserDemand node IDs.
-
-Constraint:
-flow over UserDemand link outflow link <= cumulative return flow from previous demand priorities
-"""
-function add_constraints_user_source!(
-    problem::JuMP.Model,
-    sources::OrderedDict{Tuple{NodeID, NodeID}, AllocationSource},
-)::Nothing
-    F = problem[:F]
-
-    return_links = Dict(
-        source.link[1] => source.link for
-        source in values(sources) if source.type == AllocationSourceType.user_demand
-    )
-
-    problem[:source_user] = JuMP.@constraint(
-        problem,
-        [node_id = keys(return_links)],
-        F[return_links[node_id]] <= 0.0,
-        base_name = "source_user"
-    )
-    return nothing
-end
-
-"""
-Add the boundary source constraints to the allocation problem.
-The actual threshold values will be set before each allocation solve.
-The constraint indices are (link_source_id, link_dst_id).
-
-Constraint:
-flow over source link <= source flow in physical layer
-"""
-function add_constraints_boundary_source!(
-    problem::JuMP.Model,
-    sources::OrderedDict{Tuple{NodeID, NodeID}, AllocationSource},
-)::Nothing
-    links_source = [
-        source.link for
-        source in values(sources) if source.type == AllocationSourceType.boundary
-    ]
-    F = problem[:F]
-
-    problem[:source_boundary] = JuMP.@constraint(
-        problem,
-        [link_id = links_source],
-        F[link_id] <= 0.0,
-        base_name = "source_boundary"
-    )
-    return nothing
-end
-
-"""
-Add main network source constraints to the allocation problem.
-The actual threshold values will be set before each allocation solve.
-The constraint indices are (link_source_id, link_dst_id).
-
-Constraint:
-flow over main network to subnetwork connection link <= either 0 or allocated amount from the main network
-"""
-function add_constraints_main_network_source!(
-    problem::JuMP.Model,
-    sources::OrderedDict{Tuple{NodeID, NodeID}, AllocationSource},
-)::Nothing
-    F = problem[:F]
-
-    links_source = [
-        source.link for source in values(sources) if
-        source.type == AllocationSourceType.subnetwork_inlet
-    ]
-
-    problem[:source_main_network] = JuMP.@constraint(
-        problem,
-        [link_id = links_source],
-        F[link_id] <= 0.0,
-        base_name = "source_main_network"
-    )
-    return nothing
-end
-
-"""
-Add the basin flow conservation constraints to the allocation problem.
-The constraint indices are Basin node IDs.
-
-Constraint:
-sum(flows out of basin) == sum(flows into basin) + flow from storage and vertical fluxes
-"""
-function add_constraints_conservation_node!(
-    problem::JuMP.Model,
-    p_non_diff::ParametersNonDiff,
-    subnetwork_id::Int32,
-)::Nothing
-    (; graph) = p_non_diff
-    F = problem[:F]
-    F_basin_in = problem[:F_basin_in]
-    F_basin_out = problem[:F_basin_out]
-    F_flow_buffer_in = problem[:F_flow_buffer_in]
-    F_flow_buffer_out = problem[:F_flow_buffer_out]
-    node_ids = graph[].node_ids[subnetwork_id]
-
-    inflows = Dict{NodeID, Set{JuMP.VariableRef}}()
-    outflows = Dict{NodeID, Set{JuMP.VariableRef}}()
-
-    links_allocation = only(F.axes)
-
-    for node_id in node_ids
-
-        # If a node is a source or a sink (i.e. a boundary node),
-        # there is no flow conservation on that node
-        is_source_sink = node_id.type in
-        [NodeType.FlowBoundary, NodeType.LevelBoundary, NodeType.UserDemand]
-
-        if is_source_sink
-            continue
-        end
-
-        inflows_node = Set{JuMP.VariableRef}()
-        outflows_node = Set{JuMP.VariableRef}()
-        inflows[node_id] = inflows_node
-        outflows[node_id] = outflows_node
-
-        # Find in- and outflow allocation links of this node
-        for neighbor_id in inoutflow_ids(graph, node_id)
-            link_in = (neighbor_id, node_id)
-            if link_in in links_allocation
-                push!(inflows_node, F[link_in])
-            end
-            link_out = (node_id, neighbor_id)
-            if link_out in links_allocation
-                push!(outflows_node, F[link_out])
-            end
-        end
-
-        # If the node is a Basin with a level demand, add basin in- and outflow
-        if has_external_demand(graph, node_id, :level_demand)[1]
-            push!(inflows_node, F_basin_out[node_id])
-            push!(outflows_node, F_basin_in[node_id])
-        end
-
-        # If the node has a buffer
-        if has_external_demand(graph, node_id, :flow_demand)[1]
-            push!(inflows_node, F_flow_buffer_out[node_id])
-            push!(outflows_node, F_flow_buffer_in[node_id])
-        end
-    end
-
-    # Only the node IDs with conservation constraints on them
-    # Discard constraints of the form 0 == 0
-    node_ids = [
-        node_id for node_id in keys(inflows) if
-        !(isempty(inflows[node_id]) && isempty(outflows[node_id]))
-    ]
+    (; node_id, inflow_link, outflow_link) = node
+    node_ids = filter(id -> graph[id].subnetwork_id == subnetwork_id, node_id)
+    flow = problem[:flow]
 
     problem[:flow_conservation] = JuMP.@constraint(
         problem,
         [node_id = node_ids],
-        sum(inflows[node_id]) == sum(outflows[node_id]);
+        flow[inflow_link[node_id.idx].link] == flow[outflow_link[node_id.idx].link],
         base_name = "flow_conservation"
     )
-
     return nothing
 end
 
-"""
-Add the Basin flow constraints to the allocation problem.
-The constraint indices are the Basin node IDs.
-
-Constraint:
-flow out of basin <= basin capacity
-"""
-function add_constraints_basin_flow!(problem::JuMP.Model)::Nothing
-    F_basin_out = problem[:F_basin_out]
-    problem[:basin_outflow] = JuMP.@constraint(
-        problem,
-        [node_id = only(F_basin_out.axes)],
-        F_basin_out[node_id] <= 0.0,
-        base_name = "basin_outflow"
-    )
-    return nothing
-end
-
-"""
-Add the buffer outflow constraints to the allocation problem.
-The constraint indices are the node IDs of the nodes that have a flow demand.
-
-Constraint:
-flow out of buffer <= flow buffer capacity
-"""
-function add_constraints_buffer!(problem::JuMP.Model)::Nothing
-    F_flow_buffer_out = problem[:F_flow_buffer_out]
-    problem[:flow_buffer_outflow] = JuMP.@constraint(
-        problem,
-        [node_id = only(F_flow_buffer_out.axes)],
-        F_flow_buffer_out[node_id] <= 0.0,
-        base_name = "flow_buffer_outflow"
-    )
-    return nothing
-end
-
-"""
-Construct the allocation problem for the current subnetwork as a JuMP model.
-"""
-function allocation_problem(
+function add_conservation!(
+    problem::JuMP.Model,
     p_non_diff::ParametersNonDiff,
-    sources::OrderedDict{Tuple{NodeID, NodeID}, AllocationSource},
-    capacity::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}},
     subnetwork_id::Int32,
-)::JuMP.Model
+    Δt_allocation::Float64,
+)::Nothing
+
+    # Flow trough conservative nodes
+    (;
+        graph,
+        pump,
+        outlet,
+        linear_resistance,
+        manning_resistance,
+        tabulated_rating_curve,
+        basin,
+    ) = p_non_diff
+    add_flow_conservation!(problem, pump, graph, subnetwork_id)
+    add_flow_conservation!(problem, outlet, graph, subnetwork_id)
+    add_flow_conservation!(problem, linear_resistance, graph, subnetwork_id)
+    add_flow_conservation!(problem, manning_resistance, graph, subnetwork_id)
+    add_flow_conservation!(problem, tabulated_rating_curve, graph, subnetwork_id)
+
+    # Define constraints: Basin storage change
+    storage = problem[:basin_storage]
+    forcing = problem[:basin_forcing]
+    flow = problem[:flow]
+    basin_ids_subnetwork = get_subnetwork_ids(graph, NodeType.Basin, subnetwork_id)
+    inflow_sum = Dict(
+        basin_id => sum(
+            flow[(other_id, basin_id)] for
+            other_id in basin.inflow_ids[basin_id.idx] if
+            graph[other_id].subnetwork_id == subnetwork_id
+        ) for basin_id in basin_ids_subnetwork
+    )
+    outflow_sum = Dict(
+        basin_id => sum(
+            flow[(basin_id, other_id)] for
+            other_id in basin.outflow_ids[basin_id.idx] if
+            graph[other_id].subnetwork_id == subnetwork_id
+        ) for basin_id in basin_ids_subnetwork
+    )
+    problem[:volume_conservation] = JuMP.@constraint(
+        problem,
+        [node_id = basin_ids_subnetwork],
+        storage[(node_id, :end)] - storage[(node_id, :start)] ==
+        Δt_allocation * (forcing[node_id] + inflow_sum[node_id] - outflow_sum[node_id]),
+        base_name = "volume conservation"
+    )
+
+    return nothing
+end
+
+function add_user_demand!(
+    problem::JuMP.Model,
+    p_non_diff::ParametersNonDiff,
+    subnetwork_id::Int32,
+)::Nothing
+    (; graph, user_demand) = p_non_diff
+    (; inflow_link, outflow_link) = user_demand
+
+    user_demand_ids_subnetwork =
+        get_subnetwork_ids(graph, NodeType.UserDemand, subnetwork_id)
+    flow = problem[:flow]
+
+    # Define variables: flow allocated to user demand nodes (values to be filled in before optimizing)
+    user_demand_allocated =
+        problem[:user_demand_allocated] =
+            JuMP.@variable(problem, user_demand_allocated[user_demand_ids_subnetwork] == 0)
+
+    # Define variables: target demand fraction (value to be set before optimizing)
+    target_demand_fraction =
+        problem[:target_demand_fraction] =
+            JuMP.@variable(problem, target_demand_fraction[user_demand_ids_subnetwork] == 0)
+
+    # Define variables: lower and upper user demand error
+    relative_user_demand_error_lower =
+        problem[:relative_user_demand_error_lower] = JuMP.@variable(
+            problem,
+            relative_user_demand_error_lower[user_demand_ids_subnetwork] >= 0
+        )
+    relative_user_demand_error_upper =
+        problem[:relative_user_demand_error_upper] = JuMP.@variable(
+            problem,
+            relative_user_demand_error_upper[user_demand_ids_subnetwork] >= 0
+        )
+
+    # Define constraints: error terms
+    d = 2.0 # example demand
+    problem[:user_demand_constraint_lower] = JuMP.@constraint(
+        problem,
+        [node_id = user_demand_ids_subnetwork],
+        d * relative_user_demand_error_lower[node_id] ≥
+        target_demand_fraction[node_id] -
+        (flow[inflow_link[node_id.idx].link] - user_demand_allocated[node_id]),
+        base_name = "user_demand_constraint_lower"
+    )
+    problem[:user_demand_constraint_upper] = JuMP.@constraint(
+        problem,
+        [node_id = user_demand_ids_subnetwork],
+        d * relative_user_demand_error_upper[node_id] ≥
+        flow[inflow_link[node_id.idx].link] - user_demand_allocated[node_id] -
+        target_demand_fraction[node_id],
+        base_name = "user_demand_constraint_upper"
+    )
+
+    # Define constraints: user demand return flow
+    return_factor = 0.5 # example return factor
+    problem[:user_demand_return_flow] = JuMP.@constraint(
+        problem,
+        [node_id = user_demand_ids_subnetwork],
+        flow[outflow_link[node_id.idx].link] ==
+        return_factor * flow[inflow_link[node_id.idx].link],
+        base_name = "user_demand_return_flow"
+    )
+
+    # Define constraints: user demand inflow is at least allocated flow (for goal programming)
+    problem[:user_demand_inflow_goal] = JuMP.@constraint(
+        problem,
+        [node_id = user_demand_ids_subnetwork],
+        flow[inflow_link[node_id.idx].link] ≥ user_demand_allocated[node_id],
+        base_name = "user_demand_inflow_goal"
+    )
+
+    return nothing
+end
+
+function add_flow_demand!(
+    problem::JuMP.Model,
+    p_non_diff::ParametersNonDiff,
+    subnetwork_id::Int32,
+)::Nothing
+    (; graph) = p_non_diff
+    ids_with_flow_demand_subnetwork = filter(
+        node_id -> has_external_flow_demand(graph, node_id, :flow_demand)[1],
+        graph[].node_ids[subnetwork_id],
+    )
+
+    # Define variables: lower flow demand error
+    problem[:relative_flow_demand_error] = JuMP.@variable(
+        problem,
+        relative_flow_demand_error[ids_with_flow_demand_subnetwork] >= 0,
+        base_name = "relative_flow_demand_error"
+    )
+
+    # Define variables: allocated flow (values to be filled in later)
+    flow_demand_allocated =
+        problem[:flow_demand_allocated] = JuMP.@variable(
+            problem,
+            flow_demand_allocated[ids_with_flow_demand_subnetwork] == -Inf
+        )
+
+    # Define constraints: flow through node with flow demand (for goal programming, values to be filled in before optimization)
+    flow = problem[:flow]
+    problem[:flow_demand_goal] = JuMP.@constraint(
+        problem,
+        [node_id = ids_with_flow_demand_subnetwork],
+        flow[inflow_link(graph, node_id).link] ≥ flow_demand_allocated[node_id],
+        base_name = "flow_demand_goal"
+    )
+
+    return nothing
+end
+
+function add_level_demand!(
+    problem::JuMP.Model,
+    p_non_diff::ParametersNonDiff,
+    subnetwork_id::Int32,
+)::Nothing
+    (; graph) = p_non_diff
+
+    ids_with_level_demand_subnetwork = filter(
+        node_id -> has_external_flow_demand(graph, node_id, :level_demand)[1],
+        graph[].node_ids[subnetwork_id],
+    )
+
+    # Define variables: storage allocated to basins with a level demand (values to be filled in before optimizing)
+    basin_allocated =
+        problem[:basin_allocated] =
+            JuMP.@variable(problem, basin_allocated[ids_with_level_demand_subnetwork] == 0)
+
+    # Define variables: target storage (value to be set before optimizing)
+    target_storage =
+        problem[:targe_storage_demand_fraction] = JuMP.@variable(
+            problem,
+            target_storage_demand_fraction[ids_with_level_demand_subnetwork] == 0
+        )
+
+    # Define variables: lower relative level error (formulated in terms of storage)
+    relative_storage_error_lower =
+        problem[:relative_storage_error_lower] = JuMP.@variable(
+            problem,
+            relative_storage_error_lower[ids_with_level_demand_subnetwork] >= 0
+        )
+
+    # Define constraints: error terms
+    storage = problem[:basin_storage]
+    s = 2.0 # example storage demand
+    problem[:storage_constraint_lower] = JuMP.@constraint(
+        problem,
+        [node_id = ids_with_level_demand_subnetwork],
+        s * relative_storage_error_lower[node_id] ≥
+        target_storage[node_id] - storage[(node_id, :end)],
+        base_name = "storage_constraint_lower"
+    )
+
+    # Define constraints: added storage to the basin is at least the allocated amount'
+    problem[:basin_storage_increase_goal] = JuMP.@constraint(
+        problem,
+        [node_id = ids_with_level_demand_subnetwork],
+        storage[(node_id, :end)] - storage[(node_id, :start)] ≥ basin_allocated[node_id]
+    )
+
+    return nothing
+end
+
+function add_flow_boundary(
+    p_non_diff::ParametersNonDiff,
+    subnetwork_id::Int32,
+)::Dict{Tuple{NodeID, NodeID}, Float64}
+    (; flow_boundary, graph) = p_non_diff
+    flow_boundary_ids_subnetwork =
+        get_subnetwork_ids(graph, NodeType.FlowBoundary, subnetwork_id)
+    return Dict(
+        flow_boundary.outflow_link[node_id.idx].link => 0.0 for
+        node_id in flow_boundary_ids_subnetwork
+    )
+end
+
+function add_level_boundary!(
+    problem::JuMP.Model,
+    p_non_diff::ParametersNonDiff,
+    subnetwork_id::Int32,
+)::Nothing
+    (; graph) = p_non_diff
+    level_boundary_ids_subnetwork =
+        get_subnetwork_ids(graph, NodeType.LevelBoundary, subnetwork_id)
+
+    # Add variables: level boundary levels (values to be filled in before optimization)
+    problem[:boundary_level] =
+        JuMP.@variable(problem, boundary_level[level_boundary_ids_subnetwork] == 0)
+
+    return nothing
+end
+
+"""
+Construct an objective per demand priority
+"""
+function get_objectives(
+    problem::JuMP.Model,
+    p_non_diff::ParametersNonDiff,
+    subnetwork_id::Int32,
+)::Tuple{Vector{JuMP.AffExpr}, Vector{AllocationObjectiveType.T}}
+    (; graph, allocation, user_demand, flow_demand, level_demand) = p_non_diff
+    (; demand_priorities_all) = allocation
+    objectives = JuMP.AffExpr[]
+    objective_types = AllocationObjectiveType.T[]
+
+    relative_user_demand_error_lower = problem[:relative_user_demand_error_lower]
+    relative_user_demand_error_upper = problem[:relative_user_demand_error_upper]
+
+    relative_flow_demand_error = problem[:relative_flow_demand_error]
+
+    relative_storage_error_lower = problem[:relative_storage_error_lower]
+
+    errors = false
+
+    for (demand_priority_idx, demand_priority) in enumerate(demand_priorities_all)
+        has_flow_demand = false
+        has_level_demand = false
+
+        objective = JuMP.AffExpr()
+        objective_type = AllocationObjectiveType.none
+
+        # UserDemand terms are always part of the objective function, so that
+        # deviating from a demand of 0 can also be penalized
+        JuMP.add_to_expression!(objective, sum(relative_user_demand_error_lower))
+        JuMP.add_to_expression!(objective, sum(relative_user_demand_error_upper))
+
+        for node_id in graph[].node_ids[subnetwork_id]
+            if node_id.type == NodeType.UserDemand &&
+               user_demand.has_priority[node_id.idx, demand_priority_idx]
+                has_flow_demand = true
+            elseif node_id.type == NodeType.Basin
+                has_level_demand_id, id_level_demand =
+                    has_external_flow_demand(graph, node_id, :level_demand)
+                if has_level_demand_id &&
+                   (level_demand.demand_priority[id_level_demand.idx] == demand_priority)
+                    has_level_demand = true
+                    JuMP.add_to_expression!(
+                        objective,
+                        relative_storage_error_lower[node_id],
+                    )
+                end
+            else
+                has_flow_demand_id, id_flow_demand =
+                    has_external_flow_demand(graph, node_id, :flow_demand)
+                if has_flow_demand_id &&
+                   flow_demand.demand_priority[id_flow_demand.idx] == demand_priority
+                    has_flow_demand = true
+                    JuMP.add_to_expression!(objective, relative_flow_demand_error[node_id])
+                end
+            end
+        end
+
+        if has_flow_demand && has_level_demand
+            errors = true
+            @error "A demand priority was detected which has both flow and level demands, this is not allowed." demand_priority
+        else
+            has_flow_demand && (objective_type = AllocationObjectiveType.flow)
+            has_level_demand && (objective_type = AllocationObjectiveType.level)
+        end
+
+        push!(objectives, objective)
+        push!(objective_types, objective_type)
+    end
+
+    errors && error("Errors encountered when constructing allocation objective functions.")
+
+    return objectives, objective_types
+end
+
+function AllocationModel(
+    subnetwork_id::Int32,
+    p_non_diff::ParametersNonDiff,
+    Δt_allocation::Float64,
+)
     optimizer = JuMP.optimizer_with_attributes(
         HiGHS.Optimizer,
         "log_to_console" => false,
-        "objective_bound" => 0.0,
         "time_limit" => 60.0,
         "random_seed" => 0,
         "primal_feasibility_tolerance" => 1e-5,
@@ -421,48 +505,26 @@ function allocation_problem(
     )
     problem = JuMP.direct_model(optimizer)
 
-    # Add variables to problem
-    add_variables_flow!(problem, capacity)
-    add_variables_basin!(problem, sources)
-    add_variables_flow_buffer!(problem, sources)
+    cumulative_forcing_volume = add_basin!(problem, p_non_diff, subnetwork_id)
+    add_flow!(problem, p_non_diff, subnetwork_id)
+    add_conservation!(problem, p_non_diff, subnetwork_id, Δt_allocation)
 
-    # Add constraints to problem
-    add_constraints_conservation_node!(problem, p_non_diff, subnetwork_id)
-    add_constraints_capacity!(problem, capacity, p_non_diff, subnetwork_id)
-    add_constraints_boundary_source!(problem, sources)
-    add_constraints_main_network_source!(problem, sources)
-    add_constraints_user_source!(problem, sources)
-    add_constraints_basin_flow!(problem)
-    add_constraints_buffer!(problem)
+    cumulative_boundary_volume = add_flow_boundary(p_non_diff, subnetwork_id)
+    add_level_boundary!(problem, p_non_diff, subnetwork_id)
 
-    return problem
-end
+    add_user_demand!(problem, p_non_diff, subnetwork_id)
+    add_flow_demand!(problem, p_non_diff, subnetwork_id)
+    add_level_demand!(problem, p_non_diff, subnetwork_id)
 
-"""
-Construct the JuMP.jl problem for allocation.
-"""
-function AllocationModel(
-    subnetwork_id::Int32,
-    p_non_diff::ParametersNonDiff,
-    sources::OrderedDict{Tuple{NodeID, NodeID}, AllocationSource},
-    Δt_allocation::Float64,
-)::AllocationModel
-    capacity = get_capacity(p_non_diff, subnetwork_id)
-    source_priorities = unique(source.source_priority for source in values(sources))
-    sources = OrderedDict(
-        link => source for
-        (link, source) in sources if source.subnetwork_id == subnetwork_id
-    )
-    problem = allocation_problem(p_non_diff, sources, capacity, subnetwork_id)
-    flow = JuMP.Containers.SparseAxisArray(Dict(only(problem[:F].axes) .=> 0.0))
+    objectives, objective_types = get_objectives(problem, p_non_diff, subnetwork_id)
 
-    return AllocationModel(;
-        subnetwork_id,
-        source_priorities,
-        capacity,
-        flow,
-        sources,
+    AllocationModel(;
         problem,
+        subnetwork_id,
         Δt_allocation,
+        objectives,
+        objective_types,
+        cumulative_forcing_volume,
+        cumulative_boundary_volume,
     )
 end

@@ -322,22 +322,6 @@ function low_storage_factor_resistance_node(
     end
 end
 
-"""Whether the given node node is flow constraining by having a maximum flow rate."""
-function is_flow_constraining(type::NodeType.T)::Bool
-    type in (NodeType.LinearResistance, NodeType.Pump, NodeType.Outlet)
-end
-
-"""Whether the given node is flow direction constraining (only in direction of links)."""
-function is_flow_direction_constraining(type::NodeType.T)::Bool
-    type in (
-        NodeType.Pump,
-        NodeType.Outlet,
-        NodeType.TabulatedRatingCurve,
-        NodeType.UserDemand,
-        NodeType.FlowBoundary,
-    )
-end
-
 function has_main_network(allocation::Allocation)::Bool
     if !is_active(allocation)
         false
@@ -428,7 +412,7 @@ function get_continuous_control_type(graph::MetaGraph, node_id::Vector{NodeID})
     return continuous_control_type
 end
 
-function has_external_demand(
+function has_external_flow_demand(
     graph::MetaGraph,
     node_id::NodeID,
     node_type::Symbol,
@@ -468,14 +452,14 @@ inflow_link(graph, node_id)::LinkMetadata = graph[inflow_id(graph, node_id), nod
 outflow_link(graph, node_id)::LinkMetadata = graph[node_id, outflow_id(graph, node_id)]
 
 """
-We want to perform allocation at t = 0 but there are no mean flows available
+We want to perform allocation at t = 0 but there are no cumulative volumes available yet
 as input. Therefore we set the instantaneous flows as the mean flows as allocation input.
 """
-function set_initial_allocation_mean_flows!(integrator)::Nothing
+function set_initial_allocation_cumulative_volume!(integrator)::Nothing
     (; u, p, t) = integrator
     (; p_non_diff) = p
-    (; allocation) = p_non_diff
-    (; mean_input_flows, mean_realized_flows, allocation_models) = allocation
+    (; allocation, flow_boundary) = p_non_diff
+    (; allocation_models) = allocation
     (; Δt_allocation) = allocation_models[1]
 
     # At the time of writing water_balance! already
@@ -484,30 +468,20 @@ function set_initial_allocation_mean_flows!(integrator)::Nothing
     du = get_du(integrator)
     water_balance!(du, u, p, t)
 
-    for mean_input_flows_subnetwork in values(mean_input_flows)
-        for link in keys(mean_input_flows_subnetwork)
-            if link[1] == link[2]
-                q = get_influx(du, link[1], p)
-            else
-                q = get_flow(du, p_non_diff, t, link)
-            end
-            # Multiply by Δt_allocation as averaging divides by this factor
-            # in update_allocation!
-            mean_input_flows_subnetwork[link] = q * Δt_allocation
+    for allocation_model in allocation_models
+        (; cumulative_forcing_volume, cumulative_boundary_volume) = allocation_model
+
+        # Basin forcing
+        for node_id in keys(cumulative_forcing_volume)
+            cumulative_forcing_volume[node_id] = get_influx(du, node_id, p) * Δt_allocation
+        end
+
+        # Boundary flow
+        for link in keys(cumulative_boundary_volume)
+            cumulative_boundary_volume[link] =
+                flow_boundary.flow_rate[link[1].idx](0.0) * Δt_allocation
         end
     end
-
-    # Mean realized demands for basins are calculated as Δstorage/Δt
-    # This sets the realized demands as -storage_old
-    for link in keys(mean_realized_flows)
-        if link[1] == link[2]
-            mean_realized_flows[link] = -u[link[1].idx]
-        else
-            q = get_flow(du, p_non_diff, t, link)
-            mean_realized_flows[link] = q * Δt_allocation
-        end
-    end
-
     return nothing
 end
 
@@ -1067,12 +1041,6 @@ function min_low_user_demand_level_factor(
     else
         one(T)
     end
-end
-
-function mean_input_flows_subnetwork(p_non_diff::ParametersNonDiff, subnetwork_id::Int32)
-    (; mean_input_flows, subnetwork_ids) = p_non_diff.allocation
-    subnetwork_idx = searchsortedfirst(subnetwork_ids, subnetwork_id)
-    return mean_input_flows[subnetwork_idx]
 end
 
 """

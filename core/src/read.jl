@@ -252,142 +252,9 @@ const conservative_nodetypes = Set{NodeType.T}([
     NodeType.ManningResistance,
 ])
 
-function get_allocation_sources_in_order!(
-    p_non_diff::ParametersNonDiff,
-    db::DB,
-    config::Config,
-)::OrderedDict{Tuple{NodeID, NodeID}, AllocationSource}
-    (; graph, user_demand, allocation) = p_non_diff
-    (;
-        subnetwork_demands,
-        subnetwork_allocateds,
-        demand_priorities_all,
-        main_network_connections,
-    ) = allocation
-    n_demand_priorities = length(demand_priorities_all)
-
-    default_source_priority = config.allocation.source_priority
-
-    node_rows = execute(
-        db,
-        "SELECT node_id, node_type, subnetwork_id, source_priority FROM Node ORDER BY subnetwork_id, source_priority",
-    )
-
-    # Build dictionary source type -> default source priority (e.g. "user_demand" => 1000)
-    source_types = propertynames(default_source_priority)
-    default_source_priority_dict = Dict{Symbol, Int32}(
-        source_type => getfield(default_source_priority, source_type) for
-        source_type in source_types
-    )
-    default_source_priority_dict[:flow_boundary] = default_source_priority.boundary
-    default_source_priority_dict[:level_boundary] = default_source_priority.boundary
-
-    # NOTE: return flow has to be done before other sources, to prevent that
-    # return flow is directly used within the same source priority by the same node
-    sources = OrderedDict{Tuple{NodeID, NodeID}, AllocationSource}()
-
-    errors = false
-
-    for row in node_rows
-        # Only source nodes that are part of a subnetwork are relevant
-        is_source = false
-        # One row can yield multiple sources:
-        # - One source priority can apply to multiple sources in the case of a LevelDemand
-        #   node which connects to multiple basins
-        # - One source node can imply multiple sources in the case of a LevelBoundary with multiple
-        #   neighbors
-        node_id = NodeID(Symbol(row.node_type), row.node_id, p_non_diff)
-        links = Tuple{NodeID, NodeID}[]
-        if !ismissing(row.subnetwork_id)
-            # E.g. :manning_resistance
-            node_type = Symbol(snake_case(row.node_type))
-
-            if node_type ∈ source_types
-                # The case where the node type is also a source type
-                source_priority =
-                    coalesce(row.source_priority, default_source_priority_dict[node_type])
-                # E.g. AllocationSourceType.level_demand
-                source_type = AllocationSourceType.T(node_type)
-                is_source = true
-                if source_type == AllocationSourceType.level_demand
-                    # If the row is for a level demand, make a source for each connected basin
-                    for basin_id in
-                        outneighbor_labels_type(graph, node_id, LinkType.control)
-                        push!(links, (basin_id, basin_id))
-                    end
-                elseif source_type == AllocationSourceType.flow_demand
-                    # If the row is for a flow demand, make a source for the connected connector node
-                    id_with_demand =
-                        only(outneighbor_labels_type(graph, node_id, LinkType.control))
-                    push!(links, (id_with_demand, id_with_demand))
-                else # if source_type == AllocationSourceType.user_demand
-                    push!(links, user_demand.outflow_link[node_id.idx].link)
-                end
-            elseif node_type ∈ (:flow_boundary, :level_boundary)
-                # The case where the node type is a boundary source node type
-                source_priority =
-                    coalesce(row.source_priority, default_source_priority_dict[node_type])
-                source_type = AllocationSourceType.boundary
-                is_source = true
-                # Always consider the edge going out of the source, even if only the reverse edge
-                # exists in the physical layer
-                for inoutflow_id in inoutflow_ids(graph, node_id)
-                    push!(links, (node_id, inoutflow_id))
-                end
-            elseif row.subnetwork_id != 1 # Not in the main network
-                for main_network_id in filter!(
-                    id -> graph[id].subnetwork_id == 1, # Connects to the main network
-                    collect(inflow_ids(graph, node_id)),
-                )
-                    is_source = true
-                    source_priority = default_source_priority_dict[:subnetwork_inlet]
-                    source_type = AllocationSourceType.subnetwork_inlet
-                    link = (main_network_id, node_id)
-                    push!(links, link)
-                    push!(main_network_connections[row.subnetwork_id], link)
-                    # Allocate memory for the demands and demand priorities
-                    # from the subnetwork via this link
-                    subnetwork_demands[link] = zeros(n_demand_priorities)
-                    subnetwork_allocateds[link] = zeros(n_demand_priorities)
-                end
-            end
-        end
-
-        if is_source
-            for link in links
-                sources[link] = AllocationSource(;
-                    link,
-                    type = source_type,
-                    source_priority,
-                    row.subnetwork_id,
-                    node_id,
-                )
-            end
-        elseif !ismissing(row.source_priority)
-            errors = true
-            @error "$(only(node_ids)) has a source priority ($(row.source_priority)) but is not interpreted as a source by allocation."
-        end
-    end
-
-    if errors
-        error("Errors encountered when processing the allocation source priority data.")
-    end
-
-    OrderedDict(
-        sort!(
-            collect(sources);
-            by = pair -> (pair[2].subnetwork_id, pair[2].source_priority, pair[2].node_id),
-        ),
-    )
-end
-
-function initialize_allocation!(
-    p_non_diff::ParametersNonDiff,
-    db::DB,
-    config::Config,
-)::Nothing
+function initialize_allocation!(p_non_diff::ParametersNonDiff, config::Config)::Nothing
     (; graph, allocation) = p_non_diff
-    (; subnetwork_ids, allocation_models, main_network_connections) = allocation
+    (; subnetwork_ids, allocation_models) = allocation
     subnetwork_ids_ = sort(collect(keys(graph[].node_ids)))
 
     if isempty(subnetwork_ids_)
@@ -401,15 +268,12 @@ function initialize_allocation!(
 
     for subnetwork_id in subnetwork_ids_
         push!(subnetwork_ids, subnetwork_id)
-        main_network_connections[subnetwork_id] = Tuple{NodeID, NodeID}[]
     end
-
-    sources = get_allocation_sources_in_order!(p_non_diff, db, config)
 
     for subnetwork_id in subnetwork_ids_
         push!(
             allocation_models,
-            AllocationModel(subnetwork_id, p_non_diff, sources, config.allocation.timestep),
+            AllocationModel(subnetwork_id, p_non_diff, config.allocation.timestep),
         )
     end
     return nothing
@@ -1714,63 +1578,9 @@ function Subgrid(db::DB, config::Config, basin::Basin)::Subgrid
 end
 
 function Allocation(db::DB, config::Config, graph::MetaGraph)::Allocation
-    mean_input_flows = Dict{Tuple{NodeID, NodeID}, Float64}[]
-    mean_realized_flows = Dict{Tuple{NodeID, NodeID}, Float64}()
-    subnetwork_ids = sort(collect(keys(graph[].node_ids)))
-
-    if config.allocation.use_allocation
-        for _ in subnetwork_ids
-            push!(mean_input_flows, Dict{Tuple{NodeID, NodeID}, Float64}())
-        end
-
-        # Find links which serve as sources in allocation
-        for link_metadata in values(graph.edge_data)
-            (; link) = link_metadata
-            id_source, _ = link
-            if id_source.type in boundary_source_nodetypes
-                (; subnetwork_id) = graph[id_source]
-                # Check whether the source node is part of a subnetwork
-                if subnetwork_id ≠ 0
-                    subnetwork_idx = searchsortedfirst(subnetwork_ids, subnetwork_id)
-                    mean_input_flows[subnetwork_idx][link] = 0.0
-                end
-            end
-        end
-
-        # Find basins with a level demand
-        for node_id in values(graph.vertex_labels)
-            if has_external_demand(graph, node_id, :level_demand)[1]
-                subnetwork_id = graph[node_id].subnetwork_id
-                subnetwork_idx = searchsortedfirst(subnetwork_ids, subnetwork_id)
-                mean_input_flows[subnetwork_idx][(node_id, node_id)] = 0.0
-            end
-        end
-
-        # Find links that realize a demand
-        for link_metadata in values(graph.edge_data)
-            (; type, link) = link_metadata
-
-            src_id, dst_id = link
-            user_demand_inflow =
-                (type == LinkType.flow) && (dst_id.type == NodeType.UserDemand)
-            level_demand_inflow =
-                (type == LinkType.control) && (src_id.type == NodeType.LevelDemand)
-            flow_demand_inflow =
-                (type == LinkType.flow) &&
-                has_external_demand(graph, dst_id, :flow_demand)[1]
-
-            if user_demand_inflow || flow_demand_inflow
-                mean_realized_flows[link] = 0.0
-            elseif level_demand_inflow
-                mean_realized_flows[(dst_id, dst_id)] = 0.0
-            end
-        end
-    end
-
     return Allocation(;
         demand_priorities_all = get_all_demand_priorities(db, config),
-        mean_input_flows,
-        mean_realized_flows,
+        subnetwork_ids = sort(collect(keys(graph[].node_ids))),
     )
 end
 
@@ -1868,7 +1678,7 @@ function Parameters(db::DB, config::Config)::Parameters
 
     # Allocation data structures
     if config.allocation.use_allocation
-        initialize_allocation!(p_non_diff, db, config)
+        initialize_allocation!(p_non_diff, config)
     end
 
     return Parameters(; p_non_diff)

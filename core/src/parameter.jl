@@ -191,25 +191,54 @@ function Base.show(io::IO, source::AllocationSource)
     print(io, "AllocationSource of type $type at link $link")
 end
 
+@enumx AllocationObjectiveType flow level none
+
 """
 Store information for a subnetwork used for allocation.
 
 subnetwork_id: The ID of this subnetwork
-source_priorities: All used source priority values in this subnetwork
-capacity: The capacity per link of the allocation network, as constrained by nodes that have a max_flow_rate
-flow: The flows over all the links in the subnetwork for a certain demand priority (used for allocation_flow output)
-sources: source data in preferred order of optimization
 problem: The JuMP.jl model for solving the allocation problem
 Δt_allocation: The time interval between consecutive allocation solves
+objectives: An objective per demand priority
+objective_types: Per objective its type (flow, level or none)
+cumulative_forcing_volume: The net volume of forcing exchanged with each Basin in the subnetwork in the last Δt_allocation
+cumulative_boundary_volume: The net volume of boundary flow into the model for each FlowBoundary in the subnetwork
+    over the last Δt_allocation
+main_network_connections: links (from_id, to_id) from the main network to this subnetwork
 """
 @kwdef struct AllocationModel
     subnetwork_id::Int32
-    source_priorities::Vector{Int32}
-    capacity::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}}
-    flow::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}}
-    sources::OrderedDict{Tuple{NodeID, NodeID}, AllocationSource}
     problem::JuMP.Model
     Δt_allocation::Float64
+    objectives::Vector{JuMP.AffExpr}
+    objective_types::Vector{AllocationObjectiveType.T}
+    cumulative_forcing_volume::Dict{NodeID, Float64}
+    cumulative_boundary_volume::Dict{Tuple{NodeID, NodeID}, Float64}
+    main_network_connections::Vector{Tuple{NodeID, NodeID}} = Tuple{NodeID, NodeID}[]
+end
+
+@kwdef struct DemandRecord
+    time::Vector{Float64} = []
+    subnetwork_id::Vector{Int32} = []
+    node_type::Vector{String} = []
+    node_id::Vector{Int32} = []
+    demand_priority::Vector{Int32} = []
+    demand::Vector{Float64} = []
+    allocated::Vector{Float64} = []
+    realized::Vector{Float64} = []
+end
+
+@kwdef struct FlowRecord
+    time::Vector{Float64} = []
+    link_id::Vector{Int32} = []
+    from_node_type::Vector{String} = []
+    from_node_id::Vector{Int32} = []
+    to_node_type::Vector{String} = []
+    to_node_id::Vector{Int32} = []
+    subnetwork_id::Vector{Int32} = []
+    demand_priority::Vector{Int32} = []
+    flow_rate::Vector{Float64} = []
+    optimization_type::Vector{String} = []
 end
 
 """
@@ -229,59 +258,12 @@ record_flow: A record of all flows computed by allocation optimization, eventual
 """
 @kwdef struct Allocation
     subnetwork_ids::Vector{Int32} = Int32[]
-    allocation_models::Vector{AllocationModel} = AllocationModel[]
-    main_network_connections::Dict{Int32, Vector{Tuple{NodeID, NodeID}}} =
-        Dict{Int, Vector{Tuple{NodeID, NodeID}}}()
-    demand_priorities_all::Vector{Int32}
-    subnetwork_demands::Dict{Tuple{NodeID, NodeID}, Vector{Float64}} = Dict()
-    subnetwork_allocateds::Dict{Tuple{NodeID, NodeID}, Vector{Float64}} = Dict()
-    mean_input_flows::Vector{Dict{Tuple{NodeID, NodeID}, Float64}}
-    mean_realized_flows::Dict{Tuple{NodeID, NodeID}, Float64}
-    record_demand::@NamedTuple{
-        time::Vector{Float64},
-        subnetwork_id::Vector{Int32},
-        node_type::Vector{String},
-        node_id::Vector{Int32},
-        demand_priority::Vector{Int32},
-        demand::Vector{Float64},
-        allocated::Vector{Float64},
-        realized::Vector{Float64},
-    } = (;
-        time = Float64[],
-        subnetwork_id = Int32[],
-        node_type = String[],
-        node_id = Int32[],
-        demand_priority = Int32[],
-        demand = Float64[],
-        allocated = Float64[],
-        realized = Float64[],
-    )
-    record_flow::@NamedTuple{
-        time::Vector{Float64},
-        link_id::Vector{Int32},
-        from_node_type::Vector{String},
-        from_node_id::Vector{Int32},
-        to_node_type::Vector{String},
-        to_node_id::Vector{Int32},
-        subnetwork_id::Vector{Int32},
-        demand_priority::Vector{Int32},
-        flow_rate::Vector{Float64},
-        optimization_type::Vector{String},
-    } = (;
-        time = Float64[],
-        link_id = Int32[],
-        from_node_type = String[],
-        from_node_id = Int32[],
-        to_node_type = String[],
-        to_node_id = Int32[],
-        subnetwork_id = Int32[],
-        demand_priority = Int32[],
-        flow_rate = Float64[],
-        optimization_type = String[],
-    )
+    allocation_models::Vector{AllocationModel} = []
+    demand_priorities_all::Vector{Int32} = []
+    mean_realized_flows::Dict{Tuple{NodeID, NodeID}, Float64} = Dict()
+    record_demand::DemandRecord = DemandRecord()
+    record_flow::FlowRecord = FlowRecord()
 end
-
-is_active(allocation::Allocation) = !isempty(allocation.allocation_models)
 
 """
 Type for storing metadata of nodes in the graph
@@ -444,7 +426,7 @@ of vectors or Arrow Tables, and is added to avoid type instabilities.
     cumulative_drainage::Vector{Float64} = zeros(length(node_id))
     cumulative_precipitation_saveat::Vector{Float64} = zeros(length(node_id))
     cumulative_drainage_saveat::Vector{Float64} = zeros(length(node_id))
-    # Discrete values for interpolation
+    # Basin profile interpolations
     storage_to_level::Vector{
         LinearInterpolationIntInv{
             Vector{Float64},
