@@ -1,9 +1,9 @@
-md5: aa976a0658b5e52b211b9714c93b6a34
+md5: ac8f106c844227171975b9d0417f33a6
 frozen: true
 deps:
-- md5: 24169f5a25b4c78f1868b8401a367117.dir
-  size: 43269986
-  nfiles: 4
+- md5: a5de3ddf9da718b7d431dbce2b09deea.dir
+  size: 42621406
+  nfiles: 3
   hash: md5
   path: remote://minio_readonly/hws_2025_4_0
 outs:
@@ -11,4 +11,4 @@ outs:
   size: 42621406
   nfiles: 3
   hash: md5
-  path: hws_2025_4_0
+  path: hws
