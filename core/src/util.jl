@@ -389,27 +389,24 @@ function get_external_demand_priority_idx(
     return findsorted(allocation.demand_priorities_all, demand_priority)
 end
 
-const control_type_mapping = Dict{NodeType.T, ContinuousControlType.T}(
-    NodeType.PidControl => ContinuousControlType.PID,
-    NodeType.ContinuousControl => ContinuousControlType.Continuous,
+const control_type_mapping = Dict{NodeType.T, ControlType.T}(
+    NodeType.PidControl => ControlType.PID,
+    NodeType.ContinuousControl => ControlType.Continuous,
 )
 
-function get_continuous_control_type(graph::MetaGraph, node_id::Vector{NodeID})
-    continuous_control_type = fill(ContinuousControlType.None, length(node_id))
+function get_control_type(graph::MetaGraph, node_id::Vector{NodeID})
+    control_type = fill(ControlType.None, length(node_id))
     for id in node_id
         control_inneighbors = collect(inneighbor_labels_type(graph, id, LinkType.control))
         if length(control_inneighbors) == 1
             control_inneighbor = only(control_inneighbors)
-            continuous_control_type[id.idx] = get(
-                control_type_mapping,
-                control_inneighbor.type,
-                ContinuousControlType.None,
-            )
+            control_type[id.idx] =
+                get(control_type_mapping, control_inneighbor.type, ControlType.None)
         elseif length(control_inneighbors) > 1
             error("$id has more than 1 control inneighbors.")
         end
     end
-    return continuous_control_type
+    return control_type
 end
 
 function has_external_flow_demand(

@@ -16,7 +16,7 @@ const SolverStats = @NamedTuple{
 # LinkType.flow and NodeType.FlowBoundary
 @enumx LinkType flow control none
 @eval @enumx NodeType $(config.nodetypes...)
-@enumx ContinuousControlType None Continuous PID
+@enumx ControlType None Continuous PID Allocation
 @enumx Substance Continuity = 1 Initial = 2 LevelBoundary = 3 FlowBoundary = 4 UserDemand =
     5 Drainage = 6 Precipitation = 7
 Base.to_index(id::Substance.T) = Int(id)  # used to index into concentration matrices
@@ -204,6 +204,7 @@ objective_types: Per objective its type (flow, level or none)
 cumulative_forcing_volume: The net volume of forcing exchanged with each Basin in the subnetwork in the last Δt_allocation
 cumulative_boundary_volume: The net volume of boundary flow into the model for each FlowBoundary in the subnetwork
     over the last Δt_allocation
+sources: The nodes in the subnetwork which can act as sources, sorted by source priority
 main_network_connections: links (from_id, to_id) from the main network to this subnetwork
 """
 @kwdef struct AllocationModel
@@ -214,6 +215,7 @@ main_network_connections: links (from_id, to_id) from the main network to this s
     objective_types::Vector{AllocationObjectiveType.T}
     cumulative_forcing_volume::Dict{NodeID, Float64}
     cumulative_boundary_volume::Dict{Tuple{NodeID, NodeID}, Float64}
+    sources::Dict{Int32, NodeID} = OrderedDict()
     main_network_connections::Vector{Tuple{NodeID, NodeID}} = Tuple{NodeID, NodeID}[]
 end
 
@@ -268,11 +270,13 @@ end
 """
 Type for storing metadata of nodes in the graph
 type: type of the node
-subnetwork_id: Allocation network ID (0 if not in subnetwork)
+subnetwork_id: Allocation network ID (0 if not in any subnetwork)
+source_priority: Priority of a source in the subnetwork (0 if not a source)
 """
 @kwdef struct NodeMetadata
     type::Symbol
     subnetwork_id::Int32
+    source_priority::Int32
 end
 
 """
@@ -600,7 +604,7 @@ max_flow_rate: The maximum flow rate of the pump
 min_upstream_level: The upstream level below which the Pump flow goes to zero
 max_downstream_level: The downstream level above which the Pump flow goes to zero
 control_mapping: dictionary from (node_id, control_state) to target flow rate
-continuous_control_type: one of None, ContinuousControl, PidControl
+control_type: one of None, ContinuousControl, PidControl, Allocation
 """
 @kwdef struct Pump <: AbstractParameterNode
     node_id::Vector{NodeID}
@@ -613,8 +617,7 @@ continuous_control_type: one of None, ContinuousControl, PidControl
     min_upstream_level::Vector{ScalarInterpolation} = ScalarInterpolation[]
     max_downstream_level::Vector{ScalarInterpolation} = ScalarInterpolation[]
     control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate}
-    continuous_control_type::Vector{ContinuousControlType.T} =
-        fill(ContinuousControlType.None, length(node_id))
+    control_type::Vector{ControlType.T} = fill(ControlType.None, length(node_id))
 end
 
 """
@@ -630,7 +633,7 @@ max_flow_rate: The maximum flow rate of the outlet
 min_upstream_level: The upstream level below which the Outlet flow goes to zero
 max_downstream_level: The downstream level above which the Outlet flow goes to zero
 control_mapping: dictionary from (node_id, control_state) to target flow rate
-continuous_control_type: one of None, ContinuousControl, PidControl
+control_type: one of None, ContinuousControl, PidControl, Allocation
 """
 @kwdef struct Outlet <: AbstractParameterNode
     node_id::Vector{NodeID}
@@ -643,8 +646,7 @@ continuous_control_type: one of None, ContinuousControl, PidControl
     min_upstream_level::Vector{ScalarInterpolation} = ScalarInterpolation[]
     max_downstream_level::Vector{ScalarInterpolation} = ScalarInterpolation[]
     control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate} = Dict()
-    continuous_control_type::Vector{ContinuousControlType.T} =
-        fill(ContinuousControlType.None, length(node_id))
+    control_type::Vector{ControlType.T} = fill(ControlType.None, length(node_id))
 end
 
 """

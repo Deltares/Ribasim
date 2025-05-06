@@ -606,7 +606,7 @@ function Pump(db::DB, config::Config, graph::MetaGraph)::Pump
     end
 
     (; node_id) = parsed_parameters
-    continuous_control_type = get_continuous_control_type(graph, node_id)
+    control_type = get_control_type(graph, node_id)
 
     if !valid_flow_rates(
         node_id,
@@ -627,7 +627,7 @@ function Pump(db::DB, config::Config, graph::MetaGraph)::Pump
         parsed_parameters.min_upstream_level,
         parsed_parameters.max_downstream_level,
         parsed_parameters.control_mapping,
-        continuous_control_type,
+        control_type,
     )
 end
 
@@ -664,7 +664,7 @@ function Outlet(db::DB, config::Config, graph::MetaGraph)::Outlet
     end
 
     (; node_id) = parsed_parameters
-    continuous_control_type = get_continuous_control_type(graph, node_id)
+    control_type = get_control_type(graph, node_id)
 
     if !valid_flow_rates(
         node_id,
@@ -685,7 +685,7 @@ function Outlet(db::DB, config::Config, graph::MetaGraph)::Outlet
         parsed_parameters.control_mapping,
         parsed_parameters.min_upstream_level,
         parsed_parameters.max_downstream_level,
-        continuous_control_type,
+        control_type,
     )
 end
 

@@ -133,7 +133,7 @@ end
 
 @option struct SourcePriority <: TableOption
     user_demand::Int32 = 1000
-    boundary::Int32 = 2000 # boundary = {flow_boundary, level_boundary}
+    flow_boundary::Int32 = 2000
     level_demand::Int32 = 3000
     flow_demand::Int32 = 4000
     subnetwork_inlet::Int32 = 5000

@@ -74,8 +74,6 @@ using DataInterpolations.ExtrapolationType:
 import JuMP
 # The optimization backend of JuMP.
 import HiGHS
-# Optimal piecewise linear approximations of differentiable functions used for allocation
-using PiecewiseLinApprox
 # Represent piecewise linear functions in JuMP
 using PiecewiseLinearOpt: piecewiselinear
 
