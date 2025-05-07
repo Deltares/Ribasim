@@ -580,7 +580,7 @@ function get_objectives(
 
         for node_id in graph[].node_ids[subnetwork_id]
             if node_id.type == NodeType.UserDemand &&
-               user_demand.has_priority[node_id.idx, demand_priority_idx]
+               user_demand.has_demand_priority[node_id.idx, demand_priority_idx]
                 has_flow_demand = true
             elseif node_id.type == NodeType.Basin
                 has_level_demand_id, id_level_demand =
@@ -647,8 +647,8 @@ function AllocationModel(
     add_linear_resistance!(problem, p_non_diff, subnetwork_id)
     add_manning_resistance!(problem, p_non_diff, subnetwork_id)
 
-    add_pump!()
-    add_outlet!()
+    # add_pump!()
+    # add_outlet!()
 
     add_user_demand!(problem, p_non_diff, subnetwork_id)
     add_flow_demand!(problem, p_non_diff, subnetwork_id)

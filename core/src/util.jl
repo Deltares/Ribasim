@@ -394,19 +394,33 @@ const control_type_mapping = Dict{NodeType.T, ControlType.T}(
     NodeType.ContinuousControl => ControlType.Continuous,
 )
 
-function get_control_type(graph::MetaGraph, node_id::Vector{NodeID})
-    control_type = fill(ControlType.None, length(node_id))
-    for id in node_id
-        control_inneighbors = collect(inneighbor_labels_type(graph, id, LinkType.control))
-        if length(control_inneighbors) == 1
-            control_inneighbor = only(control_inneighbors)
-            control_type[id.idx] =
+function set_control_type!(node::AbstractParameterNode, graph::MetaGraph)::Nothing
+    (; control_type, control_mapping) = node
+
+    errors = false
+
+    for node_id in node.node_id
+        control_inneighbors =
+            collect(inneighbor_labels_type(graph, node_id, LinkType.control))
+
+        control_type[node_id.idx] =
+            if (node_id, "Ribasim.allocation") in keys(control_mapping)
+                ControlType.Allocation
+            elseif length(control_inneighbors) == 1
+                control_inneighbor = only(control_inneighbors)
                 get(control_type_mapping, control_inneighbor.type, ControlType.None)
-        elseif length(control_inneighbors) > 1
-            error("$id has more than 1 control inneighbors.")
-        end
+            elseif length(control_inneighbors) > 1
+                @error "$node_id has more than 1 control inneighbors."
+                errors = true
+                ControlType.None
+            else
+                ControlType.None
+            end
     end
-    return control_type
+
+    errors && @error("Errors encountered when parsing control type of $(typeof(node)).")
+
+    return nothing
 end
 
 function has_external_flow_demand(

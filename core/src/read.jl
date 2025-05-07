@@ -518,12 +518,13 @@ function Pump(db::DB, config::Config, graph::MetaGraph)
     static = load_structvector(db, config, PumpStaticV1)
     time = load_structvector(db, config, PumpTimeV1)
     node_id = get_node_ids(db, NodeType.Pump)
-    continuous_control_type = get_continuous_control_type(graph, node_id)
 
-    pump = Pump(; node_id, continuous_control_type)
+    pump = Pump(; node_id)
 
     initialize_control_mapping!(pump, static)
+    set_control_type!(pump, graph)
     set_inoutflow_links!(pump, graph)
+
     errors = parse_parameter!(pump, config, :active; static, time, default = true)
     errors |= parse_parameter!(pump, config, :flow_rate; static, time)
     errors |= parse_parameter!(pump, config, :min_flow_rate; static, time, default = 0.0)
@@ -544,12 +545,13 @@ function Outlet(db::DB, config::Config, graph::MetaGraph)
     static = load_structvector(db, config, OutletStaticV1)
     time = load_structvector(db, config, OutletTimeV1)
     node_id = get_node_ids(db, NodeType.Outlet)
-    continuous_control_type = get_continuous_control_type(graph, node_id)
 
-    outlet = Outlet(; node_id, continuous_control_type)
+    outlet = Outlet(; node_id)
 
     initialize_control_mapping!(outlet, static)
+    set_control_type!(outlet, graph)
     set_inoutflow_links!(outlet, graph)
+
     errors = parse_parameter!(outlet, config, :active; static, time, default = true)
     errors |= parse_parameter!(outlet, config, :flow_rate; static, time)
     errors |= parse_parameter!(outlet, config, :min_flow_rate; static, time, default = 0.0)

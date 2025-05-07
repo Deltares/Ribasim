@@ -178,11 +178,32 @@ function optimize_for_demand_priority!(
     return nothing
 end
 
+# Set the flow rate of allocation controlled pumps and outlets to
+# their flow determined by allocation
+function apply_control_from_allocation!(
+    node::Union{Pump, Outlet},
+    allocation_model::AllocationModel,
+    graph::MetaGraph,
+    flow_rate::Vector{Float64},
+)::Nothing
+    (; subnetwork_id) = allocation_model
+
+    for (node_id, control_type, inflow_link) in
+        zip(node.node_id, node.control_type, node.inflow_link)
+        in_subnetwork = (graph[node_id].subnetwork_id == subnetwork_id)
+        allocation_controlled = (control_type == ControlType.Allocation)
+        if in_subnetwork && allocation_controlled
+            flow_rate[node_id.idx] = flow[inflow_link.link]
+        end
+    end
+    return nothing
+end
+
 "Solve the allocation problem for all demands and assign allocated abstractions."
 function update_allocation!(integrator)::Nothing
     (; u, p, t) = integrator
-    (; p_non_diff) = p
-    (; allocation) = p_non_diff
+    (; p_non_diff, diff_cache) = p
+    (; allocation, pump, outlet, graph) = p_non_diff
     (; allocation_models, demand_priorities_all) = allocation
 
     # Don't run the allocation algorithm if allocation is not active
@@ -212,6 +233,19 @@ function update_allocation!(integrator)::Nothing
     # Allocate first in the main network if it is present, and then in the other subnetworks
     for allocation_model in allocation_models
         # TODO
+
+        apply_control_from_allocation!(
+            pump,
+            allocation_model,
+            graph,
+            diff_cache.flow_rate_pump,
+        )
+        apply_control_from_allocation!(
+            outlet,
+            allocation_model,
+            graph,
+            diff_cache.flow_rate_outlet,
+        )
     end
 
     return nothing

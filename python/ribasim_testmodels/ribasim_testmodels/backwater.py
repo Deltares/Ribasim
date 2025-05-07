@@ -1,6 +1,7 @@
 import numpy as np
 import ribasim
 from ribasim.config import Experimental, Node
+from ribasim.model import Model
 from ribasim.nodes import (
     basin,
     flow_boundary,
@@ -9,7 +10,7 @@ from ribasim.nodes import (
 from shapely.geometry import Point
 
 
-def backwater_model():
+def backwater_model() -> Model:
     """Backwater curve as an integration test for ManningResistance."""
     node_type = np.full(102, "ManningResistance")
     node_type[1::2] = "Basin"
