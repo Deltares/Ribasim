@@ -3,7 +3,8 @@
     using Tables.DataAPI: nrow
     using Dates: DateTime
     import Arrow
-    using Ribasim: get_tstops, tsaves, StateRanges
+    using Ribasim: get_tstops, tsaves
+    using Ribasim.CArrays: CVector, getaxes
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/trivial/ribasim.toml")
     @test ispath(toml_path)
@@ -19,11 +20,13 @@
     model = Ribasim.run(config)
     @test model isa Ribasim.Model
     @test success(model)
+    (; u, du) = model.integrator
     (; p_non_diff) = model.integrator.p
 
     @test p_non_diff.node_id == [0, 6, 6]
-    @test p_non_diff.state_ranges ==
-          StateRanges(; tabulated_rating_curve = 1:1, evaporation = 2:2, infiltration = 3:3)
+    @test u isa CVector
+    @test filter(!isempty, getaxes(u)) ==
+          (; tabulated_rating_curve = 1:1, evaporation = 2:2, infiltration = 3:3)
 
     @test !ispath(control_path)
 
@@ -139,15 +142,13 @@ end
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
     (; p_non_diff, diff_cache) = model.integrator.p
-    (; basin, state_ranges) = p_non_diff
+    (; basin) = p_non_diff
     @test diff_cache.current_storage ≈ [1000]
     @test basin.vertical_flux.precipitation == [0.0]
     @test basin.vertical_flux.drainage == [0.0]
     du = get_du(model.integrator)
-    du_evaporation = view(du, state_ranges.evaporation)
-    du_infiltration = view(du, state_ranges.infiltration)
-    @test du_evaporation == [0.0]
-    @test du_infiltration == [0.0]
+    @test du.evaporation == [0.0]
+    @test du.infiltration == [0.0]
     @test success(model)
 end
 
@@ -164,14 +165,14 @@ end
     du = get_du(integrator)
     (; u, p, t) = integrator
     (; p_non_diff, diff_cache) = p
-    (; basin, state_ranges) = p_non_diff
+    (; basin) = p_non_diff
 
     Ribasim.water_balance!(du, u, p, t)
     stor = diff_cache.current_storage
     prec = basin.vertical_flux.precipitation
-    evap = view(du, state_ranges.evaporation)
+    evap = du.evaporation
     drng = basin.vertical_flux.drainage
-    infl = view(du, state_ranges.infiltration)
+    infl = du.infiltration
     # The dynamic data has missings, but these are not set.
     @test prec == [0.0]
     @test evap == [0.0]
@@ -363,7 +364,7 @@ end
     level_basin = Ribasim.get_storages_and_levels(model).level[:]
 
     # Basin level converges to stable level boundary level
-    all(isapprox.(level_basin[t .>= t_maximum_level], level.u[3], atol = 5e-2))
+    @test all(isapprox.(level_basin[t .>= t_maximum_level], level.u[3], atol = 5e-2))
 end
 
 @testitem "UserDemand" begin

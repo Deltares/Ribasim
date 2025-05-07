@@ -13,6 +13,21 @@ const SolverStats = @NamedTuple{
     rejected_timesteps::Int,
 }
 
+const state_components = (
+    :tabulated_rating_curve,
+    :pump,
+    :outlet,
+    :user_demand_inflow,
+    :user_demand_outflow,
+    :linear_resistance,
+    :manning_resistance,
+    :evaporation,
+    :infiltration,
+    :integral,
+)
+const n_components = length(state_components)
+const StateTuple{V} = NamedTuple{state_components, NTuple{n_components, V}}
+
 # LinkType.flow and NodeType.FlowBoundary
 @enumx LinkType flow control none
 @eval @enumx NodeType $(config.nodetypes...)
@@ -391,6 +406,15 @@ the length of each Vector is the number of Basins.
     infiltration::Vector{ScalarConstantInterpolation} = ScalarConstantInterpolation[]
 end
 
+function BasinForcing(n::Integer)
+    return BasinForcing(
+        Vector{ScalarConstantInterpolation}(undef, n),
+        Vector{ScalarConstantInterpolation}(undef, n),
+        Vector{ScalarConstantInterpolation}(undef, n),
+        Vector{ScalarConstantInterpolation}(undef, n),
+    )
+end
+
 """Current values of the vertical fluxes in a Basin, per node ID.
 
 Current forcing is stored as separate array for BMI access.
@@ -405,6 +429,13 @@ end
 
 VerticalFlux(n::Int) = VerticalFlux(zeros(n), zeros(n), zeros(n), zeros(n))
 
+const StorageToLevelType = LinearInterpolationIntInv{
+    Vector{Float64},
+    Vector{Float64},
+    ScalarInterpolation,
+    Float64,
+}
+
 """
 Requirements:
 
@@ -417,8 +448,8 @@ of vectors or Arrow Tables, and is added to avoid type instabilities.
 """
 @kwdef struct Basin{CD, D} <: AbstractParameterNode
     node_id::Vector{NodeID}
-    inflow_ids::Vector{Vector{NodeID}} = [NodeID[]]
-    outflow_ids::Vector{Vector{NodeID}} = [NodeID[]]
+    inflow_ids::Vector{Vector{NodeID}} = fill(NodeID[], length(node_id))
+    outflow_ids::Vector{Vector{NodeID}} = fill(NodeID[], length(node_id))
     # Vertical fluxes
     vertical_flux::VerticalFlux = VerticalFlux(length(node_id))
     # Initial_storage
@@ -431,19 +462,14 @@ of vectors or Arrow Tables, and is added to avoid type instabilities.
     cumulative_precipitation_saveat::Vector{Float64} = zeros(length(node_id))
     cumulative_drainage_saveat::Vector{Float64} = zeros(length(node_id))
     # Basin profile interpolations
-    storage_to_level::Vector{
-        LinearInterpolationIntInv{
-            Vector{Float64},
-            Vector{Float64},
-            ScalarInterpolation,
-            Float64,
-        },
-    }
-    level_to_area::Vector{ScalarInterpolation}
+    storage_to_level::Vector{StorageToLevelType} =
+        Vector{StorageToLevelType}(undef, length(node_id))
+    level_to_area::Vector{ScalarInterpolation} =
+        Vector{ScalarInterpolation}(undef, length(node_id))
     # Values for allocation if applicable
     demand::Vector{Float64} = zeros(length(node_id))
     allocated::Vector{Float64} = zeros(length(node_id))
-    forcing::BasinForcing = BasinForcing()
+    forcing::BasinForcing = BasinForcing(length(node_id))
     # Storage for each Basin at the previous time step
     storage_prev::Vector{Float64} = zeros(length(node_id))
     # Level for each Basin at the previous time step
@@ -473,13 +499,14 @@ control_mapping: dictionary from (node_id, control_state) to Q(h) and/or active 
 """
 @kwdef struct TabulatedRatingCurve <: AbstractParameterNode
     node_id::Vector{NodeID}
-    inflow_link::Vector{LinkMetadata}
-    outflow_link::Vector{LinkMetadata}
-    active::Vector{Bool}
+    inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
+    outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
+    active::Vector{Bool} = ones(Bool, length(node_id))
     max_downstream_level::Vector{Float64} = fill(Inf, length(node_id))
-    interpolations::Vector{ScalarInterpolation}
-    current_interpolation_index::Vector{IndexLookup}
-    control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate}
+    interpolations::Vector{ScalarInterpolation} = ScalarInterpolation[]
+    current_interpolation_index::Vector{IndexLookup} = IndexLookup[]
+    control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate} =
+        Dict{Tuple{NodeID, String}, ControlStateUpdate}()
 end
 
 """
@@ -495,12 +522,13 @@ control_mapping: dictionary from (node_id, control_state) to resistance and/or a
 """
 @kwdef struct LinearResistance <: AbstractParameterNode
     node_id::Vector{NodeID}
-    inflow_link::Vector{LinkMetadata}
-    outflow_link::Vector{LinkMetadata}
-    active::Vector{Bool}
-    resistance::Vector{Float64}
-    max_flow_rate::Vector{Float64}
-    control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate}
+    inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
+    outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
+    active::Vector{Bool} = ones(Bool, length(node_id))
+    resistance::Vector{Float64} = zeros(length(node_id))
+    max_flow_rate::Vector{Float64} = zeros(length(node_id))
+    control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate} =
+        Dict{Tuple{NodeID, String}, ControlStateUpdate}()
 end
 
 """
@@ -543,16 +571,17 @@ Requirements:
 """
 @kwdef struct ManningResistance <: AbstractParameterNode
     node_id::Vector{NodeID}
-    inflow_link::Vector{LinkMetadata}
-    outflow_link::Vector{LinkMetadata}
-    active::Vector{Bool}
-    length::Vector{Float64}
-    manning_n::Vector{Float64}
-    profile_width::Vector{Float64}
-    profile_slope::Vector{Float64}
-    upstream_bottom::Vector{Float64}
-    downstream_bottom::Vector{Float64}
-    control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate}
+    inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
+    outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
+    active::Vector{Bool} = ones(Bool, length(node_id))
+    length::Vector{Float64} = zeros(size(node_id))
+    manning_n::Vector{Float64} = zeros(size(node_id))
+    profile_width::Vector{Float64} = zeros(size(node_id))
+    profile_slope::Vector{Float64} = zeros(size(node_id))
+    upstream_bottom::Vector{Float64} = zeros(size(node_id))
+    downstream_bottom::Vector{Float64} = zeros(size(node_id))
+    control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate} =
+        Dict{Tuple{NodeID, String}, ControlStateUpdate}()
 end
 
 """
@@ -564,8 +593,8 @@ concentration_time: Data source for concentration updates
 """
 @kwdef struct LevelBoundary{C} <: AbstractParameterNode
     node_id::Vector{NodeID}
-    active::Vector{Bool}
-    level::Vector{ScalarInterpolation}
+    active::Vector{Bool} = ones(Bool, length(node_id))
+    level::Vector{ScalarInterpolation} = Vector{ScalarInterpolation}(undef, length(node_id))
     concentration::Matrix{Float64}
     concentration_time::StructVector{LevelBoundaryConcentrationV1, C, Int}
 end
@@ -582,11 +611,12 @@ concentration_time: Data source for concentration updates
 """
 @kwdef struct FlowBoundary{C} <: AbstractParameterNode
     node_id::Vector{NodeID}
-    outflow_link::Vector{LinkMetadata} = []
-    active::Vector{Bool}
+    outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
+    active::Vector{Bool} = ones(Bool, length(node_id))
     cumulative_flow::Vector{Float64} = zeros(length(node_id))
     cumulative_flow_saveat::Vector{Float64} = zeros(length(node_id))
-    flow_rate::Vector{ScalarInterpolation}
+    flow_rate::Vector{ScalarInterpolation} =
+        Vector{ScalarInterpolation}(undef, length(node_id))
     concentration::Matrix{Float64}
     concentration_time::StructVector{FlowBoundaryConcentrationV1, C, Int}
 end
@@ -608,15 +638,21 @@ control_type: one of None, ContinuousControl, PidControl, Allocation
 """
 @kwdef struct Pump <: AbstractParameterNode
     node_id::Vector{NodeID}
-    inflow_link::Vector{LinkMetadata} = []
-    outflow_link::Vector{LinkMetadata} = []
+    inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
+    outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     active::Vector{Bool} = fill(true, length(node_id))
-    flow_rate::Vector{ScalarInterpolation} = ScalarInterpolation[]
-    min_flow_rate::Vector{ScalarInterpolation} = ScalarInterpolation[]
-    max_flow_rate::Vector{ScalarInterpolation} = ScalarInterpolation[]
-    min_upstream_level::Vector{ScalarInterpolation} = ScalarInterpolation[]
-    max_downstream_level::Vector{ScalarInterpolation} = ScalarInterpolation[]
-    control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate}
+    flow_rate::Vector{ScalarInterpolation} =
+        Vector{ScalarInterpolation}(undef, length(node_id))
+    min_flow_rate::Vector{ScalarInterpolation} =
+        Vector{ScalarInterpolation}(undef, length(node_id))
+    max_flow_rate::Vector{ScalarInterpolation} =
+        Vector{ScalarInterpolation}(undef, length(node_id))
+    min_upstream_level::Vector{ScalarInterpolation} =
+        Vector{ScalarInterpolation}(undef, length(node_id))
+    max_downstream_level::Vector{ScalarInterpolation} =
+        Vector{ScalarInterpolation}(undef, length(node_id))
+    control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate} =
+        Dict{Tuple{NodeID, String}, ControlStateUpdate}()
     control_type::Vector{ControlType.T} = fill(ControlType.None, length(node_id))
 end
 
@@ -637,14 +673,19 @@ control_type: one of None, ContinuousControl, PidControl, Allocation
 """
 @kwdef struct Outlet <: AbstractParameterNode
     node_id::Vector{NodeID}
-    inflow_link::Vector{LinkMetadata} = []
-    outflow_link::Vector{LinkMetadata} = []
-    active::Vector{Bool} = fill(true, length(node_id))
-    flow_rate::Vector{ScalarInterpolation} = ScalarInterpolation[]
-    min_flow_rate::Vector{ScalarInterpolation} = ScalarInterpolation[]
-    max_flow_rate::Vector{ScalarInterpolation} = ScalarInterpolation[]
-    min_upstream_level::Vector{ScalarInterpolation} = ScalarInterpolation[]
-    max_downstream_level::Vector{ScalarInterpolation} = ScalarInterpolation[]
+    inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
+    outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
+    active::Vector{Bool} = ones(Bool, length(node_id))
+    flow_rate::Vector{ScalarInterpolation} =
+        Vector{ScalarInterpolation}(undef, length(node_id))
+    min_flow_rate::Vector{ScalarInterpolation} =
+        Vector{ScalarInterpolation}(undef, length(node_id))
+    max_flow_rate::Vector{ScalarInterpolation} =
+        Vector{ScalarInterpolation}(undef, length(node_id))
+    min_upstream_level::Vector{ScalarInterpolation} =
+        Vector{ScalarInterpolation}(undef, length(node_id))
+    max_downstream_level::Vector{ScalarInterpolation} =
+        Vector{ScalarInterpolation}(undef, length(node_id))
     control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate} = Dict()
     control_type::Vector{ControlType.T} = fill(ControlType.None, length(node_id))
 end
@@ -787,24 +828,30 @@ control_mapping: dictionary from (node_id, control_state) to target flow rate
 """
 @kwdef struct PidControl <: AbstractParameterNode
     node_id::Vector{NodeID}
-    active::Vector{Bool}
-    listen_node_id::Vector{NodeID}
-    target::Vector{ScalarInterpolation}
+    active::Vector{Bool} = ones(Bool, length(node_id))
+    listen_node_id::Vector{NodeID} = Vector{NodeID}(undef, length(node_id))
+    target::Vector{ScalarInterpolation} =
+        Vector{ScalarInterpolation}(undef, length(node_id))
     target_ref::Vector{DiffCacheRef} = Vector{DiffCacheRef}(undef, length(node_id))
-    proportional::Vector{ScalarInterpolation}
-    integral::Vector{ScalarInterpolation}
-    derivative::Vector{ScalarInterpolation}
-    control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate}
+    proportional::Vector{ScalarInterpolation} =
+        Vector{ScalarInterpolation}(undef, length(node_id))
+    integral::Vector{ScalarInterpolation} =
+        Vector{ScalarInterpolation}(undef, length(node_id))
+    derivative::Vector{ScalarInterpolation} =
+        Vector{ScalarInterpolation}(undef, length(node_id))
+    control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate} =
+        Dict{Tuple{NodeID, String}, ControlStateUpdate}()
 end
 
 """
 node_id: node ID of the UserDemand node
+demand_priorities: All demand priorities that exist in the model (not just by UserDemand) sorted
 inflow_link: incoming flow link
     The ID of the destination node is always the ID of the UserDemand node
 outflow_link: outgoing flow link metadata
     The ID of the source node is always the ID of the UserDemand node
 active: whether this node is active and thus demands water
-has_priority: boolean matrix stating per UserDemand node per demand priority index whether the (node_idx, demand_priority_idx)
+has_demand_priority: boolean matrix stating per UserDemand node per demand priority index whether the (node_idx, demand_priority_idx)
     node will ever have a demand of that priority
 demand: water flux demand of UserDemand per demand priority (node_idx, demand_priority_idx)
     Each UserDemand has a demand for all demand priorities,
@@ -821,17 +868,29 @@ concentration_time: Data source for concentration updates
 """
 @kwdef struct UserDemand{C} <: AbstractDemandNode
     node_id::Vector{NodeID}
-    inflow_link::Vector{LinkMetadata} = []
-    outflow_link::Vector{LinkMetadata} = []
-    active::Vector{Bool} = fill(true, length(node_id))
-    has_priority::Matrix{Bool}
-    demand::Matrix{Float64}
-    demand_reduced::Matrix{Float64}
-    demand_itp::Vector{Vector{ScalarInterpolation}}
-    demand_from_timeseries::Vector{Bool}
-    allocated::Matrix{Float64}
-    return_factor::Vector{ScalarInterpolation}
-    min_level::Vector{Float64}
+    demand_priorities::Vector{Int32} = Int32[]
+    inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
+    outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
+    active::Vector{Bool} = ones(Bool, length(node_id))
+    has_demand_priority::Matrix{Bool} =
+        zeros(Bool, length(node_id), length(demand_priorities))
+    demand::Matrix{Float64} = zeros(length(node_id), length(demand_priorities))
+    demand_reduced::Matrix{Float64} = zeros(length(node_id), length(demand_priorities))
+    demand_itp::Vector{Vector{ScalarInterpolation}} = [
+        fill(
+            LinearInterpolation(
+                [0.0, 0.0],
+                [0.0, 1.0];
+                extrapolation = ConstantExtrapolation,
+            ),
+            length(demand_priorities),
+        ) for _ in node_id
+    ]
+    demand_from_timeseries::Vector{Bool} = Vector{Bool}(undef, length(node_id))
+    allocated::Matrix{Float64} = fill(Inf, length(node_id), length(demand_priorities))
+    return_factor::Vector{ScalarInterpolation} =
+        Vector{ScalarInterpolation}(undef, length(node_id))
+    min_level::Vector{Float64} = zeros(length(node_id))
     concentration::Matrix{Float64}
     concentration_time::StructVector{UserDemandConcentrationV1, C, Int}
 end
@@ -844,9 +903,11 @@ demand_priority: If in a shortage state, the priority of the demand of the conne
 """
 @kwdef struct LevelDemand <: AbstractDemandNode
     node_id::Vector{NodeID}
-    min_level::Vector{ScalarInterpolation} = fill(-Inf, length(node_id))
-    max_level::Vector{ScalarInterpolation} = fill(Inf, length(node_id))
-    demand_priority::Vector{Int32}
+    min_level::Vector{ScalarInterpolation} =
+        Vector{ScalarInterpolation}(undef, length(node_id))
+    max_level::Vector{ScalarInterpolation} =
+        Vector{ScalarInterpolation}(undef, length(node_id))
+    demand_priority::Vector{Int32} = Vector{Int32}(undef, length(node_id))
 end
 
 """
@@ -857,37 +918,38 @@ demand_priority: The priority of the demand of the node
 """
 @kwdef struct FlowDemand <: AbstractDemandNode
     node_id::Vector{NodeID}
-    demand_itp::Vector{ScalarInterpolation}
-    demand::Vector{Float64}
-    demand_priority::Vector{Int32}
+    demand_itp::Vector{ScalarInterpolation} =
+        Vector{ScalarInterpolation}(undef, length(node_id))
+    demand::Vector{Float64} = zeros(length(node_id))
+    demand_priority::Vector{Int32} = zeros(length(node_id))
 end
 
 "Subgrid linearly interpolates basin levels."
 @kwdef struct Subgrid
     # current level of each subgrid (static and dynamic) ordered by subgrid_id
-    level::Vector{Float64}
+    level::Vector{Float64} = []
 
     # Static part
     # Static subgrid ids
-    subgrid_id_static::Vector{Int32}
-    # index into the basin.current_level vector for each static subgrid_id
-    basin_index_static::Vector{Int}
+    subgrid_id_static::Vector{Int32} = []
+    # index into the p.diff_cache.current_level vector for each static subgrid_id
+    basin_id_static::Vector{NodeID} = []
     # index into the subgrid.level vector for each static subgrid_id
-    level_index_static::Vector{Int}
+    level_index_static::Vector{Int} = []
     # per subgrid one relation
-    interpolations_static::Vector{ScalarInterpolation}
+    interpolations_static::Vector{ScalarInterpolation} = []
 
     # Dynamic part
     # Dynamic subgrid ids
-    subgrid_id_time::Vector{Int32}
-    # index into the basin.current_level vector for each dynamic subgrid_id
-    basin_index_time::Vector{Int}
+    subgrid_id_time::Vector{Int32} = []
+    # index into the p.diff_cache.current_level vector for each dynamic subgrid_id
+    basin_id_time::Vector{NodeID} = []
     # index into the subgrid.level vector for each dynamic subgrid_id
-    level_index_time::Vector{Int}
+    level_index_time::Vector{Int} = []
     # per subgrid n relations, n being the number of timesteps for that subgrid
-    interpolations_time::Vector{ScalarInterpolation}
+    interpolations_time::Vector{ScalarInterpolation} = []
     # per subgrid 1 lookup from t to an index in interpolations_time
-    current_interpolation_index::Vector{IndexLookup}
+    current_interpolation_index::Vector{IndexLookup} = []
 end
 
 """
@@ -915,26 +977,6 @@ const ModelGraph = MetaGraph{
     Returns{Float64},
     Float64,
 }
-
-"""
-Collection of ranges that cover all the components of the state vector `u`."
-
-It is used to create views of `u`, and an low-latency alternative to making `u` a ComponentArray.
-"""
-@kwdef struct StateRanges
-    tabulated_rating_curve::UnitRange{Int64} = 1:0
-    pump::UnitRange{Int64} = 1:0
-    outlet::UnitRange{Int64} = 1:0
-    user_demand_inflow::UnitRange{Int64} = 1:0
-    user_demand_outflow::UnitRange{Int64} = 1:0
-    linear_resistance::UnitRange{Int64} = 1:0
-    manning_resistance::UnitRange{Int64} = 1:0
-    evaporation::UnitRange{Int64} = 1:0
-    infiltration::UnitRange{Int64} = 1:0
-    integral::UnitRange{Int64} = 1:0
-end
-
-StateRanges(u_ids::NamedTuple) = StateRanges(ranges(map(length, collect(u_ids)))...)
 
 """
 The part of the parameters passed to the rhs and callbacks that are mutable.
@@ -983,8 +1025,6 @@ the object itself is not.
     u_prev_saveat::Vector{Float64} = Float64[]
     # Node ID associated with each state
     node_id::Vector{NodeID} = NodeID[]
-    # Range per states or cache component
-    state_ranges::StateRanges = StateRanges()
 end
 
 """
@@ -1015,7 +1055,7 @@ The collection of all parameters that are passed to the rhs (`water_balance!`) a
     p_mutable::ParametersMutable = ParametersMutable()
 end
 
-function get_value(ref::DiffCacheRef, p::Parameters, du::Vector)
+function get_value(ref::DiffCacheRef, p::Parameters, du::CVector)
     if ref.from_du
         du[ref.idx]
     else

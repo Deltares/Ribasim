@@ -32,10 +32,23 @@ def invalid_qh_model() -> Model:
         use_validation=False,
     )
 
-    model.tabulated_rating_curve.add(
+    bsn = model.basin.add(
         Node(1, Point(0, 0)),
+        [
+            basin.State(level=[1.0]),
+            basin.Profile(level=[0.0, 2.0], area=[100.0, 200.0]),
+        ],
+    )
+
+    trc = model.tabulated_rating_curve.add(
+        Node(2, Point(1, 0)),
         [tabulated_rating_curve.Static(level=[0, 0, 1], flow_rate=[1, 2, 1.5])],
     )
+
+    trm = model.terminal.add(Node(3, Point(3, 0)))
+
+    model.link.add(bsn, trc)
+    model.link.add(trc, trm)
 
     return model
 

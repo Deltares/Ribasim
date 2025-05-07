@@ -186,15 +186,10 @@ function update_concentrations!(u, t, integrator)::Nothing
     (; uprev, p, tprev, dt) = integrator
     (; p_non_diff, diff_cache) = p
     (; current_storage, current_level) = diff_cache
-    (; basin, flow_boundary, state_ranges) = p_non_diff
+    (; basin, flow_boundary) = p_non_diff
     (; vertical_flux, concentration_data) = basin
     (; evaporate_mass, cumulative_in, concentration_state, concentration, mass) =
         concentration_data
-
-    u_evaporation = view(u, state_ranges.evaporation)
-    u_infiltration = view(u, state_ranges.infiltration)
-    uprev_evaporation = view(uprev, state_ranges.evaporation)
-    uprev_infiltration = view(uprev, state_ranges.infiltration)
 
     # Reset cumulative flows, used to calculate the concentration
     # of the basins after processing inflows only
@@ -238,9 +233,9 @@ function update_concentrations!(u, t, integrator)::Nothing
 
     # Evaporate mass to keep the mass balance, if enabled in model config
     if evaporate_mass
-        mass .-= concentration_state .* (u_evaporation - uprev_evaporation)
+        mass .-= concentration_state .* (u.evaporation - uprev.evaporation)
     end
-    mass .-= concentration_state .* (u_infiltration - uprev_infiltration)
+    mass .-= concentration_state .* (u.infiltration - uprev.infiltration)
 
     # Take care of infinitely small masses, possibly becoming negative due to truncation.
     for I in eachindex(basin.concentration_data.mass)
@@ -277,13 +272,8 @@ function flow_update_on_link(
     link_src::Tuple{NodeID, NodeID},
 )::Float64
     (; u, uprev, p, t, tprev, dt) = integrator
-    (; basin, flow_boundary, state_ranges) = p.p_non_diff
+    (; basin, flow_boundary) = p.p_non_diff
     (; vertical_flux) = basin
-
-    u_evaporation = view(u, state_ranges.evaporation)
-    u_infiltration = view(u, state_ranges.infiltration)
-    uprev_evaporation = view(uprev, state_ranges.evaporation)
-    uprev_infiltration = view(uprev, state_ranges.infiltration)
 
     from_id, to_id = link_src
     if from_id == to_id
@@ -291,8 +281,8 @@ function flow_update_on_link(
         idx = from_id.idx
         fixed_area = basin_areas(basin, idx)[end]
         (fixed_area * vertical_flux.precipitation[idx] + vertical_flux.drainage[idx]) * dt -
-        (u_evaporation[idx] - uprev_evaporation[idx]) -
-        (u_infiltration[idx] - uprev_infiltration[idx])
+        (u.evaporation[idx] - uprev.evaporation[idx]) -
+        (u.infiltration[idx] - uprev.infiltration[idx])
     elseif from_id.type == NodeType.FlowBoundary
         if flow_boundary.active[from_id.idx]
             integral(flow_boundary.flow_rate[from_id.idx], tprev, t)
@@ -300,6 +290,7 @@ function flow_update_on_link(
             0.0
         end
     else
+        state_ranges = getaxes(u)
         flow_idx = get_state_index(state_ranges, link_src)
         u[flow_idx] - uprev[flow_idx]
     end
@@ -394,9 +385,9 @@ function check_water_balance_error!(
 )::Nothing
     (; u, p, t) = integrator
     (; p_non_diff, diff_cache) = p
-    (; basin, water_balance_abstol, water_balance_reltol, state_ranges, starttime) =
-        p_non_diff
+    (; basin, water_balance_abstol, water_balance_reltol, starttime) = p_non_diff
     errors = false
+    state_ranges = getaxes(u)
 
     # The initial storage is irrelevant for the storage rate and can only cause
     # floating point truncation errors
@@ -584,7 +575,7 @@ end
 Get a value for a condition. Currently supports getting levels from basins and flows
 from flow boundaries.
 """
-function get_value(subvariable::SubVariable, p::Parameters, du::AbstractVector, t::Float64)
+function get_value(subvariable::SubVariable, p::Parameters, du::CVector, t::Float64)
     (; flow_boundary, level_boundary, basin) = p.p_non_diff
     (; listen_node_id, look_ahead, variable, diff_cache_ref) = subvariable
 
@@ -662,22 +653,22 @@ function update_subgrid_level!(integrator)::Nothing
     subgrid = p_non_diff.subgrid
 
     # First update the all the subgrids with static h(h) relations
-    for (level_index, basin_index, hh_itp) in zip(
+    for (level_index, basin_id, hh_itp) in zip(
         subgrid.level_index_static,
-        subgrid.basin_index_static,
+        subgrid.basin_id_static,
         subgrid.interpolations_static,
     )
-        subgrid.level[level_index] = hh_itp(diff_cache.current_level[basin_index])
+        subgrid.level[level_index] = hh_itp(diff_cache.current_level[basin_id.idx])
     end
     # Then update the subgrids with dynamic h(h) relations
-    for (level_index, basin_index, lookup) in zip(
+    for (level_index, basin_id, lookup) in zip(
         subgrid.level_index_time,
-        subgrid.basin_index_time,
+        subgrid.basin_id_time,
         subgrid.current_interpolation_index,
     )
         itp_index = lookup(t)
         hh_itp = subgrid.interpolations_time[itp_index]
-        subgrid.level[level_index] = hh_itp(diff_cache.current_level[basin_index])
+        subgrid.level[level_index] = hh_itp(diff_cache.current_level[basin_id.idx])
     end
 end
 
