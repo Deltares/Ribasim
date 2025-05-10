@@ -358,7 +358,7 @@ def tabulated_rating_curve_model() -> Model:
     return model
 
 
-def outlet_model():
+def outlet_model() -> Model:
     """Set up a basic model with an outlet that encounters various physical constraints."""
     model = Model(
         starttime="2020-01-01",
