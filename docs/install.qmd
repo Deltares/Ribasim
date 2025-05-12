@@ -110,7 +110,14 @@ The Ribasim Python package is [registered in PyPI](https://pypi.org/project/riba
 ```sh
 pip install ribasim
 ```
-
+or create a pixi environment in your modelling project with:
+```sh
+pixi init
+```
+and install ribasim:
+```sh
+pixi add ribasim
+```
 For documentation please see the [examples](/guide/examples.ipynb) and [API reference](/reference/reference).
 
 # Install Ribasim QGIS plugin
