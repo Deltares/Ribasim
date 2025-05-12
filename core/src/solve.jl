@@ -392,6 +392,49 @@ function formulate_flow!(
     return nothing
 end
 
+function manning_resistance_flow(
+    manning_resistance::ManningResistance,
+    node_id::NodeID,
+    h_a::Number,
+    h_b::Number,
+)::Float64
+    (;
+        length,
+        manning_n,
+        profile_width,
+        profile_slope,
+        upstream_bottom,
+        downstream_bottom,
+    ) = manning_resistance
+
+    bottom_a = upstream_bottom[node_id.idx]
+    bottom_b = downstream_bottom[node_id.idx]
+    slope = profile_slope[node_id.idx]
+    width = profile_width[node_id.idx]
+    n = manning_n[node_id.idx]
+    L = length[node_id.idx]
+
+    # Average d, A, R
+    d_a = h_a - bottom_a
+    d_b = h_b - bottom_b
+    d = 0.5 * (d_a + d_b)
+
+    A_a = width * d + slope * d_a^2
+    A_b = width * d + slope * d_b^2
+    A = 0.5 * (A_a + A_b)
+
+    slope_unit_length = sqrt(slope^2 + 1.0)
+    P_a = width + 2.0 * d_a * slope_unit_length
+    P_b = width + 2.0 * d_b * slope_unit_length
+    R_h_a = A_a / P_a
+    R_h_b = A_b / P_b
+    R_h = 0.5 * (R_h_a + R_h_b)
+
+    Δh = h_a - h_b
+
+    return A / n * ∛(R_h^2) * relaxed_root(Δh / L, 1e-5)
+end
+
 """
 Conservation of energy for two basins, a and b:
 
@@ -438,16 +481,7 @@ function formulate_flow!(
     t::Number,
 )::Nothing
     (; p_mutable) = p
-    (;
-        node_id,
-        active,
-        length,
-        manning_n,
-        profile_width,
-        profile_slope,
-        upstream_bottom,
-        downstream_bottom,
-    ) = manning_resistance
+    (; node_id, active) = manning_resistance
 
     all_nodes_active = p_mutable.all_nodes_active[]
     for id in node_id
@@ -464,32 +498,7 @@ function formulate_flow!(
         h_a = get_level(p, inflow_id, t)
         h_b = get_level(p, outflow_id, t)
 
-        bottom_a = upstream_bottom[id.idx]
-        bottom_b = downstream_bottom[id.idx]
-        slope = profile_slope[id.idx]
-        width = profile_width[id.idx]
-        n = manning_n[id.idx]
-        L = length[id.idx]
-
-        # Average d, A, R
-        d_a = h_a - bottom_a
-        d_b = h_b - bottom_b
-        d = 0.5 * (d_a + d_b)
-
-        A_a = width * d + slope * d_a^2
-        A_b = width * d + slope * d_b^2
-        A = 0.5 * (A_a + A_b)
-
-        slope_unit_length = sqrt(slope^2 + 1.0)
-        P_a = width + 2.0 * d_a * slope_unit_length
-        P_b = width + 2.0 * d_b * slope_unit_length
-        R_h_a = A_a / P_a
-        R_h_b = A_b / P_b
-        R_h = 0.5 * (R_h_a + R_h_b)
-
-        Δh = h_a - h_b
-
-        q = A / n * ∛(R_h^2) * relaxed_root(Δh / L, 1e-5)
+        q = manning_resistance_flow(manning_resistance, id, h_a, h_b)
         q *= low_storage_factor_resistance_node(p, q, inflow_id, outflow_id)
         du.manning_resistance[id.idx] = q
     end

@@ -219,6 +219,7 @@ objective_types: Per objective its type (flow, level or none)
 cumulative_forcing_volume: The net volume of forcing exchanged with each Basin in the subnetwork in the last Δt_allocation
 cumulative_boundary_volume: The net volume of boundary flow into the model for each FlowBoundary in the subnetwork
     over the last Δt_allocation
+cumulative_realized_volume: The net volume of flow realized by a demand node over the last Δt_allocation
 sources: The nodes in the subnetwork which can act as sources, sorted by source priority
 main_network_connections: links (from_id, to_id) from the main network to this subnetwork
 """
@@ -230,6 +231,7 @@ main_network_connections: links (from_id, to_id) from the main network to this s
     objective_types::Vector{AllocationObjectiveType.T}
     cumulative_forcing_volume::Dict{NodeID, Float64}
     cumulative_boundary_volume::Dict{Tuple{NodeID, NodeID}, Float64}
+    cumulative_realized_volume::Dict{Tuple{NodeID, NodeID}, Float64}
     sources::Dict{Int32, NodeID} = OrderedDict()
     main_network_connections::Vector{Tuple{NodeID, NodeID}} = Tuple{NodeID, NodeID}[]
 end
@@ -277,7 +279,6 @@ record_flow: A record of all flows computed by allocation optimization, eventual
     subnetwork_ids::Vector{Int32} = Int32[]
     allocation_models::Vector{AllocationModel} = []
     demand_priorities_all::Vector{Int32} = []
-    mean_realized_flows::Dict{Tuple{NodeID, NodeID}, Float64} = Dict()
     record_demand::DemandRecord = DemandRecord()
     record_flow::FlowRecord = FlowRecord()
 end
@@ -856,8 +857,6 @@ has_demand_priority: boolean matrix stating per UserDemand node per demand prior
 demand: water flux demand of UserDemand per demand priority (node_idx, demand_priority_idx)
     Each UserDemand has a demand for all demand priorities,
     which is 0.0 if it is not provided explicitly.
-demand_reduced: the total demand reduced by allocated flows. This is used for goal programming,
-    and requires separate memory from `demand` since demands can come from the BMI
 demand_itp: Timeseries interpolation objects for demands
 demand_from_timeseries: If false the demand comes from the BMI or is fixed
 allocated: water flux currently allocated to UserDemand per demand priority (node_idx, demand_priority_idx)
@@ -875,7 +874,6 @@ concentration_time: Data source for concentration updates
     has_demand_priority::Matrix{Bool} =
         zeros(Bool, length(node_id), length(demand_priorities))
     demand::Matrix{Float64} = zeros(length(node_id), length(demand_priorities))
-    demand_reduced::Matrix{Float64} = zeros(length(node_id), length(demand_priorities))
     demand_itp::Vector{Vector{ScalarInterpolation}} = [
         fill(
             LinearInterpolation(
@@ -900,6 +898,9 @@ node_id: node ID of the LevelDemand node
 min_level: The minimum target level of the connected basin(s)
 max_level: The maximum target level of the connected basin(s)
 demand_priority: If in a shortage state, the priority of the demand of the connected basin(s)
+storage_min_level: The storage associated with the minimum level for the latest allocation optimization
+storage_demand: The storage demand (the storage required to get the basin up to the minimum level)
+storage_prev: The storage in the Basin with the level demand the previous time the allocation algorithm was run
 """
 @kwdef struct LevelDemand <: AbstractDemandNode
     node_id::Vector{NodeID}
@@ -908,6 +909,9 @@ demand_priority: If in a shortage state, the priority of the demand of the conne
     max_level::Vector{ScalarInterpolation} =
         Vector{ScalarInterpolation}(undef, length(node_id))
     demand_priority::Vector{Int32} = Vector{Int32}(undef, length(node_id))
+    storage_min_level::Vector{Float64} = zeros(length(node_id))
+    storage_demand::Vector{Float64} = zeros(length(node_id))
+    storage_prev::Vector{Float64} = zeros(length(node_id))
 end
 
 """

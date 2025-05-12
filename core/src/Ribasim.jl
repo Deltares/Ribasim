@@ -24,6 +24,8 @@ using DifferentiationInterface:
     prepare_derivative,
     derivative!
 
+using ForwardDiff: derivative as forward_diff
+
 # Algorithms for solving ODEs.
 using OrdinaryDiffEqCore: OrdinaryDiffEqCore, get_du, AbstractNLSolver
 using DiffEqBase: DiffEqBase, calculate_residuals!

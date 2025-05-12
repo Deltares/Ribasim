@@ -240,6 +240,7 @@ end
 
 function add_user_demand!(
     problem::JuMP.Model,
+    cumulative_realized_volume::Dict{Tuple{NodeID, NodeID}, Float64},
     p_non_diff::ParametersNonDiff,
     subnetwork_id::Int32,
 )::Nothing
@@ -249,16 +250,12 @@ function add_user_demand!(
     user_demand_ids_subnetwork =
         get_subnetwork_ids(graph, NodeType.UserDemand, subnetwork_id)
     flow = problem[:flow]
+    target_demand_fraction = problem[:target_demand_fraction]
 
     # Define parameters: flow allocated to user demand nodes (m^3/s, values to be filled in before optimizing)
     user_demand_allocated =
         problem[:user_demand_allocated] =
             JuMP.@variable(problem, user_demand_allocated[user_demand_ids_subnetwork] == 0)
-
-    # Define parameters: target demand fraction (unitless, value to be set before optimizing)
-    target_demand_fraction =
-        problem[:target_demand_fraction] =
-            JuMP.@variable(problem, target_demand_fraction[user_demand_ids_subnetwork] == 0)
 
     # Define decision variables: lower and upper user demand error (unitless)
     relative_user_demand_error_lower =
@@ -273,21 +270,19 @@ function add_user_demand!(
         )
 
     # Define constraints: error terms
-    d = 2.0 # example demand
+    d = 2.0 # example demand (m^3/s, values to be filled in before optimizing)
     problem[:user_demand_constraint_lower] = JuMP.@constraint(
         problem,
         [node_id = user_demand_ids_subnetwork],
-        d * relative_user_demand_error_lower[node_id] ≥
-        target_demand_fraction[node_id] -
-        (flow[inflow_link[node_id.idx].link] - user_demand_allocated[node_id]),
+        d * (relative_user_demand_error_lower[node_id] - target_demand_fraction) ≥
+        -(flow[inflow_link[node_id.idx].link] - user_demand_allocated[node_id]),
         base_name = "user_demand_constraint_lower"
     )
     problem[:user_demand_constraint_upper] = JuMP.@constraint(
         problem,
         [node_id = user_demand_ids_subnetwork],
-        d * relative_user_demand_error_upper[node_id] ≥
-        flow[inflow_link[node_id.idx].link] - user_demand_allocated[node_id] -
-        target_demand_fraction[node_id],
+        d * (relative_user_demand_error_upper[node_id] + target_demand_fraction) ≥
+        flow[inflow_link[node_id.idx].link] - user_demand_allocated[node_id],
         base_name = "user_demand_constraint_upper"
     )
 
@@ -309,11 +304,17 @@ function add_user_demand!(
         base_name = "user_demand_inflow_goal"
     )
 
+    # Add the links for which the realized volume is required for output
+    for node_id in user_demand_ids_subnetwork
+        cumulative_realized_volume[inflow_link[node_id.idx].link] = 0.0
+    end
+
     return nothing
 end
 
 function add_flow_demand!(
     problem::JuMP.Model,
+    cumulative_realized_volume::Dict{Tuple{NodeID, NodeID}, Float64},
     p_non_diff::ParametersNonDiff,
     subnetwork_id::Int32,
 )::Nothing
@@ -322,12 +323,23 @@ function add_flow_demand!(
         node_id -> has_external_flow_demand(graph, node_id, :flow_demand)[1],
         graph[].node_ids[subnetwork_id],
     )
+    target_demand_fraction = problem[:target_demand_fraction]
 
     # Define decision variables: lower flow demand error (unitless)
     problem[:relative_flow_demand_error] = JuMP.@variable(
         problem,
         relative_flow_demand_error[ids_with_flow_demand_subnetwork] >= 0,
         base_name = "relative_flow_demand_error"
+    )
+
+    # Define constraints: error terms
+    d = 2.0 # example demand (m^3/s, values to be filled in before optimizing)
+    problem[:flow_demand_constraint] = JuMP.@constraint(
+        problem,
+        [node_id = ids_with_flow_demand_subnetwork],
+        d * (relative_flow_demand_error[node_id] - target_demand_fraction) ≥
+        -(flow[inflow_link[node_id.idx].link] - flow_demand_allocated[node_id]),
+        base_name = "flow_demand_constraint"
     )
 
     # Define parameters: allocated flow (m^3/s values to be filled in later)
@@ -346,6 +358,11 @@ function add_flow_demand!(
         base_name = "flow_demand_goal"
     )
 
+    # Add the links for which the realized volume is required for output
+    for node_id in ids_with_flow_demand_subnetwork
+        cumulative_realized_volume[inflow_link(graph, node_id).link] = 0.0
+    end
+
     return nothing
 end
 
@@ -361,7 +378,7 @@ function add_level_demand!(
         graph[].node_ids[subnetwork_id],
     )
 
-    # Define parameters: storage allocated to basins with a level demand (values to be filled in before optimizing)
+    # Define parameters: storage allocated to basins with a level demand (m^3, values to be filled in before optimizing)
     basin_allocated =
         problem[:basin_allocated] =
             JuMP.@variable(problem, basin_allocated[ids_with_level_demand_subnetwork] == 0)
@@ -516,30 +533,27 @@ function add_manning_resistance!(
     subnetwork_id::Int32,
 )::Nothing
     (; graph, manning_resistance) = p_non_diff
-    (;
-        inflow_link,
-        outflow_link,
-        manning_n,
-        profile_width,
-        profile_slope,
-        upstream_bottom,
-        downstream_bottom,
-    ) = manning_resistance
+    (; inflow_link, outflow_link) = manning_resistance
 
     manning_resistance_ids_subnetwork =
         get_subnetwork_ids(graph, NodeType.ManningResistance, subnetwork_id)
 
-    # Add constraints: flow(levels) relationship
+    # Add constraints: linearisation of the flow(levels) relationship in the current levels in the physical layer
     flow = problem[:flow]
-    problem[:manning_resistance] = JuMP.@constraint(
+    q0 = 1.0 # example value (m^3/s, to be filled in before optimizing)
+    ∂q_∂level_upstream = 1.0 # example value (m^3/(sm), to be filled in before optimizing)
+    ∂q_∂level_downstream = -1.0 # example value (m^3/(sm), to be filled in before optimizing)
+    problem[:manning_resistance_constraint] = JuMP.@constraint(
         problem,
         [node_id = manning_resistance_ids_subnetwork],
         flow[inflow_link[node_id.idx].link] == begin
             level_upstream = get_level(problem, inflow_link[node_id.idx].link[1])
             level_downstream = get_level(problem, outflow_link[node_id.idx].link[2])
-            Δlevel = level_upstream - level_downstream
-            # TODO: Implement Manning resistance relationship
-        end
+            q0 +
+            ∂q_∂level_upstream * level_upstream +
+            ∂q_∂level_downstream * level_downstream
+        end,
+        base_name = "manning_resistance_constraint"
     )
     return nothing
 end
@@ -635,6 +649,7 @@ function AllocationModel(
         "dual_feasibility_tolerance" => 1e-5,
     )
     problem = JuMP.direct_model(optimizer)
+    cumulative_realized_volume = Dict{Tuple{NodeID, NodeID}, Float64}()
 
     cumulative_forcing_volume = add_basin!(problem, p_non_diff, subnetwork_id)
     add_flow!(problem, p_non_diff, subnetwork_id)
@@ -650,8 +665,10 @@ function AllocationModel(
     # add_pump!()
     # add_outlet!()
 
-    add_user_demand!(problem, p_non_diff, subnetwork_id)
-    add_flow_demand!(problem, p_non_diff, subnetwork_id)
+    # Demand nodes
+    problem[:target_demand_fraction] = JuMP.@variable(problem, target_fraction == 1.0) # TODO: Use for all demand nodes
+    add_user_demand!(problem, cumulative_realized_volume, p_non_diff, subnetwork_id)
+    add_flow_demand!(problem, cumulative_realized_volume, p_non_diff, subnetwork_id)
     add_level_demand!(problem, p_non_diff, subnetwork_id)
 
     objectives, objective_types = get_objectives(problem, p_non_diff, subnetwork_id)
@@ -664,5 +681,6 @@ function AllocationModel(
         objective_types,
         cumulative_forcing_volume,
         cumulative_boundary_volume,
+        cumulative_realized_volume,
     )
 end

@@ -7,7 +7,7 @@ const conservative_nodetypes = Set{NodeType.T}([
 ])
 
 function initialize_allocation!(p_non_diff::ParametersNonDiff, config::Config)::Nothing
-    (; graph, allocation) = p_non_diff
+    (; graph, allocation, level_demand, basin) = p_non_diff
     (; subnetwork_ids, allocation_models) = allocation
     subnetwork_ids_ = sort(collect(keys(graph[].node_ids)))
 
