@@ -446,8 +446,10 @@ end
 function reset_cumulative_flows!(integrator)
     (; u, p) = integrator
     (; p_non_diff, diff_cache) = p
-    (; basin, flow_boundary, state_ranges) = p_non_diff
+    (; basin, flow_boundary) = p_non_diff
     (; storage0) = basin
+
+    state_ranges = getaxes(u)
 
     storage0 .= p.diff_cache.current_storage
 

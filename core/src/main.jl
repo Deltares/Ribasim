@@ -50,8 +50,8 @@ function main(toml_path::AbstractString)::Cint
                         # Catch errors thrown during simulation.
                         @warn "Simulation crashed or interrupted."
                         log_bottlenecks(model; converged = false)
-                        write_results(model)
                         display_error(io)
+                        write_results(model)
                         return 1
                     end
 
