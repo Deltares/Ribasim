@@ -10,7 +10,8 @@ bucketName = "ribasim"
 parser = argparse.ArgumentParser(
     description="Download a folder (recursively) from the MinIO server"
 )
-parser.add_argument("folder", help="The path to download in the MinIO server")
+parser.add_argument("remote", help="The path to download in the MinIO server")
+parser.add_argument("local", help="The path to download in the MinIO server")
 parser.add_argument(
     "--accesskey",
     help="The access key to access the MinIO server",
@@ -25,10 +26,14 @@ args = parser.parse_args()
 
 
 client = Minio(minioServer, access_key=args.accesskey, secret_key=args.secretkey)
-objects = client.list_objects(bucketName, prefix=args.folder, recursive=True)
+objects = client.list_objects(bucketName, prefix=args.remote, recursive=True)
 
 for obj in objects:
     try:
-        client.fget_object(bucketName, obj.object_name, "models/" + obj.object_name)
+        client.fget_object(
+            bucketName,
+            obj.object_name,
+            f"models/{args.local}" + obj.object_name.removeprefix(args.remote),
+        )
     except S3Error as e:
         print(f"Error occurred: {e}")
