@@ -112,7 +112,7 @@ pip install ribasim
 ```
 or create a pixi environment in your modelling project with:
 ```sh
-pixi init && pixi add ribasim
+pixi init
 ```
 and install ribasim:
 ```sh
