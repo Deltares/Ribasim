@@ -25,7 +25,7 @@ timestep = 86400                                 # optional (required if use_all
 use_allocation = false                           # optional, default false
 [allocation.source_priority]
 user_demand = 1000       # optional, default 1000
-boundary = 2000          # optional, default 2000
+flow_boundary = 2000     # optional, default 2000
 level_demand = 3000      # optional, default 3000
 flow_demand = 4000       # optional, default 4000
 subnetwork_inlet = 5000  # optional, default 5000

@@ -271,8 +271,8 @@ function Model(config::Config)::Model
     )
     @debug "Setup integrator."
 
-    if config.allocation.use_allocation && is_active(p_non_diff.allocation)
-        set_initial_allocation_mean_flows!(integrator)
+    if is_active(p_non_diff.allocation)
+        set_initial_allocation_cumulative_volume!(integrator)
     end
 
     model = Model(integrator, config, saved)
