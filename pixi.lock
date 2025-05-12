@@ -392,7 +392,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/nss-3.110-h159eef7_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/numba-0.61.2-py312h2e6246c_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/numba_celltree-0.4.1-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/numpy-2.2.5-py312h72c5963_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/numpy-2.1.3-py312h58c1407_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/ocl-icd-2.3.3-hb9d3cd8_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/opencl-headers-2024.10.24-h5888daf_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/openjpeg-2.5.3-h5fbd93e_0.conda
@@ -950,7 +950,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/nss-3.110-ha3c76ea_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/numba-0.61.2-py312hdf12f13_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/numba_celltree-0.4.1-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/numpy-2.2.5-py312h7c1f314_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/numpy-2.1.3-py312h94ee1e1_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/opencl-headers-2024.10.24-h286801f_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/openjpeg-2.5.3-h8a3d83b_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/openldap-2.6.9-hbe55e7a_0.conda
@@ -1452,7 +1452,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/notebook-shim-0.2.4-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/numba-0.61.2-py312hcccf92d_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/numba_celltree-0.4.1-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/numpy-2.2.5-py312h3150e54_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/numpy-2.1.3-py312h49bc9c5_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/opencl-headers-2024.10.24-he0c23c2_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/openjpeg-2.5.3-h4d64b90_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/openssl-3.5.0-ha4e3fda_1.conda
@@ -2031,7 +2031,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/nss-3.110-h159eef7_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/numba-0.61.2-py311h4e1c48f_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/numba_celltree-0.4.1-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/numpy-2.2.5-py311h5d046bc_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/numpy-2.1.3-py311h71ddf71_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/ocl-icd-2.3.3-hb9d3cd8_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/opencl-headers-2024.10.24-h5888daf_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/openjpeg-2.5.3-h5fbd93e_0.conda
@@ -2589,7 +2589,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/nss-3.110-ha3c76ea_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/numba-0.61.2-py311h74daea0_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/numba_celltree-0.4.1-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/numpy-2.2.5-py311h762c074_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/numpy-2.1.3-py311h649a571_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/opencl-headers-2024.10.24-h286801f_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/openjpeg-2.5.3-h8a3d83b_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/openldap-2.6.9-hbe55e7a_0.conda
@@ -3091,7 +3091,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/notebook-shim-0.2.4-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/numba-0.61.2-py311h0673bce_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/numba_celltree-0.4.1-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/numpy-2.2.5-py311h5e411d1_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/numpy-2.1.3-py311h35ffc71_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/opencl-headers-2024.10.24-he0c23c2_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/openjpeg-2.5.3-h4d64b90_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/openssl-3.5.0-ha4e3fda_1.conda
@@ -16006,9 +16006,9 @@ packages:
   - pkg:pypi/numba-celltree?source=compressed-mapping
   size: 38838
   timestamp: 1744789198029
-- conda: https://conda.anaconda.org/conda-forge/linux-64/numpy-2.2.5-py311h5d046bc_0.conda
-  sha256: 66988aa1a624f7fab4f8c5ccb1b848ee52d9d36dd8eb8b3d0149657316ee53f9
-  md5: df82417acd53257028de5425047ebc22
+- conda: https://conda.anaconda.org/conda-forge/linux-64/numpy-2.1.3-py311h71ddf71_0.conda
+  sha256: d2fdae6b0e80c23248f0f6bf7b5e3b6e0f56f69f420e9f5da5a6aae2c95b1493
+  md5: 1b3c543b0cc96310bcf0b825d5a68cb1
   depends:
   - __glibc >=2.17,<3.0.a0
   - libblas >=3.9.0,<4.0a0
@@ -16020,15 +16020,17 @@ packages:
   - python_abi 3.11.* *_cp311
   constrains:
   - numpy-base <0a0
+  arch: x86_64
+  platform: linux
   license: BSD-3-Clause
   license_family: BSD
   purls:
   - pkg:pypi/numpy?source=hash-mapping
-  size: 9054544
-  timestamp: 1745119332553
-- conda: https://conda.anaconda.org/conda-forge/linux-64/numpy-2.2.5-py312h72c5963_0.conda
-  sha256: af293ba6f715983f71543ed0111e6bb77423d409c1d13062474601257c2eebca
-  md5: 505bcfc142b97010c162863c38d90016
+  size: 8978113
+  timestamp: 1730588531967
+- conda: https://conda.anaconda.org/conda-forge/linux-64/numpy-2.1.3-py312h58c1407_0.conda
+  sha256: e4c14f71588a5627a6935d3e7d9ca78a8387229ec8ebc91616b0988ce57ba0dc
+  md5: dfdbc12e6d81889ba4c494a23f23eba8
   depends:
   - __glibc >=2.17,<3.0.a0
   - libblas >=3.9.0,<4.0a0
@@ -16040,15 +16042,17 @@ packages:
   - python_abi 3.12.* *_cp312
   constrains:
   - numpy-base <0a0
+  arch: x86_64
+  platform: linux
   license: BSD-3-Clause
   license_family: BSD
   purls:
   - pkg:pypi/numpy?source=hash-mapping
-  size: 8543883
-  timestamp: 1745119461819
-- conda: https://conda.anaconda.org/conda-forge/osx-arm64/numpy-2.2.5-py311h762c074_0.conda
-  sha256: 9e5c2e6b603bd4e165760bc354e33bd7b3551096bf0e93499637fc7229081cd3
-  md5: fae31abeb9224e4a29b5e09bd3a9246d
+  size: 8388631
+  timestamp: 1730588649810
+- conda: https://conda.anaconda.org/conda-forge/osx-arm64/numpy-2.1.3-py311h649a571_0.conda
+  sha256: 5a95da4a8de64fb44b0045c92f579d3529b2cccbd5a38ec7901e03ee10f707d5
+  md5: 3205b87adf34406ae1a83e8bf46cd987
   depends:
   - __osx >=11.0
   - libblas >=3.9.0,<4.0a0
@@ -16060,15 +16064,17 @@ packages:
   - python_abi 3.11.* *_cp311
   constrains:
   - numpy-base <0a0
+  arch: arm64
+  platform: osx
   license: BSD-3-Clause
   license_family: BSD
   purls:
   - pkg:pypi/numpy?source=hash-mapping
-  size: 7152823
-  timestamp: 1745119359025
-- conda: https://conda.anaconda.org/conda-forge/osx-arm64/numpy-2.2.5-py312h7c1f314_0.conda
-  sha256: 982aed7df71ae0ca8bc396ae25d43fd9a4f2b15d18faca15d6c27e9efb3955be
-  md5: 24a41dacf9d624b069d54a6e92594540
+  size: 7041966
+  timestamp: 1730588523973
+- conda: https://conda.anaconda.org/conda-forge/osx-arm64/numpy-2.1.3-py312h94ee1e1_0.conda
+  sha256: cd287b6c270ee8af77d200c46d56fdfe1e2a9deeff68044439718b8d073214dd
+  md5: a2af54c86582e08718805c69af737897
   depends:
   - __osx >=11.0
   - libblas >=3.9.0,<4.0a0
@@ -16080,15 +16086,17 @@ packages:
   - python_abi 3.12.* *_cp312
   constrains:
   - numpy-base <0a0
+  arch: arm64
+  platform: osx
   license: BSD-3-Clause
   license_family: BSD
   purls:
   - pkg:pypi/numpy?source=hash-mapping
-  size: 6498553
-  timestamp: 1745119367238
-- conda: https://conda.anaconda.org/conda-forge/win-64/numpy-2.2.5-py311h5e411d1_0.conda
-  sha256: 4e2efa4ebd9de0b17d6ed4286af26bfebdf093d78b5c71c67b00614a5d7cd239
-  md5: 5344f61c044719da0e95abb7d0a23c7b
+  size: 6398123
+  timestamp: 1730588490904
+- conda: https://conda.anaconda.org/conda-forge/win-64/numpy-2.1.3-py311h35ffc71_0.conda
+  sha256: 09b0b580e5c4e2eb5dd1b5c44487a274a444d7cc44caced61324a65a8cfa2741
+  md5: aa627d29d5d1ed4192e70cd5a6cb1f4f
   depends:
   - libblas >=3.9.0,<4.0a0
   - libcblas >=3.9.0,<4.0a0
@@ -16100,15 +16108,17 @@ packages:
   - vc14_runtime >=14.29.30139
   constrains:
   - numpy-base <0a0
+  arch: x86_64
+  platform: win
   license: BSD-3-Clause
   license_family: BSD
   purls:
   - pkg:pypi/numpy?source=hash-mapping
-  size: 7723082
-  timestamp: 1745119890450
-- conda: https://conda.anaconda.org/conda-forge/win-64/numpy-2.2.5-py312h3150e54_0.conda
-  sha256: c497607b3e7e0946b8a2566b6587152c7cb376625559addbf606494f5bbe41dd
-  md5: 00c3b00c9091b7f76faba85795350c7e
+  size: 7659216
+  timestamp: 1730588918527
+- conda: https://conda.anaconda.org/conda-forge/win-64/numpy-2.1.3-py312h49bc9c5_0.conda
+  sha256: f7e6648e2e55de450c8022008eb86158c55786f360aacc91fe3a5a53ba52d5d8
+  md5: 4d03cad3ea6c6cc575f1fd811691432f
   depends:
   - libblas >=3.9.0,<4.0a0
   - libcblas >=3.9.0,<4.0a0
@@ -16120,12 +16130,14 @@ packages:
   - vc14_runtime >=14.29.30139
   constrains:
   - numpy-base <0a0
+  arch: x86_64
+  platform: win
   license: BSD-3-Clause
   license_family: BSD
   purls:
   - pkg:pypi/numpy?source=hash-mapping
-  size: 7132354
-  timestamp: 1745119803660
+  size: 6965471
+  timestamp: 1730589010831
 - conda: https://conda.anaconda.org/conda-forge/linux-64/ocl-icd-2.3.3-hb9d3cd8_0.conda
   sha256: 2254dae821b286fb57c61895f2b40e3571a070910fdab79a948ff703e1ea807b
   md5: 56f8947aa9d5cf37b0b3d43b83f34192
@@ -20747,7 +20759,7 @@ packages:
   timestamp: 1598024297745
 - pypi: python/ribasim
   name: ribasim
-  version: 2025.3.0
+  version: 2025.2.0
   sha256: 555f77a50822a4f25c4984be1cecbc85c09baf71aaec8dc79744f5d652e5f293
   requires_dist:
   - datacompy>=0.16
@@ -20783,7 +20795,7 @@ packages:
   editable: true
 - pypi: python/ribasim_api
   name: ribasim-api
-  version: 2025.3.0
+  version: 2025.1.0
   sha256: 73658444714bf6027302b5bf1ec3da2cad1a265d8d1e3c0f4dcb9a17c02b704c
   requires_dist:
   - xmipy>=1.3
