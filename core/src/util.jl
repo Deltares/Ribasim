@@ -531,7 +531,7 @@ Get the reference to a parameter
 function get_diff_cache_ref(
     node_id::NodeID,
     variable::String,
-    state_ranges::StateRanges;
+    state_ranges::StateTuple{UnitRange{Int}};
     listen::Bool = true,
 )::Tuple{DiffCacheRef, Bool}
     errors = false
@@ -571,8 +571,11 @@ end
 """
 Set references to all variables that are listened to by discrete/continuous control
 """
-function set_listen_diff_cache_refs!(p_non_diff::ParametersNonDiff)::Nothing
-    (; discrete_control, continuous_control, state_ranges) = p_non_diff
+function set_listen_diff_cache_refs!(
+    p_non_diff::ParametersNonDiff,
+    state_ranges::StateTuple{UnitRange{Int}},
+)::Nothing
+    (; discrete_control, continuous_control) = p_non_diff
     compound_variable_sets =
         [discrete_control.compound_variables..., continuous_control.compound_variable]
     errors = false
@@ -649,7 +652,7 @@ function set_target_ref!(
     target_ref::Vector{DiffCacheRef},
     node_id::Vector{NodeID},
     controlled_variable::Vector{String},
-    state_ranges::StateRanges,
+    state_ranges::StateTuple{UnitRange{Int}},
     graph::MetaGraph,
 )::Nothing
     errors = false
@@ -663,65 +666,6 @@ function set_target_ref!(
 
     if errors
         error("Errors encountered when setting continuously controlled variable refs.")
-    end
-    return nothing
-end
-
-"""
-Add a control state to a logic mapping. The references to the targets in memory
-for the parameter values are added later when these references are known
-"""
-function add_control_state!(
-    control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate},
-    time_interpolatables::Vector{Symbol},
-    parameter_names::NTuple{N, Symbol} where {N},
-    parameter_values::Vector,
-    node_type::String,
-    control_state::Union{Missing, String},
-    node_id::NodeID,
-)::Nothing
-    ismissing(control_state) && return nothing
-
-    # Control state is only added if a control state update can be defined
-    add_control_state = false
-
-    # Create 'active' parameter update if it exists, otherwise this gets
-    # ignored
-    active_idx = findfirst(==(:active), parameter_names)
-    active = if isnothing(active_idx)
-        ParameterUpdate(:active, true)
-    else
-        add_control_state = true
-        ParameterUpdate(:active, parameter_values[active_idx])
-    end
-
-    itp_update = ParameterUpdate{ScalarInterpolation}[]
-    scalar_update = ParameterUpdate{Float64}[]
-    for (parameter_name, parameter_value) in zip(parameter_names, parameter_values)
-        if parameter_name in controllablefields(Symbol(node_type)) &&
-           parameter_name !== :active
-            add_control_state = true
-            parameter_update = ParameterUpdate(parameter_name, parameter_value)
-
-            # Differentiate between scalar parameters and interpolation parameters
-            if parameter_name in time_interpolatables
-                push!(itp_update, parameter_update)
-            else
-                push!(scalar_update, parameter_update)
-            end
-        end
-    end
-    # This is a not so great way to get a concrete type,
-    # which is used as a ControlStateUpdate type parameter.
-    itp_update_linear = if isempty(itp_update)
-        ParameterUpdate{ScalarInterpolation}[]
-    else
-        [x for x in itp_update]
-    end
-    control_state_update = ControlStateUpdate(; active, scalar_update, itp_update_linear)
-
-    if add_control_state
-        control_mapping[(node_id, control_state)] = control_state_update
     end
     return nothing
 end
@@ -780,7 +724,7 @@ end
 Compute the residual of the non-linear solver, i.e. a measure of the
 error in the solution to the implicit equation defined by the solver algorithm
 """
-function residual(z, integrator, nlsolver, f::TF) where {TF}
+function residual(z::CVector, integrator, nlsolver, f::TF) where {TF}
     (; uprev, t, p, dt, opts, isdae) = integrator
     (; tmp, ztmp, γ, α, cache, method) = nlsolver
     (; ustep, atmp, tstep, k, invγdt, tstep, k, invγdt) = cache
@@ -813,26 +757,44 @@ function OrdinaryDiffEqNonlinearSolve.relax!(
     linesearch::MonitoredBackTracking,
 )
     (; linesearch, dz_tmp, z_tmp) = linesearch
+    atmp = nlsolver.cache.atmp
 
-    # Store step before relaxation
-    @. dz_tmp = dz
+    let dz = dz,
+        integrator = integrator,
+        nlsolver = nlsolver,
+        f = f,
+        linesearch = linesearch
 
-    # Apply relaxation and measure the residual change
-    @. z_tmp = nlsolver.z + dz
-    resid_before = residual(z_tmp, integrator, nlsolver, f)
-    relax!(dz, nlsolver, integrator, f, linesearch)
-    @. z_tmp = nlsolver.z + dz
-    resid_after = residual(z_tmp, integrator, nlsolver, f)
+        function ϕ(α)
+            @. atmp = nlsolver.z - dz * α
+            residual(atmp, integrator, nlsolver, f)
+        end
 
-    # If the residual increased due to the relaxation, reject it
-    if resid_after > resid_before
-        @. dz = dz_tmp
+        # Store step before relaxation
+        @. dz_tmp = dz
+
+        # Apply relaxation and measure the residual change
+        @. z_tmp = nlsolver.z + dz
+        resid_before = residual(z_tmp, integrator, nlsolver, f)
+        α0 = 1.0
+        ϕ0 = ϕ(0.0)
+        ϵ = sqrt(eps())
+        dϕ0 = (ϕ(ϵ) - ϕ0) / ϵ
+
+        # This linesearch method is specific to BackTracking
+        α, resid_after = linesearch(ϕ, α0, ϕ0, dϕ0)
+        @. z_tmp = nlsolver.z + α * dz
+
+        # If the residual increased due to the relaxation, reject it
+        if resid_after > resid_before
+            @. dz = dz_tmp
+        end
+        return dz
     end
-    return dz
 end
 
 "Create a NamedTuple of the node IDs per state component in the state order"
-function state_node_ids(p::Union{ParametersNonDiff, NamedTuple})::NamedTuple
+function state_node_ids(p::Union{ParametersNonDiff, NamedTuple})::StateTuple{Vector{NodeID}}
     (;
         tabulated_rating_curve = p.tabulated_rating_curve.node_id,
         pump = p.pump.node_id,
@@ -847,21 +809,27 @@ function state_node_ids(p::Union{ParametersNonDiff, NamedTuple})::NamedTuple
     )
 end
 
+"Create the axis of the state vector"
+function count_state_ranges(u_ids::StateTuple{Vector{NodeID}})::StateTuple{UnitRange{Int}}
+    StateTuple{UnitRange{Int}}(ranges(map(length, collect(u_ids))))
+end
+
 function build_state_vector(p_non_diff::ParametersNonDiff)
     # It is assumed that the horizontal flow states come first in
     # p_non_diff.state_inflow_link and p_non_diff.state_outflow_link
     u_ids = state_node_ids(p_non_diff)
-    state_ranges = p_non_diff.state_ranges
-    u = zeros(length(p_non_diff.node_id))
-    # Ensure p_non_diff.node_id, p_non_diff.state_ranges and u have the same length and order
+    state_ranges = count_state_ranges(u_ids)
+    data = zeros(length(p_non_diff.node_id))
+    u = CVector(data, state_ranges)
+    # Ensure p_non_diff.node_id, state_ranges and u have the same length and order
     ranges = (getproperty(state_ranges, x) for x in propertynames(state_ranges))
     @assert length(u) == length(p_non_diff.node_id) == mapreduce(length, +, ranges)
-    @assert keys(u_ids) == fieldnames(StateRanges)
+    @assert keys(u_ids) == state_components
     return u
 end
 
 function build_flow_to_storage(
-    state_ranges::StateRanges,
+    state_ranges::StateTuple{UnitRange{Int}},
     n_states::Int,
     basin::Basin,
     connector_nodes::NamedTuple,
@@ -920,7 +888,7 @@ function get_state_flow_links(
     placeholder_link =
         LinkMetadata(0, LinkType.flow, (NodeID(:Terminal, 0, 0), NodeID(:Terminal, 0, 0)))
 
-    for node_name in fieldnames(StateRanges)
+    for node_name in state_components
         if hasproperty(nodes, node_name)
             node::AbstractParameterNode = getproperty(nodes, node_name)
             for id in node.node_id
@@ -968,7 +936,7 @@ Use the inflow Boolean argument to disambiguite for node types that have multipl
 Can return nothing for node types that do not have a state, like Terminal.
 """
 function get_state_index(
-    state_ranges::StateRanges,
+    state_ranges::StateTuple{UnitRange{Int}},
     id::NodeID;
     inflow::Bool = true,
 )::Union{Int, Nothing}
@@ -987,7 +955,10 @@ function get_state_index(
 end
 
 "Get the state index of the to-node of the link if it exists, otherwise the from-node."
-function get_state_index(state_ranges::StateRanges, link::Tuple{NodeID, NodeID})::Int
+function get_state_index(
+    state_ranges::StateTuple{UnitRange{Int}},
+    link::Tuple{NodeID, NodeID},
+)::Int
     idx = get_state_index(state_ranges, link[2])
     isnothing(idx) ? get_state_index(state_ranges, link[1]; inflow = false) : idx
 end

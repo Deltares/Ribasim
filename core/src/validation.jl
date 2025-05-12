@@ -294,8 +294,12 @@ function valid_flow_rates(
     for (key, control_state_update) in pairs(control_mapping)
         id_controlled = key[1]
         push!(ids_controlled, id_controlled)
-        flow_rate_update = only(control_state_update.itp_update_linear)
-        @assert flow_rate_update.name == :flow_rate
+        flow_rate_update_idx = findfirst(
+            parameter_update -> parameter_update.name == :flow_rate,
+            control_state_update.itp_update_linear,
+        )
+        @assert !isnothing(flow_rate_update_idx)
+        flow_rate_update = control_state_update.itp_update_linear[flow_rate_update_idx]
         flow_rate_ = minimum(flow_rate_update.value.u)
 
         if flow_rate_ < 0.0
@@ -353,7 +357,7 @@ Validate the entries for a single subgrid element.
 function valid_subgrid(
     subgrid_id::Int32,
     node_id::Int32,
-    node_to_basin::Dict{Int32, Int},
+    node_to_basin::Dict{Int32, NodeID},
     basin_level::Vector{Float64},
     subgrid_level::Vector{Float64},
 )::Bool

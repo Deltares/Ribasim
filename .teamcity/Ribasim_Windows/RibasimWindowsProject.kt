@@ -128,7 +128,7 @@ object Windows_TestDelwaqCoupling : BuildType({
             id = "ARTIFACT_DEPENDENCY_4206"
             buildRule = lastSuccessful()
             artifactRules = """
-                DWAQ_win64_Release_Visual Studio 16 2019_ifx_*.zip!** => dimr
+                DWAQ_win64_Release_Visual Studio *.zip!** => dimr
             """.trimIndent()
         }
     }
