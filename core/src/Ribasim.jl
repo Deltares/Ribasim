@@ -148,7 +148,7 @@ using DataStructures: OrderedSet, OrderedDict, counter, inc!
 export libribasim
 
 include("carrays.jl")
-using .CArrays: CVector, getaxes
+using .CArrays: CVector, getaxes, getdata
 include("schema.jl")
 include("config.jl")
 using .config

@@ -88,6 +88,10 @@ function create_callbacks(
     discrete_control_cb = FunctionCallingCallback(apply_discrete_control!)
     push!(callbacks, discrete_control_cb)
 
+    decrease_tol_cb =
+        FunctionCallingCallback(decrease_tolerance!; funcat = saveat, func_start = false)
+    push!(callbacks, decrease_tol_cb)
+
     saved = SavedResults(
         saved_flow,
         saved_basin_states,
@@ -97,6 +101,28 @@ function create_callbacks(
     callback = CallbackSet(callbacks...)
 
     return callback, saved
+end
+
+"""
+Decrease the relative tolerance of the integrator over time,
+to compensate for the ever increasing cumulative flows.
+"""
+function decrease_tolerance!(u, t, integrator)::Nothing
+    (; uprev, p, tprev, dt, opts) = integrator
+
+    # Use the internal norm to get the magnitude of the (cumulative) states,
+    # as used in calculate_residuals, and compare to an estimated magnitude for a day
+    cum_magnitude = opts.internalnorm(getdata(u), t)
+    daily_magnitude = opts.internalnorm(getdata(u - uprev), t) * (24 * 60 * 60 / dt)
+
+    # Decrease the relative tolerance based on their difference
+    diff_norm = round(Int, log10(cum_magnitude / daily_magnitude))
+    newtol = 10.0^(log10(integrator.p.p_non_diff.reltol) - diff_norm)
+
+    if integrator.opts.reltol > newtol
+        integrator.opts.reltol = newtol
+        @info "Relative tolerance changed at t = $t to $(integrator.opts.reltol)"
+    end
 end
 
 """
@@ -416,6 +442,7 @@ function check_water_balance_error!(
         balance_error = storage_rate - (total_in - total_out)
         mean_flow_rate = (total_in + total_out) / 2
         relative_error = iszero(mean_flow_rate) ? 0.0 : balance_error / mean_flow_rate
+        # relative_error = max(eps(storage_rate), eps(total_in), eps(total_out))
 
         if abs(balance_error) > water_balance_abstol &&
            abs(relative_error) > water_balance_reltol
