@@ -676,3 +676,7 @@ end
 
     model = Ribasim.run(toml_path)
 end
+
+@testitem "CrystalBasin" begin
+    Ribasim.run("../../generated_testmodels/crystal_tutorial/ribasim.toml")
+end
