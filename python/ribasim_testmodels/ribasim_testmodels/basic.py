@@ -500,7 +500,11 @@ def crystal_tutorial_model() -> Model:
     confluence = model.basin.add(
         Node(3, Point(-1.5, -1), name="confluence"),
         [
-            basin.Profile(area=[672000, 5600000], level=[0, 6]),
+            basin.Profile(
+                area=[1000000, 4000000, 90000000, 16000000],
+                level=[0, 1, 2, 3],
+                storage=[0, 4000000, 13000000, 29000000],
+            ),
             basin.State(level=[4]),
             basin.Time(time=[starttime, endtime]),
         ],
