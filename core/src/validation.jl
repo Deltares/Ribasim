@@ -268,11 +268,6 @@ function valid_profiles(
                 area = areas[1],
             )
         end
-
-        if any(diff(areas) .< 0.0)
-            errors = true
-            @error "$id profile cannot have decreasing areas."
-        end
     end
     return !errors
 end
@@ -674,4 +669,41 @@ function valid_time_interpolation(
     end
 
     return !errors
+end
+
+function validate_consistent_basin_initialization(db::DB, config::Config)::Nothing
+    profiles = load_structvector(db, config, BasinProfileV1)
+
+    init_with_area = Vector{Int32}()
+    init_with_storage = Vector{Int32}()
+    init_with_both = Vector{Int32}()
+
+    for group in IterTools.groupby(row -> row.node_id, profiles)
+        group_area = getproperty.(group, :area)
+        group_level = getproperty.(group, :level)
+        group_storage = getproperty.(group, :storage)
+
+        node_id = group[1].node_id
+        if all(ismissing, group_area)
+            push!(init_with_storage, node_id)
+        elseif all(ismissing, group_storage)
+            push!(init_with_area, node_id)
+        else
+            push!(init_with_both, node_id)
+        end
+    end
+
+    if count(x -> !isempty(x), (init_with_area, init_with_storage, init_with_both)) > 1
+        @info "Basin initialization is inconsistent: one of area, storage, or both should be used for initialization."
+        if !isempty(init_with_area)
+            @info "Nodes initialized with area-level input:" node_ids = init_with_area
+        end
+        if !isempty(init_with_storage)
+            @info "Nodes initialized with storage-level input:" node_ids = init_with_storage
+        end
+        if !isempty(init_with_both)
+            @info "Nodes initialized with area-storage-level input:" node_ids =
+                init_with_both
+        end
+    end
 end

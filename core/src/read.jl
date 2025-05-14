@@ -828,6 +828,7 @@ function Basin(db::DB, config::Config, graph::MetaGraph)
     errors |= parse_forcing!(:drainage)
     errors |= parse_forcing!(:infiltration)
 
+    validate_consistent_basin_initialization(db, config)
     # Profiles
     area, level = create_storage_tables(db, config)
 
@@ -841,7 +842,7 @@ function Basin(db::DB, config::Config, graph::MetaGraph)
             A,
             h;
             extrapolation_left = ConstantExtrapolation,
-            extrapolation_right = Extension,
+            extrapolation_right = ConstantExtrapolation,
             cache_parameters = true,
         ),
         basin.level_to_area,
