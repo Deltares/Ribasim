@@ -671,6 +671,11 @@ function valid_time_interpolation(
     return !errors
 end
 
+"""
+Validated the initialisation of basins. Each basin at least need a level-area or level storage relationship.
+We recommend to initialise all basins in the same way, which can be level-area, level-storage or level-area-storage.
+If basins diverge from this recommendation we log info about it for the modeler.
+"""
 function validate_consistent_basin_initialization(db::DB, config::Config)::Nothing
     profiles = load_structvector(db, config, BasinProfileV1)
 
@@ -678,12 +683,18 @@ function validate_consistent_basin_initialization(db::DB, config::Config)::Nothi
     init_with_storage = Vector{Int32}()
     init_with_both = Vector{Int32}()
 
+    error_logs::String = ""
+
     for group in IterTools.groupby(row -> row.node_id, profiles)
         group_area = getproperty.(group, :area)
-        group_level = getproperty.(group, :level)
         group_storage = getproperty.(group, :storage)
 
         node_id = group[1].node_id
+        if all(ismissing, group_area) && all(ismissing, group_storage)
+            error_logs *
+            "\nBasin at node $node_id is missing both area-level and storage-level input. At least specify either one"
+        end
+
         if all(ismissing, group_area)
             push!(init_with_storage, node_id)
         elseif all(ismissing, group_storage)
@@ -691,19 +702,31 @@ function validate_consistent_basin_initialization(db::DB, config::Config)::Nothi
         else
             push!(init_with_both, node_id)
         end
+
+        if any(ismissing, group_area) && !all(ismissing, group_area)
+            error_logs * "\nBasin has missing area input at node: $node_id"
+        end
+        if any(ismissing, group_storage) && !all(ismissing, group_storage)
+            error_logs * "\nBasin has missing storage input data at node: $node_id"
+        end
     end
 
     if count(x -> !isempty(x), (init_with_area, init_with_storage, init_with_both)) > 1
-        @info "Basin initialization is inconsistent: one of area, storage, or both should be used for initialization."
+        @info "Not all basins are initialised with the same input type"
         if !isempty(init_with_area)
-            @info "Nodes initialized with area-level input:" node_ids = init_with_area
+            @info "Basins initialized with area-level input:" node_ids = init_with_area
         end
         if !isempty(init_with_storage)
-            @info "Nodes initialized with storage-level input:" node_ids = init_with_storage
+            @info "Basins initialized with storage-level input:" node_ids =
+                init_with_storage
         end
         if !isempty(init_with_both)
-            @info "Nodes initialized with area-storage-level input:" node_ids =
+            @info "Basins initialized with area-storage-level input:" node_ids =
                 init_with_both
         end
+    end
+
+    if !isempty(error_logs)
+        error(error_logs)
     end
 end
