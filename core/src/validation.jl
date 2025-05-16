@@ -677,13 +677,13 @@ We recommend to initialise all basins in the same way, which can be level-area, 
 If basins diverge from this recommendation we log info about it for the modeler.
 """
 function validate_consistent_basin_initialization(db::DB, config::Config)::Nothing
+    errors::Bool = false
+
     profiles = load_structvector(db, config, BasinProfileV1)
 
     init_with_area = Vector{Int32}()
     init_with_storage = Vector{Int32}()
     init_with_both = Vector{Int32}()
-
-    error_logs::String = ""
 
     for group in IterTools.groupby(row -> row.node_id, profiles)
         group_area = getproperty.(group, :area)
@@ -691,8 +691,8 @@ function validate_consistent_basin_initialization(db::DB, config::Config)::Nothi
 
         node_id = group[1].node_id
         if all(ismissing, group_area) && all(ismissing, group_storage)
-            error_logs *
-            "\nBasin at node $node_id is missing both area-level and storage-level input. At least specify either one"
+            @error "Basin at node $node_id is missing both area-level and storage-level input. At least specify either one"
+            errors = true
         end
 
         if all(ismissing, group_area)
@@ -704,10 +704,12 @@ function validate_consistent_basin_initialization(db::DB, config::Config)::Nothi
         end
 
         if any(ismissing, group_area) && !all(ismissing, group_area)
-            error_logs * "\nBasin has missing area input at node: $node_id"
+            @error "Basin has missing area input at node: $node_id"
+            errors = true
         end
         if any(ismissing, group_storage) && !all(ismissing, group_storage)
-            error_logs * "\nBasin has missing storage input data at node: $node_id"
+            @error "Basin has missing storage input data at node: $node_id"
+            errors = true
         end
     end
 
@@ -721,12 +723,10 @@ function validate_consistent_basin_initialization(db::DB, config::Config)::Nothi
                 init_with_storage
         end
         if !isempty(init_with_both)
-            @info "Basins initialized with area-storage-level input:" node_ids =
+            @info "Basins initialized with area-level and storage-level input:" node_ids =
                 init_with_both
         end
     end
 
-    if !isempty(error_logs)
-        error(error_logs)
-    end
+    errors && error(error_logs)
 end
