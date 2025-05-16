@@ -655,8 +655,6 @@ function validate_consistent_basin_initialization(
     init_with_storage = Int32[]
     init_with_both = Int32[]
 
-    error_logs::String = ""
-
     for group in IterTools.groupby(row -> row.node_id, profiles)
         group_level = getproperty.(group, :level)
         group_area = getproperty.(group, :area)
