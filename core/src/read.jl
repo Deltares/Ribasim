@@ -800,7 +800,7 @@ function ConcentrationData(
     )
 end
 
-function Basin(db::DB, config::Config, graph::MetaGraph)
+function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     static = load_structvector(db, config, BasinStaticV1)
     time = load_structvector(db, config, BasinTimeV1)
     state = load_structvector(db, config, BasinStateV1)
@@ -828,14 +828,15 @@ function Basin(db::DB, config::Config, graph::MetaGraph)
     errors |= parse_forcing!(:drainage)
     errors |= parse_forcing!(:infiltration)
 
-    validate_consistent_basin_initialization(db, config)
     # Profiles
-    area, level = create_storage_tables(db, config)
+    validate_consistent_basin_initialization(db, config)
+    level, area = create_storage_tables(db, config)
 
     if !valid_profiles(node_id, level, area)
-        error("Invalid Basin / profile table.")
+        @error "Invalid Basin / profile table."
         errors = true
     end
+    errors && error("Errors encountered when parsing Basin data.")
 
     map!(
         (A, h) -> LinearInterpolation(
@@ -862,8 +863,6 @@ function Basin(db::DB, config::Config, graph::MetaGraph)
     basin.storage0 .= storage0
     basin.storage_prev .= storage0
     basin.concentration_data.mass .*= storage0  # was initialized by concentration_state, resulting in mass
-
-    errors && error("Errors encountered when parsing Basin data.")
 
     basin
 end
@@ -1791,22 +1790,47 @@ function load_structvector(
     return sorted_table!(table)
 end
 
+function finite_diff_storage_to_area(
+    storage::Vector{Float64},
+    level::Vector{Float64},
+)::Vector{Float64}
+    area = Vector{Float64}
+    for i in 1:(length(levels) - 1)
+        Δstorage = storage[i + 1] - storage[i]
+        Δlevel = level[i + 1] - level[i]
+        if i == 1
+            # We need to choose a value for A₁. A₁=0 is problematic for our solver, and we prefer A₁ < A₂:
+            # If we assume A₁ = 1/2*A₂ then:
+            push!(area, 2 / 3 * Δstorage / Δlevel)
+        end
+        push!(area, 2 * Δstorage / Δlevel - area[i])
+    end
+    area
+end
+
 "Read the Basin / profile table and return all area and level and computed storage values"
 function create_storage_tables(
     db::DB,
     config::Config,
-)::Tuple{Vector{Vector{Float64}}, Vector{Vector{Float64}}}
+)::Tuple{Vector{Vector{Float64}}, Vector{Vector{Float64}}, Vector{Vector{Float64}}}
     profiles = load_structvector(db, config, BasinProfileV1)
     area = Vector{Vector{Float64}}()
     level = Vector{Vector{Float64}}()
+    storage = Vector{Vector{Float64}}()
 
     for group in IterTools.groupby(row -> row.node_id, profiles)
         group_area = getproperty.(group, :area)
         group_level = getproperty.(group, :level)
+
+        if all(ismissing, group_area)
+            group_storage = getproperty.(group, :storage)
+            group_area = finite_diff_storage_to_area(group_storage, group_level)
+        end
+
         push!(area, group_area)
         push!(level, group_level)
     end
-    return area, level
+    return level, area
 end
 
 "Determine all substances present in the input over multiple tables"
