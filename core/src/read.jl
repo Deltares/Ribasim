@@ -829,15 +829,11 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     errors |= parse_forcing!(:infiltration)
 
     # Profiles
-    validate_consistent_basin_initialization(db, config)
-    level, area = create_storage_tables(db, config)
+    errors |= validate_consistent_basin_initialization(db, config)
 
-    if !valid_profiles(node_id, level, area)
-        @error "Invalid Basin / profile table."
-        errors = true
-    end
-    errors && error("Errors encountered when parsing Basin data.")
+    level, area, storage = create_storage_tables(db, config)
 
+    # linear interpolate area-level
     map!(
         (A, h) -> LinearInterpolation(
             A,
@@ -850,8 +846,15 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
         area,
         level,
     )
-    map!(invert_integral, basin.storage_to_level, basin.level_to_area)
 
+    # the invert_integral, we use when we dont have storage or if we didn't have area. If we had both, we just interpolate
+    map!((h, S) -> LagrangeInterpolation(h, S), basin.storage_to_level, level, storage)
+
+    if !valid_profiles(node_id, level, area)
+        @error "Invalid Basin / profile table."
+        errors = true
+    end
+    errors && error("Errors encountered when parsing Basin data.")
     # Inflow and outflow links
     map!(id -> collect(inflow_ids(graph, id)), basin.inflow_ids, node_id)
     map!(id -> collect(outflow_ids(graph, id)), basin.outflow_ids, node_id)
@@ -1790,25 +1793,47 @@ function load_structvector(
     return sorted_table!(table)
 end
 
+"""
+Compute the finite difference approximation of the vector `f` with respect to vector `x`.
+
+Taking the derivative of an n-sized vector f, give us a n-1 sized derivatives vector dfdx.
+Mapping these derivatives to an n-sized vector dfdx requires choosing a value at the lower bound.
+By default we use the relation dfdx₀ = 0.5*dfdx₁
+
+"""
 function finite_diff_storage_to_area(
-    storage::Vector{Float64},
-    level::Vector{Float64},
+    f::Vector{Float64},
+    x::Vector{Float64},
+    dfdx₀::Float64 = 2 / 3 * (f[2] - f[1]) / (x[2] - x[1]),
 )::Vector{Float64}
-    area = Vector{Float64}
-    for i in 1:(length(levels) - 1)
-        Δstorage = storage[i + 1] - storage[i]
-        Δlevel = level[i + 1] - level[i]
-        if i == 1
-            # We need to choose a value for A₁. A₁=0 is problematic for our solver, and we prefer A₁ < A₂:
-            # If we assume A₁ = 1/2*A₂ then:
-            push!(area, 2 / 3 * Δstorage / Δlevel)
-        end
-        push!(area, 2 * Δstorage / Δlevel - area[i])
+    dfdx = Vector{Float64}(undef, length(f))
+    dfdx[1] = dfdx₀
+
+    for i in 1:(length(x) - 1)
+        Δf = f[i + 1] - f[i]
+        Δx = x[i + 1] - x[i]
+        dfdx[i + 1] = 2 * Δf / Δx - dfdx[i]
     end
-    area
+    dfdx
 end
 
-"Read the Basin / profile table and return all area and level and computed storage values"
+"""trapezoidal integration"""
+function trapezoidal_int_area_to_storage(
+    dfdx::Vector{Float64},
+    x::Vector{Float64},
+    c::Float64 = 0.0,
+)::Vector{Float64}
+    n = length(dfdx)
+    f = Vector{Float64}(undef, n)
+    f[1] = c
+    for i in 1:(n - 1)
+        Δx = x[i + 1] - x[i]
+        f[i + 1] = f[i] + 0.5 * (dfdx[i + 1] + dfdx[i]) * Δx
+    end
+    f
+end
+
+"Read the Basin / profile table and return all area and level and storage values"
 function create_storage_tables(
     db::DB,
     config::Config,
@@ -1821,16 +1846,20 @@ function create_storage_tables(
     for group in IterTools.groupby(row -> row.node_id, profiles)
         group_area = getproperty.(group, :area)
         group_level = getproperty.(group, :level)
+        group_storage = getproperty.(group, :storage)
 
         if all(ismissing, group_area)
-            group_storage = getproperty.(group, :storage)
             group_area = finite_diff_storage_to_area(group_storage, group_level)
+        elseif all(ismissing, group_storage)
+            group_storage = trapezoidal_int_area_to_storage(group_area, group_level)
         end
 
         push!(area, group_area)
         push!(level, group_level)
+        push!(storage, group_storage)
     end
-    return level, area
+
+    return level, area, storage
 end
 
 "Determine all substances present in the input over multiple tables"

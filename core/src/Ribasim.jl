@@ -61,6 +61,7 @@ using DataInterpolations:
     ConstantInterpolation,
     LinearInterpolation,
     LinearInterpolationIntInv,
+    LagrangeInterpolation,
     invert_integral,
     derivative,
     integral,

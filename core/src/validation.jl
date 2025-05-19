@@ -676,7 +676,7 @@ Validated the initialisation of basins. Each basin at least need a level-area or
 We recommend to initialise all basins in the same way, which can be level-area, level-storage or level-area-storage.
 If basins diverge from this recommendation we log info about it for the modeler.
 """
-function validate_consistent_basin_initialization(db::DB, config::Config)::Nothing
+function validate_consistent_basin_initialization(db::DB, config::Config)::Bool
     errors::Bool = false
 
     profiles = load_structvector(db, config, BasinProfileV1)
@@ -728,5 +728,5 @@ function validate_consistent_basin_initialization(db::DB, config::Config)::Nothi
         end
     end
 
-    errors && error(error_logs)
+    errors
 end

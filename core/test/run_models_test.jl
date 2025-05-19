@@ -678,5 +678,37 @@ end
 end
 
 @testitem "CrystalBasin" begin
+    using DataInterpolations:
+        LinearInterpolation,
+        QuadraticInterpolation,
+        LagrangeInterpolation,
+        ExtrapolationType,
+        integral,
+        invert_integral
+    using Ribasim
+    using ..Pkg
+    Pkg.add("Plots")
+    using Plots
+
+    # a parabolic shaped (x^2 - 1) basin with a circular cross section
+    levels::Vector{Float64} = [0, 1, 2, 3, 4, 5]
+    areas::Vector{Float64} = (levels .+ 1) .* pi
+    storages::Vector{Float64} = pi / 2 * ((levels .+ 1) .^ 2 .- 1)
+
+    level_to_area = LinearInterpolation(
+        areas,
+        levels;
+        extrapolation_left = ExtrapolationType.Constant,
+        extrapolation_right = ExtrapolationType.Constant,
+    )
+    storage_to_level = invert_integral(level_to_area)
+
+    integral(level_to_area, 4.5)
+    storage_to_level(45.945792558750725)
+
+    # Now we only know the storage-level relationship.
+    areas_from_finite_diff = Ribasim.finite_diff_storage_to_area(storages, levels)
+    storage_from_trapz_int = Ribasim.trapezoidal_int_area_to_storage(areas, levels)
+
     Ribasim.run("../../generated_testmodels/crystal_tutorial/ribasim.toml")
 end
