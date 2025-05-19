@@ -108,20 +108,26 @@ Decrease the relative tolerance of the integrator over time,
 to compensate for the ever increasing cumulative flows.
 """
 function decrease_tolerance!(u, t, integrator)::Nothing
-    (; uprev, p, tprev, dt, opts) = integrator
+    (; p, t, opts) = integrator
 
-    # Use the internal norm to get the magnitude of the (cumulative) states,
-    # as used in calculate_residuals, and compare to an estimated magnitude for a day
-    cum_magnitude = opts.internalnorm(getdata(u), t)
-    daily_magnitude = opts.internalnorm(getdata(u - uprev), t) * (24 * 60 * 60 / dt)
+    for (i, state) in enumerate(u)
+        p.p_non_diff.relmask[i] || continue
 
-    # Decrease the relative tolerance based on their difference
-    diff_norm = round(Int, log10(cum_magnitude / daily_magnitude))
-    newtol = 10.0^(log10(integrator.p.p_non_diff.reltol) - diff_norm)
+        # Use the internal norm to get the magnitude of the (cumulative) states,
+        # as used in calculate_residuals, and compare to an estimated average magnitude
+        cum_magnitude = opts.internalnorm(state, t)
+        iszero(cum_magnitude) && continue
+        avg_magnitude = max(opts.internalnorm(1e4, t), cum_magnitude / t)  # allow for 1e4 m3/s
 
-    if integrator.opts.reltol > newtol
-        integrator.opts.reltol = newtol
-        @info "Relative tolerance changed at t = $t to $(integrator.opts.reltol)"
+        # Decrease the relative tolerance based on their difference
+        diff_norm = max(0, round(Int, log10(cum_magnitude / avg_magnitude)))
+        # Limit new tolerance to floating point precision (~-14)
+        newtol = max(10.0^(log10(integrator.p.p_non_diff.reltol) - diff_norm), 1e-14)
+
+        if integrator.opts.reltol[i] > newtol
+            @debug "Relative tolerance changed at t = $t, state = $i to $(newtol)"
+            integrator.opts.reltol[i] = newtol
+        end
     end
 end
 
