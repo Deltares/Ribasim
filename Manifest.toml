@@ -2,7 +2,7 @@
 
 julia_version = "1.11.5"
 manifest_format = "2.0"
-project_hash = "08df9cf37f934d9c54c355f731e7bb06c158c106"
+project_hash = "3e1838f9696521083f22c02fea04deb9da5c14c6"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "e2478490447631aedba0823d4d7a80b2cc8cdb32"
@@ -454,9 +454,7 @@ version = "1.7.0"
 
 [[deps.DataInterpolations]]
 deps = ["EnumX", "FindFirstFunctions", "ForwardDiff", "LinearAlgebra", "PrettyTables", "RecipesBase", "Reexport"]
-git-tree-sha1 = "2fec20373492faf6bdf4ee95eee72a2e69835839"
-repo-rev = "master"
-repo-url = "https://github.com/SciML/DataInterpolations.jl.git"
+git-tree-sha1 = "b6fc25b5dbff016d8aae1e0ae2740347bccb6f65"
 uuid = "82cc6244-b520-54b8-b5a6-8a565e85f1d0"
 version = "8.0.1"
 
@@ -1200,9 +1198,9 @@ version = "1.25.0"
 
 [[deps.JuliaInterpreter]]
 deps = ["CodeTracking", "InteractiveUtils", "Random", "UUIDs"]
-git-tree-sha1 = "6ac9e4acc417a5b534ace12690bc6973c25b862f"
+git-tree-sha1 = "c47892541d03e5dc63467f8964c9f2b415dfe718"
 uuid = "aa1ae85d-cabe-5617-a682-6adf51b2e16a"
-version = "0.10.3"
+version = "0.9.46"
 
 [[deps.KernelDensity]]
 deps = ["Distributions", "DocStringExtensions", "FFTW", "Interpolations", "StatsBase"]
@@ -1451,9 +1449,9 @@ version = "1.1.0"
 
 [[deps.LoweredCodeUtils]]
 deps = ["JuliaInterpreter"]
-git-tree-sha1 = "4ef1c538614e3ec30cb6383b9eb0326a5c3a9763"
+git-tree-sha1 = "39240b5f66956acfa462d7fe12efe08e26d6d70d"
 uuid = "6f1432cf-f94c-5a45-995e-cdbf5db27b0b"
-version = "3.3.0"
+version = "3.2.2"
 
 [[deps.Lz4_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
@@ -2077,9 +2075,9 @@ version = "1.3.1"
 
 [[deps.Revise]]
 deps = ["CodeTracking", "FileWatching", "JuliaInterpreter", "LibGit2", "LoweredCodeUtils", "OrderedCollections", "REPL", "Requires", "UUIDs", "Unicode"]
-git-tree-sha1 = "cedc9f9013f7beabd8a9c6d2e22c0ca7c5c2a8ed"
+git-tree-sha1 = "4e58145c98094ab2405b8fca034e21bde6c06c1c"
 uuid = "295af30f-e4ad-537b-8983-00126c2a3abe"
-version = "3.7.6"
+version = "3.7.5"
 weakdeps = ["Distributed"]
 
     [deps.Revise.extensions]
@@ -2294,11 +2292,9 @@ version = "1.11.0"
 
 [[deps.SparseConnectivityTracer]]
 deps = ["ADTypes", "DocStringExtensions", "FillArrays", "LinearAlgebra", "Random", "SparseArrays"]
-git-tree-sha1 = "45135436bd57b5c6e9352690aab54d25262253d8"
-repo-rev = "datainterpolations-8.0.0"
-repo-url = "https://github.com/visr/SparseConnectivityTracer.jl"
+git-tree-sha1 = "fadb2d7010dd92912e5eb31a493613ad4b8c9583"
 uuid = "9f842d2f-2579-4b1d-911e-f412cf18a3f5"
-version = "0.6.15"
+version = "0.6.18"
 
     [deps.SparseConnectivityTracer.extensions]
     SparseConnectivityTracerDataInterpolationsExt = "DataInterpolations"
