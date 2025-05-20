@@ -828,12 +828,11 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     errors |= parse_forcing!(:drainage)
     errors |= parse_forcing!(:infiltration)
     errors |= validate_consistent_basin_initialization(db, config)
+    errors && error("Errors encountered when parsing Basin data.")
 
     profiles = load_structvector(db, config, BasinProfileV1)
 
     interpolate_basin_profile_relations!(basin, profiles)
-
-    errors && error("Errors encountered when parsing Basin data.")
 
     # Inflow and outflow links
     map!(id -> collect(inflow_ids(graph, id)), basin.inflow_ids, node_id)
@@ -1776,13 +1775,17 @@ end
 """
 Compute the finite difference approximation of the vector `f` with respect to vector `x`.
 
-Taking the derivative of an n-sized vector f, give us a n-1 sized derivative vector dfdx.
-Mapping these derivatives to an n-sized vector dfdx requires choosing a value at the lower bound.
+Taking the derivative of an n-sized vector f, give us a n-1 sized derivative vector dfdx,
+since the computed derivatives are located in between x_i and x_i+1.
+
+Mapping these derivatives to an n-sized vector dfdx requires choosing a value at the lower bound (dfdx₀).
+
+As default we use dfdx = const = dfdx[0] = dfdx[1] =  (f[2] - f[1]) / (x[2] - x[1]),
 """
-function finite_diff_storage_to_area(
+function finite_difference(
     f::Vector{Float64},
     x::Vector{Float64},
-    dfdx₀::Float64 = 2 / 3 * (f[2] - f[1]) / (x[2] - x[1]),
+    dfdx₀::Float64 = (f[2] - f[1]) / (x[2] - x[1]),
 )::Vector{Float64}
     dfdx = Vector{Float64}(undef, length(f))
     dfdx[1] = dfdx₀
@@ -1796,13 +1799,10 @@ function finite_diff_storage_to_area(
 end
 
 """trapezoidal integration"""
-function trapezoidal_int_area_to_storage(
-    dfdx::Vector{Float64},
-    x::Vector{Float64},
-)::Vector{Float64}
+function trapezoidal_integrate(dfdx::Vector{Float64}, x::Vector{Float64})::Vector{Float64}
     n = length(dfdx)
-    f = Vector{Float64}(undef, n)
-    f[1] = 0
+    f = zeros(Float64, n)
+
     for i in 1:(n - 1)
         Δx = x[i + 1] - x[i]
         f[i + 1] = f[i] + 0.5 * (dfdx[i + 1] + dfdx[i]) * Δx
@@ -1826,9 +1826,9 @@ function create_storage_tables(
         group_storage = getproperty.(group, :storage)
 
         if all(ismissing, group_area)
-            group_area = finite_diff_storage_to_area(group_storage, group_level)
+            group_area = finite_difference(group_storage, group_level)
         elseif all(ismissing, group_storage)
-            group_storage = trapezoidal_int_area_to_storage(group_area, group_level)
+            group_storage = trapezoidal_integrate(group_area, group_level)
         end
 
         push!(area, group_area)
@@ -1892,11 +1892,11 @@ function interpolate_basin_profile_relations!(
 
         # If there is no storage as input, we integrate A(h)
         if all(ismissing, group_storage)
-            group_storage = trapezoidal_int_area_to_storage(group_area, group_level)
+            group_storage = trapezoidal_integrate(group_area, group_level)
         end
 
         # We always differentiate storage with respect to level such that we can use invert_integral
-        dS_dh = finite_diff_storage_to_area(group_storage, group_level)
+        dS_dh = finite_difference(group_storage, group_level)
 
         level_to_area = LinearInterpolation(
             dS_dh,
