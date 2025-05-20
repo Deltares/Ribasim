@@ -671,7 +671,7 @@ function validate_consistent_basin_initialization(db::DB, config::Config)::Bool
         end
 
         if all(ismissing, group_area) && all(ismissing, group_storage)
-            @error "Basin at node $node_id is missing both area-level and storage-level input. At least specify either one"
+            @error "Basin at node $node_id is missing both area-level and storage-level input. At least specify area or storage data"
             errors = true
         end
 
