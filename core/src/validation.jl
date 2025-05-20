@@ -641,8 +641,8 @@ function valid_time_interpolation(
 end
 
 """
-Validated the initialisation of basins. Each basin at least need a level-area or level storage relationship.
-We recommend to initialise all basins in the same way, which can be level-area, level-storage or level-area-storage.
+Validates the initialisation of basins. Each basin at least need a level-area or level-storage relationship.
+We recommend to initialise all basins in the same way, which can be level-area, level-storage or both.
 If basins diverge from this recommendation we log info about it for the modeler.
 """
 function validate_consistent_basin_initialization(db::DB, config::Config)::Bool
