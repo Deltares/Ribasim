@@ -855,8 +855,6 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
 
     interpolate_basin_profile!(basin, profiles)
 
-    errors && error("Errors encountered when parsing Basin data.")
-
     # Inflow and outflow links
     map!(id -> collect(inflow_ids(graph, id)), basin.inflow_ids, node_id)
     map!(id -> collect(outflow_ids(graph, id)), basin.outflow_ids, node_id)
