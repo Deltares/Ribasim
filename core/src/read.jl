@@ -1827,10 +1827,10 @@ end
 function trapz_integrate(dfdx::Vector{Float64}, x::Vector{Float64})::Vector{Float64}
     n = length(dfdx)
     f = zeros(Float64, n)
+    Δx = diff(x)
 
     for i in 1:(n - 1)
-        Δx = x[i + 1] - x[i]
-        f[i + 1] = f[i] + 0.5 * (dfdx[i + 1] + dfdx[i]) * Δx
+        f[i + 1] = f[i] + 0.5 * (dfdx[i + 1] + dfdx[i]) * Δx[i]
     end
     f
 end
