@@ -677,38 +677,33 @@ end
     model = Ribasim.run(toml_path)
 end
 
-@testitem "CrystalBasin" begin
-    using DataInterpolations:
-        LinearInterpolation,
-        QuadraticInterpolation,
-        LagrangeInterpolation,
-        ExtrapolationType,
-        integral,
-        invert_integral
-    using Ribasim
-    using ..Pkg
-    Pkg.add("Plots")
-    using Plots
-
-    # a parabolic shaped (x^2 - 1) basin with a circular cross section
-    levels::Vector{Float64} = [0, 1, 2, 3, 4, 5]
-    areas::Vector{Float64} = (levels .+ 1) .* pi
-    storages::Vector{Float64} = pi / 2 * ((levels .+ 1) .^ 2 .- 1)
-
-    level_to_area = LinearInterpolation(
-        areas,
-        levels;
-        extrapolation_left = ExtrapolationType.Constant,
-        extrapolation_right = ExtrapolationType.Constant,
+@testitem "init_basin_only_storage" begin
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/basic_basin_only_storage/ribasim.toml",
     )
-    storage_to_level = invert_integral(level_to_area)
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+    @test model isa Ribasim.Model
+    @test success(model)
+end
 
-    integral(level_to_area, 4.5)
-    storage_to_level(45.945792558750725)
+@testitem "init_basin_only_area" begin
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/basic_basin_only_area/ribasim.toml")
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+    @test model isa Ribasim.Model
+    @test success(model)
+end
 
-    # Now we only know the storage-level relationship.
-    areas_from_finite_diff = Ribasim.finite_diff_storage_to_area(storages, levels)
-    storage_from_trapz_int = Ribasim.trapezoidal_int_area_to_storage(areas, levels)
-
-    Ribasim.run("../../generated_testmodels/crystal_tutorial/ribasim.toml")
+@testitem "init_basin_both_area_and_storage" begin
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/basic_basin_both_area_and_storage/ribasim.toml",
+    )
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+    @test model isa Ribasim.Model
+    @test success(model)
 end

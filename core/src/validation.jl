@@ -242,37 +242,6 @@ function valid_links(graph::MetaGraph)::Bool
 end
 
 """
-Check whether the profile data has no repeats in the levels and the areas start positive.
-"""
-function valid_profiles(
-    node_id::Vector{NodeID},
-    level::Vector{Vector{Float64}},
-    area::Vector{Vector{Float64}},
-)::Bool
-    errors = false
-    for (id, levels, areas) in zip(node_id, level, area)
-        n = length(levels)
-        if n < 2
-            errors = true
-            @error "$id profile must have at least two data points, got $n."
-        end
-        if !allunique(levels)
-            errors = true
-            @error "$id profile has repeated levels, this cannot be interpolated."
-        end
-
-        if areas[1] <= 0
-            errors = true
-            @error(
-                "$id profile cannot start with area <= 0 at the bottom for numerical reasons.",
-                area = areas[1],
-            )
-        end
-    end
-    return !errors
-end
-
-"""
 Test whether static or discrete controlled flow rates are indeed non-negative.
 """
 function valid_flow_rates(
@@ -686,10 +655,21 @@ function validate_consistent_basin_initialization(db::DB, config::Config)::Bool
     init_with_both = Vector{Int32}()
 
     for group in IterTools.groupby(row -> row.node_id, profiles)
+        group_level = getproperty.(group, :level)
         group_area = getproperty.(group, :area)
         group_storage = getproperty.(group, :storage)
-
         node_id = group[1].node_id
+
+        n = length(group_level)
+        if n < 2
+            errors = true
+            @error "$node_id profile must have at least two data points, got $n."
+        end
+        if !allunique(group_level)
+            errors = true
+            @error "$node_id profile has repeated levels, this cannot be interpolated."
+        end
+
         if all(ismissing, group_area) && all(ismissing, group_storage)
             @error "Basin at node $node_id is missing both area-level and storage-level input. At least specify either one"
             errors = true
@@ -701,6 +681,11 @@ function validate_consistent_basin_initialization(db::DB, config::Config)::Bool
             push!(init_with_area, node_id)
         else
             push!(init_with_both, node_id)
+        end
+
+        if !ismissing(group_area[1]) && (group_area[1] <= 0.0)
+            @error "Basin at node $node_id has non-positive area input at level $(group_level[1])"
+            errors = true
         end
 
         if any(ismissing, group_area) && !all(ismissing, group_area)
@@ -730,3 +715,5 @@ function validate_consistent_basin_initialization(db::DB, config::Config)::Bool
 
     errors
 end
+
+function validate_profiles() end
