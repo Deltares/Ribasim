@@ -397,7 +397,7 @@ function manning_resistance_flow(
     node_id::NodeID,
     h_a::Number,
     h_b::Number,
-)::Float64
+)::Number
     (;
         length,
         manning_n,
@@ -556,6 +556,7 @@ function formulate_flow!(
         factor = get_low_storage_factor(p, inflow_id)
         q = flow_rate * factor
 
+        # NOTE: If these thresholds are changed, also change them in set_simulation_data!
         q *= reduction_factor(src_level - min_upstream_level(t), 0.02)
         q *= reduction_factor(max_downstream_level(t) - dst_level, 0.02)
 
@@ -617,6 +618,7 @@ function formulate_flow!(
         q *= get_low_storage_factor(p, inflow_id)
 
         # No flow of outlet if source level is lower than target level
+        # NOTE: If these thresholds are changed, also change them in set_simulation_data!
         Δlevel = src_level - dst_level
         q *= reduction_factor(Δlevel, 0.02)
         q *= reduction_factor(src_level - min_upstream_level(t), 0.02)
@@ -756,9 +758,13 @@ function limit_flow!(
                 id,
                 inflow_id,
             )
-            @views allocated_total =
-                is_active(allocation) ? sum(user_demand.allocated[id.idx, :]) :
-                sum(user_demand.demand[id.idx, :])
+            allocated_total = sum(
+                min(
+                    user_demand.demand[id.idx, demand_priority_idx],
+                    user_demand.allocated[id.idx, demand_priority_idx],
+                ) for
+                demand_priority_idx in eachindex(allocation.demand_priorities_all)
+            )
             factor_basin_min * factor_level_min * allocated_total, allocated_total
         end
         limit_flow!(

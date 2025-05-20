@@ -147,36 +147,27 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
         end
     end
 
-    # Update realized flows for allocation input
-    for allocation_model in allocation_models
-        (; cumulative_forcing_volume, cumulative_boundary_volume) = allocation_model
-        # Basin forcing
+    # Update realized flows for allocation input and output
+    for allocation_model in allocation.allocation_models
+        (;
+            cumulative_forcing_volume,
+            cumulative_boundary_volume,
+            cumulative_realized_volume,
+        ) = allocation_model
+        # Basin forcing input
         for basin_id in keys(cumulative_forcing_volume)
             cumulative_forcing_volume[basin_id] +=
                 flow_update_on_link(integrator, (basin_id, basin_id))
         end
 
-        # Flow boundary
+        # Flow boundary input
         for link in keys(cumulative_boundary_volume)
-            cumulative_boundary_volume[flow_boundary_id] +=
-                flow_update_on_link(integrator, link)
+            cumulative_boundary_volume[link] += flow_update_on_link(integrator, link)
         end
-    end
 
-    # Update realized flows for allocation output
-    for link in keys(allocation.mean_realized_flows)
-        allocation.mean_realized_flows[link] += flow_update_on_link(integrator, link)
-        if link[1] == link[2]
-            basin_id = link[1]
-            @assert basin_id.type == NodeType.Basin
-            for inflow_id in basin.inflow_ids[basin_id.idx]
-                allocation.mean_realized_flows[link] +=
-                    flow_update_on_link(integrator, (inflow_id, basin_id))
-            end
-            for outflow_id in basin.outflow_ids[basin_id.idx]
-                allocation.mean_realized_flows[link] -=
-                    flow_update_on_link(integrator, (basin_id, outflow_id))
-            end
+        # Update realized flows for allocation output
+        for link in keys(cumulative_realized_volume)
+            cumulative_realized_volume[link] += flow_update_on_link(integrator, link)
         end
     end
     return nothing

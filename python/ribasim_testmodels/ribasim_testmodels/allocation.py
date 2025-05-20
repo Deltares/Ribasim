@@ -438,11 +438,11 @@ def main_network_with_subnetworks_model() -> Model:
     )
 
     basin_data: list[TableModel[Any]] = [
-        basin.Profile(area=1000.0, level=[0.0, 1.0]),
+        basin.Profile(area=1000.0, level=[0.0, 100.0]),
         basin.State(level=[1.0]),
     ]
     large_basin_data: list[TableModel[Any]] = [
-        basin.Profile(area=100000.0, level=[0.0, 1.0]),
+        basin.Profile(area=100000.0, level=[0.0, 100.0]),
         basin.State(level=[10.0]),
     ]
 
@@ -471,7 +471,7 @@ def main_network_with_subnetworks_model() -> Model:
     )
     model.basin.add(Node(10, Point(27, 1), subnetwork_id=1), basin_data)
     model.pump.add(
-        Node(11, Point(3, 4), subnetwork_id=3),
+        Node(11, Point(3, 4), subnetwork_id=1),
         [pump.Static(flow_rate=[1e-3], max_flow_rate=10.0)],
     )
     model.basin.add(Node(12, Point(2, 4), subnetwork_id=3), large_basin_data)
@@ -520,7 +520,7 @@ def main_network_with_subnetworks_model() -> Model:
         [outlet.Static(flow_rate=[3.0], max_flow_rate=3.0)],
     )
     model.pump.add(
-        Node(24, Point(14, 3), subnetwork_id=5),
+        Node(24, Point(14, 3), subnetwork_id=1),
         [pump.Static(flow_rate=[1e-3], max_flow_rate=1.0)],
     )
     model.basin.add(Node(25, Point(14, 4), subnetwork_id=5), basin_data)
@@ -556,7 +556,7 @@ def main_network_with_subnetworks_model() -> Model:
     )
     model.terminal.add(Node(37, Point(24, 4), subnetwork_id=7))
     model.pump.add(
-        Node(38, Point(28, 4), subnetwork_id=7),
+        Node(38, Point(28, 4), subnetwork_id=1),
         [pump.Static(flow_rate=[1e-3], max_flow_rate=1.0)],
     )
     model.pump.add(
@@ -584,11 +584,11 @@ def main_network_with_subnetworks_model() -> Model:
     )
     model.tabulated_rating_curve.add(
         Node(46, Point(26, 7), subnetwork_id=7),
-        [tabulated_rating_curve.Static(level=[0.0, 1.0], flow_rate=[0.0, 2.0])],
+        [tabulated_rating_curve.Static(level=[0.0, 1.0], flow_rate=[0.0, 1e-3])],
     )
     model.tabulated_rating_curve.add(
         Node(47, Point(28, 7), subnetwork_id=7),
-        [tabulated_rating_curve.Static(level=[0.0, 1.0], flow_rate=[0.0, 2.0])],
+        [tabulated_rating_curve.Static(level=[0.0, 1.0], flow_rate=[0.0, 1e-3])],
     )
     model.basin.add(Node(48, Point(26, 8), subnetwork_id=7), basin_data)
     model.pump.add(
@@ -677,8 +677,8 @@ def main_network_with_subnetworks_model() -> Model:
     model.link.add(model.basin[40], model.user_demand[45])
     model.link.add(model.basin[42], model.tabulated_rating_curve[46])
     model.link.add(model.tabulated_rating_curve[46], model.basin[48])
-    model.link.add(model.basin[48], model.pump[49])
-    model.link.add(model.pump[49], model.basin[50])
+    model.link.add(model.pump[49], model.basin[48])
+    model.link.add(model.basin[50], model.pump[49])
     model.link.add(model.basin[50], model.user_demand[53])
     model.link.add(model.basin[48], model.tabulated_rating_curve[52])
     model.link.add(model.tabulated_rating_curve[52], model.basin[54])

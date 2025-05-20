@@ -62,8 +62,8 @@ class SourcePriority(ChildModel):
 
     user_demand: int = 1000
     flow_boundary: int = 2000
-    level_demand: int = 3000
-    subnetwork_inlet: int = 5000
+    basin: int = 3000
+    subnetwork_inlet: int = 4000
 
 
 class Allocation(ChildModel):

@@ -7,18 +7,20 @@ const conservative_nodetypes = Set{NodeType.T}([
 ])
 
 function initialize_allocation!(p_non_diff::ParametersNonDiff, config::Config)::Nothing
-    (; graph, allocation, level_demand, basin) = p_non_diff
+    (; graph, allocation) = p_non_diff
     (; subnetwork_ids, allocation_models) = allocation
     subnetwork_ids_ = sort(collect(keys(graph[].node_ids)))
 
+    # If no subnetworks are defined, there is no allocation to initialize
     if isempty(subnetwork_ids_)
         return nothing
     end
 
-    errors = non_positive_subnetwork_id(graph)
-    if errors
-        error("Allocation network initialization failed.")
-    end
+    # Detect connections between the main network and subnetworks:
+    # (upstream_id: pump or outlet in the main network, node_id: node in the subnetwork, generally a basin)
+    collect_main_network_connections!(allocation, graph)
+
+    non_positive_subnetwork_id(graph) && error("Allocation network initialization failed.")
 
     for subnetwork_id in subnetwork_ids_
         push!(subnetwork_ids, subnetwork_id)
@@ -27,9 +29,11 @@ function initialize_allocation!(p_non_diff::ParametersNonDiff, config::Config)::
     for subnetwork_id in subnetwork_ids_
         push!(
             allocation_models,
-            AllocationModel(subnetwork_id, p_non_diff, config.allocation.timestep),
+            AllocationModel(subnetwork_id, p_non_diff, config.allocation),
         )
     end
+
+    validate_objectives(allocation_models, p_non_diff)
     return nothing
 end
 
@@ -1120,7 +1124,7 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)
     user_demand
 end
 
-function LevelDemand(db::DB, config::Config)
+function LevelDemand(db::DB, config::Config, graph::MetaGraph)
     static = load_structvector(db, config, LevelDemandStaticV1)
     time = load_structvector(db, config, LevelDemandTimeV1)
     node_id = get_node_ids(db, NodeType.LevelDemand)
@@ -1147,6 +1151,17 @@ function LevelDemand(db::DB, config::Config)
         cyclic_times,
     )
     errors |= parse_parameter!(level_demand, config, :demand_priority; static, time)
+
+    for id in node_id
+        basin_ids = collect(inneighbor_labels_type(graph, id, LinkType.control))
+        push!(level_demand.basins_with_demand, basin_ids)
+        for basin_id in basin_ids
+            level_demand.target_level_min[basin_]
+            level_demand.target_storage_min[basin_id] = 0.0
+            level_demand.storage_demand[basin_id] = 0.0
+            level_demand.storage_prev[basin_id] = 0.0
+        end
+    end
 
     errors && error("Errors encountered when parsing LevelDemand data.")
 
@@ -1326,6 +1341,7 @@ function Allocation(db::DB, config::Config, graph::MetaGraph)::Allocation
     return Allocation(;
         demand_priorities_all = get_all_demand_priorities(db, config),
         subnetwork_ids = sort(collect(keys(graph[].node_ids))),
+        subnetwork_inlet_source_priority = config.allocation.source_priority.subnetwork_inlet,
     )
 end
 
@@ -1356,7 +1372,7 @@ function Parameters(db::DB, config::Config)::Parameters
         continuous_control = ContinuousControl(db, config),
         pid_control = PidControl(db, config),
         user_demand = UserDemand(db, config, graph),
-        level_demand = LevelDemand(db, config),
+        level_demand = LevelDemand(db, config, graph),
         flow_demand = FlowDemand(db, config),
     )
 
