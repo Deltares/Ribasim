@@ -650,9 +650,9 @@ function validate_consistent_basin_initialization(db::DB, config::Config)::Bool
 
     profiles = load_structvector(db, config, BasinProfileV1)
 
-    init_with_area = Vector{Int32}()
-    init_with_storage = Vector{Int32}()
-    init_with_both = Vector{Int32}()
+    init_with_area = Int32[]
+    init_with_storage = Int32[]
+    init_with_both = Int32[]
 
     for group in IterTools.groupby(row -> row.node_id, profiles)
         group_level = getproperty.(group, :level)

@@ -460,15 +460,7 @@ def cyclic_time_model() -> Model:
     return model
 
 
-def basic_basin_only_area_model() -> Model:
-    starttime = "2022-01-01"
-    endtime = "2023-01-01"
-    model = Model(
-        starttime=starttime,
-        endtime=endtime,
-        crs="EPSG:4326",
-    )
-
+def build_model_with_basin(model, basin_definition) -> Model:
     # FlowBoundary nodes
     data = pd.DataFrame({
         "time": pd.date_range(start="2022-01-01", end="2023-01-01", freq="MS"),
@@ -496,19 +488,10 @@ def basic_basin_only_area_model() -> Model:
             )
         ],
     )
-    # a parabolic shaped (x^2 - 1) basin with a circular cross section
-    levels = [0, 1, 2, 3, 4, 5]
-    areas = [(level + 1) * np.pi for level in levels]
+
     confluence = model.basin.add(
-        Node(3, Point(-1.5, -1), name="confluence"),
-        [
-            basin.Profile(
-                area=areas,
-                level=levels,
-            ),
-            basin.State(level=[4]),
-            basin.Time(time=[starttime, endtime]),
-        ],
+        Node(3, Point(-1.5, -1), name="basin"),
+        basin_definition,
     )
 
     weir = model.tabulated_rating_curve.add(
@@ -529,148 +512,79 @@ def basic_basin_only_area_model() -> Model:
     model.link.add(weir, sea, name="sea")
 
     return model
+
+
+def basic_basin_only_area_model() -> Model:
+    starttime = "2022-01-01"
+    endtime = "2023-01-01"
+
+    model = Model(
+        starttime=starttime,
+        endtime=endtime,
+        crs="EPSG:4326",
+    )
+
+    # a parabolic shaped (x^2 - 1) basin with a circular cross section
+    levels = [0, 1, 2, 3, 4, 5]
+    areas = [(level + 1) * np.pi for level in levels]
+    basin_definition = [
+        basin.Profile(
+            area=areas,
+            level=levels,
+        ),
+        basin.State(level=[4]),
+        basin.Time(time=[starttime, endtime]),
+    ]
+
+    return build_model_with_basin(model, basin_definition)
 
 
 def basic_basin_only_storage_model() -> Model:
     starttime = "2022-01-01"
     endtime = "2023-01-01"
+
     model = Model(
         starttime=starttime,
         endtime=endtime,
         crs="EPSG:4326",
     )
 
-    # FlowBoundary nodes
-    data = pd.DataFrame({
-        "time": pd.date_range(start="2022-01-01", end="2023-01-01", freq="MS"),
-        "main": [74.7, 57.9, 63.2, 183.9, 91.8, 47.5, 32.6, 27.6, 26.5, 25.1, 39.3, 37.8, 57.9],
-        "minor": [16.3, 3.8, 3.0, 37.6, 18.2, 11.1, 12.9, 12.2, 11.2, 10.8, 15.1, 14.3, 11.8]
-    })  # fmt: skip
-    data["total"] = data["minor"] + data["main"]
-
-    main = model.flow_boundary.add(
-        Node(1, Point(0.0, 0.0), name="main"),
-        [
-            flow_boundary.Time(
-                time=data.time,
-                flow_rate=data.main,
-            )
-        ],
-    )
-
-    minor = model.flow_boundary.add(
-        Node(2, Point(-3.0, 0.0), name="minor"),
-        [
-            flow_boundary.Time(
-                time=data.time,
-                flow_rate=data.minor,
-            )
-        ],
-    )
-    # a parabolic shaped (x^2 - 1) basin with a circular cross section
     levels = [0, 1, 2, 3, 4, 5]
     storages = [np.pi / 2 * ((level + 1) ** 2 - 1) for level in levels]
-    confluence = model.basin.add(
-        Node(3, Point(-1.5, -1), name="confluence"),
-        [
-            basin.Profile(
-                level=levels,
-                storage=storages,
-            ),
-            basin.State(level=[4]),
-            basin.Time(time=[starttime, endtime]),
-        ],
-    )
+    basin_definition = [
+        basin.Profile(
+            level=levels,
+            storage=storages,
+        ),
+        basin.State(level=[4]),
+        basin.Time(time=[starttime, endtime]),
+    ]
 
-    weir = model.tabulated_rating_curve.add(
-        Node(4, Point(-1.5, -1.5), name="weir"),
-        [
-            tabulated_rating_curve.Static(
-                level=[0.0, 2, 5],
-                flow_rate=[0.0, 50, 200],
-            )
-        ],
-    )
-
-    sea = model.terminal.add(Node(5, Point(-1.5, -3.0), name="sea"))
-
-    model.link.add(main, confluence, name="main")
-    model.link.add(minor, confluence, name="minor")
-    model.link.add(confluence, weir)
-    model.link.add(weir, sea, name="sea")
-
-    return model
+    return build_model_with_basin(model, basin_definition)
 
 
 def basic_basin_both_area_and_storage_model() -> Model:
     starttime = "2022-01-01"
     endtime = "2023-01-01"
+
     model = Model(
         starttime=starttime,
         endtime=endtime,
         crs="EPSG:4326",
-    )
-
-    # FlowBoundary nodes
-    data = pd.DataFrame({
-        "time": pd.date_range(start="2022-01-01", end="2023-01-01", freq="MS"),
-        "main": [74.7, 57.9, 63.2, 183.9, 91.8, 47.5, 32.6, 27.6, 26.5, 25.1, 39.3, 37.8, 57.9],
-        "minor": [16.3, 3.8, 3.0, 37.6, 18.2, 11.1, 12.9, 12.2, 11.2, 10.8, 15.1, 14.3, 11.8]
-    })  # fmt: skip
-    data["total"] = data["minor"] + data["main"]
-
-    main = model.flow_boundary.add(
-        Node(1, Point(0.0, 0.0), name="main"),
-        [
-            flow_boundary.Time(
-                time=data.time,
-                flow_rate=data.main,
-            )
-        ],
-    )
-
-    minor = model.flow_boundary.add(
-        Node(2, Point(-3.0, 0.0), name="minor"),
-        [
-            flow_boundary.Time(
-                time=data.time,
-                flow_rate=data.minor,
-            )
-        ],
     )
 
     # a parabolic shaped (x^2 - 1) basin with a circular cross section
     levels = [0, 1, 2, 3, 4, 5]
     areas = [(level + 1) * np.pi for level in levels]
     storages = [np.pi / 2 * ((level + 1) ** 2 - 1) for level in levels]
-    confluence = model.basin.add(
-        Node(3, Point(-1.5, -1), name="confluence"),
-        [
-            basin.Profile(
-                area=areas,
-                level=levels,
-                storage=storages,
-            ),
-            basin.State(level=[4]),
-            basin.Time(time=[starttime, endtime]),
-        ],
-    )
+    basin_definition = [
+        basin.Profile(
+            area=areas,
+            level=levels,
+            storage=storages,
+        ),
+        basin.State(level=[4]),
+        basin.Time(time=[starttime, endtime]),
+    ]
 
-    weir = model.tabulated_rating_curve.add(
-        Node(4, Point(-1.5, -1.5), name="weir"),
-        [
-            tabulated_rating_curve.Static(
-                level=[0.0, 2, 5],
-                flow_rate=[0.0, 50, 200],
-            )
-        ],
-    )
-
-    sea = model.terminal.add(Node(5, Point(-1.5, -3.0), name="sea"))
-
-    model.link.add(main, confluence, name="main")
-    model.link.add(minor, confluence, name="minor")
-    model.link.add(confluence, weir)
-    model.link.add(weir, sea, name="sea")
-
-    return model
+    return build_model_with_basin(model, basin_definition)
