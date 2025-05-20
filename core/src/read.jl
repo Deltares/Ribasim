@@ -827,34 +827,14 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     errors |= parse_forcing!(:potential_evaporation)
     errors |= parse_forcing!(:drainage)
     errors |= parse_forcing!(:infiltration)
-
-    # Profiles
     errors |= validate_consistent_basin_initialization(db, config)
 
-    level, area, storage = create_storage_tables(db, config)
+    profiles = load_structvector(db, config, BasinProfileV1)
 
-    # linear interpolate area-level
-    map!(
-        (A, h) -> LinearInterpolation(
-            A,
-            h;
-            extrapolation_left = ConstantExtrapolation,
-            extrapolation_right = ConstantExtrapolation,
-            cache_parameters = true,
-        ),
-        basin.level_to_area,
-        area,
-        level,
-    )
+    interpolate_basin_profile_relations!(basin, profiles)
 
-    # the invert_integral, we use when we dont have storage or if we didn't have area. If we had both, we just interpolate
-    map!((h, S) -> LagrangeInterpolation(h, S), basin.storage_to_level, level, storage)
-
-    if !valid_profiles(node_id, level, area)
-        @error "Invalid Basin / profile table."
-        errors = true
-    end
     errors && error("Errors encountered when parsing Basin data.")
+
     # Inflow and outflow links
     map!(id -> collect(inflow_ids(graph, id)), basin.inflow_ids, node_id)
     map!(id -> collect(outflow_ids(graph, id)), basin.outflow_ids, node_id)
@@ -1796,10 +1776,8 @@ end
 """
 Compute the finite difference approximation of the vector `f` with respect to vector `x`.
 
-Taking the derivative of an n-sized vector f, give us a n-1 sized derivatives vector dfdx.
+Taking the derivative of an n-sized vector f, give us a n-1 sized derivative vector dfdx.
 Mapping these derivatives to an n-sized vector dfdx requires choosing a value at the lower bound.
-By default we use the relation dfdx₀ = 0.5*dfdx₁
-
 """
 function finite_diff_storage_to_area(
     f::Vector{Float64},
@@ -1821,11 +1799,10 @@ end
 function trapezoidal_int_area_to_storage(
     dfdx::Vector{Float64},
     x::Vector{Float64},
-    c::Float64 = 0.0,
 )::Vector{Float64}
     n = length(dfdx)
     f = Vector{Float64}(undef, n)
-    f[1] = c
+    f[1] = 0
     for i in 1:(n - 1)
         Δx = x[i + 1] - x[i]
         f[i + 1] = f[i] + 0.5 * (dfdx[i + 1] + dfdx[i]) * Δx
@@ -1899,5 +1876,47 @@ function set_concentrations!(
             node_idx = findfirst(node_id -> node_id.value == first_row.node_id, node_ids)
             concentration[node_idx, sub_idx] = value
         end
+    end
+end
+
+function interpolate_basin_profile_relations!(
+    basin::Basin,
+    profiles::StructVector{BasinProfileV1},
+)::Nothing
+    i = 0
+    for group in IterTools.groupby(row -> row.node_id, profiles)
+        i += 1
+        group_area = getproperty.(group, :area)
+        group_level = getproperty.(group, :level)
+        group_storage = getproperty.(group, :storage)
+
+        # If there is no storage as input, we integrate A(h)
+        if all(ismissing, group_storage)
+            group_storage = trapezoidal_int_area_to_storage(group_area, group_level)
+        end
+
+        # We always differentiate storage with respect to level such that we can use invert_integral
+        dS_dh = finite_diff_storage_to_area(group_storage, group_level)
+
+        level_to_area = LinearInterpolation(
+            dS_dh,
+            group_level;
+            extrapolation_left = ConstantExtrapolation,
+            extrapolation_right = ConstantExtrapolation,
+            cache_parameters = true,
+        )
+
+        basin.storage_to_level[i] = invert_integral(level_to_area)
+
+        if !all(ismissing, group_area)
+            level_to_area = LinearInterpolation(
+                group_area,
+                group_level;
+                extrapolation_left = ConstantExtrapolation,
+                extrapolation_right = ConstantExtrapolation,
+                cache_parameters = true,
+            )
+        end
+        basin.level_to_area[i] = level_to_area
     end
 end

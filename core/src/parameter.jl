@@ -443,8 +443,12 @@ end
 
 VerticalFlux(n::Int) = VerticalFlux(zeros(n), zeros(n), zeros(n), zeros(n))
 
-# const StorageToLevelType =
-#     AbstractInterpolation{Vector{Float64}, Vector{Float64}, ScalarInterpolation, Float64}
+const StorageToLevelType = LinearInterpolationIntInv{
+    Vector{Float64},
+    Vector{Float64},
+    ScalarInterpolation,
+    Float64,
+}
 
 """
 Requirements:
@@ -472,8 +476,8 @@ of vectors or Arrow Tables, and is added to avoid type instabilities.
     cumulative_precipitation_saveat::Vector{Float64} = zeros(length(node_id))
     cumulative_drainage_saveat::Vector{Float64} = zeros(length(node_id))
     # Discrete values for interpolation
-    storage_to_level::Vector{AbstractInterpolation} =
-        Vector{AbstractInterpolation}(undef, length(node_id))
+    storage_to_level::Vector{StorageToLevelType} =
+        Vector{StorageToLevelType}(undef, length(node_id))
     level_to_area::Vector{ScalarInterpolation} =
         Vector{ScalarInterpolation}(undef, length(node_id))
     # Values for allocation if applicable
