@@ -1810,35 +1810,6 @@ function trapezoidal_integrate(dfdx::Vector{Float64}, x::Vector{Float64})::Vecto
     f
 end
 
-"Read the Basin / profile table and return all area and level and storage values"
-function create_storage_tables(
-    db::DB,
-    config::Config,
-)::Tuple{Vector{Vector{Float64}}, Vector{Vector{Float64}}, Vector{Vector{Float64}}}
-    profiles = load_structvector(db, config, BasinProfileV1)
-    area = Vector{Vector{Float64}}()
-    level = Vector{Vector{Float64}}()
-    storage = Vector{Vector{Float64}}()
-
-    for group in IterTools.groupby(row -> row.node_id, profiles)
-        group_area = getproperty.(group, :area)
-        group_level = getproperty.(group, :level)
-        group_storage = getproperty.(group, :storage)
-
-        if all(ismissing, group_area)
-            group_area = finite_difference(group_storage, group_level)
-        elseif all(ismissing, group_storage)
-            group_storage = trapezoidal_integrate(group_area, group_level)
-        end
-
-        push!(area, group_area)
-        push!(level, group_level)
-        push!(storage, group_storage)
-    end
-
-    return level, area, storage
-end
-
 "Determine all substances present in the input over multiple tables"
 function get_substances(db::DB, config::Config)::OrderedSet{Symbol}
     # Hardcoded tracers
