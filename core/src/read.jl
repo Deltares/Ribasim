@@ -855,14 +855,8 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
 
     interpolate_basin_profile!(basin, profiles)
 
-    # the invert_integral, we use when we dont have storage or if we didn't have area. If we had both, we just interpolate
-    map!((h, S) -> LagrangeInterpolation(h, S), basin.storage_to_level, level, storage)
-
-    if !valid_profiles(node_id, level, area)
-        @error "Invalid Basin / profile table."
-        errors = true
-    end
     errors && error("Errors encountered when parsing Basin data.")
+
     # Inflow and outflow links
     map!(id -> collect(inflow_ids(graph, id)), basin.inflow_ids, node_id)
     map!(id -> collect(outflow_ids(graph, id)), basin.outflow_ids, node_id)
