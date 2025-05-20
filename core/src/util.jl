@@ -90,14 +90,14 @@ function get_scalar_interpolation(
 end
 
 """
-Create a valid Qh ScalarInterpolation.
+Create a valid Qh ScalarLinearInterpolation.
 Takes a node_id for validation logging, and a vector of level (h) and flow_rate (Q).
 """
 function qh_interpolation(
     node_id::NodeID,
     level::Vector{Float64},
     flow_rate::Vector{Float64},
-)::ScalarInterpolation
+)::ScalarLinearInterpolation
     errors = false
     n = length(level)
     if n < 2
@@ -1095,4 +1095,15 @@ function ranges(lengths::Vector{<:Integer})
     # standardize empty ranges to 1:0 for easier testing
     replace!(x -> isempty(x) ? (1:0) : x, ranges)
     return ranges
+end
+
+function get_interpolation_vec(interpolation_type::String, node_id::Vector{NodeID})::Vector
+    type = if interpolation_type == "linear"
+        ScalarLinearInterpolation
+    elseif interpolation_type == "stepwise"
+        ScalarStepwiseInterpolation
+    else
+        error("Invalid interpolation type specified: $interpolation_type.")
+    end
+    return Vector{type}(undef, length(node_id))
 end

@@ -23,6 +23,7 @@ from ribasim_testmodels.allocation import (
 )
 from ribasim_testmodels.backwater import backwater_model
 from ribasim_testmodels.basic import (
+    Wilson_model,
     basic_arrow_model,
     basic_model,
     basic_transient_model,
@@ -128,6 +129,7 @@ __all__ = [
     "trivial_model",
     "two_basin_model",
     "user_demand_model",
+    "Wilson_model",
 ]
 
 # provide a mapping from model name to its constructor, so we can iterate over all models

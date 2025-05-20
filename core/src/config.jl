@@ -120,6 +120,11 @@ const nodetypes = collect(keys(nodekinds))
     evaporate_mass::Bool = true
 end
 
+@option struct Interpolation <: TableOption
+    flow_boundary::String = "linear"
+    stepwise_smoothing::Float64 = 60.0
+end
+
 # Separate struct, as basin clashes with nodetype
 @option struct Results <: TableOption
     compression::Bool = true
@@ -165,6 +170,7 @@ end
     ribasim_version::String
     input_dir::String
     results_dir::String
+    interpolation::Interpolation = Interpolation()
     allocation::Allocation = Allocation()
     solver::Solver = Solver()
     logging::Logging = Logging()

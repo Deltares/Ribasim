@@ -60,6 +60,7 @@ using LinearAlgebra: mul!
 using DataInterpolations:
     ConstantInterpolation,
     LinearInterpolation,
+    SmoothedConstantInterpolation,
     LinearInterpolationIntInv,
     invert_integral,
     derivative,
