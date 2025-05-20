@@ -531,6 +531,10 @@ def build_model_with_basin(model, basin_definition) -> Model:
         ],
     )
 
+    # a parabolic shaped (x^2 - 1) basin with a circular cross section
+    levels = [0, 1, 2, 3, 4, 5]
+    areas = [(level + 1) * np.pi for level in levels]
+    storages = [np.pi / 2 * ((level + 1) ** 2 - 1) for level in levels]
     confluence = model.basin.add(
         Node(3, Point(-1.5, -1), name="basin"),
         basin_definition,
