@@ -108,3 +108,22 @@ The reduction factors help with performance, but are also an important tool to a
 Negative storage needs to be avoided since it is not a real solution, and would introduce water into the model that doesn't exist.
 Another tool used to avoid negative storage is the [`isoutoutofdomain`](https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/) option, which Ribasim makes use of.
 This rejects timesteps that lead to negative storage, instead retrying with a smaller timestep.
+
+# Compensating for cumulative flows
+
+As the cumulative flows in $\mathbf{u}$ grow over time, the allowed error tolerance based on `reltol` grows as well. After a thousand seconds with a flow of $1\text{ m}^3/\text{s}$, the error tolerance has decreased from $1^{-5}$ to $1^{-2}$. To compensate for this, we decrease the `reltol` individually per state over time.
+
+The formula for the new tolerance can be expressed as:
+
+$$
+\text{reltol}' = \max\left(10^{\log_{10}(\text{reltol}) - \text{diff\_norm}}, 10^{-14}\right)
+$$
+
+Where:
+
+- $\text{reltol}$ is the configured relative tolerance.
+- $\text{diff\_norm} = \max\left(0, \log_{10}\left(\frac{\text{cum\_magnitude}}{\text{avg\_magnitude}}\right)\right)$
+- $\text{cum\_magnitude}$ is the cumulative magnitude ($\text{internalnorm}$) of the state.
+- $\text{avg\_magnitude} = \max\left(\text{internalnorm}(10^4, t),\frac{\text{cum\_magnitude}}{t}\right)$ where $t$ is the current time.
+
+This formula ensures that the new tolerance decreases based on the difference between the cumulative magnitude and the average magnitude (once the cumulative magnitude exceeds $10^{4}$), with a lower bound of $10^{-14}$ to maintain numerical precision.
