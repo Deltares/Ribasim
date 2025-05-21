@@ -449,7 +449,6 @@ function check_water_balance_error!(
         balance_error = storage_rate - (total_in - total_out)
         mean_flow_rate = (total_in + total_out) / 2
         relative_error = iszero(mean_flow_rate) ? 0.0 : balance_error / mean_flow_rate
-        # relative_error = max(eps(storage_rate), eps(total_in), eps(total_out))
 
         if abs(balance_error) > water_balance_abstol &&
            abs(relative_error) > water_balance_reltol

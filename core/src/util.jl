@@ -1101,7 +1101,7 @@ end
 """Get the exponential time stops for decreasing the tolerance."""
 function get_log_tstops(starttime, endtime)::Vector{Float64}
     log_tstops = Float64[]
-    t = 2.0
+    t = 60 * 60
     while Second(t) <= round(endtime - starttime, Second)
         push!(log_tstops, t)
         t *= 2.0
