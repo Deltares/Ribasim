@@ -1098,6 +1098,17 @@ function get_timeseries_tstops(
     return tstops
 end
 
+"""Get the exponential time stops for decreasing the tolerance."""
+function get_log_tstops(starttime, endtime)::Vector{Float64}
+    log_tstops = Float64[]
+    t = 2.0
+    while Second(t) <= round(endtime - starttime, Second)
+        push!(log_tstops, t)
+        t *= 2.0
+    end
+    return log_tstops
+end
+
 function ranges(lengths::Vector{<:Integer})
     # from the lengths of the components
     # construct [1:n_pump, (n_pump+1):(n_pump+n_outlet)]

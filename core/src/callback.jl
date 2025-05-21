@@ -88,8 +88,9 @@ function create_callbacks(
     discrete_control_cb = FunctionCallingCallback(apply_discrete_control!)
     push!(callbacks, discrete_control_cb)
 
+    toltimes = get_log_tstops(config.starttime, config.endtime)
     decrease_tol_cb =
-        FunctionCallingCallback(decrease_tolerance!; funcat = saveat, func_start = false)
+        FunctionCallingCallback(decrease_tolerance!; funcat = toltimes, func_start = false)
     push!(callbacks, decrease_tol_cb)
 
     saved = SavedResults(
@@ -120,7 +121,7 @@ function decrease_tolerance!(u, t, integrator)::Nothing
         avg_magnitude = max(opts.internalnorm(1e4, t), cum_magnitude / t)  # allow for 1e4 m3/s
 
         # Decrease the relative tolerance based on their difference
-        diff_norm = max(0, round(Int, log10(cum_magnitude / avg_magnitude)))
+        diff_norm = max(0, log10(cum_magnitude / avg_magnitude))
         # Limit new tolerance to floating point precision (~-14)
         newtol = max(10.0^(log10(integrator.p.p_non_diff.reltol) - diff_norm), 1e-14)
 

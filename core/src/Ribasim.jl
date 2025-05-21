@@ -145,6 +145,8 @@ using StructArrays: StructVector
 # OrderedDict is used to store the order of the sources in a subnetwork.
 using DataStructures: OrderedSet, OrderedDict, counter, inc!
 
+using Dates: Second
+
 export libribasim
 
 include("carrays.jl")
