@@ -645,10 +645,10 @@ Validates the initialisation of basins. Each basin at least need a level-area or
 We recommend to initialise all basins in the same way, which can be level-area, level-storage or both.
 If basins diverge from this recommendation we log info about it for the modeler.
 """
-function validate_consistent_basin_initialization(db::DB, config::Config)::Bool
+function validate_consistent_basin_initialization(
+    profiles::StructVector{BasinProfileV1},
+)::Bool
     errors::Bool = false
-
-    profiles = load_structvector(db, config, BasinProfileV1)
 
     init_with_area = Int32[]
     init_with_storage = Int32[]
@@ -688,6 +688,11 @@ function validate_consistent_basin_initialization(db::DB, config::Config)::Bool
             errors = true
         end
 
+        if !issorted(group_storage; rev = false)
+            @error "Basin at node $node_id has non-monotonic storage input. Storage must always be increasing."
+            errors = true
+        end
+
         if any(ismissing, group_area) && !all(ismissing, group_area)
             @error "Basin has missing area input at node: $node_id"
             errors = true
@@ -715,5 +720,3 @@ function validate_consistent_basin_initialization(db::DB, config::Config)::Bool
 
     errors
 end
-
-function validate_profiles() end

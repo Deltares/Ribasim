@@ -827,10 +827,11 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     errors |= parse_forcing!(:potential_evaporation)
     errors |= parse_forcing!(:drainage)
     errors |= parse_forcing!(:infiltration)
-    errors |= validate_consistent_basin_initialization(db, config)
-    errors && error("Errors encountered when parsing Basin data.")
 
     profiles = load_structvector(db, config, BasinProfileV1)
+
+    errors |= validate_consistent_basin_initialization(profiles)
+    errors && error("Errors encountered when parsing Basin data.")
 
     interpolate_basin_profile_relations!(basin, profiles)
 

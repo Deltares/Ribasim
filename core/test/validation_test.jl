@@ -481,3 +481,49 @@ end
         @test_throws "Node ID not found" Ribasim.NodeID(:Pump, 20, v)
     end
 end
+
+@testitem "Validate consistent basin initialization with invalid profiles" begin
+    using Ribasim: BasinProfileV1, validate_consistent_basin_initialization
+    using StructArrays: StructVector
+
+    # Profile with repeated levels
+    levels_repeated = [0, 1, 1, 2, 3, 4]
+    areas_valid = [1, 2, 3, 4, 5, 6]
+    n = length(levels_repeated)
+    node = fill(1, n)
+    skipped = fill(missing, n)
+
+    profiles_repeated_levels = StructVector{BasinProfileV1}(;
+        node_id = node,
+        level = levels_repeated,
+        area = areas_valid,
+        storage = skipped,
+    )
+    error = validate_consistent_basin_initialization(profiles_repeated_levels)
+    @test error
+
+    # Profile with non-increasing storage
+    levels_valid = [0, 1, 2, 3, 4, 5]
+    storage_non_increasing = [10, 10, 9, 8, 8, 7]
+
+    profiles_non_increasing_storage = StructVector{BasinProfileV1}(;
+        node_id = node,
+        level = levels_valid,
+        area = skipped,
+        storage = storage_non_increasing,
+    )
+    error = validate_consistent_basin_initialization(profiles_non_increasing_storage)
+    @test error
+
+    # Profile with zero area at the bottom
+    areas_with_zero = [0, 1, 2, 3, 4, 5]
+
+    profiles_zero_area = StructVector{BasinProfileV1}(;
+        node_id = node,
+        level = levels_valid,
+        area = areas_with_zero,
+        storage = skipped,
+    )
+    error = validate_consistent_basin_initialization(profiles_zero_area)
+    @test error
+end
