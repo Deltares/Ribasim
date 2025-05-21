@@ -204,7 +204,7 @@ end
 make_itp(::Type{<:LinearInterpolation}, u, t; extrapolation, kwargs...) =
     LinearInterpolation(u, t; cache_parameters = true, extrapolation)
 make_itp(::Type{<:ConstantInterpolation}, u, t; extrapolation, kwargs...) =
-    ConstantInterpolation(u, t; extrapolation, kwargs...)
+    ConstantInterpolation(u, t; cache_parameters = true, extrapolation)
 make_itp(
     ::Type{<:SmoothedConstantInterpolation},
     u,
@@ -212,7 +212,13 @@ make_itp(
     extrapolation,
     stepwise_smoothing,
     kwargs...,
-) = SmoothedConstantInterpolation(u, t; extrapolation, d_max = stepwise_smoothing)
+) = SmoothedConstantInterpolation(
+    u,
+    t;
+    cache_parameters = true,
+    extrapolation,
+    d_max = stepwise_smoothing,
+)
 
 # Get interpolation parameter value
 function get_parameter_value(
