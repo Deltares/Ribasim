@@ -721,5 +721,3 @@ function validate_consistent_basin_initialization(
 
     errors
 end
-
-function validate_profiles() end
