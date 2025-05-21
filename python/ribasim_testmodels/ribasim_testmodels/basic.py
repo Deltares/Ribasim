@@ -465,7 +465,7 @@ def Wilson_model() -> Model:
         starttime="2020-01-01",
         endtime="2020-01-09",
         crs="EPSG:28992",
-        interpolation=Interpolation(flow_boundary="stepwise", stepwise_smoothing=7200),
+        interpolation=Interpolation(flow_boundary="stepwise", stepwise_smoothing=0.0),
     )
 
     fb = model.flow_boundary.add(
