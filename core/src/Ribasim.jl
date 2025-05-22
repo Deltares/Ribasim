@@ -177,7 +177,7 @@ include("libribasim.jl")
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
     isfile(toml_path) || return
     @compile_workload begin
-        Ribasim.main(toml_path)
+        main(toml_path)
     end
 end
 
