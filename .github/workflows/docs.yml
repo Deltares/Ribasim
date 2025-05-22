@@ -2,9 +2,9 @@ name: Docs
 on:
   push:
     branches: [main]
-    paths-ignore: [".teamcity/**"]
+    paths: ["core/**", "docs/**", "python/**", "pixi.toml", "pixi.lock"]
   pull_request:
-    paths-ignore: [".teamcity/**"]
+    paths: ["core/**", "docs/**", "python/**", "pixi.toml", "pixi.lock"]
   merge_group:
   workflow_dispatch:
 concurrency:
