@@ -493,6 +493,7 @@ end
     node = fill(1, n)
     skipped = fill(missing, n)
 
+    # Profile with repeated levels should give an error
     profiles_repeated_levels = StructVector{BasinProfileV1}(;
         node_id = node,
         level = levels_repeated,
@@ -502,7 +503,7 @@ end
     error = validate_consistent_basin_initialization(profiles_repeated_levels)
     @test error
 
-    # Profile with non-increasing storage
+    # Profile with non-increasing storage should give an error
     levels_valid = [0, 1, 2, 3, 4, 5]
     storage_non_increasing = [10, 10, 9, 8, 8, 7]
 
@@ -515,7 +516,7 @@ end
     error = validate_consistent_basin_initialization(profiles_non_increasing_storage)
     @test error
 
-    # Profile with zero area at the bottom
+    # Profile with zero area at the bottom should give an error
     areas_with_zero = [0, 1, 2, 3, 4, 5]
 
     profiles_zero_area = StructVector{BasinProfileV1}(;
@@ -525,5 +526,15 @@ end
         storage = skipped,
     )
     error = validate_consistent_basin_initialization(profiles_zero_area)
+    @test error
+
+    # Profile with no storage and area should error
+    profiles_missing_data = StructVector{BasinProfileV1}(;
+        node_id = node,
+        level = levels_valid,
+        area = skipped,
+        storage = skipped,
+    )
+    error = validate_consistent_basin_initialization(profiles_missing_data)
     @test error
 end
