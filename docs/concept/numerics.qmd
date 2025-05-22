@@ -111,9 +111,9 @@ This rejects timesteps that lead to negative storage, instead retrying with a sm
 
 # Compensating for cumulative flows
 
-As the cumulative flows in $\mathbf{u}$ grow over time, the allowed error tolerance based on `reltol` grows as well. After a thousand seconds with a flow of $1\text{ m}^3/\text{s}$, the error tolerance has decreased from $1^{-5}$ to $1^{-2}$. To compensate for this, we decrease the `reltol` individually per state over time.
+As the cumulative flows in $\mathbf{u}$ grow over time, the error tolerance based on `reltol` grows as well. The error tolerance is roughly $\text{abstol} + \mathbf{u} * \text{reltol}$, see [Basic Stepsize Control](https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/). The error tolerance is thus based on the cumulative flow current $\mathbf{u}$, and not on the instantaneous flow over the current timestep $\mathbf{u}-\mathbf{u_{t-1}}$. Thus, after a thousand seconds with a flow of $1\text{ m}^3/\text{s}$, the error tolerance has increased from $10^{-5}$ to $10^{-2}$.
 
-The formula for the new tolerance can be expressed as:
+To compensate for this, we decrease the `reltol` per state over time. The formula for the new tolerance can be expressed as:
 
 $$
 \text{reltol}' = \max\left(10^{\log_{10}(\text{reltol}) - \text{diff\_norm}}, 10^{-14}\right)
@@ -121,9 +121,11 @@ $$
 
 Where:
 
-- $\text{reltol}$ is the configured relative tolerance.
+- $\text{reltol}'$ is the new relative tolerance, and $\text{reltol}$ is the configured relative tolerance.
 - $\text{diff\_norm} = \max\left(0, \log_{10}\left(\frac{\text{cum\_magnitude}}{\text{avg\_magnitude}}\right)\right)$
 - $\text{cum\_magnitude}$ is the cumulative magnitude ($\text{internalnorm}$) of the state.
 - $\text{avg\_magnitude} = \max\left(\text{internalnorm}(10^4, t),\frac{\text{cum\_magnitude}}{t}\right)$ where $t$ is the current time.
 
-This formula ensures that the new tolerance decreases based on the difference between the cumulative magnitude and the average magnitude (once the cumulative magnitude exceeds $10^{4}$), with a lower bound of $10^{-14}$ to maintain numerical precision.
+This formula ensures that the new tolerance decreases based on the difference between the cumulative magnitude and the average magnitude (once the cumulative magnitude exceeds $10^{4}$), with a lower bound of $10^{-14}$, roughly the floating point precision.
+
+The tolerance reduction is applied as a callback at fixed times---starting at an hour---that double in their interval afterwards (e.g. 1, 2, 4, 8 hours etc.). This doubling accounts for the order of difference between the average and cumulative flows over time, which decreases exponentially as well.
