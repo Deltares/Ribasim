@@ -8,12 +8,12 @@ Ribasim.config is a submodule mainly to avoid name clashes between the configura
 """
 module config
 
+using ADTypes: AutoForwardDiff, AutoFiniteDiff
 using Configurations: Configurations, @option, from_toml, @type_alias
 using DataStructures: DefaultDict
 using Dates: DateTime
 using Logging: LogLevel, Debug, Info, Warn, Error
 using ..Ribasim: Ribasim, isnode, nodetype
-using ADTypes: AutoForwardDiff, AutoFiniteDiff
 using OrdinaryDiffEqCore: OrdinaryDiffEqAlgorithm, OrdinaryDiffEqNewtonAdaptiveAlgorithm
 using OrdinaryDiffEqNonlinearSolve: NLNewton
 using OrdinaryDiffEqLowOrderRK: Euler, RK4
@@ -25,6 +25,7 @@ using OrdinaryDiffEqRosenbrock: Rosenbrock23, Rodas4P, Rodas5P
 export Config, Solver, Results, Logging, Toml
 export algorithm,
     camel_case,
+    get_ad_type,
     snake_case,
     input_path,
     database_path,
@@ -46,8 +47,9 @@ for sv in nodeschemas
     node, kind = nodetype(sv)
     push!(nodekinds[node], kind)
 end
-# Terminal has no tables
+# Terminal and Junction have no tables
 nodekinds[:Terminal] = Symbol[]
+nodekinds[:Junction] = Symbol[]
 
 "Convert a string from CamelCase to snake_case."
 function snake_case(str::AbstractString)::String
@@ -114,7 +116,7 @@ const nodetypes = collect(keys(nodekinds))
     water_balance_reltol::Float64 = 1e-2
     maxiters::Int = 1e9
     sparse::Bool = true
-    autodiff::Bool = false
+    autodiff::Bool = true
     evaporate_mass::Bool = true
 end
 
@@ -290,6 +292,9 @@ function function_accepts_kwarg(f, kwarg)::Bool
     return false
 end
 
+get_ad_type(solver::Solver) =
+    solver.autodiff ? AutoForwardDiff(; tag = :Ribasim) : AutoFiniteDiff()
+
 "Create an OrdinaryDiffEqAlgorithm from solver config"
 function algorithm(solver::Solver; u0 = [])::OrdinaryDiffEqAlgorithm
     algotype = get(algorithms, solver.algorithm, nothing)
@@ -311,7 +316,7 @@ function algorithm(solver::Solver; u0 = [])::OrdinaryDiffEqAlgorithm
     end
 
     if function_accepts_kwarg(algotype, :autodiff)
-        kwargs[:autodiff] = solver.autodiff ? AutoForwardDiff() : AutoFiniteDiff()
+        kwargs[:autodiff] = get_ad_type(solver)
     end
 
     algotype(; kwargs...)

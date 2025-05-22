@@ -13,25 +13,30 @@ The figure below illustrates the relation between the various components of Riba
 flowchart TB
 modeler([Modeler]):::user
 
-api["Ribasim Python\n[python]"]
+api["Ribasim Python
+    [python]"]
 modeler-->|prepare model|api
 
-ribasim["Ribasim\n[julia]"]
+ribasim["Ribasim
+        [julia]"]
 modeler-->|start|ribasim
 
 subgraph qgisBoundary[QGIS]
     QGIS[QGIS Application]:::system_ext
-    qgisPlugin["Ribasim QGIS plugin\n[python]"]
+    qgisPlugin["Ribasim QGIS plugin
+               [python]"]
     QGIS-->qgisPlugin
 end
 modeler-->|prepare model|qgisBoundary
 
-model[("input model data\n[toml + geopackage + arrow]")]
+model[("input model data
+        [toml + geopackage + arrow]")]
 qgisPlugin-->|read/write|model
 api-->|read/write|model
 ribasim-->|simulate|model
 
-output[("simulation results\n[arrow]")]
+output[("simulation results
+         [arrow]")]
 ribasim-->|write|output
 
 class qgisBoundary boundary
@@ -105,7 +110,14 @@ The Ribasim Python package is [registered in PyPI](https://pypi.org/project/riba
 ```sh
 pip install ribasim
 ```
-
+or create a pixi environment in your modelling project with:
+```sh
+pixi init
+```
+and install ribasim:
+```sh
+pixi add ribasim
+```
 For documentation please see the [examples](/guide/examples.ipynb) and [API reference](/reference/reference).
 
 # Install Ribasim QGIS plugin

@@ -39,6 +39,13 @@ object Windows_Main : BuildType({
 
     triggers {
         vcs {
+            id = "TRIGGER_RIBA_SKIPW1"
+            branchFilter = """
+                +:<default>
+                +:refs/pull/*
+                +:pull/*
+            """.trimIndent()
+            triggerRules = "-:comment=skip ci:**"
         }
     }
 
@@ -88,19 +95,30 @@ object Windows_TestRibasimBinaries : BuildType({
 })
 
 object Windows_TestDelwaqCoupling : BuildType({
-    templates(WindowsAgent, GithubCommitStatusIntegration, TestDelwaqCouplingWindows)
+    templates(WindowsAgent, GithubCommitStatusIntegration, TestDelwaqCouplingWindows, GithubPullRequestsIntegration)
     name = "Test Delwaq coupling"
+
+    vcs {
+        root(RibasimVcs, ". => ribasim")
+        cleanCheckout = true
+    }
 
     artifactRules = "ribasim/python/ribasim/ribasim/delwaq/model"
 
     triggers {
         vcs {
             id = "TRIGGER_304"
+            branchFilter = """
+                +:<default>
+                +:refs/pull/*
+                +:pull/*
+            """.trimIndent()
             triggerRules = """
                 +:ribasim/coupling/delwaq/**
                 +:ribasim/core/**
                 +:ribasim/python/**
                 +:ribasim/ribasim_testmodels/**
+                -:comment=skip ci:**
             """.trimIndent()
         }
     }
@@ -110,7 +128,7 @@ object Windows_TestDelwaqCoupling : BuildType({
             id = "ARTIFACT_DEPENDENCY_4206"
             buildRule = lastSuccessful()
             artifactRules = """
-                DWAQ_win64_Release_Visual Studio 16 2019_ifx_*.zip!** => dimr
+                DWAQ_win64_Release_Visual Studio *.zip!** => dimr
             """.trimIndent()
         }
     }
@@ -124,10 +142,10 @@ object Windows_GenerateCache : BuildType({
         vcs {
             id = "TRIGGER_RIBA_W1"
             triggerRules = """
-                +:Manifest.toml
-                +:Project.toml
-                +:pixi.lock
-                +:pixi.toml
+                +:root=Ribasim_Ribasim:/Manifest.toml
+                +:root=Ribasim_Ribasim:/Project.toml
+                +:root=Ribasim_Ribasim:/pixi.lock
+                +:root=Ribasim_Ribasim:/pixi.toml
             """.trimIndent()
             branchFilter = "+:<default>"
         }

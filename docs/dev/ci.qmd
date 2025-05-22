@@ -30,6 +30,10 @@ They include the following checks:
 * Ribasim Python tests: Runs Ribasim Python tests on multiple platforms and multiple Python versions
 * QGIS Tests: Runs QGIS unit tests
 
+The Github CI configuration is stored in version control,
+and can be found in the `.github` folder.
+
+One can [skip running the CI](https://docs.github.com/en/actions/managing-workflow-runs-and-deployments/managing-workflow-runs/skipping-workflow-runs) using `[skip ci]` in the git commit message.
 
 # TeamCity
 Ribasim has another cloud-based CI service based on [TeamCity](https://www.jetbrains.com/teamcity/).
@@ -40,6 +44,13 @@ graph LR
     A[TeamCity]-->|Monitoring|B[GitHub]
     A-->C(Release)
 ```
+
+The Teamcity CI configuration itself is also stored in version control, and can be found in the `.teamcity` folder.
+Note that changes are only applied once merged to the `main` branch.
+One can test the validity of their local configuration with `mvn teamcity-configs:generate`
+(requiring a local installation of [maven](https://maven.apache.org/)).
+
+Like Github, one can skip running the Teamcity CI by starting the git commit message with `[skip ci]`.
 
 ## Conditions of using TeamCity
 TeamCity only runs workflows with the following conditions:

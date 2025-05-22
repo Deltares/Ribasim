@@ -30,11 +30,6 @@ end
         concentration_time = StructVector{Ribasim.BasinConcentrationV1}(undef, 0),
     )
 
-    (; current_level, current_area) = basin.current_properties
-
-    current_level[Float64[]] .= [2.0, 3.0]
-    current_area[Float64[]] .= [2.0, 3.0]
-
     @test Ribasim.basin_levels(basin, 2)[1] === 4.0
     @test Ribasim.basin_bottom(basin, NodeID(:Basin, 5, 1))[2] === 0.0
     @test Ribasim.basin_bottom(basin, NodeID(:Basin, 7, 2))[2] === 4.0
@@ -257,16 +252,16 @@ end
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
 
-    cfg = Ribasim.Config(toml_path)
-    db_path = Ribasim.database_path(cfg)
+    config = Ribasim.Config(toml_path)
+    db_path = Ribasim.database_path(config)
     db = SQLite.DB(db_path)
 
-    p = Ribasim.Parameters(db, cfg)
+    p = Ribasim.Parameters(db, config)
     close(db)
     t0 = 0.0
-    u0 = Ribasim.build_state_vector(p)
+    u0 = Ribasim.build_state_vector(p.p_non_diff)
     du0 = copy(u0)
-    jac_prototype = Ribasim.get_jac_prototype(du0, u0, p, t0)
+    jac_prototype, _, _ = Ribasim.get_diff_eval(du0, u0, p, config.solver)
 
     # rows, cols, _ = findnz(jac_prototype)
     #! format: off
@@ -279,15 +274,16 @@ end
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/pid_control/ribasim.toml")
 
-    cfg = Ribasim.Config(toml_path)
-    db_path = Ribasim.database_path(cfg)
+    config = Ribasim.Config(toml_path)
+    db_path = Ribasim.database_path(config)
     db = SQLite.DB(db_path)
 
-    p = Ribasim.Parameters(db, cfg)
+    p = Ribasim.Parameters(db, config)
+    (; p_non_diff) = p
     close(db)
-    u0 = Ribasim.build_state_vector(p)
+    u0 = Ribasim.build_state_vector(p_non_diff)
     du0 = copy(u0)
-    jac_prototype = Ribasim.get_jac_prototype(du0, u0, p, t0)
+    jac_prototype, _, _ = Ribasim.get_diff_eval(du0, u0, p, config.solver)
 
     #! format: off
     rows_expected = [1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6, 1, 2]
@@ -365,7 +361,7 @@ end
 end
 
 @testitem "Node types" begin
-    using Ribasim: nodetypes, NodeType, Parameters, AbstractParameterNode, snake_case
+    using Ribasim: nodetypes, NodeType, ParametersNonDiff, AbstractParameterNode, snake_case
 
     @test Set(nodetypes) == Set([
         :Basin,
@@ -378,6 +374,7 @@ end
         :LinearResistance,
         :ManningResistance,
         :Outlet,
+        :Junction,
         :PidControl,
         :Pump,
         :TabulatedRatingCurve,
@@ -390,19 +387,20 @@ end
             # It has a struct which is added to Parameters
             T = getproperty(Ribasim, nodetype)
             @test T <: AbstractParameterNode
-            @test hasfield(Parameters, snake_case(nodetype))
+            @test hasfield(ParametersNonDiff, snake_case(nodetype))
         end
     end
 end
 
 @testitem "flow_to_storage matrix" begin
     using LinearAlgebra: I
+    using Ribasim: getaxes
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.Model(toml_path)
-    (; p) = model.integrator
-    n_basins = length(p.basin.node_id)
-    (; flow_to_storage, state_ranges) = p
+    (; basin, flow_to_storage) = model.integrator.p.p_non_diff
+    state_ranges = getaxes(model.integrator.u)
+    n_basins = length(basin.node_id)
 
     @test flow_to_storage[:, state_ranges.evaporation] == -I
     @test flow_to_storage[:, state_ranges.infiltration] == -I

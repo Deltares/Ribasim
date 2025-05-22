@@ -1,7 +1,7 @@
 name: Julia Tests
 on:
   push:
-    branches: [main, update/pixi-lock, update/julia-manifest]
+    branches: [main]
     paths-ignore: [".teamcity/**"]
     tags: ["*"]
   pull_request:
@@ -44,7 +44,7 @@ jobs:
         if: matrix.os == 'windows-latest'
         run: |
           mkdir "C:\Users\runneradmin\.julia\conda\3\x86_64"
-      - uses: prefix-dev/setup-pixi@v0.8.3
+      - uses: prefix-dev/setup-pixi@v0.8.8
         with:
           pixi-version: "latest"
       - name: Prepare pixi

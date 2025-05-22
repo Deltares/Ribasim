@@ -1,7 +1,7 @@
 name: Python Codegen
 on:
   push:
-    branches: [main, update/pixi-lock]
+    branches: [main]
     paths-ignore: [".teamcity/**"]
     tags: ["*"]
   pull_request:
@@ -18,7 +18,7 @@ jobs:
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
-      - uses: prefix-dev/setup-pixi@v0.8.3
+      - uses: prefix-dev/setup-pixi@v0.8.8
         with:
           pixi-version: "latest"
       - name: Prepare pixi

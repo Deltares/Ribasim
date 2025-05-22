@@ -323,25 +323,42 @@ Currently the stored demand and abstraction rate are those at the allocation tim
 ## Allocation flow - `allocation_flow.arrow`
 
 The allocation flow table contains results of the optimized allocation flow on every link in the model that is part of a subnetwork, for each time an optimization problem is solved (see also [here](/concept/allocation.qmd#the-high-level-algorithm)).
-If in the model a main network and subnetwork(s) are specified, there are 2 different
-types of optimization for the subnetwork: collecting its total demand per priority (for allocating flow from the main network to the subnetwork), and allocating flow within the subnetwork. The column `collect_demands` provides the distinction between these two optimization types.
+If in the model a main network and subnetwork(s) are specified, there are 3 different types of optimization for the subnetwork:
+The column `optimization_type` provides the distinction between these optimization types.
 
-column          | type
-----------------| -----
-time            | DateTime
-link_id         | Int32
-from_node_type  | String
-from_node_id    | Int32
-to_node_type    | String
-to_node_id      | Int32
-subnetwork_id   | Int32
-priority        | Int32
-flow_rate       | Float64
-collect_demands | Bool
+- `internal_sources`: first it will try using local sources internal to the subnetwork
+- `collect_demands`: collecting its total demand per priority (for allocating flow from the main network to the subnetwork)
+- `allocate`: allocating flow within the subnetwork
+
+column            | type
+----------------- | -----
+time              | DateTime
+link_id           | Int32
+from_node_type    | String
+from_node_id      | Int32
+to_node_type      | String
+to_node_id        | Int32
+subnetwork_id     | Int32
+priority          | Int32
+flow_rate         | Float64
+optimization_type | String
+
+## Concentration - `concentration.arrow`
+
+If the [experimental concentration feature](/reference/usage.qmd#experimental-features) is enabled, the results are written to `concentration.arrow`.
+This file records the Basin concentrations for each substance over time.
+The schema below is identical to the [external Basin concentration input](/reference/node/basin.qmd#concentration-external).
+
+column         | type     | unit                     | restriction
+-------------- | -------- | ------------------------ | -----------
+node_id        | Int32    | -                        | Basin nodes only
+time           | DateTime | -                        |
+substance      | String   | -                        | can correspond to known Delwaq substances
+concentration  | Float64  | $\text{g}/\text{m}^3$    |
 
 ## Subgrid level - `subgrid_level.arrow`
 
-This result file is only written if the model contains a [Basin / subgrid](node/basin.qmd#subgrid) table.
+This result file is only written if the model contains a [Basin / subgrid](/reference/node/basin.qmd#subgrid) table.
 See there for more information on the meaning of this output.
 
 column         | type
@@ -354,10 +371,14 @@ subgrid_level  | Float64
 
 This result file contains statistics about the solver, which can give an insight into how well the solver is performing over time. The data is solved by `saveat` (see [configuration file](#configuration-file)). `water_balance` refers to the right-hand-side function of the system of differential equations solved by the Ribasim core.
 
-column              | type
---------------------| -----
-time                | DateTime
-water_balance_calls | Int
-linear_solves       | Int
-accepted_timesteps  | Int
-rejected_timesteps  | Int
+The `computation_time` is the wall time in milliseconds spent on the given period.
+The first row tends to include compilation time as well.
+
+column              | type     | unit
+--------------------| -------- | ----
+time                | DateTime | -
+computation_time    | Float64  | $\text{ms}$
+water_balance_calls | Int      | -
+linear_solves       | Int      | -
+accepted_timesteps  | Int      | -
+rejected_timesteps  | Int      | -

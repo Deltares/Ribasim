@@ -1,8 +1,8 @@
 # Allowed types for downstream (to_node_id) nodes given the type of the upstream (from_node_id) node
 neighbortypes(nodetype::Symbol) = neighbortypes(Val(config.snake_case(nodetype)))
-neighbortypes(::Val{:pump}) = Set((:basin, :terminal, :level_boundary))
-neighbortypes(::Val{:outlet}) = Set((:basin, :terminal, :level_boundary))
-neighbortypes(::Val{:user_demand}) = Set((:basin, :terminal, :level_boundary))
+neighbortypes(::Val{:pump}) = Set((:basin, :terminal, :level_boundary, :junction))
+neighbortypes(::Val{:outlet}) = Set((:basin, :terminal, :level_boundary, :junction))
+neighbortypes(::Val{:user_demand}) = Set((:basin, :terminal, :level_boundary, :junction))
 neighbortypes(::Val{:level_demand}) = Set((:basin,))
 neighbortypes(::Val{:basin}) = Set((
     :linear_resistance,
@@ -11,13 +11,24 @@ neighbortypes(::Val{:basin}) = Set((
     :pump,
     :outlet,
     :user_demand,
+    :junction,
 ))
-neighbortypes(::Val{:terminal}) = Set{Symbol}() # only endnode
-neighbortypes(::Val{:flow_boundary}) = Set((:basin, :terminal, :level_boundary))
+neighbortypes(::Val{:terminal}) = Set{Symbol}()
+neighbortypes(::Val{:junction}) = Set((
+    :basin,
+    :junction,
+    :linear_resistance,
+    :tabulated_rating_curve,
+    :manning_resistance,
+    :pump,
+    :outlet,
+    :user_demand,
+))
+neighbortypes(::Val{:flow_boundary}) = Set((:basin, :terminal, :level_boundary, :junction))
 neighbortypes(::Val{:level_boundary}) =
     Set((:linear_resistance, :pump, :outlet, :tabulated_rating_curve))
-neighbortypes(::Val{:linear_resistance}) = Set((:basin, :level_boundary))
-neighbortypes(::Val{:manning_resistance}) = Set((:basin,))
+neighbortypes(::Val{:linear_resistance}) = Set((:basin, :level_boundary, :junction))
+neighbortypes(::Val{:manning_resistance}) = Set((:basin, :junction))
 neighbortypes(::Val{:continuous_control}) = Set((:pump, :outlet))
 neighbortypes(::Val{:discrete_control}) = Set((
     :pump,
@@ -28,7 +39,8 @@ neighbortypes(::Val{:discrete_control}) = Set((
     :pid_control,
 ))
 neighbortypes(::Val{:pid_control}) = Set((:pump, :outlet))
-neighbortypes(::Val{:tabulated_rating_curve}) = Set((:basin, :terminal, :level_boundary))
+neighbortypes(::Val{:tabulated_rating_curve}) =
+    Set((:basin, :terminal, :level_boundary, :junction))
 neighbortypes(::Val{:flow_demand}) =
     Set((:linear_resistance, :manning_resistance, :tabulated_rating_curve, :pump, :outlet))
 neighbortypes(::Any) = Set{Symbol}()
@@ -48,10 +60,12 @@ n_neighbor_bounds_flow(::Val{:ManningResistance}) = n_neighbor_bounds(1, 1, 1, 1
 n_neighbor_bounds_flow(::Val{:TabulatedRatingCurve}) = n_neighbor_bounds(1, 1, 1, 1)
 n_neighbor_bounds_flow(::Val{:LevelBoundary}) =
     n_neighbor_bounds(0, typemax(Int), 0, typemax(Int))
-n_neighbor_bounds_flow(::Val{:FlowBoundary}) = n_neighbor_bounds(0, 0, 1, typemax(Int))
+n_neighbor_bounds_flow(::Val{:FlowBoundary}) = n_neighbor_bounds(0, 0, 1, 1)
 n_neighbor_bounds_flow(::Val{:Pump}) = n_neighbor_bounds(1, 1, 1, 1)
 n_neighbor_bounds_flow(::Val{:Outlet}) = n_neighbor_bounds(1, 1, 1, 1)
 n_neighbor_bounds_flow(::Val{:Terminal}) = n_neighbor_bounds(1, typemax(Int), 0, 0)
+n_neighbor_bounds_flow(::Val{:Junction}) =
+    n_neighbor_bounds(1, typemax(Int), 1, typemax(Int))
 n_neighbor_bounds_flow(::Val{:PidControl}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_flow(::Val{:ContinuousControl}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_flow(::Val{:DiscreteControl}) = n_neighbor_bounds(0, 0, 0, 0)
@@ -71,6 +85,7 @@ n_neighbor_bounds_control(::Val{:FlowBoundary}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_control(::Val{:Pump}) = n_neighbor_bounds(0, 1, 0, 0)
 n_neighbor_bounds_control(::Val{:Outlet}) = n_neighbor_bounds(0, 1, 0, 0)
 n_neighbor_bounds_control(::Val{:Terminal}) = n_neighbor_bounds(0, 0, 0, 0)
+n_neighbor_bounds_control(::Val{:Junction}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_control(::Val{:PidControl}) = n_neighbor_bounds(0, 1, 1, 1)
 n_neighbor_bounds_control(::Val{:ContinuousControl}) =
     n_neighbor_bounds(0, 0, 1, typemax(Int))
@@ -91,14 +106,6 @@ controllablefields(::Val{:Outlet}) = Set((:active, :flow_rate))
 controllablefields(::Val{:PidControl}) =
     Set((:active, :target, :proportional, :integral, :derivative))
 controllablefields(nodetype) = Set{Symbol}()
-
-function variable_names(s::Any)
-    filter(x -> !(x in (:node_id, :control_state)), fieldnames(s))
-end
-function variable_nt(s::Any)
-    names = variable_names(typeof(s))
-    NamedTuple{names}((getfield(s, x) for x in names))
-end
 
 "Get the right sort by function (by in `sort(x; by)`) given the Schema"
 function sort_by end
@@ -275,8 +282,8 @@ Test whether static or discrete controlled flow rates are indeed non-negative.
 """
 function valid_flow_rates(
     node_id::Vector{NodeID},
-    flow_rate::Vector,
-    control_mapping::Dict,
+    flow_rate::Vector{ScalarInterpolation},
+    control_mapping::Dict{Tuple{NodeID, String}, <:ControlStateUpdate},
 )::Bool
     errors = false
 
@@ -287,14 +294,18 @@ function valid_flow_rates(
     for (key, control_state_update) in pairs(control_mapping)
         id_controlled = key[1]
         push!(ids_controlled, id_controlled)
-        flow_rate_update = only(control_state_update.itp_update)
-        @assert flow_rate_update.name == :flow_rate
+        flow_rate_update_idx = findfirst(
+            parameter_update -> parameter_update.name == :flow_rate,
+            control_state_update.itp_update_linear,
+        )
+        @assert !isnothing(flow_rate_update_idx)
+        flow_rate_update = control_state_update.itp_update_linear[flow_rate_update_idx]
         flow_rate_ = minimum(flow_rate_update.value.u)
 
         if flow_rate_ < 0.0
             errors = true
             control_state = key[2]
-            @error "$id_controlled flow rates must be non-negative, found $flow_rate_ for control state '$control_state'."
+            @error "Negative flow rate(s) found." node_id = id_controlled control_state
         end
     end
 
@@ -302,9 +313,9 @@ function valid_flow_rates(
         if id in ids_controlled
             continue
         end
-        if flow_rate_ < 0.0
+        if minimum(flow_rate_.u) < 0.0
             errors = true
-            @error "$id flow rates must be non-negative, found $flow_rate_."
+            @error "Negative flow rate(s) for $id found."
         end
     end
 
@@ -346,7 +357,7 @@ Validate the entries for a single subgrid element.
 function valid_subgrid(
     subgrid_id::Int32,
     node_id::Int32,
-    node_to_basin::Dict{Int32, Int},
+    node_to_basin::Dict{Int32, NodeID},
     basin_level::Vector{Float64},
     subgrid_level::Vector{Float64},
 )::Bool
@@ -539,7 +550,7 @@ Check:
 - Whether the supplied truth states have the proper length;
 - Whether look_ahead is only supplied for condition variables given by a time-series.
 """
-function valid_discrete_control(p::Parameters, config::Config)::Bool
+function valid_discrete_control(p::ParametersNonDiff, config::Config)::Bool
     (; discrete_control, graph) = p
     (; node_id, logic_mapping) = discrete_control
 

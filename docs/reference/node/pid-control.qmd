@@ -18,7 +18,7 @@ column           | type     | unit            | restriction
 node_id          | Int32    | -               |
 control_state    | String   | -               | (optional)
 active           | Bool     | -               | (optional, default true)
-listen_node_id   | Int32    | -               | -
+listen_node_id   | Int32    | -               | must be a Basin
 target           | Float64  | $\text{m}$      | -
 proportional     | Float64  | $\text{s}^{-1}$ | -
 integral         | Float64  | $\text{s}^{-2}$ | -
@@ -37,7 +37,7 @@ column           | type     | unit            | restriction
 ---------------- | -------- | --------------- | -----------
 node_id          | Int32    | -               |
 time             | DateTime | -               |
-listen_node_id   | Int32    | -               | -
+listen_node_id   | Int32    | -               | must be a Basin
 target           | Float64  | $\text{m}$      | -
 proportional     | Float64  | $\text{s}^{-1}$ | -
 integral         | Float64  | $\text{s}^{-2}$ | -

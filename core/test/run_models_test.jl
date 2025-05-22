@@ -1,10 +1,10 @@
 @testitem "trivial model" begin
-    using SciMLBase: successful_retcode
     using Tables: Tables
     using Tables.DataAPI: nrow
     using Dates: DateTime
     import Arrow
-    using Ribasim: get_tstops, tsaves, StateRanges
+    using Ribasim: get_tstops, tsaves
+    using Ribasim.CArrays: CVector, getaxes
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/trivial/ribasim.toml")
     @test ispath(toml_path)
@@ -19,12 +19,14 @@
     config = Ribasim.Config(toml_path)
     model = Ribasim.run(config)
     @test model isa Ribasim.Model
-    @test successful_retcode(model)
-    (; p) = model.integrator
+    @test success(model)
+    (; u, du) = model.integrator
+    (; p_non_diff) = model.integrator.p
 
-    @test p.node_id == [0, 6, 6]
-    @test p.state_ranges ==
-          StateRanges(; tabulated_rating_curve = 1:1, evaporation = 2:2, infiltration = 3:3)
+    @test p_non_diff.node_id == [0, 6, 6]
+    @test u isa CVector
+    @test filter(!isempty, getaxes(u)) ==
+          (; tabulated_rating_curve = 1:1, evaporation = 2:2, infiltration = 3:3)
 
     @test !ispath(control_path)
 
@@ -82,8 +84,15 @@
             (DateTime, Int32, Float64),
         )
         @test Tables.schema(solver_stats) == Tables.Schema(
-            (:time, :rhs_calls, :linear_solves, :accepted_timesteps, :rejected_timesteps),
-            (DateTime, Int, Int, Int, Int),
+            (
+                :time,
+                :computation_time,
+                :rhs_calls,
+                :linear_solves,
+                :accepted_timesteps,
+                :rejected_timesteps,
+            ),
+            (DateTime, Float64, Int, Int, Int, Int),
         )
     end
 
@@ -93,7 +102,7 @@
         # t0 has no flow, 2 flow links
         @test nrow(flow) == (nsaved - 1) * 2
         @test nrow(basin) == nsaved - 1
-        @test nrow(subgrid) == nsaved * length(p.subgrid.level)
+        @test nrow(subgrid) == nsaved * length(p_non_diff.subgrid.level)
     end
 
     @testset "Results values" begin
@@ -116,37 +125,34 @@
 
         # The exporter interpolates 1:1 for three subgrid elements, but shifted by 1.0 meter.
         basin_level = basin.level[1]
-        @test length(p.subgrid.level) == 3
-        @test diff(p.subgrid.level) ≈ [-1.0, 2.0]
+        @test length(p_non_diff.subgrid.level) == 3
+        @test diff(p_non_diff.subgrid.level) ≈ [-1.0, 2.0]
         @test subgrid.subgrid_id[1:3] == [11, 22, 33]
         @test subgrid.subgrid_level[1:3] ≈
               [basin_level, basin_level - 1.0, basin_level + 1.0]
-        @test subgrid.subgrid_level[(end - 2):end] == p.subgrid.level
+        @test subgrid.subgrid_level[(end - 2):end] == p_non_diff.subgrid.level
     end
 end
 
 @testitem "bucket model" begin
-    using SciMLBase: successful_retcode
     using OrdinaryDiffEqCore: get_du
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/bucket/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
-    (; basin, state_ranges) = model.integrator.p
-    @test basin.current_properties.current_storage[Float64[]] ≈ [1000]
+    (; p_non_diff, diff_cache) = model.integrator.p
+    (; basin) = p_non_diff
+    @test diff_cache.current_storage ≈ [1000]
     @test basin.vertical_flux.precipitation == [0.0]
     @test basin.vertical_flux.drainage == [0.0]
     du = get_du(model.integrator)
-    du_evaporation = view(du, state_ranges.evaporation)
-    du_infiltration = view(du, state_ranges.infiltration)
-    @test du_evaporation == [0.0]
-    @test du_infiltration == [0.0]
-    @test successful_retcode(model)
+    @test du.evaporation == [0.0]
+    @test du.infiltration == [0.0]
+    @test success(model)
 end
 
 @testitem "leaky bucket model" begin
-    using SciMLBase: successful_retcode
     using OrdinaryDiffEqCore: get_du
     import BasicModelInterface as BMI
 
@@ -158,12 +164,15 @@ end
     (; integrator) = model
     du = get_du(integrator)
     (; u, p, t) = integrator
+    (; p_non_diff, diff_cache) = p
+    (; basin) = p_non_diff
+
     Ribasim.water_balance!(du, u, p, t)
-    stor = integrator.p.basin.current_properties.current_storage[du]
-    prec = p.basin.vertical_flux.precipitation
-    evap = view(du, p.state_ranges.evaporation)
-    drng = p.basin.vertical_flux.drainage
-    infl = view(du, p.state_ranges.infiltration)
+    stor = diff_cache.current_storage
+    prec = basin.vertical_flux.precipitation
+    evap = du.evaporation
+    drng = basin.vertical_flux.drainage
+    infl = du.infiltration
     # The dynamic data has missings, but these are not set.
     @test prec == [0.0]
     @test evap == [0.0]
@@ -183,13 +192,12 @@ end
     @test drng == [0.001]
     @test infl == [0.002]
     stor ≈ Float32[init_stor + 86400 * (0.003 * 2.0 + 0.001 * 0.5 - 0.001 - 0.002 * 0.5)]
-    @test successful_retcode(Ribasim.solve!(model))
+    @test success(Ribasim.solve!(model))
 end
 
 @testitem "basic model" begin
     using Logging: Debug, with_logger
     using LoggingExtras
-    using SciMLBase: successful_retcode
     using OrdinaryDiffEqBDF: QNDF
     import Tables
     using Dates
@@ -207,19 +215,20 @@ end
 
     (; integrator) = model
     (; p, alg) = integrator
+    (; p_non_diff, diff_cache) = p
 
     @test p isa Ribasim.Parameters
-    @test isconcretetype(typeof(p))
-    @test all(isconcretetype, fieldtypes(typeof(p)))
-    @test p.node_id == [4, 5, 8, 7, 10, 12, 2, 1, 3, 6, 9, 1, 3, 6, 9]
+    @test isconcretetype(typeof(p_non_diff))
+    @test all(isconcretetype, fieldtypes(typeof(p_non_diff)))
+    @test p_non_diff.node_id == [4, 5, 8, 7, 10, 12, 2, 1, 3, 6, 9, 1, 3, 6, 9]
 
     @test alg isa QNDF
     @test alg.step_limiter! == Ribasim.limit_flow!
 
-    @test successful_retcode(model)
+    @test success(model)
     @test length(model.integrator.sol) == 2 # start and end
-    @test model.integrator.p.basin.current_properties.current_storage[Float64[]] ≈
-          Float32[804.22156, 803.6474, 495.18243, 1318.3053] skip = Sys.isapple() atol = 1.5
+    @test diff_cache.current_storage ≈ Float32[804.22156, 803.6474, 495.18243, 1318.3053] skip =
+        Sys.isapple() atol = 1.5
 
     @test length(logger.logs) > 10
     @test logger.logs[1].level == Debug
@@ -237,17 +246,14 @@ end
 end
 
 @testitem "basic arrow model" begin
-    using SciMLBase: successful_retcode
-
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic_arrow/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
-    @test successful_retcode(model)
+    @test success(model)
 end
 
 @testitem "basic transient model" begin
-    using SciMLBase: successful_retcode
     using OrdinaryDiffEqCore: get_du
 
     toml_path =
@@ -255,29 +261,25 @@ end
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
-    @test successful_retcode(model)
+    @test success(model)
     @test allunique(Ribasim.tsaves(model))
-    du = get_du(model.integrator)
-    precipitation = model.integrator.p.basin.vertical_flux.precipitation
+    (; p_non_diff, diff_cache) = model.integrator.p
+    precipitation = p_non_diff.basin.vertical_flux.precipitation
     @test length(precipitation) == 4
-    @test model.integrator.p.basin.current_properties.current_storage[du] ≈
-          Float32[698.6895, 698.143, 420.57407, 1334.486] atol = 2.0 skip = Sys.isapple()
+    @test diff_cache.current_storage ≈ Float32[698.6895, 698.143, 420.57407, 1334.486] atol =
+        2.0 skip = Sys.isapple()
 end
 
 @testitem "Allocation example model" begin
-    using SciMLBase: successful_retcode
-
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/allocation_example/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
-    @test successful_retcode(model)
+    @test success(model)
 end
 
 @testitem "sparse and AD/FDM jac solver options" begin
-    using SciMLBase: successful_retcode
-
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/basic_transient/ribasim.toml")
 
@@ -290,10 +292,10 @@ end
     config = Ribasim.Config(toml_path; solver_sparse = false, solver_autodiff = false)
     dense_fdm = Ribasim.run(config)
 
-    @test successful_retcode(sparse_ad)
-    @test successful_retcode(dense_ad)
-    @test successful_retcode(sparse_fdm)
-    @test successful_retcode(dense_fdm)
+    @test success(sparse_ad)
+    @test success(dense_ad)
+    @test success(sparse_fdm)
+    @test success(dense_fdm)
 
     @test dense_ad.integrator.u ≈ sparse_ad.integrator.u atol = 0.1
     @test sparse_fdm.integrator.u ≈ sparse_ad.integrator.u atol = 4
@@ -301,12 +303,11 @@ end
 
     config = Ribasim.Config(toml_path; solver_algorithm = "Rodas5P", solver_autodiff = true)
     time_ad = Ribasim.run(config)
-    @test successful_retcode(time_ad)
+    @test success(time_ad)
     @test time_ad.integrator.u ≈ sparse_ad.integrator.u atol = 10
 end
 
 @testitem "TabulatedRatingCurve model" begin
-    using SciMLBase: successful_retcode
     using DataInterpolations.ExtrapolationType: Constant, Periodic
 
     toml_path =
@@ -314,10 +315,10 @@ end
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
-    @test successful_retcode(model)
-    @test model.integrator.p.basin.current_properties.current_storage[Float64[]] ≈
-          Float32[368.31558, 365.68442] skip = Sys.isapple()
-    (; tabulated_rating_curve) = model.integrator.p
+    @test success(model)
+    (; p_non_diff, diff_cache) = model.integrator.p
+    @test diff_cache.current_storage ≈ Float32[368.31558, 365.68442] skip = Sys.isapple()
+    (; tabulated_rating_curve) = p_non_diff
     # The first node is static, the first interpolation object always applies
     index_itp1 = tabulated_rating_curve.current_interpolation_index[1]
     @test only(index_itp1.u) == 1
@@ -336,15 +337,13 @@ end
 
 @testitem "Outlet constraints" begin
     using DataFrames: DataFrame
-    using SciMLBase: successful_retcode
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/outlet/ribasim.toml")
     @test ispath(toml_path)
 
     model = Ribasim.run(toml_path)
-    @test successful_retcode(model)
-    p = model.integrator.p
-    (; level_boundary, outlet) = p
+    @test success(model)
+    (; level_boundary, outlet) = model.integrator.p.p_non_diff
     (; level) = level_boundary
     level = level[1]
 
@@ -365,11 +364,10 @@ end
     level_basin = Ribasim.get_storages_and_levels(model).level[:]
 
     # Basin level converges to stable level boundary level
-    all(isapprox.(level_basin[t .>= t_maximum_level], level.u[3], atol = 5e-2))
+    @test all(isapprox.(level_basin[t .>= t_maximum_level], level.u[3], atol = 5e-2))
 end
 
 @testitem "UserDemand" begin
-    using SciMLBase: successful_retcode
     using Dates
     using DataFrames: DataFrame
     using Ribasim: formulate_storages!
@@ -381,23 +379,24 @@ end
 
     (; integrator) = model
     (; u, p, t, sol) = integrator
-    current_storage = p.basin.current_properties.current_storage[Float64[]]
+    (; p_non_diff, diff_cache) = p
+    (; p_non_diff, diff_cache) = model.integrator.p
 
     day = 86400.0
 
-    @test only(current_storage) ≈ 1000.0
+    @test only(diff_cache.current_storage) ≈ 1000.0
     # constant UserDemand withdraws to 0.9m or 900m3 due to min level = 0.9
     BMI.update_until(model, 150day)
-    formulate_storages!(current_storage, u, u, p, t)
-    @test only(current_storage) ≈ 900 atol = 5
+    formulate_storages!(u, p, t)
+    @test only(diff_cache.current_storage) ≈ 900 atol = 5
     # dynamic UserDemand withdraws to 0.5m or 500m3 due to min level = 0.5
     BMI.update_until(model, 220day)
-    formulate_storages!(current_storage, u, u, p, t)
-    @test only(current_storage) ≈ 500 atol = 1
+    formulate_storages!(u, p, t)
+    @test only(diff_cache.current_storage) ≈ 500 atol = 1
 
     # Trasient return factor
     flow = DataFrame(Ribasim.flow_table(model))
-    return_factor_itp = model.integrator.p.user_demand.return_factor[3]
+    return_factor_itp = p_non_diff.user_demand.return_factor[3]
     flow_in =
         filter([:from_node_id, :to_node_id] => (from, to) -> (from, to) == (1, 4), flow)
     flow_out =
@@ -411,8 +410,6 @@ end
 end
 
 @testitem "ManningResistance" begin
-    using PreallocationTools: get_tmp
-    using SciMLBase: successful_retcode
     using OrdinaryDiffEqCore: get_du
     using Ribasim: NodeID
 
@@ -473,11 +470,13 @@ end
     toml_path = normpath(@__DIR__, "../../generated_testmodels/backwater/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
-    @test successful_retcode(model)
+    @test success(model)
 
     du = get_du(model.integrator)
     (; p, t) = model.integrator
-    h_actual = p.basin.current_properties.current_level[du][1:50]
+    (; p_non_diff, diff_cache) = p
+    (; current_level) = diff_cache
+    h_actual = current_level[1:50]
     x = collect(10.0:20.0:990.0)
     h_expected = standard_step_method(x, 5.0, 1.0, 0.04, h_actual[end], 1.0e-6)
 
@@ -487,13 +486,17 @@ end
     # https://www.hec.usace.army.mil/confluence/rasdocs/ras1dtechref/latest/theoretical-basis-for-one-dimensional-and-two-dimensional-hydrodynamic-calculations/1d-steady-flow-water-surface-profiles/friction-loss-evaluation
     @test all(isapprox.(h_expected, h_actual; atol = 0.02))
     # Test for conservation of mass, flow at the beginning == flow at the end
-    @test Ribasim.get_flow(du, p, t, (NodeID(:FlowBoundary, 1, p), NodeID(:Basin, 2, p))) ≈
-          5.0 atol = 0.001 skip = Sys.isapple()
     @test Ribasim.get_flow(
         du,
-        p,
+        p_non_diff,
         t,
-        (NodeID(:ManningResistance, 101, p), NodeID(:Basin, 102, p)),
+        (NodeID(:FlowBoundary, 1, p_non_diff), NodeID(:Basin, 2, p_non_diff)),
+    ) ≈ 5.0 atol = 0.001 skip = Sys.isapple()
+    @test Ribasim.get_flow(
+        du,
+        p_non_diff,
+        t,
+        (NodeID(:ManningResistance, 101, p_non_diff), NodeID(:Basin, 102, p_non_diff)),
     ) ≈ 5.0 atol = 0.001 skip = Sys.isapple()
 end
 
@@ -566,8 +569,9 @@ end
 end
 
 @testitem "stroboscopic_forcing" begin
-    import BasicModelInterface as BMI
     using SciMLBase: successful_retcode
+    using Ribasim: is_finished
+    import BasicModelInterface as BMI
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/bucket/ribasim.toml")
     model = BMI.initialize(Ribasim.Model, toml_path)
@@ -597,7 +601,8 @@ end
         drn_out[day + 1] = only(drn_sum)
     end
 
-    @test successful_retcode(model)
+    @test successful_retcode(model.integrator.sol)
+    @test !is_finished(model)
 
     Δdrn = diff(drn_out)
     Δinf = diff(inf_out)
@@ -632,5 +637,42 @@ end
     basin_level = copy(BMI.get_value_ptr(model, "basin.level"))
     basin_level[2] += 1
     @test basin_level ≈ df.subgrid_level[(end - 1):end]
-    @test basin_level ≈ model.integrator.p.subgrid.level
+    @test basin_level ≈ model.integrator.p.p_non_diff.subgrid.level
+end
+
+@testitem "junction" begin
+    import SQLite
+    import MetaGraphsNext: labels
+
+    # Combined (confluence and bifurcation) model
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/junction_combined/ribasim.toml")
+
+    config = Ribasim.Config(toml_path)
+    db_path = Ribasim.database_path(config)
+    db = SQLite.DB(db_path)
+    graph = Ribasim.create_graph(db, config)
+
+    (; internal_flow_links, external_flow_links, flow_link_map) = graph.graph_data
+    @test length(internal_flow_links) == 8
+    @test length(external_flow_links) == 10
+    @test all(node.type != Ribasim.NodeType.Junction for node in labels(graph))
+
+    # Chained model
+    model = Ribasim.run(toml_path)
+
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/junction_chained/ribasim.toml")
+
+    config = Ribasim.Config(toml_path)
+    db_path = Ribasim.database_path(config)
+    db = SQLite.DB(db_path)
+    graph = Ribasim.create_graph(db, config)
+
+    (; internal_flow_links, external_flow_links, flow_link_map) = graph.graph_data
+    @test length(internal_flow_links) == 6
+    @test length(external_flow_links) == 8
+    @test all(node.type != Ribasim.NodeType.Junction for node in labels(graph))
+
+    model = Ribasim.run(toml_path)
 end

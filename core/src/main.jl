@@ -43,9 +43,21 @@ function main(toml_path::AbstractString)::Cint
                 end
 
                 try
-                    model = run(config)
+                    model = Model(config)
+                    try
+                        solve!(model)
+                    catch
+                        # Catch errors thrown during simulation.
+                        @warn "Simulation crashed or interrupted."
+                        log_bottlenecks(model; converged = false)
+                        write_results(model)
+                        display_error(io)
+                        return 1
+                    end
 
-                    if successful_retcode(model)
+                    write_results(model)
+
+                    if success(model)
                         log_bottlenecks(model; converged = true)
                         @info "The model finished successfully."
                         return 0
@@ -61,19 +73,27 @@ function main(toml_path::AbstractString)::Cint
                     end
 
                 catch
+                    # Catch errors thrown before the model is initialized.
                     # Both validation errors that we throw and unhandled exceptions are caught here.
-                    # To make it easier to find the cause, log the stacktrace to the terminal and log file.
-                    stack = current_exceptions()
-                    Base.invokelatest(Base.display_error, stack)
-                    Base.invokelatest(Base.display_error, io, stack)
+                    display_error(io)
                     return 1
                 end
             end
         end
     catch
-        # If it fails before we get to setup the logger, we can't log to a file.
+        # Catch errors thrown before the logger is initialized.
         # This happens if e.g. the config is invalid.
-        Base.invokelatest(Base.display_error, current_exceptions())
+        display_error()
         return 1
     end
+end
+
+"Print a stacktrace to the terminal and optionally a log file."
+function display_error(io::Union{IOStream, Nothing} = nothing)::Nothing
+    stack = current_exceptions()
+    Base.invokelatest(Base.display_error, stack)
+    if io !== nothing
+        Base.invokelatest(Base.display_error, io, stack)
+    end
+    return nothing
 end

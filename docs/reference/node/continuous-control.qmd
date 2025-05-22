@@ -16,8 +16,8 @@ For instance, if one `ContinuousControl` node sets the flow rate of a pump, this
 
 ## Variable
 
-The compound variable schema defines linear combinations of variables which can be used in conditions. This means that
-this schema defines new variables with the given `compound_variable_id` that look like
+The compound variable schema defines linear combinations of variables which can be used as an input for continuous functions described below. This means that
+this schema defines new variables that look like
 $$
     \text{weight}_1 * \text{variable}_1 + \text{weight}_2 * \text{variable}_2 + \ldots,
 $$
@@ -27,7 +27,7 @@ which can be for instance an average or a difference of variables. If a variable
 column               | type     | unit       | restriction
 -------------------- | -------- | ---------- | -----------
 node_id              | Int32    | -          |
-listen_node_id       | Int32    | -          |
+listen_node_id       | Int32    | -          | cannot be a Junction
 variable             | String   | -          | must be "level" or "flow_rate"
 weight               | Float64  | -          | (optional, default 1.0)
 look_ahead           | Float64  | $\text{s}$ | Only on transient boundary conditions, non-negative (optional, default 0.0).

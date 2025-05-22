@@ -2,31 +2,14 @@
     "[julia]": {
         "editor.formatOnSave": true
     },
-    "julia.executablePath": "julia +1.11.3",
-    "notebook.formatOnSave.enabled": true,
-    "notebook.codeActionsOnSave": {
-        "notebook.source.fixAll": "explicit",
-        "notebook.source.organizeImports": "explicit"
-    },
     "[python]": {
-        "editor.defaultFormatter": "charliermarsh.ruff",
-        "editor.formatOnSave": true,
         "editor.codeActionsOnSave": {
             "source.fixAll": "explicit",
             "source.organizeImports": "explicit"
-        }
+        },
+        "editor.defaultFormatter": "charliermarsh.ruff",
+        "editor.formatOnSave": true
     },
-    "mypy-type-checker.importStrategy": "fromEnvironment",
-    "python.testing.pytestArgs": [
-        "."
-    ],
-    "python.testing.unittestEnabled": false,
-    "python.testing.pytestEnabled": true,
-    "julia.lint.disabledDirs": [
-        ".pixi"
-    ],
-    "julia.lint.run": true,
-    "files.insertFinalNewline": true,
     "cSpell.enabledLanguageIds": [
         "asciidoc",
         "c",
@@ -78,5 +61,23 @@
         "qgis",
         "quartodoc",
         "Ribasim"
-    ]
+    ],
+    "files.insertFinalNewline": true,
+    "julia.executablePath": "julia +1.11.5",
+    "julia.lint.disabledDirs": [
+        ".pixi"
+    ],
+    "julia.lint.run": true,
+    "julia.numTestProcesses": 6,
+    "mypy-type-checker.importStrategy": "fromEnvironment",
+    "notebook.codeActionsOnSave": {
+        "notebook.source.fixAll": "explicit",
+        "notebook.source.organizeImports": "explicit"
+    },
+    "notebook.formatOnSave.enabled": true,
+    "python.testing.pytestArgs": [
+        "."
+    ],
+    "python.testing.pytestEnabled": true,
+    "python.testing.unittestEnabled": false
 }

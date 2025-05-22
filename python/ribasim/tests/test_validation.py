@@ -14,18 +14,16 @@ from ribasim.nodes import (
 from shapely import MultiPolygon, Point, Polygon
 
 
-def test_duplicate_link(basic):
+def test_multiple_outflows(basic):
     model = basic
     with pytest.raises(
         ValueError,
-        match=re.escape(
-            "Links have to be unique, but link with from_node_id 16 to_node_id 1 already exists."
-        ),
+        match=re.escape("Node 16 can have at most 1 flow link outneighbor(s) (got 1)"),
     ):
         model.link.add(
             model.flow_boundary[16],
             model.basin[1],
-            name="duplicate",
+            name="multiple-outflows",
         )
 
 
@@ -34,7 +32,7 @@ def test_connectivity(trivial):
     with pytest.raises(
         ValueError,
         match=re.escape(
-            "Node #2147483647 of type Terminal cannot be downstream of node #6 of type Basin. Possible downstream node types: ['LinearResistance', 'UserDemand', 'Outlet', 'TabulatedRatingCurve', 'ManningResistance', 'Pump']"
+            "Node #2147483647 of type Terminal cannot be downstream of node #6 of type Basin. Possible downstream node types: ['LinearResistance', 'UserDemand', 'Junction', 'Outlet', 'TabulatedRatingCurve', 'ManningResistance', 'Pump']"
         ),
     ):
         model.link.add(model.basin[6], model.terminal[2147483647])

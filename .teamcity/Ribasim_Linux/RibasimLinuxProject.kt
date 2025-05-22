@@ -35,6 +35,13 @@ object Linux_Main : BuildType({
 
     triggers {
         vcs {
+            id = "TRIGGER_RIBA_SKIPL1"
+            branchFilter = """
+                +:<default>
+                +:refs/pull/*
+                +:pull/*
+            """.trimIndent()
+            triggerRules = "-:comment=skip ci:**"
         }
     }
 
@@ -85,10 +92,10 @@ object Linux_GenerateCache : BuildType({
         vcs {
             id = "TRIGGER_RIBA_L1"
             triggerRules = """
-                +:Manifest.toml
-                +:Project.toml
-                +:pixi.lock
-                +:pixi.toml
+                +:root=Ribasim_Ribasim:/Manifest.toml
+                +:root=Ribasim_Ribasim:/Project.toml
+                +:root=Ribasim_Ribasim:/pixi.lock
+                +:root=Ribasim_Ribasim:/pixi.toml
             """.trimIndent()
             branchFilter = "+:<default>"
         }
