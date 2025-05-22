@@ -297,7 +297,7 @@ end
     @test success(sparse_fdm)
     @test success(dense_fdm)
 
-    @test dense_ad.integrator.u ≈ sparse_ad.integrator.u atol = 0.1
+    @test dense_ad.integrator.u ≈ sparse_ad.integrator.u atol = 0.3
     @test sparse_fdm.integrator.u ≈ sparse_ad.integrator.u atol = 4
     @test dense_fdm.integrator.u ≈ sparse_ad.integrator.u atol = 4
 

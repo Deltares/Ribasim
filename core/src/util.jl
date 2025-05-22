@@ -828,6 +828,18 @@ function build_state_vector(p_non_diff::ParametersNonDiff)
     return u
 end
 
+function build_reltol_vector(u0::CVector, reltol::Float64)
+    reltolv = fill(reltol, length(u0))
+    mask = trues(length(u0))
+    # Mask the non-cumulative states
+    for (node, range) in pairs(getaxes(u0))
+        if node in (:integral,)
+            mask[range] .= false
+        end
+    end
+    reltolv, mask
+end
+
 function build_flow_to_storage(
     state_ranges::StateTuple{UnitRange{Int}},
     n_states::Int,
@@ -1090,6 +1102,17 @@ function get_timeseries_tstops(
     end
 
     return tstops
+end
+
+"""Get the exponential time stops for decreasing the tolerance."""
+function get_log_tstops(starttime, endtime)::Vector{Float64}
+    log_tstops = Float64[]
+    t = 60 * 60
+    while Second(t) <= round(endtime - starttime, Second)
+        push!(log_tstops, t)
+        t *= 2.0
+    end
+    return log_tstops
 end
 
 function ranges(lengths::Vector{<:Integer})

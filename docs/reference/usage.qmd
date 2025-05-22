@@ -52,7 +52,7 @@ For small or highly connected models it could be faster to use a dense Jacobian 
 
 The total maximum number of iterations `maxiters = 1e9`, can normally stay as-is unless doing extremely long simulations.
 
-The absolute and relative tolerance for adaptive timestepping can be set with `abstol` and `reltol`. For more information on these and other solver options, see the [DifferentialEquations.jl docs](https://docs.sciml.ai/DiffEqDocs/latest/basics/common_solver_opts/#solver_options).
+The absolute and relative tolerance for adaptive timestepping can be set with `abstol` and `reltol`. For more information on these and other solver options, see the [DifferentialEquations.jl docs](https://docs.sciml.ai/DiffEqDocs/latest/basics/common_solver_opts/#solver_options) and the [DifferentialEquations.jl FAQ](https://docs.sciml.ai/DiffEqDocs/stable/basics/faq/#What-does-tolerance-mean-and-how-much-error-should-I-expect).
 
 Finally there's the `evaporate_mass = true` setting, which determines whether mass is lost due to evaporation in water quality calculations, by default set to true.
 While physically incorrect, it is useful for a first correctness check on a model in terms of mass balance (Continuity tracer should always have a concentration of 1). To simulate increasing concentrations (e.g. salinity) due to evaporation, change the setting to `false`.
