@@ -63,6 +63,7 @@ using DataInterpolations:
     SmoothedConstantInterpolation,
     LinearInterpolationIntInv,
     invert_integral,
+    get_transition_ts,
     derivative,
     integral,
     AbstractInterpolation,

@@ -1058,15 +1058,18 @@ function get_timeseries_tstops(
     itp::AbstractInterpolation,
     endtime::Float64,
 )::Vector{Float64}
+    transition_ts = get_transition_ts(itp)
+
     # The length of the period
-    T = last(itp.t) - first(itp.t)
+    T = last(transition_ts) - first(transition_ts)
 
-    # How many periods back from first(itp.t) are needed
-    nT_back = itp.extrapolation_left == Periodic ? Int(ceil((first(itp.t)) / T)) : 0
+    # How many periods back from first(transition_ts) are needed
+    nT_back = itp.extrapolation_left == Periodic ? Int(ceil((first(transition_ts)) / T)) : 0
 
-    # How many periods forward from first(itp.t) are needed
+    # How many periods forward from first(transition_ts) are needed
     nT_forward =
-        itp.extrapolation_right == Periodic ? Int(ceil((endtime - first(itp.t)) / T)) : 0
+        itp.extrapolation_right == Periodic ?
+        Int(ceil((endtime - first(transition_ts)) / T)) : 0
 
     tstops = Float64[]
 
@@ -1074,12 +1077,15 @@ function get_timeseries_tstops(
         # Append the timepoints of the interpolation shifted by an integer amount of
         # periods to the tstops, filtering out values outside the simulation period
         if i == nT_forward
-            append!(tstops, filter(t -> 0 ≤ t ≤ endtime, itp.t .+ i * T))
+            append!(tstops, filter(t -> 0 ≤ t ≤ endtime, transition_ts .+ i * T))
         else
-            # Because of floating point errors last(itp.t) = first(itp.t) + T
+            # Because of floating point errors last(transition_ts) = first(transition_ts) + T
             # does not always hold exactly, so to prevent that these become separate
             # very close tstops we only use the last time point of the period in the last period
-            append!(tstops, filter(t -> 0 ≤ t ≤ endtime, itp.t[1:(end - 1)] .+ i * T))
+            append!(
+                tstops,
+                filter(t -> 0 ≤ t ≤ endtime, transition_ts[1:(end - 1)] .+ i * T),
+            )
         end
     end
 
