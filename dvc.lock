@@ -8,7 +8,7 @@ stages:
       md5: 6228f56acef895eeb5d4fdcd479cd1ee.dir
       size: 474129
       nfiles: 45
-    - path: models/hws_2024_7_0
+    - path: models/hws_2025_4_0
       hash: md5
       md5: e88123c69a0f7e3590b94c55dbe0062e.dir
       size: 45421022
