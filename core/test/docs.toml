@@ -20,6 +20,10 @@ ribasim_version = "2025.3.0" # required
 [basin]
 time = "basin/time.arrow"
 
+[interpolation]
+flow_boundary = "linear"   # optional, default "linear", can otherwise be "stepwise"
+stepwise_smoothing = 60.0  # optional, default 60.0
+
 [allocation]
 timestep = 86400                                 # optional (required if use_allocation = true), default 86400
 use_allocation = false                           # optional, default false
