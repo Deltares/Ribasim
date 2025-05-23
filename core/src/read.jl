@@ -1918,3 +1918,37 @@ function interpolate_basin_profile!(
         basin.level_to_area[i] = level_to_area
     end
 end
+
+function interpolate_basin_profile_relations!(
+    basin::Basin,
+    profiles::StructVector{BasinProfileV1},
+)::Nothing
+    i = 0
+    for group in IterTools.groupby(row -> row.node_id, profiles)
+        i += 1
+        group_area = getproperty.(group, :area)
+        group_level = getproperty.(group, :level)
+        group_storage = getproperty.(group, :storage)
+
+        # If there is no storage as input, we integrate A(h)
+        if all(ismissing, group_storage)
+            group_storage = trapezoidal_integrate(group_area, group_level)
+        elseif all(ismissing)
+            group_area = finite_difference(group_storage, group_level)
+        end
+
+        basin.level_to_area[i] = LinearInterpolation(
+            group_area,
+            group_level;
+            extrapolation_left = ConstantExtrapolation,
+            extrapolation_right = ConstantExtrapolation,
+            cache_parameters = true,
+        )
+
+        basin.storage_to_level[i] = LagrangeInterpolation(
+            group_level,
+            group_storage;
+            extrapolation = ExtrapolationType.Linear,
+        )
+    end
+end
