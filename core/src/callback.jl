@@ -88,6 +88,11 @@ function create_callbacks(
     discrete_control_cb = FunctionCallingCallback(apply_discrete_control!)
     push!(callbacks, discrete_control_cb)
 
+    toltimes = get_log_tstops(config.starttime, config.endtime)
+    decrease_tol_cb =
+        FunctionCallingCallback(decrease_tolerance!; funcat = toltimes, func_start = false)
+    push!(callbacks, decrease_tol_cb)
+
     saved = SavedResults(
         saved_flow,
         saved_basin_states,
@@ -97,6 +102,34 @@ function create_callbacks(
     callback = CallbackSet(callbacks...)
 
     return callback, saved
+end
+
+"""
+Decrease the relative tolerance of the integrator over time,
+to compensate for the ever increasing cumulative flows.
+"""
+function decrease_tolerance!(u, t, integrator)::Nothing
+    (; p, t, opts) = integrator
+
+    for (i, state) in enumerate(u)
+        p.p_non_diff.relmask[i] || continue
+
+        # Use the internal norm to get the magnitude of the (cumulative) states,
+        # as used in calculate_residuals, and compare to an estimated average magnitude
+        cum_magnitude = opts.internalnorm(state, t)
+        iszero(cum_magnitude) && continue
+        avg_magnitude = max(opts.internalnorm(1e4, t), cum_magnitude / t)  # allow for 1e4 m3/s
+
+        # Decrease the relative tolerance based on their difference
+        diff_norm = max(0, log10(cum_magnitude / avg_magnitude))
+        # Limit new tolerance to floating point precision (~-14)
+        newtol = max(10.0^(log10(integrator.p.p_non_diff.reltol) - diff_norm), 1e-14)
+
+        if integrator.opts.reltol[i] > newtol
+            @debug "Relative tolerance changed at t = $t, state = $i to $(newtol)"
+            integrator.opts.reltol[i] = newtol
+        end
+    end
 end
 
 """

@@ -1419,6 +1419,8 @@ function Parameters(db::DB, config::Config)::Parameters
 
     p_non_diff = ParametersNonDiff(;
         config.starttime,
+        config.solver.reltol,
+        relmask = collect(trues(n_states)),
         graph,
         allocation,
         nodes...,

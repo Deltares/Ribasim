@@ -215,6 +215,8 @@ function Model(config::Config)::Model
     @debug "Read database into memory."
 
     u0 = build_state_vector(parameters.p_non_diff)
+    reltol, relmask = build_reltol_vector(u0, config.solver.reltol)
+    parameters.p_non_diff.relmask .= relmask
     du0 = zero(u0)
 
     # The Solver algorithm
@@ -266,7 +268,7 @@ function Model(config::Config)::Model
         dtmax = something(config.solver.dtmax, t_end),
         config.solver.force_dtmin,
         config.solver.abstol,
-        config.solver.reltol,
+        reltol,
         config.solver.maxiters,
     )
     @debug "Setup integrator."
