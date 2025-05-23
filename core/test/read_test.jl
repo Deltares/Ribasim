@@ -88,7 +88,7 @@ end
     @test logger.logs[1].message == "All nodes in subnetwork 2 should be connected"
 end
 
-@testitem "Basin profile initialisation" begin
+@testitem "Parabolic basin profile initialisation" begin
     using Ribasim: BasinProfileV1, Basin, StructVector, BasinConcentrationV1, NodeID
 
     # a parabolic shaped (x^2 - 1) basin with a circular cross section
@@ -123,4 +123,40 @@ end
 
     # Assert that level_to_area interpolation is consistent for nodes 1 and 3. Node 2 is different
     @test basin.level_to_area[1](1.0) ≈ basin.level_to_area[3](1.0)
+end
+
+@testitem "Cyllindric basin profile initialisation" begin
+    using Ribasim:
+        BasinProfileV1,
+        Basin,
+        StructVector,
+        BasinConcentrationV1,
+        NodeID,
+        interpolate_basin_profile_relations!
+
+    # a parabolic shaped (x^2 - 1) basin with a circular cross section
+    levels::Vector{Float64} = [0, 1]
+    areas::Vector{Float64} = [1000, 1000]
+
+    n = length(levels)
+
+    node_1 = fill(1, n)
+
+    skipped = fill(missing, n)
+
+    basin = Ribasim.Basin(;
+        node_id = NodeID.(:Basin, [1], 1),
+        concentration_time = StructVector{BasinConcentrationV1}(undef, 0),
+    )
+
+    profiles = StructVector{BasinProfileV1}(;
+        node_id = node_1,
+        level = levels,
+        area = areas,
+        storage = skipped,
+    )
+
+    interpolate_basin_profile_relations!(basin, profiles)
+    # Assert that storage_to_level interpolation is consistent for nodes 1, 2, and 3
+    @test basin.storage_to_level[1](2000) ≈ 2.0
 end
