@@ -15,16 +15,16 @@ The Model struct is an initialized model, combined with the [`Config`](@ref) use
 The Basic Model Interface ([BMI](https://github.com/Deltares/BasicModelInterface.jl)) is implemented on the Model.
 A Model can be created from the path to a TOML configuration file, or a Config object.
 """
-struct Model{T}
-    integrator::T
+struct Model
+    integrator::SciMLBase.AbstractODEIntegrator
     config::Config
     saved::SavedResults
     function Model(
-        integrator::T,
+        integrator,
         config,
         saved,
-    ) where {T <: SciMLBase.AbstractODEIntegrator}
-        new{T}(integrator, config, saved)
+    )
+        new(integrator, config, saved)
     end
 end
 
@@ -203,7 +203,7 @@ function Model(config::Config)::Model
                 init = ScalarConstantInterpolation[],
             )...,
         ]
-            for itp in interpolations
+            for itp in interpolations::Vector{<:AbstractInterpolation}
                 push!(tstops, get_timeseries_tstops(itp, t_end))
             end
         end
@@ -231,13 +231,13 @@ function Model(config::Config)::Model
 
     saveat = convert_saveat(config.solver.saveat, t_end)
     saveat isa Float64 && push!(tstops, range(0, t_end; step = saveat))
-    tstops = sort(unique(vcat(tstops...)))
+    tstops = sort(unique(reduce(vcat, tstops)))::Vector{Float64}
     adaptive, dt = convert_dt(config.solver.dt)
 
     jac_prototype, jac, tgrad = get_diff_eval(du0, u0, parameters, config.solver)
     RHS = ODEFunction(water_balance!; jac_prototype, jac, tgrad)
 
-    prob = ODEProblem(RHS, u0, timespan, parameters)
+    prob = ODEProblem{true, SciMLBase.NoSpecialize}(RHS, u0, timespan, parameters)
     @debug "Setup ODEProblem."
 
     callback, saved = create_callbacks(p_non_diff, config, saveat)
@@ -344,7 +344,7 @@ Solve a Model until the configured `endtime`.
 """
 function solve!(model::Model)::Model
     (; config, integrator) = model
-    (; tspan) = integrator.sol.prob
+    (; tspan::Tuple{Float64, Float64}) = integrator.sol.prob
 
     comptime_s = @elapsed if config.allocation.use_allocation
         (; timestep) = config.allocation
