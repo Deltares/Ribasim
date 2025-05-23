@@ -510,7 +510,7 @@ $$
     Q_P = P \cdot A.
 $$ {#eq-precip}
 
-Here $P = P(t)$ is the precipitation rate and $A$ is the maximum area given in the `Basin / profile` table.
+Here $P = P(t)$ is the precipitation rate and $A$ is the area given at the highest level in the `Basin / profile` table.
 Precipitation in the Basin area is assumed to be directly added to the Basin storage.
 The modeler needs to ensure all precipitation enters the model, and there is no overlap in the maximum profile areas, otherwise extra water is created.
 If a part of the catchment is not in any Basin profile, the modeler has to verify that water source is not forgotten.
