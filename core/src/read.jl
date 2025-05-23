@@ -1868,7 +1868,7 @@ function interpolate_basin_profile_relations!(
             dS_dh,
             group_level;
             extrapolation_left = ConstantExtrapolation,
-            extrapolation_right = ConstantExtrapolation,
+            extrapolation_right = Extension,
             cache_parameters = true,
         )
 
