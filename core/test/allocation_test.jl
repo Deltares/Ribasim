@@ -442,12 +442,12 @@ end
     (; p_non_diff) = p
     (; graph, allocation, flow_demand, user_demand, level_boundary) = p_non_diff
 
-    # Test has_external_demand
+    # Test has_external_flow_demand
     @test !any(
-        Ribasim.has_external_demand(graph, node_id, :flow_demand)[1] for
+        Ribasim.has_external_flow_demand(graph, node_id, :flow_demand)[1] for
         node_id in graph[].node_ids[2] if node_id.value != 2
     )
-    @test Ribasim.has_external_demand(
+    @test Ribasim.has_external_flow_demand(
         graph,
         NodeID(:TabulatedRatingCurve, 2, p_non_diff),
         :flow_demand,

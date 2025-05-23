@@ -46,13 +46,13 @@ function water_balance!(
     formulate_continuous_control!(du, p, t)
 
     # Formulate intermediate flows (controlled by ContinuousControl)
-    formulate_flows!(du, p, t; continuous_control_type = ContinuousControlType.Continuous)
+    formulate_flows!(du, p, t; control_type = ControlType.Continuous)
 
     # Compute PID control
     formulate_pid_control!(du, u, p, t)
 
     # Formulate intermediate flow (controlled by PID control)
-    formulate_flows!(du, p, t; continuous_control_type = ContinuousControlType.PID)
+    formulate_flows!(du, p, t; control_type = ControlType.PID)
 
     return nothing
 end
@@ -392,6 +392,49 @@ function formulate_flow!(
     return nothing
 end
 
+function manning_resistance_flow(
+    manning_resistance::ManningResistance,
+    node_id::NodeID,
+    h_a::Number,
+    h_b::Number,
+)::Number
+    (;
+        length,
+        manning_n,
+        profile_width,
+        profile_slope,
+        upstream_bottom,
+        downstream_bottom,
+    ) = manning_resistance
+
+    bottom_a = upstream_bottom[node_id.idx]
+    bottom_b = downstream_bottom[node_id.idx]
+    slope = profile_slope[node_id.idx]
+    width = profile_width[node_id.idx]
+    n = manning_n[node_id.idx]
+    L = length[node_id.idx]
+
+    # Average d, A, R
+    d_a = h_a - bottom_a
+    d_b = h_b - bottom_b
+    d = 0.5 * (d_a + d_b)
+
+    A_a = width * d + slope * d_a^2
+    A_b = width * d + slope * d_b^2
+    A = 0.5 * (A_a + A_b)
+
+    slope_unit_length = sqrt(slope^2 + 1.0)
+    P_a = width + 2.0 * d_a * slope_unit_length
+    P_b = width + 2.0 * d_b * slope_unit_length
+    R_h_a = A_a / P_a
+    R_h_b = A_b / P_b
+    R_h = 0.5 * (R_h_a + R_h_b)
+
+    Δh = h_a - h_b
+
+    return A / n * ∛(R_h^2) * relaxed_root(Δh / L, 1e-5)
+end
+
 """
 Conservation of energy for two basins, a and b:
 
@@ -438,16 +481,7 @@ function formulate_flow!(
     t::Number,
 )::Nothing
     (; p_mutable) = p
-    (;
-        node_id,
-        active,
-        length,
-        manning_n,
-        profile_width,
-        profile_slope,
-        upstream_bottom,
-        downstream_bottom,
-    ) = manning_resistance
+    (; node_id, active) = manning_resistance
 
     all_nodes_active = p_mutable.all_nodes_active[]
     for id in node_id
@@ -464,32 +498,7 @@ function formulate_flow!(
         h_a = get_level(p, inflow_id, t)
         h_b = get_level(p, outflow_id, t)
 
-        bottom_a = upstream_bottom[id.idx]
-        bottom_b = downstream_bottom[id.idx]
-        slope = profile_slope[id.idx]
-        width = profile_width[id.idx]
-        n = manning_n[id.idx]
-        L = length[id.idx]
-
-        # Average d, A, R
-        d_a = h_a - bottom_a
-        d_b = h_b - bottom_b
-        d = 0.5 * (d_a + d_b)
-
-        A_a = width * d + slope * d_a^2
-        A_b = width * d + slope * d_b^2
-        A = 0.5 * (A_a + A_b)
-
-        slope_unit_length = sqrt(slope^2 + 1.0)
-        P_a = width + 2.0 * d_a * slope_unit_length
-        P_b = width + 2.0 * d_b * slope_unit_length
-        R_h_a = A_a / P_a
-        R_h_b = A_b / P_b
-        R_h = 0.5 * (R_h_a + R_h_b)
-
-        Δh = h_a - h_b
-
-        q = A / n * ∛(R_h^2) * relaxed_root(Δh / L, 1e-5)
+        q = manning_resistance_flow(manning_resistance, id, h_a, h_b)
         q *= low_storage_factor_resistance_node(p, q, inflow_id, outflow_id)
         du.manning_resistance[id.idx] = q
     end
@@ -501,7 +510,7 @@ function formulate_flow!(
     pump::Pump,
     p::Parameters,
     t::Number,
-    continuous_control_type_::ContinuousControlType.T,
+    control_type_::ControlType.T,
 )::Nothing
     (; diff_cache, p_mutable) = p
 
@@ -516,7 +525,7 @@ function formulate_flow!(
         max_flow_rate,
         min_upstream_level,
         max_downstream_level,
-        continuous_control_type,
+        control_type,
     ) in zip(
         pump.node_id,
         pump.inflow_link,
@@ -527,14 +536,13 @@ function formulate_flow!(
         pump.max_flow_rate,
         pump.min_upstream_level,
         pump.max_downstream_level,
-        pump.continuous_control_type,
+        pump.control_type,
     )
-        if !(active || all_nodes_active) ||
-           (continuous_control_type != continuous_control_type_)
+        if !(active || all_nodes_active) || (control_type != control_type_)
             continue
         end
 
-        flow_rate = if continuous_control_type == ContinuousControlType.None
+        flow_rate = if control_type == ControlType.None
             flow_rate_itp(t)
         else
             diff_cache.flow_rate_pump[id.idx]
@@ -548,6 +556,7 @@ function formulate_flow!(
         factor = get_low_storage_factor(p, inflow_id)
         q = flow_rate * factor
 
+        # NOTE: If these thresholds are changed, also change them in set_simulation_data!
         q *= reduction_factor(src_level - min_upstream_level(t), 0.02)
         q *= reduction_factor(max_downstream_level(t) - dst_level, 0.02)
 
@@ -562,7 +571,7 @@ function formulate_flow!(
     outlet::Outlet,
     p::Parameters,
     t::Number,
-    continuous_control_type_::ContinuousControlType.T,
+    control_type_::ControlType.T,
 )::Nothing
     (; diff_cache, p_mutable) = p
 
@@ -575,7 +584,7 @@ function formulate_flow!(
         flow_rate_itp,
         min_flow_rate,
         max_flow_rate,
-        continuous_control_type,
+        control_type,
         min_upstream_level,
         max_downstream_level,
     ) in zip(
@@ -586,16 +595,15 @@ function formulate_flow!(
         outlet.flow_rate,
         outlet.min_flow_rate,
         outlet.max_flow_rate,
-        outlet.continuous_control_type,
+        outlet.control_type,
         outlet.min_upstream_level,
         outlet.max_downstream_level,
     )
-        if !(active || all_nodes_active) ||
-           (continuous_control_type != continuous_control_type_)
+        if !(active || all_nodes_active) || (control_type != control_type_)
             continue
         end
 
-        flow_rate = if continuous_control_type == ContinuousControlType.None
+        flow_rate = if control_type == ControlType.None
             flow_rate_itp(t)
         else
             diff_cache.flow_rate_outlet[id.idx]
@@ -610,6 +618,7 @@ function formulate_flow!(
         q *= get_low_storage_factor(p, inflow_id)
 
         # No flow of outlet if source level is lower than target level
+        # NOTE: If these thresholds are changed, also change them in set_simulation_data!
         Δlevel = src_level - dst_level
         q *= reduction_factor(Δlevel, 0.02)
         q *= reduction_factor(src_level - min_upstream_level(t), 0.02)
@@ -625,7 +634,7 @@ function formulate_flows!(
     du::CVector,
     p::Parameters,
     t::Number;
-    continuous_control_type::ContinuousControlType.T = ContinuousControlType.None,
+    control_type::ControlType.T = ControlType.None,
 )::Nothing
     (;
         linear_resistance,
@@ -636,10 +645,10 @@ function formulate_flows!(
         user_demand,
     ) = p.p_non_diff
 
-    formulate_flow!(du, pump, p, t, continuous_control_type)
-    formulate_flow!(du, outlet, p, t, continuous_control_type)
+    formulate_flow!(du, pump, p, t, control_type)
+    formulate_flow!(du, outlet, p, t, control_type)
 
-    if continuous_control_type == ContinuousControlType.None
+    if control_type == ControlType.None
         formulate_flow!(du, linear_resistance, p, t)
         formulate_flow!(du, manning_resistance, p, t)
         formulate_flow!(du, tabulated_rating_curve, p, t)
@@ -749,9 +758,13 @@ function limit_flow!(
                 id,
                 inflow_id,
             )
-            @views allocated_total =
-                is_active(allocation) ? sum(user_demand.allocated[id.idx, :]) :
-                sum(user_demand.demand[id.idx, :])
+            allocated_total = sum(
+                min(
+                    user_demand.demand[id.idx, demand_priority_idx],
+                    user_demand.allocated[id.idx, demand_priority_idx],
+                ) for
+                demand_priority_idx in eachindex(allocation.demand_priorities_all)
+            )
             factor_basin_min * factor_level_min * allocated_total, allocated_total
         end
         limit_flow!(

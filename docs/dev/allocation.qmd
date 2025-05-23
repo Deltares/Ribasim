@@ -122,7 +122,7 @@ A variable is named `F_basin_in` if the corresponding basin is supplied by a lev
 node_ids_basin = [
     node_id for
     node_id in graph[].node_ids[subnetwork_id] if graph[node_id].type == :basin &&
-    has_external_demand(graph, node_id, :level_demand)[1]
+    has_external_flow_demand(graph, node_id, :level_demand)[1]
 ]
 problem[:F_basin_in] =
     JuMP.@variable(problem, F_basin_in[node_id = node_ids_basin,] >= 0.0)

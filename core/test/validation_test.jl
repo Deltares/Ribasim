@@ -82,11 +82,11 @@ end
         graph_data = nothing,
     )
 
-    graph[NodeID(:Pump, 1, 1)] = NodeMetadata(:pump, 9)
-    graph[NodeID(:Basin, 2, 1)] = NodeMetadata(:pump, 9)
-    graph[NodeID(:Basin, 3, 1)] = NodeMetadata(:pump, 9)
-    graph[NodeID(:Basin, 4, 1)] = NodeMetadata(:pump, 9)
-    graph[NodeID(:Pump, 6, 1)] = NodeMetadata(:pump, 9)
+    graph[NodeID(:Pump, 1, 1)] = NodeMetadata(:pump, 9, 0)
+    graph[NodeID(:Basin, 2, 1)] = NodeMetadata(:pump, 9, 0)
+    graph[NodeID(:Basin, 3, 1)] = NodeMetadata(:pump, 9, 0)
+    graph[NodeID(:Basin, 4, 1)] = NodeMetadata(:pump, 9, 0)
+    graph[NodeID(:Pump, 6, 1)] = NodeMetadata(:pump, 9, 0)
 
     function set_link_metadata!(id_1, id_2, link_type)
         graph[id_1, id_2] = LinkMetadata(; id = 0, type = link_type, link = (id_1, id_2))
@@ -137,13 +137,13 @@ end
         graph_data = nothing,
     )
 
-    graph[NodeID(:PidControl, 1, 1)] = NodeMetadata(:pid_control, 0)
-    graph[NodeID(:PidControl, 6, 1)] = NodeMetadata(:pid_control, 0)
-    graph[NodeID(:Pump, 2, 1)] = NodeMetadata(:pump, 0)
-    graph[NodeID(:Pump, 4, 1)] = NodeMetadata(:pump, 0)
-    graph[NodeID(:Terminal, 3, 1)] = NodeMetadata(:something_else, 0)
-    graph[NodeID(:Basin, 5, 1)] = NodeMetadata(:basin, 0)
-    graph[NodeID(:Basin, 7, 1)] = NodeMetadata(:basin, 0)
+    graph[NodeID(:PidControl, 1, 1)] = NodeMetadata(:pid_control, 0, 0)
+    graph[NodeID(:PidControl, 6, 1)] = NodeMetadata(:pid_control, 0, 0)
+    graph[NodeID(:Pump, 2, 1)] = NodeMetadata(:pump, 0, 0)
+    graph[NodeID(:Pump, 4, 1)] = NodeMetadata(:pump, 0, 0)
+    graph[NodeID(:Terminal, 3, 1)] = NodeMetadata(:something_else, 0, 0)
+    graph[NodeID(:Basin, 5, 1)] = NodeMetadata(:basin, 0, 0)
+    graph[NodeID(:Basin, 7, 1)] = NodeMetadata(:basin, 0, 0)
 
     function set_link_metadata!(id_1, id_2, link_type)
         graph[id_1, id_2] = LinkMetadata(; id = 0, type = link_type, link = (id_1, id_2))
