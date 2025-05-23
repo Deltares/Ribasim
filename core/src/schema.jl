@@ -154,8 +154,9 @@ end
 
 @version BasinProfileV1 begin
     node_id::Int32
-    area::Float64
+    area::Union{Missing, Float64}
     level::Float64
+    storage::Union{Missing, Float64}
 end
 
 @version BasinStateV1 begin
