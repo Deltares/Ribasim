@@ -1862,7 +1862,11 @@ function interpolate_basin_profile_relations!(
         end
 
         # We always differentiate storage with respect to level such that we can use invert_integral
-        dS_dh = finite_difference(group_storage, group_level)
+        dS_dh = if ismissing(group_area[1])
+            finite_difference(group_storage, group_level)
+        else
+            finite_difference(group_storage, group_level, group_area[1])
+        end
 
         level_to_area = LinearInterpolation(
             dS_dh,
