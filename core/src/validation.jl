@@ -23,6 +23,7 @@ neighbortypes(::Val{:junction}) = Set((
     :pump,
     :outlet,
     :user_demand,
+    :terminal,
 ))
 neighbortypes(::Val{:flow_boundary}) = Set((:basin, :terminal, :level_boundary, :junction))
 neighbortypes(::Val{:level_boundary}) =

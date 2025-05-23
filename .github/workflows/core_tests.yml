@@ -2,10 +2,10 @@ name: Julia Tests
 on:
   push:
     branches: [main]
-    paths-ignore: [".teamcity/**"]
+    paths: ["core/**", "python/**", "pixi.toml", "pixi.lock", "Project.toml", "Manifest.toml"]
     tags: ["*"]
   pull_request:
-    paths-ignore: [".teamcity/**"]
+    paths: ["core/**", "python/**", "pixi.toml", "pixi.lock", "Project.toml", "Manifest.toml"]
   merge_group:
   workflow_dispatch:
 concurrency:
