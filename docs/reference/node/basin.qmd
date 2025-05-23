@@ -177,9 +177,8 @@ ax.set_ylabel("area", fontsize = fontsize)
 ax.set_yticks([0])
 
 # Extrapolation
-level_extrap = level[-1]
-area_extrap = 2 * area[-1] - area[-2]
-ax.plot([level[-1], level_extrap], [area[-1], area_extrap], color = "C0", ls = "dashed", label = "extrapolation")
+level_extrap = 2 * level[-1] - level[-2]
+ax.plot([level[-1], level_extrap], [area[-1], area[-1]], color = "C0", ls = "dashed", label = "extrapolation")
 xlim = ax.get_xlim()
 ax.set_xlim(xlim[0], (level[-1] + level_extrap)/2)
 
@@ -235,8 +234,10 @@ ax.set_xlabel("level", fontsize = fontsize)
 ax.set_ylabel("storage", fontsize = fontsize)
 
 # Extrapolation
-level_eval_extrap = np.linspace(level[-1], level_extrap, 35)
-storage_eval_extrap = S(level_eval_extrap)
+level_eval_extrap = [level[-1], level_extrap]
+storage_extrap = storage_eval[-1] + area[:-1]*level_extrap
+storage_eval_extrap = [storage_eval[-1], storage_extrap]
+
 ax.plot(level_eval_extrap, storage_eval_extrap, color = "C0", linestyle = "dashed", label = "extrapolation")
 xlim = ax.get_xlim()
 ax.set_xlim(xlim[0], (level[-1] + level_extrap)/2)
