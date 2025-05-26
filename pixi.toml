@@ -82,7 +82,9 @@ test-ribasim-cli = "pytest --numprocesses=4 --basetemp=build/tests/temp --junitx
 test-ribasim-core = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test()'", depends-on = [
     "generate-testmodels",
 ] }
-test-ribasim-migration = { cmd = "pytest --numprocesses=4 -m regression python/ribasim/tests" }
+test-ribasim-migration = { cmd = "pytest --numprocesses=4 -m regression python/ribasim/tests", depends-on = [
+    { task = "s3-download", args = ["hws_migration_test/", "hws_migration_test/"] },
+] }
 test-ribasim-core-cov = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test(coverage=true, julia_args=[\"--check-bounds=yes\"])'", depends-on = [
     "generate-testmodels",
 ] }
@@ -90,7 +92,6 @@ test-ribasim-regression = { cmd = "julia --project=core --eval 'using Pkg; Pkg.t
     "generate-testmodels",
     "test-ribasim-migration",
     { task = "s3-download", args = ["benchmark/", "benchmark/"] },
-    { task = "s3-download", args = ["hws_migration_test/", "hws_migration_test/"] },
 ] }
 generate-testmodels = { cmd = "python utils/generate-testmodels.py", inputs = [
     "python/ribasim",
