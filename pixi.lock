@@ -601,9 +601,9 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zstandard-0.23.0-py312h66e93f0_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zstd-1.5.7-hb8e6e7a_2.conda
       - pypi: https://files.pythonhosted.org/packages/44/5b/fa477e4fd8e62c722febdc52462d7b037a77aa963c3e400a8e90e8f0d2c0/ptvsd-4.3.2-py2.py3-none-any.whl
-      - pypi: .\python\ribasim
-      - pypi: .\python\ribasim_api
-      - pypi: .\python\ribasim_testmodels
+      - pypi: ./python/ribasim
+      - pypi: ./python/ribasim_api
+      - pypi: ./python/ribasim_testmodels
       osx-arm64:
       - conda: https://conda.anaconda.org/conda-forge/noarch/_python_abi3_support-1.0-hd8ed1ab_2.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/annotated-types-0.7.0-pyhd8ed1ab_1.conda
@@ -1134,9 +1134,9 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zstandard-0.23.0-py312hea69d52_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zstd-1.5.7-h6491c7d_2.conda
       - pypi: https://files.pythonhosted.org/packages/44/5b/fa477e4fd8e62c722febdc52462d7b037a77aa963c3e400a8e90e8f0d2c0/ptvsd-4.3.2-py2.py3-none-any.whl
-      - pypi: .\python\ribasim
-      - pypi: .\python\ribasim_api
-      - pypi: .\python\ribasim_testmodels
+      - pypi: ./python/ribasim
+      - pypi: ./python/ribasim_api
+      - pypi: ./python/ribasim_testmodels
       win-64:
       - conda: https://conda.anaconda.org/conda-forge/win-64/_openmp_mutex-4.5-2_gnu.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/_python_abi3_support-1.0-hd8ed1ab_2.conda
@@ -1642,9 +1642,9 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstandard-0.23.0-py312h4389bb4_2.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstd-1.5.7-hbeecb71_2.conda
       - pypi: https://files.pythonhosted.org/packages/44/5b/fa477e4fd8e62c722febdc52462d7b037a77aa963c3e400a8e90e8f0d2c0/ptvsd-4.3.2-py2.py3-none-any.whl
-      - pypi: .\python\ribasim
-      - pypi: .\python\ribasim_api
-      - pypi: .\python\ribasim_testmodels
+      - pypi: ./python/ribasim
+      - pypi: ./python/ribasim_api
+      - pypi: ./python/ribasim_testmodels
   py311:
     channels:
     - url: https://conda.anaconda.org/conda-forge/
@@ -2246,9 +2246,9 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zstandard-0.23.0-py311h9ecbd09_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zstd-1.5.7-hb8e6e7a_2.conda
       - pypi: https://files.pythonhosted.org/packages/44/5b/fa477e4fd8e62c722febdc52462d7b037a77aa963c3e400a8e90e8f0d2c0/ptvsd-4.3.2-py2.py3-none-any.whl
-      - pypi: .\python\ribasim
-      - pypi: .\python\ribasim_api
-      - pypi: .\python\ribasim_testmodels
+      - pypi: ./python/ribasim
+      - pypi: ./python/ribasim_api
+      - pypi: ./python/ribasim_testmodels
       osx-arm64:
       - conda: https://conda.anaconda.org/conda-forge/noarch/_python_abi3_support-1.0-hd8ed1ab_2.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/annotated-types-0.7.0-pyhd8ed1ab_1.conda
@@ -2779,9 +2779,9 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zstandard-0.23.0-py311h917b07b_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zstd-1.5.7-h6491c7d_2.conda
       - pypi: https://files.pythonhosted.org/packages/44/5b/fa477e4fd8e62c722febdc52462d7b037a77aa963c3e400a8e90e8f0d2c0/ptvsd-4.3.2-py2.py3-none-any.whl
-      - pypi: .\python\ribasim
-      - pypi: .\python\ribasim_api
-      - pypi: .\python\ribasim_testmodels
+      - pypi: ./python/ribasim
+      - pypi: ./python/ribasim_api
+      - pypi: ./python/ribasim_testmodels
       win-64:
       - conda: https://conda.anaconda.org/conda-forge/win-64/_openmp_mutex-4.5-2_gnu.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/_python_abi3_support-1.0-hd8ed1ab_2.conda
@@ -3287,9 +3287,9 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstandard-0.23.0-py311he736701_2.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstd-1.5.7-hbeecb71_2.conda
       - pypi: https://files.pythonhosted.org/packages/44/5b/fa477e4fd8e62c722febdc52462d7b037a77aa963c3e400a8e90e8f0d2c0/ptvsd-4.3.2-py2.py3-none-any.whl
-      - pypi: .\python\ribasim
-      - pypi: .\python\ribasim_api
-      - pypi: .\python\ribasim_testmodels
+      - pypi: ./python/ribasim
+      - pypi: ./python/ribasim_api
+      - pypi: ./python/ribasim_testmodels
 packages:
 - conda: https://conda.anaconda.org/conda-forge/linux-64/_libgcc_mutex-0.1-conda_forge.tar.bz2
   sha256: fe51de6107f9edc7aa4f786a70f4a883943bc9d39b3bb7307c04c41410990726
@@ -20783,9 +20783,9 @@ packages:
   - pkg:pypi/rfc3986-validator?source=hash-mapping
   size: 7818
   timestamp: 1598024297745
-- pypi: .\python\ribasim
+- pypi: ./python/ribasim
   name: ribasim
-  version: 2025.2.0
+  version: 2025.3.0
   sha256: 555f77a50822a4f25c4984be1cecbc85c09baf71aaec8dc79744f5d652e5f293
   requires_dist:
   - datacompy>=0.16
@@ -20819,7 +20819,7 @@ packages:
   - teamcity-messages ; extra == 'tests'
   requires_python: '>=3.11'
   editable: true
-- pypi: .\python\ribasim_api
+- pypi: ./python/ribasim_api
   name: ribasim-api
   version: 2025.3.0
   sha256: 73658444714bf6027302b5bf1ec3da2cad1a265d8d1e3c0f4dcb9a17c02b704c
@@ -20830,7 +20830,7 @@ packages:
   - ribasim-testmodels ; extra == 'tests'
   requires_python: '>=3.11'
   editable: true
-- pypi: .\python\ribasim_testmodels
+- pypi: ./python/ribasim_testmodels
   name: ribasim-testmodels
   version: 0.5.0
   sha256: 2e21a8b0966e289c2c6b2d794d050031ac7070b29f3408065e62e41308d4fc8e
