@@ -6,6 +6,7 @@ node_type_connectivity: dict[str, list[str]] = {
     "Junction": [
         "LinearResistance",
         "UserDemand",
+        "Terminal",
         "Junction",
         "Outlet",
         "Basin",
