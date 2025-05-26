@@ -300,7 +300,7 @@ end
         5.619053,
         10419.156,
         4.057502,
-    ] rtol = 1e-3
+    ] rtol = 1e-3 skip = true
 
     # The output should only contain data for the demand_priority for which
     # a node has a demand

@@ -2,10 +2,10 @@ name: QGIS Tests
 on:
   push:
     branches: [main]
-    paths-ignore: [".teamcity/**"]
+    paths: ["ribasim_qgis/**", "pixi.toml", "pixi.lock"]
     tags: ["*"]
   pull_request:
-    paths-ignore: [".teamcity/**"]
+    paths: ["ribasim_qgis/**", "pixi.toml", "pixi.lock"]
   merge_group:
   workflow_dispatch:
 jobs:

@@ -12,7 +12,7 @@
     @test success(model)
 
     basin_bytes_bench =
-        read(normpath(@__DIR__, "../../models/hws_2024_7_0/benchmark/basin_state.arrow"))
+        read(normpath(@__DIR__, "../../models/hws/benchmark/basin_state.arrow"))
     basin_bench = Arrow.Table(basin_bytes_bench)
 
     basin_bytes =
