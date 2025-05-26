@@ -5,7 +5,7 @@ title: "Allocation"
 # Introduction
 Allocation is the process of assigning an optimized allocated flow rate to demand nodes in the physical layer of the model based on information about sources and their source priorities, the different demand nodes over various demand priorities, constraints introduced by nodes, local water availability and graph topology. It solves a linearized version of the problem formulated for the [physical layer](modelconcept.qmd#physical-layer) a period of time ahead of the physical layer, while simultaneously optimizing allocated flows and steering certain structures to get the water from (preferred) source to demand. The physics is implemented in an implicit manner, rather like the [implicit Euler](https://en.wikipedia.org/wiki/Backward_Euler_method) numerical method.
 
-The allocation problem is solved per subnetwork of the Ribasim model. A subnetwork is defined by all nodes that have the same subnetwork ID in the [Node table](../reference/usage.qmd#node). in Each subnetwork is used to formulate a linear optimization problem with the [JuMP](https://jump.dev/JuMP.jl/stable/) package, which is solved using the [HiGHS solver](https://highs.dev/). For more in-depth information see also the example of solving the maximum flow problem with `JuMP.jl` [here](https://jump.dev/JuMP.jl/stable/tutorials/linear/network_flows/#The-max-flow-problem).
+The allocation problem is solved per subnetwork of the Ribasim model. A subnetwork is defined by all nodes that have the same subnetwork ID in the [Node table](../reference/usage.qmd#node). Each subnetwork is used to formulate a linear optimization problem with the [JuMP](https://jump.dev/JuMP.jl/stable/) package, which is solved using the [HiGHS solver](https://highs.dev/). For more in-depth information see also the example of solving the maximum flow problem with `JuMP.jl` [here](https://jump.dev/JuMP.jl/stable/tutorials/linear/network_flows/#The-max-flow-problem).
 
 There can be a special subnetwork called primary network (with subnetwork ID 1), which represents the main or primary water system. Other subnetworks are called secondary networks and are only allowed to connect to the main network via a Pump or Outlet; secondary networks are not allowed to be connected to each other. Secondary networks automatically formulate demands to the main network if there is a shortage of water within the subnetwork to fulfill all demands.
 
@@ -14,22 +14,22 @@ There can be a special subnetwork called primary network (with subnetwork ID 1),
 # The high level algorithm {#sec-high-level-algorithm}
 The allocation algorithm contains 2 types of optimization:
 
-- Demand collection, where water is allocated in the secondary networks with the sole purpose of finding out what the demand of the subnetwork is from the main network;
-- Allocation, where water is allocated in all subnetworks, and the amount of water that is allocated to demands is given as output and communicated to the physical layer.
+- Demand collection, where water is allocated in the secondary networks with the sole purpose of finding out what the demand of the secondary network is from the primary network;
+- Allocation, where water is allocated in all subnetworks, and the amount of water that is allocated to demands is written as output and communicated to the physical layer.
 
 The full algorithm goes through the following steps:
 
 1. Perform demand collection in the secondary subnetworks;
-2. Perform allocation in the main network;
+2. Perform allocation in the primary network;
 3. Perform allocation for the other subnetworks.
 
-If no main network is present, then step 1 and 2 are skipped.
+If no primary network is present, then step 1 and 2 are skipped.
 
 # The optimization problems for the subnetworks
 
 ## Water balance
 
-Just as the physical layer, the allocation layer must satisfy the water balance over the allocation timestep $\Delta t_\text{allocation}$. To explain how this is done, we give an algebraic description of some basic aspects of the subnetworks. Say we denote the set of all nodes in the model by $V$, and the subset that forms a subnetwork by $S \subseteq V$. We also have the the set of all flow links in the model $L \subseteq V \times V$, i.e. the links are ordered pairs of nodes. The set of links associated with the subnetwork is derived from $S$ as
+Just as the physical layer, the allocation layer must satisfy the water balance, in this case over the allocation timestep $\Delta t_\text{allocation}$. To explain how this is done, we give an algebraic description of some basic aspects of the subnetworks. Say we denote the set of all nodes in the model by $V$, and the subset that forms a subnetwork by $S \subseteq V$. We also have the the set of all flow links in the model $L \subseteq V \times V$, i.e. the links are ordered pairs of nodes. The set of links associated with the subnetwork is derived from $S$ as
 
 $$
     E_S = \{l \in L \; : \; l \cap S \ne\emptyset\},
@@ -96,7 +96,7 @@ $$
     \mathcal{L}^\text{end}_b = P_b(\mathcal{S}^\text{end}_b)
 $$
 
-<span style="color: red;">#TODO: Explain how the level(storage) relationship is linearized.</span>
+<span style="color: red;">#TODO: Explain how the level(storage) relationship is linearized, and how some 'phantom storage' is introduced into the profile.</span>
 
 Just like the initial storages, each Basin has an initial level $L_b^\text{start}$ known from the physical layer which we need to compute flows.
 
@@ -118,30 +118,13 @@ The flow rate of a FlowBoundary is given as a timeseries so we could use the int
 
 ### Tabulated Rating Curve
 
-Since the $Q(h)$ relationships for TabulatedRatingCurve nodes are already linear
+Since the $Q(h)$ relationships for TabulatedRatingCurve nodes (see [here](../reference/node/tabulated-rating-curve.qmd#equations)) are already linear, these can be directly incorporated into the allocation problem.
 
 ### Resistance nodes
 
-In Ribasim we have LinearResistance and ManningResistance. If $r \in S$ is such a resistance node and $l_r \in E_S$ is the inflow link of that resistance node, we add the decision variables $\mathcal{F}_{l_r}^+ \ge 0$, $\mathcal{F}_{l_r}^- \ge 0$ and the constraint
+In Ribasim we have [LinearResistance](../reference/node/linear-resistance.qmd) and [ManningResistance](../reference/node/manning-resistance.qmd) nodes. The linear resistance node is already linear and therefore can be directly incorporated in the allocation problem. For ManningResistance we linearize the flow relationship with respect to the upstream and downstream level at the beginning of the allocation timestep.
 
-$$
-\mathcal{F}_{l_r} = \mathcal{F}_{l_r}^+ - \mathcal{F}_{l_r}^-.
-$$
-
-That is, we split $\mathcal{F}_{l_r}$ into a positive and negative flow term. Furthermore we add a Boolean decision variable $\mathcal{B}_r$ and constraints
-
-$$
-    \mathcal{F}_{l_r}^+ \le F_\text{max}\mathcal{B}_r, \quad \mathcal{F}_{l_r}^- \le F_\text{max}(1-\mathcal{B}_r)
-$$
-
-to make sure that only one of the positive and negative flow variable can be non-zero. Now consider the following plot of the upstream level $h_a$ and downstream level $h_b$ space.
-
-```{python}
-# | code-fold: true
-import matplotlib.pyplot as plt
-
-fig, ax = plt.subplots()
-```
+For the resistance nodes [the phantom storage introduced above](#the-basin-profile) is very helpful, because it prevents that according to the formula water has to flow from an empty basin with a high bottom to a lower basin.
 
 ## Objectives (goals)
 

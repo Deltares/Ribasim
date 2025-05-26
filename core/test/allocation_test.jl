@@ -1,5 +1,5 @@
 @testitem "Allocation solve" begin
-    using Ribasim: NodeID, OptimizationType
+    using Ribasim: NodeID, AllocationOptimizationType
     import SQLite
     import JuMP
 
@@ -10,14 +10,12 @@
     (; p) = model.integrator
     (; p_non_diff) = p
     (; graph, allocation, user_demand) = p_non_diff
-
-    allocation.mean_input_flows[1][(
+    allocation_model = allocation.allocation_models[1]
+    allocation_model.cumulative_boundary_volume[(
         NodeID(:FlowBoundary, 1, p_non_diff),
         NodeID(:Basin, 2, p_non_diff),
-    )] = 4.5
-    allocation_model = allocation.allocation_models[1]
-    (; flow) = allocation_model
-    t = 0.0
+    )] = 4.5 * model.config.allocation.timestep
+
     Ribasim.allocate_demands!(p, allocation_model, t)
 
     # Last demand priority (= 2) flows
