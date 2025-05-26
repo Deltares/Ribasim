@@ -72,6 +72,12 @@ build = { "cmd" = "julia --project build.jl", cwd = "build", depends-on = [
     "initialize-julia",
 ] }
 # Tests
+s3-download = { cmd = "python utils/s3_download.py {{ remote }} {{ local }}", args = [
+    "remote", "local"
+] }
+s3-upload = { cmd = "python utils/s3_upload.py {{ source }} {{ destination }}", args = [
+    "source", "destination"
+] }
 test-ribasim-cli = "pytest --numprocesses=4 --basetemp=build/tests/temp --junitxml=report.xml build/tests"
 test-ribasim-core = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test()'", depends-on = [
     "generate-testmodels",
@@ -83,6 +89,8 @@ test-ribasim-core-cov = { cmd = "julia --project=core --eval 'using Pkg; Pkg.tes
 test-ribasim-regression = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test(julia_args=[\"--check-bounds=yes\"], test_args=[\"regression\"])'", depends-on = [
     "generate-testmodels",
     "test-ribasim-migration",
+    { task = "s3-download", args = ["benchmark/", "benchmark/"] },
+    { task = "s3-download", args = ["hws_migration_test/", "hws_migration_test/"] },
 ] }
 generate-testmodels = { cmd = "python utils/generate-testmodels.py", inputs = [
     "python/ribasim",
@@ -94,7 +102,9 @@ generate-testmodels = { cmd = "python utils/generate-testmodels.py", inputs = [
 tests = { depends-on = ["lint", "test-ribasim-python", "test-ribasim-core"] }
 delwaq = { cmd = "pytest python/ribasim/tests/test_delwaq.py" }
 gen-delwaq = { cmd = "python python/ribasim/ribasim/delwaq/generate.py" }
-model-integration-test = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test(test_args=[\"integration\"])'" }
+model-integration-test = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test(test_args=[\"integration\"])'", depends-on = [
+    { task = "s3-download", args = ["hws_2025_4_0/", "hws/"] },
+] }
 # Codegen
 codegen = { cmd = "julia --project utils/gen_python.jl && ruff format python/ribasim/ribasim/schemas.py python/ribasim/ribasim/validation.py", depends-on = [
     "initialize-julia",

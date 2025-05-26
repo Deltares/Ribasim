@@ -11,7 +11,7 @@ parser = argparse.ArgumentParser(
     description="Download a folder (recursively) from the MinIO server"
 )
 parser.add_argument("remote", help="The path to download in the MinIO server")
-parser.add_argument("local", help="The path to download in the MinIO server")
+parser.add_argument("local", help="The path to the local file system")
 parser.add_argument(
     "--accesskey",
     help="The access key to access the MinIO server",

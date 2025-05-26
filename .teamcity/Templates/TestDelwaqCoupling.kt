@@ -53,7 +53,7 @@ open class TestDelwaqCoupling(platformOs: String) : Template() {
                 id = "Delwaq_upload"
                 workingDir = "ribasim"
                 scriptContent = """
-                pixi run python utils/upload_benchmark.py --secretkey %MiniO_credential_token% "python/ribasim/ribasim/delwaq/model/delwaq_map.nc" "doc-image/delwaq/delwaq_map.nc"
+                pixi run s3-upload "python/ribasim/ribasim/delwaq/model/delwaq_map.nc" "doc-image/delwaq/delwaq_map.nc"
                 """.trimIndent()
             }
         }
