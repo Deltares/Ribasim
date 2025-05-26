@@ -116,3 +116,17 @@ function collect_main_network_connections!(
 
     return nothing
 end
+
+function get_minmax_level(p_non_diff::ParametersNonDiff, node_id::NodeID)
+    (; basin, level_boundary) = p_non_diff
+
+    if node_id.type == NodeType.Basin
+        itp = basin.level_to_area[node_id.idx]
+        return itp.t[1], ipt.t[end]
+    elseif node_id.type == NodeType.LevelBoundary
+        itp = level_boundary.level[node_id.idx]
+        return minimum(itp.u), maximum(itp.u)
+    else
+        error("Min and max level are not defined for nodes of type $(node_id.type).")
+    end
+end

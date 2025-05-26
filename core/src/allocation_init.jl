@@ -103,6 +103,8 @@ function add_basin!(
     values_storage = Dict{NodeID, Vector{Float64}}()
     values_level = Dict{NodeID, Vector{Float64}}()
 
+    lowest_level = minimum(itp -> itp.t[1], level_to_area)
+
     for node_id in basin_ids_subnetwork
         itp = storage_to_level[node_id.idx]
 
@@ -116,6 +118,16 @@ function add_basin!(
             values_storage_node[inds] .=
                 range(itp.t[i], itp.t[i + 1]; length = n_samples_per_segment + 1)
             itp(view(values_level_node, inds), view(values_storage_node, inds))
+        end
+
+        phantom_Δh = values_level_node[1] - lowest_level
+
+        if phantom_Δh > 0
+            phantom_area = level_to_area[node_id.idx].t[1] / 1e3
+            phantom_storage = phantom_Δh * phantom_area
+            pushfirst!(values_level_node, lowest_level)
+            values_storage_node .+= phantom_storage
+            pushfirst!(values_storage_node, 0.0)
         end
 
         values_storage[node_id] = values_storage_node
@@ -557,8 +569,11 @@ function add_linear_resistance!(
         problem,
         [node_id = linear_resistance_ids_subnetwork],
         flow[inflow_link[node_id.idx].link] == begin
-            level_upstream = get_level(problem, inflow_link[node_id.idx].link[1])
-            level_downstream = get_level(problem, outflow_link[node_id.idx].link[2])
+            inflow_id = inflow_link[node_id.idx].link[1]
+            outflow_id = outflow_link[node_id.idx].link[2]
+
+            level_upstream = get_level(problem, inflow_id)
+            level_downstream = get_level(problem, outflow_id)
             Δlevel = level_upstream - level_downstream
             max_flow = max_flow_rate[node_id.idx]
 
@@ -568,18 +583,29 @@ function add_linear_resistance!(
             else
                 # If there is a flow bound, the flow(Δlevel) relationship
                 # is modelled as a (non-convex) piecewise linear relationship
+                min_inflow_level, max_inflow_level =
+                    get_minmax_level(p_non_diff, inflow_id)
+                min_outflow_level, max_outflow_level =
+                    get_minmax_level(p_non_diff, outflow_id)
+
+                Δlevel_min = min_inflow_level - max_outflow_level
+                Δlevel_max = max_inflow_level - min_outflow_level
+
+                input = [-Δlevel_max_flow, Δlevel_max_flow]
+                output = [-max_flow, max_flow]
+
+                if Δlevel_min < -Δlevel_max_flow
+                    pushfirst!(input, Δllevel_min)
+                    pushfirst!(output, -max_flow)
+                end
+
+                if Δlevel_max > Δlevel_max_flow
+                    push!(input, Δlevel_max)
+                    push!(output, max_flow)
+                end
+
                 Δlevel_max_flow = resistance[node_id.idx] * max_flow
-                piecewiselinear(
-                    problem,
-                    Δlevel,
-                    [
-                        -Δlevel_max_flow - 1000,
-                        -Δlevel_max_flow,
-                        Δlevel_max_flow,
-                        Δlevel_max_flow + 1000,
-                    ],
-                    [-max_flow, -max_flow, max_flow, max_flow],
-                )
+                piecewiselinear(problem, Δlevel, input, output)
             end
         end,
         base_name = "linear_resistance"
