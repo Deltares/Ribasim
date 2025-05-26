@@ -31,6 +31,7 @@ from ribasim.config import (
     Experimental,
     FlowBoundary,
     FlowDemand,
+    Interpolation,
     Junction,
     LevelBoundary,
     LevelDemand,
@@ -89,6 +90,7 @@ class Model(FileModel):
     results: Results = Field(default_factory=Results)
 
     allocation: Allocation = Field(default_factory=Allocation)
+    interpolation: Interpolation = Field(default_factory=Interpolation)
 
     experimental: Experimental = Field(default_factory=Experimental)
 
