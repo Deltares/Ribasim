@@ -36,7 +36,8 @@ open class TestBinaries (platformOs: String) : Template() {
 
         val depot_path = generateJuliaDepotPath(platformOs)
         params {
-            password("MiniO_credential_token", "credentialsJSON:86cbf3e5-724c-437d-9962-7a3f429b0aa2")
+            param("env.MINIO_ACCESS_KEY", "KwKRzscudy3GvRB8BN1Z")
+            password("env.MINIO_SECRET_KEY", "credentialsJSON:86cbf3e5-724c-437d-9962-7a3f429b0aa2")
             param("env.JULIA_DEPOT_PATH", depot_path)
         }
 
