@@ -461,12 +461,12 @@ def cyclic_time_model() -> Model:
     return model
 
 
-def Wilson_model() -> Model:
+def flow_boundary_interpolation_model() -> Model:
     model = Model(
         starttime="2020-01-01",
         endtime="2020-01-09",
         crs="EPSG:28992",
-        interpolation=Interpolation(flow_boundary="stepwise", stepwise_smoothing=0.0),
+        interpolation=Interpolation(flow_boundary="block", block_transition_period=0.0),
     )
 
     fb = model.flow_boundary.add(

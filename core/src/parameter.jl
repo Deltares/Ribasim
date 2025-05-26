@@ -164,7 +164,7 @@ const ScalarLinearInterpolation = LinearInterpolation{
 }
 
 "SmoothedConstantInterpolation from a Float64 to a Float64"
-const ScalarStepwiseInterpolation = SmoothedConstantInterpolation{
+const ScalarBlockInterpolation = SmoothedConstantInterpolation{
     Vector{Float64},
     Vector{Float64},
     Vector{Float64},

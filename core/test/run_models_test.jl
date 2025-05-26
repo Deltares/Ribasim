@@ -677,21 +677,24 @@ end
     model = Ribasim.run(toml_path)
 end
 
-@testitem "flow_boundary_interpolation_type" begin
+@testitem "FlowBoundary interpolation type" begin
     using DataInterpolations: LinearInterpolation, SmoothedConstantInterpolation
     using DataFrames
 
-    toml_path = normpath(@__DIR__, "../../generated_testmodels/Wilson/ribasim.toml")
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/flow_boundary_interpolation/ribasim.toml",
+    )
     @test ispath(toml_path)
 
     model = Ribasim.Model(toml_path)
     (; flow_rate) = model.integrator.p.p_non_diff.flow_boundary
     (; interpolation) = model.config
 
-    @test interpolation.flow_boundary == "stepwise"
+    @test interpolation.flow_boundary == "block"
     @test flow_rate isa Vector{<:SmoothedConstantInterpolation}
     itp = only(flow_rate)
-    @test itp.d_max == interpolation.stepwise_smoothing == 0.0
+    @test itp.d_max == interpolation.block_transition_period == 0.0
     Ribasim.solve!(model)
 
     flow_rates_input = itp.u

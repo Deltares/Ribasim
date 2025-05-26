@@ -1129,8 +1129,8 @@ end
 function get_interpolation_vec(interpolation_type::String, node_id::Vector{NodeID})::Vector
     type = if interpolation_type == "linear"
         ScalarLinearInterpolation
-    elseif interpolation_type == "stepwise"
-        ScalarStepwiseInterpolation
+    elseif interpolation_type == "block"
+        ScalarBlockInterpolation
     else
         error("Invalid interpolation type specified: $interpolation_type.")
     end

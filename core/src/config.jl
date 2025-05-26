@@ -122,7 +122,7 @@ end
 
 @option struct Interpolation <: TableOption
     flow_boundary::String = "linear"
-    stepwise_smoothing::Float64 = 60.0
+    block_transition_period::Float64 = 60.0
 end
 
 # Separate struct, as basin clashes with nodetype

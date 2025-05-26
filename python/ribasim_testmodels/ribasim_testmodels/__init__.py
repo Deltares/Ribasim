@@ -23,11 +23,11 @@ from ribasim_testmodels.allocation import (
 )
 from ribasim_testmodels.backwater import backwater_model
 from ribasim_testmodels.basic import (
-    Wilson_model,
     basic_arrow_model,
     basic_model,
     basic_transient_model,
     cyclic_time_model,
+    flow_boundary_interpolation_model,
     outlet_model,
     tabulated_rating_curve_model,
 )
@@ -92,6 +92,7 @@ __all__ = [
     "cyclic_time_model",
     "discrete_control_of_pid_control_model",
     "fair_distribution_model",
+    "flow_boundary_interpolation_model",
     "flow_boundary_time_model",
     "flow_condition_model",
     "flow_demand_model",
@@ -129,7 +130,6 @@ __all__ = [
     "trivial_model",
     "two_basin_model",
     "user_demand_model",
-    "Wilson_model",
 ]
 
 # provide a mapping from model name to its constructor, so we can iterate over all models

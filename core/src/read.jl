@@ -210,14 +210,14 @@ make_itp(
     u,
     t;
     extrapolation,
-    stepwise_smoothing,
+    block_transition_period,
     kwargs...,
 ) = SmoothedConstantInterpolation(
     u,
     t;
     cache_parameters = true,
     extrapolation,
-    d_max = stepwise_smoothing,
+    d_max = block_transition_period,
 )
 
 # Get interpolation parameter value
@@ -254,7 +254,7 @@ function get_parameter_value(
         u,
         t;
         extrapolation = cyclic_time ? Periodic : ConstantExtrapolation,
-        config.interpolation.stepwise_smoothing,
+        config.interpolation.block_transition_period,
     )
     return itp, valid
 end
