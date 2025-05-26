@@ -28,6 +28,8 @@ struct Model
     end
 end
 
+const specialize = @load_preference("specialize", true)
+
 """
 Get the Jacobian evaluation function via DifferentiationInterface.jl.
 The time derivative is also supplied in case a Rosenbrock method is used.
@@ -235,9 +237,8 @@ function Model(config::Config)::Model
     adaptive, dt = convert_dt(config.solver.dt)
 
     jac_prototype, jac, tgrad = get_diff_eval(du0, u0, parameters, config.solver)
-    RHS = ODEFunction(water_balance!; jac_prototype, jac, tgrad)
-
-    prob = ODEProblem{true, SciMLBase.NoSpecialize}(RHS, u0, timespan, parameters)
+    RHS = ODEFunction{true, specialize ? SciMLBase.FullSpecialize : SciMLBase.NoSpecialize}(water_balance!; jac_prototype, jac, tgrad)
+    prob = ODEProblem{true, specialize ? SciMLBase.FullSpecialize : SciMLBase.NoSpecialize}(RHS, u0, timespan, parameters)
     @debug "Setup ODEProblem."
 
     callback, saved = create_callbacks(p_non_diff, config, saveat)
