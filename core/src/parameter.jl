@@ -443,7 +443,12 @@ end
 
 VerticalFlux(n::Int) = VerticalFlux(zeros(n), zeros(n), zeros(n), zeros(n))
 
-const StorageToLevelType = AbstractInterpolation
+const StorageToLevelType = LinearInterpolationIntInv{
+    Vector{Float64},
+    Vector{Float64},
+    ScalarInterpolation,
+    Float64,
+}
 
 """
 Requirements:

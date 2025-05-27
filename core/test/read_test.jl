@@ -115,7 +115,7 @@ end
         storage = [skipped; storages; storages],
     )
 
-    Ribasim.interpolate_basin_profile_relations!(basin, profiles)
+    Ribasim.interpolate_basin_profile!(basin, profiles)
 
     # Assert that storage_to_level interpolation is consistent for nodes 1, 2, and 3
     @test basin.storage_to_level[1](1.0) ≈ basin.storage_to_level[2](1.0)
@@ -132,7 +132,7 @@ end
         StructVector,
         BasinConcentrationV1,
         NodeID,
-        interpolate_basin_profile_relations!
+        interpolate_basin_profile!
 
     # a parabolic shaped (x^2 - 1) basin with a circular cross section
     levels::Vector{Float64} = [0, 1]
@@ -156,7 +156,7 @@ end
         storage = skipped,
     )
 
-    interpolate_basin_profile_relations!(basin, profiles)
-    # Assert that storage_to_level interpolation is consistent for nodes 1, 2, and 3
+    interpolate_basin_profile!(basin, profiles)
+
     @test basin.storage_to_level[1](2000) ≈ 2.0
 end

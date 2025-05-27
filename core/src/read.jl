@@ -833,7 +833,7 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     errors |= validate_consistent_basin_initialization(profiles)
     errors && error("Errors encountered when parsing Basin data.")
 
-    interpolate_inv_int_basin_profile_relations!(basin, profiles)
+    interpolate_basin_profile!(basin, profiles)
 
     # Inflow and outflow links
     map!(id -> collect(inflow_ids(graph, id)), basin.inflow_ids, node_id)
@@ -1794,7 +1794,7 @@ function finite_difference(
 end
 
 """trapezoidal integration"""
-function trapezoidal_integrate(dfdx::Vector{Float64}, x::Vector{Float64})::Vector{Float64}
+function trapz_integrate(dfdx::Vector{Float64}, x::Vector{Float64})::Vector{Float64}
     n = length(dfdx)
     f = zeros(Float64, n)
     Δx = diff(x)
@@ -1845,23 +1845,22 @@ function set_concentrations!(
     end
 end
 
-function interpolate_inv_int_basin_profile_relations!(
+function interpolate_basin_profile!(
     basin::Basin,
     profiles::StructVector{BasinProfileV1},
 )::Nothing
-    i = 0
-    for group in IterTools.groupby(row -> row.node_id, profiles)
-        i += 1
+    for (i, group) in enumerate(IterTools.groupby(row -> row.node_id, profiles))
         group_area = getproperty.(group, :area)
         group_level = getproperty.(group, :level)
         group_storage = getproperty.(group, :storage)
 
         # If there is no storage as input, we integrate A(h)
         if all(ismissing, group_storage)
-            group_storage = trapezoidal_integrate(group_area, group_level)
+            group_storage = trapz_integrate(group_area, group_level)
         end
 
         # We always differentiate storage with respect to level such that we can use invert_integral
+        # We treat level-area and storage-level as independent relations.
         dS_dh = if ismissing(group_area[1])
             finite_difference(group_storage, group_level)
         else
@@ -1871,56 +1870,21 @@ function interpolate_inv_int_basin_profile_relations!(
         level_to_area = LinearInterpolation(
             dS_dh,
             group_level;
-            extrapolation_left = ConstantExtrapolation,
-            extrapolation_right = Extension,
+            extrapolation = ConstantExtrapolation,
             cache_parameters = true,
         )
 
-        basin.storage_to_level[i] = invert_integral(level_to_area)
+        basin.storage_to_level[i] =
+            invert_integral(level_to_area; extrapolation_right = Extension)
 
         if !all(ismissing, group_area)
             level_to_area = LinearInterpolation(
                 group_area,
                 group_level;
-                extrapolation_left = ConstantExtrapolation,
-                extrapolation_right = ConstantExtrapolation,
+                extrapolation = ConstantExtrapolation,
                 cache_parameters = true,
             )
         end
         basin.level_to_area[i] = level_to_area
-    end
-end
-
-function interpolate_basin_profile_relations!(
-    basin::Basin,
-    profiles::StructVector{BasinProfileV1},
-)::Nothing
-    i = 0
-    for group in IterTools.groupby(row -> row.node_id, profiles)
-        i += 1
-        group_area = getproperty.(group, :area)
-        group_level = getproperty.(group, :level)
-        group_storage = getproperty.(group, :storage)
-
-        # If there is no storage as input, we integrate A(h)
-        if all(ismissing, group_storage)
-            group_storage = trapezoidal_integrate(group_area, group_level)
-        elseif all(ismissing)
-            group_area = finite_difference(group_storage, group_level)
-        end
-
-        basin.level_to_area[i] = LinearInterpolation(
-            group_area,
-            group_level;
-            extrapolation_left = ConstantExtrapolation,
-            extrapolation_right = ConstantExtrapolation,
-            cache_parameters = true,
-        )
-
-        basin.storage_to_level[i] = LagrangeInterpolation(
-            group_level,
-            group_storage;
-            extrapolation = ExtrapolationType.Linear,
-        )
     end
 end

@@ -60,8 +60,6 @@ using LinearAlgebra: mul!
 using DataInterpolations:
     ConstantInterpolation,
     LinearInterpolation,
-    AkimaInterpolation,
-    LagrangeInterpolation,
     LinearInterpolationIntInv,
     invert_integral,
     derivative,
