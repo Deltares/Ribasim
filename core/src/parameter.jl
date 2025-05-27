@@ -392,15 +392,15 @@ abstract type AbstractDemandNode <: AbstractParameterNode end
     # Config setting to enable/disable evaporation of mass
     evaporate_mass::Bool = true
     # Cumulative inflow for each Basin at a given time
-    cumulative_in::Vector{Float64}
+    cumulative_in::Vector{Float64} = zeros(Float64, 0)
     # matrix with concentrations for each Basin and substance
-    concentration_state::Matrix{Float64}  # Basin, substance
+    concentration_state::Matrix{Float64} = zeros(Float64, 0, 0)  # Basin, substance
     # matrix with boundary concentrations for each boundary, Basin and substance
-    concentration::Array{Float64, 3}
+    concentration::Array{Float64, 3} = zeros(Float64, 0, 0, 0)
     # matrix with mass for each Basin and substance
-    mass::Matrix{Float64}
+    mass::Matrix{Float64} = zeros(Float64, 0, 0)
     # substances in use by the model (ordered like their axis in the concentration matrices)
-    substances::OrderedSet{Symbol}
+    substances::OrderedSet{Symbol} = OrderedSet{Symbol}()
     # Data source for external concentrations (used in control)
     concentration_external::Vector{Dict{String, ScalarInterpolation}} =
         Dict{String, ScalarInterpolation}[]
@@ -460,7 +460,7 @@ Requirements:
 Type parameter D indicates the content backing the StructVector, which can be a NamedTuple
 of vectors or Arrow Tables, and is added to avoid type instabilities.
 """
-@kwdef struct Basin{CD, D} <: AbstractParameterNode
+@kwdef struct Basin <: AbstractParameterNode
     node_id::Vector{NodeID}
     inflow_ids::Vector{Vector{NodeID}} = fill(NodeID[], length(node_id))
     outflow_ids::Vector{Vector{NodeID}} = fill(NodeID[], length(node_id))
@@ -489,9 +489,9 @@ of vectors or Arrow Tables, and is added to avoid type instabilities.
     # Level for each Basin at the previous time step
     level_prev::Vector{Float64} = zeros(length(node_id))
     # Concentrations
-    concentration_data::CD = nothing
+    concentration_data::ConcentrationData = ConcentrationData()
     # Data source for concentration updates
-    concentration_time::StructVector{BasinConcentrationV1, D, Int}
+    concentration_time::StructVector{BasinConcentrationV1}
 end
 
 """
@@ -605,12 +605,12 @@ level: the fixed level of this 'infinitely big Basin'
 concentration: matrix with boundary concentrations for each Basin and substance
 concentration_time: Data source for concentration updates
 """
-@kwdef struct LevelBoundary{C} <: AbstractParameterNode
+@kwdef struct LevelBoundary <: AbstractParameterNode
     node_id::Vector{NodeID}
     active::Vector{Bool} = ones(Bool, length(node_id))
     level::Vector{ScalarInterpolation} = Vector{ScalarInterpolation}(undef, length(node_id))
     concentration::Matrix{Float64}
-    concentration_time::StructVector{LevelBoundaryConcentrationV1, C, Int}
+    concentration_time::StructVector{LevelBoundaryConcentrationV1}
 end
 
 """
@@ -623,7 +623,7 @@ flow_rate: flow rate (exact)
 concentration: matrix with boundary concentrations for each Basin and substance
 concentration_time: Data source for concentration updates
 """
-@kwdef struct FlowBoundary{C} <: AbstractParameterNode
+@kwdef struct FlowBoundary <: AbstractParameterNode
     node_id::Vector{NodeID}
     outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     active::Vector{Bool} = ones(Bool, length(node_id))
@@ -632,7 +632,7 @@ concentration_time: Data source for concentration updates
     flow_rate::Vector{ScalarInterpolation} =
         Vector{ScalarInterpolation}(undef, length(node_id))
     concentration::Matrix{Float64}
-    concentration_time::StructVector{FlowBoundaryConcentrationV1, C, Int}
+    concentration_time::StructVector{FlowBoundaryConcentrationV1}
 end
 
 """
@@ -882,7 +882,7 @@ min_level: The level of the source Basin below which the UserDemand does not abs
 concentration: matrix with boundary concentrations for each Basin and substance
 concentration_time: Data source for concentration updates
 """
-@kwdef struct UserDemand{C} <: AbstractDemandNode
+@kwdef struct UserDemand <: AbstractDemandNode
     node_id::Vector{NodeID}
     demand_priorities::Vector{Int32} = Int32[]
     inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
@@ -908,7 +908,7 @@ concentration_time: Data source for concentration updates
         Vector{ScalarInterpolation}(undef, length(node_id))
     min_level::Vector{Float64} = zeros(length(node_id))
     concentration::Matrix{Float64}
-    concentration_time::StructVector{UserDemandConcentrationV1, C, Int}
+    concentration_time::StructVector{UserDemandConcentrationV1}
 end
 
 """
@@ -1008,18 +1008,18 @@ and not derived from the state vector `u` (or the time `t`). In this context e.g
 of floats (not dependent on `u`) is not considered mutable, because even though it's elements are mutable,
 the object itself is not.
 """
-@kwdef struct ParametersNonDiff{C1, C2, C3, C4, C5}
+@kwdef struct ParametersNonDiff
     starttime::DateTime
     reltol::Float64
     relmask::Vector{Bool}
     graph::ModelGraph
     allocation::Allocation
-    basin::Basin{C1, C2}
+    basin::Basin
     linear_resistance::LinearResistance
     manning_resistance::ManningResistance
     tabulated_rating_curve::TabulatedRatingCurve
-    level_boundary::LevelBoundary{C3}
-    flow_boundary::FlowBoundary{C4}
+    level_boundary::LevelBoundary
+    flow_boundary::FlowBoundary
     pump::Pump
     outlet::Outlet
     terminal::Terminal
@@ -1027,7 +1027,7 @@ the object itself is not.
     discrete_control::DiscreteControl
     continuous_control::ContinuousControl
     pid_control::PidControl
-    user_demand::UserDemand{C5}
+    user_demand::UserDemand
     level_demand::LevelDemand
     flow_demand::FlowDemand
     subgrid::Subgrid
@@ -1067,11 +1067,14 @@ end
 """
 The collection of all parameters that are passed to the rhs (`water_balance!`) and callbacks.
 """
-@kwdef struct Parameters{C1, C2, C3, C4, C5, T}
-    p_non_diff::ParametersNonDiff{C1, C2, C3, C4, C5}
+@kwdef struct Parameters{T}
+    p_non_diff::ParametersNonDiff
     diff_cache::DiffCache{T} = DiffCache(p_non_diff)
     p_mutable::ParametersMutable = ParametersMutable()
 end
+
+Base.show(io::IO, p::Parameters) = print(io, "Ribasim Parameters")
+Base.show(io::IO, ::MIME"text/plain", p::Parameters) = print(io, "Ribasim Parameters")
 
 function get_value(ref::DiffCacheRef, p::Parameters, du::CVector)
     if ref.from_du

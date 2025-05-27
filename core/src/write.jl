@@ -9,7 +9,7 @@ function write_results(model::Model)::Model
     @debug "Writing results."
 
     compress = get_compressor(results)
-    remove_empty_table = model.integrator.t != 0
+    remove_empty_table::Bool = model.integrator.t::Float64 != 0
 
     # state
     table = basin_state_table(model)

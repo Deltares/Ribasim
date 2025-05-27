@@ -14,6 +14,10 @@ For more granular access, see:
 """
 module Ribasim
 
+using PrecompileTools: @setup_workload, @compile_workload
+using CompileTraces: @compile_traces
+using Preferences: @load_preference
+
 # Requirements for automatic differentiation
 using DifferentiationInterface:
     AutoSparse,
@@ -170,5 +174,13 @@ include("callback.jl")
 include("concentration.jl")
 include("main.jl")
 include("libribasim.jl")
+
+@setup_workload begin
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
+    isfile(toml_path) || return
+    @compile_workload begin
+        main(toml_path)
+    end
+end
 
 end  # module Ribasim
