@@ -16,14 +16,27 @@ function set_simulation_data!(
     t::Float64,
     du::CVector,
 )::Nothing
-    (; problem, Δt_allocation, subnetwork_id, cumulative_boundary_volume) = allocation_model
+    (; basin, level_boundary, manning_resistance, pump, outlet, user_demand, graph) =
+        p.p_non_diff
+
+    set_simulation_data!(allocation_model, basin, p)
+    set_simulation_data!(allocation_model, level_boundary, t)
+    set_simulation_data!(allocation_model, manning_resistance)
+    set_simulation_data!(allocation_model, pump, outlet, graph, du)
+    set_simulation_data!(allocation_model, user_demand, t)
+    return nothing
+end
+
+function set_simulation_data!(
+    allocation_model::AllocationModel,
+    ::Basin,
+    p::Parameters,
+)::Nothing
+    (; problem, cumulative_boundary_volume, Δt_allocation) = allocation_model
+
     storage = problem[:basin_storage]
     basin_level = problem[:basin_level]
     flow = problem[:flow]
-    boundary_level = problem[:boundary_level]
-    manning_resistance_constraint = problem[:manning_resistance_constraint]
-
-    (; level_boundary, manning_resistance, pump, outlet, graph) = p.p_non_diff
     (; current_storage, current_level) = p.diff_cache
 
     # Set Basin starting storages and levels
@@ -38,6 +51,16 @@ function set_simulation_data!(
     for link in keys(cumulative_boundary_volume)
         JuMP.fix(flow[link], cumulative_boundary_volume[link] / Δt_allocation; force = true)
     end
+    return nothing
+end
+
+function set_simulation_data!(
+    allocation_model::AllocationModel,
+    level_boundary::LevelBoundary,
+    t::Float64,
+)::Nothing
+    (; problem, Δt_allocation) = allocation_model
+    boundary_level = problem[:boundary_level]
 
     # Set LevelBoundary levels
     for node_id in only(boundary_level.axes)
@@ -47,6 +70,15 @@ function set_simulation_data!(
             force = true,
         )
     end
+    return nothing
+end
+
+function set_simulation_data!(
+    allocation_model::AllocationModel,
+    manning_resistance::ManningResistance,
+)::Nothing
+    (; problem) = allocation_model
+    manning_resistance_constraint = problem[:manning_resistance_constraint]
 
     # Set the linearization of ManningResistance flows in the current levels from the physical layer
     for node_id in only(manning_resistance_constraint.axes)
@@ -92,6 +124,19 @@ function set_simulation_data!(
         JuMP.set_normalized_coefficient(constraint, upstream_level, -∂q_∂level_upstream)
         JuMP.set_normalized_coefficient(constraint, downstream_level, -∂q_∂level_downstream)
     end
+    return nothing
+end
+
+function set_simulation_data!(
+    allocation_model::AllocationModel,
+    pump::Pump,
+    outlet::Outlet,
+    graph::MetaGraph,
+    du::CVector,
+)::Nothing
+    (; problem, subnetwork_id) = allocation_model
+    flow = problem[:flow]
+    # TODO: Consider drought
 
     # Set the flow rates of Pumps and Outlets that are not controlled by allocation
     for node_id in graph[].node_ids[subnetwork_id]
@@ -105,7 +150,27 @@ function set_simulation_data!(
             JuMP.fix(flow[inflow_link], du.outlet[node_id.idx]; force = true)
         end
     end
+end
 
+function set_simulation_data!(
+    allocation_model::AllocationModel,
+    user_demand::UserDemand,
+    t::Float64,
+)::Nothing
+    (; problem, Δt_allocation) = allocation_model
+    constraints = problem[:user_demand_return_flow]
+    flow = problem[:flow]
+
+    # Set the return factor for the end of the time step
+    for node_id in only(constraints.axes)
+        constraint = constraints[node_id]
+        outflow = flow[user_demand.inflow_link[node_id.idx].link]
+        JuMP.set_normalized_coefficient(
+            constraint,
+            outflow,
+            -user_demand.return_factor[node_id.idx](t + Δt_allocation),
+        )
+    end
     return nothing
 end
 
@@ -129,12 +194,12 @@ function prepare_demand_collection!(
     p_non_diff::ParametersNonDiff,
 )::Nothing
     (; problem, subnetwork_id) = allocation_model
-    @assert !is_main_network(subnetwork_id)
+    @assert !is_primary_network(subnetwork_id)
     flow = problem[:flow]
 
-    # Allow the inflow from the main network to be as large as required
-    # (will be restricted when optimizing for source priorities)
-    for link in p_non_diff.allocation.main_network_connections[subnetwork_id]
+    # Allow the inflow from the primary network to be as large as required
+    # (will be restricted when optimizing for the actual allocation)
+    for link in p_non_diff.allocation.primary_network_connections[subnetwork_id]
         JuMP.set_upper_bound(flow[link], MAX_ABS_FLOW)
     end
 
@@ -293,16 +358,18 @@ function assign_allocations!(
     allocation_model::AllocationModel,
     objective::AllocationObjective,
 )::Nothing
-    (; allocated) = p_non_diff.user_demand
+    (; allocated, inflow_link) = p_non_diff.user_demand
     (; problem) = allocation_model
     (; demand_priority_idx) = objective
     user_demand_allocated = problem[:user_demand_allocated]
+    flow = problem[:flow]
 
     for node_id in only(user_demand_allocated.axes)
         # user_demand_allocated is cumulative over the priorities, so we have
         # to subtract what's allocated for the previous priorities
+        inflow_link_node = inflow_link[node_id.idx].link
         allocated_node_priority =
-            user_demand_allocated[node_id] -
+            JuMP.value(flow[inflow_link_node]) -
             sum(view(allocated, node_id.idx, 1:(demand_priority_idx - 1)))
         allocated[node_id.idx, demand_priority_idx] = allocated_node_priority
     end
@@ -460,77 +527,13 @@ function optimize_for_objective!(
     optimization_type::AllocationOptimizationType.T,
 )::Nothing
     args = (allocation_model, integrator, objective, optimization_type)
-    if objective.type == AllocationObjectiveType.physics_forcing
-        optimize_for_physics_forcing!(args...)
-    elseif objective.type == AllocationObjectiveType.physics_horizontal
-        optimize_for_physics_horizontal!(args...)
-    elseif objective.type == AllocationObjectiveType.non_allocation_controlled
-        optimize_for_non_allocation_controlled!(args...)
-    elseif objective.type == AllocationObjectiveType.demand
+    if objective.type == AllocationObjectiveType.demand
         optimize_for_demand!(args...)
     elseif objective.type == AllocationObjectiveType.source_priorities
         optimize_for_sources!(args...)
     else
-        error("Unsupported optimization type $optimization_type.")
+        error("Unsupported objective type $(objective.type).")
     end
-    return nothing
-end
-
-function optimize_for_physics_forcing!(
-    allocation_model::AllocationModel,
-    integrator::DEIntegrator,
-    objective::AllocationObjective,
-    optimization_type::AllocationOptimizationType.T,
-)::Nothing
-    (; t) = integrator
-    (; problem, subnetwork_id, cumulative_forcing_volume, Δt_allocation) = allocation_model
-    basin_forcing = problem[:basin_forcing]
-    basin_ids_subnetwork = only(basin_forcing.axes)
-
-    forcing_constraint_lower = problem[:forcing_constraint_lower]
-    forcing_constraint_upper = problem[:forcing_constraint_upper]
-
-    # Set target forcing in constraints
-    for node_id in basin_ids_subnetwork
-        f = cumulative_forcing_volume[node_id] / Δt_allocation
-        JuMP.set_normalized_rhs(forcing_constraint_lower, f)
-        JuMP.set_normalized_rhs(forcing_constraint_upper, -f)
-    end
-
-    # Set the forcing objective
-    JuMP.@objective(problem, Min, objective.expression)
-
-    # Solve problem
-    JuMP.optimize!(problem)
-    @debug JuMP.solution_summary(problem)
-    termination_status = JuMP.termination_status(problem)
-    if termination_status !== JuMP.OPTIMAL
-        print(problem)
-        error(
-            "Allocation optimization for subnetwork $subnetwork_id, $objective at t = $t s couldn't find (optimal) solution. Termination status: $termination_status.",
-        )
-    end
-
-    for node_id in basin_ids_subnetwork
-        f_var = basin_forcing[node_id]
-        f = cumulative_forcing_volume[node_id] / Δt_allocation
-        f_opt = JuMP.value(f_var)
-        if f ≈ f_opt
-            JuMP.fix(f_var, f_opt; force = true)
-        else
-            #TODO
-            error()
-        end
-    end
-    return nothing
-end
-
-function optimize_for_physics_horizontal!(
-    allocation_model::AllocationModel,
-    integrator::DEIntegrator,
-    objective::AllocationObjective,
-    optimization_type::AllocationOptimizationType.T,
-)::Nothing
     return nothing
 end
 
@@ -573,16 +576,13 @@ function optimize_for_demand!(
     # in subsequent optimizations
     update_allocated_values!(problem, p_non_diff, objective)
 
+    assign_allocations!(p_non_diff, allocation_model, objective)
+
     # Save the demands and allocated values for all demand nodes that have a demand of the current priority
     save_demands_and_allocations!(p_non_diff, t, allocation_model, subnetwork_id, objective)
 
     # Save the flows over all links in the subnetwork in this stage of the goal programming
     save_allocation_flows!(p_non_diff, t, allocation_model, objective, optimization_type)
-
-    if (optimization_type == AllocationOptimizationType.allocate)
-        assign_allocations!(p_non_diff, allocation_model, objective)
-    end
-
     return nothing
 end
 
@@ -671,6 +671,11 @@ function reset_cumulative!(allocation_model::AllocationModel)::Nothing
     return nothing
 end
 
+function get_subnetwork_demands!(allocation_model::AllocationModel)::Nothing
+    #TODO
+    return nothing
+end
+
 "Solve the allocation problem for all demands and assign allocated abstractions."
 function update_allocation!(integrator)::Nothing
     (; u, p, t) = integrator
@@ -691,8 +696,8 @@ function update_allocation!(integrator)::Nothing
     # For demands that come from a timeseries, compute the value that will be optimized for
     set_timeseries_demands!(p, t)
 
-    # If a main network is present, collect demands of subnetworks
-    if has_main_network(allocation)
+    # If a primary network is present, collect demands of subnetworks
+    if has_primary_network(allocation)
         for allocation_model in Iterators.drop(allocation_models, 1)
             reset_goal_programming!(allocation_model)
             prepare_demand_collection!(allocation_model, p_non_diff)
@@ -704,13 +709,27 @@ function update_allocation!(integrator)::Nothing
                     AllocationOptimizationType.collect_demands,
                 )
             end
+            get_subnetwork_demand!(allocation_model)
         end
     end
 
-    # Allocate first in the main network if it is present, and then in the other subnetworks
+    # Allocate first in the primary network if it is present, and then in the secondary networks
     for allocation_model in allocation_models
-        # TODO
+        reset_goal_programming!(allocation_model)
+        for objective in allocation_model.objectives
+            optimize_for_objective!(
+                allocation_model,
+                integrator,
+                objective,
+                AllocationOptimizationType.allocate,
+            )
+        end
 
+        if is_primary_network(allocation_model.subnetwork_id)
+            # TODO: Transfer allocated to secondary networks
+        end
+
+        # Update parameters in physical layer based on allocation results
         apply_control_from_allocation!(
             pump,
             allocation_model,

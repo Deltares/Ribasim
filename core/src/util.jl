@@ -322,7 +322,7 @@ function low_storage_factor_resistance_node(
     end
 end
 
-function has_main_network(allocation::Allocation)::Bool
+function has_primary_network(allocation::Allocation)::Bool
     if !is_active(allocation)
         false
     else
@@ -330,7 +330,7 @@ function has_main_network(allocation::Allocation)::Bool
     end
 end
 
-function is_main_network(subnetwork_id::Int32)::Bool
+function is_primary_network(subnetwork_id::Int32)::Bool
     return subnetwork_id == 1
 end
 

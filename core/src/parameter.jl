@@ -167,7 +167,7 @@ const ScalarInterpolation = LinearInterpolation{
 const IndexLookup =
     ConstantInterpolation{Vector{Int64}, Vector{Float64}, Vector{Float64}, Int64}
 
-@enumx AllocationObjectiveType physics_forcing physics_horizontal non_allocation_controlled demand source_priorities
+@enumx AllocationObjectiveType demand source_priorities
 
 """
 Store information about an allocation objective (goal)
@@ -208,8 +208,7 @@ cumulative_boundary_volume: The net volume of boundary flow into the model for e
     over the last Δt_allocation
 cumulative_realized_volume: The net volume of flow realized by a demand node over the last Δt_allocation
 sources: The nodes in the subnetwork which can act as sources, sorted by source priority
-subnetwork_demand: The total demand of the subnetwork per demand priority (irrelevant for the main network)
-piecewise_linear_ids: The index of
+subnetwork_demand: The total demand of the secondary network from the primary network per inlet per demand priority (irrelevant for the primary network)
 """
 @kwdef struct AllocationModel
     subnetwork_id::Int32
@@ -220,8 +219,7 @@ piecewise_linear_ids: The index of
     cumulative_boundary_volume::Dict{Tuple{NodeID, NodeID}, Float64} = Dict()
     cumulative_realized_volume::Dict{Tuple{NodeID, NodeID}, Float64} = Dict()
     sources::Dict{Int32, NodeID} = OrderedDict()
-    subnetwork_demand::Vector{Float64} = zeros(length(objectives))
-    piecewise_linear_ids::Dict{NodeID, Int} = Dict()
+    subnetwork_demand::Dict{Tuple{NodeID, NodeID}, Vector{Float64}} = Dict()
 end
 
 @kwdef struct DemandRecord
@@ -251,9 +249,9 @@ end
 """
 Object for all information about allocation
 subnetwork_ids: The unique sorted allocation network IDs
-allocation_models: The allocation models for the main network and subnetworks corresponding to
+allocation_models: The allocation models for the primary network and subnetworks corresponding to
     subnetwork_ids
-main_network_connections: (from_id: pump or outlet in the main network, to_id: node in the subnetwork, generally a basin)
+primary_network_connections: (from_id: pump or outlet in the primary network, to_id: node in the subnetwork, generally a basin)
     per subnetwork
 demand_priorities_all: All used demand priority values from all subnetworks
 subnetwork_inlet_source_priority: The default source priority for subnetwork inlets
@@ -264,7 +262,7 @@ record_flow: A record of all flows computed by allocation optimization, eventual
 @kwdef struct Allocation
     subnetwork_ids::Vector{Int32} = Int32[]
     allocation_models::Vector{AllocationModel} = []
-    main_network_connections::Dict{Int32, Vector{Tuple{NodeID, NodeID}}} = Dict()
+    primary_network_connections::Dict{Int32, Vector{Tuple{NodeID, NodeID}}} = Dict()
     demand_priorities_all::Vector{Int32} = []
     subnetwork_inlet_source_priority::Int32 = 0
     record_demand::DemandRecord = DemandRecord()

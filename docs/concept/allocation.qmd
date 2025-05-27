@@ -7,7 +7,7 @@ Allocation is the process of assigning an optimized allocated flow rate to deman
 
 The allocation problem is solved per subnetwork of the Ribasim model. A subnetwork is defined by all nodes that have the same subnetwork ID in the [Node table](../reference/usage.qmd#node). Each subnetwork is used to formulate a linear optimization problem with the [JuMP](https://jump.dev/JuMP.jl/stable/) package, which is solved using the [HiGHS solver](https://highs.dev/). For more in-depth information see also the example of solving the maximum flow problem with `JuMP.jl` [here](https://jump.dev/JuMP.jl/stable/tutorials/linear/network_flows/#The-max-flow-problem).
 
-There can be a special subnetwork called primary network (with subnetwork ID 1), which represents the main or primary water system. Other subnetworks are called secondary networks and are only allowed to connect to the main network via a Pump or Outlet; secondary networks are not allowed to be connected to each other. Secondary networks automatically formulate demands to the main network if there is a shortage of water within the subnetwork to fulfill all demands.
+There can be a special subnetwork called primary network (with subnetwork ID 1), which represents the main or primary water system. Other subnetworks are called secondary networks and are only allowed to connect to the primary network via a Pump or Outlet; secondary networks are not allowed to be connected to each other. Secondary networks automatically formulate demands to the primary network if there is a shortage of water within the subnetwork to fulfill all demands.
 
 <span style="color: red;">#TODO: Add model image with primary network and secondary networks.</span>
 
@@ -187,7 +187,7 @@ which are automatically inferred as all links that point out of LevelBoundary or
 $$
     \frac{1}{\Delta t_{\text{alloc}}}\int_{t - \Delta t_{\text{alloc}}}^tQ_{ij}(t') dt'
 $$
- is treated as a source flow in the allocation problem. These links are either coming from a boundary/source node (e.g. a level or flow boundary) or connect the main network to a subnetwork. For the definition of $Q_{ij}$ see [the formal model description](/concept/equations.qmd#formal-model-description).
+ is treated as a source flow in the allocation problem. These links are either coming from a boundary/source node (e.g. a level or flow boundary) or connect the primary network to a subnetwork. For the definition of $Q_{ij}$ see [the formal model description](/concept/equations.qmd#formal-model-description).
 
 ### User demands
 
@@ -295,7 +295,7 @@ $$
 $$
 
 :::{.callout-note}
-When performing main network allocation, the connections to subnetworks are also interpreted as UserDemand nodes with demands determined by subnetwork demand collection.
+When performing primary network allocation, the connections to subnetworks are also interpreted as UserDemand nodes with demands determined by subnetwork demand collection.
 :::
 
 This type of objective cares about the fraction of the demand allocated, and will lead to an equal fraction of all demands allocated when possible. For a discussion on this see [here](https://github.com/Deltares/Ribasim/pull/1366).
@@ -348,7 +348,7 @@ $$
 
 There are several things to note about the source constraints:
 - The sources are not all used at once. There is an optimization for each source in a subnetwork, where only one source has nonzero capacity.
-- When performing subnetwork demand collection, these capacities are set to $\infty$ for links which connect the main network to a subnetwork.
+- When performing subnetwork demand collection, these capacities are set to $\infty$ for links which connect the primary network to a subnetwork.
 
 Similar constraints hold for the flow out of basins, flow demand buffers and user demand outflow sources:
 $$

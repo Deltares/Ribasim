@@ -428,7 +428,7 @@ def allocation_example_model() -> Model:
 
 
 def main_network_with_subnetworks_model() -> Model:
-    """Generate a model which consists of a main network and multiple connected subnetworks."""
+    """Generate a model which consists of a primary network and multiple connected subnetworks."""
     model = Model(
         starttime="2020-01-01",
         endtime="2020-03-01",

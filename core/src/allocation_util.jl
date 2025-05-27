@@ -81,38 +81,42 @@ function get_level(problem::JuMP.Model, node_id::NodeID)
     end
 end
 
-function collect_main_network_connections!(
+function collect_primary_network_connections!(
     allocation::Allocation,
     graph::MetaGraph,
 )::Nothing
     errors = false
 
     for subnetwork_id in allocation.subnetwork_ids
-        is_main_network(subnetwork_id) && continue
-        main_network_connections_subnetwork = Tuple{NodeID, NodeID}[]
+        is_primary_network(subnetwork_id) && continue
+        primary_network_connections_subnetwork = Tuple{NodeID, NodeID}[]
 
         for node_id in graph[].node_ids[subnetwork_id]
             for upstream_id in inflow_ids(graph, node_id)
                 upstream_node_subnetwork_id = graph[upstream_id].subnetwork_id
-                if is_main_network(upstream_node_subnetwork_id)
+                if is_primary_network(upstream_node_subnetwork_id)
                     if upstream_id.type ∈ (NodeType.Pump, NodeType.Outlet)
-                        push!(main_network_connections_subnetwork, (upstream_id, node_id))
+                        push!(
+                            primary_network_connections_subnetwork,
+                            (upstream_id, node_id),
+                        )
                     else
-                        @error "This node connects the main network to a subnetwork but is not an outlet or pump." upstream_id subnetwork_id
+                        @error "This node connects the primary network to a subnetwork but is not an outlet or pump." upstream_id subnetwork_id
                         errors = true
                     end
                 elseif upstream_node_subnetwork_id != subnetwork_id
-                    @error "This node connects two subnetworks that are not the main network." upstream_id subnetwork_id upstream_node_subnetwork_id
+                    @error "This node connects two subnetworks that are not the primary network." upstream_id subnetwork_id upstream_node_subnetwork_id
                     errors = true
                 end
             end
         end
 
-        allocation.main_network_connections[subnetwork_id] =
-            main_network_connections_subnetwork
+        allocation.primary_network_connections[subnetwork_id] =
+            primary_network_connections_subnetwork
     end
 
-    errors && error("Errors detected in connections between main network and subnetworks.")
+    errors &&
+        error("Errors detected in connections between primary network and subnetworks.")
 
     return nothing
 end

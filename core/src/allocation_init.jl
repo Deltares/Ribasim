@@ -1,4 +1,3 @@
-
 function add_objectives!(
     allocation_model::AllocationModel,
     p_non_diff::ParametersNonDiff,
@@ -34,13 +33,14 @@ function make_source_priority_objective(
     (; problem, subnetwork_id) = allocation_model
     flow = problem[:flow]
 
-    main_network_connections = get(allocation.main_network_connections, subnetwork_id, ())
+    primary_network_connections =
+        get(allocation.primary_network_connections, subnetwork_id, ())
 
     source_priority_objective =
         AllocationObjective(; type = AllocationObjectiveType.source_priorities)
 
     for node_id in graph[].node_ids[subnetwork_id]
-        source_priority = graph[node_id].source_priority
+        (; source_priority) = graph[node_id]
         if !iszero(source_priority)
             for downstream_id in outflow_ids(graph, node_id)
                 JuMP.add_to_expression!(
@@ -49,7 +49,7 @@ function make_source_priority_objective(
                 )
             end
         else
-            for link in main_network_connections
+            for link in primary_network_connections
                 if link[2] == node_id
                     source_priority = graph[node_id].source_priority
                     iszero(source_priority) &&
@@ -102,6 +102,8 @@ function add_basin!(
     # (from storage 0.0 to twice the largest storage)
     values_storage = Dict{NodeID, Vector{Float64}}()
     values_level = Dict{NodeID, Vector{Float64}}()
+
+    # TODO: Not just split in segments given by input data, but look for changes in slope
 
     lowest_level = minimum(itp -> itp.t[1], level_to_area)
 
@@ -653,7 +655,7 @@ function add_subnetwork_demand!(
     target_demand_fraction = problem[:target_demand_fraction]
     flow = problem[:flow]
 
-    connecting_links = vcat(values(allocation.main_network_connections)...)
+    connecting_links = vcat(values(allocation.primary_network_connections)...)
 
     # Define parameters: flow allocated to user subnetworks (m^3/s, values to be filled in before optimizing)
     subnetwork_allocated =
@@ -766,9 +768,17 @@ function AllocationModel(
     add_flow_demand!(allocation_model, p_non_diff)
     add_level_demand!(allocation_model, p_non_diff)
 
-    # Main network to subnetwork connections
-    if is_main_network(subnetwork_id)
+    # Primary to secondary subnetwork connections
+    if is_primary_network(subnetwork_id)
         add_subnetwork_demand!(allocation_model, p_non_diff)
+    else
+        # Initialize subnetwork demands
+        n_demands = length(p_non_diff.allocation.demand_priorities_all)
+        if !is_primary_network(subnetwork_id)
+            for link in p_non_diff.allocation.primary_network_connections[subnetwork_id]
+                allocation_model.subnetwork_demand[link] = zeros(n_demands)
+            end
+        end
     end
 
     return allocation_model

@@ -16,9 +16,9 @@ function initialize_allocation!(p_non_diff::ParametersNonDiff, config::Config)::
         return nothing
     end
 
-    # Detect connections between the main network and subnetworks:
-    # (upstream_id: pump or outlet in the main network, node_id: node in the subnetwork, generally a basin)
-    collect_main_network_connections!(allocation, graph)
+    # Detect connections between the primary network and subnetworks:
+    # (upstream_id: pump or outlet in the primary network, node_id: node in the subnetwork, generally a basin)
+    collect_primary_network_connections!(allocation, graph)
 
     non_positive_subnetwork_id(graph) && error("Allocation network initialization failed.")
 
