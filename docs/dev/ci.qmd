@@ -81,3 +81,20 @@ graph LR
     H[Build Ribasim]---D[Test Ribasim Binaries]
     D-->A
 ```
+
+# MinIO
+
+MinIO is S3 compatible object storage.
+We have a MinIO instance running at Deltares, which has a bucket called `ribasim` that we use for storage.
+The bucket resides at https://s3.deltares.nl/ribasim/ and with the right permissions can be managed at https://s3-console.deltares.nl/browser/ribasim.
+
+The bucket is private, but folders can be set to public.
+For instance the `doc-image` folder is public, and is used to host image that are part of our documentation.
+This way we don't need to store images in the repository.
+
+Some of the Pixi tasks, like those running integration tests, also depend on a task called `s3-download` that will download reference data from MinIO.
+For this to work the access keys need to be set up at the S3 Console.
+Go to https://s3-console.deltares.nl/access-keys, create a personal access key, and store the access key and secret key securely.
+Now make a copy of `.env.default` in the root of the repository, name it `.env`.
+In this file you can fill in the values of your access key and secret key.
+These will then be used in the `s3-download` task.
