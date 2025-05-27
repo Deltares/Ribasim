@@ -92,6 +92,7 @@ function get_storages_and_levels(
     storage = zeros(length(node_id), length(tsteps))
     level = zero(storage)
     for (i, cvec) in enumerate(saved.basin_state.saveval)
+        i > length(tsteps) && continue
         storage[:, i] .= cvec.storage
         level[:, i] .= cvec.level
     end
