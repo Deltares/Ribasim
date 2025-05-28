@@ -178,7 +178,8 @@ ax.set_yticks([0])
 
 # Extrapolation
 level_extrap = 2 * level[-1] - level[-2]
-ax.plot([level[-1], level_extrap], [area[-1], area[-1]], color = "C0", ls = "dashed", label = "extrapolation")
+area_extrap = area[-1]
+ax.plot([level[-1], level_extrap], [area[-1], area_extrap], color = "C0", ls = "dashed", label = "extrapolation")
 xlim = ax.get_xlim()
 ax.set_xlim(xlim[0], (level[-1] + level_extrap)/2)
 
@@ -235,7 +236,7 @@ ax.set_ylabel("storage", fontsize = fontsize)
 
 # Extrapolation
 level_eval_extrap = [level[-1], level_extrap]
-storage_extrap = storage_eval[-1] + area[:-1]*level_extrap
+storage_extrap = storage_eval[-1] + area[-1]*level_extrap
 storage_eval_extrap = [storage_eval[-1], storage_extrap]
 
 ax.plot(level_eval_extrap, storage_eval_extrap, color = "C0", linestyle = "dashed", label = "extrapolation")
@@ -254,12 +255,13 @@ The profile data is not detailed enough to create a full 3D picture of the basin
 import plotly.graph_objects as go
 import numpy as np
 
-def linear_interpolation(X,Y,x):
-    i = min(max(0, np.searchsorted(X, x)-1), len(X)-2)
-    return Y[i] + (Y[i+1] - Y[i])/(X[i+1] - X[i]) * (x - X[i])
+def linear_interpolation(X, Y, x, maximum):
+    i = min(max(0, np.searchsorted(X, x) - 1), len(X) - 2)
+    return min(Y[i] + (Y[i + 1] - Y[i]) / (X[i + 1] - X[i]) * (x - X[i]), maximum)
+
 
 def A(h):
-    return linear_interpolation(level, area, h)
+    return linear_interpolation(level, area, h, maximum=area[-1])
 
 fig = go.Figure()
 
@@ -325,6 +327,8 @@ for h in np.linspace(level[0], level_extrap, 100):
 
 
     i = min(max(0, np.searchsorted(level, h)-1), len(level)-2)
+    if h > level[-1]:
+        i = i + 1
     fill_area = np.append(area[:i+1], a)
     fill_level = np.append(level[:i+1], h)
     fill_x = np.concat([-fill_area[::-1]/2, fill_area/2])

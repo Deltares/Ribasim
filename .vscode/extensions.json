@@ -9,6 +9,7 @@
         "tamasfe.even-better-toml",
         "samuelcolvin.jinjahtml",
         "yy0931.vscode-sqlite3-editor",
-        "streetsidesoftware.code-spell-checker"
+        "streetsidesoftware.code-spell-checker",
+        "ms-toolsai.jupyter",
     ]
 }
