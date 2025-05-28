@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import ribasim
 from ribasim import Model
-from ribasim.config import Experimental, Node
+from ribasim.config import Experimental, Node, Solver
 from ribasim.input_base import TableModel
 from ribasim.nodes import (
     basin,
@@ -407,8 +407,9 @@ def outlet_model():
 def cyclic_time_model() -> Model:
     model = Model(
         starttime="2020-01-01",
-        endtime="2021-01-01",
+        endtime="3021-01-01",
         crs="EPSG:28992",
+        solver=Solver(saveat=7 * 24 * 60 * 60),
     )
 
     bsn = model.basin.add(

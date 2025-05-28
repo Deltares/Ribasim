@@ -71,7 +71,7 @@ open class IntegrationTest (platformOs: String) : Template() {
                 workingDir = "ribasim"
                 scriptContent = header +
                 """
-                pixi run python utils/get_benchmark.py --secretkey %MiniO_credential_token% "hws_2024_7_0/"
+                pixi run python utils/get_benchmark.py --secretkey %MiniO_credential_token% hws_2025_4_0/ hws/
                 pixi run model-integration-test
                 """.trimIndent()
             }

@@ -1010,6 +1010,8 @@ the object itself is not.
 """
 @kwdef struct ParametersNonDiff{C1, C2, C3, C4, C5}
     starttime::DateTime
+    reltol::Float64
+    relmask::Vector{Bool}
     graph::ModelGraph
     allocation::Allocation
     basin::Basin{C1, C2}

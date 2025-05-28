@@ -2,10 +2,10 @@ name: Python Codegen
 on:
   push:
     branches: [main]
-    paths-ignore: [".teamcity/**"]
+    paths: ["core/**", "python/**", "pixi.toml", "pixi.lock"]
     tags: ["*"]
   pull_request:
-    paths-ignore: [".teamcity/**"]
+    paths: ["core/**", "python/**", "pixi.toml", "pixi.lock"]
   merge_group:
   workflow_dispatch:
 concurrency:
