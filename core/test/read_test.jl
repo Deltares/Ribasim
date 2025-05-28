@@ -117,12 +117,13 @@ end
 
     Ribasim.interpolate_basin_profile!(basin, profiles)
 
-    # Assert that storage_to_level interpolation is consistent for nodes 1, 2, and 3
-    @test basin.storage_to_level[1](1.0) ≈ basin.storage_to_level[2](1.0)
-    @test basin.storage_to_level[2](1.0) ≈ basin.storage_to_level[3](1.0)
+    # Assert that storage_to_level interpolation is consistent for nodes 1 2 and 3
+    println("HELLO")
+    @test basin.storage_to_level[1](storages[1]) ≈ basin.storage_to_level[3](storages[1])
+    @test basin.storage_to_level[1](storages[1]) ≈ basin.storage_to_level[2](storages[1])
 
-    # Assert that level_to_area interpolation is consistent for nodes 1 and 3. Node 2 is different
-    @test basin.level_to_area[1](1.0) ≈ basin.level_to_area[3](1.0)
+    # Assert that level_to_area interpolation is consistent for nodes 1 and 3. Node 2 is different, since it must guess the bottom area
+    @test basin.level_to_area[1](levels[1]) ≈ basin.level_to_area[3](levels[1])
 end
 
 @testitem "Cyllindric basin profile initialisation" begin
