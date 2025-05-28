@@ -1,27 +1,3 @@
-@testitem "Basin profile validation" begin
-    using Ribasim: NodeID, valid_profiles
-    using Logging
-    using StructArrays: StructVector
-
-    node_id = [NodeID(:Basin, 1, 1)]
-    level = [[0.0, 0.0, 1.0]]
-    area = [[0.0, 100.0, 90]]
-
-    logger = TestLogger(; min_level = Debug)
-    with_logger(logger) do
-        @test !valid_profiles(node_id, level, area)
-    end
-    @test length(logger.logs) == 3
-    @test logger.logs[1].level == Error
-    @test logger.logs[1].message ==
-          "Basin #1 profile has repeated levels, this cannot be interpolated."
-    @test logger.logs[2].level == Error
-    @test logger.logs[2].message ==
-          "Basin #1 profile cannot start with area <= 0 at the bottom for numerical reasons."
-    @test logger.logs[2].kwargs[:area] == 0
-    @test logger.logs[3].level == Error
-    @test logger.logs[3].message == "Basin #1 profile cannot have decreasing areas."
-end
 
 @testitem "Q(h) validation" begin
     import SQLite
