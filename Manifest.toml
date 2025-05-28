@@ -2,7 +2,7 @@
 
 julia_version = "1.11.5"
 manifest_format = "2.0"
-project_hash = "08df9cf37f934d9c54c355f731e7bb06c158c106"
+project_hash = "4d0893bccb4d42d99b346d744c070e35cc420ff7"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "e2478490447631aedba0823d4d7a80b2cc8cdb32"
@@ -1253,6 +1253,11 @@ git-tree-sha1 = "a9eaadb366f5493a5654e843864c13d8b107548c"
 uuid = "10f19ff3-798f-405d-979b-55457f8fc047"
 version = "0.1.17"
 
+[[deps.LazilyInitializedFields]]
+git-tree-sha1 = "0f2da712350b020bc3957f269c9caad516383ee0"
+uuid = "0e77f7df-68c5-4e49-93ce-4cd80f5598bf"
+version = "1.3.0"
+
 [[deps.LazyArrays]]
 deps = ["ArrayLayouts", "FillArrays", "LinearAlgebra", "MacroTools", "SparseArrays"]
 git-tree-sha1 = "866ce84b15e54d758c11946aacd4e5df0e60b7a3"
@@ -1361,6 +1366,12 @@ deps = ["Artifacts", "JLLWrappers", "Libdl"]
 git-tree-sha1 = "321ccef73a96ba828cd51f2ab5b9f917fa73945a"
 uuid = "38a345b3-de98-5d2b-a5d3-14cd9215e700"
 version = "2.41.0+0"
+
+[[deps.LicenseCheck]]
+deps = ["licensecheck_jll"]
+git-tree-sha1 = "e98bc9e1f773123cfdb1fa3d7a4c898e1f030341"
+uuid = "726dbf0d-6eb6-41af-b36c-cd770e0f00cc"
+version = "0.2.2"
 
 [[deps.LineSearch]]
 deps = ["ADTypes", "CommonSolve", "ConcreteStructs", "FastClosures", "LinearAlgebra", "MaybeInplace", "SciMLBase", "SciMLJacobianOperators", "StaticArraysCore"]
@@ -1890,6 +1901,12 @@ weakdeps = ["REPL"]
     [deps.Pkg.extensions]
     REPLExt = "REPL"
 
+[[deps.PkgToSoftwareBOM]]
+deps = ["Artifacts", "Downloads", "LicenseCheck", "Logging", "Pkg", "Reexport", "RegistryInstances", "SPDX", "UUIDs"]
+git-tree-sha1 = "e1d6a871220e356ca43a242cf0088c604f043893"
+uuid = "6254a0f9-6143-4104-aa2e-fd339a2830a6"
+version = "0.1.13"
+
 [[deps.PkgVersion]]
 deps = ["Pkg"]
 git-tree-sha1 = "f9501cc0430a26bc3d156ae1b5b0c1b47af4d6da"
@@ -2065,6 +2082,12 @@ git-tree-sha1 = "45e428421666073eab6f2da5c9d310d99bb12f9b"
 uuid = "189a3867-3050-52da-a836-e630ba90ab69"
 version = "1.2.2"
 
+[[deps.RegistryInstances]]
+deps = ["LazilyInitializedFields", "Pkg", "TOML", "Tar"]
+git-tree-sha1 = "ffd19052caf598b8653b99404058fce14828be51"
+uuid = "2792f1a3-b283-48e8-9a74-f99dce5104f3"
+version = "0.1.0"
+
 [[deps.RelocatableFolders]]
 deps = ["SHA", "Scratch"]
 git-tree-sha1 = "ffdaf70d81cf6ff22c2b6e733c900c3321cab864"
@@ -2130,6 +2153,12 @@ version = "3.7.1"
 git-tree-sha1 = "330289636fb8107c5f32088d2741e9fd7a061a5c"
 uuid = "94e857df-77ce-4151-89e5-788b33177be4"
 version = "0.1.0"
+
+[[deps.SPDX]]
+deps = ["DataStructures", "Dates", "JSON", "Logging", "SHA", "TimeZones", "UUIDs"]
+git-tree-sha1 = "de73a6f48b8efa0eeb7e0c526c6b0e38e62b981a"
+uuid = "47358f48-d834-4249-91f5-f6185eb3d540"
+version = "0.4.1"
 
 [[deps.SQLite]]
 deps = ["DBInterface", "Random", "SQLite_jll", "Serialization", "Tables", "WeakRefStrings"]
@@ -2782,6 +2811,12 @@ deps = ["Artifacts", "Giflib_jll", "JLLWrappers", "JpegTurbo_jll", "Libdl", "Lib
 git-tree-sha1 = "d2408cac540942921e7bd77272c32e58c33d8a77"
 uuid = "c5f90fcd-3b7e-5836-afba-fc50a0988cb2"
 version = "1.5.0+0"
+
+[[deps.licensecheck_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "b790ad21ac235c39c0eb34214ccf3d5f5ea60efa"
+uuid = "4ecb348a-8b88-51ea-b912-4c460483ee91"
+version = "0.3.101+0"
 
 [[deps.nghttp2_jll]]
 deps = ["Artifacts", "Libdl"]

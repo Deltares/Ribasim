@@ -29,13 +29,14 @@ install = { depends-on = [
     "install-pre-commit",
 ] }
 # Julia
-update-registry-julia = { cmd = "julia --eval='using Pkg; Registry.update()'"}
-update-manifest-julia = { cmd = "julia --project utils/update-manifest.jl"}
-instantiate-julia = { cmd = "julia --project --eval='using Pkg; Pkg.instantiate()'"}
+update-registry-julia = { cmd = "julia --eval='using Pkg; Registry.update()'" }
+update-manifest-julia = { cmd = "julia --project utils/update-manifest.jl" }
+instantiate-julia = { cmd = "julia --project --eval='using Pkg; Pkg.instantiate()'" }
 initialize-julia = { depends-on = [
     "update-registry-julia",
     "instantiate-julia",
 ] }
+generate-sbom-ribasim-core = { cmd = "julia --project -- utils/generate-sbom.jl" }
 # Docs
 quartodoc-build = { cmd = "quartodoc build && rm objects.json", cwd = "docs", inputs = [
     "docs/_quarto.yml",
