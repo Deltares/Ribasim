@@ -1790,19 +1790,25 @@ function finite_difference(
     x::Vector{Float64},
     dfdx₀::Float64 = (f[2] - f[1]) / (x[2] - x[1]),
 )::Vector{Float64}
-    Δf = diff(f)
-    Δx = diff(x)
-    dfdx = [dfdx₀; 2 .* Δf ./ Δx .- dfdx₀]
+    dfdx = zeros(Float64, length(x))
+    dfdx[1] = dfdx₀  # Set the first derivative value
+
+    for i in 1:(length(x) - 1)
+        Δf = f[i + 1] - f[i]
+        Δx = x[i + 1] - x[i]
+        dfdx[i + 1] = 2 * Δf / Δx - dfdx[i]
+    end
+    dfdx
 end
 
 """trapezoidal integration"""
 function trapz_integrate(dfdx::Vector{Float64}, x::Vector{Float64})::Vector{Float64}
     n = length(dfdx)
     f = zeros(Float64, n)
-    Δx = diff(x)
 
     for i in 1:(n - 1)
-        f[i + 1] = f[i] + 0.5 * (dfdx[i + 1] + dfdx[i]) * Δx[i]
+        Δx = x[i + 1] - x[i]
+        f[i + 1] = f[i] + 0.5 * (dfdx[i + 1] + dfdx[i]) * Δx
     end
     f
 end
