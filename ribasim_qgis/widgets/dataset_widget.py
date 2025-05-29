@@ -7,6 +7,7 @@ It also allows enabling or disabling individual elements for a computation.
 from __future__ import annotations
 
 from collections.abc import Callable
+from contextvars import ContextVar
 from datetime import datetime
 from functools import partial
 from pathlib import Path
@@ -38,6 +39,7 @@ from qgis.core import (
     QgsFeatureRequest,
     QgsField,
     QgsInterval,
+    QgsLayerTreeGroup,
     QgsMapLayer,
     QgsProject,
     QgsRelation,
@@ -61,8 +63,12 @@ from ribasim_qgis.core.nodes import (
 )
 from ribasim_qgis.core.topology import set_link_properties
 
+group_position_var: ContextVar[int] = ContextVar("group_position", default=0)
+
 
 class DatasetTreeWidget(QTreeWidget):
+    """A tree widget to manage layers in a Ribasim model."""
+
     def __init__(self, parent: QWidget | None):
         super().__init__(parent)
         self.setSelectionMode(QAbstractItemView.ExtendedSelection)
@@ -81,6 +87,7 @@ class DatasetTreeWidget(QTreeWidget):
         item = QTreeWidgetItem()
         self.addTopLevelItem(item)
         item.setText(0, name)
+
         return item
 
     def add_node_layer(self, element: Input) -> QTreeWidgetItem:
@@ -189,6 +196,7 @@ class DatasetWidget(QWidget):
         layer_row.addWidget(self.remove_button)
         dataset_layout.addLayout(layer_row)
         self.setLayout(dataset_layout)
+        self.add_reload_context()
 
     def remove_results(self, layer_ids: list[str]) -> None:
         """Remove Python references to layers that will be deleted."""
@@ -232,19 +240,22 @@ class DatasetWidget(QWidget):
         on_top: bool = False,
         labels: Any = None,
     ) -> QgsMapLayer | None:
-        return self.ribasim_widget.add_layer(
+        self.ribasim_widget.add_layer(
             layer,
             destination,
             suppress,
             on_top,
             labels,
         )
+        layer.setCustomProperty("ribasim_path", self.path.as_posix())
+        return layer
 
     def add_item_to_qgis(self, item) -> None:
         element = item.element
         layer, labels = element.from_geopackage()
         suppress = self.suppress_popup_checkbox.isChecked()
-        self.add_layer(layer, "Ribasim Input", suppress, labels=labels)
+        self.add_layer(layer, "Input", suppress, labels=labels)
+
         element.set_editor_widget()
         element.set_read_only()
         return
@@ -286,8 +297,7 @@ class DatasetWidget(QWidget):
         geo_path = get_database_path_from_model_file(self.path)
         nodes = load_nodes_from_geopackage(geo_path)
 
-        name = self.path.stem
-        self.ribasim_widget.create_groups(name)
+        self.ribasim_widget.create_groups(self.path.with_suffix("").as_posix())
 
         # Make sure "Node", "Link", "Basin / area" are the top three layers
         node = nodes.pop("Node")
@@ -410,6 +420,57 @@ class DatasetWidget(QWidget):
         """Remove layers from the dataset tree widget, QGIS layer panel and the GeoPackage."""
         self.dataset_tree.remove_geopackage_layers()
 
+    @staticmethod
+    def activeGroup(iface):
+        ltv = iface.layerTreeView()
+
+        i = ltv.selectionModel().currentIndex()
+        if not i.isValid():
+            return
+        group = ltv.index2node(i)
+        if isinstance(group, QgsLayerTreeGroup):
+            return group
+
+    def add_reload_context(self) -> None:
+        """Connect to the layer context (right-click) menu opening."""
+        ltv = self.ribasim_widget.iface.layerTreeView()
+        if ltv is not None:
+            ltv.contextMenuAboutToShow.connect(self.generate_reload_action)
+
+    def generate_reload_action(self, menu: QMenu) -> None:
+        """Generate reload action in the context menu."""
+        print("Generating reload action in context menu...")
+        for action in menu.actions():
+            if action.text() == "Ribasim: Reload":
+                return
+
+        group = self.activeGroup(self.ribasim_widget.iface)
+        if not group or group.name() in ("Input", "Results"):
+            return
+
+        path = None
+        for child in group.findLayers():
+            path = child.layer().customProperty("ribasim_path")
+            if path is not None:
+                break
+        if path is None:
+            return
+
+        # Always add action, as it lives only during this context menu
+        menu.addSeparator()
+        action = menu.addAction("Reload Ribasim model")
+        action.triggered.connect(partial(self.reload_action, path, group))
+
+    def reload_action(self, path, group) -> None:
+        """Remove group, and (re)load the model in the same position."""
+        self.dataset_tree.clear()
+        parent = group.parent()
+        position = parent.children().index(group)
+        parent.removeChildNode(group)
+        token = group_position_var.set(position)
+        self._open_model(path)
+        group_position_var.reset(token)
+
     def add_topology_context(self) -> None:
         """Connect to the layer context (right-click) menu opening."""
         ltv = self.ribasim_widget.iface.layerTreeView()
@@ -435,7 +496,7 @@ class DatasetWidget(QWidget):
         scope = QgsExpressionContextUtils.layerScope(layer)
         checked = scope is not None and scope.variable("layer_topology") == "True"
 
-        # Always add action, as it's lives only during this context menu
+        # Always add action, as it lives only during this context menu
         menu.addSeparator()
         action = menu.addAction("Show topology")
         action.setCheckable(True)
@@ -629,7 +690,7 @@ class DatasetWidget(QWidget):
             )
             return
 
-        maplayer = self.add_layer(duplicate, "Ribasim Results", False, labels=None)
+        maplayer = self.add_layer(duplicate, "Results", False, labels=None)
 
         toml = get_toml_dict(self.path)
         trange = QgsDateTimeRange(
@@ -729,6 +790,8 @@ class DatasetWidget(QWidget):
             print(
                 f"Can't join data at {time}, shapes of Link and Allocation tables differ."
             )
+            layer.endEditCommand()
+            layer.commitChanges()
             return
 
         for column in df.columns.tolist():
