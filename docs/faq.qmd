@@ -1,0 +1,24 @@
+---
+title: "Frequently asked questions"
+---
+
+
+# Running simulations
+## My model exited with return code Unstable
+
+When you get a message like
+```julia
+┌ Error: The model exited at model time 2024-01-27T14:46:17.791 with return code Unstable. See https://docs.sciml.ai/DiffEqDocs/stable/basics/solution/#retcodes
+```
+
+it's best to rerun the model with `saveat = 0` in the [solver](reference/usage.qmd#sec-solver-settings) settings. The model might then instead exit with
+
+```julia
+┌ Error: Too large water balance error
+│   id = Basin #2
+│   balance_error = 0.0017985748886167501
+│   relative_error = 1.3503344464431657
+```
+
+which helps you pin down the problematic node(s).
+The normal output for every calculation timestep is written until the moment of error, so one can use this information to understand the problem.

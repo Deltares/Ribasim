@@ -32,6 +32,7 @@ website:
         - changelog.qmd
         - known_issues.qmd
         - contact.qmd
+        - faq.qmd
     - title: "Tutorials"
       contents:
         - tutorial/natural-flow.ipynb
