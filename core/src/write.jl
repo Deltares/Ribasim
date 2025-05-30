@@ -244,10 +244,10 @@ function flow_table(
 
     for (ti, cvec) in enumerate(saveval)
         (; flow, flow_boundary) = cvec
-        flow = CVector(flow, getaxes(u))
+        cflow = CVector(flow, getaxes(u))
         for (fi, link) in enumerate(internal_flow_links)
             internal_flow_rate[fi] =
-                get_flow(flow, p_non_diff, 0.0, link.link; boundary_flow = flow_boundary)
+                get_flow(cflow, p_non_diff, 0.0, link.link; boundary_flow = flow_boundary)
         end
         mul!(
             view(flow_rate, (1 + (ti - 1) * nflow):(ti * nflow)),
