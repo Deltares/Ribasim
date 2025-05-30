@@ -36,7 +36,13 @@ initialize-julia = { depends-on = [
     "update-registry-julia",
     "instantiate-julia",
 ] }
-generate-sbom-ribasim-core = { cmd = "julia --project -- utils/generate-sbom.jl" }
+generate-sbom-ribasim-core = { cmd = "julia --project -- utils/generate-sbom.jl", depends-on = [
+    "instantiate-julia",
+], inputs = [
+    "core/Project.toml",
+], outputs = [
+    "Ribasim.spdx.json",
+] }
 # Docs
 quartodoc-build = { cmd = "quartodoc build && rm objects.json", cwd = "docs", inputs = [
     "docs/_quarto.yml",
