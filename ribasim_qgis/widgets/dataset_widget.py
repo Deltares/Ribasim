@@ -296,8 +296,10 @@ class DatasetWidget(QWidget):
         self.dataset_tree.clear()
         geo_path = get_database_path_from_model_file(self.path)
         nodes = load_nodes_from_geopackage(geo_path)
-
-        self.ribasim_widget.create_groups(self.path.with_suffix("").as_posix())
+        
+        name = self.path.stem
+        parent = self.path.parent.stem
+        self.ribasim_widget.create_groups(f"{parent}/{name}")
 
         # Make sure "Node", "Link", "Basin / area" are the top three layers
         node = nodes.pop("Node")
