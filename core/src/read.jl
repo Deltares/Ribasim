@@ -1608,6 +1608,7 @@ function Parameters(db::DB, config::Config)::Parameters
         config.solver.water_balance_reltol,
         u_prev_saveat = zeros(n_states),
         node_id,
+        state_ranges,
     )
 
     collect_control_mappings!(p_non_diff)

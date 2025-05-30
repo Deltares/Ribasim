@@ -342,6 +342,27 @@ function get_flow(
     end
 end
 
+function get_flow(
+    flow::AbstractVector,
+    p_non_diff::ParametersNonDiff,
+    t::Number,
+    link::Tuple{NodeID, NodeID};
+    boundary_flow = nothing,
+)
+    (; flow_boundary) = p_non_diff
+    from_id = link[1]
+    if from_id.type == NodeType.FlowBoundary
+        if boundary_flow === nothing
+            flow_boundary.active[from_id.idx] ? flow_boundary.flow_rate[from_id.idx](t) :
+            0.0
+        else
+            boundary_flow[from_id.idx]
+        end
+    else
+        flow[get_state_index(p_non_diff.state_ranges, link)]
+    end
+end
+
 function get_influx(du::CVector, id::NodeID, p::Parameters)
     @assert id.type == NodeType.Basin
     (; basin) = p.p_non_diff
