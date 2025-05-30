@@ -47,6 +47,8 @@ Base.getindex(x::CArray, i::Int) = getdata(x)[i]
 Base.getindex(x::CArray, I...) = getdata(x)[I...]
 Base.IndexStyle(::Type{CArray}) = IndexLinear()
 Base.elsize(x::CArray) = Base.elsize(getdata(x))
+Base.eltype(::Type{CArray{T}}) where {T} = T
+Base.axes(x::CArray) = axes(getdata(x))
 
 # Linear algebra
 Base.pointer(x::CArray) = pointer(getdata(x))
@@ -101,5 +103,7 @@ function Base.getproperty(x::CArray, name::Symbol)
     loc = getproperty(axes, name)
     component(data, loc)
 end
+
+Base.iterate(x::CArray, state...) = iterate(getdata(x), state...)
 
 end  # module CArrays
