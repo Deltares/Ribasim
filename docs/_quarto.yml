@@ -32,7 +32,6 @@ website:
         - changelog.qmd
         - known_issues.qmd
         - contact.qmd
-        - faq.qmd
     - title: "Tutorials"
       contents:
         - tutorial/natural-flow.ipynb
@@ -46,6 +45,7 @@ website:
         - section: "Coupling guides"
           contents:
             - guide/delwaq.ipynb
+        - guide/debug.qmd
     - title: "Concepts"
       contents:
         - concept/concept.qmd

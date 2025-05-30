@@ -1,12 +1,8 @@
 ---
-title: "Frequently asked questions"
+title: "Debugging models"
 ---
 
-
-# Running simulations
-## My model exited with return code Unstable
-
-When you get a message like
+When your model exits with a message like so:
 ```julia
 ┌ Error: The model exited at model time 2024-01-27T14:46:17.791 with return code Unstable. See https://docs.sciml.ai/DiffEqDocs/stable/basics/solution/#retcodes
 ```
