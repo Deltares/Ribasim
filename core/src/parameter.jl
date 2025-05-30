@@ -1073,7 +1073,7 @@ The collection of all parameters that are passed to the rhs (`water_balance!`) a
     p_mutable::ParametersMutable = ParametersMutable()
 end
 
-function get_value(ref::DiffCacheRef, p::Parameters, du::CVector)
+function get_value(ref::DiffCacheRef, p::Parameters, du::ComponentVector)
     if ref.from_du
         du[ref.idx]
     else

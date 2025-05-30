@@ -316,7 +316,7 @@ function flow_update_on_link(
             0.0
         end
     else
-        state_ranges = getaxes(u)
+        state_ranges = get_state_ranges(u)
         flow_idx = get_state_index(state_ranges, link_src)
         u[flow_idx] - uprev[flow_idx]
     end
@@ -413,7 +413,7 @@ function check_water_balance_error!(
     (; p_non_diff, diff_cache) = p
     (; basin, water_balance_abstol, water_balance_reltol, starttime) = p_non_diff
     errors = false
-    state_ranges = getaxes(u)
+    state_ranges = get_state_ranges(u)
 
     # The initial storage is irrelevant for the storage rate and can only cause
     # floating point truncation errors
@@ -601,7 +601,7 @@ end
 Get a value for a condition. Currently supports getting levels from basins and flows
 from flow boundaries.
 """
-function get_value(subvariable::SubVariable, p::Parameters, du::CVector, t::Float64)
+function get_value(subvariable::SubVariable, p::Parameters, du::ComponentVector, t::Float64)
     (; flow_boundary, level_boundary, basin) = p.p_non_diff
     (; listen_node_id, look_ahead, variable, diff_cache_ref) = subvariable
 

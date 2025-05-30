@@ -133,7 +133,7 @@ function basin_table(
 }
     (; saved) = model
     (; u) = model.integrator
-    state_ranges = getaxes(u)
+    state_ranges = get_state_ranges(u)
 
     # The last timestep is not included; there is no period over which to compute flows.
     data = get_storages_and_levels(model)
@@ -244,7 +244,7 @@ function flow_table(
 
     for (ti, cvec) in enumerate(saveval)
         (; flow, flow_boundary) = cvec
-        flow = CVector(flow, getaxes(u))
+        flow = ComponentVector(flow, Axis(get_state_ranges(u)))
         for (fi, link) in enumerate(internal_flow_links)
             internal_flow_rate[fi] =
                 get_flow(flow, p_non_diff, 0.0, link.link; boundary_flow = flow_boundary)

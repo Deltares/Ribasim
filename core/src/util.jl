@@ -724,7 +724,7 @@ end
 Compute the residual of the non-linear solver, i.e. a measure of the
 error in the solution to the implicit equation defined by the solver algorithm
 """
-function residual(z::CVector, integrator, nlsolver, f::TF) where {TF}
+function residual(z::ComponentVector, integrator, nlsolver, f::TF) where {TF}
     (; uprev, t, p, dt, opts, isdae) = integrator
     (; tmp, ztmp, γ, α, cache, method) = nlsolver
     (; ustep, atmp, tstep, k, invγdt, tstep, k, invγdt) = cache
@@ -820,7 +820,7 @@ function build_state_vector(p_non_diff::ParametersNonDiff)
     u_ids = state_node_ids(p_non_diff)
     state_ranges = count_state_ranges(u_ids)
     data = zeros(length(p_non_diff.node_id))
-    u = CVector(data, state_ranges)
+    u = ComponentVector(data, Axis(state_ranges))
     # Ensure p_non_diff.node_id, state_ranges and u have the same length and order
     ranges = (getproperty(state_ranges, x) for x in propertynames(state_ranges))
     @assert length(u) == length(p_non_diff.node_id) == mapreduce(length, +, ranges)
@@ -828,11 +828,11 @@ function build_state_vector(p_non_diff::ParametersNonDiff)
     return u
 end
 
-function build_reltol_vector(u0::CVector, reltol::Float64)
+function build_reltol_vector(u0::ComponentVector, reltol::Float64)
     reltolv = fill(reltol, length(u0))
     mask = trues(length(u0))
     # Mask the non-cumulative states
-    for (node, range) in pairs(getaxes(u0))
+    for (node, range) in pairs(get_state_ranges(u0))
         if node in (:integral,)
             mask[range] .= false
         end
@@ -940,6 +940,12 @@ function get_state_flow_links(
     end
 
     return state_inflow_link, state_outflow_link
+end
+
+"From a ComponentVector, get a NamedTuple mapping components to their index ranges"
+function get_state_ranges(u::ComponentVector)::StateTuple{UnitRange{Int}}
+    axis = only(getaxes(u))
+    return indexmap(axis)
 end
 
 """
