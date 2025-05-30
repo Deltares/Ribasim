@@ -394,12 +394,12 @@ end
 
 @testitem "flow_to_storage matrix" begin
     using LinearAlgebra: I
-    using Ribasim: getaxes
+    using Ribasim: get_state_ranges
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.Model(toml_path)
     (; basin, flow_to_storage) = model.integrator.p.p_non_diff
-    state_ranges = getaxes(model.integrator.u)
+    state_ranges = get_state_ranges(model.integrator.u)
     n_basins = length(basin.node_id)
 
     @test flow_to_storage[:, state_ranges.evaporation] == -I

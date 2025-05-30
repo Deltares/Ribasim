@@ -1,14 +1,14 @@
 """
 The right hand side function of the system of ODEs set up by Ribasim.
 """
-water_balance!(du::CVector, u::CVector, p::Parameters, t::Number)::Nothing =
+water_balance!(du::ComponentVector, u::ComponentVector, p::Parameters, t::Number)::Nothing =
     water_balance!(du, u, p.p_non_diff, p.diff_cache, p.p_mutable, t)
 
 # Method with `t` as second argument parsable by DifferentiationInterface.jl for time derivative computation
 water_balance!(
-    du::CVector,
+    du::ComponentVector,
     t::Number,
-    u::CVector,
+    u::ComponentVector,
     p_non_diff::ParametersNonDiff,
     diff_cache::DiffCache,
     p_mutable::ParametersMutable,
@@ -16,8 +16,8 @@ water_balance!(
 
 # Method with separate parameter parsable by DifferentiationInterface.jl for Jacobian computation
 function water_balance!(
-    du::CVector,
-    u::CVector,
+    du::ComponentVector,
+    u::ComponentVector,
     p_non_diff::ParametersNonDiff,
     diff_cache::DiffCache,
     p_mutable::ParametersMutable,
@@ -57,7 +57,11 @@ function water_balance!(
     return nothing
 end
 
-function formulate_continuous_control!(du::CVector, p::Parameters, t::Number)::Nothing
+function formulate_continuous_control!(
+    du::ComponentVector,
+    p::Parameters,
+    t::Number,
+)::Nothing
     (; compound_variable, target_ref, func) = p.p_non_diff.continuous_control
 
     for (cvar, ref, func_) in zip(compound_variable, target_ref, func)
@@ -71,7 +75,11 @@ end
 Compute the storages, levels and areas of all Basins given the
 state u and the time t.
 """
-function set_current_basin_properties!(u::CVector, p::Parameters, t::Number)::Nothing
+function set_current_basin_properties!(
+    u::ComponentVector,
+    p::Parameters,
+    t::Number,
+)::Nothing
     (; p_non_diff, diff_cache, p_mutable) = p
     (; basin) = p_non_diff
     (; node_id, cumulative_precipitation, cumulative_drainage, vertical_flux) = basin
@@ -99,7 +107,7 @@ function set_current_basin_properties!(u::CVector, p::Parameters, t::Number)::No
 end
 
 function formulate_storages!(
-    u::CVector,
+    u::ComponentVector,
     p::Parameters,
     t::Number;
     add_initial_storage::Bool = true,
@@ -152,7 +160,7 @@ end
 Smoothly let the evaporation flux go to 0 when at small water depths
 Currently at less than 0.1 m.
 """
-function update_vertical_flux!(du::CVector, p::Parameters)::Nothing
+function update_vertical_flux!(du::ComponentVector, p::Parameters)::Nothing
     (; p_non_diff, diff_cache) = p
     (; basin) = p_non_diff
     (; vertical_flux) = basin
@@ -184,7 +192,12 @@ function set_error!(pid_control::PidControl, p::Parameters, t::Number)
     end
 end
 
-function formulate_pid_control!(du::CVector, u::CVector, p::Parameters, t::Number)::Nothing
+function formulate_pid_control!(
+    du::ComponentVector,
+    u::ComponentVector,
+    p::Parameters,
+    t::Number,
+)::Nothing
     (; p_non_diff, diff_cache, p_mutable) = p
     (; pid_control) = p_non_diff
     (; node_id, active, target, listen_node_id) = pid_control
@@ -247,7 +260,7 @@ end
 Formulate the time derivative of the storage in a single Basin.
 """
 function formulate_dstorage(
-    du::CVector,
+    du::ComponentVector,
     p_non_diff::ParametersNonDiff,
     t::Number,
     node_id::NodeID,
@@ -273,7 +286,7 @@ function formulate_dstorage(
 end
 
 function formulate_flow!(
-    du::CVector,
+    du::ComponentVector,
     user_demand::UserDemand,
     p::Parameters,
     t::Number,
@@ -326,7 +339,7 @@ function formulate_flow!(
 end
 
 function formulate_flow!(
-    du::CVector,
+    du::ComponentVector,
     linear_resistance::LinearResistance,
     p::Parameters,
     t::Number,
@@ -355,7 +368,7 @@ function formulate_flow!(
 end
 
 function formulate_flow!(
-    du::CVector,
+    du::ComponentVector,
     tabulated_rating_curve::TabulatedRatingCurve,
     p::Parameters,
     t::Number,
@@ -432,7 +445,7 @@ hydraulic radius. This ensures that a basin can receive water after it has gone
 dry.
 """
 function formulate_flow!(
-    du::CVector,
+    du::ComponentVector,
     manning_resistance::ManningResistance,
     p::Parameters,
     t::Number,
@@ -497,7 +510,7 @@ function formulate_flow!(
 end
 
 function formulate_flow!(
-    du::CVector,
+    du::ComponentVector,
     pump::Pump,
     p::Parameters,
     t::Number,
@@ -558,7 +571,7 @@ function formulate_flow!(
 end
 
 function formulate_flow!(
-    du::CVector,
+    du::ComponentVector,
     outlet::Outlet,
     p::Parameters,
     t::Number,
@@ -622,7 +635,7 @@ function formulate_flow!(
 end
 
 function formulate_flows!(
-    du::CVector,
+    du::ComponentVector,
     p::Parameters,
     t::Number;
     continuous_control_type::ContinuousControlType.T = ContinuousControlType.None,
@@ -652,7 +665,7 @@ Clamp the cumulative flow states within the minimum and maximum
 flow rates for the last time step if these flow rate bounds are known.
 """
 function limit_flow!(
-    u::CVector,
+    u::ComponentVector,
     integrator::DEIntegrator,
     p::Parameters,
     t::Number,
