@@ -45,6 +45,7 @@ website:
         - section: "Coupling guides"
           contents:
             - guide/delwaq.ipynb
+        - guide/debug.qmd
     - title: "Concepts"
       contents:
         - concept/concept.qmd
