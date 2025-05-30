@@ -676,3 +676,34 @@ end
 
     model = Ribasim.run(toml_path)
 end
+
+@testitem "init_basin_only_storage" begin
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/basic_basin_only_storage/ribasim.toml",
+    )
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+    @test model isa Ribasim.Model
+    @test success(model)
+end
+
+@testitem "init_basin_only_area" begin
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/basic_basin_only_area/ribasim.toml")
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+    @test model isa Ribasim.Model
+    @test success(model)
+end
+
+@testitem "init_basin_both_area_and_storage" begin
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/basic_basin_both_area_and_storage/ribasim.toml",
+    )
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+    @test model isa Ribasim.Model
+    @test success(model)
+end

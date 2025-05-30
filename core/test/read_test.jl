@@ -87,3 +87,77 @@ end
     @test logger.logs[1].level == Error
     @test logger.logs[1].message == "All nodes in subnetwork 2 should be connected"
 end
+
+@testitem "Parabolic basin profile initialisation" begin
+    using Ribasim: BasinProfileV1, Basin, StructVector, BasinConcentrationV1, NodeID
+
+    # a parabolic shaped (x^2 - 1) basin with a circular cross section
+    levels::Vector{Float64} = [0, 1, 2, 3, 4, 5]
+    n = length(levels)
+    areas::Vector{Float64} = (levels .+ 1) .* pi
+    storages::Vector{Float64} = π / 2 * ((levels .+ 1) .^ 2 .- 1)
+
+    node_1 = fill(1, n)
+    node_2 = fill(2, n)
+    node_3 = fill(3, n)
+
+    skipped = fill(missing, n)
+
+    basin = Ribasim.Basin(;
+        node_id = NodeID.(:Basin, [1, 2, 3], 1),
+        concentration_time = StructVector{BasinConcentrationV1}(undef, 0),
+    )
+
+    profiles = StructVector{BasinProfileV1}(;
+        node_id = [node_1; node_2; node_3],
+        level = [levels; levels; levels],
+        area = [areas; skipped; areas],
+        storage = [skipped; storages; storages],
+    )
+
+    Ribasim.interpolate_basin_profile!(basin, profiles)
+
+    # Assert that storage_to_level interpolation is consistent for nodes 1 2 and 3
+    println("HELLO")
+    @test basin.storage_to_level[1](storages[1]) ≈ basin.storage_to_level[3](storages[1])
+    @test basin.storage_to_level[1](storages[1]) ≈ basin.storage_to_level[2](storages[1])
+
+    # Assert that level_to_area interpolation is consistent for nodes 1 and 3. Node 2 is different, since it must guess the bottom area
+    @test basin.level_to_area[1](levels[1]) ≈ basin.level_to_area[3](levels[1])
+end
+
+@testitem "Cyllindric basin profile initialisation" begin
+    using Ribasim:
+        BasinProfileV1,
+        Basin,
+        StructVector,
+        BasinConcentrationV1,
+        NodeID,
+        interpolate_basin_profile!
+
+    # a parabolic shaped (x^2 - 1) basin with a circular cross section
+    levels::Vector{Float64} = [0, 1]
+    areas::Vector{Float64} = [1000, 1000]
+
+    n = length(levels)
+
+    node_1 = fill(1, n)
+
+    skipped = fill(missing, n)
+
+    basin = Ribasim.Basin(;
+        node_id = NodeID.(:Basin, [1], 1),
+        concentration_time = StructVector{BasinConcentrationV1}(undef, 0),
+    )
+
+    profiles = StructVector{BasinProfileV1}(;
+        node_id = node_1,
+        level = levels,
+        area = areas,
+        storage = skipped,
+    )
+
+    interpolate_basin_profile!(basin, profiles)
+
+    @test basin.storage_to_level[1](2000) ≈ 2.0
+end
