@@ -66,7 +66,7 @@ class NodesWidget(QWidget):
         # Write to geopackage
         node.write()
         # Add to QGIS
-        self.ribasim_widget.add_layer(node.layer, "Ribasim Input", labels=node.labels)
+        self.ribasim_widget.add_layer(node.layer, "Input", labels=node.labels)
         # Setup relationship
         self.ribasim_widget.add_relationship(node.layer, node_type)
         # Add to dataset tree
