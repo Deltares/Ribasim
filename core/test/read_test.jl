@@ -118,7 +118,6 @@ end
     Ribasim.interpolate_basin_profile!(basin, profiles)
 
     # Assert that storage_to_level interpolation is consistent for nodes 1 2 and 3
-    println("HELLO")
     @test basin.storage_to_level[1](storages[1]) ≈ basin.storage_to_level[3](storages[1])
     @test basin.storage_to_level[1](storages[1]) ≈ basin.storage_to_level[2](storages[1])
 
