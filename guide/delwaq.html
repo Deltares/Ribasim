@@ -890,14 +890,14 @@ See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stab
 <td>2020-01-01 00:00:00</td>
 <td>1</td>
 <td>0.0</td>
-<td>UserDemand</td>
+<td>Foo</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">1464</td>
 <td>2020-01-01 00:00:00</td>
 <td>1</td>
 <td>0.0</td>
-<td>FlowBoundary</td>
+<td>Cl</td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">2928</td>
@@ -911,14 +911,14 @@ See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stab
 <td>2020-01-01 00:00:00</td>
 <td>1</td>
 <td>0.0</td>
-<td>Drainage</td>
+<td>Terminal</td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">5856</td>
 <td>2020-01-01 00:00:00</td>
 <td>1</td>
 <td>0.0</td>
-<td>Foo</td>
+<td>Precipitation</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">...</td>
@@ -931,29 +931,29 @@ See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stab
 <td data-quarto-table-cell-role="th">11711</td>
 <td>2020-12-31 00:00:00</td>
 <td>9</td>
-<td>0.0</td>
-<td>Bar</td>
+<td>0.189717</td>
+<td>Tracer</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">13175</td>
 <td>2020-12-31 00:00:00</td>
 <td>9</td>
-<td>0.188934</td>
-<td>Precipitation</td>
+<td>0.000783</td>
+<td>FlowBoundary</td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">14639</td>
 <td>2020-12-31 00:00:00</td>
 <td>9</td>
-<td>0.000586</td>
-<td>LevelBoundary</td>
+<td>0.0</td>
+<td>Bar</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">16103</td>
 <td>2020-12-31 00:00:00</td>
 <td>9</td>
 <td>0.0</td>
-<td>Terminal</td>
+<td>UserDemand</td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">17567</td>
@@ -969,7 +969,7 @@ See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stab
 </div>
 </div>
 <div class="cell-output cell-output-stdout">
-<pre><code>{'UserDemand', 'FlowBoundary', 'Initial', 'Drainage', 'Foo', 'Tracer', 'Cl', 'Bar', 'Precipitation', 'LevelBoundary', 'Terminal', 'Continuity'}</code></pre>
+<pre><code>{'Foo', 'Cl', 'Initial', 'Terminal', 'Precipitation', 'Drainage', 'LevelBoundary', 'Tracer', 'FlowBoundary', 'Bar', 'UserDemand', 'Continuity'}</code></pre>
 </div>
 <div class="cell-output cell-output-display" data-execution_count="12">
 <div>
@@ -998,14 +998,14 @@ See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stab
 <td>2020-01-03 00:00:00</td>
 <td>1</td>
 <td>0.0</td>
-<td>UserDemand</td>
+<td>Foo</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">1472</td>
 <td>2020-01-03 00:00:00</td>
 <td>1</td>
-<td>0.986397</td>
-<td>FlowBoundary</td>
+<td>0.0</td>
+<td>Cl</td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">2936</td>
@@ -1019,56 +1019,56 @@ See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stab
 <td>2020-01-03 00:00:00</td>
 <td>1</td>
 <td>0.0</td>
-<td>Drainage</td>
+<td>Terminal</td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">5864</td>
-<td>2020-01-03 00:00:00</td>
-<td>1</td>
-<td>0.0</td>
-<td>Foo</td>
-</tr>
-<tr class="even">
-<td data-quarto-table-cell-role="th">7328</td>
-<td>2020-01-03 00:00:00</td>
-<td>1</td>
-<td>1.129907</td>
-<td>Tracer</td>
-</tr>
-<tr class="odd">
-<td data-quarto-table-cell-role="th">8792</td>
-<td>2020-01-03 00:00:00</td>
-<td>1</td>
-<td>0.0</td>
-<td>Cl</td>
-</tr>
-<tr class="even">
-<td data-quarto-table-cell-role="th">10256</td>
-<td>2020-01-03 00:00:00</td>
-<td>1</td>
-<td>0.0</td>
-<td>Bar</td>
-</tr>
-<tr class="odd">
-<td data-quarto-table-cell-role="th">11720</td>
 <td>2020-01-03 00:00:00</td>
 <td>1</td>
 <td>0.14351</td>
 <td>Precipitation</td>
 </tr>
 <tr class="even">
-<td data-quarto-table-cell-role="th">13184</td>
+<td data-quarto-table-cell-role="th">7328</td>
+<td>2020-01-03 00:00:00</td>
+<td>1</td>
+<td>0.0</td>
+<td>Drainage</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">8792</td>
 <td>2020-01-03 00:00:00</td>
 <td>1</td>
 <td>0.0</td>
 <td>LevelBoundary</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">10256</td>
+<td>2020-01-03 00:00:00</td>
+<td>1</td>
+<td>1.129907</td>
+<td>Tracer</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">11720</td>
+<td>2020-01-03 00:00:00</td>
+<td>1</td>
+<td>0.986397</td>
+<td>FlowBoundary</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">13184</td>
+<td>2020-01-03 00:00:00</td>
+<td>1</td>
+<td>0.0</td>
+<td>Bar</td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">14648</td>
 <td>2020-01-03 00:00:00</td>
 <td>1</td>
 <td>0.0</td>
-<td>Terminal</td>
+<td>UserDemand</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">16112</td>
@@ -1081,15 +1081,15 @@ See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stab
 <td data-quarto-table-cell-role="th">9</td>
 <td>2020-01-03 00:00:00</td>
 <td>3</td>
-<td>0.0</td>
-<td>UserDemand</td>
+<td>0.01887</td>
+<td>Foo</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">1473</td>
 <td>2020-01-03 00:00:00</td>
 <td>3</td>
-<td>0.006273</td>
-<td>FlowBoundary</td>
+<td>0.641596</td>
+<td>Cl</td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">2937</td>
@@ -1103,56 +1103,56 @@ See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stab
 <td>2020-01-03 00:00:00</td>
 <td>3</td>
 <td>0.0</td>
-<td>Drainage</td>
+<td>Terminal</td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">5865</td>
-<td>2020-01-03 00:00:00</td>
-<td>3</td>
-<td>0.01887</td>
-<td>Foo</td>
-</tr>
-<tr class="even">
-<td data-quarto-table-cell-role="th">7329</td>
-<td>2020-01-03 00:00:00</td>
-<td>3</td>
-<td>0.071003</td>
-<td>Tracer</td>
-</tr>
-<tr class="odd">
-<td data-quarto-table-cell-role="th">8793</td>
-<td>2020-01-03 00:00:00</td>
-<td>3</td>
-<td>0.641596</td>
-<td>Cl</td>
-</tr>
-<tr class="even">
-<td data-quarto-table-cell-role="th">10257</td>
-<td>2020-01-03 00:00:00</td>
-<td>3</td>
-<td>0.0</td>
-<td>Bar</td>
-</tr>
-<tr class="odd">
-<td data-quarto-table-cell-role="th">11721</td>
 <td>2020-01-03 00:00:00</td>
 <td>3</td>
 <td>0.06473</td>
 <td>Precipitation</td>
 </tr>
 <tr class="even">
-<td data-quarto-table-cell-role="th">13185</td>
+<td data-quarto-table-cell-role="th">7329</td>
+<td>2020-01-03 00:00:00</td>
+<td>3</td>
+<td>0.0</td>
+<td>Drainage</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">8793</td>
 <td>2020-01-03 00:00:00</td>
 <td>3</td>
 <td>0.01887</td>
 <td>LevelBoundary</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">10257</td>
+<td>2020-01-03 00:00:00</td>
+<td>3</td>
+<td>0.071003</td>
+<td>Tracer</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">11721</td>
+<td>2020-01-03 00:00:00</td>
+<td>3</td>
+<td>0.006273</td>
+<td>FlowBoundary</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">13185</td>
+<td>2020-01-03 00:00:00</td>
+<td>3</td>
+<td>0.0</td>
+<td>Bar</td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">14649</td>
 <td>2020-01-03 00:00:00</td>
 <td>3</td>
 <td>0.0</td>
-<td>Terminal</td>
+<td>UserDemand</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">16113</td>
@@ -1165,15 +1165,15 @@ See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stab
 <td data-quarto-table-cell-role="th">10</td>
 <td>2020-01-03 00:00:00</td>
 <td>6</td>
-<td>0.0</td>
-<td>UserDemand</td>
+<td>0.001693</td>
+<td>Foo</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">1474</td>
 <td>2020-01-03 00:00:00</td>
 <td>6</td>
-<td>0.000561</td>
-<td>FlowBoundary</td>
+<td>0.057579</td>
+<td>Cl</td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">2938</td>
@@ -1187,56 +1187,56 @@ See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stab
 <td>2020-01-03 00:00:00</td>
 <td>6</td>
 <td>0.0</td>
-<td>Drainage</td>
+<td>Terminal</td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">5866</td>
-<td>2020-01-03 00:00:00</td>
-<td>6</td>
-<td>0.001693</td>
-<td>Foo</td>
-</tr>
-<tr class="even">
-<td data-quarto-table-cell-role="th">7330</td>
-<td>2020-01-03 00:00:00</td>
-<td>6</td>
-<td>0.00637</td>
-<td>Tracer</td>
-</tr>
-<tr class="odd">
-<td data-quarto-table-cell-role="th">8794</td>
-<td>2020-01-03 00:00:00</td>
-<td>6</td>
-<td>0.057579</td>
-<td>Cl</td>
-</tr>
-<tr class="even">
-<td data-quarto-table-cell-role="th">10258</td>
-<td>2020-01-03 00:00:00</td>
-<td>6</td>
-<td>0.0</td>
-<td>Bar</td>
-</tr>
-<tr class="odd">
-<td data-quarto-table-cell-role="th">11722</td>
 <td>2020-01-03 00:00:00</td>
 <td>6</td>
 <td>0.005809</td>
 <td>Precipitation</td>
 </tr>
 <tr class="even">
-<td data-quarto-table-cell-role="th">13186</td>
+<td data-quarto-table-cell-role="th">7330</td>
+<td>2020-01-03 00:00:00</td>
+<td>6</td>
+<td>0.0</td>
+<td>Drainage</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">8794</td>
 <td>2020-01-03 00:00:00</td>
 <td>6</td>
 <td>0.001693</td>
 <td>LevelBoundary</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">10258</td>
+<td>2020-01-03 00:00:00</td>
+<td>6</td>
+<td>0.00637</td>
+<td>Tracer</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">11722</td>
+<td>2020-01-03 00:00:00</td>
+<td>6</td>
+<td>0.000561</td>
+<td>FlowBoundary</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">13186</td>
+<td>2020-01-03 00:00:00</td>
+<td>6</td>
+<td>0.0</td>
+<td>Bar</td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">14650</td>
 <td>2020-01-03 00:00:00</td>
 <td>6</td>
 <td>0.0</td>
-<td>Terminal</td>
+<td>UserDemand</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">16114</td>
@@ -1249,15 +1249,15 @@ See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stab
 <td data-quarto-table-cell-role="th">11</td>
 <td>2020-01-03 00:00:00</td>
 <td>9</td>
-<td>0.0</td>
-<td>UserDemand</td>
+<td>0.000031</td>
+<td>Foo</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">1475</td>
 <td>2020-01-03 00:00:00</td>
 <td>9</td>
-<td>0.00001</td>
-<td>FlowBoundary</td>
+<td>0.001047</td>
+<td>Cl</td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">2939</td>
@@ -1271,56 +1271,56 @@ See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stab
 <td>2020-01-03 00:00:00</td>
 <td>9</td>
 <td>0.0</td>
-<td>Drainage</td>
+<td>Terminal</td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">5867</td>
-<td>2020-01-03 00:00:00</td>
-<td>9</td>
-<td>0.000031</td>
-<td>Foo</td>
-</tr>
-<tr class="even">
-<td data-quarto-table-cell-role="th">7331</td>
-<td>2020-01-03 00:00:00</td>
-<td>9</td>
-<td>0.016435</td>
-<td>Tracer</td>
-</tr>
-<tr class="odd">
-<td data-quarto-table-cell-role="th">8795</td>
-<td>2020-01-03 00:00:00</td>
-<td>9</td>
-<td>0.001047</td>
-<td>Cl</td>
-</tr>
-<tr class="even">
-<td data-quarto-table-cell-role="th">10259</td>
-<td>2020-01-03 00:00:00</td>
-<td>9</td>
-<td>0.0</td>
-<td>Bar</td>
-</tr>
-<tr class="odd">
-<td data-quarto-table-cell-role="th">11723</td>
 <td>2020-01-03 00:00:00</td>
 <td>9</td>
 <td>0.016425</td>
 <td>Precipitation</td>
 </tr>
 <tr class="even">
-<td data-quarto-table-cell-role="th">13187</td>
+<td data-quarto-table-cell-role="th">7331</td>
+<td>2020-01-03 00:00:00</td>
+<td>9</td>
+<td>0.0</td>
+<td>Drainage</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">8795</td>
 <td>2020-01-03 00:00:00</td>
 <td>9</td>
 <td>0.000031</td>
 <td>LevelBoundary</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">10259</td>
+<td>2020-01-03 00:00:00</td>
+<td>9</td>
+<td>0.016435</td>
+<td>Tracer</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">11723</td>
+<td>2020-01-03 00:00:00</td>
+<td>9</td>
+<td>0.00001</td>
+<td>FlowBoundary</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">13187</td>
+<td>2020-01-03 00:00:00</td>
+<td>9</td>
+<td>0.0</td>
+<td>Bar</td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">14651</td>
 <td>2020-01-03 00:00:00</td>
 <td>9</td>
 <td>0.0</td>
-<td>Terminal</td>
+<td>UserDemand</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">16115</td>
