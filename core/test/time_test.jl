@@ -103,6 +103,11 @@ end
     test_extrapolation(basin.forcing.precipitation[1])
     test_extrapolation(level_boundary.level[1])
     test_extrapolation(flow_boundary.flow_rate[1])
+
+    t_end = Ribasim.seconds_since(model.config.endtime, model.config.starttime)
+    tstops = Vector{Float64}[]
+    Ribasim.get_timeseries_tstops!(tstops, t_end, basin.forcing.precipitation)
+    @test length(only(tstops)) == 3996
 end
 
 @testitem "decrease tolerance" begin
