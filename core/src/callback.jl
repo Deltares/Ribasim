@@ -26,12 +26,9 @@ function create_callbacks(
         FunctionCallingCallback(update_cumulative_flows!; func_start = false)
     push!(callbacks, cumulative_flows_cb)
 
-    if config.experimental.concentration
-        # Update concentrations
-        concentrations_cb =
-            FunctionCallingCallback(update_concentrations!; func_start = false)
-        push!(callbacks, concentrations_cb)
-    end
+    # Update concentrations
+    concentrations_cb = FunctionCallingCallback(update_concentrations!; func_start = false)
+    push!(callbacks, concentrations_cb)
 
     # Update Basin forcings
     # All variables are given at the same time, so just precipitation works
@@ -42,18 +39,16 @@ function create_callbacks(
     basin_cb = PresetTimeCallback(tstops, update_basin!; save_positions = (false, false))
     push!(callbacks, basin_cb)
 
-    if config.experimental.concentration
-        # Update boundary concentrations
-        for (boundary, func) in (
-            (basin, update_basin_conc!),
-            (flow_boundary, update_flowb_conc!),
-            (level_boundary, update_levelb_conc!),
-            (user_demand, update_userd_conc!),
-        )
-            tstops = get_tstops(boundary.concentration_time.time, starttime)
-            conc_cb = PresetTimeCallback(tstops, func; save_positions = (false, false))
-            push!(callbacks, conc_cb)
-        end
+    # Update boundary concentrations
+    for (boundary, func) in (
+        (basin, update_basin_conc!),
+        (flow_boundary, update_flowb_conc!),
+        (level_boundary, update_levelb_conc!),
+        (user_demand, update_userd_conc!),
+    )
+        tstops = get_tstops(boundary.concentration_time.time, starttime)
+        conc_cb = PresetTimeCallback(tstops, func; save_positions = (false, false))
+        push!(callbacks, conc_cb)
     end
 
     # If saveat is a vector which contains 0.0 this callback will still be called
@@ -73,15 +68,10 @@ function create_callbacks(
 
     # interpolate the levels
     saved_subgrid_level = SavedValues(Float64, Vector{Float64})
-    if config.results.subgrid
-        export_cb = SavingCallback(
-            save_subgrid_level,
-            saved_subgrid_level;
-            saveat,
-            save_start = true,
-        )
-        push!(callbacks, export_cb)
-    end
+
+    export_cb =
+        SavingCallback(save_subgrid_level, saved_subgrid_level; saveat, save_start = true)
+    push!(callbacks, export_cb)
 
     discrete_control_cb = FunctionCallingCallback(apply_discrete_control!)
     push!(callbacks, discrete_control_cb)
@@ -210,10 +200,12 @@ function update_concentrations!(u, t, integrator)::Nothing
     (; uprev, p, tprev, dt) = integrator
     (; p_non_diff, diff_cache) = p
     (; current_storage, current_level) = diff_cache
-    (; basin, flow_boundary) = p_non_diff
+    (; basin, flow_boundary, do_concentration) = p_non_diff
     (; vertical_flux, concentration_data) = basin
     (; evaporate_mass, cumulative_in, concentration_state, concentration, mass) =
         concentration_data
+
+    !do_concentration && return nothing
 
     # Reset cumulative flows, used to calculate the concentration
     # of the basins after processing inflows only
@@ -711,8 +703,12 @@ end
 
 "Interpolate the levels and save them to SavedValues"
 function save_subgrid_level(u, t, integrator)
-    update_subgrid_level!(integrator)
-    return copy(integrator.p.p_non_diff.subgrid.level)
+    return if integrator.p.p_non_diff.do_concentration
+        update_subgrid_level!(integrator)
+        copy(integrator.p.p_non_diff.subgrid.level)
+    else
+        integrator.p.p_non_diff.subgrid.level
+    end
 end
 
 "Update one current vertical flux from an interpolation at time t."
@@ -760,10 +756,12 @@ end
 "Load updates from 'Basin / concentration' into the parameters"
 function update_basin_conc!(integrator)::Nothing
     (; p_non_diff) = integrator.p
-    (; basin, starttime) = p_non_diff
+    (; basin, starttime, do_concentration) = p_non_diff
     (; node_id, concentration_data, concentration_time) = basin
     (; concentration, substances) = concentration_data
     t = datetime_since(integrator.t, starttime)
+
+    !do_concentration && return nothing
 
     rows = searchsorted(concentration_time.time, t)
     timeblock = view(concentration_time, rows)
@@ -780,11 +778,13 @@ end
 "Load updates from 'concentration' tables into the parameters"
 function update_conc!(integrator, parameter, nodetype)::Nothing
     (; p_non_diff) = integrator.p
-    (; basin, starttime) = p_non_diff
+    (; basin, starttime, do_concentration) = p_non_diff
     node = getproperty(p_non_diff, parameter)
     (; node_id, concentration, concentration_time) = node
     (; substances) = basin.concentration_data
     t = datetime_since(integrator.t, starttime)
+
+    !do_concentration && return nothing
 
     rows = searchsorted(concentration_time.time, t)
     timeblock = view(concentration_time, rows)
