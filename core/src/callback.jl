@@ -35,12 +35,10 @@ function create_callbacks(
 
     # Update Basin forcings
     # All variables are given at the same time, so just precipitation works
-    times = [itp.t for itp in basin.forcing.precipitation]
-    tstops = Float64[]
-    for t in times
-        append!(tstops, t)
-    end
-    unique!(sort!(tstops))
+    tstops = Vector{Float64}[]
+    t_end = seconds_since(config.endtime, config.starttime)
+    get_timeseries_tstops!(tstops, t_end, basin.forcing.precipitation)
+    tstops = sort(unique(vcat(tstops...)))
     basin_cb = PresetTimeCallback(tstops, update_basin!; save_positions = (false, false))
     push!(callbacks, basin_cb)
 
