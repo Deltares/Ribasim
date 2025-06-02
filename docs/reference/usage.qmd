@@ -323,11 +323,11 @@ Currently the stored demand and abstraction rate are those at the allocation tim
 ## Allocation flow - `allocation_flow.arrow`
 
 The allocation flow table contains results of the optimized allocation flow on every link in the model that is part of a subnetwork, for each time an optimization problem is solved (see also [here](/concept/allocation.qmd#the-high-level-algorithm)).
-If in the model a main network and subnetwork(s) are specified, there are 3 different types of optimization for the subnetwork:
+If in the model a primary network and subnetwork(s) are specified, there are 3 different types of optimization for the subnetwork:
 The column `optimization_type` provides the distinction between these optimization types.
 
 - `internal_sources`: first it will try using local sources internal to the subnetwork
-- `collect_demands`: collecting its total demand per priority (for allocating flow from the main network to the subnetwork)
+- `collect_demands`: collecting its total demand per priority (for allocating flow from the primary network to the subnetwork)
 - `allocate`: allocating flow within the subnetwork
 
 column            | type

@@ -58,17 +58,12 @@ from ribasim.utils import _concat, _pascal_to_snake
 
 
 class SourcePriority(ChildModel):
-    """
-    Specify per source node type what its default source priority is.
-
-    flow_boundary and level_boundary nodes are combined into the single category 'boundary'.
-    """
+    """Specify per source node type what its default source priority is."""
 
     user_demand: int = 1000
-    boundary: int = 2000
-    level_demand: int = 3000
-    flow_demand: int = 4000
-    subnetwork_inlet: int = 5000
+    flow_boundary: int = 2000
+    basin: int = 3000
+    subnetwork_inlet: int = 4000
 
 
 class Allocation(ChildModel):
