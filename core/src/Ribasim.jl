@@ -149,8 +149,6 @@ using Dates: Second
 
 export libribasim
 
-include("carrays.jl")
-using .CArrays: CVector, getaxes, getdata
 include("schema.jl")
 include("config.jl")
 using .config

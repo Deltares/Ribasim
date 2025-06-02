@@ -132,8 +132,7 @@ function basin_table(
     relative_error::Vector{Float64},
 }
     (; saved) = model
-    (; u) = model.integrator
-    state_ranges = getaxes(u)
+    (; state_ranges) = model.integrator.p.p_non_diff
 
     # The last timestep is not included; there is no period over which to compute flows.
     data = get_storages_and_levels(model)
@@ -222,7 +221,7 @@ function flow_table(
 }
     (; config, saved, integrator) = model
     (; t, saveval) = saved.flow
-    (; u, p) = integrator
+    (; p) = integrator
     (; p_non_diff) = p
     (; graph) = p_non_diff
     (; internal_flow_links, external_flow_links, flow_link_map) = graph[]
@@ -244,7 +243,6 @@ function flow_table(
 
     for (ti, cvec) in enumerate(saveval)
         (; flow, flow_boundary) = cvec
-        flow = CVector(flow, getaxes(u))
         for (fi, link) in enumerate(internal_flow_links)
             internal_flow_rate[fi] =
                 get_flow(flow, p_non_diff, 0.0, link.link; boundary_flow = flow_boundary)
