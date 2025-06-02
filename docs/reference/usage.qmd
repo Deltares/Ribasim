@@ -129,10 +129,10 @@ The Ribasim version that was used to create the results is written to each file 
 Below we give details per file, in which we describe the schema of the table using a syntax
 like this:
 
-column    | type    | unit         | restriction
---------- | ------- | ------------ | -----------
-node_id   | Int32   | -            | sorted
-storage   | Float64 | $m^3$        | non-negative
+column    | type    | unit                | restriction
+--------- | ------- | ------------------- | -----------
+node_id   | Int32   | -                   | sorted
+storage   | Float64 | $\text{m}^3$        | non-negative
 
 This means that two columns are required, one named `node_id`, that contained elements of
 type `Int32`, and a column named `storage` that contains elements of type `Float64`. The order
