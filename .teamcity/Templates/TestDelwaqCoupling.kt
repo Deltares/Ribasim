@@ -16,7 +16,8 @@ open class TestDelwaqCoupling(platformOs: String) : Template() {
 
         val depot_path = generateJuliaDepotPath(platformOs)
         params {
-            password("MiniO_credential_token", "credentialsJSON:86cbf3e5-724c-437d-9962-7a3f429b0aa2")
+            param("env.MINIO_ACCESS_KEY", "KwKRzscudy3GvRB8BN1Z")
+            password("env.MINIO_SECRET_KEY", "credentialsJSON:86cbf3e5-724c-437d-9962-7a3f429b0aa2")
             param("env.JULIA_DEPOT_PATH", depot_path)
         }
 
@@ -53,7 +54,7 @@ open class TestDelwaqCoupling(platformOs: String) : Template() {
                 id = "Delwaq_upload"
                 workingDir = "ribasim"
                 scriptContent = """
-                pixi run python utils/upload_benchmark.py --secretkey %MiniO_credential_token% "python/ribasim/ribasim/delwaq/model/delwaq_map.nc" "doc-image/delwaq/delwaq_map.nc"
+                pixi run s3-upload "python/ribasim/ribasim/delwaq/model/delwaq_map.nc" "doc-image/delwaq/delwaq_map.nc"
                 """.trimIndent()
             }
         }

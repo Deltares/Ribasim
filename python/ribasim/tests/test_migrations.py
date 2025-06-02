@@ -14,7 +14,7 @@ def test_hws_migration(tmp_path):
     db_path = root_folder / "models/hws_migration_test/database.gpkg"
 
     assert toml_path.exists(), (
-        "Can't find the model, did you retrieve it with get_benchmark.py?"
+        "Can't find the model, did you retrieve it with s3_download.py?"
     )
 
     assert _get_db_schema_version(db_path) == 0
