@@ -3,8 +3,7 @@
     using Tables.DataAPI: nrow
     using Dates: DateTime
     import Arrow
-    using Ribasim: get_tstops, tsaves
-    using Ribasim.CArrays: CVector, getaxes
+    using Ribasim: get_tstops, tsaves, ComponentVector, get_state_ranges
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/trivial/ribasim.toml")
     @test ispath(toml_path)
@@ -24,8 +23,8 @@
     (; p_non_diff) = model.integrator.p
 
     @test p_non_diff.node_id == [0, 6, 6]
-    @test u isa CVector
-    @test filter(!isempty, getaxes(u)) ==
+    @test u isa ComponentVector
+    @test filter(!isempty, get_state_ranges(u)) ==
           (; tabulated_rating_curve = 1:1, evaporation = 2:2, infiltration = 3:3)
 
     @test !ispath(control_path)

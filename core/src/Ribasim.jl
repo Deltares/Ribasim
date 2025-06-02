@@ -147,10 +147,12 @@ using DataStructures: OrderedSet, OrderedDict, counter, inc!
 
 using Dates: Second
 
+# Use ComponentArrays as our state vector type until this is resolved:
+# https://github.com/Deltares/Ribasim/issues/2262
+using ComponentArrays: ComponentArrays, ComponentVector, Axis, getaxes, getdata, indexmap
+
 export libribasim
 
-include("carrays.jl")
-using .CArrays: CVector, getaxes, getdata
 include("schema.jl")
 include("config.jl")
 using .config
