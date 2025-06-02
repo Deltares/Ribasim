@@ -35,7 +35,7 @@ function create_callbacks(
     tstops = Vector{Float64}[]
     t_end = seconds_since(config.endtime, config.starttime)
     get_timeseries_tstops!(tstops, t_end, basin.forcing.precipitation)
-    tstops = sort(unique(vcat(tstops...)))
+    tstops = sort(unique(reduce(vcat, tstops)))
     basin_cb = PresetTimeCallback(tstops, update_basin!; save_positions = (false, false))
     push!(callbacks, basin_cb)
 

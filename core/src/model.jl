@@ -188,7 +188,7 @@ function Model(config::Config)::Model
 
     saveat = convert_saveat(config.solver.saveat, t_end)
     saveat isa Float64 && push!(tstops, range(0, t_end; step = saveat))
-    tstops = sort(unique(vcat(tstops...)))
+    tstops = sort(unique(reduce(vcat, tstops)))
     adaptive, dt = convert_dt(config.solver.dt)
 
     jac_prototype, jac, tgrad = get_diff_eval(du0, u0, parameters, config.solver)
