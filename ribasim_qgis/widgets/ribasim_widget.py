@@ -25,7 +25,7 @@ from qgis.core import (
 from qgis.gui import QgisInterface
 
 from ribasim_qgis.core.nodes import Input
-from ribasim_qgis.widgets.dataset_widget import DatasetWidget
+from ribasim_qgis.widgets.dataset_widget import DatasetWidget, group_position_var
 from ribasim_qgis.widgets.nodes_widget import NodesWidget
 
 PYQT_DELETED_ERROR = "wrapped C/C++ object of type QgsLayerTreeGroup has been deleted"
@@ -104,13 +104,13 @@ class RibasimWidget(QWidget):
 
     # QGIS layers
     # -----------
-    def create_subgroup(self, name: str, part: str, visible=True) -> None:
+    def create_subgroup(self, name: str, subgroup: str, visible=True) -> None:
         try:
             assert self.group is not None
-            value = self.group.addGroup(f"{name}-{part}")
+            value = self.group.addGroup(subgroup)
             assert value is not None
             value.setItemVisibilityChecked(visible)
-            self.groups[part] = value
+            self.groups[subgroup] = value
         except RuntimeError as e:
             if e.args[0] == PYQT_DELETED_ERROR:
                 # This means the main group has been deleted: recreate
@@ -123,9 +123,11 @@ class RibasimWidget(QWidget):
         assert project is not None
         root = project.layerTreeRoot()
         assert root is not None
-        self.group = root.insertGroup(0, name)  # insert at the top
-        self.create_subgroup(name, "Ribasim Input")
-        self.create_subgroup(name, "Ribasim Results", visible=False)
+        self.group = root.insertGroup(
+            group_position_var.get(), name
+        )  # insert at the top
+        self.create_subgroup(name, "Input")
+        self.create_subgroup(name, "Results", visible=False)
         assert self.group is not None
         self.group.setIsMutuallyExclusive(True)
 
