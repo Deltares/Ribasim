@@ -1883,7 +1883,7 @@ function interpolate_basin_profile!(
         )
 
         basin.storage_to_level[i] =
-            invert_integral(level_to_area; extrapolation_right = Extension)
+            invert_integral(level_to_area; extrapolation_right = ExtrapolationType.Linear)
 
         if !all(ismissing, group_area)
             level_to_area = LinearInterpolation(
