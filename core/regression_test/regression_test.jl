@@ -20,6 +20,8 @@
                     solver_algorithm = solver,
                     solver_sparse = sparse_on_off,
                     solver_autodiff = autodiff_on_off,
+                    solver_abstol = 1e-7,
+                    solver_reltol = 1e-7,
                 )
                 model = Ribasim.run(config)
                 @test model isa Ribasim.Model
