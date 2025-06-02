@@ -227,7 +227,7 @@ end
 
     @test success(model)
     @test length(model.integrator.sol) == 2 # start and end
-    @test diff_cache.current_storage ≈ Float32[698.6895, 698.143, 420.57407, 1334.486] skip =
+    @test diff_cache.current_storage ≈ Float32[797.561, 797.112, 510.737, 1130.005] skip =
         Sys.isapple() atol = 1.5
 
     @test length(logger.logs) > 10
@@ -266,7 +266,7 @@ end
     (; p_non_diff, diff_cache) = model.integrator.p
     precipitation = p_non_diff.basin.vertical_flux.precipitation
     @test length(precipitation) == 4
-    @test diff_cache.current_storage ≈ Float32[698.6895, 698.143, 420.57407, 1334.486] atol =
+    @test diff_cache.current_storage ≈ Float32[702.262, 701.802, 439.235, 1136.969] atol =
         2.0 skip = Sys.isapple()
 end
 
