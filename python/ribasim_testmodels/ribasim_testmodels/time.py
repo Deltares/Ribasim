@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from ribasim.config import Experimental, Node
+from ribasim.config import Experimental, Interpolation, Node
 from ribasim.model import Model
 from ribasim.nodes import basin, flow_boundary, level_boundary, outlet, pump
 from shapely.geometry import Point
@@ -13,6 +13,7 @@ def flow_boundary_time_model() -> Model:
         endtime="2021-01-01",
         crs="EPSG:28992",
         experimental=Experimental(concentration=True),
+        interpolation=Interpolation(flow_boundary="linear"),
     )
 
     model.flow_boundary.add(

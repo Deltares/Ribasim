@@ -21,7 +21,7 @@ ribasim_version = "2025.3.0" # required
 time = "basin/time.arrow"
 
 [interpolation]
-flow_boundary = "linear"   # optional, default "linear", can otherwise be "block"
+flow_boundary = "block"   # optional, default "block", can otherwise be "linear"
 block_transition_period = 60.0  # optional, default 60.0
 
 [allocation]

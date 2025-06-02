@@ -121,7 +121,7 @@ const nodetypes = collect(keys(nodekinds))
 end
 
 @option struct Interpolation <: TableOption
-    flow_boundary::String = "linear"
+    flow_boundary::String = "block"
     block_transition_period::Float64 = 60.0
 end
 

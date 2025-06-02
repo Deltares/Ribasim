@@ -80,13 +80,13 @@ class Interpolation(ChildModel):
     Attributes
     ----------
     flow_boundary : string
-        The interpolation type used for the flow rate timeseries (optional, defaults to 'linear')
+        The interpolation type used for the flow rate timeseries (optional, defaults to 'block')
     block_transition_period : float
         If block interpolation is used, this is the maximum time span on either side of the data points over which
         the transition between data points is smoothed.
     """
 
-    flow_boundary: str = "linear"
+    flow_boundary: str = "block"
     block_transition_period: float = 60.0
 
 

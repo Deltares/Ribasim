@@ -410,6 +410,7 @@ def cyclic_time_model() -> Model:
         endtime="3021-01-01",
         crs="EPSG:28992",
         solver=Solver(saveat=7 * 24 * 60 * 60),
+        interpolation=Interpolation(flow_boundary="linear"),
     )
 
     bsn = model.basin.add(
