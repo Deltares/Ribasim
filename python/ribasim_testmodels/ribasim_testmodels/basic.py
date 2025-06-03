@@ -467,7 +467,7 @@ def flow_boundary_interpolation_model() -> Model:
         starttime="2020-01-01",
         endtime="2020-01-09",
         crs="EPSG:28992",
-        interpolation=Interpolation(flow_boundary="block", block_transition_period=0.0),
+        interpolation=Interpolation(flow_boundary="block", block_transition_period=0),
     )
 
     fb = model.flow_boundary.add(

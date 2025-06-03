@@ -22,7 +22,7 @@ time = "basin/time.arrow"
 
 [interpolation]
 flow_boundary = "block"   # optional, default "block", can otherwise be "linear"
-block_transition_period = 60.0  # optional, default 60.0
+block_transition_period = 0  # optional, default 0
 
 [allocation]
 timestep = 86400                                 # optional (required if use_allocation = true), default 86400

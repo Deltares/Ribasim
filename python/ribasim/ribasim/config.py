@@ -87,7 +87,7 @@ class Interpolation(ChildModel):
     """
 
     flow_boundary: str = "block"
-    block_transition_period: float = 60.0
+    block_transition_period: float = 0.0
 
 
 class Allocation(ChildModel):
