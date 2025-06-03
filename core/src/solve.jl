@@ -673,8 +673,7 @@ function limit_flow!(
     # The current storage and level based on the proposed u are used to estimate the lowest
     # storage and level attained in the last time step to estimate whether there was an effect
     # of reduction factors
-    du = get_du(integrator)
-    set_current_basin_properties!(du, p, t)
+    set_current_basin_properties!(u, p, t)
 
     # TabulatedRatingCurve flow is in [0, ∞) and can be inactive
     for (id, active) in zip(tabulated_rating_curve.node_id, tabulated_rating_curve.active)
