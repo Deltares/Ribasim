@@ -600,7 +600,14 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zlib-1.3.1-hb9d3cd8_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zstandard-0.23.0-py312h66e93f0_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zstd-1.5.7-hb8e6e7a_2.conda
+      - pypi: https://files.pythonhosted.org/packages/23/72/a6feae158a2188f457ca8f50d8d4d29a3affeed763227bd8b1bf2df0ce2c/lib4package-0.3.2-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/07/4d/4e98d47cbfca9a45e62ff86eab29eff770fd355df9452e48480d89ede7ef/lib4sbom-0.8.4-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/44/5b/fa477e4fd8e62c722febdc52462d7b037a77aa963c3e400a8e90e8f0d2c0/ptvsd-4.3.2-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/6c/73/9f872cb81fc5c3bb48f7227872c28975f998f3e7c2b1c16e95e6432bbb90/python_magic-0.4.27-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/3a/fd/e5dae179943e631ae1d2b1903d73d7060ea9a82242e922abc685e33b6679/sbom2dot-0.3.2-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/dc/6f/09acbe8b17a427e89f92ed03ae2b102aa77f911f094834214e82d0d36416/sbom4files-0.4.5-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/5d/ab/ca69eca5d16b550d227df7616ab24f32d528903a3f1305953ad038adecaa/sbom4python-0.12.3-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/6a/23/8146aad7d88f4fcb3a6218f41a60f6c2d4e3a72de72da1825dc7c8f7877c/semantic_version-2.10.0-py2.py3-none-any.whl
       - pypi: ./python/ribasim
       - pypi: ./python/ribasim_api
       - pypi: ./python/ribasim_testmodels
@@ -1132,7 +1139,14 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zlib-1.3.1-h8359307_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zstandard-0.23.0-py312hea69d52_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zstd-1.5.7-h6491c7d_2.conda
+      - pypi: https://files.pythonhosted.org/packages/23/72/a6feae158a2188f457ca8f50d8d4d29a3affeed763227bd8b1bf2df0ce2c/lib4package-0.3.2-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/07/4d/4e98d47cbfca9a45e62ff86eab29eff770fd355df9452e48480d89ede7ef/lib4sbom-0.8.4-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/44/5b/fa477e4fd8e62c722febdc52462d7b037a77aa963c3e400a8e90e8f0d2c0/ptvsd-4.3.2-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/6c/73/9f872cb81fc5c3bb48f7227872c28975f998f3e7c2b1c16e95e6432bbb90/python_magic-0.4.27-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/3a/fd/e5dae179943e631ae1d2b1903d73d7060ea9a82242e922abc685e33b6679/sbom2dot-0.3.2-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/dc/6f/09acbe8b17a427e89f92ed03ae2b102aa77f911f094834214e82d0d36416/sbom4files-0.4.5-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/5d/ab/ca69eca5d16b550d227df7616ab24f32d528903a3f1305953ad038adecaa/sbom4python-0.12.3-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/6a/23/8146aad7d88f4fcb3a6218f41a60f6c2d4e3a72de72da1825dc7c8f7877c/semantic_version-2.10.0-py2.py3-none-any.whl
       - pypi: ./python/ribasim
       - pypi: ./python/ribasim_api
       - pypi: ./python/ribasim_testmodels
@@ -1639,7 +1653,15 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/zlib-1.3.1-h2466b09_2.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstandard-0.23.0-py312h4389bb4_2.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstd-1.5.7-hbeecb71_2.conda
+      - pypi: https://files.pythonhosted.org/packages/23/72/a6feae158a2188f457ca8f50d8d4d29a3affeed763227bd8b1bf2df0ce2c/lib4package-0.3.2-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/07/4d/4e98d47cbfca9a45e62ff86eab29eff770fd355df9452e48480d89ede7ef/lib4sbom-0.8.4-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/44/5b/fa477e4fd8e62c722febdc52462d7b037a77aa963c3e400a8e90e8f0d2c0/ptvsd-4.3.2-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/6c/73/9f872cb81fc5c3bb48f7227872c28975f998f3e7c2b1c16e95e6432bbb90/python_magic-0.4.27-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/07/c2/094e3d62b906d952537196603a23aec4bcd7c6126bf80eb14e6f9f4be3a2/python_magic_bin-0.4.14-py2.py3-none-win_amd64.whl
+      - pypi: https://files.pythonhosted.org/packages/3a/fd/e5dae179943e631ae1d2b1903d73d7060ea9a82242e922abc685e33b6679/sbom2dot-0.3.2-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/dc/6f/09acbe8b17a427e89f92ed03ae2b102aa77f911f094834214e82d0d36416/sbom4files-0.4.5-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/5d/ab/ca69eca5d16b550d227df7616ab24f32d528903a3f1305953ad038adecaa/sbom4python-0.12.3-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/6a/23/8146aad7d88f4fcb3a6218f41a60f6c2d4e3a72de72da1825dc7c8f7877c/semantic_version-2.10.0-py2.py3-none-any.whl
       - pypi: ./python/ribasim
       - pypi: ./python/ribasim_api
       - pypi: ./python/ribasim_testmodels
@@ -2243,7 +2265,14 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zlib-1.3.1-hb9d3cd8_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zstandard-0.23.0-py311h9ecbd09_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zstd-1.5.7-hb8e6e7a_2.conda
+      - pypi: https://files.pythonhosted.org/packages/23/72/a6feae158a2188f457ca8f50d8d4d29a3affeed763227bd8b1bf2df0ce2c/lib4package-0.3.2-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/07/4d/4e98d47cbfca9a45e62ff86eab29eff770fd355df9452e48480d89ede7ef/lib4sbom-0.8.4-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/44/5b/fa477e4fd8e62c722febdc52462d7b037a77aa963c3e400a8e90e8f0d2c0/ptvsd-4.3.2-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/6c/73/9f872cb81fc5c3bb48f7227872c28975f998f3e7c2b1c16e95e6432bbb90/python_magic-0.4.27-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/3a/fd/e5dae179943e631ae1d2b1903d73d7060ea9a82242e922abc685e33b6679/sbom2dot-0.3.2-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/dc/6f/09acbe8b17a427e89f92ed03ae2b102aa77f911f094834214e82d0d36416/sbom4files-0.4.5-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/5d/ab/ca69eca5d16b550d227df7616ab24f32d528903a3f1305953ad038adecaa/sbom4python-0.12.3-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/6a/23/8146aad7d88f4fcb3a6218f41a60f6c2d4e3a72de72da1825dc7c8f7877c/semantic_version-2.10.0-py2.py3-none-any.whl
       - pypi: ./python/ribasim
       - pypi: ./python/ribasim_api
       - pypi: ./python/ribasim_testmodels
@@ -2775,7 +2804,14 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zlib-1.3.1-h8359307_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zstandard-0.23.0-py311h917b07b_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zstd-1.5.7-h6491c7d_2.conda
+      - pypi: https://files.pythonhosted.org/packages/23/72/a6feae158a2188f457ca8f50d8d4d29a3affeed763227bd8b1bf2df0ce2c/lib4package-0.3.2-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/07/4d/4e98d47cbfca9a45e62ff86eab29eff770fd355df9452e48480d89ede7ef/lib4sbom-0.8.4-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/44/5b/fa477e4fd8e62c722febdc52462d7b037a77aa963c3e400a8e90e8f0d2c0/ptvsd-4.3.2-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/6c/73/9f872cb81fc5c3bb48f7227872c28975f998f3e7c2b1c16e95e6432bbb90/python_magic-0.4.27-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/3a/fd/e5dae179943e631ae1d2b1903d73d7060ea9a82242e922abc685e33b6679/sbom2dot-0.3.2-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/dc/6f/09acbe8b17a427e89f92ed03ae2b102aa77f911f094834214e82d0d36416/sbom4files-0.4.5-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/5d/ab/ca69eca5d16b550d227df7616ab24f32d528903a3f1305953ad038adecaa/sbom4python-0.12.3-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/6a/23/8146aad7d88f4fcb3a6218f41a60f6c2d4e3a72de72da1825dc7c8f7877c/semantic_version-2.10.0-py2.py3-none-any.whl
       - pypi: ./python/ribasim
       - pypi: ./python/ribasim_api
       - pypi: ./python/ribasim_testmodels
@@ -3282,7 +3318,15 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/zlib-1.3.1-h2466b09_2.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstandard-0.23.0-py311he736701_2.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstd-1.5.7-hbeecb71_2.conda
+      - pypi: https://files.pythonhosted.org/packages/23/72/a6feae158a2188f457ca8f50d8d4d29a3affeed763227bd8b1bf2df0ce2c/lib4package-0.3.2-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/07/4d/4e98d47cbfca9a45e62ff86eab29eff770fd355df9452e48480d89ede7ef/lib4sbom-0.8.4-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/44/5b/fa477e4fd8e62c722febdc52462d7b037a77aa963c3e400a8e90e8f0d2c0/ptvsd-4.3.2-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/6c/73/9f872cb81fc5c3bb48f7227872c28975f998f3e7c2b1c16e95e6432bbb90/python_magic-0.4.27-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/07/c2/094e3d62b906d952537196603a23aec4bcd7c6126bf80eb14e6f9f4be3a2/python_magic_bin-0.4.14-py2.py3-none-win_amd64.whl
+      - pypi: https://files.pythonhosted.org/packages/3a/fd/e5dae179943e631ae1d2b1903d73d7060ea9a82242e922abc685e33b6679/sbom2dot-0.3.2-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/dc/6f/09acbe8b17a427e89f92ed03ae2b102aa77f911f094834214e82d0d36416/sbom4files-0.4.5-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/5d/ab/ca69eca5d16b550d227df7616ab24f32d528903a3f1305953ad038adecaa/sbom4python-0.12.3-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/6a/23/8146aad7d88f4fcb3a6218f41a60f6c2d4e3a72de72da1825dc7c8f7877c/semantic_version-2.10.0-py2.py3-none-any.whl
       - pypi: ./python/ribasim
       - pypi: ./python/ribasim_api
       - pypi: ./python/ribasim_testmodels
@@ -9002,6 +9046,22 @@ packages:
   purls: []
   size: 164701
   timestamp: 1745264384716
+- pypi: https://files.pythonhosted.org/packages/23/72/a6feae158a2188f457ca8f50d8d4d29a3affeed763227bd8b1bf2df0ce2c/lib4package-0.3.2-py2.py3-none-any.whl
+  name: lib4package
+  version: 0.3.2
+  sha256: 6466d7274ab94f0ec7a15aaa5620752ce483b3aff887ec745214f72897ef469e
+  requires_dist:
+  - requests
+  requires_python: '>=3.8'
+- pypi: https://files.pythonhosted.org/packages/07/4d/4e98d47cbfca9a45e62ff86eab29eff770fd355df9452e48480d89ede7ef/lib4sbom-0.8.4-py2.py3-none-any.whl
+  name: lib4sbom
+  version: 0.8.4
+  sha256: 380d123426348ece43cae8976b49e6ebc4e85bccd6db02dc394a2fa97cf6776c
+  requires_dist:
+  - pyyaml>=5.4
+  - semantic-version
+  - defusedxml
+  requires_python: '>=3.7'
 - conda: https://conda.anaconda.org/conda-forge/linux-64/libabseil-20250127.1-cxx17_hbbce691_0.conda
   sha256: 65d5ca837c3ee67b9d769125c21dc857194d7f6181bb0e7bd98ae58597b457d0
   md5: 00290e549c5c8a32cc271020acc9ec6b
@@ -19393,6 +19453,15 @@ packages:
   - pkg:pypi/python-json-logger?source=hash-mapping
   size: 13383
   timestamp: 1677079727691
+- pypi: https://files.pythonhosted.org/packages/6c/73/9f872cb81fc5c3bb48f7227872c28975f998f3e7c2b1c16e95e6432bbb90/python_magic-0.4.27-py2.py3-none-any.whl
+  name: python-magic
+  version: 0.4.27
+  sha256: c212960ad306f700aa0d01e5d7a325d20548ff97eb9920dcd29513174f0294d3
+  requires_python: '>=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*'
+- pypi: https://files.pythonhosted.org/packages/07/c2/094e3d62b906d952537196603a23aec4bcd7c6126bf80eb14e6f9f4be3a2/python_magic_bin-0.4.14-py2.py3-none-win_amd64.whl
+  name: python-magic-bin
+  version: 0.4.14
+  sha256: 90be6206ad31071a36065a2fc169c5afb5e0355cbe6030e87641c6c62edc2b69
 - conda: https://conda.anaconda.org/conda-forge/noarch/python-tzdata-2025.2-pyhd8ed1ab_0.conda
   sha256: e8392a8044d56ad017c08fec2b0eb10ae3d1235ac967d0aab8bd7b41c4a5eaf0
   md5: 88476ae6ebd24f39261e0854ac244f33
@@ -21323,6 +21392,34 @@ packages:
   purls: []
   size: 358164
   timestamp: 1749095480268
+- pypi: https://files.pythonhosted.org/packages/3a/fd/e5dae179943e631ae1d2b1903d73d7060ea9a82242e922abc685e33b6679/sbom2dot-0.3.2-py2.py3-none-any.whl
+  name: sbom2dot
+  version: 0.3.2
+  sha256: e8264b1a2cea4fb8d033380d3027284529cef587bf0123bd1973d7a7f03cdeb7
+  requires_dist:
+  - lib4sbom>=0.7.2
+  requires_python: '>=3.7'
+- pypi: https://files.pythonhosted.org/packages/dc/6f/09acbe8b17a427e89f92ed03ae2b102aa77f911f094834214e82d0d36416/sbom4files-0.4.5-py2.py3-none-any.whl
+  name: sbom4files
+  version: 0.4.5
+  sha256: 7ff51c08f66f6158ff75587987e6428ae8110f51355939bb7c9f9800112351ea
+  requires_dist:
+  - lib4sbom>=0.8.0
+  - python-magic
+  - python-magic-bin ; sys_platform == 'win32'
+  requires_python: '>=3.7'
+- pypi: https://files.pythonhosted.org/packages/5d/ab/ca69eca5d16b550d227df7616ab24f32d528903a3f1305953ad038adecaa/sbom4python-0.12.3-py2.py3-none-any.whl
+  name: sbom4python
+  version: 0.12.3
+  sha256: 46ac0698c268db0565791ebd53eef04d71190b2e29697a5b36253e7766033880
+  requires_dist:
+  - lib4package>=0.3.1
+  - lib4sbom>=0.8.0
+  - sbom2dot>=0.3.0
+  - sbom4files>=0.4.4
+  - importlib-metadata>=3.6 ; python_full_version < '3.10'
+  - toml ; python_full_version < '3.11'
+  requires_python: '>=3.7'
 - conda: https://conda.anaconda.org/conda-forge/linux-64/scikit-learn-1.7.0-py311h57cc02b_1.conda
   sha256: 9f66d0945d0924831af8c24e171512293d5b7359aa76f085ab058918d3454944
   md5: 0b15df8c52975d1482a18d9102f9ff92
@@ -21611,6 +21708,24 @@ packages:
   - pkg:pypi/secretstorage?source=hash-mapping
   size: 31601
   timestamp: 1725915741329
+- pypi: https://files.pythonhosted.org/packages/6a/23/8146aad7d88f4fcb3a6218f41a60f6c2d4e3a72de72da1825dc7c8f7877c/semantic_version-2.10.0-py2.py3-none-any.whl
+  name: semantic-version
+  version: 2.10.0
+  sha256: de78a3b8e0feda74cabc54aab2da702113e33ac9d9eb9d2389bcf1f58b7d9177
+  requires_dist:
+  - django>=1.11 ; extra == 'dev'
+  - nose2 ; extra == 'dev'
+  - tox ; extra == 'dev'
+  - check-manifest ; extra == 'dev'
+  - coverage ; extra == 'dev'
+  - flake8 ; extra == 'dev'
+  - wheel ; extra == 'dev'
+  - zest-releaser[recommended] ; extra == 'dev'
+  - readme-renderer<25.0 ; python_full_version == '3.4.*' and extra == 'dev'
+  - colorama<=0.4.1 ; python_full_version == '3.4.*' and extra == 'dev'
+  - sphinx ; extra == 'doc'
+  - sphinx-rtd-theme ; extra == 'doc'
+  requires_python: '>=2.7'
 - conda: https://conda.anaconda.org/conda-forge/noarch/send2trash-1.8.3-pyh0d859eb_1.conda
   sha256: 00926652bbb8924e265caefdb1db100f86a479e8f1066efe395d5552dde54d02
   md5: 938c8de6b9de091997145b3bf25cdbf9
