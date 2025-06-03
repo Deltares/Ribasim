@@ -461,7 +461,7 @@ version = "1.7.0"
 [[deps.DataInterpolations]]
 deps = ["EnumX", "FindFirstFunctions", "ForwardDiff", "LinearAlgebra", "PrettyTables", "RecipesBase", "Reexport"]
 git-tree-sha1 = "a68ef5bedadb5de421f9f77df42886d806639289"
-repo-rev = "master"
+repo-rev = "38d1817"
 repo-url = "https://github.com/SciML/DataInterpolations.jl.git"
 uuid = "82cc6244-b520-54b8-b5a6-8a565e85f1d0"
 version = "8.0.1"
