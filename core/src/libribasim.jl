@@ -10,7 +10,7 @@ last_error_message::String = ""
 
 # After update and update_until we need to return an integer status code
 # indicating success (zero) or failure (nonzero)
-update_retcode(model)::Cint = !successful_retcode(model)
+update_retcode(model)::Cint = !successful_retcode(model.integrator.sol)
 
 """
     @try_c(ex)
