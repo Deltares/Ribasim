@@ -144,20 +144,7 @@ function Model(config::Config)::Model
             error("Invalid discrete control state definition(s).")
         end
 
-        (;
-            basin,
-            discrete_control,
-            flow_boundary,
-            flow_demand,
-            graph,
-            level_boundary,
-            level_demand,
-            outlet,
-            pid_control,
-            pump,
-            tabulated_rating_curve,
-            user_demand,
-        ) = p_non_diff
+        (; basin, graph, outlet, pid_control, pump, tabulated_rating_curve) = p_non_diff
         if !valid_pid_connectivity(pid_control.node_id, pid_control.listen_node_id, graph)
             error("Invalid PidControl connectivity.")
         end
@@ -176,37 +163,7 @@ function Model(config::Config)::Model
 
         # Tell the solver to stop at all data points from timeseries,
         # extrapolating periodically if applicable.
-        tstops = Vector{Float64}[]
-        for interpolations in [
-            basin.forcing.drainage,
-            basin.forcing.infiltration,
-            basin.forcing.potential_evaporation,
-            basin.forcing.precipitation,
-            flow_boundary.flow_rate,
-            flow_demand.demand_itp,
-            level_boundary.level,
-            level_demand.max_level,
-            level_demand.min_level,
-            pid_control.derivative,
-            pid_control.integral,
-            pid_control.proportional,
-            pid_control.target,
-            tabulated_rating_curve.current_interpolation_index,
-            user_demand.demand_itp...,
-            user_demand.return_factor,
-            reduce(
-                vcat,
-                [
-                    [cv.greater_than for cv in cvs] for
-                    cvs in discrete_control.compound_variables
-                ];
-                init = ScalarConstantInterpolation[],
-            )...,
-        ]
-            for itp in interpolations
-                push!(tstops, get_timeseries_tstops(itp, t_end))
-            end
-        end
+        tstops = get_timeseries_tstops(p_non_diff, t_end)
 
     finally
         # always close the database, also in case of an error
@@ -231,7 +188,7 @@ function Model(config::Config)::Model
 
     saveat = convert_saveat(config.solver.saveat, t_end)
     saveat isa Float64 && push!(tstops, range(0, t_end; step = saveat))
-    tstops = sort(unique(vcat(tstops...)))
+    tstops = sort(unique(reduce(vcat, tstops)))
     adaptive, dt = convert_dt(config.solver.dt)
 
     jac_prototype, jac, tgrad = get_diff_eval(du0, u0, parameters, config.solver)

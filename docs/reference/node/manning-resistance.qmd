@@ -129,7 +129,7 @@ if the head in basin $b$ is larger than in basin $a$.
 This expression however has a derivative which tends to $\infty$ as $\Delta h$ tends to $0$, which can lead to instabilities in simulation. Therefore we use the modified expression
 
 $$
-Q = \frac{A}{n} R_h^{2/3}s\left(\frac{\Delta h}{L}; 10^{-5}\right),
+Q = \phi\frac{A}{n} R_h^{2/3}s\left(\frac{\Delta h}{L}; 10^{-5}\right),
 $$
 
 where $s$ is a relaxed square root function:
@@ -169,6 +169,8 @@ ax.plot(x, y_o, ls = ":", label = r"sign$(x)\sqrt{|x|}$")
 ax.plot(x, y_s, color = "C0", label = r"$s\left(x; 10^{-3}\right)$")
 ax.legend();
 ```
+
+and $\phi$ is the reduction factor which makes the flow go smoothly to $0$ as the upstream storage (as determined by the flow direction) becomes smaller than $10 \;\text{m}^3$.
 
 :::{.callout-note}
 The computation of $S_f$ is not exact: we base it on a representative area and hydraulic radius, rather than integrating $S_f$ along the length of a reach.

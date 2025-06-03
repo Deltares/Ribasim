@@ -1067,9 +1067,62 @@ function find_index(x::Symbol, s::OrderedSet{Symbol})
 end
 
 function get_timeseries_tstops(
-    itp::AbstractInterpolation,
-    endtime::Float64,
-)::Vector{Float64}
+    p_non_diff::ParametersNonDiff,
+    t_end::Float64,
+)::Vector{Vector{Float64}}
+    (;
+        basin,
+        flow_boundary,
+        flow_demand,
+        level_boundary,
+        level_demand,
+        pid_control,
+        tabulated_rating_curve,
+        user_demand,
+        discrete_control,
+    ) = p_non_diff
+    tstops = Vector{Float64}[]
+
+    # For nodes that have multiple timeseries associated with them defined in the same table
+    # (e.g. multiple Basin forcings and multiple PID terms)
+    # only one timeseries is used as all timeseries use the same timesteps
+    get_timeseries_tstops!(tstops, t_end, basin.forcing.precipitation)
+    get_timeseries_tstops!(tstops, t_end, flow_boundary.flow_rate)
+    get_timeseries_tstops!(tstops, t_end, flow_demand.demand_itp)
+    get_timeseries_tstops!(tstops, t_end, level_boundary.level)
+    get_timeseries_tstops!(tstops, t_end, level_demand.min_level)
+    get_timeseries_tstops!(tstops, t_end, pid_control.target)
+    get_timeseries_tstops!(
+        tstops,
+        t_end,
+        tabulated_rating_curve.current_interpolation_index,
+    )
+    get_timeseries_tstops!(tstops, t_end, user_demand.return_factor)
+    for row in user_demand.demand_itp
+        get_timeseries_tstops!(tstops, t_end, row)
+    end
+    for compound_variables in discrete_control.compound_variables
+        for compound_variable in compound_variables
+            get_timeseries_tstops!(tstops, t_end, compound_variable.greater_than)
+        end
+    end
+
+    return tstops
+end
+
+function get_timeseries_tstops!(
+    tstops::Vector{Vector{Float64}},
+    t_end::Float64,
+    interpolations::AbstractArray{<:AbstractInterpolation},
+)::Nothing
+    for itp in interpolations
+        push!(tstops, get_timeseries_tstops(itp, t_end))
+    end
+    return nothing
+end
+
+function get_timeseries_tstops(itp::AbstractInterpolation, t_end::Float64)::Vector{Float64}
+    # Timepoints where the interpolation transitions to a new section
     transition_ts = get_transition_ts(itp)
 
     # The length of the period
@@ -1081,7 +1134,7 @@ function get_timeseries_tstops(
     # How many periods forward from first(transition_ts) are needed
     nT_forward =
         itp.extrapolation_right == Periodic ?
-        Int(ceil((endtime - first(transition_ts)) / T)) : 0
+        Int(ceil((t_end - first(transition_ts)) / T)) : 0
 
     tstops = Float64[]
 
@@ -1089,15 +1142,12 @@ function get_timeseries_tstops(
         # Append the timepoints of the interpolation shifted by an integer amount of
         # periods to the tstops, filtering out values outside the simulation period
         if i == nT_forward
-            append!(tstops, filter(t -> 0 ≤ t ≤ endtime, transition_ts .+ i * T))
+            append!(tstops, filter(t -> 0 ≤ t ≤ t_end, transition_ts .+ i * T))
         else
             # Because of floating point errors last(transition_ts) = first(transition_ts) + T
             # does not always hold exactly, so to prevent that these become separate
             # very close tstops we only use the last time point of the period in the last period
-            append!(
-                tstops,
-                filter(t -> 0 ≤ t ≤ endtime, transition_ts[1:(end - 1)] .+ i * T),
-            )
+            append!(tstops, filter(t -> 0 ≤ t ≤ t_end, transition_ts[1:(end - 1)] .+ i * T))
         end
     end
 
@@ -1105,10 +1155,10 @@ function get_timeseries_tstops(
 end
 
 """Get the exponential time stops for decreasing the tolerance."""
-function get_log_tstops(starttime, endtime)::Vector{Float64}
+function get_log_tstops(starttime, t_end)::Vector{Float64}
     log_tstops = Float64[]
     t = 60 * 60
-    while Second(t) <= round(endtime - starttime, Second)
+    while Second(t) <= round(t_end - starttime, Second)
         push!(log_tstops, t)
         t *= 2.0
     end

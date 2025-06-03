@@ -1628,6 +1628,8 @@ function Parameters(db::DB, config::Config)::Parameters
         config.solver.water_balance_reltol,
         u_prev_saveat = zeros(n_states),
         node_id,
+        do_concentration = config.experimental.concentration,
+        do_subgrid = config.results.subgrid,
     )
 
     collect_control_mappings!(p_non_diff)
