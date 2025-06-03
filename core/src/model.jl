@@ -32,7 +32,7 @@ end
 Get the Jacobian evaluation function via DifferentiationInterface.jl.
 The time derivative is also supplied in case a Rosenbrock method is used.
 """
-function get_diff_eval(du::CVector, u::CVector, p::Parameters, solver::Solver)
+function get_diff_eval(du::Vector, u::Vector, p::Parameters, solver::Solver)
     (; p_non_diff, diff_cache, p_mutable) = p
     backend = get_ad_type(solver)
     sparsity_detector = TracerSparsityDetector()
@@ -215,7 +215,7 @@ function Model(config::Config)::Model
     @debug "Read database into memory."
 
     u0 = build_state_vector(parameters.p_non_diff)
-    reltol, relmask = build_reltol_vector(u0, config.solver.reltol)
+    reltol, relmask = build_reltol_vector(u0, config.solver.reltol, parameters.p_non_diff)
     parameters.p_non_diff.relmask .= relmask
     du0 = zero(u0)
 

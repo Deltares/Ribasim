@@ -531,7 +531,7 @@ Get the reference to a parameter
 function get_diff_cache_ref(
     node_id::NodeID,
     variable::String,
-    state_ranges::StateTuple{UnitRange{Int}};
+    state_ranges::StateRanges;
     listen::Bool = true,
 )::Tuple{DiffCacheRef, Bool}
     errors = false
@@ -571,11 +571,8 @@ end
 """
 Set references to all variables that are listened to by discrete/continuous control
 """
-function set_listen_diff_cache_refs!(
-    p_non_diff::ParametersNonDiff,
-    state_ranges::StateTuple{UnitRange{Int}},
-)::Nothing
-    (; discrete_control, continuous_control) = p_non_diff
+function set_listen_diff_cache_refs!(p_non_diff::ParametersNonDiff)::Nothing
+    (; discrete_control, continuous_control, state_ranges) = p_non_diff
     compound_variable_sets =
         [discrete_control.compound_variables..., continuous_control.compound_variable]
     errors = false
@@ -652,7 +649,7 @@ function set_target_ref!(
     target_ref::Vector{DiffCacheRef},
     node_id::Vector{NodeID},
     controlled_variable::Vector{String},
-    state_ranges::StateTuple{UnitRange{Int}},
+    state_ranges::StateRanges,
     graph::MetaGraph,
 )::Nothing
     errors = false
@@ -724,7 +721,7 @@ end
 Compute the residual of the non-linear solver, i.e. a measure of the
 error in the solution to the implicit equation defined by the solver algorithm
 """
-function residual(z::CVector, integrator, nlsolver, f::TF) where {TF}
+function residual(z, integrator, nlsolver, f::TF) where {TF}
     (; uprev, t, p, dt, opts, isdae) = integrator
     (; tmp, ztmp, γ, α, cache, method) = nlsolver
     (; ustep, atmp, tstep, k, invγdt, tstep, k, invγdt) = cache
@@ -757,7 +754,7 @@ function OrdinaryDiffEqNonlinearSolve.relax!(
     linesearch::MonitoredBackTracking,
 )
     (; linesearch, dz_tmp, z_tmp) = linesearch
-    atmp = nlsolver.cache.atmp
+    atmp::Vector{Float64} = nlsolver.cache.atmp
 
     let dz = dz,
         integrator = integrator,
@@ -794,7 +791,7 @@ function OrdinaryDiffEqNonlinearSolve.relax!(
 end
 
 "Create a NamedTuple of the node IDs per state component in the state order"
-function state_node_ids(p::Union{ParametersNonDiff, NamedTuple})::StateTuple{Vector{NodeID}}
+function state_node_ids(p::Union{ParametersNonDiff, NamedTuple})::NamedTuple
     (;
         tabulated_rating_curve = p.tabulated_rating_curve.node_id,
         pump = p.pump.node_id,
@@ -809,31 +806,27 @@ function state_node_ids(p::Union{ParametersNonDiff, NamedTuple})::StateTuple{Vec
     )
 end
 
-"Create the axis of the state vector"
-function count_state_ranges(u_ids::StateTuple{Vector{NodeID}})::StateTuple{UnitRange{Int}}
-    StateTuple{UnitRange{Int}}(ranges(map(length, collect(u_ids))))
-end
-
 function build_state_vector(p_non_diff::ParametersNonDiff)
     # It is assumed that the horizontal flow states come first in
     # p_non_diff.state_inflow_link and p_non_diff.state_outflow_link
     u_ids = state_node_ids(p_non_diff)
-    state_ranges = count_state_ranges(u_ids)
-    data = zeros(length(p_non_diff.node_id))
-    u = CVector(data, state_ranges)
-    # Ensure p_non_diff.node_id, state_ranges and u have the same length and order
+    state_ranges = p_non_diff.state_ranges
+    u = zeros(length(p_non_diff.node_id))
+    # Ensure p_non_diff.node_id, p_non_diff.state_ranges and u have the same length and order
     ranges = (getproperty(state_ranges, x) for x in propertynames(state_ranges))
     @assert length(u) == length(p_non_diff.node_id) == mapreduce(length, +, ranges)
-    @assert keys(u_ids) == state_components
+    @assert keys(u_ids) == fieldnames(StateRanges)
     return u
 end
 
-function build_reltol_vector(u0::CVector, reltol::Float64)
+function build_reltol_vector(u0::Vector, reltol::Float64, p_non_diff::ParametersNonDiff)
     reltolv = fill(reltol, length(u0))
     mask = trues(length(u0))
     # Mask the non-cumulative states
-    for (node, range) in pairs(getaxes(u0))
-        if node in (:integral,)
+    names = fieldnames(StateRanges)
+    for name in names
+        range = getproperty(p_non_diff.state_ranges, name)
+        if name === :integral
             mask[range] .= false
         end
     end
@@ -841,7 +834,7 @@ function build_reltol_vector(u0::CVector, reltol::Float64)
 end
 
 function build_flow_to_storage(
-    state_ranges::StateTuple{UnitRange{Int}},
+    state_ranges::StateRanges,
     n_states::Int,
     basin::Basin,
     connector_nodes::NamedTuple,
@@ -900,7 +893,7 @@ function get_state_flow_links(
     placeholder_link =
         LinkMetadata(0, LinkType.flow, (NodeID(:Terminal, 0, 0), NodeID(:Terminal, 0, 0)))
 
-    for node_name in state_components
+    for node_name in fieldnames(StateRanges)
         if hasproperty(nodes, node_name)
             node::AbstractParameterNode = getproperty(nodes, node_name)
             for id in node.node_id
@@ -948,7 +941,7 @@ Use the inflow Boolean argument to disambiguite for node types that have multipl
 Can return nothing for node types that do not have a state, like Terminal.
 """
 function get_state_index(
-    state_ranges::StateTuple{UnitRange{Int}},
+    state_ranges::StateRanges,
     id::NodeID;
     inflow::Bool = true,
 )::Union{Int, Nothing}
@@ -967,10 +960,7 @@ function get_state_index(
 end
 
 "Get the state index of the to-node of the link if it exists, otherwise the from-node."
-function get_state_index(
-    state_ranges::StateTuple{UnitRange{Int}},
-    link::Tuple{NodeID, NodeID},
-)::Int
+function get_state_index(state_ranges::StateRanges, link::Tuple{NodeID, NodeID})::Int
     idx = get_state_index(state_ranges, link[2])
     isnothing(idx) ? get_state_index(state_ranges, link[1]; inflow = false) : idx
 end

@@ -1574,7 +1574,7 @@ function Parameters(db::DB, config::Config)::Parameters
     )
     node_id = reduce(vcat, u_ids)
     n_states = length(node_id)
-    state_ranges = count_state_ranges(u_ids)
+    state_ranges = StateRanges(u_ids)
     flow_to_storage = build_flow_to_storage(state_ranges, n_states, basin, connector_nodes)
     state_inflow_link, state_outflow_link = get_state_flow_links(graph, nodes)
 
@@ -1608,10 +1608,11 @@ function Parameters(db::DB, config::Config)::Parameters
         config.solver.water_balance_reltol,
         u_prev_saveat = zeros(n_states),
         node_id,
+        state_ranges,
     )
 
     collect_control_mappings!(p_non_diff)
-    set_listen_diff_cache_refs!(p_non_diff, state_ranges)
+    set_listen_diff_cache_refs!(p_non_diff)
     set_discrete_controlled_variable_refs!(p_non_diff)
 
     # Allocation data structures

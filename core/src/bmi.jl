@@ -41,7 +41,8 @@ This uses a typeassert to ensure that the return type annotation doesn't create 
 function BMI.get_value_ptr(model::Model, name::String)::Vector{Float64}
     (; u, p) = model.integrator
     (; p_non_diff, diff_cache) = p
-    (; basin, user_demand, subgrid) = p_non_diff
+    (; state_ranges, basin, user_demand, subgrid) = p_non_diff
+    (; infiltration, user_demand_inflow) = state_ranges
 
     if name == "basin.storage"
         diff_cache.current_storage
@@ -52,7 +53,7 @@ function BMI.get_value_ptr(model::Model, name::String)::Vector{Float64}
     elseif name == "basin.drainage"
         basin.vertical_flux.drainage::Vector{Float64}
     elseif name == "basin.cumulative_infiltration"
-        unsafe_array(u.infiltration)::Vector{Float64}
+        unsafe_array(view(u, infiltration))::Vector{Float64}
     elseif name == "basin.cumulative_drainage"
         basin.cumulative_drainage::Vector{Float64}
     elseif name == "basin.subgrid_level"
@@ -60,7 +61,7 @@ function BMI.get_value_ptr(model::Model, name::String)::Vector{Float64}
     elseif name == "user_demand.demand"
         vec(user_demand.demand)::Vector{Float64}
     elseif name == "user_demand.cumulative_inflow"
-        unsafe_array(u.user_demand_inflow)::Vector{Float64}
+        unsafe_array(view(u, user_demand_inflow))::Vector{Float64}
     else
         error("Unknown variable $name")
     end
