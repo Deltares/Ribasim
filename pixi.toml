@@ -180,7 +180,7 @@ scripts = ["utils/unset-ssl-cert.bat"]
 
 [dependencies]
 datacompy = ">=0.16"
-geopandas = ">=1.0"
+geopandas = "1.0.*"
 gh = "*"
 hatch = "*"
 hatchling = "*"

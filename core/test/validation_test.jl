@@ -1,32 +1,8 @@
-@testitem "Basin profile validation" begin
-    using Ribasim: NodeID, valid_profiles
-    using Logging
-    using StructArrays: StructVector
-
-    node_id = [NodeID(:Basin, 1, 1)]
-    level = [[0.0, 0.0, 1.0]]
-    area = [[0.0, 100.0, 90]]
-
-    logger = TestLogger(; min_level = Debug)
-    with_logger(logger) do
-        @test !valid_profiles(node_id, level, area)
-    end
-    @test length(logger.logs) == 3
-    @test logger.logs[1].level == Error
-    @test logger.logs[1].message ==
-          "Basin #1 profile has repeated levels, this cannot be interpolated."
-    @test logger.logs[2].level == Error
-    @test logger.logs[2].message ==
-          "Basin #1 profile cannot start with area <= 0 at the bottom for numerical reasons."
-    @test logger.logs[2].kwargs[:area] == 0
-    @test logger.logs[3].level == Error
-    @test logger.logs[3].message == "Basin #1 profile cannot have decreasing areas."
-end
 
 @testitem "Q(h) validation" begin
     import SQLite
     using Logging
-    using Ribasim: NodeID, qh_interpolation, ScalarInterpolation
+    using Ribasim: NodeID, qh_interpolation, ScalarLinearInterpolation
 
     node_id = NodeID(:TabulatedRatingCurve, 1, 1)
     level = [1.0, 2.0]
@@ -38,7 +14,7 @@ end
     @test itp(1.5) ≈ 0.05
     @test itp(2.0) ≈ 0.1
     @test itp(3.0) ≈ 0.2
-    @test itp isa ScalarInterpolation
+    @test itp isa ScalarLinearInterpolation
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/invalid_qh/ribasim.toml")
     @test ispath(toml_path)
@@ -480,4 +456,61 @@ end
     with_logger(logger) do
         @test_throws "Node ID not found" Ribasim.NodeID(:Pump, 20, v)
     end
+end
+
+@testitem "Validate consistent basin initialization with invalid profiles" begin
+    using Ribasim: BasinProfileV1, validate_consistent_basin_initialization
+    using StructArrays: StructVector
+
+    # Profile with repeated levels
+    levels_repeated = [0, 1, 1, 2, 3, 4]
+    areas_valid = [1, 2, 3, 4, 5, 6]
+    n = length(levels_repeated)
+    node = fill(1, n)
+    skipped = fill(missing, n)
+
+    # Profile with repeated levels should give an error
+    profiles_repeated_levels = StructVector{BasinProfileV1}(;
+        node_id = node,
+        level = levels_repeated,
+        area = areas_valid,
+        storage = skipped,
+    )
+    error = validate_consistent_basin_initialization(profiles_repeated_levels)
+    @test error
+
+    # Profile with non-increasing storage should give an error
+    levels_valid = [0, 1, 2, 3, 4, 5]
+    storage_non_increasing = [10, 10, 9, 8, 8, 7]
+
+    profiles_non_increasing_storage = StructVector{BasinProfileV1}(;
+        node_id = node,
+        level = levels_valid,
+        area = skipped,
+        storage = storage_non_increasing,
+    )
+    error = validate_consistent_basin_initialization(profiles_non_increasing_storage)
+    @test error
+
+    # Profile with zero area at the bottom should give an error
+    areas_with_zero = [0, 1, 2, 3, 4, 5]
+
+    profiles_zero_area = StructVector{BasinProfileV1}(;
+        node_id = node,
+        level = levels_valid,
+        area = areas_with_zero,
+        storage = skipped,
+    )
+    error = validate_consistent_basin_initialization(profiles_zero_area)
+    @test error
+
+    # Profile with no storage and area should error
+    profiles_missing_data = StructVector{BasinProfileV1}(;
+        node_id = node,
+        level = levels_valid,
+        area = skipped,
+        storage = skipped,
+    )
+    error = validate_consistent_basin_initialization(profiles_missing_data)
+    @test error
 end

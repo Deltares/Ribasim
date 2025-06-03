@@ -227,7 +227,7 @@ end
 
     @test success(model)
     @test length(model.integrator.sol) == 2 # start and end
-    @test diff_cache.current_storage ≈ Float32[804.22156, 803.6474, 495.18243, 1318.3053] skip =
+    @test diff_cache.current_storage ≈ Float32[797.561, 797.112, 510.737, 1130.005] skip =
         Sys.isapple() atol = 1.5
 
     @test length(logger.logs) > 10
@@ -266,7 +266,7 @@ end
     (; p_non_diff, diff_cache) = model.integrator.p
     precipitation = p_non_diff.basin.vertical_flux.precipitation
     @test length(precipitation) == 4
-    @test diff_cache.current_storage ≈ Float32[698.6895, 698.143, 420.57407, 1334.486] atol =
+    @test diff_cache.current_storage ≈ Float32[702.262, 701.802, 439.235, 1136.969] atol =
         2.0 skip = Sys.isapple()
 end
 
@@ -297,7 +297,7 @@ end
     @test success(sparse_fdm)
     @test success(dense_fdm)
 
-    @test dense_ad.integrator.u ≈ sparse_ad.integrator.u atol = 0.3
+    @test dense_ad.integrator.u ≈ sparse_ad.integrator.u atol = 0.4
     @test sparse_fdm.integrator.u ≈ sparse_ad.integrator.u atol = 4
     @test dense_fdm.integrator.u ≈ sparse_ad.integrator.u atol = 4
 
@@ -692,4 +692,70 @@ end
     @test all(x -> abs(x) < 1e-10, basin_table.storage[3:end])
     @test all(x -> abs(x) < 1e-10, basin_table.storage_rate[3:end])
     @test all(x -> abs(x) < 1e-10, basin_table.infiltration[3:end])
+end
+
+@testitem "FlowBoundary interpolation type" begin
+    using DataInterpolations: LinearInterpolation, SmoothedConstantInterpolation
+    using DataFrames
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/flow_boundary_interpolation/ribasim.toml",
+    )
+    @test ispath(toml_path)
+
+    model = Ribasim.Model(toml_path)
+    (; flow_rate) = model.integrator.p.p_non_diff.flow_boundary
+    (; interpolation) = model.config
+
+    @test interpolation.flow_boundary == "block"
+    @test flow_rate isa Vector{<:SmoothedConstantInterpolation}
+    itp = only(flow_rate)
+    @test itp.d_max == interpolation.block_transition_period == 0.0
+    Ribasim.solve!(model)
+
+    flow_rates_input = itp.u
+    flow_rates_output =
+        filter(row -> row.from_node_id == 1, DataFrame(Ribasim.flow_table(model))).flow_rate
+    @test flow_rates_output[1:4] ≈ flow_rates_input
+    @test flow_rates_output[4:7] ≈ flow_rates_input
+
+    config = Ribasim.Config(toml_path; interpolation_flow_boundary = "linear")
+    model = Ribasim.Model(config)
+    (; flow_rate) = model.integrator.p.p_non_diff.flow_boundary
+    (; interpolation) = model.config
+
+    @test interpolation.flow_boundary == "linear"
+    @test flow_rate isa Vector{<:LinearInterpolation}
+end
+
+@testitem "init_basin_only_storage" begin
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/basic_basin_only_storage/ribasim.toml",
+    )
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+    @test model isa Ribasim.Model
+    @test success(model)
+end
+
+@testitem "init_basin_only_area" begin
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/basic_basin_only_area/ribasim.toml")
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+    @test model isa Ribasim.Model
+    @test success(model)
+end
+
+@testitem "init_basin_both_area_and_storage" begin
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/basic_basin_both_area_and_storage/ribasim.toml",
+    )
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+    @test model isa Ribasim.Model
+    @test success(model)
 end
