@@ -147,8 +147,8 @@ node_id |  area  | level  | storage |
 
 We use the symbol $A$ for area, $h$ for level and $S$ for storage.
 The profile provides a function $A(h)$ for each basin.
-Internally this get converted to two functions, $A(S)$ and $h(S)$.
-When $A$ is missing, we take the finite difference $S$ with respect to $h$.
+Internally this get converted to two functions, $A(h)$ and $h(S)$.
+When $A$ is missing, we take the derivative of $S$ with respect to $h$.
 When $S$ is missing, we integrate $A(h)$ with respect to $h$.
 The area at the top level is used to convert precipitation flux to an inflow.
 
