@@ -676,3 +676,17 @@ end
 
     model = Ribasim.run(toml_path)
 end
+
+@testitem "Drought" begin
+    using DataFrames
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/drought/ribasim.toml")
+    @test ispath(toml_path)
+
+    model = Ribasim.run(toml_path)
+    @test success(model)
+
+    basin_table = DataFrame(Ribasim.basin_table(model))
+    filter!(:node_id => ==(2189), basin_table)
+    @test all(x -> abs(x) < 1e-10, basin_table.storage_rate[3:end])
+    @test all(x -> abs(x) < 1e-10, basin_table.infiltration[3:end])
+end

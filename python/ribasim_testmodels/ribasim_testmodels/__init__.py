@@ -27,6 +27,7 @@ from ribasim_testmodels.basic import (
     basic_model,
     basic_transient_model,
     cyclic_time_model,
+    drought_model,
     outlet_model,
     tabulated_rating_curve_model,
 )
@@ -90,6 +91,7 @@ __all__ = [
     "cyclic_demand_model",
     "cyclic_time_model",
     "discrete_control_of_pid_control_model",
+    "drought_model",
     "fair_distribution_model",
     "flow_boundary_time_model",
     "flow_condition_model",
