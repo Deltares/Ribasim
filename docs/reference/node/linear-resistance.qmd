@@ -22,9 +22,10 @@ A LinearResistance connects two Basins together.
 The flow between the two Basins is determined by a linear relationship, up to an optional maximum flow rate:
 
 $$
-Q_\text{linear\_resistance} = \mathrm{clamp}\left(\frac{h_a - h_b}{R}, -Q_{\max}, Q_{\max}\right)
+Q_\text{linear\_resistance} = \phi\mathrm{clamp}\left(\frac{h_a - h_b}{R}, -Q_{\max}, Q_{\max}\right)
 $$
 
 Here $h_a$ is the water level in the incoming Basin and $h_b$ is the water level in the outgoing Basin.
 $R$ is the resistance of the link, and $Q_{\max}$ is the maximum flow rate.
 Water flows from high to low; either direction is possible.
+$\phi$ is the reduction factor which makes the flow go smoothly to $0$ as the upstream storage (as determined by the flow direction) becomes smaller than $10 \;\text{m}^3$.

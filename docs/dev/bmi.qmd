@@ -27,15 +27,15 @@ The following pointers to memory containing Ribasim internal arrays are given vi
 
 string                          | meaning                                | type    | unit         | temporal type         | writable  | sorted by
 ------------------------------- | -------------------------------------- | ------- | ------------ | --------------------- | --------  |----------
-`basin.storage`                 | storage per basin                      | Float64 | $m^3$        | instantaneous         | no        | basin node ID
-`basin.level`                   | level per basin                        | Float64 | $m$          | instantaneous         | no        |  basin node ID
-`basin.infiltration`            | infiltration flux per basin            | Float64 | $m^3 s^{-1}$ | forward fill          | yes       |  basin node ID
-`basin.drainage`                | drainage flux per basin                | Float64 | $m^3 s^{-1}$ | forward fill          | yes       |  basin node ID
-`basin.infiltration_integrated` | cumulative infiltration per basin      | Float64 | $m^3$        | integrated from start | yes       |  basin node ID
-`basin.drainage_integrated`     | cumulative drainage per basin          | Float64 | $m^3$        | integrated from start | yes       |  basin node ID
-`basin.subgrid_level`           | subgrid level                          | Float64 | $m$          | instantaneous         | no        |  subgrid ID
-`user_demand.demand`            | demand per node ID per priority        | Float64 | $m^3 s^{-1}$ | forward fill          | yes       |  user_demand node ID, priority index
-`user_demand.realized`          | cumulative intake flow per user        | Float64 | $m^3$        | integrated from start | yes       |  user_demand node ID
+`basin.storage`                 | storage per basin                      | Float64 | $\text{m}^3$        | instantaneous         | no        | basin node ID
+`basin.level`                   | level per basin                        | Float64 | $\text{m}$          | instantaneous         | no        |  basin node ID
+`basin.infiltration`            | infiltration flux per basin            | Float64 | $\text{m}^3 \text{s}^{-1}$ | forward fill          | yes       |  basin node ID
+`basin.drainage`                | drainage flux per basin                | Float64 | $\text{m}^3 \text{s}^{-1}$ | forward fill          | yes       |  basin node ID
+`basin.infiltration_integrated` | cumulative infiltration per basin      | Float64 | $\text{m}^3$        | integrated from start | yes       |  basin node ID
+`basin.drainage_integrated`     | cumulative drainage per basin          | Float64 | $\text{m}^3$        | integrated from start | yes       |  basin node ID
+`basin.subgrid_level`           | subgrid level                          | Float64 | $\text{m}$          | instantaneous         | no        |  subgrid ID
+`user_demand.demand`            | demand per node ID per priority        | Float64 | $\text{m}^3 \text{s}^{-1}$ | forward fill          | yes       |  user_demand node ID, priority index
+`user_demand.realized`          | cumulative intake flow per user        | Float64 | $\text{m}^3$        | integrated from start | yes       |  user_demand node ID
 
 Additional notes:
 
