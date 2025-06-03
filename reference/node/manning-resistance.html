@@ -535,7 +535,7 @@ Q = \textrm{sign}(\Delta h) \frac{A}{n} R_h^{2/3}\sqrt{\frac{|\Delta h|}{L} }
 <p>The <span class="math inline">\(\textrm{sign}(\Delta h)\)</span> term causes the direction of the flow to reverse if the head in basin <span class="math inline">\(b\)</span> is larger than in basin <span class="math inline">\(a\)</span>.</p>
 <p>This expression however has a derivative which tends to <span class="math inline">\(\infty\)</span> as <span class="math inline">\(\Delta h\)</span> tends to <span class="math inline">\(0\)</span>, which can lead to instabilities in simulation. Therefore we use the modified expression</p>
 <p><span class="math display">\[
-Q = \frac{A}{n} R_h^{2/3}s\left(\frac{\Delta h}{L}; 10^{-5}\right),
+Q = \phi\frac{A}{n} R_h^{2/3}s\left(\frac{\Delta h}{L}; 10^{-5}\right),
 \]</span></p>
 <p>where <span class="math inline">\(s\)</span> is a relaxed square root function:</p>
 <p><span class="math display">\[
@@ -548,7 +548,7 @@ s(x; x_0)
   \end{cases}
 \end{align}
 \]</span></p>
-<div id="6258b5fc" class="cell" data-execution_count="1">
+<div id="1b2f6dc9" class="cell" data-execution_count="1">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> numpy <span class="im">as</span> np</span>
@@ -581,6 +581,7 @@ s(x; x_0)
 </div>
 </div>
 </div>
+<p>and <span class="math inline">\(\phi\)</span> is the reduction factor which makes the flow go smoothly to <span class="math inline">\(0\)</span> as the upstream storage (as determined by the flow direction) becomes smaller than <span class="math inline">\(10 \;\text{m}^3\)</span>.</p>
 <div class="callout callout-style-default callout-note callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">

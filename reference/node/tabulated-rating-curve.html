@@ -488,7 +488,7 @@ window.Quarto = {
 <section id="interpolation" class="level3" data-number="1.1.1">
 <h3 data-number="1.1.1" class="anchored" data-anchor-id="interpolation"><span class="header-section-number">1.1.1</span> Interpolation</h3>
 <p>The <span class="math inline">\(Q(h)\)</span> relationship of a tabulated rating curve is defined as a linear interpolation.</p>
-<div id="9c473228" class="cell" data-execution_count="1">
+<div id="38bf4e5a" class="cell" data-execution_count="1">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> numpy <span class="im">as</span> np</span>
@@ -649,9 +649,9 @@ Q = \phi f(h)
 <li><span class="math inline">\(f\)</span> is a piecewise linear function describing the given rating curve <span class="math inline">\(Q(h)\)</span></li>
 <li><span class="math inline">\(\phi\)</span> is the reduction factor, which smoothly reduces flow based on all of these criteria:
 <ul>
-<li>The upstream volume is below <span class="math inline">\(10 m^3\)</span>.</li>
-<li>The upstream level is less than <span class="math inline">\(0.02 m\)</span> above the downstream level.</li>
-<li>The downstream level is above <code>max_downstream_level</code> - <span class="math inline">\(0.02 m\)</span></li>
+<li>The upstream volume is below <span class="math inline">\(10 \;\text{m}^3\)</span>.</li>
+<li>The upstream level is less than <span class="math inline">\(0.02 \;\text{m}\)</span> above the downstream level.</li>
+<li>The downstream level is above <code>max_downstream_level</code> - <span class="math inline">\(0.02 \;\text{m}\)</span></li>
 </ul></li>
 </ul>
 
