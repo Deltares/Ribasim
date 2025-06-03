@@ -27,12 +27,16 @@
         @test libribasim.initialize(toml_path_ptr) == 0
         @test libribasim.model isa Ribasim.Model
         @test libribasim.model.integrator.t == 0.0
+        @test libribasim.update_retcode(libribasim.model) == 1
 
         @test libribasim.get_current_time(time_ptr) == 0
         @test time[1] == 0.0
 
         @test libribasim.get_var_type(var_name_ptr, type_ptr) == 0
         @test unsafe_string(type_ptr) == "double"
+
+        @test libribasim.update() == 0
+        @test libribasim.update_retcode(libribasim.model) == 0
 
         @test libribasim.finalize() == 0
         @test libribasim.model === nothing

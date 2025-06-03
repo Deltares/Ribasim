@@ -2,10 +2,15 @@ module libribasim
 
 import BasicModelInterface as BMI
 import ..Ribasim
+using SciMLBase: successful_retcode
 
 # globals
 model::Union{Ribasim.Model, Nothing} = nothing
 last_error_message::String = ""
+
+# After update and update_until we need to return an integer status code
+# indicating success (zero) or failure (nonzero)
+update_retcode(model)::Cint = !successful_retcode(model)
 
 """
     @try_c(ex)
@@ -90,14 +95,14 @@ Base.@ccallable function update()::Cint
     @try_c begin
         BMI.update(model)
     end
-    return 0
+    return update_retcode(model)
 end
 
 Base.@ccallable function update_until(time::Cdouble)::Cint
     @try_c begin
         BMI.update_until(model, time)
     end
-    return 0
+    return update_retcode(model)
 end
 
 Base.@ccallable function update_subgrid_level()::Cint
