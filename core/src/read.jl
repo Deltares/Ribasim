@@ -820,7 +820,7 @@ function ConcentrationData(
     )
 end
 
-function Basin(db::DB, config::Config, graph::MetaGraph)
+function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     static = load_structvector(db, config, BasinStaticV1)
     time = load_structvector(db, config, BasinTimeV1)
     state = load_structvector(db, config, BasinStateV1)
@@ -848,27 +848,12 @@ function Basin(db::DB, config::Config, graph::MetaGraph)
     errors |= parse_forcing!(:drainage)
     errors |= parse_forcing!(:infiltration)
 
-    # Profiles
-    area, level = create_storage_tables(db, config)
+    profiles = load_structvector(db, config, BasinProfileV1)
 
-    if !valid_profiles(node_id, level, area)
-        error("Invalid Basin / profile table.")
-        errors = true
-    end
+    errors |= validate_consistent_basin_initialization(profiles)
+    errors && error("Errors encountered when parsing Basin data.")
 
-    map!(
-        (A, h) -> LinearInterpolation(
-            A,
-            h;
-            extrapolation_left = ConstantExtrapolation,
-            extrapolation_right = Extension,
-            cache_parameters = true,
-        ),
-        basin.level_to_area,
-        area,
-        level,
-    )
-    map!(invert_integral, basin.storage_to_level, basin.level_to_area)
+    interpolate_basin_profile!(basin, profiles)
 
     # Inflow and outflow links
     map!(id -> collect(inflow_ids(graph, id)), basin.inflow_ids, node_id)
@@ -881,8 +866,6 @@ function Basin(db::DB, config::Config, graph::MetaGraph)
     basin.storage0 .= storage0
     basin.storage_prev .= storage0
     basin.concentration_data.mass .*= storage0  # was initialized by concentration_state, resulting in mass
-
-    errors && error("Errors encountered when parsing Basin data.")
 
     basin
 end
@@ -1814,22 +1797,42 @@ function load_structvector(
     return sorted_table!(table)
 end
 
-"Read the Basin / profile table and return all area and level and computed storage values"
-function create_storage_tables(
-    db::DB,
-    config::Config,
-)::Tuple{Vector{Vector{Float64}}, Vector{Vector{Float64}}}
-    profiles = load_structvector(db, config, BasinProfileV1)
-    area = Vector{Vector{Float64}}()
-    level = Vector{Vector{Float64}}()
+"""
+Compute the finite difference approximation of the vector `f` with respect to vector `x`.
 
-    for group in IterTools.groupby(row -> row.node_id, profiles)
-        group_area = getproperty.(group, :area)
-        group_level = getproperty.(group, :level)
-        push!(area, group_area)
-        push!(level, group_level)
+Taking the derivative of an n-sized vector f, give us a n-1 sized derivative vector dfdx,
+since the computed derivatives are located in between x_i and x_i+1.
+
+Mapping these derivatives to an n-sized vector dfdx requires choosing a value at the lower bound (dfdx₀).
+
+As default we use dfdx = const = dfdx[0] = dfdx[1] =  (f[2] - f[1]) / (x[2] - x[1]),
+"""
+function finite_difference(
+    f::Vector{Float64},
+    x::Vector{Float64},
+    dfdx₀::Float64 = (f[2] - f[1]) / (x[2] - x[1]),
+)::Vector{Float64}
+    dfdx = zeros(Float64, length(x))
+    dfdx[1] = dfdx₀  # Set the first derivative value
+
+    for i in 1:(length(x) - 1)
+        Δf = f[i + 1] - f[i]
+        Δx = x[i + 1] - x[i]
+        dfdx[i + 1] = 2 * Δf / Δx - dfdx[i]
     end
-    return area, level
+    dfdx
+end
+
+"""trapezoidal integration"""
+function trapz_integrate(dfdx::Vector{Float64}, x::Vector{Float64})::Vector{Float64}
+    n = length(dfdx)
+    f = zeros(Float64, n)
+
+    for i in 1:(n - 1)
+        Δx = x[i + 1] - x[i]
+        f[i + 1] = f[i] + 0.5 * (dfdx[i + 1] + dfdx[i]) * Δx
+    end
+    f
 end
 
 "Determine all substances present in the input over multiple tables"
@@ -1869,5 +1872,49 @@ function set_concentrations!(
             node_idx = findfirst(node_id -> node_id.value == first_row.node_id, node_ids)
             concentration[node_idx, sub_idx] = value
         end
+    end
+end
+
+function interpolate_basin_profile!(
+    basin::Basin,
+    profiles::StructVector{BasinProfileV1},
+)::Nothing
+    for (i, group) in enumerate(IterTools.groupby(row -> row.node_id, profiles))
+        group_area = getproperty.(group, :area)
+        group_level = getproperty.(group, :level)
+        group_storage = getproperty.(group, :storage)
+
+        # If there is no storage as input, we integrate A(h)
+        if all(ismissing, group_storage)
+            group_storage = trapz_integrate(group_area, group_level)
+        end
+
+        # We always differentiate storage with respect to level such that we can use invert_integral
+        # We treat level-area and storage-level as independent relations.
+        dS_dh = if ismissing(group_area[1])
+            finite_difference(group_storage, group_level)
+        else
+            finite_difference(group_storage, group_level, group_area[1])
+        end
+
+        level_to_area = LinearInterpolation(
+            dS_dh,
+            group_level;
+            extrapolation = ConstantExtrapolation,
+            cache_parameters = true,
+        )
+
+        basin.storage_to_level[i] =
+            invert_integral(level_to_area; extrapolation_right = ExtrapolationType.Linear)
+
+        if !all(ismissing, group_area)
+            level_to_area = LinearInterpolation(
+                group_area,
+                group_level;
+                extrapolation = ConstantExtrapolation,
+                cache_parameters = true,
+            )
+        end
+        basin.level_to_area[i] = level_to_area
     end
 end
