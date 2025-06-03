@@ -687,6 +687,9 @@ end
 
     basin_table = DataFrame(Ribasim.basin_table(model))
     filter!(:node_id => ==(2189), basin_table)
+
+    # Check that Basin #2189 is running dry and thus the infiltration and storage rate are close to 0
+    @test all(x -> abs(x) < 1e-10, basin_table.storage[3:end])
     @test all(x -> abs(x) < 1e-10, basin_table.storage_rate[3:end])
     @test all(x -> abs(x) < 1e-10, basin_table.infiltration[3:end])
 end

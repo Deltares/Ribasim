@@ -462,7 +462,7 @@ def cyclic_time_model() -> Model:
 
 
 def drought_model() -> Model:
-    """Create a small subsection of the LHM Vecht model containing a drought situation."""
+    """Create a small subsection of the LHM Vechtstromen model containing a basin that runs dry (#2189)."""
     model = Model(
         starttime="2020-01-01 00:00:00", endtime="2021-01-01 00:00:00", crs="EPSG:28992"
     )
