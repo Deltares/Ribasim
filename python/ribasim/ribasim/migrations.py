@@ -141,3 +141,10 @@ def discretecontrolconditionschema_migration(
         df["time"] = [None] * n_rows
         df["condition_id"] = range(1, n_rows + 1)
     return df
+
+
+def basinprofileschema_migration(df: DataFrame, schema_version: int) -> DataFrame:
+    if schema_version < 6:
+        warnings.warn("Migrating outdated Basin / profile table.", UserWarning)
+        df["storage"] = None
+    return df
