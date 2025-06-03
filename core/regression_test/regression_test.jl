@@ -20,6 +20,8 @@
                     solver_algorithm = solver,
                     solver_sparse = sparse_on_off,
                     solver_autodiff = autodiff_on_off,
+                    solver_abstol = 1e-7,
+                    solver_reltol = 1e-7,
                 )
                 model = Ribasim.run(config)
                 @test model isa Ribasim.Model
@@ -39,8 +41,8 @@
                 @testset "Results values" begin
                     @test basin.storage[1] ≈ 1.0f0
                     @test basin.level[1] ≈ 0.044711584f0
-                    @test basin.storage[end] ≈ 16.513230433478157f0
-                    @test basin.level[end] ≈ 0.18172274663230828f0
+                    @test basin.storage[end] ≈ 16.530443267f0
+                    @test basin.level[end] ≈ 0.181817438
                     @test flow.flow_rate[1] ≈ basin.outflow_rate[1]
                     @test all(q -> abs(q) < 1e-7, basin.balance_error)
                     @test all(err -> abs(err) < 0.01, basin.relative_error)

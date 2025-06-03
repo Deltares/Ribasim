@@ -31,7 +31,7 @@ install = { depends-on = [
 # Julia
 update-registry-julia = { cmd = "julia --eval='using Pkg; Registry.update()'" }
 update-manifest-julia = { cmd = "julia --project utils/update-manifest.jl" }
-instantiate-julia = { cmd = "julia --project --eval='using Pkg; Pkg.instantiate()'" }
+instantiate-julia = { cmd = "julia --project --check-bounds=yes --eval='using Pkg; Pkg.instantiate()'" }
 initialize-julia = { depends-on = [
     "update-registry-julia",
     "instantiate-julia",
@@ -86,16 +86,16 @@ s3-upload = { cmd = "python utils/s3_upload.py {{ source }} {{ destination }}", 
     "source", "destination"
 ] }
 test-ribasim-cli = "pytest --numprocesses=4 --basetemp=build/tests/temp --junitxml=report.xml build/tests"
-test-ribasim-core = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test()'", depends-on = [
+test-ribasim-core = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test(allow_reresolve=false)'", depends-on = [
     "generate-testmodels",
 ] }
 test-ribasim-migration = { cmd = "pytest --numprocesses=4 -m regression python/ribasim/tests", depends-on = [
     { task = "s3-download", args = ["hws_migration_test/", "hws_migration_test/"] },
 ] }
-test-ribasim-core-cov = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test(coverage=true, julia_args=[\"--check-bounds=yes\"])'", depends-on = [
+test-ribasim-core-cov = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test(allow_reresolve=false, coverage=true, julia_args=[\"--check-bounds=yes\"])'", depends-on = [
     "generate-testmodels",
 ] }
-test-ribasim-regression = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test(julia_args=[\"--check-bounds=yes\"], test_args=[\"regression\"])'", depends-on = [
+test-ribasim-regression = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test(allow_reresolve=false, julia_args=[\"--check-bounds=yes\"], test_args=[\"regression\"])'", depends-on = [
     "generate-testmodels",
     "test-ribasim-migration",
     { task = "s3-download", args = ["benchmark/", "benchmark/"] },
@@ -110,7 +110,7 @@ generate-testmodels = { cmd = "python utils/generate-testmodels.py", inputs = [
 tests = { depends-on = ["lint", "test-ribasim-python", "test-ribasim-core"] }
 delwaq = { cmd = "pytest python/ribasim/tests/test_delwaq.py" }
 gen-delwaq = { cmd = "python python/ribasim/ribasim/delwaq/generate.py" }
-model-integration-test = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test(test_args=[\"integration\"])'", depends-on = [
+model-integration-test = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test(allow_reresolve=false, test_args=[\"integration\"])'", depends-on = [
     { task = "s3-download", args = ["hws_2025_4_0/", "hws/"] },
 ] }
 # Codegen
@@ -180,7 +180,7 @@ scripts = ["utils/unset-ssl-cert.bat"]
 
 [dependencies]
 datacompy = ">=0.16"
-geopandas = ">=1.0"
+geopandas = "1.0.*"
 gh = "*"
 hatch = "*"
 hatchling = "*"
