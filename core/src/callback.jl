@@ -118,7 +118,7 @@ function decrease_tolerance!(u, t, integrator)::Nothing
         # as used in calculate_residuals, and compare to an estimated average magnitude
         cum_magnitude = opts.internalnorm(state, t)
         iszero(cum_magnitude) && continue
-        avg_magnitude = max(opts.internalnorm(1e4, t), cum_magnitude / t)  # allow for 1e4 m3/s
+        avg_magnitude = cum_magnitude / t
 
         # Decrease the relative tolerance based on their difference
         diff_norm = max(0, log10(cum_magnitude / avg_magnitude))
