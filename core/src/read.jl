@@ -201,10 +201,24 @@ function get_parameter_value(
 end
 
 # Map interpolation type -> constructor
-make_itp(::Type{<:LinearInterpolation}, args...; kwargs...) =
-    LinearInterpolation(args...; kwargs...)
-make_itp(::Type{<:ConstantInterpolation}, args...; kwargs...) =
-    ConstantInterpolation(args...; kwargs...)
+make_itp(::Type{<:LinearInterpolation}, u, t; extrapolation, kwargs...) =
+    LinearInterpolation(u, t; cache_parameters = true, extrapolation)
+make_itp(::Type{<:ConstantInterpolation}, u, t; extrapolation, kwargs...) =
+    ConstantInterpolation(u, t; cache_parameters = true, extrapolation)
+make_itp(
+    ::Type{<:SmoothedConstantInterpolation},
+    u,
+    t;
+    extrapolation,
+    block_transition_period,
+    kwargs...,
+) = SmoothedConstantInterpolation(
+    u,
+    t;
+    cache_parameters = true,
+    extrapolation,
+    d_max = block_transition_period,
+)
 
 # Get interpolation parameter value
 function get_parameter_value(
@@ -240,7 +254,7 @@ function get_parameter_value(
         u,
         t;
         extrapolation = cyclic_time ? Periodic : ConstantExtrapolation,
-        cache_parameters = true,
+        config.interpolation.block_transition_period,
     )
     return itp, valid
 end
@@ -283,7 +297,12 @@ function parse_parameter!(
 
     if has_default
         if is_itp
-            itp_default = make_itp(T, [default, default], [0.0, prevfloat(Inf)])
+            itp_default = make_itp(
+                T,
+                [default, default],
+                [0.0, prevfloat(Inf)];
+                extrapolation = ConstantExtrapolation,
+            )
         else
             @assert default isa T
         end
@@ -634,8 +653,9 @@ function FlowBoundary(db::DB, config::Config, graph::MetaGraph)
     concentration[:, Substance.Continuity] .= 1.0
     concentration[:, Substance.FlowBoundary] .= 1.0
     set_concentrations!(concentration, concentration_time, substances, node_id)
+    flow_rate = get_interpolation_vec(config.interpolation.flow_boundary, node_id)
 
-    flow_boundary = FlowBoundary(; node_id, concentration, concentration_time)
+    flow_boundary = FlowBoundary(; node_id, concentration, concentration_time, flow_rate)
 
     set_inoutflow_links!(flow_boundary, graph; inflow = false)
     errors = parse_parameter!(flow_boundary, config, :flow_rate; static, time, cyclic_times)
@@ -759,9 +779,9 @@ function ConcentrationData(
 
     concentration_external_data =
         load_structvector(db, config, BasinConcentrationExternalV1)
-    concentration_external = Dict{String, ScalarInterpolation}[]
+    concentration_external = Dict{String, ScalarLinearInterpolation}[]
     for (id, cyclic_time) in zip(node_id, cyclic_times)
-        concentration_external_id = Dict{String, ScalarInterpolation}()
+        concentration_external_id = Dict{String, ScalarLinearInterpolation}()
         data_id = filter(row -> row.node_id == id.value, concentration_external_data)
         for group in IterTools.groupby(row -> row.substance, data_id)
             first_row = first(group)
@@ -1035,7 +1055,7 @@ function continuous_control_functions(db, config, ids)
     errors = false
     # Parse the function table
     # Create linear interpolation objects out of the provided functions
-    functions = ScalarInterpolation[]
+    functions = ScalarLinearInterpolation[]
     controlled_variables = String[]
 
     # Loop over the IDs of the ContinuousControl nodes

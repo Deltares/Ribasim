@@ -2,7 +2,7 @@
 @testitem "Q(h) validation" begin
     import SQLite
     using Logging
-    using Ribasim: NodeID, qh_interpolation, ScalarInterpolation
+    using Ribasim: NodeID, qh_interpolation, ScalarLinearInterpolation
 
     node_id = NodeID(:TabulatedRatingCurve, 1, 1)
     level = [1.0, 2.0]
@@ -14,7 +14,7 @@
     @test itp(1.5) ≈ 0.05
     @test itp(2.0) ≈ 0.1
     @test itp(3.0) ≈ 0.2
-    @test itp isa ScalarInterpolation
+    @test itp isa ScalarLinearInterpolation
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/invalid_qh/ribasim.toml")
     @test ispath(toml_path)

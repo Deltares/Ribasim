@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import ribasim
 from ribasim import Model
-from ribasim.config import Experimental, Node, Solver
+from ribasim.config import Experimental, Interpolation, Node, Solver
 from ribasim.input_base import TableModel
 from ribasim.nodes import (
     basin,
@@ -410,6 +410,7 @@ def cyclic_time_model() -> Model:
         endtime="3021-01-01",
         crs="EPSG:28992",
         solver=Solver(saveat=7 * 24 * 60 * 60),
+        interpolation=Interpolation(flow_boundary="linear"),
     )
 
     bsn = model.basin.add(
@@ -457,6 +458,46 @@ def cyclic_time_model() -> Model:
     model.edge.add(bsn, lr)
     model.edge.add(lr, lb)
     model.edge.add(fb, bsn)
+
+    return model
+
+
+def flow_boundary_interpolation_model() -> Model:
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2020-01-09",
+        crs="EPSG:28992",
+        interpolation=Interpolation(flow_boundary="block", block_transition_period=0),
+    )
+
+    fb = model.flow_boundary.add(
+        Node(1, Point(0, 0), cyclic_time=True),
+        [
+            flow_boundary.Time(
+                time=["2020-01-01", "2020-01-02", "2020-01-03", "2020-01-04"],
+                flow_rate=[1e-3, 2.5e-3, 0.0, 1e-3],
+            )
+        ],
+    )
+
+    bsn = model.basin.add(
+        Node(2, Point(4, 0)),
+        [
+            basin.State(level=[1.0]),
+            basin.Profile(level=[0.0, 3.0], area=[1000.0, 1000.0]),
+        ],
+    )
+
+    trc = model.tabulated_rating_curve.add(
+        Node(3, Point(5, 0)),
+        [tabulated_rating_curve.Static(level=[0.0, 2.0], flow_rate=[0.0, 1e-3])],
+    )
+
+    tml = model.terminal.add(Node(4, Point(0, 12)))
+
+    model.link.add(fb, bsn)
+    model.link.add(bsn, trc)
+    model.link.add(trc, tml)
 
     return model
 

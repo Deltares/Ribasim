@@ -57,8 +57,13 @@ The absolute and relative tolerance for adaptive timestepping can be set with `a
 Finally there's the `evaporate_mass = true` setting, which determines whether mass is lost due to evaporation in water quality calculations, by default set to true.
 While physically incorrect, it is useful for a first correctness check on a model in terms of mass balance (Continuity tracer should always have a concentration of 1). To simulate increasing concentrations (e.g. salinity) due to evaporation, change the setting to `false`.
 
+## Interpolation settings
+There are the following interpolation settings:
+- `flow_boundary`: The interpolation type of flow boundary timeseries. This is `linear` by default, but can also be set to `block`.
+- `block_transition_period`: When an interpolation type is set to `block`, this parameter determines an interval in time on either side of each data point which is used to smooth the transition between data points. See also the [documentation](https://docs.sciml.ai/DataInterpolations/dev/methods/#Smoothed-Constant-Interpolation) for this interpolation type.
+
 ## Allocation settings
-Currently there are the following allocation settings:
+There are the following allocation settings:
 - `use_allocation`: A boolean which says whether allocation should be used or not;
 - `timestep`: A float value in seconds which dictates the update interval for allocations;
 - `source_priority`: An integer per source type for the allocation algorithm: `user_demand`, `boundary`, `level_demand`, `flow_demand`, `subnetwork_inlet`. Flow boundaries and level boundaries are combined in the single category `boundary`. By default all nodes of the same type have the same source priority, so to obtain a strict source ordering the sources are sorted by node ID for each source priority within a subnetwork.  When no default source priorities are specified, default defaults are applied (see the TOML example above).
