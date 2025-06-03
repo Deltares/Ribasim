@@ -31,7 +31,7 @@ install = { depends-on = [
 # Julia
 update-registry-julia = { cmd = "julia --eval='using Pkg; Registry.update()'" }
 update-manifest-julia = { cmd = "julia --project utils/update-manifest.jl" }
-instantiate-julia = { cmd = "julia --project --eval='using Pkg; Pkg.instantiate()'" }
+instantiate-julia = { cmd = "julia --project --check-bounds=yes --eval='using Pkg; Pkg.instantiate()'" }
 initialize-julia = { depends-on = [
     "update-registry-julia",
     "instantiate-julia",
