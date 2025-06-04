@@ -45,6 +45,7 @@ website:
         - section: "Coupling guides"
           contents:
             - guide/delwaq.ipynb
+        - guide/debug.qmd
     - title: "Concepts"
       contents:
         - concept/concept.qmd
@@ -93,7 +94,6 @@ website:
         - dev/bmi.qmd
         - dev/ci.qmd
         - dev/release.qmd
-        - dev/callstacks.qmd
         - section: QGIS
           contents:
             - dev/qgis.qmd

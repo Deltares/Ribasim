@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import ribasim
 from ribasim import Model
-from ribasim.config import Experimental, Node, Solver
+from ribasim.config import Experimental, Interpolation, Node, Solver
 from ribasim.input_base import TableModel
 from ribasim.nodes import (
     basin,
@@ -410,6 +410,7 @@ def cyclic_time_model() -> Model:
         endtime="3021-01-01",
         crs="EPSG:28992",
         solver=Solver(saveat=7 * 24 * 60 * 60),
+        interpolation=Interpolation(flow_boundary="linear"),
     )
 
     bsn = model.basin.add(
@@ -459,3 +460,173 @@ def cyclic_time_model() -> Model:
     model.edge.add(fb, bsn)
 
     return model
+
+
+def flow_boundary_interpolation_model() -> Model:
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2020-01-09",
+        crs="EPSG:28992",
+        interpolation=Interpolation(flow_boundary="block", block_transition_period=0),
+    )
+
+    fb = model.flow_boundary.add(
+        Node(1, Point(0, 0), cyclic_time=True),
+        [
+            flow_boundary.Time(
+                time=["2020-01-01", "2020-01-02", "2020-01-03", "2020-01-04"],
+                flow_rate=[1e-3, 2.5e-3, 0.0, 1e-3],
+            )
+        ],
+    )
+
+    bsn = model.basin.add(
+        Node(2, Point(4, 0)),
+        [
+            basin.State(level=[1.0]),
+            basin.Profile(level=[0.0, 3.0], area=[1000.0, 1000.0]),
+        ],
+    )
+
+    trc = model.tabulated_rating_curve.add(
+        Node(3, Point(5, 0)),
+        [tabulated_rating_curve.Static(level=[0.0, 2.0], flow_rate=[0.0, 1e-3])],
+    )
+
+    tml = model.terminal.add(Node(4, Point(0, 12)))
+
+    model.link.add(fb, bsn)
+    model.link.add(bsn, trc)
+    model.link.add(trc, tml)
+
+    return model
+
+
+def build_model_with_basin(model, basin_definition) -> Model:
+    # FlowBoundary nodes
+    data = pd.DataFrame({
+        "time": pd.date_range(start="2022-01-01", end="2023-01-01", freq="MS"),
+        "main": [74.7, 57.9, 63.2, 183.9, 91.8, 47.5, 32.6, 27.6, 26.5, 25.1, 39.3, 37.8, 57.9],
+        "minor": [16.3, 3.8, 3.0, 37.6, 18.2, 11.1, 12.9, 12.2, 11.2, 10.8, 15.1, 14.3, 11.8]
+    })  # fmt: skip
+    data["total"] = data["minor"] + data["main"]
+
+    main = model.flow_boundary.add(
+        Node(1, Point(0.0, 0.0), name="main"),
+        [
+            flow_boundary.Time(
+                time=data.time,
+                flow_rate=data.main,
+            )
+        ],
+    )
+
+    minor = model.flow_boundary.add(
+        Node(2, Point(-3.0, 0.0), name="minor"),
+        [
+            flow_boundary.Time(
+                time=data.time,
+                flow_rate=data.minor,
+            )
+        ],
+    )
+
+    confluence = model.basin.add(
+        Node(3, Point(-1.5, -1), name="basin"),
+        basin_definition,
+    )
+
+    weir = model.tabulated_rating_curve.add(
+        Node(4, Point(-1.5, -1.5), name="weir"),
+        [
+            tabulated_rating_curve.Static(
+                level=[0.0, 2, 5],
+                flow_rate=[0.0, 50, 200],
+            )
+        ],
+    )
+
+    sea = model.terminal.add(Node(5, Point(-1.5, -3.0), name="sea"))
+
+    model.link.add(main, confluence, name="main")
+    model.link.add(minor, confluence, name="minor")
+    model.link.add(confluence, weir)
+    model.link.add(weir, sea, name="sea")
+
+    return model
+
+
+def basic_basin_only_area_model() -> Model:
+    starttime = "2022-01-01"
+    endtime = "2023-01-01"
+
+    model = Model(
+        starttime=starttime,
+        endtime=endtime,
+        crs="EPSG:4326",
+    )
+
+    # a parabolic shaped (x^2 - 1) basin with a circular cross section
+    levels = [0, 1, 2, 3, 4, 5]
+    areas = [(level + 1) * np.pi for level in levels]
+    basin_definition = [
+        basin.Profile(
+            area=areas,
+            level=levels,
+        ),
+        basin.State(level=[4]),
+        basin.Time(time=[starttime, endtime]),
+    ]
+
+    return build_model_with_basin(model, basin_definition)
+
+
+def basic_basin_only_storage_model() -> Model:
+    starttime = "2022-01-01"
+    endtime = "2023-01-01"
+
+    model = Model(
+        starttime=starttime,
+        endtime=endtime,
+        crs="EPSG:4326",
+    )
+
+    levels = [0, 1, 2, 3, 4, 5]
+    storages = [np.pi / 2 * ((level + 1) ** 2 - 1) for level in levels]
+    basin_definition = [
+        basin.Profile(
+            level=levels,
+            storage=storages,
+        ),
+        basin.State(level=[4]),
+        basin.Time(time=[starttime, endtime]),
+    ]
+
+    return build_model_with_basin(model, basin_definition)
+
+
+def basic_basin_both_area_and_storage_model() -> Model:
+    starttime = "2022-01-01"
+    endtime = "2023-01-01"
+
+    model = Model(
+        starttime=starttime,
+        endtime=endtime,
+        crs="EPSG:4326",
+    )
+
+    # a parabolic shaped (x^2 - 1) basin with a circular cross section
+    levels = [0, 1, 2, 3, 4, 5]
+    areas = [(level + 1) * np.pi for level in levels]
+    storages = [np.pi / 2 * ((level + 1) ** 2 - 1) for level in levels]
+    basin_definition = [
+        basin.Profile(
+            area=areas,
+            level=levels,
+            storage=storages,
+        ),
+        basin.State(level=[4]),
+        basin.Time(time=[starttime, endtime]),
+    ]
+
+    return build_model_with_basin(model, basin_definition)

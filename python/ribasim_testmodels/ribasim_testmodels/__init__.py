@@ -24,9 +24,13 @@ from ribasim_testmodels.allocation import (
 from ribasim_testmodels.backwater import backwater_model
 from ribasim_testmodels.basic import (
     basic_arrow_model,
+    basic_basin_both_area_and_storage_model,
+    basic_basin_only_area_model,
+    basic_basin_only_storage_model,
     basic_model,
     basic_transient_model,
     cyclic_time_model,
+    flow_boundary_interpolation_model,
     outlet_model,
     tabulated_rating_curve_model,
 )
@@ -80,6 +84,9 @@ __all__ = [
     "backwater_model",
     "basic_arrow_model",
     "basic_model",
+    "basic_basin_only_area_model",
+    "basic_basin_only_storage_model",
+    "basic_basin_both_area_and_storage_model",
     "basic_transient_model",
     "bommelerwaard_model",
     "bucket_model",
@@ -91,6 +98,7 @@ __all__ = [
     "cyclic_time_model",
     "discrete_control_of_pid_control_model",
     "fair_distribution_model",
+    "flow_boundary_interpolation_model",
     "flow_boundary_time_model",
     "flow_condition_model",
     "flow_demand_model",

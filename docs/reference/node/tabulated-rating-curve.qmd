@@ -124,6 +124,6 @@ Where:
 - $h$ is the upstream water level
 - $f$ is a piecewise linear function describing the given rating curve $Q(h)$
 - $\phi$ is the reduction factor, which smoothly reduces flow based on all of these criteria:
-  - The upstream volume is below $10 m^3$.
-  - The upstream level is less than $0.02 m$ above the downstream level.
-  - The downstream level is above `max_downstream_level` - $0.02 m$
+  - The upstream volume is below $10 \;\text{m}^3$.
+  - The upstream level is less than $0.02 \;\text{m}$ above the downstream level.
+  - The downstream level is above `max_downstream_level` - $0.02 \;\text{m}$
