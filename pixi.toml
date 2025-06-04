@@ -29,14 +29,14 @@ install = { depends-on = [
     "install-pre-commit",
 ] }
 # Julia
-update-registry-julia = { cmd = "julia --eval='using Pkg; Registry.update()'" }
-update-manifest-julia = { cmd = "julia --project utils/update-manifest.jl" }
+update-registry-julia = { cmd = "julia --check-bounds=yes --eval='using Pkg; Registry.update()'" }
+update-manifest-julia = { cmd = "julia --check-bounds=yes --project utils/update-manifest.jl" }
 instantiate-julia = { cmd = "julia --project --check-bounds=yes --eval='using Pkg; Pkg.instantiate()'" }
 initialize-julia = { depends-on = [
     "update-registry-julia",
     "instantiate-julia",
 ] }
-generate-sbom-ribasim-core = { cmd = "julia --project -- utils/generate-sbom.jl", depends-on = [
+generate-sbom-ribasim-core = { cmd = "julia --project --check-bounds=yes -- utils/generate-sbom.jl", depends-on = [
     "instantiate-julia",
 ], inputs = [
     "core/Project.toml",
@@ -55,7 +55,7 @@ quarto-preview = { cmd = "quarto preview docs", depends-on = [
     "generate-testmodels",
 ] }
 quarto-check = { cmd = "quarto check all", depends-on = ["quartodoc-build"] }
-quarto-render = { cmd = "julia --project --eval 'using Pkg; Pkg.build(\"IJulia\")' && quarto render docs --to html --execute", depends-on = [
+quarto-render = { cmd = "julia --project --check-bounds=yes --eval 'using Pkg; Pkg.build(\"IJulia\")' && quarto render docs --to html --execute", depends-on = [
     "quartodoc-build",
     "generate-testmodels",
 ] }
@@ -74,7 +74,7 @@ lint = { depends-on = [
     "mypy-ribasim-qgis",
 ] }
 # Build
-build = { "cmd" = "julia --project build.jl", cwd = "build", depends-on = [
+build = { "cmd" = "julia --project --check-bounds=yes build.jl", cwd = "build", depends-on = [
     "generate-testmodels",
     "initialize-julia",
 ] }
@@ -97,10 +97,10 @@ test-ribasim-migration = { cmd = "pytest --numprocesses=4 -m regression python/r
         "hws_migration_test/",
     ] },
 ] }
-test-ribasim-core-cov = { cmd = "julia --project=core --check-bounds=yes --eval 'using Pkg; Pkg.test(allow_reresolve=false, coverage=true, julia_args=[\"--check-bounds=yes\"])'", depends-on = [
+test-ribasim-core-cov = { cmd = "julia --project=core --check-bounds=yes --eval 'using Pkg; Pkg.test(allow_reresolve=false, coverage=true)'", depends-on = [
     "generate-testmodels",
 ] }
-test-ribasim-regression = { cmd = "julia --project=core --check-bounds=yes --eval 'using Pkg; Pkg.test(allow_reresolve=false, julia_args=[\"--check-bounds=yes\"], test_args=[\"regression\"])'", depends-on = [
+test-ribasim-regression = { cmd = "julia --project=core --check-bounds=yes --eval 'using Pkg; Pkg.test(allow_reresolve=false, test_args=[\"regression\"])'", depends-on = [
     "generate-testmodels",
     "test-ribasim-migration",
     { task = "s3-download", args = [
