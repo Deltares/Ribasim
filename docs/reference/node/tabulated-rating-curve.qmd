@@ -32,7 +32,20 @@ Below the lowest given level of -0.10, the flow rate is kept at 0.
 Between given levels the flow rate is interpolated linearly.
 Above the maximum given level of 20.09, the flow rate keeps increases linearly according to the slope of the last segment.
 
-TESTESTEST
+For tabulated rating curves with a fixed maximum value (e.g. max capacity of a discharge gate), enter a new row and re-enter the maximum flow_rate at an incrementally higher level:
+
+node_id | flow_rate  | level
+------- |----------- |-------
+      2 | 0.0        | -0.10
+      2 | 0.0001     |  0.09
+      2 | 0.01       |  0.29
+      2 | 0.9        | 20.09
+      2 | 0.9        | 20.10
+
+Here, the trc has a maximum flow_rate of 0.9 for for all levels 20.09 or higher.
+
+Ribasim does not allow the flow rate to decrease at higher levels. To do so, a DiscreteControl node is needed to manipulate the flow_rate. 
+
 
 ### Interpolation
 
