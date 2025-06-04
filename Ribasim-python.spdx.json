@@ -6,12 +6,12 @@
     "creators": [
       "Tool: sbom4python-0.12.3"
     ],
-    "created": "2025-06-03T16:05:03Z",
+    "created": "2025-06-04T09:59:24Z",
     "licenseListVersion": "3.25"
   },
   "name": "Python-ribasim",
   "dataLicense": "CC0-1.0",
-  "documentNamespace": "http://spdx.org/spdxdocs/Python-ribasim-29bb6d34-3f79-46ee-babb-1010e93e127e",
+  "documentNamespace": "http://spdx.org/spdxdocs/Python-ribasim-55e98063-9356-4b19-898e-46c57bca35e9",
   "packages": [
     {
       "SPDXID": "SPDXRef-1-ribasim",
@@ -1162,23 +1162,23 @@
     {
       "SPDXID": "SPDXRef-27-typing-extensions",
       "name": "typing-extensions",
-      "versionInfo": "4.13.2",
+      "versionInfo": "4.14.0",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "Organization: Guido van Jukka ukasz Michael (levkivskyi@gmail.com)",
-      "downloadLocation": "https://pypi.org/project/typing-extensions/4.13.2/#files",
+      "downloadLocation": "https://pypi.org/project/typing-extensions/4.14.0/#files",
       "filesAnalyzed": false,
       "homepage": "https://github.com/python/typing_extensions",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "a439e7c04b49fec3e5d3e2beaa21755cadbbdc391694e28ccdd36ca4a1408f8c"
+          "checksumValue": "a1514509136dd0b477638fc68d6a91497af5076466ad0fa6c338e44e359944af"
         }
       ],
       "licenseConcluded": "NOASSERTION",
       "licenseDeclared": "NOASSERTION",
       "copyrightText": "NOASSERTION",
-      "summary": "Backported and Experimental Type Hints for Python 3.8+",
-      "releaseDate": "2025-04-10T14:19:03Z",
+      "summary": "Backported and Experimental Type Hints for Python 3.9+",
+      "releaseDate": "2025-06-02T14:52:10Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -1208,12 +1208,12 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/typing-extensions@4.13.2"
+          "referenceLocator": "pkg:pypi/typing-extensions@4.14.0"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:guido_van_jukka_ukasz_michael:typing-extensions:4.13.2:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:guido_van_jukka_ukasz_michael:typing-extensions:4.14.0:*:*:*:*:*:*:*"
         }
       ]
     },
