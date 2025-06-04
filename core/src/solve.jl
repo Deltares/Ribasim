@@ -106,7 +106,7 @@ function set_current_basin_properties!(u::CVector, p::Parameters, t::Number)::No
     for (id, s) in zip(basin.node_id, diff_cache.current_storage)
         i = id.idx
         diff_cache.current_low_storage_factor[i] =
-            reduction_factor(s, 100LOW_STORAGE_THRESHOLD)
+            reduction_factor(s, LOW_STORAGE_THRESHOLD)
         diff_cache.current_level[i] = get_level_from_storage(basin, i, s)
         diff_cache.current_area[i] = basin.level_to_area[i](diff_cache.current_level[i])
     end
