@@ -853,7 +853,12 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     errors |= validate_consistent_basin_initialization(profiles)
     errors && error("Errors encountered when parsing Basin data.")
 
-    interpolate_basin_profile!(basin, profiles, config)
+    areas, levels, storage, node_ids = interpolate_basin_profile!(basin, profiles)
+
+    if config.logging.verbosity == Debug
+        dir = joinpath(config.dir, config.results_dir)
+        output_basin_profiles(levels, areas, storage, node_ids, dir)
+    end
 
     # Inflow and outflow links
     map!(id -> collect(inflow_ids(graph, id)), basin.inflow_ids, node_id)
@@ -1875,12 +1880,14 @@ function set_concentrations!(
     end
 end
 
-function interpolate_basin_profile!(
-    basin::Basin,
-    profiles::StructVector{BasinProfileV1},
-    config::Config,
-)::Nothing
+function interpolate_basin_profile!(basin::Basin, profiles::StructVector{BasinProfileV1})
+    areas = Vector{Vector{Float64}}()
+    levels = Vector{Vector{Float64}}()
+    storage = Vector{Vector{Float64}}()
+
+    node_ids = Vector{Int32}()
     for (i, group) in enumerate(IterTools.groupby(row -> row.node_id, profiles))
+        push!(node_ids, first(group).node_id)
         group_area = getproperty.(group, :area)
         group_level = getproperty.(group, :level)
         group_storage = getproperty.(group, :storage)
@@ -1892,14 +1899,14 @@ function interpolate_basin_profile!(
 
         # We always differentiate storage with respect to level such that we can use invert_integral
         # We treat level-area and storage-level as independent relations.
-        dS_dh = if ismissing(group_area[1])
+        dS_dh_i = if ismissing(group_area[1])
             finite_difference(group_storage, group_level)
         else
             finite_difference(group_storage, group_level, group_area[1])
         end
 
         level_to_area = LinearInterpolation(
-            dS_dh,
+            dS_dh_i,
             group_level;
             extrapolation = ConstantExtrapolation,
             cache_parameters = true,
@@ -1916,23 +1923,57 @@ function interpolate_basin_profile!(
                 extrapolation = ConstantExtrapolation,
                 cache_parameters = true,
             )
-
         else
             # else the differentiated storage is used
-            group_area = dS_dh
+            group_area = dS_dh_i
         end
         basin.level_to_area[i] = level_to_area
 
-        if config.logging.verbosity == Debug
-            node_id = first(group).node_id
-            data = (; level = group_level, area = group_area, storage = group_storage)
-            filename = joinpath(
-                config.dir,
-                config.results_dir,
-                "basin_profile_node_$(node_id).csv",
-            )
-            mkpath(dirname(filename))  # Ensure the directory exists
-            DelimitedFiles.writedlm(filename, Tables.columntable(data))
-        end
+        push!(areas, group_area)
+        push!(levels, group_level)
+        push!(storage, group_storage)
     end
+
+    return areas, levels, storage, node_ids
+end
+
+function output_basin_profile(
+    group_level::Vector{Float64},
+    group_area::Vector{Float64},
+    group_storage::Vector{Float64},
+    node_id::Int32,
+    dir::AbstractString,
+    results_dir::AbstractString,
+)::nothing
+    data = (; level = group_level, area = group_area, storage = group_storage)
+    filename = joinpath(dir, results_dir, "basin_profile_node_$(node_id).csv")
+    DelimitedFiles.writedlm(filename, Tables.columntable(data))
+end
+
+function output_basin_profiles(
+    all_levels::Vector{Vector{Float64}},
+    all_areas::Vector{Vector{Float64}},
+    all_storage::Vector{Vector{Float64}},
+    all_node_ids::Vector{Int64},
+    dir::AbstractString,
+)::Nothing
+    # Flatten all data and add node_id column
+    n = sum(length.(all_levels))
+    level = Vector{Float64}(undef, n)
+    area = Vector{Float64}(undef, n)
+    storage = Vector{Float64}(undef, n)
+    node_id = Vector{Int32}(undef, n)
+    idx = 1
+    for (i, nid) in enumerate(all_node_ids)
+        len = length(all_levels[i])
+        level[idx:(idx + len - 1)] = all_levels[i]
+        area[idx:(idx + len - 1)] = all_areas[i]
+        storage[idx:(idx + len - 1)] = all_storage[i]
+        node_id[idx:(idx + len - 1)] .= nid
+        idx += len
+    end
+    data = (; node_id, level, area, storage)
+    filename = joinpath(dir, "basin_profiles.csv")
+    mkpath(dirname(filename))
+    DelimitedFiles.writedlm(filename, Tables.columntable(data), ',')
 end

@@ -726,24 +726,32 @@ end
 @testitem "debug interpolated relations" begin
     using Ribasim
     using DelimitedFiles: readdlm
-    toml_path = normpath(
+
+    levels = [[0.0, 1.0, 2.0, 3.0, 4.0, 5.0], [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]]
+    areas = [
+        [3.142, 6.283, 9.425, 12.566, 15.708, 18.850],
+        [3.142, 6.283, 9.425, 12.566, 15.708, 18.850],
+    ]
+    storages = [
+        [0.0, 4.712, 12.567, 23.562, 37.699, 54.978],
+        [0.0, 4.712, 12.567, 23.562, 37.699, 54.978],
+    ]
+    node_ids = [1, 2]
+    dir = joinpath(
         @__DIR__,
-        "../../generated_testmodels/basic_basin_both_area_and_storage/ribasim.toml",
+        "../../generated_testmodels/basic_basin_both_area_and_storage/results/",
     )
 
-    model = Ribasim.run(toml_path)
+    Ribasim.output_basin_profiles(levels, areas, storages, node_ids, dir)
+    filename = joinpath(dir, "basin_profiles.csv")
+    data = readdlm(filename, ',')
+    # Extract columns from data
+    level_col = data[2, :]
+    area_col = data[3, :]
+    storage_col = data[4, :]
 
-    levels = [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]
-    areas = [3.142, 6.283, 9.425, 12.566, 15.708, 18.850]
-    storages = [0.0, 4.712, 12.567, 23.562, 37.699, 54.978]
-
-    filename =
-        joinpath(model.config.dir, model.config.results_dir, "basin_profile_node_1.csv")
-
-    node_id = 1
-    data = readdlm(filename, ','; header = true)[1]
-    @test size(data, 1) == length(levels)
-    @test data[:, 1] ≈ levels
-    @test data[:, 2] ≈ areas
-    @test data[:, 3] ≈ storages
+    # Compare with expected values
+    @test level_col ≈ [levels[1]; levels[2]]
+    @test area_col ≈ [areas[1]; areas[2]]
+    @test storage_col ≈ [storages[1]; storages[2]]
 end
