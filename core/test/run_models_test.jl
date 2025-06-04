@@ -742,3 +742,41 @@ end
     @test model isa Ribasim.Model
     @test success(model)
 end
+
+@testitem "init_basin_both_area_and_storage" begin
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/basic_basin_both_area_and_storage/ribasim.toml",
+    )
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+    @test model isa Ribasim.Model
+    @test success(model)
+end
+
+@testitem "debug interpolated relations" begin
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/basic_basin_both_area_and_storage/ribasim.toml",
+    )
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+    @test model isa Ribasim.Model
+    @test success(model)
+
+    levels = [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]
+    areas = [3.142, 6.283, 9.425, 12.566, 15.708, 18.850]
+    storages = [0.0, 4.712, 12.567, 23.562, 37.699, 54.978]
+
+    filename =
+        joinpath(model.config.dir, model.config.results_dir, "basin_profile_node_1.csv")
+
+    using DelimitedFiles
+
+    node_id = 1
+    data = readdlm(filename, ','; header = true)[1]
+    @test size(data, 1) == length(levels)
+    @test data[:, 1] ≈ levels
+    @test data[:, 2] ≈ areas
+    @test data[:, 3] ≈ storages
+end

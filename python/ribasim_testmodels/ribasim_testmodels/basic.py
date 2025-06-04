@@ -614,6 +614,7 @@ def basic_basin_both_area_and_storage_model() -> Model:
         endtime=endtime,
         crs="EPSG:4326",
     )
+    model.logging = ribasim.Logging(verbosity="debug")
 
     # a parabolic shaped (x^2 - 1) basin with a circular cross section
     levels = [0, 1, 2, 3, 4, 5]

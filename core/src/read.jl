@@ -853,7 +853,7 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     errors |= validate_consistent_basin_initialization(profiles)
     errors && error("Errors encountered when parsing Basin data.")
 
-    interpolate_basin_profile!(basin, profiles)
+    interpolate_basin_profile!(basin, profiles, config)
 
     # Inflow and outflow links
     map!(id -> collect(inflow_ids(graph, id)), basin.inflow_ids, node_id)
@@ -1878,6 +1878,7 @@ end
 function interpolate_basin_profile!(
     basin::Basin,
     profiles::StructVector{BasinProfileV1},
+    config::Config,
 )::Nothing
     for (i, group) in enumerate(IterTools.groupby(row -> row.node_id, profiles))
         group_area = getproperty.(group, :area)
@@ -1908,13 +1909,30 @@ function interpolate_basin_profile!(
             invert_integral(level_to_area; extrapolation_right = ExtrapolationType.Linear)
 
         if !all(ismissing, group_area)
+            # if all data is present for area, we use it
             level_to_area = LinearInterpolation(
                 group_area,
                 group_level;
                 extrapolation = ConstantExtrapolation,
                 cache_parameters = true,
             )
+
+        else
+            # else the differentiated storage is used
+            group_area = dS_dh
         end
         basin.level_to_area[i] = level_to_area
+
+        if config.logging.verbosity == Debug
+            node_id = first(group).node_id
+            data = (; level = group_level, area = group_area, storage = group_storage)
+            filename = joinpath(
+                config.dir,
+                config.results_dir,
+                "basin_profile_node_$(node_id).csv",
+            )
+            mkpath(dirname(filename))  # Ensure the directory exists
+            DelimitedFiles.writedlm(filename, Tables.columntable(data))
+        end
     end
 end
