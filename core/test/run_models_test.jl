@@ -1,4 +1,4 @@
-@testitem "trivial model" begin
+@testitem "trivial model" setup = [Teamcity] begin
     using Tables: Tables
     using Tables.DataAPI: nrow
     using Dates: DateTime
@@ -42,7 +42,7 @@
     subgrid = Arrow.Table(subgrid_bytes)
     solver_stats = Arrow.Table(solver_stats_bytes)
 
-    @testset "Schema" begin
+    @testset Teamcity.TeamcityTestSet "Schema" begin
         @test Tables.schema(flow) == Tables.Schema(
             (:time, :link_id, :from_node_id, :to_node_id, :flow_rate),
             (DateTime, Union{Int32, Missing}, Int32, Int32, Float64),
@@ -96,7 +96,7 @@
         )
     end
 
-    @testset "Results size" begin
+    @testset Teamcity.TeamcityTestSet "Results size" begin
         nsaved = length(tsaves(model))
         @test nsaved > 10
         # t0 has no flow, 2 flow links
@@ -105,7 +105,7 @@
         @test nrow(subgrid) == nsaved * length(p_non_diff.subgrid.level)
     end
 
-    @testset "Results values" begin
+    @testset Teamcity.TeamcityTestSet "Results values" begin
         @test flow.time[1] == DateTime(2020)
         @test coalesce.(flow.link_id[1:2], -1) == [100, 101]
         @test flow.from_node_id[1:2] == [6, 0]
