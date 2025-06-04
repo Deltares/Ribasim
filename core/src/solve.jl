@@ -57,6 +57,20 @@ function water_balance!(
     return nothing
 end
 
+function formulate_flow_boundary!(p::Parameters, t::Number)::Nothing
+    (; p_non_diff, diff_cache, p_mutable) = p
+    (; node_id, flow_rate, active, cumulative_flow) = p_non_diff.flow_boundary
+    (; tprev) = p_mutable
+
+    for id in node_id
+        if active[id.idx]
+            diff_cache.current_cumulative_boundary_flow[id.idx] =
+                cumulative_flow[id.idx] + integral(flow_rate[id.idx], tprev, t)
+        end
+    end
+    return nothing
+end
+
 function formulate_continuous_control!(du::CVector, p::Parameters, t::Number)::Nothing
     (; compound_variable, target_ref, func) = p.p_non_diff.continuous_control
 
@@ -104,9 +118,8 @@ function formulate_storages!(
     t::Number;
     add_initial_storage::Bool = true,
 )::Nothing
-    (; p_non_diff, diff_cache, p_mutable) = p
+    (; p_non_diff, diff_cache) = p
     (; basin, flow_boundary, flow_to_storage) = p_non_diff
-    (; tprev) = p_mutable
     # Current storage: initial condition +
     # total inflows and outflows since the start
     # of the simulation
@@ -118,39 +131,21 @@ function formulate_storages!(
     mul!(diff_cache.current_storage, flow_to_storage, u, 1, 1)
     diff_cache.current_storage .+= diff_cache.current_cumulative_precipitation
     diff_cache.current_storage .+= diff_cache.current_cumulative_drainage
-    formulate_storage!(diff_cache.current_storage, tprev, t, flow_boundary)
+
+    # Formulate storage contributions of flow boundaries
+    formulate_flow_boundary!(p, t)
+    for (outflow_link, cumulative_flow) in
+        zip(flow_boundary.outflow_link, diff_cache.current_cumulative_boundary_flow)
+        outflow_id = outflow_link.link[2]
+        if outflow_id.type == NodeType.Basin
+            diff_cache.current_storage[outflow_id.idx] += cumulative_flow
+        end
+    end
     return nothing
 end
 
 """
-Formulate storage contributions of flow boundaries.
-"""
-function formulate_storage!(
-    current_storage::AbstractVector,
-    tprev::Number,
-    t::Number,
-    flow_boundary::FlowBoundary,
-)
-    for (flow_rate, outflow_link, active, cumulative_flow) in zip(
-        flow_boundary.flow_rate,
-        flow_boundary.outflow_link,
-        flow_boundary.active,
-        flow_boundary.cumulative_flow,
-    )
-        volume = cumulative_flow
-        if active
-            volume += integral(flow_rate, tprev, t)
-        end
-        outflow_id = outflow_link.link[2]
-        if outflow_id.type == NodeType.Basin
-            current_storage[outflow_id.idx] += volume
-        end
-    end
-end
-
-"""
-Smoothly let the evaporation flux go to 0 when at small water depths
-Currently at less than 0.1 m.
+Smoothly let the evaporation and infiltration flux go to 0 when the storage is less than 10 m^3
 """
 function update_vertical_flux!(du::CVector, p::Parameters)::Nothing
     (; p_non_diff, diff_cache) = p

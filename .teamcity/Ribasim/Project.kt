@@ -4,6 +4,8 @@ import Ribasim.buildTypes.GenerateTestmodels
 import Ribasim.buildTypes.Ribasim_MakeGitHubRelease
 import Ribasim.buildTypes.Ribasim_UploadToMinio
 import Ribasim.buildTypes.Ribasim_MakeQgisPlugin
+import Ribasim.buildTypes.Windows_GenerateCache
+import Ribasim.buildTypes.Linux_GenerateCache
 import Ribasim.vcsRoots.Ribasim
 import Ribasim_Linux.RibasimLinuxProject
 import Ribasim_Windows.RibasimWindowsProject
@@ -20,6 +22,8 @@ object Project : Project({
     buildType(Ribasim_MakeQgisPlugin)
     buildType(Ribasim_MakeGitHubRelease)
     buildType(Ribasim_UploadToMinio)
+    buildType(Windows_GenerateCache)
+    buildType(Linux_GenerateCache)
 
     template(GithubCommitStatusIntegration)
     template(GithubPullRequestsIntegration)
