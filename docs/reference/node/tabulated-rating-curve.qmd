@@ -1,7 +1,7 @@
 ---
 title: "TabulatedRatingCurve"
----
-test 
+--- 
+
 A TabulatedRatingCurve determines outflow from a Basin by looking up the flow rate that corresponds to the current upstream level from a rating curve.
 The TabulatedRatingCurve takes a rating curve as input.
 Use it for instance to model flow over a weir.
