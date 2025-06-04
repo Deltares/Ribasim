@@ -1,4 +1,4 @@
-@testitem "regression_ode_solvers_trivial" begin
+@testitem "regression_ode_solvers_trivial" setup = [Teamcity] begin
     import Arrow
     using Ribasim
 
@@ -11,10 +11,12 @@
     sparse_on = [true, false]
     autodiff_on = [true, false]
 
-    @testset "$solver" for solver in solver_list
-        @testset "sparse density is $sparse_on_off" for sparse_on_off in sparse_on
-            @testset "auto differentiation is $autodiff_on_off" for autodiff_on_off in
-                                                                    autodiff_on
+    @testset Teamcity.TeamcityTestSet "$solver" for solver in solver_list
+        @testset Teamcity.TeamcityTestSet "sparse density is $sparse_on_off" for sparse_on_off in
+                                                                                 sparse_on
+            @testset Teamcity.TeamcityTestSet "auto differentiation is $autodiff_on_off" for autodiff_on_off in
+                                                                                             autodiff_on
+                @info "Running with solver: $solver, sparse: $sparse_on_off, autodiff: $autodiff_on_off"
                 config = Ribasim.Config(
                     toml_path;
                     solver_algorithm = solver,
@@ -52,7 +54,7 @@
     end
 end
 
-@testitem "regression_ode_solvers_basic" begin
+@testitem "regression_ode_solvers_basic" setup = [Teamcity] begin
     import Arrow
     using Ribasim
     using Statistics
@@ -71,10 +73,11 @@ end
     sparse_on = [true, false]
     autodiff_on = [true, false]
 
-    @testset "$solver" for solver in solver_list
-        @testset "sparse density is $sparse_on_off" for sparse_on_off in sparse_on
-            @testset "auto differentiation is $autodiff_on_off" for autodiff_on_off in
-                                                                    autodiff_on
+    @testset Teamcity.TeamcityTestSet "$solver" for solver in solver_list
+        @testset Teamcity.TeamcityTestSet "sparse density is $sparse_on_off" for sparse_on_off in
+                                                                                 sparse_on
+            @testset Teamcity.TeamcityTestSet "auto differentiation is $autodiff_on_off" for autodiff_on_off in
+                                                                                             autodiff_on
                 config = Ribasim.Config(
                     toml_path;
                     solver_algorithm = solver,
@@ -121,7 +124,7 @@ end
     end
 end
 
-@testitem "regression_ode_solvers_pid_control" begin
+@testitem "regression_ode_solvers_pid_control" setup = [Teamcity] begin
     import Arrow
     using Ribasim
 
@@ -141,10 +144,11 @@ end
     sparse_on = [true, false]
     autodiff_on = [true, false]
 
-    @testset "$solver" for solver in solver_list
-        @testset "sparse density is $sparse_on_off" for sparse_on_off in sparse_on
-            @testset "auto differentiation is $autodiff_on_off" for autodiff_on_off in
-                                                                    autodiff_on
+    @testset Teamcity.TeamcityTestSet "$solver" for solver in solver_list
+        @testset Teamcity.TeamcityTestSet "sparse density is $sparse_on_off" for sparse_on_off in
+                                                                                 sparse_on
+            @testset Teamcity.TeamcityTestSet "auto differentiation is $autodiff_on_off" for autodiff_on_off in
+                                                                                             autodiff_on
                 config = Ribasim.Config(
                     toml_path;
                     solver_algorithm = solver,

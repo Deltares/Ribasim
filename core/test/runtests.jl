@@ -1,5 +1,7 @@
 using TestItemRunner
 
+include("utils.jl")
+
 function test_type(item)::Bool
     dir = basename(dirname(item.filename))
     is_integration = dir == "integration_test"
