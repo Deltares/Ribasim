@@ -689,7 +689,7 @@ function validate_consistent_basin_initialization(
             errors = true
         end
 
-        if !issorted(group_storage; rev = false)
+        if !issorted(group_storage)
             @error "Basin at node $node_id has non-monotonic storage input. Storage must always be increasing."
             errors = true
         end
