@@ -178,6 +178,10 @@ ribasim-core-testmodels = { cmd = "julia --project --check-bounds=yes --threads=
     "generate-testmodels",
     "initialize-julia",
 ] }
+migrate-model = { cmd = "python utils/migrate_model.py {{ input_toml }} {{ output_toml }}", args = [
+    "input_toml",
+    "output_toml",
+] }
 # Release
 github-release = "python utils/github-release.py"
 
