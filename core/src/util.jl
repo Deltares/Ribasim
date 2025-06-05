@@ -718,7 +718,7 @@ get_level_from_storage(basin::Basin, state_idx::Int, storage::GradientTracer) = 
     c_1::Float64 = 1e-4
     ρ_hi::Float64 = 0.5
     ρ_lo::Float64 = 0.1
-    iter_max::Int = 100
+    iter_max::Int = 10
 end
 
 """
