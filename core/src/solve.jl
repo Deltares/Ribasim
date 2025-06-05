@@ -88,7 +88,13 @@ state u and the time t.
 function set_current_basin_properties!(u::CVector, p::Parameters, t::Number)::Nothing
     (; p_non_diff, diff_cache, p_mutable) = p
     (; basin) = p_non_diff
-    (; node_id, cumulative_precipitation, cumulative_drainage, vertical_flux) = basin
+    (;
+        node_id,
+        cumulative_precipitation,
+        cumulative_drainage,
+        vertical_flux,
+        low_storage_threshold,
+    ) = basin
 
     # The exact cumulative precipitation and drainage up to the t of this water_balance call
     dt = t - p_mutable.tprev
@@ -106,7 +112,7 @@ function set_current_basin_properties!(u::CVector, p::Parameters, t::Number)::No
     for (id, s) in zip(basin.node_id, diff_cache.current_storage)
         i = id.idx
         diff_cache.current_low_storage_factor[i] =
-            reduction_factor(s, LOW_STORAGE_THRESHOLD)
+            reduction_factor(s, low_storage_threshold[i])
         diff_cache.current_level[i] = get_level_from_storage(basin, i, s)
         diff_cache.current_area[i] = basin.level_to_area[i](diff_cache.current_level[i])
     end
@@ -734,8 +740,12 @@ function limit_flow!(
             # The lower bound is estimated as the lowest inflow given the minimum values
             # of the reduction factors involved (with a margin)
             inflow_id = inflow_link.link[1]
-            factor_basin_min =
-                min_low_storage_factor(current_storage, basin.storage_prev, inflow_id)
+            factor_basin_min = min_low_storage_factor(
+                current_storage,
+                basin.storage_prev,
+                basin,
+                inflow_id,
+            )
             factor_level_min = min_low_user_demand_level_factor(
                 current_level,
                 basin.level_prev,
@@ -763,7 +773,7 @@ function limit_flow!(
     # Infiltration is in [f * infiltration, infiltration] where f is a rough estimate of the smallest low storage factor
     # reduction factor value that was attained over the last timestep
     for (id, infiltration) in zip(basin.node_id, basin.vertical_flux.infiltration)
-        factor_min = min_low_storage_factor(current_storage, basin.storage_prev, id)
+        factor_min = min_low_storage_factor(current_storage, basin.storage_prev, basin, id)
         limit_flow!(u.evaporation, uprev.evaporation, id, 0.0, Inf, true, dt)
         limit_flow!(
             u.infiltration,

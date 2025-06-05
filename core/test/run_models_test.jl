@@ -227,7 +227,7 @@ end
 
     @test success(model)
     @test length(model.integrator.sol) == 2 # start and end
-    @test diff_cache.current_storage ≈ Float32[797.561, 797.112, 510.737, 1130.005] skip =
+    @test diff_cache.current_storage ≈ Float32[797.559, 797.110, 506.494, 1130.005] skip =
         Sys.isapple() atol = 1.5
 
     @test length(logger.logs) > 10
