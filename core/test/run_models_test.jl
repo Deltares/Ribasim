@@ -736,7 +736,7 @@ end
         [0.0, 4.712, 12.567, 23.562, 37.699, 54.978],
         [0.0, 4.712, 12.567, 23.562, 37.699, 54.978],
     ]
-    node_ids = [1, 2]
+    node_ids = Int32[1, 2]
     dir = joinpath(
         @__DIR__,
         "../../generated_testmodels/basic_basin_both_area_and_storage/results/",
