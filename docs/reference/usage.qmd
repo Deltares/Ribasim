@@ -86,6 +86,23 @@ entry             | type   | description
 ----------------- | ------ | -----------
 verbosity         | String | Verbosity level: debug, info, warn, or error.
 
+If verbosity is set to debug, the used dimensions (level, area and storage) are written to a csv file in the results folder.
+
+The format of the csv is: row 1 = node id, row 2 = level, row 3 = area and row 4 is storage.
+
+Lets say you have 2 basins at node 1 and node 2.
+Dimensions node 1: level = [0, 1, 2], area = [2, 2, 4] and storage = [0, 2, 6],
+dimensions node 1: level = [0, 1, 2], area = [4, 4, 8] and storage = [0, 4, 12].
+
+Then the csv will look like:
+
+1 | 1 | 1 | 2 | 2 | 2
+--|---|---|---|---|---
+0 | 1 | 2 | 0 | 1 | 2
+2 | 2 | 4 | 4 | 4 | 4
+0 | 2 | 6 | 0 | 4 | 12
+
+
 ## Experimental features
 
 ::: {.callout-important}
