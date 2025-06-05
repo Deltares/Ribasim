@@ -28,7 +28,7 @@ using DifferentiationInterface:
 using OrdinaryDiffEqCore: OrdinaryDiffEqCore, get_du, AbstractNLSolver
 using DiffEqBase: DiffEqBase, calculate_residuals!
 using OrdinaryDiffEqNonlinearSolve: OrdinaryDiffEqNonlinearSolve, relax!, _compute_rhs!
-using LineSearches: BackTracking
+using NaNMath
 
 # Interface for defining and solving the ODE problem of the physical layer.
 using SciMLBase:

@@ -714,10 +714,93 @@ low_storage_factor_resistance_node(::Parameters, q::GradientTracer, ::NodeID, ::
 relaxed_root(x::GradientTracer, threshold::Real) = x
 get_level_from_storage(basin::Basin, state_idx::Int, storage::GradientTracer) = storage
 
-@kwdef struct MonitoredBackTracking{B, V}
-    linesearch::B = BackTracking()
-    dz_tmp::V = []
-    z_tmp::V = []
+@kwdef struct BackTracking
+    c_1::Float64 = 1e-4
+    ρ_hi::Float64 = 0.5
+    ρ_lo::Float64 = 0.1
+    iter_max::Int = 100
+end
+
+"""
+Find the minimum of the loss function between 0 and 1
+by approximating the loss function by cubic polynomials
+"""
+function (ls::BackTracking)(loss)
+    (; c_1, iter_max, ρ_lo, ρ_hi) = ls
+
+    loss_0 = loss(0.0)
+    ϵ = sqrt(eps())
+    dloss_0 = (loss(ϵ) - loss_0) / ϵ
+
+    success = true
+
+    αₙ₋₁ = 1.0
+    loss_αₙ₋₁ = loss(αₙ₋₁)
+
+    iterfinite = 0
+    iterfinitemax = -log2(eps(Float64))
+    while !isfinite(loss_αₙ₋₁) && (iterfinite < iterfinitemax)
+        iterfinite += 1
+        αₙ₋₁ /= 2
+        loss_αₙ₋₁ = loss(αₙ₋₁)
+    end
+
+    αₙ = αₙ₋₁
+    loss_αₙ = loss_αₙ₋₁
+
+    iterations = 0
+
+    # Check convergence criterion
+    while loss_αₙ > loss_0 + c_1 * αₙ * dloss_0
+        iterations += 1
+        if iterations > iter_max
+            # If the maximum number of iterations is exceeded,
+            # the line search has failed
+            success = false
+            break
+        end
+
+        if iterations == 1
+            # For the first iteration, approximate the loss function with a quadratic
+            # polynomial based on loss(0), loss'(0) and loss(α_start) and find its minimum
+            αₙ₊₁ = -dloss_0 / (2 * (loss_αₙ₋₁ - loss_0 - dloss_0))
+        else
+            # For the later iterations, approximate the loss function with a cubic
+            # polynomial based on loss(0), loss'(0), loss(αₙ₋₁) and loss(αₙ) and find its minimum
+            rhs_1 = loss_αₙ - loss_0 - dloss_0 * αₙ
+            rhs_2 = loss_αₙ₋₁ - loss_0 - dloss_0 * αₙ₋₁
+            det = (αₙ * αₙ₋₁)^2 * (αₙ - αₙ₋₁)
+            a = (rhs_1 * αₙ₋₁^2 - rhs_2 * αₙ^2) / det
+            b = (rhs_2 * αₙ^3 - rhs_1 * αₙ₋₁^3) / det
+
+            αₙ₊₁ = if isapprox(a, 0.0; atol = eps(Float64))
+                -dloss_0 / (2 * b)
+            else
+                # Discriminant
+                d = max(0.0, b^2 - 3a * dloss_0)
+                (-b + sqrt(d)) / (3a)
+            end
+        end
+
+        # Avoid reductions that are too big or too small
+        αₙ₊₁ = NaNMath.min(αₙ₊₁, αₙ * ρ_hi)
+        αₙ₊₁ = NaNMath.max(αₙ₊₁, αₙ * ρ_lo)
+
+        αₙ₋₁ = αₙ
+        loss_αₙ₋₁ = loss_αₙ
+
+        αₙ = αₙ₊₁
+        loss_αₙ = loss(αₙ)
+    end
+
+    # As a last check, say the line search failed when the loss value actually increased
+    if success && (loss_αₙ > loss(1.0))
+        success = false
+    end
+
+    # If the line search failed, this NaN will propagate trough OrdinaryDiffEq
+    # and causes the time step to be rejected
+    return success ? αₙ : NaN
 end
 
 """
@@ -754,9 +837,8 @@ function OrdinaryDiffEqNonlinearSolve.relax!(
     nlsolver::AbstractNLSolver,
     integrator::DEIntegrator,
     f,
-    linesearch::MonitoredBackTracking,
+    linesearch::BackTracking,
 )
-    (; linesearch, dz_tmp, z_tmp) = linesearch
     atmp = nlsolver.cache.atmp
 
     let dz = dz,
@@ -765,30 +847,14 @@ function OrdinaryDiffEqNonlinearSolve.relax!(
         f = f,
         linesearch = linesearch
 
-        function ϕ(α)
+        function loss(α)
             @. atmp = nlsolver.z - dz * α
             residual(atmp, integrator, nlsolver, f)
         end
 
-        # Store step before relaxation
-        @. dz_tmp = dz
+        α = linesearch(loss)
+        @. dz *= α
 
-        # Apply relaxation and measure the residual change
-        @. z_tmp = nlsolver.z + dz
-        resid_before = residual(z_tmp, integrator, nlsolver, f)
-        α0 = 1.0
-        ϕ0 = ϕ(0.0)
-        ϵ = sqrt(eps())
-        dϕ0 = (ϕ(ϵ) - ϕ0) / ϵ
-
-        # This linesearch method is specific to BackTracking
-        α, resid_after = linesearch(ϕ, α0, ϕ0, dϕ0)
-        @. z_tmp = nlsolver.z + α * dz
-
-        # If the residual increased due to the relaxation, reject it
-        if resid_after > resid_before
-            @. dz = dz_tmp
-        end
         return dz
     end
 end
