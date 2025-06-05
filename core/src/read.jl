@@ -1899,14 +1899,14 @@ function interpolate_basin_profile!(basin::Basin, profiles::StructVector{BasinPr
 
         # We always differentiate storage with respect to level such that we can use invert_integral
         # We treat level-area and storage-level as independent relations.
-        dS_dh_i = if ismissing(group_area[1])
+        dS_dh = if ismissing(group_area[1])
             finite_difference(group_storage, group_level)
         else
             finite_difference(group_storage, group_level, group_area[1])
         end
 
         level_to_area = LinearInterpolation(
-            dS_dh_i,
+            dS_dh,
             group_level;
             extrapolation = ConstantExtrapolation,
             cache_parameters = true,
@@ -1925,7 +1925,7 @@ function interpolate_basin_profile!(basin::Basin, profiles::StructVector{BasinPr
             )
         else
             # else the differentiated storage is used
-            group_area = dS_dh_i
+            group_area = dS_dh
         end
         basin.level_to_area[i] = level_to_area
 
@@ -1935,19 +1935,6 @@ function interpolate_basin_profile!(basin::Basin, profiles::StructVector{BasinPr
     end
 
     return areas, levels, storage, node_ids
-end
-
-function output_basin_profile(
-    group_level::Vector{Float64},
-    group_area::Vector{Float64},
-    group_storage::Vector{Float64},
-    node_id::Int32,
-    dir::AbstractString,
-    results_dir::AbstractString,
-)::nothing
-    data = (; level = group_level, area = group_area, storage = group_storage)
-    filename = joinpath(dir, results_dir, "basin_profile_node_$(node_id).csv")
-    DelimitedFiles.writedlm(filename, Tables.columntable(data))
 end
 
 function output_basin_profiles(
