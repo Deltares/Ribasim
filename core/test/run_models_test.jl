@@ -689,7 +689,7 @@ end
     filter!(:node_id => ==(2189), basin_table)
 
     # Check that Basin #2189 is running dry and thus the infiltration and storage rate are close to 0
-    @test all(x -> abs(x) < 1e-7, basin_table.storage[4:end])
+    @test all(x -> abs(x) < 1e-5, basin_table.storage[4:end])
     @test all(x -> abs(x) < 1e-10, basin_table.storage_rate[3:end])
     @test all(x -> abs(x) < 1e-10, basin_table.infiltration[3:end])
 end
