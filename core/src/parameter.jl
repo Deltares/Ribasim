@@ -1,5 +1,5 @@
 # Universal depth at which the low storage factor kicks in
-const LOW_STORAGE_DEPTH = 0.01
+const LOW_STORAGE_DEPTH = 0.1
 
 # Universal reduction factor threshold for the minimum upstream level of UserDemand nodes
 const USER_DEMAND_MIN_LEVEL_THRESHOLD = 0.1
