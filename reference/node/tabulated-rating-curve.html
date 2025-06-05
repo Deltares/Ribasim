@@ -452,43 +452,10 @@ window.Quarto = {
 </tr>
 </tbody>
 </table>
-<p>Thus a single rating curve can be given by the following table:</p>
-<table class="caption-top table">
-<thead>
-<tr class="header">
-<th>node_id</th>
-<th>flow_rate</th>
-<th>level</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>2</td>
-<td>0.0</td>
-<td>-0.10</td>
-</tr>
-<tr class="even">
-<td>2</td>
-<td>0.0001</td>
-<td>0.09</td>
-</tr>
-<tr class="odd">
-<td>2</td>
-<td>0.01</td>
-<td>0.29</td>
-</tr>
-<tr class="even">
-<td>2</td>
-<td>0.9</td>
-<td>20.09</td>
-</tr>
-</tbody>
-</table>
-<p>Below the lowest given level of -0.10, the flow rate is kept at 0. Between given levels the flow rate is interpolated linearly. Above the maximum given level of 20.09, the flow rate keeps increases linearly according to the slope of the last segment.</p>
 <section id="interpolation" class="level3" data-number="1.1.1">
 <h3 data-number="1.1.1" class="anchored" data-anchor-id="interpolation"><span class="header-section-number">1.1.1</span> Interpolation</h3>
 <p>The <span class="math inline">\(Q(h)\)</span> relationship of a tabulated rating curve is defined as a linear interpolation.</p>
-<div id="008e6616" class="cell" data-execution_count="1">
+<div id="5ef5304f" class="cell" data-execution_count="1">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> numpy <span class="im">as</span> np</span>
@@ -496,36 +463,33 @@ window.Quarto = {
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
 <span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> IPython.display <span class="im">import</span> display, Markdown</span>
 <span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>np.random.seed(<span class="dv">0</span>)</span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>fontsize <span class="op">=</span> <span class="dv">15</span></span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>N <span class="op">=</span> <span class="dv">10</span></span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>level <span class="op">=</span> np.cumsum(np.random.rand(N))</span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>flow <span class="op">=</span> level<span class="op">**</span><span class="dv">2</span> <span class="op">+</span> np.random.rand(N)</span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>flow[<span class="dv">0</span>] <span class="op">=</span> <span class="fl">0.0</span></span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots()</span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>ax.set_xticks([])</span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>ax.set_yticks([<span class="dv">0</span>])</span>
-<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>ax.scatter(level, flow, label <span class="op">=</span> <span class="st">"data"</span>)</span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>ax.plot(level, flow, label <span class="op">=</span> <span class="st">"interpolation"</span>, color <span class="op">=</span> <span class="st">"C0"</span>)</span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>ax.plot([level[<span class="dv">0</span>] <span class="op">-</span> <span class="dv">1</span>, level[<span class="dv">0</span>]], [<span class="dv">0</span>, <span class="dv">0</span>], label <span class="op">=</span> <span class="st">"extrapolation"</span>, linestyle <span class="op">=</span> <span class="st">"dashed"</span>)</span>
-<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>ax.legend()</span>
-<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>ax.set_xlabel(<span class="st">"level"</span>, fontsize <span class="op">=</span> fontsize)</span>
-<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>ax.set_ylabel(<span class="st">"flow"</span>, fontsize <span class="op">=</span> fontsize)</span>
-<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>level_extrap <span class="op">=</span> <span class="dv">2</span> <span class="op">*</span> level[<span class="op">-</span><span class="dv">1</span>] <span class="op">-</span> level[<span class="op">-</span><span class="dv">2</span>]</span>
-<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>flow_extrap <span class="op">=</span> <span class="dv">2</span> <span class="op">*</span> flow[<span class="op">-</span><span class="dv">1</span>] <span class="op">-</span> flow[<span class="op">-</span><span class="dv">2</span>]</span>
-<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>ax.plot([level[<span class="op">-</span><span class="dv">1</span>], level_extrap], [flow[<span class="op">-</span><span class="dv">1</span>], flow_extrap], color <span class="op">=</span> <span class="st">"C0"</span>, linestyle <span class="op">=</span> <span class="st">"dashed"</span>)</span>
-<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>ax.set_xlim(level[<span class="dv">0</span>] <span class="op">-</span> <span class="fl">0.5</span>, (level[<span class="op">-</span><span class="dv">1</span>] <span class="op">+</span> level_extrap)<span class="op">/</span><span class="dv">2</span>)</span>
-<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>markdown_table <span class="op">=</span> pd.DataFrame(</span>
-<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>        data <span class="op">=</span> {</span>
-<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>            <span class="st">"level"</span> : level,</span>
-<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>            <span class="st">"flow"</span> : flow</span>
-<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a>        }</span>
-<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a>    ).to_markdown(index <span class="op">=</span> <span class="va">False</span>)</span>
-<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a>display(Markdown(markdown_table))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>fontsize <span class="op">=</span> <span class="dv">15</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>level <span class="op">=</span> [<span class="fl">12.0</span>, <span class="fl">12.2</span>, <span class="fl">12.5</span>, <span class="fl">13.0</span>]</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>flow <span class="op">=</span> [<span class="fl">0.0</span>, <span class="fl">0.5</span>, <span class="fl">2.5</span>, <span class="fl">8.0</span>]</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots()</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>ax.set_xticks([])</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>ax.set_yticks([<span class="dv">0</span>])</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>ax.scatter(level, flow, label <span class="op">=</span> <span class="st">"data"</span>)</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>ax.plot(level, flow, label <span class="op">=</span> <span class="st">"interpolation"</span>, color <span class="op">=</span> <span class="st">"C0"</span>)</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>ax.plot([level[<span class="dv">0</span>] <span class="op">-</span> <span class="fl">0.2</span>, level[<span class="dv">0</span>]], [<span class="dv">0</span>, <span class="dv">0</span>], label <span class="op">=</span> <span class="st">"extrapolation"</span>, linestyle <span class="op">=</span> <span class="st">"dashed"</span>)</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>ax.legend()</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>ax.set_xlabel(<span class="st">"level"</span>, fontsize <span class="op">=</span> fontsize)</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>ax.set_ylabel(<span class="st">"flow"</span>, fontsize <span class="op">=</span> fontsize)</span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>level_extrap <span class="op">=</span> <span class="dv">2</span> <span class="op">*</span> level[<span class="op">-</span><span class="dv">1</span>] <span class="op">-</span> level[<span class="op">-</span><span class="dv">2</span>]</span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>flow_extrap <span class="op">=</span> <span class="dv">2</span> <span class="op">*</span> flow[<span class="op">-</span><span class="dv">1</span>] <span class="op">-</span> flow[<span class="op">-</span><span class="dv">2</span>]</span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>ax.plot([level[<span class="op">-</span><span class="dv">1</span>], level_extrap], [flow[<span class="op">-</span><span class="dv">1</span>], flow_extrap], color <span class="op">=</span> <span class="st">"C0"</span>, linestyle <span class="op">=</span> <span class="st">"dashed"</span>)</span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>ax.set_xlim(level[<span class="dv">0</span>] <span class="op">-</span> <span class="fl">0.2</span>, (level[<span class="op">-</span><span class="dv">1</span>] <span class="op">+</span> level_extrap)<span class="op">/</span><span class="dv">2</span>)</span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>markdown_table <span class="op">=</span> pd.DataFrame(</span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>        data <span class="op">=</span> {</span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>            <span class="st">"level"</span> : level,</span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>            <span class="st">"flow"</span> : flow</span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>        }</span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>    ).to_markdown(index <span class="op">=</span> <span class="va">False</span>)</span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a>display(Markdown(markdown_table))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output cell-output-display cell-output-markdown">
 <table class="caption-top table table-sm table-striped small">
@@ -537,44 +501,20 @@ window.Quarto = {
 </thead>
 <tbody>
 <tr class="odd">
-<td style="text-align: right;">0.548814</td>
+<td style="text-align: right;">12</td>
 <td style="text-align: right;">0</td>
 </tr>
 <tr class="even">
-<td style="text-align: right;">1.264</td>
-<td style="text-align: right;">2.1266</td>
+<td style="text-align: right;">12.2</td>
+<td style="text-align: right;">0.5</td>
 </tr>
 <tr class="odd">
-<td style="text-align: right;">1.86677</td>
-<td style="text-align: right;">4.05286</td>
+<td style="text-align: right;">12.5</td>
+<td style="text-align: right;">2.5</td>
 </tr>
 <tr class="even">
-<td style="text-align: right;">2.41165</td>
-<td style="text-align: right;">6.74165</td>
-</tr>
-<tr class="odd">
-<td style="text-align: right;">2.8353</td>
-<td style="text-align: right;">8.10999</td>
-</tr>
-<tr class="even">
-<td style="text-align: right;">3.4812</td>
-<td style="text-align: right;">12.2059</td>
-</tr>
-<tr class="odd">
-<td style="text-align: right;">3.91879</td>
-<td style="text-align: right;">15.3771</td>
-</tr>
-<tr class="even">
-<td style="text-align: right;">4.81056</td>
-<td style="text-align: right;">23.9741</td>
-</tr>
-<tr class="odd">
-<td style="text-align: right;">5.77422</td>
-<td style="text-align: right;">34.1198</td>
-</tr>
-<tr class="even">
-<td style="text-align: right;">6.15766</td>
-<td style="text-align: right;">38.7868</td>
+<td style="text-align: right;">13</td>
+<td style="text-align: right;">8</td>
 </tr>
 </tbody>
 </table>
@@ -587,7 +527,46 @@ window.Quarto = {
 </div>
 </div>
 </div>
-<p>Here it is validated that the flow starts at <span class="math inline">\(0\)</span> and is non-decreasing. The flow is extrapolated as <span class="math inline">\(0\)</span> backward and linearly forward.</p>
+<p>Below the lowest given level of 12.0, the flow rate is kept at 0. Between given levels the flow rate is interpolated linearly. Above the maximum given level of 13.0, the flow rate keeps increases linearly according to the slope of the last segment.</p>
+<p>For tabulated rating curves with a fixed maximum value (e.g.&nbsp;max capacity of a weir), enter a new row and re-enter the maximum flow_rate at a higher level:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>node_id</th>
+<th>level</th>
+<th>flow_rate</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>2</td>
+<td>12.0</td>
+<td>0.0</td>
+</tr>
+<tr class="even">
+<td>2</td>
+<td>12.2</td>
+<td>0.5</td>
+</tr>
+<tr class="odd">
+<td>2</td>
+<td>12.5</td>
+<td>2.5</td>
+</tr>
+<tr class="even">
+<td>2</td>
+<td>13.0</td>
+<td>8.0</td>
+</tr>
+<tr class="odd">
+<td>2</td>
+<td>13.1</td>
+<td>8.0</td>
+</tr>
+</tbody>
+</table>
+<p>Now this tabulated rating curve node has a flow rate of 8.0 <span class="math inline">\(\text{m}^3/\text{s}\)</span> for for all levels 13.0 or higher.</p>
+<p>The flow rate is not allowed to decrease with higher levels. If you wish to e.g.&nbsp;simulate the (partial) closing of a weir when the water level exceeds a certain threshold, you can use and Outlet with a control node to set flow rates.</p>
 </section>
 </section>
 <section id="time" class="level2" data-number="1.2">
@@ -649,7 +628,7 @@ Q = \phi f(h)
 <li><span class="math inline">\(f\)</span> is a piecewise linear function describing the given rating curve <span class="math inline">\(Q(h)\)</span></li>
 <li><span class="math inline">\(\phi\)</span> is the reduction factor, which smoothly reduces flow based on all of these criteria:
 <ul>
-<li>The upstream volume is below <span class="math inline">\(10 \;\text{m}^3\)</span>.</li>
+<li>The upstream volume is below the equivalent of a water depth of <span class="math inline">\(10 \;\text{cm}\)</span>.</li>
 <li>The upstream level is less than <span class="math inline">\(0.02 \;\text{m}\)</span> above the downstream level.</li>
 <li>The downstream level is above <code>max_downstream_level</code> - <span class="math inline">\(0.02 \;\text{m}\)</span></li>
 </ul></li>
