@@ -31,6 +31,7 @@ from ribasim_testmodels.basic import (
     basic_transient_model,
     cyclic_time_model,
     flow_boundary_interpolation_model,
+    no_basin_model,
     outlet_model,
     tabulated_rating_curve_model,
 )
@@ -121,6 +122,7 @@ __all__ = [
     "manning_resistance_model",
     "minimal_subnetwork_model",
     "misc_nodes_model",
+    "no_basin_model",
     "outlet_continuous_control_model",
     "outlet_model",
     "pid_control_equation_model",

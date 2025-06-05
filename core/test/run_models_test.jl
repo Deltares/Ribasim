@@ -742,3 +742,14 @@ end
     @test model isa Ribasim.Model
     @test success(model)
 end
+
+@testitem "model without basin" begin
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/no_basin/ribasim.toml")
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+    @test model isa Ribasim.Model
+    @test success(model)
+
+    (; p_non_diff) = model.integrator.p
+    @test p_non_diff.basin === nothing
+end
