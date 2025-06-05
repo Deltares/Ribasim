@@ -1062,14 +1062,20 @@ end
 """
 Estimate the minimum reduction factor achieved over the last time step by
 estimating the lowest storage achieved over the last time step. To make sure
-it is an underestimate of the minimum, 2LOW_STORAGE_THRESHOLD is subtracted from this lowest storage.
+it is an underestimate of the minimum, 2low_storage_threshold is subtracted from this lowest storage.
 This is done to not be too strict in clamping the flow in the limiter
 """
-function min_low_storage_factor(storage_now::AbstractVector{T}, storage_prev, id) where {T}
+function min_low_storage_factor(
+    storage_now::AbstractVector{T},
+    storage_prev,
+    basin,
+    id,
+) where {T}
     if id.type == NodeType.Basin
+        low_storage_threshold = basin.low_storage_threshold[id.idx]
         reduction_factor(
-            min(storage_now[id.idx], storage_prev[id.idx]) - 2LOW_STORAGE_THRESHOLD,
-            LOW_STORAGE_THRESHOLD,
+            min(storage_now[id.idx], storage_prev[id.idx]) - 2low_storage_threshold,
+            low_storage_threshold,
         )
     else
         one(T)

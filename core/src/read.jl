@@ -867,6 +867,14 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     basin.storage_prev .= storage0
     basin.concentration_data.mass .*= storage0  # was initialized by concentration_state, resulting in mass
 
+    # Compute the low storage threshold as the disk of water between the bottom
+    # and 10 cm above the bottom
+    for id in node_id
+        bottom = basin_bottom(basin, id)[2]
+        basin.low_storage_threshold[id.idx] =
+            get_storage_from_level(basin, id.idx, bottom + LOW_STORAGE_DEPTH)
+    end
+
     basin
 end
 

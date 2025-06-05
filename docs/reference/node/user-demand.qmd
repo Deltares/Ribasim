@@ -74,7 +74,7 @@ $$
 
 From left to right:
 
-- The first reduction factor lets the UserDemand abstraction go smoothly to $0$ as the source Basin dries out;
+- The first reduction factor lets the UserDemand abstraction go smoothly to $0$ as the source Basin dries out below a storage which is the equivalent of a water depth of $10 \;\text{cm}$;
 - The second reduction factor lets the UserDemand abstraction go smoothly to $0$ as the source Basin level approaches the minimum source Basin level (from above);
 - The last term is the sum of the allocations over the priorities.
   If the current demand happens to be lower than the allocation at some demand priority, the demand is taken instead.

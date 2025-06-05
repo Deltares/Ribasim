@@ -1,5 +1,5 @@
-# Universal reduction factor threshold for the low storage factor
-const LOW_STORAGE_THRESHOLD = 10.0
+# Universal depth at which the low storage factor kicks in
+const LOW_STORAGE_DEPTH = 0.1
 
 # Universal reduction factor threshold for the minimum upstream level of UserDemand nodes
 const USER_DEMAND_MIN_LEVEL_THRESHOLD = 0.1
@@ -475,6 +475,8 @@ of vectors or Arrow Tables, and is added to avoid type instabilities.
     node_id::Vector{NodeID}
     inflow_ids::Vector{Vector{NodeID}} = fill(NodeID[], length(node_id))
     outflow_ids::Vector{Vector{NodeID}} = fill(NodeID[], length(node_id))
+    # Storage below which outflows are reduced
+    low_storage_threshold::Vector{Float64} = zeros(length(node_id))
     # Vertical fluxes
     vertical_flux::VerticalFlux = VerticalFlux(length(node_id))
     # Initial_storage
