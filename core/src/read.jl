@@ -1941,7 +1941,7 @@ function output_basin_profiles(
     all_levels::Vector{Vector{Float64}},
     all_areas::Vector{Vector{Float64}},
     all_storage::Vector{Vector{Float64}},
-    all_node_ids::Vector{Int64},
+    all_node_ids::Vector{Int32},
     dir::AbstractString,
 )::Nothing
     # Flatten all data and add node_id column
