@@ -312,9 +312,7 @@ function algorithm(solver::Solver; u0 = [])::OrdinaryDiffEqAlgorithm
     kwargs = Dict{Symbol, Any}()
 
     if algotype <: OrdinaryDiffEqNewtonAdaptiveAlgorithm
-        kwargs[:nlsolve] = NLNewton(;
-            relax = Ribasim.MonitoredBackTracking(; z_tmp = copy(u0), dz_tmp = copy(u0)),
-        )
+        kwargs[:nlsolve] = NLNewton(; relax = Ribasim.BackTracking())
     end
 
     if function_accepts_kwarg(algotype, :step_limiter!)

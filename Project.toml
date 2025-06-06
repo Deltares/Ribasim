@@ -41,6 +41,7 @@ Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
 LoggingExtras = "e6f89c97-d47a-5376-807f-9c37f3926c36"
 MarkdownTables = "1862ce21-31c7-451e-824c-f20fa3f90fa2"
 MetaGraphsNext = "fa8bd995-216d-47f1-8a91-f3b68fbeb377"
+NaNMath = "77ba4419-2d1f-58cd-9bb1-8ffee604a2e3"
 OrderedCollections = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"
 OrdinaryDiffEqBDF = "6ad6398a-0878-4a85-9266-38940aa047c8"
 OrdinaryDiffEqCore = "bbf590c4-e513-4bbe-9b18-05decba2e5d8"
@@ -68,4 +69,4 @@ TestItemRunner = "f8b46487-2199-4994-9208-9a1283c18c0a"
 TranscodingStreams = "3bb67fe8-82b1-5028-8e26-92a6c54297fa"
 
 [sources]
-Ribasim = { path = "core" }
+Ribasim = {path = "core"}
