@@ -17,6 +17,11 @@
     @test getaxes(x) === axes
     @test keys(x) === (:a, :b)
     @inferred getproperty(x, :a)
+    @test similar(x) isa CVector{Float64}
+    @test similar(x, Int) isa CVector{Int}
+    @test similar(x, 2, 3) isa Matrix{Float64}
+    @test similar(x, Int, 2, 3) isa Matrix{Int}
+    @test iterate(x) === (1.0, 2)
 end
 
 @testitem "Int" begin

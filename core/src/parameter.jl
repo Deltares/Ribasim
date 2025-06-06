@@ -1,5 +1,5 @@
-# Universal reduction factor threshold for the low storage factor
-const LOW_STORAGE_THRESHOLD = 10.0
+# Universal depth at which the low storage factor kicks in
+const LOW_STORAGE_DEPTH = 0.1
 
 # Universal reduction factor threshold for the minimum upstream level of UserDemand nodes
 const USER_DEMAND_MIN_LEVEL_THRESHOLD = 0.1
@@ -475,6 +475,8 @@ of vectors or Arrow Tables, and is added to avoid type instabilities.
     node_id::Vector{NodeID}
     inflow_ids::Vector{Vector{NodeID}} = fill(NodeID[], length(node_id))
     outflow_ids::Vector{Vector{NodeID}} = fill(NodeID[], length(node_id))
+    # Storage below which outflows are reduced
+    low_storage_threshold::Vector{Float64} = zeros(length(node_id))
     # Vertical fluxes
     vertical_flux::VerticalFlux = VerticalFlux(length(node_id))
     # Initial_storage
@@ -743,6 +745,7 @@ const DiffCache{T} = @NamedTuple{
     current_area::Vector{T},
     current_cumulative_precipitation::Vector{T},
     current_cumulative_drainage::Vector{T},
+    current_cumulative_boundary_flow::Vector{T},
     flow_rate_pump::Vector{T},
     flow_rate_outlet::Vector{T},
     error_pid_control::Vector{T},
@@ -1063,7 +1066,7 @@ end
 Initialize the DiffCache based on node amounts obtained from ParametersNonDiff.
 """
 function DiffCache(p_non_diff::ParametersNonDiff)
-    (; basin, pump, outlet, pid_control) = p_non_diff
+    (; basin, pump, outlet, pid_control, flow_boundary) = p_non_diff
     n_basin = length(basin.node_id)
     return (;
         current_storage = zeros(n_basin),
@@ -1072,6 +1075,7 @@ function DiffCache(p_non_diff::ParametersNonDiff)
         current_area = zeros(n_basin),
         current_cumulative_precipitation = zeros(n_basin),
         current_cumulative_drainage = zeros(n_basin),
+        current_cumulative_boundary_flow = zeros(length(flow_boundary.node_id)),
         flow_rate_pump = zeros(length(pump.node_id)),
         flow_rate_outlet = zeros(length(outlet.node_id)),
         error_pid_control = zeros(length(pid_control.node_id)),
