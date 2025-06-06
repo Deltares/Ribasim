@@ -745,10 +745,11 @@ end
     Ribasim.output_basin_profiles(levels, areas, storages, node_ids, dir)
     filename = joinpath(dir, "basin_profiles.csv")
     data = readdlm(filename, ',')
+
     # Extract columns from data
-    level_col = data[2, :]
-    area_col = data[3, :]
-    storage_col = data[4, :]
+    level_col = data[:, 2]
+    area_col = data[:, 3]
+    storage_col = data[:, 4]
 
     # Compare with expected values
     @test level_col ≈ [levels[1]; levels[2]]
