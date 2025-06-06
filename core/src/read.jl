@@ -853,7 +853,12 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     errors |= validate_consistent_basin_initialization(profiles)
     errors && error("Errors encountered when parsing Basin data.")
 
-    interpolate_basin_profile!(basin, profiles)
+    areas, levels, storage, node_ids = interpolate_basin_profile!(basin, profiles)
+
+    if config.logging.verbosity == Debug
+        dir = joinpath(config.dir, config.results_dir)
+        output_basin_profiles(levels, areas, storage, node_ids, dir)
+    end
 
     # Inflow and outflow links
     map!(id -> collect(inflow_ids(graph, id)), basin.inflow_ids, node_id)
@@ -1883,11 +1888,14 @@ function set_concentrations!(
     end
 end
 
-function interpolate_basin_profile!(
-    basin::Basin,
-    profiles::StructVector{BasinProfileV1},
-)::Nothing
+function interpolate_basin_profile!(basin::Basin, profiles::StructVector{BasinProfileV1})
+    areas = Vector{Vector{Float64}}()
+    levels = Vector{Vector{Float64}}()
+    storage = Vector{Vector{Float64}}()
+
+    node_ids = Vector{Int32}()
     for (i, group) in enumerate(IterTools.groupby(row -> row.node_id, profiles))
+        push!(node_ids, first(group).node_id)
         group_area = getproperty.(group, :area)
         group_level = getproperty.(group, :level)
         group_storage = getproperty.(group, :storage)
@@ -1916,13 +1924,23 @@ function interpolate_basin_profile!(
             invert_integral(level_to_area; extrapolation_right = ExtrapolationType.Linear)
 
         if !all(ismissing, group_area)
+            # if all data is present for area, we use it
             level_to_area = LinearInterpolation(
                 group_area,
                 group_level;
                 extrapolation = ConstantExtrapolation,
                 cache_parameters = true,
             )
+        else
+            # else the differentiated storage is used
+            group_area = dS_dh
         end
         basin.level_to_area[i] = level_to_area
+
+        push!(areas, group_area)
+        push!(levels, group_level)
+        push!(storage, group_storage)
     end
+
+    return areas, levels, storage, node_ids
 end
