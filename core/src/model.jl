@@ -33,7 +33,7 @@ Get the Jacobian evaluation function via DifferentiationInterface.jl.
 The time derivative is also supplied in case a Rosenbrock method is used.
 """
 function get_diff_eval(du::CVector, u::CVector, p::Parameters, solver::Solver)
-    (; p_non_diff, diff_cache, p_mutable) = p
+    (; p_independent, state_time_dependent_cache, time_dependent_cache, p_mutable) = p
     backend = get_ad_type(solver)
     sparsity_detector = TracerSparsityDetector()
 
@@ -52,8 +52,9 @@ function get_diff_eval(du::CVector, u::CVector, p::Parameters, solver::Solver)
         du,
         backend_jac,
         u,
-        Constant(p_non_diff),
-        Cache(diff_cache),
+        Constant(p_independent),
+        Cache(state_time_dependent_cache),
+        Constant(time_dependent_cache),
         Constant(p_mutable),
         Constant(t);
         strict = Val(true),
@@ -69,8 +70,9 @@ function get_diff_eval(du::CVector, u::CVector, p::Parameters, solver::Solver)
         jac_prep,
         backend_jac,
         u,
-        Constant(p.p_non_diff),
-        Cache(diff_cache),
+        Constant(p.p_independent),
+        Cache(state_time_dependent_cache),
+        Constant(time_dependent_cache),
         Constant(p.p_mutable),
         Constant(t),
     )
@@ -81,8 +83,9 @@ function get_diff_eval(du::CVector, u::CVector, p::Parameters, solver::Solver)
         backend,
         t,
         Constant(u),
-        Constant(p_non_diff),
-        Cache(diff_cache),
+        Constant(p_independent),
+        Cache(state_time_dependent_cache),
+        Cache(time_dependent_cache),
         Constant(p_mutable);
         strict = Val(true),
     )
@@ -94,10 +97,13 @@ function get_diff_eval(du::CVector, u::CVector, p::Parameters, solver::Solver)
         backend,
         t,
         Constant(u),
-        Constant(p.p_non_diff),
-        Cache(p.diff_cache),
+        Constant(p.p_independent),
+        Cache(state_time_dependent_cache),
+        Cache(time_dependent_cache),
         Constant(p.p_mutable),
     )
+
+    time_dependent_cache.t_prev_call[1] = -1.0
 
     return jac_prototype, jac, tgrad
 end

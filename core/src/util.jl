@@ -159,11 +159,19 @@ The ID can belong to either a Basin or a LevelBoundary.
 du: tells ForwardDiff whether this call is for differentiation or not
 """
 function get_level(p::Parameters, node_id::NodeID, t::Number)::Number
-    (; p_non_diff, diff_cache) = p
+    (; p_independent, state_time_dependent_cache, time_dependent_cache) = p
+
     if node_id.type == NodeType.Basin
-        diff_cache.current_level[node_id.idx]
+        state_time_dependent_cache.current_level[node_id.idx]
     elseif node_id.type == NodeType.LevelBoundary
-        p_non_diff.level_boundary.level[node_id.idx](t)
+        itp = p_independent.level_boundary.level[node_id.idx]
+        eval_time_interp(
+            itp,
+            time_dependent_cache.level_boundary.current_level,
+            node_id.idx,
+            p,
+            t,
+        )
     elseif node_id.type == NodeType.Terminal
         # Terminal is like a bottomless pit.
         # A level at -Inf ensures we don't hit `max_downstream_level` reduction factors.
@@ -723,22 +731,60 @@ get_level_from_storage(basin::Basin, state_idx::Int, storage::GradientTracer) = 
     iter_max::Int = 10
 end
 
+@kwdef struct Loss{C1 <: CVector, C2 <: AbstractNLSolver, C3 <: DEIntegrator, C4}
+    dz::C1
+    nlsolver::C2
+    integrator::C3
+    f::C4
+end
+
+function (loss::Loss)(α)
+    (; dz, nlsolver, integrator, f) = loss
+    (; tmp, ztmp, z, γ, α, cache, method) = nlsolver
+    (; ustep, atmp, tstep, k, invγdt, tstep, k, invγdt) = cache
+    (; atmp) = cache
+    (; uprev, t, p, dt, opts, isdae) = integrator
+
+    # Compute proposed state atmp
+    @. atmp = nlsolver.z - dz * α
+
+    # Compute residual atmp
+    @assert !isdae
+    b, ustep2 = _compute_rhs!(tmp, ztmp, ustep, γ, α, tstep, k, invγdt, method, p, dt, f, z)
+    calculate_residuals!(
+        atmp,
+        b,
+        uprev,
+        ustep2,
+        opts.abstol,
+        opts.reltol,
+        opts.internalnorm,
+        t,
+    )
+
+    # Compute residual norm
+    ndz = opts.internalnorm(atmp, t)
+    return ndz
+end
+
 """
 Find the minimum of the loss function between 0 and 1
 by approximating the loss function by cubic polynomials
 """
-function (ls::BackTracking)(loss)
+function (ls::BackTracking)(loss, α₀, loss_α₀)
     (; c_1, iter_max, ρ_lo, ρ_hi) = ls
 
-    loss_0 = loss(0.0)
-    ϵ = sqrt(eps())
-    dloss_0 = (loss(ϵ) - loss_0) / ϵ
+    αₙ₋₁ = α₀
+    loss_αₙ₋₁ = loss_α₀
+
+    # Get value and derivative of loss for α = 0.0
+    result = ForwardDiff.derivative!(DiffResults.DiffResult(0.0, 0.0), loss, 0.0)
+    loss_0 = DiffResults.value(result)
+    dloss_0 = DiffResults.derivative(result)
 
     success = true
 
-    αₙ₋₁ = 1.0
-    loss_αₙ₋₁ = loss(αₙ₋₁)
-
+    # Find smallest integer k such that loss(2⁻ᵏ) is not NaN or Inf
     iterfinite = 0
     iterfinitemax = -log2(eps(Float64))
     while !isfinite(loss_αₙ₋₁) && (iterfinite < iterfinitemax)
@@ -795,45 +841,11 @@ function (ls::BackTracking)(loss)
         loss_αₙ = loss(αₙ)
     end
 
-    # As a last check, say the line search failed when the loss value actually increased
-    if success && (loss_αₙ > loss(1.0))
-        success = false
-    end
-
     # If the line search failed, this NaN will propagate trough OrdinaryDiffEq
     # and causes the time step to be rejected
     return success ? αₙ : NaN
 end
 
-"""
-Compute the residual of the non-linear solver, i.e. a measure of the
-error in the solution to the implicit equation defined by the solver algorithm
-"""
-function residual(z::CVector, integrator, nlsolver, f::TF) where {TF}
-    (; uprev, t, p, dt, opts, isdae) = integrator
-    (; tmp, ztmp, γ, α, cache, method) = nlsolver
-    (; ustep, atmp, tstep, k, invγdt, tstep, k, invγdt) = cache
-    @assert !isdae
-    b, ustep2 =
-        _compute_rhs!(tmp, ztmp, ustep, γ, α, tstep, k, invγdt, method, p, dt, f::TF, z)
-    calculate_residuals!(
-        atmp,
-        b,
-        uprev,
-        ustep2,
-        opts.abstol,
-        opts.reltol,
-        opts.internalnorm,
-        t,
-    )
-    ndz = opts.internalnorm(atmp, t)
-    return ndz
-end
-
-"""
-MonitoredBackTracing is a thin wrapper of BackTracking, making sure that
-the BackTracking relaxation is rejected if it results in a residual increase
-"""
 function OrdinaryDiffEqNonlinearSolve.relax!(
     dz,
     nlsolver::AbstractNLSolver,
@@ -841,28 +853,29 @@ function OrdinaryDiffEqNonlinearSolve.relax!(
     f,
     linesearch::BackTracking,
 )
-    atmp = nlsolver.cache.atmp
+    (; κ) = nlsolver
 
-    let dz = dz,
-        integrator = integrator,
-        nlsolver = nlsolver,
-        f = f,
-        linesearch = linesearch
+    loss = Loss(dz, nlsolver, integrator, f)
 
-        function loss(α)
-            @. atmp = nlsolver.z - dz * α
-            residual(atmp, integrator, nlsolver, f)
-        end
+    α₀ = 1.0
+    loss_α₀ = loss(α₀)
 
-        α = linesearch(loss)
-        @. dz *= α
-
-        return dz
+    # Only do linesearch when convergence is not satisfied
+    α = if loss_α₀ < κ
+        α₀
+    else
+        linesearch(loss, α₀, loss_α₀)
     end
+
+    dz .*= α
+
+    return dz
 end
 
 "Create a NamedTuple of the node IDs per state component in the state order"
-function state_node_ids(p::Union{ParametersNonDiff, NamedTuple})::StateTuple{Vector{NodeID}}
+function state_node_ids(
+    p::Union{ParametersIndependent, NamedTuple},
+)::StateTuple{Vector{NodeID}}
     (;
         tabulated_rating_curve = p.tabulated_rating_curve.node_id,
         pump = p.pump.node_id,
@@ -1262,4 +1275,31 @@ function get_interpolation_vec(interpolation_type::String, node_id::Vector{NodeI
         error("Invalid interpolation type specified: $interpolation_type.")
     end
     return Vector{type}(undef, length(node_id))
+end
+
+function check_new_input!(p::Parameters, t::Number)::Nothing
+    (; time_dependent_cache, p_mutable) = p
+    (; t_prev_call) = time_dependent_cache
+
+    p_mutable.new_t = !isassigned(t_prev_call, 1) || (t != t_prev_call[1])
+    if p_mutable.new_t
+        time_dependent_cache.t_prev_call[1] = t
+    end
+    return nothing
+end
+
+function eval_time_interp(
+    itp::AbstractInterpolation,
+    cache::Vector,
+    idx::Int,
+    p::Parameters,
+    t::Number,
+)
+    if p.p_mutable.new_t
+        val = itp(t)
+        cache[idx] = val
+        return val
+    else
+        return cache[idx]
+    end
 end

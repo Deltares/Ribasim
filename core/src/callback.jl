@@ -134,8 +134,8 @@ Specifically, we first use all the inflows to update the mass of the Basins, rec
 the Basin concentration(s) and then remove the mass that is being lost to the outflows.
 """
 function update_cumulative_flows!(u, t, integrator)::Nothing
-    (; p_non_diff, p_mutable, diff_cache) = integrator.p
-    (; basin, flow_boundary, allocation) = p_non_diff
+    (; p_independent, p_mutable, time_dependent_cache) = integrator.p
+    (; basin, flow_boundary, allocation) = p_independent
 
     set_current_basin_properties!(u, integrator.p, t)
 
@@ -144,17 +144,21 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
 
     # Update cumulative forcings which are integrated exactly
     @. basin.cumulative_drainage_saveat +=
-        diff_cache.current_cumulative_drainage - basin.cumulative_drainage
-    @. basin.cumulative_drainage = diff_cache.current_cumulative_drainage
+        time_dependent_cache.basin.current_cumulative_drainage - basin.cumulative_drainage
+    @. basin.cumulative_drainage = time_dependent_cache.basin.current_cumulative_drainage
 
     @. basin.cumulative_precipitation_saveat +=
-        diff_cache.current_cumulative_precipitation - basin.cumulative_precipitation
-    @. basin.cumulative_precipitation = diff_cache.current_cumulative_precipitation
+        time_dependent_cache.basin.current_cumulative_precipitation -
+        basin.cumulative_precipitation
+    @. basin.cumulative_precipitation =
+        time_dependent_cache.basin.current_cumulative_precipitation
 
     # Update cumulative boundary flow which is integrated exactly
     @. flow_boundary.cumulative_flow_saveat +=
-        diff_cache.current_cumulative_boundary_flow - flow_boundary.cumulative_flow
-    @. flow_boundary.cumulative_flow = diff_cache.current_cumulative_boundary_flow
+        time_dependent_cache.flow_boundary.current_cumulative_boundary_flow -
+        flow_boundary.cumulative_flow
+    @. flow_boundary.cumulative_flow =
+        time_dependent_cache.flow_boundary.current_cumulative_boundary_flow
 
     # Update realized flows for allocation input
     for subnetwork_id in allocation.subnetwork_ids

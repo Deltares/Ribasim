@@ -743,12 +743,49 @@ const StateTimeDependentCache{T} = @NamedTuple{
     current_low_storage_factor::Vector{T},
     current_level::Vector{T},
     current_area::Vector{T},
-    current_cumulative_precipitation::Vector{T},
-    current_cumulative_drainage::Vector{T},
-    current_cumulative_boundary_flow::Vector{T},
-    flow_rate_pump::Vector{T},
-    flow_rate_outlet::Vector{T},
-    error_pid_control::Vector{T},
+    current_flow_rate_pump::Vector{T},
+    current_flow_rate_outlet::Vector{T},
+    current_error_pid_control::Vector{T},
+    prev_storage::Vector{T},
+} where {T}
+
+@enumx CacheType flow_rate_pump flow_rate_outlet basin_level
+
+"""
+A cache for intermediate results in `water_balance!` which depend only on the time `t`. A second version of this
+this cache is required for automatic differentiation (for Rosenbrock methods), where e.g. ForwardDiff requires these vectors
+to be of `ForwardDiff.Dual` type. This second version of the cache is created by DifferentiationInterface.
+"""
+const TimeDependentCache{T} = @NamedTuple{
+    basin::@NamedTuple{
+        current_cumulative_precipitation::Vector{T},
+        current_cumulative_drainage::Vector{T},
+        current_potential_evaporation::Vector{T},
+        current_infiltration::Vector{T},
+    },
+    tabulated_rating_curve::@NamedTuple{current_interpolation_index::Vector{Int}},
+    level_boundary::@NamedTuple{current_level::Vector{T}},
+    flow_boundary::@NamedTuple{current_cumulative_boundary_flow::Vector{T}},
+    pump::@NamedTuple{
+        current_min_flow_rate::Vector{T},
+        current_max_flow_rate::Vector{T},
+        current_min_upstream_level::Vector{T},
+        current_max_downstream_level::Vector{T},
+    },
+    outlet::@NamedTuple{
+        current_min_flow_rate::Vector{T},
+        current_max_flow_rate::Vector{T},
+        current_min_upstream_level::Vector{T},
+        current_max_downstream_level::Vector{T},
+    },
+    pid_control::@NamedTuple{
+        current_target::Vector{T},
+        current_proportional::Vector{T},
+        current_integral::Vector{T},
+        current_derivative::Vector{T},
+    },
+    user_demand::@NamedTuple{current_demand::Vector{T}, current_return_factor::Vector{T}},
+    t_prev_call::Vector{T},
 } where {T}
 
 """
@@ -1014,6 +1051,7 @@ The part of the parameters passed to the rhs and callbacks that are mutable.
 """
 @kwdef mutable struct ParametersMutable
     all_nodes_active::Bool = false
+    new_t = true
     tprev::Float64 = 0.0
 end
 
@@ -1076,21 +1114,82 @@ function StateTimeDependentCache(
         current_low_storage_factor = zeros(n_basin),
         current_level = zeros(n_basin),
         current_area = zeros(n_basin),
+        current_flow_rate_pump = zeros(n_pump),
+        current_flow_rate_outlet = zeros(n_outlet),
+        current_error_pid_control = zeros(n_pid_control),
+        prev_storage = fill(-1.0, n_basin),
+    )
+end
+
+function TimeDependentCache(p_independent::ParametersIndependent)::TimeDependentCache
+    n_basin = length(p_independent.basin.node_id)
+    basin = (;
         current_cumulative_precipitation = zeros(n_basin),
         current_cumulative_drainage = zeros(n_basin),
-        current_cumulative_boundary_flow = zeros(length(flow_boundary.node_id)),
-        flow_rate_pump = zeros(length(pump.node_id)),
-        flow_rate_outlet = zeros(length(outlet.node_id)),
-        error_pid_control = zeros(length(pid_control.node_id)),
+        current_potential_evaporation = zeros(n_basin),
+        current_infiltration = zeros(n_basin),
+    )
+
+    n_rating_curve = length(p_independent.tabulated_rating_curve.node_id)
+    tabulated_rating_curve = (; current_interpolation_index = zeros(Int, n_rating_curve))
+
+    n_level_boundary = length(p_independent.level_boundary.node_id)
+    level_boundary = (; current_level = zeros(n_level_boundary))
+
+    n_flow_boundary = length(p_independent.flow_boundary.node_id)
+    flow_boundary = (; current_cumulative_boundary_flow = zeros(n_flow_boundary))
+
+    n_pump = length(p_independent.pump.node_id)
+    pump = (;
+        current_min_flow_rate = zeros(n_pump),
+        current_max_flow_rate = zeros(n_pump),
+        current_min_upstream_level = zeros(n_pump),
+        current_max_downstream_level = zeros(n_pump),
+    )
+
+    n_outlet = length(p_independent.outlet.node_id)
+    outlet = (;
+        current_min_flow_rate = zeros(n_outlet),
+        current_max_flow_rate = zeros(n_outlet),
+        current_min_upstream_level = zeros(n_outlet),
+        current_max_downstream_level = zeros(n_outlet),
+    )
+
+    n_pid_control = length(p_independent.pid_control.node_id)
+    pid_control = (;
+        current_target = zeros(n_pid_control),
+        current_proportional = zeros(n_pid_control),
+        current_integral = zeros(n_pid_control),
+        current_derivative = zeros(n_pid_control),
+    )
+
+    n_user_demand = length(p_independent.user_demand.node_id)
+    user_demand = (;
+        current_demand = zeros(n_user_demand),
+        current_return_factor = zeros(n_user_demand),
+    )
+
+    return (;
+        basin,
+        tabulated_rating_curve,
+        level_boundary,
+        flow_boundary,
+        pump,
+        outlet,
+        pid_control,
+        user_demand,
+        t_prev_call = [-1.0],
     )
 end
 
 """
 The collection of all parameters that are passed to the rhs (`water_balance!`) and callbacks.
 """
+@kwdef struct Parameters{C1, C2, C3, C4, C5, C6, T1, T2}
     p_independent::ParametersIndependent{C1, C2, C3, C4, C5, C6}
     state_time_dependent_cache::StateTimeDependentCache{T1} =
         StateTimeDependentCache(p_independent)
+    time_dependent_cache::TimeDependentCache{T2} = TimeDependentCache(p_independent)
     p_mutable::ParametersMutable = ParametersMutable()
 end
 
