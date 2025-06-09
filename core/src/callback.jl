@@ -13,6 +13,8 @@ function create_callbacks(
     callbacks = SciMLBase.DECallback[]
 
     # Check for negative storage
+    # As the first callback that is always applied, this callback also calls water_balance!
+    # to make sure all parameter data is up to date with the state
     negative_storage_cb = FunctionCallingCallback(check_negative_storage)
     push!(callbacks, negative_storage_cb)
 
@@ -303,8 +305,6 @@ Save the storages and levels at the latest t.
 """
 function save_basin_state(u, t, integrator)
     (; current_storage, current_level) = integrator.p.state_time_dependent_cache
-    du = get_du(integrator)
-    water_balance!(du, u, integrator.p, t)
     SavedBasinState(; storage = copy(current_storage), level = copy(current_level), t)
 end
 
@@ -498,7 +498,6 @@ function apply_discrete_control!(u, t, integrator)::Nothing
     (; discrete_control) = p.p_independent
     (; node_id, truth_state, compound_variables) = discrete_control
     du = get_du(integrator)
-    water_balance!(du, u, p, t)
 
     # Loop over the discrete control nodes to determine their truth state
     # and detect possible control state changes
