@@ -29,7 +29,7 @@ end
 
 function log_bottlenecks(model; converged::Bool)
     (; cache, p, u) = model.integrator
-    (; p_non_diff) = p
+    (; p_independent) = p
 
     level = converged ? LoggingExtras.Info : LoggingExtras.Warn
 
@@ -41,7 +41,7 @@ function log_bottlenecks(model; converged::Bool)
         max_errors = 5
         # Iterate over the errors in descending order
         for i in sortperm(flow_error; rev = true)
-            node_id = Symbol(p_non_diff.node_id[i])
+            node_id = Symbol(p_independent.node_id[i])
             error = flow_error[i]
             isnan(error) && continue  # NaN are sorted as largest
             # Stop reporting errors if they are too small or too many

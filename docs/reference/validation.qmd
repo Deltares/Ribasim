@@ -17,7 +17,7 @@ using MarkdownTables
 node_names_snake_case = Symbol[]
 node_names_camel_case = Symbol[]
 for (node_name, node_type) in
-    zip(fieldnames(Ribasim.ParametersNonDiff), fieldtypes(Ribasim.ParametersNonDiff))
+    zip(fieldnames(Ribasim.ParametersIndependent), fieldtypes(Ribasim.ParametersIndependent))
     if node_type <: Ribasim.AbstractParameterNode
         push!(node_names_snake_case, node_name)
         push!(node_names_camel_case, nameof(node_type))

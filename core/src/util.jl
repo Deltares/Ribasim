@@ -297,7 +297,7 @@ function reduction_factor(x::T, threshold::Real)::T where {T <: Real}
 end
 
 function get_low_storage_factor(p::Parameters, id::NodeID)
-    (; current_low_storage_factor) = p.diff_cache
+    (; current_low_storage_factor) = p.state_time_dependent_cache
     if id.type == NodeType.Basin
         current_low_storage_factor[id.idx]
     else
@@ -384,10 +384,10 @@ function get_all_demand_priorities(db::DB, config::Config;)::Vector{Int32}
 end
 
 function get_external_demand_priority_idx(
-    p_non_diff::ParametersNonDiff,
+    p_independent::ParametersIndependent,
     node_id::NodeID,
 )::Int
-    (; graph, level_demand, flow_demand, allocation) = p_non_diff
+    (; graph, level_demand, flow_demand, allocation) = p_independent
     inneighbor_control_ids = inneighbor_labels_type(graph, node_id, LinkType.control)
     if isempty(inneighbor_control_ids)
         return 0
@@ -447,7 +447,7 @@ Get the time interval between (flow) saves
 """
 function get_Δt(integrator)::Float64
     (; p, t, dt) = integrator
-    (; saveat) = p.p_non_diff.graph[]
+    (; saveat) = p.p_independent.graph[]
     if iszero(saveat)
         dt
     elseif isinf(saveat)
@@ -473,8 +473,8 @@ as input. Therefore we set the instantaneous flows as the mean flows as allocati
 """
 function set_initial_allocation_mean_flows!(integrator)::Nothing
     (; u, p, t) = integrator
-    (; p_non_diff) = p
-    (; allocation) = p_non_diff
+    (; p_independent) = p
+    (; allocation) = p_independent
     (; mean_input_flows, mean_realized_flows, allocation_models) = allocation
     (; Δt_allocation) = allocation_models[1]
 
@@ -489,7 +489,7 @@ function set_initial_allocation_mean_flows!(integrator)::Nothing
             if link[1] == link[2]
                 q = get_influx(du, link[1], p)
             else
-                q = get_flow(du, p_non_diff, t, link)
+                q = get_flow(du, p_independent, t, link)
             end
             # Multiply by Δt_allocation as averaging divides by this factor
             # in update_allocation!
@@ -503,7 +503,7 @@ function set_initial_allocation_mean_flows!(integrator)::Nothing
         if link[1] == link[2]
             mean_realized_flows[link] = -u[link[1].idx]
         else
-            q = get_flow(du, p_non_diff, t, link)
+            q = get_flow(du, p_independent, t, link)
             mean_realized_flows[link] = q * Δt_allocation
         end
     end
@@ -518,9 +518,9 @@ function convert_truth_state(boolean_vector)::String
     String(UInt8.(ifelse.(boolean_vector, 'T', 'F')))
 end
 
-function NodeID(type::Symbol, value::Integer, p_non_diff::ParametersNonDiff)::NodeID
+function NodeID(type::Symbol, value::Integer, p_independent::ParametersIndependent)::NodeID
     node_type = NodeType.T(type)
-    node = getfield(p_non_diff, snake_case(type))
+    node = getfield(p_independent, snake_case(type))
     idx = searchsortedfirst(node.node_id, NodeID(node_type, value, 0))
     return NodeID(node_type, value, idx)
 end
@@ -528,42 +528,42 @@ end
 """
 Get the reference to a parameter
 """
-function get_diff_cache_ref(
+function get_cache_ref(
     node_id::NodeID,
     variable::String,
     state_ranges::StateTuple{UnitRange{Int}};
     listen::Bool = true,
-)::Tuple{DiffCacheRef, Bool}
+)::Tuple{CacheRef, Bool}
     errors = false
 
     ref = if node_id.type == NodeType.Basin && variable == "level"
-        DiffCacheRef(; type = DiffCacheType.basin_level, node_id.idx)
+        CacheRef(; type = CacheType.basin_level, node_id.idx)
     elseif variable == "flow_rate" && node_id.type != NodeType.FlowBoundary
         if listen
             if node_id.type ∉ conservative_nodetypes
                 errors = true
                 @error "Cannot listen to flow_rate of $node_id, the node type must be one of $conservative_node_types."
-                DiffCacheRef()
+                CacheRef()
             else
                 # Index in the state vector (inflow)
                 idx = get_state_index(state_ranges, node_id)
-                DiffCacheRef(; idx, from_du = true)
+                CacheRef(; idx, from_du = true)
             end
         else
             type = if node_id.type == NodeType.Pump
-                DiffCacheType.flow_rate_pump
+                CacheType.flow_rate_pump
             elseif node_id.type == NodeType.Outlet
-                DiffCacheType.flow_rate_outlet
+                CacheType.flow_rate_outlet
             else
                 errors = true
                 @error "Cannot set the flow rate of $node_id."
-                DiffCacheType.flow_rate_pump
+                CacheType.flow_rate_pump
             end
-            DiffCacheRef(; type, node_id.idx)
+            CacheRef(; type, node_id.idx)
         end
     else
         # Placeholder to obtain correct type
-        DiffCacheRef()
+        CacheRef()
     end
     return ref, errors
 end
@@ -571,11 +571,11 @@ end
 """
 Set references to all variables that are listened to by discrete/continuous control
 """
-function set_listen_diff_cache_refs!(
-    p_non_diff::ParametersNonDiff,
+function set_listen_cache_refs!(
+    p_independent::ParametersIndependent,
     state_ranges::StateTuple{UnitRange{Int}},
 )::Nothing
-    (; discrete_control, continuous_control) = p_non_diff
+    (; discrete_control, continuous_control) = p_independent
     compound_variable_sets =
         [discrete_control.compound_variables..., continuous_control.compound_variable]
     errors = false
@@ -584,13 +584,13 @@ function set_listen_diff_cache_refs!(
         for compound_variable in compound_variables
             (; subvariables) = compound_variable
             for (j, subvariable) in enumerate(subvariables)
-                ref, error = get_diff_cache_ref(
+                ref, error = get_cache_ref(
                     subvariable.listen_node_id,
                     subvariable.variable,
                     state_ranges,
                 )
                 if !error
-                    subvariables[j] = @set subvariable.diff_cache_ref = ref
+                    subvariables[j] = @set subvariable.cache_ref = ref
                 end
                 errors |= error
             end
@@ -606,9 +606,11 @@ end
 """
 Set references to all variables that are controlled by discrete control
 """
-function set_discrete_controlled_variable_refs!(p_non_diff::ParametersNonDiff)::Nothing
-    for nodetype in propertynames(p_non_diff)
-        node = getfield(p_non_diff, nodetype)
+function set_discrete_controlled_variable_refs!(
+    p_independent::ParametersIndependent,
+)::Nothing
+    for nodetype in propertynames(p_independent)
+        node = getfield(p_independent, nodetype)
         if node isa AbstractParameterNode && hasfield(typeof(node), :control_mapping)
             control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate} =
                 node.control_mapping
@@ -649,7 +651,7 @@ function set_discrete_controlled_variable_refs!(p_non_diff::ParametersNonDiff)::
 end
 
 function set_target_ref!(
-    target_ref::Vector{DiffCacheRef},
+    target_ref::Vector{CacheRef},
     node_id::Vector{NodeID},
     controlled_variable::Vector{String},
     state_ranges::StateTuple{UnitRange{Int}},
@@ -659,7 +661,7 @@ function set_target_ref!(
     for (i, (id, variable)) in enumerate(zip(node_id, controlled_variable))
         controlled_node_id = only(outneighbor_labels_type(graph, id, LinkType.control))
         ref, error =
-            get_diff_cache_ref(controlled_node_id, variable, state_ranges; listen = false)
+            get_cache_ref(controlled_node_id, variable, state_ranges; listen = false)
         target_ref[i] = ref
         errors |= error
     end
@@ -674,12 +676,12 @@ end
 Collect the control mappings of all controllable nodes in
 the DiscreteControl object for easy access
 """
-function collect_control_mappings!(p_non_diff::ParametersNonDiff)::Nothing
-    (; control_mappings) = p_non_diff.discrete_control
+function collect_control_mappings!(p_independent::ParametersIndependent)::Nothing
+    (; control_mappings) = p_independent.discrete_control
 
     for node_type in instances(NodeType.T)
         node_type == NodeType.Terminal && continue
-        node = getfield(p_non_diff, snake_case(node_type))
+        node = getfield(p_independent, snake_case(node_type))
         if hasfield(typeof(node), :control_mapping)
             control_mappings[node_type] = node.control_mapping
         end
@@ -880,16 +882,16 @@ function count_state_ranges(u_ids::StateTuple{Vector{NodeID}})::StateTuple{UnitR
     StateTuple{UnitRange{Int}}(ranges(map(length, collect(u_ids))))
 end
 
-function build_state_vector(p_non_diff::ParametersNonDiff)
+function build_state_vector(p_independent::ParametersIndependent)
     # It is assumed that the horizontal flow states come first in
-    # p_non_diff.state_inflow_link and p_non_diff.state_outflow_link
-    u_ids = state_node_ids(p_non_diff)
+    # p_independent.state_inflow_link and p_independent.state_outflow_link
+    u_ids = state_node_ids(p_independent)
     state_ranges = count_state_ranges(u_ids)
-    data = zeros(length(p_non_diff.node_id))
+    data = zeros(length(p_independent.node_id))
     u = CVector(data, state_ranges)
-    # Ensure p_non_diff.node_id, state_ranges and u have the same length and order
+    # Ensure p_independent.node_id, state_ranges and u have the same length and order
     ranges = (getproperty(state_ranges, x) for x in propertynames(state_ranges))
-    @assert length(u) == length(p_non_diff.node_id) == mapreduce(length, +, ranges)
+    @assert length(u) == length(p_independent.node_id) == mapreduce(length, +, ranges)
     @assert keys(u_ids) == state_components
     return u
 end
@@ -1045,7 +1047,7 @@ end
 Check whether any storages are negative given the state u.
 """
 function isoutofdomain(u, p, t)
-    (; current_storage) = p.diff_cache
+    (; current_storage) = p.state_time_dependent_cache
     formulate_storages!(u, p, t)
     any(<(0), current_storage)
 end
@@ -1106,8 +1108,11 @@ function min_low_user_demand_level_factor(
     end
 end
 
-function mean_input_flows_subnetwork(p_non_diff::ParametersNonDiff, subnetwork_id::Int32)
-    (; mean_input_flows, subnetwork_ids) = p_non_diff.allocation
+function mean_input_flows_subnetwork(
+    p_independent::ParametersIndependent,
+    subnetwork_id::Int32,
+)
+    (; mean_input_flows, subnetwork_ids) = p_independent.allocation
     subnetwork_idx = searchsortedfirst(subnetwork_ids, subnetwork_id)
     return mean_input_flows[subnetwork_idx]
 end
@@ -1139,7 +1144,7 @@ function find_index(x::Symbol, s::OrderedSet{Symbol})
 end
 
 function get_timeseries_tstops(
-    p_non_diff::ParametersNonDiff,
+    p_independent::ParametersIndependent,
     t_end::Float64,
 )::Vector{Vector{Float64}}
     (;
@@ -1152,7 +1157,7 @@ function get_timeseries_tstops(
         tabulated_rating_curve,
         user_demand,
         discrete_control,
-    ) = p_non_diff
+    ) = p_independent
     tstops = Vector{Float64}[]
 
     # For nodes that have multiple timeseries associated with them defined in the same table

@@ -734,11 +734,11 @@ node_id: node ID of the Junction node
 end
 
 """
-A cache for intermediate results in 'water_balance!' which depend on the state vector `u`. A second version of
+A cache for intermediate results in `water_balance!` which can depend on both the state vector `u` and time `t`. A second version of
 this cache is required for automatic differentiation, where e.g. ForwardDiff requires these vectors to
 be of `ForwardDiff.Dual` type. This second version of the cache is created by DifferentiationInterface.
 """
-const DiffCache{T} = @NamedTuple{
+const StateTimeDependentCache{T} = @NamedTuple{
     current_storage::Vector{T},
     current_low_storage_factor::Vector{T},
     current_level::Vector{T},
@@ -751,37 +751,38 @@ const DiffCache{T} = @NamedTuple{
     error_pid_control::Vector{T},
 } where {T}
 
-@enumx DiffCacheType flow_rate_pump flow_rate_outlet basin_level
-
 """
-A reference to an element of either the DiffCache of the state derivative `du`.
+A reference to an element of either the StateTimeDependentCache or the state derivative `du`.
 This is not a direct reference to the memory, because it depends on the type of call
 of `water_balance!` (AD versus 'normal') which version of these objects is passed.
 """
-@kwdef struct DiffCacheRef
-    type::DiffCacheType.T = DiffCacheType.flow_rate_pump
+@kwdef struct CacheRef
+    type::CacheType.T = CacheType.flow_rate_pump
     idx::Int = 0
     from_du::Bool = false
 end
 
 """
-Get one of the vectors of the DiffCache based on the passed type.
+Get one of the vectors of the StateTimeDependentCache based on the passed type.
 """
-function get_cache_vector(diff_cache::DiffCache, type::DiffCacheType.T)
-    if type == DiffCacheType.flow_rate_pump
-        diff_cache.flow_rate_pump
-    elseif type == DiffCacheType.flow_rate_outlet
-        diff_cache.flow_rate_outlet
-    elseif type == DiffCacheType.basin_level
-        diff_cache.current_level
+function get_cache_vector(
+    state_time_dependent_cache::StateTimeDependentCache,
+    type::CacheType.T,
+)
+    if type == CacheType.flow_rate_pump
+        state_time_dependent_cache.current_flow_rate_pump
+    elseif type == CacheType.flow_rate_outlet
+        state_time_dependent_cache.current_flow_rate_outlet
+    elseif type == CacheType.basin_level
+        state_time_dependent_cache.current_level
     else
-        error("Invalid DiffCacheType $type passed.")
+        error("Invalid cache type $type passed.")
     end
 end
 
 @kwdef struct SubVariable
     listen_node_id::NodeID
-    diff_cache_ref::DiffCacheRef
+    cache_ref::CacheRef
     variable::String
     weight::Float64
     look_ahead::Float64
@@ -838,7 +839,7 @@ end
     node_id::Vector{NodeID}
     compound_variable::Vector{CompoundVariable}
     controlled_variable::Vector{String}
-    target_ref::Vector{DiffCacheRef} = Vector{DiffCacheRef}(undef, length(node_id))
+    target_ref::Vector{CacheRef} = Vector{CacheRef}(undef, length(node_id))
     func::Vector{ScalarLinearInterpolation}
 end
 
@@ -862,7 +863,7 @@ control_mapping: dictionary from (node_id, control_state) to target flow rate
     listen_node_id::Vector{NodeID} = Vector{NodeID}(undef, length(node_id))
     target::Vector{ScalarLinearInterpolation} =
         Vector{ScalarLinearInterpolation}(undef, length(node_id))
-    target_ref::Vector{DiffCacheRef} = Vector{DiffCacheRef}(undef, length(node_id))
+    target_ref::Vector{CacheRef} = Vector{CacheRef}(undef, length(node_id))
     proportional::Vector{ScalarLinearInterpolation} =
         Vector{ScalarLinearInterpolation}(undef, length(node_id))
     integral::Vector{ScalarLinearInterpolation} =
@@ -962,7 +963,7 @@ end
     # Static part
     # Static subgrid ids
     subgrid_id_static::Vector{Int32} = []
-    # index into the p.diff_cache.current_level vector for each static subgrid_id
+    # index into the p.state_time_dependent_cache.current_level vector for each static subgrid_id
     basin_id_static::Vector{NodeID} = []
     # index into the subgrid.level vector for each static subgrid_id
     level_index_static::Vector{Int} = []
@@ -972,7 +973,7 @@ end
     # Dynamic part
     # Dynamic subgrid ids
     subgrid_id_time::Vector{Int32} = []
-    # index into the p.diff_cache.current_level vector for each dynamic subgrid_id
+    # index into the p.state_time_dependent_cache.current_level vector for each dynamic subgrid_id
     basin_id_time::Vector{NodeID} = []
     # index into the subgrid.level vector for each dynamic subgrid_id
     level_index_time::Vector{Int} = []
@@ -1022,7 +1023,7 @@ and not derived from the state vector `u` (or the time `t`). In this context e.g
 of floats (not dependent on `u`) is not considered mutable, because even though it's elements are mutable,
 the object itself is not.
 """
-@kwdef struct ParametersNonDiff{C1, C2, C3, C4, C5, C6}
+@kwdef struct ParametersIndependent{C1, C2, C3, C4, C5, C6}
     starttime::DateTime
     reltol::Float64
     relmask::Vector{Bool}
@@ -1062,12 +1063,14 @@ the object itself is not.
     do_subgrid::Bool
 end
 
-"""
-Initialize the DiffCache based on node amounts obtained from ParametersNonDiff.
-"""
-function DiffCache(p_non_diff::ParametersNonDiff)
-    (; basin, pump, outlet, pid_control, flow_boundary) = p_non_diff
-    n_basin = length(basin.node_id)
+function StateTimeDependentCache(
+    p_independent::ParametersIndependent,
+)::StateTimeDependentCache
+    n_basin = length(p_independent.basin.node_id)
+    n_pump = length(p_independent.pump.node_id)
+    n_outlet = length(p_independent.outlet.node_id)
+    n_pid_control = length(p_independent.pid_control.node_id)
+
     return (;
         current_storage = zeros(n_basin),
         current_low_storage_factor = zeros(n_basin),
@@ -1085,21 +1088,21 @@ end
 """
 The collection of all parameters that are passed to the rhs (`water_balance!`) and callbacks.
 """
-@kwdef struct Parameters{C1, C2, C3, C4, C5, C6, T}
-    p_non_diff::ParametersNonDiff{C1, C2, C3, C4, C5, C6}
-    diff_cache::DiffCache{T} = DiffCache(p_non_diff)
+    p_independent::ParametersIndependent{C1, C2, C3, C4, C5, C6}
+    state_time_dependent_cache::StateTimeDependentCache{T1} =
+        StateTimeDependentCache(p_independent)
     p_mutable::ParametersMutable = ParametersMutable()
 end
 
-function get_value(ref::DiffCacheRef, p::Parameters, du::CVector)
+function get_value(ref::CacheRef, p::Parameters, du::CVector)
     if ref.from_du
         du[ref.idx]
     else
-        get_cache_vector(p.diff_cache, ref.type)[ref.idx]
+        get_cache_vector(p.state_time_dependent_cache, ref.type)[ref.idx]
     end
 end
 
-function set_value!(ref::DiffCacheRef, p::Parameters, value)
+function set_value!(ref::CacheRef, p::Parameters, value)
     @assert !ref.from_du
-    get_cache_vector(p.diff_cache, ref.type)[ref.idx] = value
+    get_cache_vector(p.state_time_dependent_cache, ref.type)[ref.idx] = value
 end
