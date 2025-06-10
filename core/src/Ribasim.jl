@@ -28,9 +28,6 @@ using DifferentiationInterface:
 using OrdinaryDiffEqCore: OrdinaryDiffEqCore, get_du, AbstractNLSolver
 import ForwardDiff
 
-# Use NaNMath.min and max which ignore NaN.
-import NaNMath
-
 # Interface for defining and solving the ODE problem of the physical layer.
 using SciMLBase:
     SciMLBase,
