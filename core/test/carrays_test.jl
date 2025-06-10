@@ -22,6 +22,10 @@
     @test similar(x, 2, 3) isa Matrix{Float64}
     @test similar(x, Int, 2, 3) isa Matrix{Int}
     @test iterate(x) === (1.0, 2)
+
+    @test map(identity, x) isa CVector{Float64}
+    @test map!(identity, similar(data), x) isa Vector{Float64}
+    @test map!(identity, similar(x), x) isa CVector{Float64}
 end
 
 @testitem "Int" begin
