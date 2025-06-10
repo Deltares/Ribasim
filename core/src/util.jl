@@ -1129,6 +1129,11 @@ function get_interpolation_vec(interpolation_type::String, node_id::Vector{NodeI
     return Vector{type}(undef, length(node_id))
 end
 
+"""
+Check whether the inputs u and t are different from the previous call of water_balance! and
+update the boolean flags in p_mutable. In several parts of the calculations in water_balance!,
+caches are only updated if the data they depend on is different from the previous water_balance! call.
+"""
 function check_new_input!(p::Parameters, u::CVector, t::Number)::Nothing
     (; state_time_dependent_cache, time_dependent_cache, p_mutable) = p
     (; u_prev_call) = state_time_dependent_cache
