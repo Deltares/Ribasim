@@ -75,7 +75,6 @@ function Base.similar(x::CArray, ::Type{T}) where {T}
 end
 
 Base.iterate(x::CArray, state...) = iterate(getdata(x), state...)
-Base.map!(f, y::AbstractArray, x::CArray) = CArray(map!(f, y, getdata(x)), getaxes(x))
 Base.map(f, x::CArray) = CArray(map(f, getdata(x)), getaxes(x))
 
 # Implement broadcasting such that `u - uprev` returns a CArray.
