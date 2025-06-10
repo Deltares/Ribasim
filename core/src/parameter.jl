@@ -763,7 +763,6 @@ const TimeDependentCache{T} = @NamedTuple{
         current_potential_evaporation::Vector{T},
         current_infiltration::Vector{T},
     },
-    tabulated_rating_curve::@NamedTuple{current_interpolation_index::Vector{Int}},
     level_boundary::@NamedTuple{current_level::Vector{T}},
     flow_boundary::@NamedTuple{current_cumulative_boundary_flow::Vector{T}},
     pump::@NamedTuple{

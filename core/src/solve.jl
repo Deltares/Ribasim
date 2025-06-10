@@ -426,13 +426,6 @@ function formulate_flow!(
 
         if active[id.idx] || all_nodes_active
             factor = get_low_storage_factor(p, inflow_id)
-            interpolation_index = eval_time_interp(
-                current_interpolation_index[id.idx],
-                time_dependent_cache.tabulated_rating_curve.current_interpolation_index,
-                id.idx,
-                p,
-                t,
-            )
             interpolation_index = current_interpolation_index[id.idx](t)
             qh = interpolations[interpolation_index]
             q = factor * qh(h_a)
