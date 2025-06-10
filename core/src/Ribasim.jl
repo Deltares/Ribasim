@@ -27,8 +27,7 @@ using DifferentiationInterface:
 # Algorithms for solving ODEs.
 using OrdinaryDiffEqCore: OrdinaryDiffEqCore, get_du, AbstractNLSolver
 using DiffEqBase: DiffEqBase, calculate_residuals!
-using OrdinaryDiffEqNonlinearSolve: OrdinaryDiffEqNonlinearSolve, relax!, _compute_rhs!
-using ForwardDiff, DiffResults
+import ForwardDiff
 
 # Use NaNMath.min and max which ignore NaN.
 import NaNMath
