@@ -1129,13 +1129,30 @@ function get_interpolation_vec(interpolation_type::String, node_id::Vector{NodeI
     return Vector{type}(undef, length(node_id))
 end
 
-function check_new_input!(p::Parameters, t::Number)::Nothing
-    (; time_dependent_cache, p_mutable) = p
+function check_new_input!(p::Parameters, u::CVector, t::Number)::Nothing
+    (; state_time_dependent_cache, time_dependent_cache, p_mutable) = p
+    (; u_prev_call) = state_time_dependent_cache
     (; t_prev_call) = time_dependent_cache
 
-    p_mutable.new_t = !isassigned(t_prev_call, 1) || (t != t_prev_call[1])
+    p_mutable.new_t =
+        !isassigned(t_prev_call, 1) || (
+            t != t_prev_call[1] &&
+            ForwardDiff.partials(t) == ForwardDiff.partials(t_prev_call[1])
+        )
     if p_mutable.new_t
         time_dependent_cache.t_prev_call[1] = t
+    end
+
+    p_mutable.new_u =
+        any(i -> !isassigned(u_prev_call, i), eachindex(u)) || any(
+            i -> !(
+                u[i] == u_prev_call[i] &&
+                ForwardDiff.partials(u[i]) == ForwardDiff.partials(u_prev_call[i])
+            ),
+            eachindex(u),
+        )
+    if p_mutable.new_u
+        state_time_dependent_cache.u_prev_call .= u
     end
     return nothing
 end

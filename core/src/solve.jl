@@ -47,8 +47,8 @@ function water_balance!(
         p_mutable,
     )
 
-    # Check whether t is different from the last water_balance! call
-    check_new_input!(p, t)
+    # Check whether t or u is different from the last water_balance! call
+    check_new_input!(p, u, t)
 
     du .= 0.0
 
@@ -137,13 +137,11 @@ function set_current_basin_properties!(u::CVector, p::Parameters, t::Number)::No
             cumulative_drainage + dt * vertical_flux.drainage
     end
 
-    formulate_storages!(u, p, t)
+    if p_mutable.new_t || p_mutable.new_u
+        formulate_storages!(u, p, t)
 
-    for (id, s) in zip(basin.node_id, state_time_dependent_cache.current_storage)
-        i = id.idx
-        if !isassigned(state_time_dependent_cache.prev_storage, i) ||
-           (s != state_time_dependent_cache.prev_storage[i])
-            state_time_dependent_cache.prev_storage[i] = s
+        for (id, s) in zip(basin.node_id, state_time_dependent_cache.current_storage)
+            i = id.idx
             state_time_dependent_cache.current_low_storage_factor[i] =
                 reduction_factor(s, low_storage_threshold[i])
             state_time_dependent_cache.current_level[i] =
@@ -568,30 +566,19 @@ function formulate_flow!(
         current_max_downstream_level,
     ) = time_dependent_cache.pump
     (; current_flow_rate_pump) = state_time_dependent_cache
+
     all_nodes_active = p_mutable.all_nodes_active
-    for (
-        id,
-        inflow_link,
-        outflow_link,
-        active,
-        flow_rate_itp,
-        min_flow_rate,
-        max_flow_rate,
-        min_upstream_level,
-        max_downstream_level,
-        continuous_control_type,
-    ) in zip(
-        pump.node_id,
-        pump.inflow_link,
-        pump.outflow_link,
-        pump.active,
-        pump.flow_rate,
-        pump.min_flow_rate,
-        pump.max_flow_rate,
-        pump.min_upstream_level,
-        pump.max_downstream_level,
-        pump.continuous_control_type,
-    )
+    for id in pump.node_id
+        inflow_link = pump.inflow_link[id.idx]
+        outflow_link = pump.outflow_link[id.idx]
+        active = pump.active[id.idx]
+        flow_rate_itp = pump.flow_rate[id.idx]
+        min_flow_rate = pump.min_flow_rate[id.idx]
+        max_flow_rate = pump.max_flow_rate[id.idx]
+        continuous_control_type = pump.continuous_control_type[id.idx]
+        min_upstream_level = pump.min_upstream_level[id.idx]
+        max_downstream_level = pump.max_downstream_level[id.idx]
+
         if !(active || all_nodes_active) ||
            (continuous_control_type != continuous_control_type_)
             continue
@@ -651,29 +638,6 @@ function formulate_flow!(
     ) = time_dependent_cache.outlet
 
     all_nodes_active = p_mutable.all_nodes_active
-    # for (
-    #     id,
-    #     inflow_link,
-    #     outflow_link,
-    #     active,
-    #     flow_rate_itp,
-    #     min_flow_rate,
-    #     max_flow_rate,
-    #     continuous_control_type,
-    #     min_upstream_level,
-    #     max_downstream_level,
-    # ) in zip(
-    #     outlet.node_id,
-    #     outlet.inflow_link,
-    #     outlet.outflow_link,
-    #     outlet.active,
-    #     outlet.flow_rate,
-    #     outlet.min_flow_rate,
-    #     outlet.max_flow_rate,
-    #     outlet.continuous_control_type,
-    #     outlet.min_upstream_level,
-    #     outlet.max_downstream_level,
-    # )
     for id in outlet.node_id
         inflow_link = outlet.inflow_link[id.idx]
         outflow_link = outlet.outflow_link[id.idx]

@@ -746,7 +746,7 @@ const StateTimeDependentCache{T} = @NamedTuple{
     current_flow_rate_pump::Vector{T},
     current_flow_rate_outlet::Vector{T},
     current_error_pid_control::Vector{T},
-    prev_storage::Vector{T},
+    u_prev_call::Vector{T},
 } where {T}
 
 @enumx CacheType flow_rate_pump flow_rate_outlet basin_level
@@ -1052,6 +1052,7 @@ The part of the parameters passed to the rhs and callbacks that are mutable.
 @kwdef mutable struct ParametersMutable
     all_nodes_active::Bool = false
     new_t = true
+    new_u = true
     tprev::Float64 = 0.0
 end
 
@@ -1117,7 +1118,7 @@ function StateTimeDependentCache(
         current_flow_rate_pump = zeros(n_pump),
         current_flow_rate_outlet = zeros(n_outlet),
         current_error_pid_control = zeros(n_pid_control),
-        prev_storage = fill(-1.0, n_basin),
+        u_prev_call = getdata(build_state_vector(p_independent)) .- 1.0,
     )
 end
 
