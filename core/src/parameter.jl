@@ -1131,7 +1131,6 @@ function TimeDependentCache(p_independent::ParametersIndependent)::TimeDependent
     )
 
     n_rating_curve = length(p_independent.tabulated_rating_curve.node_id)
-    tabulated_rating_curve = (; current_interpolation_index = zeros(Int, n_rating_curve))
 
     n_level_boundary = length(p_independent.level_boundary.node_id)
     level_boundary = (; current_level = zeros(n_level_boundary))
@@ -1171,7 +1170,6 @@ function TimeDependentCache(p_independent::ParametersIndependent)::TimeDependent
 
     return (;
         basin,
-        tabulated_rating_curve,
         level_boundary,
         flow_boundary,
         pump,
