@@ -84,9 +84,9 @@ function get_storages_and_levels(
     level::Matrix{Float64},
 }
     (; config, integrator, saved) = model
-    (; p_non_diff) = integrator.p
+    (; p_independent) = integrator.p
 
-    node_id = p_non_diff.basin.node_id::Vector{NodeID}
+    node_id = p_independent.basin.node_id::Vector{NodeID}
     tsteps = datetime_since.(tsaves(model), config.starttime)
 
     storage = zeros(length(node_id), length(tsteps))
@@ -105,12 +105,12 @@ function basin_state_table(
     model::Model,
 )::@NamedTuple{node_id::Vector{Int32}, level::Vector{Float64}}
     (; u, p, t) = model.integrator
-    (; current_level) = p.diff_cache
+    (; current_level) = p.state_time_dependent_cache
 
     # ensure the levels are up-to-date
     set_current_basin_properties!(u, p, t)
 
-    return (; node_id = Int32.(p.p_non_diff.basin.node_id), level = current_level)
+    return (; node_id = Int32.(p.p_independent.basin.node_id), level = current_level)
 end
 
 "Create the basin result table from the saved data"
@@ -199,7 +199,7 @@ function solver_stats_table(
     (;
         time = datetime_since.(
             solver_stats.time[1:(end - 1)],
-            model.integrator.p.p_non_diff.starttime,
+            model.integrator.p.p_independent.starttime,
         ),
         # convert nanosecond to millisecond
         computation_time = diff(solver_stats.time_ns) .* 1e-6,
@@ -223,8 +223,8 @@ function flow_table(
     (; config, saved, integrator) = model
     (; t, saveval) = saved.flow
     (; u, p) = integrator
-    (; p_non_diff) = p
-    (; graph) = p_non_diff
+    (; p_independent) = p
+    (; graph) = p_independent
     (; internal_flow_links, external_flow_links, flow_link_map) = graph[]
 
     from_node_id = Int32[]
@@ -247,7 +247,7 @@ function flow_table(
         flow = CVector(flow, getaxes(u))
         for (fi, link) in enumerate(internal_flow_links)
             internal_flow_rate[fi] =
-                get_flow(flow, p_non_diff, 0.0, link.link; boundary_flow = flow_boundary)
+                get_flow(flow, p_independent, 0.0, link.link; boundary_flow = flow_boundary)
         end
         mul!(
             view(flow_rate, (1 + (ti - 1) * nflow):(ti * nflow)),
@@ -279,8 +279,8 @@ function concentration_table(
     concentration::Vector{Float64},
 }
     (; saved, integrator) = model
-    (; p_non_diff) = integrator.p
-    (; basin) = p_non_diff
+    (; p_independent) = integrator.p
+    (; basin) = p_independent
 
     # The last timestep is not included; there is no period over which to compute flows.
     data = get_storages_and_levels(model)
@@ -309,7 +309,7 @@ function discrete_control_table(
     control_state::Vector{String},
 }
     (; config) = model
-    (; record) = model.integrator.p.p_non_diff.discrete_control
+    (; record) = model.integrator.p.p_independent.discrete_control
 
     time = datetime_since.(record.time, config.starttime)
     return (; time, record.control_node_id, record.truth_state, record.control_state)
@@ -329,7 +329,7 @@ function allocation_table(
     realized::Vector{Float64},
 }
     (; config) = model
-    (; record_demand) = model.integrator.p.p_non_diff.allocation
+    (; record_demand) = model.integrator.p.p_independent.allocation
 
     time = datetime_since.(record_demand.time, config.starttime)
     return (;
@@ -359,7 +359,7 @@ function allocation_flow_table(
     optimization_type::Vector{String},
 }
     (; config) = model
-    (; record_flow) = model.integrator.p.p_non_diff.allocation
+    (; record_flow) = model.integrator.p.p_independent.allocation
 
     time = datetime_since.(record_flow.time, config.starttime)
 
@@ -386,7 +386,7 @@ function subgrid_level_table(
 }
     (; config, saved, integrator) = model
     (; t, saveval) = saved.subgrid_level
-    subgrid = integrator.p.p_non_diff.subgrid
+    subgrid = integrator.p.p_independent.subgrid
 
     nelem = length(subgrid.level)
     ntsteps = length(t)

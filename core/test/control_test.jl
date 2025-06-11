@@ -9,19 +9,22 @@
         normpath(@__DIR__, "../../generated_testmodels/pump_discrete_control/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
-    (; p_non_diff) = model.integrator.p
-    (; discrete_control, pump, graph) = p_non_diff
+    (; p_independent) = model.integrator.p
+    (; discrete_control, pump, graph) = p_independent
 
     # Control input(flow rates)
     pump_control_mapping = pump.control_mapping
     @test unique(
         only(
-            pump_control_mapping[(NodeID(:Pump, 4, p_non_diff), "off")].itp_update_linear,
+            pump_control_mapping[(
+                NodeID(:Pump, 4, p_independent),
+                "off",
+            )].itp_update_linear,
         ).value.u,
     ) == [0]
     @test unique(
         only(
-            pump_control_mapping[(NodeID(:Pump, 4, p_non_diff), "on")].itp_update_linear,
+            pump_control_mapping[(NodeID(:Pump, 4, p_independent), "on")].itp_update_linear,
         ).value.u,
     ) == [1.0e-5]
 
@@ -75,7 +78,7 @@ end
     toml_path = normpath(@__DIR__, "../../generated_testmodels/flow_condition/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
-    (; discrete_control, flow_boundary) = model.integrator.p.p_non_diff
+    (; discrete_control, flow_boundary) = model.integrator.p.p_independent
 
     Δt = discrete_control.compound_variables[1][1].subvariables[1].look_ahead
 
@@ -98,7 +101,7 @@ end
     )
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
-    (; discrete_control, level_boundary) = model.integrator.p.p_non_diff
+    (; discrete_control, level_boundary) = model.integrator.p.p_independent
 
     Δt = discrete_control.compound_variables[1][1].subvariables[1].look_ahead
 
@@ -118,7 +121,7 @@ end
     toml_path = normpath(@__DIR__, "../../generated_testmodels/pid_control/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
-    (; basin, pid_control, flow_boundary) = model.integrator.p.p_non_diff
+    (; basin, pid_control, flow_boundary) = model.integrator.p.p_independent
 
     level = Ribasim.get_storages_and_levels(model).level[1, :]
     t = Ribasim.tsaves(model)
@@ -161,7 +164,7 @@ end
     )
     @test ispath(toml_path)
     model = Ribasim.Model(toml_path)
-    (; discrete_control, tabulated_rating_curve) = model.integrator.p.p_non_diff
+    (; discrete_control, tabulated_rating_curve) = model.integrator.p.p_independent
     (; current_interpolation_index, interpolations) = tabulated_rating_curve
 
     index_high, index_low = 1, 2
@@ -193,18 +196,18 @@ end
     )
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
-    (; p_non_diff) = model.integrator.p
-    (; discrete_control, pid_control) = p_non_diff
+    (; p_independent) = model.integrator.p
+    (; discrete_control, pid_control) = p_independent
 
     t = Ribasim.tsaves(model)
     level = Ribasim.get_storages_and_levels(model).level[1, :]
 
     target_high = pid_control.control_mapping[(
-        NodeID(:PidControl, 6, p_non_diff),
+        NodeID(:PidControl, 6, p_independent),
         "target_high",
     )].itp_update_linear[1].value.u[1]
     target_low = pid_control.control_mapping[(
-        NodeID(:PidControl, 6, p_non_diff),
+        NodeID(:PidControl, 6, p_independent),
         "target_low",
     )].itp_update_linear[1].value.u[1]
 
@@ -224,22 +227,22 @@ end
     )
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
-    (; p_non_diff) = model.integrator.p
-    (; discrete_control) = p_non_diff
+    (; p_independent) = model.integrator.p
+    (; discrete_control) = p_independent
     (; compound_variables, record) = discrete_control
 
     compound_variable = only(only(compound_variables))
 
     @test compound_variable.subvariables[1] == SubVariable(;
-        listen_node_id = NodeID(:FlowBoundary, 2, p_non_diff),
-        diff_cache_ref = compound_variable.subvariables[1].diff_cache_ref,
+        listen_node_id = NodeID(:FlowBoundary, 2, p_independent),
+        cache_ref = compound_variable.subvariables[1].cache_ref,
         variable = "flow_rate",
         weight = 0.5,
         look_ahead = 0.0,
     )
     @test compound_variable.subvariables[2] == SubVariable(;
-        listen_node_id = NodeID(:FlowBoundary, 3, p_non_diff),
-        diff_cache_ref = compound_variable.subvariables[2].diff_cache_ref,
+        listen_node_id = NodeID(:FlowBoundary, 3, p_independent),
+        cache_ref = compound_variable.subvariables[2].cache_ref,
         variable = "flow_rate",
         weight = 0.5,
         look_ahead = 0.0,
@@ -259,8 +262,8 @@ end
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
 
-    (; p_non_diff) = model.integrator.p
-    (; starttime, discrete_control) = p_non_diff
+    (; p_independent) = model.integrator.p
+    (; starttime, discrete_control) = p_independent
     (; record) = discrete_control
     @test record.truth_state == ["T", "F"]
     @test record.control_state == ["On", "Off"]
@@ -317,7 +320,7 @@ end
     flow_link_0 = filter(:link_id => id -> id == 0, flow_data)
     t = Ribasim.seconds_since.(flow_link_0.time, model.config.starttime)
     itp =
-        model.integrator.p.p_non_diff.basin.concentration_data.concentration_external[1]["concentration_external.kryptonite"]
+        model.integrator.p.p_independent.basin.concentration_data.concentration_external[1]["concentration_external.kryptonite"]
     concentration = itp.(t)
     threshold = 0.5
     above_threshold = concentration .> threshold
@@ -332,7 +335,7 @@ end
     @test ispath(toml_path)
 
     model = Ribasim.run(toml_path)
-    (; record, compound_variables) = model.integrator.p.p_non_diff.discrete_control
+    (; record, compound_variables) = model.integrator.p.p_independent.discrete_control
 
     itp = compound_variables[1][1].greater_than[1]
     @test itp.extrapolation_left == Periodic

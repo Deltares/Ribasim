@@ -515,7 +515,7 @@ Check:
 - Whether the supplied truth states have the proper length;
 - Whether look_ahead is only supplied for condition variables given by a time-series.
 """
-function valid_discrete_control(p::ParametersNonDiff, config::Config)::Bool
+function valid_discrete_control(p::ParametersIndependent, config::Config)::Bool
     (; discrete_control, graph) = p
     (; node_id, logic_mapping) = discrete_control
 

@@ -14,7 +14,7 @@ using MarkdownTables
 node_names = Symbol[]
 controllable_parameters = String[]
 
-for node_type in fieldtypes(Ribasim.ParametersNonDiff)
+for node_type in fieldtypes(Ribasim.ParametersIndependent)
     if node_type <: Ribasim.AbstractParameterNode
         node_name = nameof(node_type)
         controllable_fields = Ribasim.controllablefields(node_name)
