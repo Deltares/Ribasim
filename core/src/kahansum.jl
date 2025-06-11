@@ -1,3 +1,8 @@
+"""
+The KahanSum is an object which holds a sum and a correction value.
+The correction value is used to reduce the floating point truncation error
+in the overload of +. See also https://en.wikipedia.org/wiki/Kahan_summation_algorithm.
+"""
 struct KahanSum{T <: Number} <: Number
     sum::T
     correction::T
@@ -20,7 +25,11 @@ function Base.:+(s::KahanSum, x::Number)
 
     y = x - correction
     t = sum + y
-    c = (t - sum) - y
+    c = if abs(sum) >= abs(x)
+        (t - sum) - y
+    else
+        (t - y) - sum
+    end
     return KahanSum(t, c)
 end
 
