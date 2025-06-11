@@ -152,6 +152,7 @@ using Dates: Second
 export libribasim
 
 include("carrays.jl")
+include("kahansum.jl")
 using .CArrays: CVector, getaxes, getdata
 include("schema.jl")
 include("config.jl")

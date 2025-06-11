@@ -327,8 +327,8 @@ function save_flow(u, t, integrator)
     # Current u is previous u in next computation
     u_prev_saveat .= u
 
-    inflow_mean = zeros(length(basin.node_id))
-    outflow_mean = zeros(length(basin.node_id))
+    inflow_mean = zeros(KahanSum{Float64}, length(basin.node_id))
+    outflow_mean = zeros(KahanSum{Float64}, length(basin.node_id))
 
     # Flow contributions from horizontal flow states
     for (flow, inflow_link, outflow_link) in
@@ -425,9 +425,9 @@ function check_water_balance_error!(
         basin.node_id,
     )
         storage_rate = (s_now - s_prev) / Δt
-        total_in = inflow_rate + precipitation + drainage
-        total_out = outflow_rate + evaporation + infiltration
-        balance_error = storage_rate - (total_in - total_out)
+        total_in = kahan_sum(precipitation, drainage, inflow_rate)
+        total_out = kahan_sum(evaporation, infiltration, outflow_rate)
+        balance_error = kahan_sum(total_out, -total_in, storage_rate)
         mean_flow_rate = (total_in + total_out) / 2
         relative_error = iszero(mean_flow_rate) ? 0.0 : balance_error / mean_flow_rate
 
