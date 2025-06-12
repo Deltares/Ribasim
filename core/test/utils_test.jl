@@ -469,18 +469,18 @@ end
     x = eps
     y1 = relaxed_root(x, eps)
     y2 = sqrt(x)
-    @test isapprox(y1, y2; atol = 1e-12)
+    @test y1 ≈ y2 atol = 1e-12
 
     x = -eps
     y1 = relaxed_root(x, eps)
     y2 = -sqrt(abs(x))
-    @test isapprox(y1, y2; atol = 1e-12)
+    @test y1 ≈ y2 atol = 1e-12
 
     # Test half way threshold, relative diff is not more than 20 %
     x = eps / 2
     y1 = relaxed_root(x, eps)
     y2 = sqrt(eps / 2)
-    @test isapprox(y1, y2; rtol = 0.2)
+    @test y1 ≈ y2 atol = 0.2
 
     # Test for very small epsilon
     @test relaxed_root(1e-8, 1e-8) ≈ sqrt(1e-8)
