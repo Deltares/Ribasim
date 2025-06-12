@@ -21,27 +21,17 @@ end
     main(ARGS::Vector{String})::Cint
 
 This is the main entry point of the application.
-Performs argument parsing and sets up logging for both terminal and file.
-Calls Ribasim.run() and handles exceptions to convert to exit codes.
+Performs argument parsing and sets up logging to both the terminal and a file.
+Handles exceptions to convert to exit codes.
 """
 function main(toml_path::AbstractString)::Cint
     try
-        # show progress bar in terminal
         config = Config(toml_path)
         mkpath(results_path(config, "."))
         open(results_path(config, "ribasim.log"), "w") do io
             logger = setup_logger(; verbosity = config.logging.verbosity, stream = io)
             with_logger(logger) do
-                cli = (; ribasim_version = string(pkgversion(Ribasim)))
-                (; starttime, endtime) = config
-                if config.ribasim_version != cli.ribasim_version
-                    @warn "The Ribasim version in the TOML config file does not match the used Ribasim CLI version." config.ribasim_version cli.ribasim_version
-                end
-                @info "Starting a Ribasim simulation." toml_path cli.ribasim_version starttime endtime
-                if any(config.experimental)
-                    @warn "The following *experimental* features are enabled: $(config.experimental)"
-                end
-
+                log_startup(config, toml_path)
                 try
                     model = Model(config)
                     try
@@ -54,24 +44,8 @@ function main(toml_path::AbstractString)::Cint
                         display_error(io)
                         return 1
                     end
-
                     write_results(model)
-
-                    if success(model)
-                        log_bottlenecks(model; converged = true)
-                        @info "The model finished successfully."
-                        return 0
-                    else
-                        # OrdinaryDiffEq doesn't error on e.g. convergence failure,
-                        # but we want a non-zero exit code in that case.
-                        log_bottlenecks(model; converged = false)
-                        t = datetime_since(model.integrator.t, starttime)
-                        retcode = model.integrator.sol.retcode
-                        @error """The model exited at model time $t with return code $retcode.
-                        See https://docs.sciml.ai/DiffEqDocs/stable/basics/solution/#retcodes"""
-                        return 1
-                    end
-
+                    return log_finalize(model)
                 catch
                     # Catch errors thrown before the model is initialized.
                     # Both validation errors that we throw and unhandled exceptions are caught here.

@@ -16,17 +16,32 @@ function setup_logger(;
     stream::IOStream,
     module_filter_function::Function = is_current_module,
 )::AbstractLogger
-    file_logger = LoggingExtras.MinLevelLogger(LoggingExtras.FileLogger(stream), verbosity)
-    terminal_logger = LoggingExtras.MinLevelLogger(
+    file_logger = MinLevelLogger(FileLogger(stream), verbosity)
+    terminal_logger = MinLevelLogger(
         TerminalLogger(),
         LogLevel(-1), # To include progress bar
     )
-    return LoggingExtras.EarlyFilteredLogger(
+    return EarlyFilteredLogger(
         module_filter_function,
-        LoggingExtras.TeeLogger(file_logger, terminal_logger),
+        TeeLogger(file_logger, terminal_logger),
     )
 end
 
+"Log messages before the model is initialized."
+function log_startup(config, toml_path::AbstractString)::Nothing
+    cli = (; ribasim_version = string(pkgversion(Ribasim)))
+    (; starttime, endtime) = config
+    if config.ribasim_version != cli.ribasim_version
+        @warn "The Ribasim version in the TOML config file does not match the used Ribasim CLI version." config.ribasim_version cli.ribasim_version
+    end
+    @info "Starting a Ribasim simulation." toml_path cli.ribasim_version starttime endtime
+    if any(config.experimental)
+        @warn "The following *experimental* features are enabled: $(config.experimental)"
+    end
+    return nothing
+end
+
+"Log the convergence bottlenecks."
 function log_bottlenecks(model; converged::Bool)
     (; cache, p, u) = model.integrator
     (; p_independent) = p
@@ -57,5 +72,23 @@ function log_bottlenecks(model; converged::Bool)
     else
         algorithm = model.config.solver.algorithm
         @logmsg level "Convergence bottlenecks are not shown for the chosen solver algorithm." algorithm
+    end
+end
+
+"Log messages after the computation."
+function log_finalize(model)::Cint
+    if success(model)
+        log_bottlenecks(model; converged = true)
+        @info "The model finished successfully."
+        return 0
+    else
+        # OrdinaryDiffEq doesn't error on e.g. convergence failure,
+        # but we want a non-zero exit code in that case.
+        log_bottlenecks(model; converged = false)
+        t = datetime_since(model.integrator.t, model.config.starttime)
+        (; retcode) = model.integrator.sol
+        @error """The model exited at model time $t with return code $retcode.
+        See https://docs.sciml.ai/DiffEqDocs/stable/basics/solution/#retcodes"""
+        return 1
     end
 end

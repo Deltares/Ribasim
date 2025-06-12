@@ -206,7 +206,7 @@ end
     @test ispath(toml_path)
 
     logger = TestLogger(; min_level = Debug)
-    filtered_logger = LoggingExtras.EarlyFilteredLogger(Ribasim.is_current_module, logger)
+    filtered_logger = EarlyFilteredLogger(Ribasim.is_current_module, logger)
     model = with_logger(filtered_logger) do
         Ribasim.run(toml_path)
     end
