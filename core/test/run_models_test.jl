@@ -21,9 +21,9 @@
     @test model isa Ribasim.Model
     @test success(model)
     (; u, du) = model.integrator
-    (; p_non_diff) = model.integrator.p
+    (; p_independent) = model.integrator.p
 
-    @test p_non_diff.node_id == [0, 6, 6]
+    @test p_independent.node_id == [0, 6, 6]
     @test u isa CVector
     @test filter(!isempty, getaxes(u)) ==
           (; tabulated_rating_curve = 1:1, evaporation = 2:2, infiltration = 3:3)
@@ -102,7 +102,7 @@
         # t0 has no flow, 2 flow links
         @test nrow(flow) == (nsaved - 1) * 2
         @test nrow(basin) == nsaved - 1
-        @test nrow(subgrid) == nsaved * length(p_non_diff.subgrid.level)
+        @test nrow(subgrid) == nsaved * length(p_independent.subgrid.level)
     end
 
     @testset "Results values" begin
@@ -125,12 +125,12 @@
 
         # The exporter interpolates 1:1 for three subgrid elements, but shifted by 1.0 meter.
         basin_level = basin.level[1]
-        @test length(p_non_diff.subgrid.level) == 3
-        @test diff(p_non_diff.subgrid.level) ≈ [-1.0, 2.0]
+        @test length(p_independent.subgrid.level) == 3
+        @test diff(p_independent.subgrid.level) ≈ [-1.0, 2.0]
         @test subgrid.subgrid_id[1:3] == [11, 22, 33]
         @test subgrid.subgrid_level[1:3] ≈
               [basin_level, basin_level - 1.0, basin_level + 1.0]
-        @test subgrid.subgrid_level[(end - 2):end] == p_non_diff.subgrid.level
+        @test subgrid.subgrid_level[(end - 2):end] == p_independent.subgrid.level
     end
 end
 
@@ -141,9 +141,9 @@ end
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
-    (; p_non_diff, diff_cache) = model.integrator.p
-    (; basin) = p_non_diff
-    @test diff_cache.current_storage ≈ [1000]
+    (; p_independent, state_time_dependent_cache) = model.integrator.p
+    (; basin) = p_independent
+    @test state_time_dependent_cache.current_storage ≈ [1000]
     @test basin.vertical_flux.precipitation == [0.0]
     @test basin.vertical_flux.drainage == [0.0]
     du = get_du(model.integrator)
@@ -164,11 +164,11 @@ end
     (; integrator) = model
     du = get_du(integrator)
     (; u, p, t) = integrator
-    (; p_non_diff, diff_cache) = p
-    (; basin) = p_non_diff
+    (; p_independent, state_time_dependent_cache) = p
+    (; basin) = p_independent
 
     Ribasim.water_balance!(du, u, p, t)
-    stor = diff_cache.current_storage
+    stor = state_time_dependent_cache.current_storage
     prec = basin.vertical_flux.precipitation
     evap = du.evaporation
     drng = basin.vertical_flux.drainage
@@ -215,20 +215,20 @@ end
 
     (; integrator) = model
     (; p, alg) = integrator
-    (; p_non_diff, diff_cache) = p
+    (; p_independent, state_time_dependent_cache) = p
 
     @test p isa Ribasim.Parameters
-    @test isconcretetype(typeof(p_non_diff))
-    @test all(isconcretetype, fieldtypes(typeof(p_non_diff)))
-    @test p_non_diff.node_id == [4, 5, 8, 7, 10, 12, 2, 1, 3, 6, 9, 1, 3, 6, 9]
+    @test isconcretetype(typeof(p_independent))
+    @test all(isconcretetype, fieldtypes(typeof(p_independent)))
+    @test p_independent.node_id == [4, 5, 8, 7, 10, 12, 2, 1, 3, 6, 9, 1, 3, 6, 9]
 
     @test alg isa QNDF
     @test alg.step_limiter! == Ribasim.limit_flow!
 
     @test success(model)
     @test length(model.integrator.sol) == 2 # start and end
-    @test diff_cache.current_storage ≈ Float32[804.22156, 803.6474, 495.18243, 1318.3053] skip =
-        Sys.isapple() atol = 1.5
+    @test state_time_dependent_cache.current_storage ≈
+          Float32[797.56195, 797.11017, 508.48175, 1130.005] skip = Sys.isapple() atol = 1.5
 
     @test length(logger.logs) > 10
     @test logger.logs[1].level == Debug
@@ -263,11 +263,11 @@ end
     @test model isa Ribasim.Model
     @test success(model)
     @test allunique(Ribasim.tsaves(model))
-    (; p_non_diff, diff_cache) = model.integrator.p
-    precipitation = p_non_diff.basin.vertical_flux.precipitation
+    (; p_independent, state_time_dependent_cache) = model.integrator.p
+    precipitation = p_independent.basin.vertical_flux.precipitation
     @test length(precipitation) == 4
-    @test diff_cache.current_storage ≈ Float32[698.6895, 698.143, 420.57407, 1334.486] atol =
-        2.0 skip = Sys.isapple()
+    @test state_time_dependent_cache.current_storage ≈
+          Float32[702.262, 701.802, 439.235, 1136.969] atol = 2.0 skip = Sys.isapple()
 end
 
 @testitem "Allocation example model" begin
@@ -297,7 +297,7 @@ end
     @test success(sparse_fdm)
     @test success(dense_fdm)
 
-    @test dense_ad.integrator.u ≈ sparse_ad.integrator.u atol = 0.3
+    @test dense_ad.integrator.u ≈ sparse_ad.integrator.u atol = 0.4
     @test sparse_fdm.integrator.u ≈ sparse_ad.integrator.u atol = 4
     @test dense_fdm.integrator.u ≈ sparse_ad.integrator.u atol = 4
 
@@ -316,9 +316,10 @@ end
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
     @test success(model)
-    (; p_non_diff, diff_cache) = model.integrator.p
-    @test diff_cache.current_storage ≈ Float32[368.31558, 365.68442] skip = Sys.isapple()
-    (; tabulated_rating_curve) = p_non_diff
+    (; p_independent, state_time_dependent_cache) = model.integrator.p
+    @test state_time_dependent_cache.current_storage ≈ Float32[368.31558, 365.68442] skip =
+        Sys.isapple()
+    (; tabulated_rating_curve) = p_independent
     # The first node is static, the first interpolation object always applies
     index_itp1 = tabulated_rating_curve.current_interpolation_index[1]
     @test only(index_itp1.u) == 1
@@ -343,7 +344,7 @@ end
 
     model = Ribasim.run(toml_path)
     @test success(model)
-    (; level_boundary, outlet) = model.integrator.p.p_non_diff
+    (; level_boundary, outlet) = model.integrator.p.p_independent
     (; level) = level_boundary
     level = level[1]
 
@@ -379,24 +380,23 @@ end
 
     (; integrator) = model
     (; u, p, t, sol) = integrator
-    (; p_non_diff, diff_cache) = p
-    (; p_non_diff, diff_cache) = model.integrator.p
+    (; p_independent, state_time_dependent_cache) = p
 
     day = 86400.0
 
-    @test only(diff_cache.current_storage) ≈ 1000.0
+    @test only(state_time_dependent_cache.current_storage) ≈ 1000.0
     # constant UserDemand withdraws to 0.9m or 900m3 due to min level = 0.9
     BMI.update_until(model, 150day)
     formulate_storages!(u, p, t)
-    @test only(diff_cache.current_storage) ≈ 900 atol = 5
+    @test only(state_time_dependent_cache.current_storage) ≈ 900 atol = 5
     # dynamic UserDemand withdraws to 0.5m or 500m3 due to min level = 0.5
     BMI.update_until(model, 220day)
     formulate_storages!(u, p, t)
-    @test only(diff_cache.current_storage) ≈ 500 atol = 1
+    @test only(state_time_dependent_cache.current_storage) ≈ 500 atol = 1
 
     # Trasient return factor
     flow = DataFrame(Ribasim.flow_table(model))
-    return_factor_itp = p_non_diff.user_demand.return_factor[3]
+    return_factor_itp = p_independent.user_demand.return_factor[3]
     flow_in =
         filter([:from_node_id, :to_node_id] => (from, to) -> (from, to) == (1, 4), flow)
     flow_out =
@@ -474,8 +474,8 @@ end
 
     du = get_du(model.integrator)
     (; p, t) = model.integrator
-    (; p_non_diff, diff_cache) = p
-    (; current_level) = diff_cache
+    (; p_independent, state_time_dependent_cache) = p
+    (; current_level) = state_time_dependent_cache
     h_actual = current_level[1:50]
     x = collect(10.0:20.0:990.0)
     h_expected = standard_step_method(x, 5.0, 1.0, 0.04, h_actual[end], 1.0e-6)
@@ -488,15 +488,18 @@ end
     # Test for conservation of mass, flow at the beginning == flow at the end
     @test Ribasim.get_flow(
         du,
-        p_non_diff,
+        p_independent,
         t,
-        (NodeID(:FlowBoundary, 1, p_non_diff), NodeID(:Basin, 2, p_non_diff)),
+        (NodeID(:FlowBoundary, 1, p_independent), NodeID(:Basin, 2, p_independent)),
     ) ≈ 5.0 atol = 0.001 skip = Sys.isapple()
     @test Ribasim.get_flow(
         du,
-        p_non_diff,
+        p_independent,
         t,
-        (NodeID(:ManningResistance, 101, p_non_diff), NodeID(:Basin, 102, p_non_diff)),
+        (
+            NodeID(:ManningResistance, 101, p_independent),
+            NodeID(:Basin, 102, p_independent),
+        ),
     ) ≈ 5.0 atol = 0.001 skip = Sys.isapple()
 end
 
@@ -637,7 +640,7 @@ end
     basin_level = copy(BMI.get_value_ptr(model, "basin.level"))
     basin_level[2] += 1
     @test basin_level ≈ df.subgrid_level[(end - 1):end]
-    @test basin_level ≈ model.integrator.p.p_non_diff.subgrid.level
+    @test basin_level ≈ model.integrator.p.p_independent.subgrid.level
 end
 
 @testitem "junction" begin
@@ -675,4 +678,107 @@ end
     @test all(node.type != Ribasim.NodeType.Junction for node in labels(graph))
 
     model = Ribasim.run(toml_path)
+end
+
+@testitem "Drought" begin
+    using DataFrames
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/drought/ribasim.toml")
+    @test ispath(toml_path)
+
+    model = Ribasim.run(toml_path)
+    @test success(model)
+
+    basin_table = DataFrame(Ribasim.basin_table(model))
+    filter!(
+        [:node_id, :time] =>
+            (id, time) ->
+                (id == 2189) &&
+                    (Ribasim.seconds_since(time, model.config.starttime) > 100 * 86400),
+        basin_table,
+    )
+
+    # Check that Basin #2189 is running dry and thus the infiltration and storage rate are close to 0
+    @test all(x -> abs(x) < 0.03, basin_table.storage)
+    @test all(x -> abs(x) < 1e-8, basin_table.storage_rate)
+    @test all(x -> abs(x) < 1e-8, basin_table.infiltration)
+end
+
+@testitem "FlowBoundary interpolation type" begin
+    using DataInterpolations: LinearInterpolation, SmoothedConstantInterpolation
+    using DataFrames
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/flow_boundary_interpolation/ribasim.toml",
+    )
+    @test ispath(toml_path)
+
+    model = Ribasim.Model(toml_path)
+    (; flow_rate) = model.integrator.p.p_independent.flow_boundary
+    (; interpolation) = model.config
+
+    @test interpolation.flow_boundary == "block"
+    @test flow_rate isa Vector{<:SmoothedConstantInterpolation}
+    itp = only(flow_rate)
+    @test itp.d_max == interpolation.block_transition_period == 0.0
+    Ribasim.solve!(model)
+
+    flow_rates_input = itp.u
+    flow_rates_output =
+        filter(row -> row.from_node_id == 1, DataFrame(Ribasim.flow_table(model))).flow_rate
+    @test flow_rates_output[1:4] ≈ flow_rates_input
+    @test flow_rates_output[4:7] ≈ flow_rates_input
+
+    config = Ribasim.Config(toml_path; interpolation_flow_boundary = "linear")
+    model = Ribasim.Model(config)
+    (; flow_rate) = model.integrator.p.p_independent.flow_boundary
+    (; interpolation) = model.config
+
+    @test interpolation.flow_boundary == "linear"
+    @test flow_rate isa Vector{<:LinearInterpolation}
+end
+
+@testitem "init_basin_only_storage" begin
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/basic_basin_only_storage/ribasim.toml",
+    )
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+    @test model isa Ribasim.Model
+    @test success(model)
+end
+
+@testitem "debug interpolated relations" begin
+    using Ribasim
+    using DelimitedFiles: readdlm
+
+    levels = [[0.0, 1.0, 2.0, 3.0, 4.0, 5.0], [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]]
+    areas = [
+        [3.142, 6.283, 9.425, 12.566, 15.708, 18.850],
+        [3.142, 6.283, 9.425, 12.566, 15.708, 18.850],
+    ]
+    storages = [
+        [0.0, 4.712, 12.567, 23.562, 37.699, 54.978],
+        [0.0, 4.712, 12.567, 23.562, 37.699, 54.978],
+    ]
+    node_ids = Int32[1, 2]
+    dir = joinpath(
+        @__DIR__,
+        "../../generated_testmodels/basic_basin_both_area_and_storage/results/",
+    )
+
+    Ribasim.output_basin_profiles(levels, areas, storages, node_ids, dir)
+    filename = joinpath(dir, "basin_profiles.csv")
+    data = readdlm(filename, ',')
+
+    # Extract columns from data
+    level_col = data[:, 2]
+    area_col = data[:, 3]
+    storage_col = data[:, 4]
+
+    # Compare with expected values
+    @test level_col ≈ [levels[1]; levels[2]]
+    @test area_col ≈ [areas[1]; areas[2]]
+    @test storage_col ≈ [storages[1]; storages[2]]
 end

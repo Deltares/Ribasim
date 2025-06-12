@@ -1,5 +1,5 @@
-# Universal reduction factor threshold for the low storage factor
-const LOW_STORAGE_THRESHOLD = 10.0
+# Universal depth at which the low storage factor kicks in
+const LOW_STORAGE_DEPTH = 0.1
 
 # Universal reduction factor threshold for the minimum upstream level of UserDemand nodes
 const USER_DEMAND_MIN_LEVEL_THRESHOLD = 0.1
@@ -155,11 +155,22 @@ const ScalarConstantInterpolation =
     ConstantInterpolation{Vector{Float64}, Vector{Float64}, Vector{Float64}, Float64}
 
 "LinearInterpolation from a Float64 to a Float64"
-const ScalarInterpolation = LinearInterpolation{
+const ScalarLinearInterpolation = LinearInterpolation{
     Vector{Float64},
     Vector{Float64},
     Vector{Float64},
     Vector{Float64},
+    Float64,
+}
+
+"SmoothedConstantInterpolation from a Float64 to a Float64"
+const ScalarBlockInterpolation = SmoothedConstantInterpolation{
+    Vector{Float64},
+    Vector{Float64},
+    Vector{Float64},
+    Vector{Float64},
+    Vector{Float64},
+    Float64,
     Float64,
 }
 
@@ -315,8 +326,8 @@ The parameter update associated with a certain control state for discrete contro
 @kwdef struct ControlStateUpdate
     active::ParameterUpdate{Bool}
     scalar_update::Vector{ParameterUpdate{Float64}} = ParameterUpdate{Float64}[]
-    itp_update_linear::Vector{ParameterUpdate{ScalarInterpolation}} =
-        ParameterUpdate{ScalarInterpolation}[]
+    itp_update_linear::Vector{ParameterUpdate{ScalarLinearInterpolation}} =
+        ParameterUpdate{ScalarLinearInterpolation}[]
     itp_update_lookup::Vector{ParameterUpdate{IndexLookup}} = ParameterUpdate{IndexLookup}[]
 end
 
@@ -375,8 +386,8 @@ abstract type AbstractDemandNode <: AbstractParameterNode end
     # substances in use by the model (ordered like their axis in the concentration matrices)
     substances::OrderedSet{Symbol}
     # Data source for external concentrations (used in control)
-    concentration_external::Vector{Dict{String, ScalarInterpolation}} =
-        Dict{String, ScalarInterpolation}[]
+    concentration_external::Vector{Dict{String, ScalarLinearInterpolation}} =
+        Dict{String, ScalarLinearInterpolation}[]
 end
 
 """
@@ -419,7 +430,7 @@ VerticalFlux(n::Int) = VerticalFlux(zeros(n), zeros(n), zeros(n), zeros(n))
 const StorageToLevelType = LinearInterpolationIntInv{
     Vector{Float64},
     Vector{Float64},
-    ScalarInterpolation,
+    ScalarLinearInterpolation,
     Float64,
 }
 
@@ -437,6 +448,8 @@ of vectors or Arrow Tables, and is added to avoid type instabilities.
     node_id::Vector{NodeID}
     inflow_ids::Vector{Vector{NodeID}} = fill(NodeID[], length(node_id))
     outflow_ids::Vector{Vector{NodeID}} = fill(NodeID[], length(node_id))
+    # Storage below which outflows are reduced
+    low_storage_threshold::Vector{Float64} = zeros(length(node_id))
     # Vertical fluxes
     vertical_flux::VerticalFlux = VerticalFlux(length(node_id))
     # Initial_storage
@@ -451,8 +464,8 @@ of vectors or Arrow Tables, and is added to avoid type instabilities.
     # Basin profile interpolations
     storage_to_level::Vector{StorageToLevelType} =
         Vector{StorageToLevelType}(undef, length(node_id))
-    level_to_area::Vector{ScalarInterpolation} =
-        Vector{ScalarInterpolation}(undef, length(node_id))
+    level_to_area::Vector{ScalarLinearInterpolation} =
+        Vector{ScalarLinearInterpolation}(undef, length(node_id))
     # Values for allocation if applicable
     demand::Vector{Float64} = zeros(length(node_id))
     allocated::Vector{Float64} = zeros(length(node_id))
@@ -490,7 +503,7 @@ control_mapping: dictionary from (node_id, control_state) to Q(h) and/or active 
     outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     active::Vector{Bool} = ones(Bool, length(node_id))
     max_downstream_level::Vector{Float64} = fill(Inf, length(node_id))
-    interpolations::Vector{ScalarInterpolation} = ScalarInterpolation[]
+    interpolations::Vector{ScalarLinearInterpolation} = ScalarLinearInterpolation[]
     current_interpolation_index::Vector{IndexLookup} = IndexLookup[]
     control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate} =
         Dict{Tuple{NodeID, String}, ControlStateUpdate}()
@@ -581,7 +594,8 @@ concentration_time: Data source for concentration updates
 @kwdef struct LevelBoundary{C} <: AbstractParameterNode
     node_id::Vector{NodeID}
     active::Vector{Bool} = ones(Bool, length(node_id))
-    level::Vector{ScalarInterpolation} = Vector{ScalarInterpolation}(undef, length(node_id))
+    level::Vector{ScalarLinearInterpolation} =
+        Vector{ScalarLinearInterpolation}(undef, length(node_id))
     concentration::Matrix{Float64}
     concentration_time::StructVector{LevelBoundaryConcentrationV1, C, Int}
 end
@@ -596,14 +610,13 @@ flow_rate: flow rate (exact)
 concentration: matrix with boundary concentrations for each Basin and substance
 concentration_time: Data source for concentration updates
 """
-@kwdef struct FlowBoundary{C} <: AbstractParameterNode
+@kwdef struct FlowBoundary{C, I} <: AbstractParameterNode
     node_id::Vector{NodeID}
     outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     active::Vector{Bool} = ones(Bool, length(node_id))
     cumulative_flow::Vector{Float64} = zeros(length(node_id))
     cumulative_flow_saveat::Vector{Float64} = zeros(length(node_id))
-    flow_rate::Vector{ScalarInterpolation} =
-        Vector{ScalarInterpolation}(undef, length(node_id))
+    flow_rate::Vector{I}
     concentration::Matrix{Float64}
     concentration_time::StructVector{FlowBoundaryConcentrationV1, C, Int}
 end
@@ -628,16 +641,16 @@ control_type: one of None, ContinuousControl, PidControl, Allocation
     inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     active::Vector{Bool} = fill(true, length(node_id))
-    flow_rate::Vector{ScalarInterpolation} =
-        Vector{ScalarInterpolation}(undef, length(node_id))
-    min_flow_rate::Vector{ScalarInterpolation} =
-        Vector{ScalarInterpolation}(undef, length(node_id))
-    max_flow_rate::Vector{ScalarInterpolation} =
-        Vector{ScalarInterpolation}(undef, length(node_id))
-    min_upstream_level::Vector{ScalarInterpolation} =
-        Vector{ScalarInterpolation}(undef, length(node_id))
-    max_downstream_level::Vector{ScalarInterpolation} =
-        Vector{ScalarInterpolation}(undef, length(node_id))
+    flow_rate::Vector{ScalarLinearInterpolation} =
+        Vector{ScalarLinearInterpolation}(undef, length(node_id))
+    min_flow_rate::Vector{ScalarLinearInterpolation} =
+        Vector{ScalarLinearInterpolation}(undef, length(node_id))
+    max_flow_rate::Vector{ScalarLinearInterpolation} =
+        Vector{ScalarLinearInterpolation}(undef, length(node_id))
+    min_upstream_level::Vector{ScalarLinearInterpolation} =
+        Vector{ScalarLinearInterpolation}(undef, length(node_id))
+    max_downstream_level::Vector{ScalarLinearInterpolation} =
+        Vector{ScalarLinearInterpolation}(undef, length(node_id))
     control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate} =
         Dict{Tuple{NodeID, String}, ControlStateUpdate}()
     control_type::Vector{ControlType.T} = fill(ControlType.None, length(node_id))
@@ -663,16 +676,16 @@ control_type: one of None, ContinuousControl, PidControl, Allocation
     inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     active::Vector{Bool} = ones(Bool, length(node_id))
-    flow_rate::Vector{ScalarInterpolation} =
-        Vector{ScalarInterpolation}(undef, length(node_id))
-    min_flow_rate::Vector{ScalarInterpolation} =
-        Vector{ScalarInterpolation}(undef, length(node_id))
-    max_flow_rate::Vector{ScalarInterpolation} =
-        Vector{ScalarInterpolation}(undef, length(node_id))
-    min_upstream_level::Vector{ScalarInterpolation} =
-        Vector{ScalarInterpolation}(undef, length(node_id))
-    max_downstream_level::Vector{ScalarInterpolation} =
-        Vector{ScalarInterpolation}(undef, length(node_id))
+    flow_rate::Vector{ScalarLinearInterpolation} =
+        Vector{ScalarLinearInterpolation}(undef, length(node_id))
+    min_flow_rate::Vector{ScalarLinearInterpolation} =
+        Vector{ScalarLinearInterpolation}(undef, length(node_id))
+    max_flow_rate::Vector{ScalarLinearInterpolation} =
+        Vector{ScalarLinearInterpolation}(undef, length(node_id))
+    min_upstream_level::Vector{ScalarLinearInterpolation} =
+        Vector{ScalarLinearInterpolation}(undef, length(node_id))
+    max_downstream_level::Vector{ScalarLinearInterpolation} =
+        Vector{ScalarLinearInterpolation}(undef, length(node_id))
     control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate} = Dict()
     control_type::Vector{ControlType.T} = fill(ControlType.None, length(node_id))
 end
@@ -692,53 +705,91 @@ node_id: node ID of the Junction node
 end
 
 """
-A cache for intermediate results in 'water_balance!' which depend on the state vector `u`. A second version of
+A cache for intermediate results in `water_balance!` which can depend on both the state vector `u` and time `t`. A second version of
 this cache is required for automatic differentiation, where e.g. ForwardDiff requires these vectors to
 be of `ForwardDiff.Dual` type. This second version of the cache is created by DifferentiationInterface.
 """
-const DiffCache{T} = @NamedTuple{
+const StateTimeDependentCache{T} = @NamedTuple{
     current_storage::Vector{T},
     current_low_storage_factor::Vector{T},
     current_level::Vector{T},
     current_area::Vector{T},
-    current_cumulative_precipitation::Vector{T},
-    current_cumulative_drainage::Vector{T},
-    flow_rate_pump::Vector{T},
-    flow_rate_outlet::Vector{T},
-    error_pid_control::Vector{T},
+    current_flow_rate_pump::Vector{T},
+    current_flow_rate_outlet::Vector{T},
+    current_error_pid_control::Vector{T},
+    u_prev_call::Vector{T},
 } where {T}
 
-@enumx DiffCacheType flow_rate_pump flow_rate_outlet basin_level
+@enumx CacheType flow_rate_pump flow_rate_outlet basin_level
 
 """
-A reference to an element of either the DiffCache of the state derivative `du`.
+A cache for intermediate results in `water_balance!` which depend only on the time `t`. A second version of this
+this cache is required for automatic differentiation (for Rosenbrock methods), where e.g. ForwardDiff requires these vectors
+to be of `ForwardDiff.Dual` type. This second version of the cache is created by DifferentiationInterface.
+"""
+const TimeDependentCache{T} = @NamedTuple{
+    basin::@NamedTuple{
+        current_cumulative_precipitation::Vector{T},
+        current_cumulative_drainage::Vector{T},
+        current_potential_evaporation::Vector{T},
+        current_infiltration::Vector{T},
+    },
+    level_boundary::@NamedTuple{current_level::Vector{T}},
+    flow_boundary::@NamedTuple{current_cumulative_boundary_flow::Vector{T}},
+    pump::@NamedTuple{
+        current_min_flow_rate::Vector{T},
+        current_max_flow_rate::Vector{T},
+        current_min_upstream_level::Vector{T},
+        current_max_downstream_level::Vector{T},
+    },
+    outlet::@NamedTuple{
+        current_min_flow_rate::Vector{T},
+        current_max_flow_rate::Vector{T},
+        current_min_upstream_level::Vector{T},
+        current_max_downstream_level::Vector{T},
+    },
+    pid_control::@NamedTuple{
+        current_target::Vector{T},
+        current_proportional::Vector{T},
+        current_integral::Vector{T},
+        current_derivative::Vector{T},
+    },
+    user_demand::@NamedTuple{current_demand::Vector{T}, current_return_factor::Vector{T}},
+    t_prev_call::Vector{T},
+} where {T}
+
+"""
+A reference to an element of either the StateTimeDependentCache or the state derivative `du`.
 This is not a direct reference to the memory, because it depends on the type of call
 of `water_balance!` (AD versus 'normal') which version of these objects is passed.
 """
-@kwdef struct DiffCacheRef
-    type::DiffCacheType.T = DiffCacheType.flow_rate_pump
+@kwdef struct CacheRef
+    type::CacheType.T = CacheType.flow_rate_pump
     idx::Int = 0
     from_du::Bool = false
 end
 
 """
-Get one of the vectors of the DiffCache based on the passed type.
+Get one of the vectors of the StateTimeDependentCache based on the passed type.
 """
-function get_cache_vector(diff_cache::DiffCache, type::DiffCacheType.T)
-    if type == DiffCacheType.flow_rate_pump
-        diff_cache.flow_rate_pump
-    elseif type == DiffCacheType.flow_rate_outlet
-        diff_cache.flow_rate_outlet
-    elseif type == DiffCacheType.basin_level
-        diff_cache.current_level
+function get_cache_vector(
+    state_time_dependent_cache::StateTimeDependentCache,
+    type::CacheType.T,
+)
+    if type == CacheType.flow_rate_pump
+        state_time_dependent_cache.current_flow_rate_pump
+    elseif type == CacheType.flow_rate_outlet
+        state_time_dependent_cache.current_flow_rate_outlet
+    elseif type == CacheType.basin_level
+        state_time_dependent_cache.current_level
     else
-        error("Invalid DiffCacheType $type passed.")
+        error("Invalid cache type $type passed.")
     end
 end
 
 @kwdef struct SubVariable
     listen_node_id::NodeID
-    diff_cache_ref::DiffCacheRef
+    cache_ref::CacheRef
     variable::String
     weight::Float64
     look_ahead::Float64
@@ -795,8 +846,8 @@ end
     node_id::Vector{NodeID}
     compound_variable::Vector{CompoundVariable}
     controlled_variable::Vector{String}
-    target_ref::Vector{DiffCacheRef} = Vector{DiffCacheRef}(undef, length(node_id))
-    func::Vector{ScalarInterpolation}
+    target_ref::Vector{CacheRef} = Vector{CacheRef}(undef, length(node_id))
+    func::Vector{ScalarLinearInterpolation}
 end
 
 """
@@ -817,15 +868,15 @@ control_mapping: dictionary from (node_id, control_state) to target flow rate
     node_id::Vector{NodeID}
     active::Vector{Bool} = ones(Bool, length(node_id))
     listen_node_id::Vector{NodeID} = Vector{NodeID}(undef, length(node_id))
-    target::Vector{ScalarInterpolation} =
-        Vector{ScalarInterpolation}(undef, length(node_id))
-    target_ref::Vector{DiffCacheRef} = Vector{DiffCacheRef}(undef, length(node_id))
-    proportional::Vector{ScalarInterpolation} =
-        Vector{ScalarInterpolation}(undef, length(node_id))
-    integral::Vector{ScalarInterpolation} =
-        Vector{ScalarInterpolation}(undef, length(node_id))
-    derivative::Vector{ScalarInterpolation} =
-        Vector{ScalarInterpolation}(undef, length(node_id))
+    target::Vector{ScalarLinearInterpolation} =
+        Vector{ScalarLinearInterpolation}(undef, length(node_id))
+    target_ref::Vector{CacheRef} = Vector{CacheRef}(undef, length(node_id))
+    proportional::Vector{ScalarLinearInterpolation} =
+        Vector{ScalarLinearInterpolation}(undef, length(node_id))
+    integral::Vector{ScalarLinearInterpolation} =
+        Vector{ScalarLinearInterpolation}(undef, length(node_id))
+    derivative::Vector{ScalarLinearInterpolation} =
+        Vector{ScalarLinearInterpolation}(undef, length(node_id))
     control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate} =
         Dict{Tuple{NodeID, String}, ControlStateUpdate}()
 end
@@ -860,7 +911,7 @@ concentration_time: Data source for concentration updates
     has_demand_priority::Matrix{Bool} =
         zeros(Bool, length(node_id), length(demand_priorities))
     demand::Matrix{Float64} = zeros(length(node_id), length(demand_priorities))
-    demand_itp::Vector{Vector{ScalarInterpolation}} = [
+    demand_itp::Vector{Vector{ScalarLinearInterpolation}} = [
         fill(
             LinearInterpolation(
                 [0.0, 0.0],
@@ -872,8 +923,8 @@ concentration_time: Data source for concentration updates
     ]
     demand_from_timeseries::Vector{Bool} = Vector{Bool}(undef, length(node_id))
     allocated::Matrix{Float64} = fill(Inf, length(node_id), length(demand_priorities))
-    return_factor::Vector{ScalarInterpolation} =
-        Vector{ScalarInterpolation}(undef, length(node_id))
+    return_factor::Vector{ScalarLinearInterpolation} =
+        Vector{ScalarLinearInterpolation}(undef, length(node_id))
     min_level::Vector{Float64} = zeros(length(node_id))
     concentration::Matrix{Float64}
     concentration_time::StructVector{UserDemandConcentrationV1, C, Int}
@@ -892,10 +943,10 @@ storage_prev: The storage in the Basin with the level demand the previous time t
 """
 @kwdef struct LevelDemand <: AbstractDemandNode
     node_id::Vector{NodeID}
-    min_level::Vector{ScalarInterpolation} =
-        Vector{ScalarInterpolation}(undef, length(node_id))
-    max_level::Vector{ScalarInterpolation} =
-        Vector{ScalarInterpolation}(undef, length(node_id))
+    min_level::Vector{ScalarLinearInterpolation} =
+        Vector{ScalarLinearInterpolation}(undef, length(node_id))
+    max_level::Vector{ScalarLinearInterpolation} =
+        Vector{ScalarLinearInterpolation}(undef, length(node_id))
     demand_priority::Vector{Int32} = Vector{Int32}(undef, length(node_id))
     basins_with_demand::Vector{Vector{NodeID}} = Vector{NodeID}[]
     target_level_min::Dict{NodeID, Float64} = Dict{NodeID, Float64}()
@@ -912,8 +963,8 @@ demand_priority: The priority of the demand of the node
 """
 @kwdef struct FlowDemand <: AbstractDemandNode
     node_id::Vector{NodeID}
-    demand_itp::Vector{ScalarInterpolation} =
-        Vector{ScalarInterpolation}(undef, length(node_id))
+    demand_itp::Vector{ScalarLinearInterpolation} =
+        Vector{ScalarLinearInterpolation}(undef, length(node_id))
     demand::Vector{Float64} = zeros(length(node_id))
     demand_priority::Vector{Int32} = zeros(length(node_id))
 end
@@ -926,22 +977,22 @@ end
     # Static part
     # Static subgrid ids
     subgrid_id_static::Vector{Int32} = []
-    # index into the p.diff_cache.current_level vector for each static subgrid_id
+    # index into the p.state_time_dependent_cache.current_level vector for each static subgrid_id
     basin_id_static::Vector{NodeID} = []
     # index into the subgrid.level vector for each static subgrid_id
     level_index_static::Vector{Int} = []
     # per subgrid one relation
-    interpolations_static::Vector{ScalarInterpolation} = []
+    interpolations_static::Vector{ScalarLinearInterpolation} = []
 
     # Dynamic part
     # Dynamic subgrid ids
     subgrid_id_time::Vector{Int32} = []
-    # index into the p.diff_cache.current_level vector for each dynamic subgrid_id
+    # index into the p.state_time_dependent_cache.current_level vector for each dynamic subgrid_id
     basin_id_time::Vector{NodeID} = []
     # index into the subgrid.level vector for each dynamic subgrid_id
     level_index_time::Vector{Int} = []
     # per subgrid n relations, n being the number of timesteps for that subgrid
-    interpolations_time::Vector{ScalarInterpolation} = []
+    interpolations_time::Vector{ScalarLinearInterpolation} = []
     # per subgrid 1 lookup from t to an index in interpolations_time
     current_interpolation_index::Vector{IndexLookup} = []
 end
@@ -977,6 +1028,8 @@ The part of the parameters passed to the rhs and callbacks that are mutable.
 """
 @kwdef mutable struct ParametersMutable
     all_nodes_active::Bool = false
+    new_t = true
+    new_u = true
     tprev::Float64 = 0.0
 end
 
@@ -986,7 +1039,7 @@ and not derived from the state vector `u` (or the time `t`). In this context e.g
 of floats (not dependent on `u`) is not considered mutable, because even though it's elements are mutable,
 the object itself is not.
 """
-@kwdef struct ParametersNonDiff{C1, C2, C3, C4, C5}
+@kwdef struct ParametersIndependent{C1, C2, C3, C4, C5, C6}
     starttime::DateTime
     reltol::Float64
     relmask::Vector{Bool}
@@ -997,7 +1050,7 @@ the object itself is not.
     manning_resistance::ManningResistance
     tabulated_rating_curve::TabulatedRatingCurve
     level_boundary::LevelBoundary{C3}
-    flow_boundary::FlowBoundary{C4}
+    flow_boundary::FlowBoundary{C4, C5}
     pump::Pump
     outlet::Outlet
     terminal::Terminal
@@ -1005,7 +1058,7 @@ the object itself is not.
     discrete_control::DiscreteControl
     continuous_control::ContinuousControl
     pid_control::PidControl
-    user_demand::UserDemand{C5}
+    user_demand::UserDemand{C6}
     level_demand::LevelDemand
     flow_demand::FlowDemand
     subgrid::Subgrid
@@ -1021,45 +1074,110 @@ the object itself is not.
     u_prev_saveat::Vector{Float64} = Float64[]
     # Node ID associated with each state
     node_id::Vector{NodeID} = NodeID[]
+    # Callback configurations
+    do_concentration::Bool
+    do_subgrid::Bool
 end
 
-"""
-Initialize the DiffCache based on node amounts obtained from ParametersNonDiff.
-"""
-function DiffCache(p_non_diff::ParametersNonDiff)
-    (; basin, pump, outlet, pid_control) = p_non_diff
-    n_basin = length(basin.node_id)
+function StateTimeDependentCache(
+    p_independent::ParametersIndependent,
+)::StateTimeDependentCache
+    n_basin = length(p_independent.basin.node_id)
+    n_pump = length(p_independent.pump.node_id)
+    n_outlet = length(p_independent.outlet.node_id)
+    n_pid_control = length(p_independent.pid_control.node_id)
+
     return (;
         current_storage = zeros(n_basin),
         current_low_storage_factor = zeros(n_basin),
         current_level = zeros(n_basin),
         current_area = zeros(n_basin),
+        current_flow_rate_pump = zeros(n_pump),
+        current_flow_rate_outlet = zeros(n_outlet),
+        current_error_pid_control = zeros(n_pid_control),
+        u_prev_call = getdata(build_state_vector(p_independent)) .- 1.0,
+    )
+end
+
+function TimeDependentCache(p_independent::ParametersIndependent)::TimeDependentCache
+    n_basin = length(p_independent.basin.node_id)
+    basin = (;
         current_cumulative_precipitation = zeros(n_basin),
         current_cumulative_drainage = zeros(n_basin),
-        flow_rate_pump = zeros(length(pump.node_id)),
-        flow_rate_outlet = zeros(length(outlet.node_id)),
-        error_pid_control = zeros(length(pid_control.node_id)),
+        current_potential_evaporation = zeros(n_basin),
+        current_infiltration = zeros(n_basin),
+    )
+
+    n_rating_curve = length(p_independent.tabulated_rating_curve.node_id)
+
+    n_level_boundary = length(p_independent.level_boundary.node_id)
+    level_boundary = (; current_level = zeros(n_level_boundary))
+
+    n_flow_boundary = length(p_independent.flow_boundary.node_id)
+    flow_boundary = (; current_cumulative_boundary_flow = zeros(n_flow_boundary))
+
+    n_pump = length(p_independent.pump.node_id)
+    pump = (;
+        current_min_flow_rate = zeros(n_pump),
+        current_max_flow_rate = zeros(n_pump),
+        current_min_upstream_level = zeros(n_pump),
+        current_max_downstream_level = zeros(n_pump),
+    )
+
+    n_outlet = length(p_independent.outlet.node_id)
+    outlet = (;
+        current_min_flow_rate = zeros(n_outlet),
+        current_max_flow_rate = zeros(n_outlet),
+        current_min_upstream_level = zeros(n_outlet),
+        current_max_downstream_level = zeros(n_outlet),
+    )
+
+    n_pid_control = length(p_independent.pid_control.node_id)
+    pid_control = (;
+        current_target = zeros(n_pid_control),
+        current_proportional = zeros(n_pid_control),
+        current_integral = zeros(n_pid_control),
+        current_derivative = zeros(n_pid_control),
+    )
+
+    n_user_demand = length(p_independent.user_demand.node_id)
+    user_demand = (;
+        current_demand = zeros(n_user_demand),
+        current_return_factor = zeros(n_user_demand),
+    )
+
+    return (;
+        basin,
+        level_boundary,
+        flow_boundary,
+        pump,
+        outlet,
+        pid_control,
+        user_demand,
+        t_prev_call = [-1.0],
     )
 end
 
 """
 The collection of all parameters that are passed to the rhs (`water_balance!`) and callbacks.
 """
-@kwdef struct Parameters{C1, C2, C3, C4, C5, T}
-    p_non_diff::ParametersNonDiff{C1, C2, C3, C4, C5}
-    diff_cache::DiffCache{T} = DiffCache(p_non_diff)
+@kwdef struct Parameters{C1, C2, C3, C4, C5, C6, T1, T2}
+    p_independent::ParametersIndependent{C1, C2, C3, C4, C5, C6}
+    state_time_dependent_cache::StateTimeDependentCache{T1} =
+        StateTimeDependentCache(p_independent)
+    time_dependent_cache::TimeDependentCache{T2} = TimeDependentCache(p_independent)
     p_mutable::ParametersMutable = ParametersMutable()
 end
 
-function get_value(ref::DiffCacheRef, p::Parameters, du::CVector)
+function get_value(ref::CacheRef, p::Parameters, du::CVector)
     if ref.from_du
         du[ref.idx]
     else
-        get_cache_vector(p.diff_cache, ref.type)[ref.idx]
+        get_cache_vector(p.state_time_dependent_cache, ref.type)[ref.idx]
     end
 end
 
-function set_value!(ref::DiffCacheRef, p::Parameters, value)
+function set_value!(ref::CacheRef, p::Parameters, value)
     @assert !ref.from_du
-    get_cache_vector(p.diff_cache, ref.type)[ref.idx] = value
+    get_cache_vector(p.state_time_dependent_cache, ref.type)[ref.idx] = value
 end

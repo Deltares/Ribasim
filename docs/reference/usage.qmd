@@ -57,8 +57,13 @@ The absolute and relative tolerance for adaptive timestepping can be set with `a
 Finally there's the `evaporate_mass = true` setting, which determines whether mass is lost due to evaporation in water quality calculations, by default set to true.
 While physically incorrect, it is useful for a first correctness check on a model in terms of mass balance (Continuity tracer should always have a concentration of 1). To simulate increasing concentrations (e.g. salinity) due to evaporation, change the setting to `false`.
 
+## Interpolation settings
+There are the following interpolation settings:
+- `flow_boundary`: The interpolation type of flow boundary timeseries. This is `linear` by default, but can also be set to `block`.
+- `block_transition_period`: When an interpolation type is set to `block`, this parameter determines an interval in time on either side of each data point which is used to smooth the transition between data points. See also the [documentation](https://docs.sciml.ai/DataInterpolations/dev/methods/#Smoothed-Constant-Interpolation) for this interpolation type.
+
 ## Allocation settings
-Currently there are the following allocation settings:
+There are the following allocation settings:
 - `use_allocation`: A boolean which says whether allocation should be used or not;
 - `timestep`: A float value in seconds which dictates the update interval for allocations;
 - `source_priority`: An integer per source type for the allocation algorithm: `user_demand`, `boundary`, `level_demand`, `flow_demand`, `subnetwork_inlet`. Flow boundaries and level boundaries are combined in the single category `boundary`. By default all nodes of the same type have the same source priority, so to obtain a strict source ordering the sources are sorted by node ID for each source priority within a subnetwork.  When no default source priorities are specified, default defaults are applied (see the TOML example above).
@@ -80,6 +85,26 @@ The following can be set in the configuration in the `[logging]` section.
 entry             | type   | description
 ----------------- | ------ | -----------
 verbosity         | String | Verbosity level: debug, info, warn, or error.
+
+If verbosity is set to debug, the used `Basin / profile` dimensions (level, area and storage) are written to a CSV file in the results folder. This can be useful if you only provide 2 of the 3 columns and want to inspect the dimensions used in the computation.
+
+The format of the CSV is: column 1 = node id, column 2 = level, column 3 = area and row 4 is storage.
+
+Lets say you have 2 basins at node 1 and node 2.
+Dimensions node 1: level = [0, 1, 2], area = [2, 2, 4] and storage = [0, 2, 6],
+Dimensions node 1: level = [0, 1, 2], area = [4, 4, 8] and storage = [0, 4, 12].
+
+Then the CSV will look like:
+
+node_id | level | area | storage
+--------|-------|------|--------
+1       | 0     | 2    | 0
+1       | 1     | 2    | 2
+1       | 2     | 4    | 6
+2       | 0     | 4    | 0
+2       | 1     | 4    | 4
+2       | 2     | 8    | 12
+
 
 ## Experimental features
 
@@ -129,10 +154,10 @@ The Ribasim version that was used to create the results is written to each file 
 Below we give details per file, in which we describe the schema of the table using a syntax
 like this:
 
-column    | type    | unit         | restriction
---------- | ------- | ------------ | -----------
-node_id   | Int32   | -            | sorted
-storage   | Float64 | $m^3$        | non-negative
+column    | type    | unit                | restriction
+--------- | ------- | ------------------- | -----------
+node_id   | Int32   | -                   | sorted
+storage   | Float64 | $\text{m}^3$        | non-negative
 
 This means that two columns are required, one named `node_id`, that contained elements of
 type `Int32`, and a column named `storage` that contains elements of type `Float64`. The order

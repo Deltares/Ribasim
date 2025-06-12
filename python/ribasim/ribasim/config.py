@@ -66,6 +66,25 @@ class SourcePriority(ChildModel):
     subnetwork_inlet: int = 4000
 
 
+class Interpolation(ChildModel):
+    """
+    Defines interpolation types used for various node types.
+
+    Supported interpolation types are: linear, block
+
+    Attributes
+    ----------
+    flow_boundary : string
+        The interpolation type used for the flow rate timeseries (optional, defaults to 'block')
+    block_transition_period : float
+        If block interpolation is used, this is the maximum time span on either side of the data points over which
+        the transition between data points is smoothed.
+    """
+
+    flow_boundary: str = "block"
+    block_transition_period: float = 0.0
+
+
 class Allocation(ChildModel):
     """
     Defines the allocation optimization algorithm options.

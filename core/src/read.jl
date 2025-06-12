@@ -29,11 +29,11 @@ function initialize_allocation!(p_non_diff::ParametersNonDiff, config::Config)::
     for subnetwork_id in subnetwork_ids_
         push!(
             allocation_models,
-            AllocationModel(subnetwork_id, p_non_diff, config.allocation),
+            AllocationModel(subnetwork_id, p_independent, config.allocation),
         )
     end
 
-    validate_objectives(allocation_models, p_non_diff)
+    validate_objectives(allocation_models, p_independent)
     return nothing
 end
 
@@ -69,10 +69,24 @@ function get_parameter_value(
 end
 
 # Map interpolation type -> constructor
-make_itp(::Type{<:LinearInterpolation}, args...; kwargs...) =
-    LinearInterpolation(args...; kwargs...)
-make_itp(::Type{<:ConstantInterpolation}, args...; kwargs...) =
-    ConstantInterpolation(args...; kwargs...)
+make_itp(::Type{<:LinearInterpolation}, u, t; extrapolation, kwargs...) =
+    LinearInterpolation(u, t; cache_parameters = true, extrapolation)
+make_itp(::Type{<:ConstantInterpolation}, u, t; extrapolation, kwargs...) =
+    ConstantInterpolation(u, t; cache_parameters = true, extrapolation)
+make_itp(
+    ::Type{<:SmoothedConstantInterpolation},
+    u,
+    t;
+    extrapolation,
+    block_transition_period,
+    kwargs...,
+) = SmoothedConstantInterpolation(
+    u,
+    t;
+    cache_parameters = true,
+    extrapolation,
+    d_max = block_transition_period,
+)
 
 # Get interpolation parameter value
 function get_parameter_value(
@@ -108,7 +122,7 @@ function get_parameter_value(
         u,
         t;
         extrapolation = cyclic_time ? Periodic : ConstantExtrapolation,
-        cache_parameters = true,
+        config.interpolation.block_transition_period,
     )
     return itp, valid
 end
@@ -151,7 +165,12 @@ function parse_parameter!(
 
     if has_default
         if is_itp
-            itp_default = make_itp(T, [default, default], [0.0, prevfloat(Inf)])
+            itp_default = make_itp(
+                T,
+                [default, default],
+                [0.0, prevfloat(Inf)];
+                extrapolation = ConstantExtrapolation,
+            )
         else
             @assert default isa T
         end
@@ -502,8 +521,9 @@ function FlowBoundary(db::DB, config::Config, graph::MetaGraph)
     concentration[:, Substance.Continuity] .= 1.0
     concentration[:, Substance.FlowBoundary] .= 1.0
     set_concentrations!(concentration, concentration_time, substances, node_id)
+    flow_rate = get_interpolation_vec(config.interpolation.flow_boundary, node_id)
 
-    flow_boundary = FlowBoundary(; node_id, concentration, concentration_time)
+    flow_boundary = FlowBoundary(; node_id, concentration, concentration_time, flow_rate)
 
     set_inoutflow_links!(flow_boundary, graph; inflow = false)
     errors = parse_parameter!(flow_boundary, config, :flow_rate; static, time, cyclic_times)
@@ -625,9 +645,9 @@ function ConcentrationData(
 
     concentration_external_data =
         load_structvector(db, config, BasinConcentrationExternalV1)
-    concentration_external = Dict{String, ScalarInterpolation}[]
+    concentration_external = Dict{String, ScalarLinearInterpolation}[]
     for (id, cyclic_time) in zip(node_id, cyclic_times)
-        concentration_external_id = Dict{String, ScalarInterpolation}()
+        concentration_external_id = Dict{String, ScalarLinearInterpolation}()
         data_id = filter(row -> row.node_id == id.value, concentration_external_data)
         for group in IterTools.groupby(row -> row.substance, data_id)
             first_row = first(group)
@@ -666,7 +686,7 @@ function ConcentrationData(
     )
 end
 
-function Basin(db::DB, config::Config, graph::MetaGraph)
+function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     static = load_structvector(db, config, BasinStaticV1)
     time = load_structvector(db, config, BasinTimeV1)
     state = load_structvector(db, config, BasinStateV1)
@@ -694,27 +714,17 @@ function Basin(db::DB, config::Config, graph::MetaGraph)
     errors |= parse_forcing!(:drainage)
     errors |= parse_forcing!(:infiltration)
 
-    # Profiles
-    area, level = create_storage_tables(db, config)
+    profiles = load_structvector(db, config, BasinProfileV1)
 
-    if !valid_profiles(node_id, level, area)
-        error("Invalid Basin / profile table.")
-        errors = true
+    errors |= validate_consistent_basin_initialization(profiles)
+    errors && error("Errors encountered when parsing Basin data.")
+
+    areas, levels, storage, node_ids = interpolate_basin_profile!(basin, profiles)
+
+    if config.logging.verbosity == Debug
+        dir = joinpath(config.dir, config.results_dir)
+        output_basin_profiles(levels, areas, storage, node_ids, dir)
     end
-
-    map!(
-        (A, h) -> LinearInterpolation(
-            A,
-            h;
-            extrapolation_left = ConstantExtrapolation,
-            extrapolation_right = Extension,
-            cache_parameters = true,
-        ),
-        basin.level_to_area,
-        area,
-        level,
-    )
-    map!(invert_integral, basin.storage_to_level, basin.level_to_area)
 
     # Inflow and outflow links
     map!(id -> collect(inflow_ids(graph, id)), basin.inflow_ids, node_id)
@@ -728,7 +738,13 @@ function Basin(db::DB, config::Config, graph::MetaGraph)
     basin.storage_prev .= storage0
     basin.concentration_data.mass .*= storage0  # was initialized by concentration_state, resulting in mass
 
-    errors && error("Errors encountered when parsing Basin data.")
+    # Compute the low storage threshold as the disk of water between the bottom
+    # and 10 cm above the bottom
+    for id in node_id
+        bottom = basin_bottom(basin, id)[2]
+        basin.low_storage_threshold[id.idx] =
+            get_storage_from_level(basin, id.idx, bottom + LOW_STORAGE_DEPTH)
+    end
 
     basin
 end
@@ -795,14 +811,13 @@ function CompoundVariable(
             error("Invalid `listen_node_id`.")
         end
         # Placeholder until actual ref is known
-        diff_cache_ref = DiffCacheRef()
+        cache_ref = CacheRef()
         variable = row.variable
         # Default to weight = 1.0 if not specified
         weight = coalesce(row.weight, 1.0)
         # Default to look_ahead = 0.0 if not specified
         look_ahead = coalesce(row.look_ahead, 0.0)
-        subvariable =
-            SubVariable(listen_node_id, diff_cache_ref, variable, weight, look_ahead)
+        subvariable = SubVariable(listen_node_id, cache_ref, variable, weight, look_ahead)
         push!(subvariables, subvariable)
     end
 
@@ -918,7 +933,7 @@ function continuous_control_functions(db, config, ids)
     errors = false
     # Parse the function table
     # Create linear interpolation objects out of the provided functions
-    functions = ScalarInterpolation[]
+    functions = ScalarLinearInterpolation[]
     controlled_variables = String[]
 
     # Loop over the IDs of the ContinuousControl nodes
@@ -1417,7 +1432,7 @@ function Parameters(db::DB, config::Config)::Parameters
         graph,
     )
 
-    p_non_diff = ParametersNonDiff(;
+    p_independent = ParametersIndependent(;
         config.starttime,
         config.solver.reltol,
         relmask = collect(trues(n_states)),
@@ -1432,18 +1447,20 @@ function Parameters(db::DB, config::Config)::Parameters
         config.solver.water_balance_reltol,
         u_prev_saveat = zeros(n_states),
         node_id,
+        do_concentration = config.experimental.concentration,
+        do_subgrid = config.results.subgrid,
     )
 
-    collect_control_mappings!(p_non_diff)
-    set_listen_diff_cache_refs!(p_non_diff, state_ranges)
-    set_discrete_controlled_variable_refs!(p_non_diff)
+    collect_control_mappings!(p_independent)
+    set_listen_cache_refs!(p_independent, state_ranges)
+    set_discrete_controlled_variable_refs!(p_independent)
 
     # Allocation data structures
     if config.allocation.use_allocation
-        initialize_allocation!(p_non_diff, config)
+        initialize_allocation!(p_independent, config)
     end
 
-    return Parameters(; p_non_diff)
+    return Parameters(; p_independent)
 end
 
 function get_node_ids_int32(db::DB, node_type)::Vector{Int32}
@@ -1616,22 +1633,42 @@ function load_structvector(
     return sorted_table!(table)
 end
 
-"Read the Basin / profile table and return all area and level and computed storage values"
-function create_storage_tables(
-    db::DB,
-    config::Config,
-)::Tuple{Vector{Vector{Float64}}, Vector{Vector{Float64}}}
-    profiles = load_structvector(db, config, BasinProfileV1)
-    area = Vector{Vector{Float64}}()
-    level = Vector{Vector{Float64}}()
+"""
+Compute the finite difference approximation of the vector `f` with respect to vector `x`.
 
-    for group in IterTools.groupby(row -> row.node_id, profiles)
-        group_area = getproperty.(group, :area)
-        group_level = getproperty.(group, :level)
-        push!(area, group_area)
-        push!(level, group_level)
+Taking the derivative of an n-sized vector f, give us a n-1 sized derivative vector dfdx,
+since the computed derivatives are located in between x_i and x_i+1.
+
+Mapping these derivatives to an n-sized vector dfdx requires choosing a value at the lower bound (dfdx₀).
+
+As default we use dfdx = const = dfdx[0] = dfdx[1] =  (f[2] - f[1]) / (x[2] - x[1]),
+"""
+function finite_difference(
+    f::Vector{Float64},
+    x::Vector{Float64},
+    dfdx₀::Float64 = (f[2] - f[1]) / (x[2] - x[1]),
+)::Vector{Float64}
+    dfdx = zeros(Float64, length(x))
+    dfdx[1] = dfdx₀  # Set the first derivative value
+
+    for i in 1:(length(x) - 1)
+        Δf = f[i + 1] - f[i]
+        Δx = x[i + 1] - x[i]
+        dfdx[i + 1] = 2 * Δf / Δx - dfdx[i]
     end
-    return area, level
+    dfdx
+end
+
+"""trapezoidal integration"""
+function trapz_integrate(dfdx::Vector{Float64}, x::Vector{Float64})::Vector{Float64}
+    n = length(dfdx)
+    f = zeros(Float64, n)
+
+    for i in 1:(n - 1)
+        Δx = x[i + 1] - x[i]
+        f[i + 1] = f[i] + 0.5 * (dfdx[i + 1] + dfdx[i]) * Δx
+    end
+    f
 end
 
 "Determine all substances present in the input over multiple tables"
@@ -1672,4 +1709,61 @@ function set_concentrations!(
             concentration[node_idx, sub_idx] = value
         end
     end
+end
+
+function interpolate_basin_profile!(basin::Basin, profiles::StructVector{BasinProfileV1})
+    areas = Vector{Vector{Float64}}()
+    levels = Vector{Vector{Float64}}()
+    storage = Vector{Vector{Float64}}()
+
+    node_ids = Vector{Int32}()
+    for (i, group) in enumerate(IterTools.groupby(row -> row.node_id, profiles))
+        push!(node_ids, first(group).node_id)
+        group_area = getproperty.(group, :area)
+        group_level = getproperty.(group, :level)
+        group_storage = getproperty.(group, :storage)
+
+        # If there is no storage as input, we integrate A(h)
+        if all(ismissing, group_storage)
+            group_storage = trapz_integrate(group_area, group_level)
+        end
+
+        # We always differentiate storage with respect to level such that we can use invert_integral
+        # We treat level-area and storage-level as independent relations.
+        dS_dh = if ismissing(group_area[1])
+            finite_difference(group_storage, group_level)
+        else
+            finite_difference(group_storage, group_level, group_area[1])
+        end
+
+        level_to_area = LinearInterpolation(
+            dS_dh,
+            group_level;
+            extrapolation = ConstantExtrapolation,
+            cache_parameters = true,
+        )
+
+        basin.storage_to_level[i] =
+            invert_integral(level_to_area; extrapolation_right = ExtrapolationType.Linear)
+
+        if !all(ismissing, group_area)
+            # if all data is present for area, we use it
+            level_to_area = LinearInterpolation(
+                group_area,
+                group_level;
+                extrapolation = ConstantExtrapolation,
+                cache_parameters = true,
+            )
+        else
+            # else the differentiated storage is used
+            group_area = dS_dh
+        end
+        basin.level_to_area[i] = level_to_area
+
+        push!(areas, group_area)
+        push!(levels, group_level)
+        push!(storage, group_storage)
+    end
+
+    return areas, levels, storage, node_ids
 end

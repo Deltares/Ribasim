@@ -87,9 +87,12 @@ class BasinProfileSchema(_BaseSchema):
     node_id: Series[Annotated[pd.ArrowDtype, pyarrow.int32()]] = pa.Field(
         nullable=False, default=0
     )
-    area: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(nullable=False)
+    area: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(nullable=True)
     level: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
         nullable=False
+    )
+    storage: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
+        nullable=True
     )
 
 

@@ -17,7 +17,7 @@ function set_simulation_data!(
     du::CVector,
 )::Nothing
     (; basin, level_boundary, manning_resistance, pump, outlet, user_demand, graph) =
-        p.p_non_diff
+        p.p_independent
 
     set_simulation_data!(allocation_model, basin, p)
     set_simulation_data!(allocation_model, level_boundary, t)
@@ -37,7 +37,7 @@ function set_simulation_data!(
     storage = problem[:basin_storage]
     basin_level = problem[:basin_level]
     flow = problem[:flow]
-    (; current_storage, current_level) = p.diff_cache
+    (; current_storage, current_level) = p.state_time_dependent_cache
 
     # Set Basin starting storages and levels
     for key in only(storage.axes)
@@ -191,7 +191,7 @@ end
 
 function prepare_demand_collection!(
     allocation_model::AllocationModel,
-    p_non_diff::ParametersNonDiff,
+    p_independent::ParametersIndependent,
 )::Nothing
     (; problem, subnetwork_id) = allocation_model
     @assert !is_primary_network(subnetwork_id)
@@ -199,7 +199,7 @@ function prepare_demand_collection!(
 
     # Allow the inflow from the primary network to be as large as required
     # (will be restricted when optimizing for the actual allocation)
-    for link in p_non_diff.allocation.primary_network_connections[subnetwork_id]
+    for link in p_independent.allocation.primary_network_connections[subnetwork_id]
         JuMP.set_upper_bound(flow[link], MAX_ABS_FLOW)
     end
 
@@ -243,10 +243,10 @@ end
 
 function set_demands!(
     problem::JuMP.Model,
-    p_non_diff::ParametersNonDiff,
+    p_independent::ParametersIndependent,
     objective::AllocationObjective,
 )::Nothing
-    (; user_demand, flow_demand, level_demand) = p_non_diff
+    (; user_demand, flow_demand, level_demand) = p_independent
     target_demand_fraction = problem[:target_demand_fraction]
     (; demand_priority, demand_priority_idx) = objective
 
@@ -296,10 +296,10 @@ end
 
 function update_allocated_values!(
     problem::JuMP.Model,
-    p_non_diff::ParametersNonDiff,
+    p_independent::ParametersIndependent,
     objective::AllocationObjective,
 )::Nothing
-    (; user_demand, flow_demand, level_demand, basin, graph) = p_non_diff
+    (; user_demand, flow_demand, level_demand, basin, graph) = p_independent
     (; demand_priority, demand_priority_idx) = objective
 
     user_demand_allocated = problem[:user_demand_allocated]
@@ -354,11 +354,11 @@ function update_allocated_values!(
 end
 
 function assign_allocations!(
-    p_non_diff::ParametersNonDiff,
+    p_independent::ParametersIndependent,
     allocation_model::AllocationModel,
     objective::AllocationObjective,
 )::Nothing
-    (; allocated, inflow_link) = p_non_diff.user_demand
+    (; allocated, inflow_link) = p_independent.user_demand
     (; problem) = allocation_model
     (; demand_priority_idx) = objective
     user_demand_allocated = problem[:user_demand_allocated]
@@ -401,14 +401,14 @@ end
 # for the current demand priority.
 # NOTE: The realized amount lags one allocation period behind.
 function save_demands_and_allocations!(
-    p_non_diff::ParametersNonDiff,
+    p_independent::ParametersIndependent,
     t::Float64,
     allocation_model::AllocationModel,
     subnetwork_id::Int32,
     objective::AllocationObjective,
 )::Nothing
     (; problem, Δt_allocation, cumulative_realized_volume) = allocation_model
-    (; allocation, user_demand, flow_demand, level_demand) = p_non_diff
+    (; allocation, user_demand, flow_demand, level_demand) = p_independent
     (; record_demand, demand_priorities_all) = allocation
     (; demand_priority_idx) = objective
     user_demand_allocated = problem[:user_demand_allocated]
@@ -473,14 +473,14 @@ end
 # After all goals have been optimized for, save
 # the resulting flows for output
 function save_allocation_flows!(
-    p_non_diff::ParametersNonDiff,
+    p_independent::ParametersIndependent,
     t::Float64,
     allocation_model::AllocationModel,
     objective::AllocationObjective,
     optimization_type::AllocationOptimizationType.T,
 )::Nothing
     (; problem, subnetwork_id) = allocation_model
-    (; graph, allocation) = p_non_diff
+    (; graph, allocation) = p_independent
     (; record_flow) = allocation
     (; demand_priority) = objective
     flow = problem[:flow]
@@ -554,13 +554,13 @@ function optimize_for_demand!(
     optimization_type::AllocationOptimizationType.T,
 )::Nothing
     (; p, t) = integrator
-    (; p_non_diff) = p
+    (; p_independent) = p
     (; problem, subnetwork_id) = allocation_model
 
     # Set objective corresponding to the demand_priority
     JuMP.@objective(problem, Min, objective.expression)
 
-    set_demands!(problem, p_non_diff, objective)
+    set_demands!(problem, p_independent, objective)
 
     # Solve problem
     JuMP.optimize!(problem)
@@ -574,15 +574,21 @@ function optimize_for_demand!(
 
     # Update allocation constraints so that the results of the optimization for this demand priority are retained
     # in subsequent optimizations
-    update_allocated_values!(problem, p_non_diff, objective)
+    update_allocated_values!(problem, p_independent, objective)
 
-    assign_allocations!(p_non_diff, allocation_model, objective)
+    assign_allocations!(p_independent, allocation_model, objective)
 
     # Save the demands and allocated values for all demand nodes that have a demand of the current priority
-    save_demands_and_allocations!(p_non_diff, t, allocation_model, subnetwork_id, objective)
+    save_demands_and_allocations!(
+        p_independent,
+        t,
+        allocation_model,
+        subnetwork_id,
+        objective,
+    )
 
     # Save the flows over all links in the subnetwork in this stage of the goal programming
-    save_allocation_flows!(p_non_diff, t, allocation_model, objective, optimization_type)
+    save_allocation_flows!(p_independent, t, allocation_model, objective, optimization_type)
     return nothing
 end
 
@@ -608,8 +614,8 @@ function apply_control_from_allocation!(
 end
 
 function set_timeseries_demands!(p::Parameters, t::Float64)::Nothing
-    (; p_non_diff, diff_cache) = p
-    (; user_demand, flow_demand, level_demand, allocation, basin) = p_non_diff
+    (; p_independent, state_time_dependent_cache) = p
+    (; user_demand, flow_demand, level_demand, allocation, basin) = p_independent
     (; demand_priorities_all, allocation_models) = allocation
     (; Δt_allocation) = first(allocation_models)
 
@@ -644,8 +650,11 @@ function set_timeseries_demands!(p::Parameters, t::Float64)::Nothing
             target_storage_min =
                 get_storage_from_level(basin, basin_id.idx, target_level_min)
             level_demand.target_storage_min[basin_id] = target_storage_min
-            level_demand.storage_demand =
-                max(0.0, target_storage_min - diff_cache.current_storage[basin_id.idx])
+            level_demand.storage_demand = max(
+                0.0,
+                target_storage_min -
+                state_time_dependent_cache.current_storage[basin_id.idx],
+            )
         end
     end
 
@@ -680,8 +689,8 @@ end
 function update_allocation!(integrator)::Nothing
     (; u, p, t) = integrator
     du = get_du(integrator)
-    (; p_non_diff, diff_cache) = p
-    (; allocation, pump, outlet, graph) = p_non_diff
+    (; p_independent, state_time_dependent_cache) = p
+    (; allocation, pump, outlet, graph) = p_independent
     (; allocation_models) = allocation
 
     # Don't run the allocation algorithm if allocation is not active
@@ -700,7 +709,7 @@ function update_allocation!(integrator)::Nothing
     if has_primary_network(allocation)
         for allocation_model in Iterators.drop(allocation_models, 1)
             reset_goal_programming!(allocation_model)
-            prepare_demand_collection!(allocation_model, p_non_diff)
+            prepare_demand_collection!(allocation_model, p_independent)
             for objective in allocation_model.objectives
                 optimize_for_objective!(
                     allocation_model,
@@ -734,13 +743,13 @@ function update_allocation!(integrator)::Nothing
             pump,
             allocation_model,
             graph,
-            diff_cache.flow_rate_pump,
+            state_time_dependent_cache.flow_rate_pump,
         )
         apply_control_from_allocation!(
             outlet,
             allocation_model,
             graph,
-            diff_cache.flow_rate_outlet,
+            state_time_dependent_cache.flow_rate_outlet,
         )
 
         # Reset cumulative data

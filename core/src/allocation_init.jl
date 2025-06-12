@@ -1,9 +1,9 @@
 function add_objectives!(
     allocation_model::AllocationModel,
-    p_non_diff::ParametersNonDiff,
+    p_independent::ParametersIndependent,
 )::Nothing
     (; objectives) = allocation_model
-    (; demand_priorities_all) = p_non_diff.allocation
+    (; demand_priorities_all) = p_independent.allocation
 
     # Then optimize for demands (objectives will be will be further specified in the add_*_demand! functions)
     # NOTE: demand objectives are assumed to be consecutive by get_demand_objectives
@@ -19,16 +19,16 @@ function add_objectives!(
     end
 
     # Lastly optimize for source priorities
-    push!(objectives, make_source_priority_objective(allocation_model, p_non_diff))
+    push!(objectives, make_source_priority_objective(allocation_model, p_independent))
 
     return nothing
 end
 
 function make_source_priority_objective(
     allocation_model::AllocationModel,
-    p_non_diff::ParametersNonDiff,
+    p_independent::ParametersIndependent,
 )::AllocationObjective
-    (; graph, allocation) = p_non_diff
+    (; graph, allocation) = p_independent
     (; subnetwork_inlet_source_priority) = allocation
     (; problem, subnetwork_id) = allocation_model
     flow = problem[:flow]
@@ -70,10 +70,10 @@ Add variables and constraints defining the basin profile.
 """
 function add_basin!(
     allocation_model::AllocationModel,
-    p_non_diff::ParametersNonDiff,
+    p_independent::ParametersIndependent,
 )::Nothing
     (; problem, subnetwork_id, cumulative_forcing_volume) = allocation_model
-    (; graph, basin) = p_non_diff
+    (; graph, basin) = p_independent
     (; storage_to_level, level_to_area) = basin
 
     # Basin node IDs within the subnetwork
@@ -160,10 +160,10 @@ Add flow variables with capacity constraints derived from connected nodes.
 """
 function add_flow!(
     allocation_model::AllocationModel,
-    p_non_diff::ParametersNonDiff,
+    p_independent::ParametersIndependent,
 )::Nothing
     (; problem, subnetwork_id) = allocation_model
-    (; graph) = p_non_diff
+    (; graph) = p_independent
 
     node_ids_subnetwork = graph[].node_ids[subnetwork_id]
     flow_links_subnetwork = Vector{Tuple{NodeID, NodeID}}()
@@ -179,9 +179,9 @@ function add_flow!(
     # Define decision variables: flow over flow links (m^3/s)
     problem[:flow] = JuMP.@variable(
         problem,
-        flow_capacity_lower_bound(link, p_non_diff) ≤
+        flow_capacity_lower_bound(link, p_independent) ≤
         flow[link = flow_links_subnetwork] ≤
-        flow_capacity_upper_bound(link, p_non_diff)
+        flow_capacity_upper_bound(link, p_independent)
     )
 
     # Define parameters: Basin forcing (m^3, values to be filled in before optimizing)
@@ -217,7 +217,7 @@ end
 
 function add_conservation!(
     allocation_model::AllocationModel,
-    p_non_diff::ParametersNonDiff,
+    p_independent::ParametersIndependent,
 )::Nothing
     (; problem, subnetwork_id, Δt_allocation) = allocation_model
 
@@ -230,7 +230,7 @@ function add_conservation!(
         manning_resistance,
         tabulated_rating_curve,
         basin,
-    ) = p_non_diff
+    ) = p_independent
     add_flow_conservation!(allocation_model, pump, graph)
     add_flow_conservation!(allocation_model, outlet, graph)
     add_flow_conservation!(allocation_model, linear_resistance, graph)
@@ -271,10 +271,10 @@ end
 
 function add_user_demand!(
     allocation_model::AllocationModel,
-    p_non_diff::ParametersNonDiff,
+    p_independent::ParametersIndependent,
 )::Nothing
     (; problem, objectives, subnetwork_id, cumulative_realized_volume) = allocation_model
-    (; graph, user_demand) = p_non_diff
+    (; graph, user_demand) = p_independent
     (; inflow_link, outflow_link) = user_demand
 
     user_demand_ids_subnetwork =
@@ -359,10 +359,10 @@ end
 
 function add_flow_demand!(
     allocation_model::AllocationModel,
-    p_non_diff::ParametersNonDiff,
+    p_independent::ParametersIndependent,
 )::Nothing
     (; problem, cumulative_realized_volume, subnetwork_id, objectives) = allocation_model
-    (; graph, flow_demand) = p_non_diff
+    (; graph, flow_demand) = p_independent
     ids_with_flow_demand_subnetwork = filter(
         node_id -> has_external_flow_demand(graph, node_id, :flow_demand)[1],
         graph[].node_ids[subnetwork_id],
@@ -428,10 +428,10 @@ end
 
 function add_level_demand!(
     allocation_model::AllocationModel,
-    p_non_diff::ParametersNonDiff,
+    p_independent::ParametersIndependent,
 )::Nothing
     (; problem, subnetwork_id, objectives) = allocation_model
-    (; graph, level_demand) = p_non_diff
+    (; graph, level_demand) = p_independent
 
     ids_with_level_demand_subnetwork = filter(
         node_id -> has_external_flow_demand(graph, node_id, :level_demand)[1],
@@ -495,10 +495,10 @@ end
 
 function add_flow_boundary!(
     allocation_model::AllocationModel,
-    p_non_diff::ParametersNonDiff,
+    p_independent::ParametersIndependent,
 )::Nothing
     (; subnetwork_id, cumulative_boundary_volume) = allocation_model
-    (; flow_boundary, graph) = p_non_diff
+    (; flow_boundary, graph) = p_independent
     flow_boundary_ids_subnetwork =
         get_subnetwork_ids(graph, NodeType.FlowBoundary, subnetwork_id)
     for node_id in flow_boundary_ids_subnetwork
@@ -509,10 +509,10 @@ end
 
 function add_level_boundary!(
     allocation_model::AllocationModel,
-    p_non_diff::ParametersNonDiff,
+    p_independent::ParametersIndependent,
 )::Nothing
     (; problem, subnetwork_id) = allocation_model
-    (; graph) = p_non_diff
+    (; graph) = p_independent
     level_boundary_ids_subnetwork =
         get_subnetwork_ids(graph, NodeType.LevelBoundary, subnetwork_id)
 
@@ -525,10 +525,10 @@ end
 
 function add_tabulated_rating_curve!(
     allocation_model::AllocationModel,
-    p_non_diff::ParametersNonDiff,
+    p_independent::ParametersIndependent,
 )::Nothing
     (; problem, subnetwork_id) = allocation_model
-    (; tabulated_rating_curve, graph) = p_non_diff
+    (; tabulated_rating_curve, graph) = p_independent
     (; interpolations, current_interpolation_index, inflow_link) = tabulated_rating_curve
     rating_curve_ids_subnetwork =
         get_subnetwork_ids(graph, NodeType.TabulatedRatingCurve, subnetwork_id)
@@ -556,10 +556,10 @@ end
 
 function add_linear_resistance!(
     allocation_model::AllocationModel,
-    p_non_diff::ParametersNonDiff,
+    p_independent::ParametersIndependent,
 )::Nothing
     (; problem, subnetwork_id) = allocation_model
-    (; graph, linear_resistance) = p_non_diff
+    (; graph, linear_resistance) = p_independent
     (; inflow_link, outflow_link, resistance, max_flow_rate) = linear_resistance
 
     linear_resistance_ids_subnetwork =
@@ -586,9 +586,9 @@ function add_linear_resistance!(
                 # If there is a flow bound, the flow(Δlevel) relationship
                 # is modelled as a (non-convex) piecewise linear relationship
                 min_inflow_level, max_inflow_level =
-                    get_minmax_level(p_non_diff, inflow_id)
+                    get_minmax_level(p_independent, inflow_id)
                 min_outflow_level, max_outflow_level =
-                    get_minmax_level(p_non_diff, outflow_id)
+                    get_minmax_level(p_independent, outflow_id)
 
                 Δlevel_min = min_inflow_level - max_outflow_level
                 Δlevel_max = max_inflow_level - min_outflow_level
@@ -617,10 +617,10 @@ end
 
 function add_manning_resistance!(
     allocation_model::AllocationModel,
-    p_non_diff::ParametersNonDiff,
+    p_independent::ParametersIndependent,
 )::Nothing
     (; problem, subnetwork_id) = allocation_model
-    (; graph, manning_resistance) = p_non_diff
+    (; graph, manning_resistance) = p_independent
     (; inflow_link, outflow_link) = manning_resistance
 
     manning_resistance_ids_subnetwork =
@@ -648,9 +648,9 @@ end
 
 function add_subnetwork_demand!(
     allocation_model::AllocationModel,
-    p_non_diff::ParametersNonDiff,
+    p_independent::ParametersIndependent,
 )::Nothing
-    (; allocation) = p_non_diff
+    (; allocation) = p_independent
     (; problem, objectives) = allocation_model
     target_demand_fraction = problem[:target_demand_fraction]
     flow = problem[:flow]
@@ -700,9 +700,9 @@ end
 
 function validate_objectives(
     allocation_models::Vector{AllocationModel},
-    p_non_diff::ParametersNonDiff,
+    p_independent::ParametersIndependent,
 )::Nothing
-    (; demand_priorities_all) = p_non_diff.allocation
+    (; demand_priorities_all) = p_independent.allocation
 
     errors = false
 
@@ -730,7 +730,7 @@ end
 
 function AllocationModel(
     subnetwork_id::Int32,
-    p_non_diff::ParametersNonDiff,
+    p_independent::ParametersIndependent,
     allocation_config::config.Allocation,
 )
     Δt_allocation = allocation_config.timestep
@@ -746,36 +746,36 @@ function AllocationModel(
     allocation_model = AllocationModel(; subnetwork_id, problem, Δt_allocation)
 
     # Volume and flow
-    add_basin!(allocation_model, p_non_diff)
-    add_flow!(allocation_model, p_non_diff)
-    add_conservation!(allocation_model, p_non_diff)
+    add_basin!(allocation_model, p_independent)
+    add_flow!(allocation_model, p_independent)
+    add_conservation!(allocation_model, p_independent)
 
     # Objectives (goals)
-    add_objectives!(allocation_model, p_non_diff)
+    add_objectives!(allocation_model, p_independent)
 
     # Boundary nodes
-    add_flow_boundary!(allocation_model, p_non_diff)
-    add_level_boundary!(allocation_model, p_non_diff)
+    add_flow_boundary!(allocation_model, p_independent)
+    add_level_boundary!(allocation_model, p_independent)
 
     # Connector nodes
-    add_tabulated_rating_curve!(allocation_model, p_non_diff)
-    add_linear_resistance!(allocation_model, p_non_diff)
-    add_manning_resistance!(allocation_model, p_non_diff)
+    add_tabulated_rating_curve!(allocation_model, p_independent)
+    add_linear_resistance!(allocation_model, p_independent)
+    add_manning_resistance!(allocation_model, p_independent)
 
     # Demand nodes and subnetworks as demand nodes
     problem[:target_demand_fraction] = JuMP.@variable(problem, target_fraction == 1.0)
-    add_user_demand!(allocation_model, p_non_diff)
-    add_flow_demand!(allocation_model, p_non_diff)
-    add_level_demand!(allocation_model, p_non_diff)
+    add_user_demand!(allocation_model, p_independent)
+    add_flow_demand!(allocation_model, p_independent)
+    add_level_demand!(allocation_model, p_independent)
 
     # Primary to secondary subnetwork connections
     if is_primary_network(subnetwork_id)
-        add_subnetwork_demand!(allocation_model, p_non_diff)
+        add_subnetwork_demand!(allocation_model, p_independent)
     else
         # Initialize subnetwork demands
-        n_demands = length(p_non_diff.allocation.demand_priorities_all)
+        n_demands = length(p_independent.allocation.demand_priorities_all)
         if !is_primary_network(subnetwork_id)
-            for link in p_non_diff.allocation.primary_network_connections[subnetwork_id]
+            for link in p_independent.allocation.primary_network_connections[subnetwork_id]
                 allocation_model.subnetwork_demand[link] = zeros(n_demands)
             end
         end

@@ -30,7 +30,7 @@ open class GenerateCache(platformOs: String) : Template() {
         features {
             buildCache {
                 id = "Ribasim${platformOs}Cache"
-                name = "Ribasim ${platformOs} Cache"
+                name = "Ribasim${platformOs}Cache"
                 use = false
                 rules = """
                     %teamcity.build.checkoutDir%/.julia

@@ -333,12 +333,12 @@ from the parameters, but integrated/averaged FlowBoundary flows must be provided
 """
 function get_flow(
     flow::CVector,
-    p_non_diff::ParametersNonDiff,
+    p_independent::ParametersIndependent,
     t::Number,
     link::Tuple{NodeID, NodeID};
     boundary_flow = nothing,
 )
-    (; flow_boundary) = p_non_diff
+    (; flow_boundary) = p_independent
     from_id = link[1]
     if from_id.type == NodeType.FlowBoundary
         if boundary_flow === nothing
@@ -355,7 +355,7 @@ end
 
 function get_influx(du::CVector, id::NodeID, p::Parameters)
     @assert id.type == NodeType.Basin
-    (; basin) = p.p_non_diff
+    (; basin) = p.p_independent
     (; vertical_flux) = basin
     fixed_area = basin_areas(basin, id.idx)[end]
     return fixed_area * vertical_flux.precipitation[id.idx] +

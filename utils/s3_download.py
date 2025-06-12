@@ -1,4 +1,5 @@
 import argparse
+from os import makedirs
 
 from minio import Minio
 from minio.error import S3Error
@@ -31,10 +32,16 @@ objects = client.list_objects(bucketName, prefix=args.remote, recursive=True)
 
 for obj in objects:
     try:
-        client.fget_object(
-            bucketName,
-            obj.object_name,
-            f"models/{args.local}" + obj.object_name.removeprefix(args.remote),
-        )
+        if obj.is_dir:
+            local_dir = f"models/{args.local}" + obj.object_name.removeprefix(
+                args.remote
+            )
+            makedirs(local_dir, exist_ok=True)
+        else:
+            client.fget_object(
+                bucketName,
+                obj.object_name,
+                f"models/{args.local}" + obj.object_name.removeprefix(args.remote),
+            )
     except S3Error as e:
         print(f"Error occurred: {e}")

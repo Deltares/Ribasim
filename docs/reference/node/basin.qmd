@@ -124,12 +124,13 @@ This only applies when the user wishes to continue an existing simulation as if 
 
 ## Profile
 
-The profile table defines the physical dimensions of the storage reservoir of each basin.
+The profile table defines the physical dimensions of the storage reservoir of each basin. Either storage or area is required.
 
 column    | type    | unit         | restriction
 --------- | ------- | ------------ | -----------
 node_id   | Int32   | -            |
-area      | Float64 | $\text{m}^2$ | non-negative, per node_id: start positive and not decreasing
+storage   | Float64 | $\text{m}^3$ | non-negative and non-decreasing (optional if area is defined)
+area      | Float64 | $\text{m}^2$ | non-negative, per node_id: start positive (optional if storage is defined)
 level     | Float64 | $\text{m}$   | increasing
 
 The level is the level at the basin outlet. All levels are defined in meters above a datum
@@ -137,18 +138,19 @@ that is the same for the entire model. An example of the first 4 rows of such a 
 given below. The first 3 rows define the profile of ID `2`. The number of rows can vary
 per ID, and must be at least 2. Using a very large number of rows may impact performance.
 
-node_id |   area | level
-------- |------- |-------
-      2 |    1.0 |   6.0
-      2 | 1000.0 |   7.0
-      2 | 1000.0 |   9.0
-      3 |    1.0 |   2.2
+node_id |  area  | level  | storage |
+------- |------- |------- | ------- |
+      2 |  3.14  |   0.0  |  0.0    |
+      2 |  6.28  |   1.0  |  4.71   |
+      2 |  9.42  |   2.0  |  12.56  |
+      3 |  12.56 |   3.0  |  23.56  |
 
 We use the symbol $A$ for area, $h$ for level and $S$ for storage.
 The profile provides a function $A(h)$ for each basin.
-Internally this get converted to two functions, $A(S)$ and $h(S)$, by integrating over the function, setting the storage to zero for the bottom of the profile.
-The minimum area cannot be zero to avoid numerical issues.
-The maximum area is used to convert the precipitation flux into an inflow.
+Internally this get converted to two functions, $A(h)$ and $h(S)$.
+When $A$ is missing, we take the derivative of $S$ with respect to $h$.
+When $S$ is missing, we integrate $A(h)$ with respect to $h$.
+The area at the top level is used to convert precipitation flux to an inflow.
 
 ### Interpolation
 
@@ -176,7 +178,7 @@ ax.set_yticks([0])
 
 # Extrapolation
 level_extrap = 2 * level[-1] - level[-2]
-area_extrap = 2 * area[-1] - area[-2]
+area_extrap = area[-1]
 ax.plot([level[-1], level_extrap], [area[-1], area_extrap], color = "C0", ls = "dashed", label = "extrapolation")
 xlim = ax.get_xlim()
 ax.set_xlim(xlim[0], (level[-1] + level_extrap)/2)
@@ -196,8 +198,8 @@ display(Markdown(markdown_table))
 
 For this interpolation it is validated that:
 
-- The areas are positive and are non-decreasing;
-- There are at least 2 data points.
+- The areas are positive
+- There are at least 2 data points
 
 This interpolation is used in each evaluation of the right hand side function of the ODE.
 
@@ -233,8 +235,10 @@ ax.set_xlabel("level", fontsize = fontsize)
 ax.set_ylabel("storage", fontsize = fontsize)
 
 # Extrapolation
-level_eval_extrap = np.linspace(level[-1], level_extrap, 35)
-storage_eval_extrap = S(level_eval_extrap)
+level_eval_extrap = [level[-1], level_extrap]
+storage_extrap = storage_eval[-1] + area[-1]*level_extrap
+storage_eval_extrap = [storage_eval[-1], storage_extrap]
+
 ax.plot(level_eval_extrap, storage_eval_extrap, color = "C0", linestyle = "dashed", label = "extrapolation")
 xlim = ax.get_xlim()
 ax.set_xlim(xlim[0], (level[-1] + level_extrap)/2)
@@ -251,12 +255,13 @@ The profile data is not detailed enough to create a full 3D picture of the basin
 import plotly.graph_objects as go
 import numpy as np
 
-def linear_interpolation(X,Y,x):
-    i = min(max(0, np.searchsorted(X, x)-1), len(X)-2)
-    return Y[i] + (Y[i+1] - Y[i])/(X[i+1] - X[i]) * (x - X[i])
+def linear_interpolation(X, Y, x, maximum):
+    i = min(max(0, np.searchsorted(X, x) - 1), len(X) - 2)
+    return min(Y[i] + (Y[i + 1] - Y[i]) / (X[i + 1] - X[i]) * (x - X[i]), maximum)
+
 
 def A(h):
-    return linear_interpolation(level, area, h)
+    return linear_interpolation(level, area, h, maximum=area[-1])
 
 fig = go.Figure()
 
@@ -322,6 +327,8 @@ for h in np.linspace(level[0], level_extrap, 100):
 
 
     i = min(max(0, np.searchsorted(level, h)-1), len(level)-2)
+    if h > level[-1]:
+        i = i + 1
     fill_area = np.append(area[:i+1], a)
     fill_level = np.append(level[:i+1], h)
     fill_x = np.concat([-fill_area[::-1]/2, fill_area/2])
@@ -507,7 +514,7 @@ $$
     Q_P = P \cdot A.
 $$ {#eq-precip}
 
-Here $P = P(t)$ is the precipitation rate and $A$ is the maximum area given in the `Basin / profile` table.
+Here $P = P(t)$ is the precipitation rate and $A$ is the area given at the highest level in the `Basin / profile` table.
 Precipitation in the Basin area is assumed to be directly added to the Basin storage.
 The modeler needs to ensure all precipitation enters the model, and there is no overlap in the maximum profile areas, otherwise extra water is created.
 If a part of the catchment is not in any Basin profile, the modeler has to verify that water source is not forgotten.

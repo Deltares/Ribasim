@@ -120,6 +120,11 @@ const nodetypes = collect(keys(nodekinds))
     evaporate_mass::Bool = true
 end
 
+@option struct Interpolation <: TableOption
+    flow_boundary::String = "block"
+    block_transition_period::Float64 = 0.0
+end
+
 # Separate struct, as basin clashes with nodetype
 @option struct Results <: TableOption
     compression::Bool = true
@@ -165,6 +170,7 @@ end
     ribasim_version::String
     input_dir::String
     results_dir::String
+    interpolation::Interpolation = Interpolation()
     allocation::Allocation = Allocation()
     solver::Solver = Solver()
     logging::Logging = Logging()
@@ -306,9 +312,7 @@ function algorithm(solver::Solver; u0 = [])::OrdinaryDiffEqAlgorithm
     kwargs = Dict{Symbol, Any}()
 
     if algotype <: OrdinaryDiffEqNewtonAdaptiveAlgorithm
-        kwargs[:nlsolve] = NLNewton(;
-            relax = Ribasim.MonitoredBackTracking(; z_tmp = copy(u0), dz_tmp = copy(u0)),
-        )
+        kwargs[:nlsolve] = NLNewton()
     end
 
     if function_accepts_kwarg(algotype, :step_limiter!)

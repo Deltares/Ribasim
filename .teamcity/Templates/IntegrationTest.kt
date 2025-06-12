@@ -48,7 +48,7 @@ open class IntegrationTest (platformOs: String) : Template() {
         features {
             buildCache {
                 id = "Ribasim${platformOs}Cache"
-                name = "Ribasim ${platformOs} Cache"
+                name = "Ribasim${platformOs}Cache"
                 publish = false
             }
         }
