@@ -64,7 +64,6 @@ There are the following interpolation settings:
 
 ## Allocation settings
 There are the following allocation settings:
-- `use_allocation`: A boolean which says whether allocation should be used or not;
 - `timestep`: A float value in seconds which dictates the update interval for allocations;
 - `source_priority`: An integer per source type for the allocation algorithm: `user_demand`, `boundary`, `level_demand`, `flow_demand`, `subnetwork_inlet`. Flow boundaries and level boundaries are combined in the single category `boundary`. By default all nodes of the same type have the same source priority, so to obtain a strict source ordering the sources are sorted by node ID for each source priority within a subnetwork.  When no default source priorities are specified, default defaults are applied (see the TOML example above).
 
@@ -120,6 +119,7 @@ Currently the following features can be enabled (all are disabled by default).
 entry             | type   | description
 ----------------- | ------ | -----------
 concentration     | Bool   | Whether to enable tracer calculations or not.
+allocation        | Bool   | Whether to activate the activation layer. Replaced by 'first come first serve' when deactivated
 
 
 

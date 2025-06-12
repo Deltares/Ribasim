@@ -91,7 +91,7 @@ end
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/minimal_subnetwork/ribasim.toml")
     @test ispath(toml_path)
-    config = Ribasim.Config(toml_path; allocation_use_allocation = false)
+    config = Ribasim.Config(toml_path; experimental_allocation = false)
     model = Ribasim.Model(config)
     demand = BMI.get_value_ptr(model, "user_demand.demand")
     inflow = BMI.get_value_ptr(model, "user_demand.cumulative_inflow")

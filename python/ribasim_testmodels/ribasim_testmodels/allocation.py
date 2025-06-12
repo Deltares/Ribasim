@@ -100,8 +100,8 @@ def subnetwork_model() -> Model:
         starttime="2020-01-01",
         endtime="2020-04-01",
         crs="EPSG:28992",
-        allocation=Allocation(use_allocation=True, timestep=86400),
-        experimental=Experimental(concentration=True),
+        allocation=Allocation(timestep=86400),
+        experimental=Experimental(concentration=True, allocation=True),
         interpolation=Interpolation(flow_boundary="linear"),
     )
 
@@ -187,8 +187,8 @@ def looped_subnetwork_model() -> Model:
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
-        allocation=Allocation(use_allocation=True, timestep=86400),
-        experimental=Experimental(concentration=True),
+        allocation=Allocation(timestep=86400),
+        experimental=Experimental(concentration=True, allocation=True),
     )
 
     basin_data: list[TableModel[Any]] = [
@@ -314,8 +314,8 @@ def minimal_subnetwork_model() -> Model:
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
-        allocation=Allocation(use_allocation=True, timestep=86400),
-        experimental=Experimental(concentration=True),
+        allocation=Allocation(timestep=86400),
+        experimental=Experimental(concentration=True, allocation=True),
     )
 
     basin_data: list[TableModel[Any]] = [
@@ -371,8 +371,8 @@ def allocation_example_model() -> Model:
         starttime="2020-01-01",
         endtime="2020-01-20",
         crs="EPSG:28992",
-        allocation=Allocation(use_allocation=True, timestep=86400),
-        experimental=Experimental(concentration=True),
+        allocation=Allocation(timestep=86400),
+        experimental=Experimental(concentration=True, allocation=True),
     )
 
     basin_data: list[TableModel[Any]] = [
@@ -434,8 +434,8 @@ def main_network_with_subnetworks_model() -> Model:
         starttime="2020-01-01",
         endtime="2020-03-01",
         crs="EPSG:28992",
-        allocation=Allocation(use_allocation=True, timestep=86400),
-        experimental=Experimental(concentration=True),
+        allocation=Allocation(timestep=86400),
+        experimental=Experimental(concentration=True, allocation=True),
     )
 
     basin_data: list[TableModel[Any]] = [
@@ -730,8 +730,8 @@ def level_demand_model() -> Model:
         starttime="2020-01-01",
         endtime="2020-02-01",
         crs="EPSG:28992",
-        allocation=Allocation(use_allocation=True, timestep=1e5),
-        experimental=Experimental(concentration=True),
+        allocation=Allocation(timestep=1e5),
+        experimental=Experimental(concentration=True, allocation=True),
     )
     model.flow_boundary.add(
         Node(1, Point(0, 0), subnetwork_id=2), [flow_boundary.Static(flow_rate=[1e-3])]
@@ -791,8 +791,8 @@ def flow_demand_model() -> Model:
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",
         crs="EPSG:28992",
-        allocation=Allocation(use_allocation=True, timestep=1e5),
-        experimental=Experimental(concentration=True),
+        allocation=Allocation(timestep=1e5),
+        experimental=Experimental(concentration=True, allocation=True),
     )
 
     model.tabulated_rating_curve.add(
@@ -866,8 +866,7 @@ def linear_resistance_demand_model() -> Model:
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",
         crs="EPSG:28992",
-        allocation=Allocation(use_allocation=True),
-        experimental=Experimental(concentration=True),
+        experimental=Experimental(concentration=True, allocation=True),
     )
 
     model.basin.add(
@@ -902,8 +901,7 @@ def fair_distribution_model() -> Model:
         starttime="2020-01-01 00:00:00",
         endtime="2020-01-07 00:00:00",
         crs="EPSG:28992",
-        allocation=Allocation(use_allocation=True),
-        experimental=Experimental(concentration=True),
+        experimental=Experimental(concentration=True, allocation=True),
     )
 
     model.level_boundary.add(
@@ -1000,8 +998,7 @@ def allocation_training_model() -> Model:
         starttime="2022-01-01",
         endtime="2023-01-01",
         crs="EPSG:4326",
-        allocation=Allocation(use_allocation=True),
-        experimental=Experimental(concentration=True),
+        experimental=Experimental(concentration=True, allocation=True),
         interpolation=Interpolation(flow_boundary="linear"),
     )
 
@@ -1180,8 +1177,7 @@ def bommelerwaard_model() -> Model:
         starttime="2016-01-01",
         endtime="2016-03-31",
         crs="EPSG:28992",
-        allocation=Allocation(use_allocation=True),
-        experimental=Experimental(concentration=True),
+        experimental=Experimental(concentration=True, allocation=True),
     )
 
     # Node coordinates
@@ -1271,11 +1267,23 @@ def bommelerwaard_model() -> Model:
         )
         pump_index += 1
 
-    for node_id, level in zip([43, 44], [[1.85, 2.85, 2.95], [1.15, 2.15, 2.25]]):
-        model.tabulated_rating_curve.add(
-            get_node(node_id),
-            [tabulated_rating_curve.Static(level=level, flow_rate=[0.0, 0.1, 1.0])],
-        )
+    model.tabulated_rating_curve.add(
+        get_node(43),
+        [
+            tabulated_rating_curve.Static(
+                level=[1.85, 2.85, 2.95], flow_rate=[0.0, 0.1, 1.0]
+            )
+        ],
+    )
+
+    model.tabulated_rating_curve.add(
+        get_node(44),
+        [
+            tabulated_rating_curve.Static(
+                level=[1.15, 2.15, 2.25], flow_rate=[0.0, 0.1, 1.0]
+            )
+        ],
+    )
 
     for node_id, listen_node_id, greater_than in zip(
         range(45, 52),
@@ -1377,7 +1385,7 @@ def cyclic_demand_model() -> Model:
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
-        allocation=Allocation(use_allocation=True),
+        experimental=Experimental(allocation=True),
     )
 
     fb = model.flow_boundary.add(
@@ -1453,7 +1461,7 @@ def allocation_control_model() -> Model:
         starttime="2020-01-01",
         endtime="2023-01-01",
         crs="EPSG:28992",
-        allocation=Allocation(use_allocation=True),
+        experimental=Experimental(allocation=True),
     )
 
     lb = model.level_boundary.add(

@@ -1459,7 +1459,7 @@ function Parameters(db::DB, config::Config)::Parameters
     set_discrete_controlled_variable_refs!(p_independent)
 
     # Allocation data structures
-    if config.allocation.use_allocation
+    if config.experimental.allocation
         initialize_allocation!(p_independent, config)
     end
 

@@ -93,13 +93,9 @@ class Allocation(ChildModel):
     ----------
     timestep : float
         The simulated time in seconds between successive allocation calls (Optional, defaults to 86400)
-    use_allocation : bool
-        Whether the allocation algorithm should be active. If not, `UserDemand` nodes attempt to
-        abstract their full demand (Optional, defaults to False)
     """
 
     timestep: float = 86400.0
-    use_allocation: bool = False
     default_source_priority: SourcePriority = SourcePriority()
 
 
@@ -185,9 +181,12 @@ class Experimental(ChildModel):
     ----------
     concentration : bool
         Whether to enable tracer support (default is False)
+    allocation : bool
+        Whether to activate the activation layer. Replaced by 'first come first serve' when deactivated (default is False)
     """
 
     concentration: bool = False
+    allocation: bool = False
 
 
 class Node(pydantic.BaseModel):

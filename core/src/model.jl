@@ -236,7 +236,7 @@ function Model(config::Config)::Model
     )
     @debug "Setup integrator."
 
-    if config.allocation.use_allocation && is_active(p_independent.allocation)
+    if config.experimental.allocation && is_active(p_independent.allocation)
         set_initial_allocation_cumulative_volume!(integrator)
     end
 
@@ -309,7 +309,7 @@ function solve!(model::Model)::Model
     (; config, integrator) = model
     (; tspan) = integrator.sol.prob
 
-    comptime_s = @elapsed if config.allocation.use_allocation
+    comptime_s = @elapsed if config.experimental.allocation
         (; timestep) = config.allocation
         n_allocation_times = floor(Int, tspan[end] / timestep)
         for _ in 1:n_allocation_times

@@ -146,12 +146,12 @@ end
 
 @option struct Allocation <: TableOption
     timestep::Float64 = 86400
-    use_allocation::Bool = false
     source_priority::SourcePriority = SourcePriority()
 end
 
 @option struct Experimental <: TableOption
     concentration::Bool = false
+    allocation::Bool = false
 end
 # For logging enabled experimental features
 function Base.iterate(exp::Experimental, state = 0)
