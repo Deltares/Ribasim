@@ -696,8 +696,7 @@ but the derivative is bounded at x = 0.
 """
 function relaxed_root(x, threshold)
     if abs(x) < threshold
-        x_scaled = x / threshold
-        sqrt(threshold) * x_scaled^3 * (9 - 5x_scaled^2) / 4
+        1 / 4 * (x / sqrt(threshold)) * (5 - (x / threshold)^2)
     else
         sign(x) * sqrt(abs(x))
     end

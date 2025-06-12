@@ -416,3 +416,36 @@ end
     @test find_index(:c, s) === 3
     @test_throws "not found" find_index(:d, s)
 end
+
+@testitem "relaxed_root basic behavior" begin
+    using Ribasim: relaxed_root
+
+    # Test for x = 0
+    @test relaxed_root(0.0, 1e-3) == 0.0
+
+    # Test for x > threshold
+    @test relaxed_root(2.0, 1.0) ≈ sqrt(2.0)
+    @test relaxed_root(-2.0, 1.0) ≈ -sqrt(2.0)
+
+    # Test at threshold boundary
+    eps = 1e-3
+    x = eps
+    y1 = relaxed_root(x, eps)
+    y2 = sqrt(x)
+    @test y1 ≈ y2 atol = 1e-12
+
+    x = -eps
+    y1 = relaxed_root(x, eps)
+    y2 = -sqrt(abs(x))
+    @test y1 ≈ y2 atol = 1e-12
+
+    # Test half way threshold, relative diff is not more than 20 %
+    x = eps / 2
+    y1 = relaxed_root(x, eps)
+    y2 = sqrt(eps / 2)
+    @test y1 ≈ y2 atol = 0.2
+
+    # Test for very small epsilon
+    @test relaxed_root(1e-8, 1e-8) ≈ sqrt(1e-8)
+    @test relaxed_root(-1e-8, 1e-8) ≈ -sqrt(1e-8)
+end
