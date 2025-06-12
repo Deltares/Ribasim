@@ -25,13 +25,12 @@ flow_boundary = "block"   # optional, default "block", can otherwise be "linear"
 block_transition_period = 0  # optional, default 0
 
 [allocation]
-timestep = 86400                                 # optional (required if use_allocation = true), default 86400
-use_allocation = false                           # optional, default false
+timestep = 86400         # optional (required if experimental.allocation = true), default 86400
 [allocation.source_priority]
 user_demand = 1000       # optional, default 1000
-boundary = 2000          # optional, default 2000
-level_demand = 3000      # optional, default 3000
-flow_demand = 4000       # optional, default 4000
+flow_boundary = 2000     # optional, default 2000
+level_boundary = 3000    # optional, default 3000
+basin = 4000             # optional, default 4000
 subnetwork_inlet = 5000  # optional, default 5000
 
 [solver]
@@ -62,3 +61,4 @@ subgrid = false       # optional, default false
 [experimental]
 # Experimental features, disabled by default
 concentration = false # tracer calculations
+allocation = false # allocation layer, replaced by 'first come first serve' when inactive

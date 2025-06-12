@@ -83,11 +83,11 @@ sequenceDiagram
 # Nested allocation {#sec-nested-allocation}
 
 Since water systems may be extensive, like in the Netherlands, Ribasim models may become large networks with over ten thousand nodes.
-To keep a proper functioning allocation concept under these circumstances, the modeller can decompose the network domain into a main network and multiple sub-networks.
+To keep a proper functioning allocation concept under these circumstances, the modeller can decompose the network domain into a primary network and multiple sub-networks.
 The allocation will then be conducted in three steps:
 
-1. conduct an inventory of demands from the sub-networks to inlets from the main network,
-2. allocate the available water in the main network to the subnetworks inlets,
+1. conduct an inventory of demands from the sub-networks to inlets from the primary network,
+2. allocate the available water in the primary network to the subnetworks inlets,
 3. allocate the assigned water within each subnetwork to the individual demand nodes.
 
 The demand nodes then will request this updated demand from the rule-based simulation.

@@ -47,7 +47,7 @@ Ribasim allows water users (water demands) to abstract water from the basins (i.
 Under dry conditions, water managers may want to prioritize some abstractions over other abstractions.
 The Ribasim allocation layer can take care of this prioritization by reducing the abstraction rates of lower-priority demands to ensure that sufficient water remains available in the system for the higher-priority demands.
 The associated mathematical formulations are described on the [allocation page](/concept/allocation.qmd).
-In case of large networks, a subdivision in a main network with subnetworks is recommended.
+In case of large networks, a subdivision in a primary network with subnetworks is recommended.
 For more details see the explanation of the [simulation loop](/concept/core.qmd#sec-nested-allocation).
 
 The layers and the main components and dataflows between the layers are shown in the next figure:

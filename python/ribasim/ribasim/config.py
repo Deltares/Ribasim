@@ -58,17 +58,12 @@ from ribasim.utils import _concat, _pascal_to_snake
 
 
 class SourcePriority(ChildModel):
-    """
-    Specify per source node type what its default source priority is.
-
-    flow_boundary and level_boundary nodes are combined into the single category 'boundary'.
-    """
+    """Specify per source node type what its default source priority is."""
 
     user_demand: int = 1000
-    boundary: int = 2000
-    level_demand: int = 3000
-    flow_demand: int = 4000
-    subnetwork_inlet: int = 5000
+    flow_boundary: int = 2000
+    basin: int = 3000
+    subnetwork_inlet: int = 4000
 
 
 class Interpolation(ChildModel):
@@ -98,13 +93,9 @@ class Allocation(ChildModel):
     ----------
     timestep : float
         The simulated time in seconds between successive allocation calls (Optional, defaults to 86400)
-    use_allocation : bool
-        Whether the allocation algorithm should be active. If not, `UserDemand` nodes attempt to
-        abstract their full demand (Optional, defaults to False)
     """
 
     timestep: float = 86400.0
-    use_allocation: bool = False
     default_source_priority: SourcePriority = SourcePriority()
 
 
@@ -190,9 +181,12 @@ class Experimental(ChildModel):
     ----------
     concentration : bool
         Whether to enable tracer support (default is False)
+    allocation : bool
+        Whether to activate the activation layer. Replaced by 'first come first serve' when deactivated (default is False)
     """
 
     concentration: bool = False
+    allocation: bool = False
 
 
 class Node(pydantic.BaseModel):

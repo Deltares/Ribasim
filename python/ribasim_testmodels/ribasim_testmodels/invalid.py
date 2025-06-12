@@ -1,6 +1,6 @@
 from typing import Any
 
-from ribasim.config import Allocation, Node, Solver
+from ribasim.config import Allocation, Experimental, Node, Solver
 from ribasim.input_base import TableModel
 from ribasim.model import Model
 from ribasim.nodes import (
@@ -191,7 +191,8 @@ def invalid_priorities_model() -> Model:
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",
         crs="EPSG:28992",
-        allocation=Allocation(use_allocation=True, timestep=1e5),
+        allocation=Allocation(timestep=1e5),
+        experimental=Experimental(allocation=True),
         use_validation=False,
     )
 

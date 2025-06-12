@@ -323,43 +323,6 @@ end
     @test reduction_factor(-Inf, 2.0) === 0.0
 end
 
-@testitem "constraints_from_nodes" begin
-    using Ribasim:
-        Model,
-        snake_case,
-        nodetypes,
-        NodeType,
-        is_flow_constraining,
-        is_flow_direction_constraining
-
-    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
-    @test ispath(toml_path)
-    model = Model(toml_path)
-    (; p) = model.integrator
-    constraining_types = (NodeType.Pump, NodeType.Outlet, NodeType.LinearResistance)
-    directed = (
-        NodeType.Pump,
-        NodeType.Outlet,
-        NodeType.TabulatedRatingCurve,
-        NodeType.UserDemand,
-        NodeType.FlowBoundary,
-    )
-
-    for symbol in nodetypes
-        type = NodeType.T(symbol)
-        if type in constraining_types
-            @test is_flow_constraining(type)
-        else
-            @test !is_flow_constraining(type)
-        end
-        if type in directed
-            @test is_flow_direction_constraining(type)
-        else
-            @test !is_flow_direction_constraining(type)
-        end
-    end
-end
-
 @testitem "Node types" begin
     using Ribasim:
         nodetypes, NodeType, ParametersIndependent, AbstractParameterNode, snake_case

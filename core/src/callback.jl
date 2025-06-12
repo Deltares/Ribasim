@@ -134,10 +134,9 @@ Specifically, we first use all the inflows to update the mass of the Basins, rec
 the Basin concentration(s) and then remove the mass that is being lost to the outflows.
 """
 function update_cumulative_flows!(u, t, integrator)::Nothing
-    (; p_independent, p_mutable, time_dependent_cache) = integrator.p
+    (; p) = integrator
+    (; p_independent, p_mutable, time_dependent_cache) = p
     (; basin, flow_boundary, allocation) = p_independent
-
-    set_current_basin_properties!(u, integrator.p, t)
 
     # Update tprev
     p_mutable.tprev = t
@@ -160,29 +159,27 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
     @. flow_boundary.cumulative_flow =
         time_dependent_cache.flow_boundary.current_cumulative_boundary_flow
 
-    # Update realized flows for allocation input
-    for subnetwork_id in allocation.subnetwork_ids
-        mean_input_flows_subnetwork_ =
-            mean_input_flows_subnetwork(p_independent, subnetwork_id)
-        for link in keys(mean_input_flows_subnetwork_)
-            mean_input_flows_subnetwork_[link] += flow_update_on_link(integrator, link)
+    # Update realized flows for allocation input and output
+    for allocation_model in allocation.allocation_models
+        (;
+            cumulative_forcing_volume,
+            cumulative_boundary_volume,
+            cumulative_realized_volume,
+        ) = allocation_model
+        # Basin forcing input
+        for basin_id in keys(cumulative_forcing_volume)
+            cumulative_forcing_volume[basin_id] +=
+                flow_update_on_link(integrator, (basin_id, basin_id))
         end
-    end
 
-    # Update realized flows for allocation output
-    for link in keys(allocation.mean_realized_flows)
-        allocation.mean_realized_flows[link] += flow_update_on_link(integrator, link)
-        if link[1] == link[2]
-            basin_id = link[1]
-            @assert basin_id.type == NodeType.Basin
-            for inflow_id in basin.inflow_ids[basin_id.idx]
-                allocation.mean_realized_flows[link] +=
-                    flow_update_on_link(integrator, (inflow_id, basin_id))
-            end
-            for outflow_id in basin.outflow_ids[basin_id.idx]
-                allocation.mean_realized_flows[link] -=
-                    flow_update_on_link(integrator, (basin_id, outflow_id))
-            end
+        # Flow boundary input
+        for link in keys(cumulative_boundary_volume)
+            cumulative_boundary_volume[link] += flow_update_on_link(integrator, link)
+        end
+
+        # Update realized flows for allocation output
+        for link in keys(cumulative_realized_volume)
+            cumulative_realized_volume[link] += flow_update_on_link(integrator, link)
         end
     end
     return nothing
@@ -630,19 +627,6 @@ function compound_variable_value(compound_variable::CompoundVariable, p, du, t)
     return value
 end
 
-function get_allocation_model(
-    p_independent::ParametersIndependent,
-    subnetwork_id::Int32,
-)::AllocationModel
-    (; subnetwork_ids, allocation_models) = p_independent.allocation
-    idx = findsorted(subnetwork_ids, subnetwork_id)
-    if isnothing(idx)
-        error("Invalid allocation network ID $subnetwork_id.")
-    else
-        return allocation_models[idx]
-    end
-end
-
 function set_control_params!(p::Parameters, node_id::NodeID, control_state::String)::Nothing
     (; discrete_control) = p.p_independent
     (; control_mappings) = discrete_control
@@ -659,7 +643,7 @@ end
 function apply_parameter_update!(parameter_update)::Nothing
     (; name, value, ref) = parameter_update
 
-    # Ignore this parameter update of the associated node does
+    # Ignore this parameter update if the associated node does
     # not have an 'active' field
     if name == :active && ref.i == 0
         return nothing
@@ -795,60 +779,6 @@ update_levelb_conc!(integrator)::Nothing =
     update_conc!(integrator, :level_boundary, NodeType.LevelBoundary)
 update_userd_conc!(integrator)::Nothing =
     update_conc!(integrator, :user_demand, NodeType.UserDemand)
-
-"Solve the allocation problem for all demands and assign allocated abstractions."
-function update_allocation!(integrator)::Nothing
-    (; p, t, u) = integrator
-    (; p_independent) = p
-    (; allocation) = p_independent
-    (; allocation_models, mean_input_flows, mean_realized_flows) = allocation
-
-    # Make sure current storages are up to date
-    formulate_storages!(u, p, t)
-
-    # Don't run the allocation algorithm if allocation is not active
-    # (Specifically for running Ribasim via the BMI)
-    if !is_active(allocation)
-        return nothing
-    end
-
-    # Divide by the allocation Δt to get the mean input flows from the cumulative flows
-    (; Δt_allocation) = allocation_models[1]
-    for mean_input_flows_subnetwork in values(mean_input_flows)
-        for link in keys(mean_input_flows_subnetwork)
-            mean_input_flows_subnetwork[link] /= Δt_allocation
-        end
-    end
-
-    # Divide by the allocation Δt to get the mean realized flows from the cumulative flows
-    for link in keys(mean_realized_flows)
-        mean_realized_flows[link] /= Δt_allocation
-    end
-
-    # If a main network is present, collect demands of subnetworks
-    if has_main_network(allocation)
-        for allocation_model in Iterators.drop(allocation_models, 1)
-            collect_demands!(p, allocation_model, t)
-        end
-    end
-
-    # Solve the allocation problems
-    # If a main network is present this is solved first,
-    # which provides allocation to the subnetworks
-    for allocation_model in allocation_models
-        allocate_demands!(p, allocation_model, t)
-    end
-
-    # Reset the mean flows
-    for mean_flows in mean_input_flows
-        for link in keys(mean_flows)
-            mean_flows[link] = 0.0
-        end
-    end
-    for link in keys(mean_realized_flows)
-        mean_realized_flows[link] = 0.0
-    end
-end
 
 function update_subgrid_level(model::Model)::Model
     update_subgrid_level!(model.integrator)
