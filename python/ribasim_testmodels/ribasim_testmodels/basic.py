@@ -632,7 +632,7 @@ def basic_basin_both_area_and_storage_model() -> Model:
     return build_model_with_basin(model, basin_definition)
 
 
-def no_basin_model() -> Model:
+def invalid_no_basin_model() -> Model:
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
