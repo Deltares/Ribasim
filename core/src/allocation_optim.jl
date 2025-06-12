@@ -274,9 +274,9 @@ function set_demands!(
         problem[:flow_demand_constraint],
         problem[:relative_flow_demand_error],
         target_demand_fraction,
-        node_idx ->
-            flow_demand.demand_priority[node_id.idx] == demand_priority ?
-            flow_demand.demand[node_id.idx] : 0.0,
+        idx ->
+            flow_demand.demand_priority[idx] == demand_priority ? flow_demand.demand[idx] :
+            0.0,
         only(problem[:relative_flow_demand_error].axes),
     )
 
@@ -285,9 +285,9 @@ function set_demands!(
         problem[:storage_constraint_lower],
         problem[:relative_storage_error_lower],
         target_demand_fraction,
-        node_idx ->
-            level_demand.demand_priority[node_id.idx] == demand_priority ?
-            level_demand.demand[node_id.idx] : 0.0,
+        idx ->
+            level_demand.demand_priority[idx] == demand_priority ?
+            level_demand.storage_demand[idx] : 0.0,
         only(problem[:relative_storage_error_lower].axes),
     )
 
@@ -435,7 +435,7 @@ function save_demands_and_allocations!(
 
     # FlowDemand
     for node_id in only(flow_demand_allocated.axes)
-        if flow_demand.demand_priority[node_id.idx]
+        if flow_demand.has_demand_priority[node_id.idx]
             add_to_record_demand!(
                 record_demand,
                 t,
@@ -640,7 +640,8 @@ function set_timeseries_demands!(p::Parameters, t::Float64)::Nothing
         # Set the demand as the average of the demand interpolation
         # over the coming interpolation period
         flow_demand.demand[node_id.idx] =
-            integral(flow_demand.demand_itp, t, t + Δt_allocation) / Δt_allocation
+            integral(flow_demand.demand_itp[node_id.idx], t, t + Δt_allocation) /
+            Δt_allocation
     end
 
     # LevelDemand
@@ -743,13 +744,13 @@ function update_allocation!(integrator)::Nothing
             pump,
             allocation_model,
             graph,
-            state_time_dependent_cache.flow_rate_pump,
+            state_time_dependent_cache.current_flow_rate_pump,
         )
         apply_control_from_allocation!(
             outlet,
             allocation_model,
             graph,
-            state_time_dependent_cache.flow_rate_outlet,
+            state_time_dependent_cache.current_flow_rate_outlet,
         )
 
         # Reset cumulative data

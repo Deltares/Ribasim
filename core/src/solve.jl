@@ -577,16 +577,15 @@ function formulate_flow!(
         flow_rate_itp = pump.flow_rate[id.idx]
         min_flow_rate = pump.min_flow_rate[id.idx]
         max_flow_rate = pump.max_flow_rate[id.idx]
-        continuous_control_type = pump.continuous_control_type[id.idx]
+        control_type = pump.control_type[id.idx]
         min_upstream_level = pump.min_upstream_level[id.idx]
         max_downstream_level = pump.max_downstream_level[id.idx]
 
-        if !(active || all_nodes_active) ||
-           (continuous_control_type != continuous_control_type_)
+        if !(active || all_nodes_active) || (control_type != control_type_)
             continue
         end
 
-        if continuous_control_type == ContinuousControlType.None
+        if control_type == ControlType.None
             eval_time_interp(flow_rate_itp, current_flow_rate_pump, id.idx, p, t)
         end
 
@@ -647,16 +646,15 @@ function formulate_flow!(
         flow_rate_itp = outlet.flow_rate[id.idx]
         min_flow_rate = outlet.min_flow_rate[id.idx]
         max_flow_rate = outlet.max_flow_rate[id.idx]
-        continuous_control_type = outlet.continuous_control_type[id.idx]
+        control_type = outlet.control_type[id.idx]
         min_upstream_level = outlet.min_upstream_level[id.idx]
         max_downstream_level = outlet.max_downstream_level[id.idx]
 
-        if !(active || all_nodes_active) ||
-           (continuous_control_type != continuous_control_type_)
+        if !(active || all_nodes_active) || (control_type != control_type_)
             continue
         end
 
-        if continuous_control_type == ContinuousControlType.None
+        if control_type == ControlType.None
             eval_time_interp(flow_rate_itp, current_flow_rate_outlet, id.idx, p, t)
         end
 

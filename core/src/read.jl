@@ -6,8 +6,11 @@ const conservative_nodetypes = Set{NodeType.T}([
     NodeType.ManningResistance,
 ])
 
-function initialize_allocation!(p_non_diff::ParametersNonDiff, config::Config)::Nothing
-    (; graph, allocation) = p_non_diff
+function initialize_allocation!(
+    p_independent::ParametersIndependent,
+    config::Config,
+)::Nothing
+    (; graph, allocation) = p_independent
     (; subnetwork_ids, allocation_models) = allocation
     subnetwork_ids_ = sort(collect(keys(graph[].node_ids)))
 

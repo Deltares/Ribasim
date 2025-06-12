@@ -24,16 +24,16 @@ end
 
 function flow_capacity_lower_bound(
     link::Tuple{NodeID, NodeID},
-    p_non_diff::ParametersNonDiff,
+    p_independent::ParametersIndependent,
 )
     lower_bound = -MAX_ABS_FLOW
     for id in link
         min_flow_rate_id = if id.type == NodeType.Pump
-            max(0.0, p_non_diff.pump.min_flow_rate[id.idx](0))
+            max(0.0, p_independent.pump.min_flow_rate[id.idx](0))
         elseif id.type == NodeType.Outlet
-            max(0.0, p_non_diff.outlet.min_flow_rate[id.idx](0))
+            max(0.0, p_independent.outlet.min_flow_rate[id.idx](0))
         elseif id.type == NodeType.LinearResistance
-            -p_non_diff.linear_resistance.max_flow_rate[id.idx]
+            -p_independent.linear_resistance.max_flow_rate[id.idx]
         elseif id.type ∈ (
             NodeType.UserDemand,
             NodeType.FlowBoundary,
@@ -53,16 +53,16 @@ end
 
 function flow_capacity_upper_bound(
     link::Tuple{NodeID, NodeID},
-    p_non_diff::ParametersNonDiff,
+    p_independent::ParametersIndependent,
 )
     upper_bound = MAX_ABS_FLOW
     for id in link
         max_flow_rate_id = if id.type == NodeType.Pump
-            p_non_diff.pump.max_flow_rate[id.idx](0)
+            p_independent.pump.max_flow_rate[id.idx](0)
         elseif id.type == NodeType.Outlet
-            p_non_diff.outlet.max_flow_rate[id.idx](0)
+            p_independent.outlet.max_flow_rate[id.idx](0)
         elseif id.type == NodeType.LinearResistance
-            p_non_diff.linear_resistance.max_flow_rate[id.idx]
+            p_independent.linear_resistance.max_flow_rate[id.idx]
         else
             MAX_ABS_FLOW
         end
@@ -121,12 +121,12 @@ function collect_primary_network_connections!(
     return nothing
 end
 
-function get_minmax_level(p_non_diff::ParametersNonDiff, node_id::NodeID)
-    (; basin, level_boundary) = p_non_diff
+function get_minmax_level(p_independent::ParametersIndependent, node_id::NodeID)
+    (; basin, level_boundary) = p_independent
 
     if node_id.type == NodeType.Basin
         itp = basin.level_to_area[node_id.idx]
-        return itp.t[1], ipt.t[end]
+        return itp.t[1], itp.t[end]
     elseif node_id.type == NodeType.LevelBoundary
         itp = level_boundary.level[node_id.idx]
         return minimum(itp.u), maximum(itp.u)

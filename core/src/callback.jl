@@ -135,8 +135,8 @@ the Basin concentration(s) and then remove the mass that is being lost to the ou
 """
 function update_cumulative_flows!(u, t, integrator)::Nothing
     (; p) = integrator
-    (; p_non_diff, p_mutable) = p
-    (; basin, flow_boundary, allocation) = p_non_diff
+    (; p_independent, p_mutable, time_dependent_cache) = p
+    (; basin, flow_boundary, allocation) = p_independent
 
     # Update tprev
     p_mutable.tprev = t

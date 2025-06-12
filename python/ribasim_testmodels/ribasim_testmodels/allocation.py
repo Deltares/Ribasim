@@ -1413,7 +1413,7 @@ def cyclic_demand_model() -> Model:
                 time=time,
                 min_level=[0.5, 0.7, 0.5],
                 max_level=[0.7, 0.9, 0.7],
-                demand_priority=1,
+                demand_priority=3,
             )
         ],
     )

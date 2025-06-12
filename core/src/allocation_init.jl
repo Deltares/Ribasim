@@ -368,7 +368,14 @@ function add_flow_demand!(
         graph[].node_ids[subnetwork_id],
     )
     target_demand_fraction = problem[:target_demand_fraction]
+    flow = problem[:flow]
 
+    # Define parameters: allocated flow (m^3/s values to be filled in later)
+    flow_demand_allocated =
+        problem[:flow_demand_allocated] = JuMP.@variable(
+            problem,
+            flow_demand_allocated[ids_with_flow_demand_subnetwork] == -MAX_ABS_FLOW
+        )
     # Define decision variables: lower flow demand error (unitless)
     relative_flow_demand_error =
         problem[:relative_flow_demand_error] = JuMP.@variable(
@@ -383,16 +390,9 @@ function add_flow_demand!(
         problem,
         [node_id = ids_with_flow_demand_subnetwork],
         d * (relative_flow_demand_error[node_id] - target_demand_fraction) ≥
-        -(flow[inflow_link[node_id.idx].link] - flow_demand_allocated[node_id]),
+        -(flow[inflow_link(graph, node_id).link] - flow_demand_allocated[node_id]),
         base_name = "flow_demand_constraint"
     )
-
-    # Define parameters: allocated flow (m^3/s values to be filled in later)
-    flow_demand_allocated =
-        problem[:flow_demand_allocated] = JuMP.@variable(
-            problem,
-            flow_demand_allocated[ids_with_flow_demand_subnetwork] == -MAX_ABS_FLOW
-        )
 
     # Define constraints: flow through node with flow demand (for goal programming, values to be filled in before optimization)
     flow = problem[:flow]
