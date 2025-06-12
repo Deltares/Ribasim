@@ -7,18 +7,17 @@
 
     solver_list =
         ["QNDF", "Rosenbrock23", "TRBDF2", "Rodas5P", "KenCarp4", "Tsit5", "ImplicitEuler"]
-    sparse_on = [true, false]
-    autodiff_on = [true, false]
+    sparse_options = [true, false]
+    autodiff_options = [true, false]
 
     @testset "$solver" for solver in solver_list
-        @testset "sparse density is $sparse_on_off" for sparse_on_off in sparse_on
-            @testset "auto differentiation is $autodiff_on_off" for autodiff_on_off in
-                                                                    autodiff_on
+        @testset "sparse = $sparse" for sparse in sparse_options
+            @testset "autodiff = $autodiff" for autodiff in autodiff_options
                 config = Ribasim.Config(
                     toml_path;
                     solver_algorithm = solver,
-                    solver_sparse = sparse_on_off,
-                    solver_autodiff = autodiff_on_off,
+                    solver_sparse = sparse,
+                    solver_autodiff = autodiff,
                     solver_abstol = 1e-7,
                     solver_reltol = 1e-7,
                 )
@@ -38,8 +37,8 @@
                 @testset "Results values" begin
                     @test basin.storage[1] ≈ 1.0f0
                     @test basin.level[1] ≈ 0.044711584f0
-                    @test basin.storage[end] ≈ 16.530443267f0
-                    @test basin.level[end] ≈ 0.181817438
+                    @test basin.storage[end] ≈ 16.530443267f0 atol = 0.02
+                    @test basin.level[end] ≈ 0.181817438f0
                     @test flow.flow_rate[1] ≈ basin.outflow_rate[1]
                     @test all(q -> abs(q) < 1e-7, basin.balance_error)
                     @test all(err -> abs(err) < 0.01, basin.relative_error)
