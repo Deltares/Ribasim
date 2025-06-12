@@ -3,7 +3,17 @@
 
 Initialize a [`Model`](@ref) from the path to the TOML configuration file.
 """
-BMI.initialize(T::Type{Model}, config_path::AbstractString)::Model = Model(config_path)
+function BMI.initialize(T::Type{Model}, config_path::AbstractString)::Model
+    config = Config(config_path)
+    mkpath(results_path(config, "."))
+    io = open(results_path(config, "ribasim.log"), "w")
+    logger = setup_logger(; verbosity = config.logging.verbosity, stream = io)
+    # We rely on setting the global logger, if this causes issues
+    # we should store the logger in the Model.
+    global_logger(logger)
+    log_startup(config, config_path)
+    return Model(config_path)
+end
 
 """
     BMI.finalize(model::Model)::Model
@@ -12,6 +22,14 @@ Write all results to the configured files.
 """
 function BMI.finalize(model::Model)::Nothing
     write_results(model)
+    log_finalize(model)
+    logger = global_logger()
+    try
+        io = logger.logger.loggers[1].logger.logger.stream
+        close(io)
+    catch
+        error("Could not close the log file.")
+    end
     return nothing
 end
 
