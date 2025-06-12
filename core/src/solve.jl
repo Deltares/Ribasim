@@ -160,19 +160,19 @@ function formulate_storages!(
 )::Nothing
     (; p_independent, state_time_dependent_cache, time_dependent_cache, p_mutable) = p
     (; basin, flow_boundary, flow_to_storage) = p_independent
-    (; current_storage) = state_time_dependent_cache
+    (; current_storage, current_storage_kahan) = state_time_dependent_cache
     # Current storage: initial condition +
     # total inflows and outflows since the start
     # of the simulation
     if add_initial_storage
-        current_storage .= basin.storage0
+        current_storage_kahan .= basin.storage0
     else
-        current_storage .= 0.0
+        current_storage_kahan .= 0.0
     end
 
-    mul!(current_storage, flow_to_storage, u, 1, 1)
-    current_storage .+= time_dependent_cache.basin.current_cumulative_precipitation
-    current_storage .+= time_dependent_cache.basin.current_cumulative_drainage
+    mul!(current_storage_kahan, flow_to_storage, u, 1, 1)
+    current_storage_kahan .+= time_dependent_cache.basin.current_cumulative_precipitation
+    current_storage_kahan .+= time_dependent_cache.basin.current_cumulative_drainage
 
     # Formulate storage contributions of flow boundaries
     p_mutable.new_t && formulate_flow_boundary!(p, t)
@@ -182,9 +182,11 @@ function formulate_storages!(
     )
         outflow_id = outflow_link.link[2]
         if outflow_id.type == NodeType.Basin
-            current_storage[outflow_id.idx] += cumulative_flow
+            current_storage_kahan[outflow_id.idx] += cumulative_flow
         end
     end
+
+    current_storage .= current_storage_kahan
     return nothing
 end
 

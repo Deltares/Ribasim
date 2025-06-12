@@ -739,15 +739,16 @@ this cache is required for automatic differentiation, where e.g. ForwardDiff req
 be of `ForwardDiff.Dual` type. This second version of the cache is created by DifferentiationInterface.
 """
 const StateTimeDependentCache{T} = @NamedTuple{
-    current_storage::Vector{T},
-    current_low_storage_factor::Vector{T},
-    current_level::Vector{T},
-    current_area::Vector{T},
-    current_flow_rate_pump::Vector{T},
-    current_flow_rate_outlet::Vector{T},
-    current_error_pid_control::Vector{T},
-    u_prev_call::Vector{T},
-} where {T}
+    current_storage_kahan::Vector{T1},
+    current_storage::Vector{T2},
+    current_low_storage_factor::Vector{T2},
+    current_level::Vector{T2},
+    current_area::Vector{T2},
+    current_flow_rate_pump::Vector{T2},
+    current_flow_rate_outlet::Vector{T2},
+    current_error_pid_control::Vector{T2},
+    u_prev_call::Vector{T2},
+} where {T1, T2}
 
 @enumx CacheType flow_rate_pump flow_rate_outlet basin_level
 
@@ -1110,6 +1111,7 @@ function StateTimeDependentCache(
     n_pid_control = length(p_independent.pid_control.node_id)
 
     return (;
+        current_storage_kahan = zeros(KahanSum{Float64}, n_basin),
         current_storage = zeros(n_basin),
         current_low_storage_factor = zeros(n_basin),
         current_level = zeros(n_basin),
@@ -1183,11 +1185,11 @@ end
 """
 The collection of all parameters that are passed to the rhs (`water_balance!`) and callbacks.
 """
-@kwdef struct Parameters{C1, C2, C3, C4, C5, C6, T1, T2}
+@kwdef struct Parameters{C1, C2, C3, C4, C5, C6, T1, T2, T3}
     p_independent::ParametersIndependent{C1, C2, C3, C4, C5, C6}
-    state_time_dependent_cache::StateTimeDependentCache{T1} =
+    state_time_dependent_cache::StateTimeDependentCache{T1, T2} =
         StateTimeDependentCache(p_independent)
-    time_dependent_cache::TimeDependentCache{T2} = TimeDependentCache(p_independent)
+    time_dependent_cache::TimeDependentCache{T3} = TimeDependentCache(p_independent)
     p_mutable::ParametersMutable = ParametersMutable()
 end
 
