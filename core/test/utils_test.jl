@@ -465,6 +465,7 @@ end
     @test relaxed_root(-2.0, 1.0) ≈ -sqrt(2.0)
 
     # Test at threshold boundary
+    eps = 1e-3
     x = eps
     y1 = relaxed_root(x, eps)
     y2 = sqrt(x)
