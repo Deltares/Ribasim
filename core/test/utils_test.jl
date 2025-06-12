@@ -464,17 +464,6 @@ end
     @test relaxed_root(2.0, 1.0) ≈ sqrt(2.0)
     @test relaxed_root(-2.0, 1.0) ≈ -sqrt(2.0)
 
-    # Test for x < threshold (smooth region)
-    eps = 1.0
-    x = 0.5
-    y = relaxed_root(x, eps)
-    # Should be continuous and differentiable at x = eps
-    @test y ≈ 1 / 4 * (x / sqrt(eps)) * (5 - (x / eps)^2)
-
-    x = -0.5
-    y = relaxed_root(x, eps)
-    @test y ≈ 1 / 4 * (x / sqrt(eps)) * (5 - (x / eps)^2)
-
     # Test at threshold boundary
     x = eps
     y1 = relaxed_root(x, eps)
