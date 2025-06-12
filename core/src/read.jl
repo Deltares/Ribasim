@@ -7,11 +7,11 @@ const conservative_nodetypes = Set{NodeType.T}([
 ])
 
 function get_allocation_sources_in_order!(
-    p_non_diff::ParametersNonDiff,
+    p_independent::ParametersIndependent,
     db::DB,
     config::Config,
 )::OrderedDict{Tuple{NodeID, NodeID}, AllocationSource}
-    (; graph, user_demand, allocation) = p_non_diff
+    (; graph, user_demand, allocation) = p_independent
     (;
         subnetwork_demands,
         subnetwork_allocateds,
@@ -50,7 +50,7 @@ function get_allocation_sources_in_order!(
         #   node which connects to multiple basins
         # - One source node can imply multiple sources in the case of a LevelBoundary with multiple
         #   neighbors
-        node_id = NodeID(Symbol(row.node_type), row.node_id, p_non_diff)
+        node_id = NodeID(Symbol(row.node_type), row.node_id, p_independent)
         links = Tuple{NodeID, NodeID}[]
         if !ismissing(row.subnetwork_id)
             # E.g. :manning_resistance
@@ -136,11 +136,11 @@ function get_allocation_sources_in_order!(
 end
 
 function initialize_allocation!(
-    p_non_diff::ParametersNonDiff,
+    p_independent::ParametersIndependent,
     db::DB,
     config::Config,
 )::Nothing
-    (; graph, allocation) = p_non_diff
+    (; graph, allocation) = p_independent
     (; subnetwork_ids, allocation_models, main_network_connections) = allocation
     subnetwork_ids_ = sort(collect(keys(graph[].node_ids)))
 
@@ -158,12 +158,17 @@ function initialize_allocation!(
         main_network_connections[subnetwork_id] = Tuple{NodeID, NodeID}[]
     end
 
-    sources = get_allocation_sources_in_order!(p_non_diff, db, config)
+    sources = get_allocation_sources_in_order!(p_independent, db, config)
 
     for subnetwork_id in subnetwork_ids_
         push!(
             allocation_models,
-            AllocationModel(subnetwork_id, p_non_diff, sources, config.allocation.timestep),
+            AllocationModel(
+                subnetwork_id,
+                p_independent,
+                sources,
+                config.allocation.timestep,
+            ),
         )
     end
     return nothing
@@ -853,7 +858,12 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     errors |= validate_consistent_basin_initialization(profiles)
     errors && error("Errors encountered when parsing Basin data.")
 
-    interpolate_basin_profile!(basin, profiles)
+    areas, levels, storage, node_ids = interpolate_basin_profile!(basin, profiles)
+
+    if config.logging.verbosity == Debug
+        dir = joinpath(config.dir, config.results_dir)
+        output_basin_profiles(levels, areas, storage, node_ids, dir)
+    end
 
     # Inflow and outflow links
     map!(id -> collect(inflow_ids(graph, id)), basin.inflow_ids, node_id)
@@ -866,6 +876,14 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     basin.storage0 .= storage0
     basin.storage_prev .= storage0
     basin.concentration_data.mass .*= storage0  # was initialized by concentration_state, resulting in mass
+
+    # Compute the low storage threshold as the disk of water between the bottom
+    # and 10 cm above the bottom
+    for id in node_id
+        bottom = basin_bottom(basin, id)[2]
+        basin.low_storage_threshold[id.idx] =
+            get_storage_from_level(basin, id.idx, bottom + LOW_STORAGE_DEPTH)
+    end
 
     basin
 end
@@ -932,14 +950,13 @@ function CompoundVariable(
             error("Invalid `listen_node_id`.")
         end
         # Placeholder until actual ref is known
-        diff_cache_ref = DiffCacheRef()
+        cache_ref = CacheRef()
         variable = row.variable
         # Default to weight = 1.0 if not specified
         weight = coalesce(row.weight, 1.0)
         # Default to look_ahead = 0.0 if not specified
         look_ahead = coalesce(row.look_ahead, 0.0)
-        subvariable =
-            SubVariable(listen_node_id, diff_cache_ref, variable, weight, look_ahead)
+        subvariable = SubVariable(listen_node_id, cache_ref, variable, weight, look_ahead)
         push!(subvariables, subvariable)
     end
 
@@ -1596,7 +1613,7 @@ function Parameters(db::DB, config::Config)::Parameters
         graph,
     )
 
-    p_non_diff = ParametersNonDiff(;
+    p_independent = ParametersIndependent(;
         config.starttime,
         config.solver.reltol,
         relmask = collect(trues(n_states)),
@@ -1615,16 +1632,16 @@ function Parameters(db::DB, config::Config)::Parameters
         do_subgrid = config.results.subgrid,
     )
 
-    collect_control_mappings!(p_non_diff)
-    set_listen_diff_cache_refs!(p_non_diff, state_ranges)
-    set_discrete_controlled_variable_refs!(p_non_diff)
+    collect_control_mappings!(p_independent)
+    set_listen_cache_refs!(p_independent, state_ranges)
+    set_discrete_controlled_variable_refs!(p_independent)
 
     # Allocation data structures
     if config.allocation.use_allocation
-        initialize_allocation!(p_non_diff, db, config)
+        initialize_allocation!(p_independent, db, config)
     end
 
-    return Parameters(; p_non_diff)
+    return Parameters(; p_independent)
 end
 
 function get_node_ids_int32(db::DB, node_type)::Vector{Int32}
@@ -1875,11 +1892,14 @@ function set_concentrations!(
     end
 end
 
-function interpolate_basin_profile!(
-    basin::Basin,
-    profiles::StructVector{BasinProfileV1},
-)::Nothing
+function interpolate_basin_profile!(basin::Basin, profiles::StructVector{BasinProfileV1})
+    areas = Vector{Vector{Float64}}()
+    levels = Vector{Vector{Float64}}()
+    storage = Vector{Vector{Float64}}()
+
+    node_ids = Vector{Int32}()
     for (i, group) in enumerate(IterTools.groupby(row -> row.node_id, profiles))
+        push!(node_ids, first(group).node_id)
         group_area = getproperty.(group, :area)
         group_level = getproperty.(group, :level)
         group_storage = getproperty.(group, :storage)
@@ -1908,13 +1928,23 @@ function interpolate_basin_profile!(
             invert_integral(level_to_area; extrapolation_right = ExtrapolationType.Linear)
 
         if !all(ismissing, group_area)
+            # if all data is present for area, we use it
             level_to_area = LinearInterpolation(
                 group_area,
                 group_level;
                 extrapolation = ConstantExtrapolation,
                 cache_parameters = true,
             )
+        else
+            # else the differentiated storage is used
+            group_area = dS_dh
         end
         basin.level_to_area[i] = level_to_area
+
+        push!(areas, group_area)
+        push!(levels, group_level)
+        push!(storage, group_storage)
     end
+
+    return areas, levels, storage, node_ids
 end

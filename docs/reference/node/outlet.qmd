@@ -52,7 +52,7 @@ $$
 - $Q_\text{set}$ is the Outlet's target `flow_rate`.
 - $Q_{\min}$ and $Q_{\max}$ are the Outlet `min_flow_rate` and `max_flow_rate`.
 - $\phi$ is the reduction factor, which smoothly reduces flow based on all of these criteria:
-  - The upstream volume is below $10 \;\text{m}^3$.
+  - The upstream volume is below the equivalent of a water depth of $10 \;\text{cm}$.
   - The upstream level is less than $0.02 \;\text{m}$ above the downstream level.
   - The upstream level is below `min_upstream_level` + $0.02 \;\text{m}$
   - The downstream level is above `max_downstream_level` - $0.02 \;\text{m}$

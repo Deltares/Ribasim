@@ -165,12 +165,12 @@ end
     cfg = Ribasim.Config(toml_path)
     db_path = Ribasim.database_path(cfg)
     db = SQLite.DB(db_path)
-    (; p_non_diff) = Ribasim.Parameters(db, cfg)
+    (; p_independent) = Ribasim.Parameters(db, cfg)
     close(db)
 
     logger = TestLogger()
     with_logger(logger) do
-        @test !Ribasim.valid_discrete_control(p_non_diff, cfg)
+        @test !Ribasim.valid_discrete_control(p_independent, cfg)
     end
 
     @test length(logger.logs) == 5
@@ -349,9 +349,9 @@ end
     config = Ribasim.Config(toml_path)
     model = Ribasim.Model(config)
 
-    (; p_non_diff) = model.integrator.p
+    (; p_independent) = model.integrator.p
 
-    (; graph, tabulated_rating_curve, basin) = p_non_diff
+    (; graph, tabulated_rating_curve, basin) = p_independent
     tabulated_rating_curve.interpolations[1].t[1] = invalid_level
 
     logger = TestLogger()
@@ -380,9 +380,9 @@ end
     config = Ribasim.Config(toml_path)
     model = Ribasim.Model(config)
 
-    (; p_non_diff) = model.integrator.p
+    (; p_independent) = model.integrator.p
 
-    (; graph, outlet, basin) = p_non_diff
+    (; graph, outlet, basin) = p_independent
     outlet.min_upstream_level[1] = LinearInterpolation(fill(invalid_level, 2), zeros(2))
 
     logger = TestLogger()

@@ -33,7 +33,7 @@ Get the Jacobian evaluation function via DifferentiationInterface.jl.
 The time derivative is also supplied in case a Rosenbrock method is used.
 """
 function get_diff_eval(du::CVector, u::CVector, p::Parameters, solver::Solver)
-    (; p_non_diff, diff_cache, p_mutable) = p
+    (; p_independent, state_time_dependent_cache, time_dependent_cache, p_mutable) = p
     backend = get_ad_type(solver)
     sparsity_detector = TracerSparsityDetector()
 
@@ -52,8 +52,9 @@ function get_diff_eval(du::CVector, u::CVector, p::Parameters, solver::Solver)
         du,
         backend_jac,
         u,
-        Constant(p_non_diff),
-        Cache(diff_cache),
+        Constant(p_independent),
+        Cache(state_time_dependent_cache),
+        Constant(time_dependent_cache),
         Constant(p_mutable),
         Constant(t);
         strict = Val(true),
@@ -69,8 +70,9 @@ function get_diff_eval(du::CVector, u::CVector, p::Parameters, solver::Solver)
         jac_prep,
         backend_jac,
         u,
-        Constant(p.p_non_diff),
-        Cache(diff_cache),
+        Constant(p.p_independent),
+        Cache(state_time_dependent_cache),
+        Constant(time_dependent_cache),
         Constant(p.p_mutable),
         Constant(t),
     )
@@ -81,8 +83,9 @@ function get_diff_eval(du::CVector, u::CVector, p::Parameters, solver::Solver)
         backend,
         t,
         Constant(u),
-        Constant(p_non_diff),
-        Cache(diff_cache),
+        Constant(p_independent),
+        Cache(state_time_dependent_cache),
+        Cache(time_dependent_cache),
         Constant(p_mutable);
         strict = Val(true),
     )
@@ -94,10 +97,13 @@ function get_diff_eval(du::CVector, u::CVector, p::Parameters, solver::Solver)
         backend,
         t,
         Constant(u),
-        Constant(p.p_non_diff),
-        Cache(p.diff_cache),
+        Constant(p.p_independent),
+        Cache(state_time_dependent_cache),
+        Cache(time_dependent_cache),
         Constant(p.p_mutable),
     )
+
+    time_dependent_cache.t_prev_call[1] = -1.0
 
     return jac_prototype, jac, tgrad
 end
@@ -135,16 +141,16 @@ function Model(config::Config)::Model
     t0 = zero(t_end)
     timespan = (t0, t_end)
 
-    local parameters, p_non_diff, diff_cache, p_mutable, tstops
+    local parameters, p_independent, state_time_dependent_cache, p_mutable, tstops
     try
         parameters = Parameters(db, config)
-        (; p_non_diff, diff_cache, p_mutable) = parameters
+        (; p_independent, state_time_dependent_cache, p_mutable) = parameters
 
-        if !valid_discrete_control(parameters.p_non_diff, config)
+        if !valid_discrete_control(parameters.p_independent, config)
             error("Invalid discrete control state definition(s).")
         end
 
-        (; basin, graph, outlet, pid_control, pump, tabulated_rating_curve) = p_non_diff
+        (; basin, graph, outlet, pid_control, pump, tabulated_rating_curve) = p_independent
         if !valid_pid_connectivity(pid_control.node_id, pid_control.listen_node_id, graph)
             error("Invalid PidControl connectivity.")
         end
@@ -163,7 +169,7 @@ function Model(config::Config)::Model
 
         # Tell the solver to stop at all data points from timeseries,
         # extrapolating periodically if applicable.
-        tstops = get_timeseries_tstops(p_non_diff, t_end)
+        tstops = get_timeseries_tstops(p_independent, t_end)
 
     finally
         # always close the database, also in case of an error
@@ -171,14 +177,14 @@ function Model(config::Config)::Model
     end
     @debug "Read database into memory."
 
-    u0 = build_state_vector(parameters.p_non_diff)
+    u0 = build_state_vector(parameters.p_independent)
     if isempty(u0)
         @error "Models without states are unsupported, please add a Basin node."
         error("Model has no state.")
     end
 
     reltol, relmask = build_reltol_vector(u0, config.solver.reltol)
-    parameters.p_non_diff.relmask .= relmask
+    parameters.p_independent.relmask .= relmask
     du0 = zero(u0)
 
     # The Solver algorithm
@@ -189,7 +195,7 @@ function Model(config::Config)::Model
 
     # Previous level is used to estimate the minimum level that was attained during a time step
     # in limit_flow!
-    p_non_diff.basin.level_prev .= diff_cache.current_level
+    p_independent.basin.level_prev .= state_time_dependent_cache.current_level
 
     saveat = convert_saveat(config.solver.saveat, t_end)
     saveat isa Float64 && push!(tstops, range(0, t_end; step = saveat))
@@ -202,7 +208,7 @@ function Model(config::Config)::Model
     prob = ODEProblem(RHS, u0, timespan, parameters)
     @debug "Setup ODEProblem."
 
-    callback, saved = create_callbacks(p_non_diff, config, saveat)
+    callback, saved = create_callbacks(p_independent, config, saveat)
     @debug "Created callbacks."
 
     # Run water_balance! before initializing the integrator. This is because
@@ -235,7 +241,7 @@ function Model(config::Config)::Model
     )
     @debug "Setup integrator."
 
-    if config.allocation.use_allocation && is_active(p_non_diff.allocation)
+    if config.allocation.use_allocation && is_active(p_independent.allocation)
         set_initial_allocation_mean_flows!(integrator)
     end
 

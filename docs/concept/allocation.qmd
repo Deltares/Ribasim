@@ -245,7 +245,7 @@ using SQLite
 toml_path = normpath(@__DIR__, "../../generated_testmodels/allocation_example/ribasim.toml")
 model = Ribasim.Model(toml_path)
 (; p, t) = model.integrator
-(; allocation) = p.p_non_diff
+(; allocation) = p.p_independent
 
 allocation_model = allocation.allocation_models[1]
 priority_idx = 1

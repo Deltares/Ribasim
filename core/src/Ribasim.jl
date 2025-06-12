@@ -26,9 +26,7 @@ using DifferentiationInterface:
 
 # Algorithms for solving ODEs.
 using OrdinaryDiffEqCore: OrdinaryDiffEqCore, get_du, AbstractNLSolver
-using DiffEqBase: DiffEqBase, calculate_residuals!
-using OrdinaryDiffEqNonlinearSolve: OrdinaryDiffEqNonlinearSolve, relax!, _compute_rhs!
-using LineSearches: BackTracking
+import ForwardDiff
 
 # Interface for defining and solving the ODE problem of the physical layer.
 using SciMLBase:
@@ -85,12 +83,14 @@ import BasicModelInterface as BMI
 using Arrow: Arrow, Table
 import TranscodingStreams
 using CodecZstd: ZstdCompressor
+using DelimitedFiles, Tables
+
 # Reading GeoPackage files, which are SQLite databases with spatial data
 using SQLite: SQLite, DB, Query, esc_id
 using DBInterface: execute
 
 # Logging to both the console and a file
-using Logging: with_logger, @logmsg, LogLevel, AbstractLogger
+using Logging: with_logger, @logmsg, LogLevel, AbstractLogger, Debug
 import LoggingExtras
 using TerminalLoggers: TerminalLogger
 
