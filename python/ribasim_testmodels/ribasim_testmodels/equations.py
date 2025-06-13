@@ -60,9 +60,9 @@ def rating_curve_model() -> Model:
     )
 
     model.basin.add(
-        Node(1, Point(0, 0)),
+        Node(1, Point(0, 0), subnetwork_id=1),
         [
-            basin.Profile(area=[0.01, 100.0, 100.0], level=[0.0, 1.0, 2.0]),
+            basin.Profile(area=[0.01, 100.0, 100.0], level=[0.0, 1.0, 12.0]),
             basin.State(level=[10.5]),
         ],
     )
@@ -71,11 +71,11 @@ def rating_curve_model() -> Model:
     level = np.linspace(1, 12, 100)
     flow_rate = np.square(level - level_min) / (60 * 60 * 24)
     model.tabulated_rating_curve.add(
-        Node(2, Point(1, 0)),
+        Node(2, Point(1, 0), subnetwork_id=1),
         [tabulated_rating_curve.Static(level=level, flow_rate=flow_rate)],
     )
 
-    model.terminal.add(Node(3, Point(2, 0)))
+    model.terminal.add(Node(3, Point(2, 0), subnetwork_id=1))
 
     model.link.add(
         model.basin[1],
