@@ -252,7 +252,6 @@ end
     to_node_type::Vector{String} = []
     to_node_id::Vector{Int32} = []
     subnetwork_id::Vector{Int32} = []
-    demand_priority::Vector{Int32} = []
     flow_rate::Vector{Float64} = []
     optimization_type::Vector{String} = []
 end
@@ -454,6 +453,8 @@ of vectors or Arrow Tables, and is added to avoid type instabilities.
     vertical_flux::VerticalFlux = VerticalFlux(length(node_id))
     # Initial_storage
     storage0::Vector{Float64} = zeros(length(node_id))
+    # The storage rate for computing the minimum basin emptying_time
+    dstorage::Vector{Float64} = zeros(length(node_id))
     # Storage at previous saveat without storage0
     Δstorage_prev_saveat::Vector{Float64} = zeros(length(node_id))
     # Analytically integrated forcings

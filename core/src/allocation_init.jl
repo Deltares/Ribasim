@@ -592,12 +592,13 @@ function add_linear_resistance!(
 
                 Δlevel_min = min_inflow_level - max_outflow_level
                 Δlevel_max = max_inflow_level - min_outflow_level
+                Δlevel_max_flow = resistance[node_id.idx] * max_flow
 
                 input = [-Δlevel_max_flow, Δlevel_max_flow]
                 output = [-max_flow, max_flow]
 
                 if Δlevel_min < -Δlevel_max_flow
-                    pushfirst!(input, Δllevel_min)
+                    pushfirst!(input, Δlevel_min)
                     pushfirst!(output, -max_flow)
                 end
 

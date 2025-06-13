@@ -27,14 +27,16 @@ def linear_resistance_model() -> Model:
     )
 
     model.basin.add(
-        Node(1, Point(0, 0)),
+        Node(1, Point(0, 0), subnetwork_id=1),
         [basin.Profile(area=100.0, level=[0.0, 10.0]), basin.State(level=[10.0])],
     )
     model.linear_resistance.add(
-        Node(2, Point(1, 0)),
+        Node(2, Point(1, 0), subnetwork_id=1),
         [linear_resistance.Static(resistance=[5e4], max_flow_rate=[6e-5])],
     )
-    model.level_boundary.add(Node(3, Point(2, 0)), [level_boundary.Static(level=[5.0])])
+    model.level_boundary.add(
+        Node(3, Point(2, 0), subnetwork_id=1), [level_boundary.Static(level=[5.0])]
+    )
 
     model.link.add(
         model.basin[1],
