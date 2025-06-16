@@ -192,7 +192,7 @@ Adjust the naming of the Basin in the dictionary mapping and the saving file sho
 ```{julia}
 #| include: false
 import Ribasim
-Ribasim.main(toml_path)
+Ribasim.main("crystal-basin/Crystal-3/ribasim.toml")
 ```
 
 ## Plot reservoir storage and level

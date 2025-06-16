@@ -197,7 +197,7 @@ model.plot();
 ```{julia}
 #| include: false
 import Ribasim
-Ribasim.main(toml_path)
+Ribasim.main("crystal-basin/Crystal-2/ribasim.toml")
 ```
 
 ### Plot and compare the Basin results
