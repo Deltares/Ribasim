@@ -233,7 +233,7 @@ $$
 
 ## Example
 
-The following is an example of an optimization problem for the example shown [here](/guide/examples.ipynb#model-with-allocation-user-demand):
+The following is an example of an optimization problem for the example shown [here](/guide/examples.qmd#model-with-allocation-user-demand):
 
 
 ```{julia}
