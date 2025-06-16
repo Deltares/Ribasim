@@ -25,7 +25,7 @@ function main(ARGS)
 
         # Treat models starting with "invalid_" as expected to fail (non-zero ret_code means pass) :)
         if startswith(basename(toml_path), "invalid_")
-            ret_code = ret_code != 0 ? 0 : 1
+            ret_code = ret_code == 0 ? 1 : 0
         end
 
         lock(lk) do
