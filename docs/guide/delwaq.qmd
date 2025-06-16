@@ -24,6 +24,7 @@ This Ribasim model already has substance concentrations for `Cl` and `Tracer` in
 
 ```{python}
 from ribasim import Model
+from IPython.display import display
 
 model = Model.read(toml_path)
 
