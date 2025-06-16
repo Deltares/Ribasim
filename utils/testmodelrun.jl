@@ -20,7 +20,14 @@ function main(ARGS)
 
     Threads.@threads for toml_path in toml_paths
         modelname = basename(dirname(toml_path))
+
         ret_code = Ribasim.main(toml_path)
+
+        # Treat models starting with "invalid_" as expected to fail (non-zero ret_code means pass) :)
+        if startswith(basename(toml_path), "invalid_")
+            ret_code = ret_code == 0 ? 1 : 0
+        end
+
         lock(lk) do
             if ret_code != 0
                 push!(failed, modelname)
