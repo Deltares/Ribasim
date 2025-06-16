@@ -254,6 +254,8 @@ The profile data is not detailed enough to create a full 3D picture of the basin
 # | code-fold: true
 import plotly.graph_objects as go
 import numpy as np
+import plotly.io as pio
+pio.renderers.default = "plotly_mimetype+notebook_connected"
 
 def linear_interpolation(X, Y, x, maximum):
     i = min(max(0, np.searchsorted(X, x) - 1), len(X) - 2)

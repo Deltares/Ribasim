@@ -22,6 +22,9 @@ from ribasim.nodes import (
     user_demand,
 )
 from shapely.geometry import Point
+import plotly.io as pio
+print(pio.renderers)
+pio.renderers.default = "plotly_mimetype+notebook_connected"
 ```
 
 ```{python}
