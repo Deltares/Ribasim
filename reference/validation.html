@@ -76,7 +76,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../site_libs/quarto-html/quarto-syntax-highlighting-e1a5c8363afafaef2c763b6775fbf3ca.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-d90ce3c7170e331f986bc1471cc32374.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-d2026e3a0307a9005e6bcfa8bba53f60.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -361,7 +361,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="connectivity" class="level1" data-number="1">
 <h1 data-number="1"><span class="header-section-number">1</span> Connectivity</h1>
 <p>In the table below, each column shows which node types are allowed to be downstream (or ‘down-control’) of the node type at the top of the column.</p>
-<div id="ac21a29e" class="cell" data-execution_count="1">
+<div id="bccc12ad" class="cell" data-execution_count="1">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb1"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">using</span> <span class="bu">Ribasim</span></span>
@@ -371,7 +371,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>node_names_snake_case <span class="op">=</span> <span class="dt">Symbol</span>[]</span>
 <span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>node_names_camel_case <span class="op">=</span> <span class="dt">Symbol</span>[]</span>
 <span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (node_name, node_type) <span class="kw">in</span></span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    <span class="fu">zip</span>(<span class="fu">fieldnames</span>(Ribasim.ParametersNonDiff), <span class="fu">fieldtypes</span>(Ribasim.ParametersNonDiff))</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    <span class="fu">zip</span>(<span class="fu">fieldnames</span>(Ribasim.ParametersIndependent), <span class="fu">fieldtypes</span>(Ribasim.ParametersIndependent))</span>
 <span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> node_type <span class="op">&lt;:</span><span class="dt"> Ribasim.AbstractParameterNode</span></span>
 <span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>        <span class="fu">push!</span>(node_names_snake_case, node_name)</span>
 <span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>        <span class="fu">push!</span>(node_names_camel_case, <span class="fu">nameof</span>(node_type))</span>
@@ -749,7 +749,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="neighbor-amounts" class="level1" data-number="2">
 <h1 data-number="2"><span class="header-section-number">2</span> Neighbor amounts</h1>
 <p>The table below shows for each node type between which bounds the amount of in- and outneighbors must be, for both flow and control links.</p>
-<div id="2562878a" class="cell" data-execution_count="2">
+<div id="e92c7f2c" class="cell" data-execution_count="2">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb2"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>flow_in_min <span class="op">=</span> <span class="fu">Vector</span><span class="dt">{String}</span>()</span>
