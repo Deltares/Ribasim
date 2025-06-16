@@ -321,7 +321,7 @@ function update_allocated_values!(
     for node_id in only(flow_demand_allocated.axes)
         has_demand = (flow_demand.demand_priority[node_id.idx] == demand_priority)
         if has_demand
-            inflow_link = flow_demand.inflow_link[node_id.idx].link
+            inflow_link = (inflow_id(graph, node_id), node_id)
             JuMP.fix(
                 flow_demand_allocated[node_id],
                 JuMP.value(flow[inflow_link]);
@@ -430,18 +430,21 @@ function save_demands_and_allocations!(
     end
 
     # FlowDemand
-    for node_id in only(flow_demand_allocated.axes)
-        if flow_demand.has_demand_priority[node_id.idx]
+    for connector_node_id in only(flow_demand_allocated.axes)
+        node_id = only(inneighbor_labels_type(graph, connector_node_id, LinkType.control))
+        if flow_demand.demand_priority[node_id.idx] == objective.demand_priority
             add_to_record_demand!(
                 record_demand,
                 t,
                 subnetwork_id,
-                node_id,
+                connector_node_id,
                 demand_priority,
-                flow_demand.demand[node_id.idx](t + Δt_allocation),
-                JuMP.value(flow_demand_allocated[node_id]),
-                cumulative_realized_volume[(node_id, inflow_id(graph, node_id))] /
-                Δt_allocation,
+                flow_demand.demand[node_id.idx],
+                JuMP.value(flow_demand_allocated[connector_node_id]),
+                cumulative_realized_volume[(
+                    inflow_id(graph, connector_node_id),
+                    connector_node_id,
+                )] / Δt_allocation,
             )
         end
     end
@@ -537,10 +540,13 @@ end
 Postprocess for the specific objective type
 """
 function postprocess_objective!(
-    problem::JuMP.Model,
+    allocation_model::AllocationModel,
     p_independent::ParametersIndependent,
     objective::AllocationObjective,
+    t::Number,
 )::Nothing
+    (; problem, subnetwork_id) = allocation_model
+
     if objective.type == AllocationObjectiveType.demand
         # Update allocation constraints so that the results of the optimization for this demand priority are retained
         # in subsequent optimizations
@@ -586,7 +592,7 @@ function optimize_for_objective!(
         )
     end
 
-    postprocess_objective!(problem, p_independent, objective)
+    postprocess_objective!(allocation_model, p_independent, objective, t)
     return nothing
 end
 
@@ -719,7 +725,7 @@ function update_allocation!(integrator)::Nothing
                 allocation_model,
                 AllocationOptimizationType.collect_demands,
             )
-            get_subnetwork_demand!(allocation_model)
+            #TODO: get_subnetwork_demand!(allocation_model)
         end
     end
 

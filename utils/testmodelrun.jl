@@ -21,6 +21,11 @@ function main(ARGS)
     Threads.@threads for toml_path in toml_paths
         modelname = basename(dirname(toml_path))
 
+        skipped_allocation = String[]
+        if Ribasim.Config(toml_path).experimental.allocation
+            push!(skipped_allocation, model_name)
+        end
+
         ret_code = Ribasim.main(toml_path)
 
         # Treat models starting with "invalid_" as expected to fail (non-zero ret_code means pass) :)
@@ -39,6 +44,10 @@ function main(ARGS)
     end
 
     println("Ran $n_model models, $n_pass passed, $n_fail failed.\n")
+    if length(skipped_allocation) > 0
+        println("Skipped the following models that use allocation:")
+        foreach(println, skipped_allocation)
+    end
     if n_fail > 0
         println("Failed models:")
         foreach(println, failed)
