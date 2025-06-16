@@ -40,7 +40,7 @@ def plot_fraction(
     ax.set_xlabel("Time")
     ax.set_ylabel("Fraction")
 
-    plt.show(fig)
+    return fig, ax
 
 
 def plot_spatial(model, tracer="Basin", versus=None, limit=0.001):
@@ -90,4 +90,4 @@ def plot_spatial(model, tracer="Basin", versus=None, limit=0.001):
     ax.set_xlabel("x")
     ax.set_ylabel("y")
 
-    plt.show(fig)
+    return fig, ax

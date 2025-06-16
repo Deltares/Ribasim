@@ -151,13 +151,18 @@ We can use this table to plot the results of the Delwaq model, both spatially as
 from ribasim.delwaq import plot_fraction
 
 plot_fraction(nmodel, 1)  # default tracers, should add up to 1
+plt.draw()
 plot_fraction(nmodel, 9, ["Foo", "Bar"])  # custom tracers
+plt.draw()
 plot_fraction(nmodel, 9, ["Continuity"])  # mass balance check
+plt.draw()
 ```
 
 ```{python}
 from ribasim.delwaq import plot_spatial
 
 plot_spatial(nmodel, "Bar")
+plt.draw()
 plot_spatial(nmodel, "Foo", versus="Bar")  # ratio of Meuse to Rhine
+plt.draw()
 ```
