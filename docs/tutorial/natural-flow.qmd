@@ -224,7 +224,7 @@ model.link.add(weir, sea, name="sea")
 Plot the schematization.
 
 ```{python}
-model.plot();
+model.plot()
 ```
 
 Write the model configuration to the `TOML` file.
