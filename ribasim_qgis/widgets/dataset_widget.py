@@ -398,7 +398,7 @@ class DatasetWidget(QWidget):
                     f'crs = "{self.ribasim_widget.crs.authid()}"\n',
                     'input_dir = "."\n',
                     'results_dir = "results"\n',
-                    'ribasim_version = "2025.3.0"\n',
+                    'ribasim_version = "2025.4.0"\n',
                 ]
             )
 
