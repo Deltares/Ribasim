@@ -90,8 +90,9 @@ using SQLite: SQLite, DB, Query, esc_id
 using DBInterface: execute
 
 # Logging to both the console and a file
-using Logging: with_logger, @logmsg, LogLevel, AbstractLogger, Debug
-import LoggingExtras
+using Logging: with_logger, @logmsg, LogLevel, AbstractLogger, Debug, global_logger
+using LoggingExtras:
+    LoggingExtras, FileLogger, TeeLogger, MinLevelLogger, EarlyFilteredLogger
 using TerminalLoggers: TerminalLogger
 
 # Date and time handling; externally we use the proleptic Gregorian calendar,
