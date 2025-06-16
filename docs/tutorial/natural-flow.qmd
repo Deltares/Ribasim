@@ -60,6 +60,7 @@ import pandas as pd
 from ribasim import Model, Node
 from ribasim.nodes import basin, flow_boundary, tabulated_rating_curve
 from shapely.geometry import Point
+from IPython.display import display
 ```
 
 ### Setup paths and model configuration
