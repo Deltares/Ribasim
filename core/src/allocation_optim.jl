@@ -177,11 +177,6 @@ end
 function reset_goal_programming!(allocation_model::AllocationModel)::Nothing
     (; problem) = allocation_model
 
-    # From physics_forcing objective
-    for forcing_variable in problem[:basin_forcing]
-        JuMP.is_fixed(forcing_variable) && JuMP.unfix(forcing_variable)
-    end
-
     # From demand objectives
     JuMP.fix.(problem[:user_demand_allocated], 0.0; force = true)
     JuMP.fix.(problem[:flow_demand_allocated], -MAX_ABS_FLOW; force = true)
@@ -357,11 +352,10 @@ end
 
 function assign_allocations!(
     p_independent::ParametersIndependent,
-    allocation_model::AllocationModel,
+    problem::JuMP.Model,
     objective::AllocationObjective,
 )::Nothing
     (; allocated, inflow_link) = p_independent.user_demand
-    (; problem) = allocation_model
     (; demand_priority_idx) = objective
     user_demand_allocated = problem[:user_demand_allocated]
     flow = problem[:flow]
@@ -481,13 +475,11 @@ function save_allocation_flows!(
     p_independent::ParametersIndependent,
     t::Float64,
     allocation_model::AllocationModel,
-    objective::AllocationObjective,
     optimization_type::AllocationOptimizationType.T,
 )::Nothing
     (; problem, subnetwork_id) = allocation_model
     (; graph, allocation) = p_independent
     (; record_flow) = allocation
-    (; demand_priority) = objective
     flow = problem[:flow]
     basin_forcing = problem[:basin_forcing]
 
@@ -503,7 +495,6 @@ function save_allocation_flows!(
         push!(record_flow.to_node_type, string(id_to.type))
         push!(record_flow.to_node_id, Int32(id_to))
         push!(record_flow.subnetwork_id, subnetwork_id)
-        push!(record_flow.demand_priority, demand_priority)
         push!(record_flow.flow_rate, JuMP.value(flow[link]))
         push!(record_flow.optimization_type, string(optimization_type))
     end
@@ -517,7 +508,6 @@ function save_allocation_flows!(
         push!(record_flow.to_node_type, string(NodeType.Basin))
         push!(record_flow.to_node_id, node_id)
         push!(record_flow.subnetwork_id, subnetwork_id)
-        push!(record_flow.demand_priority, demand_priority)
         push!(record_flow.flow_rate, JuMP.value(basin_forcing[node_id]))
         push!(record_flow.optimization_type, string(optimization_type))
     end
@@ -525,47 +515,66 @@ function save_allocation_flows!(
     return nothing
 end
 
-function optimize_for_objective!(
-    allocation_model::AllocationModel,
-    integrator::DEIntegrator,
+"""
+Preprocess for the specific objective type
+"""
+function preprocess_objective!(
+    problem::JuMP.Model,
+    p_independent::ParametersIndependent,
     objective::AllocationObjective,
-    optimization_type::AllocationOptimizationType.T,
 )::Nothing
-    args = (allocation_model, integrator, objective, optimization_type)
     if objective.type == AllocationObjectiveType.demand
-        optimize_for_demand!(args...)
+        set_demands!(problem, p_independent, objective)
     elseif objective.type == AllocationObjectiveType.source_priorities
-        optimize_for_sources!(args...)
+        nothing
     else
         error("Unsupported objective type $(objective.type).")
     end
     return nothing
 end
 
-function optimize_for_sources!(
-    allocation_model::AllocationModel,
-    integrator::DEIntegrator,
+"""
+Postprocess for the specific objective type
+"""
+function postprocess_objective!(
+    problem::JuMP.Model,
+    p_independent::ParametersIndependent,
     objective::AllocationObjective,
-    optimization_type::AllocationOptimizationType.T,
 )::Nothing
-    # TODO
+    if objective.type == AllocationObjectiveType.demand
+        # Update allocation constraints so that the results of the optimization for this demand priority are retained
+        # in subsequent optimizations
+        update_allocated_values!(problem, p_independent, objective)
+
+        assign_allocations!(p_independent, problem, objective)
+
+        # Save the demands and allocated values for all demand nodes that have a demand of the current priority
+        save_demands_and_allocations!(
+            p_independent,
+            t,
+            allocation_model,
+            subnetwork_id,
+            objective,
+        )
+    elseif objective.type == AllocationObjectiveType.source_priorities
+        nothing
+    end
     return nothing
 end
 
-function optimize_for_demand!(
+function optimize_for_objective!(
     allocation_model::AllocationModel,
     integrator::DEIntegrator,
     objective::AllocationObjective,
-    optimization_type::AllocationOptimizationType.T,
 )::Nothing
     (; p, t) = integrator
     (; p_independent) = p
     (; problem, subnetwork_id) = allocation_model
 
-    # Set objective corresponding to the demand_priority
-    JuMP.@objective(problem, Min, objective.expression)
+    preprocess_objective!(problem, p_independent, objective)
 
-    set_demands!(problem, p_independent, objective)
+    # Set the objective
+    JuMP.@objective(problem, Min, objective.expression)
 
     # Solve problem
     JuMP.optimize!(problem)
@@ -577,23 +586,7 @@ function optimize_for_demand!(
         )
     end
 
-    # Update allocation constraints so that the results of the optimization for this demand priority are retained
-    # in subsequent optimizations
-    update_allocated_values!(problem, p_independent, objective)
-
-    assign_allocations!(p_independent, allocation_model, objective)
-
-    # Save the demands and allocated values for all demand nodes that have a demand of the current priority
-    save_demands_and_allocations!(
-        p_independent,
-        t,
-        allocation_model,
-        subnetwork_id,
-        objective,
-    )
-
-    # Save the flows over all links in the subnetwork in this stage of the goal programming
-    save_allocation_flows!(p_independent, t, allocation_model, objective, optimization_type)
+    postprocess_objective!(problem, p_independent, objective)
     return nothing
 end
 
@@ -718,13 +711,14 @@ function update_allocation!(integrator)::Nothing
             reset_goal_programming!(allocation_model)
             prepare_demand_collection!(allocation_model, p_independent)
             for objective in allocation_model.objectives
-                optimize_for_objective!(
-                    allocation_model,
-                    integrator,
-                    objective,
-                    AllocationOptimizationType.collect_demands,
-                )
+                optimize_for_objective!(allocation_model, integrator, objective)
             end
+            save_allocation_flows!(
+                p_independent,
+                t,
+                allocation_model,
+                AllocationOptimizationType.collect_demands,
+            )
             get_subnetwork_demand!(allocation_model)
         end
     end
@@ -733,12 +727,7 @@ function update_allocation!(integrator)::Nothing
     for allocation_model in allocation_models
         reset_goal_programming!(allocation_model)
         for objective in allocation_model.objectives
-            optimize_for_objective!(
-                allocation_model,
-                integrator,
-                objective,
-                AllocationOptimizationType.allocate,
-            )
+            optimize_for_objective!(allocation_model, integrator, objective)
         end
 
         if is_primary_network(allocation_model.subnetwork_id)
@@ -757,6 +746,13 @@ function update_allocation!(integrator)::Nothing
             allocation_model,
             graph,
             state_time_dependent_cache.current_flow_rate_outlet,
+        )
+
+        save_allocation_flows!(
+            p_independent,
+            t,
+            allocation_model,
+            AllocationOptimizationType.collect_demands,
         )
 
         # Reset cumulative data

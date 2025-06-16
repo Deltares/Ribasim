@@ -127,11 +127,11 @@ function set_current_basin_properties!(u::CVector, p::Parameters, t::Number)::No
     # The exact cumulative precipitation and drainage up to the t of this water_balance call
     if p_mutable.new_t
         dt = t - p_mutable.tprev
-        for node_id in node_id
-            fixed_area = basin_areas(basin, node_id.idx)[end]
-            time_dependent_cache.basin.current_cumulative_precipitation[node_id.idx] =
-                cumulative_precipitation[node_id.idx] +
-                fixed_area * vertical_flux.precipitation[node_id.idx] * dt
+        for id in node_id
+            fixed_area = basin_areas(basin, id.idx)[end]
+            time_dependent_cache.basin.current_cumulative_precipitation[id.idx] =
+                cumulative_precipitation[id.idx] +
+                fixed_area * vertical_flux.precipitation[id.idx] * dt
         end
         @. time_dependent_cache.basin.current_cumulative_drainage =
             cumulative_drainage + dt * vertical_flux.drainage

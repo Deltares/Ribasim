@@ -103,8 +103,9 @@ function add_basin!(
     values_storage = Dict{NodeID, Vector{Float64}}()
     values_level = Dict{NodeID, Vector{Float64}}()
 
-    # TODO: Not just split in segments given by input data, but look for changes in slope
+    # TODO: Use DouglasPeucker algorithm here and for TabulatedRatingCurve
 
+    # TODO: Find lowest level within subnetwork of basins and level boundaries
     lowest_level = minimum(itp -> itp.t[1], level_to_area)
 
     for node_id in basin_ids_subnetwork
@@ -592,12 +593,13 @@ function add_linear_resistance!(
 
                 Δlevel_min = min_inflow_level - max_outflow_level
                 Δlevel_max = max_inflow_level - min_outflow_level
+                Δlevel_max_flow = resistance[node_id.idx] * max_flow
 
                 input = [-Δlevel_max_flow, Δlevel_max_flow]
                 output = [-max_flow, max_flow]
 
                 if Δlevel_min < -Δlevel_max_flow
-                    pushfirst!(input, Δllevel_min)
+                    pushfirst!(input, Δlevel_min)
                     pushfirst!(output, -max_flow)
                 end
 
@@ -606,7 +608,6 @@ function add_linear_resistance!(
                     push!(output, max_flow)
                 end
 
-                Δlevel_max_flow = resistance[node_id.idx] * max_flow
                 piecewiselinear(problem, Δlevel, input, output)
             end
         end,

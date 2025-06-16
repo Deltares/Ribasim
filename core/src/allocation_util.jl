@@ -134,3 +134,53 @@ function get_minmax_level(p_independent::ParametersIndependent, node_id::NodeID)
         error("Min and max level are not defined for nodes of type $(node_id.type).")
     end
 end
+
+@kwdef struct DouglasPeuckerCache{T}
+    u::Vector{T}
+    t::Vector{T}
+    selection::Vector{Bool} = zeros(Bool, length(u))
+    rel_tol::T
+end
+
+"""
+Perform a modified Douglas-Peucker algorithm to down sample the piecewise linear interpolation given
+by t (input) and u (output) such that the relative difference between the new and old interpolation is
+smaller than ε_rel on the entire domain when possible
+"""
+function douglas_peucker(u::Vector, t::Vector; rel_tol = 1e-2)
+    @assert length(u) == length(t)
+    cache = DouglasPeuckerCache(; u, t, rel_tol)
+    (; selection) = cache
+
+    selection[1] = true
+    selection[end] = true
+    cache(firstindex(u):lastindex(u))
+
+    return u[selection], t[selection]
+end
+
+function (cache::DouglasPeuckerCache)(range::UnitRange)
+    (; u, t, selection, rel_tol) = cache
+
+    idx_err_rel_max = nothing
+    err_rel_max = 0
+
+    for idx in (range.start + 1):(range.stop - 1)
+        u_idx = u[idx]
+        u_itp =
+            u[range.start] +
+            (u[range.stop] - u[range.start]) * (t[idx] - t[range.start]) /
+            (t[range.stop] - t[range.start])
+        err_rel = abs((u_idx - u_itp) / u_idx)
+        if err_rel > max(rel_tol, err_rel_max)
+            err_rel_max = err_rel
+            idx_err_rel_max = idx
+        end
+    end
+
+    if !isnothing(idx_err_rel_max)
+        selection[idx_err_rel_max] = true
+        cache((range.start):idx_err_rel_max)
+        cache(idx_err_rel_max:(range.stop))
+    end
+end
