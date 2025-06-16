@@ -127,7 +127,7 @@ end
 end
 
 @testitem "BMI logging" begin
-    using Ribasim: results_path
+    using Ribasim: results_path, logger_stream
     import BasicModelInterface as BMI
     using LoggingExtras: global_logger, EarlyFilteredLogger
 
@@ -137,6 +137,7 @@ end
     model = BMI.initialize(Ribasim.Model, toml_path)
     logger = global_logger()
     @test logger isa EarlyFilteredLogger
+    @test logger_stream(logger) isa IOStream
 
     BMI.update_until(model, 1.0)
     BMI.finalize(model)
