@@ -177,7 +177,7 @@ model.link.add(weir, sea, name="sea")
 ```
 
 ```{python}
-model.plot();
+model.plot()
 ```
 
 ```{python}

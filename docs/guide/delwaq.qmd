@@ -32,7 +32,7 @@ display(model.basin.concentration_state)  # basin initial state
 display(model.basin.concentration)  # basin boundaries
 display(model.flow_boundary.concentration)  # flow boundaries
 display(model.level_boundary.concentration)  # level boundaries
-model.plot();  # for later comparison
+model.plot()  # for later comparison
 ```
 
 ```{python}
@@ -106,7 +106,7 @@ nx.draw(
     ax=ax[1],
 )
 ax[1].set_title("Ribasim node IDs")
-fig.suptitle("Delwaq network");
+fig.suptitle("Delwaq network")
 ```
 
 Here we plotted the Delwaq network twice, with the node IDs as used by Delwaq on the left hand side, and the corresponding Ribasim node IDs on the right hand side.
