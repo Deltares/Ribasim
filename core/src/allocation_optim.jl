@@ -216,7 +216,7 @@ function set_demands_lower_constraints!(
     for node_id in node_ids
         constraint_lower = constraints_lower[node_id]
         rel_error_lower = rel_errors_lower[node_id]
-        d = demand_function(node_id.idx)
+        d = demand_function(node_id)
         JuMP.set_normalized_coefficient(constraint_lower, rel_error_lower, d)
         JuMP.set_normalized_coefficient(constraint_lower, target_demand_fraction, -d)
     end
@@ -234,7 +234,7 @@ function set_demands_upper_constraints!(
     for node_id in node_ids
         constraint_upper = constraints_upper[node_id]
         rel_error_upper = rel_errors_upper[node_id]
-        d = demand_function(node_id.idx)
+        d = demand_function(node_id)
         JuMP.set_normalized_coefficient(constraint_upper, rel_error_upper, d)
         JuMP.set_normalized_coefficient(constraint_upper, target_demand_fraction, d)
     end
@@ -258,14 +258,14 @@ function set_demands!(
         problem[:user_demand_constraint_lower],
         problem[:relative_user_demand_error_lower],
         target_demand_fraction,
-        node_idx -> user_demand.demand[node_idx, demand_priority_idx],
+        node_id -> user_demand.demand[node_id.idx, demand_priority_idx],
         only(problem[:relative_user_demand_error_lower].axes),
     )
     set_demands_upper_constraints!(
         problem[:user_demand_constraint_upper],
         problem[:relative_user_demand_error_upper],
         target_demand_fraction,
-        node_idx -> user_demand.demand[node_idx, demand_priority_idx],
+        node_id -> user_demand.demand[node_id.idx, demand_priority_idx],
         only(problem[:relative_user_demand_error_upper].axes),
     )
 
@@ -274,9 +274,9 @@ function set_demands!(
         problem[:flow_demand_constraint],
         problem[:relative_flow_demand_error],
         target_demand_fraction,
-        idx ->
-            flow_demand.demand_priority[idx] == demand_priority ? flow_demand.demand[idx] :
-            0.0,
+        node_id ->
+            flow_demand.demand_priority[node_id.idx] == demand_priority ?
+            flow_demand.demand[node_id.idx] : 0.0,
         only(problem[:relative_flow_demand_error].axes),
     )
 
@@ -285,9 +285,9 @@ function set_demands!(
         problem[:storage_constraint_lower],
         problem[:relative_storage_error_lower],
         target_demand_fraction,
-        idx ->
-            level_demand.demand_priority[idx] == demand_priority ?
-            level_demand.storage_demand[idx] : 0.0,
+        node_id ->
+            level_demand.demand_priority[node_id.idx] == demand_priority ?
+            level_demand.storage_demand[node_id] : 0.0,
         only(problem[:relative_storage_error_lower].axes),
     )
 
@@ -408,7 +408,7 @@ function save_demands_and_allocations!(
     objective::AllocationObjective,
 )::Nothing
     (; problem, Δt_allocation, cumulative_realized_volume) = allocation_model
-    (; allocation, user_demand, flow_demand, level_demand) = p_independent
+    (; allocation, user_demand, flow_demand, level_demand, graph) = p_independent
     (; record_demand, demand_priorities_all) = allocation
     (; demand_priority_idx) = objective
     user_demand_allocated = problem[:user_demand_allocated]
@@ -459,7 +459,7 @@ function save_demands_and_allocations!(
                 subnetwork_id,
                 node_id,
                 demand_priority,
-                level_demand.storage_demand[node_id.idx] / Δt_allocation,
+                level_demand.storage_demand[node_id] / Δt_allocation,
                 JuMP.value(basin_allocated[node_id]) / Δt_allocation,
                 cumulative_realized_volume[(node_id, inflow_id(graph, node_id))] /
                 Δt_allocation,
@@ -600,14 +600,15 @@ function apply_control_from_allocation!(
     graph::MetaGraph,
     flow_rate::Vector{Float64},
 )::Nothing
-    (; subnetwork_id) = allocation_model
+    (; problem, subnetwork_id) = allocation_model
+    flow = problem[:flow]
 
     for (node_id, control_type, inflow_link) in
         zip(node.node_id, node.control_type, node.inflow_link)
         in_subnetwork = (graph[node_id].subnetwork_id == subnetwork_id)
         allocation_controlled = (control_type == ControlType.Allocation)
         if in_subnetwork && allocation_controlled
-            flow_rate[node_id.idx] = flow[inflow_link.link]
+            flow_rate[node_id.idx] = JuMP.value(flow[inflow_link.link])
         end
     end
     return nothing
@@ -651,7 +652,7 @@ function set_timeseries_demands!(p::Parameters, t::Float64)::Nothing
             target_storage_min =
                 get_storage_from_level(basin, basin_id.idx, target_level_min)
             level_demand.target_storage_min[basin_id] = target_storage_min
-            level_demand.storage_demand = max(
+            level_demand.storage_demand[node_id] = max(
                 0.0,
                 target_storage_min -
                 state_time_dependent_cache.current_storage[basin_id.idx],

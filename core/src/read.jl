@@ -1171,10 +1171,10 @@ function LevelDemand(db::DB, config::Config, graph::MetaGraph)
     errors |= parse_parameter!(level_demand, config, :demand_priority; static, time)
 
     for id in node_id
-        basin_ids = collect(inneighbor_labels_type(graph, id, LinkType.control))
+        basin_ids = collect(outneighbor_labels_type(graph, id, LinkType.control))
         push!(level_demand.basins_with_demand, basin_ids)
         for basin_id in basin_ids
-            level_demand.target_level_min[basin_]
+            level_demand.target_level_min[basin_id] = 0.0
             level_demand.target_storage_min[basin_id] = 0.0
             level_demand.storage_demand[basin_id] = 0.0
             level_demand.storage_prev[basin_id] = 0.0
