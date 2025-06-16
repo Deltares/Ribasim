@@ -1,8 +1,12 @@
 ---
 title: Getting started
-jupyter: python3
+engine: julia
 ---
 
+```{julia}
+#| include: false
+import PythonCall
+```
 
 # Introduction
 Welcome to Ribasim!
@@ -56,6 +60,7 @@ import pandas as pd
 from ribasim import Model, Node
 from ribasim.nodes import basin, flow_boundary, tabulated_rating_curve
 from shapely.geometry import Point
+from IPython.display import display
 ```
 
 ### Setup paths and model configuration
@@ -219,7 +224,7 @@ model.link.add(weir, sea, name="sea")
 Plot the schematization.
 
 ```{python}
-model.plot();
+model.plot()
 ```
 
 Write the model configuration to the `TOML` file.
@@ -236,19 +241,10 @@ After running `model.write` a subfolder `Crystal-1` is created, which contains t
 - ribasim.toml: The model configuration
 - database.gpkg: A GeoPackage containing the network geometry and input data of the nodes used.
 
-```{python}
+```{julia}
 #| include: false
-from subprocess import run
-
-run(
-    [
-        "julia",
-        "--project=../../core",
-        "--eval",
-        f'using Ribasim; Ribasim.main("{toml_path.as_posix()}")',
-    ],
-    check=True,
-)
+import Ribasim
+Ribasim.main("crystal-basin/Crystal-1/ribasim.toml")
 ```
 
 Now run the model. You can open a terminal and run it from there. For example:
@@ -302,7 +298,7 @@ ax2.tick_params(axis="y", labelcolor=color)
 
 fig.tight_layout()  # Adjust layout to fit labels
 plt.title("Basin level and storage")
-plt.show()
+plt.draw()
 ```
 
 The figure above shows the storage and levels in the Basin node.
@@ -340,7 +336,7 @@ ax.set_ylabel("Flow [m³/s]")
 ax.legend(bbox_to_anchor=(1.15, 1), title="Link")
 plt.title("Flow")
 plt.grid(True)
-plt.show()
+plt.draw()
 ```
 
 The figure above shows the discharges in $\text{m}^3/\text{s}$ on each link.

@@ -37,7 +37,7 @@ initialize-julia = { depends-on = [
     "instantiate-julia",
 ] }
 generate-sbom-ribasim-core = { cmd = "julia --project --check-bounds=yes -- utils/generate-sbom.jl", depends-on = [
-    "instantiate-julia",
+    "initialize-julia",
 ], inputs = [
     "core/Project.toml",
 ], outputs = [
@@ -55,9 +55,10 @@ quarto-preview = { cmd = "quarto preview docs", depends-on = [
     "generate-testmodels",
 ] }
 quarto-check = { cmd = "quarto check all", depends-on = ["quartodoc-build"] }
-quarto-render = { cmd = "julia --project --check-bounds=yes --eval 'using Pkg; Pkg.build(\"IJulia\")' && quarto render docs --to html --execute", depends-on = [
+quarto-render = { cmd = "quarto render docs --to html", depends-on = [
     "quartodoc-build",
     "generate-testmodels",
+    "initialize-julia",
 ] }
 docs = { depends-on = ["quarto-preview"] }
 # Lint
@@ -192,6 +193,9 @@ install-ci = { depends-on = ["install-julia", "update-registry-julia"] }
 [target.win.activation]
 # Workaround a conflict between conda openssl activation and julia < 1.12
 scripts = ["utils/unset-ssl-cert.bat"]
+
+[activation.env]
+JULIA_CONDAPKG_BACKEND = "Null"
 
 [dependencies]
 datacompy = ">=0.16"

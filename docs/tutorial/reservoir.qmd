@@ -1,8 +1,12 @@
 ---
 title: Reservoir
-jupyter: python3
+engine: julia
 ---
 
+```{julia}
+#| include: false
+import PythonCall
+```
 
 ```{python}
 from pathlib import Path
@@ -18,6 +22,9 @@ from ribasim.nodes import (
     user_demand,
 )
 from shapely.geometry import Point
+import plotly.io as pio
+print(pio.renderers)
+pio.renderers.default = "plotly_mimetype+notebook_connected"
 ```
 
 ```{python}
@@ -173,7 +180,7 @@ model.link.add(weir, sea, name="sea")
 ```
 
 ```{python}
-model.plot();
+model.plot()
 ```
 
 ```{python}
@@ -185,19 +192,10 @@ cli_path = "ribasim"
 ### Adjust the code
 Adjust the naming of the Basin in the dictionary mapping and the saving file should be `Crystal-3`.
 
-```{python}
+```{julia}
 #| include: false
-from subprocess import run
-
-run(
-    [
-        "julia",
-        "--project=../../core",
-        "--eval",
-        f'using Ribasim; Ribasim.main("{toml_path.as_posix()}")',
-    ],
-    check=True,
-)
+import Ribasim
+Ribasim.main("crystal-basin/Crystal-3/ribasim.toml")
 ```
 
 ## Plot reservoir storage and level
@@ -232,7 +230,7 @@ ax2.tick_params(axis="y", labelcolor=color)
 
 fig.tight_layout()  # Adjust layout to fit labels
 plt.title("Basin level and storage")
-plt.show()
+plt.draw()
 ```
 
 The figure above illustrates the storage and water level at the reservoir.
