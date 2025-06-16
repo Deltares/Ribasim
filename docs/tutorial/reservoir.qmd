@@ -227,7 +227,7 @@ ax2.tick_params(axis="y", labelcolor=color)
 
 fig.tight_layout()  # Adjust layout to fit labels
 plt.title("Basin level and storage")
-plt.show()
+plt.draw()
 ```
 
 The figure above illustrates the storage and water level at the reservoir.

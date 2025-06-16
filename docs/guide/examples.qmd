@@ -422,7 +422,7 @@ ax.hlines(
 
 ax.set_yticks(greater_than, ["min", "max"])
 ax.set_ylabel("level")
-plt.show()
+plt.draw()
 ```
 
 We see that in January the level of the basin is too high and thus water is pumped out until the maximum level of the desired range is reached. Then until May water flows out of the basin freely through the tabulated rating curve until the minimum level is reached. From

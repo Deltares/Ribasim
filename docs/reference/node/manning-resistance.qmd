@@ -167,7 +167,7 @@ y_s = [s(x_, threshold) for x_ in x]
 
 ax.plot(x, y_o, ls = ":", label = r"sign$(x)\sqrt{|x|}$")
 ax.plot(x, y_s, color = "C0", label = r"$s\left(x; 10^{-3}\right)$")
-ax.legend();
+ax.legend()
 ```
 
 and $\phi$ is the reduction factor which makes the flow go smoothly to $0$ as the upstream storage (as determined by the flow direction) becomes smaller than the equivalent of a water depth of $10 \;\text{cm}$.

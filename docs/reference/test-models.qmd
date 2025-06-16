@@ -23,6 +23,6 @@ for model_name, model_constructor in ribasim_testmodels.constructors.items():
     fig, ax = plt.subplots(figsize=(6, 4))
     model.plot(ax)
     ax.axis("off")
-    plt.show()
+    plt.draw()
     plt.close(fig)
 ```
