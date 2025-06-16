@@ -25,6 +25,9 @@ function BMI.finalize(model::Model)::Nothing
     log_finalize(model)
     logger = global_logger()
     try
+        # Pick the IOStream out of our composed LoggingExtras.jl logger,
+        # the FileLogger contains the file handle.
+        # This is internal API, but our unit tests cover it.
         io = logger.logger.loggers[1].logger.logger.stream
         close(io)
     catch
