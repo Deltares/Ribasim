@@ -246,7 +246,7 @@ function set_demands!(
     p_independent::ParametersIndependent,
     objective::AllocationObjective,
 )::Nothing
-    (; user_demand, flow_demand, level_demand) = p_independent
+    (; user_demand, flow_demand, level_demand, graph) = p_independent
     target_demand_fraction = problem[:target_demand_fraction]
     (; demand_priority, demand_priority_idx) = objective
 
@@ -285,9 +285,11 @@ function set_demands!(
         problem[:storage_constraint_lower],
         problem[:relative_storage_error_lower],
         target_demand_fraction,
-        node_id ->
+        node_id_basin -> begin
+            node_id = only(inneighbor_labels_type(graph, node_id_basin, LinkType.control))
             level_demand.demand_priority[node_id.idx] == demand_priority ?
-            level_demand.storage_demand[node_id] : 0.0,
+            level_demand.storage_demand[node_id] : 0.0
+        end,
         only(problem[:relative_storage_error_lower].axes),
     )
 
@@ -451,8 +453,12 @@ function save_demands_and_allocations!(
     end
 
     # LevelDemand
-    for node_id in only(basin_allocated.axes)
+    for node_id_basin in only(basin_allocated.axes)
+        node_id = only(inneighbor_labels_type(graph, node_id_basin, LinkType.control))
         if level_demand.demand_priority[node_id.idx] == demand_priority
+            # TODO: compute cumulative_realized_basin_volume as the storage difference
+            # between allocation solves
+            cumulative_realized_basin_volume = 0.0
             add_to_record_demand!(
                 record_demand,
                 t,
@@ -460,9 +466,8 @@ function save_demands_and_allocations!(
                 node_id,
                 demand_priority,
                 level_demand.storage_demand[node_id] / Δt_allocation,
-                JuMP.value(basin_allocated[node_id]) / Δt_allocation,
-                cumulative_realized_volume[(node_id, inflow_id(graph, node_id))] /
-                Δt_allocation,
+                JuMP.value(basin_allocated[node_id_basin]) / Δt_allocation,
+                cumulative_realized_basin_volume / Δt_allocation,
             )
         end
     end
