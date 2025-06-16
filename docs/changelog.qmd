@@ -5,6 +5,38 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [v2025.4.0] - 2025-06-16
+
+This release had a big push on the stability and performance for large models.
+Users can now also provide a level-storage relation in Basin / profile.
+This means old models need to be migrated by reading them into Ribasim Python, and writing them out.
+We are working on reformulating the allocation problem.
+Until this work is finished, allocation remains an experimental feature of Ribasim.
+
+### Added
+- Reload Ribasim model in QGIS. [#2307](https://github.com/Deltares/Ribasim/pull/2307)
+- Support storage column in Basin / profile [#2278](https://github.com/Deltares/Ribasim/pull/2278)
+- Allow Junction to Terminal links. [#2295](https://github.com/Deltares/Ribasim/pull/2295)
+- Add model performance debugging guide [#2308](https://github.com/Deltares/Ribasim/pull/2308)
+- Make FlowBoundary interpolation method configurable [#2285](https://github.com/Deltares/Ribasim/pull/2285)
+- Output interpolated Basin / profile in debug mode [#2344](https://github.com/Deltares/Ribasim/pull/2344)
+- Write log file via BMI [#2370](https://github.com/Deltares/Ribasim/pull/2370)
+
+### Changed
+- Reformulate the allocation problem. [#2266](https://github.com/Deltares/Ribasim/pull/2266)
+- Mark allocation as experimental. [#2266](https://github.com/Deltares/Ribasim/pull/2266)
+- Low storage threshold based on 10 cm depth [#2357](https://github.com/Deltares/Ribasim/pull/2357)
+- Stability: decrease relative tolerance over time. [#2277](https://github.com/Deltares/Ribasim/pull/2277)
+- Use block interpolation for FlowBoundary by default [#2285](https://github.com/Deltares/Ribasim/pull/2285)
+- Remove backtracking, add more caching [#2359](https://github.com/Deltares/Ribasim/pull/2359)
+- More realistic smoothing around `Δh = 0` in ManningResistance. [#2365](https://github.com/Deltares/Ribasim/pull/2365)
+
+### Fixed
+- Fix writing results on `saveat = 0` [#2305](https://github.com/Deltares/Ribasim/pull/2305)
+- Fix error in flow limiter [#2334](https://github.com/Deltares/Ribasim/pull/2334)
+- Fix cyclic Basin forcing [#2313](https://github.com/Deltares/Ribasim/pull/2313)
+- BMI: return 1 on update if solve not successful [#2341](https://github.com/Deltares/Ribasim/pull/2341)
+
 ## [v2025.3.0] - 2025-04-14
 
 The only breaking change in this release is to disallow connecting a single FlowBoundary to multiple Basins.
