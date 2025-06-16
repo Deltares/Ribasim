@@ -503,7 +503,7 @@ ax.set_ylabel(r"$\phi(x;p)$", fontsize=fontsize)
 ax.set_ylim(y_lim)
 
 fig.tight_layout()
-plt.show()
+plt.draw()
 ```
 
 ## Precipitation

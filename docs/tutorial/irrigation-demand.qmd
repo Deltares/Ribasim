@@ -191,7 +191,7 @@ Plot the schematization and run the model.
 This time the new outputs should be written in a new folder called `Crystal-2`:
 
 ```{python}
-model.plot();
+model.plot()
 ```
 
 ```{julia}
@@ -268,7 +268,7 @@ plot_basin_data(ax3, ax4, df_basin_conf, title="Confluence Basin level and stora
 # Common X label
 ax3.set_xlabel("Time")
 fig.tight_layout()  # Adjust layout to fit labels
-plt.show()
+plt.draw()
 ```
 
 The figure above illustrates the water levels and storage capacities for each Basin.

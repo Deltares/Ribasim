@@ -298,7 +298,7 @@ ax2.tick_params(axis="y", labelcolor=color)
 
 fig.tight_layout()  # Adjust layout to fit labels
 plt.title("Basin level and storage")
-plt.show()
+plt.draw()
 ```
 
 The figure above shows the storage and levels in the Basin node.
@@ -336,7 +336,7 @@ ax.set_ylabel("Flow [m³/s]")
 ax.legend(bbox_to_anchor=(1.15, 1), title="Link")
 plt.title("Flow")
 plt.grid(True)
-plt.show()
+plt.draw()
 ```
 
 The figure above shows the discharges in $\text{m}^3/\text{s}$ on each link.
