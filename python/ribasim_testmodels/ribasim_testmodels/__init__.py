@@ -32,6 +32,7 @@ from ribasim_testmodels.basic import (
     cyclic_time_model,
     drought_model,
     flow_boundary_interpolation_model,
+    invalid_no_basin_model,
     outlet_model,
     tabulated_rating_curve_model,
 )
@@ -106,6 +107,7 @@ __all__ = [
     "flow_demand_model",
     "invalid_discrete_control_model",
     "invalid_link_types_model",
+    "invalid_no_basin_model",
     "invalid_priorities_model",
     "invalid_qh_model",
     "invalid_unstable_model",

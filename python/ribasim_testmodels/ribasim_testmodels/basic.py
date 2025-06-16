@@ -741,28 +741,3 @@ def basic_basin_both_area_and_storage_model() -> Model:
     ]
 
     return build_model_with_basin(model, basin_definition)
-
-
-def invalid_no_basin_model() -> Model:
-    model = Model(
-        starttime="2020-01-01",
-        endtime="2021-01-01",
-        crs="EPSG:28992",
-    )
-
-    # Setup flow boundary
-    boundary1 = model.flow_boundary.add(
-        Node(1, Point(0.0, 0.0)), [flow_boundary.Static(flow_rate=[1e-4])]
-    )
-    # Setup another flow boundary
-    boundary2 = model.flow_boundary.add(
-        Node(2, Point(2.0, 0.0)), [flow_boundary.Static(flow_rate=[1e-4])]
-    )
-
-    # Setup terminal
-    sea = model.terminal.add(Node(3, Point(1.0, -1.0)))
-
-    model.link.add(boundary1, sea)
-    model.link.add(boundary2, sea)
-
-    return model
