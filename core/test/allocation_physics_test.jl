@@ -25,7 +25,7 @@ end
 
     config = Ribasim.Config(toml_path; experimental_allocation = true)
     model = Ribasim.Model(config)
-    @profview Ribasim.solve!(model)
+    Ribasim.solve!(model)
     allocation_flow_table = DataFrame(Ribasim.allocation_flow_table(model))
     flow_table = DataFrame(Ribasim.flow_table(model))
 
