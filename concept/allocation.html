@@ -567,7 +567,7 @@ F_{ij} \le (C^{UD}_S)_i, \quad \forall i \in U_S, \quad V_S^{\text{out}}(i) = \{
 <section id="example" class="level2" data-number="4.4">
 <h2 data-number="4.4" class="anchored" data-anchor-id="example"><span class="header-section-number">4.4</span> Example</h2>
 <p>The following is an example of an optimization problem for the example shown <a href="../guide/examples.html#model-with-allocation-user-demand">here</a>:</p>
-<div id="5a2e7e28" class="cell" data-execution_count="1">
+<div id="9be9ce1d" class="cell" data-execution_count="1">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb1"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">using</span> <span class="bu">Ribasim</span></span>
@@ -587,42 +587,6 @@ F_{ij} \le (C^{UD}_S)_i, \quad \forall i \in U_S, \quad V_S^{\text{out}}(i) = \{
 <span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="fu">println</span>(allocation.allocation_models[<span class="fl">1</span>].problem)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
-<div class="cell-output cell-output-stderr">
-<div class="ansi-escaped-output">
-<pre><span class="ansi-cyan-fg ansi-bold">[ </span><span class="ansi-cyan-fg ansi-bold">Info: </span>Precompiling Ribasim [aac5e3d9-0b8f-4d4f-8241-b1a7a9632635] (cache misses: mismatched flags (2))
-
-<span class="ansi-cyan-fg ansi-bold">[ </span><span class="ansi-cyan-fg ansi-bold">Info: </span>Precompiling StaticArrayInterfaceOffsetArraysExt [a8fab69c-de6f-5f74-aba3-bef19c2d033f] (cache misses: mismatched flags (2))
-
-<span class="ansi-cyan-fg ansi-bold">[ </span><span class="ansi-cyan-fg ansi-bold">Info: </span>Precompiling IntervalSetsRecipesBaseExt [37015e66-589a-58b1-bfae-83565f1dedb3] (cache misses: mismatched flags (2))
-
-<span class="ansi-cyan-fg ansi-bold">[ </span><span class="ansi-cyan-fg ansi-bold">Info: </span>Precompiling IntervalArithmeticRecipesBaseExt [e3b91bd4-2888-5303-85ed-4cf5ebb38ff1] (cache misses: mismatched flags (2))
-
-<span class="ansi-cyan-fg ansi-bold">[ </span><span class="ansi-cyan-fg ansi-bold">Info: </span>Precompiling IntervalSetsExt [71b72403-3d0d-5ec7-be98-551cc85f009b] (cache misses: mismatched flags (2))
-
-<span class="ansi-cyan-fg ansi-bold">[ </span><span class="ansi-cyan-fg ansi-bold">Info: </span>Precompiling UnitfulExt [8d0556db-720e-519a-baed-0b9ed79749be] (cache misses: mismatched flags (2))
-
-<span class="ansi-cyan-fg ansi-bold">[ </span><span class="ansi-cyan-fg ansi-bold">Info: </span>Precompiling SciMLBaseMakieExt [565f26a4-c902-5eae-92ad-e10714a9d9de] (cache misses: mismatched flags (2))
-
-<span class="ansi-cyan-fg ansi-bold">[ </span><span class="ansi-cyan-fg ansi-bold">Info: </span>Precompiling DiffEqBaseUnitfulExt [aeb06bb4-539b-5a1b-8332-034ed9f8ca66] (cache misses: mismatched flags (2))
-
-<span class="ansi-cyan-fg ansi-bold">[ </span><span class="ansi-cyan-fg ansi-bold">Info: </span>Precompiling DiffEqBaseDistributionsExt [24f3332a-0dc5-5d65-94b6-25e75cab9690] (cache misses: mismatched flags (2))
-
-<span class="ansi-cyan-fg ansi-bold">[ </span><span class="ansi-cyan-fg ansi-bold">Info: </span>Precompiling IntervalArithmeticDiffRulesExt [86439bda-9ede-5c22-99a0-f82df582fb22] (cache misses: mismatched flags (2))
-
-<span class="ansi-cyan-fg ansi-bold">[ </span><span class="ansi-cyan-fg ansi-bold">Info: </span>Precompiling ForwardDiffExt [c7e34fd8-6a5d-5aa1-8c87-78a955b9dce5] (cache misses: mismatched flags (2))
-
-<span class="ansi-cyan-fg ansi-bold">[ </span><span class="ansi-cyan-fg ansi-bold">Info: </span>Precompiling IntervalArithmeticForwardDiffExt [ba47a815-ec9a-57c1-b718-e4e972ac9261] (cache misses: mismatched flags (2))
-
-<span class="ansi-cyan-fg ansi-bold">[ </span><span class="ansi-cyan-fg ansi-bold">Info: </span>Precompiling SparseMatrixColoringsColorsExt [42e6ba4b-6785-530d-add2-80af3b5b757b] (cache misses: mismatched flags (2))
-
-<span class="ansi-cyan-fg ansi-bold">[ </span><span class="ansi-cyan-fg ansi-bold">Info: </span>Precompiling FilePathsBaseTestExt [36f6b4e4-024d-52bd-a01f-148eb20c09de] (cache misses: mismatched flags (2))
-
-<span class="ansi-cyan-fg ansi-bold">[ </span><span class="ansi-cyan-fg ansi-bold">Info: </span>Precompiling DistributionsTestExt [ffbe0ea5-a612-5ff7-aaf5-cac02eef3019] (cache misses: mismatched flags (2))
-
-<span class="ansi-cyan-fg ansi-bold">[ </span><span class="ansi-cyan-fg ansi-bold">Info: </span>Precompiling AbstractFFTsTestExt [f14dd36e-a047-53ac-8286-f8b5d0265aae] (cache misses: mismatched flags (2))
-</pre>
-</div>
-</div>
 <div class="cell-output cell-output-stdout">
 <pre><code>Min F[(Basin #5, UserDemand #6)]² + 0.6666666666666666 F[(Basin #2, UserDemand #3)]² - 2 F[(Basin #2, UserDemand #3)] + 1.5
 Subject to
