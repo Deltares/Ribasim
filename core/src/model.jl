@@ -178,6 +178,11 @@ function Model(config::Config)::Model
     @debug "Read database into memory."
 
     u0 = build_state_vector(parameters.p_independent)
+    if isempty(u0)
+        @error "Models without states are unsupported, please add a Basin node."
+        error("Model has no state.")
+    end
+
     reltol, relmask = build_reltol_vector(u0, config.solver.reltol)
     parameters.p_independent.relmask .= relmask
     du0 = zero(u0)
