@@ -1,8 +1,12 @@
 ---
 title: Irrigation demand
-jupyter: python3
+engine: julia
 ---
 
+```{julia}
+#| include: false
+import PythonCall
+```
 
 ```{python}
 from pathlib import Path
@@ -190,19 +194,10 @@ This time the new outputs should be written in a new folder called `Crystal-2`:
 model.plot();
 ```
 
-```{python}
+```{julia}
 #| include: false
-from subprocess import run
-
-run(
-    [
-        "julia",
-        "--project=../../core",
-        "--eval",
-        f'using Ribasim; Ribasim.main("{toml_path.as_posix()}")',
-    ],
-    check=True,
-)
+import Ribasim
+Ribasim.main(toml_path)
 ```
 
 ### Plot and compare the Basin results
