@@ -37,7 +37,7 @@ initialize-julia = { depends-on = [
     "instantiate-julia",
 ] }
 generate-sbom-ribasim-core = { cmd = "julia --project --check-bounds=yes -- utils/generate-sbom.jl", depends-on = [
-    "instantiate-julia",
+    "initialize-julia",
 ], inputs = [
     "core/Project.toml",
 ], outputs = [
@@ -58,6 +58,7 @@ quarto-check = { cmd = "quarto check all", depends-on = ["quartodoc-build"] }
 quarto-render = { cmd = "quarto render docs --to html", depends-on = [
     "quartodoc-build",
     "generate-testmodels",
+    "initialize-julia",
 ] }
 docs = { depends-on = ["quarto-preview"] }
 # Lint
