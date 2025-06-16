@@ -51,6 +51,7 @@ quarto-check = { cmd = "quarto check all", depends-on = ["quartodoc-build"] }
 quarto-render = { cmd = "julia --project --check-bounds=yes --eval 'using Pkg; Pkg.build(\"IJulia\")' && quarto render docs --to html --execute", depends-on = [
     "quartodoc-build",
     "generate-testmodels",
+    "initialize-julia",
 ] }
 docs = { depends-on = ["quarto-preview"] }
 # Lint
@@ -180,7 +181,7 @@ github-release = "python utils/github-release.py"
 
 [tasks.generate-sbom-ribasim-core]
 cmd = "julia --project --check-bounds=yes -- utils/generate-sbom.jl"
-depends-on = ["instantiate-julia"]
+depends-on = ["initialize-julia"]
 inputs = ["core/Project.toml"]
 outputs = ["Ribasim.spdx.json"]
 
