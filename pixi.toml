@@ -212,6 +212,9 @@ args = [":"]
 # Workaround a conflict between conda openssl activation and julia < 1.12
 scripts = ["utils/unset-ssl-cert.bat"]
 
+[activation.env]
+JULIA_CONDAPKG_BACKEND = "Null"
+
 [dependencies]
 datacompy = ">=0.16"
 geopandas = "1.0.*"
