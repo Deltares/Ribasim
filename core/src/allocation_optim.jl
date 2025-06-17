@@ -19,39 +19,67 @@ function set_simulation_data!(
     (; basin, level_boundary, manning_resistance, pump, outlet, user_demand, graph) =
         p.p_independent
 
-    set_simulation_data!(allocation_model, basin, p)
+    errors = false
+
+    errors != set_simulation_data!(allocation_model, basin, p)
     set_simulation_data!(allocation_model, level_boundary, t)
     set_simulation_data!(allocation_model, manning_resistance)
     set_simulation_data!(allocation_model, pump, outlet, graph, du)
     set_simulation_data!(allocation_model, user_demand, t)
+
+    if errors
+        error(
+            "Errors encountered when transferring data from physical layer to allocation layer.",
+        )
+    end
     return nothing
 end
 
 function set_simulation_data!(
     allocation_model::AllocationModel,
-    ::Basin,
+    basin::Basin,
     p::Parameters,
-)::Nothing
+)::Bool
     (; problem, cumulative_boundary_volume, Δt_allocation) = allocation_model
+    (; storage_to_level) = basin
 
     storage = problem[:basin_storage]
     basin_level = problem[:basin_level]
     flow = problem[:flow]
     (; current_storage, current_level) = p.state_time_dependent_cache
 
+    errors = false
+
     # Set Basin starting storages and levels
     for key in only(storage.axes)
         (key[2] != :start) && continue
         basin_id = key[1]
 
-        JuMP.fix(storage[key], current_storage[basin_id.idx]; force = true)
-        JuMP.fix(basin_level[key], current_level[basin_id.idx]; force = true)
+        storage_now = current_storage[basin_id.idx]
+        storage_max = storage_to_level[basin_id.idx].t[end]
+
+        if storage_now > storage_max
+            @error "Maximum basin storage exceed (allocation infeasibility)" storage_now storage_max
+            errors = true
+        end
+
+        level_now = current_level[basin_id.idx]
+        level_max = storage_to_level[basin_id.idx].u[end]
+
+        if level_now > level_max
+            @error "Maximum basin level exceed (allocation infeasibility)" level_now level_max
+            errors = true
+        end
+
+        JuMP.fix(storage[key], storage_now; force = true)
+        JuMP.fix(basin_level[key], level_now; force = true)
     end
 
     for link in keys(cumulative_boundary_volume)
         JuMP.fix(flow[link], cumulative_boundary_volume[link] / Δt_allocation; force = true)
     end
-    return nothing
+
+    return errors
 end
 
 function set_simulation_data!(
@@ -518,6 +546,32 @@ function save_allocation_flows!(
     return nothing
 end
 
+function fix_user_demand_allocated!(problem, p_independent)::Nothing
+    (; inflow_link) = p_independent.user_demand
+    flow = problem[:flow]
+    user_demand_allocated = problem[:user_demand_allocated]
+
+    for node_id in only(user_demand_allocated.axes)
+        JuMP.fix(
+            flow[inflow_link[node_id.idx].link],
+            JuMP.value(user_demand_allocated[node_id]);
+            force = true,
+        )
+    end
+    return nothing
+end
+
+function unfix_user_demand_allocated!(problem, p_independent)::Nothing
+    (; inflow_link) = p_independent.user_demand
+    flow = problem[:flow]
+    user_demand_allocated = problem[:user_demand_allocated]
+
+    for node_id in only(user_demand_allocated.axes)
+        JuMP.unfix(flow[inflow_link[node_id.idx].link])
+    end
+    return nothing
+end
+
 """
 Preprocess for the specific objective type
 """
@@ -529,7 +583,7 @@ function preprocess_objective!(
     if objective.type == AllocationObjectiveType.demand
         set_demands!(problem, p_independent, objective)
     elseif objective.type == AllocationObjectiveType.source_priorities
-        nothing
+        fix_user_demand_allocated!(problem, p_independent)
     else
         error("Unsupported objective type $(objective.type).")
     end
@@ -563,7 +617,7 @@ function postprocess_objective!(
             objective,
         )
     elseif objective.type == AllocationObjectiveType.source_priorities
-        nothing
+        unfix_user_demand_allocated!(problem, p_independent, objective)
     end
     return nothing
 end
@@ -583,6 +637,7 @@ function optimize_for_objective!(
     JuMP.@objective(problem, Min, objective.expression)
 
     # Solve problem
+    println(problem)
     JuMP.optimize!(problem)
     @debug JuMP.solution_summary(problem)
     termination_status = JuMP.termination_status(problem)

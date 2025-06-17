@@ -184,3 +184,39 @@ function (cache::DouglasPeuckerCache)(range::UnitRange)
         cache(idx_err_rel_max:(range.stop))
     end
 end
+
+function parse_profile(
+    storage_to_level::AbstractInterpolation,
+    level_to_area::AbstractInterpolation,
+    lowest_level;
+    n_samples_per_segment = 10,
+)
+    n_segments = length(storage_to_level.u) - 1
+    samples_storage_node = zeros(n_samples_per_segment * n_segments + 1)
+    samples_level_node = zero(samples_storage_node)
+
+    for i in 1:n_segments
+        inds = (1 + (i - 1) * n_samples_per_segment):(1 + i * n_samples_per_segment)
+        samples_storage_node[inds] .= range(
+            storage_to_level.t[i],
+            storage_to_level.t[i + 1];
+            length = n_samples_per_segment + 1,
+        )
+        storage_to_level(view(samples_level_node, inds), view(samples_storage_node, inds))
+    end
+
+    values_level_node, values_storage_node =
+        douglas_peucker(samples_level_node, samples_storage_node)
+
+    phantom_Δh = values_level_node[1] - lowest_level
+
+    if phantom_Δh > 0
+        phantom_area = level_to_area.u[1] / 1e3
+        phantom_storage = phantom_Δh * phantom_area
+        pushfirst!(values_level_node, lowest_level)
+        values_storage_node .+= phantom_storage
+        pushfirst!(values_storage_node, 0.0)
+    end
+
+    values_storage_node, values_level_node
+end

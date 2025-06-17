@@ -73,7 +73,7 @@ function add_basin!(
     p_independent::ParametersIndependent,
 )::Nothing
     (; problem, subnetwork_id, cumulative_forcing_volume) = allocation_model
-    (; graph, basin) = p_independent
+    (; graph, basin, level_boundary) = p_independent
     (; storage_to_level, level_to_area) = basin
 
     # Basin node IDs within the subnetwork
@@ -103,36 +103,25 @@ function add_basin!(
     values_storage = Dict{NodeID, Vector{Float64}}()
     values_level = Dict{NodeID, Vector{Float64}}()
 
-    # TODO: Use DouglasPeucker algorithm here and for TabulatedRatingCurve
+    # TODO: Use DouglasPeucker algorithm also TabulatedRatingCurve
 
-    # TODO: Find lowest level within subnetwork of basins and level boundaries
-    lowest_level = minimum(itp -> itp.t[1], level_to_area)
+    lowest_level_basin =
+        minimum(node_id -> level_to_area[node_id.idx].t[1], basin_ids_subnetwork)
+    level_boundary_ids_subnetwork =
+        get_subnetwork_ids(graph, NodeType.LevelBoundary, subnetwork_id)
+    lowest_level = minimum(
+        node_id -> minimum(level_boundary.level[node_id.idx].u),
+        level_boundary_ids_subnetwork;
+        init = lowest_level_basin,
+    )
 
     for node_id in basin_ids_subnetwork
-        itp = storage_to_level[node_id.idx]
-
-        n_samples_per_segment = 3
-        n_segments = length(itp.u) - 1
-        values_storage_node = zeros(3 * n_segments + 1)
-        values_level_node = zero(values_storage_node)
-
-        for i in 1:n_segments
-            inds = (1 + (i - 1) * n_samples_per_segment):(1 + i * n_samples_per_segment)
-            values_storage_node[inds] .=
-                range(itp.t[i], itp.t[i + 1]; length = n_samples_per_segment + 1)
-            itp(view(values_level_node, inds), view(values_storage_node, inds))
-        end
-
-        phantom_Δh = values_level_node[1] - lowest_level
-
-        if phantom_Δh > 0
-            phantom_area = level_to_area[node_id.idx].t[1] / 1e3
-            phantom_storage = phantom_Δh * phantom_area
-            pushfirst!(values_level_node, lowest_level)
-            values_storage_node .+= phantom_storage
-            pushfirst!(values_storage_node, 0.0)
-        end
-
+        values_storage_node, values_level_node = parse_profile(
+            storage_to_level[node_id.idx],
+            level_to_area[node_id.idx],
+            lowest_level,
+        )
+        @show values_storage_node, values_level_node
         values_storage[node_id] = values_storage_node
         values_level[node_id] = values_level_node
     end

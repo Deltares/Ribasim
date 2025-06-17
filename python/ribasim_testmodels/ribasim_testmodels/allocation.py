@@ -106,7 +106,7 @@ def subnetwork_model() -> Model:
     )
 
     basin_data: list[TableModel[Any]] = [
-        basin.Profile(area=100000.0, level=[0.0, 1.0]),
+        basin.Profile(area=100000.0, level=[0.0, 100.0]),
         basin.State(level=[10.0]),
     ]
     outlet_data: list[TableModel[Any]] = [
@@ -371,7 +371,7 @@ def allocation_example_model() -> Model:
         starttime="2020-01-01",
         endtime="2020-01-20",
         crs="EPSG:28992",
-        allocation=Allocation(timestep=86400),
+        allocation=Allocation(utimestep=86400),
         experimental=Experimental(concentration=True, allocation=True),
     )
 
@@ -429,7 +429,7 @@ def allocation_example_model() -> Model:
 
 
 def main_network_with_subnetworks_model() -> Model:
-    """Generate a model which consists of a primary network and multiple connected subnetworks."""
+    """Generate a model which consists of a main network and multiple connected subnetworks."""
     model = Model(
         starttime="2020-01-01",
         endtime="2020-03-01",
@@ -439,11 +439,11 @@ def main_network_with_subnetworks_model() -> Model:
     )
 
     basin_data: list[TableModel[Any]] = [
-        basin.Profile(area=1000.0, level=[0.0, 100.0]),
+        basin.Profile(area=1000.0, level=[0.0, 1.0]),
         basin.State(level=[1.0]),
     ]
     large_basin_data: list[TableModel[Any]] = [
-        basin.Profile(area=100000.0, level=[0.0, 100.0]),
+        basin.Profile(area=100000.0, level=[0.0, 1.0]),
         basin.State(level=[10.0]),
     ]
 
@@ -472,7 +472,7 @@ def main_network_with_subnetworks_model() -> Model:
     )
     model.basin.add(Node(10, Point(27, 1), subnetwork_id=1), basin_data)
     model.pump.add(
-        Node(11, Point(3, 4), subnetwork_id=1),
+        Node(11, Point(3, 4), subnetwork_id=3),
         [pump.Static(flow_rate=[1e-3], max_flow_rate=10.0)],
     )
     model.basin.add(Node(12, Point(2, 4), subnetwork_id=3), large_basin_data)
@@ -521,7 +521,7 @@ def main_network_with_subnetworks_model() -> Model:
         [outlet.Static(flow_rate=[3.0], max_flow_rate=3.0)],
     )
     model.pump.add(
-        Node(24, Point(14, 3), subnetwork_id=1),
+        Node(24, Point(14, 3), subnetwork_id=5),
         [pump.Static(flow_rate=[1e-3], max_flow_rate=1.0)],
     )
     model.basin.add(Node(25, Point(14, 4), subnetwork_id=5), basin_data)
@@ -557,7 +557,7 @@ def main_network_with_subnetworks_model() -> Model:
     )
     model.terminal.add(Node(37, Point(24, 4), subnetwork_id=7))
     model.pump.add(
-        Node(38, Point(28, 4), subnetwork_id=1),
+        Node(38, Point(28, 4), subnetwork_id=7),
         [pump.Static(flow_rate=[1e-3], max_flow_rate=1.0)],
     )
     model.pump.add(
@@ -585,11 +585,11 @@ def main_network_with_subnetworks_model() -> Model:
     )
     model.tabulated_rating_curve.add(
         Node(46, Point(26, 7), subnetwork_id=7),
-        [tabulated_rating_curve.Static(level=[0.0, 1.0], flow_rate=[0.0, 1e-3])],
+        [tabulated_rating_curve.Static(level=[0.0, 1.0], flow_rate=[0.0, 2.0])],
     )
     model.tabulated_rating_curve.add(
         Node(47, Point(28, 7), subnetwork_id=7),
-        [tabulated_rating_curve.Static(level=[0.0, 1.0], flow_rate=[0.0, 1e-3])],
+        [tabulated_rating_curve.Static(level=[0.0, 1.0], flow_rate=[0.0, 2.0])],
     )
     model.basin.add(Node(48, Point(26, 8), subnetwork_id=7), basin_data)
     model.pump.add(
@@ -678,8 +678,8 @@ def main_network_with_subnetworks_model() -> Model:
     model.link.add(model.basin[40], model.user_demand[45])
     model.link.add(model.basin[42], model.tabulated_rating_curve[46])
     model.link.add(model.tabulated_rating_curve[46], model.basin[48])
-    model.link.add(model.pump[49], model.basin[48])
-    model.link.add(model.basin[50], model.pump[49])
+    model.link.add(model.basin[48], model.pump[49])
+    model.link.add(model.pump[49], model.basin[50])
     model.link.add(model.basin[50], model.user_demand[53])
     model.link.add(model.basin[48], model.tabulated_rating_curve[52])
     model.link.add(model.tabulated_rating_curve[52], model.basin[54])
@@ -860,7 +860,7 @@ def flow_demand_model() -> Model:
     return model
 
 
-def linear_resistance_demand_model() -> Model:
+def linear_resistance_demand_model():
     """Small model with a FlowDemand for a node with a max flow rate."""
     model = Model(
         starttime="2020-01-01 00:00:00",
@@ -895,7 +895,7 @@ def linear_resistance_demand_model() -> Model:
     return model
 
 
-def fair_distribution_model() -> Model:
+def fair_distribution_model():
     """See the behavior of allocation with few restrictions within the graph."""
     model = Model(
         starttime="2020-01-01 00:00:00",
@@ -993,7 +993,7 @@ def fair_distribution_model() -> Model:
     return model
 
 
-def allocation_training_model() -> Model:
+def allocation_training_model():
     model = Model(
         starttime="2022-01-01",
         endtime="2023-01-01",
@@ -1091,7 +1091,7 @@ def allocation_training_model() -> Model:
                 demand=[0.0, 0.0, 10, 12, 12, 0.0],
                 return_factor=0,
                 min_level=0,
-                demand_priority=4,
+                demand_priority=3,
                 time=[
                     "2022-01-01",
                     "2022-03-31",
@@ -1132,7 +1132,7 @@ def allocation_training_model() -> Model:
                 demand=[2.0, 2.3, 2.3, 2.4, 3, 3, 4, 3, 2.5, 2.2, 2.0, 2.0],
                 return_factor=0.4,
                 min_level=0,
-                demand_priority=3,
+                demand_priority=2,
                 time=pd.date_range(start="2022-01-01", periods=12, freq="MS"),
             )
         ],
@@ -1147,7 +1147,7 @@ def allocation_training_model() -> Model:
                 demand=[4, 4, 4.5, 5, 5, 6, 7.5, 8, 5, 4, 3, 2.0],
                 return_factor=0.5,
                 min_level=0,
-                demand_priority=2,
+                demand_priority=1,
                 time=pd.date_range(start="2022-01-01", periods=12, freq="MS"),
             )
         ],
@@ -1172,7 +1172,7 @@ def allocation_training_model() -> Model:
     return model
 
 
-def bommelerwaard_model() -> Model:
+def bommelerwaard_model():
     model = Model(
         starttime="2016-01-01",
         endtime="2016-03-31",
@@ -1267,23 +1267,11 @@ def bommelerwaard_model() -> Model:
         )
         pump_index += 1
 
-    model.tabulated_rating_curve.add(
-        get_node(43),
-        [
-            tabulated_rating_curve.Static(
-                level=[1.85, 2.85, 2.95], flow_rate=[0.0, 0.1, 1.0]
-            )
-        ],
-    )
-
-    model.tabulated_rating_curve.add(
-        get_node(44),
-        [
-            tabulated_rating_curve.Static(
-                level=[1.15, 2.15, 2.25], flow_rate=[0.0, 0.1, 1.0]
-            )
-        ],
-    )
+    for node_id, level in zip([43, 44], [[1.85, 2.85, 2.95], [1.15, 2.15, 2.25]]):
+        model.tabulated_rating_curve.add(
+            get_node(node_id),
+            [tabulated_rating_curve.Static(level=level, flow_rate=[0.0, 0.1, 1.0])],
+        )
 
     for node_id, listen_node_id, greater_than in zip(
         range(45, 52),
@@ -1379,7 +1367,7 @@ def bommelerwaard_model() -> Model:
     return model
 
 
-def cyclic_demand_model() -> Model:
+def cyclic_demand_model():
     """Create a model that has cyclic User- Flow- and LevelDemand."""
     model = Model(
         starttime="2020-01-01",
@@ -1421,7 +1409,7 @@ def cyclic_demand_model() -> Model:
                 time=time,
                 min_level=[0.5, 0.7, 0.5],
                 max_level=[0.7, 0.9, 0.7],
-                demand_priority=3,
+                demand_priority=1,
             )
         ],
     )
