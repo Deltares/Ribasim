@@ -6,32 +6,25 @@
     "creators": [
       "Tool: sbom4python-0.12.3"
     ],
-    "created": "2025-06-04T09:59:24Z",
+    "created": "2025-06-17T14:16:09Z",
     "licenseListVersion": "3.25"
   },
   "name": "Python-ribasim",
   "dataLicense": "CC0-1.0",
-  "documentNamespace": "http://spdx.org/spdxdocs/Python-ribasim-55e98063-9356-4b19-898e-46c57bca35e9",
+  "documentNamespace": "http://spdx.org/spdxdocs/Python-ribasim-cddc78c6-1752-4129-bf28-c802eebda75d",
   "packages": [
     {
       "SPDXID": "SPDXRef-1-ribasim",
       "name": "ribasim",
-      "versionInfo": "2025.3.0",
+      "versionInfo": "2025.4.0",
       "primaryPackagePurpose": "APPLICATION",
       "supplier": "Organization: Deltares and contributors (ribasim.info@deltares.nl)",
-      "downloadLocation": "https://pypi.org/project/ribasim/2025.3.0/#files",
+      "downloadLocation": "https://pypi.org/project/ribasim/2025.4.0/#files",
       "filesAnalyzed": false,
-      "checksums": [
-        {
-          "algorithm": "SHA256",
-          "checksumValue": "cd02e8fdef546cc25bfd50cb6ee9bf108957654cb28f4a8de1f5c25060f80818"
-        }
-      ],
       "licenseConcluded": "MIT",
       "licenseDeclared": "MIT",
       "copyrightText": "NOASSERTION",
       "summary": "Pre- and post-process Ribasim",
-      "releaseDate": "2025-04-15T18:55:18Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -46,12 +39,12 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/ribasim@2025.3.0"
+          "referenceLocator": "pkg:pypi/ribasim@2025.4.0"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:deltares_and_contributors:ribasim:2025.3.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:deltares_and_contributors:ribasim:2025.4.0:*:*:*:*:*:*:*"
         }
       ]
     },
@@ -64,12 +57,18 @@
       "downloadLocation": "https://pypi.org/project/datacompy/0.16.7/#files",
       "filesAnalyzed": false,
       "homepage": "https://github.com/capitalone/datacompy",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "42ba60bd5a82fa85db703b34c53e85d51f0ff5354edb9d1b18a63fea61ba5548"
+        }
+      ],
       "licenseConcluded": "Apache-2.0",
       "licenseDeclared": "NOASSERTION",
       "licenseComments": "datacompy declares Apache Software License which is not currently a valid SPDX License identifier or expression.",
       "copyrightText": "NOASSERTION",
       "summary": "Dataframe comparison in Python",
-      "releaseDate": "2025-04-15T18:55:18Z",
+      "releaseDate": "2025-05-21T17:08:46Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -842,33 +841,33 @@
     {
       "SPDXID": "SPDXRef-20-fonttools",
       "name": "fonttools",
-      "versionInfo": "4.58.1",
+      "versionInfo": "4.58.2",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "Organization: Just van Rossum (just@letterror.com)",
-      "downloadLocation": "https://pypi.org/project/fonttools/4.58.1/#files",
+      "downloadLocation": "https://pypi.org/project/fonttools/4.58.2/#files",
       "filesAnalyzed": false,
       "homepage": "http://github.com/fonttools/fonttools",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "4ebd423034ac4f74196c1ae29f8ed3b862f820345acbf35600af8596ebf62573"
+          "checksumValue": "4baaf34f07013ba9c2c3d7a95d0c391fcbb30748cb86c36c094fab8f168e49bb"
         }
       ],
       "licenseConcluded": "MIT",
       "licenseDeclared": "MIT",
       "copyrightText": "NOASSERTION",
       "summary": "Tools to manipulate font files",
-      "releaseDate": "2025-05-28T15:27:59Z",
+      "releaseDate": "2025-06-06T14:49:33Z",
       "externalRefs": [
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/fonttools@4.58.1"
+          "referenceLocator": "pkg:pypi/fonttools@4.58.2"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:just_van_rossum:fonttools:4.58.1:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:just_van_rossum:fonttools:4.58.2:*:*:*:*:*:*:*"
         }
       ]
     },
@@ -1226,17 +1225,11 @@
       "downloadLocation": "https://pypi.org/project/pydantic-core/2.33.2/#files",
       "filesAnalyzed": false,
       "homepage": "https://github.com/pydantic/pydantic-core",
-      "checksums": [
-        {
-          "algorithm": "SHA256",
-          "checksumValue": "2b3d326aaef0c0399d9afffeb6367d5e26ddc24d351dbc9c636840ac355dc5d8"
-        }
-      ],
       "licenseConcluded": "MIT",
       "licenseDeclared": "MIT",
       "copyrightText": "NOASSERTION",
       "summary": "Core functionality for Pydantic validation and serialization",
-      "releaseDate": "2025-04-23T18:30:43Z",
+      "releaseDate": "2025-06-02T14:52:10Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -1311,22 +1304,22 @@
     {
       "SPDXID": "SPDXRef-30-typeguard",
       "name": "typeguard",
-      "versionInfo": "4.4.2",
+      "versionInfo": "4.4.3",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "Person: Alex Gronholm (alex.gronholm@nextday.fi)",
-      "downloadLocation": "https://pypi.org/project/typeguard/4.4.2/#files",
+      "downloadLocation": "https://pypi.org/project/typeguard/4.4.3/#files",
       "filesAnalyzed": false,
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "77a78f11f09777aeae7fa08585f33b5f4ef0e7335af40005b0c422ed398ff48c"
+          "checksumValue": "7d8b4a3d280257fd1aa29023f22de64e29334bda0b172ff1040f05682223795e"
         }
       ],
       "licenseConcluded": "MIT",
       "licenseDeclared": "MIT",
       "copyrightText": "NOASSERTION",
       "summary": "Run-time type checker for Python",
-      "releaseDate": "2025-02-16T16:28:24Z",
+      "releaseDate": "2025-06-04T21:47:03Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -1351,12 +1344,12 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/typeguard@4.4.2"
+          "referenceLocator": "pkg:pypi/typeguard@4.4.3"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:alex_gronholm:typeguard:4.4.2:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:alex_gronholm:typeguard:4.4.3:*:*:*:*:*:*:*"
         }
       ]
     },
@@ -1401,22 +1394,22 @@
     {
       "SPDXID": "SPDXRef-32-zipp",
       "name": "zipp",
-      "versionInfo": "3.22.0",
+      "versionInfo": "3.23.0",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "Organization: Jason R. (jaraco@jaraco.com)",
-      "downloadLocation": "https://pypi.org/project/zipp/3.22.0/#files",
+      "downloadLocation": "https://pypi.org/project/zipp/3.23.0/#files",
       "filesAnalyzed": false,
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "fe208f65f2aca48b81f9e6fd8cf7b8b32c26375266b009b413d45306b6148343"
+          "checksumValue": "071652d6115ed432f5ce1d34c336c0adfd6a884660d1e9712a256d3d3bd4b14e"
         }
       ],
       "licenseConcluded": "NOASSERTION",
       "licenseDeclared": "NOASSERTION",
       "copyrightText": "NOASSERTION",
       "summary": "Backport of pathlib-compatible object wrapper for zip files",
-      "releaseDate": "2025-05-26T14:46:30Z",
+      "releaseDate": "2025-06-08T17:06:38Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -1426,12 +1419,12 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/zipp@3.22.0"
+          "referenceLocator": "pkg:pypi/zipp@3.23.0"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:jason_r.:zipp:3.22.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:jason_r.:zipp:3.23.0:*:*:*:*:*:*:*"
         }
       ]
     },
