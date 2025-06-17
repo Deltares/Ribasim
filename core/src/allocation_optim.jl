@@ -16,7 +16,7 @@ function set_simulation_data!(
     t::Float64,
     du::CVector,
 )::Nothing
-    (; basin, level_boundary, manning_resistance, pump, outlet, user_demand, graph) =
+    (; basin, level_boundary, manning_resistance, pump, outlet, user_demand) =
         p.p_independent
 
     errors = false
@@ -24,7 +24,7 @@ function set_simulation_data!(
     errors != set_simulation_data!(allocation_model, basin, p)
     set_simulation_data!(allocation_model, level_boundary, t)
     set_simulation_data!(allocation_model, manning_resistance, p, t)
-    set_simulation_data!(allocation_model, pump, outlet, graph, du)
+    set_simulation_data!(allocation_model, pump, outlet, du)
     set_simulation_data!(allocation_model, user_demand, t)
 
     if errors
@@ -161,23 +161,35 @@ function set_simulation_data!(
     allocation_model::AllocationModel,
     pump::Pump,
     outlet::Outlet,
-    graph::MetaGraph,
     du::CVector,
 )::Nothing
-    (; problem, subnetwork_id) = allocation_model
-    flow = problem[:flow]
-    # TODO: Consider drought
+    (; problem) = allocation_model
+    pump_constraints = problem[:pump]
+    outlet_constraints = problem[:outlet]
 
-    # Set the flow rates of Pumps and Outlets that are not controlled by allocation
-    for node_id in graph[].node_ids[subnetwork_id]
-        if (node_id.type == NodeType.Pump) &&
-           (pump.control_type[node_id.idx] != ControlType.Allocation)
-            inflow_link = pump.inflow_link[node_id.idx].link
-            JuMP.fix(flow[inflow_link], du.pump[node_id.idx]; force = true)
-        elseif (node_id.type == NodeType.Outlet) &&
-               (outlet.control_type[node_id.idx] != ControlType.Allocation)
-            inflow_link = outlet.inflow_link[node_id.idx].link
-            JuMP.fix(flow[inflow_link], du.outlet[node_id.idx]; force = true)
+    # Set the flows of pumps to the flows formulated in the physical layer at the current t
+    for node_id in only(pump_constraints.axes)
+        constraint = pump_constraints[node_id]
+        upstream_node_id = pump.inflow_link[node_id.idx].link[1]
+        q = du.pump[node_id.idx]
+        if upstream_node_id.type == NodeType.Basin
+            low_storage_factor = get_low_storage_factor(problem, upstream_node_id)
+            JuMP.set_normalized_coefficient(constraint, low_storage_factor, -q)
+        else
+            JuMP.set_normalized_rhs(constraint, q)
+        end
+    end
+
+    # Set the flows of outlets to the flows formulated in the physical layer at the current t
+    for node_id in only(outlet_constraints.axes)
+        constraint = outlet_constraints[node_id]
+        upstream_node_id = outlet.inflow_link[node_id.idx].link[1]
+        q = du.outlet[node_id.idx]
+        if upstream_node_id.type == NodeType.Basin
+            low_storage_factor = get_low_storage_factor(problem, upstream_node_id)
+            JuMP.set_normalized_coefficient(constraint, low_storage_factor, -q)
+        else
+            JuMP.set_normalized_rhs(constraint, q)
         end
     end
 end
@@ -619,7 +631,7 @@ function postprocess_objective!(
             objective,
         )
     elseif objective.type == AllocationObjectiveType.source_priorities
-        unfix_user_demand_allocated!(problem, p_independent, objective)
+        unfix_user_demand_allocated!(problem, p_independent)
     end
     return nothing
 end
