@@ -121,7 +121,6 @@ function add_basin!(
             level_to_area[node_id.idx],
             lowest_level,
         )
-        @show values_storage_node, values_level_node
         values_storage[node_id] = values_storage_node
         values_level[node_id] = values_level_node
     end
@@ -254,6 +253,39 @@ function add_conservation!(
         storage[(node_id, :end)] - storage[(node_id, :start)] ==
         Δt_allocation * (forcing[node_id] + inflow_sum[node_id] - outflow_sum[node_id]),
         base_name = "volume conservation"
+    )
+
+    return nothing
+end
+
+function add_low_storage_factor!(
+    allocation_model::AllocationModel,
+    p_independent::ParametersIndependent,
+)::Nothing
+    (; basin, graph) = p_independent
+    (; low_storage_threshold, storage_to_level) = basin
+    (; problem, subnetwork_id) = allocation_model
+
+    basin_ids_subnetwork = get_subnetwork_ids(graph, NodeType.Basin, subnetwork_id)
+    storage = problem[:basin_storage]
+
+    # Define parameters: low storage factor
+    low_storage_factor =
+        problem[:low_storage_factor] =
+            JuMP.@variable(problem, 0 ≤ low_storage_factor[basin_ids_subnetwork] ≤ 1)
+
+    factor_values = [0.0, 1.0, 1.0]
+
+    # Define constraints: low storage factor
+    problem[:low_storage_func] = JuMP.@constraint(
+        problem,
+        [node_id = basin_ids_subnetwork],
+        low_storage_factor[node_id] == piecewiselinear(
+            problem,
+            storage[(node_id, :end)],
+            [0.0, low_storage_threshold[node_id.idx], storage_to_level[node_id.idx].t[end]],
+            factor_values,
+        )
     )
 
     return nothing
@@ -636,6 +668,54 @@ function add_manning_resistance!(
     return nothing
 end
 
+function add_pump!(
+    allocation_model::AllocationModel,
+    p_independent::ParametersIndependent,
+)::Nothing
+    (; problem, subnetwork_id) = allocation_model
+    (; graph, pump) = p_independent
+    flow = problem[:flow]
+
+    # Get the IDs of the pumps in the subnetwork which are not controlled by allocation
+    pump_ids_subnetwork_non_alloc_controlled = filter(
+        node_id -> pump.control_type[node_id.idx] != ControlType.Allocation,
+        get_subnetwork_ids(graph, NodeType.Pump, subnetwork_id),
+    )
+
+    q = 1.0 # example value (m^3/s, to be filled in before optimizing)
+    problem[:pump] = JuMP.@constraint(
+        problem,
+        [node_id = pump_ids_subnetwork_non_alloc_controlled],
+        flow[pump.inflow_link[node_id.idx].link] ==
+        q * get_low_storage_factor(problem, node_id)
+    )
+    return nothing
+end
+
+function add_outlet!(
+    allocation_model::AllocationModel,
+    p_independent::ParametersIndependent,
+)::Nothing
+    (; problem, subnetwork_id) = allocation_model
+    (; graph, outlet) = p_independent
+    flow = problem[:flow]
+
+    # Get the IDs of the pumps in the subnetwork which are not controlled by allocation
+    outlet_ids_subnetwork_non_alloc_controlled = filter(
+        node_id -> outlet.control_type[node_id.idx] != ControlType.Allocation,
+        get_subnetwork_ids(graph, NodeType.Outlet, subnetwork_id),
+    )
+
+    q = 1.0 # example value (m^3/s, to be filled in before optimizing)
+    problem[:outlet] = JuMP.@constraint(
+        problem,
+        [node_id = outlet_ids_subnetwork_non_alloc_controlled],
+        flow[outlet.inflow_link[node_id.idx].link] ==
+        q * get_low_storage_factor(problem, node_id)
+    )
+    return nothing
+end
+
 function add_subnetwork_demand!(
     allocation_model::AllocationModel,
     p_independent::ParametersIndependent,
@@ -737,6 +817,7 @@ function AllocationModel(
 
     # Volume and flow
     add_basin!(allocation_model, p_independent)
+    add_low_storage_factor!(allocation_model, p_independent) # Not used for resistance nodes
     add_flow!(allocation_model, p_independent)
     add_conservation!(allocation_model, p_independent)
 
@@ -751,6 +832,8 @@ function AllocationModel(
     add_tabulated_rating_curve!(allocation_model, p_independent)
     add_linear_resistance!(allocation_model, p_independent)
     add_manning_resistance!(allocation_model, p_independent)
+    add_pump!(allocation_model, p_independent)
+    add_outlet!(allocation_model, p_independent)
 
     # Demand nodes and subnetworks as demand nodes
     problem[:target_demand_fraction] = JuMP.@variable(problem, target_fraction == 1.0)
