@@ -472,7 +472,7 @@ def main_network_with_subnetworks_model() -> Model:
     )
     model.basin.add(Node(10, Point(27, 1), subnetwork_id=1), basin_data)
     model.pump.add(
-        Node(11, Point(3, 4), subnetwork_id=3),
+        Node(11, Point(3, 4), subnetwork_id=1),
         [pump.Static(flow_rate=[1e-3], max_flow_rate=10.0)],
     )
     model.basin.add(Node(12, Point(2, 4), subnetwork_id=3), large_basin_data)
@@ -521,7 +521,7 @@ def main_network_with_subnetworks_model() -> Model:
         [outlet.Static(flow_rate=[3.0], max_flow_rate=3.0)],
     )
     model.pump.add(
-        Node(24, Point(14, 3), subnetwork_id=5),
+        Node(24, Point(14, 3), subnetwork_id=1),
         [pump.Static(flow_rate=[1e-3], max_flow_rate=1.0)],
     )
     model.basin.add(Node(25, Point(14, 4), subnetwork_id=5), basin_data)
@@ -557,7 +557,7 @@ def main_network_with_subnetworks_model() -> Model:
     )
     model.terminal.add(Node(37, Point(24, 4), subnetwork_id=7))
     model.pump.add(
-        Node(38, Point(28, 4), subnetwork_id=7),
+        Node(38, Point(28, 4), subnetwork_id=1),
         [pump.Static(flow_rate=[1e-3], max_flow_rate=1.0)],
     )
     model.pump.add(

@@ -158,12 +158,7 @@ end
         Ribasim.reset_goal_programming!(allocation_model)
         Ribasim.prepare_demand_collection!(allocation_model, p_independent)
         for objective in allocation_model.objectives
-            Ribasim.optimize_for_objective!(
-                allocation_model,
-                integrator,
-                objective,
-                AllocationOptimizationType.collect_demands,
-            )
+            Ribasim.optimize_for_objective!(allocation_model, integrator, objective)
         end
     end
 
@@ -612,7 +607,6 @@ end
                 :to_node_type,
                 :to_node_id,
                 :subnetwork_id,
-                :demand_priority,
                 :flow_rate,
                 :optimization_type,
             ),
