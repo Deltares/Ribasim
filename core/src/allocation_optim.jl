@@ -23,7 +23,7 @@ function set_simulation_data!(
 
     errors != set_simulation_data!(allocation_model, basin, p)
     set_simulation_data!(allocation_model, level_boundary, t)
-    set_simulation_data!(allocation_model, manning_resistance)
+    set_simulation_data!(allocation_model, manning_resistance, p, t)
     set_simulation_data!(allocation_model, pump, outlet, graph, du)
     set_simulation_data!(allocation_model, user_demand, t)
 
@@ -104,6 +104,8 @@ end
 function set_simulation_data!(
     allocation_model::AllocationModel,
     manning_resistance::ManningResistance,
+    p::Parameters,
+    t::Float64,
 )::Nothing
     (; problem) = allocation_model
     manning_resistance_constraint = problem[:manning_resistance_constraint]

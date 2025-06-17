@@ -34,3 +34,39 @@ end
 
     @test allocation_flow_table.flow_rate ≈ flow_table.flow_rate rtol = 1e-1
 end
+
+@testitem "Manning Resistance" begin
+    using DataFrames: DataFrame
+
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/manning_resistance/ribasim.toml")
+    @test ispath(toml_path)
+
+    config = Ribasim.Config(toml_path; experimental_allocation = true)
+    model = Ribasim.Model(config)
+    Ribasim.solve!(model)
+    allocation_flow_table = DataFrame(Ribasim.allocation_flow_table(model))
+    flow_table = DataFrame(Ribasim.flow_table(model))
+
+    filter!(:link_id => ==(1), allocation_flow_table)
+    filter!(:link_id => ==(1), flow_table)
+
+    @test allocation_flow_table.flow_rate ≈ flow_table.flow_rate rtol = 1e-2
+
+    using Plots
+
+    plot(
+        flow_table.time,
+        flow_table.flow_rate;
+        label = "flow_table",
+        xlabel = "Time",
+        ylabel = "Flow rate",
+        legend = :topright,
+    )
+    plot!(
+        allocation_flow_table.time,
+        allocation_flow_table.flow_rate;
+        label = "allocation_flow_table",
+    )
+    savefig("allocation_flow_rate.png")
+end

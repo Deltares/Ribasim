@@ -98,18 +98,22 @@ def manning_resistance_model() -> Model:
         experimental=Experimental(concentration=True),
     )
 
-    basin_profile = basin.Profile(area=[0.01, 100.0, 100.0], level=[0.0, 1.0, 2.0])
+    basin_profile = basin.Profile(area=[0.01, 100.0, 100.0], level=[0.0, 1.0, 10.0])
 
-    model.basin.add(Node(1, Point(0, 0)), [basin_profile, basin.State(level=[9.5])])
+    model.basin.add(
+        Node(1, Point(0, 0), subnetwork_id=1), [basin_profile, basin.State(level=[9.5])]
+    )
     model.manning_resistance.add(
-        Node(2, Point(1, 0)),
+        Node(2, Point(1, 0), subnetwork_id=1),
         [
             manning_resistance.Static(
-                manning_n=[1e7], profile_width=50.0, profile_slope=0.0, length=2000.0
+                manning_n=[1e6], profile_width=50.0, profile_slope=0.0, length=2000.0
             )
         ],
     )
-    model.basin.add(Node(3, Point(2, 0)), [basin_profile, basin.State(level=[4.5])])
+    model.basin.add(
+        Node(3, Point(2, 0), subnetwork_id=1), [basin_profile, basin.State(level=[4.5])]
+    )
 
     model.link.add(
         model.basin[1],
