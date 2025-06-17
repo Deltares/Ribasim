@@ -220,3 +220,12 @@ function parse_profile(
 
     values_storage_node, values_level_node
 end
+
+function get_low_storage_factor(problem::JuMP.Model, node_id::NodeID)
+    low_storage_factor = problem[:low_storage_factor]
+    if node_id.type == NodeType.Basin
+        low_storage_factor[node_id]
+    else
+        1.0
+    end
+end
