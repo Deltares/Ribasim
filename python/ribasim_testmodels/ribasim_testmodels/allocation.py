@@ -100,13 +100,13 @@ def subnetwork_model() -> Model:
         starttime="2020-01-01",
         endtime="2020-04-01",
         crs="EPSG:28992",
-        allocation=Allocation(use_allocation=True, timestep=86400),
-        experimental=Experimental(concentration=True),
+        allocation=Allocation(timestep=86400),
+        experimental=Experimental(concentration=True, allocation=True),
         interpolation=Interpolation(flow_boundary="linear"),
     )
 
     basin_data: list[TableModel[Any]] = [
-        basin.Profile(area=100000.0, level=[0.0, 1.0]),
+        basin.Profile(area=100000.0, level=[0.0, 100.0]),
         basin.State(level=[10.0]),
     ]
     outlet_data: list[TableModel[Any]] = [
@@ -187,8 +187,8 @@ def looped_subnetwork_model() -> Model:
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
-        allocation=Allocation(use_allocation=True, timestep=86400),
-        experimental=Experimental(concentration=True),
+        allocation=Allocation(timestep=86400),
+        experimental=Experimental(concentration=True, allocation=True),
     )
 
     basin_data: list[TableModel[Any]] = [
@@ -314,12 +314,12 @@ def minimal_subnetwork_model() -> Model:
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
-        allocation=Allocation(use_allocation=True, timestep=86400),
-        experimental=Experimental(concentration=True),
+        allocation=Allocation(timestep=86400),
+        experimental=Experimental(concentration=True, allocation=True),
     )
 
     basin_data: list[TableModel[Any]] = [
-        basin.Profile(area=1000.0, level=[0.0, 1.0]),
+        basin.Profile(area=1000.0, level=[0.0, 1000.0]),
         basin.State(level=[1.0]),
     ]
 
@@ -371,8 +371,8 @@ def allocation_example_model() -> Model:
         starttime="2020-01-01",
         endtime="2020-01-20",
         crs="EPSG:28992",
-        allocation=Allocation(use_allocation=True, timestep=86400),
-        experimental=Experimental(concentration=True),
+        allocation=Allocation(timestep=86400),
+        experimental=Experimental(concentration=True, allocation=True),
     )
 
     basin_data: list[TableModel[Any]] = [
@@ -434,8 +434,8 @@ def main_network_with_subnetworks_model() -> Model:
         starttime="2020-01-01",
         endtime="2020-03-01",
         crs="EPSG:28992",
-        allocation=Allocation(use_allocation=True, timestep=86400),
-        experimental=Experimental(concentration=True),
+        allocation=Allocation(timestep=86400),
+        experimental=Experimental(concentration=True, allocation=True),
     )
 
     basin_data: list[TableModel[Any]] = [
@@ -472,7 +472,7 @@ def main_network_with_subnetworks_model() -> Model:
     )
     model.basin.add(Node(10, Point(27, 1), subnetwork_id=1), basin_data)
     model.pump.add(
-        Node(11, Point(3, 4), subnetwork_id=3),
+        Node(11, Point(3, 4), subnetwork_id=1),
         [pump.Static(flow_rate=[1e-3], max_flow_rate=10.0)],
     )
     model.basin.add(Node(12, Point(2, 4), subnetwork_id=3), large_basin_data)
@@ -521,7 +521,7 @@ def main_network_with_subnetworks_model() -> Model:
         [outlet.Static(flow_rate=[3.0], max_flow_rate=3.0)],
     )
     model.pump.add(
-        Node(24, Point(14, 3), subnetwork_id=5),
+        Node(24, Point(14, 3), subnetwork_id=1),
         [pump.Static(flow_rate=[1e-3], max_flow_rate=1.0)],
     )
     model.basin.add(Node(25, Point(14, 4), subnetwork_id=5), basin_data)
@@ -557,7 +557,7 @@ def main_network_with_subnetworks_model() -> Model:
     )
     model.terminal.add(Node(37, Point(24, 4), subnetwork_id=7))
     model.pump.add(
-        Node(38, Point(28, 4), subnetwork_id=7),
+        Node(38, Point(28, 4), subnetwork_id=1),
         [pump.Static(flow_rate=[1e-3], max_flow_rate=1.0)],
     )
     model.pump.add(
@@ -730,8 +730,8 @@ def level_demand_model() -> Model:
         starttime="2020-01-01",
         endtime="2020-02-01",
         crs="EPSG:28992",
-        allocation=Allocation(use_allocation=True, timestep=1e5),
-        experimental=Experimental(concentration=True),
+        allocation=Allocation(timestep=1e5),
+        experimental=Experimental(concentration=True, allocation=True),
     )
     model.flow_boundary.add(
         Node(1, Point(0, 0), subnetwork_id=2), [flow_boundary.Static(flow_rate=[1e-3])]
@@ -791,8 +791,8 @@ def flow_demand_model() -> Model:
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",
         crs="EPSG:28992",
-        allocation=Allocation(use_allocation=True, timestep=1e5),
-        experimental=Experimental(concentration=True),
+        allocation=Allocation(timestep=1e5),
+        experimental=Experimental(concentration=True, allocation=True),
     )
 
     model.tabulated_rating_curve.add(
@@ -866,8 +866,7 @@ def linear_resistance_demand_model():
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",
         crs="EPSG:28992",
-        allocation=Allocation(use_allocation=True),
-        experimental=Experimental(concentration=True),
+        experimental=Experimental(concentration=True, allocation=True),
     )
 
     model.basin.add(
@@ -902,8 +901,7 @@ def fair_distribution_model():
         starttime="2020-01-01 00:00:00",
         endtime="2020-01-07 00:00:00",
         crs="EPSG:28992",
-        allocation=Allocation(use_allocation=True),
-        experimental=Experimental(concentration=True),
+        experimental=Experimental(concentration=True, allocation=True),
     )
 
     model.level_boundary.add(
@@ -936,7 +934,7 @@ def fair_distribution_model():
 
     model.basin.add(
         Node(5, Point(4, 0), subnetwork_id=1),
-        [basin.Profile(area=1e3, level=[0.0, 1.0]), basin.State(level=[1.0])],
+        [basin.Profile(area=1e3, level=[0.0, 10.0]), basin.State(level=[1.0])],
     )
 
     model.user_demand.add(
@@ -995,13 +993,12 @@ def fair_distribution_model():
     return model
 
 
-def allocation_training_model():
+def allocation_training_model() -> Model:
     model = Model(
         starttime="2022-01-01",
         endtime="2023-01-01",
         crs="EPSG:4326",
-        allocation=Allocation(use_allocation=True),
-        experimental=Experimental(concentration=True),
+        experimental=Experimental(concentration=True, allocation=True),
         interpolation=Interpolation(flow_boundary="linear"),
     )
 
@@ -1180,8 +1177,7 @@ def bommelerwaard_model():
         starttime="2016-01-01",
         endtime="2016-03-31",
         crs="EPSG:28992",
-        allocation=Allocation(use_allocation=True),
-        experimental=Experimental(concentration=True),
+        experimental=Experimental(concentration=True, allocation=True),
     )
 
     # Node coordinates
@@ -1377,7 +1373,7 @@ def cyclic_demand_model():
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
-        allocation=Allocation(use_allocation=True),
+        experimental=Experimental(allocation=True),
     )
 
     fb = model.flow_boundary.add(
@@ -1443,5 +1439,52 @@ def cyclic_demand_model():
     model.link.add(fd, pmp)
     model.link.add(bsn2, ud)
     model.link.add(ud, bsn2)
+
+    return model
+
+
+def allocation_control_model() -> Model:
+    """Create a model that has a pump controlled by allocation."""
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2023-01-01",
+        crs="EPSG:28992",
+        experimental=Experimental(allocation=True),
+    )
+
+    lb = model.level_boundary.add(
+        Node(1, Point(0, 0), subnetwork_id=1), [level_boundary.Static(level=[1.0])]
+    )
+
+    out = model.outlet.add(
+        Node(2, Point(1, 0), subnetwork_id=1),
+        [outlet.Static(flow_rate=[0.0], control_state="Ribasim.allocation")],
+    )
+
+    bsn = model.basin.add(
+        Node(3, Point(2, 0), subnetwork_id=1),
+        [
+            basin.State(level=[1.0]),
+            basin.Profile(level=[0.0, 1.0], area=[100.0, 100.0]),
+        ],
+    )
+
+    user = model.user_demand.add(
+        Node(4, Point(2, -1), subnetwork_id=1, cyclic_time=True),
+        [
+            user_demand.Time(
+                time=["2020-01-01", "2020-06-01", "2021-01-01"],
+                demand=[0.0, 10.0, 0.0],
+                return_factor=0.0,
+                min_level=-5.0,
+                demand_priority=1,
+            )
+        ],
+    )
+
+    model.link.add(lb, out)
+    model.link.add(out, bsn)
+    model.link.add(bsn, user)
+    model.link.add(user, bsn)
 
     return model
