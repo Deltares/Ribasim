@@ -569,7 +569,6 @@ function formulate_flow!(
     ) = time_dependent_cache.pump
     (; current_flow_rate_pump) = state_time_dependent_cache
 
-    all_nodes_active = p_mutable.all_nodes_active
     for id in pump.node_id
         inflow_link = pump.inflow_link[id.idx]
         outflow_link = pump.outflow_link[id.idx]
@@ -581,7 +580,7 @@ function formulate_flow!(
         min_upstream_level = pump.min_upstream_level[id.idx]
         max_downstream_level = pump.max_downstream_level[id.idx]
 
-        if !(active || all_nodes_active) || (control_type != control_type_)
+        if should_skip_update_q(active, control_type, control_type_, p)
             continue
         end
 
@@ -638,7 +637,6 @@ function formulate_flow!(
         current_max_downstream_level,
     ) = time_dependent_cache.outlet
 
-    all_nodes_active = p_mutable.all_nodes_active
     for id in outlet.node_id
         inflow_link = outlet.inflow_link[id.idx]
         outflow_link = outlet.outflow_link[id.idx]
@@ -650,7 +648,7 @@ function formulate_flow!(
         min_upstream_level = outlet.min_upstream_level[id.idx]
         max_downstream_level = outlet.max_downstream_level[id.idx]
 
-        if !(active || all_nodes_active) || (control_type != control_type_)
+        if should_skip_update_q(active, control_type, control_type_, p)
             continue
         end
 
@@ -887,4 +885,33 @@ function limit_flow!(
         u_component[id.idx] = uprev_component[id.idx]
     end
     return nothing
+end
+
+function should_skip_update_q(
+    active::Bool,
+    control_type::ControlType.T,
+    control_type_::ControlType.T,
+    p::Parameters,
+)::Bool
+    (; p_mutable) = p
+    (; skip_update_q, all_nodes_active) = p_mutable
+    # Hard skip condition can be set for the update of q
+    if skip_update_q
+        return true
+    end
+
+    # Update is not needed if inactive and all nodes are not active
+    if !active && !all_nodes_active
+        return true
+    end
+
+    # If the control_type does not match the control_type_ skip update q, UNLESS the combination is None/Allocation
+    if (control_type != control_type_)
+        if control_type_ == ControlType.None && control_type == ControlType.Allocation
+            return false
+        else
+            return true
+        end
+    end
+    return false
 end
