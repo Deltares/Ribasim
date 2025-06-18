@@ -21,6 +21,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from ribasim import Allocation, Model, Node, Solver
+from ribasim.config import Experimental
 from ribasim.nodes import (
     basin,
     continuous_control,
