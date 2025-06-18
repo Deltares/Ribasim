@@ -79,8 +79,8 @@ end
 
 @testitem "Allocation Control" begin
     using DataFrames: DataFrame
-    using Test
-    using Ribasim
+
+    using Plots
 
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/allocation_control/ribasim.toml")
