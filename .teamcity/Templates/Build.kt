@@ -2,6 +2,7 @@ package Templates
 
 
 import jetbrains.buildServer.configs.kotlin.Template
+import jetbrains.buildServer.configs.kotlin.*
 import jetbrains.buildServer.configs.kotlin.buildSteps.script
 import jetbrains.buildServer.configs.kotlin.buildFeatures.buildCache
 
@@ -39,6 +40,13 @@ open class Build(platformOs: String) : Template() {
                 id = "Ribasim${platformOs}Cache"
                 name = "Ribasim${platformOs}Cache"
                 publish = false
+            }
+        }
+
+        dependencies {
+            artifacts(AbsoluteId("GenerateCache${platformOs}")) {
+                buildRule = lastSuccessful()
+                artifactRules = "cache.zip => .julia"
             }
         }
 
