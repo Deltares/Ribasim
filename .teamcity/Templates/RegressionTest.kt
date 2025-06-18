@@ -2,6 +2,7 @@ package Templates
 
 import Ribasim_Windows.Windows_BuildRibasim
 import Ribasim_Linux.Linux_BuildRibasim
+import jetbrains.buildServer.configs.kotlin.*
 import jetbrains.buildServer.configs.kotlin.Template
 import jetbrains.buildServer.configs.kotlin.buildFeatures.buildCache
 import jetbrains.buildServer.configs.kotlin.buildFeatures.XmlReport
@@ -54,6 +55,13 @@ open class RegressionTest (platformOs: String) : Template() {
         }
 
         val header = generateRegressionTestHeader(platformOs)
+
+        dependencies {
+            artifacts(AbsoluteId("Ribasim_${platformOs}_GenerateCache")) {
+                buildRule = lastSuccessful()
+                artifactRules = "cache.zip => .julia"
+            }
+        }
 
         steps {
             script {
