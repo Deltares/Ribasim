@@ -687,7 +687,8 @@ function add_pump!(
         problem,
         [node_id = pump_ids_subnetwork_non_alloc_controlled],
         flow[pump.inflow_link[node_id.idx].link] ==
-        q * get_low_storage_factor(problem, node_id)
+        q * get_low_storage_factor(problem, pump.inflow_link[node_id.idx].link[1]),
+        base_name = "pump_constraint"
     )
     return nothing
 end
@@ -711,7 +712,8 @@ function add_outlet!(
         problem,
         [node_id = outlet_ids_subnetwork_non_alloc_controlled],
         flow[outlet.inflow_link[node_id.idx].link] ==
-        q * get_low_storage_factor(problem, node_id)
+        q * get_low_storage_factor(problem, outlet.inflow_link[node_id.idx].link[1]),
+        base_name = "outlet_constraint"
     )
     return nothing
 end

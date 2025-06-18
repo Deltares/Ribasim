@@ -21,7 +21,7 @@ function set_simulation_data!(
 
     errors = false
 
-    errors != set_simulation_data!(allocation_model, basin, p)
+    errors |= set_simulation_data!(allocation_model, basin, p)
     set_simulation_data!(allocation_model, level_boundary, t)
     set_simulation_data!(allocation_model, manning_resistance, p, t)
     set_simulation_data!(allocation_model, pump, outlet, du)
@@ -351,11 +351,13 @@ function update_allocated_values!(
         has_demand = user_demand.has_demand_priority[node_id.idx, demand_priority_idx]
         if has_demand
             inflow_link = user_demand.inflow_link[node_id.idx].link
-            JuMP.fix(
-                user_demand_allocated[node_id],
-                JuMP.value(flow[inflow_link]);
-                force = true,
-            )
+            allocated_prev = JuMP.value(user_demand_allocated[node_id])
+            demand = user_demand.demand[node_id.idx, demand_priority_idx]
+            allocated = clamp(JuMP.value(flow[inflow_link]) - allocated_prev, 0, demand)
+            JuMP.fix(user_demand_allocated[node_id], allocated; force = true)
+            user_demand.allocated[node_id.idx, demand_priority_idx] = allocated
+        else
+            user_demand.allocated[node_id.idx, demand_priority_idx] = 0.0
         end
     end
 
@@ -389,28 +391,6 @@ function update_allocated_values!(
         end
     end
 
-    return nothing
-end
-
-function assign_allocations!(
-    p_independent::ParametersIndependent,
-    problem::JuMP.Model,
-    objective::AllocationObjective,
-)::Nothing
-    (; allocated, inflow_link) = p_independent.user_demand
-    (; demand_priority_idx) = objective
-    user_demand_allocated = problem[:user_demand_allocated]
-    flow = problem[:flow]
-
-    for node_id in only(user_demand_allocated.axes)
-        # user_demand_allocated is cumulative over the priorities, so we have
-        # to subtract what's allocated for the previous priorities
-        inflow_link_node = inflow_link[node_id.idx].link
-        allocated_node_priority =
-            JuMP.value(flow[inflow_link_node]) -
-            sum(view(allocated, node_id.idx, 1:(demand_priority_idx - 1)))
-        allocated[node_id.idx, demand_priority_idx] = allocated_node_priority
-    end
     return nothing
 end
 
@@ -560,32 +540,6 @@ function save_allocation_flows!(
     return nothing
 end
 
-function fix_user_demand_allocated!(problem, p_independent)::Nothing
-    (; inflow_link) = p_independent.user_demand
-    flow = problem[:flow]
-    user_demand_allocated = problem[:user_demand_allocated]
-
-    for node_id in only(user_demand_allocated.axes)
-        JuMP.fix(
-            flow[inflow_link[node_id.idx].link],
-            JuMP.value(user_demand_allocated[node_id]);
-            force = true,
-        )
-    end
-    return nothing
-end
-
-function unfix_user_demand_allocated!(problem, p_independent)::Nothing
-    (; inflow_link) = p_independent.user_demand
-    flow = problem[:flow]
-    user_demand_allocated = problem[:user_demand_allocated]
-
-    for node_id in only(user_demand_allocated.axes)
-        JuMP.unfix(flow[inflow_link[node_id.idx].link])
-    end
-    return nothing
-end
-
 """
 Preprocess for the specific objective type
 """
@@ -597,7 +551,7 @@ function preprocess_objective!(
     if objective.type == AllocationObjectiveType.demand
         set_demands!(problem, p_independent, objective)
     elseif objective.type == AllocationObjectiveType.source_priorities
-        fix_user_demand_allocated!(problem, p_independent)
+        nothing
     else
         error("Unsupported objective type $(objective.type).")
     end
@@ -620,8 +574,6 @@ function postprocess_objective!(
         # in subsequent optimizations
         update_allocated_values!(problem, p_independent, objective)
 
-        assign_allocations!(p_independent, problem, objective)
-
         # Save the demands and allocated values for all demand nodes that have a demand of the current priority
         save_demands_and_allocations!(
             p_independent,
@@ -631,7 +583,7 @@ function postprocess_objective!(
             objective,
         )
     elseif objective.type == AllocationObjectiveType.source_priorities
-        unfix_user_demand_allocated!(problem, p_independent)
+        nothing
     end
     return nothing
 end
@@ -651,7 +603,6 @@ function optimize_for_objective!(
     JuMP.@objective(problem, Min, objective.expression)
 
     # Solve problem
-    println(problem)
     JuMP.optimize!(problem)
     @debug JuMP.solution_summary(problem)
     termination_status = JuMP.termination_status(problem)

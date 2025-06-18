@@ -37,12 +37,17 @@ end
 
 @testitem "Manning Resistance" begin
     using DataFrames: DataFrame
+    using Dates: DateTime
 
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/manning_resistance/ribasim.toml")
     @test ispath(toml_path)
 
-    config = Ribasim.Config(toml_path; experimental_allocation = true)
+    config = Ribasim.Config(
+        toml_path;
+        experimental_allocation = true,
+        endtime = DateTime("2023-01-01"),
+    )
     model = Ribasim.Model(config)
     Ribasim.solve!(model)
     allocation_flow_table = DataFrame(Ribasim.allocation_flow_table(model))

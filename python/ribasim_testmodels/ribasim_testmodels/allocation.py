@@ -319,7 +319,7 @@ def minimal_subnetwork_model() -> Model:
     )
 
     basin_data: list[TableModel[Any]] = [
-        basin.Profile(area=1000.0, level=[0.0, 1.0]),
+        basin.Profile(area=1000.0, level=[0.0, 1000.0]),
         basin.State(level=[1.0]),
     ]
 
@@ -371,7 +371,7 @@ def allocation_example_model() -> Model:
         starttime="2020-01-01",
         endtime="2020-01-20",
         crs="EPSG:28992",
-        allocation=Allocation(utimestep=86400),
+        allocation=Allocation(timestep=86400),
         experimental=Experimental(concentration=True, allocation=True),
     )
 
@@ -934,7 +934,7 @@ def fair_distribution_model():
 
     model.basin.add(
         Node(5, Point(4, 0), subnetwork_id=1),
-        [basin.Profile(area=1e3, level=[0.0, 1.0]), basin.State(level=[1.0])],
+        [basin.Profile(area=1e3, level=[0.0, 10.0]), basin.State(level=[1.0])],
     )
 
     model.user_demand.add(
@@ -993,7 +993,7 @@ def fair_distribution_model():
     return model
 
 
-def allocation_training_model():
+def allocation_training_model() -> Model:
     model = Model(
         starttime="2022-01-01",
         endtime="2023-01-01",

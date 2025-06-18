@@ -107,7 +107,7 @@ def manning_resistance_model() -> Model:
         Node(2, Point(1, 0), subnetwork_id=1),
         [
             manning_resistance.Static(
-                manning_n=[1e6], profile_width=50.0, profile_slope=0.0, length=2000.0
+                manning_n=[1e7], profile_width=50.0, profile_slope=0.0, length=2000.0
             )
         ],
     )
