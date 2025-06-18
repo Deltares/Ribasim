@@ -65,11 +65,17 @@ Base.pairs(x::CArray) = (x => getproperty(x, x) for x in propertynames(x))
 Base.copy(x::CArray) = CArray(copy(getdata(x)), getaxes(x))
 Base.zero(x::CArray) = CArray(zero(getdata(x)), getaxes(x))
 Base.similar(x::CArray) = CArray(similar(getdata(x)), getaxes(x))
+Base.similar(x::CArray, dims::Vararg{Int}) = similar(getdata(x), dims...)
+Base.similar(x::CArray, ::Type{T}, dims::Vararg{Int}) where {T} =
+    similar(getdata(x), T, dims...)
 
 function Base.similar(x::CArray, ::Type{T}) where {T}
     data = similar(getdata(x), T)
     CArray(data, getaxes(x))
 end
+
+Base.iterate(x::CArray, state...) = iterate(getdata(x), state...)
+Base.map(f, x::CArray) = CArray(map(f, getdata(x)), getaxes(x))
 
 # Implement broadcasting such that `u - uprev` returns a CArray.
 # Based on https://docs.julialang.org/en/v1/manual/interfaces/#Selecting-an-appropriate-output-array

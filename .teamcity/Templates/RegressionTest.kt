@@ -40,14 +40,15 @@ open class RegressionTest (platformOs: String) : Template() {
 
         val depot_path = generateJuliaDepotPath(platformOs)
         params {
-            password("MiniO_credential_token", "credentialsJSON:86cbf3e5-724c-437d-9962-7a3f429b0aa2")
+            param("env.MINIO_ACCESS_KEY", "KwKRzscudy3GvRB8BN1Z")
+            password("env.MINIO_SECRET_KEY", "credentialsJSON:86cbf3e5-724c-437d-9962-7a3f429b0aa2")
             param("env.JULIA_DEPOT_PATH", depot_path)
         }
 
         features {
             buildCache {
                 id = "Ribasim${platformOs}Cache"
-                name = "Ribasim ${platformOs} Cache"
+                name = "Ribasim${platformOs}Cache"
                 publish = false
             }
         }
@@ -71,8 +72,6 @@ open class RegressionTest (platformOs: String) : Template() {
                 workingDir = "ribasim"
                 scriptContent = header +
                         """
-                pixi run python utils/get_benchmark.py --secretkey %MiniO_credential_token% benchmark/ benchmark/
-                pixi run python utils/get_benchmark.py --secretkey %MiniO_credential_token% hws_migration_test/ hws_migration_test/
                 pixi run test-ribasim-regression
                 """.trimIndent()
             }

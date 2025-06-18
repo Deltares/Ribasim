@@ -2,7 +2,7 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-from ribasim.config import Allocation, Experimental, Node, Solver
+from ribasim.config import Allocation, Experimental, Interpolation, Node, Solver
 from ribasim.geometry.link import NodeData
 from ribasim.input_base import TableModel
 from ribasim.model import Model
@@ -102,6 +102,7 @@ def subnetwork_model() -> Model:
         crs="EPSG:28992",
         allocation=Allocation(use_allocation=True, timestep=86400),
         experimental=Experimental(concentration=True),
+        interpolation=Interpolation(flow_boundary="linear"),
     )
 
     basin_data: list[TableModel[Any]] = [
@@ -1001,6 +1002,7 @@ def allocation_training_model():
         crs="EPSG:4326",
         allocation=Allocation(use_allocation=True),
         experimental=Experimental(concentration=True),
+        interpolation=Interpolation(flow_boundary="linear"),
     )
 
     flow_boundary_times = pd.date_range(start="2022-01-01", end="2023-01-01", freq="MS")

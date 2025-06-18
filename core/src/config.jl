@@ -120,6 +120,11 @@ const nodetypes = collect(keys(nodekinds))
     evaporate_mass::Bool = true
 end
 
+@option struct Interpolation <: TableOption
+    flow_boundary::String = "block"
+    block_transition_period::Float64 = 0.0
+end
+
 # Separate struct, as basin clashes with nodetype
 @option struct Results <: TableOption
     compression::Bool = true
@@ -165,6 +170,7 @@ end
     ribasim_version::String
     input_dir::String
     results_dir::String
+    interpolation::Interpolation = Interpolation()
     allocation::Allocation = Allocation()
     solver::Solver = Solver()
     logging::Logging = Logging()
@@ -292,11 +298,18 @@ function function_accepts_kwarg(f, kwarg)::Bool
     return false
 end
 
-get_ad_type(solver::Solver) =
-    solver.autodiff ? AutoForwardDiff(; tag = :Ribasim) : AutoFiniteDiff()
+get_ad_type(solver::Solver; specialize = true) =
+    solver.autodiff ?
+    AutoForwardDiff(; chunksize = specialize ? nothing : 1, tag = :Ribasim) :
+    AutoFiniteDiff()
 
 "Create an OrdinaryDiffEqAlgorithm from solver config"
-function algorithm(solver::Solver; u0 = [])::OrdinaryDiffEqAlgorithm
+function algorithm(
+    solver::Solver;
+    u0 = [],
+    specialize = true,
+    keywordargs...,
+)::OrdinaryDiffEqAlgorithm
     algotype = get(algorithms, solver.algorithm, nothing)
     if algotype === nothing
         options = join(keys(algorithms), ", ")
@@ -306,9 +319,7 @@ function algorithm(solver::Solver; u0 = [])::OrdinaryDiffEqAlgorithm
     kwargs = Dict{Symbol, Any}()
 
     if algotype <: OrdinaryDiffEqNewtonAdaptiveAlgorithm
-        kwargs[:nlsolve] = NLNewton(;
-            relax = Ribasim.MonitoredBackTracking(; z_tmp = copy(u0), dz_tmp = copy(u0)),
-        )
+        kwargs[:nlsolve] = NLNewton()
     end
 
     if function_accepts_kwarg(algotype, :step_limiter!)
@@ -316,7 +327,13 @@ function algorithm(solver::Solver; u0 = [])::OrdinaryDiffEqAlgorithm
     end
 
     if function_accepts_kwarg(algotype, :autodiff)
-        kwargs[:autodiff] = get_ad_type(solver)
+        kwargs[:autodiff] = get_ad_type(solver; specialize)
+    end
+
+    for (field, value) in pairs(keywordargs)
+        if function_accepts_kwarg(algotype, field)
+            kwargs[field] = value
+        end
     end
 
     algotype(; kwargs...)

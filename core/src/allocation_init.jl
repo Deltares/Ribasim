@@ -4,10 +4,10 @@ which is a type of sparse arrays that in this case takes NodeID in stead of Int 
 E.g. capacity[(node_a, node_b)] gives the capacity of link (node_a, node_b).
 """
 function get_subnetwork_capacity(
-    p_non_diff::ParametersNonDiff,
+    p_independent::ParametersIndependent,
     subnetwork_id::Int32,
 )::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}}
-    (; graph) = p_non_diff
+    (; graph) = p_independent
     node_ids_subnetwork = graph[].node_ids[subnetwork_id]
 
     dict = Dict{Tuple{NodeID, NodeID}, Float64}()
@@ -28,7 +28,7 @@ function get_subnetwork_capacity(
 
             # Find flow constraints for this link
             if is_flow_constraining(id_src.type)
-                node_src = getfield(p_non_diff, graph[id_src].type)
+                node_src = getfield(p_independent, graph[id_src].type)
 
                 max_flow_rate = node_src.max_flow_rate[id_src.idx]
                 capacity_node_src =
@@ -37,7 +37,7 @@ function get_subnetwork_capacity(
                 capacity_link = min(capacity_link, capacity_node_src)
             end
             if is_flow_constraining(id_dst.type)
-                node_dst = getfield(p_non_diff, graph[id_dst].type)
+                node_dst = getfield(p_independent, graph[id_dst].type)
 
                 max_flow_rate = node_dst.max_flow_rate[id_dst.idx]
                 capacity_node_dst =
@@ -72,10 +72,10 @@ and subnetwork allocation network (defined by their capacity objects).
 """
 function add_subnetwork_connections!(
     capacity::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}},
-    p_non_diff::ParametersNonDiff,
+    p_independent::ParametersIndependent,
     subnetwork_id::Int32,
 )::Nothing
-    (; allocation) = p_non_diff
+    (; allocation) = p_independent
     (; main_network_connections) = allocation
 
     # Add the connections to the main network
@@ -100,11 +100,11 @@ dictionary wrapper. The keys of this dictionary define
 the which links are used in the allocation optimization problem.
 """
 function get_capacity(
-    p_non_diff::ParametersNonDiff,
+    p_independent::ParametersIndependent,
     subnetwork_id::Int32,
 )::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}}
-    capacity = get_subnetwork_capacity(p_non_diff, subnetwork_id)
-    add_subnetwork_connections!(capacity, p_non_diff, subnetwork_id)
+    capacity = get_subnetwork_capacity(p_independent, subnetwork_id)
+    add_subnetwork_connections!(capacity, p_independent, subnetwork_id)
 
     return capacity
 end
@@ -176,10 +176,10 @@ flow over link <= link capacity
 function add_constraints_capacity!(
     problem::JuMP.Model,
     capacity::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}},
-    p_non_diff::ParametersNonDiff,
+    p_independent::ParametersIndependent,
     subnetwork_id::Int32,
 )::Nothing
-    (; main_network_connections) = p_non_diff.allocation
+    (; main_network_connections) = p_independent.allocation
     main_network_source_links = main_network_connections[subnetwork_id]
     F = problem[:F]
 
@@ -291,10 +291,10 @@ sum(flows out of basin) == sum(flows into basin) + flow from storage and vertica
 """
 function add_constraints_conservation_node!(
     problem::JuMP.Model,
-    p_non_diff::ParametersNonDiff,
+    p_independent::ParametersIndependent,
     subnetwork_id::Int32,
 )::Nothing
-    (; graph) = p_non_diff
+    (; graph) = p_independent
     F = problem[:F]
     F_basin_in = problem[:F_basin_in]
     F_basin_out = problem[:F_basin_out]
@@ -405,7 +405,7 @@ end
 Construct the allocation problem for the current subnetwork as a JuMP model.
 """
 function allocation_problem(
-    p_non_diff::ParametersNonDiff,
+    p_independent::ParametersIndependent,
     sources::OrderedDict{Tuple{NodeID, NodeID}, AllocationSource},
     capacity::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}},
     subnetwork_id::Int32,
@@ -427,8 +427,8 @@ function allocation_problem(
     add_variables_flow_buffer!(problem, sources)
 
     # Add constraints to problem
-    add_constraints_conservation_node!(problem, p_non_diff, subnetwork_id)
-    add_constraints_capacity!(problem, capacity, p_non_diff, subnetwork_id)
+    add_constraints_conservation_node!(problem, p_independent, subnetwork_id)
+    add_constraints_capacity!(problem, capacity, p_independent, subnetwork_id)
     add_constraints_boundary_source!(problem, sources)
     add_constraints_main_network_source!(problem, sources)
     add_constraints_user_source!(problem, sources)
@@ -443,17 +443,17 @@ Construct the JuMP.jl problem for allocation.
 """
 function AllocationModel(
     subnetwork_id::Int32,
-    p_non_diff::ParametersNonDiff,
+    p_independent::ParametersIndependent,
     sources::OrderedDict{Tuple{NodeID, NodeID}, AllocationSource},
     Δt_allocation::Float64,
 )::AllocationModel
-    capacity = get_capacity(p_non_diff, subnetwork_id)
+    capacity = get_capacity(p_independent, subnetwork_id)
     source_priorities = unique(source.source_priority for source in values(sources))
     sources = OrderedDict(
         link => source for
         (link, source) in sources if source.subnetwork_id == subnetwork_id
     )
-    problem = allocation_problem(p_non_diff, sources, capacity, subnetwork_id)
+    problem = allocation_problem(p_independent, sources, capacity, subnetwork_id)
     flow = JuMP.Containers.SparseAxisArray(Dict(only(problem[:F].axes) .=> 0.0))
 
     return AllocationModel(;

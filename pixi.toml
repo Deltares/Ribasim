@@ -29,12 +29,19 @@ install = { depends-on = [
     "install-pre-commit",
 ] }
 # Julia
-update-registry-julia = { cmd = "julia --eval='using Pkg; Registry.update()'"}
-update-manifest-julia = { cmd = "julia --project utils/update-manifest.jl"}
-instantiate-julia = { cmd = "julia --project --eval='using Pkg; Pkg.instantiate()'"}
+update-registry-julia = { cmd = "julia --check-bounds=yes --eval='using Pkg; Registry.update()'" }
+update-manifest-julia = { cmd = "julia --check-bounds=yes --project utils/update-manifest.jl" }
+instantiate-julia = { cmd = "julia --project --check-bounds=yes --eval='using Pkg; Pkg.instantiate()'" }
 initialize-julia = { depends-on = [
     "update-registry-julia",
     "instantiate-julia",
+] }
+generate-sbom-ribasim-core = { cmd = "julia --project --check-bounds=yes -- utils/generate-sbom.jl", depends-on = [
+    "instantiate-julia",
+], inputs = [
+    "core/Project.toml",
+], outputs = [
+    "Ribasim.spdx.json",
 ] }
 # Docs
 quartodoc-build = { cmd = "quartodoc build && rm objects.json", cwd = "docs", inputs = [
@@ -48,7 +55,7 @@ quarto-preview = { cmd = "quarto preview docs", depends-on = [
     "generate-testmodels",
 ] }
 quarto-check = { cmd = "quarto check all", depends-on = ["quartodoc-build"] }
-quarto-render = { cmd = "julia --project --eval 'using Pkg; Pkg.build(\"IJulia\")' && quarto render docs --to html --execute", depends-on = [
+quarto-render = { cmd = "julia --project --check-bounds=yes --eval 'using Pkg; Pkg.build(\"IJulia\")' && quarto render docs --to html --execute", depends-on = [
     "quartodoc-build",
     "generate-testmodels",
 ] }
@@ -67,22 +74,39 @@ lint = { depends-on = [
     "mypy-ribasim-qgis",
 ] }
 # Build
-build = { "cmd" = "julia --project build.jl", cwd = "build", depends-on = [
+build = { "cmd" = "julia --project --check-bounds=yes build.jl", cwd = "build", depends-on = [
     "generate-testmodels",
     "initialize-julia",
 ] }
 # Tests
+s3-download = { cmd = "python utils/s3_download.py {{ remote }} {{ local }}", args = [
+    "remote",
+    "local",
+] }
+s3-upload = { cmd = "python utils/s3_upload.py {{ source }} {{ destination }}", args = [
+    "source",
+    "destination",
+] }
 test-ribasim-cli = "pytest --numprocesses=4 --basetemp=build/tests/temp --junitxml=report.xml build/tests"
-test-ribasim-core = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test()'", depends-on = [
+test-ribasim-core = { cmd = "julia --project=core --check-bounds=yes --eval 'using Pkg; Pkg.test(allow_reresolve=false)'", depends-on = [
     "generate-testmodels",
 ] }
-test-ribasim-migration = { cmd = "pytest --numprocesses=4 -m regression python/ribasim/tests" }
-test-ribasim-core-cov = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test(coverage=true, julia_args=[\"--check-bounds=yes\"])'", depends-on = [
+test-ribasim-migration = { cmd = "pytest --numprocesses=4 -m regression python/ribasim/tests", depends-on = [
+    { task = "s3-download", args = [
+        "hws_migration_test/",
+        "hws_migration_test/",
+    ] },
+] }
+test-ribasim-core-cov = { cmd = "julia --project=core --check-bounds=yes --eval 'using Pkg; Pkg.test(allow_reresolve=false, coverage=true)'", depends-on = [
     "generate-testmodels",
 ] }
-test-ribasim-regression = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test(julia_args=[\"--check-bounds=yes\"], test_args=[\"regression\"])'", depends-on = [
+test-ribasim-regression = { cmd = "julia --project=core --check-bounds=yes --eval 'using Pkg; Pkg.test(allow_reresolve=false, test_args=[\"regression\"])'", depends-on = [
     "generate-testmodels",
     "test-ribasim-migration",
+    { task = "s3-download", args = [
+        "benchmark/",
+        "benchmark/",
+    ] },
 ] }
 generate-testmodels = { cmd = "python utils/generate-testmodels.py", inputs = [
     "python/ribasim",
@@ -94,7 +118,12 @@ generate-testmodels = { cmd = "python utils/generate-testmodels.py", inputs = [
 tests = { depends-on = ["lint", "test-ribasim-python", "test-ribasim-core"] }
 delwaq = { cmd = "pytest python/ribasim/tests/test_delwaq.py" }
 gen-delwaq = { cmd = "python python/ribasim/ribasim/delwaq/generate.py" }
-model-integration-test = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test(test_args=[\"integration\"])'" }
+model-integration-test = { cmd = "julia --project=core --check-bounds=yes --eval 'using Pkg; Pkg.test(allow_reresolve=false, test_args=[\"integration\"])'", depends-on = [
+    { task = "s3-download", args = [
+        "hws_2025_4_0/",
+        "hws/",
+    ] },
+] }
 # Codegen
 codegen = { cmd = "julia --project utils/gen_python.jl && ruff format python/ribasim/ribasim/schemas.py python/ribasim/ribasim/validation.py", depends-on = [
     "initialize-julia",
@@ -142,12 +171,16 @@ test-ribasim-qgis-cov = { cmd = "pytest --numprocesses=auto --cov=ribasim_qgis -
 ] }
 mypy-ribasim-qgis = "mypy ribasim_qgis"
 # Run
-ribasim-core = { cmd = "julia --project=core -e 'using Ribasim; Ribasim.main(ARGS)'", depends-on = [
+ribasim-core = { cmd = "julia --project=core --check-bounds=yes -e 'using Ribasim; Ribasim.main(ARGS)'", depends-on = [
     "initialize-julia",
 ] }
-ribasim-core-testmodels = { cmd = "julia --project --threads=4 utils/testmodelrun.jl", depends-on = [
+ribasim-core-testmodels = { cmd = "julia --project --check-bounds=yes --threads=4 utils/testmodelrun.jl", depends-on = [
     "generate-testmodels",
     "initialize-julia",
+] }
+migrate-model = { cmd = "python utils/migrate_model.py {{ input_toml }} {{ output_toml }}", args = [
+    "input_toml",
+    "output_toml",
 ] }
 # Release
 github-release = "python utils/github-release.py"
@@ -162,7 +195,7 @@ scripts = ["utils/unset-ssl-cert.bat"]
 
 [dependencies]
 datacompy = ">=0.16"
-geopandas = ">=1.0"
+geopandas = "1.0.*"
 gh = "*"
 hatch = "*"
 hatchling = "*"
@@ -178,10 +211,11 @@ numpy = ">=1.25, <2.2"
 pandas = ">=2.0"
 pandas-stubs = "*"
 pandera = ">=0.20, <0.23"
-plotly = "5.*"
+plotly = "*"
 pre-commit = "*"
 pyarrow = ">=17.0"
 pydantic = ">=2.0"
+pydantic-settings = "*"
 pyogrio = ">=0.8"
 pyqt-stubs = "*"
 pytest = "*"

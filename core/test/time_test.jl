@@ -30,7 +30,7 @@ end
     @test ispath(toml_path)
     config = Ribasim.Config(toml_path; solver_saveat = 0)
     model = Ribasim.run(toml_path)
-    (; basin) = model.integrator.p.p_non_diff
+    (; basin) = model.integrator.p.p_independent
     n_basin = length(basin.node_id)
     basin_table = DataFrame(Ribasim.basin_table(model))
 
@@ -62,7 +62,7 @@ end
         solver_algorithm = "Euler",
     )
     model = Ribasim.Model(config)
-    (; basin) = model.integrator.p.p_non_diff
+    (; basin) = model.integrator.p.p_independent
     starting_precipitation =
         basin.vertical_flux.precipitation[1] * Ribasim.basin_areas(basin, 1)[end]
     BMI.update_until(model, saveat)
@@ -93,7 +93,7 @@ end
     @test ispath(toml_path)
 
     model = Ribasim.Model(toml_path)
-    (; level_boundary, flow_boundary, basin) = model.integrator.p.p_non_diff
+    (; level_boundary, flow_boundary, basin) = model.integrator.p.p_independent
 
     function test_extrapolation(itp)
         @test itp.extrapolation_left == Periodic
@@ -103,6 +103,11 @@ end
     test_extrapolation(basin.forcing.precipitation[1])
     test_extrapolation(level_boundary.level[1])
     test_extrapolation(flow_boundary.flow_rate[1])
+
+    t_end = Ribasim.seconds_since(model.config.endtime, model.config.starttime)
+    tstops = Vector{Float64}[]
+    Ribasim.get_timeseries_tstops!(tstops, t_end, basin.forcing.precipitation)
+    @test length(only(tstops)) == 3996
 end
 
 @testitem "decrease tolerance" begin
@@ -111,7 +116,7 @@ end
 
     model = Ribasim.run(toml_path)
     @test model.integrator.opts.reltol isa Vector{Float64}
-    @test all(model.integrator.opts.reltol .<= model.integrator.p.p_non_diff.reltol)
+    @test all(model.integrator.opts.reltol .<= model.integrator.p.p_independent.reltol)
     @test model.integrator.u[1] >= 1e11
     @test model.integrator.opts.reltol[1] <= 1e-11
 end
@@ -128,6 +133,6 @@ end
     @test all(isapprox.(storage[1, 2:end], storage[1, end]; rtol = 1e-4))
 
     t_end = model.integrator.t
-    flow_rate_end = model.integrator.p.p_non_diff.pump.flow_rate[1].u[end]
+    flow_rate_end = model.integrator.p.p_independent.pump.flow_rate[1].u[end]
     @test storage[2, end] ≈ storage[2, 1] + 0.5 * flow_rate_end * t_end
 end

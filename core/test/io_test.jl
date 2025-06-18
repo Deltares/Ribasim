@@ -136,8 +136,8 @@ end
 
     config = Ribasim.Config(toml_path)
     model = Ribasim.Model(config)
-    (; p_non_diff, diff_cache) = model.integrator.p
-    (; current_storage) = diff_cache
+    (; p_independent, state_time_dependent_cache) = model.integrator.p
+    (; current_storage) = state_time_dependent_cache
     storage1_begin = copy(current_storage)
     solve!(model)
     storage1_end = current_storage
@@ -156,8 +156,8 @@ end
     end
 
     model = Ribasim.Model(toml_path)
-    (; p_non_diff, diff_cache) = model.integrator.p
-    (; current_storage) = diff_cache
+    (; p_independent, state_time_dependent_cache) = model.integrator.p
+    (; current_storage) = state_time_dependent_cache
     storage2_begin = current_storage
     @test storage1_end ≈ storage2_begin
 end

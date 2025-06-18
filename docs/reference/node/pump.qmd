@@ -54,6 +54,6 @@ $$
 - $Q_\text{set}$ is the Pump's target `flow_rate`.
 - $Q_{\min}$ and $Q_{\max}$ are the Pump `min_flow_rate` and `max_flow_rate`.
 - $\phi$ is the reduction factor, which smoothly reduces flow based on all of these criteria:
-  - The upstream volume is below $10 m^3$.
-  - The upstream level is below `min_upstream_level` + $0.02 m$
-  - The downstream level is above `max_downstream_level` - $0.02 m$
+  - The upstream volume is below the equivalent of a water depth of $10 \;\text{cm}$.
+  - The upstream level is below `min_upstream_level` + $0.02 \;\text{m}$
+  - The downstream level is above `max_downstream_level` - $0.02 \;\text{m}$

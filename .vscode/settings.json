@@ -64,6 +64,9 @@
     ],
     "files.insertFinalNewline": true,
     "julia.executablePath": "julia +1.11.5",
+    "julia.additionalArgs": [
+        "--check-bounds=yes"
+    ],
     "julia.lint.disabledDirs": [
         ".pixi"
     ],

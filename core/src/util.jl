@@ -90,14 +90,14 @@ function get_scalar_interpolation(
 end
 
 """
-Create a valid Qh ScalarInterpolation.
+Create a valid Qh ScalarLinearInterpolation.
 Takes a node_id for validation logging, and a vector of level (h) and flow_rate (Q).
 """
 function qh_interpolation(
     node_id::NodeID,
     level::Vector{Float64},
     flow_rate::Vector{Float64},
-)::ScalarInterpolation
+)::ScalarLinearInterpolation
     errors = false
     n = length(level)
     if n < 2
@@ -159,11 +159,19 @@ The ID can belong to either a Basin or a LevelBoundary.
 du: tells ForwardDiff whether this call is for differentiation or not
 """
 function get_level(p::Parameters, node_id::NodeID, t::Number)::Number
-    (; p_non_diff, diff_cache) = p
+    (; p_independent, state_time_dependent_cache, time_dependent_cache) = p
+
     if node_id.type == NodeType.Basin
-        diff_cache.current_level[node_id.idx]
+        state_time_dependent_cache.current_level[node_id.idx]
     elseif node_id.type == NodeType.LevelBoundary
-        p_non_diff.level_boundary.level[node_id.idx](t)
+        itp = p_independent.level_boundary.level[node_id.idx]
+        eval_time_interp(
+            itp,
+            time_dependent_cache.level_boundary.current_level,
+            node_id.idx,
+            p,
+            t,
+        )
     elseif node_id.type == NodeType.Terminal
         # Terminal is like a bottomless pit.
         # A level at -Inf ensures we don't hit `max_downstream_level` reduction factors.
@@ -297,7 +305,7 @@ function reduction_factor(x::T, threshold::Real)::T where {T <: Real}
 end
 
 function get_low_storage_factor(p::Parameters, id::NodeID)
-    (; current_low_storage_factor) = p.diff_cache
+    (; current_low_storage_factor) = p.state_time_dependent_cache
     if id.type == NodeType.Basin
         current_low_storage_factor[id.idx]
     else
@@ -384,10 +392,10 @@ function get_all_demand_priorities(db::DB, config::Config;)::Vector{Int32}
 end
 
 function get_external_demand_priority_idx(
-    p_non_diff::ParametersNonDiff,
+    p_independent::ParametersIndependent,
     node_id::NodeID,
 )::Int
-    (; graph, level_demand, flow_demand, allocation) = p_non_diff
+    (; graph, level_demand, flow_demand, allocation) = p_independent
     inneighbor_control_ids = inneighbor_labels_type(graph, node_id, LinkType.control)
     if isempty(inneighbor_control_ids)
         return 0
@@ -447,7 +455,7 @@ Get the time interval between (flow) saves
 """
 function get_Δt(integrator)::Float64
     (; p, t, dt) = integrator
-    (; saveat) = p.p_non_diff.graph[]
+    (; saveat) = p.p_independent.graph[]
     if iszero(saveat)
         dt
     elseif isinf(saveat)
@@ -473,8 +481,8 @@ as input. Therefore we set the instantaneous flows as the mean flows as allocati
 """
 function set_initial_allocation_mean_flows!(integrator)::Nothing
     (; u, p, t) = integrator
-    (; p_non_diff) = p
-    (; allocation) = p_non_diff
+    (; p_independent) = p
+    (; allocation) = p_independent
     (; mean_input_flows, mean_realized_flows, allocation_models) = allocation
     (; Δt_allocation) = allocation_models[1]
 
@@ -489,7 +497,7 @@ function set_initial_allocation_mean_flows!(integrator)::Nothing
             if link[1] == link[2]
                 q = get_influx(du, link[1], p)
             else
-                q = get_flow(du, p_non_diff, t, link)
+                q = get_flow(du, p_independent, t, link)
             end
             # Multiply by Δt_allocation as averaging divides by this factor
             # in update_allocation!
@@ -503,7 +511,7 @@ function set_initial_allocation_mean_flows!(integrator)::Nothing
         if link[1] == link[2]
             mean_realized_flows[link] = -u[link[1].idx]
         else
-            q = get_flow(du, p_non_diff, t, link)
+            q = get_flow(du, p_independent, t, link)
             mean_realized_flows[link] = q * Δt_allocation
         end
     end
@@ -518,9 +526,9 @@ function convert_truth_state(boolean_vector)::String
     String(UInt8.(ifelse.(boolean_vector, 'T', 'F')))
 end
 
-function NodeID(type::Symbol, value::Integer, p_non_diff::ParametersNonDiff)::NodeID
+function NodeID(type::Symbol, value::Integer, p_independent::ParametersIndependent)::NodeID
     node_type = NodeType.T(type)
-    node = getfield(p_non_diff, snake_case(type))
+    node = getfield(p_independent, snake_case(type))
     idx = searchsortedfirst(node.node_id, NodeID(node_type, value, 0))
     return NodeID(node_type, value, idx)
 end
@@ -528,42 +536,42 @@ end
 """
 Get the reference to a parameter
 """
-function get_diff_cache_ref(
+function get_cache_ref(
     node_id::NodeID,
     variable::String,
     state_ranges::StateTuple{UnitRange{Int}};
     listen::Bool = true,
-)::Tuple{DiffCacheRef, Bool}
+)::Tuple{CacheRef, Bool}
     errors = false
 
     ref = if node_id.type == NodeType.Basin && variable == "level"
-        DiffCacheRef(; type = DiffCacheType.basin_level, node_id.idx)
+        CacheRef(; type = CacheType.basin_level, node_id.idx)
     elseif variable == "flow_rate" && node_id.type != NodeType.FlowBoundary
         if listen
             if node_id.type ∉ conservative_nodetypes
                 errors = true
                 @error "Cannot listen to flow_rate of $node_id, the node type must be one of $conservative_node_types."
-                DiffCacheRef()
+                CacheRef()
             else
                 # Index in the state vector (inflow)
                 idx = get_state_index(state_ranges, node_id)
-                DiffCacheRef(; idx, from_du = true)
+                CacheRef(; idx, from_du = true)
             end
         else
             type = if node_id.type == NodeType.Pump
-                DiffCacheType.flow_rate_pump
+                CacheType.flow_rate_pump
             elseif node_id.type == NodeType.Outlet
-                DiffCacheType.flow_rate_outlet
+                CacheType.flow_rate_outlet
             else
                 errors = true
                 @error "Cannot set the flow rate of $node_id."
-                DiffCacheType.flow_rate_pump
+                CacheType.flow_rate_pump
             end
-            DiffCacheRef(; type, node_id.idx)
+            CacheRef(; type, node_id.idx)
         end
     else
         # Placeholder to obtain correct type
-        DiffCacheRef()
+        CacheRef()
     end
     return ref, errors
 end
@@ -571,11 +579,11 @@ end
 """
 Set references to all variables that are listened to by discrete/continuous control
 """
-function set_listen_diff_cache_refs!(
-    p_non_diff::ParametersNonDiff,
+function set_listen_cache_refs!(
+    p_independent::ParametersIndependent,
     state_ranges::StateTuple{UnitRange{Int}},
 )::Nothing
-    (; discrete_control, continuous_control) = p_non_diff
+    (; discrete_control, continuous_control) = p_independent
     compound_variable_sets =
         [discrete_control.compound_variables..., continuous_control.compound_variable]
     errors = false
@@ -584,13 +592,13 @@ function set_listen_diff_cache_refs!(
         for compound_variable in compound_variables
             (; subvariables) = compound_variable
             for (j, subvariable) in enumerate(subvariables)
-                ref, error = get_diff_cache_ref(
+                ref, error = get_cache_ref(
                     subvariable.listen_node_id,
                     subvariable.variable,
                     state_ranges,
                 )
                 if !error
-                    subvariables[j] = @set subvariable.diff_cache_ref = ref
+                    subvariables[j] = @set subvariable.cache_ref = ref
                 end
                 errors |= error
             end
@@ -606,9 +614,11 @@ end
 """
 Set references to all variables that are controlled by discrete control
 """
-function set_discrete_controlled_variable_refs!(p_non_diff::ParametersNonDiff)::Nothing
-    for nodetype in propertynames(p_non_diff)
-        node = getfield(p_non_diff, nodetype)
+function set_discrete_controlled_variable_refs!(
+    p_independent::ParametersIndependent,
+)::Nothing
+    for nodetype in propertynames(p_independent)
+        node = getfield(p_independent, nodetype)
         if node isa AbstractParameterNode && hasfield(typeof(node), :control_mapping)
             control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate} =
                 node.control_mapping
@@ -649,7 +659,7 @@ function set_discrete_controlled_variable_refs!(p_non_diff::ParametersNonDiff)::
 end
 
 function set_target_ref!(
-    target_ref::Vector{DiffCacheRef},
+    target_ref::Vector{CacheRef},
     node_id::Vector{NodeID},
     controlled_variable::Vector{String},
     state_ranges::StateTuple{UnitRange{Int}},
@@ -659,7 +669,7 @@ function set_target_ref!(
     for (i, (id, variable)) in enumerate(zip(node_id, controlled_variable))
         controlled_node_id = only(outneighbor_labels_type(graph, id, LinkType.control))
         ref, error =
-            get_diff_cache_ref(controlled_node_id, variable, state_ranges; listen = false)
+            get_cache_ref(controlled_node_id, variable, state_ranges; listen = false)
         target_ref[i] = ref
         errors |= error
     end
@@ -674,12 +684,12 @@ end
 Collect the control mappings of all controllable nodes in
 the DiscreteControl object for easy access
 """
-function collect_control_mappings!(p_non_diff::ParametersNonDiff)::Nothing
-    (; control_mappings) = p_non_diff.discrete_control
+function collect_control_mappings!(p_independent::ParametersIndependent)::Nothing
+    (; control_mappings) = p_independent.discrete_control
 
     for node_type in instances(NodeType.T)
         node_type == NodeType.Terminal && continue
-        node = getfield(p_non_diff, snake_case(node_type))
+        node = getfield(p_independent, snake_case(node_type))
         if hasfield(typeof(node), :control_mapping)
             control_mappings[node_type] = node.control_mapping
         end
@@ -701,8 +711,7 @@ but the derivative is bounded at x = 0.
 """
 function relaxed_root(x, threshold)
     if abs(x) < threshold
-        x_scaled = x / threshold
-        sqrt(threshold) * x_scaled^3 * (9 - 5x_scaled^2) / 4
+        1 / 4 * (x / sqrt(threshold)) * (5 - (x / threshold)^2)
     else
         sign(x) * sqrt(abs(x))
     end
@@ -714,87 +723,10 @@ low_storage_factor_resistance_node(::Parameters, q::GradientTracer, ::NodeID, ::
 relaxed_root(x::GradientTracer, threshold::Real) = x
 get_level_from_storage(basin::Basin, state_idx::Int, storage::GradientTracer) = storage
 
-@kwdef struct MonitoredBackTracking{B, V}
-    linesearch::B = BackTracking()
-    dz_tmp::V = []
-    z_tmp::V = []
-end
-
-"""
-Compute the residual of the non-linear solver, i.e. a measure of the
-error in the solution to the implicit equation defined by the solver algorithm
-"""
-function residual(z::CVector, integrator, nlsolver, f::TF) where {TF}
-    (; uprev, t, p, dt, opts, isdae) = integrator
-    (; tmp, ztmp, γ, α, cache, method) = nlsolver
-    (; ustep, atmp, tstep, k, invγdt, tstep, k, invγdt) = cache
-    @assert !isdae
-    b, ustep2 =
-        _compute_rhs!(tmp, ztmp, ustep, γ, α, tstep, k, invγdt, method, p, dt, f::TF, z)
-    calculate_residuals!(
-        atmp,
-        b,
-        uprev,
-        ustep2,
-        opts.abstol,
-        opts.reltol,
-        opts.internalnorm,
-        t,
-    )
-    ndz = opts.internalnorm(atmp, t)
-    return ndz
-end
-
-"""
-MonitoredBackTracing is a thin wrapper of BackTracking, making sure that
-the BackTracking relaxation is rejected if it results in a residual increase
-"""
-function OrdinaryDiffEqNonlinearSolve.relax!(
-    dz,
-    nlsolver::AbstractNLSolver,
-    integrator::DEIntegrator,
-    f,
-    linesearch::MonitoredBackTracking,
-)
-    (; linesearch, dz_tmp, z_tmp) = linesearch
-    atmp = nlsolver.cache.atmp
-
-    let dz = dz,
-        integrator = integrator,
-        nlsolver = nlsolver,
-        f = f,
-        linesearch = linesearch
-
-        function ϕ(α)
-            @. atmp = nlsolver.z - dz * α
-            residual(atmp, integrator, nlsolver, f)
-        end
-
-        # Store step before relaxation
-        @. dz_tmp = dz
-
-        # Apply relaxation and measure the residual change
-        @. z_tmp = nlsolver.z + dz
-        resid_before = residual(z_tmp, integrator, nlsolver, f)
-        α0 = 1.0
-        ϕ0 = ϕ(0.0)
-        ϵ = sqrt(eps())
-        dϕ0 = (ϕ(ϵ) - ϕ0) / ϵ
-
-        # This linesearch method is specific to BackTracking
-        α, resid_after = linesearch(ϕ, α0, ϕ0, dϕ0)
-        @. z_tmp = nlsolver.z + α * dz
-
-        # If the residual increased due to the relaxation, reject it
-        if resid_after > resid_before
-            @. dz = dz_tmp
-        end
-        return dz
-    end
-end
-
 "Create a NamedTuple of the node IDs per state component in the state order"
-function state_node_ids(p::Union{ParametersNonDiff, NamedTuple})::StateTuple{Vector{NodeID}}
+function state_node_ids(
+    p::Union{ParametersIndependent, NamedTuple},
+)::StateTuple{Vector{NodeID}}
     (;
         tabulated_rating_curve = p.tabulated_rating_curve.node_id,
         pump = p.pump.node_id,
@@ -814,16 +746,16 @@ function count_state_ranges(u_ids::StateTuple{Vector{NodeID}})::StateTuple{UnitR
     StateTuple{UnitRange{Int}}(ranges(map(length, collect(u_ids))))
 end
 
-function build_state_vector(p_non_diff::ParametersNonDiff)
+function build_state_vector(p_independent::ParametersIndependent)
     # It is assumed that the horizontal flow states come first in
-    # p_non_diff.state_inflow_link and p_non_diff.state_outflow_link
-    u_ids = state_node_ids(p_non_diff)
+    # p_independent.state_inflow_link and p_independent.state_outflow_link
+    u_ids = state_node_ids(p_independent)
     state_ranges = count_state_ranges(u_ids)
-    data = zeros(length(p_non_diff.node_id))
+    data = zeros(length(p_independent.node_id))
     u = CVector(data, state_ranges)
-    # Ensure p_non_diff.node_id, state_ranges and u have the same length and order
+    # Ensure p_independent.node_id, state_ranges and u have the same length and order
     ranges = (getproperty(state_ranges, x) for x in propertynames(state_ranges))
-    @assert length(u) == length(p_non_diff.node_id) == mapreduce(length, +, ranges)
+    @assert length(u) == length(p_independent.node_id) == mapreduce(length, +, ranges)
     @assert keys(u_ids) == state_components
     return u
 end
@@ -979,7 +911,7 @@ end
 Check whether any storages are negative given the state u.
 """
 function isoutofdomain(u, p, t)
-    (; current_storage) = p.diff_cache
+    (; current_storage) = p.state_time_dependent_cache
     formulate_storages!(u, p, t)
     any(<(0), current_storage)
 end
@@ -996,14 +928,20 @@ end
 """
 Estimate the minimum reduction factor achieved over the last time step by
 estimating the lowest storage achieved over the last time step. To make sure
-it is an underestimate of the minimum, 2LOW_STORAGE_THRESHOLD is subtracted from this lowest storage.
+it is an underestimate of the minimum, 2low_storage_threshold is subtracted from this lowest storage.
 This is done to not be too strict in clamping the flow in the limiter
 """
-function min_low_storage_factor(storage_now::AbstractVector{T}, storage_prev, id) where {T}
+function min_low_storage_factor(
+    storage_now::AbstractVector{T},
+    storage_prev,
+    basin,
+    id,
+) where {T}
     if id.type == NodeType.Basin
+        low_storage_threshold = basin.low_storage_threshold[id.idx]
         reduction_factor(
-            min(storage_now[id.idx], storage_prev[id.idx]) - 2LOW_STORAGE_THRESHOLD,
-            LOW_STORAGE_THRESHOLD,
+            min(storage_now[id.idx], storage_prev[id.idx]) - 2low_storage_threshold,
+            low_storage_threshold,
         )
     else
         one(T)
@@ -1034,8 +972,11 @@ function min_low_user_demand_level_factor(
     end
 end
 
-function mean_input_flows_subnetwork(p_non_diff::ParametersNonDiff, subnetwork_id::Int32)
-    (; mean_input_flows, subnetwork_ids) = p_non_diff.allocation
+function mean_input_flows_subnetwork(
+    p_independent::ParametersIndependent,
+    subnetwork_id::Int32,
+)
+    (; mean_input_flows, subnetwork_ids) = p_independent.allocation
     subnetwork_idx = searchsortedfirst(subnetwork_ids, subnetwork_id)
     return mean_input_flows[subnetwork_idx]
 end
@@ -1067,18 +1008,74 @@ function find_index(x::Symbol, s::OrderedSet{Symbol})
 end
 
 function get_timeseries_tstops(
-    itp::AbstractInterpolation,
-    endtime::Float64,
-)::Vector{Float64}
+    p_independent::ParametersIndependent,
+    t_end::Float64,
+)::Vector{Vector{Float64}}
+    (;
+        basin,
+        flow_boundary,
+        flow_demand,
+        level_boundary,
+        level_demand,
+        pid_control,
+        tabulated_rating_curve,
+        user_demand,
+        discrete_control,
+    ) = p_independent
+    tstops = Vector{Float64}[]
+
+    # For nodes that have multiple timeseries associated with them defined in the same table
+    # (e.g. multiple Basin forcings and multiple PID terms)
+    # only one timeseries is used as all timeseries use the same timesteps
+    get_timeseries_tstops!(tstops, t_end, basin.forcing.precipitation)
+    get_timeseries_tstops!(tstops, t_end, flow_boundary.flow_rate)
+    get_timeseries_tstops!(tstops, t_end, flow_demand.demand_itp)
+    get_timeseries_tstops!(tstops, t_end, level_boundary.level)
+    get_timeseries_tstops!(tstops, t_end, level_demand.min_level)
+    get_timeseries_tstops!(tstops, t_end, pid_control.target)
+    get_timeseries_tstops!(
+        tstops,
+        t_end,
+        tabulated_rating_curve.current_interpolation_index,
+    )
+    get_timeseries_tstops!(tstops, t_end, user_demand.return_factor)
+    for row in user_demand.demand_itp
+        get_timeseries_tstops!(tstops, t_end, row)
+    end
+    for compound_variables in discrete_control.compound_variables
+        for compound_variable in compound_variables
+            get_timeseries_tstops!(tstops, t_end, compound_variable.greater_than)
+        end
+    end
+
+    return tstops
+end
+
+function get_timeseries_tstops!(
+    tstops::Vector{Vector{Float64}},
+    t_end::Float64,
+    interpolations::AbstractArray{<:AbstractInterpolation},
+)::Nothing
+    for itp in interpolations
+        push!(tstops, get_timeseries_tstops(itp, t_end))
+    end
+    return nothing
+end
+
+function get_timeseries_tstops(itp::AbstractInterpolation, t_end::Float64)::Vector{Float64}
+    # Timepoints where the interpolation transitions to a new section
+    transition_ts = get_transition_ts(itp)
+
     # The length of the period
-    T = last(itp.t) - first(itp.t)
+    T = last(transition_ts) - first(transition_ts)
 
-    # How many periods back from first(itp.t) are needed
-    nT_back = itp.extrapolation_left == Periodic ? Int(ceil((first(itp.t)) / T)) : 0
+    # How many periods back from first(transition_ts) are needed
+    nT_back = itp.extrapolation_left == Periodic ? Int(ceil((first(transition_ts)) / T)) : 0
 
-    # How many periods forward from first(itp.t) are needed
+    # How many periods forward from first(transition_ts) are needed
     nT_forward =
-        itp.extrapolation_right == Periodic ? Int(ceil((endtime - first(itp.t)) / T)) : 0
+        itp.extrapolation_right == Periodic ?
+        Int(ceil((t_end - first(transition_ts)) / T)) : 0
 
     tstops = Float64[]
 
@@ -1086,12 +1083,12 @@ function get_timeseries_tstops(
         # Append the timepoints of the interpolation shifted by an integer amount of
         # periods to the tstops, filtering out values outside the simulation period
         if i == nT_forward
-            append!(tstops, filter(t -> 0 ≤ t ≤ endtime, itp.t .+ i * T))
+            append!(tstops, filter(t -> 0 ≤ t ≤ t_end, transition_ts .+ i * T))
         else
-            # Because of floating point errors last(itp.t) = first(itp.t) + T
+            # Because of floating point errors last(transition_ts) = first(transition_ts) + T
             # does not always hold exactly, so to prevent that these become separate
             # very close tstops we only use the last time point of the period in the last period
-            append!(tstops, filter(t -> 0 ≤ t ≤ endtime, itp.t[1:(end - 1)] .+ i * T))
+            append!(tstops, filter(t -> 0 ≤ t ≤ t_end, transition_ts[1:(end - 1)] .+ i * T))
         end
     end
 
@@ -1099,10 +1096,10 @@ function get_timeseries_tstops(
 end
 
 """Get the exponential time stops for decreasing the tolerance."""
-function get_log_tstops(starttime, endtime)::Vector{Float64}
+function get_log_tstops(starttime, t_end)::Vector{Float64}
     log_tstops = Float64[]
     t = 60 * 60
-    while Second(t) <= round(endtime - starttime, Second)
+    while Second(t) <= round(t_end - starttime, Second)
         push!(log_tstops, t)
         t *= 2.0
     end
@@ -1118,4 +1115,64 @@ function ranges(lengths::Vector{<:Integer})
     # standardize empty ranges to 1:0 for easier testing
     replace!(x -> isempty(x) ? (1:0) : x, ranges)
     return ranges
+end
+
+function get_interpolation_vec(interpolation_type::String, node_id::Vector{NodeID})::Vector
+    type = if interpolation_type == "linear"
+        ScalarLinearInterpolation
+    elseif interpolation_type == "block"
+        ScalarBlockInterpolation
+    else
+        error("Invalid interpolation type specified: $interpolation_type.")
+    end
+    return Vector{type}(undef, length(node_id))
+end
+
+"""
+Check whether the inputs u and t are different from the previous call of water_balance! and
+update the boolean flags in p_mutable. In several parts of the calculations in water_balance!,
+caches are only updated if the data they depend on is different from the previous water_balance! call.
+"""
+function check_new_input!(p::Parameters, u::CVector, t::Number)::Nothing
+    (; state_time_dependent_cache, time_dependent_cache, p_mutable) = p
+    (; u_prev_call) = state_time_dependent_cache
+    (; t_prev_call) = time_dependent_cache
+
+    p_mutable.new_t =
+        !isassigned(t_prev_call, 1) || (
+            t != t_prev_call[1] &&
+            ForwardDiff.partials(t) == ForwardDiff.partials(t_prev_call[1])
+        )
+    if p_mutable.new_t
+        time_dependent_cache.t_prev_call[1] = t
+    end
+
+    p_mutable.new_u =
+        any(i -> !isassigned(u_prev_call, i), eachindex(u)) || any(
+            i -> !(
+                u[i] == u_prev_call[i] &&
+                ForwardDiff.partials(u[i]) == ForwardDiff.partials(u_prev_call[i])
+            ),
+            eachindex(u),
+        )
+    if p_mutable.new_u
+        state_time_dependent_cache.u_prev_call .= u
+    end
+    return nothing
+end
+
+function eval_time_interp(
+    itp::AbstractInterpolation,
+    cache::Vector,
+    idx::Int,
+    p::Parameters,
+    t::Number,
+)
+    if p.p_mutable.new_t
+        val = itp(t)
+        cache[idx] = val
+        return val
+    else
+        return cache[idx]
+    end
 end
