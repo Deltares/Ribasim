@@ -12,7 +12,7 @@ crs = "EPSG:4326"      # required
 input_dir = "."         # required
 results_dir = "results" # required
 
-ribasim_version = "2025.3.0" # required
+ribasim_version = "2025.4.0" # required
 
 # Specific tables can also go into Arrow files rather than the database.
 # For large tables this can benefit from better compressed file sizes.
