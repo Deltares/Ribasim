@@ -57,7 +57,7 @@ open class IntegrationTest (platformOs: String) : Template() {
         val header = generateIntegrationTestHeader(platformOs)
 
         dependencies {
-            artifacts(AbsoluteId("${platformOs}_GenerateCache")) {
+            artifacts(AbsoluteId("Ribasim_${platformOs}_GenerateCache")) {
                 buildRule = lastSuccessful()
                 artifactRules = "cache.zip => .julia"
             }

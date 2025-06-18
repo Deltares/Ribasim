@@ -44,7 +44,7 @@ open class Build(platformOs: String) : Template() {
         }
 
         dependencies {
-            artifacts(AbsoluteId("${platformOs}_GenerateCache")) {
+            artifacts(AbsoluteId("Ribasim_${platformOs}_GenerateCache")) {
                 buildRule = lastSuccessful()
                 artifactRules = "cache.zip => .julia"
             }
