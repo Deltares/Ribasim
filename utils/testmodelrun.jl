@@ -17,11 +17,11 @@ function main(ARGS)
     n_fail = 0
     lk = ReentrantLock()
     failed = String[]
+    skipped_allocation = String[]
 
     Threads.@threads for toml_path in toml_paths
         modelname = basename(dirname(toml_path))
 
-        skipped_allocation = String[]
         if Ribasim.Config(toml_path).experimental.allocation
             push!(skipped_allocation, modelname)
             continue
