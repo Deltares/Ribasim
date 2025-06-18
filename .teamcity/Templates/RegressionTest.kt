@@ -59,7 +59,7 @@ open class RegressionTest (platformOs: String) : Template() {
         dependencies {
             artifacts(AbsoluteId("Ribasim_${platformOs}_GenerateCache")) {
                 buildRule = lastSuccessful()
-                artifactRules = "cache.zip => .julia"
+                artifactRules = "cache.zip!** => %teamcity.build.checkoutDir%/.julia"
             }
         }
 
