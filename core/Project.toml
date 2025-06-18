@@ -122,5 +122,9 @@ TestItemRunner = "f8b46487-2199-4994-9208-9a1283c18c0a"
 [preferences.LinearSolve]
 LoadMKL_JLL = false
 
+[preferences.Ribasim]
+precompile_workload = false
+specialize = false
+
 [targets]
 test = ["Aqua", "CSV", "DataFrames", "IOCapture", "Logging", "Statistics", "TerminalLoggers", "Test", "TOML", "TestItemRunner"]

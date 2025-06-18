@@ -8,6 +8,11 @@ set_preferences!(
     "precompile_workload" => true;
     force = true,
 )
+set_preferences!(
+    UUID("aac5e3d9-0b8f-4d4f-8241-b1a7a9632635"),  # Ribasim
+    "specialize" => true;
+    force = true,
+)
 using Ribasim
 
 toml_path = normpath(@__DIR__, "../generated_testmodels/basic/ribasim.toml")
@@ -18,5 +23,10 @@ toml_path = normpath(@__DIR__, "../generated_testmodels/basic/ribasim.toml")
 set_preferences!(
     UUID("aac5e3d9-0b8f-4d4f-8241-b1a7a9632635"),  # Ribasim
     "precompile_workload" => missing;
+    force = true,
+)
+set_preferences!(
+    UUID("aac5e3d9-0b8f-4d4f-8241-b1a7a9632635"),  # Ribasim
+    "specialize" => missing;
     force = true,
 )
