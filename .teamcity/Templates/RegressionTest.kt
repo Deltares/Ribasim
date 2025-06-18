@@ -57,7 +57,7 @@ open class RegressionTest (platformOs: String) : Template() {
         val header = generateRegressionTestHeader(platformOs)
 
         dependencies {
-            artifacts(AbsoluteId("GenerateCache${platformOs}")) {
+            artifacts(AbsoluteId("${platformOs}_GenerateCache")) {
                 buildRule = lastSuccessful()
                 artifactRules = "cache.zip => .julia"
             }
