@@ -23,7 +23,7 @@ function main(ARGS)
 
         skipped_allocation = String[]
         if Ribasim.Config(toml_path).experimental.allocation
-            push!(skipped_allocation, model_name)
+            push!(skipped_allocation, modelname)
         end
 
         ret_code = Ribasim.main(toml_path)
