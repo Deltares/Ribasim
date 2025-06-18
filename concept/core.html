@@ -356,10 +356,10 @@ window.Quarto = {
 </section>
 <section id="sec-nested-allocation" class="level1" data-number="2">
 <h1 data-number="2"><span class="header-section-number">2</span> Nested allocation</h1>
-<p>Since water systems may be extensive, like in the Netherlands, Ribasim models may become large networks with over ten thousand nodes. To keep a proper functioning allocation concept under these circumstances, the modeller can decompose the network domain into a main network and multiple sub-networks. The allocation will then be conducted in three steps:</p>
+<p>Since water systems may be extensive, like in the Netherlands, Ribasim models may become large networks with over ten thousand nodes. To keep a proper functioning allocation concept under these circumstances, the modeller can decompose the network domain into a primary network and multiple sub-networks. The allocation will then be conducted in three steps:</p>
 <ol type="1">
-<li>conduct an inventory of demands from the sub-networks to inlets from the main network,</li>
-<li>allocate the available water in the main network to the subnetworks inlets,</li>
+<li>conduct an inventory of demands from the sub-networks to inlets from the primary network,</li>
+<li>allocate the available water in the primary network to the subnetworks inlets,</li>
 <li>allocate the assigned water within each subnetwork to the individual demand nodes.</li>
 </ol>
 <p>The demand nodes then will request this updated demand from the rule-based simulation. Whether this updated demand is indeed abstracted depends on all dry-fall control mechanism implemented in the rule-based simulation.</p>

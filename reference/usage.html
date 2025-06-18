@@ -465,43 +465,43 @@ window.Quarto = {
 <span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="dt">block_transition_period</span> <span class="op">=</span> <span class="dv">0</span>  <span class="co"># optional, default 0</span></span>
 <span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a><span class="kw">[allocation]</span></span>
-<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a><span class="dt">timestep</span> <span class="op">=</span> <span class="dv">86400</span>                                 <span class="co"># optional (required if use_allocation = true), default 86400</span></span>
-<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a><span class="dt">use_allocation</span> <span class="op">=</span> <span class="cn">false</span>                           <span class="co"># optional, default false</span></span>
-<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a><span class="kw">[allocation.source_priority]</span></span>
-<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a><span class="dt">user_demand</span> <span class="op">=</span> <span class="dv">1000</span>       <span class="co"># optional, default 1000</span></span>
-<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a><span class="dt">boundary</span> <span class="op">=</span> <span class="dv">2000</span>          <span class="co"># optional, default 2000</span></span>
-<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a><span class="dt">level_demand</span> <span class="op">=</span> <span class="dv">3000</span>      <span class="co"># optional, default 3000</span></span>
-<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a><span class="dt">flow_demand</span> <span class="op">=</span> <span class="dv">4000</span>       <span class="co"># optional, default 4000</span></span>
-<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a><span class="dt">subnetwork_inlet</span> <span class="op">=</span> <span class="dv">5000</span>  <span class="co"># optional, default 5000</span></span>
-<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a><span class="kw">[solver]</span></span>
-<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a><span class="dt">algorithm</span> <span class="op">=</span> <span class="st">"QNDF"</span>  <span class="co"># optional, default "QNDF"</span></span>
-<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a><span class="dt">saveat</span> <span class="op">=</span> <span class="dv">86400</span>      <span class="co"># optional, default 86400, 0 saves every timestep, inf saves only at start- and endtime</span></span>
-<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a><span class="dt">dt</span> <span class="op">=</span> <span class="fl">60.0</span>           <span class="co"># optional, remove for adaptive time stepping</span></span>
-<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a><span class="dt">dtmin</span> <span class="op">=</span> <span class="fl">0.0</span>         <span class="co"># optional, default 0.0</span></span>
-<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a><span class="dt">dtmax</span> <span class="op">=</span> <span class="fl">0.0</span>         <span class="co"># optional, default length of simulation</span></span>
-<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a><span class="dt">force_dtmin</span> <span class="op">=</span> <span class="cn">false</span> <span class="co"># optional, default false</span></span>
-<span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a><span class="dt">abstol</span> <span class="op">=</span> <span class="fl">1e-5</span>       <span class="co"># optional, default 1e-5</span></span>
-<span id="cb1-45"><a href="#cb1-45" aria-hidden="true" tabindex="-1"></a><span class="dt">reltol</span> <span class="op">=</span> <span class="fl">1e-5</span>       <span class="co"># optional, default 1e-5</span></span>
-<span id="cb1-46"><a href="#cb1-46" aria-hidden="true" tabindex="-1"></a><span class="dt">water_balance_abstol</span> <span class="op">=</span> <span class="fl">1e-3</span> <span class="co"># optional, default 1e-3</span></span>
-<span id="cb1-47"><a href="#cb1-47" aria-hidden="true" tabindex="-1"></a><span class="dt">water_balance_reltol</span> <span class="op">=</span> <span class="fl">1e-2</span> <span class="co"># optional, default 1e-2</span></span>
-<span id="cb1-48"><a href="#cb1-48" aria-hidden="true" tabindex="-1"></a><span class="dt">maxiters</span> <span class="op">=</span> <span class="fl">1e9</span>      <span class="co"># optional, default 1e9</span></span>
-<span id="cb1-49"><a href="#cb1-49" aria-hidden="true" tabindex="-1"></a><span class="dt">sparse</span> <span class="op">=</span> <span class="cn">true</span>       <span class="co"># optional, default true</span></span>
-<span id="cb1-50"><a href="#cb1-50" aria-hidden="true" tabindex="-1"></a><span class="dt">autodiff</span> <span class="op">=</span> <span class="cn">true</span>     <span class="co"># optional, default true</span></span>
-<span id="cb1-51"><a href="#cb1-51" aria-hidden="true" tabindex="-1"></a><span class="dt">evaporate_mass</span> <span class="op">=</span> <span class="cn">true</span>  <span class="co"># optional, default true to simulate a correct mass balance</span></span>
-<span id="cb1-52"><a href="#cb1-52" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-53"><a href="#cb1-53" aria-hidden="true" tabindex="-1"></a><span class="kw">[logging]</span></span>
-<span id="cb1-54"><a href="#cb1-54" aria-hidden="true" tabindex="-1"></a><span class="co"># defines the logging level of Ribasim</span></span>
-<span id="cb1-55"><a href="#cb1-55" aria-hidden="true" tabindex="-1"></a><span class="dt">verbosity</span> <span class="op">=</span> <span class="st">"info"</span> <span class="co"># optional, default "info", can otherwise be "debug", "warn" or "error"</span></span>
-<span id="cb1-56"><a href="#cb1-56" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-57"><a href="#cb1-57" aria-hidden="true" tabindex="-1"></a><span class="kw">[results]</span></span>
-<span id="cb1-58"><a href="#cb1-58" aria-hidden="true" tabindex="-1"></a><span class="dt">compression</span> <span class="op">=</span> <span class="cn">true</span>    <span class="co"># optional, default true, using zstd compression</span></span>
-<span id="cb1-59"><a href="#cb1-59" aria-hidden="true" tabindex="-1"></a><span class="dt">compression_level</span> <span class="op">=</span> <span class="dv">6</span> <span class="co"># optional, default 6</span></span>
-<span id="cb1-60"><a href="#cb1-60" aria-hidden="true" tabindex="-1"></a><span class="dt">subgrid</span> <span class="op">=</span> <span class="cn">false</span>       <span class="co"># optional, default false</span></span>
-<span id="cb1-61"><a href="#cb1-61" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-62"><a href="#cb1-62" aria-hidden="true" tabindex="-1"></a><span class="kw">[experimental]</span></span>
-<span id="cb1-63"><a href="#cb1-63" aria-hidden="true" tabindex="-1"></a><span class="co"># Experimental features, disabled by default</span></span>
-<span id="cb1-64"><a href="#cb1-64" aria-hidden="true" tabindex="-1"></a><span class="dt">concentration</span> <span class="op">=</span> <span class="cn">false</span> <span class="co"># tracer calculations</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a><span class="dt">timestep</span> <span class="op">=</span> <span class="dv">86400</span>         <span class="co"># optional (required if experimental.allocation = true), default 86400</span></span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a><span class="kw">[allocation.source_priority]</span></span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a><span class="dt">user_demand</span> <span class="op">=</span> <span class="dv">1000</span>       <span class="co"># optional, default 1000</span></span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a><span class="dt">flow_boundary</span> <span class="op">=</span> <span class="dv">2000</span>     <span class="co"># optional, default 2000</span></span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a><span class="dt">level_boundary</span> <span class="op">=</span> <span class="dv">3000</span>    <span class="co"># optional, default 3000</span></span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a><span class="dt">basin</span> <span class="op">=</span> <span class="dv">4000</span>             <span class="co"># optional, default 4000</span></span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a><span class="dt">subnetwork_inlet</span> <span class="op">=</span> <span class="dv">5000</span>  <span class="co"># optional, default 5000</span></span>
+<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a><span class="kw">[solver]</span></span>
+<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a><span class="dt">algorithm</span> <span class="op">=</span> <span class="st">"QNDF"</span>  <span class="co"># optional, default "QNDF"</span></span>
+<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a><span class="dt">saveat</span> <span class="op">=</span> <span class="dv">86400</span>      <span class="co"># optional, default 86400, 0 saves every timestep, inf saves only at start- and endtime</span></span>
+<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a><span class="dt">dt</span> <span class="op">=</span> <span class="fl">60.0</span>           <span class="co"># optional, remove for adaptive time stepping</span></span>
+<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a><span class="dt">dtmin</span> <span class="op">=</span> <span class="fl">0.0</span>         <span class="co"># optional, default 0.0</span></span>
+<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a><span class="dt">dtmax</span> <span class="op">=</span> <span class="fl">0.0</span>         <span class="co"># optional, default length of simulation</span></span>
+<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a><span class="dt">force_dtmin</span> <span class="op">=</span> <span class="cn">false</span> <span class="co"># optional, default false</span></span>
+<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a><span class="dt">abstol</span> <span class="op">=</span> <span class="fl">1e-5</span>       <span class="co"># optional, default 1e-5</span></span>
+<span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a><span class="dt">reltol</span> <span class="op">=</span> <span class="fl">1e-5</span>       <span class="co"># optional, default 1e-5</span></span>
+<span id="cb1-45"><a href="#cb1-45" aria-hidden="true" tabindex="-1"></a><span class="dt">water_balance_abstol</span> <span class="op">=</span> <span class="fl">1e-3</span> <span class="co"># optional, default 1e-3</span></span>
+<span id="cb1-46"><a href="#cb1-46" aria-hidden="true" tabindex="-1"></a><span class="dt">water_balance_reltol</span> <span class="op">=</span> <span class="fl">1e-2</span> <span class="co"># optional, default 1e-2</span></span>
+<span id="cb1-47"><a href="#cb1-47" aria-hidden="true" tabindex="-1"></a><span class="dt">maxiters</span> <span class="op">=</span> <span class="fl">1e9</span>      <span class="co"># optional, default 1e9</span></span>
+<span id="cb1-48"><a href="#cb1-48" aria-hidden="true" tabindex="-1"></a><span class="dt">sparse</span> <span class="op">=</span> <span class="cn">true</span>       <span class="co"># optional, default true</span></span>
+<span id="cb1-49"><a href="#cb1-49" aria-hidden="true" tabindex="-1"></a><span class="dt">autodiff</span> <span class="op">=</span> <span class="cn">true</span>     <span class="co"># optional, default true</span></span>
+<span id="cb1-50"><a href="#cb1-50" aria-hidden="true" tabindex="-1"></a><span class="dt">evaporate_mass</span> <span class="op">=</span> <span class="cn">true</span>  <span class="co"># optional, default true to simulate a correct mass balance</span></span>
+<span id="cb1-51"><a href="#cb1-51" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-52"><a href="#cb1-52" aria-hidden="true" tabindex="-1"></a><span class="kw">[logging]</span></span>
+<span id="cb1-53"><a href="#cb1-53" aria-hidden="true" tabindex="-1"></a><span class="co"># defines the logging level of Ribasim</span></span>
+<span id="cb1-54"><a href="#cb1-54" aria-hidden="true" tabindex="-1"></a><span class="dt">verbosity</span> <span class="op">=</span> <span class="st">"info"</span> <span class="co"># optional, default "info", can otherwise be "debug", "warn" or "error"</span></span>
+<span id="cb1-55"><a href="#cb1-55" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-56"><a href="#cb1-56" aria-hidden="true" tabindex="-1"></a><span class="kw">[results]</span></span>
+<span id="cb1-57"><a href="#cb1-57" aria-hidden="true" tabindex="-1"></a><span class="dt">compression</span> <span class="op">=</span> <span class="cn">true</span>    <span class="co"># optional, default true, using zstd compression</span></span>
+<span id="cb1-58"><a href="#cb1-58" aria-hidden="true" tabindex="-1"></a><span class="dt">compression_level</span> <span class="op">=</span> <span class="dv">6</span> <span class="co"># optional, default 6</span></span>
+<span id="cb1-59"><a href="#cb1-59" aria-hidden="true" tabindex="-1"></a><span class="dt">subgrid</span> <span class="op">=</span> <span class="cn">false</span>       <span class="co"># optional, default false</span></span>
+<span id="cb1-60"><a href="#cb1-60" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-61"><a href="#cb1-61" aria-hidden="true" tabindex="-1"></a><span class="kw">[experimental]</span></span>
+<span id="cb1-62"><a href="#cb1-62" aria-hidden="true" tabindex="-1"></a><span class="co"># Experimental features, disabled by default</span></span>
+<span id="cb1-63"><a href="#cb1-63" aria-hidden="true" tabindex="-1"></a><span class="dt">concentration</span> <span class="op">=</span> <span class="cn">false</span> <span class="co"># tracer calculations</span></span>
+<span id="cb1-64"><a href="#cb1-64" aria-hidden="true" tabindex="-1"></a><span class="dt">allocation</span> <span class="op">=</span> <span class="cn">false</span> <span class="co"># allocation layer, replaced by 'first come first serve' when inactive</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <section id="sec-solver-settings" class="level2" data-number="1.1">
 <h2 data-number="1.1" class="anchored" data-anchor-id="sec-solver-settings"><span class="header-section-number">1.1</span> Solver settings</h2>
 <p>The solver section in the configuration file is entirely optional, since we aim to use defaults that will generally work well. Common reasons to modify the solver settings are to adjust the calculation or result stepsizes: <code>dt</code>, and <code>saveat</code>. If your model does not converge, or your performance is lower than expected, it can help to adjust other solver settings as well.</p>
@@ -521,7 +521,7 @@ window.Quarto = {
 </section>
 <section id="allocation-settings" class="level2" data-number="1.3">
 <h2 data-number="1.3" class="anchored" data-anchor-id="allocation-settings"><span class="header-section-number">1.3</span> Allocation settings</h2>
-<p>There are the following allocation settings: - <code>use_allocation</code>: A boolean which says whether allocation should be used or not; - <code>timestep</code>: A float value in seconds which dictates the update interval for allocations; - <code>source_priority</code>: An integer per source type for the allocation algorithm: <code>user_demand</code>, <code>boundary</code>, <code>level_demand</code>, <code>flow_demand</code>, <code>subnetwork_inlet</code>. Flow boundaries and level boundaries are combined in the single category <code>boundary</code>. By default all nodes of the same type have the same source priority, so to obtain a strict source ordering the sources are sorted by node ID for each source priority within a subnetwork. When no default source priorities are specified, default defaults are applied (see the TOML example above).</p>
+<p>There are the following allocation settings: - <code>timestep</code>: A float value in seconds which dictates the update interval for allocations; - <code>source_priority</code>: An integer per source type for the allocation algorithm: <code>user_demand</code>, <code>boundary</code>, <code>level_demand</code>, <code>flow_demand</code>, <code>subnetwork_inlet</code>. Flow boundaries and level boundaries are combined in the single category <code>boundary</code>. By default all nodes of the same type have the same source priority, so to obtain a strict source ordering the sources are sorted by node ID for each source priority within a subnetwork. When no default source priorities are specified, default defaults are applied (see the TOML example above).</p>
 </section>
 <section id="results-settings" class="level2" data-number="1.4">
 <h2 data-number="1.4" class="anchored" data-anchor-id="results-settings"><span class="header-section-number">1.4</span> Results settings</h2>
@@ -669,6 +669,11 @@ Important
 <td>concentration</td>
 <td>Bool</td>
 <td>Whether to enable tracer calculations or not.</td>
+</tr>
+<tr class="even">
+<td>allocation</td>
+<td>Bool</td>
+<td>Whether to activate the activation layer. Replaced by ‘first come first serve’ when deactivated</td>
 </tr>
 </tbody>
 </table>
@@ -1099,10 +1104,10 @@ Note
 </section>
 <section id="allocation-flow---allocation_flow.arrow" class="level2" data-number="5.6">
 <h2 data-number="5.6" class="anchored" data-anchor-id="allocation-flow---allocation_flow.arrow"><span class="header-section-number">5.6</span> Allocation flow - <code>allocation_flow.arrow</code></h2>
-<p>The allocation flow table contains results of the optimized allocation flow on every link in the model that is part of a subnetwork, for each time an optimization problem is solved (see also <a href="../concept/allocation.html#the-high-level-algorithm">here</a>). If in the model a main network and subnetwork(s) are specified, there are 3 different types of optimization for the subnetwork: The column <code>optimization_type</code> provides the distinction between these optimization types.</p>
+<p>The allocation flow table contains results of the optimized allocation flow on every link in the model that is part of a subnetwork, for each time an optimization problem is solved (see also <a href="../concept/allocation.html#the-high-level-algorithm">here</a>). If in the model a primary network and subnetwork(s) are specified, there are 3 different types of optimization for the subnetwork: The column <code>optimization_type</code> provides the distinction between these optimization types.</p>
 <ul>
 <li><code>internal_sources</code>: first it will try using local sources internal to the subnetwork</li>
-<li><code>collect_demands</code>: collecting its total demand per priority (for allocating flow from the main network to the subnetwork)</li>
+<li><code>collect_demands</code>: collecting its total demand per priority (for allocating flow from the primary network to the subnetwork)</li>
 <li><code>allocate</code>: allocating flow within the subnetwork</li>
 </ul>
 <table class="caption-top table">

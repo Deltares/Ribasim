@@ -284,7 +284,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#data-processing" id="toc-data-processing" class="nav-link" data-scroll-target="#data-processing"><span class="header-section-number">2.1</span> Data processing</a>
   <ul class="collapse">
   <li><a href="#deriving-link-capacities" id="toc-deriving-link-capacities" class="nav-link" data-scroll-target="#deriving-link-capacities"><span class="header-section-number">2.1.1</span> Deriving link capacities</a></li>
-  <li><a href="#handling-the-connection-between-the-main-network-and-subnetworks" id="toc-handling-the-connection-between-the-main-network-and-subnetworks" class="nav-link" data-scroll-target="#handling-the-connection-between-the-main-network-and-subnetworks"><span class="header-section-number">2.1.2</span> Handling the connection between the main network and subnetworks</a></li>
+  <li><a href="#handling-the-connection-between-the-primary-network-and-subnetworks" id="toc-handling-the-connection-between-the-primary-network-and-subnetworks" class="nav-link" data-scroll-target="#handling-the-connection-between-the-primary-network-and-subnetworks"><span class="header-section-number">2.1.2</span> Handling the connection between the primary network and subnetworks</a></li>
   </ul></li>
   <li><a href="#sec-optimization-problem" id="toc-sec-optimization-problem" class="nav-link" data-scroll-target="#sec-optimization-problem"><span class="header-section-number">2.2</span> The optimization problem</a>
   <ul class="collapse">
@@ -366,7 +366,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <ul>
 <li>Updating the mean flows. The mean flow data is used for output and to determine the capacity of sources in the allocation model.</li>
 <li><a href="../concept/allocation.html#sec-high-level-algorithm">“Collect demand”</a>. This step initializes and solves the optimization problems that collects the demand from the subnetworks.</li>
-<li><a href="../concept/allocation.html#sec-high-level-algorithm">“Allocate”</a>. This step solves the optimization problems that allocates the demand. For the main network this step allocates to the subnetworks and demand nodes that are in the main network. For the subnetwork this step allocates to the demand nodes.</li>
+<li><a href="../concept/allocation.html#sec-high-level-algorithm">“Allocate”</a>. This step solves the optimization problems that allocates the demand. For the primary network this step allocates to the subnetworks and demand nodes that are in the primary network. For the subnetwork this step allocates to the demand nodes.</li>
 </ul>
 <p>The steps “collect demand” and “allocate” correspond to the function <code>collect_demand!</code> and <code>allocate_demands!</code> in the code.</p>
 <p>The iteration stops when it reaches the end time of the simulation.</p>
@@ -410,9 +410,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Link capacities are important constraints in the optimization problem. They set the limit for the flows between the nodes. Therefore, the capacities of all the flow links in the subnetworks are obtained. The capacity of an link is given by the smallest <code>max_flow_rate</code> of the nodes connected to the links if these nodes have such a value. The capacities are stored in a <code>SparseArray</code> object from <code>JuMP.jl</code> called <code>capacities</code>, indexed by a tuple of node IDs.</p>
 <p>The function <code>get_capacity</code> obtains the capacities of the links within a subnetwork given a subnetwork ID and the Ribasim model parameters <code>p</code>, if the sources of the subnetwork are valid (checked in function <code>valid_sources</code>).</p>
 </section>
-<section id="handling-the-connection-between-the-main-network-and-subnetworks" class="level3" data-number="2.1.2">
-<h3 data-number="2.1.2" class="anchored" data-anchor-id="handling-the-connection-between-the-main-network-and-subnetworks"><span class="header-section-number">2.1.2</span> Handling the connection between the main network and subnetworks</h3>
-<p>The function <code>find_subnetwork_connetions</code> finds the links that connected the main network to a subnetwork. <code>subnetwork_demands</code> and <code>subnetwork_allocateds</code> will be created, which stores demands and allocated values for subnetworks as a whole. <code>main_network_connections</code> is a dictionary of links that connect a subnetwork with the main network.</p>
+<section id="handling-the-connection-between-the-primary-network-and-subnetworks" class="level3" data-number="2.1.2">
+<h3 data-number="2.1.2" class="anchored" data-anchor-id="handling-the-connection-between-the-primary-network-and-subnetworks"><span class="header-section-number">2.1.2</span> Handling the connection between the primary network and subnetworks</h3>
+<p>The function <code>find_subnetwork_connetions</code> finds the links that connected the primary network to a subnetwork. <code>subnetwork_demands</code> and <code>subnetwork_allocateds</code> will be created, which stores demands and allocated values for subnetworks as a whole. <code>primary_network_connections</code> is a dictionary of links that connect a subnetwork with the primary network.</p>
 </section>
 </section>
 <section id="sec-optimization-problem" class="level2" data-number="2.2">
@@ -433,7 +433,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>node_ids_basin <span class="op">=</span> [</span>
 <span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    node_id for</span>
 <span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    node_id <span class="kw">in</span> graph[].node_ids[subnetwork_id] if graph[node_id].type <span class="op">==</span> <span class="op">:</span>basin <span class="op">&amp;&amp;</span></span>
-<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">has_external_demand</span>(graph, node_id, <span class="op">:</span>level_demand)[<span class="fl">1</span>]</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">has_external_flow_demand</span>(graph, node_id, <span class="op">:</span>level_demand)[<span class="fl">1</span>]</span>
 <span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>]</span>
 <span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>problem[<span class="op">:</span>F_basin_in] <span class="op">=</span></span>
 <span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    JuMP.<span class="pp">@variable</span>(problem, F_basin_in[node_id <span class="op">=</span> node_ids_basin,] <span class="op">&gt;=</span> <span class="fl">0.0</span>)</span>
@@ -466,9 +466,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="setting-up-the-objective-function" class="level3" data-number="3.1.1">
 <h3 data-number="3.1.1" class="anchored" data-anchor-id="setting-up-the-objective-function"><span class="header-section-number">3.1.1</span> Setting up the objective function</h3>
 <p>The optimization objective is the sum of three quadratic error terms. The quadratic terms are defined with the <code>add_objective_term</code> function.</p>
-<p>Function <code>set_objective_priority</code> sets the objective function based on the main network for a given priority with the following steps:</p>
+<p>Function <code>set_objective_priority</code> sets the objective function based on the primary network for a given priority with the following steps:</p>
 <ul>
-<li>First, it treats the subnetworks as user demand nodes and adds the quadratic terms of the main network.</li>
+<li>First, it treats the subnetworks as user demand nodes and adds the quadratic terms of the primary network.</li>
 <li>Then it loops over all the links in allocation.</li>
 <li>Based on the type of the node that the link is pointing to (user demand or flow demand), it adds the corresponding quadratic terms.</li>
 <li>Finally, it does the same to the links that start from a level demand node.</li>
@@ -511,7 +511,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>        <span class="cf">end</span></span>
 <span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>    <span class="cf">end</span></span>
 <span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<p>Apart from the <code>set_initial_*</code> function above, capacities of <code>inlet</code> are the allocated capacities from the main network to the subnetworks. Source constraints will be adapted based on the optimization type. This function is called separately and thus not part of the <code>set_initial_values</code>.</p>
+<p>Apart from the <code>set_initial_*</code> function above, capacities of <code>inlet</code> are the allocated capacities from the primary network to the subnetworks. Source constraints will be adapted based on the optimization type. This function is called separately and thus not part of the <code>set_initial_values</code>.</p>
 </section>
 </section>
 <section id="looping-over-priorities" class="level2" data-number="3.2">
