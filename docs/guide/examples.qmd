@@ -668,7 +668,8 @@ model.user_demand.add(
 Setup the allocation:
 
 ```{python}
-model.allocation = Allocation(use_allocation=True, timestep=86400)
+model.experimental = Experimental(allocation=True)
+model.allocation = Allocation(timestep=86400)
 ```
 
 Setup the links:
@@ -844,7 +845,8 @@ model.user_demand.add(
 Setup the allocation:
 
 ```{python}
-model.allocation = Allocation(use_allocation=True, timestep=1e5)
+model.experimental = Experimental(allocation=True)
+model.allocation = Allocation(timestep=1e5)
 ```
 
 Setup the links:
