@@ -2569,9 +2569,11 @@ version = "1.102.1"
 
 [[deps.TestItemRunner]]
 deps = ["Pkg", "TOML", "Test", "TestItems", "UUIDs"]
-git-tree-sha1 = "068c8f3e8d2f3b5948a85f11412f047cbab4e6c0"
+git-tree-sha1 = "9855a1710eff7a5975edbed5ebd52afd063fa8db"
+repo-rev = "main"
+repo-url = "https://github.com/evetion/TestItemRunner.jl.git"
 uuid = "f8b46487-2199-4994-9208-9a1283c18c0a"
-version = "1.1.0"
+version = "1.1.1-DEV"
 
 [[deps.TestItems]]
 git-tree-sha1 = "42fd9023fef18b9b78c8343a4e2f3813ffbcefcb"

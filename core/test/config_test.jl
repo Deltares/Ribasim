@@ -1,9 +1,9 @@
-@testitem "config" begin
+@testitem "config" setup = [Teamcity] begin
     using CodecZstd: ZstdCompressor
     using Configurations: UndefKeywordError
     using Dates
 
-    @testset "testrun" begin
+    @testset Teamcity.TeamcityTestSet "testrun" begin
         config = Ribasim.Config(normpath(@__DIR__, "data", "config_test.toml"))
         @test config isa Ribasim.Config
         @test config.endtime > config.starttime
@@ -12,7 +12,7 @@
         @test config.results.compression_level == 6
     end
 
-    @testset "results" begin
+    @testset Teamcity.TeamcityTestSet "results" begin
         o = Ribasim.Results()
         @test o isa Ribasim.Results
         @test o.compression
@@ -29,7 +29,7 @@
         ) === nothing
     end
 
-    @testset "docs" begin
+    @testset Teamcity.TeamcityTestSet "docs" begin
         config = Ribasim.Config(normpath(@__DIR__, "docs.toml"))
         @test config isa Ribasim.Config
         @test config.solver.autodiff
