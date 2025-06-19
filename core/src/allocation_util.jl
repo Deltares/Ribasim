@@ -229,3 +229,22 @@ function get_low_storage_factor(problem::JuMP.Model, node_id::NodeID)
         1.0
     end
 end
+
+function report_cause_of_infeasibility(problem::JuMP.Model)::Nothing
+    relaxed_problem = copy_model(problem)
+    penalty_map = relax_with_penalty!(relaxed_problem; default = 2.0)
+    optimize!(relaxed_problem)
+    for (constraint, slack_var) in penalty_map
+        if value(slack_var) != 0
+            expr = JuMP.constraint_object(constraint).func
+            for (v, ~) in expr.terms
+                if name(v) != ""
+                    println("Variable ", name(v), " has infeasible constraints:")
+                    println("\tConstraint expression: ", constraint)
+                    println("\tviolation amount: ", value(slack_var))
+                    println("\tvariable value: ", value(v))
+                end
+            end
+        end
+    end
+end

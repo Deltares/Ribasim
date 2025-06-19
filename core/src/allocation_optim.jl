@@ -607,6 +607,7 @@ function optimize_for_objective!(
     @debug JuMP.solution_summary(problem)
     termination_status = JuMP.termination_status(problem)
     if termination_status !== JuMP.OPTIMAL
+        report_cause_of_infeasibility(problem)
         error(
             "Allocation optimization for subnetwork $subnetwork_id, $objective at t = $t s couldn't find (optimal) solution. Termination status: $termination_status.",
         )
