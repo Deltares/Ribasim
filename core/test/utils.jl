@@ -117,7 +117,7 @@ using TestItemRunner: @testmodule
             isa(t, Broken) && (broken += 1)
             # handle children
             if isa(t, AbstractTestSet)
-                tc = Test.get_test_counts(t)::TestCounts
+                tc = Test.get_test_counts(t)::Test.TestCounts
                 c_passes += tc.passes + tc.cumulative_passes
                 c_fails += tc.fails + tc.cumulative_fails
                 c_errors += tc.errors + tc.cumulative_errors
@@ -143,11 +143,13 @@ using TestItemRunner: @testmodule
     printtcresult(ts, _::Test.Pass) = nothing
     printtcresult(ts, _::Test.Broken) = nothing  # Teamcity does not support broken tests
     function printtcresult(ts, res::Test.Fail)
-        println("##teamcity[testFailed name='$(gettctestname(ts))' message='$(res)']")
+        println("##teamcity[testFailed name='$(gettctestname(ts))'")
+        println(res)
         flush(stdout)
     end
     function printtcresult(ts, res::Test.Error)
-        println("##teamcity[testFailed name='$(gettctestname(ts))' message='$(res)']")
+        println("##teamcity[testFailed name='$(gettctestname(ts))'")
+        println(res)
         flush(stdout)
     end
     gettctestname(ts) = "$(ts.description).$(string(length(ts.results) + 1))"
