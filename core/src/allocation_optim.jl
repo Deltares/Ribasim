@@ -871,7 +871,6 @@ function optimize_for_objective!(
     end
 
     postprocess_objective!(allocation_model, p, objective, t)
-
     return nothing
 end
 
