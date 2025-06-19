@@ -29,7 +29,7 @@ function set_simulation_data!(
 
     if errors
         error(
-            "Errors encountered when transferring data from physical layer to allocation layer.",
+            "Errors encountered when transferring data from physical layer to allocation layer at t = $t.",
         )
     end
     return nothing
@@ -59,7 +59,7 @@ function set_simulation_data!(
         storage_max = storage_to_level[basin_id.idx].t[end]
 
         if storage_now > storage_max
-            @error "Maximum basin storage exceed (allocation infeasibility)" storage_now storage_max
+            @error "Maximum basin storage exceed (allocation infeasibility)" storage_now storage_max basin_id
             errors = true
         end
 
@@ -67,7 +67,7 @@ function set_simulation_data!(
         level_max = storage_to_level[basin_id.idx].u[end]
 
         if level_now > level_max
-            @error "Maximum basin level exceed (allocation infeasibility)" level_now level_max
+            @error "Maximum basin level exceed (allocation infeasibility)" level_now level_max basin_id
             errors = true
         end
 
@@ -343,6 +343,7 @@ function update_allocated_values!(
 
     user_demand_allocated = problem[:user_demand_allocated]
     flow_demand_allocated = problem[:flow_demand_allocated]
+    basin_allocated = problem[:basin_allocated]
     basin_storage = problem[:basin_storage]
     flow = problem[:flow]
 
@@ -375,8 +376,9 @@ function update_allocated_values!(
     end
 
     # Storage allocated to Basins with LevelDemand
-    for node_id in basin.node_id
-        has_demand, level_demand_id = has_external_flow_demand(graph, node_id, :LevelDemand)
+    for node_id in only(basin_allocated.axes)
+        has_demand, level_demand_id =
+            has_external_flow_demand(graph, node_id, :level_demand)
         if has_demand
             has_demand &=
                 level_demand.demand_priority[level_demand_id.idx] == demand_priority
@@ -385,9 +387,9 @@ function update_allocated_values!(
         if has_demand
             storage_start = JuMP.value(basin_storage[(node_id, :start)])
             storage_end = JuMP.value(basin_storage[(node_id, :end)])
-            storage_target_level = level_demand.storage_min_level[node_id.idx]
+            storage_target_level = level_demand.target_storage_min[node_id]
             allocated_storage = min(storage_end, storage_target_level) - storage_start
-            JuMP.fix(basin_Allocated[node_id], allocated_storage; force = true)
+            JuMP.fix(basin_allocated[node_id], allocated_storage; force = true)
         end
     end
 
@@ -419,12 +421,14 @@ end
 # for the current demand priority.
 # NOTE: The realized amount lags one allocation period behind.
 function save_demands_and_allocations!(
-    p_independent::ParametersIndependent,
+    p::Parameters,
     t::Float64,
     allocation_model::AllocationModel,
     subnetwork_id::Int32,
     objective::AllocationObjective,
 )::Nothing
+    (; p_independent, state_time_dependent_cache) = p
+    (; current_storage) = state_time_dependent_cache
     (; problem, Δt_allocation, cumulative_realized_volume) = allocation_model
     (; allocation, user_demand, flow_demand, level_demand, graph) = p_independent
     (; record_demand, demand_priorities_all) = allocation
@@ -475,14 +479,15 @@ function save_demands_and_allocations!(
     for node_id_basin in only(basin_allocated.axes)
         node_id = only(inneighbor_labels_type(graph, node_id_basin, LinkType.control))
         if level_demand.demand_priority[node_id.idx] == demand_priority
-            # TODO: compute cumulative_realized_basin_volume as the storage difference
-            # between allocation solves
-            cumulative_realized_basin_volume = 0.0
+            @show level_demand.storage_prev[node_id_basin]
+            cumulative_realized_basin_volume =
+                current_storage[node_id_basin.idx] -
+                level_demand.storage_prev[node_id_basin]
             add_to_record_demand!(
                 record_demand,
                 t,
                 subnetwork_id,
-                node_id,
+                node_id_basin,
                 demand_priority,
                 level_demand.storage_demand[node_id] / Δt_allocation,
                 JuMP.value(basin_allocated[node_id_basin]) / Δt_allocation,
@@ -563,10 +568,11 @@ Postprocess for the specific objective type
 """
 function postprocess_objective!(
     allocation_model::AllocationModel,
-    p_independent::ParametersIndependent,
+    p::Parameters,
     objective::AllocationObjective,
     t::Number,
 )::Nothing
+    (; p_independent) = p
     (; problem, subnetwork_id) = allocation_model
 
     if objective.type == AllocationObjectiveType.demand
@@ -575,13 +581,7 @@ function postprocess_objective!(
         update_allocated_values!(problem, p_independent, objective)
 
         # Save the demands and allocated values for all demand nodes that have a demand of the current priority
-        save_demands_and_allocations!(
-            p_independent,
-            t,
-            allocation_model,
-            subnetwork_id,
-            objective,
-        )
+        save_demands_and_allocations!(p, t, allocation_model, subnetwork_id, objective)
     elseif objective.type == AllocationObjectiveType.source_priorities
         nothing
     end
@@ -612,7 +612,7 @@ function optimize_for_objective!(
         )
     end
 
-    postprocess_objective!(allocation_model, p_independent, objective, t)
+    postprocess_objective!(allocation_model, p, objective, t)
     return nothing
 end
 
@@ -784,6 +784,9 @@ function update_allocation!(integrator)::Nothing
         # Reset cumulative data
         reset_cumulative!(allocation_model)
     end
+
+    # Update storage_prev for level_demand
+    update_storage_prev!(p)
 
     return nothing
 end
