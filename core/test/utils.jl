@@ -42,7 +42,9 @@ using TestItemRunner: @testmodule
     end
     function record(ts::TeamcityTestSet, res::Test.Result)
         if ts.teamcity
-            println("##teamcity[testStarted name='$(gettctestname(ts))']")
+            println(
+                "##teamcity[testStarted name='$(gettctestname(ts))' captureStandardOutput='true']",
+            )
             flush(stdout)
             println("##teamcity[testFinished name='$(gettctestname(ts))']")
             flush(stdout)
@@ -52,7 +54,9 @@ using TestItemRunner: @testmodule
     end
     function record(ts::TeamcityTestSet, res::Union{Test.Fail, Test.Error})
         if ts.teamcity
-            println("##teamcity[testStarted name='$(gettctestname(ts))']")
+            println(
+                "##teamcity[testStarted name='$(gettctestname(ts))' captureStandardOutput='true']",
+            )
             flush(stdout)
             printtcresult(ts, res)
         end
@@ -85,7 +89,7 @@ using TestItemRunner: @testmodule
         ts.time_end = now()
         if ts.teamcity
             println(
-                "##teamcity[testSuiteFinished name='$(ts.description)', duration='$(value(now()-ts.time_start))']",
+                "##teamcity[testSuiteFinished name='$(ts.description)' duration='$(value(now()-ts.time_start))']",
             )
             flush(stdout)
         end
