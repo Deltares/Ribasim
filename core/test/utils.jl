@@ -143,12 +143,12 @@ using TestItemRunner: @testmodule
     printtcresult(ts, _::Test.Pass) = nothing
     printtcresult(ts, _::Test.Broken) = nothing  # Teamcity does not support broken tests
     function printtcresult(ts, res::Test.Fail)
-        println("##teamcity[testFailed name='$(gettctestname(ts))'")
+        println("##teamcity[testFailed name='$(gettctestname(ts))']")
         println(res)
         flush(stdout)
     end
     function printtcresult(ts, res::Test.Error)
-        println("##teamcity[testFailed name='$(gettctestname(ts))'")
+        println("##teamcity[testFailed name='$(gettctestname(ts))']")
         println(res)
         flush(stdout)
     end
