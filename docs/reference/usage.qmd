@@ -64,7 +64,6 @@ There are the following interpolation settings:
 
 ## Allocation settings
 There are the following allocation settings:
-- `use_allocation`: A boolean which says whether allocation should be used or not;
 - `timestep`: A float value in seconds which dictates the update interval for allocations;
 - `source_priority`: An integer per source type for the allocation algorithm: `user_demand`, `boundary`, `level_demand`, `flow_demand`, `subnetwork_inlet`. Flow boundaries and level boundaries are combined in the single category `boundary`. By default all nodes of the same type have the same source priority, so to obtain a strict source ordering the sources are sorted by node ID for each source priority within a subnetwork.  When no default source priorities are specified, default defaults are applied (see the TOML example above).
 
@@ -86,6 +85,26 @@ entry             | type   | description
 ----------------- | ------ | -----------
 verbosity         | String | Verbosity level: debug, info, warn, or error.
 
+If verbosity is set to debug, the used `Basin / profile` dimensions (level, area and storage) are written to a CSV file in the results folder. This can be useful if you only provide 2 of the 3 columns and want to inspect the dimensions used in the computation.
+
+The format of the CSV is: column 1 = node id, column 2 = level, column 3 = area and row 4 is storage.
+
+Lets say you have 2 basins at node 1 and node 2.
+Dimensions node 1: level = [0, 1, 2], area = [2, 2, 4] and storage = [0, 2, 6],
+Dimensions node 1: level = [0, 1, 2], area = [4, 4, 8] and storage = [0, 4, 12].
+
+Then the CSV will look like:
+
+node_id | level | area | storage
+--------|-------|------|--------
+1       | 0     | 2    | 0
+1       | 1     | 2    | 2
+1       | 2     | 4    | 6
+2       | 0     | 4    | 0
+2       | 1     | 4    | 4
+2       | 2     | 8    | 12
+
+
 ## Experimental features
 
 ::: {.callout-important}
@@ -100,6 +119,7 @@ Currently the following features can be enabled (all are disabled by default).
 entry             | type   | description
 ----------------- | ------ | -----------
 concentration     | Bool   | Whether to enable tracer calculations or not.
+allocation        | Bool   | Whether to activate the activation layer. Replaced by 'first come first serve' when deactivated
 
 
 
@@ -328,11 +348,11 @@ Currently the stored demand and abstraction rate are those at the allocation tim
 ## Allocation flow - `allocation_flow.arrow`
 
 The allocation flow table contains results of the optimized allocation flow on every link in the model that is part of a subnetwork, for each time an optimization problem is solved (see also [here](/concept/allocation.qmd#the-high-level-algorithm)).
-If in the model a main network and subnetwork(s) are specified, there are 3 different types of optimization for the subnetwork:
+If in the model a primary network and subnetwork(s) are specified, there are 3 different types of optimization for the subnetwork:
 The column `optimization_type` provides the distinction between these optimization types.
 
 - `internal_sources`: first it will try using local sources internal to the subnetwork
-- `collect_demands`: collecting its total demand per priority (for allocating flow from the main network to the subnetwork)
+- `collect_demands`: collecting its total demand per priority (for allocating flow from the primary network to the subnetwork)
 - `allocate`: allocating flow within the subnetwork
 
 column            | type

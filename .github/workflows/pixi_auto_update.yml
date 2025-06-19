@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Set up pixi
-        uses: prefix-dev/setup-pixi@v0.8.8
+        uses: prefix-dev/setup-pixi@v0.8.10
         with:
           pixi-version: "latest"
           run-install: false
@@ -22,6 +22,7 @@ jobs:
         run: |
           set -o pipefail
           pixi update --json | pixi exec pixi-diff-to-markdown >> diff.md
+          pixi run generate-sbom-ribasim-python
       - name: Create pull request
         uses: peter-evans/create-pull-request@v7
         with:
@@ -32,4 +33,3 @@ jobs:
           branch: update/pixi-lock
           base: main
           delete-branch: true
-          add-paths: pixi.lock

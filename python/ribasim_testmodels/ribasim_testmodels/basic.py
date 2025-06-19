@@ -358,7 +358,7 @@ def tabulated_rating_curve_model() -> Model:
     return model
 
 
-def outlet_model():
+def outlet_model() -> Model:
     """Set up a basic model with an outlet that encounters various physical constraints."""
     model = Model(
         starttime="2020-01-01",
@@ -369,16 +369,16 @@ def outlet_model():
 
     # Set up the basins
     model.basin.add(
-        Node(3, Point(2.0, 0.0)),
+        Node(3, Point(2.0, 0.0), subnetwork_id=2),
         [
-            basin.Profile(area=[1000.0, 1000.0], level=[0.0, 1.0]),
+            basin.Profile(area=[1000.0, 1000.0], level=[0.0, 10.0]),
             basin.State(level=[0.0]),
         ],
     )
 
     # Set up the level boundary
     model.level_boundary.add(
-        Node(1, Point(0.0, 0.0)),
+        Node(1, Point(0.0, 0.0), subnetwork_id=2),
         [
             level_boundary.Time(
                 time=[
@@ -393,7 +393,7 @@ def outlet_model():
 
     # Setup the outlet
     model.outlet.add(
-        Node(2, Point(1.0, 0.0)),
+        Node(2, Point(1.0, 0.0), subnetwork_id=2),
         [outlet.Static(flow_rate=[1e-3], min_upstream_level=[2.0])],
     )
 
@@ -458,6 +458,116 @@ def cyclic_time_model() -> Model:
     model.edge.add(bsn, lr)
     model.edge.add(lr, lb)
     model.edge.add(fb, bsn)
+
+    return model
+
+
+def drought_model() -> Model:
+    """Create a small subsection of the LHM Vechtstromen model containing a basin that runs dry (#2189)."""
+    model = Model(
+        starttime="2020-01-01 00:00:00", endtime="2021-01-01 00:00:00", crs="EPSG:28992"
+    )
+
+    model.basin.add(
+        Node(1558, Point(4, 2)),
+        [
+            basin.Profile(level=[22.4, 22.41, 25.4], area=[0.1, 435363.1, 435363.1]),
+            basin.State(level=[25.4]),
+            basin.Time(time=["2020-01-01"], infiltration=[0.0379294629649877049]),
+        ],
+    )
+
+    model.basin.add(
+        Node(1737, Point(0, 0)),
+        [
+            basin.Profile(level=[22.4, 22.41, 25.4], area=[0.1, 422367.9, 422367.9]),
+            basin.State(level=[25.4]),
+            basin.Time(time=["2020-01-01"], infiltration=[0.001642597244767027157]),
+        ],
+    )
+
+    model.basin.add(
+        Node(2117, Point(6, 0)),
+        [
+            basin.Profile(level=[17.24, 17.25, 20.24], area=[0.1, 960850.7, 960850.7]),
+            basin.State(level=[20.24]),
+        ],
+    )
+
+    model.basin.add(
+        Node(2188, Point(4, 0)),
+        [
+            basin.Profile(level=[17.25, 17.26, 20.25], area=[0.1, 424545.6, 424545.6]),
+            basin.State(level=[20.25]),
+        ],
+    )
+
+    model.basin.add(
+        Node(2189, Point(2, 0)),
+        [
+            basin.Profile(level=[22.4, 22.41, 25.4], area=[0.1, 66326.8, 66326.8]),
+            basin.State(level=[25.4]),
+            basin.Time(time=["2020-01-01"], infiltration=[0.0165766882781172575]),
+        ],
+    )
+
+    model.basin.add(
+        Node(2305, Point(6, 2)),
+        [
+            basin.Profile(
+                level=[17.25, 17.26, 20.25], area=[0.1, 9944437.9, 9944437.9]
+            ),
+            basin.State(level=[20.25]),
+        ],
+    )
+
+    model.manning_resistance.add(
+        Node(1236, Point(6, 1)),
+        [
+            manning_resistance.Static(
+                length=[3390], profile_width=25, profile_slope=1, manning_n=0.04
+            )
+        ],
+    )
+
+    model.manning_resistance.add(
+        Node(1237, Point(3, 0)),
+        [
+            manning_resistance.Static(
+                length=[1430], profile_width=25, profile_slope=1, manning_n=0.04
+            )
+        ],
+    )
+
+    model.manning_resistance.add(
+        Node(1238, Point(4, 1)),
+        [
+            manning_resistance.Static(
+                length=[2710], profile_width=25, profile_slope=1, manning_n=0.04
+            )
+        ],
+    )
+
+    model.outlet.add(
+        Node(229, Point(1, 0)),
+        [outlet.Static(flow_rate=[2.44], min_upstream_level=25.4)],
+    )
+
+    model.outlet.add(
+        Node(285, Point(5, 0)),
+        [outlet.Static(flow_rate=[5.62], min_upstream_level=20.25)],
+    )
+
+    model.link.add(model.outlet[229], model.basin[2189])
+    model.link.add(model.outlet[285], model.basin[2117])
+    model.link.add(model.manning_resistance[1236], model.basin[2117])
+    model.link.add(model.manning_resistance[1237], model.basin[2188])
+    model.link.add(model.manning_resistance[1238], model.basin[2188])
+    model.link.add(model.basin[1737], model.outlet[229])
+    model.link.add(model.basin[2188], model.outlet[285])
+    model.link.add(model.basin[2305], model.manning_resistance[1236])
+    model.link.add(model.basin[2189], model.manning_resistance[1237])
+    model.link.add(model.basin[1558], model.manning_resistance[1238])
 
     return model
 
@@ -614,6 +724,7 @@ def basic_basin_both_area_and_storage_model() -> Model:
         endtime=endtime,
         crs="EPSG:4326",
     )
+    model.logging = ribasim.Logging(verbosity="debug")
 
     # a parabolic shaped (x^2 - 1) basin with a circular cross section
     levels = [0, 1, 2, 3, 4, 5]

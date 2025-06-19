@@ -6,6 +6,7 @@ from ribasim.model import Model
 
 import ribasim_testmodels
 from ribasim_testmodels.allocation import (
+    allocation_control_model,
     allocation_example_model,
     allocation_training_model,
     bommelerwaard_model,
@@ -30,6 +31,7 @@ from ribasim_testmodels.basic import (
     basic_model,
     basic_transient_model,
     cyclic_time_model,
+    drought_model,
     flow_boundary_interpolation_model,
     outlet_model,
     tabulated_rating_curve_model,
@@ -59,6 +61,7 @@ from ribasim_testmodels.equations import (
 from ribasim_testmodels.invalid import (
     invalid_discrete_control_model,
     invalid_link_types_model,
+    invalid_no_basin_model,
     invalid_priorities_model,
     invalid_qh_model,
     invalid_unstable_model,
@@ -79,6 +82,7 @@ from ribasim_testmodels.trivial import trivial_model
 from ribasim_testmodels.two_basin import two_basin_model
 
 __all__ = [
+    "allocation_control_model",
     "allocation_training_model",
     "allocation_example_model",
     "backwater_model",
@@ -97,6 +101,7 @@ __all__ = [
     "cyclic_demand_model",
     "cyclic_time_model",
     "discrete_control_of_pid_control_model",
+    "drought_model",
     "fair_distribution_model",
     "flow_boundary_interpolation_model",
     "flow_boundary_time_model",
@@ -104,6 +109,7 @@ __all__ = [
     "flow_demand_model",
     "invalid_discrete_control_model",
     "invalid_link_types_model",
+    "invalid_no_basin_model",
     "invalid_priorities_model",
     "invalid_qh_model",
     "invalid_unstable_model",

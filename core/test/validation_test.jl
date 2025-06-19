@@ -58,11 +58,11 @@ end
         graph_data = nothing,
     )
 
-    graph[NodeID(:Pump, 1, 1)] = NodeMetadata(:pump, 9)
-    graph[NodeID(:Basin, 2, 1)] = NodeMetadata(:pump, 9)
-    graph[NodeID(:Basin, 3, 1)] = NodeMetadata(:pump, 9)
-    graph[NodeID(:Basin, 4, 1)] = NodeMetadata(:pump, 9)
-    graph[NodeID(:Pump, 6, 1)] = NodeMetadata(:pump, 9)
+    graph[NodeID(:Pump, 1, 1)] = NodeMetadata(:pump, 9, 0)
+    graph[NodeID(:Basin, 2, 1)] = NodeMetadata(:pump, 9, 0)
+    graph[NodeID(:Basin, 3, 1)] = NodeMetadata(:pump, 9, 0)
+    graph[NodeID(:Basin, 4, 1)] = NodeMetadata(:pump, 9, 0)
+    graph[NodeID(:Pump, 6, 1)] = NodeMetadata(:pump, 9, 0)
 
     function set_link_metadata!(id_1, id_2, link_type)
         graph[id_1, id_2] = LinkMetadata(; id = 0, type = link_type, link = (id_1, id_2))
@@ -113,13 +113,13 @@ end
         graph_data = nothing,
     )
 
-    graph[NodeID(:PidControl, 1, 1)] = NodeMetadata(:pid_control, 0)
-    graph[NodeID(:PidControl, 6, 1)] = NodeMetadata(:pid_control, 0)
-    graph[NodeID(:Pump, 2, 1)] = NodeMetadata(:pump, 0)
-    graph[NodeID(:Pump, 4, 1)] = NodeMetadata(:pump, 0)
-    graph[NodeID(:Terminal, 3, 1)] = NodeMetadata(:something_else, 0)
-    graph[NodeID(:Basin, 5, 1)] = NodeMetadata(:basin, 0)
-    graph[NodeID(:Basin, 7, 1)] = NodeMetadata(:basin, 0)
+    graph[NodeID(:PidControl, 1, 1)] = NodeMetadata(:pid_control, 0, 0)
+    graph[NodeID(:PidControl, 6, 1)] = NodeMetadata(:pid_control, 0, 0)
+    graph[NodeID(:Pump, 2, 1)] = NodeMetadata(:pump, 0, 0)
+    graph[NodeID(:Pump, 4, 1)] = NodeMetadata(:pump, 0, 0)
+    graph[NodeID(:Terminal, 3, 1)] = NodeMetadata(:something_else, 0, 0)
+    graph[NodeID(:Basin, 5, 1)] = NodeMetadata(:basin, 0, 0)
+    graph[NodeID(:Basin, 7, 1)] = NodeMetadata(:basin, 0, 0)
 
     function set_link_metadata!(id_1, id_2, link_type)
         graph[id_1, id_2] = LinkMetadata(; id = 0, type = link_type, link = (id_1, id_2))
@@ -165,12 +165,12 @@ end
     cfg = Ribasim.Config(toml_path)
     db_path = Ribasim.database_path(cfg)
     db = SQLite.DB(db_path)
-    (; p_non_diff) = Ribasim.Parameters(db, cfg)
+    (; p_independent) = Ribasim.Parameters(db, cfg)
     close(db)
 
     logger = TestLogger()
     with_logger(logger) do
-        @test !Ribasim.valid_discrete_control(p_non_diff, cfg)
+        @test !Ribasim.valid_discrete_control(p_independent, cfg)
     end
 
     @test length(logger.logs) == 5
@@ -349,9 +349,9 @@ end
     config = Ribasim.Config(toml_path)
     model = Ribasim.Model(config)
 
-    (; p_non_diff) = model.integrator.p
+    (; p_independent) = model.integrator.p
 
-    (; graph, tabulated_rating_curve, basin) = p_non_diff
+    (; graph, tabulated_rating_curve, basin) = p_independent
     tabulated_rating_curve.interpolations[1].t[1] = invalid_level
 
     logger = TestLogger()
@@ -380,9 +380,9 @@ end
     config = Ribasim.Config(toml_path)
     model = Ribasim.Model(config)
 
-    (; p_non_diff) = model.integrator.p
+    (; p_independent) = model.integrator.p
 
-    (; graph, outlet, basin) = p_non_diff
+    (; graph, outlet, basin) = p_independent
     outlet.min_upstream_level[1] = LinearInterpolation(fill(invalid_level, 2), zeros(2))
 
     logger = TestLogger()

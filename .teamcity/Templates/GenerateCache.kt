@@ -4,6 +4,7 @@ import Ribasim.vcsRoots.Ribasim
 import jetbrains.buildServer.configs.kotlin.Template
 import jetbrains.buildServer.configs.kotlin.buildSteps.script
 import jetbrains.buildServer.configs.kotlin.buildFeatures.buildCache
+import jetbrains.buildServer.configs.kotlin.*
 
 fun generateJuliaDepotPath(platformOs: String): String {
     if (platformOs == "Linux") {
@@ -16,6 +17,9 @@ fun generateJuliaDepotPath(platformOs: String): String {
 open class GenerateCache(platformOs: String) : Template() {
     init {
         name = "GenerateCache${platformOs}_Template"
+
+        artifactRules = """%teamcity.build.checkoutDir%/.julia => cache.zip"""
+        publishArtifacts = PublishMode.SUCCESSFUL
 
         vcs {
             root(Ribasim, ". => ribasim")

@@ -91,12 +91,12 @@ end
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/minimal_subnetwork/ribasim.toml")
     @test ispath(toml_path)
-    config = Ribasim.Config(toml_path; allocation_use_allocation = false)
+    config = Ribasim.Config(toml_path; experimental_allocation = false)
     model = Ribasim.Model(config)
     demand = BMI.get_value_ptr(model, "user_demand.demand")
     inflow = BMI.get_value_ptr(model, "user_demand.cumulative_inflow")
     # One year in seconds
-    year = model.integrator.p.p_non_diff.user_demand.demand_itp[2][1].t[2]
+    year = model.integrator.p.p_independent.user_demand.demand_itp[2][1].t[2]
     demand_start = 1e-3
     slope = 1e-3 / year
     day = 86400.0
@@ -124,4 +124,30 @@ end
 
     cumulative_drainage = BMI.get_value_ptr(model, "basin.cumulative_drainage")
     @test cumulative_drainage ≈ Δt * drainage_flux
+end
+
+@testitem "BMI logging" begin
+    using Ribasim: results_path, logger_stream
+    import BasicModelInterface as BMI
+    using LoggingExtras: global_logger, EarlyFilteredLogger
+
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/invalid_unstable/ribasim.toml")
+    @test ispath(toml_path)
+    model = BMI.initialize(Ribasim.Model, toml_path)
+    logger = global_logger()
+    @test logger isa EarlyFilteredLogger
+    @test logger_stream(logger) isa IOStream
+
+    BMI.update_until(model, 1.0)
+    BMI.finalize(model)
+
+    log_path = results_path(model.config, "ribasim.log")
+    @test isfile(log_path)
+    log_str = read(log_path, String)
+    @test occursin("Info: Starting a Ribasim simulation.", log_str)
+    @test occursin(
+        "Error: The model exited at model time 2020-01-01T00:00:00 with return code DtLessThanMin.",
+        log_str,
+    )
 end

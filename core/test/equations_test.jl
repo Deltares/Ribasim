@@ -21,7 +21,7 @@
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test success(model)
-    (; level_boundary, basin, linear_resistance) = model.integrator.p.p_non_diff
+    (; level_boundary, basin, linear_resistance) = model.integrator.p.p_independent
 
     t = Ribasim.tsaves(model)
     storage = Ribasim.get_storages_and_levels(model).storage[1, :]
@@ -51,7 +51,7 @@ end
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test success(model)
-    (; basin) = model.integrator.p.p_non_diff
+    (; basin) = model.integrator.p.p_independent
 
     t = Ribasim.tsaves(model)
     storage = Ribasim.get_storages_and_levels(model).storage[1, :]
@@ -84,7 +84,7 @@ end
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test success(model)
-    (; manning_resistance, basin) = model.integrator.p.p_non_diff
+    (; manning_resistance, basin) = model.integrator.p.p_independent
 
     t = Ribasim.tsaves(model)
     storage_both = Ribasim.get_storages_and_levels(model).storage
@@ -118,7 +118,7 @@ end
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test success(model)
-    (; basin, pid_control) = model.integrator.p.p_non_diff
+    (; basin, pid_control) = model.integrator.p.p_independent
 
     storage = Ribasim.get_storages_and_levels(model).storage[:]
     t = Ribasim.tsaves(model)
@@ -167,8 +167,8 @@ end
     @test config.solver.dt === model.integrator.dt
     Ribasim.solve!(model)
     @test success(model)
-    (; p_non_diff) = model.integrator.p
-    (; flow_boundary, pump) = p_non_diff
+    (; p_independent) = model.integrator.p
+    (; flow_boundary, pump) = p_independent
 
     q_boundary = flow_boundary.flow_rate[1].u[1]
     q_pump = pump.flow_rate[1].u[1]

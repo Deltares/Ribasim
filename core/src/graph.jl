@@ -9,7 +9,7 @@ function create_graph(db::DB, config::Config)::MetaGraph
     node_table = get_node_ids(db)
     node_rows = execute(
         db,
-        "SELECT node_id, node_type, subnetwork_id FROM Node ORDER BY node_type, node_id",
+        "SELECT node_id, node_type, subnetwork_id, source_priority FROM Node ORDER BY node_type, node_id",
     )
     link_rows = execute(
         db,
@@ -42,6 +42,13 @@ function create_graph(db::DB, config::Config)::MetaGraph
         weight_function = Returns(1.0),
     )
 
+    default_source_priority = Dict(
+        "UserDemand" => config.allocation.source_priority.user_demand,
+        "FlowBoundary" => config.allocation.source_priority.flow_boundary,
+        "LevelBoundary" => config.allocation.source_priority.level_boundary,
+        "Basin" => config.allocation.source_priority.basin,
+    )
+
     for row in node_rows
         node_id = NodeID(row.node_type, row.node_id, node_table)
         # Process allocation network ID
@@ -54,7 +61,11 @@ function create_graph(db::DB, config::Config)::MetaGraph
             end
             push!(node_ids[subnetwork_id], node_id)
         end
-        graph[node_id] = NodeMetadata(Symbol(snake_case(row.node_type)), subnetwork_id)
+        # Process source priority
+        source_priority =
+            coalesce(row.source_priority, get(default_source_priority, row.node_type, 0))
+        graph[node_id] =
+            NodeMetadata(Symbol(snake_case(row.node_type)), subnetwork_id, source_priority)
     end
 
     errors = false
@@ -322,12 +333,12 @@ from the parameters, but integrated/averaged FlowBoundary flows must be provided
 """
 function get_flow(
     flow::CVector,
-    p_non_diff::ParametersNonDiff,
+    p_independent::ParametersIndependent,
     t::Number,
     link::Tuple{NodeID, NodeID};
     boundary_flow = nothing,
 )
-    (; flow_boundary) = p_non_diff
+    (; flow_boundary) = p_independent
     from_id = link[1]
     if from_id.type == NodeType.FlowBoundary
         if boundary_flow === nothing
@@ -344,7 +355,7 @@ end
 
 function get_influx(du::CVector, id::NodeID, p::Parameters)
     @assert id.type == NodeType.Basin
-    (; basin) = p.p_non_diff
+    (; basin) = p.p_independent
     (; vertical_flux) = basin
     fixed_area = basin_areas(basin, id.idx)[end]
     return fixed_area * vertical_flux.precipitation[id.idx] +

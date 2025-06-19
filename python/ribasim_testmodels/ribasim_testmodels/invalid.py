@@ -1,6 +1,6 @@
 from typing import Any
 
-from ribasim.config import Allocation, Node, Solver
+from ribasim.config import Allocation, Experimental, Node, Solver
 from ribasim.input_base import TableModel
 from ribasim.model import Model
 from ribasim.nodes import (
@@ -191,7 +191,8 @@ def invalid_priorities_model() -> Model:
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",
         crs="EPSG:28992",
-        allocation=Allocation(use_allocation=True, timestep=1e5),
+        allocation=Allocation(timestep=1e5),
+        experimental=Experimental(allocation=True),
         use_validation=False,
     )
 
@@ -233,5 +234,30 @@ def invalid_priorities_model() -> Model:
     model.link.add(model.basin[3], model.user_demand[4])
     model.link.add(model.level_demand[6], model.basin[3])
     model.link.add(model.flow_demand[5], model.tabulated_rating_curve[2])
+
+    return model
+
+
+def invalid_no_basin_model() -> Model:
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2021-01-01",
+        crs="EPSG:28992",
+    )
+
+    # Setup flow boundary
+    boundary1 = model.flow_boundary.add(
+        Node(1, Point(0.0, 0.0)), [flow_boundary.Static(flow_rate=[1e-4])]
+    )
+    # Setup another flow boundary
+    boundary2 = model.flow_boundary.add(
+        Node(2, Point(2.0, 0.0)), [flow_boundary.Static(flow_rate=[1e-4])]
+    )
+
+    # Setup terminal
+    sea = model.terminal.add(Node(3, Point(1.0, -1.0)))
+
+    model.link.add(boundary1, sea)
+    model.link.add(boundary2, sea)
 
     return model

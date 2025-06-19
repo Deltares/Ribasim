@@ -27,7 +27,10 @@ using TestItemRunner: @testmodule
         # constructor takes a description string and options keyword arguments
         # function TeamcityTestSet(desc; teamcity = haskey(ENV, "TEAMCITY_VERSION"))
         function TeamcityTestSet(desc; teamcity = true)
-            teamcity && println("##teamcity[testSuiteStarted name='$desc']")
+            if teamcity
+                println("##teamcity[testSuiteStarted name='$desc']")
+                flush(stdout)
+            end
             new(desc, teamcity, now(), nothing, [], true)
         end
     end
@@ -38,14 +41,21 @@ using TestItemRunner: @testmodule
         push!(ts.results, child)
     end
     function record(ts::TeamcityTestSet, res::Test.Result)
-        ts.teamcity && println("##teamcity[testStarted name='$(gettctestname(ts))']")
-        ts.teamcity && println("##teamcity[testFinished name='$(gettctestname(ts))']")
+        if ts.teamcity
+            println("##teamcity[testStarted name='$(gettctestname(ts))']")
+            flush(stdout)
+            println("##teamcity[testFinished name='$(gettctestname(ts))']")
+            flush(stdout)
+        end
         push!(ts.results, res)
         res
     end
     function record(ts::TeamcityTestSet, res::Union{Test.Fail, Test.Error})
-        ts.teamcity && println("##teamcity[testStarted name='$(gettctestname(ts))']")
-        ts.teamcity && printtcresult(ts, res)
+        if ts.teamcity
+            println("##teamcity[testStarted name='$(gettctestname(ts))']")
+            flush(stdout)
+            printtcresult(ts, res)
+        end
         print(ts.description, ": ")
         # don't print for interrupted tests
         if !(res isa Test.Error) || res.test_type !== :test_interrupted
@@ -62,7 +72,10 @@ using TestItemRunner: @testmodule
             end
             println()
         end
-        ts.teamcity && println("##teamcity[testFinished name='$(gettctestname(ts))']")
+        if ts.teamcity
+            println("##teamcity[testFinished name='$(gettctestname(ts))']")
+            flush(stdout)
+        end
         push!(ts.results, res)
         res
     end
@@ -70,14 +83,16 @@ using TestItemRunner: @testmodule
     function finish(ts::TeamcityTestSet)
         # just record if we're not the top-level parent
         ts.time_end = now()
-        ts.teamcity && println(
-            "##teamcity[testSuiteFinished name='$(ts.description)', duration='$(value(now()-ts.time_start))']",
-        )
+        if ts.teamcity
+            println(
+                "##teamcity[testSuiteFinished name='$(ts.description)', duration='$(value(now()-ts.time_start))']",
+            )
+            flush(stdout)
+        end
         depth = Test.get_testset_depth()
         if depth != 0
             parent_ts = Test.get_testset()
             Test.record(parent_ts, ts)
-            println(depth, parent_ts)
             return ts
         end
 
@@ -124,11 +139,14 @@ using TestItemRunner: @testmodule
     end
     printtcresult(ts, _::Test.Pass) = nothing
     printtcresult(ts, _::Test.Broken) = nothing  # Teamcity does not support broken tests
-    printtcresult(ts, res::Test.Fail) =
+    function printtcresult(ts, res::Test.Fail)
         println("##teamcity[testFailed name='$(gettctestname(ts))' message='$(res)']")
-    printtcresult(ts, res::Test.Error) =
+        flush(stdout)
+    end
+    function printtcresult(ts, res::Test.Error)
         println("##teamcity[testFailed name='$(gettctestname(ts))' message='$(res)']")
-
+        flush(stdout)
+    end
     gettctestname(ts) = "$(ts.description).$(string(length(ts.results) + 1))"
 
     Test.results(ts::TeamcityTestSet) = ts.results

@@ -24,11 +24,11 @@ using DifferentiationInterface:
     prepare_derivative,
     derivative!
 
+using ForwardDiff: derivative as forward_diff
+
 # Algorithms for solving ODEs.
 using OrdinaryDiffEqCore: OrdinaryDiffEqCore, get_du, AbstractNLSolver
-using DiffEqBase: DiffEqBase, calculate_residuals!
-using OrdinaryDiffEqNonlinearSolve: OrdinaryDiffEqNonlinearSolve, relax!, _compute_rhs!
-using LineSearches: BackTracking
+import ForwardDiff
 
 # Interface for defining and solving the ODE problem of the physical layer.
 using SciMLBase:
@@ -76,6 +76,8 @@ using DataInterpolations.ExtrapolationType:
 import JuMP
 # The optimization backend of JuMP.
 import HiGHS
+# Represent piecewise linear functions in JuMP
+using PiecewiseLinearOpt: piecewiselinear
 
 # The BMI is a standard for interacting with a Ribasim model,
 # see the docs: https://ribasim.org/dev/bmi.html
@@ -85,13 +87,16 @@ import BasicModelInterface as BMI
 using Arrow: Arrow, Table
 import TranscodingStreams
 using CodecZstd: ZstdCompressor
+using DelimitedFiles, Tables
+
 # Reading GeoPackage files, which are SQLite databases with spatial data
 using SQLite: SQLite, DB, Query, esc_id
 using DBInterface: execute
 
 # Logging to both the console and a file
-using Logging: with_logger, @logmsg, LogLevel, AbstractLogger
-import LoggingExtras
+using Logging: with_logger, @logmsg, LogLevel, AbstractLogger, Debug, global_logger
+using LoggingExtras:
+    LoggingExtras, FileLogger, TeeLogger, MinLevelLogger, EarlyFilteredLogger
 using TerminalLoggers: TerminalLogger
 
 # Date and time handling; externally we use the proleptic Gregorian calendar,
@@ -160,6 +165,7 @@ include("parameter.jl")
 include("validation.jl")
 include("solve.jl")
 include("logging.jl")
+include("allocation_util.jl")
 include("allocation_init.jl")
 include("allocation_optim.jl")
 include("util.jl")

@@ -6,166 +6,37 @@ const conservative_nodetypes = Set{NodeType.T}([
     NodeType.ManningResistance,
 ])
 
-function get_allocation_sources_in_order!(
-    p_non_diff::ParametersNonDiff,
-    db::DB,
-    config::Config,
-)::OrderedDict{Tuple{NodeID, NodeID}, AllocationSource}
-    (; graph, user_demand, allocation) = p_non_diff
-    (;
-        subnetwork_demands,
-        subnetwork_allocateds,
-        demand_priorities_all,
-        main_network_connections,
-    ) = allocation
-    n_demand_priorities = length(demand_priorities_all)
-
-    default_source_priority = config.allocation.source_priority
-
-    node_rows = execute(
-        db,
-        "SELECT node_id, node_type, subnetwork_id, source_priority FROM Node ORDER BY subnetwork_id, source_priority",
-    )
-
-    # Build dictionary source type -> default source priority (e.g. "user_demand" => 1000)
-    source_types = propertynames(default_source_priority)
-    default_source_priority_dict = Dict{Symbol, Int32}(
-        source_type => getfield(default_source_priority, source_type) for
-        source_type in source_types
-    )
-    default_source_priority_dict[:flow_boundary] = default_source_priority.boundary
-    default_source_priority_dict[:level_boundary] = default_source_priority.boundary
-
-    # NOTE: return flow has to be done before other sources, to prevent that
-    # return flow is directly used within the same source priority by the same node
-    sources = OrderedDict{Tuple{NodeID, NodeID}, AllocationSource}()
-
-    errors = false
-
-    for row in node_rows
-        # Only source nodes that are part of a subnetwork are relevant
-        is_source = false
-        # One row can yield multiple sources:
-        # - One source priority can apply to multiple sources in the case of a LevelDemand
-        #   node which connects to multiple basins
-        # - One source node can imply multiple sources in the case of a LevelBoundary with multiple
-        #   neighbors
-        node_id = NodeID(Symbol(row.node_type), row.node_id, p_non_diff)
-        links = Tuple{NodeID, NodeID}[]
-        if !ismissing(row.subnetwork_id)
-            # E.g. :manning_resistance
-            node_type = Symbol(snake_case(row.node_type))
-
-            if node_type ∈ source_types
-                # The case where the node type is also a source type
-                source_priority =
-                    coalesce(row.source_priority, default_source_priority_dict[node_type])
-                # E.g. AllocationSourceType.level_demand
-                source_type = AllocationSourceType.T(node_type)
-                is_source = true
-                if source_type == AllocationSourceType.level_demand
-                    # If the row is for a level demand, make a source for each connected basin
-                    for basin_id in
-                        outneighbor_labels_type(graph, node_id, LinkType.control)
-                        push!(links, (basin_id, basin_id))
-                    end
-                elseif source_type == AllocationSourceType.flow_demand
-                    # If the row is for a flow demand, make a source for the connected connector node
-                    id_with_demand =
-                        only(outneighbor_labels_type(graph, node_id, LinkType.control))
-                    push!(links, (id_with_demand, id_with_demand))
-                else # if source_type == AllocationSourceType.user_demand
-                    push!(links, user_demand.outflow_link[node_id.idx].link)
-                end
-            elseif node_type ∈ (:flow_boundary, :level_boundary)
-                # The case where the node type is a boundary source node type
-                source_priority =
-                    coalesce(row.source_priority, default_source_priority_dict[node_type])
-                source_type = AllocationSourceType.boundary
-                is_source = true
-                # Always consider the edge going out of the source, even if only the reverse edge
-                # exists in the physical layer
-                for inoutflow_id in inoutflow_ids(graph, node_id)
-                    push!(links, (node_id, inoutflow_id))
-                end
-            elseif row.subnetwork_id != 1 # Not in the main network
-                for main_network_id in filter!(
-                    id -> graph[id].subnetwork_id == 1, # Connects to the main network
-                    collect(inflow_ids(graph, node_id)),
-                )
-                    is_source = true
-                    source_priority = default_source_priority_dict[:subnetwork_inlet]
-                    source_type = AllocationSourceType.subnetwork_inlet
-                    link = (main_network_id, node_id)
-                    push!(links, link)
-                    push!(main_network_connections[row.subnetwork_id], link)
-                    # Allocate memory for the demands and demand priorities
-                    # from the subnetwork via this link
-                    subnetwork_demands[link] = zeros(n_demand_priorities)
-                    subnetwork_allocateds[link] = zeros(n_demand_priorities)
-                end
-            end
-        end
-
-        if is_source
-            for link in links
-                sources[link] = AllocationSource(;
-                    link,
-                    type = source_type,
-                    source_priority,
-                    row.subnetwork_id,
-                    node_id,
-                )
-            end
-        elseif !ismissing(row.source_priority)
-            errors = true
-            @error "$(only(node_ids)) has a source priority ($(row.source_priority)) but is not interpreted as a source by allocation."
-        end
-    end
-
-    if errors
-        error("Errors encountered when processing the allocation source priority data.")
-    end
-
-    OrderedDict(
-        sort!(
-            collect(sources);
-            by = pair -> (pair[2].subnetwork_id, pair[2].source_priority, pair[2].node_id),
-        ),
-    )
-end
-
 function initialize_allocation!(
-    p_non_diff::ParametersNonDiff,
-    db::DB,
+    p_independent::ParametersIndependent,
     config::Config,
 )::Nothing
-    (; graph, allocation) = p_non_diff
-    (; subnetwork_ids, allocation_models, main_network_connections) = allocation
+    (; graph, allocation) = p_independent
+    (; subnetwork_ids, allocation_models) = allocation
     subnetwork_ids_ = sort(collect(keys(graph[].node_ids)))
 
+    # If no subnetworks are defined, there is no allocation to initialize
     if isempty(subnetwork_ids_)
         return nothing
     end
 
-    errors = non_positive_subnetwork_id(graph)
-    if errors
-        error("Allocation network initialization failed.")
-    end
+    # Detect connections between the primary network and subnetworks:
+    # (upstream_id: pump or outlet in the primary network, node_id: node in the subnetwork, generally a basin)
+    collect_primary_network_connections!(allocation, graph)
+
+    non_positive_subnetwork_id(graph) && error("Allocation network initialization failed.")
 
     for subnetwork_id in subnetwork_ids_
         push!(subnetwork_ids, subnetwork_id)
-        main_network_connections[subnetwork_id] = Tuple{NodeID, NodeID}[]
     end
-
-    sources = get_allocation_sources_in_order!(p_non_diff, db, config)
 
     for subnetwork_id in subnetwork_ids_
         push!(
             allocation_models,
-            AllocationModel(subnetwork_id, p_non_diff, sources, config.allocation.timestep),
+            AllocationModel(subnetwork_id, p_independent, config.allocation),
         )
     end
+
+    validate_objectives(allocation_models, p_independent)
     return nothing
 end
 
@@ -674,12 +545,13 @@ function Pump(db::DB, config::Config, graph::MetaGraph)
     static = load_structvector(db, config, PumpStaticV1)
     time = load_structvector(db, config, PumpTimeV1)
     node_id = get_node_ids(db, NodeType.Pump)
-    continuous_control_type = get_continuous_control_type(graph, node_id)
 
-    pump = Pump(; node_id, continuous_control_type)
+    pump = Pump(; node_id)
 
     initialize_control_mapping!(pump, static)
+    set_control_type!(pump, graph)
     set_inoutflow_links!(pump, graph)
+
     errors = parse_parameter!(pump, config, :active; static, time, default = true)
     errors |= parse_parameter!(pump, config, :flow_rate; static, time)
     errors |= parse_parameter!(pump, config, :min_flow_rate; static, time, default = 0.0)
@@ -689,9 +561,7 @@ function Pump(db::DB, config::Config, graph::MetaGraph)
     errors |=
         parse_parameter!(pump, config, :max_downstream_level; static, time, default = Inf)
 
-    if !valid_flow_rates(node_id, pump.flow_rate, pump.control_mapping)
-        error("Invalid pump flow_rates found.")
-    end
+    errors |= !valid_flow_rates(node_id, pump.flow_rate, pump.control_mapping)
 
     errors && error("Errors encountered when parsing Pump data.")
 
@@ -702,12 +572,13 @@ function Outlet(db::DB, config::Config, graph::MetaGraph)
     static = load_structvector(db, config, OutletStaticV1)
     time = load_structvector(db, config, OutletTimeV1)
     node_id = get_node_ids(db, NodeType.Outlet)
-    continuous_control_type = get_continuous_control_type(graph, node_id)
 
-    outlet = Outlet(; node_id, continuous_control_type)
+    outlet = Outlet(; node_id)
 
     initialize_control_mapping!(outlet, static)
+    set_control_type!(outlet, graph)
     set_inoutflow_links!(outlet, graph)
+
     errors = parse_parameter!(outlet, config, :active; static, time, default = true)
     errors |= parse_parameter!(outlet, config, :flow_rate; static, time)
     errors |= parse_parameter!(outlet, config, :min_flow_rate; static, time, default = 0.0)
@@ -717,9 +588,7 @@ function Outlet(db::DB, config::Config, graph::MetaGraph)
     errors |=
         parse_parameter!(outlet, config, :max_downstream_level; static, time, default = Inf)
 
-    if !valid_flow_rates(node_id, outlet.flow_rate, outlet.control_mapping)
-        error("Invalid Outlet flow_rates found.")
-    end
+    errors |= !valid_flow_rates(node_id, outlet.flow_rate, outlet.control_mapping)
 
     errors && error("Errors encountered when parsing Outlet data.")
 
@@ -853,7 +722,12 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     errors |= validate_consistent_basin_initialization(profiles)
     errors && error("Errors encountered when parsing Basin data.")
 
-    interpolate_basin_profile!(basin, profiles)
+    areas, levels, storage, node_ids = interpolate_basin_profile!(basin, profiles)
+
+    if config.logging.verbosity == Debug
+        dir = joinpath(config.dir, config.results_dir)
+        output_basin_profiles(levels, areas, storage, node_ids, dir)
+    end
 
     # Inflow and outflow links
     map!(id -> collect(inflow_ids(graph, id)), basin.inflow_ids, node_id)
@@ -866,6 +740,14 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     basin.storage0 .= storage0
     basin.storage_prev .= storage0
     basin.concentration_data.mass .*= storage0  # was initialized by concentration_state, resulting in mass
+
+    # Compute the low storage threshold as the disk of water between the bottom
+    # and 10 cm above the bottom
+    for id in node_id
+        bottom = basin_bottom(basin, id)[2]
+        basin.low_storage_threshold[id.idx] =
+            get_storage_from_level(basin, id.idx, bottom + LOW_STORAGE_DEPTH)
+    end
 
     basin
 end
@@ -932,14 +814,13 @@ function CompoundVariable(
             error("Invalid `listen_node_id`.")
         end
         # Placeholder until actual ref is known
-        diff_cache_ref = DiffCacheRef()
+        cache_ref = CacheRef()
         variable = row.variable
         # Default to weight = 1.0 if not specified
         weight = coalesce(row.weight, 1.0)
         # Default to look_ahead = 0.0 if not specified
         look_ahead = coalesce(row.look_ahead, 0.0)
-        subvariable =
-            SubVariable(listen_node_id, diff_cache_ref, variable, weight, look_ahead)
+        subvariable = SubVariable(listen_node_id, cache_ref, variable, weight, look_ahead)
         push!(subvariables, subvariable)
     end
 
@@ -1261,7 +1142,7 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)
     user_demand
 end
 
-function LevelDemand(db::DB, config::Config)
+function LevelDemand(db::DB, config::Config, graph::MetaGraph)
     static = load_structvector(db, config, LevelDemandStaticV1)
     time = load_structvector(db, config, LevelDemandTimeV1)
     node_id = get_node_ids(db, NodeType.LevelDemand)
@@ -1288,6 +1169,17 @@ function LevelDemand(db::DB, config::Config)
         cyclic_times,
     )
     errors |= parse_parameter!(level_demand, config, :demand_priority; static, time)
+
+    for id in node_id
+        basin_ids = collect(outneighbor_labels_type(graph, id, LinkType.control))
+        push!(level_demand.basins_with_demand, basin_ids)
+        for basin_id in basin_ids
+            level_demand.target_level_min[basin_id] = 0.0
+            level_demand.target_storage_min[basin_id] = 0.0
+            level_demand.storage_demand[basin_id] = 0.0
+            level_demand.storage_prev[basin_id] = 0.0
+        end
+    end
 
     errors && error("Errors encountered when parsing LevelDemand data.")
 
@@ -1464,63 +1356,10 @@ function Subgrid(db::DB, config::Config, basin::Basin)
 end
 
 function Allocation(db::DB, config::Config, graph::MetaGraph)::Allocation
-    mean_input_flows = Dict{Tuple{NodeID, NodeID}, Float64}[]
-    mean_realized_flows = Dict{Tuple{NodeID, NodeID}, Float64}()
-    subnetwork_ids = sort(collect(keys(graph[].node_ids)))
-
-    if config.allocation.use_allocation
-        for _ in subnetwork_ids
-            push!(mean_input_flows, Dict{Tuple{NodeID, NodeID}, Float64}())
-        end
-
-        # Find links which serve as sources in allocation
-        for link_metadata in values(graph.edge_data)
-            (; link) = link_metadata
-            id_source, _ = link
-            if id_source.type in boundary_source_nodetypes
-                (; subnetwork_id) = graph[id_source]
-                # Check whether the source node is part of a subnetwork
-                if subnetwork_id ≠ 0
-                    subnetwork_idx = searchsortedfirst(subnetwork_ids, subnetwork_id)
-                    mean_input_flows[subnetwork_idx][link] = 0.0
-                end
-            end
-        end
-
-        # Find basins with a level demand
-        for node_id in values(graph.vertex_labels)
-            if has_external_demand(graph, node_id, :level_demand)[1]
-                subnetwork_id = graph[node_id].subnetwork_id
-                subnetwork_idx = searchsortedfirst(subnetwork_ids, subnetwork_id)
-                mean_input_flows[subnetwork_idx][(node_id, node_id)] = 0.0
-            end
-        end
-
-        # Find links that realize a demand
-        for link_metadata in values(graph.edge_data)
-            (; type, link) = link_metadata
-
-            src_id, dst_id = link
-            user_demand_inflow =
-                (type == LinkType.flow) && (dst_id.type == NodeType.UserDemand)
-            level_demand_inflow =
-                (type == LinkType.control) && (src_id.type == NodeType.LevelDemand)
-            flow_demand_inflow =
-                (type == LinkType.flow) &&
-                has_external_demand(graph, dst_id, :flow_demand)[1]
-
-            if user_demand_inflow || flow_demand_inflow
-                mean_realized_flows[link] = 0.0
-            elseif level_demand_inflow
-                mean_realized_flows[(dst_id, dst_id)] = 0.0
-            end
-        end
-    end
-
     return Allocation(;
         demand_priorities_all = get_all_demand_priorities(db, config),
-        mean_input_flows,
-        mean_realized_flows,
+        subnetwork_ids = sort(collect(keys(graph[].node_ids))),
+        subnetwork_inlet_source_priority = config.allocation.source_priority.subnetwork_inlet,
     )
 end
 
@@ -1551,7 +1390,7 @@ function Parameters(db::DB, config::Config)::Parameters
         continuous_control = ContinuousControl(db, config),
         pid_control = PidControl(db, config),
         user_demand = UserDemand(db, config, graph),
-        level_demand = LevelDemand(db, config),
+        level_demand = LevelDemand(db, config, graph),
         flow_demand = FlowDemand(db, config),
     )
 
@@ -1596,7 +1435,7 @@ function Parameters(db::DB, config::Config)::Parameters
         graph,
     )
 
-    p_non_diff = ParametersNonDiff(;
+    p_independent = ParametersIndependent(;
         config.starttime,
         config.solver.reltol,
         relmask = collect(trues(n_states)),
@@ -1615,16 +1454,16 @@ function Parameters(db::DB, config::Config)::Parameters
         do_subgrid = config.results.subgrid,
     )
 
-    collect_control_mappings!(p_non_diff)
-    set_listen_diff_cache_refs!(p_non_diff, state_ranges)
-    set_discrete_controlled_variable_refs!(p_non_diff)
+    collect_control_mappings!(p_independent)
+    set_listen_cache_refs!(p_independent, state_ranges)
+    set_discrete_controlled_variable_refs!(p_independent)
 
     # Allocation data structures
-    if config.allocation.use_allocation
-        initialize_allocation!(p_non_diff, db, config)
+    if config.experimental.allocation
+        initialize_allocation!(p_independent, config)
     end
 
-    return Parameters(; p_non_diff)
+    return Parameters(; p_independent)
 end
 
 function get_node_ids_int32(db::DB, node_type)::Vector{Int32}
@@ -1875,11 +1714,14 @@ function set_concentrations!(
     end
 end
 
-function interpolate_basin_profile!(
-    basin::Basin,
-    profiles::StructVector{BasinProfileV1},
-)::Nothing
+function interpolate_basin_profile!(basin::Basin, profiles::StructVector{BasinProfileV1})
+    areas = Vector{Vector{Float64}}()
+    levels = Vector{Vector{Float64}}()
+    storage = Vector{Vector{Float64}}()
+
+    node_ids = Vector{Int32}()
     for (i, group) in enumerate(IterTools.groupby(row -> row.node_id, profiles))
+        push!(node_ids, first(group).node_id)
         group_area = getproperty.(group, :area)
         group_level = getproperty.(group, :level)
         group_storage = getproperty.(group, :storage)
@@ -1908,13 +1750,23 @@ function interpolate_basin_profile!(
             invert_integral(level_to_area; extrapolation_right = ExtrapolationType.Linear)
 
         if !all(ismissing, group_area)
+            # if all data is present for area, we use it
             level_to_area = LinearInterpolation(
                 group_area,
                 group_level;
                 extrapolation = ConstantExtrapolation,
                 cache_parameters = true,
             )
+        else
+            # else the differentiated storage is used
+            group_area = dS_dh
         end
         basin.level_to_area[i] = level_to_area
+
+        push!(areas, group_area)
+        push!(levels, group_level)
+        push!(storage, group_storage)
     end
+
+    return areas, levels, storage, node_ids
 end
