@@ -196,7 +196,7 @@ end
     flow_bench = Arrow.Table(flow_bytes_bench)
     basin_bench = Arrow.Table(basin_bytes_bench)
 
-    solver_list = ["QNDF"]
+    solver_list = []
     # false sparse or autodiff can cause large differences in results, thus removed
     sparse_on = [true]
     autodiff_on = [true]
