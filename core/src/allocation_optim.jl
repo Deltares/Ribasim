@@ -479,7 +479,6 @@ function save_demands_and_allocations!(
     for node_id_basin in only(basin_allocated.axes)
         node_id = only(inneighbor_labels_type(graph, node_id_basin, LinkType.control))
         if level_demand.demand_priority[node_id.idx] == demand_priority
-            @show level_demand.storage_prev[node_id_basin]
             cumulative_realized_basin_volume =
                 current_storage[node_id_basin.idx] -
                 level_demand.storage_prev[node_id_basin]

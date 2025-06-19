@@ -396,6 +396,7 @@ end
     @test storage[stage_5] ≈ u_stage_5.(t[stage_5]) rtol = 1e-10
 
     # Isolated LevelDemand + Basin pair to test optional min_level
+    (; problem) = allocation.allocation_models[2]
     basin_id = NodeID(:Basin, 7, p_independent)
     @test JuMP.value(only(problem[:basin_storage][(basin_id, :start)])) ==
           JuMP.value(only(problem[:basin_storage][(basin_id, :end)]))
