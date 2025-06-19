@@ -670,7 +670,7 @@ end
 # end
 
 @testitem "level_demand_without_max_level" begin
-    using Ribasim: NodeID, get_basin_capacity, outflow_id
+    using Ribasim: NodeID, outflow_id
     using JuMP
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/level_demand/ribasim.toml")

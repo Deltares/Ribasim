@@ -354,7 +354,7 @@ function update_allocated_values!(
     p_independent::ParametersIndependent,
     objective::AllocationObjective,
 )::Nothing
-    (; user_demand, flow_demand, level_demand, basin, graph) = p_independent
+    (; user_demand, flow_demand, level_demand, graph) = p_independent
     (; demand_priority, demand_priority_idx) = objective
 
     user_demand_allocated = problem[:user_demand_allocated]

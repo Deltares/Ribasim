@@ -469,7 +469,7 @@ function add_level_demand!(
     target_storage =
         problem[:targe_storage_demand_fraction] = JuMP.@variable(
             problem,
-            target_storage_demand_fraction[ids_with_level_demand_subnetwork] == 0
+            target_storage_demand_fraction[ids_with_level_demand_subnetwork] == 1
         )
 
     # Define decision variables: lower relative level error (unitless)
