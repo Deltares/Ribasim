@@ -47,6 +47,14 @@ function water_balance!(
         p_mutable,
     )
 
+    # (; current_flow_rate_outlet) = state_time_dependent_cache
+    # # Set all `undef` values in current_flow_rate_outlet to 0
+    # for i in eachindex(current_flow_rate_outlet)
+    #     if !isassigned(current_flow_rate_outlet, i) || isnan(current_flow_rate_outlet[i])
+    #         current_flow_rate_outlet[i] = 0.0
+    #     end
+    # end
+
     # Check whether t or u is different from the last water_balance! call
     check_new_input!(p, u, t)
 
@@ -581,7 +589,7 @@ function formulate_flow!(
         min_upstream_level = pump.min_upstream_level[id.idx]
         max_downstream_level = pump.max_downstream_level[id.idx]
 
-        if !(active || all_nodes_active) || (control_type != control_type_)
+        if should_skip_update_q(active, control_type, control_type_, p)
             continue
         end
 
@@ -650,7 +658,7 @@ function formulate_flow!(
         min_upstream_level = outlet.min_upstream_level[id.idx]
         max_downstream_level = outlet.max_downstream_level[id.idx]
 
-        if !(active || all_nodes_active) || (control_type != control_type_)
+        if should_skip_update_q(active, control_type, control_type_, p)
             continue
         end
 
