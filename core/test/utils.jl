@@ -25,8 +25,7 @@ using TestItemRunner: @testmodule
         results::Vector
         showtiming::Bool
         # constructor takes a description string and options keyword arguments
-        # function TeamcityTestSet(desc; teamcity = haskey(ENV, "TEAMCITY_VERSION"))
-        function TeamcityTestSet(desc; teamcity = true)
+        function TeamcityTestSet(desc; teamcity = haskey(ENV, "TEAMCITY_VERSION"))
             if teamcity
                 println("##teamcity[testSuiteStarted name='$desc']")
                 flush(stdout)
