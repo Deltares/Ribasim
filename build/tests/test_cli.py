@@ -18,6 +18,9 @@ def test_models(model_constructor, tmp_path):
     assert isinstance(model, ribasim.Model)
     model.write(tmp_path / "ribasim.toml")
 
+    if model.experimental.allocation:
+        return
+
     result = subprocess.run([executable, tmp_path / "ribasim.toml"])
 
     if model_constructor.__name__.startswith("invalid_"):

@@ -730,7 +730,7 @@ def level_demand_model() -> Model:
         starttime="2020-01-01",
         endtime="2020-02-01",
         crs="EPSG:28992",
-        allocation=Allocation(timestep=1e5),
+        allocation=Allocation(timestep=86400),
         experimental=Experimental(concentration=True, allocation=True),
     )
     model.flow_boundary.add(
@@ -739,7 +739,7 @@ def level_demand_model() -> Model:
     model.basin.add(
         Node(2, Point(1, 0), subnetwork_id=2),
         [
-            basin.Profile(area=1000.0, level=[0.0, 1.0]),
+            basin.Profile(area=1000.0, level=[0.0, 10.0]),
             basin.Time(
                 time=["2020-01-01", "2020-01-16"],
                 precipitation=[1e-6, 0.0],
@@ -761,17 +761,17 @@ def level_demand_model() -> Model:
     )
     model.basin.add(
         Node(5, Point(2, -1), subnetwork_id=2),
-        [basin.Profile(area=1000.0, level=[0.0, 1.0]), basin.State(level=[0.5])],
+        [basin.Profile(area=1000.0, level=[0.0, 10.0]), basin.State(level=[0.5])],
     )
 
     # Isolated LevelDemand + Basin pair to test optional min_level
     model.level_demand.add(
         Node(6, Point(3, -1), subnetwork_id=3),
-        [level_demand.Static(max_level=[1.0], demand_priority=1)],
+        [level_demand.Static(min_level=[1.0], demand_priority=1)],
     )
     model.basin.add(
         Node(7, Point(3, 0), subnetwork_id=3),
-        [basin.Profile(area=1000.0, level=[0.0, 1.0]), basin.State(level=[2.0])],
+        [basin.Profile(area=1000.0, level=[0.0, 10.0]), basin.State(level=[2.0])],
     )
 
     model.link.add(model.flow_boundary[1], model.basin[2])
@@ -1091,7 +1091,7 @@ def allocation_training_model() -> Model:
                 demand=[0.0, 0.0, 10, 12, 12, 0.0],
                 return_factor=0,
                 min_level=0,
-                demand_priority=3,
+                demand_priority=4,
                 time=[
                     "2022-01-01",
                     "2022-03-31",
@@ -1132,7 +1132,7 @@ def allocation_training_model() -> Model:
                 demand=[2.0, 2.3, 2.3, 2.4, 3, 3, 4, 3, 2.5, 2.2, 2.0, 2.0],
                 return_factor=0.4,
                 min_level=0,
-                demand_priority=2,
+                demand_priority=3,
                 time=pd.date_range(start="2022-01-01", periods=12, freq="MS"),
             )
         ],
@@ -1147,7 +1147,7 @@ def allocation_training_model() -> Model:
                 demand=[4, 4, 4.5, 5, 5, 6, 7.5, 8, 5, 4, 3, 2.0],
                 return_factor=0.5,
                 min_level=0,
-                demand_priority=1,
+                demand_priority=2,
                 time=pd.date_range(start="2022-01-01", periods=12, freq="MS"),
             )
         ],

@@ -3,7 +3,7 @@ const MAX_ABS_FLOW = 5e5
 is_active(allocation::Allocation) = !isempty(allocation.allocation_models)
 
 get_subnetwork_ids(graph::MetaGraph, node_type::NodeType.T, subnetwork_id::Int32) =
-    filter(node_id -> node_id.type == node_type, graph[].node_ids[subnetwork_id])
+    collect(filter(node_id -> node_id.type == node_type, graph[].node_ids[subnetwork_id]))
 
 get_demand_objectives(objectives::Vector{AllocationObjective}) = view(
     objectives,
@@ -228,4 +228,16 @@ function get_low_storage_factor(problem::JuMP.Model, node_id::NodeID)
     else
         1.0
     end
+end
+
+function update_storage_prev!(p::Parameters)::Nothing
+    (; p_independent, state_time_dependent_cache) = p
+    (; current_storage) = state_time_dependent_cache
+    (; storage_prev) = p_independent.level_demand
+
+    for node_id in keys(storage_prev)
+        storage_prev[node_id] = current_storage[node_id.idx]
+    end
+
+    return nothing
 end
