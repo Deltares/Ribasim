@@ -21,7 +21,7 @@ function set_simulation_data!(
 
     errors = false
 
-    errors |= set_simulation_data!(allocation_model, basin, p)
+    errors |= set_simulation_data!(allocation_model, basin, p, t)
     set_simulation_data!(allocation_model, level_boundary, t)
     set_simulation_data!(allocation_model, manning_resistance, p, t)
     set_simulation_data!(allocation_model, pump, outlet, du)
@@ -39,8 +39,10 @@ function set_simulation_data!(
     allocation_model::AllocationModel,
     basin::Basin,
     p::Parameters,
+    t::Number,
 )::Bool
     (; problem, cumulative_boundary_volume, Δt_allocation) = allocation_model
+    (; graph, tabulated_rating_curve) = p.p_independent
     (; storage_to_level) = basin
 
     storage = problem[:basin_storage]
@@ -69,6 +71,20 @@ function set_simulation_data!(
         if level_now > level_max
             @error "Maximum basin level exceed (allocation infeasibility)" level_now level_max basin_id
             errors = true
+        end
+
+        for rating_curve_id in outflow_ids(graph, basin_id)
+            if rating_curve_id.type == NodeType.TabulatedRatingCurve
+                interpolation_index =
+                    tabulated_rating_curve.current_interpolation_index[rating_curve_id.idx](
+                        t,
+                    )
+                qh = tabulated_rating_curve.interpolations[interpolation_index]
+                level_rating_curve_max = qh.t[end]
+                if level_now > level_rating_curve_max
+                    @error "Maximum tabulated rating curve level exceeded (allocation infeasibility)" level_now level_rating_curve_max basin_id rating_curve_id
+                end
+            end
         end
 
         JuMP.fix(storage[key], storage_now; force = true)
