@@ -24,6 +24,10 @@ struct Model
     end
 end
 
+"""
+Whether to fully specialize the ODEProblem and automatically choose an AD chunk size
+for full runtime performance, or not for improved (compilation) latency.
+"""
 const specialize = @load_preference("specialize", true)
 
 """
@@ -201,13 +205,13 @@ function Model(config::Config)::Model
     adaptive, dt = convert_dt(config.solver.dt)
 
     jac_prototype, jac, tgrad = get_diff_eval(du0, u0, parameters, config.solver)
-    RHS = ODEFunction{true, specialize ? SciMLBase.FullSpecialize : SciMLBase.NoSpecialize}(
+    RHS = ODEFunction{true, specialize ? FullSpecialize : NoSpecialize}(
         water_balance!;
         jac_prototype,
         jac,
         tgrad,
     )
-    prob = ODEProblem{true, specialize ? SciMLBase.FullSpecialize : SciMLBase.NoSpecialize}(
+    prob = ODEProblem{true, specialize ? FullSpecialize : NoSpecialize}(
         RHS,
         u0,
         timespan,

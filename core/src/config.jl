@@ -298,10 +298,13 @@ function function_accepts_kwarg(f, kwarg)::Bool
     return false
 end
 
-get_ad_type(solver::Solver; specialize = true) =
-    solver.autodiff ?
-    AutoForwardDiff(; chunksize = specialize ? nothing : 1, tag = :Ribasim) :
-    AutoFiniteDiff()
+function get_ad_type(solver::Solver; specialize = true)
+    if solver.autodiff
+        AutoForwardDiff(; chunksize = specialize ? nothing : 1, tag = :Ribasim)
+    else
+        AutoFiniteDiff()
+    end
+end
 
 "Create an OrdinaryDiffEqAlgorithm from solver config"
 function algorithm(solver::Solver; u0 = [], specialize = true)::OrdinaryDiffEqAlgorithm
