@@ -294,6 +294,21 @@ end
     @test jac_prototype == jac_prototype_expected
 end
 
+@testitem "Solver algorithm" begin
+    using LinearSolve: KLUFactorization
+    using OrdinaryDiffEqNonlinearSolve: NLNewton
+    using OrdinaryDiffEqBDF: QNDF
+
+    model =
+        Ribasim.Model(normpath(@__DIR__, "../../generated_testmodels/bucket/ribasim.toml"))
+    (; alg) = model.integrator
+
+    @test alg isa QNDF
+    @test alg.step_limiter! == Ribasim.limit_flow!
+    @test alg.nlsolve == NLNewton()
+    @test alg.linsolve == KLUFactorization()
+end
+
 @testitem "FlatVector" begin
     vv = [[2.2, 3.2], [4.3, 5.3], [6.4, 7.4]]
     fv = Ribasim.FlatVector(vv)
