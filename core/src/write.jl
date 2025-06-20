@@ -470,5 +470,6 @@ function output_basin_profiles(
     data = (; node_id, level, area, storage)
     filename = joinpath(dir, "basin_profiles.csv")
     mkpath(dirname(filename))
-    DelimitedFiles.writedlm(filename, Tables.rowtable(data), ',')
+    writedlm(filename, Tables.rowtable(data), ',')
+    return nothing
 end

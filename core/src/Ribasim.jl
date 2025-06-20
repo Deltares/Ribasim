@@ -30,7 +30,7 @@ using DifferentiationInterface:
 using ForwardDiff: derivative as forward_diff
 
 # Algorithms for solving ODEs.
-using OrdinaryDiffEqCore: OrdinaryDiffEqCore, get_du, AbstractNLSolver
+using OrdinaryDiffEqCore: OrdinaryDiffEqCore, get_du
 import ForwardDiff
 
 # Interface for defining and solving the ODE problem of the physical layer.
@@ -49,8 +49,7 @@ using SciMLBase:
 
 # Automatically detecting the sparsity pattern of the Jacobian of water_balance!
 # through operator overloading
-using SparseConnectivityTracer:
-    GradientTracer, TracerSparsityDetector, IndexSetGradientPattern
+using SparseConnectivityTracer: GradientTracer, TracerSparsityDetector
 using SparseMatrixColorings: GreedyColoringAlgorithm, sparsity_pattern
 
 # For efficient sparse computations
@@ -74,7 +73,7 @@ using DataInterpolations:
     AbstractInterpolation,
     ExtrapolationType
 using DataInterpolations.ExtrapolationType:
-    Constant as ConstantExtrapolation, Periodic, Extension, Linear
+    Constant as ConstantExtrapolation, Periodic, Linear
 
 # Modeling language for Mathematical Optimization.
 # Used for allocation, see the docs: https://ribasim.org/dev/allocation.html
@@ -92,7 +91,7 @@ import BasicModelInterface as BMI
 using Arrow: Arrow, Table
 import TranscodingStreams
 using CodecZstd: ZstdCompressor
-using DelimitedFiles, Tables
+using DelimitedFiles: writedlm
 
 # Reading GeoPackage files, which are SQLite databases with spatial data
 using SQLite: SQLite, DB, Query, esc_id
@@ -116,14 +115,7 @@ using DiffEqCallbacks:
 
 # The network defined by the Node and Link table is converted to a graph internally.
 using Graphs:
-    DiGraph,
-    edges,
-    inneighbors,
-    outneighbors,
-    induced_subgraph,
-    is_connected,
-    rem_edge!,
-    rem_vertex!
+    DiGraph, edges, inneighbors, outneighbors, induced_subgraph, is_connected, rem_vertex!
 # Convenience functionality built on top of Graphs. Used to store e.g. node and edge metadata
 # alongside the graph. Extra metadata is stored in a NamedTuple retrieved as graph[].
 using MetaGraphsNext:
