@@ -15,7 +15,6 @@ For more granular access, see:
 module Ribasim
 
 using PrecompileTools: @setup_workload, @compile_workload
-using CompileTraces: @compile_traces
 using Preferences: @load_preference
 
 # Requirements for automatic differentiation

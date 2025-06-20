@@ -304,12 +304,7 @@ get_ad_type(solver::Solver; specialize = true) =
     AutoFiniteDiff()
 
 "Create an OrdinaryDiffEqAlgorithm from solver config"
-function algorithm(
-    solver::Solver;
-    u0 = [],
-    specialize = true,
-    keywordargs...,
-)::OrdinaryDiffEqAlgorithm
+function algorithm(solver::Solver; u0 = [], specialize = true)::OrdinaryDiffEqAlgorithm
     algotype = get(algorithms, solver.algorithm, nothing)
     if algotype === nothing
         options = join(keys(algorithms), ", ")
@@ -328,12 +323,6 @@ function algorithm(
 
     if function_accepts_kwarg(algotype, :autodiff)
         kwargs[:autodiff] = get_ad_type(solver; specialize)
-    end
-
-    for (field, value) in pairs(keywordargs)
-        if function_accepts_kwarg(algotype, field)
-            kwargs[field] = value
-        end
     end
 
     algotype(; kwargs...)

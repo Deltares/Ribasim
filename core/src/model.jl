@@ -186,7 +186,7 @@ function Model(config::Config)::Model
     du0 = zero(u0)
 
     # The Solver algorithm
-    alg = algorithm(config.solver; u0, specialize, chunk_size = specialize ? 0 : 1)
+    alg = algorithm(config.solver; u0, specialize)
 
     # Synchronize level with storage
     set_current_basin_properties!(u0, parameters, t0)
@@ -212,7 +212,6 @@ function Model(config::Config)::Model
         u0,
         timespan,
         parameters;
-        # chunk_size = specialize ? 0 : 1,
     )
     @debug "Setup ODEProblem."
 
