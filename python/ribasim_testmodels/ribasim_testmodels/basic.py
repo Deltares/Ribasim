@@ -358,7 +358,7 @@ def tabulated_rating_curve_model() -> Model:
     return model
 
 
-def outlet_model():
+def outlet_model() -> Model:
     """Set up a basic model with an outlet that encounters various physical constraints."""
     model = Model(
         starttime="2020-01-01",
@@ -369,16 +369,16 @@ def outlet_model():
 
     # Set up the basins
     model.basin.add(
-        Node(3, Point(2.0, 0.0)),
+        Node(3, Point(2.0, 0.0), subnetwork_id=2),
         [
-            basin.Profile(area=[1000.0, 1000.0], level=[0.0, 1.0]),
+            basin.Profile(area=[1000.0, 1000.0], level=[0.0, 10.0]),
             basin.State(level=[0.0]),
         ],
     )
 
     # Set up the level boundary
     model.level_boundary.add(
-        Node(1, Point(0.0, 0.0)),
+        Node(1, Point(0.0, 0.0), subnetwork_id=2),
         [
             level_boundary.Time(
                 time=[
@@ -393,7 +393,7 @@ def outlet_model():
 
     # Setup the outlet
     model.outlet.add(
-        Node(2, Point(1.0, 0.0)),
+        Node(2, Point(1.0, 0.0), subnetwork_id=2),
         [outlet.Static(flow_rate=[1e-3], min_upstream_level=[2.0])],
     )
 

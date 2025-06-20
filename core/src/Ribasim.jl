@@ -27,6 +27,8 @@ using DifferentiationInterface:
     prepare_derivative,
     derivative!
 
+using ForwardDiff: derivative as forward_diff
+
 # Algorithms for solving ODEs.
 using OrdinaryDiffEqCore: OrdinaryDiffEqCore, get_du, AbstractNLSolver
 import ForwardDiff
@@ -77,6 +79,8 @@ using DataInterpolations.ExtrapolationType:
 import JuMP
 # The optimization backend of JuMP.
 import HiGHS
+# Represent piecewise linear functions in JuMP
+using PiecewiseLinearOpt: piecewiselinear
 
 # The BMI is a standard for interacting with a Ribasim model,
 # see the docs: https://ribasim.org/dev/bmi.html
@@ -164,6 +168,7 @@ include("parameter.jl")
 include("validation.jl")
 include("solve.jl")
 include("logging.jl")
+include("allocation_util.jl")
 include("allocation_init.jl")
 include("allocation_optim.jl")
 include("util.jl")

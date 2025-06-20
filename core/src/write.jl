@@ -354,7 +354,6 @@ function allocation_flow_table(
     to_node_type::Vector{String},
     to_node_id::Vector{Int32},
     subnetwork_id::Vector{Int32},
-    demand_priority::Vector{Int32},
     flow_rate::Vector{Float64},
     optimization_type::Vector{String},
 }
@@ -371,7 +370,6 @@ function allocation_flow_table(
         record_flow.to_node_type,
         record_flow.to_node_id,
         record_flow.subnetwork_id,
-        record_flow.demand_priority,
         record_flow.flow_rate,
         record_flow.optimization_type,
     )

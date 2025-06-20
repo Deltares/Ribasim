@@ -31,7 +31,7 @@ const StateTuple{V} = NamedTuple{state_components, NTuple{n_components, V}}
 # LinkType.flow and NodeType.FlowBoundary
 @enumx LinkType flow control none
 @eval @enumx NodeType $(config.nodetypes...)
-@enumx ContinuousControlType None Continuous PID
+@enumx ControlType None Continuous PID Allocation
 @enumx Substance Continuity = 1 Initial = 2 LevelBoundary = 3 FlowBoundary = 4 UserDemand =
     5 Drainage = 6 Precipitation = 7
 Base.to_index(id::Substance.T) = Int(id)  # used to index into concentration matrices
@@ -178,145 +178,117 @@ const ScalarBlockInterpolation = SmoothedConstantInterpolation{
 const IndexLookup =
     ConstantInterpolation{Vector{Int64}, Vector{Float64}, Vector{Float64}, Int64}
 
-@eval @enumx AllocationSourceType $(fieldnames(Ribasim.config.SourcePriority)...)
+@enumx AllocationObjectiveType demand source_priorities
 
-# Support creating a AllocationSourceTuple enum instance from a symbol
-function AllocationSourceType.T(s::Symbol)::AllocationSourceType.T
-    symbol_map = EnumX.symbol_map(AllocationSourceType.T)
-    for (sym, val) in symbol_map
-        sym == s && return AllocationSourceType.T(val)
+"""
+Store information about an allocation objective (goal)
+
+expression: The objective expression, a linear combination of error terms
+type: The allocation objective type (one of physics, demand, source_priorities)
+demand_priority: If a demand objective, the priority associated with those demands
+demand_priority_idx: The index of the demand priority in the sorted list of all demand priorities in the model
+has_flow_demand: If a demand objective, whether there is a flow demand (UserDemand, FlowDemand, SubnetworkDemand)
+has_level_demand: If a demand objective, whether there is a level demand (LevelDemand)
+"""
+@kwdef mutable struct AllocationObjective
+    const expression::JuMP.AffExpr = JuMP.AffExpr()
+    const type::AllocationObjectiveType.T
+    const demand_priority::Int32 = 0
+    const demand_priority_idx::Int = 0
+    has_flow_demand::Bool = false
+    has_level_demand::Bool = false
+end
+
+function Base.show(io::IO, objective::AllocationObjective)
+    (; type, demand_priority) = objective
+    print(io, "objective of type $type")
+    if type == AllocationObjectiveType.demand
+        print(io, ", demand_priority $demand_priority")
     end
-    throw(ArgumentError("Invalid value for AllocationSourceType: $s"))
-end
-
-"""
-Data structure for a single source within an allocation subnetwork.
-link: The outflow link of the source
-type: The type of source (link, basin, main_to_sub, user_return, buffer)
-source_priority: The priority of the source
-subnetwork_id: The ID of the subnetwork this source belongs to
-node_id: The ID of the node from which this source was created. Mainly used for sorting the sources.
-capacity: The initial capacity of the source as determined by the physical layer
-capacity_reduced: The capacity adjusted by passed optimizations
-basin_flow_rate: The total outflow rate of a basin when optimized over all sources for one demand priority.
-    Ignored when the source is not a basin.
-"""
-@kwdef mutable struct AllocationSource
-    const link::Tuple{NodeID, NodeID}
-    const type::AllocationSourceType.T
-    const source_priority::Int32
-    const subnetwork_id::Int32
-    const node_id::NodeID
-    capacity::Float64 = 0.0
-    capacity_reduced::Float64 = 0.0
-    basin_flow_rate::Float64 = 0.0
-end
-
-function Base.show(io::IO, source::AllocationSource)
-    (; link, type) = source
-    print(io, "AllocationSource of type $type at link $link")
 end
 
 """
 Store information for a subnetwork used for allocation.
 
 subnetwork_id: The ID of this subnetwork
-source_priorities: All used source priority values in this subnetwork
-capacity: The capacity per link of the allocation network, as constrained by nodes that have a max_flow_rate
-flow: The flows over all the links in the subnetwork for a certain demand priority (used for allocation_flow output)
-sources: source data in preferred order of optimization
 problem: The JuMP.jl model for solving the allocation problem
-Δt_allocation: The time interval between consecutive allocation solves
+Δt_allocation: The time interval between consecutive allocation solves'
+objectives: The objectives (goals) in the order in which they will be optimized for
+cumulative_forcing_volume: The net volume of forcing exchanged with each Basin in the subnetwork in the last Δt_allocation
+cumulative_boundary_volume: The net volume of boundary flow into the model for each FlowBoundary in the subnetwork
+    over the last Δt_allocation
+cumulative_realized_volume: The net volume of flow realized by a demand node over the last Δt_allocation
+sources: The nodes in the subnetwork which can act as sources, sorted by source priority
+subnetwork_demand: The total demand of the secondary network from the primary network per inlet per demand priority (irrelevant for the primary network)
 """
 @kwdef struct AllocationModel
     subnetwork_id::Int32
-    source_priorities::Vector{Int32}
-    capacity::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}}
-    flow::JuMP.Containers.SparseAxisArray{Float64, 2, Tuple{NodeID, NodeID}}
-    sources::OrderedDict{Tuple{NodeID, NodeID}, AllocationSource}
     problem::JuMP.Model
     Δt_allocation::Float64
+    objectives::Vector{AllocationObjective} = []
+    cumulative_forcing_volume::Dict{NodeID, Float64} = Dict()
+    cumulative_boundary_volume::Dict{Tuple{NodeID, NodeID}, Float64} = Dict()
+    cumulative_realized_volume::Dict{Tuple{NodeID, NodeID}, Float64} = Dict()
+    sources::Dict{Int32, NodeID} = OrderedDict()
+    subnetwork_demand::Dict{Tuple{NodeID, NodeID}, Vector{Float64}} = Dict()
+end
+
+@kwdef struct DemandRecord
+    time::Vector{Float64} = []
+    subnetwork_id::Vector{Int32} = []
+    node_type::Vector{String} = []
+    node_id::Vector{Int32} = []
+    demand_priority::Vector{Int32} = []
+    demand::Vector{Float64} = []
+    allocated::Vector{Float64} = []
+    realized::Vector{Float64} = []
+end
+
+@kwdef struct FlowRecord
+    time::Vector{Float64} = []
+    link_id::Vector{Int32} = []
+    from_node_type::Vector{String} = []
+    from_node_id::Vector{Int32} = []
+    to_node_type::Vector{String} = []
+    to_node_id::Vector{Int32} = []
+    subnetwork_id::Vector{Int32} = []
+    flow_rate::Vector{Float64} = []
+    optimization_type::Vector{String} = []
 end
 
 """
 Object for all information about allocation
 subnetwork_ids: The unique sorted allocation network IDs
-allocation_models: The allocation models for the main network and subnetworks corresponding to
+allocation_models: The allocation models for the primary network and subnetworks corresponding to
     subnetwork_ids
-main_network_connections: (from_id, to_id) from the main network to the subnetwork per subnetwork
+primary_network_connections: (from_id: pump or outlet in the primary network, to_id: node in the subnetwork, generally a basin)
+    per subnetwork
 demand_priorities_all: All used demand priority values from all subnetworks
-subnetwork_demands: The demand of an link from the main network to a subnetwork
-subnetwork_allocateds: The allocated flow of an link from the main network to a subnetwork
-mean_input_flows: Per subnetwork, flows averaged over Δt_allocation over links that are allocation sources
-mean_realized_flows: Flows averaged over Δt_allocation over links that realize a demand
+subnetwork_inlet_source_priority: The default source priority for subnetwork inlets
 record_demand: A record of demands and allocated flows for nodes that have these
 record_flow: A record of all flows computed by allocation optimization, eventually saved to
     output file
 """
 @kwdef struct Allocation
     subnetwork_ids::Vector{Int32} = Int32[]
-    allocation_models::Vector{AllocationModel} = AllocationModel[]
-    main_network_connections::Dict{Int32, Vector{Tuple{NodeID, NodeID}}} =
-        Dict{Int, Vector{Tuple{NodeID, NodeID}}}()
-    demand_priorities_all::Vector{Int32}
-    subnetwork_demands::Dict{Tuple{NodeID, NodeID}, Vector{Float64}} = Dict()
-    subnetwork_allocateds::Dict{Tuple{NodeID, NodeID}, Vector{Float64}} = Dict()
-    mean_input_flows::Vector{Dict{Tuple{NodeID, NodeID}, Float64}}
-    mean_realized_flows::Dict{Tuple{NodeID, NodeID}, Float64}
-    record_demand::@NamedTuple{
-        time::Vector{Float64},
-        subnetwork_id::Vector{Int32},
-        node_type::Vector{String},
-        node_id::Vector{Int32},
-        demand_priority::Vector{Int32},
-        demand::Vector{Float64},
-        allocated::Vector{Float64},
-        realized::Vector{Float64},
-    } = (;
-        time = Float64[],
-        subnetwork_id = Int32[],
-        node_type = String[],
-        node_id = Int32[],
-        demand_priority = Int32[],
-        demand = Float64[],
-        allocated = Float64[],
-        realized = Float64[],
-    )
-    record_flow::@NamedTuple{
-        time::Vector{Float64},
-        link_id::Vector{Int32},
-        from_node_type::Vector{String},
-        from_node_id::Vector{Int32},
-        to_node_type::Vector{String},
-        to_node_id::Vector{Int32},
-        subnetwork_id::Vector{Int32},
-        demand_priority::Vector{Int32},
-        flow_rate::Vector{Float64},
-        optimization_type::Vector{String},
-    } = (;
-        time = Float64[],
-        link_id = Int32[],
-        from_node_type = String[],
-        from_node_id = Int32[],
-        to_node_type = String[],
-        to_node_id = Int32[],
-        subnetwork_id = Int32[],
-        demand_priority = Int32[],
-        flow_rate = Float64[],
-        optimization_type = String[],
-    )
+    allocation_models::Vector{AllocationModel} = []
+    primary_network_connections::Dict{Int32, Vector{Tuple{NodeID, NodeID}}} = Dict()
+    demand_priorities_all::Vector{Int32} = []
+    subnetwork_inlet_source_priority::Int32 = 0
+    record_demand::DemandRecord = DemandRecord()
+    record_flow::FlowRecord = FlowRecord()
 end
-
-is_active(allocation::Allocation) = !isempty(allocation.allocation_models)
 
 """
 Type for storing metadata of nodes in the graph
 type: type of the node
-subnetwork_id: Allocation network ID (0 if not in subnetwork)
+subnetwork_id: Allocation network ID (0 if not in any subnetwork)
+source_priority: Priority of a source in the subnetwork (0 if not a source)
 """
 @kwdef struct NodeMetadata
     type::Symbol
     subnetwork_id::Int32
+    source_priority::Int32
 end
 
 """
@@ -481,6 +453,8 @@ of vectors or Arrow Tables, and is added to avoid type instabilities.
     vertical_flux::VerticalFlux = VerticalFlux(length(node_id))
     # Initial_storage
     storage0::Vector{Float64} = zeros(length(node_id))
+    # The storage rate for computing the minimum basin emptying_time
+    dstorage::Vector{Float64} = zeros(length(node_id))
     # Storage at previous saveat without storage0
     Δstorage_prev_saveat::Vector{Float64} = zeros(length(node_id))
     # Analytically integrated forcings
@@ -488,7 +462,7 @@ of vectors or Arrow Tables, and is added to avoid type instabilities.
     cumulative_drainage::Vector{Float64} = zeros(length(node_id))
     cumulative_precipitation_saveat::Vector{Float64} = zeros(length(node_id))
     cumulative_drainage_saveat::Vector{Float64} = zeros(length(node_id))
-    # Discrete values for interpolation
+    # Basin profile interpolations
     storage_to_level::Vector{StorageToLevelType} =
         Vector{StorageToLevelType}(undef, length(node_id))
     level_to_area::Vector{ScalarLinearInterpolation} =
@@ -661,7 +635,7 @@ max_flow_rate: The maximum flow rate of the pump
 min_upstream_level: The upstream level below which the Pump flow goes to zero
 max_downstream_level: The downstream level above which the Pump flow goes to zero
 control_mapping: dictionary from (node_id, control_state) to target flow rate
-continuous_control_type: one of None, ContinuousControl, PidControl
+control_type: one of None, ContinuousControl, PidControl, Allocation
 """
 @kwdef struct Pump <: AbstractParameterNode
     node_id::Vector{NodeID}
@@ -680,8 +654,7 @@ continuous_control_type: one of None, ContinuousControl, PidControl
         Vector{ScalarLinearInterpolation}(undef, length(node_id))
     control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate} =
         Dict{Tuple{NodeID, String}, ControlStateUpdate}()
-    continuous_control_type::Vector{ContinuousControlType.T} =
-        fill(ContinuousControlType.None, length(node_id))
+    control_type::Vector{ControlType.T} = fill(ControlType.None, length(node_id))
 end
 
 """
@@ -697,7 +670,7 @@ max_flow_rate: The maximum flow rate of the outlet
 min_upstream_level: The upstream level below which the Outlet flow goes to zero
 max_downstream_level: The downstream level above which the Outlet flow goes to zero
 control_mapping: dictionary from (node_id, control_state) to target flow rate
-continuous_control_type: one of None, ContinuousControl, PidControl
+control_type: one of None, ContinuousControl, PidControl, Allocation
 """
 @kwdef struct Outlet <: AbstractParameterNode
     node_id::Vector{NodeID}
@@ -715,8 +688,7 @@ continuous_control_type: one of None, ContinuousControl, PidControl
     max_downstream_level::Vector{ScalarLinearInterpolation} =
         Vector{ScalarLinearInterpolation}(undef, length(node_id))
     control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate} = Dict()
-    continuous_control_type::Vector{ContinuousControlType.T} =
-        fill(ContinuousControlType.None, length(node_id))
+    control_type::Vector{ControlType.T} = fill(ControlType.None, length(node_id))
 end
 
 """
@@ -923,8 +895,6 @@ has_demand_priority: boolean matrix stating per UserDemand node per demand prior
 demand: water flux demand of UserDemand per demand priority (node_idx, demand_priority_idx)
     Each UserDemand has a demand for all demand priorities,
     which is 0.0 if it is not provided explicitly.
-demand_reduced: the total demand reduced by allocated flows. This is used for goal programming,
-    and requires separate memory from `demand` since demands can come from the BMI
 demand_itp: Timeseries interpolation objects for demands
 demand_from_timeseries: If false the demand comes from the BMI or is fixed
 allocated: water flux currently allocated to UserDemand per demand priority (node_idx, demand_priority_idx)
@@ -942,7 +912,6 @@ concentration_time: Data source for concentration updates
     has_demand_priority::Matrix{Bool} =
         zeros(Bool, length(node_id), length(demand_priorities))
     demand::Matrix{Float64} = zeros(length(node_id), length(demand_priorities))
-    demand_reduced::Matrix{Float64} = zeros(length(node_id), length(demand_priorities))
     demand_itp::Vector{Vector{ScalarLinearInterpolation}} = [
         fill(
             LinearInterpolation(
@@ -966,7 +935,12 @@ end
 node_id: node ID of the LevelDemand node
 min_level: The minimum target level of the connected basin(s)
 max_level: The maximum target level of the connected basin(s)
+basins_with_demand: The node IDs of the Basins whose target level is given by a particular LevelDemand node
 demand_priority: If in a shortage state, the priority of the demand of the connected basin(s)
+target_level_min: The target level used for the current optimization run
+target_storage_min: The storage associated with target_level_min
+storage_demand: The storage demand (the storage required to get the basin up to the minimum level)
+storage_prev: The storage in the Basin with the level demand the previous time the allocation algorithm was run
 """
 @kwdef struct LevelDemand <: AbstractDemandNode
     node_id::Vector{NodeID}
@@ -975,6 +949,11 @@ demand_priority: If in a shortage state, the priority of the demand of the conne
     max_level::Vector{ScalarLinearInterpolation} =
         Vector{ScalarLinearInterpolation}(undef, length(node_id))
     demand_priority::Vector{Int32} = Vector{Int32}(undef, length(node_id))
+    basins_with_demand::Vector{Vector{NodeID}} = Vector{NodeID}[]
+    target_level_min::Dict{NodeID, Float64} = Dict{NodeID, Float64}()
+    target_storage_min::Dict{NodeID, Float64} = Dict{NodeID, Float64}()
+    storage_demand::Dict{NodeID, Float64} = Dict{NodeID, Float64}()
+    storage_prev::Dict{NodeID, Float64} = Dict{NodeID, Float64}()
 end
 
 """

@@ -138,20 +138,20 @@ end
 
 @option struct SourcePriority <: TableOption
     user_demand::Int32 = 1000
-    boundary::Int32 = 2000 # boundary = {flow_boundary, level_boundary}
-    level_demand::Int32 = 3000
-    flow_demand::Int32 = 4000
+    flow_boundary::Int32 = 2000
+    level_boundary::Int32 = 3000
+    basin::Int32 = 4000
     subnetwork_inlet::Int32 = 5000
 end
 
 @option struct Allocation <: TableOption
     timestep::Float64 = 86400
-    use_allocation::Bool = false
     source_priority::SourcePriority = SourcePriority()
 end
 
 @option struct Experimental <: TableOption
     concentration::Bool = false
+    allocation::Bool = false
 end
 # For logging enabled experimental features
 function Base.iterate(exp::Experimental, state = 0)

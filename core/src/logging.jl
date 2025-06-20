@@ -7,6 +7,7 @@ See https://github.com/JuliaLogging/LoggingExtras.jl/blob/d35e7c8cfc197853ee336a
 for the information available in log.
 """
 function is_current_module(log)::Bool
+    isnothing(log._module) && return false
     (log._module == @__MODULE__) ||
         (parentmodule(log._module) == @__MODULE__) ||
         log._module == OrdinaryDiffEqCore # for the progress bar

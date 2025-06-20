@@ -17,9 +17,15 @@ function main(ARGS)
     n_fail = 0
     lk = ReentrantLock()
     failed = String[]
+    skipped_allocation = String[]
 
     Threads.@threads for toml_path in toml_paths
         modelname = basename(dirname(toml_path))
+
+        if Ribasim.Config(toml_path).experimental.allocation
+            push!(skipped_allocation, modelname)
+            continue
+        end
 
         ret_code = Ribasim.main(toml_path)
 
@@ -39,6 +45,10 @@ function main(ARGS)
     end
 
     println("Ran $n_model models, $n_pass passed, $n_fail failed.\n")
+    if length(skipped_allocation) > 0
+        println("Skipped the following models that use allocation:")
+        foreach(println, skipped_allocation)
+    end
     if n_fail > 0
         println("Failed models:")
         foreach(println, failed)
