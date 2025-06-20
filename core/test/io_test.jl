@@ -57,7 +57,7 @@ end
     import Legolas
     using StructArrays: StructVector
     import SQLite
-    import Tables
+    using Tables: columntable
 
     "Convert an in-memory table to a memory mapped Arrow table"
     function to_arrow_table(
@@ -68,7 +68,7 @@ end
             Arrow.write(io, table)
         end
         table = Arrow.Table(path)
-        nt = Tables.columntable(table)
+        nt = columntable(table)
         return StructVector{T}(nt)
     end
 

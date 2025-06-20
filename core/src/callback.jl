@@ -115,9 +115,9 @@ function decrease_tolerance!(u, t, integrator)::Nothing
         # Limit new tolerance to floating point precision (~-14)
         newtol = max(10.0^(log10(integrator.p.p_independent.reltol) - diff_norm), 1e-14)
 
-        if integrator.opts.reltol[i] > newtol
+        if opts.reltol[i] > newtol
             @debug "Relative tolerance changed at t = $t, state = $i to $(newtol)"
-            integrator.opts.reltol[i] = newtol
+            opts.reltol[i] = newtol
         end
     end
 end
