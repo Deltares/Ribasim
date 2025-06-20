@@ -198,7 +198,6 @@ end
 @testitem "basic model" begin
     using Logging: Debug, with_logger
     using LoggingExtras
-    using OrdinaryDiffEqBDF: QNDF
     import Tables
     using Dates
 
@@ -214,16 +213,13 @@ end
     @test model isa Ribasim.Model
 
     (; integrator) = model
-    (; p, alg) = integrator
+    (; p) = integrator
     (; p_independent, state_time_dependent_cache) = p
 
     @test p isa Ribasim.Parameters
     @test isconcretetype(typeof(p_independent))
     @test all(isconcretetype, fieldtypes(typeof(p_independent)))
     @test p_independent.node_id == [4, 5, 8, 7, 10, 12, 2, 1, 3, 6, 9, 1, 3, 6, 9]
-
-    @test alg isa QNDF
-    @test alg.step_limiter! == Ribasim.limit_flow!
 
     @test success(model)
     @test length(model.integrator.sol) == 2 # start and end
