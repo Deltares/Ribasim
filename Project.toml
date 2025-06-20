@@ -56,6 +56,8 @@ OrdinaryDiffEqTsit5 = "b1df2697-797e-41e3-8120-5422d3b24e4a"
 OteraEngine = "b2d7f28f-acd6-4007-8b26-bc27716e5513"
 PackageCompiler = "9b87118b-4619-50d2-8e1e-99f35a4d4d9d"
 PiecewiseLinearOpt = "0f51c51e-adfa-5141-8a04-d40246b8977c"
+PrecompileTools = "aea7be01-6a6a-4083-8856-8a6e6704d82a"
+Preferences = "21216c6a-2e73-6563-6e65-726566657250"
 PkgToSoftwareBOM = "6254a0f9-6143-4104-aa2e-fd339a2830a6"
 Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
 Ribasim = "aac5e3d9-0b8f-4d4f-8241-b1a7a9632635"
@@ -76,3 +78,7 @@ TranscodingStreams = "3bb67fe8-82b1-5028-8e26-92a6c54297fa"
 
 [sources]
 Ribasim = {path = "core"}
+
+[preferences.Ribasim]
+precompile_workload = false
+specialize = false
