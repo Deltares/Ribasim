@@ -1488,3 +1488,50 @@ def allocation_control_model() -> Model:
     model.link.add(user, bsn)
 
     return model
+
+
+def multi_level_demand_model() -> Model:
+    """Create a model that has a level demand with multiple priorities."""
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2023-01-01",
+        crs="EPSG:28992",
+        experimental=Experimental(allocation=True),
+    )
+
+    fb = model.flow_boundary.add(
+        Node(1, Point(0, 0), subnetwork_id=2), [flow_boundary.Static(flow_rate=[1e-3])]
+    )
+
+    b = model.basin.add(
+        Node(2, Point(1, 0), subnetwork_id=2),
+        [
+            basin.Profile(level=[0.0, 1.0, 2.0], storage=[1000.0, 2000.0, 3000.0]),
+            basin.State(level=[5.0]),
+        ],
+    )
+
+    ld = model.level_demand.add(
+        Node(3, Point(0, 1)),
+        [
+            level_demand.Static(
+                min_level=[3.0, 4.0], max_level=[6.0, 5.0], demand_priority=[1, 3]
+            )
+        ],
+    )
+
+    ud = model.user_demand.add(
+        Node(4, Point(2, 0), subnetwork_id=2),
+        [
+            user_demand.Static(
+                demand_priority=2, demand=[1e-3], return_factor=0, min_level=0
+            )
+        ],
+    )
+
+    model.link.add(fb, b)
+    model.link.add(b, ud)
+    model.link.add(ud, b)
+    model.link.add(ld, b)
+
+    return model

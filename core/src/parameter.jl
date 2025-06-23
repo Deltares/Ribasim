@@ -912,16 +912,8 @@ concentration_time: Data source for concentration updates
     has_demand_priority::Matrix{Bool} =
         zeros(Bool, length(node_id), length(demand_priorities))
     demand::Matrix{Float64} = zeros(length(node_id), length(demand_priorities))
-    demand_itp::Vector{Vector{ScalarLinearInterpolation}} = [
-        fill(
-            LinearInterpolation(
-                [0.0, 0.0],
-                [0.0, 1.0];
-                extrapolation = ConstantExtrapolation,
-            ),
-            length(demand_priorities),
-        ) for _ in node_id
-    ]
+    demand_itp::Vector{Vector{ScalarLinearInterpolation}} =
+        trivial_itp_fill(demand_priorities, node_id)
     demand_from_timeseries::Vector{Bool} = Vector{Bool}(undef, length(node_id))
     allocated::Matrix{Float64} = fill(Inf, length(node_id), length(demand_priorities))
     return_factor::Vector{ScalarLinearInterpolation} =
@@ -933,10 +925,12 @@ end
 
 """
 node_id: node ID of the LevelDemand node
-min_level: The minimum target level of the connected basin(s)
-max_level: The maximum target level of the connected basin(s)
+demand_priorities: All demand priorities that exist in the model (not just by UserDemand) sorted
+has_demand_priority: boolean matrix stating per LevelDemand node per demand priority index whether the (node_idx, demand_priority_idx)
+    node will ever have a demand of that priority
+min_level: The minimum target level per demand priority of the connected basin(s)
+max_level: The maximum target level per demand priority of the connected basin(s)
 basins_with_demand: The node IDs of the Basins whose target level is given by a particular LevelDemand node
-demand_priority: If in a shortage state, the priority of the demand of the connected basin(s)
 target_level_min: The target level used for the current optimization run
 target_storage_min: The storage associated with target_level_min
 storage_demand: The storage demand (the storage required to get the basin up to the minimum level)
@@ -944,11 +938,13 @@ storage_prev: The storage in the Basin with the level demand the previous time t
 """
 @kwdef struct LevelDemand <: AbstractDemandNode
     node_id::Vector{NodeID}
-    min_level::Vector{ScalarLinearInterpolation} =
-        Vector{ScalarLinearInterpolation}(undef, length(node_id))
-    max_level::Vector{ScalarLinearInterpolation} =
-        Vector{ScalarLinearInterpolation}(undef, length(node_id))
-    demand_priority::Vector{Int32} = Vector{Int32}(undef, length(node_id))
+    demand_priorities::Vector{Int32} = Int32[]
+    has_demand_priority::Matrix{Bool} =
+        zeros(Bool, length(node_id), length(demand_priorities))
+    min_level::Vector{Vector{ScalarLinearInterpolation}} =
+        trivial_itp_fill(demand_priorities, node_id)
+    max_level::Vector{Vector{ScalarLinearInterpolation}} =
+        trivial_itp_fill(demand_priorities, node_id)
     basins_with_demand::Vector{Vector{NodeID}} = Vector{NodeID}[]
     target_level_min::Dict{NodeID, Float64} = Dict{NodeID, Float64}()
     target_storage_min::Dict{NodeID, Float64} = Dict{NodeID, Float64}()

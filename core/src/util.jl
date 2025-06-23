@@ -1152,3 +1152,14 @@ function eval_time_interp(
         return cache[idx]
     end
 end
+
+function trivial_itp(; val = 0.0)
+    LinearInterpolation([val, val], [0.0, 1.0]; extrapolation = ConstantExtrapolation)
+end
+
+function trivial_itp_fill(
+    demand_priorities,
+    node_id,
+)::Vector{Vector{ScalarLinearInterpolation}}
+    [fill(trivial_itp(), length(demand_priorities)) for _ in node_id]
+end

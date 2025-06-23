@@ -561,15 +561,9 @@ function add_tabulated_rating_curve!(
         problem,
         [node_id = rating_curve_ids_subnetwork],
         flow[inflow_link[node_id.idx].link] == begin
-            itp = interpolations[current_interpolation_index[node_id.idx](0.0)]
+            qh = interpolations[current_interpolation_index[node_id.idx](0.0)]
             level_upstream = get_level(problem, inflow_link[node_id.idx].link[1])
-            level_upstream_data = copy(itp.t)
-            flow_rate_data = copy(itp.u)
-            level_extrapolated = last(level_upstream_data) + 1000.0
-            flow_extrapolated = itp(level_extrapolated)
-            push!(level_upstream_data, level_extrapolated)
-            push!(flow_rate_data, flow_extrapolated)
-            piecewiselinear(problem, level_upstream, level_upstream_data, flow_rate_data)
+            piecewiselinear(problem, level_upstream, qh.t, qh.u)
         end,
         base_name = "rating_curve",
     )
@@ -808,11 +802,12 @@ function AllocationModel(
     Δt_allocation = allocation_config.timestep
     optimizer = JuMP.optimizer_with_attributes(
         HiGHS.Optimizer,
-        "log_to_console" => false,
+        # "log_to_console" => false,
         "time_limit" => 60.0,
         "random_seed" => 0,
         "primal_feasibility_tolerance" => 1e-5,
         "dual_feasibility_tolerance" => 1e-5,
+        "presolve" => "off",
     )
     problem = JuMP.direct_model(optimizer)
     allocation_model = AllocationModel(; subnetwork_id, problem, Δt_allocation)
