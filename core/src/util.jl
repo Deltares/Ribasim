@@ -1007,7 +1007,7 @@ function get_timeseries_tstops(
     get_timeseries_tstops!(tstops, t_end, flow_boundary.flow_rate)
     get_timeseries_tstops!(tstops, t_end, flow_demand.demand_itp)
     get_timeseries_tstops!(tstops, t_end, level_boundary.level)
-    get_timeseries_tstops!(tstops, t_end, level_demand.min_level)
+    get_timeseries_tstops!.(Ref(tstops), t_end, level_demand.min_level)
     get_timeseries_tstops!(tstops, t_end, pid_control.target)
     get_timeseries_tstops!(
         tstops,
