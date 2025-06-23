@@ -1488,3 +1488,36 @@ def allocation_control_model() -> Model:
     model.link.add(user, bsn)
 
     return model
+
+
+def infeasible_model() -> Model:
+    """Set up a minimal model which uses a linear_resistance node."""
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2021-01-01",
+        crs="EPSG:28992",
+        experimental=Experimental(concentration=True),
+    )
+
+    model.basin.add(
+        Node(1, Point(0, 0), subnetwork_id=1),
+        [basin.Profile(area=100.0, level=[0.0, 10.0]), basin.State(level=[10.0])],
+    )
+    model.linear_resistance.add(
+        Node(2, Point(1, 0), subnetwork_id=1),
+        [linear_resistance.Static(resistance=[5e4], max_flow_rate=[6e-5])],
+    )
+    model.level_boundary.add(
+        Node(3, Point(2, 0), subnetwork_id=1), [level_boundary.Static(level=[11.0])]
+    )
+
+    model.link.add(
+        model.basin[1],
+        model.linear_resistance[2],
+    )
+    model.link.add(
+        model.linear_resistance[2],
+        model.level_boundary[3],
+    )
+
+    return model
