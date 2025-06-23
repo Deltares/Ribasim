@@ -21,6 +21,7 @@ using OrdinaryDiffEqTsit5: Tsit5
 using OrdinaryDiffEqSDIRK: ImplicitEuler, KenCarp4, TRBDF2
 using OrdinaryDiffEqBDF: FBDF, QNDF
 using OrdinaryDiffEqRosenbrock: Rosenbrock23, Rodas4P, Rodas5P
+using LinearSolve: KLUFactorization
 
 export Config, Solver, Results, Logging, Toml
 export algorithm,
@@ -318,6 +319,9 @@ function algorithm(solver::Solver; u0 = [], specialize = true)::OrdinaryDiffEqAl
 
     if algotype <: OrdinaryDiffEqNewtonAdaptiveAlgorithm
         kwargs[:nlsolve] = NLNewton()
+        if solver.sparse
+            kwargs[:linsolve] = KLUFactorization()
+        end
     end
 
     if function_accepts_kwarg(algotype, :step_limiter!)
