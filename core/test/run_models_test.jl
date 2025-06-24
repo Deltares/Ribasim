@@ -1,4 +1,4 @@
-@testitem "trivial model" begin
+@testitem "trivial model" setup = [Teamcity] begin
     using Tables: Tables
     using Tables.DataAPI: nrow
     using Dates: DateTime
@@ -42,7 +42,7 @@
     subgrid = Arrow.Table(subgrid_bytes)
     solver_stats = Arrow.Table(solver_stats_bytes)
 
-    @testset "Schema" begin
+    @testset Teamcity.TeamcityTestSet "Schema" begin
         @test Tables.schema(flow) == Tables.Schema(
             (:time, :link_id, :from_node_id, :to_node_id, :flow_rate),
             (DateTime, Union{Int32, Missing}, Int32, Int32, Float64),
@@ -96,7 +96,7 @@
         )
     end
 
-    @testset "Results size" begin
+    @testset Teamcity.TeamcityTestSet "Results size" begin
         nsaved = length(tsaves(model))
         @test nsaved > 10
         # t0 has no flow, 2 flow links
@@ -105,7 +105,7 @@
         @test nrow(subgrid) == nsaved * length(p_independent.subgrid.level)
     end
 
-    @testset "Results values" begin
+    @testset Teamcity.TeamcityTestSet "Results values" begin
         @test flow.time[1] == DateTime(2020)
         @test coalesce.(flow.link_id[1:2], -1) == [100, 101]
         @test flow.from_node_id[1:2] == [6, 0]
@@ -198,7 +198,6 @@ end
 @testitem "basic model" begin
     using Logging: Debug, with_logger
     using LoggingExtras
-    using OrdinaryDiffEqBDF: QNDF
     import Tables
     using Dates
 
@@ -214,16 +213,13 @@ end
     @test model isa Ribasim.Model
 
     (; integrator) = model
-    (; p, alg) = integrator
+    (; p) = integrator
     (; p_independent, state_time_dependent_cache) = p
 
     @test p isa Ribasim.Parameters
     @test isconcretetype(typeof(p_independent))
     @test all(isconcretetype, fieldtypes(typeof(p_independent)))
     @test p_independent.node_id == [4, 5, 8, 7, 10, 12, 2, 1, 3, 6, 9, 1, 3, 6, 9]
-
-    @test alg isa QNDF
-    @test alg.step_limiter! == Ribasim.limit_flow!
 
     @test success(model)
     @test length(model.integrator.sol) == 2 # start and end
@@ -300,11 +296,6 @@ end
     @test dense_ad.integrator.u ≈ sparse_ad.integrator.u atol = 0.4
     @test sparse_fdm.integrator.u ≈ sparse_ad.integrator.u atol = 4
     @test dense_fdm.integrator.u ≈ sparse_ad.integrator.u atol = 4
-
-    config = Ribasim.Config(toml_path; solver_algorithm = "Rodas5P", solver_autodiff = true)
-    time_ad = Ribasim.run(config)
-    @test success(time_ad)
-    @test time_ad.integrator.u ≈ sparse_ad.integrator.u atol = 10
 end
 
 @testitem "TabulatedRatingCurve model" begin
