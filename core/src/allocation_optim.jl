@@ -617,7 +617,7 @@ function optimize_for_objective!(
         try
             JuMP.write_to_file(problem, tmpfile)
 
-            # We solve the relaced problem to determine where the infeasibility comes from.
+            # We solve the relaxed problem to determine where the infeasibility comes from.
             constraint_to_penalty_map = relax_problem!(problem)
             JuMP.optimize!(problem)
             infeasibility_count = report_cause_of_infeasibility(constraint_to_penalty_map)
