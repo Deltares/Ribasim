@@ -1673,7 +1673,7 @@ function load_structvector(
         return StructVector{T}(undef, 0)
     end
 
-    nt = Tables.columntable(table)
+    nt = columntable(table)
     if table isa Query && haskey(nt, :time)
         # time has type timestamp and is stored as a String in the database
         # currently SQLite.jl does not automatically convert it to DateTime

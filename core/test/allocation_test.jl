@@ -422,7 +422,7 @@ end
     @test all(isapprox.(realized_numeric[3:end], df_user_3.realized[4:end], atol = 1e-3))
 end
 
-@testitem "Flow demand" begin
+@testitem "Flow demand" setup = [Teamcity] begin
     using JuMP
     using Ribasim: NodeID, OptimizationType
     using DataFrames: DataFrame
@@ -545,7 +545,7 @@ end
     @test_throws Exception df_rating_curve_2 = record_demand[record_demand.node_id .== 2, :]
     @test_broken all(df_rating_curve_2.realized .≈ 0.002)
 
-    @testset "Results" begin
+    @testset Teamcity.TeamcityTestSet "Results" begin
         allocation_bytes = read(normpath(dirname(toml_path), "results/allocation.arrow"))
         allocation_flow_bytes =
             read(normpath(dirname(toml_path), "results/allocation_flow.arrow"))
