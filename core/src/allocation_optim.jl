@@ -612,7 +612,7 @@ function optimize_for_objective!(
     infeasibility_count = 0
 
     if termination_status !== JuMP.OPTIMAL
-        # We write to unrelaxed problem to file as backup for later
+        # We write the unrelaxed problem to file as backup for later
         tmpfile = tempname() * ".mps"
         try
             JuMP.write_to_file(problem, tmpfile)
