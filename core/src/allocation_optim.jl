@@ -217,12 +217,12 @@ function set_simulation_data!(
 end
 
 function reset_goal_programming!(allocation_model::AllocationModel)::Nothing
-    (; problem) = allocation_model
+    (; problem, Δt_allocation) = allocation_model
 
     # From demand objectives
     JuMP.fix.(problem[:user_demand_allocated], 0.0; force = true)
     JuMP.fix.(problem[:flow_demand_allocated], -MAX_ABS_FLOW; force = true)
-    JuMP.fix.(problem[:basin_allocated], -MAX_ABS_FLOW; force = true)
+    JuMP.fix.(problem[:basin_allocated], -MAX_ABS_FLOW * Δt_allocation; force = true)
     return nothing
 end
 
