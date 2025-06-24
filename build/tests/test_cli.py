@@ -19,7 +19,7 @@ def test_models(model_constructor, tmp_path):
     model.write(tmp_path / "ribasim.toml")
 
     if model.experimental.allocation:
-        return
+        pytest.skip("Model uses allocation which is not stable.")
 
     result = subprocess.run([executable, tmp_path / "ribasim.toml"])
 
