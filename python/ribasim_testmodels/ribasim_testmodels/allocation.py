@@ -1494,7 +1494,7 @@ def infeasible_model() -> Model:
     """Set up a minimal model which uses a linear_resistance node."""
     model = Model(
         starttime="2020-01-01",
-        endtime="2021-01-01",
+        endtime="2020-02-01",
         crs="EPSG:28992",
         experimental=Experimental(concentration=True),
     )

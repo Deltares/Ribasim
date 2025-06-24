@@ -230,19 +230,20 @@ function get_low_storage_factor(problem::JuMP.Model, node_id::NodeID)
     end
 end
 
-function report_cause_of_infeasibility(problem::JuMP.Model)::Nothing
-    JuMP.set_objective_function(problem, 0.0)
-
-    constraint_to_penalty_1 = Dict(c => 1e6 for c in problem[:volume_conservation])
-    constraint_to_penalty_2 = Dict(c => 1e6 for c in problem[:flow_conservation])
+function relax_problem!(problem::JuMP.Model)::Dict{JuMP.ConstraintRef, JuMP.AffExpr}
+    constraint_to_penalty_1 = Dict(c => 1.0 for c in problem[:volume_conservation])
+    constraint_to_penalty_2 = Dict(c => 1.0 for c in problem[:flow_conservation])
     constraint_to_penalty = merge(constraint_to_penalty_1, constraint_to_penalty_2)
 
-    penalty_map = JuMP.relax_with_penalty!(problem, constraint_to_penalty)
-    JuMP.optimize!(problem)
+    return JuMP.relax_with_penalty!(problem, constraint_to_penalty; default = nothing)
+end
 
+function report_cause_of_infeasibility(penalty_map)
+    nonzero_slack_count = 0
     for (constraint, slack_var) in penalty_map
         expr = JuMP.constraint_object(constraint).func
-        if JuMP.value(slack_var) != 0
+        if JuMP.value(slack_var) != 0.0
+            nonzero_slack_count += 1
             println("\ninfeasible constraint: ", constraint)
             expr = JuMP.constraint_object(constraint).func
             println(
@@ -258,7 +259,7 @@ function report_cause_of_infeasibility(problem::JuMP.Model)::Nothing
                 if JuMP.name(v) == ""
                     continue
                 end
-                for (other_constraint, slack_var) in penalty_map
+                for (other_constraint, other_slack_var) in penalty_map
                     other_expr = JuMP.constraint_object(other_constraint).func
                     for (ov, _) in other_expr.terms
                         if v == ov && other_constraint != constraint
@@ -273,9 +274,10 @@ function report_cause_of_infeasibility(problem::JuMP.Model)::Nothing
             end
         end
     end
+    return nonzero_slack_count
 end
 
-function print_constraint_variable_values(constraint)
+function print_constraint_variable_values(constraint::JuMP.ConstraintRef)
     expr = JuMP.constraint_object(constraint).func
     for (v, _) in expr.terms
         name = JuMP.name(v)
@@ -287,4 +289,15 @@ function print_constraint_variable_values(constraint)
         ub = JuMP.has_upper_bound(v) ? JuMP.upper_bound(v) : "Inf"
         println("\t", name, " (", lb, ", ", ub, ") = ", value)
     end
+end
+
+function get_optimizer()
+    return JuMP.optimizer_with_attributes(
+        HiGHS.Optimizer,
+        "log_to_console" => false,
+        "time_limit" => 60.0,
+        "random_seed" => 0,
+        "primal_feasibility_tolerance" => 1e-5,
+        "dual_feasibility_tolerance" => 1e-5,
+    )
 end
