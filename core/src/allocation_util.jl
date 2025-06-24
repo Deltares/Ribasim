@@ -231,50 +231,60 @@ function get_low_storage_factor(problem::JuMP.Model, node_id::NodeID)
 end
 
 function report_cause_of_infeasibility(problem::JuMP.Model)::Nothing
-    relaxed_problem = problem
-    penalty_map = JuMP.relax_with_penalty!(relaxed_problem; default = 2.0)
-    JuMP.optimize!(relaxed_problem)
+    JuMP.set_objective_function(problem, 0.0)
+
+    constraint_to_penalty_1 = Dict(c => 1e6 for c in problem[:volume_conservation])
+    constraint_to_penalty_2 = Dict(c => 1e6 for c in problem[:flow_conservation])
+    constraint_to_penalty = merge(constraint_to_penalty_1, constraint_to_penalty_2)
+
+    penalty_map = JuMP.relax_with_penalty!(problem, constraint_to_penalty)
+    JuMP.optimize!(problem)
+
     for (constraint, slack_var) in penalty_map
         expr = JuMP.constraint_object(constraint).func
-        has_non_lambda_var = any(
-            v ->
-                JuMP.name(v) != "" &&
-                    !occursin(r"^[A-Za-zλ]+_\d+(\[\d+\])?$", JuMP.name(v)),
-            keys(expr.terms),
-        )
-        if !has_non_lambda_var
-            continue
-        end
         if JuMP.value(slack_var) != 0
-            println("\nInfeasible constraint: ", constraint)
+            println("\ninfeasible constraint: ", constraint)
             expr = JuMP.constraint_object(constraint).func
-            println("constraint is violated by: ", slack_var, " = ", JuMP.value(slack_var))
+            println(
+                "\tconstraint is violated by: ",
+                slack_var,
+                " = ",
+                JuMP.value(slack_var),
+            )
+
+            print_constraint_variable_values(constraint)
+
             for (v, _) in expr.terms
                 if JuMP.name(v) == ""
-                    continue
-                end
-
-                lb = JuMP.has_lower_bound(v) ? JuMP.lower_bound(v) : "-Inf"
-                ub = JuMP.has_upper_bound(v) ? JuMP.upper_bound(v) : "Inf"
-                println(JuMP.name(v), "(", lb, ", ", ub, ")", " = ", JuMP.value(v))
-                # Exclude variables with names like letter_number, e.g., x_1, y_2, y_5[1], or λ_1[6]
-                if occursin(r"^[A-Za-zλ]+_\d+(\[\d+\])?$", JuMP.name(v))
-                    continue
-                end
-            end
-            for (v, _) in expr.terms
-                if JuMP.name(v) == "" || occursin(r"^[λ]+_\d+(\[\d+\])?$", JuMP.name(v))
                     continue
                 end
                 for (other_constraint, slack_var) in penalty_map
                     other_expr = JuMP.constraint_object(other_constraint).func
                     for (ov, _) in other_expr.terms
                         if v == ov && other_constraint != constraint
-                            println("possible conflicting constraints: ", other_constraint)
+                            println(
+                                "\tpossible conflicting constraints: ",
+                                other_constraint,
+                            )
+                            print_constraint_variable_values(other_constraint)
                         end
                     end
                 end
             end
         end
+    end
+end
+
+function print_constraint_variable_values(constraint)
+    expr = JuMP.constraint_object(constraint).func
+    for (v, _) in expr.terms
+        name = JuMP.name(v)
+        if name == ""
+            continue
+        end
+        value = JuMP.value(v)
+        lb = JuMP.has_lower_bound(v) ? JuMP.lower_bound(v) : "-Inf"
+        ub = JuMP.has_upper_bound(v) ? JuMP.upper_bound(v) : "Inf"
+        println("\t", name, " (", lb, ", ", ub, ") = ", value)
     end
 end
