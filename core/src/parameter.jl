@@ -33,7 +33,7 @@ const StateTuple{V} = NamedTuple{state_components, NTuple{n_components, V}}
 @eval @enumx NodeType $(config.nodetypes...)
 @enumx ControlType None Continuous PID Allocation
 @enumx Substance Continuity = 1 Initial = 2 LevelBoundary = 3 FlowBoundary = 4 UserDemand =
-    5 Drainage = 6 Precipitation = 7
+    5 Drainage = 6 Precipitation = 7 Runoff = 8
 Base.to_index(id::Substance.T) = Int(id)  # used to index into concentration matrices
 
 function config.snake_case(nt::NodeType.T)::Symbol
