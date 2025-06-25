@@ -350,6 +350,7 @@ In-memory storage of saved mean flows for writing to results.
     outflow::Vector{Float64}
     flow_boundary::Vector{Float64}
     precipitation::Vector{Float64}
+    runoff::Vector{Float64}
     drainage::Vector{Float64}
     concentration::Matrix{Float64}
     storage_rate::Vector{Float64} = zero(precipitation)
@@ -397,6 +398,7 @@ the length of each Vector is the number of Basins.
 """
 @kwdef struct BasinForcing
     precipitation::Vector{ScalarConstantInterpolation} = ScalarConstantInterpolation[]
+    runoff::Vector{ScalarConstantInterpolation} = ScalarConstantInterpolation[]
     potential_evaporation::Vector{ScalarConstantInterpolation} =
         ScalarConstantInterpolation[]
     drainage::Vector{ScalarConstantInterpolation} = ScalarConstantInterpolation[]
@@ -405,6 +407,7 @@ end
 
 function BasinForcing(n::Integer)
     return BasinForcing(
+        Vector{ScalarConstantInterpolation}(undef, n),
         Vector{ScalarConstantInterpolation}(undef, n),
         Vector{ScalarConstantInterpolation}(undef, n),
         Vector{ScalarConstantInterpolation}(undef, n),
@@ -419,12 +422,13 @@ These are updated from BasinForcing at runtime.
 """
 @kwdef struct VerticalFlux
     precipitation::Vector{Float64}
+    runoff::Vector{Float64}
     potential_evaporation::Vector{Float64}
     drainage::Vector{Float64}
     infiltration::Vector{Float64}
 end
 
-VerticalFlux(n::Int) = VerticalFlux(zeros(n), zeros(n), zeros(n), zeros(n))
+VerticalFlux(n::Int) = VerticalFlux(zeros(n), zeros(n), zeros(n), zeros(n), zeros(n))
 
 const StorageToLevelType = LinearInterpolationIntInv{
     Vector{Float64},
@@ -459,8 +463,10 @@ of vectors or Arrow Tables, and is added to avoid type instabilities.
     Δstorage_prev_saveat::Vector{Float64} = zeros(length(node_id))
     # Analytically integrated forcings
     cumulative_precipitation::Vector{Float64} = zeros(length(node_id))
+    cumulative_runoff::Vector{Float64} = zeros(length(node_id))
     cumulative_drainage::Vector{Float64} = zeros(length(node_id))
     cumulative_precipitation_saveat::Vector{Float64} = zeros(length(node_id))
+    cumulative_runoff_saveat::Vector{Float64} = zeros(length(node_id))
     cumulative_drainage_saveat::Vector{Float64} = zeros(length(node_id))
     # Basin profile interpolations
     storage_to_level::Vector{StorageToLevelType} =
@@ -731,6 +737,7 @@ to be of `ForwardDiff.Dual` type. This second version of the cache is created by
 const TimeDependentCache{T} = @NamedTuple{
     basin::@NamedTuple{
         current_cumulative_precipitation::Vector{T},
+        current_cumulative_runoff::Vector{T},
         current_cumulative_drainage::Vector{T},
         current_potential_evaporation::Vector{T},
         current_infiltration::Vector{T},
@@ -1104,6 +1111,7 @@ function TimeDependentCache(p_independent::ParametersIndependent)::TimeDependent
     n_basin = length(p_independent.basin.node_id)
     basin = (;
         current_cumulative_precipitation = zeros(n_basin),
+        current_cumulative_runoff = zeros(n_basin),
         current_cumulative_drainage = zeros(n_basin),
         current_potential_evaporation = zeros(n_basin),
         current_infiltration = zeros(n_basin),

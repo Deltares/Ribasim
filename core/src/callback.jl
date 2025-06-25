@@ -201,7 +201,9 @@ function update_concentrations!(u, t, integrator)::Nothing
     cumulative_in .= 0.0
 
     @views mass .+= concentration[1, :, :] .* vertical_flux.drainage * dt
+    @views mass .+= concentration[3, :, :] .* vertical_flux.runoff * dt
     basin.concentration_data.cumulative_in .= vertical_flux.drainage * dt
+    basin.concentration_data.cumulative_in .= vertical_flux.runoff * dt
 
     # Precipitation depends on fixed area
     for node_id in basin.node_id
@@ -362,8 +364,10 @@ function save_flow(u, t, integrator)
     end
 
     precipitation = copy(basin.cumulative_precipitation_saveat) ./ Δt
+    runoff = copy(basin.cumulative_runoff_saveat) ./ Δt
     drainage = copy(basin.cumulative_drainage_saveat) ./ Δt
     @. basin.cumulative_precipitation_saveat = 0.0
+    @. basin.cumulative_runoff_saveat = 0.0
     @. basin.cumulative_drainage_saveat = 0.0
 
     concentration = copy(basin.concentration_data.concentration_state)
@@ -373,6 +377,7 @@ function save_flow(u, t, integrator)
         outflow = outflow_mean,
         flow_boundary = flow_boundary_mean,
         precipitation,
+        runoff,
         drainage,
         concentration,
         t,

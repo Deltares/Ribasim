@@ -125,6 +125,7 @@ function basin_table(
     outflow_rate::Vector{Float64},
     storage_rate::Vector{Float64},
     precipitation::Vector{Float64},
+    runoff::Vector{Float64},
     evaporation::Vector{Float64},
     drainage::Vector{Float64},
     infiltration::Vector{Float64},
@@ -150,6 +151,7 @@ function basin_table(
     infiltration = zeros(nrows)
     evaporation = zeros(nrows)
     precipitation = FlatVector(saved.flow.saveval, :precipitation)
+    runoff = FlatVector(saved.flow.saveval, :runoff)
     storage_rate = FlatVector(saved.flow.saveval, :storage_rate)
     balance_error = FlatVector(saved.flow.saveval, :balance_error)
     relative_error = FlatVector(saved.flow.saveval, :relative_error)
@@ -177,6 +179,7 @@ function basin_table(
         outflow_rate,
         storage_rate,
         precipitation,
+        runoff,
         evaporation,
         drainage,
         infiltration,
