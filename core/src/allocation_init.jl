@@ -5,7 +5,7 @@ function add_objectives!(
     (; objectives) = allocation_model
     (; demand_priorities_all) = p_independent.allocation
 
-    # Then optimize for demands (objectives will be will be further specified in the add_*_demand! functions)
+    # First optimize for demands (objectives will be will be further specified in the add_*_demand! functions)
     # NOTE: demand objectives are assumed to be consecutive by get_demand_objectives
     for (demand_priority_idx, demand_priority) in enumerate(demand_priorities_all)
         push!(
@@ -455,60 +455,92 @@ function add_level_demand!(
     (; problem, subnetwork_id, objectives) = allocation_model
     (; graph, level_demand) = p_independent
 
+    level_demand_ids_subnetwork =
+        get_subnetwork_ids(graph, NodeType.LevelDemand, subnetwork_id)
     ids_with_level_demand_subnetwork = filter(
         node_id -> has_external_flow_demand(graph, node_id, :level_demand)[1],
         graph[].node_ids[subnetwork_id],
     )
 
-    # Define parameters: storage allocated to basins with a level demand (m^3, values to be filled in before optimizing)
-    basin_allocated =
-        problem[:basin_allocated] =
-            JuMP.@variable(problem, basin_allocated[ids_with_level_demand_subnetwork] == 0)
+    # Define parameters: storage (in or out) allocated to basins with a level demand (m^3, values to be filled in before optimizing)
+    basin_allocated_in =
+        problem[:basin_allocated_in] =
+            JuMP.@variable(problem, basin_allocated_in[ids_with_level_demand_subnetwork])
+    basin_allocated_out =
+        problem[:basin_allocated_out] =
+            JuMP.@variable(problem, basin_allocated_out[ids_with_level_demand_subnetwork])
 
-    # Define parameters: target storage (m^3, value to be set before optimizing)
-    target_storage =
-        problem[:targe_storage_demand_fraction] = JuMP.@variable(
+    # Define parameters: target storage demand fraction (m^3, value to be set before optimizing)
+    target_storage_demand_fraction_in =
+        problem[:target_storage_demand_fraction_in] =
+            JuMP.@variable(problem, target_storage_demand_fraction_in == 1)
+    target_storage_demand_fraction_out =
+        problem[:target_storage_demand_fraction_out] =
+            JuMP.@variable(problem, target_storage_demand_fraction_out == 1)
+
+    # Define decision variables: relative storage error below minimum level (unitless)
+    relative_storage_error_in =
+        problem[:relative_storage_error_in] = JuMP.@variable(
             problem,
-            target_storage_demand_fraction[ids_with_level_demand_subnetwork] == 1
+            relative_storage_error_in[ids_with_level_demand_subnetwork] >= 0
         )
 
-    # Define decision variables: lower relative level error (unitless)
-    relative_storage_error_lower =
-        problem[:relative_storage_error_lower] = JuMP.@variable(
+    # Define decision variables: relative storage error above maximum level (unitless)
+    relative_storage_error_out =
+        problem[:relative_storage_error_out] = JuMP.@variable(
             problem,
-            relative_storage_error_lower[ids_with_level_demand_subnetwork] >= 0
+            relative_storage_error_out[ids_with_level_demand_subnetwork] >= 0
         )
 
-    # Define constraints: error terms
+    # Define constraints: error terms below minimum storage
     storage = problem[:basin_storage]
     s = 2.0 # example storage demand
-    problem[:storage_constraint_lower] = JuMP.@constraint(
+    problem[:storage_constraint_in] = JuMP.@constraint(
         problem,
         [node_id = ids_with_level_demand_subnetwork],
-        s * relative_storage_error_lower[node_id] ≥
-        target_storage[node_id] - storage[(node_id, :end)],
-        base_name = "storage_constraint_lower"
+        s * (relative_storage_error_in[node_id] - target_storage_demand_fraction_in) ≥
+        -(storage[(node_id, :end)] - basin_allocated_in[node_id]),
+        base_name = "storage_constraint_in"
+    )
+
+    # Define constraints: error terms above maximum storage
+    problem[:storage_constraint_out] = JuMP.@constraint(
+        problem,
+        [node_id = ids_with_level_demand_subnetwork],
+        s * (relative_storage_error_out[node_id] - target_storage_demand_fraction_out) ≥
+        storage[(node_id, :end)] - basin_allocated_out[node_id],
+        base_name = "storage_constraint_out"
     )
 
     # Define constraints: added storage to the basin is at least the allocated amount
     problem[:basin_storage_increase_goal] = JuMP.@constraint(
         problem,
         [node_id = ids_with_level_demand_subnetwork],
-        storage[(node_id, :end)] - storage[(node_id, :start)] ≥ basin_allocated[node_id]
+        storage[(node_id, :end)] - storage[(node_id, :start)] ≥ basin_allocated_in[node_id]
+    )
+
+    # Define constraints: subtracted storage from the basin is at least the allocated amount
+    problem[:basin_storage_decrease_goal] = JuMP.@constraint(
+        problem,
+        [node_id = ids_with_level_demand_subnetwork],
+        storage[(node_id, :end)] - storage[(node_id, :start)] ≤
+        -basin_allocated_out[node_id]
     )
 
     # Add error terms to objectives
+    relative_in_error_sum = sum(relative_storage_error_in)
+    relative_out_error_sum = sum(relative_storage_error_out)
     for objective in get_demand_objectives(objectives)
-        for node_id in ids_with_level_demand_subnetwork
-            flow_demand_id = has_external_flow_demand(graph, node_id, :level_demand)[2]
-            demand_priority_node = level_demand.demand_priority[flow_demand_id.idx]
-            if objective.demand_priority == demand_priority_node
-                JuMP.add_to_expression!(
-                    objective.expression,
-                    relative_storage_error_lower[node_id],
-                )
-                objective.has_level_demand = true
-            end
+        JuMP.add_to_expression!(objective.expression, relative_in_error_sum)
+        JuMP.add_to_expression!(objective.expression, relative_out_error_sum)
+        if any(
+            node_id -> level_demand.has_demand_priority[
+                node_id.idx,
+                objective.demand_priority_idx,
+            ],
+            level_demand_ids_subnetwork,
+        )
+            objective.has_level_demand = true
         end
     end
 
@@ -802,12 +834,11 @@ function AllocationModel(
     Δt_allocation = allocation_config.timestep
     optimizer = JuMP.optimizer_with_attributes(
         HiGHS.Optimizer,
-        # "log_to_console" => false,
+        "log_to_console" => false,
         "time_limit" => 60.0,
         "random_seed" => 0,
         "primal_feasibility_tolerance" => 1e-5,
         "dual_feasibility_tolerance" => 1e-5,
-        "presolve" => "off",
     )
     problem = JuMP.direct_model(optimizer)
     allocation_model = AllocationModel(; subnetwork_id, problem, Δt_allocation)
@@ -850,6 +881,9 @@ function AllocationModel(
             end
         end
     end
+
+    # Split level objectives into inflow and outflow demand objectives
+    split_level_objectives!(allocation_model.objectives)
 
     return allocation_model
 end

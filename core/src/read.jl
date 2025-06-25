@@ -1203,29 +1203,28 @@ function parse_time_demand_data!(
     cyclic_time::Bool,
     config::Config,
 )::Nothing
-    for time_priority_group in in
-        IterTools.groupby(row -> row.demand_priority, time_group)
+    for time_priority_group in IterTools.groupby(row -> row.demand_priority, time_group)
         demand_priority_idx =
             findsorted(demand_priorities, first(time_priority_group).demand_priority)
         level_demand.has_demand_priority[id.idx, demand_priority_idx] = true
         min_level = get_scalar_interpolation(
             config.starttime,
-            time_priority_group.time,
-            node_id,
+            StructVector(time_priority_group),
+            id,
             :min_level;
             default_value = -Inf,
             cyclic_time,
         )
-        level_demand.min_level[id.node_idx][demand_priority_idx] = min_level
+        level_demand.min_level[id.idx][demand_priority_idx] = min_level
         max_level = get_scalar_interpolation(
             config.starttime,
-            time_priority_group.time,
-            node_id,
-            :ax_level;
+            StructVector(time_priority_group),
+            id,
+            :max_level;
             default_value = Inf,
             cyclic_time,
         )
-        level_demand.max_level[id.node_idx][demand_priority_idx] = max_level
+        level_demand.max_level[id.idx][demand_priority_idx] = max_level
     end
     return nothing
 end
@@ -1236,6 +1235,7 @@ function LevelDemand(db::DB, config::Config, graph::MetaGraph)
     node_id = get_node_ids(db, NodeType.LevelDemand)
     cyclic_times = get_cyclic_time(db, "LevelDemand")
     demand_priorities = get_all_demand_priorities(db, config)
+    n_demand_priorities = length(demand_priorities)
 
     level_demand = LevelDemand(; node_id, demand_priorities)
 
@@ -1245,10 +1245,10 @@ function LevelDemand(db::DB, config::Config, graph::MetaGraph)
         basin_ids = collect(outneighbor_labels_type(graph, id, LinkType.control))
         push!(level_demand.basins_with_demand, basin_ids)
         for basin_id in basin_ids
-            level_demand.target_level_min[basin_id] = 0.0
-            level_demand.target_storage_min[basin_id] = 0.0
-            level_demand.storage_demand[basin_id] = 0.0
+            level_demand.target_storage_min[basin_id] = zeros(n_demand_priorities)
+            level_demand.target_storage_max[basin_id] = zeros(n_demand_priorities)
             level_demand.storage_prev[basin_id] = 0.0
+            level_demand.storage_allocated[basin_id] = zeros(n_demand_priorities)
         end
     end
 
