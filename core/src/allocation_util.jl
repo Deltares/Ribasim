@@ -237,21 +237,15 @@ function relax_problem!(problem::JuMP.Model)::Dict{JuMP.ConstraintRef, JuMP.AffE
 
     return JuMP.relax_with_penalty!(problem, constraint_to_penalty; default = nothing)
 end
-
 function report_cause_of_infeasibility(penalty_map)
     nonzero_slack_count = 0
     for (constraint, slack_var) in penalty_map
         expr = JuMP.constraint_object(constraint).func
         if JuMP.value(slack_var) != 0.0
             nonzero_slack_count += 1
-            println("\ninfeasible constraint: ", constraint)
+            @info "infeasible constraint: $constraint"
             expr = JuMP.constraint_object(constraint).func
-            println(
-                "\tconstraint is violated by: ",
-                slack_var,
-                " = ",
-                JuMP.value(slack_var),
-            )
+            @info "constraint is violated by: $(slack_var) = $(JuMP.value(slack_var))"
 
             print_constraint_variable_values(constraint)
 
@@ -263,10 +257,7 @@ function report_cause_of_infeasibility(penalty_map)
                     other_expr = JuMP.constraint_object(other_constraint).func
                     for (ov, _) in other_expr.terms
                         if v == ov && other_constraint != constraint
-                            println(
-                                "\tpossible conflicting constraints: ",
-                                other_constraint,
-                            )
+                            @info "possible conflicting constraints: $other_constraint"
                             print_constraint_variable_values(other_constraint)
                         end
                     end
@@ -287,7 +278,7 @@ function print_constraint_variable_values(constraint::JuMP.ConstraintRef)
         value = JuMP.value(v)
         lb = JuMP.has_lower_bound(v) ? JuMP.lower_bound(v) : "-Inf"
         ub = JuMP.has_upper_bound(v) ? JuMP.upper_bound(v) : "Inf"
-        println("\t", name, " (", lb, ", ", ub, ") = ", value)
+        @info "\t$name ($lb, $ub) = $value"
     end
 end
 
