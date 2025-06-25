@@ -247,7 +247,7 @@ function report_cause_of_infeasibility(penalty_map)
             expr = JuMP.constraint_object(constraint).func
             @info "constraint is violated by: $(slack_var) = $(JuMP.value(slack_var))"
 
-            print_constraint_variable_values(constraint)
+            log_constraint_variable_values(constraint)
 
             for (v, _) in expr.terms
                 if JuMP.name(v) == ""
@@ -258,7 +258,7 @@ function report_cause_of_infeasibility(penalty_map)
                     for (ov, _) in other_expr.terms
                         if v == ov && other_constraint != constraint
                             @info "possible conflicting constraints: $other_constraint"
-                            print_constraint_variable_values(other_constraint)
+                            log_constraint_variable_values(other_constraint)
                         end
                     end
                 end
@@ -268,7 +268,7 @@ function report_cause_of_infeasibility(penalty_map)
     return nonzero_slack_count
 end
 
-function print_constraint_variable_values(constraint::JuMP.ConstraintRef)
+function log_constraint_variable_values(constraint::JuMP.ConstraintRef)
     expr = JuMP.constraint_object(constraint).func
     for (v, _) in expr.terms
         name = JuMP.name(v)
