@@ -245,7 +245,7 @@ function report_cause_of_infeasibility(penalty_map)
             nonzero_slack_count += 1
             @info "infeasible constraint: $constraint"
             expr = JuMP.constraint_object(constraint).func
-            @info "constraint is violated by: $(slack_var) = $(JuMP.value(slack_var))"
+            @info "constraint is violated by: $slack_var = $(JuMP.value(slack_var))"
 
             log_constraint_variable_values(constraint)
 
