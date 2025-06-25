@@ -77,20 +77,6 @@ end
     @test allocation_flow_table.flow_rate ≈ flow_table.flow_rate atol = 7e-4
 end
 
-@testitem "Allocation infeasibility" begin
-    using DataFrames: DataFrame
-    using Test
-    using Ribasim
-
-    toml_path = normpath(@__DIR__, "../../generated_testmodels/infeasible/ribasim.toml")
-    @test ispath(toml_path)
-
-    config = Ribasim.Config(toml_path; experimental_allocation = true)
-    model = Ribasim.Model(config)
-
-    @test_throws Exception Ribasim.solve!(model)
-end
-
 @testitem "allocation training" begin
     using DataFrames: DataFrame
     using Test
@@ -100,10 +86,10 @@ end
         normpath(@__DIR__, "../../generated_testmodels/allocation_training/ribasim.toml")
     @test ispath(toml_path)
 
-    config = Ribasim.Config(toml_path; experimental_allocation = true)
+    config = Ribasim.Config(toml_path)
     model = Ribasim.Model(config)
-
     Ribasim.solve!(model)
+    success(model)
     allocation_flow_table = DataFrame(Ribasim.allocation_flow_table(model))
     flow_table = DataFrame(Ribasim.flow_table(model))
 

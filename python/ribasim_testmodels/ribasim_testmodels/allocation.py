@@ -1490,13 +1490,13 @@ def allocation_control_model() -> Model:
     return model
 
 
-def infeasible_model() -> Model:
+def invalid_infeasible_model() -> Model:
     """Set up a minimal model which uses a linear_resistance node."""
     model = Model(
         starttime="2020-01-01",
         endtime="2020-02-01",
         crs="EPSG:28992",
-        experimental=Experimental(concentration=True),
+        experimental=Experimental(allocation=True),
     )
 
     model.basin.add(

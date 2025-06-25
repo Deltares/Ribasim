@@ -601,46 +601,13 @@ function optimize_for_objective!(
 
     # Set the objective
     JuMP.@objective(problem, Min, objective.expression)
-    JuMP.write_to_file(problem, "allocation_problem.mps")
 
     # Solve problem
     JuMP.optimize!(problem)
-
     @debug JuMP.solution_summary(problem)
-    termination_status = JuMP.termination_status(problem)
 
-    infeasibility_count = 0
+    handle_infeasibility!(problem, subnetwork_id, objective, t)
 
-    if termination_status !== JuMP.OPTIMAL
-        # We write the unrelaxed problem to file as backup for later
-        tmpfile = tempname() * ".mps"
-        try
-            JuMP.write_to_file(problem, tmpfile)
-
-            # We solve the relaxed problem to determine where the infeasibility comes from.
-            constraint_to_penalty_map = relax_problem!(problem)
-            JuMP.optimize!(problem)
-            infeasibility_count = report_cause_of_infeasibility(constraint_to_penalty_map)
-
-            # We have encountered a situation where the relaxed problem is solved, without finding any infeasibility. So we actually can continue with these results
-            # Therefore we load the backup of the problem
-            if infeasibility_count == 0
-                optimizer = get_optimizer()
-                problem = JuMP.direct_model(optimizer)
-                problem = JuMP.read_from_file(tmpfile)
-            end
-            rm(tmpfile; force = true)
-        catch
-            # make sure the file is removed in case of an error
-            rm(tmpfile; force = true)
-        end
-    end
-
-    if infeasibility_count != 0
-        error(
-            "Allocation optimization for subnetwork $subnetwork_id, $objective at t = $t s couldn't find (optimal) solution. Termination status: $termination_status.",
-        )
-    end
     postprocess_objective!(allocation_model, p_independent, objective, t)
 
     return nothing
