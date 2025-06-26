@@ -183,7 +183,7 @@ end
 
 """
 Add flow conservation constraints for conservative nodes.
-Ensures that inflow equals outflow for nodes that conserve mass (pumps, outlets, 
+Ensures that inflow equals outflow for nodes that conserve mass (pumps, outlets,
 resistances, rating curves). Creates unique constraint names based on node type
 to avoid naming collisions.
 """
@@ -199,7 +199,7 @@ function add_flow_conservation!(
 
     # Extract node type name from the struct type
     node_type = lowercase(string(typeof(node).name.name))
-    
+
     # Define constraints: inflow is equal to outflow for conservative nodes
     constraint_name = Symbol("flow_conservation_$(node_type)")
     problem[constraint_name] = JuMP.@constraint(
