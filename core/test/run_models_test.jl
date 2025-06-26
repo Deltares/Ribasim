@@ -44,8 +44,8 @@
 
     @testset Teamcity.TeamcityTestSet "Schema" begin
         @test Tables.schema(flow) == Tables.Schema(
-            (:time, :link_id, :from_node_id, :to_node_id, :flow_rate),
-            (DateTime, Union{Int32, Missing}, Int32, Int32, Float64),
+            (:time, :link_id, :from_node_id, :to_node_id, :flow_rate, :convergence),
+            (DateTime, Union{Int32, Missing}, Int32, Int32, Float64, Float64),
         )
         @test Tables.schema(basin) == Tables.Schema(
             (
