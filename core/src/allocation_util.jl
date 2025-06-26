@@ -260,6 +260,7 @@ end
 function report_cause_of_infeasibility(
     constraint_to_slack_map::Dict{JuMP.ConstraintRef, JuMP.AffExpr},
     objective::AllocationObjective,
+    problem::JuMP.Model,
 )
     nonzero_slack_count = 0
     for (constraint, slack_var) in constraint_to_slack_map
@@ -278,9 +279,12 @@ function report_cause_of_infeasibility(
                 if JuMP.name(variable) == ""
                     continue
                 end
-                for (other_constraint, _) in constraint_to_slack_map
-                    other_expr = JuMP.constraint_object(other_constraint).func
-                    for (other_variable, _) in other_expr.terms
+                for other_constraint in JuMP.all_constraints(
+                    problem;
+                    include_variable_in_set_constraints = false,
+                )
+                    for (other_variable, _) in
+                        JuMP.constraint_object(other_constraint).func.terms
                         if variable == other_variable && other_constraint != constraint
                             @info "possible conflicting constraints: $other_constraint"
                             log_constraint_variable_values(other_constraint)
@@ -330,7 +334,7 @@ function handle_infeasibility!(
     # We solve the relaxed problem to determine where the infeasibility comes from.
     constraint_to_slack_map = relax_problem!(problem)
     JuMP.optimize!(problem)
-    n = report_cause_of_infeasibility(constraint_to_slack_map, objective)
+    n = report_cause_of_infeasibility(constraint_to_slack_map, objective, problem)
 
     if n != 0
         error(
