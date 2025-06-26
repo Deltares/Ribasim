@@ -62,10 +62,12 @@
                 :infiltration,
                 :balance_error,
                 :relative_error,
+                :convergence,
             ),
             (
                 DateTime,
                 Int32,
+                Float64,
                 Float64,
                 Float64,
                 Float64,
@@ -91,8 +93,9 @@
                 :linear_solves,
                 :accepted_timesteps,
                 :rejected_timesteps,
+                :dt,
             ),
-            (DateTime, Float64, Int, Int, Int, Int),
+            (DateTime, Float64, Int, Int, Int, Int, Float64),
         )
     end
 
