@@ -152,6 +152,10 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
     @. basin.cumulative_precipitation =
         time_dependent_cache.basin.current_cumulative_precipitation
 
+    @. basin.cumulative_runoff_saveat +=
+        time_dependent_cache.basin.current_cumulative_runoff - basin.cumulative_runoff
+    @. basin.cumulative_runoff = time_dependent_cache.basin.current_cumulative_runoff
+
     # Update cumulative boundary flow which is integrated exactly
     @. flow_boundary.cumulative_flow_saveat +=
         time_dependent_cache.flow_boundary.current_cumulative_boundary_flow -
@@ -287,8 +291,11 @@ function flow_update_on_link(
         @assert from_id.type == to_id.type == NodeType.Basin
         idx = from_id.idx
         fixed_area = basin_areas(basin, idx)[end]
-        (fixed_area * vertical_flux.precipitation[idx] + vertical_flux.drainage[idx]) * dt -
-        (u.evaporation[idx] - uprev.evaporation[idx]) -
+        (
+            fixed_area * vertical_flux.precipitation[idx] +
+            vertical_flux.drainage[idx] +
+            vertical_flux.runoff[idx]
+        ) * dt - (u.evaporation[idx] - uprev.evaporation[idx]) -
         (u.infiltration[idx] - uprev.infiltration[idx])
     elseif from_id.type == NodeType.FlowBoundary
         if flow_boundary.active[from_id.idx]
@@ -409,6 +416,7 @@ function check_water_balance_error!(
         inflow_rate,
         outflow_rate,
         precipitation,
+        runoff,
         drainage,
         evaporation,
         infiltration,
@@ -419,6 +427,7 @@ function check_water_balance_error!(
         saved_flow.inflow,
         saved_flow.outflow,
         saved_flow.precipitation,
+        saved_flow.runoff,
         saved_flow.drainage,
         evaporation,
         infiltration,
@@ -427,7 +436,7 @@ function check_water_balance_error!(
         basin.node_id,
     )
         storage_rate = (s_now - s_prev) / Δt
-        total_in = inflow_rate + precipitation + drainage
+        total_in = inflow_rate + precipitation + drainage + runoff
         total_out = outflow_rate + evaporation + infiltration
         balance_error = storage_rate - (total_in - total_out)
         mean_flow_rate = (total_in + total_out) / 2
@@ -727,6 +736,7 @@ function update_basin!(basin::Basin, t)::Nothing
     for id in basin.node_id
         i = id.idx
         set_flux!(vertical_flux.precipitation, forcing.precipitation, i, t)
+        set_flux!(vertical_flux.runoff, forcing.runoff, i, t)
         set_flux!(vertical_flux.potential_evaporation, forcing.potential_evaporation, i, t)
         set_flux!(vertical_flux.infiltration, forcing.infiltration, i, t)
         set_flux!(vertical_flux.drainage, forcing.drainage, i, t)
@@ -753,6 +763,7 @@ function update_basin_conc!(integrator)::Nothing
         j = find_index(Symbol(row.substance), substances)
         ismissing(row.drainage) || (concentration[1, i, j] = row.drainage)
         ismissing(row.precipitation) || (concentration[2, i, j] = row.precipitation)
+        ismissing(row.runoff) || (concentration[3, i, j] = row.runoff)
     end
     return nothing
 end

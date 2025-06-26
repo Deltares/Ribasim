@@ -338,6 +338,7 @@ In-memory storage of saved mean flows for writing to results.
 - `outflow`: The sum of the mean flows going out of each Basin
 - `flow_boundary`: The exact integrated mean flows of flow boundaries
 - `precipitation`: The exact integrated mean precipitation
+- `runoff`: The exact integrated mean runoff
 - `drainage`: The exact integrated mean drainage
 - `concentration`: Concentrations for each Basin and substance
 - `balance_error`: The (absolute) water balance error
@@ -440,7 +441,7 @@ const StorageToLevelType = LinearInterpolationIntInv{
 """
 Requirements:
 
-* Must be positive: precipitation, evaporation, infiltration, drainage
+* Must be positive: precipitation, runoff, evaporation, infiltration, drainage
 * Index points to a Basin
 * volume, area, level must all be positive and monotonic increasing.
 
