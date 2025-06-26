@@ -828,7 +828,8 @@ function AllocationModel(
         "dual_feasibility_tolerance" => 1e-5,
     )
     problem = JuMP.direct_model(optimizer)
-    allocation_model = AllocationModel(; subnetwork_id, problem, Δt_allocation)
+    scaling = ScalingFactors(p_independent, subnetwork_id, Δt_allocation)
+    allocation_model = AllocationModel(; subnetwork_id, problem, Δt_allocation, scaling)
 
     # Volume and flow
     add_basin!(allocation_model, p_independent)

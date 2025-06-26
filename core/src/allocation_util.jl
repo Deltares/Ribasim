@@ -237,3 +237,20 @@ function get_flow_value(
     (; problem, scaling) = allocation_model
     return JuMP.value(problem[:flow][link]) * scaling.flow
 end
+
+function ScalingFactors(
+    p_independent::ParametersIndependent,
+    subnetwork_id::Int32,
+    Δt_allocation::Float64,
+)
+    (; basin, graph) = p_independent
+    max_storages = [
+        basin.storage_to_level[node_id.idx].t[end] for
+        node_id in basin.node_id if graph[node_id].subnetwork_id == subnetwork_id
+    ]
+    mean_half_storage = sum(max_storages) / (2 * length(max_storages))
+    return ScalingFactors(;
+        storage = mean_half_storage,
+        flow = mean_half_storage / Δt_allocation,
+    )
+end
