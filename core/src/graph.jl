@@ -353,6 +353,24 @@ function get_flow(
     end
 end
 
+"""
+Like `get_flow` and `get_state_index`, but for convergence, so without the boundary flow.
+"""
+function get_convergence(
+    convergence::CVector,
+    link::Tuple{NodeID, NodeID},
+)::Union{Missing, Float64}
+    a = get_state_index(getaxes(convergence), link[1]; inflow = false)
+    b = get_state_index(getaxes(convergence), link[2])
+    if isnothing(a) && isnothing(b)
+        missing
+    elseif isnothing(a)
+        convergence[b]
+    elseif isnothing(b)
+        convergence[a]
+    end
+end
+
 function get_influx(du::CVector, id::NodeID, p::Parameters)
     @assert id.type == NodeType.Basin
     (; basin) = p.p_independent

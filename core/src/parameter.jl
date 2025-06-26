@@ -356,8 +356,8 @@ In-memory storage of saved mean flows for writing to results.
     storage_rate::Vector{Float64} = zero(precipitation)
     balance_error::Vector{Float64} = zero(precipitation)
     relative_error::Vector{Float64} = zero(precipitation)
-    basin_convergence::Vector{Float64}
-    flow_convergence::Vector{Float64}
+    basin_convergence::Vector{Union{Missing, Float64}}
+    flow_convergence::Vector{Union{Missing, Float64}}
     t::Float64
 end
 

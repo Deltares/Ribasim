@@ -130,7 +130,7 @@ function basin_table(
     infiltration::Vector{Float64},
     balance_error::Vector{Float64},
     relative_error::Vector{Float64},
-    convergence::Vector{Float64},
+    convergence::Vector{Union{Missing, Float64}},
 }
     (; saved) = model
     (; u) = model.integrator
@@ -224,7 +224,7 @@ function flow_table(
     from_node_id::Vector{Int32},
     to_node_id::Vector{Int32},
     flow_rate::Vector{Float64},
-    convergence::Vector{Float64},
+    convergence::Vector{Union{Missing, Float64}},
 }
     (; config, saved, integrator) = model
     (; t, saveval) = saved.flow
@@ -246,9 +246,9 @@ function flow_table(
     nflow = length(unique_link_ids_flow)
     ntsteps = length(t)
     flow_rate = zeros(nflow * ntsteps)
-    flow_rate_conv = zeros(nflow * ntsteps)
+    flow_rate_conv = zeros(Union{Missing, Float64}, nflow * ntsteps)
     internal_flow_rate = zeros(length(internal_flow_links))
-    internal_flow_rate_conv = zeros(length(internal_flow_links))
+    internal_flow_rate_conv = zeros(Union{Missing, Float64}, length(internal_flow_links))
 
     for (ti, cvec) in enumerate(saveval)
         (; flow, flow_boundary, flow_convergence) = cvec
@@ -258,16 +258,7 @@ function flow_table(
             internal_flow_rate[fi] =
                 get_flow(flow, p_independent, 0.0, link.link; boundary_flow = flow_boundary)
 
-            a = get_state_index(getaxes(convergence), link.link[2])
-            b = get_state_index(getaxes(convergence), link.link[1]; inflow = false)
-            conv = if isnothing(a) && isnothing(b)
-                NaN
-            elseif isnothing(a)
-                convergence[b]
-            elseif isnothing(b)
-                convergence[a]
-            end
-            internal_flow_rate_conv[fi] = conv
+            internal_flow_rate_conv[fi] = get_convergence(convergence, link.link)
         end
         mul!(
             view(flow_rate, (1 + (ti - 1) * nflow):(ti * nflow)),

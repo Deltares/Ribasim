@@ -327,8 +327,8 @@ function save_flow(u, t, integrator)
     n_basin = length(basin.node_id)
     inflow_mean = zeros(n_basin)
     outflow_mean = zeros(n_basin)
-    flow_convergence = fill(NaN, length(u))
-    basin_convergence = fill(NaN, n_basin)
+    flow_convergence = fill(missing, length(u)) |> Vector{Union{Missing, Float64}}
+    basin_convergence = fill(missing, n_basin) |> Vector{Union{Missing, Float64}}
 
     # Flow contributions from horizontal flow states
     for (flow, inflow_link, outflow_link) in
@@ -371,6 +371,7 @@ function save_flow(u, t, integrator)
 
     if hasproperty(cache, :nlsolver)
         @. flow_convergence = abs(cache.nlsolver.cache.atmp / u)
+        flow_convergence = CVector(flow_convergence, getaxes(u))
         for (i, (evap, infil)) in
             enumerate(zip(flow_convergence.evaporation, flow_convergence.infiltration))
             if isnan(evap)
