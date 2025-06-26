@@ -268,8 +268,9 @@ function report_cause_of_infeasibility(
         # If a slack variable is non-zero, it indicates that the constraint is violated.
         if JuMP.value(slack_var) != 0.0
             nonzero_slack_count += 1
-            @info "infeasible constraint: $constraint"
             @info "objective function $(objective.expression)"
+            @info "infeasible constraint: $constraint"
+
             expr = JuMP.constraint_object(constraint).func
             @info "constraint is violated by: $(JuMP.value(slack_var))"
             log_constraint_variable_values(constraint)
