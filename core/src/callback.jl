@@ -315,9 +315,15 @@ Both computed by the solver and integrated exactly. Also computes the total hori
 inflow and outflow per Basin.
 """
 function save_flow(u, t, integrator)
-    (; p) = integrator
-    (; basin, state_inflow_link, state_outflow_link, flow_boundary, u_prev_saveat) =
-        p.p_independent
+    (; cache, p) = integrator
+    (;
+        basin,
+        state_inflow_link,
+        state_outflow_link,
+        flow_boundary,
+        u_prev_saveat,
+        node_id,
+    ) = p.p_independent
     Δt = get_Δt(integrator)
     flow_mean = (u - u_prev_saveat) / Δt
 
@@ -366,6 +372,24 @@ function save_flow(u, t, integrator)
     @. basin.cumulative_precipitation_saveat = 0.0
     @. basin.cumulative_drainage_saveat = 0.0
 
+    basin_convergence = fill(NaN, length(basin.node_id))
+    if hasproperty(cache, :nlsolver)
+        flow_convergence = @. abs(cache.nlsolver.cache.atmp / u)
+        for (i, (evap, infil)) in
+            enumerate(zip(flow_convergence.evaporation, flow_convergence.infiltration))
+            if isnan(evap)
+                basin_convergence[i] = infil
+            elseif isnan(infil)
+                basin_convergence[i] = evap
+            else
+                basin_convergence[i] = max(evap, infil)
+            end
+        end
+    else
+        flow_convergence = fill(NaN, length(u))
+        basin_convergence = fill(NaN, length(basin.node_id))
+    end
+
     concentration = copy(basin.concentration_data.concentration_state)
     saved_flow = SavedFlow(;
         flow = flow_mean,
@@ -375,6 +399,8 @@ function save_flow(u, t, integrator)
         precipitation,
         drainage,
         concentration,
+        flow_convergence,
+        basin_convergence,
         t,
     )
     check_water_balance_error!(saved_flow, integrator, Δt)
@@ -449,6 +475,7 @@ function check_water_balance_error!(
 end
 
 function save_solver_stats(u, t, integrator)
+    (; dt) = integrator
     (; stats) = integrator.sol
     (;
         time = t,
@@ -457,6 +484,7 @@ function save_solver_stats(u, t, integrator)
         linear_solves = stats.nsolve,
         accepted_timesteps = stats.naccept,
         rejected_timesteps = stats.nreject,
+        dt,
     )
 end
 
