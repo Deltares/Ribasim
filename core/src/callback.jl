@@ -316,22 +316,19 @@ inflow and outflow per Basin.
 """
 function save_flow(u, t, integrator)
     (; cache, p) = integrator
-    (;
-        basin,
-        state_inflow_link,
-        state_outflow_link,
-        flow_boundary,
-        u_prev_saveat,
-        node_id,
-    ) = p.p_independent
+    (; basin, state_inflow_link, state_outflow_link, flow_boundary, u_prev_saveat) =
+        p.p_independent
     Δt = get_Δt(integrator)
     flow_mean = (u - u_prev_saveat) / Δt
 
     # Current u is previous u in next computation
     u_prev_saveat .= u
 
-    inflow_mean = zeros(length(basin.node_id))
-    outflow_mean = zeros(length(basin.node_id))
+    n_basin = length(basin.node_id)
+    inflow_mean = zeros(n_basin)
+    outflow_mean = zeros(n_basin)
+    flow_convergence = fill(NaN, length(u))
+    basin_convergence = fill(NaN, n_basin)
 
     # Flow contributions from horizontal flow states
     for (flow, inflow_link, outflow_link) in
@@ -372,9 +369,8 @@ function save_flow(u, t, integrator)
     @. basin.cumulative_precipitation_saveat = 0.0
     @. basin.cumulative_drainage_saveat = 0.0
 
-    basin_convergence = fill(NaN, length(basin.node_id))
     if hasproperty(cache, :nlsolver)
-        flow_convergence = @. abs(cache.nlsolver.cache.atmp / u)
+        @. flow_convergence = abs(cache.nlsolver.cache.atmp / u)
         for (i, (evap, infil)) in
             enumerate(zip(flow_convergence.evaporation, flow_convergence.infiltration))
             if isnan(evap)
@@ -385,9 +381,6 @@ function save_flow(u, t, integrator)
                 basin_convergence[i] = max(evap, infil)
             end
         end
-    else
-        flow_convergence = fill(NaN, length(u))
-        basin_convergence = fill(NaN, length(basin.node_id))
     end
 
     concentration = copy(basin.concentration_data.concentration_state)

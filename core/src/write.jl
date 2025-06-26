@@ -133,9 +133,7 @@ function basin_table(
     convergence::Vector{Float64},
 }
     (; saved) = model
-    (; u, p) = model.integrator
-    (; basin,) = p.p_independent
-
+    (; u) = model.integrator
     state_ranges = getaxes(u)
 
     # The last timestep is not included; there is no period over which to compute flows.
