@@ -75,7 +75,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../site_libs/quarto-html/quarto-syntax-highlighting-e1a5c8363afafaef2c763b6775fbf3ca.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-d2026e3a0307a9005e6bcfa8bba53f60.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-77fa4190651282c21d415cb5083120b0.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -228,8 +228,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </nav>
 <div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
 <!-- margin-sidebar -->
-    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
-        
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#slow-models" id="toc-slow-models" class="nav-link active" data-scroll-target="#slow-models"><span class="header-section-number">1</span> Slow models</a></li>
+  <li><a href="#unstable-models" id="toc-unstable-models" class="nav-link" data-scroll-target="#unstable-models"><span class="header-section-number">2</span> Unstable models</a></li>
+  </ul>
+</nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
@@ -253,16 +260,31 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
+<section id="slow-models" class="level2" data-number="1">
+<h2 data-number="1" class="anchored" data-anchor-id="slow-models"><span class="header-section-number">1</span> Slow models</h2>
+<p>When your model is slow, it’s often only a handful of nodes that are hard to solve. If the model finishes or is interrupted, convergence bottlenecks are shown like so:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>┌ Info<span class="op">:</span> Convergence bottlenecks <span class="kw">in</span> descending order of severity<span class="op">:</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>│   ManningResistance <span class="co">#251242 = 0.09023997405863035</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>│   ManningResistance <span class="co">#70523 = 0.006218636603583534</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>│   ManningResistance <span class="co">#251181 = 0.004716432403226626</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>│   ManningResistance <span class="co">#251182 = 0.0035319514660666165</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>└   ManningResistance <span class="co">#591558 = 0.003284110004804508</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>It’s best to inspect these nodes, and try to adjust the parametrization, or merge smaller nodes. You can find the convergence measure per node over time in the <code>flow.arrow</code> and <code>basin.arrow</code> <a href="reference/usage.qmd#sec-results">output files</a>.</p>
+<p>To gain further insight into model performance, one can inspect the <code>solver_stats.arrow</code> output file, which gives the number of computations, number of rejected and accepted solutions, and the size of each calculation timestep.</p>
+</section>
+<section id="unstable-models" class="level2" data-number="2">
+<h2 data-number="2" class="anchored" data-anchor-id="unstable-models"><span class="header-section-number">2</span> Unstable models</h2>
 <p>When your model exits with a message like so:</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>┌ Error<span class="op">:</span> The model exited at model time <span class="fl">2024</span><span class="op">-</span><span class="fl">01</span><span class="op">-</span><span class="fl">27</span>T14<span class="op">:</span><span class="fl">46</span><span class="op">:</span><span class="fl">17.791</span> with <span class="cf">return</span> code Unstable. See https<span class="op">://</span>docs.sciml.ai<span class="op">/</span>DiffEqDocs<span class="op">/</span>stable<span class="op">/</span>basics<span class="op">/</span>solution<span class="op">/</span><span class="co">#retcodes</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode" id="cb2"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>┌ Error<span class="op">:</span> The model exited at model time <span class="fl">2024</span><span class="op">-</span><span class="fl">01</span><span class="op">-</span><span class="fl">27</span>T14<span class="op">:</span><span class="fl">46</span><span class="op">:</span><span class="fl">17.791</span> with <span class="cf">return</span> code Unstable. See https<span class="op">://</span>docs.sciml.ai<span class="op">/</span>DiffEqDocs<span class="op">/</span>stable<span class="op">/</span>basics<span class="op">/</span>solution<span class="op">/</span><span class="co">#retcodes</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <p>it’s best to rerun the model with <code>saveat = 0</code> in the <a href="reference/usage.qmd#sec-solver-settings">solver</a> settings. The model might then instead exit with</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>┌ Error<span class="op">:</span> Too large water balance error</span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>│   id <span class="op">=</span> Basin <span class="co">#2</span></span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>│   balance_error <span class="op">=</span> <span class="fl">0.0017985748886167501</span></span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>│   relative_error <span class="op">=</span> <span class="fl">1.3503344464431657</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode" id="cb3"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>┌ Error<span class="op">:</span> Too large water balance error</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>│   id <span class="op">=</span> Basin <span class="co">#2</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>│   balance_error <span class="op">=</span> <span class="fl">0.0017985748886167501</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>│   relative_error <span class="op">=</span> <span class="fl">1.3503344464431657</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <p>which helps you pin down the problematic node(s). The normal output for every calculation timestep is written until the moment of error, so one can use this information to understand the problem.</p>
 
 
+</section>
 
 </main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">

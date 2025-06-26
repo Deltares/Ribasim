@@ -96,7 +96,7 @@ div.csl-indent {
 <link href="../site_libs/quarto-html/quarto-syntax-highlighting-e1a5c8363afafaef2c763b6775fbf3ca.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-d2026e3a0307a9005e6bcfa8bba53f60.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-77fa4190651282c21d415cb5083120b0.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -398,7 +398,7 @@ window.Quarto = {
   <li><a href="#cyclic-time-series" id="toc-cyclic-time-series" class="nav-link" data-scroll-target="#cyclic-time-series"><span class="header-section-number">3.1</span> Cyclic time series</a></li>
   </ul></li>
   <li><a href="#sec-link" id="toc-sec-link" class="nav-link" data-scroll-target="#sec-link"><span class="header-section-number">4</span> Link</a></li>
-  <li><a href="#results" id="toc-results" class="nav-link" data-scroll-target="#results"><span class="header-section-number">5</span> Results</a>
+  <li><a href="#sec-results" id="toc-sec-results" class="nav-link" data-scroll-target="#sec-results"><span class="header-section-number">5</span> Results</a>
   <ul class="collapse">
   <li><a href="#basin---basin.arrow" id="toc-basin---basin.arrow" class="nav-link" data-scroll-target="#basin---basin.arrow"><span class="header-section-number">5.1</span> Basin - <code>basin.arrow</code></a></li>
   <li><a href="#flow---flow.arrow" id="toc-flow---flow.arrow" class="nav-link" data-scroll-target="#flow---flow.arrow"><span class="header-section-number">5.2</span> Flow - <code>flow.arrow</code></a></li>
@@ -827,7 +827,7 @@ Important
 </table>
 <p>Similarly to the node table, you can use a geometry to visualize the connections between the nodes in QGIS. For instance, you can draw a line connecting the two node coordinates.</p>
 </section>
-<section id="results" class="level1" data-number="5">
+<section id="sec-results" class="level1" data-number="5">
 <h1 data-number="5"><span class="header-section-number">5</span> Results</h1>
 <section id="basin---basin.arrow" class="level2" data-number="5.1">
 <h2 data-number="5.1" class="anchored" data-anchor-id="basin---basin.arrow"><span class="header-section-number">5.1</span> Basin - <code>basin.arrow</code></h2>
@@ -842,6 +842,7 @@ Important
 <li>The <code>outflow_rate</code> consists of the sum of all modelled flows out of the basin: <code>outflow_rate</code> (horizontal flows out of the basin, independent of link direction) + <code>evaporation</code> + <code>infiltration</code>.</li>
 <li>The <code>balance_error</code> is the difference between the <code>storage_rate</code> on one side and the <code>inflow_rate</code> and <code>outflow_rate</code> on the other side: <code>storage_rate</code> - (<code>inflow_rate</code> - <code>outflow_rate</code>). It can be used to check if the numerical error when solving the water balance is sufficiently small.</li>
 <li>The <code>relative_error</code> is the fraction of the <code>balance_error</code> over the mean of the <code>total_inflow</code> and <code>total_outflow</code>.</li>
+<li>The <code>convergence</code> is the scaled residual of the solver, giving an indication of which nodes converge the worst (are hardest to solve).</li>
 </ul>
 <p>For a more in-depth explanation of the water balance error see <a href="../concept/equations.html#the-water-balance-error">here</a>.</p>
 <table class="caption-top table">
@@ -918,6 +919,11 @@ Important
 <td>Float64</td>
 <td>-</td>
 </tr>
+<tr class="even">
+<td>convergence</td>
+<td>Float64/Missing</td>
+<td>-</td>
+</tr>
 </tbody>
 </table>
 <p>The table is sorted by time, and per time it is sorted by <code>node_id</code>.</p>
@@ -969,9 +975,14 @@ Important
 <td>Float64</td>
 <td><span class="math inline">\(\text{m}^3/\text{s}\)</span></td>
 </tr>
+<tr class="even">
+<td>convergence</td>
+<td>Float64/Missing</td>
+<td>-</td>
+</tr>
 </tbody>
 </table>
-<p>The table is sorted by time, and per time the same <code>link_id</code> order is used, though not sorted. The <code>link_id</code> value is the same as the <code>fid</code> written to the Link table, and can be used to directly look up the Link geometry. Flows from the “from” to the “to” node have a positive sign, and if the flow is reversed it will be negative.</p>
+<p>The table is sorted by time, and per time the same <code>link_id</code> order is used, though not sorted. The <code>link_id</code> value is the same as the <code>fid</code> written to the Link table, and can be used to directly look up the Link geometry. Flows from the “from” to the “to” node have a positive sign, and if the flow is reversed it will be negative. - The <code>convergence</code> is the scaled residual of the solver, giving an indication of which nodes converge the worst (are hardest to solve).</p>
 </section>
 <section id="sec-state" class="level2" data-number="5.3">
 <h2 data-number="5.3" class="anchored" data-anchor-id="sec-state"><span class="header-section-number">5.3</span> State - <code>basin_state.arrow</code></h2>
@@ -1236,7 +1247,7 @@ Note
 <section id="solver-statistics---solver_stats.arrow" class="level2" data-number="5.9">
 <h2 data-number="5.9" class="anchored" data-anchor-id="solver-statistics---solver_stats.arrow"><span class="header-section-number">5.9</span> Solver statistics - <code>solver_stats.arrow</code></h2>
 <p>This result file contains statistics about the solver, which can give an insight into how well the solver is performing over time. The data is solved by <code>saveat</code> (see <a href="#configuration-file">configuration file</a>). <code>water_balance</code> refers to the right-hand-side function of the system of differential equations solved by the Ribasim core.</p>
-<p>The <code>computation_time</code> is the wall time in milliseconds spent on the given period. The first row tends to include compilation time as well.</p>
+<p>The <code>computation_time</code> is the wall time in milliseconds spent on the given period. The first row tends to include compilation time as well. The <code>dt</code> is the size (in seconds) of the last calculation timestep (at the <code>saveat</code> timestep).</p>
 <table class="caption-top table">
 <thead>
 <tr class="header">
@@ -1275,6 +1286,11 @@ Note
 <td>rejected_timesteps</td>
 <td>Int</td>
 <td>-</td>
+</tr>
+<tr class="odd">
+<td>dt</td>
+<td>Float64</td>
+<td>s</td>
 </tr>
 </tbody>
 </table>
