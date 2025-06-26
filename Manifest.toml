@@ -472,11 +472,9 @@ version = "1.7.0"
 
 [[deps.DataInterpolations]]
 deps = ["EnumX", "FindFirstFunctions", "ForwardDiff", "LinearAlgebra", "PrettyTables", "RecipesBase", "Reexport"]
-git-tree-sha1 = "60540a90656d842f58e0639bc881e16f81d08020"
-repo-rev = "master"
-repo-url = "https://github.com/SciML/DataInterpolations.jl.git"
+git-tree-sha1 = "13c4d72ac01c0a441d72eced702332f8eabc8366"
 uuid = "82cc6244-b520-54b8-b5a6-8a565e85f1d0"
-version = "8.0.1"
+version = "8.1.0"
 
     [deps.DataInterpolations.extensions]
     DataInterpolationsChainRulesCoreExt = "ChainRulesCore"
