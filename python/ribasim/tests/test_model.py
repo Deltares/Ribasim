@@ -1,10 +1,12 @@
 import re
+import warnings
 from sqlite3 import connect
 
 import datacompy
 import numpy as np
 import pandas as pd
 import pytest
+import tomli
 import tomli_w
 import xugrid
 from pydantic import ValidationError
@@ -362,3 +364,79 @@ def test_model_diff(basic):
     assert "static" in x["basin"]
     assert "diff" in x["basin"]["static"]
     assert isinstance(x["basin"]["static"]["diff"], datacompy.Compare)
+
+
+def test_version_mismatch_warning_newer_version(basic, tmp_path):
+    """Test that a warning is issued when TOML ribasim_version is newer than package version."""
+    # Write the model to get a TOML file
+    toml_path = tmp_path / "ribasim.toml"
+    basic.write(toml_path)
+
+    # Read the TOML file and modify the version to be newer
+    with open(toml_path, "rb") as f:
+        config = tomli.load(f)
+
+    # Set a newer version
+    config["ribasim_version"] = "3030.1.0"
+
+    # Write the modified TOML back
+    with open(toml_path, "wb") as f:
+        tomli_w.dump(config, f)
+
+    # Test that a warning is issued when reading the model
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        Model.read(toml_path)
+
+        # Check that a warning was issued - filter for our specific warning
+        version_warnings = [
+            warning
+            for warning in w
+            if "version in the TOML file" in str(warning.message)
+        ]
+        assert len(version_warnings) == 1
+        assert issubclass(version_warnings[0].category, UserWarning)
+        assert "3030.1.0" in str(version_warnings[0].message)
+        assert "is newer than the Python package version" in str(
+            version_warnings[0].message
+        )
+
+
+def test_invalid_version_string_warning(basic, tmp_path):
+    """Test that a warning is issued when TOML ribasim_version is not a valid version string."""
+    import warnings
+
+    import tomli
+
+    # Write the model to get a TOML file
+    toml_path = tmp_path / "ribasim.toml"
+    basic.write(toml_path)
+
+    # Read the TOML file and modify the version to an invalid version string
+    with open(toml_path, "rb") as f:
+        config = tomli.load(f)
+
+    # Set an invalid version string
+    config["ribasim_version"] = "invalid_version_string"
+
+    # Write the modified TOML back
+    with open(toml_path, "wb") as f:
+        tomli_w.dump(config, f)
+
+    # Test that a warning is issued when reading the model
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        Model.read(toml_path)
+
+        # Check that a warning was issued - filter for our specific warning
+        version_warnings = [
+            warning
+            for warning in w
+            if "version in the TOML file" in str(warning.message)
+        ]
+        assert len(version_warnings) == 1
+        assert issubclass(version_warnings[0].category, UserWarning)
+        assert "invalid_version_string" in str(version_warnings[0].message)
+        assert "does not match the Python package version" in str(
+            version_warnings[0].message
+        )

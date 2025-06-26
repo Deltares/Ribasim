@@ -7851,7 +7851,8 @@ packages:
   - python
   license: MIT
   license_family: MIT
-  purls: []
+  purls:
+  - pkg:pypi/hyperlink?source=hash-mapping
   size: 74751
   timestamp: 1733319972207
 - conda: https://conda.anaconda.org/conda-forge/linux-64/icu-75.1-he02047a_0.conda
@@ -21040,12 +21041,13 @@ packages:
 - pypi: ./python/ribasim
   name: ribasim
   version: 2025.4.0
-  sha256: 40dd8b952cc77846d8a0f5baa930d31609a7b2b953d0be5b8dce3589af12d5d5
+  sha256: 17436089dfc254ed14d65196110b478fd4ab8be37cd89d2a562116102260f82d
   requires_dist:
   - datacompy>=0.16
   - geopandas>=1.0,<1.1
   - matplotlib>=3.7
   - numpy>=1.25
+  - packaging>=23.0
   - pandas>=2.0
   - pandera>=0.20,<0.23
   - pyarrow>=17.0
@@ -21075,7 +21077,7 @@ packages:
   editable: true
 - pypi: ./python/ribasim_api
   name: ribasim-api
-  version: 2025.4.0
+  version: 2025.3.0
   sha256: 73658444714bf6027302b5bf1ec3da2cad1a265d8d1e3c0f4dcb9a17c02b704c
   requires_dist:
   - xmipy>=1.3
