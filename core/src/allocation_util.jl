@@ -237,11 +237,18 @@ end
     returns a dictionary mapping each relaxed constraint to its corresponding slack variable.
 """
 function relax_problem!(problem::JuMP.Model)::Dict{JuMP.ConstraintRef, JuMP.AffExpr}
-    constraint_to_penalty_1 = Dict(c => 1.0 for c in problem[:volume_conservation])
-    constraint_to_penalty_2 = Dict(c => 1.0 for c in problem[:flow_conservation])
-    constraint_to_penalty = merge(constraint_to_penalty_1, constraint_to_penalty_2)
+    # Restore constraint names in relaxed problem
+    constraint_to_penalty = Dict{JuMP.ConstraintRef, Float64}()
 
-    return JuMP.relax_with_penalty!(problem, constraint_to_penalty; default = nothing)
+    for constraint in
+        JuMP.all_constraints(problem; include_variable_in_set_constraints = true)
+        if startswith(JuMP.name(constraint), "volume_conservation") ||
+           startswith(JuMP.name(constraint), "flow_conservation")
+            constraint_to_penalty[constraint] = 1e6
+        end
+    end
+
+    return JuMP.relax_with_penalty!(problem, constraint_to_penalty)
 end
 
 """
@@ -252,18 +259,18 @@ end
  """
 function report_cause_of_infeasibility(
     constraint_to_slack_map::Dict{JuMP.ConstraintRef, JuMP.AffExpr},
+    objective::AllocationObjective,
 )
     nonzero_slack_count = 0
-
     for (constraint, slack_var) in constraint_to_slack_map
         constraint_expression = JuMP.constraint_object(constraint).func
-
         # If a slack variable is non-zero, it indicates that the constraint is violated.
         if JuMP.value(slack_var) != 0.0
             nonzero_slack_count += 1
             @info "infeasible constraint: $constraint"
+            @info "objective function $(objective.expression)"
             expr = JuMP.constraint_object(constraint).func
-            @info "constraint is violated by: $slack_var = $(JuMP.value(slack_var))"
+            @info "constraint is violated by: $(JuMP.value(slack_var))"
             log_constraint_variable_values(constraint)
 
             # for all variables in the violated constraint, check if there are other constraints on them
@@ -294,7 +301,7 @@ function log_constraint_variable_values(constraint::JuMP.ConstraintRef)
     for (v, _) in expr.terms
         name = JuMP.name(v)
         if name == ""
-            continue
+            name = string(v)
         end
         value = JuMP.value(v)
         lb = JuMP.has_lower_bound(v) ? JuMP.lower_bound(v) : "-Inf"
@@ -320,34 +327,27 @@ function handle_infeasibility!(
     objective::AllocationObjective,
     t::Real,
 )
-    infeasibility_count = 0
-    termination_status = JuMP.termination_status(problem)
-    if termination_status !== JuMP.OPTIMAL
-        # We write the unrelaxed problem to file as backup for later
-        tmpfile = tempname() * ".mps"
-        try
-            JuMP.write_to_file(problem, tmpfile)
+    # We solve the relaxed problem to determine where the infeasibility comes from.
+    constraint_to_slack_map = relax_problem!(problem)
+    JuMP.optimize!(problem)
+    n = report_cause_of_infeasibility(constraint_to_slack_map, objective)
 
-            # We solve the relaxed problem to determine where the infeasibility comes from.
-            constraint_to_slack_map = relax_problem!(problem)
-            JuMP.optimize!(problem)
-            infeasibility_count = report_cause_of_infeasibility(constraint_to_slack_map)
-
-            # We have encountered a situation where the relaxed problem is solved, without finding any infeasibility. So we actually can continue with these results
-            # Therefore we load the backup of the problem
-            if infeasibility_count == 0
-                optimizer = get_optimizer()
-                problem = JuMP.direct_model(optimizer)
-                problem = JuMP.read_from_file(tmpfile)
-            end
-        finally
-            # make sure the file is removed in case of an error
-            rm(tmpfile; force = true)
-        end
-    end
-    if infeasibility_count != 0
+    if n != 0
         error(
-            "Allocation optimization for subnetwork $subnetwork_id, $objective at t = $t s couldn't find (optimal) solution. Termination status: $termination_status.",
+            "Allocation optimization for subnetwork $subnetwork_id, $objective at t = $t s is infeasible",
         )
     end
+end
+
+"""
+copies the problem by writing it to a temporary file and reading it back.
+However, during writing the registered names of the constraints are lost
+"""
+function copy_problem(problem::JuMP.Model)::JuMP.Model
+    tmpfile = tempname() * ".mps"
+    JuMP.write_to_file(problem, tmpfile)
+    copy = JuMP.read_from_file(tmpfile)
+    rm(tmpfile; force = true)
+    JuMP.set_optimizer(copy, get_optimizer())
+    return copy
 end

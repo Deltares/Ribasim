@@ -1032,6 +1032,8 @@ The part of the parameters passed to the rhs and callbacks that are mutable.
     new_t = true
     new_u = true
     tprev::Float64 = 0.0
+    constraint_to_slack::Dict{JuMP.ConstraintRef, JuMP.AffExpr} =
+        Dict{JuMP.ConstraintRef, JuMP.AffExpr}()
 end
 
 """

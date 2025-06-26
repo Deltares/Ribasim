@@ -606,7 +606,9 @@ function optimize_for_objective!(
     JuMP.optimize!(problem)
     @debug JuMP.solution_summary(problem)
 
-    handle_infeasibility!(problem, subnetwork_id, objective, t)
+    if JuMP.termination_status(problem) == JuMP.INFEASIBLE
+        handle_infeasibility!(problem, subnetwork_id, objective, t)
+    end
 
     postprocess_objective!(allocation_model, p_independent, objective, t)
 
