@@ -207,6 +207,11 @@ function Base.show(io::IO, objective::AllocationObjective)
     end
 end
 
+@kwdef mutable struct ScalingFactors
+    flow::Float64 = 1e3
+    storage::Float64 = 1e6
+end
+
 """
 Store information for a subnetwork used for allocation.
 
@@ -220,6 +225,7 @@ cumulative_boundary_volume: The net volume of boundary flow into the model for e
 cumulative_realized_volume: The net volume of flow realized by a demand node over the last Δt_allocation
 sources: The nodes in the subnetwork which can act as sources, sorted by source priority
 subnetwork_demand: The total demand of the secondary network from the primary network per inlet per demand priority (irrelevant for the primary network)
+scaling: The flow and storage scaling factors to make the optimization problem more numerically stable
 """
 @kwdef struct AllocationModel
     subnetwork_id::Int32
@@ -231,6 +237,7 @@ subnetwork_demand: The total demand of the secondary network from the primary ne
     cumulative_realized_volume::Dict{Tuple{NodeID, NodeID}, Float64} = Dict()
     sources::Dict{Int32, NodeID} = OrderedDict()
     subnetwork_demand::Dict{Tuple{NodeID, NodeID}, Vector{Float64}} = Dict()
+    scaling::ScalingFactors = ScalingFactors()
 end
 
 @kwdef struct DemandRecord

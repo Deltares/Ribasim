@@ -72,7 +72,7 @@ function add_basin!(
     allocation_model::AllocationModel,
     p_independent::ParametersIndependent,
 )::Nothing
-    (; problem, subnetwork_id, cumulative_forcing_volume) = allocation_model
+    (; problem, subnetwork_id, cumulative_forcing_volume, scaling) = allocation_model
     (; graph, basin, level_boundary) = p_independent
     (; storage_to_level, level_to_area) = basin
 
@@ -82,7 +82,7 @@ function add_basin!(
     # Storage and level indices
     indices = IterTools.product(basin_ids_subnetwork, [:start, :end])
 
-    # Define decision variables: storage (m^3) and level (m)
+    # Define decision variables: storage (scaling.storage * m^3) and level (m)
     # Each storage variable is constrained between 0 and the largest storage value in the profile
     # Each level variable is between the lowest and the highest level in the profile
     storage =
@@ -122,6 +122,7 @@ function add_basin!(
             lowest_level,
         )
         values_storage[node_id] = values_storage_node
+        values_storage[node_id] ./= scaling.storage
         values_level[node_id] = values_level_node
     end
 
@@ -151,7 +152,7 @@ function add_flow!(
     allocation_model::AllocationModel,
     p_independent::ParametersIndependent,
 )::Nothing
-    (; problem, subnetwork_id) = allocation_model
+    (; problem, subnetwork_id, scaling) = allocation_model
     (; graph) = p_independent
 
     node_ids_subnetwork = graph[].node_ids[subnetwork_id]
@@ -165,15 +166,15 @@ function add_flow!(
         end
     end
 
-    # Define decision variables: flow over flow links (m^3/s)
+    # Define decision variables: flow over flow links (scaling.flow * m^3/s)
     problem[:flow] = JuMP.@variable(
         problem,
-        flow_capacity_lower_bound(link, p_independent) ≤
+        flow_capacity_lower_bound(link, p_independent) / scaling.flow ≤
         flow[link = flow_links_subnetwork] ≤
-        flow_capacity_upper_bound(link, p_independent)
+        flow_capacity_upper_bound(link, p_independent) / scaling.flow
     )
 
-    # Define parameters: Basin forcing (m^3, values to be filled in before optimizing)
+    # Define parameters: Basin forcing (scaling.flow * m^3/s, values to be filled in before optimizing)
     basin_ids_subnetwork = filter(id -> id.type == NodeType.Basin, node_ids_subnetwork)
     problem[:basin_forcing] =
         JuMP.@variable(problem, basin_forcing[basin_ids_subnetwork] == 0.0)
@@ -186,19 +187,28 @@ Equate the inflow and outflow of conservative nodes
 """
 function add_flow_conservation!(
     allocation_model::AllocationModel,
-    node::AbstractParameterNode,
+    nodes::NTuple{N, AbstractParameterNode} where {N},
     graph::MetaGraph,
 )::Nothing
     (; problem, subnetwork_id) = allocation_model
-    (; node_id, inflow_link, outflow_link) = node
-    node_ids = filter(id -> graph[id].subnetwork_id == subnetwork_id, node_id)
+    node_ids = NodeID[]
+    inflow_link = Dict{NodeID, LinkMetadata}()
+    outflow_link = Dict{NodeID, LinkMetadata}()
+    for node in nodes
+        append!(
+            node_ids,
+            filter(id -> graph[id].subnetwork_id == subnetwork_id, node.node_id),
+        )
+        merge!(inflow_link, Dict(node.node_id .=> node.inflow_link))
+        merge!(outflow_link, Dict(node.node_id .=> node.outflow_link))
+    end
     flow = problem[:flow]
 
     # Define constraints: inflow is equal to outflow for conservative nodes
     problem[:flow_conservation] = JuMP.@constraint(
         problem,
         [node_id = node_ids],
-        flow[inflow_link[node_id.idx].link] == flow[outflow_link[node_id.idx].link],
+        flow[inflow_link[node_id].link] == flow[outflow_link[node_id].link],
         base_name = "flow_conservation"
     )
     return nothing
@@ -208,7 +218,7 @@ function add_conservation!(
     allocation_model::AllocationModel,
     p_independent::ParametersIndependent,
 )::Nothing
-    (; problem, subnetwork_id, Δt_allocation) = allocation_model
+    (; problem, subnetwork_id, Δt_allocation, scaling) = allocation_model
 
     # Flow trough conservative nodes
     (;
@@ -220,11 +230,8 @@ function add_conservation!(
         tabulated_rating_curve,
         basin,
     ) = p_independent
-    add_flow_conservation!(allocation_model, pump, graph)
-    add_flow_conservation!(allocation_model, outlet, graph)
-    add_flow_conservation!(allocation_model, linear_resistance, graph)
-    add_flow_conservation!(allocation_model, manning_resistance, graph)
-    add_flow_conservation!(allocation_model, tabulated_rating_curve, graph)
+    nodes = (pump, outlet, linear_resistance, manning_resistance, tabulated_rating_curve)
+    add_flow_conservation!(allocation_model, nodes, graph)
 
     # Define constraints: Basin storage change (water balance)
     storage = problem[:basin_storage]
@@ -251,7 +258,9 @@ function add_conservation!(
         problem,
         [node_id = basin_ids_subnetwork],
         storage[(node_id, :end)] - storage[(node_id, :start)] ==
-        Δt_allocation * (forcing[node_id] + inflow_sum[node_id] - outflow_sum[node_id]),
+        Δt_allocation *
+        (scaling.flow / scaling.storage) *
+        (forcing[node_id] + inflow_sum[node_id] - outflow_sum[node_id]),
         base_name = "volume conservation"
     )
 
@@ -264,7 +273,7 @@ function add_low_storage_factor!(
 )::Nothing
     (; basin, graph) = p_independent
     (; low_storage_threshold, storage_to_level) = basin
-    (; problem, subnetwork_id) = allocation_model
+    (; problem, subnetwork_id, scaling) = allocation_model
 
     basin_ids_subnetwork = get_subnetwork_ids(graph, NodeType.Basin, subnetwork_id)
     storage = problem[:basin_storage]
@@ -283,7 +292,11 @@ function add_low_storage_factor!(
         low_storage_factor[node_id] == piecewiselinear(
             problem,
             storage[(node_id, :end)],
-            [0.0, low_storage_threshold[node_id.idx], storage_to_level[node_id.idx].t[end]],
+            [
+                0.0,
+                low_storage_threshold[node_id.idx],
+                storage_to_level[node_id.idx].t[end],
+            ] ./ scaling.storage,
             factor_values,
         )
     )
@@ -322,7 +335,7 @@ function add_user_demand!(
         )
 
     # Define constraints: error terms
-    d = 2.0 # example demand (m^3/s, values to be filled in before optimizing)
+    d = 2.0 # example demand (scaling.flow * m^3/s, values to be filled in before optimizing)
     problem[:user_demand_constraint_lower] = JuMP.@constraint(
         problem,
         [node_id = user_demand_ids_subnetwork],
@@ -392,7 +405,7 @@ function add_flow_demand!(
     target_demand_fraction = problem[:target_demand_fraction]
     flow = problem[:flow]
 
-    # Define parameters: allocated flow (m^3/s values to be filled in later)
+    # Define parameters: allocated flow (scaling.flow m^3/s values to be filled in later)
     flow_demand_allocated =
         problem[:flow_demand_allocated] = JuMP.@variable(
             problem,
@@ -407,7 +420,7 @@ function add_flow_demand!(
         )
 
     # Define constraints: error terms
-    d = 2.0 # example demand (m^3/s, values to be filled in before optimizing)
+    d = 2.0 # example demand (scaling.flow * m^3/s, values to be filled in before optimizing)
     problem[:flow_demand_constraint] = JuMP.@constraint(
         problem,
         [node_id = ids_with_flow_demand_subnetwork],
@@ -465,7 +478,7 @@ function add_level_demand!(
         problem[:basin_allocated] =
             JuMP.@variable(problem, basin_allocated[ids_with_level_demand_subnetwork] == 0)
 
-    # Define parameters: target storage (m^3, value to be set before optimizing)
+    # Define parameters: target storage (scaling.storage * m^3, value to be set before optimizing)
     target_storage =
         problem[:targe_storage_demand_fraction] = JuMP.@variable(
             problem,
@@ -538,7 +551,7 @@ function add_level_boundary!(
     level_boundary_ids_subnetwork =
         get_subnetwork_ids(graph, NodeType.LevelBoundary, subnetwork_id)
 
-    # Add parameters: level boundary levels (values to be filled in before optimization)
+    # Add parameters: level boundary levels (m, values to be filled in before optimization)
     problem[:boundary_level] =
         JuMP.@variable(problem, boundary_level[level_boundary_ids_subnetwork] == 0)
 
@@ -549,7 +562,7 @@ function add_tabulated_rating_curve!(
     allocation_model::AllocationModel,
     p_independent::ParametersIndependent,
 )::Nothing
-    (; problem, subnetwork_id) = allocation_model
+    (; problem, subnetwork_id, scaling) = allocation_model
     (; tabulated_rating_curve, graph) = p_independent
     (; interpolations, current_interpolation_index, inflow_link) = tabulated_rating_curve
     rating_curve_ids_subnetwork =
@@ -563,12 +576,8 @@ function add_tabulated_rating_curve!(
         flow[inflow_link[node_id.idx].link] == begin
             itp = interpolations[current_interpolation_index[node_id.idx](0.0)]
             level_upstream = get_level(problem, inflow_link[node_id.idx].link[1])
-            level_upstream_data = copy(itp.t)
-            flow_rate_data = copy(itp.u)
-            level_extrapolated = last(level_upstream_data) + 1000.0
-            flow_extrapolated = itp(level_extrapolated)
-            push!(level_upstream_data, level_extrapolated)
-            push!(flow_rate_data, flow_extrapolated)
+            level_upstream_data = itp.t
+            flow_rate_data = itp.u ./ scaling.flow
             piecewiselinear(problem, level_upstream, level_upstream_data, flow_rate_data)
         end,
         base_name = "rating_curve",
@@ -580,7 +589,7 @@ function add_linear_resistance!(
     allocation_model::AllocationModel,
     p_independent::ParametersIndependent,
 )::Nothing
-    (; problem, subnetwork_id) = allocation_model
+    (; problem, subnetwork_id, scaling) = allocation_model
     (; graph, linear_resistance) = p_independent
     (; inflow_link, outflow_link, resistance, max_flow_rate) = linear_resistance
 
@@ -603,7 +612,7 @@ function add_linear_resistance!(
 
             if isinf(max_flow)
                 # If there is no flow bound the relationship is simple
-                Δlevel / resistance[node_id.idx]
+                Δlevel / (resistance[node_id.idx] * scaling.flow)
             else
                 # If there is a flow bound, the flow(Δlevel) relationship
                 # is modelled as a (non-convex) piecewise linear relationship
@@ -629,6 +638,8 @@ function add_linear_resistance!(
                     push!(output, max_flow)
                 end
 
+                output ./= scaling.flow
+
                 piecewiselinear(problem, Δlevel, input, output)
             end
         end,
@@ -650,9 +661,9 @@ function add_manning_resistance!(
 
     # Add constraints: linearisation of the flow(levels) relationship in the current levels in the physical layer
     flow = problem[:flow]
-    q0 = 1.0 # example value (m^3/s, to be filled in before optimizing)
-    ∂q_∂level_upstream = 1.0 # example value (m^3/(sm), to be filled in before optimizing)
-    ∂q_∂level_downstream = -1.0 # example value (m^3/(sm), to be filled in before optimizing)
+    q0 = 1.0 # example value (scaling.flow * m^3/s, to be filled in before optimizing)
+    ∂q_∂level_upstream = 1.0 # example value (scaling_flow * m^3/(sm), to be filled in before optimizing)
+    ∂q_∂level_downstream = -1.0 # example value (scaling_flow * m^3/(sm), to be filled in before optimizing)
     problem[:manning_resistance_constraint] = JuMP.@constraint(
         problem,
         [node_id = manning_resistance_ids_subnetwork],
@@ -682,7 +693,7 @@ function add_pump!(
         get_subnetwork_ids(graph, NodeType.Pump, subnetwork_id),
     )
 
-    q = 1.0 # example value (m^3/s, to be filled in before optimizing)
+    q = 1.0 # example value (scaling.flow * m^3/s, to be filled in before optimizing)
     problem[:pump] = JuMP.@constraint(
         problem,
         [node_id = pump_ids_subnetwork_non_alloc_controlled],
@@ -707,7 +718,7 @@ function add_outlet!(
         get_subnetwork_ids(graph, NodeType.Outlet, subnetwork_id),
     )
 
-    q = 1.0 # example value (m^3/s, to be filled in before optimizing)
+    q = 1.0 # example value (scaling.flow * m^3/s, to be filled in before optimizing)
     problem[:outlet] = JuMP.@constraint(
         problem,
         [node_id = outlet_ids_subnetwork_non_alloc_controlled],
@@ -729,7 +740,7 @@ function add_subnetwork_demand!(
 
     connecting_links = vcat(values(allocation.primary_network_connections)...)
 
-    # Define parameters: flow allocated to user subnetworks (m^3/s, values to be filled in before optimizing)
+    # Define parameters: flow allocated to user subnetworks (scaling.flow * m^3/s, values to be filled in before optimizing)
     subnetwork_allocated =
         problem[:subnetwork_allocated] =
             JuMP.@variable(problem, subnetwork[connecting_links] == 0)
@@ -743,7 +754,7 @@ function add_subnetwork_demand!(
             JuMP.@variable(problem, relative_subnetwork_error_upper[connecting_links] >= 0)
 
     # Define constraints: error terms
-    d = 2.0 # example demand (m^3/s, values to be filled in before optimizing)
+    d = 2.0 # example demand (scaling.flow * m^3/s, values to be filled in before optimizing)
     problem[:subnetwork_constraint_lower] = JuMP.@constraint(
         problem,
         [link = connecting_links],

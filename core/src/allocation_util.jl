@@ -229,3 +229,11 @@ function get_low_storage_factor(problem::JuMP.Model, node_id::NodeID)
         1.0
     end
 end
+
+function get_flow_value(
+    allocation_model::AllocationModel,
+    link::Tuple{NodeID, NodeID},
+)::Float64
+    (; problem, scaling) = allocation_model
+    return JuMP.value(problem[:flow][link]) * scaling.flow
+end
