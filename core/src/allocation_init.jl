@@ -182,7 +182,10 @@ function add_flow!(
 end
 
 """
-Equate the inflow and outflow of conservative nodes
+Add flow conservation constraints for conservative nodes.
+Ensures that inflow equals outflow for nodes that conserve mass (pumps, outlets,
+resistances, rating curves). Creates unique constraint names based on node type
+to avoid naming collisions.
 """
 function add_flow_conservation!(
     allocation_model::AllocationModel,
@@ -194,16 +197,27 @@ function add_flow_conservation!(
     node_ids = filter(id -> graph[id].subnetwork_id == subnetwork_id, node_id)
     flow = problem[:flow]
 
+    # Extract node type name from the struct type
+    node_type = lowercase(string(typeof(node).name.name))
+
     # Define constraints: inflow is equal to outflow for conservative nodes
-    problem[:flow_conservation] = JuMP.@constraint(
+    constraint_name = Symbol("flow_conservation_$(node_type)")
+    problem[constraint_name] = JuMP.@constraint(
         problem,
         [node_id = node_ids],
         flow[inflow_link[node_id.idx].link] == flow[outflow_link[node_id.idx].link],
-        base_name = "flow_conservation"
+        base_name = "flow_conservation_$(node_type)"
     )
     return nothing
 end
 
+"""
+Add all conservation constraints to the allocation model.
+Sets up flow conservation for conservative nodes and volume conservation for basins.
+This ensures mass balance throughout the water network by:
+1. Enforcing inflow = outflow for conservative nodes (pumps, outlets, resistances)
+2. Implementing water balance equations for basin storage changes
+"""
 function add_conservation!(
     allocation_model::AllocationModel,
     p_independent::ParametersIndependent,
