@@ -73,23 +73,14 @@ build = { "cmd" = "julia --project --check-bounds=yes build.jl", cwd = "build", 
     "initialize-julia",
 ] }
 # Tests
-s3-download = { cmd = "python utils/s3_download.py {{ remote }} {{ local }}", args = [
-    "remote",
-    "local",
-] }
-s3-upload = { cmd = "python utils/s3_upload.py {{ source }} {{ destination }}", args = [
-    "source",
-    "destination",
-] }
+s3-download = { cmd = "python utils/s3_download.py {{ remote }} {{ local }}" }
+s3-upload = { cmd = "python utils/s3_upload.py {{ source }} {{ destination }}" }
 test-ribasim-cli = "pytest --numprocesses=4 --basetemp=build/tests/temp --junitxml=report.xml build/tests"
 test-ribasim-core = { cmd = "julia --project=core --check-bounds=yes --eval 'using Pkg; Pkg.test(allow_reresolve=false)'", depends-on = [
     "generate-testmodels",
 ] }
 test-ribasim-migration = { cmd = "pytest --numprocesses=4 -m regression python/ribasim/tests", depends-on = [
-    { task = "s3-download", args = [
-        "hws_migration_test/",
-        "hws_migration_test/",
-    ] },
+    "s3-download",
 ] }
 test-ribasim-core-cov = { cmd = "julia --project=core --check-bounds=yes --eval 'using Pkg; Pkg.test(allow_reresolve=false, coverage=true)'", depends-on = [
     "generate-testmodels",
@@ -97,10 +88,7 @@ test-ribasim-core-cov = { cmd = "julia --project=core --check-bounds=yes --eval 
 test-ribasim-regression = { cmd = "julia --project=core --check-bounds=yes --eval 'using Pkg; Pkg.test(allow_reresolve=false, test_args=[\"regression\"])'", depends-on = [
     "generate-testmodels",
     "test-ribasim-migration",
-    { task = "s3-download", args = [
-        "benchmark/",
-        "benchmark/",
-    ] },
+    "s3-download",
 ] }
 generate-testmodels = { cmd = "python utils/generate-testmodels.py", inputs = [
     "python/ribasim",
@@ -113,10 +101,7 @@ tests = { depends-on = ["lint", "test-ribasim-python", "test-ribasim-core"] }
 delwaq = { cmd = "pytest python/ribasim/tests/test_delwaq.py" }
 gen-delwaq = { cmd = "python python/ribasim/ribasim/delwaq/generate.py" }
 model-integration-test = { cmd = "julia --project=core --check-bounds=yes --eval 'using Pkg; Pkg.test(allow_reresolve=false, test_args=[\"integration\"])'", depends-on = [
-    { task = "s3-download", args = [
-        "hws_2025_4_0/",
-        "hws/",
-    ] },
+    "s3-download",
 ] }
 # Codegen
 codegen = { cmd = "julia --project utils/gen_python.jl && ruff format python/ribasim/ribasim/schemas.py python/ribasim/ribasim/validation.py", depends-on = [
@@ -172,10 +157,7 @@ ribasim-core-testmodels = { cmd = "julia --project --check-bounds=yes --threads=
     "generate-testmodels",
     "initialize-julia",
 ] }
-migrate-model = { cmd = "python utils/migrate_model.py {{ input_toml }} {{ output_toml }}", args = [
-    "input_toml",
-    "output_toml",
-] }
+migrate-model = { cmd = "python utils/migrate_model.py {{ input_toml }} {{ output_toml }}" }
 # Release
 github-release = "python utils/github-release.py"
 
@@ -186,27 +168,22 @@ inputs = ["core/Project.toml"]
 outputs = ["Ribasim.spdx.json"]
 
 [tasks.generate-sbom-ribasim-python-noarch]
-args = [{ "arg" = "path_sep" }]
 cmd = "sbom4python -m ribasim --system --sbom spdx --format json --output Ribasim-python.spdx.json"
-env = { "PATH" = "$PATH$path_sep$CONDA_PREFIX/Lib/site-packages/magic/libmagic" }
 inputs = ["python/ribasim/pyproject.toml"]
 outputs = ["Ribasim-python.spdx.json"]
 
 [target.win.tasks]
 add-ribasim-icon = { cmd = "rcedit build/ribasim/ribasim.exe --set-icon docs/assets/ribasim.ico" }
 install-ci = { depends-on = ["install-julia", "update-registry-julia"] }
+generate-sbom-ribasim-python = { cmd = "sbom4python -m ribasim --system --sbom spdx --format json --output Ribasim-python.spdx.json", env = { "PATH" = "$PATH;$CONDA_PREFIX/Lib/site-packages/magic/libmagic" }, inputs = ["python/ribasim/pyproject.toml"], outputs = ["Ribasim-python.spdx.json"] }
 
-[[target.win.tasks.generate-sbom-ribasim-python.depends-on]]
-task = "generate-sbom-ribasim-python-noarch"
-args = [";"]
+[target.linux.tasks]
+generate-sbom-ribasim-python = { cmd = "sbom4python -m ribasim --system --sbom spdx --format json --output Ribasim-python.spdx.json", env = { "PATH" = "$PATH:$CONDA_PREFIX/Lib/site-packages/magic/libmagic" }, inputs = ["python/ribasim/pyproject.toml"], outputs = ["Ribasim-python.spdx.json"] }
 
-[[target.linux.tasks.generate-sbom-ribasim-python.depends-on]]
-task = "generate-sbom-ribasim-python-noarch"
-args = [":"]
+[target.osx.tasks]
+generate-sbom-ribasim-python = { cmd = "sbom4python -m ribasim --system --sbom spdx --format json --output Ribasim-python.spdx.json", env = { "PATH" = "$PATH:$CONDA_PREFIX/Lib/site-packages/magic/libmagic" }, inputs = ["python/ribasim/pyproject.toml"], outputs = ["Ribasim-python.spdx.json"] }
 
-[[target.osx.tasks.generate-sbom-ribasim-python.depends-on]]
-task = "generate-sbom-ribasim-python-noarch"
-args = [":"]
+
 
 [target.win.activation]
 # Workaround a conflict between conda openssl activation and julia < 1.12
