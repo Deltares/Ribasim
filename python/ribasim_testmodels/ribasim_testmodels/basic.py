@@ -38,7 +38,7 @@ def basic_model() -> Model:
         basin.Static(
             potential_evaporation=[0.001 / 86400],
             precipitation=[0.001 / 86400],
-            runoff=[0.001 / 86400],
+            surface_runoff=[1 / 86400],
         ),
         basin.State(level=[0.04471158417652035]),
         basin.Concentration(
@@ -46,7 +46,7 @@ def basic_model() -> Model:
             substance=["Cl", "Tracer", "Cl"],
             drainage=[0.0, 1.0, 1.0],
             precipitation=[0.0, 1.0, 1.0],
-            runoff=[0.0, 1.0, 1.0],
+            surface_runoff=[0.0, 1.0, 1.0],
         ),
         basin.ConcentrationState(substance=["Cl"], concentration=[0.0]),
         basin.ConcentrationExternal(

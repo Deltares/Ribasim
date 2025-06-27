@@ -34,7 +34,7 @@ const StateTuple{V} = NamedTuple{state_components, NTuple{n_components, V}}
 @eval @enumx NodeType $(config.nodetypes...)
 @enumx ControlType None Continuous PID Allocation
 @enumx Substance Continuity = 1 Initial = 2 LevelBoundary = 3 FlowBoundary = 4 UserDemand =
-    5 Drainage = 6 Precipitation = 7 Runoff = 8
+    5 Drainage = 6 Precipitation = 7 SurfaceRunoff = 8
 Base.to_index(id::Substance.T) = Int(id)  # used to index into concentration matrices
 
 function config.snake_case(nt::NodeType.T)::Symbol
@@ -339,7 +339,7 @@ In-memory storage of saved mean flows for writing to results.
 - `outflow`: The sum of the mean flows going out of each Basin
 - `flow_boundary`: The exact integrated mean flows of flow boundaries
 - `precipitation`: The exact integrated mean precipitation
-- `runoff`: The exact integrated mean runoff
+- `surface_runoff`: The exact integrated mean surface_runoff
 - `drainage`: The exact integrated mean drainage
 - `concentration`: Concentrations for each Basin and substance
 - `balance_error`: The (absolute) water balance error
@@ -352,7 +352,7 @@ In-memory storage of saved mean flows for writing to results.
     outflow::Vector{Float64}
     flow_boundary::Vector{Float64}
     precipitation::Vector{Float64}
-    runoff::Vector{Float64}
+    surface_runoff::Vector{Float64}
     drainage::Vector{Float64}
     concentration::Matrix{Float64}
     storage_rate::Vector{Float64} = zero(precipitation)
@@ -402,7 +402,7 @@ the length of each Vector is the number of Basins.
 """
 @kwdef struct BasinForcing
     precipitation::Vector{ScalarConstantInterpolation} = ScalarConstantInterpolation[]
-    runoff::Vector{ScalarConstantInterpolation} = ScalarConstantInterpolation[]
+    surface_runoff::Vector{ScalarConstantInterpolation} = ScalarConstantInterpolation[]
     potential_evaporation::Vector{ScalarConstantInterpolation} =
         ScalarConstantInterpolation[]
     drainage::Vector{ScalarConstantInterpolation} = ScalarConstantInterpolation[]
@@ -426,7 +426,7 @@ These are updated from BasinForcing at runtime.
 """
 @kwdef struct VerticalFlux
     precipitation::Vector{Float64}
-    runoff::Vector{Float64}
+    surface_runoff::Vector{Float64}
     potential_evaporation::Vector{Float64}
     drainage::Vector{Float64}
     infiltration::Vector{Float64}
@@ -444,7 +444,7 @@ const StorageToLevelType = LinearInterpolationIntInv{
 """
 Requirements:
 
-* Must be positive: precipitation, runoff, evaporation, infiltration, drainage
+* Must be positive: precipitation, surface_runoff, evaporation, infiltration, drainage
 * Index points to a Basin
 * volume, area, level must all be positive and monotonic increasing.
 
@@ -467,10 +467,10 @@ of vectors or Arrow Tables, and is added to avoid type instabilities.
     Δstorage_prev_saveat::Vector{Float64} = zeros(length(node_id))
     # Analytically integrated forcings
     cumulative_precipitation::Vector{Float64} = zeros(length(node_id))
-    cumulative_runoff::Vector{Float64} = zeros(length(node_id))
+    cumulative_surface_runoff::Vector{Float64} = zeros(length(node_id))
     cumulative_drainage::Vector{Float64} = zeros(length(node_id))
     cumulative_precipitation_saveat::Vector{Float64} = zeros(length(node_id))
-    cumulative_runoff_saveat::Vector{Float64} = zeros(length(node_id))
+    cumulative_surface_runoff_saveat::Vector{Float64} = zeros(length(node_id))
     cumulative_drainage_saveat::Vector{Float64} = zeros(length(node_id))
     # Basin profile interpolations
     storage_to_level::Vector{StorageToLevelType} =
@@ -741,7 +741,7 @@ to be of `ForwardDiff.Dual` type. This second version of the cache is created by
 const TimeDependentCache{T} = @NamedTuple{
     basin::@NamedTuple{
         current_cumulative_precipitation::Vector{T},
-        current_cumulative_runoff::Vector{T},
+        current_cumulative_surface_runoff::Vector{T},
         current_cumulative_drainage::Vector{T},
         current_potential_evaporation::Vector{T},
         current_infiltration::Vector{T},
@@ -1115,7 +1115,7 @@ function TimeDependentCache(p_independent::ParametersIndependent)::TimeDependent
     n_basin = length(p_independent.basin.node_id)
     basin = (;
         current_cumulative_precipitation = zeros(n_basin),
-        current_cumulative_runoff = zeros(n_basin),
+        current_cumulative_surface_runoff = zeros(n_basin),
         current_cumulative_drainage = zeros(n_basin),
         current_potential_evaporation = zeros(n_basin),
         current_infiltration = zeros(n_basin),

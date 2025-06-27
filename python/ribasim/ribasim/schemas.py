@@ -80,7 +80,7 @@ class BasinConcentrationSchema(_BaseSchema):
     precipitation: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
         nullable=True
     )
-    runoff: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
+    surface_runoff: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
         nullable=True
     )
 
@@ -126,7 +126,7 @@ class BasinStaticSchema(_BaseSchema):
     precipitation: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
         nullable=True
     )
-    runoff: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
+    surface_runoff: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
         nullable=True
     )
 
@@ -186,7 +186,7 @@ class BasinTimeSchema(_BaseSchema):
     precipitation: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
         nullable=True
     )
-    runoff: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
+    surface_runoff: Series[Annotated[pd.ArrowDtype, pyarrow.float64()]] = pa.Field(
         nullable=True
     )
 

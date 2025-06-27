@@ -630,7 +630,7 @@ function ConcentrationData(
     concentration[2, :, Substance.Continuity] .= 1.0
     concentration[2, :, Substance.Precipitation] .= 1.0
     concentration[3, :, Substance.Continuity] .= 1.0
-    concentration[3, :, Substance.Runoff] .= 1.0
+    concentration[3, :, Substance.SurfaceRunoff] .= 1.0
     set_concentrations!(
         view(concentration, 1, :, :),
         concentration_time,
@@ -650,7 +650,7 @@ function ConcentrationData(
         concentration_time,
         substances,
         node_id;
-        concentration_column = :runoff,
+        concentration_column = :surface_runoff,
     )
 
     errors = false
@@ -722,7 +722,7 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     )
 
     errors = parse_forcing!(:precipitation)
-    errors |= parse_forcing!(:runoff)
+    errors |= parse_forcing!(:surface_runoff)
     errors |= parse_forcing!(:potential_evaporation)
     errors |= parse_forcing!(:drainage)
     errors |= parse_forcing!(:infiltration)

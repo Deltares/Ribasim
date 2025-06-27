@@ -64,6 +64,7 @@
                 :outflow_rate,
                 :storage_rate,
                 :precipitation,
+                :surface_runoff,
                 :evaporation,
                 :drainage,
                 :infiltration,
@@ -74,6 +75,7 @@
             (
                 DateTime,
                 Int32,
+                Float64,
                 Float64,
                 Float64,
                 Float64,
