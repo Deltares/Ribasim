@@ -49,7 +49,9 @@ The install task automatically installs all required Python and Julia packages f
 Our Pixi environment also provides Juliaup, QGIS and the Rust compiler.
 These will not conflict with any pre-installed applications, as long as you have the pixi environment enabled.
 You can do this in a terminal by calling `pixi shell`, or starting programs with `pixi run julia`, or `pixi run qgis`.
-Visual Studio Code will locate the pixi environments; select `('default': Pixi)` once such that all developer tools are available.
+The first time you open the Ribasim repo in Visual Studio Code you need to tell it where it can find the Pixi environment.
+Open the command box with {{< kbd Ctrl+Shift+P >}} ({{< kbd Cmd+Shift+P >}} on macOS) and run `Python: Select Interpreter`.
+Select `('default': Pixi)` in the `/.pixi` folder.
 Unless the setting `python.terminal.activateEnvironment` is disabled, it will already activate the environment in your terminal.
 
 If you encounter issues related to Pixi dependencies, it might help to clean your Pixi environment with `pixi clean`, followed by `pixi run install`.
