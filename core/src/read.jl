@@ -1452,6 +1452,7 @@ function Parameters(db::DB, config::Config)::Parameters
         node_id,
         do_concentration = config.experimental.concentration,
         do_subgrid = config.results.subgrid,
+        convergence = CVector(zeros(n_states), state_ranges),
     )
 
     collect_control_mappings!(p_independent)

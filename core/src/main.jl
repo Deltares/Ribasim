@@ -38,7 +38,8 @@ function main(toml_path::AbstractString)::Cint
                         solve!(model)
                     catch
                         # Catch errors thrown during simulation.
-                        @warn "Simulation crashed or interrupted."
+                        t = datetime_since(model.integrator.t, model.config.starttime)
+                        @warn "Simulation crashed or interrupted at $t."
                         log_bottlenecks(model; converged = false)
                         write_results(model)
                         display_error(io)

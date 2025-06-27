@@ -1081,6 +1081,7 @@ the object itself is not.
     # Callback configurations
     do_concentration::Bool
     do_subgrid::Bool
+    convergence::CVector
 end
 
 function StateTimeDependentCache(
