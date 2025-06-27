@@ -62,10 +62,67 @@ Deltares also provides the iMOD QGIS plugin, which can be used to inspect the re
 For larger edits using Python is recommended.
 One can also use Ribasim Python to build entire models from base data, such that your model setup is fully reproducible.
 
-Users can choose to use Ribasim Python or QGIS plugin or a combination of them to build a Ribasim model.
-And then use the Ribasim core to run the simulation.
+# Install all components into a Pixi workspace (recommended) {#sec-install-all}
 
-# Install Ribasim core
+We recommend most users to install all components into one [Pixi](https://pixi.sh/) workspace.
+With it we can provide quick and reproducible steps to get started with modeling.
+Note that if you only wish to visualize models, you can [just install the QGIS plugin](@sec-install-qgis-plugin).
+
+First install Pixi following the [Pixi installation documentation](https://pixi.sh/latest/installation/).
+Note that if the recommended installation methods don't work due to restriction on your PC, the [zipped executable](https://pixi.sh/latest/installation/#download-from-github-releases) is likely to still work.
+
+```sh
+# Open your terminal in a new empty project folder.
+# Create a new Pixi workspace.
+pixi init
+
+# Add Ribasim, QGIS and download & unpack tools.
+# Remove qgis if you prefer to use an existing QGIS installation.
+pixi add ribasim==2025.4.0 curl 7zip qgis
+
+# Download latest Ribasim QGIS plugin.
+pixi run curl -O https://github.com/Deltares/Ribasim/releases/download/v2025.4.0/ribasim_qgis.zip
+
+# Start QGIS and install the Ribasim and iMOD plugins manually.
+# If you did not `pixi add qgis`, start QGIS yourself.
+pixi run qgis
+
+# After installation you can remove the plugin ZIP file
+pixi run rm ribasim_qgis.zip
+
+# Download latest Ribasim core for Windows, unpack and remove ZIP file.
+# Takes some time due to download size.
+# Replace `windows` with `linux` if you are using Linux.
+pixi run curl -O https://github.com/Deltares/Ribasim/releases/download/v2025.4.0/ribasim_windows.zip
+pixi run 7z x ribasim_windows.zip
+pixi run rm ribasim_windows.zip
+
+
+# TODO works cross-platform, rm 7zip
+tar -x
+rm
+
+# TODO see if we can add our CLI to the path
+[target.win.activation.env]
+PATH="$PATH;ribasim/ribasim"
+```
+
+The latest Ribasim release is currently `2025.4.0`.
+If you wish to install one of the [older releases](https://github.com/Deltares/Ribasim/releases), replace the version number in the script above.
+
+Since a Pixi workspace is isolated from other installations such as Python on your system, you can install different versions of Ribasim in different places.
+
+Note only that QGIS plugins are by default installed into the default user profile, which is shared.
+You need to create separate user profiles if you wish to install and use different versions of the QGIS plugin at the same time.
+
+If you wish to check what is installed in your workspace, run `pixi list`.
+When you run into what seem like installation issues, try `pixi clean`, followed by `pixi install`.
+
+If your editor does not automatically detect the right Python environment, point it to `.pixi/envs/default/python.exe`.
+Starting your editor via Pixi will also help it find the environment since it will already be active.
+For Visual Studio Code, you can run `pixi run code .` to open your workspace.
+
+# Install Ribasim core {#sec-install-core}
 
 Ribasim is typically used as a command-line interface (CLI). It is distributed as a `.zip`
 archive, that must be downloaded and unpacked. It can be placed anywhere, however it is
@@ -93,7 +150,7 @@ Usage: ribasim <TOML_PATH>
 For more information, try '--help'.'
 ```
 
-# Install Ribasim Python
+# Install Ribasim Python {#sec-install-python}
 
 The Ribasim Python package (named `ribasim`) aims to make it easy to build, update and analyze Ribasim models
 programmatically.
@@ -120,7 +177,7 @@ pixi add ribasim
 ```
 For documentation please see the [examples](/guide/examples.qmd) and [API reference](/reference/python/index.qmd).
 
-# Install Ribasim QGIS plugin
+# Install Ribasim QGIS plugin {#sec-install-qgis-plugin}
 
 The Ribasim QGIS plugin requires [QGIS](https://qgis.org/en/site/) 3.34 or higher.
 The Ribasim QGIS plugin is only distributed as a .zip archive and must be downloaded and installed in QGIS.
