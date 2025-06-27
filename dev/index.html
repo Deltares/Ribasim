@@ -76,6 +76,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
 <link href="../site_libs/bootstrap/bootstrap-77fa4190651282c21d415cb5083120b0.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script src="../site_libs/quarto-contrib/kbd/kbd.js"></script>
+<link href="../site_libs/quarto-contrib/kbd/kbd.css" rel="stylesheet">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -272,7 +274,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#setting-up-the-developer-environment" id="toc-setting-up-the-developer-environment" class="nav-link active" data-scroll-target="#setting-up-the-developer-environment"><span class="header-section-number">1</span> Setting up the developer environment</a>
   <ul class="collapse">
   <li><a href="#clone-ribasim" id="toc-clone-ribasim" class="nav-link" data-scroll-target="#clone-ribasim"><span class="header-section-number">1.1</span> Clone Ribasim</a></li>
-  <li><a href="#setting-up-pixi" id="toc-setting-up-pixi" class="nav-link" data-scroll-target="#setting-up-pixi"><span class="header-section-number">1.2</span> Setting up pixi</a></li>
+  <li><a href="#setting-up-pixi" id="toc-setting-up-pixi" class="nav-link" data-scroll-target="#setting-up-pixi"><span class="header-section-number">1.2</span> Setting up Pixi</a></li>
   </ul></li>
   </ul>
 </nav>
@@ -312,11 +314,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="sourceCode" id="cb2"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> Ribasim</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </section>
 <section id="setting-up-pixi" class="level2" data-number="1.2">
-<h2 data-number="1.2" class="anchored" data-anchor-id="setting-up-pixi"><span class="header-section-number">1.2</span> Setting up pixi</h2>
-<p>First, set up pixi as described on their getting started <a href="https://prefix.dev/docs/pixi/overview">page</a>.</p>
-<p>Then set up the environment by running the following commands:</p>
+<h2 data-number="1.2" class="anchored" data-anchor-id="setting-up-pixi"><span class="header-section-number">1.2</span> Setting up Pixi</h2>
+<p>First, set up Pixi as described on their getting started <a href="https://prefix.dev/docs/pixi/overview">page</a>.</p>
+<p>We require at least Pixi version v0.48.1, but generally recommend the latest release. Check the version with <code>pixi --version</code>, update with <code>pixi self-update</code>.</p>
+<p>Windows users should <a href="https://learn.microsoft.com/en-us/windows/apps/get-started/enable-your-device-for-development#activate-developer-mode">enable Developer Mode</a>, because the install task creates symlinks for the QGIS plugin.</p>
+<p>Then set up the environment by running the following command. It will take a while. You can interrupt the task if you don’t want to precompile the Julia dependencies at this moment, because that is the last task. Check out the <code>pixi.toml</code> file to see the tasks that are part of this, you can also run them individually.</p>
 <div class="sourceCode" id="cb3"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run install</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<p>This will automatically install all required packages for development. Our pixi environment also provides an instance of Julia and QGIS. These will not conflict with any pre-installed applications, as long as you have the pixi environment enabled. You can do this in a terminal by calling <code>pixi shell</code>, or starting programs with <code>pixi run julia</code>, or <code>pixi run qgis</code>. Visual Studio Code will locate the pixi environments; select <code>('default': Pixi)</code> once such that all developer tools are available. Unless the setting <code>python.terminal.activateEnvironment</code> is disabled, it will already activate the environment in your terminal.</p>
+<p>The install task automatically installs all required Python and Julia packages for development. Our Pixi environment also provides Juliaup, QGIS and the Rust compiler. These will not conflict with any pre-installed applications, as long as you have the pixi environment enabled. You can do this in a terminal by calling <code>pixi shell</code>, or starting programs with <code>pixi run julia</code>, or <code>pixi run qgis</code>. The first time you open the Ribasim repo in Visual Studio Code you need to tell it where it can find the Pixi environment. Open the command box with <kbd aria-hidden="true">Ctrl+Shift+P</kbd><span class="visually-hidden">Ctrl+Shift+P</span> (<kbd aria-hidden="true">Cmd+Shift+P</kbd><span class="visually-hidden">Cmd+Shift+P</span> on macOS) and run <code>Python: Select Interpreter</code>. Select <code>('default': Pixi)</code> in the <code>/.pixi</code> folder. Unless the setting <code>python.terminal.activateEnvironment</code> is disabled, it will already activate the environment in your terminal.</p>
+<p>If you encounter issues related to Pixi dependencies, it might help to clean your Pixi environment with <code>pixi clean</code>, followed by <code>pixi run install</code>.</p>
 
 
 </section>
