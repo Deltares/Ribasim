@@ -324,7 +324,7 @@ Both computed by the solver and integrated exactly. Also computes the total hori
 inflow and outflow per Basin.
 """
 function save_flow(u, t, integrator)
-    (; p) = integrator
+    (; cache, p) = integrator
     (; basin, state_inflow_link, state_outflow_link, flow_boundary, u_prev_saveat) =
         p.p_independent
     Δt = get_Δt(integrator)
@@ -333,8 +333,11 @@ function save_flow(u, t, integrator)
     # Current u is previous u in next computation
     u_prev_saveat .= u
 
-    inflow_mean = zeros(length(basin.node_id))
-    outflow_mean = zeros(length(basin.node_id))
+    n_basin = length(basin.node_id)
+    inflow_mean = zeros(n_basin)
+    outflow_mean = zeros(n_basin)
+    flow_convergence = fill(missing, length(u)) |> Vector{Union{Missing, Float64}}
+    basin_convergence = fill(missing, n_basin) |> Vector{Union{Missing, Float64}}
 
     # Flow contributions from horizontal flow states
     for (flow, inflow_link, outflow_link) in
@@ -377,6 +380,21 @@ function save_flow(u, t, integrator)
     @. basin.cumulative_runoff_saveat = 0.0
     @. basin.cumulative_drainage_saveat = 0.0
 
+    if hasproperty(cache, :nlsolver)
+        @. flow_convergence = abs(cache.nlsolver.cache.atmp / u)
+        flow_convergence = CVector(flow_convergence, getaxes(u))
+        for (i, (evap, infil)) in
+            enumerate(zip(flow_convergence.evaporation, flow_convergence.infiltration))
+            if isnan(evap)
+                basin_convergence[i] = infil
+            elseif isnan(infil)
+                basin_convergence[i] = evap
+            else
+                basin_convergence[i] = max(evap, infil)
+            end
+        end
+    end
+
     concentration = copy(basin.concentration_data.concentration_state)
     saved_flow = SavedFlow(;
         flow = flow_mean,
@@ -387,6 +405,8 @@ function save_flow(u, t, integrator)
         runoff,
         drainage,
         concentration,
+        flow_convergence,
+        basin_convergence,
         t,
     )
     check_water_balance_error!(saved_flow, integrator, Δt)
@@ -463,6 +483,7 @@ function check_water_balance_error!(
 end
 
 function save_solver_stats(u, t, integrator)
+    (; dt) = integrator
     (; stats) = integrator.sol
     (;
         time = t,
@@ -471,6 +492,7 @@ function save_solver_stats(u, t, integrator)
         linear_solves = stats.nsolve,
         accepted_timesteps = stats.naccept,
         rejected_timesteps = stats.nreject,
+        dt,
     )
 end
 

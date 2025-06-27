@@ -2,6 +2,25 @@
 title: "Debugging models"
 ---
 
+## Slow models
+
+When your model is slow, it's often only a handful of nodes that are hard to solve. If the model finishes or is interrupted, convergence bottlenecks are shown like so:
+
+```julia
+┌ Info: Convergence bottlenecks in descending order of severity:
+│   ManningResistance #251242 = 0.09023997405863035
+│   ManningResistance #70523 = 0.006218636603583534
+│   ManningResistance #251181 = 0.004716432403226626
+│   ManningResistance #251182 = 0.0035319514660666165
+└   ManningResistance #591558 = 0.003284110004804508
+```
+
+It's best to inspect these nodes, and try to adjust the parametrization, or merge smaller nodes. You can find the convergence measure per node over time in the `flow.arrow` and `basin.arrow` [output files](reference/usage.qmd#sec-results).
+
+To gain further insight into model performance, one can inspect the `solver_stats.arrow` output file, which gives the number of computations, number of rejected and accepted solutions, and the size of each calculation timestep.
+
+## Unstable models
+
 When your model exits with a message like so:
 ```julia
 ┌ Error: The model exited at model time 2024-01-27T14:46:17.791 with return code Unstable. See https://docs.sciml.ai/DiffEqDocs/stable/basics/solution/#retcodes
