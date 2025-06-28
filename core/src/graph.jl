@@ -377,5 +377,6 @@ function get_influx(du::CVector, id::NodeID, p::Parameters)
     (; vertical_flux) = basin
     fixed_area = basin_areas(basin, id.idx)[end]
     return fixed_area * vertical_flux.precipitation[id.idx] +
+           vertical_flux.surface_runoff[id.idx] +
            vertical_flux.drainage[id.idx] - du.evaporation[id.idx] - du.infiltration[id.idx]
 end
