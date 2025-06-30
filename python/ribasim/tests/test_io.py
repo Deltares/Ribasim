@@ -66,7 +66,7 @@ def test_basic_transient(basic_transient, tmp_path):
     assert model_orig.basin.time.df.time.iloc[0] == time.df.time.iloc[0]
     assert time.df.node_id.dtype == "int32[pyarrow]"
     __assert_equal(model_orig.basin.time.df, time.df)
-    assert time.df.shape == (1468, 6)
+    assert time.df.shape == (1468, 7)
 
 
 @pytest.mark.xfail(reason="Needs implementation")

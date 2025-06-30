@@ -59,7 +59,9 @@ def basinstaticschema_migration(df: DataFrame, schema_version: int) -> DataFrame
     if schema_version == 0:
         warnings.warn("Migrating outdated Basin / static table.", UserWarning)
         df.drop(columns="urban_runoff", inplace=True, errors="ignore")
-
+    if schema_version < 7 and "surface_runoff" not in df.columns:
+        warnings.warn("Migrating outdated Basin / static table.", UserWarning)
+        df["surface_runoff"] = None
     return df
 
 
@@ -67,6 +69,9 @@ def basintimeschema_migration(df: DataFrame, schema_version: int) -> DataFrame:
     if schema_version == 0:
         warnings.warn("Migrating outdated Basin / time table.", UserWarning)
         df.drop(columns="urban_runoff", inplace=True, errors="ignore")
+    if schema_version < 7 and "surface_runoff" not in df.columns:
+        warnings.warn("Migrating outdated Basin / static table.", UserWarning)
+        df["surface_runoff"] = None
 
     return df
 
