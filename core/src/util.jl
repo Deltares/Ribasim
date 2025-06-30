@@ -1007,7 +1007,7 @@ function get_timeseries_tstops(
     get_timeseries_tstops!(tstops, t_end, flow_boundary.flow_rate)
     get_timeseries_tstops!(tstops, t_end, flow_demand.demand_itp)
     get_timeseries_tstops!(tstops, t_end, level_boundary.level)
-    get_timeseries_tstops!(tstops, t_end, level_demand.min_level)
+    get_timeseries_tstops!.(Ref(tstops), t_end, level_demand.min_level)
     get_timeseries_tstops!(tstops, t_end, pid_control.target)
     get_timeseries_tstops!(
         tstops,
@@ -1151,4 +1151,15 @@ function eval_time_interp(
     else
         return cache[idx]
     end
+end
+
+function trivial_itp(; val = 0.0)
+    LinearInterpolation([val, val], [0.0, 1.0]; extrapolation = ConstantExtrapolation)
+end
+
+function trivial_itp_fill(
+    demand_priorities,
+    node_id,
+)::Vector{Vector{ScalarLinearInterpolation}}
+    [fill(trivial_itp(), length(demand_priorities)) for _ in node_id]
 end
