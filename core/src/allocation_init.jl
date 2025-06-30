@@ -371,14 +371,6 @@ function add_user_demand!(
         base_name = "user_demand_return_flow"
     )
 
-    # Define constraints: user demand inflow is at least allocated flow (for goal programming)
-    problem[:user_demand_inflow_goal] = JuMP.@constraint(
-        problem,
-        [node_id = user_demand_ids_subnetwork],
-        flow[inflow_link[node_id.idx].link] ≥ user_demand_allocated[node_id],
-        base_name = "user_demand_inflow_goal"
-    )
-
     # Add the links for which the realized volume is required for output
     for node_id in user_demand_ids_subnetwork
         cumulative_realized_volume[inflow_link[node_id.idx].link] = 0.0
