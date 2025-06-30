@@ -27,6 +27,7 @@ install = { depends-on = [
     "install-ci",
     "install-qgis-plugins",
     "install-pre-commit",
+    "initialize-julia",
 ] }
 # Julia
 update-registry-julia = { cmd = "julia --check-bounds=yes --eval='using Pkg; Registry.update()'" }
