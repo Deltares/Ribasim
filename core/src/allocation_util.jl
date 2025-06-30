@@ -230,7 +230,6 @@ function get_low_storage_factor(problem::JuMP.Model, node_id::NodeID)
     end
 end
 
-
 """
     Each conservation equation around on a node is relaxed by introducing a slack variable.
     The slack variable is penalized in the objective function.
@@ -331,7 +330,9 @@ function get_optimizer()
         "time_limit" => 60.0,
         "random_seed" => 0,
         "primal_feasibility_tolerance" => 1e-5,
-        "dual_feasibility_tolerance" => 1e-5)
+        "dual_feasibility_tolerance" => 1e-5,
+    )
+end
 
 function get_flow_value(
     allocation_model::AllocationModel,
@@ -355,6 +356,5 @@ function ScalingFactors(
     return ScalingFactors(;
         storage = mean_half_storage,
         flow = mean_half_storage / Δt_allocation,
-
     )
 end
