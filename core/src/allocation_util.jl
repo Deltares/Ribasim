@@ -244,7 +244,7 @@ function relax_problem!(problem::JuMP.Model)::Dict{JuMP.ConstraintRef, JuMP.AffE
         JuMP.all_constraints(problem; include_variable_in_set_constraints = true)
         if startswith(JuMP.name(constraint), "volume conservation") ||
            startswith(JuMP.name(constraint), "flow_conservation")
-            constraint_to_penalty[constraint] = 1e6
+            constraint_to_penalty[constraint] = 1
         end
     end
 
