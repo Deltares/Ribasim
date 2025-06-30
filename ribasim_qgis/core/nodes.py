@@ -333,6 +333,7 @@ class BasinStatic(Input):
             QgsField("potential_evaporation", QVariant.Double),
             QgsField("infiltration", QVariant.Double),
             QgsField("precipitation", QVariant.Double),
+            QgsField("runoff", QVariant.Double),
         ]
 
 
@@ -354,6 +355,7 @@ class BasinTime(Input):
             QgsField("potential_evaporation", QVariant.Double),
             QgsField("infiltration", QVariant.Double),
             QgsField("precipitation", QVariant.Double),
+            QgsField("runoff", QVariant.Double),
         ]
 
 
@@ -412,6 +414,7 @@ class BasinConcentration(Input):
             QgsField("substance", QVariant.String),
             QgsField("drainage", QVariant.Double),
             QgsField("precipitation", QVariant.Double),
+            QgsField("runoff", QVariant.Double),
         ]
 
 

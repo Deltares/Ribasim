@@ -39,6 +39,8 @@ OrdinaryDiffEqRosenbrock = "43230ef6-c299-4910-a778-202eb28ce4ce"
 OrdinaryDiffEqSDIRK = "2d112036-d095-4a1e-ab9a-08536f3ecdbf"
 OrdinaryDiffEqTsit5 = "b1df2697-797e-41e3-8120-5422d3b24e4a"
 PiecewiseLinearOpt = "0f51c51e-adfa-5141-8a04-d40246b8977c"
+PrecompileTools = "aea7be01-6a6a-4083-8856-8a6e6704d82a"
+Preferences = "21216c6a-2e73-6563-6e65-726566657250"
 SQLite = "0aa819cd-b072-5ff4-a722-6bc24af294d9"
 SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
@@ -60,7 +62,7 @@ CodecZstd = "0.7, 0.8"
 Configurations = "0.17"
 DBInterface = "2.4"
 DataFrames = "1.4"
-DataInterpolations = "8"
+DataInterpolations = "8.1"
 DataStructures = "0.18"
 Dates = "1"
 DelimitedFiles = "1.9.1"
@@ -88,6 +90,8 @@ OrdinaryDiffEqRosenbrock = "1.1"
 OrdinaryDiffEqSDIRK = "1.1"
 OrdinaryDiffEqTsit5 = "1.1"
 PiecewiseLinearOpt = "0.4.2"
+PrecompileTools = "1.2.1"
+Preferences = "1.4.3"
 SQLite = "1.5.1"
 SciMLBase = "2.36"
 SparseArrays = "1"
@@ -117,6 +121,10 @@ TestItemRunner = "f8b46487-2199-4994-9208-9a1283c18c0a"
 
 [preferences.LinearSolve]
 LoadMKL_JLL = false
+
+[preferences.Ribasim]
+precompile_workload = false
+specialize = false
 
 [targets]
 test = ["Aqua", "CSV", "DataFrames", "IOCapture", "Logging", "Statistics", "TerminalLoggers", "Test", "TOML", "TestItemRunner"]
