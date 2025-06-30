@@ -238,10 +238,10 @@ end
 
 function reset_goal_programming!(
     allocation_model::AllocationModel,
-    p_non_diff::ParametersIndependent,
+    p_independent::ParametersIndependent,
 )::Nothing
     (; problem, Δt_allocation, scaling) = allocation_model
-    (; user_demand) = p_non_diff
+    (; user_demand) = p_independent
 
     flow = problem[:flow]
 
