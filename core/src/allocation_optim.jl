@@ -605,14 +605,13 @@ function optimize_for_objective!(
     # Solve problem
     JuMP.optimize!(problem)
     @debug JuMP.solution_summary(problem)
-    termination_status = JuMP.termination_status(problem)
-    if termination_status !== JuMP.OPTIMAL
-        error(
-            "Allocation optimization for subnetwork $subnetwork_id, $objective at t = $t s couldn't find (optimal) solution. Termination status: $termination_status.",
-        )
+
+    if JuMP.termination_status(problem) == JuMP.INFEASIBLE
+        handle_infeasibility!(problem, subnetwork_id, objective, t)
     end
 
     postprocess_objective!(allocation_model, p_independent, objective, t)
+
     return nothing
 end
 
