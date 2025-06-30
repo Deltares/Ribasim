@@ -338,7 +338,7 @@ end
 
 """
 copies the problem by writing it to a temporary file and reading it back.
-However, during writing the registered names of the constraints are lost
+However, note that during writing the registered names of the constraints are lost
 """
 function copy_problem(problem::JuMP.Model)::JuMP.Model
     tmpfile = tempname() * ".mps"
