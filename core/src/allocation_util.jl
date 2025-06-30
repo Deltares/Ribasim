@@ -242,12 +242,13 @@ function relax_problem!(problem::JuMP.Model)::Dict{JuMP.ConstraintRef, JuMP.AffE
 
     for constraint in
         JuMP.all_constraints(problem; include_variable_in_set_constraints = true)
-        if startswith(JuMP.name(constraint), "volume_conservation") ||
+        if startswith(JuMP.name(constraint), "volume conservation") ||
            startswith(JuMP.name(constraint), "flow_conservation")
             constraint_to_penalty[constraint] = 1e6
         end
     end
 
+    JuMP.@objective(problem, Min, 0)
     return JuMP.relax_with_penalty!(problem, constraint_to_penalty)
 end
 
@@ -261,15 +262,18 @@ function report_cause_of_infeasibility(
     constraint_to_slack_map::Dict{JuMP.ConstraintRef, JuMP.AffExpr},
     objective::AllocationObjective,
     problem::JuMP.Model,
+    subnetwork_id::Int32,
+    t::Float64,
 )
     nonzero_slack_count = 0
     for (constraint, slack_var) in constraint_to_slack_map
         constraint_expression = JuMP.constraint_object(constraint).func
-        # If a slack variable is non-zero, it indicates that the constraint is violated.
+        # If a slack variable is non-zero, it means that the constraint is violated.
         if JuMP.value(slack_var) != 0.0
             nonzero_slack_count += 1
-            @info "objective function $(objective.expression)"
+
             @info "infeasible constraint: $constraint"
+            @info " ______________________________________________________________________________________________"
 
             expr = JuMP.constraint_object(constraint).func
             @info "constraint is violated by: $(JuMP.value(slack_var))"
@@ -280,6 +284,7 @@ function report_cause_of_infeasibility(
                 if JuMP.name(variable) == ""
                     continue
                 end
+
                 for other_constraint in JuMP.all_constraints(
                     problem;
                     include_variable_in_set_constraints = false,
@@ -295,7 +300,12 @@ function report_cause_of_infeasibility(
             end
         end
     end
-    return nonzero_slack_count
+
+    if nonzero_slack_count != 0
+        error(
+            "Allocation optimization for subnetwork $subnetwork_id, $objective at t = $t s is infeasible",
+        )
+    end
 end
 
 """
@@ -324,24 +334,6 @@ function get_optimizer()
         "primal_feasibility_tolerance" => 1e-5,
         "dual_feasibility_tolerance" => 1e-5,
     )
-end
-
-function handle_infeasibility!(
-    problem::JuMP.Model,
-    subnetwork_id::Int32,
-    objective::AllocationObjective,
-    t::Real,
-)
-    # We solve the relaxed problem to determine where the infeasibility comes from.
-    constraint_to_slack_map = relax_problem!(problem)
-    JuMP.optimize!(problem)
-    n = report_cause_of_infeasibility(constraint_to_slack_map, objective, problem)
-
-    if n != 0
-        error(
-            "Allocation optimization for subnetwork $subnetwork_id, $objective at t = $t s is infeasible",
-        )
-    end
 end
 
 """
