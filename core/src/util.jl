@@ -1152,3 +1152,31 @@ function eval_time_interp(
         return cache[idx]
     end
 end
+
+function should_skip_update_q(
+    active::Bool,
+    control_type::ControlType.T,
+    control_type_::ControlType.T,
+    p::Parameters,
+)::Bool
+    (; p_mutable) = p
+    (; skip_update_q, all_nodes_active) = p_mutable
+    # Hard skip condition can be set for the update of q
+    if skip_update_q
+        return true
+    end
+    # Update is not needed if inactive and all nodes are not active
+    if !active && !all_nodes_active
+        return true
+    end
+
+    # If the control_type does not match the control_type_ skip update q, UNLESS the combination is None/Allocation
+    if (control_type != control_type_)
+        if control_type_ == ControlType.None && control_type == ControlType.Allocation
+            return false
+        else
+            return true
+        end
+    end
+    return false
+end
