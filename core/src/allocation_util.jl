@@ -331,7 +331,7 @@ function get_optimizer()
         "time_limit" => 60.0,
         "random_seed" => 0,
         "primal_feasibility_tolerance" => 1e-5,
-        "dual_feasibility_tolerance" => 1e-5,
+        "dual_feasibility_tolerance" => 1e-5)
 
 function get_flow_value(
     allocation_model::AllocationModel,
