@@ -242,7 +242,7 @@ function relax_problem!(problem::JuMP.Model)::Dict{JuMP.ConstraintRef, JuMP.AffE
 
     for constraint in
         JuMP.all_constraints(problem; include_variable_in_set_constraints = true)
-        if startswith(JuMP.name(constraint), "volume conservation") ||
+        if startswith(JuMP.name(constraint), "volume_conservation") ||
            startswith(JuMP.name(constraint), "flow_conservation")
             constraint_to_penalty[constraint] = 1
         end
@@ -269,7 +269,7 @@ function report_cause_of_infeasibility(
     for (constraint, slack_var) in constraint_to_slack_map
         constraint_expression = JuMP.constraint_object(constraint).func
         # If a slack variable is non-zero, it means that the constraint is violated.
-        if JuMP.value(slack_var) != 0.0
+        if !iszero(JuMP.value(slack_var))
             nonzero_slack_count += 1
 
             @info "infeasible constraint: $constraint"
@@ -287,7 +287,7 @@ function report_cause_of_infeasibility(
 
                 for other_constraint in JuMP.all_constraints(
                     problem;
-                    include_variable_in_set_constraints = false,
+                    include_variable_in_set_constraints = true,
                 )
                     for (other_variable, _) in
                         JuMP.constraint_object(other_constraint).func.terms
@@ -301,11 +301,9 @@ function report_cause_of_infeasibility(
         end
     end
 
-    if nonzero_slack_count != 0
-        error(
-            "Allocation optimization for subnetwork $subnetwork_id, $objective at t = $t s is infeasible",
-        )
-    end
+    error(
+        "Allocation optimization for subnetwork $subnetwork_id, $objective at t = $t s is infeasible",
+    )
 end
 
 """
@@ -334,17 +332,4 @@ function get_optimizer()
         "primal_feasibility_tolerance" => 1e-5,
         "dual_feasibility_tolerance" => 1e-5,
     )
-end
-
-"""
-copies the problem by writing it to a temporary file and reading it back.
-However, note that during writing the registered names of the constraints are lost
-"""
-function copy_problem(problem::JuMP.Model)::JuMP.Model
-    tmpfile = tempname() * ".mps"
-    JuMP.write_to_file(problem, tmpfile)
-    copy = JuMP.read_from_file(tmpfile)
-    rm(tmpfile; force = true)
-    JuMP.set_optimizer(copy, get_optimizer())
-    return copy
 end

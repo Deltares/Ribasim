@@ -266,7 +266,7 @@ function add_conservation!(
         [node_id = basin_ids_subnetwork],
         storage[(node_id, :end)] - storage[(node_id, :start)] ==
         Δt_allocation * (forcing[node_id] + inflow_sum[node_id] - outflow_sum[node_id]),
-        base_name = "volume conservation"
+        base_name = "volume_conservation"
     )
 
     return nothing
