@@ -6,19 +6,33 @@
     model = Ribasim.Model(toml_path)
     (; basin) = model.integrator.p.p_independent
 
-    for id in basin.node_id
-        storage, level =
-            parse_profile(basin.storage_to_level[id.idx], basin.level_to_area[id.idx], 0.0)
-        itp_allocation = LinearInterpolation(level, storage)
-        storage_eval = collect(range(storage[1], storage[end]; length = 100))
+    for lowest_level in (0.0, -5.0)
+        for id in basin.node_id
+            level_to_area = basin.level_to_area[id.idx]
+            storage, level =
+                parse_profile(basin.storage_to_level[id.idx], level_to_area, lowest_level)
+            itp_allocation = LinearInterpolation(level, storage)
+            itp_physical = basin.storage_to_level[id.idx]
+            storage_eval = collect(range(storage[1], storage[end]; length = 100))
 
-        @test all(
-            isapprox.(
-                itp_allocation.(storage_eval),
-                basin.storage_to_level[id.idx].(storage_eval),
-                rtol = 1e-2,
-            ),
-        )
+            phantom_storage = (itp_physical.u[1] - lowest_level) * level_to_area.u[1] / 1e3
+
+            function itp_physical_(s)
+                if s < phantom_storage
+                    lowest_level + (itp_physical.t[1] - lowest_level) * s / phantom_storage
+                else
+                    itp_physical(s - phantom_storage)
+                end
+            end
+
+            @test all(
+                isapprox.(
+                    itp_allocation.(storage_eval),
+                    itp_physical_.(storage_eval),
+                    rtol = 1e-2,
+                ),
+            )
+        end
     end
 end
 
