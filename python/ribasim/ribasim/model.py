@@ -269,7 +269,7 @@ class Model(FileModel):
 
     def _nodes(self) -> Generator[MultiNodeModel, Any, None]:
         """Return all non-empty MultiNodeModel instances."""
-        for key in self.model_fields.keys():
+        for key in self.__class__.model_fields.keys():
             attr = getattr(self, key)
             if (
                 isinstance(attr, MultiNodeModel)
@@ -282,7 +282,7 @@ class Model(FileModel):
     def _children(self):
         return {
             k: getattr(self, k)
-            for k in self.model_fields.keys()
+            for k in self.__class__.model_fields.keys()
             if isinstance(getattr(self, k), ChildModel)
         }
 

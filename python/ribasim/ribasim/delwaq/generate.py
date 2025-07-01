@@ -410,7 +410,7 @@ def generate(
 
     # Write volumes to Delwaq format
     basins.drop(columns=["level"], inplace=True)
-    volumes = basins[["time", "node_id", "storage"]]
+    volumes = basins[["time", "node_id", "storage"]].copy()
     volumes["riba_node_id"] = volumes["node_id"]
     volumes.loc[:, "node_id"] = (
         volumes["node_id"].map(basin_mapping).astype(pd.Int32Dtype())
