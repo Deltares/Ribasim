@@ -99,7 +99,6 @@ end
     @test allocation_flow_table.flow_rate ≈ flow_table.flow_rate rtol = 1e-1
 end
 
-
 @testitem "Allocation Control" begin
     using DataFrames: DataFrame
     using Test
@@ -123,5 +122,3 @@ end
 
     @test allocation_flow_table.flow_rate ≈ flow_table.flow_rate rtol = 1e-2
 end
-
-
