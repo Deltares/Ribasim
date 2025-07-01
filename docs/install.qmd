@@ -78,10 +78,10 @@ pixi init
 
 # Add Ribasim, QGIS and download & unpack tools.
 # Remove qgis if you prefer to use an existing QGIS installation.
-pixi add ribasim==2025.4.0 gh 7zip qgis
+pixi add ribasim==2025.4.0 curl 7zip qgis
 
 # Download latest Ribasim QGIS plugin.
-pixi run gh release download v2025.4.0 --repo Deltares/Ribasim --clobber --pattern ribasim_qgis.zip
+pixi run curl -O https://github.com/Deltares/Ribasim/releases/download/v2025.4.0/ribasim_qgis.zip
 
 # Start QGIS and install the Ribasim and iMOD plugins manually.
 # If you did not `pixi add qgis`, start QGIS yourself.
@@ -93,7 +93,7 @@ pixi run rm ribasim_qgis.zip
 # Download latest Ribasim core for Windows, unpack and remove ZIP file.
 # Takes some time due to download size.
 # Replace `windows` with `linux` if you are using Linux.
-pixi run gh release download v2025.4.0 --repo Deltares/Ribasim --clobber --pattern ribasim_windows.zip
+pixi run curl -O https://github.com/Deltares/Ribasim/releases/download/v2025.4.0/ribasim_windows.zip
 pixi run 7z x ribasim_windows.zip
 pixi run rm ribasim_windows.zip
 ```
