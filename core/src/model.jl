@@ -249,6 +249,7 @@ function Model(config::Config)::Model
         config.solver.abstol,
         reltol,
         config.solver.maxiters,
+        controller = PredictiveController(),
     )
     @debug "Setup integrator."
 
