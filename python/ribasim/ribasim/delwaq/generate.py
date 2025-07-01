@@ -167,7 +167,7 @@ def _setup_graph(nodes, link, evaporate_mass=True):
                 link_ids = G.edges[loop]["id"]
                 G.edges[reversed(loop)]["id"].extend(link_ids)
                 merge_links.extend(link_ids)
-                G.remove_link(*loop)
+                G.remove_edge(*loop)
 
     # Remove boundary to boundary links
     remove_double_links = []

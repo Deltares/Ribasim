@@ -107,17 +107,39 @@ end
 
 @testitem "results" begin
     import Arrow
+    import Tables
 
-    toml_path = normpath(@__DIR__, "../../generated_testmodels/bucket/ribasim.toml")
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
     @test ispath(toml_path)
     config = Ribasim.Config(toml_path)
     model = Ribasim.run(config)
     @test success(model)
 
+    ribasim_version = string(pkgversion(Ribasim))
     path = Ribasim.results_path(config, Ribasim.RESULTS_FILENAME.basin)
     bytes = read(path)
     tbl = Arrow.Table(bytes)
-    ribasim_version = string(pkgversion(Ribasim))
+    @test :convergence in Tables.columnnames(tbl)
+    @test eltype(tbl.convergence) == Union{Missing, Float64}
+    @test any(isfinite, tbl.convergence)
+    @test Arrow.getmetadata(tbl) ===
+          Base.ImmutableDict("ribasim_version" => ribasim_version)
+
+    path = Ribasim.results_path(config, Ribasim.RESULTS_FILENAME.flow)
+    bytes = read(path)
+    tbl = Arrow.Table(bytes)
+    @test :convergence in Tables.columnnames(tbl)
+    @test eltype(tbl.convergence) == Union{Missing, Float64}
+    @test any(isfinite, tbl.convergence)
+    @test Arrow.getmetadata(tbl) ===
+          Base.ImmutableDict("ribasim_version" => ribasim_version)
+
+    path = Ribasim.results_path(config, Ribasim.RESULTS_FILENAME.solver_stats)
+    bytes = read(path)
+    tbl = Arrow.Table(bytes)
+    @test :dt in Tables.columnnames(tbl)
+    @test eltype(tbl.dt) == Float64
+    @test all(>(0), tbl.dt)
     @test Arrow.getmetadata(tbl) ===
           Base.ImmutableDict("ribasim_version" => ribasim_version)
 end

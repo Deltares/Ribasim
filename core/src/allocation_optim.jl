@@ -40,7 +40,7 @@ function set_simulation_data!(
     basin::Basin,
     p::Parameters,
 )::Bool
-    (; problem, cumulative_boundary_volume, Δt_allocation) = allocation_model
+    (; problem, cumulative_boundary_volume, Δt_allocation, scaling) = allocation_model
     (; storage_to_level) = basin
 
     storage = problem[:basin_storage]
@@ -71,12 +71,16 @@ function set_simulation_data!(
             errors = true
         end
 
-        JuMP.fix(storage[key], storage_now; force = true)
+        JuMP.fix(storage[key], storage_now / scaling.storage; force = true)
         JuMP.fix(basin_level[key], level_now; force = true)
     end
 
     for link in keys(cumulative_boundary_volume)
-        JuMP.fix(flow[link], cumulative_boundary_volume[link] / Δt_allocation; force = true)
+        JuMP.fix(
+            flow[link],
+            cumulative_boundary_volume[link] / (Δt_allocation * scaling.flow);
+            force = true,
+        )
     end
 
     return errors
@@ -107,7 +111,7 @@ function set_simulation_data!(
     p::Parameters,
     t::Float64,
 )::Nothing
-    (; problem) = allocation_model
+    (; problem, scaling) = allocation_model
     manning_resistance_constraint = problem[:manning_resistance_constraint]
 
     # Set the linearization of ManningResistance flows in the current levels from the physical layer
@@ -149,10 +153,18 @@ function set_simulation_data!(
             get_level(problem, manning_resistance.inflow_link[node_id.idx].link[1])
         downstream_level =
             get_level(problem, manning_resistance.outflow_link[node_id.idx].link[2])
-        JuMP.set_normalized_rhs(constraint, q0)
+        JuMP.set_normalized_rhs(constraint, q0 / scaling.flow)
         # Minus signs because the level terms are moved to the lhs in the constraint
-        JuMP.set_normalized_coefficient(constraint, upstream_level, -∂q_∂level_upstream)
-        JuMP.set_normalized_coefficient(constraint, downstream_level, -∂q_∂level_downstream)
+        JuMP.set_normalized_coefficient(
+            constraint,
+            upstream_level,
+            -∂q_∂level_upstream / scaling.flow,
+        )
+        JuMP.set_normalized_coefficient(
+            constraint,
+            downstream_level,
+            -∂q_∂level_downstream / scaling.flow,
+        )
     end
     return nothing
 end
@@ -163,7 +175,7 @@ function set_simulation_data!(
     outlet::Outlet,
     du::CVector,
 )::Nothing
-    (; problem) = allocation_model
+    (; problem, scaling) = allocation_model
     pump_constraints = problem[:pump]
     outlet_constraints = problem[:outlet]
 
@@ -174,9 +186,13 @@ function set_simulation_data!(
         q = du.pump[node_id.idx]
         if upstream_node_id.type == NodeType.Basin
             low_storage_factor = get_low_storage_factor(problem, upstream_node_id)
-            JuMP.set_normalized_coefficient(constraint, low_storage_factor, -q)
+            JuMP.set_normalized_coefficient(
+                constraint,
+                low_storage_factor,
+                -q / scaling.flow,
+            )
         else
-            JuMP.set_normalized_rhs(constraint, q)
+            JuMP.set_normalized_rhs(constraint, q / scaling.flow)
         end
     end
 
@@ -187,9 +203,13 @@ function set_simulation_data!(
         q = du.outlet[node_id.idx]
         if upstream_node_id.type == NodeType.Basin
             low_storage_factor = get_low_storage_factor(problem, upstream_node_id)
-            JuMP.set_normalized_coefficient(constraint, low_storage_factor, -q)
+            JuMP.set_normalized_coefficient(
+                constraint,
+                low_storage_factor,
+                -q / scaling.flow,
+            )
         else
-            JuMP.set_normalized_rhs(constraint, q)
+            JuMP.set_normalized_rhs(constraint, q / scaling.flow)
         end
     end
 end
@@ -216,13 +236,29 @@ function set_simulation_data!(
     return nothing
 end
 
-function reset_goal_programming!(allocation_model::AllocationModel)::Nothing
-    (; problem) = allocation_model
+function reset_goal_programming!(
+    allocation_model::AllocationModel,
+    p_independent::ParametersIndependent,
+)::Nothing
+    (; problem, Δt_allocation, scaling) = allocation_model
+    (; user_demand) = p_independent
+
+    flow = problem[:flow]
 
     # From demand objectives
     JuMP.fix.(problem[:user_demand_allocated], 0.0; force = true)
-    JuMP.fix.(problem[:flow_demand_allocated], -MAX_ABS_FLOW; force = true)
-    JuMP.fix.(problem[:basin_allocated], -MAX_ABS_FLOW; force = true)
+    JuMP.fix.(problem[:flow_demand_allocated], -MAX_ABS_FLOW / scaling.flow; force = true)
+    JuMP.fix.(
+        problem[:basin_allocated],
+        -MAX_ABS_FLOW * Δt_allocation / scaling.storage;
+        force = true,
+    )
+
+    for node_id in only(problem[:user_demand_return_flow].axes)
+        inflow_link = user_demand.inflow_link[node_id.idx].link
+        JuMP.set_lower_bound(flow[inflow_link], 0.0)
+    end
+
     return nothing
 end
 
@@ -230,14 +266,14 @@ function prepare_demand_collection!(
     allocation_model::AllocationModel,
     p_independent::ParametersIndependent,
 )::Nothing
-    (; problem, subnetwork_id) = allocation_model
+    (; problem, subnetwork_id, scaling) = allocation_model
     @assert !is_primary_network(subnetwork_id)
     flow = problem[:flow]
 
     # Allow the inflow from the primary network to be as large as required
     # (will be restricted when optimizing for the actual allocation)
     for link in p_independent.allocation.primary_network_connections[subnetwork_id]
-        JuMP.set_upper_bound(flow[link], MAX_ABS_FLOW)
+        JuMP.set_upper_bound(flow[link], MAX_ABS_FLOW / scaling.flow)
     end
 
     return nothing
@@ -279,10 +315,11 @@ function set_demands_upper_constraints!(
 end
 
 function set_demands!(
-    problem::JuMP.Model,
+    allocation_model::AllocationModel,
     p_independent::ParametersIndependent,
     objective::AllocationObjective,
 )::Nothing
+    (; problem, scaling) = allocation_model
     (; user_demand, flow_demand, level_demand, graph) = p_independent
     target_demand_fraction = problem[:target_demand_fraction]
     (; demand_priority, demand_priority_idx) = objective
@@ -295,14 +332,14 @@ function set_demands!(
         problem[:user_demand_constraint_lower],
         problem[:relative_user_demand_error_lower],
         target_demand_fraction,
-        node_id -> user_demand.demand[node_id.idx, demand_priority_idx],
+        node_id -> user_demand.demand[node_id.idx, demand_priority_idx] / scaling.flow,
         only(problem[:relative_user_demand_error_lower].axes),
     )
     set_demands_upper_constraints!(
         problem[:user_demand_constraint_upper],
         problem[:relative_user_demand_error_upper],
         target_demand_fraction,
-        node_id -> user_demand.demand[node_id.idx, demand_priority_idx],
+        node_id -> user_demand.demand[node_id.idx, demand_priority_idx] / scaling.flow,
         only(problem[:relative_user_demand_error_upper].axes),
     )
 
@@ -313,7 +350,7 @@ function set_demands!(
         target_demand_fraction,
         node_id ->
             flow_demand.demand_priority[node_id.idx] == demand_priority ?
-            flow_demand.demand[node_id.idx] : 0.0,
+            flow_demand.demand[node_id.idx] / scaling.flow : 0.0,
         only(problem[:relative_flow_demand_error].axes),
     )
 
@@ -325,7 +362,7 @@ function set_demands!(
         node_id_basin -> begin
             node_id = only(inneighbor_labels_type(graph, node_id_basin, LinkType.control))
             level_demand.demand_priority[node_id.idx] == demand_priority ?
-            level_demand.storage_demand[node_id] : 0.0
+            level_demand.storage_demand[node_id] / scaling.storage : 0.0
         end,
         only(problem[:relative_storage_error_lower].axes),
     )
@@ -334,10 +371,11 @@ function set_demands!(
 end
 
 function update_allocated_values!(
-    problem::JuMP.Model,
+    allocation_model::AllocationModel,
     p_independent::ParametersIndependent,
     objective::AllocationObjective,
 )::Nothing
+    (; problem, scaling) = allocation_model
     (; user_demand, flow_demand, level_demand, basin, graph) = p_independent
     (; demand_priority, demand_priority_idx) = objective
 
@@ -351,10 +389,16 @@ function update_allocated_values!(
         has_demand = user_demand.has_demand_priority[node_id.idx, demand_priority_idx]
         if has_demand
             inflow_link = user_demand.inflow_link[node_id.idx].link
-            allocated_prev = JuMP.value(user_demand_allocated[node_id])
-            demand = user_demand.demand[node_id.idx, demand_priority_idx]
-            allocated = clamp(JuMP.value(flow[inflow_link]) - allocated_prev, 0, demand)
-            JuMP.fix(user_demand_allocated[node_id], allocated; force = true)
+            allocated_prev = JuMP.value(user_demand_allocated[node_id]) # (scaling.flow * m^3/s)
+            demand = user_demand.demand[node_id.idx, demand_priority_idx] # (m^3/s)
+            allocated = clamp(
+                scaling.flow * (JuMP.value(flow[inflow_link]) - allocated_prev),
+                0,
+                demand,
+            ) # (m^3/s)
+            allocated_scaled = allocated / scaling.flow
+            JuMP.fix(user_demand_allocated[node_id], allocated_scaled; force = true)
+            JuMP.set_lower_bound(flow[inflow_link], allocated_scaled)
             user_demand.allocated[node_id.idx, demand_priority_idx] = allocated
         else
             user_demand.allocated[node_id.idx, demand_priority_idx] = 0.0
@@ -383,11 +427,12 @@ function update_allocated_values!(
         end
 
         if has_demand
-            storage_start = JuMP.value(basin_storage[(node_id, :start)])
-            storage_end = JuMP.value(basin_storage[(node_id, :end)])
-            storage_target_level = level_demand.storage_min_level[node_id.idx]
-            allocated_storage = min(storage_end, storage_target_level) - storage_start
-            JuMP.fix(basin_Allocated[node_id], allocated_storage; force = true)
+            storage_start = JuMP.value(basin_storage[(node_id, :start)]) # (scaling.storage * m^3)
+            storage_end = JuMP.value(basin_storage[(node_id, :end)]) # (scaling.storage * m^3)
+            storage_target_level = level_demand.storage_min_level[node_id.idx] # (m^3)
+            allocated_storage =
+                min(storage_end, storage_target_level / scaling.storage) - storage_start # (scaling.storage * m^3)
+            JuMP.fix(basin_allocated[node_id], allocated_storage; force = true)
         end
     end
 
@@ -425,7 +470,7 @@ function save_demands_and_allocations!(
     subnetwork_id::Int32,
     objective::AllocationObjective,
 )::Nothing
-    (; problem, Δt_allocation, cumulative_realized_volume) = allocation_model
+    (; problem, Δt_allocation, cumulative_realized_volume, scaling) = allocation_model
     (; allocation, user_demand, flow_demand, level_demand, graph) = p_independent
     (; record_demand, demand_priorities_all) = allocation
     (; demand_priority_idx) = objective
@@ -462,7 +507,7 @@ function save_demands_and_allocations!(
                 connector_node_id,
                 demand_priority,
                 flow_demand.demand[node_id.idx],
-                JuMP.value(flow_demand_allocated[connector_node_id]),
+                JuMP.value(flow_demand_allocated[connector_node_id]) * scaling.flow,
                 cumulative_realized_volume[(
                     inflow_id(graph, connector_node_id),
                     connector_node_id,
@@ -485,7 +530,8 @@ function save_demands_and_allocations!(
                 node_id,
                 demand_priority,
                 level_demand.storage_demand[node_id] / Δt_allocation,
-                JuMP.value(basin_allocated[node_id_basin]) / Δt_allocation,
+                JuMP.value(basin_allocated[node_id_basin]) * scaling.storage /
+                Δt_allocation,
                 cumulative_realized_basin_volume / Δt_allocation,
             )
         end
@@ -502,7 +548,7 @@ function save_allocation_flows!(
     allocation_model::AllocationModel,
     optimization_type::AllocationOptimizationType.T,
 )::Nothing
-    (; problem, subnetwork_id) = allocation_model
+    (; problem, subnetwork_id, scaling) = allocation_model
     (; graph, allocation) = p_independent
     (; record_flow) = allocation
     flow = problem[:flow]
@@ -520,7 +566,7 @@ function save_allocation_flows!(
         push!(record_flow.to_node_type, string(id_to.type))
         push!(record_flow.to_node_id, Int32(id_to))
         push!(record_flow.subnetwork_id, subnetwork_id)
-        push!(record_flow.flow_rate, JuMP.value(flow[link]))
+        push!(record_flow.flow_rate, get_flow_value(allocation_model, link))
         push!(record_flow.optimization_type, string(optimization_type))
     end
 
@@ -533,7 +579,7 @@ function save_allocation_flows!(
         push!(record_flow.to_node_type, string(NodeType.Basin))
         push!(record_flow.to_node_id, node_id)
         push!(record_flow.subnetwork_id, subnetwork_id)
-        push!(record_flow.flow_rate, JuMP.value(basin_forcing[node_id]))
+        push!(record_flow.flow_rate, JuMP.value(basin_forcing[node_id]) * scaling.flow)
         push!(record_flow.optimization_type, string(optimization_type))
     end
 
@@ -544,12 +590,12 @@ end
 Preprocess for the specific objective type
 """
 function preprocess_objective!(
-    problem::JuMP.Model,
+    allocation_model::AllocationModel,
     p_independent::ParametersIndependent,
     objective::AllocationObjective,
 )::Nothing
     if objective.type == AllocationObjectiveType.demand
-        set_demands!(problem, p_independent, objective)
+        set_demands!(allocation_model, p_independent, objective)
     elseif objective.type == AllocationObjectiveType.source_priorities
         nothing
     else
@@ -567,12 +613,12 @@ function postprocess_objective!(
     objective::AllocationObjective,
     t::Number,
 )::Nothing
-    (; problem, subnetwork_id) = allocation_model
+    (; subnetwork_id) = allocation_model
 
     if objective.type == AllocationObjectiveType.demand
         # Update allocation constraints so that the results of the optimization for this demand priority are retained
         # in subsequent optimizations
-        update_allocated_values!(problem, p_independent, objective)
+        update_allocated_values!(allocation_model, p_independent, objective)
 
         # Save the demands and allocated values for all demand nodes that have a demand of the current priority
         save_demands_and_allocations!(
@@ -597,7 +643,7 @@ function optimize_for_objective!(
     (; p_independent) = p
     (; problem, subnetwork_id) = allocation_model
 
-    preprocess_objective!(problem, p_independent, objective)
+    preprocess_objective!(allocation_model, p_independent, objective)
 
     # Set the objective
     JuMP.@objective(problem, Min, objective.expression)
@@ -624,7 +670,7 @@ function apply_control_from_allocation!(
     graph::MetaGraph,
     flow_rate::Vector{Float64},
 )::Nothing
-    (; problem, subnetwork_id) = allocation_model
+    (; problem, subnetwork_id, scaling) = allocation_model
     flow = problem[:flow]
 
     for (node_id, control_type, inflow_link) in
@@ -632,7 +678,7 @@ function apply_control_from_allocation!(
         in_subnetwork = (graph[node_id].subnetwork_id == subnetwork_id)
         allocation_controlled = (control_type == ControlType.Allocation)
         if in_subnetwork && allocation_controlled
-            flow_rate[node_id.idx] = JuMP.value(flow[inflow_link.link])
+            flow_rate[node_id.idx] = JuMP.value(flow[inflow_link.link]) * scaling.flow
         end
     end
     return nothing
@@ -734,7 +780,7 @@ function update_allocation!(integrator)::Nothing
     # If a primary network is present, collect demands of subnetworks
     if has_primary_network(allocation)
         for allocation_model in Iterators.drop(allocation_models, 1)
-            reset_goal_programming!(allocation_model)
+            reset_goal_programming!(allocation_model, p_independent)
             prepare_demand_collection!(allocation_model, p_independent)
             for objective in allocation_model.objectives
                 optimize_for_objective!(allocation_model, integrator, objective)
@@ -751,7 +797,7 @@ function update_allocation!(integrator)::Nothing
 
     # Allocate first in the primary network if it is present, and then in the secondary networks
     for allocation_model in allocation_models
-        reset_goal_programming!(allocation_model)
+        reset_goal_programming!(allocation_model, p_independent)
         for objective in allocation_model.objectives
             optimize_for_objective!(allocation_model, integrator, objective)
         end
