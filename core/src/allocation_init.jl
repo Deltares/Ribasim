@@ -268,10 +268,12 @@ function add_conservation!(
         problem,
         [node_id = basin_ids_subnetwork],
         storage[(node_id, :end)] - storage[(node_id, :start)] ==
+
         Δt_allocation *
         (scaling.flow / scaling.storage) *
         (forcing[node_id] + inflow_sum[node_id] - outflow_sum[node_id]),
-        base_name = "volume conservation"
+        base_name = "volume_conservation"
+
     )
 
     return nothing
@@ -819,14 +821,7 @@ function AllocationModel(
     allocation_config::config.Allocation,
 )
     Δt_allocation = allocation_config.timestep
-    optimizer = JuMP.optimizer_with_attributes(
-        HiGHS.Optimizer,
-        "log_to_console" => false,
-        "time_limit" => 60.0,
-        "random_seed" => 0,
-        "primal_feasibility_tolerance" => 1e-5,
-        "dual_feasibility_tolerance" => 1e-5,
-    )
+    optimizer = get_optimizer()
     problem = JuMP.direct_model(optimizer)
     scaling = ScalingFactors(p_independent, subnetwork_id, Δt_allocation)
     allocation_model = AllocationModel(; subnetwork_id, problem, Δt_allocation, scaling)
