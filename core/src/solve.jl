@@ -47,20 +47,6 @@ function water_balance!(
         p_mutable,
     )
 
-    # (; skip_update_q) = p_mutable
-    # if skip_update_q
-    #     print("skipping update_q in water_balance!\n")
-
-    #     (; current_flow_rate_outlet) = state_time_dependent_cache
-    #     # Set all `undef` values in current_flow_rate_outlet to 0
-    #     for i in eachindex(current_flow_rate_outlet)
-    #         if !isassigned(current_flow_rate_outlet, i)
-    #             current_flow_rate_outlet[i] = zero(eltype(current_flow_rate_outlet))
-    #         end
-    #     end
-    # end
-    # print("t: $t\n")
-
     # Check whether t or u is different from the last water_balance! call
     check_new_input!(p, u, t)
 
