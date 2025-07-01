@@ -96,6 +96,15 @@ pixi run rm ribasim_qgis.zip
 pixi run curl -O https://github.com/Deltares/Ribasim/releases/download/v2025.4.0/ribasim_windows.zip
 pixi run 7z x ribasim_windows.zip
 pixi run rm ribasim_windows.zip
+
+
+# TODO works cross-platform, rm 7zip
+tar -x
+rm
+
+# TODO see if we can add our CLI to the path
+[target.win.activation.env]
+PATH="$PATH;ribasim/ribasim"
 ```
 
 The latest Ribasim release is currently `2025.4.0`.
