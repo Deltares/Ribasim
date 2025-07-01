@@ -236,8 +236,14 @@ function set_simulation_data!(
     return nothing
 end
 
-function reset_goal_programming!(allocation_model::AllocationModel)::Nothing
+function reset_goal_programming!(
+    allocation_model::AllocationModel,
+    p_independent::ParametersIndependent,
+)::Nothing
     (; problem, Δt_allocation, scaling) = allocation_model
+    (; user_demand) = p_independent
+
+    flow = problem[:flow]
 
     # From demand objectives
     JuMP.fix.(problem[:user_demand_allocated], 0.0; force = true)
@@ -247,6 +253,12 @@ function reset_goal_programming!(allocation_model::AllocationModel)::Nothing
         -MAX_ABS_FLOW * Δt_allocation / scaling.storage;
         force = true,
     )
+
+    for node_id in only(problem[:user_demand_return_flow].axes)
+        inflow_link = user_demand.inflow_link[node_id.idx].link
+        JuMP.set_lower_bound(flow[inflow_link], 0.0)
+    end
+
     return nothing
 end
 
@@ -384,7 +396,9 @@ function update_allocated_values!(
                 0,
                 demand,
             ) # (m^3/s)
-            JuMP.fix(user_demand_allocated[node_id], allocated / scaling.flow; force = true)
+            allocated_scaled = allocated / scaling.flow
+            JuMP.fix(user_demand_allocated[node_id], allocated_scaled; force = true)
+            JuMP.set_lower_bound(flow[inflow_link], allocated_scaled)
             user_demand.allocated[node_id.idx, demand_priority_idx] = allocated
         else
             user_demand.allocated[node_id.idx, demand_priority_idx] = 0.0
@@ -766,7 +780,7 @@ function update_allocation!(integrator)::Nothing
     # If a primary network is present, collect demands of subnetworks
     if has_primary_network(allocation)
         for allocation_model in Iterators.drop(allocation_models, 1)
-            reset_goal_programming!(allocation_model)
+            reset_goal_programming!(allocation_model, p_independent)
             prepare_demand_collection!(allocation_model, p_independent)
             for objective in allocation_model.objectives
                 optimize_for_objective!(allocation_model, integrator, objective)
@@ -783,7 +797,7 @@ function update_allocation!(integrator)::Nothing
 
     # Allocate first in the primary network if it is present, and then in the secondary networks
     for allocation_model in allocation_models
-        reset_goal_programming!(allocation_model)
+        reset_goal_programming!(allocation_model, p_independent)
         for objective in allocation_model.objectives
             optimize_for_objective!(allocation_model, integrator, objective)
         end

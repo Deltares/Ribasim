@@ -155,7 +155,7 @@ end
 
     # Collecting demands
     for allocation_model in Iterators.drop(allocation_models, 1)
-        Ribasim.reset_goal_programming!(allocation_model)
+        Ribasim.reset_goal_programming!(allocation_model, p_independent)
         Ribasim.prepare_demand_collection!(allocation_model, p_independent)
         for objective in allocation_model.objectives
             Ribasim.optimize_for_objective!(allocation_model, integrator, objective)
