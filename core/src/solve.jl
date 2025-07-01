@@ -604,7 +604,7 @@ function formulate_flow!(
             continue
         end
 
-        if control_type == ControlType.None
+        if control_type ∈ (ControlType.None, ControlType.Allocation)
             eval_time_interp(flow_rate_itp, current_flow_rate_pump, id.idx, p, t)
         end
 
@@ -672,8 +672,7 @@ function formulate_flow!(
         if should_skip_update_q(active, control_type, control_type_, p)
             continue
         end
-
-        if control_type == ControlType.None
+        if control_type ∈ (ControlType.None, ControlType.Allocation)
             eval_time_interp(flow_rate_itp, current_flow_rate_outlet, id.idx, p, t)
         end
 
