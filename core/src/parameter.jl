@@ -1047,6 +1047,7 @@ The part of the parameters passed to the rhs and callbacks that are mutable.
 """
 @kwdef mutable struct ParametersMutable
     all_nodes_active::Bool = false
+    skip_update_q::Bool = false
     new_t = true
     new_u = true
     tprev::Float64 = 0.0

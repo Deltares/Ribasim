@@ -1160,8 +1160,11 @@ function should_skip_update_q(
     p::Parameters,
 )::Bool
     (; p_mutable) = p
-    (; all_nodes_active) = p_mutable
-
+    (; skip_update_q, all_nodes_active) = p_mutable
+    # Hard skip condition can be set for the update of q
+    if skip_update_q
+        return true
+    end
     # Update is not needed if inactive and all nodes are not active
     if !active && !all_nodes_active
         return true
