@@ -230,6 +230,110 @@ function get_low_storage_factor(problem::JuMP.Model, node_id::NodeID)
     end
 end
 
+"""
+    Each conservation equation around on a node is relaxed by introducing a slack variable.
+    The slack variable is penalized in the objective function.
+
+    returns a dictionary mapping each relaxed constraint to its corresponding slack variable.
+"""
+function relax_problem!(problem::JuMP.Model)::Dict{JuMP.ConstraintRef, JuMP.AffExpr}
+    # Restore constraint names in relaxed problem
+    constraint_to_penalty = Dict{JuMP.ConstraintRef, Float64}()
+
+    for constraint in
+        JuMP.all_constraints(problem; include_variable_in_set_constraints = true)
+        if startswith(JuMP.name(constraint), "volume_conservation") ||
+           startswith(JuMP.name(constraint), "flow_conservation")
+            constraint_to_penalty[constraint] = 1
+        end
+    end
+
+    JuMP.@objective(problem, Min, 0)
+    return JuMP.relax_with_penalty!(problem, constraint_to_penalty)
+end
+
+"""
+ logs:
+    - all constraints that are violated by a non-zero slack variable.
+    - all variables in the violated constraint with their values and bounds.
+    - all other (unviolated) constraints on the variables in the violated constraint.
+ """
+function report_cause_of_infeasibility(
+    constraint_to_slack_map::Dict{JuMP.ConstraintRef, JuMP.AffExpr},
+    objective::AllocationObjective,
+    problem::JuMP.Model,
+    subnetwork_id::Int32,
+    t::Float64,
+)
+    nonzero_slack_count = 0
+    for (constraint, slack_var) in constraint_to_slack_map
+        constraint_expression = JuMP.constraint_object(constraint).func
+        # If a slack variable is non-zero, it means that the constraint is violated.
+        if !iszero(JuMP.value(slack_var))
+            nonzero_slack_count += 1
+
+            @info "infeasible constraint: $constraint"
+            @info " ______________________________________________________________________________________________"
+
+            expr = JuMP.constraint_object(constraint).func
+            @info "constraint is violated by: $(JuMP.value(slack_var))"
+            log_constraint_variable_values(constraint)
+
+            # for all variables in the violated constraint, check if there are other constraints on them
+            for (variable, _) in constraint_expression.terms
+                if JuMP.name(variable) == ""
+                    continue
+                end
+
+                for other_constraint in JuMP.all_constraints(
+                    problem;
+                    include_variable_in_set_constraints = true,
+                )
+                    for (other_variable, _) in
+                        JuMP.constraint_object(other_constraint).func.terms
+                        if variable == other_variable && other_constraint != constraint
+                            @info "possible conflicting constraints: $other_constraint"
+                            log_constraint_variable_values(other_constraint)
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    error(
+        "Allocation optimization for subnetwork $subnetwork_id, $objective at t = $t s is infeasible",
+    )
+end
+
+"""
+    log the values of all variables in a constraint, including their bounds.
+"""
+function log_constraint_variable_values(constraint::JuMP.ConstraintRef)
+    expr = JuMP.constraint_object(constraint).func
+    for (v, _) in expr.terms
+        name = JuMP.name(v)
+        if name == ""
+            name = string(v)
+        end
+        value = JuMP.value(v)
+        lb = JuMP.has_lower_bound(v) ? JuMP.lower_bound(v) : "-Inf"
+        ub = JuMP.has_upper_bound(v) ? JuMP.upper_bound(v) : "Inf"
+        @info "\t$name ($lb, $ub) = $value"
+    end
+end
+
+function get_optimizer()
+    return JuMP.optimizer_with_attributes(
+        HiGHS.Optimizer,
+        "log_to_console" => false,
+        "time_limit" => 60.0,
+        "random_seed" => 0,
+        "primal_feasibility_tolerance" => 1e-5,
+        "dual_feasibility_tolerance" => 1e-5,
+    )
+end
+
 function get_flow_value(
     allocation_model::AllocationModel,
     link::Tuple{NodeID, NodeID},

@@ -640,7 +640,7 @@ function optimize_for_objective!(
     objective::AllocationObjective,
 )::Nothing
     (; p, t) = integrator
-    (; p_independent) = p
+    (; p_independent, p_mutable) = p
     (; problem, subnetwork_id) = allocation_model
 
     preprocess_objective!(allocation_model, p_independent, objective)
@@ -652,13 +652,25 @@ function optimize_for_objective!(
     JuMP.optimize!(problem)
     @debug JuMP.solution_summary(problem)
     termination_status = JuMP.termination_status(problem)
-    if termination_status !== JuMP.OPTIMAL
+
+    if termination_status == JuMP.INFEASIBLE
+        constraint_to_slack = relax_problem!(problem)
+        JuMP.optimize!(problem)
+        report_cause_of_infeasibility(
+            constraint_to_slack,
+            objective,
+            problem,
+            subnetwork_id,
+            t,
+        )
+    elseif termination_status != JuMP.OPTIMAL
         error(
-            "Allocation optimization for subnetwork $subnetwork_id, $objective at t = $t s couldn't find (optimal) solution. Termination status: $termination_status.",
+            "Allocation optimization for subnetwork $subnetwork_id, $objective at t = $t s did not find an optimal solution. Termination status: $(JuMP.termination_status(problem)).",
         )
     end
 
     postprocess_objective!(allocation_model, p_independent, objective, t)
+
     return nothing
 end
 
