@@ -236,7 +236,7 @@ name          | String                        | (optional, does not have to be u
 Similarly to the node table, you can use a geometry to visualize the connections between the
 nodes in QGIS. For instance, you can draw a line connecting the two node coordinates.
 
-# Results
+# Results {#sec-results}
 
 ## Basin - `basin.arrow`
 
@@ -255,24 +255,27 @@ The Basin table contains:
 - The `balance_error` is the difference between the `storage_rate` on one side and the `inflow_rate` and `outflow_rate` on the other side: `storage_rate` - (`inflow_rate` - `outflow_rate`).
   It can be used to check if the numerical error when solving the water balance is sufficiently small.
 - The `relative_error` is the fraction of the `balance_error` over the mean of the `total_inflow` and `total_outflow`.
+- The `convergence` is the scaled residual of the solver, giving an indication of which nodes converge the worst (are hardest to solve).
 
 For a more in-depth explanation of the water balance error see [here](/concept/equations.qmd#the-water-balance-error).
 
-column         | type     | unit
--------------- | ---------| ----
-time           | DateTime | -
-node_id        | Int32    | -
-level          | Float64  | $\text{m}$
-storage        | Float64  | $\text{m}^3$
-inflow_rate    | Float64  | $\text{m}^3/\text{s}$
-outflow_rate   | Float64  | $\text{m}^3/\text{s}$
-storage_rate   | Float64  | $\text{m}^3/\text{s}$
-precipitation  | Float64  | $\text{m}^3/\text{s}$
-evaporation    | Float64  | $\text{m}^3/\text{s}$
-drainage       | Float64  | $\text{m}^3/\text{s}$
-infiltration   | Float64  | $\text{m}^3/\text{s}$
-balance_error  | Float64  | $\text{m}^3/\text{s}$
-relative_error | Float64  | -
+column         | type            | unit
+-------------- | --------------- | ----
+time           | DateTime        | -
+node_id        | Int32           | -
+level          | Float64         | $\text{m}$
+storage        | Float64         | $\text{m}^3$
+inflow_rate    | Float64         | $\text{m}^3/\text{s}$
+outflow_rate   | Float64         | $\text{m}^3/\text{s}$
+storage_rate   | Float64         | $\text{m}^3/\text{s}$
+precipitation  | Float64         | $\text{m}^3/\text{s}$
+surface_runoff | Float64         | $\text{m}^3/\text{s}$
+evaporation    | Float64         | $\text{m}^3/\text{s}$
+drainage       | Float64         | $\text{m}^3/\text{s}$
+infiltration   | Float64         | $\text{m}^3/\text{s}$
+balance_error  | Float64         | $\text{m}^3/\text{s}$
+relative_error | Float64         | -
+convergence    | Float64/Missing | -
 
 The table is sorted by time, and per time it is sorted by `node_id`.
 
@@ -290,10 +293,12 @@ from_node_id   | Int32                 | -
 to_node_type   | String                | -
 to_node_id     | Int32                 | -
 flow_rate      | Float64               | $\text{m}^3/\text{s}$
+convergence    | Float64/Missing       | -
 
 The table is sorted by time, and per time the same `link_id` order is used, though not sorted.
 The `link_id` value is the same as the `fid` written to the Link table, and can be used to directly look up the Link geometry.
 Flows from the "from" to the "to" node have a positive sign, and if the flow is reversed it will be negative.
+- The `convergence` is the scaled residual of the solver, giving an indication of which nodes converge the worst (are hardest to solve).
 
 ## State - `basin_state.arrow` {#sec-state}
 
@@ -398,6 +403,7 @@ This result file contains statistics about the solver, which can give an insight
 
 The `computation_time` is the wall time in milliseconds spent on the given period.
 The first row tends to include compilation time as well.
+The `dt` is the size (in seconds) of the last calculation timestep (at the `saveat` timestep).
 
 column              | type     | unit
 --------------------| -------- | ----
@@ -407,3 +413,4 @@ water_balance_calls | Int      | -
 linear_solves       | Int      | -
 accepted_timesteps  | Int      | -
 rejected_timesteps  | Int      | -
+dt                  | Float64  | s

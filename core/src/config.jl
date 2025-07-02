@@ -21,6 +21,7 @@ using OrdinaryDiffEqTsit5: Tsit5
 using OrdinaryDiffEqSDIRK: ImplicitEuler, KenCarp4, TRBDF2
 using OrdinaryDiffEqBDF: FBDF, QNDF
 using OrdinaryDiffEqRosenbrock: Rosenbrock23, Rodas4P, Rodas5P
+using LinearSolve: KLUFactorization
 
 export Config, Solver, Results, Logging, Toml
 export algorithm,
@@ -298,11 +299,16 @@ function function_accepts_kwarg(f, kwarg)::Bool
     return false
 end
 
-get_ad_type(solver::Solver) =
-    solver.autodiff ? AutoForwardDiff(; tag = :Ribasim) : AutoFiniteDiff()
+function get_ad_type(solver::Solver; specialize = true)
+    if solver.autodiff
+        AutoForwardDiff(; chunksize = specialize ? nothing : 1, tag = :Ribasim)
+    else
+        AutoFiniteDiff()
+    end
+end
 
 "Create an OrdinaryDiffEqAlgorithm from solver config"
-function algorithm(solver::Solver; u0 = [])::OrdinaryDiffEqAlgorithm
+function algorithm(solver::Solver; u0 = [], specialize = true)::OrdinaryDiffEqAlgorithm
     algotype = get(algorithms, solver.algorithm, nothing)
     if algotype === nothing
         options = join(keys(algorithms), ", ")
@@ -313,6 +319,9 @@ function algorithm(solver::Solver; u0 = [])::OrdinaryDiffEqAlgorithm
 
     if algotype <: OrdinaryDiffEqNewtonAdaptiveAlgorithm
         kwargs[:nlsolve] = NLNewton()
+        if solver.sparse
+            kwargs[:linsolve] = KLUFactorization()
+        end
     end
 
     if function_accepts_kwarg(algotype, :step_limiter!)
@@ -320,7 +329,7 @@ function algorithm(solver::Solver; u0 = [])::OrdinaryDiffEqAlgorithm
     end
 
     if function_accepts_kwarg(algotype, :autodiff)
-        kwargs[:autodiff] = get_ad_type(solver)
+        kwargs[:autodiff] = get_ad_type(solver; specialize)
     end
 
     algotype(; kwargs...)

@@ -127,6 +127,7 @@ function set_current_basin_properties!(u::CVector, p::Parameters, t::Number)::No
     (;
         node_id,
         cumulative_precipitation,
+        cumulative_surface_runoff,
         cumulative_drainage,
         vertical_flux,
         low_storage_threshold,
@@ -141,6 +142,8 @@ function set_current_basin_properties!(u::CVector, p::Parameters, t::Number)::No
                 cumulative_precipitation[id.idx] +
                 fixed_area * vertical_flux.precipitation[id.idx] * dt
         end
+        @. time_dependent_cache.basin.current_cumulative_surface_runoff =
+            cumulative_surface_runoff + dt * vertical_flux.surface_runoff
         @. time_dependent_cache.basin.current_cumulative_drainage =
             cumulative_drainage + dt * vertical_flux.drainage
     end
@@ -180,6 +183,7 @@ function formulate_storages!(
 
     mul!(current_storage, flow_to_storage, u, 1, 1)
     current_storage .+= time_dependent_cache.basin.current_cumulative_precipitation
+    current_storage .+= time_dependent_cache.basin.current_cumulative_surface_runoff
     current_storage .+= time_dependent_cache.basin.current_cumulative_drainage
 
     # Formulate storage contributions of flow boundaries
@@ -318,6 +322,7 @@ function formulate_dstorage(
 
     fixed_area = basin_areas(basin, node_id.idx)[end]
     dstorage += fixed_area * vertical_flux.precipitation[node_id.idx]
+    dstorage += vertical_flux.surface_runoff[node_id.idx]
     dstorage += vertical_flux.drainage[node_id.idx]
     dstorage -= du.evaporation[node_id.idx]
     dstorage -= du.infiltration[node_id.idx]

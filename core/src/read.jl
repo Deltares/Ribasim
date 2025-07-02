@@ -624,11 +624,13 @@ function ConcentrationData(
     set_concentrations!(concentration_state, concentration_state_data, substances, node_id)
     mass = copy(concentration_state)
 
-    concentration = zeros(2, n, length(substances))
+    concentration = zeros(3, n, length(substances))
     concentration[1, :, Substance.Continuity] .= 1.0
     concentration[1, :, Substance.Drainage] .= 1.0
     concentration[2, :, Substance.Continuity] .= 1.0
     concentration[2, :, Substance.Precipitation] .= 1.0
+    concentration[3, :, Substance.Continuity] .= 1.0
+    concentration[3, :, Substance.SurfaceRunoff] .= 1.0
     set_concentrations!(
         view(concentration, 1, :, :),
         concentration_time,
@@ -637,11 +639,18 @@ function ConcentrationData(
         concentration_column = :drainage,
     )
     set_concentrations!(
-        view(concentration, 1, :, :),
+        view(concentration, 2, :, :),
         concentration_time,
         substances,
         node_id;
         concentration_column = :precipitation,
+    )
+    set_concentrations!(
+        view(concentration, 3, :, :),
+        concentration_time,
+        substances,
+        node_id;
+        concentration_column = :surface_runoff,
     )
 
     errors = false
@@ -713,6 +722,7 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     )
 
     errors = parse_forcing!(:precipitation)
+    errors |= parse_forcing!(:surface_runoff)
     errors |= parse_forcing!(:potential_evaporation)
     errors |= parse_forcing!(:drainage)
     errors |= parse_forcing!(:infiltration)
@@ -1604,7 +1614,7 @@ function load_structvector(
         return StructVector{T}(undef, 0)
     end
 
-    nt = Tables.columntable(table)
+    nt = columntable(table)
     if table isa Query && haskey(nt, :time)
         # time has type timestamp and is stored as a String in the database
         # currently SQLite.jl does not automatically convert it to DateTime
