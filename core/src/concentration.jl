@@ -66,9 +66,13 @@ function mass_inflows_basin!(integrator::DEIntegrator)::Nothing
         from_node = inflow_link.link[1]
         state_node = inflow_link.link[2]
         to_node = outflow_link.link[2]
+
         if state_node.type == NodeType.UserDemand
-            nothing
-        elseif from_node.type == NodeType.Basin
+            # UserDemand is handled separately in mass_outflows_user_demand
+            continue
+        end
+
+        if from_node.type == NodeType.Basin
             cumulative_flow = flow_update_on_link(integrator, inflow_link.link)
             # Negative flow over the inflow link means flow into the from_node
             if cumulative_flow < 0
@@ -108,9 +112,7 @@ function mass_inflows_basin!(integrator::DEIntegrator)::Nothing
                         cumulative_flow,
                         t,
                     )
-                elseif (from_node.type == NodeType.UserDemand) ||
-                       (from_node.type == NodeType.Terminal && from_node.value == 0)
-                    # UserDemand inflow is discoupled from its outflow
+                elseif from_node.type == NodeType.Terminal && from_node.value == 0
                     # The unset flow link defaults to Terminal #0
                     nothing
                 else
@@ -133,9 +135,13 @@ function mass_outflows_basin!(integrator::DEIntegrator)::Nothing
         from_node = inflow_link.link[1]
         state_node = inflow_link.link[2]
         to_node = outflow_link.link[2]
+
         if state_node.type == NodeType.UserDemand
-            nothing
-        elseif from_node.type == NodeType.Basin
+            # UserDemand is handled separately in mass_outflows_user_demand
+            continue
+        end
+
+        if from_node.type == NodeType.Basin
             flow = flow_update_on_link(integrator, inflow_link.link)
             if flow > 0
                 mass[from_node.idx] .-= concentration_state[from_node.idx, :] .* flow
