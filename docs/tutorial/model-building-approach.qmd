@@ -1,0 +1,60 @@
+---
+title: "Phased approach for building a Ribasim model"
+--- 
+
+The process to build a Ribsaim model typically follows a phased approach.
+
+# Phase 1: Create and validate the network
+
+Steps
+- Decide what procedure to follow to separate basins and position control nodes inbetween
+- Script this approach to build the network topology of nodes and links
+- Parameterize basins with default or made up profiles
+- Parameterize TabulatedRatingCurves with some default settings
+- Parameterize Pumps and outlets with sufficiently large default or made up capacities
+- Put static forcings on the boundaries nodes
+- Try to run the model and fix any topological issues
+
+Necessary input data:
+- A map-based sketch and/or GIS-data layers with geographic information for proper water system representation. 
+These could hold information on reservoirs, control structures (intakes, outlets, pump stations), gauges, river reaches, canals etc.
+- some default values (e.g. flow rates, river cross sections) to use that are in line with the typical parameter ranges of the system
+
+Output:
+- a valid network topology with sufficient basic information for execution by the Ribasim kernel
+
+
+# Phase 2: Improve model parameterization for semi-static conditions
+
+- Where available, use actual basin profile information for better volume respresentation
+- Improve TabulatedRatingCurves parameterizations where possible
+- Add local water level controls to the pumps and outlets to be maintained
+- Add proper capacities to outlets and pumps
+- Try to run the model with semi-static flow boundaries (high and low flow rates)
+- Assess whether water flows in a proper direction, where basins drain properly and receive water as needed
+
+Necessary input data:
+- Volume-level relations for reservoirs and river cross sectiosn
+- Tabulated rating curves
+- Water system control information such as controlled water levels, actual flow rates or maximum flow capacities
+
+Output:
+- a valid and running Ribasim model with irmpoved system representation
+
+
+Phase 2: Add more extensive control and use dynamic boundary conditions
+Add realistic flow boundary conditions and assess model behaviour
+Extend the control rules to properly represent practice
+Collect proper dynamic forcings (e.g. flow boundaries, user demands)
+Run the model and compare with observations
+
+Necessary input data:
+- more parameterizationrelated information
+- proper forcings on the boundaries
+- observations that can be associated with objects in the network
+
+
+
+
+
+
