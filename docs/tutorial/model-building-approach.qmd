@@ -16,40 +16,44 @@ Steps
 - Try to run the model and fix any topological issues
 
 Necessary input data:
-- A map-based sketch and/or GIS-data layers with geographic information for proper water system representation. 
-These could hold information on reservoirs, control structures (intakes, outlets, pump stations), gauges, river reaches, canals etc.
+- GIS-data layers with accurate geographic information (coordinates) for proper water system representation:
+  - reservoirs
+  - control structures (weirs, intakes, outlets, pump stations)
+  - gauges
+  - river reaches, canal sections
+- if the above is not available, at minimum map-based sketch with the layout of the water system, paying extra attention to positioning of waterways and connections
 - some default values (e.g. flow rates, river cross sections) to use that are in line with the typical parameter ranges of the system
 
 Output:
 - a valid network topology with sufficient basic information for execution by the Ribasim kernel
 
+# Phase 2: Improve model parameterization and assess behaviour for semi-static conditions
 
-# Phase 2: Improve model parameterization for semi-static conditions
-
-- Where available, use actual basin profile information for better volume respresentation
-- Improve TabulatedRatingCurves parameterizations where possible
+- Where available, use actual basin profile information (e.g. volume-level relations) for better volume respresentation. If needed, make estimates of river/canal width and depth in combination with length of river reaches and canal sections to make a reasonable volume estimate
+- Improve Tabulated Rating Curves parameterizations where possible
 - Add local water level controls to the pumps and outlets to be maintained
 - Add proper capacities to outlets and pumps
 - Try to run the model with semi-static flow boundaries (high and low flow rates)
 - Assess whether water flows in a proper direction, where basins drain properly and receive water as needed
 
 Necessary input data:
-- Volume-level relations for reservoirs and river cross sectiosn
+- Volume-level relations for reservoirs and river reaches and canal sections
 - Tabulated rating curves
 - Water system control information such as controlled water levels, actual flow rates or maximum flow capacities
 
 Output:
-- a valid and running Ribasim model with irmpoved system representation
+- a valid and running Ribasim model with improved system representation
 
 
-Phase 2: Add more extensive control and use dynamic boundary conditions
-Add realistic flow boundary conditions and assess model behaviour
-Extend the control rules to properly represent practice
-Collect proper dynamic forcings (e.g. flow boundaries, user demands)
-Run the model and compare with observations
+# Phase 3: Improve model parameterization and assess behaviour for dynamic boundary conditions
+
+- Add realistic flow boundary conditions and assess model behaviour
+- Extend the control rules to properly represent practice (including level and flow demands as deemed appropriate)
+- Collect proper dynamic forcings (e.g. flow boundaries, user demands)
+- Run the model and compare with observations
 
 Necessary input data:
-- more parameterizationrelated information
+- more parameterization related information
 - proper forcings on the boundaries
 - observations that can be associated with objects in the network
 
