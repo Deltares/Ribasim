@@ -94,7 +94,6 @@ end
     Ribasim.solve!(model)
     allocation_flow_table = DataFrame(Ribasim.allocation_flow_table(model))
     flow_table = DataFrame(Ribasim.flow_table(model))
-
     filter!(:link_id => ==(1), allocation_flow_table)
     filter!(:link_id => ==(1), flow_table)
 
