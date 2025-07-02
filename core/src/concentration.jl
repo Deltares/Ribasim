@@ -18,13 +18,15 @@ function mass_updates_user_demand!(integrator::DEIntegrator)::Nothing
         if from_node.type == NodeType.Basin
             # Substance abstracted from upstream
             mass[from_node.idx] .-=
-                concentration_state[to_node.idx, :] .* cumulative_user_demand_inflow
+                concentration_state[from_node.idx, :] .* cumulative_user_demand_inflow
         end
 
         if to_node.type == NodeType.Basin
-            # From upstream
+            # Substance added from upstream
+            # Note that the difference between inflow and outflow can mean that UserDemand
+            # consumes substance
             mass[to_node.idx] .+=
-                concentration_state[to_node.idx, :] .* cumulative_user_demand_inflow
+                concentration_state[to_node.idx, :] .* cumulative_user_demand_outflow
 
             # Substance added by UserDemand
             add_substance_mass!(
