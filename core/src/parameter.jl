@@ -459,9 +459,6 @@ Requirements:
 * Must be positive: precipitation, surface_runoff, evaporation, infiltration, drainage
 * Index points to a Basin
 * volume, area, level must all be positive and monotonic increasing.
-
-Type parameter D indicates the content backing the StructVector, which can be a NamedTuple
-of vectors or Arrow Tables, and is added to avoid type instabilities.
 """
 @kwdef struct Basin <: AbstractParameterNode
     node_id::Vector{NodeID}
