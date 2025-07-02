@@ -2,7 +2,7 @@
 Process mass updates for UserDemand separately
 as the inflow and outflow are decoupled in the states
 """
-function mass_updates_user_demand!(integrator::DEIntegrator)::Nothing
+function mass_inflows_user_demand!(integrator::DEIntegrator)::Nothing
     (; p, t) = integrator
     (; basin, user_demand) = p.p_independent
     (; concentration_state, mass) = basin.concentration_data
@@ -12,21 +12,15 @@ function mass_updates_user_demand!(integrator::DEIntegrator)::Nothing
         from_node = inflow_link.link[1]
         to_node = outflow_link.link[2]
         user_demand_idx = outflow_link.link[1].idx
-        cumulative_user_demand_inflow = flow_update_on_link(integrator, inflow_link.link)
-        cumulative_user_demand_outflow = flow_update_on_link(integrator, outflow_link.link)
 
-        if from_node.type == NodeType.Basin
-            # Substance abstracted from upstream
-            mass[from_node.idx] .-=
-                concentration_state[from_node.idx, :] .* cumulative_user_demand_inflow
-        end
+        cumulative_user_demand_outflow = flow_update_on_link(integrator, outflow_link.link)
 
         if to_node.type == NodeType.Basin
             # Substance added from upstream
-            # Note that the difference between inflow and outflow can mean that UserDemand
+            # Note that when outflow < inflow UserDemand consumes the substance in the difference
             # consumes substance
             mass[to_node.idx] .+=
-                concentration_state[to_node.idx, :] .* cumulative_user_demand_outflow
+                concentration_state[from_node.idx, :] .* cumulative_user_demand_outflow
 
             # Substance added by UserDemand
             add_substance_mass!(
@@ -35,6 +29,25 @@ function mass_updates_user_demand!(integrator::DEIntegrator)::Nothing
                 cumulative_user_demand_outflow,
                 t,
             )
+        end
+    end
+    return nothing
+end
+
+function mass_outflows_user_demand!(integrator::DEIntegrator)::Nothing
+    (; p) = integrator
+    (; basin, user_demand) = p.p_independent
+    (; concentration_state, mass) = basin.concentration_data
+
+    for inflow_link in user_demand.inflow_link
+        from_node = inflow_link.link[1]
+
+        if from_node.type == NodeType.Basin
+            # Substance abstracted from upstream
+            cumulative_user_demand_inflow =
+                flow_update_on_link(integrator, inflow_link.link)
+            mass[from_node.idx] .-=
+                concentration_state[from_node.idx, :] .* cumulative_user_demand_inflow
         end
     end
     return nothing
@@ -51,8 +64,11 @@ function mass_inflows_basin!(integrator::DEIntegrator)::Nothing
     # Loop over connections that have state
     for (inflow_link, outflow_link) in zip(state_inflow_link, state_outflow_link)
         from_node = inflow_link.link[1]
+        state_node = inflow_link.link[2]
         to_node = outflow_link.link[2]
-        if from_node.type == NodeType.Basin
+        if state_node.type == NodeType.UserDemand
+            nothing
+        elseif from_node.type == NodeType.Basin
             cumulative_flow = flow_update_on_link(integrator, inflow_link.link)
             # Negative flow over the inflow link means flow into the from_node
             if cumulative_flow < 0
@@ -67,8 +83,7 @@ function mass_inflows_basin!(integrator::DEIntegrator)::Nothing
                         -cumulative_flow,
                         t,
                     )
-                elseif (to_node.type == NodeType.UserDemand) ||
-                       (to_node.type == NodeType.Terminal && to_node.value == 0)
+                elseif (to_node.type == NodeType.Terminal && to_node.value == 0)
                     # UserDemand inflow is discoupled from its outflow
                     # The unset flow link defaults to Terminal #0
                     nothing
@@ -116,8 +131,11 @@ function mass_outflows_basin!(integrator::DEIntegrator)::Nothing
 
     @views for (inflow_link, outflow_link) in zip(state_inflow_link, state_outflow_link)
         from_node = inflow_link.link[1]
+        state_node = inflow_link.link[2]
         to_node = outflow_link.link[2]
-        if from_node.type == NodeType.Basin
+        if state_node.type == NodeType.UserDemand
+            nothing
+        elseif from_node.type == NodeType.Basin
             flow = flow_update_on_link(integrator, inflow_link.link)
             if flow > 0
                 mass[from_node.idx] .-= concentration_state[from_node.idx, :] .* flow
