@@ -1,7 +1,7 @@
 version: '2'
 services:
   qgis:
-    image: qgis/qgis:release-3_40
+    image: qgis/qgis:3.40
     container_name: qgis
     volumes:
       - ../ribasim_qgis/:/tests_directory/ribasim_qgis
