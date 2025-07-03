@@ -63,7 +63,7 @@ end
     @test ispath(toml_path)
 
     model = Ribasim.run(toml_path)
-    # @test success(model)
+    @test success(model)
     (; p, t) = model.integrator
     (; p_independent) = p
     (; user_demand, flow_boundary, allocation) = p_independent
