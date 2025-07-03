@@ -426,7 +426,7 @@ end
     problem = allocation.allocation_models[2].problem
     @test_broken JuMP.value(only(problem[:F_basin_in])) == 0.0
     @test_broken JuMP.value(only(problem[:F_basin_out])) == 0.0
-    @test_throws Exception q = JuMP.normalized_rhs(only(problem[:basin_outflow]))
+    @test_throws Exception local q = JuMP.normalized_rhs(only(problem[:basin_outflow]))
     storage_surplus = 1000.0  # Basin #7 is 1000 m2 and 1 m above LevelDemand max_level
     @test_broken q ≈ storage_surplus / Δt_allocation
 
