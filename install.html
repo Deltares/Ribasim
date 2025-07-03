@@ -311,7 +311,7 @@ classDef boundary fill:transparent,stroke-dasharray:5 5
 </div>
 <p>There are three main components of the Ribasim software package. They are the Ribasim core (written in Julia language), the Ribasim Python package and the Ribasim QGIS plugin.</p>
 <p>The kernel of Ribasim is written in the <a href="https://julialang.org/">Julia programming language</a> and is built on top of the <a href="https://sciml.ai/">SciML: Open Source Software for Scientific Machine Learning</a> libraries, notably <a href="https://docs.sciml.ai/DiffEqDocs/stable/">DifferentialEquations.jl</a>.</p>
-<p>The <a href="./install.html">Ribasim Python package</a> is available to build, update and analyze Ribasim models programmatically. For runtime data exchange and coupling with other kernels, the Julia kernel is wrapped in a Python API (<code>ribasim_api</code>) which implements the Basic Modelling Interface <a href="https://bmi-spec.readthedocs.io/en/latest/">BMI</a>.</p>
+<p>The <a href="./reference/python/index.html">Ribasim Python package</a> is available to build, update and analyze Ribasim models programmatically. For runtime data exchange and coupling with other kernels, the Julia kernel is wrapped in a Python API (<code>ribasim_api</code>) which implements the Basic Modelling Interface <a href="https://bmi-spec.readthedocs.io/en/latest/">BMI</a>.</p>
 <p>Ribasim uses <a href="https://www.geopackage.org/">GeoPackage</a> files to store the model database (<code>database.gpkg</code>). <a href="https://qgis.org/">QGIS</a> works well with GeoPackage files. This makes QGIS the perfect application to inspect and make edits to Ribasim models. Deltares also provides the iMOD QGIS plugin, which can be used to inspect the results of a Ribasim model too. For larger edits using Python is recommended. One can also use Ribasim Python to build entire models from base data, such that your model setup is fully reproducible.</p>
 <p>Users can choose to use Ribasim Python or QGIS plugin or a combination of them to build a Ribasim model. And then use the Ribasim core to run the simulation.</p>
 </section>
@@ -344,7 +344,7 @@ For more information, try '--help'.'</code></pre>
 <div class="sourceCode" id="cb3"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> init</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <p>and install ribasim:</p>
 <div class="sourceCode" id="cb4"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> add ribasim</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<p>For documentation please see the <a href="./guide/examples.html">examples</a> and <a href="./reference/reference">API reference</a>.</p>
+<p>For documentation please see the <a href="./guide/examples.html">examples</a> and <a href="./reference/python/index.html">API reference</a>.</p>
 </section>
 <section id="install-ribasim-qgis-plugin" class="level1" data-number="4">
 <h1 data-number="4"><span class="header-section-number">4</span> Install Ribasim QGIS plugin</h1>
