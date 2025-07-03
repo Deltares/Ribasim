@@ -20,7 +20,7 @@ These parameters help define how water is stored and managed in the system. Belo
 * Canals: Similar to a river reach a canal can also be modeled as a Basin, where water flow is managed along the canal system
 
 # Confluence Representation
-A Confluence where multiple links converge into a single node can be modeled using a [Junction node](https://ribasim.org/reference/node/junction.html)
+A confluence where multiple links converge into a single node can be modeled using a [Junction node](/reference/node/junction.qmd).
 
 # Tables
 
