@@ -52,7 +52,7 @@ They are the Ribasim core (written in Julia language), the Ribasim Python packag
 
 The kernel of Ribasim is written in the [Julia programming language](https://julialang.org/) and is built on top of the [SciML: Open Source Software for Scientific Machine Learning](https://sciml.ai/) libraries, notably [DifferentialEquations.jl](https://docs.sciml.ai/DiffEqDocs/stable/).
 
-The [Ribasim Python package](/install.qmd) is available to build, update and analyze Ribasim models programmatically.
+The [Ribasim Python package](/reference/python/index.qmd) is available to build, update and analyze Ribasim models programmatically.
 For runtime data exchange and coupling with other kernels, the Julia kernel is wrapped in a Python API (`ribasim_api`) which implements the Basic Modelling Interface [BMI](https://bmi-spec.readthedocs.io/en/latest/).
 
 Ribasim uses [GeoPackage](https://www.geopackage.org/) files to store the model database (`database.gpkg`).
@@ -118,7 +118,7 @@ and install ribasim:
 ```sh
 pixi add ribasim
 ```
-For documentation please see the [examples](/guide/examples.qmd) and [API reference](/reference/reference).
+For documentation please see the [examples](/guide/examples.qmd) and [API reference](/reference/python/index.qmd).
 
 # Install Ribasim QGIS plugin
 

@@ -1,7 +1,7 @@
 ---
 title: Model concept
 ---
-A brief summary of the concept is given [introduction](concept.qmd#sec-concept).
+A brief summary of the concept is given in the [introduction](concept.qmd#sec-concept).
 As indicated, the model concept is organized in three layers:
 
 - a physical layer representing water bodies and associated infrastructure,
