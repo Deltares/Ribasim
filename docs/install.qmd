@@ -122,7 +122,7 @@ For documentation please see the [examples](/guide/examples.qmd) and [API refere
 
 # Install Ribasim QGIS plugin
 
-The Ribasim QGIS plugin requires [QGIS](https://qgis.org/en/site/) 3.34 or higher.
+The Ribasim QGIS plugin requires [QGIS](https://qgis.org/en/site/) 3.40 or higher.
 The Ribasim QGIS plugin is only distributed as a .zip archive and must be downloaded and installed in QGIS.
 
 ## Install Ribasim plugin
