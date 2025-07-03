@@ -80,7 +80,7 @@ function add_basin!(
     basin_ids_subnetwork = get_subnetwork_ids(graph, NodeType.Basin, subnetwork_id)
 
     # Storage and level indices
-    indices = IterTools.product(basin_ids_subnetwork, [:start, :end])
+    indices = Iterators.product(basin_ids_subnetwork, [:start, :end])
 
     # Define decision variables: storage (scaling.storage * m^3) and level (m)
     # Each storage variable is constrained between 0 and the largest storage value in the profile
@@ -268,12 +268,10 @@ function add_conservation!(
         problem,
         [node_id = basin_ids_subnetwork],
         storage[(node_id, :end)] - storage[(node_id, :start)] ==
-
         Δt_allocation *
         (scaling.flow / scaling.storage) *
         (forcing[node_id] + inflow_sum[node_id] - outflow_sum[node_id]),
         base_name = "volume_conservation"
-
     )
 
     return nothing
