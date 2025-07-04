@@ -1,5 +1,4 @@
 import re
-import warnings
 from sqlite3 import connect
 
 import datacompy
@@ -384,28 +383,15 @@ def test_version_mismatch_warning_newer_version(basic, tmp_path):
         tomli_w.dump(config, f)
 
     # Test that a warning is issued when reading the model
-    with warnings.catch_warnings(record=True) as w:
-        warnings.simplefilter("always")
+    with pytest.warns(
+        UserWarning,
+        match="version in the TOML file.*3030.1.0.*is newer than the Python package version",
+    ):
         Model.read(toml_path)
-
-        # Check that a warning was issued - filter for our specific warning
-        version_warnings = [
-            warning
-            for warning in w
-            if "version in the TOML file" in str(warning.message)
-        ]
-        assert len(version_warnings) == 1
-        assert issubclass(version_warnings[0].category, UserWarning)
-        assert "3030.1.0" in str(version_warnings[0].message)
-        assert "is newer than the Python package version" in str(
-            version_warnings[0].message
-        )
 
 
 def test_invalid_version_string_warning(basic, tmp_path):
     """Test that a warning is issued when TOML ribasim_version is not a valid version string."""
-    import warnings
-
     import tomli
 
     # Write the model to get a TOML file
@@ -424,19 +410,8 @@ def test_invalid_version_string_warning(basic, tmp_path):
         tomli_w.dump(config, f)
 
     # Test that a warning is issued when reading the model
-    with warnings.catch_warnings(record=True) as w:
-        warnings.simplefilter("always")
+    with pytest.warns(
+        UserWarning,
+        match="version in the TOML file.*invalid_version_string.*does not match the Python package version",
+    ):
         Model.read(toml_path)
-
-        # Check that a warning was issued - filter for our specific warning
-        version_warnings = [
-            warning
-            for warning in w
-            if "version in the TOML file" in str(warning.message)
-        ]
-        assert len(version_warnings) == 1
-        assert issubclass(version_warnings[0].category, UserWarning)
-        assert "invalid_version_string" in str(version_warnings[0].message)
-        assert "does not match the Python package version" in str(
-            version_warnings[0].message
-        )

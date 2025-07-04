@@ -180,11 +180,6 @@ class Model(FileModel):
     def _serialize_path(self, path: Path) -> str:
         return str(path)
 
-    @field_serializer("ribasim_version")
-    def _serialize_ribasim_version(self, value: str) -> str:
-        """Serialize ribasim_version as the current package version when writing."""
-        return ribasim.__version__
-
     def model_post_init(self, __context: Any) -> None:
         # When serializing we exclude fields that are set to their default values
         # However, we always want to write `input_dir`, `results_dir`, and `ribasim_version`
