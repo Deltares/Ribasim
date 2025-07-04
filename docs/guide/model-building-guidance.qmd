@@ -1,0 +1,145 @@
+---
+title: "Incremental approach for building a Ribasim model"
+--- 
+
+In general, it is recommended to follow an incremental approach when building a Ribasim model. This approach could be organized in the following phases:
+
+1. Start with a small network to get some experience and make it run with default values and static forcing. When this small model runs, expand the network to cover the full area and make that run with default values and static forcing
+2. Improve parameterization and make it run with dry and wet conditions
+3. Improve parameterization and include more complex control situations. Conduct test runs with dynamic forcing
+4. Add allocation as needed (may possibly done in parallel with phase 3)
+5. Validate the model against observations
+6. Apply the model together with stakeholders for scenario analysis or in day-to-day operations
+
+
+
+# Phase 1: Create and validate the network
+
+Goal: create a valid network representation of the water system which runs and can be discussed with the stakeholder
+
+Steps
+
+- Discus with stakeholders the purpose of the model and what system components and behavior they want to see reflected in the model
+- Decide what procedure to follow to separate basins and position control nodes in between
+- Script this approach to build the network topology of nodes and links
+- Add user demand nodes as appropriate and link them to the supplying basin
+- Parameterize basins with default or made up profiles
+- Parameterize TabulatedRatingCurves with some default settings
+- Parameterize Pumps and outlets with sufficiently large default or made up capacities
+- Put static forcing on the boundaries nodes
+- Try to run the model and fix any topological issues
+- Discuss the network/water system representation with the stakeholders to confirm that the relevant elements are included. Prioritize next steps.
+
+Keep in mind:
+
+- For better understanding and plotting of the model layout, use of proper GIS-coordinates are highly recommended. Water system components that are modelled with multiple nodes in Ribasim (e.g. reservoirs) may share similar coordinates for the storage component (the Basin-node) and the control structures (e.g. Outlet nodes). For clarity, it is recommended to apply small coordinate offsets to enable visualization of topological connections between these co-located nodes. 
+
+- When preparing input data for Ribasim, all quantities must follow SI units unless explicitly stated otherwise in the documentation.
+  - Volume: cubic meters (m³)
+  - Flow: cubic meters per second (m³/s)
+  - Water level / elevation: meters (m) above reference datum
+  - Area: square meters (m²)
+
+Necessary input data:
+
+- GIS-data layers with accurate geographic information (coordinates) for proper water system representation:
+  - reservoirs
+  - control structures (weirs, intakes, outlets, pump stations)
+  - gauges
+  - river reaches, canal sections
+  - water demand areas (irrigation systems, domestic/industrial abstractions)
+- if the above is not available, at minimum map-based sketch with the layout of the water system, paying extra attention to positioning of waterways and connections. Try to assign proper coordinates.
+- some default (static) values (e.g. flow rates, river cross sections) to use that are in line with the typical parameter ranges of the system.
+- Keep in mind that values are specified in SI units
+
+Output:
+- a valid network topology with sufficient basic information for execution by the Ribasim kernel
+- a model schematization that can be discussed with stakeholders
+
+# Phase 2: Improve model parameterization and assess behavior for semi-static conditions
+
+Steps
+
+- Where available, use actual basin profile information (e.g. volume-level relations) for better volume representation. If needed, make estimates of river/canal width and depth in combination with length of river reaches and canal sections to make a reasonable volume estimate
+- Improve Tabulated Rating Curves parameterization where possible
+- Add local water level controls to the pumps and outlets to be maintained
+- Add proper capacities to outlets and pumps
+- Try to run the model with semi-static flow boundaries/demands (high and low flow rates)
+- Assess whether water flows in a proper direction, where basins drain properly and receive water as needed
+- Assess computational run time and improve the model (network topology and/or model parameterization) to address the nodes that most impact.
+- Discuss the model with the stakeholders to confirm that the relevant elements are included. Prioritize next steps.
+
+Necessary input data:
+
+- Volume-level relations for reservoirs and river reaches and canal sections
+- Tabulated rating curves
+- Water system control information such as controlled water levels, actual flow rates or maximum flow capacities
+
+Output:
+- a valid and running Ribasim model with improved system representation
+
+# Phase 3: Improve model parameterization and assess behavior for dynamic boundary conditions
+
+Steps
+
+- Collect and add realistic dynamic forcing (e.g. flow boundaries, basin fluxes, user demands)
+- Where needed add control nodes to properly represent more complicated control practices of joint system operation
+- Run the model for a limited time period (e.g. 1 year) and assess model behavior (outcome and computational performance)
+- Improve the model (network topology and/or model parameterization) to address the nodes that most impact
+- Discuss the model and the underlying assumptions with the stakeholders to confirm that the relevant elements are properly included. Prioritize next steps.
+
+Necessary input data:
+- Water system control information e.g. on joint operation of reservoirs
+- proper forcing on the boundaries
+
+Output:
+- a better model, both in outcome produced and runtime needed
+
+# Phase 4 (Optional): Introduce allocation
+
+When the analysis situation needs global allocation decisions, the input for the allocation algorithm needs to be specified
+
+Steps
+
+- Extend/add UserDemand nodes and associated abstraction series (m³/s) and link them to basin (abstraction and return flow links)
+- Add LevelDemand nodes and link them to Basins
+- Add FlowDemand nodes and link them to Outlets or Pumps
+- Assign demand priorities, using separate priorities for each demand-type
+- Assign allocation sub-networks
+- When relevant, specify which discrete control nodes need to be controlled by allocation
+- Run the model with allocation for a limited time period (e.g. 1 year) and assess model behavior (outcome and computational performance)
+- Improve the model (e.g prioritization) to address outstanding issues
+- Review the model implementation and underlying assumptions with the stakeholders to confirm that the underlying (policy) information is properly represented in the model
+
+Necessary input data:
+
+- Reservoir operation and allocation policy information (demands, allocation and source priorities, reservoir rules etc)
+
+Output:
+- an improved water systems model taking allocation policies into account
+
+
+# Phase 5: Model validation and acceptance
+
+As the model is nearly finished, a validation against observations is advised to accommodate acceptance.
+
+Steps
+
+- Discuss with stakeholders what they consider relevant to accept the model
+- Decide on key performance indicators (e.g. water levels or flows at critical locations) and acceptance criteria to validate model behavior
+- Decide on the period to run and validate the model
+- Collect observations that support the validation
+- Collect forcing data for the associated validation period
+- Run the model for the analysis period
+- Assess model behavior (outcome and computational performance)
+- Discuss the model results with the stakeholders and if needed prioritize improvements
+
+Necessary input data:
+
+- observations that can be associated with objects in the network
+
+# Phase 6: Apply the model
+
+As deemed appropriate by the project
+
+
