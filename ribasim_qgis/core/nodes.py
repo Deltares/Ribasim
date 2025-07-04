@@ -26,7 +26,7 @@ import abc
 from pathlib import Path
 from typing import Any
 
-from PyQt5.QtCore import QVariant
+from PyQt5.QtCore import QMetaType
 from qgis.core import (
     Qgis,
     QgsCoordinateReferenceSystem,
@@ -196,11 +196,11 @@ class Node(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("node_id", QVariant.Int),
-            QgsField("name", QVariant.String),
-            QgsField("node_type", QVariant.String),
-            QgsField("subnetwork_id", QVariant.Int),
-            QgsField("source_priority", QVariant.Int),
+            QgsField("node_id", QMetaType.Type.Int),
+            QgsField("name", QMetaType.Type.QString),
+            QgsField("node_type", QMetaType.Type.QString),
+            QgsField("subnetwork_id", QMetaType.Type.Int),
+            QgsField("source_priority", QMetaType.Type.Int),
         ]
 
     @classmethod
@@ -249,11 +249,11 @@ class Link(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("link_id", QVariant.Int),
-            QgsField("name", QVariant.String),
-            QgsField("from_node_id", QVariant.Int),
-            QgsField("to_node_id", QVariant.Int),
-            QgsField("link_type", QVariant.String),
+            QgsField("link_id", QMetaType.Type.Int),
+            QgsField("name", QMetaType.Type.QString),
+            QgsField("from_node_id", QMetaType.Type.Int),
+            QgsField("to_node_id", QMetaType.Type.Int),
+            QgsField("link_type", QMetaType.Type.QString),
         ]
 
     @classmethod
@@ -310,9 +310,9 @@ class BasinProfile(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("node_id", QVariant.Int),
-            QgsField("area", QVariant.Double),
-            QgsField("level", QVariant.Double),
+            QgsField("node_id", QMetaType.Type.Int),
+            QgsField("area", QMetaType.Type.Double),
+            QgsField("level", QMetaType.Type.Double),
         ]
 
 
@@ -328,12 +328,12 @@ class BasinStatic(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("node_id", QVariant.Int),
-            QgsField("drainage", QVariant.Double),
-            QgsField("potential_evaporation", QVariant.Double),
-            QgsField("infiltration", QVariant.Double),
-            QgsField("precipitation", QVariant.Double),
-            QgsField("runoff", QVariant.Double),
+            QgsField("node_id", QMetaType.Type.Int),
+            QgsField("drainage", QMetaType.Type.Double),
+            QgsField("potential_evaporation", QMetaType.Type.Double),
+            QgsField("infiltration", QMetaType.Type.Double),
+            QgsField("precipitation", QMetaType.Type.Double),
+            QgsField("runoff", QMetaType.Type.Double),
         ]
 
 
@@ -349,13 +349,13 @@ class BasinTime(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("node_id", QVariant.Int),
-            QgsField("time", QVariant.DateTime),
-            QgsField("drainage", QVariant.Double),
-            QgsField("potential_evaporation", QVariant.Double),
-            QgsField("infiltration", QVariant.Double),
-            QgsField("precipitation", QVariant.Double),
-            QgsField("runoff", QVariant.Double),
+            QgsField("node_id", QMetaType.Type.Int),
+            QgsField("time", QMetaType.Type.QDateTime),
+            QgsField("drainage", QMetaType.Type.Double),
+            QgsField("potential_evaporation", QMetaType.Type.Double),
+            QgsField("infiltration", QMetaType.Type.Double),
+            QgsField("precipitation", QMetaType.Type.Double),
+            QgsField("runoff", QMetaType.Type.Double),
         ]
 
 
@@ -371,10 +371,10 @@ class BasinConcentrationExternal(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("node_id", QVariant.Int),
-            QgsField("time", QVariant.DateTime),
-            QgsField("substance", QVariant.String),
-            QgsField("concentration", QVariant.Double),
+            QgsField("node_id", QMetaType.Type.Int),
+            QgsField("time", QMetaType.Type.QDateTime),
+            QgsField("substance", QMetaType.Type.QString),
+            QgsField("concentration", QMetaType.Type.Double),
         ]
 
 
@@ -390,10 +390,10 @@ class BasinConcentrationState(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("node_id", QVariant.Int),
-            QgsField("time", QVariant.DateTime),
-            QgsField("substance", QVariant.String),
-            QgsField("concentration", QVariant.Double),
+            QgsField("node_id", QMetaType.Type.Int),
+            QgsField("time", QMetaType.Type.QDateTime),
+            QgsField("substance", QMetaType.Type.QString),
+            QgsField("concentration", QMetaType.Type.Double),
         ]
 
 
@@ -409,12 +409,12 @@ class BasinConcentration(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("node_id", QVariant.Int),
-            QgsField("time", QVariant.DateTime),
-            QgsField("substance", QVariant.String),
-            QgsField("drainage", QVariant.Double),
-            QgsField("precipitation", QVariant.Double),
-            QgsField("runoff", QVariant.Double),
+            QgsField("node_id", QMetaType.Type.Int),
+            QgsField("time", QMetaType.Type.QDateTime),
+            QgsField("substance", QMetaType.Type.QString),
+            QgsField("drainage", QMetaType.Type.Double),
+            QgsField("precipitation", QMetaType.Type.Double),
+            QgsField("runoff", QMetaType.Type.Double),
         ]
 
 
@@ -430,10 +430,10 @@ class BasinSubgrid(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("subgrid_id", QVariant.Int),
-            QgsField("node_id", QVariant.Int),
-            QgsField("basin_level", QVariant.Double),
-            QgsField("subgrid_level", QVariant.Double),
+            QgsField("subgrid_id", QMetaType.Type.Int),
+            QgsField("node_id", QMetaType.Type.Int),
+            QgsField("basin_level", QMetaType.Type.Double),
+            QgsField("subgrid_level", QMetaType.Type.Double),
         ]
 
 
@@ -449,11 +449,11 @@ class BasinSubgridTime(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("subgrid_id", QVariant.Int),
-            QgsField("node_id", QVariant.Int),
-            QgsField("time", QVariant.DateTime),
-            QgsField("basin_level", QVariant.Double),
-            QgsField("subgrid_level", QVariant.Double),
+            QgsField("subgrid_id", QMetaType.Type.Int),
+            QgsField("node_id", QMetaType.Type.Int),
+            QgsField("time", QMetaType.Type.QDateTime),
+            QgsField("basin_level", QMetaType.Type.Double),
+            QgsField("subgrid_level", QMetaType.Type.Double),
         ]
 
 
@@ -476,7 +476,7 @@ class BasinArea(Input):
 
     @classmethod
     def attributes(cls) -> list[QgsField]:
-        return [QgsField("node_id", QVariant.Int)]
+        return [QgsField("node_id", QMetaType.Type.Int)]
 
 
 class BasinState(Input):
@@ -491,8 +491,8 @@ class BasinState(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("node_id", QVariant.Int),
-            QgsField("level", QVariant.Double),
+            QgsField("node_id", QMetaType.Type.Int),
+            QgsField("level", QMetaType.Type.Double),
         ]
 
 
@@ -508,11 +508,11 @@ class TabulatedRatingCurveStatic(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("node_id", QVariant.Int),
-            QgsField("active", QVariant.Bool),
-            QgsField("level", QVariant.Double),
-            QgsField("flow_rate", QVariant.Double),
-            QgsField("control_state", QVariant.String),
+            QgsField("node_id", QMetaType.Type.Int),
+            QgsField("active", QMetaType.Type.Bool),
+            QgsField("level", QMetaType.Type.Double),
+            QgsField("flow_rate", QMetaType.Type.Double),
+            QgsField("control_state", QMetaType.Type.QString),
         ]
 
 
@@ -528,10 +528,10 @@ class TabulatedRatingCurveTime(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("node_id", QVariant.Int),
-            QgsField("time", QVariant.DateTime),
-            QgsField("level", QVariant.Double),
-            QgsField("flow_rate", QVariant.Double),
+            QgsField("node_id", QMetaType.Type.Int),
+            QgsField("time", QMetaType.Type.QDateTime),
+            QgsField("level", QMetaType.Type.Double),
+            QgsField("flow_rate", QMetaType.Type.Double),
         ]
 
 
@@ -547,10 +547,10 @@ class LinearResistanceStatic(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("node_id", QVariant.Int),
-            QgsField("active", QVariant.Bool),
-            QgsField("resistance", QVariant.Double),
-            QgsField("control_state", QVariant.String),
+            QgsField("node_id", QMetaType.Type.Int),
+            QgsField("active", QMetaType.Type.Bool),
+            QgsField("resistance", QMetaType.Type.Double),
+            QgsField("control_state", QMetaType.Type.QString),
         ]
 
 
@@ -566,13 +566,13 @@ class ManningResistanceStatic(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("node_id", QVariant.Int),
-            QgsField("active", QVariant.Bool),
-            QgsField("length", QVariant.Double),
-            QgsField("manning_n", QVariant.Double),
-            QgsField("profile_width", QVariant.Double),
-            QgsField("profile_slope", QVariant.Double),
-            QgsField("control_state", QVariant.String),
+            QgsField("node_id", QMetaType.Type.Int),
+            QgsField("active", QMetaType.Type.Bool),
+            QgsField("length", QMetaType.Type.Double),
+            QgsField("manning_n", QMetaType.Type.Double),
+            QgsField("profile_width", QMetaType.Type.Double),
+            QgsField("profile_slope", QMetaType.Type.Double),
+            QgsField("control_state", QMetaType.Type.QString),
         ]
 
 
@@ -588,9 +588,9 @@ class LevelBoundaryStatic(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("node_id", QVariant.Int),
-            QgsField("active", QVariant.Bool),
-            QgsField("level", QVariant.Double),
+            QgsField("node_id", QMetaType.Type.Int),
+            QgsField("active", QMetaType.Type.Bool),
+            QgsField("level", QMetaType.Type.Double),
         ]
 
 
@@ -606,9 +606,9 @@ class LevelBoundaryTime(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("node_id", QVariant.Int),
-            QgsField("time", QVariant.DateTime),
-            QgsField("level", QVariant.Double),
+            QgsField("node_id", QMetaType.Type.Int),
+            QgsField("time", QMetaType.Type.QDateTime),
+            QgsField("level", QMetaType.Type.Double),
         ]
 
 
@@ -624,10 +624,10 @@ class LevelBoundaryConcentration(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("node_id", QVariant.Int),
-            QgsField("time", QVariant.DateTime),
-            QgsField("substance", QVariant.String),
-            QgsField("concentration", QVariant.Double),
+            QgsField("node_id", QMetaType.Type.Int),
+            QgsField("time", QMetaType.Type.QDateTime),
+            QgsField("substance", QMetaType.Type.QString),
+            QgsField("concentration", QMetaType.Type.Double),
         ]
 
 
@@ -643,14 +643,14 @@ class PumpStatic(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("node_id", QVariant.Int),
-            QgsField("active", QVariant.Bool),
-            QgsField("flow_rate", QVariant.Double),
-            QgsField("min_flow_rate", QVariant.Double),
-            QgsField("max_flow_rate", QVariant.Double),
-            QgsField("min_upstream_level", QVariant.Double),
-            QgsField("max_downstream_level", QVariant.Double),
-            QgsField("control_state", QVariant.String),
+            QgsField("node_id", QMetaType.Type.Int),
+            QgsField("active", QMetaType.Type.Bool),
+            QgsField("flow_rate", QMetaType.Type.Double),
+            QgsField("min_flow_rate", QMetaType.Type.Double),
+            QgsField("max_flow_rate", QMetaType.Type.Double),
+            QgsField("min_upstream_level", QMetaType.Type.Double),
+            QgsField("max_downstream_level", QMetaType.Type.Double),
+            QgsField("control_state", QMetaType.Type.QString),
         ]
 
 
@@ -666,13 +666,13 @@ class PumpTime(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("node_id", QVariant.Int),
-            QgsField("time", QVariant.DateTime),
-            QgsField("flow_rate", QVariant.Double),
-            QgsField("min_flow_rate", QVariant.Double),
-            QgsField("max_flow_rate", QVariant.Double),
-            QgsField("min_upstream_level", QVariant.Double),
-            QgsField("max_downstream_level", QVariant.Double),
+            QgsField("node_id", QMetaType.Type.Int),
+            QgsField("time", QMetaType.Type.QDateTime),
+            QgsField("flow_rate", QMetaType.Type.Double),
+            QgsField("min_flow_rate", QMetaType.Type.Double),
+            QgsField("max_flow_rate", QMetaType.Type.Double),
+            QgsField("min_upstream_level", QMetaType.Type.Double),
+            QgsField("max_downstream_level", QMetaType.Type.Double),
         ]
 
 
@@ -688,14 +688,14 @@ class OutletStatic(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("node_id", QVariant.Int),
-            QgsField("active", QVariant.Bool),
-            QgsField("flow_rate", QVariant.Double),
-            QgsField("min_flow_rate", QVariant.Double),
-            QgsField("max_flow_rate", QVariant.Double),
-            QgsField("min_upstream_level", QVariant.Double),
-            QgsField("max_downstream_level", QVariant.Double),
-            QgsField("control_state", QVariant.String),
+            QgsField("node_id", QMetaType.Type.Int),
+            QgsField("active", QMetaType.Type.Bool),
+            QgsField("flow_rate", QMetaType.Type.Double),
+            QgsField("min_flow_rate", QMetaType.Type.Double),
+            QgsField("max_flow_rate", QMetaType.Type.Double),
+            QgsField("min_upstream_level", QMetaType.Type.Double),
+            QgsField("max_downstream_level", QMetaType.Type.Double),
+            QgsField("control_state", QMetaType.Type.QString),
         ]
 
 
@@ -711,13 +711,13 @@ class OutletTime(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("node_id", QVariant.Int),
-            QgsField("time", QVariant.DateTime),
-            QgsField("flow_rate", QVariant.Double),
-            QgsField("min_flow_rate", QVariant.Double),
-            QgsField("max_flow_rate", QVariant.Double),
-            QgsField("min_upstream_level", QVariant.Double),
-            QgsField("max_downstream_level", QVariant.Double),
+            QgsField("node_id", QMetaType.Type.Int),
+            QgsField("time", QMetaType.Type.QDateTime),
+            QgsField("flow_rate", QMetaType.Type.Double),
+            QgsField("min_flow_rate", QMetaType.Type.Double),
+            QgsField("max_flow_rate", QMetaType.Type.Double),
+            QgsField("min_upstream_level", QMetaType.Type.Double),
+            QgsField("max_downstream_level", QMetaType.Type.Double),
         ]
 
 
@@ -733,9 +733,9 @@ class FlowBoundaryStatic(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("node_id", QVariant.Int),
-            QgsField("active", QVariant.Bool),
-            QgsField("flow_rate", QVariant.Double),
+            QgsField("node_id", QMetaType.Type.Int),
+            QgsField("active", QMetaType.Type.Bool),
+            QgsField("flow_rate", QMetaType.Type.Double),
         ]
 
 
@@ -751,9 +751,9 @@ class FlowBoundaryTime(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("node_id", QVariant.Int),
-            QgsField("time", QVariant.DateTime),
-            QgsField("flow_rate", QVariant.Double),
+            QgsField("node_id", QMetaType.Type.Int),
+            QgsField("time", QMetaType.Type.QDateTime),
+            QgsField("flow_rate", QMetaType.Type.Double),
         ]
 
 
@@ -769,10 +769,10 @@ class FlowBoundaryConcentration(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("node_id", QVariant.Int),
-            QgsField("time", QVariant.DateTime),
-            QgsField("substance", QVariant.String),
-            QgsField("concentration", QVariant.Double),
+            QgsField("node_id", QMetaType.Type.Int),
+            QgsField("time", QMetaType.Type.QDateTime),
+            QgsField("substance", QMetaType.Type.QString),
+            QgsField("concentration", QMetaType.Type.Double),
         ]
 
 
@@ -788,12 +788,12 @@ class DiscreteControlVariable(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("node_id", QVariant.Int),
-            QgsField("compound_variable_id", QVariant.Int),
-            QgsField("listen_node_id", QVariant.Int),
-            QgsField("variable", QVariant.String),
-            QgsField("weight", QVariant.Double),
-            QgsField("look_ahead", QVariant.Double),
+            QgsField("node_id", QMetaType.Type.Int),
+            QgsField("compound_variable_id", QMetaType.Type.Int),
+            QgsField("listen_node_id", QMetaType.Type.Int),
+            QgsField("variable", QMetaType.Type.QString),
+            QgsField("weight", QMetaType.Type.Double),
+            QgsField("look_ahead", QMetaType.Type.Double),
         ]
 
 
@@ -809,9 +809,9 @@ class DiscreteControlCondition(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("node_id", QVariant.Int),
-            QgsField("compound_variable_id", QVariant.Int),
-            QgsField("greater_than", QVariant.Double),
+            QgsField("node_id", QMetaType.Type.Int),
+            QgsField("compound_variable_id", QMetaType.Type.Int),
+            QgsField("greater_than", QMetaType.Type.Double),
         ]
 
 
@@ -827,9 +827,9 @@ class DiscreteControlLogic(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("node_id", QVariant.Int),
-            QgsField("control_state", QVariant.String),
-            QgsField("truth_state", QVariant.String),
+            QgsField("node_id", QMetaType.Type.Int),
+            QgsField("control_state", QMetaType.Type.QString),
+            QgsField("truth_state", QMetaType.Type.QString),
         ]
 
 
@@ -845,11 +845,11 @@ class ContinuousControlVariable(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("node_id", QVariant.Int),
-            QgsField("listen_node_id", QVariant.Int),
-            QgsField("variable", QVariant.String),
-            QgsField("weight", QVariant.Double),
-            QgsField("look_ahead", QVariant.Double),
+            QgsField("node_id", QMetaType.Type.Int),
+            QgsField("listen_node_id", QMetaType.Type.Int),
+            QgsField("variable", QMetaType.Type.QString),
+            QgsField("weight", QMetaType.Type.Double),
+            QgsField("look_ahead", QMetaType.Type.Double),
         ]
 
 
@@ -865,10 +865,10 @@ class ContinuousControlFunction(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("node_id", QVariant.Int),
-            QgsField("input", QVariant.Double),
-            QgsField("output", QVariant.Double),
-            QgsField("controlled_variable", QVariant.String),
+            QgsField("node_id", QMetaType.Type.Int),
+            QgsField("input", QMetaType.Type.Double),
+            QgsField("output", QMetaType.Type.Double),
+            QgsField("controlled_variable", QMetaType.Type.QString),
         ]
 
 
@@ -884,13 +884,13 @@ class PidControlStatic(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("node_id", QVariant.Int),
-            QgsField("active", QVariant.Bool),
-            QgsField("listen_node_id", QVariant.Int),
-            QgsField("target", QVariant.Double),
-            QgsField("proportional", QVariant.Double),
-            QgsField("integral", QVariant.Double),
-            QgsField("derivative", QVariant.Double),
+            QgsField("node_id", QMetaType.Type.Int),
+            QgsField("active", QMetaType.Type.Bool),
+            QgsField("listen_node_id", QMetaType.Type.Int),
+            QgsField("target", QMetaType.Type.Double),
+            QgsField("proportional", QMetaType.Type.Double),
+            QgsField("integral", QMetaType.Type.Double),
+            QgsField("derivative", QMetaType.Type.Double),
         ]
 
 
@@ -906,13 +906,13 @@ class PidControlTime(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("node_id", QVariant.Int),
-            QgsField("listen_node_id", QVariant.Int),
-            QgsField("time", QVariant.DateTime),
-            QgsField("target", QVariant.Double),
-            QgsField("proportional", QVariant.Double),
-            QgsField("integral", QVariant.Double),
-            QgsField("derivative", QVariant.Double),
+            QgsField("node_id", QMetaType.Type.Int),
+            QgsField("listen_node_id", QMetaType.Type.Int),
+            QgsField("time", QMetaType.Type.QDateTime),
+            QgsField("target", QMetaType.Type.Double),
+            QgsField("proportional", QMetaType.Type.Double),
+            QgsField("integral", QMetaType.Type.Double),
+            QgsField("derivative", QMetaType.Type.Double),
         ]
 
 
@@ -928,11 +928,11 @@ class UserDemandStatic(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("node_id", QVariant.Int),
-            QgsField("active", QVariant.Bool),
-            QgsField("demand", QVariant.Double),
-            QgsField("return_factor", QVariant.Double),
-            QgsField("demand_priority", QVariant.Int),
+            QgsField("node_id", QMetaType.Type.Int),
+            QgsField("active", QMetaType.Type.Bool),
+            QgsField("demand", QMetaType.Type.Double),
+            QgsField("return_factor", QMetaType.Type.Double),
+            QgsField("demand_priority", QMetaType.Type.Int),
         ]
 
 
@@ -948,11 +948,11 @@ class UserDemandTime(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("node_id", QVariant.Int),
-            QgsField("time", QVariant.DateTime),
-            QgsField("demand", QVariant.Double),
-            QgsField("return_factor", QVariant.Double),
-            QgsField("demand_priority", QVariant.Int),
+            QgsField("node_id", QMetaType.Type.Int),
+            QgsField("time", QMetaType.Type.QDateTime),
+            QgsField("demand", QMetaType.Type.Double),
+            QgsField("return_factor", QMetaType.Type.Double),
+            QgsField("demand_priority", QMetaType.Type.Int),
         ]
 
 
@@ -968,10 +968,10 @@ class UserDemandConcentration(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("node_id", QVariant.Int),
-            QgsField("time", QVariant.DateTime),
-            QgsField("substance", QVariant.String),
-            QgsField("concentration", QVariant.Double),
+            QgsField("node_id", QMetaType.Type.Int),
+            QgsField("time", QMetaType.Type.QDateTime),
+            QgsField("substance", QMetaType.Type.QString),
+            QgsField("concentration", QMetaType.Type.Double),
         ]
 
 
@@ -987,10 +987,10 @@ class LevelDemandStatic(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("node_id", QVariant.Int),
-            QgsField("min_level", QVariant.Double),
-            QgsField("max_level", QVariant.Double),
-            QgsField("demand_priority", QVariant.Int),
+            QgsField("node_id", QMetaType.Type.Int),
+            QgsField("min_level", QMetaType.Type.Double),
+            QgsField("max_level", QMetaType.Type.Double),
+            QgsField("demand_priority", QMetaType.Type.Int),
         ]
 
 
@@ -1006,11 +1006,11 @@ class LevelDemandTime(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("node_id", QVariant.Int),
-            QgsField("time", QVariant.DateTime),
-            QgsField("min_level", QVariant.Double),
-            QgsField("max_level", QVariant.Double),
-            QgsField("demand_priority", QVariant.Int),
+            QgsField("node_id", QMetaType.Type.Int),
+            QgsField("time", QMetaType.Type.QDateTime),
+            QgsField("min_level", QMetaType.Type.Double),
+            QgsField("max_level", QMetaType.Type.Double),
+            QgsField("demand_priority", QMetaType.Type.Int),
         ]
 
 
@@ -1026,9 +1026,9 @@ class FlowDemandStatic(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("node_id", QVariant.Int),
-            QgsField("demand", QVariant.Double),
-            QgsField("demand_priority", QVariant.Int),
+            QgsField("node_id", QMetaType.Type.Int),
+            QgsField("demand", QMetaType.Type.Double),
+            QgsField("demand_priority", QMetaType.Type.Int),
         ]
 
 
@@ -1044,10 +1044,10 @@ class FlowDemandTime(Input):
     @classmethod
     def attributes(cls) -> list[QgsField]:
         return [
-            QgsField("node_id", QVariant.Int),
-            QgsField("time", QVariant.DateTime),
-            QgsField("demand", QVariant.Double),
-            QgsField("demand_priority", QVariant.Int),
+            QgsField("node_id", QMetaType.Type.Int),
+            QgsField("time", QMetaType.Type.QDateTime),
+            QgsField("demand", QMetaType.Type.Double),
+            QgsField("demand_priority", QMetaType.Type.Int),
         ]
 
 
