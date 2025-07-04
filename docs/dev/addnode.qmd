@@ -152,7 +152,7 @@ class NewNodeTypeStatic:
     input_type = "NewNodeType / static"
     geometry_type = "No Geometry"
     attributes = [
-        QgsField("node_id", QMetaType.Type.Int)
+        QgsField("node_id", QVariant.Int)
         # Other fields for properties of this node
     ]
 ```

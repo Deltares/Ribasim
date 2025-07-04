@@ -15,7 +15,7 @@ from typing import Any, cast
 
 import pandas as pd
 from osgeo import ogr
-from PyQt5.QtCore import QDateTime, QMetaType, Qt
+from PyQt5.QtCore import QDateTime, Qt, QVariant
 from PyQt5.QtWidgets import (
     QAbstractItemView,
     QCheckBox,
@@ -752,7 +752,7 @@ class DatasetWidget(QWidget):
                 continue
             dataprovider = layer.dataProvider()
             if dataprovider is not None and dataprovider.fieldNameIndex(column) == -1:
-                dataprovider.addAttributes([QgsField(column, QMetaType.Type.Double)])
+                dataprovider.addAttributes([QgsField(column, QVariant.Double)])
             layer.updateFields()
         layer.commitChanges()
 
