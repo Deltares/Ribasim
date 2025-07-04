@@ -12,6 +12,7 @@ import pandas as pd
 import tomli
 import tomli_w
 from matplotlib import pyplot as plt
+from packaging import version
 from pandera.typing.geopandas import GeoDataFrame
 from pydantic import (
     DirectoryPath,
@@ -19,6 +20,7 @@ from pydantic import (
     FilePath,
     PrivateAttr,
     field_serializer,
+    field_validator,
     model_validator,
 )
 
@@ -84,6 +86,7 @@ class Model(FileModel):
 
     input_dir: Path = Field(default=Path("."))
     results_dir: Path = Field(default=Path("results"))
+    ribasim_version: str = Field(default_factory=lambda: ribasim.__version__)
 
     logging: Logging = Field(default_factory=Logging)
     solver: Solver = Field(default_factory=Solver)
@@ -117,6 +120,33 @@ class Model(FileModel):
     use_validation: bool = Field(default=True, exclude=True)
 
     _used_node_ids: UsedIDs = PrivateAttr(default_factory=UsedIDs)
+
+    @field_validator("ribasim_version")
+    @classmethod
+    def _validate_ribasim_version(cls, v: str) -> str:
+        """Validate the ribasim_version in the TOML and warn if it is newer than the Python package version."""
+        try:
+            toml_version = version.parse(v)
+            package_version = version.parse(ribasim.__version__)
+
+            if toml_version > package_version:
+                warnings.warn(
+                    f"The ribasim_version in the TOML file ({v}) is newer than "
+                    f"the Python package version ({ribasim.__version__}). "
+                    f"This may cause compatibility issues.",
+                    UserWarning,
+                )
+        except version.InvalidVersion:
+            # If version parsing fails, just issue a general warning
+            if v != ribasim.__version__:
+                warnings.warn(
+                    f"The Ribasim version in the TOML file ({v}) "
+                    f"does not match the Python package version ({ribasim.__version__}). "
+                    f"This may cause compatibility issues.",
+                    UserWarning,
+                )
+
+        return v
 
     @model_validator(mode="after")
     def _set_node_parent(self) -> "Model":
@@ -152,10 +182,10 @@ class Model(FileModel):
 
     def model_post_init(self, __context: Any) -> None:
         # When serializing we exclude fields that are set to their default values
-        # However, we always want to write `input_dir` and `results_dir`
+        # However, we always want to write `input_dir`, `results_dir`, and `ribasim_version`
         # By overriding `BaseModel.model_post_init` we can set them explicitly,
         # and enforce that they are always written.
-        self.model_fields_set.update({"input_dir", "results_dir"})
+        self.model_fields_set.update({"input_dir", "results_dir", "ribasim_version"})
         self.edge = self.link  # Backwards compatible alias for link
 
     def __repr__(self) -> str:
@@ -197,7 +227,6 @@ class Model(FileModel):
         )
         # Filter empty dicts (default Nodes)
         content = dict(filter(lambda x: x[1], content.items()))
-        content["ribasim_version"] = ribasim.__version__
         with open(fn, "wb") as f:
             tomli_w.dump(content, f)
         return fn
