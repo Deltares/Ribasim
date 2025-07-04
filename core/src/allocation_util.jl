@@ -280,7 +280,13 @@ function report_cause_of_infeasibility(
             log_constraint_variable_values(constraint)
 
             # for all variables in the violated constraint, check if there are other constraints on them
-            for (variable, _) in constraint_expression.terms
+            variables = if isa(constraint_expression, JuMP.GenericAffExpr)
+                [(var, coef) for (var, coef) in constraint_expression.terms]
+            else
+                [(constraint_expression, 1.0)]
+            end
+
+            for (variable, _) in variables
                 if JuMP.name(variable) == ""
                     continue
                 end
@@ -289,8 +295,14 @@ function report_cause_of_infeasibility(
                     problem;
                     include_variable_in_set_constraints = true,
                 )
-                    for (other_variable, _) in
-                        JuMP.constraint_object(other_constraint).func.terms
+                    other_expr = JuMP.constraint_object(other_constraint).func
+                    other_variables = if isa(other_expr, JuMP.GenericAffExpr)
+                        [(var, coef) for (var, coef) in other_expr.terms]
+                    else
+                        [(other_expr, 1.0)]
+                    end
+
+                    for (other_variable, _) in other_variables
                         if variable == other_variable && other_constraint != constraint
                             @info "possible conflicting constraints: $other_constraint"
                             log_constraint_variable_values(other_constraint)

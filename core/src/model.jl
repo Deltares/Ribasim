@@ -49,6 +49,7 @@ function get_diff_eval(du::CVector, u::CVector, p::Parameters, solver::Solver)
 
     # Activate all nodes to catch all possible state dependencies
     p_mutable.all_nodes_active = true
+
     jac_prep = prepare_jacobian(
         water_balance!,
         du,
