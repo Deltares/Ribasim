@@ -13,11 +13,11 @@ In general, it is recommended to follow an incremental approach when building a 
 
 # Create and validate the network
 
-**Goal**
+## Goal
 
 Create a valid network representation of the water system that runs and can be discussed with stakeholders.
 
-**Steps**
+## Steps
 
 - Discuss with stakeholders the purpose of the model and what system components and behavior they want to see reflected in the model.
 - Decide what procedure to follow to separate Basins and position control nodes in between.
@@ -30,7 +30,7 @@ Create a valid network representation of the water system that runs and can be d
 - Try to run the model and fix any topological issues.
 - Discuss the network/water system representation with the stakeholders to confirm that the relevant elements are included. Prioritize next steps.
 
-**Keep in mind**
+## Keep in mind
 
 - For better understanding and plotting of the model layout, use of proper GIS-coordinates are highly recommended. Water system components that are modelled with multiple nodes in Ribasim (e.g. reservoirs) may share similar coordinates for the storage component (the Basin-node) and the control structures (e.g. Outlet nodes). For clarity, it is recommended to apply small coordinate offsets to enable visualization of topological connections between these co-located nodes.
 - When preparing input data for Ribasim, all quantities must follow SI units unless explicitly stated otherwise in the documentation.
@@ -39,7 +39,7 @@ Create a valid network representation of the water system that runs and can be d
   - Water level / elevation: meters (m) above reference datum
   - Area: square meters (m²)
 
-**Necessary input data**
+## Necessary input data
 
 - GIS-data layers with accurate geographic information (coordinates) for proper water system representation:
   - reservoirs
@@ -51,18 +51,18 @@ Create a valid network representation of the water system that runs and can be d
 - Some default (static) values (e.g. flow rates, river cross sections) to use that are in line with the typical parameter ranges of the system.
 - Keep in mind that values are specified in SI units.
 
-**Output**
+## Output
 
 - A valid network topology with sufficient basic information for execution by the Ribasim kernel.
 - A model schematization that can be discussed with stakeholders.
 
 # Use semi-static conditions
 
-**Goal**
+## Goal
 
 Improve the model's realism by incorporating better physical parameters and semi-static boundary conditions to test the model under different flow scenarios.
 
-**Steps**
+## Steps
 
 - Where available, use actual Basin profile information (e.g. volume-level relations) for better volume representation. If needed, make estimates of river/canal width and depth in combination with length of river reaches and canal sections to make a reasonable volume estimate.
 - Improve Tabulated Rating Curves parameterization where possible.
@@ -73,23 +73,23 @@ Improve the model's realism by incorporating better physical parameters and semi
 - Assess computational run time and improve the model (network topology and/or model parameterization) to address the nodes that most impact performance.
 - Discuss the model with the stakeholders to confirm that the relevant elements are included. Prioritize next steps.
 
-**Necessary input data**
+## Necessary input data
 
 - Volume-level relations for reservoirs and river reaches and canal sections.
 - Tabulated rating curves.
 - Water system control information such as controlled water levels, actual flow rates or maximum flow capacities.
 
-**Output**
+## Output
 
 - A valid and running Ribasim model with improved system representation.
 
 # Use dynamic boundary conditions
 
-**Goal**
+## Goal
 
 Transition from static/semi-static conditions to realistic time-varying boundary conditions and control strategies.
 
-**Steps**
+## Steps
 
 - Collect and add realistic dynamic forcing (e.g. flow boundaries, Basin fluxes, user demands).
 - Where needed add control nodes to properly represent more complicated control practices of joint system operation.
@@ -97,24 +97,24 @@ Transition from static/semi-static conditions to realistic time-varying boundary
 - Improve the model (network topology and/or model parameterization) to address the nodes that most impact performance.
 - Discuss the model and the underlying assumptions with the stakeholders to confirm that the relevant elements are properly included. Prioritize next steps.
 
-**Necessary input data**
+## Necessary input data
 
 - Water system control information e.g. on joint operation of reservoirs.
 - proper forcing on the boundaries.
 
-**Output**
+## Output
 
 - A better model, both in outcome produced and runtime needed.
 
 # Add allocation (optional)
 
-**Goal**
+## Goal
 
 Implement water allocation to represent water distribution policies and priority-based water management decisions.
 
 When the analysis situation needs global allocation decisions, the input for the allocation algorithm needs to be specified.
 
-**Steps**
+## Steps
 
 - Extend/add UserDemand nodes and associated abstraction series (m³/s) and link them to Basin (abstraction and return flow links).
 - Add LevelDemand nodes and link them to Basins.
@@ -126,23 +126,23 @@ When the analysis situation needs global allocation decisions, the input for the
 - Improve the model (e.g prioritization) to address outstanding issues.
 - Review the model implementation and underlying assumptions with the stakeholders to confirm that the underlying (policy) information is properly represented in the model.
 
-**Necessary input data**
+## Necessary input data
 
 - Reservoir operation and allocation policy information (demands, allocation and source priorities, reservoir rules etc).
 
-**Output**
+## Output
 
 - An improved water systems model taking allocation policies into account.
 
 # Validate model
 
-**Goal**
+## Goal
 
 Verify that the model adequately represents the real-world water system by comparing simulated results with observed data.
 
 As the model is nearly finished, a validation against observations is advised to accommodate acceptance.
 
-**Steps**
+## Steps
 
 - Discuss with stakeholders what they consider relevant to accept the model.
 - Decide on key performance indicators (e.g. water levels or flows at critical locations) and acceptance criteria to validate model behavior.
@@ -153,29 +153,29 @@ As the model is nearly finished, a validation against observations is advised to
 - Assess model behavior (outcome and computational performance).
 - Discuss the model results with the stakeholders and if needed prioritize improvements.
 
-**Necessary input data**
+## Necessary input data
 
 - Observations that can be associated with objects in the network.
 
-**Output**
+## Output
 
 - A validated model with documented performance against observations.
 - Assessment of model accuracy and limitations for intended applications.
 
 # Apply the model
 
-**Goal**
+## Goal
 
 Deploy the validated model for its intended purpose, whether for operational water management, scenario analysis, or decision support.
 
-**Steps**
+## Steps
 
 - Conduct scenario analysis or operational runs as required by the project.
 - Document model assumptions, limitations, and recommended usage.
 - Provide training or handover materials to end users.
 - Establish procedures for model updates and maintenance as needed.
 
-**Output**
+## Output
 
 - A fully operational model ready for its intended application.
 - Documentation supporting model use and interpretation.
