@@ -689,7 +689,7 @@ function postprocess_objective!(
     t::Number,
 )::Nothing
     (; p_independent) = p
-    (; problem, subnetwork_id) = allocation_model
+    (; subnetwork_id) = allocation_model
 
     if objective.type == AllocationObjectiveType.demand
         # Update allocation constraints so that the results of the optimization for this demand priority are retained
@@ -739,7 +739,7 @@ function optimize_for_objective!(
         )
     end
 
-    postprocess_objective!(allocation_model, p_independent, objective, t)
+    postprocess_objective!(allocation_model, p, objective, t)
 
     return nothing
 end

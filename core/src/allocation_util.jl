@@ -292,6 +292,15 @@ function relax_problem!(problem::JuMP.Model)::Dict{JuMP.ConstraintRef, JuMP.AffE
     return JuMP.relax_with_penalty!(problem, constraint_to_penalty)
 end
 
+function get_terms(constraint)
+    (; func) = JuMP.constraint_object(constraint)
+    return if hasproperty(func, :terms)
+        func.terms
+    else
+        (func, nothing)
+    end
+end
+
 """
  logs:
     - all constraints that are violated by a non-zero slack variable.
@@ -315,7 +324,6 @@ function report_cause_of_infeasibility(
             @info "infeasible constraint: $constraint"
             @info " ______________________________________________________________________________________________"
 
-            expr = JuMP.constraint_object(constraint).func
             @info "constraint is violated by: $(JuMP.value(slack_var))"
             log_constraint_variable_values(constraint)
 
@@ -329,8 +337,7 @@ function report_cause_of_infeasibility(
                     problem;
                     include_variable_in_set_constraints = true,
                 )
-                    for (other_variable, _) in
-                        JuMP.constraint_object(other_constraint).func.terms
+                    for (other_variable, _) in get_terms(other_constraint)
                         if variable == other_variable && other_constraint != constraint
                             @info "possible conflicting constraints: $other_constraint"
                             log_constraint_variable_values(other_constraint)
