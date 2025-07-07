@@ -1,6 +1,6 @@
 ---
 title: "Incremental approach for building a Ribasim model"
---- 
+---
 
 In general, it is recommended to follow an incremental approach when building a Ribasim model. This approach could be organized in the following phases:
 
@@ -11,9 +11,7 @@ In general, it is recommended to follow an incremental approach when building a 
 5. Validate the model against observations
 6. Apply the model together with stakeholders for scenario analysis or in day-to-day operations
 
-
-
-# Phase 1: Create and validate the network
+# Create and validate the network
 
 Goal: create a valid network representation of the water system which runs and can be discussed with the stakeholder
 
@@ -32,7 +30,7 @@ Steps
 
 Keep in mind:
 
-- For better understanding and plotting of the model layout, use of proper GIS-coordinates are highly recommended. Water system components that are modelled with multiple nodes in Ribasim (e.g. reservoirs) may share similar coordinates for the storage component (the Basin-node) and the control structures (e.g. Outlet nodes). For clarity, it is recommended to apply small coordinate offsets to enable visualization of topological connections between these co-located nodes. 
+- For better understanding and plotting of the model layout, use of proper GIS-coordinates are highly recommended. Water system components that are modelled with multiple nodes in Ribasim (e.g. reservoirs) may share similar coordinates for the storage component (the Basin-node) and the control structures (e.g. Outlet nodes). For clarity, it is recommended to apply small coordinate offsets to enable visualization of topological connections between these co-located nodes.
 
 - When preparing input data for Ribasim, all quantities must follow SI units unless explicitly stated otherwise in the documentation.
   - Volume: cubic meters (m³)
@@ -56,7 +54,7 @@ Output:
 - a valid network topology with sufficient basic information for execution by the Ribasim kernel
 - a model schematization that can be discussed with stakeholders
 
-# Phase 2: Improve model parameterization and assess behavior for semi-static conditions
+# Improve model parameterization and assess behavior for semi-static conditions
 
 Steps
 
@@ -78,7 +76,7 @@ Necessary input data:
 Output:
 - a valid and running Ribasim model with improved system representation
 
-# Phase 3: Improve model parameterization and assess behavior for dynamic boundary conditions
+# Improve model parameterization and assess behavior for dynamic boundary conditions
 
 Steps
 
@@ -95,7 +93,7 @@ Necessary input data:
 Output:
 - a better model, both in outcome produced and runtime needed
 
-# Phase 4 (Optional): Introduce allocation
+# Introduce allocation (optional)
 
 When the analysis situation needs global allocation decisions, the input for the allocation algorithm needs to be specified
 
@@ -119,7 +117,7 @@ Output:
 - an improved water systems model taking allocation policies into account
 
 
-# Phase 5: Model validation and acceptance
+# Model validation and acceptance
 
 As the model is nearly finished, a validation against observations is advised to accommodate acceptance.
 
@@ -138,8 +136,6 @@ Necessary input data:
 
 - observations that can be associated with objects in the network
 
-# Phase 6: Apply the model
+# Apply the model
 
-As deemed appropriate by the project
-
-
+As deemed appropriate by the project.

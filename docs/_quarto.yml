@@ -39,8 +39,8 @@ website:
         - tutorial/reservoir.qmd
     - title: "How-to guides"
       contents:
-        - guide/model-building-guidance.qmd
         - guide/examples.qmd
+        - guide/modeling-process.qmd
         - guide/qgis.qmd
         - guide/coupling.qmd
         - section: "Coupling guides"
