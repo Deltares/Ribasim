@@ -71,13 +71,13 @@ function water_balance!(
     formulate_continuous_control!(du, p, t)
 
     # Formulate intermediate flows (controlled by ContinuousControl)
-    formulate_flows!(du, p, t; control_type = ControlType.Continuous)
+    formulate_flows!(du, p, t; control_type = ContinuousControlType.Continuous)
 
     # Compute PID control
     formulate_pid_control!(du, u, p, t)
 
     # Formulate intermediate flow (controlled by PID control)
-    formulate_flows!(du, p, t; control_type = ControlType.PID)
+    formulate_flows!(du, p, t; control_type = ContinuousControlType.PID)
 
     return nothing
 end
@@ -565,7 +565,7 @@ function formulate_controlled_flow!(
     component_type::Symbol,  # :pump or :outlet
     p::Parameters,
     t::Number,
-    control_type_::ControlType.T,
+    control_type_::ContinuousControlType.T,
 )::Nothing
     (; time_dependent_cache, state_time_dependent_cache, p_mutable) = p
 
@@ -601,7 +601,7 @@ function formulate_controlled_flow!(
             continue
         end
 
-        if control_type ∈ (ControlType.None, ControlType.Allocation)
+        if control_type == ContinuousControlType.None
             eval_time_interp(flow_rate_itp, current_flow_rate, id.idx, p, t)
         end
 
@@ -649,7 +649,7 @@ function formulate_flow!(
     pump::Pump,
     p::Parameters,
     t::Number,
-    control_type_::ControlType.T,
+    control_type_::ContinuousControlType.T,
 )::Nothing
     formulate_controlled_flow!(du, pump, :pump, p, t, control_type_)
 end
@@ -659,7 +659,7 @@ function formulate_flow!(
     outlet::Outlet,
     p::Parameters,
     t::Number,
-    control_type_::ControlType.T,
+    control_type_::ContinuousControlType.T,
 )::Nothing
     formulate_controlled_flow!(du, outlet, :outlet, p, t, control_type_)
 end
@@ -668,7 +668,7 @@ function formulate_flows!(
     du::CVector,
     p::Parameters,
     t::Number;
-    control_type::ControlType.T = ControlType.None,
+    control_type::ContinuousControlType.T = ContinuousControlType.None,
 )::Nothing
     (;
         linear_resistance,
@@ -682,7 +682,7 @@ function formulate_flows!(
     formulate_flow!(du, pump, p, t, control_type)
     formulate_flow!(du, outlet, p, t, control_type)
 
-    if control_type == ControlType.None
+    if control_type == ContinuousControlType.None
         formulate_flow!(du, linear_resistance, p, t)
         formulate_flow!(du, manning_resistance, p, t)
         formulate_flow!(du, tabulated_rating_curve, p, t)

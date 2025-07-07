@@ -684,11 +684,9 @@ function apply_control_from_allocation!(
     (; problem, subnetwork_id, scaling) = allocation_model
     flow = problem[:flow]
 
-    for (node_id, control_type, inflow_link) in
-        zip(node.node_id, node.control_type, node.inflow_link)
+    for (node_id, inflow_link) in zip(node.node_id, node.inflow_link)
         in_subnetwork = (graph[node_id].subnetwork_id == subnetwork_id)
-        allocation_controlled = (control_type == ControlType.Allocation)
-        if in_subnetwork && allocation_controlled
+        if in_subnetwork && node.allocation_controlled[node_id.idx]
             node.flow_rate[node_id.idx].u .=
                 JuMP.value(flow[inflow_link.link]) * scaling.flow
         end
