@@ -5,6 +5,7 @@ import datacompy
 import numpy as np
 import pandas as pd
 import pytest
+import tomli
 import tomli_w
 import xugrid
 from pydantic import ValidationError
@@ -362,3 +363,55 @@ def test_model_diff(basic):
     assert "static" in x["basin"]
     assert "diff" in x["basin"]["static"]
     assert isinstance(x["basin"]["static"]["diff"], datacompy.Compare)
+
+
+def test_version_mismatch_warning_newer_version(basic, tmp_path):
+    """Test that a warning is issued when TOML ribasim_version is newer than package version."""
+    # Write the model to get a TOML file
+    toml_path = tmp_path / "ribasim.toml"
+    basic.write(toml_path)
+
+    # Read the TOML file and modify the version to be newer
+    with open(toml_path, "rb") as f:
+        config = tomli.load(f)
+
+    # Set a newer version
+    config["ribasim_version"] = "3030.1.0"
+
+    # Write the modified TOML back
+    with open(toml_path, "wb") as f:
+        tomli_w.dump(config, f)
+
+    # Test that a warning is issued when reading the model
+    with pytest.warns(
+        UserWarning,
+        match="version in the TOML file.*3030.1.0.*is newer than the Python package version",
+    ):
+        Model.read(toml_path)
+
+
+def test_invalid_version_string_warning(basic, tmp_path):
+    """Test that a warning is issued when TOML ribasim_version is not a valid version string."""
+    import tomli
+
+    # Write the model to get a TOML file
+    toml_path = tmp_path / "ribasim.toml"
+    basic.write(toml_path)
+
+    # Read the TOML file and modify the version to an invalid version string
+    with open(toml_path, "rb") as f:
+        config = tomli.load(f)
+
+    # Set an invalid version string
+    config["ribasim_version"] = "invalid_version_string"
+
+    # Write the modified TOML back
+    with open(toml_path, "wb") as f:
+        tomli_w.dump(config, f)
+
+    # Test that a warning is issued when reading the model
+    with pytest.warns(
+        UserWarning,
+        match="version in the TOML file.*invalid_version_string.*does not match the Python package version",
+    ):
+        Model.read(toml_path)

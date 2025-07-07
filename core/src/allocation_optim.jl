@@ -269,11 +269,6 @@ function reset_goal_programming!(
         -MAX_ABS_FLOW * Δt_allocation / scaling.storage;
         force = true,
     )
-    JuMP.fix.(
-        problem[:basin_allocated_out],
-        -MAX_ABS_FLOW * Δt_allocation / scaling.storage;
-        force = true,
-    )
 
     for node_id in only(problem[:user_demand_return_flow].axes)
         inflow_link = user_demand.inflow_link[node_id.idx].link
@@ -744,7 +739,8 @@ function optimize_for_objective!(
         )
     end
 
-    postprocess_objective!(allocation_model, p, objective, t)
+    postprocess_objective!(allocation_model, p_independent, objective, t)
+
     return nothing
 end
 
