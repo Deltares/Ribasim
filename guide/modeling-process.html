@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>Coupling – Ribasim</title>
+<title>Modeling process – Ribasim</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -30,8 +30,8 @@ ul.task-list li input[type="checkbox"] {
 <script src="../site_libs/quarto-search/fuse.min.js"></script>
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
-<link href="../guide/delwaq.html" rel="next">
-<link href="../guide/qgis.html" rel="prev">
+<link href="../guide/qgis.html" rel="next">
+<link href="../guide/examples.html" rel="prev">
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
 <script src="../site_libs/quarto-html/popper.min.js"></script>
@@ -69,9 +69,6 @@ ul.task-list li input[type="checkbox"] {
     "search-label": "Search"
   }
 }</script>
-<script src="../site_libs/quarto-diagram/mermaid.min.js"></script>
-<script src="../site_libs/quarto-diagram/mermaid-init.js"></script>
-<link href="../site_libs/quarto-diagram/mermaid.css" rel="stylesheet">
 
 
 <link rel="stylesheet" href="../assets/styles.css">
@@ -139,7 +136,7 @@ ul.task-list li input[type="checkbox"] {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../guide/coupling.html">Coupling</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../guide/modeling-process.html">Modeling process</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -159,7 +156,7 @@ ul.task-list li input[type="checkbox"] {
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../guide/modeling-process.html" class="sidebar-item-text sidebar-link">
+  <a href="../guide/modeling-process.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text">Modeling process</span></a>
   </div>
 </li>
@@ -171,7 +168,7 @@ ul.task-list li input[type="checkbox"] {
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../guide/coupling.html" class="sidebar-item-text sidebar-link active">
+  <a href="../guide/coupling.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Coupling</span></a>
   </div>
 </li>
@@ -208,10 +205,47 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#imod" id="toc-imod" class="nav-link active" data-scroll-target="#imod"><span class="header-section-number">1</span> iMOD</a></li>
-  <li><a href="#sec-waterquality" id="toc-sec-waterquality" class="nav-link" data-scroll-target="#sec-waterquality"><span class="header-section-number">2</span> Water quality</a>
+  <li><a href="#create-and-validate-the-network" id="toc-create-and-validate-the-network" class="nav-link active" data-scroll-target="#create-and-validate-the-network"><span class="header-section-number">1</span> Create and validate the network</a>
   <ul class="collapse">
-  <li><a href="#setup" id="toc-setup" class="nav-link" data-scroll-target="#setup"><span class="header-section-number">2.1</span> Setup</a></li>
+  <li><a href="#goal" id="toc-goal" class="nav-link" data-scroll-target="#goal"><span class="header-section-number">1.1</span> Goal</a></li>
+  <li><a href="#steps" id="toc-steps" class="nav-link" data-scroll-target="#steps"><span class="header-section-number">1.2</span> Steps</a></li>
+  <li><a href="#keep-in-mind" id="toc-keep-in-mind" class="nav-link" data-scroll-target="#keep-in-mind"><span class="header-section-number">1.3</span> Keep in mind</a></li>
+  <li><a href="#necessary-input-data" id="toc-necessary-input-data" class="nav-link" data-scroll-target="#necessary-input-data"><span class="header-section-number">1.4</span> Necessary input data</a></li>
+  <li><a href="#output" id="toc-output" class="nav-link" data-scroll-target="#output"><span class="header-section-number">1.5</span> Output</a></li>
+  </ul></li>
+  <li><a href="#use-semi-static-conditions" id="toc-use-semi-static-conditions" class="nav-link" data-scroll-target="#use-semi-static-conditions"><span class="header-section-number">2</span> Use semi-static conditions</a>
+  <ul class="collapse">
+  <li><a href="#goal-1" id="toc-goal-1" class="nav-link" data-scroll-target="#goal-1"><span class="header-section-number">2.1</span> Goal</a></li>
+  <li><a href="#steps-1" id="toc-steps-1" class="nav-link" data-scroll-target="#steps-1"><span class="header-section-number">2.2</span> Steps</a></li>
+  <li><a href="#necessary-input-data-1" id="toc-necessary-input-data-1" class="nav-link" data-scroll-target="#necessary-input-data-1"><span class="header-section-number">2.3</span> Necessary input data</a></li>
+  <li><a href="#output-1" id="toc-output-1" class="nav-link" data-scroll-target="#output-1"><span class="header-section-number">2.4</span> Output</a></li>
+  </ul></li>
+  <li><a href="#use-dynamic-boundary-conditions" id="toc-use-dynamic-boundary-conditions" class="nav-link" data-scroll-target="#use-dynamic-boundary-conditions"><span class="header-section-number">3</span> Use dynamic boundary conditions</a>
+  <ul class="collapse">
+  <li><a href="#goal-2" id="toc-goal-2" class="nav-link" data-scroll-target="#goal-2"><span class="header-section-number">3.1</span> Goal</a></li>
+  <li><a href="#steps-2" id="toc-steps-2" class="nav-link" data-scroll-target="#steps-2"><span class="header-section-number">3.2</span> Steps</a></li>
+  <li><a href="#necessary-input-data-2" id="toc-necessary-input-data-2" class="nav-link" data-scroll-target="#necessary-input-data-2"><span class="header-section-number">3.3</span> Necessary input data</a></li>
+  <li><a href="#output-2" id="toc-output-2" class="nav-link" data-scroll-target="#output-2"><span class="header-section-number">3.4</span> Output</a></li>
+  </ul></li>
+  <li><a href="#add-allocation-optional" id="toc-add-allocation-optional" class="nav-link" data-scroll-target="#add-allocation-optional"><span class="header-section-number">4</span> Add allocation (optional)</a>
+  <ul class="collapse">
+  <li><a href="#goal-3" id="toc-goal-3" class="nav-link" data-scroll-target="#goal-3"><span class="header-section-number">4.1</span> Goal</a></li>
+  <li><a href="#steps-3" id="toc-steps-3" class="nav-link" data-scroll-target="#steps-3"><span class="header-section-number">4.2</span> Steps</a></li>
+  <li><a href="#necessary-input-data-3" id="toc-necessary-input-data-3" class="nav-link" data-scroll-target="#necessary-input-data-3"><span class="header-section-number">4.3</span> Necessary input data</a></li>
+  <li><a href="#output-3" id="toc-output-3" class="nav-link" data-scroll-target="#output-3"><span class="header-section-number">4.4</span> Output</a></li>
+  </ul></li>
+  <li><a href="#validate-model" id="toc-validate-model" class="nav-link" data-scroll-target="#validate-model"><span class="header-section-number">5</span> Validate model</a>
+  <ul class="collapse">
+  <li><a href="#goal-4" id="toc-goal-4" class="nav-link" data-scroll-target="#goal-4"><span class="header-section-number">5.1</span> Goal</a></li>
+  <li><a href="#steps-4" id="toc-steps-4" class="nav-link" data-scroll-target="#steps-4"><span class="header-section-number">5.2</span> Steps</a></li>
+  <li><a href="#necessary-input-data-4" id="toc-necessary-input-data-4" class="nav-link" data-scroll-target="#necessary-input-data-4"><span class="header-section-number">5.3</span> Necessary input data</a></li>
+  <li><a href="#output-4" id="toc-output-4" class="nav-link" data-scroll-target="#output-4"><span class="header-section-number">5.4</span> Output</a></li>
+  </ul></li>
+  <li><a href="#apply-the-model" id="toc-apply-the-model" class="nav-link" data-scroll-target="#apply-the-model"><span class="header-section-number">6</span> Apply the model</a>
+  <ul class="collapse">
+  <li><a href="#goal-5" id="toc-goal-5" class="nav-link" data-scroll-target="#goal-5"><span class="header-section-number">6.1</span> Goal</a></li>
+  <li><a href="#steps-5" id="toc-steps-5" class="nav-link" data-scroll-target="#steps-5"><span class="header-section-number">6.2</span> Steps</a></li>
+  <li><a href="#output-5" id="toc-output-5" class="nav-link" data-scroll-target="#output-5"><span class="header-section-number">6.3</span> Output</a></li>
   </ul></li>
   </ul>
 </nav>
@@ -221,7 +255,7 @@ ul.task-list li input[type="checkbox"] {
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">Coupling</h1>
+<h1 class="title">Modeling process</h1>
 </div>
 
 
@@ -238,30 +272,226 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
-<section id="imod" class="level1" data-number="1">
-<h1 data-number="1"><span class="header-section-number">1</span> iMOD</h1>
-<p>Ribasim can also be (online) coupled to other kernels with the help of iMOD Coupler. The corresponding documentation can be found within the <a href="https://deltares.github.io/iMOD-Documentation/coupler.html">iMOD Suite Documentation</a>.</p>
+<p>In general, it is recommended to follow an incremental approach when building a Ribasim model. This approach could be organized in the following phases:</p>
+<ol type="1">
+<li>Start with a small network to get some experience and make it run with default values and static forcing. When this small model runs, expand the network to cover the full area and make that run with default values and static forcing.</li>
+<li>Improve parameterization and make it run with dry and wet conditions.</li>
+<li>Improve parameterization and include more complex control situations. Conduct test runs with dynamic forcing.</li>
+<li>Add allocation as needed (may possibly be done in parallel with phase 3).</li>
+<li>Validate the model against observations.</li>
+<li>Apply the model together with stakeholders for scenario analysis or in day-to-day operations.</li>
+</ol>
+<section id="create-and-validate-the-network" class="level1" data-number="1">
+<h1 data-number="1"><span class="header-section-number">1</span> Create and validate the network</h1>
+<section id="goal" class="level2" data-number="1.1">
+<h2 data-number="1.1" class="anchored" data-anchor-id="goal"><span class="header-section-number">1.1</span> Goal</h2>
+<p>Create a valid network representation of the water system that runs and can be discussed with stakeholders.</p>
 </section>
-<section id="sec-waterquality" class="level1" data-number="2">
-<h1 data-number="2"><span class="header-section-number">2</span> Water quality</h1>
-<p>Ribasim can be offline coupled to Delwaq, the Deltares Water Quality model.</p>
-<div class="cell" data-layout-align="default">
-<div class="cell-output-display">
-<div>
-<p></p><figure class="figure"><p></p>
-<div>
-<pre class="mermaid mermaid-js">flowchart LR
-    Ribasim --&gt; Delwaq
-</pre>
-</div>
-<p></p></figure><p></p>
-</div>
-</div>
-</div>
-<section id="setup" class="level2" data-number="2.1">
-<h2 data-number="2.1" class="anchored" data-anchor-id="setup"><span class="header-section-number">2.1</span> Setup</h2>
-<p>Delwaq can calculate the concentration of substances in <a href="../reference/node/basin.html">Basin</a> nodes over time, based on initial concentrations, and of <a href="../reference/node/flow-boundary.html">FlowBoundary</a> nodes. Ribasim exposes the <code>Basin / concentration</code>, <code>Basin / concentration_state</code>, <code>FlowBoundary / concentration</code>, and <code>LevelBoundary / concentration</code> tables to setup these substances and concentrations.</p>
-<p>When a Ribasim model ran with the above tables, one can use the utilities in the <code>delwaq</code> namespace of the Ribasim Python API to generate the input required for Delwaq to run, as well as to parse the output from Delwaq into a Ribasim compatible format. For more information see the <a href="../guide/delwaq.html">guide</a>.</p>
+<section id="steps" class="level2" data-number="1.2">
+<h2 data-number="1.2" class="anchored" data-anchor-id="steps"><span class="header-section-number">1.2</span> Steps</h2>
+<ul>
+<li>Discuss with stakeholders the purpose of the model and what system components and behavior they want to see reflected in the model.</li>
+<li>Decide what procedure to follow to separate Basins and position control nodes in between.</li>
+<li>Script this approach to build the network topology of nodes and links.</li>
+<li>Add user demand nodes as appropriate and link them to the supplying Basin.</li>
+<li>Parameterize Basins with default or made up profiles.</li>
+<li>Parameterize TabulatedRatingCurves with some default settings.</li>
+<li>Parameterize Pumps and outlets with sufficiently large default or made up capacities.</li>
+<li>Put static forcing on the boundaries nodes.</li>
+<li>Try to run the model and fix any topological issues.</li>
+<li>Discuss the network/water system representation with the stakeholders to confirm that the relevant elements are included. Prioritize next steps.</li>
+</ul>
+</section>
+<section id="keep-in-mind" class="level2" data-number="1.3">
+<h2 data-number="1.3" class="anchored" data-anchor-id="keep-in-mind"><span class="header-section-number">1.3</span> Keep in mind</h2>
+<ul>
+<li>For better understanding and plotting of the model layout, use of proper GIS-coordinates are highly recommended. Water system components that are modelled with multiple nodes in Ribasim (e.g.&nbsp;reservoirs) may share similar coordinates for the storage component (the Basin-node) and the control structures (e.g.&nbsp;Outlet nodes). For clarity, it is recommended to apply small coordinate offsets to enable visualization of topological connections between these co-located nodes.</li>
+<li>When preparing input data for Ribasim, all quantities must follow SI units unless explicitly stated otherwise in the documentation.
+<ul>
+<li>Volume: cubic meters (m³)</li>
+<li>Flow: cubic meters per second (m³/s)</li>
+<li>Water level / elevation: meters (m) above reference datum</li>
+<li>Area: square meters (m²)</li>
+</ul></li>
+</ul>
+</section>
+<section id="necessary-input-data" class="level2" data-number="1.4">
+<h2 data-number="1.4" class="anchored" data-anchor-id="necessary-input-data"><span class="header-section-number">1.4</span> Necessary input data</h2>
+<ul>
+<li>GIS-data layers with accurate geographic information (coordinates) for proper water system representation:
+<ul>
+<li>reservoirs</li>
+<li>control structures (weirs, intakes, outlets, pump stations)</li>
+<li>gauges</li>
+<li>river reaches, canal sections</li>
+<li>water demand areas (irrigation systems, domestic/industrial abstractions)</li>
+</ul></li>
+<li>If the above is not available, at minimum map-based sketch with the layout of the water system, paying extra attention to positioning of waterways and connections. Try to assign proper coordinates.</li>
+<li>Some default (static) values (e.g.&nbsp;flow rates, river cross sections) to use that are in line with the typical parameter ranges of the system.</li>
+<li>Keep in mind that values are specified in SI units.</li>
+</ul>
+</section>
+<section id="output" class="level2" data-number="1.5">
+<h2 data-number="1.5" class="anchored" data-anchor-id="output"><span class="header-section-number">1.5</span> Output</h2>
+<ul>
+<li>A valid network topology with sufficient basic information for execution by the Ribasim kernel.</li>
+<li>A model schematization that can be discussed with stakeholders.</li>
+</ul>
+</section>
+</section>
+<section id="use-semi-static-conditions" class="level1" data-number="2">
+<h1 data-number="2"><span class="header-section-number">2</span> Use semi-static conditions</h1>
+<section id="goal-1" class="level2" data-number="2.1">
+<h2 data-number="2.1" class="anchored" data-anchor-id="goal-1"><span class="header-section-number">2.1</span> Goal</h2>
+<p>Improve the model’s realism by incorporating better physical parameters and semi-static boundary conditions to test the model under different flow scenarios.</p>
+</section>
+<section id="steps-1" class="level2" data-number="2.2">
+<h2 data-number="2.2" class="anchored" data-anchor-id="steps-1"><span class="header-section-number">2.2</span> Steps</h2>
+<ul>
+<li>Where available, use actual Basin profile information (e.g.&nbsp;volume-level relations) for better volume representation. If needed, make estimates of river/canal width and depth in combination with length of river reaches and canal sections to make a reasonable volume estimate.</li>
+<li>Improve Tabulated Rating Curves parameterization where possible.</li>
+<li>Add local water level controls to the pumps and outlets to be maintained.</li>
+<li>Add proper capacities to outlets and pumps.</li>
+<li>Try to run the model with semi-static flow boundaries/demands (high and low flow rates).</li>
+<li>Assess whether water flows in a proper direction, where basins drain properly and receive water as needed.</li>
+<li>Assess computational run time and improve the model (network topology and/or model parameterization) to address the nodes that most impact performance.</li>
+<li>Discuss the model with the stakeholders to confirm that the relevant elements are included. Prioritize next steps.</li>
+</ul>
+</section>
+<section id="necessary-input-data-1" class="level2" data-number="2.3">
+<h2 data-number="2.3" class="anchored" data-anchor-id="necessary-input-data-1"><span class="header-section-number">2.3</span> Necessary input data</h2>
+<ul>
+<li>Volume-level relations for reservoirs and river reaches and canal sections.</li>
+<li>Tabulated rating curves.</li>
+<li>Water system control information such as controlled water levels, actual flow rates or maximum flow capacities.</li>
+</ul>
+</section>
+<section id="output-1" class="level2" data-number="2.4">
+<h2 data-number="2.4" class="anchored" data-anchor-id="output-1"><span class="header-section-number">2.4</span> Output</h2>
+<ul>
+<li>A valid and running Ribasim model with improved system representation.</li>
+</ul>
+</section>
+</section>
+<section id="use-dynamic-boundary-conditions" class="level1" data-number="3">
+<h1 data-number="3"><span class="header-section-number">3</span> Use dynamic boundary conditions</h1>
+<section id="goal-2" class="level2" data-number="3.1">
+<h2 data-number="3.1" class="anchored" data-anchor-id="goal-2"><span class="header-section-number">3.1</span> Goal</h2>
+<p>Transition from static/semi-static conditions to realistic time-varying boundary conditions and control strategies.</p>
+</section>
+<section id="steps-2" class="level2" data-number="3.2">
+<h2 data-number="3.2" class="anchored" data-anchor-id="steps-2"><span class="header-section-number">3.2</span> Steps</h2>
+<ul>
+<li>Collect and add realistic dynamic forcing (e.g.&nbsp;flow boundaries, Basin fluxes, user demands).</li>
+<li>Where needed add control nodes to properly represent more complicated control practices of joint system operation.</li>
+<li>Run the model for a limited time period (e.g.&nbsp;1 year) and assess model behavior (outcome and computational performance).</li>
+<li>Improve the model (network topology and/or model parameterization) to address the nodes that most impact performance.</li>
+<li>Discuss the model and the underlying assumptions with the stakeholders to confirm that the relevant elements are properly included. Prioritize next steps.</li>
+</ul>
+</section>
+<section id="necessary-input-data-2" class="level2" data-number="3.3">
+<h2 data-number="3.3" class="anchored" data-anchor-id="necessary-input-data-2"><span class="header-section-number">3.3</span> Necessary input data</h2>
+<ul>
+<li>Water system control information e.g.&nbsp;on joint operation of reservoirs.</li>
+<li>proper forcing on the boundaries.</li>
+</ul>
+</section>
+<section id="output-2" class="level2" data-number="3.4">
+<h2 data-number="3.4" class="anchored" data-anchor-id="output-2"><span class="header-section-number">3.4</span> Output</h2>
+<ul>
+<li>A better model, both in outcome produced and runtime needed.</li>
+</ul>
+</section>
+</section>
+<section id="add-allocation-optional" class="level1" data-number="4">
+<h1 data-number="4"><span class="header-section-number">4</span> Add allocation (optional)</h1>
+<section id="goal-3" class="level2" data-number="4.1">
+<h2 data-number="4.1" class="anchored" data-anchor-id="goal-3"><span class="header-section-number">4.1</span> Goal</h2>
+<p>Implement water allocation to represent water distribution policies and priority-based water management decisions.</p>
+<p>When the analysis situation needs global allocation decisions, the input for the allocation algorithm needs to be specified.</p>
+</section>
+<section id="steps-3" class="level2" data-number="4.2">
+<h2 data-number="4.2" class="anchored" data-anchor-id="steps-3"><span class="header-section-number">4.2</span> Steps</h2>
+<ul>
+<li>Extend/add UserDemand nodes and associated abstraction series (m³/s) and link them to Basin (abstraction and return flow links).</li>
+<li>Add LevelDemand nodes and link them to Basins.</li>
+<li>Add FlowDemand nodes and link them to Outlets or Pumps.</li>
+<li>Assign demand priorities, using separate priorities for each demand-type.</li>
+<li>Assign allocation sub-networks.</li>
+<li>When relevant, specify which discrete control nodes need to be controlled by allocation.</li>
+<li>Run the model with allocation for a limited time period (e.g.&nbsp;1 year) and assess model behavior (outcome and computational performance).</li>
+<li>Improve the model (e.g prioritization) to address outstanding issues.</li>
+<li>Review the model implementation and underlying assumptions with the stakeholders to confirm that the underlying (policy) information is properly represented in the model.</li>
+</ul>
+</section>
+<section id="necessary-input-data-3" class="level2" data-number="4.3">
+<h2 data-number="4.3" class="anchored" data-anchor-id="necessary-input-data-3"><span class="header-section-number">4.3</span> Necessary input data</h2>
+<ul>
+<li>Reservoir operation and allocation policy information (demands, allocation and source priorities, reservoir rules etc).</li>
+</ul>
+</section>
+<section id="output-3" class="level2" data-number="4.4">
+<h2 data-number="4.4" class="anchored" data-anchor-id="output-3"><span class="header-section-number">4.4</span> Output</h2>
+<ul>
+<li>An improved water systems model taking allocation policies into account.</li>
+</ul>
+</section>
+</section>
+<section id="validate-model" class="level1" data-number="5">
+<h1 data-number="5"><span class="header-section-number">5</span> Validate model</h1>
+<section id="goal-4" class="level2" data-number="5.1">
+<h2 data-number="5.1" class="anchored" data-anchor-id="goal-4"><span class="header-section-number">5.1</span> Goal</h2>
+<p>Verify that the model adequately represents the real-world water system by comparing simulated results with observed data.</p>
+<p>As the model is nearly finished, a validation against observations is advised to accommodate acceptance.</p>
+</section>
+<section id="steps-4" class="level2" data-number="5.2">
+<h2 data-number="5.2" class="anchored" data-anchor-id="steps-4"><span class="header-section-number">5.2</span> Steps</h2>
+<ul>
+<li>Discuss with stakeholders what they consider relevant to accept the model.</li>
+<li>Decide on key performance indicators (e.g.&nbsp;water levels or flows at critical locations) and acceptance criteria to validate model behavior.</li>
+<li>Decide on the period to run and validate the model.</li>
+<li>Collect observations that support the validation.</li>
+<li>Collect forcing data for the associated validation period.</li>
+<li>Run the model for the analysis period.</li>
+<li>Assess model behavior (outcome and computational performance).</li>
+<li>Discuss the model results with the stakeholders and if needed prioritize improvements.</li>
+</ul>
+</section>
+<section id="necessary-input-data-4" class="level2" data-number="5.3">
+<h2 data-number="5.3" class="anchored" data-anchor-id="necessary-input-data-4"><span class="header-section-number">5.3</span> Necessary input data</h2>
+<ul>
+<li>Observations that can be associated with objects in the network.</li>
+</ul>
+</section>
+<section id="output-4" class="level2" data-number="5.4">
+<h2 data-number="5.4" class="anchored" data-anchor-id="output-4"><span class="header-section-number">5.4</span> Output</h2>
+<ul>
+<li>A validated model with documented performance against observations.</li>
+<li>Assessment of model accuracy and limitations for intended applications.</li>
+</ul>
+</section>
+</section>
+<section id="apply-the-model" class="level1" data-number="6">
+<h1 data-number="6"><span class="header-section-number">6</span> Apply the model</h1>
+<section id="goal-5" class="level2" data-number="6.1">
+<h2 data-number="6.1" class="anchored" data-anchor-id="goal-5"><span class="header-section-number">6.1</span> Goal</h2>
+<p>Deploy the validated model for its intended purpose, whether for operational water management, scenario analysis, or decision support.</p>
+</section>
+<section id="steps-5" class="level2" data-number="6.2">
+<h2 data-number="6.2" class="anchored" data-anchor-id="steps-5"><span class="header-section-number">6.2</span> Steps</h2>
+<ul>
+<li>Conduct scenario analysis or operational runs as required by the project.</li>
+<li>Document model assumptions, limitations, and recommended usage.</li>
+<li>Provide training or handover materials to end users.</li>
+<li>Establish procedures for model updates and maintenance as needed.</li>
+</ul>
+</section>
+<section id="output-5" class="level2" data-number="6.3">
+<h2 data-number="6.3" class="anchored" data-anchor-id="output-5"><span class="header-section-number">6.3</span> Output</h2>
+<ul>
+<li>A fully operational model ready for its intended application.</li>
+<li>Documentation supporting model use and interpretation.</li>
+</ul>
 
 
 </section>
@@ -669,13 +899,13 @@ ul.task-list li input[type="checkbox"] {
   </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="../guide/qgis.html" class="pagination-link" aria-label="QGIS plugin">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">QGIS plugin</span>
+      <a href="../guide/examples.html" class="pagination-link" aria-label="Examples">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Examples</span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="../guide/delwaq.html" class="pagination-link" aria-label="Ribasim Delwaq coupling">
-        <span class="nav-page-text">Ribasim Delwaq coupling</span> <i class="bi bi-arrow-right-short"></i>
+      <a href="../guide/qgis.html" class="pagination-link" aria-label="QGIS plugin">
+        <span class="nav-page-text">QGIS plugin</span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>
