@@ -413,7 +413,7 @@ function formulate_flow!(
     p::Parameters,
     t::Number,
 )::Nothing
-    (; p_mutable, time_dependent_cache) = p
+    (; p_mutable) = p
     all_nodes_active = p_mutable.all_nodes_active
     (; node_id, active, interpolations, current_interpolation_index) =
         tabulated_rating_curve
