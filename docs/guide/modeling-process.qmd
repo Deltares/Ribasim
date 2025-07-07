@@ -7,14 +7,14 @@ In general, it is recommended to follow an incremental approach when building a 
 1. Start with a small network to get some experience and make it run with default values and static forcing. When this small model runs, expand the network to cover the full area and make that run with default values and static forcing.
 2. Improve parameterization and make it run with dry and wet conditions.
 3. Improve parameterization and include more complex control situations. Conduct test runs with dynamic forcing.
-4. Add allocation as needed (may possibly done in parallel with phase 3).
+4. Add allocation as needed (may possibly be done in parallel with phase 3).
 5. Validate the model against observations.
 6. Apply the model together with stakeholders for scenario analysis or in day-to-day operations.
 
 # Create and validate the network
 
 **Goal**
-Create a valid network representation of the water system which runs and can be discussed with the stakeholder.
+Create a valid network representation of the water system that runs and can be discussed with stakeholders.
 
 **Steps**
 - Discuss with stakeholders the purpose of the model and what system components and behavior they want to see reflected in the model
@@ -53,6 +53,9 @@ Create a valid network representation of the water system which runs and can be 
 
 # Use semi-static conditions
 
+**Goal**
+Improve the model's realism by incorporating better physical parameters and semi-static boundary conditions to test the model under different flow scenarios.
+
 **Steps**
 - Where available, use actual Basin profile information (e.g. volume-level relations) for better volume representation. If needed, make estimates of river/canal width and depth in combination with length of river reaches and canal sections to make a reasonable volume estimate
 - Improve Tabulated Rating Curves parameterization where possible
@@ -60,7 +63,7 @@ Create a valid network representation of the water system which runs and can be 
 - Add proper capacities to outlets and pumps
 - Try to run the model with semi-static flow boundaries/demands (high and low flow rates)
 - Assess whether water flows in a proper direction, where basins drain properly and receive water as needed
-- Assess computational run time and improve the model (network topology and/or model parameterization) to address the nodes that most impact.
+- Assess computational run time and improve the model (network topology and/or model parameterization) to address the nodes that most impact performance.
 - Discuss the model with the stakeholders to confirm that the relevant elements are included. Prioritize next steps.
 
 **Necessary input data**
@@ -73,11 +76,14 @@ Create a valid network representation of the water system which runs and can be 
 
 # Use dynamic boundary conditions
 
+**Goal**
+Transition from static/semi-static conditions to realistic time-varying boundary conditions and control strategies.
+
 **Steps**
 - Collect and add realistic dynamic forcing (e.g. flow boundaries, Basin fluxes, user demands).
 - Where needed add control nodes to properly represent more complicated control practices of joint system operation
 - Run the model for a limited time period (e.g. 1 year) and assess model behavior (outcome and computational performance)
-- Improve the model (network topology and/or model parameterization) to address the nodes that most impact
+- Improve the model (network topology and/or model parameterization) to address the nodes that most impact performance
 - Discuss the model and the underlying assumptions with the stakeholders to confirm that the relevant elements are properly included. Prioritize next steps.
 
 **Necessary input data**
@@ -85,9 +91,12 @@ Create a valid network representation of the water system which runs and can be 
 - proper forcing on the boundaries
 
 **Output**
-- a better model, both in outcome produced and runtime needed
+- A better model, both in outcome produced and runtime needed.
 
 # Add allocation (optional)
+
+**Goal**
+Implement water allocation to represent water distribution policies and priority-based water management decisions.
 
 When the analysis situation needs global allocation decisions, the input for the allocation algorithm needs to be specified
 
@@ -106,25 +115,43 @@ When the analysis situation needs global allocation decisions, the input for the
 - Reservoir operation and allocation policy information (demands, allocation and source priorities, reservoir rules etc)
 
 **Output**
-- an improved water systems model taking allocation policies into account
+- An improved water systems model taking allocation policies into account.
 
 # Validate model
+
+**Goal**
+Verify that the model adequately represents the real-world water system by comparing simulated results with observed data.
 
 As the model is nearly finished, a validation against observations is advised to accommodate acceptance.
 
 **Steps**
-- Discuss with stakeholders what they consider relevant to accept the model
-- Decide on key performance indicators (e.g. water levels or flows at critical locations) and acceptance criteria to validate model behavior
-- Decide on the period to run and validate the model
-- Collect observations that support the validation
-- Collect forcing data for the associated validation period
-- Run the model for the analysis period
-- Assess model behavior (outcome and computational performance)
-- Discuss the model results with the stakeholders and if needed prioritize improvements
+- Discuss with stakeholders what they consider relevant to accept the model.
+- Decide on key performance indicators (e.g. water levels or flows at critical locations) and acceptance criteria to validate model behavior.
+- Decide on the period to run and validate the model.
+- Collect observations that support the validation.
+- Collect forcing data for the associated validation period.
+- Run the model for the analysis period.
+- Assess model behavior (outcome and computational performance).
+- Discuss the model results with the stakeholders and if needed prioritize improvements.
 
 **Necessary input data**
-- Observations that can be associated with objects in the network
+- Observations that can be associated with objects in the network.
+
+**Output**
+- A validated model with documented performance against observations.
+- Assessment of model accuracy and limitations for intended applications.
 
 # Apply the model
 
-As deemed appropriate by the project.
+**Goal**
+Deploy the validated model for its intended purpose, whether for operational water management, scenario analysis, or decision support.
+
+**Steps**
+- Conduct scenario analysis or operational runs as required by the project
+- Document model assumptions, limitations, and recommended usage
+- Provide training or handover materials to end users
+- Establish procedures for model updates and maintenance as needed
+
+**Output**
+- A fully operational model ready for its intended application
+- Documentation supporting model use and interpretation
