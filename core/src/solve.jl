@@ -558,44 +558,33 @@ function formulate_flow!(
     return nothing
 end
 
-# Common code for both pump and outlet flow formulation
-function formulate_controlled_flow!(
+function formulate_flow!(
     du::CVector,
-    component::Union{Pump, Outlet},
-    component_type::Symbol,  # :pump or :outlet
+    pump::Pump,
     p::Parameters,
     t::Number,
     control_type_::ContinuousControlType.T,
 )::Nothing
     (; time_dependent_cache, state_time_dependent_cache, p_mutable) = p
-
-    # Get the appropriate current flow rate cache
-    current_flow_rate = if component_type === :pump
-        state_time_dependent_cache.current_flow_rate_pump
-    else
-        state_time_dependent_cache.current_flow_rate_outlet
-    end
-
-    # Get component-specific cache
-    component_cache = getproperty(time_dependent_cache, component_type)
     (;
         current_min_flow_rate,
         current_max_flow_rate,
         current_min_upstream_level,
         current_max_downstream_level,
-    ) = component_cache
+    ) = time_dependent_cache.pump
+    (; current_flow_rate_pump) = state_time_dependent_cache
 
     all_nodes_active = p_mutable.all_nodes_active
-    for id in component.node_id
-        inflow_link = component.inflow_link[id.idx]
-        outflow_link = component.outflow_link[id.idx]
-        active = component.active[id.idx]
-        flow_rate_itp = component.flow_rate[id.idx]
-        min_flow_rate = component.min_flow_rate[id.idx]
-        max_flow_rate = component.max_flow_rate[id.idx]
-        control_type = component.control_type[id.idx]
-        min_upstream_level = component.min_upstream_level[id.idx]
-        max_downstream_level = component.max_downstream_level[id.idx]
+    for id in pump.node_id
+        inflow_link = pump.inflow_link[id.idx]
+        outflow_link = pump.outflow_link[id.idx]
+        active = pump.active[id.idx]
+        flow_rate_itp = pump.flow_rate[id.idx]
+        min_flow_rate = pump.min_flow_rate[id.idx]
+        max_flow_rate = pump.max_flow_rate[id.idx]
+        control_type = pump.control_type[id.idx]
+        min_upstream_level = pump.min_upstream_level[id.idx]
+        max_downstream_level = pump.max_downstream_level[id.idx]
 
         if should_skip_update_q(active, control_type, control_type_, p)
             continue
@@ -605,20 +594,15 @@ function formulate_controlled_flow!(
             eval_time_interp(flow_rate_itp, current_flow_rate, id.idx, p, t)
         end
 
-        flow_rate = current_flow_rate[id.idx]
+        flow_rate = current_flow_rate_pump[id.idx]
 
         inflow_id = inflow_link.link[1]
         outflow_id = outflow_link.link[2]
         src_level = get_level(p, inflow_id, t)
         dst_level = get_level(p, outflow_id, t)
 
-        q = flow_rate * get_low_storage_factor(p, inflow_id)
-
-        # Special case for outlet: check level difference
-        if component_type === :outlet
-            Δlevel = src_level - dst_level
-            q *= reduction_factor(Δlevel, 0.02)
-        end
+        factor = get_low_storage_factor(p, inflow_id)
+        q = flow_rate * factor
 
         min_upstream_level_ =
             eval_time_interp(min_upstream_level, current_min_upstream_level, id.idx, p, t)
@@ -638,15 +622,14 @@ function formulate_controlled_flow!(
             eval_time_interp(min_flow_rate, current_min_flow_rate, id.idx, p, t),
             eval_time_interp(max_flow_rate, current_max_flow_rate, id.idx, p, t),
         )
-        du_component = getproperty(du, component_type)
-        du_component[id.idx] = q
+        du.pump[id.idx] = q
     end
     return nothing
 end
 
 function formulate_flow!(
     du::CVector,
-    pump::Pump,
+    outlet::Outlet,
     p::Parameters,
     t::Number,
     control_type_::ContinuousControlType.T,
@@ -662,6 +645,70 @@ function formulate_flow!(
     control_type_::ContinuousControlType.T,
 )::Nothing
     formulate_controlled_flow!(du, outlet, :outlet, p, t, control_type_)
+    (; time_dependent_cache, state_time_dependent_cache, p_mutable) = p
+    (; current_flow_rate_outlet) = state_time_dependent_cache
+    (;
+        current_min_flow_rate,
+        current_max_flow_rate,
+        current_min_upstream_level,
+        current_max_downstream_level,
+    ) = time_dependent_cache.outlet
+
+    all_nodes_active = p_mutable.all_nodes_active
+    for id in outlet.node_id
+        inflow_link = outlet.inflow_link[id.idx]
+        outflow_link = outlet.outflow_link[id.idx]
+        active = outlet.active[id.idx]
+        flow_rate_itp = outlet.flow_rate[id.idx]
+        min_flow_rate = outlet.min_flow_rate[id.idx]
+        max_flow_rate = outlet.max_flow_rate[id.idx]
+        control_type = outlet.control_type[id.idx]
+        min_upstream_level = outlet.min_upstream_level[id.idx]
+        max_downstream_level = outlet.max_downstream_level[id.idx]
+
+        if should_skip_update_q(active, control_type, control_type_, p)
+            continue
+        end
+        if control_type ∈ (ControlType.None, ControlType.Allocation)
+            eval_time_interp(flow_rate_itp, current_flow_rate_outlet, id.idx, p, t)
+        end
+
+        flow_rate = current_flow_rate_outlet[id.idx]
+
+        inflow_id = inflow_link.link[1]
+        outflow_id = outflow_link.link[2]
+        src_level = get_level(p, inflow_id, t)
+        dst_level = get_level(p, outflow_id, t)
+
+        q = flow_rate
+        q *= get_low_storage_factor(p, inflow_id)
+
+        # No flow of outlet if source level is lower than target level
+        # NOTE: If these thresholds are changed, also change them in set_simulation_data!
+        Δlevel = src_level - dst_level
+        q *= reduction_factor(Δlevel, 0.02)
+
+        min_upstream_level_ =
+            eval_time_interp(min_upstream_level, current_min_upstream_level, id.idx, p, t)
+        q *= reduction_factor(src_level - min_upstream_level_, 0.02)
+
+        max_downstream_level_ = eval_time_interp(
+            max_downstream_level,
+            current_max_downstream_level,
+            id.idx,
+            p,
+            t,
+        )
+        q *= reduction_factor(max_downstream_level_ - dst_level, 0.02)
+
+        q = clamp(
+            q,
+            eval_time_interp(min_flow_rate, current_min_flow_rate, id.idx, p, t),
+            eval_time_interp(max_flow_rate, current_max_flow_rate, id.idx, p, t),
+        )
+        du.outlet[id.idx] = q
+    end
+    return nothing
 end
 
 function formulate_flows!(
