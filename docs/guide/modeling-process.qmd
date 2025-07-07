@@ -17,15 +17,15 @@ In general, it is recommended to follow an incremental approach when building a 
 Create a valid network representation of the water system that runs and can be discussed with stakeholders.
 
 **Steps**
-- Discuss with stakeholders the purpose of the model and what system components and behavior they want to see reflected in the model
-- Decide what procedure to follow to separate Basins and position control nodes in between
-- Script this approach to build the network topology of nodes and links
-- Add user demand nodes as appropriate and link them to the supplying Basin
-- Parameterize Basins with default or made up profiles
-- Parameterize TabulatedRatingCurves with some default settings
-- Parameterize Pumps and outlets with sufficiently large default or made up capacities
-- Put static forcing on the boundaries nodes
-- Try to run the model and fix any topological issues
+- Discuss with stakeholders the purpose of the model and what system components and behavior they want to see reflected in the model.
+- Decide what procedure to follow to separate Basins and position control nodes in between.
+- Script this approach to build the network topology of nodes and links.
+- Add user demand nodes as appropriate and link them to the supplying Basin.
+- Parameterize Basins with default or made up profiles.
+- Parameterize TabulatedRatingCurves with some default settings.
+- Parameterize Pumps and outlets with sufficiently large default or made up capacities.
+- Put static forcing on the boundaries nodes.
+- Try to run the model and fix any topological issues.
 - Discuss the network/water system representation with the stakeholders to confirm that the relevant elements are included. Prioritize next steps.
 
 **Keep in mind**
@@ -57,17 +57,17 @@ Create a valid network representation of the water system that runs and can be d
 Improve the model's realism by incorporating better physical parameters and semi-static boundary conditions to test the model under different flow scenarios.
 
 **Steps**
-- Where available, use actual Basin profile information (e.g. volume-level relations) for better volume representation. If needed, make estimates of river/canal width and depth in combination with length of river reaches and canal sections to make a reasonable volume estimate
-- Improve Tabulated Rating Curves parameterization where possible
-- Add local water level controls to the pumps and outlets to be maintained
-- Add proper capacities to outlets and pumps
-- Try to run the model with semi-static flow boundaries/demands (high and low flow rates)
-- Assess whether water flows in a proper direction, where basins drain properly and receive water as needed
+- Where available, use actual Basin profile information (e.g. volume-level relations) for better volume representation. If needed, make estimates of river/canal width and depth in combination with length of river reaches and canal sections to make a reasonable volume estimate.
+- Improve Tabulated Rating Curves parameterization where possible.
+- Add local water level controls to the pumps and outlets to be maintained.
+- Add proper capacities to outlets and pumps.
+- Try to run the model with semi-static flow boundaries/demands (high and low flow rates).
+- Assess whether water flows in a proper direction, where basins drain properly and receive water as needed.
 - Assess computational run time and improve the model (network topology and/or model parameterization) to address the nodes that most impact performance.
 - Discuss the model with the stakeholders to confirm that the relevant elements are included. Prioritize next steps.
 
 **Necessary input data**
-- Volume-level relations for reservoirs and river reaches and canal sections
+- Volume-level relations for reservoirs and river reaches and canal sections.
 - Tabulated rating curves.
 - Water system control information such as controlled water levels, actual flow rates or maximum flow capacities.
 
@@ -81,14 +81,14 @@ Transition from static/semi-static conditions to realistic time-varying boundary
 
 **Steps**
 - Collect and add realistic dynamic forcing (e.g. flow boundaries, Basin fluxes, user demands).
-- Where needed add control nodes to properly represent more complicated control practices of joint system operation
-- Run the model for a limited time period (e.g. 1 year) and assess model behavior (outcome and computational performance)
-- Improve the model (network topology and/or model parameterization) to address the nodes that most impact performance
+- Where needed add control nodes to properly represent more complicated control practices of joint system operation.
+- Run the model for a limited time period (e.g. 1 year) and assess model behavior (outcome and computational performance).
+- Improve the model (network topology and/or model parameterization) to address the nodes that most impact performance.
 - Discuss the model and the underlying assumptions with the stakeholders to confirm that the relevant elements are properly included. Prioritize next steps.
 
 **Necessary input data**
-- Water system control information e.g. on joint operation of reservoirs
-- proper forcing on the boundaries
+- Water system control information e.g. on joint operation of reservoirs.
+- proper forcing on the boundaries.
 
 **Output**
 - A better model, both in outcome produced and runtime needed.
@@ -98,21 +98,21 @@ Transition from static/semi-static conditions to realistic time-varying boundary
 **Goal**
 Implement water allocation to represent water distribution policies and priority-based water management decisions.
 
-When the analysis situation needs global allocation decisions, the input for the allocation algorithm needs to be specified
+When the analysis situation needs global allocation decisions, the input for the allocation algorithm needs to be specified.
 
 **Steps**
-- Extend/add UserDemand nodes and associated abstraction series (m³/s) and link them to Basin (abstraction and return flow links)
-- Add LevelDemand nodes and link them to Basins
-- Add FlowDemand nodes and link them to Outlets or Pumps
-- Assign demand priorities, using separate priorities for each demand-type
-- Assign allocation sub-networks
-- When relevant, specify which discrete control nodes need to be controlled by allocation
-- Run the model with allocation for a limited time period (e.g. 1 year) and assess model behavior (outcome and computational performance)
-- Improve the model (e.g prioritization) to address outstanding issues
-- Review the model implementation and underlying assumptions with the stakeholders to confirm that the underlying (policy) information is properly represented in the model
+- Extend/add UserDemand nodes and associated abstraction series (m³/s) and link them to Basin (abstraction and return flow links).
+- Add LevelDemand nodes and link them to Basins.
+- Add FlowDemand nodes and link them to Outlets or Pumps.
+- Assign demand priorities, using separate priorities for each demand-type.
+- Assign allocation sub-networks.
+- When relevant, specify which discrete control nodes need to be controlled by allocation.
+- Run the model with allocation for a limited time period (e.g. 1 year) and assess model behavior (outcome and computational performance).
+- Improve the model (e.g prioritization) to address outstanding issues.
+- Review the model implementation and underlying assumptions with the stakeholders to confirm that the underlying (policy) information is properly represented in the model.
 
 **Necessary input data**
-- Reservoir operation and allocation policy information (demands, allocation and source priorities, reservoir rules etc)
+- Reservoir operation and allocation policy information (demands, allocation and source priorities, reservoir rules etc).
 
 **Output**
 - An improved water systems model taking allocation policies into account.
@@ -147,11 +147,11 @@ As the model is nearly finished, a validation against observations is advised to
 Deploy the validated model for its intended purpose, whether for operational water management, scenario analysis, or decision support.
 
 **Steps**
-- Conduct scenario analysis or operational runs as required by the project
-- Document model assumptions, limitations, and recommended usage
-- Provide training or handover materials to end users
-- Establish procedures for model updates and maintenance as needed
+- Conduct scenario analysis or operational runs as required by the project.
+- Document model assumptions, limitations, and recommended usage.
+- Provide training or handover materials to end users.
+- Establish procedures for model updates and maintenance as needed.
 
 **Output**
-- A fully operational model ready for its intended application
-- Documentation supporting model use and interpretation
+- A fully operational model ready for its intended application.
+- Documentation supporting model use and interpretation.
