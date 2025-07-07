@@ -634,17 +634,6 @@ function formulate_flow!(
     t::Number,
     control_type_::ContinuousControlType.T,
 )::Nothing
-    formulate_controlled_flow!(du, pump, :pump, p, t, control_type_)
-end
-
-function formulate_flow!(
-    du::CVector,
-    outlet::Outlet,
-    p::Parameters,
-    t::Number,
-    control_type_::ContinuousControlType.T,
-)::Nothing
-    formulate_controlled_flow!(du, outlet, :outlet, p, t, control_type_)
     (; time_dependent_cache, state_time_dependent_cache, p_mutable) = p
     (; current_flow_rate_outlet) = state_time_dependent_cache
     (;
@@ -669,7 +658,7 @@ function formulate_flow!(
         if should_skip_update_q(active, control_type, control_type_, p)
             continue
         end
-        if control_type ∈ (ControlType.None, ControlType.Allocation)
+        if control_type == ContinuousControlType.None
             eval_time_interp(flow_rate_itp, current_flow_rate_outlet, id.idx, p, t)
         end
 
