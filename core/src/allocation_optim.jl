@@ -710,7 +710,7 @@ function optimize_for_objective!(
     objective::AllocationObjective,
 )::Nothing
     (; p, t) = integrator
-    (; p_independent, p_mutable) = p
+    (; p_independent) = p
     (; problem, subnetwork_id) = allocation_model
 
     preprocess_objective!(allocation_model, p_independent, objective)
