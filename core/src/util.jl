@@ -397,9 +397,9 @@ function get_external_demand_priority_idx(
     return findsorted(allocation.demand_priorities_all, demand_priority)
 end
 
-const control_type_mapping = Dict{NodeType.T, ControlType.T}(
-    NodeType.PidControl => ControlType.PID,
-    NodeType.ContinuousControl => ControlType.Continuous,
+const control_type_mapping = Dict{NodeType.T, ContinuousControlType.T}(
+    NodeType.PidControl => ContinuousControlType.PID,
+    NodeType.ContinuousControl => ContinuousControlType.Continuous,
 )
 
 function set_control_type!(node::AbstractParameterNode, graph::MetaGraph)::Nothing
@@ -411,19 +411,19 @@ function set_control_type!(node::AbstractParameterNode, graph::MetaGraph)::Nothi
         control_inneighbors =
             collect(inneighbor_labels_type(graph, node_id, LinkType.control))
 
-        control_type[node_id.idx] =
-            if (node_id, "Ribasim.allocation") in keys(control_mapping)
-                ControlType.Allocation
-            elseif length(control_inneighbors) == 1
-                control_inneighbor = only(control_inneighbors)
-                get(control_type_mapping, control_inneighbor.type, ControlType.None)
-            elseif length(control_inneighbors) > 1
-                @error "$node_id has more than 1 control inneighbors."
-                errors = true
-                ControlType.None
-            else
-                ControlType.None
-            end
+        control_type[node_id.idx] = if length(control_inneighbors) == 1
+            control_inneighbor = only(control_inneighbors)
+            get(control_type_mapping, control_inneighbor.type, ContinuousControlType.None)
+        elseif length(control_inneighbors) > 1
+            @error "$node_id has more than 1 control inneighbors."
+            errors = true
+            ContinuousControlType.None
+        else
+            ContinuousControlType.None
+        end
+
+        node.allocation_controlled[node_id.idx] =
+            (node_id, "Ribasim.allocation") in keys(control_mapping)
     end
 
     errors && @error("Errors encountered when parsing control type of $(typeof(node)).")
@@ -1230,4 +1230,20 @@ function add_substance_mass!(
         mass[substance_idx] += cumulative_flow * itp(t)
     end
     return nothing
+end
+
+function should_skip_update_q(
+    active::Bool,
+    control_type::ContinuousControlType.T,
+    control_type_::ContinuousControlType.T,
+    p::Parameters,
+)::Bool
+    (; p_mutable) = p
+    (; all_nodes_active) = p_mutable
+    # Update is not needed if inactive and all nodes are not active
+    if !active && !all_nodes_active
+        return true
+    end
+
+    return control_type != control_type_
 end
