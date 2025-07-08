@@ -251,7 +251,7 @@ function update_concentrations!(u, t, integrator)::Nothing
         end
     end
 
-    mass_inflows_user_demand!(integrator)
+    mass_inflows_from_user_demand!(integrator)
     mass_inflows_basin!(integrator)
 
     # Update the Basin concentrations based on the added mass and flows
@@ -260,7 +260,6 @@ function update_concentrations!(u, t, integrator)::Nothing
         concentration_state[node_id.idx, :] .= mass[node_id.idx] ./ storage_only_in
     end
 
-    mass_outflows_user_demand!(integrator)
     mass_outflows_basin!(integrator)
 
     errors = false

@@ -1,8 +1,8 @@
 """
-Process mass updates for UserDemand separately
+Process mass inflows from UserDemand separately
 as the inflow and outflow are decoupled in the states
 """
-function mass_inflows_user_demand!(integrator::DEIntegrator)::Nothing
+function mass_inflows_from_user_demand!(integrator::DEIntegrator)::Nothing
     (; p, t) = integrator
     (; basin, user_demand) = p.p_independent
     (; concentration_state, mass) = basin.concentration_data
@@ -17,8 +17,7 @@ function mass_inflows_user_demand!(integrator::DEIntegrator)::Nothing
 
         if to_node.type == NodeType.Basin
             # Substance added from upstream
-            # Note that when outflow < inflow UserDemand consumes the substance in the difference
-            # consumes substance
+            # Note that when outflow < inflow UserDemand consumes the difference including the substances
             mass[to_node.idx] .+=
                 concentration_state[from_node.idx, :] .* cumulative_user_demand_outflow
 
@@ -29,25 +28,6 @@ function mass_inflows_user_demand!(integrator::DEIntegrator)::Nothing
                 cumulative_user_demand_outflow,
                 t,
             )
-        end
-    end
-    return nothing
-end
-
-function mass_outflows_user_demand!(integrator::DEIntegrator)::Nothing
-    (; p) = integrator
-    (; basin, user_demand) = p.p_independent
-    (; concentration_state, mass) = basin.concentration_data
-
-    for inflow_link in user_demand.inflow_link
-        from_node = inflow_link.link[1]
-
-        if from_node.type == NodeType.Basin
-            # Substance abstracted from upstream
-            cumulative_user_demand_inflow =
-                flow_update_on_link(integrator, inflow_link.link)
-            mass[from_node.idx] .-=
-                concentration_state[from_node.idx, :] .* cumulative_user_demand_inflow
         end
     end
     return nothing
@@ -68,7 +48,7 @@ function mass_inflows_basin!(integrator::DEIntegrator)::Nothing
         to_node = outflow_link.link[2]
 
         if state_node.type == NodeType.UserDemand
-            # UserDemand is handled separately in mass_outflows_user_demand
+            # UserDemand is handled separately in mass_inflows_from_user_demand
             continue
         end
 
@@ -133,13 +113,7 @@ function mass_outflows_basin!(integrator::DEIntegrator)::Nothing
 
     @views for (inflow_link, outflow_link) in zip(state_inflow_link, state_outflow_link)
         from_node = inflow_link.link[1]
-        state_node = inflow_link.link[2]
         to_node = outflow_link.link[2]
-
-        if state_node.type == NodeType.UserDemand
-            # UserDemand is handled separately in mass_outflows_user_demand
-            continue
-        end
 
         if from_node.type == NodeType.Basin
             flow = flow_update_on_link(integrator, inflow_link.link)

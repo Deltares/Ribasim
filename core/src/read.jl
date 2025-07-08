@@ -614,12 +614,16 @@ function Junction(db::DB)::Junction
     return Junction(; node_id)
 end
 
+# Constant interpolation that is always 0, used
+# e.g. for unspecified standard tracers
 const trivial_itp = ConstantInterpolation(
     [0.0, 0.0],
     [0.0, 1.0];
     extrapolation = ExtrapolationType.Constant,
 )
 
+# Constant interpolation that is always 1, used
+# e.g. for boundary flow tracers
 const unit_itp = ConstantInterpolation(
     [1.0, 1.0],
     [0.0, 1.0];

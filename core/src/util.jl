@@ -1160,8 +1160,11 @@ function initialize_concentration_itp(
 )::Vector{ScalarConstantInterpolation}
     # Default: concentration of 0
     concentration_itp = fill(trivial_itp, n_substance)
+
+    # Set the concentration corresponding to the node type to 1
     concentration_itp[substance_idx_node_type] = unit_itp
     if continuity_tracer
+        # Set the concentration corresponding of the continuity tracer to 1
         concentration_itp[Substance.Continuity] = unit_itp
     end
     return concentration_itp
