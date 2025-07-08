@@ -80,7 +80,7 @@ function add_basin!(
     basin_ids_subnetwork = get_subnetwork_ids(graph, NodeType.Basin, subnetwork_id)
 
     # Storage and level indices
-    indices = IterTools.product(basin_ids_subnetwork, [:start, :end])
+    indices = Iterators.product(basin_ids_subnetwork, [:start, :end])
 
     # Define decision variables: storage (scaling.storage * m^3) and level (m)
     # Each storage variable is constrained between 0 and the largest storage value in the profile

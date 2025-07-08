@@ -20,6 +20,7 @@ dependencies = [
     "geopandas >=1.0, <1.1",
     "matplotlib >=3.7",
     "numpy >=1.25",
+    "packaging >=23.0",
     "pandas >=2.0",
     "pandera >=0.20, <0.23",
     "pyarrow >=17.0",
