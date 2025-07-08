@@ -147,5 +147,7 @@ function check_continuity_tracer(model::Model)::Nothing
         end
     end
 
+    errors && error("Continuity tracer violation(s) detected.")
+
     return nothing
 end
