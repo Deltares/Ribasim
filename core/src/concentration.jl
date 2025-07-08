@@ -130,3 +130,22 @@ function mass_outflows_basin!(integrator::DEIntegrator)::Nothing
     end
     return nothing
 end
+
+function check_continuity_tracer(model::Model)::Nothing
+    (; integrator, config) = model
+    (; basin) = integrator.p.p_independent
+    (; node_id, concentration_data) = basin
+    (; concentration_state) = concentration_data
+
+    errors = false
+
+    for id in node_id
+        continuity_concentration = concentration_state[id.idx, Substance.Continuity]
+        if !isapprox(continuity_concentration, 1.0; rtol = config.solver.reltol)
+            @error "Continuity tracer concentration in too far from 1.0" id continuity_concentration
+            errors = true
+        end
+    end
+
+    return nothing
+end
