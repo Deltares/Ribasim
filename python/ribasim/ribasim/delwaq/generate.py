@@ -156,7 +156,7 @@ def _setup_graph(nodes, link, evaporate_mass=True):
     # for which we do nothing. We merge these UserDemand cycles links to
     # a single link, and later merge the flows.
     merge_links = []
-    for loop in nx.simple_cycles(G):
+    for loop in nx.simple_cycles(G, length_bound=2):
         if len(loop) == 2:
             if (
                 G.nodes[loop[0]]["type"] != "UserDemand"
