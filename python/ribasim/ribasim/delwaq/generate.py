@@ -409,7 +409,6 @@ def generate(
     )  # same as flow, so area becomes 1
 
     # Write volumes to Delwaq format
-    basins.drop(columns=["level"], inplace=True)
     volumes = basins[["time", "node_id", "storage"]]
     volumes["riba_node_id"] = volumes["node_id"]
     volumes.loc[:, "node_id"] = (

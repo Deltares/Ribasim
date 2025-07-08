@@ -33,3 +33,4 @@ jobs:
           branch: update/pixi-lock
           base: main
           delete-branch: true
+          add-paths: pixi.lock, Ribasim-python.spdx.json
