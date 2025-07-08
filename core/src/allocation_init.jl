@@ -681,7 +681,6 @@ function add_manning_resistance!(
     return nothing
 end
 
-# Extract common functionality for pumps and outlets
 function add_node_with_flow_control!(
     allocation_model::AllocationModel,
     p_independent::ParametersIndependent,

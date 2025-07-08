@@ -558,16 +558,15 @@ function formulate_flow!(
     return nothing
 end
 
-# Common code for both pump and outlet flow formulation
-function formulate_controlled_flow!(
+function formulate_pump_or_outlet_flow!(
     du_component::SubArray{<:Number},
-    component::Union{Pump, Outlet},
+    node::Union{Pump, Outlet},
     p::Parameters,
     t::Number,
     control_type_::ContinuousControlType.T,
     current_flow_rate::Vector{<:Number},
     component_cache::NamedTuple,
-    reduce_Δ_level::Bool = false,
+    reduce_Δlevel::Bool = false,
 )::Nothing
     (p_mutable) = p
 
@@ -578,16 +577,16 @@ function formulate_controlled_flow!(
         current_max_downstream_level,
     ) = component_cache
 
-    for id in component.node_id
-        inflow_link = component.inflow_link[id.idx]
-        outflow_link = component.outflow_link[id.idx]
-        active = component.active[id.idx]
-        flow_rate_itp = component.flow_rate[id.idx]
-        min_flow_rate = component.min_flow_rate[id.idx]
-        max_flow_rate = component.max_flow_rate[id.idx]
-        control_type = component.control_type[id.idx]
-        min_upstream_level = component.min_upstream_level[id.idx]
-        max_downstream_level = component.max_downstream_level[id.idx]
+    for id in node.node_id
+        inflow_link = node.inflow_link[id.idx]
+        outflow_link = node.outflow_link[id.idx]
+        active = node.active[id.idx]
+        flow_rate_itp = node.flow_rate[id.idx]
+        min_flow_rate = node.min_flow_rate[id.idx]
+        max_flow_rate = node.max_flow_rate[id.idx]
+        control_type = node.control_type[id.idx]
+        min_upstream_level = node.min_upstream_level[id.idx]
+        max_downstream_level = node.max_downstream_level[id.idx]
 
         if should_skip_update_q(active, control_type, control_type_, p)
             continue
@@ -607,7 +606,7 @@ function formulate_controlled_flow!(
         q = flow_rate * get_low_storage_factor(p, inflow_id)
 
         # Special case for outlet: check level difference
-        if reduce_Δ_level
+        if reduce_Δlevel
             Δlevel = src_level - dst_level
             q *= reduction_factor(Δlevel, 0.02)
         end
@@ -643,7 +642,7 @@ function formulate_flow!(
     control_type_::ContinuousControlType.T,
 )::Nothing
     (; time_dependent_cache, state_time_dependent_cache) = p
-    formulate_controlled_flow!(
+    formulate_pump_or_outlet_flow!(
         du.pump,
         pump,
         p,
@@ -662,7 +661,7 @@ function formulate_flow!(
     control_type_::ContinuousControlType.T,
 )::Nothing
     (; time_dependent_cache, state_time_dependent_cache) = p
-    formulate_controlled_flow!(
+    formulate_pump_or_outlet_flow!(
         du.outlet,
         outlet,
         p,
