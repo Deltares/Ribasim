@@ -114,3 +114,74 @@ function mass_outflows_basin!(integrator::DEIntegrator)::Nothing
     end
     return nothing
 end
+
+function get_volume_state_idx(volume_data::VolumeData, basin_id::NodeID, commodity::NodeID)
+    (; commodities_in_basin, n_states_cumulative) = volume_data
+
+    local_idx = findsorted(commodities_in_basin[basin_id.idx], commodity)
+    if isnothing(local_idx)
+        return local_idx
+    else
+        return local_idx + n_states_cumulative[basin_id.idx]
+    end
+end
+
+function set_commodity_transfer_matrix!(integrator::DEIntegrator, τ::Float64)::Nothing
+    (; u, uprev, p) = integrator
+    (; state_time_dependent_cache, p_independent) = p
+    (; current_storage) = state_time_dependent_cache
+    (; basin, state_inflow_link, state_outflow_link) = p_independent
+    (; volume_data, storage_prev) = basin
+    (; commodities_in_basin, M) = volume_data
+
+    println("yeet")
+
+    M .= 0
+
+    # Flows from/to Basins that are part of the state
+    for (inflow_link, outflow_link, cumulative_flow, cumulative_flow_prev) in
+        zip(state_inflow_link, state_outflow_link, u, uprev)
+        volume_over_link = cumulative_flow - cumulative_flow_prev
+        upstream_id = inflow_link.link[1]
+        downstream_id = outflow_link.link[2]
+
+        if volume_over_link < 0
+            upstream_id, downstream_id = downstream_id, upstream_id
+            volume_over_link = -volume_over_link
+        end
+
+        if upstream_id.type == NodeType.Basin
+            v_prev = storage_prev[upstream_id.idx]
+            v = current_storage[upstream_id.idx]
+            upstream_volume = v_prev + (v - v_prev) * τ
+            downstream_is_basin = (downstream_id.type == NodeType.Basin)
+
+            for commodity in commodities_in_basin[upstream_id.idx]
+                state_idx = get_volume_state_idx(volume_data, upstream_id, commodity)
+                val = volume_over_link / upstream_volume
+                M[state_idx, state_idx] -= val
+
+                if downstream_is_basin
+                    eq_idx = get_volume_state_idx(volume_data, downstream_id, commodity)
+                    if !isnothing(eq_idx)
+                        M[eq_idx, state_idx] += val
+                    end
+                end
+            end
+        end
+    end
+
+    return nothing
+end
+
+function set_initial_commodity_state!(basin)
+    (; node_id, volume_data, storage_prev) = basin
+    (; commodity_state) = volume_data
+
+    commodity_state .= 0
+
+    for id in node_id
+        state_idx = get_volume_state_idx(volume_data, id, id)
+        commodity_state[state_idx] = storage_prev[id.idx]
+    end
+end

@@ -605,6 +605,59 @@ function Junction(db::DB)::Junction
     return Junction(; node_id)
 end
 
+function VolumeData(graph::MetaGraph, node_id_basin::Vector{NodeID})::VolumeData
+    max_dist = 4
+
+    commodities_in_basin = [Set{NodeID}([id]) for id in node_id_basin]
+
+    for root_node in labels(graph)
+        if root_node.type ∈ (
+            NodeType.Basin,
+            NodeType.LevelBoundary,
+            NodeType.FlowBoundary,
+            NodeType.UserDemand,
+        )
+            leaf_nodes = [root_node]
+            links_considered = Tuple{NodeID, NodeID}[]
+            for _ in 1:max_dist
+                leaf_nodes_new = NodeID[]
+                for leaf_node in leaf_nodes
+                    for leaf_node_new in
+                        outneighbor_labels_type(graph, leaf_node, LinkType.flow)
+                        if (leaf_node, leaf_node_new) ∉ links_considered
+                            if leaf_node_new.type == NodeType.Basin
+                                push!(commodities_in_basin[leaf_node_new.idx], root_node)
+                            end
+                            push!(leaf_nodes_new, leaf_node_new)
+                            push!(links_considered, (leaf_node, leaf_node_new))
+                        end
+                    end
+                    for leaf_node_new in
+                        inneighbor_labels_type(graph, leaf_node, LinkType.flow)
+                        if (leaf_node_new, leaf_node) ∉ links_considered &&
+                           leaf_node_new.type ∈ (
+                            NodeType.Basin,
+                            NodeType.LinearResistance,
+                            NodeType.ManningResistance,
+                        )
+                            if leaf_node_new.type == NodeType.Basin
+                                push!(commodities_in_basin[leaf_node_new.idx], root_node)
+                            end
+                            push!(leaf_nodes_new, leaf_node_new)
+                            push!(links_considered, (leaf_node_new, leaf_node))
+                        end
+                    end
+                end
+                leaf_nodes = leaf_nodes_new
+            end
+        end
+    end
+
+    commodities_in_basin = map(sort! ∘ collect, commodities_in_basin)
+
+    return VolumeData(; commodities_in_basin)
+end
+
 function ConcentrationData(
     concentration_time,
     node_id::Vector{NodeID},
@@ -705,9 +758,10 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     concentration_time = load_structvector(db, config, BasinConcentrationV1)
     node_id = get_node_ids(db, NodeType.Basin)
     cyclic_times = get_cyclic_time(db, "Basin")
+    volume_data = VolumeData(graph, node_id)
     concentration_data = ConcentrationData(concentration_time, node_id, db, config)
 
-    basin = Basin(; node_id, concentration_time, concentration_data)
+    basin = Basin(; node_id, concentration_time, concentration_data, volume_data)
 
     parse_forcing!(parameter_name) = parse_parameter!(
         basin.forcing,

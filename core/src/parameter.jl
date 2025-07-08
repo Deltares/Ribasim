@@ -401,6 +401,15 @@ abstract type AbstractDemandNode <: AbstractParameterNode end
         Dict{String, ScalarLinearInterpolation}[]
 end
 
+@kwdef struct VolumeData
+    commodities_in_basin::Vector{Vector{NodeID}} = []
+    n_states_cumulative::Vector{Int64} = [0, cumsum(length.(commodities_in_basin))...]
+    n_states::Int64 = last(n_states_cumulative)
+    commodity_state::Vector{Float64} = zeros(n_states)
+    M::SparseMatrixCSC{Float64, Int64} = spzeros(n_states, n_states)
+    rhs::Vector{Float64} = zeros(n_states)
+end
+
 """
 Data source for Basin parameter updates over time
 
@@ -492,6 +501,8 @@ of vectors or Arrow Tables, and is added to avoid type instabilities.
     storage_prev::Vector{Float64} = zeros(length(node_id))
     # Level for each Basin at the previous time step
     level_prev::Vector{Float64} = zeros(length(node_id))
+    # Volumes
+    volume_data::VolumeData = VolumeData()
     # Concentrations
     concentration_data::ConcentrationData = ConcentrationData()
     # Data source for concentration updates
