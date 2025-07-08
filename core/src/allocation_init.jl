@@ -681,27 +681,43 @@ function add_manning_resistance!(
     return nothing
 end
 
+function add_node_with_flow_control!(
+    allocation_model::AllocationModel,
+    p_independent::ParametersIndependent,
+    node_type::NodeType.T,
+    node_data::Union{Pump, Outlet},
+)::Nothing
+    (; problem, subnetwork_id) = allocation_model
+    (; graph) = p_independent
+    flow = problem[:flow]
+
+    # Get the IDs of nodes in the subnetwork which are not controlled by allocation
+    node_ids_non_alloc_controlled = filter(
+        node_id -> !node_data.allocation_controlled[node_id.idx],
+        get_subnetwork_ids(graph, node_type, subnetwork_id),
+    )
+
+    q = 1.0 # example value (scaling.flow * m^3/s, to be filled in before optimizing)
+    constraint_name = Symbol(lowercase(string(node_type)))
+    problem[constraint_name] = JuMP.@constraint(
+        problem,
+        [node_id = node_ids_non_alloc_controlled],
+        flow[node_data.inflow_link[node_id.idx].link] ==
+        q * get_low_storage_factor(problem, node_data.inflow_link[node_id.idx].link[1]),
+        base_name = "$(constraint_name)_constraint"
+    )
+    return nothing
+end
+
 function add_pump!(
     allocation_model::AllocationModel,
     p_independent::ParametersIndependent,
 )::Nothing
-    (; problem, subnetwork_id) = allocation_model
-    (; graph, pump) = p_independent
-    flow = problem[:flow]
-
-    # Get the IDs of the pumps in the subnetwork which are not controlled by allocation
-    pump_ids_subnetwork_non_alloc_controlled = filter(
-        node_id -> pump.control_type[node_id.idx] != ControlType.Allocation,
-        get_subnetwork_ids(graph, NodeType.Pump, subnetwork_id),
-    )
-
-    q = 1.0 # example value (scaling.flow * m^3/s, to be filled in before optimizing)
-    problem[:pump] = JuMP.@constraint(
-        problem,
-        [node_id = pump_ids_subnetwork_non_alloc_controlled],
-        flow[pump.inflow_link[node_id.idx].link] ==
-        q * get_low_storage_factor(problem, pump.inflow_link[node_id.idx].link[1]),
-        base_name = "pump_constraint"
+    add_node_with_flow_control!(
+        allocation_model,
+        p_independent,
+        NodeType.Pump,
+        p_independent.pump,
     )
     return nothing
 end
@@ -710,23 +726,11 @@ function add_outlet!(
     allocation_model::AllocationModel,
     p_independent::ParametersIndependent,
 )::Nothing
-    (; problem, subnetwork_id) = allocation_model
-    (; graph, outlet) = p_independent
-    flow = problem[:flow]
-
-    # Get the IDs of the pumps in the subnetwork which are not controlled by allocation
-    outlet_ids_subnetwork_non_alloc_controlled = filter(
-        node_id -> outlet.control_type[node_id.idx] != ControlType.Allocation,
-        get_subnetwork_ids(graph, NodeType.Outlet, subnetwork_id),
-    )
-
-    q = 1.0 # example value (scaling.flow * m^3/s, to be filled in before optimizing)
-    problem[:outlet] = JuMP.@constraint(
-        problem,
-        [node_id = outlet_ids_subnetwork_non_alloc_controlled],
-        flow[outlet.inflow_link[node_id.idx].link] ==
-        q * get_low_storage_factor(problem, outlet.inflow_link[node_id.idx].link[1]),
-        base_name = "outlet_constraint"
+    add_node_with_flow_control!(
+        allocation_model,
+        p_independent,
+        NodeType.Outlet,
+        p_independent.outlet,
     )
     return nothing
 end

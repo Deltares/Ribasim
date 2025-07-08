@@ -680,17 +680,15 @@ function apply_control_from_allocation!(
     node::Union{Pump, Outlet},
     allocation_model::AllocationModel,
     graph::MetaGraph,
-    flow_rate::Vector{Float64},
 )::Nothing
     (; problem, subnetwork_id, scaling) = allocation_model
     flow = problem[:flow]
 
-    for (node_id, control_type, inflow_link) in
-        zip(node.node_id, node.control_type, node.inflow_link)
+    for (node_id, inflow_link) in zip(node.node_id, node.inflow_link)
         in_subnetwork = (graph[node_id].subnetwork_id == subnetwork_id)
-        allocation_controlled = (control_type == ControlType.Allocation)
-        if in_subnetwork && allocation_controlled
-            flow_rate[node_id.idx] = JuMP.value(flow[inflow_link.link]) * scaling.flow
+        if in_subnetwork && node.allocation_controlled[node_id.idx]
+            node.flow_rate[node_id.idx].u .=
+                JuMP.value(flow[inflow_link.link]) * scaling.flow
         end
     end
     return nothing
@@ -819,18 +817,8 @@ function update_allocation!(integrator)::Nothing
         end
 
         # Update parameters in physical layer based on allocation results
-        apply_control_from_allocation!(
-            pump,
-            allocation_model,
-            graph,
-            state_time_dependent_cache.current_flow_rate_pump,
-        )
-        apply_control_from_allocation!(
-            outlet,
-            allocation_model,
-            graph,
-            state_time_dependent_cache.current_flow_rate_outlet,
-        )
+        apply_control_from_allocation!(pump, allocation_model, graph)
+        apply_control_from_allocation!(outlet, allocation_model, graph)
 
         save_allocation_flows!(
             p_independent,

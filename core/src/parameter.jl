@@ -32,7 +32,7 @@ const StateTuple{V} = NamedTuple{state_components, NTuple{n_components, V}}
 # LinkType.flow and NodeType.FlowBoundary
 @enumx LinkType flow control none
 @eval @enumx NodeType $(config.nodetypes...)
-@enumx ControlType None Continuous PID Allocation
+@enumx ContinuousControlType None Continuous PID
 @enumx Substance Continuity = 1 Initial = 2 LevelBoundary = 3 FlowBoundary = 4 UserDemand =
     5 Drainage = 6 Precipitation = 7 SurfaceRunoff = 8
 Base.to_index(id::Substance.T) = Int(id)  # used to index into concentration matrices
@@ -653,6 +653,7 @@ min_upstream_level: The upstream level below which the Pump flow goes to zero
 max_downstream_level: The downstream level above which the Pump flow goes to zero
 control_mapping: dictionary from (node_id, control_state) to target flow rate
 control_type: one of None, ContinuousControl, PidControl, Allocation
+allocation_controlled: whether this Pump is controlled by allocation
 """
 @kwdef struct Pump <: AbstractParameterNode
     node_id::Vector{NodeID}
@@ -671,7 +672,9 @@ control_type: one of None, ContinuousControl, PidControl, Allocation
         Vector{ScalarLinearInterpolation}(undef, length(node_id))
     control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate} =
         Dict{Tuple{NodeID, String}, ControlStateUpdate}()
-    control_type::Vector{ControlType.T} = fill(ControlType.None, length(node_id))
+    control_type::Vector{ContinuousControlType.T} =
+        fill(ContinuousControlType.None, length(node_id))
+    allocation_controlled::Vector{Bool} = fill(false, length(node_id))
 end
 
 """
@@ -688,6 +691,7 @@ min_upstream_level: The upstream level below which the Outlet flow goes to zero
 max_downstream_level: The downstream level above which the Outlet flow goes to zero
 control_mapping: dictionary from (node_id, control_state) to target flow rate
 control_type: one of None, ContinuousControl, PidControl, Allocation
+allocation_controlled: whether this Outlet is controlled by allocation
 """
 @kwdef struct Outlet <: AbstractParameterNode
     node_id::Vector{NodeID}
@@ -705,7 +709,9 @@ control_type: one of None, ContinuousControl, PidControl, Allocation
     max_downstream_level::Vector{ScalarLinearInterpolation} =
         Vector{ScalarLinearInterpolation}(undef, length(node_id))
     control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate} = Dict()
-    control_type::Vector{ControlType.T} = fill(ControlType.None, length(node_id))
+    control_type::Vector{ContinuousControlType.T} =
+        fill(ContinuousControlType.None, length(node_id))
+    allocation_controlled::Vector{Bool} = fill(false, length(node_id))
 end
 
 """
