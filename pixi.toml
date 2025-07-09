@@ -27,6 +27,7 @@ install = { depends-on = [
     "install-ci",
     "install-qgis-plugins",
     "install-pre-commit",
+    "initialize-julia",
 ] }
 # Julia
 update-registry-julia = { cmd = "julia --check-bounds=yes --eval='using Pkg; Registry.update()'" }
@@ -227,6 +228,7 @@ mypy = "*"
 netcdf4 = "*"
 networkx = ">=3.3"
 numpy = ">=1.25, <2.2"
+packaging = ">=23.0"
 pandas = ">=2.0"
 pandas-stubs = "*"
 pandera = ">=0.20, <0.23"
@@ -241,7 +243,7 @@ pytest = "*"
 pytest-cov = "*"
 pytest-xdist = "*"
 python = ">=3.11"
-qgis = ">=3.34"
+qgis = "3.40.*"
 qgis-plugin-manager = "*"
 quarto = "*"
 quartodoc = "*"

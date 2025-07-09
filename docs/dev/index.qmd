@@ -28,19 +28,30 @@ To continue with the following steps, make the root of the repository your worki
 cd Ribasim
 ```
 
-## Setting up pixi
+## Setting up Pixi
 
-First, set up pixi as described on their getting started [page](https://prefix.dev/docs/pixi/overview).
+First, set up Pixi as described on their getting started [page](https://prefix.dev/docs/pixi/overview).
 
-Then set up the environment by running the following commands:
+We require at least Pixi version v0.48.1, but generally recommend the latest release.
+Check the version with `pixi --version`, update with `pixi self-update`.
+
+Windows users should [enable Developer Mode](https://learn.microsoft.com/en-us/windows/apps/get-started/enable-your-device-for-development#activate-developer-mode), because the install task creates symlinks for the QGIS plugin.
+
+Then set up the environment by running the following command. It will take a while.
+You can interrupt the task if you don't want to precompile the Julia dependencies at this moment, because that is the last task.
+Check out the `pixi.toml` file to see the tasks that are part of this, you can also run them individually.
 
 ```sh
 pixi run install
 ```
 
-This will automatically install all required packages for development.
-Our pixi environment also provides an instance of Julia and QGIS.
+The install task automatically installs all required Python and Julia packages for development.
+Our Pixi environment also provides Juliaup, QGIS and the Rust compiler.
 These will not conflict with any pre-installed applications, as long as you have the pixi environment enabled.
 You can do this in a terminal by calling `pixi shell`, or starting programs with `pixi run julia`, or `pixi run qgis`.
-Visual Studio Code will locate the pixi environments; select `('default': Pixi)` once such that all developer tools are available.
+The first time you open the Ribasim repo in Visual Studio Code you need to tell it where it can find the Pixi environment.
+Open the command box with {{< kbd Ctrl+Shift+P >}} ({{< kbd Cmd+Shift+P >}} on macOS) and run `Python: Select Interpreter`.
+Select `('default': Pixi)` in the `/.pixi` folder.
 Unless the setting `python.terminal.activateEnvironment` is disabled, it will already activate the environment in your terminal.
+
+If you encounter issues related to Pixi dependencies, it might help to clean your Pixi environment with `pixi clean`, followed by `pixi run install`.

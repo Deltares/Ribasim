@@ -20,7 +20,7 @@ These parameters help define how water is stored and managed in the system. Belo
 * Canals: Similar to a river reach a canal can also be modeled as a Basin, where water flow is managed along the canal system
 
 # Confluence Representation
-A Confluence where multiple links converge into a single node can be modeled using a [Junction node](https://ribasim.org/reference/node/junction.html)
+A confluence where multiple links converge into a single node can be modeled using a [Junction node](/reference/node/junction.qmd).
 
 # Tables
 
@@ -35,6 +35,7 @@ column                | type    | unit                  | restriction
 ---------             | ------- | --------------------- | -----------
 node_id               | Int32   | -                     |
 precipitation         | Float64 | $\text{m}/\text{s}$   | non-negative
+surface_runoff        | Float64 | $\text{m}^3/\text{s}$ | non-negative
 potential_evaporation | Float64 | $\text{m}/\text{s}$   | non-negative
 drainage              | Float64 | $\text{m}^3/\text{s}$ | non-negative
 infiltration          | Float64 | $\text{m}^3/\text{s}$ | non-negative
@@ -540,9 +541,9 @@ In general, the effect of the reduction term is negligible, or not even necessar
 As a surface water dries, its wetted area decreases and so does the evaporative flux.
 However, for (simplified) cases with constant wetted surface (a rectangular profile), evaporation only stops at $u = 0$.
 
-## Infiltration and Drainage
+## Infiltration, Surface Runoff and Drainage
 
-Infiltration is provided as a lump sum for the Basin.
+Infiltration and surface runoff is provided as a lump sum for the Basin.
 If Ribasim is coupled with MODFLOW 6, the infiltration is computed as the sum of all **positive** flows of the MODFLOW 6 boundary conditions in the Basin:
 
 $$

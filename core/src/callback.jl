@@ -159,6 +159,12 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
     @. basin.cumulative_precipitation =
         time_dependent_cache.basin.current_cumulative_precipitation
 
+    @. basin.cumulative_surface_runoff_saveat +=
+        time_dependent_cache.basin.current_cumulative_surface_runoff -
+        basin.cumulative_surface_runoff
+    @. basin.cumulative_surface_runoff =
+        time_dependent_cache.basin.current_cumulative_surface_runoff
+
     # Update cumulative boundary flow which is integrated exactly
     @. flow_boundary.cumulative_flow_saveat +=
         time_dependent_cache.flow_boundary.current_cumulative_boundary_flow -
@@ -208,7 +214,9 @@ function update_concentrations!(u, t, integrator)::Nothing
     cumulative_in .= 0.0
 
     @views mass .+= concentration[1, :, :] .* vertical_flux.drainage * dt
+    @views mass .+= concentration[3, :, :] .* vertical_flux.surface_runoff * dt
     basin.concentration_data.cumulative_in .= vertical_flux.drainage * dt
+    basin.concentration_data.cumulative_in .= vertical_flux.surface_runoff * dt
 
     # Precipitation depends on fixed area
     for node_id in basin.node_id
@@ -292,8 +300,11 @@ function flow_update_on_link(
         @assert from_id.type == to_id.type == NodeType.Basin
         idx = from_id.idx
         fixed_area = basin_areas(basin, idx)[end]
-        (fixed_area * vertical_flux.precipitation[idx] + vertical_flux.drainage[idx]) * dt -
-        (u.evaporation[idx] - uprev.evaporation[idx]) -
+        (
+            fixed_area * vertical_flux.precipitation[idx] +
+            vertical_flux.drainage[idx] +
+            vertical_flux.surface_runoff[idx]
+        ) * dt - (u.evaporation[idx] - uprev.evaporation[idx]) -
         (u.infiltration[idx] - uprev.infiltration[idx])
     elseif from_id.type == NodeType.FlowBoundary
         if flow_boundary.active[from_id.idx]
@@ -380,8 +391,10 @@ function save_flow(u, t, integrator)
     end
 
     precipitation = copy(basin.cumulative_precipitation_saveat) ./ Δt
+    surface_runoff = copy(basin.cumulative_surface_runoff_saveat) ./ Δt
     drainage = copy(basin.cumulative_drainage_saveat) ./ Δt
     @. basin.cumulative_precipitation_saveat = 0.0
+    @. basin.cumulative_surface_runoff_saveat = 0.0
     @. basin.cumulative_drainage_saveat = 0.0
 
     if hasproperty(cache, :nlsolver)
@@ -407,6 +420,7 @@ function save_flow(u, t, integrator)
         outflow = outflow_mean,
         flow_boundary = flow_boundary_mean,
         precipitation,
+        surface_runoff,
         drainage,
         concentration,
         flow_convergence,
@@ -440,6 +454,7 @@ function check_water_balance_error!(
         inflow_rate,
         outflow_rate,
         precipitation,
+        surface_runoff,
         drainage,
         evaporation,
         infiltration,
@@ -450,6 +465,7 @@ function check_water_balance_error!(
         saved_flow.inflow,
         saved_flow.outflow,
         saved_flow.precipitation,
+        saved_flow.surface_runoff,
         saved_flow.drainage,
         evaporation,
         infiltration,
@@ -458,7 +474,7 @@ function check_water_balance_error!(
         basin.node_id,
     )
         storage_rate = (s_now - s_prev) / Δt
-        total_in = inflow_rate + precipitation + drainage
+        total_in = inflow_rate + precipitation + drainage + surface_runoff
         total_out = outflow_rate + evaporation + infiltration
         balance_error = storage_rate - (total_in - total_out)
         mean_flow_rate = (total_in + total_out) / 2
@@ -760,6 +776,7 @@ function update_basin!(basin::Basin, t)::Nothing
     for id in basin.node_id
         i = id.idx
         set_flux!(vertical_flux.precipitation, forcing.precipitation, i, t)
+        set_flux!(vertical_flux.surface_runoff, forcing.surface_runoff, i, t)
         set_flux!(vertical_flux.potential_evaporation, forcing.potential_evaporation, i, t)
         set_flux!(vertical_flux.infiltration, forcing.infiltration, i, t)
         set_flux!(vertical_flux.drainage, forcing.drainage, i, t)
@@ -786,6 +803,7 @@ function update_basin_conc!(integrator)::Nothing
         j = find_index(Symbol(row.substance), substances)
         ismissing(row.drainage) || (concentration[1, i, j] = row.drainage)
         ismissing(row.precipitation) || (concentration[2, i, j] = row.precipitation)
+        ismissing(row.surface_runoff) || (concentration[3, i, j] = row.surface_runoff)
     end
     return nothing
 end

@@ -156,7 +156,7 @@ def _setup_graph(nodes, link, evaporate_mass=True):
     # for which we do nothing. We merge these UserDemand cycles links to
     # a single link, and later merge the flows.
     merge_links = []
-    for loop in nx.simple_cycles(G):
+    for loop in nx.simple_cycles(G, length_bound=2):
         if len(loop) == 2:
             if (
                 G.nodes[loop[0]]["type"] != "UserDemand"
@@ -167,7 +167,7 @@ def _setup_graph(nodes, link, evaporate_mass=True):
                 link_ids = G.edges[loop]["id"]
                 G.edges[reversed(loop)]["id"].extend(link_ids)
                 merge_links.extend(link_ids)
-                G.remove_link(*loop)
+                G.remove_edge(*loop)
 
     # Remove boundary to boundary links
     remove_double_links = []
@@ -409,7 +409,6 @@ def generate(
     )  # same as flow, so area becomes 1
 
     # Write volumes to Delwaq format
-    basins.drop(columns=["level"], inplace=True)
     volumes = basins[["time", "node_id", "storage"]]
     volumes["riba_node_id"] = volumes["node_id"]
     volumes.loc[:, "node_id"] = (

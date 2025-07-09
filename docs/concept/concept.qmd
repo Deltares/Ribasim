@@ -5,7 +5,7 @@ title: Introduction
 # Introduction {#sec-introduction}
 
 Decision makers need to balance the supply and demand of water at the river basin scale, under increasing environmental pressure.
-Ribasim allows users to model basins under current and changing conditions to evaluate and design and management of the water system.
+Ribasim allows users to model basins under current and changing conditions to evaluate, design, and manage water systems.
 It is available as free and open source software under the MIT license.
 Besides a model simulation core, Ribasim also includes tooling to assist in building models from basic datasets and visualize results.
 The model and its results provides insights to decision makers, enabling them to build consensus amongst water users and make informed decisions about how to manage water resources optimally.

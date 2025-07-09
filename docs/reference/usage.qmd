@@ -269,6 +269,7 @@ inflow_rate    | Float64         | $\text{m}^3/\text{s}$
 outflow_rate   | Float64         | $\text{m}^3/\text{s}$
 storage_rate   | Float64         | $\text{m}^3/\text{s}$
 precipitation  | Float64         | $\text{m}^3/\text{s}$
+surface_runoff | Float64         | $\text{m}^3/\text{s}$
 evaporation    | Float64         | $\text{m}^3/\text{s}$
 drainage       | Float64         | $\text{m}^3/\text{s}$
 infiltration   | Float64         | $\text{m}^3/\text{s}$
