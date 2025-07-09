@@ -143,7 +143,7 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
 
     # Update convergence measure
     if hasproperty(cache, :nlsolver)
-        conv = cache.nlsolver.cache.atmp ./ u
+        conv = @. abs(cache.nlsolver.cache.atmp / u)
         convergence .+= conv / finitemaximum(conv)
         ncalls[] += 1
     end
@@ -385,7 +385,7 @@ function save_flow(u, t, integrator)
     @. basin.cumulative_drainage_saveat = 0.0
 
     if hasproperty(cache, :nlsolver)
-        flow_convergence = copy(convergence) ./ ncalls
+        flow_convergence = convergence ./ ncalls
         for (i, (evap, infil)) in
             enumerate(zip(flow_convergence.evaporation, flow_convergence.infiltration))
             if isnan(evap)
