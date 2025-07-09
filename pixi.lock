@@ -409,8 +409,8 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/packaging-25.0-pyh29332c3_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pandas-2.3.0-py312hf9745cd_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandas-stubs-2.2.3.250527-pyhd8ed1ab_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-0.22.1-hd8ed1ab_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-base-0.22.1-pyhd8ed1ab_1.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-0.25.0-hd8ed1ab_1.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-base-0.25.0-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pandoc-3.6.3-ha770c72_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandocfilters-1.5.0-pyhd8ed1ab_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/noarch/parso-0.8.4-pyhd8ed1ab_1.conda
@@ -980,8 +980,8 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/packaging-25.0-pyh29332c3_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pandas-2.3.0-py312hcb1e3ce_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandas-stubs-2.2.3.250527-pyhd8ed1ab_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-0.22.1-hd8ed1ab_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-base-0.22.1-pyhd8ed1ab_1.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-0.25.0-hd8ed1ab_1.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-base-0.25.0-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pandoc-3.6.3-hce30654_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandocfilters-1.5.0-pyhd8ed1ab_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/noarch/parso-0.8.4-pyhd8ed1ab_1.conda
@@ -1497,8 +1497,8 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/packaging-25.0-pyh29332c3_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/pandas-2.3.0-py312h72972c8_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandas-stubs-2.2.3.250527-pyhd8ed1ab_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-0.22.1-hd8ed1ab_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-base-0.22.1-pyhd8ed1ab_1.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-0.25.0-hd8ed1ab_1.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-base-0.25.0-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/pandoc-3.6.3-h57928b3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandocfilters-1.5.0-pyhd8ed1ab_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/noarch/parso-0.8.4-pyhd8ed1ab_1.conda
@@ -2097,8 +2097,8 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/packaging-25.0-pyh29332c3_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pandas-2.3.0-py311h7db5c69_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandas-stubs-2.2.3.250527-pyhd8ed1ab_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-0.22.1-hd8ed1ab_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-base-0.22.1-pyhd8ed1ab_1.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-0.25.0-hd8ed1ab_1.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-base-0.25.0-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pandoc-3.6.3-ha770c72_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandocfilters-1.5.0-pyhd8ed1ab_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/noarch/parso-0.8.4-pyhd8ed1ab_1.conda
@@ -2668,8 +2668,8 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/packaging-25.0-pyh29332c3_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pandas-2.3.0-py311hca32420_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandas-stubs-2.2.3.250527-pyhd8ed1ab_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-0.22.1-hd8ed1ab_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-base-0.22.1-pyhd8ed1ab_1.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-0.25.0-hd8ed1ab_1.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-base-0.25.0-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pandoc-3.6.3-hce30654_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandocfilters-1.5.0-pyhd8ed1ab_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/noarch/parso-0.8.4-pyhd8ed1ab_1.conda
@@ -3185,8 +3185,8 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/packaging-25.0-pyh29332c3_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/pandas-2.3.0-py311hcf9f919_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandas-stubs-2.2.3.250527-pyhd8ed1ab_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-0.22.1-hd8ed1ab_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-base-0.22.1-pyhd8ed1ab_1.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-0.25.0-hd8ed1ab_1.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/pandera-base-0.25.0-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/pandoc-3.6.3-h57928b3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pandocfilters-1.5.0-pyhd8ed1ab_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/noarch/parso-0.8.4-pyhd8ed1ab_1.conda
@@ -17236,24 +17236,23 @@ packages:
   - pkg:pypi/pandas-stubs?source=hash-mapping
   size: 100801
   timestamp: 1748387401885
-- conda: https://conda.anaconda.org/conda-forge/noarch/pandera-0.22.1-hd8ed1ab_1.conda
-  noarch: python
-  sha256: 93265e713fabaf5015fa40a500edc38e9215e7217d1a30474c2fa1c18cf0c3d2
-  md5: fce4c2db84b9393200261c7e9cdd25ea
+- conda: https://conda.anaconda.org/conda-forge/noarch/pandera-0.25.0-hd8ed1ab_1.conda
+  sha256: b4eb7857d927b9001a2fdc11ee70add246c2de80e1e08bff3a8b67ce0cdc7912
+  md5: c9dca5dbec0de5c56e248087ba18ac02
   depends:
-  - pandera-base >=0.22.1,<0.22.2.0a0
+  - numpy >=1.24.4
+  - pandas >=2.1.1
+  - pandera-base 0.25.0 pyhd8ed1ab_1
   license: MIT
   license_family: MIT
   purls: []
-  size: 6924
-  timestamp: 1736416539733
-- conda: https://conda.anaconda.org/conda-forge/noarch/pandera-base-0.22.1-pyhd8ed1ab_1.conda
-  sha256: 40f37e62835b34f7c29ddadde985b9f5508fbc0ce843a974a0666573b29781f1
-  md5: 2d3ec0b9088d6f31df59871f7f33184a
+  size: 7458
+  timestamp: 1752079800481
+- conda: https://conda.anaconda.org/conda-forge/noarch/pandera-base-0.25.0-pyhd8ed1ab_1.conda
+  sha256: 98c3b93e690426dbdd5ef788db9b183bc75202ebbc563ed1859df39da2f86e8f
+  md5: 8f88cb3ba3aac2992171892cd5f6d48d
   depends:
-  - numpy >=1.19.0
   - packaging >=20.0
-  - pandas >=1.2.0
   - pydantic
   - python >=3.9
   - typeguard
@@ -17262,8 +17261,8 @@ packages:
   license_family: MIT
   purls:
   - pkg:pypi/pandera?source=hash-mapping
-  size: 151790
-  timestamp: 1736416538808
+  size: 164068
+  timestamp: 1752079799520
 - conda: https://conda.anaconda.org/conda-forge/linux-64/pandoc-3.6.3-ha770c72_0.conda
   sha256: a7392b0d5403676b0b3ab9ff09c1e65d8ab9e1c34349bba9be605d76cf622640
   md5: 16ff7c679250dc09f9732aab14408d2c
@@ -18493,7 +18492,8 @@ packages:
   - python
   license: BSD-3-Clause
   license_family: BSD
-  purls: []
+  purls:
+  - pkg:pypi/pycparser?source=hash-mapping
   size: 110100
   timestamp: 1733195786147
 - conda: https://conda.anaconda.org/conda-forge/linux-64/pycryptodome-3.23.0-py311h35130b2_0.conda
@@ -21329,7 +21329,7 @@ packages:
 - pypi: ./python/ribasim
   name: ribasim
   version: 2025.4.0
-  sha256: 17436089dfc254ed14d65196110b478fd4ab8be37cd89d2a562116102260f82d
+  sha256: 90276675f58104e4b3f6803c234bc7d3578198749f7dc4e25c83da16e804a530
   requires_dist:
   - datacompy>=0.16
   - geopandas>=1.0,<1.1
@@ -21337,7 +21337,7 @@ packages:
   - numpy>=1.25
   - packaging>=23.0
   - pandas>=2.0
-  - pandera>=0.20,<0.23
+  - pandera>=0.25
   - pyarrow>=17.0
   - pydantic>=2.0
   - pyogrio>=0.8

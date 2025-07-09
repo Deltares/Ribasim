@@ -4,7 +4,7 @@ from collections.abc import Callable
 from typing import Annotated, Any
 
 import pandas as pd
-import pandera as pa
+import pandera.pandas as pa
 import pyarrow
 from pandera.dtypes import Int32
 from pandera.typing import Index, Series
