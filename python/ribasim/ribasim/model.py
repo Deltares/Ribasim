@@ -264,7 +264,9 @@ class Model(FileModel):
         node_table = NodeTable(df=df)
         node_table.sort()
         assert node_table.df is not None
-        assert node_table.df.index.is_unique, "node_id must be unique"
+        assert node_table.df.index.is_unique, (
+            f"node_id must be unique, the following ids are not {node_table.df.index[node_table.df.index.duplicated(keep=False)].unique()}"
+        )
         return node_table
 
     def _nodes(self) -> Generator[MultiNodeModel, Any, None]:

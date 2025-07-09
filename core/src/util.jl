@@ -1152,3 +1152,14 @@ function eval_time_interp(
         return cache[idx]
     end
 end
+
+function finitemaximum(u::AbstractVector; init = -Inf)
+    # Find the maximum finite value in the vector
+    max_val = init
+    for val in u
+        if isfinite(val) && val > max_val
+            max_val = val
+        end
+    end
+    max_val
+end

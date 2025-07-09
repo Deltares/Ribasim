@@ -1082,6 +1082,7 @@ the object itself is not.
     do_concentration::Bool
     do_subgrid::Bool
     convergence::CVector
+    ncalls::Ref{Int} = Ref(0)
 end
 
 function StateTimeDependentCache(

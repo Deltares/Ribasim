@@ -136,14 +136,16 @@ the Basin concentration(s) and then remove the mass that is being lost to the ou
 function update_cumulative_flows!(u, t, integrator)::Nothing
     (; cache, p) = integrator
     (; p_independent, p_mutable, time_dependent_cache) = p
-    (; basin, flow_boundary, allocation, convergence) = p_independent
+    (; basin, flow_boundary, allocation, convergence, ncalls) = p_independent
 
     # Update tprev
     p_mutable.tprev = t
 
     # Update convergence measure
     if hasproperty(cache, :nlsolver)
-        convergence .= max.(abs.(cache.nlsolver.cache.atmp ./ u), convergence)
+        conv = cache.nlsolver.cache.atmp ./ u
+        convergence .+= conv / finitemaximum(conv)
+        ncalls[] += 1
     end
 
     # Update cumulative forcings which are integrated exactly
@@ -328,6 +330,8 @@ function save_flow(u, t, integrator)
         flow_boundary,
         u_prev_saveat,
         convergence,
+        ncalls,
+        node_id,
     ) = p.p_independent
     Δt = get_Δt(integrator)
     flow_mean = (u - u_prev_saveat) / Δt
@@ -381,7 +385,7 @@ function save_flow(u, t, integrator)
     @. basin.cumulative_drainage_saveat = 0.0
 
     if hasproperty(cache, :nlsolver)
-        flow_convergence = copy(convergence)
+        flow_convergence = copy(convergence) ./ ncalls
         for (i, (evap, infil)) in
             enumerate(zip(flow_convergence.evaporation, flow_convergence.infiltration))
             if isnan(evap)
@@ -393,6 +397,7 @@ function save_flow(u, t, integrator)
             end
         end
         fill!(convergence, 0)
+        ncalls[] = 0
     end
 
     concentration = copy(basin.concentration_data.concentration_state)
