@@ -257,7 +257,12 @@ function update_concentrations!(u, t, integrator)::Nothing
     # Update the Basin concentrations based on the added mass and flows
     for node_id in basin.node_id
         storage_only_in = basin.storage_prev[node_id.idx] + cumulative_in[node_id.idx]
-        concentration_state[node_id.idx, :] .= mass[node_id.idx] ./ storage_only_in
+
+        if iszero(storage_only_in)
+            concentration_state[node_id.idx, :] .= 0
+        else
+            concentration_state[node_id.idx, :] .= mass[node_id.idx] ./ storage_only_in
+        end
     end
 
     mass_outflows_basin!(integrator)
@@ -294,8 +299,13 @@ function update_concentrations!(u, t, integrator)::Nothing
         end
 
         # Update the Basin concentrations again based on the removed mass
-        concentration_state[node_id.idx, :] .=
-            mass[node_id.idx] ./ current_storage[node_id.idx]
+        s = current_storage[node_id.idx]
+        if iszero(current_storage)
+            concentration_state[node_id.idx, :] .= 0
+        else
+            concentration_state[node_id.idx, :] .=
+                mass[node_id.idx] ./ current_storage[node_id.idx]
+        end
     end
 
     errors && error("Negative mass(es) detected at t = $t s")
