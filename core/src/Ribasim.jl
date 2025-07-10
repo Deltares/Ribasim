@@ -67,8 +67,6 @@ using DataInterpolations:
     SmoothedLinearInterpolation,
     SmoothedConstantInterpolation,
     LinearInterpolationIntInv,
-    CubicHermiteSpline,
-    PCHIPInterpolation,
     invert_integral,
     get_transition_ts,
     derivative,
