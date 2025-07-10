@@ -48,5 +48,5 @@ output               | Float64 | -       | -
 controlled_variable  | String  | -       | must be "level" or "flow_rate"
 
 :::{.callout-note}
-The data in the function table is not interpolated exactly linearly. On an interval around each data point the linear interpolation is replaced by a spline section. This interval is given by 25% of the distance between the input values on either side of the data points.
+The data in the function table is not interpolated exactly linearly. On an interval around each data point the linear interpolation is replaced by a spline section. This interval is given by 12.5% of the distance between the input values on either side of the data points.
 :::
