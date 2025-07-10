@@ -36,11 +36,12 @@ function main(toml_path::AbstractString)::Cint
                     model = Model(config)
                     try
                         solve!(model)
-                    catch
+                    catch e
                         # Catch errors thrown during simulation.
                         t = datetime_since(model.integrator.t, model.config.starttime)
                         @warn "Simulation crashed or interrupted at $t."
-                        log_bottlenecks(model; converged = false)
+                        interrupt = e isa InterruptException
+                        log_bottlenecks(model; interrupt)
                         write_results(model)
                         display_error(io)
                         return 1

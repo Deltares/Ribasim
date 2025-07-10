@@ -51,15 +51,20 @@ function log_startup(config, toml_path::AbstractString)::Nothing
 end
 
 "Log the convergence bottlenecks."
-function log_bottlenecks(model; converged::Bool)
+function log_bottlenecks(model; interrupt::Bool)
     (; cache, p, u) = model.integrator
     (; p_independent) = p
 
-    level = converged ? LoggingExtras.Info : LoggingExtras.Warn
+    level = LoggingExtras.Warn
 
     # Indicate convergence bottlenecks if possible with the current algorithm
     if hasproperty(cache, :nlsolver)
-        flow_error = p.p_independent.convergence ./ p.p_independent.ncalls
+        flow_error = if interrupt && p.p_independent.ncalls[] > 0
+            flow_error = p.p_independent.convergence ./ p.p_independent.ncalls
+        else
+            temp_convergence = @. abs(cache.nlsolver.cache.atmp / u)
+            temp_convergence / finitemaximum(temp_convergence)
+        end
 
         errors = Pair{Symbol, String}[]
         error_count = 0
@@ -88,13 +93,12 @@ end
 "Log messages after the computation."
 function log_finalize(model)::Cint
     if success(model)
-        log_bottlenecks(model; converged = true)
         @info "The model finished successfully."
         return 0
     else
         # OrdinaryDiffEq doesn't error on e.g. convergence failure,
         # but we want a non-zero exit code in that case.
-        log_bottlenecks(model; converged = false)
+        log_bottlenecks(model; interrupt = false)
         t = datetime_since(model.integrator.t, model.config.starttime)
         (; retcode) = model.integrator.sol
         @error """The model exited at model time $t with return code $retcode.
