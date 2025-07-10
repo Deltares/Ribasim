@@ -9,7 +9,7 @@ function create_callbacks(
     config::Config,
     saveat,
 )::Tuple{CallbackSet, SavedResults}
-    (; starttime, basin, flow_boundary, level_boundary, user_demand) = p_independent
+    (; basin) = p_independent
     callbacks = SciMLBase.DECallback[]
 
     # Check for negative storage
@@ -40,18 +40,6 @@ function create_callbacks(
     tstops = sort(unique(reduce(vcat, tstops)))
     basin_cb = PresetTimeCallback(tstops, update_basin!; save_positions = (false, false))
     push!(callbacks, basin_cb)
-
-    # Update boundary concentrations
-    for (boundary, func) in (
-        (basin, update_basin_conc!),
-        (flow_boundary, update_flowb_conc!),
-        (level_boundary, update_levelb_conc!),
-        (user_demand, update_userd_conc!),
-    )
-        tstops = get_tstops(boundary.concentration_time.time, starttime)
-        conc_cb = PresetTimeCallback(tstops, func; save_positions = (false, false))
-        push!(callbacks, conc_cb)
-    end
 
     # If saveat is a vector which contains 0.0 this callback will still be called
     # at t = 0.0 despite save_start = false
@@ -205,27 +193,50 @@ function update_concentrations!(u, t, integrator)::Nothing
     (; current_storage, current_level) = state_time_dependent_cache
     (; basin, flow_boundary, do_concentration) = p_independent
     (; vertical_flux, concentration_data) = basin
-    (; evaporate_mass, cumulative_in, concentration_state, concentration, mass) =
-        concentration_data
+    (;
+        evaporate_mass,
+        cumulative_in,
+        concentration_state,
+        concentration_itp_drainage,
+        concentration_itp_precipitation,
+        concentration_itp_surface_runoff,
+        mass,
+    ) = concentration_data
 
     !do_concentration && return nothing
 
     # Reset cumulative flows, used to calculate the concentration
-    # of the basins after processing inflows only
-    cumulative_in .= 0.0
+    cumulative_in .= vertical_flux.drainage * dt
+    cumulative_in .+= vertical_flux.surface_runoff * dt
 
-    @views mass .+= concentration[1, :, :] .* vertical_flux.drainage * dt
-    @views mass .+= concentration[3, :, :] .* vertical_flux.surface_runoff * dt
-    basin.concentration_data.cumulative_in .= vertical_flux.drainage * dt
-    basin.concentration_data.cumulative_in .= vertical_flux.surface_runoff * dt
-
-    # Precipitation depends on fixed area
+    # Basin forcings
     for node_id in basin.node_id
+        mass_node = mass[node_id.idx]
+
+        add_substance_mass!(
+            mass_node,
+            concentration_itp_drainage[node_id.idx],
+            vertical_flux.drainage[node_id.idx] * dt,
+            t,
+        )
+
+        # Precipitation depends on fixed area
         fixed_area = basin_areas(basin, node_id.idx)[end]
         added_precipitation = fixed_area * vertical_flux.precipitation[node_id.idx] * dt
-        @views mass[node_id.idx, :] .+=
-            concentration[2, node_id.idx, :] .* added_precipitation
+        add_substance_mass!(
+            mass_node,
+            concentration_itp_precipitation[node_id.idx],
+            added_precipitation,
+            t,
+        )
         cumulative_in[node_id.idx] += added_precipitation
+
+        add_substance_mass!(
+            mass_node,
+            concentration_itp_surface_runoff[node_id.idx],
+            vertical_flux.surface_runoff[node_id.idx] * dt,
+            t,
+        )
     end
 
     # Exact boundary flow over time step
@@ -237,47 +248,76 @@ function update_concentrations!(u, t, integrator)::Nothing
     )
         if active
             outflow_id = outflow_link.link[2]
-            volume = integral(flow_rate, tprev, t)
-            @views mass[outflow_id.idx, :] .+=
-                flow_boundary.concentration[id.idx, :] .* volume
-            cumulative_in[outflow_id.idx] += volume
+            added_boundary_flow = integral(flow_rate, tprev, t)
+            add_substance_mass!(
+                mass[outflow_id.idx],
+                flow_boundary.concentration_itp[id.idx],
+                added_boundary_flow,
+                t,
+            )
+            cumulative_in[outflow_id.idx] += added_boundary_flow
         end
     end
 
-    mass_updates_user_demand!(integrator)
+    mass_inflows_from_user_demand!(integrator)
     mass_inflows_basin!(integrator)
 
     # Update the Basin concentrations based on the added mass and flows
-    concentration_state .= mass ./ (basin.storage_prev .+ cumulative_in)
+    for node_id in basin.node_id
+        storage_only_in = basin.storage_prev[node_id.idx] + cumulative_in[node_id.idx]
+
+        if iszero(storage_only_in)
+            concentration_state[node_id.idx, :] .= 0
+        else
+            concentration_state[node_id.idx, :] .= mass[node_id.idx] ./ storage_only_in
+        end
+    end
 
     mass_outflows_basin!(integrator)
 
-    # Evaporate mass to keep the mass balance, if enabled in model config
-    if evaporate_mass
-        mass .-= concentration_state .* (u.evaporation - uprev.evaporation)
-    end
-    mass .-= concentration_state .* (u.infiltration - uprev.infiltration)
+    errors = false
 
-    # Take care of infinitely small masses, possibly becoming negative due to truncation.
-    for I in eachindex(basin.concentration_data.mass)
-        if (-eps(Float64)) < mass[I] < (eps(Float64))
-            mass[I] = 0.0
+    for node_id in basin.node_id
+        mass_node = mass[node_id.idx]
+
+        # Evaporate mass to keep the mass balance, if enabled in model config
+        if evaporate_mass
+            evaporated_volume = u.evaporation[node_id.idx] - uprev.evaporation[node_id.idx]
+            mass_node .-= concentration_state[node_id.idx, :] .* evaporated_volume
+        end
+
+        infiltrated_volume = u.infiltration[node_id.idx] - uprev.infiltration[node_id.idx]
+        mass_node .-= concentration_state[node_id.idx, :] .* infiltrated_volume
+
+        # Take care of infinitely small masses, possibly becoming negative due to truncation.
+        for I in eachindex(mass_node)
+            if (-eps(Float64)) < mass_node[I] < (eps(Float64))
+                mass_node[I] = 0.0
+            end
+        end
+
+        # Check for negative masses
+        if any(<(0), mass_node)
+            errors = true
+            for substance_idx in findall(<(0), mass_node)
+                substance_name = basin.concentration_data.substances[substance_idx]
+                substance_mass = mass_node[substance_idx]
+                @error "$node_id has negative mass $substance_mass for substance $substance_name"
+            end
+        end
+
+        # Update the Basin concentrations again based on the removed mass
+        s = current_storage[node_id.idx]
+        if iszero(current_storage)
+            concentration_state[node_id.idx, :] .= 0
+        else
+            concentration_state[node_id.idx, :] .=
+                mass[node_id.idx] ./ current_storage[node_id.idx]
         end
     end
 
-    # Check for negative masses
-    if any(<(0), mass)
-        R = CartesianIndices(mass)
-        locations = findall(<(0), mass)
-        for I in locations
-            basin_idx, substance_idx = Tuple(R[I])
-            @error "$(basin.node_id[basin_idx]) has negative mass $(basin.concentration_data.mass[I]) for substance $(basin.concentration_data.substances[substance_idx])"
-        end
-        error("Negative mass(es) detected")
-    end
+    errors && error("Negative mass(es) detected at t = $t s")
 
-    # Update the Basin concentrations again based on the removed mass
-    concentration_state .= mass ./ current_storage
     basin.storage_prev .= current_storage
     basin.level_prev .= current_level
     return nothing
@@ -285,7 +325,7 @@ end
 
 """
 Given an link (from_id, to_id), compute the cumulative flow over that
-link over the latest timestep. If from_id and to_id are both the same Basin,
+link over the latest time step. If from_id and to_id are both the same Basin,
 the function returns the sum of the Basin forcings.
 """
 function flow_update_on_link(
@@ -785,57 +825,6 @@ function update_basin!(basin::Basin, t)::Nothing
 
     return nothing
 end
-
-"Load updates from 'Basin / concentration' into the parameters"
-function update_basin_conc!(integrator)::Nothing
-    (; p_independent) = integrator.p
-    (; basin, starttime, do_concentration) = p_independent
-    (; node_id, concentration_data, concentration_time) = basin
-    (; concentration, substances) = concentration_data
-    t = datetime_since(integrator.t, starttime)
-
-    !do_concentration && return nothing
-
-    rows = searchsorted(concentration_time.time, t)
-    timeblock = view(concentration_time, rows)
-
-    for row in timeblock
-        i = searchsortedfirst(node_id, NodeID(NodeType.Basin, row.node_id, 0))
-        j = find_index(Symbol(row.substance), substances)
-        ismissing(row.drainage) || (concentration[1, i, j] = row.drainage)
-        ismissing(row.precipitation) || (concentration[2, i, j] = row.precipitation)
-        ismissing(row.surface_runoff) || (concentration[3, i, j] = row.surface_runoff)
-    end
-    return nothing
-end
-
-"Load updates from 'concentration' tables into the parameters"
-function update_conc!(integrator, parameter, nodetype)::Nothing
-    (; p_independent) = integrator.p
-    (; basin, starttime, do_concentration) = p_independent
-    node = getproperty(p_independent, parameter)
-    (; node_id, concentration, concentration_time) = node
-    (; substances) = basin.concentration_data
-    t = datetime_since(integrator.t, starttime)
-
-    !do_concentration && return nothing
-
-    rows = searchsorted(concentration_time.time, t)
-    timeblock = view(concentration_time, rows)
-
-    for row in timeblock
-        i = searchsortedfirst(node_id, NodeID(nodetype, row.node_id, 0))
-        j = find_index(Symbol(row.substance), substances)
-        ismissing(row.concentration) || (concentration[i, j] = row.concentration)
-    end
-    return nothing
-end
-update_flowb_conc!(integrator)::Nothing =
-    update_conc!(integrator, :flow_boundary, NodeType.FlowBoundary)
-update_levelb_conc!(integrator)::Nothing =
-    update_conc!(integrator, :level_boundary, NodeType.LevelBoundary)
-update_userd_conc!(integrator)::Nothing =
-    update_conc!(integrator, :user_demand, NodeType.UserDemand)
 
 function update_subgrid_level(model::Model)::Model
     update_subgrid_level!(model.integrator)
