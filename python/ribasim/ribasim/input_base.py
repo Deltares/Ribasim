@@ -2,7 +2,7 @@ import operator
 import re
 import warnings
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Generator
+from collections.abc import Callable
 from contextlib import closing
 from contextvars import ContextVar
 from pathlib import Path
@@ -591,7 +591,7 @@ class NodeModel(ChildModel):
     def _layername(cls, field: str) -> str:
         return f"{cls.get_input_type()}{delimiter}{field}"
 
-    def _tables(self) -> Generator[TableModel[Any], Any, None]:
+    def _tables(self):
         for key in self._fields():
             attr = getattr(self, key)
             if (

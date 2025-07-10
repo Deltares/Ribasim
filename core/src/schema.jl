@@ -361,13 +361,13 @@ end
 end
 
 @version FlowDemandStaticV1 begin
-    node_id::Int
+    node_id::Int32
     demand::Float64
     demand_priority::Union{Missing, Int32}
 end
 
 @version FlowDemandTimeV1 begin
-    node_id::Int
+    node_id::Int32
     time::DateTime
     demand::Float64
     demand_priority::Union{Missing, Int32}

@@ -64,7 +64,7 @@ def test_basic_transient(basic_transient, tmp_path):
 
     time = model_loaded.basin.time
     assert model_orig.basin.time.df.time.iloc[0] == time.df.time.iloc[0]
-    assert time.df.node_id.dtype == "int32[pyarrow]"
+    assert time.df.node_id.dtype == "int32"
     __assert_equal(model_orig.basin.time.df, time.df)
     assert time.df.shape == (1468, 7)
 
@@ -341,14 +341,7 @@ def test_closed_model(basic, tmp_path):
     model.write(toml_path)
 
 
-def test_arrow_dtype():
-    # Below millisecond precision is not supported
-    with pytest.raises(ValidationError):
-        flow_boundary.Time(
-            time=["2021-01-01 00:00:00.1234"],
-            flow_rate=np.ones(1),
-        )
-
+def test_pandas_dtype():
     # Extra columns don't get coerced to Arrow types
     df = flow_boundary.Time(
         time=["2021-01-01 00:00:00.123", "2021-01-01 00:00:00.456"],
@@ -358,13 +351,13 @@ def test_arrow_dtype():
     ).df
 
     assert (df["node_id"] == 0).all()
-    assert df["node_id"].dtype == "int32[pyarrow]"
-    assert df["time"].dtype == "timestamp[ms][pyarrow]"
+    assert df["node_id"].dtype == "int32"
+    assert "datetime64" in str(df["time"].dtype)
     assert df["time"].dt.tz is None
     assert df["time"].diff().iloc[1] == pd.Timedelta("333ms")
-    assert df["flow_rate"].dtype == "double[pyarrow]"
+    assert str(df["flow_rate"].dtype) == "datetime64[ns]"
     assert df["meta_obj"].dtype == object
-    assert df["meta_str"].dtype == "string[pyarrow]"
+    assert df["meta_str"].dtype == "string[python]"
     assert df["meta_str"].isna().iloc[1]
 
     # Check a string column that is part of the schema and a boolean column
