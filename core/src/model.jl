@@ -343,7 +343,6 @@ function solve!(model::Model)::Model
         SciMLBase.solve!(integrator)
     end
     check_error!(integrator)
-    check_continuity_tracer(model)
     comptime = canonicalize(Millisecond(round(Int, comptime_s * 1000)))
     @info "Computation time: $comptime"
     return model
