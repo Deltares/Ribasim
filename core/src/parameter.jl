@@ -390,10 +390,15 @@ abstract type AbstractDemandNode <: AbstractParameterNode end
     cumulative_in::Vector{Float64} = zeros(Float64, 0)
     # matrix with concentrations for each Basin and substance
     concentration_state::Matrix{Float64} = zeros(Float64, 0, 0)  # Basin, substance
-    # matrix with boundary concentrations for each boundary, Basin and substance
-    concentration::Array{Float64, 3} = zeros(Float64, 0, 0, 0)
+    # Vectors with concentration timeseries interpolations for each incoming forcing per Basin per substance
+    concentration_itp_drainage::Vector{Vector{ScalarConstantInterpolation}} =
+        Vector{ScalarBlockInterpolation}[]
+    concentration_itp_precipitation::Vector{Vector{ScalarConstantInterpolation}} =
+        Vector{ScalarBlockInterpolation}[]
+    concentration_itp_surface_runoff::Vector{Vector{ScalarConstantInterpolation}} =
+        Vector{ScalarBlockInterpolation}[]
     # matrix with mass for each Basin and substance
-    mass::Matrix{Float64} = zeros(Float64, 0, 0)
+    mass::Vector{Vector{Float64}} = Vector{Float64}[]
     # substances in use by the model (ordered like their axis in the concentration matrices)
     substances::OrderedSet{Symbol} = OrderedSet{Symbol}()
     # Data source for external concentrations (used in control)
@@ -454,9 +459,6 @@ Requirements:
 * Must be positive: precipitation, surface_runoff, evaporation, infiltration, drainage
 * Index points to a Basin
 * volume, area, level must all be positive and monotonic increasing.
-
-Type parameter D indicates the content backing the StructVector, which can be a NamedTuple
-of vectors or Arrow Tables, and is added to avoid type instabilities.
 """
 @kwdef struct Basin <: AbstractParameterNode
     node_id::Vector{NodeID}
@@ -494,8 +496,6 @@ of vectors or Arrow Tables, and is added to avoid type instabilities.
     level_prev::Vector{Float64} = zeros(length(node_id))
     # Concentrations
     concentration_data::ConcentrationData = ConcentrationData()
-    # Data source for concentration updates
-    concentration_time::StructVector{BasinConcentrationV1}
 end
 
 """
@@ -606,16 +606,14 @@ end
 node_id: node ID of the LevelBoundary node
 active: whether this node is active
 level: the fixed level of this 'infinitely big Basin'
-concentration: matrix with boundary concentrations for each Basin and substance
-concentration_time: Data source for concentration updates
+concentration_itp: matrix with timeseries interpolations of concentrations per LevelBoundary per substance
 """
 @kwdef struct LevelBoundary <: AbstractParameterNode
     node_id::Vector{NodeID}
     active::Vector{Bool} = ones(Bool, length(node_id))
     level::Vector{ScalarLinearInterpolation} =
         Vector{ScalarLinearInterpolation}(undef, length(node_id))
-    concentration::Matrix{Float64}
-    concentration_time::StructVector{LevelBoundaryConcentrationV1}
+    concentration_itp::Vector{Vector{ScalarConstantInterpolation}}
 end
 
 """
@@ -625,8 +623,7 @@ active: whether this node is active and thus contributes flow
 cumulative_flow: The exactly integrated cumulative boundary flow since the start of the simulation
 cumulative_flow_saveat: The exactly integrated cumulative boundary flow since the last saveat
 flow_rate: flow rate (exact)
-concentration: matrix with boundary concentrations for each Basin and substance
-concentration_time: Data source for concentration updates
+concentration_itp: matrix with boundary concentrations per FlowBoundary per substance
 """
 @kwdef struct FlowBoundary{I} <: AbstractParameterNode
     node_id::Vector{NodeID}
@@ -635,8 +632,7 @@ concentration_time: Data source for concentration updates
     cumulative_flow::Vector{Float64} = zeros(length(node_id))
     cumulative_flow_saveat::Vector{Float64} = zeros(length(node_id))
     flow_rate::Vector{I}
-    concentration::Matrix{Float64}
-    concentration_time::StructVector{FlowBoundaryConcentrationV1}
+    concentration_itp::Vector{Vector{ScalarConstantInterpolation}}
 end
 
 """
@@ -924,8 +920,7 @@ demand_from_timeseries: If false the demand comes from the BMI or is fixed
 allocated: water flux currently allocated to UserDemand per demand priority (node_idx, demand_priority_idx)
 return_factor: the factor in [0,1] of how much of the abstracted water is given back to the system
 min_level: The level of the source Basin below which the UserDemand does not abstract
-concentration: matrix with boundary concentrations for each Basin and substance
-concentration_time: Data source for concentration updates
+concentration_itp: matrix with timeseries interpolations of concentrations per LevelBoundary per substance
 """
 @kwdef struct UserDemand <: AbstractDemandNode
     node_id::Vector{NodeID}
@@ -951,8 +946,7 @@ concentration_time: Data source for concentration updates
     return_factor::Vector{ScalarLinearInterpolation} =
         Vector{ScalarLinearInterpolation}(undef, length(node_id))
     min_level::Vector{Float64} = zeros(length(node_id))
-    concentration::Matrix{Float64}
-    concentration_time::StructVector{UserDemandConcentrationV1}
+    concentration_itp::Vector{Vector{ScalarConstantInterpolation}}
 end
 
 """
