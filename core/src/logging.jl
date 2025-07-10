@@ -59,8 +59,8 @@ function log_bottlenecks(model; interrupt::Bool)
 
     # Indicate convergence bottlenecks if possible with the current algorithm
     if hasproperty(cache, :nlsolver)
-        flow_error = if interrupt && p.p_independent.ncalls[] > 0
-            flow_error = p.p_independent.convergence ./ p.p_independent.ncalls
+        flow_error = if interrupt && p.p_independent.ncalls[1] > 0
+            flow_error = p.p_independent.convergence ./ p.p_independent.ncalls[1]
         else
             temp_convergence = @. abs(cache.nlsolver.cache.atmp / u)
             temp_convergence / finitemaximum(temp_convergence)

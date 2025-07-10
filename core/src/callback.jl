@@ -134,7 +134,7 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
     if hasproperty(cache, :nlsolver)
         @. temp_convergence = abs(cache.nlsolver.cache.atmp / u)
         convergence .+= temp_convergence / finitemaximum(temp_convergence)
-        ncalls[] += 1
+        ncalls[1] += 1
     end
 
     # Update cumulative forcings which are integrated exactly
@@ -439,7 +439,7 @@ function save_flow(u, t, integrator)
     @. basin.cumulative_drainage_saveat = 0.0
 
     if hasproperty(cache, :nlsolver)
-        flow_convergence = convergence ./ ncalls
+        flow_convergence = convergence ./ ncalls[1]
         for (i, (evap, infil)) in
             enumerate(zip(flow_convergence.evaporation, flow_convergence.infiltration))
             if isnan(evap)
@@ -451,7 +451,7 @@ function save_flow(u, t, integrator)
             end
         end
         fill!(convergence, 0)
-        ncalls[] = 0
+        ncalls[1] = 0
     end
 
     concentration = copy(basin.concentration_data.concentration_state)
