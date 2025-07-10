@@ -498,12 +498,16 @@ function LevelBoundary(db::DB, config::Config)
     cyclic_times = get_cyclic_time(db, "LevelBoundary")
 
     substances = get_substances(db, config)
-    concentration = zeros(length(node_id), length(substances))
-    concentration[:, Substance.Continuity] .= 1.0
-    concentration[:, Substance.LevelBoundary] .= 1.0
-    set_concentrations!(concentration, concentration_time, substances, node_id)
+    concentration_itp = get_concentration_itp(
+        concentration_time,
+        node_id,
+        substances,
+        Substance.LevelBoundary,
+        cyclic_times,
+        config,
+    )
 
-    level_boundary = LevelBoundary(; node_id, concentration, concentration_time)
+    level_boundary = LevelBoundary(; node_id, concentration_itp)
 
     errors = parse_parameter!(level_boundary, config, :level; static, time, cyclic_times)
 
@@ -520,13 +524,18 @@ function FlowBoundary(db::DB, config::Config, graph::MetaGraph)
     cyclic_times = get_cyclic_time(db, "FlowBoundary")
 
     substances = get_substances(db, config)
-    concentration = zeros(length(node_id), length(substances))
-    concentration[:, Substance.Continuity] .= 1.0
-    concentration[:, Substance.FlowBoundary] .= 1.0
-    set_concentrations!(concentration, concentration_time, substances, node_id)
+    concentration_itp = get_concentration_itp(
+        concentration_time,
+        node_id,
+        substances,
+        Substance.FlowBoundary,
+        cyclic_times,
+        config,
+    )
+
     flow_rate = get_interpolation_vec(config.interpolation.flow_boundary, node_id)
 
-    flow_boundary = FlowBoundary(; node_id, concentration, concentration_time, flow_rate)
+    flow_boundary = FlowBoundary(; node_id, concentration_itp, flow_rate)
 
     set_inoutflow_links!(flow_boundary, graph; inflow = false)
     errors = parse_parameter!(flow_boundary, config, :flow_rate; static, time, cyclic_times)
@@ -605,53 +614,64 @@ function Junction(db::DB)::Junction
     return Junction(; node_id)
 end
 
+# Constant interpolation that is always 0, used
+# e.g. for unspecified standard tracers
+const trivial_itp = ConstantInterpolation(
+    [0.0, 0.0],
+    [0.0, 1.0];
+    extrapolation = ExtrapolationType.Constant,
+)
+
+# Constant interpolation that is always 1, used
+# e.g. for boundary flow tracers
+const unit_itp = ConstantInterpolation(
+    [1.0, 1.0],
+    [0.0, 1.0];
+    extrapolation = ExtrapolationType.Constant,
+)
+
 function ConcentrationData(
     concentration_time,
     node_id::Vector{NodeID},
     db::DB,
     config::Config,
 )::ConcentrationData
-    n = length(node_id)
+    n_basin = length(node_id)
     cyclic_times = get_cyclic_time(db, "Basin")
 
     concentration_state_data = load_structvector(db, config, BasinConcentrationStateV1)
 
-    evaporate_mass = config.solver.evaporate_mass
     substances = get_substances(db, config)
-    concentration_state = zeros(n, length(substances))
+    n_substance = length(substances)
+
+    concentration_state = zeros(n_basin, n_substance)
     concentration_state[:, Substance.Continuity] .= 1.0
     concentration_state[:, Substance.Initial] .= 1.0
     set_concentrations!(concentration_state, concentration_state_data, substances, node_id)
-    mass = copy(concentration_state)
+    mass = collect(eachrow(concentration_state))
 
-    concentration = zeros(3, n, length(substances))
-    concentration[1, :, Substance.Continuity] .= 1.0
-    concentration[1, :, Substance.Drainage] .= 1.0
-    concentration[2, :, Substance.Continuity] .= 1.0
-    concentration[2, :, Substance.Precipitation] .= 1.0
-    concentration[3, :, Substance.Continuity] .= 1.0
-    concentration[3, :, Substance.SurfaceRunoff] .= 1.0
-    set_concentrations!(
-        view(concentration, 1, :, :),
-        concentration_time,
-        substances,
-        node_id;
-        concentration_column = :drainage,
-    )
-    set_concentrations!(
-        view(concentration, 2, :, :),
-        concentration_time,
-        substances,
-        node_id;
-        concentration_column = :precipitation,
-    )
-    set_concentrations!(
-        view(concentration, 3, :, :),
-        concentration_time,
-        substances,
-        node_id;
-        concentration_column = :surface_runoff,
-    )
+    concentration_itp_drainage =
+        [initialize_concentration_itp(n_substance, Substance.Drainage) for _ in node_id]
+    concentration_itp_precipitation = [
+        initialize_concentration_itp(n_substance, Substance.Precipitation) for _ in node_id
+    ]
+    concentration_itp_surface_runoff = [
+        initialize_concentration_itp(n_substance, Substance.SurfaceRunoff) for _ in node_id
+    ]
+
+    for (id, cyclic_time) in zip(node_id, cyclic_times)
+        data_id = filter(row -> row.node_id == id.value, concentration_time)
+        for group in IterTools.groupby(row -> row.substance, data_id)
+            first_row = first(group)
+            substance_idx = find_index(Symbol(first_row.substance), substances)
+            concentration_itp_drainage[id.idx][substance_idx] =
+                filtered_constant_interpolation(group, :drainage, cyclic_time, config)
+            concentration_itp_precipitation[id.idx][substance_idx] =
+                filtered_constant_interpolation(group, :precipitation, cyclic_time, config)
+            concentration_itp_surface_runoff[id.idx][substance_idx] =
+                filtered_constant_interpolation(group, :surface_runoff, cyclic_time, config)
+        end
+    end
 
     errors = false
 
@@ -685,12 +705,14 @@ function ConcentrationData(
         error("Errors encountered when parsing Basin concentration data.")
     end
 
-    cumulative_in = zeros(n)
+    cumulative_in = zeros(n_basin)
 
     return ConcentrationData(;
-        evaporate_mass,
+        config.solver.evaporate_mass,
         concentration_state,
-        concentration,
+        concentration_itp_drainage,
+        concentration_itp_precipitation,
+        concentration_itp_surface_runoff,
         mass,
         concentration_external,
         substances,
@@ -707,7 +729,7 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     cyclic_times = get_cyclic_time(db, "Basin")
     concentration_data = ConcentrationData(concentration_time, node_id, db, config)
 
-    basin = Basin(; node_id, concentration_time, concentration_data)
+    basin = Basin(; node_id, concentration_data)
 
     parse_forcing!(parameter_name) = parse_parameter!(
         basin.forcing,
@@ -759,7 +781,7 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
             get_storage_from_level(basin, id.idx, bottom + LOW_STORAGE_DEPTH)
     end
 
-    basin
+    return basin
 end
 
 function get_greater_than!(
@@ -1050,13 +1072,18 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)
     demand_priorities = get_all_demand_priorities(db, config)
 
     substances = get_substances(db, config)
-    concentration = zeros(length(node_id), length(substances))
-    # Continuity concentration is zero, as the return flow (from a Basin) already includes it
-    concentration[:, Substance.UserDemand] .= 1.0
-    set_concentrations!(concentration, concentration_time, substances, node_id)
+    substances = get_substances(db, config)
+    concentration_itp = get_concentration_itp(
+        concentration_time,
+        node_id,
+        substances,
+        Substance.UserDemand,
+        cyclic_times,
+        config;
+        continuity_tracer = false,
+    )
 
-    user_demand =
-        UserDemand(; node_id, concentration_time, concentration, demand_priorities)
+    user_demand = UserDemand(; node_id, concentration_itp, demand_priorities)
 
     set_inoutflow_links!(user_demand, graph)
     errors = parse_parameter!(user_demand, config, :active; static, time, default = true)

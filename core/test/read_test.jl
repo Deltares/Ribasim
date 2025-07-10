@@ -103,10 +103,7 @@ end
 
     skipped = fill(missing, n)
 
-    basin = Ribasim.Basin(;
-        node_id = NodeID.(:Basin, [1, 2, 3], 1),
-        concentration_time = StructVector{BasinConcentrationV1}(undef, 0),
-    )
+    basin = Ribasim.Basin(; node_id = NodeID.(:Basin, [1, 2, 3], 1))
 
     profiles = StructVector{BasinProfileV1}(;
         node_id = [node_1; node_2; node_3],
@@ -143,10 +140,7 @@ end
 
     skipped = fill(missing, n)
 
-    basin = Ribasim.Basin(;
-        node_id = NodeID.(:Basin, [1], 1),
-        concentration_time = StructVector{BasinConcentrationV1}(undef, 0),
-    )
+    basin = Ribasim.Basin(; node_id = NodeID.(:Basin, [1], 1))
 
     profiles = StructVector{BasinProfileV1}(;
         node_id = node_1,
@@ -178,10 +172,7 @@ end
 
     skipped = fill(missing, n)
 
-    basin = Ribasim.Basin(;
-        node_id = NodeID.(:Basin, [1], 1),
-        concentration_time = StructVector{BasinConcentrationV1}(undef, 0),
-    )
+    basin = Ribasim.Basin(; node_id = NodeID.(:Basin, [1], 1))
 
     profiles = StructVector{BasinProfileV1}(;
         node_id = node_1,
@@ -215,10 +206,7 @@ end
 
     skipped = fill(missing, n)
 
-    basin = Ribasim.Basin(;
-        node_id = NodeID.(:Basin, [1], 1),
-        concentration_time = StructVector{BasinConcentrationV1}(undef, 0),
-    )
+    basin = Ribasim.Basin(; node_id = NodeID.(:Basin, [1], 1))
 
     profiles = StructVector{BasinProfileV1}(;
         node_id = node_1,
