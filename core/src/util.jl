@@ -707,7 +707,6 @@ reduction_factor(x::GradientTracer, ::Real) = x
 low_storage_factor_resistance_node(::Parameters, q::GradientTracer, ::NodeID, ::NodeID) = q
 relaxed_root(x::GradientTracer, threshold::Real) = x
 get_level_from_storage(basin::Basin, state_idx::Int, storage::GradientTracer) = storage
-(::SmoothedLinearInterpolation)(x::GradientTracer) = x
 
 "Create a NamedTuple of the node IDs per state component in the state order"
 function state_node_ids(

@@ -1677,7 +1677,9 @@ version = "1.11.0"
 
 [[deps.SparseConnectivityTracer]]
 deps = ["ADTypes", "DocStringExtensions", "FillArrays", "LinearAlgebra", "Random", "SparseArrays"]
-git-tree-sha1 = "182990067a09adf950274f97f38f68c76f81d2d0"
+git-tree-sha1 = "bb394bcac0275a08e71506eaa23132dfd9d383a5"
+repo-rev = "add_smoothed_linear_interpolation_support"
+repo-url = "https://github.com/SouthEndMusic/SparseConnectivityTracer.jl"
 uuid = "9f842d2f-2579-4b1d-911e-f412cf18a3f5"
 version = "0.6.21"
 
