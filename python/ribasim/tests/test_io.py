@@ -352,10 +352,10 @@ def test_pandas_dtype():
 
     assert (df["node_id"] == 0).all()
     assert df["node_id"].dtype == "int32"
-    assert "datetime64" in str(df["time"].dtype)
     assert df["time"].dt.tz is None
     assert df["time"].diff().iloc[1] == pd.Timedelta("333ms")
-    assert str(df["flow_rate"].dtype) == "datetime64[ns]"
+    assert str(df["time"].dtype) == "datetime64[ns]"
+    assert df["flow_rate"].dtype == np.float64
     assert df["meta_obj"].dtype == object
     assert df["meta_str"].dtype == "string[python]"
     assert df["meta_str"].isna().iloc[1]
