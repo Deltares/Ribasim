@@ -2,7 +2,7 @@
 
 julia_version = "1.11.5"
 manifest_format = "2.0"
-project_hash = "f6a0770e1fb1a6057f88838586f8e70915108dcb"
+project_hash = "a15a36ab8f1f06e75263ce0939505903c612166d"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "be7ae030256b8ef14a441726c4c37766b90b93a3"
@@ -359,7 +359,9 @@ version = "1.7.0"
 
 [[deps.DataInterpolations]]
 deps = ["EnumX", "FindFirstFunctions", "ForwardDiff", "LinearAlgebra", "PrettyTables", "RecipesBase", "Reexport"]
-git-tree-sha1 = "13c4d72ac01c0a441d72eced702332f8eabc8366"
+git-tree-sha1 = "01dd49bd6a0f61728a0b9b2c3d6de5c95cd2b1e9"
+repo-rev = "add_smoothed_linear_interpolation"
+repo-url = "https://github.com/SciML/DataInterpolations.jl"
 uuid = "82cc6244-b520-54b8-b5a6-8a565e85f1d0"
 version = "8.1.0"
 
