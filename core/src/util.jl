@@ -1153,7 +1153,7 @@ function eval_time_interp(
     end
 end
 
-function finitemaximum(u::AbstractVector; init = -Inf)
+function finitemaximum(u::AbstractVector; init = 0)
     # Find the maximum finite value in the vector
     max_val = init
     for val in u

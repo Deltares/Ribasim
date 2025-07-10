@@ -1102,6 +1102,7 @@ the object itself is not.
     # Callback configurations
     do_concentration::Bool
     do_subgrid::Bool
+    temp_convergence::CVector
     convergence::CVector
     ncalls::Ref{Int} = Ref(0)
 end

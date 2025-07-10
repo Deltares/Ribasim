@@ -136,15 +136,16 @@ the Basin concentration(s) and then remove the mass that is being lost to the ou
 function update_cumulative_flows!(u, t, integrator)::Nothing
     (; cache, p) = integrator
     (; p_independent, p_mutable, time_dependent_cache) = p
-    (; basin, flow_boundary, allocation, convergence, ncalls) = p_independent
+    (; basin, flow_boundary, allocation, temp_convergence, convergence, ncalls) =
+        p_independent
 
     # Update tprev
     p_mutable.tprev = t
 
     # Update convergence measure
     if hasproperty(cache, :nlsolver)
-        conv = @. abs(cache.nlsolver.cache.atmp / u)
-        convergence .+= conv / finitemaximum(conv)
+        @. temp_convergence = abs(cache.nlsolver.cache.atmp / u)
+        convergence .+= temp_convergence / finitemaximum(temp_convergence)
         ncalls[] += 1
     end
 
