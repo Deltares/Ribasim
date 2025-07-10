@@ -28,6 +28,8 @@ const state_components = (
 )
 const n_components = length(state_components)
 const StateTuple{V} = NamedTuple{state_components, NTuple{n_components, V}}
+const RibasimCVectorType =
+    Ribasim.CArrays.CArray{Float64, 1, Vector{Float64}, StateTuple{UnitRange{Int}}}
 
 # LinkType.flow and NodeType.FlowBoundary
 @enumx LinkType flow control none
@@ -1096,6 +1098,9 @@ the object itself is not.
     # Callback configurations
     do_concentration::Bool
     do_subgrid::Bool
+    temp_convergence::RibasimCVectorType
+    convergence::RibasimCVectorType
+    ncalls::Vector{Int} = [0]
 end
 
 function StateTimeDependentCache(

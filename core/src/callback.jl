@@ -122,12 +122,20 @@ Specifically, we first use all the inflows to update the mass of the Basins, rec
 the Basin concentration(s) and then remove the mass that is being lost to the outflows.
 """
 function update_cumulative_flows!(u, t, integrator)::Nothing
-    (; p) = integrator
+    (; cache, p) = integrator
     (; p_independent, p_mutable, time_dependent_cache) = p
-    (; basin, flow_boundary, allocation) = p_independent
+    (; basin, flow_boundary, allocation, temp_convergence, convergence, ncalls) =
+        p_independent
 
     # Update tprev
     p_mutable.tprev = t
+
+    # Update convergence measure
+    if hasproperty(cache, :nlsolver)
+        @. temp_convergence = abs(cache.nlsolver.cache.atmp / u)
+        convergence .+= temp_convergence / finitemaximum(temp_convergence)
+        ncalls[1] += 1
+    end
 
     # Update cumulative forcings which are integrated exactly
     @. basin.cumulative_drainage_saveat +=
@@ -367,8 +375,16 @@ inflow and outflow per Basin.
 """
 function save_flow(u, t, integrator)
     (; cache, p) = integrator
-    (; basin, state_inflow_link, state_outflow_link, flow_boundary, u_prev_saveat) =
-        p.p_independent
+    (;
+        basin,
+        state_inflow_link,
+        state_outflow_link,
+        flow_boundary,
+        u_prev_saveat,
+        convergence,
+        ncalls,
+        node_id,
+    ) = p.p_independent
     Δt = get_Δt(integrator)
     flow_mean = (u - u_prev_saveat) / Δt
 
@@ -423,8 +439,7 @@ function save_flow(u, t, integrator)
     @. basin.cumulative_drainage_saveat = 0.0
 
     if hasproperty(cache, :nlsolver)
-        @. flow_convergence = abs(cache.nlsolver.cache.atmp / u)
-        flow_convergence = CVector(flow_convergence, getaxes(u))
+        flow_convergence = convergence ./ ncalls[1]
         for (i, (evap, infil)) in
             enumerate(zip(flow_convergence.evaporation, flow_convergence.infiltration))
             if isnan(evap)
@@ -435,6 +450,8 @@ function save_flow(u, t, integrator)
                 basin_convergence[i] = max(evap, infil)
             end
         end
+        fill!(convergence, 0)
+        ncalls[1] = 0
     end
 
     concentration = copy(basin.concentration_data.concentration_state)

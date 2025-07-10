@@ -151,6 +151,8 @@ using DataStructures: OrderedSet, OrderedDict, counter, inc!
 
 using Dates: Second
 
+using Printf: @sprintf
+
 export libribasim
 
 include("carrays.jl")

@@ -1153,6 +1153,17 @@ function eval_time_interp(
     end
 end
 
+function finitemaximum(u::AbstractVector; init = 0)
+    # Find the maximum finite value in the vector
+    max_val = init
+    for val in u
+        if isfinite(val) && val > max_val
+            max_val = val
+        end
+    end
+    max_val
+end
+
 function initialize_concentration_itp(
     n_substance,
     substance_idx_node_type;
