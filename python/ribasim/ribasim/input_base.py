@@ -514,7 +514,7 @@ class SpatialTableModel(TableModel[TableT], Generic[TableT]):
         with closing(connect(path)) as connection:
             if exists(connection, table):
                 # pyogrio hardcodes fid name on reading
-                df = gpd.read_file(path, layer=table, fid_as_index=True)
+                df = gpd.read_file(path, layer=table, fid_as_index=True, use_arrow=True)
             else:
                 df = None
 
@@ -535,7 +535,6 @@ class SpatialTableModel(TableModel[TableT], Generic[TableT]):
             driver="GPKG",
             index=True,
             fid=self.df.index.name,
-            engine="pyogrio",
         )
         _add_styles_to_geopackage(path, self.tablename())
 
