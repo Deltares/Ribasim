@@ -209,9 +209,7 @@ run(
 Plot the simulated levels and storages at the diverted section and at the confluence.
 
 ```{python}
-df_basin = pd.read_feather(
-    base_dir / "Crystal-2/results/basin.arrow", dtype_backend="pyarrow"
-)
+df_basin = pd.read_feather(base_dir / "Crystal-2/results/basin.arrow")
 
 # Create pivot tables and plot for basin data
 df_basin_wide = df_basin.pivot_table(
@@ -285,9 +283,7 @@ This reduction is attributed to the irrigation demand upstream with no return fl
 Plot the flow results in an interactive plotting tool.
 
 ```{python}
-df_flow = pd.read_feather(
-    base_dir / "Crystal-2/results/flow.arrow", dtype_backend="pyarrow"
-)
+df_flow = pd.read_feather(base_dir / "Crystal-2/results/flow.arrow")
 # Add the link names and then remove unnamed links
 df_flow["name"] = model.link.df["name"].loc[df_flow["link_id"]].to_numpy()
 df_flow = df_flow[df_flow["name"].astype(bool)]

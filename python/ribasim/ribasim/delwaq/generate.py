@@ -304,12 +304,8 @@ def generate(
     results_folder = toml_path.parent / model.results_dir
     evaporate_mass = model.solver.evaporate_mass
 
-    basins = pd.read_feather(
-        toml_path.parent / results_folder / "basin.arrow", dtype_backend="pyarrow"
-    )
-    flows = pd.read_feather(
-        toml_path.parent / results_folder / "flow.arrow", dtype_backend="pyarrow"
-    )
+    basins = pd.read_feather(toml_path.parent / results_folder / "basin.arrow")
+    flows = pd.read_feather(toml_path.parent / results_folder / "flow.arrow")
 
     output_path.mkdir(exist_ok=True)
 

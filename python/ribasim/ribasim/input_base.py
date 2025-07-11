@@ -446,7 +446,7 @@ class TableModel(FileModel, Generic[TableT]):
     @classmethod
     def _from_arrow(cls, path: Path) -> pd.DataFrame:
         directory = context_file_loading.get().get("directory", Path("."))
-        return pd.read_feather(directory / path, dtype_backend="pyarrow")
+        return pd.read_feather(directory / path)
 
     def sort(self):
         """Sort the table as required.
