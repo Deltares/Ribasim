@@ -3,13 +3,13 @@
     "dataLicense": "CC0-1.0",
     "SPDXID": "SPDXRef-DOCUMENT",
     "name": "Ribasim.jl",
-    "documentNamespace": "https://github.com/Deltares/Ribasim/Ribasim.spdx.json-973e3580-7b9a-48db-aad3-10c76d980380",
+    "documentNamespace": "https://github.com/Deltares/Ribasim/Ribasim.spdx.json-01c40cc6-2070-408d-9cd4-04de0fc680d7",
     "creationInfo": {
         "creators": [
             "Organization:  Deltares  (software@deltares.nl)"
         ],
-        "created": "2025-07-02T03:26:50Z",
-        "comment": "Target Platform: Platform(\"x86_64\", \"linux\"; libgfortran_version = \"5.0.0\", julia_version = \"1.11.5\", libc = \"glibc\", libstdcxx_version = \"3.4.30\", cxxstring_abi = \"cxx11\")"
+        "created": "2025-07-11T15:08:40Z",
+        "comment": "Target Platform: Platform(\"x86_64\", \"linux\"; libgfortran_version = \"5.0.0\", julia_version = \"1.11.6\", libc = \"glibc\", libstdcxx_version = \"3.4.30\", cxxstring_abi = \"cxx11\")"
     },
     "comment": "Registries used for populating Package data:\nGeneral registry: https://github.com/JuliaRegistries/General.git\nOfficial general Julia package registry where people can\nregister any package they want without too much debate about\nnaming and without enforced standards on documentation or\ntesting. We nevertheless encourage documentation, testing and\nsome amount of consideration when choosing package names.\n",
     "packages": [
@@ -905,13 +905,13 @@
         {
             "name": "MathOptInterface",
             "SPDXID": "SPDXRef-MathOptInterface-b8f27783-ece8-5eb3-8dc8-9495eed66fee",
-            "versionInfo": "1.41.0",
+            "versionInfo": "1.42.0",
             "supplier": "NOASSERTION",
             "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/jump-dev/MathOptInterface.jl.git@2f2c18c6acab9042557bdb0af8c3a14dd7b64413",
+            "downloadLocation": "git+https://github.com/jump-dev/MathOptInterface.jl.git@1251fce78b907fe415a2f680291b67cf51360d2a",
             "filesAnalyzed": true,
             "packageVerificationCode": {
-                "packageVerificationCodeValue": "bc4f6f161f1d85634618e43d4dd84f2cea2a210e"
+                "packageVerificationCodeValue": "04873fa7fc53ade491bd3c113789d5946a7227ed"
             },
             "homepage": "https://github.com/jump-dev/MathOptInterface.jl.git",
             "sourceInfo": "Download Location is supplied by the General registry:\nhttps://github.com/JuliaRegistries/General.git\nThe hash supplied in Download Location is not the typical git commit hash. Instead it is a git tree hash. The easiest way to retrieve this version from the cloned repository is to use the command:\ngit archive --output=path/to/archive.tar <tree hash>",
@@ -1846,13 +1846,13 @@
         {
             "name": "Moshi",
             "SPDXID": "SPDXRef-Moshi-2e0e35c7-a2e4-4343-998d-7ef72827ed2d",
-            "versionInfo": "0.3.6",
+            "versionInfo": "0.3.7",
             "supplier": "NOASSERTION",
             "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/Roger-luo/Moshi.jl.git@d5198869af7a8aec7354dc8559ae71aba77a625a",
+            "downloadLocation": "git+https://github.com/Roger-luo/Moshi.jl.git@53f817d3e84537d84545e0ad749e483412dd6b2a",
             "filesAnalyzed": true,
             "packageVerificationCode": {
-                "packageVerificationCodeValue": "6c33e8f6338ac52519a2a1bd3e76e737a8d57f99"
+                "packageVerificationCodeValue": "1ad97ad8b5c776440313c02a8de9f4224b76691b"
             },
             "homepage": "https://github.com/Roger-luo/Moshi.jl.git",
             "sourceInfo": "Download Location is supplied by the General registry:\nhttps://github.com/JuliaRegistries/General.git\nThe hash supplied in Download Location is not the typical git commit hash. Instead it is a git tree hash. The easiest way to retrieve this version from the cloned repository is to use the command:\ngit archive --output=path/to/archive.tar <tree hash>",
@@ -2044,13 +2044,13 @@
         {
             "name": "RecursiveArrayTools",
             "SPDXID": "SPDXRef-RecursiveArrayTools-731186ca-8d62-57ce-b412-fbd966d074cd",
-            "versionInfo": "3.33.0",
+            "versionInfo": "3.34.1",
             "supplier": "NOASSERTION",
             "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/SciML/RecursiveArrayTools.jl.git@2e154f7d7e38db1af0a14ec751aba33360c3bef9",
+            "downloadLocation": "git+https://github.com/SciML/RecursiveArrayTools.jl.git@efc718978d97745c58e69c5115a35c51a080e45e",
             "filesAnalyzed": true,
             "packageVerificationCode": {
-                "packageVerificationCodeValue": "a729c0fdc737260fcf1f5134788351f931c9e7c7"
+                "packageVerificationCodeValue": "78ab8bf9add7591bdd3b1293c6af565c7b9eff35"
             },
             "homepage": "https://github.com/SciML/RecursiveArrayTools.jl.git",
             "sourceInfo": "Download Location is supplied by the General registry:\nhttps://github.com/JuliaRegistries/General.git\nThe hash supplied in Download Location is not the typical git commit hash. Instead it is a git tree hash. The easiest way to retrieve this version from the cloned repository is to use the command:\ngit archive --output=path/to/archive.tar <tree hash>",
@@ -3115,13 +3115,13 @@
         {
             "name": "DiffEqBase",
             "SPDXID": "SPDXRef-DiffEqBase-2b5f629d-d688-5b77-993f-72d75c75574e",
-            "versionInfo": "6.176.0",
+            "versionInfo": "6.177.2",
             "supplier": "NOASSERTION",
             "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/SciML/DiffEqBase.jl.git@2d87d7bd165c1ca0d11923a9fabe90a9d71e88a6",
+            "downloadLocation": "git+https://github.com/SciML/DiffEqBase.jl.git@e9b34e0eb3443492f396c97e7fed08630752a4f2",
             "filesAnalyzed": true,
             "packageVerificationCode": {
-                "packageVerificationCodeValue": "4df956f3f8d76d890694dd43cc025b150c29b4be"
+                "packageVerificationCodeValue": "243e14f5816d725529d0e94b11ec55be0881ba01"
             },
             "homepage": "https://github.com/SciML/DiffEqBase.jl.git",
             "sourceInfo": "Download Location is supplied by the General registry:\nhttps://github.com/JuliaRegistries/General.git\nThe hash supplied in Download Location is not the typical git commit hash. Instead it is a git tree hash. The easiest way to retrieve this version from the cloned repository is to use the command:\ngit archive --output=path/to/archive.tar <tree hash>",
@@ -3159,13 +3159,13 @@
         {
             "name": "OrdinaryDiffEqCore",
             "SPDXID": "SPDXRef-OrdinaryDiffEqCore-bbf590c4-e513-4bbe-9b18-05decba2e5d8",
-            "versionInfo": "1.26.1",
+            "versionInfo": "1.26.2",
             "supplier": "NOASSERTION",
             "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/SciML/OrdinaryDiffEq.jl.git@08dac9c6672a4548439048089bac293759a897fd#lib/OrdinaryDiffEqCore",
+            "downloadLocation": "git+https://github.com/SciML/OrdinaryDiffEq.jl.git@1bd20b621e8dee5f2d170ae31631bf573ab77eec#lib/OrdinaryDiffEqCore",
             "filesAnalyzed": true,
             "packageVerificationCode": {
-                "packageVerificationCodeValue": "0cbc8aceb7d55f07c32ce6de467db583f29ea623"
+                "packageVerificationCodeValue": "b755d6b67d8caa52ffb67376c496bf4276187a87"
             },
             "homepage": "https://github.com/SciML/OrdinaryDiffEq.jl.git",
             "sourceInfo": "Download Location is supplied by the General registry:\nhttps://github.com/JuliaRegistries/General.git\nThe hash supplied in Download Location is not the typical git commit hash. Instead it is a git tree hash. The easiest way to retrieve this version from the cloned repository is to use the command:\ngit archive --output=path/to/archive.tar <tree hash>",
@@ -3512,13 +3512,13 @@
         {
             "name": "DifferentiationInterface",
             "SPDXID": "SPDXRef-DifferentiationInterface-a0c0ee7d-e4b9-4e03-894e-1c5f64a51d63",
-            "versionInfo": "0.7.1",
+            "versionInfo": "0.7.2",
             "supplier": "NOASSERTION",
             "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/JuliaDiff/DifferentiationInterface.jl.git@210933c93f39f832d92f9efbbe69a49c453db36d#DifferentiationInterface",
+            "downloadLocation": "git+https://github.com/JuliaDiff/DifferentiationInterface.jl.git@c092fd1dd0d94e609cd0d29e13897b2825c804bb#DifferentiationInterface",
             "filesAnalyzed": true,
             "packageVerificationCode": {
-                "packageVerificationCodeValue": "edb49cd1c7f80066a05281746da0028d80bb29f5"
+                "packageVerificationCodeValue": "a5053c8fd59149150cdb1a8bf2d3a4d96ee2cba4"
             },
             "homepage": "https://github.com/JuliaDiff/DifferentiationInterface.jl.git",
             "sourceInfo": "Download Location is supplied by the General registry:\nhttps://github.com/JuliaRegistries/General.git\nThe hash supplied in Download Location is not the typical git commit hash. Instead it is a git tree hash. The easiest way to retrieve this version from the cloned repository is to use the command:\ngit archive --output=path/to/archive.tar <tree hash>",
@@ -3603,13 +3603,13 @@
             "versionInfo": "0.6.21",
             "supplier": "NOASSERTION",
             "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/adrhill/SparseConnectivityTracer.jl.git@182990067a09adf950274f97f38f68c76f81d2d0",
+            "downloadLocation": "git+https://github.com/SouthEndMusic/SparseConnectivityTracer.jl@add_smoothed_linear_interpolation_support",
             "filesAnalyzed": true,
             "packageVerificationCode": {
-                "packageVerificationCodeValue": "e39e1bbc111ce3d494b1b3426b8e6501878da692"
+                "packageVerificationCodeValue": "b84435cdfb7e4bb27df052f5a80c4b146ec95823"
             },
-            "homepage": "https://github.com/adrhill/SparseConnectivityTracer.jl.git",
-            "sourceInfo": "Download Location is supplied by the General registry:\nhttps://github.com/JuliaRegistries/General.git\nThe hash supplied in Download Location is not the typical git commit hash. Instead it is a git tree hash. The easiest way to retrieve this version from the cloned repository is to use the command:\ngit archive --output=path/to/archive.tar <tree hash>",
+            "homepage": "https://github.com/SouthEndMusic/SparseConnectivityTracer.jl",
+            "sourceInfo": "SparseConnectivityTracer is directly tracking a git repository.",
             "licenseConcluded": "NOASSERTION",
             "licenseInfoFromFiles": [
                 "MIT"
@@ -3886,13 +3886,13 @@
         {
             "name": "PreallocationTools",
             "SPDXID": "SPDXRef-PreallocationTools-d236fae5-4411-538c-8e31-a6e3d9e00b46",
-            "versionInfo": "0.4.27",
+            "versionInfo": "0.4.28",
             "supplier": "NOASSERTION",
             "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/SciML/PreallocationTools.jl.git@6d98eace73d82e47f5b16c393de198836d9f790a",
+            "downloadLocation": "git+https://github.com/SciML/PreallocationTools.jl.git@7a5e02659e293b25a4bfaeeb6cd268acd0742eba",
             "filesAnalyzed": true,
             "packageVerificationCode": {
-                "packageVerificationCodeValue": "bd722896e93f8cde59bd2fa14a6f05a735067cf4"
+                "packageVerificationCodeValue": "e61314095554188d8bab0c958d128a7c90153233"
             },
             "homepage": "https://github.com/SciML/PreallocationTools.jl.git",
             "sourceInfo": "Download Location is supplied by the General registry:\nhttps://github.com/JuliaRegistries/General.git\nThe hash supplied in Download Location is not the typical git commit hash. Instead it is a git tree hash. The easiest way to retrieve this version from the cloned repository is to use the command:\ngit archive --output=path/to/archive.tar <tree hash>",
@@ -4219,13 +4219,13 @@
             "versionInfo": "8.1.0",
             "supplier": "NOASSERTION",
             "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/SciML/DataInterpolations.jl.git@13c4d72ac01c0a441d72eced702332f8eabc8366",
+            "downloadLocation": "git+https://github.com/SciML/DataInterpolations.jl@add_smoothed_linear_interpolation",
             "filesAnalyzed": true,
             "packageVerificationCode": {
-                "packageVerificationCodeValue": "76f6a97733566aa176e474715bdd38191212ef18"
+                "packageVerificationCodeValue": "5d5fe6c2611d6c3caf77c7eb3529a87d75218e9f"
             },
-            "homepage": "https://github.com/SciML/DataInterpolations.jl.git",
-            "sourceInfo": "Download Location is supplied by the General registry:\nhttps://github.com/JuliaRegistries/General.git\nThe hash supplied in Download Location is not the typical git commit hash. Instead it is a git tree hash. The easiest way to retrieve this version from the cloned repository is to use the command:\ngit archive --output=path/to/archive.tar <tree hash>",
+            "homepage": "https://github.com/SciML/DataInterpolations.jl",
+            "sourceInfo": "DataInterpolations is directly tracking a git repository.",
             "licenseConcluded": "NOASSERTION",
             "licenseInfoFromFiles": [
                 "MIT"
