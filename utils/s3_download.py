@@ -28,14 +28,12 @@ if (not args.accesskey) or (not args.secretkey):
     raise ValueError("No MinIO access key or secret key provided")
 
 client = Minio(minioServer, access_key=args.accesskey, secret_key=args.secretkey)
-objects = client.list_objects(bucketName, prefix=args.remote, recursive=True)
+objects = list(client.list_objects(bucketName, prefix=args.remote, recursive=True))
 
-# Check if remote path exists by converting iterator to list and checking if empty
-objects_list = list(objects)
-if not objects_list:
-    raise ValueError(f"Remote path '{args.remote}' does not exist or is empty")
+if not objects:
+    raise ValueError(f"Remote path '{args.remote}' does not exist or is empty.")
 
-for obj in objects_list:
+for obj in objects:
     try:
         if obj.is_dir:
             local_dir = f"models/{args.local}" + obj.object_name.removeprefix(
