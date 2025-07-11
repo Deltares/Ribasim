@@ -50,7 +50,7 @@ This way any variations in between timesteps are also included, and we can outpu
 ## Space {#sec-space}
 
 The water balance equation can be applied on different spatial scales.
-Besides modelling a single lumped watershed, it allows you to divide the area into a network of connected representative elementary watersheds (REWs) [@REGGIANI1998367].
+Besides modeling a single lumped watershed, it allows you to divide the area into a network of connected representative elementary watersheds (REWs) [@REGGIANI1998367].
 At this scale global water balance laws can be formulated by means of integration of point-scale conservation equations
 over control volumes.
 Such an approach makes Ribasim a semi-distributed model.

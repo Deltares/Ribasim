@@ -906,7 +906,7 @@ Stages:
 - At the start of the fourth stage the precipitation stops, and so the UserDemand partly uses surplus water from the Basin to fulfill its demand. The net change of Basin #2 becomes $q - d$.
 - In the final stage the Basin is in a dynamical equilibrium, since the Basin has no supply so the user abstracts precisely the flow from the LevelBoundary.
 
-# Guidance of modelling a cascade of polder basins
+# Guidance of modeling a cascade of polder basins
 
 **Situation description**: This example shows how to make a model for a given practical water system, which consists of a cascade of level control polder basins with inlet and outlet to the main systems. Note that alternative model layouts are feasible for the same water system, each having its positive items and drawbacks.
 
