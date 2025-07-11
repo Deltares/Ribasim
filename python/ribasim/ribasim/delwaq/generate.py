@@ -73,18 +73,17 @@ def _make_boundary(data, boundary_type):
     """
     bid = _boundary_name(data.node_id.iloc[0], boundary_type)
     piv = (
-        data.pivot_table(
-            index="time", columns="substance", values="concentration", fill_value=-999
-        )
+        data.pivot_table(index="time", columns="substance", values="concentration")
         .reset_index()
         .reset_index(drop=True)
     )
-    # Convert Arrow time to Numpy to avoid needing tzdata somehow
-    piv.time = piv.time.astype("datetime64[ns]").dt.strftime("%Y/%m/%d-%H:%M:%S")
+    piv.time = piv.time.dt.strftime("%Y/%m/%d-%H:%M:%S")
     boundary = {
         "name": bid,
         "substances": list(map(_quote, piv.columns[1:])),
-        "df": piv.to_string(formatters={"time": _quote}, header=False, index=False),
+        "df": piv.to_string(
+            formatters={"time": _quote}, header=False, index=False, na_rep=-999
+        ),
     }
     substances = data.substance.unique()
     return boundary, substances
@@ -304,12 +303,8 @@ def generate(
     results_folder = toml_path.parent / model.results_dir
     evaporate_mass = model.solver.evaporate_mass
 
-    basins = pd.read_feather(
-        toml_path.parent / results_folder / "basin.arrow", dtype_backend="pyarrow"
-    )
-    flows = pd.read_feather(
-        toml_path.parent / results_folder / "flow.arrow", dtype_backend="pyarrow"
-    )
+    basins = pd.read_feather(toml_path.parent / results_folder / "basin.arrow")
+    flows = pd.read_feather(toml_path.parent / results_folder / "flow.arrow")
 
     output_path.mkdir(exist_ok=True)
 

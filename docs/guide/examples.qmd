@@ -248,9 +248,7 @@ ribasim basic/ribasim.toml
 After running the model, read back the results:
 
 ```{python}
-df_basin = pd.read_feather(
-    datadir / "basic/results/basin.arrow", dtype_backend="pyarrow"
-)
+df_basin = pd.read_feather(datadir / "basic/results/basin.arrow")
 df_basin_wide = df_basin.pivot_table(
     index="time", columns="node_id", values=["storage", "level"]
 )
@@ -259,7 +257,7 @@ ax.set_ylabel("level [m]");
 ```
 
 ```{python}
-df_flow = pd.read_feather(datadir / "basic/results/flow.arrow", dtype_backend="pyarrow")
+df_flow = pd.read_feather(datadir / "basic/results/flow.arrow")
 df_flow["link"] = list(zip(df_flow.from_node_id, df_flow.to_node_id))
 df_flow["flow_m3d"] = df_flow.flow_rate * 86400
 ax = df_flow.pivot_table(index="time", columns="link", values="flow_m3d").plot()
@@ -413,9 +411,7 @@ Now run the model (for running instructions see [here](#running-a-model)).
 After running the model, read back the results:
 
 ```{python}
-df_basin = pd.read_feather(
-    datadir / "level_range/results/basin.arrow", dtype_backend="pyarrow"
-)
+df_basin = pd.read_feather(datadir / "level_range/results/basin.arrow")
 df_basin_wide = df_basin.pivot_table(
     index="time", columns="node_id", values=["storage", "level"]
 )
@@ -567,9 +563,7 @@ After running the model, read back the results:
 ```{python}
 from matplotlib.dates import date2num
 
-df_basin = pd.read_feather(
-    datadir / "pid_control/results/basin.arrow", dtype_backend="pyarrow"
-)
+df_basin = pd.read_feather(datadir / "pid_control/results/basin.arrow")
 df_basin_wide = df_basin.pivot_table(
     index="time", columns="node_id", values=["storage", "level"]
 )
@@ -721,9 +715,7 @@ After running the model, read back the results:
 ```{python}
 import matplotlib.ticker as plticker
 
-df_allocation = pd.read_feather(
-    datadir / "allocation_example/results/allocation.arrow", dtype_backend="pyarrow"
-)
+df_allocation = pd.read_feather(datadir / "allocation_example/results/allocation.arrow")
 df_allocation_wide = df_allocation.pivot_table(
     index="time",
     columns=["node_type", "node_id", "demand_priority"],
@@ -759,9 +751,7 @@ Some things to note about this plot:
 - Abstraction is accumulated over all priorities per user.
 
 ```{python}
-df_basin = pd.read_feather(
-    datadir / "allocation_example/results/basin.arrow", dtype_backend="pyarrow"
-)
+df_basin = pd.read_feather(datadir / "allocation_example/results/basin.arrow")
 df_basin_wide = df_basin.pivot_table(
     index="time", columns="node_id", values=["storage", "level"]
 )
@@ -891,9 +881,7 @@ Now run the model (for running instructions see [here](#running-a-model)).
 After running the model, read back the results:
 
 ```{python}
-df_basin = pd.read_feather(
-    datadir / "level_demand/results/basin.arrow", dtype_backend="pyarrow"
-)
+df_basin = pd.read_feather(datadir / "level_demand/results/basin.arrow")
 df_basin = df_basin[df_basin.node_id == 2]
 df_basin_wide = df_basin.pivot_table(
     index="time", columns="node_id", values=["storage", "level"]
@@ -1149,7 +1137,7 @@ After running the model, read back the result to plot the flow of each polder ba
 
 ```{python}
 datadir_flow = datadir / "local_pidcontrolled_cascade/results/flow.arrow"
-df_flow = pd.read_feather(datadir_flow, dtype_backend="pyarrow")
+df_flow = pd.read_feather(datadir_flow)
 df_flow["link"] = list(zip(df_flow.from_node_id, df_flow.to_node_id))
 df_flow["flow_m3d"] = df_flow.flow_rate * 86400
 
@@ -1171,7 +1159,7 @@ ax.set_ylabel("flow [m³day⁻¹]");
 
 ```{python}
 datadir_basin = datadir / "local_pidcontrolled_cascade/results/basin.arrow"
-df_basin = pd.read_feather(datadir_basin, dtype_backend="pyarrow")
+df_basin = pd.read_feather(datadir_basin)
 df_basin["vertical_flux"] = (
     df_basin["precipitation"]
     - df_basin["evaporation"]
@@ -1334,9 +1322,7 @@ Now run the model (for running instructions see [here](#running-a-model)).
 After running the model, read back the results:
 
 ```{python}
-df_flow = pd.read_feather(
-    datadir / "outlet_continuous_control/results/flow.arrow", dtype_backend="pyarrow"
-)
+df_flow = pd.read_feather(datadir / "outlet_continuous_control/results/flow.arrow")
 fig, ax = plt.subplots()
 
 

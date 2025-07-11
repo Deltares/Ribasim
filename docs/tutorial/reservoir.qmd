@@ -203,9 +203,7 @@ run(
 ## Plot reservoir storage and level
 
 ```{python}
-df_basin = pd.read_feather(
-    base_dir / "Crystal-3/results/basin.arrow", dtype_backend="pyarrow"
-)
+df_basin = pd.read_feather(base_dir / "Crystal-3/results/basin.arrow")
 
 # Create pivot tables and plot for Basin data
 df_basin_wide = df_basin.pivot_table(
@@ -241,9 +239,7 @@ As expected, after increasing the profile of the Basin, its storage capacity inc
 ## Plot flows
 
 ```{python}
-df_flow = pd.read_feather(
-    base_dir / "Crystal-3/results/flow.arrow", dtype_backend="pyarrow"
-)
+df_flow = pd.read_feather(base_dir / "Crystal-3/results/flow.arrow")
 # Add the link names and then remove unnamed links
 df_flow["name"] = model.link.df["name"].loc[df_flow["link_id"]].to_numpy()
 df_flow = df_flow[df_flow["name"].astype(bool)]
