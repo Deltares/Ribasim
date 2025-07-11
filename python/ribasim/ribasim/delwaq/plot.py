@@ -13,24 +13,29 @@ def plot_fraction(
         "Initial",
         "Drainage",
         "Precipitation",
+        "SurfaceRunoff",
         "Terminal",
     ],
 ):
     table = model.basin.concentration_external.df
     table = table[table["node_id"] == node_id]
     table = table[table["substance"].isin(tracers)]
+    if len(table) == 0:
+        raise ValueError(f"No data found for node {node_id} with tracers {tracers}")
 
     groups = table.groupby("substance")
     stack = {k: v["concentration"].to_numpy() for (k, v) in groups}
 
     fig, ax = plt.subplots()
+    key = next(iter(groups.groups))
+    time = groups.get_group(key)["time"]
     ax.stackplot(
-        groups.get_group(tracers[0])["time"],
+        time,
         stack.values(),
         labels=stack.keys(),
     )
     ax.plot(
-        groups.get_group(tracers[0])["time"],
+        time,
         np.sum(list(stack.values()), axis=0),
         c="black",
         lw=2,
@@ -43,14 +48,18 @@ def plot_fraction(
     plt.show(fig)
 
 
-def plot_spatial(model, tracer="Basin", versus=None, limit=0.001):
+def plot_spatial(model, tracer="Initial", versus=None, limit=0.001):
     table = model.basin.concentration_external.df
     table = table[table["time"] == table["time"].max()]
 
     if versus is not None:
         vtable = table[table["substance"] == versus]
+        if len(vtable) == 0:
+            raise ValueError(f"No data found for versus tracer {versus}")
         vtable.set_index("node_id", inplace=True)
     table = table[table["substance"] == tracer]
+    if len(table) == 0:
+        raise ValueError(f"No data found for tracer {tracer}")
     table.set_index("node_id", inplace=True)
 
     nodes = model.node_table().df
