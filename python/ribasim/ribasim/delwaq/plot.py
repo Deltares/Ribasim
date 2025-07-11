@@ -27,13 +27,15 @@ def plot_fraction(
     stack = {k: v["concentration"].to_numpy() for (k, v) in groups}
 
     fig, ax = plt.subplots()
+    key = next(iter(groups.groups))
+    time = groups.get_group(key)["time"]
     ax.stackplot(
-        groups.get_group(next(iter(groups.groups)))["time"],
+        time,
         stack.values(),
         labels=stack.keys(),
     )
     ax.plot(
-        groups.get_group(next(iter(groups.groups)))["time"],
+        time,
         np.sum(list(stack.values()), axis=0),
         c="black",
         lw=2,
