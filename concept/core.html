@@ -277,12 +277,12 @@ window.Quarto = {
 
 
 <p>With the term “core”, we mean the computational engine of Ribasim. As detailed in the <a href="../reference/usage.html">usage</a> documentation, it is generally used as a command line tool.</p>
-<p>A quick overview of the model concept is available in the <a href="../concept/concept.html#sec-concept">introduction</a>, while a more in depth discussion is available on the <a href="../concept/modelconcept.html">model concept</a> page. The theory is described on the <a href="../concept/equations.html">equations</a> page, and more in-depth numerical considerations are described on the <a href="../concept/numerics.html">numerical considerations</a> page. As allocation is a large and self-contained part of the Ribasim core, it is described on the separate <a href="../concept/allocation.html">allocation</a> page. Input validation is described on the <a href="../reference/validation.html">validation</a> page.</p>
+<p>A quick overview of the model concept is available in the <a href="../concept/concept.html#sec-concept">introduction</a>, while a more in-depth discussion is available on the <a href="../concept/modelconcept.html">model concept</a> page. The theory is described on the <a href="../concept/equations.html">equations</a> page, and more in-depth numerical considerations are described on the <a href="../concept/numerics.html">numerical considerations</a> page. As allocation is a large and self-contained part of the Ribasim core, it is described on the separate <a href="../concept/allocation.html">allocation</a> page. Input validation is described on the <a href="../reference/validation.html">validation</a> page.</p>
 <p>The core is implemented in the <a href="https://julialang.org/">Julia programming language</a>, and can be found in the <a href="https://github.com/Deltares/Ribasim">Ribasim repository</a> under the <code>core/</code> folder. For developers we also advise to read the <a href="../dev/core.html">developer documentation</a>. Information on coupling can be found <a href="../guide/coupling.html">here</a>.</p>
 <p>An overview of all components is given in the <a href="../install.html#sec-components">installation</a> section.</p>
 <section id="sec-simulationloop" class="level1" data-number="1">
 <h1 data-number="1"><span class="header-section-number">1</span> The simulation loop</h1>
-<p>The computational process can be divided in three phases:</p>
+<p>The computational process can be divided into three phases:</p>
 <ul>
 <li>Model initialization</li>
 <li>Running the simulation loop</li>
@@ -356,14 +356,14 @@ window.Quarto = {
 </section>
 <section id="sec-nested-allocation" class="level1" data-number="2">
 <h1 data-number="2"><span class="header-section-number">2</span> Nested allocation</h1>
-<p>Since water systems may be extensive, like in the Netherlands, Ribasim models may become large networks with over ten thousand nodes. To keep a proper functioning allocation concept under these circumstances, the modeller can decompose the network domain into a primary network and multiple sub-networks. The allocation will then be conducted in three steps:</p>
+<p>Since water systems may be extensive, like in the Netherlands, Ribasim models may become large networks with over ten thousand nodes. To maintain a properly functioning allocation concept under these circumstances, the modeler can decompose the network domain into a primary network and multiple sub-networks. The allocation will then be conducted in three steps:</p>
 <ol type="1">
 <li>conduct an inventory of demands from the sub-networks to inlets from the primary network,</li>
-<li>allocate the available water in the primary network to the subnetworks inlets,</li>
+<li>allocate the available water in the primary network to the subnetwork inlets,</li>
 <li>allocate the assigned water within each subnetwork to the individual demand nodes.</li>
 </ol>
-<p>The demand nodes then will request this updated demand from the rule-based simulation. Whether this updated demand is indeed abstracted depends on all dry-fall control mechanism implemented in the rule-based simulation.</p>
-<p>The following sequence diagram illustrates this calculation process within then allocation phase.</p>
+<p>The demand nodes will then request this updated demand from the rule-based simulation. Whether this updated demand is indeed abstracted depends on all the control mechanisms implemented in the rule-based simulation.</p>
+<p>The following sequence diagram illustrates this calculation process within the allocation phase.</p>
 <div class="cell" data-layout-align="default">
 <div class="cell-output-display">
 <div>
@@ -410,14 +410,14 @@ Caution
 </div>
 </div>
 <div class="callout-body-container callout-body">
-<p>This is an unsupported experimental feature and is disabled by default. We advise to use the <a href="@sec-waterquality">Delwaq coupling</a> for tracer calculations. If you’re interested in using this experimental feature, please <a href="../contact.html">contact us</a>.</p>
+<p>This is an unsupported experimental feature and is disabled by default. We advise to use the <a href="../guide/coupling.html#sec-waterquality">Delwaq coupling</a> for tracer calculations. If you’re interested in using this experimental feature, please <a href="../contact.html">contact us</a>.</p>
 </div>
 </div>
 <p>Ribasim can calculate concentrations of conservative tracers (i.e.&nbsp;substances that are non-reactive). It does so by calculating the mass transports by flows for each timestep, in the <code>update_cumulative_flows!</code> callback. Specifically, for each Basin at each timestep it calculates:</p>
 <ul>
 <li>all mass inflows (<span class="math inline">\(flow * source\_concentration\)</span>) given the link inflows</li>
 <li>update the concentrations in the Basin based on the added storage (<span class="math inline">\(previous storage + inflows\)</span>)</li>
-<li>all mass outflows (<span class="math inline">\(flow * basin\_concentration\_state\)</span>) give the link outflows</li>
+<li>all mass outflows (<span class="math inline">\(flow * basin\_concentration\_state\)</span>) given the link outflows</li>
 <li>update the concentrations in the Basin based on the current storage</li>
 </ul>
 <p>We thus keep track of both mass and concentration of substances for each Basin. Note that we have not added the substance mass to the states, and we assume that concentrations of flows are piecewise constant over a timestep. This excludes the use of tracer injections.</p>
