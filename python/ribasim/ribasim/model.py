@@ -549,8 +549,8 @@ class Model(FileModel):
         """Plot the implicit listen links of the model."""
         df_listen_link = pd.DataFrame(
             data={
-                "control_node_id": pd.Series([], dtype="int32[pyarrow]"),
-                "listen_node_id": pd.Series([], dtype="int32[pyarrow]"),
+                "control_node_id": pd.Series([], dtype=np.int32),
+                "listen_node_id": pd.Series([], dtype=np.int32),
             }
         )
 

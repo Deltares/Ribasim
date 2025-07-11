@@ -435,7 +435,6 @@ class TableModel(FileModel, Generic[TableT]):
                     # we store TIMESTAMP in SQLite like "2025-05-29 14:16:00"
                     # see https://www.sqlite.org/lang_datefunc.html
                     parse_dates={"time": {"format": "ISO8601"}},
-                    dtype_backend="pyarrow",
                 )
                 df.set_index("fid", inplace=True)
             else:
@@ -515,15 +514,7 @@ class SpatialTableModel(TableModel[TableT], Generic[TableT]):
         with closing(connect(path)) as connection:
             if exists(connection, table):
                 # pyogrio hardcodes fid name on reading
-                df = gpd.read_file(
-                    path,
-                    layer=table,
-                    engine="pyogrio",
-                    fid_as_index=True,
-                    use_arrow=True,
-                    # tell pyarrow to map to pd.ArrowDtype rather than NumPy
-                    arrow_to_pandas_kwargs={"types_mapper": pd.ArrowDtype},
-                )
+                df = gpd.read_file(path, layer=table, fid_as_index=True)
             else:
                 df = None
 

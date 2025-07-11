@@ -380,7 +380,7 @@ def test_pandas_dtype():
         demand_priority=[1, pd.NA],
     ).df
 
-    assert df["demand_priority"].dtype == "int32[pyarrow]"
+    assert df["demand_priority"].dtype == "Int32"
     assert df["demand_priority"].isna().iloc[1]
 
     # Missing optional integer column
@@ -388,5 +388,5 @@ def test_pandas_dtype():
         demand=[1, 2.2],
     ).df
 
-    assert df["demand_priority"].dtype == "int32[pyarrow]"
+    assert df["demand_priority"].dtype == "Int32"
     assert df["demand_priority"].isna().all()
