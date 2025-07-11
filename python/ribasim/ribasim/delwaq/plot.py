@@ -13,24 +13,27 @@ def plot_fraction(
         "Initial",
         "Drainage",
         "Precipitation",
+        "SurfaceRunoff",
         "Terminal",
     ],
 ):
     table = model.basin.concentration_external.df
     table = table[table["node_id"] == node_id]
     table = table[table["substance"].isin(tracers)]
+    if len(table) == 0:
+        raise ValueError(f"No data found for node {node_id} with tracers {tracers}")
 
     groups = table.groupby("substance")
     stack = {k: v["concentration"].to_numpy() for (k, v) in groups}
 
     fig, ax = plt.subplots()
     ax.stackplot(
-        groups.get_group(tracers[0])["time"],
+        groups.get_group(next(iter(groups.groups)))["time"],
         stack.values(),
         labels=stack.keys(),
     )
     ax.plot(
-        groups.get_group(tracers[0])["time"],
+        groups.get_group(next(iter(groups.groups)))["time"],
         np.sum(list(stack.values()), axis=0),
         c="black",
         lw=2,
