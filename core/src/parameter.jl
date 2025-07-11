@@ -166,6 +166,15 @@ const ScalarLinearInterpolation = LinearInterpolation{
     Float64,
 }
 
+"Smoothed linear interpolation from a Float64 to a Float64"
+const ScalarSmoothedLinearInterpolation = SmoothedLinearInterpolation{
+    Vector{Float64},
+    Vector{Float64},
+    Nothing,
+    Vector{Float64},
+    Float64,
+}
+
 "SmoothedConstantInterpolation from a Float64 to a Float64"
 const ScalarBlockInterpolation = SmoothedConstantInterpolation{
     Vector{Float64},
@@ -870,7 +879,7 @@ end
     compound_variable::Vector{CompoundVariable}
     controlled_variable::Vector{String}
     target_ref::Vector{CacheRef} = Vector{CacheRef}(undef, length(node_id))
-    func::Vector{ScalarLinearInterpolation}
+    func::Vector{ScalarSmoothedLinearInterpolation}
 end
 
 """
