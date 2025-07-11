@@ -342,12 +342,13 @@ def test_closed_model(basic, tmp_path):
 
 
 def test_pandas_dtype():
-    # Extra columns don't get coerced to Arrow types
+    # Extra columns don't get coerced to schema types
     df = flow_boundary.Time(
         time=["2021-01-01 00:00:00.123", "2021-01-01 00:00:00.456"],
         flow_rate=[1, 2.2],
         meta_obj=["foo", "bar"],
-        meta_str=pd.Series(["a", pd.NA], dtype="string[pyarrow]"),
+        meta_str_python=pd.Series(["a", pd.NA], dtype="string[python]"),
+        meta_str_pyarrow=pd.Series(["b", pd.NA], dtype="string[pyarrow]"),
     ).df
 
     assert (df["node_id"] == 0).all()
@@ -357,8 +358,10 @@ def test_pandas_dtype():
     assert str(df["time"].dtype) == "datetime64[ns]"
     assert df["flow_rate"].dtype == np.float64
     assert df["meta_obj"].dtype == object
-    assert df["meta_str"].dtype == "string[python]"
-    assert df["meta_str"].isna().iloc[1]
+    assert df["meta_str_python"].dtype == "string[python]"
+    assert df["meta_str_python"].isna().iloc[1]
+    assert df["meta_str_pyarrow"].dtype == "string[pyarrow]"
+    assert df["meta_str_pyarrow"].isna().iloc[1]
 
     # Check a string column that is part of the schema and a boolean column
     df = pump.Static(
@@ -367,8 +370,8 @@ def test_pandas_dtype():
         active=[None, False],
     ).df
 
-    assert df["control_state"].dtype == "string[pyarrow]"
-    assert df["active"].dtype == "bool[pyarrow]"
+    assert df["control_state"].dtype == "string[python]"
+    assert df["active"].dtype == "boolean"
     assert df["active"].isna().iloc[0]
 
     # Optional integer column
