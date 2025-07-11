@@ -46,14 +46,18 @@ def plot_fraction(
     plt.show(fig)
 
 
-def plot_spatial(model, tracer="Basin", versus=None, limit=0.001):
+def plot_spatial(model, tracer="Initial", versus=None, limit=0.001):
     table = model.basin.concentration_external.df
     table = table[table["time"] == table["time"].max()]
 
     if versus is not None:
         vtable = table[table["substance"] == versus]
+        if len(vtable) == 0:
+            raise ValueError(f"No data found for versus tracer {versus}")
         vtable.set_index("node_id", inplace=True)
     table = table[table["substance"] == tracer]
+    if len(table) == 0:
+        raise ValueError(f"No data found for tracer {tracer}")
     table.set_index("node_id", inplace=True)
 
     nodes = model.node_table().df
