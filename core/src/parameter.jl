@@ -28,11 +28,13 @@ const state_components = (
 )
 const n_components = length(state_components)
 const StateTuple{V} = NamedTuple{state_components, NTuple{n_components, V}}
+const RibasimCVectorType =
+    Ribasim.CArrays.CArray{Float64, 1, Vector{Float64}, StateTuple{UnitRange{Int}}}
 
 # LinkType.flow and NodeType.FlowBoundary
 @enumx LinkType flow control none
 @eval @enumx NodeType $(config.nodetypes...)
-@enumx ControlType None Continuous PID Allocation
+@enumx ContinuousControlType None Continuous PID
 @enumx Substance Continuity = 1 Initial = 2 LevelBoundary = 3 FlowBoundary = 4 UserDemand =
     5 Drainage = 6 Precipitation = 7 SurfaceRunoff = 8
 Base.to_index(id::Substance.T) = Int(id)  # used to index into concentration matrices
@@ -160,6 +162,15 @@ const ScalarLinearInterpolation = LinearInterpolation{
     Vector{Float64},
     Vector{Float64},
     Vector{Float64},
+    Vector{Float64},
+    Float64,
+}
+
+"Smoothed linear interpolation from a Float64 to a Float64"
+const ScalarSmoothedLinearInterpolation = SmoothedLinearInterpolation{
+    Vector{Float64},
+    Vector{Float64},
+    Nothing,
     Vector{Float64},
     Float64,
 }
@@ -390,10 +401,15 @@ abstract type AbstractDemandNode <: AbstractParameterNode end
     cumulative_in::Vector{Float64} = zeros(Float64, 0)
     # matrix with concentrations for each Basin and substance
     concentration_state::Matrix{Float64} = zeros(Float64, 0, 0)  # Basin, substance
-    # matrix with boundary concentrations for each boundary, Basin and substance
-    concentration::Array{Float64, 3} = zeros(Float64, 0, 0, 0)
+    # Vectors with concentration timeseries interpolations for each incoming forcing per Basin per substance
+    concentration_itp_drainage::Vector{Vector{ScalarConstantInterpolation}} =
+        Vector{ScalarBlockInterpolation}[]
+    concentration_itp_precipitation::Vector{Vector{ScalarConstantInterpolation}} =
+        Vector{ScalarBlockInterpolation}[]
+    concentration_itp_surface_runoff::Vector{Vector{ScalarConstantInterpolation}} =
+        Vector{ScalarBlockInterpolation}[]
     # matrix with mass for each Basin and substance
-    mass::Matrix{Float64} = zeros(Float64, 0, 0)
+    mass::Vector{Vector{Float64}} = Vector{Float64}[]
     # substances in use by the model (ordered like their axis in the concentration matrices)
     substances::OrderedSet{Symbol} = OrderedSet{Symbol}()
     # Data source for external concentrations (used in control)
@@ -454,9 +470,6 @@ Requirements:
 * Must be positive: precipitation, surface_runoff, evaporation, infiltration, drainage
 * Index points to a Basin
 * volume, area, level must all be positive and monotonic increasing.
-
-Type parameter D indicates the content backing the StructVector, which can be a NamedTuple
-of vectors or Arrow Tables, and is added to avoid type instabilities.
 """
 @kwdef struct Basin <: AbstractParameterNode
     node_id::Vector{NodeID}
@@ -494,8 +507,6 @@ of vectors or Arrow Tables, and is added to avoid type instabilities.
     level_prev::Vector{Float64} = zeros(length(node_id))
     # Concentrations
     concentration_data::ConcentrationData = ConcentrationData()
-    # Data source for concentration updates
-    concentration_time::StructVector{BasinConcentrationV1}
 end
 
 """
@@ -606,16 +617,14 @@ end
 node_id: node ID of the LevelBoundary node
 active: whether this node is active
 level: the fixed level of this 'infinitely big Basin'
-concentration: matrix with boundary concentrations for each Basin and substance
-concentration_time: Data source for concentration updates
+concentration_itp: matrix with timeseries interpolations of concentrations per LevelBoundary per substance
 """
 @kwdef struct LevelBoundary <: AbstractParameterNode
     node_id::Vector{NodeID}
     active::Vector{Bool} = ones(Bool, length(node_id))
     level::Vector{ScalarLinearInterpolation} =
         Vector{ScalarLinearInterpolation}(undef, length(node_id))
-    concentration::Matrix{Float64}
-    concentration_time::StructVector{LevelBoundaryConcentrationV1}
+    concentration_itp::Vector{Vector{ScalarConstantInterpolation}}
 end
 
 """
@@ -625,8 +634,7 @@ active: whether this node is active and thus contributes flow
 cumulative_flow: The exactly integrated cumulative boundary flow since the start of the simulation
 cumulative_flow_saveat: The exactly integrated cumulative boundary flow since the last saveat
 flow_rate: flow rate (exact)
-concentration: matrix with boundary concentrations for each Basin and substance
-concentration_time: Data source for concentration updates
+concentration_itp: matrix with boundary concentrations per FlowBoundary per substance
 """
 @kwdef struct FlowBoundary{I} <: AbstractParameterNode
     node_id::Vector{NodeID}
@@ -635,8 +643,7 @@ concentration_time: Data source for concentration updates
     cumulative_flow::Vector{Float64} = zeros(length(node_id))
     cumulative_flow_saveat::Vector{Float64} = zeros(length(node_id))
     flow_rate::Vector{I}
-    concentration::Matrix{Float64}
-    concentration_time::StructVector{FlowBoundaryConcentrationV1}
+    concentration_itp::Vector{Vector{ScalarConstantInterpolation}}
 end
 
 """
@@ -653,6 +660,7 @@ min_upstream_level: The upstream level below which the Pump flow goes to zero
 max_downstream_level: The downstream level above which the Pump flow goes to zero
 control_mapping: dictionary from (node_id, control_state) to target flow rate
 control_type: one of None, ContinuousControl, PidControl, Allocation
+allocation_controlled: whether this Pump is controlled by allocation
 """
 @kwdef struct Pump <: AbstractParameterNode
     node_id::Vector{NodeID}
@@ -671,7 +679,9 @@ control_type: one of None, ContinuousControl, PidControl, Allocation
         Vector{ScalarLinearInterpolation}(undef, length(node_id))
     control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate} =
         Dict{Tuple{NodeID, String}, ControlStateUpdate}()
-    control_type::Vector{ControlType.T} = fill(ControlType.None, length(node_id))
+    control_type::Vector{ContinuousControlType.T} =
+        fill(ContinuousControlType.None, length(node_id))
+    allocation_controlled::Vector{Bool} = fill(false, length(node_id))
 end
 
 """
@@ -688,6 +698,7 @@ min_upstream_level: The upstream level below which the Outlet flow goes to zero
 max_downstream_level: The downstream level above which the Outlet flow goes to zero
 control_mapping: dictionary from (node_id, control_state) to target flow rate
 control_type: one of None, ContinuousControl, PidControl, Allocation
+allocation_controlled: whether this Outlet is controlled by allocation
 """
 @kwdef struct Outlet <: AbstractParameterNode
     node_id::Vector{NodeID}
@@ -705,7 +716,9 @@ control_type: one of None, ContinuousControl, PidControl, Allocation
     max_downstream_level::Vector{ScalarLinearInterpolation} =
         Vector{ScalarLinearInterpolation}(undef, length(node_id))
     control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate} = Dict()
-    control_type::Vector{ControlType.T} = fill(ControlType.None, length(node_id))
+    control_type::Vector{ContinuousControlType.T} =
+        fill(ContinuousControlType.None, length(node_id))
+    allocation_controlled::Vector{Bool} = fill(false, length(node_id))
 end
 
 """
@@ -866,7 +879,7 @@ end
     compound_variable::Vector{CompoundVariable}
     controlled_variable::Vector{String}
     target_ref::Vector{CacheRef} = Vector{CacheRef}(undef, length(node_id))
-    func::Vector{ScalarLinearInterpolation}
+    func::Vector{ScalarSmoothedLinearInterpolation}
 end
 
 """
@@ -918,8 +931,7 @@ demand_from_timeseries: If false the demand comes from the BMI or is fixed
 allocated: water flux currently allocated to UserDemand per demand priority (node_idx, demand_priority_idx)
 return_factor: the factor in [0,1] of how much of the abstracted water is given back to the system
 min_level: The level of the source Basin below which the UserDemand does not abstract
-concentration: matrix with boundary concentrations for each Basin and substance
-concentration_time: Data source for concentration updates
+concentration_itp: matrix with timeseries interpolations of concentrations per LevelBoundary per substance
 """
 @kwdef struct UserDemand <: AbstractDemandNode
     node_id::Vector{NodeID}
@@ -945,8 +957,7 @@ concentration_time: Data source for concentration updates
     return_factor::Vector{ScalarLinearInterpolation} =
         Vector{ScalarLinearInterpolation}(undef, length(node_id))
     min_level::Vector{Float64} = zeros(length(node_id))
-    concentration::Matrix{Float64}
-    concentration_time::StructVector{UserDemandConcentrationV1}
+    concentration_itp::Vector{Vector{ScalarConstantInterpolation}}
 end
 
 """
@@ -1096,6 +1107,9 @@ the object itself is not.
     # Callback configurations
     do_concentration::Bool
     do_subgrid::Bool
+    temp_convergence::RibasimCVectorType
+    convergence::RibasimCVectorType
+    ncalls::Vector{Int} = [0]
 end
 
 function StateTimeDependentCache(

@@ -108,6 +108,7 @@ end
 @testitem "results" begin
     import Arrow
     import Tables
+    using DataFrames: DataFrame
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
     @test ispath(toml_path)
@@ -142,6 +143,12 @@ end
     @test all(>(0), tbl.dt)
     @test Arrow.getmetadata(tbl) ===
           Base.ImmutableDict("ribasim_version" => ribasim_version)
+
+    path = Ribasim.results_path(config, Ribasim.RESULTS_FILENAME.concentration)
+    bytes = read(path)
+    tbl = Arrow.Table(bytes)
+    df = DataFrame(tbl)
+    @test all(≈(1), filter(row -> row.substance == "Continuity", df).concentration)
 end
 
 @testitem "warm state" begin

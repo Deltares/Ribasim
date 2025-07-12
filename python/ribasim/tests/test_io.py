@@ -64,7 +64,7 @@ def test_basic_transient(basic_transient, tmp_path):
 
     time = model_loaded.basin.time
     assert model_orig.basin.time.df.time.iloc[0] == time.df.time.iloc[0]
-    assert time.df.node_id.dtype == "int32[pyarrow]"
+    assert time.df.node_id.dtype == "int32"
     __assert_equal(model_orig.basin.time.df, time.df)
     assert time.df.shape == (1468, 7)
 
@@ -341,31 +341,27 @@ def test_closed_model(basic, tmp_path):
     model.write(toml_path)
 
 
-def test_arrow_dtype():
-    # Below millisecond precision is not supported
-    with pytest.raises(ValidationError):
-        flow_boundary.Time(
-            time=["2021-01-01 00:00:00.1234"],
-            flow_rate=np.ones(1),
-        )
-
-    # Extra columns don't get coerced to Arrow types
+def test_pandas_dtype():
+    # Extra columns don't get coerced to schema types
     df = flow_boundary.Time(
         time=["2021-01-01 00:00:00.123", "2021-01-01 00:00:00.456"],
         flow_rate=[1, 2.2],
         meta_obj=["foo", "bar"],
-        meta_str=pd.Series(["a", pd.NA], dtype="string[pyarrow]"),
+        meta_str_python=pd.Series(["a", pd.NA], dtype="string[python]"),
+        meta_str_pyarrow=pd.Series(["b", pd.NA], dtype="string[pyarrow]"),
     ).df
 
     assert (df["node_id"] == 0).all()
-    assert df["node_id"].dtype == "int32[pyarrow]"
-    assert df["time"].dtype == "timestamp[ms][pyarrow]"
+    assert df["node_id"].dtype == "int32"
     assert df["time"].dt.tz is None
     assert df["time"].diff().iloc[1] == pd.Timedelta("333ms")
-    assert df["flow_rate"].dtype == "double[pyarrow]"
+    assert str(df["time"].dtype) == "datetime64[ns]"
+    assert df["flow_rate"].dtype == np.float64
     assert df["meta_obj"].dtype == object
-    assert df["meta_str"].dtype == "string[pyarrow]"
-    assert df["meta_str"].isna().iloc[1]
+    assert df["meta_str_python"].dtype == "string[python]"
+    assert df["meta_str_python"].isna().iloc[1]
+    assert df["meta_str_pyarrow"].dtype == "string[pyarrow]"
+    assert df["meta_str_pyarrow"].isna().iloc[1]
 
     # Check a string column that is part of the schema and a boolean column
     df = pump.Static(
@@ -374,8 +370,8 @@ def test_arrow_dtype():
         active=[None, False],
     ).df
 
-    assert df["control_state"].dtype == "string[pyarrow]"
-    assert df["active"].dtype == "bool[pyarrow]"
+    assert df["control_state"].dtype == "string[python]"
+    assert df["active"].dtype == "boolean"
     assert df["active"].isna().iloc[0]
 
     # Optional integer column
@@ -384,7 +380,7 @@ def test_arrow_dtype():
         demand_priority=[1, pd.NA],
     ).df
 
-    assert df["demand_priority"].dtype == "int32[pyarrow]"
+    assert df["demand_priority"].dtype == "Int32"
     assert df["demand_priority"].isna().iloc[1]
 
     # Missing optional integer column
@@ -392,5 +388,5 @@ def test_arrow_dtype():
         demand=[1, 2.2],
     ).df
 
-    assert df["demand_priority"].dtype == "int32[pyarrow]"
+    assert df["demand_priority"].dtype == "Int32"
     assert df["demand_priority"].isna().all()

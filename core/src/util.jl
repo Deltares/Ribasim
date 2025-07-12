@@ -397,9 +397,9 @@ function get_external_demand_priority_idx(
     return findsorted(allocation.demand_priorities_all, demand_priority)
 end
 
-const control_type_mapping = Dict{NodeType.T, ControlType.T}(
-    NodeType.PidControl => ControlType.PID,
-    NodeType.ContinuousControl => ControlType.Continuous,
+const control_type_mapping = Dict{NodeType.T, ContinuousControlType.T}(
+    NodeType.PidControl => ContinuousControlType.PID,
+    NodeType.ContinuousControl => ContinuousControlType.Continuous,
 )
 
 function set_control_type!(node::AbstractParameterNode, graph::MetaGraph)::Nothing
@@ -411,19 +411,19 @@ function set_control_type!(node::AbstractParameterNode, graph::MetaGraph)::Nothi
         control_inneighbors =
             collect(inneighbor_labels_type(graph, node_id, LinkType.control))
 
-        control_type[node_id.idx] =
-            if (node_id, "Ribasim.allocation") in keys(control_mapping)
-                ControlType.Allocation
-            elseif length(control_inneighbors) == 1
-                control_inneighbor = only(control_inneighbors)
-                get(control_type_mapping, control_inneighbor.type, ControlType.None)
-            elseif length(control_inneighbors) > 1
-                @error "$node_id has more than 1 control inneighbors."
-                errors = true
-                ControlType.None
-            else
-                ControlType.None
-            end
+        control_type[node_id.idx] = if length(control_inneighbors) == 1
+            control_inneighbor = only(control_inneighbors)
+            get(control_type_mapping, control_inneighbor.type, ContinuousControlType.None)
+        elseif length(control_inneighbors) > 1
+            @error "$node_id has more than 1 control inneighbors."
+            errors = true
+            ContinuousControlType.None
+        else
+            ContinuousControlType.None
+        end
+
+        node.allocation_controlled[node_id.idx] =
+            (node_id, "Ribasim.allocation") in keys(control_mapping)
     end
 
     errors && @error("Errors encountered when parsing control type of $(typeof(node)).")
@@ -1151,4 +1151,110 @@ function eval_time_interp(
     else
         return cache[idx]
     end
+end
+
+function finitemaximum(u::AbstractVector; init = 0)
+    # Find the maximum finite value in the vector
+    max_val = init
+    for val in u
+        if isfinite(val) && val > max_val
+            max_val = val
+        end
+    end
+    max_val
+end
+
+function initialize_concentration_itp(
+    n_substance,
+    substance_idx_node_type;
+    continuity_tracer = true,
+)::Vector{ScalarConstantInterpolation}
+    # Default: concentration of 0
+    concentration_itp = fill(trivial_itp, n_substance)
+
+    # Set the concentration corresponding to the node type to 1
+    concentration_itp[substance_idx_node_type] = unit_itp
+    if continuity_tracer
+        # Set the concentration corresponding of the continuity tracer to 1
+        concentration_itp[Substance.Continuity] = unit_itp
+    end
+    return concentration_itp
+end
+
+function filtered_constant_interpolation(
+    group,
+    field::Symbol,
+    cyclic_time::Bool,
+    config::Config,
+)::ScalarConstantInterpolation
+    values = getproperty.(group, field)
+    times = getproperty.(group, :time)
+    mask = map(!ismissing, values)
+    return if any(mask)
+        ConstantInterpolation(
+            values[mask],
+            seconds_since.(times[mask], config.starttime);
+            extrapolation = cyclic_time ? Periodic : ConstantExtrapolation,
+        )
+    else
+        trivial_itp
+    end
+end
+
+function get_concentration_itp(
+    concentration_time,
+    node_id,
+    substances,
+    substance_idx_node_type,
+    cyclic_times,
+    config;
+    continuity_tracer = true,
+)::Vector{Vector{ScalarConstantInterpolation}}
+    concentration_itp = [
+        initialize_concentration_itp(
+            length(substances),
+            substance_idx_node_type;
+            continuity_tracer,
+        ) for _ in node_id
+    ]
+
+    for (id, cyclic_time) in zip(node_id, cyclic_times)
+        data_id = filter(row -> row.node_id == id.value, concentration_time)
+        for group in IterTools.groupby(row -> row.substance, data_id)
+            first_row = first(group)
+            substance_idx = find_index(Symbol(first_row.substance), substances)
+            concentration_itp[id.idx][substance_idx] =
+                filtered_constant_interpolation(group, :concentration, cyclic_time, config)
+        end
+    end
+
+    return concentration_itp
+end
+
+function add_substance_mass!(
+    mass,
+    concentration_itp,
+    cumulative_flow::Float64, # m³
+    t::Float64,
+)::Nothing
+    for (substance_idx, itp) in enumerate(concentration_itp)
+        mass[substance_idx] += cumulative_flow * itp(t)
+    end
+    return nothing
+end
+
+function should_skip_update_q(
+    active::Bool,
+    control_type::ContinuousControlType.T,
+    control_type_::ContinuousControlType.T,
+    p::Parameters,
+)::Bool
+    (; p_mutable) = p
+    (; all_nodes_active) = p_mutable
+    # Update is not needed if inactive and all nodes are not active
+    if !active && !all_nodes_active
+        return true
+    end
+
+    return control_type != control_type_
 end

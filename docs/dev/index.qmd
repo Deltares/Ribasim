@@ -30,7 +30,7 @@ cd Ribasim
 
 ## Setting up Pixi
 
-First, set up Pixi as described on their getting started [page](https://prefix.dev/docs/pixi/overview).
+First, set up Pixi as described on [pixi.sh](https://pixi.sh/latest/).
 
 We require at least Pixi version v0.48.1, but generally recommend the latest release.
 Check the version with `pixi --version`, update with `pixi self-update`.

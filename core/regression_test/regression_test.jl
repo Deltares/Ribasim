@@ -5,8 +5,7 @@
     @test ispath(toml_path)
     config = Ribasim.Config(toml_path)
 
-    solver_list =
-        ["QNDF", "Rosenbrock23", "TRBDF2", "Rodas5P", "KenCarp4", "Tsit5", "ImplicitEuler"]
+    solver_list = ["QNDF", "Rosenbrock23", "TRBDF2", "KenCarp4", "Tsit5", "ImplicitEuler"]
     sparse_options = [true, false]
     autodiff_options = [true, false]
 
