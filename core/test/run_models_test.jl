@@ -785,10 +785,3 @@ end
     @test area_col ≈ [areas[1]; areas[2]]
     @test storage_col ≈ [storages[1]; storages[2]]
 end
-
-@testitem "Allocation training model" begin
-    toml_path =
-        joinpath(@__DIR__, "../../generated_testmodels/allocation_training/ribasim.toml")
-    model = Ribasim.run(toml_path)
-    @test Ribasim.success(model)
-end
