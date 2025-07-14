@@ -97,7 +97,7 @@ function qh_interpolation(
     node_id::NodeID,
     level::Vector{Float64},
     flow_rate::Vector{Float64},
-)::ScalarLinearInterpolation
+)::ScalarSmoothedLinearInterpolation
     errors = false
     n = length(level)
     if n < 2
@@ -122,7 +122,11 @@ function qh_interpolation(
 
     errors && error("Errors occurred when parsing $node_id.")
 
-    return LinearInterpolation(
+    # Make sure the smoothing is also correctly applied around the first level
+    pushfirst!(level, first(level) - 1.0)
+    pushfirst!(flow_rate, 0.0)
+
+    return SmoothedLinearInterpolation(
         flow_rate,
         level;
         extrapolation_left = ConstantExtrapolation,

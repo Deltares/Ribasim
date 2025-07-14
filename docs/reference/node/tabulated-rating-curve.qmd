@@ -21,46 +21,57 @@ flow_rate            | Float64 | $\text{m}^3/\text{s}$ | start at 0, increasing
 
 ### Interpolation
 
-The $Q(h)$ relationship of a tabulated rating curve is defined as a linear interpolation.
+The $Q(h)$ relationship of a tabulated rating curve is defined as a smoothed linear interpolation.
 
-```{python}
+```{julia}
 # | code-fold: true
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-from IPython.display import display, Markdown
-
-fontsize = 15
+using DataInterpolations
+using Plots
 
 level = [12.0, 12.2, 12.5, 13.0]
 flow = [0.0, 0.5, 2.5, 8.0]
-fig, ax = plt.subplots()
-ax.set_xticks([])
-ax.set_yticks([0])
-ax.scatter(level, flow, label = "data")
-ax.plot(level, flow, label = "interpolation", color = "C0")
-ax.plot([level[0] - 0.2, level[0]], [0, 0], label = "extrapolation", linestyle = "dashed")
-ax.legend()
-ax.set_xlabel("level", fontsize = fontsize)
-ax.set_ylabel("flow", fontsize = fontsize)
 
-level_extrap = 2 * level[-1] - level[-2]
-flow_extrap = 2 * flow[-1] - flow[-2]
-ax.plot([level[-1], level_extrap], [flow[-1], flow_extrap], color = "C0", linestyle = "dashed")
-ax.set_xlim(level[0] - 0.2, (level[-1] + level_extrap)/2)
+level_aug = copy(level)
+flow_aug = copy(flow)
 
-markdown_table = pd.DataFrame(
-        data = {
-            "level" : level,
-            "flow" : flow
-        }
-    ).to_markdown(index = False)
+pushfirst!(level_aug, first(level) - 1.0)
+pushfirst!(flow_aug, 0.0)
 
-display(Markdown(markdown_table))
+itp = SmoothedLinearInterpolation(
+    flow_aug,
+    level_aug;
+    extrapolation_right = DataInterpolations.ExtrapolationType.Linear,
+)
+
+level_eval = range(first(level), last(level); length = 1000)
+flow_eval = itp.(level_eval)
+
+level_extrap_left = [first(level) - 0.3, first(level)]
+flow_extrap_left = itp.(level_extrap_left)
+
+level_extrap_right = [last(level), last(level) + 0.3]
+flow_extrap_right = itp.(level_extrap_right)
+
+c = :blue
+plot(
+    level_eval,
+    flow_eval;
+    c,
+    label = "interpolation",
+    xticks = false,
+    yticks = false,
+    left_margin = 5Plots.mm,
+)
+plot!(level_extrap_left, flow_extrap_left; ls = :dash, c, label = "extrapolation")
+plot!(level_extrap_right, flow_extrap_right; ls = :dash, c, label = "")
+scatter!(level, flow; c, label = "data", markeralpha = 0.25)
+xlabel!("level")
+ylabel!("flow")
+xlims!(first(level) - 0.2, last(level) + 0.2)
 ```
 
 Below the lowest given level of 12.0, the flow rate is kept at 0.
-Between given levels the flow rate is interpolated linearly.
+Between given levels the flow rate is interpolated linearly (with some smoothing).
 Above the maximum given level of 13.0, the flow rate keeps increases linearly according to the slope of the last segment.
 
 For tabulated rating curves with a fixed maximum value (e.g. max capacity of a weir), enter a new row and re-enter the maximum flow_rate at a higher level:
@@ -77,6 +88,10 @@ Now this tabulated rating curve node has a flow rate of 8.0 $\text{m}^3/\text{s}
 
 The flow rate is not allowed to decrease with higher levels.
 If you wish to e.g. simulate the (partial) closing of a weir when the water level exceeds a certain threshold, you can use and Outlet with a control node to set flow rates.
+
+:::{.callout-note}
+The data in the function table is not interpolated exactly linearly. On an interval around each data point the linear interpolation is replaced by a spline section. This interval is given by 12.5% of the distance between the input values on either side of the data points.
+:::
 
 ## Time
 
