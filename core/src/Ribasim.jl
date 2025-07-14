@@ -151,8 +151,6 @@ using DataStructures: OrderedSet, OrderedDict, counter, inc!
 
 using Dates: Second
 
-export libribasim
-
 include("carrays.jl")
 using .CArrays: CVector, getaxes, getdata
 include("schema.jl")

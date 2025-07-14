@@ -2,6 +2,8 @@ using TOML
 using LibGit2
 using Libdl: dlext
 
+lib = Sys.iswindows() ? "bin" : "lib"
+
 function (@main)(_)::Cint
     project_dir = "../core"
     license_file = "../LICENSE"
@@ -10,10 +12,10 @@ function (@main)(_)::Cint
 
     # change directory to this script's location
     cd(@__DIR__) do
-        lib_dir = prepare_lib_dir(output_dir)
+        prepare_lib_dir(output_dir)
 
         juliac = normpath(Sys.BINDIR, Base.DATAROOTDIR, "julia/juliac/juliac.jl")
-        juliac_args = `--experimental --trim=no --output-lib $lib_dir/libribasim --compile-ccallable libribasim.jl`
+        juliac_args = `--experimental --trim=no --output-lib $output_dir/$lib/libribasim --compile-ccallable libribasim.jl`
         # TODO check preferences and precompile.jl
         run(`$(Base.julia_cmd()) $juliac $juliac_args`)
 
@@ -59,19 +61,19 @@ function add_metadata(project_dir, license_file, output_dir, git_repo, readme)
     # save some environment variables in a Build.toml file for debugging purposes
     vars = ["BUILD_NUMBER", "BUILD_VCS_NUMBER"]
     dict = Dict(var => ENV[var] for var in vars if haskey(ENV, var))
-    open(normpath(output_dir, "libribasim/Build.toml"), "w") do io
+    open(normpath(output_dir, "$lib/Build.toml"), "w") do io
         TOML.print(io, dict)
     end
 
     # Add Project.toml and Manifest.toml as metadata
     cp(
         normpath(project_dir, "Project.toml"),
-        normpath(output_dir, "libribasim/Project.toml");
+        normpath(output_dir, "$lib/Project.toml");
         force = true,
     )
     cp(
         normpath(git_repo, "Manifest.toml"),
-        normpath(output_dir, "libribasim/Manifest.toml");
+        normpath(output_dir, "$lib/Manifest.toml");
         force = true,
     )
 
@@ -117,7 +119,7 @@ end
 
 "Copy the julia shared libraries to the output directory."
 function prepare_lib_dir(output_dir)
-    lib_dir = normpath(output_dir, Sys.iswindows ? "bin" : "lib")
+    lib_dir = normpath(output_dir, lib)
     mkpath(lib_dir)
     # copy most julia shared libraries; this needs to be refined
     for (root, _, files) in walkdir(Sys.BINDIR)
@@ -127,5 +129,4 @@ function prepare_lib_dir(output_dir)
             end
         end
     end
-    return lib_dir
 end
