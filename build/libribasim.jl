@@ -1,7 +1,7 @@
 module libribasim
 
 import BasicModelInterface as BMI
-import ..Ribasim
+import Ribasim
 using SciMLBase: successful_retcode
 
 # globals

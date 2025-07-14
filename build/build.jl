@@ -1,7 +1,6 @@
-using Artifacts
-using PackageCompiler
 using TOML
 using LibGit2
+using Libdl: dlext
 
 function (@main)(_)::Cint
     project_dir = "../core"
@@ -10,23 +9,19 @@ function (@main)(_)::Cint
     git_repo = ".."
 
     # change directory to this script's location
-    cd(@__DIR__)
+    cd(@__DIR__) do
+        lib_dir = prepare_lib_dir(output_dir)
 
-    create_library(
-        project_dir,
-        output_dir;
-        lib_name = "libribasim",
-        precompile_execution_file = "precompile.jl",
-        include_lazy_artifacts = false,
-        include_transitive_dependencies = false,
-        include_preferences = true,
-        force = true,
-    )
+        juliac = normpath(Sys.BINDIR, Base.DATAROOTDIR, "julia/juliac/juliac.jl")
+        juliac_args = `--experimental --trim=no --output-lib $lib_dir/libribasim --compile-ccallable libribasim.jl`
+        # TODO check preferences and precompile.jl
+        run(`$(Base.julia_cmd()) $juliac $juliac_args`)
 
-    add_metadata(project_dir, license_file, output_dir, git_repo, readme_start)
-    run(Cmd(`cargo build --release`; dir = "cli"))
-    ribasim = Sys.iswindows() ? "ribasim.exe" : "ribasim"
-    cp("cli/target/release/$ribasim", "ribasim/$ribasim"; force = true)
+        add_metadata(project_dir, license_file, output_dir, git_repo, readme_start)
+        run(Cmd(`cargo build --release`; dir = "cli"))
+        ribasim = Sys.iswindows() ? "ribasim.exe" : "ribasim"
+        cp("cli/target/release/$ribasim", "ribasim/$ribasim"; force = true)
+    end
     return 0
 end
 
@@ -64,21 +59,19 @@ function add_metadata(project_dir, license_file, output_dir, git_repo, readme)
     # save some environment variables in a Build.toml file for debugging purposes
     vars = ["BUILD_NUMBER", "BUILD_VCS_NUMBER"]
     dict = Dict(var => ENV[var] for var in vars if haskey(ENV, var))
-    open(normpath(output_dir, "share/julia/Build.toml"), "w") do io
+    open(normpath(output_dir, "libribasim/Build.toml"), "w") do io
         TOML.print(io, dict)
     end
 
-    # a stripped Project.toml is already added in the same location by PackageCompiler
-    # however it is better to copy the original, since it includes the version and compat
+    # Add Project.toml and Manifest.toml as metadata
     cp(
         normpath(project_dir, "Project.toml"),
-        normpath(output_dir, "share/julia/Project.toml");
+        normpath(output_dir, "libribasim/Project.toml");
         force = true,
     )
-    # the Manifest.toml always gives the exact version of Ribasim that was built
     cp(
         normpath(git_repo, "Manifest.toml"),
-        normpath(output_dir, "share/julia/Manifest.toml");
+        normpath(output_dir, "libribasim/Manifest.toml");
         force = true,
     )
 
@@ -120,4 +113,19 @@ function add_metadata(project_dir, license_file, output_dir, git_repo, readme)
 
     # Override the Cargo.toml file with the git version
     set_version("cli/Cargo.toml", tag)
+end
+
+"Copy the julia shared libraries to the output directory."
+function prepare_lib_dir(output_dir)
+    lib_dir = normpath(output_dir, Sys.iswindows ? "bin" : "lib")
+    mkpath(lib_dir)
+    # copy most julia shared libraries; this needs to be refined
+    for (root, _, files) in walkdir(Sys.BINDIR)
+        for file in files
+            if endswith(file, string('.', dlext))
+                cp(normpath(root, file), normpath(lib_dir, file); force = true)
+            end
+        end
+    end
+    return lib_dir
 end
