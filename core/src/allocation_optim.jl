@@ -44,7 +44,6 @@ function set_simulation_data!(
     (; storage_to_level) = basin
 
     storage = problem[:basin_storage]
-    basin_level = problem[:basin_level]
     flow = problem[:flow]
     (; current_storage, current_level) = p.state_time_dependent_cache
 
@@ -72,7 +71,6 @@ function set_simulation_data!(
         end
 
         JuMP.fix(storage[key], storage_now / scaling.storage; force = true)
-        JuMP.fix(basin_level[key], level_now; force = true)
     end
 
     for link in keys(cumulative_boundary_volume)
@@ -654,18 +652,15 @@ function optimize_for_objective!(
     termination_status = JuMP.termination_status(problem)
 
     if termination_status == JuMP.INFEASIBLE
-        constraint_to_slack = relax_problem!(problem)
-        JuMP.optimize!(problem)
-        report_cause_of_infeasibility(
-            constraint_to_slack,
-            objective,
-            problem,
-            subnetwork_id,
-            t,
+        analyze_infeasibility(problem)
+        analyze_numerics(problem)
+
+        error(
+            "Allocation optimization for subnetwork $subnetwork_id, $objective at t = $t s is infeasible",
         )
     elseif termination_status != JuMP.OPTIMAL
         error(
-            "Allocation optimization for subnetwork $subnetwork_id, $objective at t = $t s did not find an optimal solution. Termination status: $(JuMP.termination_status(problem)).",
+            "Allocation optimization for subnetwork $subnetwork_id, $objective at t = $t s did not find an optimal solution. Termination status: $termination_status.",
         )
     end
 
