@@ -654,15 +654,20 @@ function optimize_for_objective!(
 
     if termination_status == JuMP.INFEASIBLE
         analyze_infeasibility(allocation_model, objective, t, config)
-        analyze_numerics(allocation_model, objective, t, config)
+        analyze_scaling(allocation_model, objective, t, config)
 
         error(
             "Allocation optimization for subnetwork $subnetwork_id, $objective at t = $t s is infeasible",
         )
-    elseif termination_status != JuMP.OPTIMAL
-        error(
-            "Allocation optimization for subnetwork $subnetwork_id, $objective at t = $t s did not find an optimal solution. Termination status: $termination_status.",
-        )
+    else
+        relative_gap = JuMP.relative_gap(problem)
+        if relative_gap < 0.001 # Hardcoded threshold for now
+            @debug "Allocation optimization for subnetwork $subnetwork_id, $objective at t = $t s did not find an optimal solution (termination status: $termination_status), but the relative gap ($relative_gap) is within the acceptable threshold ($acceptable_gap). Proceeding with the solution."
+        else
+            error(
+                "Allocation optimization for subnetwork $subnetwork_id, $objective at t = $t s did not find an acceptable solution. Termination status: $termination_status.",
+            )
+        end
     end
 
     postprocess_objective!(allocation_model, p_independent, objective, t)

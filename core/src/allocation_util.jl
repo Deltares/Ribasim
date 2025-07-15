@@ -241,17 +241,21 @@ function analyze_infeasibility(
     log_path = results_path(config, RESULTS_FILENAME.allocation_analysis_infeasibility)
     @debug "Running allocation infeasibility analysis for $subnetwork_id, $objective at t = $t, for full summary see $log_path."
 
+    # Perform infeasibility analysis
     data_infeasibility = MathOptAnalyzer.analyze(
         MathOptAnalyzer.Infeasibility.Analyzer(),
         problem;
         optimizer = get_optimizer(),
     )
+
+    # Write infeasibility analysis summary to file
     open(log_path, "w") do io
         buffer = IOBuffer()
         MathOptAnalyzer.summarize(buffer, data_infeasibility; model = problem)
         write(io, take!(buffer) |> String)
     end
 
+    # Parse irreducible infeasible constraint sets for modeller readable logging
     for irreducible_infeasible_subset in data_infeasibility.iis
         constraints = JuMP.ConstraintRef[]
         for constraint_index in irreducible_infeasible_subset.constraint
@@ -265,7 +269,7 @@ function analyze_infeasibility(
     return nothing
 end
 
-function analyze_numerics(
+function analyze_scaling(
     allocation_model::AllocationModel,
     objective::AllocationObjective,
     t::Float64,
@@ -276,21 +280,22 @@ function analyze_numerics(
     log_path = results_path(config, RESULTS_FILENAME.allocation_analysis_scaling)
     @debug "Running allocation numerics analysis for $subnetwork_id, $objective at t = $t, for full summary see $file_name."
 
-    solver_properties =
-        Dict(prop.first.name => prop.second for prop in get_optimizer().params)
+    # Perform numerics analysis
     data_numerical = MathOptAnalyzer.analyze(
         MathOptAnalyzer.Numerical.Analyzer(),
         problem;
-        threshold_small = solver_properties["small_matrix_value"],
-        threshold_large = solver_properties["large_matrix_value"],
+        threshold_small = JuMP.get_attribute(problem, "small_matrix_value"),
+        threshold_large = JuMP.get_attribute(problem, "large_matrix_value"),
     )
+
+    # Write numerics analysis summary to file
     open(log_path, "w") do io
         buffer = IOBuffer()
         MathOptAnalyzer.summarize(buffer, data_numerical; model = problem)
         write(io, take!(buffer) |> String)
     end
 
-    # Variables that do not appear in any constraint
+    # Parse variables that do not appear in any constraint for modeller readable logging
     if !isempty(data_numerical.variables_not_in_constraints)
         variables = JuMP.VariableRef[]
         for variable in data_numerical.variables_not_in_constraints
@@ -300,7 +305,7 @@ function analyze_numerics(
         @error "Variables found which are not in any constraint." variables
     end
 
-    # Small matrix coefficients
+    # Parse small matrix coefficients for modeller readable logging
     if !isempty(data_numerical.matrix_small)
         for data in data_numerical.matrix_small
             constraint_name = JuMP.name(constraint_ref_from_index(problem, data.ref))
@@ -309,33 +314,16 @@ function analyze_numerics(
         end
     end
 
-    # Large matrix coefficients
+    # Parse large matrix coefficients for modeller readable logging
     if !isempty(data_numerical.matrix_large)
         for data in data_numerical.matrix_large
             constraint_name = JuMP.name(constraint_ref_from_index(problem, data.ref))
             variable = variable_ref_from_index(problem, data.variable)
-            @error "Too small coefficient found" constraint_name variable data.coefficient
+            @error "Too large coefficient found" constraint_name variable data.coefficient
         end
     end
 
     return nothing
-end
-
-"""
-    log the values of all variables in a constraint, including their bounds.
-"""
-function log_constraint_variable_values(constraint::JuMP.ConstraintRef)
-    expr = JuMP.constraint_object(constraint).func
-    for (v, _) in expr.terms
-        name = JuMP.name(v)
-        if name == ""
-            name = string(v)
-        end
-        value = JuMP.value(v)
-        lb = JuMP.has_lower_bound(v) ? JuMP.lower_bound(v) : "-Inf"
-        ub = JuMP.has_upper_bound(v) ? JuMP.upper_bound(v) : "Inf"
-        @info "\t$name ($lb, $ub) = $value"
-    end
 end
 
 function get_optimizer()
@@ -344,10 +332,6 @@ function get_optimizer()
         "log_to_console" => false,
         "time_limit" => 60.0,
         "random_seed" => 0,
-        # Do not remove these matrix value bounds so that they can be used
-        # in analyze_numerics
-        "small_matrix_value" => 1e-9,
-        "large_matrix_value" => 1e15,
     )
 end
 
