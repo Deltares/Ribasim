@@ -13,31 +13,28 @@ The figure below illustrates the relation between the various components of Riba
 flowchart TB
 modeler([Modeler]):::user
 
-api["Ribasim Python
-    [python]"]
-modeler-->|prepare model|api
+python["Ribasim Python"]
+modeler-->|prepare model|python
 
-ribasim["Ribasim
-        [julia]"]
-modeler-->|start|ribasim
+core["Ribasim core"]
+modeler-->|start|core
 
 subgraph qgisBoundary[QGIS]
     QGIS[QGIS Application]:::system_ext
-    qgisPlugin["Ribasim QGIS plugin
-               [python]"]
+    qgisPlugin["Ribasim QGIS plugin"]
     QGIS-->qgisPlugin
 end
 modeler-->|prepare model|qgisBoundary
 
 model[("input model data
-        [toml + geopackage + arrow]")]
+        [TOML + GeoPackage + Arrow]")]
 qgisPlugin-->|read/write|model
-api-->|read/write|model
-ribasim-->|simulate|model
+python-->|read/write|model
+core-->|simulate|model
 
 output[("simulation results
-         [arrow]")]
-ribasim-->|write|output
+         [Arrow]")]
+core-->|write|output
 
 class qgisBoundary boundary
 
@@ -48,79 +45,23 @@ classDef boundary fill:transparent,stroke-dasharray:5 5
 ```
 
 There are three main components of the Ribasim software package.
-They are the Ribasim core (written in Julia language), the Ribasim Python package and the Ribasim QGIS plugin.
+They are the Ribasim core, the Ribasim Python package and the Ribasim QGIS plugin.
 
-The kernel of Ribasim is written in the [Julia programming language](https://julialang.org/) and is built on top of the [SciML: Open Source Software for Scientific Machine Learning](https://sciml.ai/) libraries, notably [DifferentialEquations.jl](https://docs.sciml.ai/DiffEqDocs/stable/).
+The [core](/reference/usage.qmd) is a command line interface (CLI) that runs Ribasim simulations.
+It is written in the [Julia programming language](https://julialang.org/) and is built on top of the [SciML: Open Source Software for Scientific Machine Learning](https://sciml.ai/) libraries, notably [DifferentialEquations.jl](https://docs.sciml.ai/DiffEqDocs/stable/).
 
 The [Ribasim Python package](/reference/python/index.qmd) is available to build, update and analyze Ribasim models programmatically.
-For runtime data exchange and coupling with other kernels, the Julia kernel is wrapped in a Python API (`ribasim_api`) which implements the Basic Model Interface [BMI](https://bmi-spec.readthedocs.io/en/latest/).
-
-Ribasim uses [GeoPackage](https://www.geopackage.org/) files to store the model database (`database.gpkg`).
-[QGIS](https://qgis.org/) works well with GeoPackage files.
-This makes QGIS the perfect application to inspect and make edits to Ribasim models.
-Deltares also provides the iMOD QGIS plugin, which can be used to inspect the results of a Ribasim model too.
-For larger edits using Python is recommended.
 One can also use Ribasim Python to build entire models from base data, such that your model setup is fully reproducible.
 
-# Install all components into a Pixi workspace (recommended) {#sec-install-all}
+Ribasim uses [GeoPackage](https://www.geopackage.org/) files to store the model database (`database.gpkg`).
+[QGIS](https://qgis.org/) works well with GeoPackage files, making it a good application to visualize Ribasim models.
+Deltares also provides the iMOD QGIS plugin, which can be used to view the timeseries in the Ribasim results.
 
-We recommend most users to install all components into one [Pixi](https://pixi.sh/) workspace.
-With it we can provide quick and reproducible steps to get started with modeling.
-Note that if you only wish to visualize models, you can [just install the QGIS plugin](@sec-install-qgis-plugin).
-
-First install Pixi following the [Pixi installation documentation](https://pixi.sh/latest/installation/).
-Note that if the recommended installation methods don't work due to restriction on your PC, the [zipped executable](https://pixi.sh/latest/installation/#download-from-github-releases) is likely to still work.
-
-```sh
-# Open your terminal in a new empty project folder.
-# Create a new Pixi workspace.
-pixi init
-
-# Add Ribasim, QGIS and download & unpack tools.
-# Remove qgis if you prefer to use an existing QGIS installation.
-pixi add ribasim==2025.4.0 curl 7zip qgis
-
-# Download latest Ribasim QGIS plugin.
-pixi run curl -O https://github.com/Deltares/Ribasim/releases/download/v2025.4.0/ribasim_qgis.zip
-
-# Start QGIS and install the Ribasim and iMOD plugins manually.
-# If you did not `pixi add qgis`, start QGIS yourself.
-pixi run qgis
-
-# After installation you can remove the plugin ZIP file
-pixi run rm ribasim_qgis.zip
-
-# Download latest Ribasim core for Windows, unpack and remove ZIP file.
-# Takes some time due to download size.
-# Replace `windows` with `linux` if you are using Linux.
-pixi run curl -O https://github.com/Deltares/Ribasim/releases/download/v2025.4.0/ribasim_windows.zip
-pixi run 7z x ribasim_windows.zip
-pixi run rm ribasim_windows.zip
-
-
-# TODO works cross-platform, rm 7zip
-tar -x
-rm
-
-# TODO see if we can add our CLI to the path
-[target.win.activation.env]
-PATH="$PATH;ribasim/ribasim"
-```
-
-The latest Ribasim release is currently `2025.4.0`.
-If you wish to install one of the [older releases](https://github.com/Deltares/Ribasim/releases), replace the version number in the script above.
-
-Since a Pixi workspace is isolated from other installations such as Python on your system, you can install different versions of Ribasim in different places.
-
-Note only that QGIS plugins are by default installed into the default user profile, which is shared.
-You need to create separate user profiles if you wish to install and use different versions of the QGIS plugin at the same time.
-
-If you wish to check what is installed in your workspace, run `pixi list`.
-When you run into what seem like installation issues, try `pixi clean`, followed by `pixi install`.
-
-If your editor does not automatically detect the right Python environment, point it to `.pixi/envs/default/python.exe`.
-Starting your editor via Pixi will also help it find the environment since it will already be active.
-For Visual Studio Code, you can run `pixi run code .` to open your workspace.
+::: {.callout-note}
+The components don't depend on each other, so you can install what you need.
+When using multiple components, all component versions must be the same.
+If you receive a model, the Ribasim version used to create it is written in the TOML file. Older releases can be found in the Release assets [on GitHub](https://github.com/Deltares/Ribasim/releases).
+:::
 
 # Install Ribasim core {#sec-install-core}
 
@@ -131,16 +72,15 @@ executable is in the main folder.
 
 To download the Ribasim core, download the appropriate zip file for your operating system:
 
-- Ribasim executable - Windows: [ribasim_windows.zip](https://github.com/Deltares/Ribasim/releases/latest/download/ribasim_windows.zip)
-- Ribasim executable - Linux: [ribasim_linux.zip](https://github.com/Deltares/Ribasim/releases/latest/download/ribasim_linux.zip)
+- Ribasim executable - Windows: [ribasim_windows.zip](https://github.com/Deltares/Ribasim/releases/download/v2025.4.0/ribasim_windows.zip)
+- Ribasim executable - Linux: [ribasim_linux.zip](https://github.com/Deltares/Ribasim/releases/download/v2025.4.0/ribasim_linux.zip)
 
 Note that we currently only support and provide binaries for Windows and Linux, for the x86_64 architecture.
 
 To check whether the installation was performed successfully, open a terminal and go to the path where the executable is for example `C:\bin\ribasim\`.
 If you are using cmd.exe type `ribasim`, or for PowerShell `./ribasim`.
 
-This will give the following message:
-
+This will give the following message if it is installed correctly:
 ```
 error: the following required arguments were not provided:
   <TOML_PATH>
@@ -150,32 +90,92 @@ Usage: ribasim <TOML_PATH>
 For more information, try '--help'.'
 ```
 
+## Adding Ribasim to Path on Windows
+
+To use Ribasim from any directory without specifying the full path, you can add the Ribasim executable directory to your Windows Path environment variable.
+
+The Path environment variable tells Windows where to look for programs when you type their name in a terminal. By adding Ribasim to your Path, you can type `ribasim` from any folder instead of having to navigate to the Ribasim folder first or typing the full path like `C:\bin\ribasim\ribasim.exe`.
+
+   - Search "Environment Variables" in the Windows search bar
+   - Click "Edit the system environment variables"
+   - Click on the "Advanced" tab
+   - Click the "Environment Variables..." button at the bottom
+   - In the top section "User variables", scroll down and find "Path", then click "Edit..."
+   - Click "New" and enter the full path to your Ribasim directory (e.g., `C:\bin\ribasim`, not `C:\bin\ribasim\ribasim.exe`)
+   - Click "OK" three times to close all dialogs
+   - Close any open terminals/command prompts and open a new one
+
 # Install Ribasim Python {#sec-install-python}
 
 The Ribasim Python package (named `ribasim`) aims to make it easy to build, update and analyze Ribasim models
 programmatically.
 
-The Ribasim QGIS plugin allows users to construct a model from scratch without programming.
-For specific tasks, like adding observed rainfall timeseries, it can be faster to use
-Python instead.
+The Ribasim Python package is [registered in PyPI](https://pypi.org/project/ribasim/) and [conda-forge](https://prefix.dev/channels/conda-forge/packages/ribasim) and can therefore be installed with [pixi](https://pixi.sh/), [uv](https://docs.astral.sh/uv/), [pip](https://docs.python.org/3/installing/index.html) or [conda](https://docs.conda.io/).
+We recommend Pixi, but installation instructions for all are provided below.
 
-One can also use Ribasim Python to build entire models from base data, such that your model
-setup is fully reproducible.
+::: {.panel-tabset}
 
-The Ribasim Python package is [registered in PyPI](https://pypi.org/project/ribasim/) and [conda-forge](https://prefix.dev/channels/conda-forge/packages/ribasim) and can therefore be installed with [pip](https://docs.python.org/3/installing/index.html), [conda](https://docs.conda.io/) or [pixi](https://pixi.sh/):
+## pixi
 
-```sh
-pip install ribasim
-```
-or create a pixi environment in your modeling project with:
+Install Pixi following the [Pixi installation documentation](https://pixi.sh/latest/installation/).
+Note that if the recommended installation methods don't work due to restriction on your PC, the [zipped executable](https://pixi.sh/latest/installation/#download-from-github-releases) is likely to still work.
+
+Open a terminal in your project directory, and create an empty pixi environment:
 ```sh
 pixi init
 ```
-and install ribasim:
+Now add Ribasim Python:
 ```sh
-pixi add ribasim
+pixi add ribasim==2025.4.0
 ```
-For documentation please see the [examples](/guide/examples.qmd) and [API reference](/reference/python/index.qmd).
+To start Python, run:
+```sh
+pixi run python
+```
+
+If you wish to check what is installed in your workspace, run `pixi list`.
+When you run into what seem like installation issues, try `pixi clean`, followed by `pixi install`.
+
+If your editor does not automatically detect the right Python environment, point it to `.pixi/envs/default/python.exe`.
+Starting your editor via Pixi will also help it find the environment since it will already be active.
+For Visual Studio Code, you can run `pixi run code .` to open your workspace.
+
+## uv
+
+Install `uv` following the [instructions in the uv documentation](https://docs.astral.sh/uv/getting-started/installation/).
+
+Open a terminal in your project directory, and create an empty uv project:
+```sh
+uv init
+```
+Now add Ribasim Python:
+```sh
+uv add ribasim==2025.4.0
+```
+To start Python, run:
+```sh
+uv run python
+```
+
+## pip
+
+```sh
+pip install ribasim==2025.4.0
+```
+
+## conda
+
+Ribasim is available in the [conda-forge](https://conda-forge.org/) channel.
+[Miniforge](https://conda-forge.org/download/) is the preferred conda-forge installer and includes `conda`, `mamba`, and their dependencies.
+It may not work well when combined with the Anaconda default channel, see [transitioning from defaults](https://conda-forge.org/docs/user/transitioning_from_defaults/).
+
+```sh
+conda install -c conda-forge ribasim=2025.4.0
+```
+
+:::
+
+For Ribasim Python documentation please see the [examples](/guide/examples.qmd) and [API reference](/reference/python/index.qmd).
 
 # Install Ribasim QGIS plugin {#sec-install-qgis-plugin}
 
@@ -184,9 +184,9 @@ The Ribasim QGIS plugin is only distributed as a .zip archive and must be downlo
 
 ## Install Ribasim plugin
 
-Firstly, download `ribasim_qgis.zip`:
+Download `ribasim_qgis.zip`:
 
-- QGIS plugin: [ribasim_qgis.zip](https://github.com/Deltares/Ribasim/releases/latest/download/ribasim_qgis.zip).
+- QGIS plugin: [ribasim_qgis.zip](https://github.com/Deltares/Ribasim/releases/download/v2025.4.0/ribasim_qgis.zip).
 
 In QGIS, go to Plugins menu > Manage and Install Plugins...
 
