@@ -2,7 +2,7 @@
 
 julia_version = "1.11.6"
 manifest_format = "2.0"
-project_hash = "f6a0770e1fb1a6057f88838586f8e70915108dcb"
+project_hash = "a44d08f7027a727ea820d5c49f8168c823981435"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "be7ae030256b8ef14a441726c4c37766b90b93a3"
@@ -364,22 +364,25 @@ version = "1.7.0"
 
 [[deps.DataInterpolations]]
 deps = ["EnumX", "FindFirstFunctions", "ForwardDiff", "LinearAlgebra", "PrettyTables", "RecipesBase", "Reexport"]
-git-tree-sha1 = "83c04c5d9b2139e7c31309e97321e7c62f1a78c8"
-repo-rev = "add_smoothed_linear_interpolation"
+git-tree-sha1 = "d6e0baaaaad7dffbca36c819e870a41de91295f5"
+repo-rev = "fix_SCT_extension"
 repo-url = "https://github.com/SciML/DataInterpolations.jl"
 uuid = "82cc6244-b520-54b8-b5a6-8a565e85f1d0"
-version = "8.1.0"
+version = "8.3.0"
 
     [deps.DataInterpolations.extensions]
     DataInterpolationsChainRulesCoreExt = "ChainRulesCore"
     DataInterpolationsOptimExt = "Optim"
     DataInterpolationsRegularizationToolsExt = "RegularizationTools"
+    DataInterpolationsSparseConnectivityTracerExt = ["SparseConnectivityTracer", "FillArrays"]
     DataInterpolationsSymbolicsExt = "Symbolics"
 
     [deps.DataInterpolations.weakdeps]
     ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
+    FillArrays = "1a297f60-69ca-5386-bcde-b61e274b549b"
     Optim = "429524aa-4258-5aef-a3af-852621145aeb"
     RegularizationTools = "29dad682-9a27-4bc3-9c72-016788665182"
+    SparseConnectivityTracer = "9f842d2f-2579-4b1d-911e-f412cf18a3f5"
     Symbolics = "0c5d862f-8b57-4792-8d23-62f2024744c7"
     Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
 
@@ -465,9 +468,9 @@ version = "1.15.1"
 
 [[deps.DifferentiationInterface]]
 deps = ["ADTypes", "LinearAlgebra"]
-git-tree-sha1 = "c092fd1dd0d94e609cd0d29e13897b2825c804bb"
+git-tree-sha1 = "f620da805b82bec64ab4d5f881c7592c82dbc08a"
 uuid = "a0c0ee7d-e4b9-4e03-894e-1c5f64a51d63"
-version = "0.7.2"
+version = "0.7.3"
 
     [deps.DifferentiationInterface.extensions]
     DifferentiationInterfaceChainRulesCoreExt = "ChainRulesCore"
@@ -979,9 +982,9 @@ version = "1.11.0"
 
 [[deps.LinearSolve]]
 deps = ["ArrayInterface", "ChainRulesCore", "ConcreteStructs", "DocStringExtensions", "EnumX", "GPUArraysCore", "InteractiveUtils", "Krylov", "LazyArrays", "Libdl", "LinearAlgebra", "MKL_jll", "Markdown", "PrecompileTools", "Preferences", "RecursiveArrayTools", "Reexport", "SciMLBase", "SciMLOperators", "Setfield", "StaticArraysCore", "UnPack"]
-git-tree-sha1 = "062c11f1d84ffc80d00fddaa515f7e37e8e9f9d5"
+git-tree-sha1 = "13464637e13bc2a6577c2e456d561c5603ca54c7"
 uuid = "7ed4a6bd-45f5-4d41-b270-4a48e9bafcae"
-version = "3.18.2"
+version = "3.19.1"
 
     [deps.LinearSolve.extensions]
     LinearSolveBandedMatricesExt = "BandedMatrices"
@@ -1390,9 +1393,9 @@ version = "1.4.3"
 
 [[deps.PreallocationTools]]
 deps = ["Adapt", "ArrayInterface", "ForwardDiff"]
-git-tree-sha1 = "7a5e02659e293b25a4bfaeeb6cd268acd0742eba"
+git-tree-sha1 = "2cc315bb7f6e4d59081bad744cdb911d6374fc7f"
 uuid = "d236fae5-4411-538c-8e31-a6e3d9e00b46"
-version = "0.4.28"
+version = "0.4.29"
 
     [deps.PreallocationTools.extensions]
     PreallocationToolsReverseDiffExt = "ReverseDiff"
@@ -1555,9 +1558,9 @@ version = "3.48.0+0"
 
 [[deps.SciMLBase]]
 deps = ["ADTypes", "Accessors", "Adapt", "ArrayInterface", "CommonSolve", "ConstructionBase", "Distributed", "DocStringExtensions", "EnumX", "FunctionWrappersWrappers", "IteratorInterfaceExtensions", "LinearAlgebra", "Logging", "Markdown", "Moshi", "PrecompileTools", "Preferences", "Printf", "RecipesBase", "RecursiveArrayTools", "Reexport", "RuntimeGeneratedFunctions", "SciMLOperators", "SciMLStructures", "StaticArraysCore", "Statistics", "SymbolicIndexingInterface"]
-git-tree-sha1 = "31587e20cdea9fba3a689033313e658dfc9aae78"
+git-tree-sha1 = "e6a28a9a2dd9bc3ed46391fa0e6c35839bde4028"
 uuid = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
-version = "2.102.1"
+version = "2.103.0"
 
     [deps.SciMLBase.extensions]
     SciMLBaseChainRulesCoreExt = "ChainRulesCore"
@@ -1688,21 +1691,17 @@ version = "1.11.0"
 
 [[deps.SparseConnectivityTracer]]
 deps = ["ADTypes", "DocStringExtensions", "FillArrays", "LinearAlgebra", "Random", "SparseArrays"]
-git-tree-sha1 = "cc30639f36661042b4efb9f6f262fb5dc025b21b"
-repo-rev = "add_smoothed_linear_interpolation_support"
-repo-url = "https://github.com/SouthEndMusic/SparseConnectivityTracer.jl"
+git-tree-sha1 = "7bd2b8981cc57adcf5cf1add282aba2713a7058f"
 uuid = "9f842d2f-2579-4b1d-911e-f412cf18a3f5"
-version = "0.6.21"
+version = "1.0.0"
 
     [deps.SparseConnectivityTracer.extensions]
-    SparseConnectivityTracerDataInterpolationsExt = "DataInterpolations"
     SparseConnectivityTracerLogExpFunctionsExt = "LogExpFunctions"
     SparseConnectivityTracerNNlibExt = "NNlib"
     SparseConnectivityTracerNaNMathExt = "NaNMath"
     SparseConnectivityTracerSpecialFunctionsExt = "SpecialFunctions"
 
     [deps.SparseConnectivityTracer.weakdeps]
-    DataInterpolations = "82cc6244-b520-54b8-b5a6-8a565e85f1d0"
     LogExpFunctions = "2ab3a3ac-af41-5b50-aa03-7779005ae688"
     NNlib = "872c559c-99b0-510c-b3b7-b6c96a88d5cd"
     NaNMath = "77ba4419-2d1f-58cd-9bb1-8ffee604a2e3"
