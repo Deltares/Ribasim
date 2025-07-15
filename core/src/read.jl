@@ -968,7 +968,7 @@ function continuous_control_functions(db, config, ids)
     errors = false
     # Parse the function table
     # Create linear interpolation objects out of the provided functions
-    functions = ScalarSmoothedLinearInterpolation[]
+    functions = ScalarPCHIPInterpolation[]
     controlled_variables = String[]
 
     # Loop over the IDs of the ContinuousControl nodes
@@ -987,7 +987,7 @@ function continuous_control_functions(db, config, ids)
         else
             push!(controlled_variables, only(unique_controlled_variable))
         end
-        function_itp = SmoothedLinearInterpolation(
+        function_itp = PCHIPInterpolation(
             function_rows.output,
             function_rows.input;
             extrapolation = Linear,
