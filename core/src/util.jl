@@ -97,7 +97,7 @@ function qh_interpolation(
     node_id::NodeID,
     level::Vector{Float64},
     flow_rate::Vector{Float64},
-)::ScalarSmoothedLinearInterpolation
+)::CubicHermiteSpline
     errors = false
     n = length(level)
     if n < 2
@@ -126,7 +126,7 @@ function qh_interpolation(
     pushfirst!(level, first(level) - 1.0)
     pushfirst!(flow_rate, 0.0)
 
-    return SmoothedLinearInterpolation(
+    return PCHIPInterpolation(
         flow_rate,
         level;
         extrapolation_left = ConstantExtrapolation,

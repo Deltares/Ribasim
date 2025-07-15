@@ -21,7 +21,7 @@ flow_rate            | Float64 | $\text{m}^3/\text{s}$ | start at 0, increasing
 
 ### Interpolation
 
-The $Q(h)$ relationship of a tabulated rating curve is defined as a smoothed linear interpolation.
+The $Q(h)$ relationship of a tabulated rating curve is defined as a PCHIPInterpolation, for more information see [here](https://www.mathworks.com/help/matlab/ref/pchip.html).
 
 ```{julia}
 # | code-fold: true
@@ -37,7 +37,7 @@ flow_aug = copy(flow)
 pushfirst!(level_aug, first(level) - 1.0)
 pushfirst!(flow_aug, 0.0)
 
-itp = SmoothedLinearInterpolation(
+itp = PCHIPInterpolation(
     flow_aug,
     level_aug;
     extrapolation_right = DataInterpolations.ExtrapolationType.Linear,
@@ -88,10 +88,6 @@ Now this tabulated rating curve node has a flow rate of 8.0 $\text{m}^3/\text{s}
 
 The flow rate is not allowed to decrease with higher levels.
 If you wish to e.g. simulate the (partial) closing of a weir when the water level exceeds a certain threshold, you can use and Outlet with a control node to set flow rates.
-
-:::{.callout-note}
-The data in the function table is not interpolated exactly linearly. On an interval around each data point the linear interpolation is replaced by a spline section. This interval is given by 12.5% of the distance between the input values on either side of the data points.
-:::
 
 ## Time
 
