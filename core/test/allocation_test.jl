@@ -146,7 +146,7 @@ end
     @test ispath(toml_path)
     model = Ribasim.Model(toml_path)
 
-    (; integrator) = model
+    (; integrator, config) = model
     (; p) = integrator
     (; p_independent) = p
     (; allocation, user_demand, graph, basin) = p_independent
@@ -158,7 +158,7 @@ end
         Ribasim.reset_goal_programming!(allocation_model, p_independent)
         Ribasim.prepare_demand_collection!(allocation_model, p_independent)
         for objective in allocation_model.objectives
-            Ribasim.optimize_for_objective!(allocation_model, integrator, objective)
+            Ribasim.optimize_for_objective!(allocation_model, integrator, objective, config)
         end
     end
 
