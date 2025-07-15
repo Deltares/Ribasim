@@ -273,7 +273,7 @@ function analyze_numerics(
 )::Nothing
     (; problem, subnetwork_id) = allocation_model
 
-    log_path = results_path(config, RESULTS_FILENAME.allocation_analysis_numerics)
+    log_path = results_path(config, RESULTS_FILENAME.allocation_analysis_scaling)
     @debug "Running allocation numerics analysis for $subnetwork_id, $objective at t = $t, for full summary see $file_name."
 
     solver_properties =
