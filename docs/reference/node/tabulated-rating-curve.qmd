@@ -71,7 +71,7 @@ xlims!(first(level) - 0.2, last(level) + 0.2)
 ```
 
 Below the lowest given level of 12.0, the flow rate is kept at 0.
-Between given levels the flow rate is interpolated linearly (with some smoothing).
+Between given levels the flow rate is interpolated using PCHIP interpolation.
 Above the maximum given level of 13.0, the flow rate keeps increases linearly according to the slope of the last segment.
 
 For tabulated rating curves with a fixed maximum value (e.g. max capacity of a weir), enter a new row and re-enter the maximum flow_rate at a higher level:
@@ -108,7 +108,7 @@ max_downstream_level | Float64  | $\text{m}$            | (optional)
 # Equations
 
 The TabulatedRatingCurve is a tabulation of a Basin's discharge behavior.
-It describes a piecewise linear relationship between the Basin's level and its discharge.
+It describes a relationship between the Basin's level and its discharge.
 It can be understood as an empirical description of a Basin's properties.
 This can include a weir, but also the lumped hydraulic behavior of the upstream channels.
 
@@ -119,7 +119,7 @@ $$
 Where:
 
 - $h$ is the upstream water level
-- $f$ is a piecewise linear function describing the given rating curve $Q(h)$
+- $f$ is a function describing the given rating curve $Q(h)$
 - $\phi$ is the reduction factor, which smoothly reduces flow based on all of these criteria:
   - The upstream volume is below the equivalent of a water depth of $10 \;\text{cm}$.
   - The upstream level is less than $0.02 \;\text{m}$ above the downstream level.
