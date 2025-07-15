@@ -134,7 +134,7 @@ pixi run python
 ```
 
 If you wish to check what is installed in your workspace, run `pixi list`.
-When you run into what seem like installation issues, try `pixi clean`, followed by `pixi install`.
+When you run into what seems like installation issues, try `pixi clean`, followed by `pixi install`.
 
 If your editor does not automatically detect the right Python environment, point it to `.pixi/envs/default/python.exe`.
 Starting your editor via Pixi will also help it find the environment since it will already be active.
