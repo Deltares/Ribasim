@@ -18,7 +18,7 @@
         NodeID(:Basin, 2, p_independent),
     )] = flow_boundary_flow * model.config.allocation.timestep
 
-    Ribasim.update_allocation!(model.integrator)
+    Ribasim.update_allocation!(model)
 
     flow = allocation_model.problem[:flow]
 

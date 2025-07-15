@@ -311,7 +311,7 @@ function step!(model::Model, dt::Float64)::Model
     # set over BMI at time t before calling this function.
     ntimes = t / config.allocation.timestep
     if round(ntimes) ≈ ntimes
-        update_allocation!(integrator)
+        update_allocation!(model)
     end
     SciMLBase.step!(integrator, dt, true)
     return model
@@ -330,13 +330,13 @@ function solve!(model::Model)::Model
         (; timestep) = config.allocation
         n_allocation_times = floor(Int, tspan[end] / timestep)
         for _ in 1:n_allocation_times
-            update_allocation!(integrator)
+            update_allocation!(model)
             SciMLBase.step!(integrator, timestep, true)
         end
         # Any possible remaining step (< allocation.timestep) after the last allocation
         dt = tspan[end] - integrator.t
         if dt > 0
-            update_allocation!(integrator)
+            update_allocation!(model)
             SciMLBase.step!(integrator, dt, true)
         end
     else

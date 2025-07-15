@@ -636,9 +636,10 @@ function optimize_for_objective!(
     allocation_model::AllocationModel,
     integrator::DEIntegrator,
     objective::AllocationObjective,
+    config::Config,
 )::Nothing
     (; p, t) = integrator
-    (; p_independent, p_mutable) = p
+    (; p_independent) = p
     (; problem, subnetwork_id) = allocation_model
 
     preprocess_objective!(allocation_model, p_independent, objective)
@@ -652,8 +653,8 @@ function optimize_for_objective!(
     termination_status = JuMP.termination_status(problem)
 
     if termination_status == JuMP.INFEASIBLE
-        analyze_infeasibility(problem)
-        analyze_numerics(problem)
+        analyze_infeasibility(allocation_model, objective, t, config)
+        analyze_numerics(allocation_model, objective, t, config)
 
         error(
             "Allocation optimization for subnetwork $subnetwork_id, $objective at t = $t s is infeasible",
@@ -763,10 +764,11 @@ function get_subnetwork_demands!(allocation_model::AllocationModel)::Nothing
 end
 
 "Solve the allocation problem for all demands and assign allocated abstractions."
-function update_allocation!(integrator)::Nothing
+function update_allocation!(model)::Nothing
+    (; integrator, config) = model
     (; u, p, t) = integrator
     du = get_du(integrator)
-    (; p_independent, state_time_dependent_cache) = p
+    (; p_independent) = p
     (; allocation, pump, outlet, graph) = p_independent
     (; allocation_models) = allocation
 
@@ -788,7 +790,7 @@ function update_allocation!(integrator)::Nothing
             reset_goal_programming!(allocation_model, p_independent)
             prepare_demand_collection!(allocation_model, p_independent)
             for objective in allocation_model.objectives
-                optimize_for_objective!(allocation_model, integrator, objective)
+                optimize_for_objective!(allocation_model, integrator, objective, config)
             end
             save_allocation_flows!(
                 p_independent,
@@ -804,7 +806,7 @@ function update_allocation!(integrator)::Nothing
     for allocation_model in allocation_models
         reset_goal_programming!(allocation_model, p_independent)
         for objective in allocation_model.objectives
-            optimize_for_objective!(allocation_model, integrator, objective)
+            optimize_for_objective!(allocation_model, integrator, objective, config)
         end
 
         if is_primary_network(allocation_model.subnetwork_id)

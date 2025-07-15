@@ -230,14 +230,27 @@ function get_low_storage_factor(problem::JuMP.Model, node_id::NodeID)
     end
 end
 
-function analyze_infeasibility(problem::JuMP.Model)::Nothing
-    # Infeasibility data
+function analyze_infeasibility(
+    allocation_model::AllocationModel,
+    objective::AllocationObjective,
+    t::Float64,
+    config::Config,
+)::Nothing
+    (; problem, subnetwork_id) = allocation_model
+
+    log_path = results_path(config, RESULTS_FILENAME.allocation_analysis_infeasibility)
+    @debug "Running allocation infeasibility analysis for $subnetwork_id, $objective at t = $t, for full summary see $log_path."
+
     data_infeasibility = MathOptAnalyzer.analyze(
         MathOptAnalyzer.Infeasibility.Analyzer(),
         problem;
         optimizer = get_optimizer(),
     )
-    # TODO: Also process infeasible_bounds, constraint_range
+    open(log_path, "w") do io
+        buffer = IOBuffer()
+        MathOptAnalyzer.summarize(buffer, data_infeasibility; model = problem)
+        write(io, take!(buffer) |> String)
+    end
 
     for irreducible_infeasible_subset in data_infeasibility.iis
         constraints = JuMP.ConstraintRef[]
@@ -252,7 +265,17 @@ function analyze_infeasibility(problem::JuMP.Model)::Nothing
     return nothing
 end
 
-function analyze_numerics(problem::JuMP.Model)::Nothing
+function analyze_numerics(
+    allocation_model::AllocationModel,
+    objective::AllocationObjective,
+    t::Float64,
+    config::Config,
+)::Nothing
+    (; problem, subnetwork_id) = allocation_model
+
+    log_path = results_path(config, RESULTS_FILENAME.allocation_analysis_numerics)
+    @debug "Running allocation numerics analysis for $subnetwork_id, $objective at t = $t, for full summary see $file_name."
+
     solver_properties =
         Dict(prop.first.name => prop.second for prop in get_optimizer().params)
     data_numerical = MathOptAnalyzer.analyze(
@@ -261,6 +284,11 @@ function analyze_numerics(problem::JuMP.Model)::Nothing
         threshold_small = solver_properties["small_matrix_value"],
         threshold_large = solver_properties["large_matrix_value"],
     )
+    open(log_path, "w") do io
+        buffer = IOBuffer()
+        MathOptAnalyzer.summarize(buffer, data_numerical; model = problem)
+        write(io, take!(buffer) |> String)
+    end
 
     # Variables that do not appear in any constraint
     if !isempty(data_numerical.variables_not_in_constraints)
