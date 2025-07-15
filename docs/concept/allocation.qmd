@@ -3,7 +3,76 @@ title: "Allocation"
 ---
 
 # Introduction
-Allocation is the process of assigning an optimized allocated flow rate to demand nodes in the physical layer of the model based on information about sources and their source priorities, the different demand nodes over various demand priorities, constraints introduced by nodes, local water availability and graph topology. It solves a linearized version of the problem formulated for the [physical layer](modelconcept.qmd#physical-layer) a period of time ahead of the physical layer, while simultaneously optimizing allocated flows and steering certain structures to get the water from (preferred) source to demand. The physics is implemented in an implicit manner, rather like the [implicit Euler](https://en.wikipedia.org/wiki/Backward_Euler_method) numerical method.
+In water resources management, allocation deals with distributing limited water resources among competing demands in a fair and efficient manner. This is particularly important in situations where water demands exceed available supply, requiring a systematic approach to prioritize and optimize water distribution across the network.
+
+
+
+In Ribasim, we optimize and assign the allocated flow rate to demand nodes in the physical layer of the model based on:
+
+- information about sources and their source priorities
+- the different demand nodes over various demand priorities
+- constraints introduced by nodes, local water availability and graph topology.
+
+Ribasim's allocation algorithm works by optimizing for a given demand in each time step. Optimal is defined by minimizing the difference between the requested demand and the supplied amount.
+
+
+Hence we want to minimize the difference between the demanded amount and allocated amount, subject to the constraint of the mass continuity, assuming incompessibility.
+$$
+\begin{aligned}
+\text{min}\quad & \sum_{i=0}^n Q_{demand,i} - Q_{alloc,i} + \sum_{i=1}^n S_{demand,i} - S_{alloc,i}\\
+\text{s.t.}\quad & \frac{dS}{dt} = Q_{in} - Q_{out}\\
+\end{aligned}
+$$
+
+
+where:
+
+- $Q$ denotes flow rate [m³/s]
+- $S$ is the storage [m³]
+- $t$ is the time [s]
+- $n$ is the number of demand nodes [-]
+
+## Discretizing the optimization problem
+
+For numerical solution, we discretize the continuous optimization problem over the allocation timestep $\Delta t$:
+
+- Flows are assumed constant over $\Delta t$
+- States (storage, levels) are evaluated at start and end of timestep
+- Coefficients in linearized equations are evaluated at start conditions
+
+For the time discretization, we use a backward Euler approximation to transform them from continuous to discrete equations:
+
+$$\frac{dS}{dt} \approx \frac{S^{n+1} - S^{n}}{\Delta t} = Q_{in}^{n+1} - Q_{out}^{n+1} $$
+
+Where $n$ denotes evaluation at the beginning of the time step and $n+1$ denotes evaluation at the end of the time step.
+
+This yields a linear programming problem that can be solved efficiently. The allocation timestep $\Delta t$ must be chosen carefully to:
+
+1. Be short enough that the linearization remains valid
+2. Be long enough to allow meaningful allocation decisions
+3. Be compatible with the physical timestep
+
+## Linearizing for the optimization problem
+
+The nonlinear relationships must be linearized to allow using linear programming algorithms, which offer better computational performance. We linearize around the current time step $t^n$ by:
+
+1. Taking first-order Taylor expansions of nonlinear functions with respect to storage
+2. Evaluating coefficients based on current state
+3. Treating resulting linear relationships as constraints
+
+For example, nonlinear flow-head relationships in the physical layer like Manning's equation are linearized to:
+
+$$Q = K_1^nS_1^{n+1} - K_1^nS_2^{n+1} $$
+
+This yields a linear approximation valid for small changes around the operating point.
+
+where S is storage, and Q represents flows in and out of nodes. These flows themselves depend on various physical factors like:
+
+- Water levels and hydraulic heads
+- Hydraulic resistances
+- Pump and structure capacities
+- Network connectivity constraints
+
 
 The allocation problem is solved per subnetwork of the Ribasim model. A subnetwork is defined by all nodes that have the same subnetwork ID in the [Node table](../reference/usage.qmd#node). Each subnetwork is used to formulate a linear optimization problem with the [JuMP](https://jump.dev/JuMP.jl/stable/) package, which is solved using the [HiGHS solver](https://highs.dev/). For more in-depth information see also the example of solving the maximum flow problem with `JuMP.jl` [here](https://jump.dev/JuMP.jl/stable/tutorials/linear/network_flows/#The-max-flow-problem).
 
@@ -167,7 +236,6 @@ There are several other control systems in Ribasim:
 
 See [here](../reference/usage.qmd#results).
 
-<!-- # Elements of allocation
 
 The following data of the parameters and state of a Ribasim model are relevant for the allocation problem.
 
@@ -225,12 +293,12 @@ We consider fluxes into the basin to be positive and out of the basin to be nega
 
 Secondly, there is either a supply or demand from the storage in the Basin if the Basin has a level demand. Given a minimum level $\ell_{\min, i}$ and a maximum level $\ell_{\max, i}$ which correspond to a minimum storage $s_{\min, i}$ and maximum storage $s_{\max, i}$ respectively, we get a flow supply of
 $$
-    F^{\text{basin out}}_{\max, i} = \max\left(0.0, \frac{u_i(t)-s_{\max,i}}{\Delta t_{\text{alloc}}} + \phi_i(t)\right)
+    F^{\text{basin out}}_{\max, i} = \max\left(0.0, \frac{u_i(t)-s_{\min,i}}{\Delta t_{\text{alloc}}} + \phi_i(t)\right)
 $$
 
 and a demand of
 $$
-    d^p_i = \max\left(0.0, \frac{s_{\min,i} - u_i(t)}{\Delta t_{\text{alloc}}} - \phi_i(t)\right),
+    d^p_i = \max\left(0.0, \frac{s_{\max,i} - u_i(t)}{\Delta t_{\text{alloc}}} - \phi_i(t)\right),
 $$
 
 for all $i \in B_S$. Note that the basin demand has only a single priority, so for other priorities this demand is $0$.
