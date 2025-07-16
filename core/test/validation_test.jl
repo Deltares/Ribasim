@@ -2,7 +2,7 @@
 @testitem "Q(h) validation" begin
     import SQLite
     using Logging
-    using Ribasim: NodeID, qh_interpolation, ScalarLinearInterpolation
+    using Ribasim: NodeID, qh_interpolation, ScalarPCHIPInterpolation
 
     node_id = NodeID(:TabulatedRatingCurve, 1, 1)
     level = [1.0, 2.0]
@@ -11,10 +11,10 @@
     # constant extrapolation at the bottom end, linear extrapolation at the top end
     @test itp(0.0) ≈ 0.0
     @test itp(1.0) ≈ 0.0
-    @test itp(1.5) ≈ 0.05
+    @test itp(1.5) ≈ 0.03125
     @test itp(2.0) ≈ 0.1
-    @test itp(3.0) ≈ 0.2
-    @test itp isa ScalarLinearInterpolation
+    @test itp(3.0) ≈ 0.25
+    @test itp isa ScalarPCHIPInterpolation
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/invalid_qh/ribasim.toml")
     @test ispath(toml_path)
@@ -352,7 +352,7 @@ end
     (; p_independent) = model.integrator.p
 
     (; graph, tabulated_rating_curve, basin) = p_independent
-    tabulated_rating_curve.interpolations[1].t[1] = invalid_level
+    tabulated_rating_curve.interpolations[1].t[2] = invalid_level
 
     logger = TestLogger()
     with_logger(logger) do
