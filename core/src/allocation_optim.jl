@@ -659,7 +659,7 @@ function optimize_for_objective!(
         error(
             "Allocation optimization for subnetwork $subnetwork_id, $objective at t = $t s is infeasible",
         )
-    elseif terminal_status != JuMP.OPTIMAL
+    elseif termination_status != JuMP.OPTIMAL
         relative_gap = JuMP.relative_gap(problem)
         threshold = 1e-3 # Hardcoded threshold for now
         if relative_gap < threshold
