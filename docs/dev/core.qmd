@@ -6,7 +6,7 @@ title: "Julia core development"
 
 The computational core is one of the components of Ribasim as illustrated in the [component overview](/install.qmd#sec-components).
 
-The computational process can be divided in three phases:
+The computational process can be divided into three phases:
 
 - Model initialization
 - Running the simulation loop

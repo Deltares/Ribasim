@@ -64,6 +64,7 @@ using LinearAlgebra: mul!
 using DataInterpolations:
     ConstantInterpolation,
     LinearInterpolation,
+    SmoothedLinearInterpolation,
     SmoothedConstantInterpolation,
     LinearInterpolationIntInv,
     invert_integral,
@@ -150,6 +151,8 @@ using StructArrays: StructVector
 using DataStructures: OrderedSet, OrderedDict, counter, inc!
 
 using Dates: Second
+
+using Printf: @sprintf
 
 export libribasim
 

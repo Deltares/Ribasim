@@ -2,3 +2,8 @@
 
 # SCM syntax highlighting & preventing 3-way merges
 pixi.lock merge=binary linguist-language=YAML linguist-generated=true
+
+Manifest.toml merge=binary linguist-generated=true
+Ribasim.spdx.json merge=binary linguist-generated=true
+Ribasim-python.spdx.json merge=binary linguist-generated=true
+python/ribasim/ribasim/styles/*.qml merge=binary linguist-generated=true

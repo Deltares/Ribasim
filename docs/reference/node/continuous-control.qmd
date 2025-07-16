@@ -34,7 +34,7 @@ look_ahead           | Float64  | $\text{s}$ | Only on transient boundary condit
 
 ## Function
 
-The function table defines a piecewise linear function $f$ interpolating between `(input, output)` datapoints for each `ContinuousControl` node. It linearly extrapolates. The total computation thus looks like
+The function table defines a smoothed piecewise linear function $f$ interpolating between `(input, output)` datapoints for each `ContinuousControl` node. It linearly extrapolates. The total computation thus looks like
 
 $$
     f(\text{weight}_1 * \text{variable}_1 + \text{weight}_2 * \text{variable}_2 + \ldots).
@@ -46,3 +46,7 @@ node_id              | Int32   | -       |
 input                | Float64 | -       |
 output               | Float64 | -       | -
 controlled_variable  | String  | -       | must be "level" or "flow_rate"
+
+:::{.callout-note}
+The data in the function table is not interpolated exactly linearly. On an interval around each data point the linear interpolation is replaced by a spline section. This interval is given by 12.5% of the distance between the input values on either side of the data points.
+:::
