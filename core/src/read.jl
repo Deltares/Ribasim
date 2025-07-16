@@ -987,9 +987,20 @@ function continuous_control_functions(db, config, ids)
         else
             push!(controlled_variables, only(unique_controlled_variable))
         end
+
+        input = collect(function_rows.input)
+        output = collect(function_rows.output)
+
+        # PCHIPInterpolation cannot handle having only 2 data points:
+        # https://github.com/SciML/DataInterpolations.jl/issues/446
+        if length(function_rows) == 2
+            insert!(input, 2, sum(input) / 2)
+            insert!(output, 2, sum(output) / 2)
+        end
+
         function_itp = PCHIPInterpolation(
-            function_rows.output,
-            function_rows.input;
+            output,
+            input;
             extrapolation = Linear,
             cache_parameters = true,
         )
