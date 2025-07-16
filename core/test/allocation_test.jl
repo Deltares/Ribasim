@@ -745,3 +745,37 @@ end
     @test_throws Exception test_extrapolation(only(flow_demand.demand_itp))
     @test_throws Exception test_extrapolation.(only(user_demand.demand_itp))
 end
+
+@testitem "infeasibility analysis" begin
+    using Logging
+    using JuMP: name
+
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/invalid_infeasible/ribasim.toml")
+    @test ispath(toml_path)
+
+    logger = TestLogger()
+    with_logger(logger) do
+        @test_throws "Allocation optimization for subnetwork 1, objective of type source_priorities at t = 0.0 s is infeasible" Ribasim.run(
+            toml_path,
+        )
+    end
+
+    @test logger.logs[5].level == Error
+    @test logger.logs[5].message == "Set of incompatible constraints found"
+    @test name.(logger.logs[5].kwargs[:constraints]) ==
+          ["volume_conservation[Basin #1]", "linear_resistance[LinearResistance #2]"]
+
+    @test logger.logs[6].level == Error
+    @test logger.logs[6].message == "Variables found which are not in any constraint."
+    @test name.(logger.logs[6].kwargs[:variables]) == ["target_fraction"]
+
+    @test ispath(
+        @__DIR__,
+        "../../generated_testmodels/invalid_infeasible/results/allocation_analysis_infeasibility.log",
+    )
+    @test ispath(
+        @__DIR__,
+        "../../generated_testmodels/invalid_infeasible/results/allocation_analysis_numerics.log",
+    )
+end
