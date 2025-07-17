@@ -13,7 +13,6 @@ from typing import Any, cast
 
 from PyQt5.QtWidgets import QTabWidget, QVBoxLayout, QWidget
 from qgis.core import (
-    Qgis,
     QgsAbstractVectorLayerLabeling,
     QgsCoordinateReferenceSystem,
     QgsLayerTreeGroup,
@@ -155,7 +154,6 @@ class RibasimWidget(QWidget):
         self,
         layer: QgsVectorLayer,
         destination: str,
-        suppress: bool | None = None,
         on_top: bool = False,
         labels: QgsAbstractVectorLayerLabeling | None = None,
     ) -> QgsMapLayer | None:
@@ -168,10 +166,6 @@ class RibasimWidget(QWidget):
             QGIS map layer, raster or vector layer
         destination:
             Legend group
-        suppress:
-            optional, bool. Default value is None.
-            This controls whether attribute form popup is suppressed or not.
-            Only relevant for vector (input) layers.
         on_top: optional, bool. Default value is False.
             Whether to place the layer on top in the destination legend group.
             Handy for transparent layers such as contours.
@@ -189,14 +183,6 @@ class RibasimWidget(QWidget):
         assert project is not None
         maplayer = cast(QgsVectorLayer, project.addMapLayer(layer, add_to_legend))
         assert maplayer is not None
-        if suppress is not None:
-            config = maplayer.editFormConfig()
-            config.setSuppress(
-                Qgis.AttributeFormSuppression.On
-                if suppress
-                else Qgis.AttributeFormSuppression.Default
-            )
-            maplayer.setEditFormConfig(config)
         if labels is not None:
             layer.setLabeling(labels)
             layer.setLabelsEnabled(True)

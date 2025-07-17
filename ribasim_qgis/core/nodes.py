@@ -156,15 +156,6 @@ class Input(abc.ABC):
         self.layer_from_geopackage()
         return (self.layer, self.labels)
 
-    def write(self) -> None:
-        self.layer = geopackage.write_layer(
-            self._path, self.layer, self.input_type(), fid=self.fid_column()
-        )
-        self.set_defaults()
-
-    def remove_from_geopackage(self) -> None:
-        geopackage.remove_layer(self._path, self.input_type())
-
     def set_editor_widget(self) -> None:
         # Calling during new_layer doesn't have any effect...
         pass
@@ -210,18 +201,6 @@ class Node(Input):
     @classmethod
     def fid_column(cls):
         return "node_id"
-
-    def write(self) -> None:
-        # Special case the Node layer write because it needs to generate a new file.
-        self.layer = geopackage.write_layer(
-            self._path,
-            self.layer,
-            self.input_type(),
-            newfile=True,
-            fid=self.fid_column(),
-        )
-        self.set_defaults()
-        return
 
     def set_editor_widget(self) -> None:
         layer = self.layer
