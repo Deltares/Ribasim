@@ -25,7 +25,6 @@ from qgis.gui import QgisInterface
 
 from ribasim_qgis.core.nodes import Input
 from ribasim_qgis.widgets.dataset_widget import DatasetWidget, group_position_var
-from ribasim_qgis.widgets.nodes_widget import NodesWidget
 
 PYQT_DELETED_ERROR = "wrapped C/C++ object of type QgsLayerTreeGroup has been deleted"
 
@@ -36,16 +35,13 @@ class RibasimWidget(QWidget):
 
         self.iface = iface
         self.message_bar = self.iface.messageBar()
-
         self.__dataset_widget = DatasetWidget(self)
-        self.__nodes_widget = NodesWidget(self)
 
         # Layout
         layout = QVBoxLayout()
         self.tabwidget = QTabWidget()
         layout.addWidget(self.tabwidget)
         self.tabwidget.addTab(self.__dataset_widget, "Model")
-        self.tabwidget.addTab(self.__nodes_widget, "Nodes")
         self.setLayout(layout)
 
         # QGIS Layers Panel groups
@@ -94,9 +90,6 @@ class RibasimWidget(QWidget):
 
     def add_node_layer(self, element: Input):
         self.__dataset_widget.add_node_layer(element)
-
-    def toggle_node_buttons(self, state: bool) -> None:
-        self.__nodes_widget.toggle_node_buttons(state)
 
     def selection_names(self):
         return self.__dataset_widget.selection_names()

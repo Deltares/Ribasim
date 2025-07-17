@@ -291,7 +291,6 @@ class DatasetWidget(QWidget):
             self.set_current_time_extent()
             self.load_geopackage()
             self.add_topology_context()
-            self.ribasim_widget.toggle_node_buttons(True)
             self.refresh_results()
         self.dataset_tree.sortByColumn(0, Qt.SortOrder.AscendingOrder)
 
