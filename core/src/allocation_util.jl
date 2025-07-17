@@ -256,15 +256,26 @@ function analyze_infeasibility(
     end
 
     # Parse irreducible infeasible constraint sets for modeller readable logging
+    violated_constraints =
+        constraint_ref_from_index.(
+            problem,
+            reduce(vcat, getfield.(data_infeasibility.iis, :constraint)),
+        )
+    constraint_to_penalty = Dict(violated_constraints .=> 1.0)
+    JuMP.@objective(problem, Min, 0)
+    constraint_to_slack = JuMP.relax_with_penalty!(problem, constraint_to_penalty)
+    JuMP.optimize!(problem)
+
     for irreducible_infeasible_subset in data_infeasibility.iis
-        constraints = JuMP.ConstraintRef[]
+        constraint_violations = Dict{JuMP.ConstraintRef, Float64}()
         for constraint_index in irreducible_infeasible_subset.constraint
             constraint_ref = constraint_ref_from_index(problem, constraint_index)
             if !isempty(JuMP.name(constraint_ref))
-                push!(constraints, constraint_ref)
+                constraint_violations[constraint_ref] =
+                    JuMP.value(constraint_to_slack[constraint_ref])
             end
         end
-        @error "Set of incompatible constraints found" constraints
+        @error "Set of incompatible constraints found" constraint_violations
     end
     return nothing
 end
