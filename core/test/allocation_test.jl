@@ -776,6 +776,6 @@ end
     )
     @test ispath(
         @__DIR__,
-        "../../generated_testmodels/invalid_infeasible/results/allocation_analysis_numerics.log",
+        "../../generated_testmodels/invalid_infeasible/results/allocation_analysis_scaling.log",
     )
 end
