@@ -19,6 +19,10 @@ except ImportError:
     xugrid = MissingOptionalModule("xugrid")
 
 
+delwaq_dir = Path(__file__).parent
+model_dir = delwaq_dir / "model"
+
+
 def strfdelta(tdelta) -> str:
     # dddhhmmss format
     days = tdelta.days
@@ -153,21 +157,30 @@ def ugrid(G) -> xugrid.UgridDataset:
     return uds
 
 
-def run_delwaq() -> None:
-    d3d_home = os.environ.get("D3D_HOME")
+def run_delwaq(
+    model_dir: Path | str = model_dir, d3d_home: Path | str | None = None
+) -> None:
+    """Run Delwaq simulation.
+
+    Args:
+        model_dir: Directory containing the Delwaq model files.
+        d3d_home: Path to the Delft3D installation directory.
+                  If None, uses the D3D_HOME environment variable.
+    """
     if d3d_home is None:
-        raise ValueError("D3D_HOME is not set.")
-    else:
-        pd3d_home = Path(d3d_home)
-    binfolder = (pd3d_home / "bin").absolute()
-    folder = Path(__file__).parent
-    inp_path = folder / "model" / "delwaq.inp"
+        d3d_home = os.environ.get("D3D_HOME")
+    if d3d_home is None:
+        raise ValueError("D3D_HOME is not set and d3d_home argument not provided.")
+    d3d_home = Path(d3d_home)
+    model_dir = Path(model_dir)
+    binfolder = (d3d_home / "bin").absolute()
+    inp_path = model_dir / "delwaq.inp"
     system = platform.system()
     if system == "Windows":
         # run_delwaq.bat prepends working directory to the inp file
         subprocess.run(
             [binfolder / "run_delwaq.bat", "delwaq.inp"],
-            cwd=(folder / "model").absolute(),
+            cwd=model_dir.absolute(),
             check=True,
         )
     elif system == "Linux":

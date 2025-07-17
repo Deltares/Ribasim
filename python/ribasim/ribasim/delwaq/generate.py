@@ -25,16 +25,18 @@ except ImportError:
 
 import ribasim
 from ribasim.delwaq.util import (
+    delwaq_dir,
     strfdelta,
     ugrid,
     write_flows,
     write_pointer,
     write_volumes,
 )
+from ribasim.delwaq.util import (
+    model_dir as output_path,
+)
 
 logger = logging.getLogger(__name__)
-delwaq_dir = Path(__file__).parent
-output_path = delwaq_dir / "model"
 
 env = jinja2.Environment(
     autoescape=True, loader=jinja2.FileSystemLoader(delwaq_dir / "template")
