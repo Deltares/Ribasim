@@ -2,100 +2,19 @@
 title: "QGIS plugin"
 ---
 
-# Preparing a model
+# Opening a model
 
 This guide assumes you have already installed the Ribasim core, test models and QGIS plugin as described in the [install page](/install.qmd).
-Open an existing model or create a new model.
 As an example of an existing model, you can use the "basic" model from `generated_testmodels.zip`.
 
 ![](https://user-images.githubusercontent.com/4471859/224939126-b38f0eed-2e89-4120-b541-5b8c31798c09.png){fig-align="left"}
-
-Check if your coordinate reference system (CRS) is set correctly.
-
-![](https://user-images.githubusercontent.com/4471859/224939143-19e9931e-da4b-4717-ba28-67a0f141dd40.png){fig-align="left"}
-
-If you are working with an unknown CRS, right click the model database group in Layers,
-and click "Set Group CRS...".
-
-![](https://user-images.githubusercontent.com/4471859/224939165-45807f16-2d3a-41b3-92a2-7fe0e86ae72b.png){fig-align="left"}
-
-If you are modeling the Netherlands, select "Amersfoort / RD New" (EPSG:28992).
-
-![](https://user-images.githubusercontent.com/4471859/224939182-3486ff0b-842b-4f98-a37e-ecd04f29aa7f.png){fig-align="left"}
-
-## Editing nodes
-
-### Adding nodes on the map
-
-Select the Node layer.
-
-![](https://user-images.githubusercontent.com/4471859/224939204-2aa2ead2-a028-4673-b747-abeadd821ec8.png){fig-align="left"}
-
-Turn on the edit mode to be able to add nodes on the map.
-
-![](https://user-images.githubusercontent.com/4471859/224939223-66e232c0-748c-46f0-ba1b-8751a965f114.png){fig-align="left"}
-
-Add nodes to the map with a left click and select the node type.
-
-<img alt="Node form" src="https://github.com/user-attachments/assets/6e811bb9-1817-4505-b8a4-a96ced5b6c26" class="img-fluid"/>
-
-Turn the edit mode off and save the edits to the Nodes layer.
-
-![](https://user-images.githubusercontent.com/4471859/224946136-e37021d5-80c1-4d90-ac04-d0dbd96879f3.png){fig-align="left"}
-
-### Editing node properties
-
-Right click a layer and select "Open Attribute Table".
-
-![](https://user-images.githubusercontent.com/4471859/224939276-ca8f856d-3325-49a7-b457-78b09b81ac5e.png){fig-align="left"}
-
-Click the yellow pencil icon on the top left to enable editing, and copy and paste a record.
-A record can be selected by clicking on the row number.
-
-![](https://user-images.githubusercontent.com/4471859/224939287-a8b9f351-9aea-4e3a-8417-3867cd40cda5.png){fig-align="left"}
-
-Adjust the content. Note that the `node_id` field is connected to the Node layer and thus must be set to an existing `node_id`.
-If you prefer, it also works to copy data with the same columns from
-Excel. Turn off edit mode and save changes to the layer.
-
-![](https://user-images.githubusercontent.com/4471859/224939297-4b0ca812-9618-4d25-ab7a-518bf1ca63e1.png){fig-align="left"}
-
-## Connect nodes
-
-### Turn on snapping
-
-Make sure the Snapping Toolbar is visible, by going to the View > Toolbars menu. Turn on
-snapping mode by clicking the magnet and set the snapping distance to 25 pixels. The keyboard shortcut for snapping is `s` (once the toolbar is enabled).
-
-![](https://user-images.githubusercontent.com/4471859/224939328-8359272a-30bb-4eb1-ab6c-968318ac3997.png){fig-align="left"}
-
-### Creating connecting links
-
-Select the Link layer and turn on the edit mode.
-
-![](https://user-images.githubusercontent.com/4471859/224939342-c6939331-a60d-4526-a350-3cddb122c62d.png){fig-align="left"}
-
-Select "Add line feature".
-
-![](https://user-images.githubusercontent.com/4471859/224939354-523cac79-dcd5-4c43-ab5a-db7672fb743e.png){fig-align="left"}
-
-Create a connection by left clicking a source node and right clicking the destination node.
-
-<img alt="Create an link" src="https://github.com/user-attachments/assets/048d342d-dd2b-4e67-b8a0-7bbb8fe3f243" class="img-fluid"/>
-
-A form where one can change the link attributes will pop up. Once done with editing, click ok.
-
-<img alt="Link form" src="https://github.com/user-attachments/assets/bee6af6f-7623-4d1e-98ed-edc26c524377" class="img-fluid"/>
-
-Now leave the edit mode and save the results to the layer. Your model is now ready to run. See
 
 # Running a model
 
 - Install the Ribasim core application as described in the [install section](/install.qmd)
 - Open a terminal like Powershell or Cmd and navigate to the model directory.
-- Call Ribasim with the `.toml` file as input. E.g. `<path_to_ribasim>\ribasim.exe my_model.toml`.
-- In your model directory there is now a `results/` folder with `basin.arrow` and
-  `flow.arrow` output files.
+- Call Ribasim with the `.toml` file as input. E.g. `<path_to_ribasim>/ribasim my_model.toml`.
+- In your model directory there is now a `results/` folder with `basin.arrow` and `flow.arrow` output files.
 
 # Inspect a (large) model {#sec-inspect}
 
@@ -104,7 +23,6 @@ the tables are linked via the `node_id` field to the Node table, and react to th
 It helps to set the attribute table of a table of interest to show selected features only (using the dropdown button on the bottom left).
 
 <img alt="Selection change" src="https://github.com/user-attachments/assets/074c1f58-926b-4d5e-a640-86a5a746a4c2" class="img-fluid"/>
-
 
 # Inspecting results {#sec-results}
 
