@@ -133,20 +133,17 @@ function set_simulation_data!(
         h_b = get_level(p, outflow_id, t)
 
         q = linear_resistance_flow(linear_resistance, node_id, h_a, h_b)
-        ∂q_∂level_upstream = forward_diff(
-            level_upstream ->
-                linear_resistance_flow(linear_resistance, node_id, level_upstream, h_b),
-            h_a,
-        )
-        ∂q_∂level_downstream = forward_diff(
-            level_downstream -> linear_resistance_flow(
-                linear_resistance,
-                node_id,
-                h_a,
-                level_downstream,
-            ),
-            h_b,
-        )
+
+        (; resistance, max_flow_rate) = linear_resistance
+
+        if q >= max_flow_rate[node_id.idx] || q <= -max_flow_rate[node_id.idx]
+            ∂q_∂level_upstream = 0.0
+            ∂q_∂level_downstream = 0.0
+        else
+            ∂q_∂level_upstream = 1 / resistance[node_id.idx]
+            ∂q_∂level_downstream = -1 / resistance[node_id.idx]
+        end
+
         # Constant terms in linearization
         q0 = q - h_a * ∂q_∂level_upstream - h_b * ∂q_∂level_downstream
 
