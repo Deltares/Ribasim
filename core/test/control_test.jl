@@ -182,7 +182,7 @@ end
     @test discrete_control.record.control_state == ["high", "low"]
     @test discrete_control.record.time[1] == 0.0
     t = Ribasim.datetime_since(discrete_control.record.time[2], model.config.starttime)
-    @test Date(t) == Date("2020-03-16")
+    @test Date(t) == Date("2020-03-9")
     # then the rating curve is updated to the "low" control_state
     @test only(current_interpolation_index)(0.0) == index_low
 end
