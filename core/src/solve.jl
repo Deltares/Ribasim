@@ -398,13 +398,25 @@ function formulate_flow!(
         if (active[id.idx] || all_nodes_active)
             h_a = get_level(p, inflow_id, t)
             h_b = get_level(p, outflow_id, t)
-            q_unlimited = (h_a - h_b) / resistance[id.idx]
-            q = clamp(q_unlimited, -max_flow_rate[id.idx], max_flow_rate[id.idx])
+            q = linear_resistance_flow(linear_resistance, id, h_a, h_b)
             q *= low_storage_factor_resistance_node(p, q, inflow_id, outflow_id)
             du.linear_resistance[id.idx] = q
         end
     end
     return nothing
+end
+
+function linear_resistance_flow(
+    linear_resistance::LinearResistance,
+    node_id::NodeID,
+    h_a::Number,
+    h_b::Number,
+)::Number
+    (; resistance, max_flow_rate) = linear_resistance
+
+    Δh = h_a - h_b
+    q_unlimited = Δh / resistance[node_id.idx]
+    return clamp(q_unlimited, -max_flow_rate[node_id.idx], max_flow_rate[node_id.idx])
 end
 
 function formulate_flow!(

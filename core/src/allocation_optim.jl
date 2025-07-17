@@ -16,13 +16,21 @@ function set_simulation_data!(
     t::Float64,
     du::CVector,
 )::Nothing
-    (; basin, level_boundary, manning_resistance, pump, outlet, user_demand) =
-        p.p_independent
+    (;
+        basin,
+        level_boundary,
+        linear_resistance,
+        manning_resistance,
+        pump,
+        outlet,
+        user_demand,
+    ) = p.p_independent
 
     errors = false
 
     errors |= set_simulation_data!(allocation_model, basin, p)
     set_simulation_data!(allocation_model, level_boundary, t)
+    set_simulation_data!(allocation_model, linear_resistance, p, t)
     set_simulation_data!(allocation_model, manning_resistance, p, t)
     set_simulation_data!(allocation_model, pump, outlet, du)
     set_simulation_data!(allocation_model, user_demand, t)
@@ -100,6 +108,66 @@ function set_simulation_data!(
             boundary_level[node_id],
             level_boundary.level[node_id.idx](t + Δt_allocation);
             force = true,
+        )
+    end
+    return nothing
+end
+
+function set_simulation_data!(
+    allocation_model::AllocationModel,
+    linear_resistance::LinearResistance,
+    p::Parameters,
+    t::Float64,
+)::Nothing
+    (; problem, scaling) = allocation_model
+    linear_resistance_constraint = problem[:linear_resistance_constraint]
+
+    # Set the linearization of LinearResistance flows in the current levels from the physical layer
+    for node_id in only(linear_resistance_constraint.axes)
+        inflow_link = linear_resistance.inflow_link[node_id.idx]
+        outflow_link = linear_resistance.outflow_link[node_id.idx]
+
+        inflow_id = inflow_link.link[1]
+        outflow_id = outflow_link.link[2]
+        h_a = get_level(p, inflow_id, t)
+        h_b = get_level(p, outflow_id, t)
+
+        q = linear_resistance_flow(linear_resistance, node_id, h_a, h_b)
+        ∂q_∂level_upstream = forward_diff(
+            level_upstream ->
+                linear_resistance_flow(linear_resistance, node_id, level_upstream, h_b),
+            h_a,
+        )
+        ∂q_∂level_downstream = forward_diff(
+            level_downstream -> linear_resistance_flow(
+                linear_resistance,
+                node_id,
+                h_a,
+                level_downstream,
+            ),
+            h_b,
+        )
+        # Constant terms in linearization
+        q0 = q - h_a * ∂q_∂level_upstream - h_b * ∂q_∂level_downstream
+
+        # To avoid confusion: h_a and h_b are numbers for the current levels in the physical
+        # layer, upstream_level and downstream_level are variables in the optimization problem
+        constraint = linear_resistance_constraint[node_id]
+        upstream_level =
+            get_level(problem, linear_resistance.inflow_link[node_id.idx].link[1])
+        downstream_level =
+            get_level(problem, linear_resistance.outflow_link[node_id.idx].link[2])
+        JuMP.set_normalized_rhs(constraint, q0 / scaling.flow)
+        # Minus signs because the level terms are moved to the lhs in the constraint
+        JuMP.set_normalized_coefficient(
+            constraint,
+            upstream_level,
+            -∂q_∂level_upstream / scaling.flow,
+        )
+        JuMP.set_normalized_coefficient(
+            constraint,
+            downstream_level,
+            -∂q_∂level_downstream / scaling.flow,
         )
     end
     return nothing

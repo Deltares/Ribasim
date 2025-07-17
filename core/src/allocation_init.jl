@@ -591,61 +591,29 @@ function add_linear_resistance!(
     allocation_model::AllocationModel,
     p_independent::ParametersIndependent,
 )::Nothing
-    (; problem, subnetwork_id, scaling) = allocation_model
+    (; problem, subnetwork_id) = allocation_model
     (; graph, linear_resistance) = p_independent
-    (; inflow_link, outflow_link, resistance, max_flow_rate) = linear_resistance
+    (; inflow_link, outflow_link) = linear_resistance
 
     linear_resistance_ids_subnetwork =
         get_subnetwork_ids(graph, NodeType.LinearResistance, subnetwork_id)
 
-    # Add constraints: flow(levels) relationship
+    # Add constraints: linearisation of the flow(levels) relationship in the current levels in the physical layer
     flow = problem[:flow]
-    problem[:linear_resistance] = JuMP.@constraint(
+    q0 = 1.0 # example value (scaling.flow * m^3/s, to be filled in before optimizing)
+    ∂q_∂level_upstream = 1.0 # example value (scaling_flow * m^3/(sm), to be filled in before optimizing)
+    ∂q_∂level_downstream = -1.0 # example value (scaling_flow * m^3/(sm), to be filled in before optimizing)
+    problem[:linear_resistance_constraint] = JuMP.@constraint(
         problem,
         [node_id = linear_resistance_ids_subnetwork],
         flow[inflow_link[node_id.idx].link] == begin
-            inflow_id = inflow_link[node_id.idx].link[1]
-            outflow_id = outflow_link[node_id.idx].link[2]
-
-            level_upstream = get_level(problem, inflow_id)
-            level_downstream = get_level(problem, outflow_id)
-            Δlevel = level_upstream - level_downstream
-            max_flow = max_flow_rate[node_id.idx]
-
-            if isinf(max_flow)
-                # If there is no flow bound the relationship is simple
-                Δlevel / (resistance[node_id.idx] * scaling.flow)
-            else
-                # If there is a flow bound, the flow(Δlevel) relationship
-                # is modelled as a (non-convex) piecewise linear relationship
-                min_inflow_level, max_inflow_level =
-                    get_minmax_level(p_independent, inflow_id)
-                min_outflow_level, max_outflow_level =
-                    get_minmax_level(p_independent, outflow_id)
-
-                Δlevel_min = min_inflow_level - max_outflow_level
-                Δlevel_max = max_inflow_level - min_outflow_level
-                Δlevel_max_flow = resistance[node_id.idx] * max_flow
-
-                input = [-Δlevel_max_flow, Δlevel_max_flow]
-                output = [-max_flow, max_flow]
-
-                if Δlevel_min < -Δlevel_max_flow
-                    pushfirst!(input, Δlevel_min)
-                    pushfirst!(output, -max_flow)
-                end
-
-                if Δlevel_max > Δlevel_max_flow
-                    push!(input, Δlevel_max)
-                    push!(output, max_flow)
-                end
-
-                output ./= scaling.flow
-
-                piecewiselinear(problem, Δlevel, input, output)
-            end
+            level_upstream = get_level(problem, inflow_link[node_id.idx].link[1])
+            level_downstream = get_level(problem, outflow_link[node_id.idx].link[2])
+            q0 +
+            ∂q_∂level_upstream * level_upstream +
+            ∂q_∂level_downstream * level_downstream
         end,
-        base_name = "linear_resistance"
+        base_name = "linear_resistance_constraint"
     )
     return nothing
 end
