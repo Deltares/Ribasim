@@ -11,13 +11,16 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
-from ribasim.delwaq.generate import output_path as model_dir
 from ribasim.utils import MissingOptionalModule
 
 try:
     import xugrid
 except ImportError:
     xugrid = MissingOptionalModule("xugrid")
+
+
+delwaq_dir = Path(__file__).parent
+model_dir = delwaq_dir / "model"
 
 
 def strfdelta(tdelta) -> str:
