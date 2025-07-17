@@ -42,7 +42,7 @@ where:
 - $S$ is the storage of a basin [m³]
 - $t$ is the time [s]
 - $N_d$ is the number of demand nodes [-]
-- $E_i$ is an error as function of flow and storage
+- $E_i$ is a deviation error between allocated and demand as function of flow and storage
 
 ## Discretization
 
