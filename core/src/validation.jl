@@ -721,3 +721,36 @@ function validate_consistent_basin_initialization(
 
     errors
 end
+
+function invalid_nested_interpolation_times(
+    interpolations_min::Vector{ScalarLinearInterpolation};
+    interpolations_max::Vector{ScalarLinearInterpolation} = fill(
+        trivial_linear_itp(; val = Inf),
+        length(interpolations_min),
+    ),
+)::Vector{Float64}
+    n_itp = length(interpolations_min)
+    n_itp_ = length(interpolations_max)
+    @assert n_itp == n_itp_
+
+    tstops = reduce(vcat, getfield.(interpolations_min, :t))
+    append!(tstops, reduce(vcat, getfield.(interpolations_max, :t)))
+    sort!(unique!(tstops))
+
+    out = zeros(2 * n_itp)
+
+    out_min = view(out, 1:n_itp)
+    out_max = view(out, (2 * n_itp):-1:(n_itp + 1))
+
+    t_error = Float64[]
+
+    for t in tstops
+        map!(itp -> itp(t), out_min, interpolations_min)
+        map!(itp -> itp(t), out_max, interpolations_max)
+
+        if !issorted(out)
+            push!(t_error, t)
+        end
+    end
+    return t_error
+end
