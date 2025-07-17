@@ -236,7 +236,7 @@ end
     @test success(model)
     @test length(model.integrator.sol) == 2 # start and end
     @test state_time_dependent_cache.current_storage ≈
-          Float32[797.56195, 797.11017, 508.48175, 1130.005] skip = Sys.isapple() atol = 1.5
+          Float32[775.23576, 775.23365, 572.60102, 1130.005] skip = Sys.isapple() atol = 1.5
 
     @test length(logger.logs) > 10
     @test logger.logs[1].level == Debug
@@ -275,7 +275,7 @@ end
     precipitation = p_independent.basin.vertical_flux.precipitation
     @test length(precipitation) == 4
     @test state_time_dependent_cache.current_storage ≈
-          Float32[702.262, 701.802, 439.235, 1136.969] atol = 2.0 skip = Sys.isapple()
+          Float32[691.797, 691.795, 459.022, 1136.969] atol = 2.0 skip = Sys.isapple()
 end
 
 @testitem "Allocation example model" begin

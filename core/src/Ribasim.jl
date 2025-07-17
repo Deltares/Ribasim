@@ -64,7 +64,8 @@ using LinearAlgebra: mul!
 using DataInterpolations:
     ConstantInterpolation,
     LinearInterpolation,
-    SmoothedLinearInterpolation,
+    PCHIPInterpolation,
+    CubicHermiteSpline,
     SmoothedConstantInterpolation,
     LinearInterpolationIntInv,
     invert_integral,
