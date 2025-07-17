@@ -514,3 +514,33 @@ end
     error = validate_consistent_basin_initialization(profiles_missing_data)
     @test error
 end
+
+@testitem "nested interpolations" begin
+    using Ribasim: invalid_nested_interpolation_times
+    using DataInterpolations: LinearInterpolation, ExtrapolationType
+
+    t = [1.0, 2.0, 3.0, 4.0]
+    u1 = [1.0, 2.0, 3.0, 4.0]
+    u2 = [6.0, 5.0, 4.0, 3.0]
+
+    interpolations_min = [LinearInterpolation(u1, t)]
+    interpolations_max = [LinearInterpolation(u2, t)]
+
+    @test invalid_nested_interpolation_times(interpolations_min; interpolations_max) ==
+          [4.0]
+
+    extrapolation = ExtrapolationType.Linear
+    interpolations_min = [
+        LinearInterpolation([0.88, 1.18], [0.3, 0.8]; extrapolation),
+        LinearInterpolation([1.1, 1.15], [0.1, 0.15]; extrapolation),
+    ]
+    @test isempty(invalid_nested_interpolation_times(interpolations_min))
+
+    interpolations_max = [
+        LinearInterpolation([9.92, 9.901], [0.8, 0.99]; extrapolation),
+        LinearInterpolation([5.6488, 5.3976], [0.314, 0.628]; extrapolation),
+    ]
+    @test isempty(
+        invalid_nested_interpolation_times(interpolations_min; interpolations_max),
+    )
+end

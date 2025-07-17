@@ -616,7 +616,7 @@ end
 
 # Constant interpolation that is always 0, used
 # e.g. for unspecified standard tracers
-const trivial_itp = ConstantInterpolation(
+const zero_constant_itp = ConstantInterpolation(
     [0.0, 0.0],
     [0.0, 1.0];
     extrapolation = ExtrapolationType.Constant,
@@ -624,7 +624,7 @@ const trivial_itp = ConstantInterpolation(
 
 # Constant interpolation that is always 1, used
 # e.g. for boundary flow tracers
-const unit_itp = ConstantInterpolation(
+const unit_constant_itp = ConstantInterpolation(
     [1.0, 1.0],
     [0.0, 1.0];
     extrapolation = ExtrapolationType.Constant,
@@ -1131,7 +1131,7 @@ function parse_static_demand_data!(
         demand_priority_idx = findsorted(demand_priorities, row.demand_priority)
         user_demand.has_demand_priority[id.idx, demand_priority_idx] = true
         demand_row = coalesce(row.demand, 0.0)
-        demand_itp = trivial_itp(; val = demand_row)
+        demand_itp = trivial_linear_itp(; val = demand_row)
         user_demand.demand_itp[id.idx][demand_priority_idx] = demand_itp
         user_demand.demand[id.idx, demand_priority_idx] = demand_row
     end
@@ -1225,9 +1225,9 @@ function parse_static_demand_data!(
         demand_priority_idx = findsorted(demand_priorities, row.demand_priority)
         level_demand.has_demand_priority[id.idx, demand_priority_idx] = true
         level_demand.min_level[id.idx][demand_priority_idx] =
-            trivial_itp(; val = coalesce(row.min_level, -Inf))
+            trivial_linear_itp(; val = coalesce(row.min_level, -Inf))
         level_demand.max_level[id.idx][demand_priority_idx] =
-            trivial_itp(; val = coalesce(row.max_level, Inf))
+            trivial_linear_itp(; val = coalesce(row.max_level, Inf))
     end
     return nothing
 end
@@ -1277,6 +1277,22 @@ function LevelDemand(db::DB, config::Config, graph::MetaGraph)
     level_demand = LevelDemand(; node_id, demand_priorities)
 
     parse_demand!(level_demand, static, time, cyclic_times, demand_priorities, config)
+
+    # Validate demands
+    errors = false
+    for id in node_id
+        ts = invalid_nested_interpolation_times(
+            level_demand.min_level[node_id.idx];
+            interpolations_max = level_demand.max_level[node_id.idx],
+        )
+
+        if !isempty(ts)
+            errors = true
+            times = datetime_since.(ts, config.starttime)
+            @error "The minimum and maximum levels for subsequent LevelDemand demand priorities do not define nested windows" id times
+        end
+    end
+    errors && error("Invalid LevelDemand levels detected.")
 
     for id in node_id
         basin_ids = collect(outneighbor_labels_type(graph, id, LinkType.control))

@@ -1153,15 +1153,15 @@ function eval_time_interp(
     end
 end
 
-function trivial_itp(; val = 0.0)
+function trivial_linear_itp(; val = 0.0)
     LinearInterpolation([val, val], [0.0, 1.0]; extrapolation = ConstantExtrapolation)
 end
 
-function trivial_itp_fill(
+function trivial_linear_itp_fill(
     demand_priorities,
     node_id,
 )::Vector{Vector{ScalarLinearInterpolation}}
-    return [fill(trivial_itp(), length(demand_priorities)) for _ in node_id]
+    return [fill(trivial_linear_itp(), length(demand_priorities)) for _ in node_id]
 end
 
 function finitemaximum(u::AbstractVector; init = 0)
@@ -1181,13 +1181,13 @@ function initialize_concentration_itp(
     continuity_tracer = true,
 )::Vector{ScalarConstantInterpolation}
     # Default: concentration of 0
-    concentration_itp = fill(trivial_itp, n_substance)
+    concentration_itp = fill(zero_constant_itp, n_substance)
 
     # Set the concentration corresponding to the node type to 1
-    concentration_itp[substance_idx_node_type] = unit_itp
+    concentration_itp[substance_idx_node_type] = unit_constant_itp
     if continuity_tracer
         # Set the concentration corresponding of the continuity tracer to 1
-        concentration_itp[Substance.Continuity] = unit_itp
+        concentration_itp[Substance.Continuity] = unit_constant_itp
     end
     return concentration_itp
 end
@@ -1208,7 +1208,7 @@ function filtered_constant_interpolation(
             extrapolation = cyclic_time ? Periodic : ConstantExtrapolation,
         )
     else
-        trivial_itp
+        zero_constant_itp
     end
 end
 

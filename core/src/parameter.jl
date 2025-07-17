@@ -943,7 +943,7 @@ concentration_itp: matrix with timeseries interpolations of concentrations per L
         zeros(Bool, length(node_id), length(demand_priorities))
     demand::Matrix{Float64} = zeros(length(node_id), length(demand_priorities))
     demand_itp::Vector{Vector{ScalarLinearInterpolation}} =
-        trivial_itp_fill(demand_priorities, node_id)
+        trivial_linear_itp_fill(demand_priorities, node_id)
     demand_from_timeseries::Vector{Bool} = Vector{Bool}(undef, length(node_id))
     allocated::Matrix{Float64} = fill(Inf, length(node_id), length(demand_priorities))
     return_factor::Vector{ScalarLinearInterpolation} =
@@ -972,9 +972,9 @@ allocated: The storage allocated to each Basin per demand priority
     has_demand_priority::Matrix{Bool} =
         zeros(Bool, length(node_id), length(demand_priorities))
     min_level::Vector{Vector{ScalarLinearInterpolation}} =
-        trivial_itp_fill(demand_priorities, node_id)
+        trivial_linear_itp_fill(demand_priorities, node_id)
     max_level::Vector{Vector{ScalarLinearInterpolation}} =
-        trivial_itp_fill(demand_priorities, node_id)
+        trivial_linear_itp_fill(demand_priorities, node_id)
     basins_with_demand::Vector{Vector{NodeID}} = []
     target_storage_min::Dict{NodeID, Vector{Float64}} = Dict()
     target_storage_max::Dict{NodeID, Vector{Float64}} = Dict()
