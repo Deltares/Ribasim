@@ -11,6 +11,7 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
+from ribasim.delwaq.generate import output_path as model_dir
 from ribasim.utils import MissingOptionalModule
 
 try:
@@ -153,21 +154,20 @@ def ugrid(G) -> xugrid.UgridDataset:
     return uds
 
 
-def run_delwaq() -> None:
+def run_delwaq(model_dir: Path = model_dir) -> None:
     d3d_home = os.environ.get("D3D_HOME")
     if d3d_home is None:
         raise ValueError("D3D_HOME is not set.")
     else:
         pd3d_home = Path(d3d_home)
     binfolder = (pd3d_home / "bin").absolute()
-    folder = Path(__file__).parent
-    inp_path = folder / "model" / "delwaq.inp"
+    inp_path = model_dir / "delwaq.inp"
     system = platform.system()
     if system == "Windows":
         # run_delwaq.bat prepends working directory to the inp file
         subprocess.run(
             [binfolder / "run_delwaq.bat", "delwaq.inp"],
-            cwd=(folder / "model").absolute(),
+            cwd=model_dir.absolute(),
             check=True,
         )
     elif system == "Linux":
