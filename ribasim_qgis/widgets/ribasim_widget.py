@@ -11,7 +11,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, cast
 
-from PyQt5.QtWidgets import QTabWidget, QVBoxLayout, QWidget
+from PyQt5.QtWidgets import QVBoxLayout, QWidget
 from qgis.core import (
     QgsAbstractVectorLayerLabeling,
     QgsCoordinateReferenceSystem,
@@ -23,7 +23,6 @@ from qgis.core import (
 )
 from qgis.gui import QgisInterface
 
-from ribasim_qgis.core.nodes import Input
 from ribasim_qgis.widgets.dataset_widget import DatasetWidget, group_position_var
 
 PYQT_DELETED_ERROR = "wrapped C/C++ object of type QgsLayerTreeGroup has been deleted"
@@ -39,9 +38,7 @@ class RibasimWidget(QWidget):
 
         # Layout
         layout = QVBoxLayout()
-        self.tabwidget = QTabWidget()
-        layout.addWidget(self.tabwidget)
-        self.tabwidget.addTab(self.__dataset_widget, "Model")
+        layout.addWidget(self.__dataset_widget)
         self.setLayout(layout)
 
         # QGIS Layers Panel groups
@@ -87,12 +84,6 @@ class RibasimWidget(QWidget):
         map_settings = map_canvas.mapSettings()
         assert map_settings is not None
         return map_settings.destinationCrs()
-
-    def add_node_layer(self, element: Input):
-        self.__dataset_widget.add_node_layer(element)
-
-    def selection_names(self):
-        return self.__dataset_widget.selection_names()
 
     # QGIS layers
     # -----------

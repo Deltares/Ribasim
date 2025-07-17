@@ -10,11 +10,6 @@ The classes specify:
 Each node layer is (optionally) represented in multiple places:
 
 * It always lives in a GeoPackage.
-* While a geopackage is active within plugin, it is always represented in a
-  Dataset Tree: the Dataset Tree provides a direct look at the state of the
-  GeoPackage. In this tree, steady and transient input are on the same row.
-  Associated input is, to potentially enable transient associated data later
-  on (like a building pit with changing head top boundary).
 * It can be added to the Layers Panel in QGIS. This enables a user to visualize
   and edit its data.
 
@@ -29,7 +24,6 @@ from typing import Any
 from PyQt5.QtCore import QVariant
 from qgis.core import (
     Qgis,
-    QgsCoordinateReferenceSystem,
     QgsEditorWidgetSetup,
     QgsField,
     QgsPalLayerSettings,
@@ -75,35 +69,6 @@ class Input(abc.ABC):
     @classmethod
     def nodetype(cls):
         return cls.input_type().split("/")[0].strip()
-
-    @classmethod
-    def create(
-        cls,
-        path: Path,
-        crs: QgsCoordinateReferenceSystem,
-        names: list[str],
-    ) -> Input:
-        if cls.input_type() in names:
-            raise ValueError(f"Name already exists in geopackage: {cls.input_type()}")
-        instance = cls(path)
-        instance.layer = instance.new_layer(crs)
-        # Load style from QML file
-        instance.load_default_style()
-        return instance
-
-    def new_layer(self, crs: QgsCoordinateReferenceSystem) -> QgsVectorLayer:
-        """
-        Separate creation of the instance with creating the layer.
-
-        Needed since the layer might also come from an existing geopackage.
-        """
-        layer = QgsVectorLayer(self.geometry_type(), self.input_type(), "memory")
-        provider = layer.dataProvider()
-        assert provider is not None
-        provider.addAttributes(self.attributes())
-        layer.updateFields()
-        layer.setCrs(crs)
-        return layer
 
     def set_defaults(self) -> None:
         defaults = getattr(self, "defaults", None)

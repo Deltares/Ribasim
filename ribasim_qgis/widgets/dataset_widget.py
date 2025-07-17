@@ -15,17 +15,13 @@ from typing import Any, cast
 
 import pandas as pd
 from osgeo import ogr
-from PyQt5.QtCore import QDateTime, Qt, QVariant
+from PyQt5.QtCore import QDateTime, QVariant
 from PyQt5.QtWidgets import (
-    QAbstractItemView,
     QFileDialog,
     QHBoxLayout,
     QLineEdit,
     QMenu,
     QPushButton,
-    QSizePolicy,
-    QTreeWidget,
-    QTreeWidgetItem,
     QVBoxLayout,
     QWidget,
 )
@@ -53,42 +49,10 @@ from ribasim_qgis.core.model import (
 )
 from ribasim_qgis.core.nodes import (
     STYLE_DIR,
-    Input,
     load_nodes_from_geopackage,
 )
 
 group_position_var: ContextVar[int] = ContextVar("group_position", default=0)
-
-
-class DatasetTreeWidget(QTreeWidget):
-    """A tree widget to manage layers in a Ribasim model."""
-
-    def __init__(self, parent: QWidget | None):
-        super().__init__(parent)
-        self.setSelectionMode(QAbstractItemView.ExtendedSelection)
-        self.setHeaderHidden(True)
-        self.setSortingEnabled(True)
-        self.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Preferred)
-        self.setHeaderLabels(["  Layer"])
-        self.setHeaderHidden(False)
-        self.setColumnCount(1)
-
-    def items(self) -> list[QTreeWidgetItem]:
-        root = self.invisibleRootItem()
-        return [root.child(i) for i in range(root.childCount())]
-
-    def add_item(self, name: str) -> QTreeWidgetItem:
-        item = QTreeWidgetItem()
-        self.addTopLevelItem(item)
-        item.setText(0, name)
-
-        return item
-
-    def add_node_layer(self, element: Input) -> QTreeWidgetItem:
-        # These are mandatory elements, cannot be unticked
-        item = self.add_item(name=element.input_type())
-        item.element = element  # type: ignore[attr-defined]
-        return item
 
 
 class DatasetWidget(QWidget):
@@ -98,8 +62,6 @@ class DatasetWidget(QWidget):
         super().__init__(parent)
 
         self.ribasim_widget = cast(RibasimWidget, parent)
-        self.dataset_tree = DatasetTreeWidget(self)
-        self.dataset_tree.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
         self.dataset_line_edit = QLineEdit()
         self.dataset_line_edit.setEnabled(False)  # Just used as a viewing port
         self.open_model_button = QPushButton("Open")
@@ -126,7 +88,6 @@ class DatasetWidget(QWidget):
         dataset_row.addWidget(self.dataset_line_edit)
         dataset_row.addWidget(self.open_model_button)
         dataset_layout.addLayout(dataset_row)
-        dataset_layout.addWidget(self.dataset_tree)
         self.setLayout(dataset_layout)
         self.add_reload_context()
 
@@ -170,12 +131,11 @@ class DatasetWidget(QWidget):
         return layer
 
     def add_item_to_qgis(self, item) -> None:
-        element = item.element
-        layer, labels = element.from_geopackage()
+        layer, labels = item.from_geopackage()
         self.add_layer(layer, "Input", labels=labels)
 
-        element.set_editor_widget()
-        element.set_read_only()
+        item.set_editor_widget()
+        item.set_read_only()
         return
 
     @staticmethod
@@ -206,7 +166,6 @@ class DatasetWidget(QWidget):
 
     def load_geopackage(self) -> None:
         """Load the layers of a GeoPackage into the Layers Panel."""
-        self.dataset_tree.clear()
         geo_path = get_database_path_from_model_file(self.path)
         nodes = load_nodes_from_geopackage(geo_path)
 
@@ -216,14 +175,12 @@ class DatasetWidget(QWidget):
 
         # Make sure "Node", "Link", "Basin / area" are the top three layers
         node = nodes.pop("Node")
-        item = self.dataset_tree.add_node_layer(node)
-        self.add_item_to_qgis(item)
+        self.add_item_to_qgis(node)
         # Make sure node_id shows up in relationships
         node.layer.setDisplayExpression("node_id")
 
         link = nodes.pop("Link")
-        item = self.dataset_tree.add_node_layer(link)
-        self.add_item_to_qgis(item)
+        self.add_item_to_qgis(link)
         self.add_relationship(
             link.layer, node.layer.id(), "LinkFromNode", "from_node_id"
         )
@@ -231,16 +188,14 @@ class DatasetWidget(QWidget):
 
         basin_area_layer = nodes.pop("Basin / area", None)
         if basin_area_layer is not None:
-            item = self.dataset_tree.add_node_layer(basin_area_layer)
-            self.add_item_to_qgis(item)
+            self.add_item_to_qgis(basin_area_layer)
             self.add_relationship(
                 basin_area_layer.layer, node.layer.id(), "Basin / area"
             )
 
         # Add the remaining layers
         for table_name, node_layer in nodes.items():
-            item = self.dataset_tree.add_node_layer(node_layer)
-            self.add_item_to_qgis(item)
+            self.add_item_to_qgis(node_layer)
             self.add_relationship(node_layer.layer, node.layer.id(), table_name)
 
         # Connect node and link layer to derive connectivities.
@@ -281,7 +236,6 @@ class DatasetWidget(QWidget):
 
     def open_model(self) -> None:
         """Open a Ribasim model file."""
-        self.dataset_tree.clear()
         path, _ = QFileDialog.getOpenFileName(self, "Select file", "", "*.toml")
         self._open_model(path)
 
@@ -292,7 +246,6 @@ class DatasetWidget(QWidget):
             self.load_geopackage()
             self.add_topology_context()
             self.refresh_results()
-        self.dataset_tree.sortByColumn(0, Qt.SortOrder.AscendingOrder)
 
     @staticmethod
     def activeGroup(iface):
@@ -337,7 +290,6 @@ class DatasetWidget(QWidget):
 
     def reload_action(self, path, group) -> None:
         """Remove group, and (re)load the model in the same position."""
-        self.dataset_tree.clear()
         parent = group.parent()
         position = parent.children().index(group)
         parent.removeChildNode(group)
@@ -390,23 +342,6 @@ class DatasetWidget(QWidget):
             value,
         )
         layer.triggerRepaint()
-
-    def suppress_popup_changed(self):
-        suppress = self.suppress_popup_checkbox.isChecked()
-        for item in self.dataset_tree.items():
-            layer = item.element.layer
-            if layer is not None:
-                config = layer.editFormConfig()
-                config.setSuppress(suppress)
-                layer.setEditFormConfig(config)
-
-    def selection_names(self) -> set[str]:
-        selection = self.dataset_tree.items()
-        # Append associated items
-        return {item.element.input_type() for item in selection}  # type: ignore # TODO: dynamic item.element should be in some dict.
-
-    def add_node_layer(self, element: Input) -> None:
-        self.dataset_tree.add_node_layer(element)
 
     def refresh_results(self) -> None:
         self._set_node_results()
