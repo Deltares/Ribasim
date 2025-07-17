@@ -431,7 +431,7 @@ Note
 </section>
 <section id="function" class="level2" data-number="1.2">
 <h2 data-number="1.2" class="anchored" data-anchor-id="function"><span class="header-section-number">1.2</span> Function</h2>
-<p>The function table defines a smoothed piecewise linear function <span class="math inline">\(f\)</span> interpolating between <code>(input, output)</code> datapoints for each <code>ContinuousControl</code> node. It linearly extrapolates. The total computation thus looks like</p>
+<p>The function table defines a smooth function <span class="math inline">\(f\)</span> interpolating between <code>(input, output)</code> datapoints for each <code>ContinuousControl</code>. The interpolation type is PCHIP, for more information see <a href="https://www.mathworks.com/help/matlab/ref/pchip.html">here</a>. The total computation thus looks like</p>
 <p><span class="math display">\[
     f(\text{weight}_1 * \text{variable}_1 + \text{weight}_2 * \text{variable}_2 + \ldots).
 \]</span></p>
@@ -477,19 +477,6 @@ Note
 </tr>
 </tbody>
 </table>
-<div class="callout callout-style-default callout-note callout-titled">
-<div class="callout-header d-flex align-content-center">
-<div class="callout-icon-container">
-<i class="callout-icon"></i>
-</div>
-<div class="callout-title-container flex-fill">
-Note
-</div>
-</div>
-<div class="callout-body-container callout-body">
-<p>The data in the function table is not interpolated exactly linearly. On an interval around each data point the linear interpolation is replaced by a spline section. This interval is given by 12.5% of the distance between the input values on either side of the data points.</p>
-</div>
-</div>
 
 
 </section>
