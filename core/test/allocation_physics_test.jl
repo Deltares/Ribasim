@@ -43,6 +43,8 @@ end
 
 @testitem "Linear Resistance" begin
     using DataFrames: DataFrame
+    using Ribasim
+    using Test
 
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/linear_resistance/ribasim.toml")
