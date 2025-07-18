@@ -49,7 +49,7 @@ quarto-preview = { cmd = "quarto preview docs", depends-on = [
     "generate-testmodels",
 ] }
 quarto-check = { cmd = "quarto check all", depends-on = ["quartodoc-build"] }
-quarto-render = { cmd = "julia --project --check-bounds=yes --eval 'using Pkg; Pkg.build(\"IJulia\")' && quarto render docs --to html", depends-on = [
+quarto-render = { cmd = "quarto render docs", depends-on = [
     "quartodoc-build",
     "generate-testmodels",
     "initialize-julia",
