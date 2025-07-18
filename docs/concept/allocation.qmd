@@ -32,30 +32,35 @@ The optimization problem aims to minimize the difference between requested deman
 $$
 \begin{aligned}
 \text{min}\quad & z = \sum_{i}^{N_d} E_i(Q, S) \\
-\text{s.t.}\quad & \frac{dS_i}{dt} = Q_{i,in} - Q_{i,out}\\
+\text{s.t.}\quad & \frac{dS_j}{dt} = \sum_{k}^{N_l} Q_{k}\\
 \end{aligned}
 $$
 
 where:
 
-- $Q$ is the volumetric flow rate [m³/s]
-- $S$ is the storage of a basin [m³]
-- $t$ is the time [s]
-- $N_d$ is the number of demand nodes [-]
+- $z$ is the total error
+- $N_d$ is the number of demands within a priority [-]
 - $E_i$ is a deviation error between allocated and demand as function of flow and storage
+- $S_j$ is the storage of node $j$ [m³]
+- $Q_k$ is the volumetric flow rate on link $k$ [m³/s]
+- $N_l$ is the number of flow links connected to node $j$
+- $t$ is the time [s]
+
 
 ## Discretization
 
-For numerical solution, we discretize the continuous optimization problem over the allocation timestep $\Delta t$:
+In the optimization problem, the water balance must be discretized over the allocation timestep.
 
-- Flows are assumed constant over $\Delta t$
-- Coefficients in linearized equations are evaluated at start conditions
+$$\Delta t = t^{n+1} - t^{n}$$
 
-Using backward Euler approximation:
+Where the superscript $^n$ denotes evaluation at the beginning of the timestep and $^{n+1}$ at the end. We then use a backward Euler approximation:
 
-$$\frac{dS}{dt} \approx \frac{S^{n+1} - S^{n}}{\Delta t} = Q_{in}^{n+1} - Q_{out}^{n+1} $$
+$$\frac{dS}{dt} \approx \frac{S^{n+1} - S^{n}}{\Delta t} = \sum_{k}^{N_l} Q_{k}^{n+1} $$
 
-Where $n$ denotes evaluation at the beginning and $n+1$ at the end of the timestep.
+Under the assumption that
+- flows are constant over $\Delta t$
+- coefficients in linearized equations are evaluated at the beginning of the timestep
+
 
 The allocation timestep $\Delta t$ must be:
 
@@ -65,13 +70,7 @@ The allocation timestep $\Delta t$ must be:
 
 ## Linearization
 
-To use efficient linear programming algorithms, nonlinear relationships can be linearized around the current operating point by:
-
-1. Evaluating quantities at allocation timestep start
-2. Using first-order Taylor series expansions
-3. Converting nonlinear constraints to linear approximations
-
-For example, a nonlinear relationship between flow $Q(S_1, S_2)$, upstream ($S_1$) and downstream ($S_2$) storage can be linearized as:
+To use efficient linear programming algorithms, nonlinear relationships can be linearized around the current time $t^n$ by using first-order Taylor series expansions. For example, a nonlinear relationship between flow $Q$, upstream ($S_1$) and downstream ($S_2$) storage can be linearized as:
 
 $$Q(S_1,S_2) \approx Q(S_1^n,S_2^n) + \frac{\partial Q}{\partial S_1}(S_1^n,S_2^n)(S_1^{n+1}-S_1^n) + \frac{\partial Q}{\partial S_2}(S_1^n,S_2^n)(S_2^{n+1}-S_2^n)$$
 
@@ -93,59 +92,6 @@ If no primary network is present, then step 1 and 2 are skipped.
 
 # The optimization problems for the subnetworks
 
-## Water balance
-
-Just as the physical layer, the allocation layer must satisfy the water balance, in this case over the allocation timestep $\Delta t_\text{allocation}$. To explain how this is done, we give an algebraic description of some basic aspects of the subnetworks. Say we denote the set of all nodes in the model by $V$, and the subset that forms a subnetwork by $S \subseteq V$. We also have the set of all flow links in the model $L \subseteq V \times V$, i.e. the links are ordered pairs of nodes. The set of links associated with the subnetwork is derived from $S$ as
-
-$$
-    E_S = \{l \in L \; : \; l \cap S \ne\emptyset\},
-$$
-
-<span style="color: red;">#TODO: Add image with which links are assumed to be part of the subnetwork.</span>
-
-i.e. all links in the model that have at least one node in the subnetwork. For each link in the subnetwork we define a flow variable ($\text{m}^3/\text{s}$):
-
-$$
-    -F_\max \le \mathcal{F}_l \le F_\max, \quad l \in E_S.
-$$
-
-Here each $\mathcal{F}_l$ denotes the flow over the link $l$ over the timestep. These are decision variables, i.e. values that are an output of the optimization, which we denote in cursive script. The variable can attain values between the bounds $-F_\max$ and $F_\max$, where $F_\max = 500.000 \;\text{m}^3/\text{s}$. The bound $F_\max$ is chosen as a reasonable maximum value that flows can attain. We assume these flows to be constant over the period $\Delta t_\text{allocation}$. We will see later that certain parameters of the model can put stricter bounds on these flows.
-
-For the basins $B_S \subset S$ in the subnetwork we define storage parameters ($\text{m}^3$) for the start of the allocation time step $\Delta t_\text{allocation}$:
-
-$$
-    S^\text{start}_b, \quad b \in B_S.
-$$
-
-These are set to the values that hey have in the physical layer at the start of the allocation timestep. The storages at the end of this timestep are decision variables:
-
-$$
-    0 \le \mathcal{S}^\text{end}_b \le S_b^\max, b \in B_S,
-$$
-
-<span style="color: red;">#TODO: We might decide to relax this upper bound a bit.</span>
-
-where $S_b^\max$ is the largest storage within the [Basin profile](../reference/node/basin.qmd#profile). Lastly we have a horizontal forcing variable for each basin
-
-$$
-    \mathcal{H}^\text{end}, \quad b \in B_S,
-$$
-
-whose value will be discussed later. Given these variables, we can set up a water balance constraint for each basin in the subnetwork:
-
-$$
-    \mathcal{S}_b^\text{end} - S_b^\text{start} = \Delta t_\text{allocation}
-    \left(
-        \mathcal{H}_b
-        +
-        \sum_{(n, b) \in E_S} \mathcal{F}_{(n,b)}
-        -
-        \sum_{(b, n) \in E_S} \mathcal{F}_{(b,n)}
-    \right),
-    \quad
-    b \in B_S.
-$$
-
 ## The Basin profile
 
 For most of the physical layer, flows depend on levels. Therefore level variables have to be introduced:
@@ -154,7 +100,6 @@ $$
     L_b^\min \ge \mathcal{L}^\text{end}_b \ge L_b^\max, \quad b \in B_S,
 $$
 
-<span style="color: red;">#TODO: We might decide to relax this upper bound a bit, in accordance with the relaxation of the upper bound of the storage.</span>
 
 where $L_b^\min$ is the bottom level of the Basin and $L_b^\max$ is the highest level available in the Basin profile. Note that this means that the problem becomes infeasible if the level in a basin exceeds this value, and the solver will attempt to avoid this from happening. The level in a basin depends on the storage via the [Basin profile](../reference/node/basin.qmd#profile), here denoted by the function $P_b$:
 
