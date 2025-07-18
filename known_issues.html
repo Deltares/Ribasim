@@ -218,9 +218,7 @@ ul.task-list li input[type="checkbox"] {
 <section id="qgis-plugin-known-shortcomings" class="level1" data-number="1">
 <h1 data-number="1"><span class="header-section-number">1</span> QGIS Plugin Known Shortcomings</h1>
 <ul>
-<li>The QGIS plugin does not have a dynamic relation between its own plugin and the layers that are loaded in the QGIS project. That means that deleting a layer from the layers panel does not automatically remove it from the GeoPackage, as the layers are clones.</li>
-<li>Tables and geometries are not linked. If you remove an link or a node, the tables containing information about those objects will remain. It is up to the user to clean up all tables.</li>
-<li>The QGIS plugin does not update links when nodes are moved. Snapping is only used to grab the information of the node the user points to.</li>
+<li>Input tables that are in Arrow files are currently not automatically loaded in QGIS (<a href="https://github.com/Deltares/Ribasim/issues/318">#318</a>).</li>
 </ul>
 
 

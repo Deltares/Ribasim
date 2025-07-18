@@ -205,19 +205,7 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#preparing-a-model" id="toc-preparing-a-model" class="nav-link active" data-scroll-target="#preparing-a-model"><span class="header-section-number">1</span> Preparing a model</a>
-  <ul class="collapse">
-  <li><a href="#editing-nodes" id="toc-editing-nodes" class="nav-link" data-scroll-target="#editing-nodes"><span class="header-section-number">1.1</span> Editing nodes</a>
-  <ul class="collapse">
-  <li><a href="#adding-nodes-on-the-map" id="toc-adding-nodes-on-the-map" class="nav-link" data-scroll-target="#adding-nodes-on-the-map"><span class="header-section-number">1.1.1</span> Adding nodes on the map</a></li>
-  <li><a href="#editing-node-properties" id="toc-editing-node-properties" class="nav-link" data-scroll-target="#editing-node-properties"><span class="header-section-number">1.1.2</span> Editing node properties</a></li>
-  </ul></li>
-  <li><a href="#connect-nodes" id="toc-connect-nodes" class="nav-link" data-scroll-target="#connect-nodes"><span class="header-section-number">1.2</span> Connect nodes</a>
-  <ul class="collapse">
-  <li><a href="#turn-on-snapping" id="toc-turn-on-snapping" class="nav-link" data-scroll-target="#turn-on-snapping"><span class="header-section-number">1.2.1</span> Turn on snapping</a></li>
-  <li><a href="#creating-connecting-links" id="toc-creating-connecting-links" class="nav-link" data-scroll-target="#creating-connecting-links"><span class="header-section-number">1.2.2</span> Creating connecting links</a></li>
-  </ul></li>
-  </ul></li>
+  <li><a href="#opening-a-model" id="toc-opening-a-model" class="nav-link active" data-scroll-target="#opening-a-model"><span class="header-section-number">1</span> Opening a model</a></li>
   <li><a href="#running-a-model" id="toc-running-a-model" class="nav-link" data-scroll-target="#running-a-model"><span class="header-section-number">2</span> Running a model</a></li>
   <li><a href="#sec-inspect" id="toc-sec-inspect" class="nav-link" data-scroll-target="#sec-inspect"><span class="header-section-number">3</span> Inspect a (large) model</a></li>
   <li><a href="#sec-results" id="toc-sec-results" class="nav-link" data-scroll-target="#sec-results"><span class="header-section-number">4</span> Inspecting results</a></li>
@@ -246,118 +234,21 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
-<section id="preparing-a-model" class="level1" data-number="1">
-<h1 data-number="1"><span class="header-section-number">1</span> Preparing a model</h1>
-<p>This guide assumes you have already installed the Ribasim core, test models and QGIS plugin as described in the <a href="../install.html">install page</a>. Open an existing model or create a new model. As an example of an existing model, you can use the “basic” model from <code>generated_testmodels.zip</code>.</p>
+<section id="opening-a-model" class="level1" data-number="1">
+<h1 data-number="1"><span class="header-section-number">1</span> Opening a model</h1>
+<p>This guide assumes you have already installed the Ribasim core, test models and QGIS plugin as described in the <a href="../install.html">install page</a>. As an example of an existing model, you can use the “basic” model from <code>generated_testmodels.zip</code>.</p>
 <div class="quarto-figure quarto-figure-left">
 <figure class="figure">
 <p><img src="https://user-images.githubusercontent.com/4471859/224939126-b38f0eed-2e89-4120-b541-5b8c31798c09.png" class="img-fluid quarto-figure quarto-figure-left figure-img"></p>
 </figure>
 </div>
-<p>Check if your coordinate reference system (CRS) is set correctly.</p>
-<div class="quarto-figure quarto-figure-left">
-<figure class="figure">
-<p><img src="https://user-images.githubusercontent.com/4471859/224939143-19e9931e-da4b-4717-ba28-67a0f141dd40.png" class="img-fluid quarto-figure quarto-figure-left figure-img"></p>
-</figure>
-</div>
-<p>If you are working with an unknown CRS, right click the model database group in Layers, and click “Set Group CRS…”.</p>
-<div class="quarto-figure quarto-figure-left">
-<figure class="figure">
-<p><img src="https://user-images.githubusercontent.com/4471859/224939165-45807f16-2d3a-41b3-92a2-7fe0e86ae72b.png" class="img-fluid quarto-figure quarto-figure-left figure-img"></p>
-</figure>
-</div>
-<p>If you are modeling the Netherlands, select “Amersfoort / RD New” (EPSG:28992).</p>
-<div class="quarto-figure quarto-figure-left">
-<figure class="figure">
-<p><img src="https://user-images.githubusercontent.com/4471859/224939182-3486ff0b-842b-4f98-a37e-ecd04f29aa7f.png" class="img-fluid quarto-figure quarto-figure-left figure-img"></p>
-</figure>
-</div>
-<section id="editing-nodes" class="level2" data-number="1.1">
-<h2 data-number="1.1" class="anchored" data-anchor-id="editing-nodes"><span class="header-section-number">1.1</span> Editing nodes</h2>
-<section id="adding-nodes-on-the-map" class="level3" data-number="1.1.1">
-<h3 data-number="1.1.1" class="anchored" data-anchor-id="adding-nodes-on-the-map"><span class="header-section-number">1.1.1</span> Adding nodes on the map</h3>
-<p>Select the Node layer.</p>
-<div class="quarto-figure quarto-figure-left">
-<figure class="figure">
-<p><img src="https://user-images.githubusercontent.com/4471859/224939204-2aa2ead2-a028-4673-b747-abeadd821ec8.png" class="img-fluid quarto-figure quarto-figure-left figure-img"></p>
-</figure>
-</div>
-<p>Turn on the edit mode to be able to add nodes on the map.</p>
-<div class="quarto-figure quarto-figure-left">
-<figure class="figure">
-<p><img src="https://user-images.githubusercontent.com/4471859/224939223-66e232c0-748c-46f0-ba1b-8751a965f114.png" class="img-fluid quarto-figure quarto-figure-left figure-img"></p>
-</figure>
-</div>
-<p>Add nodes to the map with a left click and select the node type.</p>
-<p><img alt="Node form" src="https://github.com/user-attachments/assets/6e811bb9-1817-4505-b8a4-a96ced5b6c26" class="img-fluid"></p>
-<p>Turn the edit mode off and save the edits to the Nodes layer.</p>
-<div class="quarto-figure quarto-figure-left">
-<figure class="figure">
-<p><img src="https://user-images.githubusercontent.com/4471859/224946136-e37021d5-80c1-4d90-ac04-d0dbd96879f3.png" class="img-fluid quarto-figure quarto-figure-left figure-img"></p>
-</figure>
-</div>
-</section>
-<section id="editing-node-properties" class="level3" data-number="1.1.2">
-<h3 data-number="1.1.2" class="anchored" data-anchor-id="editing-node-properties"><span class="header-section-number">1.1.2</span> Editing node properties</h3>
-<p>Right click a layer and select “Open Attribute Table”.</p>
-<div class="quarto-figure quarto-figure-left">
-<figure class="figure">
-<p><img src="https://user-images.githubusercontent.com/4471859/224939276-ca8f856d-3325-49a7-b457-78b09b81ac5e.png" class="img-fluid quarto-figure quarto-figure-left figure-img"></p>
-</figure>
-</div>
-<p>Click the yellow pencil icon on the top left to enable editing, and copy and paste a record. A record can be selected by clicking on the row number.</p>
-<div class="quarto-figure quarto-figure-left">
-<figure class="figure">
-<p><img src="https://user-images.githubusercontent.com/4471859/224939287-a8b9f351-9aea-4e3a-8417-3867cd40cda5.png" class="img-fluid quarto-figure quarto-figure-left figure-img"></p>
-</figure>
-</div>
-<p>Adjust the content. Note that the <code>node_id</code> field is connected to the Node layer and thus must be set to an existing <code>node_id</code>. If you prefer, it also works to copy data with the same columns from Excel. Turn off edit mode and save changes to the layer.</p>
-<div class="quarto-figure quarto-figure-left">
-<figure class="figure">
-<p><img src="https://user-images.githubusercontent.com/4471859/224939297-4b0ca812-9618-4d25-ab7a-518bf1ca63e1.png" class="img-fluid quarto-figure quarto-figure-left figure-img"></p>
-</figure>
-</div>
-</section>
-</section>
-<section id="connect-nodes" class="level2" data-number="1.2">
-<h2 data-number="1.2" class="anchored" data-anchor-id="connect-nodes"><span class="header-section-number">1.2</span> Connect nodes</h2>
-<section id="turn-on-snapping" class="level3" data-number="1.2.1">
-<h3 data-number="1.2.1" class="anchored" data-anchor-id="turn-on-snapping"><span class="header-section-number">1.2.1</span> Turn on snapping</h3>
-<p>Make sure the Snapping Toolbar is visible, by going to the View &gt; Toolbars menu. Turn on snapping mode by clicking the magnet and set the snapping distance to 25 pixels. The keyboard shortcut for snapping is <code>s</code> (once the toolbar is enabled).</p>
-<div class="quarto-figure quarto-figure-left">
-<figure class="figure">
-<p><img src="https://user-images.githubusercontent.com/4471859/224939328-8359272a-30bb-4eb1-ab6c-968318ac3997.png" class="img-fluid quarto-figure quarto-figure-left figure-img"></p>
-</figure>
-</div>
-</section>
-<section id="creating-connecting-links" class="level3" data-number="1.2.2">
-<h3 data-number="1.2.2" class="anchored" data-anchor-id="creating-connecting-links"><span class="header-section-number">1.2.2</span> Creating connecting links</h3>
-<p>Select the Link layer and turn on the edit mode.</p>
-<div class="quarto-figure quarto-figure-left">
-<figure class="figure">
-<p><img src="https://user-images.githubusercontent.com/4471859/224939342-c6939331-a60d-4526-a350-3cddb122c62d.png" class="img-fluid quarto-figure quarto-figure-left figure-img"></p>
-</figure>
-</div>
-<p>Select “Add line feature”.</p>
-<div class="quarto-figure quarto-figure-left">
-<figure class="figure">
-<p><img src="https://user-images.githubusercontent.com/4471859/224939354-523cac79-dcd5-4c43-ab5a-db7672fb743e.png" class="img-fluid quarto-figure quarto-figure-left figure-img"></p>
-</figure>
-</div>
-<p>Create a connection by left clicking a source node and right clicking the destination node.</p>
-<p><img alt="Create an link" src="https://github.com/user-attachments/assets/048d342d-dd2b-4e67-b8a0-7bbb8fe3f243" class="img-fluid"></p>
-<p>A form where one can change the link attributes will pop up. Once done with editing, click ok.</p>
-<p><img alt="Link form" src="https://github.com/user-attachments/assets/bee6af6f-7623-4d1e-98ed-edc26c524377" class="img-fluid"></p>
-<p>Now leave the edit mode and save the results to the layer. Your model is now ready to run. See</p>
-</section>
-</section>
 </section>
 <section id="running-a-model" class="level1" data-number="2">
 <h1 data-number="2"><span class="header-section-number">2</span> Running a model</h1>
 <ul>
 <li>Install the Ribasim core application as described in the <a href="../install.html">install section</a></li>
 <li>Open a terminal like Powershell or Cmd and navigate to the model directory.</li>
-<li>Call Ribasim with the <code>.toml</code> file as input. E.g. <code>&lt;path_to_ribasim&gt;\ribasim.exe my_model.toml</code>.</li>
+<li>Call Ribasim with the <code>.toml</code> file as input. E.g. <code>&lt;path_to_ribasim&gt;/ribasim my_model.toml</code>.</li>
 <li>In your model directory there is now a <code>results/</code> folder with <code>basin.arrow</code> and <code>flow.arrow</code> output files.</li>
 </ul>
 </section>
