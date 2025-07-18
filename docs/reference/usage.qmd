@@ -223,7 +223,7 @@ There are currently 2 possible link types:
   way.
 2. "control": The control links define which nodes are controlled by a particular control node.
   Control links should always point away from the control node.
-  The links between the control node and the nodes it *listens* to are *not* present in `Link`, these are defined in [`DiscreteControl / condition`](node/discrete-control.qmd)
+  The links between the control node and the nodes it *listens* to are *not* present in `Link`, these are defined in [`DiscreteControl / condition`](/reference/node/discrete-control.qmd)
 
 column        | type                          | restriction
 --------------| ----------------------------- | -----------
