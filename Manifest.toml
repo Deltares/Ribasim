@@ -1606,7 +1606,9 @@ version = "10.42.0+1"
 
 [[deps.PackageCompiler]]
 deps = ["Artifacts", "Glob", "LazyArtifacts", "Libdl", "Pkg", "Printf", "RelocatableFolders", "TOML", "UUIDs", "p7zip_jll"]
-git-tree-sha1 = "d6fdae30c99917e01b7a3776e9bfd5b32f0665cc"
+git-tree-sha1 = "6a4297cde5a01e7150c9f02b18de00cd75e05328"
+repo-rev = "bundle_less_artifacts"
+repo-url = "https://github.com/visr/PackageCompiler.jl"
 uuid = "9b87118b-4619-50d2-8e1e-99f35a4d4d9d"
 version = "2.2.1"
 
