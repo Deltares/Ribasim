@@ -406,9 +406,11 @@ window.Quarto = {
   <li><a href="#discretecontrol---control.arrow" id="toc-discretecontrol---control.arrow" class="nav-link" data-scroll-target="#discretecontrol---control.arrow"><span class="header-section-number">5.4</span> DiscreteControl - <code>control.arrow</code></a></li>
   <li><a href="#allocation---allocation.arrow" id="toc-allocation---allocation.arrow" class="nav-link" data-scroll-target="#allocation---allocation.arrow"><span class="header-section-number">5.5</span> Allocation - <code>allocation.arrow</code></a></li>
   <li><a href="#allocation-flow---allocation_flow.arrow" id="toc-allocation-flow---allocation_flow.arrow" class="nav-link" data-scroll-target="#allocation-flow---allocation_flow.arrow"><span class="header-section-number">5.6</span> Allocation flow - <code>allocation_flow.arrow</code></a></li>
-  <li><a href="#concentration---concentration.arrow" id="toc-concentration---concentration.arrow" class="nav-link" data-scroll-target="#concentration---concentration.arrow"><span class="header-section-number">5.7</span> Concentration - <code>concentration.arrow</code></a></li>
-  <li><a href="#subgrid-level---subgrid_level.arrow" id="toc-subgrid-level---subgrid_level.arrow" class="nav-link" data-scroll-target="#subgrid-level---subgrid_level.arrow"><span class="header-section-number">5.8</span> Subgrid level - <code>subgrid_level.arrow</code></a></li>
-  <li><a href="#solver-statistics---solver_stats.arrow" id="toc-solver-statistics---solver_stats.arrow" class="nav-link" data-scroll-target="#solver-statistics---solver_stats.arrow"><span class="header-section-number">5.9</span> Solver statistics - <code>solver_stats.arrow</code></a></li>
+  <li><a href="#allocation-feasibility-analysis---allocation_analysis_feasibility.log" id="toc-allocation-feasibility-analysis---allocation_analysis_feasibility.log" class="nav-link" data-scroll-target="#allocation-feasibility-analysis---allocation_analysis_feasibility.log"><span class="header-section-number">5.7</span> Allocation feasibility analysis - <code>allocation_analysis_feasibility.log</code></a></li>
+  <li><a href="#allocation-scaling-analysis---allocation_analysis_scaling.log" id="toc-allocation-scaling-analysis---allocation_analysis_scaling.log" class="nav-link" data-scroll-target="#allocation-scaling-analysis---allocation_analysis_scaling.log"><span class="header-section-number">5.8</span> Allocation scaling analysis - <code>allocation_analysis_scaling.log</code></a></li>
+  <li><a href="#concentration---concentration.arrow" id="toc-concentration---concentration.arrow" class="nav-link" data-scroll-target="#concentration---concentration.arrow"><span class="header-section-number">5.9</span> Concentration - <code>concentration.arrow</code></a></li>
+  <li><a href="#subgrid-level---subgrid_level.arrow" id="toc-subgrid-level---subgrid_level.arrow" class="nav-link" data-scroll-target="#subgrid-level---subgrid_level.arrow"><span class="header-section-number">5.10</span> Subgrid level - <code>subgrid_level.arrow</code></a></li>
+  <li><a href="#solver-statistics---solver_stats.arrow" id="toc-solver-statistics---solver_stats.arrow" class="nav-link" data-scroll-target="#solver-statistics---solver_stats.arrow"><span class="header-section-number">5.11</span> Solver statistics - <code>solver_stats.arrow</code></a></li>
   </ul></li>
   </ul>
 </nav>
@@ -1202,8 +1204,16 @@ Note
 </tbody>
 </table>
 </section>
-<section id="concentration---concentration.arrow" class="level2" data-number="5.7">
-<h2 data-number="5.7" class="anchored" data-anchor-id="concentration---concentration.arrow"><span class="header-section-number">5.7</span> Concentration - <code>concentration.arrow</code></h2>
+<section id="allocation-feasibility-analysis---allocation_analysis_feasibility.log" class="level2" data-number="5.7">
+<h2 data-number="5.7" class="anchored" data-anchor-id="allocation-feasibility-analysis---allocation_analysis_feasibility.log"><span class="header-section-number">5.7</span> Allocation feasibility analysis - <code>allocation_analysis_feasibility.log</code></h2>
+<p>When an allocation optimization problem turns out to be infeasible, an infeasibility analysis is performed. Some user friendly data is logged in the main log, but the full report of the analysis is written to this separate file. For details on the infeasibility analysis see <a href="https://jump.dev/MathOptAnalyzer.jl/dev/">here</a>.</p>
+</section>
+<section id="allocation-scaling-analysis---allocation_analysis_scaling.log" class="level2" data-number="5.8">
+<h2 data-number="5.8" class="anchored" data-anchor-id="allocation-scaling-analysis---allocation_analysis_scaling.log"><span class="header-section-number">5.8</span> Allocation scaling analysis - <code>allocation_analysis_scaling.log</code></h2>
+<p>When an allocation optimization problem turns out to be infeasible, a scaling analysis is performed. Some user friendly data is logged in the main log, but the full report of the analysis is written to this separate file. For details on the infeasibility analysis see <a href="https://jump.dev/MathOptAnalyzer.jl/dev/">here</a>.</p>
+</section>
+<section id="concentration---concentration.arrow" class="level2" data-number="5.9">
+<h2 data-number="5.9" class="anchored" data-anchor-id="concentration---concentration.arrow"><span class="header-section-number">5.9</span> Concentration - <code>concentration.arrow</code></h2>
 <p>If the <a href="../reference/usage.html#experimental-features">experimental concentration feature</a> is enabled, the results are written to <code>concentration.arrow</code>. This file records the Basin concentrations for each substance over time. The schema below is identical to the <a href="../reference/node/basin.html#concentration-external">external Basin concentration input</a>.</p>
 <table class="caption-top table">
 <colgroup>
@@ -1248,8 +1258,8 @@ Note
 </tbody>
 </table>
 </section>
-<section id="subgrid-level---subgrid_level.arrow" class="level2" data-number="5.8">
-<h2 data-number="5.8" class="anchored" data-anchor-id="subgrid-level---subgrid_level.arrow"><span class="header-section-number">5.8</span> Subgrid level - <code>subgrid_level.arrow</code></h2>
+<section id="subgrid-level---subgrid_level.arrow" class="level2" data-number="5.10">
+<h2 data-number="5.10" class="anchored" data-anchor-id="subgrid-level---subgrid_level.arrow"><span class="header-section-number">5.10</span> Subgrid level - <code>subgrid_level.arrow</code></h2>
 <p>This result file is only written if the model contains a <a href="../reference/node/basin.html#subgrid">Basin / subgrid</a> table. See there for more information on the meaning of this output.</p>
 <table class="caption-top table">
 <thead>
@@ -1278,8 +1288,8 @@ Note
 </tbody>
 </table>
 </section>
-<section id="solver-statistics---solver_stats.arrow" class="level2" data-number="5.9">
-<h2 data-number="5.9" class="anchored" data-anchor-id="solver-statistics---solver_stats.arrow"><span class="header-section-number">5.9</span> Solver statistics - <code>solver_stats.arrow</code></h2>
+<section id="solver-statistics---solver_stats.arrow" class="level2" data-number="5.11">
+<h2 data-number="5.11" class="anchored" data-anchor-id="solver-statistics---solver_stats.arrow"><span class="header-section-number">5.11</span> Solver statistics - <code>solver_stats.arrow</code></h2>
 <p>This result file contains statistics about the solver, which can give an insight into how well the solver is performing over time. The data is solved by <code>saveat</code> (see <a href="#configuration-file">configuration file</a>). <code>water_balance</code> refers to the right-hand-side function of the system of differential equations solved by the Ribasim core.</p>
 <p>The <code>computation_time</code> is the wall time in milliseconds spent on the given period. The first row tends to include compilation time as well. The <code>dt</code> is the size (in seconds) of the last calculation timestep (at the <code>saveat</code> timestep).</p>
 <table class="caption-top table">
