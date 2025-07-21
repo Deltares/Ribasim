@@ -973,9 +973,9 @@ allocated: The storage allocated to each Basin per demand priority
     has_demand_priority::Matrix{Bool} =
         zeros(Bool, length(node_id), length(demand_priorities))
     min_level::Vector{Vector{ScalarLinearInterpolation}} =
-        trivial_linear_itp_fill(demand_priorities, node_id)
+        trivial_linear_itp_fill(demand_priorities, node_id; val = NaN)
     max_level::Vector{Vector{ScalarLinearInterpolation}} =
-        trivial_linear_itp_fill(demand_priorities, node_id)
+        trivial_linear_itp_fill(demand_priorities, node_id; val = NaN)
     basins_with_demand::Vector{Vector{NodeID}} = []
     target_storage_min::Dict{NodeID, Vector{Float64}} = Dict()
     target_storage_max::Dict{NodeID, Vector{Float64}} = Dict()

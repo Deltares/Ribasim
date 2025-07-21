@@ -748,7 +748,7 @@ function invalid_nested_interpolation_times(
         map!(itp -> itp(t), out_min, interpolations_min)
         map!(itp -> itp(t), out_max, interpolations_max)
 
-        if !issorted(out)
+        if !issorted(filter(!isnan, out))
             push!(t_error, t)
         end
     end

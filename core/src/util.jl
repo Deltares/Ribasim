@@ -1163,9 +1163,10 @@ end
 
 function trivial_linear_itp_fill(
     demand_priorities,
-    node_id,
+    node_id;
+    val = 0.0,
 )::Vector{Vector{ScalarLinearInterpolation}}
-    return [fill(trivial_linear_itp(), length(demand_priorities)) for _ in node_id]
+    return [fill(trivial_linear_itp(; val), length(demand_priorities)) for _ in node_id]
 end
 
 function finitemaximum(u::AbstractVector; init = 0)
