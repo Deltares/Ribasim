@@ -330,7 +330,11 @@ function analyze_infeasibility(
     violated_constraints =
         constraint_ref_from_index.(
             problem,
-            reduce(vcat, getfield.(data_infeasibility.iis, :constraint)),
+            reduce(
+                vcat,
+                getfield.(data_infeasibility.iis, :constraint);
+                init = JuMP.ConstraintRef[],
+            ),
         )
     constraint_to_penalty = Dict(violated_constraints .=> 1.0)
     JuMP.@objective(problem, Min, 0)
