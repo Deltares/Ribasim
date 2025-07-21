@@ -763,7 +763,7 @@ end
 
     @test logger.logs[5].level == Error
     @test logger.logs[5].message == "Set of incompatible constraints found"
-    @test name.(logger.logs[5].kwargs[:constraints]) ==
+    @test name.(keys(logger.logs[5].kwargs[:constraint_violations])) ==
           ["volume_conservation[Basin #1]", "linear_resistance[LinearResistance #2]"]
 
     @test logger.logs[6].level == Error
