@@ -7,7 +7,7 @@ In water resources management, allocation deals with distributing limited water 
 
 ## Allocation Networks
 
-When we build a Ribasim model in which we want to uttilize allocation, it can be computationally efficient and stable to divide a large allocation network in to a primary network which connects to multiple subnetworks. The primary network should be the main water system and treats each connected subnetwork as a single demand node.
+When we build a Ribasim model in which we want to uttilize allocation, it can be computationally efficient and stable to divide a large allocation network into a primary network which connects to multiple subnetworks. The primary network should be the main water system and treats each connected subnetwork as a single demand node.
 
 We can then first solve an allocation optimization for the primary network, that calculates how to optimally divide the available water to each subnetwork. With this allocated amount for a subnetwork, we can optimize how to divide this water within the subnetwork to the demand nodes.
 
@@ -33,8 +33,8 @@ The optimization problem aims to minimize the difference between requested deman
 
 $$
 \begin{aligned}
-\text{min}\quad & z = \sum_{i}^{N_d} E_i(Q, S) \\
-\text{s.t.}\quad & \frac{dS_j}{dt} = \sum_{k}^{N_l} Q_{k}\\
+\text{min}\quad & z = \sum_{i=0}^{N_d} E_i(Q, S) \\
+\text{s.t.}\quad & \frac{dS_j}{dt} = \sum_{k=1}^{N_l} Q_{k}\\
 \end{aligned}
 $$
 
@@ -44,7 +44,7 @@ where:
 - $N_d$ is the number of demands within a priority [-]
 - $E_i$ is a deviation error between allocated and demand as function of flow and storage
 - $S_j$ is the storage of node $j$ [m³]
-- $Q_k$ is the volumetric flow rate on link $k$ [m³/s]
+- $Q_k$ is the volumetric flow rate on link $k$, which is positive for inflow and negative for outflow [m³/s]
 - $N_l$ is the number of flow links connected to node $j$
 - $t$ is the time [s]
 
@@ -57,18 +57,13 @@ $$\Delta t = t^{n+1} - t^{n}$$
 
 Where the superscript $^n$ denotes evaluation at the beginning of the timestep and $^{n+1}$ at the end. We then use a backward Euler approximation:
 
-$$\frac{dS}{dt} \approx \frac{S^{n+1} - S^{n}}{\Delta t} = \sum_{k}^{N_l} Q_{k}^{n+1} $$
+$$\frac{dS}{dt} \approx \frac{S^{n+1} - S^{n}}{\Delta t} = \sum_{k=1}^{N_l} Q_{k}^{n+1} $$
 
 Under the assumption that
+
 - flows are constant over $\Delta t$
 - coefficients in linearized equations are evaluated at the beginning of the timestep
-
-
-The allocation timestep $\Delta t$ must be:
-
-1. Short enough that linearization remains valid
-2. Long enough for meaningful allocation decisions
-3. Compatible with the physical timestep
+- The allocation timestep $\Delta t$ is short enough that linearization remains valid
 
 ## Linearization
 
@@ -78,7 +73,7 @@ $$Q(S_1,S_2) \approx Q(S_1^n,S_2^n) + \frac{\partial Q}{\partial S_1}(S_1^n,S_2^
 
 This yields a linear programming problem that can be solved efficiently while maintaining acceptable accuracy for small changes around the operating point.
 
-# The high level algorithm {#sec-high-level-algorithm}
+## The high level algorithm {#sec-high-level-algorithm}
 The allocation algorithm contains 2 types of optimization:
 
 - Demand collection, where water is allocated in the secondary networks with the sole purpose of finding out what the demand of the secondary network is from the primary network;
@@ -113,33 +108,54 @@ $$
 Just like the initial storages, each Basin has an initial level $L_b^\text{start}$ known from the physical layer which we need to compute flows.
 -->
 
-# Physis representation
+# Implementation
+## The basin profile
+The level in a basin is generally a non-linear function of the storage (except when the area is constant)   . To incorporate this into a linear programming framework, we linearize the basin profile at the current timestep.
 
-### Basin forcings
+$$h^{n+1} \approx h^n + \frac{dh}{dS}^n(S^{n+1} - S^n)$$
 
-### Boundary nodes
+with $\frac{dh}{dS}(S^n) = \frac{1}{A^n}$ and $A^n$ is the area evaluated at the beginning of the time step
+
+$$h^{n+1} \approx h^{n} + \frac{1}{A^n}(S^{n+1} - S^n)$$
+
+
+## Resistance nodes
+
+In Ribasim we have [LinearResistance](../reference/node/linear-resistance.qmd) and [ManningResistance](../reference/node/manning-resistance.qmd) nodes. The linear resistance node is linear in level but not in storage. However, we can directly substitute the linearized level-storage relationship into:
+
+$$ Q_{lr}^{n+1} = \frac{1}{R}( h_a^{n+1} - h_b^{n+1} )$$
+
+For ManningResistance we linearize the flow relationship with respect to the upstream and downstream level at the beginning of the allocation timestep.
+
+$$ Q_m^{n+1} \approx Q_m^{n} + \frac{\partial Q_m}{\partial h_a}^n(h_a^{n+1} - h_a^{n}) + \frac{\partial Q_m}{\partial h_b}^n(h_b^{n+1} - h_b^{n}) $$
+
+For the resistance nodes [the phantom storage introduced above](#the-basin-profile) is very helpful, because it prevents that according to the formula water has to flow from an empty basin with a high bottom to a lower basin.
+
+To prevent numerical issues when basins are empty, we introduce a small amount of "phantom storage" at the bottom of each basin. This ensures there is always a minimal water level available for flow calculations, even when the actual storage approaches zero.
+
+The linearized relationship is used as a constraint in the optimization problem:
+
+
+## Basin forcings
+
+## Boundary nodes
 
 We have the following boundary nodes in Ribasim:
 
 - The Terminal, where water can leave the model;
-- The LevelBoundary, which yields fixed water levels; $L^\text{end}_\text{fb} = h_{fb}(t + \Delta t_\text{allocation})$ given the interpolated timeseries $h_{fb}$ of the node (or constant value);
+- The LevelBoundary, which yields fixed water levels; $L^\text{end}_\text{fb} = h_{fb}(t + \Delta t_\text{alloc})$ given the interpolated timeseries $h_{fb}$ of the node (or constant value);
 - The FlowBoundary, which specifies a flow rate. Here the average outflow of the FlowBoundary in the physical layer over the previous $\Delta t_\text{allocation}$ is used as a prediction of the flow rate in the next $\Delta t_\text{allocation}$ over which the optimization takes place.
 
 :::{.callout-note}
 The flow rate of a FlowBoundary is given as a timeseries so we could use the interpolation of that timeseries to compute the average flow in the coming $\Delta t_\text{allocation}$. However, that would not always be accurate, since FlowBoundary nodes can be deactivated by Discrete Control which can not (easily) be anticipated.
 :::
 
-### Tabulated Rating Curve
+## Tabulated Rating Curve
 
 Since the $Q(h)$ relationships for TabulatedRatingCurve nodes (see [here](../reference/node/tabulated-rating-curve.qmd#equations)) are already linear, these can be directly incorporated into the allocation problem.
 
-### Resistance nodes
 
-In Ribasim we have [LinearResistance](../reference/node/linear-resistance.qmd) and [ManningResistance](../reference/node/manning-resistance.qmd) nodes. The linear resistance node is already linear and therefore can be directly incorporated in the allocation problem. For ManningResistance we linearize the flow relationship with respect to the upstream and downstream level at the beginning of the allocation timestep.
-
-For the resistance nodes [the phantom storage introduced above](#the-basin-profile) is very helpful, because it prevents that according to the formula water has to flow from an empty basin with a high bottom to a lower basin.
-
-## Objectives (goals)
+# Objectives (goals)
 
 The allocation algorithm optimizes for a sequence of objectives in succession, adding constraints after optimization for each goal to retain the result of that optimization in the subsequent optimizations. This approach is known as [goal programming](https://en.wikipedia.org/wiki/Goal_programming).
 
@@ -194,7 +210,7 @@ Sources are indicated by a set of links in the subnetwork
 $$
 E_S^\text{source} \subset E,
 $$
-which are automatically inferred as all links that point out of LevelBoundary or FlowBoundary nodes. That is, if $(i,j) \in E_S^\text{source}$, then the average over the last allocation interval $\Delta t_{\text{alloc}}$ of the of the flow over this link
+which are automatically inferred as all links that point out of LevelBoundary or FlowBoundary nodes. That is, if $(i,j) \in E_S^\text{source}$, then the average over the last allocation interval $\Delta t_{\text{alloc}}$ of the flow over this link
 $$
     \frac{1}{\Delta t_{\text{alloc}}}\int_{t - \Delta t_{\text{alloc}}}^tQ_{ij}(t') dt'
 $$
