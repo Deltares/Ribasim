@@ -1,0 +1,655 @@
+---
+title: "Allocation Technical Reference"
+---
+
+# Introduction
+
+This document provides comprehensive technical documentation for the allocation system implementation in Ribasim. It bridges the gap between the high-level mathematical formulation in the [allocation concept documentation](/concept/allocation.qmd) and the actual JuMP.jl implementation in the Julia code.
+
+The allocation system uses a two-phase optimization approach where:
+1. **Placeholder initialization**: Variables and constraints are set up with initial placeholder values
+2. **Real value updates**: These placeholders are iteratively updated with actual physical data
+
+This document explains how mathematical formulations translate to concrete JuMP code, documents the implementation process, and provides detailed technical reference for developers.
+
+# Mathematical Foundation to Code Implementation
+
+## Overview of the Optimization Problem
+
+The allocation problem for a subnetwork consists of a quadratic objective function with associated linear constraints on a set of optimization variables. This section shows how the mathematical formulation translates to JuMP.jl code.
+
+### The Subnetwork Definition
+
+The allocation problem is solved per subnetwork, given by a subset $S \subset V$ of node IDs. Different subnetworks are disjoint from each other.
+
+**Mathematical Definition:**
+$$E_S = \{l \in L \; : \; l \cap S \ne\emptyset\}$$
+
+**Code Implementation:**
+```julia
+# In allocation_init.jl - get_subnetwork_ids function
+get_subnetwork_ids(graph::MetaGraph, node_type::NodeType.T, subnetwork_id::Int32) =
+    filter(node_id -> node_id.type == node_type, graph[].node_ids[subnetwork_id])
+```
+
+Links in the subnetwork include all links in the model that have at least one node in the subnetwork.
+
+## Optimization Variables
+
+### Flow Variables
+
+**Mathematical Definition:**
+For each link in the subnetwork we define a flow variable ($\text{m}^3/\text{s}$):
+$$-F_\max \le \mathcal{F}_l \le F_\max, \quad l \in E_S$$
+
+**Code Implementation:**
+```julia
+# In allocation_init.jl - add_variables_flow! function
+function add_variables_flow!(
+    allocation_model::AllocationModel,
+    p_independent::ParametersIndependent,
+)
+    (; problem, capacity, subnetwork_id) = allocation_model
+    (; graph) = p_independent
+    
+    links = keys(capacity.data)
+    problem[:flow] = JuMP.@variable(
+        problem,
+        flow[link = links];
+        lower_bound = flow_capacity_lower_bound(link, p_independent),
+        upper_bound = flow_capacity_upper_bound(link, p_independent),
+        base_name = "flow"
+    )
+end
+```
+
+The constant `MAX_ABS_FLOW = 5e5` corresponds to $F_\max$ in the mathematical formulation.
+
+### Basin Storage and Level Variables  
+
+**Mathematical Definition:**
+For basins in the subnetwork, we define storage parameters ($\text{m}^3$):
+$$S^\text{start}_b, \quad b \in B_S$$
+$$0 \le \mathcal{S}^\text{end}_b \le S_b^\max, \quad b \in B_S$$
+
+And level variables:
+$$L_b^\min \le \mathcal{L}^\text{end}_b \le L_b^\max, \quad b \in B_S$$
+
+**Code Implementation:**
+```julia
+# In allocation_init.jl - add_basin! function
+storage = problem[:basin_storage] = JuMP.@variable(
+    problem,
+    0 <= basin_storage[index = indices] <= 
+    storage_to_level[index[1].idx].t[end] / scaling.storage
+)
+
+level = problem[:basin_level] = JuMP.@variable(
+    problem,
+    level_to_area[node_id.idx].t[1] <= 
+    basin_level[node_id = basin_ids_subnetwork] <= 
+    level_to_area[node_id.idx].t[end]
+)
+```
+
+The relationship between storage and level is implemented through the Basin profile linearization.
+
+### Special Flow Variables
+
+**Mathematical Definition:**
+Basin and buffer flows for demand handling:
+$$F^\text{basin out}_{i}, F^\text{basin in}_{i} \geq 0 \quad \forall i \in B_S$$
+$$F^\text{buffer out}_{i}, F^\text{buffer in}_{i} \ge 0 \quad \forall i \in FD_S$$
+
+**Code Implementation:**
+```julia
+# Basin flows for level demands
+problem[:basin_outflow] = JuMP.@variable(
+    problem,
+    basin_outflow[node_id = basin_ids_level_demand] >= 0.0
+)
+problem[:basin_inflow] = JuMP.@variable(
+    problem,
+    basin_inflow[node_id = basin_ids_level_demand] >= 0.0
+)
+
+# Buffer flows for flow demands
+problem[:flow_buffer_outflow] = JuMP.@variable(
+    problem,
+    flow_buffer_outflow[node_id = flow_demand_node_ids] >= 0.0
+)
+problem[:flow_buffer_inflow] = JuMP.@variable(
+    problem,
+    flow_buffer_inflow[node_id = flow_demand_node_ids] >= 0.0
+)
+```
+
+## Objective Function Implementation
+
+### Quadratic Error Terms
+
+**Mathematical Definition:**
+The goal is to minimize the sum of squared relative errors:
+$$\min E_{\text{user demand}} + E_{\text{level demand}} + E_{\text{flow demand}}$$
+
+Where:
+$$E_{\text{user demand}} = \sum_{(i,j)\in E_S\;:\; i\in U_S} d_j^p(t)\left(1 - \frac{F_{ij}}{d_j^p(t)}\right)^2$$
+
+**Code Implementation:**
+```julia
+# In allocation_optim.jl - add_objective_term! function
+function add_objective_term!(
+    allocation_model::AllocationModel,
+    flow::JuMP.VariableRef,
+    demand::Float64,
+    priority::Int32,
+)
+    if demand > 0
+        objective = allocation_model.problem[:objective]
+        # Add quadratic term: demand * (1 - flow/demand)^2
+        # Expanded: demand * (1 - 2*flow/demand + (flow/demand)^2)
+        # = demand - 2*flow + flow^2/demand
+        JuMP.add_to_expression!(objective, demand)
+        JuMP.add_to_expression!(objective, flow, -2.0)
+        JuMP.add_to_expression!(objective, flow^2, 1.0 / demand)
+    end
+end
+```
+
+This implementation expands the quadratic form algebraically to avoid numerical issues with the fraction form.
+
+## Constraint Implementation
+
+### Water Balance Constraints
+
+**Mathematical Definition:**
+$$\mathcal{S}_b^\text{end} - S_b^\text{start} = \Delta t_\text{allocation} \left( \mathcal{H}_b + \sum_{(n, b) \in E_S} \mathcal{F}_{(n,b)} - \sum_{(b, n) \in E_S} \mathcal{F}_{(b,n)} \right)$$
+
+**Code Implementation:**
+```julia
+# In allocation_init.jl - add_constraints_conservation_basin! function
+function add_constraints_conservation_basin!(
+    allocation_model::AllocationModel,
+    p_independent::ParametersIndependent,
+)
+    (; problem, subnetwork_id, Δt_allocation, scaling) = allocation_model
+    (; graph) = p_independent
+    
+    basin_ids = get_subnetwork_ids(graph, NodeType.Basin, subnetwork_id)
+    
+    conservation_basin = problem[:conservation_basin] = JuMP.@constraint(
+        problem,
+        [node_id = basin_ids],
+        # Storage change = Δt * (inflows - outflows + forcing)
+        problem[:basin_storage][(node_id, :end)] - 
+        problem[:basin_storage][(node_id, :start)] == 
+        Δt_allocation / scaling.storage * (
+            # Horizontal forcing will be set later
+            problem[:horizontal_forcing][node_id] +
+            # Sum of inflows
+            variable_sum([
+                problem[:flow][(upstream_id, node_id)]
+                for upstream_id in inflow_ids(graph, node_id)
+                if (upstream_id, node_id) in problem[:flow].axes[1]
+            ]) -
+            # Sum of outflows  
+            variable_sum([
+                problem[:flow][(node_id, downstream_id)]
+                for downstream_id in outflow_ids(graph, node_id)
+                if (node_id, downstream_id) in problem[:flow].axes[1]
+            ])
+        )
+    )
+end
+```
+
+### Flow Conservation Constraints
+
+**Mathematical Definition:**
+For nodes that are not sources or sinks:
+$$\sum F_{\text{out special}} + \sum_{j \in V^{\text{out}}_S(k)} F_{kj} = \sum F_{\text{in special}} + \sum_{i \in V^{\text{in}}_S(k)} F_{ik}$$
+
+**Code Implementation:**
+```julia
+# Flow conservation for non-basin nodes
+conservation_node = problem[:conservation_node] = JuMP.@constraint(
+    problem,
+    [node_id = non_basin_node_ids],
+    variable_sum([
+        problem[:flow][(upstream_id, node_id)]
+        for upstream_id in inflow_ids(graph, node_id)
+        if (upstream_id, node_id) in problem[:flow].axes[1]
+    ]) == 
+    variable_sum([
+        problem[:flow][(node_id, downstream_id)]
+        for downstream_id in outflow_ids(graph, node_id)
+        if (node_id, downstream_id) in problem[:flow].axes[1]
+    ])
+)
+```
+
+### Capacity Constraints
+
+**Mathematical Definition:**
+$$F_{ij} \le (C_S)_{ij}, \quad \forall(i,j) \in E_S$$
+
+**Code Implementation:**
+```julia
+# Capacity constraints are enforced through variable bounds
+# Upper bounds set in add_variables_flow! function:
+upper_bound = flow_capacity_upper_bound(link, p_independent)
+
+# And through explicit capacity constraints:
+problem[:capacity] = JuMP.@constraint(
+    problem,
+    [link = links],
+    problem[:flow][link] <= capacity[link]
+)
+```
+
+# Two-Phase Implementation Process
+
+## Phase 1: Placeholder Initialization
+
+During model initialization, variables and constraints are created with placeholder values:
+
+```julia
+# In allocation_init.jl
+function add_allocation_model!(allocation::Allocation, subnetwork_id::Int32, p::Parameters)
+    # Create empty optimization problem
+    problem = JuMP.Model(HiGHS.Optimizer)
+    
+    # Add variables with initial bounds
+    add_variables_flow!(allocation_model, p_independent)
+    add_basin!(allocation_model, p_independent)
+    
+    # Add constraints with placeholder values
+    add_constraints_conservation_basin!(allocation_model, p_independent)
+    add_constraints_capacity!(allocation_model, p_independent)
+    
+    # Objective will be set during optimization
+    problem[:objective] = JuMP.@expression(problem, 0.0)
+end
+```
+
+## Phase 2: Real Value Updates
+
+Before each optimization solve, placeholder values are updated with current physical data:
+
+```julia
+# In allocation_optim.jl - set_simulation_data! function
+function set_simulation_data!(allocation_model::AllocationModel, p::Parameters, t::Float64, du::CVector)
+    # Update basin starting storages from physical layer
+    for key in only(storage.axes)
+        if key[2] == :start
+            basin_id = key[1]
+            storage_now = current_storage[basin_id.idx]
+            JuMP.fix(storage[key], storage_now / scaling.storage; force = true)
+        end
+    end
+    
+    # Update boundary flows from averaged physical flows
+    for link in keys(cumulative_boundary_volume)
+        JuMP.fix(
+            flow[link],
+            cumulative_boundary_volume[link] / (Δt_allocation * scaling.flow);
+            force = true,
+        )
+    end
+end
+```
+
+This two-phase approach allows the optimization structure to be set up once, then efficiently updated with current data for each solve.
+
+# Basin Profile Handling
+
+## Level-Storage Relationship Linearization
+
+The basin profile defines a piecewise linear relationship between storage and level:
+
+**Mathematical Definition:**
+$$\mathcal{L}^\text{end}_b = P_b(\mathcal{S}^\text{end}_b)$$
+
+**Code Implementation:**
+```julia
+# In allocation_init.jl - add_basin! function
+# The level-storage relationship is linearized through SOS2 constraints
+sos_data = Vector{Tuple{JuMP.VariableRef, Float64}}[]
+for i in eachindex(storage_to_level[node_id.idx].t)
+    # Create auxiliary variables for each segment
+    push!(sos_data, (auxiliary_var[i], storage_to_level[node_id.idx].t[i]))
+end
+
+# Add SOS2 constraint to ensure only adjacent segments are active
+JuMP.@constraint(problem, auxiliary_var in JuMP.SOS2(sos_weights))
+
+# Link storage to auxiliary variables
+JuMP.@constraint(problem, 
+    sum(aux_var * weight for (aux_var, weight) in sos_data) == 
+    problem[:basin_storage][(node_id, :end)]
+)
+
+# Link level to auxiliary variables  
+JuMP.@constraint(problem,
+    sum(aux_var * storage_to_level[node_id.idx](weight) for (aux_var, weight) in sos_data) == 
+    problem[:basin_level][node_id]
+)
+```
+
+## Vertical Flux Calculations
+
+**Mathematical Definition:**
+Average vertical fluxes over allocation interval:
+$$\phi_i(t) = \frac{1}{\Delta t_{\text{alloc}}}\int_{t - \Delta t_{\text{alloc}}}^t \left[Q_{P,i}(t') - Q_{E,i}(t') + Q_{\text{drn},i}(t') - Q_{\text{inf},i}(t') \right] dt'$$
+
+**Code Implementation:**
+```julia
+# Vertical forcing is accumulated in the physical layer and passed to allocation
+function set_simulation_data!(allocation_model::AllocationModel, basin::Basin, p::Parameters)
+    # The cumulative forcing volume is computed in the physical layer
+    for basin_id in basin_ids_subnetwork
+        forcing_volume = cumulative_forcing_volume[basin_id]
+        average_forcing = forcing_volume / Δt_allocation
+        
+        # Set the horizontal forcing constraint value
+        JuMP.set_normalized_rhs(
+            horizontal_forcing_constraint[basin_id],
+            average_forcing / scaling.flow
+        )
+    end
+end
+```
+
+# Demand Type Processing
+
+## User Demand Processing
+
+User demands have multiple priorities and can return a fraction of abstracted water:
+
+**Mathematical Definition:**
+$$d^p_i(t), \quad i \in U_S, p = 1,2,\ldots, p_{\max}$$
+
+**Code Implementation:**
+```julia
+# In allocation_optim.jl - add_user_demand! function
+function add_user_demand!(allocation_model::AllocationModel, user_demand::UserDemand, priority::Int32)
+    for node_id in user_demand.node_id
+        demand_value = user_demand.demand[node_id.idx](t, priority)
+        
+        if demand_value > 0
+            outflow_id = only(outflow_ids(graph, node_id))
+            flow_var = problem[:flow][(node_id, outflow_id)]
+            
+            # Add quadratic objective term
+            add_objective_term!(allocation_model, flow_var, demand_value, priority)
+            
+            # Handle return flow constraint
+            return_factor = user_demand.return_factor[node_id.idx](t)
+            if return_factor > 0
+                # Return flow capacity increases available flow
+                JuMP.set_normalized_rhs(
+                    returnflow_constraints[node_id],
+                    return_factor * JuMP.value(flow_var)
+                )
+            end
+        end
+    end
+end
+```
+
+## Level Demand Processing
+
+Level demands relate to basin storage targets:
+
+**Mathematical Definition:**
+Basin demand from level requirements:
+$$d^p_i = \max\left(0.0, \frac{s_{\min,i} - u_i(t)}{\Delta t_{\text{alloc}}} - \phi_i(t)\right)$$
+
+**Code Implementation:**
+```julia
+# In allocation_optim.jl - add_level_demand! function
+function add_level_demand!(allocation_model::AllocationModel, level_demand::LevelDemand, priority::Int32)
+    for node_id in level_demand.node_id
+        target_level = level_demand.min_level[node_id.idx](t, priority)
+        
+        if !isnan(target_level)
+            # Convert target level to target storage
+            target_storage = interpolate_profile(storage_to_level[node_id.idx], target_level)
+            current_storage = current_storage[node_id.idx]
+            
+            # Calculate demand: (target - current) / Δt - forcing
+            storage_deficit = target_storage - current_storage
+            demand_volume = max(0.0, storage_deficit - forcing_volume)
+            demand_flow = demand_volume / Δt_allocation
+            
+            if demand_flow > 0
+                # Add to objective function
+                basin_inflow_var = problem[:basin_inflow][node_id]
+                add_objective_term!(allocation_model, basin_inflow_var, demand_flow, priority)
+            end
+        end
+    end
+end
+```
+
+## Flow Demand Processing
+
+Flow demands specify required throughflow:
+
+**Mathematical Definition:**
+$$d^p_i(t) = \begin{cases} 0 \text{ if } p \ne p_{\text{fd}} \\ d^{p_{\text{df}}} \text{ if } p = p_{\text{fd}} \end{cases}$$
+
+**Code Implementation:**
+```julia
+# In allocation_optim.jl - add_flow_demand! function
+function add_flow_demand!(allocation_model::AllocationModel, flow_demand::FlowDemand, priority::Int32)
+    for node_id in flow_demand.node_id
+        demand_value = flow_demand.demand[node_id.idx](t, priority)
+        
+        if demand_value > 0
+            # Flow demand uses buffer variables
+            buffer_inflow_var = problem[:flow_buffer_inflow][node_id]
+            add_objective_term!(allocation_model, buffer_inflow_var, demand_value, priority)
+            
+            # At the demand priority, buffer can receive unlimited flow
+            # At other priorities, buffer is constrained to 0
+            if current_priority == priority
+                JuMP.set_normalized_rhs(flow_demand_constraints[node_id], Inf)
+            else
+                JuMP.set_normalized_rhs(flow_demand_constraints[node_id], 0.0)
+            end
+        end
+    end
+end
+```
+
+# Physical Layer Integration
+
+## State Variable Mapping
+
+The allocation layer uses current physical state as input:
+
+**Physical Layer State → Allocation Variables:**
+- Basin storage (`u[i]`) → `basin_storage[(node_id, :start)]`
+- Basin level (computed from storage) → Used in constraint calculations
+- Boundary flows (time-averaged) → Fixed flow variables for boundaries
+
+**Code Implementation:**
+```julia
+# Mapping physical state to allocation variables
+function set_simulation_data!(allocation_model::AllocationModel, basin::Basin, p::Parameters)
+    (; current_storage, current_level) = p.state_time_dependent_cache
+    
+    # Map storage state
+    for key in only(storage.axes)
+        if key[2] == :start
+            basin_id = key[1]
+            storage_now = current_storage[basin_id.idx]
+            JuMP.fix(storage[key], storage_now / scaling.storage; force = true)
+        end
+    end
+end
+```
+
+## Optimization Results → Physical Layer
+
+Allocation results are communicated back to update physical behavior:
+
+**Allocation Results → Physical Layer:**
+- Optimized flows → Update UserDemand abstraction rates
+- Controlled structure flows → Update Pump/Outlet flow rates
+
+**Code Implementation:**
+```julia
+# In allocation_optim.jl - assign_allocations! function
+function assign_allocations!(allocation_model::AllocationModel, p::Parameters, optimization_type::AllocationOptimizationType)
+    if optimization_type == AllocationOptimizationType.allocate
+        # Update UserDemand allocated flows
+        for node_id in user_demand_node_ids
+            outflow_id = only(outflow_ids(graph, node_id))
+            allocated_flow = JuMP.value(problem[:flow][(node_id, outflow_id)])
+            
+            # Update physical layer
+            user_demand.allocated[node_id.idx] = allocated_flow
+        end
+        
+        # Update controlled structures
+        for link in controlled_links
+            optimized_flow = JuMP.value(problem[:flow][link])
+            # Set target flow rate for pump/outlet
+            set_control_flow!(p, link, optimized_flow)
+        end
+    end
+end
+```
+
+# Debugging Guide
+
+## Common Allocation Issues
+
+### 1. Infeasible Optimization Problems
+
+**Symptoms:**
+- HiGHS solver returns `INFEASIBLE` status
+- Error messages about exceeding basin capacity
+
+**Debugging Steps:**
+```julia
+# Check basin storage bounds
+for basin_id in basin_ids
+    storage_now = current_storage[basin_id.idx]
+    storage_max = storage_to_level[basin_id.idx].t[end]
+    if storage_now > storage_max
+        @warn "Basin $basin_id storage $storage_now exceeds max $storage_max"
+    end
+end
+
+# Check constraint feasibility
+if JuMP.termination_status(problem) == JuMP.INFEASIBLE
+    # Compute and examine IIS (Irreducible Infeasible Subsystem)
+    JuMP.compute_conflict!(problem)
+    for constraint in JuMP.all_constraints(problem, include_variable_in_set_constraints=true)
+        if JuMP.MOI.get(problem, JuMP.MOI.ConstraintConflictStatus(), constraint) == JuMP.MOI.IN_CONFLICT
+            @warn "Constraint in conflict: $constraint"
+        end
+    end
+end
+```
+
+### 2. Unexpected Allocation Results
+
+**Symptoms:**
+- Demands not met when water seems available
+- Water allocated to wrong priorities
+
+**Debugging Steps:**
+```julia
+# Trace objective function components
+function debug_objective(allocation_model::AllocationModel, priority::Int32)
+    objective_value = JuMP.objective_value(allocation_model.problem)
+    @info "Priority $priority objective value: $objective_value"
+    
+    # Check individual demand fulfillment
+    for demand_node in demand_nodes
+        demand_value = get_demand(demand_node, priority)
+        allocated_value = get_allocated(allocation_model, demand_node)
+        fulfillment_ratio = allocated_value / demand_value
+        @info "$demand_node: demand=$demand_value, allocated=$allocated_value, ratio=$fulfillment_ratio"
+    end
+end
+
+# Verify flow conservation
+function verify_flow_conservation(allocation_model::AllocationModel)
+    for node_id in all_node_ids
+        inflow_sum = sum(JuMP.value(flow[(upstream, node_id)]) for upstream in inflow_ids(node_id))
+        outflow_sum = sum(JuMP.value(flow[(node_id, downstream)]) for downstream in outflow_ids(node_id))
+        balance_error = abs(inflow_sum - outflow_sum)
+        
+        if balance_error > 1e-6
+            @warn "Flow conservation violated for $node_id: inflow=$inflow_sum, outflow=$outflow_sum"
+        end
+    end
+end
+```
+
+### 3. Performance Issues
+
+**Symptoms:**
+- Slow optimization solves
+- Memory usage growth
+
+**Debugging Steps:**
+```julia
+# Profile optimization time
+@time JuMP.optimize!(problem)
+
+# Check problem size
+@info "Variables: $(JuMP.num_variables(problem))"
+@info "Constraints: $(JuMP.num_constraints(problem; count_variable_in_set_constraints=false))"
+
+# Monitor memory usage
+@info "Memory usage: $(Base.gc_live_bytes() / 1024^2) MB"
+```
+
+## Development Testing Workflow
+
+### Unit Testing Allocation Components
+
+```julia
+# Test individual constraint functions
+@testset "Allocation Constraints" begin
+    @test begin
+        allocation_model = create_test_allocation_model()
+        add_constraints_conservation_basin!(allocation_model, p_independent)
+        # Verify constraint structure
+        all(constraint -> JuMP.is_valid(allocation_model.problem, constraint), 
+            allocation_model.problem[:conservation_basin])
+    end
+end
+
+# Test objective function components
+@testset "Objective Function" begin
+    allocation_model = create_test_allocation_model()
+    add_objective_term!(allocation_model, test_flow_var, 100.0, 1)
+    @test JuMP.objective_function(allocation_model.problem) isa JuMP.QuadExpr
+end
+```
+
+### Integration Testing
+
+```julia
+# Test complete allocation workflow
+@testset "Allocation Integration" begin
+    model = create_test_ribasim_model()
+    p = parameters(model)
+    
+    # Run allocation 
+    update_allocation!(p.allocation, p, u, t, du)
+    
+    # Verify results
+    @test all(allocated >= 0 for allocated in p.user_demand.allocated)
+    @test sum(p.user_demand.allocated) <= available_water_capacity
+end
+```
+
+This technical reference provides the missing bridge between mathematical concepts and code implementation, enabling developers to understand, debug, and extend the allocation system effectively.
