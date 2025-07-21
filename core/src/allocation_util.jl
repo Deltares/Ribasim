@@ -189,7 +189,7 @@ function parse_profile(
     storage_to_level::AbstractInterpolation,
     level_to_area::AbstractInterpolation,
     lowest_level;
-    n_samples_per_segment = 10,
+    n_samples_per_segment = 100,
 )
     n_segments = length(storage_to_level.u) - 1
     samples_storage_node = zeros(n_samples_per_segment * n_segments + 1)
@@ -343,6 +343,7 @@ function get_optimizer()
         "log_to_console" => false,
         "time_limit" => 60.0,
         "random_seed" => 0,
+        "small_matrix_value" => 1e-12,
     )
 end
 

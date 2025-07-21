@@ -1,3 +1,46 @@
+@testitem "Basin Profile" begin
+    using Ribasim: parse_profile
+    using DataInterpolations: LinearInterpolation
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/allocation_training/ribasim.toml")
+    model = Ribasim.Model(toml_path)
+    (; basin) = model.integrator.p.p_independent
+
+    # In allocation, the Basin profiles get a 'phantom storage' which is a 'tube' at the bottom
+    # of each Basin with a small diameter between the physical bottom and the lowest level in the subnetwork
+    # the basin is in, to make resistance nodes easier to handle.
+    for lowest_level in (0.0, -5.0)
+        for id in basin.node_id
+            level_to_area = basin.level_to_area[id.idx]
+            storage, level =
+                parse_profile(basin.storage_to_level[id.idx], level_to_area, lowest_level)
+            itp_allocation = LinearInterpolation(level, storage)
+            itp_physical = basin.storage_to_level[id.idx]
+            storage_eval = collect(range(storage[1], storage[end]; length = 100))
+
+            # The volume of the phantom storage tube
+            phantom_storage = (itp_physical.u[1] - lowest_level) * level_to_area.u[1] / 1e3
+
+            # Construct the modified storage to level function given the phantom storage
+            function itp_physical_(s)
+                if s < phantom_storage
+                    lowest_level + (itp_physical.t[1] - lowest_level) * s / phantom_storage
+                else
+                    itp_physical(s - phantom_storage)
+                end
+            end
+
+            @test all(
+                isapprox.(
+                    itp_allocation.(storage_eval),
+                    itp_physical_.(storage_eval),
+                    rtol = 1e-2,
+                ),
+            )
+        end
+    end
+end
+
 @testitem "Linear Resistance" begin
     using DataFrames: DataFrame
 
@@ -79,8 +122,6 @@ end
 
 @testitem "allocation training" begin
     using DataFrames: DataFrame
-    using Test
-    using Ribasim
 
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/allocation_training/ribasim.toml")
