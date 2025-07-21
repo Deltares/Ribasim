@@ -46,7 +46,6 @@ function set_simulation_data!(
     (; storage_to_level) = basin
 
     storage = problem[:basin_storage]
-    basin_level = problem[:basin_level]
     flow = problem[:flow]
     (; current_storage, current_level) = p.state_time_dependent_cache
 
@@ -88,7 +87,6 @@ function set_simulation_data!(
         end
 
         JuMP.fix(storage[key], storage_now / scaling.storage; force = true)
-        JuMP.fix(basin_level[key], level_now; force = true)
     end
 
     for link in keys(cumulative_boundary_volume)
@@ -758,7 +756,7 @@ function warm_start!(
         for (node_id, when) in only(storage.axes)
             when == :start && continue
             JuMP.set_start_value(storage[(node_id, :end)], current_storage[node_id.idx])
-            JuMP.set_start_value(level[(node_id, :end)], current_level[node_id.idx])
+            JuMP.set_start_value(level[node_id], current_level[node_id.idx])
         end
 
         # Assume no flow
@@ -774,7 +772,7 @@ function warm_start!(
                 storage[(node_id, :end)],
                 JuMP.value(storage[(node_id, :end)]),
             )
-            JuMP.set_start_value(level[(node_id, :end)], JuMP.value(level[(node_id, :end)]))
+            JuMP.set_start_value(level[node_id], JuMP.value(level[node_id]))
         end
 
         # Assume no flow change with respect to the previous optimization
@@ -790,6 +788,7 @@ function optimize_for_objective!(
     allocation_model::AllocationModel,
     integrator::DEIntegrator,
     objective::AllocationObjective,
+    config::Config,
 )::Nothing
     (; p, t) = integrator
     (; p_independent) = p
@@ -809,19 +808,22 @@ function optimize_for_objective!(
     termination_status = JuMP.termination_status(problem)
 
     if termination_status == JuMP.INFEASIBLE
-        constraint_to_slack = relax_problem!(problem)
-        JuMP.optimize!(problem)
-        report_cause_of_infeasibility(
-            constraint_to_slack,
-            objective,
-            problem,
-            subnetwork_id,
-            t,
+        analyze_infeasibility(allocation_model, objective, t, config)
+        analyze_scaling(allocation_model, objective, t, config)
+
+        error(
+            "Allocation optimization for subnetwork $subnetwork_id, $objective at t = $t s is infeasible",
         )
     elseif termination_status != JuMP.OPTIMAL
-        error(
-            "Allocation optimization for subnetwork $subnetwork_id, $objective at t = $t s did not find an optimal solution. Termination status: $(JuMP.termination_status(problem)).",
-        )
+        relative_gap = JuMP.relative_gap(problem)
+        threshold = 1e-3 # Hardcoded threshold for now
+        if relative_gap < threshold
+            @debug "Allocation optimization for subnetwork $subnetwork_id, $objective at t = $t s did not find an optimal solution (termination status: $termination_status), but the relative gap ($relative_gap) is within the acceptable threshold (<$threshold). Proceeding with the solution."
+        else
+            error(
+                "Allocation optimization for subnetwork $subnetwork_id, $objective at t = $t s did not find an acceptable solution. Termination status: $termination_status.",
+            )
+        end
     end
 
     postprocess_objective!(allocation_model, p, objective, t)
@@ -926,10 +928,11 @@ function get_subnetwork_demands!(allocation_model::AllocationModel)::Nothing
 end
 
 "Solve the allocation problem for all demands and assign allocated abstractions."
-function update_allocation!(integrator)::Nothing
+function update_allocation!(model)::Nothing
+    (; integrator, config) = model
     (; u, p, t) = integrator
     du = get_du(integrator)
-    (; p_independent, state_time_dependent_cache) = p
+    (; p_independent) = p
     (; allocation, pump, outlet, graph) = p_independent
     (; allocation_models) = allocation
 
@@ -951,7 +954,7 @@ function update_allocation!(integrator)::Nothing
             reset_goal_programming!(allocation_model, p_independent)
             prepare_demand_collection!(allocation_model, p_independent)
             for objective in allocation_model.objectives
-                optimize_for_objective!(allocation_model, integrator, objective)
+                optimize_for_objective!(allocation_model, integrator, objective, config)
             end
             save_allocation_flows!(
                 p_independent,
@@ -967,7 +970,7 @@ function update_allocation!(integrator)::Nothing
     for allocation_model in allocation_models
         reset_goal_programming!(allocation_model, p_independent)
         for objective in allocation_model.objectives
-            optimize_for_objective!(allocation_model, integrator, objective)
+            optimize_for_objective!(allocation_model, integrator, objective, config)
         end
 
         if is_primary_network(allocation_model.subnetwork_id)

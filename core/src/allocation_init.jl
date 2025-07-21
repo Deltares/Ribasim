@@ -82,7 +82,8 @@ function add_basin!(
     # Storage and level indices
     indices = Iterators.product(basin_ids_subnetwork, [:start, :end])
 
-    # Define decision variables: storage (scaling.storage * m^3) and level (m)
+    # Define decision variables: storage (scaling.storage * m^3) (at the start and end of the time step)
+    # and the level (m) (only at the end of the time step)
     # Each storage variable is constrained between 0 and the largest storage value in the profile
     # Each level variable is between the lowest and the highest level in the profile
     storage =
@@ -95,9 +96,9 @@ function add_basin!(
     level =
         problem[:basin_level] = JuMP.@variable(
             problem,
-            level_to_area[index[1].idx].t[1] <=
-            basin_level[index = indices] <=
-            level_to_area[index[1].idx].t[end]
+            level_to_area[node_id.idx].t[1] <=
+            basin_level[node_id = basin_ids_subnetwork] <=
+            level_to_area[node_id.idx].t[end]
         )
 
     # Piecewise linear Basin profile approximations
@@ -132,7 +133,7 @@ function add_basin!(
     problem[:basin_profile] = JuMP.@constraint(
         problem,
         [node_id = basin_ids_subnetwork],
-        level[(node_id, :end)] == piecewiselinear(
+        level[node_id] == piecewiselinear(
             problem,
             storage[(node_id, :end)],
             values_storage[node_id],

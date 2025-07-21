@@ -373,6 +373,14 @@ priority          | Int32    | -
 flow_rate         | Float64  | $\text{m}^3/\text{s}$
 optimization_type | String   | -
 
+## Allocation feasibility analysis - `allocation_analysis_feasibility.log`
+
+When an allocation optimization problem turns out to be infeasible, an infeasibility analysis is performed. Some user friendly data is logged in the main log, but the full report of the analysis is written to this separate file. For details on the infeasibility analysis see [here](https://jump.dev/MathOptAnalyzer.jl/dev/).
+
+## Allocation scaling analysis - `allocation_analysis_scaling.log`
+
+When an allocation optimization problem turns out to be infeasible, a scaling analysis is performed. Some user friendly data is logged in the main log, but the full report of the analysis is written to this separate file. For details on the infeasibility analysis see [here](https://jump.dev/MathOptAnalyzer.jl/dev/).
+
 ## Concentration - `concentration.arrow`
 
 If the [experimental concentration feature](/reference/usage.qmd#experimental-features) is enabled, the results are written to `concentration.arrow`.

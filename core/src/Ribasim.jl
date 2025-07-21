@@ -84,6 +84,8 @@ import JuMP
 import HiGHS
 # Represent piecewise linear functions in JuMP
 using PiecewiseLinearOpt: piecewiselinear
+# Analyze infeasibilities and numerical properties
+import MathOptAnalyzer
 
 # The BMI is a standard for interacting with a Ribasim model,
 # see the docs: https://ribasim.org/dev/bmi.html
