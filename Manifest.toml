@@ -2,7 +2,7 @@
 
 julia_version = "1.11.6"
 manifest_format = "2.0"
-project_hash = "5937e26184d926ba8b7001a681dca443178d49a6"
+project_hash = "4ea12f2229553ab4373d27c87dbea6b511263ab7"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "be7ae030256b8ef14a441726c4c37766b90b93a3"
@@ -577,6 +577,16 @@ version = "0.9.5"
 deps = ["ArgTools", "FileWatching", "LibCURL", "NetworkOptions"]
 uuid = "f43a241f-c20a-4ad4-852c-f6b1247861c6"
 version = "1.6.0"
+
+[[deps.Dualization]]
+deps = ["LinearAlgebra", "MathOptInterface"]
+git-tree-sha1 = "060e90e82b8883742dbb3ce7b15c4efb24937fdc"
+uuid = "191a621a-6537-11e9-281d-650236a99e60"
+version = "0.6.1"
+weakdeps = ["JuMP"]
+
+    [deps.Dualization.extensions]
+    DualizationJuMPExt = "JuMP"
 
 [[deps.EnumX]]
 git-tree-sha1 = "bddad79635af6aec424f53ed8aad5d7555dc6f00"
@@ -1319,6 +1329,16 @@ git-tree-sha1 = "65dff26519116033543e644fb8cf2e5869469c0b"
 uuid = "1862ce21-31c7-451e-824c-f20fa3f90fa2"
 version = "1.1.0"
 
+[[deps.MathOptAnalyzer]]
+deps = ["Dualization", "LinearAlgebra", "MathOptInterface", "Printf"]
+git-tree-sha1 = "a0ea070eb015d867fd3148b1ec4d9fada5da7626"
+uuid = "d1179b25-476b-425c-b826-c7787f0fff83"
+version = "0.1.0"
+weakdeps = ["JuMP"]
+
+    [deps.MathOptAnalyzer.extensions]
+    MathOptAnalyzerJuMPExt = "JuMP"
+
 [[deps.MathOptInterface]]
 deps = ["BenchmarkTools", "CodecBzip2", "CodecZlib", "DataStructures", "ForwardDiff", "JSON3", "LinearAlgebra", "MutableArithmetics", "NaNMath", "OrderedCollections", "PrecompileTools", "Printf", "SparseArrays", "SpecialFunctions", "Test"]
 git-tree-sha1 = "1251fce78b907fe415a2f680291b67cf51360d2a"
@@ -1606,9 +1626,7 @@ version = "10.42.0+1"
 
 [[deps.PackageCompiler]]
 deps = ["Artifacts", "Glob", "LazyArtifacts", "Libdl", "Pkg", "Printf", "RelocatableFolders", "TOML", "UUIDs", "p7zip_jll"]
-git-tree-sha1 = "6a4297cde5a01e7150c9f02b18de00cd75e05328"
-repo-rev = "bundle_less_artifacts"
-repo-url = "https://github.com/visr/PackageCompiler.jl"
+git-tree-sha1 = "d6fdae30c99917e01b7a3776e9bfd5b32f0665cc"
 uuid = "9b87118b-4619-50d2-8e1e-99f35a4d4d9d"
 version = "2.2.1"
 
@@ -1881,7 +1899,7 @@ weakdeps = ["Distributed"]
     DistributedExt = "Distributed"
 
 [[deps.Ribasim]]
-deps = ["ADTypes", "Accessors", "Arrow", "BasicModelInterface", "CodecZstd", "Configurations", "DBInterface", "DataInterpolations", "DataStructures", "Dates", "DelimitedFiles", "DiffEqCallbacks", "DifferentiationInterface", "EnumX", "FiniteDiff", "ForwardDiff", "Graphs", "HiGHS", "IterTools", "JuMP", "Legolas", "LinearAlgebra", "LinearSolve", "Logging", "LoggingExtras", "MetaGraphsNext", "OrdinaryDiffEqBDF", "OrdinaryDiffEqCore", "OrdinaryDiffEqLowOrderRK", "OrdinaryDiffEqNonlinearSolve", "OrdinaryDiffEqRosenbrock", "OrdinaryDiffEqSDIRK", "OrdinaryDiffEqTsit5", "PiecewiseLinearOpt", "PrecompileTools", "Preferences", "Printf", "SQLite", "SciMLBase", "SparseArrays", "SparseConnectivityTracer", "SparseMatrixColorings", "StructArrays", "Tables", "TerminalLoggers", "TranscodingStreams"]
+deps = ["ADTypes", "Accessors", "Arrow", "BasicModelInterface", "CodecZstd", "Configurations", "DBInterface", "DataInterpolations", "DataStructures", "Dates", "DelimitedFiles", "DiffEqCallbacks", "DifferentiationInterface", "EnumX", "FiniteDiff", "ForwardDiff", "Graphs", "HiGHS", "IterTools", "JuMP", "Legolas", "LinearAlgebra", "LinearSolve", "Logging", "LoggingExtras", "MathOptAnalyzer", "MetaGraphsNext", "OrdinaryDiffEqBDF", "OrdinaryDiffEqCore", "OrdinaryDiffEqLowOrderRK", "OrdinaryDiffEqNonlinearSolve", "OrdinaryDiffEqRosenbrock", "OrdinaryDiffEqSDIRK", "OrdinaryDiffEqTsit5", "PiecewiseLinearOpt", "PrecompileTools", "Preferences", "Printf", "SQLite", "SciMLBase", "SparseArrays", "SparseConnectivityTracer", "SparseMatrixColorings", "StructArrays", "Tables", "TerminalLoggers", "TranscodingStreams"]
 path = "core"
 uuid = "aac5e3d9-0b8f-4d4f-8241-b1a7a9632635"
 version = "2025.4.0"
