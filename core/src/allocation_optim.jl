@@ -814,6 +814,7 @@ function optimize_for_objective!(
         analyze_infeasibility(allocation_model, objective, t, config)
         analyze_scaling(allocation_model, objective, t, config)
 
+        write_problem_to_file(problem, config)
         error(
             "Allocation optimization for subnetwork $subnetwork_id, $objective at t = $t s is infeasible",
         )
@@ -823,6 +824,7 @@ function optimize_for_objective!(
         if relative_gap < threshold
             @debug "Allocation optimization for subnetwork $subnetwork_id, $objective at t = $t s did not find an optimal solution (termination status: $termination_status), but the relative gap ($relative_gap) is within the acceptable threshold (<$threshold). Proceeding with the solution."
         else
+            write_problem_to_file(problem, config)
             error(
                 "Allocation optimization for subnetwork $subnetwork_id, $objective at t = $t s did not find an acceptable solution. Termination status: $termination_status.",
             )

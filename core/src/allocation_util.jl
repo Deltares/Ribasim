@@ -301,6 +301,13 @@ function get_terms(constraint)
     end
 end
 
+function write_problem_to_file(problem, config)::Nothing
+    path = results_path(config, RESULTS_FILENAME.allocation_infeasible_problem)
+    @info "Latest allocation optimization problem written to $path."
+    JuMP.write_to_file(problem, path)
+    return nothing
+end
+
 function analyze_infeasibility(
     allocation_model::AllocationModel,
     objective::AllocationObjective,
