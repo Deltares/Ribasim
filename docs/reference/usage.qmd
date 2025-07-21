@@ -223,7 +223,7 @@ There are currently 2 possible link types:
   way.
 2. "control": The control links define which nodes are controlled by a particular control node.
   Control links should always point away from the control node.
-  The links between the control node and the nodes it *listens* to are *not* present in `Link`, these are defined in [`DiscreteControl / condition`](node/discrete-control.qmd)
+  The links between the control node and the nodes it *listens* to are *not* present in `Link`, these are defined in [`DiscreteControl / condition`](/reference/node/discrete-control.qmd)
 
 column        | type                          | restriction
 --------------| ----------------------------- | -----------
@@ -315,28 +315,28 @@ To use this result as the initial condition of another simulation, see the [Basi
 
 The control table contains a record of each change of control state: when it happened, which control node was involved, to which control state it changed and based on which truth state.
 
-column          | type
---------------- | ----------
-time            | DateTime
-control_node_id | Int32
-truth_state     | String
-control_state   | String
+column          | type     | unit
+--------------- | -------- | ----
+time            | DateTime | -
+control_node_id | Int32    | -
+truth_state     | String   | -
+control_state   | String   | -
 
 ## Allocation - `allocation.arrow`
 
 The allocation table contains a record of allocation results: when it happened, for which node, in which allocation network, and what the demand, allocated flow and realized flow were.
 The realized values at the starting time of the simulation can be ignored.
 
-column        | type
---------------| -----
-time          | DateTime
-subnetwork_id | Int32
-node_type     | String
-node_id       | Int32
-priority      | Int32
-demand        | Float64
-allocated     | Float64
-realized      | Float64
+column        | type     | unit
+--------------| -------- | ----
+time          | DateTime | -
+subnetwork_id | Int32    | -
+node_type     | String   | -
+node_id       | Int32    | -
+priority      | Int32    | -
+demand        | Float64  | $\text{m}^3/\text{s}$
+allocated     | Float64  | $\text{m}^3/\text{s}$
+realized      | Float64  | $\text{m}^3/\text{s}$
 
 ::: {.callout-note}
 The LevelDemand node allocations are listed as node type Basin.
@@ -360,18 +360,18 @@ The column `optimization_type` provides the distinction between these optimizati
 - `collect_demands`: collecting its total demand per priority (for allocating flow from the primary network to the subnetwork)
 - `allocate`: allocating flow within the subnetwork
 
-column            | type
------------------ | -----
-time              | DateTime
-link_id           | Int32
-from_node_type    | String
-from_node_id      | Int32
-to_node_type      | String
-to_node_id        | Int32
-subnetwork_id     | Int32
-priority          | Int32
-flow_rate         | Float64
-optimization_type | String
+column            | type     | unit
+----------------- | -------- | ----
+time              | DateTime | -
+link_id           | Int32    | -
+from_node_type    | String   | -
+from_node_id      | Int32    | -
+to_node_type      | String   | -
+to_node_id        | Int32    | -
+subnetwork_id     | Int32    | -
+priority          | Int32    | -
+flow_rate         | Float64  | $\text{m}^3/\text{s}$
+optimization_type | String   | -
 
 ## Allocation feasibility analysis - `allocation_analysis_feasibility.log`
 
@@ -399,11 +399,11 @@ concentration  | Float64  | $\text{g}/\text{m}^3$    |
 This result file is only written if the model contains a [Basin / subgrid](/reference/node/basin.qmd#subgrid) table.
 See there for more information on the meaning of this output.
 
-column         | type
----------------| -----
-time           | DateTime
-subgrid_id     | Int32
-subgrid_level  | Float64
+column         | type     | unit
+---------------| -------- | ----
+time           | DateTime | -
+subgrid_id     | Int32    | -
+subgrid_level  | Float64  | $\text{m}$
 
 ## Solver statistics - `solver_stats.arrow`
 
@@ -421,4 +421,4 @@ water_balance_calls | Int      | -
 linear_solves       | Int      | -
 accepted_timesteps  | Int      | -
 rejected_timesteps  | Int      | -
-dt                  | Float64  | s
+dt                  | Float64  | $\text{s}$

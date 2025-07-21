@@ -1,5 +1,8 @@
 ---
 title: "DiscreteControl"
+engine: julia
+julia:
+  exeflags: ["--check-bounds=yes"]
 ---
 
 Set parameters of other nodes based on model state conditions (e.g. Basin level).

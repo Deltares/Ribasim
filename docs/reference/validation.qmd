@@ -1,5 +1,8 @@
 ---
 title: "Validation"
+engine: julia
+julia:
+  exeflags: ["--check-bounds=yes"]
 ---
 
 The tables below show the validation rules applied to the input to the Julia core before running the model.

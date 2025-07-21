@@ -5,7 +5,7 @@ title: "UserDemand"
 A UserDemand takes water from the Basin that supplies it.
 
 When allocation is not used, a `UserDemand` node attempts to extract the full demand from the connected Basin.
-When allocation is used, the amount a `UserDemand` node is allowed to abstract is determined by the [allocation algorithm](../../concept/allocation.qmd).
+When allocation is used, the amount a `UserDemand` node is allowed to abstract is determined by the [allocation algorithm](/concept/allocation.qmd).
 This algorithm first tries to allocate from the directly connected basin, and then from other sources whose flow can reach the `UserDemand` node.
 Note that `demand_priority` is used to determine the order in which the UserDemands are allocated water.
 This parameter is only used when allocation is active and is optional when allocation is not active.

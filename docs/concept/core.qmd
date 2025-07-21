@@ -5,8 +5,8 @@ title: "Julia core"
 With the term "core", we mean the computational engine of Ribasim. As detailed in the
 [usage](/reference/usage.qmd) documentation, it is generally used as a command line tool.
 
-A quick overview of the model concept is available in the [introduction](concept.qmd#sec-concept), while a more in-depth discussion is available on the [model concept](modelconcept.qmd) page.
-The theory is described on the [equations](/concept/equations.qmd) page, and more in-depth numerical considerations are described on the [numerical considerations](numerics.qmd) page. As allocation is a large and self-contained part of the Ribasim core, it is described on the separate [allocation](/concept/allocation.qmd) page. Input validation is described on the [validation](/reference/validation.qmd) page.
+A quick overview of the model concept is available in the [introduction](/concept/concept.qmd#sec-concept), while a more in-depth discussion is available on the [model concept](/concept/modelconcept.qmd) page.
+The theory is described on the [equations](/concept/equations.qmd) page, and more in-depth numerical considerations are described on the [numerical considerations](/concept/numerics.qmd) page. As allocation is a large and self-contained part of the Ribasim core, it is described on the separate [allocation](/concept/allocation.qmd) page. Input validation is described on the [validation](/reference/validation.qmd) page.
 
 The core is implemented in the [Julia programming language](https://julialang.org/), and
 can be found in the [Ribasim repository](https://github.com/Deltares/Ribasim) under the

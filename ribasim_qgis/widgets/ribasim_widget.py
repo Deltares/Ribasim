@@ -11,9 +11,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, cast
 
-from PyQt5.QtWidgets import QTabWidget, QVBoxLayout, QWidget
+from PyQt5.QtWidgets import QVBoxLayout, QWidget
 from qgis.core import (
-    Qgis,
     QgsAbstractVectorLayerLabeling,
     QgsCoordinateReferenceSystem,
     QgsLayerTreeGroup,
@@ -24,9 +23,7 @@ from qgis.core import (
 )
 from qgis.gui import QgisInterface
 
-from ribasim_qgis.core.nodes import Input
 from ribasim_qgis.widgets.dataset_widget import DatasetWidget, group_position_var
-from ribasim_qgis.widgets.nodes_widget import NodesWidget
 
 PYQT_DELETED_ERROR = "wrapped C/C++ object of type QgsLayerTreeGroup has been deleted"
 
@@ -37,16 +34,11 @@ class RibasimWidget(QWidget):
 
         self.iface = iface
         self.message_bar = self.iface.messageBar()
-
         self.__dataset_widget = DatasetWidget(self)
-        self.__nodes_widget = NodesWidget(self)
 
         # Layout
         layout = QVBoxLayout()
-        self.tabwidget = QTabWidget()
-        layout.addWidget(self.tabwidget)
-        self.tabwidget.addTab(self.__dataset_widget, "Model")
-        self.tabwidget.addTab(self.__nodes_widget, "Nodes")
+        layout.addWidget(self.__dataset_widget)
         self.setLayout(layout)
 
         # QGIS Layers Panel groups
@@ -92,15 +84,6 @@ class RibasimWidget(QWidget):
         map_settings = map_canvas.mapSettings()
         assert map_settings is not None
         return map_settings.destinationCrs()
-
-    def add_node_layer(self, element: Input):
-        self.__dataset_widget.add_node_layer(element)
-
-    def toggle_node_buttons(self, state: bool) -> None:
-        self.__nodes_widget.toggle_node_buttons(state)
-
-    def selection_names(self):
-        return self.__dataset_widget.selection_names()
 
     # QGIS layers
     # -----------
@@ -155,7 +138,6 @@ class RibasimWidget(QWidget):
         self,
         layer: QgsVectorLayer,
         destination: str,
-        suppress: bool | None = None,
         on_top: bool = False,
         labels: QgsAbstractVectorLayerLabeling | None = None,
     ) -> QgsMapLayer | None:
@@ -168,10 +150,6 @@ class RibasimWidget(QWidget):
             QGIS map layer, raster or vector layer
         destination:
             Legend group
-        suppress:
-            optional, bool. Default value is None.
-            This controls whether attribute form popup is suppressed or not.
-            Only relevant for vector (input) layers.
         on_top: optional, bool. Default value is False.
             Whether to place the layer on top in the destination legend group.
             Handy for transparent layers such as contours.
@@ -189,14 +167,6 @@ class RibasimWidget(QWidget):
         assert project is not None
         maplayer = cast(QgsVectorLayer, project.addMapLayer(layer, add_to_legend))
         assert maplayer is not None
-        if suppress is not None:
-            config = maplayer.editFormConfig()
-            config.setSuppress(
-                Qgis.AttributeFormSuppression.On
-                if suppress
-                else Qgis.AttributeFormSuppression.Default
-            )
-            maplayer.setEditFormConfig(config)
         if labels is not None:
             layer.setLabeling(labels)
             layer.setLabelsEnabled(True)

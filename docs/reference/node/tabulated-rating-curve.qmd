@@ -1,5 +1,8 @@
 ---
 title: "TabulatedRatingCurve"
+engine: julia
+julia:
+  exeflags: ["--check-bounds=yes"]
 ---
 
 A TabulatedRatingCurve determines outflow from a Basin by looking up the flow rate that corresponds to the current upstream level from a rating curve.
