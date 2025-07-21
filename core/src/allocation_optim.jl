@@ -670,7 +670,7 @@ function warm_start!(
                 storage[(node_id, :end)],
                 JuMP.value(storage[(node_id, :end)]),
             )
-            JuMP.set_start_value(level[node_id], JuMP.value(level[(node_id, :end)]))
+            JuMP.set_start_value(level[node_id], JuMP.value(level[node_id]))
         end
 
         # Assume no flow change with respect to the previous optimization
