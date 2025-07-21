@@ -18,7 +18,7 @@
         NodeID(:Basin, 2, p_independent),
     )] = flow_boundary_flow * model.config.allocation.timestep
 
-    Ribasim.update_allocation!(model.integrator)
+    Ribasim.update_allocation!(model)
 
     flow = allocation_model.problem[:flow]
 
@@ -146,7 +146,7 @@ end
     @test ispath(toml_path)
     model = Ribasim.Model(toml_path)
 
-    (; integrator) = model
+    (; integrator, config) = model
     (; p) = integrator
     (; p_independent) = p
     (; allocation, user_demand, graph, basin) = p_independent
@@ -158,7 +158,7 @@ end
         Ribasim.reset_goal_programming!(allocation_model, p_independent)
         Ribasim.prepare_demand_collection!(allocation_model, p_independent)
         for objective in allocation_model.objectives
-            Ribasim.optimize_for_objective!(allocation_model, integrator, objective)
+            Ribasim.optimize_for_objective!(allocation_model, integrator, objective, config)
         end
     end
 
@@ -744,4 +744,38 @@ end
     @test_throws Exception test_extrapolation(only(level_demand.max_level))
     @test_throws Exception test_extrapolation(only(flow_demand.demand_itp))
     @test_throws Exception test_extrapolation.(only(user_demand.demand_itp))
+end
+
+@testitem "infeasibility analysis" begin
+    using Logging
+    using JuMP: name
+
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/invalid_infeasible/ribasim.toml")
+    @test ispath(toml_path)
+
+    logger = TestLogger()
+    with_logger(logger) do
+        @test_throws "Allocation optimization for subnetwork 1, objective of type source_priorities at t = 0.0 s is infeasible" Ribasim.run(
+            toml_path,
+        )
+    end
+
+    @test logger.logs[5].level == Error
+    @test logger.logs[5].message == "Set of incompatible constraints found"
+    @test name.(logger.logs[5].kwargs[:constraints]) ==
+          ["volume_conservation[Basin #1]", "linear_resistance[LinearResistance #2]"]
+
+    @test logger.logs[6].level == Error
+    @test logger.logs[6].message == "Variables found which are not in any constraint."
+    @test name.(logger.logs[6].kwargs[:variables]) == ["target_fraction"]
+
+    @test ispath(
+        @__DIR__,
+        "../../generated_testmodels/invalid_infeasible/results/allocation_analysis_infeasibility.log",
+    )
+    @test ispath(
+        @__DIR__,
+        "../../generated_testmodels/invalid_infeasible/results/allocation_analysis_scaling.log",
+    )
 end

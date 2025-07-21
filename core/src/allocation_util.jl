@@ -75,7 +75,7 @@ end
 
 function get_level(problem::JuMP.Model, node_id::NodeID)
     if node_id.type == NodeType.Basin
-        problem[:basin_level][(node_id, :end)]
+        problem[:basin_level][node_id]
     else
         problem[:boundary_level][node_id]
     end
@@ -230,117 +230,111 @@ function get_low_storage_factor(problem::JuMP.Model, node_id::NodeID)
     end
 end
 
-"""
-    Each conservation equation around on a node is relaxed by introducing a slack variable.
-    The slack variable is penalized in the objective function.
-
-    returns a dictionary mapping each relaxed constraint to its corresponding slack variable.
-"""
-function relax_problem!(problem::JuMP.Model)::Dict{JuMP.ConstraintRef, JuMP.AffExpr}
-    # Restore constraint names in relaxed problem
-    constraint_to_penalty = Dict{JuMP.ConstraintRef, Float64}()
-
-    for constraint in
-        JuMP.all_constraints(problem; include_variable_in_set_constraints = true)
-        if startswith(JuMP.name(constraint), "volume_conservation") ||
-           startswith(JuMP.name(constraint), "flow_conservation")
-            constraint_to_penalty[constraint] = 1
-        end
-    end
-
-    JuMP.@objective(problem, Min, 0)
-    return JuMP.relax_with_penalty!(problem, constraint_to_penalty)
-end
-
-"""
- logs:
-    - all constraints that are violated by a non-zero slack variable.
-    - all variables in the violated constraint with their values and bounds.
-    - all other (unviolated) constraints on the variables in the violated constraint.
- """
-function report_cause_of_infeasibility(
-    constraint_to_slack_map::Dict{JuMP.ConstraintRef, JuMP.AffExpr},
+function analyze_infeasibility(
+    allocation_model::AllocationModel,
     objective::AllocationObjective,
-    problem::JuMP.Model,
-    subnetwork_id::Int32,
     t::Float64,
-)
-    termination_status = JuMP.termination_status(problem)
-    if JuMP.termination_status(problem) != JuMP.OPTIMAL
-        error(
-            "Allocation optimization for subnetwork $subnetwork_id, $objective at t = $t s is infeasible, but attempting to locate the infeasible constraints yielded the termination status $termination_status.",
-        )
+    config::Config,
+)::Nothing
+    (; problem, subnetwork_id) = allocation_model
+
+    log_path = results_path(config, RESULTS_FILENAME.allocation_analysis_infeasibility)
+    @debug "Running allocation infeasibility analysis for $subnetwork_id, $objective at t = $t, for full summary see $log_path."
+
+    # Perform infeasibility analysis
+    data_infeasibility = MathOptAnalyzer.analyze(
+        MathOptAnalyzer.Infeasibility.Analyzer(),
+        problem;
+        optimizer = get_optimizer(),
+    )
+
+    # Write infeasibility analysis summary to file
+    open(log_path, "w") do io
+        buffer = IOBuffer()
+        MathOptAnalyzer.summarize(buffer, data_infeasibility; model = problem)
+        write(io, take!(buffer) |> String)
     end
 
-    nonzero_slack_count = 0
-    for (constraint, slack_var) in constraint_to_slack_map
-        constraint_expression = JuMP.constraint_object(constraint).func
-        # If a slack variable is non-zero, it means that the constraint is violated.
-        if !iszero(JuMP.value(slack_var))
-            nonzero_slack_count += 1
+    # Parse irreducible infeasible constraint sets for modeller readable logging
+    violated_constraints =
+        constraint_ref_from_index.(
+            problem,
+            reduce(vcat, getfield.(data_infeasibility.iis, :constraint)),
+        )
+    constraint_to_penalty = Dict(violated_constraints .=> 1.0)
+    JuMP.@objective(problem, Min, 0)
+    constraint_to_slack = JuMP.relax_with_penalty!(problem, constraint_to_penalty)
+    JuMP.optimize!(problem)
 
-            @info "infeasible constraint: $constraint"
-            @info " ______________________________________________________________________________________________"
-
-            expr = JuMP.constraint_object(constraint).func
-            @info "constraint is violated by: $(JuMP.value(slack_var))"
-            log_constraint_variable_values(constraint)
-
-            # for all variables in the violated constraint, check if there are other constraints on them
-            variables = if isa(constraint_expression, JuMP.GenericAffExpr)
-                [(var, coef) for (var, coef) in constraint_expression.terms]
-            else
-                [(constraint_expression, 1.0)]
-            end
-
-            for (variable, _) in variables
-                if JuMP.name(variable) == ""
-                    continue
-                end
-
-                for other_constraint in JuMP.all_constraints(
-                    problem;
-                    include_variable_in_set_constraints = true,
-                )
-                    other_expr = JuMP.constraint_object(other_constraint).func
-                    other_variables = if isa(other_expr, JuMP.GenericAffExpr)
-                        [(var, coef) for (var, coef) in other_expr.terms]
-                    else
-                        [(other_expr, 1.0)]
-                    end
-
-                    for (other_variable, _) in other_variables
-                        if variable == other_variable && other_constraint != constraint
-                            @info "possible conflicting constraints: $other_constraint"
-                            log_constraint_variable_values(other_constraint)
-                        end
-                    end
-                end
+    for irreducible_infeasible_subset in data_infeasibility.iis
+        constraint_violations = Dict{JuMP.ConstraintRef, Float64}()
+        for constraint_index in irreducible_infeasible_subset.constraint
+            constraint_ref = constraint_ref_from_index(problem, constraint_index)
+            if !isempty(JuMP.name(constraint_ref))
+                constraint_violations[constraint_ref] =
+                    JuMP.value(constraint_to_slack[constraint_ref])
             end
         end
+        @error "Set of incompatible constraints found" constraint_violations
     end
-
-    objective_value = JuMP.objective_value(problem)
-    error(
-        "Allocation optimization for subnetwork $subnetwork_id, $objective at t = $t s is infeasible (badness = $objective_value)",
-    )
+    return nothing
 end
 
-"""
-    log the values of all variables in a constraint, including their bounds.
-"""
-function log_constraint_variable_values(constraint::JuMP.ConstraintRef)
-    expr = JuMP.constraint_object(constraint).func
-    for (v, _) in expr.terms
-        name = JuMP.name(v)
-        if name == ""
-            name = string(v)
-        end
-        value = JuMP.value(v)
-        lb = JuMP.has_lower_bound(v) ? JuMP.lower_bound(v) : "-Inf"
-        ub = JuMP.has_upper_bound(v) ? JuMP.upper_bound(v) : "Inf"
-        @info "\t$name ($lb, $ub) = $value"
+function analyze_scaling(
+    allocation_model::AllocationModel,
+    objective::AllocationObjective,
+    t::Float64,
+    config::Config,
+)::Nothing
+    (; problem, subnetwork_id) = allocation_model
+
+    log_path = results_path(config, RESULTS_FILENAME.allocation_analysis_scaling)
+    @debug "Running allocation numerics analysis for $subnetwork_id, $objective at t = $t, for full summary see $file_name."
+
+    # Perform numerics analysis
+    data_numerical = MathOptAnalyzer.analyze(
+        MathOptAnalyzer.Numerical.Analyzer(),
+        problem;
+        threshold_small = JuMP.get_attribute(problem, "small_matrix_value"),
+        threshold_large = JuMP.get_attribute(problem, "large_matrix_value"),
+    )
+
+    # Write numerics analysis summary to file
+    open(log_path, "w") do io
+        buffer = IOBuffer()
+        MathOptAnalyzer.summarize(buffer, data_numerical; model = problem)
+        write(io, take!(buffer) |> String)
     end
+
+    # Parse variables that do not appear in any constraint for modeller readable logging
+    if !isempty(data_numerical.variables_not_in_constraints)
+        variables = JuMP.VariableRef[]
+        for variable in data_numerical.variables_not_in_constraints
+            variable_ref = variable_ref_from_index(problem, variable.ref)
+            push!(variables, variable_ref)
+        end
+        @error "Variables found which are not in any constraint." variables
+    end
+
+    # Parse small matrix coefficients for modeller readable logging
+    if !isempty(data_numerical.matrix_small)
+        for data in data_numerical.matrix_small
+            constraint_name = JuMP.name(constraint_ref_from_index(problem, data.ref))
+            variable = variable_ref_from_index(problem, data.variable)
+            @error "Too small coefficient found" constraint_name variable data.coefficient
+        end
+    end
+
+    # Parse large matrix coefficients for modeller readable logging
+    if !isempty(data_numerical.matrix_large)
+        for data in data_numerical.matrix_large
+            constraint_name = JuMP.name(constraint_ref_from_index(problem, data.ref))
+            variable = variable_ref_from_index(problem, data.variable)
+            @error "Too large coefficient found" constraint_name variable data.coefficient
+        end
+    end
+
+    return nothing
 end
 
 function get_optimizer()
@@ -376,4 +370,21 @@ function ScalingFactors(
         storage = mean_half_storage,
         flow = mean_half_storage / Δt_allocation,
     )
+end
+
+function constraint_ref_from_index(problem::JuMP.Model, constraint_index)
+    for other_constraint in
+        JuMP.all_constraints(problem; include_variable_in_set_constraints = true)
+        if JuMP.optimizer_index(other_constraint) == constraint_index
+            return other_constraint
+        end
+    end
+end
+
+function variable_ref_from_index(problem::JuMP.Model, variable_index)
+    for other_variable in JuMP.all_variables(problem)
+        if JuMP.optimizer_index(other_variable) == variable_index
+            return other_variable
+        end
+    end
 end
