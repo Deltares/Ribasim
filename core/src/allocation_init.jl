@@ -43,6 +43,8 @@ function make_source_priority_objective(
         (; source_priority) = graph[node_id]
         if !iszero(source_priority)
             for downstream_id in outflow_ids(graph, node_id)
+                # Implements: minimize ∑(F_ij / source_priority_i) for source nodes
+                # Lower source_priority values get higher preference (minimized first)
                 JuMP.add_to_expression!(
                     source_priority_objective.expression,
                     flow[(node_id, downstream_id)] / source_priority,
@@ -245,6 +247,8 @@ function add_conservation!(
     add_flow_conservation!(allocation_model, tabulated_rating_curve, graph)
 
     # Define constraints: Basin storage change (water balance)
+    # Implements: S_end - S_start = Δt × (forcing + inflow - outflow)
+    # Where forcing includes precipitation, evaporation, infiltration, drainage
     storage = problem[:basin_storage]
     forcing = problem[:basin_forcing]
     flow = problem[:flow]
