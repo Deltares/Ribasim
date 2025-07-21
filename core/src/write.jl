@@ -72,6 +72,7 @@ const RESULTS_FILENAME = (
     allocation_flow = "allocation_flow.arrow",
     allocation_analysis_infeasibility = "allocation_analysis_infeasibility.log",
     allocation_analysis_scaling = "allocation_analysis_scaling.log",
+    allocation_infeasible_problem = "allocation_infeasible_problem.lp",
     subgrid_level = "subgrid_level.arrow",
     solver_stats = "solver_stats.arrow",
 )
