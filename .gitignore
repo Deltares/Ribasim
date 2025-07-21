@@ -160,3 +160,5 @@ playground/output
 # https://github.com/Deltares/Ribasim/issues/1652
 ribasim_qgis/tests/data/database.gpkg
 ribasim_qgis/core/styles
+
+pyjuliapkg/

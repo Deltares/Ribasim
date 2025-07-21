@@ -1,7 +1,7 @@
 ---
 title: Model concept
 ---
-A brief summary of the concept is given in the [introduction](concept.qmd#sec-concept).
+A brief summary of the concept is given in the [introduction](/concept/concept.qmd#sec-concept).
 As indicated, the model concept is organized in three layers:
 
 - a physical layer representing water bodies and associated infrastructure,
@@ -28,7 +28,7 @@ $$
 
 We don't use these equations directly.
 Rather, we use an equivalent formulation where solve for the cumulative flows instead of the Basin storages.
-For more details on this see [Equations](equations.qmd).
+For more details on this see [Equations](/concept/equations.qmd).
 
 ## Time
 

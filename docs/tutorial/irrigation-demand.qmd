@@ -3,6 +3,10 @@ title: Irrigation demand
 jupyter: python3
 ---
 
+```{python}
+#| include: false
+%run ../run_ribasim.py
+```
 
 ```{python}
 from pathlib import Path
@@ -192,17 +196,7 @@ model.plot();
 
 ```{python}
 #| include: false
-from subprocess import run
-
-run(
-    [
-        "julia",
-        "--project=../../core",
-        "--eval",
-        f'using Ribasim; Ribasim.main("{toml_path.as_posix()}")',
-    ],
-    check=True,
-)
+run_ribasim(toml_path)
 ```
 
 ### Plot and compare the Basin results

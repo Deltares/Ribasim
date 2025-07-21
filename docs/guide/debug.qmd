@@ -15,7 +15,7 @@ When your model is slow, it's often only a handful of nodes that are hard to sol
 └   ManningResistance #591558 = 0.003284110004804508
 ```
 
-It's best to inspect these nodes, and try to adjust the parametrization, or merge smaller nodes. You can find the convergence measure per node over time in the `flow.arrow` and `basin.arrow` [output files](reference/usage.qmd#sec-results).
+It's best to inspect these nodes, and try to adjust the parametrization, or merge smaller nodes. You can find the convergence measure per node over time in the `flow.arrow` and `basin.arrow` [output files](/reference/usage.qmd#sec-results).
 
 To gain further insight into model performance, one can inspect the `solver_stats.arrow` output file, which gives the number of computations, number of rejected and accepted solutions, and the size of each calculation timestep.
 
@@ -26,7 +26,7 @@ When your model exits with a message like so:
 ┌ Error: The model exited at model time 2024-01-27T14:46:17.791 with return code Unstable. See https://docs.sciml.ai/DiffEqDocs/stable/basics/solution/#retcodes
 ```
 
-it's best to rerun the model with `saveat = 0` in the [solver](reference/usage.qmd#sec-solver-settings) settings. The model might then instead exit with
+it's best to rerun the model with `saveat = 0` in the [solver](/reference/usage.qmd#sec-solver-settings) settings. The model might then instead exit with
 
 ```julia
 ┌ Error: Too large water balance error

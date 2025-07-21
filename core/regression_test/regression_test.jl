@@ -37,8 +37,8 @@
                 @testset "Results values" begin
                     @test basin.storage[1] ≈ 1.0f0
                     @test basin.level[1] ≈ 0.044711584f0
-                    @test basin.storage[end] ≈ 16.530443267f0 atol = 0.02
-                    @test basin.level[end] ≈ 0.181817438f0 atol = 1e-4
+                    @test basin.storage[end] ≈ 62.2290641115f0 atol = 0.02
+                    @test basin.level[end] ≈ 0.352778f0 atol = 1e-4
                     @test flow.flow_rate[1] ≈ basin.outflow_rate[1]
                     @test all(q -> abs(q) < 1e-7, basin.balance_error)
                     @test all(err -> abs(err) < 0.01, basin.relative_error)

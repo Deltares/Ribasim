@@ -224,7 +224,7 @@ At priorities where there is no flow demand, flow can go freely trough the node.
 
 The optimization objective function is updated based on the new demands and the given priority.
 
-If a solution is found by the solver, the allocation result will be updated. And it will be [saved](allocation.qmd#output-data), so the [physical layer](allocation.qmd#communicating-to-the-physical-layer) can make use of it.
+If a solution is found by the solver, the allocation result will be updated. And it will be [saved](/dev/allocation.qmd#output-data), so the [physical layer](/dev/allocation.qmd#communicating-to-the-physical-layer) can make use of it.
 
 Lastly, capacities and demands are updated, as shown below:
 

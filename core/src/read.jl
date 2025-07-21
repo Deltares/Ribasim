@@ -968,7 +968,7 @@ function continuous_control_functions(db, config, ids)
     errors = false
     # Parse the function table
     # Create linear interpolation objects out of the provided functions
-    functions = ScalarSmoothedLinearInterpolation[]
+    functions = ScalarPCHIPInterpolation[]
     controlled_variables = String[]
 
     # Loop over the IDs of the ContinuousControl nodes
@@ -987,9 +987,20 @@ function continuous_control_functions(db, config, ids)
         else
             push!(controlled_variables, only(unique_controlled_variable))
         end
-        function_itp = SmoothedLinearInterpolation(
-            function_rows.output,
-            function_rows.input;
+
+        input = collect(function_rows.input)
+        output = collect(function_rows.output)
+
+        # PCHIPInterpolation cannot handle having only 2 data points:
+        # https://github.com/SciML/DataInterpolations.jl/issues/446
+        if length(function_rows) == 2
+            insert!(input, 2, sum(input) / 2)
+            insert!(output, 2, sum(output) / 2)
+        end
+
+        function_itp = PCHIPInterpolation(
+            output,
+            input;
             extrapolation = Linear,
             cache_parameters = true,
         )

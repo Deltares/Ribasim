@@ -3,6 +3,10 @@ title: Reservoir
 jupyter: python3
 ---
 
+```{python}
+#| include: false
+%run ../run_ribasim.py
+```
 
 ```{python}
 from pathlib import Path
@@ -179,7 +183,6 @@ model.plot();
 ```{python}
 toml_path = base_dir / "Crystal-3/ribasim.toml"
 model.write(toml_path)
-cli_path = "ribasim"
 ```
 
 ### Adjust the code
@@ -187,17 +190,7 @@ Adjust the naming of the Basin in the dictionary mapping and the saving file sho
 
 ```{python}
 #| include: false
-from subprocess import run
-
-run(
-    [
-        "julia",
-        "--project=../../core",
-        "--eval",
-        f'using Ribasim; Ribasim.main("{toml_path.as_posix()}")',
-    ],
-    check=True,
-)
+run_ribasim(toml_path)
 ```
 
 ## Plot reservoir storage and level

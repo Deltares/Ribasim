@@ -166,15 +166,6 @@ const ScalarLinearInterpolation = LinearInterpolation{
     Float64,
 }
 
-"Smoothed linear interpolation from a Float64 to a Float64"
-const ScalarSmoothedLinearInterpolation = SmoothedLinearInterpolation{
-    Vector{Float64},
-    Vector{Float64},
-    Nothing,
-    Vector{Float64},
-    Float64,
-}
-
 "SmoothedConstantInterpolation from a Float64 to a Float64"
 const ScalarBlockInterpolation = SmoothedConstantInterpolation{
     Vector{Float64},
@@ -183,6 +174,16 @@ const ScalarBlockInterpolation = SmoothedConstantInterpolation{
     Vector{Float64},
     Vector{Float64},
     Float64,
+    Float64,
+}
+
+"PCHIPInterpolation (a special type of CubicHermiteSpline) from a Float64 to a Float64"
+const ScalarPCHIPInterpolation = CubicHermiteSpline{
+    Vector{Float64},
+    Vector{Float64},
+    Vector{Float64},
+    Vector{Float64},
+    Vector{Float64},
     Float64,
 }
 
@@ -532,7 +533,7 @@ control_mapping: dictionary from (node_id, control_state) to Q(h) and/or active 
     outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     active::Vector{Bool} = ones(Bool, length(node_id))
     max_downstream_level::Vector{Float64} = fill(Inf, length(node_id))
-    interpolations::Vector{ScalarLinearInterpolation} = ScalarLinearInterpolation[]
+    interpolations::Vector{ScalarPCHIPInterpolation} = ScalarLinearInterpolation[]
     current_interpolation_index::Vector{IndexLookup} = IndexLookup[]
     control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate} =
         Dict{Tuple{NodeID, String}, ControlStateUpdate}()
@@ -879,7 +880,7 @@ end
     compound_variable::Vector{CompoundVariable}
     controlled_variable::Vector{String}
     target_ref::Vector{CacheRef} = Vector{CacheRef}(undef, length(node_id))
-    func::Vector{ScalarSmoothedLinearInterpolation}
+    func::Vector{ScalarPCHIPInterpolation}
 end
 
 """

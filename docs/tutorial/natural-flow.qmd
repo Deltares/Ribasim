@@ -3,6 +3,10 @@ title: Getting started
 jupyter: python3
 ---
 
+```{python}
+#| include: false
+%run ../run_ribasim.py
+```
 
 # Introduction
 Welcome to Ribasim!
@@ -238,17 +242,7 @@ After running `model.write` a subfolder `Crystal-1` is created, which contains t
 
 ```{python}
 #| include: false
-from subprocess import run
-
-run(
-    [
-        "julia",
-        "--project=../../core",
-        "--eval",
-        f'using Ribasim; Ribasim.main("{toml_path.as_posix()}")',
-    ],
-    check=True,
-)
+run_ribasim(toml_path)
 ```
 
 Now run the model. You can open a terminal and run it from there. For example:
