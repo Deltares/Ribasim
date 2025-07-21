@@ -1293,8 +1293,8 @@ function LevelDemand(db::DB, config::Config, graph::MetaGraph)
     errors = false
     for id in node_id
         ts = invalid_nested_interpolation_times(
-            level_demand.min_level[node_id.idx];
-            interpolations_max = level_demand.max_level[node_id.idx],
+            level_demand.min_level[id.idx];
+            interpolations_max = level_demand.max_level[id.idx],
         )
 
         if !isempty(ts)

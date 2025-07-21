@@ -495,26 +495,24 @@ function update_allocated_values!(
                 scaling.storage # (scaling.storage * m^3)
 
             # See whether new storage has been allocated to the
-            # TODO: Same as above
             allocated_storage_in_prev = JuMP.value(basin_allocated_in[node_id])
             allocated_storage_in_priority =
-                min(Δstorage, target_storage_min - storage_start) -
+                clamp(Δstorage, 0, target_storage_min - storage_start) -
                 allocated_storage_in_prev
-
             JuMP.fix(
                 basin_allocated_in[node_id],
                 allocated_storage_in_prev + allocated_storage_in_priority,
             )
 
             # See whether removing storage has been 'allocated' to the Basin
-            # storage_demand_out = storage_start - target_storage_max
-            # allocated_storage_out =
-            #     (Δstorage < 0) && (storage_demand_out > 0) ?
-            #     min(-Δstorage, storage_demand_out) : 0.0 # (scaling.storage * m^3)
-            # allocated_storage_out_prev = JuMP.value(basin_allocated_out[node_id])
-            # if allocated_storage_out > allocated_storage_out_prev
-            #     JuMP.fix(basin_allocated_out[node_id], allocated_storage_out)
-            # end
+            allocated_storage_out_prev = JuMP.value(basin_allocated_out[node_id])
+            allocated_storage_out_priority =
+                clamp(-Δstorage, 0, storage_start - target_storage_max) -
+                allocated_storage_out_prev
+            JuMP.fix(
+                basin_allocated_out[node_id],
+                allocated_storage_out_prev + allocated_storage_out_priority,
+            )
 
             # Update allocated values for output
             level_demand.storage_allocated[node_id][demand_priority_idx] =
