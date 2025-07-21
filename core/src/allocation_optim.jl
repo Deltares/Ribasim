@@ -676,7 +676,6 @@ function warm_start!(
         end
 
         # Assume no flow change with respect to the previous optimization
-        # Assume no flow
         for link in only(flow.axes)
             JuMP.set_start_value(flow[link], JuMP.value(flow[link]))
         end
