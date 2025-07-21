@@ -26,76 +26,9 @@ Before starting with data, perform the following tests to see if the plugin does
 
 - Open QGIS and ensure that the Ribasim plugin is installed and enabled.
 - Open the application via the Ribasim button on the QGIS toolbar: _Ribasim panel opens_.
-- _In the Model tab, the "Add to QGIS" and "Remove from Dataset" buttons are disabled_.
 - _In the Nodes tab, all buttons are disabled_.
 
 ❌ [Failing](https://github.com/Deltares/Ribasim/issues/1678)
-
-# New model tests
-
-## New and cancel
-
-- Open QGIS and ensure that the Ribasim plugin is installed and enabled.
-- Open the application via the Ribasim button on the QGIS toolbar: _Ribasim panel opens_.
-- Press the "New" button in the Model tab: _file navigation window pops up_.
-- Fill in a name.
-- Press "Cancel": _Ensure that no files are created in that location_.
-
-## New single model
-
-- Open QGIS and ensure that the Ribasim plugin is installed and enabled.
-- Open the application via the Ribasim button on the QGIS toolbar: _Ribasim panel opens_.
-- Press the "New" button in the Model tab: _file navigation window pops up_.
-- Fill in a name ("test1").
-- Press OK: _A TOML and database file are created on the given location_.
-- _The layers tab shows a group with a "Node" and "Link" layer, the canvas is empty._
-- _The Ribasim panel shows a Node and Link layer, the file path is set in the text field, all nodes buttons are enabled_.
-- Cleanup: Delete the created files from disk.
-
-## New model in same folder
-
-- Open QGIS and ensure that the Ribasim plugin is installed and enabled.
-- Open the application via the Ribasim button on the QGIS toolbar: _Ribasim panel opens_.
-- Press the "New" button in the Model tab: _file navigation window pops up_.
-- Fill in a name ("test1").
-- Press OK: _A TOML and database file are created on the given location_.
-- Press the "New" button in the Model tab: _file navigation window pops up_.
-- Fill in a name ("test2").
-- Press OK: _An error is given that the database.gpkg already exists, test2.toml is not written_.
-- Cleanup: Delete the created files from disk.
-
-❌ [Failing](https://github.com/Deltares/Ribasim/issues/1679)
-
-## New model with same name
-
-- Open QGIS and ensure that the Ribasim plugin is installed and enabled.
-- Open the application via the Ribasim button on the QGIS toolbar: _Ribasim panel opens_.
-- Press the "New" button in the Model tab: _file navigation window pops up_.
-- Fill in a name ("test1").
-- Press OK: _A TOML and database file are created on the given location_.
-- Open test1.toml in a text editor and write "EXTRA_LINE=true"
-- Press the "New" button in the Model tab: _file navigation window pops up_.
-- Fill in a name ("test1").
-- Press OK: _Shows a popup window to ask if you want to overwrite_.
-- Press Yes: _An error is given that the database.gpkg already exists, test1.toml is not overwritten (EXTRA_LINE=true) is still in test1.toml_.
-- Cleanup: Delete the created files from disk.
-
-Unsure if this is wanted behavior, as we said we wanted to overwrite the TOML file, and therefore also the database file.
-Perhaps we should create folders instead of TOML files only.
-
-❌ [Failing](https://github.com/Deltares/Ribasim/issues/1681)
-
-## New model and clean new project cleans Ribasim plugin
-
-- Open QGIS and ensure that the Ribasim plugin is installed and enabled.
-- Open the application via the Ribasim button on the QGIS toolbar: _Ribasim panel opens_.
-- Press the "New" button in the Model tab: _file navigation window pops up_.
-- Fill in a name ("test1").
-- Press OK: _A TOML and database file are created on the given location_.
-- Press "Project > New": _Popup asks to save the project_.
-- Press Discard: _Layers tab is emptied, Ribasim panel is emptied_.
-
-❌ [Failing](https://github.com/Deltares/Ribasim/issues/1682)
 
 # Model tab button interaction tests
 
@@ -111,31 +44,6 @@ Perhaps we should create folders instead of TOML files only.
 - In the Nodes tab press "Basin / profile": _A Basin / profile table layer is added to the last layer group only_.
 
 Intended behavior: The same model is loaded twice, but there is only a connection on the last loaded model when interacting with the plugin.
-
-## Add to QGIS button
-
-- Open QGIS and ensure that the Ribasim plugin is installed and enabled.
-- Open the application via the Ribasim button on the QGIS toolbar: _Ribasim panel opens_.
-- Press the "New" button in the Model tab: _file navigation window pops up_.
-- Fill in a name ("test1").
-- Press OK: _A TOML and database file are created on the given location_.
-- Press "Add to QGIS": _Nothing happens_.
-- Press the "Link" layer in the Model tab: _"Add to QGIS" button is disabled_.
-
-❌ [Failing](https://github.com/Deltares/Ribasim/issues/1683)
-
-## Remove from Dataset button
-
-- Open QGIS and ensure that the Ribasim plugin is installed and enabled.
-- Open the application via the Ribasim button on the QGIS toolbar: _Ribasim panel opens_.
-- Press the "New" button in the Model tab: _file navigation window pops up_.
-- Fill in a name ("test1").
-- Press OK: _A TOML and database file are created on the given location_.
-- Press the "Link" layer in the Model tab, press "Remove from Dataset": _Popup shows "Deleting: Link"_.
-- Press "Yes": "Link" layer is removed from Layers panel and from Model tab.
-
-Unsure if this is wanted behavior, it is now impossible to load the model afterwards because it no longer contains an Link layer.
-Perhaps better if we only allow removal of the optional tables. See this [bug report](https://github.com/Deltares/Ribasim/issues/1684).
 
 # Nodes tab button interaction tests
 
@@ -214,18 +122,6 @@ See [issue](https://github.com/Deltares/Ribasim/issues/1688#issuecomment-2265315
 - Select the node layer, and make a subselection of nodes on the map: _Nodes are highlighted in yellow, including their links_.
 - Open the Link attribute table: _The highlighted rows are those with a from/to node\_id that was selected_.
 - Open any non-spatial attribute table: _The highlighted rows are those with an node\_id that was selected_.
-
-
-# Tables tests
-
-## Edit tables with data
-TODO
-
-## Edit the type of a node
-TODO
-
-## Edit information in optional tables
-TODO
 
 # Result inspection tests
 

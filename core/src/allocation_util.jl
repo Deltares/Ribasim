@@ -189,7 +189,7 @@ function parse_profile(
     storage_to_level::AbstractInterpolation,
     level_to_area::AbstractInterpolation,
     lowest_level;
-    n_samples_per_segment = 10,
+    n_samples_per_segment = 100,
 )
     n_segments = length(storage_to_level.u) - 1
     samples_storage_node = zeros(n_samples_per_segment * n_segments + 1)
@@ -314,6 +314,13 @@ function report_cause_of_infeasibility(
     subnetwork_id::Int32,
     t::Float64,
 )
+    termination_status = JuMP.termination_status(problem)
+    if JuMP.termination_status(problem) != JuMP.OPTIMAL
+        error(
+            "Allocation optimization for subnetwork $subnetwork_id, $objective at t = $t s is infeasible, but attempting to locate the infeasible constraints yielded the termination status $termination_status.",
+        )
+    end
+
     nonzero_slack_count = 0
     for (constraint, slack_var) in constraint_to_slack_map
         constraint_expression = JuMP.constraint_object(constraint).func
@@ -361,8 +368,9 @@ function report_cause_of_infeasibility(
         end
     end
 
+    objective_value = JuMP.objective_value(problem)
     error(
-        "Allocation optimization for subnetwork $subnetwork_id, $objective at t = $t s is infeasible",
+        "Allocation optimization for subnetwork $subnetwork_id, $objective at t = $t s is infeasible (badness = $objective_value)",
     )
 end
 
@@ -389,8 +397,7 @@ function get_optimizer()
         "log_to_console" => false,
         "time_limit" => 60.0,
         "random_seed" => 0,
-        "primal_feasibility_tolerance" => 1e-5,
-        "dual_feasibility_tolerance" => 1e-5,
+        "small_matrix_value" => 1e-12,
     )
 end
 

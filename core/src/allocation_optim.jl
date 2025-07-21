@@ -704,6 +704,56 @@ function postprocess_objective!(
     return nothing
 end
 
+function warm_start!(
+    allocation_model::AllocationModel,
+    objective::AllocationObjective,
+    integrator::DEIntegrator,
+)::Nothing
+    (; objectives, problem) = allocation_model
+    (; current_level, current_storage) = integrator.p.state_time_dependent_cache
+
+    storage = problem[:basin_storage]
+    level = problem[:basin_level]
+    flow = problem[:flow]
+
+    # Whether this is the optimization for the first objective
+    first_opt = (objective === first(objectives))
+
+    if first_opt
+        # Set initial guess of the storages and levels at the end of the allocation time step
+        # to the storage and level values at the beginning of the allocation time step from
+        # the physical layer
+        for (node_id, when) in only(storage.axes)
+            when == :start && continue
+            JuMP.set_start_value(storage[(node_id, :end)], current_storage[node_id.idx])
+            JuMP.set_start_value(level[(node_id, :end)], current_level[node_id.idx])
+        end
+
+        # Assume no flow
+        for link in only(flow.axes)
+            JuMP.set_start_value(flow[link], 0.0)
+        end
+    else
+        # Set initial guess of the storages and levels at the end of the allocation time step
+        # to the results from the latest optimization
+        for (node_id, when) in only(storage.axes)
+            when == :start && continue
+            JuMP.set_start_value(
+                storage[(node_id, :end)],
+                JuMP.value(storage[(node_id, :end)]),
+            )
+            JuMP.set_start_value(level[(node_id, :end)], JuMP.value(level[(node_id, :end)]))
+        end
+
+        # Assume no flow change with respect to the previous optimization
+        for link in only(flow.axes)
+            JuMP.set_start_value(flow[link], JuMP.value(flow[link]))
+        end
+    end
+
+    return nothing
+end
+
 function optimize_for_objective!(
     allocation_model::AllocationModel,
     integrator::DEIntegrator,
@@ -717,6 +767,9 @@ function optimize_for_objective!(
 
     # Set the objective
     JuMP.@objective(problem, Min, objective.expression)
+
+    # Set the initial guess
+    warm_start!(allocation_model, objective, integrator)
 
     # Solve problem
     JuMP.optimize!(problem)

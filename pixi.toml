@@ -49,11 +49,11 @@ quarto-preview = { cmd = "quarto preview docs", depends-on = [
     "generate-testmodels",
 ] }
 quarto-check = { cmd = "quarto check all", depends-on = ["quartodoc-build"] }
-quarto-render = { cmd = "julia --project --check-bounds=yes --eval 'using Pkg; Pkg.build(\"IJulia\")' && quarto render docs --to html", depends-on = [
+quarto-render = { cmd = "PYTHON_JULIAPKG_PROJECT=$PIXI_PROJECT_ROOT quarto render docs", depends-on = [
     "quartodoc-build",
     "generate-testmodels",
     "initialize-julia",
-] }
+], env = { "PYTHON_JULIACALL_CHECK_BOUNDS" = "yes", "PYTHON_JULIACALL_HANDLE_SIGNALS" = "no", "PYTHON_JULIAPKG_OFFLINE" = "yes" } }
 docs = { depends-on = ["quarto-preview"] }
 # Lint
 mypy-ribasim-python = "mypy python/ribasim/ribasim"
@@ -237,6 +237,7 @@ pre-commit = "*"
 pyarrow = ">=17.0"
 pydantic = ">=2.0"
 pydantic-settings = "*"
+pyjuliacall = "*"
 pyogrio = ">=0.8"
 pyqt-stubs = "*"
 pytest = "*"

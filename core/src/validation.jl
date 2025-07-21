@@ -404,7 +404,7 @@ function valid_tabulated_curve_level(
             # for the complete timeseries this needs to hold
             for interpolation_index in index_lookup.u
                 qh = tabulated_rating_curve.interpolations[interpolation_index]
-                h_min = qh.t[1]
+                h_min = qh.t[2]
                 if h_min < basin_bottom_level
                     @error "Lowest level of $id is lower than bottom of upstream $id_in" h_min basin_bottom_level
                     errors = true
