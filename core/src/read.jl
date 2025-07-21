@@ -1601,7 +1601,7 @@ DateTime. This is used to convert between the solver's inner float time, and the
 datetime_since(t::Real, t0::DateTime)::DateTime = t0 + Millisecond(round(1000 * t))
 
 """
-    load_data(db::DB, config::Config, nodetype::Symbol, kind::Symbol)::Union{Table, Query, Nothing}
+    load_data(db::DB, config::Config, node_type::Symbol, table_name::Symbol)::Union{Table, Query, Nothing}
 
 Load data from Arrow files if available, otherwise the database.
 Returns either an `Arrow.Table`, `SQLite.Query` or `nothing` if the data is not present.
@@ -1609,20 +1609,18 @@ Returns either an `Arrow.Table`, `SQLite.Query` or `nothing` if the data is not 
 function load_data(
     db::DB,
     config::Config,
-    record::Type{<:Legolas.AbstractRecord},
+    node_type::Union{Symbol, Nothing},
+    table_name::Union{Symbol, Nothing},
 )::Union{Table, Query, Nothing}
     # TODO load_data doesn't need both config and db, use config to check which one is needed
 
-    schema = Legolas._schema_version_from_record_type(record)
-
-    node, kind = nodetype(schema)
-    path = if isnothing(kind)
+    path = if isnothing(table_name)
         nothing
     else
-        toml = getfield(config, :toml)
-        getfield(getfield(toml, snake_case(node)), kind)
+        (; toml) = config
+        getproperty(getproperty(toml, node_type), table_name)
     end
-    sqltable = tablename(schema)
+    sqltable = tablename(node_type, table_name)
 
     table = if !isnothing(path)
         table_path = input_path(config, path)
@@ -1646,12 +1644,14 @@ not found. This function validates the schema, and enforces the required sort or
 function load_structvector(
     db::DB,
     config::Config,
-    ::Type{T},
-)::StructVector{T} where {T <: AbstractRow}
-    table = load_data(db, config, T)
+    node_type::Symbol,
+    table_name::Symbol,
+)::StructVector
+    table = load_data(db, config, node_type, table_name)
 
     if table === nothing
-        return StructVector{T}(undef, 0)
+        # TODO replace isempty(table)
+        return nothing
     end
 
     nt = columntable(table)
@@ -1674,13 +1674,12 @@ function load_structvector(
         )
     end
 
-    table = StructVector{T}(nt)
-    sv = Legolas._schema_version_from_record_type(T)
-    tableschema = Tables.schema(table)
-    if declared(sv) && tableschema !== nothing
-        validate(tableschema, sv)
-    else
-        @warn "No (validation) schema declared for $T"
+    table = StructVector(nt)
+    schema = get_schema(node_type, table_name)
+    tables_schema = Tables.Schema(keys(schema), values(schema))
+    actual_schema = Tables.schema(table)
+    if declared(schema) && tables_schema !== nothing
+        validate(tables_schema, schema)
     end
 
     return sorted_table!(table)

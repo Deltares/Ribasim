@@ -13,7 +13,7 @@ using Configurations: Configurations, @option, from_toml, @type_alias
 using DataStructures: DefaultDict
 using Dates: DateTime
 using Logging: LogLevel, Debug, Info, Warn, Error
-using ..Ribasim: Ribasim, isnode, nodetype
+using ..Ribasim: Ribasim, nodetypes, schemas, camel_case, snake_case, tablename
 using OrdinaryDiffEqCore: OrdinaryDiffEqAlgorithm, OrdinaryDiffEqNewtonAdaptiveAlgorithm
 using OrdinaryDiffEqNonlinearSolve: NLNewton
 using OrdinaryDiffEqLowOrderRK: Euler, RK4
@@ -25,49 +25,12 @@ using LinearSolve: KLUFactorization
 
 export Config, Solver, Results, Logging, Toml
 export algorithm,
-    camel_case,
     get_ad_type,
-    snake_case,
     input_path,
     database_path,
     results_path,
     convert_saveat,
-    convert_dt,
-    nodetypes
-
-const schemas =
-    getfield.(
-        Ref(Ribasim),
-        filter!(x -> endswith(string(x), "SchemaVersion"), names(Ribasim; all = true)),
-    )
-
-# Find all nodetypes and possible nodekinds
-nodekinds = DefaultDict{Symbol, Vector{Symbol}}(() -> Symbol[])  # require lambda to avoid sharing
-nodeschemas = filter(isnode, schemas)
-for sv in nodeschemas
-    node, kind = nodetype(sv)
-    push!(nodekinds[node], kind)
-end
-# Terminal and Junction have no tables
-nodekinds[:Terminal] = Symbol[]
-nodekinds[:Junction] = Symbol[]
-
-"Convert a string from CamelCase to snake_case."
-function snake_case(str::AbstractString)::String
-    under_scored = replace(str, r"(?<!^)(?=[A-Z])" => "_")
-    return lowercase(under_scored)
-end
-
-snake_case(sym::Symbol)::Symbol = Symbol(snake_case(String(sym)))
-
-"Convert a string from snake_case to CamelCase."
-function camel_case(snake_case::AbstractString)::String
-    camel_case = replace(snake_case, r"_([a-z])" => s -> uppercase(s[2]))
-    camel_case = uppercase(first(camel_case)) * camel_case[2:end]
-    return camel_case
-end
-
-camel_case(sym::Symbol)::Symbol = Symbol(camel_case(String(sym)))
+    convert_dt
 
 """
 Add fieldnames with Union{String, Nothing} type to struct expression. Requires @option use before it.
@@ -76,7 +39,7 @@ macro addfields(typ::Expr, fieldnames)
     for fieldname in fieldnames
         push!(
             typ.args[3].args,
-            Expr(:(=), Expr(:(::), fieldname, Union{String, Nothing}), nothing),
+            :($(fieldname)::Union{String, Nothing} = nothing),
         )
     end
     return esc(typ)
@@ -86,11 +49,11 @@ end
 Add all TableOption subtypes as fields to struct expression. Requires @option use before it.
 """
 macro addnodetypes(typ::Expr)
-    for nodetype in nodetypes
-        node_type = snake_case(nodetype)
+    for node_type in nodetypes
+        T = camel_case(node_type)
         push!(
             typ.args[3].args,
-            Expr(:(=), Expr(:(::), node_type, node_type), Expr(:call, node_type)),
+            :($(node_type)::$(T) = $(T)()),
         )
     end
     return esc(typ)
@@ -98,11 +61,11 @@ end
 
 # Generate structs for each nodetype for use in Config
 abstract type TableOption end
-for (T, kinds) in pairs(nodekinds)
-    T = snake_case(T)
-    @eval @option @addfields struct $T <: TableOption end $kinds
+for (nodetype, tables) in pairs(schemas)
+    T = camel_case(nodetype)
+    tablenames = collect(keys(tables))
+    @eval @option @addfields struct $T <: TableOption end $tablenames
 end
-const nodetypes = collect(keys(nodekinds))
 
 @option struct Solver <: TableOption
     algorithm::String = "QNDF"

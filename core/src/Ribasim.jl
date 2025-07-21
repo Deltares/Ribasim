@@ -140,9 +140,6 @@ using Accessors: @set, @reset
 # Iteration utilities, used to partition and group tables.
 import IterTools
 
-# Define and validate the schemas of the input tables.
-using Legolas: Legolas, @schema, @version, validate, SchemaVersion, declared
-
 # Tables interface that works with either SQLite or Arrow tables.
 using Tables: Tables, AbstractRow, columntable
 

@@ -354,7 +354,7 @@ function get_all_demand_priorities(db::DB, config::Config;)::Vector{Int32}
         type = getfield(Ribasim, name)
         if !(
             (type isa DataType) &&
-            type <: Legolas.AbstractRecord &&
+            type <: AbstractRecord &&
             hasfield(type, :demand_priority)
         )
             continue
@@ -367,7 +367,7 @@ function get_all_demand_priorities(db::DB, config::Config;)::Vector{Int32}
             union!(demand_priorities, demand_priority_col)
         else
             is_valid = false
-            node, kind = nodetype(Legolas._schema_version_from_record_type(type))
+            node, kind = nodetype(_schema_version_from_record_type(type))
             table_name = "$node / $kind"
             @error "Missing demand_priority parameter(s) for a $table_name node in the allocation problem."
         end

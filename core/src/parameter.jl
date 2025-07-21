@@ -33,7 +33,7 @@ const RibasimCVectorType =
 
 # LinkType.flow and NodeType.FlowBoundary
 @enumx LinkType flow control none
-@eval @enumx NodeType $(config.nodetypes...)
+@eval @enumx NodeType $(nodetypes...)
 @enumx ContinuousControlType None Continuous PID
 @enumx Substance Continuity = 1 Initial = 2 LevelBoundary = 3 FlowBoundary = 4 UserDemand =
     5 Drainage = 6 Precipitation = 7 SurfaceRunoff = 8

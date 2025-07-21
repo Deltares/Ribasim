@@ -54,7 +54,6 @@ end
 
 @testitem "table sort" begin
     import Arrow
-    import Legolas
     using StructArrays: StructVector
     import SQLite
     using Tables: columntable
@@ -63,7 +62,7 @@ end
     function to_arrow_table(
         path,
         table::StructVector{T},
-    )::StructVector{T} where {T <: Legolas.AbstractRecord}
+    )::StructVector{T} where {T <: AbstractRecord}
         open(path; write = true) do io
             Arrow.write(io, table)
         end
