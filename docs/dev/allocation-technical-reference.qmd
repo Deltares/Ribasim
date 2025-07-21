@@ -51,7 +51,7 @@ function add_variables_flow!(
 )
     (; problem, capacity, subnetwork_id) = allocation_model
     (; graph) = p_independent
-    
+
     links = keys(capacity.data)
     problem[:flow] = JuMP.@variable(
         problem,
@@ -65,7 +65,7 @@ end
 
 The constant `MAX_ABS_FLOW = 5e5` corresponds to $F_\max$ in the mathematical formulation.
 
-### Basin Storage and Level Variables  
+### Basin Storage and Level Variables
 
 **Mathematical Definition:**
 For basins in the subnetwork, we define storage parameters ($\text{m}^3$):
@@ -80,14 +80,14 @@ $$L_b^\min \le \mathcal{L}^\text{end}_b \le L_b^\max, \quad b \in B_S$$
 # In allocation_init.jl - add_basin! function
 storage = problem[:basin_storage] = JuMP.@variable(
     problem,
-    0 <= basin_storage[index = indices] <= 
+    0 <= basin_storage[index = indices] <=
     storage_to_level[index[1].idx].t[end] / scaling.storage
 )
 
 level = problem[:basin_level] = JuMP.@variable(
     problem,
-    level_to_area[node_id.idx].t[1] <= 
-    basin_level[node_id = basin_ids_subnetwork] <= 
+    level_to_area[node_id.idx].t[1] <=
+    basin_level[node_id = basin_ids_subnetwork] <=
     level_to_area[node_id.idx].t[end]
 )
 ```
@@ -174,15 +174,15 @@ function add_constraints_conservation_basin!(
 )
     (; problem, subnetwork_id, Δt_allocation, scaling) = allocation_model
     (; graph) = p_independent
-    
+
     basin_ids = get_subnetwork_ids(graph, NodeType.Basin, subnetwork_id)
-    
+
     conservation_basin = problem[:conservation_basin] = JuMP.@constraint(
         problem,
         [node_id = basin_ids],
         # Storage change = Δt * (inflows - outflows + forcing)
-        problem[:basin_storage][(node_id, :end)] - 
-        problem[:basin_storage][(node_id, :start)] == 
+        problem[:basin_storage][(node_id, :end)] -
+        problem[:basin_storage][(node_id, :start)] ==
         Δt_allocation / scaling.storage * (
             # Horizontal forcing will be set later
             problem[:horizontal_forcing][node_id] +
@@ -192,7 +192,7 @@ function add_constraints_conservation_basin!(
                 for upstream_id in inflow_ids(graph, node_id)
                 if (upstream_id, node_id) in problem[:flow].axes[1]
             ]) -
-            # Sum of outflows  
+            # Sum of outflows
             variable_sum([
                 problem[:flow][(node_id, downstream_id)]
                 for downstream_id in outflow_ids(graph, node_id)
@@ -219,7 +219,7 @@ conservation_node = problem[:conservation_node] = JuMP.@constraint(
         problem[:flow][(upstream_id, node_id)]
         for upstream_id in inflow_ids(graph, node_id)
         if (upstream_id, node_id) in problem[:flow].axes[1]
-    ]) == 
+    ]) ==
     variable_sum([
         problem[:flow][(node_id, downstream_id)]
         for downstream_id in outflow_ids(graph, node_id)
@@ -258,15 +258,15 @@ During model initialization, variables and constraints are created with placehol
 function add_allocation_model!(allocation::Allocation, subnetwork_id::Int32, p::Parameters)
     # Create empty optimization problem
     problem = JuMP.Model(HiGHS.Optimizer)
-    
+
     # Add variables with initial bounds
     add_variables_flow!(allocation_model, p_independent)
     add_basin!(allocation_model, p_independent)
-    
+
     # Add constraints with placeholder values
     add_constraints_conservation_basin!(allocation_model, p_independent)
     add_constraints_capacity!(allocation_model, p_independent)
-    
+
     # Objective will be set during optimization
     problem[:objective] = JuMP.@expression(problem, 0.0)
 end
@@ -287,7 +287,7 @@ function set_simulation_data!(allocation_model::AllocationModel, p::Parameters, 
             JuMP.fix(storage[key], storage_now / scaling.storage; force = true)
         end
     end
-    
+
     # Update boundary flows from averaged physical flows
     for link in keys(cumulative_boundary_volume)
         JuMP.fix(
@@ -324,14 +324,14 @@ end
 JuMP.@constraint(problem, auxiliary_var in JuMP.SOS2(sos_weights))
 
 # Link storage to auxiliary variables
-JuMP.@constraint(problem, 
-    sum(aux_var * weight for (aux_var, weight) in sos_data) == 
+JuMP.@constraint(problem,
+    sum(aux_var * weight for (aux_var, weight) in sos_data) ==
     problem[:basin_storage][(node_id, :end)]
 )
 
-# Link level to auxiliary variables  
+# Link level to auxiliary variables
 JuMP.@constraint(problem,
-    sum(aux_var * storage_to_level[node_id.idx](weight) for (aux_var, weight) in sos_data) == 
+    sum(aux_var * storage_to_level[node_id.idx](weight) for (aux_var, weight) in sos_data) ==
     problem[:basin_level][node_id]
 )
 ```
@@ -350,7 +350,7 @@ function set_simulation_data!(allocation_model::AllocationModel, basin::Basin, p
     for basin_id in basin_ids_subnetwork
         forcing_volume = cumulative_forcing_volume[basin_id]
         average_forcing = forcing_volume / Δt_allocation
-        
+
         # Set the horizontal forcing constraint value
         JuMP.set_normalized_rhs(
             horizontal_forcing_constraint[basin_id],
@@ -375,14 +375,14 @@ $$d^p_i(t), \quad i \in U_S, p = 1,2,\ldots, p_{\max}$$
 function add_user_demand!(allocation_model::AllocationModel, user_demand::UserDemand, priority::Int32)
     for node_id in user_demand.node_id
         demand_value = user_demand.demand[node_id.idx](t, priority)
-        
+
         if demand_value > 0
             outflow_id = only(outflow_ids(graph, node_id))
             flow_var = problem[:flow][(node_id, outflow_id)]
-            
+
             # Add quadratic objective term
             add_objective_term!(allocation_model, flow_var, demand_value, priority)
-            
+
             # Handle return flow constraint
             return_factor = user_demand.return_factor[node_id.idx](t)
             if return_factor > 0
@@ -411,17 +411,17 @@ $$d^p_i = \max\left(0.0, \frac{s_{\min,i} - u_i(t)}{\Delta t_{\text{alloc}}} - \
 function add_level_demand!(allocation_model::AllocationModel, level_demand::LevelDemand, priority::Int32)
     for node_id in level_demand.node_id
         target_level = level_demand.min_level[node_id.idx](t, priority)
-        
+
         if !isnan(target_level)
             # Convert target level to target storage
             target_storage = interpolate_profile(storage_to_level[node_id.idx], target_level)
             current_storage = current_storage[node_id.idx]
-            
+
             # Calculate demand: (target - current) / Δt - forcing
             storage_deficit = target_storage - current_storage
             demand_volume = max(0.0, storage_deficit - forcing_volume)
             demand_flow = demand_volume / Δt_allocation
-            
+
             if demand_flow > 0
                 # Add to objective function
                 basin_inflow_var = problem[:basin_inflow][node_id]
@@ -445,12 +445,12 @@ $$d^p_i(t) = \begin{cases} 0 \text{ if } p \ne p_{\text{fd}} \\ d^{p_{\text{df}}
 function add_flow_demand!(allocation_model::AllocationModel, flow_demand::FlowDemand, priority::Int32)
     for node_id in flow_demand.node_id
         demand_value = flow_demand.demand[node_id.idx](t, priority)
-        
+
         if demand_value > 0
             # Flow demand uses buffer variables
             buffer_inflow_var = problem[:flow_buffer_inflow][node_id]
             add_objective_term!(allocation_model, buffer_inflow_var, demand_value, priority)
-            
+
             # At the demand priority, buffer can receive unlimited flow
             # At other priorities, buffer is constrained to 0
             if current_priority == priority
@@ -479,7 +479,7 @@ The allocation layer uses current physical state as input:
 # Mapping physical state to allocation variables
 function set_simulation_data!(allocation_model::AllocationModel, basin::Basin, p::Parameters)
     (; current_storage, current_level) = p.state_time_dependent_cache
-    
+
     # Map storage state
     for key in only(storage.axes)
         if key[2] == :start
@@ -508,11 +508,11 @@ function assign_allocations!(allocation_model::AllocationModel, p::Parameters, o
         for node_id in user_demand_node_ids
             outflow_id = only(outflow_ids(graph, node_id))
             allocated_flow = JuMP.value(problem[:flow][(node_id, outflow_id)])
-            
+
             # Update physical layer
             user_demand.allocated[node_id.idx] = allocated_flow
         end
-        
+
         # Update controlled structures
         for link in controlled_links
             optimized_flow = JuMP.value(problem[:flow][link])
@@ -568,7 +568,7 @@ end
 function debug_objective(allocation_model::AllocationModel, priority::Int32)
     objective_value = JuMP.objective_value(allocation_model.problem)
     @info "Priority $priority objective value: $objective_value"
-    
+
     # Check individual demand fulfillment
     for demand_node in demand_nodes
         demand_value = get_demand(demand_node, priority)
@@ -584,7 +584,7 @@ function verify_flow_conservation(allocation_model::AllocationModel)
         inflow_sum = sum(JuMP.value(flow[(upstream, node_id)]) for upstream in inflow_ids(node_id))
         outflow_sum = sum(JuMP.value(flow[(node_id, downstream)]) for downstream in outflow_ids(node_id))
         balance_error = abs(inflow_sum - outflow_sum)
-        
+
         if balance_error > 1e-6
             @warn "Flow conservation violated for $node_id: inflow=$inflow_sum, outflow=$outflow_sum"
         end
@@ -622,7 +622,7 @@ end
         allocation_model = create_test_allocation_model()
         add_constraints_conservation_basin!(allocation_model, p_independent)
         # Verify constraint structure
-        all(constraint -> JuMP.is_valid(allocation_model.problem, constraint), 
+        all(constraint -> JuMP.is_valid(allocation_model.problem, constraint),
             allocation_model.problem[:conservation_basin])
     end
 end
@@ -642,10 +642,10 @@ end
 @testset "Allocation Integration" begin
     model = create_test_ribasim_model()
     p = parameters(model)
-    
-    # Run allocation 
+
+    # Run allocation
     update_allocation!(p.allocation, p, u, t, du)
-    
+
     # Verify results
     @test all(allocated >= 0 for allocated in p.user_demand.allocated)
     @test sum(p.user_demand.allocated) <= available_water_capacity
