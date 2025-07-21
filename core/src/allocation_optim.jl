@@ -400,18 +400,13 @@ end
 
 function update_allocated_values!(
     allocation_model::AllocationModel,
-    p_independent::ParametersIndependent,
     objective::AllocationObjective,
+    user_demand::UserDemand,
 )::Nothing
     (; problem, scaling) = allocation_model
-    (; user_demand, flow_demand, level_demand, graph) = p_independent
-    (; demand_priority, demand_priority_idx) = objective
+    (; demand_priority_idx) = objective
 
     user_demand_allocated = problem[:user_demand_allocated]
-    flow_demand_allocated = problem[:flow_demand_allocated]
-    basin_allocated_in = problem[:basin_allocated_in]
-    basin_allocated_out = problem[:basin_allocated_out]
-    basin_storage = problem[:basin_storage]
     flow = problem[:flow]
 
     # Flow allocated to UserDemand nodes
@@ -435,6 +430,21 @@ function update_allocated_values!(
         end
     end
 
+    return nothing
+end
+
+function update_allocated_values!(
+    allocation_model::AllocationModel,
+    objective::AllocationObjective,
+    flow_demand::FlowDemand,
+    graph::MetaGraph,
+)::Nothing
+    (; problem) = allocation_model
+    (; demand_priority) = objective
+
+    flow_demand_allocated = problem[:flow_demand_allocated]
+    flow = problem[:flow]
+
     # Flow allocated to FlowDemand nodes
     for node_id in only(flow_demand_allocated.axes)
         has_demand = (flow_demand.demand_priority[node_id.idx] == demand_priority)
@@ -447,6 +457,21 @@ function update_allocated_values!(
             )
         end
     end
+    return nothing
+end
+
+function update_allocated_values!(
+    allocation_model::AllocationModel,
+    objective::AllocationObjective,
+    level_demand::LevelDemand,
+    graph::MetaGraph,
+)::Nothing
+    (; problem, scaling) = allocation_model
+    (; demand_priority_idx) = objective
+
+    basin_allocated_in = problem[:basin_allocated_in]
+    basin_allocated_out = problem[:basin_allocated_out]
+    basin_storage = problem[:basin_storage]
 
     # Storage allocated to Basins with LevelDemand
     for node_id in only(basin_allocated_in.axes)
@@ -465,34 +490,39 @@ function update_allocated_values!(
 
             # Get current target storages for this demand priority
             target_storage_min =
-                level_demand.target_storage_min[node_id][demand_priority_idx] # (m^3)
+                level_demand.target_storage_min[node_id][demand_priority_idx] /
+                scaling.storage # (scaling.storage * m^3)
             target_storage_max =
-                level_demand.target_storage_max[node_id][demand_priority_idx] # (m^3)
+                level_demand.target_storage_max[node_id][demand_priority_idx] /
+                scaling.storage # (scaling.storage * m^3)
 
-            # See whether new storage has been allocated to the Basin
-            Δstorage_demand_in = target_storage_min / scaling.storage - storage_start  # (scaling.storage * m^3)
-            allocated_storage_in =
-                (Δstorage > 0) && (storage_demand_in > 0) ?
-                min(Δstorage, Δstorage_demand_in) : 0.0 # (scaling.storage * m^3)
-            allocated_storage_in_prev = JuMP.value(basin_allocated_in[node_id]) # (scaling.storage * m^3)
-            if allocated_storage_in > allocated_storage_in_prev
-                JuMP.fix(basin_allocated_in[node_id], allocated_storage_in)
-            end
+            # See whether new storage has been allocated to the
+            # TODO: Same as above
+            allocated_storage_in_prev = JuMP.value(basin_allocated_in[node_id])
+            allocated_storage_in_priority =
+                min(Δstorage, target_storage_min - storage_start) -
+                allocated_storage_in_prev
+
+            JuMP.fix(
+                basin_allocated_in[node_id],
+                allocated_storage_in_prev + allocated_storage_in_priority,
+            )
 
             # See whether removing storage has been 'allocated' to the Basin
-            storage_demand_out = storage_start - target_storage_max / scaling.storage
-            allocated_storage_out =
-                (Δstorage < 0) && (storage_demand_out > 0) ?
-                min(-Δstorage, storage_demand_out) : 0.0 # (scaling.storage * m^3)
-            allocated_storage_out_prev = JuMP.value(basin_allocated_out[node_id])
-            if allocated_storage_out > allocated_storage_out_prev
-                JuMP.fix(basin_allocated_out[node_id], allocated_storage_out)
-            end
+            # storage_demand_out = storage_start - target_storage_max
+            # allocated_storage_out =
+            #     (Δstorage < 0) && (storage_demand_out > 0) ?
+            #     min(-Δstorage, storage_demand_out) : 0.0 # (scaling.storage * m^3)
+            # allocated_storage_out_prev = JuMP.value(basin_allocated_out[node_id])
+            # if allocated_storage_out > allocated_storage_out_prev
+            #     JuMP.fix(basin_allocated_out[node_id], allocated_storage_out)
+            # end
 
+            # Update allocated values for output
             level_demand.storage_allocated[node_id][demand_priority_idx] =
                 scaling.storage * (
-                    (allocated_storage_in - allocated_storage_in_prev) -
-                    (allocated_storage_out - allocated_storage_out_prev)
+                    (allocated_storage_in_priority - allocated_storage_in_prev) -
+                    (allocated_storage_out_priority - allocated_storage_out_prev)
                 )
         else
             level_demand.storage_allocated[node_id][demand_priority_idx] = 0.0
@@ -688,13 +718,15 @@ function postprocess_objective!(
     objective::AllocationObjective,
     t::Number,
 )::Nothing
-    (; p_independent) = p
+    (; user_demand, flow_demand, level_demand, graph) = p.p_independent
     (; subnetwork_id) = allocation_model
 
     if objective.type == AllocationObjectiveType.demand
         # Update allocation constraints so that the results of the optimization for this demand priority are retained
         # in subsequent optimizations
-        update_allocated_values!(allocation_model, p_independent, objective)
+        update_allocated_values!(allocation_model, objective, user_demand)
+        update_allocated_values!(allocation_model, objective, flow_demand, graph)
+        update_allocated_values!(allocation_model, objective, level_demand, graph)
 
         # Save the demands and allocated values for all demand nodes that have a demand of the current priority
         save_demands_and_allocations!(p, t, allocation_model, subnetwork_id, objective)
