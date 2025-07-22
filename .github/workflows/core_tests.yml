@@ -43,7 +43,6 @@ jobs:
       - name: Test Ribasim Core
         run: |
           pixi run test-ribasim-core-cov
-        continue-on-error: true
         id: julia-tests
       - name: Upload allocation debug files
         if: always()
