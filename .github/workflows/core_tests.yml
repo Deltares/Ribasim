@@ -53,7 +53,6 @@ jobs:
           path: |
             **/*allocation_infeasible_problem.lp
             **/*allocation_analysis_*.lp
-            core/test/*debug*.txt
           retention-days: 7
           if-no-files-found: ignore
       - uses: julia-actions/julia-processcoverage@v1

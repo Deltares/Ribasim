@@ -128,16 +128,15 @@ end
     @test ispath(toml_path)
 
     # Fails unpredictably on CI
-    #model = Ribasim.run(toml_path)
-    # success(model)
-    @test_throws Exception allocation_flow_table =
-        DataFrame(Ribasim.allocation_flow_table(model))
-    @test_throws Exception flow_table = DataFrame(Ribasim.flow_table(model))
+    model = Ribasim.run(toml_path)
+    @test success(model)
+    allocation_flow_table = DataFrame(Ribasim.allocation_flow_table(model))
+    flow_table = DataFrame(Ribasim.flow_table(model))
 
-    @test_throws Exception filter!(:link_id => ==(1), allocation_flow_table)
-    @test_throws Exception filter!(:link_id => ==(1), flow_table)
+    @test Exception filter!(:link_id => ==(1), allocation_flow_table)
+    @test Exception filter!(:link_id => ==(1), flow_table)
 
-    @test_throws Exception allocation_flow_table.flow_rate ≈ flow_table.flow_rate
+    @test allocation_flow_table.flow_rate ≈ flow_table.flow_rate rtol = 0.1
 end
 
 @testitem "Allocation Control" begin
