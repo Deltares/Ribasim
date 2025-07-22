@@ -133,8 +133,8 @@ end
     allocation_flow_table = DataFrame(Ribasim.allocation_flow_table(model))
     flow_table = DataFrame(Ribasim.flow_table(model))
 
-    @test Exception filter!(:link_id => ==(1), allocation_flow_table)
-    @test Exception filter!(:link_id => ==(1), flow_table)
+    filter!(:link_id => ==(1), allocation_flow_table)
+    filter!(:link_id => ==(1), flow_table)
 
     @test allocation_flow_table.flow_rate ≈ flow_table.flow_rate rtol = 0.1
 end
