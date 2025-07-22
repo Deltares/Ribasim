@@ -1571,3 +1571,42 @@ def invalid_infeasible_model() -> Model:
     )
 
     return model
+
+
+def drain_surplus_model() -> Model:
+    """Set up a model which activates an outlet to drain surplus water out of a Basin."""
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2020-02-01",
+        crs="EPSG:28992",
+        experimental=Experimental(allocation=True),
+    )
+
+    bsn = model.basin.add(
+        Node(1, Point(0, 0), subnetwork_id=2),
+        [basin.Profile(area=100.0, level=[0.0, 12.0]), basin.State(level=[10.0])],
+    )
+
+    lvl = model.level_demand.add(
+        Node(4, Point(0, 1), subnetwork_id=2),
+        [level_demand.Static(demand_priority=1, max_level=[5.0])],
+    )
+
+    out = model.outlet.add(
+        Node(2, Point(1, 0), subnetwork_id=2),
+        [
+            outlet.Static(
+                flow_rate=[0.0],
+                max_flow_rate=[1e-3],
+                control_state="Ribasim.allocation",
+            )
+        ],
+    )
+
+    trm = model.terminal.add(Node(3, Point(2, 0), subnetwork_id=2))
+
+    model.link.add(bsn, out)
+    model.link.add(out, trm)
+    model.link.add(lvl, bsn)
+
+    return model
