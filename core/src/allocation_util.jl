@@ -388,16 +388,6 @@ function analyze_scaling(
         write(io, take!(buffer) |> String)
     end
 
-    # Parse variables that do not appear in any constraint for modeller readable logging
-    if !isempty(data_numerical.variables_not_in_constraints)
-        variables = JuMP.VariableRef[]
-        for variable in data_numerical.variables_not_in_constraints
-            variable_ref = variable_ref_from_index(problem, variable.ref)
-            push!(variables, variable_ref)
-        end
-        @error "Variables found which are not in any constraint." variables
-    end
-
     # Parse small matrix coefficients for modeller readable logging
     if !isempty(data_numerical.matrix_small)
         for data in data_numerical.matrix_small
