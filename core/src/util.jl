@@ -1219,13 +1219,15 @@ function get_concentration_itp(
         ) for _ in node_id
     ]
 
-    for (id, cyclic_time) in zip(node_id, cyclic_times)
-        data_id = filter(row -> row.node_id == id.value, concentration_time)
-        for group in IterTools.groupby(row -> row.substance, data_id)
-            first_row = first(group)
-            substance_idx = find_index(Symbol(first_row.substance), substances)
-            concentration_itp[id.idx][substance_idx] =
-                filtered_constant_interpolation(group, :concentration, cyclic_time, config)
+    if concentration_time !== nothing
+        for (id, cyclic_time) in zip(node_id, cyclic_times)
+            data_id = filter(row -> row.node_id == id.value, concentration_time)
+            for group in IterTools.groupby(row -> row.substance, data_id)
+                first_row = first(group)
+                substance_idx = find_index(Symbol(first_row.substance), substances)
+                concentration_itp[id.idx][substance_idx] =
+                    filtered_constant_interpolation(group, :concentration, cyclic_time, config)
+            end
         end
     end
 

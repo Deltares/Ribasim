@@ -179,11 +179,11 @@ function parse_parameter!(
         end
     end
 
-    if !isnothing(static) && !isempty(static)
+    if static !== nothing
         static_groups = IterTools.groupby(row -> row.node_id, static)
         static_group, static_idx = iterate(static_groups)
     end
-    if !isnothing(time) && !isempty(time)
+    if time !== nothing
         time_groups = IterTools.groupby(row -> row.node_id, time)
         time_group, time_idx = iterate(time_groups)
     end
@@ -328,7 +328,7 @@ function LinearResistance(db, config, graph)
 
     linear_resistance = LinearResistance(; node_id)
 
-    initialize_control_mapping!(linear_resistance, static)
+    static === nothing || initialize_control_mapping!(linear_resistance, static)
     set_inoutflow_links!(linear_resistance, graph)
     errors = parse_parameter!(linear_resistance, config, :active; static, default = true)
     errors |= parse_parameter!(linear_resistance, config, :resistance; static)
@@ -466,7 +466,7 @@ function ManningResistance(db::DB, config::Config, graph::MetaGraph, basin::Basi
 
     manning_resistance = ManningResistance(; node_id)
 
-    initialize_control_mapping!(manning_resistance, static)
+    static === nothing || initialize_control_mapping!(manning_resistance, static)
     set_inoutflow_links!(manning_resistance, graph)
     errors = parse_parameter!(manning_resistance, config, :active; static, default = true)
     errors |= parse_parameter!(manning_resistance, config, :length; static)
@@ -557,7 +557,7 @@ function Pump(db::DB, config::Config, graph::MetaGraph)
 
     pump = Pump(; node_id)
 
-    initialize_control_mapping!(pump, static)
+    static === nothing || initialize_control_mapping!(pump, static)
     set_control_type!(pump, graph)
     set_inoutflow_links!(pump, graph)
 
@@ -647,7 +647,9 @@ function ConcentrationData(
     concentration_state = zeros(n_basin, n_substance)
     concentration_state[:, Substance.Continuity] .= 1.0
     concentration_state[:, Substance.Initial] .= 1.0
-    set_concentrations!(concentration_state, concentration_state_data, substances, node_id)
+    if concentration_state_data !== nothing
+        set_concentrations!(concentration_state, concentration_state_data, substances, node_id)
+    end
     mass = collect(eachrow(concentration_state))
 
     concentration_itp_drainage =
@@ -659,17 +661,19 @@ function ConcentrationData(
         initialize_concentration_itp(n_substance, Substance.SurfaceRunoff) for _ in node_id
     ]
 
-    for (id, cyclic_time) in zip(node_id, cyclic_times)
-        data_id = filter(row -> row.node_id == id.value, concentration_time)
-        for group in IterTools.groupby(row -> row.substance, data_id)
-            first_row = first(group)
-            substance_idx = find_index(Symbol(first_row.substance), substances)
-            concentration_itp_drainage[id.idx][substance_idx] =
-                filtered_constant_interpolation(group, :drainage, cyclic_time, config)
-            concentration_itp_precipitation[id.idx][substance_idx] =
-                filtered_constant_interpolation(group, :precipitation, cyclic_time, config)
-            concentration_itp_surface_runoff[id.idx][substance_idx] =
-                filtered_constant_interpolation(group, :surface_runoff, cyclic_time, config)
+    if concentration_time !== nothing
+        for (id, cyclic_time) in zip(node_id, cyclic_times)
+            data_id = filter(row -> row.node_id == id.value, concentration_time)
+            for group in IterTools.groupby(row -> row.substance, data_id)
+                first_row = first(group)
+                substance_idx = find_index(Symbol(first_row.substance), substances)
+                concentration_itp_drainage[id.idx][substance_idx] =
+                    filtered_constant_interpolation(group, :drainage, cyclic_time, config)
+                concentration_itp_precipitation[id.idx][substance_idx] =
+                    filtered_constant_interpolation(group, :precipitation, cyclic_time, config)
+                concentration_itp_surface_runoff[id.idx][substance_idx] =
+                    filtered_constant_interpolation(group, :surface_runoff, cyclic_time, config)
+            end
         end
     end
 
@@ -678,27 +682,29 @@ function ConcentrationData(
     concentration_external_data =
         load_structvector(db, config, :basin, :concentration_external)
     concentration_external = Dict{String, ScalarLinearInterpolation}[]
-    for (id, cyclic_time) in zip(node_id, cyclic_times)
-        concentration_external_id = Dict{String, ScalarLinearInterpolation}()
-        data_id = filter(row -> row.node_id == id.value, concentration_external_data)
-        for group in IterTools.groupby(row -> row.substance, data_id)
-            first_row = first(group)
-            substance = first_row.substance
-            itp = get_scalar_interpolation(
-                config.starttime,
-                StructVector(group),
-                NodeID(:Basin, first_row.node_id, 0),
-                :concentration;
-                cyclic_time,
-            )
-            concentration_external_id["concentration_external.$substance"] = itp
-            if any(itp.u .< 0)
-                errors = true
-                @error "Found negative concentration(s) in `Basin / concentration_external`." node_id =
-                    id, substance
+    if concentration_external_data !== nothing
+        for (id, cyclic_time) in zip(node_id, cyclic_times)
+            concentration_external_id = Dict{String, ScalarLinearInterpolation}()
+            data_id = filter(row -> row.node_id == id.value, concentration_external_data)
+            for group in IterTools.groupby(row -> row.substance, data_id)
+                first_row = first(group)
+                substance = first_row.substance
+                itp = get_scalar_interpolation(
+                    config.starttime,
+                    StructVector(group),
+                    NodeID(:Basin, first_row.node_id, 0),
+                    :concentration;
+                    cyclic_time,
+                )
+                concentration_external_id["concentration_external.$substance"] = itp
+                if any(itp.u .< 0)
+                    errors = true
+                    @error "Found negative concentration(s) in `Basin / concentration_external`." node_id =
+                        id, substance
+                end
             end
+            push!(concentration_external, concentration_external_id)
         end
-        push!(concentration_external, concentration_external_id)
     end
 
     if errors
@@ -1299,56 +1305,13 @@ function Subgrid(db::DB, config::Config, basin::Basin)
 
     node_to_basin = Dict{Int32, NodeID}(id.value => id for id in basin.node_id)
 
-    for group in IterTools.groupby(row -> row.subgrid_id, static)
-        first_row = first(group)
-        subgrid_id = first_row.subgrid_id
-        node_id = first_row.node_id
-        basin_level = getproperty.(group, :basin_level)
-        subgrid_level = getproperty.(group, :subgrid_level)
-
-        if valid_subgrid(subgrid_id, node_id, node_to_basin, basin_level, subgrid_level)
-            hh_itp = LinearInterpolation(
-                subgrid_level,
-                basin_level;
-                extrapolation_left = ConstantExtrapolation,
-                extrapolation_right = Linear,
-                cache_parameters = true,
-            )
-
-            push!(subgrid.subgrid_id_static, subgrid_id)
-            push!(subgrid.basin_id_static, node_to_basin[node_id])
-            push!(subgrid.interpolations_static, hh_itp)
-            push!(subgrid.level, NaN)
-        else
-            @error "Invalid Basin static subgrid table for $id."
-            errors = true
-        end
-    end
-
-    errors && @error("Errors encountered when parsing Basin Subgrid data.")
-
-    interpolation_index = 0
-
-    for group in IterTools.groupby(row -> row.subgrid_id, time)
-        first_row = first(group)
-        subgrid_id = first_row.subgrid_id
-        node_id = first_row.node_id
-        cyclic_time = cyclic_times[node_to_basin[node_id].idx]
-
-        # Push the new subgrid_id and basin ID and extend level
-        push!(subgrid.subgrid_id_time, subgrid_id)
-        push!(subgrid.basin_id_time, node_to_basin[node_id])
-        push!(subgrid.level, NaN)
-
-        # Initialize index_lookup contents
-        lookup_time = Float64[]
-        lookup_index = Int[]
-
-        for group_time in IterTools.groupby(row -> row.time, group)
-            interpolation_index += 1
-            t = first(group_time).time
-            basin_level = getproperty.(group_time, :basin_level)
-            subgrid_level = getproperty.(group_time, :subgrid_level)
+    if static !== nothing
+        for group in IterTools.groupby(row -> row.subgrid_id, static)
+            first_row = first(group)
+            subgrid_id = first_row.subgrid_id
+            node_id = first_row.node_id
+            basin_level = getproperty.(group, :basin_level)
+            subgrid_level = getproperty.(group, :subgrid_level)
 
             if valid_subgrid(subgrid_id, node_id, node_to_basin, basin_level, subgrid_level)
                 hh_itp = LinearInterpolation(
@@ -1358,35 +1321,82 @@ function Subgrid(db::DB, config::Config, basin::Basin)
                     extrapolation_right = Linear,
                     cache_parameters = true,
                 )
-                push!(lookup_index, interpolation_index)
-                push!(lookup_time, seconds_since(t, config.starttime))
-                push!(subgrid.interpolations_time, hh_itp)
+
+                push!(subgrid.subgrid_id_static, subgrid_id)
+                push!(subgrid.basin_id_static, node_to_basin[node_id])
+                push!(subgrid.interpolations_static, hh_itp)
+                push!(subgrid.level, NaN)
             else
-                @error "Invalid Basin time subgrid table for $id, time = $time_group."
+                @error "Invalid Basin static subgrid table for $id."
                 errors = true
             end
         end
+    end
 
-        if cyclic_time
-            itp_first = subgrid.interpolations_time[first(lookup_index)]
-            itp_last = subgrid.interpolations_time[last(lookup_index)]
-            if !((itp_first.t == itp_last.t) && (itp_first.u == itp_last.u))
-                @error "For $id with cyclic_time the first and last h(h) relations for subgrid_id $subgrid_id are not equal."
-                errors = true
+    errors && @error("Errors encountered when parsing Basin Subgrid data.")
+
+    interpolation_index = 0
+
+    if time !== nothing
+        for group in IterTools.groupby(row -> row.subgrid_id, time)
+            first_row = first(group)
+            subgrid_id = first_row.subgrid_id
+            node_id = first_row.node_id
+            cyclic_time = cyclic_times[node_to_basin[node_id].idx]
+
+            # Push the new subgrid_id and basin ID and extend level
+            push!(subgrid.subgrid_id_time, subgrid_id)
+            push!(subgrid.basin_id_time, node_to_basin[node_id])
+            push!(subgrid.level, NaN)
+
+            # Initialize index_lookup contents
+            lookup_time = Float64[]
+            lookup_index = Int[]
+
+            for group_time in IterTools.groupby(row -> row.time, group)
+                interpolation_index += 1
+                t = first(group_time).time
+                basin_level = getproperty.(group_time, :basin_level)
+                subgrid_level = getproperty.(group_time, :subgrid_level)
+
+                if valid_subgrid(subgrid_id, node_id, node_to_basin, basin_level, subgrid_level)
+                    hh_itp = LinearInterpolation(
+                        subgrid_level,
+                        basin_level;
+                        extrapolation_left = ConstantExtrapolation,
+                        extrapolation_right = Linear,
+                        cache_parameters = true,
+                    )
+                    push!(lookup_index, interpolation_index)
+                    push!(lookup_time, seconds_since(t, config.starttime))
+                    push!(subgrid.interpolations_time, hh_itp)
+                else
+                    @error "Invalid Basin time subgrid table for $id, time = $time_group."
+                    errors = true
+                end
             end
-            pop!(subgrid.interpolations_time)
-            lookup_index[end] = first(lookup_index)
-            interpolation_index -= 1
-        end
 
-        # Push the completed index_lookup of the previous subgrid_id
-        push_constant_interpolation!(
-            subgrid.current_interpolation_index,
-            lookup_index,
-            lookup_time,
-            node_to_basin[node_id];
-            cyclic_time,
-        )
+            if cyclic_time
+                itp_first = subgrid.interpolations_time[first(lookup_index)]
+                itp_last = subgrid.interpolations_time[last(lookup_index)]
+                if !((itp_first.t == itp_last.t) && (itp_first.u == itp_last.u))
+                    @error "For $id with cyclic_time the first and last h(h) relations for subgrid_id $subgrid_id are not equal."
+                    errors = true
+                end
+                pop!(subgrid.interpolations_time)
+                lookup_index[end] = first(lookup_index)
+                interpolation_index -= 1
+            end
+
+            # Push the completed index_lookup of the previous subgrid_id
+            push_constant_interpolation!(
+                subgrid.current_interpolation_index,
+                lookup_index,
+                lookup_time,
+                node_to_basin[node_id];
+                cyclic_time,
+            )
+        end
     end
 
     # Find the level indices
@@ -1649,37 +1659,46 @@ function load_structvector(
     node_type::Symbol,
     table_name::Symbol,
 )::Union{StructVector, Nothing}
-    table = load_data(db, config, node_type, table_name)
+    data_table = load_data(db, config, node_type, table_name)
 
-    if table === nothing
+    if data_table === nothing
         return nothing
     end
 
-    nt = columntable(table)
-    if table isa Query && haskey(nt, :time)
-        # time has type timestamp and is stored as a String in the database
-        # currently SQLite.jl does not automatically convert it to DateTime
-        nt = merge(
-            nt,
-            (;
-                time = map(
-                    val ->
-                        ismissing(val) ? DateTime(config.starttime) :
-                        DateTime(
-                            replace(val, r"(\.\d{3})\d+$" => s"\1"),  # remove sub ms precision
-                            dateformat"yyyy-mm-dd HH:MM:SS.s",
-                        ),
-                    nt.time,
-                ),
-            ),
-        )
+    dict = OrderedDict{Symbol, AbstractVector}()
+
+    col_table = Tables.columntable(data_table)
+    for (col_name, col_data) in pairs(col_table)
+
+        if data_table isa Query && col_name == :time
+            # Convert time column to DateTime if it exists
+            col_data = map(
+                val ->
+                    ismissing(val) ? DateTime(config.starttime) :
+                    DateTime(
+                        replace(val, r"(\.\d{3})\d+$" => s"\1"),  # remove sub ms precision
+                        dateformat"yyyy-mm-dd HH:MM:SS.s",
+                    ),
+                col_data,
+            )
+        end
+
+        schema = get_schema(node_type, table_name)
+
+        if haskey(schema, col_name)
+            expected_type = schema[col_name]
+            if eltype(col_data) != expected_type
+                col_data = convert(Vector{expected_type}, col_data)
+            end
+            dict[col_name] = col_data
+        elseif !startswith(String(col_name), "meta_") && col_name !== :fid
+            full_table_name = tablename(node_type, table_name)
+            @error "Unknown column $col_name found in $full_table_name."
+            error("Unknown column $col_name found in $full_table_name.")
+        end
     end
 
-    table = StructVector(nt)
-    schema = get_schema(node_type, table_name)
-    tables_schema = Tables.Schema(keys(schema), values(schema))
-    actual_schema = Tables.schema(table)
-    # TODO validate schema, coerce Int to Int32
+    table = StructVector(; dict...)
 
     return sorted_table!(table, node_type, table_name)
 end
