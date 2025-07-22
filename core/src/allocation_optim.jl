@@ -393,7 +393,8 @@ function set_demands!(
         target_storage_demand_fraction_out,
         node_id_basin -> begin
             node_id = only(inneighbor_labels_type(graph, node_id_basin, LinkType.control))
-            level_demand.target_storage_max[node_id_basin][demand_priority_idx]
+            level_demand.target_storage_max[node_id_basin][demand_priority_idx] /
+            scaling.storage
         end,
         only(problem[:relative_storage_error_out].axes),
     )
@@ -502,8 +503,11 @@ function update_allocated_values!(
             # See whether new storage has been allocated to the
             allocated_storage_in_prev = JuMP.value(basin_allocated_in[node_id])
             allocated_storage_in_priority =
-                clamp(Δstorage, 0, target_storage_min - storage_start) -
-                allocated_storage_in_prev
+                clamp(
+                    Δstorage,
+                    allocated_storage_in_prev,
+                    target_storage_min - storage_start,
+                ) - allocated_storage_in_prev
             JuMP.fix(
                 basin_allocated_in[node_id],
                 allocated_storage_in_prev + allocated_storage_in_priority,
@@ -512,8 +516,11 @@ function update_allocated_values!(
             # See whether removing storage has been 'allocated' to the Basin
             allocated_storage_out_prev = JuMP.value(basin_allocated_out[node_id])
             allocated_storage_out_priority =
-                clamp(-Δstorage, 0, storage_start - target_storage_max) -
-                allocated_storage_out_prev
+                clamp(
+                    -Δstorage,
+                    allocated_storage_out_prev,
+                    storage_start - target_storage_max,
+                ) - allocated_storage_out_prev
             JuMP.fix(
                 basin_allocated_out[node_id],
                 allocated_storage_out_prev + allocated_storage_out_priority,
@@ -895,7 +902,7 @@ function set_timeseries_demands!(p::Parameters, t::Float64)::Nothing
             target_level_min =
                 level_demand.min_level[node_id.idx][demand_priority_idx](t + Δt_allocation)
             target_level_max =
-                level_demand.min_level[node_id.idx][demand_priority_idx](t + Δt_allocation)
+                level_demand.max_level[node_id.idx][demand_priority_idx](t + Δt_allocation)
             for basin_id in level_demand.basins_with_demand[node_id.idx]
                 level_demand.target_storage_min[basin_id][demand_priority_idx] =
                     get_storage_from_level(basin, basin_id.idx, target_level_min)

@@ -515,7 +515,7 @@ function add_level_demand!(
         problem,
         [node_id = ids_with_level_demand_subnetwork],
         s * (relative_storage_error_in[node_id] - target_storage_demand_fraction_in) ≥
-        -(storage[(node_id, :end)] - basin_allocated_in[node_id]),
+        -storage[(node_id, :end)],
         base_name = "storage_constraint_in"
     )
 
@@ -523,8 +523,8 @@ function add_level_demand!(
     problem[:storage_constraint_out] = JuMP.@constraint(
         problem,
         [node_id = ids_with_level_demand_subnetwork],
-        s * (relative_storage_error_out[node_id] - target_storage_demand_fraction_out) ≥
-        storage[(node_id, :end)] - basin_allocated_out[node_id],
+        s * (relative_storage_error_out[node_id] + target_storage_demand_fraction_out) ≥
+        storage[(node_id, :end)],
         base_name = "storage_constraint_out"
     )
 
