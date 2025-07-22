@@ -81,7 +81,7 @@ end
 function NodeType.T(s::Symbol)::NodeType.T
     symbol_map = EnumX.symbol_map(NodeType.T)
     for (sym, val) in symbol_map
-        sym == s && return NodeType.T(val)
+        sym == camel_case(s) && return NodeType.T(val)
     end
     throw(ArgumentError("Invalid value for NodeType: $s"))
 end

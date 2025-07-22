@@ -168,8 +168,8 @@ Depending on if a table can be sorted, either sort it or assert that it is sorte
 Tables loaded from the database into memory can be sorted.
 Tables loaded from Arrow files are memory mapped and can therefore not be sorted.
 """
-function sorted_table!(table::StructVector)::StructVector
-    by = sort_by(table)
+function sorted_table!(table::StructVector, node_type::Symbol, table_name::Symbol)::StructVector
+    by = sort_by[(node_type, table_name)]
     if any((typeof(col) <: Arrow.Primitive for col in Tables.columns(table)))
         et = eltype(table)
         if !issorted(table; by)

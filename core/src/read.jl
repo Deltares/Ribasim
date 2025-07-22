@@ -361,18 +361,18 @@ function TabulatedRatingCurve(db::DB, config::Config, graph::MetaGraph)
 
     interpolation_index = 0
 
-    if !isempty(static)
+    if static !== nothing
         static_groups = IterTools.groupby(row -> row.node_id, static)
         static_group, static_idx = iterate(static_groups)
     end
-    if !isempty(time)
+    if time !== nothing
         time_groups = IterTools.groupby(row -> row.node_id, time)
         time_group, time_idx = iterate(time_groups)
     end
 
     for (id, cyclic_time) in zip(node_id, cyclic_times)
-        in_static = isempty(static) ? false : (first(static_group).node_id == id)
-        in_time = isempty(time) ? false : (first(time_group).node_id == id)
+        in_static = static === nothing ? false : (first(static_group).node_id == id)
+        in_time = time === nothing ? false : (first(time_group).node_id == id)
 
         if in_static && in_time
             @error "Data for $id found in both Static and Time tables."
@@ -584,7 +584,7 @@ function Outlet(db::DB, config::Config, graph::MetaGraph)
 
     outlet = Outlet(; node_id)
 
-    initialize_control_mapping!(outlet, static)
+    static === nothing || initialize_control_mapping!(outlet, static)
     set_control_type!(outlet, graph)
     set_inoutflow_links!(outlet, graph)
 
@@ -936,9 +936,11 @@ function DiscreteControl(db::DB, config::Config, graph::MetaGraph)::DiscreteCont
     logic = load_structvector(db, config, :discrete_control, :logic)
     logic_mapping = [Dict{String, String}() for _ in eachindex(node_id)]
 
-    for (node_id, truth_state, control_state_) in
-        zip(logic.node_id, logic.truth_state, logic.control_state)
-        logic_mapping[findsorted(ids, node_id)][truth_state] = control_state_
+    if logic !== nothing
+        for (node_id, truth_state, control_state_) in
+            zip(logic.node_id, logic.truth_state, logic.control_state)
+            logic_mapping[findsorted(ids, node_id)][truth_state] = control_state_
+        end
     end
 
     logic_mapping = expand_logic_mapping(logic_mapping, node_id)
@@ -1053,7 +1055,7 @@ function PidControl(db::DB, config::Config)
 
     pid_control = PidControl(; node_id)
 
-    initialize_control_mapping!(pid_control, static)
+    static === nothing || initialize_control_mapping!(pid_control, static)
     errors = parse_parameter!(pid_control, config, :active; static, time, default = true)
     errors |= parse_parameter!(
         pid_control,
@@ -1109,11 +1111,11 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)
     )
     errors |= parse_parameter!(user_demand, config, :min_level; static, time)
 
-    if !isempty(static)
+    if static !== nothing
         static_groups = IterTools.groupby(row -> row.node_id, static)
         static_group, static_idx = iterate(static_groups)
     end
-    if !isempty(time)
+    if time !== nothing
         time_groups = IterTools.groupby(row -> row.node_id, time)
         time_group, time_idx = iterate(time_groups)
     end
@@ -1646,11 +1648,10 @@ function load_structvector(
     config::Config,
     node_type::Symbol,
     table_name::Symbol,
-)::StructVector
+)::Union{StructVector, Nothing}
     table = load_data(db, config, node_type, table_name)
 
     if table === nothing
-        # TODO replace isempty(table)
         return nothing
     end
 
@@ -1678,11 +1679,9 @@ function load_structvector(
     schema = get_schema(node_type, table_name)
     tables_schema = Tables.Schema(keys(schema), values(schema))
     actual_schema = Tables.schema(table)
-    if declared(schema) && tables_schema !== nothing
-        validate(tables_schema, schema)
-    end
+    # TODO validate schema, coerce Int to Int32
 
-    return sorted_table!(table)
+    return sorted_table!(table, node_type, table_name)
 end
 
 """
@@ -1735,6 +1734,7 @@ function get_substances(db::DB, config::Config)::OrderedSet{Symbol}
         (:user_demand, :concentration),
     ]
         data = load_structvector(db, config, node_type, table_type)
+        data === nothing && continue
         for row in data
             push!(substances, Symbol(row.substance))
         end

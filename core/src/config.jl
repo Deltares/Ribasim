@@ -164,6 +164,8 @@ end
 function Base.getproperty(config::Config, sym::Symbol)
     if sym === :dir
         return getfield(config, :dir)
+    elseif sym === :toml
+        return getfield(config, :toml)
     else
         toml = getfield(config, :toml)
         return getproperty(toml, sym)

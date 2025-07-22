@@ -356,6 +356,7 @@ function get_all_demand_priorities(db::DB, config::Config;)::Vector{Int32}
             # Check if this table schema has a demand_priority field
             if haskey(table_schema, :demand_priority)
                 data = load_structvector(db, config, node_type, table_name)
+                data === nothing && continue
                 demand_priority_col = data.demand_priority
                 demand_priority_col = Int32.(coalesce.(demand_priority_col, Int32(0)))
                 if valid_demand_priorities(demand_priority_col, config.experimental.allocation)
