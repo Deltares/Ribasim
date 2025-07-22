@@ -242,34 +242,6 @@ function update_storage_prev!(p::Parameters)::Nothing
     return nothing
 end
 
-function split_level_objectives!(objectives::Vector{AllocationObjective})::Nothing
-    i = 1
-
-    while i ≤ length(objectives)
-        obj = objectives[i]
-        if obj.has_level_demand && !obj.has_flow_demand
-            expression_in = JuMP.AffExpr()
-            expression_out = JuMP.AffExpr()
-            for term in keys(obj.expression.terms)
-                name = JuMP.name(term)
-                if startswith(name, "relative_storage_error_in")
-                    JuMP.add_to_expression!(expression_in, term)
-                elseif startswith(name, "relative_storage_error_out")
-                    JuMP.add_to_expression!(expression_out, term)
-                else
-                    JuMP.add_to_expression!(expression_in, term)
-                    JuMP.add_to_expression!(expression_out, term)
-                end
-            end
-            objectives[i] = @set obj.expression = expression_in
-            i += 1
-            insert!(objectives, i, @set obj.expression = expression_out)
-        end
-        i += 1
-    end
-    return nothing
-end
-
 """
     Each conservation equation around on a node is relaxed by introducing a slack variable.
     The slack variable is penalized in the objective function.

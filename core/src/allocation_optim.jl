@@ -573,7 +573,7 @@ function save_demands_and_allocations!(
 )::Nothing
     (; p_independent, state_time_dependent_cache) = p
     (; current_storage) = state_time_dependent_cache
-    (; problem, Δt_allocation, cumulative_realized_volume) = allocation_model
+    (; problem, Δt_allocation, cumulative_realized_volume, scaling) = allocation_model
     (; allocation, user_demand, flow_demand, level_demand, graph) = p_independent
     (; record_demand, demand_priorities_all) = allocation
     (; demand_priority_idx) = objective
@@ -826,9 +826,11 @@ function optimize_for_objective!(
             "Allocation optimization for subnetwork $subnetwork_id, $objective at t = $t s is infeasible",
         )
     elseif termination_status != JuMP.OPTIMAL
+        primal_status = JuMP.primal_status(problem)
         relative_gap = JuMP.relative_gap(problem)
         threshold = 1e-3 # Hardcoded threshold for now
-        if relative_gap < threshold
+
+        if relative_gap < threshold && primal_status == JuMP.FEASIBLE_POINT
             @debug "Allocation optimization for subnetwork $subnetwork_id, $objective at t = $t s did not find an optimal solution (termination status: $termination_status), but the relative gap ($relative_gap) is within the acceptable threshold (<$threshold). Proceeding with the solution."
         else
             write_problem_to_file(problem, config)
@@ -863,8 +865,7 @@ function apply_control_from_allocation!(
     return nothing
 end
 
-function set_timeseries_demands!(p::Parameters, t::Float64)::Nothing
-    (; p_independent, state_time_dependent_cache) = p
+function set_timeseries_demands!(p_independent::ParametersIndependent, t::Float64)::Nothing
     (; user_demand, flow_demand, level_demand, allocation, basin) = p_independent
     (; demand_priorities_all, allocation_models) = allocation
     (; Δt_allocation) = first(allocation_models)
@@ -897,12 +898,24 @@ function set_timeseries_demands!(p::Parameters, t::Float64)::Nothing
 
     # LevelDemand
     for node_id in level_demand.node_id
+        target_level_min = basin.storage_to_level[node_id.idx].u[1]
+        target_level_max = basin.storage_to_level[node_id.idx].u[end]
+
         for demand_priority_idx in eachindex(demand_priorities_all)
-            !level_demand.has_demand_priority[node_id.idx, demand_priority_idx] && continue
-            target_level_min =
-                level_demand.min_level[node_id.idx][demand_priority_idx](t + Δt_allocation)
-            target_level_max =
-                level_demand.max_level[node_id.idx][demand_priority_idx](t + Δt_allocation)
+            if level_demand.has_demand_priority[node_id.idx, demand_priority_idx]
+                target_level_min = max(
+                    target_level_min,
+                    level_demand.min_level[node_id.idx][demand_priority_idx](
+                        t + Δt_allocation,
+                    ),
+                )
+                target_level_max = min(
+                    target_level_max,
+                    level_demand.max_level[node_id.idx][demand_priority_idx](
+                        t + Δt_allocation,
+                    ),
+                )
+            end
             for basin_id in level_demand.basins_with_demand[node_id.idx]
                 level_demand.target_storage_min[basin_id][demand_priority_idx] =
                     get_storage_from_level(basin, basin_id.idx, target_level_min)
@@ -958,7 +971,7 @@ function update_allocation!(model)::Nothing
     end
 
     # For demands that come from a timeseries, compute the value that will be optimized for
-    set_timeseries_demands!(p, t)
+    set_timeseries_demands!(p_independent, t)
 
     # If a primary network is present, collect demands of subnetworks
     if has_primary_network(allocation)

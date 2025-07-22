@@ -1377,13 +1377,13 @@ def cyclic_demand_model():
     )
 
     fb = model.flow_boundary.add(
-        Node(1, Point(0, 0), subnetwork_id=1), [flow_boundary.Static(flow_rate=[1.0])]
+        Node(1, Point(0, 0), subnetwork_id=1), [flow_boundary.Static(flow_rate=[1e-3])]
     )
 
     bsn1 = model.basin.add(
         Node(2, Point(1, 0), subnetwork_id=1),
         [
-            basin.Profile(level=[0.0, 1.0], area=[100.0, 100.0]),
+            basin.Profile(level=[0.0, 100.0], area=[100.0, 100.0]),
             basin.State(level=[1.0]),
         ],
     )
@@ -1395,7 +1395,7 @@ def cyclic_demand_model():
     bsn2 = model.basin.add(
         Node(4, Point(3, 0), subnetwork_id=1),
         [
-            basin.Profile(level=[0.0, 1.0], area=[100.0, 100.0]),
+            basin.Profile(level=[0.0, 100.0], area=[100.0, 100.0]),
             basin.State(level=[1.0]),
         ],
     )
@@ -1409,7 +1409,7 @@ def cyclic_demand_model():
                 time=time,
                 min_level=[0.5, 0.7, 0.5],
                 max_level=[0.7, 0.9, 0.7],
-                demand_priority=1,
+                demand_priority=3,
             )
         ],
     )

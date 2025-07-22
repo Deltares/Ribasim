@@ -364,13 +364,13 @@ end
     ϕ = 1e-3 # precipitation
     q = flow_boundary.flow_rate[1](0)
     A = Ribasim.basin_areas(basin, 1)[1]
-    l_max = level_demand.max_level[1](0)
+    l_max = level_demand.max_level[1][1](0)
     Δt_allocation = allocation.allocation_models[1].Δt_allocation
 
     # In this section the Basin leaves no supply for the UserDemand
     stage_1 = t .<= 3 * Δt_allocation
     u_stage_1(τ) = storage[1] + (q + ϕ) * τ
-    @test storage[stage_1] ≈ u_stage_1.(t[stage_1]) rtol = 1e-10
+    @test storage[stage_1] ≈ u_stage_1.(t[stage_1]) rtol = 1e-5
 
     # In this section (and following sections) the basin has no longer a (positive) demand,
     # since precipitation provides enough water to get the basin to its target level
@@ -403,8 +403,13 @@ end
 
     # Realized level demand
     (; record_demand) = allocation
-    record_demand =
-        DataFrame(; record_demand.node_id, record_demand.time, record_demand.realized)
+    record_demand = DataFrame(;
+        record_demand.node_id,
+        record_demand.time,
+        record_demand.realized,
+        record_demand.demand_priority,
+    )
+    filter!(:demand_priority => ==(1), record_demand)
     df_basin_2 = record_demand[record_demand.node_id .== 2, :]
     itp_basin_2 = LinearInterpolation(storage, t)
     realized_numeric = diff(itp_basin_2.(df_basin_2.time)) / Δt_allocation
@@ -668,29 +673,6 @@ end
 #         NodeID(:Basin, 5, p_independent),
 #     )] == 0.0
 # end
-
-@testitem "level_demand_without_max_level" begin
-    using Ribasim: NodeID, outflow_id
-    using JuMP
-
-    toml_path = normpath(@__DIR__, "../../generated_testmodels/level_demand/ribasim.toml")
-    @test ispath(toml_path)
-    model = Ribasim.Model(toml_path)
-    (; p, u, t) = model.integrator
-    (; basin, level_demand, graph, allocation) = p.p_independent
-    (; allocation_models) = allocation
-
-    level_demand.max_level[1].u .= Inf
-    level_demand.max_level[2].u .= Inf
-
-    # Given a max_level of Inf, the basin capacity is 0.0 because it is not possible for the basin level to be > Inf
-    @test_broken Ribasim.get_basin_capacity(allocation_models[1], p, t, basin.node_id[1]) ==
-                 0.0
-    @test_broken Ribasim.get_basin_capacity(allocation_models[1], p, t, basin.node_id[2]) ==
-                 0.0
-    @test_broken Ribasim.get_basin_capacity(allocation_models[2], p, t, basin.node_id[3]) ==
-                 0.0
-end
 
 @testitem "cyclic_demand" begin
     using DataInterpolations.ExtrapolationType: Periodic

@@ -532,7 +532,8 @@ function add_level_demand!(
     problem[:basin_storage_increase_goal] = JuMP.@constraint(
         problem,
         [node_id = ids_with_level_demand_subnetwork],
-        storage[(node_id, :end)] - storage[(node_id, :start)] ≥ basin_allocated_in[node_id]
+        storage[(node_id, :end)] - storage[(node_id, :start)] ≥ basin_allocated_in[node_id],
+        base_name = "basin_storage_increase_goal"
     )
 
     # Define constraints: subtracted storage from the basin is at least the allocated amount
@@ -540,7 +541,8 @@ function add_level_demand!(
         problem,
         [node_id = ids_with_level_demand_subnetwork],
         storage[(node_id, :end)] - storage[(node_id, :start)] ≤
-        -basin_allocated_out[node_id]
+        -basin_allocated_out[node_id],
+        base_name = "basin_storage_decrease_goal"
     )
 
     # Add error terms to objectives
@@ -835,6 +837,7 @@ function validate_objectives(
         for allocation_model in allocation_models
             demand_objective =
                 get_demand_objectives(allocation_model.objectives)[demand_priority_idx]
+            @assert demand_objective.demand_priority == demand_priority
             has_flow_demand |= demand_objective.has_flow_demand
             has_level_demand |= demand_objective.has_level_demand
         end
@@ -899,9 +902,5 @@ function AllocationModel(
             end
         end
     end
-
-    # Split level objectives into inflow and outflow demand objectives
-    split_level_objectives!(allocation_model.objectives)
-
     return allocation_model
 end
