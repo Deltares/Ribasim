@@ -51,8 +51,8 @@ jobs:
         with:
           name: allocation-debug-${{ matrix.os }}-${{ matrix.arch }}-${{ github.run_id }}
           path: |
-            **/*allocation_infeasible_problem.lp
-            **/*allocation_analysis_*.lp
+            **/allocation_infeasible_problem.lp
+            **/allocation_analysis_*.lp
           retention-days: 7
           if-no-files-found: ignore
       - uses: julia-actions/julia-processcoverage@v1
