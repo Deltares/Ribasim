@@ -276,6 +276,13 @@ end
     optimization_type::Vector{String} = []
 end
 
+@kwdef struct AllocationControlRecord
+    time::Vector{Float64} = []
+    node_id::Vector{Int32} = []
+    node_type::Vector{String} = []
+    flow_rate::Vector{Float64} = []
+end
+
 """
 Object for all information about allocation
 subnetwork_ids: The unique sorted allocation network IDs
@@ -288,6 +295,7 @@ subnetwork_inlet_source_priority: The default source priority for subnetwork inl
 record_demand: A record of demands and allocated flows for nodes that have these
 record_flow: A record of all flows computed by allocation optimization, eventually saved to
     output file
+record_control: A record of all flow rates assigned to pumps and outlets by allocation
 """
 @kwdef struct Allocation
     subnetwork_ids::Vector{Int32} = Int32[]
@@ -297,6 +305,7 @@ record_flow: A record of all flows computed by allocation optimization, eventual
     subnetwork_inlet_source_priority::Int32 = 0
     record_demand::DemandRecord = DemandRecord()
     record_flow::FlowRecord = FlowRecord()
+    record_control::AllocationControlRecord = AllocationControlRecord()
 end
 
 """
