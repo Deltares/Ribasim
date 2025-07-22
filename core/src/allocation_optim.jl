@@ -818,10 +818,10 @@ function optimize_for_objective!(
     termination_status = JuMP.termination_status(problem)
 
     if termination_status == JuMP.INFEASIBLE
+        write_problem_to_file(problem, config)
         analyze_infeasibility(allocation_model, objective, t, config)
         analyze_scaling(allocation_model, objective, t, config)
 
-        write_problem_to_file(problem, config)
         error(
             "Allocation optimization for subnetwork $subnetwork_id, $objective at t = $t s is infeasible",
         )
