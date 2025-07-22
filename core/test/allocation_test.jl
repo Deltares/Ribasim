@@ -714,10 +714,6 @@ end
     @test sort(name.(keys(logger.logs[5].kwargs[:constraint_violations]))) ==
           ["linear_resistance[LinearResistance #2]", "volume_conservation[Basin #1]"]
 
-    @test logger.logs[6].level == Error
-    @test logger.logs[6].message == "Variables found which are not in any constraint."
-    @test name.(logger.logs[6].kwargs[:variables]) == ["target_fraction"]
-
     @test ispath(
         @__DIR__,
         "../../generated_testmodels/invalid_infeasible/results/allocation_analysis_infeasibility.log",
@@ -726,4 +722,17 @@ end
         @__DIR__,
         "../../generated_testmodels/invalid_infeasible/results/allocation_analysis_scaling.log",
     )
+end
+
+@testitem "drain surplus" begin
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/drain_surplus/ribasim.toml")
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+
+    basin_table = Ribasim.basin_table(model)
+    @test basin_table.level[1] == 10.0
+    @test all(h -> isapprox(h, 5.0; rtol = 1e-5), basin_table.level[7:end])
+
+    allocation_control_table = Ribasim.allocation_control_table(model)
+    @test all(q -> isapprox(q, 1e-3; rtol = 1e-5), allocation_control_table.flow_rate[1:5])
 end
