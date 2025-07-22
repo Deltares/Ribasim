@@ -315,7 +315,13 @@ function analyze_infeasibility(
                 init = JuMP.ConstraintRef[],
             ),
         )
-    constraint_to_penalty = Dict(violated_constraints .=> 1.0)
+
+    # We care the most about constraints with names, so give these smaller penalties so
+    # that these get relaxed which is more informative
+    constraint_to_penalty = Dict(
+        violated_constraint => isempty(JuMP.name(violated_constraint)) ? 1.0 : 0.5,
+        violated_constraints,
+    )
     JuMP.@objective(problem, Min, 0)
     constraint_to_slack = JuMP.relax_with_penalty!(problem, constraint_to_penalty)
     JuMP.optimize!(problem)
