@@ -323,7 +323,7 @@ function set_inoutflow_links!(node::AbstractParameterNode, graph::MetaGraph; inf
 end
 
 function LinearResistance(db, config, graph)
-    static = load_structvector(db, config, LinearResistanceStaticV1)
+    static = load_structvector(db, config, :linear_resistance, :static)
     node_id = get_node_ids(db, NodeType.LinearResistance)
 
     linear_resistance = LinearResistance(; node_id)
@@ -341,8 +341,8 @@ function LinearResistance(db, config, graph)
 end
 
 function TabulatedRatingCurve(db::DB, config::Config, graph::MetaGraph)
-    static = load_structvector(db, config, TabulatedRatingCurveStaticV1)
-    time = load_structvector(db, config, TabulatedRatingCurveTimeV1)
+    static = load_structvector(db, config, :tabulated_rating_curve, :static)
+    time = load_structvector(db, config, :tabulated_rating_curve, :time)
     node_id = get_node_ids(db, NodeType.TabulatedRatingCurve)
     cyclic_times = get_cyclic_time(db, "TabulatedRatingCurve")
 
@@ -461,7 +461,7 @@ function TabulatedRatingCurve(db::DB, config::Config, graph::MetaGraph)
 end
 
 function ManningResistance(db::DB, config::Config, graph::MetaGraph, basin::Basin)
-    static = load_structvector(db, config, ManningResistanceStaticV1)
+    static = load_structvector(db, config, :manning_resistance, :static)
     node_id = get_node_ids(db, NodeType.ManningResistance)
 
     manning_resistance = ManningResistance(; node_id)
@@ -491,9 +491,9 @@ function ManningResistance(db::DB, config::Config, graph::MetaGraph, basin::Basi
 end
 
 function LevelBoundary(db::DB, config::Config)
-    static = load_structvector(db, config, LevelBoundaryStaticV1)
-    time = load_structvector(db, config, LevelBoundaryTimeV1)
-    concentration_time = load_structvector(db, config, LevelBoundaryConcentrationV1)
+    static = load_structvector(db, config, :level_boundary, :static)
+    time = load_structvector(db, config, :level_boundary, :time)
+    concentration_time = load_structvector(db, config, :level_boundary, :concentration)
     node_id = get_node_ids(db, NodeType.LevelBoundary)
     cyclic_times = get_cyclic_time(db, "LevelBoundary")
 
@@ -517,9 +517,9 @@ function LevelBoundary(db::DB, config::Config)
 end
 
 function FlowBoundary(db::DB, config::Config, graph::MetaGraph)
-    static = load_structvector(db, config, FlowBoundaryStaticV1)
-    time = load_structvector(db, config, FlowBoundaryTimeV1)
-    concentration_time = load_structvector(db, config, FlowBoundaryConcentrationV1)
+    static = load_structvector(db, config, :flow_boundary, :static)
+    time = load_structvector(db, config, :flow_boundary, :time)
+    concentration_time = load_structvector(db, config, :flow_boundary, :concentration)
     node_id = get_node_ids(db, NodeType.FlowBoundary)
     cyclic_times = get_cyclic_time(db, "FlowBoundary")
 
@@ -551,8 +551,8 @@ function FlowBoundary(db::DB, config::Config, graph::MetaGraph)
 end
 
 function Pump(db::DB, config::Config, graph::MetaGraph)
-    static = load_structvector(db, config, PumpStaticV1)
-    time = load_structvector(db, config, PumpTimeV1)
+    static = load_structvector(db, config, :pump, :static)
+    time = load_structvector(db, config, :pump, :time)
     node_id = get_node_ids(db, NodeType.Pump)
 
     pump = Pump(; node_id)
@@ -578,8 +578,8 @@ function Pump(db::DB, config::Config, graph::MetaGraph)
 end
 
 function Outlet(db::DB, config::Config, graph::MetaGraph)
-    static = load_structvector(db, config, OutletStaticV1)
-    time = load_structvector(db, config, OutletTimeV1)
+    static = load_structvector(db, config, :outlet, :static)
+    time = load_structvector(db, config, :outlet, :time)
     node_id = get_node_ids(db, NodeType.Outlet)
 
     outlet = Outlet(; node_id)
@@ -639,7 +639,7 @@ function ConcentrationData(
     n_basin = length(node_id)
     cyclic_times = get_cyclic_time(db, "Basin")
 
-    concentration_state_data = load_structvector(db, config, BasinConcentrationStateV1)
+    concentration_state_data = load_structvector(db, config, :basin, :concentration_state)
 
     substances = get_substances(db, config)
     n_substance = length(substances)
@@ -676,7 +676,7 @@ function ConcentrationData(
     errors = false
 
     concentration_external_data =
-        load_structvector(db, config, BasinConcentrationExternalV1)
+        load_structvector(db, config, :basin, :concentration_external)
     concentration_external = Dict{String, ScalarLinearInterpolation}[]
     for (id, cyclic_time) in zip(node_id, cyclic_times)
         concentration_external_id = Dict{String, ScalarLinearInterpolation}()
@@ -721,10 +721,10 @@ function ConcentrationData(
 end
 
 function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
-    static = load_structvector(db, config, BasinStaticV1)
-    time = load_structvector(db, config, BasinTimeV1)
-    state = load_structvector(db, config, BasinStateV1)
-    concentration_time = load_structvector(db, config, BasinConcentrationV1)
+    static = load_structvector(db, config, :basin, :static)
+    time = load_structvector(db, config, :basin, :time)
+    state = load_structvector(db, config, :basin, :state)
+    concentration_time = load_structvector(db, config, :basin, :concentration)
     node_id = get_node_ids(db, NodeType.Basin)
     cyclic_times = get_cyclic_time(db, "Basin")
     concentration_data = ConcentrationData(concentration_time, node_id, db, config)
@@ -749,7 +749,7 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     errors |= parse_forcing!(:drainage)
     errors |= parse_forcing!(:infiltration)
 
-    profiles = load_structvector(db, config, BasinProfileV1)
+    profiles = load_structvector(db, config, :basin, :profile)
 
     errors |= validate_consistent_basin_initialization(profiles)
     errors && error("Errors encountered when parsing Basin data.")
@@ -867,8 +867,8 @@ function CompoundVariable(
 end
 
 function parse_variables_and_conditions(ids::Vector{Int32}, db::DB, config::Config)
-    condition = load_structvector(db, config, DiscreteControlConditionV1)
-    compound_variable = load_structvector(db, config, DiscreteControlVariableV1)
+    condition = load_structvector(db, config, :discrete_control, :condition)
+    compound_variable = load_structvector(db, config, :discrete_control, :variable)
     compound_variables = Vector{CompoundVariable}[]
     cyclic_times = get_cyclic_time(db, "DiscreteControl")
     errors = false
@@ -933,7 +933,7 @@ function DiscreteControl(db::DB, config::Config, graph::MetaGraph)::DiscreteCont
     end
 
     # Initialize the logic mappings
-    logic = load_structvector(db, config, DiscreteControlLogicV1)
+    logic = load_structvector(db, config, :discrete_control, :logic)
     logic_mapping = [Dict{String, String}() for _ in eachindex(node_id)]
 
     for (node_id, truth_state, control_state_) in
@@ -964,7 +964,7 @@ end
 
 function continuous_control_functions(db, config, ids)
     # Avoid using the variable name `function` as that is recognized as a keyword
-    func = load_structvector(db, config, ContinuousControlFunctionV1)
+    func = load_structvector(db, config, :continuous_control, :function)
     errors = false
     # Parse the function table
     # Create linear interpolation objects out of the provided functions
@@ -1014,7 +1014,7 @@ end
 function continuous_control_compound_variables(db::DB, config::Config, ids)
     node_ids_all = get_node_ids(db)
 
-    data = load_structvector(db, config, ContinuousControlVariableV1)
+    data = load_structvector(db, config, :continuous_control, :variable)
     compound_variables = CompoundVariable[]
 
     # Loop over the ContinuousControl node IDs
@@ -1029,7 +1029,7 @@ function continuous_control_compound_variables(db::DB, config::Config, ids)
 end
 
 function ContinuousControl(db::DB, config::Config)::ContinuousControl
-    compound_variable = load_structvector(db, config, ContinuousControlVariableV1)
+    compound_variable = load_structvector(db, config, :continuous_control, :variable)
 
     node_id = get_node_ids(db, NodeType.ContinuousControl)
     ids = Int32.(node_id)
@@ -1046,8 +1046,8 @@ function ContinuousControl(db::DB, config::Config)::ContinuousControl
 end
 
 function PidControl(db::DB, config::Config)
-    static = load_structvector(db, config, PidControlStaticV1)
-    time = load_structvector(db, config, PidControlTimeV1)
+    static = load_structvector(db, config, :pid_control, :static)
+    time = load_structvector(db, config, :pid_control, :time)
     node_id = get_node_ids(db, NodeType.PidControl)
     node_ids_all = get_node_ids(db)
 
@@ -1075,9 +1075,9 @@ function PidControl(db::DB, config::Config)
 end
 
 function UserDemand(db::DB, config::Config, graph::MetaGraph)
-    static = load_structvector(db, config, UserDemandStaticV1)
-    time = load_structvector(db, config, UserDemandTimeV1)
-    concentration_time = load_structvector(db, config, UserDemandConcentrationV1)
+    static = load_structvector(db, config, :user_demand, :static)
+    time = load_structvector(db, config, :user_demand, :time)
+    concentration_time = load_structvector(db, config, :user_demand, :concentration)
     node_id = get_node_ids(db, NodeType.UserDemand)
     cyclic_times = get_cyclic_time(db, "UserDemand")
     demand_priorities = get_all_demand_priorities(db, config)
@@ -1191,8 +1191,8 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)
 end
 
 function LevelDemand(db::DB, config::Config, graph::MetaGraph)
-    static = load_structvector(db, config, LevelDemandStaticV1)
-    time = load_structvector(db, config, LevelDemandTimeV1)
+    static = load_structvector(db, config, :level_demand, :static)
+    time = load_structvector(db, config, :level_demand, :time)
     node_id = get_node_ids(db, NodeType.LevelDemand)
     cyclic_times = get_cyclic_time(db, "LevelDemand")
 
@@ -1235,8 +1235,8 @@ function LevelDemand(db::DB, config::Config, graph::MetaGraph)
 end
 
 function FlowDemand(db::DB, config::Config)
-    static = load_structvector(db, config, FlowDemandStaticV1)
-    time = load_structvector(db, config, FlowDemandTimeV1)
+    static = load_structvector(db, config, :flow_demand, :static)
+    time = load_structvector(db, config, :flow_demand, :time)
     cyclic_times = get_cyclic_time(db, "FlowDemand")
     node_id = get_node_ids(db, NodeType.FlowDemand)
 
@@ -1287,8 +1287,8 @@ function static_lookup(lookup_index::Int)::IndexLookup
 end
 
 function Subgrid(db::DB, config::Config, basin::Basin)
-    static = load_structvector(db, config, BasinSubgridV1)
-    time = load_structvector(db, config, BasinSubgridTimeV1)
+    static = load_structvector(db, config, :basin, :subgrid)
+    time = load_structvector(db, config, :basin, :subgrid_time)
     cyclic_times = get_cyclic_time(db, "Basin")
 
     subgrid = Subgrid()
@@ -1727,14 +1727,14 @@ end
 function get_substances(db::DB, config::Config)::OrderedSet{Symbol}
     # Hardcoded tracers
     substances = OrderedSet{Symbol}(Symbol.(instances(Substance.T)))
-    for table in [
-        BasinConcentrationStateV1,
-        BasinConcentrationV1,
-        FlowBoundaryConcentrationV1,
-        LevelBoundaryConcentrationV1,
-        UserDemandConcentrationV1,
+    for (node_type, table_type) in [
+        (:basin, :concentration_state),
+        (:basin, :concentration),
+        (:flow_boundary, :concentration),
+        (:level_boundary, :concentration),
+        (:user_demand, :concentration),
     ]
-        data = load_structvector(db, config, table)
+        data = load_structvector(db, config, node_type, table_type)
         for row in data
             push!(substances, Symbol(row.substance))
         end
@@ -1763,7 +1763,7 @@ function set_concentrations!(
     end
 end
 
-function interpolate_basin_profile!(basin::Basin, profiles::StructVector{BasinProfileV1})
+function interpolate_basin_profile!(basin::Basin, profiles::StructVector)
     areas = Vector{Vector{Float64}}()
     levels = Vector{Vector{Float64}}()
     storage = Vector{Vector{Float64}}()

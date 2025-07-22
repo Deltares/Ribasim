@@ -637,9 +637,7 @@ Validates the initialisation of basins. Each basin at least need a level-area or
 We recommend to initialise all basins in the same way, which can be level-area, level-storage or both.
 If basins diverge from this recommendation we log info about it for the modeler.
 """
-function validate_consistent_basin_initialization(
-    profiles::StructVector{BasinProfileV1},
-)::Bool
+function validate_consistent_basin_initialization(profiles::StructVector)::Bool
     errors::Bool = false
 
     init_with_area = Int32[]

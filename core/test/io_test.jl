@@ -78,7 +78,7 @@ end
     db = SQLite.DB(db_path)
 
     # load a sorted table
-    table = Ribasim.load_structvector(db, config, Ribasim.BasinTimeV1)
+    table = Ribasim.load_structvector(db, config, :basin, :time)
     close(db)
     by = Ribasim.sort_by(table)
     @test by((; node_id = 1, time = 2)) == (1, 2)
