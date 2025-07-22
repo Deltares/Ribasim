@@ -350,26 +350,22 @@ function get_all_demand_priorities(db::DB, config::Config;)::Vector{Int32}
     demand_priorities = Set{Int32}()
     is_valid = true
 
-    for name in names(Ribasim; all = true)
-        type = getfield(Ribasim, name)
-        if !(
-            (type isa DataType) &&
-            type <: AbstractRecord &&
-            hasfield(type, :demand_priority)
-        )
-            continue
-        end
-
-        data = load_structvector(db, config, type)
-        demand_priority_col = data.demand_priority
-        demand_priority_col = Int32.(coalesce.(demand_priority_col, Int32(0)))
-        if valid_demand_priorities(demand_priority_col, config.experimental.allocation)
-            union!(demand_priorities, demand_priority_col)
-        else
-            is_valid = false
-            node, kind = nodetype(_schema_version_from_record_type(type))
-            table_name = "$node / $kind"
-            @error "Missing demand_priority parameter(s) for a $table_name node in the allocation problem."
+    # Find all tables that have demand_priority fields
+    for (node_type, tables) in pairs(schemas)
+        for (table_name, table_schema) in pairs(tables)
+            # Check if this table schema has a demand_priority field
+            if haskey(table_schema, :demand_priority)
+                data = load_structvector(db, config, node_type, table_name)
+                demand_priority_col = data.demand_priority
+                demand_priority_col = Int32.(coalesce.(demand_priority_col, Int32(0)))
+                if valid_demand_priorities(demand_priority_col, config.experimental.allocation)
+                    union!(demand_priorities, demand_priority_col)
+                else
+                    is_valid = false
+                    table_name = tablename(node_type, table_name)
+                    @error "Missing demand_priority parameter(s) for a $table_name node in the allocation problem."
+                end
+            end
         end
     end
     if is_valid

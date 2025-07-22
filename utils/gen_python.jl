@@ -1,7 +1,5 @@
-import Legolas
-import Ribasim
+using Ribasim: camel_case, neighbortypes, n_neighbor_bounds_flow, n_neighbor_bounds_control, schemas, nodetypes
 using Dates: DateTime
-using InteractiveUtils: subtypes
 using OteraEngine: Template
 
 """
@@ -26,42 +24,46 @@ python_nullable_type(x::Type{<:DateTime}) = python_type(x)
 is_nullable(::Any) = "False"
 is_nullable(::Type{T}) where {T >: Union{Missing}} = "True"
 
-function strip_prefix(T::DataType)
-    n = string(T)
-    (p, _) = occursin('V', n) ? rsplit(n, 'V'; limit = 2) : (n, "")
-    return string(last(rsplit(p, '.'; limit = 2)))
-end
-
 function get_models()
     """
-    Set up models including field properties for all subtypes of Legolas.AbstractRecord.
+    Set up models including field properties for all schemas.
     """
-    [
-        (
-            name = strip_prefix(T),
-            fields = zip(
-                fieldnames(T),
-                map(python_type, fieldtypes(T)),
-                map(is_nullable, fieldtypes(T)),
-            ),
-        ) for T in subtypes(Legolas.AbstractRecord)
-    ]
+    models = []
+    for (node_type, tables) in pairs(schemas)
+        for (table_name, table) in pairs(tables)
+            column_names = keys(table)
+            column_types = values(table)
+            model = (;
+                name = camel_case(String(node_type)) * camel_case(String(table_name)),
+                fields = zip(
+                    column_names,
+                    python_type.(column_types),
+                    is_nullable.(column_types),
+                ),
+            )
+            push!(models, model)
+        end
+    end
+    return models
 end
 
 function get_connectivity()
     """
     Set up a vector containing all possible downstream node types per node type.
     """
-    [
-        (
-            name = T,
+    connectivities = []
+    for node_type in nodetypes
+        connectivity = (;
+            name = camel_case(node_type),
             connectivity = Set(
-                Ribasim.config.camel_case(x) for x in Ribasim.neighbortypes(T)
+                camel_case(x) for x in neighbortypes(node_type)
             ),
-            flow_neighbor_bound = Ribasim.n_neighbor_bounds_flow(T),
-            control_neighbor_bound = Ribasim.n_neighbor_bounds_control(T),
-        ) for T in keys(Ribasim.config.nodekinds)
-    ]
+            flow_neighbor_bound = n_neighbor_bounds_flow(node_type),
+            control_neighbor_bound = n_neighbor_bounds_control(node_type),
+        )
+        push!(connectivities, connectivity)
+    end
+    return connectivities
 end
 
 # Don't automatically escape expression blocks

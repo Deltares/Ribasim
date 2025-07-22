@@ -59,16 +59,13 @@ end
     using Tables: columntable
 
     "Convert an in-memory table to a memory mapped Arrow table"
-    function to_arrow_table(
-        path,
-        table::StructVector{T},
-    )::StructVector{T} where {T <: AbstractRecord}
+    function to_arrow_table(path, table::StructVector)::StructVector
         open(path; write = true) do io
             Arrow.write(io, table)
         end
         table = Arrow.Table(path)
         nt = columntable(table)
-        return StructVector{T}(nt)
+        return StructVector(nt)
     end
 
     toml_path =
