@@ -1,0 +1,18 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+    // README at: https://github.com/devcontainers/templates/tree/main/src/docker-existing-dockerfile
+    {
+        "name": "ubuntu",
+        "build": {
+            "dockerfile": "Dockerfile",
+            "context": ".."
+        },
+        "customizations": {
+            "vscode": {
+                "extensions": [
+					"GitHub.copilot",
+                    "julialang.language-julia",
+                    "ms-python.python"
+				]
+            }
+        }
+    }
