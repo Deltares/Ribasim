@@ -333,6 +333,7 @@ link: (from node ID, to node ID)
 end
 
 Base.length(::LinkMetadata) = 1
+Base.isless(link_1::LinkMetadata, link_2::LinkMetadata) = link_1.id < link_2.id
 
 """
 The update of a parameter given by a value and a reference to the target

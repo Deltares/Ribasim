@@ -39,7 +39,8 @@ function make_source_priority_objective(
     source_priority_objective =
         AllocationObjective(; type = AllocationObjectiveType.source_priorities)
 
-    for node_id in graph[].node_ids[subnetwork_id]
+    # Sort node IDs for deterministic problem generation
+    for node_id in sort!(collect(graph[].node_ids[subnetwork_id]))
         (; source_priority) = graph[node_id]
         if !iszero(source_priority)
             for downstream_id in outflow_ids(graph, node_id)
@@ -161,7 +162,8 @@ function add_flow!(
     node_ids_subnetwork = graph[].node_ids[subnetwork_id]
     flow_links_subnetwork = Vector{Tuple{NodeID, NodeID}}()
 
-    for link_metadata in values(graph.edge_data)
+    # Sort link metadata for deterministic problem generation
+    for link_metadata in sort!(collect(values(graph.edge_data)))
         (; type, link) = link_metadata
         if (type == LinkType.flow) &&
            ((link[1] ∈ node_ids_subnetwork) || (link[2] ∈ node_ids_subnetwork))
@@ -779,7 +781,9 @@ function add_subnetwork_demand!(
     target_demand_fraction = problem[:target_demand_fraction]
     flow = problem[:flow]
 
-    connecting_links = vcat(values(allocation.primary_network_connections)...)
+    # Sort connections for deterministic problem generation
+    connecting_links =
+        vcat(sort!(collect(values(allocation.primary_network_connections)))...)
 
     # Define parameters: flow allocated to user subnetworks (scaling.flow * m^3/s, values to be filled in before optimizing)
     subnetwork_allocated =
