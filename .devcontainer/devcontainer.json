@@ -3,7 +3,7 @@
     {
         "name": "ci env ubuntu",
         "build": {
-            "dockerfile": "Dockerfile",
+            "dockerfile": "dockerfile",
             "context": ".."
         },
         "customizations": {
