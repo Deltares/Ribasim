@@ -15,6 +15,6 @@
 				]
             }
         },
-        "onCreateCommand": "curl -fsSL https://install.julialang.org | sh",
+        // "onCreateCommand": "curl -fsSL https://install.julialang.org | sh",
         "postStartCommand": "julia -e 'using Pkg; Pkg.precompile()'"
     }
