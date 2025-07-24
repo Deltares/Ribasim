@@ -7,13 +7,6 @@ RUN curl -L -o /usr/local/bin/pixi -fsSL --compressed "https://github.com/prefix
     && chmod +x /usr/local/bin/pixi \
     && pixi info
 
-    # install julia
-    RUN curl -L -o julia.tar.gz -fsSL "https://julialang-s3.julialang.org/bin/linux/x64/1.9/julia-${JULIA_VERSION}-linux-x86_64.tar.gz" \
-        && tar -xzf julia.tar.gz \
-        && mv julia-${JULIA_VERSION} /opt/julia \
-        && rm julia.tar.gz \
-        && ln -s /opt/julia/bin/julia /usr/local/bin/julia
-
 # set some user and workdir settings to work nicely with vscode
 USER vscode
 WORKDIR /home/vscode
