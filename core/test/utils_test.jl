@@ -338,9 +338,9 @@ end
 
 @testitem "Node types" begin
     using Ribasim:
-        nodetypes, NodeType, ParametersIndependent, AbstractParameterNode, snake_case
+        node_types, NodeType, ParametersIndependent, AbstractParameterNode, snake_case
 
-    @test Set(nodetypes) == Set([
+    @test Set(node_types) == Set([
         :Basin,
         :ContinuousControl,
         :DiscreteControl,
@@ -358,14 +358,12 @@ end
         :Terminal,
         :UserDemand,
     ])
-    for nodetype in nodetypes
-        NodeType.T(nodetype)
-        if nodetype != :Terminal
-            # It has a struct which is added to Parameters
-            T = getproperty(Ribasim, nodetype)
-            @test T <: AbstractParameterNode
-            @test hasfield(ParametersIndependent, snake_case(nodetype))
-        end
+    for node_type in node_types
+        NodeType.T(node_type)
+        # It has a struct which is added to Parameters
+        T = getproperty(Ribasim, node_type)
+        @test T <: AbstractParameterNode
+        @test hasfield(ParametersIndependent, snake_case(node_type))
     end
 end
 

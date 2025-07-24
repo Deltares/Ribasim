@@ -54,7 +54,6 @@ end
 
 @testitem "table sort" begin
     import Arrow
-    import Legolas
     using StructArrays: StructVector
     import SQLite
     using Tables: columntable
@@ -63,7 +62,7 @@ end
     function to_arrow_table(
         path,
         table::StructVector{T},
-    )::StructVector{T} where {T <: Legolas.AbstractRecord}
+    )::StructVector{T} where {T <: Ribasim.Table}
         open(path; write = true) do io
             Arrow.write(io, table)
         end
@@ -79,7 +78,7 @@ end
     db = SQLite.DB(db_path)
 
     # load a sorted table
-    table = Ribasim.load_structvector(db, config, Ribasim.BasinTimeV1)
+    table = Ribasim.load_structvector(db, config, Ribasim.Schema.Basin.Time)
     close(db)
     by = Ribasim.sort_by(table)
     @test by((; node_id = 1, time = 2)) == (1, 2)
