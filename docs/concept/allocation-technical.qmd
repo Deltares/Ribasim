@@ -562,7 +562,8 @@ The following data of the parameters and state of a Ribasim model are relevant f
 The allocation problem is solved per subnetwork, which is given by a subset $S \subset V$ of node IDs. Different subnetworks are disjoint from each other. Nodes can also not be part of any subnetwork.
 
 **Implementation:**
-```julia
+
+```{.julia}
 get_subnetwork_ids(graph::MetaGraph, node_type::NodeType.T, subnetwork_id::Int32) =
     filter(node_id -> node_id.type == node_type, graph[].node_ids[subnetwork_id])
 ```
@@ -601,6 +602,10 @@ $$
     \end{cases}
 $$
 for all $i \in FD_S$. Here $d^{p_{\text{fd}}}$ is given by the original flow demand minus the flows through node $i$ at all priorities $p < p_{\text{fd}}$.
+
+::: {.callout-note}
+**Subscript notation**: The subscript "fd" stands for "flow demand", indicating the specific priority level $p_{\text{fd}}$ associated with flow demand nodes in the subnetwork.
+:::
 
 ### Simulation (physical layer) input
 
