@@ -876,6 +876,7 @@ class UserDemandStatic(Input):
             QgsField("active", QVariant.Bool),
             QgsField("demand", QVariant.Double),
             QgsField("return_factor", QVariant.Double),
+            QgsField("min_level", QVariant.Double),
             QgsField("demand_priority", QVariant.Int),
         ]
 
@@ -896,6 +897,7 @@ class UserDemandTime(Input):
             QgsField("time", QVariant.DateTime),
             QgsField("demand", QVariant.Double),
             QgsField("return_factor", QVariant.Double),
+            QgsField("min_level", QVariant.Double),
             QgsField("demand_priority", QVariant.Int),
         ]
 

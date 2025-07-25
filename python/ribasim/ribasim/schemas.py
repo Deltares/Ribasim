@@ -352,7 +352,7 @@ class UserDemandStaticSchema(_BaseSchema):
     active: pd.BooleanDtype = pa.Field(nullable=True)
     demand: float = pa.Field(nullable=True)
     return_factor: float = pa.Field(nullable=False)
-    min_level: float = pa.Field(nullable=False)
+    min_level: float = pa.Field(nullable=True)
     demand_priority: pd.Int32Dtype = pa.Field(nullable=True)
 
 
@@ -362,5 +362,5 @@ class UserDemandTimeSchema(_BaseSchema):
     time: pd.Timestamp = pa.Field(nullable=False)
     demand: float = pa.Field(nullable=False)
     return_factor: float = pa.Field(nullable=False)
-    min_level: float = pa.Field(nullable=False)
+    min_level: float = pa.Field(nullable=True)
     demand_priority: pd.Int32Dtype = pa.Field(nullable=True)

@@ -1108,7 +1108,8 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)
         cyclic_times,
         take_first = (:demand_priority,),
     )
-    errors |= parse_parameter!(user_demand, config, :min_level; static, time)
+    errors |=
+        parse_parameter!(user_demand, config, :min_level; static, time, default = -Inf)
 
     if !isempty(static)
         static_groups = IterTools.groupby(row -> row.node_id, static)

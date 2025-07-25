@@ -320,7 +320,7 @@ struct Static <: Table
     active::Union{Missing, Bool}
     demand::Union{Missing, Float64}
     return_factor::Float64
-    min_level::Float64
+    min_level::Union{Missing, Float64}
     demand_priority::Union{Missing, Int32}
 end
 
@@ -329,7 +329,7 @@ struct Time <: Table
     time::DateTime
     demand::Float64
     return_factor::Float64
-    min_level::Float64
+    min_level::Union{Missing, Float64}
     demand_priority::Union{Missing, Int32}
 end
 

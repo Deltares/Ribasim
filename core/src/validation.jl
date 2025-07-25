@@ -378,6 +378,7 @@ function valid_min_upstream_level!(
     basin::Basin,
 )::Bool
     errors = false
+    # TODO we need something like this to fill in the right values for UserDemand min_level
     for (id, min_upstream_level) in zip(node.node_id, node.min_upstream_level)
         id_in = inflow_id(graph, id)
         if id_in.type == NodeType.Basin
