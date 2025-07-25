@@ -338,26 +338,36 @@ end
 
 @testitem "Node types" begin
     using Ribasim:
-        node_types, NodeType, ParametersIndependent, AbstractParameterNode, snake_case
+        node_types,
+        node_type,
+        table_types,
+        node_kinds,
+        NodeType,
+        ParametersIndependent,
+        AbstractParameterNode,
+        snake_case
 
-    @test Set(node_types) == Set([
+    @test node_types == [
         :Basin,
         :ContinuousControl,
         :DiscreteControl,
         :FlowBoundary,
         :FlowDemand,
+        :Junction,
         :LevelBoundary,
         :LevelDemand,
         :LinearResistance,
         :ManningResistance,
         :Outlet,
-        :Junction,
         :PidControl,
         :Pump,
         :TabulatedRatingCurve,
         :Terminal,
         :UserDemand,
-    ])
+    ]
+    # Junction and Terminal have no tables
+    @test unique(node_type.(table_types)) == filter(!in((:Terminal, :Junction)), node_types)
+    @test collect(keys(node_kinds)) == node_types
     for node_type in node_types
         NodeType.T(node_type)
         # It has a struct which is added to Parameters
