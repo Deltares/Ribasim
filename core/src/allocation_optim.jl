@@ -538,6 +538,12 @@ function save_demands_and_allocations!(
     return nothing
 end
 
+function get_all_hit_bounds!(allocation_model::AllocationModel)
+    (; problem, subnetwork_id) = allocation_model
+    flow = problem[:flow]
+    return nothing
+end
+
 # After all goals have been optimized for, save
 # the resulting flows for output
 function save_allocation_flows!(
@@ -564,8 +570,14 @@ function save_allocation_flows!(
         push!(record_flow.to_node_type, string(id_to.type))
         push!(record_flow.to_node_id, Int32(id_to))
         push!(record_flow.subnetwork_id, subnetwork_id)
-        push!(record_flow.flow_rate, get_flow_value(allocation_model, link))
-        push!(record_flow.optimization_type, string(optimization_type))
+        flow_value = get_flow_value(allocation_model, link)
+        push!(record_flow.flow_rate, flow_value)
+        push!(
+            record_flow.bound_flow_value,
+            flow_value <= flow_capacity_lower_bound(link, p_independent) ||
+                flow_value >= flow_capacity_upper_bound(link, p_independent)
+        )
+        end
     end
 
     # Vertical flows

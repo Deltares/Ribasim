@@ -274,6 +274,7 @@ end
     subnetwork_id::Vector{Int32} = []
     flow_rate::Vector{Float64} = []
     optimization_type::Vector{String} = []
+    bound_flow_rate::Vector{Bool} = []
 end
 
 """
