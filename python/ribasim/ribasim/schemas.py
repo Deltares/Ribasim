@@ -34,6 +34,16 @@ class _BaseSchema(pa.DataFrameModel):
         return f(df, schema_version)
 
 
+class BasinConcentrationSchema(_BaseSchema):
+    fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
+    node_id: np.int32 = pa.Field(nullable=False, default=0)
+    time: pd.Timestamp = pa.Field(nullable=False)
+    substance: pd.StringDtype = pa.Field(nullable=False)
+    drainage: float = pa.Field(nullable=True)
+    precipitation: float = pa.Field(nullable=True)
+    surface_runoff: float = pa.Field(nullable=True)
+
+
 class BasinConcentrationExternalSchema(_BaseSchema):
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
@@ -47,16 +57,6 @@ class BasinConcentrationStateSchema(_BaseSchema):
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     substance: pd.StringDtype = pa.Field(nullable=False)
     concentration: float = pa.Field(nullable=True)
-
-
-class BasinConcentrationSchema(_BaseSchema):
-    fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
-    node_id: np.int32 = pa.Field(nullable=False, default=0)
-    time: pd.Timestamp = pa.Field(nullable=False)
-    substance: pd.StringDtype = pa.Field(nullable=False)
-    drainage: float = pa.Field(nullable=True)
-    precipitation: float = pa.Field(nullable=True)
-    surface_runoff: float = pa.Field(nullable=True)
 
 
 class BasinProfileSchema(_BaseSchema):
@@ -83,19 +83,19 @@ class BasinStaticSchema(_BaseSchema):
     surface_runoff: float = pa.Field(nullable=True)
 
 
+class BasinSubgridSchema(_BaseSchema):
+    fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
+    subgrid_id: np.int32 = pa.Field(nullable=False)
+    node_id: np.int32 = pa.Field(nullable=False, default=0)
+    basin_level: float = pa.Field(nullable=False)
+    subgrid_level: float = pa.Field(nullable=False)
+
+
 class BasinSubgridTimeSchema(_BaseSchema):
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     subgrid_id: np.int32 = pa.Field(nullable=False)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     time: pd.Timestamp = pa.Field(nullable=False)
-    basin_level: float = pa.Field(nullable=False)
-    subgrid_level: float = pa.Field(nullable=False)
-
-
-class BasinSubgridSchema(_BaseSchema):
-    fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
-    subgrid_id: np.int32 = pa.Field(nullable=False)
-    node_id: np.int32 = pa.Field(nullable=False, default=0)
     basin_level: float = pa.Field(nullable=False)
     subgrid_level: float = pa.Field(nullable=False)
 
