@@ -573,11 +573,11 @@ function save_allocation_flows!(
         flow_value = get_flow_value(allocation_model, link)
         push!(record_flow.flow_rate, flow_value)
         push!(
-            record_flow.bound_flow_value,
+            record_flow.bound_flow_rate,
             flow_value <= flow_capacity_lower_bound(link, p_independent) ||
-                flow_value >= flow_capacity_upper_bound(link, p_independent)
+                flow_value >= flow_capacity_upper_bound(link, p_independent),
         )
-        end
+        push!(record_flow.optimization_type, string(optimization_type))
     end
 
     # Vertical flows
