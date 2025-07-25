@@ -1,0 +1,38 @@
+---
+title: "Updating Ribasim"
+---
+
+This guide explains how to update Ribasim models from older versions to newer versions.
+To update the Ribasim installation itself, follow the [installation steps](/install.qmd), ensuring that all installed components are the same.
+To see the most important changes in Ribasim, consult the [changelog](/changelog.qmd).
+
+# Version numbers and breaking changes
+
+Ribasim uses version numbers like `2023.1.0`, following `YYYY.MINOR.MICRO` from [calver](https://calver.org/).
+It starts with the year the release was made, followed by the minor version number for normal releases, and a micro number for non-breaking, hotfix releases.
+This means that whenever the year or minor version changes, there is a possibility that the user has to make changes to the model for it to keep working.
+If this is the case, it will be highlighted in the [changelog](/changelog.qmd).
+When possible, we automate this process using model migration in Ribasim Python, see the section below.
+
+# Automatic model migration
+
+The Ribasim Python package contains a set of migration functions that will be applied to the model on demand.
+A simple example is adding a new column with optional values in a table.
+For the core this change is currently breaking because it expects the column to exist,
+hence the core will always expect models to be written by the same Ribasim Python version as itself.
+It therefore gives a warning whenever the `ribasim_version` in the TOML does not match `ribasim --version`, as this may or may not work.
+
+Ribasim Python will automatically add the new column for you when reading an older version, and update the model version accordingly.
+So to migrate an existing model to the latest version you can use the following script:
+
+```python
+import ribasim
+
+# Read the old model (migration happens automatically)
+model = ribasim.Model.read("path/to/your/old_model.toml")
+
+# Write the migrated model
+model.write("path/to/your/migrated_model.toml")
+```
+
+If you have a script to build your model, re-running the script with a new Ribasim Python version will produce the update model version, and the above step won't be needed.

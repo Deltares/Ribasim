@@ -60,7 +60,16 @@ Deltares also provides the iMOD QGIS plugin, which can be used to view the times
 ::: {.callout-note}
 The components don't depend on each other, so you can install what you need.
 When using multiple components, all component versions must be the same.
-If you receive a model, the Ribasim version used to create it is written in the TOML file. Older releases can be found in the Release assets [on GitHub](https://github.com/Deltares/Ribasim/releases).
+If you receive a model, the Ribasim version used to create it is written in the TOML file.
+Older releases can be found in the [Release assets on GitHub](https://github.com/Deltares/Ribasim/releases).
+:::
+
+::: {.callout-note}
+To update an existing installation of Ribasim, follow the same installation on this page.
+Change the version number in the command or download link to install a version other than the latest release,
+or download directly from the [Release assets on GitHub](https://github.com/Deltares/Ribasim/releases).
+
+For a guide on how to update existing models to new Ribasim versions, see the [guide on updating Ribasim](/guide/updating-ribasim.qmd)
 :::
 
 # Install Ribasim core {#sec-install-core}
@@ -160,7 +169,7 @@ uv run python
 ## pip
 
 ```sh
-pip install ribasim==2025.4.0
+pip install --upgrade ribasim==2025.4.0
 ```
 
 ## conda
