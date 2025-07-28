@@ -336,7 +336,6 @@ class BasinConcentrationState(Input):
     def attributes(cls) -> list[QgsField]:
         return [
             QgsField("node_id", QVariant.Int),
-            QgsField("time", QVariant.DateTime),
             QgsField("substance", QVariant.String),
             QgsField("concentration", QVariant.Double),
         ]
@@ -778,8 +777,8 @@ class DiscreteControlLogic(Input):
     def attributes(cls) -> list[QgsField]:
         return [
             QgsField("node_id", QVariant.Int),
-            QgsField("control_state", QVariant.String),
             QgsField("truth_state", QVariant.String),
+            QgsField("control_state", QVariant.String),
         ]
 
 
