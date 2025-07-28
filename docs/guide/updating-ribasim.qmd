@@ -16,14 +16,16 @@ When possible, we automate this process using model migration in Ribasim Python,
 
 # Automatic model migration
 
-The Ribasim Python package contains a set of migration functions that will be applied to the model on demand.
-A simple example is adding a new column with optional values in a table.
-For the core this change is currently breaking because it expects the column to exist,
-hence the core will always expect models to be written by the same Ribasim Python version as itself.
-It therefore gives a warning whenever the `ribasim_version` in the TOML does not match `ribasim --version`, as this may or may not work.
+Models are automatically migrated when read from file using Ribasim Python, and this is the recommended way to update your models.
 
-Ribasim Python will automatically add the new column for you when reading an older version, and update the model version accordingly.
-So to migrate an existing model to the latest version you can use the following script:
+The Ribasim Python package contains a set of migration functions that are applied automatically when you read a model file from an older version.
+When Ribasim developers make changes to the model structure (for example, adding new required columns to tables), these changes would normally break compatibility with existing models.
+To prevent this, migration functions automatically update your model data to match the current version's requirements.
+
+The core always expects models to be written by the same Ribasim Python version as itself, which is why it gives a warning whenever the `ribasim_version` in the TOML does not match `ribasim --version`.
+
+When you read an older model, Ribasim Python will automatically apply all necessary migrations and update the model version accordingly.
+To migrate an existing model to the latest version, simply use the following script:
 
 ```python
 import ribasim
@@ -35,4 +37,4 @@ model = ribasim.Model.read("path/to/your/old_model.toml")
 model.write("path/to/your/migrated_model.toml")
 ```
 
-If you have a script to build your model, re-running the script with a new Ribasim Python version will produce the update model version, and the above step won't be needed.
+If you have a script that builds your model from scratch, simply re-running that script with the new Ribasim Python version will produce a model with the updated version, making the above migration step unnecessary.
