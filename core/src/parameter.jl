@@ -971,12 +971,13 @@ has_demand_priority: boolean matrix stating per LevelDemand node per demand prio
 min_level: The minimum target level per demand priority of the connected basin(s)
 max_level: The maximum target level per demand priority of the connected basin(s)
 basins_with_demand: The node IDs of the Basins whose target level is given by a particular LevelDemand node
-target_storage_min: The storage associated with the current min level per demand priority
-target_storage_max: The storage associated with the current max level per demand priority
-storage_demand_in: The storage the Basin needs to get to its minimum level for this priority
-storage_demand_out: The storage the Basin needs to get rid of to get to its maximum level for this priority
 storage_prev: The storage in the Basin with the level demand the previous time the allocation algorithm was run
-allocated: The storage allocated to each Basin per demand priority
+target_level_min: The current minimum target level per LevelDemand node per demand priority (node_idx, demand_priority_idx)
+target_level_max: The current maximum target level per LevelDemand node per demand priority (node_idx, demand_priority_idx)
+target_storage_min: The storage associated with the current min level per connected Basin per demand priority
+target_storage_max: The storage associated with the current max level per connected Basin per demand priority
+storage_demand: The storage change each Basin needs to reach the [min, max] window per demand priority
+storage_allocated: The storage allocated to each Basin per demand priority
 """
 @kwdef struct LevelDemand <: AbstractDemandNode
     node_id::Vector{NodeID}
