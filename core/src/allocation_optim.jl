@@ -254,28 +254,32 @@ function reset_goal_programming!(
     allocation_model::AllocationModel,
     p_independent::ParametersIndependent,
 )::Nothing
-    (; problem, Δt_allocation, scaling) = allocation_model
-    (; user_demand) = p_independent
+    (; problem, scaling) = allocation_model
+    (; user_demand, basin) = p_independent
 
     flow = problem[:flow]
+    storage = problem[:basin_storage]
+    level = problem[:basin_level]
 
-    # From demand objectives
+    # Reset allocated flow amounts
     JuMP.fix.(problem[:user_demand_allocated], 0.0; force = true)
     JuMP.fix.(problem[:flow_demand_allocated], -MAX_ABS_FLOW / scaling.flow; force = true)
-    JuMP.fix.(
-        problem[:basin_allocated_in],
-        -MAX_ABS_FLOW * Δt_allocation / scaling.storage;
-        force = true,
-    )
-    JuMP.fix.(
-        problem[:basin_allocated_out],
-        -MAX_ABS_FLOW * Δt_allocation / scaling.storage;
-        force = true,
-    )
 
     for node_id in only(problem[:user_demand_return_flow].axes)
         inflow_link = user_demand.inflow_link[node_id.idx].link
         JuMP.set_lower_bound(flow[inflow_link], 0.0)
+    end
+
+    # Reset allocated storage amounts and levels
+    for node_id in only(level.axes)
+        JuMP.set_lower_bound(storage[(node_id, :end)], 0.0)
+        JuMP.set_upper_bound(
+            storage[(node_id, :end)],
+            basin.storage_to_level[node_id.idx].t[end],
+        )
+
+        JuMP.set_lower_bound(level[node_id], basin.storage_to_level[node_id.idx].u[1])
+        JuMP.set_upper_bound(level[node_id], basin.storage_to_level[node_id.idx].u[end])
     end
 
     return nothing
@@ -303,7 +307,8 @@ function set_demands_lower_constraints!(
     rel_errors_lower,
     target_demand_fraction::JuMP.VariableRef,
     demand_function::Function,
-    node_ids::Vector{NodeID},
+    node_ids::Vector{NodeID};
+    deactivate_when_no_demand::Bool = false,
 )::Nothing
     for node_id in node_ids
         constraint_lower = constraints_lower[node_id]
@@ -311,6 +316,12 @@ function set_demands_lower_constraints!(
         d = demand_function(node_id)
         JuMP.set_normalized_coefficient(constraint_lower, rel_error_lower, d)
         JuMP.set_normalized_coefficient(constraint_lower, target_demand_fraction, -d)
+
+        if deactivate_when_no_demand && iszero(d)
+            JuMP.set_normalized_rhs(constraint_lower, -1e10)
+        else
+            JuMP.set_normalized_rhs(constraint_lower, 0)
+        end
     end
 
     return nothing
@@ -321,7 +332,8 @@ function set_demands_upper_constraints!(
     rel_errors_upper,
     target_demand_fraction::JuMP.VariableRef,
     demand_function::Function,
-    node_ids::Vector{NodeID},
+    node_ids::Vector{NodeID};
+    deactivate_when_no_demand::Bool = false,
 )::Nothing
     for node_id in node_ids
         constraint_upper = constraints_upper[node_id]
@@ -329,6 +341,12 @@ function set_demands_upper_constraints!(
         d = demand_function(node_id)
         JuMP.set_normalized_coefficient(constraint_upper, rel_error_upper, d)
         JuMP.set_normalized_coefficient(constraint_upper, target_demand_fraction, d)
+
+        if deactivate_when_no_demand && iszero(d)
+            JuMP.set_normalized_rhs(constraint_upper, -1e10)
+        else
+            JuMP.set_normalized_rhs(constraint_upper, 0)
+        end
     end
     return nothing
 end
@@ -382,10 +400,11 @@ function set_demands!(
         target_storage_demand_fraction_in,
         node_id_basin -> begin
             node_id = only(inneighbor_labels_type(graph, node_id_basin, LinkType.control))
-            level_demand.target_storage_min[node_id_basin][demand_priority_idx] /
+            max(0, level_demand.storage_demand[node_id_basin][demand_priority_idx]) /
             scaling.storage
         end,
-        only(problem[:relative_storage_error_in].axes),
+        only(problem[:relative_storage_error_in].axes);
+        deactivate_when_no_demand = true,
     )
     set_demands_upper_constraints!(
         problem[:storage_constraint_out],
@@ -393,10 +412,11 @@ function set_demands!(
         target_storage_demand_fraction_out,
         node_id_basin -> begin
             node_id = only(inneighbor_labels_type(graph, node_id_basin, LinkType.control))
-            level_demand.target_storage_max[node_id_basin][demand_priority_idx] /
+            max(0, -level_demand.storage_demand[node_id_basin][demand_priority_idx]) /
             scaling.storage
         end,
-        only(problem[:relative_storage_error_out].axes),
+        only(problem[:relative_storage_error_out].axes);
+        deactivate_when_no_demand = true,
     )
 
     return nothing
@@ -472,13 +492,19 @@ function update_allocated_values!(
 )::Nothing
     (; problem, scaling) = allocation_model
     (; demand_priority_idx) = objective
+    (;
+        target_level_min,
+        target_level_max,
+        target_storage_min,
+        target_storage_max,
+        storage_allocated,
+    ) = level_demand
 
-    basin_allocated_in = problem[:basin_allocated_in]
-    basin_allocated_out = problem[:basin_allocated_out]
-    basin_storage = problem[:basin_storage]
+    storage = problem[:basin_storage]
+    level = problem[:basin_level]
 
     # Storage allocated to Basins with LevelDemand
-    for node_id in only(basin_allocated_in.axes)
+    for node_id in only(problem[:storage_constraint_in].axes)
         has_demand, level_demand_id =
             has_external_flow_demand(graph, node_id, :level_demand)
         if has_demand
@@ -488,52 +514,54 @@ function update_allocated_values!(
 
         if has_demand
             # Compute total storage change
-            storage_start = JuMP.value(basin_storage[(node_id, :start)]) # (scaling.storage * m^3)
-            storage_end = JuMP.value(basin_storage[(node_id, :end)]) # (scaling.storage * m^3)
+            storage_start = JuMP.value(storage[(node_id, :start)]) # (scaling.storage * m^3)
+            storage_end = JuMP.value(storage[(node_id, :end)]) # (scaling.storage * m^3)
             Δstorage = storage_end - storage_start # (scaling.storage * m^3)
 
-            # Get current target storages for this demand priority
-            target_storage_min =
-                level_demand.target_storage_min[node_id][demand_priority_idx] /
-                scaling.storage # (scaling.storage * m^3)
-            target_storage_max =
-                level_demand.target_storage_max[node_id][demand_priority_idx] /
-                scaling.storage # (scaling.storage * m^3)
+            level_end = JuMP.value(level[node_id])
 
-            # See whether new storage has been allocated to the
-            allocated_storage_in_prev = JuMP.value(basin_allocated_in[node_id])
-            allocated_storage_in_priority =
-                clamp(
-                    Δstorage,
-                    allocated_storage_in_prev,
-                    target_storage_min - storage_start,
-                ) - allocated_storage_in_prev
-            JuMP.fix(
-                basin_allocated_in[node_id],
-                allocated_storage_in_prev + allocated_storage_in_priority,
+            # Storage after allocation time step lower bound:
+            # min(storage after allocation time step now, target storage min for this demand priority)
+            JuMP.set_lower_bound(
+                storage[(node_id, :end)],
+                min(
+                    storage_end,
+                    target_storage_min[node_id][demand_priority_idx] / scaling.storage,
+                ),
             )
 
-            # See whether removing storage has been 'allocated' to the Basin
-            allocated_storage_out_prev = JuMP.value(basin_allocated_out[node_id])
-            allocated_storage_out_priority =
-                clamp(
-                    -Δstorage,
-                    allocated_storage_out_prev,
-                    storage_start - target_storage_max,
-                ) - allocated_storage_out_prev
-            JuMP.fix(
-                basin_allocated_out[node_id],
-                allocated_storage_out_prev + allocated_storage_out_priority,
+            # Storage after allocation time step upper bound:
+            # max(storage after allocation time step now, target storage max for this demand priority)
+            JuMP.set_upper_bound(
+                storage[(node_id, :end)],
+                max(
+                    storage_end,
+                    target_storage_max[node_id][demand_priority_idx] / scaling.storage,
+                ),
             )
 
-            # Update allocated values for output
-            level_demand.storage_allocated[node_id][demand_priority_idx] =
-                scaling.storage * (
-                    (allocated_storage_in_priority - allocated_storage_in_prev) -
-                    (allocated_storage_out_priority - allocated_storage_out_prev)
-                )
+            # Level after allocation time step lower bound:
+            # min(level after allocation time step now, target level min for this demand priority)
+            level_demand_id = only(inneighbor_labels_type(graph, node_id, LinkType.control))
+            JuMP.set_lower_bound(
+                level[node_id],
+                min(level_end, target_level_min[level_demand_id.idx, demand_priority_idx]),
+            )
+
+            # Level after allocation time step upper bound:
+            # max(level after allocation time step now, target level max for this demand priority)
+            JuMP.set_upper_bound(
+                level[node_id],
+                max(level_end, target_level_max[level_demand_id.idx, demand_priority_idx]),
+            )
+
+            # Storage allocated to this Basin for this demand priority:
+            # the storage change over the time step minus what was allocated for previous demand priorities
+            storage_allocated[node_id][demand_priority_idx] =
+                scaling.storage * Δstorage -
+                sum(view(storage_allocated[node_id], 1:(demand_priority_idx - 1)))
         else
-            level_demand.storage_allocated[node_id][demand_priority_idx] = 0.0
+            storage_allocated[node_id][demand_priority_idx] = 0.0
         end
     end
 
@@ -579,7 +607,6 @@ function save_demands_and_allocations!(
     (; demand_priority_idx) = objective
     user_demand_allocated = problem[:user_demand_allocated]
     flow_demand_allocated = problem[:flow_demand_allocated]
-    basin_allocated_in = problem[:basin_allocated_in]
     demand_priority = demand_priorities_all[demand_priority_idx]
 
     # UserDemand
@@ -620,29 +647,28 @@ function save_demands_and_allocations!(
     end
 
     # LevelDemand
-    for node_id_basin in only(basin_allocated_in.axes)
+    for node_id_basin in only(problem[:storage_constraint_in].axes)
         node_id = only(inneighbor_labels_type(graph, node_id_basin, LinkType.control))
         if level_demand.has_demand_priority[node_id.idx, demand_priority_idx]
             current_storage_basin = current_storage[node_id_basin.idx]
             cumulative_realized_basin_volume =
                 current_storage_basin - level_demand.storage_prev[node_id_basin]
-            storage_demand_in = max(
-                0.0,
-                level_demand.target_storage_min[node_id_basin][demand_priority] -
-                current_storage_basin,
-            )
-            storage_demand_out = max(
-                0.0,
-                current_storage_basin -
-                level_demand.target_storage_max[node_id_basin][demand_priority],
-            )
+            # The demand of the zones (lower and upper) between the target levels for this priority
+            # and the target levels for the previous priority
+            storage_demand =
+                level_demand.storage_demand[node_id_basin][demand_priority] - sum(
+                    view(
+                        level_demand.storage_demand[node_id_basin],
+                        1:(demand_priority - 1),
+                    ),
+                )
             add_to_record_demand!(
                 record_demand,
                 t,
                 subnetwork_id,
                 node_id_basin,
                 demand_priority,
-                (storage_demand_in - storage_demand_out) / Δt_allocation,
+                storage_demand / Δt_allocation,
                 level_demand.storage_allocated[node_id_basin][demand_priority_idx] /
                 Δt_allocation,
                 cumulative_realized_basin_volume / Δt_allocation,
@@ -873,7 +899,9 @@ function apply_control_from_allocation!(
     return nothing
 end
 
-function set_timeseries_demands!(p_independent::ParametersIndependent, t::Float64)::Nothing
+function set_timeseries_demands!(p::Parameters, t::Float64)::Nothing
+    (; p_independent, state_time_dependent_cache) = p
+    (; current_storage) = state_time_dependent_cache
     (; user_demand, flow_demand, level_demand, allocation, basin) = p_independent
     (; demand_priorities_all, allocation_models) = allocation
     (; Δt_allocation) = first(allocation_models)
@@ -924,11 +952,32 @@ function set_timeseries_demands!(p_independent::ParametersIndependent, t::Float6
                     ),
                 )
             end
+
+            level_demand.target_level_min[node_id.idx, demand_priority_idx] =
+                target_level_min
+            level_demand.target_level_max[node_id.idx, demand_priority_idx] =
+                target_level_max
+
             for basin_id in level_demand.basins_with_demand[node_id.idx]
-                level_demand.target_storage_min[basin_id][demand_priority_idx] =
+                target_storage_min =
                     get_storage_from_level(basin, basin_id.idx, target_level_min)
-                level_demand.target_storage_max[basin_id][demand_priority_idx] =
+                target_storage_max =
                     get_storage_from_level(basin, basin_id.idx, target_level_max)
+
+                level_demand.target_storage_min[basin_id][demand_priority_idx] =
+                    target_storage_min
+                level_demand.target_storage_max[basin_id][demand_priority_idx] =
+                    target_storage_max
+
+                storage_now = current_storage[basin_id.idx]
+                storage_demand_in = max(0, target_storage_min - storage_now)
+                storage_demand_out = max(0, storage_now - target_storage_max)
+
+                # Can't have both demand for more storage and less storage
+                @assert iszero(storage_demand_in) || iszero(storage_demand_out)
+
+                level_demand.storage_demand[basin_id][demand_priority_idx] =
+                    storage_demand_in - storage_demand_out
             end
         end
     end
@@ -979,7 +1028,7 @@ function update_allocation!(model)::Nothing
     end
 
     # For demands that come from a timeseries, compute the value that will be optimized for
-    set_timeseries_demands!(p_independent, t)
+    set_timeseries_demands!(p, t)
 
     # If a primary network is present, collect demands of subnetworks
     if has_primary_network(allocation)

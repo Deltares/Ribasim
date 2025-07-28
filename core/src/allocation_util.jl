@@ -2,9 +2,12 @@ const MAX_ABS_FLOW = 5e5
 
 is_active(allocation::Allocation) = !isempty(allocation.allocation_models)
 
-get_subnetwork_ids(graph::MetaGraph, node_type::NodeType.T, subnetwork_id::Int32) = sort!(
-    collect(filter(node_id -> node_id.type == node_type, graph[].node_ids[subnetwork_id])),
-)
+get_ids_in_subnetwork(graph::MetaGraph, node_type::NodeType.T, subnetwork_id::Int32) =
+    sort!(
+        collect(
+            filter(node_id -> node_id.type == node_type, graph[].node_ids[subnetwork_id]),
+        ),
+    )
 
 get_demand_objectives(objectives::Vector{AllocationObjective}) = view(
     objectives,

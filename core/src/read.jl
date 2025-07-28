@@ -1313,6 +1313,7 @@ function LevelDemand(db::DB, config::Config, graph::MetaGraph)
             level_demand.target_storage_max[basin_id] = zeros(n_demand_priorities)
             level_demand.storage_prev[basin_id] = 0.0
             level_demand.storage_allocated[basin_id] = zeros(n_demand_priorities)
+            level_demand.storage_demand[basin_id] = zeros(n_demand_priorities)
         end
     end
 

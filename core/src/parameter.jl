@@ -973,7 +973,8 @@ max_level: The maximum target level per demand priority of the connected basin(s
 basins_with_demand: The node IDs of the Basins whose target level is given by a particular LevelDemand node
 target_storage_min: The storage associated with the current min level per demand priority
 target_storage_max: The storage associated with the current max level per demand priority
-storage_demand: The storage demand (the storage required to get the basin up to the minimum level)
+storage_demand_in: The storage the Basin needs to get to its minimum level for this priority
+storage_demand_out: The storage the Basin needs to get rid of to get to its maximum level for this priority
 storage_prev: The storage in the Basin with the level demand the previous time the allocation algorithm was run
 allocated: The storage allocated to each Basin per demand priority
 """
@@ -987,9 +988,14 @@ allocated: The storage allocated to each Basin per demand priority
     max_level::Vector{Vector{ScalarLinearInterpolation}} =
         trivial_linear_itp_fill(demand_priorities, node_id; val = NaN)
     basins_with_demand::Vector{Vector{NodeID}} = []
+    storage_prev::Dict{NodeID, Float64} = Dict()
+    # Target levels per LevelDemand node
+    target_level_min::Matrix{Float64} = zeros(length(node_id), length(demand_priorities))
+    target_level_max::Matrix{Float64} = zeros(length(node_id), length(demand_priorities))
+    # Target storages, demand and allocated per Basin with LevelDemand per demand priority
     target_storage_min::Dict{NodeID, Vector{Float64}} = Dict()
     target_storage_max::Dict{NodeID, Vector{Float64}} = Dict()
-    storage_prev::Dict{NodeID, Float64} = Dict()
+    storage_demand::Dict{NodeID, Vector{Float64}} = Dict()
     storage_allocated::Dict{NodeID, Vector{Float64}} = Dict()
 end
 

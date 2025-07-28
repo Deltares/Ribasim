@@ -127,7 +127,6 @@ end
         normpath(@__DIR__, "../../generated_testmodels/allocation_training/ribasim.toml")
     @test ispath(toml_path)
 
-    # Fails unpredictably on CI
     model = Ribasim.run(toml_path)
     @test success(model)
     allocation_flow_table = DataFrame(Ribasim.allocation_flow_table(model))
