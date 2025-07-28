@@ -269,7 +269,7 @@ end
     @test record.control_state == ["On", "Off"]
 
     t_switch = Ribasim.datetime_since(record.time[2], starttime)
-    flow_table = DataFrame(Ribasim.flow_table(model))
+    flow_table = DataFrame(Ribasim.flow_data(model))
     @test all(filter(:time => time -> time <= t_switch, flow_table).flow_rate .> -1e-12)
     @test all(
         isapprox.(
@@ -289,7 +289,7 @@ end
     )
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
-    flow_data = DataFrame(Ribasim.flow_table(model))
+    flow_data = DataFrame(Ribasim.flow_data(model))
 
     function get_link_flow(from_node_id, to_node_id)
         data = filter(
@@ -316,7 +316,7 @@ end
     )
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
-    flow_data = DataFrame(Ribasim.flow_table(model))
+    flow_data = DataFrame(Ribasim.flow_data(model))
     flow_link_0 = filter(:link_id => id -> id == 0, flow_data)
     t = Ribasim.seconds_since.(flow_link_0.time, model.config.starttime)
     itp =

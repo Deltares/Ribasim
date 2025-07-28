@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from ribasim.config import Experimental, Interpolation, Node
+from ribasim.config import Experimental, Interpolation, Node, Results
 from ribasim.model import Model, Solver
 from ribasim.nodes import (
     basin,
@@ -269,6 +269,7 @@ def tabulated_rating_curve_control_model() -> Model:
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
+        results=Results(format="netcdf"),
         experimental=Experimental(concentration=True),
     )
 

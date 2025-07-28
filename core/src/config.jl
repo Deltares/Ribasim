@@ -144,8 +144,8 @@ end
     block_transition_period::Float64 = 0.0
 end
 
-# Separate struct, as basin clashes with nodetype
 @option struct Results <: TableOption
+    format::String = "arrow"
     compression::Bool = true
     compression_level::Int = 6
     subgrid::Bool = false
@@ -172,11 +172,13 @@ end
     concentration::Bool = false
     allocation::Bool = false
 end
+
 # For logging enabled experimental features
 function Base.iterate(exp::Experimental, state = 0)
     state >= nfields(exp) && return
     return Base.getfield(exp, state + 1), state + 1
 end
+
 function Base.show(io::IO, exp::Experimental)
     fields = (field for field in fieldnames(typeof(exp)) if getfield(exp, field))
     print(io, join(fields, " "))
@@ -213,7 +215,38 @@ keys from a subsection, e.g. `dt` from the `solver` section, use underscores: `s
 function Config(config_path::AbstractString; kwargs...)::Config
     toml = from_toml(Toml, config_path; kwargs...)
     dir = dirname(normpath(config_path))
+    validate_config(toml)
     Config(toml, dir)
+end
+
+"""
+Do extra validation on the validity of the TOML config.
+
+Configurations.jl handles the type checks and required fields.
+This is the place to enforce additional rules, such as supported algorithms and formats,
+to avoid runtime errors, especially when writing results.
+"""
+function validate_config(toml::Toml)::Nothing
+    is_valid = true
+
+    if !haskey(algorithms, toml.solver.algorithm)
+        options = join(keys(algorithms), ", ")
+        @error("Given solver algorithm $(toml.solver.algorithm) not supported.\n\
+            Available options are: ($(options)).")
+        is_valid = false
+    end
+
+    supported_formats = ("arrow", "netcdf")
+    if !(toml.results.format in supported_formats)
+        @error(
+            "Unsupported results format: $(toml.results.format). Supported formats: $(supported_formats).",
+        )
+        is_valid = false
+    end
+
+    is_valid || error("Invalid TOML config.")
+
+    return nothing
 end
 
 function Base.getproperty(config::Config, sym::Symbol)
@@ -226,7 +259,7 @@ function Base.getproperty(config::Config, sym::Symbol)
 end
 
 "Construct a path relative to both the TOML directory and the optional `input_dir`"
-function input_path(config::Config, path::String)
+function input_path(config::Config, path::String="")
     return normpath(config.dir, config.input_dir, path)
 end
 
@@ -236,7 +269,15 @@ function database_path(config::Config)
 end
 
 "Construct a path relative to both the TOML directory and the optional `results_dir`"
-function results_path(config::Config, path::String)
+function results_path(config::Config, path::String="")
+    # If the path is empty, we return the results directory.
+    if !isempty(path)
+        name, ext = splitext(path)
+        if ext == ""
+            ext = config.results.format == "arrow" ? ".arrow" : ".nc"
+            path = string(name, ext)
+        end
+    end
     return normpath(config.dir, config.results_dir, path)
 end
 
@@ -327,13 +368,8 @@ end
 
 "Create an OrdinaryDiffEqAlgorithm from solver config"
 function algorithm(solver::Solver; u0 = [], specialize = true)::OrdinaryDiffEqAlgorithm
-    algotype = get(algorithms, solver.algorithm, nothing)
-    if algotype === nothing
-        options = join(keys(algorithms), ", ")
-        error("Given solver algorithm $(solver.algorithm) not supported.\n\
-            Available options are: ($(options)).")
-    end
     kwargs = Dict{Symbol, Any}()
+    algotype = algorithms[solver.algorithm]
 
     if algotype <: OrdinaryDiffEqNewtonAdaptiveAlgorithm
         kwargs[:nlsolve] = NLNewton()

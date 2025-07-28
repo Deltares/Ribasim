@@ -99,7 +99,7 @@ def _add_cf_attributes(ds, timeseries_id: str, realization: str | None = None) -
     """
     ds.attrs.update(
         {
-            "Conventions": "CF-1.8",
+            "Conventions": "CF-1.12",
             "title": "Ribasim model results",
             "references": "https://ribasim.org",
         }

@@ -73,9 +73,13 @@ The following entries can be set in the configuration in the `[results]` section
 
 entry             | type   | description
 ----------------- | ------ | -----------
+format            | String | File format, default is "arrow" for Apache Arrow, other option is "netcdf" for NetCDF with CF conventions.
 compression       | Bool   | Whether to apply compression or not.
 compression_level | Int    | Zstandard compression level. Default is 6, higher compresses more.
 subgrid           | Bool   | Compute and output more detailed water levels.
+
+Currently compression is only used for Apache Arrow.
+NetCDF will be the only output format later on.
 
 ## Logging settings
 
@@ -139,7 +143,7 @@ can be updated in place when working on a model.
 
 Arrow was chosen since it is standardized, fast, simple and flexible. It can be read and
 written by many different software packages. In Ribasim we use
-[Arrow.jl](https://arrow.apache.org/julia/dev/). Results are written to Arrow, since for long
+[Arrow.jl](https://arrow.apache.org/julia/dev/). Results can be written to Arrow, since for long
 runs Ribasim can produce tables with many rows. Arrow is well suited for large tabular
 datasets, and file size is kept small by using compression. The Arrow input files can be
 compressed with LZ4 or Zstd compression. Furthermore, in some of the columns, a small amount
@@ -326,17 +330,16 @@ control_state   | String   | -
 
 The allocation table contains a record of allocation results: when it happened, for which node, in which allocation network, and what the demand, allocated flow and realized flow were.
 The realized values at the starting time of the simulation can be ignored.
-
-column        | type     | unit
---------------| -------- | ----
-time          | DateTime | -
-subnetwork_id | Int32    | -
-node_type     | String   | -
-node_id       | Int32    | -
-priority      | Int32    | -
-demand        | Float64  | $\text{m}^3/\text{s}$
-allocated     | Float64  | $\text{m}^3/\text{s}$
-realized      | Float64  | $\text{m}^3/\text{s}$
+column           | type     | unit
+---------------- | -------- | ---------------------
+time             | DateTime | -
+subnetwork_id    | Int32    | -
+node_type        | String   | -
+node_id          | Int32    | -
+demand_priority  | Int32    | -
+demand           | Float64  | $\text{m}^3/\text{s}$
+allocated        | Float64  | $\text{m}^3/\text{s}$
+realized         | Float64  | $\text{m}^3/\text{s}$
 
 ::: {.callout-note}
 The LevelDemand node allocations are listed as node type Basin.
@@ -357,7 +360,7 @@ If in the model a primary network and subnetwork(s) are specified, there are 3 d
 The column `optimization_type` provides the distinction between these optimization types.
 
 - `internal_sources`: first it will try using local sources internal to the subnetwork
-- `collect_demands`: collecting its total demand per priority (for allocating flow from the primary network to the subnetwork)
+- `collect_demands`: collecting its total demand (for allocating flow from the primary network to the subnetwork)
 - `allocate`: allocating flow within the subnetwork
 
 column            | type     | unit
@@ -369,7 +372,6 @@ from_node_id      | Int32    | -
 to_node_type      | String   | -
 to_node_id        | Int32    | -
 subnetwork_id     | Int32    | -
-priority          | Int32    | -
 flow_rate         | Float64  | $\text{m}^3/\text{s}$
 optimization_type | String   | -
 

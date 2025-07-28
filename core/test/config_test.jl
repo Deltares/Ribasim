@@ -53,9 +53,7 @@ end
     )
     Solver(; algorithm = "DoesntExist")
     @test_throws InexactError Solver(autodiff = 2)
-    @test_throws "algorithm DoesntExist not supported" algorithm(
-        Solver(; algorithm = "DoesntExist"),
-    )
+    @test_throws KeyError algorithm(Solver(; algorithm = "DoesntExist"))
     @test alg_autodiff(algorithm(Solver(; algorithm = "QNDF", autodiff = true))) ==
           AutoForwardDiff(; tag = :Ribasim)
     @test alg_autodiff(algorithm(Solver(; algorithm = "QNDF", autodiff = false))) isa

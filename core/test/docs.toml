@@ -51,9 +51,10 @@ evaporate_mass = true  # optional, default true to simulate a correct mass balan
 
 [logging]
 # defines the logging level of Ribasim
-verbosity = "info" # optional, default "info", can otherwise be "debug", "warn" or "error"
+verbosity = "info" # optional, default "info", can also be "debug", "warn" or "error"
 
 [results]
+format = "arrow"      # optional, default "arrow", can also be "netcdf"
 compression = true    # optional, default true, using zstd compression
 compression_level = 6 # optional, default 6
 subgrid = false       # optional, default false

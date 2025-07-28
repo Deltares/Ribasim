@@ -51,8 +51,8 @@ end
     config = Ribasim.Config(toml_path; experimental_allocation = true)
     model = Ribasim.Model(config)
     Ribasim.solve!(model)
-    allocation_flow_table = DataFrame(Ribasim.allocation_flow_table(model))
-    flow_table = DataFrame(Ribasim.flow_table(model))
+    allocation_flow_table = DataFrame(Ribasim.allocation_flow_data(model))
+    flow_table = DataFrame(Ribasim.flow_data(model))
 
     filter!(:link_id => ==(1), allocation_flow_table)
     filter!(:link_id => ==(1), flow_table)
@@ -69,8 +69,8 @@ end
     config = Ribasim.Config(toml_path; experimental_allocation = true)
     model = Ribasim.Model(config)
     Ribasim.solve!(model)
-    allocation_flow_table = DataFrame(Ribasim.allocation_flow_table(model))
-    flow_table = DataFrame(Ribasim.flow_table(model))
+    allocation_flow_table = DataFrame(Ribasim.allocation_flow_data(model))
+    flow_table = DataFrame(Ribasim.flow_data(model))
 
     filter!(:link_id => ==(1), allocation_flow_table)
     filter!(:link_id => ==(1), flow_table)
@@ -93,8 +93,8 @@ end
     )
     model = Ribasim.Model(config)
     Ribasim.solve!(model)
-    allocation_flow_table = DataFrame(Ribasim.allocation_flow_table(model))
-    flow_table = DataFrame(Ribasim.flow_table(model))
+    allocation_flow_table = DataFrame(Ribasim.allocation_flow_data(model))
+    flow_table = DataFrame(Ribasim.flow_data(model))
 
     filter!(:link_id => ==(1), allocation_flow_table)
     filter!(:link_id => ==(1), flow_table)
@@ -111,8 +111,8 @@ end
     config = Ribasim.Config(toml_path; experimental_allocation = true)
     model = Ribasim.Model(config)
     Ribasim.solve!(model)
-    allocation_flow_table = DataFrame(Ribasim.allocation_flow_table(model))
-    flow_table = DataFrame(Ribasim.flow_table(model))
+    allocation_flow_table = DataFrame(Ribasim.allocation_flow_data(model))
+    flow_table = DataFrame(Ribasim.flow_data(model))
 
     filter!(:link_id => ==(1), allocation_flow_table)
     filter!(:link_id => ==(1), flow_table)
@@ -129,8 +129,8 @@ end
 
     model = Ribasim.run(toml_path)
     @test success(model)
-    allocation_flow_table = DataFrame(Ribasim.allocation_flow_table(model))
-    flow_table = DataFrame(Ribasim.flow_table(model))
+    allocation_flow_table = DataFrame(Ribasim.allocation_flow_data(model))
+    flow_table = DataFrame(Ribasim.flow_data(model))
 
     filter!(:link_id => ==(1), allocation_flow_table)
     filter!(:link_id => ==(1), flow_table)
@@ -149,8 +149,8 @@ end
     model = Ribasim.Model(config)
 
     Ribasim.solve!(model)
-    allocation_flow_table = DataFrame(Ribasim.allocation_flow_table(model))
-    flow_table = DataFrame(Ribasim.flow_table(model))
+    allocation_flow_table = DataFrame(Ribasim.allocation_flow_data(model))
+    flow_table = DataFrame(Ribasim.flow_data(model))
 
     filter!(:link_id => ==(1), allocation_flow_table)
     filter!(:link_id => ==(1), flow_table)
