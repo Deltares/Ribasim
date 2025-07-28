@@ -257,6 +257,7 @@ class BasinProfile(Input):
             QgsField("node_id", QVariant.Int),
             QgsField("area", QVariant.Double),
             QgsField("level", QVariant.Double),
+            QgsField("storage", QVariant.Double),
         ]
 
 
@@ -277,7 +278,7 @@ class BasinStatic(Input):
             QgsField("potential_evaporation", QVariant.Double),
             QgsField("infiltration", QVariant.Double),
             QgsField("precipitation", QVariant.Double),
-            QgsField("runoff", QVariant.Double),
+            QgsField("surface_runoff", QVariant.Double),
         ]
 
 
@@ -299,7 +300,7 @@ class BasinTime(Input):
             QgsField("potential_evaporation", QVariant.Double),
             QgsField("infiltration", QVariant.Double),
             QgsField("precipitation", QVariant.Double),
-            QgsField("runoff", QVariant.Double),
+            QgsField("surface_runoff", QVariant.Double),
         ]
 
 
@@ -358,7 +359,7 @@ class BasinConcentration(Input):
             QgsField("substance", QVariant.String),
             QgsField("drainage", QVariant.Double),
             QgsField("precipitation", QVariant.Double),
-            QgsField("runoff", QVariant.Double),
+            QgsField("surface_runoff", QVariant.Double),
         ]
 
 
@@ -456,6 +457,7 @@ class TabulatedRatingCurveStatic(Input):
             QgsField("active", QVariant.Bool),
             QgsField("level", QVariant.Double),
             QgsField("flow_rate", QVariant.Double),
+            QgsField("max_downstream_level", QVariant.Double),
             QgsField("control_state", QVariant.String),
         ]
 
@@ -476,6 +478,7 @@ class TabulatedRatingCurveTime(Input):
             QgsField("time", QVariant.DateTime),
             QgsField("level", QVariant.Double),
             QgsField("flow_rate", QVariant.Double),
+            QgsField("max_downstream_level", QVariant.Double),
         ]
 
 
@@ -494,6 +497,7 @@ class LinearResistanceStatic(Input):
             QgsField("node_id", QVariant.Int),
             QgsField("active", QVariant.Bool),
             QgsField("resistance", QVariant.Double),
+            QgsField("max_flow_rate", QVariant.Double),
             QgsField("control_state", QVariant.String),
         ]
 
@@ -755,7 +759,9 @@ class DiscreteControlCondition(Input):
         return [
             QgsField("node_id", QVariant.Int),
             QgsField("compound_variable_id", QVariant.Int),
+            QgsField("condition_id", QVariant.Int),
             QgsField("greater_than", QVariant.Double),
+            QgsField("time", QVariant.DateTime),
         ]
 
 
@@ -783,7 +789,7 @@ class ContinuousControlVariable(Input):
         return "ContinuousControl / variable"
 
     @classmethod
-    def geometry_type(cs) -> str:
+    def geometry_type(cls) -> str:
         return "No Geometry"
 
     @classmethod
@@ -835,6 +841,7 @@ class PidControlStatic(Input):
             QgsField("proportional", QVariant.Double),
             QgsField("integral", QVariant.Double),
             QgsField("derivative", QVariant.Double),
+            QgsField("control_state", QVariant.String),
         ]
 
 
@@ -876,6 +883,7 @@ class UserDemandStatic(Input):
             QgsField("active", QVariant.Bool),
             QgsField("demand", QVariant.Double),
             QgsField("return_factor", QVariant.Double),
+            QgsField("min_level", QVariant.Double),
             QgsField("demand_priority", QVariant.Int),
         ]
 
@@ -896,6 +904,7 @@ class UserDemandTime(Input):
             QgsField("time", QVariant.DateTime),
             QgsField("demand", QVariant.Double),
             QgsField("return_factor", QVariant.Double),
+            QgsField("min_level", QVariant.Double),
             QgsField("demand_priority", QVariant.Int),
         ]
 
