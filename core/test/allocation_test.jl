@@ -416,7 +416,7 @@ end
     @test all(isapprox.(realized_numeric, df_basin_2.realized[2:end], atol = 1e-10))
 
     # Realized user demand
-    flow_table = DataFrame(Ribasim.flow_table(model))
+    flow_table = DataFrame(Ribasim.flow_data(model))
     flow_table_user_3 = flow_table[flow_table.link_id .== 2, :]
     itp_user_3 = LinearInterpolation(
         flow_table_user_3.flow_rate,
@@ -624,7 +624,7 @@ end
     @test_throws Exception Ribasim.solve!(model)
     (; user_demand, graph) = model.integrator.p.p_independent
 
-    data_allocation = DataFrame(Ribasim.allocation_table(model))
+    data_allocation = DataFrame(Ribasim.allocation_data(model))
     fractions = Vector{Float64}[]
 
     for id in user_demand.node_id
@@ -729,10 +729,10 @@ end
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
 
-    basin_table = Ribasim.basin_table(model)
+    basin_table = Ribasim.basin_data(model)
     @test basin_table.level[1] == 10.0
     @test all(h -> isapprox(h, 5.0; rtol = 1e-5), basin_table.level[7:end])
 
-    allocation_control_table = Ribasim.allocation_control_table(model)
+    allocation_control_table = Ribasim.allocation_control_data(model)
     @test all(q -> isapprox(q, 1e-3; rtol = 1e-5), allocation_control_table.flow_rate[1:5])
 end
