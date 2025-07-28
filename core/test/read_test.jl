@@ -89,7 +89,7 @@ end
 end
 
 @testitem "Parabolic basin profile initialisation" begin
-    using Ribasim: BasinProfileV1, Basin, StructVector, BasinConcentrationV1, NodeID
+    using Ribasim: Schema, Basin, StructVector, NodeID
 
     # a parabolic shaped (x^2 - 1) basin with a circular cross section
     levels::Vector{Float64} = [0, 1, 2, 3, 4, 5]
@@ -105,7 +105,7 @@ end
 
     basin = Ribasim.Basin(; node_id = NodeID.(:Basin, [1, 2, 3], 1))
 
-    profiles = StructVector{BasinProfileV1}(;
+    profiles = StructVector{Schema.Basin.Profile}(;
         node_id = [node_1; node_2; node_3],
         level = [levels; levels; levels],
         area = [areas; skipped; areas],
@@ -123,13 +123,7 @@ end
 end
 
 @testitem "Cyllindric basin profile initialisation" begin
-    using Ribasim:
-        BasinProfileV1,
-        Basin,
-        StructVector,
-        BasinConcentrationV1,
-        NodeID,
-        interpolate_basin_profile!
+    using Ribasim: Schema, Basin, StructVector, NodeID, interpolate_basin_profile!
 
     levels::Vector{Float64} = [0, 1]
     areas::Vector{Float64} = [1000, 1000]
@@ -142,7 +136,7 @@ end
 
     basin = Ribasim.Basin(; node_id = NodeID.(:Basin, [1], 1))
 
-    profiles = StructVector{BasinProfileV1}(;
+    profiles = StructVector{Schema.Basin.Profile}(;
         node_id = node_1,
         level = levels,
         area = areas,
@@ -155,13 +149,7 @@ end
 end
 
 @testitem "Constant basin profile initialisation" begin
-    using Ribasim:
-        BasinProfileV1,
-        Basin,
-        StructVector,
-        BasinConcentrationV1,
-        NodeID,
-        interpolate_basin_profile!
+    using Ribasim: Schema, Basin, StructVector, NodeID, interpolate_basin_profile!
 
     levels::Vector{Float64} = [0, 1]
     areas::Vector{Float64} = [1000, 1000]
@@ -174,7 +162,7 @@ end
 
     basin = Ribasim.Basin(; node_id = NodeID.(:Basin, [1], 1))
 
-    profiles = StructVector{BasinProfileV1}(;
+    profiles = StructVector{Schema.Basin.Profile}(;
         node_id = node_1,
         level = levels,
         area = areas,
@@ -187,13 +175,7 @@ end
 end
 
 @testitem "Linear area basin profile initialisation" begin
-    using Ribasim:
-        BasinProfileV1,
-        Basin,
-        StructVector,
-        BasinConcentrationV1,
-        NodeID,
-        interpolate_basin_profile!
+    using Ribasim: Schema, Basin, StructVector, NodeID, interpolate_basin_profile!
     using DataInterpolations
     using Ribasim, Test
 
@@ -208,7 +190,7 @@ end
 
     basin = Ribasim.Basin(; node_id = NodeID.(:Basin, [1], 1))
 
-    profiles = StructVector{BasinProfileV1}(;
+    profiles = StructVector{Schema.Basin.Profile}(;
         node_id = node_1,
         level = levels,
         area = areas,
