@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>ManningResistance – Ribasim</title>
+<title>Updating Ribasim – Ribasim</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -58,25 +58,25 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </style>
 
 
-<script src="../../site_libs/quarto-nav/quarto-nav.js"></script>
-<script src="../../site_libs/quarto-nav/headroom.min.js"></script>
-<script src="../../site_libs/clipboard/clipboard.min.js"></script>
-<script src="../../site_libs/quarto-search/autocomplete.umd.js"></script>
-<script src="../../site_libs/quarto-search/fuse.min.js"></script>
-<script src="../../site_libs/quarto-search/quarto-search.js"></script>
-<meta name="quarto:offset" content="../../">
-<link href="../../reference/node/terminal.html" rel="next">
-<link href="../../reference/node/linear-resistance.html" rel="prev">
-<script src="../../site_libs/quarto-html/quarto.js" type="module"></script>
-<script src="../../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
-<script src="../../site_libs/quarto-html/popper.min.js"></script>
-<script src="../../site_libs/quarto-html/tippy.umd.min.js"></script>
-<script src="../../site_libs/quarto-html/anchor.min.js"></script>
-<link href="../../site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-37eea08aefeeee20ff55810ff984fec1.css" rel="stylesheet" id="quarto-text-highlighting-styles">
-<script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
-<link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../../site_libs/bootstrap/bootstrap-acab61ada4a2e8b05c89902acf7a94ad.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script src="../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../">
+<link href="../guide/qgis.html" rel="next">
+<link href="../guide/modeling-process.html" rel="prev">
+<script src="../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../site_libs/quarto-html/popper.min.js"></script>
+<script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-37eea08aefeeee20ff55810ff984fec1.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../site_libs/bootstrap/bootstrap-acab61ada4a2e8b05c89902acf7a94ad.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -105,37 +105,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   }
 }</script>
 
-  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
-  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
 
-<script type="text/javascript">
-const typesetMath = (el) => {
-  if (window.MathJax) {
-    // MathJax Typeset
-    window.MathJax.typeset([el]);
-  } else if (window.katex) {
-    // KaTeX Render
-    var mathElements = el.getElementsByClassName("math");
-    var macros = [];
-    for (var i = 0; i < mathElements.length; i++) {
-      var texText = mathElements[i].firstChild;
-      if (mathElements[i].tagName == "SPAN") {
-        window.katex.render(texText.data, mathElements[i], {
-          displayMode: mathElements[i].classList.contains('display'),
-          throwOnError: false,
-          macros: macros,
-          fleqn: false
-        });
-      }
-    }
-  }
-}
-window.Quarto = {
-  typesetMath
-};
-</script>
-
-<link rel="stylesheet" href="../../assets/styles.css">
+<link rel="stylesheet" href="../assets/styles.css">
 </head>
 
 <body class="nav-sidebar floating nav-fixed quarto-light">
@@ -145,10 +116,10 @@ window.Quarto = {
     <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
       <div class="navbar-container container-fluid">
       <div class="navbar-brand-container mx-auto">
-    <a href="../../index.html" class="navbar-brand navbar-brand-logo">
+    <a href="../index.html" class="navbar-brand navbar-brand-logo">
     <img src="https://user-images.githubusercontent.com/4471859/224825908-bee7e044-bc6b-4561-8b08-5d330cce3ed5.png" alt="" class="navbar-logo">
     </a>
-    <a class="navbar-brand" href="../../index.html">
+    <a class="navbar-brand" href="../index.html">
     <span class="navbar-title">Ribasim</span>
     </a>
   </div>
@@ -159,29 +130,29 @@ window.Quarto = {
           <div class="collapse navbar-collapse" id="navbarCollapse">
             <ul class="navbar-nav navbar-nav-scroll me-auto">
   <li class="nav-item">
-    <a class="nav-link" href="../../index.html"> 
+    <a class="nav-link" href="../index.html"> 
 <span class="menu-text">Overview</span></a>
   </li>  
   <li class="nav-item">
-    <a class="nav-link" href="../../tutorial/natural-flow.html"> 
+    <a class="nav-link" href="../tutorial/natural-flow.html"> 
 <span class="menu-text">Tutorials</span></a>
   </li>  
   <li class="nav-item">
-    <a class="nav-link" href="../../guide/examples.html"> 
+    <a class="nav-link active" href="../guide/examples.html" aria-current="page"> 
 <span class="menu-text">How-to guides</span></a>
   </li>  
   <li class="nav-item">
-    <a class="nav-link" href="../../concept/concept.html"> 
+    <a class="nav-link" href="../concept/concept.html"> 
 <span class="menu-text">Concepts</span></a>
   </li>  
   <li class="nav-item">
-    <a class="nav-link active" href="../../reference/index.html" aria-current="page"> 
+    <a class="nav-link" href="../reference/index.html"> 
 <span class="menu-text">Reference</span></a>
   </li>  
 </ul>
             <ul class="navbar-nav navbar-nav-scroll ms-auto">
   <li class="nav-item">
-    <a class="nav-link" href="../../dev/index.html"> 
+    <a class="nav-link" href="../dev/index.html"> 
 <span class="menu-text">Contributing</span></a>
   </li>  
   <li class="nav-item compact">
@@ -200,7 +171,7 @@ window.Quarto = {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../../reference/node/basin.html">Nodes</a></li><li class="breadcrumb-item"><a href="../../reference/node/manning-resistance.html">ManningResistance</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../guide/updating-ribasim.html">Updating Ribasim</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -214,38 +185,38 @@ window.Quarto = {
     <ul class="list-unstyled mt-1">
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../reference/index.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Reference</span></a>
+  <a href="../guide/examples.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Examples</span></a>
   </div>
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../reference/usage.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Usage</span></a>
+  <a href="../guide/modeling-process.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Modeling process</span></a>
   </div>
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../reference/validation.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Validation</span></a>
+  <a href="../guide/updating-ribasim.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">Updating Ribasim</span></a>
   </div>
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../reference/python/index.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Python API</span></a>
+  <a href="../guide/qgis.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">QGIS plugin</span></a>
   </div>
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../reference/test-models.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Test models</span></a>
+  <a href="../guide/coupling.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Coupling</span></a>
   </div>
 </li>
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
             <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
- <span class="menu-text">Nodes</span></a>
+ <span class="menu-text">Coupling guides</span></a>
           <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
@@ -253,102 +224,18 @@ window.Quarto = {
       <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../reference/node/basin.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Basin</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../../reference/node/tabulated-rating-curve.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">TabulatedRatingCurve</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../../reference/node/pump.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Pump</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../../reference/node/outlet.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Outlet</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../../reference/node/user-demand.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">UserDemand</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../../reference/node/flow-demand.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">FlowDemand</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../../reference/node/level-demand.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">LevelDemand</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../../reference/node/flow-boundary.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">FlowBoundary</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../../reference/node/level-boundary.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">LevelBoundary</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../../reference/node/linear-resistance.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">LinearResistance</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../../reference/node/manning-resistance.html" class="sidebar-item-text sidebar-link active">
- <span class="menu-text">ManningResistance</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../../reference/node/terminal.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Terminal</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../../reference/node/junction.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Junction</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../../reference/node/discrete-control.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">DiscreteControl</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../../reference/node/continuous-control.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">ContinuousControl</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../../reference/node/pid-control.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">PidControl</span></a>
+  <a href="../guide/delwaq.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Ribasim Delwaq coupling</span></a>
   </div>
 </li>
       </ul>
   </li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../guide/debug.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Debugging models</span></a>
+  </div>
+</li>
     </ul>
     </div>
 </nav>
@@ -359,20 +246,17 @@ window.Quarto = {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#tables" id="toc-tables" class="nav-link active" data-scroll-target="#tables"><span class="header-section-number">1</span> Tables</a>
-  <ul class="collapse">
-  <li><a href="#static" id="toc-static" class="nav-link" data-scroll-target="#static"><span class="header-section-number">1.1</span> Static</a></li>
-  </ul></li>
-  <li><a href="#equations" id="toc-equations" class="nav-link" data-scroll-target="#equations"><span class="header-section-number">2</span> Equations</a></li>
+  <li><a href="#version-numbers-and-breaking-changes" id="toc-version-numbers-and-breaking-changes" class="nav-link active" data-scroll-target="#version-numbers-and-breaking-changes"><span class="header-section-number">1</span> Version numbers and breaking changes</a></li>
+  <li><a href="#automatic-model-migration" id="toc-automatic-model-migration" class="nav-link" data-scroll-target="#automatic-model-migration"><span class="header-section-number">2</span> Automatic model migration</a></li>
   </ul>
 </nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
-<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../../reference/node/basin.html">Nodes</a></li><li class="breadcrumb-item"><a href="../../reference/node/manning-resistance.html">ManningResistance</a></li></ol></nav>
+<header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">ManningResistance</h1>
+<h1 class="title">Updating Ribasim</h1>
 </div>
 
 
@@ -389,226 +273,25 @@ window.Quarto = {
 </header>
 
 
-<p>The ManningResistance node calculates a flow rate between two Basins based on their water levels. The flow rate is calculated by conservation of energy and the Manning-Gauckler formula to estimate friction losses.</p>
-<section id="tables" class="level1" data-number="1">
-<h1 data-number="1"><span class="header-section-number">1</span> Tables</h1>
-<section id="static" class="level2" data-number="1.1">
-<h2 data-number="1.1" class="anchored" data-anchor-id="static"><span class="header-section-number">1.1</span> Static</h2>
-<table class="caption-top table">
-<colgroup>
-<col style="width: 20%">
-<col style="width: 10%">
-<col style="width: 52%">
-<col style="width: 16%">
-</colgroup>
-<thead>
-<tr class="header">
-<th>column</th>
-<th>type</th>
-<th>unit</th>
-<th>restriction</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>node_id</td>
-<td>Int32</td>
-<td>-</td>
-<td></td>
-</tr>
-<tr class="even">
-<td>active</td>
-<td>Bool</td>
-<td>-</td>
-<td>(optional, default true)</td>
-</tr>
-<tr class="odd">
-<td>length</td>
-<td>Float64</td>
-<td><span class="math inline">\(\text{m}\)</span></td>
-<td>positive</td>
-</tr>
-<tr class="even">
-<td>manning_n</td>
-<td>Float64</td>
-<td><span class="math inline">\(\text{s} \text{m}^{-\frac{1}{3}}\)</span></td>
-<td>positive</td>
-</tr>
-<tr class="odd">
-<td>profile_width</td>
-<td>Float64</td>
-<td><span class="math inline">\(\text{m}\)</span></td>
-<td>positive</td>
-</tr>
-<tr class="even">
-<td>profile_slope</td>
-<td>Float64</td>
-<td>-</td>
-<td>-</td>
-</tr>
-<tr class="odd">
-<td>control_state</td>
-<td>String</td>
-<td>-</td>
-<td>(optional)</td>
-</tr>
-</tbody>
-</table>
+<p>This guide explains how to update Ribasim models from older versions to newer versions. To update the Ribasim installation itself, follow the <a href="../install.html">installation steps</a>, ensuring that all installed components are the same. To see the most important changes in Ribasim, consult the <a href="../changelog.html">changelog</a>.</p>
+<section id="version-numbers-and-breaking-changes" class="level1" data-number="1">
+<h1 data-number="1"><span class="header-section-number">1</span> Version numbers and breaking changes</h1>
+<p>Ribasim uses version numbers like <code>2023.1.0</code>, following <code>YYYY.MINOR.MICRO</code> from <a href="https://calver.org/">calver</a>. It starts with the year the release was made, followed by the minor version number for normal releases, and a micro number for non-breaking, hotfix releases. This means that whenever the year or minor version changes, there is a possibility that the user has to make changes to the model for it to keep working. If this is the case, it will be highlighted in the <a href="../changelog.html">changelog</a>. When possible, we automate this process using model migration in Ribasim Python, see the section below.</p>
 </section>
-</section>
-<section id="equations" class="level1" data-number="2">
-<h1 data-number="2"><span class="header-section-number">2</span> Equations</h1>
-<p>ManningResistance simulates steady flow between Basins through a reach described by a trapezoidal profile and a Manning roughness coefficient.</p>
-<p>We describe the discharge from Basin <span class="math inline">\(a\)</span> to Basin <span class="math inline">\(b\)</span> solely as a function of the water levels in <span class="math inline">\(a\)</span> and <span class="math inline">\(b\)</span>.</p>
-<p><span class="math display">\[
-Q = f(h_a, h_b)
-\]</span></p>
-<p>Where:</p>
-<ul>
-<li>The subscripts <span class="math inline">\(a\)</span> and <span class="math inline">\(b\)</span> denotes two different Basins</li>
-<li><span class="math inline">\(h\)</span> is the hydraulic head, or water level</li>
-</ul>
-<p>The energy equation for open channel flow is:</p>
-<p><span class="math display">\[
-H = h + \frac{v^2}{2g}
-\]</span></p>
-<p>Where:</p>
-<ul>
-<li><span class="math inline">\(H\)</span> is total head</li>
-<li><span class="math inline">\(v\)</span> is average water velocity</li>
-<li><span class="math inline">\(g\)</span> is gravitational acceleration</li>
-</ul>
-<p>The discharge <span class="math inline">\(Q\)</span> is defined as:</p>
-<p><span class="math display">\[
-Q = Av
-\]</span></p>
-<p>where <span class="math inline">\(A\)</span> is cross-sectional area.</p>
-<p>We use conservation of energy to relate the total head at <span class="math inline">\(a\)</span> to <span class="math inline">\(b\)</span>, with <span class="math inline">\(H_a &gt; H_b\)</span> as follows:</p>
-<p><span class="math display">\[
-H_a = H_b + h_{\text{loss}}
-\]</span></p>
-<p>Or:</p>
-<p><span class="math display">\[
-h_a + \frac{v_a^2}{2g} = h_b + \frac{v_b^2}{2g} + h_{\text{loss}}
-\]</span></p>
-<p>Where <span class="math inline">\(v\)</span> is the average water velocity. <span class="math inline">\(h_{\text{loss}}\)</span> is a combination of friction and contraction/expansion losses:</p>
-<p><span class="math display">\[
-h_{\text{loss}} = S_f L + \frac{C}{2g} \left(v_b^2 - v_a^2\right)
-\]</span></p>
-<p>Where:</p>
-<ul>
-<li><span class="math inline">\(L\)</span> is the reach length</li>
-<li><span class="math inline">\(S_f\)</span> is the representative friction slope</li>
-<li><span class="math inline">\(C\)</span> is the expansion or contraction coefficient, <span class="math inline">\(0 \le C \le1\)</span></li>
-</ul>
-<p>We assume velocity differences in a connection are negligible (<span class="math inline">\(v_a = v_b\)</span>):</p>
-<p><span class="math display">\[
-h_a = h_b + S_f L
-\]</span></p>
-<p>Friction losses are computed with the Gauckler-Manning formula:</p>
-<p><span class="math display">\[
-Q = \frac{A}{n} R_h^\frac{2}{3} \sqrt{S_f}
-\]</span></p>
-<p>Where:</p>
-<ul>
-<li><span class="math inline">\(A\)</span> is the <strong>representative</strong> area.</li>
-<li><span class="math inline">\(R_h\)</span> is the <strong>representative</strong> wetted radius.</li>
-<li><span class="math inline">\(S_f\)</span> is the <strong>representative</strong> friction slope.</li>
-<li><span class="math inline">\(n\)</span> is Manning’s roughness coefficient.</li>
-</ul>
-<p>We can rewrite to express <span class="math inline">\(S_f\)</span> in terms of Q:</p>
-<p><span class="math display">\[
-S_f = Q^2 \frac{n^2}{A^2 R_h^{4/3}}
-\]</span></p>
-<p>No water is added or removed in a connection:</p>
-<p><span class="math display">\[
-Q_a = Q_b = Q
-\]</span></p>
-<p>Substituting:</p>
-<p><span class="math display">\[
-h_a = h_b + Q^2 \frac{n^2}{A^2 R_h^{4/3}} L
-\]</span></p>
-<p>We can then express <span class="math inline">\(Q\)</span> as a function of head difference <span class="math inline">\(\Delta h\)</span>:</p>
-<p><span class="math display">\[
-Q = \textrm{sign}(\Delta h) \frac{A}{n} R_h^{2/3}\sqrt{\frac{|\Delta h|}{L} }
-\]</span></p>
-<p>The <span class="math inline">\(\textrm{sign}(\Delta h)\)</span> term causes the direction of the flow to reverse if the head in basin <span class="math inline">\(b\)</span> is larger than in basin <span class="math inline">\(a\)</span>.</p>
-<p>This expression however has a derivative which tends to <span class="math inline">\(\infty\)</span> as <span class="math inline">\(\Delta h\)</span> tends to <span class="math inline">\(0\)</span>, which can lead to instabilities in simulation. Therefore we use the modified expression</p>
-<p><span class="math display">\[
-Q = \phi\frac{A}{n} R_h^{2/3}s\left(\frac{\Delta h}{L}; 10^{-5}\right),
-\]</span></p>
-<p>where <span class="math inline">\(s\)</span> is a relaxed square root function:</p>
-<p><span class="math display">\[
-s(x; x_0)
-=
-\begin{align}
-  \begin{cases}
-    \frac{x}{4\sqrt{p}}\left(5 - (\frac{x}{p})^2\right) &amp;\text{ if } |x| &lt; x_0 \\
-    \textrm{sign}(x)\sqrt{|x|} &amp;\text{ if } |x| \ge x_0
-  \end{cases}
-\end{align}
-\]</span></p>
-<div id="039b97aa" class="cell" data-execution_count="1">
-<details class="code-fold">
-<summary>Code</summary>
-<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> numpy <span class="im">as</span> np</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> s(x, threshold):</span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> np.<span class="bu">abs</span>(x) <span class="op">&lt;</span> threshold:</span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    x_scaled <span class="op">=</span> x <span class="op">/</span> threshold</span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> x <span class="op">/</span> (<span class="dv">4</span><span class="op">*</span>np.sqrt(threshold)) <span class="op">*</span> (<span class="dv">5</span> <span class="op">-</span> (x<span class="op">/</span>threshold)<span class="op">**</span><span class="dv">2</span>)</span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>  <span class="cf">else</span>:</span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> np.sign(x)<span class="op">*</span>np.sqrt(np.<span class="bu">abs</span>(x))</span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>x <span class="op">=</span> np.linspace(<span class="op">-</span><span class="fl">0.0025</span>, <span class="fl">0.0025</span>, <span class="dv">100</span>)</span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>threshold <span class="op">=</span> <span class="fl">1e-3</span></span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots()</span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>y_o <span class="op">=</span> np.sign(x)<span class="op">*</span>np.sqrt(np.<span class="bu">abs</span>(x))</span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>y_s <span class="op">=</span> [s(x_, threshold) <span class="cf">for</span> x_ <span class="kw">in</span> x]</span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>ax.plot(x, y_o, ls <span class="op">=</span> <span class="st">":"</span>, label <span class="op">=</span> <span class="vs">r"sign</span><span class="dv">$</span><span class="kw">(</span><span class="vs">x</span><span class="kw">)</span><span class="dv">\s</span><span class="vs">qrt{</span><span class="cf">|</span><span class="vs">x</span><span class="cf">|</span><span class="vs">}</span><span class="dv">$</span><span class="vs">"</span>)</span>
-<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>ax.plot(x, y_s, color <span class="op">=</span> <span class="st">"C0"</span>, label <span class="op">=</span> <span class="vs">r"</span><span class="dv">$</span><span class="vs">s</span><span class="er">\</span><span class="vs">left</span><span class="kw">(</span><span class="vs">x; 10</span><span class="dv">^</span><span class="vs">{-3}</span><span class="ch">\r</span><span class="vs">ight</span><span class="kw">)</span><span class="dv">$</span><span class="vs">"</span>)</span>
-<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>ax.legend()<span class="op">;</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</details>
-<div class="cell-output cell-output-display">
-<div>
-<figure class="figure">
-<p><img src="manning-resistance_files/figure-html/cell-2-output-1.png" class="img-fluid figure-img"></p>
-</figure>
-</div>
-</div>
-</div>
-<p>and <span class="math inline">\(\phi\)</span> is the reduction factor which makes the flow go smoothly to <span class="math inline">\(0\)</span> as the upstream storage (as determined by the flow direction) becomes smaller than the equivalent of a water depth of <span class="math inline">\(10 \;\text{cm}\)</span>.</p>
-<div class="callout callout-style-default callout-note callout-titled">
-<div class="callout-header d-flex align-content-center">
-<div class="callout-icon-container">
-<i class="callout-icon"></i>
-</div>
-<div class="callout-title-container flex-fill">
-Note
-</div>
-</div>
-<div class="callout-body-container callout-body">
-<p>The computation of <span class="math inline">\(S_f\)</span> is not exact: we base it on a representative area and hydraulic radius, rather than integrating <span class="math inline">\(S_f\)</span> along the length of a reach. Direct analytic solutions exist for e.g.&nbsp;parabolic profiles (Tolkmitt), but other profiles requires relatively complicated approaches (such as approximating the profile with a polynomial).</p>
-<p>We use the average value of the cross-sectional area, the average value of the water depth, and the average value of the hydraulic radius to compute a friction slope. The size of the resulting error will depend on the water depth difference between the upstream and downstream Basin.</p>
-</div>
-</div>
-<p>The cross sectional area for a trapezoidal or rectangular profile:</p>
-<p><span class="math display">\[
-A = w d + \frac{\Delta y}{\Delta z} d^2
-\]</span></p>
-<p>Where</p>
-<ul>
-<li><span class="math inline">\(w\)</span> is the width at <span class="math inline">\(d = 0\)</span> (A triangular profile has <span class="math inline">\(w = 0\)</span>)</li>
-<li><span class="math inline">\(\frac{\Delta y}{\Delta z}\)</span> is the slope of the profile expressed as the horizontal length for one unit in the vertical (A slope of 45 degrees has <span class="math inline">\(\frac{\Delta y}{\Delta z} = 1\)</span>; a rectangular profile 0).</li>
-</ul>
-<p>Accordingly, the wetted perimeter is:</p>
-<p><span class="math display">\[
-B = w + 2 d \sqrt{\left(\frac{\Delta y}{\Delta z}\right)^2 + 1}
-\]</span></p>
+<section id="automatic-model-migration" class="level1" data-number="2">
+<h1 data-number="2"><span class="header-section-number">2</span> Automatic model migration</h1>
+<p>Models are automatically migrated when read from file using Ribasim Python, and this is the recommended way to update your models.</p>
+<p>The Ribasim Python package contains a set of migration functions that are applied automatically when you read a model file from an older version. When Ribasim developers make changes to the model structure (for example, adding new required columns to tables), these changes would normally break compatibility with existing models. To prevent this, migration functions automatically update your model data to match the current version’s requirements.</p>
+<p>The core always expects models to be written by the same Ribasim Python version as itself, which is why it gives a warning whenever the <code>ribasim_version</code> in the TOML does not match <code>ribasim --version</code>.</p>
+<p>When you read an older model, Ribasim Python will automatically apply all necessary migrations and update the model version accordingly. To migrate an existing model to the latest version, simply use the following script:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> ribasim</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Read the old model (migration happens automatically)</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>model <span class="op">=</span> ribasim.Model.read(<span class="st">"path/to/your/old_model.toml"</span>)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Write the migrated model</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>model.write(<span class="st">"path/to/your/migrated_model.toml"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>If you have a script that builds your model from scratch, simply re-running that script with the new Ribasim Python version will produce a model with the updated version, making the above migration step unnecessary.</p>
 
 
 </section>
@@ -1015,13 +698,13 @@ B = w + 2 d \sqrt{\left(\frac{\Delta y}{\Delta z}\right)^2 + 1}
   </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="../../reference/node/linear-resistance.html" class="pagination-link" aria-label="LinearResistance">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">LinearResistance</span>
+      <a href="../guide/modeling-process.html" class="pagination-link" aria-label="Modeling process">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Modeling process</span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="../../reference/node/terminal.html" class="pagination-link" aria-label="Terminal">
-        <span class="nav-page-text">Terminal</span> <i class="bi bi-arrow-right-short"></i>
+      <a href="../guide/qgis.html" class="pagination-link" aria-label="QGIS plugin">
+        <span class="nav-page-text">QGIS plugin</span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>
