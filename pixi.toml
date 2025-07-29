@@ -213,7 +213,6 @@ args = [":"]
 [target.linux-aarch64.tasks]
 # Override docs task to be a no-op on ARM64 Linux where Quarto doesn't work
 docs = { cmd = "echo 'Skipping docs build on ARM64 Linux (Quarto not supported)'" }
-quartodoc-build = { cmd = "echo 'Skipping quartodoc build on ARM64 Linux (Quarto not supported)'" }
 quarto-preview = { cmd = "echo 'Skipping quarto preview on ARM64 Linux (Quarto not supported)'" }
 quarto-check = { cmd = "echo 'Skipping quarto check on ARM64 Linux (Quarto not supported)'" }
 quarto-render = { cmd = "echo 'Skipping quarto render on ARM64 Linux (Quarto not supported)'" }
@@ -255,6 +254,7 @@ pytest-xdist = "*"
 python = ">=3.11"
 qgis = "3.40.*"
 qgis-plugin-manager = "*"
+quartodoc = "*"
 ruff = "*"
 rust = "*"
 shapely = ">=2.0"
@@ -283,15 +283,12 @@ python = "3.11.*"
 [target.win-64.dependencies]
 rcedit = "*"
 quarto = "*"
-quartodoc = "*"
 
 [target.linux-64.dependencies]
 quarto = "*"
-quartodoc = "*"
 
 [target.osx-arm64.dependencies]
 quarto = "*"
-quartodoc = "*"
 
 [environments]
 default = ["py312"]
