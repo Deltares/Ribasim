@@ -16,10 +16,18 @@
                 "extensions": [
 					"GitHub.copilot",
                     "julialang.language-julia",
-                    "ms-python.python"
+                    "ms-python.python",
+                    "ms-python.mypy-type-checker",
+                    "charliermarsh.ruff",
+                    "njpwerner.autodocstring",
+                    "quarto.quarto",
+                    "tamasfe.even-better-toml",
+                    "samuelcolvin.jinjahtml",
+                    "yy0931.vscode-sqlite3-editor",
+                    "streetsidesoftware.code-spell-checker",
+                    "ms-toolsai.jupyter",
 				]
             }
         },
-        // "onCreateCommand": "curl -fsSL https://install.julialang.org | sh",
         "postStartCommand": "julia -e 'using Pkg; Pkg.precompile()'"
     }
