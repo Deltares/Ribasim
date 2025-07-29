@@ -142,7 +142,7 @@ The linearized relationship is used as a constraint in the optimization problem:
 
 We have the following boundary nodes in Ribasim:
 
-- The Terminal, where water can simply leave the model
+- The Terminal, where water simply leaves the model
 - The LevelBoundary, which yields fixed water levels; $h^{n+1}_{lb} $ read from the interpolated timeseries $h_{fb}$ of the node or is a constant value
 - The FlowBoundary, which specifies a flow rate. Here the average outflow of the FlowBoundary in the physical layer over the previous $\Delta t_\text{allocation}$ is used as a prediction of the flow rate in the next $\Delta t_\text{allocation}$ over which the optimization takes place.
 
