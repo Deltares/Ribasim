@@ -1610,3 +1610,62 @@ def drain_surplus_model() -> Model:
     model.link.add(lvl, bsn)
 
     return model
+
+
+def multi_priority_flow_demand_model() -> Model:
+    """Set up a model which contains a FlowDemand node with multiple demand priorities."""
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2020-01-21",
+        crs="EPSG:28992",
+        experimental=Experimental(allocation=True),
+    )
+
+    bsn = model.basin.add(
+        Node(1, Point(3, 3), subnetwork_id=2),
+        [basin.Profile(level=[0.0, 10.0], area=100.0), basin.State(level=[3.0])],
+    )
+
+    pmp = model.pump.add(
+        Node(2, Point(3, 2), subnetwork_id=2),
+        [pump.Static(flow_rate=[1.0], control_state="Ribasim.allocation")],
+    )
+
+    tmn = model.terminal.add(Node(3, Point(3, 1), subnetwork_id=2))
+
+    flb = model.flow_boundary.add(
+        Node(4, Point(3, 4), subnetwork_id=2), [flow_boundary.Static(flow_rate=[5e-3])]
+    )
+
+    udm = model.user_demand.add(
+        Node(5, Point(4, 3), subnetwork_id=2),
+        [
+            user_demand.Time(
+                return_factor=0,
+                min_level=0,
+                demand_priority=3,
+                time=[model.starttime, model.endtime],
+                demand=[3e-3, 0],
+            )
+        ],
+    )
+
+    fdm = model.flow_demand.add(
+        Node(6, Point(2, 2), subnetwork_id=2),
+        [flow_demand.Static(demand_priority=[2, 4], demand=[2e-5, 3e-5])],
+    )
+
+    ldm = model.level_demand.add(
+        Node(7, Point(2, 3), subnetwork_id=2),
+        [level_demand.Static(demand_priority=1, min_level=[3.0])],
+    )
+
+    model.link.add(bsn, pmp)
+    model.link.add(pmp, tmn)
+    model.link.add(flb, bsn)
+    model.link.add(bsn, udm)
+    model.link.add(udm, bsn)
+    model.link.add(fdm, pmp)
+    model.link.add(ldm, bsn)
+
+    return model
