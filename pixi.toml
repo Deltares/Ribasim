@@ -44,7 +44,7 @@ quartodoc-build = { cmd = "quartodoc build && rm objects.json", cwd = "docs", in
 ], outputs = [
     "docs/reference/python",
 ] }
-quarto-preview = { cmd = "quarto preview docs", depends-on = [
+quarto-preview = { cmd = "PYTHON_JULIAPKG_PROJECT=$PIXI_PROJECT_ROOT quarto preview docs", depends-on = [
     "quartodoc-build",
     "generate-testmodels",
     "initialize-julia"
