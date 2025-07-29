@@ -120,7 +120,7 @@ model-integration-test = { cmd = "julia --project=core --check-bounds=yes --eval
     ] },
 ] }
 # Codegen
-codegen = { cmd = "julia --project utils/gen_python.jl && ruff format python/ribasim/ribasim/schemas.py python/ribasim/ribasim/validation.py", depends-on = [
+codegen = { cmd = "julia --project utils/gen_python.jl --check-bounds=yes && ruff format python/ribasim/ribasim/schemas.py python/ribasim/ribasim/validation.py", depends-on = [
     "initialize-julia",
 ], inputs = [
     "core",
