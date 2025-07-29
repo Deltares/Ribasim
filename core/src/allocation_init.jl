@@ -796,7 +796,7 @@ function add_subnetwork_demand!(
     # Add error terms to objectives
     relative_lower_error_sum = variable_sum(relative_subnetwork_error_lower)
     relative_upper_error_sum = variable_sum(relative_subnetwork_error_upper)
-    for objective in objectives
+    for objective in get_demand_objectives(objectives)
         JuMP.add_to_expression!(objective.expression, relative_lower_error_sum)
         JuMP.add_to_expression!(objective.expression, relative_upper_error_sum)
     end
