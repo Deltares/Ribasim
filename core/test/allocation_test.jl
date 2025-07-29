@@ -342,118 +342,89 @@ end
     import JuMP
     using Ribasim: NodeID
     using DataFrames: DataFrame
-    using OrdinaryDiffEqCore: get_du
     using DataInterpolations: LinearInterpolation, integral
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/level_demand/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.Model(toml_path)
     (; p_independent) = model.integrator.p
-    (; user_demand, graph, allocation, basin, level_demand) = p_independent
+    (; user_demand, graph, allocation, basin, level_demand, flow_boundary) = p_independent
+    allocation_model = allocation.allocation_models[1]
 
     # Initial "integrated" vertical flux
-    @test_broken allocation.mean_input_flows[1][(
-        NodeID(:Basin, 2, p_independent),
-        NodeID(:Basin, 2, p_independent),
-    )] ≈ 1e2
+    @test allocation_model.cumulative_forcing_volume[NodeID(:Basin, 2, p_independent),] ≈
+          86.4
 
-    @test_throws Exception Ribasim.solve!(model)
+    Ribasim.solve!(model)
 
     storage = Ribasim.get_storages_and_levels(model).storage[1, :]
     t = Ribasim.tsaves(model)
-    du = get_du(model.integrator)
 
     d = user_demand.demand_itp[1][2](0)
     ϕ = 1e-3 # precipitation
-    q = Ribasim.get_flow(
-        du,
-        p_independent,
-        0.0,
-        (
-            Ribasim.NodeID(:FlowBoundary, 1, p_independent),
-            Ribasim.NodeID(:Basin, 2, p_independent),
-        ),
-    )
+    q = flow_boundary.flow_rate[1](0)
     A = Ribasim.basin_areas(basin, 1)[1]
-    l_max = level_demand.max_level[1](0)
+    l_max = level_demand.max_level[1][1](0)
     Δt_allocation = allocation.allocation_models[1].Δt_allocation
 
     # In this section the Basin leaves no supply for the UserDemand
-    stage_1 = t .<= 2 * Δt_allocation
+    stage_1 = t .<= 3 * Δt_allocation
     u_stage_1(τ) = storage[1] + (q + ϕ) * τ
-    @test storage[stage_1] ≈ u_stage_1.(t[stage_1]) rtol = 1e-4
+    @test storage[stage_1] ≈ u_stage_1.(t[stage_1]) rtol = 1e-5
 
     # In this section (and following sections) the basin has no longer a (positive) demand,
     # since precipitation provides enough water to get the basin to its target level
     # The FlowBoundary flow gets fully allocated to the UserDemand
-    stage_2 = 2 * Δt_allocation .<= t .<= 8 * Δt_allocation
+    stage_2 = 5 * Δt_allocation .<= t .<= 15 * Δt_allocation
     stage_2_start_idx = findfirst(stage_2)
-    u_stage_2(τ) = storage[stage_2_start_idx] + ϕ * (τ - t[stage_2_start_idx])
-    @test_broken storage[stage_2] ≈ u_stage_2.(t[stage_2]) rtol = 1e-4
-
-    # In this section the basin enters its surplus stage,
-    # even though initially the level is below the maximum level. This is because the simulation
-    # anticipates that the current precipitation is going to bring the basin level over
-    # its maximum level
-    stage_3 = 8 * Δt_allocation .<= t .<= 13 * Δt_allocation
-    stage_3_start_idx = findfirst(stage_3)
-    u_stage_3(τ) = storage[stage_3_start_idx] + (q + ϕ - d) * (τ - t[stage_3_start_idx])
-    @test_broken storage[stage_3] ≈ u_stage_3.(t[stage_3]) rtol = 1e-4
-    @test_broken all(
-        filter(
-            row ->
-                (8 * Δt_allocation <= row.time <= 13 * Δt_allocation) && (row.node_id == 2),
-            DataFrame(allocation.record_demand),
-        ).demand .< 0,
-    )
+    u_stage_2(τ) = storage[stage_2_start_idx] + (ϕ + q - d) * (τ - t[stage_2_start_idx])
+    @test storage[stage_2] ≈ u_stage_2.(t[stage_2]) rtol = 1e-10
 
     # At the start of this section precipitation stops, and so the UserDemand
     # partly uses surplus water from the basin to fulfill its demand
-    stage_4 = 13 * Δt_allocation .<= t .<= 17 * Δt_allocation
+    stage_4 = 15 * Δt_allocation .<= t .<= 28 * Δt_allocation
     stage_4_start_idx = findfirst(stage_4)
     u_stage_4(τ) = storage[stage_4_start_idx] + (q - d) * (τ - t[stage_4_start_idx])
-    @test_broken storage[stage_4] ≈ u_stage_4.(t[stage_4]) rtol = 1e-4
+    @test storage[stage_4] ≈ u_stage_4.(t[stage_4]) rtol = 1e-10
 
     # From this point the basin is in a dynamical equilibrium,
     # since the basin has no supply so the UserDemand abstracts precisely
     # the flow from the level boundary
-    stage_5 = 18 * Δt_allocation .<= t
+    stage_5 = 28 * Δt_allocation .<= t
     stage_5_start_idx = findfirst(stage_5)
     u_stage_5(τ) = storage[stage_5_start_idx]
-    @test_broken storage[stage_5] ≈ u_stage_5.(t[stage_5]) rtol = 1e-4
+    @test storage[stage_5] ≈ u_stage_5.(t[stage_5]) rtol = 1e-10
 
     # Isolated LevelDemand + Basin pair to test optional min_level
-    problem = allocation.allocation_models[2].problem
-    @test_broken JuMP.value(only(problem[:F_basin_in])) == 0.0
-    @test_broken JuMP.value(only(problem[:F_basin_out])) == 0.0
-    @test_throws Exception local q = JuMP.normalized_rhs(only(problem[:basin_outflow]))
-    storage_surplus = 1000.0  # Basin #7 is 1000 m2 and 1 m above LevelDemand max_level
-    @test_broken q ≈ storage_surplus / Δt_allocation
+    (; problem) = allocation.allocation_models[2]
+    basin_id = NodeID(:Basin, 7, p_independent)
+    @test JuMP.value(only(problem[:basin_storage][(basin_id, :start)])) ==
+          JuMP.value(only(problem[:basin_storage][(basin_id, :end)]))
 
     # Realized level demand
-    @test_throws Exception record_demand = DataFrame(allocation.record_demand)
-    @test_throws Exception df_basin_2 = record_demand[record_demand.node_id .== 2, :]
-    @test_throws Exception itp_basin_2 = LinearInterpolation(storage, t)
-    @test_throws Exception realized_numeric =
-        diff(itp_basin_2.(df_basin_2.time)) / Δt_allocation
-    @test_broken all(isapprox.(realized_numeric, df_basin_2.realized[2:end], atol = 2e-4))
+    (; record_demand) = allocation
+    record_demand = DataFrame(;
+        record_demand.node_id,
+        record_demand.time,
+        record_demand.realized,
+        record_demand.demand_priority,
+    )
+    filter!(:demand_priority => ==(1), record_demand)
+    df_basin_2 = record_demand[record_demand.node_id .== 2, :]
+    itp_basin_2 = LinearInterpolation(storage, t)
+    realized_numeric = diff(itp_basin_2.(df_basin_2.time)) / Δt_allocation
+    @test all(isapprox.(realized_numeric, df_basin_2.realized[2:end], atol = 1e-10))
 
     # Realized user demand
     flow_table = DataFrame(Ribasim.flow_table(model))
     flow_table_user_3 = flow_table[flow_table.link_id .== 2, :]
-    @test_throws Exception itp_user_3 = LinearInterpolation(
+    itp_user_3 = LinearInterpolation(
         flow_table_user_3.flow_rate,
         Ribasim.seconds_since.(flow_table_user_3.time, model.config.starttime),
     )
-    @test_throws Exception df_user_3 = record_demand[
-        (record_demand.node_id .== 3) .&& (record_demand.demand_priority .== 1),
-        :,
-    ]
-    @test_throws Exception realized_numeric =
-        diff(integral.(Ref(itp_user_3), df_user_3.time)) ./ Δt_allocation
-    @test_broken all(
-        isapprox.(realized_numeric[3:end], df_user_3.realized[4:end], atol = 5e-4),
-    )
+    df_user_3 = record_demand[(record_demand.node_id .== 3), :]
+    realized_numeric = diff(integral.(Ref(itp_user_3), df_user_3.time)) ./ Δt_allocation
+    @test all(isapprox.(realized_numeric[3:end], df_user_3.realized[4:end], atol = 1e-3))
 end
 
 @testitem "Flow demand" setup = [Teamcity] begin
@@ -703,29 +674,6 @@ end
 #     )] == 0.0
 # end
 
-@testitem "level_demand_without_max_level" begin
-    using Ribasim: NodeID, outflow_id
-    using JuMP
-
-    toml_path = normpath(@__DIR__, "../../generated_testmodels/level_demand/ribasim.toml")
-    @test ispath(toml_path)
-    model = Ribasim.Model(toml_path)
-    (; p, u, t) = model.integrator
-    (; basin, level_demand, graph, allocation) = p.p_independent
-    (; allocation_models) = allocation
-
-    level_demand.max_level[1].u .= Inf
-    level_demand.max_level[2].u .= Inf
-
-    # Given a max_level of Inf, the basin capacity is 0.0 because it is not possible for the basin level to be > Inf
-    @test_broken Ribasim.get_basin_capacity(allocation_models[1], p, t, basin.node_id[1]) ==
-                 0.0
-    @test_broken Ribasim.get_basin_capacity(allocation_models[1], p, t, basin.node_id[2]) ==
-                 0.0
-    @test_broken Ribasim.get_basin_capacity(allocation_models[2], p, t, basin.node_id[3]) ==
-                 0.0
-end
-
 @testitem "cyclic_demand" begin
     using DataInterpolations.ExtrapolationType: Periodic
 
@@ -761,14 +709,10 @@ end
         )
     end
 
-    @test logger.logs[5].level == Error
-    @test logger.logs[5].message == "Set of incompatible constraints found"
-    @test sort(name.(keys(logger.logs[5].kwargs[:constraint_violations]))) ==
-          ["linear_resistance[LinearResistance #2]", "volume_conservation[Basin #1]"]
-
     @test logger.logs[6].level == Error
-    @test logger.logs[6].message == "Variables found which are not in any constraint."
-    @test name.(logger.logs[6].kwargs[:variables]) == ["target_fraction"]
+    @test logger.logs[6].message == "Set of incompatible constraints found"
+    @test sort(name.(keys(logger.logs[6].kwargs[:constraint_violations]))) ==
+          ["linear_resistance[LinearResistance #2]", "volume_conservation[Basin #1]"]
 
     @test ispath(
         @__DIR__,
@@ -778,4 +722,17 @@ end
         @__DIR__,
         "../../generated_testmodels/invalid_infeasible/results/allocation_analysis_scaling.log",
     )
+end
+
+@testitem "drain surplus" begin
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/drain_surplus/ribasim.toml")
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+
+    basin_table = Ribasim.basin_table(model)
+    @test basin_table.level[1] == 10.0
+    @test all(h -> isapprox(h, 5.0; rtol = 1e-5), basin_table.level[7:end])
+
+    allocation_control_table = Ribasim.allocation_control_table(model)
+    @test all(q -> isapprox(q, 1e-3; rtol = 1e-5), allocation_control_table.flow_rate[1:5])
 end

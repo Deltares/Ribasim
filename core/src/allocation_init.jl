@@ -5,8 +5,8 @@ function add_objectives!(
     (; objectives) = allocation_model
     (; demand_priorities_all) = p_independent.allocation
 
-    # Then optimize for demands (objectives will be will be further specified in the add_*_demand! functions)
-    # NOTE: demand objectives are assumed to be consecutive by get_demand_objectives
+    # First optimize for demands (objectives will be will be further specified in the add_*_demand! functions)
+    # NOTE: in the objectives vector, demand objectives are assumed to be consecutive by the function get_demand_objectives
     for (demand_priority_idx, demand_priority) in enumerate(demand_priorities_all)
         push!(
             objectives,
@@ -39,7 +39,8 @@ function make_source_priority_objective(
     source_priority_objective =
         AllocationObjective(; type = AllocationObjectiveType.source_priorities)
 
-    for node_id in graph[].node_ids[subnetwork_id]
+    # Sort node IDs for deterministic problem generation
+    for node_id in sort!(collect(graph[].node_ids[subnetwork_id]))
         (; source_priority) = graph[node_id]
         if !iszero(source_priority)
             for downstream_id in outflow_ids(graph, node_id)
@@ -77,7 +78,7 @@ function add_basin!(
     (; storage_to_level, level_to_area) = basin
 
     # Basin node IDs within the subnetwork
-    basin_ids_subnetwork = get_subnetwork_ids(graph, NodeType.Basin, subnetwork_id)
+    basin_ids_subnetwork = get_ids_in_subnetwork(graph, NodeType.Basin, subnetwork_id)
 
     # Storage and level indices
     indices = Iterators.product(basin_ids_subnetwork, [:start, :end])
@@ -111,7 +112,7 @@ function add_basin!(
     lowest_level_basin =
         minimum(node_id -> level_to_area[node_id.idx].t[1], basin_ids_subnetwork)
     level_boundary_ids_subnetwork =
-        get_subnetwork_ids(graph, NodeType.LevelBoundary, subnetwork_id)
+        get_ids_in_subnetwork(graph, NodeType.LevelBoundary, subnetwork_id)
     lowest_level = minimum(
         node_id -> minimum(level_boundary.level[node_id.idx].u),
         level_boundary_ids_subnetwork;
@@ -161,7 +162,8 @@ function add_flow!(
     node_ids_subnetwork = graph[].node_ids[subnetwork_id]
     flow_links_subnetwork = Vector{Tuple{NodeID, NodeID}}()
 
-    for link_metadata in values(graph.edge_data)
+    # Sort link metadata for deterministic problem generation
+    for link_metadata in sort!(collect(values(graph.edge_data)))
         (; type, link) = link_metadata
         if (type == LinkType.flow) &&
            ((link[1] ∈ node_ids_subnetwork) || (link[2] ∈ node_ids_subnetwork))
@@ -248,7 +250,7 @@ function add_conservation!(
     storage = problem[:basin_storage]
     forcing = problem[:basin_forcing]
     flow = problem[:flow]
-    basin_ids_subnetwork = get_subnetwork_ids(graph, NodeType.Basin, subnetwork_id)
+    basin_ids_subnetwork = get_ids_in_subnetwork(graph, NodeType.Basin, subnetwork_id)
     inflow_sum = Dict(
         basin_id => sum(
             flow[(other_id, basin_id)] for
@@ -286,7 +288,7 @@ function add_low_storage_factor!(
     (; low_storage_threshold, storage_to_level) = basin
     (; problem, subnetwork_id, scaling) = allocation_model
 
-    basin_ids_subnetwork = get_subnetwork_ids(graph, NodeType.Basin, subnetwork_id)
+    basin_ids_subnetwork = get_ids_in_subnetwork(graph, NodeType.Basin, subnetwork_id)
     storage = problem[:basin_storage]
 
     # Define parameters: low storage factor
@@ -324,7 +326,7 @@ function add_user_demand!(
     (; inflow_link, outflow_link) = user_demand
 
     user_demand_ids_subnetwork =
-        get_subnetwork_ids(graph, NodeType.UserDemand, subnetwork_id)
+        get_ids_in_subnetwork(graph, NodeType.UserDemand, subnetwork_id)
     flow = problem[:flow]
     target_demand_fraction = problem[:target_demand_fraction]
 
@@ -471,60 +473,72 @@ function add_level_demand!(
     (; problem, subnetwork_id, objectives) = allocation_model
     (; graph, level_demand) = p_independent
 
+    level_demand_ids_subnetwork =
+        get_ids_in_subnetwork(graph, NodeType.LevelDemand, subnetwork_id)
     ids_with_level_demand_subnetwork = filter(
         node_id -> has_external_flow_demand(graph, node_id, :level_demand)[1],
         graph[].node_ids[subnetwork_id],
     )
 
-    # Define parameters: storage allocated to basins with a level demand (m^3, values to be filled in before optimizing)
-    basin_allocated =
-        problem[:basin_allocated] =
-            JuMP.@variable(problem, basin_allocated[ids_with_level_demand_subnetwork] == 0)
+    # Define parameters: target storage demand fraction (unitless, value to be set before optimizing)
+    target_storage_demand_fraction_in =
+        problem[:target_storage_demand_fraction_in] =
+            JuMP.@variable(problem, target_storage_demand_fraction_in == 1)
+    target_storage_demand_fraction_out =
+        problem[:target_storage_demand_fraction_out] =
+            JuMP.@variable(problem, target_storage_demand_fraction_out == 1)
 
-    # Define parameters: target storage (scaling.storage * m^3, value to be set before optimizing)
-    target_storage =
-        problem[:targe_storage_demand_fraction] = JuMP.@variable(
+    # Define decision variables: relative storage error below minimum level (unitless)
+    relative_storage_error_in =
+        problem[:relative_storage_error_in] = JuMP.@variable(
             problem,
-            target_storage_demand_fraction[ids_with_level_demand_subnetwork] == 0
+            relative_storage_error_in[ids_with_level_demand_subnetwork] >= 0
         )
 
-    # Define decision variables: lower relative level error (unitless)
-    relative_storage_error_lower =
-        problem[:relative_storage_error_lower] = JuMP.@variable(
+    # Define decision variables: relative storage error above maximum level (unitless)
+    relative_storage_error_out =
+        problem[:relative_storage_error_out] = JuMP.@variable(
             problem,
-            relative_storage_error_lower[ids_with_level_demand_subnetwork] >= 0
+            relative_storage_error_out[ids_with_level_demand_subnetwork] >= 0
         )
 
-    # Define constraints: error terms
+    # Define constraints: error terms below minimum storage
     storage = problem[:basin_storage]
-    s = 2.0 # example storage demand
-    problem[:storage_constraint_lower] = JuMP.@constraint(
+    s_in = 2.0 # example storage in demand
+    problem[:storage_constraint_in] = JuMP.@constraint(
         problem,
         [node_id = ids_with_level_demand_subnetwork],
-        s * relative_storage_error_lower[node_id] ≥
-        target_storage[node_id] - storage[(node_id, :end)],
-        base_name = "storage_constraint_lower"
+        s_in * relative_storage_error_in[node_id] ≥
+        target_storage_demand_fraction_in * s_in -
+        (storage[(node_id, :end)] - storage[(node_id, :start)]),
+        base_name = "storage_constraint_in"
     )
 
-    # Define constraints: added storage to the basin is at least the allocated amount
-    problem[:basin_storage_increase_goal] = JuMP.@constraint(
+    # Define constraints: error terms above maximum storage
+    s_out = 2.0 # example storage out demand
+    problem[:storage_constraint_out] = JuMP.@constraint(
         problem,
         [node_id = ids_with_level_demand_subnetwork],
-        storage[(node_id, :end)] - storage[(node_id, :start)] ≥ basin_allocated[node_id]
+        s_out * relative_storage_error_out[node_id] ≥
+        (storage[(node_id, :end)] - storage[(node_id, :start)]) -
+        target_storage_demand_fraction_out * s_out,
+        base_name = "storage_constraint_out"
     )
 
     # Add error terms to objectives
+    relative_in_error_sum = variable_sum(relative_storage_error_in)
+    relative_out_error_sum = variable_sum(relative_storage_error_out)
     for objective in get_demand_objectives(objectives)
-        for node_id in ids_with_level_demand_subnetwork
-            flow_demand_id = has_external_flow_demand(graph, node_id, :level_demand)[2]
-            demand_priority_node = level_demand.demand_priority[flow_demand_id.idx]
-            if objective.demand_priority == demand_priority_node
-                JuMP.add_to_expression!(
-                    objective.expression,
-                    relative_storage_error_lower[node_id],
-                )
-                objective.has_level_demand = true
-            end
+        JuMP.add_to_expression!(objective.expression, relative_in_error_sum)
+        JuMP.add_to_expression!(objective.expression, relative_out_error_sum)
+        if any(
+            node_id -> level_demand.has_demand_priority[
+                node_id.idx,
+                objective.demand_priority_idx,
+            ],
+            level_demand_ids_subnetwork,
+        )
+            objective.has_level_demand = true
         end
     end
 
@@ -538,7 +552,7 @@ function add_flow_boundary!(
     (; subnetwork_id, cumulative_boundary_volume) = allocation_model
     (; flow_boundary, graph) = p_independent
     flow_boundary_ids_subnetwork =
-        get_subnetwork_ids(graph, NodeType.FlowBoundary, subnetwork_id)
+        get_ids_in_subnetwork(graph, NodeType.FlowBoundary, subnetwork_id)
     for node_id in flow_boundary_ids_subnetwork
         cumulative_boundary_volume[flow_boundary.outflow_link[node_id.idx].link] = 0.0
     end
@@ -552,7 +566,7 @@ function add_level_boundary!(
     (; problem, subnetwork_id) = allocation_model
     (; graph) = p_independent
     level_boundary_ids_subnetwork =
-        get_subnetwork_ids(graph, NodeType.LevelBoundary, subnetwork_id)
+        get_ids_in_subnetwork(graph, NodeType.LevelBoundary, subnetwork_id)
 
     # Add parameters: level boundary levels (m, values to be filled in before optimization)
     problem[:boundary_level] =
@@ -569,7 +583,7 @@ function add_tabulated_rating_curve!(
     (; tabulated_rating_curve, graph) = p_independent
     (; interpolations, current_interpolation_index, inflow_link) = tabulated_rating_curve
     rating_curve_ids_subnetwork =
-        get_subnetwork_ids(graph, NodeType.TabulatedRatingCurve, subnetwork_id)
+        get_ids_in_subnetwork(graph, NodeType.TabulatedRatingCurve, subnetwork_id)
 
     # Add constraints: flow(upstream level) relationship of tabulated rating curves
     flow = problem[:flow]
@@ -577,10 +591,10 @@ function add_tabulated_rating_curve!(
         problem,
         [node_id = rating_curve_ids_subnetwork],
         flow[inflow_link[node_id.idx].link] == begin
-            itp = interpolations[current_interpolation_index[node_id.idx](0.0)]
+            qh = interpolations[current_interpolation_index[node_id.idx](0.0)]
             level_upstream = get_level(problem, inflow_link[node_id.idx].link[1])
-            level_upstream_data = itp.t
-            flow_rate_data = itp.u ./ scaling.flow
+            level_upstream_data = qh.t
+            flow_rate_data = qh.u ./ scaling.flow
             piecewiselinear(problem, level_upstream, level_upstream_data, flow_rate_data)
         end,
         base_name = "rating_curve",
@@ -597,7 +611,7 @@ function add_linear_resistance!(
     (; inflow_link, outflow_link, resistance, max_flow_rate) = linear_resistance
 
     linear_resistance_ids_subnetwork =
-        get_subnetwork_ids(graph, NodeType.LinearResistance, subnetwork_id)
+        get_ids_in_subnetwork(graph, NodeType.LinearResistance, subnetwork_id)
 
     # Add constraints: flow(levels) relationship
     flow = problem[:flow]
@@ -660,7 +674,7 @@ function add_manning_resistance!(
     (; inflow_link, outflow_link) = manning_resistance
 
     manning_resistance_ids_subnetwork =
-        get_subnetwork_ids(graph, NodeType.ManningResistance, subnetwork_id)
+        get_ids_in_subnetwork(graph, NodeType.ManningResistance, subnetwork_id)
 
     # Add constraints: linearisation of the flow(levels) relationship in the current levels in the physical layer
     flow = problem[:flow]
@@ -695,7 +709,7 @@ function add_node_with_flow_control!(
     # Get the IDs of nodes in the subnetwork which are not controlled by allocation
     node_ids_non_alloc_controlled = filter(
         node_id -> !node_data.allocation_controlled[node_id.idx],
-        get_subnetwork_ids(graph, node_type, subnetwork_id),
+        get_ids_in_subnetwork(graph, node_type, subnetwork_id),
     )
 
     q = 1.0 # example value (scaling.flow * m^3/s, to be filled in before optimizing)
@@ -745,7 +759,9 @@ function add_subnetwork_demand!(
     target_demand_fraction = problem[:target_demand_fraction]
     flow = problem[:flow]
 
-    connecting_links = vcat(values(allocation.primary_network_connections)...)
+    # Sort connections for deterministic problem generation
+    connecting_links =
+        vcat(sort!(collect(values(allocation.primary_network_connections)))...)
 
     # Define parameters: flow allocated to user subnetworks (scaling.flow * m^3/s, values to be filled in before optimizing)
     subnetwork_allocated =
@@ -803,6 +819,7 @@ function validate_objectives(
         for allocation_model in allocation_models
             demand_objective =
                 get_demand_objectives(allocation_model.objectives)[demand_priority_idx]
+            @assert demand_objective.demand_priority == demand_priority
             has_flow_demand |= demand_objective.has_flow_demand
             has_level_demand |= demand_objective.has_level_demand
         end
@@ -867,6 +884,5 @@ function AllocationModel(
             end
         end
     end
-
     return allocation_model
 end

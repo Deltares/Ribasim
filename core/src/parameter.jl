@@ -276,6 +276,13 @@ end
     optimization_type::Vector{String} = []
 end
 
+@kwdef struct AllocationControlRecord
+    time::Vector{Float64} = []
+    node_id::Vector{Int32} = []
+    node_type::Vector{String} = []
+    flow_rate::Vector{Float64} = []
+end
+
 """
 Object for all information about allocation
 subnetwork_ids: The unique sorted allocation network IDs
@@ -288,6 +295,7 @@ subnetwork_inlet_source_priority: The default source priority for subnetwork inl
 record_demand: A record of demands and allocated flows for nodes that have these
 record_flow: A record of all flows computed by allocation optimization, eventually saved to
     output file
+record_control: A record of all flow rates assigned to pumps and outlets by allocation
 """
 @kwdef struct Allocation
     subnetwork_ids::Vector{Int32} = Int32[]
@@ -297,6 +305,7 @@ record_flow: A record of all flows computed by allocation optimization, eventual
     subnetwork_inlet_source_priority::Int32 = 0
     record_demand::DemandRecord = DemandRecord()
     record_flow::FlowRecord = FlowRecord()
+    record_control::AllocationControlRecord = AllocationControlRecord()
 end
 
 """
@@ -324,6 +333,7 @@ link: (from node ID, to node ID)
 end
 
 Base.length(::LinkMetadata) = 1
+Base.isless(link_1::LinkMetadata, link_2::LinkMetadata) = link_1.id < link_2.id
 
 """
 The update of a parameter given by a value and a reference to the target
@@ -943,16 +953,8 @@ concentration_itp: matrix with timeseries interpolations of concentrations per L
     has_demand_priority::Matrix{Bool} =
         zeros(Bool, length(node_id), length(demand_priorities))
     demand::Matrix{Float64} = zeros(length(node_id), length(demand_priorities))
-    demand_itp::Vector{Vector{ScalarLinearInterpolation}} = [
-        fill(
-            LinearInterpolation(
-                [0.0, 0.0],
-                [0.0, 1.0];
-                extrapolation = ConstantExtrapolation,
-            ),
-            length(demand_priorities),
-        ) for _ in node_id
-    ]
+    demand_itp::Vector{Vector{ScalarLinearInterpolation}} =
+        trivial_linear_itp_fill(demand_priorities, node_id)
     demand_from_timeseries::Vector{Bool} = Vector{Bool}(undef, length(node_id))
     allocated::Matrix{Float64} = fill(Inf, length(node_id), length(demand_priorities))
     return_factor::Vector{ScalarLinearInterpolation} =
@@ -963,27 +965,39 @@ end
 
 """
 node_id: node ID of the LevelDemand node
-min_level: The minimum target level of the connected basin(s)
-max_level: The maximum target level of the connected basin(s)
+demand_priorities: All demand priorities that exist in the model (not just by UserDemand) sorted
+has_demand_priority: boolean matrix stating per LevelDemand node per demand priority index whether the (node_idx, demand_priority_idx)
+    node will ever have a demand of that priority
+min_level: The minimum target level per demand priority of the connected basin(s)
+max_level: The maximum target level per demand priority of the connected basin(s)
 basins_with_demand: The node IDs of the Basins whose target level is given by a particular LevelDemand node
-demand_priority: If in a shortage state, the priority of the demand of the connected basin(s)
-target_level_min: The target level used for the current optimization run
-target_storage_min: The storage associated with target_level_min
-storage_demand: The storage demand (the storage required to get the basin up to the minimum level)
 storage_prev: The storage in the Basin with the level demand the previous time the allocation algorithm was run
+target_level_min: The current minimum target level per LevelDemand node per demand priority (node_idx, demand_priority_idx)
+target_level_max: The current maximum target level per LevelDemand node per demand priority (node_idx, demand_priority_idx)
+target_storage_min: The storage associated with the current min level per connected Basin per demand priority
+target_storage_max: The storage associated with the current max level per connected Basin per demand priority
+storage_demand: The storage change each Basin needs to reach the [min, max] window per demand priority
+storage_allocated: The storage allocated to each Basin per demand priority
 """
 @kwdef struct LevelDemand <: AbstractDemandNode
     node_id::Vector{NodeID}
-    min_level::Vector{ScalarLinearInterpolation} =
-        Vector{ScalarLinearInterpolation}(undef, length(node_id))
-    max_level::Vector{ScalarLinearInterpolation} =
-        Vector{ScalarLinearInterpolation}(undef, length(node_id))
-    demand_priority::Vector{Int32} = Vector{Int32}(undef, length(node_id))
-    basins_with_demand::Vector{Vector{NodeID}} = Vector{NodeID}[]
-    target_level_min::Dict{NodeID, Float64} = Dict{NodeID, Float64}()
-    target_storage_min::Dict{NodeID, Float64} = Dict{NodeID, Float64}()
-    storage_demand::Dict{NodeID, Float64} = Dict{NodeID, Float64}()
-    storage_prev::Dict{NodeID, Float64} = Dict{NodeID, Float64}()
+    demand_priorities::Vector{Int32} = Int32[]
+    has_demand_priority::Matrix{Bool} =
+        zeros(Bool, length(node_id), length(demand_priorities))
+    min_level::Vector{Vector{ScalarLinearInterpolation}} =
+        trivial_linear_itp_fill(demand_priorities, node_id; val = NaN)
+    max_level::Vector{Vector{ScalarLinearInterpolation}} =
+        trivial_linear_itp_fill(demand_priorities, node_id; val = NaN)
+    basins_with_demand::Vector{Vector{NodeID}} = []
+    storage_prev::Dict{NodeID, Float64} = Dict()
+    # Target levels per LevelDemand node
+    target_level_min::Matrix{Float64} = zeros(length(node_id), length(demand_priorities))
+    target_level_max::Matrix{Float64} = zeros(length(node_id), length(demand_priorities))
+    # Target storages, demand and allocated per Basin with LevelDemand per demand priority
+    target_storage_min::Dict{NodeID, Vector{Float64}} = Dict()
+    target_storage_max::Dict{NodeID, Vector{Float64}} = Dict()
+    storage_demand::Dict{NodeID, Vector{Float64}} = Dict()
+    storage_allocated::Dict{NodeID, Vector{Float64}} = Dict()
 end
 
 """

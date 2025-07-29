@@ -48,6 +48,11 @@ function write_results(model::Model)::Model
     path = results_path(config, RESULTS_FILENAME.allocation_flow)
     write_arrow(path, table, compress; remove_empty_table)
 
+    # allocation control
+    table = allocation_control_table(model)
+    path = results_path(config, RESULTS_FILENAME.allocation_control)
+    write_arrow(path, table, compress; remove_empty_table)
+
     # exported levels
     table = subgrid_level_table(model)
     path = results_path(config, RESULTS_FILENAME.subgrid_level)
@@ -73,6 +78,7 @@ const RESULTS_FILENAME = (
     allocation_analysis_infeasibility = "allocation_analysis_infeasibility.log",
     allocation_analysis_scaling = "allocation_analysis_scaling.log",
     allocation_infeasible_problem = "allocation_infeasible_problem.lp",
+    allocation_control = "allocation_control.arrow",
     subgrid_level = "subgrid_level.arrow",
     solver_stats = "solver_stats.arrow",
 )
@@ -401,6 +407,25 @@ function allocation_flow_table(
         record_flow.subnetwork_id,
         record_flow.flow_rate,
         record_flow.optimization_type,
+    )
+end
+
+function allocation_control_table(
+    model::Model,
+)::@NamedTuple{
+    time::Vector{DateTime},
+    node_id::Vector{Int32},
+    node_type::Vector{String},
+    flow_rate::Vector{Float64},
+}
+    (; integrator, config) = model
+    (; record_control) = integrator.p.p_independent.allocation
+
+    return (;
+        time = datetime_since.(record_control.time, config.starttime),
+        record_control.node_id,
+        record_control.node_type,
+        record_control.flow_rate,
     )
 end
 
