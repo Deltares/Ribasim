@@ -47,9 +47,9 @@ If you prefer a containerized development environment, you can use the provided 
 1. Install [Visual Studio Code](https://code.visualstudio.com/) and the [Remote - Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) extension.
 2. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) and ensure it's running.
 3. Open the Ribasim repository in Visual Studio Code.
-4. Press `F1` and select `Remote-Containers: Reopen in Container`.
+4. Press {{< kbd Ctrl+Shift+P >}} (or {{< kbd Cmd+Shift+P >}} on macOS) and select `Dev Containers: Clone Repository in Container Volume`.
 
-This will build the devcontainer image and start a new container with all the necessary dependencies.
+This will build the devcontainer image and start a new container with all the necessary dependencies. The build and install will take a few minutes to complete.
 
 ## Option 3: github codespace
 If you prefer a cloud-based development environment, you can use GitHub Codespaces. This option allows you to quickly set up a development environment without needing to configure your local machine.
