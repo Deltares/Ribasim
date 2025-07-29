@@ -10,29 +10,7 @@ A guide on how to add a new node type to both is written in [adding node types](
 
 # Setting up the developer environment
 
-
-## Option 1: use a devcontainer
-If you prefer a containerized development environment, you can use the provided devcontainer configuration. This option is particularly useful if you want to avoid installing dependencies directly on your host machine.
-
-First, clone Ribasim as described in [Clone Ribasim](#clone-ribasim) and then:
-
-1. Install [Visual Studio Code](https://code.visualstudio.com/) and the [Remote - Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) extension.
-2. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) and ensure it's running.
-3. Open the Ribasim repository in Visual Studio Code.
-4. Press `F1` and select `Remote-Containers: Reopen in Container`.
-
-This will build the devcontainer image and start a new container with all the necessary dependencies.
-
-## Option 2: github codespace
-If you prefer a cloud-based development environment, you can use GitHub Codespaces. This option allows you to quickly set up a development environment without needing to configure your local machine.
-
-1. Go to the [Ribasim GitHub repository](https://github.com/Deltares/Ribasim).
-2. Click on the green "Code" button and select "Open with Codespaces".
-3. Follow the prompts to create a new codespace.
-
-This creates a cloud-based development environment with all necessary dependencies pre-installed. The environment runs on GitHub's servers and can be accessed through your browser via the Ribasim repo.
-
-## Option 3: local development
+## Option 1: local development
 If you prefer local development, clone Ribasim as described in [Clone Ribasim](#clone-ribasim).
 
 Then, set up Pixi as described on [pixi.sh](https://pixi.sh/latest/).
@@ -60,6 +38,27 @@ Select `('default': Pixi)` in the `/.pixi` folder.
 Unless the setting `python.terminal.activateEnvironment` is disabled, it will already activate the environment in your terminal.
 
 If you encounter issues related to Pixi dependencies, it might help to clean your Pixi environment with `pixi clean`, followed by `pixi run install`.
+
+## Option 2: use a devcontainer
+If you prefer a containerized development environment, you can use the provided devcontainer configuration. This option is particularly useful if you want to avoid installing dependencies directly on your host machine.
+
+1. Clone Ribasim as described in [Clone Ribasim](#clone-ribasim)
+
+1. Install [Visual Studio Code](https://code.visualstudio.com/) and the [Remote - Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) extension.
+2. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) and ensure it's running.
+3. Open the Ribasim repository in Visual Studio Code.
+4. Press `F1` and select `Remote-Containers: Reopen in Container`.
+
+This will build the devcontainer image and start a new container with all the necessary dependencies.
+
+## Option 3: github codespace
+If you prefer a cloud-based development environment, you can use GitHub Codespaces. This option allows you to quickly set up a development environment without needing to configure your local machine.
+
+1. Go to the [Ribasim GitHub repository](https://github.com/Deltares/Ribasim).
+2. Click on the green "Code" button and select "Open with Codespaces".
+3. Follow the prompts to create a new codespace.
+
+This creates a cloud-based development environment with all necessary dependencies pre-installed. The environment runs on GitHub's servers and can be accessed through your browser via the Ribasim repo.
 
 ## Clone Ribasim
 
