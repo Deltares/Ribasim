@@ -59,6 +59,7 @@ function set_simulation_data!(
         storage_now = current_storage[basin_id.idx]
         storage_max = storage_to_level[basin_id.idx].t[end]
 
+        # Check whether the storage in the physical layer is within the maximum storage bound
         if storage_now > storage_max
             @error "Maximum basin storage exceed (allocation infeasibility)" storage_now storage_max basin_id
             errors = true
@@ -67,11 +68,14 @@ function set_simulation_data!(
         level_now = current_level[basin_id.idx]
         level_max = storage_to_level[basin_id.idx].u[end]
 
+        # Check whether the level in the physical layer is within the maximum storage bound
         if level_now > level_max
             @error "Maximum basin level exceed (allocation infeasibility)" level_now level_max basin_id
             errors = true
         end
 
+        # Check whether the level in the physical layer is within the the maximum level bound
+        # for which the Q(h) relation of connected TabulatedRatingCurve nodes is defined
         for rating_curve_id in outflow_ids(graph, basin_id)
             if rating_curve_id.type == NodeType.TabulatedRatingCurve
                 interpolation_index =

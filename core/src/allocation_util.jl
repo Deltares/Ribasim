@@ -246,28 +246,6 @@ function update_storage_prev!(p::Parameters)::Nothing
     return nothing
 end
 
-"""
-    Each conservation equation around on a node is relaxed by introducing a slack variable.
-    The slack variable is penalized in the objective function.
-
-    returns a dictionary mapping each relaxed constraint to its corresponding slack variable.
-"""
-function relax_problem!(problem::JuMP.Model)::Dict{JuMP.ConstraintRef, JuMP.AffExpr}
-    # Restore constraint names in relaxed problem
-    constraint_to_penalty = Dict{JuMP.ConstraintRef, Float64}()
-
-    for constraint in
-        JuMP.all_constraints(problem; include_variable_in_set_constraints = true)
-        if startswith(JuMP.name(constraint), "volume_conservation") ||
-           startswith(JuMP.name(constraint), "flow_conservation")
-            constraint_to_penalty[constraint] = 1
-        end
-    end
-
-    JuMP.@objective(problem, Min, 0)
-    return JuMP.relax_with_penalty!(problem, constraint_to_penalty)
-end
-
 function get_terms(constraint)
     (; func) = JuMP.constraint_object(constraint)
     return if hasproperty(func, :terms)

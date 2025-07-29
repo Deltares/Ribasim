@@ -6,7 +6,7 @@ function add_objectives!(
     (; demand_priorities_all) = p_independent.allocation
 
     # First optimize for demands (objectives will be will be further specified in the add_*_demand! functions)
-    # NOTE: demand objectives are assumed to be consecutive by get_demand_objectives
+    # NOTE: in the objectives vector, demand objectives are assumed to be consecutive by the function get_demand_objectives
     for (demand_priority_idx, demand_priority) in enumerate(demand_priorities_all)
         push!(
             objectives,
