@@ -899,38 +899,61 @@ function apply_control_from_allocation!(
     return nothing
 end
 
-function set_timeseries_demands!(p::Parameters, t::Float64)::Nothing
-    (; p_independent, state_time_dependent_cache) = p
-    (; current_storage) = state_time_dependent_cache
-    (; user_demand, flow_demand, level_demand, allocation, basin) = p_independent
-    (; demand_priorities_all, allocation_models) = allocation
-    (; Δt_allocation) = first(allocation_models)
+function set_timeseries_demands!(user_demand::UserDemand, integrator::DEIntegrator)::Nothing
+    (; p, t) = integrator
+    Δt_allocation = get_Δt_allocation(p.p_independent.allocation)
+    (; demand_from_timeseries, has_demand_priority, demand, demand_itp, demand_priorities) =
+        user_demand
 
-    # UserDemand
     for node_id in user_demand.node_id
-        !(user_demand.demand_from_timeseries[node_id.idx]) && continue
+        !(demand_from_timeseries[node_id.idx]) && continue
 
-        for demand_priority_idx in eachindex(demand_priorities_all)
-            !user_demand.has_demand_priority[node_id.idx, demand_priority_idx] || continue
+        for demand_priority_idx in eachindex(demand_priorities)
+            !has_demand_priority[node_id.idx, demand_priority_idx] && continue
             # Set the demand as the average of the demand interpolation
-            # over the coming interpolation period
-            user_demand.demand[node_id.idx, demand_priority_idx] =
+            # over the coming allocation period
+            demand[node_id.idx, demand_priority_idx] =
                 integral(
-                    user_demand.demand_itp[node_id.idx][demand_priority_idx],
+                    demand_itp[node_id.idx][demand_priority_idx],
                     t,
                     t + Δt_allocation,
                 ) / Δt_allocation
         end
     end
+    return nothing
+end
 
-    # FlowDemand
+function set_timeseries_demands!(flow_demand::FlowDemand, integrator::DEIntegrator)::Nothing
+    (; p, t) = integrator
+    Δt_allocation = get_Δt_allocation(p.p_independent.allocation)
+    (; has_demand_priority, demand, demand_itp, demand_priorities) = flow_demand
+
     for node_id in flow_demand.node_id
-        # Set the demand as the average of the demand interpolation
-        # over the coming interpolation period
-        flow_demand.demand[node_id.idx] =
-            integral(flow_demand.demand_itp[node_id.idx], t, t + Δt_allocation) /
-            Δt_allocation
+        for demand_priority_idx in eachindex(demand_priorities)
+            !has_demand_priority[node_id.idx, demand_priority_idx] && continue
+            # Set the demand as the average of the demand interpolation
+            # over the coming allocation period
+            demand[node_id.idx, demand_priority_idx] =
+                integral(
+                    demand_itp[node_id.idx][demand_priority_idx],
+                    t,
+                    t + Δt_allocation,
+                ) / Δt_allocation
+        end
     end
+    return nothing
+end
+
+function set_timeseries_demands!(
+    level_demand::LevelDemand,
+    integrator::DEIntegrator,
+)::Nothing
+    (; p, t) = integrator
+    (; p_independent, state_time_dependent_cache) = p
+    (; current_storage) = state_time_dependent_cache
+    (; allocation, basin) = p_independent
+    (; demand_priorities_all) = allocation
+    Δt_allocation = get_Δt_allocation(allocation)
 
     # LevelDemand
     for node_id in level_demand.node_id
@@ -953,6 +976,7 @@ function set_timeseries_demands!(p::Parameters, t::Float64)::Nothing
                 )
             end
 
+            # Target level per LevelDemand node
             level_demand.target_level_min[node_id.idx, demand_priority_idx] =
                 target_level_min
             level_demand.target_level_max[node_id.idx, demand_priority_idx] =
@@ -964,6 +988,8 @@ function set_timeseries_demands!(p::Parameters, t::Float64)::Nothing
                 target_storage_max =
                     get_storage_from_level(basin, basin_id.idx, target_level_max)
 
+                # Target storage per Basin
+                # (one LevelDemand node can set target levels for multiple Basins)
                 level_demand.target_storage_min[basin_id][demand_priority_idx] =
                     target_storage_min
                 level_demand.target_storage_max[basin_id][demand_priority_idx] =
@@ -976,6 +1002,7 @@ function set_timeseries_demands!(p::Parameters, t::Float64)::Nothing
                 # Can't have both demand for more storage and less storage
                 @assert iszero(storage_demand_in) || iszero(storage_demand_out)
 
+                # Demand per Basin
                 level_demand.storage_demand[basin_id][demand_priority_idx] =
                     storage_demand_in - storage_demand_out
             end
@@ -1028,7 +1055,9 @@ function update_allocation!(model)::Nothing
     end
 
     # For demands that come from a timeseries, compute the value that will be optimized for
-    set_timeseries_demands!(p, t)
+    set_timeseries_demands!(user_demand, integrator)
+    set_timeseries_demands!(flow_demand, integrator)
+    set_timeseries_demands!(level_demand, integrator)
 
     # If a primary network is present, collect demands of subnetworks
     if has_primary_network(allocation)
