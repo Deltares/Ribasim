@@ -25,9 +25,10 @@
                     "samuelcolvin.jinjahtml",
                     "yy0931.vscode-sqlite3-editor",
                     "streetsidesoftware.code-spell-checker",
-                    "ms-toolsai.jupyter",
+                    "ms-toolsai.jupyter"
 				]
             }
         },
+        "postCreateCommand": "pixi run install",
         "postStartCommand": "julia -e 'using Pkg; Pkg.precompile()'"
     }
