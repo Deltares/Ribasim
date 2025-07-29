@@ -420,3 +420,6 @@ function variable_ref_from_index(problem::JuMP.Model, variable_index)
         end
     end
 end
+
+get_Δt_allocation(allocation::Allocation) =
+    first(allocation.allocation_models).Δt_allocation

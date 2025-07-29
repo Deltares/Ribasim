@@ -981,7 +981,7 @@ storage_allocated: The storage allocated to each Basin per demand priority
 """
 @kwdef struct LevelDemand <: AbstractDemandNode
     node_id::Vector{NodeID}
-    demand_priorities::Vector{Int32} = Int32[]
+    demand_priorities::Vector{Int32} = []
     has_demand_priority::Matrix{Bool} =
         zeros(Bool, length(node_id), length(demand_priorities))
     min_level::Vector{Vector{ScalarLinearInterpolation}} =
@@ -1002,16 +1002,18 @@ end
 
 """
 node_id: node ID of the FlowDemand node
-demand_itp: The time interpolation of the demand of the node
-demand: The current demand of the node
-demand_priority: The priority of the demand of the node
+TODO: update docstring
 """
 @kwdef struct FlowDemand <: AbstractDemandNode
     node_id::Vector{NodeID}
-    demand_itp::Vector{ScalarLinearInterpolation} =
-        Vector{ScalarLinearInterpolation}(undef, length(node_id))
-    demand::Vector{Float64} = zeros(length(node_id))
-    demand_priority::Vector{Int32} = zeros(length(node_id))
+    demand_priorities::Vector{Int32} = []
+    inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
+    has_demand_priority::Matrix{Bool} =
+        zeros(Bool, length(node_id), length(demand_priorities))
+    demand_itp::Vector{Vector{ScalarLinearInterpolation}} =
+        trivial_linear_itp_fill(demand_priorities, node_id; val = NaN)
+    demand::Matrix{Float64} = zeros(length(node_id), length(demand_priorities))
+    allocated::Matrix{Float64} = zeros(length(node_id), length(demand_priorities))
 end
 
 "Subgrid linearly interpolates basin levels."
