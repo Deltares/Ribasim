@@ -6,12 +6,12 @@
     "creators": [
       "Tool: sbom4python-0.12.4"
     ],
-    "created": "2025-07-17T15:17:58Z",
+    "created": "2025-07-25T14:49:35Z",
     "licenseListVersion": "3.26"
   },
   "name": "Python-ribasim",
   "dataLicense": "CC0-1.0",
-  "documentNamespace": "http://spdx.org/spdxdocs/Python-ribasim-2f0e4834-cca2-4f16-976e-3b1379f80410",
+  "documentNamespace": "http://spdx.org/spdxdocs/Python-ribasim-6b0f2d13-e55a-4ca0-8909-e8dd5828fa9e",
   "packages": [
     {
       "SPDXID": "SPDXRef-1-ribasim",
@@ -635,23 +635,23 @@
     {
       "SPDXID": "SPDXRef-15-certifi",
       "name": "certifi",
-      "versionInfo": "2025.7.9",
+      "versionInfo": "2025.7.14",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "Person: Kenneth Reitz (me@kennethreitz.com)",
-      "downloadLocation": "https://pypi.org/project/certifi/2025.7.9/#files",
+      "downloadLocation": "https://pypi.org/project/certifi/2025.7.14/#files",
       "filesAnalyzed": false,
       "homepage": "https://github.com/certifi/python-certifi",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "d842783a14f8fdd646895ac26f719a061408834473cfc10203f6a575beb15d39"
+          "checksumValue": "6b31f564a415d79ee77df69d757bb49a5bb53bd9f756cbbe24394ffd6fc1f4b2"
         }
       ],
       "licenseConcluded": "MPL-2.0",
       "licenseDeclared": "MPL-2.0",
       "copyrightText": "NOASSERTION",
       "summary": "Python package for providing Mozilla's CA Bundle.",
-      "releaseDate": "2025-07-09T02:13:57Z",
+      "releaseDate": "2025-07-14T03:29:26Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -661,12 +661,12 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/certifi@2025.7.9"
+          "referenceLocator": "pkg:pypi/certifi@2025.7.14"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:kenneth_reitz:certifi:2025.7.9:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:kenneth_reitz:certifi:2025.7.14:*:*:*:*:*:*:*"
         }
       ]
     },
@@ -954,33 +954,33 @@
     {
       "SPDXID": "SPDXRef-22-fonttools",
       "name": "fonttools",
-      "versionInfo": "4.58.5",
+      "versionInfo": "4.59.0",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "Organization: Just van Rossum (just@letterror.com)",
-      "downloadLocation": "https://pypi.org/project/fonttools/4.58.5/#files",
+      "downloadLocation": "https://pypi.org/project/fonttools/4.59.0/#files",
       "filesAnalyzed": false,
       "homepage": "http://github.com/fonttools/fonttools",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "d500d399aa4e92d969a0d21052696fa762385bb23c3e733703af4a195ad9f34c"
+          "checksumValue": "524133c1be38445c5c0575eacea42dbd44374b310b1ffc4b60ff01d881fabb96"
         }
       ],
       "licenseConcluded": "MIT",
       "licenseDeclared": "MIT",
       "copyrightText": "NOASSERTION",
       "summary": "Tools to manipulate font files",
-      "releaseDate": "2025-07-03T14:03:15Z",
+      "releaseDate": "2025-07-16T12:03:33Z",
       "externalRefs": [
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/fonttools@4.58.5"
+          "referenceLocator": "pkg:pypi/fonttools@4.59.0"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:just_van_rossum:fonttools:4.58.5:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:just_van_rossum:fonttools:4.59.0:*:*:*:*:*:*:*"
         }
       ]
     },

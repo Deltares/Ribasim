@@ -1,4 +1,3 @@
-import Legolas
 import Ribasim
 using Dates: DateTime
 using InteractiveUtils: subtypes
@@ -34,17 +33,17 @@ end
 
 function get_models()
     """
-    Set up models including field properties for all subtypes of Legolas.AbstractRecord.
+    Set up models including field properties for all subtypes of Ribasim.Table.
     """
     [
         (
-            name = strip_prefix(T),
+            name = string(Ribasim.node_type(T), nameof(T)),
             fields = zip(
                 fieldnames(T),
                 map(python_type, fieldtypes(T)),
                 map(is_nullable, fieldtypes(T)),
             ),
-        ) for T in subtypes(Legolas.AbstractRecord)
+        ) for T in subtypes(Ribasim.Table)
     ]
 end
 
@@ -55,12 +54,10 @@ function get_connectivity()
     [
         (
             name = T,
-            connectivity = Set(
-                Ribasim.config.camel_case(x) for x in Ribasim.neighbortypes(T)
-            ),
+            connectivity = Set(Ribasim.camel_case(x) for x in Ribasim.neighbortypes(T)),
             flow_neighbor_bound = Ribasim.n_neighbor_bounds_flow(T),
             control_neighbor_bound = Ribasim.n_neighbor_bounds_control(T),
-        ) for T in keys(Ribasim.config.nodekinds)
+        ) for T in keys(Ribasim.node_kinds)
     ]
 end
 

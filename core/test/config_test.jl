@@ -79,24 +79,34 @@ end
 end
 
 @testitem "snake_case" begin
-    using Ribasim: NodeType
-    @test Ribasim.snake_case("CamelCase") == "camel_case"
-    @test Ribasim.snake_case("ABCdef") == "a_b_cdef"
-    @test Ribasim.snake_case("snake_case") == "snake_case"
-    @test Ribasim.snake_case(:CamelCase) === :camel_case
-    @test Ribasim.snake_case(:ABCdef) === :a_b_cdef
-    @test Ribasim.snake_case(:snake_case) === :snake_case
-    @test Ribasim.snake_case(NodeType.PidControl) === :pid_control
+    using Ribasim: NodeType, snake_case
+    @test snake_case("CamelCase") == "camel_case"
+    @test snake_case("ABCdef") == "a_b_cdef"
+    @test snake_case("snake_case") == "snake_case"
+    @test snake_case(:CamelCase) === :camel_case
+    @test snake_case(:ABCdef) === :a_b_cdef
+    @test snake_case(:snake_case) === :snake_case
+    @test snake_case(NodeType.PidControl) === :pid_control
     for nt in instances(NodeType.T)
-        @test Ribasim.snake_case(nt) isa Symbol
+        @test snake_case(nt) isa Symbol
     end
 end
 
 @testitem "camel_case" begin
-    @test Ribasim.camel_case("camel_case") == "CamelCase"
-    @test Ribasim.camel_case("a_b_cdef") == "ABCdef"
-    @test Ribasim.camel_case("CamelCase") == "CamelCase"
-    @test Ribasim.camel_case(:camel_case) == :CamelCase
-    @test Ribasim.camel_case(:a_b_cdef) == :ABCdef
-    @test Ribasim.camel_case(:CamelCase) == :CamelCase
+    using Ribasim: camel_case
+    @test camel_case("camel_case") == "CamelCase"
+    @test camel_case("a_b_cdef") == "ABCdef"
+    @test camel_case("CamelCase") == "CamelCase"
+    @test camel_case(:camel_case) == :CamelCase
+    @test camel_case(:a_b_cdef) == :ABCdef
+    @test camel_case(:CamelCase) == :CamelCase
+end
+
+@testitem "table type" begin
+    using Ribasim: Schema, node_type, table_name, sql_table_name
+    @test node_type(Schema.DiscreteControl.Variable) === :DiscreteControl
+    table_type = Schema.Basin.ConcentrationExternal
+    @test node_type(table_type) === :Basin
+    @test table_name(table_type) === :concentration_external
+    @test sql_table_name(table_type) === "Basin / concentration_external"
 end
