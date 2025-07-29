@@ -29,6 +29,6 @@
 				]
             }
         },
-        "postCreateCommand": "pixi run install",
+        "postCreateCommand": "pixi run install && pixi run generate-testmodels",
         "postStartCommand": "julia -e 'using Pkg; Pkg.precompile()'"
     }
