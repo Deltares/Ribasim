@@ -127,7 +127,8 @@ end
         normpath(@__DIR__, "../../generated_testmodels/allocation_training/ribasim.toml")
     @test ispath(toml_path)
 
-    model = Ribasim.run(toml_path)
+    config = Ribasim.Config(toml_path; experimental_concentration = false)
+    model = Ribasim.run(config)
     @test success(model)
     allocation_flow_table = DataFrame(Ribasim.allocation_flow_table(model))
     flow_table = DataFrame(Ribasim.flow_table(model))
