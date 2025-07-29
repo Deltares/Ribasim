@@ -7,7 +7,7 @@ In water resources management, allocation deals with distributing limited water 
 
 ## Allocation Networks
 
-When we build a Ribasim model in which we want to uttilize allocation, it can be computationally efficient and stable to divide a large allocation network into a primary network which connects to multiple subnetworks. The primary network should be the main water system and treats each connected subnetwork as a single demand node.
+When we build a Ribasim model in which we want to utilize allocation, it can be computationally efficient and stable to divide a large allocation network into a primary network which connects to multiple subnetworks. The primary network should be the main water system and treats each connected subnetwork as a single demand node.
 
 We can then first solve an allocation optimization for the primary network, that calculates how to optimally divide the available water to each subnetwork. With this allocated amount for a subnetwork, we can optimize how to divide this water within the subnetwork to the demand nodes.
 
@@ -17,7 +17,7 @@ Secondary networks:
 
 - Can only connect to the primary network via Pump or Outlet nodes
 - Cannot connect directly to other secondary networks
-- The demand of a subnetwork to the primary network is the sum of all demands within the subnetwork
+- The demand of a subnetwork to the primary network is the sum of all unmet demands within the subnetwork
 
 For each subnetwork, a linear optimization problem is formulated .
 
@@ -67,7 +67,7 @@ Under the assumption that
 
 ## Linearization
 
-To use efficient linear programming algorithms, nonlinear relationships can be linearized around the current time $t^n$ by using first-order Taylor series expansions. For example, a nonlinear relationship between flow $Q$, upstream ($S_1$) and downstream ($S_2$) storage can be linearized as:
+To use efficient linear programming algorithms, nonlinear relationships can be linearized around the current time $t^n$. For example, a nonlinear relationship between flow $Q$, upstream ($S_1$) and downstream ($S_2$) storage can be linearized as:
 
 $$Q(S_1,S_2) \approx Q(S_1^n,S_2^n) + \frac{\partial Q}{\partial S_1}(S_1^n,S_2^n)(S_1^{n+1}-S_1^n) + \frac{\partial Q}{\partial S_2}(S_1^n,S_2^n)(S_2^{n+1}-S_2^n)$$
 
@@ -83,7 +83,7 @@ The full algorithm goes through the following steps:
 
 1. Perform demand collection in the secondary subnetworks;
 2. Perform allocation in the primary network;
-3. Perform sequentially allocation (or in the future parallel) in the subnetworks.
+3. Perform sequentially allocation (in the future maybe in parallel) in the subnetworks.
 
 If no primary network is present, then step 1 and 2 are skipped and the entire network is treated as a single subnetwork.
 
@@ -110,7 +110,7 @@ Just like the initial storages, each Basin has an initial level $L_b^\text{start
 
 # Implementation
 ## The basin profile
-The level in a basin is generally a non-linear function of the storage (except when the area is constant)   . To incorporate this into a linear programming framework, we linearize the basin profile at the current timestep.
+The level in a basin is generally a non-linear function of the storage (except when the area is constant). To incorporate this into a linear programming framework, we linearize the basin profile at the current timestep.
 
 $$h^{n+1} \approx h^n + \frac{dh}{dS}^n(S^{n+1} - S^n)$$
 
@@ -143,8 +143,8 @@ The linearized relationship is used as a constraint in the optimization problem:
 We have the following boundary nodes in Ribasim:
 
 - The Terminal, where water simply leaves the model
-- The LevelBoundary, which yields fixed water levels; $h^{n+1}_{lb} $ read from the interpolated timeseries $h_{fb}$ of the node or is a constant value
-- The FlowBoundary, which specifies a flow rate. Here the average outflow of the FlowBoundary in the physical layer over the previous $\Delta t_\text{allocation}$ is used as a prediction of the flow rate in the next $\Delta t_\text{allocation}$ over which the optimization takes place.
+- The LevelBoundary, which yields fixed water levels; $h^{n+1}_{lb}$ is read from the interpolated timeseries $h_{lb}$ of the node or is a constant value
+- The FlowBoundary, which specifies a flow rate. Here the average outflow of the FlowBoundary in the physical layer over the previous $\Delta t$ is used as a prediction of the flow rate in the next $\Delta t$ over which the optimization takes place.
 
 :::{.callout-note}
 The flow rate of a FlowBoundary is given as a timeseries so we could use the interpolation of that timeseries to compute the average flow in the coming $\Delta t_\text{allocation}$. However, that would not always be accurate, since FlowBoundary nodes can be deactivated by Discrete Control which can not (easily) be anticipated.
