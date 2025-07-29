@@ -981,7 +981,7 @@ storage_allocated: The storage allocated to each Basin per demand priority
 """
 @kwdef struct LevelDemand <: AbstractDemandNode
     node_id::Vector{NodeID}
-    demand_priorities::Vector{Int32} = Int32[]
+    demand_priorities::Vector{Int32} = []
     has_demand_priority::Matrix{Bool} =
         zeros(Bool, length(node_id), length(demand_priorities))
     min_level::Vector{Vector{ScalarLinearInterpolation}} =
