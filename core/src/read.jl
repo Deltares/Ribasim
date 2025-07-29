@@ -1132,20 +1132,22 @@ function parse_demand!(
 end
 
 function parse_static_demand_data!(
-    user_demand::UserDemand,
+    node::Union{UserDemand, FlowDemand},
     id::NodeID,
     static_group,
     demand_priorities,
     ::Config,
 )::Nothing
-    user_demand.demand_from_timeseries[id.idx] = false
+    if node isa UserDemand
+        node.demand_from_timeseries[id.idx] = false
+    end
     for row in static_group
         demand_priority_idx = findsorted(demand_priorities, row.demand_priority)
-        user_demand.has_demand_priority[id.idx, demand_priority_idx] = true
+        node.has_demand_priority[id.idx, demand_priority_idx] = true
         demand_row = coalesce(row.demand, 0.0)
         demand_itp = trivial_linear_itp(; val = demand_row)
-        user_demand.demand_itp[id.idx][demand_priority_idx] = demand_itp
-        user_demand.demand[id.idx, demand_priority_idx] = demand_row
+        node.demand_itp[id.idx][demand_priority_idx] = demand_itp
+        node.demand[id.idx, demand_priority_idx] = demand_row
     end
     return nothing
 end
@@ -1321,24 +1323,22 @@ function LevelDemand(db::DB, config::Config, graph::MetaGraph)
     level_demand
 end
 
-function FlowDemand(db::DB, config::Config)
+function FlowDemand(db::DB, config::Config, graph::MetaGraph)
     static = load_structvector(db, config, Schema.FlowDemand.Static)
     time = load_structvector(db, config, Schema.FlowDemand.Time)
-    cyclic_times = get_cyclic_time(db, "FlowDemand")
     node_id = get_node_ids(db, NodeType.FlowDemand)
+    cyclic_times = get_cyclic_time(db, "FlowDemand")
+    demand_priorities = get_all_demand_priorities(db, config)
 
-    flow_demand = FlowDemand(; node_id)
-    errors = parse_parameter!(flow_demand, config, :demand_priority; static, time)
-    errors |= parse_parameter!(
-        flow_demand,
-        config,
-        :demand;
-        static,
-        time,
-        field_name = :demand_itp,
-        cyclic_times,
-    )
+    flow_demand = FlowDemand(; node_id, demand_priorities)
 
+    for id in node_id
+        flow_demand.inflow_link[id.idx] =
+            inflow_link(graph, only(outneighbor_labels_type(graph, id, LinkType.control)))
+    end
+
+    errors =
+        parse_demand!(flow_demand, static, time, cyclic_times, demand_priorities, config)
     errors && error("Errors encountered when parsing FlowDemand data.")
 
     flow_demand
@@ -1526,7 +1526,7 @@ function Parameters(db::DB, config::Config)::Parameters
         pid_control = PidControl(db, config),
         user_demand = UserDemand(db, config, graph),
         level_demand = LevelDemand(db, config, graph),
-        flow_demand = FlowDemand(db, config),
+        flow_demand = FlowDemand(db, config, graph),
     )
 
     subgrid = Subgrid(db, config, basin)
