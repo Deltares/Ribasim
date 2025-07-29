@@ -572,12 +572,15 @@ function save_allocation_flows!(
         push!(record_flow.subnetwork_id, subnetwork_id)
         flow_value = get_flow_value(allocation_model, link)
         push!(record_flow.flow_rate, flow_value)
-        push!(
-            record_flow.bound_flow_rate,
+        bound_hit =
             flow_value == flow_capacity_lower_bound(link, p_independent) ||
-                flow_value == flow_capacity_upper_bound(link, p_independent),
-        )
+            flow_value == flow_capacity_upper_bound(link, p_independent)
+        push!(record_flow.bound_flow_rate, bound_hit)
         push!(record_flow.optimization_type, string(optimization_type))
+
+        if bound_hit
+            @info "At least 1 flow bound hit at time $t" maxlog = 1
+        end
     end
 
     # Vertical flows
