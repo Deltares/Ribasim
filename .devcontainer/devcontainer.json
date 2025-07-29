@@ -14,7 +14,7 @@
         "customizations": {
             "vscode": {
                 "extensions": [
-					"GitHub.copilot",
+                    "GitHub.copilot",
                     "julialang.language-julia",
                     "ms-python.python",
                     "ms-python.mypy-type-checker",
