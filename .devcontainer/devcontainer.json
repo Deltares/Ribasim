@@ -6,6 +6,11 @@
             "dockerfile": "dockerfile",
             "context": ".."
         },
+        "features": {
+            "ghcr.io/julialang/devcontainer-features/julia:1": {
+                "channel": "release"
+            }
+        },
         "customizations": {
             "vscode": {
                 "extensions": [
