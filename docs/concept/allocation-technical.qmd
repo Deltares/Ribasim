@@ -1,0 +1,938 @@
+---
+title: "Allocation - Complete Documentation"
+---
+
+# Introduction
+In water resources management, allocation deals with distributing limited water resources among competing demands in a fair and efficient manner. This is particularly important in situations where water demands exceed available supply, requiring a systematic approach to prioritize and optimize water distribution across the entire network. In Ribasim we formulate this with linear programming using [JuMP](https://jump.dev/JuMP.jl/stable/) and solve the problem using the [HiGHS solver](https://highs.dev/).
+
+This document provides comprehensive documentation for the allocation system implementation in Ribasim, combining conceptual overview with detailed technical documentation including mathematical formulation to code mapping and implementation details.
+
+## Allocation Networks
+
+When we build a Ribasim model in which we want to utilize allocation, it can be computationally efficient and stable to divide a large allocation network into a primary network which connects to multiple subnetworks. The primary network should be the main water system and treats each connected subnetwork as a single demand node.
+
+We can then first solve an allocation optimization for the primary network, that calculates how to optimally divide the available water to each subnetwork. With this allocated amount for a subnetwork, we can optimize how to divide this water within the subnetwork to the demand nodes.
+
+Subnetworks are defined by grouping nodes that share the same subnetwork ID in the [Node table](../reference/usage.qmd#node). The primary network needs to be assigned with subnetwork ID 1. This will always represent the main water system.
+
+Secondary networks:
+
+- Can only connect to the primary network via Pump or Outlet nodes
+- Cannot connect directly to other secondary networks
+- The demand of a subnetwork to the primary network is the sum of all demands within the subnetwork
+
+For each subnetwork, a linear optimization problem is formulated.
+
+## Mathematical formulation
+
+In Ribasim, we optimize and assign allocated flow rates to demand nodes based on:
+
+- Information about sources and their priorities
+- Different demand nodes and their priorities
+- Constraints from nodes, local water availability and network topology
+
+The optimization problem aims to minimize the difference between requested demands and supplied amounts, subject to water balance constraints:
+
+$$
+\begin{aligned}
+\text{min}\quad & z = \sum_{i=0}^{N_d} E_i(Q, S) \\
+\text{s.t.}\quad & \frac{dS_j}{dt} = \sum_{k=1}^{N_l} Q_{k}\\
+\end{aligned}
+$$
+
+where:
+
+- $z$ is the total error
+- $N_d$ is the number of demands within a priority [-]
+- $E_i$ is a deviation error between allocated and demand as function of flow and storage
+- $S_j$ is the storage of node $j$ [m³]
+- $Q_k$ is the volumetric flow rate on link $k$, which is positive for inflow and negative for outflow [m³/s]
+- $N_l$ is the number of flow links connected to node $j$
+- $t$ is the time [s]
+
+## Discretization
+
+In the optimization problem, the water balance must be discretized over the allocation timestep.
+
+$$\Delta t = t^{n+1} - t^{n}$$
+
+Where the superscript $^n$ denotes evaluation at the beginning of the timestep and $^{n+1}$ at the end. We then use a backward Euler approximation:
+
+$$\frac{dS}{dt} \approx \frac{S^{n+1} - S^{n}}{\Delta t} = \sum_{k=1}^{N_l} Q_{k}^{n+1} $$
+
+Under the assumption that
+
+- flows are constant over $\Delta t$
+- coefficients in linearized equations are evaluated at the beginning of the timestep
+- The allocation timestep $\Delta t$ is short enough that linearization remains valid
+
+## Linearization
+
+To use efficient linear programming algorithms, nonlinear relationships can be linearized around the current time $t^n$ by using first-order Taylor series expansions. For example, a nonlinear relationship between flow $Q$, upstream ($S_1$) and downstream ($S_2$) storage can be linearized as:
+
+$$Q(S_1,S_2) \approx Q(S_1^n,S_2^n) + \frac{\partial Q}{\partial S_1}(S_1^n,S_2^n)(S_1^{n+1}-S_1^n) + \frac{\partial Q}{\partial S_2}(S_1^n,S_2^n)(S_2^{n+1}-S_2^n)$$
+
+This yields a linear programming problem that can be solved efficiently while maintaining acceptable accuracy for small changes around the operating point.
+
+The allocation problem is solved per subnetwork of the Ribasim model. A subnetwork is defined by all nodes that have the same subnetwork ID in the [Node table](/reference/usage.qmd#node). Each subnetwork is used to formulate a linear optimization problem with the [JuMP](https://jump.dev/JuMP.jl/stable/) package, which is solved using the [HiGHS solver](https://highs.dev/). For more in-depth information see also the example of solving the maximum flow problem with `JuMP.jl` [here](https://jump.dev/JuMP.jl/stable/tutorials/linear/network_flows/#The-max-flow-problem).
+
+There can be a special subnetwork called primary network (with subnetwork ID 1), which represents the main or primary water system. Other subnetworks are called secondary networks and are only allowed to connect to the primary network via a Pump or Outlet; secondary networks are not allowed to be connected to each other. Secondary networks automatically formulate demands to the primary network if there is a shortage of water within the subnetwork to fulfill all demands.
+
+# The high level algorithm {#sec-high-level-algorithm}
+The allocation algorithm contains 2 types of optimization:
+
+- Demand collection, where water is allocated in the secondary networks with the sole purpose of finding out what the demand of the secondary network is from the primary network;
+- Allocation, where water is allocated in all subnetworks, and the amount of water that is allocated to demands is written as output and communicated to the physical layer.
+
+The full algorithm goes through the following steps:
+
+1. Perform demand collection in the secondary subnetworks;
+2. Perform allocation in the primary network;
+3. Perform allocation for the other subnetworks.
+
+If no primary network is present, then step 1 and 2 are skipped.
+
+# The optimization problems for the subnetworks
+
+## Water balance
+
+Just as the physical layer, the allocation layer must satisfy the water balance, in this case over the allocation timestep $\Delta t_\text{allocation}$. To explain how this is done, we give an algebraic description of some basic aspects of the subnetworks. Say we denote the set of all nodes in the model by $V$, and the subset that forms a subnetwork by $S \subseteq V$. We also have the the set of all flow links in the model $L \subseteq V \times V$, i.e. the links are ordered pairs of nodes. The set of links associated with the subnetwork is derived from $S$ as
+
+$$
+    E_S = \{l \in L \; : \; l \cap S \ne\emptyset\},
+$$
+
+i.e. all links in the model that have at least one node in the subnetwork. For each link in the subnetwork we define a flow variable ($\text{m}^3/\text{s}$):
+
+$$
+    -F_\max \le \mathcal{F}_l \le F_\max, \quad l \in E_S.
+$$
+
+Here each $\mathcal{F}_l$ denotes the flow over the link $l$ over the timestep. These are decision variables, i.e. values that are an output of the optimization, which we denote in cursive script. The variable can attain values between the bounds $-F_\max$ and $F_\max$, where $F_\max = 500.000 \;\text{m}^3/\text{s}$ (implemented as `MAX_ABS_FLOW = 5e5`). The bound $F_\max$ is chosen as a reasonable maximum value that flows can attain. We assume these flows to be constant over the period $\Delta t_\text{allocation}$. We will see later that certain parameters of the model can put stricter bounds on these flows.
+
+For the basins $B_S \subset S$ in the subnetwork we define storage variables ($\text{m}^3$) at both the start and end of the allocation time step $\Delta t_\text{allocation}$:
+
+$$
+    S^\text{start}_b, \quad \mathcal{S}^\text{end}_b, \quad b \in B_S.
+$$
+
+The start values $S^\text{start}_b$ are fixed to the values from the physical layer at the start of the allocation timestep. The end storages $\mathcal{S}^\text{end}_b$ are decision variables constrained by:
+
+$$
+    0 \le \mathcal{S}^\text{end}_b \le S_b^\max, b \in B_S,
+$$
+
+where $S_b^\max$ is the largest storage within the [Basin profile](/reference/node/basin.qmd#profile).
+
+Similarly, we define level variables ($\text{m}$) at both start and end of the timestep:
+
+$$
+    L^\text{start}_b, \quad \mathcal{L}^\text{end}_b, \quad b \in B_S,
+$$
+
+where $L^\text{start}_b$ is fixed from the physical layer and $\mathcal{L}^\text{end}_b$ is a decision variable constrained by:
+
+$$
+    L_b^\min \le \mathcal{L}^\text{end}_b \le L_b^\max, \quad b \in B_S,
+$$
+
+where $L_b^\min$ is the bottom level of the Basin and $L_b^\max$ is the highest level available in the Basin profile.
+
+We also have a horizontal forcing variable for each basin:
+
+$$
+    \mathcal{H}_b, \quad b \in B_S,
+$$
+
+whose value represents the average vertical fluxes (precipitation, evaporation, infiltration, drainage) over the allocation timestep. Given these variables, we can set up a water balance constraint for each basin in the subnetwork:
+
+$$
+    \mathcal{S}_b^\text{end} - S_b^\text{start} = \Delta t_\text{allocation}
+    \left(
+        \mathcal{H}_b
+        +
+        \sum_{(n, b) \in E_S} \mathcal{F}_{(n,b)}
+        -
+        \sum_{(b, n) \in E_S} \mathcal{F}_{(b,n)}
+    \right),
+    \quad
+    b \in B_S.
+$$
+
+## The Basin profile
+
+The level in a basin depends on the storage via the [Basin profile](/reference/node/basin.qmd#profile), here denoted by the function $P_b$:
+
+$$
+    \mathcal{L}^\text{end}_b = P_b(\mathcal{S}^\text{end}_b)
+$$
+
+### Basin Profile Linearization
+
+The basin profile defines a non-linear level-storage relationship that must be linearized for the allocation optimization problem. This is implemented using a piecewise linear approximation with a Douglas-Peucker algorithm to reduce the number of segments while maintaining accuracy.
+
+**Implementation Process:**
+
+1. **Profile Parsing**: The original profile is sampled densely and then reduced using the Douglas-Peucker algorithm:
+   ```julia
+   function parse_profile(storage_to_level, level_to_area, lowest_level)
+       # Dense sampling of the profile
+       samples_storage = sample_profile_densely(storage_to_level)
+       samples_level = evaluate_profile(storage_to_level, samples_storage)
+
+       # Apply Douglas-Peucker reduction
+       values_level, values_storage = douglas_peucker(samples_level, samples_storage)
+   end
+   ```
+
+2. **Phantom Storage**: To prevent numerical issues when basins are empty, phantom storage is added:
+   ```julia
+   phantom_Δh = values_level_node[1] - lowest_level
+   if phantom_Δh > 0
+       phantom_area = level_to_area.u[1] / 1e3
+       phantom_storage = phantom_Δh * phantom_area
+       pushfirst!(values_level_node, lowest_level)
+       values_storage_node .+= phantom_storage
+       pushfirst!(values_storage_node, 0.0)
+   end
+   ```
+
+3. **Piecewise Linear Constraints**: The relationship is enforced using JuMP's piecewise linear constraints:
+   ```julia
+   problem[:basin_profile] = JuMP.@constraint(
+       problem,
+       [node_id = basin_ids_subnetwork],
+       level[node_id] == piecewiselinear(
+           problem,
+           storage[(node_id, :end)],
+           values_storage[node_id],
+           values_level[node_id],
+       )
+   )
+   ```
+
+Just like the initial storages, each Basin has an initial level $L_b^\text{start}$ known from the physical layer which we need to compute flows.
+
+## Physical processes
+
+### Basin forcings
+
+Basin forcings represent the vertical water balance terms that affect basin storage over the allocation timestep. These include:
+
+- **Precipitation**: $Q_{P,i}(t)$ - Rainfall into the basin
+- **Evaporation**: $Q_{E,i}(t)$ - Water loss through evaporation
+- **Infiltration**: $Q_{\text{inf},i}(t)$ - Water loss to groundwater
+- **Drainage**: $Q_{\text{drn},i}(t)$ - Water gain from groundwater
+
+The average vertical flux over the allocation interval is computed as:
+
+$$
+    \phi_i(t) = \frac{1}{\Delta t_{\text{alloc}}}\int_{t - \Delta t_{\text{alloc}}}^t \left[Q_{P,i}(t') - Q_{E,i}(t') + Q_{\text{drn},i}(t') - Q_{\text{inf},i}(t') \right] dt'
+$$
+
+**Implementation:**
+The cumulative forcing volume is tracked in the physical layer and averaged over the allocation timestep:
+
+```julia
+function set_simulation_data!(allocation_model::AllocationModel, basin::Basin, p::Parameters)
+    for basin_id in basin_ids_subnetwork
+        # Average forcing over the allocation timestep
+        average_forcing = cumulative_forcing_volume[basin_id] / Δt_allocation
+
+        # Set the basin forcing parameter
+        JuMP.fix(
+            problem[:basin_forcing][basin_id],
+            average_forcing / scaling.flow;
+            force = true
+        )
+    end
+end
+```
+
+### Boundary nodes
+
+We have the following boundary nodes in Ribasim:
+
+- The Terminal, where water can leave the model;
+- The LevelBoundary, which yields fixed water levels; $L^\text{end}_\text{lb} = h_{lb}(t + \Delta t_\text{allocation})$ given the interpolated timeseries $h_{lb}$ of the node (or constant value);
+- The FlowBoundary, which specifies a flow rate. Here the average outflow of the FlowBoundary in the physical layer over the previous $\Delta t_\text{allocation}$ is used as a prediction of the flow rate in the next $\Delta t_\text{allocation}$ over which the optimization takes place.
+
+:::{.callout-note}
+The flow rate of a FlowBoundary is given as a timeseries so we could use the interpolation of that timeseries to compute the average flow in the coming $\Delta t_\text{allocation}$. However, that would not always be accurate, since FlowBoundary nodes can be deactivated by Discrete Control which can not (easily) be anticipated.
+:::
+
+### Tabulated Rating Curve
+
+Since the $Q(h)$ relationships for TabulatedRatingCurve nodes (see [here](/reference/node/tabulated-rating-curve.qmd#equations)) are already linear, these can be directly incorporated into the allocation problem through piecewise linear interpolation.
+
+**Implementation:**
+```julia
+problem[:rating_curve] = JuMP.@constraint(
+    problem,
+    [node_id = rating_curve_ids_subnetwork],
+    flow[inflow_link[node_id.idx].link] == begin
+        level_upstream = get_level(problem, inflow_link[node_id.idx].link[1])
+        level_upstream_data = interpolation.t
+        flow_rate_data = interpolation.u ./ scaling.flow
+        piecewiselinear(problem, level_upstream, level_upstream_data, flow_rate_data)
+    end
+)
+```
+
+### Resistance nodes
+
+In Ribasim we have [LinearResistance](/reference/node/linear-resistance.qmd) and [ManningResistance](/reference/node/manning-resistance.qmd) nodes. Both resistance types use linearization around the current physical conditions, being updated at each allocation timestep.
+
+**Resistance Linearization:**
+
+Both LinearResistance and ManningResistance are implemented using the same linearization approach. During model initialization, placeholder constraints are created:
+
+```julia
+# Linearized constraint: flow = q0 + ∂q/∂h_upstream × h_upstream + ∂q/∂h_downstream × h_downstream
+flow[inflow_link] == q0 + ∂q_∂level_upstream * level_upstream + ∂q_∂level_downstream * level_downstream
+```
+
+Before each optimization, these coefficients are updated from the current physical layer state:
+
+```julia
+# Get current physical levels and compute current flow
+h_a = get_level(p, inflow_id, t)
+h_b = get_level(p, outflow_id, t)
+q = resistance_flow(node_id, h_a, h_b)  # Current flow
+
+# For LinearResistance: check capacity limits
+if q >= max_flow_rate || q <= -max_flow_rate
+    ∂q_∂level_upstream = 0.0      # At capacity, no sensitivity to levels
+    ∂q_∂level_downstream = 0.0
+else
+    ∂q_∂level_upstream = 1 / resistance     # Linear relationship
+    ∂q_∂level_downstream = -1 / resistance
+end
+
+# For ManningResistance: compute derivatives numerically
+∂q_∂level_upstream = forward_diff(h -> manning_flow(h, h_b), h_a)
+∂q_∂level_downstream = forward_diff(h -> manning_flow(h_a, h), h_b)
+
+# Constant term: q0 = q_current - h_a × ∂q/∂h_a - h_b × ∂q/∂h_b
+q0 = q - h_a * ∂q_∂level_upstream - h_b * ∂q_∂level_downstream
+
+# Update constraint coefficients for optimization
+JuMP.set_normalized_rhs(constraint, q0 / scaling.flow)
+JuMP.set_normalized_coefficient(constraint, upstream_level, -∂q_∂level_upstream / scaling.flow)
+JuMP.set_normalized_coefficient(constraint, downstream_level, -∂q_∂level_downstream / scaling.flow)
+```
+
+This approach ensures that the linearization remains valid for small changes around the current operating point, with coefficients updated at each allocation timestep.
+
+For the resistance nodes, the phantom storage introduced in the basin profile is very helpful, because it prevents that according to the formula water has to flow from an empty basin with a high bottom to a lower basin.
+
+## Objectives (goals)
+
+The allocation algorithm optimizes for a sequence of objectives in succession, adding constraints after optimization for each goal to retain the result of that optimization in the subsequent optimizations. This approach is known as [goal programming](https://en.wikipedia.org/wiki/Goal_programming).
+
+### Demand objectives
+
+There are several types of demand nodes:
+
+- UserDemand ($UD \subset S$), which can have inflow demands for various demand priorities, and can consume a fraction of its abstraction and releases the rest back to the model;
+- LevelDemand ($LD \subset S$), which can have several level demands for various demand priorities, where higher levels must have lower priorities
+- FlowDemand ($FD \subset S$), which can have several inflow demands for various demand priorities, where no flow is consumed. The FlowDemand node gives this demand to another node
+
+Demand objectives come in 2 categories:
+
+- flow demand (UserDemand, FlowDemand)
+- Level demand (LevelDemand)
+
+We separate these out because these different types optimize for different quantities (flow and storage respectively), and combining demands of these two types within the same subnetwork within the same demand priority is not allowed.
+
+### Objective Function Formulation
+
+The objective function minimizes the sum of relative error variables:
+
+$$\min \sum_{i} \text{error\_lower}_i + \text{error\_upper}_i$$
+
+Where the error variables are constrained by:
+
+**User Demand Error Constraints:**
+```julia
+# Lower error constraint
+d * (relative_user_demand_error_lower[node_id] - target_demand_fraction) ≥
+    -(flow[inflow_link] - user_demand_allocated[node_id])
+
+# Upper error constraint
+d * (relative_user_demand_error_upper[node_id] + target_demand_fraction) ≥
+    flow[inflow_link] - user_demand_allocated[node_id]
+```
+
+**Linear Objective Construction:**
+```julia
+# The objective expression is a JuMP.AffExpr (linear expression)
+@kwdef mutable struct AllocationObjective
+    const expression::JuMP.AffExpr = JuMP.AffExpr()  # LINEAR, not quadratic
+    # ...
+end
+
+# Add linear error terms to objective
+for objective in get_demand_objectives(objectives)
+    JuMP.add_to_expression!(objective.expression, variable_sum(relative_user_demand_error_lower))
+    JuMP.add_to_expression!(objective.expression, variable_sum(relative_user_demand_error_upper))
+end
+```
+
+**Key Points:**
+- The objective function is linear (`JuMP.AffExpr`)
+- Error variables represent deviations from target demand fractions
+- The linear formulation ensures efficient LP solving with HiGHS
+
+This type of objective cares about the fraction of the demand allocated, and will lead to an equal fraction of all demands allocated when possible. For a discussion on this see [here](https://github.com/Deltares/Ribasim/pull/1366).
+
+## Control
+
+### Control by allocation
+
+When Pumps and Outlets are part of a subnetwork, they can be controlled by allocation. To accomplish this, they must be given the special control state `Ribasim.allocation`. When a Pump or Outlet has this control state, the flow through the node is only bounded by its capacity and upstream/downstream level constraints. After all goals have been optimized for, the flow rate through the Pump or Outlet is communicated to the physical layer.
+
+**Implementation:**
+```julia
+function apply_control_from_allocation!(
+    node::Union{Pump, Outlet},
+    allocation_model::AllocationModel,
+    graph::MetaGraph,
+)
+    for (node_id, inflow_link) in zip(node.node_id, node.inflow_link)
+        if node.allocation_controlled[node_id.idx]
+            # Set the flow rate based on allocation optimization result
+            node.flow_rate[node_id.idx].u .=
+                JuMP.value(flow[inflow_link.link]) * scaling.flow
+        end
+    end
+end
+```
+
+### Interaction of allocation with other control systems
+
+There are several other control systems in Ribasim:
+
+- **[DiscreteControl](/reference/node/discrete-control.qmd)**: This node type can change parameters of other nodes in between time steps of the solver of the physical layer. If the affected node is within a subnetwork, the parameter change is taken into account in allocation runs. The parameters in the allocation layer are always up to date with those in the physical layer, but the allocation algorithm cannot anticipate parameter changes from DiscreteControl that occur within the allocation time step which is being optimized over, so this can be a source of discrepancies between the physical layer and the allocation layer.
+
+- **[ContinuousControl](/reference/node/continuous-control.qmd)**: ContinuousControl relationships are fully implemented in the allocation system. The controlled variable is updated based on the optimization results and the control function relationship.
+
+- **[PidControl](/reference/node/pid-control.qmd)**: PID control is fully supported in allocation with sophisticated error computation and control output calculations. The PID controller state is maintained across allocation timesteps, though the continuous nature of the control is discretized over the allocation timestep.
+
+**Implementation Details:**
+
+```julia
+# Control type mapping is used to identify control relationships
+const control_type_mapping = Dict{NodeType.T, ContinuousControlType.T}(
+    NodeType.PidControl => ContinuousControlType.PID,
+    NodeType.ContinuousControl => ContinuousControlType.Continuous,
+)
+
+# PID control error computation
+function set_error!(pid_control::PidControl, p::Parameters, t::Number)
+    for node_id in pid_control.node_id
+        # Calculate error based on target vs actual controlled variable
+        target = pid_control.target[node_id.idx](t)
+        actual = get_controlled_variable_value(p, node_id, t)
+        pid_control.error[node_id.idx] = target - actual
+    end
+end
+```
+
+## Scaling and Numerical Considerations
+
+### Scaling Factors
+
+To improve numerical stability, the allocation system uses scaling factors that normalize variables to similar orders of magnitude:
+
+```julia
+function ScalingFactors(p_independent::ParametersIndependent, subnetwork_id::Int32, Δt_allocation::Float64)
+    max_storages = [basin.storage_to_level[node_id.idx].t[end]
+                   for node_id in basin.node_id
+                   if graph[node_id].subnetwork_id == subnetwork_id]
+    mean_half_storage = sum(max_storages) / (2 * length(max_storages))
+
+    return ScalingFactors(;
+        storage = mean_half_storage,
+        flow = mean_half_storage / Δt_allocation,
+    )
+end
+```
+
+### Low Storage Factor
+
+A low storage factor is implemented to handle situations where basins approach empty conditions:
+
+```julia
+problem[:low_storage_func] = JuMP.@constraint(
+    problem,
+    [node_id = basin_ids_subnetwork],
+    low_storage_factor[node_id] == piecewiselinear(
+        problem,
+        storage[(node_id, :end)],
+        [0.0, low_storage_threshold[node_id.idx], storage_max] ./ scaling.storage,
+        [0.0, 1.0, 1.0],
+    )
+)
+```
+
+This factor reduces flows from basins when storage is critically low, preventing unphysical negative storage.
+
+### Warm Starting
+
+The optimization uses warm starting to improve convergence:
+
+```julia
+function warm_start!(allocation_model::AllocationModel, objective::AllocationObjective, integrator)
+    if first_optimization
+        # Initialize with physical layer values
+        for (node_id, when) in only(storage.axes)
+            when == :start && continue
+            JuMP.set_start_value(storage[(node_id, :end)], current_storage[node_id.idx])
+        end
+    else
+        # Use previous optimization results
+        for (node_id, when) in only(storage.axes)
+            when == :start && continue
+            JuMP.set_start_value(storage[(node_id, :end)], JuMP.value(storage[(node_id, :end)]))
+        end
+    end
+end
+```
+
+# Two-Phase Implementation Process
+
+The allocation system uses a two-phase approach:
+
+## Phase 1: Placeholder Initialization
+
+During model initialization, the optimization structure is created with placeholder values:
+
+```julia
+function AllocationModel(subnetwork_id::Int32, p_independent::ParametersIndependent, allocation_config)
+    # Create optimization problem
+    problem = JuMP.direct_model(get_optimizer())
+
+    # Add variables and constraints with placeholders
+    add_basin!(allocation_model, p_independent)
+    add_flow!(allocation_model, p_independent)
+    add_conservation!(allocation_model, p_independent)
+    add_objectives!(allocation_model, p_independent)
+
+    # Add node-specific constraints
+    add_user_demand!(allocation_model, p_independent)
+    add_flow_demand!(allocation_model, p_independent)
+    add_level_demand!(allocation_model, p_independent)
+
+    return allocation_model
+end
+```
+
+## Phase 2: Real Value Updates
+
+Before each optimization solve, placeholders are updated with current physical data:
+
+```julia
+function set_simulation_data!(allocation_model::AllocationModel, p::Parameters, t::Float64, du::CVector)
+    # Update basin states
+    set_simulation_data!(allocation_model, basin, p)
+
+    # Update boundary conditions
+    set_simulation_data!(allocation_model, level_boundary, t)
+
+    # Update linearized resistance relationships
+    set_simulation_data!(allocation_model, manning_resistance, p, t)
+
+    # Update pump/outlet flows
+    set_simulation_data!(allocation_model, pump, outlet, du)
+
+    # Update demand values
+    set_simulation_data!(allocation_model, user_demand, t)
+end
+```
+
+# Elements of allocation
+
+The following data of the parameters and state of a Ribasim model are relevant for the allocation problem.
+
+### Schematisation input
+
+#### The subnetwork
+
+The allocation problem is solved per subnetwork, which is given by a subset $S \subset V$ of node IDs. Different subnetworks are disjoint from each other. Nodes can also not be part of any subnetwork.
+
+**Implementation:**
+
+```{.julia}
+get_subnetwork_ids(graph::MetaGraph, node_type::NodeType.T, subnetwork_id::Int32) =
+    filter(node_id -> node_id.type == node_type, graph[].node_ids[subnetwork_id])
+```
+
+#### Source flows
+
+Sources are indicated by a set of links in the subnetwork
+$$
+E_S^\text{source} \subset E,
+$$
+which are automatically inferred as all links that point out of LevelBoundary or FlowBoundary nodes. That is, if $(i,j) \in E_S^\text{source}$, then the average over the last allocation interval $\Delta t_{\text{alloc}}$ of the flow over this link
+$$
+    \frac{1}{\Delta t_{\text{alloc}}}\int_{t - \Delta t_{\text{alloc}}}^tQ_{ij}(t') dt'
+$$
+is treated as a source flow in the allocation problem. These links are either coming from a boundary/source node (e.g. a level or flow boundary) or connect the primary network to a subnetwork. For the definition of $Q_{ij}$ see [the formal model description](/concept/equations.qmd#formal-model-description).
+
+#### User demands
+
+The subnetwork contains a subset of UserDemand nodes $U_S \subset S$, who all have static or time varying demands over various priorities $p$:
+$$
+    d^p_i(t), \quad i \in U_S, p = 1,2,\ldots, p_{\max}.
+$$
+
+:::{.callout-note}
+On this page we assume that the priorities are given by all integers from $1$ to some $p_{\max} \in \mathbb{N}$. For the Ribasim input this is not a requirement; some of these in between priority values can be missing, only the ordering of the given priorities is taken into account.
+:::
+
+#### Flow demands
+
+The subnetwork contains a subset of nodes $FD_S \subset S$ which have a demand of a single priority $p_{\text{fd}}$ for the flow through that node. With this we define
+$$
+    d^p_i(t) =
+    \begin{cases}
+        0 \text{ if } p \ne p_{\text{fd}} \\
+        d^{p_{\text{fd}}} \text{ if } p = p_{\text{fd}}
+    \end{cases}
+$$
+for all $i \in FD_S$. Here $d^{p_{\text{fd}}}$ is given by the original flow demand minus the flows through node $i$ at all priorities $p < p_{\text{fd}}$.
+
+::: {.callout-note}
+**Subscript notation**: The subscript "fd" stands for "flow demand", indicating the specific priority level $p_{\text{fd}}$ associated with flow demand nodes in the subnetwork.
+:::
+
+### Simulation (physical layer) input
+
+#### Vertical fluxes and local storage
+
+Apart from the source flows denoted by links, there are other sources of water in the subnetwork, associated with the Basins in the subnetwork $B_S = B \cap S$. First, there is the average over the last allocation interval $\Delta t_{\text{alloc}}$ of the vertical fluxes (precipitation, evaporation, infiltration and drainage) for each Basin:
+$$
+    \phi_i(t) = \frac{1}{\Delta t_{\text{alloc}}}\int_{t - \Delta t_{\text{alloc}}}^t \left[Q_{P,i}(t') - Q_{E,i}(t') + Q_{\text{drn},i}(t') - Q_{\text{inf},i}(t') \right] dt', \quad \forall i \in B_S.
+$$
+
+We consider fluxes into the basin to be positive and out of the basin to be negative. For more information see [the natural water balance terms](/concept/equations.qmd#natural-water-balance-terms).
+
+Secondly, there is either a supply or demand from the storage in the Basin if the Basin has a level demand. Given a minimum level $\ell_{\min, i}$ and a maximum level $\ell_{\max, i}$ which correspond to a minimum storage $s_{\min, i}$ and maximum storage $s_{\max, i}$ respectively, we get a flow supply of
+$$
+    F^{\text{basin out}}_{\max, i} = \max\left(0.0, \frac{u_i(t)-s_{\max,i}}{\Delta t_{\text{alloc}}} + \phi_i(t)\right)
+$$
+
+and a demand of
+$$
+    d^p_i = \max\left(0.0, \frac{s_{\min,i} - u_i(t)}{\Delta t_{\text{alloc}}} - \phi_i(t)\right),
+$$
+
+for all $i \in B_S$. Note that the basin demand has only a single priority, so for other priorities this demand is $0$.
+
+#### Constraining factors
+
+##### Flow magnitude and direction constraints
+Nodes in the Ribasim model that have a `max_flow_rate`, i.e. Pump, Outlet and LinearResistance, put a constraint on the flow through that node. Some nodes only allow flow in one direction, like Pump, Outlet and TabulatedRatingCurve.
+
+##### UserDemand return flows
+UserDemand nodes dictate proportional relationships between flows over links in the subnetwork. The return factor is given by $0 \le r_i(t) \le 1, i \in U_S$.
+
+### The subnetwork
+The subnetwork consists of a set of nodes $S \subset V$ and links
+
+$$
+    E_S = (S \times S) \cup E_S^\text{source},
+$$
+
+i.e. the links that lie within the subnetwork together with the source links (which can be partially outside the subnetwork).
+The nodes in $S$ together with the connected nodes outside the subnetwork are called the extended subnetwork.
+
+#### Capacities
+
+Each link in the subnetwork has an associated capacity. These capacities are collected in the sparse capacity matrix $C_S \in \overline{\mathbb{R}}_{\ge 0}^{n\times n}$ where $n$ is the number of nodes in the extended subnetwork. A link capacity is infinite if there is nothing in the model constraining the capacity.
+
+The capacities are determined in different ways:
+
+- If a link does not exist in the allocation network, i.e. $(i,j) \notin E_S$ for certain $1 \le i,j\le n'$, then $(C_S)_{i,j} = 0$;
+- The capacity of the link $e \in E_S$ is given by the smallest `max_flow_rate` of the nodes along the equivalent links in the subnetwork. If there are no nodes with a `max_flow_rate`, the link capacity is infinite. If the `max_flow_rate` is time-dependent, only the value at the starttime of the simulation is considered;
+- If the link is a source, the capacity of the link is given by the flow rate of that source;
+
+There are also capacities for special links:
+
+- $C^{LD}_S \in \mathbb{R}^b_{\ge 0}$ where $b = \# B_S$ is the number of basins, for the flow supplied by basins based on level demand (this capacity is 0 for basins that have no level demand).
+- $C^{FD}_S \in \mathbb{R}^c_{\ge 0}$ where $c = \# FD_S$ is the number of nodes with a flow demand, for the flow supplied by flow buffers at these nodes with a flow demand.
+- $C^{UD}_S \in \mathbb{R}^f_{\ge 0}$ where $f = \# U_S$, for the flow supplied by the user demand outflow source whose capacity is given by return flows.
+
+## The optimization problem
+
+The optimization problem for a subnetwork consists of a **linear objective function** with associated linear constraints on a set of variables, all of which are introduced below.
+
+### The optimization variables
+
+There are several types of variable whose value has to be determined to solve the allocation problem:
+
+- The flows $F \in \mathbb{R}_{\ge 0}^{n\times n}$ over the links in the allocation network;
+- The flows $F^\text{basin out}_{i}, F^\text{basin in}_{i} \geq 0$ for all $i \in B_S$ supplied and consumed by the basins with a level demand respectively;
+- The flows $F^\text{buffer out}_{i}, F^\text{buffer in}_{i} \ge 0$ for all $i \in FD_S \cup FF_S$ supplied and consumed by the flow buffers of nodes with a flow demand.
+
+### The optimization objective
+
+The goal of allocation is to get the flow to nodes with demands as close as possible to these demands. This is achieved by minimizing the sum of linear error variables:
+
+$$
+    \min \sum_{i} \left(\text{error\_lower}_i + \text{error\_upper}_i\right)
+$$
+
+Where error variables are constrained to represent deviations from target demand fractions through linear constraints.
+
+**Implementation Details:**
+
+1. **Error Variables**: The system uses `relative_user_demand_error_lower` and `relative_user_demand_error_upper` variables that are minimized in the objective function.
+
+2. **Linear Constraints**: These error variables are constrained by inequalities like:
+   ```
+   d * (error_lower - target_fraction) ≥ -(allocated - demanded)
+   d * (error_upper + target_fraction) ≥ (allocated - demanded)
+   ```
+
+3. **Linear Programming**: The entire optimization is formulated as a Linear Program (LP) solved with the HiGHS solver.
+
+:::{.callout-note}
+When performing primary network allocation, the connections to subnetworks are also interpreted as UserDemand nodes with demands determined by subnetwork demand collection.
+:::
+
+This type of objective cares about the fraction of the demand allocated, and will lead to an equal fraction of all demands allocated when possible. For a discussion on this see [here](https://github.com/Deltares/Ribasim/pull/1366).
+
+### The optimization constraints
+
+For convenience, we use the notation
+
+\begin{align}
+    V^{\text{out}}_S(i) = \left\{j \in V : (i,j) \in E_S\right\} \\
+    V^{\text{in}}_S(j) = \left\{i \in V : (i,j) \in E_S\right\}
+\end{align}
+
+for the set of in-neighbors and out-neighbors of a node in the network respectively.
+
+- Flow conservation: For all nodes $k$ that are not a source or a sink (i.e. `FlowBoundary`, `LevelBoundary`, `UserDemand`) we have a flow conservation constraint:
+$$
+    \sum F_{\text{out special}} + \sum_{j \in V^{\text{out}}_S(k)} F_{kj} = \sum F_{\text{in special}} + \sum_{i \in V^{\text{in}}_S(k)} F_{ik}, \quad \forall k \in B_S.
+$$  {#eq-flowconservationconstraintbasin}
+
+In here, we have the following special flows:
+
+- If $k$ is a basin with a flow demand, there is a special outflow $F^{\text{basin in}}_k$ and a special inflow $F^{\text{basin out}}_k$;
+- If the node has a buffer (see [here](#the-optimization-variables)) there is a special outflow $F^{\text{buffer in}}_k$ and a special inflow $F^{\text{buffer out}}_k$.
+
+:::{.callout-note}
+In the above, the placement of the basin and buffer flows might seem counter-intuitive. Think of the storage or buffer as a separate node connected to the node with the demand.
+:::
+
+- Capacity: the flows over the links are bounded by the link capacity:
+$$
+    F_{ij} \le \left(C_S\right)_{ij}, \quad \forall(i,j) \in E_S.
+$$ {#eq-capacityconstraint}
+
+By the definition of $C_S$ this also includes the source flows. The same holds for the basin outflows:
+
+$$
+    F^{\text{basin out}}_{i} \le F^{\text{basin out}}_{\max, i}, \quad \forall i \in B_S.
+$$
+
+There are several things to note about the source constraints:
+- The sources are not all used at once. There is an optimization for each source in a subnetwork, where only one source has nonzero capacity.
+- When performing subnetwork demand collection, these capacities are set to $\infty$ for links which connect the primary network to a subnetwork.
+
+Similar constraints hold for the flow out of basins, flow demand buffers and user demand outflow sources:
+$$
+F^\text{basin out}_{i} \le (C^{FD}_S)_i, \quad \forall i \in B_S,
+$$
+
+$$
+F^\text{buffer out}_{i} \le (C^{FD}_S)_i, \quad \forall i \in FD_S,
+$$
+
+$$
+F_{ij} \le (C^{UD}_S)_i, \quad \forall i \in U_S, \quad V_S^{\text{out}}(i) = \{j\}.
+$$
+Here we use that each UserDemand node in the allocation network has a unique outflow link. The user outflow source capacities are increased after each optimization solve by the return fraction:
+$$
+    r_i(t) \cdot F_{ki}, \quad V_S^{\text{in}}(i) = \{k\}.
+$$
+
+- Flow sign: Furthermore there are the non-negativity constraints for the flows and allocations, see [The optimization variables](/concept/allocation.qmd#the-optimization-variables).
+
+# Debugging and Analysis Tools
+
+## Infeasibility Analysis and Constraint Relaxation
+
+When optimization problems become infeasible, the system provides comprehensive analysis and automatic constraint relaxation to help diagnose the cause:
+
+### Constraint Relaxation
+```julia
+function relax_problem!(problem::JuMP.Model)::Dict{JuMP.ConstraintRef, JuMP.AffExpr}
+    # Relax conservation constraints by introducing slack variables
+    constraint_to_penalty = Dict{JuMP.ConstraintRef, Float64}()
+
+    for constraint in JuMP.all_constraints(problem; include_variable_in_set_constraints = true)
+        if startswith(JuMP.name(constraint), "volume_conservation") ||
+           startswith(JuMP.name(constraint), "flow_conservation")
+            constraint_to_penalty[constraint] = 1
+        end
+    end
+
+    JuMP.@objective(problem, Min, 0)
+    return JuMP.relax_with_penalty!(problem, constraint_to_penalty)
+end
+```
+
+### Detailed Infeasibility Reporting
+```julia
+function report_cause_of_infeasibility(
+    constraint_to_slack_map::Dict{JuMP.ConstraintRef, JuMP.AffExpr},
+    objective::AllocationObjective,
+    problem::JuMP.Model,
+    subnetwork_id::Int32,
+    t::Float64,
+)
+    # Log all constraints violated by non-zero slack variables
+    # Log all variables in violated constraints with their values and bounds
+    # Log other constraints affecting the same variables
+    for (constraint, slack_var) in constraint_to_slack_map
+        if !iszero(JuMP.value(slack_var))
+            @info "infeasible constraint: $constraint"
+            @info "constraint is violated by: $(JuMP.value(slack_var))"
+            log_constraint_variable_values(constraint)
+
+            # Check for conflicting constraints on the same variables
+            # [detailed conflict analysis code]
+        end
+    end
+end
+```
+
+### Integration with Optimization Workflow
+
+When HiGHS returns `INFEASIBLE` status, the system automatically:
+
+1. **Relaxes constraints**: Adds slack variables to volume and flow conservation constraints
+2. **Re-optimizes**: Solves the relaxed problem to identify constraint violations
+3. **Reports violations**: Logs all constraints with non-zero slack variables
+4. **Analyzes conflicts**: Identifies other constraints affecting the same variables
+5. **Provides diagnostics**: Shows variable values, bounds, and constraint coefficients
+
+```julia
+if termination_status == JuMP.INFEASIBLE
+    constraint_to_slack = relax_problem!(problem)
+    JuMP.optimize!(problem)
+    report_cause_of_infeasibility(constraint_to_slack, objective, problem, subnetwork_id, t)
+end
+```
+
+This approach transforms infeasible problems into diagnosis tools, helping users understand which constraints are incompatible and why the optimization cannot find a feasible solution.
+
+## Numerical Analysis
+
+The system also provides numerical stability analysis:
+
+```julia
+function analyze_scaling(allocation_model::AllocationModel, objective::AllocationObjective, t::Float64, config::Config)
+    data_numerical = MathOptAnalyzer.analyze(
+        MathOptAnalyzer.Numerical.Analyzer(),
+        problem;
+        threshold_small = JuMP.get_attribute(problem, "small_matrix_value"),
+        threshold_large = JuMP.get_attribute(problem, "large_matrix_value"),
+    )
+
+    # Identify variables not appearing in constraints
+    if !isempty(data_numerical.variables_not_in_constraints)
+        variables = [variable_ref_from_index(problem, var.ref)
+                    for var in data_numerical.variables_not_in_constraints]
+        @error "Variables found which are not in any constraint." variables
+    end
+
+    # Check for poorly scaled matrix coefficients
+    for data in data_numerical.matrix_large
+        constraint_name = JuMP.name(constraint_ref_from_index(problem, data.ref))
+        variable = variable_ref_from_index(problem, data.variable)
+        @error "Too large coefficient found" constraint_name variable data.coefficient
+    end
+end
+```
+
+# Output
+
+Allocation produces detailed output for analysis and validation:
+
+## Demand Records
+- **Demand**: Requested amount for each priority
+- **Allocated**: Amount allocated by optimization
+- **Realized**: Actual amount delivered (with lag)
+
+## Flow Records
+- **Allocation flows**: Optimized flow rates between nodes
+- **Basin forcing**: Vertical flux contributions
+- **Optimization type**: Whether from demand collection or final allocation
+
+See [here](/reference/usage.qmd#results) for complete output specifications.
+
+# Performance Considerations
+
+## Solver Configuration
+
+The allocation system uses HiGHS with updated optimized settings from the Overhaul-allocation-documentation branch:
+
+```julia
+function get_optimizer()
+    return JuMP.optimizer_with_attributes(
+        HiGHS.Optimizer,
+        "log_to_console" => false,
+        "time_limit" => 60.0,
+        "random_seed" => 0,
+        "primal_feasibility_tolerance" => 1e-5,
+        "dual_feasibility_tolerance" => 1e-5,
+    )
+end
+```
+
+**Key Changes:**
+- Removed `small_matrix_value` setting
+- Added explicit primal and dual feasibility tolerances for better numerical stability
+
+## Memory Management
+
+The two-phase approach minimizes memory allocation by reusing optimization problem structure across time steps.
+
+## Convergence Acceleration
+
+- Warm starting from previous solutions
+- Scaled variables for numerical stability
+- Goal programming to break down complex objectives
+
+## Key Utility Functions
+
+### Level Access Function
+
+The `get_level()` function provides unified access to level variables in the optimization problem:
+
+```julia
+function get_level(problem::JuMP.Model, node_id::NodeID)
+    if node_id.type == NodeType.Basin
+        problem[:basin_level][(node_id, :end)]  # Access end-of-timestep level
+    else
+        problem[:boundary_level][node_id]       # LevelBoundary levels
+    end
+end
+```
+
+This function abstracts the difference between Basin levels (which have `:start` and `:end` indices) and boundary levels (which have fixed values), providing a consistent interface for constraint formulation.
+
+### Variable Indexing
+
+- **Basin storage**: `basin_storage[(node_id, :start)]` and `basin_storage[(node_id, :end)]`
+- **Basin levels**: `basin_level[(node_id, :start)]` and `basin_level[(node_id, :end)]`
+- **Boundary levels**: `boundary_level[node_id]`
+- **Flows**: `flow[(from_node_id, to_node_id)]`
+
+This complete documentation provides both conceptual understanding and implementation details for the Ribasim allocation system, enabling effective use, debugging, and extension of the allocation functionality.
