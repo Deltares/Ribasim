@@ -2,8 +2,12 @@ const MAX_ABS_FLOW = 5e5
 
 is_active(allocation::Allocation) = !isempty(allocation.allocation_models)
 
-get_subnetwork_ids(graph::MetaGraph, node_type::NodeType.T, subnetwork_id::Int32) =
-    filter(node_id -> node_id.type == node_type, graph[].node_ids[subnetwork_id])
+get_ids_in_subnetwork(graph::MetaGraph, node_type::NodeType.T, subnetwork_id::Int32) =
+    sort!(
+        collect(
+            filter(node_id -> node_id.type == node_type, graph[].node_ids[subnetwork_id]),
+        ),
+    )
 
 get_demand_objectives(objectives::Vector{AllocationObjective}) = view(
     objectives,
@@ -230,6 +234,27 @@ function get_low_storage_factor(problem::JuMP.Model, node_id::NodeID)
     end
 end
 
+function update_storage_prev!(p::Parameters)::Nothing
+    (; p_independent, state_time_dependent_cache) = p
+    (; current_storage) = state_time_dependent_cache
+    (; storage_prev) = p_independent.level_demand
+
+    for node_id in keys(storage_prev)
+        storage_prev[node_id] = current_storage[node_id.idx]
+    end
+
+    return nothing
+end
+
+function get_terms(constraint)
+    (; func) = JuMP.constraint_object(constraint)
+    return if hasproperty(func, :terms)
+        func.terms
+    else
+        (func, nothing)
+    end
+end
+
 function write_problem_to_file(problem, config)::Nothing
     path = results_path(config, RESULTS_FILENAME.allocation_infeasible_problem)
     @info "Latest allocation optimization problem written to $path."
@@ -266,9 +291,19 @@ function analyze_infeasibility(
     violated_constraints =
         constraint_ref_from_index.(
             problem,
-            reduce(vcat, getfield.(data_infeasibility.iis, :constraint)),
+            reduce(
+                vcat,
+                getfield.(data_infeasibility.iis, :constraint);
+                init = JuMP.ConstraintRef[],
+            ),
         )
-    constraint_to_penalty = Dict(violated_constraints .=> 1.0)
+
+    # We care the most about constraints with names, so give these smaller penalties so
+    # that these get relaxed which is more informative
+    constraint_to_penalty = Dict(
+        violated_constraint => isempty(JuMP.name(violated_constraint)) ? 1.0 : 0.5 for
+        violated_constraint in violated_constraints
+    )
     JuMP.@objective(problem, Min, 0)
     constraint_to_slack = JuMP.relax_with_penalty!(problem, constraint_to_penalty)
     JuMP.optimize!(problem)
@@ -311,16 +346,6 @@ function analyze_scaling(
         buffer = IOBuffer()
         MathOptAnalyzer.summarize(buffer, data_numerical; model = problem)
         write(io, take!(buffer) |> String)
-    end
-
-    # Parse variables that do not appear in any constraint for modeller readable logging
-    if !isempty(data_numerical.variables_not_in_constraints)
-        variables = JuMP.VariableRef[]
-        for variable in data_numerical.variables_not_in_constraints
-            variable_ref = variable_ref_from_index(problem, variable.ref)
-            push!(variables, variable_ref)
-        end
-        @error "Variables found which are not in any constraint." variables
     end
 
     # Parse small matrix coefficients for modeller readable logging

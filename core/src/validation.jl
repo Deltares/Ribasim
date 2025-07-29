@@ -112,62 +112,69 @@ controllablefields(nodetype) = Set{Symbol}()
 function sort_by end
 # Not using any fallbacks to avoid forgetting to add the correct sorting.
 
-sort_by(::StructVector{BasinConcentrationV1}) = x -> (x.node_id, x.substance, x.time)
-sort_by(::StructVector{BasinConcentrationExternalV1}) =
+sort_by(::StructVector{Schema.Basin.Concentration}) = x -> (x.node_id, x.substance, x.time)
+sort_by(::StructVector{Schema.Basin.ConcentrationExternal}) =
     x -> (x.node_id, x.substance, x.time)
-sort_by(::StructVector{BasinConcentrationStateV1}) = x -> (x.node_id, x.substance)
-sort_by(::StructVector{BasinProfileV1}) = x -> (x.node_id, x.level)
-sort_by(::StructVector{BasinStateV1}) = x -> (x.node_id)
-sort_by(::StructVector{BasinStaticV1}) = x -> (x.node_id)
-sort_by(::StructVector{BasinSubgridV1}) = x -> (x.subgrid_id, x.basin_level)
-sort_by(::StructVector{BasinSubgridTimeV1}) = x -> (x.subgrid_id, x.time, x.basin_level)
-sort_by(::StructVector{BasinTimeV1}) = x -> (x.node_id, x.time)
+sort_by(::StructVector{Schema.Basin.ConcentrationState}) = x -> (x.node_id, x.substance)
+sort_by(::StructVector{Schema.Basin.Profile}) = x -> (x.node_id, x.level)
+sort_by(::StructVector{Schema.Basin.State}) = x -> (x.node_id)
+sort_by(::StructVector{Schema.Basin.Static}) = x -> (x.node_id)
+sort_by(::StructVector{Schema.Basin.Subgrid}) = x -> (x.subgrid_id, x.basin_level)
+sort_by(::StructVector{Schema.Basin.SubgridTime}) =
+    x -> (x.subgrid_id, x.time, x.basin_level)
+sort_by(::StructVector{Schema.Basin.Time}) = x -> (x.node_id, x.time)
 
-sort_by(::StructVector{ContinuousControlFunctionV1}) = x -> (x.node_id, x.input)
-sort_by(::StructVector{ContinuousControlVariableV1}) =
+sort_by(::StructVector{Schema.ContinuousControl.Function}) = x -> (x.node_id, x.input)
+sort_by(::StructVector{Schema.ContinuousControl.Variable}) =
     x -> (x.node_id, x.listen_node_id, x.variable)
 
-sort_by(::StructVector{DiscreteControlConditionV1}) =
+sort_by(::StructVector{Schema.DiscreteControl.Condition}) =
     x -> (x.node_id, x.compound_variable_id, x.condition_id)
-sort_by(::StructVector{DiscreteControlLogicV1}) = x -> (x.node_id, x.truth_state)
-sort_by(::StructVector{DiscreteControlVariableV1}) =
+sort_by(::StructVector{Schema.DiscreteControl.Logic}) = x -> (x.node_id, x.truth_state)
+sort_by(::StructVector{Schema.DiscreteControl.Variable}) =
     x -> (x.node_id, x.compound_variable_id, x.listen_node_id, x.variable)
 
-sort_by(::StructVector{FlowBoundaryConcentrationV1}) = x -> (x.node_id, x.substance, x.time)
-sort_by(::StructVector{FlowBoundaryStaticV1}) = x -> (x.node_id)
-sort_by(::StructVector{FlowBoundaryTimeV1}) = x -> (x.node_id, x.time)
-
-sort_by(::StructVector{FlowDemandStaticV1}) = x -> (x.node_id, x.demand_priority)
-sort_by(::StructVector{FlowDemandTimeV1}) = x -> (x.node_id, x.demand_priority, x.time)
-
-sort_by(::StructVector{LevelBoundaryConcentrationV1}) =
+sort_by(::StructVector{Schema.FlowBoundary.Concentration}) =
     x -> (x.node_id, x.substance, x.time)
-sort_by(::StructVector{LevelBoundaryStaticV1}) = x -> (x.node_id)
-sort_by(::StructVector{LevelBoundaryTimeV1}) = x -> (x.node_id, x.time)
+sort_by(::StructVector{Schema.FlowBoundary.Static}) = x -> (x.node_id)
+sort_by(::StructVector{Schema.FlowBoundary.Time}) = x -> (x.node_id, x.time)
 
-sort_by(::StructVector{LevelDemandStaticV1}) = x -> (x.node_id, x.demand_priority)
-sort_by(::StructVector{LevelDemandTimeV1}) = x -> (x.node_id, x.demand_priority, x.time)
+sort_by(::StructVector{Schema.FlowDemand.Static}) = x -> (x.node_id, x.demand_priority)
+sort_by(::StructVector{Schema.FlowDemand.Time}) =
+    x -> (x.node_id, x.demand_priority, x.time)
 
-sort_by(::StructVector{LinearResistanceStaticV1}) = x -> (x.node_id, x.control_state)
+sort_by(::StructVector{Schema.LevelBoundary.Concentration}) =
+    x -> (x.node_id, x.substance, x.time)
+sort_by(::StructVector{Schema.LevelBoundary.Static}) = x -> (x.node_id)
+sort_by(::StructVector{Schema.LevelBoundary.Time}) = x -> (x.node_id, x.time)
 
-sort_by(::StructVector{ManningResistanceStaticV1}) = x -> (x.node_id, x.control_state)
+sort_by(::StructVector{Schema.LevelDemand.Static}) = x -> (x.node_id, x.demand_priority)
+sort_by(::StructVector{Schema.LevelDemand.Time}) =
+    x -> (x.node_id, x.demand_priority, x.time)
 
-sort_by(::StructVector{OutletStaticV1}) = x -> (x.node_id, x.control_state)
-sort_by(::StructVector{OutletTimeV1}) = x -> (x.node_id, x.time)
+sort_by(::StructVector{Schema.LinearResistance.Static}) = x -> (x.node_id, x.control_state)
 
-sort_by(::StructVector{PidControlStaticV1}) = x -> (x.node_id, x.control_state)
-sort_by(::StructVector{PidControlTimeV1}) = x -> (x.node_id, x.time)
+sort_by(::StructVector{Schema.ManningResistance.Static}) = x -> (x.node_id, x.control_state)
 
-sort_by(::StructVector{PumpStaticV1}) = x -> (x.node_id, x.control_state)
-sort_by(::StructVector{PumpTimeV1}) = x -> (x.node_id, x.time)
+sort_by(::StructVector{Schema.Outlet.Static}) = x -> (x.node_id, x.control_state)
+sort_by(::StructVector{Schema.Outlet.Time}) = x -> (x.node_id, x.time)
 
-sort_by(::StructVector{TabulatedRatingCurveStaticV1}) =
+sort_by(::StructVector{Schema.PidControl.Static}) = x -> (x.node_id, x.control_state)
+sort_by(::StructVector{Schema.PidControl.Time}) = x -> (x.node_id, x.time)
+
+sort_by(::StructVector{Schema.Pump.Static}) = x -> (x.node_id, x.control_state)
+sort_by(::StructVector{Schema.Pump.Time}) = x -> (x.node_id, x.time)
+
+sort_by(::StructVector{Schema.TabulatedRatingCurve.Static}) =
     x -> (x.node_id, x.control_state, x.level)
-sort_by(::StructVector{TabulatedRatingCurveTimeV1}) = x -> (x.node_id, x.time, x.level)
+sort_by(::StructVector{Schema.TabulatedRatingCurve.Time}) =
+    x -> (x.node_id, x.time, x.level)
 
-sort_by(::StructVector{UserDemandConcentrationV1}) = x -> (x.node_id, x.substance, x.time)
-sort_by(::StructVector{UserDemandStaticV1}) = x -> (x.node_id, x.demand_priority)
-sort_by(::StructVector{UserDemandTimeV1}) = x -> (x.node_id, x.demand_priority, x.time)
+sort_by(::StructVector{Schema.UserDemand.Concentration}) =
+    x -> (x.node_id, x.substance, x.time)
+sort_by(::StructVector{Schema.UserDemand.Static}) = x -> (x.node_id, x.demand_priority)
+sort_by(::StructVector{Schema.UserDemand.Time}) =
+    x -> (x.node_id, x.demand_priority, x.time)
 
 """
 Depending on if a table can be sorted, either sort it or assert that it is sorted.
@@ -175,9 +182,7 @@ Depending on if a table can be sorted, either sort it or assert that it is sorte
 Tables loaded from the database into memory can be sorted.
 Tables loaded from Arrow files are memory mapped and can therefore not be sorted.
 """
-function sorted_table!(
-    table::StructVector{<:Legolas.AbstractRecord},
-)::StructVector{<:Legolas.AbstractRecord}
+function sorted_table!(table::StructVector{<:Table})::StructVector{<:Table}
     by = sort_by(table)
     if any((typeof(col) <: Arrow.Primitive for col in Tables.columns(table)))
         et = eltype(table)
@@ -445,8 +450,8 @@ number of flow/control inneighbors and outneighbors
 function valid_n_neighbors(graph::MetaGraph)::Bool
     errors = false
 
-    for nodetype in nodetypes
-        errors |= !valid_n_neighbors(nodetype, graph)
+    for node_type in node_types
+        errors |= !valid_n_neighbors(node_type, graph)
     end
 
     return !errors
@@ -647,7 +652,7 @@ We recommend to initialise all basins in the same way, which can be level-area, 
 If basins diverge from this recommendation we log info about it for the modeler.
 """
 function validate_consistent_basin_initialization(
-    profiles::StructVector{BasinProfileV1},
+    profiles::StructVector{Schema.Basin.Profile},
 )::Bool
     errors::Bool = false
 
@@ -720,4 +725,37 @@ function validate_consistent_basin_initialization(
     end
 
     errors
+end
+
+function invalid_nested_interpolation_times(
+    interpolations_min::Vector{ScalarLinearInterpolation};
+    interpolations_max::Vector{ScalarLinearInterpolation} = fill(
+        trivial_linear_itp(; val = Inf),
+        length(interpolations_min),
+    ),
+)::Vector{Float64}
+    n_itp = length(interpolations_min)
+    n_itp_ = length(interpolations_max)
+    @assert n_itp == n_itp_
+
+    tstops = reduce(vcat, getfield.(interpolations_min, :t))
+    append!(tstops, reduce(vcat, getfield.(interpolations_max, :t)))
+    sort!(unique!(tstops))
+
+    out = zeros(2 * n_itp)
+
+    out_min = view(out, 1:n_itp)
+    out_max = view(out, (2 * n_itp):-1:(n_itp + 1))
+
+    t_error = Float64[]
+
+    for t in tstops
+        map!(itp -> itp(t), out_min, interpolations_min)
+        map!(itp -> itp(t), out_max, interpolations_max)
+
+        if !issorted(filter(!isnan, out))
+            push!(t_error, t)
+        end
+    end
+    return t_error
 end

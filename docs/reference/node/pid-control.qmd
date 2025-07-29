@@ -16,13 +16,13 @@ In the future controlling the flow on a particular link could be supported.
 column           | type     | unit            | restriction
 ---------------- | -------- | --------------- | -----------
 node_id          | Int32    | -               |
-control_state    | String   | -               | (optional)
 active           | Bool     | -               | (optional, default true)
 listen_node_id   | Int32    | -               | must be a Basin
 target           | Float64  | $\text{m}$      | -
 proportional     | Float64  | $\text{s}^{-1}$ | -
 integral         | Float64  | $\text{s}^{-2}$ | -
 derivative       | Float64  | -               | -
+control_state    | String   | -               | (optional)
 
 ## Time
 
@@ -36,8 +36,8 @@ Note that a `node_id` can be either in this table or in the static one, but not 
 column           | type     | unit            | restriction
 ---------------- | -------- | --------------- | -----------
 node_id          | Int32    | -               |
-time             | DateTime | -               |
 listen_node_id   | Int32    | -               | must be a Basin
+time             | DateTime | -               |
 target           | Float64  | $\text{m}$      | -
 proportional     | Float64  | $\text{s}^{-1}$ | -
 integral         | Float64  | $\text{s}^{-2}$ | -

@@ -103,5 +103,5 @@ DiscreteControl is applied in the Julia core as follows:
 column         | type     | unit | restriction
 -------------- | -------- | ---- | -----------
 node_id        | Int32    | -    |
-control_state  | String   | -    | -
 truth_state    | String   | -    | Consists of the characters "T" (true), "F" (false) and "*" (any)
+control_state  | String   | -    | -

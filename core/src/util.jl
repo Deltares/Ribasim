@@ -350,25 +350,19 @@ function get_all_demand_priorities(db::DB, config::Config;)::Vector{Int32}
     demand_priorities = Set{Int32}()
     is_valid = true
 
-    for name in names(Ribasim; all = true)
-        type = getfield(Ribasim, name)
-        if !(
-            (type isa DataType) &&
-            type <: Legolas.AbstractRecord &&
-            hasfield(type, :demand_priority)
-        )
+    for table_type in table_types
+        if !hasfield(table_type, :demand_priority)
             continue
         end
 
-        data = load_structvector(db, config, type)
+        data = load_structvector(db, config, table_type)
         demand_priority_col = data.demand_priority
         demand_priority_col = Int32.(coalesce.(demand_priority_col, Int32(0)))
         if valid_demand_priorities(demand_priority_col, config.experimental.allocation)
             union!(demand_priorities, demand_priority_col)
         else
             is_valid = false
-            node, kind = nodetype(Legolas._schema_version_from_record_type(type))
-            table_name = "$node / $kind"
+            table_name = sql_table_name(table_type)
             @error "Missing demand_priority parameter(s) for a $table_name node in the allocation problem."
         end
     end
@@ -1011,7 +1005,7 @@ function get_timeseries_tstops(
     get_timeseries_tstops!(tstops, t_end, flow_boundary.flow_rate)
     get_timeseries_tstops!(tstops, t_end, flow_demand.demand_itp)
     get_timeseries_tstops!(tstops, t_end, level_boundary.level)
-    get_timeseries_tstops!(tstops, t_end, level_demand.min_level)
+    get_timeseries_tstops!.(Ref(tstops), t_end, level_demand.min_level)
     get_timeseries_tstops!(tstops, t_end, pid_control.target)
     get_timeseries_tstops!(
         tstops,
@@ -1157,6 +1151,18 @@ function eval_time_interp(
     end
 end
 
+function trivial_linear_itp(; val = 0.0)
+    LinearInterpolation([val, val], [0.0, 1.0]; extrapolation = ConstantExtrapolation)
+end
+
+function trivial_linear_itp_fill(
+    demand_priorities,
+    node_id;
+    val = 0.0,
+)::Vector{Vector{ScalarLinearInterpolation}}
+    return [fill(trivial_linear_itp(; val), length(demand_priorities)) for _ in node_id]
+end
+
 function finitemaximum(u::AbstractVector; init = 0)
     # Find the maximum finite value in the vector
     max_val = init
@@ -1174,13 +1180,13 @@ function initialize_concentration_itp(
     continuity_tracer = true,
 )::Vector{ScalarConstantInterpolation}
     # Default: concentration of 0
-    concentration_itp = fill(trivial_itp, n_substance)
+    concentration_itp = fill(zero_constant_itp, n_substance)
 
     # Set the concentration corresponding to the node type to 1
-    concentration_itp[substance_idx_node_type] = unit_itp
+    concentration_itp[substance_idx_node_type] = unit_constant_itp
     if continuity_tracer
         # Set the concentration corresponding of the continuity tracer to 1
-        concentration_itp[Substance.Continuity] = unit_itp
+        concentration_itp[Substance.Continuity] = unit_constant_itp
     end
     return concentration_itp
 end
@@ -1201,7 +1207,7 @@ function filtered_constant_interpolation(
             extrapolation = cyclic_time ? Periodic : ConstantExtrapolation,
         )
     else
-        trivial_itp
+        zero_constant_itp
     end
 end
 

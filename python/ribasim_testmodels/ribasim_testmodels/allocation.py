@@ -730,7 +730,7 @@ def level_demand_model() -> Model:
         starttime="2020-01-01",
         endtime="2020-02-01",
         crs="EPSG:28992",
-        allocation=Allocation(timestep=1e5),
+        allocation=Allocation(timestep=86400),
         experimental=Experimental(concentration=True, allocation=True),
     )
     model.flow_boundary.add(
@@ -739,7 +739,7 @@ def level_demand_model() -> Model:
     model.basin.add(
         Node(2, Point(1, 0), subnetwork_id=2),
         [
-            basin.Profile(area=1000.0, level=[0.0, 1.0]),
+            basin.Profile(area=1000.0, level=[0.0, 10.0]),
             basin.Time(
                 time=["2020-01-01", "2020-01-16"],
                 precipitation=[1e-6, 0.0],
@@ -761,17 +761,17 @@ def level_demand_model() -> Model:
     )
     model.basin.add(
         Node(5, Point(2, -1), subnetwork_id=2),
-        [basin.Profile(area=1000.0, level=[0.0, 1.0]), basin.State(level=[0.5])],
+        [basin.Profile(area=1000.0, level=[0.0, 10.0]), basin.State(level=[0.5])],
     )
 
     # Isolated LevelDemand + Basin pair to test optional min_level
     model.level_demand.add(
         Node(6, Point(3, -1), subnetwork_id=3),
-        [level_demand.Static(max_level=[1.0], demand_priority=1)],
+        [level_demand.Static(min_level=[1.0], demand_priority=1)],
     )
     model.basin.add(
         Node(7, Point(3, 0), subnetwork_id=3),
-        [basin.Profile(area=1000.0, level=[0.0, 1.0]), basin.State(level=[2.0])],
+        [basin.Profile(area=1000.0, level=[0.0, 10.0]), basin.State(level=[2.0])],
     )
 
     model.link.add(model.flow_boundary[1], model.basin[2])
@@ -1377,13 +1377,13 @@ def cyclic_demand_model():
     )
 
     fb = model.flow_boundary.add(
-        Node(1, Point(0, 0), subnetwork_id=1), [flow_boundary.Static(flow_rate=[1.0])]
+        Node(1, Point(0, 0), subnetwork_id=1), [flow_boundary.Static(flow_rate=[1e-3])]
     )
 
     bsn1 = model.basin.add(
         Node(2, Point(1, 0), subnetwork_id=1),
         [
-            basin.Profile(level=[0.0, 1.0], area=[100.0, 100.0]),
+            basin.Profile(level=[0.0, 100.0], area=[100.0, 100.0]),
             basin.State(level=[1.0]),
         ],
     )
@@ -1395,7 +1395,7 @@ def cyclic_demand_model():
     bsn2 = model.basin.add(
         Node(4, Point(3, 0), subnetwork_id=1),
         [
-            basin.Profile(level=[0.0, 1.0], area=[100.0, 100.0]),
+            basin.Profile(level=[0.0, 100.0], area=[100.0, 100.0]),
             basin.State(level=[1.0]),
         ],
     )
@@ -1409,7 +1409,7 @@ def cyclic_demand_model():
                 time=time,
                 min_level=[0.5, 0.7, 0.5],
                 max_level=[0.7, 0.9, 0.7],
-                demand_priority=1,
+                demand_priority=3,
             )
         ],
     )
@@ -1494,6 +1494,56 @@ def allocation_control_model() -> Model:
     return model
 
 
+def multi_level_demand_model() -> Model:
+    """Create a model that has a level demand with multiple priorities."""
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2021-01-01",
+        crs="EPSG:28992",
+        experimental=Experimental(allocation=True),
+    )
+
+    fb = model.flow_boundary.add(
+        Node(1, Point(0, 0), subnetwork_id=2), [flow_boundary.Static(flow_rate=[1e-3])]
+    )
+
+    b = model.basin.add(
+        Node(2, Point(1, 0), subnetwork_id=2),
+        [
+            basin.Profile(level=[0.0, 1.0, 10.0], storage=[1000.0, 2000.0, 10000.0]),
+            basin.State(level=[5.0]),
+        ],
+    )
+
+    ld = model.level_demand.add(
+        Node(3, Point(0, 1), subnetwork_id=2),
+        [
+            level_demand.Time(
+                min_level=2 * [3.0, 4.0],
+                max_level=2 * [6.0, 5.0],
+                demand_priority=2 * [1, 3],
+                time=["2020-01-01", "2020-01-01", "2021-01-01", "2021-01-01"],
+            )
+        ],
+    )
+
+    ud = model.user_demand.add(
+        Node(4, Point(2, 0), subnetwork_id=2),
+        [
+            user_demand.Static(
+                demand_priority=2, demand=[1e-3], return_factor=0, min_level=0
+            )
+        ],
+    )
+
+    model.link.add(fb, b)
+    model.link.add(b, ud)
+    model.link.add(ud, b)
+    model.link.add(ld, b)
+
+    return model
+
+
 def invalid_infeasible_model() -> Model:
     """Set up a minimal model which uses a linear_resistance node."""
     model = Model(
@@ -1523,5 +1573,44 @@ def invalid_infeasible_model() -> Model:
         model.linear_resistance[2],
         model.level_boundary[3],
     )
+
+    return model
+
+
+def drain_surplus_model() -> Model:
+    """Set up a model which activates an outlet to drain surplus water out of a Basin."""
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2020-02-01",
+        crs="EPSG:28992",
+        experimental=Experimental(allocation=True),
+    )
+
+    bsn = model.basin.add(
+        Node(1, Point(0, 0), subnetwork_id=2),
+        [basin.Profile(area=100.0, level=[0.0, 12.0]), basin.State(level=[10.0])],
+    )
+
+    lvl = model.level_demand.add(
+        Node(4, Point(0, 1), subnetwork_id=2),
+        [level_demand.Static(demand_priority=1, max_level=[5.0])],
+    )
+
+    out = model.outlet.add(
+        Node(2, Point(1, 0), subnetwork_id=2),
+        [
+            outlet.Static(
+                flow_rate=[0.0],
+                max_flow_rate=[1e-3],
+                control_state="Ribasim.allocation",
+            )
+        ],
+    )
+
+    trm = model.terminal.add(Node(3, Point(2, 0), subnetwork_id=2))
+
+    model.link.add(bsn, out)
+    model.link.add(out, trm)
+    model.link.add(lvl, bsn)
 
     return model
