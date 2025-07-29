@@ -41,6 +41,7 @@ website:
       contents:
         - guide/examples.qmd
         - guide/modeling-process.qmd
+        - guide/updating-ribasim.qmd
         - guide/qgis.qmd
         - guide/coupling.qmd
         - section: "Coupling guides"
