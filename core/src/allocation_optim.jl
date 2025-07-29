@@ -574,8 +574,8 @@ function save_allocation_flows!(
         push!(record_flow.flow_rate, flow_value)
         push!(
             record_flow.bound_flow_rate,
-            flow_value <= flow_capacity_lower_bound(link, p_independent) ||
-                flow_value >= flow_capacity_upper_bound(link, p_independent),
+            flow_value == flow_capacity_lower_bound(link, p_independent) ||
+                flow_value == flow_capacity_upper_bound(link, p_independent),
         )
         push!(record_flow.optimization_type, string(optimization_type))
     end
@@ -590,6 +590,7 @@ function save_allocation_flows!(
         push!(record_flow.to_node_id, node_id)
         push!(record_flow.subnetwork_id, subnetwork_id)
         push!(record_flow.flow_rate, JuMP.value(basin_forcing[node_id]) * scaling.flow)
+        push!(record_flow.bound_flow_rate, false)
         push!(record_flow.optimization_type, string(optimization_type))
     end
 

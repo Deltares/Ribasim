@@ -162,15 +162,6 @@ end
     filter!(:link_id => ==(1), flow_table)
 
     @test allocation_flow_table.flow_rate ≈ flow_table.flow_rate rtol = 1e-2
-
-    using Plots
-
-    Plots.plot(
-        allocation_flow_table.time,
-        allocation_flow_table.flow_rate;
-        xlabel = "Time",
-        ylabel = "Flow Rate",
-    )
 end
 
 @testitem "output hit bounds" begin
