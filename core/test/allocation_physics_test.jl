@@ -148,8 +148,6 @@ end
     config = Ribasim.Config(toml_path; experimental_allocation = true)
     model = Ribasim.Model(config)
 
-    pop!(model.integrator.p.p_independent.allocation.allocation_models[1].objectives)
-
     Ribasim.solve!(model)
     allocation_flow_table = DataFrame(Ribasim.allocation_flow_table(model))
     flow_table = DataFrame(Ribasim.flow_table(model))
