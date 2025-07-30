@@ -279,8 +279,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <ul>
   <li><a href="#setting-up-the-developer-environment" id="toc-setting-up-the-developer-environment" class="nav-link active" data-scroll-target="#setting-up-the-developer-environment"><span class="header-section-number">1</span> Setting up the developer environment</a>
   <ul class="collapse">
-  <li><a href="#clone-ribasim" id="toc-clone-ribasim" class="nav-link" data-scroll-target="#clone-ribasim"><span class="header-section-number">1.1</span> Clone Ribasim</a></li>
-  <li><a href="#setting-up-pixi" id="toc-setting-up-pixi" class="nav-link" data-scroll-target="#setting-up-pixi"><span class="header-section-number">1.2</span> Setting up Pixi</a></li>
+  <li><a href="#option-1-local-development" id="toc-option-1-local-development" class="nav-link" data-scroll-target="#option-1-local-development"><span class="header-section-number">1.1</span> Option 1: local development</a></li>
+  <li><a href="#option-2-use-a-devcontainer" id="toc-option-2-use-a-devcontainer" class="nav-link" data-scroll-target="#option-2-use-a-devcontainer"><span class="header-section-number">1.2</span> Option 2: use a devcontainer</a></li>
+  <li><a href="#option-3-github-codespace" id="toc-option-3-github-codespace" class="nav-link" data-scroll-target="#option-3-github-codespace"><span class="header-section-number">1.3</span> Option 3: github codespace</a></li>
+  <li><a href="#clone-ribasim" id="toc-clone-ribasim" class="nav-link" data-scroll-target="#clone-ribasim"><span class="header-section-number">1.4</span> Clone Ribasim</a></li>
   </ul></li>
   </ul>
 </nav>
@@ -311,23 +313,45 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>There is developer documentation for the <a href="../dev/core.html">Julia core</a>, the <a href="../dev/bmi.html">Basic Model Interface (BMI)</a>, <a href="../dev/python.html">Python tooling</a>, and the <a href="../dev/qgis.html">QGIS plugin</a>. A guide on how to add a new node type to both is written in <a href="../dev/addnode.html">adding node types</a>. <a href="../dev/release.html">Release process</a> describes the steps to follow when creating a new Ribasim release.</p>
 <section id="setting-up-the-developer-environment" class="level1" data-number="1">
 <h1 data-number="1"><span class="header-section-number">1</span> Setting up the developer environment</h1>
-<section id="clone-ribasim" class="level2" data-number="1.1">
-<h2 data-number="1.1" class="anchored" data-anchor-id="clone-ribasim"><span class="header-section-number">1.1</span> Clone Ribasim</h2>
-<p>In order to have the Ribasim repository locally available, you can clone it with Git. Git can be installed from <a href="https://git-scm.com/downloads">git-scm.com</a>. Once installed, run the following command at a directory of your choice:</p>
-<p>In order to have the Ribasim repository locally available, run the following command at a directory of your choice:</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> clone https://github.com/Deltares/Ribasim.git</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<p>To continue with the following steps, make the root of the repository your working directory by running</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> Ribasim</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</section>
-<section id="setting-up-pixi" class="level2" data-number="1.2">
-<h2 data-number="1.2" class="anchored" data-anchor-id="setting-up-pixi"><span class="header-section-number">1.2</span> Setting up Pixi</h2>
-<p>First, set up Pixi as described on <a href="https://pixi.sh/latest/">pixi.sh</a>.</p>
+<section id="option-1-local-development" class="level2" data-number="1.1">
+<h2 data-number="1.1" class="anchored" data-anchor-id="option-1-local-development"><span class="header-section-number">1.1</span> Option 1: local development</h2>
+<p>If you prefer local development, clone Ribasim as described in <a href="#clone-ribasim">Clone Ribasim</a>.</p>
+<p>Then, set up Pixi as described on <a href="https://pixi.sh/latest/">pixi.sh</a>.</p>
 <p>We require at least Pixi version v0.48.1, but generally recommend the latest release. Check the version with <code>pixi --version</code>, update with <code>pixi self-update</code>.</p>
 <p>Windows users should <a href="https://learn.microsoft.com/en-us/windows/apps/get-started/enable-your-device-for-development#activate-developer-mode">enable Developer Mode</a>, because the install task creates symlinks for the QGIS plugin.</p>
 <p>Then set up the environment by running the following command. It will take a while. You can interrupt the task if you don’t want to precompile the Julia dependencies at this moment, because that is the last task. Check out the <code>pixi.toml</code> file to see the tasks that are part of this, you can also run them individually.</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run install</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode" id="cb1"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run install</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <p>The install task automatically installs all required Python and Julia packages for development. Our Pixi environment also provides Juliaup, QGIS and the Rust compiler. These will not conflict with any pre-installed applications, as long as you have the pixi environment enabled. You can do this in a terminal by calling <code>pixi shell</code>, or starting programs with <code>pixi run julia</code>, or <code>pixi run qgis</code>. The first time you open the Ribasim repo in Visual Studio Code you need to tell it where it can find the Pixi environment. Open the command box with <kbd aria-hidden="true">Ctrl+Shift+P</kbd><span class="visually-hidden">Ctrl+Shift+P</span> (<kbd aria-hidden="true">Cmd+Shift+P</kbd><span class="visually-hidden">Cmd+Shift+P</span> on macOS) and run <code>Python: Select Interpreter</code>. Select <code>('default': Pixi)</code> in the <code>/.pixi</code> folder. Unless the setting <code>python.terminal.activateEnvironment</code> is disabled, it will already activate the environment in your terminal.</p>
 <p>If you encounter issues related to Pixi dependencies, it might help to clean your Pixi environment with <code>pixi clean</code>, followed by <code>pixi run install</code>.</p>
+</section>
+<section id="option-2-use-a-devcontainer" class="level2" data-number="1.2">
+<h2 data-number="1.2" class="anchored" data-anchor-id="option-2-use-a-devcontainer"><span class="header-section-number">1.2</span> Option 2: use a devcontainer</h2>
+<p>If you prefer a containerized development environment, you can use the provided devcontainer configuration. This option is particularly useful if you want to avoid installing dependencies directly on your host machine.</p>
+<ol type="1">
+<li>Install <a href="https://code.visualstudio.com/">Visual Studio Code</a> and the <a href="https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers">Remote - Containers</a> extension.</li>
+<li>Install <a href="https://www.docker.com/products/docker-desktop/">Docker Desktop</a> and ensure it’s running.</li>
+<li>Press <kbd aria-hidden="true">Ctrl+Shift+P</kbd><span class="visually-hidden">Ctrl+Shift+P</span> (or <kbd aria-hidden="true">Cmd+Shift+P</kbd><span class="visually-hidden">Cmd+Shift+P</span> on macOS) and select <code>Dev Containers: Clone Repository in Container Volume</code>.</li>
+<li>Paste https://github.com/Deltares/Ribasim.git in the prompt and continue</li>
+</ol>
+<p>This will pull the repo, build the devcontainer image and start a new container with all the necessary dependencies. The build and install will take a few minutes to complete.</p>
+</section>
+<section id="option-3-github-codespace" class="level2" data-number="1.3">
+<h2 data-number="1.3" class="anchored" data-anchor-id="option-3-github-codespace"><span class="header-section-number">1.3</span> Option 3: github codespace</h2>
+<p>If you prefer a cloud-based development environment, you can use GitHub Codespaces. This option allows you to quickly set up a development environment without needing to configure your local machine.</p>
+<ol type="1">
+<li>Go to the <a href="https://github.com/Deltares/Ribasim">Ribasim GitHub repository</a>.</li>
+<li>Click on the green “Code” button and select “Open with Codespaces”.</li>
+<li>Follow the prompts to create a new codespace.</li>
+</ol>
+<p>This creates a cloud-based development environment with all necessary dependencies pre-installed. The environment runs on GitHub’s servers and can be accessed through your browser via the Ribasim repo.</p>
+</section>
+<section id="clone-ribasim" class="level2" data-number="1.4">
+<h2 data-number="1.4" class="anchored" data-anchor-id="clone-ribasim"><span class="header-section-number">1.4</span> Clone Ribasim</h2>
+<p>In order to have the Ribasim repository locally available, you can clone it with Git. Git can be installed from <a href="https://git-scm.com/downloads">git-scm.com</a>. Once installed, run the following command at a directory of your choice:</p>
+<p>In order to have the Ribasim repository locally available, run the following command at a directory of your choice:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> clone https://github.com/Deltares/Ribasim.git</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>To continue with the following steps, make the root of the repository your working directory by running</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> Ribasim</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 
 
 </section>
