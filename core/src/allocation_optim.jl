@@ -931,7 +931,7 @@ function set_timeseries_demands!(p::Parameters, t::Float64)::Nothing
         !(user_demand.demand_from_timeseries[node_id.idx]) && continue
 
         for demand_priority_idx in eachindex(demand_priorities_all)
-            !user_demand.has_demand_priority[node_id.idx, demand_priority_idx] || continue
+            !user_demand.has_demand_priority[node_id.idx, demand_priority_idx] && continue
             # Set the demand as the average of the demand interpolation
             # over the coming interpolation period
             user_demand.demand[node_id.idx, demand_priority_idx] =
