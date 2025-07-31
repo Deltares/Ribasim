@@ -78,10 +78,10 @@ class NodeTable(SpatialTableModel[NodeSchema]):
 
         if contains_main_network:
             handles.append(Patch(facecolor=COLOR_MAIN_NETWORK, alpha=ALPHA))
-            labels.append("Main network")
+            labels.append("Primary network")
         if contains_subnetworks:
             handles.append(Patch(facecolor=COLOR_SUBNETWORK, alpha=ALPHA))
-            labels.append("Subnetwork")
+            labels.append("Secondary network")
 
         return handles, labels
 

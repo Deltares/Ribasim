@@ -308,7 +308,7 @@ function update_concentrations!(u, t, integrator)::Nothing
 
         # Update the Basin concentrations again based on the removed mass
         s = current_storage[node_id.idx]
-        if iszero(current_storage)
+        if iszero(s)
             concentration_state[node_id.idx, :] .= 0
         else
             concentration_state[node_id.idx, :] .=

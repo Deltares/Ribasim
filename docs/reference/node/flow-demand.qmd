@@ -2,7 +2,7 @@
 title: "FlowDemand"
 ---
 
-A `FlowDemand` node associates a non-consuming flow demand to a connector node (e.g. `Pump`, `TabulatedRatingCurve`) for one single demand priority.
+A `FlowDemand` node associates a non-consuming flow demand to a connector node (e.g. `Pump`, `TabulatedRatingCurve`) for one or more demand priorities.
 FlowDemand nodes can set a flow demand only for a single connector node.
 
 # Tables
