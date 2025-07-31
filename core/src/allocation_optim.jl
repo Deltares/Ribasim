@@ -258,7 +258,7 @@ function reset_goal_programming!(
     allocation_model::AllocationModel,
     p_independent::ParametersIndependent,
 )::Nothing
-    (; problem) = allocation_model
+    (; problem, scaling) = allocation_model
     (; user_demand, flow_demand, basin) = p_independent
 
     flow = problem[:flow]
@@ -286,6 +286,8 @@ function reset_goal_programming!(
     end
 
     # Reset allocated flow amounts for FlowDemand
+    JuMP.fix.(problem[:flow_demand_allocated], -MAX_ABS_FLOW / scaling.flow; force = true)
+
     for node_id in only(problem[:flow_demand_constraint].axes)
         (; link) = flow_demand.inflow_link[node_id.idx]
         JuMP.set_lower_bound(flow[link], flow_capacity_lower_bound(link, p_independent))
@@ -317,18 +319,19 @@ function set_demands_lower_constraints!(
     target_demand_fraction::JuMP.VariableRef,
     demand_function::Function,
     node_ids::Vector{NodeID};
-    deactivate_when_no_demand::Bool = false,
 )::Nothing
     for node_id in node_ids
         constraint_lower = constraints_lower[node_id]
         rel_error_lower = rel_errors_lower[node_id]
         d = demand_function(node_id)
-        JuMP.set_normalized_coefficient(constraint_lower, rel_error_lower, d)
-        JuMP.set_normalized_coefficient(constraint_lower, target_demand_fraction, -d)
 
-        if deactivate_when_no_demand && iszero(d)
+        if isnan(d)
+            # d == NaN means there is no demand, so set the rhs
+            # of the constraint to a large negative value which effectively deactivates the constraint
             JuMP.set_normalized_rhs(constraint_lower, -1e10)
         else
+            JuMP.set_normalized_coefficient(constraint_lower, rel_error_lower, max(1e-6, d))
+            JuMP.set_normalized_coefficient(constraint_lower, target_demand_fraction, -d)
             JuMP.set_normalized_rhs(constraint_lower, 0)
         end
     end
@@ -342,19 +345,19 @@ function set_demands_upper_constraints!(
     target_demand_fraction::JuMP.VariableRef,
     demand_function::Function,
     node_ids::Vector{NodeID};
-    deactivate_when_no_demand::Bool = false,
 )::Nothing
     for node_id in node_ids
         constraint_upper = constraints_upper[node_id]
         rel_error_upper = rel_errors_upper[node_id]
         d = demand_function(node_id)
-        JuMP.set_normalized_coefficient(constraint_upper, rel_error_upper, d)
-        JuMP.set_normalized_coefficient(constraint_upper, target_demand_fraction, d)
 
-        if deactivate_when_no_demand && iszero(d)
+        if isnan(d)
+            # d == NaN means there is no demand, so set the rhs
+            # of the constraint to a large negative value which effectively deactivates the constraint
             JuMP.set_normalized_rhs(constraint_upper, -1e10)
         else
-            JuMP.set_normalized_rhs(constraint_upper, 0)
+            JuMP.set_normalized_coefficient(constraint_upper, rel_error_upper, max(d, 1e-6))
+            JuMP.set_normalized_coefficient(constraint_upper, target_demand_fraction, d)
         end
     end
     return nothing
@@ -398,7 +401,6 @@ function set_demands!(
         target_demand_fraction,
         node_id -> flow_demand.demand[node_id.idx, demand_priority_idx] / scaling.flow,
         only(problem[:relative_flow_demand_error].axes);
-        deactivate_when_no_demand = true,
     )
 
     # LevelDemand
@@ -412,7 +414,6 @@ function set_demands!(
             scaling.storage
         end,
         only(problem[:relative_storage_error_in].axes);
-        deactivate_when_no_demand = true,
     )
     set_demands_upper_constraints!(
         problem[:storage_constraint_out],
@@ -424,7 +425,6 @@ function set_demands!(
             scaling.storage
         end,
         only(problem[:relative_storage_error_out].axes);
-        deactivate_when_no_demand = true,
     )
 
     return nothing
@@ -442,21 +442,21 @@ function update_allocated_values!(
 
     flow = problem[:flow]
 
-    # Flow allocated to UserDemand nodes
     for node_id in only(node_allocated.axes)
         if has_demand_priority[node_id.idx, demand_priority_idx]
             inflow_link = node.inflow_link[node_id.idx].link
-            allocated_prev = JuMP.value(node_allocated[node_id]) # (scaling.flow * m^3/s)
+            allocated_prev =
+                sum(view(node.allocated, node_id.idx, 1:(demand_priority_idx - 1))) # (m^3/s)
             demand = node.demand[node_id.idx, demand_priority_idx] # (m^3/s)
-            allocated = clamp(
-                scaling.flow * (JuMP.value(flow[inflow_link]) - allocated_prev),
+            allocated_demand_priority = clamp(
+                scaling.flow * JuMP.value(flow[inflow_link]) - allocated_prev,
                 0,
                 demand,
             ) # (m^3/s)
-            allocated_scaled = allocated / scaling.flow
+            allocated_scaled = (allocated_prev + allocated_demand_priority) / scaling.flow
             JuMP.fix(node_allocated[node_id], allocated_scaled; force = true)
             JuMP.set_lower_bound(flow[inflow_link], allocated_scaled)
-            node.allocated[node_id.idx, demand_priority_idx] = allocated
+            node.allocated[node_id.idx, demand_priority_idx] = allocated_demand_priority
         else
             node.allocated[node_id.idx, demand_priority_idx] = 0.0
         end
@@ -611,7 +611,7 @@ function save_demands_and_allocations!(
     (; p, t) = integrator
     (; record_demand) = p.p_independent.allocation
     (; subnetwork_id, Δt_allocation, cumulative_realized_volume, problem) = allocation_model
-    (; demand_priority_idx) = objective
+    (; demand_priority, demand_priority_idx) = objective
     (; demand, allocated, inflow_link, has_demand_priority) = flow_demand
 
     flow_demand_allocated = problem[:flow_demand_allocated]
@@ -625,7 +625,7 @@ function save_demands_and_allocations!(
                 subnetwork_id,
                 link[2],
                 demand_priority,
-                demand[node_id.idx],
+                demand[node_id.idx, demand_priority_idx],
                 allocated[node_id.idx, demand_priority_idx],
                 # NOTE: The realized amount lags one allocation period behind
                 cumulative_realized_volume[link] / Δt_allocation,

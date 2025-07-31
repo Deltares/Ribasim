@@ -1012,7 +1012,7 @@ TODO: update docstring
         zeros(Bool, length(node_id), length(demand_priorities))
     demand_itp::Vector{Vector{ScalarLinearInterpolation}} =
         trivial_linear_itp_fill(demand_priorities, node_id; val = NaN)
-    demand::Matrix{Float64} = zeros(length(node_id), length(demand_priorities))
+    demand::Matrix{Float64} = fill(NaN, length(node_id), length(demand_priorities))
     allocated::Matrix{Float64} = zeros(length(node_id), length(demand_priorities))
 end
 

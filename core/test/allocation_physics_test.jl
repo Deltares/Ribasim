@@ -147,9 +147,7 @@ end
     @test ispath(toml_path)
 
     config = Ribasim.Config(toml_path; experimental_allocation = true)
-    model = Ribasim.Model(config)
-
-    Ribasim.solve!(model)
+    model = Ribasim.run(config)
     allocation_flow_table = DataFrame(Ribasim.allocation_flow_table(model))
     flow_table = DataFrame(Ribasim.flow_table(model))
 
@@ -168,7 +166,7 @@ end
         normpath(@__DIR__, "../../generated_testmodels/allocation_training/ribasim.toml")
     @test ispath(toml_path)
 
-    config = Ribasim.Config(toml_path)
+    config = Ribasim.Config(toml_path; experimental_concentration = false)
     model = Ribasim.Model(config)
     Ribasim.solve!(model)
     success(model)

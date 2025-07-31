@@ -1153,18 +1153,20 @@ function parse_static_demand_data!(
 end
 
 function parse_time_demand_data!(
-    user_demand::UserDemand,
+    node::Union{UserDemand, FlowDemand},
     id::NodeID,
     time_group,
     demand_priorities,
     cyclic_time::Bool,
     config::Config,
 )
-    user_demand.demand_from_timeseries[id.idx] = true
+    if node isa UserDemand
+        node.demand_from_timeseries[id.idx] = true
+    end
     for time_priority_group in IterTools.groupby(row -> row.demand_priority, time_group)
         demand_priority_idx =
             findsorted(demand_priorities, first(time_priority_group).demand_priority)
-        user_demand.has_demand_priority[id.idx, demand_priority_idx] = true
+        node.has_demand_priority[id.idx, demand_priority_idx] = true
         demand_itp = get_scalar_interpolation(
             config.starttime,
             StructVector(time_priority_group),
@@ -1172,9 +1174,8 @@ function parse_time_demand_data!(
             :demand;
             cyclic_time,
         )
-        user_demand.demand_itp[id.idx][demand_priority_idx] = demand_itp
-        user_demand.demand[id.idx, demand_priority_idx] =
-            last(user_demand.demand_itp[id.idx])(0.0)
+        node.demand_itp[id.idx][demand_priority_idx] = demand_itp
+        node.demand[id.idx, demand_priority_idx] = last(node.demand_itp[id.idx])(0.0)
     end
     return nothing
 end
@@ -1312,11 +1313,11 @@ function LevelDemand(db::DB, config::Config, graph::MetaGraph)
         basin_ids = collect(outneighbor_labels_type(graph, id, LinkType.control))
         push!(level_demand.basins_with_demand, basin_ids)
         for basin_id in basin_ids
-            level_demand.target_storage_min[basin_id] = zeros(n_demand_priorities)
-            level_demand.target_storage_max[basin_id] = zeros(n_demand_priorities)
+            level_demand.target_storage_min[basin_id] = fill(NaN, n_demand_priorities)
+            level_demand.target_storage_max[basin_id] = fill(NaN, n_demand_priorities)
             level_demand.storage_prev[basin_id] = 0.0
             level_demand.storage_allocated[basin_id] = zeros(n_demand_priorities)
-            level_demand.storage_demand[basin_id] = zeros(n_demand_priorities)
+            level_demand.storage_demand[basin_id] = fill(NaN, n_demand_priorities)
         end
     end
 

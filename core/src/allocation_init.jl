@@ -180,7 +180,8 @@ function add_flow!(
     )
 
     # Define parameters: Basin forcing (scaling.flow * m^3/s, values to be filled in before optimizing)
-    basin_ids_subnetwork = filter(id -> id.type == NodeType.Basin, node_ids_subnetwork)
+    basin_ids_subnetwork =
+        sort!(collect(filter(id -> id.type == NodeType.Basin, node_ids_subnetwork)))
     problem[:basin_forcing] =
         JuMP.@variable(problem, basin_forcing[basin_ids_subnetwork] == 0.0)
 
