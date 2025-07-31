@@ -568,7 +568,7 @@ function formulate_pump_or_outlet_flow!(
     component_cache::NamedTuple,
     reduce_Δlevel::Bool = false,
 )::Nothing
-    (; allocation, graph, flow_demand) = p.p_mutable
+    (; allocation, graph, flow_demand) = p.p_independent
 
     (;
         current_min_flow_rate,
