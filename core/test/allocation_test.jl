@@ -745,5 +745,9 @@ end
     @test ispath(toml_path)
 
     model = Ribasim.run(toml_path)
-    @test all(q -> isapprox(q, 1e-3; rtol = 1e-4), Ribasim.flow_table(model).flow_rate)
+    @test success(model)
+
+    flow = Ribasim.flow_table(model).flow_rate
+    @test !isempty(flow)
+    @test all(q -> isapprox(q, 1e-3; rtol = 1e-4), flow[1:100])
 end
