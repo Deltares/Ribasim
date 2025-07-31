@@ -630,7 +630,7 @@ function formulate_pump_or_outlet_flow!(
         # When allocation is not active, set the flow demand directly as a lower bound on the
         # pump or outlet flow rate
         if !is_active(allocation)
-            has_demand, flow_demand_id = has_external_flow_demand(graph, id, :FlowDemand)
+            has_demand, flow_demand_id = has_external_flow_demand(graph, id, :flow_demand)
             if has_demand
                 lower_bound = clamp(
                     flow_demand.demand_itp[flow_demand_id.idx](t),
