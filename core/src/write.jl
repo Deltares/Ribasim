@@ -181,13 +181,13 @@ function nc_dims(file_name::String, var_name::String)::Vector{String}
         ("allocation_flow", "subnetwork_id") => ["link_id"]
         # data variables have the same dimensions in a file
         ("basin", _) => ["time", "node_id"]
-        ("flow", _) => ["time", "link_id"]
+        ("flow", _) => ["link_id", "time"]
         ("basin_state", _) => ["node_id"]
-        ("concentration", _) => ["time", "node_id", "substance"]
+        ("concentration", _) => ["substance", "node_id", "time"]
         ("control", _) => ["time"]
-        ("allocation", _) => ["time", "node_id", "demand_priority"]
-        ("allocation_flow", _) => ["time", "link_id"]
-        ("subgrid_level", _) => ["time", "subgrid_id"]
+        ("allocation", _) => ["demand_priority", "node_id", "time"]
+        ("allocation_flow", _) => ["link_id", "time"]
+        ("subgrid_level", _) => ["subgrid_id", "time"]
         ("solver_stats", _) => ["time"]
         _ => error("Unknown dimensionality for file: $file_name, variable: $var_name")
     end
@@ -500,8 +500,8 @@ function flow_data(model::Model; table::Bool = true)
         from_node_id = repeat(from_node_id; outer = ntsteps)
         to_node_id = repeat(to_node_id; outer = ntsteps)
     else
-        flow_rate = Array(reshape(flow_rate, ntsteps, nflow))
-        flow_rate_conv = Array(reshape(flow_rate_conv, ntsteps, nflow))
+        flow_rate = Array(reshape(flow_rate, nflow, ntsteps))
+        flow_rate_conv = Array(reshape(flow_rate_conv, nflow, ntsteps))
     end
 
     return (;
@@ -539,7 +539,7 @@ function concentration_data(model::Model; table::Bool = true)
         substance = repeat(substance; inner = nbasin, outer = ntsteps)
         node_id = repeat(node_id; outer = ntsteps * nsubstance)
     else
-        concentration = Array(reshape(concentration, ntsteps, nbasin, nsubstance))
+        concentration = Array(reshape(concentration, nsubstance, nbasin, ntsteps))
     end
 
     return (; time, node_id, substance, concentration)
@@ -579,21 +579,21 @@ function allocation_data(model::Model; table::Bool = true)
 
         all_indices = CartesianIndices((ntsteps, nnodes, nprio))
 
-        subnetwork_id = reshape(record_demand.subnetwork_id, ntsteps, nnodes, nprio)
-        node_type = reshape(record_demand.node_type, ntsteps, nnodes, nprio)
+        subnetwork_id = reshape(record_demand.subnetwork_id, nprio, nnodes, ntsteps)
+        node_type = reshape(record_demand.node_type, nprio, nnodes, ntsteps)
         if isempty(all_indices)
             # ensure it is a vector
             subnetwork_id = Int32[]
             node_type = String[]
         else
-            node_indices = all_indices[begin, :, 1]
+            node_indices = all_indices[1, :, 1]
             subnetwork_id = subnetwork_id[node_indices]
             node_type = node_type[node_indices]
         end
 
-        demand = Array(reshape(record_demand.demand, ntsteps, nnodes, nprio))
-        allocated = Array(reshape(record_demand.allocated, ntsteps, nnodes, nprio))
-        realized = Array(reshape(record_demand.realized, ntsteps, nnodes, nprio))
+        demand = Array(reshape(record_demand.demand, nprio, nnodes, ntsteps))
+        allocated = Array(reshape(record_demand.allocated, nprio, nnodes, ntsteps))
+        realized = Array(reshape(record_demand.realized, nprio, nnodes, ntsteps))
     end
 
     return (;
@@ -681,7 +681,7 @@ function subgrid_level_data(model::Model; table::Bool = true)
         subgrid_id = repeat(subgrid_id; outer = ntsteps)
         subgrid_level = FlatVector(saveval)
     else
-        subgrid_level = Array(reshape(FlatVector(saveval), ntsteps, nelem))
+        subgrid_level = Array(reshape(FlatVector(saveval), nelem, ntsteps))
     end
     return (; time, subgrid_id, subgrid_level)
 end

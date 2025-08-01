@@ -183,8 +183,8 @@ end
         @test ntime > 1
         @test nnode == 1
         @test size(ds["node_id"]) == (nnode,)
-        @test size(ds["level"]) == (ntime, nnode)
-        @test dimnames(ds["level"]) == ("time", "node_id")
+        @test size(ds["level"]) == (nnode, ntime)
+        @test dimnames(ds["level"]) == ("node_id", "time")
     end
 
     # Test flow NetCDF output
