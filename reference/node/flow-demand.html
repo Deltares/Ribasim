@@ -354,7 +354,7 @@ window.Quarto = {
 </header>
 
 
-<p>A <code>FlowDemand</code> node associates a non-consuming flow demand to a connector node (e.g.&nbsp;<code>Pump</code>, <code>TabulatedRatingCurve</code>) for one single demand priority. FlowDemand nodes can set a flow demand only for a single connector node.</p>
+<p>A <code>FlowDemand</code> node associates a non-consuming flow demand to a connector node (e.g.&nbsp;<code>Pump</code>, <code>TabulatedRatingCurve</code>) for one single demand priority. FlowDemand nodes can set a flow demand only for a single connector node. FlowDemand nodes do nothing when allocation is not activated, except when they are connected to a Pump or an Outlet. In that case the flow demand flow rate is taken as the minimum flow trough that Pump or Outlet.</p>
 <section id="tables" class="level1" data-number="1">
 <h1 data-number="1"><span class="header-section-number">1</span> Tables</h1>
 <section id="static" class="level2" data-number="1.1">
