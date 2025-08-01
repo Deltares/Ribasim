@@ -114,20 +114,38 @@ The level in a basin is generally a non-linear function of the storage (except w
 
 $$h^{n+1} \approx h^n + \frac{dh}{dS}^n(S^{n+1} - S^n)$$
 
-with $\frac{dh}{dS}(S^n) = \frac{1}{A^n}$ and $A^n$ is the area evaluated at the beginning of the time step
+with
+
+$$\frac{dh}{dS}^n = \frac{1}{A^n}$$
+
+and $A^n$ is the area evaluated at the beginning of the time step
 
 $$h^{n+1} \approx h^{n} + \frac{1}{A^n}(S^{n+1} - S^n)$$
 
 
 ## Resistance nodes
 
-In Ribasim we have [LinearResistance](../reference/node/linear-resistance.qmd) and [ManningResistance](../reference/node/manning-resistance.qmd) nodes. The linear resistance node is linear in level but not in storage. However, we can directly substitute the linearized level-storage relationship into:
+In Ribasim we have [LinearResistance](../reference/node/linear-resistance.qmd) and [ManningResistance](../reference/node/manning-resistance.qmd) nodes. The linear resistance node is linear in level but not in storage. However, we can directly substitute the linearized level-storage relationship into
 
-$$ Q_{lr}^{n+1} = \frac{1}{R}( h_a^{n+1} - h_b^{n+1} )$$
+$$Q_{lr}^{n+1} = \frac{1}{R}( h_a^{n+1} - h_b^{n+1} )$$
+
+to obtain
+
+$$Q_{lr}^{n+1} = \frac{1}{R}( h_a^{n} - h_b^{n} ) + \frac{1}{R}\left( \frac{1}{A_a^n}(S_a^{n+1} - S_a^n) - \frac{1}{A_b^n}(S_b^{n+1} - S_b^n)\right)$$
 
 For ManningResistance we linearize the flow relationship with respect to the upstream and downstream level at the beginning of the allocation timestep.
 
-$$ Q_m^{n+1} \approx Q_m^{n} + \frac{\partial Q_m}{\partial h_a}^n(h_a^{n+1} - h_a^{n}) + \frac{\partial Q_m}{\partial h_b}^n(h_b^{n+1} - h_b^{n}) $$
+$$ Q_m^{n+1} = Q_m^{n} + \frac{\partial Q_m}{\partial S_a}^n(S_a^{n+1} - S_a^{n}) + \frac{\partial Q_m}{\partial S_b}^n(S_b^{n+1} - S_b^{n}) $$
+
+and use the chain rule
+
+$$ \frac{\partial Q}{\partial S} = \frac{\partial Q}{\partial h} \frac{\partial h}{\partial S}$$
+
+to obtain
+
+$$ Q_m^{n+1} = Q_m^{n} + \frac{\partial Q_m}{\partial h_a}^n \frac{1}{A_a^n}(S_a^{n+1} - S_a^{n}) + \frac{\partial Q_m}{\partial h_b}^n \frac{1}{A_b^n} (S_b^{n+1} - S_b^{n}) $$
+
+and $\frac{\partial Q}{\partial h}^n$ can be computed numerically using forward diff.
 
 For the resistance nodes [the phantom storage introduced above](#the-basin-profile) is very helpful, because it prevents that according to the formula water has to flow from an empty basin with a high bottom to a lower basin.
 
