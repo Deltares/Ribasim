@@ -1610,3 +1610,32 @@ def drain_surplus_model() -> Model:
     model.link.add(lvl, bsn)
 
     return model
+
+
+def allocation_off_flow_demand_model() -> Model:
+    """Set up a model with a Pump with a FlowDemand but allocation turned off."""
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2021-01-01",
+        crs="EPSG:28992",
+        experimental=Experimental(allocation=True),
+    )
+
+    bsn = model.basin.add(
+        Node(1, Point(0, 0)),
+        [basin.Profile(level=[0.0, 10.0], area=1000.0), basin.State(level=[5.0])],
+    )
+
+    pmp = model.pump.add(Node(2, Point(1, 0)), [pump.Static(flow_rate=[0.0])])
+
+    tml = model.terminal.add(Node(3, Point(2, 0)))
+
+    fdm = model.flow_demand.add(
+        Node(4, Point(1, 1)), [flow_demand.Static(demand_priority=[1], demand=1e-3)]
+    )
+
+    model.link.add(bsn, pmp)
+    model.link.add(pmp, tml)
+    model.link.add(fdm, pmp)
+
+    return model
