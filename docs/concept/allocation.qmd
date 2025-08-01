@@ -133,7 +133,7 @@ to obtain
 
 $$Q_{lr}^{n+1} = \frac{1}{R}( h_a^{n} - h_b^{n} ) + \frac{1}{R}\left( \frac{1}{A_a^n}(S_a^{n+1} - S_a^n) - \frac{1}{A_b^n}(S_b^{n+1} - S_b^n)\right)$$
 
-For ManningResistance we linearize the flow relationship with respect to the upstream and downstream level at the beginning of the allocation timestep.
+For ManningResistance we linearize the flow relationship with respect to the upstream and downstream storage at the beginning of the allocation timestep.
 
 $$ Q_m^{n+1} = Q_m^{n} + \frac{\partial Q_m}{\partial S_a}^n(S_a^{n+1} - S_a^{n}) + \frac{\partial Q_m}{\partial S_b}^n(S_b^{n+1} - S_b^{n}) $$
 
