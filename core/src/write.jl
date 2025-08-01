@@ -124,11 +124,6 @@ function write_results_netcdf(model::Model)::Model
     path = results_path(config, RESULTS_FILENAME.allocation)
     write_netcdf(path, data, nothing)
 
-    # allocation flow
-    data = allocation_flow_data(model; table = false)
-    path = results_path(config, RESULTS_FILENAME.allocation_flow)
-    write_netcdf(path, data, nothing)
-
     # allocation control
     data = allocation_control_data(model; table = false)
     path = results_path(config, RESULTS_FILENAME.allocation_control)
@@ -180,7 +175,7 @@ function nc_dims(file_name::String, var_name::String)::Vector{String}
         ("allocation", "subnetwork_id") => ["node_id"]
         ("allocation_flow", "subnetwork_id") => ["link_id"]
         # data variables have the same dimensions in a file
-        ("basin", _) => ["time", "node_id"]
+        ("basin", _) => ["node_id", "time"]
         ("flow", _) => ["link_id", "time"]
         ("basin_state", _) => ["node_id"]
         ("concentration", _) => ["substance", "node_id", "time"]
@@ -397,6 +392,11 @@ function basin_data(model::Model; table::Bool = true)
     if table
         time = repeat(time; inner = nbasin)
         node_id = repeat(node_id; outer = ntsteps)
+    else
+        level = reshape(level, nbasin, ntsteps)
+        storage = reshape(storage, nbasin, ntsteps)
+        evaporation = reshape(evaporation, nbasin, ntsteps)
+        infiltration = reshape(infiltration, nbasin, ntsteps)
     end
 
     return (;
@@ -500,8 +500,8 @@ function flow_data(model::Model; table::Bool = true)
         from_node_id = repeat(from_node_id; outer = ntsteps)
         to_node_id = repeat(to_node_id; outer = ntsteps)
     else
-        flow_rate = Array(reshape(flow_rate, nflow, ntsteps))
-        flow_rate_conv = Array(reshape(flow_rate_conv, nflow, ntsteps))
+        flow_rate = reshape(flow_rate, nflow, ntsteps)
+        flow_rate_conv = reshape(flow_rate_conv, nflow, ntsteps)
     end
 
     return (;
@@ -539,7 +539,7 @@ function concentration_data(model::Model; table::Bool = true)
         substance = repeat(substance; inner = nbasin, outer = ntsteps)
         node_id = repeat(node_id; outer = ntsteps * nsubstance)
     else
-        concentration = Array(reshape(concentration, nsubstance, nbasin, ntsteps))
+        concentration = reshape(concentration, nsubstance, nbasin, ntsteps)
     end
 
     return (; time, node_id, substance, concentration)
@@ -559,8 +559,10 @@ function allocation_data(model::Model; table::Bool = true)
     (; config) = model
     (; record_demand) = model.integrator.p.p_independent.allocation
 
+    datetimes = datetime_since.(record_demand.time, config.starttime)
+
     if table
-        time = datetime_since.(record_demand.time, config.starttime)
+        time = datetimes
         subnetwork_id = record_demand.subnetwork_id
         node_type = record_demand.node_type
         node_id = record_demand.node_id
@@ -569,31 +571,40 @@ function allocation_data(model::Model; table::Bool = true)
         allocated = record_demand.allocated
         realized = record_demand.realized
     else
-        time = unique(datetime_since.(record_demand.time, config.starttime))
+        time = unique(datetimes)
         node_id = unique(record_demand.node_id)
         demand_priority = unique(record_demand.demand_priority)
 
+        nrows = length(record_demand.time)
         ntsteps = length(time)
         nnodes = length(node_id)
         nprio = length(demand_priority)
 
-        all_indices = CartesianIndices((ntsteps, nnodes, nprio))
+        # record_demand only stores existing node_id and demand_priority combination
+        # e.g. node #3 has only prio 1, node #6 has only prio 3
+        # here we need to create the 2x2 matrix ourselves and fill in this case half
+        demand = fill(NaN, nprio, nnodes, ntsteps)
+        allocated = fill(NaN, nprio, nnodes, ntsteps)
+        realized = fill(NaN, nprio, nnodes, ntsteps)
 
-        subnetwork_id = reshape(record_demand.subnetwork_id, nprio, nnodes, ntsteps)
-        node_type = reshape(record_demand.node_type, nprio, nnodes, ntsteps)
-        if isempty(all_indices)
-            # ensure it is a vector
-            subnetwork_id = Int32[]
-            node_type = String[]
-        else
-            node_indices = all_indices[1, :, 1]
-            subnetwork_id = subnetwork_id[node_indices]
-            node_type = node_type[node_indices]
+        # coordinate variables are similarly filled in
+        subnetwork_id = zeros(Int32, nnodes)
+        node_type = ["" for _ in 1:nnodes]
+
+        for row in 1:nrows
+            prio = record_demand.demand_priority[row]
+            node = record_demand.node_id[row]
+            t = datetimes[row]
+
+            i = searchsortedfirst(demand_priority, prio)
+            j = searchsortedfirst(node_id, node)
+            k = searchsortedfirst(time, t)
+            demand[i, j, k] = record_demand.demand[row]
+            allocated[i, j, k] = record_demand.allocated[row]
+            realized[i, j, k] = record_demand.realized[row]
+            subnetwork_id[j] = record_demand.subnetwork_id[row]
+            node_type[j] = record_demand.node_type[row]
         end
-
-        demand = Array(reshape(record_demand.demand, nprio, nnodes, ntsteps))
-        allocated = Array(reshape(record_demand.allocated, nprio, nnodes, ntsteps))
-        realized = Array(reshape(record_demand.realized, nprio, nnodes, ntsteps))
     end
 
     return (;
@@ -622,22 +633,7 @@ function allocation_flow_data(model::Model; table::Bool = true)
         subnetwork_id = record_flow.subnetwork_id
         optimization_type = record_flow.optimization_type
     else
-        # only write optimization_type = "allocate" to NetCDF, so filter for those
-        optimization_type = ["allocate"]
-        allocate_rows = findall(==("allocate"), record_flow.optimization_type)
-
-        time = unique(datetime_since.(record_flow.time, config.starttime))
-        link_id = unique(view(record_flow.link_id, allocate_rows))
-        from_node_type = unique(view(record_flow.from_node_type, allocate_rows))
-        from_node_id = unique(view(record_flow.from_node_id, allocate_rows))
-        to_node_type = unique(view(record_flow.to_node_type, allocate_rows))
-        to_node_id = unique(view(record_flow.to_node_id, allocate_rows))
-        if isempty(time)
-            subnetwork_id = record_flow.subnetwork_id
-        else
-            first_row_inds = 1:length(time):(length(time) * length(link_id))
-            subnetwork_id = view(record_flow.subnetwork_id, allocate_rows)[first_row_inds]
-        end
+        error("allocation_flow not implemented for NetCDF")
     end
 
     return (;
@@ -681,7 +677,7 @@ function subgrid_level_data(model::Model; table::Bool = true)
         subgrid_id = repeat(subgrid_id; outer = ntsteps)
         subgrid_level = FlatVector(saveval)
     else
-        subgrid_level = Array(reshape(FlatVector(saveval), nelem, ntsteps))
+        subgrid_level = reshape(FlatVector(saveval), nelem, ntsteps)
     end
     return (; time, subgrid_id, subgrid_level)
 end
@@ -719,11 +715,15 @@ function write_netcdf(
     haskey(data, :time) && isempty(data.time) && return nothing
     file_name = splitext(basename(path))[1]
     attrib = merge(CF_GLOBAL_ATTRIB, OrderedDict("title" => "Ribasim results: $file_name"))
-
     NCDataset(path, "c"; attrib) do ds
         for (var_name, var_data) in pairs(data)
             var_name = String(var_name)
             var_dims = Tuple(nc_dims(file_name, var_name))
+            # FlatVector contents can easily be stacked to a matrix
+            # Normal Vectors should be reshape to a matrix already
+            if var_data isa FlatVector && length(var_dims) > 1
+                var_data = stack(var_data.v)
+            end
             attrib = CF[var_name]
             defVar(ds, var_name, var_data, var_dims; attrib)
         end
