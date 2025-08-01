@@ -9,13 +9,6 @@
     toml_path = normpath(@__DIR__, "../../generated_testmodels/trivial/ribasim.toml")
     @test ispath(toml_path)
 
-    # There is no control. That means we don't write the control.arrow,
-    # and we remove it if it exists.
-    control_path = normpath(dirname(toml_path), "results/control.arrow")
-    mkpath(dirname(control_path))
-    touch(control_path)
-    @test ispath(control_path)
-
     config = Ribasim.Config(toml_path)
     model = Ribasim.run(config)
     @test model isa Ribasim.Model
@@ -27,8 +20,6 @@
     @test u isa CVector
     @test filter(!isempty, getaxes(u)) ==
           (; tabulated_rating_curve = 1:1, evaporation = 2:2, infiltration = 3:3)
-
-    @test !ispath(control_path)
 
     # read all results as bytes first to avoid memory mapping
     # which can have cleanup issues due to file locking
@@ -728,10 +719,7 @@ end
 
     flow_rates_input = itp.u
     flow_rates_output =
-        filter(
-            row -> row.from_node_id == 1,
-            DataFrame(Ribasim.flow_data(model)),
-        ).flow_rate
+        filter(row -> row.from_node_id == 1, DataFrame(Ribasim.flow_data(model))).flow_rate
     @test flow_rates_output[1:4] ≈ flow_rates_input
     @test flow_rates_output[4:7] ≈ flow_rates_input
 

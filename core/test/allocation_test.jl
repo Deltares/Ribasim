@@ -729,7 +729,7 @@ end
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
 
-    basin_table = Ribasim.basin_table(model)
+    basin_table = Ribasim.basin_data(model)
     @test basin_table.level[1] == 10.0
     @test all(h -> isapprox(h, 5.0; rtol = 1e-5), basin_table.level[7:end])
 
