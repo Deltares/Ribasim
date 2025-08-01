@@ -683,6 +683,12 @@ function save_demands_and_allocations!(
     return nothing
 end
 
+function get_all_hit_bounds!(allocation_model::AllocationModel)
+    (; problem, subnetwork_id) = allocation_model
+    flow = problem[:flow]
+    return nothing
+end
+
 # After all goals have been optimized for, save
 # the resulting flows for output
 function save_allocation_flows!(
@@ -709,8 +715,17 @@ function save_allocation_flows!(
         push!(record_flow.to_node_type, string(id_to.type))
         push!(record_flow.to_node_id, Int32(id_to))
         push!(record_flow.subnetwork_id, subnetwork_id)
-        push!(record_flow.flow_rate, get_flow_value(allocation_model, link))
+        flow_value = get_flow_value(allocation_model, link)
+        push!(record_flow.flow_rate, flow_value)
+        bound_hit =
+            flow_value == flow_capacity_lower_bound(link, p_independent) ||
+            flow_value == flow_capacity_upper_bound(link, p_independent)
+        push!(record_flow.bound_flow_rate, bound_hit)
         push!(record_flow.optimization_type, string(optimization_type))
+
+        if bound_hit
+            @info "At least 1 flow bound hit at time $t" maxlog = 1
+        end
     end
 
     # Vertical flows
@@ -723,6 +738,7 @@ function save_allocation_flows!(
         push!(record_flow.to_node_id, node_id)
         push!(record_flow.subnetwork_id, subnetwork_id)
         push!(record_flow.flow_rate, JuMP.value(basin_forcing[node_id]) * scaling.flow)
+        push!(record_flow.bound_flow_rate, false)
         push!(record_flow.optimization_type, string(optimization_type))
     end
 
@@ -915,7 +931,7 @@ function set_timeseries_demands!(p::Parameters, t::Float64)::Nothing
         !(user_demand.demand_from_timeseries[node_id.idx]) && continue
 
         for demand_priority_idx in eachindex(demand_priorities_all)
-            !user_demand.has_demand_priority[node_id.idx, demand_priority_idx] || continue
+            !user_demand.has_demand_priority[node_id.idx, demand_priority_idx] && continue
             # Set the demand as the average of the demand interpolation
             # over the coming interpolation period
             user_demand.demand[node_id.idx, demand_priority_idx] =
