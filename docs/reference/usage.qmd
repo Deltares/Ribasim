@@ -73,9 +73,13 @@ The following entries can be set in the configuration in the `[results]` section
 
 entry             | type   | description
 ----------------- | ------ | -----------
+format            | String | File format, default is "arrow" for Apache Arrow, other option is "netcdf" for NetCDF with CF conventions.
 compression       | Bool   | Whether to apply compression or not.
 compression_level | Int    | Zstandard compression level. Default is 6, higher compresses more.
 subgrid           | Bool   | Compute and output more detailed water levels.
+
+Currently compression is only used for Apache Arrow.
+NetCDF will be the only output format later on.
 
 ## Logging settings
 
@@ -139,7 +143,7 @@ can be updated in place when working on a model.
 
 Arrow was chosen since it is standardized, fast, simple and flexible. It can be read and
 written by many different software packages. In Ribasim we use
-[Arrow.jl](https://arrow.apache.org/julia/dev/). Results are written to Arrow, since for long
+[Arrow.jl](https://arrow.apache.org/julia/dev/). Results can be written to Arrow, since for long
 runs Ribasim can produce tables with many rows. Arrow is well suited for large tabular
 datasets, and file size is kept small by using compression. The Arrow input files can be
 compressed with LZ4 or Zstd compression. Furthermore, in some of the columns, a small amount
@@ -238,7 +242,7 @@ nodes in QGIS. For instance, you can draw a line connecting the two node coordin
 
 # Results {#sec-results}
 
-## Basin - `basin.arrow`
+## Basin - `basin`
 
 The Basin table contains:
 
@@ -279,7 +283,7 @@ convergence    | Float64/Missing | -
 
 The table is sorted by time, and per time it is sorted by `node_id`.
 
-## Flow - `flow.arrow`
+## Flow - `flow`
 
 The flow table contains calculated mean flows over the `saveat` intervals for every flow link in the model.
 In the time column the start of the period is indicated.
@@ -300,7 +304,7 @@ The `link_id` value is the same as the `fid` written to the Link table, and can 
 Flows from the "from" to the "to" node have a positive sign, and if the flow is reversed it will be negative.
 - The `convergence` is the scaled residual of the solver, giving an indication of which nodes converge the worst (are hardest to solve).
 
-## State - `basin_state.arrow` {#sec-state}
+## State - `basin_state` {#sec-state}
 
 The Basin state table contains the water levels in each Basin at the end of the simulation.
 
@@ -311,7 +315,7 @@ level     | Float64 | $\text{m}$
 
 To use this result as the initial condition of another simulation, see the [Basin / state](/reference/node/basin.qmd#sec-state) table reference.
 
-## DiscreteControl - `control.arrow`
+## DiscreteControl - `control`
 
 The control table contains a record of each change of control state: when it happened, which control node was involved, to which control state it changed and based on which truth state.
 
@@ -322,21 +326,20 @@ control_node_id | Int32    | -
 truth_state     | String   | -
 control_state   | String   | -
 
-## Allocation - `allocation.arrow`
+## Allocation - `allocation`
 
 The allocation table contains a record of allocation results: when it happened, for which node, in which allocation network, and what the demand, allocated flow and realized flow were.
 The realized values at the starting time of the simulation can be ignored.
-
-column        | type     | unit
---------------| -------- | ----
-time          | DateTime | -
-subnetwork_id | Int32    | -
-node_type     | String   | -
-node_id       | Int32    | -
-priority      | Int32    | -
-demand        | Float64  | $\text{m}^3/\text{s}$
-allocated     | Float64  | $\text{m}^3/\text{s}$
-realized      | Float64  | $\text{m}^3/\text{s}$
+column           | type     | unit
+---------------- | -------- | ---------------------
+time             | DateTime | -
+subnetwork_id    | Int32    | -
+node_type        | String   | -
+node_id          | Int32    | -
+demand_priority  | Int32    | -
+demand           | Float64  | $\text{m}^3/\text{s}$
+allocated        | Float64  | $\text{m}^3/\text{s}$
+realized         | Float64  | $\text{m}^3/\text{s}$
 
 ::: {.callout-note}
 The LevelDemand node allocations are listed as node type Basin.
@@ -350,14 +353,14 @@ The values are negative if the Basin supplies due to a surplus of water.
 Currently the stored demand and abstraction rate are those at the allocation timepoint (and the abstraction rate is based on the previous allocation optimization). In the future these will be an average over the previous allocation timestep.
 :::
 
-## Allocation flow - `allocation_flow.arrow`
+## Allocation flow - `allocation_flow`
 
 The allocation flow table contains results of the optimized allocation flow on every link in the model that is part of a subnetwork, for each time an optimization problem is solved (see also [here](/concept/allocation.qmd#the-high-level-algorithm)).
 If in the model a primary network and subnetwork(s) are specified, there are 3 different types of optimization for the subnetwork:
 The column `optimization_type` provides the distinction between these optimization types.
 
 - `internal_sources`: first it will try using local sources internal to the subnetwork
-- `collect_demands`: collecting its total demand per priority (for allocating flow from the primary network to the subnetwork)
+- `collect_demands`: collecting its total demand (for allocating flow from the primary network to the subnetwork)
 - `allocate`: allocating flow within the subnetwork
 
 column            | type     | unit
@@ -369,9 +372,12 @@ from_node_id      | Int32    | -
 to_node_type      | String   | -
 to_node_id        | Int32    | -
 subnetwork_id     | Int32    | -
-priority          | Int32    | -
 flow_rate         | Float64  | $\text{m}^3/\text{s}$
 optimization_type | String   | -
+
+::: {.callout-note}
+This file is currently not written when the results format is set to `"netcdf"`.
+:::
 
 ## Allocation feasibility analysis - `allocation_analysis_feasibility.log`
 
@@ -381,9 +387,9 @@ When an allocation optimization problem turns out to be infeasible, an infeasibi
 
 When an allocation optimization problem turns out to be infeasible, a scaling analysis is performed. Some user friendly data is logged in the main log, but the full report of the analysis is written to this separate file. For details on the infeasibility analysis see [here](https://jump.dev/MathOptAnalyzer.jl/dev/).
 
-## Concentration - `concentration.arrow`
+## Concentration - `concentration`
 
-If the [experimental concentration feature](/reference/usage.qmd#experimental-features) is enabled, the results are written to `concentration.arrow`.
+If the [experimental concentration feature](/reference/usage.qmd#experimental-features) is enabled, the results are written to file.
 This file records the Basin concentrations for each substance over time.
 The schema below is identical to the [external Basin concentration input](/reference/node/basin.qmd#concentration-external).
 
@@ -394,7 +400,7 @@ time           | DateTime | -                        |
 substance      | String   | -                        | can correspond to known Delwaq substances
 concentration  | Float64  | $\text{g}/\text{m}^3$    |
 
-## Subgrid level - `subgrid_level.arrow`
+## Subgrid level - `subgrid_level`
 
 This result file is only written if the model contains a [Basin / subgrid](/reference/node/basin.qmd#subgrid) table.
 See there for more information on the meaning of this output.
@@ -405,7 +411,7 @@ time           | DateTime | -
 subgrid_id     | Int32    | -
 subgrid_level  | Float64  | $\text{m}$
 
-## Solver statistics - `solver_stats.arrow`
+## Solver statistics - `solver_stats`
 
 This result file contains statistics about the solver, which can give an insight into how well the solver is performing over time. The data is solved by `saveat` (see [configuration file](#configuration-file)). `water_balance` refers to the right-hand-side function of the system of differential equations solved by the Ribasim core.
 

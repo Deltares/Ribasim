@@ -87,6 +87,9 @@ using PiecewiseLinearOpt: piecewiselinear
 # Analyze infeasibilities and numerical properties
 import MathOptAnalyzer
 
+# Pattern matching
+using Moshi.Match: @match
+
 # The BMI is a standard for interacting with a Ribasim model,
 # see the docs: https://ribasim.org/dev/bmi.html
 import BasicModelInterface as BMI
@@ -149,6 +152,9 @@ using StructArrays: StructVector
 # OrderedSet is used to store the order of the substances in the network.
 # OrderedDict is used to store the order of the sources in a subnetwork.
 using DataStructures: OrderedSet, OrderedDict, counter, inc!
+
+# NCDatasets is used to read and write NetCDF files.
+using NCDatasets: NCDataset, defDim, defVar
 
 using Dates: Second
 

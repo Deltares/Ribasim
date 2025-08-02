@@ -1,43 +1,44 @@
-@testitem "relativepath" begin
+@testitem "configure paths" begin
+    using Ribasim: Config, Toml, Results, results_path, input_path, database_path
     using Dates
 
-    # relative to tomldir
-    toml = Ribasim.Toml(;
-        starttime = now(),
-        endtime = now(),
-        input_dir = ".",
-        results_dir = "results",
-        crs = "EPSG:28992",
-        ribasim_version = string(Ribasim.pkgversion(Ribasim)),
+    kwargs = Dict(
+        :starttime => now(),
+        :endtime => now(),
+        :crs => "EPSG:28992",
+        :ribasim_version => string(Ribasim.pkgversion(Ribasim)),
     )
-    config = Ribasim.Config(toml, "model")
-    @test Ribasim.database_path(config) == normpath("model/database.gpkg")
-    @test Ribasim.input_path(config, "path/to/file") == normpath("model/path/to/file")
 
-    # also relative to inputdir
-    toml = Ribasim.Toml(;
-        starttime = now(),
-        endtime = now(),
+    # default dirs
+    toml = Toml(; input_dir = ".", results_dir = "results", kwargs...)
+    config = Config(toml, "model")
+    @test database_path(config) == normpath("model/database.gpkg")
+    @test input_path(config, "path/to/file") == normpath("model/path/to/file")
+    @test results_path(config, "path/to/file.txt") ==
+          normpath("model/results/path/to/file.txt")
+    @test results_path(config, "path/to/file") ==
+          normpath("model/results/path/to/file.arrow")
+    @test results_path(config) == normpath("model/results/")
+
+    # non-default dirs, and netcdf results
+    toml = Toml(;
         input_dir = "input",
-        results_dir = "results",
-        crs = "EPSG:28992",
-        ribasim_version = string(Ribasim.pkgversion(Ribasim)),
+        results_dir = "output",
+        results = Results(; format = "netcdf"),
+        kwargs...,
     )
-    config = Ribasim.Config(toml, "model")
-    @test Ribasim.database_path(config) == normpath("model/input/database.gpkg")
-    @test Ribasim.input_path(config, "path/to/file") == normpath("model/input/path/to/file")
+    config = Config(toml, "model")
+    @test database_path(config) == normpath("model/input/database.gpkg")
+    @test input_path(config, "path/to/file") == normpath("model/input/path/to/file")
+    @test results_path(config, "path/to/file.txt") ==
+          normpath("model/output/path/to/file.txt")
+    @test results_path(config, "path/to/file") == normpath("model/output/path/to/file.nc")
 
     # absolute path
-    toml = Ribasim.Toml(;
-        starttime = now(),
-        endtime = now(),
-        input_dir = ".",
-        results_dir = "results",
-        crs = "EPSG:28992",
-        ribasim_version = string(Ribasim.pkgversion(Ribasim)),
-    )
-    config = Ribasim.Config(toml)
-    @test Ribasim.input_path(config, "/path/to/file") == abspath("/path/to/file")
+    toml = Toml(; input_dir = ".", results_dir = "results", kwargs...)
+    config = Config(toml)
+    @test input_path(config, "/path/to/file") == abspath("/path/to/file")
+    @test results_path(config, "/path/to/file.txt") == abspath("/path/to/file.txt")
 end
 
 @testitem "time" begin
@@ -148,6 +149,129 @@ end
     tbl = Arrow.Table(bytes)
     df = DataFrame(tbl)
     @test all(≈(1), filter(row -> row.substance == "Continuity", df).concentration)
+end
+
+@testitem "netcdf results" begin
+    using NCDatasets
+    using DataFrames: DataFrame
+    using Ribasim: results_path, RESULTS_FILENAME
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/tabulated_rating_curve_control/ribasim.toml",
+    )
+    @test ispath(toml_path)
+    config = Ribasim.Config(toml_path)
+    model = Ribasim.run(config)
+    @test success(model)
+
+    ribasim_version = string(pkgversion(Ribasim))
+
+    # Test basin NetCDF output (1 Basin)
+    path = results_path(config, RESULTS_FILENAME.basin)
+    @test isfile(path)
+    NCDatasets.Dataset(path) do ds
+        @test "time" in keys(ds)
+        @test "node_id" in keys(ds)
+        @test "level" in keys(ds)
+        @test "storage" in keys(ds)
+        @test ds.attrib["Conventions"] == "CF-1.12"
+        @test ds.attrib["ribasim_version"] == ribasim_version
+        @test ndims(ds["time"]) == 1
+        ntime = length(ds["time"])
+        nnode = length(ds["node_id"])
+        @test ntime > 1
+        @test nnode == 1
+        @test size(ds["node_id"]) == (nnode,)
+        @test size(ds["level"]) == (nnode, ntime)
+        @test dimnames(ds["level"]) == ("node_id", "time")
+    end
+
+    # Test flow NetCDF output
+    path = results_path(config, RESULTS_FILENAME.flow)
+    @test isfile(path)
+    NCDatasets.Dataset(path) do ds
+        @test "time" in keys(ds)
+        @test "link_id" in keys(ds)
+        @test "flow_rate" in keys(ds)
+        @test "convergence" in keys(ds)
+        @test ds["flow_rate"].attrib["units"] == "m3 s-1"
+        @test ds["convergence"].attrib["units"] == "1"
+        ntime = length(ds["time"])
+        nlink = length(ds["link_id"])
+        @test ntime > 1
+        @test nlink == 2
+        @test size(ds["link_id"]) == (nlink,)
+        @test size(ds["flow_rate"]) == (nlink, ntime)
+        @test dimnames(ds["flow_rate"]) == ("link_id", "time")
+    end
+
+    # Test control NetCDF output
+    path = results_path(config, RESULTS_FILENAME.control)
+    @test isfile(path)
+    NCDatasets.Dataset(path) do ds
+        @test "time" in keys(ds)
+        @test "control_node_id" in keys(ds)
+        @test "truth_state" in keys(ds)
+        @test "control_state" in keys(ds)
+    end
+end
+
+@testitem "netcdf dimensions" begin
+    using NCDatasets
+    using DataFrames: DataFrame
+    using Ribasim: results_path, RESULTS_FILENAME
+
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/allocation_example/ribasim.toml")
+    @test ispath(toml_path)
+    config = Ribasim.Config(toml_path)
+    model = Ribasim.run(config)
+    @test success(model)
+
+    ribasim_version = string(pkgversion(Ribasim))
+
+    # Test basin NetCDF output (multiple Basins)
+    path = results_path(config, RESULTS_FILENAME.basin)
+    @test isfile(path)
+    NCDatasets.Dataset(path) do ds
+        ntime = length(ds["time"])
+        nnode = length(ds["node_id"])
+        @test ntime > 1
+        @test nnode == 2
+        @test size(ds["node_id"]) == (nnode,)
+        @test size(ds["level"]) == (nnode, ntime)
+        @test dimnames(ds["level"]) == ("node_id", "time")
+    end
+
+    # Test flow NetCDF output
+    path = results_path(config, RESULTS_FILENAME.flow)
+    @test isfile(path)
+    NCDatasets.Dataset(path) do ds
+        ntime = length(ds["time"])
+        nlink = length(ds["link_id"])
+        @test ntime > 1
+        @test nlink == 9
+        @test size(ds["link_id"]) == (nlink,)
+        @test size(ds["flow_rate"]) == (nlink, ntime)
+        @test dimnames(ds["flow_rate"]) == ("link_id", "time")
+    end
+
+    # Test allocation NetCDF output
+    path = results_path(config, RESULTS_FILENAME.allocation)
+    @test isfile(path)
+    NCDatasets.Dataset(path) do ds
+        ntime = length(ds["time"])
+        nnode = length(ds["node_id"])
+        nprio = length(ds["demand_priority"])
+        @test ntime > 1
+        @test nnode == 2
+        @test nprio == 2
+        @test size(ds["node_id"]) == (nnode,)
+        @test size(ds["subnetwork_id"]) == (nnode,)
+        @test size(ds["demand"]) == (nnode, nprio, ntime)
+        @test dimnames(ds["demand"]) == ("demand_priority", "node_id", "time")
+    end
 end
 
 @testitem "warm state" begin
