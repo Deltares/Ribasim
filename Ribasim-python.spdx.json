@@ -6,12 +6,12 @@
     "creators": [
       "Tool: sbom4python-0.12.4"
     ],
-    "created": "2025-07-25T14:49:35Z",
+    "created": "2025-08-03T03:38:53Z",
     "licenseListVersion": "3.26"
   },
   "name": "Python-ribasim",
   "dataLicense": "CC0-1.0",
-  "documentNamespace": "http://spdx.org/spdxdocs/Python-ribasim-6b0f2d13-e55a-4ca0-8909-e8dd5828fa9e",
+  "documentNamespace": "http://spdx.org/spdxdocs/Python-ribasim-404be88a-fc04-4de8-9f99-3eb36d78e875",
   "packages": [
     {
       "SPDXID": "SPDXRef-1-ribasim",
@@ -58,16 +58,16 @@
     {
       "SPDXID": "SPDXRef-2-datacompy",
       "name": "datacompy",
-      "versionInfo": "0.17.0",
+      "versionInfo": "0.17.1",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "Organization: Ian Dan Coates Faisal Dosani (faisal.dosani@capitalone.com)",
-      "downloadLocation": "https://pypi.org/project/datacompy/0.17.0/#files",
+      "downloadLocation": "https://pypi.org/project/datacompy/0.17.1/#files",
       "filesAnalyzed": false,
       "homepage": "https://github.com/capitalone/datacompy",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "495e78860c9e9581d07946f4e6e651cb5d85df8ffce0d2f223791e5f78e4f63d"
+          "checksumValue": "c7cba60b56b4262191c01167783e396122f7116959c6e70c5f934057289dbaa5"
         }
       ],
       "licenseConcluded": "Apache-2.0",
@@ -75,7 +75,7 @@
       "licenseComments": "datacompy declares Apache Software License which is not currently a valid SPDX License identifier or expression.",
       "copyrightText": "NOASSERTION",
       "summary": "Dataframe comparison in Python",
-      "releaseDate": "2025-07-09T17:54:44Z",
+      "releaseDate": "2025-07-25T16:20:03Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -100,28 +100,28 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/datacompy@0.17.0"
+          "referenceLocator": "pkg:pypi/datacompy@0.17.1"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:ian_dan_coates_faisal_dosani:datacompy:0.17.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:ian_dan_coates_faisal_dosani:datacompy:0.17.1:*:*:*:*:*:*:*"
         }
       ]
     },
     {
       "SPDXID": "SPDXRef-3-pandas",
       "name": "pandas",
-      "versionInfo": "2.3.0",
+      "versionInfo": "2.3.1",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "NOASSERTION",
-      "downloadLocation": "https://pypi.org/project/pandas/2.3.0/#files",
+      "downloadLocation": "https://pypi.org/project/pandas/2.3.1/#files",
       "filesAnalyzed": false,
       "homepage": "https://pandas.pydata.org",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "625466edd01d43b75b1883a64d859168e4556261a5035b32f9d743b67ef44634"
+          "checksumValue": "22c2e866f7209ebc3a8f08d75766566aae02bcc91d196935a1d9e59c7b990ac9"
         }
       ],
       "licenseConcluded": "NOASSERTION",
@@ -129,7 +129,7 @@
       "licenseComments": "pandas declares BSD 3-Clause License\n\n Copyright (c) 2008-2011, AQR Capital Management, LLC, Lambda Foundry, Inc. and PyData Development Team\n All rights reserved.\n\n Copyright (c) 2011-2023, Open source contributors.\n\n Redistribution and use in source and binary forms, with or without\n modification, are permitted provided that the following conditions are met:\n\n * Redistributions of source code must retain the above copyright notice, this\n   list of conditions and the following disclaimer.\n\n * Redistributions in binary form must reproduce the above copyright notice,\n   this list of conditions and the following disclaimer in the documentation\n   and/or other materials provided with the distribution.\n\n * Neither the name of the copyright holder nor the names of its\n   contributors may be used to endorse or promote products derived from\n   this software without specific prior written permission.\n\n THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\"\n AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE\n IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE\n DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE\n FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL\n DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR\n SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER\n CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,\n OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE\n OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n which is not currently a valid SPDX License identifier or expression.",
       "copyrightText": "NOASSERTION",
       "summary": "Powerful data structures for data analysis, time series, and statistics",
-      "releaseDate": "2025-06-05T03:25:48Z",
+      "releaseDate": "2025-07-07T19:18:12Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -144,7 +144,7 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/pandas@2.3.0"
+          "referenceLocator": "pkg:pypi/pandas@2.3.1"
         }
       ]
     },
@@ -807,16 +807,16 @@
     {
       "SPDXID": "SPDXRef-19-matplotlib",
       "name": "matplotlib",
-      "versionInfo": "3.10.3",
+      "versionInfo": "3.10.5",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "Organization: John D. Michael Droettboom",
-      "downloadLocation": "https://pypi.org/project/matplotlib/3.10.3/#files",
+      "downloadLocation": "https://pypi.org/project/matplotlib/3.10.5/#files",
       "filesAnalyzed": false,
       "homepage": "https://matplotlib.org",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "213fadd6348d106ca7db99e113f1bea1e65e383c3ba76e8556ba4a3054b65ae7"
+          "checksumValue": "5d4773a6d1c106ca05cb5a5515d277a6bb96ed09e5c8fab6b7741b8fcaa62c8f"
         }
       ],
       "licenseConcluded": "NOASSERTION",
@@ -824,7 +824,7 @@
       "licenseComments": "matplotlib declares License agreement for matplotlib versions 1.3.0 and later\n =========================================================\n\n 1. This LICENSE AGREEMENT is between the Matplotlib Development Team\n (\"MDT\"), and the Individual or Organization (\"Licensee\") accessing and\n otherwise using matplotlib software in source or binary form and its\n associated documentation.\n\n 2. Subject to the terms and conditions of this License Agreement, MDT\n hereby grants Licensee a nonexclusive, royalty-free, world-wide license\n to reproduce, analyze, test, perform and/or display publicly, prepare\n derivative works, distribute, and otherwise use matplotlib\n alone or in any derivative version, provided, however, that MDT's\n License Agreement and MDT's notice of copyright, i.e., \"Copyright (c)\n 2012- Matplotlib Development Team; All Rights Reserved\" are retained in\n matplotlib  alone or in any derivative version prepared by\n Licensee.\n\n 3. In the event Licensee prepares a derivative work that is based on or\n incorporates matplotlib or any part thereof, and wants to\n make the derivative work available to others as provided herein, then\n Licensee hereby agrees to include in any such work a brief summary of\n the changes made to matplotlib .\n\n 4. MDT is making matplotlib available to Licensee on an \"AS\n IS\" basis.  MDT MAKES NO REPRESENTATIONS OR WARRANTIES, EXPRESS OR\n IMPLIED.  BY WAY OF EXAMPLE, BUT NOT LIMITATION, MDT MAKES NO AND\n DISCLAIMS ANY REPRESENTATION OR WARRANTY OF MERCHANTABILITY OR FITNESS\n FOR ANY PARTICULAR PURPOSE OR THAT THE USE OF MATPLOTLIB\n WILL NOT INFRINGE ANY THIRD PARTY RIGHTS.\n\n 5. MDT SHALL NOT BE LIABLE TO LICENSEE OR ANY OTHER USERS OF MATPLOTLIB\n  FOR ANY INCIDENTAL, SPECIAL, OR CONSEQUENTIAL DAMAGES OR\n LOSS AS A RESULT OF MODIFYING, DISTRIBUTING, OR OTHERWISE USING\n MATPLOTLIB , OR ANY DERIVATIVE THEREOF, EVEN IF ADVISED OF\n THE POSSIBILITY THEREOF.\n\n 6. This License Agreement will automatically terminate upon a material\n breach of its terms and conditions.\n\n 7. Nothing in this License Agreement shall be deemed to create any\n relationship of agency, partnership, or joint venture between MDT and\n Licensee.  This License Agreement does not grant permission to use MDT\n trademarks or trade name in a trademark sense to endorse or promote\n products or services of Licensee, or any third party.\n\n 8. By copying, installing or otherwise using matplotlib ,\n Licensee agrees to be bound by the terms and conditions of this License\n Agreement.\n\n License agreement for matplotlib versions prior to 1.3.0\n ========================================================\n\n 1. This LICENSE AGREEMENT is between John D. Hunter (\"JDH\"), and the\n Individual or Organization (\"Licensee\") accessing and otherwise using\n matplotlib software in source or binary form and its associated\n documentation.\n\n 2. Subject to the terms and conditions of this License Agreement, JDH\n hereby grants Licensee a nonexclusive, royalty-free, world-wide license\n to reproduce, analyze, test, perform and/or display publicly, prepare\n derivative works, distribute, and otherwise use matplotlib\n alone or in any derivative version, provided, however, that JDH's\n License Agreement and JDH's notice of copyright, i.e., \"Copyright (c)\n 2002-2011 John D. Hunter; All Rights Reserved\" are retained in\n matplotlib  alone or in any derivative version prepared by\n Licensee.\n\n 3. In the event Licensee prepares a derivative work that is based on or\n incorporates matplotlib  or any part thereof, and wants to\n make the derivative work available to others as provided herein, then\n Licensee hereby agrees to include in any such work a brief summary of\n the changes made to matplotlib.\n\n 4. JDH is making matplotlib  available to Licensee on an \"AS\n IS\" basis.  JDH MAKES NO REPRESENTATIONS OR WARRANTIES, EXPRESS OR\n IMPLIED.  BY WAY OF EXAMPLE, BUT NOT LIMITATION, JDH MAKES NO AND\n DISCLAIMS ANY REPRESENTATION OR WARRANTY OF MERCHANTABILITY OR FITNESS\n FOR ANY PARTICULAR PURPOSE OR THAT THE USE OF MATPLOTLIB\n WILL NOT INFRINGE ANY THIRD PARTY RIGHTS.\n\n 5. JDH SHALL NOT BE LIABLE TO LICENSEE OR ANY OTHER USERS OF MATPLOTLIB\n  FOR ANY INCIDENTAL, SPECIAL, OR CONSEQUENTIAL DAMAGES OR\n LOSS AS A RESULT OF MODIFYING, DISTRIBUTING, OR OTHERWISE USING\n MATPLOTLIB , OR ANY DERIVATIVE THEREOF, EVEN IF ADVISED OF\n THE POSSIBILITY THEREOF.\n\n 6. This License Agreement will automatically terminate upon a material\n breach of its terms and conditions.\n\n 7. Nothing in this License Agreement shall be deemed to create any\n relationship of agency, partnership, or joint venture between JDH and\n Licensee.  This License Agreement does not grant permission to use JDH\n trademarks or trade name in a trademark sense to endorse or promote\n products or services of Licensee, or any third party.\n\n 8. By copying, installing or otherwise using matplotlib,\n Licensee agrees to be bound by the terms and conditions of this License\n Agreement. which is not currently a valid SPDX License identifier or expression.",
       "copyrightText": "NOASSERTION",
       "summary": "Python plotting package",
-      "releaseDate": "2025-05-08T19:09:39Z",
+      "releaseDate": "2025-07-31T18:07:36Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -859,28 +859,28 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/matplotlib@3.10.3"
+          "referenceLocator": "pkg:pypi/matplotlib@3.10.5"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:john_d._michael_droettboom:matplotlib:3.10.3:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:john_d._michael_droettboom:matplotlib:3.10.5:*:*:*:*:*:*:*"
         }
       ]
     },
     {
       "SPDXID": "SPDXRef-20-contourpy",
       "name": "contourpy",
-      "versionInfo": "1.3.2",
+      "versionInfo": "1.3.3",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "NOASSERTION",
-      "downloadLocation": "https://pypi.org/project/contourpy/1.3.2/#files",
+      "downloadLocation": "https://pypi.org/project/contourpy/1.3.3/#files",
       "filesAnalyzed": false,
       "homepage": "https://github.com/contourpy/contourpy",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "ba38e3f9f330af820c4b27ceb4b9c7feee5fe0493ea53a8720f4792667465934"
+          "checksumValue": "709a48ef9a690e1343202916450bc48b9e51c049b089c7f79a267b46cffcdaa1"
         }
       ],
       "licenseConcluded": "NOASSERTION",
@@ -888,7 +888,7 @@
       "licenseComments": "contourpy declares BSD 3-Clause License\n\n Copyright (c) 2021-2025, ContourPy Developers.\n All rights reserved.\n\n Redistribution and use in source and binary forms, with or without\n modification, are permitted provided that the following conditions are met:\n\n 1. Redistributions of source code must retain the above copyright notice, this\n    list of conditions and the following disclaimer.\n\n 2. Redistributions in binary form must reproduce the above copyright notice,\n    this list of conditions and the following disclaimer in the documentation\n    and/or other materials provided with the distribution.\n\n 3. Neither the name of the copyright holder nor the names of its\n    contributors may be used to endorse or promote products derived from\n    this software without specific prior written permission.\n\n THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\"\n AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE\n IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE\n DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE\n FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL\n DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR\n SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER\n CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,\n OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE\n OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n which is not currently a valid SPDX License identifier or expression.",
       "copyrightText": "NOASSERTION",
       "summary": "Python library for calculating contours of 2D quadrilateral grids",
-      "releaseDate": "2025-04-15T17:34:46Z",
+      "releaseDate": "2025-07-26T12:01:02Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -908,7 +908,7 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/contourpy@1.3.2"
+          "referenceLocator": "pkg:pypi/contourpy@1.3.3"
         }
       ]
     },
