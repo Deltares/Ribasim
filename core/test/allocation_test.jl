@@ -760,11 +760,10 @@ end
 
     toml_paths = get_testmodels()
 
-    changed_problems = @NamedTuple{model_name::String, subnetwork_id::Int32}[]
+    changed_problems = Set{@NamedTuple{model_name::String, subnetwork_id::Int32}}[]
 
     for toml_path in toml_paths
         model_name = basename(dirname(toml_path))
-        current_problem_path = joinpath(mktempdir(), "tmp.lp")
 
         if !startswith(model_name, "invalid_")
             config = Ribasim.Config(toml_path)
@@ -777,13 +776,17 @@ end
                     for allocation_model in allocation_models
                         (; problem, subnetwork_id) = allocation_model
 
-                        problem_path = normpath(
+                        written_problem_path = normpath(
                             @__DIR__,
                             "data/allocation_problems/$model_name/allocation_problem_$subnetwork_id.lp",
                         )
-                        @test ispath(problem_path)
-                        written_problem = read(problem_path, String)
+                        @test ispath(written_problem_path)
+                        written_problem = read(written_problem_path, String)
 
+                        current_problem_path = joinpath(
+                            dirname(toml_path),
+                            "allocation_problem_$subnetwork_id.lp",
+                        )
                         JuMP.write_to_file(problem, current_problem_path)
                         current_problem = read(current_problem_path, String)
 
