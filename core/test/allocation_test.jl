@@ -736,3 +736,18 @@ end
     allocation_control_table = Ribasim.allocation_control_data(model)
     @test all(q -> isapprox(q, 1e-3; rtol = 1e-5), allocation_control_table.flow_rate[1:5])
 end
+
+@testitem "FlowDemand without allocation" begin
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/allocation_off_flow_demand/ribasim.toml",
+    )
+    @test ispath(toml_path)
+
+    model = Ribasim.run(toml_path)
+    @test success(model)
+
+    flow = Ribasim.flow_table(model).flow_rate
+    @test !isempty(flow)
+    @test all(q -> isapprox(q, 1e-3; rtol = 1e-4), flow[1:100])
+end
