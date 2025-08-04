@@ -760,52 +760,52 @@ end
 
     toml_paths = get_testmodels()
 
-    changed_problems = Set{@NamedTuple{model_name::String, subnetwork_id::Int32}}[]
+    changed_problems = Set{@NamedTuple{model_name::String, subnetwork_id::Int32}}()
 
     for toml_path in toml_paths
         model_name = basename(dirname(toml_path))
 
-        if !startswith(model_name, "invalid_")
-            config = Ribasim.Config(toml_path)
+        if startswith(model_name, "invalid_")
+            continue
+        end
 
-            if config.experimental.allocation
-                for _ in 1:5
-                    model = Ribasim.Model(toml_path)
-                    (; allocation_models) = model.integrator.p.p_independent.allocation
+        config = Ribasim.Config(toml_path)
 
-                    for allocation_model in allocation_models
-                        (; problem, subnetwork_id) = allocation_model
+        if !config.experimental.allocation
+            continue
+        end
 
-                        problem_code = (; model_name, subnetwork_id)
+        # Initialize the same model 5 times
+        models = [Ribasim.Model(toml_path) for _ in 1:5]
 
-                        # Don't overwrite the problem written to file by the test
-                        # if a change was detected
-                        if problem_code in changed_problems
-                            continue
-                        end
+        subnetwork_ids = [
+            allocation_model.subnetwork_id for allocation_model in
+            first(models).integrator.p.p_independent.allocation.allocation_models
+        ]
 
-                        written_problem_path = normpath(
-                            @__DIR__,
-                            "data/allocation_problems/$model_name/allocation_problem_$subnetwork_id.lp",
-                        )
-                        @test ispath(written_problem_path)
-                        written_problem = read(written_problem_path, String)
+        for (i, subnetwork_id) in enumerate(subnetwork_ids)
+            @testset "$(model_name)_subnetwork_id_$subnetwork_id" begin
+                for model in models
+                    (; problem, subnetwork_id) =
+                        model.integrator.p.p_independent.allocation.allocation_models[i]
 
-                        current_problem_path = joinpath(
-                            dirname(toml_path),
-                            "allocation_problem_$subnetwork_id.lp",
-                        )
-                        JuMP.write_to_file(problem, current_problem_path)
-                        current_problem = read(current_problem_path, String)
+                    written_problem_path = normpath(
+                        @__DIR__,
+                        "data/allocation_problems/$model_name/allocation_problem_$subnetwork_id.lp",
+                    )
+                    @test ispath(written_problem_path)
+                    written_problem = read(written_problem_path, String)
 
-                        if current_problem != written_problem
-                            push!(changed_problems, problem_code)
-                        end
-                    end
+                    current_problem_path =
+                        joinpath(dirname(toml_path), "allocation_problem_$subnetwork_id.lp")
+                    JuMP.write_to_file(problem, current_problem_path)
+                    current_problem = read(current_problem_path, String)
+
+                    problem_equality = (current_problem == written_problem)
+                    @test problem_equality
+                    !problem_equality && break
                 end
             end
         end
     end
-
-    @test isempty(changed_problems)
 end
