@@ -25,10 +25,10 @@ function plot_basin_data(model::Model)
 end
 
 function plot_flow!(model::Model, ax::Axis, link_metadata::Ribasim.LinkMetadata)
-    flow_data = DataFrame(Ribasim.flow_data(model))
-    flow_data = filter(:link_id => ==(link_metadata.id), flow_data)
+    flow_table = DataFrame(Ribasim.flow_data(model))
+    flow_table = filter(:link_id => ==(link_metadata.id), flow_table)
     label = "$(link_metadata.link[1]) → $(link_metadata.link[2])"
-    scatterlines!(ax, flow_data.time, flow_data.flow_rate; label)
+    scatterlines!(ax, flow_table.time, flow_table.flow_rate; label)
     return nothing
 end
 

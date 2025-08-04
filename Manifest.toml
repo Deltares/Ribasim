@@ -2,7 +2,7 @@
 
 julia_version = "1.11.6"
 manifest_format = "2.0"
-project_hash = "d43a044b34966a6f3f6ee4927a763ef33a5976f1"
+project_hash = "8e7cd388f71b3282c67527cb92aa8f437640c824"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "7927b9af540ee964cc5d1b73293f1eb0b761a3a1"
@@ -63,9 +63,9 @@ version = "1.1.3"
 
 [[deps.Aqua]]
 deps = ["Compat", "Pkg", "Test"]
-git-tree-sha1 = "622d6ee5f093951e2e08ed88aa3fcdebec091bcf"
+git-tree-sha1 = "d57fd255a8932b6509baf43284c416fc44d0b903"
 uuid = "4c88cf16-eb10-579e-8560-4a9242c79595"
-version = "0.8.13"
+version = "0.8.14"
 
 [[deps.ArgCheck]]
 git-tree-sha1 = "f9e9a66c9b7be1ad7372bbd9b062d9230c30c5ce"
@@ -470,9 +470,9 @@ version = "1.9.1"
 
 [[deps.DiffEqBase]]
 deps = ["ArrayInterface", "ConcreteStructs", "DataStructures", "DocStringExtensions", "EnumX", "EnzymeCore", "FastBroadcast", "FastClosures", "FastPower", "FunctionWrappers", "FunctionWrappersWrappers", "LinearAlgebra", "Logging", "Markdown", "MuladdMacro", "Parameters", "PrecompileTools", "Printf", "RecursiveArrayTools", "Reexport", "SciMLBase", "SciMLOperators", "SciMLStructures", "Setfield", "Static", "StaticArraysCore", "Statistics", "SymbolicIndexingInterface", "TruncatedStacktraces"]
-git-tree-sha1 = "6f8f25122389ba34e491bdfe143ae16fda37cad3"
+git-tree-sha1 = "9782d43bd23a405f7ab06e2cbb4cec267b37d12f"
 uuid = "2b5f629d-d688-5b77-993f-72d75c75574e"
-version = "6.180.0"
+version = "6.181.0"
 
     [deps.DiffEqBase.extensions]
     DiffEqBaseCUDAExt = "CUDA"
@@ -528,9 +528,9 @@ version = "1.15.1"
 
 [[deps.DifferentiationInterface]]
 deps = ["ADTypes", "LinearAlgebra"]
-git-tree-sha1 = "f620da805b82bec64ab4d5f881c7592c82dbc08a"
+git-tree-sha1 = "54d7b8c74408048aea9c055ac8573b2b5c5ec11f"
 uuid = "a0c0ee7d-e4b9-4e03-894e-1c5f64a51d63"
-version = "0.7.3"
+version = "0.7.4"
 
     [deps.DifferentiationInterface.extensions]
     DifferentiationInterfaceChainRulesCoreExt = "ChainRulesCore"
