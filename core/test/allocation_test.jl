@@ -791,7 +791,7 @@ end
 
                 current_problem_path = normpath(
                     dirname(toml_path),
-                    "results/allocation_problem_$subnetwork_id.lp",
+                    "results/allocation_problem_from_tests_$subnetwork_id.lp",
                 )
 
                 for model in models
