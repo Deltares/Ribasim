@@ -391,6 +391,7 @@ function allocation_flow_table(
     subnetwork_id::Vector{Int32},
     flow_rate::Vector{Float64},
     optimization_type::Vector{String},
+    bound_flow_rate::Vector{Bool},
 }
     (; config) = model
     (; record_flow) = model.integrator.p.p_independent.allocation
@@ -407,6 +408,7 @@ function allocation_flow_table(
         record_flow.subnetwork_id,
         record_flow.flow_rate,
         record_flow.optimization_type,
+        record_flow.bound_flow_rate,
     )
 end
 
