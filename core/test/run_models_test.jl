@@ -158,11 +158,14 @@ end
 @testitem "leaky bucket model" begin
     using OrdinaryDiffEqCore: get_du
     import BasicModelInterface as BMI
+    using Ribasim: results_path
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/leaky_bucket/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.Model(toml_path)
     @test model isa Ribasim.Model
+    # results dir is created on Model initialization
+    @test isdir(results_path(model.config))
 
     (; integrator) = model
     du = get_du(integrator)

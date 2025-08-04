@@ -120,6 +120,7 @@ function Model(config_path::AbstractString)::Model
 end
 
 function Model(config::Config)::Model
+    mkpath(results_path(config))
     db_path = database_path(config)
     if !isfile(db_path)
         @error "Database file not found" db_path
