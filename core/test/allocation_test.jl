@@ -751,3 +751,48 @@ end
     @test !isempty(flow)
     @test all(q -> isapprox(q, 1e-3; rtol = 1e-4), flow[1:100])
 end
+
+@testitem "Allocation problem consistency" begin
+    # To update the reference files run `pixi run write-allocation-problems`
+    include(normpath(@__DIR__, "../../utils/utils.jl"))
+
+    toml_paths = get_testmodels()
+
+    changed_problems = @NamedTuple{model_name::String, subnetwork_id::Int32}[]
+
+    for toml_path in toml_paths
+        model_name = basename(dirname(toml_path))
+        current_problem_path = joinpath(mktempdir(), "tmp.lp")
+
+        if !startswith(model_name, "invalid_")
+            config = Ribasim.Config(toml_path)
+
+            if config.experimental.allocation
+                for _ in 1:5
+                    model = Ribasim.Model(toml_path)
+                    (; allocation_models) = model.integrator.p.p_independent.allocation
+
+                    for allocation_model in allocation_models
+                        (; problem, subnetwork_id) = allocation_model
+
+                        problem_path = normpath(
+                            @__DIR__,
+                            "data/allocation_problems/$model_name/allocation_problem_$subnetwork_id.lp",
+                        )
+                        @test ispath(problem_path)
+                        written_problem = read(problem_path, String)
+
+                        JuMP.write_to_file(problem, current_problem_path)
+                        current_problem = read(current_problem_path, String)
+
+                        if current_problem != written_problem
+                            push!(changed_problems, (; model_name, subnetwork_id))
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    @test isempty(changed_problems)
+end
