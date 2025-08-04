@@ -4,83 +4,311 @@
 Write all results to the Arrow files as specified in the model configuration.
 """
 function write_results(model::Model)::Model
-    (; config) = model
-    (; results, experimental) = model.config
+    (; format) = model.config.results
     @debug "Writing results."
 
-    compress = get_compressor(results)
-    remove_empty_table::Bool = model.integrator.t::Float64 != 0
-
-    # state
-    table = basin_state_table(model)
-    path = results_path(config, RESULTS_FILENAME.basin_state)
-    write_arrow(path, table, compress; remove_empty_table)
-
-    # basin
-    table = basin_table(model)
-    path = results_path(config, RESULTS_FILENAME.basin)
-    write_arrow(path, table, compress; remove_empty_table)
-
-    # flow
-    table = flow_table(model)
-    path = results_path(config, RESULTS_FILENAME.flow)
-    write_arrow(path, table, compress; remove_empty_table)
-
-    # concentrations
-    if experimental.concentration
-        table = concentration_table(model)
-        path = results_path(config, RESULTS_FILENAME.concentration)
-        write_arrow(path, table, compress; remove_empty_table)
+    if format == "arrow"
+        write_results_arrow(model)
+    else
+        write_results_netcdf(model)
     end
-
-    # discrete control
-    table = discrete_control_table(model)
-    path = results_path(config, RESULTS_FILENAME.control)
-    write_arrow(path, table, compress; remove_empty_table)
-
-    # allocation
-    table = allocation_table(model)
-    path = results_path(config, RESULTS_FILENAME.allocation)
-    write_arrow(path, table, compress; remove_empty_table)
-
-    # allocation flow
-    table = allocation_flow_table(model)
-    path = results_path(config, RESULTS_FILENAME.allocation_flow)
-    write_arrow(path, table, compress; remove_empty_table)
-
-    # allocation control
-    table = allocation_control_table(model)
-    path = results_path(config, RESULTS_FILENAME.allocation_control)
-    write_arrow(path, table, compress; remove_empty_table)
-
-    # exported levels
-    table = subgrid_level_table(model)
-    path = results_path(config, RESULTS_FILENAME.subgrid_level)
-    write_arrow(path, table, compress; remove_empty_table)
-
-    # solver stats
-    table = solver_stats_table(model)
-    path = results_path(config, RESULTS_FILENAME.solver_stats)
-    write_arrow(path, table, compress; remove_empty_table)
 
     @debug "Wrote results."
     return model
 end
 
+"""
+    write_results_arrow(model::Model)::Model
+
+Write all results to the Arrow files as specified in the model configuration.
+"""
+function write_results_arrow(model::Model)::Model
+    (; config) = model
+    (; results, experimental) = model.config
+
+    compress = get_compressor(results)
+
+    # state
+    table = basin_state_data(model)
+    path = results_path(config, RESULTS_FILENAME.basin_state)
+    write_arrow(path, table, compress)
+
+    # basin
+    table = basin_data(model)
+    path = results_path(config, RESULTS_FILENAME.basin)
+    write_arrow(path, table, compress)
+
+    # flow
+    table = flow_data(model)
+    path = results_path(config, RESULTS_FILENAME.flow)
+    write_arrow(path, table, compress)
+
+    # concentrations
+    if experimental.concentration
+        table = concentration_data(model)
+        path = results_path(config, RESULTS_FILENAME.concentration)
+        write_arrow(path, table, compress)
+    end
+
+    # discrete control
+    table = discrete_control_data(model)
+    path = results_path(config, RESULTS_FILENAME.control)
+    write_arrow(path, table, compress)
+
+    # allocation
+    table = allocation_data(model)
+    path = results_path(config, RESULTS_FILENAME.allocation)
+    write_arrow(path, table, compress)
+
+    # allocation flow
+    table = allocation_flow_data(model)
+    path = results_path(config, RESULTS_FILENAME.allocation_flow)
+    write_arrow(path, table, compress)
+
+    # allocation control
+    table = allocation_control_data(model)
+    path = results_path(config, RESULTS_FILENAME.allocation_control)
+    write_arrow(path, table, compress)
+
+    # exported levels
+    table = subgrid_level_data(model)
+    path = results_path(config, RESULTS_FILENAME.subgrid_level)
+    write_arrow(path, table, compress)
+
+    # solver stats
+    table = solver_stats_data(model)
+    path = results_path(config, RESULTS_FILENAME.solver_stats)
+    write_arrow(path, table, compress)
+
+    return model
+end
+
+"""
+    write_results_netcdf(model::Model)::Model
+
+Write all results to the Arrow files as specified in the model configuration.
+"""
+function write_results_netcdf(model::Model)::Model
+    (; config) = model
+    (; results, experimental) = model.config
+
+    # state
+    data = basin_state_data(model; table = false)
+    path = results_path(config, RESULTS_FILENAME.basin_state)
+    write_netcdf(path, data, nothing)
+
+    # basin
+    data = basin_data(model; table = false)
+    path = results_path(config, RESULTS_FILENAME.basin)
+    write_netcdf(path, data, nothing)
+
+    # flow
+    data = flow_data(model; table = false)
+    path = results_path(config, RESULTS_FILENAME.flow)
+    write_netcdf(path, data, nothing)
+
+    # concentrations
+    if experimental.concentration
+        data = concentration_data(model; table = false)
+        path = results_path(config, RESULTS_FILENAME.concentration)
+        write_netcdf(path, data, nothing)
+    end
+
+    # discrete control
+    data = discrete_control_data(model; table = false)
+    path = results_path(config, RESULTS_FILENAME.control)
+    write_netcdf(path, data, nothing)
+
+    # allocation
+    data = allocation_data(model; table = false)
+    path = results_path(config, RESULTS_FILENAME.allocation)
+    write_netcdf(path, data, nothing)
+
+    # allocation control
+    data = allocation_control_data(model; table = false)
+    path = results_path(config, RESULTS_FILENAME.allocation_control)
+    write_netcdf(path, data, nothing)
+
+    # exported levels
+    data = subgrid_level_data(model; table = false)
+    path = results_path(config, RESULTS_FILENAME.subgrid_level)
+    write_netcdf(path, data, nothing)
+
+    # solver stats
+    data = solver_stats_data(model; table = false)
+    path = results_path(config, RESULTS_FILENAME.solver_stats)
+    write_netcdf(path, data, nothing)
+
+    return model
+end
+
 const RESULTS_FILENAME = (
-    basin_state = "basin_state.arrow",
-    basin = "basin.arrow",
-    flow = "flow.arrow",
-    concentration = "concentration.arrow",
-    control = "control.arrow",
-    allocation = "allocation.arrow",
-    allocation_flow = "allocation_flow.arrow",
+    # configurable format, without extension
+    basin_state = "basin_state",
+    basin = "basin",
+    flow = "flow",
+    concentration = "concentration",
+    control = "control",
+    allocation = "allocation",
+    allocation_flow = "allocation_flow",
+    allocation_control = "allocation_control",
+    subgrid_level = "subgrid_level",
+    solver_stats = "solver_stats",
+    # fixed format, with extension
     allocation_analysis_infeasibility = "allocation_analysis_infeasibility.log",
     allocation_analysis_scaling = "allocation_analysis_scaling.log",
     allocation_infeasible_problem = "allocation_infeasible_problem.lp",
-    allocation_control = "allocation_control.arrow",
-    subgrid_level = "subgrid_level.arrow",
-    solver_stats = "solver_stats.arrow",
+)
+
+const nc_dim_names =
+    ("time", "node_id", "link_id", "subgrid_id", "substance", "demand_priority")
+
+#! format: off
+"Get a list of dimension names given a file and variable name."
+function nc_dims(file_name::String, var_name::String)::Vector{String}
+    @match (file_name, var_name) begin
+        # dimension variables are only themselves
+        (_, var_name) && if var_name in nc_dim_names end => [var_name]
+        # coordinate variables and their dimension
+        (_, Regex("^(from|to)_node_(type|id)\$")) => ["link_id"]
+        (_, "node_type") => ["node_id"]
+        ("allocation", "subnetwork_id") => ["node_id"]
+        ("allocation_flow", "subnetwork_id") => ["link_id"]
+        # data variables have the same dimensions in a file
+        ("basin", _) => ["node_id", "time"]
+        ("flow", _) => ["link_id", "time"]
+        ("basin_state", _) => ["node_id"]
+        ("concentration", _) => ["substance", "node_id", "time"]
+        ("control", _) => ["time"]
+        ("allocation", _) => ["demand_priority", "node_id", "time"]
+        ("allocation_flow", _) => ["link_id", "time"]
+        ("subgrid_level", _) => ["subgrid_id", "time"]
+        ("solver_stats", _) => ["time"]
+        _ => error("Unknown dimensionality for file: $file_name, variable: $var_name")
+    end
+end
+#! format: on
+
+"""
+NetCDF global attributes based on CF conventions.
+"""
+const CF_GLOBAL_ATTRIB = OrderedDict{String, String}(
+    "Conventions" => "CF-1.12",
+    "references" => "https://ribasim.org",
+    "ribasim_version" => string(pkgversion(Ribasim)),
+)
+
+"""
+NetCDF variable attributes based on CF conventions.
+
+https://cfconventions.org/Data/cf-standard-names/current/build/cf-standard-name-table.html
+"""
+const CF = OrderedDict{String, OrderedDict{String, String}}(
+    "node_id" =>
+        OrderedDict("cf_role" => "timeseries_id", "long_name" => "node identifier"),
+    "link_id" =>
+        OrderedDict("cf_role" => "timeseries_id", "long_name" => "link identifier"),
+    "time" => OrderedDict(
+        "axis" => "T",
+        "calendar" => "standard",
+        "standard_name" => "time",
+        "long_name" => "time",
+    ),
+    "level" => OrderedDict(
+        "units" => "m",
+        "standard_name" => "water_surface_height_above_reference_datum",
+        "long_name" => "water level above reference datum",
+    ),
+    "flow_rate" => OrderedDict(
+        "units" => "m3 s-1",
+        "standard_name" => "water_volume_transport_in_river_channel",
+        "long_name" => "water flow rate",
+    ),
+    "concentration" => OrderedDict(
+        "units" => "g m-3",
+        "standard_name" => "mass_concentration_of_substance_in_water",  # not CF
+        "long_name" => "mass concentration",
+    ),
+    "storage" => OrderedDict(
+        "units" => "m3",
+        "standard_name" => "surface_water_amount",
+        "long_name" => "water storage volume",
+    ),
+    "inflow_rate" => OrderedDict(
+        "units" => "m3 s-1",
+        "standard_name" => "water_volume_transport_in_river_channel",
+        "long_name" => "water inflow rate",
+    ),
+    "outflow_rate" => OrderedDict(
+        "units" => "m3 s-1",
+        "standard_name" => "water_volume_transport_in_river_channel",
+        "long_name" => "water outflow rate",
+    ),
+    "storage_rate" =>
+        OrderedDict("units" => "m3 s-1", "long_name" => "water storage rate of change"),
+    "precipitation" => OrderedDict(
+        "units" => "m3 s-1",
+        "standard_name" => "lwe_precipitation_rate",
+        "long_name" => "liquid water equivalent precipitation rate",
+    ),
+    "surface_runoff" => OrderedDict(
+        "units" => "m3 s-1",
+        "standard_name" => "surface_runoff_flux",
+        "long_name" => "surface runoff flux",
+    ),
+    "evaporation" => OrderedDict(
+        "units" => "m3 s-1",
+        "standard_name" => "lwe_water_evaporation_rate",
+        "long_name" => "water evaporation flux",
+    ),
+    "drainage" => OrderedDict("units" => "m3 s-1", "long_name" => "drainage flux"),
+    "infiltration" =>
+        OrderedDict("units" => "m3 s-1", "long_name" => "infiltration flux"),
+    "balance_error" =>
+        OrderedDict("units" => "m3 s-1", "long_name" => "water balance error"),
+    "relative_error" =>
+        OrderedDict("units" => "1", "long_name" => "relative water balance error"),
+    "convergence" =>
+        OrderedDict("units" => "1", "long_name" => "convergence indicator"),
+    "computation_time" =>
+        OrderedDict("units" => "ms", "long_name" => "computation time"),
+    "rhs_calls" => OrderedDict(
+        "units" => "1",
+        "long_name" => "number of right-hand side function calls",
+    ),
+    "linear_solves" =>
+        OrderedDict("units" => "1", "long_name" => "number of linear solves"),
+    "accepted_timesteps" =>
+        OrderedDict("units" => "1", "long_name" => "number of accepted timesteps"),
+    "rejected_timesteps" =>
+        OrderedDict("units" => "1", "long_name" => "number of rejected timesteps"),
+    "dt" => OrderedDict("units" => "s", "long_name" => "timestep size"),
+    "from_node_id" => OrderedDict("long_name" => "source node identifier"),
+    "to_node_id" => OrderedDict("long_name" => "destination node identifier"),
+    "substance" =>
+        OrderedDict("standard_name" => "realization", "long_name" => "substance name"),
+    "control_node_id" => OrderedDict("long_name" => "control node identifier"),
+    "truth_state" => OrderedDict("long_name" => "truth state of control condition"),
+    "control_state" => OrderedDict("long_name" => "control state"),
+    "subnetwork_id" => OrderedDict("long_name" => "subnetwork identifier"),
+    "node_type" => OrderedDict("long_name" => "node type"),
+    "demand_priority" => OrderedDict(
+        "units" => "1",
+        "standard_name" => "realization",
+        "long_name" => "demand priority",
+    ),
+    "demand" => OrderedDict("units" => "m3 s-1", "long_name" => "water demand"),
+    "allocated" => OrderedDict("units" => "m3 s-1", "long_name" => "allocated water"),
+    "realized" =>
+        OrderedDict("units" => "m3 s-1", "long_name" => "realized water allocation"),
+    "from_node_type" => OrderedDict("long_name" => "source node type"),
+    "to_node_type" => OrderedDict("long_name" => "destination node type"),
+    "subgrid_id" => OrderedDict("long_name" => "subgrid element identifier"),
+    "subgrid_level" => OrderedDict(
+        "units" => "m",
+        "standard_name" => "water_surface_height_above_reference_datum",
+        "long_name" => "subgrid water level above reference datum",
+    ),
 )
 
 "Get the storage and level of all basins as matrices of nbasin × ntime"
@@ -110,9 +338,7 @@ function get_storages_and_levels(
 end
 
 "Create the basin state table from the saved data"
-function basin_state_table(
-    model::Model,
-)::@NamedTuple{node_id::Vector{Int32}, level::Vector{Float64}}
+function basin_state_data(model::Model; table::Bool = true)
     (; u, p, t) = model.integrator
     (; current_level) = p.state_time_dependent_cache
 
@@ -123,25 +349,7 @@ function basin_state_table(
 end
 
 "Create the basin result table from the saved data"
-function basin_table(
-    model::Model,
-)::@NamedTuple{
-    time::Vector{DateTime},
-    node_id::Vector{Int32},
-    level::Vector{Float64},
-    storage::Vector{Float64},
-    inflow_rate::Vector{Float64},
-    outflow_rate::Vector{Float64},
-    storage_rate::Vector{Float64},
-    precipitation::Vector{Float64},
-    surface_runoff::Vector{Float64},
-    evaporation::Vector{Float64},
-    drainage::Vector{Float64},
-    infiltration::Vector{Float64},
-    balance_error::Vector{Float64},
-    relative_error::Vector{Float64},
-    convergence::Vector{Union{Missing, Float64}},
-}
+function basin_data(model::Model; table::Bool = true)
     (; saved) = model
     (; u) = model.integrator
     state_ranges = getaxes(u)
@@ -178,8 +386,18 @@ function basin_table(
         end
     end
 
-    time = repeat(data.time[begin:(end - 1)]; inner = nbasin)
-    node_id = repeat(Int32.(data.node_id); outer = ntsteps)
+    time = data.time[begin:(end - 1)]
+    node_id = Int32.(data.node_id)
+
+    if table
+        time = repeat(time; inner = nbasin)
+        node_id = repeat(node_id; outer = ntsteps)
+    else
+        level = reshape(level, nbasin, ntsteps)
+        storage = reshape(storage, nbasin, ntsteps)
+        evaporation = reshape(evaporation, nbasin, ntsteps)
+        infiltration = reshape(infiltration, nbasin, ntsteps)
+    end
 
     return (;
         time,
@@ -200,17 +418,7 @@ function basin_table(
     )
 end
 
-function solver_stats_table(
-    model::Model,
-)::@NamedTuple{
-    time::Vector{DateTime},
-    computation_time::Vector{Float64},
-    rhs_calls::Vector{Int},
-    linear_solves::Vector{Int},
-    accepted_timesteps::Vector{Int},
-    rejected_timesteps::Vector{Int},
-    dt::Vector{Float64},
-}
+function solver_stats_data(model::Model; table::Bool = true)
     solver_stats = StructVector(model.saved.solver_stats.saveval)
     (;
         time = datetime_since.(
@@ -228,16 +436,7 @@ function solver_stats_table(
 end
 
 "Create a flow result table from the saved data"
-function flow_table(
-    model::Model,
-)::@NamedTuple{
-    time::Vector{DateTime},
-    link_id::Vector{Union{Int32, Missing}},
-    from_node_id::Vector{Int32},
-    to_node_id::Vector{Int32},
-    flow_rate::Vector{Float64},
-    convergence::Vector{Union{Missing, Float64}},
-}
+function flow_data(model::Model; table::Bool = true)
     (; config, saved, integrator) = model
     (; t, saveval) = saved.flow
     (; u, p) = integrator
@@ -289,10 +488,21 @@ function flow_table(
     if !isempty(t)
         t_starts[1] = 0.0
     end
-    time = repeat(datetime_since.(t_starts, config.starttime); inner = nflow)
-    link_id = repeat(unique_link_ids_flow; outer = ntsteps)
-    from_node_id = repeat(from_node_id; outer = ntsteps)
-    to_node_id = repeat(to_node_id; outer = ntsteps)
+
+    time = datetime_since.(t_starts, config.starttime)
+    link_id = unique_link_ids_flow
+    from_node_id = from_node_id
+    to_node_id = to_node_id
+
+    if table
+        time = repeat(time; inner = nflow)
+        link_id = repeat(link_id; outer = ntsteps)
+        from_node_id = repeat(from_node_id; outer = ntsteps)
+        to_node_id = repeat(to_node_id; outer = ntsteps)
+    else
+        flow_rate = reshape(flow_rate, nflow, ntsteps)
+        flow_rate_conv = reshape(flow_rate_conv, nflow, ntsteps)
+    end
 
     return (;
         time,
@@ -305,14 +515,7 @@ function flow_table(
 end
 
 "Create a concentration result table from the saved data"
-function concentration_table(
-    model::Model,
-)::@NamedTuple{
-    time::Vector{DateTime},
-    node_id::Vector{Int32},
-    substance::Vector{String},
-    concentration::Vector{Float64},
-}
+function concentration_data(model::Model; table::Bool = true)
     (; saved, integrator) = model
     (; p_independent) = integrator.p
     (; basin) = p_independent
@@ -327,22 +530,23 @@ function concentration_table(
     substances = String.(basin.concentration_data.substances)
     concentration = FlatVector(saved.flow.saveval, :concentration)
 
-    time = repeat(data.time[begin:(end - 1)]; inner = nbasin * nsubstance)
-    substance = repeat(substances; inner = nbasin, outer = ntsteps)
-    node_id = repeat(Int32.(data.node_id); outer = ntsteps * nsubstance)
+    time = data.time[begin:(end - 1)]
+    substance = substances
+    node_id = Int32.(data.node_id)
+
+    if table
+        time = repeat(time; inner = nbasin * nsubstance)
+        substance = repeat(substance; inner = nbasin, outer = ntsteps)
+        node_id = repeat(node_id; outer = ntsteps * nsubstance)
+    else
+        concentration = reshape(concentration, nsubstance, nbasin, ntsteps)
+    end
 
     return (; time, node_id, substance, concentration)
 end
 
 "Create a discrete control result table from the saved data"
-function discrete_control_table(
-    model::Model,
-)::@NamedTuple{
-    time::Vector{DateTime},
-    control_node_id::Vector{Int32},
-    truth_state::Vector{String},
-    control_state::Vector{String},
-}
+function discrete_control_data(model::Model; table::Bool = true)
     (; config) = model
     (; record) = model.integrator.p.p_independent.discrete_control
 
@@ -351,73 +555,101 @@ function discrete_control_table(
 end
 
 "Create an allocation result table for the saved data"
-function allocation_table(
-    model::Model,
-)::@NamedTuple{
-    time::Vector{DateTime},
-    subnetwork_id::Vector{Int32},
-    node_type::Vector{String},
-    node_id::Vector{Int32},
-    demand_priority::Vector{Int32},
-    demand::Vector{Float64},
-    allocated::Vector{Float64},
-    realized::Vector{Float64},
-}
+function allocation_data(model::Model; table::Bool = true)
     (; config) = model
     (; record_demand) = model.integrator.p.p_independent.allocation
 
-    time = datetime_since.(record_demand.time, config.starttime)
+    datetimes = datetime_since.(record_demand.time, config.starttime)
+
+    if table
+        time = datetimes
+        subnetwork_id = record_demand.subnetwork_id
+        node_type = record_demand.node_type
+        node_id = record_demand.node_id
+        demand_priority = record_demand.demand_priority
+        demand = record_demand.demand
+        allocated = record_demand.allocated
+        realized = record_demand.realized
+    else
+        time = unique(datetimes)
+        node_id = unique(record_demand.node_id)
+        demand_priority = unique(record_demand.demand_priority)
+
+        nrows = length(record_demand.time)
+        ntsteps = length(time)
+        nnodes = length(node_id)
+        nprio = length(demand_priority)
+
+        # record_demand only stores existing node_id and demand_priority combination
+        # e.g. node #3 has only prio 1, node #6 has only prio 3
+        # here we need to create the 2x2 matrix ourselves and fill in this case half
+        demand = fill(NaN, nprio, nnodes, ntsteps)
+        allocated = fill(NaN, nprio, nnodes, ntsteps)
+        realized = fill(NaN, nprio, nnodes, ntsteps)
+
+        # coordinate variables are similarly filled in
+        subnetwork_id = zeros(Int32, nnodes)
+        node_type = ["" for _ in 1:nnodes]
+
+        for row in 1:nrows
+            prio = record_demand.demand_priority[row]
+            node = record_demand.node_id[row]
+            t = datetimes[row]
+
+            i = searchsortedfirst(demand_priority, prio)
+            j = searchsortedfirst(node_id, node)
+            k = searchsortedfirst(time, t)
+            demand[i, j, k] = record_demand.demand[row]
+            allocated[i, j, k] = record_demand.allocated[row]
+            realized[i, j, k] = record_demand.realized[row]
+            subnetwork_id[j] = record_demand.subnetwork_id[row]
+            node_type[j] = record_demand.node_type[row]
+        end
+    end
+
     return (;
         time,
-        record_demand.subnetwork_id,
-        record_demand.node_type,
-        record_demand.node_id,
-        record_demand.demand_priority,
-        record_demand.demand,
-        record_demand.allocated,
-        record_demand.realized,
+        subnetwork_id,
+        node_type,
+        node_id,
+        demand_priority,
+        demand,
+        allocated,
+        realized,
     )
 end
 
-function allocation_flow_table(
-    model::Model,
-)::@NamedTuple{
-    time::Vector{DateTime},
-    link_id::Vector{Int32},
-    from_node_type::Vector{String},
-    from_node_id::Vector{Int32},
-    to_node_type::Vector{String},
-    to_node_id::Vector{Int32},
-    subnetwork_id::Vector{Int32},
-    flow_rate::Vector{Float64},
-    optimization_type::Vector{String},
-}
+function allocation_flow_data(model::Model; table::Bool = true)
     (; config) = model
     (; record_flow) = model.integrator.p.p_independent.allocation
 
-    time = datetime_since.(record_flow.time, config.starttime)
+    if table
+        time = datetime_since.(record_flow.time, config.starttime)
+        link_id = record_flow.link_id
+        from_node_type = record_flow.from_node_type
+        from_node_id = record_flow.from_node_id
+        to_node_type = record_flow.to_node_type
+        to_node_id = record_flow.to_node_id
+        subnetwork_id = record_flow.subnetwork_id
+        optimization_type = record_flow.optimization_type
+    else
+        error("allocation_flow not implemented for NetCDF")
+    end
 
     return (;
         time,
-        record_flow.link_id,
-        record_flow.from_node_type,
-        record_flow.from_node_id,
-        record_flow.to_node_type,
-        record_flow.to_node_id,
-        record_flow.subnetwork_id,
+        link_id,
+        from_node_type,
+        from_node_id,
+        to_node_type,
+        to_node_id,
+        subnetwork_id,
         record_flow.flow_rate,
-        record_flow.optimization_type,
+        optimization_type,
     )
 end
 
-function allocation_control_table(
-    model::Model,
-)::@NamedTuple{
-    time::Vector{DateTime},
-    node_id::Vector{Int32},
-    node_type::Vector{String},
-    flow_rate::Vector{Float64},
-}
+function allocation_control_data(model::Model; table::Bool = true)
     (; integrator, config) = model
     (; record_control) = integrator.p.p_independent.allocation
 
@@ -429,13 +661,7 @@ function allocation_control_table(
     )
 end
 
-function subgrid_level_table(
-    model::Model,
-)::@NamedTuple{
-    time::Vector{DateTime},
-    subgrid_id::Vector{Int32},
-    subgrid_level::Vector{Float64},
-}
+function subgrid_level_data(model::Model; table::Bool = true)
     (; config, saved, integrator) = model
     (; t, saveval) = saved.subgrid_level
     subgrid = integrator.p.p_independent.subgrid
@@ -443,12 +669,16 @@ function subgrid_level_table(
     nelem = length(subgrid.level)
     ntsteps = length(t)
 
-    time = repeat(datetime_since.(t, config.starttime); inner = nelem)
-    subgrid_id = repeat(
-        sort(vcat(subgrid.subgrid_id_static, subgrid.subgrid_id_time));
-        outer = ntsteps,
-    )
-    subgrid_level = FlatVector(saveval)
+    time = datetime_since.(t, config.starttime)
+    subgrid_id = sort(vcat(subgrid.subgrid_id_static, subgrid.subgrid_id_time))
+
+    if table
+        time = repeat(time; inner = nelem)
+        subgrid_id = repeat(subgrid_id; outer = ntsteps)
+        subgrid_level = FlatVector(saveval)
+    else
+        subgrid_level = reshape(FlatVector(saveval), nelem, ntsteps)
+    end
     return (; time, subgrid_id, subgrid_level)
 end
 
@@ -456,20 +686,8 @@ end
 function write_arrow(
     path::AbstractString,
     table::NamedTuple,
-    compress::Union{ZstdCompressor, Nothing};
-    remove_empty_table::Bool = false,
+    compress::Union{ZstdCompressor, Nothing},
 )::Nothing
-    # At the start of the simulation, write an empty table to ensure we have permissions
-    # and fail early.
-    # At the end of the simulation, write all non-empty tables, and remove existing empty ones.
-    if haskey(table, :time) && isempty(table.time) && remove_empty_table
-        try
-            rm(path; force = true)
-        catch
-            @warn "Failed to remove results, file may be locked." path
-        end
-        return nothing
-    end
     if haskey(table, :time)
         # ensure DateTime is encoded in a compatible manner
         # https://github.com/apache/arrow-julia/issues/303
@@ -482,6 +700,33 @@ function write_arrow(
     catch e
         @error "Failed to write results, file may be locked." path
         rethrow(e)
+    end
+    return nothing
+end
+
+"Write a result table to disk as an Arrow file"
+function write_netcdf(
+    path::AbstractString,
+    data::NamedTuple,
+    compress::Union{ZstdCompressor, Nothing},
+)::Nothing
+    mkpath(dirname(path))
+    # Don't write empty files
+    haskey(data, :time) && isempty(data.time) && return nothing
+    file_name = splitext(basename(path))[1]
+    attrib = merge(CF_GLOBAL_ATTRIB, OrderedDict("title" => "Ribasim results: $file_name"))
+    NCDataset(path, "c"; attrib) do ds
+        for (var_name, var_data) in pairs(data)
+            var_name = String(var_name)
+            var_dims = Tuple(nc_dims(file_name, var_name))
+            # FlatVector contents can easily be stacked to a matrix
+            # Normal Vectors should be reshape to a matrix already
+            if var_data isa FlatVector && length(var_dims) > 1
+                var_data = stack(var_data.v)
+            end
+            attrib = CF[var_name]
+            defVar(ds, var_name, var_data, var_dims; attrib)
+        end
     end
     return nothing
 end

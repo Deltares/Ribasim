@@ -7,7 +7,7 @@
             force = true,
         )
         config = Ribasim.Config(normpath(dir, "ribasim.toml"))
-        mkdir(Ribasim.results_path(config, "."))
+        mkdir(Ribasim.results_path(config))
         open(Ribasim.results_path(config, "ribasim.log"), "w") do io
             logger =
                 Ribasim.setup_logger(; verbosity = config.logging.verbosity, stream = io)
@@ -28,7 +28,7 @@ end
             force = true,
         )
         config = Ribasim.Config(normpath(dir, "ribasim.toml"))
-        mkdir(Ribasim.results_path(config, "."))
+        mkdir(Ribasim.results_path(config))
         open(Ribasim.results_path(config, "ribasim.log"), "w") do io
             logger =
                 Ribasim.setup_logger(; verbosity = config.logging.verbosity, stream = io)
@@ -50,7 +50,7 @@ end
             force = true,
         )
         config = Ribasim.Config(normpath(dir, "ribasim.toml"))
-        mkdir(Ribasim.results_path(config, "."))
+        mkdir(Ribasim.results_path(config))
         open(Ribasim.results_path(config, "ribasim.log"), "w") do io
             logger = Ribasim.setup_logger(;
                 verbosity = Logging.Debug,
