@@ -782,19 +782,20 @@ end
 
         for (i, subnetwork_id) in enumerate(subnetwork_ids)
             @testset "$(model_name)_subnetwork_id_$subnetwork_id" begin
+                written_problem_path = normpath(
+                    @__DIR__,
+                    "data/allocation_problems/$model_name/allocation_problem_$subnetwork_id.lp",
+                )
+                @test ispath(written_problem_path)
+                written_problem = read(written_problem_path, String)
+
+                current_problem_path =
+                    joinpath(dirname(toml_path), "allocation_problem_$subnetwork_id.lp")
+
                 for model in models
                     (; problem, subnetwork_id) =
                         model.integrator.p.p_independent.allocation.allocation_models[i]
 
-                    written_problem_path = normpath(
-                        @__DIR__,
-                        "data/allocation_problems/$model_name/allocation_problem_$subnetwork_id.lp",
-                    )
-                    @test ispath(written_problem_path)
-                    written_problem = read(written_problem_path, String)
-
-                    current_problem_path =
-                        joinpath(dirname(toml_path), "allocation_problem_$subnetwork_id.lp")
                     JuMP.write_to_file(problem, current_problem_path)
                     current_problem = read(current_problem_path, String)
 
