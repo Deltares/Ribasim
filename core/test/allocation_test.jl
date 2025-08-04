@@ -789,8 +789,10 @@ end
                 @test ispath(written_problem_path)
                 written_problem = read(written_problem_path, String)
 
-                current_problem_path =
-                    joinpath(dirname(toml_path), "allocation_problem_$subnetwork_id.lp")
+                current_problem_path = normpath(
+                    dirname(toml_path),
+                    "results/allocation_problem_$subnetwork_id.lp",
+                )
 
                 for model in models
                     (; problem, subnetwork_id) =
