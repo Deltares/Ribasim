@@ -776,6 +776,14 @@ end
                     for allocation_model in allocation_models
                         (; problem, subnetwork_id) = allocation_model
 
+                        problem_code = (; model_name, subnetwork_id)
+
+                        # Don't overwrite the problem written to file by the test
+                        # if a change was detected
+                        if problem_code in changed_problems
+                            continue
+                        end
+
                         written_problem_path = normpath(
                             @__DIR__,
                             "data/allocation_problems/$model_name/allocation_problem_$subnetwork_id.lp",
@@ -791,7 +799,7 @@ end
                         current_problem = read(current_problem_path, String)
 
                         if current_problem != written_problem
-                            push!(changed_problems, (; model_name, subnetwork_id))
+                            push!(changed_problems, problem_code)
                         end
                     end
                 end
