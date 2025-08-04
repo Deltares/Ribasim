@@ -129,4 +129,4 @@ precompile_workload = false
 specialize = false
 
 [targets]
-test = ["Aqua", "CSV", "DataFrames", "IOCapture", "Logging", "Statistics", "TerminalLoggers", "Test", "TOML", "TestItemRunner"]
+test = ["Aqua", "CSV", "DataFrames", "Glob", "IOCapture", "Logging", "Statistics", "TerminalLoggers", "Test", "TOML", "TestItemRunner"]
