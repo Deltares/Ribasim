@@ -757,10 +757,7 @@ end
 
     # To update the reference files run `pixi run write-allocation-problems`
     include(normpath(@__DIR__, "../../utils/utils.jl"))
-
     toml_paths = get_testmodels()
-
-    changed_problems = Set{@NamedTuple{model_name::String, subnetwork_id::Int32}}()
 
     for toml_path in toml_paths
         model_name = basename(dirname(toml_path))
