@@ -331,30 +331,6 @@ function set_demands_lower_constraints!(
     return nothing
 end
 
-function set_demands_upper_constraints!(
-    constraints_upper,
-    rel_errors_upper,
-    target_demand_fraction::JuMP.VariableRef,
-    demand_function::Function,
-    node_ids::Vector{NodeID};
-    deactivate_when_no_demand::Bool = false,
-)::Nothing
-    for node_id in node_ids
-        constraint_upper = constraints_upper[node_id]
-        rel_error_upper = rel_errors_upper[node_id]
-        d = demand_function(node_id)
-        JuMP.set_normalized_coefficient(constraint_upper, rel_error_upper, d)
-        JuMP.set_normalized_coefficient(constraint_upper, target_demand_fraction, d)
-
-        if deactivate_when_no_demand && iszero(d)
-            JuMP.set_normalized_rhs(constraint_upper, -1e10)
-        else
-            JuMP.set_normalized_rhs(constraint_upper, 0)
-        end
-    end
-    return nothing
-end
-
 function set_demands!(
     allocation_model::AllocationModel,
     p_independent::ParametersIndependent,
@@ -376,13 +352,17 @@ function set_demands!(
         node_id -> user_demand.demand[node_id.idx, demand_priority_idx] / scaling.flow,
         only(problem[:relative_user_demand_error].axes),
     )
-    set_demands_upper_constraints!(
-        problem[:user_demand_constraint_upper],
-        problem[:relative_user_demand_error],
-        target_demand_fraction,
-        node_id -> user_demand.demand[node_id.idx, demand_priority_idx] / scaling.flow,
-        only(problem[:relative_user_demand_error].axes),
-    )
+
+    flow = problem[:flow]
+
+    # Set demand (+ previously allocated) as upper bound
+    for node_id in only(problem[:relative_user_demand_error].axes)
+        inflow_link = user_demand.inflow_link[node_id.idx].link
+        allocated =
+            sum(view(user_demand.allocated, node_id.idx, 1:(demand_priority_idx - 1)))
+        upper_bound = allocated + user_demand.demand[node_id.idx, demand_priority_idx]
+        JuMP.set_upper_bound(flow[inflow_link], upper_bound / scaling.flow)
+    end
 
     # FlowDemand
     set_demands_lower_constraints!(

@@ -351,13 +351,6 @@ function add_user_demand!(
         -(flow[inflow_link[node_id.idx].link] - user_demand_allocated[node_id]),
         base_name = "user_demand_constraint_lower"
     )
-    problem[:user_demand_constraint_upper] = JuMP.@constraint(
-        problem,
-        [node_id = user_demand_ids_subnetwork],
-        d * (relative_user_demand_error[node_id] + target_demand_fraction) ≥
-        flow[inflow_link[node_id.idx].link] - user_demand_allocated[node_id],
-        base_name = "user_demand_constraint_upper"
-    )
 
     # Define constraints: user demand return flow
     return_factor = 0.5 # example return factor
