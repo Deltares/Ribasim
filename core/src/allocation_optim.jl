@@ -151,7 +151,9 @@ function set_simulation_data!(
         S_a = get_storage_from_level(basin, inflow_link.link[1].idx, h_a)
 
         # Constant terms in linearization
-        q0 = q - h_b * ∂q_∂level_downstream - ∂q_∂level_upstream * ∂h∂S_upstream * S_a
+        q0 =
+            q - h_b * ∂q_∂level_downstream -
+            ∂q_∂level_upstream * ∂h∂S_upstream * S_a / scaling.storage
 
         # To avoid confusion: h_a and h_b are numbers for the current levels in the physical
         # layer, upstream_level and downstream_level are variables in the optimization problem
@@ -165,7 +167,7 @@ function set_simulation_data!(
         JuMP.set_normalized_coefficient(
             constraint,
             upstream_storage,
-            -∂q_∂level_upstream * ∂h∂S_upstream / scaling.flow,
+            -∂q_∂level_upstream * ∂h∂S_upstream / scaling.flow / scaling.storage,
         )
         JuMP.set_normalized_coefficient(
             constraint,
