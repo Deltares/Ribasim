@@ -400,17 +400,17 @@ window.Quarto = {
   <li><a href="#sec-link" id="toc-sec-link" class="nav-link" data-scroll-target="#sec-link"><span class="header-section-number">4</span> Link</a></li>
   <li><a href="#sec-results" id="toc-sec-results" class="nav-link" data-scroll-target="#sec-results"><span class="header-section-number">5</span> Results</a>
   <ul class="collapse">
-  <li><a href="#basin---basin.arrow" id="toc-basin---basin.arrow" class="nav-link" data-scroll-target="#basin---basin.arrow"><span class="header-section-number">5.1</span> Basin - <code>basin.arrow</code></a></li>
-  <li><a href="#flow---flow.arrow" id="toc-flow---flow.arrow" class="nav-link" data-scroll-target="#flow---flow.arrow"><span class="header-section-number">5.2</span> Flow - <code>flow.arrow</code></a></li>
-  <li><a href="#sec-state" id="toc-sec-state" class="nav-link" data-scroll-target="#sec-state"><span class="header-section-number">5.3</span> State - <code>basin_state.arrow</code></a></li>
-  <li><a href="#discretecontrol---control.arrow" id="toc-discretecontrol---control.arrow" class="nav-link" data-scroll-target="#discretecontrol---control.arrow"><span class="header-section-number">5.4</span> DiscreteControl - <code>control.arrow</code></a></li>
-  <li><a href="#allocation---allocation.arrow" id="toc-allocation---allocation.arrow" class="nav-link" data-scroll-target="#allocation---allocation.arrow"><span class="header-section-number">5.5</span> Allocation - <code>allocation.arrow</code></a></li>
-  <li><a href="#allocation-flow---allocation_flow.arrow" id="toc-allocation-flow---allocation_flow.arrow" class="nav-link" data-scroll-target="#allocation-flow---allocation_flow.arrow"><span class="header-section-number">5.6</span> Allocation flow - <code>allocation_flow.arrow</code></a></li>
+  <li><a href="#basin---basin" id="toc-basin---basin" class="nav-link" data-scroll-target="#basin---basin"><span class="header-section-number">5.1</span> Basin - <code>basin</code></a></li>
+  <li><a href="#flow---flow" id="toc-flow---flow" class="nav-link" data-scroll-target="#flow---flow"><span class="header-section-number">5.2</span> Flow - <code>flow</code></a></li>
+  <li><a href="#sec-state" id="toc-sec-state" class="nav-link" data-scroll-target="#sec-state"><span class="header-section-number">5.3</span> State - <code>basin_state</code></a></li>
+  <li><a href="#discretecontrol---control" id="toc-discretecontrol---control" class="nav-link" data-scroll-target="#discretecontrol---control"><span class="header-section-number">5.4</span> DiscreteControl - <code>control</code></a></li>
+  <li><a href="#allocation---allocation" id="toc-allocation---allocation" class="nav-link" data-scroll-target="#allocation---allocation"><span class="header-section-number">5.5</span> Allocation - <code>allocation</code></a></li>
+  <li><a href="#allocation-flow---allocation_flow" id="toc-allocation-flow---allocation_flow" class="nav-link" data-scroll-target="#allocation-flow---allocation_flow"><span class="header-section-number">5.6</span> Allocation flow - <code>allocation_flow</code></a></li>
   <li><a href="#allocation-feasibility-analysis---allocation_analysis_feasibility.log" id="toc-allocation-feasibility-analysis---allocation_analysis_feasibility.log" class="nav-link" data-scroll-target="#allocation-feasibility-analysis---allocation_analysis_feasibility.log"><span class="header-section-number">5.7</span> Allocation feasibility analysis - <code>allocation_analysis_feasibility.log</code></a></li>
   <li><a href="#allocation-scaling-analysis---allocation_analysis_scaling.log" id="toc-allocation-scaling-analysis---allocation_analysis_scaling.log" class="nav-link" data-scroll-target="#allocation-scaling-analysis---allocation_analysis_scaling.log"><span class="header-section-number">5.8</span> Allocation scaling analysis - <code>allocation_analysis_scaling.log</code></a></li>
-  <li><a href="#concentration---concentration.arrow" id="toc-concentration---concentration.arrow" class="nav-link" data-scroll-target="#concentration---concentration.arrow"><span class="header-section-number">5.9</span> Concentration - <code>concentration.arrow</code></a></li>
-  <li><a href="#subgrid-level---subgrid_level.arrow" id="toc-subgrid-level---subgrid_level.arrow" class="nav-link" data-scroll-target="#subgrid-level---subgrid_level.arrow"><span class="header-section-number">5.10</span> Subgrid level - <code>subgrid_level.arrow</code></a></li>
-  <li><a href="#solver-statistics---solver_stats.arrow" id="toc-solver-statistics---solver_stats.arrow" class="nav-link" data-scroll-target="#solver-statistics---solver_stats.arrow"><span class="header-section-number">5.11</span> Solver statistics - <code>solver_stats.arrow</code></a></li>
+  <li><a href="#concentration---concentration" id="toc-concentration---concentration" class="nav-link" data-scroll-target="#concentration---concentration"><span class="header-section-number">5.9</span> Concentration - <code>concentration</code></a></li>
+  <li><a href="#subgrid-level---subgrid_level" id="toc-subgrid-level---subgrid_level" class="nav-link" data-scroll-target="#subgrid-level---subgrid_level"><span class="header-section-number">5.10</span> Subgrid level - <code>subgrid_level</code></a></li>
+  <li><a href="#solver-statistics---solver_stats" id="toc-solver-statistics---solver_stats" class="nav-link" data-scroll-target="#solver-statistics---solver_stats"><span class="header-section-number">5.11</span> Solver statistics - <code>solver_stats</code></a></li>
   </ul></li>
   </ul>
 </nav>
@@ -493,17 +493,18 @@ window.Quarto = {
 <span id="cb1-51"><a href="#cb1-51" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-52"><a href="#cb1-52" aria-hidden="true" tabindex="-1"></a><span class="kw">[logging]</span></span>
 <span id="cb1-53"><a href="#cb1-53" aria-hidden="true" tabindex="-1"></a><span class="co"># defines the logging level of Ribasim</span></span>
-<span id="cb1-54"><a href="#cb1-54" aria-hidden="true" tabindex="-1"></a><span class="dt">verbosity</span> <span class="op">=</span> <span class="st">"info"</span> <span class="co"># optional, default "info", can otherwise be "debug", "warn" or "error"</span></span>
+<span id="cb1-54"><a href="#cb1-54" aria-hidden="true" tabindex="-1"></a><span class="dt">verbosity</span> <span class="op">=</span> <span class="st">"info"</span> <span class="co"># optional, default "info", can also be "debug", "warn" or "error"</span></span>
 <span id="cb1-55"><a href="#cb1-55" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-56"><a href="#cb1-56" aria-hidden="true" tabindex="-1"></a><span class="kw">[results]</span></span>
-<span id="cb1-57"><a href="#cb1-57" aria-hidden="true" tabindex="-1"></a><span class="dt">compression</span> <span class="op">=</span> <span class="cn">true</span>    <span class="co"># optional, default true, using zstd compression</span></span>
-<span id="cb1-58"><a href="#cb1-58" aria-hidden="true" tabindex="-1"></a><span class="dt">compression_level</span> <span class="op">=</span> <span class="dv">6</span> <span class="co"># optional, default 6</span></span>
-<span id="cb1-59"><a href="#cb1-59" aria-hidden="true" tabindex="-1"></a><span class="dt">subgrid</span> <span class="op">=</span> <span class="cn">false</span>       <span class="co"># optional, default false</span></span>
-<span id="cb1-60"><a href="#cb1-60" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-61"><a href="#cb1-61" aria-hidden="true" tabindex="-1"></a><span class="kw">[experimental]</span></span>
-<span id="cb1-62"><a href="#cb1-62" aria-hidden="true" tabindex="-1"></a><span class="co"># Experimental features, disabled by default</span></span>
-<span id="cb1-63"><a href="#cb1-63" aria-hidden="true" tabindex="-1"></a><span class="dt">concentration</span> <span class="op">=</span> <span class="cn">false</span> <span class="co"># tracer calculations</span></span>
-<span id="cb1-64"><a href="#cb1-64" aria-hidden="true" tabindex="-1"></a><span class="dt">allocation</span> <span class="op">=</span> <span class="cn">false</span> <span class="co"># allocation layer, replaced by 'first come first serve' when inactive</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb1-57"><a href="#cb1-57" aria-hidden="true" tabindex="-1"></a><span class="dt">format</span> <span class="op">=</span> <span class="st">"arrow"</span>      <span class="co"># optional, default "arrow", can also be "netcdf"</span></span>
+<span id="cb1-58"><a href="#cb1-58" aria-hidden="true" tabindex="-1"></a><span class="dt">compression</span> <span class="op">=</span> <span class="cn">true</span>    <span class="co"># optional, default true, using zstd compression</span></span>
+<span id="cb1-59"><a href="#cb1-59" aria-hidden="true" tabindex="-1"></a><span class="dt">compression_level</span> <span class="op">=</span> <span class="dv">6</span> <span class="co"># optional, default 6</span></span>
+<span id="cb1-60"><a href="#cb1-60" aria-hidden="true" tabindex="-1"></a><span class="dt">subgrid</span> <span class="op">=</span> <span class="cn">false</span>       <span class="co"># optional, default false</span></span>
+<span id="cb1-61"><a href="#cb1-61" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-62"><a href="#cb1-62" aria-hidden="true" tabindex="-1"></a><span class="kw">[experimental]</span></span>
+<span id="cb1-63"><a href="#cb1-63" aria-hidden="true" tabindex="-1"></a><span class="co"># Experimental features, disabled by default</span></span>
+<span id="cb1-64"><a href="#cb1-64" aria-hidden="true" tabindex="-1"></a><span class="dt">concentration</span> <span class="op">=</span> <span class="cn">false</span> <span class="co"># tracer calculations</span></span>
+<span id="cb1-65"><a href="#cb1-65" aria-hidden="true" tabindex="-1"></a><span class="dt">allocation</span> <span class="op">=</span> <span class="cn">false</span> <span class="co"># allocation layer, replaced by 'first come first serve' when inactive</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <section id="sec-solver-settings" class="level2" data-number="1.1">
 <h2 data-number="1.1" class="anchored" data-anchor-id="sec-solver-settings"><span class="header-section-number">1.1</span> Solver settings</h2>
 <p>The solver section in the configuration file is entirely optional, since we aim to use defaults that will generally work well. Common reasons to modify the solver settings are to adjust the calculation or result stepsizes: <code>dt</code>, and <code>saveat</code>. If your model does not converge, or your performance is lower than expected, it can help to adjust other solver settings as well.</p>
@@ -543,22 +544,28 @@ window.Quarto = {
 </thead>
 <tbody>
 <tr class="odd">
+<td>format</td>
+<td>String</td>
+<td>File format, default is “arrow” for Apache Arrow, other option is “netcdf” for NetCDF with CF conventions.</td>
+</tr>
+<tr class="even">
 <td>compression</td>
 <td>Bool</td>
 <td>Whether to apply compression or not.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>compression_level</td>
 <td>Int</td>
 <td>Zstandard compression level. Default is 6, higher compresses more.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>subgrid</td>
 <td>Bool</td>
 <td>Compute and output more detailed water levels.</td>
 </tr>
 </tbody>
 </table>
+<p>Currently compression is only used for Apache Arrow. NetCDF will be the only output format later on.</p>
 </section>
 <section id="logging-settings" class="level2" data-number="1.5">
 <h2 data-number="1.5" class="anchored" data-anchor-id="logging-settings"><span class="header-section-number">1.5</span> Logging settings</h2>
@@ -685,7 +692,7 @@ Important
 <h1 data-number="2"><span class="header-section-number">2</span> GeoPackage database and Arrow tables</h1>
 <p>The input and output tables described below all share that they are tabular files. The Node and Link tables always have to be in the <a href="https://www.geopackage.org/">GeoPackage</a> database file, and results are always written to <a href="https://arrow.apache.org/">Apache Arrow</a> files, sometimes also known as Feather files. All other tables can either be in the database or in separate Arrow files that are listed in the TOML as described above.</p>
 <p>For visualization, the Node and Link tables typically have associated geometries. GeoPackage was used since it provides a standardized way to store tables with (and without) geometry columns in a SQLite database. If, like Ribasim, you can ignore the geometries, a GeoPackage is easy to read using SQLite libraries, which are commonly available. Furthermore GeoPackage can be updated in place when working on a model.</p>
-<p>Arrow was chosen since it is standardized, fast, simple and flexible. It can be read and written by many different software packages. In Ribasim we use <a href="https://arrow.apache.org/julia/dev/">Arrow.jl</a>. Results are written to Arrow, since for long runs Ribasim can produce tables with many rows. Arrow is well suited for large tabular datasets, and file size is kept small by using compression. The Arrow input files can be compressed with LZ4 or Zstd compression. Furthermore, in some of the columns, a small amount of different values are repeated many times. To reduce file sizes it may be a good idea to apply <a href="https://arrow.apache.org/docs/format/Columnar.html#dictionary-encoded-layout">dictionary encoding</a> to those columns. The Ribasim version that was used to create the results is written to each file in the <code>ribasim_version</code> schema metadata.</p>
+<p>Arrow was chosen since it is standardized, fast, simple and flexible. It can be read and written by many different software packages. In Ribasim we use <a href="https://arrow.apache.org/julia/dev/">Arrow.jl</a>. Results can be written to Arrow, since for long runs Ribasim can produce tables with many rows. Arrow is well suited for large tabular datasets, and file size is kept small by using compression. The Arrow input files can be compressed with LZ4 or Zstd compression. Furthermore, in some of the columns, a small amount of different values are repeated many times. To reduce file sizes it may be a good idea to apply <a href="https://arrow.apache.org/docs/format/Columnar.html#dictionary-encoded-layout">dictionary encoding</a> to those columns. The Ribasim version that was used to create the results is written to each file in the <code>ribasim_version</code> schema metadata.</p>
 <section id="table-requirements" class="level2" data-number="2.1">
 <h2 data-number="2.1" class="anchored" data-anchor-id="table-requirements"><span class="header-section-number">2.1</span> Table requirements</h2>
 <p>Below we give details per file, in which we describe the schema of the table using a syntax like this:</p>
@@ -831,8 +838,8 @@ Important
 </section>
 <section id="sec-results" class="level1" data-number="5">
 <h1 data-number="5"><span class="header-section-number">5</span> Results</h1>
-<section id="basin---basin.arrow" class="level2" data-number="5.1">
-<h2 data-number="5.1" class="anchored" data-anchor-id="basin---basin.arrow"><span class="header-section-number">5.1</span> Basin - <code>basin.arrow</code></h2>
+<section id="basin---basin" class="level2" data-number="5.1">
+<h2 data-number="5.1" class="anchored" data-anchor-id="basin---basin"><span class="header-section-number">5.1</span> Basin - <code>basin</code></h2>
 <p>The Basin table contains:</p>
 <ul>
 <li>Results of the storage and level of each Basin, which are instantaneous values;</li>
@@ -935,8 +942,8 @@ Important
 </table>
 <p>The table is sorted by time, and per time it is sorted by <code>node_id</code>.</p>
 </section>
-<section id="flow---flow.arrow" class="level2" data-number="5.2">
-<h2 data-number="5.2" class="anchored" data-anchor-id="flow---flow.arrow"><span class="header-section-number">5.2</span> Flow - <code>flow.arrow</code></h2>
+<section id="flow---flow" class="level2" data-number="5.2">
+<h2 data-number="5.2" class="anchored" data-anchor-id="flow---flow"><span class="header-section-number">5.2</span> Flow - <code>flow</code></h2>
 <p>The flow table contains calculated mean flows over the <code>saveat</code> intervals for every flow link in the model. In the time column the start of the period is indicated.</p>
 <table class="caption-top table">
 <thead>
@@ -992,7 +999,7 @@ Important
 <p>The table is sorted by time, and per time the same <code>link_id</code> order is used, though not sorted. The <code>link_id</code> value is the same as the <code>fid</code> written to the Link table, and can be used to directly look up the Link geometry. Flows from the “from” to the “to” node have a positive sign, and if the flow is reversed it will be negative. - The <code>convergence</code> is the scaled residual of the solver, giving an indication of which nodes converge the worst (are hardest to solve).</p>
 </section>
 <section id="sec-state" class="level2" data-number="5.3">
-<h2 data-number="5.3" class="anchored" data-anchor-id="sec-state"><span class="header-section-number">5.3</span> State - <code>basin_state.arrow</code></h2>
+<h2 data-number="5.3" class="anchored" data-anchor-id="sec-state"><span class="header-section-number">5.3</span> State - <code>basin_state</code></h2>
 <p>The Basin state table contains the water levels in each Basin at the end of the simulation.</p>
 <table class="caption-top table">
 <thead>
@@ -1017,8 +1024,8 @@ Important
 </table>
 <p>To use this result as the initial condition of another simulation, see the <a href="../reference/node/basin.html#sec-state">Basin / state</a> table reference.</p>
 </section>
-<section id="discretecontrol---control.arrow" class="level2" data-number="5.4">
-<h2 data-number="5.4" class="anchored" data-anchor-id="discretecontrol---control.arrow"><span class="header-section-number">5.4</span> DiscreteControl - <code>control.arrow</code></h2>
+<section id="discretecontrol---control" class="level2" data-number="5.4">
+<h2 data-number="5.4" class="anchored" data-anchor-id="discretecontrol---control"><span class="header-section-number">5.4</span> DiscreteControl - <code>control</code></h2>
 <p>The control table contains a record of each change of control state: when it happened, which control node was involved, to which control state it changed and based on which truth state.</p>
 <table class="caption-top table">
 <thead>
@@ -1052,60 +1059,9 @@ Important
 </tbody>
 </table>
 </section>
-<section id="allocation---allocation.arrow" class="level2" data-number="5.5">
-<h2 data-number="5.5" class="anchored" data-anchor-id="allocation---allocation.arrow"><span class="header-section-number">5.5</span> Allocation - <code>allocation.arrow</code></h2>
-<p>The allocation table contains a record of allocation results: when it happened, for which node, in which allocation network, and what the demand, allocated flow and realized flow were. The realized values at the starting time of the simulation can be ignored.</p>
-<table class="caption-top table">
-<thead>
-<tr class="header">
-<th>column</th>
-<th>type</th>
-<th>unit</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>time</td>
-<td>DateTime</td>
-<td>-</td>
-</tr>
-<tr class="even">
-<td>subnetwork_id</td>
-<td>Int32</td>
-<td>-</td>
-</tr>
-<tr class="odd">
-<td>node_type</td>
-<td>String</td>
-<td>-</td>
-</tr>
-<tr class="even">
-<td>node_id</td>
-<td>Int32</td>
-<td>-</td>
-</tr>
-<tr class="odd">
-<td>priority</td>
-<td>Int32</td>
-<td>-</td>
-</tr>
-<tr class="even">
-<td>demand</td>
-<td>Float64</td>
-<td><span class="math inline">\(\text{m}^3/\text{s}\)</span></td>
-</tr>
-<tr class="odd">
-<td>allocated</td>
-<td>Float64</td>
-<td><span class="math inline">\(\text{m}^3/\text{s}\)</span></td>
-</tr>
-<tr class="even">
-<td>realized</td>
-<td>Float64</td>
-<td><span class="math inline">\(\text{m}^3/\text{s}\)</span></td>
-</tr>
-</tbody>
-</table>
+<section id="allocation---allocation" class="level2" data-number="5.5">
+<h2 data-number="5.5" class="anchored" data-anchor-id="allocation---allocation"><span class="header-section-number">5.5</span> Allocation - <code>allocation</code></h2>
+<p>The allocation table contains a record of allocation results: when it happened, for which node, in which allocation network, and what the demand, allocated flow and realized flow were. The realized values at the starting time of the simulation can be ignored. column | type | unit —————- | ——– | ——————— time | DateTime | - subnetwork_id | Int32 | - node_type | String | - node_id | Int32 | - demand_priority | Int32 | - demand | Float64 | <span class="math inline">\(\text{m}^3/\text{s}\)</span> allocated | Float64 | <span class="math inline">\(\text{m}^3/\text{s}\)</span> realized | Float64 | <span class="math inline">\(\text{m}^3/\text{s}\)</span></p>
 <div class="callout callout-style-default callout-note callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -1134,12 +1090,12 @@ Note
 </div>
 </div>
 </section>
-<section id="allocation-flow---allocation_flow.arrow" class="level2" data-number="5.6">
-<h2 data-number="5.6" class="anchored" data-anchor-id="allocation-flow---allocation_flow.arrow"><span class="header-section-number">5.6</span> Allocation flow - <code>allocation_flow.arrow</code></h2>
+<section id="allocation-flow---allocation_flow" class="level2" data-number="5.6">
+<h2 data-number="5.6" class="anchored" data-anchor-id="allocation-flow---allocation_flow"><span class="header-section-number">5.6</span> Allocation flow - <code>allocation_flow</code></h2>
 <p>The allocation flow table contains results of the optimized allocation flow on every link in the model that is part of a subnetwork, for each time an optimization problem is solved (see also <a href="../concept/allocation.html#the-high-level-algorithm">here</a>). If in the model a primary network and subnetwork(s) are specified, there are 3 different types of optimization for the subnetwork: The column <code>optimization_type</code> provides the distinction between these optimization types.</p>
 <ul>
 <li><code>internal_sources</code>: first it will try using local sources internal to the subnetwork</li>
-<li><code>collect_demands</code>: collecting its total demand per priority (for allocating flow from the primary network to the subnetwork)</li>
+<li><code>collect_demands</code>: collecting its total demand (for allocating flow from the primary network to the subnetwork)</li>
 <li><code>allocate</code>: allocating flow within the subnetwork</li>
 </ul>
 <table class="caption-top table">
@@ -1187,22 +1143,30 @@ Note
 <td>-</td>
 </tr>
 <tr class="even">
-<td>priority</td>
-<td>Int32</td>
-<td>-</td>
-</tr>
-<tr class="odd">
 <td>flow_rate</td>
 <td>Float64</td>
 <td><span class="math inline">\(\text{m}^3/\text{s}\)</span></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>optimization_type</td>
 <td>String</td>
 <td>-</td>
 </tr>
 </tbody>
 </table>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Note
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>This file is currently not written when the results format is set to <code>"netcdf"</code>.</p>
+</div>
+</div>
 </section>
 <section id="allocation-feasibility-analysis---allocation_analysis_feasibility.log" class="level2" data-number="5.7">
 <h2 data-number="5.7" class="anchored" data-anchor-id="allocation-feasibility-analysis---allocation_analysis_feasibility.log"><span class="header-section-number">5.7</span> Allocation feasibility analysis - <code>allocation_analysis_feasibility.log</code></h2>
@@ -1212,9 +1176,9 @@ Note
 <h2 data-number="5.8" class="anchored" data-anchor-id="allocation-scaling-analysis---allocation_analysis_scaling.log"><span class="header-section-number">5.8</span> Allocation scaling analysis - <code>allocation_analysis_scaling.log</code></h2>
 <p>When an allocation optimization problem turns out to be infeasible, a scaling analysis is performed. Some user friendly data is logged in the main log, but the full report of the analysis is written to this separate file. For details on the infeasibility analysis see <a href="https://jump.dev/MathOptAnalyzer.jl/dev/">here</a>.</p>
 </section>
-<section id="concentration---concentration.arrow" class="level2" data-number="5.9">
-<h2 data-number="5.9" class="anchored" data-anchor-id="concentration---concentration.arrow"><span class="header-section-number">5.9</span> Concentration - <code>concentration.arrow</code></h2>
-<p>If the <a href="../reference/usage.html#experimental-features">experimental concentration feature</a> is enabled, the results are written to <code>concentration.arrow</code>. This file records the Basin concentrations for each substance over time. The schema below is identical to the <a href="../reference/node/basin.html#concentration-external">external Basin concentration input</a>.</p>
+<section id="concentration---concentration" class="level2" data-number="5.9">
+<h2 data-number="5.9" class="anchored" data-anchor-id="concentration---concentration"><span class="header-section-number">5.9</span> Concentration - <code>concentration</code></h2>
+<p>If the <a href="../reference/usage.html#experimental-features">experimental concentration feature</a> is enabled, the results are written to file. This file records the Basin concentrations for each substance over time. The schema below is identical to the <a href="../reference/node/basin.html#concentration-external">external Basin concentration input</a>.</p>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 24%">
@@ -1258,8 +1222,8 @@ Note
 </tbody>
 </table>
 </section>
-<section id="subgrid-level---subgrid_level.arrow" class="level2" data-number="5.10">
-<h2 data-number="5.10" class="anchored" data-anchor-id="subgrid-level---subgrid_level.arrow"><span class="header-section-number">5.10</span> Subgrid level - <code>subgrid_level.arrow</code></h2>
+<section id="subgrid-level---subgrid_level" class="level2" data-number="5.10">
+<h2 data-number="5.10" class="anchored" data-anchor-id="subgrid-level---subgrid_level"><span class="header-section-number">5.10</span> Subgrid level - <code>subgrid_level</code></h2>
 <p>This result file is only written if the model contains a <a href="../reference/node/basin.html#subgrid">Basin / subgrid</a> table. See there for more information on the meaning of this output.</p>
 <table class="caption-top table">
 <thead>
@@ -1288,8 +1252,8 @@ Note
 </tbody>
 </table>
 </section>
-<section id="solver-statistics---solver_stats.arrow" class="level2" data-number="5.11">
-<h2 data-number="5.11" class="anchored" data-anchor-id="solver-statistics---solver_stats.arrow"><span class="header-section-number">5.11</span> Solver statistics - <code>solver_stats.arrow</code></h2>
+<section id="solver-statistics---solver_stats" class="level2" data-number="5.11">
+<h2 data-number="5.11" class="anchored" data-anchor-id="solver-statistics---solver_stats"><span class="header-section-number">5.11</span> Solver statistics - <code>solver_stats</code></h2>
 <p>This result file contains statistics about the solver, which can give an insight into how well the solver is performing over time. The data is solved by <code>saveat</code> (see <a href="#configuration-file">configuration file</a>). <code>water_balance</code> refers to the right-hand-side function of the system of differential equations solved by the Ribasim core.</p>
 <p>The <code>computation_time</code> is the wall time in milliseconds spent on the given period. The first row tends to include compilation time as well. The <code>dt</code> is the size (in seconds) of the last calculation timestep (at the <code>saveat</code> timestep).</p>
 <table class="caption-top table">
