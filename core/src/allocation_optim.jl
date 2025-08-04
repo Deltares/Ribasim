@@ -126,6 +126,9 @@ function set_simulation_data!(
     for node_id in only(linear_resistance_constraint.axes)
         inflow_link = linear_resistance.inflow_link[node_id.idx]
         outflow_link = linear_resistance.outflow_link[node_id.idx]
+        (; p_independent) = p
+        (; basin) = p_independent
+        (; level_to_area) = basin
 
         inflow_id = inflow_link.link[1]
         outflow_id = outflow_link.link[2]
@@ -143,23 +146,26 @@ function set_simulation_data!(
             ∂q_∂level_upstream = 1 / resistance[node_id.idx]
             ∂q_∂level_downstream = -1 / resistance[node_id.idx]
         end
+        ∂h∂S_upstream = 1.0 / level_to_area[inflow_link.link[1]].u[end]
+
+        S_a = get_storage_from_level(basin, inflow_link.link[1].idx, h_a)
 
         # Constant terms in linearization
-        q0 = q - h_a * ∂q_∂level_upstream - h_b * ∂q_∂level_downstream
+        q0 = q - h_b * ∂q_∂level_downstream - ∂q_∂level_upstream * ∂h∂S_upstream * S_a
 
         # To avoid confusion: h_a and h_b are numbers for the current levels in the physical
         # layer, upstream_level and downstream_level are variables in the optimization problem
         constraint = linear_resistance_constraint[node_id]
-        upstream_level =
-            get_level(problem, linear_resistance.inflow_link[node_id.idx].link[1])
+        upstream_storage =
+            get_storage(problem, linear_resistance.inflow_link[node_id.idx].link[1])
         downstream_level =
             get_level(problem, linear_resistance.outflow_link[node_id.idx].link[2])
         JuMP.set_normalized_rhs(constraint, q0 / scaling.flow)
         # Minus signs because the level terms are moved to the lhs in the constraint
         JuMP.set_normalized_coefficient(
             constraint,
-            upstream_level,
-            -∂q_∂level_upstream / scaling.flow,
+            upstream_storage,
+            -∂q_∂level_upstream * ∂h∂S_upstream / scaling.flow,
         )
         JuMP.set_normalized_coefficient(
             constraint,
@@ -190,7 +196,7 @@ function set_simulation_data!(
         h_b = get_level(p, outflow_id, t)
 
         q = manning_resistance_flow(manning_resistance, node_id, h_a, h_b)
-        ∂q_∂level_upstream = forward_diff(
+        ∂q_∂h_upstream = forward_diff(
             level_upstream -> manning_resistance_flow(
                 manning_resistance,
                 node_id,
@@ -199,7 +205,7 @@ function set_simulation_data!(
             ),
             h_a,
         )
-        ∂q_∂level_downstream = forward_diff(
+        ∂q_∂h_downstream = forward_diff(
             level_downstream -> manning_resistance_flow(
                 manning_resistance,
                 node_id,
@@ -209,7 +215,7 @@ function set_simulation_data!(
             h_b,
         )
         # Constant terms in linearization
-        q0 = q - h_a * ∂q_∂level_upstream - h_b * ∂q_∂level_downstream
+        q0 = q - h_a * ∂q_∂h_upstream - h_b * ∂q_∂h_downstream
 
         # To avoid confusion: h_a and h_b are numbers for the current levels in the physical
         # layer, upstream_level and downstream_level are variables in the optimization problem
@@ -223,12 +229,12 @@ function set_simulation_data!(
         JuMP.set_normalized_coefficient(
             constraint,
             upstream_level,
-            -∂q_∂level_upstream / scaling.flow,
+            -∂q_∂h_upstream / scaling.flow,
         )
         JuMP.set_normalized_coefficient(
             constraint,
             downstream_level,
-            -∂q_∂level_downstream / scaling.flow,
+            -∂q_∂h_downstream / scaling.flow,
         )
     end
     return nothing

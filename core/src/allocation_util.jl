@@ -81,6 +81,10 @@ function get_level(problem::JuMP.Model, node_id::NodeID)
     end
 end
 
+function get_storage(problem::JuMP.Model, node_id::NodeID)::Union{JuMP.VariableRef, Nothing}
+    problem[:basin_storage][(node_id, :end)]
+end
+
 function collect_primary_network_connections!(
     allocation::Allocation,
     graph::MetaGraph,

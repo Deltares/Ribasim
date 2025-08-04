@@ -181,6 +181,12 @@ function get_level(p::Parameters, node_id::NodeID, t::Number)::Number
     end
 end
 
+function get_storage(p::Parameters, node_id::NodeID, t::Number)::Float64
+    (; p_independent, state_time_dependent_cache, time_dependent_cache) = p
+
+    state_time_dependent_cache.current_storage[node_id.idx]
+end
+
 "Return the bottom elevation of the basin with index i, or nothing if it doesn't exist"
 function basin_bottom(basin::Basin, node_id::NodeID)::Tuple{Bool, Float64}
     return if node_id.type == NodeType.Basin

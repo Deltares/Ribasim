@@ -209,8 +209,8 @@ function Base.show(io::IO, objective::AllocationObjective)
 end
 
 @kwdef mutable struct ScalingFactors
-    flow::Float64 = 1e3
-    storage::Float64 = 1e6
+    flow::Float64 = 1
+    storage::Float64 = 1
 end
 
 """

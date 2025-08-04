@@ -607,7 +607,7 @@ function add_linear_resistance!(
         problem,
         [node_id = linear_resistance_ids_subnetwork],
         flow[inflow_link[node_id.idx].link] == begin
-            level_upstream = get_level(problem, inflow_link[node_id.idx].link[1])
+            level_upstream = get_storage(problem, inflow_link[node_id.idx].link[1])
             level_downstream = get_level(problem, outflow_link[node_id.idx].link[2])
             q0 +
             ∂q_∂level_upstream * level_upstream +
