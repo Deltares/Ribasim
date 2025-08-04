@@ -52,7 +52,7 @@ function set_simulation_data!(
     (; storage_to_level) = basin
 
     storage = problem[:basin_storage]
-    basin_level = problem[:basin_level]
+    # basin_level = problem[:basin_level]
     flow = problem[:flow]
     (; current_storage, current_level) = p.state_time_dependent_cache
 
@@ -80,7 +80,7 @@ function set_simulation_data!(
         end
 
         JuMP.fix(storage[key], storage_now / scaling.storage; force = true)
-        JuMP.fix(basin_level[key], level_now; force = true)
+        # JuMP.fix(basin_level[key], level_now; force = true)
     end
 
     for link in keys(cumulative_boundary_volume)
