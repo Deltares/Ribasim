@@ -101,8 +101,8 @@ Bounds
 0 <= flow_(UserDemand_#21,_Basin_#16)_ <= 864000
 0 <= flow_(UserDemand_#22,_Basin_#18)_ <= 864000
 0 <= flow_(FlowBoundary_#58,_Basin_#16)_ <= 864000
-basin_forcing_Basin_#16_ = 0
 basin_forcing_Basin_#12_ = 0
+basin_forcing_Basin_#16_ = 0
 basin_forcing_Basin_#18_ = 0
 target_fraction = 1
 user_demand_allocated_UserDemand_#20_ = 0

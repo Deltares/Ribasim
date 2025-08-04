@@ -233,13 +233,13 @@ Bounds
 0 <= flow_(UserDemand_#20,_Basin_#17)_ <= 86400000
 0 <= flow_(Basin_#11,_UserDemand_#24)_ <= 86400000
 0 <= flow_(UserDemand_#24,_Basin_#11)_ <= 86400000
-basin_forcing_Basin_#7_ = 0
-basin_forcing_Basin_#17_ = 0
 basin_forcing_Basin_#2_ = 0
-basin_forcing_Basin_#11_ = 0
-basin_forcing_Basin_#21_ = 0
-basin_forcing_Basin_#15_ = 0
+basin_forcing_Basin_#7_ = 0
 basin_forcing_Basin_#9_ = 0
+basin_forcing_Basin_#11_ = 0
+basin_forcing_Basin_#15_ = 0
+basin_forcing_Basin_#17_ = 0
+basin_forcing_Basin_#21_ = 0
 0 <= z_15 <= 345.6
 0 <= __15_1_ <= 1
 0 <= __15_2_ <= 1

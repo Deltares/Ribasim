@@ -7,10 +7,10 @@ c1_1: 1 __3_2_ + 1 __3_3_ - 1 y_3_1_ >= 0
 c2_1: 1 __4_2_ + 1 __4_3_ - 1 y_4_1_ >= 0
 user_demand_constraint_lower_UserDemand_#3_: 1 flow_(Basin_#2,_UserDemand_#3)_ - 2 target_fraction - 1 user_demand_allocated_UserDemand_#3_ + 2 relative_user_demand_error_lower_UserDemand_#3_ >= 0
 user_demand_constraint_upper_UserDemand_#3_: -1 flow_(Basin_#2,_UserDemand_#3)_ + 2 target_fraction + 1 user_demand_allocated_UserDemand_#3_ + 2 relative_user_demand_error_upper_UserDemand_#3_ >= 0
-storage_constraint_in_Basin_#5_: -1 basin_storage_(Basin_#5,__start)_ + 1 basin_storage_(Basin_#5,__end)_ - 2 target_storage_demand_fraction_in + 2 relative_storage_error_in_Basin_#5_ >= 0
 storage_constraint_in_Basin_#2_: -1 basin_storage_(Basin_#2,__start)_ + 1 basin_storage_(Basin_#2,__end)_ - 2 target_storage_demand_fraction_in + 2 relative_storage_error_in_Basin_#2_ >= 0
-storage_constraint_out_Basin_#5_: 1 basin_storage_(Basin_#5,__start)_ - 1 basin_storage_(Basin_#5,__end)_ + 2 target_storage_demand_fraction_out + 2 relative_storage_error_out_Basin_#5_ >= 0
+storage_constraint_in_Basin_#5_: -1 basin_storage_(Basin_#5,__start)_ + 1 basin_storage_(Basin_#5,__end)_ - 2 target_storage_demand_fraction_in + 2 relative_storage_error_in_Basin_#5_ >= 0
 storage_constraint_out_Basin_#2_: 1 basin_storage_(Basin_#2,__start)_ - 1 basin_storage_(Basin_#2,__end)_ + 2 target_storage_demand_fraction_out + 2 relative_storage_error_out_Basin_#2_ >= 0
+storage_constraint_out_Basin_#5_: 1 basin_storage_(Basin_#5,__start)_ - 1 basin_storage_(Basin_#5,__end)_ + 2 target_storage_demand_fraction_out + 2 relative_storage_error_out_Basin_#5_ >= 0
 c1: 1 __1_1_ + 1 __1_2_ = 1
 c2: -1 basin_storage_(Basin_#2,__end)_ + 2 __1_2_ = 0
 c3: -1 z_1 + 10 __1_2_ = 0
@@ -56,18 +56,18 @@ Bounds
 0 <= flow_(FlowBoundary_#1,_Basin_#2)_ <= 8640000
 0 <= flow_(Basin_#2,_UserDemand_#3)_ <= 8640000
 0 <= flow_(UserDemand_#3,_Basin_#5)_ <= 8640000
-basin_forcing_Basin_#5_ = 0
 basin_forcing_Basin_#2_ = 0
+basin_forcing_Basin_#5_ = 0
 target_fraction = 1
 user_demand_allocated_UserDemand_#3_ = 0
 relative_user_demand_error_lower_UserDemand_#3_ >= 0
 relative_user_demand_error_upper_UserDemand_#3_ >= 0
 target_storage_demand_fraction_in = 1
 target_storage_demand_fraction_out = 1
-relative_storage_error_in_Basin_#5_ >= 0
 relative_storage_error_in_Basin_#2_ >= 0
-relative_storage_error_out_Basin_#5_ >= 0
+relative_storage_error_in_Basin_#5_ >= 0
 relative_storage_error_out_Basin_#2_ >= 0
+relative_storage_error_out_Basin_#5_ >= 0
 Binary
 y_3_1_
 y_4_1_

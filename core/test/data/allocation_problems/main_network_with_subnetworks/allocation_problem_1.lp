@@ -152,11 +152,11 @@ Bounds
 0 <= flow_(Basin_#10,_Pump_#38)_ <= 172.8
 0 <= flow_(Basin_#8,_UserDemand_#60)_ <= 86400000
 0 <= flow_(UserDemand_#60,_Basin_#8)_ <= 86400000
-basin_forcing_Basin_#8_ = 0
 basin_forcing_Basin_#2_ = 0
-basin_forcing_Basin_#6_ = 0
-basin_forcing_Basin_#10_ = 0
 basin_forcing_Basin_#4_ = 0
+basin_forcing_Basin_#6_ = 0
+basin_forcing_Basin_#8_ = 0
+basin_forcing_Basin_#10_ = 0
 target_fraction = 1
 user_demand_allocated_UserDemand_#60_ = 0
 relative_user_demand_error_lower_UserDemand_#60_ >= 0

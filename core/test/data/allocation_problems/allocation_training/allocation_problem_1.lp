@@ -120,8 +120,8 @@ Bounds
 0 <= flow_(Basin_#7,_UserDemand_#10)_ <= 856.0133950244222
 0 <= flow_(UserDemand_#10,_Basin_#3)_ <= 856.0133950244222
 0 <= flow_(TabulatedRatingCurve_#4,_Terminal_#5)_ <= 856.0133950244222
-basin_forcing_Basin_#7_ = 0
 basin_forcing_Basin_#3_ = 0
+basin_forcing_Basin_#7_ = 0
 0 <= z_5 <= 0.34240535800976885
 0 <= __5_1_ <= 1
 0 <= __5_2_ <= 1

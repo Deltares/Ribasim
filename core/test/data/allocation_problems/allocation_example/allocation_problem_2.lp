@@ -72,8 +72,8 @@ Bounds
 0 <= flow_(TabulatedRatingCurve_#7,_Terminal_#8)_ <= 288000
 0 <= flow_(UserDemand_#3,_Basin_#2)_ <= 288000
 0 <= flow_(UserDemand_#6,_Basin_#5)_ <= 288000
-basin_forcing_Basin_#5_ = 0
 basin_forcing_Basin_#2_ = 0
+basin_forcing_Basin_#5_ = 0
 0 <= z_5 <= 1.152
 0 <= __5_1_ <= 1
 0 <= __5_2_ <= 1

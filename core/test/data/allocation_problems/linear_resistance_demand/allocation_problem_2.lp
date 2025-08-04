@@ -55,8 +55,8 @@ Bounds
 0 <= __4_3_ <= 1
 -345.6 <= flow_(Basin_#1,_LinearResistance_#2)_ <= 345.6
 -345.6 <= flow_(LinearResistance_#2,_Basin_#3)_ <= 345.6
-basin_forcing_Basin_#3_ = 0
 basin_forcing_Basin_#1_ = 0
+basin_forcing_Basin_#3_ = 0
 -345.6 <= z_5 <= 345.6
 0 <= __5_1_ <= 1
 0 <= __5_2_ <= 1

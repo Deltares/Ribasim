@@ -72,8 +72,8 @@ Bounds
 0 <= flow_(UserDemand_#8,_Basin_#7)_ <= 100000000
 0 <= flow_(Basin_#3,_UserDemand_#6)_ <= 100000000
 0 <= flow_(UserDemand_#6,_Basin_#7)_ <= 100000000
-basin_forcing_Basin_#7_ = 0
 basin_forcing_Basin_#3_ = 0
+basin_forcing_Basin_#7_ = 0
 boundary_level_LevelBoundary_#1_ = 0
 0 <= z_5 <= 0.4
 0 <= __5_1_ <= 1

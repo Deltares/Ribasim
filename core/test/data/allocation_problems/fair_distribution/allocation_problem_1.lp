@@ -74,8 +74,8 @@ Bounds
 0 <= flow_(UserDemand_#7,_Basin_#3)_ <= 1.5709090909090908e7
 0 <= flow_(UserDemand_#8,_Basin_#5)_ <= 1.5709090909090908e7
 0 <= flow_(UserDemand_#9,_Basin_#5)_ <= 1.5709090909090908e7
-basin_forcing_Basin_#5_ = 0
 basin_forcing_Basin_#3_ = 0
+basin_forcing_Basin_#5_ = 0
 boundary_level_LevelBoundary_#1_ = 0
 target_fraction = 1
 user_demand_allocated_UserDemand_#6_ = 0
