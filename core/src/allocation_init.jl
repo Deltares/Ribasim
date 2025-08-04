@@ -92,13 +92,6 @@ function add_basin!(
             basin_storage[index = indices] <=
             storage_to_level[index[1].idx].t[end] / scaling.storage
         )
-    # level =
-    #     problem[:basin_level] = JuMP.@variable(
-    #         problem,
-    #         level_to_area[index[1].idx].t[1] <=
-    #         basin_level[index = indices] <=
-    #         level_to_area[index[1].idx].t[end]
-    #     )
 
     # Piecewise linear Basin profile approximations
     # (from storage 0.0 to twice the largest storage)
@@ -127,19 +120,6 @@ function add_basin!(
         values_storage[node_id] ./= scaling.storage
         values_level[node_id] = values_level_node
     end
-
-    # Define constraints: levels are given by the storages and profiles
-    # problem[:basin_profile] = JuMP.@constraint(
-    #     problem,
-    #     [node_id = basin_ids_subnetwork],
-    #     level[(node_id, :end)] == piecewiselinear(
-    #         problem,
-    #         storage[(node_id, :end)],
-    #         values_storage[node_id],
-    #         values_level[node_id],
-    #     ),
-    #     base_name = "basin_profile"
-    # )
 
     for node_id in basin_ids_subnetwork
         cumulative_forcing_volume[node_id] = 0.0
