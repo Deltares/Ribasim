@@ -335,16 +335,11 @@ function add_user_demand!(
         problem[:user_demand_allocated] =
             JuMP.@variable(problem, user_demand_allocated[user_demand_ids_subnetwork] == 0)
 
-    # Define decision variables: lower and upper user demand error (unitless)
-    relative_user_demand_error_lower =
-        problem[:relative_user_demand_error_lower] = JuMP.@variable(
+    # Define decision variables: relative user demand error (unitless)
+    relative_user_demand_error =
+        problem[:relative_user_demand_error] = JuMP.@variable(
             problem,
-            relative_user_demand_error_lower[user_demand_ids_subnetwork] >= 0
-        )
-    relative_user_demand_error_upper =
-        problem[:relative_user_demand_error_upper] = JuMP.@variable(
-            problem,
-            relative_user_demand_error_upper[user_demand_ids_subnetwork] >= 0
+            relative_user_demand_error[user_demand_ids_subnetwork] >= 0
         )
 
     # Define constraints: error terms
@@ -352,14 +347,14 @@ function add_user_demand!(
     problem[:user_demand_constraint_lower] = JuMP.@constraint(
         problem,
         [node_id = user_demand_ids_subnetwork],
-        d * (relative_user_demand_error_lower[node_id] - target_demand_fraction) ≥
+        d * (relative_user_demand_error[node_id] - target_demand_fraction) ≥
         -(flow[inflow_link[node_id.idx].link] - user_demand_allocated[node_id]),
         base_name = "user_demand_constraint_lower"
     )
     problem[:user_demand_constraint_upper] = JuMP.@constraint(
         problem,
         [node_id = user_demand_ids_subnetwork],
-        d * (relative_user_demand_error_upper[node_id] + target_demand_fraction) ≥
+        d * (relative_user_demand_error[node_id] + target_demand_fraction) ≥
         flow[inflow_link[node_id.idx].link] - user_demand_allocated[node_id],
         base_name = "user_demand_constraint_upper"
     )
@@ -380,11 +375,9 @@ function add_user_demand!(
     end
 
     # Add error terms to objectives
-    relative_lower_error_sum = variable_sum(relative_user_demand_error_lower)
-    relative_upper_error_sum = variable_sum(relative_user_demand_error_upper)
+    relative_error_sum = variable_sum(relative_user_demand_error)
     for objective in get_demand_objectives(objectives)
-        JuMP.add_to_expression!(objective.expression, relative_lower_error_sum)
-        JuMP.add_to_expression!(objective.expression, relative_upper_error_sum)
+        JuMP.add_to_expression!(objective.expression, relative_error_sum)
         if any(
             node_id ->
                 user_demand.has_demand_priority[node_id.idx, objective.demand_priority_idx],
@@ -480,57 +473,36 @@ function add_level_demand!(
         graph[].node_ids[subnetwork_id],
     )
 
-    # Define parameters: target storage demand fraction (unitless, value to be set before optimizing)
-    target_storage_demand_fraction_in =
-        problem[:target_storage_demand_fraction_in] =
-            JuMP.@variable(problem, target_storage_demand_fraction_in == 1)
-    target_storage_demand_fraction_out =
-        problem[:target_storage_demand_fraction_out] =
-            JuMP.@variable(problem, target_storage_demand_fraction_out == 1)
-
-    # Define decision variables: relative storage error below minimum level (unitless)
-    relative_storage_error_in =
-        problem[:relative_storage_error_in] = JuMP.@variable(
-            problem,
-            relative_storage_error_in[ids_with_level_demand_subnetwork] >= 0
-        )
-
-    # Define decision variables: relative storage error above maximum level (unitless)
-    relative_storage_error_out =
-        problem[:relative_storage_error_out] = JuMP.@variable(
+    # Define decision variables: absolute storage error above maximum level (m^3 * scaling.storage)
+    absolute_storage_error =
+        problem[:absolute_storage_error] = JuMP.@variable(
             problem,
             relative_storage_error_out[ids_with_level_demand_subnetwork] >= 0
         )
 
     # Define constraints: error terms below minimum storage
     storage = problem[:basin_storage]
-    s_in = 2.0 # example storage in demand
+    s_min = 2000.0 # example minimum storage
     problem[:storage_constraint_in] = JuMP.@constraint(
         problem,
         [node_id = ids_with_level_demand_subnetwork],
-        s_in * relative_storage_error_in[node_id] ≥
-        target_storage_demand_fraction_in * s_in -
-        (storage[(node_id, :end)] - storage[(node_id, :start)]),
+        absolute_storage_error[node_id] ≥ s_min - storage[(node_id, :end)],
         base_name = "storage_constraint_in"
     )
 
     # Define constraints: error terms above maximum storage
-    s_out = 2.0 # example storage out demand
+    s_max = 3000.0 # example maximum storage
     problem[:storage_constraint_out] = JuMP.@constraint(
         problem,
         [node_id = ids_with_level_demand_subnetwork],
-        s_out * relative_storage_error_out[node_id] ≥
-        (storage[(node_id, :end)] - storage[(node_id, :start)]) -
-        target_storage_demand_fraction_out * s_out,
+        absolute_storage_error[node_id] ≥ storage[(node_id, :end)] - s_max,
         base_name = "storage_constraint_out"
     )
 
     # Add error terms to objectives
-    relative_in_error_sum = variable_sum(relative_storage_error_in)
-    relative_out_error_sum = variable_sum(relative_storage_error_out)
+    absolute_error_sum = variable_sum(absolute_storage_error)
     for objective in get_demand_objectives(objectives)
-        JuMP.add_to_expression!(objective.expression, relative_in_error_sum)
-        JuMP.add_to_expression!(objective.expression, relative_out_error_sum)
+        JuMP.add_to_expression!(objective.expression, absolute_error_sum)
         if any(
             node_id -> level_demand.has_demand_priority[
                 node_id.idx,

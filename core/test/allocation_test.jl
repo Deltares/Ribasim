@@ -77,9 +77,7 @@ end
     @test demand_objective.type == AllocationObjectiveType.demand
     @test demand_objective.has_flow_demand
     @test !demand_objective.has_level_demand
-    @test demand_objective.expression ==
-          sum(problem[:relative_user_demand_error_lower]) +
-          sum(problem[:relative_user_demand_error_upper])
+    @test demand_objective.expression == sum(problem[:relative_user_demand_error])
 
     # Source objective
     @test source_objective.type == AllocationObjectiveType.source_priorities
