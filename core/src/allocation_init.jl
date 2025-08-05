@@ -473,7 +473,7 @@ function add_level_demand!(
     absolute_storage_error =
         problem[:absolute_storage_error] = JuMP.@variable(
             problem,
-            relative_storage_error_out[ids_with_level_demand_subnetwork] >= 0
+            absolute_storage_error[ids_with_level_demand_subnetwork] >= 0
         )
 
     # Define constraints: error terms below minimum storage
