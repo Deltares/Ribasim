@@ -159,6 +159,57 @@ function set_normalized_storage_or_level_coefficient!(
     return rhs
 end
 
+function set_linearized_resistance_data!(
+    allocation_model::AllocationModel,
+    resistance_node::AbstractParameterNode,
+    resistance_constraint::JuMP.ConstraintRef,
+    flow_function::Function,
+    p::Parameters,
+    t::Float64,
+)
+    for node_id in only(resistance_constraint.axes)
+        inflow_id = resistance_node.inflow_link[node_id.idx].link[1]
+        outflow_id = resistance_node.outflow_link[node_id.idx].link[2]
+
+        h_a = get_level(p, inflow_id, t)
+        h_b = get_level(p, outflow_id, t)
+
+        q = flow_function(resistance_node, node_id, h_a, h_b, p)
+
+        ∂q∂h_a = forward_diff(
+            level_a -> flow_function(resistance_node, node_id, level_a, h_b, p),
+            h_a,
+        )
+        ∂q∂h_b = forward_diff(
+            level_b -> flow_function(resistance_node, node_id, h_a, level_b, p),
+            h_b,
+        )
+        rhs = q
+        constraint = resistance_constraint[node_id]
+        # upstream
+        rhs = set_normalized_storage_or_level_coefficient!(
+            allocation_model,
+            inflow_id,
+            ∂q∂h_a,
+            h_a,
+            rhs,
+            constraint,
+            p,
+        )
+        # downstream
+        rhs = set_normalized_storage_or_level_coefficient!(
+            allocation_model,
+            outflow_id,
+            ∂q∂h_b,
+            h_b,
+            rhs,
+            constraint,
+            p,
+        )
+        JuMP.set_normalized_rhs(constraint, rhs / allocation_model.scaling.flow)
+    end
+end
+
 function set_simulation_data!(
     allocation_model::AllocationModel,
     linear_resistance::LinearResistance,
@@ -168,54 +219,15 @@ function set_simulation_data!(
     (; problem, scaling) = allocation_model
     linear_resistance_constraint = problem[:linear_resistance_constraint]
 
-    # Set the linearization of LinearResistance flows in the current levels from the physical layer
-    for node_id in only(linear_resistance_constraint.axes)
-        inflow_id = linear_resistance.inflow_link[node_id.idx].link[1]
-        outflow_id = linear_resistance.outflow_link[node_id.idx].link[2]
-        (; p_independent) = p
+    set_linearized_resistance_data!(
+        allocation_model,
+        linear_resistance,
+        linear_resistance_constraint,
+        linear_resistance_flow,
+        p,
+        t,
+    )
 
-        h_a = get_level(p, inflow_id, t)
-        h_b = get_level(p, outflow_id, t)
-
-        q = linear_resistance_flow(linear_resistance, node_id, h_a, h_b)
-        # TODO: test if low storage factor improves at near empty basins
-        # q *= low_storage_factor_resistance_node(p, q, inflow_id, outflow_id)
-
-        (; resistance, max_flow_rate) = linear_resistance
-
-        # Limit flowrate by setting partial derivatives of flow with respect to levels to zero
-        if q >= max_flow_rate[node_id.idx] || q <= -max_flow_rate[node_id.idx]
-            ∂q∂h_upstream = 0.0
-            ∂q∂h_downstream = 0.0
-        else
-            ∂q∂h_upstream = 1 / resistance[node_id.idx]
-            ∂q∂h_downstream = -1 / resistance[node_id.idx]
-        end
-
-        rhs = q
-        constraint = linear_resistance_constraint[node_id]
-
-        rhs = set_normalized_storage_or_level_coefficient!(
-            allocation_model,
-            inflow_id,
-            ∂q∂h_upstream,
-            h_a,
-            rhs,
-            constraint,
-            p,
-        )
-        rhs = set_normalized_storage_or_level_coefficient!(
-            allocation_model,
-            outflow_id,
-            ∂q∂h_downstream,
-            h_b,
-            rhs,
-            constraint,
-            p,
-        )
-
-        JuMP.set_normalized_rhs(constraint, rhs / scaling.flow)
-    end
     return nothing
 end
 
@@ -228,62 +240,15 @@ function set_simulation_data!(
     (; problem, scaling) = allocation_model
     manning_resistance_constraint = problem[:manning_resistance_constraint]
 
-    # Set the linearization of ManningResistance flows in the current levels from the physical layer
-    for node_id in only(manning_resistance_constraint.axes)
-        inflow_link = manning_resistance.inflow_link[node_id.idx]
-        outflow_link = manning_resistance.outflow_link[node_id.idx]
+    set_linearized_resistance_data!(
+        allocation_model,
+        manning_resistance,
+        manning_resistance_constraint,
+        manning_resistance_flow,
+        p,
+        t,
+    )
 
-        inflow_id = inflow_link.link[1]
-        outflow_id = outflow_link.link[2]
-        h_a = get_level(p, inflow_id, t)
-        h_b = get_level(p, outflow_id, t)
-
-        q = manning_resistance_flow(manning_resistance, node_id, h_a, h_b)
-
-        ∂q_∂h_upstream = forward_diff(
-            level_upstream -> manning_resistance_flow(
-                manning_resistance,
-                node_id,
-                level_upstream,
-                h_b,
-            ),
-            h_a,
-        )
-        ∂q_∂h_downstream = forward_diff(
-            level_downstream -> manning_resistance_flow(
-                manning_resistance,
-                node_id,
-                h_a,
-                level_downstream,
-            ),
-            h_b,
-        )
-        # Constant terms in linearization
-        rhs = q
-
-        constraint = manning_resistance_constraint[node_id]
-
-        rhs = set_normalized_storage_or_level_coefficient!(
-            allocation_model,
-            inflow_id,
-            ∂q_∂h_upstream,
-            h_a,
-            rhs,
-            constraint,
-            p,
-        )
-
-        rhs = set_normalized_storage_or_level_coefficient!(
-            allocation_model,
-            outflow_id,
-            ∂q_∂h_downstream,
-            h_b,
-            rhs,
-            constraint,
-            p,
-        )
-        JuMP.set_normalized_rhs(constraint, rhs / scaling.flow)
-    end
     return nothing
 end
 

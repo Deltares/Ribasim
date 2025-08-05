@@ -398,7 +398,7 @@ function formulate_flow!(
         if (active[id.idx] || all_nodes_active)
             h_a = get_level(p, inflow_id, t)
             h_b = get_level(p, outflow_id, t)
-            q = linear_resistance_flow(linear_resistance, id, h_a, h_b)
+            q = linear_resistance_flow(linear_resistance, id, h_a, h_b, p)
             q *= low_storage_factor_resistance_node(p, q, inflow_id, outflow_id)
             du.linear_resistance[id.idx] = q
         end
@@ -411,12 +411,19 @@ function linear_resistance_flow(
     node_id::NodeID,
     h_a::Number,
     h_b::Number,
+    p::Parameters,
 )::Number
     (; resistance, max_flow_rate) = linear_resistance
+    inflow_link = linear_resistance.inflow_link[node_id.idx]
+    outflow_link = linear_resistance.outflow_link[node_id.idx]
+
+    inflow_id = inflow_link.link[1]
+    outflow_id = outflow_link.link[2]
 
     Δh = h_a - h_b
     q_unlimited = Δh / resistance[node_id.idx]
-    return clamp(q_unlimited, -max_flow_rate[node_id.idx], max_flow_rate[node_id.idx])
+    q = clamp(q_unlimited, -max_flow_rate[node_id.idx], max_flow_rate[node_id.idx])
+    return q * low_storage_factor_resistance_node(p, q_unlimited, inflow_id, outflow_id)
 end
 
 function formulate_flow!(
@@ -462,6 +469,7 @@ function manning_resistance_flow(
     node_id::NodeID,
     h_a::Number,
     h_b::Number,
+    p::Parameters,
 )::Number
     (;
         length,
@@ -471,6 +479,12 @@ function manning_resistance_flow(
         upstream_bottom,
         downstream_bottom,
     ) = manning_resistance
+
+    inflow_link = manning_resistance.inflow_link[node_id.idx]
+    outflow_link = manning_resistance.outflow_link[node_id.idx]
+
+    inflow_id = inflow_link.link[1]
+    outflow_id = outflow_link.link[2]
 
     bottom_a = upstream_bottom[node_id.idx]
     bottom_b = downstream_bottom[node_id.idx]
@@ -497,7 +511,8 @@ function manning_resistance_flow(
 
     Δh = h_a - h_b
 
-    return A / n * ∛(R_h^2) * relaxed_root(Δh / L, 1e-5)
+    q = A / n * ∛(R_h^2) * relaxed_root(Δh / L, 1e-5)
+    return q * low_storage_factor_resistance_node(p, q, inflow_id, outflow_id)
 end
 
 """
@@ -563,8 +578,8 @@ function formulate_flow!(
         h_a = get_level(p, inflow_id, t)
         h_b = get_level(p, outflow_id, t)
 
-        q = manning_resistance_flow(manning_resistance, id, h_a, h_b)
-        q *= low_storage_factor_resistance_node(p, q, inflow_id, outflow_id)
+        q = manning_resistance_flow(manning_resistance, id, h_a, h_b, p)
+
         du.manning_resistance[id.idx] = q
     end
     return nothing
