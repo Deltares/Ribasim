@@ -30,7 +30,7 @@ end
     import BasicModelInterface as BMI
     using SciMLBase: successful_retcode
 
-    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/trivial/ribasim.toml")
     dt = 1.0
     config = Ribasim.Config(toml_path; solver_algorithm = "ImplicitEuler", solver_dt = dt)
     @test config.solver.algorithm == "ImplicitEuler"
