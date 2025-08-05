@@ -65,7 +65,7 @@ def rating_curve_model() -> Model:
     model.basin.add(
         Node(1, Point(0, 0), subnetwork_id=1),
         [
-            basin.Profile(area=[0.01, 100.0, 100.0], level=[0.0, 1.0, 12.0]),
+            basin.Profile(area=[0.01, 50.0, 100.0], level=[0.0, 1.0, 12.0]),
             basin.State(level=[10.5]),
         ],
     )
