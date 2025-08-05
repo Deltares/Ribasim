@@ -331,30 +331,6 @@ function set_demands_lower_constraints!(
     return nothing
 end
 
-function set_demands_upper_constraints!(
-    constraints_upper,
-    rel_errors_upper,
-    target_demand_fraction::JuMP.VariableRef,
-    demand_function::Function,
-    node_ids::Vector{NodeID};
-    deactivate_when_no_demand::Bool = false,
-)::Nothing
-    for node_id in node_ids
-        constraint_upper = constraints_upper[node_id]
-        rel_error_upper = rel_errors_upper[node_id]
-        d = demand_function(node_id)
-        JuMP.set_normalized_coefficient(constraint_upper, rel_error_upper, d)
-        JuMP.set_normalized_coefficient(constraint_upper, target_demand_fraction, d)
-
-        if deactivate_when_no_demand && iszero(d)
-            JuMP.set_normalized_rhs(constraint_upper, -1e10)
-        else
-            JuMP.set_normalized_rhs(constraint_upper, 0)
-        end
-    end
-    return nothing
-end
-
 function set_demands!(
     allocation_model::AllocationModel,
     p_independent::ParametersIndependent,
@@ -363,8 +339,6 @@ function set_demands!(
     (; problem, scaling) = allocation_model
     (; user_demand, flow_demand, level_demand, graph) = p_independent
     target_demand_fraction = problem[:target_demand_fraction]
-    target_storage_demand_fraction_in = problem[:target_storage_demand_fraction_in]
-    target_storage_demand_fraction_out = problem[:target_storage_demand_fraction_out]
     (; demand_priority, demand_priority_idx) = objective
 
     # TODO: Compute proper target fraction
@@ -373,18 +347,22 @@ function set_demands!(
     # UserDemand
     set_demands_lower_constraints!(
         problem[:user_demand_constraint_lower],
-        problem[:relative_user_demand_error_lower],
+        problem[:relative_user_demand_error],
         target_demand_fraction,
         node_id -> user_demand.demand[node_id.idx, demand_priority_idx] / scaling.flow,
-        only(problem[:relative_user_demand_error_lower].axes),
+        only(problem[:relative_user_demand_error].axes),
     )
-    set_demands_upper_constraints!(
-        problem[:user_demand_constraint_upper],
-        problem[:relative_user_demand_error_upper],
-        target_demand_fraction,
-        node_id -> user_demand.demand[node_id.idx, demand_priority_idx] / scaling.flow,
-        only(problem[:relative_user_demand_error_upper].axes),
-    )
+
+    flow = problem[:flow]
+
+    # Set demand (+ previously allocated) as upper bound
+    for node_id in only(problem[:relative_user_demand_error].axes)
+        inflow_link = user_demand.inflow_link[node_id.idx].link
+        allocated =
+            sum(view(user_demand.allocated, node_id.idx, 1:(demand_priority_idx - 1)))
+        upper_bound = allocated + user_demand.demand[node_id.idx, demand_priority_idx]
+        JuMP.set_upper_bound(flow[inflow_link], upper_bound / scaling.flow)
+    end
 
     # FlowDemand
     set_demands_lower_constraints!(
@@ -398,30 +376,24 @@ function set_demands!(
     )
 
     # LevelDemand
-    set_demands_lower_constraints!(
-        problem[:storage_constraint_in],
-        problem[:relative_storage_error_in],
-        target_storage_demand_fraction_in,
-        node_id_basin -> begin
-            node_id = only(inneighbor_labels_type(graph, node_id_basin, LinkType.control))
-            max(0, level_demand.storage_demand[node_id_basin][demand_priority_idx]) /
-            scaling.storage
-        end,
-        only(problem[:relative_storage_error_in].axes);
-        deactivate_when_no_demand = true,
-    )
-    set_demands_upper_constraints!(
-        problem[:storage_constraint_out],
-        problem[:relative_storage_error_out],
-        target_storage_demand_fraction_out,
-        node_id_basin -> begin
-            node_id = only(inneighbor_labels_type(graph, node_id_basin, LinkType.control))
-            max(0, -level_demand.storage_demand[node_id_basin][demand_priority_idx]) /
-            scaling.storage
-        end,
-        only(problem[:relative_storage_error_out].axes);
-        deactivate_when_no_demand = true,
-    )
+    storage_constraint_in = problem[:storage_constraint_in]
+    storage_constraint_out = problem[:storage_constraint_out]
+
+    for node_id_basin in only(problem[:absolute_storage_error].axes)
+        node_id_level_demand =
+            only(inneighbor_labels_type(graph, node_id_basin, LinkType.control))
+
+        if level_demand.has_demand_priority[node_id_level_demand.idx, demand_priority_idx]
+            JuMP.set_normalized_rhs(
+                storage_constraint_in[node_id_basin],
+                level_demand.target_storage_min[node_id_basin][demand_priority_idx],
+            )
+            JuMP.set_normalized_rhs(
+                storage_constraint_out[node_id_basin],
+                -level_demand.target_storage_max[node_id_basin][demand_priority_idx],
+            )
+        end
+    end
 
     return nothing
 end
