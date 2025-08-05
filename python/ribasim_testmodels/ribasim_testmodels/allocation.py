@@ -1339,7 +1339,7 @@ def bommelerwaard_model():
         )
 
     for node_id, demand_priority, min_level in zip(
-        range(59, 62), [2, 2, 3], [0.18, 0.58, 0.55]
+        range(59, 62), [4, 4, 5], [0.18, 0.58, 0.55]
     ):
         model.level_demand.add(
             get_node(node_id),

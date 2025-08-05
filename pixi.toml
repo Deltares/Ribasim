@@ -47,7 +47,7 @@ quartodoc-build = { cmd = "quartodoc build && rm objects.json", cwd = "docs", in
 quarto-preview = { cmd = "PYTHON_JULIAPKG_PROJECT=$PIXI_PROJECT_ROOT quarto preview docs", depends-on = [
     "quartodoc-build",
     "generate-testmodels",
-    "initialize-julia"
+    "initialize-julia",
 ] }
 quarto-check = { cmd = "quarto check all", depends-on = ["quartodoc-build"] }
 quarto-render = { cmd = "PYTHON_JULIAPKG_PROJECT=$PIXI_PROJECT_ROOT quarto render docs", depends-on = [
@@ -171,6 +171,10 @@ ribasim-core = { cmd = "julia --project=core --check-bounds=yes -e 'using Ribasi
     "initialize-julia",
 ] }
 ribasim-core-testmodels = { cmd = "julia --project --check-bounds=yes --threads=4 utils/testmodelrun.jl", depends-on = [
+    "generate-testmodels",
+    "initialize-julia",
+] }
+write-allocation-problems = { cmd = "julia --project --check-bounds=yes --threads=4 utils/write_allocation_problems.jl", depends-on = [
     "generate-testmodels",
     "initialize-julia",
 ] }

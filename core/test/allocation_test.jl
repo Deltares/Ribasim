@@ -714,3 +714,61 @@ end
     @test !isempty(flow)
     @test all(q -> isapprox(q, 1e-3; rtol = 1e-4), flow[1:100])
 end
+
+@testitem "Allocation problem consistency" begin
+    import JuMP
+
+    # To update the reference files run `pixi run write-allocation-problems`
+    include(normpath(@__DIR__, "../../utils/utils.jl"))
+    toml_paths = get_testmodels()
+
+    for toml_path in toml_paths
+        model_name = basename(dirname(toml_path))
+
+        if startswith(model_name, "invalid_")
+            continue
+        end
+
+        config = Ribasim.Config(toml_path)
+
+        if !config.experimental.allocation
+            continue
+        end
+
+        # Initialize the same model 5 times
+        models = [Ribasim.Model(toml_path) for _ in 1:5]
+
+        subnetwork_ids = [
+            allocation_model.subnetwork_id for allocation_model in
+            first(models).integrator.p.p_independent.allocation.allocation_models
+        ]
+
+        for (i, subnetwork_id) in enumerate(subnetwork_ids)
+            @testset "$(model_name)_subnetwork_id_$subnetwork_id" begin
+                written_problem_path = normpath(
+                    @__DIR__,
+                    "data/allocation_problems/$model_name/allocation_problem_$subnetwork_id.lp",
+                )
+                @test ispath(written_problem_path)
+                written_problem = read(written_problem_path, String)
+
+                current_problem_path = normpath(
+                    dirname(toml_path),
+                    "results/allocation_problem_from_tests_$subnetwork_id.lp",
+                )
+
+                for model in models
+                    (; problem, subnetwork_id) =
+                        model.integrator.p.p_independent.allocation.allocation_models[i]
+
+                    JuMP.write_to_file(problem, current_problem_path)
+                    current_problem = read(current_problem_path, String)
+
+                    problem_equality = (current_problem == written_problem)
+                    @test problem_equality
+                    !problem_equality && break
+                end
+            end
+        end
+    end
+end
