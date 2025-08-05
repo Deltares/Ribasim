@@ -247,7 +247,7 @@ end
 
 @testitem "Subnetworks with sources" begin
     using SQLite
-    using Ribasim: NodeID, OptimizationType
+    using Ribasim: NodeID
     using OrdinaryDiffEqCore: get_du
     using JuMP
     using DataFrames: DataFrame

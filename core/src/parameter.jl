@@ -964,7 +964,7 @@ concentration_itp: matrix with timeseries interpolations of concentrations per L
 end
 
 """
-node_id: node ID of the LevelDemand node
+node_id: node IDs of the LevelDemand nodes
 demand_priorities: All demand priorities that exist in the model (not just by UserDemand) sorted
 has_demand_priority: boolean matrix stating per LevelDemand node per demand priority index whether the (node_idx, demand_priority_idx)
     node will ever have a demand of that priority
@@ -1001,8 +1001,13 @@ storage_allocated: The storage allocated to each Basin per demand priority
 end
 
 """
-node_id: node ID of the FlowDemand node
-TODO: update docstring
+node_id: The node IDs of the FlowDemand node
+demand_priorities: All the demand priorities present in the model
+inflow_link: The inflow link of the connector node that has the flow demand
+has_demand_priority: Boolean matrix of whether a FlowDemand node has a certain priority (node_idx, demand_priority_idx)
+demand_priority: The demand per FlowDemand node for each demand priority
+demand: The current demand per FlowDemand node per demand priority (node_idx, demand_priority_idx)
+allocated: The current allocated amount per FlowDemand node per demand priority (node_idx, demand_priority_idx)
 """
 @kwdef struct FlowDemand <: AbstractDemandNode
     node_id::Vector{NodeID}
