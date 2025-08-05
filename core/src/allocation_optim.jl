@@ -141,7 +141,7 @@ function set_normalized_storage_or_level_coefficient!(
     # If the node is a Basin, we define linear resistance in terms of storage
     if (node_id.type == NodeType.Basin)
         storage = get_storage(problem, node_id)
-        ∂h∂S = 1.0 / level_to_area[node_id](h_n)
+        ∂h∂S = 1.0 / level_to_area[node_id.idx](h_n)
 
         S_n = p.state_time_dependent_cache.current_storage[node_id.idx]
         JuMP.set_normalized_coefficient(
@@ -239,6 +239,7 @@ function set_simulation_data!(
         h_b = get_level(p, outflow_id, t)
 
         q = manning_resistance_flow(manning_resistance, node_id, h_a, h_b)
+
         ∂q_∂h_upstream = forward_diff(
             level_upstream -> manning_resistance_flow(
                 manning_resistance,
@@ -258,25 +259,30 @@ function set_simulation_data!(
             h_b,
         )
         # Constant terms in linearization
-        q0 = q - h_a * ∂q_∂h_upstream - h_b * ∂q_∂h_downstream
+        rhs = q
 
         constraint = manning_resistance_constraint[node_id]
-        upstream_level =
-            get_level(problem, manning_resistance.inflow_link[node_id.idx].link[1])
-        downstream_level =
-            get_level(problem, manning_resistance.outflow_link[node_id.idx].link[2])
-        JuMP.set_normalized_rhs(constraint, q0 / scaling.flow)
-        # Minus signs because the level terms are moved to the lhs in the constraint
-        JuMP.set_normalized_coefficient(
+
+        rhs = set_normalized_storage_or_level_coefficient!(
+            allocation_model,
+            inflow_id,
+            ∂q_∂h_upstream,
+            h_a,
+            rhs,
             constraint,
-            upstream_level,
-            -∂q_∂h_upstream / scaling.flow,
+            p,
         )
-        JuMP.set_normalized_coefficient(
+
+        rhs = set_normalized_storage_or_level_coefficient!(
+            allocation_model,
+            outflow_id,
+            ∂q_∂h_downstream,
+            h_b,
+            rhs,
             constraint,
-            downstream_level,
-            -∂q_∂h_downstream / scaling.flow,
+            p,
         )
+        JuMP.set_normalized_rhs(constraint, rhs / scaling.flow)
     end
     return nothing
 end
