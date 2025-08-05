@@ -151,7 +151,7 @@ function set_normalized_storage_or_level_coefficient!(
         )
         rhs -= ∂q∂h * ∂h∂S * S_n / scaling.storage
     else
-        # If the node is not a Basin, its a LevelBoundary which have "infinite storage" so we define linear resistance in terms of level
+        # If the node is not a Basin, its a LevelBoundary which has "infinite storage" so we define linear resistance in terms of level
         level = get_level(problem, node_id)
         JuMP.set_normalized_coefficient(constraint, level, -∂q∂h / scaling.flow)
         rhs -= h_n * ∂q∂h
