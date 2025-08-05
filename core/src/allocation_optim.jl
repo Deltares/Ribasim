@@ -80,7 +80,6 @@ function set_simulation_data!(
         end
 
         JuMP.fix(storage[key], storage_now / scaling.storage; force = true)
-        # JuMP.fix(basin_level[key], level_now; force = true)
     end
 
     for link in keys(cumulative_boundary_volume)
@@ -113,33 +112,37 @@ function set_simulation_data!(
     return nothing
 end
 
-function set_normalized_storage_or_level_coefficient(
-    problem,
-    flow_id,
-    ∂q∂h,
-    h_n,
-    rhs,
-    constraint,
-    scaling,
-    p_independent,
+function set_normalized_storage_or_level_coefficient!(
+    allocation_model::AllocationModel,
+    node_id::NodeID,
+    ∂q∂h::Float64,
+    h_n::Float64,
+    rhs::Float64,
+    constraint::JuMP.ConstraintRef,
+    p::Parameters,
 )::Float64
-    # To avoid confusion: h_n and S_n are numbers from the last time step in the physical
-    # layer, level and storage are variables in the optimization problem
+    # To avoid confusion: h_n and S_n are numbers from the last time step in the physical layer
+    #  while level and storage are variables in the optimization problem
+    (; problem, scaling) = allocation_model
+    (; p_independent) = p
     (; basin) = p_independent
     (; level_to_area) = basin
 
-    if (flow_id.type == NodeType.Basin)
-        storage = get_storage(problem, flow_id)
-        ∂h∂S = 1.0 / level_to_area[flow_id].u[end]
-        S_n = get_storage_from_level(basin, flow_id.idx, h_n)
+    # If the node is a Basin, we define linear resistance in terms of storage
+    if (node_id.type == NodeType.Basin)
+        storage = get_storage(problem, node_id)
+        ∂h∂S = 1.0 / level_to_area[node_id](h_n)
+
+        S_n = p.state_time_dependent_cache.current_storage[node_id.idx]
         JuMP.set_normalized_coefficient(
             constraint,
             storage,
-            -∂q∂h * ∂h∂S / scaling.flow / scaling.storage,
+            -∂q∂h * ∂h∂S / (scaling.flow * scaling.storage),
         )
         rhs -= ∂q∂h * ∂h∂S * S_n / scaling.storage
     else
-        level = get_level(problem, flow_id)
+        # If the node is not a Basin, its a LevelBoundary which have "infinite storage" so we define linear resistance in terms of level
+        level = get_level(problem, node_id)
         JuMP.set_normalized_coefficient(constraint, level, -∂q∂h / scaling.flow)
         rhs -= h_n * ∂q∂h
     end
@@ -165,6 +168,8 @@ function set_simulation_data!(
         h_b = get_level(p, outflow_id, t)
 
         q = linear_resistance_flow(linear_resistance, node_id, h_a, h_b)
+        # TODO: test if low storage factor improves at near empty basins
+        # q *= low_storage_factor_resistance_node(p, q, inflow_id, outflow_id)
 
         (; resistance, max_flow_rate) = linear_resistance
 
@@ -180,25 +185,23 @@ function set_simulation_data!(
         rhs = q
         constraint = linear_resistance_constraint[node_id]
 
-        rhs = set_normalized_storage_or_level_coefficient(
-            problem,
+        rhs = set_normalized_storage_or_level_coefficient!(
+            allocation_model,
             inflow_id,
             ∂q∂h_upstream,
             h_a,
             rhs,
             constraint,
-            scaling,
-            p_independent,
+            p,
         )
-        rhs = set_normalized_storage_or_level_coefficient(
-            problem,
+        rhs = set_normalized_storage_or_level_coefficient!(
+            allocation_model,
             outflow_id,
             ∂q∂h_downstream,
             h_b,
             rhs,
             constraint,
-            scaling,
-            p_independent,
+            p,
         )
 
         JuMP.set_normalized_rhs(constraint, rhs / scaling.flow)

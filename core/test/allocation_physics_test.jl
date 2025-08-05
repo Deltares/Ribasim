@@ -34,7 +34,6 @@
         xlabel = "Time",
         ylabel = "Flow Rate",
     )
-    plot!(; title = "Linear Resistance Stepwise profile")
 end
 
 @testitem "Tabulated Rating Curve" begin
