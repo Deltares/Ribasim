@@ -212,12 +212,17 @@ struct AllocationObjectives
     has_level_demand::Vector{Bool}
 end
 
-function Base.show(io::IO, objective::AllocationObjective)
-    (; type, demand_priority) = objective
-    print(io, "objective of type $type")
+function repr_allocation_objective(
+    objectives::AllocationObjectives,
+    objective_idx::Integer,
+)::String
+    type = objectives.type[objective_idx]
+    out = "objective of type $type"
     if type == AllocationObjectiveType.demand
-        print(io, ", demand_priority $demand_priority")
+        demand_priority = objectives.demand_priority[objective_idx]
+        out *= ", demand_priority $demand_priority"
     end
+    return out
 end
 
 @kwdef mutable struct ScalingFactors
