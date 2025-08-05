@@ -2,7 +2,14 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-from ribasim.config import Allocation, Experimental, Interpolation, Node, Solver
+from ribasim.config import (
+    Allocation,
+    Experimental,
+    Interpolation,
+    Node,
+    Results,
+    Solver,
+)
 from ribasim.geometry.link import NodeData
 from ribasim.input_base import TableModel
 from ribasim.model import Model
@@ -373,6 +380,7 @@ def allocation_example_model() -> Model:
         crs="EPSG:28992",
         allocation=Allocation(timestep=86400),
         experimental=Experimental(concentration=True, allocation=True),
+        results=Results(format="netcdf"),
     )
 
     basin_data: list[TableModel[Any]] = [
@@ -1331,7 +1339,7 @@ def bommelerwaard_model():
         )
 
     for node_id, demand_priority, min_level in zip(
-        range(59, 62), [2, 2, 3], [0.18, 0.58, 0.55]
+        range(59, 62), [4, 4, 5], [0.18, 0.58, 0.55]
     ):
         model.level_demand.add(
             get_node(node_id),

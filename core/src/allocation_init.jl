@@ -180,7 +180,8 @@ function add_flow!(
     )
 
     # Define parameters: Basin forcing (scaling.flow * m^3/s, values to be filled in before optimizing)
-    basin_ids_subnetwork = filter(id -> id.type == NodeType.Basin, node_ids_subnetwork)
+    basin_ids_subnetwork =
+        sort!(filter(id -> id.type == NodeType.Basin, collect(node_ids_subnetwork)))
     problem[:basin_forcing] =
         JuMP.@variable(problem, basin_forcing[basin_ids_subnetwork] == 0.0)
 
@@ -461,9 +462,11 @@ function add_level_demand!(
 
     level_demand_ids_subnetwork =
         get_ids_in_subnetwork(graph, NodeType.LevelDemand, subnetwork_id)
-    ids_with_level_demand_subnetwork = filter(
-        node_id -> has_external_flow_demand(graph, node_id, :level_demand)[1],
-        graph[].node_ids[subnetwork_id],
+    ids_with_level_demand_subnetwork = sort!(
+        filter(
+            node_id -> has_external_flow_demand(graph, node_id, :level_demand)[1],
+            collect(graph[].node_ids[subnetwork_id]),
+        ),
     )
 
     # Define decision variables: absolute storage error above maximum level (m^3 * scaling.storage)
