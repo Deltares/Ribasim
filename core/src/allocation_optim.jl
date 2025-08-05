@@ -124,14 +124,12 @@ function set_simulation_data!(
 
     # Set the linearization of LinearResistance flows in the current levels from the physical layer
     for node_id in only(linear_resistance_constraint.axes)
-        inflow_link = linear_resistance.inflow_link[node_id.idx]
-        outflow_link = linear_resistance.outflow_link[node_id.idx]
+        inflow_id = linear_resistance.inflow_link[node_id.idx].link[1]
+        outflow_id = linear_resistance.outflow_link[node_id.idx].link[2]
         (; p_independent) = p
         (; basin) = p_independent
         (; level_to_area) = basin
 
-        inflow_id = inflow_link.link[1]
-        outflow_id = outflow_link.link[2]
         h_a = get_level(p, inflow_id, t)
         h_b = get_level(p, outflow_id, t)
 
@@ -146,34 +144,55 @@ function set_simulation_data!(
             ∂q_∂level_upstream = 1 / resistance[node_id.idx]
             ∂q_∂level_downstream = -1 / resistance[node_id.idx]
         end
-        ∂h∂S_upstream = 1.0 / level_to_area[inflow_link.link[1]].u[end]
 
-        S_a = get_storage_from_level(basin, inflow_link.link[1].idx, h_a)
+        # Collect constant terms in linearization in q0
+        rhs = q
 
-        # Constant terms in linearization
-        q0 =
-            q - h_b * ∂q_∂level_downstream -
-            ∂q_∂level_upstream * ∂h∂S_upstream * S_a / scaling.storage
-
-        # To avoid confusion: h_a and h_b are numbers for the current levels in the physical
-        # layer, upstream_level and downstream_level are variables in the optimization problem
+        # To avoid confusion: h_a and h_b, S_a and S_b are numbers for the current levels in the physical
+        # layer, upstream_level and downstream_level, upstream_storage and downstream_storage are variables in the optimization problem
         constraint = linear_resistance_constraint[node_id]
-        upstream_storage =
-            get_storage(problem, linear_resistance.inflow_link[node_id.idx].link[1])
-        downstream_level =
-            get_level(problem, linear_resistance.outflow_link[node_id.idx].link[2])
-        JuMP.set_normalized_rhs(constraint, q0 / scaling.flow)
-        # Minus signs because the level terms are moved to the lhs in the constraint
-        JuMP.set_normalized_coefficient(
-            constraint,
-            upstream_storage,
-            -∂q_∂level_upstream * ∂h∂S_upstream / scaling.flow / scaling.storage,
-        )
-        JuMP.set_normalized_coefficient(
-            constraint,
-            downstream_level,
-            -∂q_∂level_downstream / scaling.flow,
-        )
+
+        if (inflow_id.type == NodeType.Basin)
+            upstream_storage = get_storage(problem, inflow_id)
+            ∂h∂S_upstream = 1.0 / level_to_area[inflow_id].u[end]
+            S_a = get_storage_from_level(basin, inflow_id.idx, h_a)
+            JuMP.set_normalized_coefficient(
+                constraint,
+                upstream_storage,
+                -∂q_∂level_upstream * ∂h∂S_upstream / scaling.flow / scaling.storage,
+            )
+            rhs -= ∂q_∂level_upstream * ∂h∂S_upstream * S_a / scaling.storage
+        else
+            upstream_level = get_level(problem, inflow_id)
+            JuMP.set_normalized_coefficient(
+                constraint,
+                upstream_level,
+                -∂q_∂level_upstream / scaling.flow,
+            )
+            rhs -= h_a * ∂q_∂level_upstream
+        end
+
+        if (outflow_id.type == NodeType.Basin)
+            downstream_storage = get_storage(problem, outflow_id)
+            ∂h∂S_downstream = 1.0 / level_to_area[outflow_id].u[end]
+            S_b = get_storage_from_level(basin, outflow_id.idx, h_b)
+            JuMP.set_normalized_coefficient(
+                constraint,
+                downstream_storage,
+                -∂q_∂level_downstream * ∂h∂S_downstream / scaling.flow / scaling.storage,
+            )
+            rhs -= ∂q_∂level_downstream * ∂h∂S_downstream * S_b / scaling.storage
+        else
+            downstream_level = get_level(problem, outflow_id)
+            JuMP.set_normalized_coefficient(
+                constraint,
+                downstream_level,
+                -∂q_∂level_downstream / scaling.flow,
+            )
+            rhs -= h_b * ∂q_∂level_downstream
+        end
+
+        JuMP.set_normalized_rhs(constraint, rhs / scaling.flow)
     end
     return nothing
 end
