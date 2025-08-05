@@ -247,8 +247,6 @@ function set_simulation_data!(
         # Constant terms in linearization
         q0 = q - h_a * ∂q_∂h_upstream - h_b * ∂q_∂h_downstream
 
-        # To avoid confusion: h_a and h_b are numbers for the current levels in the physical
-        # layer, upstream_level and downstream_level are variables in the optimization problem
         constraint = manning_resistance_constraint[node_id]
         upstream_level =
             get_level(problem, manning_resistance.inflow_link[node_id.idx].link[1])
