@@ -596,17 +596,30 @@ function add_linear_resistance!(
     # Add constraints: linearisation of the flow(levels) relationship in the current levels in the physical layer
     flow = problem[:flow]
     q0 = 1.0 # example value (scaling.flow * m^3/s, to be filled in before optimizing)
-    ∂q_∂level_upstream = 1.0 # example value (scaling_flow * m^3/(sm), to be filled in before optimizing)
-    ∂q_∂level_downstream = -1.0 # example value (scaling_flow * m^3/(sm), to be filled in before optimizing)
+    ∂q∂variable_upstream = 1.0 # example value, to be filled in before optimizing)
+    ∂q∂variable_downstream = -1.0 # example value, to be filled in before optimizing)
+    # variable is either level or storage, depending on the type of node
+
     problem[:linear_resistance_constraint] = JuMP.@constraint(
         problem,
         [node_id = linear_resistance_ids_subnetwork],
         flow[inflow_link[node_id.idx].link] == begin
-            level_upstream = get_storage(problem, inflow_link[node_id.idx].link[1])
-            level_downstream = get_level(problem, outflow_link[node_id.idx].link[2])
+            # Basins define linear resistance in terms of storage, and level boundaries in terms of level
+            if inflow_link[node_id.idx].link[1].type == NodeType.Basin
+                variable_upstream = get_storage(problem, inflow_link[node_id.idx].link[1])
+            else
+                variable_upstream = get_level(problem, inflow_link[node_id.idx].link[1])
+            end
+            if outflow_link[node_id.idx].link[2].type == NodeType.Basin
+                variable_downstream =
+                    get_storage(problem, outflow_link[node_id.idx].link[2])
+            else
+                variable_downstream = get_level(problem, outflow_link[node_id.idx].link[2])
+            end
+            #
             q0 +
-            ∂q_∂level_upstream * level_upstream +
-            ∂q_∂level_downstream * level_downstream
+            ∂q∂variable_upstream * variable_upstream +
+            ∂q∂variable_downstream * variable_downstream
         end,
         base_name = "linear_resistance_constraint"
     )
