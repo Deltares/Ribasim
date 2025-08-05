@@ -167,10 +167,13 @@ function set_linearized_resistance_data!(
     p::Parameters,
     t::Float64,
 )
+    (; scaling) = allocation_model
+
     for node_id in only(resistance_constraint.axes)
         inflow_id = resistance_node.inflow_link[node_id.idx].link[1]
         outflow_id = resistance_node.outflow_link[node_id.idx].link[2]
 
+        # h_a and h_b are numbers from the last time step in the physical layer
         h_a = get_level(p, inflow_id, t)
         h_b = get_level(p, outflow_id, t)
 
@@ -206,7 +209,7 @@ function set_linearized_resistance_data!(
             constraint,
             p,
         )
-        JuMP.set_normalized_rhs(constraint, rhs / allocation_model.scaling.flow)
+        JuMP.set_normalized_rhs(constraint, rhs / scaling.flow)
     end
 end
 
@@ -216,7 +219,7 @@ function set_simulation_data!(
     p::Parameters,
     t::Float64,
 )::Nothing
-    (; problem, scaling) = allocation_model
+    (; problem) = allocation_model
     linear_resistance_constraint = problem[:linear_resistance_constraint]
 
     set_linearized_resistance_data!(
@@ -237,7 +240,7 @@ function set_simulation_data!(
     p::Parameters,
     t::Float64,
 )::Nothing
-    (; problem, scaling) = allocation_model
+    (; problem) = allocation_model
     manning_resistance_constraint = problem[:manning_resistance_constraint]
 
     set_linearized_resistance_data!(
