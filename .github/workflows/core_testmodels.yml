@@ -36,16 +36,7 @@ jobs:
         with:
           cache-compiled: "true"
           cache-registries: "true"
-      - name: "Manually add Conda.jl folder due to bug in its build step"
-        if: matrix.os == 'ubuntu-latest'
-        # https://github.com/JuliaPy/Conda.jl/issues/251
-        run: |
-          mkdir -p "/home/runner/.julia/conda/3/x86_64"
-      - name: "Same but for Windows"
-        if: matrix.os == 'windows-latest'
-        run: |
-          mkdir "C:\Users\runneradmin\.julia\conda\3\x86_64"
-      - uses: prefix-dev/setup-pixi@v0.8.10
+      - uses: prefix-dev/setup-pixi@v0.8.14
         with:
           pixi-version: "latest"
       - name: Prepare pixi

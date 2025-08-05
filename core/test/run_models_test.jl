@@ -9,13 +9,6 @@
     toml_path = normpath(@__DIR__, "../../generated_testmodels/trivial/ribasim.toml")
     @test ispath(toml_path)
 
-    # There is no control. That means we don't write the control.arrow,
-    # and we remove it if it exists.
-    control_path = normpath(dirname(toml_path), "results/control.arrow")
-    mkpath(dirname(control_path))
-    touch(control_path)
-    @test ispath(control_path)
-
     config = Ribasim.Config(toml_path)
     model = Ribasim.run(config)
     @test model isa Ribasim.Model
@@ -27,8 +20,6 @@
     @test u isa CVector
     @test filter(!isempty, getaxes(u)) ==
           (; tabulated_rating_curve = 1:1, evaporation = 2:2, infiltration = 3:3)
-
-    @test !ispath(control_path)
 
     # read all results as bytes first to avoid memory mapping
     # which can have cleanup issues due to file locking
@@ -167,11 +158,14 @@ end
 @testitem "leaky bucket model" begin
     using OrdinaryDiffEqCore: get_du
     import BasicModelInterface as BMI
+    using Ribasim: results_path
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/leaky_bucket/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.Model(toml_path)
     @test model isa Ribasim.Model
+    # results dir is created on Model initialization
+    @test isdir(results_path(model.config))
 
     (; integrator) = model
     du = get_du(integrator)
@@ -236,19 +230,19 @@ end
     @test success(model)
     @test length(model.integrator.sol) == 2 # start and end
     @test state_time_dependent_cache.current_storage ≈
-          Float32[797.56195, 797.11017, 508.48175, 1130.005] skip = Sys.isapple() atol = 1.5
+          Float32[775.23576, 775.23365, 572.60102, 1130.005] skip = Sys.isapple() atol = 1.5
 
     @test length(logger.logs) > 10
     @test logger.logs[1].level == Debug
     @test logger.logs[1].message == "Read database into memory."
 
-    table = Ribasim.flow_table(model)
+    table = Ribasim.flow_data(model)
 
     # flows are recorded at the end of each period, and are undefined at the start
     @test unique(table.time) == Ribasim.datetimes(model)[1:(end - 1)]
 
     @test isfile(joinpath(dirname(toml_path), "results/concentration.arrow"))
-    table = Ribasim.concentration_table(model)
+    table = Ribasim.concentration_data(model)
     @test "Continuity" in table.substance
     @test all(isapprox.(table.concentration[table.substance .== "Continuity"], 1.0))
 end
@@ -275,7 +269,7 @@ end
     precipitation = p_independent.basin.vertical_flux.precipitation
     @test length(precipitation) == 4
     @test state_time_dependent_cache.current_storage ≈
-          Float32[702.262, 701.802, 439.235, 1136.969] atol = 2.0 skip = Sys.isapple()
+          Float32[691.797, 691.795, 459.022, 1136.969] atol = 2.0 skip = Sys.isapple()
 end
 
 @testitem "Allocation example model" begin
@@ -352,7 +346,7 @@ end
     level = level[1]
 
     t = model.saved.flow.t
-    flow = DataFrame(Ribasim.flow_table(model))
+    flow = DataFrame(Ribasim.flow_data(model))
     outlet_flow =
         filter([:from_node_id, :to_node_id] => (from, to) -> from == 2 && to == 3, flow)
 
@@ -398,7 +392,7 @@ end
     @test only(state_time_dependent_cache.current_storage) ≈ 500 atol = 1
 
     # Trasient return factor
-    flow = DataFrame(Ribasim.flow_table(model))
+    flow = DataFrame(Ribasim.flow_data(model))
     return_factor_itp = p_independent.user_demand.return_factor[3]
     flow_in =
         filter([:from_node_id, :to_node_id] => (from, to) -> (from, to) == (1, 4), flow)
@@ -515,7 +509,7 @@ end
     function get_flow(solver_dt::Union{Float64, Nothing}, solver_saveat::Float64)
         config = Ribasim.Config(toml_path; solver_dt, solver_saveat)
         model = Ribasim.run(config)
-        df = DataFrame(Ribasim.flow_table(model))
+        df = DataFrame(Ribasim.flow_data(model))
         flow =
             filter(
                 [:from_node_id, :to_node_id] => (from, to) -> from == 3 && to == 2,
@@ -626,7 +620,7 @@ end
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/two_basin/ribasim.toml")
     model = Ribasim.run(toml_path)
-    df = DataFrame(Ribasim.subgrid_level_table(model))
+    df = DataFrame(Ribasim.subgrid_level_data(model))
 
     ntime = 367
     @test nrow(df) == ntime * 2
@@ -691,7 +685,7 @@ end
     model = Ribasim.run(toml_path)
     @test success(model)
 
-    basin_table = DataFrame(Ribasim.basin_table(model))
+    basin_table = DataFrame(Ribasim.basin_data(model))
     filter!(
         [:node_id, :time] =>
             (id, time) ->
@@ -728,7 +722,7 @@ end
 
     flow_rates_input = itp.u
     flow_rates_output =
-        filter(row -> row.from_node_id == 1, DataFrame(Ribasim.flow_table(model))).flow_rate
+        filter(row -> row.from_node_id == 1, DataFrame(Ribasim.flow_data(model))).flow_rate
     @test flow_rates_output[1:4] ≈ flow_rates_input
     @test flow_rates_output[4:7] ≈ flow_rates_input
 
@@ -784,11 +778,4 @@ end
     @test level_col ≈ [levels[1]; levels[2]]
     @test area_col ≈ [areas[1]; areas[2]]
     @test storage_col ≈ [storages[1]; storages[2]]
-end
-
-@testitem "Allocation training model" begin
-    toml_path =
-        joinpath(@__DIR__, "../../generated_testmodels/allocation_training/ribasim.toml")
-    model = Ribasim.run(toml_path)
-    @test Ribasim.success(model)
 end

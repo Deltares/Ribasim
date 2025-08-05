@@ -1,13 +1,13 @@
 # Automatically generated file. Do not modify.
 
 from collections.abc import Callable
-from typing import Annotated, Any
+from typing import Any
 
+import numpy as np
 import pandas as pd
-import pandera as pa
-import pyarrow
+import pandera.pandas as pa
 from pandera.dtypes import Int32
-from pandera.typing import Index, Series
+from pandera.typing import Index
 
 from ribasim import migrations
 
@@ -17,7 +17,7 @@ class _BaseSchema(pa.DataFrameModel):
         coerce = True
 
     @classmethod
-    def _index_name(self) -> str:
+    def _index_name(cls) -> str:
         return "fid"
 
     @pa.dataframe_parser

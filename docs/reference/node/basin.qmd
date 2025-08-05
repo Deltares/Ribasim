@@ -34,11 +34,11 @@ time table, it is empty, or all timestamps of that variable are missing.
 column                | type    | unit                  | restriction
 ---------             | ------- | --------------------- | -----------
 node_id               | Int32   | -                     |
+drainage              | Float64 | $\text{m}^3/\text{s}$ | non-negative
+potential_evaporation | Float64 | $\text{m}/\text{s}$   | non-negative
+infiltration          | Float64 | $\text{m}^3/\text{s}$ | non-negative
 precipitation         | Float64 | $\text{m}/\text{s}$   | non-negative
 surface_runoff        | Float64 | $\text{m}^3/\text{s}$ | non-negative
-potential_evaporation | Float64 | $\text{m}/\text{s}$   | non-negative
-drainage              | Float64 | $\text{m}^3/\text{s}$ | non-negative
-infiltration          | Float64 | $\text{m}^3/\text{s}$ | non-negative
 
 Note that if variables are not set in the static table, default values are used when
 possible. These are generally zero, e.g. no precipitation, no inflow. If it is not possible
@@ -425,13 +425,14 @@ That means for each Basin all subgrid relations are either static or dynamic.
 ## Concentration {#sec-basin-conc}
 This table defines the concentration of substances for the inflow boundaries of a Basin node.
 
-column        | type     | unit                     | restriction
-------------- | -------- | ------------------------ | -----------
-node_id       | Int32    | -                        |
-time          | DateTime | -                        |
-substance     | String   |                          | can correspond to known Delwaq substances
-drainage      | Float64  | $\text{g}/\text{m}^3$    | (optional)
-precipitation | Float64  | $\text{g}/\text{m}^3$    | (optional)
+column          | type     | unit                     | restriction
+--------------- | -------- | ------------------------ | -----------
+node_id         | Int32    | -                        |
+time            | DateTime | -                        |
+substance       | String   |                          | can correspond to known Delwaq substances
+drainage        | Float64  | $\text{g}/\text{m}^3$    | (optional)
+precipitation   | Float64  | $\text{g}/\text{m}^3$    | (optional)
+surface_runoff  | Float64  | $\text{g}/\text{m}^3$    | (optional)
 
 ## Concentration state {#sec-basin-conc-state}
 This table defines the concentration of substances in the Basin at the start of the simulation.

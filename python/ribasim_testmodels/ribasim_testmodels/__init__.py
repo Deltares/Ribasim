@@ -1,4 +1,4 @@
-__version__ = "0.5.0"
+__version__ = "2024.4.0"
 
 from collections.abc import Callable
 
@@ -8,9 +8,11 @@ import ribasim_testmodels
 from ribasim_testmodels.allocation import (
     allocation_control_model,
     allocation_example_model,
+    allocation_off_flow_demand_model,
     allocation_training_model,
     bommelerwaard_model,
     cyclic_demand_model,
+    drain_surplus_model,
     fair_distribution_model,
     flow_demand_model,
     invalid_infeasible_model,
@@ -19,6 +21,7 @@ from ribasim_testmodels.allocation import (
     looped_subnetwork_model,
     main_network_with_subnetworks_model,
     minimal_subnetwork_model,
+    multi_level_demand_model,
     subnetwork_model,
     subnetworks_with_sources_model,
     user_demand_model,
@@ -86,6 +89,7 @@ __all__ = [
     "allocation_control_model",
     "allocation_training_model",
     "allocation_example_model",
+    "allocation_off_flow_demand_model",
     "backwater_model",
     "basic_arrow_model",
     "basic_model",
@@ -102,6 +106,7 @@ __all__ = [
     "cyclic_demand_model",
     "cyclic_time_model",
     "discrete_control_of_pid_control_model",
+    "drain_surplus_model",
     "drought_model",
     "fair_distribution_model",
     "flow_boundary_interpolation_model",
@@ -129,6 +134,7 @@ __all__ = [
     "manning_resistance_model",
     "minimal_subnetwork_model",
     "misc_nodes_model",
+    "multi_level_demand_model",
     "outlet_continuous_control_model",
     "outlet_model",
     "pid_control_equation_model",

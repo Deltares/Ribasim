@@ -27,7 +27,7 @@ Handles exceptions to convert to exit codes.
 function main(toml_path::AbstractString)::Cint
     try
         config = Config(toml_path)
-        mkpath(results_path(config, "."))
+        mkpath(results_path(config))
         open(results_path(config, "ribasim.log"), "w") do io
             logger = setup_logger(; verbosity = config.logging.verbosity, stream = io)
             with_logger(logger) do
@@ -36,10 +36,12 @@ function main(toml_path::AbstractString)::Cint
                     model = Model(config)
                     try
                         solve!(model)
-                    catch
+                    catch e
                         # Catch errors thrown during simulation.
-                        @warn "Simulation crashed or interrupted."
-                        log_bottlenecks(model; converged = false)
+                        t = datetime_since(model.integrator.t, model.config.starttime)
+                        @warn "Simulation crashed or interrupted at $t."
+                        interrupt = e isa InterruptException
+                        log_bottlenecks(model; interrupt)
                         write_results(model)
                         display_error(io)
                         return 1

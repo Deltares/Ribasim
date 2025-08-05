@@ -6,6 +6,9 @@ title: "Allocation"
 In water resources management, allocation deals with distributing limited water resources among competing demands in a fair and efficient manner. This is particularly important in situations where water demands exceed available supply, requiring a systematic approach to prioritize and optimize water distribution across the entire network. In Ribasim we formulate this with linear programming using [JuMP](https://jump.dev/JuMP.jl/stable/) and solve the problem using the the [HiGHS solver](https://highs.dev/).
 
 ## Allocation Networks
+Allocation is the process of assigning an optimized allocated flow rate to demand nodes in the physical layer of the model based on information about sources and their source priorities, the different demand nodes over various demand priorities, constraints introduced by nodes, local water availability and graph topology. It solves a linearized version of the problem formulated for the [physical layer](/concept/modelconcept.qmd#physical-layer) a period of time ahead of the physical layer, while simultaneously optimizing allocated flows and steering certain structures to get the water from (preferred) source to demand. The physics is implemented in an implicit manner, rather like the [implicit Euler](https://en.wikipedia.org/wiki/Backward_Euler_method) numerical method.
+
+The allocation problem is solved per subnetwork of the Ribasim model. A subnetwork is defined by all nodes that have the same subnetwork ID in the [Node table](/reference/usage.qmd#node). Each subnetwork is used to formulate a linear optimization problem with the [JuMP](https://jump.dev/JuMP.jl/stable/) package, which is solved using the [HiGHS solver](https://highs.dev/). For more in-depth information see also the example of solving the maximum flow problem with `JuMP.jl` [here](https://jump.dev/JuMP.jl/stable/tutorials/linear/network_flows/#The-max-flow-problem).
 
 When we build a Ribasim model in which we want to utilize allocation, it can be computationally efficient and stable to divide a large allocation network into a primary network which connects to multiple subnetworks. The primary network should be the main water system and treats each connected subnetwork as a single demand node.
 
@@ -89,6 +92,60 @@ If no primary network is present, then step 1 and 2 are skipped and the entire n
 
 
 <!-- ## The Basin profile
+## Water balance
+
+Just as the physical layer, the allocation layer must satisfy the water balance, in this case over the allocation timestep $\Delta t_\text{allocation}$. To explain how this is done, we give an algebraic description of some basic aspects of the subnetworks. Say we denote the set of all nodes in the model by $V$, and the subset that forms a subnetwork by $S \subseteq V$. We also have the the set of all flow links in the model $L \subseteq V \times V$, i.e. the links are ordered pairs of nodes. The set of links associated with the subnetwork is derived from $S$ as
+
+$$
+    E_S = \{l \in L \; : \; l \cap S \ne\emptyset\},
+$$
+
+<span style="color: red;">#TODO: Add image with which links are assumed to be part of the subnetwork.</span>
+
+i.e. all links in the model that have at least one node in the subnetwork. For each link in the subnetwork we define a flow variable ($\text{m}^3/\text{s}$):
+
+$$
+    -F_\max \le \mathcal{F}_l \le F_\max, \quad l \in E_S.
+$$
+
+Here each $\mathcal{F}_l$ denotes the flow over the link $l$ over the timestep. These are decision variables, i.e. values that are an output of the optimization, which we denote in cursive script. The variable can attain values between the bounds $-F_\max$ and $F_\max$, where $F_\max = 500.000 \;\text{m}^3/\text{s}$. The bound $F_\max$ is chosen as a reasonable maximum value that flows can attain. We assume these flows to be constant over the period $\Delta t_\text{allocation}$. We will see later that certain parameters of the model can put stricter bounds on these flows.
+
+For the basins $B_S \subset S$ in the subnetwork we define storage parameters ($\text{m}^3$) for the start of the allocation time step $\Delta t_\text{allocation}$:
+
+$$
+    S^\text{start}_b, \quad b \in B_S.
+$$
+
+These are set to the values that hey have in the physical layer at the start of the allocation timestep. The storages at the end of this timestep are decision variables:
+
+$$
+    0 \le \mathcal{S}^\text{end}_b \le S_b^\max, b \in B_S,
+$$
+
+<span style="color: red;">#TODO: We might decide to relax this upper bound a bit.</span>
+
+where $S_b^\max$ is the largest storage within the [Basin profile](/reference/node/basin.qmd#profile). Lastly we have a horizontal forcing variable for each basin
+
+$$
+    \mathcal{H}^\text{end}, \quad b \in B_S,
+$$
+
+whose value will be discussed later. Given these variables, we can set up a water balance constraint for each basin in the subnetwork:
+
+$$
+    \mathcal{S}_b^\text{end} - S_b^\text{start} = \Delta t_\text{allocation}
+    \left(
+        \mathcal{H}_b
+        +
+        \sum_{(n, b) \in E_S} \mathcal{F}_{(n,b)}
+        -
+        \sum_{(b, n) \in E_S} \mathcal{F}_{(b,n)}
+    \right),
+    \quad
+    b \in B_S.
+$$
+
+## The Basin profile
 
 For most of the physical layer, flows depend on levels. Therefore level variables have to be introduced:
 
@@ -97,7 +154,7 @@ $$
 $$
 
 
-where $L_b^\min$ is the bottom level of the Basin and $L_b^\max$ is the highest level available in the Basin profile. Note that this means that the problem becomes infeasible if the level in a basin exceeds this value, and the solver will attempt to avoid this from happening. The level in a basin depends on the storage via the [Basin profile](../reference/node/basin.qmd#profile), here denoted by the function $P_b$:
+where $L_b^\min$ is the bottom level of the Basin and $L_b^\max$ is the highest level available in the Basin profile. Note that this means that the problem becomes infeasible if the level in a basin exceeds this value, and the solver will attempt to avoid this from happening. The level in a basin depends on the storage via the [Basin profile](/reference/node/basin.qmd#profile), here denoted by the function $P_b$:
 
 $$
     \mathcal{L}^\text{end}_b = P_b(\mathcal{S}^\text{end}_b)
@@ -170,10 +227,15 @@ The flow rate of a FlowBoundary is given as a timeseries so we could use the int
 
 ## Tabulated Rating Curve
 
-Since the $Q(h)$ relationships for TabulatedRatingCurve nodes (see [here](../reference/node/tabulated-rating-curve.qmd#equations)) are already linear, these can be directly incorporated into the allocation problem.
+Since the $Q(h)$ relationships for TabulatedRatingCurve nodes (see [here](/reference/node/tabulated-rating-curve.qmd#equations)) are already linear, these can be directly incorporated into the allocation problem.
 
 
 # Objectives (goals)
+In Ribasim we have [LinearResistance](/reference/node/linear-resistance.qmd) and [ManningResistance](/reference/node/manning-resistance.qmd) nodes. The linear resistance node is already linear and therefore can be directly incorporated in the allocation problem. For ManningResistance we linearize the flow relationship with respect to the upstream and downstream level at the beginning of the allocation timestep.
+
+For the resistance nodes [the phantom storage introduced above](#the-basin-profile) is very helpful, because it prevents that according to the formula water has to flow from an empty basin with a high bottom to a lower basin.
+
+## Objectives (goals)
 
 The allocation algorithm optimizes for a sequence of objectives in succession, adding constraints after optimization for each goal to retain the result of that optimization in the subsequent optimizations. This approach is known as [goal programming](https://en.wikipedia.org/wiki/Goal_programming).
 
@@ -206,12 +268,12 @@ When Pumps and Outlets are part of a subnetwork, they can be controlled by alloc
 
 There are several other control systems in Ribasim:
 
-- [DiscreteControl](../reference/node/discrete-control.qmd): This node type can change parameters of other nodes in between time steps of the solver of the physical layer. If the affected node is within a subnetwork, the parameter change will also be taken into account in the next allocation run  <span style="color: red;">#TODO: This has not been implemented yet.</span>. So the parameters in the allocation layer are always up to date with those in the physical layer, but the allocation algorithm cannot anticipate parameter changes from DiscreteControl that occur within the allocation time step which is being optimized over, so this can be a source of discrepancies between the physical layer and the allocation layer.
-- [ContinuousControl](../reference/node/continuous-control.qmd): <span style="color: red;">#TODO: Undecided. Some ContinuousControl relationships could be implemented in allocation, but this requires validation.</span>
-- [PidControl](../reference/node/pid-control.qmd): The continuous nature of this control type is not taken into account. The flow rate the controlled structure has at the start of the allocation optimization step will be extrapolated in a constant manner.
+- [DiscreteControl](/reference/node/discrete-control.qmd): This node type can change parameters of other nodes in between time steps of the solver of the physical layer. If the affected node is within a subnetwork, the parameter change will also be taken into account in the next allocation run  <span style="color: red;">#TODO: This has not been implemented yet.</span>. So the parameters in the allocation layer are always up to date with those in the physical layer, but the allocation algorithm cannot anticipate parameter changes from DiscreteControl that occur within the allocation time step which is being optimized over, so this can be a source of discrepancies between the physical layer and the allocation layer.
+- [ContinuousControl](/reference/node/continuous-control.qmd): <span style="color: red;">#TODO: Undecided. Some ContinuousControl relationships could be implemented in allocation, but this requires validation.</span>
+- [PidControl](/reference/node/pid-control.qmd): The continuous nature of this control type is not taken into account. The flow rate the controlled structure has at the start of the allocation optimization step will be extrapolated in a constant manner.
 
 
-See [here](../reference/usage.qmd#results).
+See [here](/reference/usage.qmd#results).
 
 
 The following data of the parameters and state of a Ribasim model are relevant for the allocation problem.

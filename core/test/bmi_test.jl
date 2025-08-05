@@ -28,9 +28,10 @@ end
 
 @testitem "fixed timestepping" begin
     import BasicModelInterface as BMI
+    using SciMLBase: successful_retcode
 
-    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
-    dt = 10.0
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/trivial/ribasim.toml")
+    dt = 1.0
     config = Ribasim.Config(toml_path; solver_algorithm = "ImplicitEuler", solver_dt = dt)
     @test config.solver.algorithm == "ImplicitEuler"
     @test config.solver.dt === dt
@@ -38,6 +39,7 @@ end
 
     @test BMI.get_time_step(model) == dt
     BMI.update(model)
+    @test successful_retcode(model.integrator.sol)
     @test BMI.get_current_time(model) == dt
     @test_throws ErrorException BMI.update_until(model, dt - 60)
     BMI.update_until(model, dt + 60)

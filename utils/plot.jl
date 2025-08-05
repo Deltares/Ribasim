@@ -5,7 +5,7 @@ using Makie: Figure, Axis, scatterlines!, axislegend
 using Ribasim: Ribasim, Model
 
 function plot_basin_data!(model::Model, ax::Axis, column::Symbol)
-    basin_data = DataFrame(Ribasim.basin_table(model))
+    basin_data = DataFrame(Ribasim.basin_data(model))
     for node_id in unique(basin_data.node_id)
         group = filter(:node_id => ==(node_id), basin_data)
         scatterlines!(ax, group.time, getproperty(group, column); label = "Basin #$node_id")
@@ -25,10 +25,10 @@ function plot_basin_data(model::Model)
 end
 
 function plot_flow!(model::Model, ax::Axis, link_metadata::Ribasim.LinkMetadata)
-    flow_data = DataFrame(Ribasim.flow_table(model))
-    flow_data = filter(:link_id => ==(link_metadata.id), flow_data)
+    flow_table = DataFrame(Ribasim.flow_data(model))
+    flow_table = filter(:link_id => ==(link_metadata.id), flow_table)
     label = "$(link_metadata.link[1]) → $(link_metadata.link[2])"
-    scatterlines!(ax, flow_data.time, flow_data.flow_rate; label)
+    scatterlines!(ax, flow_table.time, flow_table.flow_rate; label)
     return nothing
 end
 

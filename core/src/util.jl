@@ -97,7 +97,7 @@ function qh_interpolation(
     node_id::NodeID,
     level::Vector{Float64},
     flow_rate::Vector{Float64},
-)::ScalarLinearInterpolation
+)::CubicHermiteSpline
     errors = false
     n = length(level)
     if n < 2
@@ -122,7 +122,11 @@ function qh_interpolation(
 
     errors && error("Errors occurred when parsing $node_id.")
 
-    return LinearInterpolation(
+    # Make sure the smoothing is also correctly applied around the first level
+    pushfirst!(level, first(level) - 1.0)
+    pushfirst!(flow_rate, 0.0)
+
+    return PCHIPInterpolation(
         flow_rate,
         level;
         extrapolation_left = ConstantExtrapolation,
@@ -352,25 +356,19 @@ function get_all_demand_priorities(db::DB, config::Config;)::Vector{Int32}
     demand_priorities = Set{Int32}()
     is_valid = true
 
-    for name in names(Ribasim; all = true)
-        type = getfield(Ribasim, name)
-        if !(
-            (type isa DataType) &&
-            type <: Legolas.AbstractRecord &&
-            hasfield(type, :demand_priority)
-        )
+    for table_type in table_types
+        if !hasfield(table_type, :demand_priority)
             continue
         end
 
-        data = load_structvector(db, config, type)
+        data = load_structvector(db, config, table_type)
         demand_priority_col = data.demand_priority
         demand_priority_col = Int32.(coalesce.(demand_priority_col, Int32(0)))
         if valid_demand_priorities(demand_priority_col, config.experimental.allocation)
             union!(demand_priorities, demand_priority_col)
         else
             is_valid = false
-            node, kind = nodetype(Legolas._schema_version_from_record_type(type))
-            table_name = "$node / $kind"
+            table_name = sql_table_name(table_type)
             @error "Missing demand_priority parameter(s) for a $table_name node in the allocation problem."
         end
     end
@@ -1013,7 +1011,7 @@ function get_timeseries_tstops(
     get_timeseries_tstops!(tstops, t_end, flow_boundary.flow_rate)
     get_timeseries_tstops!(tstops, t_end, flow_demand.demand_itp)
     get_timeseries_tstops!(tstops, t_end, level_boundary.level)
-    get_timeseries_tstops!(tstops, t_end, level_demand.min_level)
+    get_timeseries_tstops!.(Ref(tstops), t_end, level_demand.min_level)
     get_timeseries_tstops!(tstops, t_end, pid_control.target)
     get_timeseries_tstops!(
         tstops,
@@ -1157,6 +1155,108 @@ function eval_time_interp(
     else
         return cache[idx]
     end
+end
+
+function trivial_linear_itp(; val = 0.0)
+    LinearInterpolation([val, val], [0.0, 1.0]; extrapolation = ConstantExtrapolation)
+end
+
+function trivial_linear_itp_fill(
+    demand_priorities,
+    node_id;
+    val = 0.0,
+)::Vector{Vector{ScalarLinearInterpolation}}
+    return [fill(trivial_linear_itp(; val), length(demand_priorities)) for _ in node_id]
+end
+
+function finitemaximum(u::AbstractVector; init = 0)
+    # Find the maximum finite value in the vector
+    max_val = init
+    for val in u
+        if isfinite(val) && val > max_val
+            max_val = val
+        end
+    end
+    max_val
+end
+
+function initialize_concentration_itp(
+    n_substance,
+    substance_idx_node_type;
+    continuity_tracer = true,
+)::Vector{ScalarConstantInterpolation}
+    # Default: concentration of 0
+    concentration_itp = fill(zero_constant_itp, n_substance)
+
+    # Set the concentration corresponding to the node type to 1
+    concentration_itp[substance_idx_node_type] = unit_constant_itp
+    if continuity_tracer
+        # Set the concentration corresponding of the continuity tracer to 1
+        concentration_itp[Substance.Continuity] = unit_constant_itp
+    end
+    return concentration_itp
+end
+
+function filtered_constant_interpolation(
+    group,
+    field::Symbol,
+    cyclic_time::Bool,
+    config::Config,
+)::ScalarConstantInterpolation
+    values = getproperty.(group, field)
+    times = getproperty.(group, :time)
+    mask = map(!ismissing, values)
+    return if any(mask)
+        ConstantInterpolation(
+            values[mask],
+            seconds_since.(times[mask], config.starttime);
+            extrapolation = cyclic_time ? Periodic : ConstantExtrapolation,
+        )
+    else
+        zero_constant_itp
+    end
+end
+
+function get_concentration_itp(
+    concentration_time,
+    node_id,
+    substances,
+    substance_idx_node_type,
+    cyclic_times,
+    config;
+    continuity_tracer = true,
+)::Vector{Vector{ScalarConstantInterpolation}}
+    concentration_itp = [
+        initialize_concentration_itp(
+            length(substances),
+            substance_idx_node_type;
+            continuity_tracer,
+        ) for _ in node_id
+    ]
+
+    for (id, cyclic_time) in zip(node_id, cyclic_times)
+        data_id = filter(row -> row.node_id == id.value, concentration_time)
+        for group in IterTools.groupby(row -> row.substance, data_id)
+            first_row = first(group)
+            substance_idx = find_index(Symbol(first_row.substance), substances)
+            concentration_itp[id.idx][substance_idx] =
+                filtered_constant_interpolation(group, :concentration, cyclic_time, config)
+        end
+    end
+
+    return concentration_itp
+end
+
+function add_substance_mass!(
+    mass,
+    concentration_itp,
+    cumulative_flow::Float64, # m³
+    t::Float64,
+)::Nothing
+    for (substance_idx, itp) in enumerate(concentration_itp)
+        mass[substance_idx] += cumulative_flow * itp(t)
+    end
+    return nothing
 end
 
 function should_skip_update_q(

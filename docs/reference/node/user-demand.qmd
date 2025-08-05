@@ -5,7 +5,7 @@ title: "UserDemand"
 A UserDemand takes water from the Basin that supplies it.
 
 When allocation is not used, a `UserDemand` node attempts to extract the full demand from the connected Basin.
-When allocation is used, the amount a `UserDemand` node is allowed to extract is determined by the [allocation algorithm](../../concept/allocation.qmd).
+When allocation is used, the amount a `UserDemand` node is allowed to abstract is determined by the [allocation algorithm](/concept/allocation.qmd).
 This algorithm first tries to allocate from the directly connected basin, and then from other sources whose flow can reach the `UserDemand` node.
 Note that `demand_priority` is used to determine the order in which the UserDemands are allocated water.
 This parameter is only used when allocation is active and is optional when allocation is not active.
@@ -44,11 +44,11 @@ Note that a `node_id` can be either in this table or in the static one, but not 
 column          | type     | unit                  | restriction
 -------------   | -------- | --------------------- | -----------
 node_id         | Int32    | -                     |
-demand_priority | Int32    | -                     | positive
 time            | DateTime | -                     |
 demand          | Float64  | $\text{m}^3/\text{s}$ | non-negative
 return_factor   | Float64  | -                     | between [0 - 1]
 min_level       | Float64  | $\text{m}$            | -
+demand_priority | Int32    | -                     | positive
 
 ::: {.callout-note}
 Although it may seem that way, this table does *not* describe demands that change `demand_priority` over time. Rather, this table defines a `demand(time)` relationship for every occurring `demand_priority` in the table for a certain `node_id`.
