@@ -2,7 +2,7 @@
 @testitem "Q(h) validation" begin
     import SQLite
     using Logging
-    using Ribasim: NodeID, qh_interpolation, ScalarLinearInterpolation
+    using Ribasim: NodeID, qh_interpolation, ScalarPCHIPInterpolation
 
     node_id = NodeID(:TabulatedRatingCurve, 1, 1)
     level = [1.0, 2.0]
@@ -11,10 +11,10 @@
     # constant extrapolation at the bottom end, linear extrapolation at the top end
     @test itp(0.0) ≈ 0.0
     @test itp(1.0) ≈ 0.0
-    @test itp(1.5) ≈ 0.05
+    @test itp(1.5) ≈ 0.03125
     @test itp(2.0) ≈ 0.1
-    @test itp(3.0) ≈ 0.2
-    @test itp isa ScalarLinearInterpolation
+    @test itp(3.0) ≈ 0.25
+    @test itp isa ScalarPCHIPInterpolation
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/invalid_qh/ribasim.toml")
     @test ispath(toml_path)
@@ -352,7 +352,7 @@ end
     (; p_independent) = model.integrator.p
 
     (; graph, tabulated_rating_curve, basin) = p_independent
-    tabulated_rating_curve.interpolations[1].t[1] = invalid_level
+    tabulated_rating_curve.interpolations[1].t[2] = invalid_level
 
     logger = TestLogger()
     with_logger(logger) do
@@ -459,7 +459,7 @@ end
 end
 
 @testitem "Validate consistent basin initialization with invalid profiles" begin
-    using Ribasim: BasinProfileV1, validate_consistent_basin_initialization
+    using Ribasim: Schema, validate_consistent_basin_initialization
     using StructArrays: StructVector
 
     # Profile with repeated levels
@@ -470,7 +470,7 @@ end
     skipped = fill(missing, n)
 
     # Profile with repeated levels should give an error
-    profiles_repeated_levels = StructVector{BasinProfileV1}(;
+    profiles_repeated_levels = StructVector{Schema.Basin.Profile}(;
         node_id = node,
         level = levels_repeated,
         area = areas_valid,
@@ -483,7 +483,7 @@ end
     levels_valid = [0, 1, 2, 3, 4, 5]
     storage_non_increasing = [10, 10, 9, 8, 8, 7]
 
-    profiles_non_increasing_storage = StructVector{BasinProfileV1}(;
+    profiles_non_increasing_storage = StructVector{Schema.Basin.Profile}(;
         node_id = node,
         level = levels_valid,
         area = skipped,
@@ -495,7 +495,7 @@ end
     # Profile with zero area at the bottom should give an error
     areas_with_zero = [0, 1, 2, 3, 4, 5]
 
-    profiles_zero_area = StructVector{BasinProfileV1}(;
+    profiles_zero_area = StructVector{Schema.Basin.Profile}(;
         node_id = node,
         level = levels_valid,
         area = areas_with_zero,
@@ -505,7 +505,7 @@ end
     @test error
 
     # Profile with no storage and area should error
-    profiles_missing_data = StructVector{BasinProfileV1}(;
+    profiles_missing_data = StructVector{Schema.Basin.Profile}(;
         node_id = node,
         level = levels_valid,
         area = skipped,
@@ -513,4 +513,34 @@ end
     )
     error = validate_consistent_basin_initialization(profiles_missing_data)
     @test error
+end
+
+@testitem "nested interpolations" begin
+    using Ribasim: invalid_nested_interpolation_times
+    using DataInterpolations: LinearInterpolation, ExtrapolationType
+
+    t = [1.0, 2.0, 3.0, 4.0]
+    u1 = [1.0, 2.0, 3.0, 4.0]
+    u2 = [6.0, 5.0, 4.0, 3.0]
+
+    interpolations_min = [LinearInterpolation(u1, t)]
+    interpolations_max = [LinearInterpolation(u2, t)]
+
+    @test invalid_nested_interpolation_times(interpolations_min; interpolations_max) ==
+          [4.0]
+
+    extrapolation = ExtrapolationType.Linear
+    interpolations_min = [
+        LinearInterpolation([0.88, 1.18], [0.3, 0.8]; extrapolation),
+        LinearInterpolation([1.1, 1.15], [0.1, 0.15]; extrapolation),
+    ]
+    @test isempty(invalid_nested_interpolation_times(interpolations_min))
+
+    interpolations_max = [
+        LinearInterpolation([9.92, 9.901], [0.8, 0.99]; extrapolation),
+        LinearInterpolation([5.6488, 5.3976], [0.314, 0.628]; extrapolation),
+    ]
+    @test isempty(
+        invalid_nested_interpolation_times(interpolations_min; interpolations_max),
+    )
 end

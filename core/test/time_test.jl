@@ -8,7 +8,7 @@
     model = Ribasim.run(toml_path)
     @test success(model)
 
-    flow = DataFrame(Ribasim.flow_table(model))
+    flow = DataFrame(Ribasim.flow_data(model))
     # only from March to September the FlowBoundary varies
     is_summer(t::DateTime) = 3 <= month(t) < 10
     flow_1_to_2 = filter(
@@ -32,7 +32,7 @@ end
     model = Ribasim.run(toml_path)
     (; basin) = model.integrator.p.p_independent
     n_basin = length(basin.node_id)
-    basin_table = DataFrame(Ribasim.basin_table(model))
+    basin_table = DataFrame(Ribasim.basin_data(model))
 
     seconds = Ribasim.seconds_since.(unique(basin_table.time), basin_table.time[1])
 
@@ -65,12 +65,11 @@ end
     (; basin) = model.integrator.p.p_independent
     starting_precipitation =
         basin.vertical_flux.precipitation[1] * Ribasim.basin_areas(basin, 1)[end]
-    @test_throws Exception BMI.update_until(model, saveat)
-    @test_throws Exception (
-        mean_precipitation = only(model.saved.flow.saveval).precipitation[1]
-    )
+    BMI.update_until(model, saveat)
+    mean_precipitation = only(model.saved.flow.saveval).precipitation[1]
+
     # Given that precipitation stops after 15 of the 20 days
-    @test_broken mean_precipitation ≈ 3 / 4 * starting_precipitation
+    @test mean_precipitation ≈ 3 / 4 * starting_precipitation
 end
 
 @testitem "get_cyclic_tstops" begin

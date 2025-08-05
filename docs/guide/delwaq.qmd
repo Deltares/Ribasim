@@ -3,6 +3,10 @@ title: Ribasim Delwaq coupling
 jupyter: python3
 ---
 
+```{python}
+#| include: false
+%run ../run_ribasim.py
+```
 
 In order to generate the Delwaq input files, we need a completed Ribasim simulation (typically one with a results folder) that ideally also includes some substances and initial concentrations. Let's take the basic test model for example, which already has set some initial concentrations.
 
@@ -49,17 +53,7 @@ model.write(toml_path)
 
 ```{python}
 #| include: false
-from subprocess import run
-
-run(
-    [
-        "julia",
-        "--project=../../core",
-        "--eval",
-        f'using Ribasim; Ribasim.main("{toml_path.as_posix()}")',
-    ],
-    check=True,
-)
+run_ribasim(toml_path)
 ```
 
 Given the path to a completed Ribasim simulation, we can call `ribasim.delwaq.generate` for generating the required input files for Delwaq from scratch.

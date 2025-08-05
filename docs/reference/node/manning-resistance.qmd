@@ -12,12 +12,12 @@ The flow rate is calculated by conservation of energy and the Manning-Gauckler f
 column        | type    | unit                               | restriction
 ------------- | ------- | ---------------------------------- | -----------
 node_id       | Int32   | -                                  |
-control_state | String  | -                                  | (optional)
 active        | Bool    | -                                  | (optional, default true)
 length        | Float64 | $\text{m}$                         | positive
 manning_n     | Float64 | $\text{s} \text{m}^{-\frac{1}{3}}$ | positive
 profile_width | Float64 | $\text{m}$                         | positive
 profile_slope | Float64 | -                                  | -
+control_state | String  | -                                  | (optional)
 
 # Equations
 

@@ -27,7 +27,6 @@ end
         node_id = NodeID.(:Basin, [5, 7], [1, 2]),
         storage_to_level,
         level_to_area,
-        concentration_time = StructVector{Ribasim.BasinConcentrationV1}(undef, 0),
     )
 
     @test Ribasim.basin_levels(basin, 2)[1] === 4.0
@@ -166,7 +165,6 @@ end
         node_id = NodeID.(:Basin, [1], 1),
         storage_to_level = [storage_to_level],
         level_to_area = [level_to_area],
-        concentration_time = StructVector{Ribasim.BasinConcentrationV1}(undef, 0),
     )
 
     logger = TestLogger()
@@ -340,34 +338,42 @@ end
 
 @testitem "Node types" begin
     using Ribasim:
-        nodetypes, NodeType, ParametersIndependent, AbstractParameterNode, snake_case
+        node_types,
+        node_type,
+        table_types,
+        node_kinds,
+        NodeType,
+        ParametersIndependent,
+        AbstractParameterNode,
+        snake_case
 
-    @test Set(nodetypes) == Set([
+    @test node_types == [
         :Basin,
         :ContinuousControl,
         :DiscreteControl,
         :FlowBoundary,
         :FlowDemand,
+        :Junction,
         :LevelBoundary,
         :LevelDemand,
         :LinearResistance,
         :ManningResistance,
         :Outlet,
-        :Junction,
         :PidControl,
         :Pump,
         :TabulatedRatingCurve,
         :Terminal,
         :UserDemand,
-    ])
-    for nodetype in nodetypes
-        NodeType.T(nodetype)
-        if nodetype != :Terminal
-            # It has a struct which is added to Parameters
-            T = getproperty(Ribasim, nodetype)
-            @test T <: AbstractParameterNode
-            @test hasfield(ParametersIndependent, snake_case(nodetype))
-        end
+    ]
+    # Junction and Terminal have no tables
+    @test unique(node_type.(table_types)) == filter(!in((:Terminal, :Junction)), node_types)
+    @test collect(keys(node_kinds)) == node_types
+    for node_type in node_types
+        NodeType.T(node_type)
+        # It has a struct which is added to Parameters
+        T = getproperty(Ribasim, node_type)
+        @test T <: AbstractParameterNode
+        @test hasfield(ParametersIndependent, snake_case(node_type))
     end
 end
 

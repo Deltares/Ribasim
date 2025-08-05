@@ -1,6 +1,6 @@
 # Basic Model Interface (BMI)
 
-For runtime data exchange and coupling with other kernels, the Julia kernel is wrapped in a Python API (`ribasim_api`) which implements the Basic Modelling Interface [BMI](https://bmi-spec.readthedocs.io/en/latest/).
+For runtime data exchange and coupling with other kernels, the Julia kernel is wrapped in a Python API (`ribasim_api`) which implements the Basic Model Interface [BMI](https://bmi-spec.readthedocs.io/en/latest/).
 
 ## Functions
 

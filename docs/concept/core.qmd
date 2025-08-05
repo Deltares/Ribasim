@@ -5,8 +5,8 @@ title: "Julia core"
 With the term "core", we mean the computational engine of Ribasim. As detailed in the
 [usage](/reference/usage.qmd) documentation, it is generally used as a command line tool.
 
-A quick overview of the model concept is available in the [introduction](concept.qmd#sec-concept), while a more in depth discussion is available on the [model concept](modelconcept.qmd) page.
-The theory is described on the [equations](/concept/equations.qmd) page, and more in-depth numerical considerations are described on the [numerical considerations](numerics.qmd) page. As allocation is a large and self-contained part of the Ribasim core, it is described on the separate [allocation](/concept/allocation.qmd) page. Input validation is described on the [validation](/reference/validation.qmd) page.
+A quick overview of the model concept is available in the [introduction](/concept/concept.qmd#sec-concept), while a more in-depth discussion is available on the [model concept](/concept/modelconcept.qmd) page.
+The theory is described on the [equations](/concept/equations.qmd) page, and more in-depth numerical considerations are described on the [numerical considerations](/concept/numerics.qmd) page. As allocation is a large and self-contained part of the Ribasim core, it is described on the separate [allocation](/concept/allocation.qmd) page. Input validation is described on the [validation](/reference/validation.qmd) page.
 
 The core is implemented in the [Julia programming language](https://julialang.org/), and
 can be found in the [Ribasim repository](https://github.com/Deltares/Ribasim) under the
@@ -17,7 +17,7 @@ An overview of all components is given in the [installation](/install.qmd#sec-co
 
 # The simulation loop {#sec-simulationloop}
 
-The computational process can be divided in three phases:
+The computational process can be divided into three phases:
 
 - Model initialization
 - Running the simulation loop
@@ -83,17 +83,17 @@ sequenceDiagram
 # Nested allocation {#sec-nested-allocation}
 
 Since water systems may be extensive, like in the Netherlands, Ribasim models may become large networks with over ten thousand nodes.
-To keep a proper functioning allocation concept under these circumstances, the modeller can decompose the network domain into a primary network and multiple sub-networks.
+To maintain a properly functioning allocation concept under these circumstances, the modeler can decompose the network domain into a primary network and multiple sub-networks.
 The allocation will then be conducted in three steps:
 
 1. conduct an inventory of demands from the sub-networks to inlets from the primary network,
-2. allocate the available water in the primary network to the subnetworks inlets,
+2. allocate the available water in the primary network to the subnetwork inlets,
 3. allocate the assigned water within each subnetwork to the individual demand nodes.
 
-The demand nodes then will request this updated demand from the rule-based simulation.
-Whether this updated demand is indeed abstracted depends on all dry-fall control mechanism implemented in the rule-based simulation.
+The demand nodes will then request this updated demand from the rule-based simulation.
+Whether this updated demand is indeed abstracted depends on all the control mechanisms implemented in the rule-based simulation.
 
-The following sequence diagram illustrates this calculation process within then allocation phase.
+The following sequence diagram illustrates this calculation process within the allocation phase.
 
 ```{mermaid}
 sequenceDiagram
@@ -124,7 +124,7 @@ user_demand->>basin: abstracted
 
 ::: {.callout-caution}
 This is an unsupported experimental feature and is disabled by default.
-We advise to use the [Delwaq coupling](@sec-waterquality) for tracer calculations.
+We advise to use the [Delwaq coupling](/guide/coupling.qmd#sec-waterquality) for tracer calculations.
 If you're interested in using this experimental feature, please [contact us](/contact.qmd).
 :::
 
@@ -134,7 +134,7 @@ Specifically, for each Basin at each timestep it calculates:
 
 - all mass inflows ($flow * source\_concentration$) given the link inflows
 - update the concentrations in the Basin based on the added storage ($previous storage + inflows$)
-- all mass outflows ($flow * basin\_concentration\_state$) give the link outflows
+- all mass outflows ($flow * basin\_concentration\_state$) given the link outflows
 - update the concentrations in the Basin based on the current storage
 
 We thus keep track of both mass and concentration of substances for each Basin.

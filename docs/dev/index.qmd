@@ -10,27 +10,10 @@ A guide on how to add a new node type to both is written in [adding node types](
 
 # Setting up the developer environment
 
-## Clone Ribasim
+## Option 1: local development
+If you prefer local development, clone Ribasim as described in [Clone Ribasim](#clone-ribasim).
 
-In order to have the Ribasim repository locally available, you can clone it with Git.
-Git can be installed from [git-scm.com](https://git-scm.com/downloads).
-Once installed, run the following command at a directory of your choice:
-
-In order to have the Ribasim repository locally available, run the following command at a directory of your choice:
-
-```sh
-git clone https://github.com/Deltares/Ribasim.git
-```
-
-To continue with the following steps, make the root of the repository your working directory by running
-
-```sh
-cd Ribasim
-```
-
-## Setting up Pixi
-
-First, set up Pixi as described on their getting started [page](https://prefix.dev/docs/pixi/overview).
+Then, set up Pixi as described on [pixi.sh](https://pixi.sh/latest/).
 
 We require at least Pixi version v0.48.1, but generally recommend the latest release.
 Check the version with `pixi --version`, update with `pixi self-update`.
@@ -55,3 +38,40 @@ Select `('default': Pixi)` in the `/.pixi` folder.
 Unless the setting `python.terminal.activateEnvironment` is disabled, it will already activate the environment in your terminal.
 
 If you encounter issues related to Pixi dependencies, it might help to clean your Pixi environment with `pixi clean`, followed by `pixi run install`.
+
+## Option 2: use a devcontainer
+If you prefer a containerized development environment, you can use the provided devcontainer configuration. This option is particularly useful if you want to avoid installing dependencies directly on your host machine.
+
+1. Install [Visual Studio Code](https://code.visualstudio.com/) and the [Remote - Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) extension.
+2. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) and ensure it's running.
+3. Press {{< kbd Ctrl+Shift+P >}} (or {{< kbd Cmd+Shift+P >}} on macOS) and select `Dev Containers: Clone Repository in Container Volume`.
+4. Paste https://github.com/Deltares/Ribasim.git in the prompt and continue
+
+This will pull the repo, build the devcontainer image and start a new container with all the necessary dependencies. The build and install will take a few minutes to complete.
+
+## Option 3: github codespace
+If you prefer a cloud-based development environment, you can use GitHub Codespaces. This option allows you to quickly set up a development environment without needing to configure your local machine.
+
+1. Go to the [Ribasim GitHub repository](https://github.com/Deltares/Ribasim).
+2. Click on the green "Code" button and select "Open with Codespaces".
+3. Follow the prompts to create a new codespace.
+
+This creates a cloud-based development environment with all necessary dependencies pre-installed. The environment runs on GitHub's servers and can be accessed through your browser via the Ribasim repo.
+
+## Clone Ribasim
+
+In order to have the Ribasim repository locally available, you can clone it with Git.
+Git can be installed from [git-scm.com](https://git-scm.com/downloads).
+Once installed, run the following command at a directory of your choice:
+
+In order to have the Ribasim repository locally available, run the following command at a directory of your choice:
+
+```sh
+git clone https://github.com/Deltares/Ribasim.git
+```
+
+To continue with the following steps, make the root of the repository your working directory by running
+
+```sh
+cd Ribasim
+```

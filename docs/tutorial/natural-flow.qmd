@@ -3,6 +3,10 @@ title: Getting started
 jupyter: python3
 ---
 
+```{python}
+#| include: false
+%run ../run_ribasim.py
+```
 
 # Introduction
 Welcome to Ribasim!
@@ -238,17 +242,7 @@ After running `model.write` a subfolder `Crystal-1` is created, which contains t
 
 ```{python}
 #| include: false
-from subprocess import run
-
-run(
-    [
-        "julia",
-        "--project=../../core",
-        "--eval",
-        f'using Ribasim; Ribasim.main("{toml_path.as_posix()}")',
-    ],
-    check=True,
-)
+run_ribasim(toml_path)
 ```
 
 Now run the model. You can open a terminal and run it from there. For example:
@@ -274,9 +268,7 @@ The `print(result.stderr)` ensures you see the same logging and error messages t
 Read the Arrow files and plot the simulated flows from different links and the levels and storages at our confluence point:
 
 ```{python}
-df_basin = pd.read_feather(
-    base_dir / "Crystal-1/results/basin.arrow", dtype_backend="pyarrow"
-)
+df_basin = pd.read_feather(base_dir / "Crystal-1/results/basin.arrow")
 
 # Create pivot tables and plot for Basin data
 df_basin_wide = df_basin.pivot_table(
@@ -315,9 +307,7 @@ This is because there is no net change in storage; all incoming water is balance
 ```{python}
 # Plot flow data
 # Read the flow results
-df_flow = pd.read_feather(
-    base_dir / "Crystal-1/results/flow.arrow", dtype_backend="pyarrow"
-)
+df_flow = pd.read_feather(base_dir / "Crystal-1/results/flow.arrow")
 # Add the link names and then remove unnamed links
 df_flow["name"] = model.link.df["name"].loc[df_flow["link_id"]].to_numpy()
 df_flow = df_flow[df_flow["name"].astype(bool)]

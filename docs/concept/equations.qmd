@@ -71,7 +71,7 @@ This is true for FlowBoundary nodes, and Basin precipitation (which uses a fixed
 The Jacobian is an $N \times N$ matrix where $N$ is the number of states in the simulation.
 It is computed as part of implicit time stepping methods.
 There are 2 different methods available for computing this matrix: finite difference or automatic differentiation.
-For more details on the computation of the Jacobian and how it is used in the solvers see [numerical considerations](numerics.qmd).
+For more details on the computation of the Jacobian and how it is used in the solvers see [numerical considerations](/concept/numerics.qmd).
 
 The entries of the Jacobian $J$ are given by
 $$
@@ -151,7 +151,7 @@ Hence in short, the formulation above gives more information than a formulation 
 Ribasim uses [OrdinaryDiffEq.jl](https://github.com/SciML/OrdinaryDiffEq.jl/) to provide a numerical solution to the water balance equations.
 Changes to forcings or parameters such as precipitation, but also the allocated water abstraction is managed through the use of callback functions [@callbacks].
 In a coupled run, the exchanges with MODFLOW 6 are also managed via the use of a callback function.
-For more a more in-depth discussion of numerical computations see [Numerical considerations](numerics.qmd).
+For more a more in-depth discussion of numerical computations see [Numerical considerations](/concept/numerics.qmd).
 
 # Performance
 

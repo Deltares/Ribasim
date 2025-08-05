@@ -10,10 +10,10 @@ module config
 
 using ADTypes: AutoForwardDiff, AutoFiniteDiff
 using Configurations: Configurations, @option, from_toml, @type_alias
-using DataStructures: DefaultDict
+using DataStructures: OrderedDict
 using Dates: DateTime
 using Logging: LogLevel, Debug, Info, Warn, Error
-using ..Ribasim: Ribasim, isnode, nodetype
+using ..Ribasim: Ribasim, Table, Schema
 using OrdinaryDiffEqCore: OrdinaryDiffEqAlgorithm, OrdinaryDiffEqNewtonAdaptiveAlgorithm
 using OrdinaryDiffEqNonlinearSolve: NLNewton
 using OrdinaryDiffEqLowOrderRK: Euler, RK4
@@ -33,24 +33,48 @@ export algorithm,
     results_path,
     convert_saveat,
     convert_dt,
-    nodetypes
+    node_types,
+    node_type,
+    node_kinds,
+    table_name,
+    sql_table_name,
+    table_types
 
-const schemas =
-    getfield.(
-        Ref(Ribasim),
-        filter!(x -> endswith(string(x), "SchemaVersion"), names(Ribasim; all = true)),
-    )
+"Schema.Basin.State -> :Basin"
+node_type(table_type::Type{<:Table})::Symbol = fullname(parentmodule(table_type))[end]
+"Schema.Basin.State -> :state"
+table_name(table_type::Type{<:Table})::Symbol = snake_case(nameof(table_type))
 
-# Find all nodetypes and possible nodekinds
-nodekinds = DefaultDict{Symbol, Vector{Symbol}}(() -> Symbol[])  # require lambda to avoid sharing
-nodeschemas = filter(isnode, schemas)
-for sv in nodeschemas
-    node, kind = nodetype(sv)
-    push!(nodekinds[node], kind)
+"Schema.Basin.State -> 'Basin / state'"
+function sql_table_name(table_type::Type{<:Table})::String
+    string(node_type(table_type), " / ", table_name(table_type))
 end
-# Terminal and Junction have no tables
-nodekinds[:Terminal] = Symbol[]
-nodekinds[:Junction] = Symbol[]
+
+"[:Basin, Terminal, ...]"
+const node_types::Vector{Symbol} = filter(
+    name -> getfield(Schema, name) isa Module && name !== :Schema,
+    names(Schema; all = true),
+)
+
+"{:Basin => [:State, :Static, ...], :Terminal => [], ...}"
+const node_kinds = OrderedDict{Symbol, Vector{Symbol}}()
+
+"[Schema.Basin.State, Schema.Basin.Static, ...]"
+const table_types = Type{<:Table}[]
+
+for node_type in node_types
+    node_module = getfield(Schema, node_type)
+    node_tables = Symbol[]
+    all_names = names(node_module; all = true)
+    for name in all_names
+        x = getfield(node_module, name)
+        if isconcretetype(x) && supertype(x) === Table
+            push!(node_tables, name)
+            push!(table_types, x)
+        end
+    end
+    node_kinds[node_type] = node_tables
+end
 
 "Convert a string from CamelCase to snake_case."
 function snake_case(str::AbstractString)::String
@@ -74,10 +98,7 @@ Add fieldnames with Union{String, Nothing} type to struct expression. Requires @
 """
 macro addfields(typ::Expr, fieldnames)
     for fieldname in fieldnames
-        push!(
-            typ.args[3].args,
-            Expr(:(=), Expr(:(::), fieldname, Union{String, Nothing}), nothing),
-        )
+        push!(typ.args[3].args, :($(fieldname)::Union{String, Nothing} = nothing))
     end
     return esc(typ)
 end
@@ -86,23 +107,20 @@ end
 Add all TableOption subtypes as fields to struct expression. Requires @option use before it.
 """
 macro addnodetypes(typ::Expr)
-    for nodetype in nodetypes
-        node_type = snake_case(nodetype)
-        push!(
-            typ.args[3].args,
-            Expr(:(=), Expr(:(::), node_type, node_type), Expr(:call, node_type)),
-        )
+    for node_type in node_types
+        node_type = snake_case(node_type)
+        push!(typ.args[3].args, :($(node_type)::$(node_type) = $(node_type)()))
     end
     return esc(typ)
 end
 
 # Generate structs for each nodetype for use in Config
 abstract type TableOption end
-for (T, kinds) in pairs(nodekinds)
-    T = snake_case(T)
-    @eval @option @addfields struct $T <: TableOption end $kinds
+for (node_type, kinds) in pairs(node_kinds)
+    node_type = snake_case(node_type)
+    kinds = snake_case.(kinds)
+    @eval @option @addfields struct $node_type <: TableOption end $kinds
 end
-const nodetypes = collect(keys(nodekinds))
 
 @option struct Solver <: TableOption
     algorithm::String = "QNDF"
@@ -126,8 +144,8 @@ end
     block_transition_period::Float64 = 0.0
 end
 
-# Separate struct, as basin clashes with nodetype
 @option struct Results <: TableOption
+    format::String = "arrow"
     compression::Bool = true
     compression_level::Int = 6
     subgrid::Bool = false
@@ -154,11 +172,13 @@ end
     concentration::Bool = false
     allocation::Bool = false
 end
+
 # For logging enabled experimental features
 function Base.iterate(exp::Experimental, state = 0)
     state >= nfields(exp) && return
     return Base.getfield(exp, state + 1), state + 1
 end
+
 function Base.show(io::IO, exp::Experimental)
     fields = (field for field in fieldnames(typeof(exp)) if getfield(exp, field))
     print(io, join(fields, " "))
@@ -195,7 +215,38 @@ keys from a subsection, e.g. `dt` from the `solver` section, use underscores: `s
 function Config(config_path::AbstractString; kwargs...)::Config
     toml = from_toml(Toml, config_path; kwargs...)
     dir = dirname(normpath(config_path))
+    validate_config(toml)
     Config(toml, dir)
+end
+
+"""
+Do extra validation on the validity of the TOML config.
+
+Configurations.jl handles the type checks and required fields.
+This is the place to enforce additional rules, such as supported algorithms and formats,
+to avoid runtime errors, especially when writing results.
+"""
+function validate_config(toml::Toml)::Nothing
+    is_valid = true
+
+    if !haskey(algorithms, toml.solver.algorithm)
+        options = join(keys(algorithms), ", ")
+        @error("Given solver algorithm $(toml.solver.algorithm) not supported.\n\
+            Available options are: ($(options)).")
+        is_valid = false
+    end
+
+    supported_formats = ("arrow", "netcdf")
+    if !(toml.results.format in supported_formats)
+        @error(
+            "Unsupported results format: $(toml.results.format). Supported formats: $(supported_formats).",
+        )
+        is_valid = false
+    end
+
+    is_valid || error("Invalid TOML config.")
+
+    return nothing
 end
 
 function Base.getproperty(config::Config, sym::Symbol)
@@ -208,7 +259,7 @@ function Base.getproperty(config::Config, sym::Symbol)
 end
 
 "Construct a path relative to both the TOML directory and the optional `input_dir`"
-function input_path(config::Config, path::String)
+function input_path(config::Config, path::String="")
     return normpath(config.dir, config.input_dir, path)
 end
 
@@ -218,7 +269,15 @@ function database_path(config::Config)
 end
 
 "Construct a path relative to both the TOML directory and the optional `results_dir`"
-function results_path(config::Config, path::String)
+function results_path(config::Config, path::String="")
+    # If the path is empty, we return the results directory.
+    if !isempty(path)
+        name, ext = splitext(path)
+        if ext == ""
+            ext = config.results.format == "arrow" ? ".arrow" : ".nc"
+            path = string(name, ext)
+        end
+    end
     return normpath(config.dir, config.results_dir, path)
 end
 
@@ -309,13 +368,8 @@ end
 
 "Create an OrdinaryDiffEqAlgorithm from solver config"
 function algorithm(solver::Solver; u0 = [], specialize = true)::OrdinaryDiffEqAlgorithm
-    algotype = get(algorithms, solver.algorithm, nothing)
-    if algotype === nothing
-        options = join(keys(algorithms), ", ")
-        error("Given solver algorithm $(solver.algorithm) not supported.\n\
-            Available options are: ($(options)).")
-    end
     kwargs = Dict{Symbol, Any}()
+    algotype = algorithms[solver.algorithm]
 
     if algotype <: OrdinaryDiffEqNewtonAdaptiveAlgorithm
         kwargs[:nlsolve] = NLNewton()

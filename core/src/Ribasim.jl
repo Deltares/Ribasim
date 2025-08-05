@@ -64,6 +64,8 @@ using LinearAlgebra: mul!
 using DataInterpolations:
     ConstantInterpolation,
     LinearInterpolation,
+    PCHIPInterpolation,
+    CubicHermiteSpline,
     SmoothedConstantInterpolation,
     LinearInterpolationIntInv,
     invert_integral,
@@ -82,13 +84,18 @@ import JuMP
 import HiGHS
 # Represent piecewise linear functions in JuMP
 using PiecewiseLinearOpt: piecewiselinear
+# Analyze infeasibilities and numerical properties
+import MathOptAnalyzer
+
+# Pattern matching
+using Moshi.Match: @match
 
 # The BMI is a standard for interacting with a Ribasim model,
 # see the docs: https://ribasim.org/dev/bmi.html
 import BasicModelInterface as BMI
 
 # Reading and writing optionally compressed Arrow tables
-using Arrow: Arrow, Table
+import Arrow
 import TranscodingStreams
 using CodecZstd: ZstdCompressor
 using DelimitedFiles: writedlm
@@ -136,9 +143,6 @@ using Accessors: @set, @reset
 # Iteration utilities, used to partition and group tables.
 import IterTools
 
-# Define and validate the schemas of the input tables.
-using Legolas: Legolas, @schema, @version, validate, SchemaVersion, declared
-
 # Tables interface that works with either SQLite or Arrow tables.
 using Tables: Tables, AbstractRow, columntable
 
@@ -149,7 +153,12 @@ using StructArrays: StructVector
 # OrderedDict is used to store the order of the sources in a subnetwork.
 using DataStructures: OrderedSet, OrderedDict, counter, inc!
 
+# NCDatasets is used to read and write NetCDF files.
+using NCDatasets: NCDataset, defDim, defVar
+
 using Dates: Second
+
+using Printf: @sprintf
 
 export libribasim
 

@@ -1,20 +1,29 @@
-import Legolas
 import Ribasim
 using Dates: DateTime
 using InteractiveUtils: subtypes
 using OteraEngine: Template
 
-pythontype(::Type{Union{Missing, T}}) where {T} = pythontype(T)
-pythontype(::Type{<:AbstractString}) = "Series[Annotated[pd.ArrowDtype, pyarrow.string()]]"
-pythontype(::Type{<:Integer}) = "Series[Annotated[pd.ArrowDtype, pyarrow.int32()]]"
-pythontype(::Type{<:AbstractFloat}) = "Series[Annotated[pd.ArrowDtype, pyarrow.float64()]]"
-pythontype(::Type{<:Number}) = "Series[Annotated[pd.ArrowDtype, pyarrow.float64()]]"
-pythontype(::Type{<:Bool}) = "Series[Annotated[pd.ArrowDtype, pyarrow.bool_()]]"
-pythontype(::Type{<:Enum}) = "Series[Annotated[pd.ArrowDtype, pyarrow.string()]]"
-pythontype(::Type{<:DateTime}) = "Series[Annotated[pd.ArrowDtype, pyarrow.timestamp('ms')]]"
+"""
+Map a Julia type to the best matching Python type.
 
-isnullable(::Any) = "False"
-isnullable(::Type{T}) where {T >: Union{Missing}} = "True"
+If a Bool or Int32 can also be Missing, use the Pandas ExtensionDtype to support that.
+Otherwise, use the more widely used default pandas types for maximum compatibility.
+"""
+python_type(::Type{Union{Missing, T}}) where {T} = python_nullable_type(T)
+
+python_type(::Type{<:String}) = "pd.StringDtype"
+python_type(::Type{<:Int32}) = "np.int32"
+python_type(::Type{<:Float64}) = "float"
+python_type(::Type{<:DateTime}) = "pd.Timestamp"
+
+python_nullable_type(::Type{<:Int32}) = "pd.Int32Dtype"
+python_nullable_type(::Type{<:Bool}) = "pd.BooleanDtype"
+python_nullable_type(x::Type{<:String}) = python_type(x)
+python_nullable_type(x::Type{<:Float64}) = python_type(x)
+python_nullable_type(x::Type{<:DateTime}) = python_type(x)
+
+is_nullable(::Any) = "False"
+is_nullable(::Type{T}) where {T >: Union{Missing}} = "True"
 
 function strip_prefix(T::DataType)
     n = string(T)
@@ -24,17 +33,17 @@ end
 
 function get_models()
     """
-    Set up models including field properties for all subtypes of Legolas.AbstractRecord.
+    Set up models including field properties for all subtypes of Ribasim.Table.
     """
     [
         (
-            name = strip_prefix(T),
+            name = string(Ribasim.node_type(T), nameof(T)),
             fields = zip(
                 fieldnames(T),
-                map(pythontype, fieldtypes(T)),
-                map(isnullable, fieldtypes(T)),
+                map(python_type, fieldtypes(T)),
+                map(is_nullable, fieldtypes(T)),
             ),
-        ) for T in subtypes(Legolas.AbstractRecord)
+        ) for T in subtypes(Ribasim.Table)
     ]
 end
 
@@ -45,12 +54,10 @@ function get_connectivity()
     [
         (
             name = T,
-            connectivity = Set(
-                Ribasim.config.camel_case(x) for x in Ribasim.neighbortypes(T)
-            ),
+            connectivity = Set(Ribasim.camel_case(x) for x in Ribasim.neighbortypes(T)),
             flow_neighbor_bound = Ribasim.n_neighbor_bounds_flow(T),
             control_neighbor_bound = Ribasim.n_neighbor_bounds_control(T),
-        ) for T in keys(Ribasim.config.nodekinds)
+        ) for T in keys(Ribasim.node_kinds)
     ]
 end
 
