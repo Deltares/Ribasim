@@ -194,7 +194,7 @@ const IndexLookup =
 @enumx AllocationObjectiveType demand source_priorities
 
 """
-Store information about an allocation objective (goal)
+Store information about the allocation objectives (goals)
 
 expression: The objective expression, a linear combination of error terms
 type: The allocation objective type (one of physics, demand, source_priorities)
@@ -203,13 +203,13 @@ demand_priority_idx: The index of the demand priority in the sorted list of all 
 has_flow_demand: If a demand objective, whether there is a flow demand (UserDemand, FlowDemand, SubnetworkDemand)
 has_level_demand: If a demand objective, whether there is a level demand (LevelDemand)
 """
-@kwdef mutable struct AllocationObjective
-    const expression::JuMP.AffExpr = JuMP.AffExpr()
-    const type::AllocationObjectiveType.T
-    const demand_priority::Int32 = 0
-    const demand_priority_idx::Int = 0
-    has_flow_demand::Bool = false
-    has_level_demand::Bool = false
+@kwdef struct AllocationObjectives
+    expression::Vector{JuMP.AffExpr} = []
+    type::Vector{AllocationObjectiveType.T} = []
+    demand_priority::Vector{Int32} = []
+    demand_priority_idx::Vector{Int} = []
+    has_flow_demand::Vector{Bool} = []
+    has_level_demand::Vector{Bool} = []
 end
 
 function Base.show(io::IO, objective::AllocationObjective)
@@ -244,7 +244,7 @@ scaling: The flow and storage scaling factors to make the optimization problem m
     subnetwork_id::Int32
     problem::JuMP.Model
     Δt_allocation::Float64
-    objectives::Vector{AllocationObjective} = []
+    objectives::AllocationObjectives = AllocationObjectives()
     cumulative_forcing_volume::Dict{NodeID, Float64} = Dict()
     cumulative_boundary_volume::Dict{Tuple{NodeID, NodeID}, Float64} = Dict()
     cumulative_realized_volume::Dict{Tuple{NodeID, NodeID}, Float64} = Dict()
