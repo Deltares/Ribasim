@@ -2,7 +2,14 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-from ribasim.config import Allocation, Experimental, Interpolation, Node, Solver
+from ribasim.config import (
+    Allocation,
+    Experimental,
+    Interpolation,
+    Node,
+    Results,
+    Solver,
+)
 from ribasim.geometry.link import NodeData
 from ribasim.input_base import TableModel
 from ribasim.model import Model
@@ -373,6 +380,7 @@ def allocation_example_model() -> Model:
         crs="EPSG:28992",
         allocation=Allocation(timestep=86400),
         experimental=Experimental(concentration=True, allocation=True),
+        results=Results(format="netcdf"),
     )
 
     basin_data: list[TableModel[Any]] = [
@@ -1333,7 +1341,7 @@ def bommelerwaard_model():
         )
 
     for node_id, demand_priority, min_level in zip(
-        range(59, 62), [2, 2, 3], [0.18, 0.58, 0.55]
+        range(59, 62), [4, 4, 5], [0.18, 0.58, 0.55]
     ):
         model.level_demand.add(
             get_node(node_id),
@@ -1671,5 +1679,34 @@ def multi_priority_flow_demand_model() -> Model:
     model.link.add(udm, bsn)
     model.link.add(fdm, pmp)
     model.link.add(ldm, bsn)
+
+    return model
+
+
+def allocation_off_flow_demand_model() -> Model:
+    """Set up a model with a Pump with a FlowDemand but allocation turned off."""
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2021-01-01",
+        crs="EPSG:28992",
+        experimental=Experimental(allocation=True),
+    )
+
+    bsn = model.basin.add(
+        Node(1, Point(0, 0)),
+        [basin.Profile(level=[0.0, 10.0], area=1000.0), basin.State(level=[5.0])],
+    )
+
+    pmp = model.pump.add(Node(2, Point(1, 0)), [pump.Static(flow_rate=[0.0])])
+
+    tml = model.terminal.add(Node(3, Point(2, 0)))
+
+    fdm = model.flow_demand.add(
+        Node(4, Point(1, 1)), [flow_demand.Static(demand_priority=[1], demand=1e-3)]
+    )
+
+    model.link.add(bsn, pmp)
+    model.link.add(pmp, tml)
+    model.link.add(fdm, pmp)
 
     return model

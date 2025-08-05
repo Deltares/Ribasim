@@ -8,6 +8,7 @@ import ribasim_testmodels
 from ribasim_testmodels.allocation import (
     allocation_control_model,
     allocation_example_model,
+    allocation_off_flow_demand_model,
     allocation_training_model,
     bommelerwaard_model,
     cyclic_demand_model,
@@ -89,6 +90,7 @@ __all__ = [
     "allocation_control_model",
     "allocation_training_model",
     "allocation_example_model",
+    "allocation_off_flow_demand_model",
     "backwater_model",
     "basic_arrow_model",
     "basic_model",

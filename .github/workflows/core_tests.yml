@@ -51,6 +51,7 @@ jobs:
           name: allocation-debug-${{ matrix.os }}-${{ matrix.arch }}-${{ github.run_id }}
           path: |
             **/allocation_infeasible_problem.lp
+            **/allocation_problem_from_tests_*.lp
             **/allocation_analysis_*.log
           retention-days: 7
           if-no-files-found: ignore

@@ -77,9 +77,7 @@ end
     @test demand_objective.type == AllocationObjectiveType.demand
     @test demand_objective.has_flow_demand
     @test !demand_objective.has_level_demand
-    @test demand_objective.expression ==
-          sum(problem[:relative_user_demand_error_lower]) +
-          sum(problem[:relative_user_demand_error_upper])
+    @test demand_objective.expression == sum(problem[:relative_user_demand_error])
 
     # Source objective
     @test source_objective.type == AllocationObjectiveType.source_priorities
@@ -416,7 +414,7 @@ end
     @test all(isapprox.(realized_numeric, df_basin_2.realized[2:end], atol = 1e-10))
 
     # Realized user demand
-    flow_table = DataFrame(Ribasim.flow_table(model))
+    flow_table = DataFrame(Ribasim.flow_data(model))
     flow_table_user_3 = flow_table[flow_table.link_id .== 2, :]
     itp_user_3 = LinearInterpolation(
         flow_table_user_3.flow_rate,
@@ -480,7 +478,7 @@ end
     @test JuMP.lower_bound(flow_demand_flow) * scaling.flow == flow_demand.demand[1, 2]
 
     model = Ribasim.run(toml_path)
-    allocation_table = DataFrame(Ribasim.allocation_table(model))
+    allocation_table = DataFrame(Ribasim.allocation_data(model))
     df_rating_curve_2 = filter(:node_id => ==(2), allocation_table)
     @test all(≈(0.002), df_rating_curve_2.demand)
     @test all(≈(0.002), df_rating_curve_2.realized[2:end])
@@ -535,7 +533,7 @@ end
     @test_throws Exception Ribasim.solve!(model)
     (; user_demand, graph) = model.integrator.p.p_independent
 
-    data_allocation = DataFrame(Ribasim.allocation_table(model))
+    data_allocation = DataFrame(Ribasim.allocation_data(model))
     fractions = Vector{Float64}[]
 
     for id in user_demand.node_id
@@ -639,11 +637,11 @@ end
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
 
-    basin_table = Ribasim.basin_table(model)
+    basin_table = Ribasim.basin_data(model)
     @test basin_table.level[1] == 10.0
     @test all(h -> isapprox(h, 5.0; rtol = 1e-5), basin_table.level[7:end])
 
-    allocation_control_table = Ribasim.allocation_control_table(model)
+    allocation_control_table = Ribasim.allocation_control_data(model)
     @test all(q -> isapprox(q, 1e-3; rtol = 1e-5), allocation_control_table.flow_rate[1:5])
 end
 
@@ -654,4 +652,77 @@ end
     )
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
+end
+
+@testitem "FlowDemand without allocation" begin
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/allocation_off_flow_demand/ribasim.toml",
+    )
+    @test ispath(toml_path)
+
+    model = Ribasim.run(toml_path)
+    @test success(model)
+
+    flow = Ribasim.flow_data(model).flow_rate
+    @test !isempty(flow)
+    @test all(q -> isapprox(q, 1e-3; rtol = 1e-4), flow[1:100])
+end
+
+@testitem "Allocation problem consistency" begin
+    import JuMP
+
+    # To update the reference files run `pixi run write-allocation-problems`
+    include(normpath(@__DIR__, "../../utils/utils.jl"))
+    toml_paths = get_testmodels()
+
+    for toml_path in toml_paths
+        model_name = basename(dirname(toml_path))
+
+        if startswith(model_name, "invalid_")
+            continue
+        end
+
+        config = Ribasim.Config(toml_path)
+
+        if !config.experimental.allocation
+            continue
+        end
+
+        # Initialize the same model 5 times
+        models = [Ribasim.Model(toml_path) for _ in 1:5]
+
+        subnetwork_ids = [
+            allocation_model.subnetwork_id for allocation_model in
+            first(models).integrator.p.p_independent.allocation.allocation_models
+        ]
+
+        for (i, subnetwork_id) in enumerate(subnetwork_ids)
+            @testset "$(model_name)_subnetwork_id_$subnetwork_id" begin
+                written_problem_path = normpath(
+                    @__DIR__,
+                    "data/allocation_problems/$model_name/allocation_problem_$subnetwork_id.lp",
+                )
+                @test ispath(written_problem_path)
+                written_problem = read(written_problem_path, String)
+
+                current_problem_path = normpath(
+                    dirname(toml_path),
+                    "results/allocation_problem_from_tests_$subnetwork_id.lp",
+                )
+
+                for model in models
+                    (; problem, subnetwork_id) =
+                        model.integrator.p.p_independent.allocation.allocation_models[i]
+
+                    JuMP.write_to_file(problem, current_problem_path)
+                    current_problem = read(current_problem_path, String)
+
+                    problem_equality = (current_problem == written_problem)
+                    @test problem_equality
+                    !problem_equality && break
+                end
+            end
+        end
+    end
 end
