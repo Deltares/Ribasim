@@ -444,8 +444,9 @@ function tabulated_rating_curve_flow(
     interpolation_index = current_interpolation_index[node_id.idx](t)
     qh = interpolations[interpolation_index]
     q = factor * qh(h_a)
-    q *= reduction_factor(Δh, 0.02)
-    q *= reduction_factor(max_downstream_level - h_b, 0.02)
+    # TODO: investigate: these reduction factors give instability
+    # q *= reduction_factor(Δh, 0.02)
+    # q *= reduction_factor(max_downstream_level - h_b, 0.02)
 end
 
 function formulate_flow!(
@@ -467,7 +468,6 @@ function formulate_flow!(
         if active[id.idx] || all_nodes_active
             h_a = get_level(p, inflow_id, t)
             h_b = get_level(p, outflow_id, t)
-
             q = tabulated_rating_curve_flow(tabulated_rating_curve, id, h_a, h_b, p, t)
         else
             q = 0.0

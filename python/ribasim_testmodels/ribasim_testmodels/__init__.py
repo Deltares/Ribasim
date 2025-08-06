@@ -60,6 +60,7 @@ from ribasim_testmodels.equations import (
     manning_resistance_model,
     misc_nodes_model,
     pid_control_equation_model,
+    rating_curve_between_basins_model,
     rating_curve_model,
 )
 from ribasim_testmodels.invalid import (
@@ -141,6 +142,7 @@ __all__ = [
     "pid_control_model",
     "pump_discrete_control_model",
     "rating_curve_model",
+    "rating_curve_between_basins_model",
     "subnetwork_model",
     "subnetworks_with_sources_model",
     "tabulated_rating_curve_control_model",
