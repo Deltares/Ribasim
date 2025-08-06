@@ -526,7 +526,8 @@ function add_tabulated_rating_curve!(
 )::Nothing
     (; problem, subnetwork_id, scaling) = allocation_model
     (; tabulated_rating_curve, graph) = p_independent
-    (; interpolations, current_interpolation_index, inflow_link) = tabulated_rating_curve
+    (; interpolations, current_interpolation_index, inflow_link, outflow_link) =
+        tabulated_rating_curve
     rating_curve_ids_subnetwork =
         get_ids_in_subnetwork(graph, NodeType.TabulatedRatingCurve, subnetwork_id)
 
@@ -548,11 +549,11 @@ function add_tabulated_rating_curve!(
             else
                 variable_upstream = 0
             end
-            if inflow_link[node_id.idx].link[2].type == NodeType.Basin
+            if outflow_link[node_id.idx].link[2].type == NodeType.Basin
                 variable_downstream =
-                    get_storage(problem, inflow_link[node_id.idx].link[2])
-            elseif inflow_link[node_id.idx].link[2].type == NodeType.LevelBoundary
-                variable_downstream = get_level(problem, inflow_link[node_id.idx].link[2])
+                    get_storage(problem, outflow_link[node_id.idx].link[2])
+            elseif outflow_link[node_id.idx].link[2].type == NodeType.LevelBoundary
+                variable_downstream = get_level(problem, outflow_link[node_id.idx].link[2])
             else
                 variable_downstream = 0
             end
