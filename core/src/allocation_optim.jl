@@ -24,6 +24,7 @@ function set_simulation_data!(
         pump,
         outlet,
         user_demand,
+        tabulated_rating_curve,
     ) = p.p_independent
 
     errors = false
@@ -32,6 +33,7 @@ function set_simulation_data!(
     set_simulation_data!(allocation_model, level_boundary, t)
     set_simulation_data!(allocation_model, linear_resistance, p, t)
     set_simulation_data!(allocation_model, manning_resistance, p, t)
+    set_simulation_data!(allocation_model, tabulated_rating_curve, p, t)
     set_simulation_data!(allocation_model, pump, outlet, du)
     set_simulation_data!(allocation_model, user_demand, t)
 
@@ -83,9 +85,9 @@ function set_simulation_data!(
                     )
                 qh = tabulated_rating_curve.interpolations[interpolation_index]
                 level_rating_curve_max = qh.t[end]
-                if level_now > level_rating_curve_max
-                    @error "Maximum tabulated rating curve level exceeded (allocation infeasibility)" level_now level_rating_curve_max basin_id rating_curve_id
-                end
+                # if level_now > level_rating_curve_max
+                #     @error "Maximum tabulated rating curve level exceeded (allocation infeasibility)" level_now level_rating_curve_max basin_id rating_curve_id
+                # end
             end
         end
 
@@ -150,7 +152,7 @@ function set_normalized_storage_or_level_coefficient!(
             -∂q∂h * ∂h∂S / (scaling.flow * scaling.storage),
         )
         rhs -= ∂q∂h * ∂h∂S * S_n / scaling.storage
-    else
+    elseif (node_id.type == NodeType.LevelBoundary)
         # If the node is not a Basin, its a LevelBoundary which has "infinite storage" so we define linear resistance in terms of level
         level = get_level(problem, node_id)
         JuMP.set_normalized_coefficient(constraint, level, -∂q∂h / scaling.flow)
@@ -162,7 +164,7 @@ end
 function set_linearized_resistance_data!(
     allocation_model::AllocationModel,
     resistance_node::AbstractParameterNode,
-    resistance_constraint::JuMP.ConstraintRef,
+    resistance_constraint,
     flow_function::Function,
     p::Parameters,
     t::Float64,
@@ -177,14 +179,14 @@ function set_linearized_resistance_data!(
         h_a = get_level(p, inflow_id, t)
         h_b = get_level(p, outflow_id, t)
 
-        q = flow_function(resistance_node, node_id, h_a, h_b, p)
+        q = flow_function(resistance_node, node_id, h_a, h_b, p, t)
 
         ∂q∂h_a = forward_diff(
-            level_a -> flow_function(resistance_node, node_id, level_a, h_b, p),
+            level_a -> flow_function(resistance_node, node_id, level_a, h_b, p, t),
             h_a,
         )
         ∂q∂h_b = forward_diff(
-            level_b -> flow_function(resistance_node, node_id, h_a, level_b, p),
+            level_b -> flow_function(resistance_node, node_id, h_a, level_b, p, t),
             h_b,
         )
         rhs = q
@@ -248,6 +250,27 @@ function set_simulation_data!(
         manning_resistance,
         manning_resistance_constraint,
         manning_resistance_flow,
+        p,
+        t,
+    )
+
+    return nothing
+end
+
+function set_simulation_data!(
+    allocation_model::AllocationModel,
+    tabulated_rating_curve::TabulatedRatingCurve,
+    p::Parameters,
+    t::Float64,
+)::Nothing
+    (; problem) = allocation_model
+    tabulated_rating_curve_constraint = problem[:tabulated_rating_curve_constraint]
+
+    set_linearized_resistance_data!(
+        allocation_model,
+        tabulated_rating_curve,
+        tabulated_rating_curve_constraint,
+        tabulated_rating_curve_flow,
         p,
         t,
     )

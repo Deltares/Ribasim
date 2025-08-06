@@ -567,17 +567,36 @@ function add_tabulated_rating_curve!(
 
     # Add constraints: flow(upstream level) relationship of tabulated rating curves
     flow = problem[:flow]
-    problem[:rating_curve] = JuMP.@constraint(
+    q0 = 1.0 # example value (scaling.flow * m^3/s, to be filled in before optimizing)
+    ∂q∂variable_upstream = 1.0 # example value (scaling.flow * m^3/s, to be filled in before optimizing)
+    ∂q∂variable_downstream = -1.0 # example value, to be filled in before optimizing)
+
+    problem[:tabulated_rating_curve_constraint] = JuMP.@constraint(
         problem,
         [node_id = rating_curve_ids_subnetwork],
         flow[inflow_link[node_id.idx].link] == begin
-            qh = interpolations[current_interpolation_index[node_id.idx](0.0)]
-            level_upstream = get_level(problem, inflow_link[node_id.idx].link[1])
-            level_upstream_data = qh.t
-            flow_rate_data = qh.u ./ scaling.flow
-            piecewiselinear(problem, level_upstream, level_upstream_data, flow_rate_data)
+            # Basins define rating curves in terms of storage, and level boundaries in terms of level
+            if inflow_link[node_id.idx].link[1].type == NodeType.Basin
+                variable_upstream = get_storage(problem, inflow_link[node_id.idx].link[1])
+            elseif inflow_link[node_id.idx].link[1].type == NodeType.LevelBoundary
+                variable_upstream = get_level(problem, inflow_link[node_id.idx].link[1])
+            else
+                variable_upstream = 0
+            end
+            if inflow_link[node_id.idx].link[2].type == NodeType.Basin
+                variable_downstream =
+                    get_storage(problem, inflow_link[node_id.idx].link[2])
+            elseif inflow_link[node_id.idx].link[2].type == NodeType.LevelBoundary
+                variable_downstream = get_level(problem, inflow_link[node_id.idx].link[2])
+            else
+                variable_downstream = 0
+            end
+
+            q0 +
+            ∂q∂variable_upstream * variable_upstream +
+            ∂q∂variable_downstream * variable_downstream
         end,
-        base_name = "rating_curve",
+        base_name = "tabulated_rating_curve_constraint"
     )
     return nothing
 end
