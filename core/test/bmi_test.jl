@@ -100,7 +100,7 @@ end
     demand = BMI.get_value_ptr(model, "user_demand.demand")
     inflow = BMI.get_value_ptr(model, "user_demand.cumulative_inflow")
     # One year in seconds
-    year = model.integrator.p.p_independent.user_demand.demand_itp[2][1].t[2]
+    year = model.integrator.p.p_independent.user_demand.demand_interpolation[2][1].t[2]
     demand_start = 1e-3
     slope = 1e-3 / year
     day = 86400.0

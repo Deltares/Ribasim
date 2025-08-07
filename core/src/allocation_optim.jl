@@ -259,15 +259,14 @@ function reset_goal_programming!(
     p_independent::ParametersIndependent,
 )::Nothing
     (; problem, scaling) = allocation_model
-    (; user_demand, basin) = p_independent
+    (; user_demand, flow_demand, basin) = p_independent
 
     flow = problem[:flow]
     storage = problem[:basin_storage]
     level = problem[:basin_level]
 
-    # Reset allocated flow amounts
+    # Reset allocated flow amounts for UserDemand
     JuMP.fix.(problem[:user_demand_allocated], 0.0; force = true)
-    JuMP.fix.(problem[:flow_demand_allocated], -MAX_ABS_FLOW / scaling.flow; force = true)
 
     for node_id in only(problem[:user_demand_return_flow].axes)
         inflow_link = user_demand.inflow_link[node_id.idx].link
@@ -284,6 +283,14 @@ function reset_goal_programming!(
 
         JuMP.set_lower_bound(level[node_id], basin.storage_to_level[node_id.idx].u[1])
         JuMP.set_upper_bound(level[node_id], basin.storage_to_level[node_id.idx].u[end])
+    end
+
+    # Reset allocated flow amounts for FlowDemand
+    JuMP.fix.(problem[:flow_demand_allocated], -MAX_ABS_FLOW / scaling.flow; force = true)
+
+    for node_id in only(problem[:flow_demand_constraint].axes)
+        (; link) = flow_demand.inflow_link[node_id.idx]
+        JuMP.set_lower_bound(flow[link], flow_capacity_lower_bound(link, p_independent))
     end
 
     return nothing
@@ -312,18 +319,19 @@ function set_demands_lower_constraints!(
     target_demand_fraction::JuMP.VariableRef,
     demand_function::Function,
     node_ids::Vector{NodeID};
-    deactivate_when_no_demand::Bool = false,
 )::Nothing
     for node_id in node_ids
         constraint_lower = constraints_lower[node_id]
         rel_error_lower = rel_errors_lower[node_id]
         d = demand_function(node_id)
-        JuMP.set_normalized_coefficient(constraint_lower, rel_error_lower, d)
-        JuMP.set_normalized_coefficient(constraint_lower, target_demand_fraction, -d)
 
-        if deactivate_when_no_demand && iszero(d)
+        if isnan(d)
+            # d == NaN means there is no demand, so set the rhs
+            # of the constraint to a large negative value which effectively deactivates the constraint
             JuMP.set_normalized_rhs(constraint_lower, -1e10)
         else
+            JuMP.set_normalized_coefficient(constraint_lower, rel_error_lower, max(1e-6, d))
+            JuMP.set_normalized_coefficient(constraint_lower, target_demand_fraction, -d)
             JuMP.set_normalized_rhs(constraint_lower, 0)
         end
     end
@@ -339,7 +347,7 @@ function set_demands!(
     (; problem, scaling) = allocation_model
     (; user_demand, flow_demand, level_demand, graph) = p_independent
     target_demand_fraction = problem[:target_demand_fraction]
-    (; demand_priority, demand_priority_idx) = objective
+    (; demand_priority_idx) = objective
 
     # TODO: Compute proper target fraction
     JuMP.fix(target_demand_fraction, 1.0; force = true)
@@ -369,10 +377,8 @@ function set_demands!(
         problem[:flow_demand_constraint],
         problem[:relative_flow_demand_error],
         target_demand_fraction,
-        node_id ->
-            flow_demand.demand_priority[node_id.idx] == demand_priority ?
-            flow_demand.demand[node_id.idx] / scaling.flow : 0.0,
-        only(problem[:relative_flow_demand_error].axes),
+        node_id -> flow_demand.demand[node_id.idx, demand_priority_idx] / scaling.flow,
+        only(problem[:relative_flow_demand_error].axes);
     )
 
     # LevelDemand
@@ -401,62 +407,35 @@ end
 function update_allocated_values!(
     allocation_model::AllocationModel,
     objective::AllocationObjective,
-    user_demand::UserDemand,
+    node::Union{UserDemand, FlowDemand},
+    node_allocated,
 )::Nothing
     (; problem, scaling) = allocation_model
     (; demand_priority_idx) = objective
+    (; has_demand_priority) = node
 
-    user_demand_allocated = problem[:user_demand_allocated]
     flow = problem[:flow]
 
-    # Flow allocated to UserDemand nodes
-    for node_id in only(user_demand_allocated.axes)
-        has_demand = user_demand.has_demand_priority[node_id.idx, demand_priority_idx]
-        if has_demand
-            inflow_link = user_demand.inflow_link[node_id.idx].link
-            allocated_prev = JuMP.value(user_demand_allocated[node_id]) # (scaling.flow * m^3/s)
-            demand = user_demand.demand[node_id.idx, demand_priority_idx] # (m^3/s)
-            allocated = clamp(
-                scaling.flow * (JuMP.value(flow[inflow_link]) - allocated_prev),
+    for node_id in only(node_allocated.axes)
+        if has_demand_priority[node_id.idx, demand_priority_idx]
+            inflow_link = node.inflow_link[node_id.idx].link
+            allocated_prev =
+                sum(view(node.allocated, node_id.idx, 1:(demand_priority_idx - 1))) # (m^3/s)
+            demand = node.demand[node_id.idx, demand_priority_idx] # (m^3/s)
+            allocated_demand_priority = clamp(
+                scaling.flow * JuMP.value(flow[inflow_link]) - allocated_prev,
                 0,
                 demand,
             ) # (m^3/s)
-            allocated_scaled = allocated / scaling.flow
-            JuMP.fix(user_demand_allocated[node_id], allocated_scaled; force = true)
+            allocated_scaled = (allocated_prev + allocated_demand_priority) / scaling.flow
+            JuMP.fix(node_allocated[node_id], allocated_scaled; force = true)
             JuMP.set_lower_bound(flow[inflow_link], allocated_scaled)
-            user_demand.allocated[node_id.idx, demand_priority_idx] = allocated
+            node.allocated[node_id.idx, demand_priority_idx] = allocated_demand_priority
         else
-            user_demand.allocated[node_id.idx, demand_priority_idx] = 0.0
+            node.allocated[node_id.idx, demand_priority_idx] = 0.0
         end
     end
 
-    return nothing
-end
-
-function update_allocated_values!(
-    allocation_model::AllocationModel,
-    objective::AllocationObjective,
-    flow_demand::FlowDemand,
-    graph::MetaGraph,
-)::Nothing
-    (; problem) = allocation_model
-    (; demand_priority) = objective
-
-    flow_demand_allocated = problem[:flow_demand_allocated]
-    flow = problem[:flow]
-
-    # Flow allocated to FlowDemand nodes
-    for node_id in only(flow_demand_allocated.axes)
-        has_demand = (flow_demand.demand_priority[node_id.idx] == demand_priority)
-        if has_demand
-            inflow_link = (inflow_id(graph, node_id), node_id)
-            JuMP.fix(
-                flow_demand_allocated[node_id],
-                JuMP.value(flow[inflow_link]);
-                force = true,
-            )
-        end
-    end
     return nothing
 end
 
@@ -565,70 +544,94 @@ function add_to_record_demand!(
     return nothing
 end
 
-# Save the demand, allocated amount and realized amount
-# for the current demand priority.
-# NOTE: The realized amount lags one allocation period behind.
 function save_demands_and_allocations!(
-    p::Parameters,
-    t::Float64,
     allocation_model::AllocationModel,
-    subnetwork_id::Int32,
     objective::AllocationObjective,
+    integrator::DEIntegrator,
+    user_demand::UserDemand,
 )::Nothing
-    (; p_independent, state_time_dependent_cache) = p
-    (; current_storage) = state_time_dependent_cache
-    (; problem, Δt_allocation, cumulative_realized_volume, scaling) = allocation_model
-    (; allocation, user_demand, flow_demand, level_demand, graph) = p_independent
-    (; record_demand, demand_priorities_all) = allocation
-    (; demand_priority_idx) = objective
-    user_demand_allocated = problem[:user_demand_allocated]
-    flow_demand_allocated = problem[:flow_demand_allocated]
-    demand_priority = demand_priorities_all[demand_priority_idx]
+    (; p, t) = integrator
+    (; record_demand) = p.p_independent.allocation
+    (; subnetwork_id, Δt_allocation, cumulative_realized_volume, problem) = allocation_model
+    (; demand_priority, demand_priority_idx) = objective
+    (; demand, allocated, inflow_link, has_demand_priority) = user_demand
 
-    # UserDemand
+    user_demand_allocated = problem[:user_demand_allocated]
+
     for node_id in only(user_demand_allocated.axes)
-        if user_demand.has_demand_priority[node_id.idx, demand_priority_idx]
+        if has_demand_priority[node_id.idx, demand_priority_idx]
             add_to_record_demand!(
                 record_demand,
                 t,
                 subnetwork_id,
                 node_id,
                 demand_priority,
-                user_demand.demand[node_id.idx, demand_priority_idx],
-                user_demand.allocated[node_id.idx, demand_priority_idx],
-                cumulative_realized_volume[user_demand.inflow_link[node_id.idx].link] /
-                Δt_allocation,
+                demand[node_id.idx, demand_priority_idx],
+                allocated[node_id.idx, demand_priority_idx],
+                # NOTE: The realized amount lags one allocation period behind
+                cumulative_realized_volume[inflow_link[node_id.idx].link] / Δt_allocation,
             )
         end
     end
+    return nothing
+end
 
-    # FlowDemand
-    for connector_node_id in only(flow_demand_allocated.axes)
-        node_id = only(inneighbor_labels_type(graph, connector_node_id, LinkType.control))
-        if flow_demand.demand_priority[node_id.idx] == objective.demand_priority
+function save_demands_and_allocations!(
+    allocation_model::AllocationModel,
+    objective::AllocationObjective,
+    integrator::DEIntegrator,
+    flow_demand::FlowDemand,
+)::Nothing
+    (; p, t) = integrator
+    (; record_demand) = p.p_independent.allocation
+    (; subnetwork_id, Δt_allocation, cumulative_realized_volume, problem) = allocation_model
+    (; demand_priority, demand_priority_idx) = objective
+    (; demand, allocated, inflow_link, has_demand_priority) = flow_demand
+
+    flow_demand_allocated = problem[:flow_demand_allocated]
+
+    for node_id in only(flow_demand_allocated.axes)
+        (; link) = inflow_link[node_id.idx]
+        if has_demand_priority[node_id.idx, demand_priority_idx]
             add_to_record_demand!(
                 record_demand,
                 t,
                 subnetwork_id,
-                connector_node_id,
+                link[2],
                 demand_priority,
-                flow_demand.demand[node_id.idx],
-                JuMP.value(flow_demand_allocated[connector_node_id]) * scaling.flow,
-                cumulative_realized_volume[(
-                    inflow_id(graph, connector_node_id),
-                    connector_node_id,
-                )] / Δt_allocation,
+                demand[node_id.idx, demand_priority_idx],
+                allocated[node_id.idx, demand_priority_idx],
+                # NOTE: The realized amount lags one allocation period behind
+                cumulative_realized_volume[link] / Δt_allocation,
             )
         end
     end
+    return nothing
+end
 
-    # LevelDemand
+function save_demands_and_allocations!(
+    allocation_model::AllocationModel,
+    objective::AllocationObjective,
+    integrator::DEIntegrator,
+    level_demand::LevelDemand,
+)::Nothing
+    (; p, t) = integrator
+    (; p_independent, state_time_dependent_cache) = p
+    (; current_storage) = state_time_dependent_cache
+    (; problem, Δt_allocation, subnetwork_id) = allocation_model
+    (; allocation, graph) = p_independent
+    (; record_demand, demand_priorities_all) = allocation
+    (; demand_priority_idx) = objective
+    (; has_demand_priority, storage_prev, storage_demand, storage_allocated) = level_demand
+
+    demand_priority = demand_priorities_all[demand_priority_idx]
+
     for node_id_basin in only(problem[:storage_constraint_in].axes)
         node_id = only(inneighbor_labels_type(graph, node_id_basin, LinkType.control))
-        if level_demand.has_demand_priority[node_id.idx, demand_priority_idx]
+        if has_demand_priority[node_id.idx, demand_priority_idx]
             current_storage_basin = current_storage[node_id_basin.idx]
             cumulative_realized_basin_volume =
-                current_storage_basin - level_demand.storage_prev[node_id_basin]
+                current_storage_basin - storage_prev[node_id_basin]
             # The demand of the zones (lower and upper) between the target levels for this priority
             # and the target levels for the previous priority
             storage_demand =
@@ -645,13 +648,12 @@ function save_demands_and_allocations!(
                 node_id_basin,
                 demand_priority,
                 storage_demand / Δt_allocation,
-                level_demand.storage_allocated[node_id_basin][demand_priority_idx] /
-                Δt_allocation,
+                storage_allocated[node_id_basin][demand_priority_idx] / Δt_allocation,
+                # NOTE: The realized amount lags one allocation period behind
                 cumulative_realized_basin_volume / Δt_allocation,
             )
         end
     end
-
     return nothing
 end
 
@@ -724,22 +726,34 @@ Postprocess for the specific objective type
 """
 function postprocess_objective!(
     allocation_model::AllocationModel,
-    p::Parameters,
     objective::AllocationObjective,
-    t::Number,
+    integrator::DEIntegrator,
 )::Nothing
+    (; p, t) = integrator
     (; user_demand, flow_demand, level_demand, graph) = p.p_independent
-    (; subnetwork_id) = allocation_model
+    (; problem) = allocation_model
 
     if objective.type == AllocationObjectiveType.demand
-        # Update allocation constraints so that the results of the optimization for this demand priority are retained
+        # Update allocation bounds/constraints so that the results of the optimization for this demand priority are retained
         # in subsequent optimizations
-        update_allocated_values!(allocation_model, objective, user_demand)
-        update_allocated_values!(allocation_model, objective, flow_demand, graph)
+        update_allocated_values!(
+            allocation_model,
+            objective,
+            user_demand,
+            problem[:user_demand_allocated],
+        )
+        update_allocated_values!(
+            allocation_model,
+            objective,
+            flow_demand,
+            problem[:flow_demand_allocated],
+        )
         update_allocated_values!(allocation_model, objective, level_demand, graph)
 
         # Save the demands and allocated values for all demand nodes that have a demand of the current priority
-        save_demands_and_allocations!(p, t, allocation_model, subnetwork_id, objective)
+        save_demands_and_allocations!(allocation_model, objective, integrator, user_demand)
+        save_demands_and_allocations!(allocation_model, objective, integrator, flow_demand)
+        save_demands_and_allocations!(allocation_model, objective, integrator, level_demand)
     elseif objective.type == AllocationObjectiveType.source_priorities
         nothing
     end
@@ -842,7 +856,7 @@ function optimize_for_objective!(
         end
     end
 
-    postprocess_objective!(allocation_model, p, objective, t)
+    postprocess_objective!(allocation_model, objective, integrator)
 
     return nothing
 end
@@ -875,38 +889,66 @@ function apply_control_from_allocation!(
     return nothing
 end
 
-function set_timeseries_demands!(p::Parameters, t::Float64)::Nothing
-    (; p_independent, state_time_dependent_cache) = p
-    (; current_storage) = state_time_dependent_cache
-    (; user_demand, flow_demand, level_demand, allocation, basin) = p_independent
-    (; demand_priorities_all, allocation_models) = allocation
-    (; Δt_allocation) = first(allocation_models)
+function set_timeseries_demands!(user_demand::UserDemand, integrator::DEIntegrator)::Nothing
+    (; p, t) = integrator
+    Δt_allocation = get_Δt_allocation(p.p_independent.allocation)
+    (;
+        demand_from_timeseries,
+        has_demand_priority,
+        demand,
+        demand_interpolation,
+        demand_priorities,
+    ) = user_demand
 
-    # UserDemand
     for node_id in user_demand.node_id
-        !(user_demand.demand_from_timeseries[node_id.idx]) && continue
+        !(demand_from_timeseries[node_id.idx]) && continue
 
-        for demand_priority_idx in eachindex(demand_priorities_all)
-            !user_demand.has_demand_priority[node_id.idx, demand_priority_idx] || continue
+        for demand_priority_idx in eachindex(demand_priorities)
+            !has_demand_priority[node_id.idx, demand_priority_idx] && continue
             # Set the demand as the average of the demand interpolation
-            # over the coming interpolation period
-            user_demand.demand[node_id.idx, demand_priority_idx] =
+            # over the coming allocation period
+            demand[node_id.idx, demand_priority_idx] =
                 integral(
-                    user_demand.demand_itp[node_id.idx][demand_priority_idx],
+                    demand_interpolation[node_id.idx][demand_priority_idx],
                     t,
                     t + Δt_allocation,
                 ) / Δt_allocation
         end
     end
+    return nothing
+end
 
-    # FlowDemand
+function set_timeseries_demands!(flow_demand::FlowDemand, integrator::DEIntegrator)::Nothing
+    (; p, t) = integrator
+    Δt_allocation = get_Δt_allocation(p.p_independent.allocation)
+    (; has_demand_priority, demand, demand_interpolation, demand_priorities) = flow_demand
+
     for node_id in flow_demand.node_id
-        # Set the demand as the average of the demand interpolation
-        # over the coming interpolation period
-        flow_demand.demand[node_id.idx] =
-            integral(flow_demand.demand_itp[node_id.idx], t, t + Δt_allocation) /
-            Δt_allocation
+        for demand_priority_idx in eachindex(demand_priorities)
+            !has_demand_priority[node_id.idx, demand_priority_idx] && continue
+            # Set the demand as the average of the demand interpolation
+            # over the coming allocation period
+            demand[node_id.idx, demand_priority_idx] =
+                integral(
+                    demand_interpolation[node_id.idx][demand_priority_idx],
+                    t,
+                    t + Δt_allocation,
+                ) / Δt_allocation
+        end
     end
+    return nothing
+end
+
+function set_timeseries_demands!(
+    level_demand::LevelDemand,
+    integrator::DEIntegrator,
+)::Nothing
+    (; p, t) = integrator
+    (; p_independent, state_time_dependent_cache) = p
+    (; current_storage) = state_time_dependent_cache
+    (; allocation, basin) = p_independent
+    (; demand_priorities_all) = allocation
+    Δt_allocation = get_Δt_allocation(allocation)
 
     # LevelDemand
     for node_id in level_demand.node_id
@@ -929,6 +971,7 @@ function set_timeseries_demands!(p::Parameters, t::Float64)::Nothing
                 )
             end
 
+            # Target level per LevelDemand node
             level_demand.target_level_min[node_id.idx, demand_priority_idx] =
                 target_level_min
             level_demand.target_level_max[node_id.idx, demand_priority_idx] =
@@ -940,6 +983,8 @@ function set_timeseries_demands!(p::Parameters, t::Float64)::Nothing
                 target_storage_max =
                     get_storage_from_level(basin, basin_id.idx, target_level_max)
 
+                # Target storage per Basin
+                # (one LevelDemand node can set target levels for multiple Basins)
                 level_demand.target_storage_min[basin_id][demand_priority_idx] =
                     target_storage_min
                 level_demand.target_storage_max[basin_id][demand_priority_idx] =
@@ -952,6 +997,7 @@ function set_timeseries_demands!(p::Parameters, t::Float64)::Nothing
                 # Can't have both demand for more storage and less storage
                 @assert iszero(storage_demand_in) || iszero(storage_demand_out)
 
+                # Demand per Basin
                 level_demand.storage_demand[basin_id][demand_priority_idx] =
                     storage_demand_in - storage_demand_out
             end
@@ -991,7 +1037,7 @@ function update_allocation!(model)::Nothing
     (; u, p, t) = integrator
     du = get_du(integrator)
     (; p_independent) = p
-    (; allocation, pump, outlet, graph) = p_independent
+    (; allocation, pump, outlet, user_demand, flow_demand, level_demand) = p_independent
     (; allocation_models) = allocation
 
     # Don't run the allocation algorithm if allocation is not active
@@ -1004,7 +1050,9 @@ function update_allocation!(model)::Nothing
     end
 
     # For demands that come from a timeseries, compute the value that will be optimized for
-    set_timeseries_demands!(p, t)
+    set_timeseries_demands!(user_demand, integrator)
+    set_timeseries_demands!(flow_demand, integrator)
+    set_timeseries_demands!(level_demand, integrator)
 
     # If a primary network is present, collect demands of subnetworks
     if has_primary_network(allocation)
