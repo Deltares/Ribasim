@@ -203,13 +203,13 @@ demand_priority_idx: The index of the demand priority in the sorted list of all 
 has_flow_demand: If a demand objective, whether there is a flow demand (UserDemand, FlowDemand, SubnetworkDemand)
 has_level_demand: If a demand objective, whether there is a level demand (LevelDemand)
 """
-struct AllocationObjectives
-    expression::Vector{JuMP.AffExpr}
-    type::Vector{AllocationObjectiveType.T}
-    demand_priority::Vector{Int32}
-    demand_priority_idx::Vector{Int}
-    has_flow_demand::Vector{Bool}
-    has_level_demand::Vector{Bool}
+@kwdef struct AllocationObjectives
+    expression::Vector{JuMP.AffExpr} = []
+    type::Vector{AllocationObjectiveType.T} = []
+    demand_priority::Vector{Int32} = []
+    demand_priority_idx::Vector{Int} = []
+    has_flow_demand::Vector{Bool} = []
+    has_level_demand::Vector{Bool} = []
 end
 
 function repr_allocation_objective(
