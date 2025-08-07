@@ -438,13 +438,13 @@ function tabulated_rating_curve_flow(
     inflow_link = tabulated_rating_curve.inflow_link[node_id.idx]
     inflow_id = inflow_link.link[1]
     Δh = h_a - h_b
-    max_downstream_level = tabulated_rating_curve.max_downstream_level[node_id.idx]
+
     factor = get_low_storage_factor(p, inflow_id)
 
     interpolation_index = current_interpolation_index[node_id.idx](t)
     qh = interpolations[interpolation_index]
     q = factor * qh(h_a)
-    # TODO: investigate: these reduction factors give instability
+    # TODO: investigate: these reduction factors give instability in the linearisation in allocation
     # q *= reduction_factor(Δh, 0.02)
     # q *= reduction_factor(max_downstream_level - h_b, 0.02)
 end
@@ -469,6 +469,9 @@ function formulate_flow!(
             h_a = get_level(p, inflow_id, t)
             h_b = get_level(p, outflow_id, t)
             q = tabulated_rating_curve_flow(tabulated_rating_curve, id, h_a, h_b, p, t)
+            q *= reduction_factor(h_a - h_b, 0.02)
+            max_downstream_level = tabulated_rating_curve.max_downstream_level[id.idx]
+            q *= reduction_factor(max_downstream_level - h_b, 0.02)
         else
             q = 0.0
         end
