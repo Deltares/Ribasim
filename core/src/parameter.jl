@@ -672,6 +672,7 @@ max_downstream_level: The downstream level above which the Pump flow goes to zer
 control_mapping: dictionary from (node_id, control_state) to target flow rate
 control_type: one of None, ContinuousControl, PidControl, Allocation
 allocation_controlled: whether this Pump is controlled by allocation
+flow_demand_data: Per pump whether the Pump has a flow demand, and if so what the FlowDemand node is
 """
 @kwdef struct Pump <: AbstractParameterNode
     node_id::Vector{NodeID}
@@ -693,6 +694,8 @@ allocation_controlled: whether this Pump is controlled by allocation
     control_type::Vector{ContinuousControlType.T} =
         fill(ContinuousControlType.None, length(node_id))
     allocation_controlled::Vector{Bool} = fill(false, length(node_id))
+    flow_demand_data::Vector{Tuple{Bool, NodeID}} =
+        fill((false, NodeID(NodeType.FlowDemand, 0, 0)), length(node_id))
 end
 
 """
@@ -710,6 +713,7 @@ max_downstream_level: The downstream level above which the Outlet flow goes to z
 control_mapping: dictionary from (node_id, control_state) to target flow rate
 control_type: one of None, ContinuousControl, PidControl, Allocation
 allocation_controlled: whether this Outlet is controlled by allocation
+flow_demand_data: Per Outlet whether the Outlet has a flow demand, and if so what the FlowDemand node is
 """
 @kwdef struct Outlet <: AbstractParameterNode
     node_id::Vector{NodeID}
@@ -730,6 +734,8 @@ allocation_controlled: whether this Outlet is controlled by allocation
     control_type::Vector{ContinuousControlType.T} =
         fill(ContinuousControlType.None, length(node_id))
     allocation_controlled::Vector{Bool} = fill(false, length(node_id))
+    flow_demand_data::Vector{Tuple{Bool, NodeID}} =
+        fill((false, NodeID(NodeType.FlowDemand, 0, 0)), length(node_id))
 end
 
 """
@@ -937,7 +943,7 @@ has_demand_priority: boolean matrix stating per UserDemand node per demand prior
 demand: water flux demand of UserDemand per demand priority (node_idx, demand_priority_idx)
     Each UserDemand has a demand for all demand priorities,
     which is 0.0 if it is not provided explicitly.
-demand_itp: Timeseries interpolation objects for demands
+demand_interpolation: Timeseries interpolation objects for demands
 demand_from_timeseries: If false the demand comes from the BMI or is fixed
 allocated: water flux currently allocated to UserDemand per demand priority (node_idx, demand_priority_idx)
 return_factor: the factor in [0,1] of how much of the abstracted water is given back to the system
@@ -953,7 +959,7 @@ concentration_itp: matrix with timeseries interpolations of concentrations per L
     has_demand_priority::Matrix{Bool} =
         zeros(Bool, length(node_id), length(demand_priorities))
     demand::Matrix{Float64} = zeros(length(node_id), length(demand_priorities))
-    demand_itp::Vector{Vector{ScalarLinearInterpolation}} =
+    demand_interpolation::Vector{Vector{ScalarLinearInterpolation}} =
         trivial_linear_itp_fill(demand_priorities, node_id)
     demand_from_timeseries::Vector{Bool} = Vector{Bool}(undef, length(node_id))
     allocated::Matrix{Float64} = fill(Inf, length(node_id), length(demand_priorities))
@@ -964,7 +970,7 @@ concentration_itp: matrix with timeseries interpolations of concentrations per L
 end
 
 """
-node_id: node ID of the LevelDemand node
+node_id: node IDs of the LevelDemand nodes
 demand_priorities: All demand priorities that exist in the model (not just by UserDemand) sorted
 has_demand_priority: boolean matrix stating per LevelDemand node per demand priority index whether the (node_idx, demand_priority_idx)
     node will ever have a demand of that priority
@@ -981,7 +987,7 @@ storage_allocated: The storage allocated to each Basin per demand priority
 """
 @kwdef struct LevelDemand <: AbstractDemandNode
     node_id::Vector{NodeID}
-    demand_priorities::Vector{Int32} = Int32[]
+    demand_priorities::Vector{Int32} = []
     has_demand_priority::Matrix{Bool} =
         zeros(Bool, length(node_id), length(demand_priorities))
     min_level::Vector{Vector{ScalarLinearInterpolation}} =
@@ -1001,17 +1007,24 @@ storage_allocated: The storage allocated to each Basin per demand priority
 end
 
 """
-node_id: node ID of the FlowDemand node
-demand_itp: The time interpolation of the demand of the node
-demand: The current demand of the node
-demand_priority: The priority of the demand of the node
+node_id: The node IDs of the FlowDemand node
+demand_priorities: All the demand priorities present in the model
+inflow_link: The inflow link of the connector node that has the flow demand
+has_demand_priority: Boolean matrix of whether a FlowDemand node has a certain priority (node_idx, demand_priority_idx)
+demand_priority: The demand per FlowDemand node for each demand priority
+demand: The current demand per FlowDemand node per demand priority (node_idx, demand_priority_idx)
+allocated: The current allocated amount per FlowDemand node per demand priority (node_idx, demand_priority_idx)
 """
 @kwdef struct FlowDemand <: AbstractDemandNode
     node_id::Vector{NodeID}
-    demand_itp::Vector{ScalarLinearInterpolation} =
-        Vector{ScalarLinearInterpolation}(undef, length(node_id))
-    demand::Vector{Float64} = zeros(length(node_id))
-    demand_priority::Vector{Int32} = zeros(length(node_id))
+    demand_priorities::Vector{Int32} = []
+    inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
+    has_demand_priority::Matrix{Bool} =
+        zeros(Bool, length(node_id), length(demand_priorities))
+    demand_interpolation::Vector{Vector{ScalarLinearInterpolation}} =
+        trivial_linear_itp_fill(demand_priorities, node_id; val = NaN)
+    demand::Matrix{Float64} = fill(NaN, length(node_id), length(demand_priorities))
+    allocated::Matrix{Float64} = zeros(length(node_id), length(demand_priorities))
 end
 
 "Subgrid linearly interpolates basin levels."

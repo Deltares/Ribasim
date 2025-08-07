@@ -322,6 +322,18 @@ function set_inoutflow_links!(node::AbstractParameterNode, graph::MetaGraph; inf
     map!(node_id -> outflow_link(graph, node_id), node.outflow_link, node.node_id)
 end
 
+function set_flow_demand_data!(node::Union{Pump, Outlet}, graph)::Nothing
+    (; node_id, flow_demand_data) = node
+
+    for id in node_id
+        has_demand, flow_demand_id = has_external_flow_demand(graph, id, :flow_demand)
+        if has_demand
+            flow_demand_data[id.idx] = (has_demand, flow_demand_id)
+        end
+    end
+    return nothing
+end
+
 function LinearResistance(db, config, graph)
     static = load_structvector(db, config, Schema.LinearResistance.Static)
     node_id = get_node_ids(db, NodeType.LinearResistance)
@@ -560,6 +572,7 @@ function Pump(db::DB, config::Config, graph::MetaGraph)
     initialize_control_mapping!(pump, static)
     set_control_type!(pump, graph)
     set_inoutflow_links!(pump, graph)
+    set_flow_demand_data!(pump, graph)
 
     errors = parse_parameter!(pump, config, :active; static, time, default = true)
     errors |= parse_parameter!(pump, config, :flow_rate; static, time)
@@ -587,6 +600,7 @@ function Outlet(db::DB, config::Config, graph::MetaGraph)
     initialize_control_mapping!(outlet, static)
     set_control_type!(outlet, graph)
     set_inoutflow_links!(outlet, graph)
+    set_flow_demand_data!(outlet, graph)
 
     errors = parse_parameter!(outlet, config, :active; static, time, default = true)
     errors |= parse_parameter!(outlet, config, :flow_rate; static, time)
@@ -1132,47 +1146,51 @@ function parse_demand!(
 end
 
 function parse_static_demand_data!(
-    user_demand::UserDemand,
+    node::Union{UserDemand, FlowDemand},
     id::NodeID,
     static_group,
     demand_priorities,
     ::Config,
 )::Nothing
-    user_demand.demand_from_timeseries[id.idx] = false
+    if node isa UserDemand
+        node.demand_from_timeseries[id.idx] = false
+    end
     for row in static_group
         demand_priority_idx = findsorted(demand_priorities, row.demand_priority)
-        user_demand.has_demand_priority[id.idx, demand_priority_idx] = true
+        node.has_demand_priority[id.idx, demand_priority_idx] = true
         demand_row = coalesce(row.demand, 0.0)
-        demand_itp = trivial_linear_itp(; val = demand_row)
-        user_demand.demand_itp[id.idx][demand_priority_idx] = demand_itp
-        user_demand.demand[id.idx, demand_priority_idx] = demand_row
+        demand_interpolation = trivial_linear_itp(; val = demand_row)
+        node.demand_interpolation[id.idx][demand_priority_idx] = demand_interpolation
+        node.demand[id.idx, demand_priority_idx] = demand_row
     end
     return nothing
 end
 
 function parse_time_demand_data!(
-    user_demand::UserDemand,
+    node::Union{UserDemand, FlowDemand},
     id::NodeID,
     time_group,
     demand_priorities,
     cyclic_time::Bool,
     config::Config,
 )
-    user_demand.demand_from_timeseries[id.idx] = true
+    if node isa UserDemand
+        node.demand_from_timeseries[id.idx] = true
+    end
     for time_priority_group in IterTools.groupby(row -> row.demand_priority, time_group)
         demand_priority_idx =
             findsorted(demand_priorities, first(time_priority_group).demand_priority)
-        user_demand.has_demand_priority[id.idx, demand_priority_idx] = true
-        demand_itp = get_scalar_interpolation(
+        node.has_demand_priority[id.idx, demand_priority_idx] = true
+        demand_interpolation = get_scalar_interpolation(
             config.starttime,
             StructVector(time_priority_group),
             id,
             :demand;
             cyclic_time,
         )
-        user_demand.demand_itp[id.idx][demand_priority_idx] = demand_itp
-        user_demand.demand[id.idx, demand_priority_idx] =
-            last(user_demand.demand_itp[id.idx])(0.0)
+        node.demand_interpolation[id.idx][demand_priority_idx] = demand_interpolation
+        node.demand[id.idx, demand_priority_idx] =
+            last(node.demand_interpolation[id.idx])(0.0)
     end
     return nothing
 end
@@ -1217,7 +1235,7 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)
     errors |=
         !valid_demand(
             user_demand.node_id,
-            user_demand.demand_itp,
+            user_demand.demand_interpolation,
             user_demand.demand_priorities,
         )
 
@@ -1310,35 +1328,33 @@ function LevelDemand(db::DB, config::Config, graph::MetaGraph)
         basin_ids = collect(outneighbor_labels_type(graph, id, LinkType.control))
         push!(level_demand.basins_with_demand, basin_ids)
         for basin_id in basin_ids
-            level_demand.target_storage_min[basin_id] = zeros(n_demand_priorities)
-            level_demand.target_storage_max[basin_id] = zeros(n_demand_priorities)
+            level_demand.target_storage_min[basin_id] = fill(NaN, n_demand_priorities)
+            level_demand.target_storage_max[basin_id] = fill(NaN, n_demand_priorities)
             level_demand.storage_prev[basin_id] = 0.0
             level_demand.storage_allocated[basin_id] = zeros(n_demand_priorities)
-            level_demand.storage_demand[basin_id] = zeros(n_demand_priorities)
+            level_demand.storage_demand[basin_id] = fill(NaN, n_demand_priorities)
         end
     end
 
     level_demand
 end
 
-function FlowDemand(db::DB, config::Config)
+function FlowDemand(db::DB, config::Config, graph::MetaGraph)
     static = load_structvector(db, config, Schema.FlowDemand.Static)
     time = load_structvector(db, config, Schema.FlowDemand.Time)
-    cyclic_times = get_cyclic_time(db, "FlowDemand")
     node_id = get_node_ids(db, NodeType.FlowDemand)
+    cyclic_times = get_cyclic_time(db, "FlowDemand")
+    demand_priorities = get_all_demand_priorities(db, config)
 
-    flow_demand = FlowDemand(; node_id)
-    errors = parse_parameter!(flow_demand, config, :demand_priority; static, time)
-    errors |= parse_parameter!(
-        flow_demand,
-        config,
-        :demand;
-        static,
-        time,
-        field_name = :demand_itp,
-        cyclic_times,
-    )
+    flow_demand = FlowDemand(; node_id, demand_priorities)
 
+    for id in node_id
+        flow_demand.inflow_link[id.idx] =
+            inflow_link(graph, only(outneighbor_labels_type(graph, id, LinkType.control)))
+    end
+
+    errors =
+        parse_demand!(flow_demand, static, time, cyclic_times, demand_priorities, config)
     errors && error("Errors encountered when parsing FlowDemand data.")
 
     flow_demand
@@ -1526,7 +1542,7 @@ function Parameters(db::DB, config::Config)::Parameters
         pid_control = PidControl(db, config),
         user_demand = UserDemand(db, config, graph),
         level_demand = LevelDemand(db, config, graph),
-        flow_demand = FlowDemand(db, config),
+        flow_demand = FlowDemand(db, config, graph),
     )
 
     subgrid = Subgrid(db, config, basin)

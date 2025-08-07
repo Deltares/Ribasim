@@ -353,12 +353,12 @@ end
 
 function valid_demand(
     node_id::Vector{NodeID},
-    demand_itp::Vector{Vector{ScalarLinearInterpolation}},
+    demand_interpolation::Vector{Vector{ScalarLinearInterpolation}},
     demand_priorities::Vector{Int32},
 )::Bool
     errors = false
 
-    for (col, id) in zip(demand_itp, node_id)
+    for (col, id) in zip(demand_interpolation, node_id)
         for (demand_p_itp, p_itp) in zip(col, demand_priorities)
             if any(demand_p_itp.u .< 0.0)
                 @error "Demand of $id with demand_priority $p_itp should be non-negative"
