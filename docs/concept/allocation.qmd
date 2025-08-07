@@ -72,9 +72,10 @@ Under the assumption that
 
 ## Linearization
 
-To use efficient linear programming algorithms, nonlinear relationships can be linearized around the current time $t^n$. For example, a nonlinear relationship between flow $Q$, an upstream  variable ($S_1$) and a downstream variable ($S_2$), can be linearized as:
+To use efficient linear programming algorithms, nonlinear relationships can be linearized around the current time $t^n$. For example, a nonlinear relationship between flow $Q$, an upstream  variable ($x_1$) and a downstream variable ($x_2$), can be linearized as:
 
-$$Q(S_1,S_2) \approx Q(S_1^n,S_2^n) + \frac{\partial Q}{\partial S_1}(S_1^n,S_2^n)(S_1^{n+1}-S_1^n) + \frac{\partial Q}{\partial S_2}(S_1^n,S_2^n)(S_2^{n+1}-S_2^n)$$
+$$Q(x_1,x_2) \approx Q(x_1^n,x_2^n) + \frac{\partial Q}{\partial x_1}(x_1^n,x_2^n)(x_1^{n+1}-x_1^n) + \frac{\partial Q}{\partial x_2}(x_1^n,x_2^n)(x_2^{n+1}-x_2^n)$$
+
 
 This yields a linear programming problem that can be solved efficiently while maintaining acceptable accuracy for small changes around the operating point.
 
