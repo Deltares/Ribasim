@@ -354,7 +354,7 @@ window.Quarto = {
 </header>
 
 
-<p>A <code>LevelDemand</code> node associates a minimum and a maximum level with connected Basins to be used by the allocation algorithm.</p>
+<p>A <code>LevelDemand</code> node associates a minimum and a maximum level (possibly multiple over different priorities) with connected Basins to be used by the allocation algorithm.</p>
 <p>Since this connection conveys information rather than flow, an outgoing control link must be used. Below the minimum level the Basin has a demand, above the maximum level the Basin has a surplus and acts as a source. The source can be used by all nodes with demands in order of demand priority.</p>
 <p>The same <code>LevelDemand</code> node can be used for Basins in different subnetworks.</p>
 <p>Both <code>min_level</code> and <code>max_level</code> are optional, to be able to handle only the demand or surplus side. If both are missing, <code>LevelDemand</code> won’t have any effects on allocation.</p>
@@ -401,7 +401,7 @@ window.Quarto = {
 </section>
 <section id="time" class="level2" data-number="1.2">
 <h2 data-number="1.2" class="anchored" data-anchor-id="time"><span class="header-section-number">1.2</span> Time</h2>
-<p>This table is the transient form of the <code>LevelDemand</code> table, in which time-dependent minimum and maximum levels can be supplied. Similar to the static version, only a single priority per <code>LevelDemand</code> node can be provided.</p>
+<p>This table is the transient form of the <code>LevelDemand</code> table, in which time-dependent minimum and maximum levels can be supplied.</p>
 <table class="caption-top table">
 <thead>
 <tr class="header">
