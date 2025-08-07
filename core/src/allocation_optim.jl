@@ -153,7 +153,7 @@ function set_partial_derivative_with_respect_to_storage_or_level!(
         )
         rhs -= ∂q∂h * ∂h∂S * S_n / scaling.storage
     elseif (node_id.type == NodeType.LevelBoundary)
-        # If the node is not a Basin, its a LevelBoundary which has "infinite storage" so we define linear resistance in terms of level
+        # If is a LevelBoundary, it has "infinite storage" so we define linear resistance in terms of level
         level = get_level(problem, node_id)
         JuMP.set_normalized_coefficient(constraint, level, -∂q∂h / scaling.flow)
         rhs -= h_n * ∂q∂h
@@ -163,36 +163,35 @@ end
 
 function linearize_connector_node!(
     allocation_model::AllocationModel,
-    resistance_node::AbstractParameterNode,
-    resistance_constraint,
+    connector_node::AbstractParameterNode,
+    flow_constraint,
     flow_function::Function,
     p::Parameters,
     t::Float64,
 )
     (; scaling) = allocation_model
 
-    for node_id in only(resistance_constraint.axes)
-        inflow_id = resistance_node.inflow_link[node_id.idx].link[1]
-        outflow_id = resistance_node.outflow_link[node_id.idx].link[2]
+    for node_id in only(flow_constraint.axes)
+        inflow_id = connector_node.inflow_link[node_id.idx].link[1]
+        outflow_id = connector_node.outflow_link[node_id.idx].link[2]
 
         # h_a and h_b are numbers from the last time step in the physical layer
         h_a = get_level(p, inflow_id, t)
         h_b = get_level(p, outflow_id, t)
 
-        q = flow_function(resistance_node, node_id, h_a, h_b, p, t)
-
         # partial derivative with respect to upstream variable
         ∂q∂h_a = forward_diff(
-            level_a -> flow_function(resistance_node, node_id, level_a, h_b, p, t),
+            level_a -> flow_function(connector_node, node_id, level_a, h_b, p, t),
             h_a,
         )
         # partial derivative with respect to downstream variable
         ∂q∂h_b = forward_diff(
-            level_b -> flow_function(resistance_node, node_id, h_a, level_b, p, t),
+            level_b -> flow_function(connector_node, node_id, h_a, level_b, p, t),
             h_b,
         )
-        rhs = q
-        constraint = resistance_constraint[node_id]
+
+        rhs = flow_function(connector_node, node_id, h_a, h_b, p, t)
+        constraint = flow_constraint[node_id]
         rhs = set_partial_derivative_with_respect_to_storage_or_level!(
             allocation_model,
             inflow_id,
