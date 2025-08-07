@@ -124,7 +124,7 @@ function set_simulation_data!(
     return nothing
 end
 
-function set_normalized_storage_or_level_coefficient!(
+function set_partial_derivative_with_respect_to_storage_or_level!(
     allocation_model::AllocationModel,
     node_id::NodeID,
     ∂q∂h::Float64,
@@ -161,7 +161,7 @@ function set_normalized_storage_or_level_coefficient!(
     return rhs
 end
 
-function set_linearized_resistance_data!(
+function linearize_connector_node!(
     allocation_model::AllocationModel,
     resistance_node::AbstractParameterNode,
     resistance_constraint,
@@ -181,18 +181,19 @@ function set_linearized_resistance_data!(
 
         q = flow_function(resistance_node, node_id, h_a, h_b, p, t)
 
+        # partial derivative with respect to upstream variable
         ∂q∂h_a = forward_diff(
             level_a -> flow_function(resistance_node, node_id, level_a, h_b, p, t),
             h_a,
         )
+        # partial derivative with respect to downstream variable
         ∂q∂h_b = forward_diff(
             level_b -> flow_function(resistance_node, node_id, h_a, level_b, p, t),
             h_b,
         )
         rhs = q
         constraint = resistance_constraint[node_id]
-        # upstream
-        rhs = set_normalized_storage_or_level_coefficient!(
+        rhs = set_partial_derivative_with_respect_to_storage_or_level!(
             allocation_model,
             inflow_id,
             ∂q∂h_a,
@@ -201,8 +202,7 @@ function set_linearized_resistance_data!(
             constraint,
             p,
         )
-        # downstream
-        rhs = set_normalized_storage_or_level_coefficient!(
+        rhs = set_partial_derivative_with_respect_to_storage_or_level!(
             allocation_model,
             outflow_id,
             ∂q∂h_b,
@@ -211,6 +211,7 @@ function set_linearized_resistance_data!(
             constraint,
             p,
         )
+        # Set the right-hand side of the constraint
         JuMP.set_normalized_rhs(constraint, rhs / scaling.flow)
     end
 end
@@ -224,7 +225,7 @@ function set_simulation_data!(
     (; problem) = allocation_model
     linear_resistance_constraint = problem[:linear_resistance_constraint]
 
-    set_linearized_resistance_data!(
+    linearize_connector_node!(
         allocation_model,
         linear_resistance,
         linear_resistance_constraint,
@@ -245,7 +246,7 @@ function set_simulation_data!(
     (; problem) = allocation_model
     manning_resistance_constraint = problem[:manning_resistance_constraint]
 
-    set_linearized_resistance_data!(
+    linearize_connector_node!(
         allocation_model,
         manning_resistance,
         manning_resistance_constraint,
@@ -266,7 +267,7 @@ function set_simulation_data!(
     (; problem) = allocation_model
     tabulated_rating_curve_constraint = problem[:tabulated_rating_curve_constraint]
 
-    set_linearized_resistance_data!(
+    linearize_connector_node!(
         allocation_model,
         tabulated_rating_curve,
         tabulated_rating_curve_constraint,
