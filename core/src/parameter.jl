@@ -695,7 +695,7 @@ flow_demand_data: Per pump whether the Pump has a flow demand, and if so what th
         fill(ContinuousControlType.None, length(node_id))
     allocation_controlled::Vector{Bool} = fill(false, length(node_id))
     flow_demand_data::Vector{Tuple{Bool, NodeID}} =
-        Vector{Tuple{Bool, NodeID}}(undef, length(node_id))
+        fill((false, NodeID(NodeType.FlowDemand, 0, 0)), length(node_id))
 end
 
 """
@@ -735,7 +735,7 @@ flow_demand_data: Per Outlet whether the Outlet has a flow demand, and if so wha
         fill(ContinuousControlType.None, length(node_id))
     allocation_controlled::Vector{Bool} = fill(false, length(node_id))
     flow_demand_data::Vector{Tuple{Bool, NodeID}} =
-        Vector{Tuple{Bool, NodeID}}(undef, length(node_id))
+        fill((false, NodeID(NodeType.FlowDemand, 0, 0)), length(node_id))
 end
 
 """
