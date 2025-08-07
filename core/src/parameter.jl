@@ -937,7 +937,7 @@ has_demand_priority: boolean matrix stating per UserDemand node per demand prior
 demand: water flux demand of UserDemand per demand priority (node_idx, demand_priority_idx)
     Each UserDemand has a demand for all demand priorities,
     which is 0.0 if it is not provided explicitly.
-demand_itp: Timeseries interpolation objects for demands
+demand_interpolation: Timeseries interpolation objects for demands
 demand_from_timeseries: If false the demand comes from the BMI or is fixed
 allocated: water flux currently allocated to UserDemand per demand priority (node_idx, demand_priority_idx)
 return_factor: the factor in [0,1] of how much of the abstracted water is given back to the system
@@ -953,7 +953,7 @@ concentration_itp: matrix with timeseries interpolations of concentrations per L
     has_demand_priority::Matrix{Bool} =
         zeros(Bool, length(node_id), length(demand_priorities))
     demand::Matrix{Float64} = zeros(length(node_id), length(demand_priorities))
-    demand_itp::Vector{Vector{ScalarLinearInterpolation}} =
+    demand_interpolation::Vector{Vector{ScalarLinearInterpolation}} =
         trivial_linear_itp_fill(demand_priorities, node_id)
     demand_from_timeseries::Vector{Bool} = Vector{Bool}(undef, length(node_id))
     allocated::Matrix{Float64} = fill(Inf, length(node_id), length(demand_priorities))
@@ -1015,7 +1015,7 @@ allocated: The current allocated amount per FlowDemand node per demand priority 
     inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     has_demand_priority::Matrix{Bool} =
         zeros(Bool, length(node_id), length(demand_priorities))
-    demand_itp::Vector{Vector{ScalarLinearInterpolation}} =
+    demand_interpolation::Vector{Vector{ScalarLinearInterpolation}} =
         trivial_linear_itp_fill(demand_priorities, node_id; val = NaN)
     demand::Matrix{Float64} = fill(NaN, length(node_id), length(demand_priorities))
     allocated::Matrix{Float64} = zeros(length(node_id), length(demand_priorities))

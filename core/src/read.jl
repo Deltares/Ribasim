@@ -1145,8 +1145,8 @@ function parse_static_demand_data!(
         demand_priority_idx = findsorted(demand_priorities, row.demand_priority)
         node.has_demand_priority[id.idx, demand_priority_idx] = true
         demand_row = coalesce(row.demand, 0.0)
-        demand_itp = trivial_linear_itp(; val = demand_row)
-        node.demand_itp[id.idx][demand_priority_idx] = demand_itp
+        demand_interpolation = trivial_linear_itp(; val = demand_row)
+        node.demand_interpolation[id.idx][demand_priority_idx] = demand_interpolation
         node.demand[id.idx, demand_priority_idx] = demand_row
     end
     return nothing
@@ -1167,15 +1167,16 @@ function parse_time_demand_data!(
         demand_priority_idx =
             findsorted(demand_priorities, first(time_priority_group).demand_priority)
         node.has_demand_priority[id.idx, demand_priority_idx] = true
-        demand_itp = get_scalar_interpolation(
+        demand_interpolation = get_scalar_interpolation(
             config.starttime,
             StructVector(time_priority_group),
             id,
             :demand;
             cyclic_time,
         )
-        node.demand_itp[id.idx][demand_priority_idx] = demand_itp
-        node.demand[id.idx, demand_priority_idx] = last(node.demand_itp[id.idx])(0.0)
+        node.demand_interpolation[id.idx][demand_priority_idx] = demand_interpolation
+        node.demand[id.idx, demand_priority_idx] =
+            last(node.demand_interpolation[id.idx])(0.0)
     end
     return nothing
 end
@@ -1220,7 +1221,7 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)
     errors |=
         !valid_demand(
             user_demand.node_id,
-            user_demand.demand_itp,
+            user_demand.demand_interpolation,
             user_demand.demand_priorities,
         )
 

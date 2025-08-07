@@ -358,7 +358,7 @@ end
     storage = Ribasim.get_storages_and_levels(model).storage[1, :]
     t = Ribasim.tsaves(model)
 
-    d = user_demand.demand_itp[1][2](0)
+    d = user_demand.demand_interpolation[1][2](0)
     ϕ = 1e-3 # precipitation
     q = flow_boundary.flow_rate[1](0)
     A = Ribasim.basin_areas(basin, 1)[1]
@@ -598,8 +598,8 @@ end
 
     test_extrapolation(level_demand.min_level[1][3])
     test_extrapolation(level_demand.max_level[1][3])
-    test_extrapolation(flow_demand.demand_itp[1][2])
-    test_extrapolation.(user_demand.demand_itp[1][1:2])
+    test_extrapolation(flow_demand.demand_interpolation[1][2])
+    test_extrapolation.(user_demand.demand_interpolation[1][1:2])
 end
 
 @testitem "infeasibility analysis" begin

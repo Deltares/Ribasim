@@ -892,8 +892,13 @@ end
 function set_timeseries_demands!(user_demand::UserDemand, integrator::DEIntegrator)::Nothing
     (; p, t) = integrator
     Δt_allocation = get_Δt_allocation(p.p_independent.allocation)
-    (; demand_from_timeseries, has_demand_priority, demand, demand_itp, demand_priorities) =
-        user_demand
+    (;
+        demand_from_timeseries,
+        has_demand_priority,
+        demand,
+        demand_interpolation,
+        demand_priorities,
+    ) = user_demand
 
     for node_id in user_demand.node_id
         !(demand_from_timeseries[node_id.idx]) && continue
@@ -904,7 +909,7 @@ function set_timeseries_demands!(user_demand::UserDemand, integrator::DEIntegrat
             # over the coming allocation period
             demand[node_id.idx, demand_priority_idx] =
                 integral(
-                    demand_itp[node_id.idx][demand_priority_idx],
+                    demand_interpolation[node_id.idx][demand_priority_idx],
                     t,
                     t + Δt_allocation,
                 ) / Δt_allocation
@@ -916,7 +921,7 @@ end
 function set_timeseries_demands!(flow_demand::FlowDemand, integrator::DEIntegrator)::Nothing
     (; p, t) = integrator
     Δt_allocation = get_Δt_allocation(p.p_independent.allocation)
-    (; has_demand_priority, demand, demand_itp, demand_priorities) = flow_demand
+    (; has_demand_priority, demand, demand_interpolation, demand_priorities) = flow_demand
 
     for node_id in flow_demand.node_id
         for demand_priority_idx in eachindex(demand_priorities)
@@ -925,7 +930,7 @@ function set_timeseries_demands!(flow_demand::FlowDemand, integrator::DEIntegrat
             # over the coming allocation period
             demand[node_id.idx, demand_priority_idx] =
                 integral(
-                    demand_itp[node_id.idx][demand_priority_idx],
+                    demand_interpolation[node_id.idx][demand_priority_idx],
                     t,
                     t + Δt_allocation,
                 ) / Δt_allocation

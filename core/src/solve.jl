@@ -615,14 +615,15 @@ function formulate_pump_or_outlet_flow!(
             if has_demand
                 total_demand = 0.0
                 has_any_demand_priority = false
-                demand_itps = flow_demand.demand_itp[flow_demand_id.idx]
-                for (demand_priority_idx, demand_itp) in enumerate(demand_itps)
+                demand_interpolations = flow_demand.demand_interpolation[flow_demand_id.idx]
+                for (demand_priority_idx, demand_interpolation) in
+                    enumerate(demand_interpolations)
                     if flow_demand.has_demand_priority[
                         flow_demand_id.idx,
                         demand_priority_idx,
                     ]
                         has_any_demand_priority = true
-                        total_demand += demand_itp(t)
+                        total_demand += demand_interpolation(t)
                     end
                 end
 
