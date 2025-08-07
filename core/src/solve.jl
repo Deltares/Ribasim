@@ -614,11 +614,23 @@ function formulate_pump_or_outlet_flow!(
         if !is_active(allocation)
             has_demand, flow_demand_id = flow_demand_data
             if has_demand
-                lower_bound = clamp(
-                    flow_demand.demand_itp[flow_demand_id.idx](t),
-                    lower_bound,
-                    upper_bound,
-                )
+                total_demand = 0.0
+                has_any_demand_priority = false
+                demand_interpolations = flow_demand.demand_interpolation[flow_demand_id.idx]
+                for (demand_priority_idx, demand_interpolation) in
+                    enumerate(demand_interpolations)
+                    if flow_demand.has_demand_priority[
+                        flow_demand_id.idx,
+                        demand_priority_idx,
+                    ]
+                        has_any_demand_priority = true
+                        total_demand += demand_interpolation(t)
+                    end
+                end
+
+                if has_any_demand_priority
+                    lower_bound = clamp(total_demand, lower_bound, upper_bound)
+                end
             end
         end
         q = clamp(q, lower_bound, upper_bound)

@@ -412,8 +412,8 @@ function add_flow_demand!(
     )
 
     # Add the links for which the realized volume is required for output
-    for node_id in ids_with_flow_demand_subnetwork
-        cumulative_realized_volume[inflow_link(graph, node_id).link] = 0.0
+    for node_id in flow_demand_ids_subnetwork
+        cumulative_realized_volume[flow_demand.inflow_link[node_id.idx].link] = 0.0
     end
     return nothing
 end
@@ -728,7 +728,7 @@ function add_subnetwork_demand!(
     # Add error terms to objectives
     relative_lower_error_sum = variable_sum(relative_subnetwork_error_lower)
     relative_upper_error_sum = variable_sum(relative_subnetwork_error_upper)
-    for objective in objectives
+    for objective in get_demand_objectives(objectives)
         JuMP.add_to_expression!(objective.expression, relative_lower_error_sum)
         JuMP.add_to_expression!(objective.expression, relative_upper_error_sum)
     end

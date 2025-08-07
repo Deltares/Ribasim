@@ -5,8 +5,7 @@ c1_2: 1 __3_3_ - 1 y_3_1_ <= 0
 c2_2: 1 __4_3_ - 1 y_4_1_ <= 0
 c1_1: 1 __3_2_ + 1 __3_3_ - 1 y_3_1_ >= 0
 c2_1: 1 __4_2_ + 1 __4_3_ - 1 y_4_1_ >= 0
-flow_demand_constraint_LinearResistance_#2_: 1 flow_(Basin_#1,_LinearResistance_#2)_ - 2 target_fraction - 1 flow_demand_allocated_LinearResistance_#2_ + 2 relative_flow_demand_error_LinearResistance_#2_ >= 0
-flow_demand_goal_LinearResistance_#2_: 1 flow_(Basin_#1,_LinearResistance_#2)_ - 1 flow_demand_allocated_LinearResistance_#2_ >= 0
+flow_demand_constraint_FlowDemand_#4_: 1 flow_(Basin_#1,_LinearResistance_#2)_ - 2 target_fraction - 1 flow_demand_allocated_FlowDemand_#4_ + 2 relative_flow_demand_error_FlowDemand_#4_ >= 0
 c1: 1 __1_1_ + 1 __1_2_ = 1
 c2: -1 basin_storage_(Basin_#1,__end)_ + 2 __1_2_ = 0
 c3: -1 z_1 + 1 __1_2_ = 0
@@ -61,8 +60,8 @@ basin_forcing_Basin_#3_ = 0
 0 <= __5_1_ <= 1
 0 <= __5_2_ <= 1
 target_fraction = 1
-flow_demand_allocated_LinearResistance_#2_ = -500000
-relative_flow_demand_error_LinearResistance_#2_ >= 0
+flow_demand_allocated_FlowDemand_#4_ = -500000
+relative_flow_demand_error_FlowDemand_#4_ >= 0
 Binary
 y_3_1_
 y_4_1_
