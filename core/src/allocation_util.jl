@@ -1,4 +1,4 @@
-const MAX_ABS_FLOW = 5e5
+const MAX_ABS_FLOW = 5e5 # m/s
 
 is_active(allocation::Allocation) = !isempty(allocation.allocation_models)
 
@@ -8,15 +8,6 @@ get_ids_in_subnetwork(graph::MetaGraph, node_type::NodeType.T, subnetwork_id::In
             filter(node_id -> node_id.type == node_type, graph[].node_ids[subnetwork_id]),
         ),
     )
-
-get_demand_objectives(objectives::Vector{AllocationObjective}) = view(
-    objectives,
-    searchsorted(
-        objectives,
-        (; type = AllocationObjectiveType.demand);
-        by = objective -> objective.type,
-    ),
-)
 
 function variable_sum(variables)
     if isempty(variables)
@@ -268,14 +259,15 @@ end
 
 function analyze_infeasibility(
     allocation_model::AllocationModel,
-    objective::AllocationObjective,
+    objective_idx::Int,
     t::Float64,
     config::Config,
 )::Nothing
-    (; problem, subnetwork_id) = allocation_model
+    (; problem, subnetwork_id, objectives) = allocation_model
 
     log_path = results_path(config, RESULTS_FILENAME.allocation_analysis_infeasibility)
-    @debug "Running allocation infeasibility analysis for $subnetwork_id, $objective at t = $t, for full summary see $log_path."
+    objective_repr = repr_allocation_objective(objectives, objective_idx)
+    @debug "Running allocation infeasibility analysis for $subnetwork_id, $objective_repr at t = $t, for full summary see $log_path."
 
     # Perform infeasibility analysis
     data_infeasibility = MathOptAnalyzer.analyze(
@@ -328,14 +320,15 @@ end
 
 function analyze_scaling(
     allocation_model::AllocationModel,
-    objective::AllocationObjective,
+    objective_idx::Int,
     t::Float64,
     config::Config,
 )::Nothing
     (; problem, subnetwork_id) = allocation_model
 
     log_path = results_path(config, RESULTS_FILENAME.allocation_analysis_scaling)
-    @debug "Running allocation numerics analysis for $subnetwork_id, $objective at t = $t, for full summary see $file_name."
+    objective_repr = repr_allocation_objective(objectives, objective_idx)
+    @debug "Running allocation numerics analysis for $subnetwork_id, $objective_repr at t = $t, for full summary see $file_name."
 
     # Perform numerics analysis
     data_numerical = MathOptAnalyzer.analyze(

@@ -1,43 +1,22 @@
-function add_objectives!(
+function add_source_priority_objective!(
     allocation_model::AllocationModel,
     p_independent::ParametersIndependent,
 )::Nothing
-    (; objectives) = allocation_model
-    (; demand_priorities_all) = p_independent.allocation
-
-    # First optimize for demands (objectives will be will be further specified in the add_*_demand! functions)
-    # NOTE: in the objectives vector, demand objectives are assumed to be consecutive by the function get_demand_objectives
-    for (demand_priority_idx, demand_priority) in enumerate(demand_priorities_all)
-        push!(
-            objectives,
-            AllocationObjective(;
-                type = AllocationObjectiveType.demand,
-                demand_priority,
-                demand_priority_idx,
-            ),
-        )
-    end
-
-    # Lastly optimize for source priorities
-    push!(objectives, make_source_priority_objective(allocation_model, p_independent))
-
-    return nothing
-end
-
-function make_source_priority_objective(
-    allocation_model::AllocationModel,
-    p_independent::ParametersIndependent,
-)::AllocationObjective
     (; graph, allocation) = p_independent
     (; subnetwork_inlet_source_priority) = allocation
-    (; problem, subnetwork_id) = allocation_model
+    (; problem, subnetwork_id, objectives) = allocation_model
     flow = problem[:flow]
 
     primary_network_connections =
         get(allocation.primary_network_connections, subnetwork_id, ())
 
-    source_priority_objective =
-        AllocationObjective(; type = AllocationObjectiveType.source_priorities)
+    expression = JuMP.AffExpr()
+    push!(objectives.expression, expression)
+    push!(objectives.type, AllocationObjectiveType.source_priorities)
+    push!(objectives.demand_priority, 0)
+    push!(objectives.demand_priority_idx, 0)
+    push!(objectives.has_flow_demand, false)
+    push!(objectives.has_level_demand, false)
 
     # Sort node IDs for deterministic problem generation
     for node_id in sort!(collect(graph[].node_ids[subnetwork_id]))
@@ -45,7 +24,7 @@ function make_source_priority_objective(
         if !iszero(source_priority)
             for downstream_id in outflow_ids(graph, node_id)
                 JuMP.add_to_expression!(
-                    source_priority_objective.expression,
+                    expression,
                     flow[(node_id, downstream_id)] / source_priority,
                 )
             end
@@ -55,15 +34,12 @@ function make_source_priority_objective(
                     source_priority = graph[node_id].source_priority
                     iszero(source_priority) &&
                         (source_priority = subnetwork_inlet_source_priority)
-                    JuMP.add_to_expression!(
-                        source_priority_objective.expression,
-                        flow[link] / source_priority,
-                    )
+                    JuMP.add_to_expression!(expression, flow[link] / source_priority)
                 end
             end
         end
     end
-    return source_priority_objective
+    return nothing
 end
 
 """
@@ -74,75 +50,23 @@ function add_basin!(
     p_independent::ParametersIndependent,
 )::Nothing
     (; problem, subnetwork_id, cumulative_forcing_volume, scaling) = allocation_model
-    (; graph, basin, level_boundary) = p_independent
-    (; storage_to_level, level_to_area) = basin
+    (; graph, basin) = p_independent
+    (; storage_to_level) = basin
 
     # Basin node IDs within the subnetwork
     basin_ids_subnetwork = get_ids_in_subnetwork(graph, NodeType.Basin, subnetwork_id)
 
-    # Storage and level indices
-    indices = Iterators.product(basin_ids_subnetwork, [:start, :end])
-
-    # Define decision variables: storage (scaling.storage * m^3) (at the start and end of the time step)
-    # and the level (m) (only at the end of the time step)
+    # Define decision variables: storage (scaling.storage * m^3) (at the start of the allocation time step
+    # and the change over the allocation time step)
     # Each storage variable is constrained between 0 and the largest storage value in the profile
-    # Each level variable is between the lowest and the highest level in the profile
-    storage =
-        problem[:basin_storage] = JuMP.@variable(
-            problem,
-            0 <=
-            basin_storage[index = indices] <=
-            storage_to_level[index[1].idx].t[end] / scaling.storage
-        )
-    level =
-        problem[:basin_level] = JuMP.@variable(
-            problem,
-            level_to_area[node_id.idx].t[1] <=
-            basin_level[node_id = basin_ids_subnetwork] <=
-            level_to_area[node_id.idx].t[end]
-        )
-
-    # Piecewise linear Basin profile approximations
-    # (from storage 0.0 to twice the largest storage)
-    values_storage = Dict{NodeID, Vector{Float64}}()
-    values_level = Dict{NodeID, Vector{Float64}}()
-
-    # TODO: Use DouglasPeucker algorithm also TabulatedRatingCurve
-
-    lowest_level_basin =
-        minimum(node_id -> level_to_area[node_id.idx].t[1], basin_ids_subnetwork)
-    level_boundary_ids_subnetwork =
-        get_ids_in_subnetwork(graph, NodeType.LevelBoundary, subnetwork_id)
-    lowest_level = minimum(
-        node_id -> minimum(level_boundary.level[node_id.idx].u),
-        level_boundary_ids_subnetwork;
-        init = lowest_level_basin,
-    )
-
-    for node_id in basin_ids_subnetwork
-        values_storage_node, values_level_node = parse_profile(
-            storage_to_level[node_id.idx],
-            level_to_area[node_id.idx],
-            lowest_level,
-        )
-        values_storage[node_id] = values_storage_node
-        values_storage[node_id] ./= scaling.storage
-        values_level[node_id] = values_level_node
-    end
-
-    # Define constraints: levels are given by the storages and profiles
-    problem[:basin_profile] = JuMP.@constraint(
+    problem[:basin_storage] = JuMP.@variable(
         problem,
-        [node_id = basin_ids_subnetwork],
-        level[node_id] == piecewiselinear(
-            problem,
-            storage[(node_id, :end)],
-            values_storage[node_id],
-            values_level[node_id],
-        ),
-        base_name = "basin_profile"
+        0 ≤
+        basin_storage[basin_ids_subnetwork, [:start, :change]] ≤
+        storage_to_level[index[1].idx].t[end] / scaling.storage
     )
 
+    # Add the links for which the realized volume is required for input to the allocation algorithm
     for node_id in basin_ids_subnetwork
         cumulative_forcing_volume[node_id] = 0.0
     end
@@ -180,10 +104,11 @@ function add_flow!(
     )
 
     # Define parameters: Basin forcing (scaling.flow * m^3/s, values to be filled in before optimizing)
-    basin_ids_subnetwork =
-        sort!(filter(id -> id.type == NodeType.Basin, collect(node_ids_subnetwork)))
-    problem[:basin_forcing] =
-        JuMP.@variable(problem, basin_forcing[basin_ids_subnetwork] == 0.0)
+    basin_ids_subnetwork = get_ids_in_subnetwork(graph, NodeType.Basin, subnetwork_id)
+    problem[:basin_forcing_positive] =
+        JuMP.@variable(problem, basin_forcing_positive[basin_ids_subnetwork] == 0.0)
+    problem[:basin_forcing_negative] =
+        JuMP.@variable(problem, basin_forcing_negative[basin_ids_subnetwork] == 0)
 
     return nothing
 end
@@ -249,7 +174,8 @@ function add_conservation!(
 
     # Define constraints: Basin storage change (water balance)
     storage = problem[:basin_storage]
-    forcing = problem[:basin_forcing]
+    forcing_positive = problem[:basin_forcing_positive]
+    forcing_negative = problem[:basin_forcing_negative]
     flow = problem[:flow]
     basin_ids_subnetwork = get_ids_in_subnetwork(graph, NodeType.Basin, subnetwork_id)
     inflow_sum = Dict(
@@ -271,10 +197,13 @@ function add_conservation!(
     problem[:volume_conservation] = JuMP.@constraint(
         problem,
         [node_id = basin_ids_subnetwork],
-        storage[(node_id, :end)] - storage[(node_id, :start)] ==
+        storage[node_id, :change] ==
         Δt_allocation *
         (scaling.flow / scaling.storage) *
-        (forcing[node_id] + inflow_sum[node_id] - outflow_sum[node_id]),
+        (
+            forcing_positive[node_id] - forcing_negative + inflow_sum[node_id] -
+            outflow_sum[node_id]
+        ),
         base_name = "volume_conservation"
     )
 
@@ -322,35 +251,66 @@ function add_user_demand!(
     allocation_model::AllocationModel,
     p_independent::ParametersIndependent,
 )::Nothing
-    (; problem, objectives, subnetwork_id, cumulative_realized_volume) = allocation_model
-    (; graph, user_demand) = p_independent
+    (; problem, subnetwork_id, cumulative_realized_volume) = allocation_model
+    (; graph, user_demand, allocation) = p_independent
     (; inflow_link, outflow_link) = user_demand
+    (; demand_priorities_all) = allocation
 
     user_demand_ids_subnetwork =
         get_ids_in_subnetwork(graph, NodeType.UserDemand, subnetwork_id)
     flow = problem[:flow]
-    target_demand_fraction = problem[:target_demand_fraction]
 
-    # Define parameters: flow allocated to user demand nodes (m^3/s, values to be filled in before optimizing)
+    user_demand_priorities = Dict(
+        node_id =>
+            demand_priorities_all[user_demand.has_demand_priority[node_id.idx, :]] for
+        node_id in user_demand_ids_subnetwork
+    )
+
+    # Define decision variables: Per UserDemand node the flow allocated to that node
+    # per demand priority for which that node has a demand (scaling.flow * m^3/s)
+    d = 2.0 # example demand (scaling.flow * m^3/s, values to be filled in before optimizing)
     user_demand_allocated =
-        problem[:user_demand_allocated] =
-            JuMP.@variable(problem, user_demand_allocated[user_demand_ids_subnetwork] == 0)
+        problem[:user_demand_allocated] = JuMP.@variable(
+            problem,
+            0 ≤
+            user_demand_allocated[
+                node_id = user_demand_ids_subnetwork,
+                user_demand_priorities[node_id],
+            ] ≤
+            d
+        )
 
-    # Define decision variables: relative user demand error (unitless)
+    # Define constraints: The sum of the flows allocated to UserDemand is equal to the total flow
+    problem[:user_demand_allocated_sum_constraint] = JuMP.@constraint(
+        problem,
+        [node_id = user_demand_ids_subnetwork],
+        flow[inflow_link[node_id.idx].link] == sum(
+            user_demand_allocated[node_id, demand_priority] for
+            demand_priority in user_demand_priorities[node_id]
+        )
+    )
+
+    # Define decision variables: Per UserDemand node the allocation error per priority for
+    # which the UserDemand node has a demand
     relative_user_demand_error =
         problem[:relative_user_demand_error] = JuMP.@variable(
             problem,
-            relative_user_demand_error[user_demand_ids_subnetwork] >= 0
+            relative_user_demand_error[
+                node_id = user_demand_ids_subnetwork,
+                user_demand_priorities[node_id],
+            ] ≥ 0
         )
 
     # Define constraints: error terms
-    d = 2.0 # example demand (scaling.flow * m^3/s, values to be filled in before optimizing)
-    problem[:user_demand_constraint_lower] = JuMP.@constraint(
+    problem[:user_demand_relative_error_constraint] = JuMP.@constraint(
         problem,
-        [node_id = user_demand_ids_subnetwork],
-        d * (relative_user_demand_error[node_id] - target_demand_fraction) ≥
-        -(flow[inflow_link[node_id.idx].link] - user_demand_allocated[node_id]),
-        base_name = "user_demand_constraint_lower"
+        [
+            node_id = user_demand_ids_subnetwork,
+            demand_priority = user_demand_priorities[node_id],
+        ],
+        d * relative_user_demand_error[node_id, demand_priority] ≥
+        d - user_demand_allocated[node_id, demand_priority],
+        base_name = "user_demand_relative_error_constraint"
     )
 
     # Define constraints: user demand return flow
@@ -368,19 +328,6 @@ function add_user_demand!(
         cumulative_realized_volume[inflow_link[node_id.idx].link] = 0.0
     end
 
-    # Add error terms to objectives
-    relative_error_sum = variable_sum(relative_user_demand_error)
-    for objective in get_demand_objectives(objectives)
-        JuMP.add_to_expression!(objective.expression, relative_error_sum)
-        if any(
-            node_id ->
-                user_demand.has_demand_priority[node_id.idx, objective.demand_priority_idx],
-            user_demand_ids_subnetwork,
-        )
-            objective.has_flow_demand = true
-        end
-    end
-
     return nothing
 end
 
@@ -388,58 +335,86 @@ function add_flow_demand!(
     allocation_model::AllocationModel,
     p_independent::ParametersIndependent,
 )::Nothing
-    (; problem, cumulative_realized_volume, subnetwork_id, objectives) = allocation_model
-    (; graph, flow_demand) = p_independent
-    flow_demand_ids_subnetwork =
-        get_ids_in_subnetwork(graph, NodeType.FlowDemand, subnetwork_id)
-
-    target_demand_fraction = problem[:target_demand_fraction]
+    (; problem, cumulative_realized_volume, subnetwork_id, scaling) = allocation_model
+    (; graph, flow_demand, allocation) = p_independent
+    (; demand_priorities_all) = allocation
     flow = problem[:flow]
 
-    # Define parameters: allocated flow (scaling.flow m^3/s values to be filled in later)
+    flow_demand_priorities = Dict{NodeID, Vector{Int}}()
+    ids_with_flow_demand_subnetwork = NodeID[]
+
+    for node_id in sort!(collect(graph[].node_ids[subnetwork_id]))
+        has_demand, flow_demand_id = has_external_flow_demand(graph, node_id, :flow_demand)
+        if has_demand
+            push!(ids_with_flow_demand_subnetwork, node_id)
+            demand_priorities_node =
+                priorities_all[flow_demand.has_demand_priority[flow_demand_id.idx, :]]
+            # Add demand priority 0 for flow that's not corresponding to a demand
+            pushfirst!(demand_priorities_node, 0)
+            flow_demand_priorities[node_id] = demand_priorities_node
+        end
+    end
+
+    # Define decision variables: flow allocated to FlowDemand node per demand priority
+    # for which the node has a flow demand
+    d = 2.0 # example demand (scaling.flow * m^3/s, values to be filled in before optimizing)
     flow_demand_allocated =
         problem[:flow_demand_allocated] = JuMP.@variable(
             problem,
-            flow_demand_allocated[flow_demand_ids_subnetwork] == -MAX_ABS_FLOW
+            0 ≤
+            flow_demand_allocated[
+                node_id = ids_with_flow_demand_subnetwork,
+                flow_demand_priorities[node_id],
+            ] ≤
+            d
         )
-    # Define decision variables: lower flow demand error (unitless)
+
+    # Flow through a node with a flow demand can still be negative
+    bound = MAX_ABS_FLOW / scaling.flow
+    for node_id in ids_with_flow_demand_subnetwork
+        JuMP.set_lower_bound(flow_demand_allocated[node_id, 0], -bound)
+        JuMP.set_upper_bound(flow_demand_allocated[node_id, 0], bound)
+    end
+
+    # Define constraints: The sum of the flows per demand priority trough the node with flow demand
+    # is equal to the total flow trough this node
+    problem[:flow_demand_allocated_sum_constraint] = JuMP.@constraint(
+        problem,
+        [node_id = ids_with_flow_demand_subnetwork],
+        flow[inflow_link(graph, node_id).link] == sum(
+            flow_demand_allocated[node_id, demand_priority] for
+            demand_priority in flow_demand_priorities[node_id]
+        )
+    )
+
+    # Define decision variables: relative flow demand error per node that has a
+    # flow demand per priority for which there is a demand (unitless)
     relative_flow_demand_error =
         problem[:relative_flow_demand_error] = JuMP.@variable(
             problem,
-            relative_flow_demand_error[flow_demand_ids_subnetwork] >= 0,
+            relative_flow_demand_error[
+                node_id = ids_with_flow_demand_subnetwork,
+                flow_demand_priorities[node_id],
+            ] ≥ 0,
             base_name = "relative_flow_demand_error"
         )
 
     # Define constraints: error terms
-    d = 2.0 # example demand (scaling.flow * m^3/s, values to be filled in before optimizing)
-    problem[:flow_demand_constraint] = JuMP.@constraint(
+    problem[:flow_demand_relative_error_constraint] = JuMP.@constraint(
         problem,
-        [node_id = flow_demand_ids_subnetwork],
-        d * (relative_flow_demand_error[node_id] - target_demand_fraction) ≥ -(
-            flow[flow_demand.inflow_link[node_id.idx].link] -
-            flow_demand_allocated[node_id]
-        ),
-        base_name = "flow_demand_constraint"
+        [
+            node_id = ids_with_flow_demand_subnetwork,
+            demand_priority = demand_priorities_all[node_id],
+        ],
+        d * relative_flow_demand_error[node_id, demand_priority] ≥
+        d - flow_demand_allocated[node_id, demand_priority],
+        base_name = "flow_demand_relative_error_constraint"
     )
 
     # Add the links for which the realized volume is required for output
     for node_id in flow_demand_ids_subnetwork
         cumulative_realized_volume[flow_demand.inflow_link[node_id.idx].link] = 0.0
     end
-
-    # Add error terms to objectives
-    for objective in get_demand_objectives(objectives)
-        for node_id in flow_demand_ids_subnetwork
-            if flow_demand.has_demand_priority[node_id.idx, objective.demand_priority_idx]
-                JuMP.add_to_expression!(
-                    objective.expression,
-                    relative_flow_demand_error[node_id],
-                )
-                objective.has_flow_demand = true
-            end
-        end
-    end
-
     return nothing
 end
 
@@ -455,15 +430,15 @@ function add_level_demand!(
     ids_with_level_demand_subnetwork = sort!(
         filter(
             node_id -> has_external_flow_demand(graph, node_id, :level_demand)[1],
-            collect(graph[].node_ids[subnetwork_id]),
+            sort!(collect(graph[].node_ids[subnetwork_id])),
         ),
     )
 
     # Define decision variables: absolute storage error above maximum level (m^3 * scaling.storage)
-    absolute_storage_error =
+    lower_absolute_storage_error =
         problem[:absolute_storage_error] = JuMP.@variable(
             problem,
-            absolute_storage_error[ids_with_level_demand_subnetwork] >= 0
+            absolute_storage_error[ids_with_level_demand_subnetwork] ≥ 0
         )
 
     # Define constraints: error terms below minimum storage
@@ -714,7 +689,6 @@ function add_subnetwork_demand!(
 )::Nothing
     (; allocation) = p_independent
     (; problem, objectives) = allocation_model
-    target_demand_fraction = problem[:target_demand_fraction]
     flow = problem[:flow]
 
     # Sort connections for deterministic problem generation
@@ -729,10 +703,10 @@ function add_subnetwork_demand!(
     # Define decision variables: lower and upper user demand error (unitless)
     relative_subnetwork_error_lower =
         problem[:relative_subnetwork_error_lower] =
-            JuMP.@variable(problem, relative_subnetwork_error_lower[connecting_links] >= 0)
+            JuMP.@variable(problem, relative_subnetwork_error_lower[connecting_links] ≥ 0)
     relative_subnetwork_error_upper =
         problem[:relative_subnetwork_error_upper] =
-            JuMP.@variable(problem, relative_subnetwork_error_upper[connecting_links] >= 0)
+            JuMP.@variable(problem, relative_subnetwork_error_upper[connecting_links] ≥ 0)
 
     # Define constraints: error terms
     d = 2.0 # example demand (scaling.flow * m^3/s, values to be filled in before optimizing)
@@ -810,9 +784,6 @@ function AllocationModel(
     add_flow!(allocation_model, p_independent)
     add_conservation!(allocation_model, p_independent)
 
-    # Objectives (goals)
-    add_objectives!(allocation_model, p_independent)
-
     # Boundary nodes
     add_flow_boundary!(allocation_model, p_independent)
     add_level_boundary!(allocation_model, p_independent)
@@ -825,7 +796,6 @@ function AllocationModel(
     add_outlet!(allocation_model, p_independent)
 
     # Demand nodes and subnetworks as demand nodes
-    problem[:target_demand_fraction] = JuMP.@variable(problem, target_fraction == 1.0)
     add_user_demand!(allocation_model, p_independent)
     add_flow_demand!(allocation_model, p_independent)
     add_level_demand!(allocation_model, p_independent)
@@ -842,5 +812,9 @@ function AllocationModel(
             end
         end
     end
+
+    # Objectives (goals)
+    add_source_priority_objective!(allocation_model, p_independent)
+
     return allocation_model
 end
