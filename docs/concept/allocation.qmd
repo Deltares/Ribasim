@@ -172,11 +172,11 @@ Just like the initial storages, each Basin has an initial level $L_b^\text{start
 ## The basin profile
 The level in a basin is generally a non-linear function of the storage (except when the area is constant). To incorporate this into a linear programming framework, we linearize the basin profile at the current timestep.
 
-$$h^{n+1} \approx h^n + \frac{dh}{dS}^n(S^{n+1} - S^n)$$
+$$h^{n+1} \approx h^n + \frac{dh}{dS}(S^n)(S^{n+1} - S^n)$$
 
 with
 
-$$\frac{dh}{dS}^n = \frac{1}{A^n}$$
+$$\frac{dh}{dS}(S^n) = \frac{1}{A^n}$$
 
 and $A^n$ is the area evaluated at the beginning of the time step
 
@@ -185,27 +185,15 @@ $$h^{n+1} \approx h^{n} + \frac{1}{A^n}(S^{n+1} - S^n)$$
 
 ## Connector nodes
 
-In Ribasim, connector nodes can determine the flow as function of upstream and/or downstream level/storage. These are [LinearResistance](../reference/node/linear-resistance.qmd), [ManningResistance](../reference/node/manning-resistance.qmd) and [TabulatedRatingCurve](../reference/node/tabulated-rating-curve.qmd) nodes. The linear resistance node is linear in level but not in storage. However, we can directly substitute the linearized level-storage relationship into
+In Ribasim, connector nodes can determine the flow as function of upstream and/or downstream level. These are [LinearResistance](../reference/node/linear-resistance.qmd), [ManningResistance](../reference/node/manning-resistance.qmd) and [TabulatedRatingCurve](../reference/node/tabulated-rating-curve.qmd) nodes. Hence if we apply multi variable linearisation:
 
-$$Q_{lr}^{n+1} = \frac{1}{R}( h_a^{n+1} - h_b^{n+1} )$$
+$$ Q^{n+1} = Q^{n} + \frac{\partial Q}{\partial h_1}(h_1^n,h_2^n)(h_1^{n+1} - h_1^{n}) + \frac{\partial Q}{\partial h_2}(h_1^n,h_2^n)(h_2^{n+1} - h_2^{n}) $$
 
-to obtain
+However, we need to relate the level to a storage (in case of a basin). So we can substitute the linearised basin profile. For example if a non linear flow node connects downstream to a basin and upstream to a level boundary:
 
-$$Q_{lr}^{n+1} = \frac{1}{R}( h_a^{n} - h_b^{n} ) + \frac{1}{R}\left( \frac{1}{A_a^n}(S_a^{n+1} - S_a^n) - \frac{1}{A_b^n}(S_b^{n+1} - S_b^n)\right)$$
 
-For ManningResistance we linearize the flow relationship with respect to the upstream and downstream storage at the beginning of the allocation timestep.
+$$ Q_m^{n+1} = Q_m^{n} + \frac{1}{A^n}\frac{\partial Q_m}{\partial h_1}(h_1^n, h_2^n) (S_1^{n+1} - S_1^n) + \frac{\partial Q}{\partial h_2}(h_1^n,h_2^n)(h_2^{n+1} - h_2^{n}) $$
 
-$$ Q_m^{n+1} = Q_m^{n} + \frac{\partial Q_m}{\partial S_a}(S_1^n,S_2^n)(S_a^{n+1} - S_a^{n}) + \frac{\partial Q_m}{\partial S_b}(S_1^n,S_2^n)(S_b^{n+1} - S_b^{n}) $$
-
-and use the chain rule
-
-$$ \frac{\partial Q}{\partial S} = \frac{\partial Q}{\partial h} \frac{\partial h}{\partial S}$$
-
-to obtain
-
-$$ Q_m^{n+1} = Q_m^{n} + \frac{\partial Q_m}{\partial h_a}(h_a^n, h_b^n) \frac{1}{A_a^n}(S_a^{n+1} - S_a^{n}) + \frac{\partial Q_m}{\partial h_b}(h_a^n, h_b^n) \frac{1}{A_b^n} (S_b^{n+1} - S_b^{n}) $$
-
-However, some nodes in Ribasim calculate flows in terms of level, for which the level is not reducible to a storage. $$Q(S_1,S_2) \approx Q(S_1^n,S_2^n) + \frac{\partial Q}{\partial S_1}(S_1^n,S_2^n)(S_1^{n+1}-S_1^n) + \frac{\partial Q}{\partial S_2}(S_1^n,S_2^n)(S_2^{n+1}-S_2^n)$$
 
 ## Basin forcings
 
@@ -221,9 +209,6 @@ We have the following boundary nodes in Ribasim:
 The flow rate of a FlowBoundary is given as a timeseries so we could use the interpolation of that timeseries to compute the average flow in the coming $\Delta t_\text{allocation}$. However, that would not always be accurate, since FlowBoundary nodes can be deactivated by Discrete Control which can not (easily) be anticipated.
 :::
 
-## Tabulated Rating Curve
-
-Since the $Q(h)$ relationships for TabulatedRatingCurve nodes (see [here](/reference/node/tabulated-rating-curve.qmd#equations)) are already linear, these can be directly incorporated into the allocation problem.
 
 
 # Objectives (goals)
