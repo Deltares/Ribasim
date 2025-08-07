@@ -3,8 +3,8 @@ obj:
 subject to
 c1_2: 1 __2_3_ - 1 y_2_1_ <= 0
 c1_1: 1 __2_2_ + 1 __2_3_ - 1 y_2_1_ >= 0
-storage_constraint_in_Basin_#7_: -1 basin_storage_(Basin_#7,__start)_ + 1 basin_storage_(Basin_#7,__end)_ - 2 target_storage_demand_fraction_in + 2 relative_storage_error_in_Basin_#7_ >= 0
-storage_constraint_out_Basin_#7_: 1 basin_storage_(Basin_#7,__start)_ - 1 basin_storage_(Basin_#7,__end)_ + 2 target_storage_demand_fraction_out + 2 relative_storage_error_out_Basin_#7_ >= 0
+storage_constraint_in_Basin_#7_: 1 basin_storage_(Basin_#7,__end)_ + 1 absolute_storage_error_Basin_#7_ >= 2000
+storage_constraint_out_Basin_#7_: -1 basin_storage_(Basin_#7,__end)_ + 1 absolute_storage_error_Basin_#7_ >= -3000
 c1: 1 __1_1_ + 1 __1_2_ = 1
 c2: -1 basin_storage_(Basin_#7,__end)_ + 2 __1_2_ = 0
 c3: -1 z_1 + 10 __1_2_ = 0
@@ -28,10 +28,7 @@ Bounds
 0 <= __2_3_ <= 1
 basin_forcing_Basin_#7_ = 0
 target_fraction = 1
-target_storage_demand_fraction_in = 1
-target_storage_demand_fraction_out = 1
-relative_storage_error_in_Basin_#7_ >= 0
-relative_storage_error_out_Basin_#7_ >= 0
+absolute_storage_error_Basin_#7_ >= 0
 Binary
 y_2_1_
 End

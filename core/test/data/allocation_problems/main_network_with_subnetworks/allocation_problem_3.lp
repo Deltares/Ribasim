@@ -7,12 +7,9 @@ c3_2: 1 __6_3_ - 1 y_6_1_ <= 0
 c1_1: 1 __4_2_ + 1 __4_3_ - 1 y_4_1_ >= 0
 c2_1: 1 __5_2_ + 1 __5_3_ - 1 y_5_1_ >= 0
 c3_1: 1 __6_2_ + 1 __6_3_ - 1 y_6_1_ >= 0
-user_demand_constraint_lower_UserDemand_#20_: 1 flow_(Basin_#12,_UserDemand_#20)_ - 2 target_fraction - 1 user_demand_allocated_UserDemand_#20_ + 2 relative_user_demand_error_lower_UserDemand_#20_ >= 0
-user_demand_constraint_lower_UserDemand_#21_: 1 flow_(Basin_#16,_UserDemand_#21)_ - 2 target_fraction - 1 user_demand_allocated_UserDemand_#21_ + 2 relative_user_demand_error_lower_UserDemand_#21_ >= 0
-user_demand_constraint_lower_UserDemand_#22_: 1 flow_(Basin_#18,_UserDemand_#22)_ - 2 target_fraction - 1 user_demand_allocated_UserDemand_#22_ + 2 relative_user_demand_error_lower_UserDemand_#22_ >= 0
-user_demand_constraint_upper_UserDemand_#20_: -1 flow_(Basin_#12,_UserDemand_#20)_ + 2 target_fraction + 1 user_demand_allocated_UserDemand_#20_ + 2 relative_user_demand_error_upper_UserDemand_#20_ >= 0
-user_demand_constraint_upper_UserDemand_#21_: -1 flow_(Basin_#16,_UserDemand_#21)_ + 2 target_fraction + 1 user_demand_allocated_UserDemand_#21_ + 2 relative_user_demand_error_upper_UserDemand_#21_ >= 0
-user_demand_constraint_upper_UserDemand_#22_: -1 flow_(Basin_#18,_UserDemand_#22)_ + 2 target_fraction + 1 user_demand_allocated_UserDemand_#22_ + 2 relative_user_demand_error_upper_UserDemand_#22_ >= 0
+user_demand_constraint_lower_UserDemand_#20_: 1 flow_(Basin_#12,_UserDemand_#20)_ - 2 target_fraction - 1 user_demand_allocated_UserDemand_#20_ + 2 relative_user_demand_error_UserDemand_#20_ >= 0
+user_demand_constraint_lower_UserDemand_#21_: 1 flow_(Basin_#16,_UserDemand_#21)_ - 2 target_fraction - 1 user_demand_allocated_UserDemand_#21_ + 2 relative_user_demand_error_UserDemand_#21_ >= 0
+user_demand_constraint_lower_UserDemand_#22_: 1 flow_(Basin_#18,_UserDemand_#22)_ - 2 target_fraction - 1 user_demand_allocated_UserDemand_#22_ + 2 relative_user_demand_error_UserDemand_#22_ >= 0
 c1: 1 __1_1_ + 1 __1_2_ = 1
 c2: -1 basin_storage_(Basin_#12,__end)_ + 2 __1_2_ = 0
 c3: -1 z_1 + 1 __1_2_ = 0
@@ -107,14 +104,9 @@ target_fraction = 1
 user_demand_allocated_UserDemand_#20_ = 0
 user_demand_allocated_UserDemand_#21_ = 0
 user_demand_allocated_UserDemand_#22_ = 0
-relative_user_demand_error_lower_UserDemand_#20_ >= 0
-relative_user_demand_error_lower_UserDemand_#21_ >= 0
-relative_user_demand_error_lower_UserDemand_#22_ >= 0
-relative_user_demand_error_upper_UserDemand_#20_ >= 0
-relative_user_demand_error_upper_UserDemand_#21_ >= 0
-relative_user_demand_error_upper_UserDemand_#22_ >= 0
-target_storage_demand_fraction_in = 1
-target_storage_demand_fraction_out = 1
+relative_user_demand_error_UserDemand_#20_ >= 0
+relative_user_demand_error_UserDemand_#21_ >= 0
+relative_user_demand_error_UserDemand_#22_ >= 0
 Binary
 y_4_1_
 y_5_1_
