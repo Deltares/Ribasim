@@ -63,8 +63,6 @@ basin_forcing_Basin_#3_ = 0
 target_fraction = 1
 flow_demand_allocated_LinearResistance_#2_ = -500000
 relative_flow_demand_error_LinearResistance_#2_ >= 0
-target_storage_demand_fraction_in = 1
-target_storage_demand_fraction_out = 1
 Binary
 y_3_1_
 y_4_1_
