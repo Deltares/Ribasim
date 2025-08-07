@@ -587,6 +587,7 @@ function formulate_pump_or_outlet_flow!(
         control_type = node.control_type[id.idx]
         min_upstream_level = node.min_upstream_level[id.idx]
         max_downstream_level = node.max_downstream_level[id.idx]
+        flow_demand_data = node.flow_demand_data[id.idx]
 
         if should_skip_update_q(active, control_type, control_type_, p)
             continue
@@ -611,7 +612,7 @@ function formulate_pump_or_outlet_flow!(
         # When allocation is not active, set the flow demand directly as a lower bound on the
         # pump or outlet flow rate
         if !is_active(allocation)
-            has_demand, flow_demand_id = has_external_flow_demand(graph, id, :flow_demand)
+            has_demand, flow_demand_id = flow_demand_data
             if has_demand
                 lower_bound = clamp(
                     flow_demand.demand_itp[flow_demand_id.idx](t),
