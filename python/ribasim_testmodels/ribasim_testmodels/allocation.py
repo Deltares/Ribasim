@@ -803,8 +803,6 @@ def flow_demand_model() -> Model:
         experimental=Experimental(concentration=True, allocation=True),
     )
 
-    basin_data = [basin.Profile(area=1e4, level=[0.0, 10.0]), basin.State(level=[1.0])]
-
     model.tabulated_rating_curve.add(
         Node(2, Point(1, 0), subnetwork_id=2),
         [tabulated_rating_curve.Static(level=[0.0, 2.0], flow_rate=[0.0, 2e-3])],
@@ -817,11 +815,11 @@ def flow_demand_model() -> Model:
 
     model.basin.add(
         Node(3, Point(2, 0), subnetwork_id=2),
-        basin_data,
+        [basin.Profile(area=1e4, level=[0.0, 10.0]), basin.State(level=[1.0])],
     )
     model.basin.add(
         Node(7, Point(3, -1), subnetwork_id=2),
-        basin_data,
+        [basin.Profile(area=1e4, level=[0.0, 10.0]), basin.State(level=[1.0])],
     )
 
     model.user_demand.add(

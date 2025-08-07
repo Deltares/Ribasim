@@ -672,6 +672,7 @@ max_downstream_level: The downstream level above which the Pump flow goes to zer
 control_mapping: dictionary from (node_id, control_state) to target flow rate
 control_type: one of None, ContinuousControl, PidControl, Allocation
 allocation_controlled: whether this Pump is controlled by allocation
+flow_demand_data: Per pump whether the Pump has a flow demand, and if so what the FlowDemand node is
 """
 @kwdef struct Pump <: AbstractParameterNode
     node_id::Vector{NodeID}
@@ -693,6 +694,8 @@ allocation_controlled: whether this Pump is controlled by allocation
     control_type::Vector{ContinuousControlType.T} =
         fill(ContinuousControlType.None, length(node_id))
     allocation_controlled::Vector{Bool} = fill(false, length(node_id))
+    flow_demand_data::Vector{Tuple{Bool, NodeID}} =
+        fill((false, NodeID(NodeType.FlowDemand, 0, 0)), length(node_id))
 end
 
 """
@@ -710,6 +713,7 @@ max_downstream_level: The downstream level above which the Outlet flow goes to z
 control_mapping: dictionary from (node_id, control_state) to target flow rate
 control_type: one of None, ContinuousControl, PidControl, Allocation
 allocation_controlled: whether this Outlet is controlled by allocation
+flow_demand_data: Per Outlet whether the Outlet has a flow demand, and if so what the FlowDemand node is
 """
 @kwdef struct Outlet <: AbstractParameterNode
     node_id::Vector{NodeID}
@@ -730,6 +734,8 @@ allocation_controlled: whether this Outlet is controlled by allocation
     control_type::Vector{ContinuousControlType.T} =
         fill(ContinuousControlType.None, length(node_id))
     allocation_controlled::Vector{Bool} = fill(false, length(node_id))
+    flow_demand_data::Vector{Tuple{Bool, NodeID}} =
+        fill((false, NodeID(NodeType.FlowDemand, 0, 0)), length(node_id))
 end
 
 """

@@ -322,6 +322,18 @@ function set_inoutflow_links!(node::AbstractParameterNode, graph::MetaGraph; inf
     map!(node_id -> outflow_link(graph, node_id), node.outflow_link, node.node_id)
 end
 
+function set_flow_demand_data!(node::Union{Pump, Outlet}, graph)::Nothing
+    (; node_id, flow_demand_data) = node
+
+    for id in node_id
+        has_demand, flow_demand_id = has_external_flow_demand(graph, id, :flow_demand)
+        if has_demand
+            flow_demand_data[id.idx] = (has_demand, flow_demand_id)
+        end
+    end
+    return nothing
+end
+
 function LinearResistance(db, config, graph)
     static = load_structvector(db, config, Schema.LinearResistance.Static)
     node_id = get_node_ids(db, NodeType.LinearResistance)
@@ -560,6 +572,7 @@ function Pump(db::DB, config::Config, graph::MetaGraph)
     initialize_control_mapping!(pump, static)
     set_control_type!(pump, graph)
     set_inoutflow_links!(pump, graph)
+    set_flow_demand_data!(pump, graph)
 
     errors = parse_parameter!(pump, config, :active; static, time, default = true)
     errors |= parse_parameter!(pump, config, :flow_rate; static, time)
@@ -587,6 +600,7 @@ function Outlet(db::DB, config::Config, graph::MetaGraph)
     initialize_control_mapping!(outlet, static)
     set_control_type!(outlet, graph)
     set_inoutflow_links!(outlet, graph)
+    set_flow_demand_data!(outlet, graph)
 
     errors = parse_parameter!(outlet, config, :active; static, time, default = true)
     errors |= parse_parameter!(outlet, config, :flow_rate; static, time)
