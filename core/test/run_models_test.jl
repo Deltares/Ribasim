@@ -273,8 +273,7 @@ end
 end
 
 @testitem "Allocation example model" begin
-    #TODO: fix this test. It fails since linearization of the linear resistance. The combination with scaling factors make the problem infeasible.
-    # if you set the scaling factors to 1.0, the test passes, but other tests fail.
+    #TODO: See issue #2524
     using DataFrames: DataFrame
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/allocation_example/ribasim.toml")
