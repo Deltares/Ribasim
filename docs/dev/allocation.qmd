@@ -3,6 +3,11 @@ title: "Allocation"
 ---
 # Overview of allocation implementation {#sec-allocation-overview}
 In this document the allocation workflow is explained. Below is an overview of it.
+
+:::{.callout-note}
+For comprehensive technical documentation bridging mathematical formulation to code implementation, see the [Allocation Technical Reference](allocation-technical-reference.qmd).
+:::
+
 ```{mermaid}
 flowchart TD
     subgraph update_allocation
@@ -69,6 +74,8 @@ When [looping over priorities](#updating-capacities), the constraints are update
 
 - Objective function: This is the function that sets the objective of the optimization problem.
 It is defined using the [`@objective`](https://jump.dev/JuMP.jl/stable/api/JuMP/#@objective) macro.
+
+For detailed mathematical formulations and code examples of how objective functions and constraints are implemented, see the [Allocation Technical Reference](allocation-technical-reference.qmd).
 
 The functions `JuMP.normalized_rhs` and `JuMP.set_normalized_rhs` are used to read and write the constant right hand side of constraints respectively.
 

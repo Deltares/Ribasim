@@ -5,6 +5,10 @@ title: "Allocation"
 # Introduction
 Allocation is the process of assigning an optimized allocated flow rate to demand nodes in the physical layer of the model based on information about sources and their source priorities, the different demand nodes over various demand priorities, constraints introduced by nodes, local water availability and graph topology. It solves a linearized version of the problem formulated for the [physical layer](/concept/modelconcept.qmd#physical-layer) a period of time ahead of the physical layer, while simultaneously optimizing allocated flows and steering certain structures to get the water from (preferred) source to demand. The physics is implemented in an implicit manner, rather like the [implicit Euler](https://en.wikipedia.org/wiki/Backward_Euler_method) numerical method.
 
+:::{.callout-note}
+For detailed technical documentation about the allocation implementation, including mathematical formulation to code mapping, see the [Allocation Technical Reference](/dev/allocation-technical-reference.qmd).
+:::
+
 The allocation problem is solved per subnetwork of the Ribasim model. A subnetwork is defined by all nodes that have the same subnetwork ID in the [Node table](/reference/usage.qmd#node). Each subnetwork is used to formulate a linear optimization problem with the [JuMP](https://jump.dev/JuMP.jl/stable/) package, which is solved using the [HiGHS solver](https://highs.dev/). For more in-depth information see also the example of solving the maximum flow problem with `JuMP.jl` [here](https://jump.dev/JuMP.jl/stable/tutorials/linear/network_flows/#The-max-flow-problem).
 
 There can be a special subnetwork called primary network (with subnetwork ID 1), which represents the main or primary water system. Other subnetworks are called secondary networks and are only allowed to connect to the primary network via a Pump or Outlet; secondary networks are not allowed to be connected to each other. Secondary networks automatically formulate demands to the primary network if there is a shortage of water within the subnetwork to fulfill all demands.
@@ -167,17 +171,21 @@ There are several other control systems in Ribasim:
 
 See [here](/reference/usage.qmd#results).
 
-<!-- # Elements of allocation
+# Technical Implementation Details
+
+The following sections provide detailed mathematical formulations and implementation specifications for developers working with the allocation system. For comprehensive technical documentation, see the [Allocation Technical Reference](/dev/allocation-technical-reference.qmd).
+
+## Elements of allocation
 
 The following data of the parameters and state of a Ribasim model are relevant for the allocation problem.
 
-## Schematisation input
+### Schematisation input
 
-### The subnetwork
+#### The subnetwork
 
 The allocation problem is solved per subnetwork, which is given by a subset $S \subset V$ of node IDs. Different subnetworks are disjoint from each other. Nodes can also not be part of any subnetwork.
 
-### Source flows
+#### Source flows
 
 Sources are indicated by a set of links in the subnetwork
 $$
@@ -189,7 +197,7 @@ $$
 $$
  is treated as a source flow in the allocation problem. These links are either coming from a boundary/source node (e.g. a level or flow boundary) or connect the primary network to a subnetwork. For the definition of $Q_{ij}$ see [the formal model description](/concept/equations.qmd#formal-model-description).
 
-### User demands
+#### User demands
 
 The subnetwork contains a subset of UserDemand nodes $U_S \subset S$, who all have static or time varying demands over various priorities $p$:
 $$
@@ -200,7 +208,7 @@ $$
 On this page we assume that the priorities are given by all integers from $1$ to some $p_{\max} \in \mathbb{N}$. For the Ribasim input this is not a requirement; some of these in between priority values can be missing, only the ordering of the given priorities is taken into account.
 :::
 
-### Flow demands
+#### Flow demands
 
 The subnetwork contains a subset of nodes $FD_S \subset S$ which have a demand of a single priority $p_{\text{fd}}$ for the flow through that node. With this we define
 $$
@@ -212,9 +220,9 @@ $$
 $$
 for all $i \in FD_S$. Here $d^{p_{\text{df}}}$ is given by the original flow demand minus the flows trough node $i$ at all priorities $p < p_{\text{fd}}$.
 
-## Simulation (physical layer) input
+### Simulation (physical layer) input
 
-### Vertical fluxes and local storage
+#### Vertical fluxes and local storage
 
 Apart from the source flows denoted by links, there are other sources of water in the subnetwork, associated with the Basins in the subnetwork $B_S = B \cap S$. First, there is the average over the last allocation interval $\Delta t_{\text{alloc}}$ of the vertical fluxes (precipitation, evaporation, infiltration and drainage) for each Basin:
 $$
@@ -235,15 +243,15 @@ $$
 
 for all $i \in B_S$. Note that the basin demand has only a single priority, so for other priorities this demand is $0$.
 
-### Constraining factors
+#### Constraining factors
 
-#### Flow magnitude and direction constraints
+##### Flow magnitude and direction constraints
 Nodes in the Ribasim model that have a `max_flow_rate`, i.e. Pump, Outlet and LinearResistance, put a constraint on the flow through that node. Some nodes only allow flow in one direction, like Pump, Outlet and TabulatedRatingCurve.
 
-#### UserDemand return flows
+##### UserDemand return flows
 UserDemand nodes dictate proportional relationships between flows over links in the subnetwork. The return factor is given by $0 \le r_i(t) \le 1, i \in U_S$.
 
-## The subnetwork
+### The subnetwork
 The subnetwork consists of a set of nodes $S \subset V$ and links
 
 $$
@@ -253,7 +261,7 @@ $$
 i.e. the links that lie within the subnetwork together with the source links (which can be partially outside the subnetwork).
 The nodes in $S$ together with the connected nodes outside the subnetwork are called the extended subnetwork.
 
-### Capacities
+#### Capacities
 
 Each link in the subnetwork has an associated capacity. These capacities are collected in the sparse capacity matrix $C_S \in \overline{\mathbb{R}}_{\ge 0}^{n\times n}$ where $n$ is the number of nodes in the extended subnetwork. An link capacity is infinite if there is nothing in the model constraining the capacity.
 
@@ -269,11 +277,11 @@ There are also capacities for special links:
 - $C^{FD}_S \in \mathbb{R}^c_{\ge 0}$ where $c = \# FD_S$ is the number of nodes with a flow demand, for the flow supplied by flow buffers at these nodes with a flow demand.
 - $C^{UD}_S \in \mathbb{R}^f_{\ge 0}$ where $f = \# U_S$, for the flow supplied by the user demand outflow source whose capacity is given by return flows.
 
-# The optimization problem
+## The optimization problem
 
 The optimization problem for a subnetwork consists of a quadratic objective function with associated linear constraints on a set of variables, all of which are introduced below.
 
-## The optimization variables
+### The optimization variables
 
 There are several types of variable whose value has to be determined to solve the allocation problem:
 
@@ -281,7 +289,7 @@ There are several types of variable whose value has to be determined to solve th
 - The flows $F^\text{basin out}_{i}, F^\text{basin in}_{i} \geq 0$ for all $i \in B_S$ supplied and consumed by the basins with a level demand respectively;
 - The flows $F^\text{buffer out}_{i}, F^\text{buffer in}_{i} \ge 0$ for all $i \in FD_S \cup FF_S$ supplied and consumed by the flow buffers of nodes with a flow demand.
 
-## The optimization objective
+### The optimization objective
 
 The goal of allocation is to get the flow to nodes with demands as close as possible to these demands. To achieve this, a sum of error terms is minimized.
 
@@ -310,7 +318,7 @@ $$
     E_{\text{flow demand}} = \sum_{i \in FD_S} d_i^p(t)\left(1 -  \frac{F_i^\text{buffer in}}{d_i^p(t)}\right)^2
 $$
 
-## The optimization constraints
+### The optimization constraints
 
 For convenience, we use the notation
 
@@ -368,4 +376,3 @@ $$
 $$
 
 - Flow sign: Furthermore there are the non-negativity constraints for the flows and allocations, see [The optimization variables](/concept/allocation.qmd#the-optimization-variables).
-``` -->
