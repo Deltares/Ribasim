@@ -84,23 +84,13 @@ function add_basin!(
     indices = Iterators.product(basin_ids_subnetwork, [:start, :end])
 
     # Define decision variables: storage (scaling.storage * m^3) (at the start and end of the time step)
-    # and the level (m) (only at the end of the time step)
     # Each storage variable is constrained between 0 and the largest storage value in the profile
-    # Each level variable is between the lowest and the highest level in the profile
-    storage =
-        problem[:basin_storage] = JuMP.@variable(
-            problem,
-            0 <=
-            basin_storage[index = indices] <=
-            storage_to_level[index[1].idx].t[end] / scaling.storage
-        )
-    level =
-        problem[:basin_level] = JuMP.@variable(
-            problem,
-            level_to_area[node_id.idx].t[1] <=
-            basin_level[node_id = basin_ids_subnetwork] <=
-            level_to_area[node_id.idx].t[end]
-        )
+    problem[:basin_storage] = JuMP.@variable(
+        problem,
+        0 <=
+        basin_storage[index = indices] <=
+        storage_to_level[index[1].idx].t[end] / scaling.storage
+    )
 
     # Piecewise linear Basin profile approximations
     # (from storage 0.0 to twice the largest storage)
@@ -129,19 +119,6 @@ function add_basin!(
         values_storage[node_id] ./= scaling.storage
         values_level[node_id] = values_level_node
     end
-
-    # Define constraints: levels are given by the storages and profiles
-    problem[:basin_profile] = JuMP.@constraint(
-        problem,
-        [node_id = basin_ids_subnetwork],
-        level[node_id] == piecewiselinear(
-            problem,
-            storage[(node_id, :end)],
-            values_storage[node_id],
-            values_level[node_id],
-        ),
-        base_name = "basin_profile"
-    )
 
     for node_id in basin_ids_subnetwork
         cumulative_forcing_volume[node_id] = 0.0
@@ -539,23 +516,43 @@ function add_tabulated_rating_curve!(
 )::Nothing
     (; problem, subnetwork_id, scaling) = allocation_model
     (; tabulated_rating_curve, graph) = p_independent
-    (; interpolations, current_interpolation_index, inflow_link) = tabulated_rating_curve
+    (; interpolations, current_interpolation_index, inflow_link, outflow_link) =
+        tabulated_rating_curve
     rating_curve_ids_subnetwork =
         get_ids_in_subnetwork(graph, NodeType.TabulatedRatingCurve, subnetwork_id)
 
     # Add constraints: flow(upstream level) relationship of tabulated rating curves
     flow = problem[:flow]
-    problem[:rating_curve] = JuMP.@constraint(
+    q0 = 1.0 # example value (scaling.flow * m^3/s, to be filled in before optimizing)
+    ∂q∂variable_upstream = 1.0 # example value (scaling.flow * m^3/s, to be filled in before optimizing)
+    ∂q∂variable_downstream = -1.0 # example value, to be filled in before optimizing)
+
+    problem[:tabulated_rating_curve_constraint] = JuMP.@constraint(
         problem,
         [node_id = rating_curve_ids_subnetwork],
         flow[inflow_link[node_id.idx].link] == begin
-            qh = interpolations[current_interpolation_index[node_id.idx](0.0)]
-            level_upstream = get_level(problem, inflow_link[node_id.idx].link[1])
-            level_upstream_data = qh.t
-            flow_rate_data = qh.u ./ scaling.flow
-            piecewiselinear(problem, level_upstream, level_upstream_data, flow_rate_data)
+            # Basins define rating curves in terms of storage, and level boundaries in terms of level
+            if inflow_link[node_id.idx].link[1].type == NodeType.Basin
+                variable_upstream = get_storage(problem, inflow_link[node_id.idx].link[1])
+            elseif inflow_link[node_id.idx].link[1].type == NodeType.LevelBoundary
+                variable_upstream = get_level(problem, inflow_link[node_id.idx].link[1])
+            else
+                variable_upstream = 0
+            end
+            if outflow_link[node_id.idx].link[2].type == NodeType.Basin
+                variable_downstream =
+                    get_storage(problem, outflow_link[node_id.idx].link[2])
+            elseif outflow_link[node_id.idx].link[2].type == NodeType.LevelBoundary
+                variable_downstream = get_level(problem, outflow_link[node_id.idx].link[2])
+            else
+                variable_downstream = 0
+            end
+
+            q0 +
+            ∂q∂variable_upstream * variable_upstream +
+            ∂q∂variable_downstream * variable_downstream
         end,
-        base_name = "rating_curve",
+        base_name = "tabulated_rating_curve_constraint"
     )
     return nothing
 end
@@ -564,61 +561,42 @@ function add_linear_resistance!(
     allocation_model::AllocationModel,
     p_independent::ParametersIndependent,
 )::Nothing
-    (; problem, subnetwork_id, scaling) = allocation_model
+    (; problem, subnetwork_id) = allocation_model
     (; graph, linear_resistance) = p_independent
-    (; inflow_link, outflow_link, resistance, max_flow_rate) = linear_resistance
+    (; inflow_link, outflow_link) = linear_resistance
 
     linear_resistance_ids_subnetwork =
         get_ids_in_subnetwork(graph, NodeType.LinearResistance, subnetwork_id)
 
-    # Add constraints: flow(levels) relationship
+    # Add constraints: linearisation of the flow(levels) relationship in the current levels in the physical layer
     flow = problem[:flow]
-    problem[:linear_resistance] = JuMP.@constraint(
+    q0 = 1.0 # example value (scaling.flow * m^3/s, to be filled in before optimizing)
+    ∂q∂variable_upstream = 1.0 # example value, to be filled in before optimizing)
+    ∂q∂variable_downstream = -1.0 # example value, to be filled in before optimizing)
+    # variable is either level or storage, depending on the type of node
+
+    problem[:linear_resistance_constraint] = JuMP.@constraint(
         problem,
         [node_id = linear_resistance_ids_subnetwork],
         flow[inflow_link[node_id.idx].link] == begin
-            inflow_id = inflow_link[node_id.idx].link[1]
-            outflow_id = outflow_link[node_id.idx].link[2]
-
-            level_upstream = get_level(problem, inflow_id)
-            level_downstream = get_level(problem, outflow_id)
-            Δlevel = level_upstream - level_downstream
-            max_flow = max_flow_rate[node_id.idx]
-
-            if isinf(max_flow)
-                # If there is no flow bound the relationship is simple
-                Δlevel / (resistance[node_id.idx] * scaling.flow)
+            # Basins define linear resistance in terms of storage, and level boundaries in terms of level
+            if inflow_link[node_id.idx].link[1].type == NodeType.Basin
+                variable_upstream = get_storage(problem, inflow_link[node_id.idx].link[1])
             else
-                # If there is a flow bound, the flow(Δlevel) relationship
-                # is modelled as a (non-convex) piecewise linear relationship
-                min_inflow_level, max_inflow_level =
-                    get_minmax_level(p_independent, inflow_id)
-                min_outflow_level, max_outflow_level =
-                    get_minmax_level(p_independent, outflow_id)
-
-                Δlevel_min = min_inflow_level - max_outflow_level
-                Δlevel_max = max_inflow_level - min_outflow_level
-                Δlevel_max_flow = resistance[node_id.idx] * max_flow
-
-                input = [-Δlevel_max_flow, Δlevel_max_flow]
-                output = [-max_flow, max_flow]
-
-                if Δlevel_min < -Δlevel_max_flow
-                    pushfirst!(input, Δlevel_min)
-                    pushfirst!(output, -max_flow)
-                end
-
-                if Δlevel_max > Δlevel_max_flow
-                    push!(input, Δlevel_max)
-                    push!(output, max_flow)
-                end
-
-                output ./= scaling.flow
-
-                piecewiselinear(problem, Δlevel, input, output)
+                variable_upstream = get_level(problem, inflow_link[node_id.idx].link[1])
             end
+            if outflow_link[node_id.idx].link[2].type == NodeType.Basin
+                variable_downstream =
+                    get_storage(problem, outflow_link[node_id.idx].link[2])
+            else
+                variable_downstream = get_level(problem, outflow_link[node_id.idx].link[2])
+            end
+            #
+            q0 +
+            ∂q∂variable_upstream * variable_upstream +
+            ∂q∂variable_downstream * variable_downstream
         end,
-        base_name = "linear_resistance"
+        base_name = "linear_resistance_constraint"
     )
     return nothing
 end
@@ -637,17 +615,29 @@ function add_manning_resistance!(
     # Add constraints: linearisation of the flow(levels) relationship in the current levels in the physical layer
     flow = problem[:flow]
     q0 = 1.0 # example value (scaling.flow * m^3/s, to be filled in before optimizing)
-    ∂q_∂level_upstream = 1.0 # example value (scaling_flow * m^3/(sm), to be filled in before optimizing)
-    ∂q_∂level_downstream = -1.0 # example value (scaling_flow * m^3/(sm), to be filled in before optimizing)
+    ∂q∂variable_upstream = 1.0 # example value, to be filled in before optimizing)
+    ∂q∂variable_downstream = -1.0 # example value, to be filled in before optimizing)
+    # variable is either level or storage, depending on the type of node
     problem[:manning_resistance_constraint] = JuMP.@constraint(
         problem,
         [node_id = manning_resistance_ids_subnetwork],
         flow[inflow_link[node_id.idx].link] == begin
-            level_upstream = get_level(problem, inflow_link[node_id.idx].link[1])
-            level_downstream = get_level(problem, outflow_link[node_id.idx].link[2])
+            # Basins define linear resistance in terms of storage, and level boundaries in terms of level
+            if inflow_link[node_id.idx].link[1].type == NodeType.Basin
+                variable_upstream = get_storage(problem, inflow_link[node_id.idx].link[1])
+            else
+                variable_upstream = get_level(problem, inflow_link[node_id.idx].link[1])
+            end
+            if outflow_link[node_id.idx].link[2].type == NodeType.Basin
+                variable_downstream =
+                    get_storage(problem, outflow_link[node_id.idx].link[2])
+            else
+                variable_downstream = get_level(problem, outflow_link[node_id.idx].link[2])
+            end
+            #
             q0 +
-            ∂q_∂level_upstream * level_upstream +
-            ∂q_∂level_downstream * level_downstream
+            ∂q∂variable_upstream * variable_upstream +
+            ∂q∂variable_downstream * variable_downstream
         end,
         base_name = "manning_resistance_constraint"
     )

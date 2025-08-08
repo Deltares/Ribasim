@@ -78,11 +78,11 @@ function flow_capacity_upper_bound(
 end
 
 function get_level(problem::JuMP.Model, node_id::NodeID)
-    if node_id.type == NodeType.Basin
-        problem[:basin_level][node_id]
-    else
-        problem[:boundary_level][node_id]
-    end
+    problem[:boundary_level][node_id]
+end
+
+function get_storage(problem::JuMP.Model, node_id::NodeID)::Union{JuMP.VariableRef, Nothing}
+    problem[:basin_storage][(node_id, :end)]
 end
 
 function collect_primary_network_connections!(

@@ -89,6 +89,66 @@ def rating_curve_model() -> Model:
     return model
 
 
+def rating_curve_between_basins_model() -> Model:
+    """Set up a minimal model which uses a tabulated_rating_curve node."""
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2021-01-01",
+        crs="EPSG:28992",
+        experimental=Experimental(concentration=True),
+    )
+
+    model.basin.add(
+        Node(1, Point(0, 0), subnetwork_id=1),
+        [
+            basin.Profile(area=[0.01, 50.0, 100.0], level=[0.0, 1.0, 12.0]),
+            basin.State(level=[10.5]),
+        ],
+    )
+
+    level_min = 1.0
+    level = np.linspace(1, 12, 100)
+    flow_rate = np.square(level - level_min) / (60 * 60 * 24)
+    model.tabulated_rating_curve.add(
+        Node(2, Point(1, 0), subnetwork_id=1),
+        [tabulated_rating_curve.Static(level=level, flow_rate=flow_rate)],
+    )
+
+    model.basin.add(
+        Node(3, Point(2, 0), subnetwork_id=1),
+        [
+            basin.Profile(area=[0.01, 50.0, 100.0], level=[0.0, 1.0, 12.0]),
+            basin.State(level=[5.5]),
+        ],
+    )
+
+    model.tabulated_rating_curve.add(
+        Node(4, Point(3, 0), subnetwork_id=1),
+        [tabulated_rating_curve.Static(level=level, flow_rate=flow_rate)],
+    )
+
+    model.terminal.add(Node(5, Point(3, 0), subnetwork_id=1))
+
+    model.link.add(
+        model.basin[1],
+        model.tabulated_rating_curve[2],
+    )
+    model.link.add(
+        model.tabulated_rating_curve[2],
+        model.basin[3],
+    )
+    model.link.add(
+        model.basin[3],
+        model.tabulated_rating_curve[4],
+    )
+    model.link.add(
+        model.tabulated_rating_curve[4],
+        model.terminal[5],
+    )
+
+    return model
+
+
 def manning_resistance_model() -> Model:
     """Set up a minimal model which uses a manning_resistance node."""
     model = Model(
