@@ -1,29 +1,29 @@
 @enumx AllocationOptimizationType internal_sources collect_demands allocate
 
-"""
-Set:
-- For each Basin the starting level and storage at the start of the allocation interval Δt_allocation
-  (where the ODE solver is now)
-- For each Basin the average forcing over the previous allocation interval as a prediction of the
-    average forcing over the coming allocation interval
-- For each FlowBoundary the average flow over the previous Δt_allocation
-- The cumulative forcing and boundary volumes to compute the aforementioned averages back to 0
-- For each LevelBoundary the level to the value it will have at the end of the Δt_allocation
-"""
 function set_simulation_data!(
     allocation_model::AllocationModel,
     p::Parameters,
     t::Float64,
     du::CVector,
 )::Nothing
-    (; basin, level_boundary, manning_resistance, pump, outlet, user_demand) =
-        p.p_independent
+    (;
+        basin,
+        level_boundary,
+        linear_resistance,
+        manning_resistance,
+        pump,
+        outlet,
+        user_demand,
+        tabulated_rating_curve,
+    ) = p.p_independent
 
     errors = false
 
-    errors |= set_simulation_data!(allocation_model, basin, p, t)
+    errors |= set_simulation_data!(allocation_model, basin, p)
     set_simulation_data!(allocation_model, level_boundary, t)
+    set_simulation_data!(allocation_model, linear_resistance, p, t)
     set_simulation_data!(allocation_model, manning_resistance, p, t)
+    set_simulation_data!(allocation_model, tabulated_rating_curve, p, t)
     set_simulation_data!(allocation_model, pump, outlet, du)
     set_simulation_data!(allocation_model, user_demand, t)
 
@@ -39,19 +39,18 @@ function set_simulation_data!(
     allocation_model::AllocationModel,
     basin::Basin,
     p::Parameters,
-    t::Number,
 )::Bool
     (; problem, cumulative_boundary_volume, Δt_allocation, scaling) = allocation_model
-    (; graph, tabulated_rating_curve) = p.p_independent
     (; storage_to_level) = basin
 
     storage = problem[:basin_storage]
     flow = problem[:flow]
-    (; current_storage, current_level) = p.state_time_dependent_cache
+    linear_basin_profile = problem[:linear_basin_profile]
+    (; current_storage, current_area, current_level) = p.state_time_dependent_cache
 
     errors = false
 
-    # Set Basin starting storages and levels
+    # Set Basin starting storages and areas
     for key in only(storage.axes)
         (key[2] != :start) && continue
         basin_id = key[1]
@@ -65,32 +64,22 @@ function set_simulation_data!(
             errors = true
         end
 
-        level_now = current_level[basin_id.idx]
-        level_max = storage_to_level[basin_id.idx].u[end]
-
-        # Check whether the level in the physical layer is within the maximum storage bound
-        if level_now > level_max
-            @error "Maximum basin level exceed (allocation infeasibility)" level_now level_max basin_id
-            errors = true
-        end
-
-        # Check whether the level in the physical layer is within the the maximum level bound
-        # for which the Q(h) relation of connected TabulatedRatingCurve nodes is defined
-        for rating_curve_id in outflow_ids(graph, basin_id)
-            if rating_curve_id.type == NodeType.TabulatedRatingCurve
-                interpolation_index =
-                    tabulated_rating_curve.current_interpolation_index[rating_curve_id.idx](
-                        t,
-                    )
-                qh = tabulated_rating_curve.interpolations[interpolation_index]
-                level_rating_curve_max = qh.t[end]
-                if level_now > level_rating_curve_max
-                    @error "Maximum tabulated rating curve level exceeded (allocation infeasibility)" level_now level_rating_curve_max basin_id rating_curve_id
-                end
-            end
-        end
-
         JuMP.fix(storage[key], storage_now / scaling.storage; force = true)
+
+        # Set area in linearized level(storage) relationship
+        area_now = current_area[basin_id.idx]
+        profile_constraint = linear_basin_profile[basin_id]
+        JuMP.set_normalized_rhs(profile_constraint, current_level[basin_id.idx])
+        JuMP.set_normalized_coefficient(
+            profile_constraint,
+            storage[(basin_id, :start)],
+            scaling.storage / area_now,
+        )
+        JuMP.set_normalized_coefficient(
+            profile_constraint,
+            storage[(basin_id, :end)],
+            -scaling.storage / area_now,
+        )
     end
 
     for link in keys(cumulative_boundary_volume)
@@ -123,67 +112,136 @@ function set_simulation_data!(
     return nothing
 end
 
+function set_partial_derivative_wrt_level!(
+    allocation_model::AllocationModel,
+    node_id::NodeID,
+    ∂q∂h::Float64,
+    current_level::Float64,
+    rhs::Float64,
+    constraint::JuMP.ConstraintRef,
+)::Float64
+    (; problem, scaling) = allocation_model
+
+    level_variable = get_level(problem, node_id)
+    if !iszero(level_variable)
+        rhs -= ∂q∂h * current_level
+        JuMP.set_normalized_coefficient(constraint, level_variable, -∂q∂h / scaling.flow)
+    end
+    return rhs
+end
+
+function linearize_connector_node!(
+    allocation_model::AllocationModel,
+    connector_node::AbstractParameterNode,
+    flow_constraint,
+    flow_function::Function,
+    p::Parameters,
+    t::Float64,
+)
+    (; scaling) = allocation_model
+
+    for node_id in only(flow_constraint.axes)
+        inflow_id = connector_node.inflow_link[node_id.idx].link[1]
+        outflow_id = connector_node.outflow_link[node_id.idx].link[2]
+
+        # h_a and h_b are numbers from the last time step in the physical layer
+        h_a = get_level(p, inflow_id, t)
+        h_b = get_level(p, outflow_id, t)
+
+        # partial derivative with respect to upstream level
+        ∂q∂h_a = forward_diff(
+            level_a -> flow_function(connector_node, node_id, level_a, h_b, p, t),
+            h_a,
+        )
+        # partial derivative with respect to downstream level
+        ∂q∂h_b = forward_diff(
+            level_b -> flow_function(connector_node, node_id, h_a, level_b, p, t),
+            h_b,
+        )
+
+        rhs = flow_function(connector_node, node_id, h_a, h_b, p, t)
+        constraint = flow_constraint[node_id]
+        rhs = set_partial_derivative_wrt_level!(
+            allocation_model,
+            inflow_id,
+            ∂q∂h_a,
+            h_a,
+            rhs,
+            constraint,
+        )
+        rhs = set_partial_derivative_wrt_level!(
+            allocation_model,
+            outflow_id,
+            ∂q∂h_b,
+            h_b,
+            rhs,
+            constraint,
+        )
+        # Set the right-hand side of the constraint
+        JuMP.set_normalized_rhs(constraint, rhs / scaling.flow)
+    end
+end
+
+function set_simulation_data!(
+    allocation_model::AllocationModel,
+    linear_resistance::LinearResistance,
+    p::Parameters,
+    t::Float64,
+)::Nothing
+    (; problem) = allocation_model
+    linear_resistance_constraint = problem[:linear_resistance_constraint]
+
+    linearize_connector_node!(
+        allocation_model,
+        linear_resistance,
+        linear_resistance_constraint,
+        linear_resistance_flow,
+        p,
+        t,
+    )
+
+    return nothing
+end
+
 function set_simulation_data!(
     allocation_model::AllocationModel,
     manning_resistance::ManningResistance,
     p::Parameters,
     t::Float64,
 )::Nothing
-    (; problem, scaling) = allocation_model
+    (; problem) = allocation_model
     manning_resistance_constraint = problem[:manning_resistance_constraint]
 
-    # Set the linearization of ManningResistance flows in the current levels from the physical layer
-    for node_id in only(manning_resistance_constraint.axes)
-        inflow_link = manning_resistance.inflow_link[node_id.idx]
-        outflow_link = manning_resistance.outflow_link[node_id.idx]
+    linearize_connector_node!(
+        allocation_model,
+        manning_resistance,
+        manning_resistance_constraint,
+        manning_resistance_flow,
+        p,
+        t,
+    )
 
-        inflow_id = inflow_link.link[1]
-        outflow_id = outflow_link.link[2]
-        h_a = get_level(p, inflow_id, t)
-        h_b = get_level(p, outflow_id, t)
+    return nothing
+end
 
-        q = manning_resistance_flow(manning_resistance, node_id, h_a, h_b)
-        ∂q_∂level_upstream = forward_diff(
-            level_upstream -> manning_resistance_flow(
-                manning_resistance,
-                node_id,
-                level_upstream,
-                h_b,
-            ),
-            h_a,
-        )
-        ∂q_∂level_downstream = forward_diff(
-            level_downstream -> manning_resistance_flow(
-                manning_resistance,
-                node_id,
-                h_a,
-                level_downstream,
-            ),
-            h_b,
-        )
-        # Constant terms in linearization
-        q0 = q - h_a * ∂q_∂level_upstream - h_b * ∂q_∂level_downstream
+function set_simulation_data!(
+    allocation_model::AllocationModel,
+    tabulated_rating_curve::TabulatedRatingCurve,
+    p::Parameters,
+    t::Float64,
+)::Nothing
+    (; problem) = allocation_model
+    tabulated_rating_curve_constraint = problem[:tabulated_rating_curve_constraint]
 
-        # To avoid confusion: h_a and h_b are numbers for the current levels in the physical
-        # layer, upstream_level and downstream_level are variables in the optimization problem
-        constraint = manning_resistance_constraint[node_id]
-        upstream_level =
-            get_level(problem, manning_resistance.inflow_link[node_id.idx].link[1])
-        downstream_level =
-            get_level(problem, manning_resistance.outflow_link[node_id.idx].link[2])
-        JuMP.set_normalized_rhs(constraint, q0 / scaling.flow)
-        # Minus signs because the level terms are moved to the lhs in the constraint
-        JuMP.set_normalized_coefficient(
-            constraint,
-            upstream_level,
-            -∂q_∂level_upstream / scaling.flow,
-        )
-        JuMP.set_normalized_coefficient(
-            constraint,
-            downstream_level,
-            -∂q_∂level_downstream / scaling.flow,
-        )
-    end
+    linearize_connector_node!(
+        allocation_model,
+        tabulated_rating_curve,
+        tabulated_rating_curve_constraint,
+        tabulated_rating_curve_flow,
+        p,
+        t,
+    )
+
     return nothing
 end
 
@@ -263,7 +321,6 @@ function reset_goal_programming!(
 
     flow = problem[:flow]
     storage = problem[:basin_storage]
-    level = problem[:basin_level]
 
     # Reset allocated flow amounts for UserDemand
     JuMP.fix.(problem[:user_demand_allocated], 0.0; force = true)
@@ -274,15 +331,13 @@ function reset_goal_programming!(
     end
 
     # Reset allocated storage amounts and levels
-    for node_id in only(level.axes)
+    for (node_id, time) in only(storage.axes)
+        (time != :end) && continue
         JuMP.set_lower_bound(storage[(node_id, :end)], 0.0)
         JuMP.set_upper_bound(
             storage[(node_id, :end)],
             basin.storage_to_level[node_id.idx].t[end],
         )
-
-        JuMP.set_lower_bound(level[node_id], basin.storage_to_level[node_id.idx].u[1])
-        JuMP.set_upper_bound(level[node_id], basin.storage_to_level[node_id.idx].u[end])
     end
 
     # Reset allocated flow amounts for FlowDemand
@@ -456,7 +511,6 @@ function update_allocated_values!(
     ) = level_demand
 
     storage = problem[:basin_storage]
-    level = problem[:basin_level]
 
     # Storage allocated to Basins with LevelDemand
     for node_id in only(problem[:storage_constraint_in].axes)
@@ -472,8 +526,6 @@ function update_allocated_values!(
             storage_start = JuMP.value(storage[(node_id, :start)]) # (scaling.storage * m^3)
             storage_end = JuMP.value(storage[(node_id, :end)]) # (scaling.storage * m^3)
             Δstorage = storage_end - storage_start # (scaling.storage * m^3)
-
-            level_end = JuMP.value(level[node_id])
 
             # Storage after allocation time step lower bound:
             # min(storage after allocation time step now, target storage min for this demand priority)
@@ -493,21 +545,6 @@ function update_allocated_values!(
                     storage_end,
                     target_storage_max[node_id][demand_priority_idx] / scaling.storage,
                 ),
-            )
-
-            # Level after allocation time step lower bound:
-            # min(level after allocation time step now, target level min for this demand priority)
-            level_demand_id = only(inneighbor_labels_type(graph, node_id, LinkType.control))
-            JuMP.set_lower_bound(
-                level[node_id],
-                min(level_end, target_level_min[level_demand_id.idx, demand_priority_idx]),
-            )
-
-            # Level after allocation time step upper bound:
-            # max(level after allocation time step now, target level max for this demand priority)
-            JuMP.set_upper_bound(
-                level[node_id],
-                max(level_end, target_level_max[level_demand_id.idx, demand_priority_idx]),
             )
 
             # Storage allocated to this Basin for this demand priority:
@@ -778,7 +815,6 @@ function warm_start!(
     (; current_level, current_storage) = integrator.p.state_time_dependent_cache
 
     storage = problem[:basin_storage]
-    level = problem[:basin_level]
     flow = problem[:flow]
 
     # Whether this is the optimization for the first objective
@@ -791,7 +827,6 @@ function warm_start!(
         for (node_id, when) in only(storage.axes)
             when == :start && continue
             JuMP.set_start_value(storage[(node_id, :end)], current_storage[node_id.idx])
-            JuMP.set_start_value(level[node_id], current_level[node_id.idx])
         end
 
         # Assume no flow
@@ -807,7 +842,6 @@ function warm_start!(
                 storage[(node_id, :end)],
                 JuMP.value(storage[(node_id, :end)]),
             )
-            JuMP.set_start_value(level[node_id], JuMP.value(level[node_id]))
         end
 
         # Assume no flow change with respect to the previous optimization

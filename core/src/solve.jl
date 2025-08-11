@@ -386,7 +386,7 @@ function formulate_flow!(
 )::Nothing
     (; p_mutable) = p
     all_nodes_active = p_mutable.all_nodes_active
-    (; node_id, active, resistance, max_flow_rate) = linear_resistance
+    (; node_id, active) = linear_resistance
 
     for id in node_id
         inflow_link = linear_resistance.inflow_link[id.idx]
@@ -398,13 +398,56 @@ function formulate_flow!(
         if (active[id.idx] || all_nodes_active)
             h_a = get_level(p, inflow_id, t)
             h_b = get_level(p, outflow_id, t)
-            q_unlimited = (h_a - h_b) / resistance[id.idx]
-            q = clamp(q_unlimited, -max_flow_rate[id.idx], max_flow_rate[id.idx])
-            q *= low_storage_factor_resistance_node(p, q, inflow_id, outflow_id)
+            q = linear_resistance_flow(linear_resistance, id, h_a, h_b, p)
             du.linear_resistance[id.idx] = q
         end
     end
     return nothing
+end
+
+function linear_resistance_flow(
+    linear_resistance::LinearResistance,
+    node_id::NodeID,
+    h_a::Number,
+    h_b::Number,
+    p::Parameters,
+    t::Number = 0.0,
+)::Number
+    (; resistance, max_flow_rate) = linear_resistance
+    inflow_link = linear_resistance.inflow_link[node_id.idx]
+    outflow_link = linear_resistance.outflow_link[node_id.idx]
+
+    inflow_id = inflow_link.link[1]
+    outflow_id = outflow_link.link[2]
+
+    Δh = h_a - h_b
+    q_unlimited = Δh / resistance[node_id.idx]
+    q = clamp(q_unlimited, -max_flow_rate[node_id.idx], max_flow_rate[node_id.idx])
+    return q * low_storage_factor_resistance_node(p, q_unlimited, inflow_id, outflow_id)
+end
+
+function tabulated_rating_curve_flow(
+    tabulated_rating_curve::TabulatedRatingCurve,
+    node_id::NodeID,
+    h_a::Number,
+    h_b::Number,
+    p::Parameters,
+    t::Number,
+)::Number
+    (; current_interpolation_index, interpolations) = tabulated_rating_curve
+    inflow_link = tabulated_rating_curve.inflow_link[node_id.idx]
+    inflow_id = inflow_link.link[1]
+    Δh = h_a - h_b
+
+    factor = get_low_storage_factor(p, inflow_id)
+
+    interpolation_index = current_interpolation_index[node_id.idx](t)
+    qh = interpolations[interpolation_index]
+    q = factor * qh(h_a)
+    q *= reduction_factor(Δh, 0.02)
+    max_downstream_level = tabulated_rating_curve.max_downstream_level[node_id.idx]
+    q *= reduction_factor(max_downstream_level - h_b, 0.02)
+    return q
 end
 
 function formulate_flow!(
@@ -415,27 +458,18 @@ function formulate_flow!(
 )::Nothing
     (; p_mutable) = p
     all_nodes_active = p_mutable.all_nodes_active
-    (; node_id, active, interpolations, current_interpolation_index) =
-        tabulated_rating_curve
+    (; node_id, active) = tabulated_rating_curve
 
     for id in node_id
         inflow_link = tabulated_rating_curve.inflow_link[id.idx]
         outflow_link = tabulated_rating_curve.outflow_link[id.idx]
         inflow_id = inflow_link.link[1]
         outflow_id = outflow_link.link[2]
-        max_downstream_level = tabulated_rating_curve.max_downstream_level[id.idx]
-
-        h_a = get_level(p, inflow_id, t)
-        h_b = get_level(p, outflow_id, t)
-        Δh = h_a - h_b
 
         if active[id.idx] || all_nodes_active
-            factor = get_low_storage_factor(p, inflow_id)
-            interpolation_index = current_interpolation_index[id.idx](t)
-            qh = interpolations[interpolation_index]
-            q = factor * qh(h_a)
-            q *= reduction_factor(Δh, 0.02)
-            q *= reduction_factor(max_downstream_level - h_b, 0.02)
+            h_a = get_level(p, inflow_id, t)
+            h_b = get_level(p, outflow_id, t)
+            q = tabulated_rating_curve_flow(tabulated_rating_curve, id, h_a, h_b, p, t)
         else
             q = 0.0
         end
@@ -450,6 +484,8 @@ function manning_resistance_flow(
     node_id::NodeID,
     h_a::Number,
     h_b::Number,
+    p::Parameters,
+    t::Number = 0.0,
 )::Number
     (;
         length,
@@ -459,6 +495,12 @@ function manning_resistance_flow(
         upstream_bottom,
         downstream_bottom,
     ) = manning_resistance
+
+    inflow_link = manning_resistance.inflow_link[node_id.idx]
+    outflow_link = manning_resistance.outflow_link[node_id.idx]
+
+    inflow_id = inflow_link.link[1]
+    outflow_id = outflow_link.link[2]
 
     bottom_a = upstream_bottom[node_id.idx]
     bottom_b = downstream_bottom[node_id.idx]
@@ -485,7 +527,8 @@ function manning_resistance_flow(
 
     Δh = h_a - h_b
 
-    return A / n * ∛(R_h^2) * relaxed_root(Δh / L, 1e-5)
+    q = A / n * ∛(R_h^2) * relaxed_root(Δh / L, 1e-5)
+    return q * low_storage_factor_resistance_node(p, q, inflow_id, outflow_id)
 end
 
 """
@@ -551,8 +594,8 @@ function formulate_flow!(
         h_a = get_level(p, inflow_id, t)
         h_b = get_level(p, outflow_id, t)
 
-        q = manning_resistance_flow(manning_resistance, id, h_a, h_b)
-        q *= low_storage_factor_resistance_node(p, q, inflow_id, outflow_id)
+        q = manning_resistance_flow(manning_resistance, id, h_a, h_b, p)
+
         du.manning_resistance[id.idx] = q
     end
     return nothing

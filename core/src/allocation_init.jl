@@ -74,8 +74,8 @@ function add_basin!(
     p_independent::ParametersIndependent,
 )::Nothing
     (; problem, subnetwork_id, cumulative_forcing_volume, scaling) = allocation_model
-    (; graph, basin, level_boundary) = p_independent
-    (; storage_to_level, level_to_area) = basin
+    (; graph, basin) = p_independent
+    (; storage_to_level) = basin
 
     # Basin node IDs within the subnetwork
     basin_ids_subnetwork = get_ids_in_subnetwork(graph, NodeType.Basin, subnetwork_id)
@@ -84,63 +84,34 @@ function add_basin!(
     indices = Iterators.product(basin_ids_subnetwork, [:start, :end])
 
     # Define decision variables: storage (scaling.storage * m^3) (at the start and end of the time step)
-    # and the level (m) (only at the end of the time step)
+    # and level (m) (only at the end of the time step)
     # Each storage variable is constrained between 0 and the largest storage value in the profile
-    # Each level variable is between the lowest and the highest level in the profile
-    storage =
+    basin_storage =
         problem[:basin_storage] = JuMP.@variable(
             problem,
-            0 <=
-            basin_storage[index = indices] <=
+            0 ≤
+            basin_storage[index = indices] ≤
             storage_to_level[index[1].idx].t[end] / scaling.storage
         )
-    level =
+    basin_level =
         problem[:basin_level] = JuMP.@variable(
             problem,
-            level_to_area[node_id.idx].t[1] <=
-            basin_level[node_id = basin_ids_subnetwork] <=
-            level_to_area[node_id.idx].t[end]
+            0 ≤
+            basin_level[node_id = basin_ids_subnetwork] ≤
+            storage_to_level[node_id.idx].u[end],
         )
 
-    # Piecewise linear Basin profile approximations
-    # (from storage 0.0 to twice the largest storage)
-    values_storage = Dict{NodeID, Vector{Float64}}()
-    values_level = Dict{NodeID, Vector{Float64}}()
-
-    # TODO: Use DouglasPeucker algorithm also TabulatedRatingCurve
-
-    lowest_level_basin =
-        minimum(node_id -> level_to_area[node_id.idx].t[1], basin_ids_subnetwork)
-    level_boundary_ids_subnetwork =
-        get_ids_in_subnetwork(graph, NodeType.LevelBoundary, subnetwork_id)
-    lowest_level = minimum(
-        node_id -> minimum(level_boundary.level[node_id.idx].u),
-        level_boundary_ids_subnetwork;
-        init = lowest_level_basin,
-    )
-
-    for node_id in basin_ids_subnetwork
-        values_storage_node, values_level_node = parse_profile(
-            storage_to_level[node_id.idx],
-            level_to_area[node_id.idx],
-            lowest_level,
-        )
-        values_storage[node_id] = values_storage_node
-        values_storage[node_id] ./= scaling.storage
-        values_level[node_id] = values_level_node
-    end
-
-    # Define constraints: levels are given by the storages and profiles
-    problem[:basin_profile] = JuMP.@constraint(
+    # Define constraints: linear basin profile
+    level_start = 1e6 # Example starting level of the Basin (m^3, to be filled in before optimizing)
+    A = 1e6 # Example area of the Basin (m^2, to be filled in before optimizing)
+    problem[:linear_basin_profile] = JuMP.@constraint(
         problem,
         [node_id = basin_ids_subnetwork],
-        level[node_id] == piecewiselinear(
-            problem,
-            storage[(node_id, :end)],
-            values_storage[node_id],
-            values_level[node_id],
-        ),
-        base_name = "basin_profile"
+        basin_level[node_id] ==
+        level_start +
+        (basin_storage[(node_id, :end)] - basin_storage[(node_id, :start)]) *
+        scaling.storage / A;
+        base_name = "linear_basin_profile",
     )
 
     for node_id in basin_ids_subnetwork
@@ -205,15 +176,15 @@ function add_flow_conservation!(
     flow = problem[:flow]
 
     # Extract node type name from the struct type
-    node_type = lowercase(string(typeof(node).name.name))
+    node_name = snake_case(string(typeof(node).name.name))
 
     # Define constraints: inflow is equal to outflow for conservative nodes
-    constraint_name = Symbol("flow_conservation_$(node_type)")
-    problem[constraint_name] = JuMP.@constraint(
+    constraint_name = "flow_conservation_$node_name"
+    problem[Symbol(constraint_name)] = JuMP.@constraint(
         problem,
         [node_id = node_ids],
         flow[inflow_link[node_id.idx].link] == flow[outflow_link[node_id.idx].link],
-        base_name = "flow_conservation_$(node_type)"
+        base_name = "flow_conservation_$node_name"
     )
     return nothing
 end
@@ -533,29 +504,48 @@ function add_level_boundary!(
     return nothing
 end
 
+function add_linearized_connector_node!(
+    allocation_model::AllocationModel,
+    node::AbstractParameterNode,
+    node_ids_subnetwork,
+)::Nothing
+    (; problem) = allocation_model
+    (; inflow_link, outflow_link) = node
+
+    flow = problem[:flow]
+
+    # Extract node type name from the struct type
+    node_name = snake_case(string(typeof(node).name.name))
+    constraint_name = "$(node_name)_constraint"
+
+    q0 = 1.0 # example value (scaling.flow * m^3/s, to be filled in before optimizing)
+    ∂q∂h_upstream = 1.0 # example value (scaling.flow * m^2/s, to be filled in before optimizing)
+    ∂q∂h_downstream = -1.0 # example value, to be filled in before optimizing)
+
+    # Add constraints: the flow into the connector node is equal to the linearized
+    # flow(level upstream, level_downstream) relation of the connector node
+    problem[Symbol(constraint_name)] = JuMP.@constraint(
+        problem,
+        [node_id = node_ids_subnetwork],
+        flow[inflow_link[node_id.idx].link] ==
+        q0 +
+        ∂q∂h_upstream * get_level(problem, inflow_link[node_id.idx].link[1]) +
+        +∂q∂h_downstream * get_level(problem, outflow_link[node_id.idx].link[2]),
+        base_name = constraint_name
+    )
+    return nothing
+end
+
 function add_tabulated_rating_curve!(
     allocation_model::AllocationModel,
     p_independent::ParametersIndependent,
 )::Nothing
-    (; problem, subnetwork_id, scaling) = allocation_model
+    (; subnetwork_id) = allocation_model
     (; tabulated_rating_curve, graph) = p_independent
-    (; interpolations, current_interpolation_index, inflow_link) = tabulated_rating_curve
-    rating_curve_ids_subnetwork =
-        get_ids_in_subnetwork(graph, NodeType.TabulatedRatingCurve, subnetwork_id)
-
-    # Add constraints: flow(upstream level) relationship of tabulated rating curves
-    flow = problem[:flow]
-    problem[:rating_curve] = JuMP.@constraint(
-        problem,
-        [node_id = rating_curve_ids_subnetwork],
-        flow[inflow_link[node_id.idx].link] == begin
-            qh = interpolations[current_interpolation_index[node_id.idx](0.0)]
-            level_upstream = get_level(problem, inflow_link[node_id.idx].link[1])
-            level_upstream_data = qh.t
-            flow_rate_data = qh.u ./ scaling.flow
-            piecewiselinear(problem, level_upstream, level_upstream_data, flow_rate_data)
-        end,
-        base_name = "rating_curve",
+    add_linearized_connector_node!(
+        allocation_model,
+        tabulated_rating_curve,
+        get_ids_in_subnetwork(graph, NodeType.TabulatedRatingCurve, subnetwork_id),
     )
     return nothing
 end
@@ -564,61 +554,12 @@ function add_linear_resistance!(
     allocation_model::AllocationModel,
     p_independent::ParametersIndependent,
 )::Nothing
-    (; problem, subnetwork_id, scaling) = allocation_model
-    (; graph, linear_resistance) = p_independent
-    (; inflow_link, outflow_link, resistance, max_flow_rate) = linear_resistance
-
-    linear_resistance_ids_subnetwork =
-        get_ids_in_subnetwork(graph, NodeType.LinearResistance, subnetwork_id)
-
-    # Add constraints: flow(levels) relationship
-    flow = problem[:flow]
-    problem[:linear_resistance] = JuMP.@constraint(
-        problem,
-        [node_id = linear_resistance_ids_subnetwork],
-        flow[inflow_link[node_id.idx].link] == begin
-            inflow_id = inflow_link[node_id.idx].link[1]
-            outflow_id = outflow_link[node_id.idx].link[2]
-
-            level_upstream = get_level(problem, inflow_id)
-            level_downstream = get_level(problem, outflow_id)
-            Δlevel = level_upstream - level_downstream
-            max_flow = max_flow_rate[node_id.idx]
-
-            if isinf(max_flow)
-                # If there is no flow bound the relationship is simple
-                Δlevel / (resistance[node_id.idx] * scaling.flow)
-            else
-                # If there is a flow bound, the flow(Δlevel) relationship
-                # is modelled as a (non-convex) piecewise linear relationship
-                min_inflow_level, max_inflow_level =
-                    get_minmax_level(p_independent, inflow_id)
-                min_outflow_level, max_outflow_level =
-                    get_minmax_level(p_independent, outflow_id)
-
-                Δlevel_min = min_inflow_level - max_outflow_level
-                Δlevel_max = max_inflow_level - min_outflow_level
-                Δlevel_max_flow = resistance[node_id.idx] * max_flow
-
-                input = [-Δlevel_max_flow, Δlevel_max_flow]
-                output = [-max_flow, max_flow]
-
-                if Δlevel_min < -Δlevel_max_flow
-                    pushfirst!(input, Δlevel_min)
-                    pushfirst!(output, -max_flow)
-                end
-
-                if Δlevel_max > Δlevel_max_flow
-                    push!(input, Δlevel_max)
-                    push!(output, max_flow)
-                end
-
-                output ./= scaling.flow
-
-                piecewiselinear(problem, Δlevel, input, output)
-            end
-        end,
-        base_name = "linear_resistance"
+    (; subnetwork_id) = allocation_model
+    (; linear_resistance, graph) = p_independent
+    add_linearized_connector_node!(
+        allocation_model,
+        linear_resistance,
+        get_ids_in_subnetwork(graph, NodeType.LinearResistance, subnetwork_id),
     )
     return nothing
 end
@@ -627,29 +568,12 @@ function add_manning_resistance!(
     allocation_model::AllocationModel,
     p_independent::ParametersIndependent,
 )::Nothing
-    (; problem, subnetwork_id) = allocation_model
-    (; graph, manning_resistance) = p_independent
-    (; inflow_link, outflow_link) = manning_resistance
-
-    manning_resistance_ids_subnetwork =
-        get_ids_in_subnetwork(graph, NodeType.ManningResistance, subnetwork_id)
-
-    # Add constraints: linearisation of the flow(levels) relationship in the current levels in the physical layer
-    flow = problem[:flow]
-    q0 = 1.0 # example value (scaling.flow * m^3/s, to be filled in before optimizing)
-    ∂q_∂level_upstream = 1.0 # example value (scaling_flow * m^3/(sm), to be filled in before optimizing)
-    ∂q_∂level_downstream = -1.0 # example value (scaling_flow * m^3/(sm), to be filled in before optimizing)
-    problem[:manning_resistance_constraint] = JuMP.@constraint(
-        problem,
-        [node_id = manning_resistance_ids_subnetwork],
-        flow[inflow_link[node_id.idx].link] == begin
-            level_upstream = get_level(problem, inflow_link[node_id.idx].link[1])
-            level_downstream = get_level(problem, outflow_link[node_id.idx].link[2])
-            q0 +
-            ∂q_∂level_upstream * level_upstream +
-            ∂q_∂level_downstream * level_downstream
-        end,
-        base_name = "manning_resistance_constraint"
+    (; subnetwork_id) = allocation_model
+    (; manning_resistance, graph) = p_independent
+    add_linearized_connector_node!(
+        allocation_model,
+        manning_resistance,
+        get_ids_in_subnetwork(graph, NodeType.ManningResistance, subnetwork_id),
     )
     return nothing
 end
