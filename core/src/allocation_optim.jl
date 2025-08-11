@@ -753,7 +753,11 @@ function save_allocation_flows!(
         push!(record_flow.to_node_type, string(id_to.type))
         push!(record_flow.to_node_id, Int32(id_to))
         push!(record_flow.subnetwork_id, subnetwork_id)
-        push!(record_flow.flow_rate, get_flow_value(allocation_model, link))
+        flow_variable = flow[link]
+        push!(record_flow.flow_rate, JuMP.value(flow_variable) * scaling.flow)
+        hit_lower_bound, hit_upper_bound = get_bounds_hit(flow_variable)
+        push!(record_flow.lower_bound_hit, hit_lower_bound)
+        push!(record_flow.upper_bound_hit, hit_upper_bound)
         push!(record_flow.optimization_type, string(optimization_type))
     end
 
@@ -766,7 +770,12 @@ function save_allocation_flows!(
         push!(record_flow.to_node_type, string(NodeType.Basin))
         push!(record_flow.to_node_id, node_id)
         push!(record_flow.subnetwork_id, subnetwork_id)
-        push!(record_flow.flow_rate, JuMP.value(basin_forcing[node_id]) * scaling.flow)
+        flow_variable = basin_forcing[node_id]
+        push!(record_flow.flow_rate, JuMP.value(flow_variable) * scaling.flow)
+        hit_lower_bound, hit_upper_bound = get_bounds_hit(flow_variable)
+        # TODO: Express in terms of low storage factor?
+        push!(record_flow.lower_bound_hit, hit_lower_bound)
+        push!(record_flow.upper_bound_hit, hit_upper_bound)
         push!(record_flow.optimization_type, string(optimization_type))
     end
 

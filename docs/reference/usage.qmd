@@ -374,6 +374,8 @@ to_node_id        | Int32    | -
 subnetwork_id     | Int32    | -
 flow_rate         | Float64  | $\text{m}^3/\text{s}$
 optimization_type | String   | -
+upper_bound_hit   | Bool     | -
+lower_bound_hit   | Bool     | -
 
 ::: {.callout-note}
 This file is currently not written when the results format is set to `"netcdf"`.

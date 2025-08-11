@@ -108,9 +108,10 @@ end
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/allocation_training/ribasim.toml")
     @test ispath(toml_path)
-
     config = Ribasim.Config(toml_path; experimental_concentration = false)
-    model = Ribasim.run(config)
+    model = Ribasim.Model(config)
+
+    Ribasim.solve!(model)
     @test success(model)
     allocation_flow_table = DataFrame(Ribasim.allocation_flow_data(model))
     flow_table = DataFrame(Ribasim.flow_data(model))
@@ -139,24 +140,20 @@ end
     @test allocation_flow_table.flow_rate ≈ flow_table.flow_rate rtol = 1e-2
 end
 
-@testitem "allocation training" begin
+@testitem "Output hit bounds" begin
     using DataFrames: DataFrame
-    using Test
-    using Ribasim
 
     toml_path =
-        normpath(@__DIR__, "../../generated_testmodels/allocation_training/ribasim.toml")
+        normpath(@__DIR__, "../../generated_testmodels/allocation_control/ribasim.toml")
     @test ispath(toml_path)
 
-    config = Ribasim.Config(toml_path; experimental_concentration = false)
+    config = Ribasim.Config(toml_path; experimental_allocation = true)
     model = Ribasim.Model(config)
     Ribasim.solve!(model)
-    success(model)
+
     allocation_flow_table = DataFrame(Ribasim.allocation_flow_data(model))
-    flow_table = DataFrame(Ribasim.flow_data(model))
-
     filter!(:link_id => ==(1), allocation_flow_table)
-    filter!(:link_id => ==(1), flow_table)
+    flow_is_bounded = allocation_flow_table.flow_rate .>= 9.0
 
-    @test allocation_flow_table.flow_rate ≈ flow_table.flow_rate rtol = 1e-1
+    @test allocation_flow_table.upper_bound_hit == flow_is_bounded
 end
