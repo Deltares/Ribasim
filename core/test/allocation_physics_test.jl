@@ -171,15 +171,11 @@ end
 
     config = Ribasim.Config(toml_path; experimental_allocation = true)
     model = Ribasim.Model(config)
-
-    pop!(model.integrator.p.p_independent.allocation.allocation_models[1].objectives)
     Ribasim.solve!(model)
 
     allocation_flow_table = DataFrame(Ribasim.allocation_flow_table(model))
     filter!(:link_id => ==(1), allocation_flow_table)
-
-    flow_is_bounded = Vector{Bool}(undef, length(allocation_flow_table.flow_rate))
-    map!(x -> x >= 9.0, flow_is_bounded, allocation_flow_table.flow_rate)
+    flow_is_bounded = allocation_flow_table.flow_rate .>= 9.0
 
     @test allocation_flow_table.bound_flow_rate == flow_is_bounded
 end

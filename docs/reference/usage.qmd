@@ -369,9 +369,10 @@ from_node_id      | Int32    | -
 to_node_type      | String   | -
 to_node_id        | Int32    | -
 subnetwork_id     | Int32    | -
-priority          | Int32    | -
 flow_rate         | Float64  | $\text{m}^3/\text{s}$
 optimization_type | String   | -
+upper_bound_hit   | Bool     | -
+lower_bound_hit   | Bool     | -
 
 ## Allocation feasibility analysis - `allocation_analysis_feasibility.log`
 

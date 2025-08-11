@@ -683,12 +683,6 @@ function save_demands_and_allocations!(
     return nothing
 end
 
-function get_all_hit_bounds!(allocation_model::AllocationModel)
-    (; problem, subnetwork_id) = allocation_model
-    flow = problem[:flow]
-    return nothing
-end
-
 # After all goals have been optimized for, save
 # the resulting flows for output
 function save_allocation_flows!(
@@ -717,10 +711,8 @@ function save_allocation_flows!(
         push!(record_flow.subnetwork_id, subnetwork_id)
         flow_value = get_flow_value(allocation_model, link)
         push!(record_flow.flow_rate, flow_value)
-        bound_hit =
-            flow_value == flow_capacity_lower_bound(link, p_independent) ||
-            flow_value == flow_capacity_upper_bound(link, p_independent)
-        push!(record_flow.bound_flow_rate, bound_hit)
+        push!(record_flow.lower_bound_hit, flow_value ≤ JuMP.lower_bound(flow[link]))
+        push!(record_flow.upper_bound_hit, flow_value ≥ JuMP.upper_bound(flow[link]))
         push!(record_flow.optimization_type, string(optimization_type))
 
         if bound_hit
@@ -738,7 +730,14 @@ function save_allocation_flows!(
         push!(record_flow.to_node_id, node_id)
         push!(record_flow.subnetwork_id, subnetwork_id)
         push!(record_flow.flow_rate, JuMP.value(basin_forcing[node_id]) * scaling.flow)
-        push!(record_flow.bound_flow_rate, false)
+        push!(
+            record_flow.lower_bound_hit,
+            flow_value ≤ JuMP.lower_bound(basin_forcing[link]),
+        )
+        push!(
+            record_flow.upper_bound_hit,
+            flow_value ≥ JuMP.upper_bound(basin_forcing[link]),
+        )
         push!(record_flow.optimization_type, string(optimization_type))
     end
 

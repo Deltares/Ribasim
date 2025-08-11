@@ -274,7 +274,8 @@ end
     subnetwork_id::Vector{Int32} = []
     flow_rate::Vector{Float64} = []
     optimization_type::Vector{String} = []
-    bound_flow_rate::Vector{Bool} = []
+    upper_bound_hit::Vector{Bool} = []
+    lower_bound_hit::Vector{Bool} = []
 end
 
 @kwdef struct AllocationControlRecord
