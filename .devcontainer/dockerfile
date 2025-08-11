@@ -1,0 +1,8 @@
+FROM julia:latest
+ARG PIXI_VERSION=v0.49.0
+
+RUN curl -fsSL https://pixi.sh/install.sh | bash -s -- ${PIXI_VERSION}
+ENV PATH="/root/.pixi/bin:${PATH}"
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt-get install -y git

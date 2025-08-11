@@ -306,10 +306,10 @@ end
 
     with_logger(logger) do
         node_id = [NodeID(:UserDemand, 1, 1)]
-        demand_itp =
+        demand_interpolation =
             [[LinearInterpolation([-5.0, -5.0], [-1.8, 1.8]; extrapolation = Constant)]]
         demand_priorities = Int32[1]
-        @test !valid_demand(node_id, demand_itp, demand_priorities)
+        @test !valid_demand(node_id, demand_interpolation, demand_priorities)
     end
 
     @test length(logger.logs) == 1

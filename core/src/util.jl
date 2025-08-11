@@ -900,9 +900,9 @@ function isoutofdomain(u, p, t)
 end
 
 function get_demand(user_demand, id, demand_priority_idx, t)::Float64
-    (; demand_from_timeseries, demand_itp, demand) = user_demand
+    (; demand_from_timeseries, demand_interpolation, demand) = user_demand
     if demand_from_timeseries[id.idx]
-        demand_itp[id.idx][demand_priority_idx](t)
+        demand_interpolation[id.idx][demand_priority_idx](t)
     else
         demand[id.idx, demand_priority_idx]
     end
@@ -1003,9 +1003,10 @@ function get_timeseries_tstops(
     # only one timeseries is used as all timeseries use the same timesteps
     get_timeseries_tstops!(tstops, t_end, basin.forcing.precipitation)
     get_timeseries_tstops!(tstops, t_end, flow_boundary.flow_rate)
-    get_timeseries_tstops!(tstops, t_end, flow_demand.demand_itp)
     get_timeseries_tstops!(tstops, t_end, level_boundary.level)
+    get_timeseries_tstops!.(Ref(tstops), t_end, flow_demand.demand_interpolation)
     get_timeseries_tstops!.(Ref(tstops), t_end, level_demand.min_level)
+    get_timeseries_tstops!.(Ref(tstops), t_end, level_demand.max_level)
     get_timeseries_tstops!(tstops, t_end, pid_control.target)
     get_timeseries_tstops!(
         tstops,
@@ -1013,7 +1014,7 @@ function get_timeseries_tstops(
         tabulated_rating_curve.current_interpolation_index,
     )
     get_timeseries_tstops!(tstops, t_end, user_demand.return_factor)
-    for row in user_demand.demand_itp
+    for row in user_demand.demand_interpolation
         get_timeseries_tstops!(tstops, t_end, row)
     end
     for compound_variables in discrete_control.compound_variables

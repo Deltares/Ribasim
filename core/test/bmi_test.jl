@@ -30,8 +30,8 @@ end
     import BasicModelInterface as BMI
     using SciMLBase: successful_retcode
 
-    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
-    dt = 10.0
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/trivial/ribasim.toml")
+    dt = 1.0
     config = Ribasim.Config(toml_path; solver_algorithm = "ImplicitEuler", solver_dt = dt)
     @test config.solver.algorithm == "ImplicitEuler"
     @test config.solver.dt === dt
@@ -100,7 +100,7 @@ end
     demand = BMI.get_value_ptr(model, "user_demand.demand")
     inflow = BMI.get_value_ptr(model, "user_demand.cumulative_inflow")
     # One year in seconds
-    year = model.integrator.p.p_independent.user_demand.demand_itp[2][1].t[2]
+    year = model.integrator.p.p_independent.user_demand.demand_interpolation[2][1].t[2]
     demand_start = 1e-3
     slope = 1e-3 / year
     day = 86400.0

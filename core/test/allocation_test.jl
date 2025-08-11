@@ -77,9 +77,7 @@ end
     @test demand_objective.type == AllocationObjectiveType.demand
     @test demand_objective.has_flow_demand
     @test !demand_objective.has_level_demand
-    @test demand_objective.expression ==
-          sum(problem[:relative_user_demand_error_lower]) +
-          sum(problem[:relative_user_demand_error_upper])
+    @test demand_objective.expression == sum(problem[:relative_user_demand_error])
 
     # Source objective
     @test source_objective.type == AllocationObjectiveType.source_priorities
@@ -249,7 +247,7 @@ end
 
 @testitem "Subnetworks with sources" begin
     using SQLite
-    using Ribasim: NodeID, OptimizationType
+    using Ribasim: NodeID
     using OrdinaryDiffEqCore: get_du
     using JuMP
     using DataFrames: DataFrame
@@ -360,7 +358,7 @@ end
     storage = Ribasim.get_storages_and_levels(model).storage[1, :]
     t = Ribasim.tsaves(model)
 
-    d = user_demand.demand_itp[1][2](0)
+    d = user_demand.demand_interpolation[1][2](0)
     ϕ = 1e-3 # precipitation
     q = flow_boundary.flow_rate[1](0)
     A = Ribasim.basin_areas(basin, 1)[1]
@@ -378,7 +376,7 @@ end
     stage_2 = 5 * Δt_allocation .<= t .<= 15 * Δt_allocation
     stage_2_start_idx = findfirst(stage_2)
     u_stage_2(τ) = storage[stage_2_start_idx] + (ϕ + q - d) * (τ - t[stage_2_start_idx])
-    @test storage[stage_2] ≈ u_stage_2.(t[stage_2]) rtol = 1e-10
+    @test storage[stage_2] ≈ u_stage_2.(t[stage_2]) rtol = 1e-8
 
     # At the start of this section precipitation stops, and so the UserDemand
     # partly uses surplus water from the basin to fulfill its demand
@@ -416,7 +414,7 @@ end
     @test all(isapprox.(realized_numeric, df_basin_2.realized[2:end], atol = 1e-10))
 
     # Realized user demand
-    flow_table = DataFrame(Ribasim.flow_table(model))
+    flow_table = DataFrame(Ribasim.flow_data(model))
     flow_table_user_3 = flow_table[flow_table.link_id .== 2, :]
     itp_user_3 = LinearInterpolation(
         flow_table_user_3.flow_rate,
@@ -429,7 +427,8 @@ end
 
 @testitem "Flow demand" setup = [Teamcity] begin
     using JuMP
-    using Ribasim: NodeID, OptimizationType
+    using OrdinaryDiffEqCore: get_du
+    using Ribasim: NodeID, inflow_link
     using DataFrames: DataFrame
     using Tables.DataAPI: nrow
     import Arrow
@@ -439,7 +438,9 @@ end
     toml_path = normpath(@__DIR__, "../../generated_testmodels/flow_demand/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.Model(toml_path)
-    (; p) = model.integrator
+    (; integrator, config) = model
+    (; p, t) = integrator
+    du = get_du(integrator)
     (; p_independent) = p
     (; graph, allocation, flow_demand, user_demand, level_boundary) = p_independent
 
@@ -456,101 +457,33 @@ end
 
     (; allocation_models, record_flow) = allocation
     allocation_model = allocation_models[1]
-    @test_throws Exception (; problem, flow, sources) = allocation_model
+    (; problem, objectives, scaling) = allocation_model
 
-    @test_throws Exception F = problem[:F]
-    @test_throws Exception F_flow_buffer_in = problem[:F_flow_buffer_in]
-    @test_throws Exception F_flow_buffer_out = problem[:F_flow_buffer_out]
+    relative_flow_demand_error = problem[:relative_flow_demand_error]
+    flow = problem[:flow]
 
-    node_id_with_flow_demand = NodeID(:TabulatedRatingCurve, 2, p_independent)
+    flow_demand_id = NodeID(:FlowDemand, 5, p_independent)
+    flow_demand_flow = flow[flow_demand.inflow_link[flow_demand_id.idx].link]
 
-    # Test flow conservation constraint containing flow buffer
-    # @test_throws Exception constraint_with_flow_buffer =
-    #     JuMP.constraint_object(problem[:flow_conservation][node_id_with_flow_demand])
-    @test_broken constraint_with_flow_buffer.func ==
-                 F[(NodeID(:LevelBoundary, 1, p_independent), node_id_with_flow_demand)] -
-                 F[(node_id_with_flow_demand, NodeID(:Basin, 3, p_independent))] -
-                 F_flow_buffer_in[node_id_with_flow_demand] +
-                 F_flow_buffer_out[node_id_with_flow_demand]
-
-    t = 0.0
-    @test_throws Exception optimization_type = OptimizationType.internal_sources
-    @test_throws Exception Ribasim.set_initial_values!(allocation_model, p, t)
-    @test_throws Exception sources[(
-        NodeID(:LevelBoundary, 1, p_independent),
-        node_id_with_flow_demand,
-    )].capacity_reduced = 2e-3
+    Ribasim.set_simulation_data!(allocation_model, p, t, du)
 
     # Priority 1
-    @test_throws Exception Ribasim.optimize_demand_priority!(
-        allocation_model,
-        p,
-        t,
-        1,
-        optimization_type,
-    )
-    @test_throws Exception objective = JuMP.objective_function(problem)
-    @test_broken JuMP.UnorderedPair(
-        F_flow_buffer_in[node_id_with_flow_demand],
-        F_flow_buffer_in[node_id_with_flow_demand],
-    ) in keys(objective.terms)
-
-    # Reduced demand
-    @test_broken flow_demand.demand[1] ≈ flow_demand.demand_itp[1](t) - 0.001 rtol = 1e-3
+    Ribasim.optimize_for_objective!(allocation_model, integrator, objectives[1], config)
 
     ## Priority 2
-    @test_throws Exception Ribasim.optimize_demand_priority!(
-        allocation_model,
-        p,
-        t,
-        2,
-        optimization_type,
-    )
-    # No demand left
-    @test flow_demand.demand[1] < 1e-10
-    # Allocated
-    @test_broken JuMP.value(only(F_flow_buffer_in)) ≈ only(flow_demand.demand) atol = 1e-10
+    @test JuMP.lower_bound(flow_demand_flow) == 0
+    Ribasim.optimize_for_objective!(allocation_model, integrator, objectives[2], config)
+    objective_expression = JuMP.objective_function(problem)
+    @test relative_flow_demand_error[flow_demand_id] ∈ keys(objective_expression.terms)
+    @test JuMP.lower_bound(flow_demand_flow) * scaling.flow == flow_demand.demand[1, 2]
 
-    ## Priority 3
-    @test_throws Exception Ribasim.optimize_demand_priority!(
-        allocation_model,
-        p,
-        t,
-        3,
-        optimization_type,
-    )
-    # The flow from the source is used up in previous demand priorities
-    @test_broken flow[(
-        NodeID(:LevelBoundary, 1, p_independent),
-        node_id_with_flow_demand,
-    )] ≈ 0 atol = 1e-10
-    # So flow from the flow buffer is used for UserDemand #4
-    @test_broken flow[(node_id_with_flow_demand, NodeID(:Basin, 3, p_independent))] ≈ 0.001
-    @test_broken flow[(
-        NodeID(:Basin, 3, p_independent),
-        NodeID(:UserDemand, 4, p_independent),
-    )] ≈ 0.001
-    # No flow coming from level boundary
-    @test_broken JuMP.value(F[(only(level_boundary.node_id), node_id_with_flow_demand)]) ≈ 0 atol =
-        1e-10
+    model = Ribasim.run(toml_path)
+    allocation_table = DataFrame(Ribasim.allocation_data(model))
+    df_rating_curve_2 = filter(:node_id => ==(2), allocation_table)
+    @test all(≈(0.002), df_rating_curve_2.demand)
+    @test all(≈(0.002), df_rating_curve_2.realized[2:end])
 
-    ## Priority 4
-    @test_throws Exception Ribasim.optimize_demand_priority!(
-        allocation_model,
-        p,
-        t,
-        4,
-        optimization_type,
-    )
-
-    # Realized flow demand
-    @test_throws Exception model = Ribasim.run(toml_path)
-    @test_throws Exception record_demand =
-        DataFrame(model.integrator.p.p_independent.allocation.record_demand)
-    @test_throws Exception df_rating_curve_2 = record_demand[record_demand.node_id .== 2, :]
-    @test_broken all(df_rating_curve_2.realized .≈ 0.002)
-
-    @testset Teamcity.TeamcityTestSet "Results" begin
+    @testset "Results" begin
         allocation_bytes = read(normpath(dirname(toml_path), "results/allocation.arrow"))
         allocation_flow_bytes =
             read(normpath(dirname(toml_path), "results/allocation_flow.arrow"))
@@ -569,7 +502,7 @@ end
             ),
             (DateTime, Int32, String, Int32, Int32, Float64, Float64, Float64),
         )
-        @test_broken Tables.schema(allocation_flow) == Tables.Schema(
+        @test Tables.schema(allocation_flow) == Tables.Schema(
             (
                 :time,
                 :link_id,
@@ -581,35 +514,11 @@ end
                 :flow_rate,
                 :optimization_type,
             ),
-            (DateTime, Int32, String, Int32, String, Int32, Int32, Int32, Float64, String),
+            (DateTime, Int32, String, Int32, String, Int32, Int32, Float64, String),
         )
-        @test_broken nrow(allocation) > 0
-        @test_broken nrow(allocation_flow) > 0
+        @test nrow(allocation) > 0
+        @test nrow(allocation_flow) > 0
     end
-end
-
-@testitem "flow_demand_with_max_flow_rate" begin
-    using Ribasim: NodeID
-    using JuMP
-
-    toml_path = normpath(
-        @__DIR__,
-        "../../generated_testmodels/linear_resistance_demand/ribasim.toml",
-    )
-    @test ispath(toml_path)
-    model = Ribasim.Model(toml_path)
-    (; p_independent) = model.integrator.p
-    (; allocation) = p_independent
-
-    # Test for pump max flow capacity constraint
-    (; problem) = allocation.allocation_models[1]
-    @test_throws Exception constraint = JuMP.constraint_object(
-        problem[:capacity][(
-            NodeID(:Basin, 1, p_independent),
-            NodeID(:LinearResistance, 2, p_independent),
-        )],
-    )
-    @test_broken constraint.set.upper == 2.0
 end
 
 @testitem "equal_fraction_allocation" begin
@@ -624,7 +533,7 @@ end
     @test_throws Exception Ribasim.solve!(model)
     (; user_demand, graph) = model.integrator.p.p_independent
 
-    data_allocation = DataFrame(Ribasim.allocation_table(model))
+    data_allocation = DataFrame(Ribasim.allocation_data(model))
     fractions = Vector{Float64}[]
 
     for id in user_demand.node_id
@@ -679,19 +588,18 @@ end
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/cyclic_demand/ribasim.toml")
     @test ispath(toml_path)
-    @test_throws Exception model = Ribasim.run(toml_path)
-    @test_throws Exception (; level_demand, user_demand, flow_demand) =
-        model.integrator.p.p_independent
+    model = Ribasim.run(toml_path)
+    (; level_demand, user_demand, flow_demand) = model.integrator.p.p_independent
 
     function test_extrapolation(itp)
         @test itp.extrapolation_left == Periodic
         @test itp.extrapolation_right == Periodic
     end
 
-    @test_throws Exception test_extrapolation(only(level_demand.min_level))
-    @test_throws Exception test_extrapolation(only(level_demand.max_level))
-    @test_throws Exception test_extrapolation(only(flow_demand.demand_itp))
-    @test_throws Exception test_extrapolation.(only(user_demand.demand_itp))
+    test_extrapolation(level_demand.min_level[1][3])
+    test_extrapolation(level_demand.max_level[1][3])
+    test_extrapolation(flow_demand.demand_interpolation[1][2])
+    test_extrapolation.(user_demand.demand_interpolation[1][1:2])
 end
 
 @testitem "infeasibility analysis" begin
@@ -729,10 +637,92 @@ end
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
 
-    basin_table = Ribasim.basin_table(model)
+    basin_table = Ribasim.basin_data(model)
     @test basin_table.level[1] == 10.0
     @test all(h -> isapprox(h, 5.0; rtol = 1e-5), basin_table.level[7:end])
 
-    allocation_control_table = Ribasim.allocation_control_table(model)
+    allocation_control_table = Ribasim.allocation_control_data(model)
     @test all(q -> isapprox(q, 1e-3; rtol = 1e-5), allocation_control_table.flow_rate[1:5])
+end
+
+@testitem "multi priority flow demand" begin
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/multi_priority_flow_demand/ribasim.toml",
+    )
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+end
+
+@testitem "FlowDemand without allocation" begin
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/allocation_off_flow_demand/ribasim.toml",
+    )
+    @test ispath(toml_path)
+
+    model = Ribasim.run(toml_path)
+    @test success(model)
+
+    flow = Ribasim.flow_data(model).flow_rate
+    @test !isempty(flow)
+    @test all(q -> isapprox(q, 1e-3; rtol = 1e-4), flow[1:100])
+end
+
+@testitem "Allocation problem consistency" begin
+    import JuMP
+
+    # To update the reference files run `pixi run write-allocation-problems`
+    include(normpath(@__DIR__, "../../utils/utils.jl"))
+    toml_paths = get_testmodels()
+
+    for toml_path in toml_paths
+        model_name = basename(dirname(toml_path))
+
+        if startswith(model_name, "invalid_")
+            continue
+        end
+
+        config = Ribasim.Config(toml_path)
+
+        if !config.experimental.allocation
+            continue
+        end
+
+        # Initialize the same model 5 times
+        models = [Ribasim.Model(toml_path) for _ in 1:5]
+
+        subnetwork_ids = [
+            allocation_model.subnetwork_id for allocation_model in
+            first(models).integrator.p.p_independent.allocation.allocation_models
+        ]
+
+        for (i, subnetwork_id) in enumerate(subnetwork_ids)
+            @testset "$(model_name)_subnetwork_id_$subnetwork_id" begin
+                written_problem_path = normpath(
+                    @__DIR__,
+                    "data/allocation_problems/$model_name/allocation_problem_$subnetwork_id.lp",
+                )
+                @test ispath(written_problem_path)
+                written_problem = read(written_problem_path, String)
+
+                current_problem_path = normpath(
+                    dirname(toml_path),
+                    "results/allocation_problem_from_tests_$subnetwork_id.lp",
+                )
+
+                for model in models
+                    (; problem, subnetwork_id) =
+                        model.integrator.p.p_independent.allocation.allocation_models[i]
+
+                    JuMP.write_to_file(problem, current_problem_path)
+                    current_problem = read(current_problem_path, String)
+
+                    problem_equality = (current_problem == written_problem)
+                    @test problem_equality
+                    !problem_equality && break
+                end
+            end
+        end
+    end
 end

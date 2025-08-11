@@ -8,7 +8,7 @@
     model = Ribasim.run(toml_path)
     @test success(model)
 
-    flow = DataFrame(Ribasim.flow_table(model))
+    flow = DataFrame(Ribasim.flow_data(model))
     # only from March to September the FlowBoundary varies
     is_summer(t::DateTime) = 3 <= month(t) < 10
     flow_1_to_2 = filter(
@@ -32,7 +32,7 @@ end
     model = Ribasim.run(toml_path)
     (; basin) = model.integrator.p.p_independent
     n_basin = length(basin.node_id)
-    basin_table = DataFrame(Ribasim.basin_table(model))
+    basin_table = DataFrame(Ribasim.basin_data(model))
 
     seconds = Ribasim.seconds_since.(unique(basin_table.time), basin_table.time[1])
 

@@ -4,7 +4,7 @@ version = "2025.4.0"
 description = "Water resources modeling"
 authors = ["Deltares and contributors <ribasim.info@deltares.nl>"]
 channels = ["conda-forge"]
-platforms = ["win-64", "linux-64", "osx-arm64"]
+platforms = ["win-64", "linux-64", "osx-arm64", "linux-aarch64"]
 readme = "README.md"
 license = "MIT"
 license-file = "LICENSE"
@@ -44,9 +44,10 @@ quartodoc-build = { cmd = "quartodoc build && rm objects.json", cwd = "docs", in
 ], outputs = [
     "docs/reference/python",
 ] }
-quarto-preview = { cmd = "quarto preview docs", depends-on = [
+quarto-preview = { cmd = "PYTHON_JULIAPKG_PROJECT=$PIXI_PROJECT_ROOT quarto preview docs", depends-on = [
     "quartodoc-build",
     "generate-testmodels",
+    "initialize-julia",
 ] }
 quarto-check = { cmd = "quarto check all", depends-on = ["quartodoc-build"] }
 quarto-render = { cmd = "PYTHON_JULIAPKG_PROJECT=$PIXI_PROJECT_ROOT quarto render docs", depends-on = [
@@ -173,6 +174,10 @@ ribasim-core-testmodels = { cmd = "julia --project --check-bounds=yes --threads=
     "generate-testmodels",
     "initialize-julia",
 ] }
+write-allocation-problems = { cmd = "julia --project --check-bounds=yes --threads=4 utils/write_allocation_problems.jl", depends-on = [
+    "generate-testmodels",
+    "initialize-julia",
+] }
 migrate-model = { cmd = "python utils/migrate_model.py {{ input_toml }} {{ output_toml }}", args = [
     "input_toml",
     "output_toml",
@@ -208,6 +213,13 @@ args = [":"]
 [[target.osx.tasks.generate-sbom-ribasim-python.depends-on]]
 task = "generate-sbom-ribasim-python-noarch"
 args = [":"]
+
+[target.linux-aarch64.tasks]
+# Override docs task to be a no-op on ARM64 Linux where Quarto doesn't work
+docs = { cmd = "echo 'Skipping docs build on ARM64 Linux (Quarto not supported)'" }
+quarto-preview = { cmd = "echo 'Skipping quarto preview on ARM64 Linux (Quarto not supported)'" }
+quarto-check = { cmd = "echo 'Skipping quarto check on ARM64 Linux (Quarto not supported)'" }
+quarto-render = { cmd = "echo 'Skipping quarto render on ARM64 Linux (Quarto not supported)'" }
 
 [target.win.activation]
 # Workaround a conflict between conda openssl activation and julia < 1.12
@@ -246,7 +258,6 @@ pytest-xdist = "*"
 python = ">=3.11"
 qgis = "3.40.*"
 qgis-plugin-manager = "*"
-quarto = "*"
 quartodoc = "*"
 ruff = "*"
 rust = "*"
@@ -275,6 +286,13 @@ python = "3.11.*"
 
 [target.win-64.dependencies]
 rcedit = "*"
+quarto = "*"
+
+[target.linux-64.dependencies]
+quarto = "*"
+
+[target.osx-arm64.dependencies]
+quarto = "*"
 
 [environments]
 default = ["py312"]
