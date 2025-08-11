@@ -710,14 +710,11 @@ function save_allocation_flows!(
         push!(record_flow.to_node_id, Int32(id_to))
         push!(record_flow.subnetwork_id, subnetwork_id)
         flow_value = get_flow_value(allocation_model, link)
+        flow_variable = flow[link]
         push!(record_flow.flow_rate, flow_value)
-        push!(record_flow.lower_bound_hit, flow_value ≤ JuMP.lower_bound(flow[link]))
-        push!(record_flow.upper_bound_hit, flow_value ≥ JuMP.upper_bound(flow[link]))
+        push!(record_flow.lower_bound_hit, flow_value ≤ JuMP.lower_bound(flow_variable))
+        push!(record_flow.upper_bound_hit, flow_value ≥ JuMP.upper_bound(flow_variable))
         push!(record_flow.optimization_type, string(optimization_type))
-
-        if bound_hit
-            @info "At least 1 flow bound hit at time $t" maxlog = 1
-        end
     end
 
     # Vertical flows
