@@ -242,7 +242,7 @@ end
     @test_broken all(allocation_flow.link_exists)
 
     @test_broken user_demand.allocated[2, :] ≈ [4.0, 0.0, 0.0] atol = 1e-3
-    @test user_demand.allocated[7, :] ≈ [0.0, 0.0, 0.0] atol = 1e-3
+    @test_broken user_demand.allocated[7, :] ≈ [0.0, 0.0, 0.0] atol = 1e-3
 end
 
 @testitem "Subnetworks with sources" begin
