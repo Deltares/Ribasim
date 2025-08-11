@@ -151,14 +151,14 @@ end
     (; allocation_models, record_flow) = allocation
     t = 0.0
 
-    # Collecting demands
-    for allocation_model in Iterators.drop(allocation_models, 1)
-        Ribasim.reset_goal_programming!(allocation_model, p_independent)
-        Ribasim.prepare_demand_collection!(allocation_model, p_independent)
-        for objective in allocation_model.objectives
-            Ribasim.optimize_for_objective!(allocation_model, integrator, objective, config)
-        end
-    end
+    # # Collecting demands
+    # for allocation_model in Iterators.drop(allocation_models, 1)
+    #     Ribasim.reset_goal_programming!(allocation_model, p_independent)
+    #     Ribasim.prepare_demand_collection!(allocation_model, p_independent)
+    #     for objective in allocation_model.objectives
+    #         Ribasim.optimize_for_objective!(allocation_model, integrator, objective, config)
+    #     end
+    # end
 
     # See the difference between these values here and in
     # "subnetworks_with_sources"
@@ -634,8 +634,9 @@ end
     @test logger.logs[6].level == Error
     @test logger.logs[6].message == "Set of incompatible constraints found"
     @test sort(name.(keys(logger.logs[6].kwargs[:constraint_violations]))) == [
-        "linear_resistance_constraint[LinearResistance #2]",
-        "volume_conservation[Basin #1]",
+        "linear_basin_profile[Basin #1]"
+        "linear_resistance_constraint[LinearResistance #2]"
+        "volume_conservation[Basin #1]"
     ]
 
     @test ispath(

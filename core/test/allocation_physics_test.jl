@@ -56,8 +56,7 @@ end
     filter!(:link_id => ==(1), allocation_flow_table)
     filter!(:link_id => ==(1), flow_table)
 
-    # TODO: See issue #2525. This one is skipped due to instability caused by the reduction factors
-    @test allocation_flow_table.flow_rate ≈ flow_table.flow_rate rtol = 1e-1 skip = true
+    @test all(isapprox.(allocation_flow_table.flow_rate, flow_table.flow_rate; atol = 8e-5))
 end
 
 @testitem "Manning Resistance" begin

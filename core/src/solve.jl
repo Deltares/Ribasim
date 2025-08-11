@@ -386,7 +386,7 @@ function formulate_flow!(
 )::Nothing
     (; p_mutable) = p
     all_nodes_active = p_mutable.all_nodes_active
-    (; node_id, active, resistance, max_flow_rate) = linear_resistance
+    (; node_id, active) = linear_resistance
 
     for id in node_id
         inflow_link = linear_resistance.inflow_link[id.idx]
@@ -444,10 +444,10 @@ function tabulated_rating_curve_flow(
     interpolation_index = current_interpolation_index[node_id.idx](t)
     qh = interpolations[interpolation_index]
     q = factor * qh(h_a)
-    # TODO: #2525 investigate: these reduction factors give instability in the linearisation in allocation
-    # q *= reduction_factor(Δh, 0.02)
-    # max_downstream_level = tabulated_rating_curve.max_downstream_level[node_id.idx]
-    # q *= reduction_factor(max_downstream_level - h_b, 0.02)
+    q *= reduction_factor(Δh, 0.02)
+    max_downstream_level = tabulated_rating_curve.max_downstream_level[node_id.idx]
+    q *= reduction_factor(max_downstream_level - h_b, 0.02)
+    return q
 end
 
 function formulate_flow!(
@@ -470,10 +470,6 @@ function formulate_flow!(
             h_a = get_level(p, inflow_id, t)
             h_b = get_level(p, outflow_id, t)
             q = tabulated_rating_curve_flow(tabulated_rating_curve, id, h_a, h_b, p, t)
-            # TODO: #2525 the reduction factor should be moved into the function tabulated_rating_curve_flow
-            q *= reduction_factor(h_a - h_b, 0.02)
-            max_downstream_level = tabulated_rating_curve.max_downstream_level[id.idx]
-            q *= reduction_factor(max_downstream_level - h_b, 0.02)
         else
             q = 0.0
         end

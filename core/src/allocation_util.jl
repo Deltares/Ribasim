@@ -81,7 +81,7 @@ function get_level(problem::JuMP.Model, node_id::NodeID)
     if node_id.type == NodeType.Basin
         problem[:basin_level][node_id]
     elseif node_id.type == NodeType.LevelBoundary
-        problem[:level_boundary_level][node_id]
+        problem[:boundary_level][node_id]
     elseif node_id.type == NodeType.Terminal
         JuMP.AffExpr()
     else
