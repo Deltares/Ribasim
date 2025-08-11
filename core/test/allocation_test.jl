@@ -513,8 +513,22 @@ end
                 :subnetwork_id,
                 :flow_rate,
                 :optimization_type,
+                :lower_bound_hit,
+                :upper_bound_hit,
             ),
-            (DateTime, Int32, String, Int32, String, Int32, Int32, Float64, String),
+            (
+                DateTime,
+                Int32,
+                String,
+                Int32,
+                String,
+                Int32,
+                Int32,
+                Float64,
+                String,
+                Bool,
+                Bool,
+            ),
         )
         @test nrow(allocation) > 0
         @test nrow(allocation_flow) > 0
