@@ -1478,7 +1478,7 @@ def allocation_control_model() -> Model:
         Node(3, Point(2, 0), subnetwork_id=1),
         [
             basin.State(level=[1.0]),
-            basin.Profile(level=[0.0, 1.0], area=[100.0, 100.0]),
+            basin.Profile(level=[0.0, 100.0], area=[100.0, 100.0]),
         ],
     )
 
