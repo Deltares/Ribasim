@@ -429,20 +429,6 @@ function set_control_type!(node::AbstractParameterNode, graph::MetaGraph)::Nothi
     return nothing
 end
 
-function has_external_flow_demand(
-    graph::MetaGraph,
-    node_id::NodeID,
-    node_type::Symbol,
-)::Tuple{Bool, Union{NodeID, Nothing}}
-    control_inneighbors = inneighbor_labels_type(graph, node_id, LinkType.control)
-    for id in control_inneighbors
-        if graph[id].type == node_type
-            return true, id
-        end
-    end
-    return false, nothing
-end
-
 """
 Get the time interval between (flow) saves
 """

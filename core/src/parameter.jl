@@ -191,38 +191,29 @@ const ScalarPCHIPInterpolation = CubicHermiteSpline{
 const IndexLookup =
     ConstantInterpolation{Vector{Int64}, Vector{Float64}, Vector{Float64}, Int64}
 
-@enumx AllocationObjectiveType demand source_priorities
+@enumx AllocationObjectiveType demand_flow demand_storage low_storage_factor source_priorities
 
 """
-Store information about the allocation objectives (goals)
-
-expression: The objective expression, a linear combination of error terms
-type: The allocation objective type (one of physics, demand, source_priorities)
-demand_priority: If a demand objective, the priority associated with those demands
-demand_priority_idx: The index of the demand priority in the sorted list of all demand priorities in the model
-has_flow_demand: If a demand objective, whether there is a flow demand (UserDemand, FlowDemand, SubnetworkDemand)
-has_level_demand: If a demand objective, whether there is a level demand (LevelDemand)
+TODO: Add docstring
 """
-@kwdef struct AllocationObjectives
-    expression::Vector{JuMP.AffExpr} = []
-    type::Vector{AllocationObjectiveType.T} = []
-    demand_priority::Vector{Int32} = []
-    demand_priority_idx::Vector{Int} = []
-    has_flow_demand::Vector{Bool} = []
-    has_level_demand::Vector{Bool} = []
+@kwdef struct AllocationObjectiveMetadata
+    type::AllocationObjectiveType.T
+    demand_priority::Int32 = 0
+    demand_priority_idx::Int = 0
+    expression_first::JuMP.AffExpr
+    expression_second::JuMP.AffExpr = JuMP.AffExpr()
 end
 
-function repr_allocation_objective(
-    objectives::AllocationObjectives,
-    objective_idx::Integer,
-)::String
-    type = objectives.type[objective_idx]
-    out = "objective of type $type"
-    if type == AllocationObjectiveType.demand
-        demand_priority = objectives.demand_priority[objective_idx]
-        out *= ", demand_priority $demand_priority"
-    end
-    return out
+"""
+The objectives corresponding to a subnetwork along with metadata
+objective_expressions_all: A vector of JuMP.AffExpr to be passed to the optimizer (HiGHS) and
+    optimized for in lexicographic fashion
+objective_metadata: Metadata per objective. Note that there are more objective expressions than objective data
+        instances, because some objective data instances have more than one objective expression.
+"""
+@kwdef struct AllocationObjectives
+    objective_expressions_all::Vector{JuMP.AffExpr} = JuMP.AffExpr[]
+    objective_metadata::Vector{AllocationObjectiveMetadata} = AllocationObjectiveMetadata[]
 end
 
 @kwdef mutable struct ScalingFactors
@@ -231,9 +222,30 @@ end
 end
 
 """
+Node ids per relevant node type in a subnetwork, as well as
+connector nodes with a flow demand and Basins with a level demand
+"""
+struct NodeIDsInSubnetwork
+    basin_ids_subnetwork::Vector{NodeID}
+    user_demand_ids_subnetwork::Vector{NodeID}
+    flow_demand_ids_subnetwork::Vector{NodeID}
+    level_demand_ids_subnetwork::Vector{NodeID}
+    flow_boundary_ids_subnetwork::Vector{NodeID}
+    level_boundary_ids_subnetwork::Vector{NodeID}
+    tabulated_rating_curve_ids_subnetwork::Vector{NodeID}
+    linear_resistance_ids_subnetwork::Vector{NodeID}
+    manning_resistance_ids_subnetwork::Vector{NodeID}
+    pump_ids_subnetwork::Vector{NodeID}
+    outlet_ids_subnetwork::Vector{NodeID}
+    basin_ids_subnetwork_with_level_demand::Vector{NodeID}
+    node_ids_subnetwork_with_flow_demand::Vector{NodeID}
+end
+
+"""
 Store information for a subnetwork used for allocation.
 
 subnetwork_id: The ID of this subnetwork
+node_id_in_subnetwork: Per node type a vector of the nodes of that type in the subnetwork
 problem: The JuMP.jl model for solving the allocation problem
 Δt_allocation: The time interval between consecutive allocation solves'
 objectives: The objectives (goals) in the order in which they will be optimized for
@@ -247,6 +259,7 @@ scaling: The flow and storage scaling factors to make the optimization problem m
 """
 @kwdef struct AllocationModel
     subnetwork_id::Int32
+    node_id_in_subnetwork::NodeIDsInSubnetwork
     problem::JuMP.Model
     Δt_allocation::Float64
     objectives::AllocationObjectives = AllocationObjectives()
@@ -523,6 +536,9 @@ Requirements:
     level_prev::Vector{Float64} = zeros(length(node_id))
     # Concentrations
     concentration_data::ConcentrationData = ConcentrationData()
+    # Connected level demand node if applicable
+    level_demand_id::Vector{NodeID} =
+        fill(NodeID(NodeType.LevelDemand, 0, 0), length(node_id))
 end
 
 """
@@ -541,6 +557,7 @@ max_downstream_level: The downstream level above which the TabulatedRatingCurve 
 interpolations: All Q(h) relationships for the nodes over time
 current_interpolation_index: Per node 1 lookup from t to an index in `interpolations`
 control_mapping: dictionary from (node_id, control_state) to Q(h) and/or active state
+flow_demand_id: connected flow demand node if applicable
 """
 @kwdef struct TabulatedRatingCurve <: AbstractParameterNode
     node_id::Vector{NodeID}
@@ -552,6 +569,8 @@ control_mapping: dictionary from (node_id, control_state) to Q(h) and/or active 
     current_interpolation_index::Vector{IndexLookup} = IndexLookup[]
     control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate} =
         Dict{Tuple{NodeID, String}, ControlStateUpdate}()
+    flow_demand_id::Vector{NodeID} =
+        fill(NodeID(NodeType.FlowDemand, 0, 0), length(node_id))
 end
 
 """
@@ -564,6 +583,7 @@ active: whether this node is active and thus contributes flows
 resistance: the resistance to flow; `Q_unlimited = Δh/resistance`
 max_flow_rate: the maximum flow rate allowed through the node; `Q = clamp(Q_unlimited, -max_flow_rate, max_flow_rate)`
 control_mapping: dictionary from (node_id, control_state) to resistance and/or active state
+flow_demand_id: connected flow demand node if applicable
 """
 @kwdef struct LinearResistance <: AbstractParameterNode
     node_id::Vector{NodeID}
@@ -574,6 +594,8 @@ control_mapping: dictionary from (node_id, control_state) to resistance and/or a
     max_flow_rate::Vector{Float64} = zeros(length(node_id))
     control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate} =
         Dict{Tuple{NodeID, String}, ControlStateUpdate}()
+    flow_demand_id::Vector{NodeID} =
+        fill(NodeID(NodeType.FlowDemand, 0, 0), length(node_id))
 end
 
 """
@@ -627,6 +649,7 @@ Requirements:
     downstream_bottom::Vector{Float64} = zeros(size(node_id))
     control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate} =
         Dict{Tuple{NodeID, String}, ControlStateUpdate}()
+    flow_demand_id::Vector{NodeID} = fill(NodeID(NodeType.FlowDemand, 0, 0), size(node_id))
 end
 
 """
@@ -677,7 +700,7 @@ max_downstream_level: The downstream level above which the Pump flow goes to zer
 control_mapping: dictionary from (node_id, control_state) to target flow rate
 control_type: one of None, ContinuousControl, PidControl, Allocation
 allocation_controlled: whether this Pump is controlled by allocation
-flow_demand_data: Per pump whether the Pump has a flow demand, and if so what the FlowDemand node is
+flow_demand_id: connected flow demand node if applicable
 """
 @kwdef struct Pump <: AbstractParameterNode
     node_id::Vector{NodeID}
@@ -701,6 +724,8 @@ flow_demand_data: Per pump whether the Pump has a flow demand, and if so what th
     allocation_controlled::Vector{Bool} = fill(false, length(node_id))
     flow_demand_data::Vector{Tuple{Bool, NodeID}} =
         fill((false, NodeID(NodeType.FlowDemand, 0, 0)), length(node_id))
+    flow_demand_id::Vector{NodeID} =
+        fill(NodeID(NodeType.FlowDemand, 0, 0), length(node_id))
 end
 
 """
@@ -718,7 +743,7 @@ max_downstream_level: The downstream level above which the Outlet flow goes to z
 control_mapping: dictionary from (node_id, control_state) to target flow rate
 control_type: one of None, ContinuousControl, PidControl, Allocation
 allocation_controlled: whether this Outlet is controlled by allocation
-flow_demand_data: Per Outlet whether the Outlet has a flow demand, and if so what the FlowDemand node is
+flow_demand_id: connected flow demand node if applicable
 """
 @kwdef struct Outlet <: AbstractParameterNode
     node_id::Vector{NodeID}
@@ -739,8 +764,8 @@ flow_demand_data: Per Outlet whether the Outlet has a flow demand, and if so wha
     control_type::Vector{ContinuousControlType.T} =
         fill(ContinuousControlType.None, length(node_id))
     allocation_controlled::Vector{Bool} = fill(false, length(node_id))
-    flow_demand_data::Vector{Tuple{Bool, NodeID}} =
-        fill((false, NodeID(NodeType.FlowDemand, 0, 0)), length(node_id))
+    flow_demand_id::Vector{NodeID} =
+        fill(NodeID(NodeType.FlowDemand, 0, 0), length(node_id))
 end
 
 """
@@ -982,11 +1007,8 @@ has_demand_priority: boolean matrix stating per LevelDemand node per demand prio
 min_level: The minimum target level per demand priority of the connected basin(s)
 max_level: The maximum target level per demand priority of the connected basin(s)
 basins_with_demand: The node IDs of the Basins whose target level is given by a particular LevelDemand node
-storage_prev: The storage in the Basin with the level demand the previous time the allocation algorithm was run
 target_level_min: The current minimum target level per LevelDemand node per demand priority (node_idx, demand_priority_idx)
 target_level_max: The current maximum target level per LevelDemand node per demand priority (node_idx, demand_priority_idx)
-target_storage_min: The storage associated with the current min level per connected Basin per demand priority
-target_storage_max: The storage associated with the current max level per connected Basin per demand priority
 storage_demand: The storage change each Basin needs to reach the [min, max] window per demand priority
 storage_allocated: The storage allocated to each Basin per demand priority
 """
@@ -1000,13 +1022,7 @@ storage_allocated: The storage allocated to each Basin per demand priority
     max_level::Vector{Vector{ScalarLinearInterpolation}} =
         trivial_linear_itp_fill(demand_priorities, node_id; val = NaN)
     basins_with_demand::Vector{Vector{NodeID}} = []
-    storage_prev::Dict{NodeID, Float64} = Dict()
-    # Target levels per LevelDemand node
-    target_level_min::Matrix{Float64} = zeros(length(node_id), length(demand_priorities))
-    target_level_max::Matrix{Float64} = zeros(length(node_id), length(demand_priorities))
     # Target storages, demand and allocated per Basin with LevelDemand per demand priority
-    target_storage_min::Dict{NodeID, Vector{Float64}} = Dict()
-    target_storage_max::Dict{NodeID, Vector{Float64}} = Dict()
     storage_demand::Dict{NodeID, Vector{Float64}} = Dict()
     storage_allocated::Dict{NodeID, Vector{Float64}} = Dict()
 end

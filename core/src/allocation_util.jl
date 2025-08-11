@@ -2,13 +2,6 @@ const MAX_ABS_FLOW = 5e5 # m/s
 
 is_active(allocation::Allocation) = !isempty(allocation.allocation_models)
 
-get_ids_in_subnetwork(graph::MetaGraph, node_type::NodeType.T, subnetwork_id::Int32) =
-    sort!(
-        collect(
-            filter(node_id -> node_id.type == node_type, graph[].node_ids[subnetwork_id]),
-        ),
-    )
-
 function variable_sum(variables)
     if isempty(variables)
         JuMP.AffExpr()
@@ -225,18 +218,6 @@ function get_low_storage_factor(problem::JuMP.Model, node_id::NodeID)
     end
 end
 
-function update_storage_prev!(p::Parameters)::Nothing
-    (; p_independent, state_time_dependent_cache) = p
-    (; current_storage) = state_time_dependent_cache
-    (; storage_prev) = p_independent.level_demand
-
-    for node_id in keys(storage_prev)
-        storage_prev[node_id] = current_storage[node_id.idx]
-    end
-
-    return nothing
-end
-
 function get_terms(constraint)
     (; func) = JuMP.constraint_object(constraint)
     return if hasproperty(func, :terms)
@@ -420,3 +401,106 @@ end
 
 get_Δt_allocation(allocation::Allocation) =
     first(allocation.allocation_models).Δt_allocation
+
+# Custom iterator to iterate over the demand priorities for which a particular node has a demand
+struct DemandPriorityIterator{V}
+    node_id::NodeID
+    demand_priorities_all::Vector{Int32}
+    has_demand_priority::V
+    include_0::Bool
+end
+
+function DemandPriorityIterator(
+    node_id::NodeID,
+    p_independent::ParametersIndependent;
+    include_0::Bool = false,
+)
+    (; user_demand, flow_demand, level_demand) = p_independent
+
+    external_demand_id = get_external_demand_id(p_independent, node_id)
+
+    has_demand_priority = if node_id.type == NodeType.UserDemand
+        view(user_demand.has_demand_priority, node_id.idx, :)
+    elseif !isnothing(external_demand_id) && external_demand_id.type == NodeType.FlowDemand
+        view(flow_demand.has_demand_priority, external_demand_id.idx, :)
+    elseif !isnothing(external_demand_id) && external_demand_id.type == NodeType.LevelDemand
+        view(level_demand.has_demand_priority, external_demand_id.idx, :)
+    else
+        error("Cannot iterate over the demand priorities of $node_id.")
+    end
+
+    return DemandPriorityIterator(
+        node_id,
+        p_independent.allocation.demand_priorities_all,
+        has_demand_priority,
+        include_0,
+    )
+end
+
+function Base.iterate(
+    demand_priority_iterator::DemandPriorityIterator,
+    demand_priority_idx = demand_priority_iterator.include_0 ? 0 : 1,
+)
+    (; demand_priorities_all, has_demand_priority) = demand_priority_iterator
+
+    while demand_priority_idx ≤ length(demand_priorities_all)
+        if iszero(demand_priority_idx)
+            return 0, 1
+        end
+        if has_demand_priority[demand_priority_idx]
+            return demand_priorities_all[demand_priority_idx], demand_priority_idx + 1
+        end
+        demand_priority_idx += 1
+    end
+
+    return nothing
+end
+
+function get_objective_data_of_demand_priority(
+    objectives::AllocationObjectives,
+    demand_priority::Int,
+)
+    (; objective_metadata) = objectives
+    index = findfirst(
+        metadata -> metadata.demand_priority == demand_priority,
+        objective_metadata,
+    )
+    objective_metadata[index]
+end
+
+# This method should only be used in initialization because it does a graph lookup
+function get_external_demand_id(graph::MetaGraph, node_id::NodeID)::Union{NodeID, Nothing}
+    node_type =
+        (node_id.type == NodeType.Basin) ? NodeType.LevelDemand : NodeType.FlowDemand
+
+    control_inneighbors = inneighbor_labels_type(graph, node_id, LinkType.control)
+    for id in control_inneighbors
+        if id.type == node_type
+            return id
+        end
+    end
+    return nothing
+end
+
+function get_external_demand_id(p_independent, node_id::NodeID)::Union{NodeID, Nothing}
+    (; basin, tabulated_rating_curve, linear_resistance, manning_resistance, pump, outlet) =
+        p_independent
+
+    external_demand_id = if node_id.type == NodeType.Basin
+        basin.level_demand_id[node_id.idx]
+    elseif node_id.type == NodeType.TabulatedRatingCurve
+        tabulated_rating_curve.flow_demand_id[node_id.idx]
+    elseif node_id.type == NodeType.LinearResistance
+        linear_resistance.flow_demand_id[node_id.idx]
+    elseif node_id.type == NodeType.ManningResistance
+        manning_resistance.flow_demand_id[node_id.idx]
+    elseif node_id.type == NodeType.Pump
+        pump.flow_demand_id[node_id.idx]
+    elseif node_id.type == NodeType.Outlet
+        outlet.flow_demand_id[node_id.idx]
+    else
+        return nothing
+    end
+
+    return iszero(external_demand_id.idx) ? nothing : external_demand_id
+end
