@@ -1,5 +1,5 @@
 @testitem "Allocation solve" begin
-    using Ribasim: NodeID, AllocationOptimizationType, get_flow_value
+    using Ribasim: NodeID, AllocationOptimizationType
     import SQLite
     import JuMP
 
@@ -22,7 +22,7 @@
 
     flow = allocation_model.problem[:flow]
 
-    flow_value(id_1, id_2) = get_flow_value(allocation_model, (id_1, id_2))
+    flow_value(id_1, id_2) = JuMP.value(flow[(id_1, id_2)]) * allocation_model.scaling.flow
 
     @test flow_value(NodeID(:Basin, 2, p_independent), NodeID(:Pump, 5, p_independent)) ≈
           pump.flow_rate[1](t)
