@@ -632,6 +632,8 @@ function allocation_flow_data(model::Model; table::Bool = true)
         to_node_id = record_flow.to_node_id
         subnetwork_id = record_flow.subnetwork_id
         optimization_type = record_flow.optimization_type
+        lower_bound_hit = record_flow.lower_bound_hit
+        upper_bound_hit = record_flow.upper_bound_hit
     else
         error("allocation_flow not implemented for NetCDF")
     end
@@ -646,6 +648,8 @@ function allocation_flow_data(model::Model; table::Bool = true)
         subnetwork_id,
         record_flow.flow_rate,
         optimization_type,
+        lower_bound_hit,
+        upper_bound_hit,
     )
 end
 

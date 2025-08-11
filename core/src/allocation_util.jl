@@ -357,14 +357,6 @@ function get_optimizer()
     )
 end
 
-function get_flow_value(
-    allocation_model::AllocationModel,
-    link::Tuple{NodeID, NodeID},
-)::Float64
-    (; problem, scaling) = allocation_model
-    return JuMP.value(problem[:flow][link]) * scaling.flow
-end
-
 function ScalingFactors(
     p_independent::ParametersIndependent,
     subnetwork_id::Int32,
@@ -503,4 +495,20 @@ function get_external_demand_id(p_independent, node_id::NodeID)::Union{NodeID, N
     end
 
     return iszero(external_demand_id.idx) ? nothing : external_demand_id
+end
+
+function get_bounds_hit(variable::JuMP.VariableRef)::Tuple{Bool, Bool}
+    hit_lower_bound = if JuMP.has_lower_bound(variable)
+        JuMP.value(variable) ≤ JuMP.lower_bound(variable)
+    else
+        false
+    end
+
+    hit_upper_bound = if JuMP.has_upper_bound(variable)
+        JuMP.value(variable) ≥ JuMP.upper_bound(variable)
+    else
+        false
+    end
+
+    return hit_lower_bound, hit_upper_bound
 end

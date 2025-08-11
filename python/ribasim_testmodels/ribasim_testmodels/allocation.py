@@ -1467,14 +1467,18 @@ def allocation_control_model() -> Model:
 
     out = model.outlet.add(
         Node(2, Point(1, 0), subnetwork_id=1),
-        [outlet.Static(flow_rate=[0.0], control_state="Ribasim.allocation")],
+        [
+            outlet.Static(
+                flow_rate=[0.0], control_state="Ribasim.allocation", max_flow_rate=[9.0]
+            )
+        ],
     )
 
     bsn = model.basin.add(
         Node(3, Point(2, 0), subnetwork_id=1),
         [
             basin.State(level=[1.0]),
-            basin.Profile(level=[0.0, 1.0], area=[100.0, 100.0]),
+            basin.Profile(level=[0.0, 100.0], area=[100.0, 100.0]),
         ],
     )
 
