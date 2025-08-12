@@ -61,14 +61,6 @@ function flow_capacity_upper_bound(
     return upper_bound
 end
 
-function get_level(problem::JuMP.Model, node_id::NodeID)
-    if node_id.type == NodeType.Basin
-        problem[:basin_level][node_id]
-    else
-        problem[:boundary_level][node_id]
-    end
-end
-
 function collect_primary_network_connections!(
     allocation::Allocation,
     graph::MetaGraph,
@@ -121,92 +113,6 @@ function get_minmax_level(p_independent::ParametersIndependent, node_id::NodeID)
     else
         error("Min and max level are not defined for nodes of type $(node_id.type).")
     end
-end
-
-@kwdef struct DouglasPeuckerCache{T}
-    u::Vector{T}
-    t::Vector{T}
-    selection::Vector{Bool} = zeros(Bool, length(u))
-    rel_tol::T
-end
-
-"""
-Perform a modified Douglas-Peucker algorithm to down sample the piecewise linear interpolation given
-by t (input) and u (output) such that the relative difference between the new and old interpolation is
-smaller than ε_rel on the entire domain when possible
-"""
-function douglas_peucker(u::Vector, t::Vector; rel_tol = 1e-2)
-    @assert length(u) == length(t)
-    cache = DouglasPeuckerCache(; u, t, rel_tol)
-    (; selection) = cache
-
-    selection[1] = true
-    selection[end] = true
-    cache(firstindex(u):lastindex(u))
-
-    return u[selection], t[selection]
-end
-
-function (cache::DouglasPeuckerCache)(range::UnitRange)
-    (; u, t, selection, rel_tol) = cache
-
-    idx_err_rel_max = nothing
-    err_rel_max = 0
-
-    for idx in (range.start + 1):(range.stop - 1)
-        u_idx = u[idx]
-        u_itp =
-            u[range.start] +
-            (u[range.stop] - u[range.start]) * (t[idx] - t[range.start]) /
-            (t[range.stop] - t[range.start])
-        err_rel = abs((u_idx - u_itp) / u_idx)
-        if err_rel > max(rel_tol, err_rel_max)
-            err_rel_max = err_rel
-            idx_err_rel_max = idx
-        end
-    end
-
-    if !isnothing(idx_err_rel_max)
-        selection[idx_err_rel_max] = true
-        cache((range.start):idx_err_rel_max)
-        cache(idx_err_rel_max:(range.stop))
-    end
-end
-
-function parse_profile(
-    storage_to_level::AbstractInterpolation,
-    level_to_area::AbstractInterpolation,
-    lowest_level;
-    n_samples_per_segment = 100,
-)
-    n_segments = length(storage_to_level.u) - 1
-    samples_storage_node = zeros(n_samples_per_segment * n_segments + 1)
-    samples_level_node = zero(samples_storage_node)
-
-    for i in 1:n_segments
-        inds = (1 + (i - 1) * n_samples_per_segment):(1 + i * n_samples_per_segment)
-        samples_storage_node[inds] .= range(
-            storage_to_level.t[i],
-            storage_to_level.t[i + 1];
-            length = n_samples_per_segment + 1,
-        )
-        storage_to_level(view(samples_level_node, inds), view(samples_storage_node, inds))
-    end
-
-    values_level_node, values_storage_node =
-        douglas_peucker(samples_level_node, samples_storage_node)
-
-    phantom_Δh = values_level_node[1] - lowest_level
-
-    if phantom_Δh > 0
-        phantom_area = level_to_area.u[1] / 1e3
-        phantom_storage = phantom_Δh * phantom_area
-        pushfirst!(values_level_node, lowest_level)
-        values_storage_node .+= phantom_storage
-        pushfirst!(values_storage_node, 0.0)
-    end
-
-    values_storage_node, values_level_node
 end
 
 function get_low_storage_factor(problem::JuMP.Model, node_id::NodeID)
