@@ -4,6 +4,7 @@ function set_simulation_data!(
     allocation_model::AllocationModel,
     integrator::DEIntegrator,
 )::Nothing
+    (; p, t) = integrator
     (;
         basin,
         level_boundary,
@@ -14,7 +15,7 @@ function set_simulation_data!(
         outlet,
         user_demand,
         tabulated_rating_curve,
-    ) = integrator.p.p_independent
+    ) = p.p_independent
     du = get_du(integrator)
 
     errors = false
@@ -41,7 +42,8 @@ function set_simulation_data!(
     basin::Basin,
     p::Parameters,
 )::Bool
-    (; problem) = allocation_model
+    (; problem, node_id_in_subnetwork) = allocation_model
+    (; basin_ids_subnetwork) = node_id_in_subnetwork
     (; storage_to_level) = basin
 
     storage_change = problem[:basin_storage_change]
@@ -50,7 +52,7 @@ function set_simulation_data!(
     errors = false
 
     # Set Basin starting storages and levels
-    for basin_id in basin_id_in_subnetwork
+    for basin_id in basin_ids_subnetwork
         storage_now = current_storage[basin_id.idx]
         storage_max = storage_to_level[basin_id.idx].t[end]
 
@@ -137,18 +139,19 @@ function linearize_connector_node!(
     t_after = t + Δt_allocation
 
     for node_id in only(flow_constraint.axes)
+        inflow_id = inflow_link[node_id.idx].link[1]
+        outflow_id = outflow_link[node_id.idx].link[2]
+
         # h_a and h_b are numbers from the last time step in the physical layer
         h_a = get_level(p, inflow_id, t_after)
         h_b = get_level(p, outflow_id, t_after)
 
         # Set the right-hand side of the constraint
+        constraint = flow_constraint[node_id]
         q0 = flow_function(connector_node, node_id, h_a, h_b, p, t_after)
         JuMP.set_normalized_rhs(constraint, q0 / scaling.flow)
 
-        constraint = flow_constraint[node_id]
-
         # Only linearize if the level comes from a Basin
-        inflow_id = inflow_link[node_id.idx].link[1]
         if inflow_id.type == NodeType.Basin
             # partial derivative with respect to upstream level
             ∂q∂h_a = forward_diff(
@@ -165,7 +168,6 @@ function linearize_connector_node!(
             )
         end
 
-        outflow_id = outflow_link[node_id.idx].link[2]
         if outflow_id.type == NodeType.Basin
             # partial derivative with respect to downstream level
             ∂q∂h_b = forward_diff(
@@ -333,12 +335,13 @@ end
 
 function set_demands!(allocation_model::AllocationModel, integrator::DEIntegrator)::Nothing
     (; problem, objectives, node_id_in_subnetwork) = allocation_model
+    (; user_demand, flow_demand, level_demand) = integrator.p.p_independent
 
     # Reset cumulative demand coefficients
     average_flow_unit_error = problem[:average_flow_unit_error]
     average_flow_unit_error_constraint = problem[:average_flow_unit_error_constraint]
 
-    for objective_metadata in objectives
+    for objective_metadata in objectives.objective_metadata
         (; type, demand_priority) = objective_metadata
         (type != AllocationObjectiveType.demand_flow) && continue
 
@@ -423,7 +426,7 @@ function set_demands!(
             JuMP.set_normalized_rhs(c, d)
 
             # Set demand in first objective expression
-            JuMP.set_normalized_coefficient(expression_first, error_term_first, d)
+            expression_first.terms[error_term_first] = d
 
             # Set demand in definition of average relative flow unit error
             JuMP.set_normalized_coefficient(
@@ -434,7 +437,7 @@ function set_demands!(
             JuMP.set_normalized_coefficient(
                 average_flow_unit_error_constraint[demand_priority],
                 average_flow_unit_error[demand_priority],
-                JuMP.get_normalized_coefficient(
+                JuMP.normalized_coefficient(
                     average_flow_unit_error_constraint[demand_priority],
                     average_flow_unit_error[demand_priority],
                 ) + d,
@@ -456,8 +459,8 @@ function set_demands!(
     (; basin, allocation) = p_independent
     (; demand_priorities_all) = allocation
     (; has_demand_priority, min_level, max_level, storage_demand) = level_demand
-    (; problem, objectives, node_ids_in_model) = allocation_model
-    (; basin_ids_subnetwork_with_level_demand) = node_ids_in_model
+    (; problem, objectives, node_id_in_subnetwork) = allocation_model
+    (; basin_ids_subnetwork_with_level_demand) = node_id_in_subnetwork
 
     level_demand_allocated = problem[:level_demand_allocated]
     storage_constraint_in = problem[:storage_constraint_in]
@@ -496,24 +499,24 @@ function set_demands!(
 
             # Set demands as upper bounds to allocated storage amounts
             JuMP.set_upper_bound(
-                level_demand_allocated[node_id, demand_priority, :lower],
+                level_demand_allocated[basin_id, demand_priority, :lower],
                 d_in,
             )
             JuMP.set_upper_bound(
-                level_demand_allocated[node_id, demand_priority, :upper],
+                level_demand_allocated[basin_id, demand_priority, :upper],
                 d_out,
             )
 
             # Set demands in constraints on errors for first objective
-            JuMP.set_normalized_rhs(storage_constraint_in[node_id, demand_priority], d_in)
+            JuMP.set_normalized_rhs(storage_constraint_in[basin_id, demand_priority], d_in)
             JuMP.set_normalized_rhs(
-                storage_constraint_out[node_id, demand_priority],
+                storage_constraint_out[basin_id, demand_priority],
                 -d_out,
             )
 
             # TODO: Second objective stuff with areas
 
-            storage_demand[basin_id.idx][demand_priority_idx] = d_in - d_out
+            storage_demand[basin_id][demand_priority_idx] = d_in - d_out
 
             level_min_prev_priority = level_min
             level_max_prev_priority = level_max
@@ -720,18 +723,7 @@ end
 
 function warm_start!(allocation_model::AllocationModel, integrator::DEIntegrator)::Nothing
     (; problem) = allocation_model
-    (; current_storage) = integrator.p.state_time_dependent_cache
-
-    storage = problem[:basin_storage]
     flow = problem[:flow]
-
-    # Set initial guess of the storages at the end of the allocation time step
-    # to the storage and level values at the beginning of the allocation time step from
-    # the physical layer
-    for (node_id, when) in only(storage.axes)
-        when == :start && continue
-        JuMP.set_start_value(storage[(node_id, :end)], current_storage[node_id.idx])
-    end
 
     # Assume no flow (TODO: Take instantaneous flow from physical layer)
     for link in only(flow.axes)

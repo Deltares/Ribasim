@@ -356,7 +356,7 @@ end
 
 function get_objective_data_of_demand_priority(
     objectives::AllocationObjectives,
-    demand_priority::Int,
+    demand_priority::Int32,
 )
     (; objective_metadata) = objectives
     index = findfirst(
