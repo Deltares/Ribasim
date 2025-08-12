@@ -271,36 +271,36 @@ scaling: The flow and storage scaling factors to make the optimization problem m
     scaling::ScalingFactors = ScalingFactors()
 end
 
-@kwdef struct DemandRecord
-    time::Vector{Float64} = []
-    subnetwork_id::Vector{Int32} = []
-    node_type::Vector{String} = []
-    node_id::Vector{Int32} = []
-    demand_priority::Vector{Int32} = []
-    demand::Vector{Float64} = []
-    allocated::Vector{Float64} = []
-    realized::Vector{Float64} = []
+struct DemandRecordDatum
+    time::Float64
+    subnetwork_id::Int32
+    node_type::String
+    node_id::Int32
+    demand_priority::Int32
+    demand::Float64
+    allocated::Float64
+    realized::Float64
 end
 
-@kwdef struct FlowRecord
-    time::Vector{Float64} = []
-    link_id::Vector{Int32} = []
-    from_node_type::Vector{String} = []
-    from_node_id::Vector{Int32} = []
-    to_node_type::Vector{String} = []
-    to_node_id::Vector{Int32} = []
-    subnetwork_id::Vector{Int32} = []
-    flow_rate::Vector{Float64} = []
-    optimization_type::Vector{String} = []
-    upper_bound_hit::Vector{Bool} = []
-    lower_bound_hit::Vector{Bool} = []
+struct FlowRecordDatum
+    time::Float64
+    link_id::Int32
+    from_node_type::String
+    from_node_id::Int32
+    to_node_type::String
+    to_node_id::Int32
+    subnetwork_id::Int32
+    flow_rate::Float64
+    optimization_type::String
+    upper_bound_hit::Bool
+    lower_bound_hit::Bool
 end
 
-@kwdef struct AllocationControlRecord
-    time::Vector{Float64} = []
-    node_id::Vector{Int32} = []
-    node_type::Vector{String} = []
-    flow_rate::Vector{Float64} = []
+struct AllocationControlRecordDatum
+    time::Float64
+    node_id::Int32
+    node_type::String
+    flow_rate::Float64
 end
 
 """
@@ -323,9 +323,9 @@ record_control: A record of all flow rates assigned to pumps and outlets by allo
     primary_network_connections::Dict{Int32, Vector{Tuple{NodeID, NodeID}}} = Dict()
     demand_priorities_all::Vector{Int32} = []
     subnetwork_inlet_source_priority::Int32 = 0
-    record_demand::DemandRecord = DemandRecord()
-    record_flow::FlowRecord = FlowRecord()
-    record_control::AllocationControlRecord = AllocationControlRecord()
+    record_demand::Vector{DemandRecordDatum} = []
+    record_flow::Vector{FlowRecord} = []
+    record_control::Vector{AllocationControlRecord} = []
 end
 
 """

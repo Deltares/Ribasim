@@ -896,8 +896,8 @@ function AllocationModel(
     allocation_config::config.Allocation,
 )
     Δt_allocation = allocation_config.timestep
-    optimizer = get_optimizer()
-    problem = JuMP.direct_model(optimizer)
+    problem = JuMP.Model(() -> MOA.Optimizer(HiGHS.Optimizer))
+    set_optimizer_attributes!(problem)
     node_id_in_subnetwork = NodeIDsInSubnetwork(p_independent, subnetwork_id)
     scaling = ScalingFactors(p_independent, subnetwork_id, Δt_allocation)
     allocation_model = AllocationModel(;

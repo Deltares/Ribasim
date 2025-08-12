@@ -553,6 +553,54 @@ function set_demands!(
     return nothing
 end
 
+function save_demands_and_allocations!(
+    integrator::DEIntegrator,
+    allocation_model::AllocationModel,
+)::Nothing
+    (; user_demand, flow_demand, level_demand) = integrator.p.p_independent
+    save_demands_and_allocations!(integrator, user_demand, allocation_model)
+    save_demands_and_allocations!(integrator, flow_demand, allocation_model)
+    save_demands_and_allocations!(integrator, level_demand, allocation_model)
+    return nothing
+end
+
+function save_demands_and_allocations!(
+    integrator::DEIntegrator,
+    user_demand::UserDemand,
+    allocation_model::AllocationModel,
+)::Nothing
+    (p, t) = integrator
+    (; p_independent) = p
+    (; node_id_in_subnetwork, subnetwork_id, problem) = allocation_model
+    (; user_demand_ids_subnetwork) = node_id_in_subnetwork
+    (; allocation) = p_independent
+    (; record_demand, demand_priorities_all) = allocation
+    (; demand, has_demand_priority) = user_demand
+
+    user_demand_allocated = problem[:user_demand_allocated]
+
+    for node_id in user_demand_ids_subnetwork
+        for (demand_priority_idx, demand_priority) in enumerate(demand_priorities_all)
+            !has_demand_priority[node_id.idx, demand_priority_idx] && continue
+            push!(
+                record_demand,
+                DemandRecordDatum(
+                    t,
+                    subnetwork_id,
+                    "UserDemand",
+                    Int32(node_id),
+                    demand_priority,
+                    demand[node_id.idx, demand_priority_idx],
+                    JuMP.value(user_demand_allocated[node_id, demand_priority]),
+                    0.0, #TODO !!!!
+                ),
+            )
+        end
+    end
+
+    return nothing
+end
+
 # function add_to_record_demand!(
 #     record_demand::DemandRecord,
 #     t::Float64,
@@ -745,56 +793,16 @@ function warm_start!(allocation_model::AllocationModel, integrator::DEIntegrator
     return nothing
 end
 
-# function optimize_for_objective!(
-#     allocation_model::AllocationModel,
-#     integrator::DEIntegrator,
-#     objective::AllocationObjective,
-#     config::Config,
-# )::Nothing
-#     (; p, t) = integrator
-#     (; p_independent) = p
-#     (; problem, subnetwork_id) = allocation_model
+function optimize!(allocation_model::AllocationModel)::Nothing
+    (; problem, objectives) = allocation_model
 
-#     preprocess_objective!(allocation_model, p_independent, objective)
+    JuMP.@objective(problem, Min, objectives.objective_expressions_all)
+    JuMP.optimize!(problem)
 
-#     # Set the objective
-#     JuMP.@objective(problem, Min, objective.expression)
+    # TODO: Infeasibility handling
 
-#     # Set the initial guess
-#     warm_start!(allocation_model, objective, integrator)
-
-#     # Solve problem
-#     JuMP.optimize!(problem)
-#     @debug JuMP.solution_summary(problem)
-#     termination_status = JuMP.termination_status(problem)
-
-#     if termination_status == JuMP.INFEASIBLE
-#         write_problem_to_file(problem, config)
-#         analyze_infeasibility(allocation_model, objective, t, config)
-#         analyze_scaling(allocation_model, objective, t, config)
-
-#         error(
-#             "Allocation optimization for subnetwork $subnetwork_id, $objective at t = $t s is infeasible",
-#         )
-#     elseif termination_status != JuMP.OPTIMAL
-#         primal_status = JuMP.primal_status(problem)
-#         relative_gap = JuMP.relative_gap(problem)
-#         threshold = 1e-3 # Hardcoded threshold for now
-
-#         if relative_gap < threshold && primal_status == JuMP.FEASIBLE_POINT
-#             @debug "Allocation optimization for subnetwork $subnetwork_id, $objective at t = $t s did not find an optimal solution (termination status: $termination_status), but the relative gap ($relative_gap) is within the acceptable threshold (<$threshold). Proceeding with the solution."
-#         else
-#             write_problem_to_file(problem, config)
-#             error(
-#                 "Allocation optimization for subnetwork $subnetwork_id, $objective at t = $t s did not find an acceptable solution. Termination status: $termination_status.",
-#             )
-#         end
-#     end
-
-#     postprocess_objective!(allocation_model, objective, integrator)
-
-#     return nothing
-# end
+    return nothing
+end
 
 # Set the flow rate of allocation controlled pumps and outlets to
 # their flow determined by allocation
@@ -852,7 +860,6 @@ end
 function update_allocation!(model)::Nothing
     (; integrator) = model
     (; u, p, t) = integrator
-    du = get_du(integrator)
     (; p_independent) = p
     (; allocation) = p_independent
     (; allocation_models) = allocation
@@ -860,6 +867,7 @@ function update_allocation!(model)::Nothing
     # Don't run the allocation algorithm if allocation is not active
     !is_active(allocation) && return nothing
 
+    du = get_du(integrator)
     water_balance!(du, u, p, t)
 
     for allocation_model in allocation_models
@@ -897,6 +905,9 @@ function update_allocation!(model)::Nothing
     #     end
     # end
 
+    for allocation_model in allocation_models
+        optimize!(allocation_model)
+    end
     # # Allocate first in the primary network if it is present, and then in the secondary networks
     # for allocation_model in allocation_models
     #     reset_goal_programming!(allocation_model, p_independent)

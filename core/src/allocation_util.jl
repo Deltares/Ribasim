@@ -253,14 +253,14 @@ function analyze_scaling(
     return nothing
 end
 
-function get_optimizer()
-    return JuMP.optimizer_with_attributes(
-        HiGHS.Optimizer,
-        "log_to_console" => false,
-        "time_limit" => 60.0,
-        "random_seed" => 0,
-        "small_matrix_value" => 1e-12,
-    )
+function set_optimizer_attributes!(problem::JuMP.Model)::Nothing
+    JuMP.set_attribute(problem, MOA.Algorithm(), MOA.Lexicographic())
+    JuMP.set_attribute(problem, "log_to_console", true)
+    JuMP.set_attribute(problem, "time_limit", 60.0)
+    JuMP.set_attribute(problem, "random_seed", 0)
+    JuMP.set_attribute(problem, "small_matrix_value", 1e-12)
+    JuMP.set_attribute(problem, "presolve", "on")
+    return nothing
 end
 
 function ScalingFactors(
