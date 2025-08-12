@@ -418,3 +418,18 @@ function get_bounds_hit(variable::JuMP.VariableRef)::Tuple{Bool, Bool}
 
     return hit_lower_bound, hit_upper_bound
 end
+
+function has_external_demand(
+    node::AbstractParameterNode,
+    node_id::NodeID,
+)::Tuple{Bool, NodeID}
+    demand_id = if node isa Basin
+        node.level_demand_id[node_id.idx]
+        return !iszero(level_demand_id.idx), level_demand_id
+    elseif hasfield(typeof(node), :flow_demand_id)
+        node.flow_demand_id[node_id.idx]
+    else
+        NodeID(NodeType.LevelDemand, 0, 0)
+    end
+    return !iszero(demand_id.idx), demand_id
+end

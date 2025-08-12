@@ -724,8 +724,6 @@ flow_demand_id: connected flow demand node if applicable
     control_type::Vector{ContinuousControlType.T} =
         fill(ContinuousControlType.None, length(node_id))
     allocation_controlled::Vector{Bool} = fill(false, length(node_id))
-    flow_demand_data::Vector{Tuple{Bool, NodeID}} =
-        fill((false, NodeID(NodeType.FlowDemand, 0, 0)), length(node_id))
     flow_demand_id::Vector{NodeID} =
         fill(NodeID(NodeType.FlowDemand, 0, 0), length(node_id))
 end
@@ -1254,7 +1252,7 @@ The collection of all parameters that are passed to the rhs (`water_balance!`) a
     p_mutable::ParametersMutable = ParametersMutable()
 end
 
-Base.show(io::IO, p::Parameters) = print(io, "Ribasim Parameters")
+Base.show(io::IO, ::Parameters) = print(io, "Ribasim Parameters")
 Base.show(io::IO, ::MIME"text/plain", p::Parameters) = print(io, "Ribasim Parameters")
 
 function get_value(ref::CacheRef, p::Parameters, du::CVector)

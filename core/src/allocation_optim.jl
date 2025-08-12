@@ -160,7 +160,6 @@ function linearize_connector_node!(
                 allocation_model,
                 inflow_id,
                 ∂q∂h_a,
-                h_a,
                 p,
                 constraint,
             )
@@ -178,7 +177,6 @@ function linearize_connector_node!(
                 allocation_model,
                 outflow_id,
                 ∂q∂h_b,
-                h_b,
                 p,
                 constraint,
             )

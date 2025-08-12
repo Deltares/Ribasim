@@ -14,7 +14,7 @@ function add_basin!(allocation_model::AllocationModel)::Nothing
     problem[:basin_storage_change] = JuMP.@variable(
         problem,
         -current_storage / scaling.storage ≤
-        basin_storage_change[node_id = basin_ids_subnetwork, [:start, :change]] ≤
+        basin_storage_change[node_id = basin_ids_subnetwork] ≤
         (max_storage - current_storage) / scaling.storage
     )
 
@@ -475,12 +475,12 @@ function add_tabulated_rating_curve!(
     allocation_model::AllocationModel,
     p_independent::ParametersIndependent,
 )::Nothing
-    (; subnetwork_id) = allocation_model
-    (; tabulated_rating_curve, graph) = p_independent
+    (; node_id_in_subnetwork) = allocation_model
+    (; tabulated_rating_curve) = p_independent
     add_linearized_connector_node!(
         allocation_model,
         tabulated_rating_curve,
-        get_ids_in_subnetwork(graph, NodeType.TabulatedRatingCurve, subnetwork_id),
+        node_id_in_subnetwork.tabulated_rating_curve_ids_subnetwork,
     )
     return nothing
 end
@@ -489,12 +489,12 @@ function add_linear_resistance!(
     allocation_model::AllocationModel,
     p_independent::ParametersIndependent,
 )::Nothing
-    (; subnetwork_id) = allocation_model
-    (; linear_resistance, graph) = p_independent
+    (; node_id_in_subnetwork) = allocation_model
+    (; linear_resistance) = p_independent
     add_linearized_connector_node!(
         allocation_model,
         linear_resistance,
-        get_ids_in_subnetwork(graph, NodeType.LinearResistance, subnetwork_id),
+        node_id_in_subnetwork.linear_resistance_ids_subnetwork,
     )
     return nothing
 end
@@ -503,12 +503,12 @@ function add_manning_resistance!(
     allocation_model::AllocationModel,
     p_independent::ParametersIndependent,
 )::Nothing
-    (; subnetwork_id) = allocation_model
-    (; manning_resistance, graph) = p_independent
+    (; node_id_in_subnetwork) = allocation_model
+    (; manning_resistance) = p_independent
     add_linearized_connector_node!(
         allocation_model,
         manning_resistance,
-        get_ids_in_subnetwork(graph, NodeType.ManningResistance, subnetwork_id),
+        node_id_in_subnetwork.manning_resistance_ids_subnetwork,
     )
     return nothing
 end
@@ -594,14 +594,14 @@ function add_subnetwork_demand!(
     problem[:subnetwork_constraint_lower] = JuMP.@constraint(
         problem,
         [link = connecting_links],
-        d * (relative_subnetwork_error_lower[link] - target_demand_fraction) ≥
+        d * (relative_subnetwork_error_lower[link]) ≥
         -(flow[link] - subnetwork_allocated[link]),
         base_name = "subnetwork_constraint_lower"
     )
     problem[:subnetwork_constraint_upper] = JuMP.@constraint(
         problem,
         [link = connecting_links],
-        d * (relative_subnetwork_error_upper[link] + target_demand_fraction) ≥
+        d * (relative_subnetwork_error_upper[link]) ≥
         flow[link] - subnetwork_allocated[link],
         base_name = "subnetwork_constraint_upper"
     )
@@ -677,12 +677,16 @@ function add_demand_objectives!(
             @error "For demand priority $demand_priority there are demands of both flow (UserDemand/FlowDemand) and storage (LevelDemand) type, this is not allowed."
             errors = true
         else
-            if has_storage_unit_demands
-                objective_type = AllocationObjectiveType.demand_storage
+            objective_type = if has_storage_unit_demands
                 push!(demand_priorities_storage_unit, demand_priority)
+                AllocationObjectiveType.demand_storage
             elseif has_flow_unit_demands
-                objective_type = AllocationObjectiveType.demand_flow
                 push!(demand_priorities_flow_unit, demand_priority)
+                AllocationObjectiveType.demand_flow
+            else
+                # This is an edge case where there is no demand for this demand priority in this subnetwork
+                # This essentially adds a feasibility objective which probably doesn't impact performance much
+                AllocationObjectiveType.demand_flow
             end
             push!(
                 objective_metadata,
