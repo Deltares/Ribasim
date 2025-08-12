@@ -433,3 +433,12 @@ function has_external_demand(
     end
     return !iszero(demand_id.idx), demand_id
 end
+
+function add_to_coefficient!(
+    constraint::JuMP.ConstraintRef,
+    variable::JuMP.VariableRef,
+    addition::Float64,
+)::Nothing
+    value = JuMP.normalized_coefficient(constraint, variable)
+    JuMP.set_normalized_coefficient(constraint, variable, value + addition)
+end

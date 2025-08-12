@@ -337,19 +337,32 @@ function set_demands!(allocation_model::AllocationModel, integrator::DEIntegrato
     (; problem, objectives, node_id_in_subnetwork) = allocation_model
     (; user_demand, flow_demand, level_demand) = integrator.p.p_independent
 
-    # Reset cumulative demand coefficients
     average_flow_unit_error = problem[:average_flow_unit_error]
     average_flow_unit_error_constraint = problem[:average_flow_unit_error_constraint]
 
+    average_storage_unit_error = problem[:average_storage_unit_error]
+    average_storage_unit_error_constraint = problem[:average_storage_unit_error_constraint]
+
     for objective_metadata in objectives.objective_metadata
         (; type, demand_priority) = objective_metadata
-        (type != AllocationObjectiveType.demand_flow) && continue
 
-        JuMP.set_normalized_coefficient(
-            average_flow_unit_error_constraint[demand_priority],
-            average_flow_unit_error[demand_priority],
-            0,
-        )
+        if type == AllocationObjectiveType.demand_flow
+            # Reset cumulative demand coefficients
+            JuMP.set_normalized_coefficient(
+                average_flow_unit_error_constraint[demand_priority],
+                average_flow_unit_error[demand_priority],
+                0,
+            )
+        elseif type == AllocationObjectiveType.demand_storage
+            # Reset cumulative area coefficients
+            for side in (:lower, :upper)
+                JuMP.set_normalized_coefficient(
+                    average_storage_unit_error_constraint[demand_priority, side],
+                    average_storage_unit_error[demand_priority, side],
+                    0,
+                )
+            end
+        end
     end
 
     # Set demands for all priorities
@@ -387,7 +400,7 @@ function set_demands!(
     (; p, t) = integrator
     (; demand_priorities_all) = p.p_independent.allocation
     (; has_demand_priority, demand, demand_interpolation) = node
-    (; problem, objectives) = allocation_model
+    (; problem, objectives, scaling) = allocation_model
     is_flow_demand = (node isa FlowDemand)
 
     # Retrieve variable and constraint collections from the JuMP problem
@@ -414,7 +427,7 @@ function set_demands!(
             node_id_with_demand =
                 is_flow_demand ? node.node_with_demand[node_id.idx] : node_id
 
-            d = demand[node_id.idx, demand_priority_idx]
+            d = demand[node_id.idx, demand_priority_idx] / scaling.flow
 
             # Demand is upper bound of what is allocated
             JuMP.set_upper_bound(node_allocated[node_id_with_demand, demand_priority], d)
@@ -434,13 +447,10 @@ function set_demands!(
                 error_term_first,
                 -d,
             )
-            JuMP.set_normalized_coefficient(
+            add_to_coefficient!(
                 average_flow_unit_error_constraint[demand_priority],
                 average_flow_unit_error[demand_priority],
-                JuMP.normalized_coefficient(
-                    average_flow_unit_error_constraint[demand_priority],
-                    average_flow_unit_error[demand_priority],
-                ) + d,
+                d,
             )
         end
     end
@@ -455,16 +465,19 @@ function set_demands!(
 )::Nothing
     (; p, t) = integrator
     (; p_independent, state_time_dependent_cache) = p
-    (; current_level) = state_time_dependent_cache
+    (; current_level, current_area) = state_time_dependent_cache
     (; basin, allocation) = p_independent
     (; demand_priorities_all) = allocation
     (; has_demand_priority, min_level, max_level, storage_demand) = level_demand
-    (; problem, objectives, node_id_in_subnetwork) = allocation_model
+    (; problem, node_id_in_subnetwork, scaling) = allocation_model
     (; basin_ids_subnetwork_with_level_demand) = node_id_in_subnetwork
 
     level_demand_allocated = problem[:level_demand_allocated]
+    level_demand_error = problem[:level_demand_error]
     storage_constraint_in = problem[:storage_constraint_in]
     storage_constraint_out = problem[:storage_constraint_out]
+
+    average_storage_unit_error = problem[:average_storage_unit_error]
     average_storage_unit_error_constraint = problem[:average_storage_unit_error_constraint]
     level_demand_fairness_error_constraint =
         problem[:level_demand_fairness_error_constraint]
@@ -475,6 +488,7 @@ function set_demands!(
         level_now = current_level[basin_id.idx]
         level_min_prev_priority = basin_bottom(basin, basin_id)[2]
         level_max_prev_priority = Inf
+        A = current_area[basin_id.idx]
 
         for (demand_priority_idx, demand_priority) in enumerate(demand_priorities_all)
             !has_demand_priority[level_demand_id.idx, demand_priority_idx] && continue
@@ -489,6 +503,7 @@ function set_demands!(
                     basin_id.idx,
                     clamp(level_now, level_min_prev_priority, level_min),
                 )
+            d_in_scaled = d_in / scaling.storage
 
             d_out =
                 get_storage_from_level(
@@ -496,25 +511,38 @@ function set_demands!(
                     basin_id.idx,
                     clamp(level_now, level_max, level_max_prev_priority),
                 ) - get_storage_from_level(basin, basin_id.idx, level_max)
+            d_out_scaled = d_out / scaling.storage
 
             # Set demands as upper bounds to allocated storage amounts
             JuMP.set_upper_bound(
                 level_demand_allocated[basin_id, demand_priority, :lower],
-                d_in,
+                d_in_scaled,
             )
             JuMP.set_upper_bound(
                 level_demand_allocated[basin_id, demand_priority, :upper],
-                d_out,
+                d_out_scaled,
             )
 
             # Set demands in constraints on errors for first objective
             JuMP.set_normalized_rhs(storage_constraint_in[basin_id, demand_priority], d_in)
             JuMP.set_normalized_rhs(
                 storage_constraint_out[basin_id, demand_priority],
-                -d_out,
+                -d_out_scaled,
             )
 
-            # TODO: Second objective stuff with areas
+            # Set area in definition of average level error
+            for side in (:lower, :upper)
+                add_to_coefficient!(
+                    average_storage_unit_error_constraint[demand_priority, side],
+                    average_storage_unit_error[demand_priority, side],
+                    A,
+                )
+                JuMP.set_normalized_coefficient(
+                    level_demand_fairness_error_constraint[basin_id, demand_priority, side],
+                    level_demand_error[basin_id, demand_priority, side, :first],
+                    -A,
+                )
+            end
 
             storage_demand[basin_id][demand_priority_idx] = d_in - d_out
 
@@ -522,22 +550,6 @@ function set_demands!(
             level_max_prev_priority = level_max
         end
     end
-
-    # for (demand_priority_idx, demand_priority) in enumerate(demand_priorities_all)
-
-    #     # Objective metadata corresponding to this demand priority
-    #     (; expression_first, type) =
-    #         get_objective_data_of_demand_priority(objectives, demand_priority)
-    #     (type != AllocationObjectiveType.demand_storage) && continue
-
-    #     for basin_id in basin_ids_subnetwork_with_level_demand
-    #         level_demand_id = basin.level_demand_id[basin_id.idx]
-    #         !has_demand_priority[level_demand_id.idx, demand_priority_idx] && continue
-
-    #         min_level = min_level[level_demand_id.idx](t)
-    #         max_level = max_level[level_demand_id.idx](t)
-    #     end
-    # end
     return nothing
 end
 

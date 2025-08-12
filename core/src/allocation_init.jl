@@ -339,7 +339,7 @@ function add_level_demand!(
         )
 
     # Define constraints: The sum of the storage changes per demand priority of each Basin with a level demand
-    # is equal t the total storage change of that basin
+    # is equal to the total storage change of that basin
     storage_change = problem[:basin_storage_change]
     problem[:storage_change_allocated_sum_constraint] = JuMP.@constraint(
         problem,
@@ -771,7 +771,7 @@ function add_demand_objectives!(
         [
             node_id = basin_ids_subnetwork_with_level_demand,
             demand_priority = DemandPriorityIterator(node_id, p_independent),
-            side = [:upper, :lower],
+            side = [:lower, :upper],
         ],
         level_demand_error[node_id, demand_priority, side, :second] ≥
         level_demand_error[node_id, demand_priority, side, :first] / A -
