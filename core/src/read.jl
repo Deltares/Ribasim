@@ -1331,8 +1331,8 @@ function LevelDemand(db::DB, config::Config, graph::MetaGraph)
         basin_ids = collect(outneighbor_labels_type(graph, id, LinkType.control))
         push!(level_demand.basins_with_demand, basin_ids)
         for basin_id in basin_ids
-            level_demand.storage_allocated[basin_id] = zeros(n_demand_priorities)
             level_demand.storage_demand[basin_id] = zeros(n_demand_priorities)
+            level_demand.storage_prev[basin_id] = 0.0
         end
     end
 

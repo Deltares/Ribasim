@@ -2,7 +2,7 @@
 
 julia_version = "1.11.6"
 manifest_format = "2.0"
-project_hash = "8e01c7d1febfb9b2ca309cd9bf2a0bef492ba513"
+project_hash = "3aae8dd00b7eb2dc37ccbf501d9b873668873e4a"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "7927b9af540ee964cc5d1b73293f1eb0b761a3a1"
@@ -1054,9 +1054,9 @@ version = "3.1.1+0"
 
 [[deps.JuMP]]
 deps = ["LinearAlgebra", "MacroTools", "MathOptInterface", "MutableArithmetics", "OrderedCollections", "PrecompileTools", "Printf", "SparseArrays"]
-git-tree-sha1 = "b4da175208e462c5b380f5b4d43dc9101d12c55c"
+git-tree-sha1 = "d05a696a5abaf9d1f8bce948ee53ed1533fadfdb"
 uuid = "4076af6c-e467-56ae-b986-b466b2749572"
-version = "1.27.0"
+version = "1.28.0"
 
     [deps.JuMP.extensions]
     JuMPDimensionalDataExt = "DimensionalData"

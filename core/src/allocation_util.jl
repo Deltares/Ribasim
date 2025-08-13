@@ -124,23 +124,14 @@ function get_low_storage_factor(problem::JuMP.Model, node_id::NodeID)
     end
 end
 
-function get_terms(constraint)
-    (; func) = JuMP.constraint_object(constraint)
-    return if hasproperty(func, :terms)
-        func.terms
-    else
-        (func, nothing)
-    end
-end
-
 function write_problem_to_file(problem, config; info = true, path = nothing)::Nothing
     if isnothing(path)
         path = results_path(config, RESULTS_FILENAME.allocation_infeasible_problem)
     end
+    JuMP.write_to_file(problem, path)
     if info
         @info "Latest allocation optimization problem written to $path."
     end
-    JuMP.write_to_file(problem, path)
     return nothing
 end
 
@@ -255,7 +246,8 @@ end
 
 function set_optimizer_attributes!(problem::JuMP.Model)::Nothing
     JuMP.set_attribute(problem, MOA.Algorithm(), MOA.Lexicographic())
-    JuMP.set_attribute(problem, "log_to_console", true)
+    JuMP.set_attribute(problem, MOA.LexicographicAllPermutations(), false)
+    JuMP.set_attribute(problem, "log_to_console", false)
     JuMP.set_attribute(problem, "time_limit", 60.0)
     JuMP.set_attribute(problem, "random_seed", 0)
     JuMP.set_attribute(problem, "small_matrix_value", 1e-12)
@@ -441,4 +433,16 @@ function add_to_coefficient!(
 )::Nothing
     value = JuMP.normalized_coefficient(constraint, variable)
     JuMP.set_normalized_coefficient(constraint, variable, value + addition)
+end
+
+function update_storage_prev!(p::Parameters)::Nothing
+    (; p_independent, state_time_dependent_cache) = p
+    (; current_storage) = state_time_dependent_cache
+    (; storage_prev) = p_independent.level_demand
+
+    for node_id in keys(storage_prev)
+        storage_prev[node_id] = current_storage[node_id.idx]
+    end
+
+    return nothing
 end

@@ -249,7 +249,8 @@ node_id_in_subnetwork: Per node type a vector of the nodes of that type in the s
 problem: The JuMP.jl model for solving the allocation problem
 Δt_allocation: The time interval between consecutive allocation solves'
 objectives: The objectives (goals) in the order in which they will be optimized for
-cumulative_forcing_volume: The net volume of forcing exchanged with each Basin in the subnetwork in the last Δt_allocation
+cumulative_forcing_volume: The volume of forcing exchanged with each Basin in the subnetwork in the last Δt_allocation
+    split in (positive forcing, negative_forcing)
 cumulative_boundary_volume: The net volume of boundary flow into the model for each FlowBoundary in the subnetwork
     over the last Δt_allocation
 cumulative_realized_volume: The net volume of flow realized by a demand node over the last Δt_allocation
@@ -263,7 +264,7 @@ scaling: The flow and storage scaling factors to make the optimization problem m
     problem::JuMP.Model
     Δt_allocation::Float64
     objectives::AllocationObjectives = AllocationObjectives()
-    cumulative_forcing_volume::Dict{NodeID, Float64} = Dict()
+    cumulative_forcing_volume::Dict{NodeID, Tuple{Float64, Float64}} = Dict()
     cumulative_boundary_volume::Dict{Tuple{NodeID, NodeID}, Float64} = Dict()
     cumulative_realized_volume::Dict{Tuple{NodeID, NodeID}, Float64} = Dict()
     sources::Dict{Int32, NodeID} = OrderedDict()
@@ -292,8 +293,8 @@ struct FlowRecordDatum
     subnetwork_id::Int32
     flow_rate::Float64
     optimization_type::String
-    upper_bound_hit::Bool
     lower_bound_hit::Bool
+    upper_bound_hit::Bool
 end
 
 struct AllocationControlRecordDatum
@@ -324,8 +325,8 @@ record_control: A record of all flow rates assigned to pumps and outlets by allo
     demand_priorities_all::Vector{Int32} = []
     subnetwork_inlet_source_priority::Int32 = 0
     record_demand::Vector{DemandRecordDatum} = []
-    record_flow::Vector{FlowRecord} = []
-    record_control::Vector{AllocationControlRecord} = []
+    record_flow::Vector{FlowRecordDatum} = []
+    record_control::Vector{AllocationControlRecordDatum} = []
 end
 
 """
@@ -1009,8 +1010,8 @@ max_level: The maximum target level per demand priority of the connected basin(s
 basins_with_demand: The node IDs of the Basins whose target level is given by a particular LevelDemand node
 target_level_min: The current minimum target level per LevelDemand node per demand priority (node_idx, demand_priority_idx)
 target_level_max: The current maximum target level per LevelDemand node per demand priority (node_idx, demand_priority_idx)
+storage_prev: The storage in the Basin with the level demand the previous time the allocation algorithm was run
 storage_demand: The storage change each Basin needs to reach the [min, max] window per demand priority
-storage_allocated: The storage allocated to each Basin per demand priority
 """
 @kwdef struct LevelDemand <: AbstractDemandNode
     node_id::Vector{NodeID}
@@ -1022,9 +1023,8 @@ storage_allocated: The storage allocated to each Basin per demand priority
     max_level::Vector{Vector{ScalarLinearInterpolation}} =
         trivial_linear_itp_fill(demand_priorities, node_id; val = NaN)
     basins_with_demand::Vector{Vector{NodeID}} = []
-    # Target storages, demand and allocated per Basin with LevelDemand per demand priority
+    storage_prev::Dict{NodeID, Float64} = Dict()
     storage_demand::Dict{NodeID, Vector{Float64}} = Dict()
-    storage_allocated::Dict{NodeID, Vector{Float64}} = Dict()
 end
 
 """
@@ -1034,7 +1034,6 @@ inflow_link: The inflow link of the connector node that has the flow demand
 has_demand_priority: Boolean matrix of whether a FlowDemand node has a certain priority (node_idx, demand_priority_idx)
 demand_priority: The demand per FlowDemand node for each demand priority
 demand: The current demand per FlowDemand node per demand priority (node_idx, demand_priority_idx)
-allocated: The current allocated amount per FlowDemand node per demand priority (node_idx, demand_priority_idx)
 """
 @kwdef struct FlowDemand <: AbstractDemandNode
     node_id::Vector{NodeID}
@@ -1045,7 +1044,6 @@ allocated: The current allocated amount per FlowDemand node per demand priority 
     demand_interpolation::Vector{Vector{ScalarLinearInterpolation}} =
         trivial_linear_itp_fill(demand_priorities, node_id; val = NaN)
     demand::Matrix{Float64} = fill(NaN, length(node_id), length(demand_priorities))
-    allocated::Matrix{Float64} = zeros(length(node_id), length(demand_priorities))
 end
 
 "Subgrid linearly interpolates basin levels."

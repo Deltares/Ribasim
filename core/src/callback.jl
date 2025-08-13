@@ -170,8 +170,10 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
         ) = allocation_model
         # Basin forcing input
         for basin_id in keys(cumulative_forcing_volume)
-            cumulative_forcing_volume[basin_id] +=
-                flow_update_on_link(integrator, (basin_id, basin_id))
+            volume_update = forcing_update(integrator, basin_id)
+            values_prev = cumulative_forcing_volume[basin_id]
+            cumulative_forcing_volume[basin_id] =
+                (values_prev[1] + volume_update[1], values_prev[2] + volume_update[2])
         end
 
         # Flow boundary input
@@ -324,29 +326,47 @@ function update_concentrations!(u, t, integrator)::Nothing
 end
 
 """
+Compute the forcing volume entering and leaving the Basin over the last time step
+"""
+function forcing_update(integrator::DEIntegrator, node_id::NodeID)::Tuple{Float64, Float64}
+    (; u, uprev, p, dt) = integrator
+    (; basin) = p.p_independent
+    (; vertical_flux) = basin
+
+    @assert node_id.type == NodeType.Basin
+
+    fixed_area = basin_areas(basin, node_id.idx)[end]
+
+    inflow_update =
+        (
+            fixed_area * vertical_flux.precipitation[node_id.idx] +
+            vertical_flux.drainage[node_id.idx] +
+            vertical_flux.surface_runoff[node_id.idx]
+        ) * dt
+
+    outflow_update =
+        (u.evaporation[node_id.idx] - uprev.evaporation[node_id.idx]) +
+        (u.infiltration[node_id.idx] - uprev.infiltration[node_id.idx])
+
+    return inflow_update, outflow_update
+end
+
+"""
 Given an link (from_id, to_id), compute the cumulative flow over that
-link over the latest time step. If from_id and to_id are both the same Basin,
-the function returns the sum of the Basin forcings.
+link over the latest time step.
 """
 function flow_update_on_link(
     integrator::DEIntegrator,
     link_src::Tuple{NodeID, NodeID},
 )::Float64
-    (; u, uprev, p, t, tprev, dt) = integrator
-    (; basin, flow_boundary) = p.p_independent
-    (; vertical_flux) = basin
+    (; u, uprev, p, t, tprev) = integrator
+    (; flow_boundary) = p.p_independent
 
     from_id, to_id = link_src
     if from_id == to_id
-        @assert from_id.type == to_id.type == NodeType.Basin
-        idx = from_id.idx
-        fixed_area = basin_areas(basin, idx)[end]
-        (
-            fixed_area * vertical_flux.precipitation[idx] +
-            vertical_flux.drainage[idx] +
-            vertical_flux.surface_runoff[idx]
-        ) * dt - (u.evaporation[idx] - uprev.evaporation[idx]) -
-        (u.infiltration[idx] - uprev.infiltration[idx])
+        error(
+            "Cannot get flow update when from_id = to_id. For Basin forcing use `forcing_update`.",
+        )
     elseif from_id.type == NodeType.FlowBoundary
         if flow_boundary.active[from_id.idx]
             integral(flow_boundary.flow_rate[from_id.idx], tprev, t)

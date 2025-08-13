@@ -24,7 +24,7 @@ function add_basin!(allocation_model::AllocationModel)::Nothing
 
     # Add the links for which the realized volume is required for input to the allocation algorithm
     for node_id in basin_ids_subnetwork
-        cumulative_forcing_volume[node_id] = 0.0
+        cumulative_forcing_volume[node_id] = (0.0, 0.0)
     end
     return nothing
 end
@@ -685,7 +685,8 @@ function add_demand_objectives!(
                 AllocationObjectiveType.demand_flow
             else
                 # This is an edge case where there is no demand for this demand priority in this subnetwork
-                # This essentially adds a feasibility objective which probably doesn't impact performance much
+                # This essentially adds a feasibility objective which is filtered out in the
+                # AllocationModel constructor
                 AllocationObjectiveType.demand_flow
             end
             push!(
@@ -946,6 +947,7 @@ function AllocationModel(
     add_demand_objectives!(allocation_model, p_independent)
     add_low_storage_factor_objective!(allocation_model)
     add_source_priority_objective!(allocation_model, p_independent)
+    filter!(!iszero, allocation_model.objectives.objective_expressions_all)
 
     return allocation_model
 end

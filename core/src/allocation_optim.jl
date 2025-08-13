@@ -1,4 +1,4 @@
-@enumx AllocationOptimizationType internal_sources collect_demands allocate
+@enumx AllocationOptimizationType collect_demands allocate
 
 function set_simulation_data!(
     allocation_model::AllocationModel,
@@ -42,11 +42,14 @@ function set_simulation_data!(
     basin::Basin,
     p::Parameters,
 )::Bool
-    (; problem, node_id_in_subnetwork) = allocation_model
+    (; problem, node_id_in_subnetwork, cumulative_forcing_volume, scaling) =
+        allocation_model
     (; basin_ids_subnetwork) = node_id_in_subnetwork
     (; storage_to_level) = basin
 
     storage_change = problem[:basin_storage_change]
+    volume_conservation = problem[:volume_conservation]
+    low_storage_factor = problem[:low_storage_factor]
     (; current_storage) = p.state_time_dependent_cache
 
     errors = false
@@ -66,6 +69,21 @@ function set_simulation_data!(
         Δstorage = storage_change[basin_id]
         JuMP.set_lower_bound(Δstorage, -storage_now)
         JuMP.set_upper_bound(Δstorage, storage_max - storage_now)
+
+        # Set forcing
+        (forcing_volume_positive, forcing_volume_negative) =
+            cumulative_forcing_volume[basin_id]
+
+        volume_conservation_constraint = volume_conservation[basin_id]
+        JuMP.set_normalized_rhs(
+            volume_conservation_constraint,
+            forcing_volume_positive / scaling.storage,
+        )
+        JuMP.set_normalized_coefficient(
+            volume_conservation_constraint,
+            low_storage_factor[basin_id],
+            forcing_volume_negative / scaling.storage,
+        )
     end
     return errors
 end
@@ -553,233 +571,190 @@ function set_demands!(
     return nothing
 end
 
-function save_demands_and_allocations!(
+function parse_allocations!(
     integrator::DEIntegrator,
     allocation_model::AllocationModel,
 )::Nothing
     (; user_demand, flow_demand, level_demand) = integrator.p.p_independent
-    save_demands_and_allocations!(integrator, user_demand, allocation_model)
-    save_demands_and_allocations!(integrator, flow_demand, allocation_model)
-    save_demands_and_allocations!(integrator, level_demand, allocation_model)
+    (; problem, node_id_in_subnetwork) = allocation_model
+    parse_allocations!(
+        integrator,
+        user_demand,
+        node_id_in_subnetwork.user_demand_ids_subnetwork,
+        problem[:user_demand_allocated],
+        allocation_model,
+    )
+    parse_allocations!(
+        integrator,
+        flow_demand,
+        node_id_in_subnetwork.node_ids_subnetwork_with_flow_demand,
+        problem[:flow_demand_allocated],
+        allocation_model,
+    )
+    parse_allocations!(integrator, level_demand, allocation_model)
     return nothing
 end
 
-function save_demands_and_allocations!(
+function parse_allocations!(
     integrator::DEIntegrator,
-    user_demand::UserDemand,
+    node::Union{UserDemand, FlowDemand},
+    node_ids_subnetwork::Vector{NodeID},
+    node_allocated,
     allocation_model::AllocationModel,
 )::Nothing
-    (p, t) = integrator
+    (; p, t) = integrator
     (; p_independent) = p
-    (; node_id_in_subnetwork, subnetwork_id, problem) = allocation_model
-    (; user_demand_ids_subnetwork) = node_id_in_subnetwork
+    (; subnetwork_id, Δt_allocation, cumulative_realized_volume, scaling) = allocation_model
     (; allocation) = p_independent
     (; record_demand, demand_priorities_all) = allocation
-    (; demand, has_demand_priority) = user_demand
+    (; demand, has_demand_priority, inflow_link) = node
+    is_user_demand = (node isa UserDemand)
 
-    user_demand_allocated = problem[:user_demand_allocated]
+    for node_id in node_ids_subnetwork
+        demand_id =
+            is_user_demand ? node_id : get_external_demand_id(p_independent, node_id)
 
-    for node_id in user_demand_ids_subnetwork
         for (demand_priority_idx, demand_priority) in enumerate(demand_priorities_all)
             !has_demand_priority[node_id.idx, demand_priority_idx] && continue
+            allocated_flow =
+                JuMP.value(node_allocated[node_id, demand_priority]) * scaling.flow
             push!(
                 record_demand,
                 DemandRecordDatum(
                     t,
                     subnetwork_id,
-                    "UserDemand",
+                    string(node_id.type),
                     Int32(node_id),
                     demand_priority,
-                    demand[node_id.idx, demand_priority_idx],
-                    JuMP.value(user_demand_allocated[node_id, demand_priority]),
-                    0.0, #TODO !!!!
+                    demand[demand_id.idx, demand_priority_idx],
+                    allocated_flow,
+                    # NOTE: The realized amount lags one allocation period behind
+                    cumulative_realized_volume[inflow_link[node_id.idx].link] /
+                    Δt_allocation,
                 ),
             )
+            if is_user_demand
+                node.allocated[node_id.idx, demand_priority_idx]
+            end
         end
     end
 
     return nothing
 end
 
-# function add_to_record_demand!(
-#     record_demand::DemandRecord,
-#     t::Float64,
-#     subnetwork_id::Int32,
-#     node_id::NodeID,
-#     demand_priority::Int32,
-#     demand::Float64,
-#     allocated::Float64,
-#     realized::Float64,
-# )::Nothing
-#     push!(record_demand.time, t)
-#     push!(record_demand.subnetwork_id, subnetwork_id)
-#     push!(record_demand.node_type, string(node_id.type))
-#     push!(record_demand.node_id, Int32(node_id))
-#     push!(record_demand.demand_priority, demand_priority)
-#     push!(record_demand.demand, demand)
-#     push!(record_demand.allocated, allocated)
-#     push!(record_demand.realized, realized)
-#     return nothing
-# end
+function parse_allocations!(
+    integrator::DEIntegrator,
+    level_demand::LevelDemand,
+    allocation_model::AllocationModel,
+)::Nothing
+    (; p, t) = integrator
+    (; p_independent, state_time_dependent_cache) = p
+    (; current_storage) = state_time_dependent_cache
+    (; allocation, basin) = p_independent
+    (; record_demand, demand_priorities_all) = allocation
+    (; has_demand_priority, storage_prev, storage_demand) = level_demand
+    (; problem, subnetwork_id, node_id_in_subnetwork, Δt_allocation, scaling) =
+        allocation_model
+    (; basin_ids_subnetwork_with_level_demand) = node_id_in_subnetwork
+    level_demand_allocated = problem[:level_demand_allocated]
 
-# function save_demands_and_allocations!(
-#     allocation_model::AllocationModel,
-#     objective::AllocationObjective,
-#     integrator::DEIntegrator,
-#     user_demand::UserDemand,
-# )::Nothing
-#     (; p, t) = integrator
-#     (; record_demand) = p.p_independent.allocation
-#     (; subnetwork_id, Δt_allocation, cumulative_realized_volume, problem) = allocation_model
-#     (; demand_priority, demand_priority_idx) = objective
-#     (; demand, allocated, inflow_link, has_demand_priority) = user_demand
+    for node_id in basin_ids_subnetwork_with_level_demand
+        realized_basin_volume = current_storage[node_id.idx] - storage_prev[node_id]
+        for (demand_priority_idx, demand_priority) in enumerate(demand_priorities_all)
+            level_demand_id = basin.level_demand_id[node_id.idx]
+            !has_demand_priority[level_demand_id.idx, demand_priority_idx] && continue
+            allocated_basin_volume =
+                scaling.storage * (
+                    JuMP.value(level_demand_allocated[node_id, demand_priority, :lower]) -
+                    JuMP.value(level_demand_allocated[node_id, demand_priority, :upper])
+                )
+            push!(
+                record_demand,
+                DemandRecordDatum(
+                    t,
+                    subnetwork_id,
+                    "LevelDemand",
+                    Int32(node_id),
+                    demand_priority,
+                    storage_demand[node_id][demand_priority_idx],
+                    allocated_basin_volume / Δt_allocation,
+                    # NOTE: The realized amount lags one allocation period behind
+                    realized_basin_volume / Δt_allocation,
+                ),
+            )
+        end
+    end
+    return nothing
+end
 
-#     user_demand_allocated = problem[:user_demand_allocated]
+# After all goals have been optimized for, save
+# the resulting flows for output
+function save_flows!(
+    integrator::DEIntegrator,
+    allocation_model::AllocationModel,
+    optimization_type::AllocationOptimizationType.T,
+)::Nothing
+    (; p, t) = integrator
+    (; problem, subnetwork_id, cumulative_forcing_volume, scaling, node_id_in_subnetwork) =
+        allocation_model
+    (; basin_ids_subnetwork) = node_id_in_subnetwork
+    (; graph, allocation) = p.p_independent
+    (; record_flow) = allocation
+    flow = problem[:flow]
+    low_storage_factor = problem[:low_storage_factor]
 
-#     for node_id in only(user_demand_allocated.axes)
-#         if has_demand_priority[node_id.idx, demand_priority_idx]
-#             add_to_record_demand!(
-#                 record_demand,
-#                 t,
-#                 subnetwork_id,
-#                 node_id,
-#                 demand_priority,
-#                 demand[node_id.idx, demand_priority_idx],
-#                 allocated[node_id.idx, demand_priority_idx],
-#                 # NOTE: The realized amount lags one allocation period behind
-#                 cumulative_realized_volume[inflow_link[node_id.idx].link] / Δt_allocation,
-#             )
-#         end
-#     end
-#     return nothing
-# end
+    # Horizontal flows
+    for link in only(flow.axes)
+        (id_from, id_to) = link
+        link_metadata = graph[link...]
+        flow_variable = flow[link]
+        hit_lower_bound, hit_upper_bound = get_bounds_hit(flow_variable)
 
-# function save_demands_and_allocations!(
-#     allocation_model::AllocationModel,
-#     objective::AllocationObjective,
-#     integrator::DEIntegrator,
-#     flow_demand::FlowDemand,
-# )::Nothing
-#     (; p, t) = integrator
-#     (; record_demand) = p.p_independent.allocation
-#     (; subnetwork_id, Δt_allocation, cumulative_realized_volume, problem) = allocation_model
-#     (; demand_priority, demand_priority_idx) = objective
-#     (; demand, allocated, inflow_link, has_demand_priority) = flow_demand
+        push!(
+            record_flow,
+            FlowRecordDatum(
+                t,
+                link_metadata.id,
+                string(id_from.type),
+                Int32(id_from),
+                string(id_to.type),
+                Int32(id_to),
+                subnetwork_id,
+                JuMP.value(flow_variable) * scaling.flow,
+                string(optimization_type),
+                hit_lower_bound,
+                hit_upper_bound,
+            ),
+        )
+    end
 
-#     flow_demand_allocated = problem[:flow_demand_allocated]
+    # Vertical flows
+    for node_id in basin_ids_subnetwork
+        low_storage_factor_variable = low_storage_factor[node_id]
+        hit_lower_bound, hit_upper_bound = get_bounds_hit(low_storage_factor_variable)
+        (forcing_volume_positive, forcing_volume_negative) =
+            cumulative_forcing_volume[node_id]
+        push!(
+            record_flow,
+            FlowRecordDatum(
+                t,
+                0,
+                string(NodeType.Basin),
+                Int32(node_id),
+                string(NodeType.Basin),
+                Int32(node_id),
+                subnetwork_id,
+                forcing_volume_positive -
+                forcing_volume_negative * JuMP.value(low_storage_factor_variable),
+                string(optimization_type),
+                hit_lower_bound,
+                hit_upper_bound,
+            ),
+        )
+    end
 
-#     for node_id in only(flow_demand_allocated.axes)
-#         (; link) = inflow_link[node_id.idx]
-#         if has_demand_priority[node_id.idx, demand_priority_idx]
-#             add_to_record_demand!(
-#                 record_demand,
-#                 t,
-#                 subnetwork_id,
-#                 link[2],
-#                 demand_priority,
-#                 demand[node_id.idx, demand_priority_idx],
-#                 allocated[node_id.idx, demand_priority_idx],
-#                 # NOTE: The realized amount lags one allocation period behind
-#                 cumulative_realized_volume[link] / Δt_allocation,
-#             )
-#         end
-#     end
-#     return nothing
-# end
-
-# function save_demands_and_allocations!(
-#     allocation_model::AllocationModel,
-#     objective::AllocationObjective,
-#     integrator::DEIntegrator,
-#     level_demand::LevelDemand,
-# )::Nothing
-#     (; p, t) = integrator
-#     (; p_independent, state_time_dependent_cache) = p
-#     (; current_storage) = state_time_dependent_cache
-#     (; problem, Δt_allocation, subnetwork_id) = allocation_model
-#     (; allocation, graph) = p_independent
-#     (; record_demand, demand_priorities_all) = allocation
-#     (; demand_priority_idx) = objective
-#     (; has_demand_priority, storage_prev, storage_demand, storage_allocated) = level_demand
-
-#     demand_priority = demand_priorities_all[demand_priority_idx]
-
-#     for node_id_basin in only(problem[:storage_constraint_in].axes)
-#         node_id = only(inneighbor_labels_type(graph, node_id_basin, LinkType.control))
-#         if has_demand_priority[node_id.idx, demand_priority_idx]
-#             current_storage_basin = current_storage[node_id_basin.idx]
-#             cumulative_realized_basin_volume =
-#                 current_storage_basin - storage_prev[node_id_basin]
-#             # The demand of the zones (lower and upper) between the target levels for this priority
-#             # and the target levels for the previous priority
-#             storage_demand =
-#                 level_demand.storage_demand[node_id_basin][demand_priority] - sum(
-#                     view(
-#                         level_demand.storage_demand[node_id_basin],
-#                         1:(demand_priority - 1),
-#                     ),
-#                 )
-#             add_to_record_demand!(
-#                 record_demand,
-#                 t,
-#                 subnetwork_id,
-#                 node_id_basin,
-#                 demand_priority,
-#                 storage_demand / Δt_allocation,
-#                 storage_allocated[node_id_basin][demand_priority_idx] / Δt_allocation,
-#                 # NOTE: The realized amount lags one allocation period behind
-#                 cumulative_realized_basin_volume / Δt_allocation,
-#             )
-#         end
-#     end
-#     return nothing
-# end
-
-# # After all goals have been optimized for, save
-# # the resulting flows for output
-# function save_allocation_flows!(
-#     p_independent::ParametersIndependent,
-#     t::Float64,
-#     allocation_model::AllocationModel,
-#     optimization_type::AllocationOptimizationType.T,
-# )::Nothing
-#     (; problem, subnetwork_id, scaling) = allocation_model
-#     (; graph, allocation) = p_independent
-#     (; record_flow) = allocation
-#     flow = problem[:flow]
-#     basin_forcing = problem[:basin_forcing]
-
-#     # Horizontal flows
-#     for link in only(flow.axes)
-#         (id_from, id_to) = link
-#         link_metadata = graph[link...]
-
-#         push!(record_flow.time, t)
-#         push!(record_flow.link_id, link_metadata.id)
-#         push!(record_flow.from_node_type, string(id_from.type))
-#         push!(record_flow.from_node_id, Int32(id_from))
-#         push!(record_flow.to_node_type, string(id_to.type))
-#         push!(record_flow.to_node_id, Int32(id_to))
-#         push!(record_flow.subnetwork_id, subnetwork_id)
-#         push!(record_flow.flow_rate, get_flow_value(allocation_model, link))
-#         push!(record_flow.optimization_type, string(optimization_type))
-#     end
-
-#     # Vertical flows
-#     for node_id in only(basin_forcing.axes)
-#         push!(record_flow.time, t)
-#         push!(record_flow.link_id, 0)
-#         push!(record_flow.from_node_type, string(NodeType.Basin))
-#         push!(record_flow.from_node_id, node_id)
-#         push!(record_flow.to_node_type, string(NodeType.Basin))
-#         push!(record_flow.to_node_id, node_id)
-#         push!(record_flow.subnetwork_id, subnetwork_id)
-#         push!(record_flow.flow_rate, JuMP.value(basin_forcing[node_id]) * scaling.flow)
-#         push!(record_flow.optimization_type, string(optimization_type))
-#     end
-
-#     return nothing
-# end
+    return nothing
+end
 
 function warm_start!(allocation_model::AllocationModel, integrator::DEIntegrator)::Nothing
     (; problem) = allocation_model
@@ -798,7 +773,8 @@ function optimize!(allocation_model::AllocationModel)::Nothing
 
     JuMP.@objective(problem, Min, objectives.objective_expressions_all)
     JuMP.optimize!(problem)
-
+    @debug JuMP.solution_summary(problem)
+    @assert JuMP.termination_status(problem) == JuMP.OPTIMAL
     # TODO: Infeasibility handling
 
     return nothing
@@ -822,11 +798,15 @@ function apply_control_from_allocation!(
         if in_subnetwork && node.allocation_controlled[node_id.idx]
             flow_rate = JuMP.value(flow[inflow_link.link]) * scaling.flow
             node.flow_rate[node_id.idx].u .= flow_rate
-
-            push!(record_control.time, t)
-            push!(record_control.node_id, node_id.value)
-            push!(record_control.node_type, string(node_id.type))
-            push!(record_control.flow_rate, flow_rate)
+            push!(
+                record_control,
+                AllocationControlRecordDatum(
+                    t,
+                    Int32(node_id),
+                    string(node_id.type),
+                    flow_rate,
+                ),
+            )
         end
     end
     return nothing
@@ -841,7 +821,7 @@ function reset_cumulative!(allocation_model::AllocationModel)::Nothing
     end
 
     for node_id in keys(cumulative_forcing_volume)
-        cumulative_forcing_volume[node_id] = 0
+        cumulative_forcing_volume[node_id] = (0.0, 0.0)
     end
 
     for link in keys(cumulative_boundary_volume)
@@ -861,7 +841,7 @@ function update_allocation!(model)::Nothing
     (; integrator) = model
     (; u, p, t) = integrator
     (; p_independent) = p
-    (; allocation) = p_independent
+    (; allocation, pump, outlet) = p_independent
     (; allocation_models) = allocation
 
     # Don't run the allocation algorithm if allocation is not active
@@ -907,6 +887,13 @@ function update_allocation!(model)::Nothing
 
     for allocation_model in allocation_models
         optimize!(allocation_model)
+        parse_allocations!(integrator, allocation_model)
+        save_flows!(integrator, allocation_model, AllocationOptimizationType.allocate)
+        apply_control_from_allocation!(pump, allocation_model, integrator)
+        apply_control_from_allocation!(outlet, allocation_model, integrator)
+
+        # Reset cumulative data
+        reset_cumulative!(allocation_model)
     end
     # # Allocate first in the primary network if it is present, and then in the secondary networks
     # for allocation_model in allocation_models
@@ -930,12 +917,8 @@ function update_allocation!(model)::Nothing
     #         AllocationOptimizationType.collect_demands,
     #     )
 
-    #     # Reset cumulative data
-    #     reset_cumulative!(allocation_model)
-    # end
-
-    # # Update storage_prev for level_demand
-    # update_storage_prev!(p)
+    # Update storage_prev for level_demand
+    update_storage_prev!(p)
 
     return nothing
 end
