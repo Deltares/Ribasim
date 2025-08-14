@@ -367,29 +367,17 @@ function add_level_demand!(
         )
 
     # Define constraints: error terms below minimum storage
-    d_in = 2000.0 # example incoming storage demand (scaling.storage * m^3)
-    problem[:storage_constraint_in] = JuMP.@constraint(
+    d = 2000.0 # example storage demand (scaling.storage * m^3)
+    problem[:storage_constraint] = JuMP.@constraint(
         problem,
         [
             node_id = basin_ids_subnetwork_with_level_demand,
             demand_priority = DemandPriorityIterator(node_id, p_independent),
+            side = [:lower, :upper],
         ],
-        level_demand_error[node_id, demand_priority, :lower, :first] ≥
-        d_in - level_demand_allocated[node_id, demand_priority, :lower],
-        base_name = "storage_constraint_in"
-    )
-
-    # Define constraints: error terms above maximum storage
-    d_out = 3000.0 # example outgoing storage demand (scaling.storage * m^3)
-    problem[:storage_constraint_out] = JuMP.@constraint(
-        problem,
-        [
-            node_id = basin_ids_subnetwork_with_level_demand,
-            demand_priority = DemandPriorityIterator(node_id, p_independent),
-        ],
-        level_demand_error[node_id, demand_priority, :upper, :first] ≥
-        level_demand_allocated[node_id, demand_priority, :upper] - d_out,
-        base_name = "storage_constraint_out"
+        level_demand_error[node_id, demand_priority, side, :first] ≥
+        d - level_demand_allocated[node_id, demand_priority, side],
+        base_name = "storage_constraint"
     )
 
     return nothing
@@ -687,7 +675,7 @@ function add_demand_objectives!(
                 # This is an edge case where there is no demand for this demand priority in this subnetwork
                 # This essentially adds a feasibility objective which is filtered out in the
                 # AllocationModel constructor
-                AllocationObjectiveType.demand_flow
+                AllocationObjectiveType.none
             end
             push!(
                 objective_metadata,
@@ -897,8 +885,8 @@ function AllocationModel(
     allocation_config::config.Allocation,
 )
     Δt_allocation = allocation_config.timestep
-    problem = JuMP.Model(() -> MOA.Optimizer(HiGHS.Optimizer))
-    set_optimizer_attributes!(problem)
+    problem = JuMP.Model(() -> MOA.Optimizer(get_optimizer()))
+    set_multi_objective_attributes!(problem)
     node_id_in_subnetwork = NodeIDsInSubnetwork(p_independent, subnetwork_id)
     scaling = ScalingFactors(p_independent, subnetwork_id, Δt_allocation)
     allocation_model = AllocationModel(;

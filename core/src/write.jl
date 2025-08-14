@@ -572,8 +572,8 @@ function allocation_data(model::Model; table::Bool = true)
         realized = getfield.(record_demand, :realized)
     else
         time = unique(datetimes)
-        node_id = unique(record_demand.node_id)
-        demand_priority = unique(record_demand.demand_priority)
+        node_id = unique(getfield.(record_demand, :node_id))
+        demand_priority = unique(getfield.(record_demand, :demand_priority))
 
         nrows = length(record_demand.time)
         ntsteps = length(time)

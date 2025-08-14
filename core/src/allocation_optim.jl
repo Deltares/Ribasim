@@ -67,8 +67,8 @@ function set_simulation_data!(
 
         # Set bounds on the storage change based on the current storage and the Basin minimum and maximum
         Δstorage = storage_change[basin_id]
-        JuMP.set_lower_bound(Δstorage, -storage_now)
-        JuMP.set_upper_bound(Δstorage, storage_max - storage_now)
+        JuMP.set_lower_bound(Δstorage, -storage_now / scaling.storage)
+        JuMP.set_upper_bound(Δstorage, (storage_max - storage_now) / scaling.storage)
 
         # Set forcing
         (forcing_volume_positive, forcing_volume_negative) =
@@ -443,7 +443,7 @@ function set_demands!(
 
             # Get the node_id of the node that has the demand
             node_id_with_demand =
-                is_flow_demand ? node.node_with_demand[node_id.idx] : node_id
+                is_flow_demand ? node.inflow_link[node_id.idx].link[2] : node_id
 
             d = demand[node_id.idx, demand_priority_idx] / scaling.flow
 
@@ -452,7 +452,7 @@ function set_demands!(
 
             # Set demand in constraint for error term in first objective
             c = node_relative_error_constraint[node_id_with_demand, demand_priority]
-            error_term_first = node_error[node_id, demand_priority, :first]
+            error_term_first = node_error[node_id_with_demand, demand_priority, :first]
             JuMP.set_normalized_coefficient(c, error_term_first, d)
             JuMP.set_normalized_rhs(c, d)
 
@@ -492,8 +492,7 @@ function set_demands!(
 
     level_demand_allocated = problem[:level_demand_allocated]
     level_demand_error = problem[:level_demand_error]
-    storage_constraint_in = problem[:storage_constraint_in]
-    storage_constraint_out = problem[:storage_constraint_out]
+    storage_constraint = problem[:storage_constraint]
 
     average_storage_unit_error = problem[:average_storage_unit_error]
     average_storage_unit_error_constraint = problem[:average_storage_unit_error_constraint]
@@ -521,6 +520,7 @@ function set_demands!(
                     basin_id.idx,
                     clamp(level_now, level_min_prev_priority, level_min),
                 )
+            d_in = isnan(d_in) ? 0.0 : d_in
             d_in_scaled = d_in / scaling.storage
 
             d_out =
@@ -529,6 +529,7 @@ function set_demands!(
                     basin_id.idx,
                     clamp(level_now, level_max, level_max_prev_priority),
                 ) - get_storage_from_level(basin, basin_id.idx, level_max)
+            d_out = isnan(d_out) ? 0.0 : d_out
             d_out_scaled = d_out / scaling.storage
 
             # Set demands as upper bounds to allocated storage amounts
@@ -542,10 +543,13 @@ function set_demands!(
             )
 
             # Set demands in constraints on errors for first objective
-            JuMP.set_normalized_rhs(storage_constraint_in[basin_id, demand_priority], d_in)
             JuMP.set_normalized_rhs(
-                storage_constraint_out[basin_id, demand_priority],
-                -d_out_scaled,
+                storage_constraint[basin_id, demand_priority, :lower],
+                d_in_scaled,
+            )
+            JuMP.set_normalized_rhs(
+                storage_constraint[basin_id, demand_priority, :upper],
+                d_out_scaled,
             )
 
             # Set area in definition of average level error
@@ -568,6 +572,46 @@ function set_demands!(
             level_max_prev_priority = level_max
         end
     end
+    return nothing
+end
+
+function warm_start!(allocation_model::AllocationModel, integrator::DEIntegrator)::Nothing
+    (; problem) = allocation_model
+    flow = problem[:flow]
+
+    # Assume no flow (TODO: Take instantaneous flow from physical layer)
+    for link in only(flow.axes)
+        JuMP.set_start_value(flow[link], 0.0)
+    end
+
+    return nothing
+end
+
+function optimize!(allocation_model::AllocationModel, model)::Nothing
+    (; config, integrator) = model
+    (; t) = integrator
+    (; problem, objectives, subnetwork_id) = allocation_model
+
+    JuMP.@objective(problem, Min, objectives.objective_expressions_all)
+    JuMP.optimize!(problem)
+    @debug JuMP.solution_summary(problem)
+    termination_status = JuMP.termination_status(problem)
+
+    # Handle non-optimal termination status
+    if termination_status == JuMP.INFEASIBLE
+        # Change to scalar objective since vector-valued objective cannot be written
+        # to .lp
+        set_feasibility_objective!(problem)
+        write_problem_to_file(problem, config)
+        analyze_infeasibility(allocation_model, t, config)
+        analyze_scaling(allocation_model, t, config)
+
+        error(
+            "Allocation optimization for subnetwork $subnetwork_id at t = $t s is infeasible",
+        )
+    elseif termination_status != JuMP.OPTIMAL
+    end
+
     return nothing
 end
 
@@ -609,6 +653,7 @@ function parse_allocations!(
     (; record_demand, demand_priorities_all) = allocation
     (; demand, has_demand_priority, inflow_link) = node
     is_user_demand = (node isa UserDemand)
+    is_user_demand && (node.allocated .= 0)
 
     for node_id in node_ids_subnetwork
         demand_id =
@@ -634,7 +679,7 @@ function parse_allocations!(
                 ),
             )
             if is_user_demand
-                node.allocated[node_id.idx, demand_priority_idx]
+                node.allocated[node_id.idx, demand_priority_idx] = allocated_flow
             end
         end
     end
@@ -676,7 +721,7 @@ function parse_allocations!(
                     "LevelDemand",
                     Int32(node_id),
                     demand_priority,
-                    storage_demand[node_id][demand_priority_idx],
+                    storage_demand[node_id][demand_priority_idx] / Δt_allocation,
                     allocated_basin_volume / Δt_allocation,
                     # NOTE: The realized amount lags one allocation period behind
                     realized_basin_volume / Δt_allocation,
@@ -756,30 +801,6 @@ function save_flows!(
     return nothing
 end
 
-function warm_start!(allocation_model::AllocationModel, integrator::DEIntegrator)::Nothing
-    (; problem) = allocation_model
-    flow = problem[:flow]
-
-    # Assume no flow (TODO: Take instantaneous flow from physical layer)
-    for link in only(flow.axes)
-        JuMP.set_start_value(flow[link], 0.0)
-    end
-
-    return nothing
-end
-
-function optimize!(allocation_model::AllocationModel)::Nothing
-    (; problem, objectives) = allocation_model
-
-    JuMP.@objective(problem, Min, objectives.objective_expressions_all)
-    JuMP.optimize!(problem)
-    @debug JuMP.solution_summary(problem)
-    @assert JuMP.termination_status(problem) == JuMP.OPTIMAL
-    # TODO: Infeasibility handling
-
-    return nothing
-end
-
 # Set the flow rate of allocation controlled pumps and outlets to
 # their flow determined by allocation
 function apply_control_from_allocation!(
@@ -797,6 +818,7 @@ function apply_control_from_allocation!(
         in_subnetwork = (graph[node_id].subnetwork_id == subnetwork_id)
         if in_subnetwork && node.allocation_controlled[node_id.idx]
             flow_rate = JuMP.value(flow[inflow_link.link]) * scaling.flow
+            @show flow_rate
             node.flow_rate[node_id.idx].u .= flow_rate
             push!(
                 record_control,
@@ -838,7 +860,7 @@ end
 
 "Solve the allocation problem for all demands and assign allocated abstractions."
 function update_allocation!(model)::Nothing
-    (; integrator) = model
+    (; integrator, config) = model
     (; u, p, t) = integrator
     (; p_independent) = p
     (; allocation, pump, outlet) = p_independent
@@ -886,7 +908,7 @@ function update_allocation!(model)::Nothing
     # end
 
     for allocation_model in allocation_models
-        optimize!(allocation_model)
+        optimize!(allocation_model, model)
         parse_allocations!(integrator, allocation_model)
         save_flows!(integrator, allocation_model, AllocationOptimizationType.allocate)
         apply_control_from_allocation!(pump, allocation_model, integrator)

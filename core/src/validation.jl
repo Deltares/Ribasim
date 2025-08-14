@@ -669,7 +669,7 @@ function validate_consistent_basin_initialization(
         n = length(group_level)
         if n < 2
             errors = true
-            @error "$node_id profile must have at least two data points, got $n."
+            @error "Basin #$node_id profile must have at least two data points, got $n."
         end
         if !allunique(group_level)
             errors = true

@@ -69,32 +69,48 @@ end
     (; user_demand, flow_boundary, allocation) = p_independent
     allocation_model = allocation.allocation_models[1]
     (; objectives, problem) = allocation_model
-    demand_objective, source_objective = objectives
+    (; objective_metadata, objective_expressions_all) = objectives
 
     flow = problem[:flow]
+    user_demand_error = problem[:user_demand_error]
+    low_storage_factor = problem[:low_storage_factor]
 
     # Demand objective
-    @test demand_objective.type == AllocationObjectiveType.demand
-    @test demand_objective.has_flow_demand
-    @test !demand_objective.has_level_demand
-    @test demand_objective.expression == sum(problem[:relative_user_demand_error])
+    metadata = objective_metadata[1]
+    @test metadata.type == AllocationObjectiveType.demand_flow
+    first_expression_terms = keys(metadata.expression_first.terms)
+    @test length(first_expression_terms) == 2
+    @test user_demand_error[NodeID(:UserDemand, 5, p_independent), 1, :first] ∈
+          first_expression_terms
+    @test user_demand_error[NodeID(:UserDemand, 6, p_independent), 1, :first] ∈
+          first_expression_terms
+    @test metadata.expression_first === objective_expressions_all[1]
+    @test metadata.expression_second === objective_expressions_all[2]
+    @test metadata.expression_second ==
+          user_demand_error[NodeID(:UserDemand, 5, p_independent), 1, :second] +
+          user_demand_error[NodeID(:UserDemand, 6, p_independent), 1, :second]
+
+    # Low storage factor objective
+    metadata = objective_metadata[2]
+    @test metadata.expression_first == -sum(low_storage_factor)
+    @test metadata.expression_first === objective_expressions_all[3]
 
     # Source objective
-    @test source_objective.type == AllocationObjectiveType.source_priorities
-    @test !source_objective.has_flow_demand
-    @test !source_objective.has_level_demand
+    metadata = objective_metadata[3]
+    @test metadata.type == AllocationObjectiveType.source_priorities
+    @test metadata.expression_first === objective_expressions_all[4]
 
     ## UserDemand return flow source
     user_demand_source_priority = model.config.allocation.source_priority.user_demand
     user_demand_id = NodeID(:UserDemand, 5, p_independent)
     return_flow = flow[user_demand.outflow_link[user_demand_id.idx].link]
-    @test source_objective.expression.terms[return_flow] == inv(user_demand_source_priority)
+    @test metadata.expression_first.terms[return_flow] == inv(user_demand_source_priority)
 
     ## FlowBoundary source
     flow_boundary_source_priority = model.config.allocation.source_priority.flow_boundary
     flow_boundary_id = NodeID(:FlowBoundary, 1, p_independent)
     outflow = flow[flow_boundary.outflow_link[flow_boundary_id.idx].link]
-    @test source_objective.expression.terms[outflow] == inv(flow_boundary_source_priority)
+    @test metadata.expression_first.terms[outflow] == inv(flow_boundary_source_priority)
 end
 
 @testitem "Primary allocation network initialization" begin
@@ -142,7 +158,7 @@ end
         "../../generated_testmodels/main_network_with_subnetworks/ribasim.toml",
     )
     @test ispath(toml_path)
-    model = @test_throws Exception Ribasim.Model(toml_path)
+    model = Ribasim.Model(toml_path)
 
     # (; integrator, config) = model
     # (; p) = integrator
@@ -350,8 +366,8 @@ end
     allocation_model = allocation.allocation_models[1]
 
     # Initial "integrated" vertical flux
-    @test allocation_model.cumulative_forcing_volume[NodeID(:Basin, 2, p_independent),] ≈
-          86.4
+    @test allocation_model.cumulative_forcing_volume[NodeID(:Basin, 2, p_independent)] ==
+          (86.4, 0.0)
 
     Ribasim.solve!(model)
 
@@ -426,9 +442,6 @@ end
 end
 
 @testitem "Flow demand" setup = [Teamcity] begin
-    using JuMP
-    using OrdinaryDiffEqCore: get_du
-    using Ribasim: NodeID, inflow_link
     using DataFrames: DataFrame
     using Tables.DataAPI: nrow
     import Arrow
@@ -437,46 +450,6 @@ end
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/flow_demand/ribasim.toml")
     @test ispath(toml_path)
-    model = Ribasim.Model(toml_path)
-    (; integrator, config) = model
-    (; p, t) = integrator
-    du = get_du(integrator)
-    (; p_independent) = p
-    (; graph, allocation, flow_demand, user_demand, level_boundary) = p_independent
-
-    # Test has_external_flow_demand
-    @test !any(
-        Ribasim.has_external_flow_demand(graph, node_id, :flow_demand)[1] for
-        node_id in graph[].node_ids[2] if node_id.value != 2
-    )
-    @test Ribasim.has_external_flow_demand(
-        graph,
-        NodeID(:TabulatedRatingCurve, 2, p_independent),
-        :flow_demand,
-    )[1]
-
-    (; allocation_models, record_flow) = allocation
-    allocation_model = allocation_models[1]
-    (; problem, objectives, scaling) = allocation_model
-
-    relative_flow_demand_error = problem[:relative_flow_demand_error]
-    flow = problem[:flow]
-
-    flow_demand_id = NodeID(:FlowDemand, 5, p_independent)
-    flow_demand_flow = flow[flow_demand.inflow_link[flow_demand_id.idx].link]
-
-    Ribasim.set_simulation_data!(allocation_model, p, t, du)
-
-    # Priority 1
-    Ribasim.optimize_for_objective!(allocation_model, integrator, objectives[1], config)
-
-    ## Priority 2
-    @test JuMP.lower_bound(flow_demand_flow) == 0
-    Ribasim.optimize_for_objective!(allocation_model, integrator, objectives[2], config)
-    objective_expression = JuMP.objective_function(problem)
-    @test relative_flow_demand_error[flow_demand_id] ∈ keys(objective_expression.terms)
-    @test JuMP.lower_bound(flow_demand_flow) * scaling.flow == flow_demand.demand[1, 2]
-
     model = Ribasim.run(toml_path)
     allocation_table = DataFrame(Ribasim.allocation_data(model))
     df_rating_curve_2 = filter(:node_id => ==(2), allocation_table)
@@ -544,21 +517,11 @@ end
         normpath(@__DIR__, "../../generated_testmodels/fair_distribution/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.Model(toml_path)
-    @test_throws Exception Ribasim.solve!(model)
-    (; user_demand, graph) = model.integrator.p.p_independent
-
-    data_allocation = DataFrame(Ribasim.allocation_data(model))
-    fractions = Vector{Float64}[]
-
-    for id in user_demand.node_id
-        data_allocation_id = filter(:node_id => ==(id.value), data_allocation)
-        frac = data_allocation_id.allocated ./ data_allocation_id.demand
-        push!(fractions, frac)
-    end
-
-    @test all(isapprox.(fractions[1], fractions[2], atol = 1e-4))
-    @test all(isapprox.(fractions[1], fractions[3], atol = 1e-4))
-    @test all(isapprox.(fractions[1], fractions[4], atol = 1e-4))
+    Ribasim.solve!(model)
+    (; problem, scaling) =
+        only(model.integrator.p.p_independent.allocation.allocation_models)
+    (; user_demand) = model.integrator.p.p_independent
+    @test all(≈(0.5), user_demand.allocated ./ user_demand.demand)
 end
 
 # Do we still want this feature?
@@ -626,17 +589,16 @@ end
 
     logger = TestLogger()
     with_logger(logger) do
-        @test_throws "Allocation optimization for subnetwork 1, objective of type source_priorities at t = 0.0 s is infeasible" Ribasim.run(
+        @test_throws "Allocation optimization for subnetwork 1 at t = 0.0 s is infeasible" Ribasim.run(
             toml_path,
         )
     end
 
-    @test logger.logs[6].level == Error
-    @test logger.logs[6].message == "Set of incompatible constraints found"
-    @test sort(name.(keys(logger.logs[6].kwargs[:constraint_violations]))) == [
-        "linear_basin_profile[Basin #1]"
-        "linear_resistance_constraint[LinearResistance #2]"
-        "volume_conservation[Basin #1]"
+    @test logger.logs[5].level == Error
+    @test logger.logs[5].message == "Set of incompatible constraints found"
+    @test sort(name.(keys(logger.logs[5].kwargs[:constraint_violations]))) == [
+        "linear_resistance_constraint[LinearResistance #2]",
+        "volume_conservation[Basin #1]",
     ]
 
     @test ispath(

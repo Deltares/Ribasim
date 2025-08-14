@@ -137,17 +137,16 @@ end
 
 function analyze_infeasibility(
     allocation_model::AllocationModel,
-    objective_idx::Int,
     t::Float64,
     config::Config,
 )::Nothing
-    (; problem, subnetwork_id, objectives) = allocation_model
+    (; problem, subnetwork_id) = allocation_model
 
     log_path = results_path(config, RESULTS_FILENAME.allocation_analysis_infeasibility)
-    objective_repr = repr_allocation_objective(objectives, objective_idx)
-    @debug "Running allocation infeasibility analysis for $subnetwork_id, $objective_repr at t = $t, for full summary see $log_path."
+    @debug "Running allocation infeasibility analysis for $subnetwork_id at t = $t, for full summary see $log_path."
 
     # Perform infeasibility analysis
+    JuMP.optimize!(problem)
     data_infeasibility = MathOptAnalyzer.analyze(
         MathOptAnalyzer.Infeasibility.Analyzer(),
         problem;
@@ -178,7 +177,6 @@ function analyze_infeasibility(
         violated_constraint => isempty(JuMP.name(violated_constraint)) ? 1.0 : 0.5 for
         violated_constraint in violated_constraints
     )
-    JuMP.@objective(problem, Min, 0)
     constraint_to_slack = JuMP.relax_with_penalty!(problem, constraint_to_penalty)
     JuMP.optimize!(problem)
 
@@ -198,15 +196,13 @@ end
 
 function analyze_scaling(
     allocation_model::AllocationModel,
-    objective_idx::Int,
     t::Float64,
     config::Config,
 )::Nothing
     (; problem, subnetwork_id) = allocation_model
 
     log_path = results_path(config, RESULTS_FILENAME.allocation_analysis_scaling)
-    objective_repr = repr_allocation_objective(objectives, objective_idx)
-    @debug "Running allocation numerics analysis for $subnetwork_id, $objective_repr at t = $t, for full summary see $file_name."
+    @debug "Running allocation numerics analysis for $subnetwork_id, at t = $t, for full summary see $file_name."
 
     # Perform numerics analysis
     data_numerical = MathOptAnalyzer.analyze(
@@ -244,14 +240,19 @@ function analyze_scaling(
     return nothing
 end
 
-function set_optimizer_attributes!(problem::JuMP.Model)::Nothing
+function get_optimizer()
+    JuMP.optimizer_with_attributes(
+        HiGHS.Optimizer,
+        "log_to_console" => false,
+        "time_limit" => 60.0,
+        "random_seed" => 0,
+        "small_matrix_value" => 1e-12,
+    )
+end
+
+function set_multi_objective_attributes!(problem::JuMP.Model)::Nothing
     JuMP.set_attribute(problem, MOA.Algorithm(), MOA.Lexicographic())
     JuMP.set_attribute(problem, MOA.LexicographicAllPermutations(), false)
-    JuMP.set_attribute(problem, "log_to_console", false)
-    JuMP.set_attribute(problem, "time_limit", 60.0)
-    JuMP.set_attribute(problem, "random_seed", 0)
-    JuMP.set_attribute(problem, "small_matrix_value", 1e-12)
-    JuMP.set_attribute(problem, "presolve", "on")
     return nothing
 end
 
@@ -444,5 +445,12 @@ function update_storage_prev!(p::Parameters)::Nothing
         storage_prev[node_id] = current_storage[node_id.idx]
     end
 
+    return nothing
+end
+
+function set_feasibility_objective!(problem::JuMP.Model)::Nothing
+    # First set the optimizer for a scalar objective
+    JuMP.set_optimizer(problem, get_optimizer())
+    JuMP.@objective(problem, Min, 0)
     return nothing
 end
