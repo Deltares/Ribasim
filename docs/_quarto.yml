@@ -35,13 +35,11 @@ website:
     - title: "Overview"
       contents:
         - index.qmd
-        - install.qmd
         - changelog.qmd
         - known_issues.qmd
         - contact.qmd
     - title: "How-to guides"
       contents:
-        - guide/examples.qmd
         - guide/modeling-process.qmd
         - guide/updating-ribasim.qmd
         - guide/qgis.qmd
