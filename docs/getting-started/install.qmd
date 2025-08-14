@@ -1,5 +1,6 @@
 ---
 title: "Installation"
+sidebar: _sidebar.yml
 ---
 
 In this document, we describe how to install the different components of Ribasim.
