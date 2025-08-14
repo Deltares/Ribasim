@@ -83,8 +83,6 @@ import JuMP
 import MultiObjectiveAlgorithms as MOA
 # The optimization backend of JuMP.
 import HiGHS
-# Represent piecewise linear functions in JuMP
-using PiecewiseLinearOpt: piecewiselinear
 # Analyze infeasibilities and numerical properties
 import MathOptAnalyzer
 
