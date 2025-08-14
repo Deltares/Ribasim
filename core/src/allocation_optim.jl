@@ -818,7 +818,6 @@ function apply_control_from_allocation!(
         in_subnetwork = (graph[node_id].subnetwork_id == subnetwork_id)
         if in_subnetwork && node.allocation_controlled[node_id.idx]
             flow_rate = JuMP.value(flow[inflow_link.link]) * scaling.flow
-            @show flow_rate
             node.flow_rate[node_id.idx].u .= flow_rate
             push!(
                 record_control,

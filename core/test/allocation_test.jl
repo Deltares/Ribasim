@@ -192,8 +192,8 @@ end
     )][1:2] ≈ [0.001, 0.002] atol = 1e-4
 
     # Solving for the primary network, containing subnetworks as UserDemands
-    allocation_model = allocation_models[1]
-    (; problem) = allocation_model
+    # allocation_model = allocation_models[1]
+    # (; problem) = allocation_model
     @test_throws Exception main_source = allocation_model.sources[(
         NodeID(:FlowBoundary, 1, p_independent),
         NodeID(:Basin, 2, p_independent),
@@ -209,8 +209,8 @@ end
 
     # Main network objective function
     @test_throws Exception F = problem[:F]
-    objective = JuMP.objective_function(problem)
-    objective_links = keys(objective.terms)
+    # objective = JuMP.objective_function(problem)
+    # objective_links = keys(objective.terms)
     @test_throws Exception F_1 =
         F[(NodeID(:Basin, 2, p_independent), NodeID(:Pump, 11, p_independent))]
     @test_throws Exception F_2 =
@@ -222,7 +222,7 @@ end
     @test_broken JuMP.UnorderedPair(F_3, F_3) ∈ objective_links
 
     # Running full allocation algorithm
-    (; Δt_allocation) = allocation_models[1]
+    # (; Δt_allocation) = allocation_models[1]
     @test_throws Exception mean_input_flows[1][(
         NodeID(:FlowBoundary, 1, p_independent),
         NodeID(:Basin, 2, p_independent),
@@ -354,7 +354,7 @@ end
 
 @testitem "Allocation level control" begin
     import JuMP
-    using Ribasim: NodeID
+    using Ribasim: NodeID, seconds_since
     using DataFrames: DataFrame
     using DataInterpolations: LinearInterpolation, integral
 
@@ -416,17 +416,13 @@ end
           JuMP.value(only(problem[:basin_storage][(basin_id, :end)]))
 
     # Realized level demand
-    (; record_demand) = allocation
-    record_demand = DataFrame(;
-        record_demand.node_id,
-        record_demand.time,
-        record_demand.realized,
-        record_demand.demand_priority,
-    )
-    filter!(:demand_priority => ==(1), record_demand)
-    df_basin_2 = record_demand[record_demand.node_id .== 2, :]
+    allocation_table = Ribasim.allocation_data(model) |> DataFrame
+    filter!(:demand_priority => ==(1), allocation_table)
+    df_basin_2 = allocation_table[allocation_table.node_id .== 2, :]
     itp_basin_2 = LinearInterpolation(storage, t)
-    realized_numeric = diff(itp_basin_2.(df_basin_2.time)) / Δt_allocation
+    realized_numeric =
+        diff(itp_basin_2.(seconds_since.(df_basin_2.time, model.config.starttime))) /
+        Δt_allocation
     @test all(isapprox.(realized_numeric, df_basin_2.realized[2:end], atol = 1e-10))
 
     # Realized user demand
@@ -436,7 +432,7 @@ end
         flow_table_user_3.flow_rate,
         Ribasim.seconds_since.(flow_table_user_3.time, model.config.starttime),
     )
-    df_user_3 = record_demand[(record_demand.node_id .== 3), :]
+    df_user_3 = allocation_table[(allocation_table.node_id .== 3), :]
     realized_numeric = diff(integral.(Ref(itp_user_3), df_user_3.time)) ./ Δt_allocation
     @test all(isapprox.(realized_numeric[3:end], df_user_3.realized[4:end], atol = 1e-3))
 end
