@@ -10,8 +10,15 @@ website:
     left:
       - text: "Overview"
         file: index.qmd
-      - text: "Tutorials"
-        file: tutorial/natural-flow.qmd
+      - text: "Getting Started"
+        file: getting-started/install.qmd
+        menu:
+          - text: "Installation"
+            file: getting-started/install.qmd
+          - text: "Tutorials"
+            file: getting-started/tutorials/index.qmd
+          - text: "Examples"
+            file: getting-started/examples.qmd
       - text: "How-to guides"
         file: guide/examples.qmd
       - text: "Concepts"
