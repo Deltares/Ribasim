@@ -39,11 +39,6 @@ website:
         - changelog.qmd
         - known_issues.qmd
         - contact.qmd
-    - title: "Tutorials"
-      contents:
-        - tutorial/natural-flow.qmd
-        - tutorial/irrigation-demand.qmd
-        - tutorial/reservoir.qmd
     - title: "How-to guides"
       contents:
         - guide/examples.qmd
