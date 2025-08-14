@@ -1,5 +1,6 @@
 ---
 title: Examples
+sidebar: _sidebar.yml
 jupyter: python3
 ---
 
