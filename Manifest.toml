@@ -2,7 +2,7 @@
 
 julia_version = "1.11.6"
 manifest_format = "2.0"
-project_hash = "7729d2663815a8564d98e28d605c14e391d34b22"
+project_hash = "de9ad13affa2b00ebf4eec9768befd6e72190223"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "7927b9af540ee964cc5d1b73293f1eb0b761a3a1"
@@ -1764,12 +1764,6 @@ deps = ["FileWatching", "Test"]
 git-tree-sha1 = "2d8aaf8ee10df53d0dfb9b8ee44ae7c04ced2b03"
 uuid = "fa939f87-e72e-5be4-a000-7fc836dbe307"
 version = "1.3.0"
-
-[[deps.PiecewiseLinearOpt]]
-deps = ["JuMP", "LinearAlgebra", "MathOptInterface", "Random"]
-git-tree-sha1 = "59786d90d750f1c18029a3903e8c1bc49d0e55a8"
-uuid = "0f51c51e-adfa-5141-8a04-d40246b8977c"
-version = "0.4.2"
 
 [[deps.Pixman_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "LLVMOpenMP_jll", "Libdl"]
