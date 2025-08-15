@@ -885,7 +885,7 @@ end
 function get_state_index(
     state_ranges::StateTuple{UnitRange{Int}},
     link::Tuple{NodeID, NodeID},
-)::Int
+)::Union{Int, Nothing}
     idx = get_state_index(state_ranges, link[2])
     isnothing(idx) ? get_state_index(state_ranges, link[1]; inflow = false) : idx
 end

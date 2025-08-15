@@ -576,12 +576,28 @@ function set_demands!(
 end
 
 function warm_start!(allocation_model::AllocationModel, integrator::DEIntegrator)::Nothing
-    (; problem) = allocation_model
+    (; p, t) = integrator
+    (; problem, scaling, node_id_in_subnetwork, Δt_allocation) = allocation_model
+    (; basin_ids_subnetwork) = node_id_in_subnetwork
     flow = problem[:flow]
+    storage_change = problem[:basin_storage_change]
+    du = get_du(integrator)
 
-    # Assume no flow (TODO: Take instantaneous flow from physical layer)
+    # Extrapolate the current instantaneous flow rates from the physical layer
     for link in only(flow.axes)
-        JuMP.set_start_value(flow[link], 0.0)
+        state_index = get_state_index(getaxes(du), link)
+        if !isnothing(state_index)
+            JuMP.set_start_value(flow[link], du[state_index] / scaling.flow)
+        end
+    end
+
+    # Extrapolate the current instantaneous storage rates from the physical layer
+    for node_id in basin_ids_subnetwork
+        JuMP.set_start_value(
+            storage_change[node_id],
+            formulate_dstorage(du, p.p_independent, t, node_id) * Δt_allocation /
+            scaling.storage,
+        )
     end
 
     return nothing
