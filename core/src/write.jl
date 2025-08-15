@@ -559,23 +559,23 @@ function allocation_data(model::Model; table::Bool = true)
     (; config) = model
     (; record_demand) = model.integrator.p.p_independent.allocation
 
-    datetimes = datetime_since.(record_demand.time, config.starttime)
+    datetimes = datetime_since.(getfield.(record_demand, :time), config.starttime)
 
     if table
         time = datetimes
-        subnetwork_id = record_demand.subnetwork_id
-        node_type = record_demand.node_type
-        node_id = record_demand.node_id
-        demand_priority = record_demand.demand_priority
-        demand = record_demand.demand
-        allocated = record_demand.allocated
-        realized = record_demand.realized
+        subnetwork_id = getfield.(record_demand, :subnetwork_id)
+        node_type = getfield.(record_demand, :node_type)
+        node_id = getfield.(record_demand, :node_id)
+        demand_priority = getfield.(record_demand, :demand_priority)
+        demand = getfield.(record_demand, :demand)
+        allocated = getfield.(record_demand, :allocated)
+        realized = getfield.(record_demand, :realized)
     else
         time = unique(datetimes)
-        node_id = unique(record_demand.node_id)
-        demand_priority = unique(record_demand.demand_priority)
+        node_id = unique(getfield.(record_demand, :node_id))
+        demand_priority = unique(getfield.(record_demand, :demand_priority))
 
-        nrows = length(record_demand.time)
+        nrows = length(record_demand)
         ntsteps = length(time)
         nnodes = length(node_id)
         nprio = length(demand_priority)
@@ -592,18 +592,18 @@ function allocation_data(model::Model; table::Bool = true)
         node_type = ["" for _ in 1:nnodes]
 
         for row in 1:nrows
-            prio = record_demand.demand_priority[row]
-            node = record_demand.node_id[row]
-            t = datetimes[row]
+            prio = record_demand[row].demand_priority
+            node = record_demand[row].node_id
+            t = datetimes
 
             i = searchsortedfirst(demand_priority, prio)
             j = searchsortedfirst(node_id, node)
             k = searchsortedfirst(time, t)
-            demand[i, j, k] = record_demand.demand[row]
-            allocated[i, j, k] = record_demand.allocated[row]
-            realized[i, j, k] = record_demand.realized[row]
-            subnetwork_id[j] = record_demand.subnetwork_id[row]
-            node_type[j] = record_demand.node_type[row]
+            demand[i, j, k] = record_demand[row].demand
+            allocated[i, j, k] = record_demand[row].allocated
+            realized[i, j, k] = record_demand[row].realized
+            subnetwork_id[j] = record_demand[row].subnetwork_id
+            node_type[j] = record_demand[row].node_type
         end
     end
 
@@ -624,16 +624,17 @@ function allocation_flow_data(model::Model; table::Bool = true)
     (; record_flow) = model.integrator.p.p_independent.allocation
 
     if table
-        time = datetime_since.(record_flow.time, config.starttime)
-        link_id = record_flow.link_id
-        from_node_type = record_flow.from_node_type
-        from_node_id = record_flow.from_node_id
-        to_node_type = record_flow.to_node_type
-        to_node_id = record_flow.to_node_id
-        subnetwork_id = record_flow.subnetwork_id
-        optimization_type = record_flow.optimization_type
-        lower_bound_hit = record_flow.lower_bound_hit
-        upper_bound_hit = record_flow.upper_bound_hit
+        time = datetime_since.(getfield.(record_flow, :time), config.starttime)
+        link_id = getfield.(record_flow, :link_id)
+        from_node_type = getfield.(record_flow, :from_node_type)
+        from_node_id = getfield.(record_flow, :from_node_id)
+        to_node_type = getfield.(record_flow, :to_node_type)
+        to_node_id = getfield.(record_flow, :to_node_id)
+        subnetwork_id = getfield.(record_flow, :subnetwork_id)
+        flow_rate = getfield.(record_flow, :flow_rate)
+        optimization_type = getfield.(record_flow, :optimization_type)
+        lower_bound_hit = getfield.(record_flow, :lower_bound_hit)
+        upper_bound_hit = getfield.(record_flow, :upper_bound_hit)
     else
         error("allocation_flow not implemented for NetCDF")
     end
@@ -646,7 +647,7 @@ function allocation_flow_data(model::Model; table::Bool = true)
         to_node_type,
         to_node_id,
         subnetwork_id,
-        record_flow.flow_rate,
+        flow_rate,
         optimization_type,
         lower_bound_hit,
         upper_bound_hit,
@@ -658,10 +659,10 @@ function allocation_control_data(model::Model; table::Bool = true)
     (; record_control) = integrator.p.p_independent.allocation
 
     return (;
-        time = datetime_since.(record_control.time, config.starttime),
-        record_control.node_id,
-        record_control.node_type,
-        record_control.flow_rate,
+        time = datetime_since.(getfield.(record_control, :time), config.starttime),
+        node_id = getfield.(record_control, :node_id),
+        node_type = getfield.(record_control, :node_type),
+        flow_rate = getfield.(record_control, :flow_rate),
     )
 end
 

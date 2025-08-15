@@ -13,7 +13,7 @@ end
 
 @testitem "bottom" begin
     using StructArrays: StructVector
-    using Ribasim: NodeID, cache
+    using Ribasim: NodeID
     using DataInterpolations: LinearInterpolation, integral, invert_integral
     using DataStructures: OrderedSet
 
