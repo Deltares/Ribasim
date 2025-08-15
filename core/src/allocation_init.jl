@@ -331,44 +331,7 @@ function add_level_demand!(
 )::Nothing
     (; problem, node_id_in_subnetwork, node_id_in_subnetwork) = allocation_model
     (; basin_ids_subnetwork_with_level_demand) = node_id_in_subnetwork
-
-    # Define decision variables: The allocated storage change per Basin with a
-    # level demand per priority for which there is a level demand (scaling.storage * m^3)
-    d = 100.0 # example incoming storage demand (scaling.storage * m^3)
-    level_demand_allocated =
-        problem[:level_demand_allocated] = JuMP.@variable(
-            problem,
-            0 ≤
-            level_demand_allocated[
-                node_id = basin_ids_subnetwork_with_level_demand,
-                DemandPriorityIterator(node_id, p_independent),
-                [:lower, :upper],
-            ] ≤
-            d
-        )
-
-    # Define decision variables: extra storage change over the total demand. The bounds
-    # depend on whether the Basin has a demand or a surplus, see set_demands!
-    level_demand_extra =
-        problem[:level_demand_extra] = JuMP.@variable(
-            problem,
-            level_demand_extra[node_id = basin_ids_subnetwork_with_level_demand]
-        )
-
-    # Define constraints: The sum of the storage changes per demand priority of each Basin with a level demand
-    # is equal to the total storage change of that basin
     storage_change = problem[:basin_storage_change]
-    problem[:storage_change_allocated_sum_constraint] = JuMP.@constraint(
-        problem,
-        [node_id = basin_ids_subnetwork_with_level_demand],
-        storage_change[node_id] ==
-        level_demand_extra[node_id] + sum(
-            level_demand_allocated[node_id, demand_priority, :lower] -
-            level_demand_allocated[node_id, demand_priority, :upper] for
-            demand_priority in DemandPriorityIterator(node_id, p_independent)
-        ),
-        base_name = "storage_change_allocated_sum_constraint"
-    )
 
     # Define decision variables: Per Basin with a LevelDemand the allocation error per priority for
     # which the UserDemand node has a demand, for both the first (scaling.storage * m^3) and second objective (scaling.storage * m)
@@ -384,17 +347,30 @@ function add_level_demand!(
         )
 
     # Define constraints: error terms below minimum storage
-    d = 2000.0 # example storage demand (scaling.storage * m^3)
-    problem[:storage_constraint] = JuMP.@constraint(
+    starting_storage = 1250.0 # Example starting storage (m^3 * scaling.storage, to be filled in before optimizing)
+    minimum_storage = 1000.0 # Example minimum storage (m^3 * scaling.storage, to be filled in before optimizing)
+    problem[:storage_constraint_lower] = JuMP.@constraint(
         problem,
         [
             node_id = basin_ids_subnetwork_with_level_demand,
             demand_priority = DemandPriorityIterator(node_id, p_independent),
-            side = [:lower, :upper],
         ],
-        level_demand_error[node_id, demand_priority, side, :first] ≥
-        d - level_demand_allocated[node_id, demand_priority, side],
-        base_name = "storage_constraint"
+        level_demand_error[node_id, demand_priority, :lower, :first] ≥
+        minimum_storage - (starting_storage + storage_change[node_id]),
+        base_name = "storage_constraint_lower"
+    )
+
+    # Define constraints: error terms amove maximum storage
+    maximum_storage = 2000.0 # Example maximum storage (m^3 * scaling.storage, to be filled in before optimizing)
+    problem[:storage_constraint_upper] = JuMP.@constraint(
+        problem,
+        [
+            node_id = basin_ids_subnetwork_with_level_demand,
+            demand_priority = DemandPriorityIterator(node_id, p_independent),
+        ],
+        level_demand_error[node_id, demand_priority, :upper, :first] ≥
+        (starting_storage + storage_change[node_id]) - maximum_storage,
+        base_name = "storage_constraint_upper"
     )
 
     return nothing

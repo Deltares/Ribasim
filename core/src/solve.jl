@@ -333,11 +333,21 @@ function formulate_flow!(
     (; allocation) = p_independent
     all_nodes_active = p.p_mutable.all_nodes_active
 
-    for (id, inflow_link, outflow_link, active, allocated, return_factor, min_level) in zip(
+    for (
+        id,
+        inflow_link,
+        outflow_link,
+        active,
+        has_demand_priority,
+        allocated,
+        return_factor,
+        min_level,
+    ) in zip(
         user_demand.node_id,
         user_demand.inflow_link,
         user_demand.outflow_link,
         user_demand.active,
+        eachrow(user_demand.has_demand_priority),
         eachrow(user_demand.allocated),
         user_demand.return_factor,
         user_demand.min_level,
@@ -353,6 +363,7 @@ function formulate_flow!(
         # If allocation is not optimized then allocated = Inf, so the result is always
         # effectively allocated = demand.
         for demand_priority_idx in eachindex(allocation.demand_priorities_all)
+            !has_demand_priority[demand_priority_idx] && continue
             alloc_prio = allocated[demand_priority_idx]
             demand_prio = get_demand(user_demand, id, demand_priority_idx, t)
             alloc = min(alloc_prio, demand_prio)

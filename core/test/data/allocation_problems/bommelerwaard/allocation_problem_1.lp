@@ -8,12 +8,12 @@ user_demand_relative_error_constraint_UserDemand_#55,2_: 1 user_demand_allocated
 user_demand_relative_error_constraint_UserDemand_#56,2_: 1 user_demand_allocated_UserDemand_#56,2_ + 2 user_demand_error_UserDemand_#56,2,first_ >= 2
 user_demand_relative_error_constraint_UserDemand_#57,3_: 1 user_demand_allocated_UserDemand_#57,3_ + 2 user_demand_error_UserDemand_#57,3,first_ >= 2
 user_demand_relative_error_constraint_UserDemand_#58,1_: 1 user_demand_allocated_UserDemand_#58,1_ + 2 user_demand_error_UserDemand_#58,1,first_ >= 2
-storage_constraint_Basin_#8,5,lower_: 1 level_demand_allocated_Basin_#8,5,lower_ + 1 level_demand_error_Basin_#8,5,lower,first_ >= 2000
-storage_constraint_Basin_#8,5,upper_: 1 level_demand_allocated_Basin_#8,5,upper_ + 1 level_demand_error_Basin_#8,5,upper,first_ >= 2000
-storage_constraint_Basin_#31,4,lower_: 1 level_demand_allocated_Basin_#31,4,lower_ + 1 level_demand_error_Basin_#31,4,lower,first_ >= 2000
-storage_constraint_Basin_#31,4,upper_: 1 level_demand_allocated_Basin_#31,4,upper_ + 1 level_demand_error_Basin_#31,4,upper,first_ >= 2000
-storage_constraint_Basin_#32,4,lower_: 1 level_demand_allocated_Basin_#32,4,lower_ + 1 level_demand_error_Basin_#32,4,lower,first_ >= 2000
-storage_constraint_Basin_#32,4,upper_: 1 level_demand_allocated_Basin_#32,4,upper_ + 1 level_demand_error_Basin_#32,4,upper,first_ >= 2000
+storage_constraint_lower_Basin_#8,5_: 1 basin_storage_change_Basin_#8_ + 1 level_demand_error_Basin_#8,5,lower,first_ >= -250
+storage_constraint_lower_Basin_#31,4_: 1 basin_storage_change_Basin_#31_ + 1 level_demand_error_Basin_#31,4,lower,first_ >= -250
+storage_constraint_lower_Basin_#32,4_: 1 basin_storage_change_Basin_#32_ + 1 level_demand_error_Basin_#32,4,lower,first_ >= -250
+storage_constraint_upper_Basin_#8,5_: -1 basin_storage_change_Basin_#8_ + 1 level_demand_error_Basin_#8,5,upper,first_ >= -750
+storage_constraint_upper_Basin_#31,4_: -1 basin_storage_change_Basin_#31_ + 1 level_demand_error_Basin_#31,4,upper,first_ >= -750
+storage_constraint_upper_Basin_#32,4_: -1 basin_storage_change_Basin_#32_ + 1 level_demand_error_Basin_#32,4,upper,first_ >= -750
 user_demand_fairness_error_constraint_UserDemand_#52,2_: -1 user_demand_error_UserDemand_#52,2,first_ + 1 user_demand_error_UserDemand_#52,2,second_ + 1 average_flow_unit_error_2_ >= 0
 user_demand_fairness_error_constraint_UserDemand_#53,2_: -1 user_demand_error_UserDemand_#53,2,first_ + 1 user_demand_error_UserDemand_#53,2,second_ + 1 average_flow_unit_error_2_ >= 0
 user_demand_fairness_error_constraint_UserDemand_#54,2_: -1 user_demand_error_UserDemand_#54,2,first_ + 1 user_demand_error_UserDemand_#54,2,second_ + 1 average_flow_unit_error_2_ >= 0
@@ -106,9 +106,6 @@ user_demand_return_flow_UserDemand_#55_: -0.5 flow_(Basin_#34,_UserDemand_#55)_ 
 user_demand_return_flow_UserDemand_#56_: -0.5 flow_(Basin_#35,_UserDemand_#56)_ + 1 flow_(UserDemand_#56,_Basin_#35)_ = 0
 user_demand_return_flow_UserDemand_#57_: -0.5 flow_(Basin_#8,_UserDemand_#57)_ + 1 flow_(UserDemand_#57,_Basin_#8)_ = 0
 user_demand_return_flow_UserDemand_#58_: -0.5 flow_(Basin_#28,_UserDemand_#58)_ + 1 flow_(UserDemand_#58,_Basin_#28)_ = 0
-storage_change_allocated_sum_constraint_Basin_#8_: 1 basin_storage_change_Basin_#8_ - 1 level_demand_allocated_Basin_#8,5,lower_ + 1 level_demand_allocated_Basin_#8,5,upper_ - 1 level_demand_extra_Basin_#8_ = 0
-storage_change_allocated_sum_constraint_Basin_#31_: 1 basin_storage_change_Basin_#31_ - 1 level_demand_allocated_Basin_#31,4,lower_ + 1 level_demand_allocated_Basin_#31,4,upper_ - 1 level_demand_extra_Basin_#31_ = 0
-storage_change_allocated_sum_constraint_Basin_#32_: 1 basin_storage_change_Basin_#32_ - 1 level_demand_allocated_Basin_#32,4,lower_ + 1 level_demand_allocated_Basin_#32,4,upper_ - 1 level_demand_extra_Basin_#32_ = 0
 average_flow_unit_error_constraint_1_: -1 user_demand_error_UserDemand_#58,1,first_ + 1 average_flow_unit_error_1_ = 0
 average_flow_unit_error_constraint_2_: -1 user_demand_error_UserDemand_#52,2,first_ - 1 user_demand_error_UserDemand_#53,2,first_ - 1 user_demand_error_UserDemand_#54,2,first_ - 1 user_demand_error_UserDemand_#55,2,first_ - 1 user_demand_error_UserDemand_#56,2,first_ + 1 average_flow_unit_error_2_ = 0
 average_flow_unit_error_constraint_3_: -1 user_demand_error_UserDemand_#57,3,first_ + 1 average_flow_unit_error_3_ = 0
@@ -238,15 +235,6 @@ boundary_level_LevelBoundary_#30_ = 0
 0 <= user_demand_error_UserDemand_#57,3,second_ <= 1
 0 <= user_demand_error_UserDemand_#58,1,first_ <= 1
 0 <= user_demand_error_UserDemand_#58,1,second_ <= 1
-0 <= level_demand_allocated_Basin_#8,5,lower_ <= 100
-0 <= level_demand_allocated_Basin_#8,5,upper_ <= 100
-0 <= level_demand_allocated_Basin_#31,4,lower_ <= 100
-0 <= level_demand_allocated_Basin_#31,4,upper_ <= 100
-0 <= level_demand_allocated_Basin_#32,4,lower_ <= 100
-0 <= level_demand_allocated_Basin_#32,4,upper_ <= 100
-level_demand_extra_Basin_#8_ free
-level_demand_extra_Basin_#31_ free
-level_demand_extra_Basin_#32_ free
 level_demand_error_Basin_#8,5,lower,first_ >= 0
 level_demand_error_Basin_#8,5,lower,second_ >= 0
 level_demand_error_Basin_#8,5,upper,first_ >= 0

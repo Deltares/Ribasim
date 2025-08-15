@@ -1242,8 +1242,8 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)
             user_demand.demand_priorities,
         )
 
+    user_demand.allocated[.!user_demand.has_demand_priority] .= 0
     errors && error("Errors encountered when parsing LevelDemand data.")
-
     user_demand
 end
 
