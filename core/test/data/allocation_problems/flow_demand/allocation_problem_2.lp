@@ -19,7 +19,7 @@ c7: 1 flow_(Basin_#7,_UserDemand_#8)_ - 1 user_demand_allocated_UserDemand_#8,4_
 user_demand_return_flow_UserDemand_#4_: -0.5 flow_(Basin_#3,_UserDemand_#4)_ + 1 flow_(UserDemand_#4,_Basin_#7)_ = 0
 user_demand_return_flow_UserDemand_#6_: -0.5 flow_(Basin_#3,_UserDemand_#6)_ + 1 flow_(UserDemand_#6,_Basin_#7)_ = 0
 user_demand_return_flow_UserDemand_#8_: -0.5 flow_(Basin_#7,_UserDemand_#8)_ + 1 flow_(UserDemand_#8,_Basin_#7)_ = 0
-c11: 1 flow_(LevelBoundary_#1,_TabulatedRatingCurve_#2)_ - 36 flow_demand_allocated_TabulatedRatingCurve_#2,0_ - 36 flow_demand_allocated_TabulatedRatingCurve_#2,2_ = 0
+c11: 1 flow_(LevelBoundary_#1,_TabulatedRatingCurve_#2)_ - 36 flow_demand_allocated_TabulatedRatingCurve_#2,2_ - 1 flow_demand_extra_TabulatedRatingCurve_#2_ = 0
 average_flow_unit_error_constraint_1_: -1 user_demand_error_UserDemand_#6,1,first_ + 1 average_flow_unit_error_1_ = 0
 average_flow_unit_error_constraint_2_: -1 flow_demand_error_TabulatedRatingCurve_#2,2,first_ + 1 average_flow_unit_error_2_ = 0
 average_flow_unit_error_constraint_3_: -1 user_demand_error_UserDemand_#4,3,first_ + 1 average_flow_unit_error_3_ = 0
@@ -47,8 +47,8 @@ boundary_level_LevelBoundary_#1_ = 0
 0 <= user_demand_error_UserDemand_#6,1,second_ <= 1
 0 <= user_demand_error_UserDemand_#8,4,first_ <= 1
 0 <= user_demand_error_UserDemand_#8,4,second_ <= 1
--1000000 <= flow_demand_allocated_TabulatedRatingCurve_#2,0_ <= 1000000
-0 <= flow_demand_allocated_TabulatedRatingCurve_#2,2_ <= 2
+-1000000 <= flow_demand_allocated_TabulatedRatingCurve_#2,2_ <= 2
+0 <= flow_demand_extra_TabulatedRatingCurve_#2_ <= 1000000
 0 <= flow_demand_error_TabulatedRatingCurve_#2,2,first_ <= 1
 0 <= flow_demand_error_TabulatedRatingCurve_#2,2,second_ <= 1
 0 <= average_flow_unit_error_1_ <= 1

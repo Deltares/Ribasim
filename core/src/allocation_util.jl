@@ -298,14 +298,9 @@ struct DemandPriorityIterator{V}
     node_id::NodeID
     demand_priorities_all::Vector{Int32}
     has_demand_priority::V
-    include_0::Bool
 end
 
-function DemandPriorityIterator(
-    node_id::NodeID,
-    p_independent::ParametersIndependent;
-    include_0::Bool = false,
-)
+function DemandPriorityIterator(node_id::NodeID, p_independent::ParametersIndependent)
     (; user_demand, flow_demand, level_demand) = p_independent
 
     external_demand_id = get_external_demand_id(p_independent, node_id)
@@ -324,20 +319,16 @@ function DemandPriorityIterator(
         node_id,
         p_independent.allocation.demand_priorities_all,
         has_demand_priority,
-        include_0,
     )
 end
 
 function Base.iterate(
     demand_priority_iterator::DemandPriorityIterator,
-    demand_priority_idx = demand_priority_iterator.include_0 ? 0 : 1,
+    demand_priority_idx = 1,
 )
     (; demand_priorities_all, has_demand_priority) = demand_priority_iterator
 
     while demand_priority_idx ≤ length(demand_priorities_all)
-        if iszero(demand_priority_idx)
-            return 0, 1
-        end
         if has_demand_priority[demand_priority_idx]
             return demand_priorities_all[demand_priority_idx], demand_priority_idx + 1
         end

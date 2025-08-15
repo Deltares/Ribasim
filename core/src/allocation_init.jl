@@ -259,26 +259,35 @@ function add_flow_demand!(
             0 ≤
             flow_demand_allocated[
                 node_id = node_ids_subnetwork_with_flow_demand,
-                DemandPriorityIterator(node_id, p_independent; include_0 = true),
+                DemandPriorityIterator(node_id, p_independent),
             ] ≤
             d
         )
 
-    # Flow through a node with a flow demand can still be negative
+    # Flow through a node with a flow demand can still be negative, so allow
+    # the allocated amount for the earliest priority to account for this
     bound = MAX_ABS_FLOW / scaling.flow
     for node_id in node_ids_subnetwork_with_flow_demand
-        JuMP.set_lower_bound(flow_demand_allocated[node_id, 0], -bound)
-        JuMP.set_upper_bound(flow_demand_allocated[node_id, 0], bound)
+        earliest_priority = first(DemandPriorityIterator(node_id, p_independent))
+        JuMP.set_lower_bound(flow_demand_allocated[node_id, earliest_priority], -bound)
     end
+
+    # Define decision variables: extra flow over the total demand
+    flow_demand_extra =
+        problem[:flow_demand_extra] = JuMP.@variable(
+            problem,
+            0 ≤ flow_demand_extra[node_id = node_ids_subnetwork_with_flow_demand] ≤ bound
+        )
 
     # Define constraints: The sum of the flows per demand priority trough the node with flow demand
     # is equal to the total flow trough this node
     problem[:flow_demand_allocated_sum_constraint] = JuMP.@constraint(
         problem,
         [node_id = node_ids_subnetwork_with_flow_demand],
-        flow[inflow_link(graph, node_id).link] == sum(
-            flow_demand_allocated[node_id, demand_priority] for demand_priority in
-            DemandPriorityIterator(node_id, p_independent; include_0 = true),
+        flow[inflow_link(graph, node_id).link] ==
+        flow_demand_extra[node_id] + sum(
+            flow_demand_allocated[node_id, demand_priority] for
+            demand_priority in DemandPriorityIterator(node_id, p_independent),
             base_name in "flow_demand_allocated_sum_constraint"
         )
     )
@@ -332,10 +341,18 @@ function add_level_demand!(
             0 ≤
             level_demand_allocated[
                 node_id = basin_ids_subnetwork_with_level_demand,
-                DemandPriorityIterator(node_id, p_independent; include_0 = true),
+                DemandPriorityIterator(node_id, p_independent),
                 [:lower, :upper],
             ] ≤
             d
+        )
+
+    # Define decision variables: extra storage change over the total demand. The bounds
+    # depend on whether the Basin has a demand or a surplus, see set_demands!
+    level_demand_extra =
+        problem[:level_demand_extra] = JuMP.@variable(
+            problem,
+            level_demand_extra[node_id = basin_ids_subnetwork_with_level_demand]
         )
 
     # Define constraints: The sum of the storage changes per demand priority of each Basin with a level demand
@@ -344,11 +361,11 @@ function add_level_demand!(
     problem[:storage_change_allocated_sum_constraint] = JuMP.@constraint(
         problem,
         [node_id = basin_ids_subnetwork_with_level_demand],
-        storage_change[node_id] == sum(
+        storage_change[node_id] ==
+        level_demand_extra[node_id] + sum(
             level_demand_allocated[node_id, demand_priority, :lower] -
             level_demand_allocated[node_id, demand_priority, :upper] for
-            demand_priority in
-            DemandPriorityIterator(node_id, p_independent; include_0 = true)
+            demand_priority in DemandPriorityIterator(node_id, p_independent)
         ),
         base_name = "storage_change_allocated_sum_constraint"
     )

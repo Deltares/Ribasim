@@ -483,7 +483,7 @@ function set_demands!(
 )::Nothing
     (; p, t) = integrator
     (; p_independent, state_time_dependent_cache) = p
-    (; current_level, current_area) = state_time_dependent_cache
+    (; current_level, current_area, current_storage) = state_time_dependent_cache
     (; basin, allocation) = p_independent
     (; demand_priorities_all) = allocation
     (; has_demand_priority, min_level, max_level, storage_demand) = level_demand
@@ -491,6 +491,7 @@ function set_demands!(
     (; basin_ids_subnetwork_with_level_demand) = node_id_in_subnetwork
 
     level_demand_allocated = problem[:level_demand_allocated]
+    level_demand_extra = problem[:level_demand_extra]
     level_demand_error = problem[:level_demand_error]
     storage_constraint = problem[:storage_constraint]
 
@@ -506,6 +507,9 @@ function set_demands!(
         level_min_prev_priority = basin_bottom(basin, basin_id)[2]
         level_max_prev_priority = Inf
         A = current_area[basin_id.idx]
+        storage_now = current_storage[basin_id.idx]
+
+        earliest_priority = true
 
         for (demand_priority_idx, demand_priority) in enumerate(demand_priorities_all)
             !has_demand_priority[level_demand_id.idx, demand_priority_idx] && continue
@@ -531,6 +535,39 @@ function set_demands!(
                 ) - get_storage_from_level(basin, basin_id.idx, level_max)
             d_out = isnan(d_out) ? 0.0 : d_out
             d_out_scaled = d_out / scaling.storage
+
+            # Account for storage change in the opposite direction to the demand without
+            # `level_demand_extra` doing the allocation
+            if earliest_priority
+                storage_change_extra = level_demand_extra[basin_id]
+
+                has_positive_demand = (d_in > 0)
+                allocated_lower = level_demand_allocated[basin_id, demand_priority, :lower]
+                if has_positive_demand
+                    JuMP.set_lower_bound(allocated_lower, -storage_now / scaling.storage)
+                    JuMP.set_lower_bound(storage_change_extra, 0.0)
+                else
+                    JuMP.set_lower_bound(allocated_lower, 0.0)
+                    JuMP.set_lower_bound(
+                        storage_change_extra,
+                        -storage_now / scaling.storage,
+                    )
+                end
+
+                has_negative_demand = (d_out > 0)
+                allocated_upper = level_demand_allocated[basin_id, demand_priority, :upper]
+                if has_negative_demand
+                    JuMP.has_lower_bound(allocated_upper) &&
+                        JuMP.delete_lower_bound(allocated_upper)
+                    JuMP.set_upper_bound(storage_change_extra, 0.0)
+                else
+                    JuMP.set_lower_bound(allocated_upper, 0.0)
+                    JuMP.has_upper_bound(storage_change_extra) &&
+                        JuMP.delete_upper_bound(storage_change_extra)
+                end
+
+                earliest_priority = false
+            end
 
             # Set demands as upper bounds to allocated storage amounts
             JuMP.set_upper_bound(
@@ -678,7 +715,7 @@ function parse_allocations!(
         for (demand_priority_idx, demand_priority) in enumerate(demand_priorities_all)
             !has_demand_priority[node_id.idx, demand_priority_idx] && continue
             allocated_flow =
-                JuMP.value(node_allocated[node_id, demand_priority]) * scaling.flow
+                max(0, JuMP.value(node_allocated[node_id, demand_priority]) * scaling.flow)
             push!(
                 record_demand,
                 DemandRecordDatum(
@@ -724,11 +761,23 @@ function parse_allocations!(
         for (demand_priority_idx, demand_priority) in enumerate(demand_priorities_all)
             level_demand_id = basin.level_demand_id[node_id.idx]
             !has_demand_priority[level_demand_id.idx, demand_priority_idx] && continue
+            demand = storage_demand[node_id][demand_priority_idx] / Δt_allocation
             allocated_basin_volume =
-                scaling.storage * (
-                    JuMP.value(level_demand_allocated[node_id, demand_priority, :lower]) -
-                    JuMP.value(level_demand_allocated[node_id, demand_priority, :upper])
-                )
+                scaling.storage * if demand > 0
+                    max(
+                        0,
+                        JuMP.value(
+                            level_demand_allocated[node_id, demand_priority, :lower],
+                        ),
+                    )
+                else
+                    min(
+                        0,
+                        JuMP.value(
+                            level_demand_allocated[node_id, demand_priority, :upper],
+                        ),
+                    )
+                end
             push!(
                 record_demand,
                 DemandRecordDatum(
@@ -737,7 +786,7 @@ function parse_allocations!(
                     "LevelDemand",
                     Int32(node_id),
                     demand_priority,
-                    storage_demand[node_id][demand_priority_idx] / Δt_allocation,
+                    demand,
                     allocated_basin_volume / Δt_allocation,
                     # NOTE: The realized amount lags one allocation period behind
                     realized_basin_volume / Δt_allocation,
