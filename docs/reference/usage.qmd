@@ -225,9 +225,11 @@ There are currently 2 possible link types:
   anything, other than the sign of the flow on the link. The sign of the flow follows the link
   direction; a positive flow flows along the link direction, a negative flow in the opposite
   way.
-2. "control": The control links define which nodes are controlled by a particular control node.
-  Control links should always point away from the control node.
-  The links between the control node and the nodes it *listens* to are *not* present in `Link`, these are defined in [`DiscreteControl / condition`](/reference/node/discrete-control.qmd)
+2. "control": The control links define which nodes are influenced by a particular control or demand node.
+  No water flows over these links, only information.
+  Control links should always point away from the control or demand node.
+  The links between the control node and the nodes it *listens* to are *not* present in `Link`, these are defined as `listen_node_id` in the control node tables.
+  The LevelDemand and FlowDemand nodes use control links to indicate which nodes it will assign demands to.
 
 column        | type                          | restriction
 --------------| ----------------------------- | -----------
