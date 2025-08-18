@@ -180,20 +180,20 @@ class LinkTable(SpatialTableModel[LinkSchema]):
         if link_type == "flow":
             if in_neighbor >= max_in_flow:
                 raise ValueError(
-                    f"Node {to_node.node_id} can have at most {max_in_flow} flow link inneighbor(s) (got {in_neighbor})"
+                    f"Node {to_node.node_id} can have at most {max_in_flow} flow link inneighbor(s)"
                 )
             if out_neighbor >= max_out_flow:
                 raise ValueError(
-                    f"Node {from_node.node_id} can have at most {max_out_flow} flow link outneighbor(s) (got {out_neighbor})"
+                    f"Node {from_node.node_id} can have at most {max_out_flow} flow link outneighbor(s)"
                 )
         elif link_type == "control":
             if in_neighbor >= max_in_control:
                 raise ValueError(
-                    f"Node {to_node.node_id} can have at most {max_in_control} control link inneighbor(s) (got {in_neighbor})"
+                    f"Node {to_node.node_id} can have at most {max_in_control} control link inneighbor(s)"
                 )
             if out_neighbor >= max_out_control:
                 raise ValueError(
-                    f"Node {from_node.node_id} can have at most {max_out_control} control link outneighbor(s) (got {out_neighbor})"
+                    f"Node {from_node.node_id} can have at most {max_out_control} control link outneighbor(s)"
                 )
 
     def _get_where_link_type(self, link_type: str) -> NDArray[np.bool_]:
