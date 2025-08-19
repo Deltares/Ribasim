@@ -1758,24 +1758,38 @@ function load_structvector(
         return StructVector{T}(undef, 0)
     end
 
-    nt = columntable(table)
-    if table isa Query && haskey(nt, :time)
-        # time has type timestamp and is stored as a String in the database
-        # currently SQLite.jl does not automatically convert it to DateTime
-        nt = merge(
-            nt,
-            (;
-                time = map(
-                    val ->
-                        ismissing(val) ? DateTime(config.starttime) :
+    nt = if table isa Query
+        # faster alternative to Tables.columntable that preallocates based on the schema
+        sql_name = sql_table_name(T)
+        nrows =
+            execute(db, "SELECT COUNT(*) FROM $(esc_id(sql_name))") |> first |> first
+
+        names = fieldnames(T)
+        types = fieldtypes(T)
+        vals = ntuple(i -> Vector{types[i]}(undef, nrows), length(names))
+        nt = NamedTuple{names}(vals)
+
+        for (i, row) in enumerate(table)
+            for name in names
+                val = row[name]
+                if name == :time
+                    # time has type timestamp and is stored as a String in the database
+                    # currently SQLite.jl does not automatically convert it to DateTime
+                    val = if ismissing(val)
+                        DateTime(config.starttime)
+                    else
                         DateTime(
                             replace(val, r"(\.\d{3})\d+$" => s"\1"),  # remove sub ms precision
                             dateformat"yyyy-mm-dd HH:MM:SS.s",
-                        ),
-                    nt.time,
-                ),
-            ),
-        )
+                        )
+                    end
+                end
+                nt[name][i] = val
+            end
+        end
+        nt
+    else
+        columntable(table)
     end
 
     table = StructVector{T}(nt)
