@@ -527,7 +527,15 @@ function manning_resistance_flow(
 
     Δh = h_a - h_b
 
-    q = A / n * ∛(R_h^2) * relaxed_root(Δh / L, 1e-5)
+    # Calculate Reynolds number for open channel flow
+    # Re = (V * A / R_h) / ν
+    # V: average velocity, D_h: hydraulic depth, ν: kinematic viscosity of water
+
+    # Kinematic viscosity of water (ν), typical value at 20°C [m²/s]
+    ν = 1.004e-6
+    Re_laminar = 2000
+    threshold = (Re_laminar * ν * n / (A * R_h * ∛(R_h^2)))^2
+    q = A / n * ∛(R_h^2) * relaxed_root(Δh / L, threshold)
     return q * low_storage_factor_resistance_node(p, q, inflow_id, outflow_id)
 end
 
