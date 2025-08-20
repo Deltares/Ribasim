@@ -529,7 +529,7 @@ function manning_resistance_flow(
 
     # Calculate Reynolds number for open channel flow
     # Re = (V * A / R_h) / ν
-    # V: average velocity, D_h: hydraulic depth, ν: kinematic viscosity of water
+    # V: average velocity, R_h: hydraulic radius, ν: kinematic viscosity of water
 
     # Kinematic viscosity of water (ν), typical value at 20°C [m²/s]
     ν = 1.004e-6
