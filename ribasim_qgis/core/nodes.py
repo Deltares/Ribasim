@@ -723,6 +723,28 @@ class FlowBoundaryConcentration(Input):
         ]
 
 
+class FlowBoundaryArea(Input):
+    @classmethod
+    def input_type(cls) -> str:
+        return "FlowBoundary / area"
+
+    @classmethod
+    def is_spatial(cls):
+        return True
+
+    @classmethod
+    def geometry_type(cls) -> str:
+        return "MultiPolygon"
+
+    @classmethod
+    def qgis_geometry_type(cls) -> Qgis.GeometryType:
+        return Qgis.GeometryType.PolygonGeometry  # type: ignore
+
+    @classmethod
+    def attributes(cls) -> list[QgsField]:
+        return [QgsField("node_id", QVariant.Int)]
+
+
 class DiscreteControlVariable(Input):
     @classmethod
     def input_type(cls) -> str:

@@ -1,4 +1,4 @@
-from ribasim.geometry.area import BasinAreaSchema
+from ribasim.geometry import BasinAreaSchema
 from ribasim.input_base import SpatialTableModel, TableModel
 from ribasim.schemas import (
     BasinConcentrationExternalSchema,
