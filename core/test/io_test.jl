@@ -122,7 +122,7 @@ end
     tbl = Arrow.Table(bytes)
     @test :convergence in Tables.columnnames(tbl)
     @test eltype(tbl.convergence) == Union{Missing, Float64}
-    @test any(isfinite, tbl.convergence)
+    @test all(isfinite, tbl.convergence)
     @test Arrow.getmetadata(tbl) ===
           Base.ImmutableDict("ribasim_version" => ribasim_version)
 
@@ -131,7 +131,7 @@ end
     tbl = Arrow.Table(bytes)
     @test :convergence in Tables.columnnames(tbl)
     @test eltype(tbl.convergence) == Union{Missing, Float64}
-    @test any(isfinite, tbl.convergence)
+    @test all(isfinite, tbl.convergence)
     @test Arrow.getmetadata(tbl) ===
           Base.ImmutableDict("ribasim_version" => ribasim_version)
 
