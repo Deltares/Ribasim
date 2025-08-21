@@ -414,6 +414,8 @@ function set_control_type!(node::AbstractParameterNode, graph::MetaGraph)::Nothi
     for node_id in node.node_id
         control_inneighbors =
             collect(inneighbor_labels_type(graph, node_id, LinkType.control))
+        # FlowDemand acts directly in the physical layer or allocation, not control
+        filter!(node_id -> node_id.type != NodeType.FlowDemand, control_inneighbors)
 
         control_type[node_id.idx] = if length(control_inneighbors) == 1
             control_inneighbor = only(control_inneighbors)
@@ -430,7 +432,7 @@ function set_control_type!(node::AbstractParameterNode, graph::MetaGraph)::Nothi
             (node_id, "Ribasim.allocation") in keys(control_mapping)
     end
 
-    errors && @error("Errors encountered when parsing control type of $(typeof(node)).")
+    errors && error("Errors encountered when parsing control type of $(typeof(node)).")
 
     return nothing
 end
