@@ -6,12 +6,12 @@
     "creators": [
       "Tool: sbom4python-0.12.4"
     ],
-    "created": "2025-08-03T03:38:53Z",
+    "created": "2025-08-22T08:41:30Z",
     "licenseListVersion": "3.26"
   },
   "name": "Python-ribasim",
   "dataLicense": "CC0-1.0",
-  "documentNamespace": "http://spdx.org/spdxdocs/Python-ribasim-404be88a-fc04-4de8-9f99-3eb36d78e875",
+  "documentNamespace": "http://spdx.org/spdxdocs/Python-ribasim-aa964dc4-7f49-4306-b923-d579e4eb1723",
   "packages": [
     {
       "SPDXID": "SPDXRef-1-ribasim",
@@ -635,23 +635,23 @@
     {
       "SPDXID": "SPDXRef-15-certifi",
       "name": "certifi",
-      "versionInfo": "2025.7.14",
+      "versionInfo": "2025.8.3",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "Person: Kenneth Reitz (me@kennethreitz.com)",
-      "downloadLocation": "https://pypi.org/project/certifi/2025.7.14/#files",
+      "downloadLocation": "https://pypi.org/project/certifi/2025.8.3/#files",
       "filesAnalyzed": false,
       "homepage": "https://github.com/certifi/python-certifi",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "6b31f564a415d79ee77df69d757bb49a5bb53bd9f756cbbe24394ffd6fc1f4b2"
+          "checksumValue": "f6c12493cfb1b06ba2ff328595af9350c65d6644968e5d3a2ffd78699af217a5"
         }
       ],
       "licenseConcluded": "MPL-2.0",
       "licenseDeclared": "MPL-2.0",
       "copyrightText": "NOASSERTION",
       "summary": "Python package for providing Mozilla's CA Bundle.",
-      "releaseDate": "2025-07-14T03:29:26Z",
+      "releaseDate": "2025-08-03T03:07:45Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -661,12 +661,12 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/certifi@2025.7.14"
+          "referenceLocator": "pkg:pypi/certifi@2025.8.3"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:kenneth_reitz:certifi:2025.7.14:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:kenneth_reitz:certifi:2025.8.3:*:*:*:*:*:*:*"
         }
       ]
     },
@@ -954,57 +954,57 @@
     {
       "SPDXID": "SPDXRef-22-fonttools",
       "name": "fonttools",
-      "versionInfo": "4.59.0",
+      "versionInfo": "4.59.1",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "Organization: Just van Rossum (just@letterror.com)",
-      "downloadLocation": "https://pypi.org/project/fonttools/4.59.0/#files",
+      "downloadLocation": "https://pypi.org/project/fonttools/4.59.1/#files",
       "filesAnalyzed": false,
       "homepage": "http://github.com/fonttools/fonttools",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "524133c1be38445c5c0575eacea42dbd44374b310b1ffc4b60ff01d881fabb96"
+          "checksumValue": "e90a89e52deb56b928e761bb5b5f65f13f669bfd96ed5962975debea09776a23"
         }
       ],
       "licenseConcluded": "MIT",
       "licenseDeclared": "MIT",
       "copyrightText": "NOASSERTION",
       "summary": "Tools to manipulate font files",
-      "releaseDate": "2025-07-16T12:03:33Z",
+      "releaseDate": "2025-08-14T16:26:10Z",
       "externalRefs": [
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/fonttools@4.59.0"
+          "referenceLocator": "pkg:pypi/fonttools@4.59.1"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:just_van_rossum:fonttools:4.59.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:just_van_rossum:fonttools:4.59.1:*:*:*:*:*:*:*"
         }
       ]
     },
     {
       "SPDXID": "SPDXRef-23-kiwisolver",
       "name": "kiwisolver",
-      "versionInfo": "1.4.8",
+      "versionInfo": "1.4.9",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "Organization: The Nucleic Development Team (sccolbert@gmail.com)",
-      "downloadLocation": "https://pypi.org/project/kiwisolver/1.4.8/#files",
+      "downloadLocation": "https://pypi.org/project/kiwisolver/1.4.9/#files",
       "filesAnalyzed": false,
       "homepage": "https://github.com/nucleic/kiwi",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "88c6f252f6816a73b1f8c904f7bbe02fd67c09a69f7cb8a0eecdbf5ce78e63db"
+          "checksumValue": "b4b4d74bda2b8ebf4da5bd42af11d02d04428b2c32846e4c2c93219df8a7987b"
         }
       ],
       "licenseConcluded": "NOASSERTION",
       "licenseDeclared": "NOASSERTION",
-      "licenseComments": "kiwisolver declares =========================\n The Kiwi licensing terms\n=========================\nKiwi is licensed under the terms of the Modified BSD License (also known as\nNew or Revised BSD), as follows:\n\nCopyright (c) 2013-2024, Nucleic Development Team\n\nAll rights reserved.\n\nRedistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions are met:\n\nRedistributions of source code must retain the above copyright notice, this\nlist of conditions and the following disclaimer.\n\nRedistributions in binary form must reproduce the above copyright notice, this\nlist of conditions and the following disclaimer in the documentation and/or\nother materials provided with the distribution.\n\nNeither the name of the Nucleic Development Team nor the names of its\ncontributors may be used to endorse or promote products derived from this\nsoftware without specific prior written permission.\n\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\" AND\nANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED\nWARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE\nDISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE\nFOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL\nDAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR\nSERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER\nCAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,\nOR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE\nOF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n\nAbout Kiwi\n----------\nChris Colbert began the Kiwi project in December 2013 in an effort to\ncreate a blisteringly fast UI constraint solver. Chris is still the\nproject lead.\n\nThe Nucleic Development Team is the set of all contributors to the Nucleic\nproject and its subprojects.\n\nThe core team that coordinates development on GitHub can be found here:\nhttp://github.com/nucleic. The current team consists of:\n\n* Chris Colbert\n\nOur Copyright Policy\n--------------------\nNucleic uses a shared copyright model. Each contributor maintains copyright\nover their contributions to Nucleic. But, it is important to note that these\ncontributions are typically only changes to the repositories. Thus, the Nucleic\nsource code, in its entirety is not the copyright of any single person or\ninstitution. Instead, it is the collective copyright of the entire Nucleic\nDevelopment Team. If individual contributors want to maintain a record of what\nchanges/contributions they have specific copyright on, they should indicate\ntheir copyright in the commit message of the change, when they commit the\nchange to one of the Nucleic repositories.\n\nWith this in mind, the following banner should be used in any source code file\nto indicate the copyright and license terms:\n\n#------------------------------------------------------------------------------\n# Copyright (c) 2013-2024, Nucleic Development Team.\n#\n# Distributed under the terms of the Modified BSD License.\n#\n# The full license is in the file LICENSE, distributed with this software.\n#------------------------------------------------------------------------------\n which is not currently a valid SPDX License identifier or expression.",
+      "licenseComments": "kiwisolver declares =========================\n The Kiwi licensing terms\n=========================\nKiwi is licensed under the terms of the Modified BSD License (also known as\nNew or Revised BSD), as follows:\n\nCopyright (c) 2013-2025, Nucleic Development Team\n\nAll rights reserved.\n\nRedistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions are met:\n\nRedistributions of source code must retain the above copyright notice, this\nlist of conditions and the following disclaimer.\n\nRedistributions in binary form must reproduce the above copyright notice, this\nlist of conditions and the following disclaimer in the documentation and/or\nother materials provided with the distribution.\n\nNeither the name of the Nucleic Development Team nor the names of its\ncontributors may be used to endorse or promote products derived from this\nsoftware without specific prior written permission.\n\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\" AND\nANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED\nWARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE\nDISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE\nFOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL\nDAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR\nSERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER\nCAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,\nOR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE\nOF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n\nAbout Kiwi\n----------\nChris Colbert began the Kiwi project in December 2013 in an effort to\ncreate a blisteringly fast UI constraint solver. Chris is still the\nproject lead.\n\nThe Nucleic Development Team is the set of all contributors to the Nucleic\nproject and its subprojects.\n\nThe core team that coordinates development on GitHub can be found here:\nhttp://github.com/nucleic. The current team consists of:\n\n* Chris Colbert\n\nOur Copyright Policy\n--------------------\nNucleic uses a shared copyright model. Each contributor maintains copyright\nover their contributions to Nucleic. But, it is important to note that these\ncontributions are typically only changes to the repositories. Thus, the Nucleic\nsource code, in its entirety is not the copyright of any single person or\ninstitution. Instead, it is the collective copyright of the entire Nucleic\nDevelopment Team. If individual contributors want to maintain a record of what\nchanges/contributions they have specific copyright on, they should indicate\ntheir copyright in the commit message of the change, when they commit the\nchange to one of the Nucleic repositories.\n\nWith this in mind, the following banner should be used in any source code file\nto indicate the copyright and license terms:\n\n#------------------------------------------------------------------------------\n# Copyright (c) 2013-2025, Nucleic Development Team.\n#\n# Distributed under the terms of the Modified BSD License.\n#\n# The full license is in the file LICENSE, distributed with this software.\n#------------------------------------------------------------------------------\n which is not currently a valid SPDX License identifier or expression.",
       "copyrightText": "NOASSERTION",
       "summary": "A fast implementation of the Cassowary constraint solver",
-      "releaseDate": "2024-12-24T18:28:17Z",
+      "releaseDate": "2025-08-10T21:25:35Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -1024,12 +1024,12 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/kiwisolver@1.4.8"
+          "referenceLocator": "pkg:pypi/kiwisolver@1.4.9"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:the_nucleic_development_team:kiwisolver:1.4.8:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:the_nucleic_development_team:kiwisolver:1.4.9:*:*:*:*:*:*:*"
         }
       ]
     },
@@ -1133,16 +1133,16 @@
     {
       "SPDXID": "SPDXRef-26-pandera",
       "name": "pandera",
-      "versionInfo": "0.25.0",
+      "versionInfo": "0.26.0",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "Person: Niels Bantilan (niels.bantilan@gmail.com)",
-      "downloadLocation": "https://pypi.org/project/pandera/0.25.0/#files",
+      "downloadLocation": "https://pypi.org/project/pandera/0.26.0/#files",
       "filesAnalyzed": false,
       "homepage": "https://github.com/pandera-dev/pandera",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "365a555accc46404466641203e297722d424d74a1315f077ab899e1344f82303"
+          "checksumValue": "85e4ab058e8e6c1f13f364450e080fcb52c8320bb40ca952342ac8709d1a7a4e"
         }
       ],
       "licenseConcluded": "NOASSERTION",
@@ -1150,7 +1150,7 @@
       "licenseComments": "pandera declares MIT License\n\nCopyright (c) 2018 Niels Bantilan\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.\n which is not currently a valid SPDX License identifier or expression.",
       "copyrightText": "NOASSERTION",
       "summary": "A light-weight and flexible data validation and testing tool for statistical data objects.",
-      "releaseDate": "2025-07-08T19:20:20Z",
+      "releaseDate": "2025-08-13T01:13:26Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -1165,12 +1165,12 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/pandera@0.25.0"
+          "referenceLocator": "pkg:pypi/pandera@0.26.0"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:niels_bantilan:pandera:0.25.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:niels_bantilan:pandera:0.26.0:*:*:*:*:*:*:*"
         }
       ]
     },
