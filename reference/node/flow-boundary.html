@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.7.32">
+<meta name="generator" content="quarto-1.7.33">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -38,7 +38,7 @@ ul.task-list li input[type="checkbox"] {
 <script src="../../site_libs/quarto-html/tippy.umd.min.js"></script>
 <script src="../../site_libs/quarto-html/anchor.min.js"></script>
 <link href="../../site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-37eea08aefeeee20ff55810ff984fec1.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-ea385d0e468b0dd5ea5bf0780b1290d9.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
 <link href="../../site_libs/bootstrap/bootstrap-9dbef448cbc5dd18d3767a5753777ba6.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
@@ -329,6 +329,7 @@ window.Quarto = {
   <li><a href="#static" id="toc-static" class="nav-link" data-scroll-target="#static"><span class="header-section-number">1.1</span> Static</a></li>
   <li><a href="#time" id="toc-time" class="nav-link" data-scroll-target="#time"><span class="header-section-number">1.2</span> Time</a></li>
   <li><a href="#sec-flow-boundary-conc" id="toc-sec-flow-boundary-conc" class="nav-link" data-scroll-target="#sec-flow-boundary-conc"><span class="header-section-number">1.3</span> Concentration</a></li>
+  <li><a href="#area" id="toc-area" class="nav-link" data-scroll-target="#area"><span class="header-section-number">1.4</span> Area</a></li>
   </ul></li>
   <li><a href="#equations" id="toc-equations" class="nav-link" data-scroll-target="#equations"><span class="header-section-number">2</span> Equations</a></li>
   </ul>
@@ -474,6 +475,31 @@ window.Quarto = {
 <td>Float64</td>
 <td><span class="math inline">\(\text{g}/\text{m}^3\)</span></td>
 <td></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="area" class="level2" data-number="1.4">
+<h2 data-number="1.4" class="anchored" data-anchor-id="area"><span class="header-section-number">1.4</span> Area</h2>
+<p>The optional area table is not used during computation, but provides a place to associate areas in the form of polygons to a FlowBoundary. Using this makes it easier to recognize which water or land surfaces are represented by a FlowBoundary.</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>column</th>
+<th>type</th>
+<th>restriction</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>node_id</td>
+<td>Int32</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>geom</td>
+<td>Polygon or MultiPolygon</td>
+<td>(optional)</td>
 </tr>
 </tbody>
 </table>
