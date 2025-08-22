@@ -41,6 +41,16 @@ time           | DateTime | -                     |
 substance      | String   | -                     | can correspond to known Delwaq substances
 concentration  | Float64  | $\text{g}/\text{m}^3$ |
 
+## Area
+
+The optional area table is not used during computation, but provides a place to associate areas in the form of polygons to a FlowBoundary.
+Using this makes it easier to recognize which water or land surfaces are represented by a FlowBoundary.
+
+column    | type                    | restriction
+--------- | ----------------------- | -----------
+node_id   | Int32                   |
+geom      | Polygon or MultiPolygon | (optional)
+
 # Equations
 
 A FlowBoundary can be connected directly to a Basin and prescribes the flow to that Basin.

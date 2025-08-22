@@ -448,13 +448,17 @@ def cyclic_time_model() -> Model:
         ],
     )
 
+    flow_boundary_geometry = Point(0.0, 2.0)
     fb = model.flow_boundary.add(
         Node(4, Point(0, 1), cyclic_time=True),
         [
             flow_boundary.Time(
                 time=["2020-01-01", "2020-07-01", "2020-08-01"],
                 flow_rate=[1.0, 2.0, 1.0],
-            )
+            ),
+            flow_boundary.Area(
+                geometry=[MultiPolygon([flow_boundary_geometry.buffer(1.0)])]
+            ),
         ],
     )
 

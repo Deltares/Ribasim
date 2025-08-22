@@ -1,4 +1,5 @@
-from ribasim.input_base import TableModel
+from ribasim.geometry import FlowBoundaryAreaSchema
+from ribasim.input_base import SpatialTableModel, TableModel
 from ribasim.schemas import (
     FlowBoundaryConcentrationSchema,
     FlowBoundaryStaticSchema,
@@ -17,4 +18,8 @@ class Time(TableModel[FlowBoundaryTimeSchema]):
 
 
 class Concentration(TableModel[FlowBoundaryConcentrationSchema]):
+    pass
+
+
+class Area(SpatialTableModel[FlowBoundaryAreaSchema]):
     pass
