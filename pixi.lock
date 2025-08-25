@@ -28191,11 +28191,12 @@ packages:
 - pypi: ./python/ribasim
   name: ribasim
   version: 2025.4.0
-  sha256: e02787a2798f7b00beba2fee49c0764dd43b9274722c6ded0b3efc3eef5c88e5
+  sha256: b3249c7a3e6e782f1f9ae97088ff7afbb9708e1e51cdf465ce255b6e08b96baf
   requires_dist:
   - datacompy>=0.16
   - geopandas>=1.0
   - matplotlib>=3.7
+  - netcdf4>=1.7.1
   - numpy>=1.25
   - packaging>=23.0
   - pandas>=2.0
@@ -28206,6 +28207,7 @@ packages:
   - shapely>=2.0
   - tomli-w>=1.0
   - tomli>=2.0
+  - xarray>=2025.8.0
   - jinja2 ; extra == 'all'
   - networkx ; extra == 'all'
   - pytest ; extra == 'all'

@@ -153,7 +153,7 @@ using StructArrays: StructVector
 using DataStructures: OrderedSet, OrderedDict, counter, inc!
 
 # NCDatasets is used to read and write NetCDF files.
-using NCDatasets: NCDataset, defDim, defVar
+using NCDatasets: NCDataset, defDim, defVar, dimnames
 
 using Dates: Second
 
