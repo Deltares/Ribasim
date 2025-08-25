@@ -141,9 +141,9 @@ We use the `GitHub` repository https://github.com/Deltares/Ribasim for issues an
 
 ### Primary Data Formats
 - **SQLite/GeoPackage**: Model database storage
-- **Arrow**: High-performance data exchange and large results
+- **Arrow**: Results or tables too large for SQLite
 - **TOML**: Configuration files
-- **NetCDF**: Conversion target for external tools
+- **NetCDF**: Conversion to NetCDF for interop
 
 ### Network Architecture
 Models are represented as directed graphs where:
