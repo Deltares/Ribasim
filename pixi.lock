@@ -28163,7 +28163,7 @@ packages:
 - pypi: ./python/ribasim
   name: ribasim
   version: 2025.4.0
-  sha256: 6bca59541bba55dfe4b8a7c87cea06df24faf7331692fda11cdddbb64ee0c3a2
+  sha256: fac6b9f314e8a826fa1da1ce415f14971d7d6136be9bed9c0fa781520256fe48
   requires_dist:
   - datacompy>=0.16
   - geopandas>=1.0,<1.1

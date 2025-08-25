@@ -434,11 +434,26 @@ class TableModel(FileModel, Generic[TableT]):
 
     def _write_netcdf(self, filepath: Path, directory: Path, input_dir: Path) -> None:
         """Write the contents of the input to a NetCDF file."""
-        # TODO: Implement NetCDF writing functionality
-        raise NotImplementedError(
-            "NetCDF writing is not yet implemented. "
-            "This method needs to be implemented to support .nc file extensions."
-        )
+        assert self.df is not None
+
+        # Get the table name to determine the type of data
+        table_name = self.tablename()
+
+        # For now, only support Basin / state tables
+        if table_name != "Basin / state":
+            raise NotImplementedError(
+                f"NetCDF writing for table '{table_name}' is not yet implemented. "
+                "Currently only 'Basin / state' tables are supported."
+            )
+
+        # Convert DataFrame to xarray Dataset
+        # Set node_id as index for proper dimension handling
+        ds = self.df.set_index(["node_id"]).to_xarray()
+
+        # Write to NetCDF file
+        path = directory / input_dir / filepath
+        path.parent.mkdir(parents=True, exist_ok=True)
+        ds.to_netcdf(path)
 
     @classmethod
     def _from_db(cls, path: Path, table: str) -> pd.DataFrame | None:

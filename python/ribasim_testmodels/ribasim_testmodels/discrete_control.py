@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 from ribasim.config import Experimental, Interpolation, Node, Results
@@ -270,6 +272,7 @@ def tabulated_rating_curve_control_model() -> Model:
         endtime="2021-01-01",
         crs="EPSG:28992",
         results=Results(format="netcdf"),
+        input_dir=Path("input"),
         experimental=Experimental(concentration=True),
     )
 
@@ -324,6 +327,9 @@ def tabulated_rating_curve_control_model() -> Model:
         model.discrete_control[4],
         model.tabulated_rating_curve[2],
     )
+
+    # write the "Basin / state" to NetCDF for testing
+    model.basin.state.set_filepath(Path("basin-state.nc"))
 
     return model
 
