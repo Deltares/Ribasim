@@ -961,6 +961,9 @@ function DiscreteControl(db::DB, config::Config, graph::MetaGraph)::DiscreteCont
     # Initialize the truth state per DiscreteControl node
     truth_state = Vector{Bool}[]
     for i in eachindex(node_id)
+        if isempty(compound_variables)
+            error("Missing data for $(node_id[i]).")
+        end
         truth_state_length = sum(length(var.greater_than) for var in compound_variables[i])
         push!(truth_state, fill(false, truth_state_length))
     end
