@@ -22,6 +22,7 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 import pydantic
+import xarray as xr
 from pandera.typing import DataFrame
 from pandera.typing.geopandas import GeoDataFrame
 from pydantic import BaseModel as PydanticBaseModel
@@ -371,9 +372,18 @@ class TableModel(FileModel, Generic[TableT]):
     def _load(cls, filepath: Path | None) -> dict[str, Any]:
         db = context_file_loading.get().get("database")
         if filepath is not None and db is not None:
-            adf = cls._from_arrow(filepath)
-            # TODO Store filepath?
-            return {"df": adf}
+            suffix = filepath.suffix.lower()
+            if suffix == ".nc":
+                df = cls._from_netcdf(filepath)
+                return {"df": df}
+            elif suffix == ".arrow":
+                df = cls._from_arrow(filepath)
+                return {"df": df}
+            else:
+                raise ValueError(
+                    f"Unsupported file extension '{suffix}'. "
+                    "Only '.nc' and '.arrow' extensions are supported."
+                )
         elif db is not None:
             ddf = cls._from_db(db, cls.tablename())
             return {"df": ddf}
@@ -477,6 +487,17 @@ class TableModel(FileModel, Generic[TableT]):
     def _from_arrow(cls, path: Path) -> pd.DataFrame:
         directory = context_file_loading.get().get("directory", Path("."))
         return pd.read_feather(directory / path)
+
+    @classmethod
+    def _from_netcdf(cls, path: Path) -> pd.DataFrame:
+        """Read a NetCDF file and convert it back to a DataFrame."""
+        directory = context_file_loading.get().get("directory", Path("."))
+        full_path = directory / path
+
+        with xr.open_dataset(full_path, engine="netcdf4") as ds:
+            df = ds.to_dataframe().reset_index()
+
+        return df
 
     def sort(self):
         """Sort the table as required.
