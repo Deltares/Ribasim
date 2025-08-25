@@ -22,10 +22,10 @@ volume_conservation_Basin_#31_: -1 basin_storage_(Basin_#31,__start)_ + 1 basin_
 tabulated_rating_curve_constraint_TabulatedRatingCurve_#26_: -1 basin_level_Basin_#25_ + 1 basin_level_Basin_#31_ + 1 flow_(Basin_#25,_TabulatedRatingCurve_#26)_ = 1
 user_demand_return_flow_UserDemand_#32_: -0.5 flow_(Basin_#31,_UserDemand_#32)_ + 1 flow_(UserDemand_#32,_Basin_#31)_ = 0
 Bounds
-0 <= basin_storage_(Basin_#25,__start)_ <= 2
-0 <= basin_storage_(Basin_#31,__start)_ <= 2
-0 <= basin_storage_(Basin_#25,__end)_ <= 2
-0 <= basin_storage_(Basin_#31,__end)_ <= 2
+0 <= basin_storage_(Basin_#25,__start)_ <= 4
+0 <= basin_storage_(Basin_#31,__start)_ <= 4
+0 <= basin_storage_(Basin_#25,__end)_ <= 4
+0 <= basin_storage_(Basin_#31,__end)_ <= 4
 0 <= basin_level_Basin_#25_ <= 1
 0 <= basin_level_Basin_#31_ <= 1
 0 <= low_storage_factor_Basin_#25_ <= 1

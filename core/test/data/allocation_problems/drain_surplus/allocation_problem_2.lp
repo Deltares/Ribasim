@@ -13,8 +13,8 @@ c5: 1 low_storage_factor_Basin_#1_ - 1 z_1 = 0
 flow_conservation_outlet_Outlet_#2_: 1 flow_(Basin_#1,_Outlet_#2)_ - 1 flow_(Outlet_#2,_Terminal_#3)_ = 0
 volume_conservation_Basin_#1_: -1 basin_storage_(Basin_#1,__start)_ + 1 basin_storage_(Basin_#1,__end)_ + 1 flow_(Basin_#1,_Outlet_#2)_ - 1 basin_forcing_Basin_#1_ = 0
 Bounds
-0 <= basin_storage_(Basin_#1,__start)_ <= 2
-0 <= basin_storage_(Basin_#1,__end)_ <= 2
+0 <= basin_storage_(Basin_#1,__start)_ <= 4
+0 <= basin_storage_(Basin_#1,__end)_ <= 4
 0 <= basin_level_Basin_#1_ <= 12
 0 <= low_storage_factor_Basin_#1_ <= 1
 0 <= z_1 <= 1
