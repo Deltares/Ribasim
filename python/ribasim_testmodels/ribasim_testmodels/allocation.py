@@ -907,96 +907,37 @@ def fair_distribution_model():
     """See the behavior of allocation with few restrictions within the graph."""
     model = Model(
         starttime="2020-01-01 00:00:00",
-        endtime="2020-01-07 00:00:00",
+        endtime="2020-01-02 00:00:00",
         crs="EPSG:28992",
         experimental=Experimental(concentration=True, allocation=True),
     )
 
-    model.level_boundary.add(
-        Node(1, Point(0, 0), subnetwork_id=1),
-        [
-            level_boundary.Static(
-                level=[1.0],
-            )
-        ],
+    b = model.basin.add(
+        Node(1, Point(0, 0), subnetwork_id=2),
+        [basin.Profile(level=[0.0, 10.0], area=1000.0), basin.State(level=[1.0])],
     )
 
-    model.pump.add(
-        Node(
-            2,
-            Point(1, 0),
-            subnetwork_id=1,
-        ),
-        [pump.Static(flow_rate=9.0, max_flow_rate=[9.0])],
-    )
+    n_user_demand = 25
 
-    model.basin.add(
-        Node(3, Point(2, 0), subnetwork_id=1),
-        [basin.Profile(area=1e3, level=[0.0, 1.0]), basin.State(level=[1.0])],
-    )
+    for i in range(n_user_demand):
+        theta = 2 * np.pi * i / n_user_demand
+        ud = model.user_demand.add(
+            Node(i + 2, Point(np.cos(theta), np.sin(theta)), subnetwork_id=2),
+            [
+                user_demand.Static(
+                    demand_priority=[1],
+                    # Demands sum to twice the initial storage in the Basin
+                    demand=2000
+                    * (i + 1)
+                    / (0.5 * n_user_demand * (n_user_demand + 1) * 86400),
+                    return_factor=0.0,
+                    min_level=0.0,
+                )
+            ],
+        )
 
-    model.linear_resistance.add(
-        Node(4, Point(3, 0), subnetwork_id=1),
-        [linear_resistance.Static(resistance=[1.0])],
-    )
-
-    model.basin.add(
-        Node(5, Point(4, 0), subnetwork_id=1),
-        [basin.Profile(area=1e3, level=[0.0, 10.0]), basin.State(level=[1.0])],
-    )
-
-    model.user_demand.add(
-        Node(6, Point(2, 1), subnetwork_id=1),
-        [
-            user_demand.Static(
-                demand_priority=[1], demand=1.0, return_factor=1.0, min_level=0.2
-            )
-        ],
-    )
-
-    model.user_demand.add(
-        Node(7, Point(2, -1), subnetwork_id=1),
-        [
-            user_demand.Static(
-                demand_priority=[1], demand=2.0, return_factor=1.0, min_level=0.2
-            )
-        ],
-    )
-
-    model.user_demand.add(
-        Node(8, Point(4, 1), subnetwork_id=1),
-        [
-            user_demand.Static(
-                demand_priority=[1], demand=3.0, return_factor=1.0, min_level=0.2
-            )
-        ],
-    )
-
-    model.user_demand.add(
-        Node(9, Point(4, -1), subnetwork_id=1),
-        [
-            user_demand.Time(
-                demand_priority=1,
-                time=pd.date_range(start="2020-01", end="2021-01", freq="MS"),
-                demand=np.linspace(1.0, 5.0, 13),
-                return_factor=1.0,
-                min_level=0.2,
-            )
-        ],
-    )
-
-    model.link.add(model.level_boundary[1], model.pump[2])
-    model.link.add(model.pump[2], model.basin[3])
-    model.link.add(model.basin[3], model.linear_resistance[4])
-    model.link.add(model.linear_resistance[4], model.basin[5])
-    model.link.add(model.basin[3], model.user_demand[6])
-    model.link.add(model.basin[3], model.user_demand[7])
-    model.link.add(model.basin[5], model.user_demand[8])
-    model.link.add(model.basin[5], model.user_demand[9])
-    model.link.add(model.user_demand[6], model.basin[3])
-    model.link.add(model.user_demand[7], model.basin[3])
-    model.link.add(model.user_demand[8], model.basin[5])
-    model.link.add(model.user_demand[9], model.basin[5])
+        model.link.add(ud, b)
+        model.link.add(b, ud)
 
     return model
 
@@ -1462,7 +1403,7 @@ def allocation_control_model() -> Model:
     )
 
     lb = model.level_boundary.add(
-        Node(1, Point(0, 0), subnetwork_id=1), [level_boundary.Static(level=[1.0])]
+        Node(1, Point(0, 0), subnetwork_id=1), [level_boundary.Static(level=[5.0])]
     )
 
     out = model.outlet.add(
