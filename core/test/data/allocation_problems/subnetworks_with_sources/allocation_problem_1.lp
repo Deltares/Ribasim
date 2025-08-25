@@ -64,16 +64,16 @@ pump_constraint_Pump_#24_: -1 low_storage_factor_Basin_#6_ + 1 flow_(Basin_#6,_P
 pump_constraint_Pump_#38_: -1 low_storage_factor_Basin_#10_ + 1 flow_(Basin_#10,_Pump_#38)_ = 0
 user_demand_return_flow_UserDemand_#60_: -0.5 flow_(Basin_#8,_UserDemand_#60)_ + 1 flow_(UserDemand_#60,_Basin_#8)_ = 0
 Bounds
-0 <= basin_storage_(Basin_#2,__start)_ <= 2
-0 <= basin_storage_(Basin_#4,__start)_ <= 2
-0 <= basin_storage_(Basin_#6,__start)_ <= 2
-0 <= basin_storage_(Basin_#8,__start)_ <= 2
-0 <= basin_storage_(Basin_#10,__start)_ <= 2
-0 <= basin_storage_(Basin_#2,__end)_ <= 2
-0 <= basin_storage_(Basin_#4,__end)_ <= 2
-0 <= basin_storage_(Basin_#6,__end)_ <= 2
-0 <= basin_storage_(Basin_#8,__end)_ <= 2
-0 <= basin_storage_(Basin_#10,__end)_ <= 2
+0 <= basin_storage_(Basin_#2,__start)_ <= 4
+0 <= basin_storage_(Basin_#4,__start)_ <= 4
+0 <= basin_storage_(Basin_#6,__start)_ <= 4
+0 <= basin_storage_(Basin_#8,__start)_ <= 4
+0 <= basin_storage_(Basin_#10,__start)_ <= 4
+0 <= basin_storage_(Basin_#2,__end)_ <= 4
+0 <= basin_storage_(Basin_#4,__end)_ <= 4
+0 <= basin_storage_(Basin_#6,__end)_ <= 4
+0 <= basin_storage_(Basin_#8,__end)_ <= 4
+0 <= basin_storage_(Basin_#10,__end)_ <= 4
 0 <= basin_level_Basin_#2_ <= 1
 0 <= basin_level_Basin_#4_ <= 1
 0 <= basin_level_Basin_#6_ <= 1

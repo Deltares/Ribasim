@@ -40,12 +40,12 @@ user_demand_return_flow_UserDemand_#10_: -0.5 flow_(Basin_#2,_UserDemand_#10)_ +
 user_demand_return_flow_UserDemand_#11_: -0.5 flow_(Basin_#6,_UserDemand_#11)_ + 1 flow_(UserDemand_#11,_Basin_#6)_ = 0
 user_demand_return_flow_UserDemand_#12_: -0.5 flow_(Basin_#8,_UserDemand_#12)_ + 1 flow_(UserDemand_#12,_Basin_#8)_ = 0
 Bounds
-0 <= basin_storage_(Basin_#2,__start)_ <= 2
-0 <= basin_storage_(Basin_#6,__start)_ <= 2
-0 <= basin_storage_(Basin_#8,__start)_ <= 2
-0 <= basin_storage_(Basin_#2,__end)_ <= 2
-0 <= basin_storage_(Basin_#6,__end)_ <= 2
-0 <= basin_storage_(Basin_#8,__end)_ <= 2
+0 <= basin_storage_(Basin_#2,__start)_ <= 4
+0 <= basin_storage_(Basin_#6,__start)_ <= 4
+0 <= basin_storage_(Basin_#8,__start)_ <= 4
+0 <= basin_storage_(Basin_#2,__end)_ <= 4
+0 <= basin_storage_(Basin_#6,__end)_ <= 4
+0 <= basin_storage_(Basin_#8,__end)_ <= 4
 0 <= basin_level_Basin_#2_ <= 100
 0 <= basin_level_Basin_#6_ <= 100
 0 <= basin_level_Basin_#8_ <= 100
