@@ -61,20 +61,42 @@ See also the developer docs at `docs/dev`.
 ### Environment Setup
 ```bash
 # Use Pixi for environment management
-pixi run install            # Install and configure all dependencies
+pixi run install                  # Install and configure all dependencies
+pixi run install-julia           # Install Julia 1.11.6
+pixi run initialize-julia        # Update registry and instantiate Julia project
 ```
 
-### Key Commands
+### Development Commands
+
 ```bash
+# Building
+pixi run build                    # Build Ribasim executable (requires testmodels)
+
 # Testing
-pixi run test-ribasim-python     # Python tests
-pixi run test-ribasim-core       # Julia tests
+pixi run test-ribasim-core        # Run Julia core tests
+pixi run test-ribasim-python      # Run Python tests (excluding regression)
+pixi run test-ribasim-api         # Run Python API tests
+pixi run test-ribasim-qgis        # Run QGIS plugin tests
+pixi run tests                    # Run lint + Python + core tests
+
+# Linting and Code Quality
+pixi run lint                     # Run all linters (pre-commit + mypy)
+pixi run pre-commit               # Run pre-commit hooks on all files
+pixi run mypy-ribasim-python      # Type check Python package
+pixi run mypy-ribasim-api         # Type check API package
+pixi run mypy-ribasim-qgis        # Type check QGIS plugin
 
 # Documentation
-pixi run quarto-preview          # Preview docs locally
+pixi run docs                     # Preview documentation locally
+pixi run quarto-preview           # Preview Quarto documentation
+pixi run quartodoc-build          # Build Python API docs
 
 # Model Generation
-pixi run generate-testmodels     # Generate test models
+pixi run generate-testmodels      # Generate test models
+
+# Running models
+pixi run ribasim-core             # Run Julia core with command line args
+pixi run ribasim-core-testmodels  # Run all testmodels with core
 ```
 
 ## Code Architecture Patterns
@@ -98,6 +120,9 @@ We use the `GitHub` repository https://github.com/Deltares/Ribasim for issues an
 - Use multiple dispatch extensively
 - Prefer immutable structs where possible
 - Use `@kwdef` for struct definitions with defaults
+- Avoid allocations during simulation loops
+- Profile performance with `@benchmark` and `@code_warntype`
+- Core solver logic in `core/src/solve.jl`
 
 ### Python Code Style
 - Follow PEP 8
@@ -105,6 +130,7 @@ We use the `GitHub` repository https://github.com/Deltares/Ribasim for issues an
 - Use type hints extensively
 - Pydantic models for data structures
 - Pandas-style method chaining where appropriate
+- Comprehensive docstrings (used by quartodoc for API docs)
 
 ### File Naming
 - Julia: `snake_case.jl`
@@ -115,9 +141,16 @@ We use the `GitHub` repository https://github.com/Deltares/Ribasim for issues an
 
 ### Primary Data Formats
 - **SQLite/GeoPackage**: Model database storage
-- **Arrow**: Results or tables too large for SQLite
-- **TOML**: Configuration file
-- **NetCDF**: Conversion to NetCDF for interop
+- **Arrow**: High-performance data exchange and large results
+- **TOML**: Configuration files
+- **NetCDF**: Conversion target for external tools
+
+### Network Architecture
+Models are represented as directed graphs where:
+- **Nodes** represent physical components (basins, pumps, outlets, etc.)
+- **Links** represent water connections between nodes
+- **Control logic** governs dynamic behavior (PID controllers, discrete control)
+- **Allocation** handles water distribution optimization
 
 ### Key Data Structures
 - **Network Graph**: Node-link representation of water system
@@ -147,14 +180,22 @@ We use the `GitHub` repository https://github.com/Deltares/Ribasim for issues an
 
 ## Testing Strategy
 
-### Julia Tests
-- Unit tests in `core/test/`
-- Integration tests in `core/integration_test/`
-- Regression tests in `core/regression_test/`
+### Test Generation
+Most tests use generated models from `python/ribasim_testmodels/`. Always run `pixi run generate-testmodels` before running tests.
 
-### Python Tests
-- Unit tests in `python/*/tests/`
-- Mark regression tests with `@pytest.mark.regression`
+### Test Types
+- **Unit tests** - `core/test/` (Julia), `python/*/tests/` (Python)
+- **Integration tests** - `core/integration_test/`
+- **Regression tests** - `core/regression_test/`, marked with `@pytest.mark.regression`
+
+### Running Single Tests
+```bash
+# Julia single test file
+julia --project=core --check-bounds=yes core/test/specific_test.jl
+
+# Python single test
+pytest python/ribasim/tests/test_specific.py
+```
 
 ## Performance Considerations
 
