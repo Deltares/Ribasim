@@ -91,7 +91,7 @@ function add_basin!(
             problem,
             0 ≤
             basin_storage[index = indices] ≤
-            storage_to_level[index[1].idx].t[end] / scaling.storage
+            storage_to_level[index[1].idx].t[end] / scaling.storage * 2,
         )
     basin_level =
         problem[:basin_level] = JuMP.@variable(
