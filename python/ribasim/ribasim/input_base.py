@@ -381,11 +381,19 @@ class TableModel(FileModel, Generic[TableT]):
             return {}
 
     def _save(self, directory: DirectoryPath, input_dir: DirectoryPath) -> None:
-        # TODO directory could be used to save an arrow file
         db_path = context_file_writing.get().get("database")
         self.sort()
         if self.filepath is not None:
-            self._write_arrow(self.filepath, directory, input_dir)
+            suffix = self.filepath.suffix.lower()
+            if suffix == ".nc":
+                self._write_netcdf(self.filepath, directory, input_dir)
+            elif suffix == ".arrow":
+                self._write_arrow(self.filepath, directory, input_dir)
+            else:
+                raise ValueError(
+                    f"Unsupported file extension '{suffix}'. "
+                    "Only '.nc' and '.arrow' extensions are supported."
+                )
         elif db_path is not None:
             self._write_geopackage(db_path)
 
@@ -422,6 +430,14 @@ class TableModel(FileModel, Generic[TableT]):
             path,
             compression="zstd",
             compression_level=6,
+        )
+
+    def _write_netcdf(self, filepath: Path, directory: Path, input_dir: Path) -> None:
+        """Write the contents of the input to a NetCDF file."""
+        # TODO: Implement NetCDF writing functionality
+        raise NotImplementedError(
+            "NetCDF writing is not yet implemented. "
+            "This method needs to be implemented to support .nc file extensions."
         )
 
     @classmethod
