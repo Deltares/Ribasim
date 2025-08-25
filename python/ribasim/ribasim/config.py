@@ -9,7 +9,7 @@ from geopandas import GeoDataFrame
 from pydantic import ConfigDict, Field, NonNegativeInt, model_validator
 from shapely.geometry import Point
 
-from ribasim.geometry import BasinAreaSchema, NodeTable
+from ribasim.geometry import BasinAreaSchema, FlowBoundaryAreaSchema, NodeTable
 from ribasim.geometry.link import NodeData
 from ribasim.input_base import (
     ChildModel,
@@ -432,6 +432,10 @@ class FlowBoundary(MultiNodeModel):
     concentration: TableModel[FlowBoundaryConcentrationSchema] = Field(
         default_factory=TableModel[FlowBoundaryConcentrationSchema],
         json_schema_extra={"sort_keys": ["node_id", "substance", "time"]},
+    )
+    area: SpatialTableModel[FlowBoundaryAreaSchema] = Field(
+        default_factory=SpatialTableModel[FlowBoundaryAreaSchema],
+        json_schema_extra={"sort_keys": ["node_id"]},
     )
 
 

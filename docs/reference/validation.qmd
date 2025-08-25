@@ -13,6 +13,7 @@ In the table below, each column shows which node types are allowed to be downstr
 
 ```{julia}
 # | code-fold: true
+# | classes: freeze-left
 using Ribasim
 using DataFrames: DataFrame
 using MarkdownTables
@@ -50,6 +51,7 @@ The table below shows for each node type between which bounds the amount of in- 
 
 ```{julia}
 # | code-fold: true
+# | classes: freeze-left
 flow_in_min = Vector{String}()
 flow_in_max = Vector{String}()
 flow_out_min = Vector{String}()
@@ -91,3 +93,7 @@ df = DataFrame(;
 
 markdown_table(df)
 ```
+
+::: {.callout-note}
+Pump and Outlet can receive two control links, in which case one must be from a FlowDemand, and the other from a control node.
+:::

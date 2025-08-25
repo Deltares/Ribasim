@@ -17,3 +17,15 @@ class BasinAreaSchema(_GeoBaseSchema):
         return series.apply(
             lambda geom: MultiPolygon([geom]) if isinstance(geom, Polygon) else geom
         )
+
+
+class FlowBoundaryAreaSchema(_GeoBaseSchema):
+    fid: Index[Int32] = pa.Field(default=0, check_name=True)
+    node_id: Series[Int32] = pa.Field(nullable=False, default=0)
+    geometry: GeoSeries[MultiPolygon] = pa.Field(default=None, nullable=True)
+
+    @pa.parser("geometry")
+    def convert_to_multi(cls, series):
+        return series.apply(
+            lambda geom: MultiPolygon([geom]) if isinstance(geom, Polygon) else geom
+        )
