@@ -446,19 +446,23 @@ class TableModel(FileModel, Generic[TableT]):
         """Write the contents of the input to a NetCDF file."""
         assert self.df is not None
 
-        # Get the table name to determine the type of data
-        table_name = self.tablename()
-
-        # For now, only support Basin / state tables
-        if table_name != "Basin / state":
-            raise NotImplementedError(
-                f"NetCDF writing for table '{table_name}' is not yet implemented. "
-                "Currently only 'Basin / state' tables are supported."
-            )
+        cols = self.df.columns
+        err = ValueError(
+            f"Table doesn't support writing to NetCDF: {self.tablename()}."
+        )
 
         # Convert DataFrame to xarray Dataset
-        # Set node_id as index for proper dimension handling
-        ds = self.df.set_index(["node_id"]).to_xarray()
+        # DataFrame indices will become coordinates
+        # Unsupported subset of `Ribasim.nc_dim_names`
+        unsupported_dims = ("link_id", "subgrid_id", "substance", "demand_priority")
+        if any(col in unsupported_dims for col in cols):
+            raise err
+        elif "time" in cols:
+            ds = self.df.set_index(["time", "node_id"]).to_xarray()
+        elif "node_id" in cols:
+            ds = self.df.set_index(["node_id"]).to_xarray()
+        else:
+            raise err
 
         # Write to NetCDF file
         path = directory / input_dir / filepath

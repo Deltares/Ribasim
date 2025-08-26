@@ -195,6 +195,7 @@ def level_boundary_condition_model() -> Model:
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
+        input_dir=Path("input"),
         experimental=Experimental(concentration=True),
     )
 
@@ -256,6 +257,8 @@ def level_boundary_condition_model() -> Model:
         model.discrete_control[6],
         model.outlet[4],
     )
+
+    model.level_boundary.time.set_filepath(Path("level-boundary-time.nc"))
 
     return model
 
@@ -340,6 +343,7 @@ def compound_variable_condition_model() -> Model:
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
+        input_dir=Path("input"),
         experimental=Experimental(concentration=True),
         interpolation=Interpolation(flow_boundary="linear"),
     )
@@ -386,6 +390,8 @@ def compound_variable_condition_model() -> Model:
     model.link.add(model.basin[1], model.pump[4])
     model.link.add(model.pump[4], model.terminal[5])
     model.link.add(model.discrete_control[6], model.pump[4])
+
+    model.flow_boundary.time.set_filepath(Path("flow-boundary-time.nc"))
 
     return model
 
