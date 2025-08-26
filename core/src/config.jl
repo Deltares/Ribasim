@@ -259,7 +259,7 @@ function Base.getproperty(config::Config, sym::Symbol)
 end
 
 "Construct a path relative to both the TOML directory and the optional `input_dir`"
-function input_path(config::Config, path::String="")
+function input_path(config::Config, path::String = "")
     return normpath(config.dir, config.input_dir, path)
 end
 
@@ -269,7 +269,7 @@ function database_path(config::Config)
 end
 
 "Construct a path relative to both the TOML directory and the optional `results_dir`"
-function results_path(config::Config, path::String="")
+function results_path(config::Config, path::String = "")
     # If the path is empty, we return the results directory.
     if !isempty(path)
         name, ext = splitext(path)
