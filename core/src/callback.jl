@@ -133,7 +133,14 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
     # Update convergence measure
     if hasproperty(cache, :nlsolver)
         @. temp_convergence = abs(cache.nlsolver.cache.atmp / u)
-        convergence .+= temp_convergence / finitemaximum(temp_convergence)
+        @inbounds for I in eachindex(temp_convergence)
+            if !isfinite(temp_convergence[I])
+                temp_convergence[I] = zero(eltype(temp_convergence))
+            end
+        end
+        convergence .+=
+            temp_convergence /
+            finitemaximum(temp_convergence; init = one(eltype(temp_convergence)))
         ncalls[1] += 1
     end
 

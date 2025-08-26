@@ -6,6 +6,7 @@ from ribasim.config import Solver
 from ribasim.model import Model
 from ribasim.nodes import (
     basin,
+    flow_boundary,
     level_boundary,
     outlet,
     pid_control,
@@ -186,8 +187,8 @@ def test_geometry_validation():
     basinarea = basin.Area(geometry=[poly])
     assert isinstance(basinarea.df.geometry[0], MultiPolygon)
 
-    basinarea = basin.Area(geometry=[basinarea.df.geometry[0]])
-    assert isinstance(basinarea.df.geometry[0], MultiPolygon)
+    flowboundaryarea = flow_boundary.Area(geometry=[basinarea.df.geometry[0]])
+    assert isinstance(flowboundaryarea.df.geometry[0], MultiPolygon)
 
     with pytest.raises(ValueError):
         basin.Area(geometry=[point])
