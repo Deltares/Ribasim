@@ -30,10 +30,10 @@ user_demand_return_flow_UserDemand_#7_: -0.5 flow_(Basin_#3,_UserDemand_#7)_ + 1
 user_demand_return_flow_UserDemand_#8_: -0.5 flow_(Basin_#5,_UserDemand_#8)_ + 1 flow_(UserDemand_#8,_Basin_#5)_ = 0
 user_demand_return_flow_UserDemand_#9_: -0.5 flow_(Basin_#5,_UserDemand_#9)_ + 1 flow_(UserDemand_#9,_Basin_#5)_ = 0
 Bounds
-0 <= basin_storage_(Basin_#3,__start)_ <= 0.36363636363636365
-0 <= basin_storage_(Basin_#5,__start)_ <= 3.6363636363636362
-0 <= basin_storage_(Basin_#3,__end)_ <= 0.36363636363636365
-0 <= basin_storage_(Basin_#5,__end)_ <= 3.6363636363636362
+0 <= basin_storage_(Basin_#3,__start)_ <= 0.7272727272727273
+0 <= basin_storage_(Basin_#5,__start)_ <= 7.2727272727272725
+0 <= basin_storage_(Basin_#3,__end)_ <= 0.7272727272727273
+0 <= basin_storage_(Basin_#5,__end)_ <= 7.2727272727272725
 0 <= basin_level_Basin_#3_ <= 1
 0 <= basin_level_Basin_#5_ <= 10
 0 <= low_storage_factor_Basin_#3_ <= 1

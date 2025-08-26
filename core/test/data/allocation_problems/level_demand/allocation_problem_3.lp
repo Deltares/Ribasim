@@ -12,8 +12,8 @@ c4: -1 z_1 + 1 __1_2_ + 1 __1_3_ = 0
 c5: 1 low_storage_factor_Basin_#7_ - 1 z_1 = 0
 volume_conservation_Basin_#7_: -1 basin_storage_(Basin_#7,__start)_ + 1 basin_storage_(Basin_#7,__end)_ - 1 basin_forcing_Basin_#7_ = 0
 Bounds
-0 <= basin_storage_(Basin_#7,__start)_ <= 2
-0 <= basin_storage_(Basin_#7,__end)_ <= 2
+0 <= basin_storage_(Basin_#7,__start)_ <= 4
+0 <= basin_storage_(Basin_#7,__end)_ <= 4
 0 <= basin_level_Basin_#7_ <= 10
 0 <= low_storage_factor_Basin_#7_ <= 1
 0 <= z_1 <= 1
