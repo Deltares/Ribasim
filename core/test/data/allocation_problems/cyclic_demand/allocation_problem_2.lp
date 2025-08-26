@@ -24,10 +24,10 @@ volume_conservation_Basin_#2_: -1 basin_storage_(Basin_#2,__start)_ + 1 basin_st
 volume_conservation_Basin_#4_: -1 basin_storage_(Basin_#4,__start)_ + 1 basin_storage_(Basin_#4,__end)_ - 1 flow_(Pump_#3,_Basin_#4)_ + 1 flow_(Basin_#4,_UserDemand_#7)_ - 1 flow_(UserDemand_#7,_Basin_#4)_ - 1 basin_forcing_Basin_#4_ = 0
 user_demand_return_flow_UserDemand_#7_: -0.5 flow_(Basin_#4,_UserDemand_#7)_ + 1 flow_(UserDemand_#7,_Basin_#4)_ = 0
 Bounds
-0 <= basin_storage_(Basin_#2,__start)_ <= 2
-0 <= basin_storage_(Basin_#4,__start)_ <= 2
-0 <= basin_storage_(Basin_#2,__end)_ <= 2
-0 <= basin_storage_(Basin_#4,__end)_ <= 2
+0 <= basin_storage_(Basin_#2,__start)_ <= 4
+0 <= basin_storage_(Basin_#4,__start)_ <= 4
+0 <= basin_storage_(Basin_#2,__end)_ <= 4
+0 <= basin_storage_(Basin_#4,__end)_ <= 4
 0 <= basin_level_Basin_#2_ <= 100
 0 <= basin_level_Basin_#4_ <= 100
 0 <= low_storage_factor_Basin_#2_ <= 1

@@ -85,13 +85,13 @@ function add_basin!(
 
     # Define decision variables: storage (scaling.storage * m^3) (at the start and end of the time step)
     # and level (m) (only at the end of the time step)
-    # Each storage variable is constrained between 0 and the largest storage value in the profile
+    # Each storage variable is constrained between 0 and twice the largest storage value in the profile
     basin_storage =
         problem[:basin_storage] = JuMP.@variable(
             problem,
             0 ≤
             basin_storage[index = indices] ≤
-            storage_to_level[index[1].idx].t[end] / scaling.storage
+            storage_to_level[index[1].idx].t[end] / scaling.storage * 2,
         )
     basin_level =
         problem[:basin_level] = JuMP.@variable(

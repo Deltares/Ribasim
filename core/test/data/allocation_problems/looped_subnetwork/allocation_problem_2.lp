@@ -86,20 +86,20 @@ user_demand_return_flow_UserDemand_#18_: -0.5 flow_(Basin_#15,_UserDemand_#18)_ 
 user_demand_return_flow_UserDemand_#20_: -0.5 flow_(Basin_#17,_UserDemand_#20)_ + 1 flow_(UserDemand_#20,_Basin_#17)_ = 0
 user_demand_return_flow_UserDemand_#24_: -0.5 flow_(Basin_#11,_UserDemand_#24)_ + 1 flow_(UserDemand_#24,_Basin_#11)_ = 0
 Bounds
-0 <= basin_storage_(Basin_#2,__start)_ <= 2
-0 <= basin_storage_(Basin_#7,__start)_ <= 2
-0 <= basin_storage_(Basin_#9,__start)_ <= 2
-0 <= basin_storage_(Basin_#11,__start)_ <= 2
-0 <= basin_storage_(Basin_#15,__start)_ <= 2
-0 <= basin_storage_(Basin_#17,__start)_ <= 2
-0 <= basin_storage_(Basin_#21,__start)_ <= 2
-0 <= basin_storage_(Basin_#2,__end)_ <= 2
-0 <= basin_storage_(Basin_#7,__end)_ <= 2
-0 <= basin_storage_(Basin_#9,__end)_ <= 2
-0 <= basin_storage_(Basin_#11,__end)_ <= 2
-0 <= basin_storage_(Basin_#15,__end)_ <= 2
-0 <= basin_storage_(Basin_#17,__end)_ <= 2
-0 <= basin_storage_(Basin_#21,__end)_ <= 2
+0 <= basin_storage_(Basin_#2,__start)_ <= 4
+0 <= basin_storage_(Basin_#7,__start)_ <= 4
+0 <= basin_storage_(Basin_#9,__start)_ <= 4
+0 <= basin_storage_(Basin_#11,__start)_ <= 4
+0 <= basin_storage_(Basin_#15,__start)_ <= 4
+0 <= basin_storage_(Basin_#17,__start)_ <= 4
+0 <= basin_storage_(Basin_#21,__start)_ <= 4
+0 <= basin_storage_(Basin_#2,__end)_ <= 4
+0 <= basin_storage_(Basin_#7,__end)_ <= 4
+0 <= basin_storage_(Basin_#9,__end)_ <= 4
+0 <= basin_storage_(Basin_#11,__end)_ <= 4
+0 <= basin_storage_(Basin_#15,__end)_ <= 4
+0 <= basin_storage_(Basin_#17,__end)_ <= 4
+0 <= basin_storage_(Basin_#21,__end)_ <= 4
 0 <= basin_level_Basin_#2_ <= 1
 0 <= basin_level_Basin_#7_ <= 1
 0 <= basin_level_Basin_#9_ <= 1

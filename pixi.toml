@@ -48,13 +48,13 @@ quarto-preview = { cmd = "PYTHON_JULIAPKG_PROJECT=$PIXI_PROJECT_ROOT quarto prev
     "quartodoc-build",
     "generate-testmodels",
     "initialize-julia",
-] }
+], env = { "PYTHON_JULIACALL_CHECK_BOUNDS" = "yes", "PYTHON_JULIACALL_HANDLE_SIGNALS" = "yes", "PYTHON_JULIAPKG_OFFLINE" = "yes" } }
 quarto-check = { cmd = "quarto check all", depends-on = ["quartodoc-build"] }
 quarto-render = { cmd = "PYTHON_JULIAPKG_PROJECT=$PIXI_PROJECT_ROOT quarto render docs", depends-on = [
     "quartodoc-build",
     "generate-testmodels",
     "initialize-julia",
-], env = { "PYTHON_JULIACALL_CHECK_BOUNDS" = "yes", "PYTHON_JULIACALL_HANDLE_SIGNALS" = "no", "PYTHON_JULIAPKG_OFFLINE" = "yes" } }
+], env = { "PYTHON_JULIACALL_CHECK_BOUNDS" = "yes", "PYTHON_JULIACALL_HANDLE_SIGNALS" = "yes", "PYTHON_JULIAPKG_OFFLINE" = "yes" } }
 docs = { depends-on = ["quarto-preview"] }
 # Lint
 mypy-ribasim-python = "mypy python/ribasim/ribasim"
