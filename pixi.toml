@@ -227,7 +227,7 @@ scripts = ["utils/unset-ssl-cert.bat"]
 
 [dependencies]
 datacompy = ">=0.16"
-geopandas = "1.1.*"
+geopandas = ">=1.0"
 gh = "*"
 hatch = "*"
 hatchling = "*"
@@ -243,7 +243,7 @@ numpy = ">=1.25, <2.2"
 packaging = ">=23.0"
 pandas = ">=2.0"
 pandas-stubs = "*"
-pandera = ">=0.26"
+pandera = ">=0.25"
 plotly = "*"
 pre-commit = "*"
 pyarrow = ">=17.0"
