@@ -539,15 +539,6 @@ function manning_resistance_flow(
 
     q = A / n * ∛(R_h^2) * relaxed_root(Δh / L, threshold)
 
-    try
-        Re = q / (R_h * ν)
-        if abs(Re) < abs(Re_laminar) && Re != 0.0
-            @warn "Flow in manning resistance $(node_id) is laminar. Consider using a linear resistance instead. The velocity is: $(q / A) m/s. Re is $Re."
-        end
-    catch
-        # Catch division by zero errors when R_h or ν are zero
-    end
-
     return q * low_storage_factor_resistance_node(p, q, inflow_id, outflow_id)
 end
 
