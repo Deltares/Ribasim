@@ -125,8 +125,8 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/future-1.0.0-pyhd8ed1ab_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/gcc_impl_linux-64-15.1.0-h4393ad2_4.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/gdal-3.10.2-py312hc55c449_5.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/geopandas-1.0.1-pyhd8ed1ab_3.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/geopandas-base-1.0.1-pyha770c72_3.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/geopandas-1.1.1-pyhd8ed1ab_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/geopandas-base-1.1.1-pyha770c72_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/geos-3.13.0-h5888daf_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/geotiff-1.7.4-h3551947_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/gettext-0.25.1-h3f43e3d_1.conda
@@ -736,8 +736,8 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/future-1.0.0-pyhd8ed1ab_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/gcc_impl_linux-aarch64-15.1.0-hed31cfe_4.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/gdal-3.10.2-py312hdbc5cb1_5.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/geopandas-1.0.1-pyhd8ed1ab_3.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/geopandas-base-1.0.1-pyha770c72_3.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/geopandas-1.1.1-pyhd8ed1ab_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/geopandas-base-1.1.1-pyha770c72_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/geos-3.13.0-h5ad3122_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/geotiff-1.7.4-h0b4d7ba_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/gettext-0.25.1-h5ad3122_0.conda
@@ -1340,8 +1340,8 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/fsspec-2025.7.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/future-1.0.0-pyhd8ed1ab_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/gdal-3.10.2-py312h1afea5f_5.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/geopandas-1.0.1-pyhd8ed1ab_3.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/geopandas-base-1.0.1-pyha770c72_3.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/geopandas-1.1.1-pyhd8ed1ab_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/geopandas-base-1.1.1-pyha770c72_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/geos-3.13.0-hf9b8971_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/geotiff-1.7.4-hbef4fa4_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/gflags-2.2.2-hf9b8971_1005.conda
@@ -1884,8 +1884,8 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/fsspec-2025.7.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/future-1.0.0-pyhd8ed1ab_2.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/gdal-3.10.2-py312hc39d689_5.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/geopandas-1.0.1-pyhd8ed1ab_3.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/geopandas-base-1.0.1-pyha770c72_3.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/geopandas-1.1.1-pyhd8ed1ab_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/geopandas-base-1.1.1-pyha770c72_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/geos-3.13.0-h5a68840_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/geotiff-1.7.4-h887f4e7_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/gflags-2.2.2-he0c23c2_1005.conda
@@ -2433,8 +2433,8 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/future-1.0.0-pyhd8ed1ab_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/gcc_impl_linux-64-15.1.0-h4393ad2_4.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/gdal-3.10.2-py311hbde30c8_5.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/geopandas-1.0.1-pyhd8ed1ab_3.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/geopandas-base-1.0.1-pyha770c72_3.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/geopandas-1.1.1-pyhd8ed1ab_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/geopandas-base-1.1.1-pyha770c72_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/geos-3.13.0-h5888daf_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/geotiff-1.7.4-h3551947_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/gettext-0.25.1-h3f43e3d_1.conda
@@ -3044,8 +3044,8 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/future-1.0.0-pyhd8ed1ab_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/gcc_impl_linux-aarch64-15.1.0-hed31cfe_4.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/gdal-3.10.2-py311hf2325f7_5.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/geopandas-1.0.1-pyhd8ed1ab_3.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/geopandas-base-1.0.1-pyha770c72_3.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/geopandas-1.1.1-pyhd8ed1ab_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/geopandas-base-1.1.1-pyha770c72_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/geos-3.13.0-h5ad3122_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/geotiff-1.7.4-h0b4d7ba_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/gettext-0.25.1-h5ad3122_0.conda
@@ -3648,8 +3648,8 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/fsspec-2025.7.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/future-1.0.0-pyhd8ed1ab_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/gdal-3.10.2-py311h32e851c_5.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/geopandas-1.0.1-pyhd8ed1ab_3.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/geopandas-base-1.0.1-pyha770c72_3.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/geopandas-1.1.1-pyhd8ed1ab_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/geopandas-base-1.1.1-pyha770c72_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/geos-3.13.0-hf9b8971_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/geotiff-1.7.4-hbef4fa4_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/gflags-2.2.2-hf9b8971_1005.conda
@@ -4192,8 +4192,8 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/fsspec-2025.7.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/future-1.0.0-pyhd8ed1ab_2.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/gdal-3.10.2-py311hff72c0e_5.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/geopandas-1.0.1-pyhd8ed1ab_3.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/geopandas-base-1.0.1-pyha770c72_3.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/geopandas-1.1.1-pyhd8ed1ab_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/geopandas-base-1.1.1-pyha770c72_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/geos-3.13.0-h5a68840_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/geotiff-1.7.4-h887f4e7_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/gflags-2.2.2-he0c23c2_1005.conda
@@ -9474,38 +9474,38 @@ packages:
   - pkg:pypi/gdal?source=hash-mapping
   size: 1672536
   timestamp: 1742980544907
-- conda: https://conda.anaconda.org/conda-forge/noarch/geopandas-1.0.1-pyhd8ed1ab_3.conda
-  sha256: 04f7e616ebbf6352ff852b53c57901e43f14e2b3c92411f99b5547f106bc192e
-  md5: 1baca589eb35814a392eaad6d152447e
+- conda: https://conda.anaconda.org/conda-forge/noarch/geopandas-1.1.1-pyhd8ed1ab_0.conda
+  sha256: c296e9cf96d42f5402518065d7dd23cd3fb7179879effd914d066df916ce4070
+  md5: 7f6eb8d806480c0f7273c448d45a0ef6
   depends:
   - folium
-  - geopandas-base 1.0.1 pyha770c72_3
-  - mapclassify >=2.4.0
+  - geopandas-base 1.1.1 pyha770c72_0
+  - mapclassify >=2.5.0
   - matplotlib-base
   - pyogrio >=0.7.2
-  - pyproj >=3.3.0
-  - python >=3.9
+  - pyproj >=3.5.0
+  - python >=3.10
   - xyzservices
   license: BSD-3-Clause
   license_family: BSD
   purls: []
-  size: 7583
-  timestamp: 1734346218849
-- conda: https://conda.anaconda.org/conda-forge/noarch/geopandas-base-1.0.1-pyha770c72_3.conda
-  sha256: 2d031871b57c6d4e5e2d6cc23bd6d4e0084bb52ebca5c1b20bf06d03749e0f24
-  md5: e8343d1b635bf09dafdd362d7357f395
+  size: 8044
+  timestamp: 1751003353593
+- conda: https://conda.anaconda.org/conda-forge/noarch/geopandas-base-1.1.1-pyha770c72_0.conda
+  sha256: c6195500934234f0c52763e00cf8ffb79bcf34f248fa6c4af848379fe8436479
+  md5: 8094c45b21a26cddd6354401eddc2567
   depends:
-  - numpy >=1.22
+  - numpy >=1.24
   - packaging
-  - pandas >=1.4.0
-  - python >=3.9
+  - pandas >=2.0.0
+  - python >=3.10
   - shapely >=2.0.0
   license: BSD-3-Clause
   license_family: BSD
   purls:
   - pkg:pypi/geopandas?source=hash-mapping
-  size: 239261
-  timestamp: 1734346217454
+  size: 250432
+  timestamp: 1751003352592
 - conda: https://conda.anaconda.org/conda-forge/linux-64/geos-3.13.0-h5888daf_0.conda
   sha256: 5c70d6d16e044859edca85feb9d4f1c3c6062aaf88d650826f5ccdf8c44336de
   md5: 40b4ab956c90390e407bb177f8a58bab
@@ -28163,10 +28163,10 @@ packages:
 - pypi: ./python/ribasim
   name: ribasim
   version: 2025.4.0
-  sha256: 90276675f58104e4b3f6803c234bc7d3578198749f7dc4e25c83da16e804a530
+  sha256: e02787a2798f7b00beba2fee49c0764dd43b9274722c6ded0b3efc3eef5c88e5
   requires_dist:
   - datacompy>=0.16
-  - geopandas>=1.0,<1.1
+  - geopandas>=1.0
   - matplotlib>=3.7
   - numpy>=1.25
   - packaging>=23.0
@@ -28211,9 +28211,9 @@ packages:
 - pypi: ./python/ribasim_testmodels
   name: ribasim-testmodels
   version: 2024.4.0
-  sha256: 69d8f05cb7928de397b52a2c03bdabc3a0ddb25bddfa7c21c5e14412069ec9cb
+  sha256: c3ea2499d1ce4dadf5c11d93cf89761b84358dadb98cf63b8ccb9e5f84ae6f46
   requires_dist:
-  - geopandas>=1.0,<1.1
+  - geopandas>=1.0
   - numpy>=1.25
   - pandas>=2.0
   - ribasim
