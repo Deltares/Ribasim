@@ -414,7 +414,7 @@ class TableModel(FileModel, Generic[TableT]):
             # Set geopackage attribute table
 
     def _write_arrow(self, filepath: Path, directory: Path, input_dir: Path) -> None:
-        """Write the contents of the input to a an arrow file."""
+        """Write the contents of the input to an arrow file."""
         assert self.df is not None
         path = directory / input_dir / filepath
         path.parent.mkdir(parents=True, exist_ok=True)

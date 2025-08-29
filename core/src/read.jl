@@ -1730,7 +1730,7 @@ function load_data(
 
     table = if !isnothing(path)
         table_path = input_path(config, path)
-        Arrow.Table(read(table_path))
+        Arrow.Table(read(table_path); convert = false)
     elseif exists(db, sql_name)
         execute(db, "select * from $(esc_id(sql_name))")
     else
@@ -1738,6 +1738,15 @@ function load_data(
     end
 
     return table
+end
+
+# alternative to convert that doesn't have warntimestamp
+# https://github.com/apache/arrow-julia/issues/559
+function to_datetime(x::Arrow.Timestamp{U, nothing})::DateTime where {U}
+    x_since_epoch = Arrow.periodtype(U)(x.x)
+    ms_since_epoch = Dates.toms(x_since_epoch)
+    ut_instant = Dates.UTM(ms_since_epoch + Arrow.UNIX_EPOCH_DATETIME)
+    return DateTime(ut_instant)
 end
 
 """
@@ -1758,7 +1767,9 @@ function load_structvector(
         return StructVector{T}(undef, 0)
     end
 
-    nt = if table isa Query
+    table_in_db = table isa Query
+
+    nt = if table_in_db
         # faster alternative to Tables.columntable that preallocates based on the schema
         sql_name = sql_table_name(T)
         nrows =
@@ -1789,11 +1800,25 @@ function load_structvector(
         end
         nt
     else
-        columntable(table)
+        nrows = length(first(table))
+        names = fieldnames(T)
+        types = fieldtypes(T)
+        vals = ntuple(i -> Vector{types[i]}(undef, nrows), length(names))
+        nt = NamedTuple{names}(vals)
+
+        for name in names
+            if name == :time
+                time_col = getproperty(table, name)
+                nt[name] .= [to_datetime(t) for t in time_col]
+            else
+                nt[name] .= getproperty(table, name)
+            end
+        end
+        nt
     end
 
     table = StructVector{T}(nt)
-    return sorted_table!(table)
+    return sorted_table!(table; do_sort = table_in_db)
 end
 
 """

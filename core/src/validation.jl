@@ -177,20 +177,24 @@ sort_by(::StructVector{Schema.UserDemand.Time}) =
     x -> (x.node_id, x.demand_priority, x.time)
 
 """
-Depending on if a table can be sorted, either sort it or assert that it is sorted.
+Sort a table or check that it is sorted.
 
-Tables loaded from the database into memory can be sorted.
-Tables loaded from Arrow files are memory mapped and can therefore not be sorted.
+For historical reasons we check sorting for Arrow files,
+and sort tables that are in the database.
+
+Note that Ribasim-Python also sorts tables on write.
 """
-function sorted_table!(table::StructVector{<:Table})::StructVector{<:Table}
+function sorted_table!(
+    table::StructVector{T};
+    do_sort::Bool,
+)::StructVector{T} where {T <: Table}
     by = sort_by(table)
-    if any((typeof(col) <: Arrow.Primitive for col in Tables.columns(table)))
-        et = eltype(table)
-        if !issorted(table; by)
-            error("Arrow table for $et not sorted as required.")
-        end
-    else
+    if do_sort
         sort!(table; by)
+    else
+        if !issorted(table; by)
+            error("Table $T not sorted as required.")
+        end
     end
     return table
 end
