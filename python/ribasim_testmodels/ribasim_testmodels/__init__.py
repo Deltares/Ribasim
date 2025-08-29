@@ -44,6 +44,7 @@ from ribasim_testmodels.basic import (
 from ribasim_testmodels.bucket import bucket_model, leaky_bucket_model
 from ribasim_testmodels.continuous_control import outlet_continuous_control_model
 from ribasim_testmodels.discrete_control import (
+    circular_flow_model,
     compound_variable_condition_model,
     concentration_condition_model,
     connector_node_flow_condition_model,
@@ -101,6 +102,7 @@ __all__ = [
     "basic_transient_model",
     "bommelerwaard_model",
     "bucket_model",
+    "circular_flow_model",
     "compound_variable_condition_model",
     "concentration_condition_model",
     "continuous_concentration_condition_model",

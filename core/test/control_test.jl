@@ -350,3 +350,54 @@ end
     # Control state changes precisely when the condition changes
     @test record.time[1:2] ≈ [0, t_condition_change]
 end
+
+@testitem "solve circular flow with hysteresis control" begin
+    using DataFrames: DataFrame
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/circular_flow/ribasim.toml")
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+    # get the levels
+    data = Ribasim.get_storages_and_levels(model)
+    level = data.level[:, begin:(end - 1)]
+
+    flow_table = DataFrame(Ribasim.flow_data(model))
+    flow_link_basin_3_to_9_manning = filter(:link_id => ==(1), flow_table)
+    flow_link_basin_3_to_6_outlet = filter(:link_id => ==(4), flow_table)
+    flow_link_basin_6_to_9_pump = filter(:link_id => ==(5), flow_table)
+
+    using Plots: plot, plot!
+    time = flow_link_basin_3_to_9_manning.time
+
+    # Manning flow water loop
+    plot(time, flow_link_basin_3_to_9_manning.flow_rate; label = "manning flow")
+
+    # Polder inflow and outflow
+    plot(time, flow_link_basin_3_to_6_outlet.flow_rate; label = "polder inlet flow")
+    plot!(time, flow_link_basin_6_to_9_pump.flow_rate; label = "polder pump out flow")
+
+    #
+
+    plot(
+        time,
+        level[2, :];
+        label = "polder basin",
+        xlabel = "Time (s)",
+        ylabel = "Level (m)",
+    )
+
+    #waterloop levels
+    plot(
+        time,
+        level[1, :];
+        label = "Basin 3 (waterloop left)",
+        xlabel = "Time (s)",
+        ylabel = "Level (m)",
+    )
+    plot!(time, level[3, :]; label = "Basin 9 (waterloop right)")
+
+    # Flow balance check
+    balance =
+        flow_link_basin_3_to_9_manning.flow_rate + flow_link_basin_3_to_6_outlet.flow_rate -
+        flow_link_basin_6_to_9_pump.flow_rate
+    plot(time, balance; label = "balance", xlabel = "Time", ylabel = "Flow rate (m³/s)")
+end

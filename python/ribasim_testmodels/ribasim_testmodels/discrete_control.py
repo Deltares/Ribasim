@@ -8,6 +8,7 @@ from ribasim.nodes import (
     flow_boundary,
     level_boundary,
     linear_resistance,
+    manning_resistance,
     outlet,
     pump,
     tabulated_rating_curve,
@@ -738,5 +739,126 @@ def transient_condition_model() -> Model:
     model.edge.add(lb, pmp)
     model.edge.add(pmp, bsn)
     model.edge.add(dc, pmp)
+
+    return model
+
+
+def circular_flow_model() -> Model:
+    """Create a model with a circular flow and a discrete control on a pump."""
+    model = Model(starttime="2020-01-01", endtime="2021-01-01", crs="EPSG:4326")
+
+    time = pd.date_range(model.starttime, model.endtime)
+    day_of_year = time.day_of_year.to_numpy()
+    precipitation = np.zeros(day_of_year.size)
+    precipitation[0:90] = 1e-6
+    precipitation[90:180] = 0
+    precipitation[180:270] = 1e-6
+    precipitation[270:366] = 0
+    evaporation = np.zeros(day_of_year.size)
+    evaporation[0:90] = 0
+    evaporation[90:180] = 1e-6
+    evaporation[180:270] = 0
+    evaporation[270:366] = 1e-6
+
+    basin_data = [
+        basin.Profile(area=[0.01, 1000.0], level=[0.0, 1.0]),
+        basin.Time(
+            time=pd.date_range(model.starttime, model.endtime),
+            drainage=0.0,
+            potential_evaporation=evaporation,
+            infiltration=0.0,
+            precipitation=precipitation,
+        ),
+        basin.State(level=[0.9]),
+    ]
+
+    basin3 = model.basin.add(Node(3, Point(2.0, 0.0)), basin_data)
+    basin6 = model.basin.add(Node(6, Point(4.0, 2.0)), basin_data)
+    basin9 = model.basin.add(Node(9, Point(5.0, 0.0)), basin_data)
+
+    ###Setup outlet:
+
+    outlet10 = model.outlet.add(
+        Node(10, Point(6.0, 0.0)),
+        [outlet.Static(flow_rate=1.0, min_upstream_level=[1.1])],
+    )
+
+    outlet12 = model.outlet.add(
+        Node(12, Point(2.0, 1.1)),
+        [outlet.Static(flow_rate=1.0, max_downstream_level=[1.1])],
+    )
+
+    outlet5 = model.outlet.add(
+        Node(5, Point(2.1, 0.1)),
+        [
+            outlet.Static(
+                flow_rate=1.0, min_upstream_level=[1.0], max_downstream_level=[0.9]
+            )
+        ],
+    )
+
+    ###Setup Manning resistance:
+    manning_resistance2 = model.manning_resistance.add(
+        Node(2, Point(3.5, 0.0)),
+        [
+            manning_resistance.Static(
+                length=[900], manning_n=[0.04], profile_width=[6.0], profile_slope=[3.0]
+            )
+        ],
+    )
+
+    control1 = model.discrete_control.add(
+        Node(20, Point(5, 1)),
+        [
+            discrete_control.Variable(
+                compound_variable_id=1,
+                listen_node_id=6,
+                variable=["level"],
+            ),
+            discrete_control.Condition(
+                compound_variable_id=1,
+                condition_id=[1, 2],
+                # min, max
+                greater_than=[0.9, 0.91],
+            ),
+            discrete_control.Logic(
+                truth_state=["FF", "TF", "TT"],
+                control_state=["in", "none", "out"],
+            ),
+        ],
+    )
+
+    ##Setup pump:
+    pump7 = model.pump.add(
+        Node(7, Point(4.9, 0.1)),
+        [pump.Static(control_state=["in", "none", "out"], flow_rate=[0.0, 0.1, 10.0])],
+    )
+
+    ##Setup level boundary:
+    level_boundary11 = model.level_boundary.add(
+        Node(11, Point(2.0, 2.0)), [level_boundary.Static(level=[2])]
+    )
+    level_boundary17 = model.level_boundary.add(
+        Node(17, Point(6.0, 1.0)), [level_boundary.Static(level=[0.9])]
+    )
+
+    ##Setup the links:
+    model.link.add(manning_resistance2, basin9)  # 1
+    model.link.add(
+        basin3,
+        outlet5,
+    )  # 2
+    model.link.add(
+        basin3,
+        manning_resistance2,
+    )  # 3
+    model.link.add(outlet5, basin6)  # 4
+    model.link.add(basin6, pump7)  # 5
+    model.link.add(pump7, basin9)  # 6
+    model.link.add(basin9, outlet10)  # 7
+    model.link.add(level_boundary11, outlet12)  # 8
+    model.link.add(outlet12, basin3)  # 9
+    model.link.add(outlet10, level_boundary17)  # 10
+    model.link.add(control1, pump7)  # 11
 
     return model
