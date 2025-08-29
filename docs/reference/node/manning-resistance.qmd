@@ -158,6 +158,7 @@ def s(x, threshold):
     return np.sign(x)*np.sqrt(np.abs(x))
 
 x = np.linspace(-0.0025, 0.0025, 100)
+x = np.linspace(-25, 25, 100)
 threshold = 1e-3
 
 fig, ax = plt.subplots()
