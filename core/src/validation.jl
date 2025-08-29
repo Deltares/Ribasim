@@ -177,26 +177,16 @@ sort_by(::StructVector{Schema.UserDemand.Time}) =
     x -> (x.node_id, x.demand_priority, x.time)
 
 """
-Sort a table or check that it is sorted.
+Sort a table in place in the required order.
 
-For historical reasons we check sorting for Arrow files,
-and sort tables that are in the database.
+The parameter initialization code after this assumes the function is sorted, using e.g.
+`IterTools.groupby`.
 
-Note that Ribasim-Python also sorts tables on write.
+Note that Ribasim-Python also sorts tables in the required order on write.
 """
-function sorted_table!(
-    table::StructVector{T};
-    do_sort::Bool,
-)::StructVector{T} where {T <: Table}
+function sorted_table!(table::StructVector{T})::StructVector{T} where {T <: Table}
     by = sort_by(table)
-    if do_sort
-        sort!(table; by)
-    else
-        if !issorted(table; by)
-            error("Table $T not sorted as required.")
-        end
-    end
-    return table
+    return sort!(table; by)
 end
 
 function valid_config(config::Config)::Bool

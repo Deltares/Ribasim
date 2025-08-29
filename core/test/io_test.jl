@@ -61,19 +61,6 @@ end
     using Ribasim: sorted_table!, Schema
     using Dates: DateTime
 
-    "Convert an in-memory table to a memory mapped Arrow table"
-    function to_arrow_table(
-        path,
-        table::StructVector{T},
-    )::StructVector{T} where {T <: Ribasim.Table}
-        open(path; write = true) do io
-            Arrow.write(io, table)
-        end
-        table = Arrow.Table(path)
-        nt = columntable(table)
-        return StructVector{T}(nt)
-    end
-
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/basic_transient/ribasim.toml")
     config = Ribasim.Config(toml_path)
@@ -92,32 +79,14 @@ end
     reversed_table = sort(table; by, rev = true)
     @test issorted(table; by)
     @test !issorted(reversed_table; by)
-    # create arrow memory mapped copies
-    # TODO support cleanup, see https://github.com/apache/arrow-julia/issues/61
-    arrow_table = to_arrow_table(tempname(; cleanup = false), table)
-    reversed_arrow_table = to_arrow_table(tempname(; cleanup = false), reversed_table)
+    sorted_table!(reversed_table)
+    @test issorted(reversed_table; by)
 
-    @test table.node_id[1] == 1
-    @test reversed_table.node_id[1] == 9
-    # sorted_table! sorts reversed_table
-    sorted_table!(reversed_table; do_sort = true)
-    @test reversed_table.node_id[1] == 1
-
-    # arrow_table is already sorted, stays memory mapped
-    sorted_table!(arrow_table; do_sort = false)
-    @test_throws ReadOnlyMemoryError arrow_table.node_id[1] = 0
-    # reversed_arrow_table throws an AssertionError
-    @test_throws "not sorted as required" sorted_table!(
-        reversed_arrow_table;
-        do_sort = false,
-    )
-
+    # Basin / profile is in Arrow format
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic_arrow/ribasim.toml")
     config = Ribasim.Config(toml_path)
     db_path = Ribasim.database_path(config)
     db = SQLite.DB(db_path)
-
-    # this table is stored in an Arrow file
     table = Ribasim.load_structvector(db, config, Schema.Basin.Profile)
     @test table isa StructVector{Schema.Basin.Profile}
     @test table.node_id isa Vector{Int32}
