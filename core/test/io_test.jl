@@ -58,6 +58,8 @@ end
     using StructArrays: StructVector
     import SQLite
     using Tables: columntable
+    using Ribasim: sorted_table!, Schema
+    using Dates: DateTime
 
     "Convert an in-memory table to a memory mapped Arrow table"
     function to_arrow_table(
@@ -80,6 +82,9 @@ end
 
     # load a sorted table
     table = Ribasim.load_structvector(db, config, Ribasim.Schema.Basin.Time)
+    @test table.time isa Vector{DateTime}
+    @test table.node_id isa Vector{Int32}
+    @test table.drainage isa Vector{Union{Float64, Missing}}
     close(db)
     by = Ribasim.sort_by(table)
     @test by((; node_id = 1, time = 2)) == (1, 2)
@@ -95,14 +100,41 @@ end
     @test table.node_id[1] == 1
     @test reversed_table.node_id[1] == 9
     # sorted_table! sorts reversed_table
-    Ribasim.sorted_table!(reversed_table)
+    sorted_table!(reversed_table; do_sort = true)
     @test reversed_table.node_id[1] == 1
 
     # arrow_table is already sorted, stays memory mapped
-    Ribasim.sorted_table!(arrow_table)
+    sorted_table!(arrow_table; do_sort = false)
     @test_throws ReadOnlyMemoryError arrow_table.node_id[1] = 0
     # reversed_arrow_table throws an AssertionError
-    @test_throws "not sorted as required" Ribasim.sorted_table!(reversed_arrow_table)
+    @test_throws "not sorted as required" sorted_table!(
+        reversed_arrow_table;
+        do_sort = false,
+    )
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic_arrow/ribasim.toml")
+    config = Ribasim.Config(toml_path)
+    db_path = Ribasim.database_path(config)
+    db = SQLite.DB(db_path)
+
+    # this table is stored in an Arrow file
+    table = Ribasim.load_structvector(db, config, Schema.Basin.Profile)
+    @test table isa StructVector{Schema.Basin.Profile}
+    @test table.node_id isa Vector{Int32}
+    @test table.level isa Vector{Float64}
+end
+
+@testitem "to_datetime" begin
+    using Arrow: Flatbuf, Timestamp
+    using Ribasim: to_datetime
+    using Dates: DateTime
+    # no sub-ms precision
+    ns = 1764288000000000000
+    ts = Timestamp{Flatbuf.TimeUnit.NANOSECOND, nothing}(ns)
+    @test to_datetime(ts) == DateTime("2025-11-28")
+    # add one ns, truncated off
+    ts = Timestamp{Flatbuf.TimeUnit.NANOSECOND, nothing}(ns + 1)
+    @test to_datetime(ts) == DateTime("2025-11-28")
 end
 
 @testitem "results" begin
