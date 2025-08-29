@@ -1818,7 +1818,7 @@ function load_structvector(
     end
 
     table = StructVector{T}(nt)
-    return sorted_table!(table; do_sort = table_in_db)
+    return sorted_table!(table)
 end
 
 """
