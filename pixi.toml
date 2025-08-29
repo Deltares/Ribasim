@@ -178,10 +178,8 @@ write-allocation-problems = { cmd = "julia --project --check-bounds=yes --thread
     "generate-testmodels",
     "initialize-julia",
 ] }
-migrate-model = { cmd = "python utils/migrate_model.py {{ input_toml }} {{ output_toml }}", args = [
-    "input_toml",
-    "output_toml",
-] }
+migrate-model = "python utils/migrate_model.py"
+filter-model = "python utils/filter_model.py"
 # Release
 github-release = "python utils/github-release.py"
 

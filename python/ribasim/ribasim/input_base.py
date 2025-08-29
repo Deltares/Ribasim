@@ -330,8 +330,8 @@ class TableModel(FileModel, Generic[TableT]):
     def tablename(cls) -> str:
         """Retrieve tablename based on attached Schema.
 
-        NodeSchema -> Schema
-        TabularRatingCurveStaticSchema -> TabularRatingCurve / Static
+        NodeSchema -> Node
+        TabularRatingCurveStaticSchema -> TabularRatingCurve / static
         """
         cls_string = str(cls.tableschema())
         names: list[str] = re.sub("([A-Z]+)", r" \1", cls_string).split()[:-1]
