@@ -1653,3 +1653,66 @@ def allocation_off_flow_demand_model() -> Model:
     model.link.add(fdm, pmp)
 
     return model
+
+
+def multiple_source_priorities_model() -> Model:
+    """Set up a model to test source prioritization."""
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2021-01-01",
+        crs="EPSG:28992",
+        experimental=Experimental(allocation=True),
+    )
+
+    ud = model.user_demand.add(
+        Node(1, Point(10, 10), subnetwork_id=1),
+        [
+            user_demand.Time(
+                demand_priority=2,
+                time=["2020-01-01", "2021-01-01"],
+                demand=[0.0, 3.0],
+                return_factor=0,
+                min_level=0,
+            )
+        ],
+    )
+
+    bsn = model.basin.add(
+        Node(
+            2,
+            Point(10, 9),
+            subnetwork_id=1,
+            source_priority=100000,  # Ignore Basin as source
+        ),
+        [basin.Profile(area=1000, level=[0, 10]), basin.State(level=[2.0])],
+    )
+
+    # The LevelDemand node makes sure that Basins #2 and #9 are not used as sources
+    ld = model.level_demand.add(
+        Node(3, Point(9, 9), subnetwork_id=1),
+        [level_demand.Static(min_level=[2.0], max_level=[2.0], demand_priority=1)],
+    )
+
+    for x in range(9, 12):
+        pmp = model.pump.add(
+            Node(x - 5, Point(x, 8), subnetwork_id=1),
+            [
+                pump.Static(
+                    flow_rate=0, max_flow_rate=[1.0], control_state="Ribasim.allocation"
+                )
+            ],
+        )
+
+        lb = model.level_boundary.add(
+            Node(x - 2, Point(x, 7), subnetwork_id=1, source_priority=3000 + x),
+            [level_boundary.Static(level=[1.0])],
+        )
+
+        model.link.add(pmp, bsn)
+        model.link.add(lb, pmp)
+
+    model.link.add(bsn, ud)
+    model.link.add(ud, bsn)
+    model.link.add(ld, bsn)
+
+    return model

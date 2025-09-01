@@ -104,13 +104,13 @@ end
     user_demand_source_priority = model.config.allocation.source_priority.user_demand
     user_demand_id = NodeID(:UserDemand, 5, p_independent)
     return_flow = flow[user_demand.outflow_link[user_demand_id.idx].link]
-    @test metadata.expression_first.terms[return_flow] == inv(user_demand_source_priority)
+    @test metadata.expression_first.terms[return_flow] == user_demand_source_priority
 
     ## FlowBoundary source
     flow_boundary_source_priority = model.config.allocation.source_priority.flow_boundary
     flow_boundary_id = NodeID(:FlowBoundary, 1, p_independent)
     outflow = flow[flow_boundary.outflow_link[flow_boundary_id.idx].link]
-    @test metadata.expression_first.terms[outflow] == inv(flow_boundary_source_priority)
+    @test metadata.expression_first.terms[outflow] == flow_boundary_source_priority
 end
 
 @testitem "Primary allocation network initialization" begin
@@ -707,5 +707,33 @@ end
                 end
             end
         end
+    end
+end
+
+@testitem "Source priorities" begin
+    using DataFrames: DataFrame
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/multiple_source_priorities/ribasim.toml",
+    )
+    @test ispath(toml_path)
+
+    model = Ribasim.run(toml_path)
+    @test success(model)
+
+    flow_table = DataFrame(Ribasim.flow_data(model))
+
+    simulation_time = Ribasim.seconds_since(model.config.endtime, model.config.starttime)
+    t = Ribasim.tsaves(model)
+    demand = 3 * t / simulation_time
+
+    flow_1 = clamp.(demand, 0, 1)
+    flow_2 = clamp.(demand - flow_1, 0, 1)
+    flow_3 = clamp.(demand - flow_1 - flow_2, 0, 1)
+
+    for (link_id, flow) in zip([2, 4, 6], [flow_1, flow_2, flow_3])
+        data = filter(:link_id => ==(link_id), flow_table)
+        @test all(isapprox.(data.flow_rate, flow[1:(end - 1)], atol = 1e-5))
     end
 end
