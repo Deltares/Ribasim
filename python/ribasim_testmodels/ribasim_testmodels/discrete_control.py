@@ -4,6 +4,7 @@ from ribasim.config import Experimental, Interpolation, Node, Results
 from ribasim.model import Model, Solver
 from ribasim.nodes import (
     basin,
+    continuous_control,
     discrete_control,
     flow_boundary,
     level_boundary,
@@ -807,23 +808,17 @@ def circular_flow_model() -> Model:
         ],
     )
 
-    control1 = model.discrete_control.add(
+    control1 = model.continuous_control.add(
         Node(20, Point(5, 1)),
         [
-            discrete_control.Variable(
-                compound_variable_id=1,
+            continuous_control.Variable(
                 listen_node_id=6,
                 variable=["level"],
             ),
-            discrete_control.Condition(
-                compound_variable_id=1,
-                condition_id=[1, 2],
-                # min, max
-                greater_than=[0.9, 0.91],
-            ),
-            discrete_control.Logic(
-                truth_state=["FF", "TF", "TT"],
-                control_state=["in", "none", "out"],
+            continuous_control.Function(
+                input=[0.5, 0.9, 0.91, 1],
+                output=[0.0, 0.0, 10, 10],
+                controlled_variable="flow_rate",
             ),
         ],
     )
