@@ -333,11 +333,21 @@ function formulate_flow!(
     (; allocation) = p_independent
     all_nodes_active = p.p_mutable.all_nodes_active
 
-    for (id, inflow_link, outflow_link, active, allocated, return_factor, min_level) in zip(
+    for (
+        id,
+        inflow_link,
+        outflow_link,
+        active,
+        has_demand_priority,
+        allocated,
+        return_factor,
+        min_level,
+    ) in zip(
         user_demand.node_id,
         user_demand.inflow_link,
         user_demand.outflow_link,
         user_demand.active,
+        eachrow(user_demand.has_demand_priority),
         eachrow(user_demand.allocated),
         user_demand.return_factor,
         user_demand.min_level,
@@ -353,6 +363,7 @@ function formulate_flow!(
         # If allocation is not optimized then allocated = Inf, so the result is always
         # effectively allocated = demand.
         for demand_priority_idx in eachindex(allocation.demand_priorities_all)
+            !has_demand_priority[demand_priority_idx] && continue
             alloc_prio = allocated[demand_priority_idx]
             demand_prio = get_demand(user_demand, id, demand_priority_idx, t)
             alloc = min(alloc_prio, demand_prio)
@@ -611,7 +622,7 @@ function formulate_pump_or_outlet_flow!(
     component_cache::NamedTuple,
     reduce_Δlevel::Bool = false,
 )::Nothing
-    (; allocation, graph, flow_demand) = p.p_independent
+    (; allocation, flow_demand) = p.p_independent
 
     (;
         current_min_flow_rate,
@@ -630,7 +641,6 @@ function formulate_pump_or_outlet_flow!(
         control_type = node.control_type[id.idx]
         min_upstream_level = node.min_upstream_level[id.idx]
         max_downstream_level = node.max_downstream_level[id.idx]
-        flow_demand_data = node.flow_demand_data[id.idx]
 
         if should_skip_update_q(active, control_type, control_type_, p)
             continue
@@ -655,7 +665,7 @@ function formulate_pump_or_outlet_flow!(
         # When allocation is not active, set the flow demand directly as a lower bound on the
         # pump or outlet flow rate
         if !is_active(allocation)
-            has_demand, flow_demand_id = flow_demand_data
+            has_demand, flow_demand_id = has_external_demand(node, id)
             if has_demand
                 total_demand = 0.0
                 has_any_demand_priority = false
