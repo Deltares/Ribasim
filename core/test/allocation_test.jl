@@ -709,3 +709,31 @@ end
         end
     end
 end
+
+@testitem "Source priorities" begin
+    using DataFrames: DataFrame
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/multiple_source_priorities/ribasim.toml",
+    )
+    @test ispath(toml_path)
+
+    model = Ribasim.run(toml_path)
+    @test success(model)
+
+    flow_table = DataFrame(Ribasim.flow_data(model))
+
+    simulation_time = Ribasim.seconds_since(model.config.endtime, model.config.starttime)
+    t = Ribasim.tsaves(model)
+    demand = 3 * t / simulation_time
+
+    flow_1 = clamp.(demand, 0, 1)
+    flow_2 = clamp.(demand - flow_1, 0, 1)
+    flow_3 = clamp.(demand - flow_1 - flow_2, 0, 1)
+
+    for (link_id, flow) in zip([2, 4, 6], [flow_1, flow_2, flow_3])
+        data = filter(:link_id => ==(link_id), flow_table)
+        @test all(isapprox.(data.flow_rate, flow[1:(end - 1)], atol = 1e-5))
+    end
+end

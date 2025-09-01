@@ -1668,7 +1668,7 @@ def multiple_source_priorities_model() -> Model:
         Node(1, Point(10, 10), subnetwork_id=1),
         [
             user_demand.Time(
-                demand_priority=1,
+                demand_priority=2,
                 time=["2020-01-01", "2021-01-01"],
                 demand=[0.0, 3.0],
                 return_factor=0,
@@ -1677,13 +1677,20 @@ def multiple_source_priorities_model() -> Model:
         ],
     )
 
-    bsn1 = model.basin.add(
-        Node(2, Point(10, 9), subnetwork_id=1),
+    bsn = model.basin.add(
+        Node(
+            2,
+            Point(10, 9),
+            subnetwork_id=1,
+            source_priority=100000,  # Ignore Basin as source
+        ),
         [basin.Profile(area=1000, level=[0, 10]), basin.State(level=[2.0])],
     )
 
+    # The LevelDemand node makes sure that Basins #2 and #9 are not used as sources
     ld = model.level_demand.add(
-        Node(3, Point(12, 9), subnetwork_id=1), [level_demand.Static(min_level=[2.0])]
+        Node(3, Point(9, 9), subnetwork_id=1),
+        [level_demand.Static(min_level=[2.0], max_level=[2.0], demand_priority=1)],
     )
 
     for x in range(9, 12):
@@ -1696,44 +1703,16 @@ def multiple_source_priorities_model() -> Model:
             ],
         )
 
-        model.link.add(pmp, bsn1)
+        lb = model.level_boundary.add(
+            Node(x - 2, Point(x, 7), subnetwork_id=1, source_priority=3000 + x),
+            [level_boundary.Static(level=[1.0])],
+        )
 
-    lb = model.level_boundary.add(
-        Node(7, Point(9, 7), subnetwork_id=1, source_priority=3001),
-        [level_boundary.Static(level=[1.0])],
-    )
+        model.link.add(pmp, bsn)
+        model.link.add(lb, pmp)
 
-    bsn2 = model.basin.add(
-        Node(8, Point(10, 7), subnetwork_id=1, source_priority=3002),
-        [basin.Profile(area=1e7, level=[0, 10]), basin.State(level=[2.0])],
-    )
-
-    bsn3 = model.basin.add(
-        Node(9, Point(11, 7), subnetwork_id=1),
-        [basin.Profile(area=1000, level=[0, 10]), basin.State(level=[2.0])],
-    )
-
-    fb = model.flow_boundary.add(
-        Node(10, Point(11, 6), subnetwork_id=1, source_priority=3003),
-        [flow_boundary.Static(flow_rate=[1.0])],
-    )
-
-    pmp = model.pump.add(
-        Node(11, Point(12, 7)),
-        [pump.Static(flow_rate=[0.0], control_state="Ribasim.allocation")],
-    )
-
-    tml = model.terminal.add(Node(12, Point(13, 7), subnetwork_id=1))
-
-    model.link.add(bsn1, ud)
-    model.link.add(ud, bsn1)
-    model.link.add(ld, bsn1)
-    model.link.add(lb, model.pump[4])
-    model.link.add(bsn2, model.pump[5])
-    model.link.add(bsn3, model.pump[6])
-    model.link.add(fb, bsn3)
-    model.link.add(ld, bsn3)
-    model.link.add(bsn3, pmp)
-    model.link.add(pmp, tml)
+    model.link.add(bsn, ud)
+    model.link.add(ud, bsn)
+    model.link.add(ld, bsn)
 
     return model

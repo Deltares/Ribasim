@@ -825,7 +825,7 @@ function add_source_priority_objective!(
             for downstream_id in outflow_ids(graph, node_id)
                 JuMP.add_to_expression!(
                     expression,
-                    flow[(node_id, downstream_id)] / source_priority,
+                    source_priority * flow[(node_id, downstream_id)],
                 )
             end
         else
@@ -834,7 +834,7 @@ function add_source_priority_objective!(
                     source_priority = graph[node_id].source_priority
                     iszero(source_priority) &&
                         (source_priority = subnetwork_inlet_source_priority)
-                    JuMP.add_to_expression!(expression, flow[link] / source_priority)
+                    JuMP.add_to_expression!(expression, source_priority * flow[link])
                 end
             end
         end
