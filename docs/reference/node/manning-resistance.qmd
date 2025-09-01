@@ -129,7 +129,7 @@ if the head in basin $b$ is larger than in basin $a$.
 This expression however has a derivative which tends to $\infty$ as $\Delta h$ tends to $0$, which can lead to instabilities in simulation. Therefore we use the modified expression
 
 $$
-Q = \phi\frac{A}{n} R_h^{2/3}s\left(\frac{\Delta h}{L}; 10^{-5}\right),
+Q = \phi\frac{A}{n} R_h^{2/3}s\left(\frac{\Delta h}{L}; x_0\right),
 $$
 
 where $s$ is a relaxed square root function:
@@ -145,6 +145,18 @@ s(x; x_0)
 \end{align}
 $$
 
+And $x_0$ is calculated based on the Reynolds number, such that the smooth relaxation starts when the velocity of the flow starts to leave the fully turbulent regime:
+
+$$
+x_0 = \frac{\Delta h}{L} |_0 = \left( \text{Re}_0 \frac{ n \nu \sqrt[3]{R_h}}{A} \right)^2
+$$
+
+And the transition Reynolds number, with a value of 2000 is defined for open channel flow as:
+$$
+\text{Re} = \frac{Q}{\nu R_h}
+$$
+
+
 ```{python}
 # | code-fold: true
 import numpy as np
@@ -157,9 +169,10 @@ def s(x, threshold):
   else:
     return np.sign(x)*np.sqrt(np.abs(x))
 
+threshold = 1e-5
 x = np.linspace(-0.0025, 0.0025, 100)
-x = np.linspace(-25, 25, 100)
-threshold = 1e-3
+x = np.linspace(-2.5*threshold, 2.5*threshold, 100)
+
 
 fig, ax = plt.subplots()
 
@@ -167,7 +180,7 @@ y_o = np.sign(x)*np.sqrt(np.abs(x))
 y_s = [s(x_, threshold) for x_ in x]
 
 ax.plot(x, y_o, ls = ":", label = r"sign$(x)\sqrt{|x|}$")
-ax.plot(x, y_s, color = "C0", label = r"$s\left(x; 10^{-3}\right)$")
+ax.plot(x, y_s, color = "C0", label = r"$s\left(x; 1e-5 \right)$")
 ax.legend();
 ```
 

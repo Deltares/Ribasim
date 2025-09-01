@@ -528,13 +528,13 @@ function manning_resistance_flow(
     Δh = h_a - h_b
 
     # Calculate Reynolds number for open channel flow
-    # Re = (V * A / R_h) / ν
+    # Re = V * A / ( R_h * ν )
     # V: average velocity, R_h: hydraulic radius, ν: kinematic viscosity of water
 
     # Kinematic viscosity of water (ν), typical value at 20°C [m²/s]
     ν = 1.004e-6
     Re_laminar = 2000
-    threshold = (Re_laminar * ν * n / (A * R_h * ∛(R_h^2)))^2 * 0
+    threshold = (Re_laminar * ν * n * ∛R_h / A)^2
     threshold = max(threshold, 1e-5) # Avoid too small thresholds
 
     q = A / n * ∛(R_h^2) * relaxed_root(Δh / L, threshold)
