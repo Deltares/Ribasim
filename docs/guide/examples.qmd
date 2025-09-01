@@ -261,7 +261,7 @@ ax.set_ylabel("flow [m³day⁻¹]");
 
 # Model with discrete control
 
-The model constructed below consists of a single basin which slowly drains trough a `TabulatedRatingCurve`, but is held within a range by two connected pumps. These two pumps together behave like a reversible pump. When pumping can be done in only one direction, and the other direction is only possible under gravity, use an Outlet for that direction.
+The model constructed below consists of a single basin which slowly drains through a `TabulatedRatingCurve`, but is held within a range by two connected pumps. These two pumps together behave like a reversible pump. When pumping can be done in only one direction, and the other direction is only possible under gravity, use an Outlet for that direction.
 
 Setup the basins:
 
@@ -907,7 +907,7 @@ model.continuous_control.add(
 
 This defines:
 
-- A `ContinuousControl` node with ID 1, which listens to the flow rate of the `LinearResistance` node with ID 1, puts that trough the function $f(x) = \max(0, 0.6x)$, and assigns the result to the flow rate of the node this `ContinuousControl` node is controlling, which is defined by a (control) link;
+- A `ContinuousControl` node with ID 1, which listens to the flow rate of the `LinearResistance` node with ID 1, puts that through the function $f(x) = \max(0, 0.6x)$, and assigns the result to the flow rate of the node this `ContinuousControl` node is controlling, which is defined by a (control) link;
 - A `ContinuousControl` node with ID 2, which listens to the flow rate of the `LinearResistance` node with ID 1, puts that through the function $f(x) = \max(0, 0.4x)$, and assigns the result to the flow rate of the node this `ContinuousControl` node is controlling, which is defined by a (control) link.
 
 ```{python}
