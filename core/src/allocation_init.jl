@@ -2,9 +2,9 @@
 Add variables defining the Basin profiles
 """
 function add_basin!(allocation_model::AllocationModel)::Nothing
-    (; problem, cumulative_forcing_volume, scaling, node_id_in_subnetwork) =
+    (; problem, cumulative_forcing_volume, scaling, node_ids_in_subnetwork) =
         allocation_model
-    (; basin_ids_subnetwork) = node_id_in_subnetwork
+    (; basin_ids_subnetwork) = node_ids_in_subnetwork
 
     # Define decision variables: storage change (scaling.storage * m^3) (at the start of the allocation time step
     # and the change over the allocation time step)
@@ -19,10 +19,12 @@ function add_basin!(allocation_model::AllocationModel)::Nothing
     )
 
     # Add decision variables: Low storage factor (unitless)
+    # The low storage factor reduces flows out of Basins to prevent either negative storages or infeasible problems.
+
     problem[:low_storage_factor] =
         JuMP.@variable(problem, 0 ≤ low_storage_factor[basin_ids_subnetwork] ≤ 1)
 
-    # Add the links for which the realized volume is required for input to the allocation algorithm
+    # Initialize cumulative forcing volumes (positive, negative) for each basin
     for node_id in basin_ids_subnetwork
         cumulative_forcing_volume[node_id] = (0.0, 0.0)
     end
@@ -103,11 +105,11 @@ function add_conservation!(
     allocation_model::AllocationModel,
     p_independent::ParametersIndependent,
 )::Nothing
-    (; problem, subnetwork_id, Δt_allocation, scaling, node_id_in_subnetwork) =
+    (; problem, subnetwork_id, Δt_allocation, scaling, node_ids_in_subnetwork) =
         allocation_model
-    (; basin_ids_subnetwork) = node_id_in_subnetwork
+    (; basin_ids_subnetwork) = node_ids_in_subnetwork
 
-    # Flow trough conservative nodes
+    # Flow through conservative nodes
     (;
         graph,
         pump,
@@ -161,19 +163,22 @@ function add_conservation!(
     return nothing
 end
 
+"""
+Add variables and constraints defining the UserDemand nodes
+"""
 function add_user_demand!(
     allocation_model::AllocationModel,
     p_independent::ParametersIndependent,
 )::Nothing
-    (; problem, cumulative_realized_volume, node_id_in_subnetwork) = allocation_model
-    (; user_demand_ids_subnetwork) = node_id_in_subnetwork
+    (; problem, cumulative_realized_volume, node_ids_in_subnetwork) = allocation_model
+    (; user_demand_ids_subnetwork) = node_ids_in_subnetwork
     (; user_demand) = p_independent
     (; inflow_link, outflow_link) = user_demand
     flow = problem[:flow]
 
     # Define decision variables: Per UserDemand node the flow allocated to that node
     # per demand priority for which that node has a demand (scaling.flow * m^3/s)
-    d = 2.0 # example demand (scaling.flow * m^3/s, values to be filled in before optimizing)
+    d = 2.0 # Example demand (scaling.flow * m^3/s, values to be filled in before optimizing)
     user_demand_allocated =
         problem[:user_demand_allocated] = JuMP.@variable(
             problem,
@@ -185,7 +190,7 @@ function add_user_demand!(
             d
         )
 
-    # Define constraints: The sum of the flows allocated to UserDemand is equal to the total flow
+    # Define constraints: The sum of the flows allocated to UserDemand is equal to the total flow into the demand node
     problem[:user_demand_allocated_sum_constraint] = JuMP.@constraint(
         problem,
         [node_id = user_demand_ids_subnetwork],
@@ -239,20 +244,23 @@ function add_user_demand!(
     return nothing
 end
 
+"""
+Add variables and constraints defining the FlowDemand nodes
+"""
 function add_flow_demand!(
     allocation_model::AllocationModel,
     p_independent::ParametersIndependent,
 )::Nothing
-    (; problem, cumulative_realized_volume, scaling, node_id_in_subnetwork) =
+    (; problem, cumulative_realized_volume, scaling, node_ids_in_subnetwork) =
         allocation_model
     (; node_ids_subnetwork_with_flow_demand, flow_demand_ids_subnetwork) =
-        node_id_in_subnetwork
+        node_ids_in_subnetwork
     (; graph, flow_demand) = p_independent
     flow = problem[:flow]
 
     # Define decision variables: flow allocated to FlowDemand node per demand priority
     # for which the node has a flow demand
-    d = 2.0 # example demand (scaling.flow * m^3/s, values to be filled in before optimizing)
+    d = 2.0 # Example demand (scaling.flow * m^3/s, values to be filled in before optimizing)
     flow_demand_allocated =
         problem[:flow_demand_allocated] = JuMP.@variable(
             problem,
@@ -279,17 +287,17 @@ function add_flow_demand!(
             0 ≤ flow_demand_extra[node_id = node_ids_subnetwork_with_flow_demand] ≤ bound
         )
 
-    # Define constraints: The sum of the flows per demand priority trough the node with flow demand
-    # is equal to the total flow trough this node
+    # Define constraints: The sum of the flows per demand priority through the node with flow demand
+    # is equal to the total flow through this node
     problem[:flow_demand_allocated_sum_constraint] = JuMP.@constraint(
         problem,
         [node_id = node_ids_subnetwork_with_flow_demand],
         flow[inflow_link(graph, node_id).link] ==
         flow_demand_extra[node_id] + sum(
             flow_demand_allocated[node_id, demand_priority] for
-            demand_priority in DemandPriorityIterator(node_id, p_independent),
-            base_name in "flow_demand_allocated_sum_constraint"
-        )
+            demand_priority in DemandPriorityIterator(node_id, p_independent)
+        );
+        base_name = "flow_demand_allocated_sum_constraint"
     )
 
     # Define decision variables: Per FlowDemand node the allocation error per priority for
@@ -325,12 +333,15 @@ function add_flow_demand!(
     return nothing
 end
 
+"""
+Add variables and constraints defining the LevelDemand nodes
+"""
 function add_level_demand!(
     allocation_model::AllocationModel,
     p_independent::ParametersIndependent,
 )::Nothing
-    (; problem, node_id_in_subnetwork, node_id_in_subnetwork) = allocation_model
-    (; basin_ids_subnetwork_with_level_demand) = node_id_in_subnetwork
+    (; problem, node_ids_in_subnetwork) = allocation_model
+    (; basin_ids_subnetwork_with_level_demand) = node_ids_in_subnetwork
     storage_change = problem[:basin_storage_change]
 
     # Define decision variables: Per Basin with a LevelDemand the allocation error per priority for
@@ -360,7 +371,7 @@ function add_level_demand!(
         base_name = "storage_constraint_lower"
     )
 
-    # Define constraints: error terms amove maximum storage
+    # Define constraints: error terms above maximum storage
     maximum_storage = 2000.0 # Example maximum storage (m^3 * scaling.storage, to be filled in before optimizing)
     problem[:storage_constraint_upper] = JuMP.@constraint(
         problem,
@@ -380,8 +391,8 @@ function add_flow_boundary!(
     allocation_model::AllocationModel,
     p_independent::ParametersIndependent,
 )::Nothing
-    (; cumulative_boundary_volume, node_id_in_subnetwork) = allocation_model
-    (; flow_boundary_ids_subnetwork) = node_id_in_subnetwork
+    (; cumulative_boundary_volume, node_ids_in_subnetwork) = allocation_model
+    (; flow_boundary_ids_subnetwork) = node_ids_in_subnetwork
     (; flow_boundary) = p_independent
     for node_id in flow_boundary_ids_subnetwork
         cumulative_boundary_volume[flow_boundary.outflow_link[node_id.idx].link] = 0.0
@@ -390,8 +401,8 @@ function add_flow_boundary!(
 end
 
 function add_level_boundary!(allocation_model::AllocationModel)::Nothing
-    (; problem, node_id_in_subnetwork) = allocation_model
-    (; level_boundary_ids_subnetwork) = node_id_in_subnetwork
+    (; problem, node_ids_in_subnetwork) = allocation_model
+    (; level_boundary_ids_subnetwork) = node_ids_in_subnetwork
 
     # Add parameters: level boundary levels (m, values to be filled in before optimization)
     problem[:boundary_level] =
@@ -415,10 +426,10 @@ function add_linearized_connector_node!(
     node_name = snake_case(string(typeof(node).name.name))
     constraint_name = "$(node_name)_constraint"
 
-    A = 100.0 # example area (m^2, to be filled in before optimizing)
-    q0 = 1.0 # example flow value (scaling.flow * m^3/s, to be filled in before optimizing)
-    ∂q∂h_upstream = 1.0 # example value (scaling.flow * m^2/s, to be filled in before optimizing)
-    ∂q∂h_downstream = -1.0 # example value, to be filled in before optimizing)
+    A = 100.0 # Example area (m^2, to be filled in before optimizing)
+    q0 = 1.0 # Example flow value (scaling.flow * m^3/s, to be filled in before optimizing)
+    ∂q∂h_upstream = 1.0 # Example value (scaling.flow * m^2/s, to be filled in before optimizing)
+    ∂q∂h_downstream = -1.0 # Example value, to be filled in before optimizing)
 
     # Add constraints: the flow into the connector node is equal to the linearized
     # flow(level upstream, level_downstream) relation of the connector node
@@ -456,12 +467,12 @@ function add_tabulated_rating_curve!(
     allocation_model::AllocationModel,
     p_independent::ParametersIndependent,
 )::Nothing
-    (; node_id_in_subnetwork) = allocation_model
+    (; node_ids_in_subnetwork) = allocation_model
     (; tabulated_rating_curve) = p_independent
     add_linearized_connector_node!(
         allocation_model,
         tabulated_rating_curve,
-        node_id_in_subnetwork.tabulated_rating_curve_ids_subnetwork,
+        node_ids_in_subnetwork.tabulated_rating_curve_ids_subnetwork,
     )
     return nothing
 end
@@ -470,12 +481,12 @@ function add_linear_resistance!(
     allocation_model::AllocationModel,
     p_independent::ParametersIndependent,
 )::Nothing
-    (; node_id_in_subnetwork) = allocation_model
+    (; node_ids_in_subnetwork) = allocation_model
     (; linear_resistance) = p_independent
     add_linearized_connector_node!(
         allocation_model,
         linear_resistance,
-        node_id_in_subnetwork.linear_resistance_ids_subnetwork,
+        node_ids_in_subnetwork.linear_resistance_ids_subnetwork,
     )
     return nothing
 end
@@ -484,12 +495,12 @@ function add_manning_resistance!(
     allocation_model::AllocationModel,
     p_independent::ParametersIndependent,
 )::Nothing
-    (; node_id_in_subnetwork) = allocation_model
+    (; node_ids_in_subnetwork) = allocation_model
     (; manning_resistance) = p_independent
     add_linearized_connector_node!(
         allocation_model,
         manning_resistance,
-        node_id_in_subnetwork.manning_resistance_ids_subnetwork,
+        node_ids_in_subnetwork.manning_resistance_ids_subnetwork,
     )
     return nothing
 end
@@ -507,7 +518,7 @@ function add_node_with_flow_control!(
     node_ids_non_alloc_controlled =
         filter(id -> !node_data.allocation_controlled[id.idx], node_id)
 
-    q = 1.0 # example value (scaling.flow * m^3/s, to be filled in before optimizing)
+    q = 1.0 # Example value (scaling.flow * m^3/s, to be filled in before optimizing)
     constraint_name = Symbol(lowercase(string(node_type)))
     problem[constraint_name] = JuMP.@constraint(
         problem,
@@ -527,7 +538,7 @@ function add_pump!(
         allocation_model,
         NodeType.Pump,
         p_independent.pump,
-        allocation_model.node_id_in_subnetwork.pump_ids_subnetwork,
+        allocation_model.node_ids_in_subnetwork.pump_ids_subnetwork,
     )
     return nothing
 end
@@ -540,7 +551,7 @@ function add_outlet!(
         allocation_model,
         NodeType.Outlet,
         p_independent.outlet,
-        allocation_model.node_id_in_subnetwork.outlet_ids_subnetwork,
+        allocation_model.node_ids_in_subnetwork.outlet_ids_subnetwork,
     )
     return nothing
 end
@@ -571,7 +582,7 @@ function add_subnetwork_demand!(
             JuMP.@variable(problem, relative_subnetwork_error_upper[connecting_links] ≥ 0)
 
     # Define constraints: error terms
-    d = 2.0 # example demand (scaling.flow * m^3/s, values to be filled in before optimizing)
+    d = 2.0 # Example demand (scaling.flow * m^3/s, values to be filled in before optimizing)
     problem[:subnetwork_constraint_lower] = JuMP.@constraint(
         problem,
         [link = connecting_links],
@@ -590,16 +601,20 @@ function add_subnetwork_demand!(
     return nothing
 end
 
+"""
+Add the objectives for optimizing the allocations to the demands to the vector of all objectives
+for this allocation model.
+"""
 function add_demand_objectives!(
     allocation_model::AllocationModel,
     p_independent::ParametersIndependent,
 )::Nothing
-    (; objectives, problem, node_id_in_subnetwork) = allocation_model
+    (; objectives, problem, node_ids_in_subnetwork) = allocation_model
     (;
         user_demand_ids_subnetwork,
         node_ids_subnetwork_with_flow_demand,
         basin_ids_subnetwork_with_level_demand,
-    ) = node_id_in_subnetwork
+    ) = node_ids_in_subnetwork
     (; objective_expressions_all, objective_metadata) = objectives
     (; allocation) = p_independent
     (; demand_priorities_all) = allocation
@@ -655,7 +670,7 @@ function add_demand_objectives!(
         first_objective_expressions[demand_priority] = first_objective_expression
 
         if has_flow_unit_demands && has_storage_unit_demands
-            @error "For demand priority $demand_priority there are demands of both flow (UserDemand/FlowDemand) and storage (LevelDemand) type, this is not allowed."
+            @error "For demand priority $demand_priority there are demands of both flow (UserDemand/FlowDemand) and storage (LevelDemand) type, this is not allowed because these demand types have different units."
             errors = true
         else
             objective_type = if has_storage_unit_demands
@@ -693,7 +708,7 @@ function add_demand_objectives!(
         )
 
     # Define constraints: definition of the average relative flow unit error per demand priority
-    ∑d = 1 # example demand sum (scaling.flow * m^3/s, to be filled in before optimization)
+    ∑d = 1 # Example demand sum (scaling.flow * m^3/s, to be filled in before optimization)
     problem[:average_flow_unit_error_constraint] = JuMP.@constraint(
         problem,
         [demand_priority = demand_priorities_flow_unit],
@@ -764,6 +779,10 @@ function add_demand_objectives!(
     return nothing
 end
 
+"""
+Add the objectives for maximizing the low storage factors to the vector of all objectives
+for this allocation model.
+"""
 function add_low_storage_factor_objective!(allocation_model::AllocationModel)::Nothing
     (; problem, objectives) = allocation_model
     (; objective_expressions_all, objective_metadata) = objectives
@@ -781,6 +800,9 @@ function add_low_storage_factor_objective!(allocation_model::AllocationModel)::N
     return nothing
 end
 
+"""
+Add the objective optimizing for source priorities to the vector all objectives for this allocation model.
+"""
 function add_source_priority_objective!(
     allocation_model::AllocationModel,
     p_independent::ParametersIndependent,
@@ -839,7 +861,7 @@ function NodeIDsInSubnetwork(
     get_nodes(filter_function) =
         sort!(collect(filter(filter_function, node_ids_subnetwork)))
 
-    node_id_in_subnetwork = NodeIDsInSubnetwork(
+    node_ids_in_subnetwork = NodeIDsInSubnetwork(
         (
             get_nodes(node_id -> node_id.type == node_type) for node_type in (
                 NodeType.Basin,
@@ -869,7 +891,7 @@ function NodeIDsInSubnetwork(
         ),
     )
 
-    return node_id_in_subnetwork
+    return node_ids_in_subnetwork
 end
 
 function AllocationModel(
@@ -880,11 +902,11 @@ function AllocationModel(
     Δt_allocation = allocation_config.timestep
     problem = JuMP.Model(() -> MOA.Optimizer(get_optimizer()))
     set_multi_objective_attributes!(problem)
-    node_id_in_subnetwork = NodeIDsInSubnetwork(p_independent, subnetwork_id)
+    node_ids_in_subnetwork = NodeIDsInSubnetwork(p_independent, subnetwork_id)
     scaling = ScalingFactors(p_independent, subnetwork_id, Δt_allocation)
     allocation_model = AllocationModel(;
         subnetwork_id,
-        node_id_in_subnetwork,
+        node_ids_in_subnetwork,
         problem,
         Δt_allocation,
         scaling,

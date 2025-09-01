@@ -220,7 +220,7 @@ This function is called separately and thus not part of the `set_initial_values`
 ### Updating capacities {#sec-updating-capacities}
 While optimizing a given priority, the function `set_capacities_flow_demand_outflow` updates the constraints `flow_demand_outflow`.
 If the current priority is the same as the priority of the flow demand, constraints will be infinite, otherwise 0.
-At priorities where there is no flow demand, flow can go freely trough the node. When there is flow demand, flow is directed into the buffer. This is to make sure that flow can go to the node with the flow demand, even though the flow might have nowhere to go after that node.
+At priorities where there is no flow demand, flow can go freely through the node. When there is flow demand, flow is directed into the buffer. This is to make sure that flow can go to the node with the flow demand, even though the flow might have nowhere to go after that node.
 
 The optimization objective function is updated based on the new demands and the given priority.
 

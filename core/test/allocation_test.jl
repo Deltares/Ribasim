@@ -160,21 +160,21 @@ end
     @test ispath(toml_path)
     model = Ribasim.Model(toml_path)
 
-    # (; integrator, config) = model
-    # (; p) = integrator
-    # (; p_independent) = p
-    # (; allocation, user_demand, graph, basin) = p_independent
-    # (; allocation_models, record_flow) = allocation
-    # t = 0.0
+    (; integrator, config) = model
+    (; p) = integrator
+    (; p_independent) = p
+    (; allocation, user_demand, graph, basin) = p_independent
+    (; allocation_models, record_flow) = allocation
+    t = 0.0
 
-    # # Collecting demands
-    # for allocation_model in Iterators.drop(allocation_models, 1)
-    #     Ribasim.reset_goal_programming!(allocation_model, p_independent)
-    #     Ribasim.prepare_demand_collection!(allocation_model, p_independent)
-    #     for objective in allocation_model.objectives
-    #         Ribasim.optimize_for_objective!(allocation_model, integrator, objective, config)
-    #     end
-    # end
+    # Collecting demands
+    @test_throws Exception for allocation_model in Iterators.drop(allocation_models, 1)
+        Ribasim.reset_goal_programming!(allocation_model, p_independent)
+        Ribasim.prepare_demand_collection!(allocation_model, p_independent)
+        for objective in allocation_model.objectives
+            Ribasim.optimize_for_objective!(allocation_model, integrator, objective, config)
+        end
+    end
 
     # See the difference between these values here and in
     # "subnetworks_with_sources"
@@ -192,8 +192,8 @@ end
     )][1:2] ≈ [0.001, 0.002] atol = 1e-4
 
     # Solving for the primary network, containing subnetworks as UserDemands
-    # allocation_model = allocation_models[1]
-    # (; problem) = allocation_model
+    allocation_model = allocation_models[1]
+    (; problem) = allocation_model
     @test_throws Exception main_source = allocation_model.sources[(
         NodeID(:FlowBoundary, 1, p_independent),
         NodeID(:Basin, 2, p_independent),
@@ -209,8 +209,8 @@ end
 
     # Main network objective function
     @test_throws Exception F = problem[:F]
-    # objective = JuMP.objective_function(problem)
-    # objective_links = keys(objective.terms)
+    objective = JuMP.objective_function(problem)
+    objective_links = keys(objective.terms)
     @test_throws Exception F_1 =
         F[(NodeID(:Basin, 2, p_independent), NodeID(:Pump, 11, p_independent))]
     @test_throws Exception F_2 =
@@ -222,7 +222,7 @@ end
     @test_broken JuMP.UnorderedPair(F_3, F_3) ∈ objective_links
 
     # Running full allocation algorithm
-    # (; Δt_allocation) = allocation_models[1]
+    (; Δt_allocation) = allocation_models[1]
     @test_throws Exception mean_input_flows[1][(
         NodeID(:FlowBoundary, 1, p_independent),
         NodeID(:Basin, 2, p_independent),
@@ -243,8 +243,8 @@ end
     ] ≈ [0.001, 0.00024888, 0.0] rtol = 1e-3
 
     # Test for existence of links in allocation flow record
-    @test_throws Exception allocation_flow = DataFrame(record_flow)
-    @test_throws Exception transform!(
+    allocation_flow = DataFrame(record_flow)
+    transform!(
         allocation_flow,
         [:from_node_type, :from_node_id, :to_node_type, :to_node_id] =>
             ByRow(
@@ -255,7 +255,7 @@ end
                 ),
             ) => :link_exists,
     )
-    @test_broken all(allocation_flow.link_exists)
+    @test all(allocation_flow.link_exists)
 
     @test_broken user_demand.allocated[2, :] ≈ [4.0, 0.0, 0.0] atol = 1e-3
     @test_broken user_demand.allocated[7, :] ≈ [0.0, 0.0, 0.0] atol = 1e-3

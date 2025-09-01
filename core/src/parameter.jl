@@ -245,7 +245,7 @@ end
 Store information for a subnetwork used for allocation.
 
 subnetwork_id: The ID of this subnetwork
-node_id_in_subnetwork: Per node type a vector of the nodes of that type in the subnetwork
+node_ids_in_subnetwork: Per node type a vector of the nodes of that type in the subnetwork
 problem: The JuMP.jl model for solving the allocation problem
 Δt_allocation: The time interval between consecutive allocation solves'
 objectives: The objectives (goals) in the order in which they will be optimized for
@@ -260,7 +260,7 @@ scaling: The flow and storage scaling factors to make the optimization problem m
 """
 @kwdef struct AllocationModel
     subnetwork_id::Int32
-    node_id_in_subnetwork::NodeIDsInSubnetwork
+    node_ids_in_subnetwork::NodeIDsInSubnetwork
     problem::JuMP.Model
     Δt_allocation::Float64
     objectives::AllocationObjectives = AllocationObjectives()

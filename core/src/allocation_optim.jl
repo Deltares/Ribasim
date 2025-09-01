@@ -42,9 +42,9 @@ function set_simulation_data!(
     basin::Basin,
     p::Parameters,
 )::Bool
-    (; problem, node_id_in_subnetwork, cumulative_forcing_volume, scaling) =
+    (; problem, node_ids_in_subnetwork, cumulative_forcing_volume, scaling) =
         allocation_model
-    (; basin_ids_subnetwork) = node_id_in_subnetwork
+    (; basin_ids_subnetwork) = node_ids_in_subnetwork
     (; storage_to_level) = basin
 
     storage_change = problem[:basin_storage_change]
@@ -352,7 +352,7 @@ function prepare_demand_collection!(
 end
 
 function set_demands!(allocation_model::AllocationModel, integrator::DEIntegrator)::Nothing
-    (; problem, objectives, node_id_in_subnetwork) = allocation_model
+    (; problem, objectives, node_ids_in_subnetwork) = allocation_model
     (; user_demand, flow_demand, level_demand) = integrator.p.p_independent
 
     average_flow_unit_error = problem[:average_flow_unit_error]
@@ -387,7 +387,7 @@ function set_demands!(allocation_model::AllocationModel, integrator::DEIntegrato
     set_demands!(
         allocation_model,
         user_demand,
-        node_id_in_subnetwork.user_demand_ids_subnetwork,
+        node_ids_in_subnetwork.user_demand_ids_subnetwork,
         problem[:user_demand_allocated],
         problem[:user_demand_error],
         problem[:user_demand_relative_error_constraint],
@@ -396,7 +396,7 @@ function set_demands!(allocation_model::AllocationModel, integrator::DEIntegrato
     set_demands!(
         allocation_model,
         flow_demand,
-        node_id_in_subnetwork.flow_demand_ids_subnetwork,
+        node_ids_in_subnetwork.flow_demand_ids_subnetwork,
         problem[:flow_demand_allocated],
         problem[:flow_demand_error],
         problem[:flow_demand_relative_error_constraint],
@@ -487,8 +487,8 @@ function set_demands!(
     (; basin, allocation) = p_independent
     (; demand_priorities_all) = allocation
     (; has_demand_priority, min_level, max_level, storage_demand) = level_demand
-    (; problem, node_id_in_subnetwork, scaling) = allocation_model
-    (; basin_ids_subnetwork_with_level_demand) = node_id_in_subnetwork
+    (; problem, node_ids_in_subnetwork, scaling) = allocation_model
+    (; basin_ids_subnetwork_with_level_demand) = node_ids_in_subnetwork
 
     level_demand_error = problem[:level_demand_error]
     storage_constraint_lower = problem[:storage_constraint_lower]
@@ -569,8 +569,8 @@ end
 
 function warm_start!(allocation_model::AllocationModel, integrator::DEIntegrator)::Nothing
     (; p, t) = integrator
-    (; problem, scaling, node_id_in_subnetwork, Δt_allocation) = allocation_model
-    (; basin_ids_subnetwork) = node_id_in_subnetwork
+    (; problem, scaling, node_ids_in_subnetwork, Δt_allocation) = allocation_model
+    (; basin_ids_subnetwork) = node_ids_in_subnetwork
     flow = problem[:flow]
     storage_change = problem[:basin_storage_change]
     du = get_du(integrator)
@@ -628,18 +628,18 @@ function parse_allocations!(
     allocation_model::AllocationModel,
 )::Nothing
     (; user_demand, flow_demand, level_demand) = integrator.p.p_independent
-    (; problem, node_id_in_subnetwork) = allocation_model
+    (; problem, node_ids_in_subnetwork) = allocation_model
     parse_allocations!(
         integrator,
         user_demand,
-        node_id_in_subnetwork.user_demand_ids_subnetwork,
+        node_ids_in_subnetwork.user_demand_ids_subnetwork,
         problem[:user_demand_allocated],
         allocation_model,
     )
     parse_allocations!(
         integrator,
         flow_demand,
-        node_id_in_subnetwork.node_ids_subnetwork_with_flow_demand,
+        node_ids_in_subnetwork.node_ids_subnetwork_with_flow_demand,
         problem[:flow_demand_allocated],
         allocation_model,
     )
@@ -705,9 +705,9 @@ function parse_allocations!(
     (; allocation, basin) = p_independent
     (; record_demand, demand_priorities_all) = allocation
     (; has_demand_priority, storage_prev, storage_demand) = level_demand
-    (; problem, subnetwork_id, node_id_in_subnetwork, Δt_allocation, scaling) =
+    (; problem, subnetwork_id, node_ids_in_subnetwork, Δt_allocation, scaling) =
         allocation_model
-    (; basin_ids_subnetwork_with_level_demand) = node_id_in_subnetwork
+    (; basin_ids_subnetwork_with_level_demand) = node_ids_in_subnetwork
     storage_change = problem[:basin_storage_change]
 
     for node_id in basin_ids_subnetwork_with_level_demand
@@ -752,9 +752,9 @@ function save_flows!(
     optimization_type::AllocationOptimizationType.T,
 )::Nothing
     (; p, t) = integrator
-    (; problem, subnetwork_id, cumulative_forcing_volume, scaling, node_id_in_subnetwork) =
+    (; problem, subnetwork_id, cumulative_forcing_volume, scaling, node_ids_in_subnetwork) =
         allocation_model
-    (; basin_ids_subnetwork) = node_id_in_subnetwork
+    (; basin_ids_subnetwork) = node_ids_in_subnetwork
     (; graph, allocation) = p.p_independent
     (; record_flow) = allocation
     flow = problem[:flow]
