@@ -145,15 +145,16 @@ s(x; x_0)
 \end{align}
 $$
 
-And $x_0$ is calculated based on the Reynolds number, such that the smooth relaxation starts when the velocity of the flow starts to leave the fully turbulent regime:
+And $x_0$ is calculated based on the Reynolds number, such that the smooth relaxation starts when the velocity of the flow starts to leave the fully turbulent regime ($\text{Re}<2000$):
 
 $$
-x_0 = \frac{\Delta h}{L} |_0 = \left( \text{Re}_0 \frac{ n \nu \sqrt[3]{R_h}}{A} \right)^2
+\text{Re} = \frac{Q}{\nu R_h} = \frac{A \sqrt{\Delta h / L}}{n \nu \sqrt[3]{R_h}}
 $$
 
-And the transition Reynolds number, with a value of 2000 is defined for open channel flow as:
+Which can be rewritten:
+
 $$
-\text{Re} = \frac{Q}{\nu R_h}
+x_0 = \left( \text{Re}_0 \frac{ n \nu \sqrt[3]{R_h}}{A} \right)^2
 $$
 
 
@@ -180,7 +181,7 @@ y_o = np.sign(x)*np.sqrt(np.abs(x))
 y_s = [s(x_, threshold) for x_ in x]
 
 ax.plot(x, y_o, ls = ":", label = r"sign$(x)\sqrt{|x|}$")
-ax.plot(x, y_s, color = "C0", label = r"$s\left(x; 1e-5 \right)$")
+ax.plot(x, y_s, color = "C0", label = r"$s\left(x; 10^{-5} \right)$")
 ax.legend();
 ```
 
