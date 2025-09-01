@@ -537,7 +537,7 @@ Note
 <h2 data-number="3.2" class="anchored" data-anchor-id="control"><span class="header-section-number">3.2</span> Control</h2>
 <section id="control-by-allocation" class="level3" data-number="3.2.1">
 <h3 data-number="3.2.1" class="anchored" data-anchor-id="control-by-allocation"><span class="header-section-number">3.2.1</span> Control by allocation</h3>
-<p>When Pumps and Outlets are part of a subnetwork, they can be controlled by allocation. To accomplish this, they must be given the special control state <code>Ribasim.allocation</code>. When a Pump or Outlet has this control state, the flow trough the node is only bounded by its capacity and <span style="color: red;">#TODO: Pump or Node specific constraints based on the difference between upstream and downstream level.</span>. After all goals have been optimized for, the flow rate trough the Pump or Outlet is communicated to the physical layer.</p>
+<p>When Pumps and Outlets are part of a subnetwork, they can be controlled by allocation. To accomplish this, they must be given the special control state <code>Ribasim.allocation</code>. When a Pump or Outlet has this control state, the flow through the node is only bounded by its capacity and <span style="color: red;">#TODO: Pump or Node specific constraints based on the difference between upstream and downstream level.</span>. After all goals have been optimized for, the flow rate through the Pump or Outlet is communicated to the physical layer.</p>
 </section>
 <section id="interaction-of-allocation-with-other-control-systems" class="level3" data-number="3.2.2">
 <h3 data-number="3.2.2" class="anchored" data-anchor-id="interaction-of-allocation-with-other-control-systems"><span class="header-section-number">3.2.2</span> Interaction of allocation with other control systems</h3>
@@ -592,7 +592,7 @@ Note
         0 \text{ if } p \ne p_{\text{fd}} \\
         d^{p_{\text{df}}} \text{ if } p = p_{\text{fd}}
     \end{cases}
-\]</span> for all <span class="math inline">\(i \in FD_S\)</span>. Here <span class="math inline">\(d^{p_{\text{df}}}\)</span> is given by the original flow demand minus the flows trough node <span class="math inline">\(i\)</span> at all priorities <span class="math inline">\(p &lt; p_{\text{fd}}\)</span>.</p>
+\]</span> for all <span class="math inline">\(i \in FD_S\)</span>. Here <span class="math inline">\(d^{p_{\text{df}}}\)</span> is given by the original flow demand minus the flows through node <span class="math inline">\(i\)</span> at all priorities <span class="math inline">\(p &lt; p_{\text{fd}}\)</span>.</p>
 </section>
 </section>
 <section id="simulation-physical-layer-input" class="level2" data-number="3.4">
