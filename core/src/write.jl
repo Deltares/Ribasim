@@ -554,13 +554,77 @@ function discrete_control_data(model::Model; table::Bool = true)
     return (; time, record.control_node_id, record.truth_state, record.control_state)
 end
 
+"""
+Get the realized mean flows over the last allocation timestep
+(possibly shorter than Δt_allocation) in the same order as
+`parse_allocations!`
+"""
+function get_final_realized_values(model)::Vector{Float64}
+    (; p, t) = model.integrator
+    (; state_time_dependent_cache, p_independent) = p
+    (; current_storage) = state_time_dependent_cache
+    (; user_demand, flow_demand, level_demand, basin, allocation) = p_independent
+    (; record_demand, allocation_models, demand_priorities_all) = allocation
+    Δt = t - last(record_demand).time
+
+    realized = Float64[]
+
+    for allocation_model in allocation_models
+        (; node_ids_in_subnetwork, cumulative_realized_volume) = allocation_model
+        (; user_demand_ids_subnetwork, flow_demand_ids_subnetwork) = node_ids_in_subnetwork
+
+        # UserDemand
+        for node_id in user_demand_ids_subnetwork
+            for demand_priority_idx in eachindex(demand_priorities_all)
+                !user_demand.has_demand_priority[node_id.idx, demand_priority_idx] &&
+                    continue
+                push!(
+                    realized,
+                    cumulative_realized_volume[user_demand.inflow_link[node_id.idx].link] /
+                    Δt,
+                )
+            end
+        end
+
+        # FlowDemand
+        for node_id in flow_demand_ids_subnetwork
+            for demand_priority_idx in eachindex(demand_priorities_all)
+                !flow_demand.has_demand_priority[node_id.idx, demand_priority_idx] &&
+                    continue
+                push!(
+                    realized,
+                    cumulative_realized_volume[flow_demand.inflow_link[node_id.idx].link] /
+                    Δt,
+                )
+            end
+        end
+
+        # LevelDemand
+        for node_id in basin_ids_subnetwork_with_level_demand
+            level_demand_id = basin.level_demand_id[node_id.idx]
+            for demand_priority_idx in eachindex(demand_priorities_all)
+                !level_demand.has_demand_priority[
+                    level_demand_id.idx,
+                    demand_priority_idx,
+                ] && continue
+                push!(
+                    realized,
+                    (current_storage[node_id.idx] - level_demand.storage_prev[node_id]) /
+                    Δt,
+                )
+            end
+        end
+    end
+
+    return realized
+end
+
 "Create an allocation result table for the saved data"
 function allocation_data(model::Model; table::Bool = true)
     (; config) = model
     (; record_demand) = model.integrator.p.p_independent.allocation
 
     datetimes = datetime_since.(getfield.(record_demand, :time), config.starttime)
-    idx_after_start = searchsortedlast(datetimes, first(datatimes)) + 1
 
     if table
         time = datetimes
@@ -570,10 +634,11 @@ function allocation_data(model::Model; table::Bool = true)
         demand_priority = getfield.(record_demand, :demand_priority)
         demand = getfield.(record_demand, :demand)
         allocated = getfield.(record_demand, :allocated)
-        realized = getfield.(record_demand, :realized)[idx_after_start:end]
-        # TODO: Add last realized values
+        realized = vcat(
+            [datum.realized for datum in record_demand if !iszero(datum.time)],
+            get_final_realized_values(model),
+        )
     else
-        # TODO: Also fix realzed values here
         time = unique(datetimes)
         node_id = unique(getfield.(record_demand, :node_id))
         demand_priority = unique(getfield.(record_demand, :demand_priority))
@@ -594,19 +659,33 @@ function allocation_data(model::Model; table::Bool = true)
         subnetwork_id = zeros(Int32, nnodes)
         node_type = ["" for _ in 1:nnodes]
 
-        for row in 1:nrows
-            prio = record_demand[row].demand_priority
-            node = record_demand[row].node_id
+        for row_idx in 1:nrows
+            row = record_demand[row_idx]
+            prio = row.demand_priority
+            node = row.node_id
             t = datetimes
 
             i = searchsortedfirst(demand_priority, prio)
             j = searchsortedfirst(node_id, node)
             k = searchsortedfirst(time, t)
-            demand[i, j, k] = record_demand[row].demand
-            allocated[i, j, k] = record_demand[row].allocated
-            realized[i, j, k] = record_demand[row].realized
-            subnetwork_id[j] = record_demand[row].subnetwork_id
-            node_type[j] = record_demand[row].node_type
+            demand[i, j, k] = row.demand
+            allocated[i, j, k] = row.allocated
+
+            if k > 1
+                realized[i, j, k - 1] = row.realized
+            end
+            subnetwork_id[j] = row.subnetwork_id
+            node_type[j] = row.node_type
+        end
+
+        for (realized, row) in zip(get_final_realized_values(model), record_demand)
+            prio = row.demand_priority
+            node = row.node_id
+
+            i = searchsortedfirst(demand_priority, prio)
+            j = searchsortedfirst(node_id, node)
+
+            realized[i, j, end] = realized
         end
     end
 
