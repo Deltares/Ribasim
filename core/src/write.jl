@@ -560,6 +560,7 @@ function allocation_data(model::Model; table::Bool = true)
     (; record_demand) = model.integrator.p.p_independent.allocation
 
     datetimes = datetime_since.(getfield.(record_demand, :time), config.starttime)
+    idx_after_start = searchsortedlast(datetimes, first(datatimes)) + 1
 
     if table
         time = datetimes
@@ -569,8 +570,10 @@ function allocation_data(model::Model; table::Bool = true)
         demand_priority = getfield.(record_demand, :demand_priority)
         demand = getfield.(record_demand, :demand)
         allocated = getfield.(record_demand, :allocated)
-        realized = getfield.(record_demand, :realized)
+        realized = getfield.(record_demand, :realized)[idx_after_start:end]
+        # TODO: Add last realized values
     else
+        # TODO: Also fix realzed values here
         time = unique(datetimes)
         node_id = unique(getfield.(record_demand, :node_id))
         demand_priority = unique(getfield.(record_demand, :demand_priority))
