@@ -247,7 +247,9 @@ Store information for a subnetwork used for allocation.
 subnetwork_id: The ID of this subnetwork
 node_ids_in_subnetwork: Per node type a vector of the nodes of that type in the subnetwork
 problem: The JuMP.jl model for solving the allocation problem
-Δt_allocation: The time interval between consecutive allocation solves'
+Δt_allocation: The time interval between consecutive allocation solves
+has_demand_priority: Per demand priority in the whole model whether a demand of this priority is present in this
+    subnetwork
 objectives: The objectives (goals) in the order in which they will be optimized for
 cumulative_forcing_volume: The volume of forcing exchanged with each Basin in the subnetwork in the last Δt_allocation
     split in (positive forcing, negative_forcing)
@@ -263,6 +265,7 @@ scaling: The flow and storage scaling factors to make the optimization problem m
     node_ids_in_subnetwork::NodeIDsInSubnetwork
     problem::JuMP.Model
     Δt_allocation::Float64
+    has_demand_priority::Vector{Bool}
     objectives::AllocationObjectives = AllocationObjectives()
     cumulative_forcing_volume::Dict{NodeID, Tuple{Float64, Float64}} = Dict()
     cumulative_boundary_volume::Dict{Tuple{NodeID, NodeID}, Float64} = Dict()

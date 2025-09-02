@@ -899,6 +899,19 @@ function NodeIDsInSubnetwork(
     return node_ids_in_subnetwork
 end
 
+function has_demand_priority_subnetwork(
+    p_independent::ParametersIndependent,
+    subnetwork_id::Int32,
+)::Vector{Bool}
+    (; allocation, graph) = p_independent
+    (; demand_priorities_all) = allocation
+
+    has_demand_priority = zeros(Bool, length(demand_priorities_all))
+
+    for node_id in graph[].node_id[subnetwork_id]
+    end
+end
+
 function AllocationModel(
     subnetwork_id::Int32,
     p_independent::ParametersIndependent,
@@ -909,12 +922,15 @@ function AllocationModel(
     set_multi_objective_attributes!(problem)
     node_ids_in_subnetwork = NodeIDsInSubnetwork(p_independent, subnetwork_id)
     scaling = ScalingFactors(p_independent, subnetwork_id, Δt_allocation)
+    has_demand_priority = has_demand_priority_subnetwork(p_independent, subnetwork_id)
+
     allocation_model = AllocationModel(;
         subnetwork_id,
         node_ids_in_subnetwork,
         problem,
         Δt_allocation,
         scaling,
+        has_demand_priority,
     )
 
     # Volume and flow
