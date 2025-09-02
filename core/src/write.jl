@@ -604,32 +604,35 @@ function allocation_data(model::Model; table::Bool = true)
     end
 
     # Handle realized flows in last allocation timestep
-    Δt = integrator.t - last(record_demand).time
-    for allocation_model in allocation_models
-        (; cumulative_realized_volume) = allocation_model
+    if !isempty(record_demand)
+        Δt = integrator.t - last(record_demand).time
+        for allocation_model in allocation_models
+            (; cumulative_realized_volume) = allocation_model
 
-        # Loop over the nodes in the subnetwork
-        for id in graph[].node_ids[allocation_model.subnetwork_id]
-            j = searchsortedfirst(node_id, id)
-            !(j ≤ nnodes && node_id[j] == id) && continue
+            # Loop over the nodes in the subnetwork
+            for id in graph[].node_ids[allocation_model.subnetwork_id]
+                j = searchsortedfirst(node_id, id)
+                !(j ≤ nnodes && node_id[j] == id) && continue
 
-            if id.type == NodeType.Basin
-                # Basin with LevelDemand
-                level_demand_id = basin.level_demand_id[node_id.idx]
-                if !iszero(level_demand_id.value)
+                if id.type == NodeType.Basin
+                    # Basin with LevelDemand
+                    level_demand_id = basin.level_demand_id[id.idx]
+                    if !iszero(level_demand_id.value)
+                        realized[view(has_priority, :, j), j, end] .=
+                            (current_storage[id.idx] - level_demand.storage_prev[id]) / Δt
+                    end
+                elseif id.type == NodeType.UserDemand
+                    # UserDemand
                     realized[view(has_priority, :, j), j, end] .=
-                        (current_storage[id.idx] - level_demand.storage_prev[id]) / Δt
-                end
-            elseif id.type == NodeType.UserDemand
-                # UserDemand
-                realized[view(has_priority, :, j), j, end] .=
-                    cumulative_realized_volume[user_demand.inflow_link[id.idx].link] / Δt
-            else
-                # Connector node with FlowDemand
-                for link in flow_demand.inflow_link
-                    if link.link[2] == id
-                        cumulative_realized_volume[flow_demand.inflow_link[id.idx].link] /
+                        cumulative_realized_volume[user_demand.inflow_link[id.idx].link] /
                         Δt
+                else
+                    # Connector node with FlowDemand
+                    for link in flow_demand.inflow_link
+                        if link.link[2] == id
+                            cumulative_realized_volume[flow_demand.inflow_link[id.idx].link] /
+                            Δt
+                        end
                     end
                 end
             end
