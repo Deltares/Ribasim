@@ -901,15 +901,31 @@ end
 
 function has_demand_priority_subnetwork(
     p_independent::ParametersIndependent,
-    subnetwork_id::Int32,
+    node_ids_in_subnetwork::NodeIDsInSubnetwork,
 )::Vector{Bool}
-    (; allocation, graph) = p_independent
+    (; allocation, graph, user_demand, flow_demand, level_demand) = p_independent
     (; demand_priorities_all) = allocation
+    (; user_demand_ids_subnetwork, node_ids_subnetwork_with_flow_demand) =
+        node_ids_in_subnetwork
 
     has_demand_priority = zeros(Bool, length(demand_priorities_all))
 
-    for node_id in graph[].node_id[subnetwork_id]
+    for node_id in user_demand_ids_subnetwork
+        has_demand_priority .|= view(user_demand.has_demand_priority, node_id.idx, :)
     end
+
+    for node_id in node_ids_subnetwork_with_flow_demand
+        flow_demand_id = only(inneighbor_labels_type(graph, node_id, LinkType.Control))
+        has_demand_priority .|= view(flow_demand.has_demand_priority, flow_demand_id.idx, :)
+    end
+
+    for node_id in node_ids_subnetwork_with_flow_demand
+        level_demand_id = only(inneighbor_labels_type(graph, node_id, LinkType.Control))
+        has_demand_priority .|=
+            view(level_demand.has_demand_priority, level_demand_id.idx, :)
+    end
+
+    return has_demand_priority
 end
 
 function AllocationModel(
@@ -922,7 +938,8 @@ function AllocationModel(
     set_multi_objective_attributes!(problem)
     node_ids_in_subnetwork = NodeIDsInSubnetwork(p_independent, subnetwork_id)
     scaling = ScalingFactors(p_independent, subnetwork_id, Δt_allocation)
-    has_demand_priority = has_demand_priority_subnetwork(p_independent, subnetwork_id)
+    has_demand_priority =
+        has_demand_priority_subnetwork(p_independent, node_ids_in_subnetwork)
 
     allocation_model = AllocationModel(;
         subnetwork_id,
