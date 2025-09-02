@@ -440,8 +440,17 @@ end
         flow_table_user_3.flow_rate,
         Ribasim.seconds_since.(flow_table_user_3.time, model.config.starttime),
     )
-    df_user_3 = allocation_table[(allocation_table.node_id .== 3), :]
-    realized_numeric = diff(integral.(Ref(itp_user_3), df_user_3.time)) ./ Δt_allocation
+    df_user_3 = allocation_table[
+        (allocation_table.node_id .== 3) .&& (allocation_table.demand_priority .== 2),
+        :,
+    ]
+    realized_numeric =
+        diff(
+            integral.(
+                Ref(itp_user_3),
+                seconds_since.(df_user_3.time, model.config.starttime),
+            ),
+        ) ./ Δt_allocation
     @test all(isapprox.(realized_numeric[3:end], df_user_3.realized[4:end], atol = 1e-3))
 end
 

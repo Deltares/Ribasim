@@ -632,7 +632,7 @@ function allocation_data(model::Model; table::Bool = true)
                     # Connector node with FlowDemand
                     for link in flow_demand.inflow_link
                         if link.link[2] == id
-                            realized[view(has_priority, :, j), j, end] =
+                            realized[view(has_priority, :, j), j, end] .=
                                 cumulative_realized_volume[flow_demand.inflow_link[id.idx].link] /
                                 Δt
                         end
