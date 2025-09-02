@@ -556,7 +556,7 @@ function add_outlet!(
     return nothing
 end
 
-function add_subnetwork_demand!(
+function add_secondary_network_demand!(
     allocation_model::AllocationModel,
     p_independent::ParametersIndependent,
 )::Nothing
@@ -568,35 +568,40 @@ function add_subnetwork_demand!(
     connecting_links =
         vcat(sort!(collect(values(allocation.primary_network_connections)))...)
 
-    # Define parameters: flow allocated to user subnetworks (scaling.flow * m^3/s, values to be filled in before optimizing)
-    subnetwork_allocated =
-        problem[:subnetwork_allocated] =
-            JuMP.@variable(problem, subnetwork[connecting_links] == 0)
-
-    # Define decision variables: lower and upper user demand error (unitless)
-    relative_subnetwork_error_lower =
-        problem[:relative_subnetwork_error_lower] =
-            JuMP.@variable(problem, relative_subnetwork_error_lower[connecting_links] ≥ 0)
-    relative_subnetwork_error_upper =
-        problem[:relative_subnetwork_error_upper] =
-            JuMP.@variable(problem, relative_subnetwork_error_upper[connecting_links] ≥ 0)
-
-    # Define constraints: error terms
+    # Define decision variables: flow allocated to secondary networks
+    # (scaling.flow * m^3/s, values to be filled in before optimizing)
     d = 2.0 # Example demand (scaling.flow * m^3/s, values to be filled in before optimizing)
-    problem[:subnetwork_constraint_lower] = JuMP.@constraint(
-        problem,
-        [link = connecting_links],
-        d * (relative_subnetwork_error_lower[link]) ≥
-        -(flow[link] - subnetwork_allocated[link]),
-        base_name = "subnetwork_constraint_lower"
-    )
-    problem[:subnetwork_constraint_upper] = JuMP.@constraint(
-        problem,
-        [link = connecting_links],
-        d * (relative_subnetwork_error_upper[link]) ≥
-        flow[link] - subnetwork_allocated[link],
-        base_name = "subnetwork_constraint_upper"
-    )
+    secondary_network_allocated =
+        problem[:secondary_network_allocated] =
+            JuMP.@variable(problem, 0 ≤ secondary_network_allocated[connecting_links] ≤ d)
+
+    # Define constraints: The sum of the flows allocated to the secondary network is equal to the total flow into the secondary network
+    problem[:secondary_network_allocated_sum_constraint] = JuMP.@constraint(problem, [])
+
+    # # Define decision variables: lower and upper user demand error (unitless)
+    # relative_subnetwork_error_lower =
+    #     problem[:relative_subnetwork_error_lower] =
+    #         JuMP.@variable(problem, relative_subnetwork_error_lower[connecting_links] ≥ 0)
+    # relative_subnetwork_error_upper =
+    #     problem[:relative_subnetwork_error_upper] =
+    #         JuMP.@variable(problem, relative_subnetwork_error_upper[connecting_links] ≥ 0)
+
+    # # Define constraints: error terms
+    # d = 2.0 # Example demand (scaling.flow * m^3/s, values to be filled in before optimizing)
+    # problem[:subnetwork_constraint_lower] = JuMP.@constraint(
+    #     problem,
+    #     [link = connecting_links],
+    #     d * (relative_subnetwork_error_lower[link]) ≥
+    #     -(flow[link] - subnetwork_allocated[link]),
+    #     base_name = "subnetwork_constraint_lower"
+    # )
+    # problem[:subnetwork_constraint_upper] = JuMP.@constraint(
+    #     problem,
+    #     [link = connecting_links],
+    #     d * (relative_subnetwork_error_upper[link]) ≥
+    #     flow[link] - subnetwork_allocated[link],
+    #     base_name = "subnetwork_constraint_upper"
+    # )
 
     return nothing
 end
