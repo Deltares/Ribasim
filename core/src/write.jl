@@ -609,35 +609,34 @@ function allocation_data(model::Model; table::Bool = true)
     if !isempty(record_demand)
         Δt = integrator.t - last(record_demand).time
         for allocation_model in allocation_models
-            (; cumulative_realized_volume) = allocation_model
+            (; cumulative_realized_volume, node_ids_in_subnetwork) = allocation_model
+            (;
+                user_demand_ids_subnetwork,
+                node_ids_subnetwork_with_flow_demand,
+                basin_ids_subnetwork_with_level_demand,
+            ) = node_ids_in_subnetwork
 
-            # Loop over the nodes in the subnetwork
-            for id in graph[].node_ids[allocation_model.subnetwork_id]
+            # UserDemand
+            for id in user_demand_ids_subnetwork
                 j = searchsortedfirst(node_id, id)
-                !(j ≤ nnodes && node_id[j] == id) && continue
+                realized[view(has_priority, :, j), j, end] .=
+                    cumulative_realized_volume[user_demand.inflow_link[id.idx].link] / Δt
+            end
 
-                if id.type == NodeType.Basin
-                    # Basin with LevelDemand
-                    level_demand_id = basin.level_demand_id[id.idx]
-                    if !iszero(level_demand_id.value)
-                        realized[view(has_priority, :, j), j, end] .=
-                            (current_storage[id.idx] - level_demand.storage_prev[id]) / Δt
-                    end
-                elseif id.type == NodeType.UserDemand
-                    # UserDemand
-                    realized[view(has_priority, :, j), j, end] .=
-                        cumulative_realized_volume[user_demand.inflow_link[id.idx].link] /
-                        Δt
-                else
-                    # Connector node with FlowDemand
-                    for link in flow_demand.inflow_link
-                        if link.link[2] == id
-                            realized[view(has_priority, :, j), j, end] .=
-                                cumulative_realized_volume[flow_demand.inflow_link[id.idx].link] /
-                                Δt
-                        end
-                    end
-                end
+            # FlowDemand
+            for id in node_ids_subnetwork_with_flow_demand
+                j = searchsortedfirst(node_id, id)
+                flow_demand_id = only(inneighbor_labels_type(graph, id, LinkType.control))
+                realized[view(has_priority, :, j), j, end] .=
+                    cumulative_realized_volume[flow_demand.inflow_link[flow_demand_id.idx].link] /
+                    Δt
+            end
+
+            # LevelDemand
+            for id in basin_ids_subnetwork_with_level_demand
+                j = searchsortedfirst(node_id, id)
+                realized[view(has_priority, :, j), j, end] .=
+                    (current_storage[id.idx] - level_demand.storage_prev[id]) / Δt
             end
         end
     end

@@ -465,7 +465,10 @@ end
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     allocation_table = DataFrame(Ribasim.allocation_data(model))
-    df_rating_curve_2 = filter(:node_id => ==(2), allocation_table)
+    df_rating_curve_2 = filter(
+        [:node_id, :demand_priority] => (id, prio) -> (id == 2) && (prio == 2),
+        allocation_table,
+    )
     @test all(≈(0.002), df_rating_curve_2.demand)
     @test all(≈(0.002), df_rating_curve_2.realized[2:end])
 
