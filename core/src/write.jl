@@ -557,13 +557,15 @@ end
 "Create an allocation result table for the saved data"
 function allocation_data(model::Model; table::Bool = true)
     (; config, integrator) = model
-    (; allocation, graph, basin, user_demand, flow_demand) = integrator.p.p_independent
+    (; p_independent, state_time_dependent_cache) = integrator.p
+    (; current_storage) = state_time_dependent_cache
+    (; allocation, graph, basin, user_demand, flow_demand, level_demand) = p_independent
     (; record_demand, demand_priorities_all, allocation_models) = allocation
 
     datetimes = datetime_since.(getfield.(record_demand, :time), config.starttime)
 
     time = unique(datetimes)
-    node_id = unique(getfield.(record_demand, :node_id))
+    node_id = sort!(unique(getfield.(record_demand, :node_id)))
 
     nrows = length(record_demand)
     ntsteps = length(time)

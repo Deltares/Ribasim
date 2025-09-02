@@ -431,7 +431,7 @@ end
     realized_numeric =
         diff(itp_basin_2.(seconds_since.(df_basin_2.time, model.config.starttime))) /
         Δt_allocation
-    @test all(isapprox.(realized_numeric, df_basin_2.realized[2:end], atol = 1e-10))
+    @test all(isapprox.(realized_numeric, df_basin_2.realized[1:(end - 1)], atol = 1e-10))
 
     # Realized user demand
     flow_table = DataFrame(Ribasim.flow_data(model))
