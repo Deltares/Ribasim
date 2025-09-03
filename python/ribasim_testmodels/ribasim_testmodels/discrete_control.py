@@ -805,6 +805,7 @@ def circular_flow_model() -> Model:
         [outlet.Static(flow_rate=1.0, max_downstream_level=[1.0])],
     )
 
+    # Control outlet 13 such that it is able to both drain basin4 and fill basin6
     control_outlet13 = model.discrete_control.add(
         Node(22, Point(3.3, 1.1)),
         [
