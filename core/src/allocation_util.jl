@@ -300,6 +300,7 @@ struct DemandPriorityIterator{V}
     has_demand_priority::V
 end
 
+# Demand priorities for demand node
 function DemandPriorityIterator(node_id::NodeID, p_independent::ParametersIndependent)
     (; user_demand, flow_demand, level_demand) = p_independent
 
@@ -320,6 +321,25 @@ function DemandPriorityIterator(node_id::NodeID, p_independent::ParametersIndepe
         p_independent.allocation.demand_priorities_all,
         has_demand_priority,
     )
+end
+
+# Demand priorities for secondary network
+function DemandPriorityIterator(
+    link::Tuple{NodeID, NodeID},
+    p_independent::ParametersIndependent,
+)
+    (; allocation_models, primary_network_connections, demand_priorities_all) =
+        p_independent.allocation
+
+    for allocation_model in allocation_models
+        if link in primary_network_connections[allocation_model.subnetwork_id]
+            return DemandPriorityIterator(
+                link[2],
+                demand_priorities_all,
+                allocation_model.has_demand_priority,
+            )
+        end
+    end
 end
 
 function Base.iterate(

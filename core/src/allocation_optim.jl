@@ -334,7 +334,7 @@ function set_simulation_data!(
     return nothing
 end
 
-function prepare_demand_collection!(
+function preprocess_demand_collection!(
     allocation_model::AllocationModel,
     p_independent::ParametersIndependent,
 )::Nothing
@@ -349,6 +349,20 @@ function prepare_demand_collection!(
     end
 
     return nothing
+end
+
+function postprocess_demand_collection!(
+    allocation_model::AllocationModel,
+    p_independent::ParametersIndependent,
+)::Nothing
+    # TODO
+end
+
+function communicate_secondary_network_allocations!(
+    allocation_model::AllocationModel,
+    p_independent::ParametersIndependent,
+)::Nothing
+    # TODO
 end
 
 function set_demands!(allocation_model::AllocationModel, integrator::DEIntegrator)::Nothing
@@ -864,11 +878,6 @@ function reset_cumulative!(allocation_model::AllocationModel)::Nothing
     return nothing
 end
 
-function get_subnetwork_demands!(allocation_model::AllocationModel)::Nothing
-    #TODO
-    return nothing
-end
-
 "Solve the allocation problem for all demands and assign allocated abstractions."
 function update_allocation!(model)::Nothing
     (; integrator) = model
@@ -894,30 +903,21 @@ function update_allocation!(model)::Nothing
         warm_start!(allocation_model, integrator)
     end
 
-    # Allocate in all networks, starting with the primary network if it exists
-    # TODO
+    if has_primary_network(allocation)
+        # If a primary network is present, collect demands of the secondary network(s)
+        for allocation_model in Iterators.drop(allocation_models, 1)
+            preprocess_demand_collection!(allocation_model, p_independent)
+            optimize!(allocation_model, model)
+            save_flows!(
+                integrator,
+                allocation_model,
+                AllocationOptimizationType.collect_demands,
+            )
+            postprocess_demand_collection!(allocation_model, p_independent)
+        end
+    end
 
-    # for allocation_model in allocation_models
-    #     set_allocation_bounds!(allocation_model, p_independent)
-    # end
-
-    # # If a primary network is present, collect demands of subnetworks
-    # if has_primary_network(allocation)
-    #     for allocation_model in Iterators.drop(allocation_models, 1)
-    #         prepare_demand_collection!(allocation_model, p_independent)
-    #         for objective in allocation_model.objectives
-    #             optimize_for_objective!(allocation_model, integrator, objective, config)
-    #         end
-    #         save_allocation_flows!(
-    #             p_independent,
-    #             t,
-    #             allocation_model,
-    #             AllocationOptimizationType.collect_demands,
-    #         )
-    #         #TODO: get_subnetwork_demand!(allocation_model)
-    #     end
-    # end
-
+    # Allocate in all subnetwork, starting with the primary network if it exists
     for allocation_model in allocation_models
         optimize!(allocation_model, model)
         parse_allocations!(integrator, allocation_model)
@@ -925,30 +925,14 @@ function update_allocation!(model)::Nothing
         apply_control_from_allocation!(pump, allocation_model, integrator)
         apply_control_from_allocation!(outlet, allocation_model, integrator)
 
+        # Communicate amounts allocated to secondary networks
+        if is_primary_network(allocation_model.subnetwork_id)
+            communicate_secondary_network_allocations!(allocation_model, p_independent) # TODO
+        end
+
         # Reset cumulative data
         reset_cumulative!(allocation_model)
     end
-    # # Allocate first in the primary network if it is present, and then in the secondary networks
-    # for allocation_model in allocation_models
-    #     reset_goal_programming!(allocation_model, p_independent)
-    #     for objective in allocation_model.objectives
-    #         optimize_for_objective!(allocation_model, integrator, objective, config)
-    #     end
-
-    #     if is_primary_network(allocation_model.subnetwork_id)
-    #         # TODO: Transfer allocated to secondary networks
-    #     end
-
-    #     # Update parameters in physical layer based on allocation results
-    #     apply_control_from_allocation!(pump, allocation_model, integrator)
-    #     apply_control_from_allocation!(outlet, allocation_model, integrator)
-
-    #     save_allocation_flows!(
-    #         p_independent,
-    #         t,
-    #         allocation_model,
-    #         AllocationOptimizationType.collect_demands,
-    #     )
 
     # Update storage_prev for level_demand
     update_storage_prev!(p)

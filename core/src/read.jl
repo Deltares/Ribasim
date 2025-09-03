@@ -29,7 +29,8 @@ function initialize_allocation!(
         push!(subnetwork_ids, subnetwork_id)
     end
 
-    for subnetwork_id in subnetwork_ids_
+    # Make sure the primary network is initialized last if it exists
+    for subnetwork_id in circshift(subnetwork_ids_, -1)
         push!(
             allocation_models,
             AllocationModel(subnetwork_id, p_independent, config.allocation),

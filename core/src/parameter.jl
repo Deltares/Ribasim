@@ -257,7 +257,7 @@ cumulative_boundary_volume: The net volume of boundary flow into the model for e
     over the last Δt_allocation
 cumulative_realized_volume: The net volume of flow realized by a demand node over the last Δt_allocation
 sources: The nodes in the subnetwork which can act as sources, sorted by source priority
-subnetwork_demand: The total demand of the secondary network from the primary network per inlet per demand priority (irrelevant for the primary network)
+secondary_network_demand: The total demand of the secondary network from the primary network per inlet per demand priority (irrelevant for the primary network)
 scaling: The flow and storage scaling factors to make the optimization problem more numerically stable
 """
 @kwdef struct AllocationModel
@@ -271,7 +271,7 @@ scaling: The flow and storage scaling factors to make the optimization problem m
     cumulative_boundary_volume::Dict{Tuple{NodeID, NodeID}, Float64} = Dict()
     cumulative_realized_volume::Dict{Tuple{NodeID, NodeID}, Float64} = Dict()
     sources::Dict{Int32, NodeID} = OrderedDict()
-    subnetwork_demand::Dict{Tuple{NodeID, NodeID}, Vector{Float64}} = Dict()
+    secondary_network_demand::Dict{Tuple{NodeID, NodeID}, Vector{Float64}} = Dict()
     scaling::ScalingFactors = ScalingFactors()
 end
 

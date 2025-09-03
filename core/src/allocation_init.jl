@@ -197,7 +197,8 @@ function add_user_demand!(
         flow[inflow_link[node_id.idx].link] == sum(
             user_demand_allocated[node_id, demand_priority] for
             demand_priority in DemandPriorityIterator(node_id, p_independent)
-        )
+        );
+        base_name = "user_demand_allocated_sum_constraint"
     )
 
     # Define decision variables: Per UserDemand node the allocation error per priority for
@@ -572,36 +573,52 @@ function add_secondary_network_demand!(
     # (scaling.flow * m^3/s, values to be filled in before optimizing)
     d = 2.0 # Example demand (scaling.flow * m^3/s, values to be filled in before optimizing)
     secondary_network_allocated =
-        problem[:secondary_network_allocated] =
-            JuMP.@variable(problem, 0 ≤ secondary_network_allocated[connecting_links] ≤ d)
+        problem[:secondary_network_allocated] = JuMP.@variable(
+            problem,
+            0 ≤
+            secondary_network_allocated[
+                link = connecting_links,
+                DemandPriorityIterator(link, p_independent),
+            ] ≤
+            d
+        )
 
     # Define constraints: The sum of the flows allocated to the secondary network is equal to the total flow into the secondary network
-    problem[:secondary_network_allocated_sum_constraint] = JuMP.@constraint(problem, [])
+    problem[:secondary_network_allocated_sum_constraint] = JuMP.@constraint(
+        problem,
+        [link = connecting_links],
+        flow[link] == sum(
+            secondary_network_allocated[link, demand_priority] for
+            demand_priority in DemandPriorityIterator(link, p_independent)
+        );
+        base_name = "secondary_network_allocated_sum_constraint",
+    )
 
-    # # Define decision variables: lower and upper user demand error (unitless)
-    # relative_subnetwork_error_lower =
-    #     problem[:relative_subnetwork_error_lower] =
-    #         JuMP.@variable(problem, relative_subnetwork_error_lower[connecting_links] ≥ 0)
-    # relative_subnetwork_error_upper =
-    #     problem[:relative_subnetwork_error_upper] =
-    #         JuMP.@variable(problem, relative_subnetwork_error_upper[connecting_links] ≥ 0)
+    # Define decision variables: Per secondary network connection the allocation error per priority for
+    # which the secondary network has a demand, for both the first and second objective (unitless)
+    secondary_network_error =
+        problem[:secondary_network_error] = JuMP.@variable(
+            problem,
+            0 ≤
+            secondary_network_error[
+                link = connecting_links,
+                DemandPriorityIterator(link, p_independent),
+                [:first, :second],
+            ] ≤
+            1
+        )
 
-    # # Define constraints: error terms
-    # d = 2.0 # Example demand (scaling.flow * m^3/s, values to be filled in before optimizing)
-    # problem[:subnetwork_constraint_lower] = JuMP.@constraint(
-    #     problem,
-    #     [link = connecting_links],
-    #     d * (relative_subnetwork_error_lower[link]) ≥
-    #     -(flow[link] - subnetwork_allocated[link]),
-    #     base_name = "subnetwork_constraint_lower"
-    # )
-    # problem[:subnetwork_constraint_upper] = JuMP.@constraint(
-    #     problem,
-    #     [link = connecting_links],
-    #     d * (relative_subnetwork_error_upper[link]) ≥
-    #     flow[link] - subnetwork_allocated[link],
-    #     base_name = "subnetwork_constraint_upper"
-    # )
+    # Define constraints: error terms
+    problem[:secondary_network_relative_error_constraint] = JuMP.@constraint(
+        problem,
+        [
+            link = connecting_links,
+            demand_priority = DemandPriorityIterator(link, p_independent),
+        ],
+        d * secondary_network_error[link, demand_priority, :first] ≥
+        d - secondary_network_allocated[link, demand_priority];
+        base_name = "secondary_network_relative_error_constraint"
+    )
 
     return nothing
 end
@@ -614,7 +631,7 @@ function add_demand_objectives!(
     allocation_model::AllocationModel,
     p_independent::ParametersIndependent,
 )::Nothing
-    (; objectives, problem, node_ids_in_subnetwork) = allocation_model
+    (; objectives, problem, node_ids_in_subnetwork, subnetwork_id) = allocation_model
     (;
         user_demand_ids_subnetwork,
         node_ids_subnetwork_with_flow_demand,
@@ -645,19 +662,26 @@ function add_demand_objectives!(
         # Objective for a fair distribution of what was allocated with the previous objective
         second_objective_expression = JuMP.AffExpr()
 
-        for error_collection in [user_demand_error, flow_demand_error]
-            for (node_id, demand_priority_, objective_ord) in keys(error_collection.data)
+        # Add UserDemand, FlowDemand and secondary network errors
+        error_collections = [user_demand_error, flow_demand_error]
+        if is_primary_network(subnetwork_id)
+            push!(error_collections, problem[:secondary_network_error])
+        end
+
+        for error_collection in error_collections
+            for (identifier, demand_priority_, objective_ord) in keys(error_collection.data)
                 if demand_priority == demand_priority_
                     JuMP.add_to_expression!(
                         (objective_ord == :first) ? first_objective_expression :
                         second_objective_expression,
-                        error_collection[node_id, demand_priority, objective_ord],
+                        error_collection[identifier, demand_priority, objective_ord],
                     )
                     has_flow_unit_demands = true
                 end
             end
         end
 
+        # Add LevelDemand errors
         for (node_id, demand_priority_, side, objective_ord) in
             keys(level_demand_error.data)
             if demand_priority == demand_priority_
@@ -966,20 +990,20 @@ function AllocationModel(
     add_pump!(allocation_model, p_independent)
     add_outlet!(allocation_model, p_independent)
 
-    # Demand nodes and subnetworks as demand nodes
+    # Demand nodes
     add_user_demand!(allocation_model, p_independent)
     add_flow_demand!(allocation_model, p_independent)
     add_level_demand!(allocation_model, p_independent)
 
     # Primary to secondary subnetwork connections
     if is_primary_network(subnetwork_id)
-        add_subnetwork_demand!(allocation_model, p_independent)
+        add_secondary_network_demand!(allocation_model, p_independent)
     else
         # Initialize subnetwork demands
         n_demands = length(p_independent.allocation.demand_priorities_all)
         if !is_primary_network(subnetwork_id)
             for link in p_independent.allocation.primary_network_connections[subnetwork_id]
-                allocation_model.subnetwork_demand[link] = zeros(n_demands)
+                allocation_model.secondary_network_demand[link] = zeros(n_demands)
             end
         end
     end
