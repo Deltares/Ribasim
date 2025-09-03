@@ -823,7 +823,7 @@ def circular_flow_model() -> Model:
     # system out
     outlet10 = model.outlet.add(
         Node(10, Point(6.0, 0.0)),
-        [outlet.Static(flow_rate=1.0, min_upstream_level=[1.1])],
+        [outlet.Static(flow_rate=1.0, min_upstream_level=[1.09])],
     )
 
     ###Setup Manning resistance:

@@ -373,10 +373,11 @@ end
 
     # Manning flow water loop
     plot(time, flow_link_basin_3_to_9_manning.flow_rate; label = "manning flow")
-    plot!(time, flow_link_basin_3_to_4_outlet.flow_rate; label = "between basin flow")
+    plot!(time, flow_link_basin_3_to_4_outlet.flow_rate; label = "circle in flow")
 
-    # tussen basin 4
-    plot(time, flow_link_basin_3_to_4_outlet.flow_rate; label = "between basin flow")
+    # tussen basin inflow, outflow
+    plot(time, flow_link_basin_3_to_4_outlet.flow_rate; label = "between basin in flow")
+    plot!(time, flow_link_basin_4_to_6_outlet.flow_rate; label = "between basin out flow")
 
     # Polder inflow and outflow
     plot(time, flow_link_basin_4_to_6_outlet.flow_rate; label = "polder inlet flow")
