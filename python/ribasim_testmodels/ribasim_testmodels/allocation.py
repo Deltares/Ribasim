@@ -947,7 +947,7 @@ def allocation_training_model() -> Model:
         starttime="2022-01-01",
         endtime="2023-01-01",
         crs="EPSG:4326",
-        experimental=Experimental(concentration=True, allocation=True),
+        experimental=Experimental(allocation=True),
         interpolation=Interpolation(flow_boundary="linear"),
     )
 
