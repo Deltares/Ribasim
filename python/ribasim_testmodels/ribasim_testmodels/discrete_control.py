@@ -784,22 +784,6 @@ def circular_flow_model() -> Model:
         [outlet.Static(flow_rate=1.0, max_downstream_level=[1.1])],
     )
 
-    #### pump control:
-    control_pump = model.continuous_control.add(
-        Node(20, Point(5, 1)),
-        [
-            continuous_control.Variable(
-                listen_node_id=6,
-                variable=["level"],
-            ),
-            continuous_control.Function(
-                input=[0.5, 0.9, 0.92, 1],
-                output=[0.0, 0.0, 1.0, 10],
-                controlled_variable="flow_rate",
-            ),
-        ],
-    )
-
     outlet5 = model.outlet.add(
         Node(5, Point(2.1, 0.1)),
         [outlet.Static(flow_rate=1.0, max_downstream_level=[1.0])],
@@ -860,6 +844,22 @@ def circular_flow_model() -> Model:
                 control_state=["on", "off"],
                 flow_rate=[1.0, 0.0],
             )
+        ],
+    )
+
+    #### pump control:
+    control_pump = model.continuous_control.add(
+        Node(20, Point(5, 1)),
+        [
+            continuous_control.Variable(
+                listen_node_id=6,
+                variable=["level"],
+            ),
+            continuous_control.Function(
+                input=[0.5, 0.9, 0.92, 1],
+                output=[0.0, 0.0, 1.0, 10],
+                controlled_variable="flow_rate",
+            ),
         ],
     )
 
