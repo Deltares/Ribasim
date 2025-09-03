@@ -362,24 +362,41 @@ end
 
     flow_table = DataFrame(Ribasim.flow_data(model))
     flow_link_basin_3_to_9_manning = filter(:link_id => ==(1), flow_table)
-    flow_link_basin_3_to_6_outlet = filter(:link_id => ==(4), flow_table)
-    flow_link_basin_6_to_9_pump = filter(:link_id => ==(5), flow_table)
+    flow_link_basin_3_to_4_outlet = filter(:link_id => ==(4), flow_table)
+    flow_link_basin_4_to_6_outlet = filter(:link_id => ==(6), flow_table)
+    flow_link_basin_6_to_9_pump = filter(:link_id => ==(7), flow_table)
+    outflow_link = filter(:link_id => ==(9), flow_table)
+    inflow_link = filter(:link_id => ==(11), flow_table)
 
     using Plots: plot, plot!
     time = flow_link_basin_3_to_9_manning.time
 
     # Manning flow water loop
     plot(time, flow_link_basin_3_to_9_manning.flow_rate; label = "manning flow")
+    plot!(time, flow_link_basin_3_to_4_outlet.flow_rate; label = "between basin flow")
+
+    # tussen basin 4
+    plot(time, flow_link_basin_3_to_4_outlet.flow_rate; label = "between basin flow")
 
     # Polder inflow and outflow
-    plot(time, flow_link_basin_3_to_6_outlet.flow_rate; label = "polder inlet flow")
+    plot(time, flow_link_basin_4_to_6_outlet.flow_rate; label = "polder inlet flow")
     plot!(time, flow_link_basin_6_to_9_pump.flow_rate; label = "polder pump out flow")
 
-    #
+    # model in-out flow
+    plot(time, inflow_link.flow_rate; label = "inflow")
+    plot!(time, outflow_link.flow_rate; label = "model outflow")
 
     plot(
         time,
         level[2, :];
+        label = "tussen basin",
+        xlabel = "Time (s)",
+        ylabel = "Level (m)",
+    )
+
+    plot(
+        time,
+        level[3, :];
         label = "polder basin",
         xlabel = "Time (s)",
         ylabel = "Level (m)",
@@ -393,11 +410,5 @@ end
         xlabel = "Time (s)",
         ylabel = "Level (m)",
     )
-    plot!(time, level[3, :]; label = "Basin 9 (waterloop right)")
-
-    # Flow balance check
-    balance =
-        flow_link_basin_3_to_9_manning.flow_rate + flow_link_basin_3_to_6_outlet.flow_rate -
-        flow_link_basin_6_to_9_pump.flow_rate
-    plot(time, balance; label = "balance", xlabel = "Time", ylabel = "Flow rate (m³/s)")
+    plot!(time, level[4, :]; label = "Basin 9 (waterloop right)")
 end
