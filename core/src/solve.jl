@@ -89,7 +89,7 @@ function formulate_flow_boundary!(p::Parameters, t::Number)::Nothing
     (; tprev, new_t) = p_mutable
 
     if new_t
-        for id in node_id
+        @threads for id in node_id
             if active[id.idx]
                 current_cumulative_boundary_flow[id.idx] =
                     cumulative_flow[id.idx] + integral(flow_rate[id.idx], tprev, t)
@@ -102,7 +102,7 @@ end
 function formulate_continuous_control!(du::CVector, p::Parameters, t::Number)::Nothing
     (; compound_variable, target_ref, func) = p.p_independent.continuous_control
 
-    for (cvar, ref, func_) in zip(compound_variable, target_ref, func)
+    for (cvar, ref, func_) in zip(compound_variable, target_ref, func)    #=@threads=#
         value = compound_variable_value(cvar, p, du, t)
         set_value!(ref, p, func_(value))
     end
@@ -128,7 +128,7 @@ function set_current_basin_properties!(u::CVector, p::Parameters, t::Number)::No
     # The exact cumulative precipitation and drainage up to the t of this water_balance call
     if p_mutable.new_t
         dt = t - p_mutable.tprev
-        for id in node_id
+        @threads for id in node_id
             fixed_area = basin_areas(basin, id.idx)[end]
             time_dependent_cache.basin.current_cumulative_precipitation[id.idx] =
                 cumulative_precipitation[id.idx] +
@@ -143,7 +143,8 @@ function set_current_basin_properties!(u::CVector, p::Parameters, t::Number)::No
     if p_mutable.new_t || p_mutable.new_u
         formulate_storages!(u, p, t)
 
-        for (id, s) in zip(basin.node_id, state_time_dependent_cache.current_storage)
+        for (id, s) in        #=@threads=#
+            zip(basin.node_id, state_time_dependent_cache.current_storage)
             i = id.idx
             state_time_dependent_cache.current_low_storage_factor[i] =
                 reduction_factor(s, low_storage_threshold[i])
@@ -180,7 +181,7 @@ function formulate_storages!(
 
     # Formulate storage contributions of flow boundaries
     p_mutable.new_t && formulate_flow_boundary!(p, t)
-    for (outflow_link, cumulative_flow) in zip(
+    for (outflow_link, cumulative_flow) in zip(    #=@threads=#
         flow_boundary.outflow_link,
         time_dependent_cache.flow_boundary.current_cumulative_boundary_flow,
     )
@@ -201,7 +202,7 @@ function update_vertical_flux!(du::CVector, p::Parameters)::Nothing
     (; vertical_flux) = basin
     (; current_area, current_low_storage_factor) = state_time_dependent_cache
 
-    for id in basin.node_id
+    @threads for id in basin.node_id
         area = current_area[id.idx]
         factor = current_low_storage_factor[id.idx]
 
@@ -221,7 +222,7 @@ function set_error!(pid_control::PidControl, p::Parameters, t::Number)
     (; current_target) = time_dependent_cache.pid_control
     (; listen_node_id, target) = pid_control
 
-    for i in eachindex(listen_node_id)
+    @threads for i in eachindex(listen_node_id)
         listened_node_id = listen_node_id[i]
         @assert listened_node_id.type == NodeType.Basin lazy"Listen node $listened_node_id is not a Basin."
         current_error_pid_control[i] =
@@ -242,7 +243,7 @@ function formulate_pid_control!(du::CVector, u::CVector, p::Parameters, t::Numbe
 
     set_error!(pid_control, p, t)
 
-    for (i, _) in enumerate(node_id)
+    @threads for i in eachindex(node_id)
         if !(active[i] || all_nodes_active)
             du.integral[i] = 0.0
             u.integral[i] = 0.0
@@ -333,7 +334,7 @@ function formulate_flow!(
     (; allocation) = p_independent
     all_nodes_active = p.p_mutable.all_nodes_active
 
-    for (
+    for (    #=@threads=#
         id,
         inflow_link,
         outflow_link,
@@ -399,7 +400,7 @@ function formulate_flow!(
     all_nodes_active = p_mutable.all_nodes_active
     (; node_id, active) = linear_resistance
 
-    for id in node_id
+    @threads for id in node_id
         inflow_link = linear_resistance.inflow_link[id.idx]
         outflow_link = linear_resistance.outflow_link[id.idx]
 
@@ -471,7 +472,7 @@ function formulate_flow!(
     all_nodes_active = p_mutable.all_nodes_active
     (; node_id, active) = tabulated_rating_curve
 
-    for id in node_id
+    @threads for id in node_id
         inflow_link = tabulated_rating_curve.inflow_link[id.idx]
         outflow_link = tabulated_rating_curve.outflow_link[id.idx]
         inflow_id = inflow_link.link[1]
@@ -591,7 +592,7 @@ function formulate_flow!(
     (; node_id, active) = manning_resistance
 
     all_nodes_active = p_mutable.all_nodes_active
-    for id in node_id
+    @threads for id in node_id
         inflow_link = manning_resistance.inflow_link[id.idx]
         outflow_link = manning_resistance.outflow_link[id.idx]
 
@@ -631,7 +632,7 @@ function formulate_pump_or_outlet_flow!(
         current_max_downstream_level,
     ) = component_cache
 
-    for id in node.node_id
+    @threads for id in node.node_id
         inflow_link = node.inflow_link[id.idx]
         outflow_link = node.outflow_link[id.idx]
         active = node.active[id.idx]
@@ -806,7 +807,8 @@ function limit_flow!(
     set_current_basin_properties!(u, p, t)
 
     # TabulatedRatingCurve flow is in [0, ∞) and can be inactive
-    for (id, active) in zip(tabulated_rating_curve.node_id, tabulated_rating_curve.active)
+    for (id, active) in    #=@threads=#
+        zip(tabulated_rating_curve.node_id, tabulated_rating_curve.active)
         limit_flow!(
             u.tabulated_rating_curve,
             uprev.tabulated_rating_curve,
@@ -819,14 +821,18 @@ function limit_flow!(
     end
 
     # Pump flow is in [min_flow_rate, max_flow_rate] and can be inactive
-    for (id, min_flow_rate, max_flow_rate, active) in
+    for (id, min_flow_rate, max_flow_rate, active) in    #=@threads=#
         zip(pump.node_id, pump.min_flow_rate, pump.max_flow_rate, pump.active)
         limit_flow!(u.pump, uprev.pump, id, min_flow_rate(t), max_flow_rate(t), active, dt)
     end
 
     # Outlet flow is in [min_flow_rate, max_flow_rate] and can be inactive
-    for (id, min_flow_rate, max_flow_rate, active) in
-        zip(outlet.node_id, outlet.min_flow_rate, outlet.max_flow_rate, outlet.active)
+    for (id, min_flow_rate, max_flow_rate, active) in zip(    #=@threads=#
+        outlet.node_id,
+        outlet.min_flow_rate,
+        outlet.max_flow_rate,
+        outlet.active,
+    )
         limit_flow!(
             u.outlet,
             uprev.outlet,
@@ -839,7 +845,7 @@ function limit_flow!(
     end
 
     # LinearResistance flow is in [-max_flow_rate, max_flow_rate] and can be inactive
-    for (id, max_flow_rate, active) in zip(
+    for (id, max_flow_rate, active) in zip(    #=@threads=#
         linear_resistance.node_id,
         linear_resistance.max_flow_rate,
         linear_resistance.active,
@@ -856,7 +862,7 @@ function limit_flow!(
     end
 
     # UserDemand inflow bounds depend on multiple aspects of the simulation
-    for (id, active, inflow_link, demand_from_timeseries) in zip(
+    for (id, active, inflow_link, demand_from_timeseries) in zip(    #=@threads=#
         user_demand.node_id,
         user_demand.active,
         user_demand.inflow_link,
@@ -905,7 +911,7 @@ function limit_flow!(
     # Evaporation is in [0, ∞) (stricter bounds would require also estimating the area)
     # Infiltration is in [f * infiltration, infiltration] where f is a rough estimate of the smallest low storage factor
     # reduction factor value that was attained over the last timestep
-    for (id, infiltration) in zip(basin.node_id, basin.vertical_flux.infiltration)
+    for (id, infiltration) in zip(basin.node_id, basin.vertical_flux.infiltration)    #=@threads=#
         factor_min = min_low_storage_factor(current_storage, basin.storage_prev, basin, id)
         limit_flow!(u.evaporation, uprev.evaporation, id, 0.0, Inf, true, dt)
         limit_flow!(
