@@ -89,7 +89,7 @@ function formulate_flow_boundary!(p::Parameters, t::Number)::Nothing
     (; tprev, new_t) = p_mutable
 
     if new_t
-        @threads for id in node_id
+        for id in node_id
             if active[id.idx]
                 current_cumulative_boundary_flow[id.idx] =
                     cumulative_flow[id.idx] + integral(flow_rate[id.idx], tprev, t)
@@ -102,10 +102,14 @@ end
 function formulate_continuous_control!(du::CVector, p::Parameters, t::Number)::Nothing
     (; compound_variable, target_ref, func) = p.p_independent.continuous_control
 
-    for (cvar, ref, func_) in zip(compound_variable, target_ref, func)    #=@threads=#
+    @threads for i in eachindex(compound_variable)
+        cvar = compound_variable[i]
+        ref = target_ref[i]
+        func_ = func[i]
         value = compound_variable_value(cvar, p, du, t)
         set_value!(ref, p, func_(value))
     end
+
     return nothing
 end
 
@@ -128,7 +132,7 @@ function set_current_basin_properties!(u::CVector, p::Parameters, t::Number)::No
     # The exact cumulative precipitation and drainage up to the t of this water_balance call
     if p_mutable.new_t
         dt = t - p_mutable.tprev
-        @threads for id in node_id
+        for id in node_id
             fixed_area = basin_areas(basin, id.idx)[end]
             time_dependent_cache.basin.current_cumulative_precipitation[id.idx] =
                 cumulative_precipitation[id.idx] +
@@ -142,9 +146,9 @@ function set_current_basin_properties!(u::CVector, p::Parameters, t::Number)::No
 
     if p_mutable.new_t || p_mutable.new_u
         formulate_storages!(u, p, t)
-
-        for (id, s) in        #=@threads=#
-            zip(basin.node_id, state_time_dependent_cache.current_storage)
+        @threads for i in eachindex(basin.node_id)
+            id = basin.node_id[i]
+            s = state_time_dependent_cache.current_storage[i]
             i = id.idx
             state_time_dependent_cache.current_low_storage_factor[i] =
                 reduction_factor(s, low_storage_threshold[i])
@@ -202,7 +206,7 @@ function update_vertical_flux!(du::CVector, p::Parameters)::Nothing
     (; vertical_flux) = basin
     (; current_area, current_low_storage_factor) = state_time_dependent_cache
 
-    @threads for id in basin.node_id
+    for id in basin.node_id
         area = current_area[id.idx]
         factor = current_low_storage_factor[id.idx]
 
@@ -222,7 +226,7 @@ function set_error!(pid_control::PidControl, p::Parameters, t::Number)
     (; current_target) = time_dependent_cache.pid_control
     (; listen_node_id, target) = pid_control
 
-    @threads for i in eachindex(listen_node_id)
+    for i in eachindex(listen_node_id)
         listened_node_id = listen_node_id[i]
         @assert listened_node_id.type == NodeType.Basin lazy"Listen node $listened_node_id is not a Basin."
         current_error_pid_control[i] =
@@ -242,8 +246,7 @@ function formulate_pid_control!(du::CVector, u::CVector, p::Parameters, t::Numbe
     all_nodes_active = p_mutable.all_nodes_active
 
     set_error!(pid_control, p, t)
-
-    @threads for i in eachindex(node_id)
+    for i in eachindex(node_id)
         if !(active[i] || all_nodes_active)
             du.integral[i] = 0.0
             u.integral[i] = 0.0
@@ -334,7 +337,7 @@ function formulate_flow!(
     (; allocation) = p_independent
     all_nodes_active = p.p_mutable.all_nodes_active
 
-    for (    #=@threads=#
+    for (
         id,
         inflow_link,
         outflow_link,
@@ -399,8 +402,7 @@ function formulate_flow!(
     (; p_mutable) = p
     all_nodes_active = p_mutable.all_nodes_active
     (; node_id, active) = linear_resistance
-
-    @threads for id in node_id
+    for id in node_id
         inflow_link = linear_resistance.inflow_link[id.idx]
         outflow_link = linear_resistance.outflow_link[id.idx]
 
@@ -471,7 +473,6 @@ function formulate_flow!(
     (; p_mutable) = p
     all_nodes_active = p_mutable.all_nodes_active
     (; node_id, active) = tabulated_rating_curve
-
     @threads for id in node_id
         inflow_link = tabulated_rating_curve.inflow_link[id.idx]
         outflow_link = tabulated_rating_curve.outflow_link[id.idx]
@@ -590,9 +591,8 @@ function formulate_flow!(
 )::Nothing
     (; p_mutable) = p
     (; node_id, active) = manning_resistance
-
     all_nodes_active = p_mutable.all_nodes_active
-    @threads for id in node_id
+    for id in node_id
         inflow_link = manning_resistance.inflow_link[id.idx]
         outflow_link = manning_resistance.outflow_link[id.idx]
 
@@ -632,7 +632,7 @@ function formulate_pump_or_outlet_flow!(
         current_max_downstream_level,
     ) = component_cache
 
-    @threads for id in node.node_id
+    for id in node.node_id
         inflow_link = node.inflow_link[id.idx]
         outflow_link = node.outflow_link[id.idx]
         active = node.active[id.idx]
