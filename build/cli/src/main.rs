@@ -13,6 +13,10 @@ use std::process::ExitCode;
 struct Cli {
     /// Path to the TOML file
     toml_path: PathBuf,
+
+    /// Number of threads to use, for Julia's JULIA_NUM_THREADS environment variable
+    #[arg(short='t', long="threads", default_value="auto")]
+    threads: String,
 }
 
 fn main() -> ExitCode {
@@ -30,7 +34,6 @@ fn main() -> ExitCode {
             ),
         );
     }
-
     // TODO: Do we need to set LD_LIBRARY_PATH on linux?
 
     // Parse command line arguments
@@ -40,6 +43,8 @@ fn main() -> ExitCode {
         eprintln!("File not found {:?}", cli.toml_path);
         return ExitCode::FAILURE;
     }
+
+    env::set_var("JULIA_NUM_THREADS", cli.threads);
 
     let shared_lib_path = match OS {
         "windows" => exe_dir.join("bin/libribasim.dll"),
