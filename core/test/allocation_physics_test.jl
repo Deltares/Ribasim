@@ -156,3 +156,14 @@ end
 
     @test allocation_flow_table.upper_bound_hit == flow_is_bounded
 end
+
+@testitem "run lhm" begin
+    using Ribasim
+    toml_path = normpath(
+        @__DIR__,
+        "/Users/lexverheem/Ribasim/models/lhm_coupled_2025_8_0/lhm-coupled.toml",
+    )
+    model = Ribasim.Model(toml_path)
+    model_run = deepcopy(model)
+    Ribasim.solve!(model_run)
+end
