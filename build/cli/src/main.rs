@@ -14,9 +14,9 @@ struct Cli {
     /// Path to the TOML file
     toml_path: PathBuf,
 
-    /// Number of threads to use, for Julia's JULIA_NUM_THREADS environment variable
-    #[arg(short='t', long="threads", default_value="auto")]
-    threads: String,
+    /// Number of threads to use
+    #[arg(short='t', long="threads", value_name="#THREADS", help="Number of threads to use. Defaults to the JULIA_NUM_THREADS environment variable, and when unset, to using all (hyper)threads.")]
+    threads: Option<String>,
 }
 
 fn main() -> ExitCode {
@@ -44,7 +44,11 @@ fn main() -> ExitCode {
         return ExitCode::FAILURE;
     }
 
-    env::set_var("JULIA_NUM_THREADS", cli.threads);
+    // Set JULIA_NUM_THREADS if the user explicitly set `--threads`
+    // or if the environment variable is not yet set.
+    if cli.threads.is_some() || env::var("JULIA_NUM_THREADS").is_err() {
+        env::set_var("JULIA_NUM_THREADS", cli.threads.unwrap());
+    }
 
     let shared_lib_path = match OS {
         "windows" => exe_dir.join("bin/libribasim.dll"),
