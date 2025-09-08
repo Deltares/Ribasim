@@ -350,14 +350,17 @@ Note
 <li>Ribasim executable - Linux: <a href="https://github.com/Deltares/Ribasim/releases/download/v2025.4.0/ribasim_linux.zip">ribasim_linux.zip</a></li>
 </ul>
 <p>Note that we currently only support and provide binaries for Windows and Linux, for the x86_64 architecture.</p>
-<p>To check whether the installation was performed successfully, open a terminal and go to the path where the executable is for example <code>C:\bin\ribasim\</code>. If you are using cmd.exe type <code>ribasim</code>, or for PowerShell <code>./ribasim</code>.</p>
+<p>To check whether the installation was performed successfully, open a terminal and go to the path where the executable is for example <code>C:\bin\ribasim\</code>. If you are using cmd.exe type <code>ribasim --help</code>, or for PowerShell <code>./ribasim</code>.</p>
 <p>This will give the following message if it is installed correctly:</p>
-<pre><code>error: the following required arguments were not provided:
-  &lt;TOML_PATH&gt;
+<pre><code>Usage: ribasim [OPTIONS] &lt;TOML_PATH&gt;
 
-Usage: ribasim &lt;TOML_PATH&gt;
+Arguments:
+  &lt;TOML_PATH&gt;  Path to the TOML file
 
-For more information, try '--help'.'</code></pre>
+Options:
+  -t, --threads &lt;#THREADS&gt;  Number of threads to use. Defaults to the JULIA_NUM_THREADS environment variable, and when unset, to using all (hyper)threads.
+  -h, --help                Print help
+  -V, --version             Print version</code></pre>
 <section id="adding-ribasim-to-path-on-windows" class="level2" data-number="2.1">
 <h2 data-number="2.1" class="anchored" data-anchor-id="adding-ribasim-to-path-on-windows"><span class="header-section-number">2.1</span> Adding Ribasim to Path on Windows</h2>
 <p>To use Ribasim from any directory without specifying the full path, you can add the Ribasim executable directory to your Windows Path environment variable.</p>
