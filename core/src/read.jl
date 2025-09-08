@@ -806,7 +806,8 @@ function get_greater_than!(
     greater_than::Vector{<:AbstractInterpolation},
     conditions_compound_variable,
     starttime::DateTime,
-    cyclic_time::Bool,
+    cyclic_time::Bool;
+    field = :greater_than,
 )::Nothing
     (; node_id) = first(conditions_compound_variable)
     errors = false
@@ -824,7 +825,7 @@ function get_greater_than!(
         else
             push_constant_interpolation!(
                 greater_than,
-                condition_group.greater_than,
+                getfield(condition_group, field),
                 seconds_since.(condition_group.time, starttime),
                 NodeID(:UserDemand, node_id, 0);
                 cyclic_time,
@@ -854,7 +855,7 @@ function CompoundVariable(
         NodeID(node_type, only(unique(variables_compound_variable.node_id)), node_ids_all)
 
     compound_variable = CompoundVariable(; node_id)
-    (; subvariables, greater_than) = compound_variable
+    (; subvariables, greater_than, less_than) = compound_variable
 
     # Each row defines a subvariable
     for row in variables_compound_variable
@@ -880,6 +881,21 @@ function CompoundVariable(
         conditions_compound_variable,
         starttime,
         cyclic_time,
+    )
+    # Replace optional missing less_than with greater_than if not specified
+    if !isnothing(conditions_compound_variable)
+        less_than .=
+            coalesce.(
+                conditions_compound_variable.less_than,
+                conditions_compound_variable.greater_than,
+            )
+    end
+    !isnothing(conditions_compound_variable) && get_greater_than!(
+        less_than,
+        conditions_compound_variable,
+        starttime,
+        cyclic_time;
+        field = :less_than,
     )
     return compound_variable
 end

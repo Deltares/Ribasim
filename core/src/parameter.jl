@@ -886,6 +886,7 @@ greater_than: the thresholds this compound variable will be
     node_id::NodeID
     subvariables::Vector{SubVariable} = SubVariable[]
     greater_than::Vector{ScalarConstantInterpolation} = ScalarConstantInterpolation[]
+    less_than::Vector{ScalarConstantInterpolation} = ScalarConstantInterpolation[]
 end
 
 """

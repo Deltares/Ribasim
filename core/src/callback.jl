@@ -639,9 +639,17 @@ function apply_discrete_control!(u, t, integrator)::Nothing
             value = compound_variable_value(compound_variable, p, du, t)
 
             # Loop over the greater_than interpolations associated with the current compound variable
-            for greater_than in compound_variable.greater_than
+            for (less_than, greater_than) in
+                zip(compound_variable.less_than, compound_variable.greater_than)
                 truth_value_old = truth_state_node[truth_state_idx]
-                truth_value_new = (value > greater_than(t))
+
+                # Hysteresis deadband: if the condition was true before, only switch to false
+                # when below less_than, otherwise only switch to true when above greater_than
+                if truth_value_old
+                    truth_value_new = (value >= less_than(t))
+                else
+                    truth_value_new = (value > greater_than(t))
+                end
 
                 if truth_value_old != truth_value_new
                     truth_state_change = true

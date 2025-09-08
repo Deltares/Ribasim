@@ -1,5 +1,5 @@
 __version__ = "2025.4.0"
-__schema_version__ = 7
+__schema_version__ = 8
 
 import logging
 
