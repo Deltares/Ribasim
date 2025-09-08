@@ -556,67 +556,114 @@ end
 
 "Create an allocation result table for the saved data"
 function allocation_data(model::Model; table::Bool = true)
-    (; config) = model
-    (; record_demand) = model.integrator.p.p_independent.allocation
+    (; config, integrator) = model
+    (; p_independent, state_time_dependent_cache) = integrator.p
+    (; current_storage) = state_time_dependent_cache
+    (; allocation, graph, basin, user_demand, flow_demand, level_demand) = p_independent
+    (; record_demand, demand_priorities_all, allocation_models) = allocation
 
     datetimes = datetime_since.(getfield.(record_demand, :time), config.starttime)
 
-    if table
-        time = datetimes
-        subnetwork_id = getfield.(record_demand, :subnetwork_id)
-        node_type = getfield.(record_demand, :node_type)
-        node_id = getfield.(record_demand, :node_id)
-        demand_priority = getfield.(record_demand, :demand_priority)
-        demand = getfield.(record_demand, :demand)
-        allocated = getfield.(record_demand, :allocated)
-        realized = getfield.(record_demand, :realized)
-    else
-        time = unique(datetimes)
-        node_id = unique(getfield.(record_demand, :node_id))
-        demand_priority = unique(getfield.(record_demand, :demand_priority))
+    time = unique(datetimes)
+    node_id = sort!(unique(getfield.(record_demand, :node_id)))
 
-        nrows = length(record_demand)
-        ntsteps = length(time)
-        nnodes = length(node_id)
-        nprio = length(demand_priority)
+    nrows = length(record_demand)
+    ntsteps = length(time)
+    nnodes = length(node_id)
+    nprio = length(demand_priorities_all)
 
-        # record_demand only stores existing node_id and demand_priority combination
-        # e.g. node #3 has only prio 1, node #6 has only prio 3
-        # here we need to create the 2x2 matrix ourselves and fill in this case half
-        demand = fill(NaN, nprio, nnodes, ntsteps)
-        allocated = fill(NaN, nprio, nnodes, ntsteps)
-        realized = fill(NaN, nprio, nnodes, ntsteps)
+    # record_demand only stores existing node_id and demand_priority combination
+    # e.g. node #3 has only prio 1, node #6 has only prio 3
+    # here we need to create the 2x2 matrix ourselves and fill in this case half
+    demand = fill(NaN, nprio, nnodes, ntsteps)
+    allocated = fill(NaN, nprio, nnodes, ntsteps)
+    realized = fill(NaN, nprio, nnodes, ntsteps)
 
-        # coordinate variables are similarly filled in
-        subnetwork_id = zeros(Int32, nnodes)
-        node_type = ["" for _ in 1:nnodes]
+    # coordinate variables are similarly filled in
+    subnetwork_id = zeros(Int32, nnodes)
+    node_type = ["" for _ in 1:nnodes]
 
-        for row in 1:nrows
-            prio = record_demand[row].demand_priority
-            node = record_demand[row].node_id
-            t = datetimes
+    has_priority = zeros(Bool, nprio, nnodes)
 
-            i = searchsortedfirst(demand_priority, prio)
-            j = searchsortedfirst(node_id, node)
-            k = searchsortedfirst(time, t)
-            demand[i, j, k] = record_demand[row].demand
-            allocated[i, j, k] = record_demand[row].allocated
-            realized[i, j, k] = record_demand[row].realized
-            subnetwork_id[j] = record_demand[row].subnetwork_id
-            node_type[j] = record_demand[row].node_type
+    for row_idx in 1:nrows
+        row = record_demand[row_idx]
+        prio = row.demand_priority
+        node = row.node_id
+        t = datetime_since(row.time, config.starttime)
+
+        i = searchsortedfirst(demand_priorities_all, prio)
+        j = searchsortedfirst(node_id, node)
+        k = searchsortedfirst(time, t)
+        demand[i, j, k] = row.demand
+        allocated[i, j, k] = row.allocated
+
+        if k > 1
+            realized[i, j, k - 1] = row.realized
+        end
+        subnetwork_id[j] = row.subnetwork_id
+        node_type[j] = row.node_type
+        has_priority[i, j] = true
+    end
+
+    # Handle realized flows in last allocation timestep
+    if !isempty(record_demand)
+        Δt = integrator.t - last(record_demand).time
+        for allocation_model in allocation_models
+            (; cumulative_realized_volume, node_ids_in_subnetwork) = allocation_model
+            (;
+                user_demand_ids_subnetwork,
+                node_ids_subnetwork_with_flow_demand,
+                basin_ids_subnetwork_with_level_demand,
+            ) = node_ids_in_subnetwork
+
+            # UserDemand
+            for id in user_demand_ids_subnetwork
+                j = searchsortedfirst(node_id, id)
+                realized[view(has_priority, :, j), j, end] .=
+                    cumulative_realized_volume[user_demand.inflow_link[id.idx].link] / Δt
+            end
+
+            # FlowDemand
+            for id in node_ids_subnetwork_with_flow_demand
+                j = searchsortedfirst(node_id, id)
+                flow_demand_id = only(inneighbor_labels_type(graph, id, LinkType.control))
+                realized[view(has_priority, :, j), j, end] .=
+                    cumulative_realized_volume[flow_demand.inflow_link[flow_demand_id.idx].link] /
+                    Δt
+            end
+
+            # LevelDemand
+            for id in basin_ids_subnetwork_with_level_demand
+                j = searchsortedfirst(node_id, id)
+                realized[view(has_priority, :, j), j, end] .=
+                    (current_storage[id.idx] - level_demand.storage_prev[id]) / Δt
+            end
         end
     end
 
-    return (;
-        time,
-        subnetwork_id,
-        node_type,
-        node_id,
-        demand_priority,
-        demand,
-        allocated,
-        realized,
-    )
+    return if table
+        (;
+            time = repeat(time; inner = nprio * nnodes),
+            subnetwork_id = repeat(subnetwork_id; inner = nprio, outer = ntsteps),
+            node_type = repeat(node_type; inner = nprio, outer = ntsteps),
+            node_id = repeat(node_id; inner = nprio, outer = ntsteps),
+            demand_priority = repeat(demand_priorities_all; outer = nnodes * ntsteps),
+            demand = vec(demand),
+            allocated = vec(allocated),
+            realized = vec(realized),
+        )
+    else
+        (;
+            time,
+            subnetwork_id,
+            node_type,
+            node_id,
+            demand_priority = demand_priorities_all,
+            demand,
+            allocated,
+            realized,
+        )
+    end
 end
 
 function allocation_flow_data(model::Model; table::Bool = true)
