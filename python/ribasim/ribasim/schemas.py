@@ -133,8 +133,8 @@ class DiscreteControlConditionSchema(_BaseSchema):
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     compound_variable_id: np.int32 = pa.Field(nullable=False)
     condition_id: np.int32 = pa.Field(nullable=False)
-    greater_than: float = pa.Field(nullable=False)
-    less_than: float = pa.Field(nullable=True)
+    threshold_high: float = pa.Field(nullable=False)
+    threshold_low: float = pa.Field(nullable=True)
     time: pd.Timestamp = pa.Field(nullable=True)
 
 

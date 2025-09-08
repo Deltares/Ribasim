@@ -69,7 +69,7 @@ The most visible change is the renaming of Edge to Link. Like always, existing m
 - Check Model equality in Python. [#2057](https://github.com/Deltares/Ribasim/pull/2057)
 - Compare two models in Python. [#2080](https://github.com/Deltares/Ribasim/pull/2080)
 - Support cyclic input timeseries. [#2081](https://github.com/Deltares/Ribasim/pull/2081) [#2102](https://github.com/Deltares/Ribasim/pull/2102)
-- Time dependent `greater_than` thresholds in DiscreteControl. [#2079](https://github.com/Deltares/Ribasim/pull/2079)
+- Time dependent `threshold_high` thresholds in DiscreteControl. [#2079](https://github.com/Deltares/Ribasim/pull/2079)
 - Validation error on connector nodes having the same from and to Basin. [#2112](https://github.com/Deltares/Ribasim/pull/2112)
 - Support time dependent Pump and Outlet tables. [#2110](https://github.com/Deltares/Ribasim/pull/2110)
 

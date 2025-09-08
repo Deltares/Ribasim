@@ -525,7 +525,7 @@ function valid_discrete_control(p::ParametersIndependent, config::Config)::Bool
 
         # The number of conditions of this DiscreteControl node
         n_conditions = sum(
-            length(compound_variable.greater_than) for
+            length(compound_variable.threshold_high) for
             compound_variable in compound_variables
         )
 

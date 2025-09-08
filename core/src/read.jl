@@ -802,12 +802,12 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     return basin
 end
 
-function get_greater_than!(
-    greater_than::Vector{<:AbstractInterpolation},
+function get_threshold_high!(
+    threshold_high::Vector{<:AbstractInterpolation},
     conditions_compound_variable,
     starttime::DateTime,
     cyclic_time::Bool;
-    field = :greater_than,
+    field = :threshold_high,
 )::Nothing
     (; node_id) = first(conditions_compound_variable)
     errors = false
@@ -824,9 +824,9 @@ function get_greater_than!(
             errors = true
         else
             push_constant_interpolation!(
-                greater_than,
-                field == :greater_than ? condition_group.greater_than :
-                coalesce.(condition_group.less_than, condition_group.greater_than),
+                threshold_high,
+                field == :threshold_high ? condition_group.threshold_high :
+                coalesce.(condition_group.threshold_low, condition_group.threshold_high),
                 seconds_since.(condition_group.time, starttime),
                 NodeID(:UserDemand, node_id, 0);
                 cyclic_time,
@@ -856,7 +856,7 @@ function CompoundVariable(
         NodeID(node_type, only(unique(variables_compound_variable.node_id)), node_ids_all)
 
     compound_variable = CompoundVariable(; node_id)
-    (; subvariables, greater_than, less_than) = compound_variable
+    (; subvariables, threshold_high, threshold_low) = compound_variable
 
     # Each row defines a subvariable
     for row in variables_compound_variable
@@ -876,19 +876,19 @@ function CompoundVariable(
         push!(subvariables, subvariable)
     end
 
-    # Build greater_than ConstantInterpolation objects
-    !isnothing(conditions_compound_variable) && get_greater_than!(
-        greater_than,
+    # Build threshold_high ConstantInterpolation objects
+    !isnothing(conditions_compound_variable) && get_threshold_high!(
+        threshold_high,
         conditions_compound_variable,
         starttime,
         cyclic_time,
     )
-    !isnothing(conditions_compound_variable) && get_greater_than!(
-        less_than,
+    !isnothing(conditions_compound_variable) && get_threshold_high!(
+        threshold_low,
         conditions_compound_variable,
         starttime,
         cyclic_time;
-        field = :less_than,
+        field = :threshold_low,
     )
     return compound_variable
 end
@@ -976,7 +976,8 @@ function DiscreteControl(db::DB, config::Config, graph::MetaGraph)::DiscreteCont
         if isempty(compound_variables)
             error("Missing data for $(node_id[i]).")
         end
-        truth_state_length = sum(length(var.greater_than) for var in compound_variables[i])
+        truth_state_length =
+            sum(length(var.threshold_high) for var in compound_variables[i])
         push!(truth_state, fill(false, truth_state_length))
     end
 

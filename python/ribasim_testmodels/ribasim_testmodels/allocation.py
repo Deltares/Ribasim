@@ -1222,7 +1222,7 @@ def bommelerwaard_model():
             [tabulated_rating_curve.Static(level=level, flow_rate=[0.0, 0.1, 1.0])],
         )
 
-    for node_id, listen_node_id, greater_than in zip(
+    for node_id, listen_node_id, threshold_high in zip(
         range(45, 52),
         [31, 31, 32, 32, 33, 35, 34],
         [
@@ -1251,7 +1251,7 @@ def bommelerwaard_model():
                     node_id=2 * [node_id],
                     compound_variable_id=2 * [node_id],
                     condition_id=[1, 2],
-                    greater_than=greater_than,
+                    threshold_high=threshold_high,
                 ),
                 discrete_control.Logic(
                     node_id=3 * [node_id],

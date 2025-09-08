@@ -879,14 +879,14 @@ end
 The data for a single compound variable
 node_id:: The ID of the DiscreteControl that listens to this variable
 subvariables: data for one single subvariable
-greater_than: the thresholds this compound variable will be
+threshold_high: the thresholds this compound variable will be
     compared against (in the case of DiscreteControl)
 """
 @kwdef struct CompoundVariable
     node_id::NodeID
     subvariables::Vector{SubVariable} = SubVariable[]
-    greater_than::Vector{ScalarConstantInterpolation} = ScalarConstantInterpolation[]
-    less_than::Vector{ScalarConstantInterpolation} = ScalarConstantInterpolation[]
+    threshold_high::Vector{ScalarConstantInterpolation} = ScalarConstantInterpolation[]
+    threshold_low::Vector{ScalarConstantInterpolation} = ScalarConstantInterpolation[]
 end
 
 """

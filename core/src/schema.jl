@@ -251,8 +251,8 @@ struct Condition <: Table
     node_id::Int32
     compound_variable_id::Int32
     condition_id::Int32
-    greater_than::Float64
-    less_than::Union{Missing, Float64}
+    threshold_high::Float64
+    threshold_low::Union{Missing, Float64}
     time::Union{Missing, DateTime}
 end
 

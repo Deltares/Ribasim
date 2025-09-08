@@ -608,8 +608,8 @@ end
 Apply the discrete control logic. There's somewhat of a complex structure:
 - Each DiscreteControl node can have one or multiple compound variables it listens to
 - A compound variable is defined as a linear combination of state/time derived parameters of the model
-- Each compound variable has associated with it a vector greater_than of forward fill interpolation objects over time
-  which defines a list of conditions of the form (compound_variable_value) > greater_than[i](t)
+- Each compound variable has associated with it a vector threshold_high of forward fill interpolation objects over time
+  which defines a list of conditions of the form (compound_variable_value) > threshold_high[i](t)
 - The boolean truth value of all these conditions of a discrete control node, sorted first by compound_variable_id and then by
   condition_id, are concatenated into what is called the node's truth state
 - The DiscreteControl node maps this truth state via the logic mapping to a control state, which is a string
@@ -638,17 +638,17 @@ function apply_discrete_control!(u, t, integrator)::Nothing
         for compound_variable in compound_variables_node
             value = compound_variable_value(compound_variable, p, du, t)
 
-            # Loop over the greater_than interpolations associated with the current compound variable
-            for (less_than, greater_than) in
-                zip(compound_variable.less_than, compound_variable.greater_than)
+            # Loop over the threshold_high interpolations associated with the current compound variable
+            for (threshold_low, threshold_high) in
+                zip(compound_variable.threshold_low, compound_variable.threshold_high)
                 truth_value_old = truth_state_node[truth_state_idx]
 
                 # Hysteresis deadband: if the condition was true before, only switch to false
-                # when below less_than, otherwise only switch to true when above greater_than
+                # when below threshold_low, otherwise only switch to true when above threshold_high
                 if truth_value_old
-                    truth_value_new = (value >= less_than(t))
+                    truth_value_new = (value >= threshold_low(t))
                 else
-                    truth_value_new = (value > greater_than(t))
+                    truth_value_new = (value > threshold_high(t))
                 end
 
                 if truth_value_old != truth_value_new

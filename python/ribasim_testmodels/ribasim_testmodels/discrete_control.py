@@ -63,7 +63,7 @@ def pump_discrete_control_model() -> Model:
                 compound_variable_id=[1, 2],
             ),
             discrete_control.Condition(
-                greater_than=[0.8, 0.4],
+                threshold_high=[0.8, 0.4],
                 compound_variable_id=[1, 2],
                 condition_id=[1, 1],
             ),
@@ -82,7 +82,7 @@ def pump_discrete_control_model() -> Model:
                 compound_variable_id=1,
             ),
             discrete_control.Condition(
-                greater_than=[0.45],
+                threshold_high=[0.45],
                 compound_variable_id=1,
                 condition_id=1,
             ),
@@ -159,7 +159,7 @@ def flow_condition_model() -> Model:
                 compound_variable_id=1,
             ),
             discrete_control.Condition(
-                greater_than=[20 / (86400)],
+                threshold_high=[20 / (86400)],
                 compound_variable_id=1,
                 condition_id=1,
             ),
@@ -226,7 +226,7 @@ def level_boundary_condition_model() -> Model:
                 compound_variable_id=1,
             ),
             discrete_control.Condition(
-                greater_than=[6.0],
+                threshold_high=[6.0],
                 compound_variable_id=1,
                 condition_id=1,
             ),
@@ -302,7 +302,7 @@ def tabulated_rating_curve_control_model() -> Model:
                 compound_variable_id=1,
             ),
             discrete_control.Condition(
-                greater_than=[0.5],
+                threshold_high=[0.5],
                 compound_variable_id=1,
                 condition_id=1,
             ),
@@ -367,7 +367,7 @@ def compound_variable_condition_model() -> Model:
                 compound_variable_id=1,
             ),
             discrete_control.Condition(
-                greater_than=[0.5],
+                threshold_high=[0.5],
                 compound_variable_id=1,
                 condition_id=1,
             ),
@@ -432,7 +432,7 @@ def level_range_model() -> Model:
             ),
             discrete_control.Condition(
                 # min, max
-                greater_than=[5.0, 15.0],
+                threshold_high=[5.0, 15.0],
                 compound_variable_id=1,
                 condition_id=[1, 2],
             ),
@@ -519,7 +519,7 @@ def connector_node_flow_condition_model() -> Model:
                 compound_variable_id=1,
             ),
             discrete_control.Condition(
-                greater_than=[1e-4], compound_variable_id=1, condition_id=1
+                threshold_high=[1e-4], compound_variable_id=1, condition_id=1
             ),
             discrete_control.Logic(truth_state=["T", "F"], control_state=["On", "Off"]),
         ],
@@ -576,7 +576,7 @@ def concentration_condition_model() -> Model:
                 compound_variable_id=1,
             ),
             discrete_control.Condition(
-                greater_than=[0.5], compound_variable_id=1, condition_id=1
+                threshold_high=[0.5], compound_variable_id=1, condition_id=1
             ),
             discrete_control.Logic(truth_state=["T", "F"], control_state=["On", "Off"]),
         ],
@@ -679,7 +679,7 @@ def continuous_concentration_condition_model() -> Model:
             ),
             # More than 20% of seawater (35 g/L)
             discrete_control.Condition(
-                greater_than=[7], compound_variable_id=1, condition_id=1
+                threshold_high=[7], compound_variable_id=1, condition_id=1
             ),
             discrete_control.Logic(truth_state=["T", "F"], control_state=["Off", "On"]),
         ],
@@ -728,7 +728,7 @@ def transient_condition_model() -> Model:
             discrete_control.Condition(
                 compound_variable_id=1,
                 condition_id=1,
-                greater_than=[1.0, 3.0, 1.0],
+                threshold_high=[1.0, 3.0, 1.0],
                 time=["2020-01-01", "2020-02-01", "2020-03-01"],
             ),
             discrete_control.Logic(truth_state=["F", "T"], control_state=["A", "B"]),

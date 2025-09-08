@@ -148,7 +148,8 @@ def discretecontrolconditionschema_migration(
         warnings.warn(
             "Migrating outdated DiscreteControl / condition table.", UserWarning
         )
-        df["less_than"] = None
+        df["threshold_low"] = None
+        df.rename(columns={"greater_than": "threshold_high"}, inplace=True)
     return df
 
 

@@ -62,12 +62,12 @@
     t_1 = discrete_control.record.time[3]
     t_1_index = findfirst(>=(t_1), t)
     @test level[1, t_1_index] <=
-          discrete_control.compound_variables[1][1].greater_than[1](0)
+          discrete_control.compound_variables[1][1].threshold_high[1](0)
 
     t_2 = discrete_control.record.time[4]
     t_2_index = findfirst(>=(t_2), t)
     @test level[2, t_2_index] >=
-          discrete_control.compound_variables[1][2].greater_than[1](0)
+          discrete_control.compound_variables[1][2].threshold_high[1](0)
 
     du = get_du(model.integrator)
     @test all(iszero, du.linear_resistance)
@@ -86,12 +86,12 @@ end
     t_control = discrete_control.record.time[2]
     t_control_index = searchsortedfirst(t, t_control)
 
-    greater_than = discrete_control.compound_variables[1][1].greater_than[1](0)
+    threshold_high = discrete_control.compound_variables[1][1].threshold_high[1](0)
     flow_t_control = flow_boundary.flow_rate[1](t_control)
     flow_t_control_ahead = flow_boundary.flow_rate[1](t_control + Δt)
 
-    @test !isapprox(flow_t_control, greater_than; rtol = 0.005)
-    @test isapprox(flow_t_control_ahead, greater_than, rtol = 0.005)
+    @test !isapprox(flow_t_control, threshold_high; rtol = 0.005)
+    @test isapprox(flow_t_control_ahead, threshold_high, rtol = 0.005)
 end
 
 @testitem "Transient level boundary condition control" begin
@@ -109,12 +109,12 @@ end
     t_control = discrete_control.record.time[2]
     t_control_index = searchsortedfirst(t, t_control)
 
-    greater_than = discrete_control.compound_variables[1][1].greater_than[1](0)
+    threshold_high = discrete_control.compound_variables[1][1].threshold_high[1](0)
     level_t_control = level_boundary.level[1](t_control)
     level_t_control_ahead = level_boundary.level[1](t_control + Δt)
 
-    @test !isapprox(level_t_control, greater_than; rtol = 0.005)
-    @test isapprox(level_t_control_ahead, greater_than, rtol = 0.005)
+    @test !isapprox(level_t_control, threshold_high; rtol = 0.005)
+    @test isapprox(level_t_control_ahead, threshold_high, rtol = 0.005)
 end
 
 @testitem "PID control" begin
@@ -337,7 +337,7 @@ end
     model = Ribasim.run(toml_path)
     (; record, compound_variables) = model.integrator.p.p_independent.discrete_control
 
-    itp = compound_variables[1][1].greater_than[1]
+    itp = compound_variables[1][1].threshold_high[1]
     @test itp.extrapolation_left == Periodic
     @test itp.extrapolation_right == Periodic
 
