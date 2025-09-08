@@ -63,7 +63,7 @@
         "Ribasim"
     ],
     "files.insertFinalNewline": true,
-    "julia.executablePath": "/Users/lexverheem/.juliaup/bin/julia",
+    "julia.executablePath": "julia +1.11.6",
     "julia.additionalArgs": [
         "--check-bounds=yes"
     ],

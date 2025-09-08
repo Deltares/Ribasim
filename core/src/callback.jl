@@ -617,8 +617,8 @@ function apply_discrete_control!(u, t, integrator)::Nothing
         # Loop over the compound variables listened to by this discrete control node
         for compound_variable in compound_variables_node
             value = compound_variable_value(compound_variable, p, du, t)
-            # value_prev =
-            #     compound_variable_value(compound_variable, p, du, t - integrator.dt)
+            value_prev =
+                compound_variable_value(compound_variable, p, du, t - integrator.dt)
 
             # Loop over the greater_than interpolations associated with the current compound variable
             for greater_than in compound_variable.greater_than
