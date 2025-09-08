@@ -46,8 +46,11 @@ fn main() -> ExitCode {
 
     // Set JULIA_NUM_THREADS if the user explicitly set `--threads`
     // or if the environment variable is not yet set.
-    if cli.threads.is_some() || env::var("JULIA_NUM_THREADS").is_err() {
-        env::set_var("JULIA_NUM_THREADS", cli.threads.unwrap());
+    if let Some(threads) = cli.threads {
+        env::set_var("JULIA_NUM_THREADS", threads);
+    } else if env::var("JULIA_NUM_THREADS").is_err() {
+        // If no --threads specified and JULIA_NUM_THREADS not set, use all available threads
+        env::set_var("JULIA_NUM_THREADS", "auto");
     }
 
     let shared_lib_path = match OS {
