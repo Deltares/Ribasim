@@ -825,7 +825,8 @@ function get_greater_than!(
         else
             push_constant_interpolation!(
                 greater_than,
-                getfield(condition_group, field),
+                field == :greater_than ? condition_group.greater_than :
+                coalesce.(condition_group.less_than, condition_group.greater_than),
                 seconds_since.(condition_group.time, starttime),
                 NodeID(:UserDemand, node_id, 0);
                 cyclic_time,
@@ -882,14 +883,6 @@ function CompoundVariable(
         starttime,
         cyclic_time,
     )
-    # Replace optional missing less_than with greater_than if not specified
-    if !isnothing(conditions_compound_variable)
-        less_than .=
-            coalesce.(
-                conditions_compound_variable.less_than,
-                conditions_compound_variable.greater_than,
-            )
-    end
     !isnothing(conditions_compound_variable) && get_greater_than!(
         less_than,
         conditions_compound_variable,
