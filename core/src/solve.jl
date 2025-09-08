@@ -185,7 +185,7 @@ function formulate_storages!(
 
     # Formulate storage contributions of flow boundaries
     p_mutable.new_t && formulate_flow_boundary!(p, t)
-    for (outflow_link, cumulative_flow) in zip(    #=@threads=#
+    for (outflow_link, cumulative_flow) in zip(
         flow_boundary.outflow_link,
         time_dependent_cache.flow_boundary.current_cumulative_boundary_flow,
     )
@@ -807,8 +807,7 @@ function limit_flow!(
     set_current_basin_properties!(u, p, t)
 
     # TabulatedRatingCurve flow is in [0, ∞) and can be inactive
-    for (id, active) in    #=@threads=#
-        zip(tabulated_rating_curve.node_id, tabulated_rating_curve.active)
+    for (id, active) in zip(tabulated_rating_curve.node_id, tabulated_rating_curve.active)
         limit_flow!(
             u.tabulated_rating_curve,
             uprev.tabulated_rating_curve,
@@ -821,18 +820,14 @@ function limit_flow!(
     end
 
     # Pump flow is in [min_flow_rate, max_flow_rate] and can be inactive
-    for (id, min_flow_rate, max_flow_rate, active) in    #=@threads=#
+    for (id, min_flow_rate, max_flow_rate, active) in
         zip(pump.node_id, pump.min_flow_rate, pump.max_flow_rate, pump.active)
         limit_flow!(u.pump, uprev.pump, id, min_flow_rate(t), max_flow_rate(t), active, dt)
     end
 
     # Outlet flow is in [min_flow_rate, max_flow_rate] and can be inactive
-    for (id, min_flow_rate, max_flow_rate, active) in zip(    #=@threads=#
-        outlet.node_id,
-        outlet.min_flow_rate,
-        outlet.max_flow_rate,
-        outlet.active,
-    )
+    for (id, min_flow_rate, max_flow_rate, active) in
+        zip(outlet.node_id, outlet.min_flow_rate, outlet.max_flow_rate, outlet.active)
         limit_flow!(
             u.outlet,
             uprev.outlet,
@@ -845,7 +840,7 @@ function limit_flow!(
     end
 
     # LinearResistance flow is in [-max_flow_rate, max_flow_rate] and can be inactive
-    for (id, max_flow_rate, active) in zip(    #=@threads=#
+    for (id, max_flow_rate, active) in zip(
         linear_resistance.node_id,
         linear_resistance.max_flow_rate,
         linear_resistance.active,
@@ -862,7 +857,7 @@ function limit_flow!(
     end
 
     # UserDemand inflow bounds depend on multiple aspects of the simulation
-    for (id, active, inflow_link, demand_from_timeseries) in zip(    #=@threads=#
+    for (id, active, inflow_link, demand_from_timeseries) in zip(
         user_demand.node_id,
         user_demand.active,
         user_demand.inflow_link,
@@ -911,7 +906,7 @@ function limit_flow!(
     # Evaporation is in [0, ∞) (stricter bounds would require also estimating the area)
     # Infiltration is in [f * infiltration, infiltration] where f is a rough estimate of the smallest low storage factor
     # reduction factor value that was attained over the last timestep
-    for (id, infiltration) in zip(basin.node_id, basin.vertical_flux.infiltration)    #=@threads=#
+    for (id, infiltration) in zip(basin.node_id, basin.vertical_flux.infiltration)
         factor_min = min_low_storage_factor(current_storage, basin.storage_prev, basin, id)
         limit_flow!(u.evaporation, uprev.evaporation, id, 0.0, Inf, true, dt)
         limit_flow!(
