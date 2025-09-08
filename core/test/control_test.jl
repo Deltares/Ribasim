@@ -435,46 +435,46 @@ end
     toml_path = normpath(@__DIR__, "../../generated_testmodels/circular_flow/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
-    # get the levels
-    data = Ribasim.get_storages_and_levels(model)
-    level = data.level[:, begin:(end - 1)]
+    # # get the levels
+    # data = Ribasim.get_storages_and_levels(model)
+    # level = data.level[:, begin:(end - 1)]
 
-    flow_table = DataFrame(Ribasim.flow_data(model))
-    flow_link_basin_3_to_4_outlet = filter(:link_id => ==(4), flow_table)
-    flow_link_basin_4_to_6_outlet = filter(:link_id => ==(6), flow_table)
-    flow_link_basin_6_to_9_pump = filter(:link_id => ==(7), flow_table)
-    outflow_link = filter(:link_id => ==(12), flow_table)
-    inflow_link = filter(:link_id => ==(11), flow_table)
+    # flow_table = DataFrame(Ribasim.flow_data(model))
+    # flow_link_basin_3_to_4_outlet = filter(:link_id => ==(4), flow_table)
+    # flow_link_basin_4_to_6_outlet = filter(:link_id => ==(6), flow_table)
+    # flow_link_basin_6_to_9_pump = filter(:link_id => ==(7), flow_table)
+    # outflow_link = filter(:link_id => ==(12), flow_table)
+    # inflow_link = filter(:link_id => ==(11), flow_table)
 
-    using Plots: plot, plot!
-    time = flow_link_basin_3_to_4_outlet.time
+    # using Plots: plot, plot!
+    # time = flow_link_basin_3_to_4_outlet.time
 
-    plot(time, flow_link_basin_3_to_4_outlet.flow_rate; label = "circle in flow")
+    # plot(time, flow_link_basin_3_to_4_outlet.flow_rate; label = "circle in flow")
 
-    # tussen basin inflow, outflow
-    plot(time, flow_link_basin_3_to_4_outlet.flow_rate; label = "basin #4 inlet flow")
-    plot!(time, flow_link_basin_4_to_6_outlet.flow_rate; label = "basin #4 outlet flow")
+    # # tussen basin inflow, outflow
+    # plot(time, flow_link_basin_3_to_4_outlet.flow_rate; label = "basin #4 inlet flow")
+    # plot!(time, flow_link_basin_4_to_6_outlet.flow_rate; label = "basin #4 outlet flow")
 
-    # Polder inflow and outflow
-    plot(time, flow_link_basin_4_to_6_outlet.flow_rate; label = "basin #6 inlet flow")
-    plot!(
-        time,
-        flow_link_basin_6_to_9_pump.flow_rate;
-        label = "basin #6 outlet (pump)  flow",
-    )
+    # # Polder inflow and outflow
+    # plot(time, flow_link_basin_4_to_6_outlet.flow_rate; label = "basin #6 inlet flow")
+    # plot!(
+    #     time,
+    #     flow_link_basin_6_to_9_pump.flow_rate;
+    #     label = "basin #6 outlet (pump)  flow",
+    # )
 
-    # model in and out flow
-    plot(time, inflow_link.flow_rate; label = "model inflow")
-    plot!(time, outflow_link.flow_rate; label = "model outflow")
+    # # model in and out flow
+    # plot(time, inflow_link.flow_rate; label = "model inflow")
+    # plot!(time, outflow_link.flow_rate; label = "model outflow")
 
-    # model in-out flow
-    plot(time, inflow_link.flow_rate - outflow_link.flow_rate; label = "inflow")
+    # # model in-out flow
+    # plot(time, inflow_link.flow_rate - outflow_link.flow_rate; label = "inflow")
 
-    plot(time, level[2, :]; label = "basin #4", xlabel = "t (s)", ylabel = "h (m)")
+    # plot(time, level[2, :]; label = "basin #4", xlabel = "t (s)", ylabel = "h (m)")
 
-    plot!(time, level[3, :]; label = "basin #6 (s)")
+    # plot!(time, level[3, :]; label = "basin #6 (s)")
 
-    #waterloop levels
-    plot(time, level[1, :]; label = "Basin #3 (left)", xlabel = "t (s)", ylabel = "h (m)")
-    plot!(time, level[4, :]; label = "Basin #9 (right)")
+    # #waterloop levels
+    # plot(time, level[1, :]; label = "Basin #3 (left)", xlabel = "t (s)", ylabel = "h (m)")
+    # plot!(time, level[4, :]; label = "Basin #9 (right)")
 end
