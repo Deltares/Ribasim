@@ -4,7 +4,6 @@ from ribasim.config import Experimental, Interpolation, Node, Results
 from ribasim.model import Model, Solver
 from ribasim.nodes import (
     basin,
-    continuous_control,
     discrete_control,
     flow_boundary,
     level_boundary,
@@ -762,7 +761,7 @@ def circular_flow_model() -> Model:
     evaporation[270:366] = 1e-6
 
     basin_data = [
-        basin.Profile(area=[1000.0, 1000.0], level=[0.0, 1.0]),
+        basin.Profile(area=[0.01, 1000.0], level=[-10, 1.0]),
         basin.Time(
             time=pd.date_range(model.starttime, model.endtime),
             drainage=0.0,
@@ -773,62 +772,44 @@ def circular_flow_model() -> Model:
         basin.State(level=[0.9]),
     ]
 
-    basin3 = model.basin.add(Node(3, Point(2.0, 0.0)), basin_data)
-    basin4 = model.basin.add(Node(4, Point(3.0, 1.0)), basin_data)
-    basin6 = model.basin.add(Node(6, Point(4.0, 2.0)), basin_data)
-    basin9 = model.basin.add(Node(9, Point(5.0, 0.0)), basin_data)
+    basin3 = model.basin.add(Node(3, Point(2.0, 0.0), name="Boezem"), basin_data)
+    basin4 = model.basin.add(Node(4, Point(2.0, 2.0), name="Polder"), basin_data)
+    basin6 = model.basin.add(Node(6, Point(4.0, 2.0), name="Polder"), basin_data)
+    basin9 = model.basin.add(Node(9, Point(4.0, 0.0), name="Boezem"), basin_data)
 
-    # system in
+    ###Setup outlet:
+
+    outlet10 = model.outlet.add(
+        Node(10, Point(5.0, 0.0)),
+        [outlet.Static(flow_rate=10, min_upstream_level=[1.1])],
+    )
+
     outlet12 = model.outlet.add(
-        Node(12, Point(2.0, 1.1)),
-        [outlet.Static(flow_rate=1.0, max_downstream_level=[1.1])],
+        Node(12, Point(1.0, 0)),
+        [outlet.Static(flow_rate=[10])],
     )
 
     outlet5 = model.outlet.add(
-        Node(5, Point(2.1, 0.1)),
-        [outlet.Static(flow_rate=1.0, max_downstream_level=[1.0])],
-    )
-
-    # Control outlet 13 such that it is able to both drain basin4 and fill basin6
-    control_outlet13 = model.discrete_control.add(
-        Node(22, Point(3.3, 1.1)),
-        [
-            discrete_control.Variable(
-                compound_variable_id=[1, 2],
-                listen_node_id=[4, 6],
-                variable=["level", "level"],
-            ),
-            discrete_control.Condition(
-                threshold_high=[1.0, 0.9],
-                compound_variable_id=[1, 2],
-                condition_id=[1, 2],
-            ),
-            discrete_control.Logic(
-                truth_state=["TF", "TT", "FF", "FT"],
-                control_state=["on", "on", "on", "off"],
-            ),
-        ],
-    )
-
-    outlet13 = model.outlet.add(
-        Node(13, Point(3.1, 1.1)),
+        Node(5, Point(2, 1), name="inlaat"),
         [
             outlet.Static(
-                control_state=["on", "off"],
-                flow_rate=[1.0, 0.0],
+                flow_rate=2.0, min_upstream_level=[1.0], max_downstream_level=[1.0]
             )
         ],
     )
 
-    # system out
-    outlet10 = model.outlet.add(
-        Node(10, Point(6.0, 0.0)),
-        [outlet.Static(flow_rate=1.0, min_upstream_level=[1.1])],
+    outlet13 = model.outlet.add(
+        Node(13, Point(3, 2), name="inlaat/uitlaat"),
+        [
+            outlet.Static(
+                flow_rate=2.0, min_upstream_level=[1], max_downstream_level=[0.9]
+            )
+        ],
     )
 
     ###Setup Manning resistance:
     manning_resistance2 = model.manning_resistance.add(
-        Node(2, Point(3.5, 0.0)),
+        Node(2, Point(3, 0.0)),
         [
             manning_resistance.Static(
                 length=[900], manning_n=[0.04], profile_width=[6.0], profile_slope=[3.0]
@@ -837,38 +818,39 @@ def circular_flow_model() -> Model:
     )
 
     ##Setup pump:
+    control_pump = model.discrete_control.add(
+        Node(1, Point(0, 0.5)),
+        [
+            discrete_control.Variable(
+                listen_node_id=[6],
+                variable=["level"],
+                compound_variable_id=1,
+            ),
+            discrete_control.Condition(
+                threshold_high=[0.95],
+                threshold_low=[0.9],
+                compound_variable_id=1,
+                condition_id=1,
+            ),
+            discrete_control.Logic(truth_state=["T", "F"], control_state=["on", "off"]),
+        ],
+    )
     pump7 = model.pump.add(
         Node(7, Point(4.9, 0.1)),
         [
             pump.Static(
                 control_state=["on", "off"],
-                flow_rate=[1.0, 0.0],
+                flow_rate=[5.0, 0.0],
             )
-        ],
-    )
-
-    #### pump control:
-    control_pump = model.continuous_control.add(
-        Node(20, Point(5, 1)),
-        [
-            continuous_control.Variable(
-                listen_node_id=6,
-                variable=["level"],
-            ),
-            continuous_control.Function(
-                input=[0.5, 0.9, 0.92, 1],
-                output=[0.0, 0.0, 1.0, 10],
-                controlled_variable="flow_rate",
-            ),
         ],
     )
 
     ##Setup level boundary:
     level_boundary11 = model.level_boundary.add(
-        Node(11, Point(2.0, 2.0)), [level_boundary.Static(level=[2])]
+        Node(11, Point(0, 0)), [level_boundary.Static(level=[1.1])]
     )
     level_boundary17 = model.level_boundary.add(
-        Node(17, Point(6.0, 1.0)), [level_boundary.Static(level=[0.9])]
+        Node(17, Point(6, 0)), [level_boundary.Static(level=[0.9])]
     )
 
     ##Setup the links:
@@ -892,6 +874,5 @@ def circular_flow_model() -> Model:
     model.link.add(outlet12, basin3)  # 9
     model.link.add(outlet10, level_boundary17)  # 10
     model.link.add(control_pump, pump7)  # 11
-    model.link.add(control_outlet13, outlet13)
 
     return model
