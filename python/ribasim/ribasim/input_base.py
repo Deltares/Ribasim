@@ -22,6 +22,7 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 import pydantic
+import xarray as xr
 from pandera.typing import DataFrame
 from pandera.typing.geopandas import GeoDataFrame
 from pydantic import BaseModel as PydanticBaseModel
@@ -371,9 +372,18 @@ class TableModel(FileModel, Generic[TableT]):
     def _load(cls, filepath: Path | None) -> dict[str, Any]:
         db = context_file_loading.get().get("database")
         if filepath is not None and db is not None:
-            adf = cls._from_arrow(filepath)
-            # TODO Store filepath?
-            return {"df": adf}
+            suffix = filepath.suffix.lower()
+            if suffix == ".nc":
+                df = cls._from_netcdf(filepath)
+                return {"df": df}
+            elif suffix == ".arrow":
+                df = cls._from_arrow(filepath)
+                return {"df": df}
+            else:
+                raise ValueError(
+                    f"Unsupported file: '{filepath}'. "
+                    "Only '.nc' and '.arrow' extensions are supported."
+                )
         elif db is not None:
             ddf = cls._from_db(db, cls.tablename())
             return {"df": ddf}
@@ -381,11 +391,19 @@ class TableModel(FileModel, Generic[TableT]):
             return {}
 
     def _save(self, directory: DirectoryPath, input_dir: DirectoryPath) -> None:
-        # TODO directory could be used to save an arrow file
         db_path = context_file_writing.get().get("database")
         self.sort()
         if self.filepath is not None:
-            self._write_arrow(self.filepath, directory, input_dir)
+            suffix = self.filepath.suffix.lower()
+            if suffix == ".nc":
+                self._write_netcdf(self.filepath, directory, input_dir)
+            elif suffix == ".arrow":
+                self._write_arrow(self.filepath, directory, input_dir)
+            else:
+                raise ValueError(
+                    f"Unsupported file: '{self.filepath}'. "
+                    "Only '.nc' and '.arrow' extensions are supported."
+                )
         elif db_path is not None:
             self._write_geopackage(db_path)
 
@@ -424,6 +442,32 @@ class TableModel(FileModel, Generic[TableT]):
             compression_level=6,
         )
 
+    def _write_netcdf(self, filepath: Path, directory: Path, input_dir: Path) -> None:
+        """Write the contents of the input to a NetCDF file."""
+        assert self.df is not None
+
+        cols = self.df.columns
+        err = ValueError(
+            f"Table doesn't support writing to NetCDF: {self.tablename()}."
+        )
+
+        # Convert DataFrame to xarray Dataset
+        # DataFrame indices will become coordinates
+        unsupported_dims = ("link_id", "subgrid_id", "substance", "demand_priority")
+        if any(col in unsupported_dims for col in cols):
+            raise err
+        elif "time" in cols:
+            ds = self.df.set_index(["time", "node_id"]).to_xarray()
+        elif "node_id" in cols:
+            ds = self.df.set_index(["node_id"]).to_xarray()
+        else:
+            raise err
+
+        # Write to NetCDF file
+        path = directory / input_dir / filepath
+        path.parent.mkdir(parents=True, exist_ok=True)
+        ds.to_netcdf(path)
+
     @classmethod
     def _from_db(cls, path: Path, table: str) -> pd.DataFrame | None:
         with closing(connect(path)) as connection:
@@ -446,6 +490,17 @@ class TableModel(FileModel, Generic[TableT]):
     def _from_arrow(cls, path: Path) -> pd.DataFrame:
         directory = context_file_loading.get().get("directory", Path("."))
         return pd.read_feather(directory / path)
+
+    @classmethod
+    def _from_netcdf(cls, path: Path) -> pd.DataFrame:
+        """Read a NetCDF file and convert it back to a DataFrame."""
+        directory = context_file_loading.get().get("directory", Path("."))
+        full_path = directory / path
+
+        with xr.open_dataset(full_path, engine="netcdf4") as ds:
+            df = ds.to_dataframe().reset_index()
+
+        return df
 
     def sort(self):
         """Sort the table as required.
