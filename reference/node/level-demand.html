@@ -401,7 +401,8 @@ window.Quarto = {
 </section>
 <section id="time" class="level2" data-number="1.2">
 <h2 data-number="1.2" class="anchored" data-anchor-id="time"><span class="header-section-number">1.2</span> Time</h2>
-<p>This table is the transient form of the <code>LevelDemand</code> table, in which time-dependent minimum and maximum levels can be supplied.</p>
+<p>This table is the transient form of the <code>LevelDemand</code> table, in which time-dependent minimum and maximum levels can be supplied. With this the levels can be updated over time. In between the given times the levels are interpolated with forward fill (block interpolation), and outside the demand is constant given by the nearest time value. The allocation algorithm evaluates the interpolation at the end of the allocation time step.</p>
+<p>This is in contrast with UserDemand and FlowDemand, as allocation will aim to reach the desired level at the end of the allocation time step.</p>
 <table class="caption-top table">
 <thead>
 <tr class="header">

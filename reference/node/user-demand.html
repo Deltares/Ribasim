@@ -422,7 +422,7 @@ window.Quarto = {
 </section>
 <section id="time" class="level2" data-number="1.2">
 <h2 data-number="1.2" class="anchored" data-anchor-id="time"><span class="header-section-number">1.2</span> Time</h2>
-<p>This table is the transient form of the <code>UserDemand</code> table. The only difference is that a time column is added and activity is assumed to be true. With this the demand can be updated over time. In between the given times the demand is interpolated linearly, and outside the demand is constant given by the nearest time value. The <code>demand_priority</code> is not allowed to change over time. Note that a <code>node_id</code> can be either in this table or in the static one, but not both.</p>
+<p>This table is the transient form of the <code>UserDemand</code> table. The only difference is that a time column is added and activity is assumed to be true. With this the demand and return factor can be updated over time. In between the given times the values are block interpolated (forward fill), and outside the demand is constant given by the nearest time value. The allocation algorithm evaluates the interpolation at the start of the allocation time step. The <code>demand_priority</code> is not allowed to change over time. Note that a <code>node_id</code> can be either in this table or in the static one, but not both.</p>
 <table class="caption-top table">
 <thead>
 <tr class="header">

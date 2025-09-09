@@ -392,7 +392,7 @@ window.Quarto = {
 </section>
 <section id="time" class="level2" data-number="1.2">
 <h2 data-number="1.2" class="anchored" data-anchor-id="time"><span class="header-section-number">1.2</span> Time</h2>
-<p>This table is the transient form of the <code>FlowDemand</code> table, in which a time-dependent demand can be supplied. Similar to the static version, only a single priority per <code>FlowDemand</code> node can be provided.</p>
+<p>This table is the transient form of the <code>FlowDemand</code> table, in which a time-dependent demand can be supplied. With this the demand can be updated over time. In between the given times the demand is block interpolated (forward fill), and outside the demand is constant given by the nearest time value. The allocation algorithm evaluates the interpolation at the start of the allocation time step.</p>
 <table class="caption-top table">
 <thead>
 <tr class="header">
