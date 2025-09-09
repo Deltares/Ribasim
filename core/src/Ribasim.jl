@@ -159,6 +159,8 @@ using Dates: Second
 
 using Printf: @sprintf
 
+using Base.Threads: @threads
+
 export libribasim
 
 include("carrays.jl")
