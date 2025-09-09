@@ -119,7 +119,7 @@ end
 
     toml_path = normpath(
         @__DIR__,
-        "../../generated_testmodels/main_network_with_subnetworks/ribasim.toml",
+        "../../generated_testmodels/primary_and_secondary_subnetworks/ribasim.toml",
     )
     @test ispath(toml_path)
     model = Ribasim.Model(toml_path)
@@ -155,7 +155,7 @@ end
 
     toml_path = normpath(
         @__DIR__,
-        "../../generated_testmodels/main_network_with_subnetworks/ribasim.toml",
+        "../../generated_testmodels/primary_and_secondary_subnetworks/ribasim.toml",
     )
     @test ispath(toml_path)
     model = Ribasim.Model(toml_path)

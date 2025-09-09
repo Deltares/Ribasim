@@ -101,7 +101,7 @@ def user_demand_model() -> Model:
 def subnetwork_model() -> Model:
     """Create a UserDemand testmodel representing a subnetwork.
 
-    This model is merged into main_network_with_subnetworks_model.
+    This model is merged into primary_and_secondary_subnetworks_model.
     """
     model = Model(
         starttime="2020-01-01",
@@ -188,7 +188,7 @@ def subnetwork_model() -> Model:
 def looped_subnetwork_model() -> Model:
     """Create a UserDemand testmodel representing a subnetwork containing a loop in the topology.
 
-    This model is merged into main_network_with_subnetworks_model.
+    This model is merged into primary_and_secondary_subnetworks_model.
     """
     model = Model(
         starttime="2020-01-01",
@@ -436,7 +436,7 @@ def allocation_example_model() -> Model:
     return model
 
 
-def main_network_with_subnetworks_model() -> Model:
+def primary_and_secondary_subnetworks_model() -> Model:
     """Generate a model which consists of a main network and multiple connected subnetworks."""
     model = Model(
         starttime="2020-01-01",
@@ -713,9 +713,9 @@ def main_network_with_subnetworks_model() -> Model:
     return model
 
 
-def subnetworks_with_sources_model() -> Model:
+def secondary_networks_with_sources_model() -> Model:
     """Generate a model with subnetworks which contain sources."""
-    model = main_network_with_subnetworks_model()
+    model = primary_and_secondary_subnetworks_model()
 
     model.flow_boundary.add(
         Node(58, Point(3, 5), subnetwork_id=3),
