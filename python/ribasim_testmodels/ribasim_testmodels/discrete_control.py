@@ -1,6 +1,11 @@
+from typing import Any
+
 import numpy as np
 import pandas as pd
 from ribasim.config import Experimental, Interpolation, Node, Results
+from ribasim.input_base import (
+    TableModel,
+)
 from ribasim.model import Model, Solver
 from ribasim.nodes import (
     basin,
@@ -745,7 +750,12 @@ def transient_condition_model() -> Model:
 
 def circular_flow_model() -> Model:
     """Create a model with a circular flow and a discrete control on a pump."""
-    model = Model(starttime="2020-01-01", endtime="2021-01-01", crs="EPSG:4326")
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2021-01-01",
+        crs="EPSG:4326",
+        solver=Solver(saveat=3600),
+    )
 
     time = pd.date_range(model.starttime, model.endtime)
     day_of_year = time.day_of_year.to_numpy()
@@ -760,8 +770,8 @@ def circular_flow_model() -> Model:
     evaporation[180:270] = 0
     evaporation[270:366] = 1e-6
 
-    basin_data = [
-        basin.Profile(area=[0.01, 1000.0], level=[-10, 1.0]),
+    basin_data: list[TableModel[Any]] = [
+        basin.Profile(area=[10, 10_000.0], level=[-10, 1.0]),
         basin.Time(
             time=pd.date_range(model.starttime, model.endtime),
             drainage=0.0,
@@ -840,7 +850,7 @@ def circular_flow_model() -> Model:
         [
             pump.Static(
                 control_state=["on", "off"],
-                flow_rate=[5.0, 0.0],
+                flow_rate=[0.1, 0.0],
             )
         ],
     )

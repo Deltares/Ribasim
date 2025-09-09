@@ -351,130 +351,33 @@ end
     @test record.time[1:2] ≈ [0, t_condition_change]
 end
 
-@testitem "solve circular flow with hysteresis control" begin
+@testitem "Circular flow with hysteresis control" begin
     using DataFrames: DataFrame
+    using Arrow
+
     toml_path = normpath(@__DIR__, "../../generated_testmodels/circular_flow/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
-    # get the levels
-    data = Ribasim.get_storages_and_levels(model)
-    level = data.level[:, begin:(end - 1)]
 
-    flow_table = DataFrame(Ribasim.flow_data(model))
-    flow_link_basin_3_to_9_manning = filter(:link_id => ==(1), flow_table)
-    flow_link_basin_3_to_4_outlet = filter(:link_id => ==(4), flow_table)
-    flow_link_basin_4_to_6_outlet = filter(:link_id => ==(6), flow_table)
-    flow_link_basin_6_to_9_pump = filter(:link_id => ==(7), flow_table)
-    outflow_link = filter(:link_id => ==(9), flow_table)
-    inflow_link = filter(:link_id => ==(11), flow_table)
+    control_bytes = read(normpath(dirname(toml_path), "results/control.arrow"))
+    control = DataFrame(Arrow.Table(control_bytes))
 
-    using Plots: plot, plot!
-    time = flow_link_basin_3_to_9_manning.time
+    basin_bytes = read(normpath(dirname(toml_path), "results/basin.arrow"))
+    basin = DataFrame(Arrow.Table(basin_bytes))
+    basin6 = filter(:node_id => ==(6), basin)
 
-    # Manning flow water loop
-    plot(
-        time,
-        flow_link_basin_3_to_9_manning.flow_rate;
-        label = "manning flow",
-        xlabel = "Time (s)",
-        ylabel = "Flow rate (m³/s)",
-    )
-    plot!(time, flow_link_basin_3_to_4_outlet.flow_rate; label = "circle in flow")
+    # Pump is initially off because level is below 0.9
+    t0 = control.time[1]
+    @test control.truth_state[1] == "F"
+    @test basin6.level[findfirst(>=(t0), basin6.time)] <= 0.9 + 1e-10
 
-    # tussen basin inflow, outflow
-    plot(
-        time,
-        flow_link_basin_3_to_4_outlet.flow_rate;
-        label = "between basin in flow",
-        xlabel = "Time (s)",
-        ylabel = "Flow rate (m³/s)",
-    )
-    plot!(time, flow_link_basin_4_to_6_outlet.flow_rate; label = "between basin out flow")
+    # Switches on when level exceeds 0.95
+    t1 = control.time[2]
+    @test control.truth_state[2] == "T"
+    @test basin6.level[findfirst(>=(t1), basin6.time)] > 0.95
 
-    # Polder inflow and outflow
-    plot(time, flow_link_basin_4_to_6_outlet.flow_rate; label = "polder inlet flow")
-    plot!(time, flow_link_basin_6_to_9_pump.flow_rate; label = "polder pump out flow")
-
-    # model in and out flow
-    plot(time, inflow_link.flow_rate; label = "model inflow")
-    plot!(time, outflow_link.flow_rate; label = "model outflow")
-
-    # model in-out flow
-    plot(time, inflow_link.flow_rate - outflow_link.flow_rate; label = "inflow")
-
-    plot(
-        time,
-        level[2, :];
-        label = "tussen basin",
-        xlabel = "Time (s)",
-        ylabel = "Level (m)",
-        ylim = (0, maximum(level[2, :])),
-    )
-
-    plot(
-        time,
-        level[3, :];
-        label = "polder basin",
-        xlabel = "Time (s)",
-        ylabel = "Level (m)",
-    )
-
-    #waterloop levels
-    plot(
-        time,
-        level[1, :];
-        label = "Basin 3 (waterloop left)",
-        xlabel = "Time (s)",
-        ylabel = "Level (m)",
-    )
-    plot!(time, level[4, :]; label = "Basin 9 (waterloop right)")
-end
-
-@testitem "solve circular flow with hysteresis control" begin
-    using DataFrames: DataFrame
-    toml_path = normpath(@__DIR__, "../../generated_testmodels/circular_flow/ribasim.toml")
-    @test ispath(toml_path)
-    model = Ribasim.run(toml_path)
-    # # get the levels
-    # data = Ribasim.get_storages_and_levels(model)
-    # level = data.level[:, begin:(end - 1)]
-
-    # flow_table = DataFrame(Ribasim.flow_data(model))
-    # flow_link_basin_3_to_4_outlet = filter(:link_id => ==(4), flow_table)
-    # flow_link_basin_4_to_6_outlet = filter(:link_id => ==(6), flow_table)
-    # flow_link_basin_6_to_9_pump = filter(:link_id => ==(7), flow_table)
-    # outflow_link = filter(:link_id => ==(12), flow_table)
-    # inflow_link = filter(:link_id => ==(11), flow_table)
-
-    # using Plots: plot, plot!
-    # time = flow_link_basin_3_to_4_outlet.time
-
-    # plot(time, flow_link_basin_3_to_4_outlet.flow_rate; label = "circle in flow")
-
-    # # tussen basin inflow, outflow
-    # plot(time, flow_link_basin_3_to_4_outlet.flow_rate; label = "basin #4 inlet flow")
-    # plot!(time, flow_link_basin_4_to_6_outlet.flow_rate; label = "basin #4 outlet flow")
-
-    # # Polder inflow and outflow
-    # plot(time, flow_link_basin_4_to_6_outlet.flow_rate; label = "basin #6 inlet flow")
-    # plot!(
-    #     time,
-    #     flow_link_basin_6_to_9_pump.flow_rate;
-    #     label = "basin #6 outlet (pump)  flow",
-    # )
-
-    # # model in and out flow
-    # plot(time, inflow_link.flow_rate; label = "model inflow")
-    # plot!(time, outflow_link.flow_rate; label = "model outflow")
-
-    # # model in-out flow
-    # plot(time, inflow_link.flow_rate - outflow_link.flow_rate; label = "inflow")
-
-    # plot(time, level[2, :]; label = "basin #4", xlabel = "t (s)", ylabel = "h (m)")
-
-    # plot!(time, level[3, :]; label = "basin #6 (s)")
-
-    # #waterloop levels
-    # plot(time, level[1, :]; label = "Basin #3 (left)", xlabel = "t (s)", ylabel = "h (m)")
-    # plot!(time, level[4, :]; label = "Basin #9 (right)")
+    # And only switches off when level goes below 0.9 again
+    t2 = control.time[3]
+    @test control.truth_state[3] == "F"
+    @test basin6.level[findfirst(>=(t2), basin6.time)] <= 0.9 + 1e-2
 end

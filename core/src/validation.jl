@@ -576,6 +576,17 @@ function valid_discrete_control(p::ParametersIndependent, config::Config)::Bool
             end
         end
 
+        # Validate threshold_low
+        for compound_variable in compound_variables
+            for (threshold_high, threshold_low) in
+                zip(compound_variable.threshold_high, compound_variable.threshold_low)
+                if any(threshold_low.u .> threshold_high.u)
+                    errors = true
+                    @error "threshold_low is not less than or equal to threshold_high for '$(compound_variable.node_id)'"
+                end
+            end
+        end
+
         # Validate look_ahead
         for compound_variable in compound_variables
             for subvariable in compound_variable.subvariables

@@ -802,8 +802,8 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     return basin
 end
 
-function get_threshold_high!(
-    threshold_high::Vector{<:AbstractInterpolation},
+function get_threshold!(
+    threshold::Vector{<:AbstractInterpolation},
     conditions_compound_variable,
     starttime::DateTime,
     cyclic_time::Bool;
@@ -824,7 +824,7 @@ function get_threshold_high!(
             errors = true
         else
             push_constant_interpolation!(
-                threshold_high,
+                threshold,
                 field == :threshold_high ? condition_group.threshold_high :
                 coalesce.(condition_group.threshold_low, condition_group.threshold_high),
                 seconds_since.(condition_group.time, starttime),
@@ -877,13 +877,9 @@ function CompoundVariable(
     end
 
     # Build threshold_high ConstantInterpolation objects
-    !isnothing(conditions_compound_variable) && get_threshold_high!(
-        threshold_high,
-        conditions_compound_variable,
-        starttime,
-        cyclic_time,
-    )
-    !isnothing(conditions_compound_variable) && get_threshold_high!(
+    !isnothing(conditions_compound_variable) &&
+        get_threshold!(threshold_high, conditions_compound_variable, starttime, cyclic_time)
+    !isnothing(conditions_compound_variable) && get_threshold!(
         threshold_low,
         conditions_compound_variable,
         starttime,
