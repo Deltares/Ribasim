@@ -10,7 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 This release focuses on improving allocation capabilities and performance optimizations.
 We linearize the optimization problem, and Pump and Outlets can now listen to allocation to set the flow rate.
 NetCDF output has been added, as well as experimental support for NetCDF input.
-DiscreteControl now supports an upper and lower threshold to configure zones or hysteresis.
+DiscreteControl now supports an upper and lower threshold to model hysteresis.
 Editing models in QGIS is no longer supported; the plugin widget has been reduced one button.
 The [Ribasim Python installation section](https://ribasim.org/install.html#sec-install-python) allows you to pick your favorite package manager.
 The addition of `surface_runoff` to the Basin fluxes is the main breaking change.
@@ -44,6 +44,7 @@ Lastly, Ribasim is now multithreaded!
 - QGIS: remove editing features for simplified workflow. [#2472](https://github.com/Deltares/Ribasim/pull/2472)
 - Use smooth interpolation of ContinuousControl and TabulatedRatingCurve functions. [#2446](https://github.com/Deltares/Ribasim/pull/2446) [#2458](https://github.com/Deltares/Ribasim/pull/2458)
 - Use a Reynolds based threshold for the ManningResistance relaxed root [2544](https://github.com/Deltares/Ribasim/pull/2544)
+- Demand nodes with timeseries now use block interpolation [2568](https://github.com/Deltares/Ribasim/pull/2568)
 
 ### Fixed
 - Core model initialization speedup. [#2548](https://github.com/Deltares/Ribasim/pull/2548) [#2533](https://github.com/Deltares/Ribasim/pull/2533)
