@@ -9,3 +9,4 @@ edition = "2021"
 clap = { version = "4.5.4", features = ["derive"] }
 libc = "0.2.153"
 libloading = "0.8.3"
+num_cpus = "1.16.0"

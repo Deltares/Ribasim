@@ -1,3 +1,4 @@
+import os
 import re
 import subprocess
 from pathlib import Path
@@ -47,3 +48,74 @@ def test_help():
 def test_missing_toml():
     result = subprocess.run([executable, "/there/is/no/toml"])
     assert result.returncode != 0
+
+
+def test_threads_default(tmp_path):
+    """Test that ribasim runs without threads arg or env var."""
+    model = ribasim_testmodels.basic_model()
+    model.write(tmp_path / "ribasim.toml")
+
+    # Remove JULIA_NUM_THREADS if it exists
+    env = os.environ.copy()
+    env.pop("JULIA_NUM_THREADS", None)
+
+    result = subprocess.run(
+        [executable, tmp_path / "ribasim.toml"],
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0
+
+
+def test_threads_cli_argument(tmp_path):
+    """Test ribasim --threads 2."""
+    # Create a minimal test model
+    model = ribasim_testmodels.basic_model()
+    model.write(tmp_path / "ribasim.toml")
+
+    # Test with specific thread count
+    result = subprocess.run(
+        [executable, "--threads", "2", tmp_path / "ribasim.toml"],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0
+    assert "threads = 2" in result.stderr
+
+
+def test_threads_env_var(tmp_path):
+    """Test that JULIA_NUM_THREADS environment variable is respected."""
+    model = ribasim_testmodels.basic_model()
+    model.write(tmp_path / "ribasim.toml")
+
+    # Test with environment variable set
+    env = os.environ.copy()
+    env["JULIA_NUM_THREADS"] = "3"
+
+    result = subprocess.run(
+        [executable, tmp_path / "ribasim.toml"], env=env, capture_output=True, text=True
+    )
+    assert result.returncode == 0
+    assert "threads = 3" in result.stderr
+
+
+def test_threads_cli_overrides_env(tmp_path):
+    """Test that CLI --threads argument overrides JULIA_NUM_THREADS env var."""
+    model = ribasim_testmodels.basic_model()
+    model.write(tmp_path / "ribasim.toml")
+
+    # Set environment variable to one value
+    env = os.environ.copy()
+    env["JULIA_NUM_THREADS"] = "3"
+
+    # But use CLI argument with different value
+    result = subprocess.run(
+        [executable, "-t", "2", tmp_path / "ribasim.toml"],
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0
+    # Should use CLI value (2), not env var value (3)
+    assert "threads = 2" in result.stderr
