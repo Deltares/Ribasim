@@ -81,8 +81,8 @@ executable is in the main folder.
 
 To download the Ribasim core, download the appropriate zip file for your operating system:
 
-- Ribasim executable - Windows: [ribasim_windows.zip](https://github.com/Deltares/Ribasim/releases/download/v2025.4.0/ribasim_windows.zip)
-- Ribasim executable - Linux: [ribasim_linux.zip](https://github.com/Deltares/Ribasim/releases/download/v2025.4.0/ribasim_linux.zip)
+- Ribasim executable - Windows: [ribasim_windows.zip](https://github.com/Deltares/Ribasim/releases/download/v2025.5.0/ribasim_windows.zip)
+- Ribasim executable - Linux: [ribasim_linux.zip](https://github.com/Deltares/Ribasim/releases/download/v2025.5.0/ribasim_linux.zip)
 
 Note that we currently only support and provide binaries for Windows and Linux, for the x86_64 architecture.
 
@@ -138,7 +138,7 @@ pixi init
 ```
 Now add Ribasim Python:
 ```sh
-pixi add ribasim==2025.4.0
+pixi add ribasim==2025.5.0
 ```
 To start Python, run:
 ```sh
@@ -162,7 +162,7 @@ uv init
 ```
 Now add Ribasim Python:
 ```sh
-uv add ribasim==2025.4.0
+uv add ribasim==2025.5.0
 ```
 To start Python, run:
 ```sh
@@ -172,7 +172,7 @@ uv run python
 ## pip
 
 ```sh
-pip install --upgrade ribasim==2025.4.0
+pip install --upgrade ribasim==2025.5.0
 ```
 
 ## conda
@@ -182,7 +182,7 @@ Ribasim is available in the [conda-forge](https://conda-forge.org/) channel.
 It may not work well when combined with the Anaconda default channel, see [transitioning from defaults](https://conda-forge.org/docs/user/transitioning_from_defaults/).
 
 ```sh
-conda install -c conda-forge ribasim=2025.4.0
+conda install -c conda-forge ribasim=2025.5.0
 ```
 
 :::
@@ -198,7 +198,7 @@ The Ribasim QGIS plugin is only distributed as a .zip archive and must be downlo
 
 Download `ribasim_qgis.zip`:
 
-- QGIS plugin: [ribasim_qgis.zip](https://github.com/Deltares/Ribasim/releases/download/v2025.4.0/ribasim_qgis.zip).
+- QGIS plugin: [ribasim_qgis.zip](https://github.com/Deltares/Ribasim/releases/download/v2025.5.0/ribasim_qgis.zip).
 
 In QGIS, go to Plugins menu > Manage and Install Plugins...
 
