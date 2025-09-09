@@ -50,8 +50,26 @@ def test_missing_toml():
     assert result.returncode != 0
 
 
+def test_threads_default(tmp_path):
+    """Test that ribasim runs without threads arg or env var."""
+    model = ribasim_testmodels.basic_model()
+    model.write(tmp_path / "ribasim.toml")
+
+    # Remove JULIA_NUM_THREADS if it exists
+    env = os.environ.copy()
+    env.pop("JULIA_NUM_THREADS", None)
+
+    result = subprocess.run(
+        [executable, tmp_path / "ribasim.toml"],
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0
+
+
 def test_threads_cli_argument(tmp_path):
-    """Test that the --threads CLI argument is properly handled."""
+    """Test ribasim --threads 2."""
     # Create a minimal test model
     model = ribasim_testmodels.basic_model()
     model.write(tmp_path / "ribasim.toml")
