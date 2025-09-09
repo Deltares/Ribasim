@@ -999,7 +999,7 @@ function get_timeseries_tstops(
     end
     for compound_variables in discrete_control.compound_variables
         for compound_variable in compound_variables
-            get_timeseries_tstops!(tstops, t_end, compound_variable.greater_than)
+            get_timeseries_tstops!(tstops, t_end, compound_variable.threshold_high)
         end
     end
 

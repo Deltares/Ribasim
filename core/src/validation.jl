@@ -525,7 +525,7 @@ function valid_discrete_control(p::ParametersIndependent, config::Config)::Bool
 
         # The number of conditions of this DiscreteControl node
         n_conditions = sum(
-            length(compound_variable.greater_than) for
+            length(compound_variable.threshold_high) for
             compound_variable in compound_variables
         )
 
@@ -573,6 +573,17 @@ function valid_discrete_control(p::ParametersIndependent, config::Config)::Bool
                 undefined_list = collect(undefined_control_states)
                 @error "These control states from $id are not defined for controlled $id_outneighbor: $undefined_list."
                 errors = true
+            end
+        end
+
+        # Validate threshold_low
+        for compound_variable in compound_variables
+            for (threshold_high, threshold_low) in
+                zip(compound_variable.threshold_high, compound_variable.threshold_low)
+                if any(threshold_low.u .> threshold_high.u)
+                    errors = true
+                    @error "threshold_low is not less than or equal to threshold_high for '$(compound_variable.node_id)'"
+                end
             end
         end
 

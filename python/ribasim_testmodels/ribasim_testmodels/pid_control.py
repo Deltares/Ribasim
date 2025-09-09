@@ -132,7 +132,7 @@ def discrete_control_of_pid_control_model() -> Model:
                 compound_variable_id=1,
             ),
             discrete_control.Condition(
-                greater_than=[5.0],
+                threshold_high=[5.0],
                 compound_variable_id=1,
                 condition_id=1,
             ),
