@@ -379,28 +379,6 @@ function get_all_demand_priorities(db::DB, config::Config;)::Vector{Int32}
     end
 end
 
-function get_external_demand_priority_idx(
-    p_independent::ParametersIndependent,
-    node_id::NodeID,
-)::Int
-    (; graph, level_demand, flow_demand, allocation) = p_independent
-    inneighbor_control_ids = inneighbor_labels_type(graph, node_id, LinkType.control)
-    if isempty(inneighbor_control_ids)
-        return 0
-    end
-    inneighbor_control_id = only(inneighbor_control_ids)
-    type = inneighbor_control_id.type
-    if type == NodeType.LevelDemand
-        demand_priority = level_demand.demand_priority[inneighbor_control_id.idx]
-    elseif type == NodeType.FlowDemand
-        demand_priority = flow_demand.demand_priority[inneighbor_control_id.idx]
-    else
-        error("Nodes of type $type have no demand_priority.")
-    end
-
-    return findsorted(allocation.demand_priorities_all, demand_priority)
-end
-
 const control_type_mapping = Dict{NodeType.T, ContinuousControlType.T}(
     NodeType.PidControl => ContinuousControlType.PID,
     NodeType.ContinuousControl => ContinuousControlType.Continuous,
