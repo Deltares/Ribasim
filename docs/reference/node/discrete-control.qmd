@@ -69,7 +69,7 @@ These variables can be listened to:
 
 ## Condition
 
-The condition schema defines conditions of the form 'the `discrete_control` node with this `node_id` listens to whether the variable given by the `node_id` and `compound_variable_id` is greater than `threshold_high`' (at time $t$) when the condition was false previously, or `threshold_low` when true previously. Using `threshold_low` is optional and defaults to `threshold_high`. When set to a different value---smaller than or equal to `threshold_high`---it defines a [deadband]("https://en.wikipedia.org/wiki/Deadband") and thus enables hysteresis. In equation form:
+The condition schema defines conditions of the form the `discrete_control` node with this `node_id` listens to whether the variable given by the `node_id` and `compound_variable_id` is greater than `threshold_high` (at time $t$) when the condition was false previously, or `threshold_low` when true previously. Using `threshold_low` is optional and defaults to `threshold_high`. When set to a different value---smaller than or equal to `threshold_high`---it defines a [deadband]("https://en.wikipedia.org/wiki/Deadband") and thus enables hysteresis. In equation form:
 
 $$
 condition=\begin{cases}
