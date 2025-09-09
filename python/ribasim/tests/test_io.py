@@ -255,28 +255,28 @@ def test_sort(level_range, tmp_path):
     link = model.link
 
     # apply a wrong sort, then call the sort method to restore order
-    table.df.sort_values("greater_than", ascending=False, inplace=True)
-    assert table.df.iloc[0]["greater_than"] == 15.0
+    table.df.sort_values("threshold_high", ascending=False, inplace=True)
+    assert table.df.iloc[0]["threshold_high"] == 15.0
     assert table._sort_keys == [
         "node_id",
         "compound_variable_id",
         "condition_id",
     ]
     table.sort()
-    assert table.df.iloc[0]["greater_than"] == 5.0
+    assert table.df.iloc[0]["threshold_high"] == 5.0
 
     # The link table is not sorted
     assert link.df.iloc[1]["from_node_id"] == 3
 
     # re-apply wrong sort, then check if it gets sorted on write
-    table.df.sort_values("greater_than", ascending=False, inplace=True)
+    table.df.sort_values("threshold_high", ascending=False, inplace=True)
     model.write(tmp_path / "basic/ribasim.toml")
     # write sorts the model in place
-    assert table.df.iloc[0]["greater_than"] == 5.0
+    assert table.df.iloc[0]["threshold_high"] == 5.0
     model_loaded = ribasim.Model.read(filepath=tmp_path / "basic/ribasim.toml")
     table_loaded = model_loaded.discrete_control.condition
     link_loaded = model_loaded.link
-    assert table_loaded.df.iloc[0]["greater_than"] == 5.0
+    assert table_loaded.df.iloc[0]["threshold_high"] == 5.0
     assert link.df.iloc[1]["from_node_id"] == 3
     __assert_equal(table.df, table_loaded.df)
     __assert_equal(link.df, link_loaded.df)

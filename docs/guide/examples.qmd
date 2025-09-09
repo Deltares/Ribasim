@@ -300,7 +300,7 @@ model.discrete_control.add(
             compound_variable_id=1,
             condition_id=[1, 2],
             # min, max
-            greater_than=[5.0, 15.0],
+            threshold_high=[5.0, 15.0],
         ),
         discrete_control.Logic(
             truth_state=["FF", "TF", "TT"],
@@ -402,10 +402,10 @@ df_basin_wide = df_basin.pivot_table(
 
 ax = df_basin_wide["level"].plot()
 
-greater_than = model.discrete_control.condition.df.greater_than
+threshold_high = model.discrete_control.condition.df.threshold_high
 
 ax.hlines(
-    greater_than,
+    threshold_high,
     df_basin.time[0],
     df_basin.time.max(),
     lw=1,
@@ -413,7 +413,7 @@ ax.hlines(
     color="k",
 )
 
-ax.set_yticks(greater_than, ["min", "max"])
+ax.set_yticks(threshold_high, ["min", "max"])
 ax.set_ylabel("level")
 plt.show()
 ```

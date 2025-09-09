@@ -781,7 +781,7 @@ class DiscreteControlCondition(Input):
             QgsField("node_id", QVariant.Int),
             QgsField("compound_variable_id", QVariant.Int),
             QgsField("condition_id", QVariant.Int),
-            QgsField("greater_than", QVariant.Double),
+            QgsField("threshold_high", QVariant.Double),
             QgsField("time", QVariant.DateTime),
         ]
 

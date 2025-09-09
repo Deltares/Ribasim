@@ -4,7 +4,6 @@ from geopandas import GeoDataFrame
 from pandas import DataFrame
 
 # On each breaking change, increment the __schema_version__ by one.
-# Do the same for write_schema_version in ribasim_qgis/core/geopackage.py
 
 
 def _rename_column(df, from_colname, to_colname):
@@ -145,6 +144,12 @@ def discretecontrolconditionschema_migration(
         n_rows = len(df)
         df["time"] = [None] * n_rows
         df["condition_id"] = range(1, n_rows + 1)
+    if schema_version < 8:
+        warnings.warn(
+            "Migrating outdated DiscreteControl / condition table.", UserWarning
+        )
+        df["threshold_low"] = None
+        df.rename(columns={"greater_than": "threshold_high"}, inplace=True)
     return df
 
 

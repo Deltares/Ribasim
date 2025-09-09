@@ -102,10 +102,14 @@ end
 function formulate_continuous_control!(du::CVector, p::Parameters, t::Number)::Nothing
     (; compound_variable, target_ref, func) = p.p_independent.continuous_control
 
-    for (cvar, ref, func_) in zip(compound_variable, target_ref, func)
+    @threads for i in eachindex(compound_variable)
+        cvar = compound_variable[i]
+        ref = target_ref[i]
+        func_ = func[i]
         value = compound_variable_value(cvar, p, du, t)
         set_value!(ref, p, func_(value))
     end
+
     return nothing
 end
 
@@ -142,12 +146,13 @@ function set_current_basin_properties!(u::CVector, p::Parameters, t::Number)::No
 
     if p_mutable.new_t || p_mutable.new_u
         formulate_storages!(u, p, t)
-
-        for (id, s) in zip(basin.node_id, state_time_dependent_cache.current_storage)
+        @threads for i in eachindex(basin.node_id)
+            id = basin.node_id[i]
+            s = state_time_dependent_cache.current_storage[i]
             i = id.idx
             state_time_dependent_cache.current_low_storage_factor[i] =
                 reduction_factor(s, low_storage_threshold[i])
-            state_time_dependent_cache.current_level[i] =
+            @inbounds state_time_dependent_cache.current_level[i] =
                 get_level_from_storage(basin, i, s)
             state_time_dependent_cache.current_area[i] =
                 basin.level_to_area[i](state_time_dependent_cache.current_level[i])
@@ -241,8 +246,7 @@ function formulate_pid_control!(du::CVector, u::CVector, p::Parameters, t::Numbe
     all_nodes_active = p_mutable.all_nodes_active
 
     set_error!(pid_control, p, t)
-
-    for (i, _) in enumerate(node_id)
+    for i in eachindex(node_id)
         if !(active[i] || all_nodes_active)
             du.integral[i] = 0.0
             u.integral[i] = 0.0
@@ -398,7 +402,6 @@ function formulate_flow!(
     (; p_mutable) = p
     all_nodes_active = p_mutable.all_nodes_active
     (; node_id, active) = linear_resistance
-
     for id in node_id
         inflow_link = linear_resistance.inflow_link[id.idx]
         outflow_link = linear_resistance.outflow_link[id.idx]
@@ -470,8 +473,7 @@ function formulate_flow!(
     (; p_mutable) = p
     all_nodes_active = p_mutable.all_nodes_active
     (; node_id, active) = tabulated_rating_curve
-
-    for id in node_id
+    @threads for id in node_id
         inflow_link = tabulated_rating_curve.inflow_link[id.idx]
         outflow_link = tabulated_rating_curve.outflow_link[id.idx]
         inflow_id = inflow_link.link[1]
@@ -589,7 +591,6 @@ function formulate_flow!(
 )::Nothing
     (; p_mutable) = p
     (; node_id, active) = manning_resistance
-
     all_nodes_active = p_mutable.all_nodes_active
     for id in node_id
         inflow_link = manning_resistance.inflow_link[id.idx]
