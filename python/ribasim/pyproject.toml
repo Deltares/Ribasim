@@ -19,6 +19,7 @@ dependencies = [
     "datacompy >=0.16",
     "geopandas >=1.0",
     "matplotlib >=3.7",
+    "netCDF4 >=1.7.1",
     "numpy >=1.25",
     "packaging >=23.0",
     "pandas >=2.0",
@@ -29,6 +30,7 @@ dependencies = [
     "shapely >=2.0",
     "tomli >=2.0",
     "tomli-w >=1.0",
+    "xarray >=2025.8.0",
 ]
 dynamic = ["version"]
 

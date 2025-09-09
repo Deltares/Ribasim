@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -199,6 +200,7 @@ def level_boundary_condition_model() -> Model:
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
+        input_dir=Path("input"),
         experimental=Experimental(concentration=True),
     )
 
@@ -261,6 +263,8 @@ def level_boundary_condition_model() -> Model:
         model.outlet[4],
     )
 
+    model.level_boundary.time.set_filepath(Path("level-boundary-time.nc"))
+
     return model
 
 
@@ -276,6 +280,7 @@ def tabulated_rating_curve_control_model() -> Model:
         endtime="2021-01-01",
         crs="EPSG:28992",
         results=Results(format="netcdf"),
+        input_dir=Path("input"),
         experimental=Experimental(concentration=True),
     )
 
@@ -331,6 +336,9 @@ def tabulated_rating_curve_control_model() -> Model:
         model.tabulated_rating_curve[2],
     )
 
+    # write the "Basin / state" to NetCDF for testing
+    model.basin.state.set_filepath(Path("basin-state.nc"))
+
     return model
 
 
@@ -340,6 +348,7 @@ def compound_variable_condition_model() -> Model:
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
+        input_dir=Path("input"),
         experimental=Experimental(concentration=True),
         interpolation=Interpolation(flow_boundary="linear"),
     )
@@ -386,6 +395,8 @@ def compound_variable_condition_model() -> Model:
     model.link.add(model.basin[1], model.pump[4])
     model.link.add(model.pump[4], model.terminal[5])
     model.link.add(model.discrete_control[6], model.pump[4])
+
+    model.flow_boundary.time.set_filepath(Path("flow-boundary-time.nc"))
 
     return model
 

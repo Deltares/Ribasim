@@ -312,6 +312,27 @@ def test_roundtrip(trivial, tmp_path):
             __assert_equal(table1.df, table2.df)
 
 
+def test_roundtrip_netcdf(tabulated_rating_curve_control, tmp_path):
+    model1 = tabulated_rating_curve_control
+    # confirm NetCDF is configured for Basin / state
+    assert model1.basin.state.filepath == Path("basin-state.nc")
+    model1dir = tmp_path / "model1"
+    # read a model and then write it to a different path
+    model1.write(model1dir / "ribasim.toml")
+    model2 = Model.read(model1dir / "ribasim.toml")
+
+    assert (model1dir / "input/database.gpkg").is_file()
+    assert (model1dir / "input/basin-state.nc").is_file()
+
+    df1 = model1.basin.state.df
+    df2 = model2.basin.state.df
+    assert df2 is not None
+    __assert_equal(df1, df2)
+    assert df2.shape == (1, 2)
+    assert df2["node_id"].dtype == np.int32
+    assert df2["level"].dtype == float
+
+
 def test_datetime_timezone():
     # Due to a pydantic issue, a time zone was added.
     # https://github.com/Deltares/Ribasim/issues/1282
