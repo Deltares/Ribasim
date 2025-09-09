@@ -786,7 +786,7 @@ const StateTimeDependentCache{T} = @NamedTuple{
     u_prev_call::Vector{T},
 } where {T}
 
-@enumx CacheType flow_rate_pump flow_rate_outlet basin_level
+@enumx CacheType flow_rate_pump flow_rate_outlet basin_level basin_storage
 
 """
 A cache for intermediate results in `water_balance!` which depend only on the time `t`. A second version of this
@@ -849,6 +849,8 @@ function get_cache_vector(
         state_time_dependent_cache.current_flow_rate_outlet
     elseif type == CacheType.basin_level
         state_time_dependent_cache.current_level
+    elseif type == CacheType.basin_storage
+        state_time_dependent_cache.current_storage
     else
         error("Invalid cache type $type passed.")
     end

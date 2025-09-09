@@ -509,6 +509,8 @@ function get_cache_ref(
 
     ref = if node_id.type == NodeType.Basin && variable == "level"
         CacheRef(; type = CacheType.basin_level, node_id.idx)
+    elseif node_id.type == NodeType.Basin && variable == "storage"
+        CacheRef(; type = CacheType.basin_storage, node_id.idx)
     elseif variable == "flow_rate" && node_id.type != NodeType.FlowBoundary
         if listen
             if node_id.type ∉ conservative_nodetypes

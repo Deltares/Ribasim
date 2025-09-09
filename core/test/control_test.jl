@@ -381,3 +381,14 @@ end
     @test control.truth_state[3] == "F"
     @test basin6.level[findfirst(>=(t2), basin6.time)] <= 0.9 + 1e-2
 end
+
+@testitem "Storage condition" begin
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/storage_condition/ribasim.toml")
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+    @test success(model)
+
+    storage = Ribasim.get_storages_and_levels(model).storage[1, :]
+    @test all(storage .< 7500 + 6)
+end
