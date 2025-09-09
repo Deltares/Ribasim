@@ -32,6 +32,7 @@ Lastly, Ribasim is now multithreaded!
 - Warn when reading a new model with an old Ribasim Python version. [#2410](https://github.com/Deltares/Ribasim/pull/2410)
 - Add instructions to install using Pixi. [#2415](https://github.com/Deltares/Ribasim/pull/2415)
 - Add guide on updating Ribasim models. [#2489](https://github.com/Deltares/Ribasim/pull/2489)
+- Support DiscreteControl listening to a Basin's storage. [#2573](https://github.com/Deltares/Ribasim/pull/2573)
 
 ### Changed
 - Allow two incoming control links for Pump and Outlet. [#2531](https://github.com/Deltares/Ribasim/pull/2531)
