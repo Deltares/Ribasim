@@ -54,6 +54,7 @@ from ribasim_testmodels.discrete_control import (
     level_boundary_condition_model,
     level_range_model,
     pump_discrete_control_model,
+    storage_condition_model,
     tabulated_rating_curve_control_model,
     transient_condition_model,
 )
@@ -149,6 +150,7 @@ __all__ = [
     "pump_discrete_control_model",
     "rating_curve_model",
     "rating_curve_between_basins_model",
+    "storage_condition_model",
     "subnetwork_model",
     "subnetworks_with_sources_model",
     "tabulated_rating_curve_control_model",
