@@ -316,6 +316,10 @@ end
 end
 
 @testitem "warm state netcdf" begin
+    # This tests that we can write Basin / state results to NetCDF, and read this in again
+    # as a warm state, such that the storages at the end of one run are equal to those
+    # at the beginning of the second run.
+
     using IOCapture: capture
     using Ribasim: solve!, write_results
     import TOML

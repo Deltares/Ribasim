@@ -381,7 +381,7 @@ class TableModel(FileModel, Generic[TableT]):
                 return {"df": df}
             else:
                 raise ValueError(
-                    f"Unsupported file extension '{suffix}'. "
+                    f"Unsupported file: '{filepath}'. "
                     "Only '.nc' and '.arrow' extensions are supported."
                 )
         elif db is not None:
@@ -401,7 +401,7 @@ class TableModel(FileModel, Generic[TableT]):
                 self._write_arrow(self.filepath, directory, input_dir)
             else:
                 raise ValueError(
-                    f"Unsupported file extension '{suffix}'. "
+                    f"Unsupported file: '{self.filepath}'. "
                     "Only '.nc' and '.arrow' extensions are supported."
                 )
         elif db_path is not None:
@@ -453,7 +453,6 @@ class TableModel(FileModel, Generic[TableT]):
 
         # Convert DataFrame to xarray Dataset
         # DataFrame indices will become coordinates
-        # Unsupported subset of `Ribasim.nc_dim_names`
         unsupported_dims = ("link_id", "subgrid_id", "substance", "demand_priority")
         if any(col in unsupported_dims for col in cols):
             raise err

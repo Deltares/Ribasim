@@ -314,6 +314,8 @@ def test_roundtrip(trivial, tmp_path):
 
 def test_roundtrip_netcdf(tabulated_rating_curve_control, tmp_path):
     model1 = tabulated_rating_curve_control
+    # confirm NetCDF is configured for Basin / state
+    assert model1.basin.state.filepath == Path("basin-state.nc")
     model1dir = tmp_path / "model1"
     # read a model and then write it to a different path
     model1.write(model1dir / "ribasim.toml")
