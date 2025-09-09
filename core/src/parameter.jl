@@ -863,11 +863,13 @@ end
 end
 
 """
-The data for a single compound variable
+The data for a single compound variable for DiscreteControl.
 node_id:: The ID of the DiscreteControl that listens to this variable
 subvariables: data for one single subvariable
 threshold_high: the thresholds this compound variable will be
-    compared against (in the case of DiscreteControl)
+    compared against when the condition in the previous timestep is false
+threshold_low: the thresholds this compound variable will be
+    compared against when the condition in the previous timestep is true
 """
 @kwdef struct CompoundVariable
     node_id::NodeID

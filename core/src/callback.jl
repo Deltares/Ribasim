@@ -608,8 +608,8 @@ end
 Apply the discrete control logic. There's somewhat of a complex structure:
 - Each DiscreteControl node can have one or multiple compound variables it listens to
 - A compound variable is defined as a linear combination of state/time derived parameters of the model
-- Each compound variable has associated with it a vector threshold_high of forward fill interpolation objects over time
-  which defines a list of conditions of the form (compound_variable_value) > threshold_high[i](t)
+- Each compound variable has associated with it a vector threshold_high and threshold_low of forward fill interpolation objects over time
+  which defines a list of conditions of the form (compound_variable_value) > threshold[i](t)
 - The boolean truth value of all these conditions of a discrete control node, sorted first by compound_variable_id and then by
   condition_id, are concatenated into what is called the node's truth state
 - The DiscreteControl node maps this truth state via the logic mapping to a control state, which is a string
@@ -638,7 +638,7 @@ function apply_discrete_control!(u, t, integrator)::Nothing
         for compound_variable in compound_variables_node
             value = compound_variable_value(compound_variable, p, du, t)
 
-            # Loop over the threshold_high interpolations associated with the current compound variable
+            # Loop over the threshold interpolations associated with the current compound variable
             for (threshold_low, threshold_high) in
                 zip(compound_variable.threshold_low, compound_variable.threshold_high)
                 truth_value_old = truth_state_node[truth_state_idx]

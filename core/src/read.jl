@@ -877,7 +877,7 @@ function CompoundVariable(
         push!(subvariables, subvariable)
     end
 
-    # Build threshold_high ConstantInterpolation objects
+    # Build threshold ConstantInterpolation objects
     !isnothing(conditions_compound_variable) &&
         get_threshold!(threshold_high, conditions_compound_variable, starttime, cyclic_time)
     !isnothing(conditions_compound_variable) && get_threshold!(
