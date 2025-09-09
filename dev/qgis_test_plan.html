@@ -244,30 +244,22 @@ ul.task-list li input[type="checkbox"] {
   <ul class="collapse">
   <li><a href="#enable-and-disable" id="toc-enable-and-disable" class="nav-link" data-scroll-target="#enable-and-disable"><span class="header-section-number">1.1</span> Enable and disable</a></li>
   <li><a href="#open-and-close" id="toc-open-and-close" class="nav-link" data-scroll-target="#open-and-close"><span class="header-section-number">1.2</span> Open and close</a></li>
-  <li><a href="#button-states-on-startup" id="toc-button-states-on-startup" class="nav-link" data-scroll-target="#button-states-on-startup"><span class="header-section-number">1.3</span> Button states on startup</a></li>
   </ul></li>
   <li><a href="#model-tab-button-interaction-tests" id="toc-model-tab-button-interaction-tests" class="nav-link" data-scroll-target="#model-tab-button-interaction-tests"><span class="header-section-number">2</span> Model tab button interaction tests</a>
   <ul class="collapse">
   <li><a href="#open-model-twice" id="toc-open-model-twice" class="nav-link" data-scroll-target="#open-model-twice"><span class="header-section-number">2.1</span> Open model twice</a></li>
   </ul></li>
-  <li><a href="#nodes-tab-button-interaction-tests" id="toc-nodes-tab-button-interaction-tests" class="nav-link" data-scroll-target="#nodes-tab-button-interaction-tests"><span class="header-section-number">3</span> Nodes tab button interaction tests</a>
+  <li><a href="#map-interaction-tests" id="toc-map-interaction-tests" class="nav-link" data-scroll-target="#map-interaction-tests"><span class="header-section-number">3</span> Map interaction tests</a>
   <ul class="collapse">
-  <li><a href="#add-all-tables-to-new-model" id="toc-add-all-tables-to-new-model" class="nav-link" data-scroll-target="#add-all-tables-to-new-model"><span class="header-section-number">3.1</span> Add all tables to new model</a></li>
-  <li><a href="#add-table-twice-to-new-model" id="toc-add-table-twice-to-new-model" class="nav-link" data-scroll-target="#add-table-twice-to-new-model"><span class="header-section-number">3.2</span> Add table twice to new model</a></li>
+  <li><a href="#node-selection-on-map-triggers-table-selection" id="toc-node-selection-on-map-triggers-table-selection" class="nav-link" data-scroll-target="#node-selection-on-map-triggers-table-selection"><span class="header-section-number">3.1</span> Node selection on map triggers table selection</a></li>
   </ul></li>
-  <li><a href="#map-interaction-tests" id="toc-map-interaction-tests" class="nav-link" data-scroll-target="#map-interaction-tests"><span class="header-section-number">4</span> Map interaction tests</a>
+  <li><a href="#result-inspection-tests" id="toc-result-inspection-tests" class="nav-link" data-scroll-target="#result-inspection-tests"><span class="header-section-number">4</span> Result inspection tests</a>
   <ul class="collapse">
-  <li><a href="#add-points-to-node-layer" id="toc-add-points-to-node-layer" class="nav-link" data-scroll-target="#add-points-to-node-layer"><span class="header-section-number">4.1</span> Add points to Node layer</a></li>
-  <li><a href="#add-links-to-link-layer" id="toc-add-links-to-link-layer" class="nav-link" data-scroll-target="#add-links-to-link-layer"><span class="header-section-number">4.2</span> Add links to Link layer</a></li>
-  <li><a href="#node-selection-on-map-triggers-table-selection" id="toc-node-selection-on-map-triggers-table-selection" class="nav-link" data-scroll-target="#node-selection-on-map-triggers-table-selection"><span class="header-section-number">4.3</span> Node selection on map triggers table selection</a></li>
+  <li><a href="#run-a-model-and-check-the-time-series" id="toc-run-a-model-and-check-the-time-series" class="nav-link" data-scroll-target="#run-a-model-and-check-the-time-series"><span class="header-section-number">4.1</span> Run a model and check the time series</a></li>
   </ul></li>
-  <li><a href="#result-inspection-tests" id="toc-result-inspection-tests" class="nav-link" data-scroll-target="#result-inspection-tests"><span class="header-section-number">5</span> Result inspection tests</a>
+  <li><a href="#tutorial-tests" id="toc-tutorial-tests" class="nav-link" data-scroll-target="#tutorial-tests"><span class="header-section-number">5</span> Tutorial tests</a>
   <ul class="collapse">
-  <li><a href="#run-a-model-and-check-the-time-series" id="toc-run-a-model-and-check-the-time-series" class="nav-link" data-scroll-target="#run-a-model-and-check-the-time-series"><span class="header-section-number">5.1</span> Run a model and check the time series</a></li>
-  </ul></li>
-  <li><a href="#tutorial-tests" id="toc-tutorial-tests" class="nav-link" data-scroll-target="#tutorial-tests"><span class="header-section-number">6</span> Tutorial tests</a>
-  <ul class="collapse">
-  <li><a href="#perform-tutorial-in-documentation" id="toc-perform-tutorial-in-documentation" class="nav-link" data-scroll-target="#perform-tutorial-in-documentation"><span class="header-section-number">6.1</span> Perform tutorial in documentation</a></li>
+  <li><a href="#perform-tutorial-in-documentation" id="toc-perform-tutorial-in-documentation" class="nav-link" data-scroll-target="#perform-tutorial-in-documentation"><span class="header-section-number">5.1</span> Perform tutorial in documentation</a></li>
   </ul></li>
   </ul>
 </nav>
@@ -315,15 +307,6 @@ ul.task-list li input[type="checkbox"] {
 <li>Press the Ribasim button on the QGIS toolbar: <em>Ribasim panel hides</em>.</li>
 </ul>
 </section>
-<section id="button-states-on-startup" class="level2" data-number="1.3">
-<h2 data-number="1.3" class="anchored" data-anchor-id="button-states-on-startup"><span class="header-section-number">1.3</span> Button states on startup</h2>
-<ul>
-<li>Open QGIS and ensure that the Ribasim plugin is installed and enabled.</li>
-<li>Open the application via the Ribasim button on the QGIS toolbar: <em>Ribasim panel opens</em>.</li>
-<li><em>In the Nodes tab, all buttons are disabled</em>.</li>
-</ul>
-<p>❌ <a href="https://github.com/Deltares/Ribasim/issues/1678">Failing</a></p>
-</section>
 </section>
 <section id="model-tab-button-interaction-tests" class="level1" data-number="2">
 <h1 data-number="2"><span class="header-section-number">2</span> Model tab button interaction tests</h1>
@@ -332,113 +315,42 @@ ul.task-list li input[type="checkbox"] {
 <ul>
 <li>Open QGIS and ensure that the Ribasim plugin is installed and enabled.</li>
 <li>Open the application via the Ribasim button on the QGIS toolbar: <em>Ribasim panel opens</em>.</li>
-<li>Press the “New” button in the Model tab: <em>file navigation window pops up</em>.</li>
-<li>Fill in a name (“test1”).</li>
-<li>Press OK: <em>A TOML and database file are created on the given location</em>.</li>
-<li>Press the “Open” button in the Model tab: <em>file navigation window pops up</em>.</li>
-<li>Open test1.toml: <em>A new layer group is added to the layers panel</em>.</li>
-<li>In the Nodes tab press “Basin / profile”: <em>A Basin / profile table layer is added to the last layer group only</em>.</li>
+<li>Press the “Open” button in the Ribasim panel: <em>file navigation window pops up</em>.</li>
+<li>Choose an existing model from the <code>generated_testmodels</code> folder.</li>
+<li>Press OK: <em>The model layers appear in the layer panel and on the map</em>.</li>
+<li>Press the “Open” button: <em>file navigation window pops up</em>.</li>
+<li>Open the same model again: <em>A new layer group is added to the layers panel</em>.</li>
 </ul>
 <p>Intended behavior: The same model is loaded twice, but there is only a connection on the last loaded model when interacting with the plugin.</p>
 </section>
 </section>
-<section id="nodes-tab-button-interaction-tests" class="level1" data-number="3">
-<h1 data-number="3"><span class="header-section-number">3</span> Nodes tab button interaction tests</h1>
-<section id="add-all-tables-to-new-model" class="level2" data-number="3.1">
-<h2 data-number="3.1" class="anchored" data-anchor-id="add-all-tables-to-new-model"><span class="header-section-number">3.1</span> Add all tables to new model</h2>
+<section id="map-interaction-tests" class="level1" data-number="3">
+<h1 data-number="3"><span class="header-section-number">3</span> Map interaction tests</h1>
+<section id="node-selection-on-map-triggers-table-selection" class="level2" data-number="3.1">
+<h2 data-number="3.1" class="anchored" data-anchor-id="node-selection-on-map-triggers-table-selection"><span class="header-section-number">3.1</span> Node selection on map triggers table selection</h2>
 <ul>
 <li>Open QGIS and ensure that the Ribasim plugin is installed and enabled.</li>
 <li>Open the application via the Ribasim button on the QGIS toolbar: <em>Ribasim panel opens</em>.</li>
-<li>Press the “New” button in the Model tab: <em>file navigation window pops up</em>.</li>
-<li>Fill in a name (“test1”).</li>
-<li>Press OK: <em>A TOML and database file are created on the given location</em>.</li>
-<li>Go to the Nodes tab: <em>All buttons are enabled</em>.</li>
-<li>From left to right, top to bottom, press every button to add tables to the layers: <em>The layer group contains extra layers for every button clicked. Basin / area is a MultiPolygon layer</em>.</li>
-<li>Navigate to Model tab: <em>All layers are added to the panel</em>.</li>
-<li>Press the “Open” button to open the same model once again: <em>The layers panel adds the model containing all of its layers, the Model tab was refreshed</em>.</li>
-</ul>
-</section>
-<section id="add-table-twice-to-new-model" class="level2" data-number="3.2">
-<h2 data-number="3.2" class="anchored" data-anchor-id="add-table-twice-to-new-model"><span class="header-section-number">3.2</span> Add table twice to new model</h2>
-<ul>
-<li>Open QGIS and ensure that the Ribasim plugin is installed and enabled.</li>
-<li>Open the application via the Ribasim button on the QGIS toolbar: <em>Ribasim panel opens</em>.</li>
-<li>Press the “New” button in the Model tab: <em>file navigation window pops up</em>.</li>
-<li>Fill in a name (“test1”).</li>
-<li>Press OK: <em>A TOML and database file are created on the given location</em>.</li>
-<li>Go to the Nodes tab: <em>All buttons are enabled</em>.</li>
-<li>Press the Basin / time button: <em>A layer is added to the layers panel with that name, the button becomes disabled</em>.</li>
-</ul>
-<p>❌ <a href="https://github.com/Deltares/Ribasim/issues/1685">Failing</a></p>
-</section>
-</section>
-<section id="map-interaction-tests" class="level1" data-number="4">
-<h1 data-number="4"><span class="header-section-number">4</span> Map interaction tests</h1>
-<section id="add-points-to-node-layer" class="level2" data-number="4.1">
-<h2 data-number="4.1" class="anchored" data-anchor-id="add-points-to-node-layer"><span class="header-section-number">4.1</span> Add points to Node layer</h2>
-<ul>
-<li>Open QGIS and ensure that the Ribasim plugin is installed and enabled.</li>
-<li>Open the application via the Ribasim button on the QGIS toolbar: <em>Ribasim panel opens</em>.</li>
-<li>Press the “New” button in the Model tab: <em>file navigation window pops up</em>.</li>
-<li>Fill in a name (“test1”).</li>
-<li>Press OK: <em>A TOML and database file are created on the given location</em>.</li>
-<li>Select the Node layer in the Layers tab: <em>edit buttons in the toolbar become enabled</em>.</li>
-<li>Edit the layer by pressing the pencil button: <em>Add Point Feature button becomes enabled</em>.</li>
-<li>Click in the canvas: <em>Popup appears with Feature Attributes to fill in</em>.</li>
-<li>Press OK: <em>The first Node appears on the map</em>.</li>
-<li>Click in the canvas again: <em>Popup appears with Feature Attributes to fill in</em>.</li>
-<li>Press OK: <em>The second Node appears on the map</em>.</li>
-</ul>
-<p>Unexpected behavior: The default type of the nodes is NULL, and therefore undefined. Should be enforced and validated. See <a href="https://github.com/Deltares/Ribasim/issues/1688#issuecomment-2265315907">issue</a>.</p>
-</section>
-<section id="add-links-to-link-layer" class="level2" data-number="4.2">
-<h2 data-number="4.2" class="anchored" data-anchor-id="add-links-to-link-layer"><span class="header-section-number">4.2</span> Add links to Link layer</h2>
-<ul>
-<li>Open QGIS and ensure that the Ribasim plugin is installed and enabled.</li>
-<li>Open the application via the Ribasim button on the QGIS toolbar: <em>Ribasim panel opens</em>.</li>
-<li>Press the “New” button in the Model tab: <em>file navigation window pops up</em>.</li>
-<li>Fill in a name (“test1”).</li>
-<li>Press OK: <em>A TOML and database file are created on the given location</em>.</li>
-<li>Select the Node layer in the Layers tab: <em>edit buttons in the toolbar become enabled</em>.</li>
-<li>Edit the layer by pressing the pencil button: <em>Add Point Feature button becomes enabled</em>.</li>
-<li>Click in the canvas: <em>Popup appears with Feature Attributes to fill in</em>.</li>
-<li>Add a node id of 1, press OK: <em>The first Node appears on the map</em>.</li>
-<li>Click in the canvas again: <em>Popup appears with Feature Attributes to fill in</em>.</li>
-<li>Add a node id of 2, press OK: <em>The second Node appears on the map</em>.</li>
-<li>Select the Link layer in the Layers tab: <em>edit buttons in the toolbar become enabled</em>.</li>
-<li>Enable snapping under View &gt; Toolbars &gt; Snapping Toolbars: <em>Magnet button is enabled and active</em>.</li>
-<li>Press the Add Line Feature button: <em>Mouse becomes a crosshair</em>.</li>
-<li>Snap a line between the two nodes, click the two nodes and then right click to finish: <em>Popup shows with input, most fields are set to NULL</em>.</li>
-<li>Press OK: <em>Line appears on screen between the two nodes</em>.</li>
-<li>Save the layer’s edits: <em>The line becomes blue</em>.</li>
-<li>Open the attribute table: <em>The information shows the from_node_id, to_node_id. This information matches the information from the Node table.</em></li>
-</ul>
-</section>
-<section id="node-selection-on-map-triggers-table-selection" class="level2" data-number="4.3">
-<h2 data-number="4.3" class="anchored" data-anchor-id="node-selection-on-map-triggers-table-selection"><span class="header-section-number">4.3</span> Node selection on map triggers table selection</h2>
-<ul>
-<li>Open QGIS and ensure that the Ribasim plugin is installed and enabled.</li>
-<li>Open the application via the Ribasim button on the QGIS toolbar: <em>Ribasim panel opens</em>.</li>
-<li>Press the “Open” button in the Model tab: <em>file navigation window pops up</em>.</li>
+<li>Press the “Open” button in the Ribasim panel: <em>file navigation window pops up</em>.</li>
 <li>Choose an existing model from the <code>generated_testmodels</code> folder.</li>
 <li>Press OK: <em>The model layers appear in the layer panel and on the map</em>.</li>
 <li>Select the node layer, and make a subselection of nodes on the map: <em>Nodes are highlighted in yellow, including their links</em>.</li>
 <li>Open the Link attribute table: <em>The highlighted rows are those with a from/to node_id that was selected</em>.</li>
-<li>Open any non-spatial attribute table: <em>The highlighted rows are those with an node_id that was selected</em>.</li>
+<li>Open any non-spatial attribute table: <em>The highlighted rows are those with a node_id that was selected</em>.</li>
 </ul>
 </section>
 </section>
-<section id="result-inspection-tests" class="level1" data-number="5">
-<h1 data-number="5"><span class="header-section-number">5</span> Result inspection tests</h1>
-<section id="run-a-model-and-check-the-time-series" class="level2" data-number="5.1">
-<h2 data-number="5.1" class="anchored" data-anchor-id="run-a-model-and-check-the-time-series"><span class="header-section-number">5.1</span> Run a model and check the time series</h2>
+<section id="result-inspection-tests" class="level1" data-number="4">
+<h1 data-number="4"><span class="header-section-number">4</span> Result inspection tests</h1>
+<section id="run-a-model-and-check-the-time-series" class="level2" data-number="4.1">
+<h2 data-number="4.1" class="anchored" data-anchor-id="run-a-model-and-check-the-time-series"><span class="header-section-number">4.1</span> Run a model and check the time series</h2>
 <p>TODO</p>
 </section>
 </section>
-<section id="tutorial-tests" class="level1" data-number="6">
-<h1 data-number="6"><span class="header-section-number">6</span> Tutorial tests</h1>
-<section id="perform-tutorial-in-documentation" class="level2" data-number="6.1">
-<h2 data-number="6.1" class="anchored" data-anchor-id="perform-tutorial-in-documentation"><span class="header-section-number">6.1</span> Perform tutorial in documentation</h2>
+<section id="tutorial-tests" class="level1" data-number="5">
+<h1 data-number="5"><span class="header-section-number">5</span> Tutorial tests</h1>
+<section id="perform-tutorial-in-documentation" class="level2" data-number="5.1">
+<h2 data-number="5.1" class="anchored" data-anchor-id="perform-tutorial-in-documentation"><span class="header-section-number">5.1</span> Perform tutorial in documentation</h2>
 <p>Go through the tutorial as described in the <a href="../guide/qgis.html">How-to guide</a>.</p>
 
 
