@@ -530,13 +530,22 @@ window.Quarto = {
 </section>
 <section id="condition" class="level2" data-number="1.2">
 <h2 data-number="1.2" class="anchored" data-anchor-id="condition"><span class="header-section-number">1.2</span> Condition</h2>
-<p>The condition schema defines conditions of the form ‘the <code>discrete_control</code> node with this <code>node_id</code> listens to whether the variable given by the <code>node_id</code> and <code>compound_variable_id</code> is greater than <code>greater_than</code>’ (at time <span class="math inline">\(t\)</span>). In equation form:</p>
+<p>The condition schema defines conditions of the form the <code>discrete_control</code> node with this <code>node_id</code> listens to whether the variable given by the <code>node_id</code> and <code>compound_variable_id</code> is greater than <code>threshold_high</code> (at time <span class="math inline">\(t\)</span>) when the condition was false previously, or <code>threshold_low</code> when true previously. Using <code>threshold_low</code> is optional and defaults to <code>threshold_high</code>. When set to a different value—smaller than or equal to <code>threshold_high</code>—it defines a <a href="&quot;https://en.wikipedia.org/wiki/Deadband&quot;">deadband</a> and thus enables hysteresis. In equation form:</p>
 <p><span class="math display">\[
-    \text{weight}_1 * \text{variable}_1 + \text{weight}_2 * \text{variable}_2 + \ldots &gt; \text{greater\_than}(t).
+condition=\begin{cases}
+    \text{weight}_1 * \text{variable}_1 + \text{weight}_2 * \text{variable}_2 + \ldots &gt; \text{greater\_than}(t), !condition\_{prev} \\
+    \text{weight}_1 * \text{variable}_1 + \text{weight}_2 * \text{variable}_2 + \ldots &gt;= \text{less\_than}(t), condition\_{prev}
+\end{cases}
 \]</span></p>
-<p>Multiple conditions with different <code>greater_than</code> values can be defined on the same compound_variable, each with their own unique <code>condition_id</code>.</p>
-<p>Note the strict inequality ‘<span class="math inline">\(&gt;\)</span>’ in the equation above. This means for instance that if a simulation starts with a compound variable exactly at the <code>greater_than</code> value, the condition is false.</p>
+<p>Multiple conditions with different <code>threshold_high</code> and/or <code>threshold_low</code> values can be defined on the same compound_variable, each with their own unique <code>condition_id</code>.</p>
+<p>Note the strict inequality ‘<span class="math inline">\(&gt;\)</span>’ in the equation above. This means for instance that if a simulation starts with a compound variable exactly at the <code>threshold_high</code> value, the condition is false. The same holds for the <code>threshold_low</code> value, using ‘<span class="math inline">\(&gt;=\)</span>’, so the deadband is <em>inclusive</em> of the thresholds.</p>
 <table class="caption-top table">
+<colgroup>
+<col style="width: 43%">
+<col style="width: 17%">
+<col style="width: 15%">
+<col style="width: 23%">
+</colgroup>
 <thead>
 <tr class="header">
 <th>column</th>
@@ -565,12 +574,18 @@ window.Quarto = {
 <td>-</td>
 </tr>
 <tr class="even">
-<td>greater_than</td>
+<td>threshold_high</td>
 <td>Float64</td>
 <td>various</td>
 <td>-</td>
 </tr>
 <tr class="odd">
+<td>threshold_low</td>
+<td>Float64</td>
+<td>various</td>
+<td>(optional), &lt;= threshold_high</td>
+</tr>
+<tr class="even">
 <td>time</td>
 <td>DateTime</td>
 <td>-</td>
@@ -578,7 +593,7 @@ window.Quarto = {
 </tr>
 </tbody>
 </table>
-<p>When no (or only a single) <code>time</code> is supplied for a given <code>condition_id</code>, the <code>greater_than</code> value of this condition is unchanging over time.</p>
+<p>When no (or only a single) <code>time</code> is supplied for a given <code>condition_id</code>, the <code>threshold_high</code> value of this condition is unchanging over time.</p>
 </section>
 <section id="logic" class="level2" data-number="1.3">
 <h2 data-number="1.3" class="anchored" data-anchor-id="logic"><span class="header-section-number">1.3</span> Logic</h2>
