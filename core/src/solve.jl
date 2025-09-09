@@ -152,7 +152,7 @@ function set_current_basin_properties!(u::CVector, p::Parameters, t::Number)::No
             i = id.idx
             state_time_dependent_cache.current_low_storage_factor[i] =
                 reduction_factor(s, low_storage_threshold[i])
-            state_time_dependent_cache.current_level[i] =
+            @inbounds state_time_dependent_cache.current_level[i] =
                 get_level_from_storage(basin, i, s)
             state_time_dependent_cache.current_area[i] =
                 basin.level_to_area[i](state_time_dependent_cache.current_level[i])
