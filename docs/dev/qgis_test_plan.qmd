@@ -22,106 +22,32 @@ Before starting with data, perform the following tests to see if the plugin does
 - Open the application via the Ribasim button on the QGIS toolbar: _Ribasim panel opens_.
 - Press the Ribasim button on the QGIS toolbar: _Ribasim panel hides_.
 
-## Button states on startup
-
-- Open QGIS and ensure that the Ribasim plugin is installed and enabled.
-- Open the application via the Ribasim button on the QGIS toolbar: _Ribasim panel opens_.
-- _In the Nodes tab, all buttons are disabled_.
-
-❌ [Failing](https://github.com/Deltares/Ribasim/issues/1678)
-
 # Model tab button interaction tests
 
 ## Open model twice
 
 - Open QGIS and ensure that the Ribasim plugin is installed and enabled.
 - Open the application via the Ribasim button on the QGIS toolbar: _Ribasim panel opens_.
-- Press the "New" button in the Model tab: _file navigation window pops up_.
-- Fill in a name ("test1").
-- Press OK: _A TOML and database file are created on the given location_.
-- Press the "Open" button in the Model tab: _file navigation window pops up_.
-- Open test1.toml: _A new layer group is added to the layers panel_.
-- In the Nodes tab press "Basin / profile": _A Basin / profile table layer is added to the last layer group only_.
+- Press the "Open" button in the Ribasim panel: _file navigation window pops up_.
+- Choose an existing model from the `generated_testmodels` folder.
+- Press OK: _The model layers appear in the layer panel and on the map_.
+- Press the "Open" button: _file navigation window pops up_.
+- Open the same model again: _A new layer group is added to the layers panel_.
 
 Intended behavior: The same model is loaded twice, but there is only a connection on the last loaded model when interacting with the plugin.
 
-# Nodes tab button interaction tests
-
-## Add all tables to new model
-
-- Open QGIS and ensure that the Ribasim plugin is installed and enabled.
-- Open the application via the Ribasim button on the QGIS toolbar: _Ribasim panel opens_.
-- Press the "New" button in the Model tab: _file navigation window pops up_.
-- Fill in a name ("test1").
-- Press OK: _A TOML and database file are created on the given location_.
-- Go to the Nodes tab: _All buttons are enabled_.
-- From left to right, top to bottom, press every button to add tables to the layers: _The layer group contains extra layers for every button clicked. Basin / area is a MultiPolygon layer_.
-- Navigate to Model tab: _All layers are added to the panel_.
-- Press the "Open" button to open the same model once again: _The layers panel adds the model containing all of its layers, the Model tab was refreshed_.
-
-## Add table twice to new model
-
-- Open QGIS and ensure that the Ribasim plugin is installed and enabled.
-- Open the application via the Ribasim button on the QGIS toolbar: _Ribasim panel opens_.
-- Press the "New" button in the Model tab: _file navigation window pops up_.
-- Fill in a name ("test1").
-- Press OK: _A TOML and database file are created on the given location_.
-- Go to the Nodes tab: _All buttons are enabled_.
-- Press the Basin / time button: _A layer is added to the layers panel with that name, the button becomes disabled_.
-
-❌ [Failing](https://github.com/Deltares/Ribasim/issues/1685)
-
 # Map interaction tests
-
-## Add points to Node layer
-
-- Open QGIS and ensure that the Ribasim plugin is installed and enabled.
-- Open the application via the Ribasim button on the QGIS toolbar: _Ribasim panel opens_.
-- Press the "New" button in the Model tab: _file navigation window pops up_.
-- Fill in a name ("test1").
-- Press OK: _A TOML and database file are created on the given location_.
-- Select the Node layer in the Layers tab: _edit buttons in the toolbar become enabled_.
-- Edit the layer by pressing the pencil button: _Add Point Feature button becomes enabled_.
-- Click in the canvas: _Popup appears with Feature Attributes to fill in_.
-- Press OK: _The first Node appears on the map_.
-- Click in the canvas again: _Popup appears with Feature Attributes to fill in_.
-- Press OK: _The second Node appears on the map_.
-
-Unexpected behavior: The default type of the nodes is NULL, and therefore undefined.
-Should be enforced and validated.
-See [issue](https://github.com/Deltares/Ribasim/issues/1688#issuecomment-2265315907).
-
-## Add links to Link layer
-
-- Open QGIS and ensure that the Ribasim plugin is installed and enabled.
-- Open the application via the Ribasim button on the QGIS toolbar: _Ribasim panel opens_.
-- Press the "New" button in the Model tab: _file navigation window pops up_.
-- Fill in a name ("test1").
-- Press OK: _A TOML and database file are created on the given location_.
-- Select the Node layer in the Layers tab: _edit buttons in the toolbar become enabled_.
-- Edit the layer by pressing the pencil button: _Add Point Feature button becomes enabled_.
-- Click in the canvas: _Popup appears with Feature Attributes to fill in_.
-- Add a node id of 1, press OK: _The first Node appears on the map_.
-- Click in the canvas again: _Popup appears with Feature Attributes to fill in_.
-- Add a node id of 2, press OK: _The second Node appears on the map_.
-- Select the Link layer in the Layers tab: _edit buttons in the toolbar become enabled_.
-- Enable snapping under View > Toolbars > Snapping Toolbars: _Magnet button is enabled and active_.
-- Press the Add Line Feature button: _Mouse becomes a crosshair_.
-- Snap a line between the two nodes, click the two nodes and then right click to finish: _Popup shows with input, most fields are set to NULL_.
-- Press OK: _Line appears on screen between the two nodes_.
-- Save the layer's edits: _The line becomes blue_.
-- Open the attribute table: _The information shows the from\_node\_id, to\_node\_id. This information matches the information from the Node table._
 
 ## Node selection on map triggers table selection
 
 - Open QGIS and ensure that the Ribasim plugin is installed and enabled.
 - Open the application via the Ribasim button on the QGIS toolbar: _Ribasim panel opens_.
-- Press the "Open" button in the Model tab: _file navigation window pops up_.
+- Press the "Open" button in the Ribasim panel: _file navigation window pops up_.
 - Choose an existing model from the `generated_testmodels` folder.
 - Press OK: _The model layers appear in the layer panel and on the map_.
 - Select the node layer, and make a subselection of nodes on the map: _Nodes are highlighted in yellow, including their links_.
 - Open the Link attribute table: _The highlighted rows are those with a from/to node\_id that was selected_.
-- Open any non-spatial attribute table: _The highlighted rows are those with an node\_id that was selected_.
+- Open any non-spatial attribute table: _The highlighted rows are those with a node\_id that was selected_.
 
 # Result inspection tests
 

@@ -102,7 +102,7 @@ end
 function formulate_continuous_control!(du::CVector, p::Parameters, t::Number)::Nothing
     (; compound_variable, target_ref, func) = p.p_independent.continuous_control
 
-    @threads for i in eachindex(compound_variable)
+    for i in eachindex(compound_variable)
         cvar = compound_variable[i]
         ref = target_ref[i]
         func_ = func[i]
@@ -473,7 +473,7 @@ function formulate_flow!(
     (; p_mutable) = p
     all_nodes_active = p_mutable.all_nodes_active
     (; node_id, active) = tabulated_rating_curve
-    @threads for id in node_id
+    for id in node_id
         inflow_link = tabulated_rating_curve.inflow_link[id.idx]
         outflow_link = tabulated_rating_curve.outflow_link[id.idx]
         inflow_id = inflow_link.link[1]
