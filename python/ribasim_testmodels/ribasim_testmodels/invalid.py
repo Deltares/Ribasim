@@ -96,7 +96,7 @@ def invalid_discrete_control_model() -> Model:
                 compound_variable_id=[1, 2, 3],
             ),
             discrete_control.Condition(
-                greater_than=[0.5, 1.5, 1.5],
+                threshold_high=[0.5, 1.5, 1.5],
                 compound_variable_id=[1, 2, 3],
                 condition_id=1,
             ),

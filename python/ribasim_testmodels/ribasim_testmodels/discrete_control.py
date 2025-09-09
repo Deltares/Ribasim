@@ -1,6 +1,11 @@
+from typing import Any
+
 import numpy as np
 import pandas as pd
 from ribasim.config import Experimental, Interpolation, Node, Results
+from ribasim.input_base import (
+    TableModel,
+)
 from ribasim.model import Model, Solver
 from ribasim.nodes import (
     basin,
@@ -8,6 +13,7 @@ from ribasim.nodes import (
     flow_boundary,
     level_boundary,
     linear_resistance,
+    manning_resistance,
     outlet,
     pump,
     tabulated_rating_curve,
@@ -63,7 +69,7 @@ def pump_discrete_control_model() -> Model:
                 compound_variable_id=[1, 2],
             ),
             discrete_control.Condition(
-                greater_than=[0.8, 0.4],
+                threshold_high=[0.8, 0.4],
                 compound_variable_id=[1, 2],
                 condition_id=[1, 1],
             ),
@@ -82,7 +88,7 @@ def pump_discrete_control_model() -> Model:
                 compound_variable_id=1,
             ),
             discrete_control.Condition(
-                greater_than=[0.45],
+                threshold_high=[0.45],
                 compound_variable_id=1,
                 condition_id=1,
             ),
@@ -159,7 +165,7 @@ def flow_condition_model() -> Model:
                 compound_variable_id=1,
             ),
             discrete_control.Condition(
-                greater_than=[20 / (86400)],
+                threshold_high=[20 / (86400)],
                 compound_variable_id=1,
                 condition_id=1,
             ),
@@ -226,7 +232,7 @@ def level_boundary_condition_model() -> Model:
                 compound_variable_id=1,
             ),
             discrete_control.Condition(
-                greater_than=[6.0],
+                threshold_high=[6.0],
                 compound_variable_id=1,
                 condition_id=1,
             ),
@@ -302,7 +308,7 @@ def tabulated_rating_curve_control_model() -> Model:
                 compound_variable_id=1,
             ),
             discrete_control.Condition(
-                greater_than=[0.5],
+                threshold_high=[0.5],
                 compound_variable_id=1,
                 condition_id=1,
             ),
@@ -367,7 +373,7 @@ def compound_variable_condition_model() -> Model:
                 compound_variable_id=1,
             ),
             discrete_control.Condition(
-                greater_than=[0.5],
+                threshold_high=[0.5],
                 compound_variable_id=1,
                 condition_id=1,
             ),
@@ -432,7 +438,7 @@ def level_range_model() -> Model:
             ),
             discrete_control.Condition(
                 # min, max
-                greater_than=[5.0, 15.0],
+                threshold_high=[5.0, 15.0],
                 compound_variable_id=1,
                 condition_id=[1, 2],
             ),
@@ -519,7 +525,7 @@ def connector_node_flow_condition_model() -> Model:
                 compound_variable_id=1,
             ),
             discrete_control.Condition(
-                greater_than=[1e-4], compound_variable_id=1, condition_id=1
+                threshold_high=[1e-4], compound_variable_id=1, condition_id=1
             ),
             discrete_control.Logic(truth_state=["T", "F"], control_state=["On", "Off"]),
         ],
@@ -576,7 +582,7 @@ def concentration_condition_model() -> Model:
                 compound_variable_id=1,
             ),
             discrete_control.Condition(
-                greater_than=[0.5], compound_variable_id=1, condition_id=1
+                threshold_high=[0.5], compound_variable_id=1, condition_id=1
             ),
             discrete_control.Logic(truth_state=["T", "F"], control_state=["On", "Off"]),
         ],
@@ -679,7 +685,7 @@ def continuous_concentration_condition_model() -> Model:
             ),
             # More than 20% of seawater (35 g/L)
             discrete_control.Condition(
-                greater_than=[7], compound_variable_id=1, condition_id=1
+                threshold_high=[7], compound_variable_id=1, condition_id=1
             ),
             discrete_control.Logic(truth_state=["T", "F"], control_state=["Off", "On"]),
         ],
@@ -728,7 +734,7 @@ def transient_condition_model() -> Model:
             discrete_control.Condition(
                 compound_variable_id=1,
                 condition_id=1,
-                greater_than=[1.0, 3.0, 1.0],
+                threshold_high=[1.0, 3.0, 1.0],
                 time=["2020-01-01", "2020-02-01", "2020-03-01"],
             ),
             discrete_control.Logic(truth_state=["F", "T"], control_state=["A", "B"]),
@@ -738,5 +744,145 @@ def transient_condition_model() -> Model:
     model.edge.add(lb, pmp)
     model.edge.add(pmp, bsn)
     model.edge.add(dc, pmp)
+
+    return model
+
+
+def circular_flow_model() -> Model:
+    """Create a model with a circular flow and a discrete control on a pump."""
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2021-01-01",
+        crs="EPSG:4326",
+        solver=Solver(saveat=3600),
+    )
+
+    time = pd.date_range(model.starttime, model.endtime)
+    day_of_year = time.day_of_year.to_numpy()
+    precipitation = np.zeros(day_of_year.size)
+    precipitation[0:90] = 1e-6
+    precipitation[90:180] = 0
+    precipitation[180:270] = 1e-6
+    precipitation[270:366] = 0
+    evaporation = np.zeros(day_of_year.size)
+    evaporation[0:90] = 0
+    evaporation[90:180] = 1e-6
+    evaporation[180:270] = 0
+    evaporation[270:366] = 1e-6
+
+    basin_data: list[TableModel[Any]] = [
+        basin.Profile(area=[10, 10_000.0], level=[-10, 1.0]),
+        basin.Time(
+            time=pd.date_range(model.starttime, model.endtime),
+            drainage=0.0,
+            potential_evaporation=evaporation,
+            infiltration=0.0,
+            precipitation=precipitation,
+        ),
+        basin.State(level=[0.9]),
+    ]
+
+    basin3 = model.basin.add(Node(3, Point(2.0, 0.0), name="Boezem"), basin_data)
+    basin4 = model.basin.add(Node(4, Point(2.0, 2.0), name="Polder"), basin_data)
+    basin6 = model.basin.add(Node(6, Point(4.0, 2.0), name="Polder"), basin_data)
+    basin9 = model.basin.add(Node(9, Point(4.0, 0.0), name="Boezem"), basin_data)
+
+    ###Setup outlet:
+
+    outlet10 = model.outlet.add(
+        Node(10, Point(5.0, 0.0)),
+        [outlet.Static(flow_rate=10, min_upstream_level=[1.1])],
+    )
+
+    outlet12 = model.outlet.add(
+        Node(12, Point(1.0, 0)),
+        [outlet.Static(flow_rate=[10])],
+    )
+
+    outlet5 = model.outlet.add(
+        Node(5, Point(2, 1), name="inlaat"),
+        [
+            outlet.Static(
+                flow_rate=2.0, min_upstream_level=[1.0], max_downstream_level=[1.0]
+            )
+        ],
+    )
+
+    outlet13 = model.outlet.add(
+        Node(13, Point(3, 2), name="inlaat/uitlaat"),
+        [
+            outlet.Static(
+                flow_rate=2.0, min_upstream_level=[1], max_downstream_level=[0.9]
+            )
+        ],
+    )
+
+    ###Setup Manning resistance:
+    manning_resistance2 = model.manning_resistance.add(
+        Node(2, Point(3, 0.0)),
+        [
+            manning_resistance.Static(
+                length=[900], manning_n=[0.04], profile_width=[6.0], profile_slope=[3.0]
+            )
+        ],
+    )
+
+    ##Setup pump:
+    control_pump = model.discrete_control.add(
+        Node(1, Point(0, 0.5)),
+        [
+            discrete_control.Variable(
+                listen_node_id=[6],
+                variable=["level"],
+                compound_variable_id=1,
+            ),
+            discrete_control.Condition(
+                threshold_high=[0.95],
+                threshold_low=[0.9],
+                compound_variable_id=1,
+                condition_id=1,
+            ),
+            discrete_control.Logic(truth_state=["T", "F"], control_state=["on", "off"]),
+        ],
+    )
+    pump7 = model.pump.add(
+        Node(7, Point(4.9, 0.1)),
+        [
+            pump.Static(
+                control_state=["on", "off"],
+                flow_rate=[0.1, 0.0],
+            )
+        ],
+    )
+
+    ##Setup level boundary:
+    level_boundary11 = model.level_boundary.add(
+        Node(11, Point(0, 0)), [level_boundary.Static(level=[1.1])]
+    )
+    level_boundary17 = model.level_boundary.add(
+        Node(17, Point(6, 0)), [level_boundary.Static(level=[0.9])]
+    )
+
+    ##Setup the links:
+    model.link.add(manning_resistance2, basin9)  # 1
+    model.link.add(
+        basin3,
+        outlet5,
+    )  # 2
+    model.link.add(
+        basin3,
+        manning_resistance2,
+    )  # 3
+
+    model.link.add(outlet5, basin4)  # 4
+    model.link.add(basin4, outlet13)  # 5
+    model.link.add(outlet13, basin6)  # 4
+    model.link.add(basin6, pump7)  # 5
+    model.link.add(pump7, basin9)  # 6
+    model.link.add(basin9, outlet10)  # 7
+    model.link.add(level_boundary11, outlet12)  # 8
+    model.link.add(outlet12, basin3)  # 9
+    model.link.add(outlet10, level_boundary17)  # 10
+    model.link.add(control_pump, pump7)  # 11
 
     return model
