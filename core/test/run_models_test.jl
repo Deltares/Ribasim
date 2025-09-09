@@ -392,7 +392,7 @@ end
     # dynamic UserDemand withdraws to 0.5m or 500m3 due to min level = 0.5
     BMI.update_until(model, 220day)
     formulate_storages!(u, p, t)
-    @test only(state_time_dependent_cache.current_storage) ≈ 500 atol = 1
+    @test only(state_time_dependent_cache.current_storage) ≈ 500 atol = 2
 
     # Trasient return factor
     flow = DataFrame(Ribasim.flow_data(model))

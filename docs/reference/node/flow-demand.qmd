@@ -19,7 +19,9 @@ demand          | Float64  | $\text{m}^3/\text{s}$ | non-negative
 ## Time
 
 This table is the transient form of the `FlowDemand` table, in which a time-dependent demand can be supplied.
-Similar to the static version, only a single priority per `FlowDemand` node can be provided.
+With this the demand can be updated over time. In between the given times the
+demand is block interpolated (forward fill), and outside the demand is constant given by the
+nearest time value. The allocation algorithm evaluates the interpolation at the start of the allocation time step.
 
 column          | type     | unit                  | restriction
 --------------- | -------- | --------------------- | -----------

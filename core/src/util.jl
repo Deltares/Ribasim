@@ -71,7 +71,7 @@ function get_scalar_interpolation(
     node_id::NodeID,
     param::Symbol;
     default_value::Float64 = 0.0,
-    interpolation_type::Type{<:AbstractInterpolation} = LinearInterpolation,
+    interpolation_type::Type{<:AbstractInterpolation} = ConstantInterpolation,
     cyclic_time::Bool = false,
 )::interpolation_type
     rows = searchsorted(time.node_id, node_id)
@@ -377,28 +377,6 @@ function get_all_demand_priorities(db::DB, config::Config;)::Vector{Int32}
     else
         error("Missing demand priority parameter(s).")
     end
-end
-
-function get_external_demand_priority_idx(
-    p_independent::ParametersIndependent,
-    node_id::NodeID,
-)::Int
-    (; graph, level_demand, flow_demand, allocation) = p_independent
-    inneighbor_control_ids = inneighbor_labels_type(graph, node_id, LinkType.control)
-    if isempty(inneighbor_control_ids)
-        return 0
-    end
-    inneighbor_control_id = only(inneighbor_control_ids)
-    type = inneighbor_control_id.type
-    if type == NodeType.LevelDemand
-        demand_priority = level_demand.demand_priority[inneighbor_control_id.idx]
-    elseif type == NodeType.FlowDemand
-        demand_priority = flow_demand.demand_priority[inneighbor_control_id.idx]
-    else
-        error("Nodes of type $type have no demand_priority.")
-    end
-
-    return findsorted(allocation.demand_priorities_all, demand_priority)
 end
 
 const control_type_mapping = Dict{NodeType.T, ContinuousControlType.T}(
@@ -1154,16 +1132,16 @@ function eval_time_interp(
     end
 end
 
-function trivial_linear_itp(; val = 0.0)
-    LinearInterpolation([val, val], [0.0, 1.0]; extrapolation = ConstantExtrapolation)
+function trivial_constant_itp(; val = 0.0)
+    ConstantInterpolation([val, val], [0.0, 1.0]; extrapolation = ConstantExtrapolation)
 end
 
-function trivial_linear_itp_fill(
+function trivial_allocation_itp_fill(
     demand_priorities,
     node_id;
     val = 0.0,
-)::Vector{Vector{ScalarLinearInterpolation}}
-    return [fill(trivial_linear_itp(; val), length(demand_priorities)) for _ in node_id]
+)::Vector{Vector{ScalarConstantInterpolation}}
+    return [fill(trivial_constant_itp(; val), length(demand_priorities)) for _ in node_id]
 end
 
 function finitemaximum(u::AbstractVector; init = 0)
