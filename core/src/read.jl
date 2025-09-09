@@ -704,6 +704,7 @@ function ConcentrationData(
                 NodeID(:Basin, first_row.node_id, 0),
                 :concentration;
                 cyclic_time,
+                interpolation_type = LinearInterpolation,
             )
             concentration_external_id["concentration_external.$substance"] = itp
             if any(itp.u .< 0)
@@ -1165,7 +1166,7 @@ function parse_static_demand_data!(
         demand_priority_idx = findsorted(demand_priorities, row.demand_priority)
         node.has_demand_priority[id.idx, demand_priority_idx] = true
         demand_row = coalesce(row.demand, 0.0)
-        demand_interpolation = trivial_linear_itp(; val = demand_row)
+        demand_interpolation = trivial_constant_itp(; val = demand_row)
         node.demand_interpolation[id.idx][demand_priority_idx] = demand_interpolation
         node.demand[id.idx, demand_priority_idx] = demand_row
     end
@@ -1261,9 +1262,9 @@ function parse_static_demand_data!(
         demand_priority_idx = findsorted(demand_priorities, row.demand_priority)
         level_demand.has_demand_priority[id.idx, demand_priority_idx] = true
         level_demand.min_level[id.idx][demand_priority_idx] =
-            trivial_linear_itp(; val = coalesce(row.min_level, -Inf))
+            trivial_constant_itp(; val = coalesce(row.min_level, -Inf))
         level_demand.max_level[id.idx][demand_priority_idx] =
-            trivial_linear_itp(; val = coalesce(row.max_level, Inf))
+            trivial_constant_itp(; val = coalesce(row.max_level, Inf))
     end
     return nothing
 end

@@ -35,9 +35,9 @@ demand_priority | Int32   | -                     | positive
 
 This table is the transient form of the `UserDemand` table.
 The only difference is that a time column is added and activity is assumed to be true.
-With this the demand can be updated over time. In between the given times the
-demand is interpolated linearly, and outside the demand is constant given by the
-nearest time value.
+With this the demand and return factor can be updated over time. In between the given times the
+values are interpolated with forward fill (block interpolation), and outside the demand is constant given by the
+nearest time value. The allocation algorithm evaluates the interpolation at the start of the allocation time step.
 The `demand_priority` is not allowed to change over time.
 Note that a `node_id` can be either in this table or in the static one, but not both.
 

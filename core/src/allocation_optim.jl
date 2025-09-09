@@ -437,6 +437,7 @@ function set_demands!(
 
             # Update transient demands
             if is_flow_demand || node.demand_from_timeseries[node_id.idx]
+                # Use the demand value at the beginning of the allocation time step
                 demand[node_id.idx, demand_priority_idx] =
                     demand_interpolation[node_id.idx][demand_priority_idx](t)
             end
@@ -487,7 +488,7 @@ function set_demands!(
     (; basin, allocation) = p_independent
     (; demand_priorities_all) = allocation
     (; has_demand_priority, min_level, max_level, storage_demand) = level_demand
-    (; problem, node_ids_in_subnetwork, scaling) = allocation_model
+    (; problem, node_ids_in_subnetwork, scaling, Δt_allocation) = allocation_model
     (; basin_ids_subnetwork_with_level_demand) = node_ids_in_subnetwork
 
     level_demand_error = problem[:level_demand_error]
@@ -511,8 +512,11 @@ function set_demands!(
         for (demand_priority_idx, demand_priority) in enumerate(demand_priorities_all)
             !has_demand_priority[level_demand_id.idx, demand_priority_idx] && continue
 
-            level_min = min_level[level_demand_id.idx][demand_priority_idx](t)
-            level_max = max_level[level_demand_id.idx][demand_priority_idx](t)
+            # Use the min and max level at the end of the allocation time step
+            level_min =
+                min_level[level_demand_id.idx][demand_priority_idx](t + Δt_allocation)
+            level_max =
+                max_level[level_demand_id.idx][demand_priority_idx](t + Δt_allocation)
 
             target_storage_min = get_storage_from_level(basin, basin_id.idx, level_min)
             target_storage_max = get_storage_from_level(basin, basin_id.idx, level_max)

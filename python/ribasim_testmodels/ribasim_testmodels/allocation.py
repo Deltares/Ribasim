@@ -73,15 +73,15 @@ def user_demand_model() -> Model:
         Node(4, Point(1, 0)),
         [
             user_demand.Time(
-                time=[
-                    "2020-08-01 00:00:00",
-                    "2020-09-01 00:00:00",
-                    "2020-10-01 00:00:00",
-                    "2020-11-01 00:00:00",
-                ],
+                time=list(pd.date_range(start="2020-08-01", end="2020-09-01"))
+                + list(pd.date_range(start="2020-10-01", end="2020-11-01")),
+                demand=np.concatenate(
+                    [np.linspace(0.0, 1e-4, num=32), np.linspace(2e-4, 0.0, num=32)]
+                ),
                 min_level=0.0,
-                demand=[0.0, 1e-4, 2e-4, 0.0],
-                return_factor=[0.0, 0.1, 0.2, 0.3],
+                return_factor=np.concatenate(
+                    [np.linspace(0.0, 0.1, num=32), np.linspace(0.2, 0.3, num=32)]
+                ),
                 demand_priority=1,
             )
         ],
@@ -352,7 +352,7 @@ def minimal_subnetwork_model() -> Model:
         Node(6, Point(1, 4), subnetwork_id=2),
         [
             user_demand.Time(
-                time=["2020-01-01", "2021-01-01"],
+                time=["2020-01-01", "2020-01-02"],
                 demand=[1e-3, 2e-3],
                 return_factor=0.9,
                 min_level=0.9,
@@ -1669,8 +1669,8 @@ def multiple_source_priorities_model() -> Model:
         [
             user_demand.Time(
                 demand_priority=2,
-                time=["2020-01-01", "2021-01-01"],
-                demand=[0.0, 3.0],
+                time=pd.date_range(start="2020-01-01", end="2021-01-01"),
+                demand=np.linspace(0.0, 3.0, num=367),
                 return_factor=0,
                 min_level=0,
             )
