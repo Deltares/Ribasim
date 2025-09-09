@@ -347,7 +347,7 @@ end
 
 function valid_demand(
     node_id::Vector{NodeID},
-    demand_interpolation::Vector{Vector{ScalarLinearInterpolation}},
+    demand_interpolation::Vector{Vector{ScalarConstantInterpolation}},
     demand_priorities::Vector{Int32},
 )::Bool
     errors = false
@@ -722,9 +722,9 @@ function validate_consistent_basin_initialization(
 end
 
 function invalid_nested_interpolation_times(
-    interpolations_min::Vector{ScalarLinearInterpolation};
-    interpolations_max::Vector{ScalarLinearInterpolation} = fill(
-        trivial_linear_itp(; val = Inf),
+    interpolations_min::Vector{ScalarConstantInterpolation};
+    interpolations_max::Vector{ScalarConstantInterpolation} = fill(
+        trivial_constant_itp(; val = Inf),
         length(interpolations_min),
     ),
 )::Vector{Float64}
