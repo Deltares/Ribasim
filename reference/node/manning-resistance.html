@@ -535,7 +535,7 @@ Q = \textrm{sign}(\Delta h) \frac{A}{n} R_h^{2/3}\sqrt{\frac{|\Delta h|}{L} }
 <p>The <span class="math inline">\(\textrm{sign}(\Delta h)\)</span> term causes the direction of the flow to reverse if the head in basin <span class="math inline">\(b\)</span> is larger than in basin <span class="math inline">\(a\)</span>.</p>
 <p>This expression however has a derivative which tends to <span class="math inline">\(\infty\)</span> as <span class="math inline">\(\Delta h\)</span> tends to <span class="math inline">\(0\)</span>, which can lead to instabilities in simulation. Therefore we use the modified expression</p>
 <p><span class="math display">\[
-Q = \phi\frac{A}{n} R_h^{2/3}s\left(\frac{\Delta h}{L}; 10^{-5}\right),
+Q = \phi\frac{A}{n} R_h^{2/3}s\left(\frac{\Delta h}{L}; x_0\right),
 \]</span></p>
 <p>where <span class="math inline">\(s\)</span> is a relaxed square root function:</p>
 <p><span class="math display">\[
@@ -548,7 +548,15 @@ s(x; x_0)
   \end{cases}
 \end{align}
 \]</span></p>
-<div id="44f87ad1" class="cell" data-execution_count="1">
+<p>And <span class="math inline">\(x_0\)</span> is calculated based on the Reynolds number, such that the smooth relaxation starts when the velocity of the flow starts to leave the fully turbulent regime (<span class="math inline">\(\text{Re}&lt;2000\)</span>):</p>
+<p><span class="math display">\[
+\text{Re} = \frac{Q}{\nu R_h} = \frac{A \sqrt{\Delta h / L}}{n \nu \sqrt[3]{R_h}}
+\]</span></p>
+<p>Which can be rewritten:</p>
+<p><span class="math display">\[
+x_0 = \left( \text{Re}_0 \frac{ n \nu \sqrt[3]{R_h}}{A} \right)^2
+\]</span></p>
+<div id="e27c935a" class="cell" data-execution_count="1">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> numpy <span class="im">as</span> np</span>
@@ -561,22 +569,24 @@ s(x; x_0)
 <span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>  <span class="cf">else</span>:</span>
 <span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> np.sign(x)<span class="op">*</span>np.sqrt(np.<span class="bu">abs</span>(x))</span>
 <span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>x <span class="op">=</span> np.linspace(<span class="op">-</span><span class="fl">0.0025</span>, <span class="fl">0.0025</span>, <span class="dv">100</span>)</span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>threshold <span class="op">=</span> <span class="fl">1e-3</span></span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots()</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>threshold <span class="op">=</span> <span class="fl">1e-5</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>x <span class="op">=</span> np.linspace(<span class="op">-</span><span class="fl">0.0025</span>, <span class="fl">0.0025</span>, <span class="dv">100</span>)</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>x <span class="op">=</span> np.linspace(<span class="op">-</span><span class="fl">2.5</span><span class="op">*</span>threshold, <span class="fl">2.5</span><span class="op">*</span>threshold, <span class="dv">100</span>)</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>y_o <span class="op">=</span> np.sign(x)<span class="op">*</span>np.sqrt(np.<span class="bu">abs</span>(x))</span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>y_s <span class="op">=</span> [s(x_, threshold) <span class="cf">for</span> x_ <span class="kw">in</span> x]</span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>ax.plot(x, y_o, ls <span class="op">=</span> <span class="st">":"</span>, label <span class="op">=</span> <span class="vs">r"sign</span><span class="dv">$</span><span class="kw">(</span><span class="vs">x</span><span class="kw">)</span><span class="dv">\s</span><span class="vs">qrt{</span><span class="cf">|</span><span class="vs">x</span><span class="cf">|</span><span class="vs">}</span><span class="dv">$</span><span class="vs">"</span>)</span>
-<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>ax.plot(x, y_s, color <span class="op">=</span> <span class="st">"C0"</span>, label <span class="op">=</span> <span class="vs">r"</span><span class="dv">$</span><span class="vs">s</span><span class="er">\</span><span class="vs">left</span><span class="kw">(</span><span class="vs">x; 10</span><span class="dv">^</span><span class="vs">{-3}</span><span class="ch">\r</span><span class="vs">ight</span><span class="kw">)</span><span class="dv">$</span><span class="vs">"</span>)</span>
-<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>ax.legend()<span class="op">;</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots()</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>y_o <span class="op">=</span> np.sign(x)<span class="op">*</span>np.sqrt(np.<span class="bu">abs</span>(x))</span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>y_s <span class="op">=</span> [s(x_, threshold) <span class="cf">for</span> x_ <span class="kw">in</span> x]</span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>ax.plot(x, y_o, ls <span class="op">=</span> <span class="st">":"</span>, label <span class="op">=</span> <span class="vs">r"sign</span><span class="dv">$</span><span class="kw">(</span><span class="vs">x</span><span class="kw">)</span><span class="dv">\s</span><span class="vs">qrt{</span><span class="cf">|</span><span class="vs">x</span><span class="cf">|</span><span class="vs">}</span><span class="dv">$</span><span class="vs">"</span>)</span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>ax.plot(x, y_s, color <span class="op">=</span> <span class="st">"C0"</span>, label <span class="op">=</span> <span class="vs">r"</span><span class="dv">$</span><span class="vs">s</span><span class="er">\</span><span class="vs">left</span><span class="kw">(</span><span class="vs">x; 10</span><span class="dv">^</span><span class="vs">{-5} </span><span class="ch">\r</span><span class="vs">ight</span><span class="kw">)</span><span class="dv">$</span><span class="vs">"</span>)</span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>ax.legend()<span class="op">;</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="manning-resistance_files/figure-html/cell-2-output-1.png" width="590" height="411" class="figure-img"></p>
+<p><img src="manning-resistance_files/figure-html/cell-2-output-1.png" width="599" height="428" class="figure-img"></p>
 </figure>
 </div>
 </div>
