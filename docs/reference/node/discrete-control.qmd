@@ -57,11 +57,12 @@ column               | type     | unit       | restriction
 node_id              | Int32    | -          |
 compound_variable_id | Int32    | -          |
 listen_node_id       | Int32    | -          | cannot be a Junction
-variable             | String   | -          | must be "level" or "flow_rate"
+variable             | String   | -          | must be "level", "storage" or "flow_rate"
 weight               | Float64  | -          | (optional, default 1.0)
 look_ahead           | Float64  | $\text{s}$ | Only on transient boundary conditions, non-negative (optional, default 0.0).
 
 These variables can be listened to:
+- The storage of a Basin
 - The level of a Basin
 - The level of a LevelBoundary (supports look ahead)
 - The flow rate through one of these node types: Pump, Outlet, TabulatedRatingCurve, LinearResistance, ManningResistance

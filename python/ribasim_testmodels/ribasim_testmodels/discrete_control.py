@@ -496,6 +496,55 @@ def level_range_model() -> Model:
     return model
 
 
+def storage_condition_model() -> Model:
+    """Create a model with a discrete control condition based on the storage of a Basin."""
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2021-01-01",
+        crs="EPSG:28992",
+    )
+
+    fb = model.flow_boundary.add(
+        Node(1, Point(0, 0)), [flow_boundary.Static(flow_rate=[1e-3])]
+    )
+
+    bsn = model.basin.add(
+        Node(2, Point(1, 0)),
+        [basin.Profile(area=1000.0, level=[0.0, 10.0]), basin.State(level=[5.0])],
+    )
+
+    pmp = model.pump.add(
+        Node(3, Point(2, 0)),
+        [
+            pump.Static(
+                control_state=["off", "on"], flow_rate="1e-3", active=[False, True]
+            )
+        ],
+    )
+
+    tmn = model.terminal.add(Node(4, Point(3, 0)))
+
+    dc = model.discrete_control.add(
+        Node(5, Point(1, 1)),
+        [
+            discrete_control.Variable(
+                compound_variable_id=1, listen_node_id=2, variable=["storage"]
+            ),
+            discrete_control.Condition(
+                compound_variable_id=1, condition_id=1, threshold_high=[7500]
+            ),
+            discrete_control.Logic(truth_state=["F", "T"], control_state=["off", "on"]),
+        ],
+    )
+
+    model.link.add(fb, bsn)
+    model.link.add(bsn, pmp)
+    model.link.add(pmp, tmn)
+    model.link.add(dc, pmp)
+
+    return model
+
+
 def connector_node_flow_condition_model() -> Model:
     """DiscreteControl with a condition on the flow through a connector node."""
     model = Model(

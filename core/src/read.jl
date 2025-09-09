@@ -1827,7 +1827,7 @@ function sqlite_columntable(
 end
 
 "Alternative to Tables.columntable that converts time to our own to_datetime."
-function arrow_columntable(table::Query, T::Type{<:Table})::NamedTuple
+function arrow_columntable(table::Arrow.Table, T::Type{<:Table})::NamedTuple
     nrows = length(first(table))
     names = fieldnames(T)
     types = fieldtypes(T)
