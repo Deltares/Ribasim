@@ -99,7 +99,7 @@ This is done by storing it on the diagonal of the `flow[from, to]` matrix, e.g. 
 
 See [Equations](/concept/equations.qmd#the-jacobian) for a mathematical description of the Jacobian.
 
-Before the Julia core runs its simulation, the sparsity structure `jac_prototype` of $J$ is determined with `get_jac_prototype` in `sparsity.jl`. This function runs trough all node types and looks for nodes that create dependencies between states. It creates a sparse matrix of zeros and ones, where the ones denote locations of possible non-zeros in $J$. Note that only nodes that set flows in the physical layer (or have their own state like `PidControl`) affect the sparsity structure.
+Before the Julia core runs its simulation, the sparsity structure `jac_prototype` of $J$ is determined with `get_jac_prototype` in `sparsity.jl`. This function runs through all node types and looks for nodes that create dependencies between states. It creates a sparse matrix of zeros and ones, where the ones denote locations of possible non-zeros in $J$. Note that only nodes that set flows in the physical layer (or have their own state like `PidControl`) affect the sparsity structure.
 
 We divide the various node types in groups based on what type of state dependencies they yield, and these groups are discussed below. Each group has its own method `update_jac_prototype!` in `utils.jl` for the sparsity structure induced by nodes of that group. `NewNodeType` should be added to the signature of one these methods, or to the list of node types that do not contribute to the Jacobian in the method of `update_jac_prototype!` whose signature contains `node::AbstractParameterNode`. Of course it is also possible that a new method of `update_jac_prototype!` has to be introduced.
 

@@ -161,7 +161,10 @@ class Model(FileModel):
     @model_validator(mode="after")
     def _ensure_link_table_is_present(self) -> "Model":
         if self.link.df is None:
-            self.link.df = GeoDataFrame[LinkSchema](index=pd.Index([], name="link_id"))
+            self.link.df = GeoDataFrame[LinkSchema](
+                index=pd.Index([], name="link_id"),
+                geometry=[],
+            )
         self.link.df = self.link.df.set_geometry("geometry", crs=self.crs)
         return self
 

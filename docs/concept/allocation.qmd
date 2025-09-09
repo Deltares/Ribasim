@@ -243,7 +243,7 @@ We separate these out because these different types optimize for different quant
 
 ### Control by allocation
 
-When Pumps and Outlets are part of a subnetwork, they can be controlled by allocation. To accomplish this, they must be given the special control state `Ribasim.allocation`. When a Pump or Outlet has this control state, the flow trough the node is only bounded by its capacity and <span style="color: red;">#TODO: Pump or Node specific constraints based on the difference between upstream and downstream level.</span>. After all goals have been optimized for, the flow rate trough the Pump or Outlet is communicated to the physical layer.
+When Pumps and Outlets are part of a subnetwork, they can be controlled by allocation. To accomplish this, they must be given the special control state `Ribasim.allocation`. When a Pump or Outlet has this control state, the flow through the node is only bounded by its capacity and <span style="color: red;">#TODO: Pump or Node specific constraints based on the difference between upstream and downstream level.</span>. After all goals have been optimized for, the flow rate through the Pump or Outlet is communicated to the physical layer.
 
 ### Interaction of allocation with other control systems
 
@@ -298,7 +298,7 @@ $$
         d^{p_{\text{df}}} \text{ if } p = p_{\text{fd}}
     \end{cases}
 $$
-for all $i \in FD_S$. Here $d^{p_{\text{df}}}$ is given by the original flow demand minus the flows trough node $i$ at all priorities $p < p_{\text{fd}}$.
+for all $i \in FD_S$. Here $d^{p_{\text{df}}}$ is given by the original flow demand minus the flows through node $i$ at all priorities $p < p_{\text{fd}}$.
 
 ## Simulation (physical layer) input
 

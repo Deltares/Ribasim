@@ -556,67 +556,114 @@ end
 
 "Create an allocation result table for the saved data"
 function allocation_data(model::Model; table::Bool = true)
-    (; config) = model
-    (; record_demand) = model.integrator.p.p_independent.allocation
+    (; config, integrator) = model
+    (; p_independent, state_time_dependent_cache) = integrator.p
+    (; current_storage) = state_time_dependent_cache
+    (; allocation, graph, basin, user_demand, flow_demand, level_demand) = p_independent
+    (; record_demand, demand_priorities_all, allocation_models) = allocation
 
-    datetimes = datetime_since.(record_demand.time, config.starttime)
+    datetimes = datetime_since.(getfield.(record_demand, :time), config.starttime)
 
-    if table
-        time = datetimes
-        subnetwork_id = record_demand.subnetwork_id
-        node_type = record_demand.node_type
-        node_id = record_demand.node_id
-        demand_priority = record_demand.demand_priority
-        demand = record_demand.demand
-        allocated = record_demand.allocated
-        realized = record_demand.realized
-    else
-        time = unique(datetimes)
-        node_id = unique(record_demand.node_id)
-        demand_priority = unique(record_demand.demand_priority)
+    time = unique(datetimes)
+    node_id = sort!(unique(getfield.(record_demand, :node_id)))
 
-        nrows = length(record_demand.time)
-        ntsteps = length(time)
-        nnodes = length(node_id)
-        nprio = length(demand_priority)
+    nrows = length(record_demand)
+    ntsteps = length(time)
+    nnodes = length(node_id)
+    nprio = length(demand_priorities_all)
 
-        # record_demand only stores existing node_id and demand_priority combination
-        # e.g. node #3 has only prio 1, node #6 has only prio 3
-        # here we need to create the 2x2 matrix ourselves and fill in this case half
-        demand = fill(NaN, nprio, nnodes, ntsteps)
-        allocated = fill(NaN, nprio, nnodes, ntsteps)
-        realized = fill(NaN, nprio, nnodes, ntsteps)
+    # record_demand only stores existing node_id and demand_priority combination
+    # e.g. node #3 has only prio 1, node #6 has only prio 3
+    # here we need to create the 2x2 matrix ourselves and fill in this case half
+    demand = fill(NaN, nprio, nnodes, ntsteps)
+    allocated = fill(NaN, nprio, nnodes, ntsteps)
+    realized = fill(NaN, nprio, nnodes, ntsteps)
 
-        # coordinate variables are similarly filled in
-        subnetwork_id = zeros(Int32, nnodes)
-        node_type = ["" for _ in 1:nnodes]
+    # coordinate variables are similarly filled in
+    subnetwork_id = zeros(Int32, nnodes)
+    node_type = ["" for _ in 1:nnodes]
 
-        for row in 1:nrows
-            prio = record_demand.demand_priority[row]
-            node = record_demand.node_id[row]
-            t = datetimes[row]
+    has_priority = zeros(Bool, nprio, nnodes)
 
-            i = searchsortedfirst(demand_priority, prio)
-            j = searchsortedfirst(node_id, node)
-            k = searchsortedfirst(time, t)
-            demand[i, j, k] = record_demand.demand[row]
-            allocated[i, j, k] = record_demand.allocated[row]
-            realized[i, j, k] = record_demand.realized[row]
-            subnetwork_id[j] = record_demand.subnetwork_id[row]
-            node_type[j] = record_demand.node_type[row]
+    for row_idx in 1:nrows
+        row = record_demand[row_idx]
+        prio = row.demand_priority
+        node = row.node_id
+        t = datetime_since(row.time, config.starttime)
+
+        i = searchsortedfirst(demand_priorities_all, prio)
+        j = searchsortedfirst(node_id, node)
+        k = searchsortedfirst(time, t)
+        demand[i, j, k] = row.demand
+        allocated[i, j, k] = row.allocated
+
+        if k > 1
+            realized[i, j, k - 1] = row.realized
+        end
+        subnetwork_id[j] = row.subnetwork_id
+        node_type[j] = row.node_type
+        has_priority[i, j] = true
+    end
+
+    # Handle realized flows in last allocation timestep
+    if !isempty(record_demand)
+        Δt = integrator.t - last(record_demand).time
+        for allocation_model in allocation_models
+            (; cumulative_realized_volume, node_ids_in_subnetwork) = allocation_model
+            (;
+                user_demand_ids_subnetwork,
+                node_ids_subnetwork_with_flow_demand,
+                basin_ids_subnetwork_with_level_demand,
+            ) = node_ids_in_subnetwork
+
+            # UserDemand
+            for id in user_demand_ids_subnetwork
+                j = searchsortedfirst(node_id, id)
+                realized[view(has_priority, :, j), j, end] .=
+                    cumulative_realized_volume[user_demand.inflow_link[id.idx].link] / Δt
+            end
+
+            # FlowDemand
+            for id in node_ids_subnetwork_with_flow_demand
+                j = searchsortedfirst(node_id, id)
+                flow_demand_id = only(inneighbor_labels_type(graph, id, LinkType.control))
+                realized[view(has_priority, :, j), j, end] .=
+                    cumulative_realized_volume[flow_demand.inflow_link[flow_demand_id.idx].link] /
+                    Δt
+            end
+
+            # LevelDemand
+            for id in basin_ids_subnetwork_with_level_demand
+                j = searchsortedfirst(node_id, id)
+                realized[view(has_priority, :, j), j, end] .=
+                    (current_storage[id.idx] - level_demand.storage_prev[id]) / Δt
+            end
         end
     end
 
-    return (;
-        time,
-        subnetwork_id,
-        node_type,
-        node_id,
-        demand_priority,
-        demand,
-        allocated,
-        realized,
-    )
+    return if table
+        (;
+            time = repeat(time; inner = nprio * nnodes),
+            subnetwork_id = repeat(subnetwork_id; inner = nprio, outer = ntsteps),
+            node_type = repeat(node_type; inner = nprio, outer = ntsteps),
+            node_id = repeat(node_id; inner = nprio, outer = ntsteps),
+            demand_priority = repeat(demand_priorities_all; outer = nnodes * ntsteps),
+            demand = vec(demand),
+            allocated = vec(allocated),
+            realized = vec(realized),
+        )
+    else
+        (;
+            time,
+            subnetwork_id,
+            node_type,
+            node_id,
+            demand_priority = demand_priorities_all,
+            demand,
+            allocated,
+            realized,
+        )
+    end
 end
 
 function allocation_flow_data(model::Model; table::Bool = true)
@@ -624,16 +671,17 @@ function allocation_flow_data(model::Model; table::Bool = true)
     (; record_flow) = model.integrator.p.p_independent.allocation
 
     if table
-        time = datetime_since.(record_flow.time, config.starttime)
-        link_id = record_flow.link_id
-        from_node_type = record_flow.from_node_type
-        from_node_id = record_flow.from_node_id
-        to_node_type = record_flow.to_node_type
-        to_node_id = record_flow.to_node_id
-        subnetwork_id = record_flow.subnetwork_id
-        optimization_type = record_flow.optimization_type
-        lower_bound_hit = record_flow.lower_bound_hit
-        upper_bound_hit = record_flow.upper_bound_hit
+        time = datetime_since.(getfield.(record_flow, :time), config.starttime)
+        link_id = getfield.(record_flow, :link_id)
+        from_node_type = getfield.(record_flow, :from_node_type)
+        from_node_id = getfield.(record_flow, :from_node_id)
+        to_node_type = getfield.(record_flow, :to_node_type)
+        to_node_id = getfield.(record_flow, :to_node_id)
+        subnetwork_id = getfield.(record_flow, :subnetwork_id)
+        flow_rate = getfield.(record_flow, :flow_rate)
+        optimization_type = getfield.(record_flow, :optimization_type)
+        lower_bound_hit = getfield.(record_flow, :lower_bound_hit)
+        upper_bound_hit = getfield.(record_flow, :upper_bound_hit)
     else
         error("allocation_flow not implemented for NetCDF")
     end
@@ -646,7 +694,7 @@ function allocation_flow_data(model::Model; table::Bool = true)
         to_node_type,
         to_node_id,
         subnetwork_id,
-        record_flow.flow_rate,
+        flow_rate,
         optimization_type,
         lower_bound_hit,
         upper_bound_hit,
@@ -658,10 +706,10 @@ function allocation_control_data(model::Model; table::Bool = true)
     (; record_control) = integrator.p.p_independent.allocation
 
     return (;
-        time = datetime_since.(record_control.time, config.starttime),
-        record_control.node_id,
-        record_control.node_type,
-        record_control.flow_rate,
+        time = datetime_since.(getfield.(record_control, :time), config.starttime),
+        node_id = getfield.(record_control, :node_id),
+        node_type = getfield.(record_control, :node_type),
+        flow_rate = getfield.(record_control, :flow_rate),
     )
 end
 

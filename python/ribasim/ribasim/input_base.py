@@ -330,8 +330,8 @@ class TableModel(FileModel, Generic[TableT]):
     def tablename(cls) -> str:
         """Retrieve tablename based on attached Schema.
 
-        NodeSchema -> Schema
-        TabularRatingCurveStaticSchema -> TabularRatingCurve / Static
+        NodeSchema -> Node
+        TabularRatingCurveStaticSchema -> TabularRatingCurve / static
         """
         cls_string = str(cls.tableschema())
         names: list[str] = re.sub("([A-Z]+)", r" \1", cls_string).split()[:-1]
@@ -414,7 +414,7 @@ class TableModel(FileModel, Generic[TableT]):
             # Set geopackage attribute table
 
     def _write_arrow(self, filepath: Path, directory: Path, input_dir: Path) -> None:
-        """Write the contents of the input to a an arrow file."""
+        """Write the contents of the input to an arrow file."""
         assert self.df is not None
         path = directory / input_dir / filepath
         path.parent.mkdir(parents=True, exist_ok=True)

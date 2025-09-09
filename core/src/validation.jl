@@ -177,22 +177,16 @@ sort_by(::StructVector{Schema.UserDemand.Time}) =
     x -> (x.node_id, x.demand_priority, x.time)
 
 """
-Depending on if a table can be sorted, either sort it or assert that it is sorted.
+Sort a table in place in the required order.
 
-Tables loaded from the database into memory can be sorted.
-Tables loaded from Arrow files are memory mapped and can therefore not be sorted.
+The parameter initialization code after this assumes the function is sorted, using e.g.
+`IterTools.groupby`.
+
+Note that Ribasim-Python also sorts tables in the required order on write.
 """
-function sorted_table!(table::StructVector{<:Table})::StructVector{<:Table}
+function sorted_table!(table::StructVector{T})::StructVector{T} where {T <: Table}
     by = sort_by(table)
-    if any((typeof(col) <: Arrow.Primitive for col in Tables.columns(table)))
-        et = eltype(table)
-        if !issorted(table; by)
-            error("Arrow table for $et not sorted as required.")
-        end
-    else
-        sort!(table; by)
-    end
-    return table
+    return sort!(table; by)
 end
 
 function valid_config(config::Config)::Bool
@@ -353,7 +347,7 @@ end
 
 function valid_demand(
     node_id::Vector{NodeID},
-    demand_interpolation::Vector{Vector{ScalarLinearInterpolation}},
+    demand_interpolation::Vector{Vector{ScalarConstantInterpolation}},
     demand_priorities::Vector{Int32},
 )::Bool
     errors = false
@@ -669,7 +663,7 @@ function validate_consistent_basin_initialization(
         n = length(group_level)
         if n < 2
             errors = true
-            @error "$node_id profile must have at least two data points, got $n."
+            @error "Basin #$node_id profile must have at least two data points, got $n."
         end
         if !allunique(group_level)
             errors = true
@@ -728,9 +722,9 @@ function validate_consistent_basin_initialization(
 end
 
 function invalid_nested_interpolation_times(
-    interpolations_min::Vector{ScalarLinearInterpolation};
-    interpolations_max::Vector{ScalarLinearInterpolation} = fill(
-        trivial_linear_itp(; val = Inf),
+    interpolations_min::Vector{ScalarConstantInterpolation};
+    interpolations_max::Vector{ScalarConstantInterpolation} = fill(
+        trivial_constant_itp(; val = Inf),
         length(interpolations_min),
     ),
 )::Vector{Float64}

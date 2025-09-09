@@ -80,10 +80,9 @@ using DataInterpolations.ExtrapolationType:
 # Modeling language for Mathematical Optimization.
 # Used for allocation, see the docs: https://ribasim.org/dev/allocation.html
 import JuMP
+import MultiObjectiveAlgorithms as MOA
 # The optimization backend of JuMP.
 import HiGHS
-# Represent piecewise linear functions in JuMP
-using PiecewiseLinearOpt: piecewiselinear
 # Analyze infeasibilities and numerical properties
 import MathOptAnalyzer
 
@@ -159,6 +158,8 @@ using NCDatasets: NCDataset, defDim, defVar
 using Dates: Second
 
 using Printf: @sprintf
+
+using Base.Threads: @threads
 
 export libribasim
 

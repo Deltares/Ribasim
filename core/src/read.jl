@@ -35,9 +35,17 @@ function initialize_allocation!(
             AllocationModel(subnetwork_id, p_independent, config.allocation),
         )
     end
-
-    validate_objectives(allocation_models, p_independent)
     return nothing
+end
+
+function set_external_flow_demand_nodes!(
+    node::AbstractParameterNode,
+    graph::MetaGraph,
+)::Nothing
+    for id in node.node_id
+        flow_demand_id = get_external_demand_id(graph, id)
+        !isnothing(flow_demand_id) && (node.flow_demand_id[id.idx] = flow_demand_id)
+    end
 end
 
 # Get a number parameter value
@@ -322,18 +330,6 @@ function set_inoutflow_links!(node::AbstractParameterNode, graph::MetaGraph; inf
     map!(node_id -> outflow_link(graph, node_id), node.outflow_link, node.node_id)
 end
 
-function set_flow_demand_data!(node::Union{Pump, Outlet}, graph)::Nothing
-    (; node_id, flow_demand_data) = node
-
-    for id in node_id
-        has_demand, flow_demand_id = has_external_flow_demand(graph, id, :flow_demand)
-        if has_demand
-            flow_demand_data[id.idx] = (has_demand, flow_demand_id)
-        end
-    end
-    return nothing
-end
-
 function LinearResistance(db, config, graph)
     static = load_structvector(db, config, Schema.LinearResistance.Static)
     node_id = get_node_ids(db, NodeType.LinearResistance)
@@ -342,6 +338,7 @@ function LinearResistance(db, config, graph)
 
     initialize_control_mapping!(linear_resistance, static)
     set_inoutflow_links!(linear_resistance, graph)
+    set_external_flow_demand_nodes!(linear_resistance, graph)
     errors = parse_parameter!(linear_resistance, config, :active; static, default = true)
     errors |= parse_parameter!(linear_resistance, config, :resistance; static)
     errors |=
@@ -361,6 +358,7 @@ function TabulatedRatingCurve(db::DB, config::Config, graph::MetaGraph)
     rating_curve = TabulatedRatingCurve(; node_id)
 
     set_inoutflow_links!(rating_curve, graph)
+    set_external_flow_demand_nodes!(rating_curve, graph)
     errors = parse_parameter!(rating_curve, config, :active; static, time, default = true)
     errors |= parse_parameter!(
         rating_curve,
@@ -480,6 +478,7 @@ function ManningResistance(db::DB, config::Config, graph::MetaGraph, basin::Basi
 
     initialize_control_mapping!(manning_resistance, static)
     set_inoutflow_links!(manning_resistance, graph)
+    set_external_flow_demand_nodes!(manning_resistance, graph)
     errors = parse_parameter!(manning_resistance, config, :active; static, default = true)
     errors |= parse_parameter!(manning_resistance, config, :length; static)
     errors |= parse_parameter!(manning_resistance, config, :manning_n; static)
@@ -572,7 +571,7 @@ function Pump(db::DB, config::Config, graph::MetaGraph)
     initialize_control_mapping!(pump, static)
     set_control_type!(pump, graph)
     set_inoutflow_links!(pump, graph)
-    set_flow_demand_data!(pump, graph)
+    set_external_flow_demand_nodes!(pump, graph)
 
     errors = parse_parameter!(pump, config, :active; static, time, default = true)
     errors |= parse_parameter!(pump, config, :flow_rate; static, time)
@@ -600,7 +599,7 @@ function Outlet(db::DB, config::Config, graph::MetaGraph)
     initialize_control_mapping!(outlet, static)
     set_control_type!(outlet, graph)
     set_inoutflow_links!(outlet, graph)
-    set_flow_demand_data!(outlet, graph)
+    set_external_flow_demand_nodes!(outlet, graph)
 
     errors = parse_parameter!(outlet, config, :active; static, time, default = true)
     errors |= parse_parameter!(outlet, config, :flow_rate; static, time)
@@ -705,6 +704,7 @@ function ConcentrationData(
                 NodeID(:Basin, first_row.node_id, 0),
                 :concentration;
                 cyclic_time,
+                interpolation_type = LinearInterpolation,
             )
             concentration_external_id["concentration_external.$substance"] = itp
             if any(itp.u .< 0)
@@ -788,12 +788,16 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     basin.storage_prev .= storage0
     basin.concentration_data.mass .*= storage0  # was initialized by concentration_state, resulting in mass
 
-    # Compute the low storage threshold as the disk of water between the bottom
-    # and 10 cm above the bottom
     for id in node_id
+        # Compute the low storage threshold as the disk of water between the bottom
+        # and 10 cm above the bottom
         bottom = basin_bottom(basin, id)[2]
         basin.low_storage_threshold[id.idx] =
             get_storage_from_level(basin, id.idx, bottom + LOW_STORAGE_DEPTH)
+
+        # Cache the connected LevelDemand node if applicable
+        level_demand_id = get_external_demand_id(graph, id)
+        !isnothing(level_demand_id) && (basin.level_demand_id[id.idx] = level_demand_id)
     end
 
     return basin
@@ -961,6 +965,9 @@ function DiscreteControl(db::DB, config::Config, graph::MetaGraph)::DiscreteCont
     # Initialize the truth state per DiscreteControl node
     truth_state = Vector{Bool}[]
     for i in eachindex(node_id)
+        if isempty(compound_variables)
+            error("Missing data for $(node_id[i]).")
+        end
         truth_state_length = sum(length(var.greater_than) for var in compound_variables[i])
         push!(truth_state, fill(false, truth_state_length))
     end
@@ -1159,7 +1166,7 @@ function parse_static_demand_data!(
         demand_priority_idx = findsorted(demand_priorities, row.demand_priority)
         node.has_demand_priority[id.idx, demand_priority_idx] = true
         demand_row = coalesce(row.demand, 0.0)
-        demand_interpolation = trivial_linear_itp(; val = demand_row)
+        demand_interpolation = trivial_constant_itp(; val = demand_row)
         node.demand_interpolation[id.idx][demand_priority_idx] = demand_interpolation
         node.demand[id.idx, demand_priority_idx] = demand_row
     end
@@ -1239,8 +1246,8 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)
             user_demand.demand_priorities,
         )
 
+    user_demand.allocated[.!user_demand.has_demand_priority] .= 0
     errors && error("Errors encountered when parsing LevelDemand data.")
-
     user_demand
 end
 
@@ -1255,9 +1262,9 @@ function parse_static_demand_data!(
         demand_priority_idx = findsorted(demand_priorities, row.demand_priority)
         level_demand.has_demand_priority[id.idx, demand_priority_idx] = true
         level_demand.min_level[id.idx][demand_priority_idx] =
-            trivial_linear_itp(; val = coalesce(row.min_level, -Inf))
+            trivial_constant_itp(; val = coalesce(row.min_level, -Inf))
         level_demand.max_level[id.idx][demand_priority_idx] =
-            trivial_linear_itp(; val = coalesce(row.max_level, Inf))
+            trivial_constant_itp(; val = coalesce(row.max_level, Inf))
     end
     return nothing
 end
@@ -1328,11 +1335,8 @@ function LevelDemand(db::DB, config::Config, graph::MetaGraph)
         basin_ids = collect(outneighbor_labels_type(graph, id, LinkType.control))
         push!(level_demand.basins_with_demand, basin_ids)
         for basin_id in basin_ids
-            level_demand.target_storage_min[basin_id] = fill(NaN, n_demand_priorities)
-            level_demand.target_storage_max[basin_id] = fill(NaN, n_demand_priorities)
+            level_demand.storage_demand[basin_id] = zeros(n_demand_priorities)
             level_demand.storage_prev[basin_id] = 0.0
-            level_demand.storage_allocated[basin_id] = zeros(n_demand_priorities)
-            level_demand.storage_demand[basin_id] = fill(NaN, n_demand_priorities)
         end
     end
 
@@ -1730,7 +1734,7 @@ function load_data(
 
     table = if !isnothing(path)
         table_path = input_path(config, path)
-        Arrow.Table(read(table_path))
+        Arrow.Table(read(table_path); convert = false)
     elseif exists(db, sql_name)
         execute(db, "select * from $(esc_id(sql_name))")
     else
@@ -1738,6 +1742,15 @@ function load_data(
     end
 
     return table
+end
+
+# alternative to convert that doesn't have warntimestamp
+# https://github.com/apache/arrow-julia/issues/559
+function to_datetime(x::Arrow.Timestamp{U, nothing})::DateTime where {U}
+    x_since_epoch = Arrow.periodtype(U)(x.x)
+    ms_since_epoch = Dates.toms(x_since_epoch)
+    ut_instant = Dates.UTM(ms_since_epoch + Arrow.UNIX_EPOCH_DATETIME)
+    return DateTime(ut_instant)
 end
 
 """
@@ -1758,7 +1771,9 @@ function load_structvector(
         return StructVector{T}(undef, 0)
     end
 
-    nt = if table isa Query
+    table_in_db = table isa Query
+
+    nt = if table_in_db
         # faster alternative to Tables.columntable that preallocates based on the schema
         sql_name = sql_table_name(T)
         nrows =
@@ -1789,7 +1804,21 @@ function load_structvector(
         end
         nt
     else
-        columntable(table)
+        nrows = length(first(table))
+        names = fieldnames(T)
+        types = fieldtypes(T)
+        vals = ntuple(i -> Vector{types[i]}(undef, nrows), length(names))
+        nt = NamedTuple{names}(vals)
+
+        for name in names
+            if name == :time
+                time_col = getproperty(table, name)
+                nt[name] .= [to_datetime(t) for t in time_col]
+            else
+                nt[name] .= getproperty(table, name)
+            end
+        end
+        nt
     end
 
     table = StructVector{T}(nt)

@@ -24,7 +24,16 @@ function (@main)(_)::Cint
     )
 
     add_metadata(project_dir, license_file, output_dir, git_repo, readme_start)
-    run(Cmd(`cargo build --release`; dir = "cli"))
+
+    # On Windows, it is recommended to increase the size of the stack from the default 1 MB to 8MB
+    # https://github.com/JuliaLang/PackageCompiler.jl/blob/v2.2.2/docs/src/devdocs/binaries_part_2.md#windows-considerations
+    # Ran into this in https://github.com/Deltares/Ribasim/issues/2545
+    env = copy(ENV)
+    if Sys.iswindows()
+        env["RUSTFLAGS"] = "-C link-args=/STACK:8388608"
+    end
+
+    run(Cmd(`cargo build --release`; dir = "cli", env))
     ribasim = Sys.iswindows() ? "ribasim.exe" : "ribasim"
     cp("cli/target/release/$ribasim", "ribasim/$ribasim"; force = true)
     return 0

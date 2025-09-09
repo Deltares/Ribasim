@@ -48,13 +48,13 @@ quarto-preview = { cmd = "PYTHON_JULIAPKG_PROJECT=$PIXI_PROJECT_ROOT quarto prev
     "quartodoc-build",
     "generate-testmodels",
     "initialize-julia",
-] }
+], env = { "PYTHON_JULIACALL_CHECK_BOUNDS" = "yes", "PYTHON_JULIACALL_HANDLE_SIGNALS" = "yes", "PYTHON_JULIAPKG_OFFLINE" = "yes" } }
 quarto-check = { cmd = "quarto check all", depends-on = ["quartodoc-build"] }
 quarto-render = { cmd = "PYTHON_JULIAPKG_PROJECT=$PIXI_PROJECT_ROOT quarto render docs", depends-on = [
     "quartodoc-build",
     "generate-testmodels",
     "initialize-julia",
-], env = { "PYTHON_JULIACALL_CHECK_BOUNDS" = "yes", "PYTHON_JULIACALL_HANDLE_SIGNALS" = "no", "PYTHON_JULIAPKG_OFFLINE" = "yes" } }
+], env = { "PYTHON_JULIACALL_CHECK_BOUNDS" = "yes", "PYTHON_JULIACALL_HANDLE_SIGNALS" = "yes", "PYTHON_JULIAPKG_OFFLINE" = "yes" } }
 docs = { depends-on = ["quarto-preview"] }
 # Lint
 mypy-ribasim-python = "mypy python/ribasim/ribasim"
@@ -178,10 +178,8 @@ write-allocation-problems = { cmd = "julia --project --check-bounds=yes --thread
     "generate-testmodels",
     "initialize-julia",
 ] }
-migrate-model = { cmd = "python utils/migrate_model.py {{ input_toml }} {{ output_toml }}", args = [
-    "input_toml",
-    "output_toml",
-] }
+migrate-model = "python utils/migrate_model.py"
+filter-model = "python utils/filter_model.py"
 # Release
 github-release = "python utils/github-release.py"
 
@@ -227,7 +225,7 @@ scripts = ["utils/unset-ssl-cert.bat"]
 
 [dependencies]
 datacompy = ">=0.16"
-geopandas = "1.0.*"
+geopandas = ">=1.0"
 gh = "*"
 hatch = "*"
 hatchling = "*"
@@ -242,7 +240,7 @@ networkx = ">=3.3"
 numpy = ">=1.25, <2.2"
 packaging = ">=23.0"
 pandas = ">=2.0"
-pandas-stubs = "*"
+pandas-stubs = "2.3.0.250703.*"
 pandera = ">=0.25"
 plotly = "*"
 pre-commit = "*"
