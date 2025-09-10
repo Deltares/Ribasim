@@ -13,9 +13,11 @@ NetCDF output has been added, as well as experimental support for NetCDF input.
 DiscreteControl now supports an upper and lower threshold to model hysteresis.
 Editing models in QGIS is no longer supported; the plugin widget has been reduced one button.
 The [Ribasim Python installation section](https://ribasim.org/install.html#sec-install-python) allows you to pick your favorite package manager.
-The addition of `surface_runoff` to the Basin fluxes is the main breaking change.
-Note that Ribasim Python will add this column automatically, see also the new guide on [updating Ribasim](https://ribasim.org/guide/updating-ribasim.html).
 Lastly, Ribasim is now multithreaded!
+
+**Breaking changes**: In the `DiscreteControl / condition` table, `greater_than` has been renamed to `threshold_high`, and the optional `threshold_low` column was added.
+The `surface_runoff` column was added to `Basin / static` and `Basin / time`.
+Note that Ribasim Python will migrate existing models automatically, see also the new guide on [updating Ribasim](https://ribasim.org/guide/updating-ribasim.html).
 
 ### Added
 - Add `surface_runoff` to Basin fluxes. [#2402](https://github.com/Deltares/Ribasim/pull/2402)
