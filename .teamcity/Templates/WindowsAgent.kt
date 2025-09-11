@@ -8,7 +8,7 @@ object WindowsAgent : Template({
     description = "Template for agent that uses Windows OS"
 
     params {
-        param("env.JULIA_NUM_THREADS", "8")
+        param("env.JULIA_NUM_THREADS", "4")
     }
 
     requirements {

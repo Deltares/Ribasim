@@ -37,6 +37,9 @@ initialize-julia = { depends-on = [
     "update-registry-julia",
     "instantiate-julia",
 ] }
+initialize-julia-test = { cmd = "julia --project=core --check-bounds=yes --eval 'using Pkg; Pkg.test(allow_reresolve=false, test_args=[\"skip\"])'", depends-on = [
+    "initialize-julia",
+] }
 # Docs
 quartodoc-build = { cmd = "quartodoc build && rm objects.json", cwd = "docs", inputs = [
     "docs/_quarto.yml",
