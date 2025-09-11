@@ -37,6 +37,9 @@ initialize-julia = { depends-on = [
     "update-registry-julia",
     "instantiate-julia",
 ] }
+initialize-julia-test = { cmd = "julia --project=core --check-bounds=yes --eval 'using Pkg; Pkg.test(allow_reresolve=false, test_args=[\"skip\"])'", depends-on = [
+    "initialize-julia",
+] }
 # Docs
 quartodoc-build = { cmd = "quartodoc build && rm objects.json", cwd = "docs", inputs = [
     "docs/_quarto.yml",
@@ -170,11 +173,11 @@ mypy-ribasim-qgis = "mypy ribasim_qgis"
 ribasim-core = { cmd = "julia --project=core --check-bounds=yes -e 'using Ribasim; Ribasim.main(ARGS)'", depends-on = [
     "initialize-julia",
 ] }
-ribasim-core-testmodels = { cmd = "julia --project --check-bounds=yes --threads=4 utils/testmodelrun.jl", depends-on = [
+ribasim-core-testmodels = { cmd = "julia --project --check-bounds=yes utils/testmodelrun.jl", depends-on = [
     "generate-testmodels",
     "initialize-julia",
 ] }
-write-allocation-problems = { cmd = "julia --project --check-bounds=yes --threads=4 utils/write_allocation_problems.jl", depends-on = [
+write-allocation-problems = { cmd = "julia --project --check-bounds=yes utils/write_allocation_problems.jl", depends-on = [
     "generate-testmodels",
     "initialize-julia",
 ] }

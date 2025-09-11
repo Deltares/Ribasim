@@ -10,6 +10,8 @@ function test_type(item)::Bool
         is_integration
     elseif in("regression", ARGS)
         is_regression
+    elseif in("skip", ARGS)
+        false
     else
         !is_integration && !is_regression
     end
