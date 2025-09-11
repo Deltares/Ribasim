@@ -44,3 +44,5 @@ jobs:
       - name: Run testmodels with Ribasim Core
         run: |
           pixi run ribasim-core-testmodels
+        env:
+          JULIA_NUM_THREADS: 4

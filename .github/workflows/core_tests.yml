@@ -44,6 +44,8 @@ jobs:
         run: |
           pixi run test-ribasim-core-cov
         id: julia-tests
+        env:
+          JULIA_NUM_THREADS: 4
       - name: Upload allocation debug files
         if: always()
         uses: actions/upload-artifact@v4

@@ -9,6 +9,10 @@ object LinuxAgent : Template({
 
     publishArtifacts = PublishMode.SUCCESSFUL
 
+    params {
+        param("env.JULIA_NUM_THREADS", "8")
+    }
+
     requirements {
         equals("teamcity.agent.jvm.os.name", "Linux", "RQ_418")
     }
