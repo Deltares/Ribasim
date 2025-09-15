@@ -202,3 +202,24 @@ end
     DataInterpolations.integral(basin.level_to_area[1], 2.0) ≈ 500.0005 + 1000.0
     @test basin.storage_to_level[1](500.0005 + 1000.0) ≈ 2.0
 end
+
+@testitem "Interpolation type" begin
+    using DataInterpolations: ConstantInterpolation, SmoothedConstantInterpolation
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/flow_boundary_time/ribasim.toml")
+    @test ispath(toml_path)
+    config = Ribasim.Config(
+        toml_path;
+        interpolation_flow_boundary = "block",
+        interpolation_block_transition_period = 0.0,
+    )
+    @test Ribasim.Model(config).integrator.p.p_independent.flow_boundary.flow_rate isa
+          Vector{<:ConstantInterpolation}
+    config = Ribasim.Config(
+        toml_path;
+        interpolation_flow_boundary = "block",
+        interpolation_block_transition_period = 1.0,
+    )
+    @test Ribasim.Model(config).integrator.p.p_independent.flow_boundary.flow_rate isa
+          Vector{<:SmoothedConstantInterpolation}
+end
