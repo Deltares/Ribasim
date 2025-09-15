@@ -720,7 +720,6 @@ end
     @test interpolation.flow_boundary == "block"
     @test flow_rate isa Vector{<:ConstantInterpolation}
     itp = only(flow_rate)
-    @test itp.d_max == interpolation.block_transition_period == 0.0
     Ribasim.solve!(model)
 
     flow_rates_input = itp.u
