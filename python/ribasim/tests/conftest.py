@@ -62,3 +62,8 @@ def trivial() -> ribasim.Model:
 @pytest.fixture()
 def tabulated_rating_curve_control() -> ribasim.Model:
     return ribasim_testmodels.tabulated_rating_curve_control_model()
+
+
+@pytest.fixture()
+def drought() -> ribasim.Model:
+    return ribasim_testmodels.drought_model()

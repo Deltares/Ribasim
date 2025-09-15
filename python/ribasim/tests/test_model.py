@@ -415,3 +415,17 @@ def test_invalid_version_string_warning(basic, tmp_path):
         match="version in the TOML file.*invalid_version_string.*does not match the Python package version",
     ):
         Model.read(toml_path)
+
+
+def test_path_serialization_uses_forward_slashes(drought, tmp_path):
+    """Test that paths in TOML files always use forward slashes for cross-platform compatibility."""
+    model = drought
+    toml_path = tmp_path / "ribasim.toml"
+    model.write(toml_path)
+
+    with open(toml_path, "rb") as f:
+        config = tomli.load(f)
+
+    assert config["input_dir"] == "nested/input"
+    assert config["results_dir"] == "nested/results"
+    assert config["basin"]["time"] == "subdir/basin-time.nc"

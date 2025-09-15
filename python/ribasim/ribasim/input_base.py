@@ -32,6 +32,7 @@ from pydantic import (
     Field,
     PrivateAttr,
     ValidationInfo,
+    field_serializer,
     field_validator,
     model_serializer,
     model_validator,
@@ -243,6 +244,10 @@ class FileModel(BaseModel, ABC):
         self.filepath = filepath
         self.model_config["validate_assignment"] = True
 
+    @field_serializer("filepath")
+    def _serialize_path(self, path: Path) -> str:
+        return path.as_posix()
+
     @classmethod
     @abstractmethod
     def _load(cls, filepath: Path | None) -> dict[str, Any]:
@@ -325,7 +330,7 @@ class TableModel(FileModel, Generic[TableT]):
 
     @model_serializer
     def _set_model(self) -> "str | None":
-        return str(self.filepath.name) if self.filepath is not None else None
+        return self.filepath.as_posix() if self.filepath is not None else None
 
     @classmethod
     def tablename(cls) -> str:
