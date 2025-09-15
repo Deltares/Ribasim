@@ -544,7 +544,11 @@ function FlowBoundary(db::DB, config::Config, graph::MetaGraph)
         config,
     )
 
-    flow_rate = get_interpolation_vec(config.interpolation.flow_boundary, node_id)
+    flow_rate = get_interpolation_vec(
+        config.interpolation.flow_boundary,
+        config.interpolation.block_transition_period,
+        node_id,
+    )
 
     flow_boundary = FlowBoundary(; node_id, concentration_itp, flow_rate)
 
