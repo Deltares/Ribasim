@@ -471,11 +471,14 @@ def cyclic_time_model() -> Model:
 
 def drought_model() -> Model:
     """Create a small subsection of the LHM Vechtstromen model containing a basin that runs dry (#2189)."""
+    # Use nested paths for testing
+
     model = Model(
         starttime="2020-01-01 00:00:00",
         endtime="2021-01-01 00:00:00",
         crs="EPSG:28992",
-        input_dir=Path("input"),
+        input_dir=Path("nested/input"),
+        results_dir=Path("nested/results"),
     )
 
     model.basin.add(
@@ -579,7 +582,7 @@ def drought_model() -> Model:
     model.link.add(model.basin[2189], model.manning_resistance[1237])
     model.link.add(model.basin[1558], model.manning_resistance[1238])
 
-    model.basin.time.set_filepath(Path("basin-time.nc"))
+    model.basin.time.set_filepath(Path("subdir/basin-time.nc"))
 
     return model
 
