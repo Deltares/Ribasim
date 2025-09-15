@@ -704,7 +704,7 @@ end
 end
 
 @testitem "FlowBoundary interpolation type" begin
-    using DataInterpolations: LinearInterpolation, SmoothedConstantInterpolation
+    using DataInterpolations: LinearInterpolation, ConstantInterpolation
     using DataFrames
 
     toml_path = normpath(
@@ -718,7 +718,7 @@ end
     (; interpolation) = model.config
 
     @test interpolation.flow_boundary == "block"
-    @test flow_rate isa Vector{<:SmoothedConstantInterpolation}
+    @test flow_rate isa Vector{<:ConstantInterpolation}
     itp = only(flow_rate)
     @test itp.d_max == interpolation.block_transition_period == 0.0
     Ribasim.solve!(model)
