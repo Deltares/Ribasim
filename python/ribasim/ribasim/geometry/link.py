@@ -1,5 +1,5 @@
+from dataclasses import dataclass
 from pathlib import Path
-from typing import NamedTuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -37,7 +37,8 @@ SPATIALCONTROLNODETYPES = {
 }
 
 
-class NodeData(NamedTuple):
+@dataclass
+class NodeData:
     node_id: int
     node_type: str
     geometry: Point

@@ -303,7 +303,7 @@ class Model(FileModel):
         )
         return node_table
 
-    def _nodes(self) -> Generator[MultiNodeModel, Any, None]:
+    def _nodes(self) -> Generator[MultiNodeModel, None, None]:
         """Return all non-empty MultiNodeModel instances."""
         for key in self.__class__.model_fields.keys():
             attr = getattr(self, key)
@@ -477,7 +477,7 @@ class Model(FileModel):
         return node_info
 
     @classmethod
-    def _load(cls, filepath: Path | None) -> dict[str, Any]:
+    def _load(cls, filepath: Path | None) -> dict[str, object]:
         context_file_loading.set({})
 
         if filepath is not None and filepath.is_file():
