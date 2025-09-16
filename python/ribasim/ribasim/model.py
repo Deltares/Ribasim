@@ -188,7 +188,9 @@ class Model(FileModel):
         # However, we always want to write `input_dir`, `results_dir`, and `ribasim_version`
         # By overriding `BaseModel.model_post_init` we can set them explicitly,
         # and enforce that they are always written.
-        self.model_fields_set.update({"input_dir", "results_dir", "ribasim_version"})
+        # Since migration runs on reading, the ribasim_version should be reset.
+        self.ribasim_version = ribasim.__version__
+        self.model_fields_set.update({"input_dir", "results_dir"})
         self.edge = self.link  # Backwards compatible alias for link
 
     def __repr__(self) -> str:

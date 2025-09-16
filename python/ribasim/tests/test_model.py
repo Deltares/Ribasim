@@ -5,6 +5,7 @@ import datacompy
 import numpy as np
 import pandas as pd
 import pytest
+import ribasim
 import tomli
 import tomli_w
 import xugrid
@@ -387,7 +388,16 @@ def test_version_mismatch_warning_newer_version(basic, tmp_path):
         UserWarning,
         match="version in the TOML file.*3030.1.0.*is newer than the Python package version",
     ):
-        Model.read(toml_path)
+        model = Model.read(toml_path)
+
+    # Check that the version is reset correctly
+    assert model.ribasim_version == ribasim.__version__
+
+    # Check that the TOML file contains the correct version
+    model._write_toml(toml_path)
+    with open(toml_path, "rb") as f:
+        config = tomli.load(f)
+    assert config["ribasim_version"] == ribasim.__version__
 
 
 def test_invalid_version_string_warning(basic, tmp_path):
