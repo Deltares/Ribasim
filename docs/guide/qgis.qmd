@@ -54,3 +54,12 @@ The associated time series are shown the the graph.
 Only the `basin.arrow` and `flow.arrow` can be inspected with the "iMOD Time Series Plot" panel.
 All Arrow files can be loaded as a layer by dragging the files onto QGIS.
 Right click the layer and select "Open Attribute Table" to view the contents.
+
+# Reloading models {#sec-reload}
+
+If you made changes to your model outside of QGIS, and want to see the new version in QGIS, the quickest way is to click "Reload Ribasim model" in the model group's context menu, as shown below:
+
+![](https://s3.deltares.nl/ribasim/doc-image/qgis/reload-model.png){fig-align="left"}
+
+This avoids the need to remove the group and open the same model again via the plugin.
+It can be convenient when iteratively building your model via Python, or running new simulations.
