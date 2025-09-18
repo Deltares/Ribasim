@@ -215,6 +215,7 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#running-a-model" id="toc-running-a-model" class="nav-link" data-scroll-target="#running-a-model"><span class="header-section-number">2</span> Running a model</a></li>
   <li><a href="#sec-inspect" id="toc-sec-inspect" class="nav-link" data-scroll-target="#sec-inspect"><span class="header-section-number">3</span> Inspect a (large) model</a></li>
   <li><a href="#sec-results" id="toc-sec-results" class="nav-link" data-scroll-target="#sec-results"><span class="header-section-number">4</span> Inspecting results</a></li>
+  <li><a href="#sec-reload" id="toc-sec-reload" class="nav-link" data-scroll-target="#sec-reload"><span class="header-section-number">5</span> Reloading models</a></li>
   </ul>
 </nav>
     </div>
@@ -292,6 +293,16 @@ ul.task-list li input[type="checkbox"] {
 </figure>
 </div>
 <p>Only the <code>basin.arrow</code> and <code>flow.arrow</code> can be inspected with the “iMOD Time Series Plot” panel. All Arrow files can be loaded as a layer by dragging the files onto QGIS. Right click the layer and select “Open Attribute Table” to view the contents.</p>
+</section>
+<section id="sec-reload" class="level1" data-number="5">
+<h1 data-number="5"><span class="header-section-number">5</span> Reloading models</h1>
+<p>If you made changes to your model outside of QGIS, and want to see the new version in QGIS, the quickest way is to click “Reload Ribasim model” in the model group’s context menu, as shown below:</p>
+<div class="quarto-figure quarto-figure-left">
+<figure class="figure">
+<p><img src="https://s3.deltares.nl/ribasim/doc-image/qgis/reload-model.png" class="img-fluid quarto-figure quarto-figure-left figure-img"></p>
+</figure>
+</div>
+<p>This avoids the need to remove the group and open the same model again via the plugin. It can be convenient when iteratively building your model via Python, or running new simulations.</p>
 
 
 </section>
