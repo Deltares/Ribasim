@@ -465,3 +465,12 @@ function set_feasibility_objective!(problem::JuMP.Model)::Nothing
     JuMP.@objective(problem, Min, 0)
     return nothing
 end
+
+function delete_temporary_constraints!(problem::JuMP.Model)::Nothing
+    (; temporary_constraints) = problem
+    for constraint in temporary_constraints
+        JuMP.delete(problem, constraint)
+    end
+    empty!(temporary_constraints)
+    return nothing
+end

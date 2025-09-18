@@ -594,7 +594,7 @@ function add_secondary_network_demand!(
         base_name = "secondary_network_allocated_sum_constraint",
     )
 
-    # Define decision variables: Per secondary network connection the allocation error per priority for
+    # Define decision variables: Per secondary network connection, the allocation error per priority for
     # which the secondary network has a demand, for both the first and second objective (unitless)
     secondary_network_error =
         problem[:secondary_network_error] = JuMP.@variable(
@@ -958,8 +958,9 @@ function AllocationModel(
     allocation_config::config.Allocation,
 )
     Δt_allocation = allocation_config.timestep
-    problem = JuMP.Model(() -> MOA.Optimizer(get_optimizer()))
-    set_multi_objective_attributes!(problem)
+    problem = JuMP.Model()
+    JuMP.set_optimizer(problem, get_optimizer())
+    # set_multi_objective_attributes!(problem)
     node_ids_in_subnetwork = NodeIDsInSubnetwork(p_independent, subnetwork_id)
     scaling = ScalingFactors(p_independent, subnetwork_id, Δt_allocation)
     has_demand_priority =
@@ -998,13 +999,11 @@ function AllocationModel(
     # Primary to secondary subnetwork connections
     if is_primary_network(subnetwork_id)
         add_secondary_network_demand!(allocation_model, p_independent)
-    else
-        # Initialize subnetwork demands
-        n_demands = length(p_independent.allocation.demand_priorities_all)
-        if !is_primary_network(subnetwork_id)
-            for link in p_independent.allocation.primary_network_connections[subnetwork_id]
-                allocation_model.secondary_network_demand[link] = zeros(n_demands)
-            end
+    else # Initialize subnetwork demands
+        n_priorities = length(p_independent.allocation.demand_priorities_all)
+
+        for link in p_independent.allocation.primary_network_connections[subnetwork_id]
+            allocation_model.secondary_network_demand[link] = zeros(n_priorities)
         end
     end
 

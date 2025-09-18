@@ -609,13 +609,43 @@ function warm_start!(allocation_model::AllocationModel, integrator::DEIntegrator
     return nothing
 end
 
-function optimize!(allocation_model::AllocationModel, model)::Nothing
+function optimize_multi_objective!(allocation_model::AllocationModel, model)::Nothing
     (; config, integrator) = model
     (; t) = integrator
     (; problem, objectives, subnetwork_id) = allocation_model
+end
 
-    JuMP.@objective(problem, Min, objectives.objective_expressions_all)
-    JuMP.optimize!(problem)
+function optimize!(allocation_model::AllocationModel, model)::Nothing
+    (; config, integrator) = model
+    (; t) = integrator
+    (; problem, objectives, subnetwork_id, temporary_constraints) = allocation_model
+
+    for metadata in objectives.objective_metadata
+        (; type, expression_first, expression_second, demand_priority) = metadata
+
+        # First expression
+        JuMP.@objective(problem, Min, expression_first)
+        JuMP.optimize!(problem)
+        push!(
+            temporary_constraints,
+            JuMP.@constraint(problem, expression_first == JuMP.objective_value(problem))
+        )
+
+        # Second expression
+        JuMP.@objective(problem, Min, expression_second)
+        JuMP.optimize!(problem)
+        # check if this is the last objective
+        if metadata != last(objectives.objective_metadata)
+            # If not, add constraint to fix the value of the second objective
+            push!(
+                temporary_constraints,
+                JuMP.@constraint(
+                    problem,
+                    expression_second == JuMP.objective_value(problem),
+                )
+            )
+        end
+    end
     @debug JuMP.solution_summary(problem)
     termination_status = JuMP.termination_status(problem)
 
@@ -919,11 +949,16 @@ function update_allocation!(model)::Nothing
 
     # Allocate in all subnetwork, starting with the primary network if it exists
     for allocation_model in allocation_models
+
+        # start with optimizing the primary network
         optimize!(allocation_model, model)
         parse_allocations!(integrator, allocation_model)
+
         save_flows!(integrator, allocation_model, AllocationOptimizationType.allocate)
         apply_control_from_allocation!(pump, allocation_model, integrator)
         apply_control_from_allocation!(outlet, allocation_model, integrator)
+
+        delete_temporary_constraints!(allocation_model)
 
         # Communicate amounts allocated to secondary networks
         if is_primary_network(allocation_model.subnetwork_id)
