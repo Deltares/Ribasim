@@ -124,11 +124,6 @@ function write_results_netcdf(model::Model)::Model
     path = results_path(config, RESULTS_FILENAME.allocation)
     write_netcdf(path, data, nothing)
 
-    # allocation control
-    data = allocation_control_data(model; table = false)
-    path = results_path(config, RESULTS_FILENAME.allocation_control)
-    write_netcdf(path, data, nothing)
-
     # exported levels
     data = subgrid_level_data(model; table = false)
     path = results_path(config, RESULTS_FILENAME.subgrid_level)
