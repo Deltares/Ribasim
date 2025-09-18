@@ -27,11 +27,21 @@
     basin_bytes = read(normpath(dirname(toml_path), "results/basin.arrow"))
     subgrid_bytes = read(normpath(dirname(toml_path), "results/subgrid_level.arrow"))
     solver_stats_bytes = read(normpath(dirname(toml_path), "results/solver_stats.arrow"))
+    control_bytes = read(normpath(dirname(toml_path), "results/control.arrow"))
+    allocation_bytes = read(normpath(dirname(toml_path), "results/allocation.arrow"))
+    allocation_flow_bytes =
+        read(normpath(dirname(toml_path), "results/allocation_flow.arrow"))
+    allocation_control_bytes =
+        read(normpath(dirname(toml_path), "results/allocation_control.arrow"))
 
     flow = Arrow.Table(flow_bytes)
     basin = Arrow.Table(basin_bytes)
     subgrid = Arrow.Table(subgrid_bytes)
     solver_stats = Arrow.Table(solver_stats_bytes)
+    control = Arrow.Table(control_bytes)
+    allocation = Arrow.Table(allocation_bytes)
+    allocation_flow = Arrow.Table(allocation_flow_bytes)
+    allocation_control = Arrow.Table(allocation_control_bytes)
 
     @testset Teamcity.TeamcityTestSet "Schema" begin
         @test Tables.schema(flow) == Tables.Schema(
@@ -96,6 +106,61 @@
                 :dt,
             ),
             (DateTime, Float64, Int, Int, Int, Int, Float64),
+        )
+
+        # empty control and allocation tables should still have the right schema
+        @test nrow(control) == 0
+        @test nrow(allocation) == 0
+        @test nrow(allocation_flow) == 0
+        @test nrow(allocation_control) == 0
+        @test Tables.schema(control) == Tables.Schema(
+            (:time, :control_node_id, :truth_state, :control_state),
+            (DateTime, Int32, String, String),
+        )
+        @test Tables.schema(allocation) == Tables.Schema(
+            (
+                :time,
+                :subnetwork_id,
+                :node_type,
+                :node_id,
+                :demand_priority,
+                :demand,
+                :allocated,
+                :realized,
+            ),
+            (DateTime, Int32, String, Int32, Int32, Float64, Float64, Float64),
+        )
+        @test Tables.schema(allocation_flow) == Tables.Schema(
+            (
+                :time,
+                :link_id,
+                :from_node_type,
+                :from_node_id,
+                :to_node_type,
+                :to_node_id,
+                :subnetwork_id,
+                :flow_rate,
+                :optimization_type,
+                :lower_bound_hit,
+                :upper_bound_hit,
+            ),
+            (
+                DateTime,
+                Int32,
+                String,
+                Int32,
+                String,
+                Int32,
+                Int32,
+                Float64,
+                String,
+                Bool,
+                Bool,
+            ),
+        )
+        @test Tables.schema(allocation_control) == Tables.Schema(
+            (:time, :node_id, :node_type, :flow_rate),
+            (DateTime, Int32, String, Float64),
         )
     end
 

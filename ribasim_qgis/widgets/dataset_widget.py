@@ -529,7 +529,18 @@ class DatasetWidget(QWidget):
             dlayer = dataset.GetLayer(0)
             stream = dlayer.GetArrowStreamAsNumPy()
             data = stream.GetNextRecordBatch()
-            df = pd.DataFrame(data=data)
+            if data is None:
+                # No rows, but we still need the columns so we can groupby
+                # Get column names from the layer definition
+                # Correct dtypes don't matter, object is fine
+                layer_defn = dlayer.GetLayerDefn()
+                columns = [
+                    layer_defn.GetFieldDefn(i).GetName()
+                    for i in range(layer_defn.GetFieldCount())
+                ]
+                df = pd.DataFrame(columns=columns)
+            else:
+                df = pd.DataFrame(data=data)
 
             # The OGR path introduces strings columns as bytes
             for column in df.columns:

@@ -476,8 +476,13 @@ end
         allocation_bytes = read(normpath(dirname(toml_path), "results/allocation.arrow"))
         allocation_flow_bytes =
             read(normpath(dirname(toml_path), "results/allocation_flow.arrow"))
+        allocation_control_bytes =
+            read(normpath(dirname(toml_path), "results/allocation_control.arrow"))
+
         allocation = Arrow.Table(allocation_bytes)
         allocation_flow = Arrow.Table(allocation_flow_bytes)
+        allocation_control = Arrow.Table(allocation_control_bytes)
+
         @test Tables.schema(allocation) == Tables.Schema(
             (
                 :time,
@@ -519,8 +524,14 @@ end
                 Bool,
             ),
         )
+        @test Tables.schema(allocation_control) == Tables.Schema(
+            (:time, :node_id, :node_type, :flow_rate),
+            (DateTime, Int32, String, Float64),
+        )
+
         @test nrow(allocation) > 0
         @test nrow(allocation_flow) > 0
+        @test nrow(allocation_control) == 0
     end
 end
 

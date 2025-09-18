@@ -560,12 +560,13 @@ function allocation_data(model::Model; table::Bool = true)
     (; p_independent, state_time_dependent_cache) = integrator.p
     (; current_storage) = state_time_dependent_cache
     (; allocation, graph, basin, user_demand, flow_demand, level_demand) = p_independent
-    (; record_demand, demand_priorities_all, allocation_models) = allocation
+    (; demand_priorities_all, allocation_models) = allocation
+    record_demand = StructVector(model.integrator.p.p_independent.allocation.record_demand)
 
-    datetimes = datetime_since.(getfield.(record_demand, :time), config.starttime)
+    datetimes = datetime_since.(record_demand.time, config.starttime)
 
     time = unique(datetimes)
-    node_id = sort!(unique(getfield.(record_demand, :node_id)))
+    node_id = sort!(unique(record_demand.node_id))
 
     nrows = length(record_demand)
     ntsteps = length(time)
@@ -668,20 +669,20 @@ end
 
 function allocation_flow_data(model::Model; table::Bool = true)
     (; config) = model
-    (; record_flow) = model.integrator.p.p_independent.allocation
+    record_flow = StructVector(model.integrator.p.p_independent.allocation.record_flow)
 
     if table
-        time = datetime_since.(getfield.(record_flow, :time), config.starttime)
-        link_id = getfield.(record_flow, :link_id)
-        from_node_type = getfield.(record_flow, :from_node_type)
-        from_node_id = getfield.(record_flow, :from_node_id)
-        to_node_type = getfield.(record_flow, :to_node_type)
-        to_node_id = getfield.(record_flow, :to_node_id)
-        subnetwork_id = getfield.(record_flow, :subnetwork_id)
-        flow_rate = getfield.(record_flow, :flow_rate)
-        optimization_type = getfield.(record_flow, :optimization_type)
-        lower_bound_hit = getfield.(record_flow, :lower_bound_hit)
-        upper_bound_hit = getfield.(record_flow, :upper_bound_hit)
+        time = datetime_since.(record_flow.time, config.starttime)
+        link_id = record_flow.link_id
+        from_node_type = record_flow.from_node_type
+        from_node_id = record_flow.from_node_id
+        to_node_type = record_flow.to_node_type
+        to_node_id = record_flow.to_node_id
+        subnetwork_id = record_flow.subnetwork_id
+        flow_rate = record_flow.flow_rate
+        optimization_type = record_flow.optimization_type
+        lower_bound_hit = record_flow.lower_bound_hit
+        upper_bound_hit = record_flow.upper_bound_hit
     else
         error("allocation_flow not implemented for NetCDF")
     end
@@ -703,14 +704,19 @@ end
 
 function allocation_control_data(model::Model; table::Bool = true)
     (; integrator, config) = model
-    (; record_control) = integrator.p.p_independent.allocation
+    record_control =
+        StructVector(model.integrator.p.p_independent.allocation.record_control)
 
-    return (;
-        time = datetime_since.(getfield.(record_control, :time), config.starttime),
-        node_id = getfield.(record_control, :node_id),
-        node_type = getfield.(record_control, :node_type),
-        flow_rate = getfield.(record_control, :flow_rate),
-    )
+    if table
+        time = datetime_since.(record_control.time, config.starttime)
+        node_id = record_control.node_id
+        node_type = record_control.node_type
+        flow_rate = record_control.flow_rate
+    else
+        error("allocation_control not implemented for NetCDF")
+    end
+
+    return (; time, node_id, node_type, flow_rate)
 end
 
 function subgrid_level_data(model::Model; table::Bool = true)
