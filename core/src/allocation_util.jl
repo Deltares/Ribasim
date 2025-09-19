@@ -474,3 +474,9 @@ function delete_temporary_constraints!(model::AllocationModel)::Nothing
     empty!(temporary_constraints)
     return nothing
 end
+
+function secondary_networks(
+    allocation_models::Vector{AllocationModel},
+)::Vector{AllocationModel}
+    return filter(model -> !is_primary_network(model.subnetwork_id), allocation_models)
+end

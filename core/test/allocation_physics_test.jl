@@ -156,3 +156,18 @@ end
 
     @test allocation_flow_table.upper_bound_hit == flow_is_bounded
 end
+
+@testitem "Small Primary Secondary Network Model" begin
+    using Ribasim
+    using DataFrames: DataFrame
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/small_primary_secondary_network/ribasim.toml",
+    )
+    @test ispath(toml_path)
+
+    config = Ribasim.Config(toml_path; experimental_allocation = true)
+    model = Ribasim.Model(config)
+    Ribasim.solve!(model)
+end

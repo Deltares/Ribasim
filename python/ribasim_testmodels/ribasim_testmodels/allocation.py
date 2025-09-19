@@ -436,6 +436,82 @@ def allocation_example_model() -> Model:
     return model
 
 
+def small_primary_secondary_network_model() -> Model:
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2020-01-20",
+        crs="EPSG:28992",
+        allocation=Allocation(timestep=86400),
+        experimental=Experimental(concentration=True, allocation=True),
+        results=Results(format="netcdf"),
+    )
+
+    basin_data: list[TableModel[Any]] = [
+        basin.Profile(area=300_000.0, level=[0.0, 1.0]),
+        basin.State(level=[1.0]),
+    ]
+
+    model.flow_boundary.add(
+        Node(1, Point(0, 0), subnetwork_id=1), [flow_boundary.Static(flow_rate=[2.0])]
+    )
+    model.basin.add(Node(2, Point(1, 0), subnetwork_id=1), basin_data)
+    model.user_demand.add(
+        Node(3, Point(1, 1), subnetwork_id=1),
+        [
+            user_demand.Static(
+                demand=[1.5], return_factor=0.0, min_level=-1.0, demand_priority=1
+            )
+        ],
+    )
+    model.linear_resistance.add(
+        Node(4, Point(2, 0), subnetwork_id=1),
+        [linear_resistance.Static(resistance=[0.06])],
+    )
+    model.basin.add(Node(5, Point(3, 0), subnetwork_id=1), basin_data)
+
+    outlet_data = outlet.Static(flow_rate=[3e-3], max_flow_rate=3.0)
+
+    model.outlet.add(
+        Node(6, Point(3, 1), subnetwork_id=1),
+        [outlet_data],
+    )
+
+    model.basin.add(Node(7, Point(3, 2), subnetwork_id=2), basin_data)
+
+    model.user_demand.add(
+        Node(8, Point(3, 3), subnetwork_id=2),
+        [
+            user_demand.Static(
+                demand=[1.0], return_factor=0.0, min_level=-1.0, demand_priority=1
+            )
+        ],
+    )
+
+    model.tabulated_rating_curve.add(
+        Node(9, Point(4, 0), subnetwork_id=1),
+        [
+            tabulated_rating_curve.Static(
+                level=[0.0, 0.5, 1.0], flow_rate=[0.0, 0.0, 2.0]
+            )
+        ],
+    )
+    model.terminal.add(Node(10, Point(5, 0), subnetwork_id=1))
+
+    model.link.add(model.flow_boundary[1], model.basin[2])
+    model.link.add(model.basin[2], model.user_demand[3])
+    model.link.add(model.user_demand[3], model.basin[2])
+    model.link.add(model.basin[2], model.linear_resistance[4])
+    model.link.add(model.linear_resistance[4], model.basin[5])
+    model.link.add(model.basin[5], model.outlet[6])
+    model.link.add(model.outlet[6], model.basin[7])
+    model.link.add(model.basin[7], model.user_demand[8])
+    model.link.add(model.user_demand[8], model.basin[7])
+    model.link.add(model.basin[5], model.tabulated_rating_curve[9])
+    model.link.add(model.tabulated_rating_curve[9], model.terminal[10])
+
+    return model
+
+
 def primary_and_secondary_subnetworks_model() -> Model:
     """Generate a model which consists of a main network and multiple connected subnetworks."""
     model = Model(
