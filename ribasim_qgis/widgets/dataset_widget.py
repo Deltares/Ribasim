@@ -246,6 +246,7 @@ class DatasetWidget(QWidget):
             self.load_geopackage()
             self.add_topology_context()
             self.refresh_results()
+            _unset_imod_opengl()
 
     @staticmethod
     def activeGroup(iface):
@@ -710,3 +711,15 @@ def postprocess_flow_arrow(df: pd.DataFrame) -> pd.DataFrame:
     ndf = df.set_index(pd.DatetimeIndex(df["time"]))
     ndf.drop(columns=["time", "from_node_id", "to_node_id"], inplace=True)
     return ndf
+
+
+def _unset_imod_opengl() -> None:
+    """Try to avoid black plotting pane in iMOD timeseries widget by disabling OpenGL."""
+    # Temporary workaround until we have https://github.com/Deltares/imod-qgis/pull/89
+    # Triggered on model load or reload.
+    try:
+        from imodqgis.dependencies import pyqtgraph_0_12_3
+
+        pyqtgraph_0_12_3.setConfigOptions(useOpenGL=False)
+    except Exception:
+        pass
