@@ -1,0 +1,1360 @@
+---
+title: "Allocation Technical Reference"
+---
+
+# Introduction
+
+This document provides comprehensive technical documentation for the allocation system implementation in Ribasim. It bridges the gap between the high-level mathematical formulation in the [allocation concept documentation](/concept/allocation.qmd) and the actual JuMP.jl implementation in the Julia code.
+
+The allocation system now uses [MOA.jl](https://github.com/jump-dev/MOA.jl) for multi-objective optimization through lexicographic goal programming, representing a significant architectural improvement over previous manual constraint accumulation approaches.
+
+The allocation system uses a two-phase optimization approach where:
+1. **Placeholder initialization**: Variables and constraints are set up with initial placeholder values
+2. **Real value updates**: These placeholders are iteratively updated with actual physical data
+3. **MOA.jl orchestration**: Multi-objective optimization is handled natively by MOA.jl
+
+This document explains how mathematical formulations translate to concrete JuMP + MOA.jl code, documents the implementation process, and provides detailed technical reference for developers.
+
+# Multi-objective Optimization with MOA.jl
+
+Ribasim implements allocation as a multi-objective optimization problem using [MOA.jl](https://github.com/jump-dev/MOA.jl) with lexicographic goal programming.
+
+## Mathematical Foundation
+
+The allocation system uses **lexicographic goal programming** where objectives are optimized sequentially by priority level. For objectives $f_1, f_2, \ldots, f_k$ in order of decreasing priority:
+
+1. Solve: $\min f_1(x)$ subject to constraints $Ax \leq b$
+2. Add constraint: $f_1(x) = f_1^*$ (optimal value from step 1)
+3. Solve: $\min f_2(x)$ subject to $Ax \leq b$ and $f_1(x) = f_1^*$
+4. Continue for all objectives...
+
+## Implementation Architecture
+
+### Model Initialization with MOA.jl
+
+**Code Implementation:**
+```julia
+# In allocation_init.jl - AllocationModel constructor
+function AllocationModel(subnetwork_id::Int32, p_independent::ParametersIndependent, config)
+    # Create optimization problem with MOA.jl support
+    problem = JuMP.Model(() -> MOA.Optimizer(get_optimizer()))
+
+    # Configure lexicographic goal programming
+    set_multi_objective_attributes!(problem)
+
+    # Add variables and constraints with placeholders
+    add_basin!(allocation_model, p_independent)
+    add_flow!(allocation_model, p_independent)
+    add_conservation!(allocation_model, p_independent)
+
+    # Register all objectives upfront
+    add_objectives!(allocation_model, p_independent)
+
+    return allocation_model
+end
+
+# Configure MOA.jl attributes
+function set_multi_objective_attributes!(problem::JuMP.Model)::Nothing
+    JuMP.set_attribute(problem, MOA.Algorithm(), MOA.Lexicographic())
+    JuMP.set_attribute(problem, MOA.LexicographicAllPermutations(), false)
+    return nothing
+end
+```
+
+### Objective Registration Process
+
+Objectives are registered in priority order using the `AllocationObjectiveMetadata` structure:
+
+```julia
+@kwdef struct AllocationObjectiveMetadata
+    demand_priority::Int
+    demand_type::AllocationDemandType.T
+    source_priority::Int
+    objective_type::AllocationObjectiveType.T
+end
+
+# Example objective registration
+add_demand_objectives!(allocation_model, p_independent)
+add_low_storage_factor_objective!(allocation_model)
+add_source_priority_objective!(allocation_model)
+```
+
+### Linear Objective Construction
+
+All objectives are constructed as linear expressions (`JuMP.AffExpr`):
+
+```julia
+@kwdef mutable struct AllocationObjective
+    const expression::JuMP.AffExpr = JuMP.AffExpr()  # LINEAR, not quadratic
+    const metadata::Vector{AllocationObjectiveMetadata} = AllocationObjectiveMetadata[]
+end
+
+# Add linear error terms to objective
+for objective in get_demand_objectives(objectives)
+    JuMP.add_to_expression!(
+        objective.expression,
+        variable_sum(relative_user_demand_error_lower)
+    )
+    JuMP.add_to_expression!(
+        objective.expression,
+        variable_sum(relative_user_demand_error_upper)
+    )
+end
+
+# Register all objectives with MOA.jl
+JuMP.@objective(problem, Min, objectives.objective_expressions_all)
+```
+
+### Optimization Workflow
+
+```julia
+# Main optimization routine
+function optimize!(allocation_model::AllocationModel, objectives::AllocationObjectives)
+    problem = allocation_model.problem
+    set_multi_objective_attributes!(problem)
+    warm_start!(allocation_model, objectives, integrator)
+    JuMP.optimize!(problem)  # MOA.jl handles multi-objective orchestration
+    return JuMP.termination_status(problem)
+end
+
+# Objective management
+function get_demand_objectives(objectives::AllocationObjectives)
+    return [obj for obj in objectives.objective_data
+            if obj.metadata.objective_type == AllocationObjectiveType.demand]
+end
+```
+
+## Objective Functions
+
+### Linear Error Minimization
+
+The allocation optimization minimizes the sum of linear error variables:
+
+$$\text{minimize} \quad \sum_{i \in \mathcal{D}} \left(e_i^- + e_i^+\right)$$
+
+where $\mathcal{D}$ is the set of demand nodes in the current priority level, and $e_i^-$, $e_i^+$ are non-negative error variables.
+
+**Error Variable Constraints:**
+
+For user demands, error variables are constrained by linear inequalities:
+
+```julia
+# Lower error constraint
+problem[:user_demand_error_lower] = JuMP.@constraint(
+    problem,
+    [node_id = user_demand_ids],
+    d * (relative_user_demand_error_lower[node_id] - target_demand_fraction) ≥
+        -(flow[inflow_link] - user_demand_allocated[node_id])
+)
+
+# Upper error constraint
+problem[:user_demand_error_upper] = JuMP.@constraint(
+    problem,
+    [node_id = user_demand_ids],
+    d * (relative_user_demand_error_upper[node_id] + target_demand_fraction) ≥
+        flow[inflow_link] - user_demand_allocated[node_id]
+)
+```
+
+**Objective Construction:**
+
+```julia
+# Demand objective (linear expression)
+demand_objective = JuMP.AffExpr()
+JuMP.add_to_expression!(demand_objective,
+    sum(relative_user_demand_error_lower[node_id] for node_id in user_demand_ids))
+JuMP.add_to_expression!(demand_objective,
+    sum(relative_user_demand_error_upper[node_id] for node_id in user_demand_ids))
+```
+
+### Priority-Based Objective Hierarchy
+
+Objectives are organized by priority levels:
+
+1. **High Priority Demands** (priority 1, 2, ...)
+2. **Lower Priority Demands** (priority 3, 4, ...)
+3. **Source Priorities** (prefer specific sources)
+4. **Low Storage Factor** (prevent basin depletion)
+
+Each priority level forms a separate objective in the MOA.jl lexicographic sequence.
+
+# Elements of Allocation System
+
+## Schematisation Input
+
+The allocation system processes various types of input data from the Ribasim model to formulate the optimization problem.
+
+### Subnetwork Structure
+
+**Mathematical Definition:**
+The allocation problem is solved per subnetwork, given by a subset $S \subset V$ of node IDs. Different subnetworks are disjoint from each other.
+
+**Code Implementation:**
+```julia
+get_subnetwork_ids(graph::MetaGraph, node_type::NodeType.T, subnetwork_id::Int32) =
+    filter(node_id -> node_id.type == node_type, graph[].node_ids[subnetwork_id])
+```
+
+### Source Flows
+
+**Mathematical Definition:**
+Sources are indicated by a set of links in the subnetwork:
+$$E_S^\text{source} \subset E$$
+
+The time-averaged flow over the last allocation interval $\Delta t_{\text{alloc}}$ is:
+$$\bar{F}_{ij} = \frac{1}{\Delta t_{\text{alloc}}}\int_{t - \Delta t_{\text{alloc}}}^t F_{ij}(t') \, dt'$$
+
+**Implementation:**
+These links are automatically inferred as all links pointing out of LevelBoundary or FlowBoundary nodes, or connecting the primary network to a subnetwork.
+
+### User and Flow Demands
+
+**User Demands Mathematical Definition:**
+The subnetwork contains UserDemand nodes $U_S \subset S$ with demands over various priorities:
+$$d^p_i(t), \quad \forall i \in U_S, \; p \in \{1, 2, \ldots, p_{\max}\}$$
+
+**Flow Demands Mathematical Definition:**
+FlowDemand nodes $FD_S \subset S$ have demand for a single priority $p_{\text{fd}}$:
+$$d^p_i(t) = \begin{cases}
+    0 & \text{if } p \neq p_{\text{fd}} \\
+    d^{p_{\text{fd}}}_i(t) & \text{if } p = p_{\text{fd}}
+\end{cases}$$
+
+## Simulation (Physical Layer) Input
+
+### Vertical Fluxes and Local Storage
+
+**Mathematical Definition:**
+For each Basin in the subnetwork $B_S = B \cap S$, the average vertical flux is:
+$$\phi_i(t) = \frac{1}{\Delta t_{\text{alloc}}}\int_{t - \Delta t_{\text{alloc}}}^t \left[F_{P,i}(t') - F_{E,i}(t') + F_{\text{drn},i}(t') - F_{\text{inf},i}(t') \right] dt'$$
+
+where $F_{P,i}$ is precipitation, $F_{E,i}$ is evaporation, $F_{\text{drn},i}$ is drainage, and $F_{\text{inf},i}$ is infiltration.
+
+**Basin Supply and Demand:**
+Flow supply from basins:
+$$F^{\text{basin out}}_{\max, i} = \max\left(0, \frac{S_i(t) - S_{\max,i}}{\Delta t_{\text{alloc}}} + \phi_i(t)\right)$$
+
+Basin demand:
+$$d^p_i = \max\left(0, \frac{S_{\min,i} - S_i(t)}{\Delta t_{\text{alloc}}} - \phi_i(t)\right)$$
+
+where $S_i(t)$ is current storage, $S_{\max,i}$ and $S_{\min,i}$ are maximum and minimum storage levels.
+
+**Code Implementation:**
+```julia
+function set_simulation_data!(allocation_model::AllocationModel, basin::Basin, p::Parameters)
+    for basin_id in basin_ids_subnetwork
+        # Average forcing over the allocation timestep
+        average_forcing = cumulative_forcing_volume[basin_id] / Δt_allocation
+
+        # Set the basin forcing parameter
+        JuMP.fix(
+            problem[:basin_forcing][basin_id],
+            average_forcing / scaling.flow;
+            force = true
+        )
+    end
+end
+```
+
+### Constraining Factors
+
+#### Flow Magnitude and Direction Constraints
+Nodes with `max_flow_rate` (Pump, Outlet, LinearResistance) constrain flow through the node. Some nodes allow flow in one direction only (Pump, Outlet, TabulatedRatingCurve).
+
+#### UserDemand Return Flows
+UserDemand nodes create proportional relationships between flows with return factor $0 \leq r_i(t) \leq 1, \forall i \in U_S$.
+
+**Code Implementation:**
+```julia
+# Return flow constraint for UserDemand nodes
+return_flow = return_factor * inflow
+JuMP.@constraint(problem, outflow >= return_flow)
+```
+
+### Subnetwork Definition
+
+**Mathematical Definition:**
+The subnetwork consists of nodes $S \subset V$ and links:
+$$E_S = (S \times S) \cup E_S^\text{source}$$
+
+This includes links within the subnetwork plus source links (which can be partially outside the subnetwork). The nodes in $S$ together with connected nodes outside form the extended subnetwork.
+
+### Capacity Matrix
+
+**Mathematical Definition:**
+Each link has an associated capacity collected in the sparse capacity matrix $C_S \in \overline{\mathbb{R}}_{\geq 0}^{n\times n}$ where $n$ is the number of nodes in the extended subnetwork.
+
+**Capacity Determination:**
+- If link doesn't exist: $(C_S)_{i,j} = 0$
+- Link capacity given by smallest `max_flow_rate` of nodes along equivalent links
+- Source link capacity given by flow rate of that source
+
+**Special Capacity Types:**
+- $C^{LD}_S \in \mathbb{R}^b_{\geq 0}$: Basin level demand flow supply capacity
+- $C^{FD}_S \in \mathbb{R}^c_{\geq 0}$: Flow demand buffer capacity
+- $C^{UD}_S \in \mathbb{R}^f_{\geq 0}$: User demand outflow source capacity
+
+# Allocation System Initialization
+
+## Data Processing
+
+### Deriving Link Capacities
+
+Link capacities are critical constraints in the optimization problem, setting limits for flows between nodes. The capacity of a link is determined by the smallest `max_flow_rate` of the nodes connected to the links if these nodes have such a value.
+
+**Implementation:**
+```julia
+# Function to obtain capacities of links within a subnetwork
+function get_capacity(subnetwork_id::Int32, p::Parameters)
+    # Check if sources are valid
+    if !valid_sources(subnetwork_id, p)
+        return nothing
+    end
+
+    # Extract capacities and store in SparseArray indexed by node ID tuples
+    capacities = SparseArray{Float64}()
+    for link in subnetwork_links
+        capacity_value = min(upstream_max_flow, downstream_max_flow)
+        capacities[link] = capacity_value
+    end
+
+    return capacities
+end
+```
+
+The capacities are stored in a `SparseArray` object from `JuMP.jl` called `capacities`, indexed by a tuple of node IDs. The function `get_capacity` obtains the capacities of the links within a subnetwork given a subnetwork ID and the Ribasim model parameters `p`, if the sources of the subnetwork are valid (checked in function `valid_sources`).
+
+### Handling Primary Network and Subnetwork Connections
+
+**Implementation:**
+```julia
+# Function to find links connecting primary network to subnetworks
+function find_subnetwork_connections(graph::MetaGraph)
+    primary_network_connections = Dict{Int32, Vector{Tuple{NodeID, NodeID}}}()
+
+    for subnetwork_id in subnetwork_ids
+        connections = []
+        # Find links from primary network (ID=1) to this subnetwork
+        for edge in graph.edges
+            if edge.source.subnetwork_id == 1 && edge.target.subnetwork_id == subnetwork_id
+                push!(connections, (edge.source, edge.target))
+            end
+        end
+        primary_network_connections[subnetwork_id] = connections
+    end
+
+    return primary_network_connections
+end
+```
+
+The function `find_subnetwork_connections` finds the links that connect the primary network to a subnetwork. This creates:
+- `subnetwork_demands`: Stores demands for subnetworks as a whole
+- `subnetwork_allocateds`: Stores allocated values for subnetworks as a whole
+- `primary_network_connections`: Dictionary of links connecting subnetworks to the primary network
+
+## File Organization and Responsibility Mapping
+
+The allocation system code is organized across multiple files with specific responsibilities:
+
+- **`allocation_init.jl`**: Initialization of data structures and optimization problem setup
+- **`allocation_optim.jl`**: Updating, running optimization, and reading results
+- **`allocation_util.jl`**: Utility functions and MOA.jl configuration
+
+# Mathematical Foundation to Code Implementation
+
+## Overview of the Optimization Problem
+
+The allocation problem for a subnetwork consists of a **linear objective function** with associated linear constraints on a set of optimization variables. This section shows how the mathematical formulation translates to JuMP.jl + MOA.jl code.
+
+### The Subnetwork Definition
+
+The allocation problem is solved per subnetwork, given by a subset $S \subset V$ of node IDs. Different subnetworks are disjoint from each other.
+
+**Mathematical Definition:**
+$$E_S = \{l \in L \; : \; l \cap S \neq\emptyset\}$$
+
+**Code Implementation:**
+```julia
+# In allocation_init.jl - get_subnetwork_ids function
+get_subnetwork_ids(graph::MetaGraph, node_type::NodeType.T, subnetwork_id::Int32) =
+    filter(node_id -> node_id.type == node_type, graph[].node_ids[subnetwork_id])
+```
+
+Links in the subnetwork include all links in the model that have at least one node in the subnetwork.
+
+## Optimization Variables
+
+### Flow Variables
+
+**Mathematical Definition:**
+For each link in the subnetwork we define a flow variable ($\text{m}^3/\text{s}$):
+$$F_{\text{min},l} \leq F_l \leq F_{\text{max},l}, \quad \forall l \in E_S$$
+
+where $F_{\text{min},l}$ and $F_{\text{max},l}$ are the minimum and maximum flow capacities for link $l$.
+
+**Code Implementation:**
+```julia
+# In allocation_init.jl - add_variables_flow! function
+function add_variables_flow!(
+    allocation_model::AllocationModel,
+    p_independent::ParametersIndependent,
+)
+    # Extract links from capacity data
+    links = keys(capacity.data)
+
+    # Create flow variables with non-negativity constraints
+    problem[:F] = JuMP.@variable(problem, F[link = links] >= 0.0)
+
+    # Variables named by F(startnode, endnode) pattern
+    return problem[:F]
+end
+```
+
+## Detailed Variable Setup
+
+### Three Types of Optimization Variables
+
+The optimization problem uses three distinct variable types:
+
+1. **Flow variables between links** in the allocation model
+2. **Basin flow variables** for basins with level demands
+3. **Buffer flow variables** for nodes with flow demands
+
+### Basin Flow Variables
+
+**Implementation:**
+```julia
+# In add_variables_basin function
+function add_variables_basin!(allocation_model::AllocationModel, p::Parameters)
+    # Get basin node IDs from subnetwork that have level demands
+    node_ids_basin = [
+        node_id for node_id in graph[].node_ids[subnetwork_id]
+        if graph[node_id].type == :basin &&
+        has_external_flow_demand(graph, node_id, :level_demand)[1]
+    ]
+
+    # Basin inflow variables (supplied by level demand)
+    problem[:F_basin_in] = JuMP.@variable(
+        problem, F_basin_in[node_id = node_ids_basin] >= 0.0
+    )
+
+    # Basin outflow variables (consumed by level demand)
+    problem[:F_basin_out] = JuMP.@variable(
+        problem, F_basin_out[node_id = node_ids_basin] >= 0.0
+    )
+
+    return problem[:F_basin_in], problem[:F_basin_out]
+end
+```
+
+**Variable Naming Convention:**
+- `F_basin_in`: Basin is supplied by a level demand
+- `F_basin_out`: Basin is consumed by a level demand
+
+### Buffer Flow Variables
+
+Buffer flow variables handle nodes with flow demands, defined similarly to basin flow variables:
+
+```julia
+# Flow variables for nodes with buffers (flow demands)
+problem[:F_buffer_in] = JuMP.@variable(problem, F_buffer_in[node_id = buffer_nodes] >= 0.0)
+problem[:F_buffer_out] = JuMP.@variable(problem, F_buffer_out[node_id = buffer_nodes] >= 0.0)
+```
+
+## Detailed Constraint Implementation
+
+### Initial Constraint Setup
+
+All variables have non-negativity constraints set when added to the optimization problem. Additional constraint types include:
+
+- `capacity`: Link flow capacity constraints
+- `source_user`: User demand source constraints
+- `source`: General source constraints
+- `flow_conservation`: Flow conservation at nodes
+- `fractional_flow`: Fractional flow relationships
+- `basin_outflow`: Basin outflow constraints
+- `flow_buffer_outflow`: Flow buffer constraints
+- `flow_demand_outflow`: Flow demand constraints
+
+### Constraint Addition Pattern
+
+For each constraint type, a function named `add_constraints_[constraint_name]!` exists:
+
+**Example - User Source Constraints:**
+```julia
+function add_constraints_user_source!(allocation_model::AllocationModel, p::Parameters)
+    (; problem, graph) = allocation_model
+
+    # Get UserDemand nodes in subnetwork
+    node_ids_user = [node_id for node_id in node_ids if node_id.type == NodeType.UserDemand]
+
+    # Add constraints using JuMP macro
+    problem[:source_user] = JuMP.@constraint(
+        problem,
+        [node_id = node_ids_user],
+        F[(node_id, outflow_id(graph, node_id))] <= 0.0,
+        base_name = "source_user"
+    )
+
+    return problem[:source_user]
+end
+```
+
+### JuMP Constraint Manipulation
+
+**Low-level Constraint Operations:**
+```julia
+# Read and write constraint right-hand side values
+current_rhs = JuMP.normalized_rhs(constraint)
+JuMP.set_normalized_rhs(constraint, new_value)
+
+# Example: Update link capacity constraint
+JuMP.set_normalized_rhs(
+    constraints_capacity[link_id],
+    JuMP.normalized_rhs(constraints_capacity[link_id]) - JuMP.value(F[link_id])
+)
+```
+
+**Key Functions:**
+- `JuMP.normalized_rhs()`: Moves constants to right-hand side, variables to left-hand side
+- `JuMP.set_normalized_rhs()`: Sets new right-hand side value
+- Used for dynamic constraint updates during optimization
+
+### Basin Storage and Level Variables
+
+**Mathematical Definition:**
+For basins in the subnetwork, we define storage parameters ($\text{m}^3$):
+$$S^\text{start}_b, \quad \forall b \in B_S$$
+$$0 \leq S^\text{end}_b \leq S_b^\max, \quad \forall b \in B_S$$
+
+And level variables:
+$$h_b^\min \leq h^\text{end}_b \leq h_b^\max, \quad \forall b \in B_S$$
+
+where $h^\text{end}_b$ is the end-of-period water level in basin $b$.
+
+**Code Implementation:**
+```julia
+# In allocation_init.jl - add_basin! function
+storage = problem[:basin_storage] = JuMP.@variable(
+    problem,
+    0 <= basin_storage[index = indices] <=
+    storage_to_level[index[1].idx].t[end] / scaling.storage
+)
+
+level = problem[:basin_level] = JuMP.@variable(
+    problem,
+    level_to_area[node_id.idx].t[1] <=
+    basin_level[node_id = basin_ids_subnetwork] <=
+    level_to_area[node_id.idx].t[end]
+)
+```
+
+The relationship between storage and level is implemented through the Basin profile linearization.
+
+### Special Flow Variables
+
+**Mathematical Definition:**
+Basin and buffer flows for demand handling:
+$$F^\text{basin out}_{i}, F^\text{basin in}_{i} \geq 0 \quad \forall i \in B_S$$
+$$F^\text{buffer out}_{i}, F^\text{buffer in}_{i} \geq 0 \quad \forall i \in FD_S$$
+
+where the superscripts indicate flow direction relative to the node.
+
+**Code Implementation:**
+```julia
+# Basin flows for level demands
+problem[:basin_outflow] = JuMP.@variable(
+    problem,
+    basin_outflow[node_id = basin_ids_level_demand] >= 0.0
+)
+problem[:basin_inflow] = JuMP.@variable(
+    problem,
+    basin_inflow[node_id = basin_ids_level_demand] >= 0.0
+)
+
+# Buffer flows for flow demands
+problem[:flow_buffer_outflow] = JuMP.@variable(
+    problem,
+    flow_buffer_outflow[node_id = flow_demand_node_ids] >= 0.0
+)
+problem[:flow_buffer_inflow] = JuMP.@variable(
+    problem,
+    flow_buffer_inflow[node_id = flow_demand_node_ids] >= 0.0
+)
+```
+
+## Objective Function Implementation
+
+### Linear Error Minimization
+
+**Mathematical Definition:**
+The goal is to minimize the sum of linear error variables:
+$$\text{minimize} \quad \sum_{\text{demand types}} E_{\text{type}}$$
+
+Where each demand type contributes:
+$$E_{\text{user demand}} = \sum_{i \in U_S} \left(e_i^- + e_i^+\right)$$
+$$E_{\text{level demand}} = \sum_{i \in LD_S} \left(e_i^- + e_i^+\right)$$
+$$E_{\text{flow demand}} = \sum_{i \in FD_S} \left(e_i^- + e_i^+\right)$$
+
+**Code Implementation:**
+```julia
+# In allocation_optim.jl - linear objective construction
+function add_objective_term!(
+    allocation_model::AllocationModel,
+    flow::JuMP.VariableRef,
+    demand::Float64,
+    priority::Int32,
+)
+    if demand > 0
+        objective = allocation_model.problem[:objective]
+        # Add linear error terms for demand fulfillment
+        JuMP.add_to_expression!(objective,
+            variable_sum(relative_user_demand_error_lower))
+        JuMP.add_to_expression!(objective,
+            variable_sum(relative_user_demand_error_upper))
+    end
+end
+```
+
+This linear formulation enables efficient optimization while maintaining accurate demand allocation through error variable constraints.
+
+## Constraint Implementation
+
+### Water Balance Constraints
+
+**Mathematical Definition:**
+$$\mathcal{S}_b^\text{end} - S_b^\text{start} = \Delta t_\text{allocation} \left( \mathcal{H}_b + \sum_{(n, b) \in E_S} \mathcal{F}_{(n,b)} - \sum_{(b, n) \in E_S} \mathcal{F}_{(b,n)} \right)$$
+
+**Code Implementation:**
+```julia
+# In allocation_init.jl - add_constraints_conservation_basin! function
+function add_constraints_conservation_basin!(
+    allocation_model::AllocationModel,
+    p_independent::ParametersIndependent,
+)
+    (; problem, subnetwork_id, Δt_allocation, scaling) = allocation_model
+    (; graph) = p_independent
+
+    basin_ids = get_subnetwork_ids(graph, NodeType.Basin, subnetwork_id)
+
+    conservation_basin = problem[:conservation_basin] = JuMP.@constraint(
+        problem,
+        [node_id = basin_ids],
+        # Storage change = Δt * (inflows - outflows + forcing)
+        problem[:basin_storage][(node_id, :end)] -
+        problem[:basin_storage][(node_id, :start)] ==
+        Δt_allocation / scaling.storage * (
+            # Horizontal forcing will be set later
+            problem[:horizontal_forcing][node_id] +
+            # Sum of inflows
+            variable_sum([
+                problem[:flow][(upstream_id, node_id)]
+                for upstream_id in inflow_ids(graph, node_id)
+                if (upstream_id, node_id) in problem[:flow].axes[1]
+            ]) -
+            # Sum of outflows
+            variable_sum([
+                problem[:flow][(node_id, downstream_id)]
+                for downstream_id in outflow_ids(graph, node_id)
+                if (node_id, downstream_id) in problem[:flow].axes[1]
+            ])
+        )
+    )
+end
+```
+
+### Flow Conservation Constraints
+
+**Mathematical Definition:**
+For nodes that are not sources or sinks:
+$$\sum F_{\text{out special}} + \sum_{j \in V^{\text{out}}_S(k)} F_{kj} = \sum F_{\text{in special}} + \sum_{i \in V^{\text{in}}_S(k)} F_{ik}$$
+
+**Code Implementation:**
+```julia
+# Flow conservation for non-basin nodes
+conservation_node = problem[:conservation_node] = JuMP.@constraint(
+    problem,
+    [node_id = non_basin_node_ids],
+    variable_sum([
+        problem[:flow][(upstream_id, node_id)]
+        for upstream_id in inflow_ids(graph, node_id)
+        if (upstream_id, node_id) in problem[:flow].axes[1]
+    ]) ==
+    variable_sum([
+        problem[:flow][(node_id, downstream_id)]
+        for downstream_id in outflow_ids(graph, node_id)
+        if (node_id, downstream_id) in problem[:flow].axes[1]
+    ])
+)
+```
+
+### Capacity Constraints
+
+**Mathematical Foundation:**
+The flows over links are bounded by link capacity:
+$$F_{ij} \leq (C_S)_{ij}, \quad \forall(i,j) \in E_S$$
+
+Basin outflows are bounded by basin capacity:
+$$F^{\text{basin out}}_{i} \leq F^{\text{basin out}}_{\max, i}, \quad \forall i \in B_S$$
+
+**Source Constraints:**
+- Sources are not all used at once - one source has nonzero capacity per optimization
+- During subnetwork demand collection, capacities are set to $\infty$ for links connecting primary to subnetworks
+
+**Special Flow Constraints:**
+Basin outflows: $F^{\text{basin out}}_{i} \leq (C^{LD}_S)_i, \quad \forall i \in B_S$
+
+Flow demand buffers: $F^{\text{buffer out}}_{i} \leq (C^{FD}_S)_i, \quad \forall i \in FD_S$
+
+User demand outflows: $F_{ij} \leq (C^{UD}_S)_i, \quad \forall i \in U_S, \quad V_S^{\text{out}}(i) = \{j\}$
+
+The user outflow source capacities are increased after each optimization by the return fraction:
+$$r_i(t) \cdot F_{ki}, \quad V_S^{\text{in}}(i) = \{k\}$$
+
+### Flow Conservation Constraints
+
+**Mathematical Foundation:**
+For all nodes $k$ that are not sources or sinks (FlowBoundary, LevelBoundary, UserDemand):
+$$\sum F_{\text{out special}} + \sum_{j \in V^{\text{out}}_S(k)} F_{kj} = \sum F_{\text{in special}} + \sum_{i \in V^{\text{in}}_S(k)} F_{ik}, \quad \forall k \in B_S$$
+
+Where:
+- $V^{\text{out}}_S(i) = \{j \in V : (i,j) \in E_S\}$ (out-neighbors)
+- $V^{\text{in}}_S(j) = \{i \in V : (i,j) \in E_S\}$ (in-neighbors)
+
+**Special Flows:**
+- Basin with level demand: special outflow $F^{\text{basin in}}_k$, special inflow $F^{\text{basin out}}_k$
+- Nodes with buffers: special outflow $F^{\text{buffer in}}_k$, special inflow $F^{\text{buffer out}}_k$
+
+### Non-negativity Constraints
+
+All flows and allocations have non-negativity constraints:
+$$F_{ij} \geq 0, \quad F^{\text{basin out}}_i \geq 0, \quad F^{\text{buffer out}}_i \geq 0$$
+
+**Code Implementation:**
+```julia
+# Capacity constraints are enforced through variable bounds
+# Upper bounds set in add_variables_flow! function:
+upper_bound = flow_capacity_upper_bound(link, p_independent)
+
+# And through explicit capacity constraints:
+problem[:capacity] = JuMP.@constraint(
+    problem,
+    [link = links],
+    problem[:flow][link] <= capacity[link]
+)
+```
+
+# Two-Phase Implementation Process
+
+## Phase 1: Placeholder Initialization
+
+During model initialization, variables and constraints are created with placeholder values:
+
+```julia
+# In allocation_init.jl
+function add_allocation_model!(allocation::Allocation, subnetwork_id::Int32, p::Parameters)
+    # Create empty optimization problem
+    problem = JuMP.Model(HiGHS.Optimizer)
+
+    # Add variables with initial bounds
+    add_variables_flow!(allocation_model, p_independent)
+    add_basin!(allocation_model, p_independent)
+
+    # Add constraints with placeholder values
+    add_constraints_conservation_basin!(allocation_model, p_independent)
+    add_constraints_capacity!(allocation_model, p_independent)
+
+    # Objective will be set during optimization
+    problem[:objective] = JuMP.@expression(problem, 0.0)
+end
+```
+
+## Phase 2: Real Value Updates
+
+Before each optimization solve, placeholder values are updated with current physical data:
+
+```julia
+# In allocation_optim.jl - set_simulation_data! function
+function set_simulation_data!(allocation_model::AllocationModel, p::Parameters, t::Float64, du::CVector)
+    # Update basin starting storages from physical layer
+    for key in only(storage.axes)
+        if key[2] == :start
+            basin_id = key[1]
+            storage_now = current_storage[basin_id.idx]
+            JuMP.fix(storage[key], storage_now / scaling.storage; force = true)
+        end
+    end
+
+    # Update boundary flows from averaged physical flows
+    for link in keys(cumulative_boundary_volume)
+        JuMP.fix(
+            flow[link],
+            cumulative_boundary_volume[link] / (Δt_allocation * scaling.flow);
+            force = true,
+        )
+    end
+end
+```
+
+This two-phase approach allows the optimization structure to be set up once, then efficiently updated with current data for each solve.
+
+# Basin Profile Handling
+
+## Level-Storage Relationship Linearization
+
+The basin profile defines a piecewise linear relationship between storage and level:
+
+**Mathematical Definition:**
+$$\mathcal{L}^\text{end}_b = P_b(\mathcal{S}^\text{end}_b)$$
+
+**Code Implementation:**
+```julia
+# In allocation_init.jl - add_basin! function
+# The level-storage relationship is linearized through SOS2 constraints
+sos_data = Vector{Tuple{JuMP.VariableRef, Float64}}[]
+for i in eachindex(storage_to_level[node_id.idx].t)
+    # Create auxiliary variables for each segment
+    push!(sos_data, (auxiliary_var[i], storage_to_level[node_id.idx].t[i]))
+end
+
+# Add SOS2 constraint to ensure only adjacent segments are active
+JuMP.@constraint(problem, auxiliary_var in JuMP.SOS2(sos_weights))
+
+# Link storage to auxiliary variables
+JuMP.@constraint(problem,
+    sum(aux_var * weight for (aux_var, weight) in sos_data) ==
+    problem[:basin_storage][(node_id, :end)]
+)
+
+# Link level to auxiliary variables
+JuMP.@constraint(problem,
+    sum(aux_var * storage_to_level[node_id.idx](weight) for (aux_var, weight) in sos_data) ==
+    problem[:basin_level][node_id]
+)
+```
+
+## Vertical Flux Calculations
+
+**Mathematical Definition:**
+Average vertical fluxes over allocation interval:
+$$\phi_i(t) = \frac{1}{\Delta t_{\text{alloc}}}\int_{t - \Delta t_{\text{alloc}}}^t \left[F_{P,i}(t') - F_{E,i}(t') + F_{\text{drn},i}(t') - F_{\text{inf},i}(t') \right] dt'$$
+
+**Code Implementation:**
+```julia
+# Vertical forcing is accumulated in the physical layer and passed to allocation
+function set_simulation_data!(allocation_model::AllocationModel, basin::Basin, p::Parameters)
+    # The cumulative forcing volume is computed in the physical layer
+    for basin_id in basin_ids_subnetwork
+        forcing_volume = cumulative_forcing_volume[basin_id]
+        average_forcing = forcing_volume / Δt_allocation
+
+        # Set the horizontal forcing constraint value
+        JuMP.set_normalized_rhs(
+            horizontal_forcing_constraint[basin_id],
+            average_forcing / scaling.flow
+        )
+    end
+end
+```
+
+# Demand Type Processing
+
+## User Demand Processing
+
+User demands have multiple priorities and can return a fraction of abstracted water:
+
+**Mathematical Definition:**
+$$d^p_i(t), \quad \forall i \in U_S, \; p \in \{1, 2, \ldots, p_{\max}\}$$
+
+**Code Implementation:**
+```julia
+# In allocation_optim.jl - add_user_demand! function
+function add_user_demand!(allocation_model::AllocationModel, user_demand::UserDemand, priority::Int32)
+    for node_id in user_demand.node_id
+        demand_value = user_demand.demand[node_id.idx](t, priority)
+
+        if demand_value > 0
+            outflow_id = only(outflow_ids(graph, node_id))
+            flow_var = problem[:flow][(node_id, outflow_id)]
+
+            # Add linear objective term
+            add_objective_term!(allocation_model, flow_var, demand_value, priority)
+
+            # Handle return flow constraint
+            return_factor = user_demand.return_factor[node_id.idx](t)
+            if return_factor > 0
+                # Return flow capacity increases available flow
+                JuMP.set_normalized_rhs(
+                    returnflow_constraints[node_id],
+                    return_factor * JuMP.value(flow_var)
+                )
+            end
+        end
+    end
+end
+```
+
+## Level Demand Processing
+
+Level demands relate to basin storage targets:
+
+**Mathematical Definition:**
+Basin demand from level requirements:
+$$d^p_i = \max\left(0.0, \frac{s_{\min,i} - u_i(t)}{\Delta t_{\text{alloc}}} - \phi_i(t)\right)$$
+
+**Code Implementation:**
+```julia
+# In allocation_optim.jl - add_level_demand! function
+function add_level_demand!(allocation_model::AllocationModel, level_demand::LevelDemand, priority::Int32)
+    for node_id in level_demand.node_id
+        target_level = level_demand.min_level[node_id.idx](t, priority)
+
+        if !isnan(target_level)
+            # Convert target level to target storage
+            target_storage = interpolate_profile(storage_to_level[node_id.idx], target_level)
+            current_storage = current_storage[node_id.idx]
+
+            # Calculate demand: (target - current) / Δt - forcing
+            storage_deficit = target_storage - current_storage
+            demand_volume = max(0.0, storage_deficit - forcing_volume)
+            demand_flow = demand_volume / Δt_allocation
+
+            if demand_flow > 0
+                # Add to objective function
+                basin_inflow_var = problem[:basin_inflow][node_id]
+                add_objective_term!(allocation_model, basin_inflow_var, demand_flow, priority)
+            end
+        end
+    end
+end
+```
+
+## Flow Demand Processing
+
+Flow demands specify required throughflow:
+
+**Mathematical Definition:**
+$$d^p_i(t) = \begin{cases} 0 & \text{if } p \neq p_{\text{fd}} \\ d^{p_{\text{fd}}}_i(t) & \text{if } p = p_{\text{fd}} \end{cases}$$
+
+**Code Implementation:**
+```julia
+# In allocation_optim.jl - add_flow_demand! function
+function add_flow_demand!(allocation_model::AllocationModel, flow_demand::FlowDemand, priority::Int32)
+    for node_id in flow_demand.node_id
+        demand_value = flow_demand.demand[node_id.idx](t, priority)
+
+        if demand_value > 0
+            # Flow demand uses buffer variables
+            buffer_inflow_var = problem[:flow_buffer_inflow][node_id]
+            add_objective_term!(allocation_model, buffer_inflow_var, demand_value, priority)
+
+            # At the demand priority, buffer can receive unlimited flow
+            # At other priorities, buffer is constrained to 0
+            if current_priority == priority
+                JuMP.set_normalized_rhs(flow_demand_constraints[node_id], Inf)
+            else
+                JuMP.set_normalized_rhs(flow_demand_constraints[node_id], 0.0)
+            end
+        end
+    end
+end
+```
+
+# Physical Layer Integration
+
+## State Variable Mapping
+
+The allocation layer uses current physical state as input:
+
+**Physical Layer State → Allocation Variables:**
+- Basin storage (`u[i]`) → `basin_storage[(node_id, :start)]`
+- Basin level (computed from storage) → Used in constraint calculations
+- Boundary flows (time-averaged) → Fixed flow variables for boundaries
+
+**Code Implementation:**
+```julia
+# Mapping physical state to allocation variables
+function set_simulation_data!(allocation_model::AllocationModel, basin::Basin, p::Parameters)
+    (; current_storage, current_level) = p.state_time_dependent_cache
+
+    # Map storage state
+    for key in only(storage.axes)
+        if key[2] == :start
+            basin_id = key[1]
+            storage_now = current_storage[basin_id.idx]
+            JuMP.fix(storage[key], storage_now / scaling.storage; force = true)
+        end
+    end
+end
+```
+
+## Optimization Results → Physical Layer
+
+Allocation results are communicated back to update physical behavior:
+
+**Allocation Results → Physical Layer:**
+- Optimized flows → Update UserDemand abstraction rates
+- Controlled structure flows → Update Pump/Outlet flow rates
+
+**Code Implementation:**
+```julia
+# In allocation_optim.jl - assign_allocations! function
+function assign_allocations!(allocation_model::AllocationModel, p::Parameters, optimization_type::AllocationOptimizationType)
+    if optimization_type == AllocationOptimizationType.allocate
+        # Update UserDemand allocated flows
+        for node_id in user_demand_node_ids
+            outflow_id = only(outflow_ids(graph, node_id))
+            allocated_flow = JuMP.value(problem[:flow][(node_id, outflow_id)])
+
+            # Update physical layer
+            user_demand.allocated[node_id.idx] = allocated_flow
+        end
+
+        # Update controlled structures
+        for link in controlled_links
+            optimized_flow = JuMP.value(problem[:flow][link])
+            # Set target flow rate for pump/outlet
+            set_control_flow!(p, link, optimized_flow)
+        end
+    end
+end
+```
+
+# Debugging Guide
+
+## Common Allocation Issues
+
+### 1. Infeasible Optimization Problems
+
+**Symptoms:**
+- HiGHS solver returns `INFEASIBLE` status
+- Error messages about exceeding basin capacity
+
+**Debugging Steps:**
+```julia
+# Check basin storage bounds
+for basin_id in basin_ids
+    storage_now = current_storage[basin_id.idx]
+    storage_max = storage_to_level[basin_id.idx].t[end]
+    if storage_now > storage_max
+        @warn "Basin $basin_id storage $storage_now exceeds max $storage_max"
+    end
+end
+
+# Check constraint feasibility
+if JuMP.termination_status(problem) == JuMP.INFEASIBLE
+    # Compute and examine IIS (Irreducible Infeasible Subsystem)
+    JuMP.compute_conflict!(problem)
+    for constraint in JuMP.all_constraints(problem, include_variable_in_set_constraints=true)
+        if JuMP.MOI.get(problem, JuMP.MOI.ConstraintConflictStatus(), constraint) == JuMP.MOI.IN_CONFLICT
+            @warn "Constraint in conflict: $constraint"
+        end
+    end
+end
+```
+
+### 2. Unexpected Allocation Results
+
+**Symptoms:**
+- Demands not met when water seems available
+- Water allocated to wrong priorities
+
+**Debugging Steps:**
+```julia
+# Trace objective function components
+function debug_objective(allocation_model::AllocationModel, priority::Int32)
+    objective_value = JuMP.objective_value(allocation_model.problem)
+    @info "Priority $priority objective value: $objective_value"
+
+    # Check individual demand fulfillment
+    for demand_node in demand_nodes
+        demand_value = get_demand(demand_node, priority)
+        allocated_value = get_allocated(allocation_model, demand_node)
+        fulfillment_ratio = allocated_value / demand_value
+        @info "$demand_node: demand=$demand_value, allocated=$allocated_value, ratio=$fulfillment_ratio"
+    end
+end
+
+# Verify flow conservation
+function verify_flow_conservation(allocation_model::AllocationModel)
+    for node_id in all_node_ids
+        inflow_sum = sum(JuMP.value(flow[(upstream, node_id)]) for upstream in inflow_ids(node_id))
+        outflow_sum = sum(JuMP.value(flow[(node_id, downstream)]) for downstream in outflow_ids(node_id))
+        balance_error = abs(inflow_sum - outflow_sum)
+
+        if balance_error > 1e-6
+            @warn "Flow conservation violated for $node_id: inflow=$inflow_sum, outflow=$outflow_sum"
+        end
+    end
+end
+```
+
+### 3. Performance Issues
+
+**Symptoms:**
+- Slow optimization solves
+- Memory usage growth
+
+**Debugging Steps:**
+```julia
+# Profile optimization time
+@time JuMP.optimize!(problem)
+
+# Check problem size
+@info "Variables: $(JuMP.num_variables(problem))"
+@info "Constraints: $(JuMP.num_constraints(problem; count_variable_in_set_constraints=false))"
+
+# Monitor memory usage
+@info "Memory usage: $(Base.gc_live_bytes() / 1024^2) MB"
+```
+
+## Development Testing Workflow
+
+### Unit Testing Allocation Components
+
+```julia
+# Test individual constraint functions
+@testset "Allocation Constraints" begin
+    @test begin
+        allocation_model = create_test_allocation_model()
+        add_constraints_conservation_basin!(allocation_model, p_independent)
+        # Verify constraint structure
+        all(constraint -> JuMP.is_valid(allocation_model.problem, constraint),
+            allocation_model.problem[:conservation_basin])
+    end
+end
+
+# Test objective function components
+@testset "Objective Function" begin
+    allocation_model = create_test_allocation_model()
+    add_objective_term!(allocation_model, test_flow_var, 100.0, 1)
+    @test JuMP.objective_function(allocation_model.problem) isa JuMP.AffExpr
+end
+```
+
+### Integration Testing
+
+```julia
+# Test complete allocation workflow
+@testset "Allocation Integration" begin
+    model = create_test_ribasim_model()
+    p = parameters(model)
+
+    # Run allocation
+    update_allocation!(p.allocation, p, u, t, du)
+
+    # Verify results
+    @test all(allocated >= 0 for allocated in p.user_demand.allocated)
+    @test sum(p.user_demand.allocated) <= available_water_capacity
+end
+```
+
+This technical reference provides the missing bridge between mathematical concepts and code implementation, enabling developers to understand, debug, and extend the allocation system effectively.
+
+# Advanced Debugging and Analysis Tools
+
+## Infeasibility Analysis with MOA.jl
+
+When optimization problems become infeasible, the system provides comprehensive analysis:
+
+```julia
+function analyze_infeasibility(allocation_model::AllocationModel, objective::AllocationObjective, t::Float64, config::Config)
+    problem = allocation_model.problem
+
+    if JuMP.termination_status(problem) == JuMP.INFEASIBLE
+        # Relax problem by adding slack variables
+        constraint_to_slack = relax_problem!(problem)
+        JuMP.optimize!(problem)
+
+        # Report constraint violations
+        report_cause_of_infeasibility(constraint_to_slack, objective, problem, allocation_model.subnetwork_id, t)
+
+        # Log MOA.jl-specific diagnostics
+        @error "Multi-objective optimization infeasible" subnetwork_id=allocation_model.subnetwork_id time=t
+    end
+end
+
+function relax_problem!(problem::JuMP.Model)::Dict{JuMP.ConstraintRef, JuMP.AffExpr}
+    # Relax conservation constraints by introducing slack variables
+    constraint_to_penalty = Dict{JuMP.ConstraintRef, Float64}()
+
+    for constraint in JuMP.all_constraints(problem; include_variable_in_set_constraints = true)
+        if startswith(JuMP.name(constraint), "volume_conservation") ||
+           startswith(JuMP.name(constraint), "flow_conservation")
+            constraint_to_penalty[constraint] = 1
+        end
+    end
+
+    JuMP.@objective(problem, Min, 0)
+    return JuMP.relax_with_penalty!(problem, constraint_to_penalty)
+end
+```
+
+## Advanced Numerical Analysis
+
+```julia
+function analyze_scaling(allocation_model::AllocationModel, objective::AllocationObjective, t::Float64, config::Config)
+    problem = allocation_model.problem
+
+    data_numerical = MathOptAnalyzer.analyze(
+        MathOptAnalyzer.Numerical.Analyzer(),
+        problem;
+        threshold_small = JuMP.get_attribute(problem, "small_matrix_value"),
+        threshold_large = JuMP.get_attribute(problem, "large_matrix_value"),
+    )
+
+    # Check for poorly scaled matrix coefficients in MOA context
+    if !isempty(data_numerical.matrix_large)
+        @error "Large coefficients found in multi-objective problem"
+    end
+
+    # Identify variables not appearing in constraints
+    if !isempty(data_numerical.variables_not_in_constraints)
+        variables = [variable_ref_from_index(problem, var.ref)
+                    for var in data_numerical.variables_not_in_constraints]
+        @error "Variables found which are not in any constraint." variables
+    end
+end
+```
+
+# Enhanced Performance Considerations
+
+## Solver Configuration for MOA.jl
+
+The allocation system uses HiGHS as the underlying solver with MOA.jl orchestration:
+
+```julia
+function get_optimizer()
+    return JuMP.optimizer_with_attributes(
+        HiGHS.Optimizer,
+        "log_to_console" => false,
+        "time_limit" => 60.0,
+        "random_seed" => 0,
+        "primal_feasibility_tolerance" => 1e-5,
+        "dual_feasibility_tolerance" => 1e-5,
+    )
+end
+
+function MOA_optimizer_factory()
+    return MOA.Optimizer(get_optimizer())
+end
+```
+
+**Key Changes from Previous Versions:**
+- Added explicit primal and dual feasibility tolerances for better numerical stability
+- Integrated with MOA.jl optimizer factory pattern
+- Simplified solver configuration for improved robustness
+
+## Multi-objective Optimization Efficiency
+
+**Advantages of MOA.jl approach:**
+- Eliminates manual constraint accumulation loops
+- Provides robust mathematical foundation for lexicographic optimization
+- Integrates seamlessly with JuMP optimization infrastructure
+- Enables better debugging and analysis of multi-objective problems
+
+**Performance optimizations:**
+- Linear programming formulation for fast solving
+- Warm starting from previous allocation results
+- Scaled variables for numerical stability
+- Two-phase initialization minimizes memory allocation
+
+## Advanced Memory Management
+
+```julia
+# Reuse problem structure across time steps
+function optimize_allocation_sequence!(integrator, allocation_models)
+    for allocation_model in allocation_models
+        # Update data without recreating problem structure
+        set_simulation_data!(allocation_model, integrator)
+        set_demands!(allocation_model, integrator)
+        warm_start!(allocation_model, integrator)
+
+        # Solve with MOA.jl
+        status = optimize!(allocation_model, allocation_model.objectives)
+
+        # Parse and apply results
+        if status == JuMP.OPTIMAL
+            parse_allocations!(integrator, allocation_model)
+            apply_control_from_allocation!(integrator, allocation_model)
+        end
+    end
+end
+```
+
+# MOA.jl Physical Layer Integration
+
+## Enhanced Result Parsing and Application
+
+After MOA.jl optimization, results are parsed and applied to the physical simulation:
+
+```julia
+function parse_allocations!(integrator, allocation_model::AllocationModel)
+    problem = allocation_model.problem
+
+    # Extract optimized flows
+    for (link, flow_var) in allocation_model.flow
+        allocated_flow = JuMP.value(flow_var) * allocation_model.scaling.flow
+        # Apply to physical layer...
+    end
+
+    # Extract optimized storages
+    for (basin_id, storage_var) in allocation_model.storage
+        allocated_storage = JuMP.value(storage_var) * allocation_model.scaling.storage
+        # Apply to physical layer...
+    end
+end
+
+function apply_control_from_allocation!(integrator, allocation_model::AllocationModel)
+    # Update pump control
+    apply_control_from_allocation!(integrator.p.pump, allocation_model, integrator.p.graph)
+
+    # Update outlet control
+    apply_control_from_allocation!(integrator.p.outlet, allocation_model, integrator.p.graph)
+end
+```
+
+# Updated Allocation Algorithm with MOA.jl
+
+The high-level algorithm now uses MOA.jl throughout:
+
+```julia
+function allocate!(integrator)
+    allocation_models = integrator.p.allocation_models
+
+    # Step 1: Demand collection in secondary subnetworks
+    for allocation_model in get_secondary_networks(allocation_models)
+        optimize_for_demand_collection!(allocation_model, integrator)
+    end
+
+    # Step 2: Primary network allocation
+    primary_model = get_primary_network(allocation_models)
+    if !isnothing(primary_model)
+        optimize_primary_allocation!(primary_model, integrator)
+    end
+
+    # Step 3: Final allocation for all subnetworks
+    for allocation_model in allocation_models
+        optimize_final_allocation!(allocation_model, integrator)
+        save_flows!(integrator, allocation_model, AllocationOptimizationType.allocate)
+    end
+end
+
+function optimize_final_allocation!(allocation_model::AllocationModel, integrator)
+    set_simulation_data!(allocation_model, integrator)
+    set_demands!(allocation_model, integrator)
+    warm_start!(allocation_model, integrator)
+
+    # MOA.jl handles the multi-objective optimization
+    status = optimize!(allocation_model, allocation_model.objectives)
+
+    if status == JuMP.OPTIMAL
+        parse_allocations!(integrator, allocation_model)
+        apply_control_from_allocation!(integrator, allocation_model)
+    else
+        analyze_infeasibility(allocation_model, allocation_model.objectives, integrator.t, integrator.p.config)
+    end
+end
+```
+
+This enhanced technical reference now provides comprehensive documentation for the MOA.jl-based allocation system implementation in Ribasim. The adoption of MOA.jl represents a significant architectural improvement, providing robust multi-objective optimization capabilities while maintaining the linear programming efficiency and two-phase approach that ensures optimal performance for complex water system modeling.
