@@ -387,8 +387,8 @@ class DatasetWidget(QWidget):
         node_layer = self.ribasim_widget.node_layer
         assert node_layer is not None
         path = self._set_results(node_layer, "node_id", "basin.arrow")
-        if path.exists():
-            df = self._add_arrow_layer(path)
+        df = self._add_arrow_layer(path)
+        if df is not None:
             self.basin_layer = self._duplicate_layer(
                 node_layer, "Basin", "node_id", "node_type", "Basin"
             )
@@ -402,8 +402,8 @@ class DatasetWidget(QWidget):
             )
             / "concentration.arrow"
         )
-        if path.exists():
-            df = self._add_arrow_layer(path, postprocess_concentration_arrow)
+        df = self._add_arrow_layer(path, postprocess_concentration_arrow)
+        if df is not None:
             self.concentration_layer = self._duplicate_layer(
                 node_layer, "Concentration", "node_id", "node_type", "Basin"
             )
@@ -421,8 +421,8 @@ class DatasetWidget(QWidget):
             )
             / "allocation.arrow"
         )
-        if path.exists():
-            df = self._add_arrow_layer(path, postprocess_allocation_arrow)
+        df = self._add_arrow_layer(path, postprocess_allocation_arrow)
+        if df is not None:
             self.allocation_layer = self._duplicate_layer(
                 node_layer, "Allocation", "node_id", fids=list(df["node_id"].unique())
             )
@@ -433,8 +433,8 @@ class DatasetWidget(QWidget):
         link_layer = self.ribasim_widget.link_layer
         assert link_layer is not None
         path = self._set_results(link_layer, "link_id", "flow.arrow")
-        if path.exists():
-            df = self._add_arrow_layer(path, postprocess_flow_arrow)
+        df = self._add_arrow_layer(path, postprocess_flow_arrow)
+        if df is not None:
             self.flow_layer = self._duplicate_layer(
                 link_layer, "Flow", "link_id", "link_type", "flow"
             )
@@ -448,8 +448,8 @@ class DatasetWidget(QWidget):
             )
             / "allocation_flow.arrow"
         )
-        if path.exists():
-            df = self._add_arrow_layer(path, postprocess_allocation_flow_arrow)
+        df = self._add_arrow_layer(path, postprocess_allocation_flow_arrow)
+        if df is not None:
             self.allocation_flow_layer = self._duplicate_layer(
                 link_layer,
                 "AllocationFlow",
@@ -518,8 +518,10 @@ class DatasetWidget(QWidget):
         postprocess: Callable[[pd.DataFrame], pd.DataFrame] = lambda df: df.set_index(
             pd.DatetimeIndex(df["time"])
         ),
-    ) -> pd.DataFrame:
+    ) -> pd.DataFrame | None:
         """Add arrow output data to the layer and setup its update mechanism."""
+        if path.exists() is False:
+            return None
         try:
             from pyarrow.feather import read_feather
 
@@ -529,7 +531,11 @@ class DatasetWidget(QWidget):
             dlayer = dataset.GetLayer(0)
             stream = dlayer.GetArrowStreamAsNumPy()
             data = stream.GetNextRecordBatch()
-            df = pd.DataFrame(data=data)
+            if data is None:
+                # Empty arrow file
+                return None
+            else:
+                df = pd.DataFrame(data=data)
 
             # The OGR path introduces strings columns as bytes
             for column in df.columns:
