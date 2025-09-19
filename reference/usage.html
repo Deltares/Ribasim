@@ -1061,7 +1061,58 @@ Important
 </section>
 <section id="allocation---allocation" class="level2" data-number="5.5">
 <h2 data-number="5.5" class="anchored" data-anchor-id="allocation---allocation"><span class="header-section-number">5.5</span> Allocation - <code>allocation</code></h2>
-<p>The allocation table contains a record of allocation results: when it happened, for which node, in which allocation network, and what the demand, allocated flow and realized flow were. The realized values at the starting time of the simulation can be ignored. column | type | unit —————- | ——– | ——————— time | DateTime | - subnetwork_id | Int32 | - node_type | String | - node_id | Int32 | - demand_priority | Int32 | - demand | Float64 | <span class="math inline">\(\text{m}^3/\text{s}\)</span> allocated | Float64 | <span class="math inline">\(\text{m}^3/\text{s}\)</span> realized | Float64 | <span class="math inline">\(\text{m}^3/\text{s}\)</span></p>
+<p>The allocation table contains a record of allocation results: when it happened, for which node, in which allocation network, and what the demand, allocated flow and realized flow were. The realized values at the starting time of the simulation can be ignored.</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>column</th>
+<th>type</th>
+<th>unit</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>time</td>
+<td>DateTime</td>
+<td>-</td>
+</tr>
+<tr class="even">
+<td>subnetwork_id</td>
+<td>Int32</td>
+<td>-</td>
+</tr>
+<tr class="odd">
+<td>node_type</td>
+<td>String</td>
+<td>-</td>
+</tr>
+<tr class="even">
+<td>node_id</td>
+<td>Int32</td>
+<td>-</td>
+</tr>
+<tr class="odd">
+<td>demand_priority</td>
+<td>Int32</td>
+<td>-</td>
+</tr>
+<tr class="even">
+<td>demand</td>
+<td>Float64</td>
+<td><span class="math inline">\(\text{m}^3/\text{s}\)</span></td>
+</tr>
+<tr class="odd">
+<td>allocated</td>
+<td>Float64</td>
+<td><span class="math inline">\(\text{m}^3/\text{s}\)</span></td>
+</tr>
+<tr class="even">
+<td>realized</td>
+<td>Float64</td>
+<td><span class="math inline">\(\text{m}^3/\text{s}\)</span></td>
+</tr>
+</tbody>
+</table>
 <div class="callout callout-style-default callout-note callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
