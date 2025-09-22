@@ -336,6 +336,14 @@ end
     @test reduction_factor(-Inf, 2.0) === 0.0
 end
 
+@testitem "smooth_clamp" begin
+    using Ribasim: smooth_clamp
+    @test smooth_clamp(2.5, 2.0, 3.0) == 2.5
+    @test smooth_clamp(3.14, -Inf, Inf) == 3.14
+    @test smooth_clamp(1.0, 1.41, 1.41) == 1.41
+    @test smooth_clamp(1.95, 1.0, 2.0) ≈ 1.94375
+end
+
 @testitem "Node types" begin
     using Ribasim:
         node_types,

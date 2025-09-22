@@ -314,6 +314,60 @@ function reduction_factor(x::T, threshold::Real)::T where {T<:Real}
     end
 end
 
+"""
+Function that goes smoothly from lo to hi in the interval [lo - δ, hi + δ],
+where δ = α * (hi - lo) / 2 with smoothing parameter α ∈ [0, 1]. This function is identical
+to the non-smooth clamp function outside the intervals [lo - δ, lo + δ] and [hi - δ, hi + δ].
+"""
+function smooth_clamp(x, lo, hi; α = 0.2)
+    # Zero length interval
+    if lo == hi
+        return lo
+    end
+
+    lo_inf = isinf(lo)
+    hi_inf = isinf(hi)
+
+    # No clamping
+    if lo_inf && hi_inf
+        return x
+    end
+
+    δ = α * (hi - lo) / 2
+
+    # Happens for one-sided clamping
+    if isinf(δ)
+        return x
+    end
+
+    lower_lower_bound = lo - δ
+
+    if x < lower_lower_bound
+        return lo
+    end
+
+    lower_upper_bound = lo + δ
+    denom = 4δ
+
+    if x < lower_upper_bound
+        return lo + ((x - lower_lower_bound)^2) / denom
+    end
+
+    upper_lower_bound = hi - δ
+
+    if x < upper_lower_bound
+        return x
+    end
+
+    upper_upper_bound = hi + δ
+
+    return if x < upper_upper_bound
+        hi - ((x - upper_upper_bound)^2) / denom
+    else
+        hi
+    end
+end
+
 function get_low_storage_factor(p::Parameters, id::NodeID)
     (; current_low_storage_factor) = p.state_time_dependent_cache
     if id.type == NodeType.Basin
@@ -684,6 +738,7 @@ end
 
 # Overloads for SparseConnectivityTracer
 reduction_factor(x::GradientTracer, ::Real) = x
+smooth_clamp(x::GradientTracer, ::Real, ::Real) = x
 low_storage_factor_resistance_node(::Parameters, q::GradientTracer, ::NodeID, ::NodeID) = q
 relaxed_root(x::GradientTracer, threshold::Real) = x
 get_level_from_storage(basin::Basin, state_idx::Int, storage::GradientTracer) = storage
