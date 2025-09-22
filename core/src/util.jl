@@ -1255,3 +1255,43 @@ function should_skip_update_q(
 
     return control_type != control_type_
 end
+
+# Wrapper of ODE_DEFAULT_NORM used to dispatch on
+# for calculate_residuals!, also holding the residual
+# cache for output
+@kwdef mutable struct NormWithCache{T} <: Function
+    const cache::T
+    count::Int = 0
+end
+
+(::NormWithCache)(args...) = ODE_DEFAULT_NORM(args...)
+
+# Thin wrapper of `calculate_residuals!` to catch
+# the computed residuals
+function OrdinaryDiffEqCore.calculate_residuals!(
+    out,
+    ũ,
+    u₀,
+    u₁,
+    α,
+    ρ,
+    internalnorm::NormWithCache,
+    t,
+)
+    # Call the proper calculate_residuals!
+    output = invoke(
+        calculate_residuals!,
+        Tuple{Any, Any, Any, Any, Any, Any, Any, Any},
+        out,
+        ũ,
+        u₀,
+        u₁,
+        α,
+        ρ,
+        internalnorm,
+        t,
+    )
+    @. internalnorm.cache += abs(out)
+    internalnorm.count += 1
+    return output
+end
