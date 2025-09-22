@@ -7,10 +7,7 @@ from contextlib import closing
 from contextvars import ContextVar
 from pathlib import Path
 from sqlite3 import connect
-from typing import TYPE_CHECKING, Any, Generic, TypeVar, cast
-
-if TYPE_CHECKING:
-    from ribasim.model import Model
+from typing import Any, Generic, TypeVar, cast
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
@@ -598,7 +595,7 @@ class SpatialTableModel(TableModel[TableT], Generic[TableT]):
 
 
 class ChildModel(BaseModel):
-    _parent: "Model | None" = None
+    _parent: BaseModel | None = None
     _parent_field: str | None = None
 
     @model_validator(mode="after")

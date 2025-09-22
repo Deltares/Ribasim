@@ -292,6 +292,7 @@ class MultiNodeModel(NodeModel):
                 f"You can only add to a {self._node_type} MultiNodeModel when attached to a Model."
             )
 
+        assert hasattr(self._parent, "_used_node_ids")
         if node_id is None:
             node_id = self._parent._used_node_ids.new_id()
         elif node_id in self._parent._used_node_ids:
@@ -299,6 +300,7 @@ class MultiNodeModel(NodeModel):
                 f"Node IDs have to be unique, but {node_id} already exists."
             )
 
+        assert hasattr(self._parent, "crs")
         for table in tables:
             member_name = _pascal_to_snake(table.__class__.__name__)
             existing_member = getattr(self, member_name)
