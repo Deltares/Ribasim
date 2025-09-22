@@ -386,7 +386,6 @@ function formulate_flow!(
         factor_level = reduction_factor(Δsource_level, USER_DEMAND_MIN_LEVEL_THRESHOLD)
         q *= factor_level
         du.user_demand_inflow[id.idx] = q
-        du.user_demand_outflow[id.idx] = q * return_factor(t)
         du.user_demand_outflow[id.idx] =
             q * eval_time_interp(return_factor, current_return_factor, id.idx, p, t)
     end
