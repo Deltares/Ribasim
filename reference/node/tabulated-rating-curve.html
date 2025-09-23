@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.7.33">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>TabulatedRatingCurve – Ribasim</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js" integrity="sha512-bLT0Qm9VnAYZDflyKcBaQ2gg0hSYNQrJ8RilYldYQ1FxQYoCLtUjuuRuZo+fjqhx/qtq/1itJ0C2ejDxltZVFg==" crossorigin="anonymous"></script><script src="../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../../">
+<link href="../../reference/node/pump.html" rel="next">
+<link href="../../reference/node/basin.html" rel="prev">
+<script src="../../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-ea385d0e468b0dd5ea5bf0780b1290d9.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../site_libs/bootstrap/bootstrap-1b3a22d1cae7d936259cf712f923d661.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" integrity="sha512-c3Nl8+7g4LMSTdrm621y7kf9v3SDPnhxLNhcjFJbKECVnmZHTdo+IRO05sNLTH/D3vA6u1X32ehoLC7WFVdheg==" crossorigin="anonymous"></script>
+
+<script type="application/javascript">define('jquery', [],function() {return window.jQuery;})</script>
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN") {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+<link rel="stylesheet" href="../../assets/styles.css">
+</head>
+
+<body class="nav-sidebar floating nav-fixed quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a href="../../index.html" class="navbar-brand navbar-brand-logo">
+    <img src="https://user-images.githubusercontent.com/4471859/224825908-bee7e044-bc6b-4561-8b08-5d330cce3ed5.png" alt="" class="navbar-logo">
+    </a>
+    <a class="navbar-brand" href="../../index.html">
+    <span class="navbar-title">Ribasim</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../../index.html"> 
+<span class="menu-text">Overview</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../tutorial/natural-flow.html"> 
+<span class="menu-text">Tutorials</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../guide/examples.html"> 
+<span class="menu-text">How-to guides</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../concept/concept.html"> 
+<span class="menu-text">Concepts</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link active" href="../../reference/index.html" aria-current="page"> 
+<span class="menu-text">Reference</span></a>
+  </li>  
+</ul>
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../../dev/index.html"> 
+<span class="menu-text">Contributing</span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/Deltares/Ribasim"> <i class="bi bi-github" role="img" aria-label="GitHub">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../../reference/node/basin.html">Nodes</a></li><li class="breadcrumb-item"><a href="../../reference/node/tabulated-rating-curve.html">TabulatedRatingCurve</a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../reference/index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Reference</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../reference/usage.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Usage</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../reference/validation.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Validation</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../reference/python/index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Python API</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../reference/test-models.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Test models</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
+ <span class="menu-text">Nodes</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../reference/node/basin.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Basin</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../reference/node/tabulated-rating-curve.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">TabulatedRatingCurve</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../reference/node/pump.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Pump</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../reference/node/outlet.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Outlet</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../reference/node/user-demand.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">UserDemand</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../reference/node/flow-demand.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">FlowDemand</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../reference/node/level-demand.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">LevelDemand</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../reference/node/flow-boundary.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">FlowBoundary</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../reference/node/level-boundary.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">LevelBoundary</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../reference/node/linear-resistance.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">LinearResistance</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../reference/node/manning-resistance.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">ManningResistance</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../reference/node/terminal.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Terminal</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../reference/node/junction.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Junction</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../reference/node/discrete-control.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">DiscreteControl</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../reference/node/continuous-control.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">ContinuousControl</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../reference/node/pid-control.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">PidControl</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#tables" id="toc-tables" class="nav-link active" data-scroll-target="#tables"><span class="header-section-number">1</span> Tables</a>
+  <ul class="collapse">
+  <li><a href="#static" id="toc-static" class="nav-link" data-scroll-target="#static"><span class="header-section-number">1.1</span> Static</a>
+  <ul class="collapse">
+  <li><a href="#interpolation" id="toc-interpolation" class="nav-link" data-scroll-target="#interpolation"><span class="header-section-number">1.1.1</span> Interpolation</a></li>
+  </ul></li>
+  <li><a href="#time" id="toc-time" class="nav-link" data-scroll-target="#time"><span class="header-section-number">1.2</span> Time</a></li>
+  </ul></li>
+  <li><a href="#equations" id="toc-equations" class="nav-link" data-scroll-target="#equations"><span class="header-section-number">2</span> Equations</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../../reference/node/basin.html">Nodes</a></li><li class="breadcrumb-item"><a href="../../reference/node/tabulated-rating-curve.html">TabulatedRatingCurve</a></li></ol></nav>
+<div class="quarto-title">
+<h1 class="title">TabulatedRatingCurve</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<p>A TabulatedRatingCurve determines outflow from a Basin by looking up the flow rate that corresponds to the current upstream level from a rating curve. The TabulatedRatingCurve takes a rating curve as input. Use it for instance to model flow over a weir.</p>
+<section id="tables" class="level1" data-number="1">
+<h1 data-number="1"><span class="header-section-number">1</span> Tables</h1>
+<section id="static" class="level2" data-number="1.1">
+<h2 data-number="1.1" class="anchored" data-anchor-id="static"><span class="header-section-number">1.1</span> Static</h2>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 13%">
+<col style="width: 40%">
+<col style="width: 21%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>column</th>
+<th>type</th>
+<th>unit</th>
+<th>restriction</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>node_id</td>
+<td>Int32</td>
+<td>-</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>active</td>
+<td>Bool</td>
+<td>-</td>
+<td>(optional, default true)</td>
+</tr>
+<tr class="odd">
+<td>level</td>
+<td>Float64</td>
+<td><span class="math inline">\(\text{m}\)</span></td>
+<td>unique</td>
+</tr>
+<tr class="even">
+<td>flow_rate</td>
+<td>Float64</td>
+<td><span class="math inline">\(\text{m}^3/\text{s}\)</span></td>
+<td>start at 0, increasing</td>
+</tr>
+<tr class="odd">
+<td>max_downstream_level</td>
+<td>Float64</td>
+<td><span class="math inline">\(\text{m}\)</span></td>
+<td>(optional)</td>
+</tr>
+<tr class="even">
+<td>control_state</td>
+<td>String</td>
+<td>-</td>
+<td>(optional)</td>
+</tr>
+</tbody>
+</table>
+<section id="interpolation" class="level3" data-number="1.1.1">
+<h3 data-number="1.1.1" class="anchored" data-anchor-id="interpolation"><span class="header-section-number">1.1.1</span> Interpolation</h3>
+<p>The <span class="math inline">\(Q(h)\)</span> relationship of a tabulated rating curve is defined as a PCHIPInterpolation, for more information see <a href="https://www.mathworks.com/help/matlab/ref/pchip.html">here</a>.</p>
+<div id="2" class="cell" data-execution_count="1">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">using</span> <span class="bu">DataInterpolations</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="im">using</span> <span class="bu">Plots</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>level <span class="op">=</span> [<span class="fl">12.0</span>, <span class="fl">12.2</span>, <span class="fl">12.5</span>, <span class="fl">13.0</span>]</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>flow <span class="op">=</span> [<span class="fl">0.0</span>, <span class="fl">0.5</span>, <span class="fl">2.5</span>, <span class="fl">8.0</span>]</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>level_aug <span class="op">=</span> <span class="fu">copy</span>(level)</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>flow_aug <span class="op">=</span> <span class="fu">copy</span>(flow)</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="fu">pushfirst!</span>(level_aug, <span class="fu">first</span>(level) <span class="op">-</span> <span class="fl">1.0</span>)</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="fu">pushfirst!</span>(flow_aug, <span class="fl">0.0</span>)</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>itp <span class="op">=</span> <span class="fu">PCHIPInterpolation</span>(</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    flow_aug,</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>    level_aug;</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>    extrapolation_right <span class="op">=</span> DataInterpolations.ExtrapolationType.Linear,</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>level_eval <span class="op">=</span> <span class="fu">range</span>(<span class="fu">first</span>(level), <span class="fu">last</span>(level); length <span class="op">=</span> <span class="fl">1000</span>)</span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>flow_eval <span class="op">=</span> <span class="fu">itp</span>.(level_eval)</span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>level_extrap_left <span class="op">=</span> [<span class="fu">first</span>(level) <span class="op">-</span> <span class="fl">0.3</span>, <span class="fu">first</span>(level)]</span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>flow_extrap_left <span class="op">=</span> <span class="fu">itp</span>.(level_extrap_left)</span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>level_extrap_right <span class="op">=</span> [<span class="fu">last</span>(level), <span class="fu">last</span>(level) <span class="op">+</span> <span class="fl">0.3</span>]</span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>flow_extrap_right <span class="op">=</span> <span class="fu">itp</span>.(level_extrap_right)</span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>c <span class="op">=</span> <span class="op">:</span>blue</span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(</span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>    level_eval,</span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>    flow_eval;</span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a>    c,</span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a>    label <span class="op">=</span> <span class="st">"interpolation"</span>,</span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a>    xticks <span class="op">=</span> <span class="cn">false</span>,</span>
+<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a>    yticks <span class="op">=</span> <span class="cn">false</span>,</span>
+<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a>    left_margin <span class="op">=</span> <span class="fl">5</span>Plots.mm,</span>
+<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a><span class="fu">plot!</span>(level_extrap_left, flow_extrap_left; ls <span class="op">=</span> <span class="op">:</span>dash, c, label <span class="op">=</span> <span class="st">"extrapolation"</span>)</span>
+<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a><span class="fu">plot!</span>(level_extrap_right, flow_extrap_right; ls <span class="op">=</span> <span class="op">:</span>dash, c, label <span class="op">=</span> <span class="st">""</span>)</span>
+<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a><span class="fu">scatter!</span>(level, flow; c, label <span class="op">=</span> <span class="st">"data"</span>, markeralpha <span class="op">=</span> <span class="fl">0.25</span>)</span>
+<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a><span class="fu">xlabel!</span>(<span class="st">"level"</span>)</span>
+<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a><span class="fu">ylabel!</span>(<span class="st">"flow"</span>)</span>
+<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a><span class="fu">xlims!</span>(<span class="fu">first</span>(level) <span class="op">-</span> <span class="fl">0.2</span>, <span class="fu">last</span>(level) <span class="op">+</span> <span class="fl">0.2</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-display" data-execution_count="1">
+<img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAoUAAAHMCAIAAAAs9EW6AAAABmJLR0QA/wD/AP+gvaeTAAAgAElEQVR4nO3dd3hUVeLG8XdSSUKAACE0gVAUaQLSmxQJCIhIVFBkYYNUFRso6grqLq5tLSAiCFKlRESRovQqEURKsvQA0pIQIAklPTPz+2P4IYuRmuRMZr6fZx+fYebOvW8i6zvn3DvnWux2uwAAgFEepgMAAAD6GAAAJ0AfAwBgHn0MAIB59DEAAObRxwAAmEcfAwBgHn0MAIB59DEAAOYZ7uPk5GSzAQAAcAYm+zgrK6t27doGAwAA4CRM9rHNZsvMzDQYAAAAJ8H5YwAAzKOPAQAwjz4GAMA8+hgAAPPoYwAAzKOPAQAwjz4GAMA8+hgAAPPoYwAAzKOPAQAwjz4GAMA8L9MBAAC5S0lJSUpKMp0Cl3h4eNxxxx2enp75tH/6GACcVLdu3Y4ePerj42M6CCQpKSnpnXfeGTp0aD7tnz4GACeVlZX1008/cV9aJ/H666/n6z0JOX8MAIB59DEAAObRxwAAmEcfAwBgHn0MAIB59DEAAObRxwCAWzFq1Khdu3b91auZmZmpqan5cdwLFy489thj19ggJSXFbrc7HkdGRk6bNi0/YuQ5+hgAcCvKlClTpEiRv3p12rRpzz77bH4cNysr68cff7zGBhUrVkxOTnY8LlasWIkSJfIjRp5jPRAAwK1o2bJl6dKlJe3evbtEiRKHDx/ev39/69at77rrrtTU1H379sXFxa1atapUqVINGjSQtHPnzu3bt1eoUCEsLMxisUhas2ZN48aNly5dWrJkyYYNGx47dqxEiRKrVq2666677rvvPsdR7Hb7qlWrjh07du+999avX/+qDCdOnNi4cWNaWtrlV3fu3Gm1WtevXx8YGNisWbMaNWrk5OQ4Nj537tyKFSuysrLatm1boUIFSSdPnkxJSfHx8VmzZk3t2rVbtWpVUL+8XDA+BgDcipEjR+7cuVPSe++998QTT0yfPv3QoUMtW7bcvXt3Wlra5T7evn27pH/+85+DBg1KSEj44osvHn30Ucceunbt2r179+3bt8fFxW3ZsiU8PHzgwIFnz5594YUXxowZ49gmPDz83XffjY+P79Wr1yeffPLnDHv27ElISHjiiSemTp2qK/p41apVFy9enDdvnuP5+Pj4Bg0arF69OiYmpnHjxr/++qukpUuX9unT59VXX01ISPjb3/42Y8aMgvrl5YLxMQAUGvHxev55/f+50YLj6alJk1Ss2F9uULNmzUmTJklKT09fuHDhG2+80aNHj61bt7777ruSfv/994kTJx44cKBo0aJ2u71hw4Zbt25t0qSJpJdeeqlbt26Sli5dmpSUtGvXrmLFikVERNx5553PPfdcdHT0rl279u/f7+Xl1bt37wYNGgwcOPDK486dO9fxoEePHr179x4wYED//v2feeaZ0aNHlyxZ8sotP/74406dOk2cOFFSxYoVx4wZs2zZMkk5OTmRkZEeHh516tSZPHlyv3798vIXdzPoYwAoNIKDNXiwbLaCPq6XlwIDr7VBw4YNHQ/uuOOOY8eOXfXqjh070tPTH374YccfExIS9u3b5+hjxz8d6tSpU6xYMUkhISF33HHH/v37Y2Jimjdv7uXlJal69erFixePjY2tWLHi5bd89NFHX331lWOD48ePXyNhTExM3759HY/btGnj+KAgqX79+h4eHo7kp0+fvs4vIj/RxwBQaHh5qX170yFy8+e7EFoslssXOQcEBFStWjUyMvLyq/7+/o4Hvr6+l5+88nrstLS0gICAgICAy0/a7fbU1NSiRYte3iYmJmb8+PExMTFFixY9dOjQn88uX6lo0aKXd3Xx4sXL+3F0uTPg/DEAIO+VLFny5MmTjkpu1qzZqVOntm7dGhQUFBQUlJqampWV9ee3REdHb9myRdLKlSutVmvNmjXbtm27bt26Q4cOSZozZ05ISEiVKlUub3/+/HlfX98iRYrY7fbx48dffr5UqVInTpy4aucdO3acNm1aRkaG3W6fOHFiWFhYPvzQt8VZPhcAAAqX4sWLe3t7S/L39788zC1SpIifn5+kLl26zJw5884772zRosWMGTMWLlz49NNPv/jiizk5OUWLFl2yZElgYGCJEiUcF1o7NG3adOzYsceOHTt//vysWbN8fHyqVq06fvz4Dh06+Pv7e3t7z5kzx9PT08PDo1SpUpKaN29er169qlWrFitW7OGHH778vaY333zz8ccfz8jIWLZsmb+/v+P66oiIiF27dtWsWdPLy6tu3brjxo2T5Ovre3mk7uXlVewaZ8jz3x/zCQUvIyOjQoUKZ8+eNRUAAJxZkyZNpk2b5kr3P87IyPDw8PDx8fnzS0uXLv3kk09WrlyZkZHx5681p6WlXS7Oq6Snp3t5eTk+GVyX1Wq1Wq25Briu119/PTg4+Pnnn7+F994IxscAgAJyjfVDrr3NX5WxJMdw/AZ5enr++VS3k+D8MQDAvKZNm7733numU5hEHwMAzCtduvTlL03duNjY2AMHDtzgxmvXrs3IyLjZQxQY+hgAkL/Gjh3ruEY6z3399dfXuF3Ezz//7Ficy+GJJ55ITEzMjxh5gj4GAOSv77777tSpUwV/3P37969du/byH+Pi4ipVqlTwMW4QfQwAuEUTJkyoVatW9erVu3XrlpCQYLfb+/Xr98UXX0jKzMwMCwtbtmzZJ598snfv3oiIiEaNGq1ater777+PiIjo0aNHmTJlVqxYMXXq1Jo1a1arVq1WrVpLlixx7DYiImLMmDH33HNPxYoVBwwYkJmZKSk9PX3w4MGhoaGhoaGvvPLK5btEOOzevbtx48bVq1evUqXKqFGjJJ08efLtt9/+8ccfGzVqNHjwYEnNmzePi4uTFBsb2759+9DQ0LvvvnvBggWOPXTp0mXixIm1a9cOCQkZPnx4Af4WL+H6agAoNHJytH59LutX+/ioTZtLj7OytHFjLtv4+ally0uPMzK0aVMu+w8IUPPmlx6npioq6tJjLy+1aSOP/x3BLV68ePr06Zs2bSpZsuRHH300fPjwyMjIsWPHNmvWrEmTJjNmzChZsmSXLl26dOkye/bscePGtWjRQtKsWbPmzJmzYcOGJk2a2Gy2w4cP9+3b18fHZ8+ePR07doyNjfXz80tISIiJidm8ebO3t/eDDz44fvz4ESNGvP/++ydOnDhw4EBmZmaHDh2mTp3qaFmHMmXKLFu2LDg4ODU1NSws7KeffurcufPo0aPXrFkze/ZsxzZHjx51tHifPn169er14osv7tmzp2XLlg0aNKhWrdqJEyfWrl27c+fO9PT0evXq9e3bt3Hjxjf8byYP0McAUGicOaPJk3PpWm9vNW0qx5ocCQmaNCmX9/r6qlkzOb7sc+KEJk/OZZuiRf/o4yNH/tjG01MNG159P4nIyMh69eqtXr1akuM+iZIqVqw4efLkrl27lihRwnEPpT9r3bq1Y9lqDw+PcuXKzZo1a+/evRcuXEhPTz906FCdOnUkPfXUUwEBAZKefvrpjz/+eMSIEUuWLBk7dqy3t7e3t/fQoUO//fbbK/u4dOnSy5cv37x586lTp9LT07dt29a5c+dcj56YmLhr166ff/5ZUq1atcLCwpYvXz5s2DBJQ4cOdey/efPm+/bto48BALkrW1bz519nm0qVdMVC0bmrXv3629Spc51tzp49W6xYscOHDzv++Morr9jtdovFUrFixXPnzrVo0eLKtaavdOWdl3r27HnnnXc++OCDpUqVctwh0fF88eLFLz84d+6cpHPnzl1egatEiRIpKSlX7vOLL774+uuvR44cWaZMmZycnCuXwr7KuXPnAgICLi9bfeWuAv//phk+Pj65ruiZr+hjAMCtqFev3rlz51555ZUrn0xNTe3du/f06dM//fTTyZMnDxo0SJKvr292dvaf92Cz2dauXbto0aIiRYqcOXMmPj7+8kvbtm3r3bu3pF9//bVWrVqS7r777st3adyyZctVy5atWrXqmWeeeeihhySNGTOmTJkyjuP+uVYrV66cmZkZGxtbvXp1x666dOmSB7+O20YfAwBuxciRI1u1ajVo0KDGjRvHx8efOHFi8uTJw4YN69ix42OPPda8eXPHieT69es3b9589OjRzZs379Onz5V78PDwaNq06ZAhQ1q0aBEZGXl5TCxp6dKlAQEB/v7+n376qeNGxa+//nqPHj0uXryYmpo6Y8aM9evXX7mrFi1avP/++6mpqT///PPRo0fvvfdeSY0bN37hhRdGjhxZo0YNxycDST4+PmPGjHn44YeHDBmyYcOGgIAAxw2YjWP9agBwUs6/fnV6evqiRYuOHDkSEhLSsWPHkiVLLlu2rHv37o7bS+zcuTMrK8tx3damTZtOnTrVvHlzq9UaHx/frFkzxx7Onz//9ddfp6am9uzZ8/Dhww0aNChVqlSXLl0GDBiQnp5++vTprl273nnnnY6NDx8+vGzZMsdFXuXLl5e0e/duq9Var149u93+/fff79u3r2nTpmXLlrVarXXr1pV05MiRXbt2lShRom3btosWLerYsaNj6c2NGzdu2bKlQoUK4eHhjuWsV6xY0bhx46CgIElbt24NDg4ODQ298ofN7/Wr6WMAcFLO38f5pEuXLoMGDerRo4fpIP8jv/uY7x8DAJxL/fr1HSeA3QrnjwHAldnt9oSEhLi4xLNnUy0WS+nSAeXLh5QpU+bKGw87m3feecd0BAMYHwOAy8rJydm6dcfKlbF79vheuFDl3LlK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">
+</div>
+</div>
+<p>Below the lowest given level of 12.0, the flow rate is kept at 0. Between given levels the flow rate is interpolated using PCHIP interpolation. Above the maximum given level of 13.0, the flow rate keeps increases linearly according to the slope of the last segment.</p>
+<p>For tabulated rating curves with a fixed maximum value (e.g.&nbsp;max capacity of a weir), enter a new row and re-enter the maximum flow_rate at a higher level:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>node_id</th>
+<th>level</th>
+<th>flow_rate</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>2</td>
+<td>12.0</td>
+<td>0.0</td>
+</tr>
+<tr class="even">
+<td>2</td>
+<td>12.2</td>
+<td>0.5</td>
+</tr>
+<tr class="odd">
+<td>2</td>
+<td>12.5</td>
+<td>2.5</td>
+</tr>
+<tr class="even">
+<td>2</td>
+<td>13.0</td>
+<td>8.0</td>
+</tr>
+<tr class="odd">
+<td>2</td>
+<td>13.1</td>
+<td>8.0</td>
+</tr>
+</tbody>
+</table>
+<p>Now this tabulated rating curve node has a flow rate of 8.0 <span class="math inline">\(\text{m}^3/\text{s}\)</span> for for all levels 13.0 or higher.</p>
+<p>The flow rate is not allowed to decrease with higher levels. If you wish to e.g.&nbsp;simulate the (partial) closing of a weir when the water level exceeds a certain threshold, you can use and Outlet with a control node to set flow rates.</p>
+</section>
+</section>
+<section id="time" class="level2" data-number="1.2">
+<h2 data-number="1.2" class="anchored" data-anchor-id="time"><span class="header-section-number">1.2</span> Time</h2>
+<p>This table is the transient form of the <code>TabulatedRatingCurve</code> table. The only difference is that a time column is added. With this the rating curves can be updated over time. The <code>max_downstream_level</code> currently cannot be updated over time. Note that a <code>node_id</code> can be either in this table or in the static one, but not both.</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>column</th>
+<th>type</th>
+<th>unit</th>
+<th>restriction</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>node_id</td>
+<td>Int32</td>
+<td>-</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>time</td>
+<td>DateTime</td>
+<td>-</td>
+<td></td>
+</tr>
+<tr class="odd">
+<td>level</td>
+<td>Float64</td>
+<td><span class="math inline">\(\text{m}\)</span></td>
+<td></td>
+</tr>
+<tr class="even">
+<td>flow_rate</td>
+<td>Float64</td>
+<td><span class="math inline">\(\text{m}^3/\text{s}\)</span></td>
+<td>non-negative</td>
+</tr>
+<tr class="odd">
+<td>max_downstream_level</td>
+<td>Float64</td>
+<td><span class="math inline">\(\text{m}\)</span></td>
+<td>(optional)</td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="equations" class="level1" data-number="2">
+<h1 data-number="2"><span class="header-section-number">2</span> Equations</h1>
+<p>The TabulatedRatingCurve is a tabulation of a Basin’s discharge behavior. It describes a relationship between the Basin’s level and its discharge. It can be understood as an empirical description of a Basin’s properties. This can include a weir, but also the lumped hydraulic behavior of the upstream channels.</p>
+<p><span class="math display">\[
+Q = \phi f(h)
+\]</span></p>
+<p>Where:</p>
+<ul>
+<li><span class="math inline">\(h\)</span> is the upstream water level</li>
+<li><span class="math inline">\(f\)</span> is a function describing the given rating curve <span class="math inline">\(Q(h)\)</span></li>
+<li><span class="math inline">\(\phi\)</span> is the reduction factor, which smoothly reduces flow based on all of these criteria:
+<ul>
+<li>The upstream volume is below the equivalent of a water depth of <span class="math inline">\(10 \;\text{cm}\)</span>.</li>
+<li>The upstream level is less than <span class="math inline">\(0.02 \;\text{m}\)</span> above the downstream level.</li>
+<li>The downstream level is above <code>max_downstream_level</code> - <span class="math inline">\(0.02 \;\text{m}\)</span></li>
+</ul></li>
+</ul>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+        const codeEl = trigger.previousElementSibling.cloneNode(true);
+        for (const childEl of codeEl.children) {
+          if (isCodeAnnotation(childEl)) {
+            childEl.remove();
+          }
+        }
+        return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="../../reference/node/basin.html" class="pagination-link" aria-label="Basin">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Basin</span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="../../reference/node/pump.html" class="pagination-link" aria-label="Pump">
+        <span class="nav-page-text">Pump</span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

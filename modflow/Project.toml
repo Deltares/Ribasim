@@ -1,7 +1,0 @@
-[deps]
-BasicModelInterface = "59605e27-edc0-445a-b93d-c09a3a50b330"
-CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
-DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
-Modflow6_jll = "81230ed9-c869-5493-bf63-2c1575eaf49b"
-ModflowInterface = "a348c28d-122a-4d3f-b833-160dba4591a7"
-NCDatasets = "85f8d34a-cbdd-5861-8df4-14fed0d494ab"

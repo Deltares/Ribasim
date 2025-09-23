@@ -1,0 +1,1090 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.7.33">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>Copilot instructions – Ribasim</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../">
+<link href="../dev/qgis.html" rel="next">
+<link href="../dev/release.html" rel="prev">
+<script src="../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../site_libs/quarto-html/popper.min.js"></script>
+<script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-ea385d0e468b0dd5ea5bf0780b1290d9.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../site_libs/bootstrap/bootstrap-1b3a22d1cae7d936259cf712f923d661.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+
+<link rel="stylesheet" href="../assets/styles.css">
+</head>
+
+<body class="nav-sidebar floating nav-fixed quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a href="../index.html" class="navbar-brand navbar-brand-logo">
+    <img src="https://user-images.githubusercontent.com/4471859/224825908-bee7e044-bc6b-4561-8b08-5d330cce3ed5.png" alt="" class="navbar-logo">
+    </a>
+    <a class="navbar-brand" href="../index.html">
+    <span class="navbar-title">Ribasim</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../index.html"> 
+<span class="menu-text">Overview</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../tutorial/natural-flow.html"> 
+<span class="menu-text">Tutorials</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../guide/examples.html"> 
+<span class="menu-text">How-to guides</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../concept/concept.html"> 
+<span class="menu-text">Concepts</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../reference/index.html"> 
+<span class="menu-text">Reference</span></a>
+  </li>  
+</ul>
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item">
+    <a class="nav-link active" href="../dev/index.html" aria-current="page"> 
+<span class="menu-text">Contributing</span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/Deltares/Ribasim"> <i class="bi bi-github" role="img" aria-label="GitHub">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../dev/copilot.html">Copilot instructions</a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Contributing</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/core.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Julia core development</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/benchmark.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Benchmark</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/addnode.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Adding node types</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/python.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Python tooling development</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/allocation.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Allocation</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/bmi.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Basic Model Interface (BMI)</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/ci.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Continuous integration</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/release.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Release process</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/copilot.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">Copilot instructions</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
+ <span class="menu-text">QGIS</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/qgis.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">QGIS plugin development</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/qgis_test_plan.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">QGIS plugin manual test plan</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#current-repository-copilot-instructions" id="toc-current-repository-copilot-instructions" class="nav-link active" data-scroll-target="#current-repository-copilot-instructions"><span class="header-section-number">1</span> Current repository Copilot instructions</a></li>
+  <li><a href="#copilot-instructions" id="toc-copilot-instructions" class="nav-link" data-scroll-target="#copilot-instructions"><span class="header-section-number">2</span> Copilot instructions</a>
+  <ul class="collapse">
+  <li><a href="#project-overview" id="toc-project-overview" class="nav-link" data-scroll-target="#project-overview"><span class="header-section-number">2.1</span> Project Overview</a></li>
+  <li><a href="#repository-structure" id="toc-repository-structure" class="nav-link" data-scroll-target="#repository-structure"><span class="header-section-number">2.2</span> Repository Structure</a></li>
+  <li><a href="#key-technologies-dependencies" id="toc-key-technologies-dependencies" class="nav-link" data-scroll-target="#key-technologies-dependencies"><span class="header-section-number">2.3</span> Key Technologies &amp; Dependencies</a>
+  <ul class="collapse">
+  <li><a href="#julia-stack-core" id="toc-julia-stack-core" class="nav-link" data-scroll-target="#julia-stack-core"><span class="header-section-number">2.3.1</span> Julia Stack (Core)</a></li>
+  <li><a href="#python-stack" id="toc-python-stack" class="nav-link" data-scroll-target="#python-stack"><span class="header-section-number">2.3.2</span> Python Stack</a></li>
+  <li><a href="#build-development" id="toc-build-development" class="nav-link" data-scroll-target="#build-development"><span class="header-section-number">2.3.3</span> Build &amp; Development</a></li>
+  </ul></li>
+  <li><a href="#development-workflow" id="toc-development-workflow" class="nav-link" data-scroll-target="#development-workflow"><span class="header-section-number">2.4</span> Development Workflow</a>
+  <ul class="collapse">
+  <li><a href="#environment-setup" id="toc-environment-setup" class="nav-link" data-scroll-target="#environment-setup"><span class="header-section-number">2.4.1</span> Environment Setup</a></li>
+  <li><a href="#key-commands" id="toc-key-commands" class="nav-link" data-scroll-target="#key-commands"><span class="header-section-number">2.4.2</span> Key Commands</a></li>
+  </ul></li>
+  <li><a href="#code-architecture-patterns" id="toc-code-architecture-patterns" class="nav-link" data-scroll-target="#code-architecture-patterns"><span class="header-section-number">2.5</span> Code Architecture Patterns</a>
+  <ul class="collapse">
+  <li><a href="#julia-core-coresrc" id="toc-julia-core-coresrc" class="nav-link" data-scroll-target="#julia-core-coresrc"><span class="header-section-number">2.5.1</span> Julia Core (<code>core/src/</code>)</a></li>
+  <li><a href="#python-components" id="toc-python-components" class="nav-link" data-scroll-target="#python-components"><span class="header-section-number">2.5.2</span> Python Components</a></li>
+  </ul></li>
+  <li><a href="#common-patterns-conventions" id="toc-common-patterns-conventions" class="nav-link" data-scroll-target="#common-patterns-conventions"><span class="header-section-number">2.6</span> Common Patterns &amp; Conventions</a>
+  <ul class="collapse">
+  <li><a href="#julia-code-style" id="toc-julia-code-style" class="nav-link" data-scroll-target="#julia-code-style"><span class="header-section-number">2.6.1</span> Julia Code Style</a></li>
+  <li><a href="#python-code-style" id="toc-python-code-style" class="nav-link" data-scroll-target="#python-code-style"><span class="header-section-number">2.6.2</span> Python Code Style</a></li>
+  <li><a href="#file-naming" id="toc-file-naming" class="nav-link" data-scroll-target="#file-naming"><span class="header-section-number">2.6.3</span> File Naming</a></li>
+  </ul></li>
+  <li><a href="#data-flow-formats" id="toc-data-flow-formats" class="nav-link" data-scroll-target="#data-flow-formats"><span class="header-section-number">2.7</span> Data Flow &amp; Formats</a>
+  <ul class="collapse">
+  <li><a href="#primary-data-formats" id="toc-primary-data-formats" class="nav-link" data-scroll-target="#primary-data-formats"><span class="header-section-number">2.7.1</span> Primary Data Formats</a></li>
+  <li><a href="#key-data-structures" id="toc-key-data-structures" class="nav-link" data-scroll-target="#key-data-structures"><span class="header-section-number">2.7.2</span> Key Data Structures</a></li>
+  </ul></li>
+  <li><a href="#common-tasks-helpers" id="toc-common-tasks-helpers" class="nav-link" data-scroll-target="#common-tasks-helpers"><span class="header-section-number">2.8</span> Common Tasks &amp; Helpers</a>
+  <ul class="collapse">
+  <li><a href="#when-adding-new-node-types" id="toc-when-adding-new-node-types" class="nav-link" data-scroll-target="#when-adding-new-node-types"><span class="header-section-number">2.8.1</span> When Adding New Node Types:</a></li>
+  <li><a href="#when-modifying-solvers" id="toc-when-modifying-solvers" class="nav-link" data-scroll-target="#when-modifying-solvers"><span class="header-section-number">2.8.2</span> When Modifying Solvers:</a></li>
+  <li><a href="#when-adding-new-python-features" id="toc-when-adding-new-python-features" class="nav-link" data-scroll-target="#when-adding-new-python-features"><span class="header-section-number">2.8.3</span> When Adding New Python Features:</a></li>
+  </ul></li>
+  <li><a href="#testing-strategy" id="toc-testing-strategy" class="nav-link" data-scroll-target="#testing-strategy"><span class="header-section-number">2.9</span> Testing Strategy</a>
+  <ul class="collapse">
+  <li><a href="#julia-tests" id="toc-julia-tests" class="nav-link" data-scroll-target="#julia-tests"><span class="header-section-number">2.9.1</span> Julia Tests</a></li>
+  <li><a href="#python-tests" id="toc-python-tests" class="nav-link" data-scroll-target="#python-tests"><span class="header-section-number">2.9.2</span> Python Tests</a></li>
+  </ul></li>
+  <li><a href="#performance-considerations" id="toc-performance-considerations" class="nav-link" data-scroll-target="#performance-considerations"><span class="header-section-number">2.10</span> Performance Considerations</a>
+  <ul class="collapse">
+  <li><a href="#julia-core" id="toc-julia-core" class="nav-link" data-scroll-target="#julia-core"><span class="header-section-number">2.10.1</span> Julia Core</a></li>
+  <li><a href="#python-components-1" id="toc-python-components-1" class="nav-link" data-scroll-target="#python-components-1"><span class="header-section-number">2.10.2</span> Python Components</a></li>
+  </ul></li>
+  <li><a href="#debugging-tips" id="toc-debugging-tips" class="nav-link" data-scroll-target="#debugging-tips"><span class="header-section-number">2.11</span> Debugging Tips</a>
+  <ul class="collapse">
+  <li><a href="#julia" id="toc-julia" class="nav-link" data-scroll-target="#julia"><span class="header-section-number">2.11.1</span> Julia</a></li>
+  <li><a href="#python" id="toc-python" class="nav-link" data-scroll-target="#python"><span class="header-section-number">2.11.2</span> Python</a></li>
+  </ul></li>
+  <li><a href="#integration-points" id="toc-integration-points" class="nav-link" data-scroll-target="#integration-points"><span class="header-section-number">2.12</span> Integration Points</a>
+  <ul class="collapse">
+  <li><a href="#julia-python" id="toc-julia-python" class="nav-link" data-scroll-target="#julia-python"><span class="header-section-number">2.12.1</span> Julia ↔︎ Python</a></li>
+  <li><a href="#qgis-plugin" id="toc-qgis-plugin" class="nav-link" data-scroll-target="#qgis-plugin"><span class="header-section-number">2.12.2</span> QGIS Plugin</a></li>
+  </ul></li>
+  <li><a href="#documentation" id="toc-documentation" class="nav-link" data-scroll-target="#documentation"><span class="header-section-number">2.13</span> Documentation</a></li>
+  <li><a href="#common-gotchas" id="toc-common-gotchas" class="nav-link" data-scroll-target="#common-gotchas"><span class="header-section-number">2.14</span> Common Gotchas</a></li>
+  <li><a href="#getting-help" id="toc-getting-help" class="nav-link" data-scroll-target="#getting-help"><span class="header-section-number">2.15</span> Getting Help</a></li>
+  <li><a href="#key-files-to-understand" id="toc-key-files-to-understand" class="nav-link" data-scroll-target="#key-files-to-understand"><span class="header-section-number">2.16</span> Key Files to Understand</a></li>
+  </ul></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Copilot instructions</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<p>The developers sometimes use GitHub Copilot to assist in their work. To make this more effective, we supply custom instructions for this repository, as documented <a href="https://docs.github.com/en/copilot/how-tos/custom-instructions/adding-repository-custom-instructions-for-github-copilot">here</a>. These instructions are automatically used by Copilot.</p>
+<section id="current-repository-copilot-instructions" class="level1" data-number="1">
+<h1 data-number="1"><span class="header-section-number">1</span> Current repository Copilot instructions</h1>
+</section>
+<section id="copilot-instructions" class="level1" data-number="2">
+<h1 data-number="2"><span class="header-section-number">2</span> Copilot instructions</h1>
+<p>This document provides essential information for AI coding assistants working on the Ribasim project.</p>
+<p>See also the developer docs at <code>docs/dev</code>.</p>
+<section id="project-overview" class="level2" data-number="2.1">
+<h2 data-number="2.1" class="anchored" data-anchor-id="project-overview"><span class="header-section-number">2.1</span> Project Overview</h2>
+<p><strong>Ribasim</strong> is a water resources modeling system. It’s a multi-language project with components in Julia (core), Python (utilities/API), and QGIS integration.</p>
+<ul>
+<li><strong>Primary Language</strong>: Julia (core simulation engine)</li>
+<li><strong>Secondary Languages</strong>: Python (model building, QGIS plugin)</li>
+<li><strong>Domain</strong>: Water resources modeling, hydrology, scientific computing</li>
+<li><strong>Architecture</strong>: Modular system with CLI, Python API, and QGIS plugin</li>
+</ul>
+</section>
+<section id="repository-structure" class="level2" data-number="2.2">
+<h2 data-number="2.2" class="anchored" data-anchor-id="repository-structure"><span class="header-section-number">2.2</span> Repository Structure</h2>
+<pre><code>├── core/                   # Julia core engine (main simulation code)
+│   ├── src/                # Core Julia source code
+│   ├── test/               # Julia unit tests
+│   └── Project.toml        # Julia package configuration
+├── python/                 # Python components
+│   ├── ribasim/            # Main Python package (model building)
+│   ├── ribasim_api/        # Python API for model interaction
+│   └── ribasim_testmodels/ # Test model generation
+├── ribasim_qgis/           # QGIS plugin for model visualization
+├── docs/                   # Documentation (Quarto-based)
+├── build/                  # Build scripts for CLI
+├── generated_testmodels/   # Generated test models
+├── models/                 # Working directory for models, ignored by git
+└── utils/                  # Utility scripts</code></pre>
+</section>
+<section id="key-technologies-dependencies" class="level2" data-number="2.3">
+<h2 data-number="2.3" class="anchored" data-anchor-id="key-technologies-dependencies"><span class="header-section-number">2.3</span> Key Technologies &amp; Dependencies</h2>
+<section id="julia-stack-core" class="level3" data-number="2.3.1">
+<h3 data-number="2.3.1" class="anchored" data-anchor-id="julia-stack-core"><span class="header-section-number">2.3.1</span> Julia Stack (Core)</h3>
+<ul>
+<li><strong>OrdinaryDiffEq.jl</strong>: Differential equation solving (primary solver)</li>
+<li><strong>JuMP.jl</strong>: Mathematical optimization modeling</li>
+<li><strong>HiGHS.jl</strong>: Linear/mixed-integer programming solver</li>
+<li><strong>Arrow.jl</strong>: Columnar data format for I/O</li>
+<li><strong>SQLite.jl</strong>: Database operations</li>
+<li><strong>MetaGraphsNext.jl</strong>: Graph data structures for network topology</li>
+<li><strong>SciML ecosystem</strong>: Scientific machine learning tools</li>
+</ul>
+</section>
+<section id="python-stack" class="level3" data-number="2.3.2">
+<h3 data-number="2.3.2" class="anchored" data-anchor-id="python-stack"><span class="header-section-number">2.3.2</span> Python Stack</h3>
+<ul>
+<li><strong>Pandas/GeoPandas</strong>: Data manipulation and geospatial processing</li>
+<li><strong>PyArrow</strong>: Arrow format integration with Julia</li>
+<li><strong>Pydantic/Pandera</strong>: Data modeling and validation</li>
+<li><strong>Matplotlib</strong>: Visualization and plotting</li>
+</ul>
+</section>
+<section id="build-development" class="level3" data-number="2.3.3">
+<h3 data-number="2.3.3" class="anchored" data-anchor-id="build-development"><span class="header-section-number">2.3.3</span> Build &amp; Development</h3>
+<ul>
+<li><strong>Pixi</strong>: Primary package/environment manager, also used to run e.g.&nbsp;tests via tasks. (see <code>pixi.toml</code>)</li>
+<li><strong>Julia Package Manager</strong>: For Julia dependencies. <code>Project.toml</code> has all dev dependencies and <code>core/Project.toml</code> the Ribasim core dependencies.</li>
+<li><strong>Pre-commit</strong>: Code quality hooks</li>
+<li><strong>Pytest</strong>: Python testing</li>
+<li><strong>Quarto</strong>: Documentation generation</li>
+</ul>
+</section>
+</section>
+<section id="development-workflow" class="level2" data-number="2.4">
+<h2 data-number="2.4" class="anchored" data-anchor-id="development-workflow"><span class="header-section-number">2.4</span> Development Workflow</h2>
+<section id="environment-setup" class="level3" data-number="2.4.1">
+<h3 data-number="2.4.1" class="anchored" data-anchor-id="environment-setup"><span class="header-section-number">2.4.1</span> Environment Setup</h3>
+<div class="sourceCode" id="cb2"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Use Pixi for environment management</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run install            <span class="co"># Install and configure all dependencies</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</section>
+<section id="key-commands" class="level3" data-number="2.4.2">
+<h3 data-number="2.4.2" class="anchored" data-anchor-id="key-commands"><span class="header-section-number">2.4.2</span> Key Commands</h3>
+<div class="sourceCode" id="cb3"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Testing</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run test-ribasim-python     <span class="co"># Python tests</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run test-ribasim-core       <span class="co"># Julia tests</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Documentation</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run quarto-preview          <span class="co"># Preview docs locally</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a><span class="co"># Model Generation</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run generate-testmodels     <span class="co"># Generate test models</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</section>
+</section>
+<section id="code-architecture-patterns" class="level2" data-number="2.5">
+<h2 data-number="2.5" class="anchored" data-anchor-id="code-architecture-patterns"><span class="header-section-number">2.5</span> Code Architecture Patterns</h2>
+<section id="julia-core-coresrc" class="level3" data-number="2.5.1">
+<h3 data-number="2.5.1" class="anchored" data-anchor-id="julia-core-coresrc"><span class="header-section-number">2.5.1</span> Julia Core (<code>core/src/</code>)</h3>
+<ul>
+<li><strong>Solver integration</strong>: Built around OrdinaryDiffEq.jl patterns with callbacks</li>
+<li><strong>Graph representation</strong>: Network topology using MetaGraphsNext.jl</li>
+</ul>
+</section>
+<section id="python-components" class="level3" data-number="2.5.2">
+<h3 data-number="2.5.2" class="anchored" data-anchor-id="python-components"><span class="header-section-number">2.5.2</span> Python Components</h3>
+<ul>
+<li><strong>Pydantic (pandera) models</strong>: Data validation and serialization</li>
+<li><strong>Pandas workflows</strong>: Data processing pipelines</li>
+<li><strong>Geospatial integration</strong>: Heavy use of GeoPandas for spatial operations</li>
+<li><strong>Arrow</strong>: Seamless data exchange with Julia core</li>
+</ul>
+</section>
+</section>
+<section id="common-patterns-conventions" class="level2" data-number="2.6">
+<h2 data-number="2.6" class="anchored" data-anchor-id="common-patterns-conventions"><span class="header-section-number">2.6</span> Common Patterns &amp; Conventions</h2>
+<p>We use the <code>GitHub</code> repository https://github.com/Deltares/Ribasim for issues and PRs.</p>
+<section id="julia-code-style" class="level3" data-number="2.6.1">
+<h3 data-number="2.6.1" class="anchored" data-anchor-id="julia-code-style"><span class="header-section-number">2.6.1</span> Julia Code Style</h3>
+<ul>
+<li>Follow Julia community conventions</li>
+<li>Use multiple dispatch extensively</li>
+<li>Prefer immutable structs where possible</li>
+<li>Use <code>@kwdef</code> for struct definitions with defaults</li>
+</ul>
+</section>
+<section id="python-code-style" class="level3" data-number="2.6.2">
+<h3 data-number="2.6.2" class="anchored" data-anchor-id="python-code-style"><span class="header-section-number">2.6.2</span> Python Code Style</h3>
+<ul>
+<li>Follow PEP 8</li>
+<li>Use ruff</li>
+<li>Use type hints extensively</li>
+<li>Pydantic models for data structures</li>
+<li>Pandas-style method chaining where appropriate</li>
+</ul>
+</section>
+<section id="file-naming" class="level3" data-number="2.6.3">
+<h3 data-number="2.6.3" class="anchored" data-anchor-id="file-naming"><span class="header-section-number">2.6.3</span> File Naming</h3>
+<ul>
+<li>Julia: <code>snake_case.jl</code></li>
+<li>Python: <code>snake_case.py</code></li>
+<li>Tests: <code>test_*.py</code> (Python), <code>*_test.jl</code> (Julia)</li>
+</ul>
+</section>
+</section>
+<section id="data-flow-formats" class="level2" data-number="2.7">
+<h2 data-number="2.7" class="anchored" data-anchor-id="data-flow-formats"><span class="header-section-number">2.7</span> Data Flow &amp; Formats</h2>
+<section id="primary-data-formats" class="level3" data-number="2.7.1">
+<h3 data-number="2.7.1" class="anchored" data-anchor-id="primary-data-formats"><span class="header-section-number">2.7.1</span> Primary Data Formats</h3>
+<ul>
+<li><strong>SQLite/GeoPackage</strong>: Model database storage</li>
+<li><strong>Arrow</strong>: Results or tables too large for SQLite</li>
+<li><strong>TOML</strong>: Configuration file</li>
+<li><strong>NetCDF</strong>: Conversion to NetCDF for interop</li>
+</ul>
+</section>
+<section id="key-data-structures" class="level3" data-number="2.7.2">
+<h3 data-number="2.7.2" class="anchored" data-anchor-id="key-data-structures"><span class="header-section-number">2.7.2</span> Key Data Structures</h3>
+<ul>
+<li><strong>Network Graph</strong>: Node-link representation of water system</li>
+<li><strong>TimeSeries</strong>: Time-dependent boundary conditions</li>
+<li><strong>Spatial Geometries</strong>: Basin area polygons, link linestrings</li>
+<li><strong>Control Logic</strong>: Rules for pumps, gates, etc.</li>
+</ul>
+</section>
+</section>
+<section id="common-tasks-helpers" class="level2" data-number="2.8">
+<h2 data-number="2.8" class="anchored" data-anchor-id="common-tasks-helpers"><span class="header-section-number">2.8</span> Common Tasks &amp; Helpers</h2>
+<section id="when-adding-new-node-types" class="level3" data-number="2.8.1">
+<h3 data-number="2.8.1" class="anchored" data-anchor-id="when-adding-new-node-types"><span class="header-section-number">2.8.1</span> When Adding New Node Types:</h3>
+<ol type="1">
+<li>Define Julia struct in <code>core/src/</code></li>
+<li>Add Python Pydantic model in <code>python/ribasim/</code></li>
+<li>Update schema validation</li>
+<li>Add to network topology handling</li>
+<li>Update documentation and tests</li>
+</ol>
+</section>
+<section id="when-modifying-solvers" class="level3" data-number="2.8.2">
+<h3 data-number="2.8.2" class="anchored" data-anchor-id="when-modifying-solvers"><span class="header-section-number">2.8.2</span> When Modifying Solvers:</h3>
+<ul>
+<li>Core solver logic in <code>core/src/solve.jl</code></li>
+<li>Integration tests in <code>core/integration_test/</code></li>
+<li>Regression tests for numerical stability</li>
+</ul>
+</section>
+<section id="when-adding-new-python-features" class="level3" data-number="2.8.3">
+<h3 data-number="2.8.3" class="anchored" data-anchor-id="when-adding-new-python-features"><span class="header-section-number">2.8.3</span> When Adding New Python Features:</h3>
+<ul>
+<li>Follow the pattern in <code>python/ribasim/</code></li>
+<li>Add comprehensive docstrings (used by quartodoc)</li>
+<li>Include examples in docstrings</li>
+<li>Add tests in <code>python/ribasim/tests/</code></li>
+</ul>
+</section>
+</section>
+<section id="testing-strategy" class="level2" data-number="2.9">
+<h2 data-number="2.9" class="anchored" data-anchor-id="testing-strategy"><span class="header-section-number">2.9</span> Testing Strategy</h2>
+<section id="julia-tests" class="level3" data-number="2.9.1">
+<h3 data-number="2.9.1" class="anchored" data-anchor-id="julia-tests"><span class="header-section-number">2.9.1</span> Julia Tests</h3>
+<ul>
+<li>Unit tests in <code>core/test/</code></li>
+<li>Integration tests in <code>core/integration_test/</code></li>
+<li>Regression tests in <code>core/regression_test/</code></li>
+</ul>
+</section>
+<section id="python-tests" class="level3" data-number="2.9.2">
+<h3 data-number="2.9.2" class="anchored" data-anchor-id="python-tests"><span class="header-section-number">2.9.2</span> Python Tests</h3>
+<ul>
+<li>Unit tests in <code>python/*/tests/</code></li>
+<li>Mark regression tests with <code>@pytest.mark.regression</code></li>
+</ul>
+</section>
+</section>
+<section id="performance-considerations" class="level2" data-number="2.10">
+<h2 data-number="2.10" class="anchored" data-anchor-id="performance-considerations"><span class="header-section-number">2.10</span> Performance Considerations</h2>
+<section id="julia-core" class="level3" data-number="2.10.1">
+<h3 data-number="2.10.1" class="anchored" data-anchor-id="julia-core"><span class="header-section-number">2.10.1</span> Julia Core</h3>
+<ul>
+<li>Avoid allocations during simulation</li>
+<li>Aim towards making it statically compilable</li>
+<li>Profile with <code>@profile</code> and <code>@benchmark</code></li>
+<li>PrecompileTools.jl for reducing startup time</li>
+<li>Avoid type instabilities (use <code>@code_warntype</code>)</li>
+</ul>
+</section>
+<section id="python-components-1" class="level3" data-number="2.10.2">
+<h3 data-number="2.10.2" class="anchored" data-anchor-id="python-components-1"><span class="header-section-number">2.10.2</span> Python Components</h3>
+<ul>
+<li>Use vectorized pandas operations</li>
+</ul>
+</section>
+</section>
+<section id="debugging-tips" class="level2" data-number="2.11">
+<h2 data-number="2.11" class="anchored" data-anchor-id="debugging-tips"><span class="header-section-number">2.11</span> Debugging Tips</h2>
+<section id="julia" class="level3" data-number="2.11.1">
+<h3 data-number="2.11.1" class="anchored" data-anchor-id="julia"><span class="header-section-number">2.11.1</span> Julia</h3>
+<ul>
+<li><code>@show</code> for quick variable inspection</li>
+<li>Julia debugger for step-through debugging</li>
+</ul>
+</section>
+<section id="python" class="level3" data-number="2.11.2">
+<h3 data-number="2.11.2" class="anchored" data-anchor-id="python"><span class="header-section-number">2.11.2</span> Python</h3>
+<ul>
+<li>Standard Python debugging tools work</li>
+<li>Use <code>breakpoint()</code> for PDB</li>
+<li>Rich error messages from Pydantic validation</li>
+</ul>
+</section>
+</section>
+<section id="integration-points" class="level2" data-number="2.12">
+<h2 data-number="2.12" class="anchored" data-anchor-id="integration-points"><span class="header-section-number">2.12</span> Integration Points</h2>
+<section id="julia-python" class="level3" data-number="2.12.1">
+<h3 data-number="2.12.1" class="anchored" data-anchor-id="julia-python"><span class="header-section-number">2.12.1</span> Julia ↔︎ Python</h3>
+<ul>
+<li>SQLite database and Arrow files for model storage</li>
+<li>Arrow format for data exchange</li>
+<li>Subprocess calls from Python to Julia CLI</li>
+</ul>
+</section>
+<section id="qgis-plugin" class="level3" data-number="2.12.2">
+<h3 data-number="2.12.2" class="anchored" data-anchor-id="qgis-plugin"><span class="header-section-number">2.12.2</span> QGIS Plugin</h3>
+<ul>
+<li>Reads/writes same formats as Python components</li>
+<li>Provides GUI for model visualization</li>
+<li>Generates compatible model files</li>
+</ul>
+</section>
+</section>
+<section id="documentation" class="level2" data-number="2.13">
+<h2 data-number="2.13" class="anchored" data-anchor-id="documentation"><span class="header-section-number">2.13</span> Documentation</h2>
+<ul>
+<li><strong>User docs</strong>: <code>docs/</code> (Quarto-based, published to ribasim.org)</li>
+<li><strong>API docs</strong>: Auto-generated from docstrings</li>
+<li><strong>Code comments</strong>: Focus on <em>why</em>, not <em>what</em></li>
+<li><strong>Examples</strong>: Include runnable examples in docstrings</li>
+</ul>
+</section>
+<section id="common-gotchas" class="level2" data-number="2.14">
+<h2 data-number="2.14" class="anchored" data-anchor-id="common-gotchas"><span class="header-section-number">2.14</span> Common Gotchas</h2>
+<ol type="1">
+<li><strong>Julia compilation</strong>: First run is slow due to compilation</li>
+<li><strong>Table schema</strong>: Ensure compatibility between Julia and Python table schemas</li>
+<li><strong>Coordinate systems</strong>: Be explicit about CRS in geospatial operations</li>
+<li><strong>Numerical precision</strong>: Water balance calculations require careful numerical handling</li>
+</ol>
+</section>
+<section id="getting-help" class="level2" data-number="2.15">
+<h2 data-number="2.15" class="anchored" data-anchor-id="getting-help"><span class="header-section-number">2.15</span> Getting Help</h2>
+<ul>
+<li><strong>Documentation</strong>: https://ribasim.org/</li>
+<li><strong>Issues</strong>: GitHub issues for bugs and feature requests</li>
+<li><strong>Code patterns</strong>: Look at existing similar components for patterns</li>
+<li><strong>Tests</strong>: Existing tests show expected usage patterns</li>
+</ul>
+</section>
+<section id="key-files-to-understand" class="level2" data-number="2.16">
+<h2 data-number="2.16" class="anchored" data-anchor-id="key-files-to-understand"><span class="header-section-number">2.16</span> Key Files to Understand</h2>
+<ul>
+<li><code>core/src/Ribasim.jl</code>: Main Julia module entry point</li>
+<li><code>python/ribasim/ribasim/model.py</code>: Core Python model class</li>
+<li><code>pixi.toml</code>: Development environment and task definitions</li>
+<li><code>Project.toml</code>: Julia development dependencies</li>
+<li><code>core/Project.toml</code>: Julia package dependencies</li>
+<li><code>python/ribasim/pyproject.toml</code>: Python package configuration</li>
+</ul>
+
+
+</section>
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+        const codeEl = trigger.previousElementSibling.cloneNode(true);
+        for (const childEl of codeEl.children) {
+          if (isCodeAnnotation(childEl)) {
+            childEl.remove();
+          }
+        }
+        return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="../dev/release.html" class="pagination-link" aria-label="Release process">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Release process</span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="../dev/qgis.html" class="pagination-link" aria-label="QGIS plugin development">
+        <span class="nav-page-text">QGIS plugin development</span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

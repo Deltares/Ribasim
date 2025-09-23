@@ -1,0 +1,10 @@
+/* css styles */
+
+/* freeze first column of a table */
+.freeze-left th:first-child,
+.freeze-left td:first-child {
+  position: sticky;
+  left: 0;
+  background: white;
+  z-index: 1;
+}

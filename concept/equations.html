@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.7.33">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>Equations – Ribasim</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for citations */
+div.csl-bib-body { }
+div.csl-entry {
+  clear: both;
+  margin-bottom: 0em;
+}
+.hanging-indent div.csl-entry {
+  margin-left:2em;
+  text-indent:-2em;
+}
+div.csl-left-margin {
+  min-width:2em;
+  float:left;
+}
+div.csl-right-inline {
+  margin-left:2em;
+  padding-left:1em;
+}
+div.csl-indent {
+  margin-left: 2em;
+}</style>
+
+
+<script src="../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../">
+<link href="../concept/numerics.html" rel="next">
+<link href="../concept/modelconcept.html" rel="prev">
+<script src="../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../site_libs/quarto-html/popper.min.js"></script>
+<script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-ea385d0e468b0dd5ea5bf0780b1290d9.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../site_libs/bootstrap/bootstrap-1b3a22d1cae7d936259cf712f923d661.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN") {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+<link rel="stylesheet" href="../assets/styles.css">
+</head>
+
+<body class="nav-sidebar floating nav-fixed quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a href="../index.html" class="navbar-brand navbar-brand-logo">
+    <img src="https://user-images.githubusercontent.com/4471859/224825908-bee7e044-bc6b-4561-8b08-5d330cce3ed5.png" alt="" class="navbar-logo">
+    </a>
+    <a class="navbar-brand" href="../index.html">
+    <span class="navbar-title">Ribasim</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../index.html"> 
+<span class="menu-text">Overview</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../tutorial/natural-flow.html"> 
+<span class="menu-text">Tutorials</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../guide/examples.html"> 
+<span class="menu-text">How-to guides</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link active" href="../concept/concept.html" aria-current="page"> 
+<span class="menu-text">Concepts</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../reference/index.html"> 
+<span class="menu-text">Reference</span></a>
+  </li>  
+</ul>
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../dev/index.html"> 
+<span class="menu-text">Contributing</span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/Deltares/Ribasim"> <i class="bi bi-github" role="img" aria-label="GitHub">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../concept/modelconcept.html">Numerics</a></li><li class="breadcrumb-item"><a href="../concept/equations.html">Equations</a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../concept/concept.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Introduction</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
+ <span class="menu-text">Numerics</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../concept/modelconcept.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Model concept</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../concept/equations.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">Equations</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../concept/numerics.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Numerical considerations</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true">
+ <span class="menu-text">Implementation</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../concept/core.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Julia core</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../concept/allocation.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Allocation</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#formal-model-description" id="toc-formal-model-description" class="nav-link active" data-scroll-target="#formal-model-description"><span class="header-section-number">1</span> Formal model description</a>
+  <ul class="collapse">
+  <li><a href="#the-pid-control-integral-state" id="toc-the-pid-control-integral-state" class="nav-link" data-scroll-target="#the-pid-control-integral-state"><span class="header-section-number">1.1</span> The PID control integral state</a></li>
+  <li><a href="#exactly-integrating-flows-to-minimize-the-number-of-states" id="toc-exactly-integrating-flows-to-minimize-the-number-of-states" class="nav-link" data-scroll-target="#exactly-integrating-flows-to-minimize-the-number-of-states"><span class="header-section-number">1.2</span> Exactly integrating flows to minimize the number of states</a></li>
+  <li><a href="#the-jacobian" id="toc-the-jacobian" class="nav-link" data-scroll-target="#the-jacobian"><span class="header-section-number">1.3</span> The Jacobian</a></li>
+  <li><a href="#the-water-balance-error" id="toc-the-water-balance-error" class="nav-link" data-scroll-target="#the-water-balance-error"><span class="header-section-number">1.4</span> The water balance error</a>
+  <ul class="collapse">
+  <li><a href="#example-calculation" id="toc-example-calculation" class="nav-link" data-scroll-target="#example-calculation"><span class="header-section-number">1.4.1</span> Example calculation</a></li>
+  </ul></li>
+  <li><a href="#why-this-formulation" id="toc-why-this-formulation" class="nav-link" data-scroll-target="#why-this-formulation"><span class="header-section-number">1.5</span> Why this formulation</a></li>
+  <li><a href="#numerical-solution" id="toc-numerical-solution" class="nav-link" data-scroll-target="#numerical-solution"><span class="header-section-number">1.6</span> Numerical solution</a></li>
+  </ul></li>
+  <li><a href="#performance" id="toc-performance" class="nav-link" data-scroll-target="#performance"><span class="header-section-number">2</span> Performance</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../concept/modelconcept.html">Numerics</a></li><li class="breadcrumb-item"><a href="../concept/equations.html">Equations</a></li></ol></nav>
+<div class="quarto-title">
+<h1 class="title">Equations</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="formal-model-description" class="level1" data-number="1">
+<h1 data-number="1"><span class="header-section-number">1</span> Formal model description</h1>
+<p>In this section we give a formal description of the problem that is solved by Ribasim. The problem is of the form <span class="math display">\[
+    \frac{\text{d}\mathbf{u}}{\text{d}t} = f(\mathbf{u},p(t),t), \quad t \in [t_0, t_\text{end}],
+\]</span></p>
+<p>which is a system of coupled first order differential equations.</p>
+<p>The model is given by a directed graph, consisting of a set of node IDs (vertices) <span class="math inline">\(V\)</span> and links <span class="math inline">\(E\)</span>, consisting of ordered pairs of node IDs. We denote the subset of the nodes given by the Basins <span class="math inline">\(B \subset V\)</span>, and the subset of nodes that prescribe flow <span class="math inline">\(N \subset V\)</span>.</p>
+<p>The states <span class="math inline">\(\mathbf{u}\)</span> of the model are given by cumulative flows since the start of the simulation as prescribed by the nodes <span class="math inline">\(N\)</span>: <span class="math display">\[
+    u_n(t) = \int_{t_0}^t q_n\text{d}t' \quad \forall n \in N,
+\]</span> as well as by the Basin forcings: <span class="math display">\[
+    u_b^\text{forcing}(t) = \int_{t_0}^t q_b^\text{forcing}\text{d}t' \quad \forall b \in B.
+\]</span></p>
+<p>Because of this definition, the initial conditions of all states are simple: <span class="math display">\[
+    u_i(t_0) = 0 \quad \forall i.
+\]</span></p>
+<p>From these cumulative flows, the storage in each Basin can be determined at each point in time: <span class="math display">\[
+    S_b(t) = S_i(0) + S^\text{exact}(t) - u_b^\text{forcing}(t) + \sum_{n\;|\;(n,b)\in E} u(t) - \sum_{n\;|\;(b,n)\in E} u(t),
+\]</span></p>
+<p>i.e.&nbsp;the storage is given by:</p>
+<ul>
+<li>the initial storage;</li>
+<li>plus the exactly integrated flows (more on that below);</li>
+<li>minus the cumulative outgoing forcings;</li>
+<li>plus the cumulative horizontal inflows;</li>
+<li>minus the cumulative horizontal outflows.</li>
+</ul>
+<p>From these storages in combination with the Basin profiles the Basin levels <span class="math inline">\(h\)</span> are computed. The relationship between the profile and the storage is given by <span class="math display">\[
+    S_b = \int_{h_0}^h A_b(\ell)\text{d}\ell,
+\]</span></p>
+<p>where <span class="math inline">\(A_b\)</span> is the linear interpolation of the area as a function of the level. These levels are then inputs for determining the flows prescribed by the nodes <span class="math inline">\(N\)</span>. From this relation it also follows that</p>
+<p><span class="math display">\[
+    \frac{\text{d}h}{\text{d}t} = \frac{1}{A_b},
+\]</span> and so areas of zero are not allowed in the Basin profiles.</p>
+<section id="the-pid-control-integral-state" class="level2" data-number="1.1">
+<h2 data-number="1.1" class="anchored" data-anchor-id="the-pid-control-integral-state"><span class="header-section-number">1.1</span> The PID control integral state</h2>
+<p>There’s one other type of state, which is not a cumulative flow but a cumulative error. This is the error integral for PID control, further explained in <a href="../reference/node/pid-control.html#equations">PID equations</a>.</p>
+</section>
+<section id="exactly-integrating-flows-to-minimize-the-number-of-states" class="level2" data-number="1.2">
+<h2 data-number="1.2" class="anchored" data-anchor-id="exactly-integrating-flows-to-minimize-the-number-of-states"><span class="header-section-number">1.2</span> Exactly integrating flows to minimize the number of states</h2>
+<p>The more states the problem has, the more time it takes to solve it. Therefore we want to minimize the number of states. Flows do not have to be states when they can be integrated over time exactly because they do not depend on the other states. This is true for FlowBoundary nodes, and Basin precipitation (which uses a fixed basin area) and drainage.</p>
+</section>
+<section id="the-jacobian" class="level2" data-number="1.3">
+<h2 data-number="1.3" class="anchored" data-anchor-id="the-jacobian"><span class="header-section-number">1.3</span> The Jacobian</h2>
+<p>The Jacobian is an <span class="math inline">\(N \times N\)</span> matrix where <span class="math inline">\(N\)</span> is the number of states in the simulation. It is computed as part of implicit time stepping methods. There are 2 different methods available for computing this matrix: finite difference or automatic differentiation. For more details on the computation of the Jacobian and how it is used in the solvers see <a href="../concept/numerics.html">numerical considerations</a>.</p>
+<p>The entries of the Jacobian <span class="math inline">\(J\)</span> are given by <span class="math display">\[
+    J_{i,j} = \frac{\partial f_j}{\partial u_i},
+\]</span> i.e.&nbsp;<span class="math inline">\(J_{i,j}\)</span> quantifies how <span class="math inline">\(f_j\)</span>. the time derivative of state <span class="math inline">\(j\)</span>, changes with respect to changes in state <span class="math inline">\(i\)</span>. Most of these entries are <span class="math inline">\(0\)</span>, because flows in distant parts of the model do not depend on each other.</p>
+</section>
+<section id="the-water-balance-error" class="level2" data-number="1.4">
+<h2 data-number="1.4" class="anchored" data-anchor-id="the-water-balance-error"><span class="header-section-number">1.4</span> The water balance error</h2>
+<p>The water balance error quantifies how well the water volume in the model is conserved for each Basin over an output save period, i.e.&nbsp;whether no water erroneously appears or disappears. It looks at the storage rate <span class="math display">\[
+    \text{storage rate} = \frac{\Delta S_b}{\Delta t}
+\]</span></p>
+<p>in a Basin over a time period <span class="math inline">\(\Delta t\)</span> and compares that to the total inflows and outflows of that Basin over that period. More precisely, we first compute the total inflow and outflow, where:</p>
+<ul>
+<li><span class="math inline">\(\text{total inflow}\)</span>: the precipitation, drainage and horizontal flows into the Basin;</li>
+<li><span class="math inline">\(\text{total outflow}\)</span>: the evaporation, infiltration and horizontal flows out of the Basin.</li>
+</ul>
+<p>Whether a flow is an inflow or an outflow depends on whether the flow contributes to or takes from the Basin storage, which means that this is independent of the link direction. This is determined for each solver timestep individually.</p>
+<p>Then from this we compute the errors:</p>
+<p><span class="math display">\[
+    \begin{align}
+    \text{balance error} =&amp;&amp; \text{storage rate} - (\text{total inflow} - \text{total outflow}) \\
+    \text{relative error}=&amp;&amp; \frac{\text{absolute error}}{0.5(\text{total inflow} + \text{total outflow})}
+    \end{align}
+\]</span> Hence the reference used for computing the relative error is the average of the total inflow and total outflow of the Basin (which are both non-negative).</p>
+<p>The default tolerances are <span class="math inline">\(0.001 \text{ m}^3\)</span> for the balance error and <span class="math inline">\(0.01\)</span> for the relative error, which should not be exceeded for realistic models.</p>
+<p>In extreme cases where the storage rate is many orders of magnitude smaller than the storage itself, these computations can have floating point truncation errors which can lead to large relative errors. This is however only when the storage is roughly <span class="math inline">\(\geq 10^{15}\)</span> times bigger than the storage rate.</p>
+<section id="example-calculation" class="level3" data-number="1.4.1">
+<h3 data-number="1.4.1" class="anchored" data-anchor-id="example-calculation"><span class="header-section-number">1.4.1</span> Example calculation</h3>
+<p>Say we have the following model:</p>
+<div class="quarto-figure quarto-figure-left">
+<figure class="figure">
+<p><img src="https://s3.deltares.nl/ribasim/doc-image/concept/equations/subnetwork.png" class="img-fluid quarto-figure quarto-figure-left figure-img"></p>
+</figure>
+</div>
+<p>and we want to calculate the water balance error for Basin 6. We have the following data:</p>
+<ul>
+<li>Time period length: <span class="math inline">\(10.0 \text{ s}\)</span></li>
+<li>Basin storage start: <span class="math inline">\(100.0 \text{ m}^3\)</span></li>
+<li>Basin storage end: <span class="math inline">\(50.0 \text{ m}^3\)</span></li>
+<li>UserDemand #11 inflow average: <span class="math inline">\(10.0 \text{ m}^3/\text{s}\)</span></li>
+<li>UserDemand #11 outflow average: <span class="math inline">\(5.0 \text{ m}^3/\text{s}\)</span></li>
+<li>Outlet #7 flow average: <span class="math inline">\(- 3.5 \text{ m}^3/\text{s}\)</span></li>
+<li>Outlet #11 flow average: <span class="math inline">\(4.0 \text{ m}^3/\text{s}\)</span></li>
+</ul>
+<p>And so we get</p>
+<p><span class="math display">\[
+\begin{align}
+    \text{storage rate} = &amp;&amp; \frac{50.0 - 100.0}{10.0} &amp;= &amp; -6.0 \text{ m}^3/\text{s} \\
+    \text{total inflow} = &amp;&amp; 5.0 + 3.5 &amp;= &amp; 8.5 \text{ m}^3/\text{s}\\
+    \text{total outflow} = &amp;&amp; 10.0 + 4.0 &amp;= &amp; 14.0 \text{ m}^3/\text{s}\\
+    \text{balance error} = &amp;&amp; -6.0 - (8.5 - 14.0) &amp;= &amp; -0.5 \text{ m}^3/\text{s}\\
+    \text{relative error} = &amp;&amp; \frac{-0.5}{8.5 + 14.0} &amp;\approx &amp; -0.022
+\end{align}
+\]</span> Note that the balance error and relative error are negative, but we use their absolute value to compare to the respective tolerances.</p>
+</section>
+</section>
+<section id="why-this-formulation" class="level2" data-number="1.5">
+<h2 data-number="1.5" class="anchored" data-anchor-id="why-this-formulation"><span class="header-section-number">1.5</span> Why this formulation</h2>
+<p>You might wonder why in the above explanation the states are given by the cumulative flows and not by the Basin storages, which is arguably conceptually simpler. The reason is that we do not just want to model the storages in the Basins over time, but we also want accurate output of each individual flow, e.g.&nbsp;to model the spread of pollutants.</p>
+<p>When the states are given by the storages, generally the individual flows can not accurately be computed from that as a post processing step, because there are more flows than storages. Also, we can only compute flows at individual points in time explicitly, not over a whole interval. When the states are given by the cumulative flows however, the output of the problem solve gives these flows directly, and from those the storage over time can be computed accurately. Hence in short, the formulation above gives more information than a formulation with Basin storages as states.</p>
+</section>
+<section id="numerical-solution" class="level2" data-number="1.6">
+<h2 data-number="1.6" class="anchored" data-anchor-id="numerical-solution"><span class="header-section-number">1.6</span> Numerical solution</h2>
+<p>Ribasim uses <a href="https://github.com/SciML/OrdinaryDiffEq.jl/">OrdinaryDiffEq.jl</a> to provide a numerical solution to the water balance equations. Changes to forcings or parameters such as precipitation, but also the allocated water abstraction is managed through the use of callback functions <span class="citation" data-cites="callbacks">(<a href="#ref-callbacks" role="doc-biblioref">SciML Development Team 2022</a>)</span>. In a coupled run, the exchanges with MODFLOW 6 are also managed via the use of a callback function. For more a more in-depth discussion of numerical computations see <a href="../concept/numerics.html">Numerical considerations</a>.</p>
+</section>
+</section>
+<section id="performance" class="level1" data-number="2">
+<h1 data-number="2"><span class="header-section-number">2</span> Performance</h1>
+<p>There are many things that can influence the calculations times, for instance:</p>
+<ul>
+<li><a href="https://docs.sciml.ai/DiffEqDocs/stable/basics/faq/#What-does-tolerance-mean-and-how-much-error-should-I-expect">Solver tolerance</a>: By default both the absolute and relative tolerance is <code>1e-5</code>.</li>
+<li><a href="https://diffeq.sciml.ai/stable/solvers/ode_solve/">ODE solvers</a>: The <code>QNDF</code> method we use is robust to oscillations and massive stiffness, however other solvers should be tried as well.</li>
+<li>Forcing: Every time new forcing data is injected into the model, it needs to pause. Moreover, the larger the forcing fluxes are, the bigger the shock to the system, leading to smaller timesteps and thus longer simulation times.</li>
+</ul>
+<p>Similarly to other models that solve using a system of equations, like MODFLOW 6, if one Basin takes longer to converge due to extreme forcing, or bad schematization, the system as a whole need to iterate longer. It is important to be mindful of this, as poor schematization choices can slow down the model.</p>
+
+
+
+</section>
+
+<div id="quarto-appendix" class="default"><section class="quarto-appendix-contents" role="doc-bibliography" id="quarto-bibliography"><h2 class="anchored quarto-appendix-heading">References</h2><div id="refs" class="references csl-bib-body hanging-indent" data-entry-spacing="0" role="list">
+<div id="ref-callbacks" class="csl-entry" role="listitem">
+SciML Development Team. 2022. <span>“Event Handling and Callback Functions.”</span> <a href="https://docs.sciml.ai/DiffEqDocs/latest/features/callback_functions/">https://docs.sciml.ai/DiffEqDocs/latest/features/callback_functions/</a>.
+</div>
+</div></section></div></main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+        const codeEl = trigger.previousElementSibling.cloneNode(true);
+        for (const childEl of codeEl.children) {
+          if (isCodeAnnotation(childEl)) {
+            childEl.remove();
+          }
+        }
+        return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="../concept/modelconcept.html" class="pagination-link" aria-label="Model concept">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Model concept</span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="../concept/numerics.html" class="pagination-link" aria-label="Numerical considerations">
+        <span class="nav-page-text">Numerical considerations</span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

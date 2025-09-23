@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.7.33">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>Allocation – Ribasim</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../">
+<link href="../dev/bmi.html" rel="next">
+<link href="../dev/python.html" rel="prev">
+<script src="../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../site_libs/quarto-html/popper.min.js"></script>
+<script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-ea385d0e468b0dd5ea5bf0780b1290d9.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../site_libs/bootstrap/bootstrap-1b3a22d1cae7d936259cf712f923d661.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<script src="../site_libs/quarto-diagram/mermaid.min.js"></script>
+<script src="../site_libs/quarto-diagram/mermaid-init.js"></script>
+<link href="../site_libs/quarto-diagram/mermaid.css" rel="stylesheet">
+
+
+<link rel="stylesheet" href="../assets/styles.css">
+</head>
+
+<body class="nav-sidebar floating nav-fixed quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a href="../index.html" class="navbar-brand navbar-brand-logo">
+    <img src="https://user-images.githubusercontent.com/4471859/224825908-bee7e044-bc6b-4561-8b08-5d330cce3ed5.png" alt="" class="navbar-logo">
+    </a>
+    <a class="navbar-brand" href="../index.html">
+    <span class="navbar-title">Ribasim</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../index.html"> 
+<span class="menu-text">Overview</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../tutorial/natural-flow.html"> 
+<span class="menu-text">Tutorials</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../guide/examples.html"> 
+<span class="menu-text">How-to guides</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../concept/concept.html"> 
+<span class="menu-text">Concepts</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../reference/index.html"> 
+<span class="menu-text">Reference</span></a>
+  </li>  
+</ul>
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item">
+    <a class="nav-link active" href="../dev/index.html" aria-current="page"> 
+<span class="menu-text">Contributing</span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/Deltares/Ribasim"> <i class="bi bi-github" role="img" aria-label="GitHub">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../dev/allocation.html">Allocation</a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Contributing</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/core.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Julia core development</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/benchmark.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Benchmark</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/addnode.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Adding node types</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/python.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Python tooling development</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/allocation.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">Allocation</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/bmi.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Basic Model Interface (BMI)</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/ci.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Continuous integration</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/release.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Release process</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/copilot.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Copilot instructions</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
+ <span class="menu-text">QGIS</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/qgis.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">QGIS plugin development</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/qgis_test_plan.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">QGIS plugin manual test plan</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#sec-allocation-overview" id="toc-sec-allocation-overview" class="nav-link active" data-scroll-target="#sec-allocation-overview"><span class="header-section-number">1</span> Overview of allocation implementation</a>
+  <ul class="collapse">
+  <li><a href="#sec-allocation-struct" id="toc-sec-allocation-struct" class="nav-link" data-scroll-target="#sec-allocation-struct"><span class="header-section-number">1.1</span> The <code>Allocation</code> struct</a></li>
+  <li><a href="#sec-allocation-model-struct" id="toc-sec-allocation-model-struct" class="nav-link" data-scroll-target="#sec-allocation-model-struct"><span class="header-section-number">1.2</span> The <code>AllocationModel</code> struct</a></li>
+  <li><a href="#sec-jump-problem" id="toc-sec-jump-problem" class="nav-link" data-scroll-target="#sec-jump-problem"><span class="header-section-number">1.3</span> JuMP problem interaction</a></li>
+  </ul></li>
+  <li><a href="#initialization" id="toc-initialization" class="nav-link" data-scroll-target="#initialization"><span class="header-section-number">2</span> Initialization</a>
+  <ul class="collapse">
+  <li><a href="#data-processing" id="toc-data-processing" class="nav-link" data-scroll-target="#data-processing"><span class="header-section-number">2.1</span> Data processing</a>
+  <ul class="collapse">
+  <li><a href="#deriving-link-capacities" id="toc-deriving-link-capacities" class="nav-link" data-scroll-target="#deriving-link-capacities"><span class="header-section-number">2.1.1</span> Deriving link capacities</a></li>
+  <li><a href="#handling-the-connection-between-the-primary-network-and-subnetworks" id="toc-handling-the-connection-between-the-primary-network-and-subnetworks" class="nav-link" data-scroll-target="#handling-the-connection-between-the-primary-network-and-subnetworks"><span class="header-section-number">2.1.2</span> Handling the connection between the primary network and subnetworks</a></li>
+  </ul></li>
+  <li><a href="#sec-optimization-problem" id="toc-sec-optimization-problem" class="nav-link" data-scroll-target="#sec-optimization-problem"><span class="header-section-number">2.2</span> The optimization problem</a>
+  <ul class="collapse">
+  <li><a href="#setting-up-the-optimization-variables" id="toc-setting-up-the-optimization-variables" class="nav-link" data-scroll-target="#setting-up-the-optimization-variables"><span class="header-section-number">2.2.1</span> Setting up the optimization variables</a></li>
+  <li><a href="#sec-initial-constraints" id="toc-sec-initial-constraints" class="nav-link" data-scroll-target="#sec-initial-constraints"><span class="header-section-number">2.2.2</span> Setting up initial optimization constraints</a></li>
+  </ul></li>
+  </ul></li>
+  <li><a href="#optimization" id="toc-optimization" class="nav-link" data-scroll-target="#optimization"><span class="header-section-number">3</span> Optimization</a>
+  <ul class="collapse">
+  <li><a href="#preparing-the-optimization-problem" id="toc-preparing-the-optimization-problem" class="nav-link" data-scroll-target="#preparing-the-optimization-problem"><span class="header-section-number">3.1</span> Preparing the optimization problem</a>
+  <ul class="collapse">
+  <li><a href="#setting-up-the-objective-function" id="toc-setting-up-the-objective-function" class="nav-link" data-scroll-target="#setting-up-the-objective-function"><span class="header-section-number">3.1.1</span> Setting up the objective function</a></li>
+  <li><a href="#setting-the-constraints-and-capacities" id="toc-setting-the-constraints-and-capacities" class="nav-link" data-scroll-target="#setting-the-constraints-and-capacities"><span class="header-section-number">3.1.2</span> Setting the constraints and capacities</a></li>
+  </ul></li>
+  <li><a href="#looping-over-priorities" id="toc-looping-over-priorities" class="nav-link" data-scroll-target="#looping-over-priorities"><span class="header-section-number">3.2</span> Looping over priorities</a>
+  <ul class="collapse">
+  <li><a href="#sec-updating-capacities" id="toc-sec-updating-capacities" class="nav-link" data-scroll-target="#sec-updating-capacities"><span class="header-section-number">3.2.1</span> Updating capacities</a></li>
+  </ul></li>
+  <li><a href="#output-data" id="toc-output-data" class="nav-link" data-scroll-target="#output-data"><span class="header-section-number">3.3</span> Output data</a></li>
+  <li><a href="#communicating-to-the-physical-layer" id="toc-communicating-to-the-physical-layer" class="nav-link" data-scroll-target="#communicating-to-the-physical-layer"><span class="header-section-number">3.4</span> Communicating to the physical layer</a>
+  <ul class="collapse">
+  <li><a href="#userdemand-abstraction" id="toc-userdemand-abstraction" class="nav-link" data-scroll-target="#userdemand-abstraction"><span class="header-section-number">3.4.1</span> <code>UserDemand</code> abstraction</a></li>
+  <li><a href="#controlling-pumpsweirs-based-on-allocation-results" id="toc-controlling-pumpsweirs-based-on-allocation-results" class="nav-link" data-scroll-target="#controlling-pumpsweirs-based-on-allocation-results"><span class="header-section-number">3.4.2</span> Controlling pumps/weirs based on allocation results</a></li>
+  </ul></li>
+  </ul></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Allocation</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="sec-allocation-overview" class="level1" data-number="1">
+<h1 data-number="1"><span class="header-section-number">1</span> Overview of allocation implementation</h1>
+<p>In this document the allocation workflow is explained. Below is an overview of it.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div>
+<p></p><figure class="figure"><p></p>
+<div>
+<pre class="mermaid mermaid-js">flowchart TD
+    subgraph update_allocation
+        direction TB
+        G[update mean physical flows for allocation input]--&gt;E[collect demand]
+        E--&gt;F[allocate]
+    end
+    style update_allocation fill:#9ff
+    C(Begin)--&gt;A[Initialization allocation]
+    A--&gt; update_allocation --&gt; H[\end of time?\]
+    H--&gt; |No| update_allocation
+    H --&gt; |Yes| D(End)
+</pre>
+</div>
+<p></p></figure><p></p>
+</div>
+</div>
+</div>
+<p>If allocation is used in a model, <a href="#sec-allocation-struct">Allocation structs</a> are created. The allocation struct stores the data that is needed for the calculations and stores also the results of the calculation. In allocation, optimization is an essential part. <code>JuMP.jl</code> is used to model and solve the optimization problems that are defined by allocation. The <a href="#sec-allocation-model-struct"><code>AllocationModel</code> struct</a> is used for constructing the JuMP model. When an instance of <code>AllocationModel</code> is created, a JuMP optimization model is defined and initialized in the instance. More details on how allocation interacts with <code>JuMP.jl</code> is explained <a href="#sec-jump-problem">here</a>.</p>
+<p>After initialization, as the simulation starts, the allocation problem is solved and updated after every allocation timestep (which is specified in the TOML). With every allocation timestep a new optimization problem is formulated and solved, using the latest available data from the physical layer model and demands of the demand nodes.</p>
+<p>The update of allocation (<code>update_allocation!</code>) is repeating and divided into three parts:</p>
+<ul>
+<li>Updating the mean flows. The mean flow data is used for output and to determine the capacity of sources in the allocation model.</li>
+<li><a href="../concept/allocation.html#sec-high-level-algorithm">“Collect demand”</a>. This step initializes and solves the optimization problems that collects the demand from the subnetworks.</li>
+<li><a href="../concept/allocation.html#sec-high-level-algorithm">“Allocate”</a>. This step solves the optimization problems that allocates the demand. For the primary network this step allocates to the subnetworks and demand nodes that are in the primary network. For the subnetwork this step allocates to the demand nodes.</li>
+</ul>
+<p>The steps “collect demand” and “allocate” correspond to the function <code>collect_demand!</code> and <code>allocate_demands!</code> in the code.</p>
+<p>The iteration stops when it reaches the end time of the simulation.</p>
+<section id="sec-allocation-struct" class="level2" data-number="1.1">
+<h2 data-number="1.1" class="anchored" data-anchor-id="sec-allocation-struct"><span class="header-section-number">1.1</span> The <code>Allocation</code> struct</h2>
+<p>The <code>Allocation</code> struct stores necessary data and calculation results.</p>
+</section>
+<section id="sec-allocation-model-struct" class="level2" data-number="1.2">
+<h2 data-number="1.2" class="anchored" data-anchor-id="sec-allocation-model-struct"><span class="header-section-number">1.2</span> The <code>AllocationModel</code> struct</h2>
+<p>The <code>AllocationModel</code> struct has all the data that is needed for the JuMP optimization problem.</p>
+</section>
+<section id="sec-jump-problem" class="level2" data-number="1.3">
+<h2 data-number="1.3" class="anchored" data-anchor-id="sec-jump-problem"><span class="header-section-number">1.3</span> JuMP problem interaction</h2>
+<p>When working with optimization problems using JuMP, there are three fundamental components that need to be defined:</p>
+<ul>
+<li>Optimization variables: These are the <a href="https://jump.dev/JuMP.jl/stable/api/JuMP/#@constraints">variables</a> that are optimized in the allocation problem formulation. They are defined using the <a href="https://jump.dev/JuMP.jl/stable/api/JuMP/#@variables"><code>@variable</code></a> macro. For example, to specify the flow rates in all the links in the allocation network as variables:</li>
+</ul>
+<div class="sourceCode" id="cb1"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>problem[<span class="op">:</span>F] <span class="op">=</span> JuMP.<span class="pp">@variable</span>(problem, F[link <span class="op">=</span> links] <span class="op">&gt;=</span> <span class="fl">0.0</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>More details about setting up variables in allocation can be found in the section <a href="#sec-optimization-problem">below</a>.</p>
+<ul>
+<li><p>Constraints: These are the constraints that the optimization variables must satisfy. They are defined using the <a href="https://jump.dev/JuMP.jl/stable/api/JuMP/#@constraint"><code>@constraint</code></a> macro. The definition of the link capacity constraints is shown in section <a href="#sec-constraints-and-capacities">below</a>. <code>add_constraints_*</code> functions are used to <a href="#sec-initial-constraints">add constraints</a> to the optimization problem. The <a href="#sec-constraints-and-capacities">initial value of the constraints</a> is set in the function <code>set_initial_values_*</code>. During the iteration, the constraints are updated based on the current state of the allocation network. When <a href="#updating-capacities">looping over priorities</a>, the constraints are updated by the function <code>adjust_*</code>.</p></li>
+<li><p>Objective function: This is the function that sets the objective of the optimization problem. It is defined using the <a href="https://jump.dev/JuMP.jl/stable/api/JuMP/#@objective"><code>@objective</code></a> macro.</p></li>
+</ul>
+<p>The functions <code>JuMP.normalized_rhs</code> and <code>JuMP.set_normalized_rhs</code> are used to read and write the constant right hand side of constraints respectively.</p>
+<p>For example, to update the capacity of one of the links, <code>JuMP.normalized_rhs</code> moves all the constants to the right-hand sides and all variables to the left-hand side and <code>JuMP.set_normalized_rhs</code> sets the new right-hand-side value.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>JuMP.<span class="fu">set_normalized_rhs</span>(</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    constraints_capacity[link_id],</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    JuMP.<span class="fu">normalized_rhs</span>(constraints_capacity[link_id]) <span class="op">-</span> JuMP.<span class="fu">value</span>(F[link_id]),</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>Some JuMP data structures are used to store intermediate or result data. For more information, see <a href="https://jump.dev/JuMP.jl/stable/api/JuMP/">JuMP API</a>.</p>
+</section>
+</section>
+<section id="initialization" class="level1" data-number="2">
+<h1 data-number="2"><span class="header-section-number">2</span> Initialization</h1>
+<p>Initialization of the allocation data structures happens in <code>allocation_init.jl</code>. Below the steps of allocation problem initialization are explained.</p>
+<p>For each subnetwork, an allocation problem is formulated, which is stored in the <code>allocation_models</code> field mentioned above.</p>
+<section id="data-processing" class="level2" data-number="2.1">
+<h2 data-number="2.1" class="anchored" data-anchor-id="data-processing"><span class="header-section-number">2.1</span> Data processing</h2>
+<section id="deriving-link-capacities" class="level3" data-number="2.1.1">
+<h3 data-number="2.1.1" class="anchored" data-anchor-id="deriving-link-capacities"><span class="header-section-number">2.1.1</span> Deriving link capacities</h3>
+<p>Link capacities are important constraints in the optimization problem. They set the limit for the flows between the nodes. Therefore, the capacities of all the flow links in the subnetworks are obtained. The capacity of an link is given by the smallest <code>max_flow_rate</code> of the nodes connected to the links if these nodes have such a value. The capacities are stored in a <code>SparseArray</code> object from <code>JuMP.jl</code> called <code>capacities</code>, indexed by a tuple of node IDs.</p>
+<p>The function <code>get_capacity</code> obtains the capacities of the links within a subnetwork given a subnetwork ID and the Ribasim model parameters <code>p</code>, if the sources of the subnetwork are valid (checked in function <code>valid_sources</code>).</p>
+</section>
+<section id="handling-the-connection-between-the-primary-network-and-subnetworks" class="level3" data-number="2.1.2">
+<h3 data-number="2.1.2" class="anchored" data-anchor-id="handling-the-connection-between-the-primary-network-and-subnetworks"><span class="header-section-number">2.1.2</span> Handling the connection between the primary network and subnetworks</h3>
+<p>The function <code>find_subnetwork_connetions</code> finds the links that connected the primary network to a subnetwork. <code>subnetwork_demands</code> and <code>subnetwork_allocateds</code> will be created, which stores demands and allocated values for subnetworks as a whole. <code>primary_network_connections</code> is a dictionary of links that connect a subnetwork with the primary network.</p>
+</section>
+</section>
+<section id="sec-optimization-problem" class="level2" data-number="2.2">
+<h2 data-number="2.2" class="anchored" data-anchor-id="sec-optimization-problem"><span class="header-section-number">2.2</span> The optimization problem</h2>
+<section id="setting-up-the-optimization-variables" class="level3" data-number="2.2.1">
+<h3 data-number="2.2.1" class="anchored" data-anchor-id="setting-up-the-optimization-variables"><span class="header-section-number">2.2.1</span> Setting up the optimization variables</h3>
+<p>There are three types of variables in the optimization problems:</p>
+<ul>
+<li>flows between the links in the allocation model</li>
+<li>flows in and out of a basin with a level demand</li>
+<li>flows in and out of nodes that have a buffer, which are nodes that have a flow demand</li>
+</ul>
+<p>The function <code>add_variables_flow!</code> is used to add the variable of flows between the links. The variables are obtained from the capacity array. And variables named by <code>F($startnode, $endnode)</code> are created.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>links <span class="op">=</span> <span class="fu">keys</span>(capacity.data)</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>problem[<span class="op">:</span>F] <span class="op">=</span> JuMP.<span class="pp">@variable</span>(problem, F[link <span class="op">=</span> links] <span class="op">&gt;=</span> <span class="fl">0.0</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>In the function <code>add_variables_basin</code>, variables that represent flows of those basins that are connected with level demand are defined. Part of the function is shown in the code block below. A variable is named <code>F_basin_in</code> if the corresponding basin is supplied by a level demand and <code>F_basin_out</code> if consumed by a level demand.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Get the node IDs from the subnetwork for basins that have a level demand</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>node_ids_basin <span class="op">=</span> [</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    node_id for</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    node_id <span class="kw">in</span> graph[].node_ids[subnetwork_id] if graph[node_id].type <span class="op">==</span> <span class="op">:</span>basin <span class="op">&amp;&amp;</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">has_external_flow_demand</span>(graph, node_id, <span class="op">:</span>level_demand)[<span class="fl">1</span>]</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>]</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>problem[<span class="op">:</span>F_basin_in] <span class="op">=</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    JuMP.<span class="pp">@variable</span>(problem, F_basin_in[node_id <span class="op">=</span> node_ids_basin,] <span class="op">&gt;=</span> <span class="fl">0.0</span>)</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>problem[<span class="op">:</span>F_basin_out] <span class="op">=</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>    JuMP.<span class="pp">@variable</span>(problem, F_basin_out[node_id <span class="op">=</span> node_ids_basin,] <span class="op">&gt;=</span> <span class="fl">0.0</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>The last set of optimization variables is the flow links in and out of the buffer of nodes with a flow demand. It is defined in a similar way to the second set of variables.</p>
+</section>
+<section id="sec-initial-constraints" class="level3" data-number="2.2.2">
+<h3 data-number="2.2.2" class="anchored" data-anchor-id="sec-initial-constraints"><span class="header-section-number">2.2.2</span> Setting up initial optimization constraints</h3>
+<p>All the variables are greater and equal to 0. This is set when the variables are added to the optimization problem.</p>
+<p>Other constraints are <code>capacity</code>, <code>source_user</code>, <code>source</code>, <code>flow_conservation</code>, <code>fractional_flow</code>, <code>basin_outflow</code>, <code>flow_buffer_outflow</code> and <code>flow_demand_outflow</code>.</p>
+<p>For each set of constraints, a function named <code>add_constrains_[constraints name]!</code> exists.</p>
+<p>Take <code>add_constraints_user_source</code> as an example, the nodes that are relevant for the constraints are added to the optimization problem by calling JuMP.@constraint.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>node_ids_user <span class="op">=</span> [node_id for node_id <span class="kw">in</span> node_ids if node_id.type <span class="op">==</span> NodeType.UserDemand]</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>problem[<span class="op">:</span>source_user] <span class="op">=</span> JuMP.<span class="pp">@constraint</span>(</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    problem,</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    [node_id <span class="op">=</span> node_ids_user],</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>    F[(node_id, <span class="fu">outflow_id</span>(graph, node_id))] <span class="op">&lt;=</span> <span class="fl">0.0</span>,</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>    base_name <span class="op">=</span> <span class="st">"source_user"</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</section>
+</section>
+</section>
+<section id="optimization" class="level1" data-number="3">
+<h1 data-number="3"><span class="header-section-number">3</span> Optimization</h1>
+<p>Initialization of the data structure is in <code>allocation_init.jl</code>, and updating, running and reading the results is in <code>allocation_optim.jl</code>.</p>
+<section id="preparing-the-optimization-problem" class="level2" data-number="3.1">
+<h2 data-number="3.1" class="anchored" data-anchor-id="preparing-the-optimization-problem"><span class="header-section-number">3.1</span> Preparing the optimization problem</h2>
+<section id="setting-up-the-objective-function" class="level3" data-number="3.1.1">
+<h3 data-number="3.1.1" class="anchored" data-anchor-id="setting-up-the-objective-function"><span class="header-section-number">3.1.1</span> Setting up the objective function</h3>
+<p>The optimization objective is the sum of three quadratic error terms. The quadratic terms are defined with the <code>add_objective_term</code> function.</p>
+<p>Function <code>set_objective_priority</code> sets the objective function based on the primary network for a given priority with the following steps:</p>
+<ul>
+<li>First, it treats the subnetworks as user demand nodes and adds the quadratic terms of the primary network.</li>
+<li>Then it loops over all the links in allocation.</li>
+<li>Based on the type of the node that the link is pointing to (user demand or flow demand), it adds the corresponding quadratic terms.</li>
+<li>Finally, it does the same to the links that start from a level demand node.</li>
+</ul>
+</section>
+<section id="setting-the-constraints-and-capacities" class="level3" data-number="3.1.2">
+<h3 data-number="3.1.2" class="anchored" data-anchor-id="setting-the-constraints-and-capacities"><span class="header-section-number">3.1.2</span> Setting the constraints and capacities</h3>
+<p>In the function <code>set_initial_values</code>, the following capacities and demands are initialized:</p>
+<ul>
+<li>Source capacities come from the physical layer</li>
+<li>Link capacities derived from the maximum capacities between the connected nodes</li>
+<li>Basin capacities come from the disk of water above the max level set by a level demand node</li>
+<li>Buffer capacities start at 0</li>
+<li>User demands fractional return flow starts at 0</li>
+<li>Demands either come from the Ribasim model or are set via the BMI</li>
+</ul>
+<p>As shown below, these functions set the capacities to the corresponding initial values.</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">set_initial_capacities_source!</span>(allocation_model, p)</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="fu">set_initial_capacities_link!</span>(allocation_model, p)</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="fu">set_initial_capacities_basin!</span>(allocation_model, p, u, t)</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="fu">set_initial_capacities_buffer!</span>(allocation_model)</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a><span class="fu">set_initial_capacities_returnflow!</span>(allocation_model)</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a><span class="fu">set_initial_demands_user!</span>(allocation_model, p, t)</span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a><span class="fu">set_initial_demands_level!</span>(allocation_model, u, p, t)</span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a><span class="fu">set_initial_demands_flow!</span>(allocation_model, p, t)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>These capacities determine the constraints of the optimization problem. Take <code>set_initial_capacities_source</code> as an example, the right-hand-side values of the <code>source_constraints</code> are set to the <code>source_capacity</code>.</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> link_metadata <span class="kw">in</span> <span class="fu">values</span>(graph.edge_data)</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>    (; link) <span class="op">=</span> link_metadata</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> graph[link<span class="op">...</span>].subnetwork_id_source <span class="op">==</span> subnetwork_id</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>        <span class="co"># If it is a source link for this allocation problem</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> link <span class="op">∉</span> main_network_source_links</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>            <span class="co"># Reset the source to the averaged flow over the last allocation period</span></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>            source_capacity <span class="op">=</span> mean_input_flows[link][]</span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>            JuMP.<span class="fu">set_normalized_rhs</span>(</span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>                source_constraints[link],</span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>                <span class="co"># It is assumed that the allocation procedure does not have to be differentiated.</span></span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>                source_capacity,</span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a>            )</span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>        <span class="cf">end</span></span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>    <span class="cf">end</span></span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>Apart from the <code>set_initial_*</code> function above, capacities of <code>inlet</code> are the allocated capacities from the primary network to the subnetworks. Source constraints will be adapted based on the optimization type. This function is called separately and thus not part of the <code>set_initial_values</code>.</p>
+</section>
+</section>
+<section id="looping-over-priorities" class="level2" data-number="3.2">
+<h2 data-number="3.2" class="anchored" data-anchor-id="looping-over-priorities"><span class="header-section-number">3.2</span> Looping over priorities</h2>
+<section id="sec-updating-capacities" class="level3" data-number="3.2.1">
+<h3 data-number="3.2.1" class="anchored" data-anchor-id="sec-updating-capacities"><span class="header-section-number">3.2.1</span> Updating capacities</h3>
+<p>While optimizing a given priority, the function <code>set_capacities_flow_demand_outflow</code> updates the constraints <code>flow_demand_outflow</code>. If the current priority is the same as the priority of the flow demand, constraints will be infinite, otherwise 0. At priorities where there is no flow demand, flow can go freely through the node. When there is flow demand, flow is directed into the buffer. This is to make sure that flow can go to the node with the flow demand, even though the flow might have nowhere to go after that node.</p>
+<p>The optimization objective function is updated based on the new demands and the given priority.</p>
+<p>If a solution is found by the solver, the allocation result will be updated. And it will be <a href="../dev/allocation.html#output-data">saved</a>, so the <a href="../dev/allocation.html#communicating-to-the-physical-layer">physical layer</a> can make use of it.</p>
+<p>Lastly, capacities and demands are updated, as shown below:</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="fu">adjust_capacities_source!</span>(allocation_model)</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="fu">adjust_capacities_link!</span>(allocation_model)</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="fu">adjust_capacities_basin!</span>(allocation_model)</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="fu">adjust_capacities_buffer!</span>(allocation_model)</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="fu">adjust_capacities_returnflow!</span>(allocation_model, p)</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> parameter <span class="kw">in</span> <span class="fu">propertynames</span>(p)</span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>    demand_node <span class="op">=</span> <span class="fu">getfield</span>(p, parameter)</span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> demand_node isa AbstractDemandNode</span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>        <span class="fu">adjust_demands!</span>(allocation_model, p, priority_idx, demand_node)</span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>    <span class="cf">end</span></span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</section>
+</section>
+<section id="output-data" class="level2" data-number="3.3">
+<h2 data-number="3.3" class="anchored" data-anchor-id="output-data"><span class="header-section-number">3.3</span> Output data</h2>
+<p>The function <code>save_demands_and_allocations</code> saves the demand and the allocated value per demand node. And the function <code>save_allocation_flows</code> saves the optimized flows over the links in the subnetwork. These values are saved in the <code>record_demand</code> and <code>record_flow</code> fields of the <code>Allocation</code> struct and only written to the output file at the end of the simulation.</p>
+</section>
+<section id="communicating-to-the-physical-layer" class="level2" data-number="3.4">
+<h2 data-number="3.4" class="anchored" data-anchor-id="communicating-to-the-physical-layer"><span class="header-section-number">3.4</span> Communicating to the physical layer</h2>
+<p>The function <code>assign_allocations</code> updates the subnetwork demand if the optimization task is <code>collect_demands</code>. It assigns the allocated amount to the <code>UserDemand</code> nodes with the result of the optimization if the optimization task is <code>allocate</code>. Afterwards, it writes the resulting flow to the <code>Allocation</code> object.</p>
+<section id="userdemand-abstraction" class="level3" data-number="3.4.1">
+<h3 data-number="3.4.1" class="anchored" data-anchor-id="userdemand-abstraction"><span class="header-section-number">3.4.1</span> <code>UserDemand</code> abstraction</h3>
+<p>When allocation is active, the amount each <code>UserDemand</code> node is allowed to extract from its upstream basin is determined by the allocation algorithm. See <a href="../reference/node/user-demand.html">here</a> for more details on how allocation updates the <code>UserDemand</code> node.</p>
+</section>
+<section id="controlling-pumpsweirs-based-on-allocation-results" class="level3" data-number="3.4.2">
+<h3 data-number="3.4.2" class="anchored" data-anchor-id="controlling-pumpsweirs-based-on-allocation-results"><span class="header-section-number">3.4.2</span> Controlling pumps/weirs based on allocation results</h3>
+<p>N/A and TODO in <a href="https://github.com/Deltares/Ribasim/issues/714">this task</a>.</p>
+
+
+</section>
+</section>
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+        const codeEl = trigger.previousElementSibling.cloneNode(true);
+        for (const childEl of codeEl.children) {
+          if (isCodeAnnotation(childEl)) {
+            childEl.remove();
+          }
+        }
+        return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="../dev/python.html" class="pagination-link" aria-label="Python tooling development">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Python tooling development</span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="../dev/bmi.html" class="pagination-link" aria-label="Basic Model Interface (BMI)">
+        <span class="nav-page-text">Basic Model Interface (BMI)</span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

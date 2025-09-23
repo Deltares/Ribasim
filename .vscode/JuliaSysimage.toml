@@ -1,5 +1,0 @@
-[sysimage]
-exclude=[]   # Additional packages to be exlucded in the system image
-statements_files=[]  # Precompile statements files to be used, relative to the project folder
-# execution_files=["compile/sysimage/precompile.jl"] # Precompile execution files to be used, relative to the project folder
-execution_files=["input.jl", "run.jl"] # Precompile execution files to be used, relative to the project folder
