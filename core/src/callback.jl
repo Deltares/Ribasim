@@ -122,7 +122,8 @@ Specifically, we first use all the inflows to update the mass of the Basins, rec
 the Basin concentration(s) and then remove the mass that is being lost to the outflows.
 """
 function update_cumulative_flows!(u, t, integrator)::Nothing
-    (; cache, p) = integrator
+    (; cache, p, opts) = integrator
+    (; internalnorm) = opts
     (; p_independent, p_mutable, time_dependent_cache) = p
     (; basin, flow_boundary, allocation, temp_convergence, convergence, ncalls) =
         p_independent
@@ -132,7 +133,9 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
 
     # Update convergence measure
     if hasproperty(cache, :nlsolver)
-        @. temp_convergence = abs(cache.nlsolver.cache.atmp / u)
+        @. temp_convergence = abs(internalnorm.cache / (internalnorm.count * u))
+        internalnorm.cache .= 0
+        internalnorm.count = 0
         @inbounds for I in eachindex(temp_convergence)
             if !isfinite(temp_convergence[I])
                 temp_convergence[I] = zero(eltype(temp_convergence))
@@ -410,7 +413,6 @@ function save_flow(u, t, integrator)
         u_prev_saveat,
         convergence,
         ncalls,
-        node_id,
     ) = p.p_independent
     Δt = get_Δt(integrator)
     flow_mean = (u - u_prev_saveat) / Δt

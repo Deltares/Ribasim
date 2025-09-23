@@ -30,7 +30,7 @@ using DifferentiationInterface:
 using ForwardDiff: derivative as forward_diff
 
 # Algorithms for solving ODEs.
-using OrdinaryDiffEqCore: OrdinaryDiffEqCore, get_du
+using OrdinaryDiffEqCore: OrdinaryDiffEqCore, get_du, calculate_residuals!, ODE_DEFAULT_NORM
 import ForwardDiff
 
 # Interface for defining and solving the ODE problem of the physical layer.
