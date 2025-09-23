@@ -53,16 +53,7 @@ end
 Compute the level of a basin given its storage.
 """
 function get_level_from_storage(basin::Basin, state_idx::Int, storage::T)::T where {T}
-    storage_to_level = basin.storage_to_level[state_idx]
-    if storage >= 0
-        return storage_to_level(storage)
-    else
-        # Negative storage is not feasible and this yields a level
-        # below the basin bottom, but this does yield usable gradients
-        # for the non-linear solver
-        bottom = first(storage_to_level.u)
-        return bottom + derivative(storage_to_level, 0.0) * storage
-    end
+    return basin.storage_to_level[state_idx](storage)
 end
 
 function get_scalar_interpolation(
