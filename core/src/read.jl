@@ -1986,15 +1986,23 @@ function interpolate_basin_profile!(
             finite_difference(group_storage, group_level, group_area[1])
         end
 
+        # Left extension extrapolation is cheap equivalent of linear extrapolation for informative gradients
+        # during the nonlinear solve for negative storage
         level_to_area = LinearInterpolation(
             dS_dh,
             group_level;
-            extrapolation = ConstantExtrapolation,
+            extrapolation_left = ExtrapolationType.Extension,
+            extrapolation_right = ConstantExtrapolation,
             cache_parameters = true,
         )
 
-        basin.storage_to_level[i] =
-            invert_integral(level_to_area; extrapolation_right = ExtrapolationType.Linear)
+        # Left linear extrapolation for usable gradients by the nonlinear solver for negative storages
+        # Right linear extrapolation corresponds with constant extrapolation of area
+        basin.storage_to_level[i] = invert_integral(
+            level_to_area;
+            extrapolation_left = ExtrapolationType.Linear,
+            extrapolation_right = ExtrapolationType.Linear,
+        )
 
         if !all(ismissing, group_area)
             # if all data is present for area, we use it
