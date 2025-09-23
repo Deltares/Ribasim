@@ -448,6 +448,7 @@ function tabulated_rating_curve_flow(
     t::Number,
 )::Number
     (; current_interpolation_index, interpolations) = tabulated_rating_curve
+    (; flow_reduction_factor_threshold) = p.p_independent
     inflow_link = tabulated_rating_curve.inflow_link[node_id.idx]
     inflow_id = inflow_link.link[1]
     Δh = h_a - h_b
@@ -633,8 +634,7 @@ function formulate_pump_or_outlet_flow!(
     component_cache::NamedTuple,
     reduce_Δlevel::Bool = false,
 )::Nothing
-    (; allocation, flow_demand) = p.p_independent
-
+    (; allocation, flow_demand, flow_reduction_factor_threshold) = p.p_independent
     (;
         current_min_flow_rate,
         current_max_flow_rate,

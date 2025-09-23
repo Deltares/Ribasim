@@ -142,6 +142,12 @@ class Solver(ChildModel):
         Whether a sparse Jacobian matrix is used, which gives a significant speedup for models with >~10 basins.
     autodiff : bool
         Whether automatic differentiation instead of fine difference is used to compute the Jacobian. (Optional, defaults to true)
+    low_storage_depth : float
+        Universal depth at which the low storage factor kicks in
+    user_demand_min_level_threshold : float
+        Universal reduction factor threshold for the minimum upstream level of UserDemand nodes
+    flow_reduction_factor_threshold : float
+        Universal reduction factor threshold for the level difference of Pump/Outlet and TabulatedRatingCurve nodes
     """
 
     algorithm: str = "QNDF"
@@ -156,6 +162,9 @@ class Solver(ChildModel):
     sparse: bool = True
     autodiff: bool = True
     evaporate_mass: bool = True
+    low_storage_depth = 0.1
+    user_demand_min_level_threshold = 0.1
+    flow_reduction_factor_threshold = 0.02
 
 
 class Verbosity(str, Enum):
