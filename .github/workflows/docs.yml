@@ -13,7 +13,8 @@ concurrency:
 # needed to allow julia-actions/cache to delete old caches that it has created
 permissions:
   actions: write
-  contents: read
+  contents: write
+  pages: write
 jobs:
   publish:
     name: Docs Julia
@@ -38,9 +39,8 @@ jobs:
         run: pixi run quarto-render
       - name: Publish Quarto Project
         if: github.ref == 'refs/heads/main'
-        uses: peaceiris/actions-gh-pages@v4
+        uses: quarto-dev/quarto-actions/publish@v2
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./docs/_site
+          target: gh-pages
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
