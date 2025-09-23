@@ -116,6 +116,7 @@ class Model(FileModel):
     terminal: Terminal = Field(default_factory=Terminal)
     user_demand: UserDemand = Field(default_factory=UserDemand)
 
+    edge: Any = Field(default=None, exclude=True)  # Backwards compatible alias for link
     link: LinkTable = Field(default_factory=LinkTable)
     use_validation: bool = Field(default=True, exclude=True)
 
