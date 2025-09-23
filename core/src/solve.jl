@@ -334,7 +334,7 @@ function formulate_flow!(
 )::Nothing
     (; p_independent, time_dependent_cache) = p
     (; current_return_factor) = time_dependent_cache.user_demand
-    (; allocation) = p_independent
+    (; allocation, user_demand_min_level_threshold) = p_independent
     all_nodes_active = p.p_mutable.all_nodes_active
 
     for (
@@ -383,7 +383,7 @@ function formulate_flow!(
         # level reaches its minimum level
         source_level = get_level(p, inflow_id, t)
         Δsource_level = source_level - min_level
-        factor_level = reduction_factor(Δsource_level, USER_DEMAND_MIN_LEVEL_THRESHOLD)
+        factor_level = reduction_factor(Δsource_level, user_demand_min_level_threshold)
         q *= factor_level
         du.user_demand_inflow[id.idx] = q
         du.user_demand_outflow[id.idx] =
@@ -457,9 +457,9 @@ function tabulated_rating_curve_flow(
     interpolation_index = current_interpolation_index[node_id.idx](t)
     qh = interpolations[interpolation_index]
     q = factor * qh(h_a)
-    q *= reduction_factor(Δh, 0.02)
+    q *= reduction_factor(Δh, flow_reduction_factor_threshold)
     max_downstream_level = tabulated_rating_curve.max_downstream_level[node_id.idx]
-    q *= reduction_factor(max_downstream_level - h_b, 0.02)
+    q *= reduction_factor(max_downstream_level - h_b, flow_reduction_factor_threshold)
     return q
 end
 
@@ -702,12 +702,15 @@ function formulate_pump_or_outlet_flow!(
         # Special case for outlet: check level difference
         if reduce_Δlevel
             Δlevel = src_level - dst_level
-            q *= reduction_factor(Δlevel, 0.02)
+            q *= reduction_factor(Δlevel, flow_reduction_factor_threshold)
         end
 
         min_upstream_level_ =
             eval_time_interp(min_upstream_level, current_min_upstream_level, id.idx, p, t)
-        q *= reduction_factor(src_level - min_upstream_level_, 0.02)
+        q *= reduction_factor(
+            src_level - min_upstream_level_,
+            flow_reduction_factor_threshold,
+        )
 
         max_downstream_level_ = eval_time_interp(
             max_downstream_level,
@@ -716,7 +719,10 @@ function formulate_pump_or_outlet_flow!(
             p,
             t,
         )
-        q *= reduction_factor(max_downstream_level_ - dst_level, 0.02)
+        q *= reduction_factor(
+            max_downstream_level_ - dst_level,
+            flow_reduction_factor_threshold,
+        )
 
         du_component[id.idx] = q
     end
@@ -808,6 +814,7 @@ function limit_flow!(
         tabulated_rating_curve,
         basin,
         allocation,
+        user_demand_min_level_threshold,
     ) = p_independent
     (; current_storage, current_level) = state_time_dependent_cache
 
@@ -892,6 +899,7 @@ function limit_flow!(
                 user_demand.min_level,
                 id,
                 inflow_id,
+                user_demand_min_level_threshold,
             )
             allocated_total = sum(
                 min(
