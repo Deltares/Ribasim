@@ -162,9 +162,9 @@ class Solver(ChildModel):
     sparse: bool = True
     autodiff: bool = True
     evaporate_mass: bool = True
-    low_storage_depth = 0.1
-    user_demand_min_level_threshold = 0.1
-    flow_reduction_factor_threshold = 0.02
+    low_storage_depth: float = 0.1
+    user_demand_min_level_threshold: float = 0.1
+    flow_reduction_factor_threshold: float = 0.02
 
 
 class Verbosity(str, Enum):
