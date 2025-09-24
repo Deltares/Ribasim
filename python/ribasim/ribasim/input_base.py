@@ -83,7 +83,7 @@ class BaseModel(PydanticBaseModel):
         validate_default=True,
         populate_by_name=True,
         use_enum_values=True,
-        extra="allow",
+        extra="forbid",
     )
 
     @classmethod
@@ -265,6 +265,10 @@ class FileModel(BaseModel, ABC):
 class TableModel(FileModel, Generic[TableT]):
     df: DataFrame[TableT] | None = Field(default=None, exclude=True, repr=False)
     _sort_keys: list[str] = PrivateAttr(default=[])
+
+    model_config = ConfigDict(
+        extra="allow",
+    )
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, TableModel):

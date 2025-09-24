@@ -462,9 +462,9 @@ def cyclic_time_model() -> Model:
         ],
     )
 
-    model.edge.add(bsn, lr)
-    model.edge.add(lr, lb)
-    model.edge.add(fb, bsn)
+    model.link.add(bsn, lr)
+    model.link.add(lr, lb)
+    model.link.add(fb, bsn)
 
     return model
 
