@@ -266,6 +266,10 @@ class TableModel(FileModel, Generic[TableT]):
     df: DataFrame[TableT] | None = Field(default=None, exclude=True, repr=False)
     _sort_keys: list[str] = PrivateAttr(default=[])
 
+    model_config = ConfigDict(
+        extra="allow",
+    )
+
     def __eq__(self, other: object) -> bool:
         if isinstance(other, TableModel):
             if self.df is None and other.df is None:

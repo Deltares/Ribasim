@@ -116,7 +116,6 @@ class Model(FileModel):
     terminal: Terminal = Field(default_factory=Terminal)
     user_demand: UserDemand = Field(default_factory=UserDemand)
 
-    edge: Any = Field(default=None, exclude=True)  # Backwards compatible alias for link
     link: LinkTable = Field(default_factory=LinkTable)
     use_validation: bool = Field(default=True, exclude=True)
 
@@ -192,7 +191,6 @@ class Model(FileModel):
         # Since migration runs on reading, the ribasim_version should be reset.
         self.ribasim_version = ribasim.__version__
         self.model_fields_set.update({"input_dir", "results_dir"})
-        self.edge = self.link  # Backwards compatible alias for link
 
     def __repr__(self) -> str:
         """Generate a succinct overview of the Model content.
