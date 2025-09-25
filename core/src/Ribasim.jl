@@ -152,8 +152,8 @@ using StructArrays: StructVector
 # OrderedDict is used to store the order of the sources in a subnetwork.
 using DataStructures: OrderedSet, OrderedDict, counter, inc!
 
-# NCDatasets is used to read and write NetCDF files.
-using NCDatasets: NCDataset, defDim, defVar, dimnames
+# NCDatasets and CommonDataModel used to read and write NetCDF files.
+using NCDatasets: NCDatasets, NCDataset, defDim, defVar, dimnames, CFVariable
 
 using Dates: Second
 
