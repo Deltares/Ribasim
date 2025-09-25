@@ -1728,26 +1728,107 @@ function load_netcdf(table_path::String, table_type::Type{<:Table})::NamedTuple
         names = fieldnames(table_type)
         table = OrderedDict{Symbol, AbstractVector}()
         data_varnames = filter(x -> !(String(x) in nc_dim_names), names)
+
         for data_varname in data_varnames
             var = ds[data_varname]
             dim_names = dimnames(var)
-            if dim_names == ("node_id",)
-                table[:node_id] = ds["node_id"][:]
-            elseif dim_names == ("node_id", "time")
-                node_id_data = ds["node_id"][:]
-                time_data = ds["time"][:]
-                ntime = length(time_data)
-                nnode = length(node_id_data)
-                table[:node_id] = repeat(node_id_data; outer = ntime)
-                table[:time] = repeat(time_data; inner = nnode)
+
+            # Each variable has a node_id dimension
+            node_id = timeseries_ids(var)
+            n_node_id = length(node_id)
+
+            # Some variables have a time dimension
+            # For e.g. 'Basin / state' a time dimension is not needed,
+            # but allowed if it has length 1 since Delft-FEWS adds it.
+            time_var = findcoord(var, is_time_coord)
+            if time_var === nothing
+                n_time = 1
             else
-                error("Unsupported dimensions: $dim_names, must be (node_id, [time])")
+                time = DateTime.(Array(time_var))
+                n_time = length(time)
+                table[:time] = repeat(time; inner = n_node_id)
             end
+
+            table[:node_id] = repeat(node_id; outer = n_time)
             table[data_varname] = vec(var[:])
         end
         table
     end
     return columntable(table)
+end
+
+function check_attrib(var::CFVariable, attname::String, attval::String)::Bool
+    if attname in NCDatasets.attribnames(var)
+        return NCDatasets.attrib(var, attname) == attval
+    end
+    return false
+end
+
+function is_time_coord(var::CFVariable)::Bool
+    check_attrib(var, "axis", "T") && return true
+    check_attrib(var, "standard_name", "time") && return true
+    NCDatasets.name(var) == "time" && return true
+    return false
+end
+
+function is_node_id_coord(var::CFVariable)::Bool
+    check_attrib(var, "cf_role", "timeseries_id") && return true
+    NCDatasets.name(var) == "node_id" && return true
+    return false
+end
+
+function is_realization_coord(var::CFVariable)::Bool
+    check_attrib(var, "standard_name", "realization") && return true
+    NCDatasets.name(var) == "realization" && return true
+    return false
+end
+
+"Find coordinate variable based on some condition"
+function findcoord(var::CFVariable, f::Function)::Union{CFVariable, Nothing}
+    # dataset
+    ds = NCDatasets.dataset(var)
+    dims = Set(dimnames(var))
+    for coord_var_name in keys(ds)
+        coord_var = ds[coord_var_name]
+        coord_dims = Set(dimnames(coord_var))
+        # Must share at least one dimension.
+        # Could've been a subset check if it wasn't for char_leng dimensions.
+        isempty(coord_dims ∩ dims) && continue
+        f(coord_var) && return coord_var
+    end
+    return nothing
+end
+
+"""
+Get the variable by name or by cf_role attribute
+Delft-FEWS uses `char station_id(stations, char_leng_id)`
+"""
+function timeseries_ids(var::CFVariable)::Vector{Int32}
+    id_var = findcoord(var, is_node_id_coord)
+
+    # Support NetCDF3 Char Matrix or anything that can convert to Vector{Int32}
+    id_arr = Array(id_var)
+    if eltype(id_arr) == Char && ndims(id_arr) == 2
+        # strip nulls
+        # assumes first dimension is the character length
+        n_char, n_id = size(id_arr)
+        id_vec = Vector{Int32}(undef, n_id)
+        for i in 1:n_id
+            for c in 1:n_char
+                if id_arr[c, i] == '\0'
+                    str = String(id_arr[1:(c - 1), i])
+                    id_vec[i] = parse(Int32, str)
+                    break
+                elseif c == n_char
+                    str = String(id_arr[:, i])
+                    id_vec[i] = parse(Int32, str)
+                end
+            end
+        end
+        return id_vec
+    else
+        return id_arr
+    end
 end
 
 """
