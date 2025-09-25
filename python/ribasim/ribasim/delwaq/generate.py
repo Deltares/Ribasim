@@ -385,7 +385,7 @@ def generate(
 
     # Add basin boundaries to flows
     # Map all boundary node_ids to link_ids (unique per boundary type)
-    lookups = defaultdict(dict)
+    lookups: defaultdict[str, dict[int, int]] = defaultdict(dict)
     dfs = []
     for link_id, (a, b, (node_id, boundary_type)) in enumerate(
         G.edges(data="boundary", default=(None, None))
