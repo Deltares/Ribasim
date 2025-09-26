@@ -213,7 +213,6 @@ objective_metadata: Metadata per objective. Note that there are more objective e
 """
 @kwdef struct AllocationObjectives
     objective_expressions_all::Vector{JuMP.AffExpr} = JuMP.AffExpr[]
-    flows_to_subnetwork_expression::JuMP.AffExpr = JuMP.AffExpr()
     objective_metadata::Vector{AllocationObjectiveMetadata} = AllocationObjectiveMetadata[]
 end
 

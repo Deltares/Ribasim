@@ -36,6 +36,7 @@ function initialize_allocation!(
             AllocationModel(subnetwork_id, p_independent, config.allocation),
         )
     end
+    allocation_models .= reverse!(allocation_models)
     return nothing
 end
 

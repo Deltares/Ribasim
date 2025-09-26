@@ -637,12 +637,9 @@ function add_demand_objectives!(
         node_ids_subnetwork_with_flow_demand,
         basin_ids_subnetwork_with_level_demand,
     ) = node_ids_in_subnetwork
-    (; objective_expressions_all, objective_metadata, flows_to_subnetwork_expression) =
-        objectives
+    (; objective_expressions_all, objective_metadata) = objectives
     (; allocation) = p_independent
     (; demand_priorities_all) = allocation
-    primary_network_connections =
-        get(allocation.primary_network_connections, subnetwork_id, ())
 
     user_demand_error = problem[:user_demand_error]
     flow_demand_error = problem[:flow_demand_error]
@@ -700,14 +697,6 @@ function add_demand_objectives!(
         push!(objective_expressions_all, first_objective_expression)
         push!(objective_expressions_all, second_objective_expression)
         first_objective_expressions[demand_priority] = first_objective_expression
-
-        #add new expression with the sum of all flow variables from the primary network to the secondary network
-        if is_primary_network(subnetwork_id)
-            flow = problem[:flow]
-            # for link in primary_network_connections[subnetwork_id]
-            #     JuMP.add_to_expression!(flows_to_subnetwork_expression, flow[link])
-            # end
-        end
 
         if has_flow_unit_demands && has_storage_unit_demands
             @error "For demand priority $demand_priority there are demands of both flow (UserDemand/FlowDemand) and storage (LevelDemand) type, this is not allowed because these demand types have different units."
@@ -940,8 +929,11 @@ function has_demand_priority_subnetwork(
 )::Vector{Bool}
     (; allocation, graph, user_demand, flow_demand, level_demand) = p_independent
     (; demand_priorities_all) = allocation
-    (; user_demand_ids_subnetwork, node_ids_subnetwork_with_flow_demand) =
-        node_ids_in_subnetwork
+    (;
+        user_demand_ids_subnetwork,
+        node_ids_subnetwork_with_flow_demand,
+        level_demand_ids_subnetwork,
+    ) = node_ids_in_subnetwork
 
     has_demand_priority = zeros(Bool, length(demand_priorities_all))
 
@@ -950,14 +942,11 @@ function has_demand_priority_subnetwork(
     end
 
     for node_id in node_ids_subnetwork_with_flow_demand
-        flow_demand_id = only(inneighbor_labels_type(graph, node_id, LinkType.Control))
-        has_demand_priority .|= view(flow_demand.has_demand_priority, flow_demand_id.idx, :)
+        has_demand_priority .|= view(flow_demand.has_demand_priority, node_id.idx, :)
     end
 
-    for node_id in node_ids_subnetwork_with_flow_demand
-        level_demand_id = only(inneighbor_labels_type(graph, node_id, LinkType.Control))
-        has_demand_priority .|=
-            view(level_demand.has_demand_priority, level_demand_id.idx, :)
+    for node_id in level_demand_ids_subnetwork
+        has_demand_priority .|= view(level_demand.has_demand_priority, node_id.idx, :)
     end
 
     return has_demand_priority
@@ -971,7 +960,6 @@ function AllocationModel(
     Δt_allocation = allocation_config.timestep
     problem = JuMP.Model()
     JuMP.set_optimizer(problem, get_optimizer())
-    # set_multi_objective_attributes!(problem)
     node_ids_in_subnetwork = NodeIDsInSubnetwork(p_independent, subnetwork_id)
     scaling = ScalingFactors(p_independent, subnetwork_id, Δt_allocation)
     has_demand_priority =

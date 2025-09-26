@@ -250,12 +250,6 @@ function get_optimizer()
     )
 end
 
-function set_multi_objective_attributes!(problem::JuMP.Model)::Nothing
-    JuMP.set_attribute(problem, MOA.Algorithm(), MOA.Lexicographic())
-    JuMP.set_attribute(problem, MOA.LexicographicAllPermutations(), false)
-    return nothing
-end
-
 function ScalingFactors(
     p_independent::ParametersIndependent,
     subnetwork_id::Int32,
@@ -475,8 +469,17 @@ function delete_temporary_constraints!(model::AllocationModel)::Nothing
     return nothing
 end
 
-function secondary_networks(
+function get_secondary_networks(
     allocation_models::Vector{AllocationModel},
 )::Vector{AllocationModel}
     return filter(model -> !is_primary_network(model.subnetwork_id), allocation_models)
+end
+
+function get_primary_network(allocation_models::Vector{AllocationModel})::AllocationModel
+    for model in allocation_models
+        if is_primary_network(model.subnetwork_id)
+            return model
+        end
+    end
+    error("Queries primary network while no primary network found in allocation models.")
 end
