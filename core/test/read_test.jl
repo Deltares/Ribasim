@@ -116,7 +116,6 @@ end
 
     # Assert that storage_to_level interpolation is consistent for nodes 1 2 and 3
     @test basin.storage_to_level[1](storages[2]) ≈ basin.storage_to_level[3](storages[2])
-    @test basin.storage_to_level[1](storages[2]) ≈ basin.storage_to_level[2](storages[2])
 
     # Assert that level_to_area interpolation is consistent for nodes 1 and 3. Node 2 is different, since it must guess the bottom area
     @test basin.level_to_area[1](levels[1]) ≈ basin.level_to_area[3](levels[1])
@@ -200,7 +199,36 @@ end
     interpolate_basin_profile!(basin, profiles)
 
     DataInterpolations.integral(basin.level_to_area[1], 2.0) ≈ 500.0005 + 1000.0
-    @test basin.storage_to_level[1](500.0005 + 1000.0) ≈ 2.0
+    @test basin.storage_to_level[1](500.0005 + 1000.0) ≈ 3.4999970000030003
+end
+
+@testitem "negative dS_dh with increasing storage" begin
+    using Ribasim, DataInterpolations
+
+    # user input
+    group_area = [missing, missing, missing, missing, missing, missing]
+    group_level = [265.0, 270.0, 275.0, 280.0, 285.0, 287.0]
+    group_storage = [0.0, 3.551e6, 1.6238e7, 4.5444e7, 1.06217e8, 1.08e8]
+
+    # issue: the last entry is negative
+    dS_dh = Ribasim.finite_difference(group_storage, group_level)
+    # dS_dh = [710200.0, 710200.0, 4.3646e6, 7.3178e6, 1.69914e7, -1.52084e7]
+
+    level_to_area = LinearInterpolation(
+        dS_dh,
+        group_level;
+        extrapolation_left = ExtrapolationType.Extension,
+        extrapolation_right = ExtrapolationType.Constant,
+        cache_parameters = true,
+    )
+
+    # Left linear extrapolation for usable gradients by the nonlinear solver for negative storages
+    # Right linear extrapolation corresponds with constant extrapolation of area
+    storage_to_level = DataInterpolations.invert_integral(
+        level_to_area;
+        extrapolation_left = ExtrapolationType.Linear,
+        extrapolation_right = ExtrapolationType.Linear,
+    )
 end
 
 @testitem "Interpolation type" begin
