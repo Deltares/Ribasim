@@ -229,6 +229,9 @@ end
         extrapolation_left = ExtrapolationType.Linear,
         extrapolation_right = ExtrapolationType.Linear,
     )
+
+    # assert areas are positive
+    @test all(x -> x > 0, level_to_area.(group_level))
 end
 
 @testitem "Interpolation type" begin
