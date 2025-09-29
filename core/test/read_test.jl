@@ -116,6 +116,7 @@ end
 
     # Assert that storage_to_level interpolation is consistent for nodes 1 2 and 3
     @test basin.storage_to_level[1](storages[2]) ≈ basin.storage_to_level[3](storages[2])
+    @test basin.storage_to_level[1](storages[2]) ≈ basin.storage_to_level[2](storages[2])
 
     # Assert that level_to_area interpolation is consistent for nodes 1 and 3. Node 2 is different, since it must guess the bottom area
     @test basin.level_to_area[1](levels[1]) ≈ basin.level_to_area[3](levels[1])
