@@ -1901,7 +1901,7 @@ function finite_difference(
     for i in 1:(length(x) - 1)
         Δf = f[i + 1] - f[i]
         Δx = x[i + 1] - x[i]
-        dfdx[i + 1] = Δf / Δx
+        dfdx[i + 1] = 2 * Δf / Δx - dfdx[i]
     end
     dfdx
 end
