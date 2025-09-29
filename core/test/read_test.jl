@@ -202,36 +202,28 @@ end
     @test basin.storage_to_level[1](500.0005 + 1000.0) ≈ 3.4999970000030003
 end
 
-@testitem "negative dS_dh with increasing storage" begin
-    using Ribasim, DataInterpolations
+@testitem "decreasing area (dS_dh) from S(h)" begin
+    using Ribasim: Schema, Basin, StructVector, NodeID, interpolate_basin_profile!
 
     # user input
     group_area = [missing, missing, missing, missing, missing, missing]
     group_level = [265.0, 270.0, 275.0, 280.0, 285.0, 287.0]
     group_storage = [0.0, 3.551e6, 1.6238e7, 4.5444e7, 1.06217e8, 1.08e8]
+    n = length(group_level)
+    node_1 = fill(1, n)
+    basin = Ribasim.Basin(; node_id = NodeID.(:Basin, [1], 1))
 
-    # issue: the last entry is negative
-    dS_dh = Ribasim.finite_difference(group_storage, group_level)
-    # dS_dh = [710200.0, 710200.0, 4.3646e6, 7.3178e6, 1.69914e7, -1.52084e7]
-
-    level_to_area = LinearInterpolation(
-        dS_dh,
-        group_level;
-        extrapolation_left = ExtrapolationType.Extension,
-        extrapolation_right = ExtrapolationType.Constant,
-        cache_parameters = true,
+    profiles = StructVector{Schema.Basin.Profile}(;
+        node_id = node_1,
+        level = group_level,
+        area = group_area,
+        storage = group_storage,
     )
 
-    # Left linear extrapolation for usable gradients by the nonlinear solver for negative storages
-    # Right linear extrapolation corresponds with constant extrapolation of area
-    storage_to_level = DataInterpolations.invert_integral(
-        level_to_area;
-        extrapolation_left = ExtrapolationType.Linear,
-        extrapolation_right = ExtrapolationType.Linear,
-    )
+    # Test that an error is thrown when area is decreasing
 
-    # assert areas are positive
-    @test all(x -> x > 0, level_to_area.(group_level))
+    error_string = "decreasing area (dSdh) calculated from storage-level relation for basin Basin #1. At (h=287.0, S=1.08e8) the calculated area is decreasing with respect to the point (h=285.0, S=1.06217e8)."
+    @test_throws error_string interpolate_basin_profile!(basin, profiles)
 end
 
 @testitem "Interpolation type" begin

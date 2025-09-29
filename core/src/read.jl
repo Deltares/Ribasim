@@ -1986,6 +1986,14 @@ function interpolate_basin_profile!(
             finite_difference(group_storage, group_level, group_area[1])
         end
 
+        for j in 1:(length(dS_dh) - 1)
+            if dS_dh[j + 1] < 0
+                error((
+                    "decreasing area (dSdh) calculated from storage-level relation for basin $(basin.node_id[i]). At (h=$(group_level[j+1]), S=$(group_storage[j+1])) the calculated area is decreasing with respect to the point (h=$(group_level[j]), S=$(group_storage[j]))."
+                ),)
+            end
+        end
+
         # Left extension extrapolation is cheap equivalent of linear extrapolation for informative gradients
         # during the nonlinear solve for negative storage
         level_to_area = LinearInterpolation(
