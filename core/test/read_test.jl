@@ -200,7 +200,7 @@ end
     interpolate_basin_profile!(basin, profiles)
 
     DataInterpolations.integral(basin.level_to_area[1], 2.0) ≈ 500.0005 + 1000.0
-    @test basin.storage_to_level[1](500.0005 + 1000.0) ≈ 3.4999970000030003
+    @test basin.storage_to_level[1](500.0005 + 1000.0) ≈ 2.0
 end
 
 @testitem "decreasing area (dS_dh) from S(h)" begin
