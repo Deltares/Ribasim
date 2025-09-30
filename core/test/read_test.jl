@@ -222,8 +222,7 @@ end
     )
 
     # Test that an error is thrown when area is decreasing
-
-    error_string = "decreasing area (dSdh) calculated from storage-level relation for basin Basin #1. At (h=287.0, S=1.08e8) the calculated area is decreasing with respect to the point (h=285.0, S=1.06217e8)."
+    error_string = "Invalid profile for Basin #1. The step from (h=285.0, S=1.06217e8) to (h=287.0, S=1.08e8) implies a decreasing area compared to lower points in the profile, which is not allowed."
     @test_throws error_string interpolate_basin_profile!(basin, profiles)
 end
 

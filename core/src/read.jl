@@ -1989,7 +1989,7 @@ function interpolate_basin_profile!(
         for j in 1:(length(dS_dh) - 1)
             if dS_dh[j + 1] < 0
                 error((
-                    "decreasing area (dSdh) calculated from storage-level relation for basin $(basin.node_id[i]). At (h=$(group_level[j+1]), S=$(group_storage[j+1])) the calculated area is decreasing with respect to the point (h=$(group_level[j]), S=$(group_storage[j]))."
+                    "Invalid profile for $(basin.node_id[i]). The step from (h=$(group_level[j]), S=$(group_storage[j])) to (h=$(group_level[j+1]), S=$(group_storage[j+1])) implies a decreasing area compared to lower points in the profile, which is not allowed."
                 ),)
             end
         end
