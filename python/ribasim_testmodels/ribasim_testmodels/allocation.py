@@ -456,7 +456,7 @@ def small_primary_secondary_network_model() -> Model:
         Node(3, Point(1, 1), subnetwork_id=1),
         [
             user_demand.Static(
-                demand=[1.0], return_factor=0.0, min_level=-1.0, demand_priority=2
+                demand=[1.0], return_factor=0.0, min_level=0.5, demand_priority=2
             )
         ],
     )
@@ -467,24 +467,29 @@ def small_primary_secondary_network_model() -> Model:
         [outlet_data],
     )
 
-    #################################### subnetwork 2 ####################################
+    #################################### begin subnetwork 2 ####################################
     model.basin.add(Node(5, Point(3, 0), subnetwork_id=2), basin_data)
 
     model.user_demand.add(
         Node(6, Point(3, 1), subnetwork_id=2),
         [
             user_demand.Static(
-                demand=[1.0], return_factor=0.0, min_level=-1.0, demand_priority=2
+                demand=[1.0], return_factor=0.0, min_level=0.5, demand_priority=2
             )
         ],
     )
-    #################################### subnetwork 2 ####################################
+    model.level_demand.add(
+        Node(7, Point(1, -1), subnetwork_id=2),
+        [level_demand.Static(min_level=[0.5], max_level=1.5, demand_priority=1)],
+    )
+    #################################### end subnetwork 2 ####################################
     model.link.add(model.basin[2], model.user_demand[3])
     model.link.add(model.basin[2], model.outlet[4])
     model.link.add(model.outlet[4], model.basin[5])
     model.link.add(model.basin[5], model.user_demand[6])
     model.link.add(model.user_demand[3], model.basin[2])
     model.link.add(model.user_demand[6], model.basin[5])
+    model.link.add(model.level_demand[7], model.basin[5])
 
     return model
 

@@ -131,17 +131,13 @@ function add_conservation!(
     flow = problem[:flow]
     inflow_sum = Dict(
         basin_id => sum(
-            flow[(other_id, basin_id)] for
-            other_id in basin.inflow_ids[basin_id.idx] if
-            graph[other_id].subnetwork_id == subnetwork_id;
+            flow[(other_id, basin_id)] for other_id in basin.inflow_ids[basin_id.idx];
             init = 0,
         ) for basin_id in basin_ids_subnetwork
     )
     outflow_sum = Dict(
         basin_id => sum(
-            flow[(basin_id, other_id)] for
-            other_id in basin.outflow_ids[basin_id.idx] if
-            graph[other_id].subnetwork_id == subnetwork_id;
+            flow[(basin_id, other_id)] for other_id in basin.outflow_ids[basin_id.idx];
             init = 0,
         ) for basin_id in basin_ids_subnetwork
     )

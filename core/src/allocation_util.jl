@@ -64,6 +64,8 @@ end
 function collect_primary_network_connections!(
     allocation::Allocation,
     graph::MetaGraph,
+    pump::Pump,
+    outlet::Outlet,
 )::Nothing
     errors = false
 
@@ -80,6 +82,13 @@ function collect_primary_network_connections!(
                             primary_network_connections_subnetwork,
                             (upstream_id, node_id),
                         )
+                        # ensure node is allocation controlled
+                        if upstream_id.type == NodeType.Pump
+                            pump.allocation_controlled[upstream_id.idx] = true
+                        elseif upstream_id.type == NodeType.Outlet
+                            outlet.allocation_controlled[upstream_id.idx] = true
+                        end
+
                     else
                         @error "This node connects the primary network to a subnetwork but is not an outlet or pump." upstream_id subnetwork_id
                         errors = true
@@ -170,6 +179,8 @@ function analyze_infeasibility(
                 init = JuMP.ConstraintRef[],
             ),
         )
+    # remove all elements in violated_constraints that are nothing
+    violated_constraints = filter(!isnothing, violated_constraints)
 
     # We care the most about constraints with names, so give these smaller penalties so
     # that these get relaxed which is more informative
@@ -180,11 +191,17 @@ function analyze_infeasibility(
     constraint_to_slack = JuMP.relax_with_penalty!(problem, constraint_to_penalty)
     JuMP.optimize!(problem)
 
+    for flow in problem[:flow]
+        println(flow, " ", JuMP.value(flow))
+    end
+
     for irreducible_infeasible_subset in data_infeasibility.iis
         constraint_violations = Dict{JuMP.ConstraintRef, Float64}()
         for constraint_index in irreducible_infeasible_subset.constraint
             constraint_ref = constraint_ref_from_index(problem, constraint_index)
-            if !isempty(JuMP.name(constraint_ref))
+            if constraint_ref === nothing
+                continue
+            elseif !isempty(JuMP.name(constraint_ref))
                 constraint_violations[constraint_ref] =
                     JuMP.value(constraint_to_slack[constraint_ref])
             end

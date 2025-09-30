@@ -347,6 +347,7 @@ function preprocess_demand_collection!(
     #TODO limit upper bound to node limit if applicable:
     for link in p_independent.allocation.primary_network_connections[subnetwork_id]
         JuMP.set_upper_bound(flow[link], MAX_ABS_FLOW / scaling.flow)
+        JuMP.set_lower_bound(flow[link], 0)
     end
 
     return nothing
@@ -357,23 +358,17 @@ function communicate_secondary_network_allocations!(
     primary_network_connections,
 )::Nothing
     primary_network = get_primary_network(allocation_models)
+    primary_problem = primary_network.problem
+
     for secondary_network in get_secondary_networks(allocation_models)
         (; problem, subnetwork_id) = secondary_network
 
         for link in primary_network_connections[subnetwork_id]
-            total_allocated = 0.0
-            for metadata in objectives.objective_metadata
-                (; demand_priority) = metadata
-
-                total_allocated += JuMP.value(
-                    primary_network.problem[:secondary_network_allocated][
-                        link,
-                        demand_priority,
-                    ],
-                )
-            end
-            flow = problem[:flow]
-            JuMP.set_upper_bound(flow[link], value)
+            primary_flow = primary_problem[:flow]
+            primary_flow_value = JuMP.value(primary_flow[link])
+            secondary_flow = problem[:flow]
+            JuMP.set_upper_bound(secondary_flow[link], primary_flow_value)
+            JuMP.set_lower_bound(secondary_flow[link], primary_flow_value)
         end
     end
 end
@@ -455,7 +450,7 @@ function set_subnetwork_demand(
         get_objective_data_of_demand_priority(objectives, demand_priority)
 
     # Demand is upper bound of what is allocated
-    JuMP.set_upper_bound(node_allocated[link, demand_priority], demand)
+    # JuMP.set_upper_bound(node_allocated[link, demand_priority], demand)
 
     # Set demand in constraint for error term in first objective
     c = node_relative_error_constraint[link, demand_priority]
@@ -668,12 +663,8 @@ function warm_start!(allocation_model::AllocationModel, integrator::DEIntegrator
     return nothing
 end
 
-function optimize_multi_objective!(allocation_model::AllocationModel)::Nothing
+function optimize_multi_objective!(allocation_model::AllocationModel, t, config)::Nothing
     (; problem, objectives, temporary_constraints) = allocation_model
-
-    for c in JuMP.all_constraints(problem; include_variable_in_set_constraints = true)
-        println(c)
-    end
 
     for metadata in objectives.objective_metadata
         (; expression_first, expression_second) = metadata
@@ -682,6 +673,13 @@ function optimize_multi_objective!(allocation_model::AllocationModel)::Nothing
         JuMP.@objective(problem, Min, expression_first)
         JuMP.optimize!(problem)
         termination_status = JuMP.termination_status(problem)
+        if termination_status == JuMP.INFEASIBLE
+            # Change to scalar objective since vector-valued objective cannot be written
+            # to .lp
+            set_feasibility_objective!(problem)
+            write_problem_to_file(problem, config)
+            analyze_infeasibility(allocation_model, t, config)
+        end
         push!(
             temporary_constraints,
             JuMP.@constraint(problem, expression_first == JuMP.objective_value(problem))
@@ -691,11 +689,6 @@ function optimize_multi_objective!(allocation_model::AllocationModel)::Nothing
         JuMP.@objective(problem, Min, expression_second)
         JuMP.optimize!(problem)
         termination_status = JuMP.termination_status(problem)
-
-        flow = problem[:flow]
-        for link in only(flow.axes)
-            value = JuMP.value(flow[link])
-        end
 
         # check if this is the last objective
         if metadata != last(objectives.objective_metadata)
@@ -720,10 +713,6 @@ function collect_demands!(
     (; p_independent) = model.integrator.p
     (; subnetwork_id) = secondary_model
 
-    for c in JuMP.all_constraints(problem; include_variable_in_set_constraints = true)
-        println(c)
-    end
-
     for metadata in objectives.objective_metadata
         (; expression_first, expression_second, type, demand_priority) = metadata
 
@@ -734,15 +723,9 @@ function collect_demands!(
             temporary_constraints,
             JuMP.@constraint(problem, expression_first == JuMP.objective_value(problem))
         )
-
         # Second expression
         JuMP.@objective(problem, Min, expression_second)
         JuMP.optimize!(problem)
-
-        flow = problem[:flow]
-        for link in only(flow.axes)
-            value = JuMP.value(flow[link])
-        end
 
         # set for each priority: the flow demand from sub to primary network
         if type == AllocationObjectiveType.demand_flow ||
@@ -752,6 +735,7 @@ function collect_demands!(
                 set_subnetwork_demand(primary_model, demand, link, demand_priority)
             end
         end
+
         # check if this is the last objective
         if metadata != last(objectives.objective_metadata)
             # If not, add constraint to fix the value of the second objective
@@ -773,7 +757,7 @@ function optimize!(allocation_model::AllocationModel, model)::Nothing
     (; t) = integrator
     (; problem, subnetwork_id) = allocation_model
 
-    optimize_multi_objective!(allocation_model)
+    optimize_multi_objective!(allocation_model, t, config)
 
     @debug JuMP.solution_summary(problem)
     termination_status = JuMP.termination_status(problem)
@@ -1072,6 +1056,7 @@ function update_allocation!(model)::Nothing
                 secondary_network,
                 AllocationOptimizationType.collect_demands,
             )
+            delete_temporary_constraints!(secondary_network)
         end
 
         # set demands in the primary network
@@ -1088,8 +1073,6 @@ function update_allocation!(model)::Nothing
         apply_control_from_allocation!(pump, allocation_model, integrator)
         apply_control_from_allocation!(outlet, allocation_model, integrator)
 
-        delete_temporary_constraints!(allocation_model)
-
         # Communicate amounts allocated to secondary networks
         if is_primary_network(allocation_model.subnetwork_id)
             communicate_secondary_network_allocations!(
@@ -1097,6 +1080,7 @@ function update_allocation!(model)::Nothing
                 primary_network_connections,
             )
         end
+        delete_temporary_constraints!(allocation_model)
 
         # Reset cumulative data
         reset_cumulative!(allocation_model)

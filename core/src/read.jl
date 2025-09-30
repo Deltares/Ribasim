@@ -9,6 +9,8 @@ const conservative_nodetypes = Set{NodeType.T}([
 function initialize_allocation!(
     p_independent::ParametersIndependent,
     config::Config,
+    pump::Pump,
+    outlet::Outlet,
 )::Nothing
     (; graph, allocation) = p_independent
     (; subnetwork_ids, allocation_models) = allocation
@@ -21,7 +23,7 @@ function initialize_allocation!(
 
     # Detect connections between the primary network and subnetworks:
     # (upstream_id: pump or outlet in the primary network, node_id: node in the subnetwork, generally a basin)
-    collect_primary_network_connections!(allocation, graph)
+    collect_primary_network_connections!(allocation, graph, pump, outlet)
 
     non_positive_subnetwork_id(graph) && error("Allocation network initialization failed.")
 
@@ -1618,7 +1620,7 @@ function Parameters(db::DB, config::Config)::Parameters
 
     # Allocation data structures
     if config.experimental.allocation
-        initialize_allocation!(p_independent, config)
+        initialize_allocation!(p_independent, config, nodes.pump, nodes.outlet)
     end
 
     return Parameters(; p_independent)
