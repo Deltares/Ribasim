@@ -1986,6 +1986,14 @@ function interpolate_basin_profile!(
             finite_difference(group_storage, group_level, group_area[1])
         end
 
+        for j in 1:(length(dS_dh) - 1)
+            if dS_dh[j + 1] < 0
+                error((
+                    "Invalid profile for $(basin.node_id[i]). The step from (h=$(group_level[j]), S=$(group_storage[j])) to (h=$(group_level[j+1]), S=$(group_storage[j+1])) implies a decreasing area compared to lower points in the profile, which is not allowed."
+                ),)
+            end
+        end
+
         # Left extension extrapolation is cheap equivalent of linear extrapolation for informative gradients
         # during the nonlinear solve for negative storage
         level_to_area = LinearInterpolation(
