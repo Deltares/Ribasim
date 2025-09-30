@@ -915,6 +915,12 @@ function save_flows!(
     (; graph, allocation) = p.p_independent
     (; record_flow) = allocation
     flow = problem[:flow]
+    # print flows
+    for link in only(flow.axes)
+        flow_value = JuMP.value(flow[link]) * scaling.flow
+        println("flow ", link, " = ", flow_value)
+    end
+
     low_storage_factor = problem[:low_storage_factor]
 
     # Horizontal flows
@@ -1059,7 +1065,7 @@ function update_allocation!(model)::Nothing
             delete_temporary_constraints!(secondary_network)
         end
 
-        # set demands in the primary network
+        set_simulation_data!(primary_network, integrator)
         set_demands!(primary_network, integrator)
         warm_start!(primary_network, integrator)
     end
