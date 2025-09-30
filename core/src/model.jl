@@ -236,6 +236,7 @@ function Model(config::Config)::Model
     integrator = init(
         prob,
         alg;
+        internalnorm = NormWithCache(; cache = zero(u0)),
         progress = true,
         progress_name = "Simulating",
         progress_steps = 100,
