@@ -460,7 +460,9 @@ def small_primary_secondary_network_model() -> Model:
             )
         ],
     )
-    outlet_data = outlet.Static(flow_rate=[3e-3], max_flow_rate=3.0)
+    outlet_data = outlet.Static(
+        flow_rate=[3e-3], max_flow_rate=3.0, control_state="Ribasim.allocation"
+    )
 
     model.outlet.add(
         Node(4, Point(2, 0), subnetwork_id=1),

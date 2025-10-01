@@ -165,8 +165,6 @@ end
         @__DIR__,
         "../../generated_testmodels/small_primary_secondary_network/ribasim.toml",
     )
-    # toml_path =
-    #     normpath(@__DIR__, "../../generated_testmodels/allocation_example/ribasim.toml")
     @test ispath(toml_path)
 
     config = Ribasim.Config(toml_path; experimental_allocation = true)
