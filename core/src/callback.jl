@@ -86,8 +86,9 @@ end
 Decrease the relative tolerance of the integrator over time,
 to compensate for the ever increasing cumulative flows.
 """
-function decrease_tolerance!(u, t, integrator)::Nothing
+function decrease_tolerance!(u_raw, t, integrator)::Nothing
     (; p, t, opts) = integrator
+    u = wrap_state(u_raw, p.p_independent)
 
     for (i, state) in enumerate(u)
         p.p_independent.relmask[i] || continue
@@ -121,11 +122,12 @@ as each flow carries mass, based on the concentrations of the flow source.
 Specifically, we first use all the inflows to update the mass of the Basins, recalculate
 the Basin concentration(s) and then remove the mass that is being lost to the outflows.
 """
-function update_cumulative_flows!(u, t, integrator)::Nothing
+function update_cumulative_flows!(u_raw, t, integrator)::Nothing
     (; cache, p) = integrator
     (; p_independent, p_mutable, time_dependent_cache) = p
     (; basin, flow_boundary, allocation, temp_convergence, convergence, ncalls) =
         p_independent
+    u = wrap_state(u_raw, p_independent)
 
     # Update tprev
     p_mutable.tprev = t
@@ -196,8 +198,8 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
     return nothing
 end
 
-function update_concentrations!(u, t, integrator)::Nothing
-    (; uprev, p, tprev, dt) = integrator
+function update_concentrations!(u_raw, t, integrator)::Nothing
+    (; p, tprev, dt) = integrator
     (; p_independent, state_time_dependent_cache) = p
     (; current_storage, current_level) = state_time_dependent_cache
     (; basin, flow_boundary, do_concentration) = p_independent
@@ -211,6 +213,8 @@ function update_concentrations!(u, t, integrator)::Nothing
         concentration_itp_surface_runoff,
         mass,
     ) = concentration_data
+    u = wrap_state(u_raw, p_independent)
+    uprev = wrap_state(integrator.uprev, p_independent)
 
     !do_concentration && return nothing
 
@@ -366,8 +370,10 @@ function flow_update_on_link(
     integrator::DEIntegrator,
     link_src::Tuple{NodeID, NodeID},
 )::Float64
-    (; u, uprev, p, t, tprev) = integrator
+    (; p, t, tprev) = integrator
     (; flow_boundary) = p.p_independent
+    u = wrap_state(integrator.u, p.p_independent)
+    uprev = wrap_state(integrator.uprev, p.p_independent)
 
     from_id, to_id = link_src
     if from_id == to_id
@@ -390,7 +396,7 @@ end
 """
 Save the storages and levels at the latest t.
 """
-function save_basin_state(u, t, integrator)
+function save_basin_state(u_raw, t, integrator)
     (; current_storage, current_level) = integrator.p.state_time_dependent_cache
     SavedBasinState(; storage = copy(current_storage), level = copy(current_level), t)
 end
@@ -400,7 +406,7 @@ Save all cumulative forcings and flows over links over the latest timestep,
 Both computed by the solver and integrated exactly. Also computes the total horizontal
 inflow and outflow per Basin.
 """
-function save_flow(u, t, integrator)
+function save_flow(u_raw, t, integrator)
     (; cache, p) = integrator
     (;
         basin,
@@ -412,6 +418,7 @@ function save_flow(u, t, integrator)
         ncalls,
         node_id,
     ) = p.p_independent
+    u = wrap_state(u_raw, p.p_independent)
     Δt = get_Δt(integrator)
     flow_mean = (u - u_prev_saveat) / Δt
 
@@ -504,12 +511,13 @@ function check_water_balance_error!(
     integrator::DEIntegrator,
     Δt::Float64,
 )::Nothing
-    (; u, p, t) = integrator
+    (; p, t) = integrator
     (; p_independent, state_time_dependent_cache) = p
     (; current_storage) = state_time_dependent_cache
-    (; basin, water_balance_abstol, water_balance_reltol, starttime) = p_independent
+    (; basin, water_balance_abstol, water_balance_reltol, starttime, state_ranges) =
+        p_independent
     errors = false
-    state_ranges = getaxes(u)
+    u = wrap_state(integrator.u, p_independent)
 
     # The initial storage is irrelevant for the storage rate and can only cause
     # floating point truncation errors
@@ -568,7 +576,7 @@ function check_water_balance_error!(
     return nothing
 end
 
-function save_solver_stats(u, t, integrator)
+function save_solver_stats(u_raw, t, integrator)
     (; dt) = integrator
     (; stats) = integrator.sol
     (;
@@ -582,12 +590,12 @@ function save_solver_stats(u, t, integrator)
     )
 end
 
-function check_negative_storage(u, t, integrator)::Nothing
+function check_negative_storage(u_raw, t, integrator)::Nothing
     (; p) = integrator
     (; p_independent, state_time_dependent_cache) = p
     (; basin) = p_independent
-    du = get_du(integrator)
-    water_balance!(du, u, p, t)
+    du_raw = get_du(integrator)
+    water_balance!(du_raw, u_raw, p, t)
 
     errors = false
     for id in basin.node_id
@@ -616,11 +624,11 @@ Apply the discrete control logic. There's somewhat of a complex structure:
 - The nodes that are controlled by this DiscreteControl node must have the same control state, for which they have
     parameter values associated with that control state defined in their control_mapping
 """
-function apply_discrete_control!(u, t, integrator)::Nothing
+function apply_discrete_control!(u_raw, t, integrator)::Nothing
     (; p) = integrator
     (; discrete_control) = p.p_independent
     (; node_id, truth_state, compound_variables) = discrete_control
-    du = get_du(integrator)
+    du = wrap_state(get_du(integrator), p.p_independent)
 
     # Loop over the discrete control nodes to determine their truth state
     # and detect possible control state changes

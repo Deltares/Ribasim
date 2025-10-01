@@ -1,9 +1,14 @@
 """
 The right hand side function of the system of ODEs set up by Ribasim.
 """
-water_balance!(du::CVector, u::CVector, p::Parameters, t::Number)::Nothing = water_balance!(
-    du,
-    u,
+water_balance!(
+    du_raw::AbstractVector,
+    u_raw::AbstractVector,
+    p::Parameters,
+    t::Number,
+)::Nothing = water_balance!(
+    du_raw,
+    u_raw,
     p.p_independent,
     p.state_time_dependent_cache::StateTimeDependentCache,
     p.time_dependent_cache,
@@ -13,16 +18,16 @@ water_balance!(du::CVector, u::CVector, p::Parameters, t::Number)::Nothing = wat
 
 # Method with `t` as second argument parsable by DifferentiationInterface.jl for time derivative computation
 water_balance!(
-    du::CVector,
+    du_raw::AbstractVector,
     t::Number,
-    u::CVector,
+    u_raw::AbstractVector,
     p_independent::ParametersIndependent,
     state_time_dependent_cache::StateTimeDependentCache,
     time_dependent_cache::TimeDependentCache,
     p_mutable::ParametersMutable,
 ) = water_balance!(
-    du,
-    u,
+    du_raw,
+    u_raw,
     p_independent,
     state_time_dependent_cache,
     time_dependent_cache,
@@ -30,16 +35,18 @@ water_balance!(
     t,
 )
 
-# Method with separate parameter parsable by DifferentiationInterface.jl for Jacobian computation
+# Method with separate parameter sections parsable by DifferentiationInterface.jl for Jacobian computation
 function water_balance!(
-    du::CVector,
-    u::CVector,
+    du_raw::AbstractVector,
+    u_raw::AbstractVector,
     p_independent::ParametersIndependent,
     state_time_dependent_cache::StateTimeDependentCache,
     time_dependent_cache::TimeDependentCache,
     p_mutable::ParametersMutable,
     t::Number,
 )::Nothing
+    du = wrap_state(du_raw, p_independent)
+    u = wrap_state(u_raw, p_independent)
     p = Parameters(
         p_independent,
         state_time_dependent_cache,
@@ -146,7 +153,7 @@ function set_current_basin_properties!(u::CVector, p::Parameters, t::Number)::No
 
     if p_mutable.new_t || p_mutable.new_u
         formulate_storages!(u, p, t)
-        @threads for i in eachindex(basin.node_id)
+        for i in eachindex(basin.node_id)
             id = basin.node_id[i]
             s = state_time_dependent_cache.current_storage[i]
             i = id.idx
@@ -221,8 +228,8 @@ function update_vertical_flux!(du::CVector, p::Parameters)::Nothing
 end
 
 function set_error!(pid_control::PidControl, p::Parameters, t::Number)
-    (; state_time_dependent_cache, time_dependent_cache, p_mutable) = p
-    (; current_level, current_error_pid_control, current_area) = state_time_dependent_cache
+    (; state_time_dependent_cache, time_dependent_cache) = p
+    (; current_level, current_error_pid_control) = state_time_dependent_cache
     (; current_target) = time_dependent_cache.pid_control
     (; listen_node_id, target) = pid_control
 
@@ -230,7 +237,7 @@ function set_error!(pid_control::PidControl, p::Parameters, t::Number)
         listened_node_id = listen_node_id[i]
         @assert listened_node_id.type == NodeType.Basin lazy"Listen node $listened_node_id is not a Basin."
         current_error_pid_control[i] =
-            eval_time_interp(target[i], current_target, i, p, t) -
+            eval_time_interp!(current_target, target[i], i, p, t) -
             current_level[listened_node_id.idx]
     end
 end
@@ -259,9 +266,9 @@ function formulate_pid_control!(du::CVector, u::CVector, p::Parameters, t::Numbe
 
         flow_rate = zero(eltype(du))
 
-        K_p = eval_time_interp(pid_control.proportional[i], current_proportional, i, p, t)
-        K_i = eval_time_interp(pid_control.integral[i], current_integral, i, p, t)
-        K_d = eval_time_interp(pid_control.derivative[i], current_derivative, i, p, t)
+        K_p = eval_time_interp!(current_proportional, pid_control.proportional[i], i, p, t)
+        K_i = eval_time_interp!(current_integral, pid_control.integral[i], i, p, t)
+        K_d = eval_time_interp!(current_derivative, pid_control.derivative[i], i, p, t)
 
         if !iszero(K_d)
             # dlevel/dstorage = 1/area
@@ -387,7 +394,7 @@ function formulate_flow!(
         q *= factor_level
         du.user_demand_inflow[id.idx] = q
         du.user_demand_outflow[id.idx] =
-            q * eval_time_interp(return_factor, current_return_factor, id.idx, p, t)
+            q * eval_time_interp!(current_return_factor, return_factor, id.idx, p, t)
     end
     return nothing
 end
@@ -658,7 +665,11 @@ function formulate_pump_or_outlet_flow!(
         end
 
         if control_type == ContinuousControlType.None
-            eval_time_interp(flow_rate_itp, current_flow_rate, id.idx, p, t)
+            # eval_time_interp is not used here because current_flow_rate
+            # lives in state_time_dependent_cache (for ContinuousControl support),
+            # and thus also has to be updated if t is not new but the last evaluation
+            # was with the other version of the cache (normal versus the one for AD)
+            current_flow_rate[id.idx] = flow_rate_itp(t)
         end
 
         flow_rate = current_flow_rate[id.idx]
@@ -670,8 +681,8 @@ function formulate_pump_or_outlet_flow!(
 
         q = flow_rate * get_low_storage_factor(p, inflow_id)
 
-        lower_bound = eval_time_interp(min_flow_rate, current_min_flow_rate, id.idx, p, t)
-        upper_bound = eval_time_interp(max_flow_rate, current_max_flow_rate, id.idx, p, t)
+        lower_bound = eval_time_interp!(current_min_flow_rate, min_flow_rate, id.idx, p, t)
+        upper_bound = eval_time_interp!(current_max_flow_rate, max_flow_rate, id.idx, p, t)
 
         # When allocation is not active, set the flow demand directly as a lower bound on the
         # pump or outlet flow rate
@@ -706,12 +717,12 @@ function formulate_pump_or_outlet_flow!(
         end
 
         min_upstream_level_ =
-            eval_time_interp(min_upstream_level, current_min_upstream_level, id.idx, p, t)
+            eval_time_interp!(current_min_upstream_level, min_upstream_level, id.idx, p, t)
         q *= reduction_factor(src_level - min_upstream_level_, 0.02)
 
-        max_downstream_level_ = eval_time_interp(
-            max_downstream_level,
+        max_downstream_level_ = eval_time_interp!(
             current_max_downstream_level,
+            max_downstream_level,
             id.idx,
             p,
             t,
@@ -793,12 +804,12 @@ Clamp the cumulative flow states within the minimum and maximum
 flow rates for the last time step if these flow rate bounds are known.
 """
 function limit_flow!(
-    u::CVector,
+    u_raw::AbstractVector,
     integrator::DEIntegrator,
     p::Parameters,
     t::Number,
 )::Nothing
-    (; uprev, dt) = integrator
+    (; dt) = integrator
     (; p_independent, state_time_dependent_cache) = p
     (;
         pump,
@@ -810,6 +821,8 @@ function limit_flow!(
         allocation,
     ) = p_independent
     (; current_storage, current_level) = state_time_dependent_cache
+    u = wrap_state(u_raw, p_independent)
+    uprev = wrap_state(integrator.uprev, p_independent)
 
     # The current storage and level based on the proposed u are used to estimate the lowest
     # storage and level attained in the last time step to estimate whether there was an effect

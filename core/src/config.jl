@@ -8,10 +8,11 @@ Ribasim.config is a submodule mainly to avoid name clashes between the configura
 """
 module config
 
-using ADTypes: AutoForwardDiff, AutoFiniteDiff
+using ADTypes: AutoForwardDiff, AutoMooncake, AutoFiniteDiff
 using Configurations: Configurations, @option, from_toml, @type_alias
 using DataStructures: OrderedDict
 using Dates: DateTime
+using DifferentiationInterface: AutoSparse, MixedMode
 using Logging: LogLevel, Debug, Info, Warn, Error
 using ..Ribasim: Ribasim, Table, Schema
 using OrdinaryDiffEqCore: OrdinaryDiffEqAlgorithm, OrdinaryDiffEqNewtonAdaptiveAlgorithm
@@ -21,12 +22,15 @@ using OrdinaryDiffEqTsit5: Tsit5
 using OrdinaryDiffEqSDIRK: ImplicitEuler, KenCarp4, TRBDF2
 using OrdinaryDiffEqBDF: FBDF, QNDF
 using OrdinaryDiffEqRosenbrock: Rosenbrock23, Rodas4P, Rodas5P
+using SparseConnectivityTracer: TracerSparsityDetector
+using SparseMatrixColorings: GreedyColoringAlgorithm, AbstractOrder, NaturalOrder
 using LinearSolve: KLUFactorization
 
 export Config, Solver, Results, Logging, Toml
 export algorithm,
     camel_case,
-    get_ad_type,
+    get_jac_ad_backend,
+    get_tgrad_ad_backend,
     snake_case,
     input_path,
     database_path,
@@ -358,16 +362,51 @@ function function_accepts_kwarg(f, kwarg)::Bool
     return false
 end
 
-function get_ad_type(solver::Solver; specialize = true)
+get_forward_mode_ad_type(; specialize::Bool = true) =
+    AutoForwardDiff(; chunksize = specialize ? nothing : 1, tag = :Ribasim_forward)
+
+function get_jac_ad_backend(
+    solver::Solver;
+    mixed_mode::Bool = true,
+    specialize = true,
+    order::Union{Function, Type{<:AbstractOrder}} = NaturalOrder,
+)
     if solver.autodiff
-        AutoForwardDiff(; chunksize = specialize ? nothing : 1, tag = :Ribasim)
+        forward_mode = get_forward_mode_ad_type(; specialize)
+        if solver.sparse
+            sparsity_detector = TracerSparsityDetector()
+            backend = if mixed_mode
+                reverse_mode = AutoMooncake()
+                backend = MixedMode(forward_mode, reverse_mode)
+            else
+                forward_mode
+            end
+            AutoSparse(
+                backend;
+                sparsity_detector,
+                coloring_algorithm = GreedyColoringAlgorithm{:substitution}(
+                    order();
+                    postprocessing = true,
+                ),
+            )
+        else
+            forward_mode
+        end
+    else
+        AutoFiniteDiff()
+    end
+end
+
+function get_tgrad_ad_backend(solver::Solver; specialize = true)
+    if solver.autodiff
+        get_forward_mode_ad_type(; specialize)
     else
         AutoFiniteDiff()
     end
 end
 
 "Create an OrdinaryDiffEqAlgorithm from solver config"
-function algorithm(solver::Solver; u0 = [], specialize = true)::OrdinaryDiffEqAlgorithm
+function algorithm(solver::Solver; specialize = true)::OrdinaryDiffEqAlgorithm
     kwargs = Dict{Symbol, Any}()
     algotype = algorithms[solver.algorithm]
 
@@ -380,10 +419,6 @@ function algorithm(solver::Solver; u0 = [], specialize = true)::OrdinaryDiffEqAl
 
     if function_accepts_kwarg(algotype, :step_limiter!)
         kwargs[:step_limiter!] = Ribasim.limit_flow!
-    end
-
-    if function_accepts_kwarg(algotype, :autodiff)
-        kwargs[:autodiff] = get_ad_type(solver; specialize)
     end
 
     algotype(; kwargs...)

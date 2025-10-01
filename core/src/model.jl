@@ -34,27 +34,24 @@ const specialize = @load_preference("specialize", true)
 Get the Jacobian evaluation function via DifferentiationInterface.jl.
 The time derivative is also supplied in case a Rosenbrock method is used.
 """
-function get_diff_eval(du::CVector, u::CVector, p::Parameters, solver::Solver)
+function get_diff_eval(
+    du_raw::AbstractVector,
+    u_raw::AbstractVector,
+    p::Parameters,
+    solver::Solver,
+)
     (; p_independent, state_time_dependent_cache, time_dependent_cache, p_mutable) = p
-    backend = get_ad_type(solver; specialize)
-    sparsity_detector = TracerSparsityDetector()
-
-    backend_jac = if solver.sparse
-        AutoSparse(backend; sparsity_detector, coloring_algorithm = GreedyColoringAlgorithm())
-    else
-        backend
-    end
-
     t = 0.0
 
     # Activate all nodes to catch all possible state dependencies
     p_mutable.all_nodes_active = true
 
-    jac_prep = prepare_jacobian(
+    # Get the Jacobian preparation data given a specified AD backend
+    jac_prep_from_backend(_backend) = prepare_jacobian(
         water_balance!,
-        du,
-        backend_jac,
-        u,
+        du_raw,
+        _backend,
+        u_raw,
         Constant(p_independent),
         Cache(state_time_dependent_cache),
         Constant(time_dependent_cache),
@@ -62,17 +59,15 @@ function get_diff_eval(du::CVector, u::CVector, p::Parameters, solver::Solver)
         Constant(t);
         strict = Val(true),
     )
-    p_mutable.all_nodes_active = false
 
-    jac_prototype = solver.sparse ? sparsity_pattern(jac_prep) : nothing
-
-    jac(J, u, p, t) = jacobian!(
+    # Compute the jacobian given inputs, Jacobian preparation data and AD backend
+    jac_from_jac_prep(J, u_raw, p, t, _jac_prep, _backend) = jacobian!(
         water_balance!,
-        du,
+        du_raw,
         J,
-        jac_prep,
-        backend_jac,
-        u,
+        _jac_prep,
+        _backend,
+        u_raw,
         Constant(p.p_independent),
         Cache(state_time_dependent_cache),
         Constant(time_dependent_cache),
@@ -80,26 +75,65 @@ function get_diff_eval(du::CVector, u::CVector, p::Parameters, solver::Solver)
         Constant(t),
     )
 
+    # Find the sparse matrix coloring that leads to the cheapest Jacobian evaluation
+    if solver.sparse
+        backend_jac = nothing
+        jac_prep = nothing
+        t_min_jac_eval = Inf
+        for order in
+            (NaturalOrder, LargestFirst, SmallestLast, IncidenceDegree, DynamicLargestFirst)
+            backend = get_jac_ad_backend(solver; order)
+            jac_prep_option = try
+                jac_prep_from_backend(backend)
+            catch
+                continue
+            end
+            J = Float64.(sparsity_pattern(jac_prep_option))
+            args = (J, u_raw, p, t, jac_prep_option, backend)
+            # First evaluate only for precompilation purposes
+            jac_from_jac_prep(args...)
+            t_jac_eval = @elapsed jac_from_jac_prep(args...)
+            if t_jac_eval < t_min_jac_eval
+                t_min_jac_eval = t_jac_eval
+                backend_jac = backend
+                jac_prep = jac_prep_option
+            end
+        end
+        if isnothing(jac_prep)
+            backend_jac = get_jac_ad_backend(solver; specialize, mixed_mode = false)
+            jac_prep = jac_prep_from_backend(backend_jac)
+        end
+        jac_prototype = sparsity_pattern(jac_prep)
+    else
+        backend_jac = get_jac_ad_backend(solver)
+        jac_prep = jac_prep_from_backend(backend_jac)
+        jac_prototype = nothing
+    end
+
+    jac(J, u_raw, p, t) = jac_from_jac_prep(J, u_raw, p, t, jac_prep, backend_jac)
+
+    # Gradients w.r.t. time required by Rosenbrock methods
+    backend_tgrad = get_tgrad_ad_backend(solver; specialize)
     tgrad_prep = prepare_derivative(
         water_balance!,
-        du,
-        backend,
+        du_raw,
+        backend_tgrad,
         t,
-        Constant(u),
+        Constant(u_raw),
         Constant(p_independent),
         Cache(state_time_dependent_cache),
         Cache(time_dependent_cache),
         Constant(p_mutable);
         strict = Val(true),
     )
-    tgrad(dT, u, p, t) = derivative!(
+    tgrad(dT, u_raw, p, t) = derivative!(
         water_balance!,
-        du,
+        du_raw,
         dT,
         tgrad_prep,
-        backend,
+        backend_tgrad,
         t,
-        Constant(u),
+        Constant(u_raw),
         Constant(p.p_independent),
         Cache(state_time_dependent_cache),
         Cache(time_dependent_cache),
@@ -107,8 +141,9 @@ function get_diff_eval(du::CVector, u::CVector, p::Parameters, solver::Solver)
     )
 
     time_dependent_cache.t_prev_call[1] = -1.0
+    p_mutable.all_nodes_active = false
 
-    return jac_prototype, jac, tgrad
+    return (; jac_prototype, jac, tgrad)
 end
 
 function Model(config_path::AbstractString)::Model
@@ -181,7 +216,8 @@ function Model(config::Config)::Model
     end
     @debug "Read database into memory."
 
-    u0 = build_state_vector(parameters.p_independent)
+    u0_raw = zeros(p_independent.n_states)
+    u0 = wrap_state(u0_raw, p_independent)
     if isempty(u0)
         @error "Models without states are unsupported, please add a Basin node."
         error("Model has no state.")
@@ -189,10 +225,10 @@ function Model(config::Config)::Model
 
     reltol, relmask = build_reltol_vector(u0, config.solver.reltol)
     parameters.p_independent.relmask .= relmask
-    du0 = zero(u0)
+    du0_raw = zero(u0_raw)
 
     # The Solver algorithm
-    alg = algorithm(config.solver; u0, specialize)
+    alg = algorithm(config.solver; specialize)
 
     # Synchronize level with storage
     set_current_basin_properties!(u0, parameters, t0)
@@ -206,16 +242,13 @@ function Model(config::Config)::Model
     tstops = sort(unique(reduce(vcat, tstops)))
     adaptive, dt = convert_dt(config.solver.dt)
 
-    jac_prototype, jac, tgrad = get_diff_eval(du0, u0, parameters, config.solver)
     RHS = ODEFunction{true, specialize ? FullSpecialize : NoSpecialize}(
         water_balance!;
-        jac_prototype,
-        jac,
-        tgrad,
+        get_diff_eval(du0_raw, u0_raw, parameters, config.solver)...,
     )
     prob = ODEProblem{true, specialize ? FullSpecialize : NoSpecialize}(
         RHS,
-        u0,
+        u0_raw,
         timespan,
         parameters;
     )
@@ -227,7 +260,7 @@ function Model(config::Config)::Model
     # Run water_balance! before initializing the integrator. This is because
     # at this initialization the discrete control callback is called for the first
     # time which depends on the flows formulated in water_balance!
-    water_balance!(du0, u0, parameters, t0)
+    water_balance!(du0_raw, u0_raw, parameters, t0)
 
     # Initialize the integrator, providing all solver options as described in
     # https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/

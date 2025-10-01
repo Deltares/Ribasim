@@ -1607,6 +1607,8 @@ function Parameters(db::DB, config::Config)::Parameters
         graph,
         allocation,
         nodes...,
+        n_states,
+        state_ranges,
         subgrid,
         state_inflow_link,
         state_outflow_link,
