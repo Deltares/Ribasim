@@ -19,19 +19,14 @@ using Preferences: @load_preference
 
 # Requirements for automatic differentiation
 using DifferentiationInterface:
-    AutoSparse,
-    Constant,
-    Cache,
-    prepare_jacobian,
-    jacobian!,
-    prepare_derivative,
-    derivative!
+    Constant, Cache, prepare_jacobian, jacobian!, prepare_derivative, derivative!
 
 using ForwardDiff: derivative as forward_diff
 
 # Algorithms for solving ODEs.
 using OrdinaryDiffEqCore: OrdinaryDiffEqCore, get_du
 import ForwardDiff
+import Mooncake
 
 # Interface for defining and solving the ODE problem of the physical layer.
 using SciMLBase:
@@ -49,8 +44,15 @@ using SciMLBase:
 
 # Automatically detecting the sparsity pattern of the Jacobian of water_balance!
 # through operator overloading
-using SparseConnectivityTracer: GradientTracer, TracerSparsityDetector
-using SparseMatrixColorings: GreedyColoringAlgorithm, sparsity_pattern
+using SparseConnectivityTracer: GradientTracer
+using SparseMatrixColorings:
+    NaturalOrder,
+    LargestFirst,
+    SmallestLast,
+    IncidenceDegree,
+    DynamicLargestFirst,
+    DynamicDegreeBasedOrder,
+    sparsity_pattern
 
 # For efficient sparse computations
 using SparseArrays: SparseMatrixCSC, spzeros, sparse

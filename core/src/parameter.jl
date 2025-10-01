@@ -28,6 +28,7 @@ const state_components = (
 )
 const n_components = length(state_components)
 const StateTuple{V} = NamedTuple{state_components, NTuple{n_components, V}}
+const StateRanges = NamedTuple{state_components, NTuple{n_components, UnitRange{Int}}}
 const RibasimCVectorType =
     Ribasim.CArrays.CArray{Float64, 1, Vector{Float64}, StateTuple{UnitRange{Int}}}
 
@@ -1131,6 +1132,10 @@ the object itself is not.
     level_demand::LevelDemand
     flow_demand::FlowDemand
     subgrid::Subgrid
+    # The number of states
+    n_states::Int
+    # The ranges defining the state partition
+    state_ranges::StateRanges
     # Per state the in- and outflow links associated with that state (if they exist)
     state_inflow_link::Vector{LinkMetadata} = LinkMetadata[]
     state_outflow_link::Vector{LinkMetadata} = LinkMetadata[]
@@ -1167,7 +1172,7 @@ function StateTimeDependentCache(
         current_flow_rate_pump = zeros(n_pump),
         current_flow_rate_outlet = zeros(n_outlet),
         current_error_pid_control = zeros(n_pid_control),
-        u_prev_call = getdata(build_state_vector(p_independent)) .- 1.0,
+        u_prev_call = zeros(p_independent.n_states) .- 1.0,
     )
 end
 

@@ -45,7 +45,7 @@ Base.size(x::CArray) = size(getdata(x))
 Base.length(x::CArray) = length(getdata(x))
 Base.getindex(x::CArray, i::Int) = getdata(x)[i]
 Base.getindex(x::CArray, I...) = getdata(x)[I...]
-Base.IndexStyle(::Type{CArray}) = IndexLinear()
+Base.IndexStyle(::Type{<:CArray}) = IndexLinear()
 Base.elsize(x::CArray) = Base.elsize(getdata(x))
 
 # Linear algebra
