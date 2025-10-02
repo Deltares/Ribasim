@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 from ribasim import Model
 from ribasim.delwaq import add_tracer, generate, parse, run_delwaq
+from ribasim.delwaq.util import model_dir
 
 delwaq_dir = Path(__file__).parent
 
@@ -24,11 +25,10 @@ def test_offline_delwaq_coupling():
     model = Model.read(toml_path)
     add_tracer(model, 11, "Foo")
     add_tracer(model, 15, "Bar")
-    model.write(toml_path)
 
-    graph, substances = generate(toml_path)
-    run_delwaq()
-    model = parse(toml_path, graph, substances)
+    graph, substances = generate(model, model_dir)
+    run_delwaq(model_dir)
+    parse(model, graph, substances, model_dir)
 
     df = model.basin.concentration_external.df
     assert df is not None
@@ -44,7 +44,12 @@ def test_offline_delwaq_coupling():
         "Initial",
         "LevelBoundary",
         "Precipitation",
+        "Surface_Runoff",
         "Terminal",
         "Tracer",
         "UserDemand",
     ]
+
+    assert all(df[df.substance == "Continuity"].concentration == pytest.approx(1.0))
+
+    model.write(toml_path)

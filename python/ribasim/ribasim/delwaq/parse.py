@@ -10,17 +10,17 @@ try:
 except ImportError:
     xu = MissingOptionalModule("xugrid", "delwaq")
 
-delwaq_dir = Path(__file__).parent
-repo_dir = delwaq_dir.parents[1]
-output_folder = delwaq_dir / "model"
-
 
 def parse(
-    toml_path: Path, graph, substances, output_folder=output_folder
+    model: Path | ribasim.Model, graph, substances, output_folder=None
 ) -> ribasim.Model:
-    model = ribasim.Model.read(toml_path)
+    if not isinstance(model, ribasim.Model):
+        model = ribasim.Model.read(model)
 
     # Output of Delwaq
+    if output_folder is None:
+        assert model.filepath is not None
+        output_folder = model.filepath.parent / "delwaq"
     ug = xu.open_dataset(output_folder / "delwaq_map.nc")
 
     mapping = dict(graph.nodes(data="id"))
@@ -51,6 +51,6 @@ def parse(
     df.sort_values(["time", "node_id"], inplace=True)
 
     model.basin.concentration_external = df
-    df.to_feather(toml_path.parent / "results" / "basin_concentration_external.arrow")
+    df.to_feather(model.results_path / "basin_concentration_external.arrow")
 
     return model
