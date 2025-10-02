@@ -661,7 +661,8 @@ function add_demand_objectives!(
         # Add UserDemand, FlowDemand and secondary network errors
         error_collections = [user_demand_error, flow_demand_error]
         if is_primary_network(subnetwork_id)
-            push!(error_collections, problem[:secondary_network_error])
+            subnetwork_demand_error = problem[:secondary_network_error]
+            push!(error_collections, subnetwork_demand_error)
         end
 
         for error_collection in error_collections
@@ -763,8 +764,29 @@ function add_demand_objectives!(
         ],
         flow_demand_error[node_id, demand_priority, :second] ≥
         flow_demand_error[node_id, demand_priority, :first] -
-        average_flow_unit_error[demand_priority]
+        average_flow_unit_error[demand_priority],
+        base_name = "flow_demand_fairness_error_constraint"
     )
+
+    # If this is the primary network, also add fairness constraints for secondary network demands
+    if is_primary_network(subnetwork_id)
+        subnetwork_demand_error = problem[:secondary_network_error]
+        # Sort connections for deterministic problem generation
+        connecting_links =
+            vcat(sort!(collect(values(allocation.primary_network_connections)))...)
+
+        problem[:subnetwork_demand_fairness_error_constraint] = JuMP.@constraint(
+            problem,
+            [
+                link = connecting_links,
+                demand_priority = DemandPriorityIterator(link, p_independent),
+            ],
+            subnetwork_demand_error[link, demand_priority, :second] ≥
+            subnetwork_demand_error[link, demand_priority, :first] -
+            average_flow_unit_error[demand_priority],
+            base_name = "subnetwork_demand_fairness_error_constraint"
+        )
+    end
 
     # Define variables: average level error for storage unit demands (LevelDemand) per demand priority (m)
     average_storage_unit_error =
