@@ -459,7 +459,7 @@ end
     formulate_storages!(u, p, t)
     @test only(state_time_dependent_cache.current_storage) ≈ 500 atol = 2
 
-    # Trasient return factor
+    # Transient return factor
     flow = DataFrame(Ribasim.flow_data(model))
     return_factor_itp = p_independent.user_demand.return_factor[3]
     flow_in =
