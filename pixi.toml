@@ -19,7 +19,7 @@ test-ribasim-python-cov = "pytest --numprocesses=4 --cov=ribasim --cov-report=xm
 test-ribasim-api = "pytest --basetemp=python/ribasim_api/tests/temp --junitxml=report.xml python/ribasim_api/tests"
 # Installation
 # Keep Julia version synced with julia.executablePath in .vscode/settings.json
-install-julia = "juliaup add 1.11.6 && juliaup override set 1.11.6"
+install-julia = "juliaup add 1.11.7 && juliaup override set 1.11.7"
 install-pre-commit = "pre-commit install"
 # Note that this has a Windows specific override
 install-ci = { depends-on = ["install-julia", "update-registry-julia"] }
