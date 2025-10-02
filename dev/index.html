@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.7.33">
+<meta name="generator" content="quarto-1.8.25">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -68,14 +68,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../dev/core.html" rel="next">
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../site_libs/quarto-html/axe/axe-check.js" type="module"></script>
 <script src="../site_libs/quarto-html/popper.min.js"></script>
 <script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
 <script src="../site_libs/quarto-html/anchor.min.js"></script>
 <link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="../site_libs/quarto-html/quarto-syntax-highlighting-ea385d0e468b0dd5ea5bf0780b1290d9.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-7b89279ff1a6dce999919e0e67d4d9ec.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-0dab428fd1ac68d91f80535f802a2546.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-0b1189524dc19e09ab363e9b4d3e2f65.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script src="../site_libs/quarto-contrib/kbd/kbd.js"></script>
 <link href="../site_libs/quarto-contrib/kbd/kbd.css" rel="stylesheet">
 <script id="quarto-search-options" type="application/json">{
@@ -118,7 +119,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <div class="navbar-container container-fluid">
       <div class="navbar-brand-container mx-auto">
     <a href="../index.html" class="navbar-brand navbar-brand-logo">
-    <img src="https://user-images.githubusercontent.com/4471859/224825908-bee7e044-bc6b-4561-8b08-5d330cce3ed5.png" alt="" class="navbar-logo">
+    <img src="https://user-images.githubusercontent.com/4471859/224825908-bee7e044-bc6b-4561-8b08-5d330cce3ed5.png" alt="" class="navbar-logo light-content">
+    <img src="https://user-images.githubusercontent.com/4471859/224825908-bee7e044-bc6b-4561-8b08-5d330cce3ed5.png" alt="" class="navbar-logo dark-content">
     </a>
     <a class="navbar-brand" href="../index.html">
     <span class="navbar-title">Ribasim</span>
@@ -131,7 +133,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
           <div class="collapse navbar-collapse" id="navbarCollapse">
             <ul class="navbar-nav navbar-nav-scroll me-auto">
   <li class="nav-item">
-    <a class="nav-link" href="../index.html"> 
+    <a class="nav-link active" href="../index.html" aria-current="page"> 
 <span class="menu-text">Overview</span></a>
   </li>  
   <li class="nav-item">
@@ -153,7 +155,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </ul>
             <ul class="navbar-nav navbar-nav-scroll ms-auto">
   <li class="nav-item">
-    <a class="nav-link active" href="../dev/index.html" aria-current="page"> 
+    <a class="nav-link" href="../dev/index.html"> 
 <span class="menu-text">Contributing</span></a>
   </li>  
   <li class="nav-item compact">
@@ -182,6 +184,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
 <!-- sidebar -->
   <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="pt-lg-2 mt-2 text-left sidebar-header sidebar-header-stacked">
+      <a href="../index.html" class="sidebar-logo-link">
+      </a>
+      </div>
     <div class="sidebar-menu-container"> 
     <ul class="list-unstyled mt-1">
         <li class="sidebar-item">
@@ -320,8 +326,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>We require at least Pixi version v0.48.1, but generally recommend the latest release. Check the version with <code>pixi --version</code>, update with <code>pixi self-update</code>.</p>
 <p>Windows users should <a href="https://learn.microsoft.com/en-us/windows/apps/get-started/enable-your-device-for-development#activate-developer-mode">enable Developer Mode</a>, because the install task creates symlinks for the QGIS plugin.</p>
 <p>Then set up the environment by running the following command. It will take a while. You can interrupt the task if you don’t want to precompile the Julia dependencies at this moment, because that is the last task. Check out the <code>pixi.toml</code> file to see the tasks that are part of this, you can also run them individually.</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run install</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<p>The install task automatically installs all required Python and Julia packages for development. Our Pixi environment also provides Juliaup, QGIS and the Rust compiler. These will not conflict with any pre-installed applications, as long as you have the pixi environment enabled. You can do this in a terminal by calling <code>pixi shell</code>, or starting programs with <code>pixi run julia</code>, or <code>pixi run qgis</code>. The first time you open the Ribasim repo in Visual Studio Code you need to tell it where it can find the Pixi environment. Open the command box with <kbd aria-hidden="true">Ctrl+Shift+P</kbd><span class="visually-hidden">Ctrl+Shift+P</span> (<kbd aria-hidden="true">Cmd+Shift+P</kbd><span class="visually-hidden">Cmd+Shift+P</span> on macOS) and run <code>Python: Select Interpreter</code>. Select <code>('default': Pixi)</code> in the <code>/.pixi</code> folder. Unless the setting <code>python.terminal.activateEnvironment</code> is disabled, it will already activate the environment in your terminal.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run install</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The install task automatically installs all required Python and Julia packages for development. Our Pixi environment also provides Juliaup, QGIS and the Rust compiler. These will not conflict with any pre-installed applications, as long as you have the pixi environment enabled. You can do this in a terminal by calling <code>pixi shell</code>, or starting programs with <code>pixi run julia</code>, or <code>pixi run qgis</code>. The first time you open the Ribasim repo in Visual Studio Code you need to tell it where it can find the Pixi environment. Open the command box with <kbd title="Ctrl+Shift+P" aria-hidden="true">Ctrl+Shift+P</kbd><span class="visually-hidden">Ctrl+Shift+P</span> (<kbd title="Cmd+Shift+P" aria-hidden="true">Cmd+Shift+P</kbd><span class="visually-hidden">Cmd+Shift+P</span> on macOS) and run <code>Python: Select Interpreter</code>. Select <code>('default': Pixi)</code> in the <code>/.pixi</code> folder. Unless the setting <code>python.terminal.activateEnvironment</code> is disabled, it will already activate the environment in your terminal.</p>
 <p>If you encounter issues related to Pixi dependencies, it might help to clean your Pixi environment with <code>pixi clean</code>, followed by <code>pixi run install</code>.</p>
 </section>
 <section id="option-2-use-a-devcontainer" class="level2" data-number="1.2">
@@ -330,7 +336,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <ol type="1">
 <li>Install <a href="https://code.visualstudio.com/">Visual Studio Code</a> and the <a href="https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers">Remote - Containers</a> extension.</li>
 <li>Install <a href="https://www.docker.com/products/docker-desktop/">Docker Desktop</a> and ensure it’s running.</li>
-<li>Press <kbd aria-hidden="true">Ctrl+Shift+P</kbd><span class="visually-hidden">Ctrl+Shift+P</span> (or <kbd aria-hidden="true">Cmd+Shift+P</kbd><span class="visually-hidden">Cmd+Shift+P</span> on macOS) and select <code>Dev Containers: Clone Repository in Container Volume</code>.</li>
+<li>Press <kbd title="Ctrl+Shift+P" aria-hidden="true">Ctrl+Shift+P</kbd><span class="visually-hidden">Ctrl+Shift+P</span> (or <kbd title="Cmd+Shift+P" aria-hidden="true">Cmd+Shift+P</kbd><span class="visually-hidden">Cmd+Shift+P</span> on macOS) and select <code>Dev Containers: Clone Repository in Container Volume</code>.</li>
 <li>Paste https://github.com/Deltares/Ribasim.git in the prompt and continue</li>
 </ol>
 <p>This will pull the repo, build the devcontainer image and start a new container with all the necessary dependencies. The build and install will take a few minutes to complete.</p>
@@ -349,9 +355,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 data-number="1.4" class="anchored" data-anchor-id="clone-ribasim"><span class="header-section-number">1.4</span> Clone Ribasim</h2>
 <p>In order to have the Ribasim repository locally available, you can clone it with Git. Git can be installed from <a href="https://git-scm.com/downloads">git-scm.com</a>. Once installed, run the following command at a directory of your choice:</p>
 <p>In order to have the Ribasim repository locally available, run the following command at a directory of your choice:</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> clone https://github.com/Deltares/Ribasim.git</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> clone https://github.com/Deltares/Ribasim.git</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>To continue with the following steps, make the root of the repository your working directory by running</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> Ribasim</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> Ribasim</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 
 
 </section>
@@ -409,13 +415,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       e.clearSelection();
     }
     const getTextToCopy = function(trigger) {
-        const codeEl = trigger.previousElementSibling.cloneNode(true);
-        for (const childEl of codeEl.children) {
-          if (isCodeAnnotation(childEl)) {
-            childEl.remove();
-          }
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
         }
-        return codeEl.innerText;
+      }
+      return codeEl.innerText;
     }
     const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
       text: getTextToCopy

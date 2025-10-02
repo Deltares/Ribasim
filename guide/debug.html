@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.7.33">
+<meta name="generator" content="quarto-1.8.25">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -68,14 +68,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../guide/delwaq.html" rel="prev">
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../site_libs/quarto-html/axe/axe-check.js" type="module"></script>
 <script src="../site_libs/quarto-html/popper.min.js"></script>
 <script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
 <script src="../site_libs/quarto-html/anchor.min.js"></script>
 <link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="../site_libs/quarto-html/quarto-syntax-highlighting-ea385d0e468b0dd5ea5bf0780b1290d9.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-7b89279ff1a6dce999919e0e67d4d9ec.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-0dab428fd1ac68d91f80535f802a2546.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-0b1189524dc19e09ab363e9b4d3e2f65.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -116,7 +117,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <div class="navbar-container container-fluid">
       <div class="navbar-brand-container mx-auto">
     <a href="../index.html" class="navbar-brand navbar-brand-logo">
-    <img src="https://user-images.githubusercontent.com/4471859/224825908-bee7e044-bc6b-4561-8b08-5d330cce3ed5.png" alt="" class="navbar-logo">
+    <img src="https://user-images.githubusercontent.com/4471859/224825908-bee7e044-bc6b-4561-8b08-5d330cce3ed5.png" alt="" class="navbar-logo light-content">
+    <img src="https://user-images.githubusercontent.com/4471859/224825908-bee7e044-bc6b-4561-8b08-5d330cce3ed5.png" alt="" class="navbar-logo dark-content">
     </a>
     <a class="navbar-brand" href="../index.html">
     <span class="navbar-title">Ribasim</span>
@@ -129,7 +131,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
           <div class="collapse navbar-collapse" id="navbarCollapse">
             <ul class="navbar-nav navbar-nav-scroll me-auto">
   <li class="nav-item">
-    <a class="nav-link" href="../index.html"> 
+    <a class="nav-link active" href="../index.html" aria-current="page"> 
 <span class="menu-text">Overview</span></a>
   </li>  
   <li class="nav-item">
@@ -137,7 +139,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span class="menu-text">Tutorials</span></a>
   </li>  
   <li class="nav-item">
-    <a class="nav-link active" href="../guide/examples.html" aria-current="page"> 
+    <a class="nav-link" href="../guide/examples.html"> 
 <span class="menu-text">How-to guides</span></a>
   </li>  
   <li class="nav-item">
@@ -180,6 +182,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
 <!-- sidebar -->
   <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="pt-lg-2 mt-2 text-left sidebar-header sidebar-header-stacked">
+      <a href="../index.html" class="sidebar-logo-link">
+      </a>
+      </div>
     <div class="sidebar-menu-container"> 
     <ul class="list-unstyled mt-1">
         <li class="sidebar-item">
@@ -275,24 +281,24 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="slow-models" class="level2" data-number="1">
 <h2 data-number="1" class="anchored" data-anchor-id="slow-models"><span class="header-section-number">1</span> Slow models</h2>
 <p>When your model is slow, it’s often only a handful of nodes that are hard to solve. If the model finishes or is interrupted, convergence bottlenecks are shown like so:</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>┌ Info<span class="op">:</span> Convergence bottlenecks <span class="kw">in</span> descending order of severity<span class="op">:</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>┌ Info<span class="op">:</span> Convergence bottlenecks <span class="kw">in</span> descending order of severity<span class="op">:</span></span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>│   ManningResistance <span class="co">#251242 = 0.09023997405863035</span></span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>│   ManningResistance <span class="co">#70523 = 0.006218636603583534</span></span>
 <span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>│   ManningResistance <span class="co">#251181 = 0.004716432403226626</span></span>
 <span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>│   ManningResistance <span class="co">#251182 = 0.0035319514660666165</span></span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>└   ManningResistance <span class="co">#591558 = 0.003284110004804508</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>└   ManningResistance <span class="co">#591558 = 0.003284110004804508</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>It’s best to inspect these nodes, and try to adjust the parametrization, or merge smaller nodes. You can find the convergence measure per node over time in the <code>flow.arrow</code> and <code>basin.arrow</code> <a href="../reference/usage.html#sec-results">output files</a>.</p>
 <p>To gain further insight into model performance, one can inspect the <code>solver_stats.arrow</code> output file, which gives the number of computations, number of rejected and accepted solutions, and the size of each calculation timestep.</p>
 </section>
 <section id="unstable-models" class="level2" data-number="2">
 <h2 data-number="2" class="anchored" data-anchor-id="unstable-models"><span class="header-section-number">2</span> Unstable models</h2>
 <p>When your model exits with a message like so:</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>┌ Error<span class="op">:</span> The model exited at model time <span class="fl">2024</span><span class="op">-</span><span class="fl">01</span><span class="op">-</span><span class="fl">27</span>T14<span class="op">:</span><span class="fl">46</span><span class="op">:</span><span class="fl">17.791</span> with <span class="cf">return</span> code Unstable. See https<span class="op">://</span>docs.sciml.ai<span class="op">/</span>DiffEqDocs<span class="op">/</span>stable<span class="op">/</span>basics<span class="op">/</span>solution<span class="op">/</span><span class="co">#retcodes</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>┌ Error<span class="op">:</span> The model exited at model time <span class="fl">2024</span><span class="op">-</span><span class="fl">01</span><span class="op">-</span><span class="fl">27</span>T14<span class="op">:</span><span class="fl">46</span><span class="op">:</span><span class="fl">17.791</span> with <span class="cf">return</span> code Unstable. See https<span class="op">://</span>docs.sciml.ai<span class="op">/</span>DiffEqDocs<span class="op">/</span>stable<span class="op">/</span>basics<span class="op">/</span>solution<span class="op">/</span><span class="co">#retcodes</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>it’s best to rerun the model with <code>saveat = 0</code> in the <a href="../reference/usage.html#sec-solver-settings">solver</a> settings. The model might then instead exit with</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>┌ Error<span class="op">:</span> Too large water balance error</span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>┌ Error<span class="op">:</span> Too large water balance error</span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>│   id <span class="op">=</span> Basin <span class="co">#2</span></span>
 <span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>│   balance_error <span class="op">=</span> <span class="fl">0.0017985748886167501</span></span>
-<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>│   relative_error <span class="op">=</span> <span class="fl">1.3503344464431657</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>│   relative_error <span class="op">=</span> <span class="fl">1.3503344464431657</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>which helps you pin down the problematic node(s). The normal output for every calculation timestep is written until the moment of error, so one can use this information to understand the problem.</p>
 
 
@@ -350,13 +356,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       e.clearSelection();
     }
     const getTextToCopy = function(trigger) {
-        const codeEl = trigger.previousElementSibling.cloneNode(true);
-        for (const childEl of codeEl.children) {
-          if (isCodeAnnotation(childEl)) {
-            childEl.remove();
-          }
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
         }
-        return codeEl.innerText;
+      }
+      return codeEl.innerText;
     }
     const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
       text: getTextToCopy

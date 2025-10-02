@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.7.33">
+<meta name="generator" content="quarto-1.8.25">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -69,14 +69,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../dev/benchmark.html" rel="prev">
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../site_libs/quarto-html/axe/axe-check.js" type="module"></script>
 <script src="../site_libs/quarto-html/popper.min.js"></script>
 <script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
 <script src="../site_libs/quarto-html/anchor.min.js"></script>
 <link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="../site_libs/quarto-html/quarto-syntax-highlighting-ea385d0e468b0dd5ea5bf0780b1290d9.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-7b89279ff1a6dce999919e0e67d4d9ec.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-0dab428fd1ac68d91f80535f802a2546.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-0b1189524dc19e09ab363e9b4d3e2f65.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -119,7 +120,7 @@ const typesetMath = (el) => {
     var macros = [];
     for (var i = 0; i < mathElements.length; i++) {
       var texText = mathElements[i].firstChild;
-      if (mathElements[i].tagName == "SPAN") {
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
         window.katex.render(texText.data, mathElements[i], {
           displayMode: mathElements[i].classList.contains('display'),
           throwOnError: false,
@@ -146,7 +147,8 @@ window.Quarto = {
       <div class="navbar-container container-fluid">
       <div class="navbar-brand-container mx-auto">
     <a href="../index.html" class="navbar-brand navbar-brand-logo">
-    <img src="https://user-images.githubusercontent.com/4471859/224825908-bee7e044-bc6b-4561-8b08-5d330cce3ed5.png" alt="" class="navbar-logo">
+    <img src="https://user-images.githubusercontent.com/4471859/224825908-bee7e044-bc6b-4561-8b08-5d330cce3ed5.png" alt="" class="navbar-logo light-content">
+    <img src="https://user-images.githubusercontent.com/4471859/224825908-bee7e044-bc6b-4561-8b08-5d330cce3ed5.png" alt="" class="navbar-logo dark-content">
     </a>
     <a class="navbar-brand" href="../index.html">
     <span class="navbar-title">Ribasim</span>
@@ -159,7 +161,7 @@ window.Quarto = {
           <div class="collapse navbar-collapse" id="navbarCollapse">
             <ul class="navbar-nav navbar-nav-scroll me-auto">
   <li class="nav-item">
-    <a class="nav-link" href="../index.html"> 
+    <a class="nav-link active" href="../index.html" aria-current="page"> 
 <span class="menu-text">Overview</span></a>
   </li>  
   <li class="nav-item">
@@ -181,7 +183,7 @@ window.Quarto = {
 </ul>
             <ul class="navbar-nav navbar-nav-scroll ms-auto">
   <li class="nav-item">
-    <a class="nav-link active" href="../dev/index.html" aria-current="page"> 
+    <a class="nav-link" href="../dev/index.html"> 
 <span class="menu-text">Contributing</span></a>
   </li>  
   <li class="nav-item compact">
@@ -210,6 +212,10 @@ window.Quarto = {
 <div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
 <!-- sidebar -->
   <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="pt-lg-2 mt-2 text-left sidebar-header sidebar-header-stacked">
+      <a href="../index.html" class="sidebar-logo-link">
+      </a>
+      </div>
     <div class="sidebar-menu-container"> 
     <ul class="list-unstyled mt-1">
         <li class="sidebar-item">
@@ -352,15 +358,15 @@ window.Quarto = {
 <section id="parameters" class="level2" data-number="1.1">
 <h2 data-number="1.1" class="anchored" data-anchor-id="parameters"><span class="header-section-number">1.1</span> Parameters</h2>
 <p>The parameters object (defined in <code>parameter.jl</code>) passed to the ODE solver must be made aware of the new node type. Therefore define a struct in <code>parameter.jl</code> which holds the data for each node of the new node type:</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">struct</span> NewNodeType <span class="op">&lt;:</span><span class="dt"> AbstractParameterNode</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">struct</span> NewNodeType <span class="op">&lt;:</span><span class="dt"> AbstractParameterNode</span></span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    node_id<span class="op">::</span><span class="dt">Vector{NodeID}</span></span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Other fields</span></span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Another abstract type which subtypes from <code>AbstractParameterNode</code> is called <code>AbstractDemandNode</code>. For creating new node type used in allocation, define a struct:</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">struct</span> NewNodeType <span class="op">&lt;:</span><span class="dt"> AbstractDemandNode</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">struct</span> NewNodeType <span class="op">&lt;:</span><span class="dt"> AbstractDemandNode</span></span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    node_id<span class="op">::</span><span class="dt">Vector{NodeID}</span></span>
 <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Other fields</span></span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>These fields do not have to correspond 1:1 with the input tables (see below). The vector with all node IDs that are of the new type in a given model is a mandatory field. Now you can:</p>
 <ul>
 <li>Add <code>new_node_type::NewNodeType</code> to the Parameters object;</li>
@@ -370,7 +376,7 @@ window.Quarto = {
 <section id="reading-from-configuration" class="level2" data-number="1.2">
 <h2 data-number="1.2" class="anchored" data-anchor-id="reading-from-configuration"><span class="header-section-number">1.2</span> Reading from configuration</h2>
 <p>There can be several schemas associated with a single node type. To define a schema for the new node type, add the following to <code>schema.jl</code>:</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="pp">@schema</span> <span class="st">"ribasim.newnodetype.static"</span> NewNodeTypeStatic</span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="pp">@schema</span> <span class="st">"ribasim.newnodetype.static"</span> NewNodeTypeStatic</span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="st">"""</span></span>
 <span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="st">node_id: node ID of the NewNodeType node</span></span>
@@ -378,11 +384,11 @@ window.Quarto = {
 <span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="pp">@version</span> NewNodeTypeStaticV1 <span class="cf">begin</span></span>
 <span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>    node_id<span class="op">::</span><span class="dt">Int32</span></span>
 <span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Other fields</span></span>
-<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Here <code>static</code> refers to data that does not change over time. For naming conventions of these schemas see <a href="../reference/usage.html#sec-node">Node usage</a>. If a new schema contains a <code>demand_priority</code> column for allocation, it must also be added to the list of all such schemas in the function <code>get_all_priorities</code> in <code>util.jl</code>.</p>
 <p><code>validation.jl</code> deals with checking and applying a specific sorting order for the tabular data (default is sorting by node ID only), see <code>sort_by_function</code> and <code>sorted_table!</code>.</p>
 <p>Now we define the function that is called in the second bullet above, in <code>read.jl</code>:</p>
-<div class="sourceCode" id="cb4"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">NewNodeType</span>(db<span class="op">::</span><span class="dt">DB</span>, config<span class="op">::</span><span class="dt">Config</span>)<span class="op">::</span><span class="dt">NewNodeType</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">NewNodeType</span>(db<span class="op">::</span><span class="dt">DB</span>, config<span class="op">::</span><span class="dt">Config</span>)<span class="op">::</span><span class="dt">NewNodeType</span></span>
 <span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    static <span class="op">=</span> <span class="fu">load_structvector</span>(db, config, NewNodeTypeStaticV1)</span>
 <span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    defaults <span class="op">=</span> (; foo <span class="op">=</span> <span class="fl">1</span>, bar <span class="op">=</span> <span class="cn">false</span>)</span>
 <span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Process potential control states in the static data</span></span>
@@ -397,12 +403,12 @@ window.Quarto = {
 <span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>        <span class="fu">NodeID</span>.(NodeType.NewNodeType, parsed_parameters.node_id),</span>
 <span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>        parsed_parameters.some_property,</span>
 <span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>        parsed_parameters.control_mapping)</span>
-<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
 <section id="node-behavior" class="level2" data-number="1.3">
 <h2 data-number="1.3" class="anchored" data-anchor-id="node-behavior"><span class="header-section-number">1.3</span> Node behavior</h2>
 <p>In general if the new node type dictates flow, the behavior of the new node in the Ribasim core is defined in a method of the <code>formulate_flow!</code> function, which is called within the <code>water_balance!</code> (both in <code>solve.jl</code>) function being the right hand side of the system of differential equations solved by Ribasim. Here the details depend highly on the specifics of the node type. An example structure of a <code>formulate_flow!</code> method is given below.</p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">formulate_flow!</span>(new_node_type<span class="op">::</span><span class="dt">NewNodeType</span>, p<span class="op">::</span><span class="dt">Parameters</span>)<span class="op">::</span><span class="dt">Nothing</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">formulate_flow!</span>(new_node_type<span class="op">::</span><span class="dt">NewNodeType</span>, p<span class="op">::</span><span class="dt">Parameters</span>)<span class="op">::</span><span class="dt">Nothing</span></span>
 <span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Retrieve relevant parameters</span></span>
 <span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    (; graph) <span class="op">=</span> p</span>
 <span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    (; node_id, param_1, param_2) <span class="op">=</span> new_node_type</span>
@@ -413,7 +419,7 @@ window.Quarto = {
 <span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">end</span></span>
 <span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="cn">nothing</span></span>
-<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>If the new node type is non-conservative, meaning it either adds or removes water from the model, these boundary flows also need to be recorded. This is done by storing it on the diagonal of the <code>flow[from, to]</code> matrix, e.g.&nbsp;<code>flow[id, id] = q</code>, where <code>q</code> is positive for water added to the model.</p>
 </section>
 <section id="the-jacobian" class="level2" data-number="1.4">
@@ -439,11 +445,11 @@ window.Quarto = {
 <li>the above defined schemas to the imports from <code>ribasim.schemas</code>. This requires code generation to work, see <a href="#finishing-up">Finishing up</a>;</li>
 <li>a class of the following form with all schemas associated with the node type:</li>
 </ul>
-<div class="sourceCode" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> NewNodeType(MultiNodeModel):</span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> NewNodeType(MultiNodeModel):</span>
 <span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>    static: TableModel[NewNodeTypeStaticSchema] <span class="op">=</span> Field(</span>
 <span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>        default_factory<span class="op">=</span>TableModel[NewNodeTypeStaticSchema],</span>
 <span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>        json_schema_extra<span class="op">=</span>{<span class="st">"sort_keys"</span>: [<span class="st">"node_id"</span>]},</span>
-<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>    )</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>In <code>python/ribasim/ribasim/nodes/__init__.py</code> add</p>
 <ul>
 <li><code>NewNodeType</code> to the imports from <code>ribasim.nodes</code>;</li>
@@ -464,24 +470,24 @@ window.Quarto = {
 <li>Update the .qml style (using QGIS) in the styles folder for the specific Node.</li>
 <li>Add an input class per schema, e.g.</li>
 </ul>
-<div class="sourceCode" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> NewNodeTypeStatic:</span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> NewNodeTypeStatic:</span>
 <span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>    input_type <span class="op">=</span> <span class="st">"NewNodeType / static"</span></span>
 <span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    geometry_type <span class="op">=</span> <span class="st">"No Geometry"</span></span>
 <span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>    attributes <span class="op">=</span> [</span>
 <span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>        QgsField(<span class="st">"node_id"</span>, QVariant.Int)</span>
 <span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>        <span class="co"># Other fields for properties of this node</span></span>
-<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>    ]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>    ]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
 <section id="validation" class="level1" data-number="4">
 <h1 data-number="4"><span class="header-section-number">4</span> Validation</h1>
 <p>The new node type might have associated restrictions for a model with the new node type so that it behaves properly. Basic node ID and node type validation happens in <code>Model.validate_model</code> in <code>python/ribasim/ribasim/model.py</code>, which automatically considers all node types in the <code>node_types</code> module.</p>
 <p>Connectivity validation happens in <code>valid_links</code> and <code>valid_n_flow_neighbors</code> in <code>core/src/solve.jl</code>. Connectivity rules are specified in <code>core/src/validation.jl</code>. Allowed upstream and downstream neighbor types for <code>new_node_type</code> (the snake case version of <code>NewNodeType</code>) are specified as follows:</p>
-<div class="sourceCode" id="cb8"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co"># set allowed downstream types</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co"># set allowed downstream types</span></span>
 <span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="fu">neighbortypes</span>(<span class="op">::</span><span class="dt">Val{:new_node_type}</span>) <span class="op">=</span> <span class="fu">Set</span>((<span class="op">:</span>basin,))</span>
 <span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="co"># add your newnodetype as acceptable downstream connection of other types</span></span>
-<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="fu">neighbortypes</span>(<span class="op">::</span><span class="dt">Val{:pump}</span>) <span class="op">=</span> <span class="fu">Set</span>((<span class="op">:</span>basin, <span class="op">:</span>new_node_type))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="fu">neighbortypes</span>(<span class="op">::</span><span class="dt">Val{:pump}</span>) <span class="op">=</span> <span class="fu">Set</span>((<span class="op">:</span>basin, <span class="op">:</span>new_node_type))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>The minimum and maximum allowed number of inneighbors and outneighbors for <code>NewNodeType</code> are specified as follows:</p>
-<div class="sourceCode" id="cb9"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Allowed number of flow/control inneighbors and outneighbors per node type</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Allowed number of flow/control inneighbors and outneighbors per node type</span></span>
 <span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="kw">struct</span> n_neighbor_bounds</span>
 <span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>    in_min<span class="op">::</span><span class="dt">Int</span></span>
 <span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>    in_max<span class="op">::</span><span class="dt">Int</span></span>
@@ -493,13 +499,13 @@ window.Quarto = {
 <span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>    <span class="fu">n_neighbor_bounds</span>(<span class="fl">0</span>, <span class="fl">0</span>, <span class="fl">1</span>, <span class="fu">typemax</span>(<span class="dt">Int</span>))</span>
 <span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a><span class="fu">n_neighbor_bounds_control</span>(<span class="op">::</span><span class="dt">Val{:NewNodeType}</span>) <span class="op">=</span></span>
-<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a>    <span class="fu">n_neighbor_bounds</span>(<span class="fl">0</span>, <span class="fl">1</span>, <span class="fl">0</span>, <span class="fl">0</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a>    <span class="fu">n_neighbor_bounds</span>(<span class="fl">0</span>, <span class="fl">1</span>, <span class="fl">0</span>, <span class="fl">0</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Here <code>typemax(Int)</code> effectively means unbounded.</p>
 </section>
 <section id="tests" class="level1" data-number="5">
 <h1 data-number="5"><span class="header-section-number">5</span> Tests</h1>
 <p>Models for the julia tests are generated by running <code>pixi run generate-testmodels</code>, which uses model definitions from the <code>ribasim_testmodels</code> package, see <a href="../dev/python.html#installing-python-packages">here</a>. These models should also be updated to contain the new node type. Note that certain tests must be updated accordingly when the models used for certain tests are updated, e.g.&nbsp;the final state of the models in <code>core/test/basin.jl</code>. The following function is used to format the array of this final state.</p>
-<div class="sourceCode" id="cb10"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="fu">reprf</span>(x) <span class="op">=</span> <span class="fu">repr</span>(<span class="fu">convert</span>(<span class="dt">Vector</span>{<span class="dt">Float32</span>}, x))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="fu">reprf</span>(x) <span class="op">=</span> <span class="fu">repr</span>(<span class="fu">convert</span>(<span class="dt">Vector</span>{<span class="dt">Float32</span>}, x))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See <a href="../dev/python.html#sec-codecov">here</a> for monitoring of Python test coverage.</p>
 <p>If the new node type introduces new (somewhat) complex behavior, a good test is to construct a minimal model containing the new node type in <code>python/ribasim_testmodels/ribasim_testmodels/equations.py</code> and compare the simulation result to the analytical solution (if possible) in <code>core/test/equations.jl</code>.</p>
 </section>
@@ -577,13 +583,14 @@ window.Quarto = {
       e.clearSelection();
     }
     const getTextToCopy = function(trigger) {
-        const codeEl = trigger.previousElementSibling.cloneNode(true);
-        for (const childEl of codeEl.children) {
-          if (isCodeAnnotation(childEl)) {
-            childEl.remove();
-          }
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
         }
-        return codeEl.innerText;
+      }
+      return codeEl.innerText;
     }
     const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
       text: getTextToCopy

@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.7.33">
+<meta name="generator" content="quarto-1.8.25">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -58,7 +58,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </style>
 
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js" integrity="sha512-bLT0Qm9VnAYZDflyKcBaQ2gg0hSYNQrJ8RilYldYQ1FxQYoCLtUjuuRuZo+fjqhx/qtq/1itJ0C2ejDxltZVFg==" crossorigin="anonymous"></script><script src="../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.min.js" integrity="sha384-ZvpUoO/+PpLXR1lu4jmpXWu80pZlYUAfxl5NsBMWOEPSjUn/6Z/hRTt8+pR6L4N2" crossorigin="anonymous"></script><script src="../site_libs/quarto-nav/quarto-nav.js"></script>
 <script src="../site_libs/quarto-nav/headroom.min.js"></script>
 <script src="../site_libs/clipboard/clipboard.min.js"></script>
 <script src="../site_libs/quarto-search/autocomplete.umd.js"></script>
@@ -68,14 +68,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../tutorial/irrigation-demand.html" rel="next">
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../site_libs/quarto-html/axe/axe-check.js" type="module"></script>
 <script src="../site_libs/quarto-html/popper.min.js"></script>
 <script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
 <script src="../site_libs/quarto-html/anchor.min.js"></script>
 <link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="../site_libs/quarto-html/quarto-syntax-highlighting-ea385d0e468b0dd5ea5bf0780b1290d9.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-7b89279ff1a6dce999919e0e67d4d9ec.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-0dab428fd1ac68d91f80535f802a2546.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-0b1189524dc19e09ab363e9b4d3e2f65.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -103,7 +104,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     "search-label": "Search"
   }
 }</script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" integrity="sha512-c3Nl8+7g4LMSTdrm621y7kf9v3SDPnhxLNhcjFJbKECVnmZHTdo+IRO05sNLTH/D3vA6u1X32ehoLC7WFVdheg==" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/requirejs@2.3.6/require.min.js" integrity="sha384-c9c+LnTbwQ3aujuU7ULEPVvgLs+Fn6fJUvIGTsuu1ZcCf11fiEubah0ttpca4ntM sha384-6V1/AdqZRWk1KAlWbKBlGhN7VG4iE/yAZcO6NZPMF8od0vukrvr0tg4qY6NSrItx" crossorigin="anonymous"></script>
 
 <script type="application/javascript">define('jquery', [],function() {return window.jQuery;})</script>
 
@@ -121,7 +122,7 @@ const typesetMath = (el) => {
     var macros = [];
     for (var i = 0; i < mathElements.length; i++) {
       var texText = mathElements[i].firstChild;
-      if (mathElements[i].tagName == "SPAN") {
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
         window.katex.render(texText.data, mathElements[i], {
           displayMode: mathElements[i].classList.contains('display'),
           throwOnError: false,
@@ -148,7 +149,8 @@ window.Quarto = {
       <div class="navbar-container container-fluid">
       <div class="navbar-brand-container mx-auto">
     <a href="../index.html" class="navbar-brand navbar-brand-logo">
-    <img src="https://user-images.githubusercontent.com/4471859/224825908-bee7e044-bc6b-4561-8b08-5d330cce3ed5.png" alt="" class="navbar-logo">
+    <img src="https://user-images.githubusercontent.com/4471859/224825908-bee7e044-bc6b-4561-8b08-5d330cce3ed5.png" alt="" class="navbar-logo light-content">
+    <img src="https://user-images.githubusercontent.com/4471859/224825908-bee7e044-bc6b-4561-8b08-5d330cce3ed5.png" alt="" class="navbar-logo dark-content">
     </a>
     <a class="navbar-brand" href="../index.html">
     <span class="navbar-title">Ribasim</span>
@@ -161,11 +163,11 @@ window.Quarto = {
           <div class="collapse navbar-collapse" id="navbarCollapse">
             <ul class="navbar-nav navbar-nav-scroll me-auto">
   <li class="nav-item">
-    <a class="nav-link" href="../index.html"> 
+    <a class="nav-link active" href="../index.html" aria-current="page"> 
 <span class="menu-text">Overview</span></a>
   </li>  
   <li class="nav-item">
-    <a class="nav-link active" href="../tutorial/natural-flow.html" aria-current="page"> 
+    <a class="nav-link" href="../tutorial/natural-flow.html"> 
 <span class="menu-text">Tutorials</span></a>
   </li>  
   <li class="nav-item">
@@ -212,6 +214,10 @@ window.Quarto = {
 <div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
 <!-- sidebar -->
   <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="pt-lg-2 mt-2 text-left sidebar-header sidebar-header-stacked">
+      <a href="../index.html" class="sidebar-logo-link">
+      </a>
+      </div>
     <div class="sidebar-menu-container"> 
     <ul class="list-unstyled mt-1">
         <li class="sidebar-item">
@@ -326,21 +332,21 @@ Figure&nbsp;1: Crystal Basin based on natural flow
 <section id="import-packages" class="level3" data-number="2.1.1">
 <h3 data-number="2.1.1" class="anchored" data-anchor-id="import-packages"><span class="header-section-number">2.1.1</span> Import packages</h3>
 <p>Before building the model we need to import some modules. Open your favorite Python editor (Visual Studio Code, Jupyter, …) and create a new script or notebook and name it <code>Crystal_1.1</code> and save it into your model folder <code>Crystal_Basin</code>. Import the following modules in Python:</p>
-<div id="c7fd4c26" class="cell" data-execution_count="2">
-<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> pathlib <span class="im">import</span> Path</span>
+<div id="4a6eff76" class="cell" data-execution_count="2">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> pathlib <span class="im">import</span> Path</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
 <span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
 <span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ribasim <span class="im">import</span> Model, Node</span>
 <span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ribasim.nodes <span class="im">import</span> basin, flow_boundary, tabulated_rating_curve</span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> shapely.geometry <span class="im">import</span> Point</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> shapely.geometry <span class="im">import</span> Point</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 </section>
 <section id="setup-paths-and-model-configuration" class="level3" data-number="2.1.2">
 <h3 data-number="2.1.2" class="anchored" data-anchor-id="setup-paths-and-model-configuration"><span class="header-section-number">2.1.2</span> Setup paths and model configuration</h3>
 <p>Reference the paths of the Ribasim installation and model directory and define the time period. The used simulation period is defined by the <code>starttime</code> and <code>endtime</code> of the model, not by the input timeseries. For now we will look into the period from 2022-01-01 until 2023-01-01 for the model simulation. The coordinate reference system (CRS) is also required, and set to <a href="https://epsg.io/4326">EPSG:4326</a>, which means all coordinates are interpreted as latitude and longitude values. The CRS is important for correctly placing Ribasim models on the map, but since this is a fictional model, it is not important.</p>
-<div id="d35cb641" class="cell" data-execution_count="3">
-<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>base_dir <span class="op">=</span> Path(<span class="st">"crystal-basin"</span>)</span>
+<div id="45246b09" class="cell" data-execution_count="3">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>base_dir <span class="op">=</span> Path(<span class="st">"crystal-basin"</span>)</span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>starttime <span class="op">=</span> <span class="st">"2022-01-01"</span></span>
 <span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>endtime <span class="op">=</span> <span class="st">"2023-01-01"</span></span>
@@ -348,14 +354,14 @@ Figure&nbsp;1: Crystal Basin based on natural flow
 <span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    starttime<span class="op">=</span>starttime,</span>
 <span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    endtime<span class="op">=</span>endtime,</span>
 <span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    crs<span class="op">=</span><span class="st">"EPSG:4326"</span>,</span>
-<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 </section>
 <section id="flowboundary-nodes" class="level3" data-number="2.1.3">
 <h3 data-number="2.1.3" class="anchored" data-anchor-id="flowboundary-nodes"><span class="header-section-number">2.1.3</span> FlowBoundary nodes</h3>
 <p>The Crystal basin consists of two inflow points, the tributary and the main Crystal river, we will call them Minor and Main respectively. This is a monthly inflow timeseries from 2014 to 2023. The used simulation period is defined by the <code>starttime</code> and <code>endtime</code> of the model, not by the input timeseries.</p>
-<div id="14cd2f21" class="cell" data-execution_count="4">
-<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>data <span class="op">=</span> pd.DataFrame({</span>
+<div id="1271760c" class="cell" data-execution_count="4">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>data <span class="op">=</span> pd.DataFrame({</span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    <span class="st">"time"</span>: pd.date_range(start<span class="op">=</span><span class="st">"2022-01-01"</span>, end<span class="op">=</span><span class="st">"2023-01-01"</span>, freq<span class="op">=</span><span class="st">"MS"</span>),</span>
 <span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    <span class="st">"main"</span>: [<span class="fl">74.7</span>, <span class="fl">57.9</span>, <span class="fl">63.2</span>, <span class="fl">183.9</span>, <span class="fl">91.8</span>, <span class="fl">47.5</span>, <span class="fl">32.6</span>, <span class="fl">27.6</span>, <span class="fl">26.5</span>, <span class="fl">25.1</span>, <span class="fl">39.3</span>, <span class="fl">37.8</span>, <span class="fl">57.9</span>],</span>
 <span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    <span class="st">"minor"</span>: [<span class="fl">16.3</span>, <span class="fl">3.8</span>, <span class="fl">3.0</span>, <span class="fl">37.6</span>, <span class="fl">18.2</span>, <span class="fl">11.1</span>, <span class="fl">12.9</span>, <span class="fl">12.2</span>, <span class="fl">11.2</span>, <span class="fl">10.8</span>, <span class="fl">15.1</span>, <span class="fl">14.3</span>, <span class="fl">11.8</span>]</span>
@@ -385,12 +391,12 @@ Figure&nbsp;1: Crystal Basin based on natural flow
 <span id="cb3-28"><a href="#cb3-28" aria-hidden="true" tabindex="-1"></a>            flow_rate<span class="op">=</span>data.minor,</span>
 <span id="cb3-29"><a href="#cb3-29" aria-hidden="true" tabindex="-1"></a>        )</span>
 <span id="cb3-30"><a href="#cb3-30" aria-hidden="true" tabindex="-1"></a>    ],</span>
-<span id="cb3-31"><a href="#cb3-31" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb3-31"><a href="#cb3-31" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>
 
 
-<table class="dataframe caption-top table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
 <thead>
 <tr class="header">
 <th data-quarto-table-cell-role="th"></th>
@@ -402,91 +408,91 @@ Figure&nbsp;1: Crystal Basin based on natural flow
 </thead>
 <tbody>
 <tr class="odd">
-<td data-quarto-table-cell-role="th">0</td>
+<th data-quarto-table-cell-role="th">0</th>
 <td>2022-01-01</td>
 <td>74.7</td>
 <td>16.3</td>
 <td>91.0</td>
 </tr>
 <tr class="even">
-<td data-quarto-table-cell-role="th">1</td>
+<th data-quarto-table-cell-role="th">1</th>
 <td>2022-02-01</td>
 <td>57.9</td>
 <td>3.8</td>
 <td>61.7</td>
 </tr>
 <tr class="odd">
-<td data-quarto-table-cell-role="th">2</td>
+<th data-quarto-table-cell-role="th">2</th>
 <td>2022-03-01</td>
 <td>63.2</td>
 <td>3.0</td>
 <td>66.2</td>
 </tr>
 <tr class="even">
-<td data-quarto-table-cell-role="th">3</td>
+<th data-quarto-table-cell-role="th">3</th>
 <td>2022-04-01</td>
 <td>183.9</td>
 <td>37.6</td>
 <td>221.5</td>
 </tr>
 <tr class="odd">
-<td data-quarto-table-cell-role="th">4</td>
+<th data-quarto-table-cell-role="th">4</th>
 <td>2022-05-01</td>
 <td>91.8</td>
 <td>18.2</td>
 <td>110.0</td>
 </tr>
 <tr class="even">
-<td data-quarto-table-cell-role="th">5</td>
+<th data-quarto-table-cell-role="th">5</th>
 <td>2022-06-01</td>
 <td>47.5</td>
 <td>11.1</td>
 <td>58.6</td>
 </tr>
 <tr class="odd">
-<td data-quarto-table-cell-role="th">6</td>
+<th data-quarto-table-cell-role="th">6</th>
 <td>2022-07-01</td>
 <td>32.6</td>
 <td>12.9</td>
 <td>45.5</td>
 </tr>
 <tr class="even">
-<td data-quarto-table-cell-role="th">7</td>
+<th data-quarto-table-cell-role="th">7</th>
 <td>2022-08-01</td>
 <td>27.6</td>
 <td>12.2</td>
 <td>39.8</td>
 </tr>
 <tr class="odd">
-<td data-quarto-table-cell-role="th">8</td>
+<th data-quarto-table-cell-role="th">8</th>
 <td>2022-09-01</td>
 <td>26.5</td>
 <td>11.2</td>
 <td>37.7</td>
 </tr>
 <tr class="even">
-<td data-quarto-table-cell-role="th">9</td>
+<th data-quarto-table-cell-role="th">9</th>
 <td>2022-10-01</td>
 <td>25.1</td>
 <td>10.8</td>
 <td>35.9</td>
 </tr>
 <tr class="odd">
-<td data-quarto-table-cell-role="th">10</td>
+<th data-quarto-table-cell-role="th">10</th>
 <td>2022-11-01</td>
 <td>39.3</td>
 <td>15.1</td>
 <td>54.4</td>
 </tr>
 <tr class="even">
-<td data-quarto-table-cell-role="th">11</td>
+<th data-quarto-table-cell-role="th">11</th>
 <td>2022-12-01</td>
 <td>37.8</td>
 <td>14.3</td>
 <td>52.1</td>
 </tr>
 <tr class="odd">
-<td data-quarto-table-cell-role="th">12</td>
+<th data-quarto-table-cell-role="th">12</th>
 <td>2023-01-01</td>
 <td>57.9</td>
 <td>11.8</td>
@@ -546,15 +552,15 @@ Table&nbsp;1: Profile data for the basin node
 </div>
 <p>Whilst in this case the level starts at <span class="math inline">\(0.0\)</span> and therefore happens to be the same as the depth, it should never be interpreted as a depth. All water levels in Ribasim are assumed to be with respect to a shared reference datum, like mean sea level (MSL). The first water level in the profile is the height of the Basin bottom above this reference datum.</p>
 <p>To specify the Basin profile, the following code is used:</p>
-<div id="6e5bb160" class="cell" data-execution_count="5">
-<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>confluence <span class="op">=</span> model.basin.add(</span>
+<div id="31e0e6c4" class="cell" data-execution_count="5">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>confluence <span class="op">=</span> model.basin.add(</span>
 <span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    Node(<span class="dv">3</span>, Point(<span class="op">-</span><span class="fl">1.5</span>, <span class="op">-</span><span class="dv">1</span>), name<span class="op">=</span><span class="st">"confluence"</span>),</span>
 <span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    [</span>
 <span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>        basin.Profile(area<span class="op">=</span>[<span class="dv">672000</span>, <span class="dv">5600000</span>], level<span class="op">=</span>[<span class="dv">0</span>, <span class="dv">6</span>]),</span>
 <span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>        basin.State(level<span class="op">=</span>[<span class="dv">4</span>]),</span>
 <span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>        basin.Time(time<span class="op">=</span>[starttime, endtime]),</span>
 <span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>    ],</span>
-<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 </section>
 <section id="tabulatedratingcurve" class="level3" data-number="2.1.5">
@@ -613,8 +619,8 @@ Figure&nbsp;3: Discharge at corresponding water levels
 </figure>
 </div>
 <p>Taking this into account, add the <code>TabulatedRatingCurve</code> as follows:</p>
-<div id="489e25c2" class="cell" data-execution_count="6">
-<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>weir <span class="op">=</span> model.tabulated_rating_curve.add(</span>
+<div id="cc7ac3ef" class="cell" data-execution_count="6">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>weir <span class="op">=</span> model.tabulated_rating_curve.add(</span>
 <span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>    Node(<span class="dv">4</span>, Point(<span class="op">-</span><span class="fl">1.5</span>, <span class="op">-</span><span class="fl">1.5</span>), name<span class="op">=</span><span class="st">"weir"</span>),</span>
 <span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>    [</span>
 <span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>        tabulated_rating_curve.Static(</span>
@@ -622,31 +628,31 @@ Figure&nbsp;3: Discharge at corresponding water levels
 <span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>            flow_rate<span class="op">=</span>[<span class="fl">0.0</span>, <span class="dv">50</span>, <span class="dv">200</span>],</span>
 <span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>        )</span>
 <span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>    ],</span>
-<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 </section>
 <section id="terminal-node" class="level3" data-number="2.1.6">
 <h3 data-number="2.1.6" class="anchored" data-anchor-id="terminal-node"><span class="header-section-number">2.1.6</span> Terminal node</h3>
 <p>Finally all the water will discharge into the sea. We schematize this with the Terminal node, as it portrays the end point of the model, that can receive but not give water. Besides the node number/name and location, no further input is needed.</p>
-<div id="425a89a2" class="cell" data-execution_count="7">
-<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>sea <span class="op">=</span> model.terminal.add(Node(<span class="dv">5</span>, Point(<span class="op">-</span><span class="fl">1.5</span>, <span class="op">-</span><span class="fl">3.0</span>), name<span class="op">=</span><span class="st">"sea"</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div id="0fcb5209" class="cell" data-execution_count="7">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>sea <span class="op">=</span> model.terminal.add(Node(<span class="dv">5</span>, Point(<span class="op">-</span><span class="fl">1.5</span>, <span class="op">-</span><span class="fl">3.0</span>), name<span class="op">=</span><span class="st">"sea"</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 </section>
 <section id="defining-links" class="level3" data-number="2.1.7">
 <h3 data-number="2.1.7" class="anchored" data-anchor-id="defining-links"><span class="header-section-number">2.1.7</span> Defining links</h3>
 <p>Implement the connections (links) between the nodes.</p>
-<div id="8db89d52" class="cell" data-execution_count="8">
-<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>model.link.add(main, confluence, name<span class="op">=</span><span class="st">"main"</span>)</span>
+<div id="0dd096ab" class="cell" data-execution_count="8">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>model.link.add(main, confluence, name<span class="op">=</span><span class="st">"main"</span>)</span>
 <span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>model.link.add(minor, confluence, name<span class="op">=</span><span class="st">"minor"</span>)</span>
 <span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>model.link.add(confluence, weir)</span>
-<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>model.link.add(weir, sea, name<span class="op">=</span><span class="st">"sea"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>model.link.add(weir, sea, name<span class="op">=</span><span class="st">"sea"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 </section>
 <section id="visualization-and-model-execution" class="level3" data-number="2.1.8">
 <h3 data-number="2.1.8" class="anchored" data-anchor-id="visualization-and-model-execution"><span class="header-section-number">2.1.8</span> Visualization and model execution</h3>
 <p>Plot the schematization.</p>
-<div id="0254152f" class="cell" data-execution_count="9">
-<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>model.plot()<span class="op">;</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div id="1c0583f7" class="cell" data-execution_count="9">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>model.plot()<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
@@ -656,10 +662,10 @@ Figure&nbsp;3: Discharge at corresponding water levels
 </div>
 </div>
 <p>Write the model configuration to the <code>TOML</code> file. Name the output file <code>Crystal-1/ribasim.toml</code>:</p>
-<div id="71058c05" class="cell" data-execution_count="10">
-<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>toml_path <span class="op">=</span> base_dir <span class="op">/</span> <span class="st">"Crystal-1/ribasim.toml"</span></span>
+<div id="d1a904ad" class="cell" data-execution_count="10">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>toml_path <span class="op">=</span> base_dir <span class="op">/</span> <span class="st">"Crystal-1/ribasim.toml"</span></span>
 <span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>model.write(toml_path)</span>
-<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>cli_path <span class="op">=</span> <span class="st">"ribasim"</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>cli_path <span class="op">=</span> <span class="st">"ribasim"</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>After running <code>model.write</code> a subfolder <code>Crystal-1</code> is created, which contains the model input data and configuration:</p>
 <ul>
@@ -667,20 +673,20 @@ Figure&nbsp;3: Discharge at corresponding water levels
 <li>database.gpkg: A GeoPackage containing the network geometry and input data of the nodes used.</li>
 </ul>
 <p>Now run the model. You can open a terminal and run it from there. For example:</p>
-<div class="sourceCode" id="cb11"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="ex">ribasim</span> Crystal-1/ribasim.toml</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="ex">ribasim</span> Crystal-1/ribasim.toml</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>From Python you can run it with:</p>
-<div class="sourceCode" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> subprocess</span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> subprocess</span>
 <span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>result <span class="op">=</span> subprocess.run([cli_path, toml_path], capture_output<span class="op">=</span><span class="va">True</span>, encoding<span class="op">=</span><span class="st">"utf-8"</span>)</span>
 <span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(result.stderr)</span>
-<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>result.check_returncode()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>result.check_returncode()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Where <code>cli_path</code> is a string with either the full path to the Ribasim executable, like <code>r"c:\bin\ribasim\ribasim"</code>, or just <code>"ribasim"</code> in case you added the <code>ribasim</code> folder to your PATH.</p>
 <p>The <code>print(result.stderr)</code> ensures you see the same logging and error messages that you would see in the terminal. And <code>result.check_returncode()</code> will throw an error when the simulation was not successful.</p>
 </section>
 <section id="post-processing-results" class="level3" data-number="2.1.9">
 <h3 data-number="2.1.9" class="anchored" data-anchor-id="post-processing-results"><span class="header-section-number">2.1.9</span> Post-processing results</h3>
 <p>Read the Arrow files and plot the simulated flows from different links and the levels and storages at our confluence point:</p>
-<div id="4a3187cb" class="cell" data-execution_count="12">
-<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>df_basin <span class="op">=</span> pd.read_feather(base_dir <span class="op">/</span> <span class="st">"Crystal-1/results/basin.arrow"</span>)</span>
+<div id="baca4283" class="cell" data-execution_count="12">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>df_basin <span class="op">=</span> pd.read_feather(base_dir <span class="op">/</span> <span class="st">"Crystal-1/results/basin.arrow"</span>)</span>
 <span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Create pivot tables and plot for Basin data</span></span>
 <span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>df_basin_wide <span class="op">=</span> df_basin.pivot_table(</span>
@@ -706,7 +712,7 @@ Figure&nbsp;3: Discharge at corresponding water levels
 <span id="cb13-24"><a href="#cb13-24" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb13-25"><a href="#cb13-25" aria-hidden="true" tabindex="-1"></a>fig.tight_layout()  <span class="co"># Adjust layout to fit labels</span></span>
 <span id="cb13-26"><a href="#cb13-26" aria-hidden="true" tabindex="-1"></a>plt.title(<span class="st">"Basin level and storage"</span>)</span>
-<span id="cb13-27"><a href="#cb13-27" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb13-27"><a href="#cb13-27" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
@@ -717,8 +723,8 @@ Figure&nbsp;3: Discharge at corresponding water levels
 </div>
 <p>The figure above shows the storage and levels in the Basin node.</p>
 <p>To accurately represent the relationship between water levels and discharge rates at this confluence, a TabulatedRatingCurve is used. This setup mimics the behavior of a gate or spillway, allowing us to model how varying water levels influence flow rates at the confluence. Since the basin node is functioning as a confluence rather than a storage reservoir, the simulated water levels and storage trends will closely follow the inflow patterns. This is because there is no net change in storage; all incoming water is balanced by outgoing flow.</p>
-<div id="3135d651" class="cell" data-execution_count="13">
-<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Plot flow data</span></span>
+<div id="475c344a" class="cell" data-execution_count="13">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Plot flow data</span></span>
 <span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Read the flow results</span></span>
 <span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>df_flow <span class="op">=</span> pd.read_feather(base_dir <span class="op">/</span> <span class="st">"Crystal-1/results/flow.arrow"</span>)</span>
 <span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Add the link names and then remove unnamed links</span></span>
@@ -743,7 +749,7 @@ Figure&nbsp;3: Discharge at corresponding water levels
 <span id="cb14-23"><a href="#cb14-23" aria-hidden="true" tabindex="-1"></a>ax.legend(bbox_to_anchor<span class="op">=</span>(<span class="fl">1.15</span>, <span class="dv">1</span>), title<span class="op">=</span><span class="st">"Link"</span>)</span>
 <span id="cb14-24"><a href="#cb14-24" aria-hidden="true" tabindex="-1"></a>plt.title(<span class="st">"Flow"</span>)</span>
 <span id="cb14-25"><a href="#cb14-25" aria-hidden="true" tabindex="-1"></a>plt.grid(<span class="va">True</span>)</span>
-<span id="cb14-26"><a href="#cb14-26" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb14-26"><a href="#cb14-26" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
@@ -812,13 +818,14 @@ Figure&nbsp;3: Discharge at corresponding water levels
       e.clearSelection();
     }
     const getTextToCopy = function(trigger) {
-        const codeEl = trigger.previousElementSibling.cloneNode(true);
-        for (const childEl of codeEl.children) {
-          if (isCodeAnnotation(childEl)) {
-            childEl.remove();
-          }
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
         }
-        return codeEl.innerText;
+      }
+      return codeEl.innerText;
     }
     const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
       text: getTextToCopy

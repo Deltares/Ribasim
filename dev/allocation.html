@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.7.33">
+<meta name="generator" content="quarto-1.8.25">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -69,14 +69,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../dev/python.html" rel="prev">
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../site_libs/quarto-html/axe/axe-check.js" type="module"></script>
 <script src="../site_libs/quarto-html/popper.min.js"></script>
 <script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
 <script src="../site_libs/quarto-html/anchor.min.js"></script>
 <link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="../site_libs/quarto-html/quarto-syntax-highlighting-ea385d0e468b0dd5ea5bf0780b1290d9.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-7b89279ff1a6dce999919e0e67d4d9ec.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-0dab428fd1ac68d91f80535f802a2546.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-0b1189524dc19e09ab363e9b4d3e2f65.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -120,7 +121,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <div class="navbar-container container-fluid">
       <div class="navbar-brand-container mx-auto">
     <a href="../index.html" class="navbar-brand navbar-brand-logo">
-    <img src="https://user-images.githubusercontent.com/4471859/224825908-bee7e044-bc6b-4561-8b08-5d330cce3ed5.png" alt="" class="navbar-logo">
+    <img src="https://user-images.githubusercontent.com/4471859/224825908-bee7e044-bc6b-4561-8b08-5d330cce3ed5.png" alt="" class="navbar-logo light-content">
+    <img src="https://user-images.githubusercontent.com/4471859/224825908-bee7e044-bc6b-4561-8b08-5d330cce3ed5.png" alt="" class="navbar-logo dark-content">
     </a>
     <a class="navbar-brand" href="../index.html">
     <span class="navbar-title">Ribasim</span>
@@ -133,7 +135,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
           <div class="collapse navbar-collapse" id="navbarCollapse">
             <ul class="navbar-nav navbar-nav-scroll me-auto">
   <li class="nav-item">
-    <a class="nav-link" href="../index.html"> 
+    <a class="nav-link active" href="../index.html" aria-current="page"> 
 <span class="menu-text">Overview</span></a>
   </li>  
   <li class="nav-item">
@@ -155,7 +157,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </ul>
             <ul class="navbar-nav navbar-nav-scroll ms-auto">
   <li class="nav-item">
-    <a class="nav-link active" href="../dev/index.html" aria-current="page"> 
+    <a class="nav-link" href="../dev/index.html"> 
 <span class="menu-text">Contributing</span></a>
   </li>  
   <li class="nav-item compact">
@@ -184,6 +186,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
 <!-- sidebar -->
   <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="pt-lg-2 mt-2 text-left sidebar-header sidebar-header-stacked">
+      <a href="../index.html" class="sidebar-logo-link">
+      </a>
+      </div>
     <div class="sidebar-menu-container"> 
     <ul class="list-unstyled mt-1">
         <li class="sidebar-item">
@@ -390,7 +396,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <ul>
 <li>Optimization variables: These are the <a href="https://jump.dev/JuMP.jl/stable/api/JuMP/#@constraints">variables</a> that are optimized in the allocation problem formulation. They are defined using the <a href="https://jump.dev/JuMP.jl/stable/api/JuMP/#@variables"><code>@variable</code></a> macro. For example, to specify the flow rates in all the links in the allocation network as variables:</li>
 </ul>
-<div class="sourceCode" id="cb1"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>problem[<span class="op">:</span>F] <span class="op">=</span> JuMP.<span class="pp">@variable</span>(problem, F[link <span class="op">=</span> links] <span class="op">&gt;=</span> <span class="fl">0.0</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>problem[<span class="op">:</span>F] <span class="op">=</span> JuMP.<span class="pp">@variable</span>(problem, F[link <span class="op">=</span> links] <span class="op">&gt;=</span> <span class="fl">0.0</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>More details about setting up variables in allocation can be found in the section <a href="#sec-optimization-problem">below</a>.</p>
 <ul>
 <li><p>Constraints: These are the constraints that the optimization variables must satisfy. They are defined using the <a href="https://jump.dev/JuMP.jl/stable/api/JuMP/#@constraint"><code>@constraint</code></a> macro. The definition of the link capacity constraints is shown in section <a href="#sec-constraints-and-capacities">below</a>. <code>add_constraints_*</code> functions are used to <a href="#sec-initial-constraints">add constraints</a> to the optimization problem. The <a href="#sec-constraints-and-capacities">initial value of the constraints</a> is set in the function <code>set_initial_values_*</code>. During the iteration, the constraints are updated based on the current state of the allocation network. When <a href="#updating-capacities">looping over priorities</a>, the constraints are updated by the function <code>adjust_*</code>.</p></li>
@@ -398,10 +404,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </ul>
 <p>The functions <code>JuMP.normalized_rhs</code> and <code>JuMP.set_normalized_rhs</code> are used to read and write the constant right hand side of constraints respectively.</p>
 <p>For example, to update the capacity of one of the links, <code>JuMP.normalized_rhs</code> moves all the constants to the right-hand sides and all variables to the left-hand side and <code>JuMP.set_normalized_rhs</code> sets the new right-hand-side value.</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>JuMP.<span class="fu">set_normalized_rhs</span>(</span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>JuMP.<span class="fu">set_normalized_rhs</span>(</span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    constraints_capacity[link_id],</span>
 <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    JuMP.<span class="fu">normalized_rhs</span>(constraints_capacity[link_id]) <span class="op">-</span> JuMP.<span class="fu">value</span>(F[link_id]),</span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Some JuMP data structures are used to store intermediate or result data. For more information, see <a href="https://jump.dev/JuMP.jl/stable/api/JuMP/">JuMP API</a>.</p>
 </section>
 </section>
@@ -432,10 +438,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li>flows in and out of nodes that have a buffer, which are nodes that have a flow demand</li>
 </ul>
 <p>The function <code>add_variables_flow!</code> is used to add the variable of flows between the links. The variables are obtained from the capacity array. And variables named by <code>F($startnode, $endnode)</code> are created.</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>links <span class="op">=</span> <span class="fu">keys</span>(capacity.data)</span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>problem[<span class="op">:</span>F] <span class="op">=</span> JuMP.<span class="pp">@variable</span>(problem, F[link <span class="op">=</span> links] <span class="op">&gt;=</span> <span class="fl">0.0</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>links <span class="op">=</span> <span class="fu">keys</span>(capacity.data)</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>problem[<span class="op">:</span>F] <span class="op">=</span> JuMP.<span class="pp">@variable</span>(problem, F[link <span class="op">=</span> links] <span class="op">&gt;=</span> <span class="fl">0.0</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>In the function <code>add_variables_basin</code>, variables that represent flows of those basins that are connected with level demand are defined. Part of the function is shown in the code block below. A variable is named <code>F_basin_in</code> if the corresponding basin is supplied by a level demand and <code>F_basin_out</code> if consumed by a level demand.</p>
-<div class="sourceCode" id="cb4"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Get the node IDs from the subnetwork for basins that have a level demand</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Get the node IDs from the subnetwork for basins that have a level demand</span></span>
 <span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>node_ids_basin <span class="op">=</span> [</span>
 <span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    node_id for</span>
 <span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    node_id <span class="kw">in</span> graph[].node_ids[subnetwork_id] if graph[node_id].type <span class="op">==</span> <span class="op">:</span>basin <span class="op">&amp;&amp;</span></span>
@@ -444,7 +450,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>problem[<span class="op">:</span>F_basin_in] <span class="op">=</span></span>
 <span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    JuMP.<span class="pp">@variable</span>(problem, F_basin_in[node_id <span class="op">=</span> node_ids_basin,] <span class="op">&gt;=</span> <span class="fl">0.0</span>)</span>
 <span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>problem[<span class="op">:</span>F_basin_out] <span class="op">=</span></span>
-<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>    JuMP.<span class="pp">@variable</span>(problem, F_basin_out[node_id <span class="op">=</span> node_ids_basin,] <span class="op">&gt;=</span> <span class="fl">0.0</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>    JuMP.<span class="pp">@variable</span>(problem, F_basin_out[node_id <span class="op">=</span> node_ids_basin,] <span class="op">&gt;=</span> <span class="fl">0.0</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>The last set of optimization variables is the flow links in and out of the buffer of nodes with a flow demand. It is defined in a similar way to the second set of variables.</p>
 </section>
 <section id="sec-initial-constraints" class="level3" data-number="2.2.2">
@@ -453,14 +459,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Other constraints are <code>capacity</code>, <code>source_user</code>, <code>source</code>, <code>flow_conservation</code>, <code>fractional_flow</code>, <code>basin_outflow</code>, <code>flow_buffer_outflow</code> and <code>flow_demand_outflow</code>.</p>
 <p>For each set of constraints, a function named <code>add_constrains_[constraints name]!</code> exists.</p>
 <p>Take <code>add_constraints_user_source</code> as an example, the nodes that are relevant for the constraints are added to the optimization problem by calling JuMP.@constraint.</p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>node_ids_user <span class="op">=</span> [node_id for node_id <span class="kw">in</span> node_ids if node_id.type <span class="op">==</span> NodeType.UserDemand]</span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>node_ids_user <span class="op">=</span> [node_id for node_id <span class="kw">in</span> node_ids if node_id.type <span class="op">==</span> NodeType.UserDemand]</span>
 <span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>problem[<span class="op">:</span>source_user] <span class="op">=</span> JuMP.<span class="pp">@constraint</span>(</span>
 <span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    problem,</span>
 <span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    [node_id <span class="op">=</span> node_ids_user],</span>
 <span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>    F[(node_id, <span class="fu">outflow_id</span>(graph, node_id))] <span class="op">&lt;=</span> <span class="fl">0.0</span>,</span>
 <span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>    base_name <span class="op">=</span> <span class="st">"source_user"</span></span>
-<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
 </section>
 </section>
@@ -492,7 +498,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li>Demands either come from the Ribasim model or are set via the BMI</li>
 </ul>
 <p>As shown below, these functions set the capacities to the corresponding initial values.</p>
-<div class="sourceCode" id="cb6"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">set_initial_capacities_source!</span>(allocation_model, p)</span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">set_initial_capacities_source!</span>(allocation_model, p)</span>
 <span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="fu">set_initial_capacities_link!</span>(allocation_model, p)</span>
 <span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="fu">set_initial_capacities_basin!</span>(allocation_model, p, u, t)</span>
 <span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="fu">set_initial_capacities_buffer!</span>(allocation_model)</span>
@@ -500,9 +506,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a><span class="fu">set_initial_demands_user!</span>(allocation_model, p, t)</span>
 <span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a><span class="fu">set_initial_demands_level!</span>(allocation_model, u, p, t)</span>
-<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a><span class="fu">set_initial_demands_flow!</span>(allocation_model, p, t)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a><span class="fu">set_initial_demands_flow!</span>(allocation_model, p, t)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>These capacities determine the constraints of the optimization problem. Take <code>set_initial_capacities_source</code> as an example, the right-hand-side values of the <code>source_constraints</code> are set to the <code>source_capacity</code>.</p>
-<div class="sourceCode" id="cb7"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> link_metadata <span class="kw">in</span> <span class="fu">values</span>(graph.edge_data)</span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> link_metadata <span class="kw">in</span> <span class="fu">values</span>(graph.edge_data)</span>
 <span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>    (; link) <span class="op">=</span> link_metadata</span>
 <span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> graph[link<span class="op">...</span>].subnetwork_id_source <span class="op">==</span> subnetwork_id</span>
 <span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>        <span class="co"># If it is a source link for this allocation problem</span></span>
@@ -516,7 +522,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a>            )</span>
 <span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>        <span class="cf">end</span></span>
 <span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>    <span class="cf">end</span></span>
-<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Apart from the <code>set_initial_*</code> function above, capacities of <code>inlet</code> are the allocated capacities from the primary network to the subnetworks. Source constraints will be adapted based on the optimization type. This function is called separately and thus not part of the <code>set_initial_values</code>.</p>
 </section>
 </section>
@@ -528,7 +534,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>The optimization objective function is updated based on the new demands and the given priority.</p>
 <p>If a solution is found by the solver, the allocation result will be updated. And it will be <a href="../dev/allocation.html#output-data">saved</a>, so the <a href="../dev/allocation.html#communicating-to-the-physical-layer">physical layer</a> can make use of it.</p>
 <p>Lastly, capacities and demands are updated, as shown below:</p>
-<div class="sourceCode" id="cb8"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="fu">adjust_capacities_source!</span>(allocation_model)</span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="fu">adjust_capacities_source!</span>(allocation_model)</span>
 <span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="fu">adjust_capacities_link!</span>(allocation_model)</span>
 <span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="fu">adjust_capacities_basin!</span>(allocation_model)</span>
 <span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="fu">adjust_capacities_buffer!</span>(allocation_model)</span>
@@ -539,7 +545,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> demand_node isa AbstractDemandNode</span>
 <span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>        <span class="fu">adjust_demands!</span>(allocation_model, p, priority_idx, demand_node)</span>
 <span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>    <span class="cf">end</span></span>
-<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
 </section>
 <section id="output-data" class="level2" data-number="3.3">
@@ -614,13 +620,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       e.clearSelection();
     }
     const getTextToCopy = function(trigger) {
-        const codeEl = trigger.previousElementSibling.cloneNode(true);
-        for (const childEl of codeEl.children) {
-          if (isCodeAnnotation(childEl)) {
-            childEl.remove();
-          }
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
         }
-        return codeEl.innerText;
+      }
+      return codeEl.innerText;
     }
     const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
       text: getTextToCopy

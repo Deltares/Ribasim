@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.7.33">
+<meta name="generator" content="quarto-1.8.25">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -58,7 +58,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </style>
 
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js" integrity="sha512-bLT0Qm9VnAYZDflyKcBaQ2gg0hSYNQrJ8RilYldYQ1FxQYoCLtUjuuRuZo+fjqhx/qtq/1itJ0C2ejDxltZVFg==" crossorigin="anonymous"></script><script src="../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.min.js" integrity="sha384-ZvpUoO/+PpLXR1lu4jmpXWu80pZlYUAfxl5NsBMWOEPSjUn/6Z/hRTt8+pR6L4N2" crossorigin="anonymous"></script><script src="../site_libs/quarto-nav/quarto-nav.js"></script>
 <script src="../site_libs/quarto-nav/headroom.min.js"></script>
 <script src="../site_libs/clipboard/clipboard.min.js"></script>
 <script src="../site_libs/quarto-search/autocomplete.umd.js"></script>
@@ -69,14 +69,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../guide/coupling.html" rel="prev">
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../site_libs/quarto-html/axe/axe-check.js" type="module"></script>
 <script src="../site_libs/quarto-html/popper.min.js"></script>
 <script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
 <script src="../site_libs/quarto-html/anchor.min.js"></script>
 <link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="../site_libs/quarto-html/quarto-syntax-highlighting-ea385d0e468b0dd5ea5bf0780b1290d9.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-7b89279ff1a6dce999919e0e67d4d9ec.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-0dab428fd1ac68d91f80535f802a2546.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-0b1189524dc19e09ab363e9b4d3e2f65.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -104,7 +105,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     "search-label": "Search"
   }
 }</script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" integrity="sha512-c3Nl8+7g4LMSTdrm621y7kf9v3SDPnhxLNhcjFJbKECVnmZHTdo+IRO05sNLTH/D3vA6u1X32ehoLC7WFVdheg==" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/requirejs@2.3.6/require.min.js" integrity="sha384-c9c+LnTbwQ3aujuU7ULEPVvgLs+Fn6fJUvIGTsuu1ZcCf11fiEubah0ttpca4ntM sha384-6V1/AdqZRWk1KAlWbKBlGhN7VG4iE/yAZcO6NZPMF8od0vukrvr0tg4qY6NSrItx" crossorigin="anonymous"></script>
 
 <script type="application/javascript">define('jquery', [],function() {return window.jQuery;})</script>
 
@@ -120,7 +121,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <div class="navbar-container container-fluid">
       <div class="navbar-brand-container mx-auto">
     <a href="../index.html" class="navbar-brand navbar-brand-logo">
-    <img src="https://user-images.githubusercontent.com/4471859/224825908-bee7e044-bc6b-4561-8b08-5d330cce3ed5.png" alt="" class="navbar-logo">
+    <img src="https://user-images.githubusercontent.com/4471859/224825908-bee7e044-bc6b-4561-8b08-5d330cce3ed5.png" alt="" class="navbar-logo light-content">
+    <img src="https://user-images.githubusercontent.com/4471859/224825908-bee7e044-bc6b-4561-8b08-5d330cce3ed5.png" alt="" class="navbar-logo dark-content">
     </a>
     <a class="navbar-brand" href="../index.html">
     <span class="navbar-title">Ribasim</span>
@@ -133,7 +135,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
           <div class="collapse navbar-collapse" id="navbarCollapse">
             <ul class="navbar-nav navbar-nav-scroll me-auto">
   <li class="nav-item">
-    <a class="nav-link" href="../index.html"> 
+    <a class="nav-link active" href="../index.html" aria-current="page"> 
 <span class="menu-text">Overview</span></a>
   </li>  
   <li class="nav-item">
@@ -141,7 +143,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span class="menu-text">Tutorials</span></a>
   </li>  
   <li class="nav-item">
-    <a class="nav-link active" href="../guide/examples.html" aria-current="page"> 
+    <a class="nav-link" href="../guide/examples.html"> 
 <span class="menu-text">How-to guides</span></a>
   </li>  
   <li class="nav-item">
@@ -184,6 +186,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
 <!-- sidebar -->
   <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="pt-lg-2 mt-2 text-left sidebar-header sidebar-header-stacked">
+      <a href="../index.html" class="sidebar-logo-link">
+      </a>
+      </div>
     <div class="sidebar-menu-container"> 
     <ul class="list-unstyled mt-1">
         <li class="sidebar-item">
@@ -277,16 +283,16 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <p>In order to generate the Delwaq input files, we need a completed Ribasim simulation (typically one with a results folder) that ideally also includes some substances and initial concentrations. Let’s take the basic test model for example, which already has set some initial concentrations.</p>
 <p>All testmodels can be <a href="../install.html">downloaded from here</a>.</p>
-<div id="267fc58f" class="cell" data-execution_count="2">
-<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> pathlib <span class="im">import</span> Path</span>
+<div id="ded0108e" class="cell" data-execution_count="2">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> pathlib <span class="im">import</span> Path</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>toml_path <span class="op">=</span> Path(<span class="st">"../../generated_testmodels/basic/ribasim.toml"</span>)</span>
 <span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> toml_path.is_file()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> toml_path.is_file()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>This Ribasim model already has substance concentrations for <code>Cl</code> and <code>Tracer</code> in the input tables, and we will use these to generate the Delwaq input files.</p>
-<div id="11722dcd" class="cell" data-execution_count="3">
-<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ribasim <span class="im">import</span> Model</span>
+<div id="d51570b0" class="cell" data-execution_count="3">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ribasim <span class="im">import</span> Model</span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>model <span class="op">=</span> Model.read(toml_path)</span>
 <span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a></span>
@@ -294,12 +300,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>display(model.basin.concentration)  <span class="co"># basin boundaries</span></span>
 <span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>display(model.flow_boundary.concentration)  <span class="co"># flow boundaries</span></span>
 <span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>display(model.level_boundary.concentration)  <span class="co"># level boundaries</span></span>
-<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>model.plot()<span class="op">;</span>  <span class="co"># for later comparison</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>model.plot()<span class="op">;</span>  <span class="co"># for later comparison</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>Basin / concentration_state</div><div>
 
 
-<table class="dataframe caption-top table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
 <thead>
 <tr class="header">
 <th data-quarto-table-cell-role="th"></th>
@@ -316,25 +322,25 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </thead>
 <tbody>
 <tr class="odd">
-<td data-quarto-table-cell-role="th">0</td>
+<th data-quarto-table-cell-role="th">0</th>
 <td>1</td>
 <td>Cl</td>
 <td>0.0</td>
 </tr>
 <tr class="even">
-<td data-quarto-table-cell-role="th">1</td>
+<th data-quarto-table-cell-role="th">1</th>
 <td>3</td>
 <td>Cl</td>
 <td>0.0</td>
 </tr>
 <tr class="odd">
-<td data-quarto-table-cell-role="th">2</td>
+<th data-quarto-table-cell-role="th">2</th>
 <td>6</td>
 <td>Cl</td>
 <td>0.0</td>
 </tr>
 <tr class="even">
-<td data-quarto-table-cell-role="th">3</td>
+<th data-quarto-table-cell-role="th">3</th>
 <td>9</td>
 <td>Cl</td>
 <td>0.0</td>
@@ -348,7 +354,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div>Basin / concentration</div><div>
 
 
-<table class="dataframe caption-top table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
 <thead>
 <tr class="header">
 <th data-quarto-table-cell-role="th"></th>
@@ -371,7 +377,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </thead>
 <tbody>
 <tr class="odd">
-<td data-quarto-table-cell-role="th">0</td>
+<th data-quarto-table-cell-role="th">0</th>
 <td>1</td>
 <td>2020-01-01</td>
 <td>Cl</td>
@@ -380,7 +386,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>0.0</td>
 </tr>
 <tr class="even">
-<td data-quarto-table-cell-role="th">1</td>
+<th data-quarto-table-cell-role="th">1</th>
 <td>1</td>
 <td>2020-01-02</td>
 <td>Cl</td>
@@ -389,7 +395,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>1.0</td>
 </tr>
 <tr class="odd">
-<td data-quarto-table-cell-role="th">2</td>
+<th data-quarto-table-cell-role="th">2</th>
 <td>1</td>
 <td>2020-01-01</td>
 <td>Tracer</td>
@@ -398,7 +404,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>1.0</td>
 </tr>
 <tr class="even">
-<td data-quarto-table-cell-role="th">3</td>
+<th data-quarto-table-cell-role="th">3</th>
 <td>3</td>
 <td>2020-01-01</td>
 <td>Cl</td>
@@ -407,7 +413,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>0.0</td>
 </tr>
 <tr class="odd">
-<td data-quarto-table-cell-role="th">4</td>
+<th data-quarto-table-cell-role="th">4</th>
 <td>3</td>
 <td>2020-01-02</td>
 <td>Cl</td>
@@ -416,7 +422,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>1.0</td>
 </tr>
 <tr class="even">
-<td data-quarto-table-cell-role="th">5</td>
+<th data-quarto-table-cell-role="th">5</th>
 <td>3</td>
 <td>2020-01-01</td>
 <td>Tracer</td>
@@ -425,7 +431,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>1.0</td>
 </tr>
 <tr class="odd">
-<td data-quarto-table-cell-role="th">6</td>
+<th data-quarto-table-cell-role="th">6</th>
 <td>6</td>
 <td>2020-01-01</td>
 <td>Cl</td>
@@ -434,7 +440,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>0.0</td>
 </tr>
 <tr class="even">
-<td data-quarto-table-cell-role="th">7</td>
+<th data-quarto-table-cell-role="th">7</th>
 <td>6</td>
 <td>2020-01-02</td>
 <td>Cl</td>
@@ -443,7 +449,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>1.0</td>
 </tr>
 <tr class="odd">
-<td data-quarto-table-cell-role="th">8</td>
+<th data-quarto-table-cell-role="th">8</th>
 <td>6</td>
 <td>2020-01-01</td>
 <td>Tracer</td>
@@ -452,7 +458,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>1.0</td>
 </tr>
 <tr class="even">
-<td data-quarto-table-cell-role="th">9</td>
+<th data-quarto-table-cell-role="th">9</th>
 <td>9</td>
 <td>2020-01-01</td>
 <td>Cl</td>
@@ -461,7 +467,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>0.0</td>
 </tr>
 <tr class="odd">
-<td data-quarto-table-cell-role="th">10</td>
+<th data-quarto-table-cell-role="th">10</th>
 <td>9</td>
 <td>2020-01-02</td>
 <td>Cl</td>
@@ -470,7 +476,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>1.0</td>
 </tr>
 <tr class="even">
-<td data-quarto-table-cell-role="th">11</td>
+<th data-quarto-table-cell-role="th">11</th>
 <td>9</td>
 <td>2020-01-01</td>
 <td>Tracer</td>
@@ -487,7 +493,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div>FlowBoundary / concentration</div><div>
 
 
-<table class="dataframe caption-top table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
 <thead>
 <tr class="header">
 <th data-quarto-table-cell-role="th"></th>
@@ -506,28 +512,28 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </thead>
 <tbody>
 <tr class="odd">
-<td data-quarto-table-cell-role="th">0</td>
+<th data-quarto-table-cell-role="th">0</th>
 <td>15</td>
 <td>2020-01-01</td>
 <td>Cl</td>
 <td>0.0</td>
 </tr>
 <tr class="even">
-<td data-quarto-table-cell-role="th">1</td>
+<th data-quarto-table-cell-role="th">1</th>
 <td>15</td>
 <td>2020-01-01</td>
 <td>Tracer</td>
 <td>1.0</td>
 </tr>
 <tr class="odd">
-<td data-quarto-table-cell-role="th">2</td>
+<th data-quarto-table-cell-role="th">2</th>
 <td>16</td>
 <td>2020-01-01</td>
 <td>Cl</td>
 <td>0.0</td>
 </tr>
 <tr class="even">
-<td data-quarto-table-cell-role="th">3</td>
+<th data-quarto-table-cell-role="th">3</th>
 <td>16</td>
 <td>2020-01-01</td>
 <td>Tracer</td>
@@ -542,7 +548,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div>LevelBoundary / concentration</div><div>
 
 
-<table class="dataframe caption-top table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
 <thead>
 <tr class="header">
 <th data-quarto-table-cell-role="th"></th>
@@ -561,14 +567,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </thead>
 <tbody>
 <tr class="odd">
-<td data-quarto-table-cell-role="th">0</td>
+<th data-quarto-table-cell-role="th">0</th>
 <td>11</td>
 <td>2020-01-01</td>
 <td>Cl</td>
 <td>34.0</td>
 </tr>
 <tr class="even">
-<td data-quarto-table-cell-role="th">1</td>
+<th data-quarto-table-cell-role="th">1</th>
 <td>17</td>
 <td>2020-01-01</td>
 <td>Cl</td>
@@ -587,13 +593,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 </div>
-<div id="28ab74fb" class="cell" data-execution_count="4">
-<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>model.basin.profile</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div id="6b96c850" class="cell" data-execution_count="4">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>model.basin.profile</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display" data-execution_count="4">
 <div>Basin / profile</div><div>
 
 
-<table class="dataframe caption-top table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
 <thead>
 <tr class="header">
 <th data-quarto-table-cell-role="th"></th>
@@ -612,56 +618,56 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </thead>
 <tbody>
 <tr class="odd">
-<td data-quarto-table-cell-role="th">0</td>
+<th data-quarto-table-cell-role="th">0</th>
 <td>1</td>
 <td>0.01</td>
 <td>0.0</td>
 <td>NaN</td>
 </tr>
 <tr class="even">
-<td data-quarto-table-cell-role="th">1</td>
+<th data-quarto-table-cell-role="th">1</th>
 <td>1</td>
 <td>1000.00</td>
 <td>1.0</td>
 <td>NaN</td>
 </tr>
 <tr class="odd">
-<td data-quarto-table-cell-role="th">2</td>
+<th data-quarto-table-cell-role="th">2</th>
 <td>3</td>
 <td>0.01</td>
 <td>0.0</td>
 <td>NaN</td>
 </tr>
 <tr class="even">
-<td data-quarto-table-cell-role="th">3</td>
+<th data-quarto-table-cell-role="th">3</th>
 <td>3</td>
 <td>1000.00</td>
 <td>1.0</td>
 <td>NaN</td>
 </tr>
 <tr class="odd">
-<td data-quarto-table-cell-role="th">4</td>
+<th data-quarto-table-cell-role="th">4</th>
 <td>6</td>
 <td>0.01</td>
 <td>0.0</td>
 <td>NaN</td>
 </tr>
 <tr class="even">
-<td data-quarto-table-cell-role="th">5</td>
+<th data-quarto-table-cell-role="th">5</th>
 <td>6</td>
 <td>1000.00</td>
 <td>1.0</td>
 <td>NaN</td>
 </tr>
 <tr class="odd">
-<td data-quarto-table-cell-role="th">6</td>
+<th data-quarto-table-cell-role="th">6</th>
 <td>9</td>
 <td>0.01</td>
 <td>0.0</td>
 <td>NaN</td>
 </tr>
 <tr class="even">
-<td data-quarto-table-cell-role="th">7</td>
+<th data-quarto-table-cell-role="th">7</th>
 <td>9</td>
 <td>1000.00</td>
 <td>1.0</td>
@@ -674,20 +680,20 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 <p>Let’s add another tracer to the model, to setup a fraction calculation.</p>
-<div id="bd6b3446" class="cell" data-execution_count="5">
-<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ribasim.delwaq <span class="im">import</span> add_tracer</span>
+<div id="84a6fdc7" class="cell" data-execution_count="5">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ribasim.delwaq <span class="im">import</span> add_tracer</span>
 <span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>add_tracer(model, <span class="dv">11</span>, <span class="st">"Foo"</span>)</span>
 <span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>add_tracer(model, <span class="dv">15</span>, <span class="st">"Bar"</span>)</span>
 <span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>display(model.flow_boundary.concentration)  <span class="co"># flow boundaries</span></span>
 <span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>display(model.level_boundary.concentration)  <span class="co"># flow boundaries</span></span>
 <span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>model.write(toml_path)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>model.write(toml_path)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>FlowBoundary / concentration</div><div>
 
 
-<table class="dataframe caption-top table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
 <thead>
 <tr class="header">
 <th data-quarto-table-cell-role="th"></th>
@@ -706,35 +712,35 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </thead>
 <tbody>
 <tr class="odd">
-<td data-quarto-table-cell-role="th">0</td>
+<th data-quarto-table-cell-role="th">0</th>
 <td>15</td>
 <td>2020-01-01</td>
 <td>Cl</td>
 <td>0.0</td>
 </tr>
 <tr class="even">
-<td data-quarto-table-cell-role="th">1</td>
+<th data-quarto-table-cell-role="th">1</th>
 <td>15</td>
 <td>2020-01-01</td>
 <td>Tracer</td>
 <td>1.0</td>
 </tr>
 <tr class="odd">
-<td data-quarto-table-cell-role="th">2</td>
+<th data-quarto-table-cell-role="th">2</th>
 <td>16</td>
 <td>2020-01-01</td>
 <td>Cl</td>
 <td>0.0</td>
 </tr>
 <tr class="even">
-<td data-quarto-table-cell-role="th">3</td>
+<th data-quarto-table-cell-role="th">3</th>
 <td>16</td>
 <td>2020-01-01</td>
 <td>Tracer</td>
 <td>1.0</td>
 </tr>
 <tr class="odd">
-<td data-quarto-table-cell-role="th">4</td>
+<th data-quarto-table-cell-role="th">4</th>
 <td>15</td>
 <td>2020-01-01</td>
 <td>Bar</td>
@@ -749,7 +755,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div>LevelBoundary / concentration</div><div>
 
 
-<table class="dataframe caption-top table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
 <thead>
 <tr class="header">
 <th data-quarto-table-cell-role="th"></th>
@@ -768,21 +774,21 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </thead>
 <tbody>
 <tr class="odd">
-<td data-quarto-table-cell-role="th">0</td>
+<th data-quarto-table-cell-role="th">0</th>
 <td>11</td>
 <td>2020-01-01</td>
 <td>Cl</td>
 <td>34.0</td>
 </tr>
 <tr class="even">
-<td data-quarto-table-cell-role="th">1</td>
+<th data-quarto-table-cell-role="th">1</th>
 <td>17</td>
 <td>2020-01-01</td>
 <td>Cl</td>
 <td>34.0</td>
 </tr>
 <tr class="odd">
-<td data-quarto-table-cell-role="th">2</td>
+<th data-quarto-table-cell-role="th">2</th>
 <td>11</td>
 <td>2020-01-01</td>
 <td>Foo</td>
@@ -798,12 +804,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 <p>Given the path to a completed Ribasim simulation, we can call <code>ribasim.delwaq.generate</code> for generating the required input files for Delwaq from scratch.</p>
-<div id="d927a22e" class="cell" data-execution_count="7">
-<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ribasim.delwaq <span class="im">import</span> generate</span>
+<div id="a23bb82a" class="cell" data-execution_count="7">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ribasim.delwaq <span class="im">import</span> generate</span>
 <span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>output_path <span class="op">=</span> Path(<span class="st">"../../generated_testmodels/basic/delwaq"</span>)</span>
 <span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>graph, substances <span class="op">=</span> generate(toml_path, output_path)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>graph, substances <span class="op">=</span> generate(toml_path, output_path)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stderr">
 <pre><code>/home/runner/work/Ribasim/Ribasim/python/ribasim/ribasim/delwaq/generate.py:430: SettingWithCopyWarning:
 
@@ -816,8 +822,8 @@ See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stab
 </div>
 </div>
 <p>This call produces a handful of files in the user defined folder. Let’s take a look at them:</p>
-<div id="30de3f50" class="cell" data-execution_count="8">
-<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="bu">list</span>(output_path.iterdir())</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div id="fec05fa3" class="cell" data-execution_count="8">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="bu">list</span>(output_path.iterdir())</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display" data-execution_count="8">
 <pre><code>[PosixPath('../../generated_testmodels/basic/delwaq/B5_bounddata.inc'),
  PosixPath('../../generated_testmodels/basic/delwaq/ribasim.atr'),
@@ -837,8 +843,8 @@ See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stab
 </div>
 <p>These files form a complete Delwaq simulation, and can be run by either pointing DIMR to the <code>dimr_config.xml</code> file or pointing Delwaq to the <code>delwaq.inp</code> file.</p>
 <p>Note that the call to <code>generate</code> produces two output variables; <code>graph</code> and <code>substances</code> that are required for parsing the results of the Delwaq model later on. Nonetheless, we can also inspect them here, and inspect the created Delwaq network.</p>
-<div id="a2bd5f1e" class="cell" data-execution_count="9">
-<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>substances  <span class="co"># list of substances, as will be present in the Delwaq netcdf output</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div id="714e94d1" class="cell" data-execution_count="9">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>substances  <span class="co"># list of substances, as will be present in the Delwaq netcdf output</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display" data-execution_count="9">
 <pre><code>{'Bar',
  'Cl',
@@ -855,8 +861,8 @@ See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stab
 </div>
 </div>
 <p>As you can see, the complete substances list is a combination of user input (<code>Cl</code> and <code>Tracer</code> in the input tables), a <code>Continuity</code> tracer, and tracers for all nodetypes in the Ribasim model. The latter tracers allow for deeper inspection of the Ribasim model, such as debugging the mass balance by plotting fraction graphs. Let’s inspect the <code>graph</code> next, which is the Delwaq network that was created from the Ribasim model:</p>
-<div id="5810fb37" class="cell" data-execution_count="10">
-<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
+<div id="a51945f9" class="cell" data-execution_count="10">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
 <span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> networkx <span class="im">as</span> nx</span>
 <span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Let's draw the graph</span></span>
@@ -877,7 +883,7 @@ See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stab
 <span id="cb12-19"><a href="#cb12-19" aria-hidden="true" tabindex="-1"></a>    ax<span class="op">=</span>ax[<span class="dv">1</span>],</span>
 <span id="cb12-20"><a href="#cb12-20" aria-hidden="true" tabindex="-1"></a>)</span>
 <span id="cb12-21"><a href="#cb12-21" aria-hidden="true" tabindex="-1"></a>ax[<span class="dv">1</span>].set_title(<span class="st">"Ribasim node IDs"</span>)</span>
-<span id="cb12-22"><a href="#cb12-22" aria-hidden="true" tabindex="-1"></a>fig.suptitle(<span class="st">"Delwaq network"</span>)<span class="op">;</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb12-22"><a href="#cb12-22" aria-hidden="true" tabindex="-1"></a>fig.suptitle(<span class="st">"Delwaq network"</span>)<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
@@ -895,22 +901,22 @@ See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stab
 <section id="parsing-the-results" class="level2" data-number="1">
 <h2 data-number="1" class="anchored" data-anchor-id="parsing-the-results"><span class="header-section-number">1</span> Parsing the results</h2>
 <p>With Delwaq having run, we can now parse the results using <code>ribasim.delwaq.parse</code>. This function requires the <code>graph</code> and <code>substances</code> variables that were output by <code>ribasim.delwaq.generate</code>, as well as the path to the results folder of the Delwaq simulation.</p>
-<div id="575ea96e" class="cell" data-execution_count="12">
-<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ribasim.delwaq <span class="im">import</span> parse</span>
+<div id="679564f5" class="cell" data-execution_count="12">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ribasim.delwaq <span class="im">import</span> parse</span>
 <span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>nmodel <span class="op">=</span> parse(toml_path, graph, substances, output_folder<span class="op">=</span>output_path)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>nmodel <span class="op">=</span> parse(toml_path, graph, substances, output_folder<span class="op">=</span>output_path)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>The parsed model is identical to the Ribasim model, with the exception of the added concentration_external table that contains all tracer results from Delwaq.</p>
-<div id="e711639d" class="cell" data-execution_count="13">
-<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>display(nmodel.basin.concentration_external)</span>
+<div id="6e7c17c6" class="cell" data-execution_count="13">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>display(nmodel.basin.concentration_external)</span>
 <span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(substances)</span>
 <span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>t <span class="op">=</span> nmodel.basin.concentration_external.df</span>
-<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>t[t.time <span class="op">==</span> t.time.unique()[<span class="dv">2</span>]]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>t[t.time <span class="op">==</span> t.time.unique()[<span class="dv">2</span>]]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>Basin / concentration_external</div><div>
 
 
-<table class="dataframe caption-top table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
 <thead>
 <tr class="header">
 <th data-quarto-table-cell-role="th"></th>
@@ -929,81 +935,81 @@ See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stab
 </thead>
 <tbody>
 <tr class="odd">
-<td data-quarto-table-cell-role="th">0</td>
+<th data-quarto-table-cell-role="th">0</th>
 <td>2020-01-01</td>
 <td>1</td>
 <td>0.000000</td>
-<td>Cl</td>
+<td>UserDemand</td>
 </tr>
 <tr class="even">
-<td data-quarto-table-cell-role="th">1464</td>
-<td>2020-01-01</td>
-<td>1</td>
-<td>0.000000</td>
-<td>LevelBoundary</td>
-</tr>
-<tr class="odd">
-<td data-quarto-table-cell-role="th">2928</td>
+<th data-quarto-table-cell-role="th">1464</th>
 <td>2020-01-01</td>
 <td>1</td>
 <td>0.000000</td>
 <td>Foo</td>
 </tr>
-<tr class="even">
-<td data-quarto-table-cell-role="th">4392</td>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">2928</th>
 <td>2020-01-01</td>
 <td>1</td>
-<td>0.000000</td>
-<td>Terminal</td>
-</tr>
-<tr class="odd">
-<td data-quarto-table-cell-role="th">5856</td>
-<td>2020-01-01</td>
-<td>1</td>
-<td>1.000000</td>
-<td>Continuity</td>
-</tr>
-<tr class="even">
-<td data-quarto-table-cell-role="th">...</td>
-<td>...</td>
-<td>...</td>
-<td>...</td>
-<td>...</td>
-</tr>
-<tr class="odd">
-<td data-quarto-table-cell-role="th">11711</td>
-<td>2020-12-31</td>
-<td>9</td>
-<td>0.092013</td>
-<td>Precipitation</td>
-</tr>
-<tr class="even">
-<td data-quarto-table-cell-role="th">13175</td>
-<td>2020-12-31</td>
-<td>9</td>
-<td>0.000000</td>
-<td>Bar</td>
-</tr>
-<tr class="odd">
-<td data-quarto-table-cell-role="th">14639</td>
-<td>2020-12-31</td>
-<td>9</td>
-<td>0.000870</td>
-<td>FlowBoundary</td>
-</tr>
-<tr class="even">
-<td data-quarto-table-cell-role="th">16103</td>
-<td>2020-12-31</td>
-<td>9</td>
 <td>0.000000</td>
 <td>Drainage</td>
 </tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">4392</th>
+<td>2020-01-01</td>
+<td>1</td>
+<td>0.000000</td>
+<td>Precipitation</td>
+</tr>
 <tr class="odd">
-<td data-quarto-table-cell-role="th">17567</td>
+<th data-quarto-table-cell-role="th">5856</th>
+<td>2020-01-01</td>
+<td>1</td>
+<td>0.000000</td>
+<td>Bar</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">...</th>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">11711</th>
+<td>2020-12-31</td>
+<td>9</td>
+<td>0.093505</td>
+<td>Continuity</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">13175</th>
+<td>2020-12-31</td>
+<td>9</td>
+<td>0.000599</td>
+<td>LevelBoundary</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">14639</th>
+<td>2020-12-31</td>
+<td>9</td>
+<td>0.000023</td>
+<td>Initial</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">16103</th>
 <td>2020-12-31</td>
 <td>9</td>
 <td>0.092883</td>
 <td>Tracer</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">17567</th>
+<td>2020-12-31</td>
+<td>9</td>
+<td>0.000000</td>
+<td>Terminal</td>
 </tr>
 </tbody>
 </table>
@@ -1012,13 +1018,13 @@ See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stab
 </div>
 </div>
 <div class="cell-output cell-output-stdout">
-<pre><code>{'Cl', 'LevelBoundary', 'Foo', 'Terminal', 'Continuity', 'UserDemand', 'Initial', 'Precipitation', 'Bar', 'FlowBoundary', 'Drainage', 'Tracer'}</code></pre>
+<pre><code>{'UserDemand', 'Foo', 'Drainage', 'Precipitation', 'Bar', 'Cl', 'FlowBoundary', 'Continuity', 'LevelBoundary', 'Initial', 'Tracer', 'Terminal'}</code></pre>
 </div>
 <div class="cell-output cell-output-display" data-execution_count="13">
 <div>
 
 
-<table class="dataframe caption-top table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
 <thead>
 <tr class="header">
 <th data-quarto-table-cell-role="th"></th>
@@ -1037,340 +1043,340 @@ See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stab
 </thead>
 <tbody>
 <tr class="odd">
-<td data-quarto-table-cell-role="th">8</td>
-<td>2020-01-03</td>
-<td>1</td>
-<td>0.000000</td>
-<td>Cl</td>
-</tr>
-<tr class="even">
-<td data-quarto-table-cell-role="th">1472</td>
-<td>2020-01-03</td>
-<td>1</td>
-<td>0.000000</td>
-<td>LevelBoundary</td>
-</tr>
-<tr class="odd">
-<td data-quarto-table-cell-role="th">2936</td>
-<td>2020-01-03</td>
-<td>1</td>
-<td>0.000000</td>
-<td>Foo</td>
-</tr>
-<tr class="even">
-<td data-quarto-table-cell-role="th">4400</td>
-<td>2020-01-03</td>
-<td>1</td>
-<td>0.000000</td>
-<td>Terminal</td>
-</tr>
-<tr class="odd">
-<td data-quarto-table-cell-role="th">5864</td>
-<td>2020-01-03</td>
-<td>1</td>
-<td>1.082976</td>
-<td>Continuity</td>
-</tr>
-<tr class="even">
-<td data-quarto-table-cell-role="th">7328</td>
+<th data-quarto-table-cell-role="th">8</th>
 <td>2020-01-03</td>
 <td>1</td>
 <td>0.000000</td>
 <td>UserDemand</td>
 </tr>
-<tr class="odd">
-<td data-quarto-table-cell-role="th">8792</td>
+<tr class="even">
+<th data-quarto-table-cell-role="th">1472</th>
 <td>2020-01-03</td>
 <td>1</td>
-<td>0.035243</td>
-<td>Initial</td>
+<td>0.000000</td>
+<td>Foo</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">2936</th>
+<td>2020-01-03</td>
+<td>1</td>
+<td>0.000000</td>
+<td>Drainage</td>
 </tr>
 <tr class="even">
-<td data-quarto-table-cell-role="th">10256</td>
+<th data-quarto-table-cell-role="th">4400</th>
 <td>2020-01-03</td>
 <td>1</td>
 <td>0.071118</td>
 <td>Precipitation</td>
 </tr>
 <tr class="odd">
-<td data-quarto-table-cell-role="th">11720</td>
+<th data-quarto-table-cell-role="th">5864</th>
 <td>2020-01-03</td>
 <td>1</td>
 <td>0.000000</td>
 <td>Bar</td>
 </tr>
 <tr class="even">
-<td data-quarto-table-cell-role="th">13184</td>
+<th data-quarto-table-cell-role="th">7328</th>
+<td>2020-01-03</td>
+<td>1</td>
+<td>0.000000</td>
+<td>Cl</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">8792</th>
 <td>2020-01-03</td>
 <td>1</td>
 <td>0.976616</td>
 <td>FlowBoundary</td>
 </tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">10256</th>
+<td>2020-01-03</td>
+<td>1</td>
+<td>1.082976</td>
+<td>Continuity</td>
+</tr>
 <tr class="odd">
-<td data-quarto-table-cell-role="th">14648</td>
+<th data-quarto-table-cell-role="th">11720</th>
 <td>2020-01-03</td>
 <td>1</td>
 <td>0.000000</td>
-<td>Drainage</td>
+<td>LevelBoundary</td>
 </tr>
 <tr class="even">
-<td data-quarto-table-cell-role="th">16112</td>
+<th data-quarto-table-cell-role="th">13184</th>
+<td>2020-01-03</td>
+<td>1</td>
+<td>0.035243</td>
+<td>Initial</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">14648</th>
 <td>2020-01-03</td>
 <td>1</td>
 <td>1.047734</td>
 <td>Tracer</td>
 </tr>
-<tr class="odd">
-<td data-quarto-table-cell-role="th">9</td>
-<td>2020-01-03</td>
-<td>3</td>
-<td>0.650798</td>
-<td>Cl</td>
-</tr>
 <tr class="even">
-<td data-quarto-table-cell-role="th">1473</td>
+<th data-quarto-table-cell-role="th">16112</th>
 <td>2020-01-03</td>
-<td>3</td>
-<td>0.019141</td>
-<td>LevelBoundary</td>
-</tr>
-<tr class="odd">
-<td data-quarto-table-cell-role="th">2937</td>
-<td>2020-01-03</td>
-<td>3</td>
-<td>0.019141</td>
-<td>Foo</td>
-</tr>
-<tr class="even">
-<td data-quarto-table-cell-role="th">4401</td>
-<td>2020-01-03</td>
-<td>3</td>
+<td>1</td>
 <td>0.000000</td>
 <td>Terminal</td>
 </tr>
 <tr class="odd">
-<td data-quarto-table-cell-role="th">5865</td>
-<td>2020-01-03</td>
-<td>3</td>
-<td>0.068404</td>
-<td>Continuity</td>
-</tr>
-<tr class="even">
-<td data-quarto-table-cell-role="th">7329</td>
+<th data-quarto-table-cell-role="th">9</th>
 <td>2020-01-03</td>
 <td>3</td>
 <td>0.000000</td>
 <td>UserDemand</td>
 </tr>
-<tr class="odd">
-<td data-quarto-table-cell-role="th">8793</td>
+<tr class="even">
+<th data-quarto-table-cell-role="th">1473</th>
 <td>2020-01-03</td>
 <td>3</td>
-<td>0.010349</td>
-<td>Initial</td>
+<td>0.019141</td>
+<td>Foo</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">2937</th>
+<td>2020-01-03</td>
+<td>3</td>
+<td>0.000000</td>
+<td>Drainage</td>
 </tr>
 <tr class="even">
-<td data-quarto-table-cell-role="th">10257</td>
+<th data-quarto-table-cell-role="th">4401</th>
 <td>2020-01-03</td>
 <td>3</td>
 <td>0.032598</td>
 <td>Precipitation</td>
 </tr>
 <tr class="odd">
-<td data-quarto-table-cell-role="th">11721</td>
+<th data-quarto-table-cell-role="th">5865</th>
 <td>2020-01-03</td>
 <td>3</td>
 <td>0.000000</td>
 <td>Bar</td>
 </tr>
 <tr class="even">
-<td data-quarto-table-cell-role="th">13185</td>
+<th data-quarto-table-cell-role="th">7329</th>
+<td>2020-01-03</td>
+<td>3</td>
+<td>0.650798</td>
+<td>Cl</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">8793</th>
 <td>2020-01-03</td>
 <td>3</td>
 <td>0.006316</td>
 <td>FlowBoundary</td>
 </tr>
-<tr class="odd">
-<td data-quarto-table-cell-role="th">14649</td>
+<tr class="even">
+<th data-quarto-table-cell-role="th">10257</th>
 <td>2020-01-03</td>
 <td>3</td>
-<td>0.000000</td>
-<td>Drainage</td>
+<td>0.068404</td>
+<td>Continuity</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">11721</th>
+<td>2020-01-03</td>
+<td>3</td>
+<td>0.019141</td>
+<td>LevelBoundary</td>
 </tr>
 <tr class="even">
-<td data-quarto-table-cell-role="th">16113</td>
+<th data-quarto-table-cell-role="th">13185</th>
+<td>2020-01-03</td>
+<td>3</td>
+<td>0.010349</td>
+<td>Initial</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">14649</th>
 <td>2020-01-03</td>
 <td>3</td>
 <td>0.038913</td>
 <td>Tracer</td>
 </tr>
-<tr class="odd">
-<td data-quarto-table-cell-role="th">10</td>
-<td>2020-01-03</td>
-<td>6</td>
-<td>0.059947</td>
-<td>Cl</td>
-</tr>
 <tr class="even">
-<td data-quarto-table-cell-role="th">1474</td>
+<th data-quarto-table-cell-role="th">16113</th>
 <td>2020-01-03</td>
-<td>6</td>
-<td>0.001763</td>
-<td>LevelBoundary</td>
-</tr>
-<tr class="odd">
-<td data-quarto-table-cell-role="th">2938</td>
-<td>2020-01-03</td>
-<td>6</td>
-<td>0.001763</td>
-<td>Foo</td>
-</tr>
-<tr class="even">
-<td data-quarto-table-cell-role="th">4402</td>
-<td>2020-01-03</td>
-<td>6</td>
+<td>3</td>
 <td>0.000000</td>
 <td>Terminal</td>
 </tr>
 <tr class="odd">
-<td data-quarto-table-cell-role="th">5866</td>
-<td>2020-01-03</td>
-<td>6</td>
-<td>0.006775</td>
-<td>Continuity</td>
-</tr>
-<tr class="even">
-<td data-quarto-table-cell-role="th">7330</td>
+<th data-quarto-table-cell-role="th">10</th>
 <td>2020-01-03</td>
 <td>6</td>
 <td>0.000000</td>
 <td>UserDemand</td>
 </tr>
-<tr class="odd">
-<td data-quarto-table-cell-role="th">8794</td>
+<tr class="even">
+<th data-quarto-table-cell-role="th">1474</th>
 <td>2020-01-03</td>
 <td>6</td>
-<td>0.001429</td>
-<td>Initial</td>
+<td>0.001763</td>
+<td>Foo</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">2938</th>
+<td>2020-01-03</td>
+<td>6</td>
+<td>0.000000</td>
+<td>Drainage</td>
 </tr>
 <tr class="even">
-<td data-quarto-table-cell-role="th">10258</td>
+<th data-quarto-table-cell-role="th">4402</th>
 <td>2020-01-03</td>
 <td>6</td>
 <td>0.003003</td>
 <td>Precipitation</td>
 </tr>
 <tr class="odd">
-<td data-quarto-table-cell-role="th">11722</td>
+<th data-quarto-table-cell-role="th">5866</th>
 <td>2020-01-03</td>
 <td>6</td>
 <td>0.000000</td>
 <td>Bar</td>
 </tr>
 <tr class="even">
-<td data-quarto-table-cell-role="th">13186</td>
+<th data-quarto-table-cell-role="th">7330</th>
+<td>2020-01-03</td>
+<td>6</td>
+<td>0.059947</td>
+<td>Cl</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">8794</th>
 <td>2020-01-03</td>
 <td>6</td>
 <td>0.000581</td>
 <td>FlowBoundary</td>
 </tr>
-<tr class="odd">
-<td data-quarto-table-cell-role="th">14650</td>
+<tr class="even">
+<th data-quarto-table-cell-role="th">10258</th>
 <td>2020-01-03</td>
 <td>6</td>
-<td>0.000000</td>
-<td>Drainage</td>
+<td>0.006775</td>
+<td>Continuity</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">11722</th>
+<td>2020-01-03</td>
+<td>6</td>
+<td>0.001763</td>
+<td>LevelBoundary</td>
 </tr>
 <tr class="even">
-<td data-quarto-table-cell-role="th">16114</td>
+<th data-quarto-table-cell-role="th">13186</th>
+<td>2020-01-03</td>
+<td>6</td>
+<td>0.001429</td>
+<td>Initial</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">14650</th>
 <td>2020-01-03</td>
 <td>6</td>
 <td>0.003583</td>
 <td>Tracer</td>
 </tr>
-<tr class="odd">
-<td data-quarto-table-cell-role="th">11</td>
-<td>2020-01-03</td>
-<td>9</td>
-<td>0.001054</td>
-<td>Cl</td>
-</tr>
 <tr class="even">
-<td data-quarto-table-cell-role="th">1475</td>
+<th data-quarto-table-cell-role="th">16114</th>
 <td>2020-01-03</td>
-<td>9</td>
-<td>0.000031</td>
-<td>LevelBoundary</td>
-</tr>
-<tr class="odd">
-<td data-quarto-table-cell-role="th">2939</td>
-<td>2020-01-03</td>
-<td>9</td>
-<td>0.000031</td>
-<td>Foo</td>
-</tr>
-<tr class="even">
-<td data-quarto-table-cell-role="th">4403</td>
-<td>2020-01-03</td>
-<td>9</td>
+<td>6</td>
 <td>0.000000</td>
 <td>Terminal</td>
 </tr>
 <tr class="odd">
-<td data-quarto-table-cell-role="th">5867</td>
-<td>2020-01-03</td>
-<td>9</td>
-<td>0.012028</td>
-<td>Continuity</td>
-</tr>
-<tr class="even">
-<td data-quarto-table-cell-role="th">7331</td>
+<th data-quarto-table-cell-role="th">11</th>
 <td>2020-01-03</td>
 <td>9</td>
 <td>0.000000</td>
 <td>UserDemand</td>
 </tr>
-<tr class="odd">
-<td data-quarto-table-cell-role="th">8795</td>
+<tr class="even">
+<th data-quarto-table-cell-role="th">1475</th>
 <td>2020-01-03</td>
 <td>9</td>
-<td>0.003892</td>
-<td>Initial</td>
+<td>0.000031</td>
+<td>Foo</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">2939</th>
+<td>2020-01-03</td>
+<td>9</td>
+<td>0.000000</td>
+<td>Drainage</td>
 </tr>
 <tr class="even">
-<td data-quarto-table-cell-role="th">10259</td>
+<th data-quarto-table-cell-role="th">4403</th>
 <td>2020-01-03</td>
 <td>9</td>
 <td>0.008095</td>
 <td>Precipitation</td>
 </tr>
 <tr class="odd">
-<td data-quarto-table-cell-role="th">11723</td>
+<th data-quarto-table-cell-role="th">5867</th>
 <td>2020-01-03</td>
 <td>9</td>
 <td>0.000000</td>
 <td>Bar</td>
 </tr>
 <tr class="even">
-<td data-quarto-table-cell-role="th">13187</td>
+<th data-quarto-table-cell-role="th">7331</th>
+<td>2020-01-03</td>
+<td>9</td>
+<td>0.001054</td>
+<td>Cl</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">8795</th>
 <td>2020-01-03</td>
 <td>9</td>
 <td>0.000010</td>
 <td>FlowBoundary</td>
 </tr>
-<tr class="odd">
-<td data-quarto-table-cell-role="th">14651</td>
+<tr class="even">
+<th data-quarto-table-cell-role="th">10259</th>
 <td>2020-01-03</td>
 <td>9</td>
-<td>0.000000</td>
-<td>Drainage</td>
+<td>0.012028</td>
+<td>Continuity</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">11723</th>
+<td>2020-01-03</td>
+<td>9</td>
+<td>0.000031</td>
+<td>LevelBoundary</td>
 </tr>
 <tr class="even">
-<td data-quarto-table-cell-role="th">16115</td>
+<th data-quarto-table-cell-role="th">13187</th>
+<td>2020-01-03</td>
+<td>9</td>
+<td>0.003892</td>
+<td>Initial</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">14651</th>
 <td>2020-01-03</td>
 <td>9</td>
 <td>0.008105</td>
 <td>Tracer</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">16115</th>
+<td>2020-01-03</td>
+<td>9</td>
+<td>0.000000</td>
+<td>Terminal</td>
 </tr>
 </tbody>
 </table>
@@ -1379,12 +1385,12 @@ See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stab
 </div>
 </div>
 <p>We can use this table to plot the results of the Delwaq model, both spatially as over time.</p>
-<div id="d22d4800" class="cell" data-execution_count="14">
-<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ribasim.delwaq <span class="im">import</span> plot_fraction</span>
+<div id="bf237197" class="cell" data-execution_count="14">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ribasim.delwaq <span class="im">import</span> plot_fraction</span>
 <span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>plot_fraction(nmodel, <span class="dv">1</span>)  <span class="co"># default tracers, should add up to 1</span></span>
 <span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>plot_fraction(nmodel, <span class="dv">9</span>, [<span class="st">"Foo"</span>, <span class="st">"Bar"</span>])  <span class="co"># custom tracers</span></span>
-<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>plot_fraction(nmodel, <span class="dv">9</span>, [<span class="st">"Continuity"</span>])  <span class="co"># mass balance check</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>plot_fraction(nmodel, <span class="dv">9</span>, [<span class="st">"Continuity"</span>])  <span class="co"># mass balance check</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
@@ -1407,11 +1413,11 @@ See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stab
 </div>
 </div>
 </div>
-<div id="31cbd734" class="cell" data-execution_count="15">
-<div class="sourceCode cell-code" id="cb17"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ribasim.delwaq <span class="im">import</span> plot_spatial</span>
+<div id="b6be9aed" class="cell" data-execution_count="15">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb17"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ribasim.delwaq <span class="im">import</span> plot_spatial</span>
 <span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>plot_spatial(nmodel, <span class="st">"Bar"</span>)</span>
-<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>plot_spatial(nmodel, <span class="st">"Foo"</span>, versus<span class="op">=</span><span class="st">"Bar"</span>)  <span class="co"># ratio of Meuse to Rhine</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>plot_spatial(nmodel, <span class="st">"Foo"</span>, versus<span class="op">=</span><span class="st">"Bar"</span>)  <span class="co"># ratio of Meuse to Rhine</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
@@ -1483,13 +1489,14 @@ See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stab
       e.clearSelection();
     }
     const getTextToCopy = function(trigger) {
-        const codeEl = trigger.previousElementSibling.cloneNode(true);
-        for (const childEl of codeEl.children) {
-          if (isCodeAnnotation(childEl)) {
-            childEl.remove();
-          }
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
         }
-        return codeEl.innerText;
+      }
+      return codeEl.innerText;
     }
     const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
       text: getTextToCopy
