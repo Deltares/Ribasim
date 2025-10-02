@@ -22,6 +22,7 @@ class _BaseSchema(pa.DataFrameModel):
         return "fid"
 
     @pa.dataframe_parser
+    @classmethod
     def _name_index(cls, df):
         df.index.name = cls._index_name()
         return df
