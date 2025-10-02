@@ -1765,40 +1765,32 @@ function load_netcdf(table_path::String, table_type::Type{<:Table})::NamedTuple
 
         for data_varname in data_varnames
             var = ds[data_varname]
-            dim_names = dimnames(var)
             # For most tables, each data variable has all dimensions of the table.
             # For "UserDemand / time", variables are either:
             # - (stations, time, realization) for demand
             # - (stations, time) for return_factor
             # - (stations) for min_level
             # So we have to repeat the 1D and 2D variables to fit the full table.
-            # Note that Delft-FEWS also adds time to min_level, where we select the first one.
-            # TODO see if FEWS can interpolate min_level shut.
+            # Note that Delft-FEWS also adds time to min_level.
             if table_type == Ribasim.Schema.UserDemand.Time
                 # This can vary only between node_id, not over time or priority
                 # We accept (stations), but also (stations, time) (column major), since Delft-FEWS adds the time
                 # dimension. In this case we only take the first time step.
                 if ndims(var) == 1
                     # repeat (stations) to (stations, realization, time)
-                    data = repeat(repeat(var[:]; outer = n_priority); outer = n_time)
-                elseif ndims(var) == 2
-                    arr = if data_varname == :min_level
-                        # select (stations, time) to (stations)
-                        var[:, 1]
-                    else
-                        var[:, :]
-                    end
-                    # repeat (stations) to (stations, realization, time)
+                    arr = Array(var)
                     data = repeat(repeat(arr; outer = n_priority); outer = n_time)
+                elseif ndims(var) == 2
+                    # repeat (stations, time) to (stations, realization, time)
+                    arr = vec(Array(var))
+                    data = repeat(arr; outer = n_priority)
                 else
-                    error(
-                        "Unsupported dimensions for $table_type $data_varname: $dim_names",
-                    )
+                    data = Array(var)
                 end
             else
-                data = vec(var[:])
+                data = Array(var)
             end
-            table[data_varname] = data
+            table[data_varname] = vec(data)
         end
     end
     # columntable does not check lengths, so we do it here
