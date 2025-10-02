@@ -277,7 +277,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <p>In order to generate the Delwaq input files, we need a completed Ribasim simulation (typically one with a results folder) that ideally also includes some substances and initial concentrations. Let’s take the basic test model for example, which already has set some initial concentrations.</p>
 <p>All testmodels can be <a href="../install.html">downloaded from here</a>.</p>
-<div id="84e153b1" class="cell" data-execution_count="2">
+<div id="267fc58f" class="cell" data-execution_count="2">
 <div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> pathlib <span class="im">import</span> Path</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>toml_path <span class="op">=</span> Path(<span class="st">"../../generated_testmodels/basic/ribasim.toml"</span>)</span>
@@ -285,7 +285,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> toml_path.is_file()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>This Ribasim model already has substance concentrations for <code>Cl</code> and <code>Tracer</code> in the input tables, and we will use these to generate the Delwaq input files.</p>
-<div id="3f1ec5ab" class="cell" data-execution_count="3">
+<div id="11722dcd" class="cell" data-execution_count="3">
 <div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ribasim <span class="im">import</span> Model</span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>model <span class="op">=</span> Model.read(toml_path)</span>
@@ -587,7 +587,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 </div>
-<div id="227a91bc" class="cell" data-execution_count="4">
+<div id="28ab74fb" class="cell" data-execution_count="4">
 <div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>model.basin.profile</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-display" data-execution_count="4">
 <div>Basin / profile</div><div>
@@ -674,7 +674,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 <p>Let’s add another tracer to the model, to setup a fraction calculation.</p>
-<div id="e05f8a68" class="cell" data-execution_count="5">
+<div id="bd6b3446" class="cell" data-execution_count="5">
 <div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ribasim.delwaq <span class="im">import</span> add_tracer</span>
 <span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>add_tracer(model, <span class="dv">11</span>, <span class="st">"Foo"</span>)</span>
@@ -798,7 +798,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 <p>Given the path to a completed Ribasim simulation, we can call <code>ribasim.delwaq.generate</code> for generating the required input files for Delwaq from scratch.</p>
-<div id="0ee35f35" class="cell" data-execution_count="7">
+<div id="d927a22e" class="cell" data-execution_count="7">
 <div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ribasim.delwaq <span class="im">import</span> generate</span>
 <span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>output_path <span class="op">=</span> Path(<span class="st">"../../generated_testmodels/basic/delwaq"</span>)</span>
@@ -816,7 +816,7 @@ See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stab
 </div>
 </div>
 <p>This call produces a handful of files in the user defined folder. Let’s take a look at them:</p>
-<div id="71b37948" class="cell" data-execution_count="8">
+<div id="30de3f50" class="cell" data-execution_count="8">
 <div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="bu">list</span>(output_path.iterdir())</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-display" data-execution_count="8">
 <pre><code>[PosixPath('../../generated_testmodels/basic/delwaq/B5_bounddata.inc'),
@@ -837,7 +837,7 @@ See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stab
 </div>
 <p>These files form a complete Delwaq simulation, and can be run by either pointing DIMR to the <code>dimr_config.xml</code> file or pointing Delwaq to the <code>delwaq.inp</code> file.</p>
 <p>Note that the call to <code>generate</code> produces two output variables; <code>graph</code> and <code>substances</code> that are required for parsing the results of the Delwaq model later on. Nonetheless, we can also inspect them here, and inspect the created Delwaq network.</p>
-<div id="a19e1601" class="cell" data-execution_count="9">
+<div id="a2bd5f1e" class="cell" data-execution_count="9">
 <div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>substances  <span class="co"># list of substances, as will be present in the Delwaq netcdf output</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-display" data-execution_count="9">
 <pre><code>{'Bar',
@@ -855,7 +855,7 @@ See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stab
 </div>
 </div>
 <p>As you can see, the complete substances list is a combination of user input (<code>Cl</code> and <code>Tracer</code> in the input tables), a <code>Continuity</code> tracer, and tracers for all nodetypes in the Ribasim model. The latter tracers allow for deeper inspection of the Ribasim model, such as debugging the mass balance by plotting fraction graphs. Let’s inspect the <code>graph</code> next, which is the Delwaq network that was created from the Ribasim model:</p>
-<div id="6fdfa831" class="cell" data-execution_count="10">
+<div id="5810fb37" class="cell" data-execution_count="10">
 <div class="sourceCode cell-code" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
 <span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> networkx <span class="im">as</span> nx</span>
 <span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a></span>
@@ -895,13 +895,13 @@ See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stab
 <section id="parsing-the-results" class="level2" data-number="1">
 <h2 data-number="1" class="anchored" data-anchor-id="parsing-the-results"><span class="header-section-number">1</span> Parsing the results</h2>
 <p>With Delwaq having run, we can now parse the results using <code>ribasim.delwaq.parse</code>. This function requires the <code>graph</code> and <code>substances</code> variables that were output by <code>ribasim.delwaq.generate</code>, as well as the path to the results folder of the Delwaq simulation.</p>
-<div id="5cd9ffdd" class="cell" data-execution_count="12">
+<div id="575ea96e" class="cell" data-execution_count="12">
 <div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ribasim.delwaq <span class="im">import</span> parse</span>
 <span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>nmodel <span class="op">=</span> parse(toml_path, graph, substances, output_folder<span class="op">=</span>output_path)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>The parsed model is identical to the Ribasim model, with the exception of the added concentration_external table that contains all tracer results from Delwaq.</p>
-<div id="559db4f6" class="cell" data-execution_count="13">
+<div id="e711639d" class="cell" data-execution_count="13">
 <div class="sourceCode cell-code" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>display(nmodel.basin.concentration_external)</span>
 <span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(substances)</span>
 <span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>t <span class="op">=</span> nmodel.basin.concentration_external.df</span>
@@ -933,35 +933,35 @@ See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stab
 <td>2020-01-01</td>
 <td>1</td>
 <td>0.000000</td>
-<td>LevelBoundary</td>
+<td>Cl</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">1464</td>
 <td>2020-01-01</td>
 <td>1</td>
-<td>1.000000</td>
-<td>Continuity</td>
+<td>0.000000</td>
+<td>LevelBoundary</td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">2928</td>
 <td>2020-01-01</td>
 <td>1</td>
 <td>0.000000</td>
-<td>UserDemand</td>
+<td>Foo</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">4392</td>
 <td>2020-01-01</td>
 <td>1</td>
-<td>1.000000</td>
-<td>Initial</td>
+<td>0.000000</td>
+<td>Terminal</td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">5856</td>
 <td>2020-01-01</td>
 <td>1</td>
-<td>0.000000</td>
-<td>Drainage</td>
+<td>1.000000</td>
+<td>Continuity</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">...</td>
@@ -981,29 +981,29 @@ See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stab
 <td data-quarto-table-cell-role="th">13175</td>
 <td>2020-12-31</td>
 <td>9</td>
-<td>0.020358</td>
-<td>Cl</td>
+<td>0.000000</td>
+<td>Bar</td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">14639</td>
 <td>2020-12-31</td>
 <td>9</td>
-<td>0.000599</td>
-<td>Foo</td>
+<td>0.000870</td>
+<td>FlowBoundary</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">16103</td>
 <td>2020-12-31</td>
 <td>9</td>
-<td>0.000870</td>
-<td>FlowBoundary</td>
+<td>0.000000</td>
+<td>Drainage</td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">17567</td>
 <td>2020-12-31</td>
 <td>9</td>
-<td>0.000000</td>
-<td>Bar</td>
+<td>0.092883</td>
+<td>Tracer</td>
 </tr>
 </tbody>
 </table>
@@ -1012,7 +1012,7 @@ See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stab
 </div>
 </div>
 <div class="cell-output cell-output-stdout">
-<pre><code>{'LevelBoundary', 'Continuity', 'UserDemand', 'Initial', 'Drainage', 'Tracer', 'Terminal', 'Precipitation', 'Cl', 'Foo', 'FlowBoundary', 'Bar'}</code></pre>
+<pre><code>{'Cl', 'LevelBoundary', 'Foo', 'Terminal', 'Continuity', 'UserDemand', 'Initial', 'Precipitation', 'Bar', 'FlowBoundary', 'Drainage', 'Tracer'}</code></pre>
 </div>
 <div class="cell-output cell-output-display" data-execution_count="13">
 <div>
@@ -1041,49 +1041,49 @@ See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stab
 <td>2020-01-03</td>
 <td>1</td>
 <td>0.000000</td>
-<td>LevelBoundary</td>
+<td>Cl</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">1472</td>
 <td>2020-01-03</td>
 <td>1</td>
-<td>1.082976</td>
-<td>Continuity</td>
+<td>0.000000</td>
+<td>LevelBoundary</td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">2936</td>
 <td>2020-01-03</td>
 <td>1</td>
 <td>0.000000</td>
-<td>UserDemand</td>
+<td>Foo</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">4400</td>
 <td>2020-01-03</td>
 <td>1</td>
-<td>0.035243</td>
-<td>Initial</td>
+<td>0.000000</td>
+<td>Terminal</td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">5864</td>
 <td>2020-01-03</td>
 <td>1</td>
-<td>0.000000</td>
-<td>Drainage</td>
+<td>1.082976</td>
+<td>Continuity</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">7328</td>
 <td>2020-01-03</td>
 <td>1</td>
-<td>1.047734</td>
-<td>Tracer</td>
+<td>0.000000</td>
+<td>UserDemand</td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">8792</td>
 <td>2020-01-03</td>
 <td>1</td>
-<td>0.000000</td>
-<td>Terminal</td>
+<td>0.035243</td>
+<td>Initial</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">10256</td>
@@ -1097,77 +1097,77 @@ See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stab
 <td>2020-01-03</td>
 <td>1</td>
 <td>0.000000</td>
-<td>Cl</td>
+<td>Bar</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">13184</td>
 <td>2020-01-03</td>
 <td>1</td>
-<td>0.000000</td>
-<td>Foo</td>
+<td>0.976616</td>
+<td>FlowBoundary</td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">14648</td>
 <td>2020-01-03</td>
 <td>1</td>
-<td>0.976616</td>
-<td>FlowBoundary</td>
+<td>0.000000</td>
+<td>Drainage</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">16112</td>
 <td>2020-01-03</td>
 <td>1</td>
-<td>0.000000</td>
-<td>Bar</td>
+<td>1.047734</td>
+<td>Tracer</td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">9</td>
 <td>2020-01-03</td>
 <td>3</td>
-<td>0.019141</td>
-<td>LevelBoundary</td>
+<td>0.650798</td>
+<td>Cl</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">1473</td>
 <td>2020-01-03</td>
 <td>3</td>
-<td>0.068404</td>
-<td>Continuity</td>
+<td>0.019141</td>
+<td>LevelBoundary</td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">2937</td>
 <td>2020-01-03</td>
 <td>3</td>
-<td>0.000000</td>
-<td>UserDemand</td>
+<td>0.019141</td>
+<td>Foo</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">4401</td>
 <td>2020-01-03</td>
 <td>3</td>
-<td>0.010349</td>
-<td>Initial</td>
+<td>0.000000</td>
+<td>Terminal</td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">5865</td>
 <td>2020-01-03</td>
 <td>3</td>
-<td>0.000000</td>
-<td>Drainage</td>
+<td>0.068404</td>
+<td>Continuity</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">7329</td>
 <td>2020-01-03</td>
 <td>3</td>
-<td>0.038913</td>
-<td>Tracer</td>
+<td>0.000000</td>
+<td>UserDemand</td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">8793</td>
 <td>2020-01-03</td>
 <td>3</td>
-<td>0.000000</td>
-<td>Terminal</td>
+<td>0.010349</td>
+<td>Initial</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">10257</td>
@@ -1180,78 +1180,78 @@ See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stab
 <td data-quarto-table-cell-role="th">11721</td>
 <td>2020-01-03</td>
 <td>3</td>
-<td>0.650798</td>
-<td>Cl</td>
+<td>0.000000</td>
+<td>Bar</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">13185</td>
 <td>2020-01-03</td>
 <td>3</td>
-<td>0.019141</td>
-<td>Foo</td>
+<td>0.006316</td>
+<td>FlowBoundary</td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">14649</td>
 <td>2020-01-03</td>
 <td>3</td>
-<td>0.006316</td>
-<td>FlowBoundary</td>
+<td>0.000000</td>
+<td>Drainage</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">16113</td>
 <td>2020-01-03</td>
 <td>3</td>
-<td>0.000000</td>
-<td>Bar</td>
+<td>0.038913</td>
+<td>Tracer</td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">10</td>
 <td>2020-01-03</td>
 <td>6</td>
-<td>0.001763</td>
-<td>LevelBoundary</td>
+<td>0.059947</td>
+<td>Cl</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">1474</td>
 <td>2020-01-03</td>
 <td>6</td>
-<td>0.006775</td>
-<td>Continuity</td>
+<td>0.001763</td>
+<td>LevelBoundary</td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">2938</td>
 <td>2020-01-03</td>
 <td>6</td>
-<td>0.000000</td>
-<td>UserDemand</td>
+<td>0.001763</td>
+<td>Foo</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">4402</td>
 <td>2020-01-03</td>
 <td>6</td>
-<td>0.001429</td>
-<td>Initial</td>
+<td>0.000000</td>
+<td>Terminal</td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">5866</td>
 <td>2020-01-03</td>
 <td>6</td>
-<td>0.000000</td>
-<td>Drainage</td>
+<td>0.006775</td>
+<td>Continuity</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">7330</td>
 <td>2020-01-03</td>
 <td>6</td>
-<td>0.003583</td>
-<td>Tracer</td>
+<td>0.000000</td>
+<td>UserDemand</td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">8794</td>
 <td>2020-01-03</td>
 <td>6</td>
-<td>0.000000</td>
-<td>Terminal</td>
+<td>0.001429</td>
+<td>Initial</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">10258</td>
@@ -1264,78 +1264,78 @@ See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stab
 <td data-quarto-table-cell-role="th">11722</td>
 <td>2020-01-03</td>
 <td>6</td>
-<td>0.059947</td>
-<td>Cl</td>
+<td>0.000000</td>
+<td>Bar</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">13186</td>
 <td>2020-01-03</td>
 <td>6</td>
-<td>0.001763</td>
-<td>Foo</td>
+<td>0.000581</td>
+<td>FlowBoundary</td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">14650</td>
 <td>2020-01-03</td>
 <td>6</td>
-<td>0.000581</td>
-<td>FlowBoundary</td>
+<td>0.000000</td>
+<td>Drainage</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">16114</td>
 <td>2020-01-03</td>
 <td>6</td>
-<td>0.000000</td>
-<td>Bar</td>
+<td>0.003583</td>
+<td>Tracer</td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">11</td>
 <td>2020-01-03</td>
 <td>9</td>
-<td>0.000031</td>
-<td>LevelBoundary</td>
+<td>0.001054</td>
+<td>Cl</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">1475</td>
 <td>2020-01-03</td>
 <td>9</td>
-<td>0.012028</td>
-<td>Continuity</td>
+<td>0.000031</td>
+<td>LevelBoundary</td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">2939</td>
 <td>2020-01-03</td>
 <td>9</td>
-<td>0.000000</td>
-<td>UserDemand</td>
+<td>0.000031</td>
+<td>Foo</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">4403</td>
 <td>2020-01-03</td>
 <td>9</td>
-<td>0.003892</td>
-<td>Initial</td>
+<td>0.000000</td>
+<td>Terminal</td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">5867</td>
 <td>2020-01-03</td>
 <td>9</td>
-<td>0.000000</td>
-<td>Drainage</td>
+<td>0.012028</td>
+<td>Continuity</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">7331</td>
 <td>2020-01-03</td>
 <td>9</td>
-<td>0.008105</td>
-<td>Tracer</td>
+<td>0.000000</td>
+<td>UserDemand</td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">8795</td>
 <td>2020-01-03</td>
 <td>9</td>
-<td>0.000000</td>
-<td>Terminal</td>
+<td>0.003892</td>
+<td>Initial</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">10259</td>
@@ -1348,29 +1348,29 @@ See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stab
 <td data-quarto-table-cell-role="th">11723</td>
 <td>2020-01-03</td>
 <td>9</td>
-<td>0.001054</td>
-<td>Cl</td>
+<td>0.000000</td>
+<td>Bar</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">13187</td>
 <td>2020-01-03</td>
 <td>9</td>
-<td>0.000031</td>
-<td>Foo</td>
+<td>0.000010</td>
+<td>FlowBoundary</td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">14651</td>
 <td>2020-01-03</td>
 <td>9</td>
-<td>0.000010</td>
-<td>FlowBoundary</td>
+<td>0.000000</td>
+<td>Drainage</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">16115</td>
 <td>2020-01-03</td>
 <td>9</td>
-<td>0.000000</td>
-<td>Bar</td>
+<td>0.008105</td>
+<td>Tracer</td>
 </tr>
 </tbody>
 </table>
@@ -1379,7 +1379,7 @@ See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stab
 </div>
 </div>
 <p>We can use this table to plot the results of the Delwaq model, both spatially as over time.</p>
-<div id="d118f4ac" class="cell" data-execution_count="14">
+<div id="d22d4800" class="cell" data-execution_count="14">
 <div class="sourceCode cell-code" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ribasim.delwaq <span class="im">import</span> plot_fraction</span>
 <span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>plot_fraction(nmodel, <span class="dv">1</span>)  <span class="co"># default tracers, should add up to 1</span></span>
@@ -1407,7 +1407,7 @@ See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stab
 </div>
 </div>
 </div>
-<div id="d20756a4" class="cell" data-execution_count="15">
+<div id="31cbd734" class="cell" data-execution_count="15">
 <div class="sourceCode cell-code" id="cb17"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ribasim.delwaq <span class="im">import</span> plot_spatial</span>
 <span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>plot_spatial(nmodel, <span class="st">"Bar"</span>)</span>
