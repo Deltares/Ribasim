@@ -452,7 +452,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pydantic-core-2.33.2-py312h680f630_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pydantic-settings-2.10.1-pyh3cfb1c2_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pygments-2.19.2-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/pyjuliacall-0.9.27-pyhd8ed1ab_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/pyjuliacall-0.9.28-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pyjuliapkg-0.1.18-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pyogrio-0.10.0-py312h02b19dd_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pyparsing-3.2.3-pyhe01879c_2.conda
@@ -1063,7 +1063,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/pydantic-core-2.33.2-py312h1c19210_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pydantic-settings-2.10.1-pyh3cfb1c2_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pygments-2.19.2-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/pyjuliacall-0.9.27-pyhd8ed1ab_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/pyjuliacall-0.9.28-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pyjuliapkg-0.1.18-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/pyogrio-0.10.0-py312hfe461d8_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pyparsing-3.2.3-pyhe01879c_2.conda
@@ -1635,7 +1635,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pydantic-core-2.33.2-py312hd3c0895_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pydantic-settings-2.10.1-pyh3cfb1c2_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pygments-2.19.2-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/pyjuliacall-0.9.27-pyhd8ed1ab_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/pyjuliacall-0.9.28-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pyjuliapkg-0.1.18-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pyobjc-core-11.1-py312h4c66426_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pyobjc-framework-cocoa-11.1-py312h3964663_1.conda
@@ -2156,7 +2156,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/pydantic-core-2.33.2-py312h8422cdd_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pydantic-settings-2.10.1-pyh3cfb1c2_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pygments-2.19.2-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/pyjuliacall-0.9.27-pyhd8ed1ab_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/pyjuliacall-0.9.28-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pyjuliapkg-0.1.18-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/pyogrio-0.10.0-py312h6e88f47_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pyparsing-3.2.3-pyhe01879c_2.conda
@@ -2762,7 +2762,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pydantic-core-2.33.2-py311hdae7d1d_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pydantic-settings-2.10.1-pyh3cfb1c2_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pygments-2.19.2-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/pyjuliacall-0.9.27-pyhd8ed1ab_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/pyjuliacall-0.9.28-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pyjuliapkg-0.1.18-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pyogrio-0.10.0-py311hf6089d3_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pyparsing-3.2.3-pyhe01879c_2.conda
@@ -3373,7 +3373,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/pydantic-core-2.33.2-py311h73012f0_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pydantic-settings-2.10.1-pyh3cfb1c2_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pygments-2.19.2-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/pyjuliacall-0.9.27-pyhd8ed1ab_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/pyjuliacall-0.9.28-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pyjuliapkg-0.1.18-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/pyogrio-0.10.0-py311h83152cb_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pyparsing-3.2.3-pyhe01879c_2.conda
@@ -3945,7 +3945,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pydantic-core-2.33.2-py311hf245fc6_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pydantic-settings-2.10.1-pyh3cfb1c2_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pygments-2.19.2-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/pyjuliacall-0.9.27-pyhd8ed1ab_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/pyjuliacall-0.9.28-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pyjuliapkg-0.1.18-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pyobjc-core-11.1-py311hf0763de_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pyobjc-framework-cocoa-11.1-py311hc5b188e_1.conda
@@ -4466,7 +4466,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/pydantic-core-2.33.2-py311hc4022dc_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pydantic-settings-2.10.1-pyh3cfb1c2_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pygments-2.19.2-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/pyjuliacall-0.9.27-pyhd8ed1ab_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/pyjuliacall-0.9.28-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pyjuliapkg-0.1.18-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/pyogrio-0.10.0-py311haedb144_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pyparsing-3.2.3-pyhe01879c_2.conda
@@ -24699,9 +24699,9 @@ packages:
   - pkg:pypi/pygments?source=hash-mapping
   size: 889287
   timestamp: 1750615908735
-- conda: https://conda.anaconda.org/conda-forge/noarch/pyjuliacall-0.9.27-pyhd8ed1ab_0.conda
-  sha256: 31a87d6809c54756182f71df194cb64001ded6143bbd16ff31ecb0068f70eeaa
-  md5: e75354a20a8f6f04e997ab30d38b9b85
+- conda: https://conda.anaconda.org/conda-forge/noarch/pyjuliacall-0.9.28-pyhd8ed1ab_0.conda
+  sha256: 8e00651ffcef09ceb8b984ea48918e931b457027191c6ce6dff91451c90ee98f
+  md5: 1a048ae5083617d15aa5f67156c301a9
   depends:
   - pyjuliapkg >=0.1.17,<0.2.dev0
   - python >=3.9
@@ -24709,8 +24709,8 @@ packages:
   license_family: MIT
   purls:
   - pkg:pypi/juliacall?source=hash-mapping
-  size: 17615
-  timestamp: 1755674713652
+  size: 17857
+  timestamp: 1758160918530
 - conda: https://conda.anaconda.org/conda-forge/noarch/pyjuliapkg-0.1.18-pyhd8ed1ab_0.conda
   sha256: 331f0bfda132c9abe5f16b5d225d682a0da00a4c7b1005f986d824b008b6b4a5
   md5: a4f284e5499471382ac3ab4cd47e96bc
