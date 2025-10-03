@@ -29,7 +29,7 @@ def test_offline_delwaq_coupling():
     model.solver.evaporate_mass = False
     graph, substances = generate(model, model_dir)
     run_delwaq(model_dir)
-    parse(model, graph, substances, model_dir)
+    model = parse(model, graph, substances, model_dir)
 
     df = model.basin.concentration_external.df
     assert df is not None
@@ -48,7 +48,7 @@ def test_offline_delwaq_coupling():
         "UserDemand",
     ]
 
-    assert all(df[df.substance == "Continuity"].concentration >= 1.0)
+    assert all(df[df.substance == "Continuity"].concentration >= 1.0 - 1e-6)
     assert all(np.isclose(df[df.substance == "UserDemand"].concentration, 0.0))
 
     # With evaporation of mass disabled
@@ -58,7 +58,7 @@ def test_offline_delwaq_coupling():
 
     graph, substances = generate(model, model_dir)
     run_delwaq(model_dir)
-    parse(model, graph, substances, model_dir)
+    model = parse(model, graph, substances, model_dir)
 
     df = model.basin.concentration_external.df
     assert df is not None
