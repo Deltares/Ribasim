@@ -58,15 +58,17 @@ model.write(toml_path)
 run_ribasim(toml_path)
 ```
 
-Given the path to a completed Ribasim simulation, we can call `ribasim.delwaq.generate` for generating the required input files for Delwaq from scratch.
+Given the path to a completed Ribasim simulation, we can call `ribasim.delwaq.generate` for generating the required input files for Delwaq from scratch. `ribasim.delwaq.generate` either takes a `Model` instance, or the path to a toml file, as well as
+an output_path keyword, where the input for Delwaq will be written. By default it is
+set to the delwaq folder next to the toml.
 
 ```{python}
 from ribasim.delwaq import generate
 
-output_path = Path("../../generated_testmodels/basic/delwaq")
 # The default path is the delwaq folder next to the toml
+output_path = Path("generated_testmodels/basic/delwaq")
 
-graph, substances = generate(toml_path, output_path)
+graph, substances = generate(model, output_path)
 ```
 
 This call produces a handful of files in the user defined folder. Let's take a look at them:
@@ -118,7 +120,8 @@ As you can see, the Delwaq network is very similar to the Ribasim network, with 
 - All node IDs have been renumbered, with boundaries being negative, and Basins being positive.
 
 ## Parsing the results
-With Delwaq having run, we can now parse the results using `ribasim.delwaq.parse`. This function requires the `graph` and `substances` variables that were output by `ribasim.delwaq.generate`, as well as the path to the results folder of the Delwaq simulation.
+With Delwaq having run, we can now parse the results using `ribasim.delwaq.parse`. This function requires either a path to a toml file, or a Model instance, as well as the `graph` and `substances` variables that were output by `ribasim.delwaq.generate`.
+You can optionally set the path to the results folder of the Delwaq simulation, if you overrode the default during `ribasim.delwaq.generate`.
 
 ```{python}
 #| include: false
@@ -134,7 +137,7 @@ urllib.request.urlretrieve(
 ```{python}
 from ribasim.delwaq import parse
 
-nmodel = parse(toml_path, graph, substances, output_folder=output_path)
+nmodel = parse(model, graph, substances)
 ```
 
 The parsed model is identical to the Ribasim model, with the exception of the added concentration_external table that contains all tracer results from Delwaq.

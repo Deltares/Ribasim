@@ -16,6 +16,8 @@ def parse(
 ) -> ribasim.Model:
     if not isinstance(model, ribasim.Model):
         model = ribasim.Model.read(model)
+    else:
+        model = model.copy(deep=True)
 
     # Output of Delwaq
     if output_folder is None:

@@ -118,13 +118,12 @@ def _setup_graph(nodes, link, evaporate_mass=True):
             inneighbor_ids = G.pred[node_id]
             remove_nodes.append(node_id)
 
+            converging = True
             if len(inneighbor_ids) > 1 and len(out) > 1:
                 raise ValueError(
                     "Cannot simplify network with junctions that have multiple inflow and outflow links."
                 )
-            elif len(inneighbor_ids) > 1 and len(out) == 1:
-                converging = True
-            elif len(inneighbor_ids) == 1 and len(out) > 1:
+            elif len(inneighbor_ids) == 1 and len(out) >= 1:
                 converging = False
 
             for inneighbor_id in inneighbor_ids:
@@ -446,10 +445,6 @@ def generate(
             continue
         lookups[boundary_type][node_id] = link_id
 
-    # total_in = inflow_rate + precipitation + drainage + surface_runoff
-    # total_out = outflow_rate + evaporation + infiltration
-
-    print(lookups.keys())
     for boundary_type in lookups.keys():
         df = basins[basins.node_id.isin(lookups[boundary_type].keys())][
             ["node_id", "time", boundary_type]

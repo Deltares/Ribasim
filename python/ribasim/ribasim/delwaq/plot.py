@@ -68,10 +68,11 @@ def plot_spatial(model, tracer="Initial", versus=None, limit=0.001):
         c = table["concentration"][nodes.index]
         alpha = c > limit
     else:
-        alpha = (
+        total_concentration = (
             table["concentration"][nodes.index] + vtable["concentration"][nodes.index]
         )
-        c = table["concentration"][nodes.index] / alpha
+        c = table["concentration"][nodes.index] / total_concentration
+        alpha = total_concentration / 2
 
     fig, ax = plt.subplots()
     s = ax.scatter(

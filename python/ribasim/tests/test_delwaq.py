@@ -24,12 +24,41 @@ def test_offline_delwaq_coupling():
     toml_path = repo_dir / "generated_testmodels/basic/ribasim.toml"
 
     model = Model.read(toml_path)
+
+    # With evaporation of mass disabled
+    model.solver.evaporate_mass = False
+    graph, substances = generate(model, model_dir)
+    run_delwaq(model_dir)
+    parse(model, graph, substances, model_dir)
+
+    df = model.basin.concentration_external.df
+    assert df is not None
+    assert df.shape[0] > 0
+    assert df.node_id.nunique() == 4
+    assert sorted(df.substance.unique()) == [
+        "Cl",
+        "Continuity",
+        "Drainage",
+        "FlowBoundary",
+        "Initial",
+        "LevelBoundary",
+        "Precipitation",
+        "SurfaceRunoff",
+        "Tracer",
+        "UserDemand",
+    ]
+
+    assert all(df[df.substance == "Continuity"].concentration >= 1.0)
+    assert all(np.isclose(df[df.substance == "UserDemand"].concentration, 0.0))
+
+    # With evaporation of mass disabled
+    model.solver.evaporate_mass = True
     add_tracer(model, 11, "Foo")
     add_tracer(model, 15, "Bar")
 
-    graph, substances = generate(model)
+    graph, substances = generate(model, model_dir)
     run_delwaq(model_dir)
-    parse(model, graph, substances)
+    parse(model, graph, substances, model_dir)
 
     df = model.basin.concentration_external.df
     assert df is not None
