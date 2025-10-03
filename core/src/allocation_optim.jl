@@ -917,16 +917,21 @@ function save_flows!(
     (; graph, allocation) = p.p_independent
     (; record_flow) = allocation
     flow = problem[:flow]
-    # print flows
-    for link in only(flow.axes)
-        flow_value = JuMP.value(flow[link]) * scaling.flow
-        println("flow ", link, " = ", flow_value)
-    end
 
     low_storage_factor = problem[:low_storage_factor]
 
+    # primary network connections are links shared with the primary network, but should be recorded only once
+    if is_primary_network(subnetwork_id)
+        valid_links = only(flow.axes)
+    else
+        valid_links = filter(
+            link -> !(link in allocation.primary_network_connections[subnetwork_id]),
+            only(flow.axes),
+        )
+    end
+
     # Horizontal flows
-    for link in only(flow.axes)
+    for link in valid_links
         (id_from, id_to) = link
         link_metadata = graph[link...]
         flow_variable = flow[link]
@@ -1061,11 +1066,6 @@ function update_allocation!(model)::Nothing
         reset_demand_coefficients(primary_network)
         for secondary_network in get_secondary_networks(allocation_models)
             collect_demands!(secondary_network, primary_network, model)
-            save_flows!(
-                integrator,
-                secondary_network,
-                AllocationOptimizationType.collect_demands,
-            )
             delete_temporary_constraints!(secondary_network)
         end
 

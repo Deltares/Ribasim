@@ -191,10 +191,6 @@ function analyze_infeasibility(
     constraint_to_slack = JuMP.relax_with_penalty!(problem, constraint_to_penalty)
     JuMP.optimize!(problem)
 
-    for flow in problem[:flow]
-        println(flow, " ", JuMP.value(flow))
-    end
-
     for irreducible_infeasible_subset in data_infeasibility.iis
         constraint_violations = Dict{JuMP.ConstraintRef, Float64}()
         for constraint_index in irreducible_infeasible_subset.constraint
