@@ -14,7 +14,6 @@ def plot_fraction(
         "Drainage",
         "Precipitation",
         "SurfaceRunoff",
-        "Terminal",
     ],
 ):
     table = model.basin.concentration_external.df

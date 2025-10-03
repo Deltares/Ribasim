@@ -40,14 +40,10 @@ env = jinja2.Environment(
     autoescape=True, loader=jinja2.FileSystemLoader(delwaq_dir / "template")
 )
 
-# Add evaporation links, so mass balance is correct
-# To simulate salt increase due to evaporation, set to False
-USE_EVAP = True
-
 
 def _boundary_name(id, type):
     # Delwaq has a limit of 12 characters for the boundary name
-    return type[:9].replace("_", "") + "_" + str(id)
+    return type.replace("_", "")[:9] + "_" + str(id)
 
 
 def _quote(value):
@@ -450,12 +446,11 @@ def generate(
             continue
         lookups[boundary_type][node_id] = link_id
 
-    # Build flows for all basin boundaries
-    boundary_types = ["drainage", "precipitation"]
-    if evaporate_mass:
-        boundary_types.append("evaporation")
+    # total_in = inflow_rate + precipitation + drainage + surface_runoff
+    # total_out = outflow_rate + evaporation + infiltration
 
-    for boundary_type in boundary_types:
+    print(lookups.keys())
+    for boundary_type in lookups.keys():
         df = basins[basins.node_id.isin(lookups[boundary_type].keys())][
             ["node_id", "time", boundary_type]
         ].rename(columns={boundary_type: "flow_rate"})
@@ -520,7 +515,6 @@ def generate(
         "Initial": 1.0,
         "LevelBoundary": 0.0,
         "FlowBoundary": 0.0,
-        "Terminal": 0.0,
         "UserDemand": 0.0,
         "Precipitation": 0.0,
         "Drainage": 0.0,
@@ -602,7 +596,7 @@ def generate(
     return G, substances
 
 
-def add_tracer(model, node_id, tracer_name):
+def add_tracer(model, node_id, tracer_name, concentration=1.0):
     """Add a tracer to the Delwaq model."""
     n = model.node_table().df.loc[node_id]
     node_type = n.node_type
@@ -621,7 +615,7 @@ def add_tracer(model, node_id, tracer_name):
         node_id=[node_id],
         time=[model.starttime],
         substance=[tracer_name],
-        concentration=[1.0],
+        concentration=[concentration],
     )
     if nt.concentration is None:
         nt.concentration = table
